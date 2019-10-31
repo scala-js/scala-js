@@ -343,6 +343,12 @@ object Definitions {
     override def toString(): String =
       "MethodName<" + nameString + ">"
 
+    def displayName: String = {
+      simpleName.nameString + "(" +
+      paramTypeRefs.map(_.displayName).mkString(",") + ")" +
+      resultTypeRef.fold("")(_.displayName)
+    }
+
     /** Returns `true` iff this is the name of an instance constructor. */
     def isConstructor: Boolean = kind == ConstructorKind
 

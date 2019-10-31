@@ -182,13 +182,30 @@ object Types {
       printer.print(this)
       writer.toString()
     }
+
+    def displayName: String
   }
 
   sealed abstract class NonArrayTypeRef extends TypeRef
 
   /** Primitive type reference. */
   final case class PrimRef private[ir] (tpe: PrimTypeWithRef)
-      extends NonArrayTypeRef
+      extends NonArrayTypeRef {
+
+    val displayName: String = tpe match {
+      case NoType      => "void"
+      case BooleanType => "boolean"
+      case CharType    => "char"
+      case ByteType    => "byte"
+      case ShortType   => "short"
+      case IntType     => "int"
+      case LongType    => "long"
+      case FloatType   => "float"
+      case DoubleType  => "double"
+      case NullType    => "null"
+      case NothingType => "nothing"
+    }
+  }
 
   final val VoidRef = PrimRef(NoType)
   final val BooleanRef = PrimRef(BooleanType)
@@ -203,11 +220,16 @@ object Types {
   final val NothingRef = PrimRef(NothingType)
 
   /** Class (or interface) type. */
-  final case class ClassRef(className: ClassName) extends NonArrayTypeRef
+  final case class ClassRef(className: ClassName) extends NonArrayTypeRef {
+    def displayName: String = className.nameString
+  }
 
   /** Array type. */
   final case class ArrayTypeRef(base: NonArrayTypeRef, dimensions: Int)
-      extends TypeRef
+      extends TypeRef {
+
+    def displayName: String = "[" * dimensions + base.displayName
+  }
 
   object ArrayTypeRef {
     def of(innerType: TypeRef): ArrayTypeRef = innerType match {

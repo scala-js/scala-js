@@ -85,7 +85,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
               if (classDef.kind == ClassKind.AbstractJSType) "Abstract"
               else "Native"
             reportError(
-                s"$kind JS type ${classDef.name} cannot have instance members")
+                i"$kind JS type ${classDef.name} cannot have instance members")
           }
         case _ =>
           checkScalaClassDef(classDef)
@@ -100,7 +100,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     for (classCaptures <- classDef.jsClassCaptures) {
       if (classDef.kind != ClassKind.JSClass) {
         reportError(
-            s"Class ${classDef.name} which is not a non-native JS class " +
+            i"Class ${classDef.name} which is not a non-native JS class " +
             "cannot have class captures")
       }
 
@@ -109,13 +109,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           implicit val ctx = ErrorContext(p)
           val name = ident.name
           if (alreadyDeclared(name))
-            reportError(s"Duplicate JS class capture '$name'")
+            reportError(i"Duplicate JS class capture '$name'")
           if (tpe == NoType)
-            reportError(s"The JS class capture $name cannot have type NoType")
+            reportError(i"The JS class capture $name cannot have type NoType")
           if (mutable)
-            reportError(s"The JS class capture $name cannot be mutable")
+            reportError(i"The JS class capture $name cannot be mutable")
           if (rest)
-            reportError(s"The JS class capture $name cannot be a rest param")
+            reportError(i"The JS class capture $name cannot be a rest param")
           alreadyDeclared + name
       }
 
@@ -128,7 +128,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       for (staticInit <- classDef.methods.find(isStaticInit)) {
         implicit val ctx = ErrorContext(staticInit.value)
         reportError(
-            s"The non-top-level JS class ${classDef.name} cannot have a " +
+            i"The non-top-level JS class ${classDef.name} cannot have a " +
             "static initializer")
       }
     }
@@ -141,12 +141,12 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       case ClassKind.NativeJSClass | ClassKind.NativeJSModuleClass =>
         if (classDef.jsNativeLoadSpec.isEmpty) {
           reportError(
-              s"Native JS type ${classDef.name} must have a jsNativeLoadSpec")
+              i"Native JS type ${classDef.name} must have a jsNativeLoadSpec")
         }
       case _ =>
         if (classDef.jsNativeLoadSpec.isDefined) {
           reportError(
-              s"Non-native JS type ${classDef.name} must not have a " +
+              i"Non-native JS type ${classDef.name} must not have a " +
               "jsNativeLoadSpec")
         }
     }
@@ -187,7 +187,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         duplicate <- fieldsWithSameName.tail
       } {
         implicit val ctx = ErrorContext(duplicate)
-        reportError(s"Duplicate static field with name '${duplicate.name}'")
+        reportError(i"Duplicate static field with name '${duplicate.name}'")
       }
 
       // Module classes must have exactly one constructor, without parameter
@@ -195,9 +195,9 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         implicit val ctx = ErrorContext(classDef)
         val methods = classDef.methods
         if (methods.count(m => m.value.flags.namespace == MemberNamespace.Constructor) != 1)
-          reportError(s"Module class must have exactly 1 constructor")
+          reportError("Module class must have exactly 1 constructor")
         if (!methods.exists(_.value.encodedName == NoArgConstructorName))
-          reportError(s"Module class must have a parameterless constructor")
+          reportError("Module class must have a parameterless constructor")
       }
 
       // Check exported members
@@ -235,11 +235,11 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
           case TopLevelFieldExportDef(_, field) =>
             lookupClass(classDef.name.name).lookupStaticField(field.name).fold {
-              reportError(s"Cannot export non-existent static field '$field'")
+              reportError(i"Cannot export non-existent static field '$field'")
             } { checkedField =>
               val tpe = checkedField.tpe
               if (tpe != AnyType)
-                reportError(s"Cannot export field '$field' of type $tpe")
+                reportError(i"Cannot export field '$field' of type $tpe")
             }
         }
       }
@@ -251,10 +251,10 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         else "Interfaces"
 
       if (classDef.fields.nonEmpty)
-        reportError(s"$kindStr may not have fields")
+        reportError(i"$kindStr may not have fields")
 
       if (classDef.exportedMembers.nonEmpty || classDef.topLevelExports.nonEmpty)
-        reportError(s"$kindStr may not have exports")
+        reportError(i"$kindStr may not have exports")
     }
 
     // Check methods
@@ -285,12 +285,12 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         // ok
       case JSFieldDef(_, name, _) =>
         if (!classDef.kind.isJSClass)
-          reportError(s"Illegal JS field '$name' in Scala class")
+          reportError(i"Illegal JS field '$name' in Scala class")
         typecheckExpect(name, Env.empty, AnyType)
     }
 
     if (fieldDef.ftpe == NoType)
-      reportError(s"FieldDef cannot have type NoType")
+      reportError(i"FieldDef cannot have type NoType")
   }
 
   private def checkMethodDef(methodDef: MethodDef,
@@ -308,16 +308,16 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       reportError("A method cannot have the flag Mutable")
 
     if (classDef.kind.isJSClass && !static) {
-      reportError(s"Non exported instance method $name is illegal in JS class")
+      reportError(i"Non exported instance method $name is illegal in JS class")
       return // things would go too badly otherwise
     }
 
     for (ParamDef(name, tpe, _, rest) <- params) {
       checkDeclareLocalVar(name)
       if (tpe == NoType)
-        reportError(s"Parameter $name has type NoType")
+        reportError(i"Parameter $name has type NoType")
       if (rest)
-        reportError(s"Rest parameter $name is illegal in a Scala method")
+        reportError(i"Rest parameter $name is illegal in a Scala method")
     }
 
     if (isConstructor && classDef.kind == ClassKind.Interface)
@@ -332,8 +332,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     val sigFromName = inferMethodType(name, static)
     if (advertizedSig != sigFromName) {
       reportError(
-          s"The signature of ${classDef.name.name}.$name, which is "+
-          s"$advertizedSig, does not match its name (should be $sigFromName).")
+          i"The signature of ${classDef.name.name}.$name, which is "+
+          i"$advertizedSig, does not match its name (should be $sigFromName).")
     }
 
     // Compute bodyEnv even for abstract defs for error checking in fromSignature
@@ -346,7 +346,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     body.fold {
       // Abstract
       reportError(
-          s"The abstract method ${classDef.name.name}.$name survived the " +
+          i"The abstract method ${classDef.name.name}.$name survived the " +
           "Analyzer (this is a bug)")
     } { body =>
       // Concrete
@@ -370,7 +370,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       reportError("An exported method cannot be private")
 
     if (!isTopLevel && !classDef.kind.isAnyNonNativeClass) {
-      reportError(s"Exported method def can only appear in a class")
+      reportError(i"Exported method def can only appear in a class")
       return
     }
 
@@ -455,7 +455,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       reportError("An exported property def cannot be private")
 
     if (!classDef.kind.isAnyNonNativeClass) {
-      reportError(s"Exported property def can only appear in a class")
+      reportError(i"Exported property def can only appear in a class")
       return
     }
 
@@ -476,9 +476,9 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       checkDeclareLocalVar(setterArg.name)
       if (setterArg.ptpe != AnyType)
         reportError("Setter argument of exported property def has type "+
-            s"${setterArg.ptpe}, but must be Any")
+            i"${setterArg.ptpe}, but must be Any")
       if (setterArg.rest)
-        reportError(s"Rest parameter ${setterArg.name} is illegal in setter")
+        reportError(i"Rest parameter ${setterArg.name} is illegal in setter")
 
       val setterBodyEnv = Env.fromSignature(thisType, classDef.jsClassCaptures,
           List(setterArg), NoType)
@@ -506,7 +506,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     implicit val ctx = ErrorContext(classExportDef)
 
     if (classDef.kind != ClassKind.JSClass)
-      reportError(s"Exported JS class def can only appear in a JS class")
+      reportError(i"Exported JS class def can only appear in a JS class")
   }
 
   private def checkTopLevelModuleExportDef(
@@ -543,7 +543,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
               f <- c.lookupField(name)
               if !f.flags.isMutable
             } {
-              reportError(s"Assignment to immutable field $name.")
+              reportError(i"Assignment to immutable field $name.")
             }
           case SelectStatic(ClassRef(cls), FieldIdent(name, _)) =>
             val c = lookupClass(cls)
@@ -551,10 +551,10 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
               f <- c.lookupStaticField(name)
               if !f.flags.isMutable
             } {
-              reportError(s"Assignment to immutable static field $name.")
+              reportError(i"Assignment to immutable static field $name.")
             }
           case VarRef(LocalIdent(name, _)) if !env.locals(name).mutable =>
-            reportError(s"Assignment to immutable variable $name.")
+            reportError(i"Assignment to immutable variable $name.")
           case _ =>
         }
         val lhsTpe = typecheckExpr(select, env)
@@ -643,14 +643,14 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       implicit ctx: ErrorContext): Unit = {
     val tpe = typecheckExpr(tree, env)
     if (!isSubtype(tpe, expectedType))
-      reportError(s"$expectedType expected but $tpe found "+
-          s"for tree of type ${tree.getClass.getName}")
+      reportError(i"$expectedType expected but $tpe found "+
+          i"for tree of type ${tree.getClass.getName}")
   }
 
   private def typecheckExpr(tree: Tree, env: Env): Type = {
     implicit val ctx = ErrorContext(tree)
     if (tree.tpe == NoType)
-      reportError(s"Expression tree has type NoType")
+      reportError(i"Expression tree has type NoType")
     typecheck(tree, env)
   }
 
@@ -670,14 +670,14 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         args: List[Tree], tpe: Type, isStatic: Boolean): Unit = {
       val (methodParams, resultType) = inferMethodType(methodName, isStatic)
       if (args.size != methodParams.size)
-        reportError(s"Arity mismatch: ${methodParams.size} expected but "+
-            s"${args.size} found")
+        reportError(i"Arity mismatch: ${methodParams.size} expected but "+
+            i"${args.size} found")
       for ((actual, formal) <- args zip methodParams) {
         typecheckExpect(actual, env, formal)
       }
       if (tpe != resultType)
-        reportError(s"Call to $methodFullName of type $resultType "+
-            s"typed as ${tree.tpe}")
+        reportError(i"Call to $methodFullName of type $resultType "+
+            i"typed as ${tree.tpe}")
     }
 
     tree match {
@@ -696,7 +696,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
       case Return(expr, label) =>
         env.returnTypes.get(label.name).fold[Unit] {
-          reportError(s"Cannot return to label $label.")
+          reportError(i"Cannot return to label $label.")
           typecheckExpr(expr, env)
         } { returnType =>
           typecheckExpect(expr, env, returnType)
@@ -739,8 +739,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       case New(cls, ctor, args) =>
         val clazz = lookupClass(cls)
         if (!clazz.kind.isClass)
-          reportError(s"new $cls which is not a class")
-        checkApplyGeneric(ctor.name, s"$cls.$ctor", args, NoType,
+          reportError(i"new $cls which is not a class")
+        checkApplyGeneric(ctor.name, i"$cls.$ctor", args, NoType,
             isStatic = false)
 
       case LoadModule(cls) =>
@@ -752,7 +752,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         val c = lookupClass(cls)
         val kind = c.kind
         if (!kind.isClass) {
-          reportError(s"Cannot select $item of non-class $cls")
+          reportError(i"Cannot select $item of non-class $cls")
           typecheckExpr(qualifier, env)
         } else {
           typecheckExpect(qualifier, env, ClassType(cls))
@@ -770,11 +770,11 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
            */
           if (c.hasInstances) {
             c.lookupField(item).fold[Unit] {
-              reportError(s"Class $cls does not have a field $item")
+              reportError(i"Class $cls does not have a field $item")
             } { fieldDef =>
               if (fieldDef.tpe != tree.tpe)
-                reportError(s"Select $cls.$item of type "+
-                    s"${fieldDef.tpe} typed as ${tree.tpe}")
+                reportError(i"Select $cls.$item of type "+
+                    i"${fieldDef.tpe} typed as ${tree.tpe}")
             }
           }
         }
@@ -782,20 +782,20 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       case SelectStatic(ClassRef(cls), FieldIdent(item, _)) =>
         val checkedClass = lookupClass(cls)
         if (checkedClass.kind.isJSType) {
-          reportError(s"Cannot select static $item of JS type $cls")
+          reportError(i"Cannot select static $item of JS type $cls")
         } else {
           checkedClass.lookupStaticField(item).fold[Unit] {
-            reportError(s"Class $cls does not have a static field $item")
+            reportError(i"Class $cls does not have a static field $item")
           } { fieldDef =>
             if (fieldDef.tpe != tree.tpe)
-              reportError(s"SelectStatic $cls.$item of type "+
-                  s"${fieldDef.tpe} typed as ${tree.tpe}")
+              reportError(i"SelectStatic $cls.$item of type "+
+                  i"${fieldDef.tpe} typed as ${tree.tpe}")
           }
         }
 
       case Apply(flags, receiver, MethodIdent(method, _), args) =>
         if (flags.isPrivate)
-          reportError(s"Illegal flag for Apply: Private")
+          reportError("Illegal flag for Apply: Private")
         val receiverType = typecheckExpr(receiver, env)
         val fullCheck = receiverType match {
           case ClassType(cls) =>
@@ -817,7 +817,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             true
         }
         if (fullCheck) {
-          checkApplyGeneric(method, s"$receiverType.$method", args, tree.tpe,
+          checkApplyGeneric(method, i"$receiverType.$method", args, tree.tpe,
               isStatic = false)
         } else {
           for (arg <- args)
@@ -826,12 +826,12 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
       case ApplyStatically(_, receiver, cls, MethodIdent(method, _), args) =>
         typecheckExpect(receiver, env, ClassType(cls.className))
-        checkApplyGeneric(method, s"$cls.$method", args, tree.tpe,
+        checkApplyGeneric(method, i"$cls.$method", args, tree.tpe,
             isStatic = false)
 
       case ApplyStatic(_, cls, MethodIdent(method, _), args) =>
         val clazz = lookupClass(cls)
-        checkApplyGeneric(method, s"$cls.$method", args, tree.tpe,
+        checkApplyGeneric(method, i"$cls.$method", args, tree.tpe,
             isStatic = true)
 
       case UnaryOp(op, lhs) =>
@@ -899,16 +899,16 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       case ArrayLength(array) =>
         val arrayType = typecheckExpr(array, env)
         if (!arrayType.isInstanceOf[ArrayType])
-          reportError(s"Array type expected but $arrayType found")
+          reportError(i"Array type expected but $arrayType found")
 
       case ArraySelect(array, index) =>
         typecheckExpect(index, env, IntType)
         typecheckExpr(array, env) match {
           case arrayType: ArrayType =>
             if (tree.tpe != arrayElemType(arrayType))
-              reportError(s"Array select of array type $arrayType typed as ${tree.tpe}")
+              reportError(i"Array select of array type $arrayType typed as ${tree.tpe}")
           case arrayType =>
-            reportError(s"Array type expected but $arrayType found")
+            reportError(i"Array type expected but $arrayType found")
         }
 
       case IsInstanceOf(expr, testType) =>
@@ -933,10 +933,10 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         typecheckExpr(qualifier, env)
         val checkedClass = lookupClass(cls)
         if (!checkedClass.kind.isJSClass && checkedClass.kind != ClassKind.AbstractJSType) {
-          reportError(s"Cannot select JS private field $field of non-JS class $cls")
+          reportError(i"Cannot select JS private field $field of non-JS class $cls")
         } else {
           if (checkedClass.lookupField(field.name).isEmpty)
-            reportError(s"JS class $cls does not have a field $field")
+            reportError(i"JS class $cls does not have a field $field")
           /* The declared type of the field is irrelevant here. It is only
            * relevant for its initialization value. The type of the selection
            * is always `any`.
@@ -982,9 +982,9 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           case _                       => false
         }
         if (!valid)
-          reportError(s"JS class type expected but $cls found")
+          reportError(i"JS class type expected but $cls found")
         else if (clazz.jsClassCaptures.nonEmpty)
-          reportError(s"Cannot load JS constructor of non-top-level class $cls")
+          reportError(i"Cannot load JS constructor of non-top-level class $cls")
 
       case LoadJSModule(cls) =>
         val clazz = lookupClass(cls)
@@ -994,7 +994,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           case _                             => false
         }
         if (!valid)
-          reportError(s"JS module class type expected but $cls found")
+          reportError(i"JS module class type expected but $cls found")
 
       case JSUnaryOp(op, lhs) =>
         typecheckExpr(lhs, env)
@@ -1024,7 +1024,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       case ClassOf(typeRef) =>
         typeRef match {
           case NullRef | NothingRef =>
-            reportError(s"Invalid classOf[$typeRef]")
+            reportError(i"Invalid classOf[$typeRef]")
           case typeRef: ArrayTypeRef =>
             checkArrayTypeRef(typeRef)
           case _ =>
@@ -1037,16 +1037,16 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
       case VarRef(LocalIdent(name, _)) =>
         env.locals.get(name).fold[Unit] {
-          reportError(s"Cannot find variable $name in scope")
+          reportError(i"Cannot find variable $name in scope")
         } { localDef =>
           if (tree.tpe != localDef.tpe)
-            reportError(s"Variable $name of type ${localDef.tpe} "+
-                s"typed as ${tree.tpe}")
+            reportError(i"Variable $name of type ${localDef.tpe} "+
+                i"typed as ${tree.tpe}")
         }
 
       case This() =>
         if (!isSubtype(env.thisTpe, tree.tpe))
-          reportError(s"this of type ${env.thisTpe} typed as ${tree.tpe}")
+          reportError(i"this of type ${env.thisTpe} typed as ${tree.tpe}")
 
       case Closure(arrow, captureParams, params, body, captureValues) =>
         /* Check compliance of captureValues wrt. captureParams in the current
@@ -1054,7 +1054,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
          */
         if (captureParams.size != captureValues.size)
           reportError("Mismatched size for captures: "+
-              s"${captureParams.size} params vs ${captureValues.size} values")
+              i"${captureParams.size} params vs ${captureValues.size} values")
 
         for ((ParamDef(_, ctpe, _, _), value) <- captureParams zip captureValues) {
           typecheckExpect(value, env, ctpe)
@@ -1065,11 +1065,11 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           for (ParamDef(name, ctpe, mutable, rest) <- captureParams) {
             checkDeclareLocalVar(name)
             if (mutable)
-              reportError(s"Capture parameter $name cannot be mutable")
+              reportError(i"Capture parameter $name cannot be mutable")
             if (rest)
-              reportError(s"Capture parameter $name cannot be a rest parameter")
+              reportError(i"Capture parameter $name cannot be a rest parameter")
             if (ctpe == NoType)
-              reportError(s"Parameter $name has type NoType")
+              reportError(i"Parameter $name has type NoType")
           }
 
           checkJSParamDefs(params)
@@ -1083,11 +1083,11 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       case CreateJSClass(cls, captureValues) =>
         val clazz = lookupClass(cls)
         clazz.jsClassCaptures.fold {
-          reportError(s"Invalid CreateJSClass of top-level class $cls")
+          reportError(i"Invalid CreateJSClass of top-level class $cls")
         } { captureParams =>
           if (captureParams.size != captureValues.size) {
             reportError("Mismatched size for class captures: " +
-                s"${captureParams.size} params vs ${captureValues.size} values")
+                i"${captureParams.size} params vs ${captureValues.size} values")
           }
 
           for ((ParamDef(_, ctpe, _, _), value) <- captureParams.zip(captureValues))
@@ -1095,7 +1095,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         }
 
       case _ =>
-        reportError(s"Invalid expression tree")
+        reportError(i"Invalid expression tree")
     }
 
     tree.tpe
@@ -1107,15 +1107,15 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     for (ParamDef(name, ptpe, _, _) <- params) {
       checkDeclareLocalVar(name)
       if (ptpe == NoType)
-        reportError(s"Parameter $name has type NoType")
+        reportError(i"Parameter $name has type NoType")
       else if (ptpe != AnyType)
-        reportError(s"Parameter $name has type $ptpe but must be any")
+        reportError(i"Parameter $name has type $ptpe but must be any")
     }
 
     if (params.nonEmpty) {
       for (ParamDef(name, _, _, rest) <- params.init) {
         if (rest)
-          reportError(s"Non-last rest parameter $name is illegal")
+          reportError(i"Non-last rest parameter $name is illegal")
       }
     }
   }
@@ -1123,13 +1123,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   private def checkDeclareLocalVar(ident: LocalIdent)(
       implicit ctx: ErrorContext): Unit = {
     if (!declaredLocalVarNamesPerMethod.add(ident.name))
-      reportError(s"Duplicate local variable name ${ident.name}.")
+      reportError(i"Duplicate local variable name ${ident.name}.")
   }
 
   private def checkDeclareLabel(label: LabelIdent)(
       implicit ctx: ErrorContext): Unit = {
     if (!declaredLabelNamesPerMethod.add(label.name))
-      reportError(s"Duplicate label named ${label.name}.")
+      reportError(i"Duplicate label named ${label.name}.")
   }
 
   private def checkIsAsInstanceTargetType(tpe: Type)(
@@ -1139,12 +1139,12 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         val kind = lookupClass(className).kind
         if (kind.isJSType) {
           reportError(
-              s"JS type $className is not a valid target type for " +
+              i"JS type $className is not a valid target type for " +
               "Is/AsInstanceOf")
         }
 
       case NoType | NullType | NothingType | _:RecordType =>
-        reportError(s"$tpe is not a valid target type for Is/AsInstanceOf")
+        reportError(i"$tpe is not a valid target type for Is/AsInstanceOf")
 
       case tpe: ArrayType =>
         checkArrayType(tpe)
@@ -1163,7 +1163,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       implicit ctx: ErrorContext): Unit = {
     typeRef.base match {
       case VoidRef | NullRef | NothingRef =>
-        reportError(s"Invalid array type $typeRef")
+        reportError(i"Invalid array type $typeRef")
       case _ =>
         // ok
     }
@@ -1226,7 +1226,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   private def lookupClass(className: ClassName)(
       implicit ctx: ErrorContext): CheckedClass = {
     classes.getOrElseUpdate(className, {
-      reportError(s"Cannot find class $className")
+      reportError(i"Cannot find class $className")
       new CheckedClass(className, ClassKind.Class, None,
           Some(ObjectClass), Set(ObjectClass), hasInstances = true, None, Nil)
     })
@@ -1347,6 +1347,26 @@ object IRChecker {
    */
   def check(unit: LinkingUnit, logger: Logger): Int = {
     new IRChecker(unit, logger).check()
+  }
+
+  /** A string interpolator that displays IR concepts in a nice way. */
+  private implicit final class InfoStringContext(
+      private val self: StringContext)
+      extends AnyVal {
+
+    def i(args: Any*): String =
+      self.s(args.map(format(_)): _*)
+
+    private def format(arg: Any): String = {
+      arg match {
+        case arg: Name       => arg.nameString
+        case arg: MethodName => arg.displayName
+        case arg: IRNode     => arg.show
+        case arg: TypeRef    => arg.displayName
+        case arg: Type       => arg.show()
+        case _               => arg.toString()
+      }
+    }
   }
 
   /** The context in which to report IR check errors.
