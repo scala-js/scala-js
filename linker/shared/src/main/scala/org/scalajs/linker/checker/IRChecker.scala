@@ -73,6 +73,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       checkJSClassCaptures(classDef)
       checkJSNativeLoadSpec(classDef)
       checkStaticMembers(classDef)
+      checkDuplicateMembers(classDef)
 
       classDef.kind match {
         case ClassKind.AbstractJSType | ClassKind.NativeJSClass |
@@ -164,6 +165,34 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
+  private def checkDuplicateMembers(classDef: LinkedClass): Unit = {
+    // Fields
+    val scalaFields = classDef.fields.collect {
+      case fieldDef: FieldDef => fieldDef
+    }
+    for {
+      ((namespace, name), dupes) <- scalaFields.groupBy(f => (f.flags.namespace, f.name.name))
+      field <- dupes.tail
+    } {
+      implicit val ctx = ErrorContext(field)
+      reportError(
+          i"Duplicate definition of ${namespace.prefixString}field " +
+          i"'$name' in class '${classDef.encodedName}'")
+    }
+
+    // Methods
+    val methods = classDef.methods.map(_.value)
+    for {
+      ((namespace, name), dupes) <- methods.groupBy(m => (m.flags.namespace, m.name.name))
+      method <- dupes.tail
+    } {
+      implicit val ctx: ErrorContext = ErrorContext(method)
+      reportError(
+          i"Duplicate definition of ${namespace.prefixString}method " +
+          i"'$name' in class '${classDef.encodedName}'")
+    }
+  }
+
   private def checkScalaClassDef(classDef: LinkedClass): Unit = {
     assert(classDef.kind != ClassKind.AbstractJSType &&
         classDef.kind != ClassKind.NativeJSClass &&
@@ -174,21 +203,6 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         classDef.kind != ClassKind.Interface) {
       // Check fields
       checkFieldDefs(classDef)
-
-      /* Check for static field collisions.
-       * TODO #2627 We currently cannot check instance field collisions because
-       * of #2382.
-       */
-      val staticFieldDefs = classDef.fields.collect {
-        case fieldDef: FieldDef if fieldDef.flags.namespace.isStatic => fieldDef
-      }
-      for {
-        fieldsWithSameName <- staticFieldDefs.groupBy(_.name.name).values
-        duplicate <- fieldsWithSameName.tail
-      } {
-        implicit val ctx = ErrorContext(duplicate)
-        reportError(i"Duplicate static field with name '${duplicate.name}'")
-      }
 
       // Module classes must have exactly one constructor, without parameter
       if (classDef.kind == ClassKind.ModuleClass) {

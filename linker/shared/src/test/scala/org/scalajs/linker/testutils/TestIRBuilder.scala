@@ -114,4 +114,6 @@ object TestIRBuilder {
 
   implicit def methodName2MethodIdent(name: MethodName): MethodIdent =
     MethodIdent(name)
+
+  def int(x: Int): IntLiteral = IntLiteral(x)
 }
