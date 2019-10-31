@@ -55,6 +55,7 @@ private[emitter] object CoreJSLib {
     private val StringRef = globalRef("String")
     private val MathRef = globalRef("Math")
     private val TypeErrorRef = globalRef("TypeError")
+    private val SymbolRef = globalRef("Symbol")
 
     // Conditional global references that we often use
     private def BigIntRef = globalRef("BigInt")
@@ -273,6 +274,51 @@ private[emitter] object CoreJSLib {
               If((i & 0xc0000000) === 0, Block(i := i << 2, r := r + 2), Skip()),
               Return(r + (i >> 31))
           ))
+
+        case "privateJSFieldSymbol" =>
+          /* function privateJSFieldSymbol(description) {
+           *   function rand32() {
+           *     const s = ((Math.random() * 4294967296.0) | 0).toString(16);
+           *     return "00000000".substring(s.length) + s;
+           *   }
+           *   return description + rand32() + rand32() + rand32() + rand32();
+           * }
+           *
+           * In production mode, we remove the `description` parameter.
+           */
+          val description = varRef("description")
+          val rand32 = varRef("rand32")
+          val s = varRef("s")
+
+          val theParamList =
+            if (semantics.productionMode) Nil
+            else paramList(description)
+
+          Function(arrow = false, theParamList, Block(
+              FunctionDef(rand32.ident, Nil, Block(
+                  genLet(s.ident, mutable = false, {
+                      val randomDouble =
+                        Apply(genIdentBracketSelect(MathRef, "random"), Nil)
+                      val randomInt =
+                        (randomDouble * double(4294967296.0)) | 0
+                      Apply(genIdentBracketSelect(randomInt, "toString"), 16 :: Nil)
+                  }),
+                  {
+                    val padding = Apply(
+                        genIdentBracketSelect(str("00000000"), "substring"),
+                        genIdentBracketSelect(s, "length") :: Nil)
+                    Return(padding + s)
+                  }
+              )),
+              {
+                val callRand32 = Apply(rand32, Nil)
+                val rand128 = callRand32 + callRand32 + callRand32 + callRand32
+                val result =
+                  if (semantics.productionMode) rand128
+                  else description + rand128
+                Return(result)
+              }
+          ))
       }
 
       if (!useECMAScript2015) {
@@ -286,6 +332,12 @@ private[emitter] object CoreJSLib {
           if (useECMAScript2015) rhs0
           else rhs0 || genPolyfillFor(builtinName)
         const(envField(builtinName), rhs)
+      }
+
+      if (!useECMAScript2015) {
+        buf += const(envField("privateJSFieldSymbol"),
+            If(UnaryOp(JSUnaryOp.typeof, SymbolRef) !== str("undefined"),
+                SymbolRef, genPolyfillFor("privateJSFieldSymbol")))
       }
     }
 

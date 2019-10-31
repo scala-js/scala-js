@@ -474,6 +474,14 @@ final class Emitter private (config: CommonPhaseConfig,
     val (linkedInlineableInit, linkedMethods) =
       classEmitter.extractInlineableInit(linkedClass)(classCache)
 
+    // Symbols for private JS fields
+    if (kind.isJSClass) {
+      val fieldDefs = classTreeCache.privateJSFields.getOrElseUpdate {
+        classEmitter.genCreatePrivateJSFieldDefsOfJSClass(linkedClass)
+      }
+      fieldDefs.foreach(addToMainBase(_))
+    }
+
     // Static-like methods
     for (m <- linkedMethods) {
       val methodDef = m.value
@@ -783,6 +791,7 @@ final class Emitter private (config: CommonPhaseConfig,
 
 private object Emitter {
   private final class DesugaredClassCache {
+    val privateJSFields = new OneTimeCache[List[js.Tree]]
     val exportedMembers = new OneTimeCache[WithGlobals[js.Tree]]
     val instanceTests = new OneTimeCache[js.Tree]
     val typeData = new OneTimeCache[WithGlobals[js.Tree]]
