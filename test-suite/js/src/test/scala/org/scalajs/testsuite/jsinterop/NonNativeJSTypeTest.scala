@@ -524,6 +524,34 @@ class NonNativeJSTypeTest {
     assertEquals(1, call(x => x))
   }
 
+  @Test def anonymous_classes_private_fields_are_not_visible_issue2748(): Unit = {
+    trait TheOuter extends js.Object {
+      val id: String
+      val paint: js.UndefOr[TheInner] = js.undefined
+    }
+
+    trait TheInner extends js.Object {
+      val options: js.UndefOr[String] = js.undefined
+    }
+
+    def someValue = "some-value"
+
+    val pcFn = someValue
+
+    val r0 = new TheOuter {
+      override val id: String = "some-" + pcFn
+      override val paint: js.UndefOr[TheInner] = {
+        new TheInner {
+          override val options: js.UndefOr[String] = "{" + pcFn + "}"
+        }
+      }
+    }
+
+    assertEquals(
+        """{"id":"some-some-value","paint":{"options":"{some-value}"}}""",
+        js.JSON.stringify(r0))
+  }
+
   @Test def local_object_is_lazy(): Unit = {
     var initCount: Int = 0
 

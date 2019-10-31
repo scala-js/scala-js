@@ -77,18 +77,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       classDef.kind match {
         case ClassKind.AbstractJSType | ClassKind.NativeJSClass |
             ClassKind.NativeJSModuleClass =>
-          val fieldsOK = if (classDef.kind == ClassKind.AbstractJSType) {
-            /* Private instance fields are allowed in abstract JS types. This
-             * is necessary for anonymous JS classes, whose definitions are
-             * inlined and their ClassDef turned into an abstract JS type.
-             */
-            checkFieldDefs(classDef)
-            true
-          } else {
-            classDef.fields.isEmpty
-          }
-
-          if (!fieldsOK ||
+          if (classDef.fields.nonEmpty ||
               classDef.methods.exists(!_.value.flags.namespace.isStatic) ||
               classDef.exportedMembers.nonEmpty ||
               classDef.topLevelExports.nonEmpty) {

@@ -91,6 +91,10 @@ package object runtime {
   def withContextualJSClassValue[A](jsclass: AnyRef, inner: A): A =
     throw new Error("stub")
 
+  @inline
+  def privateFieldsSymbol(): Any =
+    PrivateFieldsSymbolHolder.privateFieldsSymbol
+
   /** Information known at link-time, given the output configuration.
    *
    *  See [[LinkingInfo]] for details.
