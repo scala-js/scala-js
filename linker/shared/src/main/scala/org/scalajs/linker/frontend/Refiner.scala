@@ -72,7 +72,8 @@ final class Refiner(config: CommonPhaseConfig) {
       implicit ec: ExecutionContext): Future[Analysis] = {
     for {
       analysis <- Analyzer.computeReachability(config, symbolRequirements,
-          allowAddingSyntheticMethods = false, inputProvider)
+          allowAddingSyntheticMethods = false,
+          checkAbstractReachability = false, inputProvider)
     } yield {
       /* There must not be linking errors at this point. If there are, it is a
        * bug in the optimizer.

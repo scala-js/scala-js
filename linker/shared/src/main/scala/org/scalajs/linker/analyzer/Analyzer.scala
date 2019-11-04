@@ -37,6 +37,7 @@ import Infos.{NamespacedMethodName, ReachabilityInfo}
 private final class Analyzer(config: CommonPhaseConfig,
     symbolRequirements: SymbolRequirement,
     allowAddingSyntheticMethods: Boolean,
+    checkAbstractReachability: Boolean,
     inputProvider: Analyzer.InputProvider,
     ec: ExecutionContext)
     extends Analysis {
@@ -382,9 +383,17 @@ private final class Analyzer(config: CommonPhaseConfig,
       if (className == ObjectClass) unvalidatedInterfaces
       else validateInterfaces(unvalidatedInterfaces)
 
+    /** Ancestors of this class or interface.
+     *
+     *  This always includes this class and `java.lang.Object`.
+     */
     val ancestors: List[ClassInfo] = {
-      val parents = superClass ++: interfaces
-      this +: parents.flatMap(_.ancestors).distinct
+      if (className == ObjectClass) {
+        this :: Nil
+      } else {
+        val parents = superClass.getOrElse(objectClassInfo) :: interfaces
+        this +: parents.flatMap(_.ancestors).distinct
+      }
     }
 
     _classInfos(className) = this
@@ -532,6 +541,21 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     val publicMethodInfos: mutable.Map[MethodName, MethodInfo] =
       methodInfos(MemberNamespace.Public)
+
+    def lookupAbstractMethod(methodName: MethodName): MethodInfo = {
+      val candidatesIterator = for {
+        ancestor <- ancestors.iterator
+        m <- ancestor.publicMethodInfos.get(methodName)
+        if !m.isDefaultBridge
+      } yield {
+        m
+      }
+
+      if (candidatesIterator.isEmpty)
+        createNonExistentMethod(methodName)
+      else
+        candidatesIterator.next()
+    }
 
     def lookupMethod(methodName: MethodName): MethodInfo = {
       tryLookupMethod(methodName).getOrElse {
@@ -942,6 +966,16 @@ private final class Analyzer(config: CommonPhaseConfig,
       val subclasses = instantiatedSubclasses
       for (subclass <- subclasses)
         subclass.callMethodResolved(methodName)
+
+      if (checkAbstractReachability) {
+        /* Also lookup the method as abstract from this class, to make sure it
+         * is *declared* on this type. We do this after the concrete lookup to
+         * avoid work, since a concretely reachable method is already marked as
+         * abstractly reachable.
+         */
+        if (!methodName.isReflectiveProxy)
+          lookupAbstractMethod(methodName).reachAbstract()
+      }
     }
 
     private def callMethodResolved(methodName: MethodName)(
@@ -978,6 +1012,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     val namespace = data.namespace
     val isAbstract = data.isAbstract
 
+    var isAbstractReachable: Boolean = false
     var isReachable: Boolean = false
 
     var calledFrom: List[From] = Nil
@@ -1009,8 +1044,19 @@ private final class Analyzer(config: CommonPhaseConfig,
 
       calledFrom ::= from
       if (!isReachable) {
+        isAbstractReachable = true
         isReachable = true
         doReach()
+      }
+    }
+
+    def reachAbstract()(implicit from: From): Unit = {
+      assert(namespace == MemberNamespace.Public)
+
+      if (!isAbstractReachable) {
+        checkExistent()
+        calledFrom ::= from
+        isAbstractReachable = true
       }
     }
 
@@ -1030,6 +1076,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       instantiatedSubclasses ::= inClass
 
       if (!isReachable) {
+        isAbstractReachable = true
         isReachable = true
         doReach()
       }
@@ -1153,9 +1200,10 @@ object Analyzer {
   def computeReachability(config: CommonPhaseConfig,
       symbolRequirements: SymbolRequirement,
       allowAddingSyntheticMethods: Boolean,
+      checkAbstractReachability: Boolean,
       inputProvider: InputProvider)(implicit ec: ExecutionContext): Future[Analysis] = {
     val analyzer = new Analyzer(config, symbolRequirements,
-        allowAddingSyntheticMethods, inputProvider, ec)
+        allowAddingSyntheticMethods, checkAbstractReachability, inputProvider, ec)
     analyzer.computeReachability().map(_ => analyzer)
   }
 
