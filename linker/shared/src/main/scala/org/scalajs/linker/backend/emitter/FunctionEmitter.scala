@@ -1208,6 +1208,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           allowSideEffects
         case JSGlobalRef(_) =>
           allowSideEffects
+        case JSTypeOfGlobalRef(_) =>
+          allowSideEffects
         case CreateJSClass(_, captureValues) =>
           allowSideEffects && captureValues.forall(test)
 
@@ -2497,7 +2499,16 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           }
 
         case JSUnaryOp(op, lhs) =>
-          js.UnaryOp(op, transformExprNoChar(lhs))
+          val transformedLhs = transformExprNoChar(lhs)
+          val protectedLhs = if (op == JSUnaryOp.typeof && lhs.isInstanceOf[JSGlobalRef]) {
+            /* #3822 We protect the argument so that it throws a ReferenceError
+             * if the global variable is not defined at all, as specified.
+             */
+            js.Block(js.IntLiteral(0), transformedLhs)
+          } else {
+            transformedLhs
+          }
+          js.UnaryOp(op, protectedLhs)
 
         case JSBinaryOp(op, lhs, rhs) =>
           js.BinaryOp(op, transformExprNoChar(lhs), transformExprNoChar(rhs))
@@ -2518,6 +2529,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         case JSGlobalRef(name) =>
           js.VarRef(transformGlobalVarIdent(name))
+
+        case JSTypeOfGlobalRef(globalRef) =>
+          js.UnaryOp(JSUnaryOp.typeof, transformExprNoChar(globalRef))
 
         case JSLinkingInfo() =>
           envField("linkingInfo")

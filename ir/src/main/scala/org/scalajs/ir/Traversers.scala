@@ -192,6 +192,9 @@ object Traversers {
           traverse(value)
         }
 
+      case JSTypeOfGlobalRef(globalRef) =>
+        traverse(globalRef)
+
       // Atomic expressions
 
       case Closure(arrow, captureParams, params, body, captureValues) =>

@@ -697,6 +697,11 @@ object Printers {
           print("global:")
           print(ident)
 
+        case JSTypeOfGlobalRef(globalRef) =>
+          print("(typeof ")
+          print(globalRef)
+          print(")")
+
         case JSLinkingInfo() =>
           print("<linkinginfo>")
 

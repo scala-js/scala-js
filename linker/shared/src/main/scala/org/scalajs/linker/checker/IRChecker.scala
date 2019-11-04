@@ -1015,6 +1015,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
       case JSGlobalRef(_) =>
 
+      case JSTypeOfGlobalRef(_) =>
+
       case JSLinkingInfo() =>
 
       // Literals

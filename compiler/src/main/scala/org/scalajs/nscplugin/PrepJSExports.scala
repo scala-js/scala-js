@@ -16,7 +16,7 @@ import scala.collection.mutable
 
 import scala.tools.nsc.Global
 
-import org.scalajs.ir.Trees.isValidJSIdentifier
+import org.scalajs.ir.Trees.TopLevelExportDef.isValidTopLevelExportName
 
 /**
  *  Prepare export generation
@@ -324,10 +324,10 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
           }
 
           // The top-level name must be a valid JS identifier
-          if (!isValidJSIdentifier(name)) {
+          if (!isValidTopLevelExportName(name)) {
             reporter.error(annot.pos,
                 "The top-level export name must be a valid JavaScript " +
-                "identifier")
+                "identifier name")
           }
 
         case ExportDestination.Static =>

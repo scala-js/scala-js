@@ -776,6 +776,10 @@ class PrintersTest {
     assertPrintEquals("global:Foo", JSGlobalRef("Foo"))
   }
 
+  @Test def printJSTypeOfGlobalRef(): Unit = {
+    assertPrintEquals("(typeof global:Foo)", JSTypeOfGlobalRef(JSGlobalRef("Foo")))
+  }
+
   @Test def printJSLinkingInfo(): Unit = {
     assertPrintEquals("<linkinginfo>", JSLinkingInfo())
   }
@@ -1099,7 +1103,7 @@ class PrintersTest {
           |module class Test extends java.lang.Object {
           |  val x$1: int
           |  var y$1: int
-          |  export top module "pkg.Foo"
+          |  export top module "Foo"
           |}
         """,
         ClassDef("Test", ClassKind.ModuleClass, None, Some(ObjectClass), Nil,
@@ -1108,7 +1112,7 @@ class PrintersTest {
                 FieldDef(MemberFlags.empty, "x$1", IntType),
                 FieldDef(MemberFlags.empty.withMutable(true), "y$1", IntType)),
             List(
-                TopLevelModuleExportDef("pkg.Foo")))(
+                TopLevelModuleExportDef("Foo")))(
             NoOptHints))
   }
 
@@ -1281,24 +1285,24 @@ class PrintersTest {
 
   @Test def printJSClassExportDef(): Unit = {
     assertPrintEquals(
-        """export top class "pkg.Foo"""",
-        TopLevelJSClassExportDef("pkg.Foo"))
+        """export top class "Foo"""",
+        TopLevelJSClassExportDef("Foo"))
   }
 
   @Test def printTopLevelModuleExportDef(): Unit = {
     assertPrintEquals(
-        """export top module "pkg.Foo"""",
-        TopLevelModuleExportDef("pkg.Foo"))
+        """export top module "Foo"""",
+        TopLevelModuleExportDef("Foo"))
   }
 
   @Test def printTopLevelMethodExportDef(): Unit = {
     assertPrintEquals(
         """
-          |export top static def "pkg.foo"(x: any): any = {
+          |export top static def "foo"(x: any): any = {
           |  5
           |}""",
         TopLevelMethodExportDef(JSMethodDef(
-            MemberFlags.empty.withNamespace(Static), StringLiteral("pkg.foo"),
+            MemberFlags.empty.withNamespace(Static), StringLiteral("foo"),
             List(ParamDef("x", AnyType, mutable = false, rest = false)),
             i(5))(NoOptHints, None)))
   }

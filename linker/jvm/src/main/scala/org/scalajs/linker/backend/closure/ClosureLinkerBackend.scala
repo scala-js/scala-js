@@ -125,6 +125,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
   private def makeExternsForExports(topLevelVarDeclarations: List[String],
       linkingUnit: LinkingUnit): String = {
     import org.scalajs.ir.Trees._
+    import org.scalajs.linker.backend.javascript.Trees.Ident.isValidJSIdentifierName
 
     def exportName(memberDef: MemberDef): Option[String] = memberDef match {
       case JSMethodDef(_, StringLiteral(name), _, _)   => Some(name)
@@ -136,7 +137,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
       classDef <- linkingUnit.classDefs
       member <- classDef.exportedMembers
       name <- exportName(member.value)
-      if isValidJSIdentifier(name)
+      if isValidJSIdentifierName(name)
     } yield {
       name
     }

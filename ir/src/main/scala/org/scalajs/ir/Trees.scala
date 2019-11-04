@@ -86,9 +86,15 @@ object Trees {
       ClassIdent(name, None)
   }
 
-  final def isValidJSIdentifier(name: String): Boolean = {
+  /** Tests whether the given name is a valid JavaScript identifier name.
+   *
+   *  This test does *not* exclude keywords.
+   */
+  def isJSIdentifierName(name: String): Boolean = {
     // scalastyle:off return
-    // This method is called on every Name construction; it should be fast.
+    /* This method is called in the constructor of some IR node classes, such
+     * as JSGlobalRef; it should be fast.
+     */
     val len = name.length()
     if (len == 0)
       return false
@@ -102,32 +108,9 @@ object Trees {
         return false
       i += 1
     }
-    !isKeyword(name)
+    true
     // scalastyle:on return
   }
-
-  final val isKeyword: Set[String] = Set(
-      // Value keywords
-      "true", "false", "null", "undefined",
-
-      // Current JavaScript keywords
-      "break", "case", "catch", "continue", "debugger", "default", "delete",
-      "do", "else", "finally", "for", "function", "if", "in", "instanceof",
-      "new", "return", "switch", "this", "throw", "try", "typeof", "var",
-      "void", "while", "with",
-
-      // Future reserved keywords
-      "class", "const", "enum", "export", "extends", "import", "super",
-
-      // Future reserved keywords in Strict mode
-      "implements", "interface", "let", "package", "private", "protected",
-      "public", "static", "yield",
-
-      // Other reserved keywords found on the Web but not in the spec
-      "abstract", "boolean", "byte", "char", "double", "final", "float",
-      "goto", "int", "long", "native", "short", "synchronized", "throws",
-      "transient", "volatile"
-  )
 
   // Definitions
 
@@ -794,9 +777,50 @@ object Trees {
 
   case class JSGlobalRef(name: String)(
       implicit val pos: Position) extends Tree {
+    import JSGlobalRef._
+
     val tpe = AnyType
 
-    require(isValidJSIdentifier(name))
+    require(isValidJSGlobalRefName(name),
+        s"`$name` is not a valid global ref name")
+  }
+
+  object JSGlobalRef {
+    /** Set of identifier names that can never be accessed from the global
+     *  scope.
+     *
+     *  This set includes and is limited to:
+     *
+     *  - All ECMAScript 2015 keywords;
+     *  - Identifier names that are treated as keywords or reserved identifier
+     *    names in ECMAScript 2015 Strict Mode;
+     *  - The identifier `arguments`, because any attempt to refer to it always
+     *    refers to the magical `arguments` pseudo-array from the enclosing
+     *    function, rather than a global variable.
+     */
+    final val ReservedJSIdentifierNames: Set[String] = Set(
+        "arguments", "break", "case", "catch", "class", "const", "continue",
+        "debugger", "default", "delete", "do", "else", "enum", "export",
+        "extends", "false", "finally", "for", "function", "if", "implements",
+        "import", "in", "instanceof", "interface", "let", "new", "null",
+        "package", "private", "protected", "public", "return", "static",
+        "super", "switch", "this", "throw", "true", "try", "typeof", "var",
+        "void", "while", "with", "yield"
+    )
+
+    /** Tests whether the given name is a valid name for a `JSGlobalRef`.
+     *
+     *  A name is valid iff it is a JavaScript identifier name (see
+     *  [[isJSIdentifierName]]) *and* it is not reserved (see
+     *  [[ReservedJSIdentifierNames]]).
+     */
+    def isValidJSGlobalRefName(name: String): Boolean =
+      isJSIdentifierName(name) && !ReservedJSIdentifierNames.contains(name)
+  }
+
+  case class JSTypeOfGlobalRef(globalRef: JSGlobalRef)(
+      implicit val pos: Position) extends Tree {
+    val tpe = AnyType
   }
 
   case class JSLinkingInfo()(implicit val pos: Position) extends Tree {
@@ -1051,6 +1075,8 @@ object Trees {
   // Top-level export defs
 
   sealed abstract class TopLevelExportDef extends IRNode {
+    import TopLevelExportDef._
+
     final def topLevelExportName: String = this match {
       case TopLevelModuleExportDef(name)  => name
       case TopLevelJSClassExportDef(name) => name
@@ -1061,6 +1087,14 @@ object Trees {
 
       case TopLevelFieldExportDef(name, _) => name
     }
+
+    require(isValidTopLevelExportName(topLevelExportName),
+        s"`$topLevelExportName` is not a valid top-level export name")
+  }
+
+  object TopLevelExportDef {
+    def isValidTopLevelExportName(exportName: String): Boolean =
+      isJSIdentifierName(exportName)
   }
 
   case class TopLevelJSClassExportDef(exportName: String)(
@@ -1270,7 +1304,8 @@ object Trees {
     /** Load from the global scope.
      *
      *  The `globalRef` is the name of a global variable (found in the global
-     *  scope).
+     *  scope). It must be valid according to
+     *  [[JSGlobalRef.isValidJSGlobalRefName]].
      *
      *  The `path` is a series of nested property names starting from that
      *  variable.
@@ -1288,7 +1323,10 @@ object Trees {
      *  }}}
      */
     final case class Global(globalRef: String, path: List[String])
-        extends JSNativeLoadSpec
+        extends JSNativeLoadSpec {
+
+      require(JSGlobalRef.isValidJSGlobalRefName(globalRef))
+    }
 
     /** Load from a module import.
      *

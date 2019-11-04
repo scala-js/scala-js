@@ -16,7 +16,6 @@ import scala.annotation.switch
 
 import java.nio.charset.StandardCharsets.UTF_8
 
-import Trees.isValidJSIdentifier
 import Types._
 import java.nio.charset.CodingErrorAction
 import java.nio.CharBuffer

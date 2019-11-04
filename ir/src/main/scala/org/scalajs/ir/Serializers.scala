@@ -463,6 +463,10 @@ object Serializers {
           writeByte(TagJSGlobalRef)
           writeString(name)
 
+        case JSTypeOfGlobalRef(globalRef) =>
+          writeByte(TagJSTypeOfGlobalRef)
+          writeTree(globalRef)
+
         case JSLinkingInfo() =>
           writeByte(TagJSLinkingInfo)
 
@@ -1085,6 +1089,7 @@ object Serializers {
         case TagJSObjectConstr       =>
           JSObjectConstr(List.fill(readInt())((readTree(), readTree())))
         case TagJSGlobalRef          => JSGlobalRef(readString())
+        case TagJSTypeOfGlobalRef    => JSTypeOfGlobalRef(readTree().asInstanceOf[JSGlobalRef])
         case TagJSLinkingInfo        => JSLinkingInfo()
 
         case TagUndefined      => Undefined()

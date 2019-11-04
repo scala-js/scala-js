@@ -1096,22 +1096,22 @@ class JSExportTest extends DirectTest with TestHelpers {
     object D
     """ hasErrors
     """
-      |newSource1.scala:3: error: The top-level export name must be a valid JavaScript identifier
+      |newSource1.scala:3: error: The top-level export name must be a valid JavaScript identifier name
       |    @JSExportTopLevel("not-a-valid-JS-identifier-1")
       |     ^
-      |newSource1.scala:6: error: The top-level export name must be a valid JavaScript identifier
+      |newSource1.scala:6: error: The top-level export name must be a valid JavaScript identifier name
       |    @JSExportTopLevel("not-a-valid-JS-identifier-2")
       |     ^
-      |newSource1.scala:10: error: The top-level export name must be a valid JavaScript identifier
+      |newSource1.scala:10: error: The top-level export name must be a valid JavaScript identifier name
       |      @JSExportTopLevel("not-a-valid-JS-identifier-3")
       |       ^
-      |newSource1.scala:13: error: The top-level export name must be a valid JavaScript identifier
+      |newSource1.scala:13: error: The top-level export name must be a valid JavaScript identifier name
       |      @JSExportTopLevel("not-a-valid-JS-identifier-4")
       |       ^
-      |newSource1.scala:16: error: The top-level export name must be a valid JavaScript identifier
+      |newSource1.scala:16: error: The top-level export name must be a valid JavaScript identifier name
       |      @JSExportTopLevel("not-a-valid-JS-identifier-5")
       |       ^
-      |newSource1.scala:20: error: The top-level export name must be a valid JavaScript identifier
+      |newSource1.scala:20: error: The top-level export name must be a valid JavaScript identifier name
       |    @JSExportTopLevel("")
       |     ^
     """
@@ -1134,19 +1134,19 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:3: error: The top-level export name must be a valid JavaScript identifier
+      |newSource1.scala:3: error: The top-level export name must be a valid JavaScript identifier name
       |    @JSExportTopLevel("namespaced.export1")
       |     ^
-      |newSource1.scala:5: error: The top-level export name must be a valid JavaScript identifier
+      |newSource1.scala:5: error: The top-level export name must be a valid JavaScript identifier name
       |    @JSExportTopLevel("namespaced.export2")
       |     ^
-      |newSource1.scala:8: error: The top-level export name must be a valid JavaScript identifier
+      |newSource1.scala:8: error: The top-level export name must be a valid JavaScript identifier name
       |      @JSExportTopLevel("namespaced.export3")
       |       ^
-      |newSource1.scala:10: error: The top-level export name must be a valid JavaScript identifier
+      |newSource1.scala:10: error: The top-level export name must be a valid JavaScript identifier name
       |      @JSExportTopLevel("namespaced.export4")
       |       ^
-      |newSource1.scala:12: error: The top-level export name must be a valid JavaScript identifier
+      |newSource1.scala:12: error: The top-level export name must be a valid JavaScript identifier name
       |      @JSExportTopLevel("namespaced.export5")
       |       ^
     """

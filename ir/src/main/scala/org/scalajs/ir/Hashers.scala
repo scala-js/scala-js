@@ -405,6 +405,10 @@ object Hashers {
           mixTag(TagJSGlobalRef)
           mixString(name)
 
+        case JSTypeOfGlobalRef(globalRef) =>
+          mixTag(TagJSTypeOfGlobalRef)
+          mixTree(globalRef)
+
         case JSLinkingInfo() =>
           mixTag(TagJSLinkingInfo)
 

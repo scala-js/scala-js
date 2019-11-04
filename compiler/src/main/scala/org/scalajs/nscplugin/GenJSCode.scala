@@ -4568,8 +4568,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case TYPEOF =>
           // js.typeOf(arg)
           val arg = genArgs1
-          genAsInstanceOf(js.JSUnaryOp(js.JSUnaryOp.typeof, arg),
-              StringClass.tpe)
+          val typeofExpr = arg match {
+            case arg: js.JSGlobalRef => js.JSTypeOfGlobalRef(arg)
+            case _                   => js.JSUnaryOp(js.JSUnaryOp.typeof, arg)
+          }
+          genAsInstanceOf(typeofExpr, StringClass.tpe)
 
         case JS_IMPORT =>
           // js.import(arg)
@@ -5865,14 +5868,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case MaybeGlobalScope.GlobalScope(_) =>
           item match {
             case js.StringLiteral(value) =>
-              if (value == "arguments") {
+              if (js.JSGlobalRef.isValidJSGlobalRefName(value)) {
+                js.JSGlobalRef(value)
+              } else if (js.JSGlobalRef.ReservedJSIdentifierNames.contains(value)) {
                 reporter.error(pos,
-                    "Selecting a field of the global scope whose name is " +
-                    "`arguments` is not allowed." +
+                    "Invalid selection in the global scope of the reserved " +
+                    s"identifier name `$value`." +
                     GenericGlobalObjectInformationMsg)
                 js.JSGlobalRef("erroneous")
-              } else if (js.isValidJSIdentifier(value)) {
-                js.JSGlobalRef(value)
               } else {
                 reporter.error(pos,
                     "Selecting a field of the global scope whose name is " +
@@ -5912,14 +5915,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case MaybeGlobalScope.GlobalScope(_) =>
           method match {
             case js.StringLiteral(value) =>
-              if (value == "arguments") {
+              if (js.JSGlobalRef.isValidJSGlobalRefName(value)) {
+                js.JSFunctionApply(js.JSGlobalRef(value), args)
+              } else if (js.JSGlobalRef.ReservedJSIdentifierNames.contains(value)) {
                 reporter.error(pos,
-                    "Calling a method of the global scope whose name is " +
-                    "`arguments` is not allowed." +
+                    "Invalid call in the global scope of the reserved " +
+                    s"identifier name `$value`." +
                     GenericGlobalObjectInformationMsg)
                 js.Undefined()
-              } else if (js.isValidJSIdentifier(value)) {
-                js.JSFunctionApply(js.JSGlobalRef(value), args)
               } else {
                 reporter.error(pos,
                     "Calling a method of the global scope whose name is not " +
