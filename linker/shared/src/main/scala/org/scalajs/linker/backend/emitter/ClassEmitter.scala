@@ -402,6 +402,33 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     }
   }
 
+  /** Generates the creation of the private JS field defs for a JavaScript
+   *  class.
+   */
+  def genCreatePrivateJSFieldDefsOfJSClass(tree: LinkedClass): List[js.Tree] = {
+    for {
+      field @ FieldDef(flags, FieldIdent(name, origName), _) <- tree.fields
+      if !flags.namespace.isStatic
+    } yield {
+      implicit val pos = field.pos
+
+      val symbolValue = {
+        def description = origName.getOrElse(name.nameString)
+        val args =
+          if (semantics.productionMode) Nil
+          else js.StringLiteral(description) :: Nil
+
+        if (esFeatures.useECMAScript2015)
+          js.Apply(js.VarRef(js.Ident("Symbol")), args)
+        else
+          genCallHelper("privateJSFieldSymbol", args: _*)
+      }
+
+      envFieldDef("r", tree.encodedName, name, symbolValue, origName,
+          mutable = false)
+    }
+  }
+
   /** Generates the creation of the static fields for a JavaScript class. */
   private def genCreateStaticFieldsOfJSClass(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {

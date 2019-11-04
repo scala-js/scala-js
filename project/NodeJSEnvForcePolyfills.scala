@@ -45,6 +45,7 @@ final class NodeJSEnvForcePolyfills(config: NodeJSEnv.Config) extends JSEnv {
           |delete Math.tanh;
           |
           |delete global.Promise;
+          |delete global.Symbol;
           |
           |delete global.Int8Array;
           |delete global.Int16Array;

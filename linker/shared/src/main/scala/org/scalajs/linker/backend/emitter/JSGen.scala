@@ -288,19 +288,16 @@ private[emitter] final class JSGen(val semantics: Semantics,
     envField("t", className, item.name, item.originalName)
   }
 
-  /* The similarity with `genSelect` is accidental. It will probably evolve in
-   * the future, to emit selections of symbols that are private to the
-   * Scala.js-generated code.
-   */
-  def genJSPrivateSelect(receiver: Tree, cls: ClassRef, field: irt.FieldIdent)(
+  def genJSPrivateSelect(receiver: Tree, className: ClassName,
+      field: irt.FieldIdent)(
       implicit pos: Position): Tree = {
-    DotSelect(receiver, genJSPrivateFieldIdent(cls.className, field)(field.pos))
+    BracketSelect(receiver,
+        genJSPrivateFieldIdent(className, field)(field.pos))
   }
 
-  // The similarity with `genFieldIdent is accidental. See above.
-  def genJSPrivateFieldIdent(cls: ClassName, field: irt.FieldIdent)(
-      implicit pos: Position): Ident = {
-    Ident(genName(cls) + "__f_" + genName(field.name), field.originalName)
+  def genJSPrivateFieldIdent(className: ClassName, field: irt.FieldIdent)(
+      implicit pos: Position): Tree = {
+    envField("r", className, field.name, field.originalName)
   }
 
   def genIsInstanceOf(expr: Tree, tpe: Type)(

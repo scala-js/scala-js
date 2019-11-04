@@ -595,7 +595,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             implicit val env = env0
             js.Assign(
                 genJSPrivateSelect(transformExprNoChar(newQualifier),
-                    cls, field)(select.pos),
+                    cls.className, field)(select.pos),
                 transformExprNoChar(newRhs))
           }
 
@@ -784,19 +784,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                * which has all the same semantics as the assignment, except
                * it disregards the prototype chain.
                *
-               * If the field is an identifier, we cannot directly translate
-               * it to a string for use in `defineProperty`, because Closure
-               * would fail to rename it. In that case, we use
-               * `defineProperties` instead, as follows:
-               *
-               *   Object.defineProperties(this, {
-               *     field: {
-               *       "configurable": true,
-               *       "enumerable": true,
-               *       "writable": true,
-               *       "value": 0
-               *     }
-               *   });
+               * For private fields, we can use a normal assignment, since they
+               * cannot clash with anything else in the prototype chain anyway.
                */
 
               def makeObjectMethodApply(methodName: String,
@@ -813,25 +802,23 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 if (field.ftpe == CharType) js.VarRef(js.Ident("$bC0"))
                 else genZeroOf(field.ftpe)
 
-              val descriptor = js.ObjectConstr(List(
-                  js.StringLiteral("configurable") -> js.BooleanLiteral(true),
-                  js.StringLiteral("enumerable") -> js.BooleanLiteral(true),
-                  js.StringLiteral("writable") -> js.BooleanLiteral(true),
-                  js.StringLiteral("value") -> zero
-              ))
-
               field match {
                 case FieldDef(_, name, _) =>
-                  val fieldIdent =
-                    genJSPrivateFieldIdent(enclosingClassName, name)
-                  val descriptors =
-                    js.ObjectConstr(List(fieldIdent -> descriptor))
-                  makeObjectMethodApply("defineProperties",
-                      List(js.This(), descriptors))
+                  js.Assign(
+                      genJSPrivateSelect(js.This(), enclosingClassName, name),
+                      zero)
 
                 case JSFieldDef(_, name, _) =>
                   unnest(name) { (newName, env0) =>
                     implicit val env = env0
+
+                    val descriptor = js.ObjectConstr(List(
+                        js.StringLiteral("configurable") -> js.BooleanLiteral(true),
+                        js.StringLiteral("enumerable") -> js.BooleanLiteral(true),
+                        js.StringLiteral("writable") -> js.BooleanLiteral(true),
+                        js.StringLiteral("value") -> zero
+                    ))
+
                     makeObjectMethodApply("defineProperty",
                         List(js.This(), transformExprNoChar(newName), descriptor))
                   }
@@ -2451,7 +2438,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           js.New(transformExprNoChar(constr), args.map(transformJSArg))
 
         case JSPrivateSelect(qualifier, cls, field) =>
-          genJSPrivateSelect(transformExprNoChar(qualifier), cls, field)
+          genJSPrivateSelect(transformExprNoChar(qualifier), cls.className,
+              field)
 
         case JSSelect(qualifier, item) =>
           genBracketSelect(transformExprNoChar(qualifier),
