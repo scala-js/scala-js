@@ -15,6 +15,8 @@ package org.scalajs.linker.testutils
 import scala.collection.mutable
 import scala.concurrent._
 
+import org.scalajs.ir.Definitions.ClassName
+
 import org.scalajs.linker.StandardImpl
 import org.scalajs.linker.interface.IRFile
 import org.scalajs.linker.interface.unstable.IRFileImpl
@@ -24,10 +26,10 @@ object TestIRRepo {
   val minilib = new TestIRRepo(StdlibHolder.minilib)
   val fulllib = new TestIRRepo(StdlibHolder.fulllib)
 
-  class InfoLoader(encodedNameToFile: Map[String, IRFileImpl]) {
-    private val infosCache = mutable.Map.empty[String, Future[ClassInfo]]
+  class InfoLoader(encodedNameToFile: Map[ClassName, IRFileImpl]) {
+    private val infosCache = mutable.Map.empty[ClassName, Future[ClassInfo]]
 
-    def loadInfo(encodedName: String)(
+    def loadInfo(encodedName: ClassName)(
         implicit ec: ExecutionContext): Option[Future[ClassInfo]] = {
       infosCache.synchronized {
         infosCache.get(encodedName).orElse {

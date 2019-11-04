@@ -60,7 +60,7 @@ final class Emitter private (config: CommonPhaseConfig,
   private def classEmitter: ClassEmitter = state.classEmitter
   private def coreJSLib: WithGlobals[js.Tree] = state.coreJSLib
 
-  private val classCaches = mutable.Map.empty[List[String], ClassCache]
+  private val classCaches = mutable.Map.empty[List[ClassName], ClassCache]
 
   private[this] var statsClassesReused: Int = 0
   private[this] var statsClassesInvalidated: Int = 0
@@ -148,6 +148,9 @@ final class Emitter private (config: CommonPhaseConfig,
       import org.scalajs.ir.Position.NoPosition
       import org.scalajs.ir.Trees.MethodDef
 
+      val jsGen = this.jsGen // stabilize it for the import
+      import jsGen._
+
       val requiredDefaultMethodDecls = List(
           BoxedBooleanClass -> List(hashCodeMethodName, compareToMethodName),
           BoxedCharacterClass -> List(
@@ -176,7 +179,7 @@ final class Emitter private (config: CommonPhaseConfig,
           }
         } {
           implicit val pos = NoPosition
-          val field = jsGen.envField("f", className + "__" + methodName).ident
+          val field = envField("f", className, methodName, None).ident
           builder.addJSTree(js.VarDef(field, None))
         }
       }
@@ -193,7 +196,7 @@ final class Emitter private (config: CommonPhaseConfig,
           })
         if (!ctorIsDefined) {
           implicit val pos = NoPosition
-          val field = jsGen.envField("ct", className + "__" + ctorName).ident
+          val field = envField("ct", className, ctorName, None).ident
           builder.addJSTree(js.VarDef(field, None))
         }
       }
@@ -322,7 +325,7 @@ final class Emitter private (config: CommonPhaseConfig,
         for (classDef <- orderedClasses) {
           classDef.jsNativeLoadSpec match {
             case Some(JSNativeLoadSpec.Import(module, _)) =>
-              val displayName = decodeClassName(classDef.encodedName)
+              val displayName = classDef.encodedName.nameString
               logger.error(s"$displayName needs to be imported from module " +
                   s"'$module' but module support is disabled.")
               importsFound = true
@@ -517,7 +520,7 @@ final class Emitter private (config: CommonPhaseConfig,
           m <- objectClass.methods
           if m.value.flags.namespace == MemberNamespace.Public
           encodedName = m.value.encodedName
-          if !existingMethods.contains(encodedName) && !isConstructorName(encodedName)
+          if !existingMethods.contains(encodedName)
         } yield {
           import org.scalajs.ir.Trees._
           import org.scalajs.ir.Types._
@@ -672,7 +675,7 @@ final class Emitter private (config: CommonPhaseConfig,
   private def getClassTreeCache(linkedClass: LinkedClass): DesugaredClassCache =
     getClassCache(linkedClass.ancestors).getCache(linkedClass.version)
 
-  private def getClassCache(ancestors: List[String]) =
+  private def getClassCache(ancestors: List[ClassName]) =
     classCaches.getOrElseUpdate(ancestors, new ClassCache)
 
   // Caching
@@ -683,7 +686,7 @@ final class Emitter private (config: CommonPhaseConfig,
     private[this] var _cacheUsed = false
 
     private[this] val _methodCaches =
-      Array.fill(MemberNamespace.Count)(mutable.Map.empty[String, MethodCache])
+      Array.fill(MemberNamespace.Count)(mutable.Map.empty[MethodName, MethodCache])
 
     private[this] var _constructorCache: Option[MethodCache] = None
 
@@ -716,7 +719,7 @@ final class Emitter private (config: CommonPhaseConfig,
     }
 
     def getMethodCache(namespace: MemberNamespace,
-        encodedName: String): MethodCache = {
+        encodedName: MethodName): MethodCache = {
       _methodCaches(namespace.ordinal)
         .getOrElseUpdate(encodedName, new MethodCache)
     }

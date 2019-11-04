@@ -106,6 +106,16 @@ object Serializers {
     final val FormatNoPositionValue = -1
   }
 
+  private final class ByteString(val bytes: Array[Byte]) {
+    override def equals(that: Any): Boolean = that match {
+      case that: ByteString => java.util.Arrays.equals(this.bytes, that.bytes)
+      case _                => false
+    }
+
+    override def hashCode(): Int =
+      scala.util.hashing.MurmurHash3.bytesHash(bytes)
+  }
+
   private final class Serializer {
     private[this] val bufferUnderlying = new JumpBackByteArrayOutputStream
     private[this] val buffer = new DataOutputStream(bufferUnderlying)
@@ -115,6 +125,36 @@ object Serializers {
     private def fileToIndex(file: URI): Int =
       fileIndexMap.getOrElseUpdate(file, (files += file).size - 1)
 
+    private[this] val encodedNames = mutable.ListBuffer.empty[Array[Byte]]
+    private[this] val encodedNameIndexMap = mutable.Map.empty[ByteString, Int]
+    private def encodedNameToIndex(encoded: Array[Byte]): Int = {
+      val byteString = new ByteString(encoded)
+      encodedNameIndexMap.getOrElseUpdate(byteString,
+          (encodedNames += encoded).size - 1)
+    }
+
+    private[this] val methodNames = mutable.ListBuffer.empty[MethodName]
+    private[this] val methodNameIndexMap = mutable.Map.empty[MethodName, Int]
+    private def methodNameToIndex(methodName: MethodName): Int = {
+      methodNameIndexMap.getOrElseUpdate(methodName, {
+        // need to reserve the internal simple names
+
+        def reserveTypeRef(typeRef: TypeRef): Unit = typeRef match {
+          case _: PrimRef =>
+            // nothing to do
+          case ClassRef(className) =>
+            encodedNameToIndex(className.unsafeEncoded)
+          case ArrayTypeRef(base, _) =>
+            reserveTypeRef(base)
+        }
+
+        encodedNameToIndex(methodName.simpleName.unsafeEncoded)
+        methodName.paramTypeRefs.foreach(reserveTypeRef(_))
+        methodName.resultTypeRef.foreach(reserveTypeRef(_))
+        (methodNames += methodName).size - 1
+      })
+    }
+
     private[this] val strings = mutable.ListBuffer.empty[String]
     private[this] val stringIndexMap = mutable.Map.empty[String, Int]
     private def stringToIndex(str: String): Int =
@@ -123,7 +163,7 @@ object Serializers {
     private[this] var lastPosition: Position = Position.NoPosition
 
     def serialize(stream: OutputStream, classDef: ClassDef): Unit = {
-      // Write tree to buffer and record files and strings
+      // Write tree to buffer and record files, names and strings
       writeClassDef(classDef)
 
       val s = new DataOutputStream(stream)
@@ -136,12 +176,57 @@ object Serializers {
 
       // Write the entry points info
       val entryPointsInfo = EntryPointsInfo.forClassDef(classDef)
-      s.writeUTF(entryPointsInfo.encodedName)
+      val entryPointEncodedName = entryPointsInfo.encodedName.unsafeEncoded
+      s.writeInt(entryPointEncodedName.length)
+      s.write(entryPointEncodedName)
       s.writeBoolean(entryPointsInfo.hasEntryPoint)
 
       // Emit the files
       s.writeInt(files.size)
       files.foreach(f => s.writeUTF(f.toString))
+
+      // Emit the names
+      s.writeInt(encodedNames.size)
+      encodedNames.foreach { encodedName =>
+        s.writeInt(encodedName.length)
+        s.write(encodedName)
+      }
+
+      def writeTypeRef(typeRef: TypeRef): Unit = typeRef match {
+        case PrimRef(tpe) =>
+          tpe match {
+            case NoType      => s.writeByte(TagVoidRef)
+            case BooleanType => s.writeByte(TagBooleanRef)
+            case CharType    => s.writeByte(TagCharRef)
+            case ByteType    => s.writeByte(TagByteRef)
+            case ShortType   => s.writeByte(TagShortRef)
+            case IntType     => s.writeByte(TagIntRef)
+            case LongType    => s.writeByte(TagLongRef)
+            case FloatType   => s.writeByte(TagFloatRef)
+            case DoubleType  => s.writeByte(TagDoubleRef)
+            case NullType    => s.writeByte(TagNullRef)
+            case NothingType => s.writeByte(TagNothingRef)
+          }
+        case ClassRef(className) =>
+          s.writeByte(TagClassRef)
+          s.writeInt(encodedNameIndexMap(new ByteString(className.unsafeEncoded)))
+        case ArrayTypeRef(base, dimensions) =>
+          s.writeByte(TagArrayTypeRef)
+          writeTypeRef(base)
+          s.writeInt(dimensions)
+      }
+
+      // Emit the method names
+      s.writeInt(methodNames.size)
+      methodNames.foreach { methodName =>
+        s.writeInt(encodedNameIndexMap(
+            new ByteString(methodName.simpleName.unsafeEncoded)))
+        s.writeInt(methodName.paramTypeRefs.size)
+        methodName.paramTypeRefs.foreach(writeTypeRef(_))
+        s.writeBoolean(methodName.resultTypeRef.isDefined)
+        methodName.resultTypeRef.foreach(writeTypeRef(_))
+        writeName(methodName.simpleName)
+      }
 
       // Emit the strings
       s.writeInt(strings.size)
@@ -609,27 +694,27 @@ object Serializers {
 
     def writeLocalIdent(ident: LocalIdent): Unit = {
       writePosition(ident.pos)
-      writeString(ident.name); writeString(ident.originalName.getOrElse(""))
+      writeName(ident.name); writeString(ident.originalName.getOrElse(""))
     }
 
     def writeLabelIdent(ident: LabelIdent): Unit = {
       writePosition(ident.pos)
-      writeString(ident.name)
+      writeName(ident.name)
     }
 
     def writeFieldIdent(ident: FieldIdent): Unit = {
       writePosition(ident.pos)
-      writeString(ident.name); writeString(ident.originalName.getOrElse(""))
+      writeName(ident.name); writeString(ident.originalName.getOrElse(""))
     }
 
     def writeMethodIdent(ident: MethodIdent): Unit = {
       writePosition(ident.pos)
-      writeString(ident.name); writeString(ident.originalName.getOrElse(""))
+      writeMethodName(ident.name); writeString(ident.originalName.getOrElse(""))
     }
 
     def writeClassIdent(ident: ClassIdent): Unit = {
       writePosition(ident.pos)
-      writeString(ident.name); writeString(ident.originalName.getOrElse(""))
+      writeName(ident.name); writeString(ident.originalName.getOrElse(""))
     }
 
     def writeClassIdents(idents: List[ClassIdent]): Unit = {
@@ -641,6 +726,12 @@ object Serializers {
       buffer.writeBoolean(optIdent.isDefined)
       optIdent.foreach(writeClassIdent)
     }
+
+    def writeName(name: Name): Unit =
+      buffer.writeInt(encodedNameToIndex(name.unsafeEncoded))
+
+    def writeMethodName(name: MethodName): Unit =
+      buffer.writeInt(methodNameToIndex(name))
 
     def writeParamDef(paramDef: ParamDef): Unit = {
       writePosition(paramDef.pos)
@@ -674,7 +765,7 @@ object Serializers {
 
         case ClassType(className) =>
           buffer.write(TagClassType)
-          writeString(className)
+          writeName(className)
 
         case ArrayType(arrayTypeRef) =>
           buffer.write(TagArrayType)
@@ -684,7 +775,7 @@ object Serializers {
           buffer.write(TagRecordType)
           buffer.writeInt(fields.size)
           for (RecordType.Field(name, originalName, tpe, mutable) <- fields) {
-            writeString(name)
+            writeName(name)
             writeString(originalName.getOrElse(""))
             writeType(tpe)
             buffer.writeBoolean(mutable)
@@ -716,7 +807,7 @@ object Serializers {
     }
 
     def writeClassRef(cls: ClassRef): Unit =
-      writeString(cls.className)
+      writeName(cls.className)
 
     def writeArrayTypeRef(typeRef: ArrayTypeRef): Unit = {
       writeTypeRef(typeRef.base)
@@ -818,20 +909,19 @@ object Serializers {
     }
   }
 
-  private final val ValidatedAsLocalNameBit = 0x01
-  private final val ValidatedAsLabelNameBit = 0x02
-  private final val ValidatedAsFieldNameBit = 0x04
-  private final val ValidatedAsMethodNameBit = 0x08
-  private final val ValidatedAsClassNameBit = 0x10
-  private final val ValidatedAsClassRefNameBit = 0x20
-
   private final class Deserializer(buf: ByteBuffer) {
     require(buf.order() == ByteOrder.BIG_ENDIAN)
 
     private[this] var sourceVersion: String = _
     private[this] var files: Array[URI] = _
+    private[this] var encodedNames: Array[Array[Byte]] = _
+    private[this] var localNames: Array[LocalName] = _
+    private[this] var labelNames: Array[LabelName] = _
+    private[this] var fieldNames: Array[FieldName] = _
+    private[this] var simpleMethodNames: Array[SimpleMethodName] = _
+    private[this] var classNames: Array[ClassName] = _
+    private[this] var methodNames: Array[MethodName] = _
     private[this] var strings: Array[String] = _
-    private[this] var stringsValidatedFlags: Array[Byte] = _
 
     private[this] var lastPosition: Position = Position.NoPosition
 
@@ -844,16 +934,26 @@ object Serializers {
       sourceVersion = readHeader()
       readEntryPointsInfo() // discarded
       files = Array.fill(readInt())(new URI(readUTF()))
+      encodedNames = Array.fill(readInt()) {
+        val len = readInt()
+        val encodedName = new Array[Byte](len)
+        buf.get(encodedName)
+        encodedName
+      }
+      localNames = new Array(encodedNames.length)
+      labelNames = new Array(encodedNames.length)
+      fieldNames = new Array(encodedNames.length)
+      simpleMethodNames = new Array(encodedNames.length)
+      classNames = new Array(encodedNames.length)
+      methodNames = Array.fill(readInt()) {
+        val simpleName = readSimpleMethodName()
+        val paramTypeRefs = List.fill(readInt())(readTypeRef())
+        val resultTypeRef = if (readBoolean()) Some(readTypeRef()) else None
+        MethodName(simpleName, paramTypeRefs, resultTypeRef)
+      }
       strings = Array.fill(readInt())(readUTF())
-      stringsValidatedFlags = new Array(strings.length)
       readClassDef()
     }
-
-    private def isStringAlreadyValidated(i: Int, bit: Int): Boolean =
-      (stringsValidatedFlags(i) & bit) != 0
-
-    private def didValidateString(i: Int, bit: Int): Unit =
-      stringsValidatedFlags(i) = (stringsValidatedFlags(i) | bit).toByte
 
     /** Reads the Scala.js IR header and verifies the version compatibility.
      *
@@ -877,9 +977,12 @@ object Serializers {
     }
 
     private def readEntryPointsInfo(): EntryPointsInfo = {
-      val encodedName = ClassName(readUTF())
+      val encodedNameLen = readInt()
+      val encodedName = new Array[Byte](encodedNameLen)
+      buf.get(encodedName)
+      val name = ClassName(encodedName)
       val hasEntryPoint = readBoolean()
-      new EntryPointsInfo(encodedName, hasEntryPoint)
+      new EntryPointsInfo(name, hasEntryPoint)
     }
 
     def readTree(): Tree = {
@@ -1295,53 +1398,66 @@ object Serializers {
 
     private def readLocalName(): LocalName = {
       val i = readInt()
-      val s = strings(i)
-      if (!isStringAlreadyValidated(i, ValidatedAsLocalNameBit)) {
-        LocalName(s)
-        didValidateString(i, ValidatedAsLocalNameBit)
+      val existing = localNames(i)
+      if (existing ne null) {
+        existing
+      } else {
+        val result = LocalName(encodedNames(i))
+        localNames(i) = result
+        result
       }
-      s.asInstanceOf[LocalName]
     }
 
     private def readLabelName(): LabelName = {
       val i = readInt()
-      val s = strings(i)
-      if (!isStringAlreadyValidated(i, ValidatedAsLabelNameBit)) {
-        LabelName(s)
-        didValidateString(i, ValidatedAsLabelNameBit)
+      val existing = labelNames(i)
+      if (existing ne null) {
+        existing
+      } else {
+        val result = LabelName(encodedNames(i))
+        labelNames(i) = result
+        result
       }
-      s.asInstanceOf[LabelName]
     }
 
     private def readFieldName(): FieldName = {
       val i = readInt()
-      val s = strings(i)
-      if (!isStringAlreadyValidated(i, ValidatedAsFieldNameBit)) {
-        FieldName(s)
-        didValidateString(i, ValidatedAsFieldNameBit)
+      val existing = fieldNames(i)
+      if (existing ne null) {
+        existing
+      } else {
+        val result = FieldName(encodedNames(i))
+        fieldNames(i) = result
+        result
       }
-      s.asInstanceOf[FieldName]
     }
 
-    private def readMethodName(): MethodName = {
+    private def readSimpleMethodName(): SimpleMethodName = {
       val i = readInt()
-      val s = strings(i)
-      if (!isStringAlreadyValidated(i, ValidatedAsMethodNameBit)) {
-        MethodName(s)
-        didValidateString(i, ValidatedAsMethodNameBit)
+      val existing = simpleMethodNames(i)
+      if (existing ne null) {
+        existing
+      } else {
+        val result = SimpleMethodName(encodedNames(i))
+        simpleMethodNames(i) = result
+        result
       }
-      s.asInstanceOf[MethodName]
     }
 
     private def readClassName(): ClassName = {
       val i = readInt()
-      val s = strings(i)
-      if (!isStringAlreadyValidated(i, ValidatedAsClassNameBit)) {
-        ClassName(s)
-        didValidateString(i, ValidatedAsClassNameBit)
+      val existing = classNames(i)
+      if (existing ne null) {
+        existing
+      } else {
+        val result = ClassName(encodedNames(i))
+        classNames(i) = result
+        result
       }
-      s.asInstanceOf[ClassName]
     }
+
+    private def readMethodName(): MethodName =
+      methodNames(readInt())
 
     private def readBoolean() = buf.get() != 0
     private def readByte() = buf.get()

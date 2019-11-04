@@ -976,7 +976,7 @@ object Trees {
   )(
       val optimizerHints: OptimizerHints
   )(implicit val pos: Position) extends IRNode {
-    def encodedName: String = name.name
+    def encodedName: ClassName = name.name
   }
 
   object ClassDef {

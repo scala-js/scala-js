@@ -61,10 +61,9 @@ private[emitter] object CoreJSLib {
 
     private val classData = Ident("$classData")
 
-    private val orderedPrimitiveCharCodeStrs = {
-      val primRefs = List(VoidRef, BooleanRef, CharRef, ByteRef, ShortRef,
-          IntRef, LongRef, FloatRef, DoubleRef)
-      primRefs.map(fieldNameOfPrimRef(_))
+    private val orderedPrimRefs = {
+      List(VoidRef, BooleanRef, CharRef, ByteRef, ShortRef, IntRef, LongRef,
+          FloatRef, DoubleRef)
     }
 
     def build(): WithGlobals[Tree] = {
@@ -465,7 +464,7 @@ private[emitter] object CoreJSLib {
               }
           ), {
             If(instance === Null(), {
-              Return(Apply(instance DOT getClassMethodName, Nil))
+              Return(Apply(instance DOT genName(getClassMethodName), Nil))
             }, {
               If(genIsInstanceOfHijackedClass(instance, BoxedLongClass), {
                 Return(genClassOf(BoxedLongClass))
@@ -489,27 +488,33 @@ private[emitter] object CoreJSLib {
     private def defineDispatchFunctions(): Unit = {
       val instance = varRef("instance")
 
-      // toString__T
+      def defineDispatcher(methodName: MethodName, args: List[VarRef],
+          body: Tree): Unit = {
+        buf += envFunctionDef("dp_" + genName(methodName),
+            paramList((instance :: args): _*), body)
+      }
+
+      // toString()java.lang.String
       locally {
-        buf += envFunctionDef("dp_toString__T", paramList(instance), {
+        defineDispatcher(toStringMethodName, Nil, {
           Return(If(instance === Undefined(),
               str("undefined"),
               Apply(instance DOT "toString", Nil)))
         })
       }
 
-      // getClass__jl_Class
+      // getClass()java.lang.Class
       locally {
-        buf += envFunctionDef("dp_getClass__jl_Class", paramList(instance), {
+        defineDispatcher(getClassMethodName, Nil, {
           Return(genCallHelper("objectGetClass", instance))
         })
       }
 
-      // clone__O
+      // clone()java.lang.Object
       locally {
-        buf += envFunctionDef("dp_clone__O", paramList(instance), {
+        defineDispatcher(cloneMethodName, Nil, {
           If(genIsScalaJSObjectOrNull(instance), {
-            Return(Apply(instance DOT "clone__O", Nil))
+            Return(Apply(instance DOT genName(cloneMethodName), Nil))
           }, {
             Throw(genScalaClassNew(CloneNotSupportedExceptionClass,
                 NoArgConstructorName))
@@ -517,20 +522,20 @@ private[emitter] object CoreJSLib {
         })
       }
 
-      // notify__V and notifyAll__V (final and no-op in Object)
+      // notify()V and notifyAll()V (final and no-op in Object)
       locally {
-        for (name <- List("notify__V", "notifyAll__V")) {
-          buf += envFunctionDef("dp_" + name, paramList(instance), {
-            If(instance === Null(), Apply(instance DOT name, Nil), Skip())
+        for (name <- List(notifyMethodName, notifyAllMethodName)) {
+          defineDispatcher(name, Nil, {
+            If(instance === Null(), Apply(instance DOT genName(name), Nil), Skip())
           })
         }
       }
 
-      // finalize__V
+      // finalize()V
       locally {
-        buf += envFunctionDef("dp_finalize__V", paramList(instance), {
+        defineDispatcher(finalizeMethodName, Nil, {
           If(genIsScalaJSObjectOrNull(instance),
-              Apply(instance DOT "finalize__V", Nil),
+              Apply(instance DOT genName(finalizeMethodName), Nil),
               Skip())
         })
       }
@@ -547,13 +552,11 @@ private[emitter] object CoreJSLib {
           case _                 => None
         }
 
-        def genHijackedMethodApply(className: ClassName): Tree = {
-          val fullName = className + "__" + methodName
-          Apply(envField("f", fullName), (instance :: args): List[VarRef])
-        }
+        def genHijackedMethodApply(className: ClassName): Tree =
+          Apply(envField("f", className, methodName, None), instance :: args)
 
         def genBodyNoSwitch(implementingHijackedClasses: List[ClassName]): Tree = {
-          val normalCall = Apply(instance DOT methodName, args)
+          val normalCall = Apply(instance DOT genName(methodName), args)
           val defaultCall: Tree = Return(implementationInObject.getOrElse(normalCall))
 
           val allButNormal = implementingHijackedClasses.foldRight(defaultCall) { (className, next) =>
@@ -590,7 +593,7 @@ private[emitter] object CoreJSLib {
           }
         }
 
-        buf += envFunctionDef("dp_" + methodName, paramList((instance :: args): _*), {
+        defineDispatcher(methodName, args, {
           genBodyMaybeSwitch()
         })
       }
@@ -874,7 +877,7 @@ private[emitter] object CoreJSLib {
           Function(arrow = false, paramList(obj), {
             Switch(typeof(obj),
                 List("string", "number", "bigint", "boolean").map(str(_) -> Skip()) :+
-                str("undefined") -> Return(genCallHelper("dp_hashCode__I", obj)),
+                str("undefined") -> Return(genCallHelper("dp_" + genName(hashCodeMethodName), obj)),
                 defaultImpl)
           })
         }
@@ -981,7 +984,7 @@ private[emitter] object CoreJSLib {
       if (asInstanceOfs != CheckedBehavior.Unchecked) {
         // Unboxes for everything
         def defineUnbox(name: String, boxedClassName: ClassName, resultExpr: Tree): Unit = {
-          val fullName = decodeClassName(boxedClassName)
+          val fullName = boxedClassName.nameString
           buf += envFunctionDef(name, paramList(v), Return {
             If(genIsInstanceOfHijackedClass(v, boxedClassName) || (v === Null()),
                 resultExpr,
@@ -1198,7 +1201,7 @@ private[emitter] object CoreJSLib {
               Nil
             }
 
-            val clone = MethodDef(static = false, Ident("clone__O"), Nil, {
+            val clone = MethodDef(static = false, Ident(genName(cloneMethodName)), Nil, {
               Return(New(ArrayClass, {
                 If((This() DOT "u") instanceof ArrayRef, {
                   Apply(genIdentBracketSelect(This() DOT "u", "slice"), 0 :: Nil)
@@ -1228,9 +1231,9 @@ private[emitter] object CoreJSLib {
               privateFieldSet("constr", ArrayClass),
               privateFieldSet("parentData", genClassDataOf(ObjectClass)),
               privateFieldSet("ancestors", ObjectConstr(List(
-                  Ident(ObjectClass) -> 1,
-                  Ident(CloneableClass) -> 1,
-                  Ident(SerializableClass) -> 1
+                  Ident(genName(ObjectClass)) -> 1,
+                  Ident(genName(CloneableClass)) -> 1,
+                  Ident(genName(SerializableClass)) -> 1
               ))),
               privateFieldSet("componentData", componentData),
               privateFieldSet("arrayBase", componentBase),
@@ -1360,24 +1363,25 @@ private[emitter] object CoreJSLib {
     }
 
     private def defineIsArrayOfPrimitiveFunctions(): Unit = {
-      for (charCodeStr <- orderedPrimitiveCharCodeStrs) {
+      for (primRef <- orderedPrimRefs) {
         val obj = varRef("obj")
         val depth = varRef("depth")
-        buf += FunctionDef(envFieldIdent("isArrayOf", charCodeStr), paramList(obj, depth), {
+        buf += FunctionDef(envFieldIdent("isArrayOf", primRef), paramList(obj, depth), {
           Return(!(!(obj && (obj DOT classData) &&
               ((obj DOT classData DOT "arrayDepth") === depth) &&
-              ((obj DOT classData DOT "arrayBase") === genClassDataOf(charCodeStr)))))
+              ((obj DOT classData DOT "arrayBase") === genClassDataOf(primRef)))))
         })
       }
     }
 
     private def defineAsArrayOfPrimitiveFunctions(): Unit = {
       if (asInstanceOfs != CheckedBehavior.Unchecked) {
-        for (charCodeStr <- orderedPrimitiveCharCodeStrs) {
+        for (primRef <- orderedPrimRefs) {
+          val charCodeStr = charCodeOfPrimRef(primRef)
           val obj = varRef("obj")
           val depth = varRef("depth")
-          buf += FunctionDef(envFieldIdent("asArrayOf", charCodeStr), paramList(obj, depth), {
-            If(genCallHelper("isArrayOf_" + charCodeStr, obj, depth) || (obj === Null()), {
+          buf += FunctionDef(envFieldIdent("asArrayOf", primRef), paramList(obj, depth), {
+            If(Apply(envField("isArrayOf", primRef), obj :: depth :: Nil) || (obj === Null()), {
               Return(obj)
             }, {
               genCallHelper("throwArrayCastException", obj, str(charCodeStr), depth)
@@ -1401,10 +1405,10 @@ private[emitter] object CoreJSLib {
             (DoubleRef, double(0), "double")
         )
       } {
-        val charCodeStr = fieldNameOfPrimRef(primRef)
-        buf += const(envField("d", charCodeStr), {
+        val charCodeStr = charCodeOfPrimRef(primRef)
+        buf += const(envField("d", primRef), {
           Apply(New(envField("TypeData"), Nil) DOT "initPrim",
-              List(zero, str(charCodeStr), str(displayName), envField("isArrayOf", charCodeStr)))
+              List(zero, str(charCodeStr), str(displayName), envField("isArrayOf", primRef)))
         })
       }
     }
@@ -1420,7 +1424,7 @@ private[emitter] object CoreJSLib {
 
     private def genScalaClassNew(className: ClassName, ctorName: MethodName,
         args: Tree*): Tree = {
-      Apply(envField("ct", className + "__" + ctorName),
+      Apply(envField("ct", className, ctorName, None),
           New(encodeClassVar(className), Nil) :: args.toList)
     }
 
@@ -1429,6 +1433,32 @@ private[emitter] object CoreJSLib {
 
     private def genIsScalaJSObjectOrNull(obj: VarRef): Tree =
       genIsScalaJSObject(obj) || (obj === Null())
+
+    /** This mapping is by-spec of run-time behavior.
+     *
+     *  It can be observed in `classOf[Array[Prim]].getName()`, as well as in
+     *  the error messages of `x.asInstanceOf[Array[Prim]]`.
+     *
+     *  Even if we change the encoding of "envFields" for PrimRefs (which is an
+     *  implementation detail of the emitter), the mapping in
+     *  `charCodeOfPrimRef` must not change.
+     */
+    private def charCodeOfPrimRef(primRef: PrimRef): String = primRef.tpe match {
+      case NoType      => "V"
+      case BooleanType => "Z"
+      case CharType    => "C"
+      case ByteType    => "B"
+      case ShortType   => "S"
+      case IntType     => "I"
+      case LongType    => "J"
+      case FloatType   => "F"
+      case DoubleType  => "D"
+
+      case NullType | NothingType =>
+        throw new AssertionError(
+            s"Trying to call charCodeOfPrimRef() for $primRef which has no " +
+            "specified char code")
+    }
 
     private def envFunctionDef(name: String, args: List[ParamDef],
         body: Tree): FunctionDef = {

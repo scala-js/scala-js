@@ -47,68 +47,71 @@ class OptimizerTest {
   private def testCloneOnArrayNotInlinedGeneric(
       customMemberDefs: List[MemberDef]): Future[Unit] = {
 
-    val thisFoo = This()(ClassType("LFoo"))
+    val thisFoo = This()(ClassType("Foo"))
     val intArrayTypeRef = ArrayTypeRef(IntRef, 1)
     val intArrayType = ArrayType(intArrayTypeRef)
     val anArrayOfInts = ArrayValue(intArrayTypeRef, List(IntLiteral(1)))
-    val newFoo = New(ClassRef("LFoo"), "init___", Nil)
+    val newFoo = New(ClassRef("Foo"), NoArgConstructorName, Nil)
+
+    val reachCloneMethodName = m("reachClone", Nil, O)
+    val anArrayMethodName = m("anArray", Nil, intArrayTypeRef)
+    val anObjectMethodName = m("anObject", Nil, O)
 
     def callCloneOn(receiver: Tree): Tree =
-      Apply(EAF, receiver, "clone__O", Nil)(AnyType)
+      Apply(EAF, receiver, cloneMethodName, Nil)(AnyType)
 
     val fooMemberDefs = List(
-        trivialCtor("LFoo"),
+        trivialCtor("Foo"),
 
         // @noinline def witness(): AnyRef = throw null
-        MethodDef(EMF, "witness__O", Nil, AnyType, Some {
+        MethodDef(EMF, witnessMethodName, Nil, AnyType, Some {
           Throw(Null())
         })(EOH.withNoinline(true), None),
 
         // @noinline def reachClone(): Object = clone()
-        MethodDef(EMF, "reachClone__O", Nil, AnyType, Some {
-          Apply(EAF, thisFoo, "clone__O", Nil)(AnyType)
+        MethodDef(EMF, reachCloneMethodName, Nil, AnyType, Some {
+          Apply(EAF, thisFoo, cloneMethodName, Nil)(AnyType)
         })(EOH.withNoinline(true), None),
 
         // @noinline def anArray(): Array[Int] = Array(1)
-        MethodDef(EMF, "anArray__AI", Nil, intArrayType, Some {
+        MethodDef(EMF, anArrayMethodName, Nil, intArrayType, Some {
           anArrayOfInts
         })(EOH.withNoinline(true), None),
 
         // @noinline def anObject(): AnyRef = Array(1)
-        MethodDef(EMF, "anObject__O", Nil, AnyType, Some {
+        MethodDef(EMF, anObjectMethodName, Nil, AnyType, Some {
           anArrayOfInts
         })(EOH.withNoinline(true), None)
     ) ::: customMemberDefs
 
     val classDefs = Seq(
-        classDef("LFoo",
+        classDef("Foo",
             superClass = Some(ObjectClass),
-            interfaces = List("jl_Cloneable"),
+            interfaces = List("java.lang.Cloneable"),
             memberDefs = fooMemberDefs
         ),
         mainTestClassDef(Block(
             // new Foo().reachClone() -- make Foo.clone() reachable for sure
-            Apply(EAF, newFoo, "reachClone__O", Nil)(AnyType),
+            Apply(EAF, newFoo, reachCloneMethodName, Nil)(AnyType),
             // Array(1).clone() -- test with an exact static type of I[]
             callCloneOn(anArrayOfInts),
             // new Foo().anArray().clone() -- test with a static type of I[]
-            callCloneOn(Apply(EAF, newFoo, "anArray__AI", Nil)(intArrayType)),
+            callCloneOn(Apply(EAF, newFoo, anArrayMethodName, Nil)(intArrayType)),
             // new Foo().anObject().clone() -- test with a static type of Object
-            callCloneOn(Apply(EAF, newFoo, "anObject__O", Nil)(AnyType))
+            callCloneOn(Apply(EAF, newFoo, anObjectMethodName, Nil)(AnyType))
         ))
     )
 
     for (linkingUnit <- linkToLinkingUnit(classDefs, MainTestModuleInitializers)) yield {
       val linkedClass = linkingUnit.classDefs.find(_.encodedName == MainTestClassDefEncodedName).get
-      val WitnessMethodName = MethodName("witness__O")
-      val CloneMethodName = MethodName("clone__O")
+      val ObjectCloneClass = ClassName("java.lang.ObjectClone$")
       linkedClass.hasNot("any call to Foo.witness()") {
-        case Apply(_, receiver, MethodIdent(WitnessMethodName, _), _) =>
-          receiver.tpe == ClassType("LFoo")
+        case Apply(_, receiver, MethodIdent(`witnessMethodName`, _), _) =>
+          receiver.tpe == ClassType("Foo")
       }.hasNot("any reference to ObjectClone") {
-        case LoadModule(ClassRef("jl_ObjectClone$")) => true
+        case LoadModule(ClassRef(ObjectCloneClass)) => true
       }.hasExactly(3, "calls to clone()") {
-        case Apply(_, _, MethodIdent(CloneMethodName, _), _) => true
+        case Apply(_, _, MethodIdent(`cloneMethodName`, _), _) => true
       }
     }
   }
@@ -118,8 +121,8 @@ class OptimizerTest {
   def testCloneOnArrayNotInlined_issue3778(): AsyncResult = await {
     testCloneOnArrayNotInlinedGeneric(List(
         // @inline override def clone(): AnyRef = witness()
-        MethodDef(EMF, "clone__O", Nil, AnyType, Some {
-          Apply(EAF, This()(ClassType("LFoo")), "witness__O", Nil)(AnyType)
+        MethodDef(EMF, cloneMethodName, Nil, AnyType, Some {
+          Apply(EAF, This()(ClassType("Foo")), witnessMethodName, Nil)(AnyType)
         })(EOH.withInline(true), None)
     ))
   }
@@ -139,11 +142,11 @@ class OptimizerTest {
   def testCloneOnArrayNotInlined_issue3778_ObjectCloneAndAnotherClone(): AsyncResult = await {
     testCloneOnArrayNotInlinedGeneric(List(
         // @inline override def clone(): AnyRef = witness()
-        MethodDef(EMF, "clone__O", Nil, AnyType, Some {
+        MethodDef(EMF, cloneMethodName, Nil, AnyType, Some {
           Block(
-              Apply(EAF, This()(ClassType("LFoo")), "witness__O", Nil)(AnyType),
-              ApplyStatically(EAF, This()(ClassType("LFoo")),
-                  ClassRef(ObjectClass), "clone__O", Nil)(AnyType)
+              Apply(EAF, This()(ClassType("Foo")), witnessMethodName, Nil)(AnyType),
+              ApplyStatically(EAF, This()(ClassType("Foo")),
+                  ClassRef(ObjectClass), cloneMethodName, Nil)(AnyType)
           )
         })(EOH.withInline(true), None)
     ))
@@ -152,6 +155,9 @@ class OptimizerTest {
 }
 
 object OptimizerTest {
+  private val cloneMethodName = m("clone", Nil, O)
+  private val witnessMethodName = m("witness", Nil, O)
+
   private final class StoreLinkingUnitLinkerBackend(
       originalBackend: LinkerBackend)
       extends LinkerBackend {

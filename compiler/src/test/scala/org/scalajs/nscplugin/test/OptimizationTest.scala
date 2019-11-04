@@ -17,6 +17,7 @@ import util._
 import org.junit.Test
 
 import org.scalajs.ir.{Trees => js, Types => jstpe}
+import org.scalajs.ir.Definitions._
 
 class OptimizationTest extends JSASTTest {
   import OptimizationTest._
@@ -37,7 +38,7 @@ class OptimizationTest extends JSASTTest {
     }
     """.
     hasNot("any LoadModule of the scala.Array companion") {
-      case js.LoadModule(jstpe.ClassRef("s_Array$")) =>
+      case js.LoadModule(jstpe.ClassRef(ArrayModuleClass)) =>
     }
 
     /* Using [] with primitives produces suboptimal trees, which cannot be
@@ -55,8 +56,8 @@ class OptimizationTest extends JSASTTest {
     }
     """.
     hasExactly(2, "calls to Array.apply methods") {
-      case js.Apply(_, js.LoadModule(jstpe.ClassRef("s_Array$")), js.MethodIdent(methodName, _), _)
-          if methodName.startsWith("apply__") =>
+      case js.Apply(_, js.LoadModule(jstpe.ClassRef(ArrayModuleClass)), js.MethodIdent(methodName, _), _)
+          if methodName.simpleName == applySimpleMethodName =>
     }
   }
 
@@ -333,6 +334,10 @@ class OptimizationTest extends JSASTTest {
 
 object OptimizationTest {
 
+  private val ArrayModuleClass = ClassName("scala.Array$")
+
+  private val applySimpleMethodName = SimpleMethodName("apply")
+
   private val hasOldCollections = {
     val version = scala.util.Properties.versionNumberString
 
@@ -341,13 +346,17 @@ object OptimizationTest {
   }
 
   private object WrapArrayCall {
-    private val Suffix =
-      if (hasOldCollections) "__scm_WrappedArray"
-      else "__sci_ArraySeq"
+    private val WrappedArrayTypeRef = {
+      val name =
+        if (hasOldCollections) "scala.collection.mutable.WrappedArray"
+        else "scala.collection.immutable.ArraySeq"
+      jstpe.ClassRef(ClassName(name))
+    }
 
     def unapply(tree: js.Apply): Boolean = {
       val methodName = tree.method.name
-      methodName.startsWith("wrap") && methodName.endsWith(Suffix)
+      methodName.simpleName.nameString.startsWith("wrap") &&
+      methodName.resultTypeRef.exists(_ == WrappedArrayTypeRef)
     }
   }
 

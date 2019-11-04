@@ -100,6 +100,7 @@ private[javascript] class SourceMapWriter(
 
   private var pendingColumnInGenerated: Int = -1
   private var pendingPos: Position = NoPosition
+  private var pendingIsIdent: Boolean = false
   // pendingName string is nullable
   private var pendingName: String = null
 
@@ -149,30 +150,33 @@ private[javascript] class SourceMapWriter(
 
   def startNode(column: Int, originalPos: Position): Unit = {
     nodePosStack.push(originalPos, null)
-    startSegment(column, originalPos, null)
+    startSegment(column, originalPos, isIdent = false, null)
   }
 
-  def startNode(column: Int, originalPos: Position,
+  def startIdentNode(column: Int, originalPos: Position,
       optOriginalName: Option[String]): Unit = {
     val originalName =
       if (optOriginalName.isDefined) optOriginalName.get
       else null
     nodePosStack.push(originalPos, originalName)
-    startSegment(column, originalPos, originalName)
+    startSegment(column, originalPos, isIdent = true, originalName)
   }
 
   def endNode(column: Int): Unit = {
     nodePosStack.pop()
-    startSegment(column, nodePosStack.topPos, nodePosStack.topName)
+    startSegment(column, nodePosStack.topPos, isIdent = false,
+        nodePosStack.topName)
   }
 
   private def startSegment(startColumn: Int, originalPos: Position,
-      originalName: String): Unit = {
+      isIdent: Boolean, originalName: String): Unit = {
     // scalastyle:off return
 
     // There is no point in outputting a segment with the same information
-    if ((originalPos == pendingPos) && (originalName == pendingName))
+    if ((originalPos == pendingPos) && (isIdent == pendingIsIdent) &&
+        (originalName == pendingName)) {
       return
+    }
 
     // Write pending segment if it covers a non-empty range
     if (startColumn != pendingColumnInGenerated)
@@ -181,6 +185,7 @@ private[javascript] class SourceMapWriter(
     // New pending
     pendingColumnInGenerated = startColumn
     pendingPos = originalPos
+    pendingIsIdent = isIdent
     pendingName = originalName
 
     // scalastyle:on return

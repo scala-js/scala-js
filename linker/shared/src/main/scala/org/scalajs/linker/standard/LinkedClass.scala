@@ -63,7 +63,7 @@ final class LinkedClass(
     methods.exists(_.value.flags.namespace == MemberNamespace.StaticConstructor)
   }
 
-  def fullName: String = Definitions.decodeClassName(encodedName)
+  def fullName: String = encodedName.nameString
 
   private[linker] def refined(
       kind: ClassKind,

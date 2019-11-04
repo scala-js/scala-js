@@ -35,14 +35,17 @@ import sbt.{Logger, MessageOnlyException}
  *  `scala.scalajs.runtime.UndefinedBehaviorError`.
  */
 object JavalibIRCleaner {
-  private val JavaIOSerializable = ClassName("Ljava_io_Serializable")
-  private val JavaLangSemanticsUtils = ClassName("jl_SemanticsUtils$")
-  private val ScalaJSRuntimePackage = ClassName("sjsr_package$")
-  private val ScalaJSUndefinedBehaviorError = ClassName("sjsr_UndefinedBehaviorError")
-  private val ScalaSerializable = ClassName("s_Serializable")
+  private val ThrowableClass = ClassName("java.lang.Throwable")
+  private val JavaIOSerializable = ClassName("java.io.Serializable")
+  private val JavaLangSemanticsUtils = ClassName("java.lang.SemanticsUtils$")
+  private val ScalaJSRuntimePackage = ClassName("scala.scalajs.runtime.package$")
+  private val ScalaJSUndefinedBehaviorError = ClassName("scala.scalajs.runtime.UndefinedBehaviorError")
+  private val ScalaSerializable = ClassName("scala.Serializable")
 
-  private val unwrapJSExceptionMethodName = MethodName("unwrapJavaScriptException__jl_Throwable__O")
-  private val writeReplaceMethodName = MethodName("writeReplace__O")
+  private val unwrapJSExceptionMethodName =
+    MethodName("unwrapJavaScriptException", List(ClassRef(ThrowableClass)), ClassRef(ObjectClass))
+  private val writeReplaceMethodName =
+    MethodName("writeReplace", Nil, ClassRef(ObjectClass))
 
   def cleanIR(dependencyClasspath: Seq[File], javalibDir: File, outputDir: File,
       logger: Logger): Set[File] = {
@@ -154,7 +157,7 @@ object JavalibIRCleaner {
     }
   }
 
-  private def getJSTypes(irFiles: Seq[IRFile]): Map[String, ClassDef] = {
+  private def getJSTypes(irFiles: Seq[IRFile]): Map[ClassName, ClassDef] = {
     (for {
       irFile <- irFiles
       if irFile.tree.kind.isJSType
@@ -164,14 +167,14 @@ object JavalibIRCleaner {
     }).toMap
   }
 
-  private def cleanTree(tree: ClassDef, jsTypes: Map[String, ClassDef],
+  private def cleanTree(tree: ClassDef, jsTypes: Map[ClassName, ClassDef],
       errorManager: ErrorManager): ClassDef = {
     new ClassDefCleaner(tree.encodedName, jsTypes, errorManager)
       .cleanClassDef(tree)
   }
 
-  private final class ClassDefCleaner(enclosingClassName: String,
-      jsTypes: Map[String, ClassDef], errorManager: ErrorManager)
+  private final class ClassDefCleaner(enclosingClassName: ClassName,
+      jsTypes: Map[ClassName, ClassDef], errorManager: ErrorManager)
       extends Transformers.ClassTransformer {
 
     def cleanClassDef(tree: ClassDef): ClassDef = {
@@ -233,7 +236,7 @@ object JavalibIRCleaner {
       } else {
         interfaces.map { ident =>
           if (ident.name == ScalaSerializable)
-            ClassIdent(JavaIOSerializable, Some("java.io.Serializable"))(ident.pos)
+            ClassIdent(JavaIOSerializable)(ident.pos)
           else
             ident
         }
@@ -348,13 +351,15 @@ object JavalibIRCleaner {
     private def transformMethodIdent(ident: MethodIdent): MethodIdent = {
       implicit val pos = ident.pos
       val encodedName = ident.name
-      val sig = decodeMethodName(encodedName)
-      val newParamTypes = sig._2.map(transformTypeRef)
-      val newResultType = sig._3.map(transformTypeRef)
-      if (newParamTypes == sig._2 && newResultType == sig._3) {
+      val paramTypeRefs = encodedName.paramTypeRefs
+      val newParamTypeRefs = paramTypeRefs.map(transformTypeRef)
+      val resultTypeRef = encodedName.resultTypeRef
+      val newResultTypeRef = resultTypeRef.map(transformTypeRef)
+      if (newParamTypeRefs == paramTypeRefs && newResultTypeRef == resultTypeRef) {
         ident
       } else {
-        MethodIdent(encodeMethodName(sig._1, newParamTypes, newResultType),
+        MethodIdent(
+            MethodName(encodedName.simpleName, newParamTypeRefs, newResultTypeRef),
             ident.originalName)(ident.pos)
       }
     }
@@ -393,13 +398,13 @@ object JavalibIRCleaner {
 
     private def postTransformChecks(classDef: ClassDef): Unit = {
       // Check that no two methods have been erased to the same name
-      val seenMethodNames = mutable.Set.empty[(MemberNamespace, String)]
+      val seenMethodNames = mutable.Set.empty[(MemberNamespace, MethodName)]
       for (m <- classDef.memberDefs) {
         m match {
           case MethodDef(flags, name, _, _, _) =>
             if (!seenMethodNames.add((flags.namespace, name.name))) {
               reportError(
-                  s"duplicate method name ${name.name} after erasure")(
+                  s"duplicate method name ${name.name.nameString} after erasure")(
                   m.pos)
             }
           case _ =>
@@ -420,7 +425,7 @@ object JavalibIRCleaner {
 
     private def validateClassName(cls: ClassName)(implicit pos: Position): Unit = {
       if (isScalaClassName(cls))
-        reportError(s"Illegal reference to Scala class $cls")
+        reportError(s"Illegal reference to Scala class ${cls.nameString}")
     }
 
     private def validateNonJSClassRef(cls: ClassRef)(implicit pos: Position): Unit =
@@ -428,19 +433,14 @@ object JavalibIRCleaner {
 
     private def validateNonJSClassName(cls: ClassName)(implicit pos: Position): Unit = {
       if (jsTypes.contains(cls))
-        reportError(s"Invalid reference to JS class $cls")
+        reportError(s"Invalid reference to JS class ${cls.nameString}")
       else
         validateClassName(cls)
     }
 
     private def isScalaClassName(cls: ClassName): Boolean = {
-      {
-        cls.startsWith("s") ||
-        cls.startsWith("Lscala_") ||
-        (cls.length > 1 && (cls.charAt(0) == 'T' || cls.charAt(0) == 'F'))
-      } && {
-        cls != ScalaJSUndefinedBehaviorError // TODO We need to get rid of this
-      }
+      cls.nameString.startsWith("scala.") &&
+      cls != ScalaJSUndefinedBehaviorError // TODO We need to get rid of this
     }
 
     private def reportError(msg: String)(implicit pos: Position): Unit = {

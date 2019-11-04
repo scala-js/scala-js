@@ -73,12 +73,12 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   protected def tryNewInlineableClass(
       className: ClassName): Option[InlineableClassStructure]
 
-  private val localNameAllocator = new FreshNameAllocator(LocalName(_))
+  private val localNameAllocator = new FreshNameAllocator.Local
 
   /** An allocated local variable name is mutable iff it belongs to this set. */
   private var mutableLocalNames: Set[LocalName] = Set.empty
 
-  private val labelNameAllocator = new FreshNameAllocator(LabelName(_))
+  private val labelNameAllocator = new FreshNameAllocator.Label
 
   /** A list of backups for all updates done to States so far (excluding
    *  those done in rolled back optimistic branches).
@@ -192,7 +192,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     stateBackupChain ::= backup
 
   private def freshLocalName(base: LocalName, mutable: Boolean): LocalName = {
-    val result = localNameAllocator.freshName(base)
+    val base1 =
+      if (base eq LocalThisName) LocalThisNameForFresh
+      else base
+    val result = localNameAllocator.freshName(base1)
     if (mutable)
       mutableLocalNames += result
     result
@@ -397,7 +400,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case ForIn(obj, keyVar @ LocalIdent(name, originalName), body) =>
         val newObj = transformExpr(obj)
         val newName = freshLocalName(name, mutable = false)
-        val newOriginalName = originalName.orElse(Some(name))
+        val newOriginalName = originalName.orElse(Some(name.nameString))
         val localDef = LocalDef(RefinedType(AnyType), mutable = false,
             ReplaceWithVarRef(newName, newOriginalName, newSimpleState(true), None))
         val newBody = {
@@ -410,7 +413,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         val newBlock = transform(block, isStat)
 
         val newName = freshLocalName(name, false)
-        val newOriginalName = originalName.orElse(Some(name))
+        val newOriginalName = originalName.orElse(Some(name.nameString))
         val localDef = LocalDef(RefinedType(AnyType), true,
             ReplaceWithVarRef(newName, newOriginalName, newSimpleState(true), None))
         val newHandler = {
@@ -1435,11 +1438,11 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             Throw(New(ClassRef(NullPointerExceptionClass),
                 MethodIdent(NoArgConstructorName), Nil))).toPreTransform)
       case _ =>
-        if (isReflProxyName(methodName)) {
+        if (methodName.isReflectiveProxy) {
           // Never inline reflective proxies
           treeNotInlined
         } else if (methodName == ObjectCloneName && canBeArray(treceiver)) {
-          // #3778 Never inline the `clone__O()` method if the receiver can be an array
+          // #3778 Never inline the `clone()j.l.Object` method if the receiver can be an array
           treeNotInlined
         } else {
           val cls = boxedClassForType(treceiver.tpe.base)
@@ -1556,7 +1559,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     def treeNotInlined =
       treeNotInlined0(transformExpr(receiver), args.map(transformExpr))
 
-    if (isReflProxyName(methodName)) {
+    if (methodName.isReflectiveProxy) {
       // Never inline reflective proxies
       treeNotInlined
     } else {
@@ -1786,24 +1789,24 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   }
 
   private val ClassNamesThatShouldBeInlined = Set(
-      "s_Predef$$less$colon$less",
-      "s_Predef$$eq$colon$eq",
+      "scala.Predef$$less$colon$less",
+      "scala.Predef$$eq$colon$eq",
 
-      "s_reflect_ManifestFactory$ByteManifest$",
-      "s_reflect_ManifestFactory$ShortManifest$",
-      "s_reflect_ManifestFactory$CharManifest$",
-      "s_reflect_ManifestFactory$IntManifest$",
-      "s_reflect_ManifestFactory$LongManifest$",
-      "s_reflect_ManifestFactory$FloatManifest$",
-      "s_reflect_ManifestFactory$DoubleManifest$",
-      "s_reflect_ManifestFactory$BooleanManifest$",
-      "s_reflect_ManifestFactory$UnitManifest$",
-      "s_reflect_ManifestFactory$AnyManifest$",
-      "s_reflect_ManifestFactory$ObjectManifest$",
-      "s_reflect_ManifestFactory$AnyValManifest$",
-      "s_reflect_ManifestFactory$NullManifest$",
-      "s_reflect_ManifestFactory$NothingManifest$"
-  )
+      "scala.reflect.ManifestFactory$ByteManifest$",
+      "scala.reflect.ManifestFactory$ShortManifest$",
+      "scala.reflect.ManifestFactory$CharManifest$",
+      "scala.reflect.ManifestFactory$IntManifest$",
+      "scala.reflect.ManifestFactory$LongManifest$",
+      "scala.reflect.ManifestFactory$FloatManifest$",
+      "scala.reflect.ManifestFactory$DoubleManifest$",
+      "scala.reflect.ManifestFactory$BooleanManifest$",
+      "scala.reflect.ManifestFactory$UnitManifest$",
+      "scala.reflect.ManifestFactory$AnyManifest$",
+      "scala.reflect.ManifestFactory$ObjectManifest$",
+      "scala.reflect.ManifestFactory$AnyValManifest$",
+      "scala.reflect.ManifestFactory$NullManifest$",
+      "scala.reflect.ManifestFactory$NothingManifest$"
+  ).map(ClassName(_))
 
   private def shouldInlineBecauseOfArgs(target: MethodID,
       receiverAndArgs: List[PreTransform]): Boolean = {
@@ -1847,7 +1850,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     }
 
     receiverAndArgs.exists(isLikelyOptimizable) || {
-      target.toString == "s_reflect_ClassTag$.apply__jl_Class__s_reflect_ClassTag" &&
+      target.is(ClassTagModuleClass, ClassTagApplyMethodName) &&
       (receiverAndArgs.tail.head match {
         case PreTransTree(ClassOf(_), _) => true
         case _                           => false
@@ -2130,7 +2133,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
                   (elemLocalDef, idx) <- elemLocalDefs.toList.zipWithIndex
                 } yield {
                   elemLocalDef match {
-                    case LocalDef(RefinedType(ClassType("T2"), _, _), false,
+                    case LocalDef(RefinedType(ClassType(Tuple2Class), _, _), false,
                         InlineClassInstanceReplacement(structure, tupleFields, _)) =>
                       val List(key, value) = structure.fieldIDs.map(tupleFields)
                       (key.newReplacement, value.newReplacement)
@@ -2156,7 +2159,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
           case _ =>
             tprops.tpe match {
-              case RefinedType(ClassType("sci_Nil$"), _, false) =>
+              case RefinedType(ClassType(NilClass), _, false) =>
                 contTree(Block(finishTransformStat(tprops), JSObjectConstr(Nil)))
               case _ =>
                 default
@@ -2212,7 +2215,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     val initialFieldBindings = for {
       RecordType.Field(name, originalName, tpe, mutable) <- structure.recordType.fields
     } yield {
-      Binding(deriveLocalNameFromFieldName(name), originalName, tpe, mutable,
+      Binding(name.toLocalName, originalName, tpe, mutable,
           PreTransLit(zeroOf(tpe)))
     }
 
@@ -2288,7 +2291,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case Assign(s @ Select(ths: This, cls, field), value) :: rest
           if !inputFieldsLocalDefs(FieldID(cls, field)).mutable =>
         pretransformExpr(value) { tvalue =>
-          withNewLocalDef(Binding(deriveLocalNameFromFieldName(field.name),
+          withNewLocalDef(Binding(field.name.toLocalName,
               field.originalName, s.tpe, false, tvalue)) { (localDef, cont1) =>
             if (localDef.contains(thisLocalDef)) {
               /* Uh oh, there is a `val x = ...this...`. We can't keep it,
@@ -2379,9 +2382,6 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         buildInner(inputFieldsLocalDefs, cont)
     }
   }
-
-  private def deriveLocalNameFromFieldName(fieldName: FieldName): LocalName =
-    LocalName(fieldName)
 
   private def foldIf(cond: Tree, thenp: Tree, elsep: Tree)(tpe: Type)(
       implicit pos: Position): Tree = {
@@ -3032,10 +3032,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     /* In theory, we could figure out the ancestors from the global knowledge,
      * but that would be overkill.
      */
-    import Definitions._
     Set(BoxedByteClass, BoxedShortClass, BoxedIntegerClass, BoxedFloatClass,
-        BoxedDoubleClass, ObjectClass, "jl_CharSequence",
-        "Ljava_io_Serializable", "jl_Comparable", "jl_Number")
+        BoxedDoubleClass, ObjectClass, ClassName("java.lang.CharSequence"),
+        ClassName("java.io.Serializable"), ClassName("java.lang.Comparable"),
+        ClassName("java.lang.Number"))
   }
 
   private def foldBinaryOpNonConstant(op: BinaryOp.Code, lhs: PreTransform,
@@ -3967,7 +3967,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       p @ ParamDef(ident @ LocalIdent(name, originalName), ptpe, mutable, rest) <- params
     } yield {
       val newName = freshLocalName(name, mutable)
-      val newOriginalName = originalName.orElse(Some(newName))
+      val newOriginalName = originalName.orElse(Some(newName.nameString))
       val localDef = LocalDef(RefinedType(ptpe), mutable,
           ReplaceWithVarRef(newName, newOriginalName, newSimpleState(true), None))
       val newParamDef = ParamDef(
@@ -4083,7 +4083,13 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
    */
   def tryOptimizePatternMatch(oldLabelName: LabelName, refinedType: Type,
       returnCount: Int, body: Tree): Option[Tree] = {
-    if (!oldLabelName.startsWith("matchEnd")) {
+    // Heuristic for speed: only try to optimize labels likely named 'matchEnd...'
+    val isMaybeMatchEndLabel = {
+      val oldEncodedName = oldLabelName.unsafeEncoded
+      oldEncodedName.length >= 8 && oldEncodedName(0) == 'm' &&
+      oldEncodedName(1) == 'a' && oldEncodedName(2) == 't' // stop here
+    }
+    if (!isMaybeMatchEndLabel) {
       None
     } else {
       body match {
@@ -4218,7 +4224,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       } else {
         // Otherwise, we effectively declare a new binding
         val newName = freshLocalName(name, mutable)
-        val newOriginalName = originalName.orElse(Some(name))
+        val newOriginalName = originalName.orElse(Some(name.nameString))
 
         val used = newSimpleState(false)
 
@@ -4402,18 +4408,28 @@ private[optimizer] object OptimizerCore {
    *  TODO It would be better for `Binding`s to represent the `this` reference
    *  using a separate mechanism.
    *
-   *  `this` is normally not a valid `LocalName`, because that is a JS keyword,
-   *  so we cast here.
+   *  We use an unsafely-constructed invalid `LocalName`, so that it never
+   *  clashes with normal local names. It is invalid because of the `;`.
    */
-  private val LocalThisName = "this".asInstanceOf[LocalName]
+  private val LocalThisName =
+    LocalName.unsafeCreate("this;".map(_.toByte).toArray)
 
-  val NullPointerExceptionClass = ClassName("jl_NullPointerException")
-  private val Tuple2Class = ClassName("T2")
-  private val JSWrappedArrayClass = ClassName("sjs_js_WrappedArray")
+  /** When creating a `freshName` based on `LocalThisName`, use this name
+   *  instead.
+   */
+  private val LocalThisNameForFresh = LocalName("this")
 
-  private val ObjectCloneName = MethodName("clone__O")
-  private val TupleFirstMethodName = MethodName("$$und1__O")
-  private val TupleSecondMethodName = MethodName("$$und2__O")
+  val NullPointerExceptionClass = ClassName("java.lang.NullPointerException")
+  private val Tuple2Class = ClassName("scala.Tuple2")
+  private val NilClass = ClassName("scala.collection.immutable.Nil$")
+  private val JSWrappedArrayClass = ClassName("scala.scalajs.js.WrappedArray")
+  private val ClassTagModuleClass = ClassName("scala.reflect.ClassTag$")
+
+  private val ObjectCloneName = MethodName("clone", Nil, ClassRef(ObjectClass))
+  private val TupleFirstMethodName = MethodName("_1", Nil, ClassRef(ObjectClass))
+  private val TupleSecondMethodName = MethodName("_2", Nil, ClassRef(ObjectClass))
+  private val ClassTagApplyMethodName =
+    MethodName("apply", List(ClassRef(ClassClass)), ClassRef(ClassName("scala.reflect.ClassTag")))
 
   final class InlineableClassStructure(
       /** `List[ownerClassName -> fieldDef]`. */
@@ -4423,7 +4439,7 @@ private[optimizer] object OptimizerCore {
       allFields.map(field => FieldID(field._1, field._2))
 
     private[OptimizerCore] val recordType: RecordType = {
-      val allocator = new FreshNameAllocator(FieldName(_))
+      val allocator = new FreshNameAllocator.Field
       val recordFields = for {
         (cls, f @ FieldDef(flags, FieldIdent(name, originalName), ftpe)) <- allFields
       } yield {
@@ -5025,10 +5041,15 @@ private[optimizer] object OptimizerCore {
   private def canNegateLong(x: Long): Boolean =
     x != Long.MinValue
 
-  private final class Intrinsics(intrinsicsMap: Map[String, Int]) {
-    def apply(flags: ApplyFlags, target: AbstractMethodID): Int =
-      if (flags.isPrivate || flags.isConstructor) -1
-      else intrinsicsMap.getOrElse(target.toString(), -1)
+  private final class Intrinsics(intrinsicsMap: Map[(ClassName, MethodName), Int]) {
+    def apply(flags: ApplyFlags, target: AbstractMethodID): Int = {
+      if (flags.isPrivate || flags.isConstructor) {
+        -1
+      } else {
+        val key = (target.enclosingClassName, target.methodName)
+        intrinsicsMap.getOrElse(key, -1)
+      }
+    }
   }
 
   private object Intrinsics {
@@ -5069,54 +5090,90 @@ private[optimizer] object OptimizerCore {
     final val Float32ArrayToFloatArray  = Int32ArrayToIntArray      + 1
     final val Float64ArrayToDoubleArray = Float32ArrayToFloatArray  + 1
 
+    private def m(name: String, paramTypeRefs: List[TypeRef],
+        resultTypeRef: TypeRef): MethodName = {
+      MethodName(name, paramTypeRefs, resultTypeRef)
+    }
+
+    private val V = VoidRef
+    private val I = IntRef
+    private val J = LongRef
+    private val O = ClassRef(ObjectClass)
+    private val ClassClassRef = ClassRef(ClassClass)
+    private val SeqClassRef = ClassRef(ClassName("scala.collection.Seq"))
+    private val JSObjectClassRef = ClassRef(ClassName("scala.scalajs.js.Object"))
+    private val JSArrayClassRef = ClassRef(ClassName("scala.scalajs.js.Array"))
+
+    private def a(base: NonArrayTypeRef): ArrayTypeRef = ArrayTypeRef(base, 1)
+
+    private def typedarrayClassRef(baseName: String): ClassRef =
+      ClassRef(ClassName(s"scala.scalajs.js.typedarray.${baseName}Array"))
+
     // scalastyle:off line.size.limit
-    private val baseIntrinsics: Map[String, Int] = Map(
-      "jl_System$.arraycopy__O__I__O__I__I__V" -> ArrayCopy,
-      "jl_System$.identityHashCode__O__I"      -> IdentityHashCode,
+    private val baseIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
+        ClassName("java.lang.System$") -> List(
+            m("arraycopy", List(O, I, O, I, I), V) -> ArrayCopy,
+            m("identityHashCode", List(O), I) -> IdentityHashCode
+        ),
+        ClassName("scala.runtime.ScalaRunTime$") -> List(
+            m("array_apply", List(O, I), O) -> ArrayApply,
+            m("array_update", List(O, I, O), V) -> ArrayUpdate,
+            m("array_length", List(O), I) -> ArrayLength
+        ),
+        ClassName("java.lang.Integer$") -> List(
+            m("numberOfLeadingZeros", List(I), I) -> IntegerNLZ
+        ),
+        ClassName("scala.collection.mutable.ArrayBuilder$") -> List(
+            m("scala$collection$mutable$ArrayBuilder$$zeroOf", List(ClassClassRef), O) -> ArrayBuilderZeroOf,
+            m("scala$collection$mutable$ArrayBuilder$$genericArrayBuilderResult", List(ClassClassRef, JSArrayClassRef), O) -> GenericArrayBuilderResult
+        ),
+        ClassName("java.lang.Class") -> List(
+            m("getComponentType", Nil, ClassClassRef) -> ClassGetComponentType
+        ),
+        ClassName("java.lang.reflect.Array$") -> List(
+            m("newInstance", List(ClassClassRef, I), O) -> ArrayNewInstance
+        ),
+        ClassName("scala.scalajs.js.special.package$") -> List(
+            m("objectLiteral", List(SeqClassRef), JSObjectClassRef) -> ObjectLiteral
+        ),
+        ClassName("scala.scalajs.js.typedarray.package$") -> List(
+            m("byteArray2Int8Array", List(a(ByteRef)), typedarrayClassRef("Int8")) -> ByteArrayToInt8Array,
+            m("shortArray2Int16Array", List(a(ShortRef)), typedarrayClassRef("Int16")) -> ShortArrayToInt16Array,
+            m("charArray2Uint16Array", List(a(CharRef)), typedarrayClassRef("Uint16")) -> CharArrayToUint16Array,
+            m("intArray2Int32Array", List(a(IntRef)), typedarrayClassRef("Int32")) -> IntArrayToInt32Array,
+            m("floatArray2Float32Array", List(a(FloatRef)), typedarrayClassRef("Float32")) -> FloatArrayToFloat32Array,
+            m("doubleArray2Float64Array", List(a(DoubleRef)), typedarrayClassRef("Float64")) -> DoubleArrayToFloat64Array,
 
-      "sr_ScalaRunTime$.array$undapply__O__I__O"     -> ArrayApply,
-      "sr_ScalaRunTime$.array$undupdate__O__I__O__V" -> ArrayUpdate,
-      "sr_ScalaRunTime$.array$undlength__O__I"       -> ArrayLength,
-
-      "jl_Integer$.numberOfLeadingZeros__I__I" -> IntegerNLZ,
-
-      "scm_ArrayBuilder$.scala$collection$mutable$ArrayBuilder$$zeroOf__jl_Class__O" -> ArrayBuilderZeroOf,
-      "scm_ArrayBuilder$.scala$collection$mutable$ArrayBuilder$$genericArrayBuilderResult__jl_Class__sjs_js_Array__O" -> GenericArrayBuilderResult,
-
-      "jl_Class.getComponentType__jl_Class" -> ClassGetComponentType,
-
-      "jl_reflect_Array$.newInstance__jl_Class__I__O" -> ArrayNewInstance,
-
-      "sjs_js_special_package$.objectLiteral__sc_Seq__sjs_js_Object" -> ObjectLiteral,
-
-      "sjs_js_typedarray_package$.byteArray2Int8Array__AB__sjs_js_typedarray_Int8Array"         -> ByteArrayToInt8Array,
-      "sjs_js_typedarray_package$.shortArray2Int16Array__AS__sjs_js_typedarray_Int16Array"      -> ShortArrayToInt16Array,
-      "sjs_js_typedarray_package$.charArray2Uint16Array__AC__sjs_js_typedarray_Uint16Array"     -> CharArrayToUint16Array,
-      "sjs_js_typedarray_package$.intArray2Int32Array__AI__sjs_js_typedarray_Int32Array"        -> IntArrayToInt32Array,
-      "sjs_js_typedarray_package$.floatArray2Float32Array__AF__sjs_js_typedarray_Float32Array"  -> FloatArrayToFloat32Array,
-      "sjs_js_typedarray_package$.doubleArray2Float64Array__AD__sjs_js_typedarray_Float64Array" -> DoubleArrayToFloat64Array,
-
-      "sjs_js_typedarray_package$.int8Array2ByteArray__sjs_js_typedarray_Int8Array__AB"         -> Int8ArrayToByteArray,
-      "sjs_js_typedarray_package$.int16Array2ShortArray__sjs_js_typedarray_Int16Array__AS"      -> Int16ArrayToShortArray,
-      "sjs_js_typedarray_package$.uint16Array2CharArray__sjs_js_typedarray_Uint16Array__AC"     -> Uint16ArrayToCharArray,
-      "sjs_js_typedarray_package$.int32Array2IntArray__sjs_js_typedarray_Int32Array__AI"        -> Int32ArrayToIntArray,
-      "sjs_js_typedarray_package$.float32Array2FloatArray__sjs_js_typedarray_Float32Array__AF"  -> Float32ArrayToFloatArray,
-      "sjs_js_typedarray_package$.float64Array2DoubleArray__sjs_js_typedarray_Float64Array__AD" -> Float64ArrayToDoubleArray
+            m("int8Array2ByteArray", List(typedarrayClassRef("Int8")), a(ByteRef)) -> Int8ArrayToByteArray,
+            m("int16Array2ShortArray", List(typedarrayClassRef("Int16")), a(ShortRef)) -> Int16ArrayToShortArray,
+            m("uint16Array2CharArray", List(typedarrayClassRef("Uint16")), a(CharRef)) -> Uint16ArrayToCharArray,
+            m("int32Array2IntArray", List(typedarrayClassRef("Int32")), a(IntRef)) -> Int32ArrayToIntArray,
+            m("float32Array2FloatArray", List(typedarrayClassRef("Float32")), a(FloatRef)) -> Float32ArrayToFloatArray,
+            m("float64Array2DoubleArray", List(typedarrayClassRef("Float64")), a(DoubleRef)) -> Float64ArrayToDoubleArray
+        )
     )
 
-    private val runtimeLongIntrinsics: Map[String, Int] = Map(
-      "jl_Long$.toString__J__T"              -> LongToString,
-      "jl_Long$.compare__J__J__I"            -> LongCompare,
-      "jl_Long$.divideUnsigned__J__J__J"     -> LongDivideUnsigned,
-      "jl_Long$.remainderUnsigned__J__J__J"  -> LongRemainderUnsigned
+    private val runtimeLongIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
+        ClassName("java.lang.Long$") -> List(
+            m("toString", List(J), ClassRef(BoxedStringClass)) -> LongToString,
+            m("compare", List(J, J), I) -> LongCompare,
+            m("divideUnsigned", List(J, J), J) -> LongDivideUnsigned,
+            m("remainderUnsigned", List(J, J), J) -> LongRemainderUnsigned
+        )
     )
     // scalastyle:on line.size.limit
 
     def buildIntrinsics(esFeatures: ESFeatures): Intrinsics = {
-      val intrinsicsMap =
+      val allIntrinsics =
         if (esFeatures.allowBigIntsForLongs) baseIntrinsics
         else baseIntrinsics ++ runtimeLongIntrinsics
 
+      val intrinsicsMap = (for {
+        (className, methodsAndCodes) <- allIntrinsics
+        (methodName, code) <- methodsAndCodes
+      } yield {
+        (className, methodName) -> code
+      }).toMap
       new Intrinsics(intrinsicsMap)
     }
   }
@@ -5141,9 +5198,14 @@ private[optimizer] object OptimizerCore {
   }
 
   trait AbstractMethodID {
+    def enclosingClassName: ClassName
+    def methodName: MethodName
     def inlineable: Boolean
     def shouldInline: Boolean
     def isForwarder: Boolean
+
+    final def is(className: ClassName, methodName: MethodName): Boolean =
+      this.enclosingClassName == className && this.methodName == methodName
   }
 
   /** Parts of [[GenIncOptimizer#MethodImpl]] with decisions about optimizations. */
@@ -5211,7 +5273,7 @@ private[optimizer] object OptimizerCore {
 
             // Shape of trivial call-super constructors
             case Block(stats)
-                if params.isEmpty && isConstructorName(encodedName) &&
+                if params.isEmpty && encodedName.isConstructor &&
                     stats.forall(isTrivialConstructorStat) =>
               true
 
@@ -5236,13 +5298,15 @@ private[optimizer] object OptimizerCore {
     }
   }
 
+  private val TraitInitSimpleMethodName = SimpleMethodName("$init$")
+
   private def isTrivialConstructorStat(stat: Tree): Boolean = stat match {
     case This() =>
       true
     case ApplyStatically(_, This(), _, _, Nil) =>
       true
     case ApplyStatic(_, _, MethodIdent(methodName, _), This() :: Nil) =>
-      methodName.startsWith("$$init$__")
+      methodName.simpleName == TraitInitSimpleMethodName
     case _ =>
       false
   }
@@ -5319,9 +5383,9 @@ private[optimizer] object OptimizerCore {
   }
 
   private class RollbackException(val trampolineId: Int,
-      val localNameAllocatorSnapshot: FreshNameAllocator.Snapshot,
+      val localNameAllocatorSnapshot: FreshNameAllocator.Snapshot[LocalName],
       val savedMutableLocalNames: Set[LocalName],
-      val labelNameAllocatorSnapshot: FreshNameAllocator.Snapshot,
+      val labelNameAllocatorSnapshot: FreshNameAllocator.Snapshot[LabelName],
       val savedStateBackupChain: List[StateBackup],
       val cont: () => TailRec[Tree]) extends ControlThrowable
 
@@ -5329,15 +5393,14 @@ private[optimizer] object OptimizerCore {
       val attemptedInlining: List[AbstractMethodID], cause: Throwable
   ) extends Exception(exceptionMsg(myself, attemptedInlining, cause), cause)
 
-  final class FreshNameAllocator[N <: String] private (
-      createNameFun: String => N,
-      private var usedNamesToNextCounter: Map[String, Int]) {
+  private abstract class FreshNameAllocator[N <: Name] private (
+      initialMap: Map[N, Int]) {
+
     import FreshNameAllocator._
 
-    def this(createNameFun: String => N) =
-      this(createNameFun, FreshNameAllocator.InitialMap)
+    private var usedNamesToNextCounter: Map[N, Int] = initialMap
 
-    def clear(): Unit = usedNamesToNextCounter = InitialMap
+    def clear(): Unit = usedNamesToNextCounter = initialMap
 
     def freshName(base: N): N = {
       if (!usedNamesToNextCounter.contains(base)) {
@@ -5345,31 +5408,69 @@ private[optimizer] object OptimizerCore {
         base
       } else {
         var i = usedNamesToNextCounter(base)
-        var result = base + "$" + i
+        var result = nameWithSuffix(base, "$" + i)
         while (usedNamesToNextCounter.contains(result)) {
           i += 1
-          result = base + "$" + i
+          result = nameWithSuffix(base, "$" + i)
         }
         usedNamesToNextCounter =
           usedNamesToNextCounter.updated(base, i + 1).updated(result, 1)
-        createNameFun(result)
+        result
       }
     }
 
-    def snapshot(): Snapshot = new Snapshot(usedNamesToNextCounter)
+    protected def nameWithSuffix(name: N, suffix: String): N
 
-    def restore(snapshot: Snapshot): Unit =
+    def snapshot(): Snapshot[N] = new Snapshot(usedNamesToNextCounter)
+
+    def restore(snapshot: Snapshot[N]): Unit =
       usedNamesToNextCounter = snapshot.usedNamesToNextCounter
   }
 
-  object FreshNameAllocator {
-    private val InitialMap = {
-      val isReserved = isKeyword ++ Seq("arguments", "eval", "ScalaJS")
-      isReserved.map(_ -> 1).toMap
+  private object FreshNameAllocator {
+    /** List of local and label names that the emitter will avoid in JS
+     *  identifiers, and therefore will rewrite with non-ASCII characters.
+     *
+     *  Since we're renaming all local and label symbols through fresh
+     *  allocators anyway, we take the opportunity to rename them in a nice way
+     *  (with ASCII characters only).
+     */
+    private val EmitterReservedJSIdentifiers = List(
+        "arguments", "break", "case", "catch", "class", "const", "continue",
+        "debugger", "default", "delete", "do", "else", "enum", "eval",
+        "export", "extends", "false", "finally", "for", "function", "if",
+        "implements", "import", "in", "instanceof", "interface", "let", "new",
+        "null", "package", "private", "protected", "public", "return",
+        "static", "super", "switch", "this", "throw", "true", "try", "typeof",
+        "undefined", "var", "void", "while", "with", "yield"
+    )
+
+    private val InitialLocalMap: Map[LocalName, Int] =
+      EmitterReservedJSIdentifiers.map(i => LocalName(i) -> 1).toMap
+
+    final class Local extends FreshNameAllocator[LocalName](InitialLocalMap) {
+      protected def nameWithSuffix(name: LocalName, suffix: String): LocalName =
+        name.withSuffix(suffix)
     }
 
-    final class Snapshot private[FreshNameAllocator] (
-        private[FreshNameAllocator] val usedNamesToNextCounter: Map[String, Int])
+    private val InitialLabelMap: Map[LabelName, Int] =
+      EmitterReservedJSIdentifiers.map(i => LabelName(i) -> 1).toMap
+
+    final class Label extends FreshNameAllocator[LabelName](InitialLabelMap) {
+      protected def nameWithSuffix(name: LabelName, suffix: String): LabelName =
+        name.withSuffix(suffix)
+    }
+
+    private val InitialFieldMap: Map[FieldName, Int] =
+      Map.empty
+
+    final class Field extends FreshNameAllocator[FieldName](InitialFieldMap) {
+      protected def nameWithSuffix(name: FieldName, suffix: String): FieldName =
+        name.withSuffix(suffix)
+    }
+
+    final class Snapshot[N <: Name] private[FreshNameAllocator] (
+        private[FreshNameAllocator] val usedNamesToNextCounter: Map[N, Int])
   }
 
   final class FieldID private (val ownerClassName: ClassName, val name: FieldName) {

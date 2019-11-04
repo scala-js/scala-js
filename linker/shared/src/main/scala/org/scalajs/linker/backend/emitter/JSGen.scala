@@ -16,6 +16,8 @@ import scala.language.implicitConversions
 
 import scala.annotation.tailrec
 
+import scala.collection.mutable
+
 import org.scalajs.ir
 import ir._
 import ir.Definitions._
@@ -37,6 +39,8 @@ private[emitter] final class JSGen(val semantics: Semantics,
     internalOptions: InternalOptions,
     mentionedDangerousGlobalRefs: Set[String]) {
 
+  import JSGen._
+
   val useClasses = esFeatures.useECMAScript2015
 
   val useArrowFunctions = esFeatures.useECMAScript2015
@@ -44,6 +48,169 @@ private[emitter] final class JSGen(val semantics: Semantics,
   val useBigIntForLongs = esFeatures.allowBigIntsForLongs
 
   val trackAllGlobalRefs = internalOptions.trackAllGlobalRefs
+
+  private val genLocalNameCache = {
+    /* Fill the cache with reserved JS identifiers so that we do not have to
+     * deal with avoiding them in `genName`. We append '\u00f8' to their
+     * translation, which is the first non-ASCII valid JS identifier start, and
+     * does not collide with any other encoding performed by `genName`.
+     */
+    val cache = mutable.Map.empty[LocalName, String]
+    for (reserved <- ReservedJSIdentifierNames)
+      cache.put(LocalName(reserved), reserved + "\u00f8")
+    cache
+  }
+
+  private val genLabelNameCache = {
+    // Same as genLocalNameCache
+    val cache = mutable.Map.empty[LabelName, String]
+    for (reserved <- ReservedJSIdentifierNames)
+      cache.put(LabelName(reserved), reserved + "\u00f8")
+    cache
+  }
+
+  private val genFieldNameCache =
+    mutable.Map.empty[FieldName, String]
+
+  private val genMethodNameCache =
+    mutable.Map.empty[MethodName, String]
+
+  private val genClassNameCache = {
+    /* Fill the cache with the compressed form of java.lang.Object and
+     * java.lang.String, so that we do not have to take care of them in
+     * genName(ClassName).
+     */
+    val cache = mutable.Map.empty[ClassName, String]
+    cache.put(ObjectClass, "O")
+    cache.put(BoxedStringClass, "T")
+    cache
+  }
+
+  private def genNameGeneric[N <: Name](name: N,
+      cache: mutable.Map[N, String]): String = {
+
+    cache.getOrElseUpdate(name, {
+      val encoded = name.unsafeEncoded
+      val len = encoded.length
+      val result = new Array[Char](len)
+      result(0) = startByteToChar(encoded(0) & 0xff)
+      var i = 1
+      while (i != len) {
+        result(i) = partByteToChar(encoded(i) & 0xff)
+        i += 1
+      }
+      new String(result)
+    })
+  }
+
+  def genName(name: LocalName): String = {
+    genLocalNameCache.getOrElseUpdate(name, {
+      val encoded = name.unsafeEncoded
+      val len = encoded.length
+      val result = new Array[Char](len)
+      result(0) = localStartByteToChar(encoded(0) & 0xff)
+      var i = 1
+      while (i != len) {
+        result(i) = partByteToChar(encoded(i) & 0xff)
+        i += 1
+      }
+      new String(result)
+    })
+  }
+
+  def genName(name: LabelName): String = genNameGeneric(name, genLabelNameCache)
+  def genName(name: FieldName): String = genNameGeneric(name, genFieldNameCache)
+
+  def genName(name: MethodName): String = {
+    genMethodNameCache.getOrElseUpdate(name, {
+      val builder = new java.lang.StringBuilder()
+
+      // For constructors and static initializers, we only need the param type refs
+      val onlyParamTypeRefs = name.isConstructor || name.isStaticInitializer
+
+      // First encode the simple name
+      if (!onlyParamTypeRefs) {
+        val encoded = name.simpleName.unsafeEncoded
+        builder.append(startByteToChar(encoded(0) & 0xff))
+        val len = encoded.length
+        var i = 1
+        while (i != len) {
+          val b = encoded(i) & 0xff
+          // Avoid '__' in the output as that must be the end of the simple name
+          if (b == '_' && encoded(i - 1) == '_')
+            builder.append('\uff3f') // FULLWIDTH SPACING UNDERSCORE
+          else
+            builder.append(partByteToChar(b))
+          i += 1
+        }
+        builder.append('_').append('_')
+      }
+
+      def appendTypeRef(typeRef: TypeRef): Unit = {
+        typeRef match {
+          case PrimRef(tpe) =>
+            tpe match {
+              case NoType      => builder.append('V')
+              case BooleanType => builder.append('Z')
+              case CharType    => builder.append('C')
+              case ByteType    => builder.append('B')
+              case ShortType   => builder.append('S')
+              case IntType     => builder.append('I')
+              case LongType    => builder.append('J')
+              case FloatType   => builder.append('F')
+              case DoubleType  => builder.append('D')
+              case NullType    => builder.append('N')
+              case NothingType => builder.append('E')
+            }
+          case ClassRef(className) =>
+            builder.append(genName(className))
+          case ArrayTypeRef(base, dimensions) =>
+            var i = 0
+            while (i != dimensions) {
+              builder.append('A')
+              i += 1
+            }
+            appendTypeRef(base)
+        }
+      }
+
+      for (typeRef <- name.paramTypeRefs) {
+        appendTypeRef(typeRef)
+        builder.append('_').append('_')
+      }
+
+      for (typeRef <- name.resultTypeRef)
+        appendTypeRef(typeRef)
+
+      builder.toString()
+    })
+  }
+
+  def genName(name: ClassName): String = {
+    genClassNameCache.getOrElseUpdate(name, {
+      val encoded = name.unsafeEncoded
+      val len = encoded.length
+      val builder = new java.lang.StringBuilder(len + 1)
+
+      // Handle compressed prefixes
+      var i = compressedPrefixes.find(pair => encodedNameStartsWith(encoded, pair._1, 0)) match {
+        case None =>
+          builder.append('L')
+          0
+        case Some(pair) =>
+          builder.append(pair._2)
+          pair._1.length
+      }
+
+      // Encode the rest
+      while (i != len) {
+        builder.append(classByteToChar(encoded(i) & 0xff))
+        i += 1
+      }
+
+      builder.toString()
+    })
+  }
 
   def genZeroOf(tpe: Type)(implicit pos: Position): Tree = {
     tpe match {
@@ -68,11 +235,11 @@ private[emitter] final class JSGen(val semantics: Semantics,
       envField("L0")
   }
 
-  def genLongModuleApply(methodName: String, args: Tree*)(
+  def genLongModuleApply(methodName: MethodName, args: Tree*)(
       implicit pos: Position): Tree = {
     import TreeDSL._
     Apply(
-        genLoadModule(LongImpl.RuntimeLongModuleClass) DOT methodName,
+        genLoadModule(LongImpl.RuntimeLongModuleClass) DOT genName(methodName),
         args.toList)
   }
 
@@ -113,12 +280,12 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   private def genFieldIdent(cls: ClassName, field: irt.FieldIdent)(
       implicit pos: Position): Ident = {
-    Ident(cls + "__f_" + field.name, field.originalName)
+    Ident(genName(cls) + "__f_" + genName(field.name), field.originalName)
   }
 
-  def genSelectStatic(className: String, item: irt.FieldIdent)(
+  def genSelectStatic(className: ClassName, item: irt.FieldIdent)(
       implicit pos: Position): VarRef = {
-    envField("t", className + "__" + item.name)
+    envField("t", className, item.name, item.originalName)
   }
 
   /* The similarity with `genSelect` is accidental. It will probably evolve in
@@ -131,9 +298,9 @@ private[emitter] final class JSGen(val semantics: Semantics,
   }
 
   // The similarity with `genFieldIdent is accidental. See above.
-  def genJSPrivateFieldIdent(cls: String, field: irt.FieldIdent)(
+  def genJSPrivateFieldIdent(cls: ClassName, field: irt.FieldIdent)(
       implicit pos: Position): Ident = {
-    Ident(cls + "__f_" + field.name, field.originalName)
+    Ident(genName(cls) + "__f_" + genName(field.name), field.originalName)
   }
 
   def genIsInstanceOf(expr: Tree, tpe: Type)(
@@ -154,8 +321,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
         }
 
       case ArrayType(ArrayTypeRef(base, depth)) =>
-        Apply(envField("isArrayOf", arrayBaseFieldName(base)),
-            List(expr, IntLiteral(depth)))
+        Apply(envField("isArrayOf", base), List(expr, IntLiteral(depth)))
 
       case UndefType   => expr === Undefined()
       case BooleanType => typeof(expr) === "boolean"
@@ -174,7 +340,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     }
   }
 
-  def genIsInstanceOfHijackedClass(expr: Tree, className: String)(
+  def genIsInstanceOfHijackedClass(expr: Tree, className: ClassName)(
       implicit pos: Position): Tree = {
     import TreeDSL._
 
@@ -235,8 +401,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
           Apply(envField("as", className), List(expr))
 
         case ArrayType(ArrayTypeRef(base, depth)) =>
-          Apply(envField("asArrayOf", arrayBaseFieldName(base)),
-              List(expr, IntLiteral(depth)))
+          Apply(envField("asArrayOf", base), List(expr, IntLiteral(depth)))
 
         case UndefType   => genCallHelper("uV", expr)
         case BooleanType => genCallHelper("uZ", expr)
@@ -350,44 +515,23 @@ private[emitter] final class JSGen(val semantics: Semantics,
   def genClassOf(typeRef: TypeRef)(implicit pos: Position): Tree =
     Apply(DotSelect(genClassDataOf(typeRef), Ident("getClassOf")), Nil)
 
+  def genClassOf(className: ClassName)(implicit pos: Position): Tree =
+    genClassOf(ClassRef(className))
+
   def genClassDataOf(typeRef: TypeRef)(implicit pos: Position): Tree = {
     typeRef match {
-      case typeRef: PrimRef =>
-        genClassDataOf(fieldNameOfPrimRef(typeRef))
-      case ClassRef(className) =>
-        genClassDataOf(className)
+      case typeRef: NonArrayTypeRef =>
+        envField("d", typeRef)
       case ArrayTypeRef(base, dims) =>
-        val baseData = envField("d", arrayBaseFieldName(base))
+        val baseData = genClassDataOf(base)
         (1 to dims).foldLeft[Tree](baseData) { (prev, _) =>
           Apply(DotSelect(prev, Ident("getArrayOf")), Nil)
         }
     }
   }
 
-  private def arrayBaseFieldName(base: NonArrayTypeRef): String = base match {
-    case base: PrimRef       => fieldNameOfPrimRef(base)
-    case ClassRef(className) => className
-  }
-
-  def fieldNameOfPrimRef(primRef: PrimRef): String = primRef.tpe match {
-    case NoType      => "V"
-    case BooleanType => "Z"
-    case CharType    => "C"
-    case ByteType    => "B"
-    case ShortType   => "S"
-    case IntType     => "I"
-    case LongType    => "J"
-    case FloatType   => "F"
-    case DoubleType  => "D"
-    case NullType    => "N"
-    case NothingType => "E"
-  }
-
-  def genClassOf(className: String)(implicit pos: Position): Tree =
-    Apply(DotSelect(genClassDataOf(className), Ident("getClassOf")), Nil)
-
-  def genClassDataOf(className: String)(implicit pos: Position): Tree =
-    envField("d", className)
+  def genClassDataOf(className: ClassName)(implicit pos: Position): Tree =
+    genClassDataOf(ClassRef(className))
 
   def envModuleField(module: String)(implicit pos: Position): VarRef = {
     /* This is written so that the happy path, when `module` contains only
@@ -432,9 +576,53 @@ private[emitter] final class JSGen(val semantics: Semantics,
     VarRef(Ident(avoidClashWithGlobalRef(varName), Some(module)))
   }
 
+  def envField(field: String, typeRef: NonArrayTypeRef)(
+      implicit pos: Position): VarRef = {
+    VarRef(envFieldIdent(field, typeRef))
+  }
+
+  def envField(field: String, className: ClassName)(implicit pos: Position): VarRef =
+    envField(field, genName(className))
+
+  def envField(field: String, className: ClassName, fieldName: FieldName,
+      origName: Option[String])(
+      implicit pos: Position): VarRef = {
+    envField(field, genName(className) + "__" + genName(fieldName), origName)
+  }
+
+  def envField(field: String, className: ClassName, methodName: MethodName,
+      origName: Option[String])(
+      implicit pos: Position): VarRef = {
+    envField(field, genName(className) + "__" + genName(methodName), origName)
+  }
+
   def envField(field: String, subField: String, origName: Option[String] = None)(
       implicit pos: Position): VarRef = {
     VarRef(envFieldIdent(field, subField, origName))
+  }
+
+  def envFieldIdent(field: String, typeRef: NonArrayTypeRef)(
+      implicit pos: Position): Ident = {
+    // The mapping in this function is an implementation detail of the emitter
+    val subField = typeRef match {
+      case PrimRef(tpe) =>
+        tpe match {
+          case NoType      => "V"
+          case BooleanType => "Z"
+          case CharType    => "C"
+          case ByteType    => "B"
+          case ShortType   => "S"
+          case IntType     => "I"
+          case LongType    => "J"
+          case FloatType   => "F"
+          case DoubleType  => "D"
+          case NullType    => "N"
+          case NothingType => "E"
+        }
+      case ClassRef(className) =>
+        genName(className)
+    }
+    envFieldIdent(field, subField)
   }
 
   def envFieldIdent(field: String, subField: String,
@@ -527,4 +715,116 @@ private[emitter] final class JSGen(val semantics: Semantics,
       implicit pos: Position): Function = {
     Function(useArrowFunctions, args, body)
   }
+}
+
+private[emitter] object JSGen {
+
+  private val startByteToChar: Array[Char] = {
+    /* The code points 256 through (512 - 1) are all valid start characters for
+     * JavaScript identifiers. We encode each invalid byte as one of those
+     * characters. Valid ASCII start chars are encoded as themselves
+     */
+    val table = Array.tabulate(256)(i => (256 + i).toChar)
+    for (b <- 'A'.toInt to 'Z'.toInt)
+      table(b) = b.toChar
+    for (b <- 'a'.toInt to 'z'.toInt)
+      table(b) = b.toChar
+    table('$'.toInt) = '$'
+    table('_'.toInt) = '_'
+    table
+  }
+
+  private val partByteToChar: Array[Char] = {
+    /* Once not at the start anymore, ASCII digits are also encoded as
+     * themselves.
+     */
+    val table = startByteToChar.clone()
+    for (b <- '0'.toInt to '9'.toInt)
+      table(b) = b.toChar
+    table
+  }
+
+  private val localStartByteToChar: Array[Char] = {
+    /* Local variables must not start with a '$', otherwise they might clash
+     * with compiler-generated variables such as envFields or the `$thiz` of
+     * default methods (#2972).
+     * We rewrite a starting '$' as '\u03b4' (greek small letter delta), which
+     * is an arbitrary choice based on the sound ('dollar' starts with the
+     * sound of delta).
+     */
+    val table = startByteToChar.clone()
+    table('$'.toInt) = '\u03b4'
+    table
+  }
+
+  private val classByteToChar: Array[Char] = {
+    /* For class names, '.' are rewritten as '_' and '_' as '\uff3f'. We can
+     * use the 'part' table even for start characters because class names are
+     * always prefixed by something in our encoding.
+     */
+    val table = partByteToChar.clone()
+    table('.'.toInt) = '_'
+    table('_'.toInt) = '\uff3f' // FULLWIDTH SPACING UNDERSCORE
+    table
+  }
+
+  /** Set of identifier names that cannot or should not be used for variable
+   *  names.
+   *
+   *  This set includes and is limited to:
+   *
+   *  - All ECMAScript 2015 keywords;
+   *  - Identifier names that are treated as keywords in ECMAScript 2015
+   *    Strict Mode;
+   *  - The identifiers `arguments` and `eval`, because they cannot be used for
+   *    local variable names in ECMAScript 2015 Strict Mode;
+   *  - The identifier `undefined`, because that's way too confusing if it does
+   *    not actually mean `void 0`, and who knows what JS engine performance
+   *    cliffs we can trigger with that.
+   */
+  private final val ReservedJSIdentifierNames: Set[String] = Set(
+      "arguments", "break", "case", "catch", "class", "const", "continue",
+      "debugger", "default", "delete", "do", "else", "enum", "eval", "export",
+      "extends", "false", "finally", "for", "function", "if", "implements",
+      "import", "in", "instanceof", "interface", "let", "new", "null",
+      "package", "private", "protected", "public", "return", "static", "super",
+      "switch", "this", "throw", "true", "try", "typeof", "undefined", "var",
+      "void", "while", "with", "yield"
+  )
+
+  private val compressedPrefixes: List[(EncodedName, String)] = {
+    List(
+        "java.lang." -> "jl_",
+        "java.util." -> "ju_",
+        "scala.collection.immutable." -> "sci_",
+        "scala.collection.mutable." -> "scm_",
+        "scala.collection.generic." -> "scg_",
+        "scala.collection." -> "sc_",
+        "scala.runtime." -> "sr_",
+        "scala.scalajs.runtime." -> "sjsr_",
+        "scala.scalajs." -> "sjs_",
+        "scala.Function" -> "F",
+        "scala.Tuple" -> "T",
+        "scala." -> "s_"
+    ).map { pair =>
+      pair._1.map(_.toByte).toArray -> pair._2
+    }
+  }
+
+  private def encodedNameStartsWith(encoded: EncodedName, prefix: EncodedName,
+      start: Int): Boolean = {
+    // scalastyle:off return
+    val prefixLen = prefix.length
+    if (start + prefixLen > encoded.length)
+      return false
+    var i = 0
+    while (i != prefixLen) {
+      if (encoded(start + i) != prefix(i))
+        return false
+      i += 1
+    }
+    true
+    // scalastyle:on return
+  }
+
 }

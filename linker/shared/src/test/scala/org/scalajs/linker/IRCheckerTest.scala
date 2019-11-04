@@ -39,38 +39,44 @@ class IRCheckerTest {
 
   @Test
   def testMethodCallOnClassWithNoInstances(): AsyncResult = await {
+    val FooClass = ClassName("Foo")
+    val BarClass = ClassName("Bar")
+
+    val methMethodName = m("meth", List(ClassRef(FooClass)), V)
+    val nullBarMethodName = m("nullBar", Nil, ClassRef(BarClass))
+
     def callMethOn(receiver: Tree): Tree =
-      Apply(EAF, receiver, "meth__LFoo__V", List(Null()))(NoType)
+      Apply(EAF, receiver, methMethodName, List(Null()))(NoType)
 
     val classDefs = Seq(
         // LFoo will be dropped by base linking
-        classDef("LFoo", superClass = Some(ObjectClass)),
+        classDef("Foo", superClass = Some(ObjectClass)),
 
-        classDef("LBar",
+        classDef("Bar",
             superClass = Some(ObjectClass),
             memberDefs = List(
-                trivialCtor("LBar"),
+                trivialCtor("Bar"),
 
                 /* This method is called, but unreachable because there are no
                  * instances of `Bar`. It will therefore not make `Foo` reachable.
                  */
-                MethodDef(EMF, "meth__LFoo__V",
-                    List(paramDef("foo", ClassType("LFoo"))), NoType,
+                MethodDef(EMF, methMethodName,
+                    List(paramDef("foo", ClassType("Foo"))), NoType,
                     Some(Skip()))(
                     EOH, None)
             )
         ),
 
-        classDef("LTest$", kind = ClassKind.ModuleClass,
+        classDef("Test$", kind = ClassKind.ModuleClass,
             superClass = Some(ObjectClass),
             memberDefs = List(
-                trivialCtor("LTest$"),
-                MethodDef(EMF, "nullBar__LBar", Nil, ClassType("LBar"),
+                trivialCtor("Test$"),
+                MethodDef(EMF, nullBarMethodName, Nil, ClassType("Bar"),
                     Some(Null()))(
                     EOH, None),
                 mainMethodDef(Block(
-                    callMethOn(Apply(EAF, This()(ClassType("LTest$")),
-                        "nullBar__LBar", Nil)(ClassType("LBar"))),
+                    callMethOn(Apply(EAF, This()(ClassType("Test$")),
+                        nullBarMethodName, Nil)(ClassType("Bar"))),
                     callMethOn(Null()),
                     callMethOn(Throw(Null()))
                 ))

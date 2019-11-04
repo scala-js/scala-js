@@ -214,7 +214,7 @@ private object Refiner {
   }
 
   private final class LinkedMethodDefsInfosCache private (
-      val caches: Array[mutable.Map[String, LinkedMethodDefInfoCache]])
+      val caches: Array[mutable.Map[MethodName, LinkedMethodDefInfoCache]])
       extends AnyVal {
 
     def getInfo(member: Versioned[MethodDef]): Infos.MethodInfo = {

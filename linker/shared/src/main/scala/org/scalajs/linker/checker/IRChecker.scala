@@ -196,7 +196,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         val methods = classDef.methods
         if (methods.count(m => m.value.flags.namespace == MemberNamespace.Constructor) != 1)
           reportError(s"Module class must have exactly 1 constructor")
-        if (!methods.exists(_.value.encodedName == "init___"))
+        if (!methods.exists(_.value.encodedName == NoArgConstructorName))
           reportError(s"Module class must have a parameterless constructor")
       }
 
@@ -322,10 +322,10 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
     if (isConstructor && classDef.kind == ClassKind.Interface)
       reportError("Interfaces cannot declare constructors")
-    if (isConstructor != isConstructorName(name))
+    if (isConstructor != name.isConstructor)
       reportError("A method must have a constructor name iff it is a constructor")
 
-    if ((namespace == MemberNamespace.StaticConstructor) != (name == StaticInitializerName))
+    if ((namespace == MemberNamespace.StaticConstructor) != name.isStaticInitializer)
       reportError("A method must have a static initializer name iff it is a static constructor")
 
     val advertizedSig = (params.map(_.ptpe), resultType)
@@ -744,7 +744,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             isStatic = false)
 
       case LoadModule(cls) =>
-        if (!cls.className.endsWith("$"))
+        val clazz = lookupClass(cls)
+        if (clazz.kind != ClassKind.ModuleClass)
           reportError("LoadModule of non-module class $cls")
 
       case Select(qualifier, ClassRef(cls), FieldIdent(item, _)) =>
@@ -1166,15 +1167,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  private def inferMethodType(encodedName: MethodName, isStatic: Boolean)(
+  private def inferMethodType(methodName: MethodName, isStatic: Boolean)(
       implicit ctx: ErrorContext): (List[Type], Type) = {
 
-    val (_, paramTypeRefs, resultTypeRef) = decodeMethodName(encodedName)
-    val paramTypes = paramTypeRefs.map(typeRefToType)
+    val paramTypes = methodName.paramTypeRefs.map(typeRefToType)
 
-    val resultType = resultTypeRef.fold[Type] {
-      if (isConstructorName(encodedName)) NoType
-      else if (encodedName == StaticInitializerName) NoType
+    val resultType = methodName.resultTypeRef.fold[Type] {
+      if (methodName.isConstructor || methodName.isStaticInitializer) NoType
       else AnyType // reflective proxy
     } { typeRef =>
       typeRefToType(typeRef)

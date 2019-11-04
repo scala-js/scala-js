@@ -49,22 +49,37 @@ class PrintersTest {
     assertEquals(expected.stripMargin.trim, sw.toString())
   }
 
+  // String -> Name conversions
+  private implicit def string2fieldName(name: String): FieldName =
+    FieldName(name)
+
+  // String -> Ident conversions
   private implicit def string2localIdent(name: String): LocalIdent =
     LocalIdent(LocalName(name))
   private implicit def string2labelIdent(name: String): LabelIdent =
     LabelIdent(LabelName(name))
   private implicit def string2fieldIdent(name: String): FieldIdent =
     FieldIdent(FieldName(name))
-  private implicit def string2methodIdent(name: String): MethodIdent =
-    MethodIdent(MethodName(name))
   private implicit def string2classIdent(name: String): ClassIdent =
     ClassIdent(ClassName(name))
+
+  // String -> Type and TypeRef conversions
   private implicit def string2classType(cls: String): ClassType =
     ClassType(ClassName(cls))
   private implicit def string2classRef(cls: String): ClassRef =
     ClassRef(ClassName(cls))
-  private implicit def string2fieldName(name: String): FieldName =
-    FieldName(name)
+
+  // Name -> Ident conversions
+  private implicit def methodName2methodIdent(name: MethodName): MethodIdent =
+    MethodIdent(name)
+  private implicit def className2classRef(cls: ClassName): ClassRef =
+    ClassRef(cls)
+  private implicit def className2classIdent(name: ClassName): ClassIdent =
+    ClassIdent(name)
+
+  private val V = VoidRef
+  private val I = IntRef
+  private val O = ClassRef(ObjectClass)
 
   private def b(value: Boolean): BooleanLiteral = BooleanLiteral(value)
   private def i(value: Int): IntLiteral = IntLiteral(value)
@@ -74,8 +89,8 @@ class PrintersTest {
 
   private def ref(ident: LocalIdent, tpe: Type): VarRef = VarRef(ident)(tpe)
 
-  private def arrayType(baseClassName: String, dimensions: Int): ArrayType =
-    ArrayType(ArrayTypeRef(baseClassName, dimensions))
+  private def arrayType(base: NonArrayTypeRef, dimensions: Int): ArrayType =
+    ArrayType(ArrayTypeRef(base, dimensions))
 
   @Test def printType(): Unit = {
     assertPrintEquals("any", AnyType)
@@ -93,10 +108,10 @@ class PrintersTest {
     assertPrintEquals("null", NullType)
     assertPrintEquals("<notype>", NoType)
 
-    assertPrintEquals("O", ClassType(ObjectClass))
+    assertPrintEquals("java.lang.Object", ClassType(ObjectClass))
 
-    assertPrintEquals("O[]", arrayType(ObjectClass, 1))
-    assertPrintEquals("I[][]", arrayType("I", 2))
+    assertPrintEquals("java.lang.Object[]", arrayType(ObjectClass, 1))
+    assertPrintEquals("int[][]", arrayType(IntRef, 2))
 
     assertPrintEquals("(x: int, var y: any)",
         RecordType(List(
@@ -105,10 +120,10 @@ class PrintersTest {
   }
 
   @Test def printTypeRef(): Unit = {
-    assertPrintEquals("O", ClassRef(ObjectClass))
+    assertPrintEquals("java.lang.Object", ClassRef(ObjectClass))
 
-    assertPrintEquals("O[]", ArrayTypeRef(ObjectClass, 1))
-    assertPrintEquals("I[][]", ArrayTypeRef("I", 2))
+    assertPrintEquals("java.lang.Object[]", ArrayTypeRef(ObjectClass, 1))
+    assertPrintEquals("int[][]", ArrayTypeRef(IntRef, 2))
   }
 
   @Test def printVarDef(): Unit = {
@@ -312,66 +327,71 @@ class PrintersTest {
   }
 
   @Test def printNew(): Unit = {
-    assertPrintEquals("new O().init___()",
-        New(ObjectClass, "init___", Nil))
-    assertPrintEquals("new T2().init___O__O(5, 6)",
-        New("T2", "init___O__O", List(i(5), i(6))))
+    assertPrintEquals("new java.lang.Object().<init>;()",
+        New(ObjectClass, NoArgConstructorName, Nil))
+    assertPrintEquals("new scala.Tuple2().<init>;Ljava.lang.Object;Ljava.lang.Object;(5, 6)",
+        New("scala.Tuple2", MethodName.constructor(List(O, O)), List(i(5), i(6))))
   }
 
   @Test def printLoadModule(): Unit = {
-    assertPrintEquals("mod:s_Predef$", LoadModule("s_Predef$"))
+    assertPrintEquals("mod:scala.Predef$", LoadModule("scala.Predef$"))
   }
 
   @Test def printStoreModule(): Unit = {
-    assertPrintEquals("mod:s_Predef$<-this",
-        StoreModule("s_Predef$", This()("s_Predef$")))
+    assertPrintEquals("mod:scala.Predef$<-this",
+        StoreModule("scala.Predef$", This()("scala.Predef$")))
   }
 
   @Test def printSelect(): Unit = {
-    assertPrintEquals("x.Ltest_Test::f",
-        Select(ref("x", "Ltest_Test"), "Ltest_Test", "f")(IntType))
+    assertPrintEquals("x.test.Test::f",
+        Select(ref("x", "test.Test"), "test.Test", "f")(IntType))
   }
 
   @Test def printSelectStatic(): Unit = {
-    assertPrintEquals("Ltest_Test::f",
-        SelectStatic("Ltest_Test", "f")(IntType))
+    assertPrintEquals("test.Test::f",
+        SelectStatic("test.Test", "f")(IntType))
   }
 
   @Test def printApply(): Unit = {
-    assertPrintEquals("x.m__V()",
-        Apply(EAF, ref("x", "Ltest_Test"), "m__V", Nil)(NoType))
-    assertPrintEquals("x.m__I__I(5)",
-        Apply(EAF, ref("x", "Ltest_Test"), "m__I__I", List(i(5)))(IntType))
-    assertPrintEquals("x.m__I__I__I(5, 6)",
-        Apply(EAF, ref("x", "Ltest_Test"), "m__I__I__I", List(i(5), i(6)))(IntType))
+    assertPrintEquals("x.m;V()",
+        Apply(EAF, ref("x", "test.Test"), MethodName("m", Nil, V), Nil)(NoType))
+    assertPrintEquals("x.m;I;I(5)",
+        Apply(EAF, ref("x", "test.Test"), MethodName("m", List(I), I),
+            List(i(5)))(IntType))
+    assertPrintEquals("x.m;I;I;I(5, 6)",
+        Apply(EAF, ref("x", "test.Test"), MethodName("m", List(I, I), I),
+            List(i(5), i(6)))(IntType))
   }
 
   @Test def printApplyStatically(): Unit = {
-    assertPrintEquals("x.Ltest_Test::m__V()",
-        ApplyStatically(EAF, ref("x", "Ltest_Test"), "Ltest_Test", "m__V",
-            Nil)(NoType))
-    assertPrintEquals("x.Ltest_Test::m__I__I(5)",
-        ApplyStatically(EAF, ref("x", "Ltest_Test"), "Ltest_Test", "m__I__I",
-            List(i(5)))(IntType))
-    assertPrintEquals("x.Ltest_Test::m__I__I__I(5, 6)",
-        ApplyStatically(EAF, ref("x", "Ltest_Test"), "Ltest_Test", "m__I__I__I",
-            List(i(5), i(6)))(IntType))
+    assertPrintEquals("x.test.Test::m;V()",
+        ApplyStatically(EAF, ref("x", "test.Test"), "test.Test",
+            MethodName("m", Nil, V), Nil)(NoType))
+    assertPrintEquals("x.test.Test::m;I;I(5)",
+        ApplyStatically(EAF, ref("x", "test.Test"), "test.Test",
+            MethodName("m", List(I), I), List(i(5)))(IntType))
+    assertPrintEquals("x.test.Test::m;I;I;I(5, 6)",
+        ApplyStatically(EAF, ref("x", "test.Test"), "test.Test",
+            MethodName("m", List(I, I), I), List(i(5), i(6)))(IntType))
 
-    assertPrintEquals("x.Ltest_Test::private::m__V()",
-        ApplyStatically(EAF.withPrivate(true), ref("x", "Ltest_Test"),
-            "Ltest_Test", "m__V", Nil)(NoType))
+    assertPrintEquals("x.test.Test::private::m;V()",
+        ApplyStatically(EAF.withPrivate(true), ref("x", "test.Test"),
+            "test.Test", MethodName("m", Nil, V), Nil)(NoType))
   }
 
   @Test def printApplyStatic(): Unit = {
-    assertPrintEquals("Ltest_Test::m__V()",
-        ApplyStatic(EAF, "Ltest_Test", "m__V", Nil)(NoType))
-    assertPrintEquals("Ltest_Test::m__I__I(5)",
-        ApplyStatic(EAF, "Ltest_Test", "m__I__I", List(i(5)))(IntType))
-    assertPrintEquals("Ltest_Test::m__I__I__I(5, 6)",
-        ApplyStatic(EAF, "Ltest_Test", "m__I__I__I", List(i(5), i(6)))(IntType))
+    assertPrintEquals("test.Test::m;V()",
+        ApplyStatic(EAF, "test.Test", MethodName("m", Nil, V), Nil)(NoType))
+    assertPrintEquals("test.Test::m;I;I(5)",
+        ApplyStatic(EAF, "test.Test", MethodName("m", List(I), I),
+            List(i(5)))(IntType))
+    assertPrintEquals("test.Test::m;I;I;I(5, 6)",
+        ApplyStatic(EAF, "test.Test", MethodName("m", List(I, I), I),
+            List(i(5), i(6)))(IntType))
 
-    assertPrintEquals("Ltest_Test::private::m__V()",
-        ApplyStatic(EAF.withPrivate(true), "Ltest_Test", "m__V", Nil)(NoType))
+    assertPrintEquals("test.Test::private::m;V()",
+        ApplyStatic(EAF.withPrivate(true), "test.Test", MethodName("m", Nil, V),
+            Nil)(NoType))
   }
 
   @Test def printUnaryOp(): Unit = {
@@ -540,29 +560,29 @@ class PrintersTest {
   }
 
   @Test def printNewArray(): Unit = {
-    assertPrintEquals("new I[3]", NewArray(ArrayTypeRef("I", 1), List(i(3))))
-    assertPrintEquals("new I[3][]", NewArray(ArrayTypeRef("I", 2), List(i(3))))
-    assertPrintEquals("new O[3][4][][]",
-        NewArray(ArrayTypeRef("O", 4), List(i(3), i(4))))
+    assertPrintEquals("new int[3]", NewArray(ArrayTypeRef(IntRef, 1), List(i(3))))
+    assertPrintEquals("new int[3][]", NewArray(ArrayTypeRef(IntRef, 2), List(i(3))))
+    assertPrintEquals("new java.lang.Object[3][4][][]",
+        NewArray(ArrayTypeRef(ObjectClass, 4), List(i(3), i(4))))
   }
 
   @Test def printArrayValue(): Unit = {
-    assertPrintEquals("I[]()",
-        ArrayValue(ArrayTypeRef("I", 1), List()))
-    assertPrintEquals("I[](5, 6)",
-        ArrayValue(ArrayTypeRef("I", 1), List(i(5), i(6))))
+    assertPrintEquals("int[]()",
+        ArrayValue(ArrayTypeRef(IntRef, 1), List()))
+    assertPrintEquals("int[](5, 6)",
+        ArrayValue(ArrayTypeRef(IntRef, 1), List(i(5), i(6))))
 
-    assertPrintEquals("I[][](null)",
-        ArrayValue(ArrayTypeRef("I", 2), List(Null())))
+    assertPrintEquals("int[][](null)",
+        ArrayValue(ArrayTypeRef(IntRef, 2), List(Null())))
   }
 
   @Test def printArrayLength(): Unit = {
-    assertPrintEquals("x.length", ArrayLength(ref("x", arrayType("I", 1))))
+    assertPrintEquals("x.length", ArrayLength(ref("x", arrayType(IntRef, 1))))
   }
 
   @Test def printArraySelect(): Unit = {
     assertPrintEquals("x[3]",
-        ArraySelect(ref("x", arrayType("I", 1)), i(3))(IntType))
+        ArraySelect(ref("x", arrayType(IntRef, 1)), i(3))(IntType))
   }
 
   @Test def printRecordValue(): Unit = {
@@ -575,13 +595,13 @@ class PrintersTest {
   }
 
   @Test def printIsInstanceOf(): Unit = {
-    assertPrintEquals("x.isInstanceOf[T]",
-        IsInstanceOf(ref("x", AnyType), BoxedStringClass))
+    assertPrintEquals("x.isInstanceOf[java.lang.String]",
+        IsInstanceOf(ref("x", AnyType), ClassType(BoxedStringClass)))
   }
 
   @Test def printAsInstanceOf(): Unit = {
-    assertPrintEquals("x.asInstanceOf[T]",
-        AsInstanceOf(ref("x", AnyType), BoxedStringClass))
+    assertPrintEquals("x.asInstanceOf[java.lang.String]",
+        AsInstanceOf(ref("x", AnyType), ClassType(BoxedStringClass)))
     assertPrintEquals("x.asInstanceOf[int]",
         AsInstanceOf(ref("x", AnyType), IntType))
   }
@@ -593,22 +613,22 @@ class PrintersTest {
   @Test def printJSNew(): Unit = {
     assertPrintEquals("new C()", JSNew(ref("C", AnyType), Nil))
     assertPrintEquals("new C(4, 5)", JSNew(ref("C", AnyType), List(i(4), i(5))))
-    assertPrintEquals("new x.Ltest_Test::C(4, 5)",
-        JSNew(JSPrivateSelect(ref("x", AnyType), "Ltest_Test", "C"), List(i(4), i(5))))
+    assertPrintEquals("new x.test.Test::C(4, 5)",
+        JSNew(JSPrivateSelect(ref("x", AnyType), "test.Test", "C"), List(i(4), i(5))))
     assertPrintEquals("""new x["C"]()""",
         JSNew(JSSelect(ref("x", AnyType), StringLiteral("C")), Nil))
 
     val fApplied = JSFunctionApply(ref("f", AnyType), Nil)
     assertPrintEquals("new (f())()", JSNew(fApplied, Nil))
-    assertPrintEquals("new (f().Ltest_Test::C)(4, 5)",
-        JSNew(JSPrivateSelect(fApplied, "Ltest_Test", "C"), List(i(4), i(5))))
+    assertPrintEquals("new (f().test.Test::C)(4, 5)",
+        JSNew(JSPrivateSelect(fApplied, "test.Test", "C"), List(i(4), i(5))))
     assertPrintEquals("""new (f()["C"])()""",
         JSNew(JSSelect(fApplied, StringLiteral("C")), Nil))
   }
 
   @Test def printJSPrivateSelect(): Unit = {
-    assertPrintEquals("x.Ltest_Test::f",
-        JSPrivateSelect(ref("x", AnyType), "Ltest_Test", "f"))
+    assertPrintEquals("x.test.Test::f",
+        JSPrivateSelect(ref("x", AnyType), "test.Test", "f"))
   }
 
   @Test def printJSSelect(): Unit = {
@@ -621,13 +641,13 @@ class PrintersTest {
     assertPrintEquals("f(3, 4)",
         JSFunctionApply(ref("f", AnyType), List(i(3), i(4))))
 
-    assertPrintEquals("(0, x.Ltest_Test::f)()",
-        JSFunctionApply(JSPrivateSelect(ref("x", AnyType), "Ltest_Test", "f"), Nil))
+    assertPrintEquals("(0, x.test.Test::f)()",
+        JSFunctionApply(JSPrivateSelect(ref("x", AnyType), "test.Test", "f"), Nil))
     assertPrintEquals("""(0, x["f"])()""",
         JSFunctionApply(JSSelect(ref("x", AnyType), StringLiteral("f")),
             Nil))
-    assertPrintEquals("(0, x.Ltest_Test::f)()",
-        JSFunctionApply(Select(ref("x", "Ltest_Test"), "Ltest_Test", "f")(AnyType),
+    assertPrintEquals("(0, x.test.Test::f)()",
+        JSFunctionApply(Select(ref("x", "test.Test"), "test.Test", "f")(AnyType),
             Nil))
   }
 
@@ -659,11 +679,11 @@ class PrintersTest {
   }
 
   @Test def printLoadJSConstructor(): Unit = {
-    assertPrintEquals("constructorOf[LTest]", LoadJSConstructor("LTest"))
+    assertPrintEquals("constructorOf[Test]", LoadJSConstructor("Test"))
   }
 
   @Test def printLoadJSModule(): Unit = {
-    assertPrintEquals("mod:LTest$", LoadJSModule("LTest$"))
+    assertPrintEquals("mod:Test$", LoadJSModule("Test$"))
   }
 
   @Test def printJSSpread(): Unit = {
@@ -831,7 +851,7 @@ class PrintersTest {
   }
 
   @Test def printClassOf(): Unit = {
-    assertPrintEquals("classOf[LTest]", ClassOf("LTest"))
+    assertPrintEquals("classOf[Test]", ClassOf("Test"))
   }
 
   @Test def printVarRef(): Unit = {
@@ -870,9 +890,9 @@ class PrintersTest {
   @Test def printCreateJSClass(): Unit = {
     assertPrintEquals(
         """
-          |createjsclass[LFoo](x, y)
+          |createjsclass[Foo](x, y)
         """,
-        CreateJSClass("LFoo", List(ref("x", IntType), ref("y", AnyType))))
+        CreateJSClass("Foo", List(ref("x", IntType), ref("y", AnyType))))
   }
 
   @Test def printTransient(): Unit = {
@@ -892,70 +912,70 @@ class PrintersTest {
     import ClassKind._
 
     def makeForKind(kind: ClassKind): ClassDef = {
-      ClassDef("LTest", kind, None, Some(ObjectClass), Nil, None, None, Nil,
+      ClassDef("Test", kind, None, Some(ObjectClass), Nil, None, None, Nil,
           Nil)(
           NoOptHints)
     }
 
     assertPrintEquals(
         """
-          |class LTest extends O {
+          |class Test extends java.lang.Object {
           |}
         """,
         makeForKind(Class))
 
     assertPrintEquals(
         """
-          |module class LTest extends O {
+          |module class Test extends java.lang.Object {
           |}
         """,
         makeForKind(ModuleClass))
 
     assertPrintEquals(
         """
-          |interface LTest extends O {
+          |interface Test extends java.lang.Object {
           |}
         """,
         makeForKind(Interface))
 
     assertPrintEquals(
         """
-          |abstract js type LTest extends O {
+          |abstract js type Test extends java.lang.Object {
           |}
         """,
         makeForKind(AbstractJSType))
 
     assertPrintEquals(
         """
-          |hijacked class LTest extends O {
+          |hijacked class Test extends java.lang.Object {
           |}
         """,
         makeForKind(HijackedClass))
 
     assertPrintEquals(
         """
-          |js class LTest extends O {
+          |js class Test extends java.lang.Object {
           |}
         """,
         makeForKind(JSClass))
 
     assertPrintEquals(
         """
-          |js module class LTest extends O {
+          |js module class Test extends java.lang.Object {
           |}
         """,
         makeForKind(JSModuleClass))
 
     assertPrintEquals(
         """
-          |native js class LTest extends O {
+          |native js class Test extends java.lang.Object {
           |}
         """,
         makeForKind(NativeJSClass))
 
     assertPrintEquals(
         """
-          |native js module class LTest extends O {
+          |native js module class Test extends java.lang.Object {
           |}
         """,
         makeForKind(NativeJSModuleClass))
@@ -964,58 +984,58 @@ class PrintersTest {
   @Test def printClassDefParents(): Unit = {
     def makeForParents(superClass: Option[ClassIdent],
         interfaces: List[ClassIdent]): ClassDef = {
-      ClassDef("LTest", ClassKind.Class, None, superClass, interfaces, None,
+      ClassDef("Test", ClassKind.Class, None, superClass, interfaces, None,
           None, Nil, Nil)(
           NoOptHints)
     }
 
     assertPrintEquals(
         """
-          |class LTest {
+          |class Test {
           |}
         """,
         makeForParents(None, Nil))
 
     assertPrintEquals(
         """
-          |class LTest extends O implements LIntf {
+          |class Test extends java.lang.Object implements Intf {
           |}
         """,
-        makeForParents(Some(ObjectClass), List("LIntf")))
+        makeForParents(Some(ObjectClass), List("Intf")))
 
     assertPrintEquals(
         """
-          |class LTest extends sr_AbstractFunction0 implements LIntf1, LIntf2 {
+          |class Test extends sr_AbstractFunction0 implements Intf1, Intf2 {
           |}
         """,
-        makeForParents(Some("sr_AbstractFunction0"), List("LIntf1", "LIntf2")))
+        makeForParents(Some("sr_AbstractFunction0"), List("Intf1", "Intf2")))
   }
 
   @Test def printClassDefJSNativeLoadSpec(): Unit = {
     assertPrintEquals(
         """
-          |native js class LTest extends O loadfrom global:Foo["Bar"] {
+          |native js class Test extends java.lang.Object loadfrom global:Foo["Bar"] {
           |}
         """,
-        ClassDef("LTest", ClassKind.NativeJSClass, None, Some(ObjectClass), Nil,
+        ClassDef("Test", ClassKind.NativeJSClass, None, Some(ObjectClass), Nil,
             None, Some(JSNativeLoadSpec.Global("Foo", List("Bar"))), Nil, Nil)(
             NoOptHints))
 
     assertPrintEquals(
         """
-          |native js class LTest extends O loadfrom import(foo)["Bar"] {
+          |native js class Test extends java.lang.Object loadfrom import(foo)["Bar"] {
           |}
         """,
-        ClassDef("LTest", ClassKind.NativeJSClass, None, Some(ObjectClass), Nil,
+        ClassDef("Test", ClassKind.NativeJSClass, None, Some(ObjectClass), Nil,
             None, Some(JSNativeLoadSpec.Import("foo", List("Bar"))), Nil, Nil)(
             NoOptHints))
 
     assertPrintEquals(
         """
-          |native js class LTest extends O loadfrom import(foo)["Bar"] fallback global:Baz["Foobar"] {
+          |native js class Test extends java.lang.Object loadfrom import(foo)["Bar"] fallback global:Baz["Foobar"] {
           |}
         """,
-        ClassDef("LTest", ClassKind.NativeJSClass, None, Some(ObjectClass), Nil,
+        ClassDef("Test", ClassKind.NativeJSClass, None, Some(ObjectClass), Nil,
             None,
             Some(JSNativeLoadSpec.ImportWithGlobalFallback(
                 JSNativeLoadSpec.Import("foo", List("Bar")),
@@ -1027,20 +1047,20 @@ class PrintersTest {
     assertPrintEquals(
         """
           |captures: none
-          |js class LTest extends O {
+          |js class Test extends java.lang.Object {
           |}
         """,
-        ClassDef("LTest", ClassKind.JSClass, Some(Nil), Some(ObjectClass), Nil,
+        ClassDef("Test", ClassKind.JSClass, Some(Nil), Some(ObjectClass), Nil,
             None, None, Nil, Nil)(
             NoOptHints))
 
     assertPrintEquals(
         """
           |captures: x: int, y: string
-          |js class LTest extends O {
+          |js class Test extends java.lang.Object {
           |}
         """,
-        ClassDef("LTest", ClassKind.JSClass,
+        ClassDef("Test", ClassKind.JSClass,
             Some(List(
                 ParamDef("x", IntType, mutable = false, rest = false),
                 ParamDef("y", StringType, mutable = false, rest = false)
@@ -1053,22 +1073,22 @@ class PrintersTest {
     assertPrintEquals(
         """
           |captures: sup: any
-          |js class LTest extends LBar (via sup) {
+          |js class Test extends Bar (via sup) {
           |}
         """,
-        ClassDef("LTest", ClassKind.JSClass,
+        ClassDef("Test", ClassKind.JSClass,
             Some(List(ParamDef("sup", AnyType, mutable = false, rest = false))),
-            Some("LBar"), Nil, Some(ref("sup", AnyType)), None, Nil, Nil)(
+            Some("Bar"), Nil, Some(ref("sup", AnyType)), None, Nil, Nil)(
             NoOptHints))
   }
 
   @Test def printClassDefOptimizerHints(): Unit = {
     assertPrintEquals(
         """
-          |@hints(1) class LTest extends O {
+          |@hints(1) class Test extends java.lang.Object {
           |}
         """,
-        ClassDef("LTest", ClassKind.Class, None, Some(ObjectClass), Nil, None,
+        ClassDef("Test", ClassKind.Class, None, Some(ObjectClass), Nil, None,
             None, Nil, Nil)(
             NoOptHints.withInline(true)))
   }
@@ -1076,13 +1096,13 @@ class PrintersTest {
   @Test def printClassDefDefs(): Unit = {
     assertPrintEquals(
         """
-          |module class LTest extends O {
+          |module class Test extends java.lang.Object {
           |  val x$1: int
           |  var y$1: int
           |  export top module "pkg.Foo"
           |}
         """,
-        ClassDef("LTest", ClassKind.ModuleClass, None, Some(ObjectClass), Nil,
+        ClassDef("Test", ClassKind.ModuleClass, None, Some(ObjectClass), Nil,
             None, None,
             List(
                 FieldDef(MemberFlags.empty, "x$1", IntType),
@@ -1112,71 +1132,74 @@ class PrintersTest {
   }
 
   @Test def printMethodDef(): Unit = {
+    val mIIMethodName = MethodName("m", List(I), I)
+    val mIVMethodName = MethodName("m", List(I), V)
+
     assertPrintEquals(
         """
-          |def m__I__I(x: int): int = <abstract>
+          |def m;I;I(x: int): int = <abstract>
         """,
-        MethodDef(MemberFlags.empty, "m__I__I",
+        MethodDef(MemberFlags.empty, mIIMethodName,
             List(ParamDef("x", IntType, mutable = false, rest = false)),
             IntType, None)(NoOptHints, None))
 
     assertPrintEquals(
         """
-          |def m__I__I(x: int): int = {
+          |def m;I;I(x: int): int = {
           |  5
           |}
         """,
-        MethodDef(MemberFlags.empty, "m__I__I",
+        MethodDef(MemberFlags.empty, mIIMethodName,
             List(ParamDef("x", IntType, mutable = false, rest = false)),
             IntType, Some(i(5)))(NoOptHints, None))
 
     assertPrintEquals(
         """
-          |@hints(1) def m__I__I(x: int): int = {
+          |@hints(1) def m;I;I(x: int): int = {
           |  5
           |}
         """,
-        MethodDef(MemberFlags.empty, "m__I__I",
+        MethodDef(MemberFlags.empty, mIIMethodName,
             List(ParamDef("x", IntType, mutable = false, rest = false)),
             IntType, Some(i(5)))(NoOptHints.withInline(true), None))
 
     assertPrintEquals(
         """
-          |def m__I__V(x: int) {
+          |def m;I;V(x: int) {
           |  5
           |}
         """,
-        MethodDef(MemberFlags.empty, "m__I__V",
+        MethodDef(MemberFlags.empty, mIVMethodName,
             List(ParamDef("x", IntType, mutable = false, rest = false)),
             NoType, Some(i(5)))(NoOptHints, None))
 
     assertPrintEquals(
         """
-          |static def m__I__I(x: int): int = {
+          |static def m;I;I(x: int): int = {
           |  5
           |}
         """,
-        MethodDef(MemberFlags.empty.withNamespace(Static), "m__I__I",
+        MethodDef(MemberFlags.empty.withNamespace(Static), mIIMethodName,
             List(ParamDef("x", IntType, mutable = false, rest = false)),
             IntType, Some(i(5)))(NoOptHints, None))
 
     assertPrintEquals(
         """
-          |private def m__I__I(x: int): int = {
+          |private def m;I;I(x: int): int = {
           |  5
           |}
         """,
-        MethodDef(MemberFlags.empty.withNamespace(Private), "m__I__I",
+        MethodDef(MemberFlags.empty.withNamespace(Private), mIIMethodName,
             List(ParamDef("x", IntType, mutable = false, rest = false)),
             IntType, Some(i(5)))(NoOptHints, None))
 
     assertPrintEquals(
         """
-          |private static def m__I__I(x: int): int = {
+          |private static def m;I;I(x: int): int = {
           |  5
           |}
         """,
-        MethodDef(MemberFlags.empty.withNamespace(PrivateStatic), "m__I__I",
+        MethodDef(MemberFlags.empty.withNamespace(PrivateStatic), mIIMethodName,
             List(ParamDef("x", IntType, mutable = false, rest = false)),
             IntType, Some(i(5)))(NoOptHints, None))
   }
