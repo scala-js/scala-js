@@ -66,7 +66,7 @@ private[frontend] final class MethodSynthesizer(
       val call = Apply(ApplyFlags.empty, This()(currentClassType),
           targetIdent, params.map(_.ref))(targetMDef.resultType)
 
-      val body = if (targetName.resultTypeRef.exists(_ == VoidRef)) {
+      val body = if (targetName.resultTypeRef == VoidRef) {
         // Materialize an `undefined` result for void methods
         Block(call, Undefined())
       } else {

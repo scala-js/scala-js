@@ -150,7 +150,7 @@ object Serializers {
 
         encodedNameToIndex(methodName.simpleName.unsafeEncoded)
         methodName.paramTypeRefs.foreach(reserveTypeRef(_))
-        methodName.resultTypeRef.foreach(reserveTypeRef(_))
+        reserveTypeRef(methodName.resultTypeRef)
         (methodNames += methodName).size - 1
       })
     }
@@ -223,8 +223,8 @@ object Serializers {
             new ByteString(methodName.simpleName.unsafeEncoded)))
         s.writeInt(methodName.paramTypeRefs.size)
         methodName.paramTypeRefs.foreach(writeTypeRef(_))
-        s.writeBoolean(methodName.resultTypeRef.isDefined)
-        methodName.resultTypeRef.foreach(writeTypeRef(_))
+        writeTypeRef(methodName.resultTypeRef)
+        s.writeBoolean(methodName.isReflectiveProxy)
         writeName(methodName.simpleName)
       }
 
@@ -949,8 +949,9 @@ object Serializers {
       methodNames = Array.fill(readInt()) {
         val simpleName = readSimpleMethodName()
         val paramTypeRefs = List.fill(readInt())(readTypeRef())
-        val resultTypeRef = if (readBoolean()) Some(readTypeRef()) else None
-        MethodName(simpleName, paramTypeRefs, resultTypeRef)
+        val resultTypeRef = readTypeRef()
+        val isReflectiveProxy = readBoolean()
+        MethodName(simpleName, paramTypeRefs, resultTypeRef, isReflectiveProxy)
       }
       strings = Array.fill(readInt())(readUTF())
       readClassDef()

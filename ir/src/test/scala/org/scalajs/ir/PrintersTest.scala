@@ -329,9 +329,9 @@ class PrintersTest {
   }
 
   @Test def printNew(): Unit = {
-    assertPrintEquals("new java.lang.Object().<init>;()",
+    assertPrintEquals("new java.lang.Object().<init>;V()",
         New(ObjectClass, NoArgConstructorName, Nil))
-    assertPrintEquals("new scala.Tuple2().<init>;Ljava.lang.Object;Ljava.lang.Object;(5, 6)",
+    assertPrintEquals("new scala.Tuple2().<init>;Ljava.lang.Object;Ljava.lang.Object;V(5, 6)",
         New("scala.Tuple2", MethodName.constructor(List(O, O)), List(i(5), i(6))))
   }
 

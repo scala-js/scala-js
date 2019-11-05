@@ -608,9 +608,8 @@ object Hashers {
       mixInt(name.paramTypeRefs.size)
       for (typeRef <- name.paramTypeRefs)
         mixTypeRef(typeRef)
-      mixBoolean(name.resultTypeRef.isDefined)
-      for (typeRef <- name.resultTypeRef)
-        mixTypeRef(typeRef)
+      mixTypeRef(name.resultTypeRef)
+      mixBoolean(name.isReflectiveProxy)
     }
 
     def mixPos(pos: Position): Unit = {

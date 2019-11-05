@@ -206,13 +206,17 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
       if (!hasExplicitThisParameter) paramTypeRefs0
       else paramOrResultTypeRef(sym.owner.toTypeConstructor) :: paramTypeRefs0
 
-    val resultTypeRef =
-      if (sym.isClassConstructor || reflProxy) None
-      else Some(paramOrResultTypeRef(tpe.resultType))
-
     val name = sym.name
     val simpleName = SimpleMethodName(name.toString())
-    val methodName = MethodName(simpleName, paramTypeRefs, resultTypeRef)
+
+    val methodName = {
+      if (sym.isClassConstructor)
+        MethodName.constructor(paramTypeRefs)
+      else if (reflProxy)
+        MethodName.reflectiveProxy(simpleName, paramTypeRefs)
+      else
+        MethodName(simpleName, paramTypeRefs, paramOrResultTypeRef(tpe.resultType))
+    }
 
     js.MethodIdent(methodName, originalNameOf(name))
   }

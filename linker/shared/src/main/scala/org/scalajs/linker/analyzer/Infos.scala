@@ -459,7 +459,7 @@ object Infos {
     def generateMethodInfo(methodDef: MethodDef): MethodInfo = {
       val methodName = methodDef.encodedName
       methodName.paramTypeRefs.foreach(builder.maybeAddReferencedClass)
-      methodName.resultTypeRef.foreach(builder.maybeAddReferencedClass)
+      builder.maybeAddReferencedClass(methodName.resultTypeRef)
 
       methodDef.body.foreach(traverse)
 

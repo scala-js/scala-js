@@ -178,8 +178,8 @@ private[emitter] final class JSGen(val semantics: Semantics,
         builder.append('_').append('_')
       }
 
-      for (typeRef <- name.resultTypeRef)
-        appendTypeRef(typeRef)
+      if (!onlyParamTypeRefs && !name.isReflectiveProxy)
+        appendTypeRef(name.resultTypeRef)
 
       builder.toString()
     })

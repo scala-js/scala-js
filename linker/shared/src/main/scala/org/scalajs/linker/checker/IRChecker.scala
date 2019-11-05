@@ -1187,14 +1187,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       implicit ctx: ErrorContext): (List[Type], Type) = {
 
     val paramTypes = methodName.paramTypeRefs.map(typeRefToType)
-
-    val resultType = methodName.resultTypeRef.fold[Type] {
-      if (methodName.isConstructor || methodName.isStaticInitializer) NoType
-      else AnyType // reflective proxy
-    } { typeRef =>
-      typeRefToType(typeRef)
-    }
-
+    val resultType = typeRefToType(methodName.resultTypeRef)
     (paramTypes, resultType)
   }
 

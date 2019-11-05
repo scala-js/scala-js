@@ -19,11 +19,6 @@ import Trees._
 
 object Types {
 
-  private val AncestorsOfPseudoArrayClass: Set[ClassName] = {
-    Set(Names.ObjectClass, ClassName("java.io.Serializable"),
-        ClassName("java.lang.Cloneable"))
-  }
-
   /** Type of a term (expression or statement) in the IR.
    *
    *  There is a many-to-one relationship from [[TypeRef]]s to `Type`s,

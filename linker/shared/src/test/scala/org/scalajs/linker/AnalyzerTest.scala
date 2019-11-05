@@ -393,7 +393,8 @@ class AnalyzerTest {
     val fooAMethodName = m("foo", Nil, ClassRef("A"))
     val fooBMethodName = m("foo", Nil, ClassRef("B"))
 
-    val fooReflProxyName = MethodName(SimpleMethodName("foo"), Nil, None)
+    val fooReflProxyName =
+      MethodName.reflectiveProxy(SimpleMethodName("foo"), Nil)
 
     val classDefs = Seq(
         classDef("A", superClass = Some(ObjectClass)),

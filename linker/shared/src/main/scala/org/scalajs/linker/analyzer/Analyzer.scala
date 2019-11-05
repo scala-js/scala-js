@@ -711,7 +711,7 @@ private final class Analyzer(config: CommonPhaseConfig,
        *   chosen arbitrarily.
        */
 
-      val resultTypes = candidates.map(c => c.encodedName.resultTypeRef.get)
+      val resultTypes = candidates.map(c => c.encodedName.resultTypeRef)
 
       // We must not use Future.traverse since otherwise we might run things on
       // the non-main thread.

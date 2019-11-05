@@ -260,7 +260,8 @@ object Names {
   /** The full name of a method, including its simple name and its signature.
    */
   final class MethodName private (val simpleName: SimpleMethodName,
-      val paramTypeRefs: List[TypeRef], val resultTypeRef: Option[TypeRef]) {
+      val paramTypeRefs: List[TypeRef], val resultTypeRef: TypeRef,
+      val isReflectiveProxy: Boolean) {
 
     import MethodName._
 
@@ -269,19 +270,9 @@ object Names {
       var acc = 1270301484 // "MethodName".hashCode()
       acc = mix(acc, simpleName.##)
       acc = mix(acc, paramTypeRefs.##)
-      acc = mixLast(acc, resultTypeRef.##)
-      finalizeHash(acc, 3)
-    }
-
-    private[this] val kind = {
-      if (simpleName.isConstructor)
-        ConstructorKind
-      else if (simpleName.isStaticInitializer)
-        StaticInitializerKind
-      else if (resultTypeRef.isDefined)
-        NormalKind
-      else
-        ReflectiveProxyKind
+      acc = mix(acc, resultTypeRef.##)
+      acc = mixLast(acc, isReflectiveProxy.##)
+      finalizeHash(acc, 4)
     }
 
     override def equals(that: Any): Boolean = {
@@ -290,7 +281,8 @@ object Names {
           this._hashCode == that._hashCode && // fail fast on different hash codes
           this.simpleName == that.simpleName &&
           this.paramTypeRefs == that.paramTypeRefs &&
-          this.resultTypeRef == that.resultTypeRef
+          this.resultTypeRef == that.resultTypeRef &&
+          this.isReflectiveProxy == that.isReflectiveProxy
         case _ =>
           false
       })
@@ -335,8 +327,10 @@ object Names {
         appendTypeRef(paramTypeRef)
       }
       builder.append(';')
-      for (resTypeRef <- resultTypeRef)
-        appendTypeRef(resTypeRef)
+      if (isReflectiveProxy)
+        builder.append('R')
+      else
+        appendTypeRef(resultTypeRef)
       builder.toString()
     }
 
@@ -346,47 +340,63 @@ object Names {
     def displayName: String = {
       simpleName.nameString + "(" +
       paramTypeRefs.map(_.displayName).mkString(",") + ")" +
-      resultTypeRef.fold("")(_.displayName)
+      (if (isReflectiveProxy) "R" else resultTypeRef.displayName)
     }
 
     /** Returns `true` iff this is the name of an instance constructor. */
-    def isConstructor: Boolean = kind == ConstructorKind
+    def isConstructor: Boolean = simpleName.isConstructor
 
     /** Returns `true` iff this is the name of a static initializer. */
-    def isStaticInitializer: Boolean = kind == StaticInitializerKind
-
-    /** Returns `true` iff this is the name of a reflective proxy. */
-    def isReflectiveProxy: Boolean = kind == ReflectiveProxyKind
+    def isStaticInitializer: Boolean = simpleName.isStaticInitializer
   }
 
   object MethodName {
-    private final val NormalKind = 0
-    private final val ConstructorKind = 1
-    private final val StaticInitializerKind = 2
-    private final val ReflectiveProxyKind = 3
+    private val ReflectiveProxyResultTypeRef = ClassRef(ObjectClass)
+    private final val ReflectiveProxyResultTypeName = "java.lang.Object"
 
     def apply(simpleName: SimpleMethodName, paramTypeRefs: List[TypeRef],
-        resultTypeRef: Option[TypeRef]): MethodName = {
+        resultTypeRef: TypeRef, isReflectiveProxy: Boolean): MethodName = {
       if ((simpleName.isConstructor || simpleName.isStaticInitializer) &&
-          resultTypeRef.isDefined) {
+          resultTypeRef != VoidRef) {
         throw new IllegalArgumentException(
-            "A constructor or static initializer must not have a result type")
+            "A constructor or static initializer must have a void result type")
       }
-      new MethodName(simpleName, paramTypeRefs, resultTypeRef)
+      if (isReflectiveProxy && resultTypeRef != ReflectiveProxyResultTypeRef) {
+        throw new IllegalArgumentException(
+            "A reflective proxy must have a result type of " +
+            ReflectiveProxyResultTypeName)
+      }
+      new MethodName(simpleName, paramTypeRefs, resultTypeRef,
+          isReflectiveProxy)
     }
 
     // Convenience constructors
 
-    def apply(simpleName: String, paramTypeRefs: List[TypeRef],
+    def apply(simpleName: SimpleMethodName, paramTypeRefs: List[TypeRef],
         resultTypeRef: TypeRef): MethodName = {
-      apply(SimpleMethodName(simpleName), paramTypeRefs, Some(resultTypeRef))
+      apply(simpleName, paramTypeRefs, resultTypeRef, isReflectiveProxy = false)
     }
 
-    def apply(simpleName: String, paramTypeRefs: List[TypeRef]): MethodName =
-      apply(SimpleMethodName(simpleName), paramTypeRefs, None)
+    def apply(simpleName: String, paramTypeRefs: List[TypeRef],
+        resultTypeRef: TypeRef): MethodName = {
+      apply(SimpleMethodName(simpleName), paramTypeRefs, resultTypeRef)
+    }
 
-    def constructor(paramTypeRefs: List[TypeRef]): MethodName =
-      apply(ConstructorSimpleName, paramTypeRefs, None)
+    def constructor(paramTypeRefs: List[TypeRef]): MethodName = {
+      new MethodName(ConstructorSimpleName, paramTypeRefs, VoidRef,
+          isReflectiveProxy = false)
+    }
+
+    def reflectiveProxy(simpleName: SimpleMethodName,
+        paramTypeRefs: List[TypeRef]): MethodName = {
+      apply(simpleName, paramTypeRefs, ReflectiveProxyResultTypeRef,
+          isReflectiveProxy = true)
+    }
+
+    def reflectiveProxy(simpleName: String,
+        paramTypeRefs: List[TypeRef]): MethodName = {
+      reflectiveProxy(SimpleMethodName(simpleName), paramTypeRefs)
+    }
   }
 
   /** The full name of a class.
@@ -458,6 +468,15 @@ object Names {
   /** The class of things returned by `ClassOf` and `GetClass`. */
   val ClassClass: ClassName = ClassName("java.lang.Class")
 
+  /** The set of classes and interfaces that are ancestors of array classes. */
+  private[ir] val AncestorsOfPseudoArrayClass: Set[ClassName] = {
+    /* This would logically be defined in Types, but that introduces a cyclic
+     * dependency between the initialization of Names and Types.
+     */
+    Set(Names.ObjectClass, ClassName("java.io.Serializable"),
+        ClassName("java.lang.Cloneable"))
+  }
+
   /** Name of a constructor without argument.
    *
    *  This is notably the signature of constructors of module classes.
@@ -467,7 +486,7 @@ object Names {
 
   /** Name of the static initializer method. */
   final val StaticInitializerName: MethodName =
-    MethodName(StaticInitializerSimpleName, Nil, None)
+    MethodName(StaticInitializerSimpleName, Nil, VoidRef)
 
   // --------------------------------------------------------------------------
   // ----- Private helpers for validation, encoding and decoding of names -----

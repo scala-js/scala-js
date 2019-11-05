@@ -154,7 +154,7 @@ class IRCheckerTest {
       assertContainsLogLine(
           "Duplicate definition of field 'foobar' in class 'Foo'", log)
       assertContainsLogLine(
-          "Duplicate definition of constructor method '<init>(java.lang.String)' in class 'Foo'", log)
+          "Duplicate definition of constructor method '<init>(java.lang.String)void' in class 'Foo'", log)
       assertContainsLogLine(
           "Duplicate definition of method 'babar(int)int' in class 'Foo'", log)
     }

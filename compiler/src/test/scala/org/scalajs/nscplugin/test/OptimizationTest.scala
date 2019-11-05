@@ -356,7 +356,7 @@ object OptimizationTest {
     def unapply(tree: js.Apply): Boolean = {
       val methodName = tree.method.name
       methodName.simpleName.nameString.startsWith("wrap") &&
-      methodName.resultTypeRef.exists(_ == WrappedArrayTypeRef)
+      methodName.resultTypeRef == WrappedArrayTypeRef
     }
   }
 

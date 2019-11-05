@@ -354,13 +354,13 @@ object JavalibIRCleaner {
       val paramTypeRefs = encodedName.paramTypeRefs
       val newParamTypeRefs = paramTypeRefs.map(transformTypeRef)
       val resultTypeRef = encodedName.resultTypeRef
-      val newResultTypeRef = resultTypeRef.map(transformTypeRef)
+      val newResultTypeRef = transformTypeRef(resultTypeRef)
       if (newParamTypeRefs == paramTypeRefs && newResultTypeRef == resultTypeRef) {
         ident
       } else {
-        MethodIdent(
-            MethodName(encodedName.simpleName, newParamTypeRefs, newResultTypeRef),
-            ident.originalName)(ident.pos)
+        val newMethodName = MethodName(encodedName.simpleName,
+            newParamTypeRefs, newResultTypeRef, encodedName.isReflectiveProxy)
+        MethodIdent(newMethodName, ident.originalName)(ident.pos)
       }
     }
 

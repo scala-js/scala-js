@@ -3142,7 +3142,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       val js.MethodIdent(initName, origName) = encodeMethodSym(ctor)
       val newName = MethodName(newSimpleMethodName, initName.paramTypeRefs,
-          Some(jstpe.ClassRef(className)))
+          jstpe.ClassRef(className))
       val newMethodIdent = js.MethodIdent(newName, origName)
 
       js.Apply(flags, genLoadModule(moduleClass), newMethodIdent, args)(
