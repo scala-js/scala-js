@@ -90,8 +90,8 @@ class IRCheckerTest {
 
   @Test
   def testDuplicateMembers(): AsyncResult = await {
-    val FooRef = ClassRef("Foo")
-    val FooType = ClassType("Foo")
+    val FooClass = ClassName("Foo")
+    val FooType = ClassType(FooClass)
     val BoxedStringType = ClassType(BoxedStringClass)
 
     val stringCtorName = MethodName.constructor(List(ClassRef(BoxedStringClass)))
@@ -99,12 +99,12 @@ class IRCheckerTest {
 
     val callPrimaryCtorBody: Tree = {
       ApplyStatically(EAF.withConstructor(true), This()(FooType),
-          FooRef, NoArgConstructorName, Nil)(NoType)
+          FooClass, NoArgConstructorName, Nil)(NoType)
     }
 
     def babarMethodBody(paramName: String): Tree = {
       BinaryOp(BinaryOp.Int_+,
-          Select(This()(FooType), FooRef, "foobar")(IntType),
+          Select(This()(FooType), FooClass, "foobar")(IntType),
           VarRef(paramName)(IntType))
     }
 
@@ -145,7 +145,7 @@ class IRCheckerTest {
 
         mainTestClassDef(Block(
             VarDef("foo", FooType, mutable = false,
-                New(FooRef, stringCtorName, List(StringLiteral("hello")))),
+                New(FooClass, stringCtorName, List(StringLiteral("hello")))),
             Apply(EAF, VarRef("foo")(FooType), babarMethodName, List(int(5)))(IntType)
         ))
     )

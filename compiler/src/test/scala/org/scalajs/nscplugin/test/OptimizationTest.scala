@@ -38,7 +38,7 @@ class OptimizationTest extends JSASTTest {
     }
     """.
     hasNot("any LoadModule of the scala.Array companion") {
-      case js.LoadModule(jstpe.ClassRef(ArrayModuleClass)) =>
+      case js.LoadModule(ArrayModuleClass) =>
     }
 
     /* Using [] with primitives produces suboptimal trees, which cannot be
@@ -56,7 +56,7 @@ class OptimizationTest extends JSASTTest {
     }
     """.
     hasExactly(2, "calls to Array.apply methods") {
-      case js.Apply(_, js.LoadModule(jstpe.ClassRef(ArrayModuleClass)), js.MethodIdent(methodName, _), _)
+      case js.Apply(_, js.LoadModule(ArrayModuleClass), js.MethodIdent(methodName, _), _)
           if methodName.simpleName == applySimpleMethodName =>
     }
   }

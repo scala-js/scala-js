@@ -515,34 +515,34 @@ object Infos {
         /* Do not call super.traverse() so that the field is not also marked as
          * read.
          */
-        case Assign(SelectStatic(ClassRef(cls), field), rhs) =>
-          builder.addStaticFieldWritten(cls, field.name)
+        case Assign(SelectStatic(className, field), rhs) =>
+          builder.addStaticFieldWritten(className, field.name)
           traverse(rhs)
 
         // In all other cases, we'll have to call super.traverse()
         case _ =>
           tree match {
-            case New(ClassRef(cls), ctor, _) =>
-              builder.addInstantiatedClass(cls, ctor.name)
+            case New(className, ctor, _) =>
+              builder.addInstantiatedClass(className, ctor.name)
 
-            case Select(_, ClassRef(cls), _) =>
-              builder.addReferencedClass(cls)
-            case SelectStatic(ClassRef(cls), field) =>
-              builder.addStaticFieldRead(cls, field.name)
+            case Select(_, className, _) =>
+              builder.addReferencedClass(className)
+            case SelectStatic(className, field) =>
+              builder.addStaticFieldRead(className, field.name)
 
             case Apply(flags, receiver, method, _) =>
               builder.addMethodCalled(receiver.tpe, method.name)
-            case ApplyStatically(flags, _, ClassRef(cls), method, _) =>
+            case ApplyStatically(flags, _, className, method, _) =>
               val namespace = MemberNamespace.forNonStaticCall(flags)
-              builder.addMethodCalledStatically(cls,
+              builder.addMethodCalledStatically(className,
                   NamespacedEncodedName(namespace, method.name))
-            case ApplyStatic(flags, ClassRef(cls), method, _) =>
+            case ApplyStatic(flags, className, method, _) =>
               val namespace = MemberNamespace.forStaticCall(flags)
-              builder.addMethodCalledStatically(cls,
+              builder.addMethodCalledStatically(className,
                   NamespacedEncodedName(namespace, method.name))
 
-            case LoadModule(ClassRef(cls)) =>
-              builder.addAccessedModule(cls)
+            case LoadModule(className) =>
+              builder.addAccessedModule(className)
 
             case IsInstanceOf(_, testType) =>
               builder.maybeAddUsedInstanceTest(testType)
@@ -579,17 +579,17 @@ object Infos {
             case ClassOf(cls) =>
               builder.maybeAddAccessedClassData(cls)
 
-            case JSPrivateSelect(qualifier, cls, field) =>
-              builder.addPrivateJSFieldUsed(cls.className, field.name)
+            case JSPrivateSelect(qualifier, className, field) =>
+              builder.addPrivateJSFieldUsed(className, field.name)
 
-            case LoadJSConstructor(cls) =>
-              builder.addInstantiatedClass(cls.className)
+            case LoadJSConstructor(className) =>
+              builder.addInstantiatedClass(className)
 
-            case LoadJSModule(ClassRef(cls)) =>
-              builder.addAccessedModule(cls)
+            case LoadJSModule(className) =>
+              builder.addAccessedModule(className)
 
-            case CreateJSClass(cls, _) =>
-              builder.addInstantiatedClass(cls.className)
+            case CreateJSClass(className, _) =>
+              builder.addInstantiatedClass(className)
 
             case Transient(CallHelper(_, args)) =>
               // This should only happen when called from the Refiner

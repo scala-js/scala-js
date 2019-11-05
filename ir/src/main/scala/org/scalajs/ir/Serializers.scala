@@ -308,26 +308,26 @@ object Serializers {
         case Debugger() =>
           writeByte(TagDebugger)
 
-        case New(cls, ctor, args) =>
+        case New(className, ctor, args) =>
           writeByte(TagNew)
-          writeClassRef(cls); writeMethodIdent(ctor); writeTrees(args)
+          writeName(className); writeMethodIdent(ctor); writeTrees(args)
 
-        case LoadModule(cls) =>
+        case LoadModule(className) =>
           writeByte(TagLoadModule)
-          writeClassRef(cls)
+          writeName(className)
 
-        case StoreModule(cls, value) =>
+        case StoreModule(className, value) =>
           writeByte(TagStoreModule)
-          writeClassRef(cls); writeTree(value)
+          writeName(className); writeTree(value)
 
-        case Select(qualifier, cls, field) =>
+        case Select(qualifier, className, field) =>
           writeByte(TagSelect)
-          writeTree(qualifier); writeClassRef(cls); writeFieldIdent(field)
+          writeTree(qualifier); writeName(className); writeFieldIdent(field)
           writeType(tree.tpe)
 
-        case SelectStatic(cls, field) =>
+        case SelectStatic(className, field) =>
           writeByte(TagSelectStatic)
-          writeClassRef(cls); writeFieldIdent(field)
+          writeName(className); writeFieldIdent(field)
           writeType(tree.tpe)
 
         case Apply(flags, receiver, method, args) =>
@@ -335,14 +335,14 @@ object Serializers {
           writeApplyFlags(flags); writeTree(receiver); writeMethodIdent(method); writeTrees(args)
           writeType(tree.tpe)
 
-        case ApplyStatically(flags, receiver, cls, method, args) =>
+        case ApplyStatically(flags, receiver, className, method, args) =>
           writeByte(TagApplyStatically)
-          writeApplyFlags(flags); writeTree(receiver); writeClassRef(cls); writeMethodIdent(method); writeTrees(args)
+          writeApplyFlags(flags); writeTree(receiver); writeName(className); writeMethodIdent(method); writeTrees(args)
           writeType(tree.tpe)
 
-        case ApplyStatic(flags, cls, method, args) =>
+        case ApplyStatic(flags, className, method, args) =>
           writeByte(TagApplyStatic)
-          writeApplyFlags(flags); writeClassRef(cls); writeMethodIdent(method); writeTrees(args)
+          writeApplyFlags(flags); writeName(className); writeMethodIdent(method); writeTrees(args)
           writeType(tree.tpe)
 
         case UnaryOp(op, lhs) =>
@@ -395,9 +395,9 @@ object Serializers {
           writeByte(TagJSNew)
           writeTree(ctor); writeTreeOrJSSpreads(args)
 
-        case JSPrivateSelect(qualifier, cls, field) =>
+        case JSPrivateSelect(qualifier, className, field) =>
           writeByte(TagJSPrivateSelect)
-          writeTree(qualifier); writeClassRef(cls); writeFieldIdent(field)
+          writeTree(qualifier); writeName(className); writeFieldIdent(field)
 
         case JSSelect(qualifier, item) =>
           writeByte(TagJSSelect)
@@ -427,13 +427,13 @@ object Serializers {
           writeByte(TagJSImportCall)
           writeTree(arg)
 
-        case LoadJSConstructor(cls) =>
+        case LoadJSConstructor(className) =>
           writeByte(TagLoadJSConstructor)
-          writeClassRef(cls)
+          writeName(className)
 
-        case LoadJSModule(cls) =>
+        case LoadJSModule(className) =>
           writeByte(TagLoadJSModule)
-          writeClassRef(cls)
+          writeName(className)
 
         case JSDelete(qualifier, item) =>
           writeByte(TagJSDelete)
@@ -533,9 +533,9 @@ object Serializers {
           writeTree(body)
           writeTrees(captureValues)
 
-        case CreateJSClass(cls, captureValues) =>
+        case CreateJSClass(className, captureValues) =>
           writeByte(TagCreateJSClass)
-          writeClassRef(cls)
+          writeName(className)
           writeTrees(captureValues)
 
         case Transient(value) =>
@@ -802,16 +802,13 @@ object Serializers {
           case NullType    => buffer.writeByte(TagNullRef)
           case NothingType => buffer.writeByte(TagNothingRef)
         }
-      case typeRef: ClassRef =>
+      case ClassRef(className) =>
         buffer.writeByte(TagClassRef)
-        writeClassRef(typeRef)
+        writeName(className)
       case typeRef: ArrayTypeRef =>
         buffer.writeByte(TagArrayTypeRef)
         writeArrayTypeRef(typeRef)
     }
-
-    def writeClassRef(cls: ClassRef): Unit =
-      writeName(cls.className)
 
     def writeArrayTypeRef(typeRef: ArrayTypeRef): Unit = {
       writeTypeRef(typeRef.base)
@@ -1043,20 +1040,20 @@ object Serializers {
           }, readTree())(readType())
         case TagDebugger => Debugger()
 
-        case TagNew          => New(readClassRef(), readMethodIdent(), readTrees())
-        case TagLoadModule   => LoadModule(readClassRef())
-        case TagStoreModule  => StoreModule(readClassRef(), readTree())
-        case TagSelect       => Select(readTree(), readClassRef(), readFieldIdent())(readType())
-        case TagSelectStatic => SelectStatic(readClassRef(), readFieldIdent())(readType())
+        case TagNew          => New(readClassName(), readMethodIdent(), readTrees())
+        case TagLoadModule   => LoadModule(readClassName())
+        case TagStoreModule  => StoreModule(readClassName(), readTree())
+        case TagSelect       => Select(readTree(), readClassName(), readFieldIdent())(readType())
+        case TagSelectStatic => SelectStatic(readClassName(), readFieldIdent())(readType())
 
         case TagApply =>
           Apply(readApplyFlags(), readTree(), readMethodIdent(), readTrees())(
               readType())
         case TagApplyStatically =>
-          ApplyStatically(readApplyFlags(), readTree(), readClassRef(),
+          ApplyStatically(readApplyFlags(), readTree(), readClassName(),
               readMethodIdent(), readTrees())(readType())
         case TagApplyStatic =>
-          ApplyStatic(readApplyFlags(), readClassRef(), readMethodIdent(),
+          ApplyStatic(readApplyFlags(), readClassName(), readMethodIdent(),
               readTrees())(readType())
 
         case TagUnaryOp      => UnaryOp(readByte(), readTree())
@@ -1071,7 +1068,7 @@ object Serializers {
         case TagGetClass     => GetClass(readTree())
 
         case TagJSNew                => JSNew(readTree(), readTreeOrJSSpreads())
-        case TagJSPrivateSelect      => JSPrivateSelect(readTree(), readClassRef(), readFieldIdent())
+        case TagJSPrivateSelect      => JSPrivateSelect(readTree(), readClassName(), readFieldIdent())
         case TagJSSelect             => JSSelect(readTree(), readTree())
         case TagJSFunctionApply      => JSFunctionApply(readTree(), readTreeOrJSSpreads())
         case TagJSMethodApply        => JSMethodApply(readTree(), readTree(), readTreeOrJSSpreads())
@@ -1080,8 +1077,8 @@ object Serializers {
           JSSuperMethodCall(readTree(), readTree(), readTree(), readTreeOrJSSpreads())
         case TagJSSuperConstructorCall => JSSuperConstructorCall(readTreeOrJSSpreads())
         case TagJSImportCall         => JSImportCall(readTree())
-        case TagLoadJSConstructor    => LoadJSConstructor(readClassRef())
-        case TagLoadJSModule         => LoadJSModule(readClassRef())
+        case TagLoadJSConstructor    => LoadJSConstructor(readClassName())
+        case TagLoadJSModule         => LoadJSModule(readClassName())
         case TagJSDelete             => JSDelete(readTree(), readTree())
         case TagJSUnaryOp            => JSUnaryOp(readInt(), readTree())
         case TagJSBinaryOp           => JSBinaryOp(readInt(), readTree(), readTree())
@@ -1113,7 +1110,7 @@ object Serializers {
           Closure(readBoolean(), readParamDefs(), readParamDefs(), readTree(),
               readTrees())
         case TagCreateJSClass =>
-          CreateJSClass(readClassRef(), readTrees())
+          CreateJSClass(readClassName(), readTrees())
       }
       if (UseDebugMagic) {
         val magic = readInt()
@@ -1303,13 +1300,10 @@ object Serializers {
         case TagDoubleRef    => DoubleRef
         case TagNullRef      => NullRef
         case TagNothingRef   => NothingRef
-        case TagClassRef     => readClassRef()
+        case TagClassRef     => ClassRef(readClassName())
         case TagArrayTypeRef => readArrayTypeRef()
       }
     }
-
-    def readClassRef(): ClassRef =
-      ClassRef(readClassName())
 
     def readArrayTypeRef(): ArrayTypeRef =
       ArrayTypeRef(readTypeRef().asInstanceOf[NonArrayTypeRef], readInt())

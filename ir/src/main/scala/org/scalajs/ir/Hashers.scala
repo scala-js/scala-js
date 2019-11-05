@@ -209,31 +209,31 @@ object Hashers {
         case Debugger() =>
           mixTag(TagDebugger)
 
-        case New(cls, ctor, args) =>
+        case New(className, ctor, args) =>
           mixTag(TagNew)
-          mixClassRef(cls)
+          mixName(className)
           mixMethodIdent(ctor)
           mixTrees(args)
 
-        case LoadModule(cls) =>
+        case LoadModule(className) =>
           mixTag(TagLoadModule)
-          mixClassRef(cls)
+          mixName(className)
 
-        case StoreModule(cls, value) =>
+        case StoreModule(className, value) =>
           mixTag(TagStoreModule)
-          mixClassRef(cls)
+          mixName(className)
           mixTree(value)
 
-        case Select(qualifier, cls, field) =>
+        case Select(qualifier, className, field) =>
           mixTag(TagSelect)
           mixTree(qualifier)
-          mixClassRef(cls)
+          mixName(className)
           mixFieldIdent(field)
           mixType(tree.tpe)
 
-        case SelectStatic(cls, field) =>
+        case SelectStatic(className, field) =>
           mixTag(TagSelectStatic)
-          mixClassRef(cls)
+          mixName(className)
           mixFieldIdent(field)
           mixType(tree.tpe)
 
@@ -245,19 +245,19 @@ object Hashers {
           mixTrees(args)
           mixType(tree.tpe)
 
-        case ApplyStatically(flags, receiver, cls, method, args) =>
+        case ApplyStatically(flags, receiver, className, method, args) =>
           mixTag(TagApplyStatically)
           mixInt(ApplyFlags.toBits(flags))
           mixTree(receiver)
-          mixClassRef(cls)
+          mixName(className)
           mixMethodIdent(method)
           mixTrees(args)
           mixType(tree.tpe)
 
-        case ApplyStatic(flags, cls, method, args) =>
+        case ApplyStatic(flags, className, method, args) =>
           mixTag(TagApplyStatic)
           mixInt(ApplyFlags.toBits(flags))
-          mixClassRef(cls)
+          mixName(className)
           mixMethodIdent(method)
           mixTrees(args)
           mixType(tree.tpe)
@@ -323,10 +323,10 @@ object Hashers {
           mixTree(ctor)
           mixTreeOrJSSpreads(args)
 
-        case JSPrivateSelect(qualifier, cls, field) =>
+        case JSPrivateSelect(qualifier, className, field) =>
           mixTag(TagJSPrivateSelect)
           mixTree(qualifier)
-          mixClassRef(cls)
+          mixName(className)
           mixFieldIdent(field)
 
         case JSSelect(qualifier, item) =>
@@ -366,13 +366,13 @@ object Hashers {
           mixTag(TagJSImportCall)
           mixTree(arg)
 
-        case LoadJSConstructor(cls) =>
+        case LoadJSConstructor(className) =>
           mixTag(TagLoadJSConstructor)
-          mixClassRef(cls)
+          mixName(className)
 
-        case LoadJSModule(cls) =>
+        case LoadJSModule(className) =>
           mixTag(TagLoadJSModule)
-          mixClassRef(cls)
+          mixName(className)
 
         case JSDelete(qualifier, item) =>
           mixTag(TagJSDelete)
@@ -454,9 +454,9 @@ object Hashers {
           mixTag(TagStringLiteral)
           mixString(value)
 
-        case ClassOf(cls) =>
+        case ClassOf(typeRef) =>
           mixTag(TagClassOf)
-          mixTypeRef(cls)
+          mixTypeRef(typeRef)
 
         case VarRef(ident) =>
           mixTag(TagVarRef)
@@ -475,9 +475,9 @@ object Hashers {
           mixTree(body)
           mixTrees(captureValues)
 
-        case CreateJSClass(cls, captureValues) =>
+        case CreateJSClass(className, captureValues) =>
           mixTag(TagCreateJSClass)
-          mixClassRef(cls)
+          mixName(className)
           mixTrees(captureValues)
 
         case Transient(value) =>
@@ -521,16 +521,13 @@ object Hashers {
           case NullType    => mixTag(TagNullRef)
           case NothingType => mixTag(TagNothingRef)
         }
-      case typeRef: ClassRef =>
+      case ClassRef(className) =>
         mixTag(TagClassRef)
-        mixClassRef(typeRef)
+        mixName(className)
       case typeRef: ArrayTypeRef =>
         mixTag(TagArrayTypeRef)
         mixArrayTypeRef(typeRef)
     }
-
-    def mixClassRef(classRef: ClassRef): Unit =
-      mixName(classRef.className)
 
     def mixArrayTypeRef(arrayTypeRef: ArrayTypeRef): Unit = {
       mixTypeRef(arrayTypeRef.base)

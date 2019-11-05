@@ -74,7 +74,7 @@ object TestIRBuilder {
     MethodDef(flags, MethodIdent(NoArgConstructorName), Nil, NoType,
         Some(ApplyStatically(EAF.withConstructor(true),
             This()(ClassType(enclosingClassName)),
-            ClassRef(ObjectClass), MethodIdent(NoArgConstructorName),
+            ObjectClass, MethodIdent(NoArgConstructorName),
             Nil)(NoType)))(
         EOH, None)
   }

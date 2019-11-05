@@ -51,7 +51,7 @@ class OptimizerTest {
     val intArrayTypeRef = ArrayTypeRef(IntRef, 1)
     val intArrayType = ArrayType(intArrayTypeRef)
     val anArrayOfInts = ArrayValue(intArrayTypeRef, List(IntLiteral(1)))
-    val newFoo = New(ClassRef("Foo"), NoArgConstructorName, Nil)
+    val newFoo = New("Foo", NoArgConstructorName, Nil)
 
     val reachCloneMethodName = m("reachClone", Nil, O)
     val anArrayMethodName = m("anArray", Nil, intArrayTypeRef)
@@ -109,7 +109,7 @@ class OptimizerTest {
         case Apply(_, receiver, MethodIdent(`witnessMethodName`, _), _) =>
           receiver.tpe == ClassType("Foo")
       }.hasNot("any reference to ObjectClone") {
-        case LoadModule(ClassRef(ObjectCloneClass)) => true
+        case LoadModule(ObjectCloneClass) => true
       }.hasExactly(3, "calls to clone()") {
         case Apply(_, _, MethodIdent(`cloneMethodName`, _), _) => true
       }
@@ -146,7 +146,7 @@ class OptimizerTest {
           Block(
               Apply(EAF, This()(ClassType("Foo")), witnessMethodName, Nil)(AnyType),
               ApplyStatically(EAF, This()(ClassType("Foo")),
-                  ClassRef(ObjectClass), cloneMethodName, Nil)(AnyType)
+                  ObjectClass, cloneMethodName, Nil)(AnyType)
           )
         })(EOH.withInline(true), None)
     ))

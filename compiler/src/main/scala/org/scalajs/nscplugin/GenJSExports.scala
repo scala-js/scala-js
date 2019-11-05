@@ -670,7 +670,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         if (isNestedJSClass(superClassSym)) {
           js.VarRef(js.LocalIdent(JSSuperClassParamName))(jstpe.AnyType)
         } else {
-          js.LoadJSConstructor(encodeClassRef(superClassSym))
+          js.LoadJSConstructor(encodeClassName(superClassSym))
         }
       }
 

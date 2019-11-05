@@ -86,25 +86,25 @@ object Transformers {
 
         // Scala expressions
 
-        case New(cls, ctor, args) =>
-          New(cls, ctor, args map transformExpr)
+        case New(className, ctor, args) =>
+          New(className, ctor, args map transformExpr)
 
-        case StoreModule(cls, value) =>
-          StoreModule(cls, transformExpr(value))
+        case StoreModule(className, value) =>
+          StoreModule(className, transformExpr(value))
 
-        case Select(qualifier, cls, field) =>
-          Select(transformExpr(qualifier), cls, field)(tree.tpe)
+        case Select(qualifier, className, field) =>
+          Select(transformExpr(qualifier), className, field)(tree.tpe)
 
         case Apply(flags, receiver, method, args) =>
           Apply(flags, transformExpr(receiver), method,
               args map transformExpr)(tree.tpe)
 
-        case ApplyStatically(flags, receiver, cls, method, args) =>
-          ApplyStatically(flags, transformExpr(receiver), cls, method,
+        case ApplyStatically(flags, receiver, className, method, args) =>
+          ApplyStatically(flags, transformExpr(receiver), className, method,
               args map transformExpr)(tree.tpe)
 
-        case ApplyStatic(flags, cls, method, args) =>
-          ApplyStatic(flags, cls, method, args map transformExpr)(tree.tpe)
+        case ApplyStatic(flags, className, method, args) =>
+          ApplyStatic(flags, className, method, args map transformExpr)(tree.tpe)
 
         case UnaryOp(op, lhs) =>
           UnaryOp(op, transformExpr(lhs))
@@ -144,8 +144,8 @@ object Transformers {
         case JSNew(ctor, args) =>
           JSNew(transformExpr(ctor), args.map(transformExprOrJSSpread))
 
-        case JSPrivateSelect(qualifier, cls, field) =>
-          JSPrivateSelect(transformExpr(qualifier), cls, field)
+        case JSPrivateSelect(qualifier, className, field) =>
+          JSPrivateSelect(transformExpr(qualifier), className, field)
 
         case JSSelect(qualifier, item) =>
           JSSelect(transformExpr(qualifier), transformExpr(item))
@@ -197,8 +197,8 @@ object Transformers {
           Closure(arrow, captureParams, params, transformExpr(body),
               captureValues.map(transformExpr))
 
-        case CreateJSClass(cls, captureValues) =>
-          CreateJSClass(cls, captureValues.map(transformExpr))
+        case CreateJSClass(className, captureValues) =>
+          CreateJSClass(className, captureValues.map(transformExpr))
 
         // Trees that need not be transformed
 

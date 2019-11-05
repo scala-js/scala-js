@@ -357,7 +357,7 @@ class AnalyzerTest {
 
   @Test
   def juPropertiesNotReachableWhenUsingGetSetClearProperty(): AsyncResult = await {
-    val systemMod = LoadModule(ClassRef("java.lang.System$"))
+    val systemMod = LoadModule("java.lang.System$")
     val emptyStr = StringLiteral("")
     val StringType = ClassType(BoxedStringClass)
 

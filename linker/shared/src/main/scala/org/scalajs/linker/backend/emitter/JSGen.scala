@@ -267,19 +267,14 @@ private[emitter] final class JSGen(val semantics: Semantics,
       VarDef(name, rhs = None)
   }
 
-  def genSelect(receiver: Tree, cls: ClassRef, field: irt.FieldIdent)(
+  def genSelect(receiver: Tree, className: ClassName, field: irt.FieldIdent)(
       implicit pos: Position): Tree = {
-    genSelect(receiver, cls.className, field)
+    DotSelect(receiver, genFieldIdent(className, field)(field.pos))
   }
 
-  def genSelect(receiver: Tree, cls: ClassName, field: irt.FieldIdent)(
-      implicit pos: Position): Tree = {
-    DotSelect(receiver, genFieldIdent(cls, field)(field.pos))
-  }
-
-  private def genFieldIdent(cls: ClassName, field: irt.FieldIdent)(
+  private def genFieldIdent(className: ClassName, field: irt.FieldIdent)(
       implicit pos: Position): Ident = {
-    Ident(genName(cls) + "__f_" + genName(field.name), field.originalName)
+    Ident(genName(className) + "__f_" + genName(field.name), field.originalName)
   }
 
   def genSelectStatic(className: ClassName, item: irt.FieldIdent)(

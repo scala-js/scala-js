@@ -52,6 +52,8 @@ class PrintersTest {
   // String -> Name conversions
   private implicit def string2fieldName(name: String): FieldName =
     FieldName(name)
+  private implicit def string2className(name: String): ClassName =
+    ClassName(name)
 
   // String -> Ident conversions
   private implicit def string2localIdent(name: String): LocalIdent =
@@ -64,16 +66,16 @@ class PrintersTest {
     ClassIdent(ClassName(name))
 
   // String -> Type and TypeRef conversions
-  private implicit def string2classType(cls: String): ClassType =
-    ClassType(ClassName(cls))
-  private implicit def string2classRef(cls: String): ClassRef =
-    ClassRef(ClassName(cls))
+  private implicit def string2classType(className: String): ClassType =
+    ClassType(ClassName(className))
+  private implicit def string2classRef(className: String): ClassRef =
+    ClassRef(ClassName(className))
 
   // Name -> Ident conversions
   private implicit def methodName2methodIdent(name: MethodName): MethodIdent =
     MethodIdent(name)
-  private implicit def className2classRef(cls: ClassName): ClassRef =
-    ClassRef(cls)
+  private implicit def className2classRef(className: ClassName): ClassRef =
+    ClassRef(className)
   private implicit def className2classIdent(name: ClassName): ClassIdent =
     ClassIdent(name)
 

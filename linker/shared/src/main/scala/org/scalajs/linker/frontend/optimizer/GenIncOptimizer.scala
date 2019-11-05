@@ -629,21 +629,21 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
         case Assign(Select(This(), _, _), rhs) => isTriviallySideEffectFree(rhs)
 
         // Mixin constructor, 2.11
-        case ApplyStatic(flags, ClassRef(cls), methodName, List(This()))
+        case ApplyStatic(flags, className, methodName, List(This()))
             if !flags.isPrivate =>
           val container =
-            CollOps.forceGet(staticLikes, cls)(MemberNamespace.PublicStatic.ordinal)
+            CollOps.forceGet(staticLikes, className)(MemberNamespace.PublicStatic.ordinal)
           container.methods(methodName.name).originalDef.body.exists {
             case Skip() => true
             case _      => false
           }
 
         // Mixin constructor, 2.12+
-        case ApplyStatically(flags, This(), ClassRef(cls), methodName, Nil)
-            if !flags.isPrivate && !classes.contains(cls) =>
-          // Since cls is not in classes, it must be a default method call.
+        case ApplyStatically(flags, This(), className, methodName, Nil)
+            if !flags.isPrivate && !classes.contains(className) =>
+          // Since className is not in classes, it must be a default method call.
           val container =
-            CollOps.forceGet(staticLikes, cls)(MemberNamespace.Public.ordinal)
+            CollOps.forceGet(staticLikes, className)(MemberNamespace.Public.ordinal)
           container.methods.get(methodName.name) exists { methodDef =>
             methodDef.originalDef.body exists {
               case Skip() => true
@@ -652,12 +652,12 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
           }
 
         // Delegation to another constructor (super or in the same class)
-        case ApplyStatically(flags, This(), ClassRef(cls), methodName, args)
+        case ApplyStatically(flags, This(), className, methodName, args)
             if flags.isConstructor =>
           val namespace = MemberNamespace.Constructor.ordinal
           args.forall(isTriviallySideEffectFree) && {
             CollOps
-              .forceGet(staticLikes, cls)(namespace)
+              .forceGet(staticLikes, className)(namespace)
               .methods
               .get(methodName.name)
               .exists(isElidableModuleConstructor)

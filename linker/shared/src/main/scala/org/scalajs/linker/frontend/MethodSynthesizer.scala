@@ -97,7 +97,7 @@ private[frontend] final class MethodSynthesizer(
       val currentClassType = ClassType(classInfo.encodedName)
 
       val body = ApplyStatically(
-          ApplyFlags.empty, This()(currentClassType), ClassRef(targetInterface),
+          ApplyFlags.empty, This()(currentClassType), targetInterface,
           targetIdent, params.map(_.ref))(targetMDef.resultType)
 
       MethodDef(MemberFlags.empty, bridgeIdent, params, targetMDef.resultType,

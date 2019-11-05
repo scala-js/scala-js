@@ -50,8 +50,8 @@ trait TypeConversions[G <: Global with Singleton] extends SubComponent {
         LongClass    -> Types.LongRef,
         FloatClass   -> Types.FloatRef,
         DoubleClass  -> Types.DoubleRef,
-        NothingClass -> Types.ClassRef(encodeClassFullName(RuntimeNothingClass)),
-        NullClass    -> Types.ClassRef(encodeClassFullName(RuntimeNullClass))
+        NothingClass -> Types.ClassRef(encodeClassName(RuntimeNothingClass)),
+        NullClass    -> Types.ClassRef(encodeClassName(RuntimeNullClass))
     )
   }
 
@@ -72,7 +72,7 @@ trait TypeConversions[G <: Global with Singleton] extends SubComponent {
   }
 
   private def makeNonArrayTypeRef(sym: Symbol): Types.NonArrayTypeRef =
-    primitiveRefMap.getOrElse(sym, Types.ClassRef(encodeClassFullName(sym)))
+    primitiveRefMap.getOrElse(sym, Types.ClassRef(encodeClassName(sym)))
 
   private def makeArrayTypeRef(base: Symbol, depth: Int): Types.ArrayTypeRef =
     Types.ArrayTypeRef(makeNonArrayTypeRef(base), depth)

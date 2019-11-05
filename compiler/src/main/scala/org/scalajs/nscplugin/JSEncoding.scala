@@ -258,22 +258,19 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     else {
       assert(sym != definitions.ArrayClass,
           "encodeClassType() cannot be called with ArrayClass")
-      jstpe.ClassType(encodeClassFullName(sym))
+      jstpe.ClassType(encodeClassName(sym))
     }
   }
 
-  def encodeClassRef(sym: Symbol): jstpe.ClassRef =
-    jstpe.ClassRef(encodeClassFullName(sym))
-
-  def encodeClassFullNameIdent(sym: Symbol)(implicit pos: Position): js.ClassIdent =
-    js.ClassIdent(encodeClassFullName(sym), Some(sym.fullName))
+  def encodeClassNameIdent(sym: Symbol)(implicit pos: Position): js.ClassIdent =
+    js.ClassIdent(encodeClassName(sym), Some(sym.fullName))
 
   private val BoxedStringModuleClassName = ClassName("java.lang.String$")
   private val BoxedVoidModuleClassName = ClassName("java.lang.Void$")
 
-  def encodeClassFullName(sym: Symbol): ClassName = {
+  def encodeClassName(sym: Symbol): ClassName = {
     assert(!sym.isPrimitiveValueClass,
-        s"Illegal encodeClassFullName(${sym.fullName}")
+        s"Illegal encodeClassName(${sym.fullName}")
     if (sym == jsDefinitions.HackedStringClass) {
       ir.Names.BoxedStringClass
     } else if (sym == jsDefinitions.HackedStringModClass) {
