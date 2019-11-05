@@ -39,20 +39,6 @@ trait Analysis {
 
 object Analysis {
 
-  private val PrimRefDisplayNames: Map[PrimRef, String] = Map(
-      VoidRef -> "void",
-      BooleanRef -> "boolean",
-      CharRef -> "char",
-      ByteRef -> "byte",
-      ShortRef -> "short",
-      IntRef -> "int",
-      LongRef -> "long",
-      FloatRef -> "float",
-      DoubleRef -> "double",
-      NullRef -> "null",
-      NothingRef -> "nothing"
-  )
-
   /** Class node in a reachability graph produced by the [[Analyzer]].
    *
    *  Warning: this trait is not meant to be extended by third-party libraries
@@ -102,17 +88,7 @@ object Analysis {
     def nonExistent: Boolean
     def syntheticKind: MethodSyntheticKind
 
-    def displayName: String = {
-      def typeRefDisplayName(tpe: TypeRef): String = tpe match {
-        case primRef: PrimRef               => PrimRefDisplayNames(primRef)
-        case ClassRef(encodedName)          => encodedName.nameString
-        case ArrayTypeRef(base, dimensions) => "[" * dimensions + typeRefDisplayName(base)
-      }
-
-      encodedName.simpleName.nameString + "(" +
-      encodedName.paramTypeRefs.map(typeRefDisplayName).mkString(",") + ")" +
-      encodedName.resultTypeRef.fold("")(typeRefDisplayName)
-    }
+    def displayName: String = encodedName.displayName
 
     def fullDisplayName: String =
       this.namespace.prefixString + owner.displayName + "." + displayName
