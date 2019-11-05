@@ -26,7 +26,7 @@ import org.scalajs.linker.analyzer._
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
 import org.scalajs.ir
-import org.scalajs.ir.Definitions.ClassName
+import org.scalajs.ir.Names.ClassName
 import org.scalajs.ir.Trees.{ClassDef, MethodDef}
 import org.scalajs.ir.Hashers
 

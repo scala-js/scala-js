@@ -34,7 +34,7 @@ import org.scalajs.linker.interface.unstable.IRFileImpl
 
 import org.scalajs.jsenv._
 
-import org.scalajs.ir.{Definitions, IRVersionNotSupportedException}
+import org.scalajs.ir.IRVersionNotSupportedException
 import org.scalajs.ir.Printers.IRTreePrinter
 
 import org.scalajs.testing.adapter.{TestAdapter, HTMLRunnerBuilder, TestAdapterInitializer}

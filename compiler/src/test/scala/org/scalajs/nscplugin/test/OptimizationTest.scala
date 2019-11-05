@@ -17,7 +17,7 @@ import util._
 import org.junit.Test
 
 import org.scalajs.ir.{Trees => js, Types => jstpe}
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Names._
 
 class OptimizationTest extends JSASTTest {
   import OptimizationTest._

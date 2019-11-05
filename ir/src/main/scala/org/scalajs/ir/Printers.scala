@@ -19,7 +19,7 @@ import scala.Predef.{print => _, println => _, _}
 
 import java.io.Writer
 
-import Definitions._
+import Names._
 import Position._
 import Trees._
 import Types._

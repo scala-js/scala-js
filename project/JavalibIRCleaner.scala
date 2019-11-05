@@ -2,7 +2,7 @@ package build
 
 import org.scalajs.ir._
 import org.scalajs.ir.ClassKind
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 

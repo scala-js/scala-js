@@ -19,7 +19,7 @@ import scala.collection.parallel._
 
 import java.util.concurrent.atomic._
 
-import org.scalajs.ir.Definitions.{ClassName, MethodName}
+import org.scalajs.ir.Names.{ClassName, MethodName}
 import org.scalajs.ir.Trees.MemberNamespace
 
 import org.scalajs.linker.standard._

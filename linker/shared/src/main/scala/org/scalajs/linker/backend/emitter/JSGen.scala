@@ -18,16 +18,15 @@ import scala.annotation.tailrec
 
 import scala.collection.mutable
 
-import org.scalajs.ir
-import ir._
-import ir.Definitions._
-import ir.Types._
-import ir.{Trees => irt}
+import org.scalajs.ir._
+import org.scalajs.ir.Names._
+import org.scalajs.ir.Types._
+import org.scalajs.ir.{Trees => irt}
 
 import org.scalajs.linker.interface._
 import org.scalajs.linker.backend.javascript.Trees._
 
-import EmitterDefinitions._
+import EmitterNames._
 
 /** Collection of tree generators that are used accross the board.
  *  This class is fully stateless.

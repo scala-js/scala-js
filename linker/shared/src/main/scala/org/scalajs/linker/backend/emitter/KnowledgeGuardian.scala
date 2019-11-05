@@ -14,8 +14,8 @@ package org.scalajs.linker.backend.emitter
 
 import scala.collection.mutable
 
-import org.scalajs.ir.{ClassKind, Definitions}
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.ClassKind
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types.Type
 
@@ -23,7 +23,7 @@ import org.scalajs.linker.interface.ModuleKind
 import org.scalajs.linker.standard._
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
-import EmitterDefinitions._
+import EmitterNames._
 
 private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
   import KnowledgeGuardian._
@@ -70,7 +70,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
       }
 
       linkedClass.encodedName match {
-        case Definitions.ClassClass =>
+        case ClassClass =>
           newIsParentDataAccessed = methodExists(getSuperclassMethodName)
         case _ =>
       }

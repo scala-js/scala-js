@@ -17,7 +17,7 @@ import scala.language.implicitConversions
 import org.junit.Test
 import org.junit.Assert._
 
-import Definitions._
+import Names._
 import Printers._
 import Trees._
 import Types._

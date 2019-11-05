@@ -19,7 +19,7 @@ import scala.concurrent._
 import org.scalajs.linker.analyzer._
 
 import org.scalajs.ir
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 

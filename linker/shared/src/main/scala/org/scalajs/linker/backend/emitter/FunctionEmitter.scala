@@ -16,9 +16,8 @@ import scala.annotation.{switch, tailrec}
 
 import scala.collection.mutable
 
-import org.scalajs.ir
 import org.scalajs.ir._
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Position._
 import org.scalajs.ir.Transformers._
 import org.scalajs.ir.Trees._
@@ -30,7 +29,7 @@ import org.scalajs.linker.backend.javascript.{Trees => js}
 
 import java.io.StringWriter
 
-import EmitterDefinitions._
+import EmitterNames._
 import Transients._
 
 /** Desugaring of the IR to JavaScript functions.
@@ -1969,8 +1968,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           genSelectStatic(cls.className, item)
 
         case Apply(_, receiver, method, args) =>
-          import Definitions._
-
           val methodName = method.name
           val newReceiver = transformExprNoChar(receiver)
           val newArgs = transformTypedArgs(method.name, args)
@@ -2161,7 +2158,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                    * able to do, since it doesn't know how hijacked classes are
                    * encoded.
                    */
-                  env.enclosingClassName.exists(_ == Definitions.ObjectClass)
+                  env.enclosingClassName.exists(_ == ObjectClass)
                 case _ =>
                   false
               }
@@ -2634,17 +2631,17 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
     def typeToBoxedHijackedClass(tpe: Type): ClassName = (tpe: @unchecked) match {
       case ClassType(cls) => cls
-      case AnyType        => Definitions.ObjectClass
-      case UndefType      => Definitions.BoxedUnitClass
-      case BooleanType    => Definitions.BoxedBooleanClass
-      case CharType       => Definitions.BoxedCharacterClass
-      case ByteType       => Definitions.BoxedByteClass
-      case ShortType      => Definitions.BoxedShortClass
-      case IntType        => Definitions.BoxedIntegerClass
-      case LongType       => Definitions.BoxedLongClass
-      case FloatType      => Definitions.BoxedFloatClass
-      case DoubleType     => Definitions.BoxedDoubleClass
-      case StringType     => Definitions.BoxedStringClass
+      case AnyType        => ObjectClass
+      case UndefType      => BoxedUnitClass
+      case BooleanType    => BoxedBooleanClass
+      case CharType       => BoxedCharacterClass
+      case ByteType       => BoxedByteClass
+      case ShortType      => BoxedShortClass
+      case IntType        => BoxedIntegerClass
+      case LongType       => BoxedLongClass
+      case FloatType      => BoxedFloatClass
+      case DoubleType     => BoxedDoubleClass
+      case StringType     => BoxedStringClass
     }
 
     /* Ideally, we should dynamically figure out this set. We should test
@@ -2766,10 +2763,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 }
 
 private object FunctionEmitter {
-  private val MaybeHijackedClasses = {
-    (Definitions.HijackedClasses ++ EmitterDefinitions.AncestorsOfHijackedClasses) -
-    Definitions.ObjectClass
-  }
+  private val MaybeHijackedClasses =
+    (HijackedClasses ++ EmitterNames.AncestorsOfHijackedClasses) - ObjectClass
 
   /** A left hand side that can be pushed into a right hand side tree. */
   sealed abstract class Lhs {

@@ -23,8 +23,8 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 
 import org.scalajs.ir
-import org.scalajs.ir.{ClassKind, Definitions}
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.ClassKind
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees.MemberNamespace
 import org.scalajs.ir.Types.ClassRef
 
@@ -73,7 +73,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     /* Load the java.lang.Object class, and validate it
      * If it is missing or invalid, we're in deep trouble, and cannot continue.
      */
-    inputProvider.loadInfo(Definitions.ObjectClass)(ec) match {
+    inputProvider.loadInfo(ObjectClass)(ec) match {
       case None =>
         _errors += MissingJavaLangObjectClass(fromAnalyzer)
 
@@ -199,7 +199,7 @@ private final class Analyzer(config: CommonPhaseConfig,
   private def reachDataThroughReflection(
       classInfos: scala.collection.Map[ClassName, ClassInfo]): Unit = {
 
-    val classClassInfo = classInfos.get(Definitions.ClassClass)
+    val classClassInfo = classInfos.get(ClassClass)
 
     /* If Class.getSuperclass() is reachable, we can reach the data of all
      * superclasses of classes whose data we can already reach.
@@ -897,7 +897,7 @@ private final class Analyzer(config: CommonPhaseConfig,
           if (isJSClass) {
             superClass.foreach(_.instantiated())
             tryLookupStaticLikeMethod(MemberNamespace.StaticConstructor,
-                Definitions.StaticInitializerName).foreach {
+                StaticInitializerName).foreach {
               staticInit => staticInit.reachStatic()
             }
           }

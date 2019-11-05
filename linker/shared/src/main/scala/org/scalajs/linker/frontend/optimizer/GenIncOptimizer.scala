@@ -19,7 +19,7 @@ import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 
 import org.scalajs.ir._
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
@@ -364,7 +364,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       _encodedName: ClassName)
       extends MethodContainer(_encodedName, MemberNamespace.Public) {
 
-    if (encodedName == Definitions.ObjectClass) {
+    if (encodedName == ObjectClass) {
       assert(superClass.isEmpty)
       assert(objectClass == null)
     } else {

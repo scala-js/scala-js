@@ -22,9 +22,9 @@ import scala.annotation.switch
 import scala.collection.mutable
 
 import org.scalajs.ir._
-import Definitions._
-import Trees._
-import Types._
+import org.scalajs.ir.Names._
+import org.scalajs.ir.Trees._
+import org.scalajs.ir.Types._
 
 import org.scalajs.logging._
 

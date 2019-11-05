@@ -12,10 +12,10 @@
 
 package org.scalajs.linker.backend.emitter
 
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Types._
 
-private[emitter] object EmitterDefinitions {
+private[emitter] object EmitterNames {
   val ArithmeticExceptionClass =
     ClassName("java.lang.ArithmeticException")
 

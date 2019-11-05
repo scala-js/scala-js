@@ -21,7 +21,7 @@ import java.net.URI
 import scala.collection.mutable
 import scala.concurrent._
 
-import Definitions._
+import Names._
 import Position._
 import Trees._
 import Types._

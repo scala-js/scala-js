@@ -16,7 +16,7 @@ import scala.language.implicitConversions
 
 import org.scalajs.ir
 import org.scalajs.ir.ClassKind
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 

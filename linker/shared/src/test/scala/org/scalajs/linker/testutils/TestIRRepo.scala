@@ -15,7 +15,7 @@ package org.scalajs.linker.testutils
 import scala.collection.mutable
 import scala.concurrent._
 
-import org.scalajs.ir.Definitions.ClassName
+import org.scalajs.ir.Names.ClassName
 
 import org.scalajs.linker.StandardImpl
 import org.scalajs.linker.interface.IRFile

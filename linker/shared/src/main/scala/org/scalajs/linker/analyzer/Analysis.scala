@@ -18,9 +18,8 @@ import scala.collection.mutable
 
 import org.scalajs.logging._
 
-import org.scalajs.ir
 import org.scalajs.ir.ClassKind
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees.MemberNamespace
 import org.scalajs.ir.Types._
 

@@ -20,7 +20,8 @@ import scala.reflect.{ClassTag, classTag}
 import scala.reflect.internal.Flags
 
 import org.scalajs.ir
-import org.scalajs.ir.{Definitions => defs, Trees => js, Types => jstpe}
+import org.scalajs.ir.{Trees => js, Types => jstpe}
+import org.scalajs.ir.Names.LocalName
 import org.scalajs.ir.Trees.OptimizerHints
 
 import org.scalajs.nscplugin.util.ScopedVar
@@ -824,7 +825,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         if (static)
           genLoadModule(sym.owner)
         else if (sym.owner == ObjectClass)
-          js.This()(jstpe.ClassType(ir.Definitions.ObjectClass))
+          js.This()(jstpe.ClassType(ir.Names.ObjectClass))
         else
           js.This()(encodeClassType(sym.owner))
       }
@@ -1051,7 +1052,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         InstanceOfTypeTest(tpe.valueClazz.typeConstructor)
 
       case _ =>
-        import ir.{Definitions => Defs}
+        import org.scalajs.ir.Names
+
         (toIRType(tpe): @unchecked) match {
           case jstpe.AnyType => NoTypeTest
 
@@ -1065,9 +1067,9 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           case jstpe.FloatType   => PrimitiveTypeTest(jstpe.FloatType, 7)
           case jstpe.DoubleType  => PrimitiveTypeTest(jstpe.DoubleType, 8)
 
-          case jstpe.ClassType(Defs.BoxedUnitClass)   => PrimitiveTypeTest(jstpe.UndefType, 0)
-          case jstpe.ClassType(Defs.BoxedStringClass) => PrimitiveTypeTest(jstpe.StringType, 9)
-          case jstpe.ClassType(_)                     => InstanceOfTypeTest(tpe)
+          case jstpe.ClassType(Names.BoxedUnitClass)   => PrimitiveTypeTest(jstpe.UndefType, 0)
+          case jstpe.ClassType(Names.BoxedStringClass) => PrimitiveTypeTest(jstpe.StringType, 9)
+          case jstpe.ClassType(_)                      => InstanceOfTypeTest(tpe)
 
           case jstpe.ArrayType(_) => InstanceOfTypeTest(tpe)
         }
@@ -1105,19 +1107,19 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
   }
 
   private def genFormalArg(index: Int)(implicit pos: Position): js.ParamDef = {
-    js.ParamDef(js.LocalIdent(defs.LocalName("arg$" + index)), jstpe.AnyType,
+    js.ParamDef(js.LocalIdent(LocalName("arg$" + index)), jstpe.AnyType,
         mutable = false, rest = false)
   }
 
   private def genRestFormalArg()(implicit pos: Position): js.ParamDef = {
-    js.ParamDef(js.LocalIdent(defs.LocalName("arg$rest")), jstpe.AnyType,
+    js.ParamDef(js.LocalIdent(LocalName("arg$rest")), jstpe.AnyType,
         mutable = false, rest = true)
   }
 
   private def genFormalArgRef(index: Int, minArgc: Int)(
       implicit pos: Position): js.Tree = {
     if (index <= minArgc)
-      js.VarRef(js.LocalIdent(defs.LocalName("arg$" + index)))(jstpe.AnyType)
+      js.VarRef(js.LocalIdent(LocalName("arg$" + index)))(jstpe.AnyType)
     else
       js.JSSelect(genRestArgRef(), js.IntLiteral(index - 1 - minArgc))
   }
@@ -1135,7 +1137,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
   }
 
   private def genRestArgRef()(implicit pos: Position): js.Tree =
-    js.VarRef(js.LocalIdent(defs.LocalName("arg$rest")))(jstpe.AnyType)
+    js.VarRef(js.LocalIdent(LocalName("arg$rest")))(jstpe.AnyType)
 
   private def hasRepeatedParam(sym: Symbol) = {
     enteringPhase(currentRun.uncurryPhase) {

@@ -7,11 +7,11 @@ package build
 import java.io.ByteArrayOutputStream
 
 import org.scalajs.ir
-import ir._
-import ir.Definitions._
-import ir.Trees._
-import ir.Types._
-import ir.Position.NoPosition
+import org.scalajs.ir._
+import org.scalajs.ir.Names._
+import org.scalajs.ir.Trees._
+import org.scalajs.ir.Types._
+import org.scalajs.ir.Position.NoPosition
 
 /** Hard-coded IR for java.lang.Object.
  *  We cannot so much as begin to fake a compilation of java.lang.Object,

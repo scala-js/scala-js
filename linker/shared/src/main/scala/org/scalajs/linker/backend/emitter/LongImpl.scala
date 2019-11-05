@@ -12,7 +12,7 @@
 
 package org.scalajs.linker.backend.emitter
 
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Types._
 
 private[linker] object LongImpl {

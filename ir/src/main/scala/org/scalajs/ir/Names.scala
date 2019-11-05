@@ -21,7 +21,7 @@ import java.nio.charset.CodingErrorAction
 import java.nio.CharBuffer
 import java.nio.charset.CharacterCodingException
 
-object Definitions {
+object Names {
   type EncodedName = Array[Byte]
 
   private final val ConstructorSimpleEncodedName: EncodedName =

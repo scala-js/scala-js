@@ -16,7 +16,7 @@ import java.security.{MessageDigest, DigestOutputStream}
 import java.io.{OutputStream, DataOutputStream}
 import java.util.Arrays
 
-import Definitions._
+import Names._
 import Trees._
 import Types._
 import Tags._

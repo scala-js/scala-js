@@ -14,7 +14,7 @@ package org.scalajs.ir
 
 import scala.annotation.switch
 
-import Definitions._
+import Names._
 import Position.NoPosition
 import Types._
 
@@ -464,7 +464,7 @@ object Trees {
       extends Tree
 
   case class GetClass(expr: Tree)(implicit val pos: Position) extends Tree {
-    val tpe = ClassType(Definitions.ClassClass)
+    val tpe = ClassType(ClassClass)
   }
 
   // JavaScript expressions
@@ -887,7 +887,7 @@ object Trees {
 
   case class ClassOf(typeRef: TypeRef)(
       implicit val pos: Position) extends Literal {
-    val tpe = ClassType(Definitions.ClassClass)
+    val tpe = ClassType(ClassClass)
   }
 
   // Atomic expressions

@@ -22,7 +22,7 @@ import scala.util.control.{NonFatal, ControlThrowable, TailCalls}
 import scala.util.control.TailCalls.{done => _, _} // done is a too generic term
 
 import org.scalajs.ir._
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
@@ -234,12 +234,12 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   private def isSubtype(lhs: Type, rhs: Type): Boolean = {
     Types.isSubtype(lhs, rhs)(isSubclassFun) || {
       (lhs, rhs) match {
-        case (LongType | ClassType(Definitions.BoxedLongClass),
+        case (LongType | ClassType(BoxedLongClass),
             ClassType(LongImpl.RuntimeLongClass)) =>
           true
 
         case (ClassType(LongImpl.RuntimeLongClass),
-            ClassType(Definitions.BoxedLongClass)) =>
+            ClassType(BoxedLongClass)) =>
           true
 
         case _ =>
@@ -539,7 +539,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
             texpr.tpe match {
               case RefinedType(ClassType(LongImpl.RuntimeLongClass), true, false) =>
-                constant(ClassRef(Definitions.BoxedLongClass))
+                constant(ClassRef(BoxedLongClass))
               case RefinedType(ClassType(className), true, false) =>
                 constant(ClassRef(className))
               case RefinedType(ArrayType(arrayTypeRef), true, false) =>
@@ -1523,25 +1523,25 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
   private def boxedClassForType(tpe: Type): ClassName = (tpe: @unchecked) match {
     case ClassType(cls) =>
-      if (cls == Definitions.BoxedLongClass && useRuntimeLong)
+      if (cls == BoxedLongClass && useRuntimeLong)
         LongImpl.RuntimeLongClass
       else
         cls
 
-    case AnyType      => Definitions.ObjectClass
-    case UndefType    => Definitions.BoxedUnitClass
-    case BooleanType  => Definitions.BoxedBooleanClass
-    case CharType     => Definitions.BoxedCharacterClass
-    case ByteType     => Definitions.BoxedByteClass
-    case ShortType    => Definitions.BoxedShortClass
-    case IntType      => Definitions.BoxedIntegerClass
+    case AnyType      => ObjectClass
+    case UndefType    => BoxedUnitClass
+    case BooleanType  => BoxedBooleanClass
+    case CharType     => BoxedCharacterClass
+    case ByteType     => BoxedByteClass
+    case ShortType    => BoxedShortClass
+    case IntType      => BoxedIntegerClass
     case LongType     =>
       if (useRuntimeLong) LongImpl.RuntimeLongClass
-      else Definitions.BoxedLongClass
-    case FloatType    => Definitions.BoxedFloatClass
-    case DoubleType   => Definitions.BoxedDoubleClass
-    case StringType   => Definitions.BoxedStringClass
-    case ArrayType(_) => Definitions.ObjectClass
+      else BoxedLongClass
+    case FloatType    => BoxedFloatClass
+    case DoubleType   => BoxedDoubleClass
+    case StringType   => BoxedStringClass
+    case ArrayType(_) => ObjectClass
   }
 
   private def pretransformStaticApply(tree: ApplyStatically, isStat: Boolean,
@@ -1962,7 +1962,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
     @inline def contTree(result: Tree) = cont(result.toPreTransform)
 
-    @inline def StringClassType = ClassType(Definitions.BoxedStringClass)
+    @inline def StringClassType = ClassType(BoxedStringClass)
 
     def defaultApply(resultType: Type): TailRec[Tree] =
       contTree(Apply(flags, newReceiver, MethodIdent(methodName), newArgs)(resultType))
@@ -2097,7 +2097,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           case ClassOf(ClassRef(_)) =>
             contTree(Null())
           case receiver =>
-            defaultApply(ClassType(Definitions.ClassClass))
+            defaultApply(ClassType(ClassClass))
         }
 
       // java.lang.reflect.Array
@@ -3069,9 +3069,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           case ByteType | ShortType | IntType =>
             true
           case ClassType(cls) =>
-            cls == Definitions.BoxedByteClass ||
-            cls == Definitions.BoxedShortClass ||
-            cls == Definitions.BoxedIntegerClass
+            cls == BoxedByteClass || cls == BoxedShortClass || cls == BoxedIntegerClass
           case _ =>
             false
         }

@@ -17,7 +17,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 
 import org.scalajs.ir.{ClassKind, Position}
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees.{JSNativeLoadSpec, MemberNamespace}
 
 import org.scalajs.logging._
@@ -27,7 +27,7 @@ import org.scalajs.linker.standard._
 import org.scalajs.linker.backend.javascript.{Trees => js, _}
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
-import EmitterDefinitions._
+import EmitterNames._
 import GlobalRefUtils._
 
 /** Emits a desugared JS tree to a builder */
@@ -144,7 +144,6 @@ final class Emitter private (config: CommonPhaseConfig,
        * makes things work.
        */
 
-      import org.scalajs.ir.Definitions._
       import org.scalajs.ir.Position.NoPosition
       import org.scalajs.ir.Trees.MethodDef
 

@@ -14,13 +14,13 @@ package org.scalajs.ir
 
 import scala.annotation.tailrec
 
-import Definitions.{ClassName, FieldName}
+import Names._
 import Trees._
 
 object Types {
 
   private val AncestorsOfPseudoArrayClass: Set[ClassName] = {
-    Set(Definitions.ObjectClass, ClassName("java.io.Serializable"),
+    Set(Names.ObjectClass, ClassName("java.io.Serializable"),
         ClassName("java.lang.Cloneable"))
   }
 
@@ -261,7 +261,6 @@ object Types {
    */
   def isSubtype(lhs: Type, rhs: Type)(
       isSubclass: (ClassName, ClassName) => Boolean): Boolean = {
-    import Definitions._
 
     (lhs != NoType && rhs != NoType) && {
       (lhs == rhs) ||

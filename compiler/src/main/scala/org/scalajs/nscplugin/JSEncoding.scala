@@ -17,7 +17,8 @@ import scala.collection.mutable
 import scala.tools.nsc._
 
 import org.scalajs.ir
-import org.scalajs.ir.{Definitions => defs, Trees => js, Types => jstpe}
+import org.scalajs.ir.{Trees => js, Types => jstpe}
+import org.scalajs.ir.Names.{LocalName, LabelName, FieldName, SimpleMethodName, MethodName, ClassName}
 
 import org.scalajs.nscplugin.util.{ScopedVar, VarBox}
 import ScopedVar.withScopedVars
@@ -43,20 +44,20 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
    *  local name scope using [[reserveLocalName]]. Otherwise, this name can
    *  clash with another local identifier.
    */
-  final val JSSuperClassParamName = defs.LocalName("superClass$")
+  final val JSSuperClassParamName = LocalName("superClass$")
 
-  private val xLocalName = defs.LocalName("x")
+  private val xLocalName = LocalName("x")
 
-  private val ScalaRuntimeNullClass = defs.ClassName("scala.runtime.Null$")
-  private val ScalaRuntimeNothingClass = defs.ClassName("scala.runtime.Nothing$")
+  private val ScalaRuntimeNullClass = ClassName("scala.runtime.Null$")
+  private val ScalaRuntimeNothingClass = ClassName("scala.runtime.Nothing$")
 
   // Fresh local name generator ----------------------------------------------
 
-  private val usedLocalNames = new ScopedVar[mutable.Set[defs.LocalName]]
-  private val localSymbolNames = new ScopedVar[mutable.Map[Symbol, defs.LocalName]]
-  private val usedLabelNames = new ScopedVar[mutable.Set[defs.LabelName]]
-  private val labelSymbolNames = new ScopedVar[mutable.Map[Symbol, defs.LabelName]]
-  private val returnLabelName = new ScopedVar[VarBox[Option[defs.LabelName]]]
+  private val usedLocalNames = new ScopedVar[mutable.Set[LocalName]]
+  private val localSymbolNames = new ScopedVar[mutable.Map[Symbol, LocalName]]
+  private val usedLabelNames = new ScopedVar[mutable.Set[LabelName]]
+  private val labelSymbolNames = new ScopedVar[mutable.Map[Symbol, LabelName]]
+  private val returnLabelName = new ScopedVar[VarBox[Option[LabelName]]]
 
   def withNewLocalNameScope[A](body: => A): A = {
     withScopedVars(
@@ -68,7 +69,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     )(body)
   }
 
-  def reserveLocalName(name: defs.LocalName): Unit = {
+  def reserveLocalName(name: LocalName): Unit = {
     require(usedLocalNames.isEmpty,
         s"Trying to reserve the name '$name' but names have already been " +
         "allocated")
@@ -90,7 +91,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     }
   }
 
-  private def freshNameGeneric[N <: defs.Name](base: N,
+  private def freshNameGeneric[N <: ir.Names.Name](base: N,
       usedNamesSet: mutable.Set[N])(
       withSuffix: (N, String) => N): N = {
 
@@ -104,24 +105,24 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     result
   }
 
-  private def freshName(base: defs.LocalName): defs.LocalName =
+  private def freshName(base: LocalName): LocalName =
     freshNameGeneric(base, usedLocalNames)(_.withSuffix(_))
 
-  private def freshName(base: String): defs.LocalName =
-    freshName(defs.LocalName(base))
+  private def freshName(base: String): LocalName =
+    freshName(LocalName(base))
 
   def freshLocalIdent()(implicit pos: ir.Position): js.LocalIdent =
     js.LocalIdent(freshName(xLocalName), None)
 
-  def freshLocalIdent(base: defs.LocalName)(implicit pos: ir.Position): js.LocalIdent = {
+  def freshLocalIdent(base: LocalName)(implicit pos: ir.Position): js.LocalIdent = {
     val fresh = freshName(base)
     js.LocalIdent(fresh, if (fresh eq base) None else Some(base.nameString))
   }
 
   def freshLocalIdent(base: String)(implicit pos: ir.Position): js.LocalIdent =
-    freshLocalIdent(defs.LocalName(base))
+    freshLocalIdent(LocalName(base))
 
-  private def localSymbolName(sym: Symbol): defs.LocalName = {
+  private def localSymbolName(sym: Symbol): LocalName = {
     localSymbolNames.getOrElseUpdate(sym, {
       /* The emitter does not like local variables that start with a '$',
        * because it needs to encode them not to clash with emitter-generated
@@ -144,16 +145,16 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     })
   }
 
-  private def freshLabelName(base: defs.LabelName): defs.LabelName =
+  private def freshLabelName(base: LabelName): LabelName =
     freshNameGeneric(base, usedLabelNames)(_.withSuffix(_))
 
-  private def freshLabelName(base: String): defs.LabelName =
-    freshLabelName(defs.LabelName(base))
+  private def freshLabelName(base: String): LabelName =
+    freshLabelName(LabelName(base))
 
   def freshLabelIdent(base: String)(implicit pos: ir.Position): js.LabelIdent =
     js.LabelIdent(freshLabelName(base))
 
-  private def labelSymbolName(sym: Symbol): defs.LabelName =
+  private def labelSymbolName(sym: Symbol): LabelName =
     labelSymbolNames.getOrElseUpdate(sym, freshLabelName(sym.name.toString))
 
   def getEnclosingReturnLabel()(implicit pos: ir.Position): js.LabelIdent = {
@@ -175,7 +176,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   def encodeFieldSym(sym: Symbol)(implicit pos: Position): js.FieldIdent = {
     requireSymIsField(sym)
     val name = sym.name.dropLocal
-    js.FieldIdent(defs.FieldName(name.toString()), originalNameOf(name))
+    js.FieldIdent(FieldName(name.toString()), originalNameOf(name))
   }
 
   def encodeFieldSymAsStringLiteral(sym: Symbol)(
@@ -210,9 +211,8 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
       else Some(paramOrResultTypeRef(tpe.resultType))
 
     val name = sym.name
-    val simpleName = defs.SimpleMethodName(name.toString())
-    val methodName =
-      defs.MethodName(simpleName, paramTypeRefs, resultTypeRef)
+    val simpleName = SimpleMethodName(name.toString())
+    val methodName = MethodName(simpleName, paramTypeRefs, resultTypeRef)
 
     js.MethodIdent(methodName, originalNameOf(name))
   }
@@ -223,7 +223,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
 
     val name = sym.name
     val resultTypeRef = paramOrResultTypeRef(sym.tpe)
-    val methodName = defs.MethodName(name.toString(), Nil, resultTypeRef)
+    val methodName = MethodName(name.toString(), Nil, resultTypeRef)
     js.MethodIdent(methodName, originalNameOf(name))
   }
 
@@ -268,26 +268,25 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   def encodeClassFullNameIdent(sym: Symbol)(implicit pos: Position): js.ClassIdent =
     js.ClassIdent(encodeClassFullName(sym), Some(sym.fullName))
 
-  private val BoxedStringModuleClassName = defs.ClassName("java.lang.String$")
-  private val BoxedVoidModuleClassName = defs.ClassName("java.lang.Void$")
+  private val BoxedStringModuleClassName = ClassName("java.lang.String$")
+  private val BoxedVoidModuleClassName = ClassName("java.lang.Void$")
 
-  def encodeClassFullName(sym: Symbol): defs.ClassName = {
+  def encodeClassFullName(sym: Symbol): ClassName = {
     assert(!sym.isPrimitiveValueClass,
         s"Illegal encodeClassFullName(${sym.fullName}")
     if (sym == jsDefinitions.HackedStringClass) {
-      ir.Definitions.BoxedStringClass
+      ir.Names.BoxedStringClass
     } else if (sym == jsDefinitions.HackedStringModClass) {
       BoxedStringModuleClassName
     } else if (sym == definitions.BoxedUnitClass) {
       // Rewire scala.runtime.BoxedUnit to java.lang.Void, as the IR expects
       // BoxedUnit$ is a JVM artifact
-      ir.Definitions.BoxedUnitClass
+      ir.Names.BoxedUnitClass
     } else if (sym == jsDefinitions.BoxedUnitModClass) {
       // Same for its module class
       BoxedVoidModuleClassName
     } else {
-      defs.ClassName(
-          sym.fullName + (if (needsModuleClassSuffix(sym)) "$" else ""))
+      ClassName(sym.fullName + (if (needsModuleClassSuffix(sym)) "$" else ""))
     }
   }
 

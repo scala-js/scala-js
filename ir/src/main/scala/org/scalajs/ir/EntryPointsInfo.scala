@@ -12,7 +12,7 @@
 
 package org.scalajs.ir
 
-import Definitions.ClassName
+import Names.ClassName
 import Trees._
 
 final class EntryPointsInfo(

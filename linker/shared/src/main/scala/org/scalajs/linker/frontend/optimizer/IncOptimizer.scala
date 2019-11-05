@@ -15,7 +15,7 @@ package org.scalajs.linker.frontend.optimizer
 import scala.collection.{GenTraversableOnce, GenIterable}
 import scala.collection.mutable
 
-import org.scalajs.ir.Definitions.{ClassName, MethodName}
+import org.scalajs.ir.Names.{ClassName, MethodName}
 import org.scalajs.ir.Trees.MemberNamespace
 
 import org.scalajs.linker.standard._

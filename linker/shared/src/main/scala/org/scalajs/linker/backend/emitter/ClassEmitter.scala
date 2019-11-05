@@ -13,7 +13,7 @@
 package org.scalajs.linker.backend.emitter
 
 import org.scalajs.ir._
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Position._
 import org.scalajs.ir.Transformers._
 import org.scalajs.ir.Trees._
@@ -27,7 +27,7 @@ import org.scalajs.linker.backend.javascript.{Trees => js}
 
 import CheckedBehavior.Unchecked
 
-import EmitterDefinitions._
+import EmitterNames._
 
 /** Emitter for the skeleton of classes. */
 private[emitter] final class ClassEmitter(jsGen: JSGen) {
@@ -178,7 +178,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
 
     assert(tree.kind.isAnyNonNativeClass)
-    assert(tree.superClass.isDefined || tree.name.name == Definitions.ObjectClass,
+    assert(tree.superClass.isDefined || tree.name.name == ObjectClass,
         s"Class ${tree.name.name} is missing a parent class")
 
     if (useClasses)
@@ -749,7 +749,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   }
 
   def genInstanceTests(tree: LinkedClass): js.Tree = {
-    import Definitions._
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -775,7 +774,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
       val isExpression = {
         className match {
-          case Definitions.ObjectClass =>
+          case ObjectClass =>
             js.BinaryOp(JSBinaryOp.!==, obj, js.Null())
 
           case _ if isHijackedClass =>
@@ -830,7 +829,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       } else {
         envFunctionDef("as", className, List(objParam), js.Return {
           className match {
-            case Definitions.ObjectClass =>
+            case ObjectClass =>
               obj
 
             case _ =>
@@ -855,7 +854,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   }
 
   def genArrayInstanceTests(tree: LinkedClass): js.Tree = {
-    import Definitions._
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -872,7 +870,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     val createIsArrayOfStat = {
       envFunctionDef("isArrayOf", className, List(objParam, depthParam), {
         className match {
-          case Definitions.ObjectClass =>
+          case ObjectClass =>
             val dataVarDef = genLet(js.Ident("data"), mutable = false, {
               obj && (obj DOT "$classData")
             })
@@ -943,7 +941,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
   def genTypeData(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
-    import Definitions._
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -1344,7 +1341,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   /** Gen JS code for an [[ModuleInitializer]]. */
   def genModuleInitializer(moduleInitializer: ModuleInitializer): js.Tree = {
     import TreeDSL._
-    import Definitions.BoxedStringClass
     import ModuleInitializerImpl._
 
     implicit val pos = Position.NoPosition
@@ -1364,10 +1360,10 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
 private[emitter] object ClassEmitter {
   private val ClassesWhoseDataReferToTheirInstanceTests =
-    AncestorsOfHijackedClasses + Definitions.BoxedStringClass
+    AncestorsOfHijackedClasses + BoxedStringClass
 
   def shouldExtendJSError(linkedClass: LinkedClass): Boolean = {
     linkedClass.name.name == ThrowableClass &&
-    linkedClass.superClass.exists(_.name == Definitions.ObjectClass)
+    linkedClass.superClass.exists(_.name == ObjectClass)
   }
 }
