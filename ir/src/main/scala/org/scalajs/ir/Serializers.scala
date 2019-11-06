@@ -106,14 +106,16 @@ object Serializers {
     final val FormatNoPositionValue = -1
   }
 
-  private final class ByteString(val bytes: Array[Byte]) {
+  private final class EncodedNameKey(val encoded: UTF8String) {
     override def equals(that: Any): Boolean = that match {
-      case that: ByteString => java.util.Arrays.equals(this.bytes, that.bytes)
-      case _                => false
+      case that: EncodedNameKey =>
+        UTF8String.equals(this.encoded, that.encoded)
+      case _ =>
+        false
     }
 
     override def hashCode(): Int =
-      scala.util.hashing.MurmurHash3.bytesHash(bytes)
+      UTF8String.hashCode(encoded)
   }
 
   private final class Serializer {
@@ -125,10 +127,10 @@ object Serializers {
     private def fileToIndex(file: URI): Int =
       fileIndexMap.getOrElseUpdate(file, (files += file).size - 1)
 
-    private[this] val encodedNames = mutable.ListBuffer.empty[Array[Byte]]
-    private[this] val encodedNameIndexMap = mutable.Map.empty[ByteString, Int]
-    private def encodedNameToIndex(encoded: Array[Byte]): Int = {
-      val byteString = new ByteString(encoded)
+    private[this] val encodedNames = mutable.ListBuffer.empty[UTF8String]
+    private[this] val encodedNameIndexMap = mutable.Map.empty[EncodedNameKey, Int]
+    private def encodedNameToIndex(encoded: UTF8String): Int = {
+      val byteString = new EncodedNameKey(encoded)
       encodedNameIndexMap.getOrElseUpdate(byteString,
           (encodedNames += encoded).size - 1)
     }
@@ -143,12 +145,12 @@ object Serializers {
           case _: PrimRef =>
             // nothing to do
           case ClassRef(className) =>
-            encodedNameToIndex(className.unsafeEncoded)
+            encodedNameToIndex(className.encoded)
           case ArrayTypeRef(base, _) =>
             reserveTypeRef(base)
         }
 
-        encodedNameToIndex(methodName.simpleName.unsafeEncoded)
+        encodedNameToIndex(methodName.simpleName.encoded)
         methodName.paramTypeRefs.foreach(reserveTypeRef(_))
         reserveTypeRef(methodName.resultTypeRef)
         (methodNames += methodName).size - 1
@@ -176,7 +178,7 @@ object Serializers {
 
       // Write the entry points info
       val entryPointsInfo = EntryPointsInfo.forClassDef(classDef)
-      val entryPointEncodedName = entryPointsInfo.encodedName.unsafeEncoded
+      val entryPointEncodedName = entryPointsInfo.encodedName.encoded.bytes
       s.writeInt(entryPointEncodedName.length)
       s.write(entryPointEncodedName)
       s.writeBoolean(entryPointsInfo.hasEntryPoint)
@@ -189,7 +191,7 @@ object Serializers {
       s.writeInt(encodedNames.size)
       encodedNames.foreach { encodedName =>
         s.writeInt(encodedName.length)
-        s.write(encodedName)
+        s.write(encodedName.bytes)
       }
 
       def writeTypeRef(typeRef: TypeRef): Unit = typeRef match {
@@ -209,7 +211,7 @@ object Serializers {
           }
         case ClassRef(className) =>
           s.writeByte(TagClassRef)
-          s.writeInt(encodedNameIndexMap(new ByteString(className.unsafeEncoded)))
+          s.writeInt(encodedNameIndexMap(new EncodedNameKey(className.encoded)))
         case ArrayTypeRef(base, dimensions) =>
           s.writeByte(TagArrayTypeRef)
           writeTypeRef(base)
@@ -220,7 +222,7 @@ object Serializers {
       s.writeInt(methodNames.size)
       methodNames.foreach { methodName =>
         s.writeInt(encodedNameIndexMap(
-            new ByteString(methodName.simpleName.unsafeEncoded)))
+            new EncodedNameKey(methodName.simpleName.encoded)))
         s.writeInt(methodName.paramTypeRefs.size)
         methodName.paramTypeRefs.foreach(writeTypeRef(_))
         writeTypeRef(methodName.resultTypeRef)
@@ -732,7 +734,7 @@ object Serializers {
     }
 
     def writeName(name: Name): Unit =
-      buffer.writeInt(encodedNameToIndex(name.unsafeEncoded))
+      buffer.writeInt(encodedNameToIndex(name.encoded))
 
     def writeMethodName(name: MethodName): Unit =
       buffer.writeInt(methodNameToIndex(name))
@@ -915,7 +917,7 @@ object Serializers {
 
     private[this] var sourceVersion: String = _
     private[this] var files: Array[URI] = _
-    private[this] var encodedNames: Array[Array[Byte]] = _
+    private[this] var encodedNames: Array[UTF8String] = _
     private[this] var localNames: Array[LocalName] = _
     private[this] var labelNames: Array[LabelName] = _
     private[this] var fieldNames: Array[FieldName] = _
@@ -939,7 +941,7 @@ object Serializers {
         val len = readInt()
         val encodedName = new Array[Byte](len)
         buf.get(encodedName)
-        encodedName
+        UTF8String.createAcquiringByteArray(encodedName)
       }
       localNames = new Array(encodedNames.length)
       labelNames = new Array(encodedNames.length)
@@ -982,7 +984,7 @@ object Serializers {
       val encodedNameLen = readInt()
       val encodedName = new Array[Byte](encodedNameLen)
       buf.get(encodedName)
-      val name = ClassName(encodedName)
+      val name = ClassName(UTF8String.createAcquiringByteArray(encodedName))
       val hasEntryPoint = readBoolean()
       new EntryPointsInfo(name, hasEntryPoint)
     }

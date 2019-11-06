@@ -4090,7 +4090,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       returnCount: Int, body: Tree): Option[Tree] = {
     // Heuristic for speed: only try to optimize labels likely named 'matchEnd...'
     val isMaybeMatchEndLabel = {
-      val oldEncodedName = oldLabelName.unsafeEncoded
+      val oldEncodedName = oldLabelName.encoded
       oldEncodedName.length >= 8 && oldEncodedName(0) == 'm' &&
       oldEncodedName(1) == 'a' && oldEncodedName(2) == 't' // stop here
     }

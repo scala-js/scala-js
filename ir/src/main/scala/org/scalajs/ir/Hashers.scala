@@ -598,7 +598,7 @@ object Hashers {
     }
 
     def mixName(name: Name): Unit = {
-      val encoded = name.unsafeEncoded
+      val encoded = name.encoded.bytes
       digestStream.writeInt(encoded.length)
       digestStream.write(encoded)
     }
