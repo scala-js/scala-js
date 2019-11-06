@@ -32,7 +32,7 @@ import org.scalajs.linker._
 import org.scalajs.linker.standard._
 
 import Analysis._
-import Infos.{NamespacedEncodedName, ReachabilityInfo}
+import Infos.{NamespacedMethodName, ReachabilityInfo}
 
 private final class Analyzer(config: CommonPhaseConfig,
     symbolRequirements: SymbolRequirement,
@@ -243,10 +243,10 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
-  private def lookupClass(encodedName: ClassName,
+  private def lookupClass(className: ClassName,
       ignoreMissing: Boolean = false)(
       onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
-    lookupClassForLinking(encodedName, Set.empty) {
+    lookupClassForLinking(className, Set.empty) {
       case info: ClassInfo =>
         if (!info.nonExistent || !ignoreMissing) {
           info.link()
@@ -258,13 +258,13 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
-  private def lookupClassForLinking(encodedName: ClassName,
+  private def lookupClassForLinking(className: ClassName,
       knownDescendants: Set[LoadingClass] = Set.empty)(
       onSuccess: LoadingResult => Unit): Unit = {
 
-    _classInfos.get(encodedName) match {
+    _classInfos.get(className) match {
       case None =>
-        val loading = new LoadingClass(encodedName)
+        val loading = new LoadingClass(className)
         loading.requestLink(knownDescendants)(onSuccess)
 
       case Some(loading: LoadingClass) =>
@@ -282,20 +282,20 @@ private final class Analyzer(config: CommonPhaseConfig,
   private case class CycleInfo(cycle: List[ClassName], root: LoadingClass)
       extends LoadingResult
 
-  private final class LoadingClass(encodedName: ClassName)
+  private final class LoadingClass(className: ClassName)
       extends ClassLoadingState {
 
     private val promise = Promise[LoadingResult]()
     private var knownDescendants = Set[LoadingClass](this)
 
-    _classInfos(encodedName) = this
+    _classInfos(className) = this
 
-    inputProvider.loadInfo(encodedName)(ec) match {
+    inputProvider.loadInfo(className)(ec) match {
       case Some(future) =>
         workQueue.enqueue(future)(link(_, nonExistent = false))
 
       case None =>
-        val data = createMissingClassInfo(encodedName)
+        val data = createMissingClassInfo(className)
         link(data, nonExistent = true)
     }
 
@@ -325,19 +325,19 @@ private final class Analyzer(config: CommonPhaseConfig,
           case CycleInfo(_, null) => cycleInfo
 
           case CycleInfo(c, root) if root == this =>
-            CycleInfo(encodedName :: c, null)
+            CycleInfo(className :: c, null)
 
           case CycleInfo(c, root) =>
-            CycleInfo(encodedName :: c, root)
+            CycleInfo(className :: c, root)
         }
 
         promise.success(newInfo)
       }
     }
 
-    private def lookupAncestors(encodedNames: List[ClassName])(
+    private def lookupAncestors(classNames: List[ClassName])(
         loaded: List[ClassInfo] => Unit)(cycle: CycleInfo => Unit): Unit = {
-      encodedNames match {
+      classNames match {
         case first :: rest =>
           lookupClassForLinking(first, knownDescendants) {
             case c: CycleInfo => cycle(c)
@@ -360,7 +360,7 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     var linkedFrom: List[From] = Nil
 
-    val encodedName = data.encodedName
+    val className = data.className
     val kind = data.kind
     val isAnyModuleClass =
       data.kind.hasModuleAccessor || data.kind == ClassKind.NativeJSModuleClass
@@ -375,11 +375,11 @@ private final class Analyzer(config: CommonPhaseConfig,
     // Note: j.l.Object is special and is validated upfront
 
     val superClass: Option[ClassInfo] =
-      if (encodedName == ObjectClass) unvalidatedSuperClass
+      if (className == ObjectClass) unvalidatedSuperClass
       else validateSuperClass(unvalidatedSuperClass)
 
     val interfaces: List[ClassInfo] =
-      if (encodedName == ObjectClass) unvalidatedInterfaces
+      if (className == ObjectClass) unvalidatedInterfaces
       else validateInterfaces(unvalidatedInterfaces)
 
     val ancestors: List[ClassInfo] = {
@@ -387,7 +387,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       this +: parents.flatMap(_.ancestors).distinct
     }
 
-    _classInfos(encodedName) = this
+    _classInfos(className) = this
 
     def link()(implicit from: From): Unit = {
       if (nonExistent)
@@ -520,7 +520,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       for (methodData <- data.methods) {
         // TODO It would be good to report duplicates as errors at this point
         val relevantMap = nsMethodInfos(methodData.namespace.ordinal)
-        relevantMap(methodData.encodedName) = new MethodInfo(this, methodData)
+        relevantMap(methodData.methodName) = new MethodInfo(this, methodData)
       }
       nsMethodInfos
     }
@@ -581,7 +581,7 @@ private final class Analyzer(config: CommonPhaseConfig,
           assert(existing.isEmpty)
           existing
         } { defaultTarget =>
-          if (existing.exists(_.defaultBridgeTarget == defaultTarget.owner.encodedName)) {
+          if (existing.exists(_.defaultBridgeTarget == defaultTarget.owner.className)) {
             /* If we found an existing bridge targeting the right method, we
              * can reuse it.
              * We also get here with None when there is no target whatsoever.
@@ -634,18 +634,18 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
 
     private def createDefaultBridge(target: MethodInfo): MethodInfo = {
-      val methodName = target.encodedName
+      val methodName = target.methodName
       val targetOwner = target.owner
 
       val syntheticInfo = makeSyntheticMethodInfo(
-          encodedName = methodName,
+          methodName = methodName,
           methodsCalledStatically = Map(
-              targetOwner.encodedName -> List(
-                  NamespacedEncodedName(MemberNamespace.Public, methodName)
+              targetOwner.className -> List(
+                  NamespacedMethodName(MemberNamespace.Public, methodName)
               )))
       val m = new MethodInfo(this, syntheticInfo)
       m.syntheticKind = MethodSyntheticKind.DefaultBridge(
-          targetOwner.encodedName)
+          targetOwner.className)
       publicMethodInfos += methodName -> m
       m
     }
@@ -658,7 +658,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         publicMethodInfos.get(proxyName).fold {
           workQueue.enqueue(findReflectiveTarget(proxyName)) { maybeTarget =>
             maybeTarget.foreach { reflectiveTarget =>
-              val proxy = createReflProxy(proxyName, reflectiveTarget.encodedName)
+              val proxy = createReflProxy(proxyName, reflectiveTarget.methodName)
               onSuccess(proxy)
             }
           }
@@ -700,7 +700,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       val candidates = publicMethodInfos.valuesIterator.filter { m =>
         // TODO In theory we should filter out protected methods
         !m.isReflectiveProxy && !m.isDefaultBridge && !m.isAbstract &&
-        reflProxyMatches(m.encodedName, proxyName)
+        reflProxyMatches(m.methodName, proxyName)
       }.toSeq
 
       /* From the JavaDoc of java.lang.Class.getMethod:
@@ -711,7 +711,7 @@ private final class Analyzer(config: CommonPhaseConfig,
        *   chosen arbitrarily.
        */
 
-      val resultTypes = candidates.map(c => c.encodedName.resultTypeRef)
+      val resultTypes = candidates.map(c => c.methodName.resultTypeRef)
 
       // We must not use Future.traverse since otherwise we might run things on
       // the non-main thread.
@@ -785,9 +785,9 @@ private final class Analyzer(config: CommonPhaseConfig,
           s"Cannot create reflective proxy in non-Scala class $this")
 
       val syntheticInfo = makeSyntheticMethodInfo(
-          encodedName = proxyName,
+          methodName = proxyName,
           methodsCalled = Map(
-              this.encodedName -> List(targetName)))
+              this.className -> List(targetName)))
       val m = new MethodInfo(this, syntheticInfo)
       m.syntheticKind = MethodSyntheticKind.ReflectiveProxy(targetName)
       publicMethodInfos += proxyName -> m
@@ -810,7 +810,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       methodInfos(namespace).get(methodName)
     }
 
-    override def toString(): String = encodedName.nameString
+    override def toString(): String = className.nameString
 
     /** Start the reachability algorithm with the entry points of this class. */
     def reachEntryPoints(): Unit = {
@@ -953,27 +953,28 @@ private final class Analyzer(config: CommonPhaseConfig,
       }
     }
 
-    def callMethodStatically(methodName: NamespacedEncodedName)(
+    def callMethodStatically(namespacedMethodName: NamespacedMethodName)(
         implicit from: From): Unit = {
-      callMethodStatically(methodName.namespace, methodName.encodedName)
+      callMethodStatically(namespacedMethodName.namespace,
+          namespacedMethodName.methodName)
     }
 
     def callMethodStatically(namespace: MemberNamespace,
-        encodedName: MethodName)(
+        methodName: MethodName)(
         implicit from: From): Unit = {
-      assert(!encodedName.isReflectiveProxy,
-          s"Trying to call statically refl proxy $this.$encodedName")
+      assert(!methodName.isReflectiveProxy,
+          s"Trying to call statically refl proxy $this.$methodName")
       if (namespace != MemberNamespace.Public)
-        lookupStaticLikeMethod(namespace, encodedName).reachStatic()
+        lookupStaticLikeMethod(namespace, methodName).reachStatic()
       else
-        lookupMethod(encodedName).reachStatic()
+        lookupMethod(methodName).reachStatic()
     }
   }
 
   private class MethodInfo(val owner: ClassInfo,
       data: Infos.MethodInfo) extends Analysis.MethodInfo {
 
-    val encodedName = data.encodedName
+    val methodName = data.methodName
     val namespace = data.namespace
     val isAbstract = data.isAbstract
 
@@ -987,7 +988,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     var syntheticKind: MethodSyntheticKind = MethodSyntheticKind.None
 
     def isReflectiveProxy: Boolean =
-      encodedName.isReflectiveProxy
+      methodName.isReflectiveProxy
 
     def isDefaultBridge: Boolean =
       syntheticKind.isInstanceOf[MethodSyntheticKind.DefaultBridge]
@@ -998,7 +999,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
 
     override def toString(): String =
-      s"$owner.${encodedName.simpleName.nameString}"
+      s"$owner.${methodName.simpleName.nameString}"
 
     def reachStatic()(implicit from: From): Unit = {
       assert(!isAbstract,
@@ -1105,9 +1106,9 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
-  private def createMissingClassInfo(encodedName: ClassName): Infos.ClassInfo = {
+  private def createMissingClassInfo(className: ClassName): Infos.ClassInfo = {
     Infos.ClassInfo(
-        encodedName = encodedName,
+        className = className,
         isExported = false,
         kind = ClassKind.Class,
         superClass = Some(ObjectClass),
@@ -1121,10 +1122,10 @@ private final class Analyzer(config: CommonPhaseConfig,
   }
 
   private def makeSyntheticMethodInfo(
-      encodedName: MethodName,
+      methodName: MethodName,
       namespace: MemberNamespace = MemberNamespace.Public,
       methodsCalled: Map[ClassName, List[MethodName]] = Map.empty,
-      methodsCalledStatically: Map[ClassName, List[NamespacedEncodedName]] = Map.empty,
+      methodsCalledStatically: Map[ClassName, List[NamespacedMethodName]] = Map.empty,
       instantiatedClasses: List[ClassName] = Nil
   ): Infos.MethodInfo = {
     val reachabilityInfo = ReachabilityInfo(
@@ -1139,7 +1140,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         accessedClassData = Nil,
         referencedClasses = Nil
     )
-    Infos.MethodInfo(encodedName, namespace, isAbstract = false,
+    Infos.MethodInfo(methodName, namespace, isAbstract = false,
         reachabilityInfo)
   }
 
@@ -1161,7 +1162,7 @@ object Analyzer {
   trait InputProvider {
     def classesWithEntryPoints(): Iterable[ClassName]
 
-    def loadInfo(encodedName: ClassName)(
+    def loadInfo(className: ClassName)(
         implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]]
   }
 

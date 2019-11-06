@@ -168,13 +168,13 @@ final class Emitter private (config: CommonPhaseConfig,
 
       for ((className, requiredMethodNames) <- requiredDefaultMethodDecls) {
         val methods = unit.classDefs
-          .find(_.encodedName == className)
+          .find(_.className == className)
           .fold[List[Versioned[MethodDef]]](Nil)(_.methods)
         for {
           methodName <- requiredMethodNames
           if !methods.exists { m =>
             m.value.flags.namespace == MemberNamespace.Public &&
-            m.value.encodedName == methodName
+            m.value.methodName == methodName
           }
         } {
           implicit val pos = NoPosition
@@ -188,10 +188,10 @@ final class Emitter private (config: CommonPhaseConfig,
         val className = CloneNotSupportedExceptionClass
         val ctorName = NoArgConstructorName
         val ctorIsDefined = unit.classDefs
-          .find(_.encodedName == className)
+          .find(_.className == className)
           .fold(false)(_.methods.exists { m =>
             m.value.flags.namespace == MemberNamespace.Constructor &&
-            m.value.encodedName == ctorName
+            m.value.methodName == ctorName
           })
         if (!ctorIsDefined) {
           implicit val pos = NoPosition
@@ -324,7 +324,7 @@ final class Emitter private (config: CommonPhaseConfig,
         for (classDef <- orderedClasses) {
           classDef.jsNativeLoadSpec match {
             case Some(JSNativeLoadSpec.Import(module, _)) =>
-              val displayName = classDef.encodedName.nameString
+              val displayName = classDef.className.nameString
               logger.error(s"$displayName needs to be imported from module " +
                   s"'$module' but module support is disabled.")
               importsFound = true
@@ -381,7 +381,7 @@ final class Emitter private (config: CommonPhaseConfig,
     val lhsAC = lhs.ancestors.size
     val rhsAC = rhs.ancestors.size
     if (lhsAC != rhsAC) lhsAC < rhsAC
-    else lhs.encodedName.compareTo(rhs.encodedName) < 0
+    else lhs.className.compareTo(rhs.className) < 0
   }
 
   private def startRun(unit: LinkingUnit): Unit = {
@@ -447,7 +447,7 @@ final class Emitter private (config: CommonPhaseConfig,
 
   private def genClass(linkedClass: LinkedClass,
       objectClass: LinkedClass): GeneratedClass = {
-    val className = linkedClass.encodedName
+    val className = linkedClass.className
     val classCache = getClassCache(linkedClass.ancestors)
     val classTreeCache = classCache.getCache(linkedClass.version)
     val kind = linkedClass.kind
@@ -488,7 +488,7 @@ final class Emitter private (config: CommonPhaseConfig,
 
       if (namespace != MemberNamespace.Public) {
         val methodCache =
-          classCache.getMethodCache(namespace, methodDef.encodedName)
+          classCache.getMethodCache(namespace, methodDef.methodName)
 
         addToMain(methodCache.getOrElseUpdate(m.version,
             classEmitter.genMethod(className, m.value)(methodCache)))
@@ -520,14 +520,14 @@ final class Emitter private (config: CommonPhaseConfig,
       val linkedMethodsAndBridges = if (ClassEmitter.shouldExtendJSError(linkedClass)) {
         val existingMethods = linkedMethods
           .withFilter(_.value.flags.namespace == MemberNamespace.Public)
-          .map(_.value.encodedName)
+          .map(_.value.methodName)
           .toSet
 
         val bridges = for {
           m <- objectClass.methods
           if m.value.flags.namespace == MemberNamespace.Public
-          encodedName = m.value.encodedName
-          if !existingMethods.contains(encodedName)
+          methodName = m.value.methodName
+          if !existingMethods.contains(methodName)
         } yield {
           import org.scalajs.ir.Trees._
           import org.scalajs.ir.Types._
@@ -557,7 +557,7 @@ final class Emitter private (config: CommonPhaseConfig,
         if m.value.flags.namespace == MemberNamespace.Public
       } yield {
         val methodCache =
-          classCache.getMethodCache(MemberNamespace.Public, m.value.encodedName)
+          classCache.getMethodCache(MemberNamespace.Public, m.value.methodName)
 
         methodCache.getOrElseUpdate(m.version,
             classEmitter.genMethod(className, m.value)(methodCache))
@@ -576,7 +576,7 @@ final class Emitter private (config: CommonPhaseConfig,
         if m.value.flags.namespace == MemberNamespace.Public
       } yield {
         val methodCache =
-          classCache.getMethodCache(MemberNamespace.Public, m.value.encodedName)
+          classCache.getMethodCache(MemberNamespace.Public, m.value.methodName)
         addToMain(methodCache.getOrElseUpdate(m.version,
             classEmitter.genDefaultMethod(className, m.value)(methodCache)))
       }
@@ -587,7 +587,7 @@ final class Emitter private (config: CommonPhaseConfig,
         if m.value.flags.namespace == MemberNamespace.Public
       } yield {
         val methodCache =
-          classCache.getMethodCache(MemberNamespace.Public, m.value.encodedName)
+          classCache.getMethodCache(MemberNamespace.Public, m.value.methodName)
         addToMain(methodCache.getOrElseUpdate(m.version,
             classEmitter.genHijackedMethod(className, m.value)(methodCache)))
       }
@@ -726,9 +726,9 @@ final class Emitter private (config: CommonPhaseConfig,
     }
 
     def getMethodCache(namespace: MemberNamespace,
-        encodedName: MethodName): MethodCache = {
+        methodName: MethodName): MethodCache = {
       _methodCaches(namespace.ordinal)
-        .getOrElseUpdate(encodedName, new MethodCache)
+        .getOrElseUpdate(methodName, new MethodCache)
     }
 
     def getConstructorCache(): MethodCache = {

@@ -178,7 +178,7 @@ object Serializers {
 
       // Write the entry points info
       val entryPointsInfo = EntryPointsInfo.forClassDef(classDef)
-      val entryPointEncodedName = entryPointsInfo.encodedName.encoded.bytes
+      val entryPointEncodedName = entryPointsInfo.className.encoded.bytes
       s.writeInt(entryPointEncodedName.length)
       s.write(entryPointEncodedName)
       s.writeBoolean(entryPointsInfo.hasEntryPoint)

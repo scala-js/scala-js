@@ -123,7 +123,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       def isStaticInit(methodDef: Versioned[MethodDef]): Boolean = {
         val m = methodDef.value
         m.flags.namespace == MemberNamespace.PublicStatic &&
-        m.encodedName == StaticInitializerName
+        m.methodName.isStaticInitializer
       }
 
       for (staticInit <- classDef.methods.find(isStaticInit)) {
@@ -177,7 +177,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       implicit val ctx = ErrorContext(field)
       reportError(
           i"Duplicate definition of ${namespace.prefixString}field " +
-          i"'$name' in class '${classDef.encodedName}'")
+          i"'$name' in class '${classDef.className}'")
     }
 
     // Methods
@@ -189,7 +189,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       implicit val ctx: ErrorContext = ErrorContext(method)
       reportError(
           i"Duplicate definition of ${namespace.prefixString}method " +
-          i"'$name' in class '${classDef.encodedName}'")
+          i"'$name' in class '${classDef.className}'")
     }
   }
 
@@ -210,7 +210,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         val methods = classDef.methods
         if (methods.count(m => m.value.flags.namespace == MemberNamespace.Constructor) != 1)
           reportError("Module class must have exactly 1 constructor")
-        if (!methods.exists(_.value.encodedName == NoArgConstructorName))
+        if (!methods.exists(_.value.methodName == NoArgConstructorName))
           reportError("Module class must have a parameterless constructor")
       }
 
@@ -1195,19 +1195,19 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       implicit ctx: ErrorContext): Type = {
     typeRef match {
       case PrimRef(tpe)               => tpe
-      case ClassRef(encodedName)      => classNameToType(encodedName)
+      case ClassRef(className)        => classNameToType(className)
       case arrayTypeRef: ArrayTypeRef => ArrayType(arrayTypeRef)
     }
   }
 
-  private def classNameToType(encodedName: ClassName)(
+  private def classNameToType(className: ClassName)(
       implicit ctx: ErrorContext): Type = {
-    if (encodedName == ObjectClass) {
+    if (className == ObjectClass) {
       AnyType
     } else {
-      val kind = lookupClass(encodedName).kind
+      val kind = lookupClass(className).kind
       if (kind.isJSType) AnyType
-      else ClassType(encodedName)
+      else ClassType(className)
     }
   }
 

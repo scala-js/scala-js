@@ -57,7 +57,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       methodName: MethodName): Option[MethodID]
 
   /** Returns the list of ancestors of a class or interface. */
-  protected def getAncestorsOf(encodedName: ClassName): List[ClassName]
+  protected def getAncestorsOf(className: ClassName): List[ClassName]
 
   /** Tests whether the given module class has an elidable accessor.
    *  In other words, whether it is safe to discard a LoadModule of that
@@ -142,7 +142,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
               body, Set.empty)
       }
       val newBody =
-        if (originalDef.encodedName == NoArgConstructorName) tryElimStoreModule(newBody1)
+        if (originalDef.methodName == NoArgConstructorName) tryElimStoreModule(newBody1)
         else newBody1
       MethodDef(static, name, newParams, resultType,
           Some(newBody))(originalDef.optimizerHints, None)(originalDef.pos)
@@ -5233,7 +5233,7 @@ private[optimizer] object OptimizerCore {
 
   /** Parts of [[GenIncOptimizer#MethodImpl]] with decisions about optimizations. */
   abstract class MethodImpl {
-    def encodedName: MethodName
+    def methodName: MethodName
     def optimizerHints: OptimizerHints
     def originalDef: MethodDef
     def thisType: Type
@@ -5296,7 +5296,7 @@ private[optimizer] object OptimizerCore {
 
             // Shape of trivial call-super constructors
             case Block(stats)
-                if params.isEmpty && encodedName.isConstructor &&
+                if params.isEmpty && methodName.isConstructor &&
                     stats.forall(isTrivialConstructorStat) =>
               true
 

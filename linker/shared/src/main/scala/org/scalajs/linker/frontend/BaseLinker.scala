@@ -112,7 +112,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
   private def assemble(moduleInitializers: Seq[ModuleInitializer],
       analysis: Analysis)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
     def assembleClass(info: ClassInfo) = {
-      val classAndVersion = inputProvider.loadClassDefAndVersion(info.encodedName)
+      val classAndVersion = inputProvider.loadClassDefAndVersion(info.className)
       val syntheticMethods = methodSynthesizer.synthesizeMembers(info, analysis)
 
       for {
@@ -163,11 +163,11 @@ final class BaseLinker(config: CommonPhaseConfig) {
 
       case m: MethodDef =>
         val methodInfo =
-          analyzerInfo.methodInfos(m.flags.namespace)(m.encodedName)
+          analyzerInfo.methodInfos(m.flags.namespace)(m.methodName)
 
         if (methodInfo.isReachable) {
           assert(m.body.isDefined,
-              s"The abstract method ${classDef.name.name}.${m.encodedName} " +
+              s"The abstract method ${classDef.name.name}.${m.methodName} " +
               "is reachable.")
           methods += linkedMethod(m)
         }
@@ -192,7 +192,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
       if (analyzerInfo.isModuleAccessed) classDef.kind
       else classDef.kind.withoutModuleAccessor
 
-    val ancestors = analyzerInfo.ancestors.map(_.encodedName)
+    val ancestors = analyzerInfo.ancestors.map(_.className)
 
     new LinkedClass(
         classDef.name,
@@ -218,53 +218,53 @@ final class BaseLinker(config: CommonPhaseConfig) {
 
 private object BaseLinker {
   private class InputProvider extends Analyzer.InputProvider with MethodSynthesizer.InputProvider {
-    private var encodedNameToFile: collection.Map[ClassName, IRFileImpl] = _
+    private var classNameToFile: collection.Map[ClassName, IRFileImpl] = _
     private var entryPoints: collection.Set[ClassName] = _
     private val cache = mutable.Map.empty[ClassName, ClassDefAndInfoCache]
 
     def update(irInput: Seq[IRFile])(implicit ec: ExecutionContext): Future[Unit] = {
       Future.traverse(irInput)(i => IRFileImpl.fromIRFile(i).entryPointsInfo).map { infos =>
-        val encodedNameToFile = mutable.Map.empty[ClassName, IRFileImpl]
+        val classNameToFile = mutable.Map.empty[ClassName, IRFileImpl]
         val entryPoints = mutable.Set.empty[ClassName]
 
         for ((input, info) <- irInput.zip(infos)) {
           // Remove duplicates. Just like the JVM
-          if (!encodedNameToFile.contains(info.encodedName))
-            encodedNameToFile += info.encodedName -> IRFileImpl.fromIRFile(input)
+          if (!classNameToFile.contains(info.className))
+            classNameToFile += info.className -> IRFileImpl.fromIRFile(input)
 
           if (info.hasEntryPoint)
-            entryPoints += info.encodedName
+            entryPoints += info.className
         }
 
-        this.encodedNameToFile = encodedNameToFile
+        this.classNameToFile = classNameToFile
         this.entryPoints = entryPoints
       }
     }
 
     def classesWithEntryPoints(): Iterable[ClassName] = entryPoints
 
-    def loadInfo(encodedName: ClassName)(
+    def loadInfo(className: ClassName)(
         implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] =
-      getCache(encodedName).map(_.loadInfo(encodedNameToFile(encodedName)))
+      getCache(className).map(_.loadInfo(classNameToFile(className)))
 
-    def loadClassDefAndVersion(encodedName: ClassName)(
+    def loadClassDefAndVersion(className: ClassName)(
         implicit ec: ExecutionContext): Future[(ClassDef, Option[String])] = {
-      val fileCache = getCache(encodedName).getOrElse {
-        throw new AssertionError(s"Cannot load file for class $encodedName")
+      val fileCache = getCache(className).getOrElse {
+        throw new AssertionError(s"Cannot load file for class $className")
       }
-      fileCache.loadClassDefAndVersion(encodedNameToFile(encodedName))
+      fileCache.loadClassDefAndVersion(classNameToFile(className))
     }
 
-    def loadClassDef(encodedName: ClassName)(
+    def loadClassDef(className: ClassName)(
         implicit ec: ExecutionContext): Future[ClassDef] = {
-      loadClassDefAndVersion(encodedName).map(_._1)
+      loadClassDefAndVersion(className).map(_._1)
     }
 
-    private def getCache(encodedName: ClassName): Option[ClassDefAndInfoCache] = {
-      cache.get(encodedName).orElse {
-        if (encodedNameToFile.contains(encodedName)) {
+    private def getCache(className: ClassName): Option[ClassDefAndInfoCache] = {
+      cache.get(className).orElse {
+        if (classNameToFile.contains(className)) {
           val fileCache = new ClassDefAndInfoCache
-          cache += encodedName -> fileCache
+          cache += className -> fileCache
           Some(fileCache)
         } else {
           None
@@ -273,7 +273,7 @@ private object BaseLinker {
     }
 
     def cleanAfterRun(): Unit = {
-      encodedNameToFile = null
+      classNameToFile = null
       entryPoints = null
       cache.filterInPlace((_, fileCache) => fileCache.cleanAfterRun())
     }

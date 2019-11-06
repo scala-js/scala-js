@@ -276,7 +276,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
           Future.traverse(scalaJSIR.value.data) { ir =>
             IRFileImpl.fromIRFile(ir)
               .entryPointsInfo
-              .map(i => Some(i.encodedName.nameString))
+              .map(i => Some(i.className.nameString))
               .fallbackTo(none)
           }
         }.flatten
@@ -293,7 +293,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
             Future.traverse(scalaJSIR.value.data) { irFile =>
               val ir = IRFileImpl.fromIRFile(irFile)
               ir.entryPointsInfo.map { i =>
-                if (i.encodedName.nameString == name) Success(Some(ir))
+                if (i.className.nameString == name) Success(Some(ir))
                 else Success(None)
               }.recover { case t => Failure(t) }
             }.flatMap { irs =>

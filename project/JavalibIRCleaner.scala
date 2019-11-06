@@ -79,7 +79,7 @@ object JavalibIRCleaner {
 
         case JSClass | JSModuleClass =>
           errorManager.reportError(
-              s"found non-native JS class ${tree.encodedName}")(tree.pos)
+              s"found non-native JS class ${tree.className}")(tree.pos)
       }
     }
 
@@ -163,13 +163,13 @@ object JavalibIRCleaner {
       if irFile.tree.kind.isJSType
     } yield {
       val tree = irFile.tree
-      tree.encodedName -> tree
+      tree.className -> tree
     }).toMap
   }
 
   private def cleanTree(tree: ClassDef, jsTypes: Map[ClassName, ClassDef],
       errorManager: ErrorManager): ClassDef = {
-    new ClassDefCleaner(tree.encodedName, jsTypes, errorManager)
+    new ClassDefCleaner(tree.className, jsTypes, errorManager)
       .cleanClassDef(tree)
   }
 
@@ -350,16 +350,16 @@ object JavalibIRCleaner {
 
     private def transformMethodIdent(ident: MethodIdent): MethodIdent = {
       implicit val pos = ident.pos
-      val encodedName = ident.name
-      val paramTypeRefs = encodedName.paramTypeRefs
+      val methodName = ident.name
+      val paramTypeRefs = methodName.paramTypeRefs
       val newParamTypeRefs = paramTypeRefs.map(transformTypeRef)
-      val resultTypeRef = encodedName.resultTypeRef
+      val resultTypeRef = methodName.resultTypeRef
       val newResultTypeRef = transformTypeRef(resultTypeRef)
       if (newParamTypeRefs == paramTypeRefs && newResultTypeRef == resultTypeRef) {
         ident
       } else {
-        val newMethodName = MethodName(encodedName.simpleName,
-            newParamTypeRefs, newResultTypeRef, encodedName.isReflectiveProxy)
+        val newMethodName = MethodName(methodName.simpleName,
+            newParamTypeRefs, newResultTypeRef, methodName.isReflectiveProxy)
         MethodIdent(newMethodName, ident.originalName)(ident.pos)
       }
     }

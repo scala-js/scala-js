@@ -38,7 +38,7 @@ object TestIRBuilder {
     MethodName(name, paramTypeRefs, resultTypeRef)
 
   def classDef(
-      encodedName: ClassName,
+      className: ClassName,
       kind: ClassKind = ClassKind.Class,
       jsClassCaptures: Option[List[ParamDef]] = None,
       superClass: Option[ClassName] = None,
@@ -47,23 +47,23 @@ object TestIRBuilder {
       jsNativeLoadSpec: Option[JSNativeLoadSpec] = None,
       memberDefs: List[MemberDef] = Nil,
       topLevelExportDefs: List[TopLevelExportDef] = Nil): ClassDef = {
-    ClassDef(ClassIdent(encodedName), kind, jsClassCaptures,
+    ClassDef(ClassIdent(className), kind, jsClassCaptures,
         superClass.map(ClassIdent(_)), interfaces.map(ClassIdent(_)),
         jsSuperClass, jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
         EOH)
   }
 
-  final val MainTestClassDefEncodedName = ClassName("Test$")
+  final val MainTestClassName = ClassName("Test$")
 
   val MainTestModuleInitializers = mainModuleInitializers("Test")
 
   def mainTestClassDef(mainBody: Tree): ClassDef = {
     classDef(
-        MainTestClassDefEncodedName,
+        MainTestClassName,
         kind = ClassKind.ModuleClass,
         superClass = Some(ObjectClass),
         memberDefs = List(
-            trivialCtor(MainTestClassDefEncodedName),
+            trivialCtor(MainTestClassName),
             mainMethodDef(mainBody)
         )
     )

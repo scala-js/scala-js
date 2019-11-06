@@ -31,11 +31,11 @@ object Infos {
 
   private val cloneMethodName = MethodName("clone", Nil, ClassRef(ObjectClass))
 
-  final case class NamespacedEncodedName(
-      namespace: MemberNamespace, encodedName: MethodName)
+  final case class NamespacedMethodName(
+      namespace: MemberNamespace, methodName: MethodName)
 
   final class ClassInfo private (
-      val encodedName: ClassName,
+      val className: ClassName,
       val isExported: Boolean,
       val kind: ClassKind,
       val superClass: Option[ClassName], // always None for interfaces
@@ -46,12 +46,12 @@ object Infos {
       val topLevelExportedMembers: List[ReachabilityInfo],
       val topLevelExportNames: List[String]
   ) {
-    override def toString(): String = encodedName.nameString
+    override def toString(): String = className.nameString
   }
 
   object ClassInfo {
     def apply(
-        encodedName: ClassName,
+        className: ClassName,
         isExported: Boolean,
         kind: ClassKind,
         superClass: Option[ClassName],
@@ -61,28 +61,28 @@ object Infos {
         exportedMembers: List[ReachabilityInfo],
         topLevelExportedMembers: List[ReachabilityInfo],
         topLevelExportNames: List[String]): ClassInfo = {
-      new ClassInfo(encodedName, isExported, kind, superClass,
+      new ClassInfo(className, isExported, kind, superClass,
           interfaces, referencedFieldClasses, methods, exportedMembers,
           topLevelExportedMembers, topLevelExportNames)
     }
   }
 
   final class MethodInfo private (
-      val encodedName: MethodName,
+      val methodName: MethodName,
       val namespace: MemberNamespace,
       val isAbstract: Boolean,
       val reachabilityInfo: ReachabilityInfo
   ) {
-    override def toString(): String = encodedName.nameString
+    override def toString(): String = methodName.nameString
   }
 
   object MethodInfo {
     def apply(
-        encodedName: MethodName,
+        methodName: MethodName,
         namespace: MemberNamespace,
         isAbstract: Boolean,
         reachabilityInfo: ReachabilityInfo): MethodInfo = {
-      new MethodInfo(encodedName, namespace, isAbstract, reachabilityInfo)
+      new MethodInfo(methodName, namespace, isAbstract, reachabilityInfo)
     }
   }
 
@@ -91,7 +91,7 @@ object Infos {
       val staticFieldsRead: Map[ClassName, List[FieldName]],
       val staticFieldsWritten: Map[ClassName, List[FieldName]],
       val methodsCalled: Map[ClassName, List[MethodName]],
-      val methodsCalledStatically: Map[ClassName, List[NamespacedEncodedName]],
+      val methodsCalledStatically: Map[ClassName, List[NamespacedMethodName]],
       /** For a Scala class, it is instantiated with a `New`; for a JS class,
        *  its constructor is accessed with a `JSLoadConstructor`.
        */
@@ -114,7 +114,7 @@ object Infos {
         staticFieldsRead: Map[ClassName, List[FieldName]],
         staticFieldsWritten: Map[ClassName, List[FieldName]],
         methodsCalled: Map[ClassName, List[MethodName]],
-        methodsCalledStatically: Map[ClassName, List[NamespacedEncodedName]],
+        methodsCalledStatically: Map[ClassName, List[NamespacedMethodName]],
         instantiatedClasses: List[ClassName],
         accessedModules: List[ClassName],
         usedInstanceTests: List[ClassName],
@@ -127,7 +127,7 @@ object Infos {
     }
   }
 
-  final class ClassInfoBuilder(private val encodedName: ClassName) {
+  final class ClassInfoBuilder(private val className: ClassName) {
     private var kind: ClassKind = ClassKind.Class
     private var isExported: Boolean = false
     private var superClass: Option[ClassName] = None
@@ -196,7 +196,7 @@ object Infos {
     }
 
     def result(): ClassInfo = {
-      ClassInfo(encodedName, isExported, kind, superClass,
+      ClassInfo(className, isExported, kind, superClass,
           interfaces.toList, referencedFieldClasses.toList, methods.toList,
           exportedMembers.toList, topLevelExportedMembers.toList,
           topLevelExportNames)
@@ -208,7 +208,7 @@ object Infos {
     private val staticFieldsRead = mutable.Map.empty[ClassName, mutable.Set[FieldName]]
     private val staticFieldsWritten = mutable.Map.empty[ClassName, mutable.Set[FieldName]]
     private val methodsCalled = mutable.Map.empty[ClassName, mutable.Set[MethodName]]
-    private val methodsCalledStatically = mutable.Map.empty[ClassName, mutable.Set[NamespacedEncodedName]]
+    private val methodsCalledStatically = mutable.Map.empty[ClassName, mutable.Set[NamespacedMethodName]]
     private val instantiatedClasses = mutable.Set.empty[ClassName]
     private val accessedModules = mutable.Set.empty[ClassName]
     private val usedInstanceTests = mutable.Set.empty[ClassName]
@@ -257,7 +257,7 @@ object Infos {
            */
           if (method != cloneMethodName) {
             addMethodCalledStatically(ObjectClass,
-                NamespacedEncodedName(MemberNamespace.Public, method))
+                NamespacedMethodName(MemberNamespace.Public, method))
           }
 
         case NullType | NothingType =>
@@ -277,7 +277,7 @@ object Infos {
     }
 
     def addMethodCalledStatically(cls: ClassName,
-        method: NamespacedEncodedName): this.type = {
+        method: NamespacedMethodName): this.type = {
       methodsCalledStatically.getOrElseUpdate(cls, mutable.Set.empty) += method
       this
     }
@@ -289,7 +289,7 @@ object Infos {
 
     def addInstantiatedClass(cls: ClassName, ctor: MethodName): this.type = {
       addInstantiatedClass(cls).addMethodCalledStatically(cls,
-          NamespacedEncodedName(MemberNamespace.Constructor, ctor))
+          NamespacedMethodName(MemberNamespace.Constructor, ctor))
     }
 
     def addAccessedModule(cls: ClassName): this.type = {
@@ -457,7 +457,7 @@ object Infos {
     private val builder = new ReachabilityInfoBuilder
 
     def generateMethodInfo(methodDef: MethodDef): MethodInfo = {
-      val methodName = methodDef.encodedName
+      val methodName = methodDef.methodName
       methodName.paramTypeRefs.foreach(builder.maybeAddReferencedClass)
       builder.maybeAddReferencedClass(methodName.resultTypeRef)
 
@@ -535,11 +535,11 @@ object Infos {
             case ApplyStatically(flags, _, className, method, _) =>
               val namespace = MemberNamespace.forNonStaticCall(flags)
               builder.addMethodCalledStatically(className,
-                  NamespacedEncodedName(namespace, method.name))
+                  NamespacedMethodName(namespace, method.name))
             case ApplyStatic(flags, className, method, _) =>
               val namespace = MemberNamespace.forStaticCall(flags)
               builder.addMethodCalledStatically(className,
-                  NamespacedEncodedName(namespace, method.name))
+                  NamespacedMethodName(namespace, method.name))
 
             case LoadModule(className) =>
               builder.addAccessedModule(className)

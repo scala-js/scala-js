@@ -87,16 +87,16 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
   }
 
   private val _interfaces = TrieMap.empty[ClassName, InterfaceType]
-  private[optimizer] def getInterface(encodedName: ClassName): InterfaceType =
-    _interfaces.getOrPut(encodedName, new ParInterfaceType(encodedName))
+  private[optimizer] def getInterface(className: ClassName): InterfaceType =
+    _interfaces.getOrPut(className, new ParInterfaceType(className))
 
   private val methodsToProcess: AtomicAcc[MethodImpl] = AtomicAcc.empty
   private[optimizer] def scheduleMethod(method: MethodImpl): Unit =
     methodsToProcess += method
 
   private[optimizer] def newMethodImpl(owner: MethodContainer,
-      encodedName: MethodName): MethodImpl = {
-    new ParMethodImpl(owner, encodedName)
+      methodName: MethodName): MethodImpl = {
+    new ParMethodImpl(owner, methodName)
   }
 
   private[optimizer] def processAllTaggedMethods(): Unit = {
@@ -106,8 +106,8 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
       method.process()
   }
 
-  private class ParInterfaceType(encName: ClassName)
-      extends InterfaceType(encName) {
+  private class ParInterfaceType(className: ClassName)
+      extends InterfaceType(className) {
 
     private val ancestorsAskers = TrieSet.empty[MethodImpl]
     private val dynamicCallers = TrieMap.empty[MethodName, TrieSet[MethodImpl]]
@@ -115,7 +115,7 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
     private val staticCallers =
       Array.fill(MemberNamespace.Count)(TrieMap.empty[MethodName, TrieSet[MethodImpl]])
 
-    private var _ancestors: List[ClassName] = encodedName :: Nil
+    private var _ancestors: List[ClassName] = className :: Nil
 
     private val _instantiatedSubclasses: TrieSet[Class] = TrieSet.empty
 
@@ -184,8 +184,8 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
     }
   }
 
-  private class ParMethodImpl(owner: MethodContainer, encodedName: MethodName)
-      extends MethodImpl(owner, encodedName) {
+  private class ParMethodImpl(owner: MethodContainer, methodName: MethodName)
+      extends MethodImpl(owner, methodName) {
 
     private val bodyAskers = TrieSet.empty[MethodImpl]
 

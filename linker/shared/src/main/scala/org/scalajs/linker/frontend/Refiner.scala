@@ -37,7 +37,7 @@ final class Refiner(config: CommonPhaseConfig) {
       logger: Logger)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
     val linkedClassesByName =
-      Map(unit.classDefs.map(c => c.encodedName -> c): _*)
+      Map(unit.classDefs.map(c => c.className -> c): _*)
     inputProvider.update(linkedClassesByName)
 
     val analysis = logger.timeFuture("Refiner: Compute reachability") {
@@ -56,7 +56,7 @@ final class Refiner(config: CommonPhaseConfig) {
         val linkedClassDefs = for {
           info <- analysis.classInfos.values
         } yield {
-          refineClassDef(linkedClassesByName(info.encodedName), info)
+          refineClassDef(linkedClassesByName(info.className), info)
         }
 
         new LinkingUnit(unit.coreSpec, linkedClassDefs.toList, unit.moduleInitializers)
@@ -100,8 +100,8 @@ final class Refiner(config: CommonPhaseConfig) {
 
     val methods = classDef.methods.filter { m =>
       val methodDef = m.value
-      info.methodInfos(methodDef.flags.namespace)(
-          methodDef.encodedName).isReachable
+      info.methodInfos(methodDef.flags.namespace)(methodDef.methodName)
+        .isReachable
     }
 
     val kind =
@@ -133,18 +133,18 @@ private object Refiner {
         linkedClass <- linkedClassesByName.valuesIterator
         if linkedClass.hasEntryPoint
       } yield {
-        linkedClass.encodedName
+        linkedClass.className
       }).toList
     }
 
-    def loadInfo(encodedName: ClassName)(implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] =
-      getCache(encodedName).map(_.loadInfo(linkedClassesByName(encodedName)))
+    def loadInfo(className: ClassName)(implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] =
+      getCache(className).map(_.loadInfo(linkedClassesByName(className)))
 
-    private def getCache(encodedName: ClassName): Option[LinkedClassInfoCache] = {
-      cache.get(encodedName).orElse {
-        if (linkedClassesByName.contains(encodedName)) {
+    private def getCache(className: ClassName): Option[LinkedClassInfoCache] = {
+      cache.get(className).orElse {
+        if (linkedClassesByName.contains(className)) {
           val fileCache = new LinkedClassInfoCache
-          cache += encodedName -> fileCache
+          cache += className -> fileCache
           Some(fileCache)
         } else {
           None
@@ -173,7 +173,7 @@ private object Refiner {
       if (!cacheUsed) {
         cacheUsed = true
 
-        val builder = new Infos.ClassInfoBuilder(linkedClass.encodedName)
+        val builder = new Infos.ClassInfoBuilder(linkedClass.className)
           .setKind(linkedClass.kind)
           .setSuperClass(linkedClass.superClass.map(_.name))
           .addInterfaces(linkedClass.interfaces.map(_.name))
@@ -192,7 +192,7 @@ private object Refiner {
           builder.setIsExported(true)
 
           val optInfo = Infos.generateTopLevelExportsInfo(
-              linkedClass.encodedName, linkedClass.topLevelExports.map(_.value))
+              linkedClass.className, linkedClass.topLevelExports.map(_.value))
           optInfo.foreach(builder.addTopLevelExportedMember(_))
         }
 
@@ -217,11 +217,11 @@ private object Refiner {
       val caches: Array[mutable.Map[MethodName, LinkedMethodDefInfoCache]])
       extends AnyVal {
 
-    def getInfo(member: Versioned[MethodDef]): Infos.MethodInfo = {
-      val memberDef = member.value
-      val cache = caches(memberDef.flags.namespace.ordinal)
-        .getOrElseUpdate(memberDef.encodedName, new LinkedMethodDefInfoCache)
-      cache.getInfo(member)
+    def getInfo(method: Versioned[MethodDef]): Infos.MethodInfo = {
+      val methodDef = method.value
+      val cache = caches(methodDef.flags.namespace.ordinal)
+        .getOrElseUpdate(methodDef.methodName, new LinkedMethodDefInfoCache)
+      cache.getInfo(method)
     }
 
     def cleanAfterRun(): Unit = {

@@ -461,22 +461,22 @@ object AnalyzerTest {
     val classesWithEntryPoints0 = classDefs
       .map(EntryPointsInfo.forClassDef)
       .withFilter(_.hasEntryPoint)
-      .map(_.encodedName)
+      .map(_.className)
 
-    val encodedNameToInfo =
+    val classNameToInfo =
       classDefs.map(c => c.name.name -> Infos.generateClassInfo(c)).toMap
 
     def inputProvider(loader: Option[TestIRRepo.InfoLoader]) = new Analyzer.InputProvider {
       def classesWithEntryPoints(): Iterable[ClassName] = classesWithEntryPoints0
 
-      def loadInfo(encodedName: ClassName)(
+      def loadInfo(className: ClassName)(
           implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] = {
         /* Note: We could use Future.successful here to complete the future
          * immediately. However, in order to exercise as much asynchronizity as
          * possible, we don't.
          */
-        val own = encodedNameToInfo.get(encodedName).map(Future(_))
-        own.orElse(loader.flatMap(_.loadInfo(encodedName)))
+        val own = classNameToInfo.get(className).map(Future(_))
+        own.orElse(loader.flatMap(_.loadInfo(className)))
       }
     }
 
@@ -536,11 +536,11 @@ object AnalyzerTest {
 
   object ClsInfo {
     def unapply(classInfo: Analysis.ClassInfo): Some[String] =
-      Some(classInfo.encodedName.nameString)
+      Some(classInfo.className.nameString)
   }
 
   object MethInfo {
     def unapply(methodInfo: Analysis.MethodInfo): Some[(String, String)] =
-      Some((methodInfo.owner.encodedName.nameString, methodInfo.encodedName.nameString))
+      Some((methodInfo.owner.className.nameString, methodInfo.methodName.nameString))
   }
 }

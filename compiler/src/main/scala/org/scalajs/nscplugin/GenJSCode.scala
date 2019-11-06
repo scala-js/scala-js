@@ -1227,7 +1227,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         else (subConstructors.head.overrideNumBounds._1, overrideNum)
 
       def get(methodName: MethodName): Option[ConstructorTree] = {
-        if (methodName == this.method.encodedName) {
+        if (methodName == this.method.methodName) {
           Some(this)
         } else {
           subConstructors.iterator.map(_.get(methodName)).collectFirst {
@@ -1529,8 +1529,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       var overrideNum = -1
       def mkConstructorTree(method: js.MethodDef): ConstructorTree = {
-        val methodName = method.encodedName
-        val subCtrTrees = ctorToChildren(methodName).map(mkConstructorTree)
+        val subCtrTrees = ctorToChildren(method.methodName).map(mkConstructorTree)
         overrideNum += 1
         new ConstructorTree(overrideNum, method, subCtrTrees)
       }
@@ -5622,7 +5621,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       // Compute the set of method symbols that we need to implement
       val sams = {
         val samsBuilder = List.newBuilder[Symbol]
-        val seenEncodedNames = mutable.Set.empty[MethodName]
+        val seenMethodNames = mutable.Set.empty[MethodName]
 
         /* scala/bug#10512: any methods which `samInfo.sam` overrides need
          * bridges made for them.
@@ -5642,7 +5641,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           /* Remove duplicates, e.g., if we override the same method declared
            * in two super traits.
            */
-          if (seenEncodedNames.add(encodeMethodSym(sam).name))
+          if (seenMethodNames.add(encodeMethodSym(sam).name))
             samsBuilder += sam
         }
 

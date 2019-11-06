@@ -16,7 +16,7 @@ import Names.ClassName
 import Trees._
 
 final class EntryPointsInfo(
-    val encodedName: ClassName,
+    val className: ClassName,
     val hasEntryPoint: Boolean
 )
 

@@ -55,14 +55,14 @@ final class LinkedClass(
     val hasRuntimeTypeInfo: Boolean,
     val version: Option[String]) {
 
-  def encodedName: ClassName = name.name
+  def className: ClassName = name.name
 
   val hasEntryPoint: Boolean = {
     topLevelExports.nonEmpty ||
     methods.exists(_.value.flags.namespace == MemberNamespace.StaticConstructor)
   }
 
-  def fullName: String = encodedName.nameString
+  def fullName: String = className.nameString
 
   private[linker] def refined(
       kind: ClassKind,

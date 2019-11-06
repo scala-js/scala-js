@@ -1002,7 +1002,7 @@ object Trees {
   )(
       val optimizerHints: OptimizerHints
   )(implicit val pos: Position) extends IRNode {
-    def encodedName: ClassName = name.name
+    def className: ClassName = name.name
   }
 
   object ClassDef {
@@ -1052,7 +1052,7 @@ object Trees {
 
     require(!flags.isMutable, "nonsensical mutable MethodDef")
 
-    def encodedName: MethodName = name.name
+    def methodName: MethodName = name.name
   }
 
   sealed abstract class JSMethodPropDef extends MemberDef
