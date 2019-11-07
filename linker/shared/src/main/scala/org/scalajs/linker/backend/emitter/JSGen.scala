@@ -18,16 +18,15 @@ import scala.annotation.tailrec
 
 import scala.collection.mutable
 
-import org.scalajs.ir
-import ir._
-import ir.Definitions._
-import ir.Types._
-import ir.{Trees => irt}
+import org.scalajs.ir._
+import org.scalajs.ir.Names._
+import org.scalajs.ir.Types._
+import org.scalajs.ir.{Trees => irt}
 
 import org.scalajs.linker.interface._
 import org.scalajs.linker.backend.javascript.Trees._
 
-import EmitterDefinitions._
+import EmitterNames._
 
 /** Collection of tree generators that are used accross the board.
  *  This class is fully stateless.
@@ -90,7 +89,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
       cache: mutable.Map[N, String]): String = {
 
     cache.getOrElseUpdate(name, {
-      val encoded = name.unsafeEncoded
+      val encoded = name.encoded
       val len = encoded.length
       val result = new Array[Char](len)
       result(0) = startByteToChar(encoded(0) & 0xff)
@@ -105,7 +104,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genName(name: LocalName): String = {
     genLocalNameCache.getOrElseUpdate(name, {
-      val encoded = name.unsafeEncoded
+      val encoded = name.encoded
       val len = encoded.length
       val result = new Array[Char](len)
       result(0) = localStartByteToChar(encoded(0) & 0xff)
@@ -130,7 +129,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
       // First encode the simple name
       if (!onlyParamTypeRefs) {
-        val encoded = name.simpleName.unsafeEncoded
+        val encoded = name.simpleName.encoded
         builder.append(startByteToChar(encoded(0) & 0xff))
         val len = encoded.length
         var i = 1
@@ -179,8 +178,8 @@ private[emitter] final class JSGen(val semantics: Semantics,
         builder.append('_').append('_')
       }
 
-      for (typeRef <- name.resultTypeRef)
-        appendTypeRef(typeRef)
+      if (!onlyParamTypeRefs && !name.isReflectiveProxy)
+        appendTypeRef(name.resultTypeRef)
 
       builder.toString()
     })
@@ -188,7 +187,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genName(name: ClassName): String = {
     genClassNameCache.getOrElseUpdate(name, {
-      val encoded = name.unsafeEncoded
+      val encoded = name.encoded
       val len = encoded.length
       val builder = new java.lang.StringBuilder(len + 1)
 
@@ -268,19 +267,14 @@ private[emitter] final class JSGen(val semantics: Semantics,
       VarDef(name, rhs = None)
   }
 
-  def genSelect(receiver: Tree, cls: ClassRef, field: irt.FieldIdent)(
+  def genSelect(receiver: Tree, className: ClassName, field: irt.FieldIdent)(
       implicit pos: Position): Tree = {
-    genSelect(receiver, cls.className, field)
+    DotSelect(receiver, genFieldIdent(className, field)(field.pos))
   }
 
-  def genSelect(receiver: Tree, cls: ClassName, field: irt.FieldIdent)(
-      implicit pos: Position): Tree = {
-    DotSelect(receiver, genFieldIdent(cls, field)(field.pos))
-  }
-
-  private def genFieldIdent(cls: ClassName, field: irt.FieldIdent)(
+  private def genFieldIdent(className: ClassName, field: irt.FieldIdent)(
       implicit pos: Position): Ident = {
-    Ident(genName(cls) + "__f_" + genName(field.name), field.originalName)
+    Ident(genName(className) + "__f_" + genName(field.name), field.originalName)
   }
 
   def genSelectStatic(className: ClassName, item: irt.FieldIdent)(
@@ -789,7 +783,7 @@ private[emitter] object JSGen {
       "void", "while", "with", "yield"
   )
 
-  private val compressedPrefixes: List[(EncodedName, String)] = {
+  private val compressedPrefixes: List[(UTF8String, String)] = {
     List(
         "java.lang." -> "jl_",
         "java.util." -> "ju_",
@@ -804,11 +798,11 @@ private[emitter] object JSGen {
         "scala.Tuple" -> "T",
         "scala." -> "s_"
     ).map { pair =>
-      pair._1.map(_.toByte).toArray -> pair._2
+      UTF8String(pair._1) -> pair._2
     }
   }
 
-  private def encodedNameStartsWith(encoded: EncodedName, prefix: EncodedName,
+  private def encodedNameStartsWith(encoded: UTF8String, prefix: UTF8String,
       start: Int): Boolean = {
     // scalastyle:off return
     val prefixLen = prefix.length

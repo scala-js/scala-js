@@ -19,7 +19,7 @@ import scala.concurrent._
 import org.scalajs.linker.analyzer._
 
 import org.scalajs.ir
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
@@ -51,7 +51,7 @@ private[frontend] final class MethodSynthesizer(
       classInfo: ClassInfo, methodInfo: MethodInfo,
       targetName: MethodName, analysis: Analysis)(
       implicit ec: ExecutionContext): Future[MethodDef] = {
-    val encodedName = methodInfo.encodedName
+    val methodName = methodInfo.methodName
 
     for {
       targetMDef <- findInheritedMethodDef(analysis, classInfo, targetName)
@@ -59,14 +59,14 @@ private[frontend] final class MethodSynthesizer(
       implicit val pos = targetMDef.pos
 
       val targetIdent = targetMDef.name.copy() // for the new pos
-      val proxyIdent = MethodIdent(encodedName, None)
+      val proxyIdent = MethodIdent(methodName, None)
       val params = targetMDef.args.map(_.copy()) // for the new pos
-      val currentClassType = ClassType(classInfo.encodedName)
+      val currentClassType = ClassType(classInfo.className)
 
       val call = Apply(ApplyFlags.empty, This()(currentClassType),
           targetIdent, params.map(_.ref))(targetMDef.resultType)
 
-      val body = if (targetName.resultTypeRef.exists(_ == VoidRef)) {
+      val body = if (targetName.resultTypeRef == VoidRef) {
         // Materialize an `undefined` result for void methods
         Block(call, Undefined())
       } else {
@@ -82,22 +82,22 @@ private[frontend] final class MethodSynthesizer(
       classInfo: ClassInfo, methodInfo: MethodInfo,
       targetInterface: ClassName, analysis: Analysis)(
       implicit ec: ExecutionContext): Future[MethodDef] = {
-    val encodedName = methodInfo.encodedName
+    val methodName = methodInfo.methodName
 
     val targetInterfaceInfo = analysis.classInfos(targetInterface)
 
     for {
-      targetMDef <- findMethodDef(targetInterfaceInfo, encodedName)
+      targetMDef <- findMethodDef(targetInterfaceInfo, methodName)
     } yield {
       implicit val pos = targetMDef.pos
 
       val targetIdent = targetMDef.name.copy() // for the new pos
       val bridgeIdent = targetIdent
       val params = targetMDef.args.map(_.copy()) // for the new pos
-      val currentClassType = ClassType(classInfo.encodedName)
+      val currentClassType = ClassType(classInfo.className)
 
       val body = ApplyStatically(
-          ApplyFlags.empty, This()(currentClassType), ClassRef(targetInterface),
+          ApplyFlags.empty, This()(currentClassType), targetInterface,
           targetIdent, params.map(_.ref))(targetMDef.resultType)
 
       MethodDef(MemberFlags.empty, bridgeIdent, params, targetMDef.resultType,
@@ -132,7 +132,7 @@ private[frontend] final class MethodSynthesizer(
 
         case None =>
           assert(ancestorInfo.superClass.isDefined,
-              s"Could not find $methodName anywhere in ${classInfo.encodedName}")
+              s"Could not find $methodName anywhere in ${classInfo.className}")
           loop(ancestorInfo.superClass.get)
       }
     }
@@ -143,16 +143,16 @@ private[frontend] final class MethodSynthesizer(
   private def findMethodDef(classInfo: ClassInfo, methodName: MethodName)(
       implicit ec: ExecutionContext): Future[MethodDef] = {
     for {
-      classDef <- inputProvider.loadClassDef(classInfo.encodedName)
+      classDef <- inputProvider.loadClassDef(classInfo.className)
     } yield {
       classDef.memberDefs.collectFirst {
         case mDef: MethodDef
             if mDef.flags.namespace == MemberNamespace.Public &&
-                mDef.encodedName == methodName =>
+                mDef.methodName == methodName =>
           mDef
       }.getOrElse {
         throw new AssertionError(
-            s"Cannot find ${methodName.nameString} in ${classInfo.encodedName.nameString}")
+            s"Cannot find ${methodName.nameString} in ${classInfo.className.nameString}")
       }
     }
   }
@@ -160,7 +160,7 @@ private[frontend] final class MethodSynthesizer(
 
 private[frontend] object MethodSynthesizer {
   trait InputProvider {
-    def loadClassDef(encodedName: ClassName)(
+    def loadClassDef(className: ClassName)(
         implicit ec: ExecutionContext): Future[ClassDef]
   }
 }

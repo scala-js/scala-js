@@ -16,14 +16,14 @@ import scala.language.implicitConversions
 
 import org.scalajs.ir.ScalaJSVersions
 import org.scalajs.ir.Position
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees.{JSUnaryOp, JSBinaryOp}
 import org.scalajs.ir.Types._
 
 import org.scalajs.linker.interface.{CheckedBehavior, ModuleKind}
 import org.scalajs.linker.backend.javascript.Trees._
 
-import EmitterDefinitions._
+import EmitterNames._
 
 private[emitter] object CoreJSLib {
 

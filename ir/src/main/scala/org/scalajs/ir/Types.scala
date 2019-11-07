@@ -14,15 +14,10 @@ package org.scalajs.ir
 
 import scala.annotation.tailrec
 
-import Definitions.{ClassName, FieldName}
+import Names._
 import Trees._
 
 object Types {
-
-  private val AncestorsOfPseudoArrayClass: Set[ClassName] = {
-    Set(Definitions.ObjectClass, ClassName("java.io.Serializable"),
-        ClassName("java.lang.Cloneable"))
-  }
 
   /** Type of a term (expression or statement) in the IR.
    *
@@ -261,7 +256,6 @@ object Types {
    */
   def isSubtype(lhs: Type, rhs: Type)(
       isSubclass: (ClassName, ClassName) => Boolean): Boolean = {
-    import Definitions._
 
     (lhs != NoType && rhs != NoType) && {
       (lhs == rhs) ||
@@ -275,26 +269,26 @@ object Types {
         case (NullType, ClassType(_)) => true
         case (NullType, ArrayType(_)) => true
 
-        case (UndefType, ClassType(cls)) =>
-          isSubclass(BoxedUnitClass, cls)
-        case (BooleanType, ClassType(cls)) =>
-          isSubclass(BoxedBooleanClass, cls)
-        case (CharType, ClassType(cls)) =>
-          isSubclass(BoxedCharacterClass, cls)
-        case (ByteType, ClassType(cls)) =>
-          isSubclass(BoxedByteClass, cls)
-        case (ShortType, ClassType(cls)) =>
-          isSubclass(BoxedShortClass, cls)
-        case (IntType, ClassType(cls)) =>
-          isSubclass(BoxedIntegerClass, cls)
-        case (LongType, ClassType(cls)) =>
-          isSubclass(BoxedLongClass, cls)
-        case (FloatType, ClassType(cls)) =>
-          isSubclass(BoxedFloatClass, cls)
-        case (DoubleType, ClassType(cls)) =>
-          isSubclass(BoxedDoubleClass, cls)
-        case (StringType, ClassType(cls)) =>
-          isSubclass(BoxedStringClass, cls)
+        case (UndefType, ClassType(className)) =>
+          isSubclass(BoxedUnitClass, className)
+        case (BooleanType, ClassType(className)) =>
+          isSubclass(BoxedBooleanClass, className)
+        case (CharType, ClassType(className)) =>
+          isSubclass(BoxedCharacterClass, className)
+        case (ByteType, ClassType(className)) =>
+          isSubclass(BoxedByteClass, className)
+        case (ShortType, ClassType(className)) =>
+          isSubclass(BoxedShortClass, className)
+        case (IntType, ClassType(className)) =>
+          isSubclass(BoxedIntegerClass, className)
+        case (LongType, ClassType(className)) =>
+          isSubclass(BoxedLongClass, className)
+        case (FloatType, ClassType(className)) =>
+          isSubclass(BoxedFloatClass, className)
+        case (DoubleType, ClassType(className)) =>
+          isSubclass(BoxedDoubleClass, className)
+        case (StringType, ClassType(className)) =>
+          isSubclass(BoxedStringClass, className)
 
         case (ArrayType(ArrayTypeRef(lhsBase, lhsDims)),
             ArrayType(ArrayTypeRef(rhsBase, rhsDims))) =>
@@ -321,8 +315,8 @@ object Types {
             }
           }
 
-        case (ArrayType(_), ClassType(cls)) =>
-          AncestorsOfPseudoArrayClass.contains(cls)
+        case (ArrayType(_), ClassType(className)) =>
+          AncestorsOfPseudoArrayClass.contains(className)
 
         case _ =>
           false

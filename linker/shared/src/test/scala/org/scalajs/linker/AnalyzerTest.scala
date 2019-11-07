@@ -17,9 +17,9 @@ import scala.concurrent._
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.ir
 import org.scalajs.ir.ClassKind
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.EntryPointsInfo
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
@@ -357,7 +357,7 @@ class AnalyzerTest {
 
   @Test
   def juPropertiesNotReachableWhenUsingGetSetClearProperty(): AsyncResult = await {
-    val systemMod = LoadModule(ClassRef("java.lang.System$"))
+    val systemMod = LoadModule("java.lang.System$")
     val emptyStr = StringLiteral("")
     val StringType = ClassType(BoxedStringClass)
 
@@ -393,7 +393,8 @@ class AnalyzerTest {
     val fooAMethodName = m("foo", Nil, ClassRef("A"))
     val fooBMethodName = m("foo", Nil, ClassRef("B"))
 
-    val fooReflProxyName = MethodName(SimpleMethodName("foo"), Nil, None)
+    val fooReflProxyName =
+      MethodName.reflectiveProxy(SimpleMethodName("foo"), Nil)
 
     val classDefs = Seq(
         classDef("A", superClass = Some(ObjectClass)),
@@ -458,24 +459,24 @@ object AnalyzerTest {
       implicit ec: ExecutionContext): Future[Analysis] = {
 
     val classesWithEntryPoints0 = classDefs
-      .map(ir.EntryPointsInfo.forClassDef)
+      .map(EntryPointsInfo.forClassDef)
       .withFilter(_.hasEntryPoint)
-      .map(_.encodedName)
+      .map(_.className)
 
-    val encodedNameToInfo =
+    val classNameToInfo =
       classDefs.map(c => c.name.name -> Infos.generateClassInfo(c)).toMap
 
     def inputProvider(loader: Option[TestIRRepo.InfoLoader]) = new Analyzer.InputProvider {
       def classesWithEntryPoints(): Iterable[ClassName] = classesWithEntryPoints0
 
-      def loadInfo(encodedName: ClassName)(
+      def loadInfo(className: ClassName)(
           implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] = {
         /* Note: We could use Future.successful here to complete the future
          * immediately. However, in order to exercise as much asynchronizity as
          * possible, we don't.
          */
-        val own = encodedNameToInfo.get(encodedName).map(Future(_))
-        own.orElse(loader.flatMap(_.loadInfo(encodedName)))
+        val own = classNameToInfo.get(className).map(Future(_))
+        own.orElse(loader.flatMap(_.loadInfo(className)))
       }
     }
 
@@ -535,11 +536,11 @@ object AnalyzerTest {
 
   object ClsInfo {
     def unapply(classInfo: Analysis.ClassInfo): Some[String] =
-      Some(classInfo.encodedName.nameString)
+      Some(classInfo.className.nameString)
   }
 
   object MethInfo {
     def unapply(methodInfo: Analysis.MethodInfo): Some[(String, String)] =
-      Some((methodInfo.owner.encodedName.nameString, methodInfo.encodedName.nameString))
+      Some((methodInfo.owner.className.nameString, methodInfo.methodName.nameString))
   }
 }

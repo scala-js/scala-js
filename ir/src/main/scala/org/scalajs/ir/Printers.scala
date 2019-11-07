@@ -19,7 +19,7 @@ import scala.Predef.{print => _, println => _, _}
 
 import java.io.Writer
 
-import Definitions._
+import Names._
 import Position._
 import Trees._
 import Types._
@@ -274,32 +274,32 @@ object Printers {
 
         // Scala expressions
 
-        case New(cls, ctor, args) =>
+        case New(className, ctor, args) =>
           print("new ")
-          print(cls)
+          print(className)
           print("().")
           print(ctor)
           printArgs(args)
 
-        case LoadModule(cls) =>
+        case LoadModule(className) =>
           print("mod:")
-          print(cls)
+          print(className)
 
-        case StoreModule(cls, value) =>
+        case StoreModule(className, value) =>
           print("mod:")
-          print(cls)
+          print(className)
           print("<-")
           print(value)
 
-        case Select(qualifier, cls, field) =>
+        case Select(qualifier, className, field) =>
           print(qualifier)
           print('.')
-          print(cls)
+          print(className)
           print("::")
           print(field)
 
-        case SelectStatic(cls, field) =>
-          print(cls)
+        case SelectStatic(className, field) =>
+          print(className)
           print("::")
           print(field)
 
@@ -309,17 +309,17 @@ object Printers {
           print(method)
           printArgs(args)
 
-        case ApplyStatically(flags, receiver, cls, method, args) =>
+        case ApplyStatically(flags, receiver, className, method, args) =>
           print(receiver)
           print(".")
-          print(cls)
+          print(className)
           print("::")
           print(flags)
           print(method)
           printArgs(args)
 
-        case ApplyStatic(flags, cls, method, args) =>
-          print(cls)
+        case ApplyStatic(flags, className, method, args) =>
+          print(className)
           print("::")
           print(flags)
           print(method)
@@ -537,10 +537,10 @@ object Printers {
           }
           printArgs(args)
 
-        case JSPrivateSelect(qualifier, cls, field) =>
+        case JSPrivateSelect(qualifier, className, field) =>
           print(qualifier)
           print('.')
-          print(cls)
+          print(className)
           print("::")
           print(field)
 
@@ -597,14 +597,14 @@ object Printers {
           print(arg)
           print(')')
 
-        case LoadJSConstructor(cls) =>
+        case LoadJSConstructor(className) =>
           print("constructorOf[")
-          print(cls)
+          print(className)
           print(']')
 
-        case LoadJSModule(cls) =>
+        case LoadJSModule(className) =>
           print("mod:")
-          print(cls)
+          print(className)
 
         case JSDelete(qualifier, item) =>
           print("delete ")
@@ -819,9 +819,9 @@ object Printers {
           printBlock(body)
           print(')')
 
-        case CreateJSClass(cls, captureValues) =>
+        case CreateJSClass(className, captureValues) =>
           print("createjsclass[")
-          print(cls)
+          print(className)
           printRow(captureValues, "](", ", ", ")")
 
         // Transient

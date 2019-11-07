@@ -12,7 +12,7 @@
 
 package org.scalajs.linker.standard
 
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Names._
 
 import org.scalajs.linker.interface.ModuleInitializer
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl

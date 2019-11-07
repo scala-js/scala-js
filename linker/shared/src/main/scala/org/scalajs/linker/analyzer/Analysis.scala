@@ -18,9 +18,8 @@ import scala.collection.mutable
 
 import org.scalajs.logging._
 
-import org.scalajs.ir
 import org.scalajs.ir.ClassKind
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees.MemberNamespace
 import org.scalajs.ir.Types._
 
@@ -46,7 +45,7 @@ object Analysis {
    *  versions, possibly causing `LinkageError`s if you extend it.
    */
   trait ClassInfo {
-    def encodedName: ClassName
+    def className: ClassName
     def kind: ClassKind
     def superClass: Option[ClassInfo]
     def interfaces: scala.collection.Seq[ClassInfo]
@@ -68,7 +67,7 @@ object Analysis {
     def methodInfos(
         namespace: MemberNamespace): scala.collection.Map[MethodName, MethodInfo]
 
-    def displayName: String = encodedName.nameString
+    def displayName: String = className.nameString
   }
 
   /** Method node in a reachability graph produced by the [[Analyzer]].
@@ -79,7 +78,7 @@ object Analysis {
    */
   trait MethodInfo {
     def owner: ClassInfo
-    def encodedName: MethodName
+    def methodName: MethodName
     def namespace: MemberNamespace
     def isAbstract: Boolean
     def isReachable: Boolean
@@ -88,7 +87,7 @@ object Analysis {
     def nonExistent: Boolean
     def syntheticKind: MethodSyntheticKind
 
-    def displayName: String = encodedName.displayName
+    def displayName: String = methodName.displayName
 
     def fullDisplayName: String =
       this.namespace.prefixString + owner.displayName + "." + displayName

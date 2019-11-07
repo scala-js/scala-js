@@ -2,7 +2,7 @@ package build
 
 import org.scalajs.ir._
 import org.scalajs.ir.ClassKind
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
@@ -79,7 +79,7 @@ object JavalibIRCleaner {
 
         case JSClass | JSModuleClass =>
           errorManager.reportError(
-              s"found non-native JS class ${tree.encodedName}")(tree.pos)
+              s"found non-native JS class ${tree.className}")(tree.pos)
       }
     }
 
@@ -163,13 +163,13 @@ object JavalibIRCleaner {
       if irFile.tree.kind.isJSType
     } yield {
       val tree = irFile.tree
-      tree.encodedName -> tree
+      tree.className -> tree
     }).toMap
   }
 
   private def cleanTree(tree: ClassDef, jsTypes: Map[ClassName, ClassDef],
       errorManager: ErrorManager): ClassDef = {
-    new ClassDefCleaner(tree.encodedName, jsTypes, errorManager)
+    new ClassDefCleaner(tree.className, jsTypes, errorManager)
       .cleanClassDef(tree)
   }
 
@@ -264,7 +264,7 @@ object JavalibIRCleaner {
          * `sjs.runtime.unwrapJavaScriptExeption(arg)`. Here, we get rid of
          * that call and rewrite `tree` to `throw arg`.
          */
-        case Throw(Apply(_, LoadModule(ClassRef(ScalaJSRuntimePackage)),
+        case Throw(Apply(_, LoadModule(ScalaJSRuntimePackage),
             MethodIdent(`unwrapJSExceptionMethodName`, _), arg :: Nil))
             if enclosingClassName == JavaLangSemanticsUtils =>
           Throw(arg)
@@ -274,19 +274,19 @@ object JavalibIRCleaner {
       }
 
       val result = super.transform(preprocessedTree, isStat) match {
-        case New(cls, ctor, args) =>
-          New(cls, transformMethodIdent(ctor), args)
+        case New(className, ctor, args) =>
+          New(className, transformMethodIdent(ctor), args)
 
         case t: Apply =>
           Apply(t.flags, t.receiver, transformMethodIdent(t.method),
               t.args)(t.tpe)
         case t: ApplyStatically =>
-          validateNonJSClassRef(t.cls)
-          ApplyStatically(t.flags, t.receiver, t.cls,
+          validateNonJSClassName(t.className)
+          ApplyStatically(t.flags, t.receiver, t.className,
               transformMethodIdent(t.method), t.args)(t.tpe)
         case t: ApplyStatic =>
-          validateNonJSClassRef(t.cls)
-          ApplyStatic(t.flags, t.cls,
+          validateNonJSClassName(t.className)
+          ApplyStatic(t.flags, t.className,
               transformMethodIdent(t.method), t.args)(t.tpe)
 
         case NewArray(typeRef, lengths) =>
@@ -298,10 +298,10 @@ object JavalibIRCleaner {
           validateType(t.testType)
           t
 
-        case LoadJSConstructor(cls) =>
-          genLoadFromLoadSpecOf(cls)
-        case LoadJSModule(cls) =>
-          genLoadFromLoadSpecOf(cls)
+        case LoadJSConstructor(className) =>
+          genLoadFromLoadSpecOf(className)
+        case LoadJSModule(className) =>
+          genLoadFromLoadSpecOf(className)
 
         case t: ClassOf =>
           if (transformTypeRef(t.typeRef) != t.typeRef)
@@ -316,21 +316,21 @@ object JavalibIRCleaner {
       result
     }
 
-    private def genLoadFromLoadSpecOf(cls: ClassRef)(
+    private def genLoadFromLoadSpecOf(className: ClassName)(
         implicit pos: Position): Tree = {
-      jsTypes.get(cls.className) match {
+      jsTypes.get(className) match {
         case Some(classDef) =>
           classDef.jsNativeLoadSpec match {
             case Some(loadSpec) =>
               genLoadFromLoadSpec(loadSpec)
             case None =>
               reportError(
-                  s"$cls does not have a load spec " +
+                  s"${className.nameString} does not have a load spec " +
                   "(this shouldn't have happened at all; bug in the compiler?)")
               JSGlobalRef("Object")
           }
         case None =>
-          reportError(s"$cls is not a JS type")
+          reportError(s"${className.nameString} is not a JS type")
           JSGlobalRef("Object")
       }
     }
@@ -350,17 +350,17 @@ object JavalibIRCleaner {
 
     private def transformMethodIdent(ident: MethodIdent): MethodIdent = {
       implicit val pos = ident.pos
-      val encodedName = ident.name
-      val paramTypeRefs = encodedName.paramTypeRefs
+      val methodName = ident.name
+      val paramTypeRefs = methodName.paramTypeRefs
       val newParamTypeRefs = paramTypeRefs.map(transformTypeRef)
-      val resultTypeRef = encodedName.resultTypeRef
-      val newResultTypeRef = resultTypeRef.map(transformTypeRef)
+      val resultTypeRef = methodName.resultTypeRef
+      val newResultTypeRef = transformTypeRef(resultTypeRef)
       if (newParamTypeRefs == paramTypeRefs && newResultTypeRef == resultTypeRef) {
         ident
       } else {
-        MethodIdent(
-            MethodName(encodedName.simpleName, newParamTypeRefs, newResultTypeRef),
-            ident.originalName)(ident.pos)
+        val newMethodName = MethodName(methodName.simpleName,
+            newParamTypeRefs, newResultTypeRef, methodName.isReflectiveProxy)
+        MethodIdent(newMethodName, ident.originalName)(ident.pos)
       }
     }
 
@@ -427,9 +427,6 @@ object JavalibIRCleaner {
       if (isScalaClassName(cls))
         reportError(s"Illegal reference to Scala class ${cls.nameString}")
     }
-
-    private def validateNonJSClassRef(cls: ClassRef)(implicit pos: Position): Unit =
-      validateNonJSClassName(cls.className)
 
     private def validateNonJSClassName(cls: ClassName)(implicit pos: Position): Unit = {
       if (jsTypes.contains(cls))

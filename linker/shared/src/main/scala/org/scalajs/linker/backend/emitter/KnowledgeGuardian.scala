@@ -14,8 +14,8 @@ package org.scalajs.linker.backend.emitter
 
 import scala.collection.mutable
 
-import org.scalajs.ir.{ClassKind, Definitions}
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.ClassKind
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types.Type
 
@@ -23,7 +23,7 @@ import org.scalajs.linker.interface.ModuleKind
 import org.scalajs.linker.standard._
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
-import EmitterDefinitions._
+import EmitterNames._
 
 private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
   import KnowledgeGuardian._
@@ -52,11 +52,11 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
 
     // Update classes
     for (linkedClass <- linkingUnit.classDefs) {
-      val encodedName = linkedClass.encodedName
-      val thisClassHasInlineableInit = hasInlineableInit(encodedName)
-      classes.get(encodedName).fold[Unit] {
+      val className = linkedClass.className
+      val thisClassHasInlineableInit = hasInlineableInit(className)
+      classes.get(className).fold[Unit] {
         // new class
-        classes.put(encodedName,
+        classes.put(className,
             new Class(linkedClass, thisClassHasInlineableInit))
       } { existingCls =>
         existingCls.update(linkedClass, thisClassHasInlineableInit)
@@ -65,12 +65,12 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
       def methodExists(methodName: MethodName): Boolean = {
         linkedClass.methods.exists { m =>
           m.value.flags.namespace == MemberNamespace.Public &&
-          m.value.encodedName == methodName
+          m.value.methodName == methodName
         }
       }
 
-      linkedClass.encodedName match {
-        case Definitions.ClassClass =>
+      linkedClass.className match {
+        case ClassClass =>
           newIsParentDataAccessed = methodExists(getSuperclassMethodName)
         case _ =>
       }
@@ -125,8 +125,8 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
        *
        * By construction, this is always true for module classes.
        */
-      !blackList(classDef.encodedName) &&
-      !classesWithInstantiatedSubclasses(classDef.encodedName) && {
+      !blackList(classDef.className) &&
+      !classesWithInstantiatedSubclasses(classDef.className) && {
         classDef.methods.count(
             x => x.value.flags.namespace == MemberNamespace.Constructor) == 1
       }
@@ -134,7 +134,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
 
     scalaClassDefs
       .withFilter(enableInlineableInitFor(_))
-      .map(_.encodedName)
+      .map(_.className)
       .toSet
   }
 
@@ -179,7 +179,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
       initHasInlineableInit: Boolean)
       extends Unregisterable {
 
-    private val encodedName = initClass.encodedName
+    private val className = initClass.className
 
     private var isAlive: Boolean = true
 
@@ -321,7 +321,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
       val inheritedFieldDefs =
         if (superClass == null) Nil
         else classes(superClass).askAllScalaClassFieldDefs(invalidatable)
-      inheritedFieldDefs :+ (encodedName -> fieldDefs)
+      inheritedFieldDefs :+ (className -> fieldDefs)
     }
 
     def askHasInlineableInit(invalidatable: Invalidatable): Boolean = {

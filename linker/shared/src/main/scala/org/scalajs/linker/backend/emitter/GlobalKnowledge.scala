@@ -12,7 +12,7 @@
 
 package org.scalajs.linker.backend.emitter
 
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees.{AnyFieldDef, JSNativeLoadSpec}
 import org.scalajs.ir.Types.Type
 
@@ -59,7 +59,7 @@ private[emitter] trait GlobalKnowledge {
    */
   def getJSNativeLoadSpec(className: ClassName): Option[JSNativeLoadSpec]
 
-  /** The `encodedName` of the superclass of a (non-native) JS class.
+  /** The `className` of the superclass of a (non-native) JS class.
    *
    *  It is invalid to call this method with a class that is not a non-native
    *  JS class.

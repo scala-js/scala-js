@@ -15,7 +15,7 @@ package org.scalajs.linker.testutils
 import scala.collection.mutable
 import scala.concurrent._
 
-import org.scalajs.ir.Definitions.ClassName
+import org.scalajs.ir.Names.ClassName
 
 import org.scalajs.linker.StandardImpl
 import org.scalajs.linker.interface.IRFile
@@ -26,16 +26,16 @@ object TestIRRepo {
   val minilib = new TestIRRepo(StdlibHolder.minilib)
   val fulllib = new TestIRRepo(StdlibHolder.fulllib)
 
-  class InfoLoader(encodedNameToFile: Map[ClassName, IRFileImpl]) {
+  class InfoLoader(classNameToFile: Map[ClassName, IRFileImpl]) {
     private val infosCache = mutable.Map.empty[ClassName, Future[ClassInfo]]
 
-    def loadInfo(encodedName: ClassName)(
+    def loadInfo(className: ClassName)(
         implicit ec: ExecutionContext): Option[Future[ClassInfo]] = {
       infosCache.synchronized {
-        infosCache.get(encodedName).orElse {
+        infosCache.get(className).orElse {
           val info =
-            encodedNameToFile.get(encodedName).map(_.tree.map(generateClassInfo))
-          info.foreach(i => infosCache.put(encodedName, i))
+            classNameToFile.get(className).map(_.tree.map(generateClassInfo))
+          info.foreach(i => infosCache.put(className, i))
           info
         }
       }
@@ -57,14 +57,14 @@ final class TestIRRepo(stdlibPath: String) {
   lazy val loader: Future[InfoLoader] = {
     def toElem(f: IRFile) = {
       val impl = IRFileImpl.fromIRFile(f)
-      impl.entryPointsInfo.map(i => i.encodedName -> impl)
+      impl.entryPointsInfo.map(i => i.className -> impl)
     }
 
     for {
       files <- stdlibIRFiles
-      encodedNameToFile <- Future.traverse(files)(toElem)
+      classNameToFile <- Future.traverse(files)(toElem)
     } yield {
-      new InfoLoader(encodedNameToFile.toMap)
+      new InfoLoader(classNameToFile.toMap)
     }
   }
 }

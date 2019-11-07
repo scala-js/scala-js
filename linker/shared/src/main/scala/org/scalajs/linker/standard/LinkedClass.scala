@@ -14,10 +14,9 @@ package org.scalajs.linker.standard
 
 import scala.collection.mutable
 
-import org.scalajs.ir
 import org.scalajs.ir.Trees._
-import org.scalajs.ir.{ClassKind, Definitions, Position}
-import org.scalajs.ir.Definitions.ClassName
+import org.scalajs.ir.{ClassKind, Position}
+import org.scalajs.ir.Names.ClassName
 
 /** A ClassDef after linking.
  *
@@ -56,14 +55,14 @@ final class LinkedClass(
     val hasRuntimeTypeInfo: Boolean,
     val version: Option[String]) {
 
-  def encodedName: ClassName = name.name
+  def className: ClassName = name.name
 
   val hasEntryPoint: Boolean = {
     topLevelExports.nonEmpty ||
     methods.exists(_.value.flags.namespace == MemberNamespace.StaticConstructor)
   }
 
-  def fullName: String = encodedName.nameString
+  def fullName: String = className.nameString
 
   private[linker] def refined(
       kind: ClassKind,

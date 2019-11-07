@@ -14,7 +14,7 @@ package org.scalajs.ir
 
 import scala.annotation.switch
 
-import Definitions._
+import Names._
 import Position.NoPosition
 import Types._
 
@@ -233,26 +233,27 @@ object Trees {
 
   // Scala expressions
 
-  case class New(cls: ClassRef, ctor: MethodIdent, args: List[Tree])(
+  case class New(className: ClassName, ctor: MethodIdent, args: List[Tree])(
       implicit val pos: Position) extends Tree {
-    val tpe = ClassType(cls.className)
+    val tpe = ClassType(className)
   }
 
-  case class LoadModule(cls: ClassRef)(
+  case class LoadModule(className: ClassName)(
       implicit val pos: Position) extends Tree {
-    val tpe = ClassType(cls.className)
+    val tpe = ClassType(className)
   }
 
-  case class StoreModule(cls: ClassRef, value: Tree)(
+  case class StoreModule(className: ClassName, value: Tree)(
       implicit val pos: Position) extends Tree {
     val tpe = NoType // cannot be in expression position
   }
 
-  case class Select(qualifier: Tree, cls: ClassRef, field: FieldIdent)(
+  case class Select(qualifier: Tree, className: ClassName, field: FieldIdent)(
       val tpe: Type)(
       implicit val pos: Position) extends Tree
 
-  case class SelectStatic(cls: ClassRef, field: FieldIdent)(val tpe: Type)(
+  case class SelectStatic(className: ClassName, field: FieldIdent)(
+      val tpe: Type)(
       implicit val pos: Position) extends Tree
 
   /** Apply an instance method with dynamic dispatch (the default). */
@@ -264,13 +265,13 @@ object Trees {
   }
 
   /** Apply an instance method with static dispatch (e.g., super calls). */
-  case class ApplyStatically(flags: ApplyFlags, receiver: Tree, cls: ClassRef,
-      method: MethodIdent, args: List[Tree])(
+  case class ApplyStatically(flags: ApplyFlags, receiver: Tree,
+      className: ClassName, method: MethodIdent, args: List[Tree])(
       val tpe: Type)(implicit val pos: Position) extends Tree
 
   /** Apply a static method. */
-  case class ApplyStatic(flags: ApplyFlags, cls: ClassRef, method: MethodIdent,
-      args: List[Tree])(
+  case class ApplyStatic(flags: ApplyFlags, className: ClassName,
+      method: MethodIdent, args: List[Tree])(
       val tpe: Type)(implicit val pos: Position) extends Tree
 
   /** Unary operation (always preserves pureness). */
@@ -464,7 +465,7 @@ object Trees {
       extends Tree
 
   case class GetClass(expr: Tree)(implicit val pos: Position) extends Tree {
-    val tpe = ClassType(Definitions.ClassClass)
+    val tpe = ClassType(ClassClass)
   }
 
   // JavaScript expressions
@@ -474,7 +475,8 @@ object Trees {
     val tpe = AnyType
   }
 
-  case class JSPrivateSelect(qualifier: Tree, cls: ClassRef, field: FieldIdent)(
+  case class JSPrivateSelect(qualifier: Tree, className: ClassName,
+      field: FieldIdent)(
       implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
@@ -506,7 +508,7 @@ object Trees {
    *  The node
    *
    *  {{{
-   *  JSSuperBrackerSelect(LoadJSConstructor(ClassRef(Bar)), qualifier, item)
+   *  JSSuperBrackerSelect(LoadJSConstructor(ClassName("Bar")), qualifier, item)
    *  }}}
    *
    *  which is printed as
@@ -550,7 +552,7 @@ object Trees {
    *  The node
    *
    *  {{{
-   *  JSSuperBrackerCall(LoadJSConstructor(ClassRef(Bar)), receiver, method, args)
+   *  JSSuperBrackerCall(LoadJSConstructor(ClassName("Bar")), receiver, method, args)
    *  }}}
    *
    *  which is printed as
@@ -637,7 +639,7 @@ object Trees {
 
   /** Loads the constructor of a JS class (native or not).
    *
-   *  `cls` must represent a non-trait JS class (native or not).
+   *  `className` must represent a non-trait JS class (native or not).
    *
    *  This is used typically to instantiate a JS class, and most importantly
    *  if it is a non-native JS class. Given the class
@@ -649,25 +651,25 @@ object Trees {
    *  The instantiation `new Foo(1)` would be represented as
    *
    *  {{{
-   *  JSNew(LoadJSConstructor(ClassRef("Foo")), List(IntLiteral(1)))
+   *  JSNew(LoadJSConstructor(ClassName("Foo")), List(IntLiteral(1)))
    *  }}}
    *
    *  This node is also useful to encode `o.isInstanceOf[Foo]`:
    *
    *  {{{
-   *  JSBinaryOp(instanceof, o, LoadJSConstructor(ClassRef("Foo")))
+   *  JSBinaryOp(instanceof, o, LoadJSConstructor(ClassName("Foo")))
    *  }}}
    *
    *  If `Foo` is non-native, the presence of this node makes it instantiable,
    *  and therefore reachable.
    */
-  case class LoadJSConstructor(cls: ClassRef)(
+  case class LoadJSConstructor(className: ClassName)(
       implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
 
   /** Like [[LoadModule]] but for a JS module class. */
-  case class LoadJSModule(cls: ClassRef)(
+  case class LoadJSModule(className: ClassName)(
       implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
@@ -887,7 +889,7 @@ object Trees {
 
   case class ClassOf(typeRef: TypeRef)(
       implicit val pos: Position) extends Literal {
-    val tpe = ClassType(Definitions.ClassClass)
+    val tpe = ClassType(ClassClass)
   }
 
   // Atomic expressions
@@ -912,7 +914,7 @@ object Trees {
 
   /** Creates a JavaScript class value.
    *
-   *  @param cls
+   *  @param className
    *    Reference to the `ClassDef` for the class definition, which must have
    *    `jsClassCaptures.nonEmpty`
    *
@@ -920,7 +922,7 @@ object Trees {
    *    Actual values for the captured parameters (in the `ClassDef`'s
    *    `jsClassCaptures.get`)
    */
-  case class CreateJSClass(cls: ClassRef, captureValues: List[Tree])(
+  case class CreateJSClass(className: ClassName, captureValues: List[Tree])(
       implicit val pos: Position)
       extends Tree {
     val tpe = AnyType
@@ -1000,7 +1002,7 @@ object Trees {
   )(
       val optimizerHints: OptimizerHints
   )(implicit val pos: Position) extends IRNode {
-    def encodedName: ClassName = name.name
+    def className: ClassName = name.name
   }
 
   object ClassDef {
@@ -1050,7 +1052,7 @@ object Trees {
 
     require(!flags.isMutable, "nonsensical mutable MethodDef")
 
-    def encodedName: MethodName = name.name
+    def methodName: MethodName = name.name
   }
 
   sealed abstract class JSMethodPropDef extends MemberDef

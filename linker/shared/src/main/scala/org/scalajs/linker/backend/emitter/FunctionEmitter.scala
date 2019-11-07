@@ -16,9 +16,8 @@ import scala.annotation.{switch, tailrec}
 
 import scala.collection.mutable
 
-import org.scalajs.ir
 import org.scalajs.ir._
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Position._
 import org.scalajs.ir.Transformers._
 import org.scalajs.ir.Trees._
@@ -30,7 +29,7 @@ import org.scalajs.linker.backend.javascript.{Trees => js}
 
 import java.io.StringWriter
 
-import EmitterDefinitions._
+import EmitterNames._
 import Transients._
 
 /** Desugaring of the IR to JavaScript functions.
@@ -559,11 +558,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case Skip() =>
           js.Skip()
 
-        case Assign(select @ Select(qualifier, cls, field), rhs) =>
+        case Assign(select @ Select(qualifier, className, field), rhs) =>
           unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
             implicit val env = env0
             js.Assign(
-                genSelect(transformExprNoChar(newQualifier), cls, field)(select.pos),
+                genSelect(transformExprNoChar(newQualifier), className, field)(select.pos),
                 transformExpr(newRhs, select.tpe))
           }
 
@@ -590,12 +589,12 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case Assign(lhs: RecordSelect, rhs) =>
           pushLhsInto(Lhs.Assign(makeRecordFieldVarRef(lhs)), rhs, tailPosLabels)
 
-        case Assign(select @ JSPrivateSelect(qualifier, cls, field), rhs) =>
+        case Assign(select @ JSPrivateSelect(qualifier, className, field), rhs) =>
           unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
             implicit val env = env0
             js.Assign(
                 genJSPrivateSelect(transformExprNoChar(newQualifier),
-                    cls.className, field)(select.pos),
+                    className, field)(select.pos),
                 transformExprNoChar(newRhs))
           }
 
@@ -625,12 +624,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           throw new IllegalArgumentException(
               s"Illegal Assign in transformStat: $tree")
 
-        case StoreModule(cls, value) =>
+        case StoreModule(className, value) =>
           unnest(value) { (newValue, env0) =>
             implicit val env = env0
-            js.Assign(
-                envField("n", cls.className),
-                transformExprNoChar(newValue))
+            js.Assign(envField("n", className), transformExprNoChar(newValue))
           }
 
         case While(cond, body) =>
@@ -993,18 +990,18 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               case Closure(arrow, captureParams, params, body, captureValues) =>
                 Closure(arrow, captureParams, params, body, recs(captureValues))
 
-              case New(cls, constr, args) if noExtractYet =>
-                New(cls, constr, recs(args))
-              case Select(qualifier, cls, item) if noExtractYet =>
-                Select(rec(qualifier), cls, item)(arg.tpe)
+              case New(className, constr, args) if noExtractYet =>
+                New(className, constr, recs(args))
+              case Select(qualifier, className, item) if noExtractYet =>
+                Select(rec(qualifier), className, item)(arg.tpe)
               case Apply(flags, receiver, method, args) if noExtractYet =>
                 val newArgs = recs(args)
                 Apply(flags, rec(receiver), method, newArgs)(arg.tpe)
-              case ApplyStatically(flags, receiver, cls, method, args) if noExtractYet =>
+              case ApplyStatically(flags, receiver, className, method, args) if noExtractYet =>
                 val newArgs = recs(args)
-                ApplyStatically(flags, rec(receiver), cls, method, newArgs)(arg.tpe)
-              case ApplyStatic(flags, cls, method, args) if noExtractYet =>
-                ApplyStatic(flags, cls, method, recs(args))(arg.tpe)
+                ApplyStatically(flags, rec(receiver), className, method, newArgs)(arg.tpe)
+              case ApplyStatic(flags, className, method, args) if noExtractYet =>
+                ApplyStatic(flags, className, method, recs(args))(arg.tpe)
               case ArrayLength(array) if noExtractYet =>
                 ArrayLength(rec(array))
               case ArraySelect(array, index) if noExtractYet =>
@@ -1170,15 +1167,15 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           allowUnpure && (captureValues forall test)
 
         // Scala expressions that can always have side-effects
-        case New(cls, constr, args) =>
+        case New(className, constr, args) =>
           allowSideEffects && (args forall test)
-        case LoadModule(cls) => // unfortunately
+        case LoadModule(className) => // unfortunately
           allowSideEffects
         case Apply(_, receiver, method, args) =>
           allowSideEffects && test(receiver) && (args forall test)
-        case ApplyStatically(_, receiver, cls, method, args) =>
+        case ApplyStatically(_, receiver, className, method, args) =>
           allowSideEffects && test(receiver) && (args forall test)
-        case ApplyStatic(_, cls, method, args) =>
+        case ApplyStatic(_, className, method, args) =>
           allowSideEffects && (args forall test)
         case GetClass(arg) =>
           allowSideEffects && test(arg)
@@ -1218,10 +1215,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
          * sense per se, as the actual desugaring of `LoadJSConstructor` is
          * based on the jsNativeLoadSpec of the class.
          */
-        case LoadJSConstructor(cls) =>
-          allowUnpure || {
-            globalKnowledge.getJSNativeLoadSpec(cls.className).isEmpty
-          }
+        case LoadJSConstructor(className) =>
+          allowUnpure || globalKnowledge.getJSNativeLoadSpec(className).isEmpty
 
         // Non-expressions
         case _ => false
@@ -1306,7 +1301,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           val base = js.Assign(transformExpr(lhs, preserveChar = true),
               transformExpr(rhs, lhs.tpe))
           lhs match {
-            case SelectStatic(ClassRef(className), FieldIdent(field, _))
+            case SelectStatic(className, FieldIdent(field, _))
                 if moduleKind == ModuleKind.NoModule =>
               val mirrors =
                 globalKnowledge.getStaticFieldMirrors(className, field)
@@ -1532,14 +1527,14 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         // Scala expressions (if we reach here their arguments are not expressions)
 
-        case New(cls, ctor, args) =>
+        case New(className, ctor, args) =>
           unnest(args) { (newArgs, env) =>
-            redo(New(cls, ctor, newArgs))(env)
+            redo(New(className, ctor, newArgs))(env)
           }
 
-        case Select(qualifier, cls, item) =>
+        case Select(qualifier, className, item) =>
           unnest(qualifier) { (newQualifier, env) =>
-            redo(Select(newQualifier, cls, item)(rhs.tpe))(env)
+            redo(Select(newQualifier, className, item)(rhs.tpe))(env)
           }
 
         case Apply(flags, receiver, method, args) =>
@@ -1547,14 +1542,15 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             redo(Apply(flags, newReceiver, method, newArgs)(rhs.tpe))(env)
           }
 
-        case ApplyStatically(flags, receiver, cls, method, args) =>
+        case ApplyStatically(flags, receiver, className, method, args) =>
           unnest(receiver, args) { (newReceiver, newArgs, env) =>
-            redo(ApplyStatically(flags, newReceiver, cls, method, newArgs)(rhs.tpe))(env)
+            redo(ApplyStatically(flags, newReceiver, className, method,
+                newArgs)(rhs.tpe))(env)
           }
 
-        case ApplyStatic(flags, cls, method, args) =>
+        case ApplyStatic(flags, className, method, args) =>
           unnest(args) { (newArgs, env) =>
-            redo(ApplyStatic(flags, cls, method, newArgs)(rhs.tpe))(env)
+            redo(ApplyStatic(flags, className, method, newArgs)(rhs.tpe))(env)
           }
 
         case UnaryOp(op, lhs) =>
@@ -1679,9 +1675,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             redo(JSImportCall(newArg))(env)
           }
 
-        case JSPrivateSelect(qualifier, cls, field) =>
+        case JSPrivateSelect(qualifier, className, field) =>
           unnest(qualifier) { (newQualifier, env) =>
-            redo(JSPrivateSelect(newQualifier, cls, field))(env)
+            redo(JSPrivateSelect(newQualifier, className, field))(env)
           }
 
         case JSSelect(qualifier, item) =>
@@ -1766,9 +1762,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 env)
           }
 
-        case CreateJSClass(cls, captureValues) =>
+        case CreateJSClass(className, captureValues) =>
           unnest(captureValues) { (newCaptureValues, env) =>
-            redo(CreateJSClass(cls, newCaptureValues))(env)
+            redo(CreateJSClass(className, newCaptureValues))(env)
           }
 
         case _ =>
@@ -1948,8 +1944,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         // Scala expressions
 
-        case New(cls, ctor, args) =>
-          val className = cls.className
+        case New(className, ctor, args) =>
           val encodedClassVar = encodeClassVar(className)
           val newArgs = transformTypedArgs(ctor.name, args)
           if (globalKnowledge.hasInlineableInit(className)) {
@@ -1959,18 +1954,16 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 js.New(encodedClassVar, Nil) :: newArgs)
           }
 
-        case LoadModule(cls) =>
-          genLoadModule(cls.className)
+        case LoadModule(className) =>
+          genLoadModule(className)
 
-        case Select(qualifier, cls, field) =>
-          genSelect(transformExprNoChar(qualifier), cls, field)
+        case Select(qualifier, className, field) =>
+          genSelect(transformExprNoChar(qualifier), className, field)
 
-        case SelectStatic(cls, item) =>
-          genSelectStatic(cls.className, item)
+        case SelectStatic(className, item) =>
+          genSelectStatic(className, item)
 
         case Apply(_, receiver, method, args) =>
-          import Definitions._
-
           val methodName = method.name
           val newReceiver = transformExprNoChar(receiver)
           val newArgs = transformTypedArgs(method.name, args)
@@ -2032,7 +2025,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                  */
                 genHijackedMethodApply(BoxedStringClass)
 
-              case ClassType(cls) if !HijackedClasses.contains(cls) =>
+              case ClassType(className) if !HijackedClasses.contains(className) =>
                 /* This is a strict ancestor of a hijacked class. We need to
                  * use the dispatcher available in the helper method.
                  */
@@ -2050,8 +2043,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             genNormalApply()
           }
 
-        case ApplyStatically(flags, receiver, cls, method, args) =>
-          val className = cls.className
+        case ApplyStatically(flags, receiver, className, method, args) =>
           val newReceiver = transformExprNoChar(receiver)
           val newArgs = transformTypedArgs(method.name, args)
           val transformedArgs = newReceiver :: newArgs
@@ -2068,10 +2060,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             js.Apply(fun DOT "call", transformedArgs)
           }
 
-        case ApplyStatic(flags, cls, method, args) =>
+        case ApplyStatic(flags, className, method, args) =>
           genApplyStaticLike(
               if (flags.isPrivate) "ps" else "s",
-              cls.className,
+              className,
               method,
               transformTypedArgs(method.name, args))
 
@@ -2161,7 +2153,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                    * able to do, since it doesn't know how hijacked classes are
                    * encoded.
                    */
-                  env.enclosingClassName.exists(_ == Definitions.ObjectClass)
+                  env.enclosingClassName.exists(_ == ObjectClass)
                 case _ =>
                   false
               }
@@ -2439,9 +2431,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case JSNew(constr, args) =>
           js.New(transformExprNoChar(constr), args.map(transformJSArg))
 
-        case JSPrivateSelect(qualifier, cls, field) =>
-          genJSPrivateSelect(transformExprNoChar(qualifier), cls.className,
-              field)
+        case JSPrivateSelect(qualifier, className, field) =>
+          genJSPrivateSelect(transformExprNoChar(qualifier), className, field)
 
         case JSSelect(qualifier, item) =>
           genBracketSelect(transformExprNoChar(qualifier),
@@ -2483,11 +2474,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case JSImportCall(arg) =>
           js.ImportCall(transformExprNoChar(arg))
 
-        case LoadJSConstructor(cls) =>
-          extractWithGlobals(genJSClassConstructor(cls.className))
+        case LoadJSConstructor(className) =>
+          extractWithGlobals(genJSClassConstructor(className))
 
-        case LoadJSModule(cls) =>
-          val className = cls.className
+        case LoadJSModule(className) =>
           globalKnowledge.getJSNativeLoadSpec(className) match {
             case None =>
               // this is a non-native JS module class
@@ -2560,8 +2550,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 List(js.IntLiteral(lo), js.IntLiteral(hi)))
           }
 
-        case ClassOf(cls) =>
-          genClassOf(cls)
+        case ClassOf(typeRef) =>
+          genClassOf(typeRef)
 
         // Atomic expressions
 
@@ -2596,17 +2586,17 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 })
           }
 
-        case CreateJSClass(cls, captureValues) =>
+        case CreateJSClass(className, captureValues) =>
           val transformedArgs = if (captureValues.forall(_.tpe != CharType)) {
             // Fast path
             captureValues.map(transformExpr(_, preserveChar = true))
           } else {
             val expectedTypes =
-              globalKnowledge.getJSClassCaptureTypes(cls.className).get
+              globalKnowledge.getJSClassCaptureTypes(className).get
             for ((value, expectedType) <- captureValues.zip(expectedTypes))
               yield transformExpr(value, expectedType)
           }
-          js.Apply(envField("a", cls.className), transformedArgs)
+          js.Apply(envField("a", className), transformedArgs)
 
         // Invalid trees
 
@@ -2623,8 +2613,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     }
 
     def isMaybeHijackedClass(tpe: Type): Boolean = tpe match {
-      case ClassType(cls) =>
-        MaybeHijackedClasses.contains(cls)
+      case ClassType(className) =>
+        MaybeHijackedClasses.contains(className)
       case AnyType | UndefType | BooleanType | CharType | ByteType | ShortType |
           IntType | LongType | FloatType | DoubleType | StringType =>
         true
@@ -2633,18 +2623,18 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     }
 
     def typeToBoxedHijackedClass(tpe: Type): ClassName = (tpe: @unchecked) match {
-      case ClassType(cls) => cls
-      case AnyType        => Definitions.ObjectClass
-      case UndefType      => Definitions.BoxedUnitClass
-      case BooleanType    => Definitions.BoxedBooleanClass
-      case CharType       => Definitions.BoxedCharacterClass
-      case ByteType       => Definitions.BoxedByteClass
-      case ShortType      => Definitions.BoxedShortClass
-      case IntType        => Definitions.BoxedIntegerClass
-      case LongType       => Definitions.BoxedLongClass
-      case FloatType      => Definitions.BoxedFloatClass
-      case DoubleType     => Definitions.BoxedDoubleClass
-      case StringType     => Definitions.BoxedStringClass
+      case ClassType(className) => className
+      case AnyType              => ObjectClass
+      case UndefType            => BoxedUnitClass
+      case BooleanType          => BoxedBooleanClass
+      case CharType             => BoxedCharacterClass
+      case ByteType             => BoxedByteClass
+      case ShortType            => BoxedShortClass
+      case IntType              => BoxedIntegerClass
+      case LongType             => BoxedLongClass
+      case FloatType            => BoxedFloatClass
+      case DoubleType           => BoxedDoubleClass
+      case StringType           => BoxedStringClass
     }
 
     /* Ideally, we should dynamically figure out this set. We should test
@@ -2766,10 +2756,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 }
 
 private object FunctionEmitter {
-  private val MaybeHijackedClasses = {
-    (Definitions.HijackedClasses ++ EmitterDefinitions.AncestorsOfHijackedClasses) -
-    Definitions.ObjectClass
-  }
+  private val MaybeHijackedClasses =
+    (HijackedClasses ++ EmitterNames.AncestorsOfHijackedClasses) - ObjectClass
 
   /** A left hand side that can be pushed into a right hand side tree. */
   sealed abstract class Lhs {

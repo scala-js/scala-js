@@ -13,7 +13,7 @@
 package org.scalajs.linker.backend.emitter
 
 import org.scalajs.ir._
-import org.scalajs.ir.Definitions._
+import org.scalajs.ir.Names._
 import org.scalajs.ir.Position._
 import org.scalajs.ir.Transformers._
 import org.scalajs.ir.Trees._
@@ -27,7 +27,7 @@ import org.scalajs.linker.backend.javascript.{Trees => js}
 
 import CheckedBehavior.Unchecked
 
-import EmitterDefinitions._
+import EmitterNames._
 
 /** Emitter for the skeleton of classes. */
 private[emitter] final class ClassEmitter(jsGen: JSGen) {
@@ -160,13 +160,13 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   def extractInlineableInit(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): (Option[Versioned[MethodDef]], List[Versioned[MethodDef]]) = {
 
-    if (globalKnowledge.hasInlineableInit(tree.encodedName)) {
+    if (globalKnowledge.hasInlineableInit(tree.className)) {
       val (constructors, otherMethods) = tree.methods.partition { m =>
         m.value.flags.namespace == MemberNamespace.Constructor
       }
       assert(constructors.size == 1,
           s"Found ${constructors.size} constructors in class " +
-          s"${tree.encodedName} which has an inlined init.")
+          s"${tree.className} which has an inlined init.")
       (Some(constructors.head), otherMethods)
     } else {
       (None, tree.methods)
@@ -178,7 +178,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
 
     assert(tree.kind.isAnyNonNativeClass)
-    assert(tree.superClass.isDefined || tree.name.name == Definitions.ObjectClass,
+    assert(tree.superClass.isDefined || tree.name.name == ObjectClass,
         s"Class ${tree.name.name} is missing a parent class")
 
     if (useClasses)
@@ -322,14 +322,14 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     implicit val pos = tree.pos
 
     val superCtorCallAndFieldDefs = if (useClasses) {
-      val fieldDefs = genFieldDefsOfScalaClass(tree.encodedName, tree.fields)
+      val fieldDefs = genFieldDefsOfScalaClass(tree.className, tree.fields)
       if (tree.superClass.isEmpty)
         fieldDefs
       else
         js.Apply(js.Super(), Nil) :: fieldDefs
     } else {
       val allFields =
-        globalKnowledge.getAllScalaClassFieldDefs(tree.encodedName)
+        globalKnowledge.getAllScalaClassFieldDefs(tree.className)
       allFields.flatMap { classAndFields =>
         genFieldDefsOfScalaClass(classAndFields._1, classAndFields._2)
       }
@@ -346,7 +346,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         }
         assert(initMethodDef.resultType == NoType,
             s"Found a constructor with type ${initMethodDef.resultType} at $pos")
-        desugarToFunction(tree.encodedName, initMethodDef.args, initMethodBody,
+        desugarToFunction(tree.className, initMethodDef.args, initMethodBody,
             resultType = NoType)
       }
 
@@ -367,10 +367,10 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     tree.exportedMembers.map(_.value) collectFirst {
       case JSMethodDef(flags, StringLiteral("constructor"), params, body)
           if flags.namespace == MemberNamespace.Public =>
-        desugarToFunction(tree.encodedName, params, body, resultType = AnyType)
+        desugarToFunction(tree.className, params, body, resultType = AnyType)
     } getOrElse {
       throw new IllegalArgumentException(
-          s"${tree.encodedName} does not have an exported constructor")
+          s"${tree.className} does not have an exported constructor")
     }
   }
 
@@ -397,7 +397,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       if flags.namespace.isStatic
     } yield {
       implicit val pos = field.pos
-      envFieldDef("t", tree.encodedName, name, genZeroOf(ftpe), origName,
+      envFieldDef("t", tree.className, name, genZeroOf(ftpe), origName,
           flags.isMutable)
     }
   }
@@ -424,7 +424,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
           genCallHelper("privateJSFieldSymbol", args: _*)
       }
 
-      envFieldDef("r", tree.encodedName, name, symbolValue, origName,
+      envFieldDef("r", tree.className, name, symbolValue, origName,
           mutable = false)
     }
   }
@@ -432,7 +432,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   /** Generates the creation of the static fields for a JavaScript class. */
   private def genCreateStaticFieldsOfJSClass(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
-    val className = tree.encodedName
+    val className = tree.className
     val statsWithGlobals = for {
       field <- tree.fields
       if field.flags.namespace.isStatic
@@ -458,7 +458,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   def genStaticInitialization(tree: LinkedClass): List[js.Tree] = {
     implicit val pos = tree.pos
     if (hasStaticInitializer(tree)) {
-      val field = envField("sct", tree.encodedName, StaticInitializerName,
+      val field = envField("sct", tree.className, StaticInitializerName,
           Some("<clinit>"))
       js.Apply(field, Nil) :: Nil
     } else {
@@ -725,7 +725,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   def needInstanceTests(tree: LinkedClass): Boolean = {
     tree.hasInstanceTests || {
       tree.hasRuntimeTypeInfo &&
-      ClassesWhoseDataReferToTheirInstanceTests.contains(tree.encodedName)
+      ClassesWhoseDataReferToTheirInstanceTests.contains(tree.className)
     }
   }
 
@@ -734,7 +734,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     implicit val pos = tree.pos
 
-    val className = tree.encodedName
+    val className = tree.className
 
     if (esFeatures.useECMAScript2015) {
       js.ClassDef(Some(encodeClassVar(className).ident), None, Nil)
@@ -749,7 +749,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   }
 
   def genInstanceTests(tree: LinkedClass): js.Tree = {
-    import Definitions._
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -775,7 +774,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
       val isExpression = {
         className match {
-          case Definitions.ObjectClass =>
+          case ObjectClass =>
             js.BinaryOp(JSBinaryOp.!==, obj, js.Null())
 
           case _ if isHijackedClass =>
@@ -830,7 +829,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       } else {
         envFunctionDef("as", className, List(objParam), js.Return {
           className match {
-            case Definitions.ObjectClass =>
+            case ObjectClass =>
               obj
 
             case _ =>
@@ -855,7 +854,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   }
 
   def genArrayInstanceTests(tree: LinkedClass): js.Tree = {
-    import Definitions._
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -872,7 +870,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     val createIsArrayOfStat = {
       envFunctionDef("isArrayOf", className, List(objParam, depthParam), {
         className match {
-          case Definitions.ObjectClass =>
+          case ObjectClass =>
             val dataVarDef = genLet(js.Ident("data"), mutable = false, {
               obj && (obj DOT "$classData")
             })
@@ -943,7 +941,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
   def genTypeData(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
-    import Definitions._
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -1133,9 +1130,9 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
             if flags.namespace == MemberNamespace.Public && tree.kind.isJSClass =>
           WithGlobals(js.Skip()(member.value.pos))
         case m: JSMethodDef =>
-          genJSMethod(tree.encodedName, m)
+          genJSMethod(tree.className, m)
         case p: JSPropertyDef =>
-          genJSProperty(tree.encodedName, p)
+          genJSProperty(tree.className, p)
       }
     }
 
@@ -1178,7 +1175,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     implicit val pos = tree.pos
 
     val methodDefWithGlobals =
-      desugarToFunction(cd.encodedName, args, body, AnyType)
+      desugarToFunction(cd.className, args, body, AnyType)
 
     methodDefWithGlobals.flatMap { methodDef =>
       genConstValueExportDef(exportName, methodDef)
@@ -1231,10 +1228,10 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
          * when we assign to the static field.
          */
         genAssignToNoModuleExportVar(exportName,
-            genSelectStatic(cd.encodedName, field))
+            genSelectStatic(cd.className, field))
 
       case ModuleKind.ESModule =>
-        val staticVarIdent = genSelectStatic(cd.encodedName, field).ident
+        val staticVarIdent = genSelectStatic(cd.className, field).ident
         WithGlobals(
             js.Export((staticVarIdent -> js.ExportName(exportName)) :: Nil))
 
@@ -1248,7 +1245,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         // optional getter definition
         val getterDef = {
           js.StringLiteral("get") -> js.Function(arrow = false, Nil, {
-            js.Return(genSelectStatic(cd.encodedName, field))
+            js.Return(genSelectStatic(cd.className, field))
           })
         }
 
@@ -1344,7 +1341,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   /** Gen JS code for an [[ModuleInitializer]]. */
   def genModuleInitializer(moduleInitializer: ModuleInitializer): js.Tree = {
     import TreeDSL._
-    import Definitions.BoxedStringClass
     import ModuleInitializerImpl._
 
     implicit val pos = Position.NoPosition
@@ -1364,10 +1360,10 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
 private[emitter] object ClassEmitter {
   private val ClassesWhoseDataReferToTheirInstanceTests =
-    AncestorsOfHijackedClasses + Definitions.BoxedStringClass
+    AncestorsOfHijackedClasses + BoxedStringClass
 
   def shouldExtendJSError(linkedClass: LinkedClass): Boolean = {
     linkedClass.name.name == ThrowableClass &&
-    linkedClass.superClass.exists(_.name == Definitions.ObjectClass)
+    linkedClass.superClass.exists(_.name == ObjectClass)
   }
 }

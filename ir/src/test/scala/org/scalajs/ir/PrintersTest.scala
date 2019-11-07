@@ -17,7 +17,7 @@ import scala.language.implicitConversions
 import org.junit.Test
 import org.junit.Assert._
 
-import Definitions._
+import Names._
 import Printers._
 import Trees._
 import Types._
@@ -52,6 +52,8 @@ class PrintersTest {
   // String -> Name conversions
   private implicit def string2fieldName(name: String): FieldName =
     FieldName(name)
+  private implicit def string2className(name: String): ClassName =
+    ClassName(name)
 
   // String -> Ident conversions
   private implicit def string2localIdent(name: String): LocalIdent =
@@ -64,16 +66,16 @@ class PrintersTest {
     ClassIdent(ClassName(name))
 
   // String -> Type and TypeRef conversions
-  private implicit def string2classType(cls: String): ClassType =
-    ClassType(ClassName(cls))
-  private implicit def string2classRef(cls: String): ClassRef =
-    ClassRef(ClassName(cls))
+  private implicit def string2classType(className: String): ClassType =
+    ClassType(ClassName(className))
+  private implicit def string2classRef(className: String): ClassRef =
+    ClassRef(ClassName(className))
 
   // Name -> Ident conversions
   private implicit def methodName2methodIdent(name: MethodName): MethodIdent =
     MethodIdent(name)
-  private implicit def className2classRef(cls: ClassName): ClassRef =
-    ClassRef(cls)
+  private implicit def className2classRef(className: ClassName): ClassRef =
+    ClassRef(className)
   private implicit def className2classIdent(name: ClassName): ClassIdent =
     ClassIdent(name)
 
@@ -327,9 +329,9 @@ class PrintersTest {
   }
 
   @Test def printNew(): Unit = {
-    assertPrintEquals("new java.lang.Object().<init>;()",
+    assertPrintEquals("new java.lang.Object().<init>;V()",
         New(ObjectClass, NoArgConstructorName, Nil))
-    assertPrintEquals("new scala.Tuple2().<init>;Ljava.lang.Object;Ljava.lang.Object;(5, 6)",
+    assertPrintEquals("new scala.Tuple2().<init>;Ljava.lang.Object;Ljava.lang.Object;V(5, 6)",
         New("scala.Tuple2", MethodName.constructor(List(O, O)), List(i(5), i(6))))
   }
 

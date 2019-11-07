@@ -78,24 +78,24 @@ object Traversers {
 
       // Scala expressions
 
-      case New(cls, ctor, args) =>
+      case New(_, _, args) =>
         args foreach traverse
 
-      case StoreModule(cls, value) =>
+      case StoreModule(_, value) =>
         traverse(value)
 
-      case Select(qualifier, cls, field) =>
+      case Select(qualifier, _, _) =>
         traverse(qualifier)
 
-      case Apply(_, receiver, method, args) =>
+      case Apply(_, receiver, _, args) =>
         traverse(receiver)
         args foreach traverse
 
-      case ApplyStatically(_, receiver, cls, method, args) =>
+      case ApplyStatically(_, receiver, _, _, args) =>
         traverse(receiver)
         args foreach traverse
 
-      case ApplyStatic(_, cls, method, args) =>
+      case ApplyStatic(_, _, _, args) =>
         args foreach traverse
 
       case UnaryOp(op, lhs) =>
