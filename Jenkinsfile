@@ -434,7 +434,7 @@ def allJavaVersions = otherJavaVersions.clone()
 allJavaVersions << mainJavaVersion
 
 def mainScalaVersion = "2.12.10"
-def mainScalaVersions = ["2.10.2", "2.11.12", "2.12.10", "2.13.0"]
+def mainScalaVersions = ["2.10.2", "2.11.12", "2.12.10", "2.13.1"]
 def otherScalaVersions = [
   "2.10.3",
   "2.10.4",
@@ -460,7 +460,8 @@ def otherScalaVersions = [
   "2.12.6",
   "2.12.7",
   "2.12.8",
-  "2.12.9"
+  "2.12.9",
+  "2.13.0"
 ]
 
 // The 'quick' matrix
