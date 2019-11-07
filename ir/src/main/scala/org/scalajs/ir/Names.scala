@@ -198,15 +198,49 @@ object Names {
     protected def stringPrefix: String = "SimpleMethodName"
 
     /** Returns `true` iff this is the name of an instance constructor. */
-    def isConstructor: Boolean = this == ConstructorSimpleName
+    def isConstructor: Boolean =
+      this eq SimpleMethodName.Constructor // globally unique, so `eq` is fine
 
     /** Returns `true` iff this is the name of a static initializer. */
-    def isStaticInitializer: Boolean = this == StaticInitializerSimpleName
+    def isStaticInitializer: Boolean =
+      this eq SimpleMethodName.StaticInitializer // globally unique, so `eq` is fine
   }
 
   object SimpleMethodName {
-    def apply(name: UTF8String): SimpleMethodName =
-      new SimpleMethodName(validateEncodedSimpleMethodName(name))
+    /** The unique `SimpleMethodName` with encoded name `<init>`. */
+    private val Constructor: SimpleMethodName =
+      new SimpleMethodName(ConstructorSimpleEncodedName)
+
+    /** The unique `SimpleMethodName` with encoded name `<clinit>`. */
+    private val StaticInitializer: SimpleMethodName =
+      new SimpleMethodName(StaticInitializerSimpleEncodedName)
+
+    def apply(name: UTF8String): SimpleMethodName = {
+      val len = name.length
+      if (len == 0)
+        throwInvalidEncodedName(name)
+
+      /* Handle constructor names and static initializer names. When we find
+       * those, we normalize the returned instance to be unique `Constructor`
+       * and `StaticInitializer` instances, ensuring that they remain globally
+       * unique.
+       */
+      if (name(0) == '<') {
+        // Must be either '<init>' or '<clinit>'
+        len match {
+          case 6 if UTF8String.equals(name, ConstructorSimpleEncodedName) =>
+            Constructor
+          case 8 if UTF8String.equals(name, StaticInitializerSimpleEncodedName) =>
+            StaticInitializer
+          case _ =>
+            throwInvalidEncodedName(name)
+        }
+      } else {
+        // Normal method name
+        new SimpleMethodName(
+            validateSimpleEncodedName(name, 0, len, openAngleBracketOK = false))
+      }
+    }
 
     def apply(name: String): SimpleMethodName =
       SimpleMethodName(UTF8String(name))
@@ -499,30 +533,6 @@ object Names {
      */
     if (i == len)
       throwInvalidEncodedName(encoded)
-
-    encoded
-  }
-
-  private def validateEncodedSimpleMethodName(encoded: UTF8String): UTF8String = {
-    val len = encoded.length
-    if (len == 0)
-      throwInvalidEncodedName(encoded)
-
-    // Validate the '<' characters
-    if (encoded(0) == '<') {
-      // Must be either '<init>' or '<clinit>'
-      len match {
-        case 6 if UTF8String.equals(encoded, ConstructorSimpleEncodedName) =>
-          // ok
-        case 8 if UTF8String.equals(encoded, StaticInitializerSimpleEncodedName) =>
-          // ok
-        case _ =>
-          throwInvalidEncodedName(encoded)
-      }
-    } else {
-      // Normal method name
-      validateSimpleEncodedName(encoded, 0, len, openAngleBracketOK = false)
-    }
 
     encoded
   }
