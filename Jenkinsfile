@@ -139,8 +139,7 @@ def Tasks = [
     sbtretry ++$scala headerCheck &&
     sbtretry ++$scala partest/fetchScalaSource &&
     sbtretry ++$scala library/mimaReportBinaryIssues testInterface/mimaReportBinaryIssues &&
-    sh ci/checksizes.sh $scala &&
-    sh ci/check-partest-coverage.sh $scala
+    sh ci/checksizes.sh $scala
   ''',
 
   "test-suite-ecma-script2015": '''

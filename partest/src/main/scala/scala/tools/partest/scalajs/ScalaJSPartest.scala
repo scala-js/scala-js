@@ -146,34 +146,33 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
       line <- source.getLines
       trimmed = line.trim
       if trimmed != "" && !trimmed.startsWith("#")
-    } yield extendShortTestName(trimmed)
+    } yield trimmed
 
     fileNames.toSet
   }
 
-  private def extendShortTestName(testName: String) = {
-    val srcDir = PathSettings.srcDir
-    (srcDir / testName).toCanonical.getAbsolutePath
-  }
-
-  private lazy val testFilter: String => Boolean = {
-    import ScalaJSPartestOptions._
-    options.testFilter match {
-      case UnknownTests => { absPath =>
-        !blacklistedTestFileNames.contains(absPath) &&
-        !whitelistedTestFileNames.contains(absPath) &&
-        !buglistedTestFileNames.contains(absPath)
-      }
-      case BlacklistedTests => blacklistedTestFileNames
-      case BuglistedTests   => buglistedTestFileNames
-      case WhitelistedTests => whitelistedTestFileNames
-      case SomeTests(names) => names.map(extendShortTestName _).toSet
-    }
-  }
-
   private def shouldUseTest(testFile: File): Boolean = {
-    val absPath = testFile.toCanonical.getAbsolutePath
-    testFilter(absPath)
+    val name = PathSettings.srcDir.toPath.relativize(testFile.toPath).toString
+
+    val isBlacklisted = blacklistedTestFileNames.contains(name)
+    val isWhitelisted = whitelistedTestFileNames.contains(name)
+    val isBuglisted = buglistedTestFileNames.contains(name)
+    val isUnknown = !isBlacklisted && !isWhitelisted && !isBuglisted
+
+    def checkKnown(): Unit = {
+      if (isUnknown)
+        throw new IllegalArgumentException(s"partest test '$name' is unknown. please classify it")
+    }
+
+    import ScalaJSPartestOptions._
+
+    options.testFilter match {
+      case UnknownTests     => isUnknown
+      case BlacklistedTests => checkKnown(); isBlacklisted
+      case BuglistedTests   => checkKnown(); isBuglisted
+      case WhitelistedTests => checkKnown(); isWhitelisted
+      case SomeTests(names) => names.contains(name)
+    }
   }
 }
 
