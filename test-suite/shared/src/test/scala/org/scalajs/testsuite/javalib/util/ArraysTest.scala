@@ -87,6 +87,9 @@ class ArraysTest {
 
     sort2(arr, 0, 6)
     assertArrayEquals(arr, Array(1, 2, 3, 4, 5, 6).map(elem))
+
+    // check zero length doesn't fail.
+    sort2(arr, 1, 1)
   }
 
   @Test def sort_is_stable_issue_2400(): Unit = {
@@ -128,6 +131,34 @@ class ArraysTest {
     Arrays.sort(scalajs, cmp)
     assertArrayEquals(sorted, scalajs)
     scalajs.zip(sorted).forall(pair => pair ._1 eq pair._2)
+  }
+
+  @Test def sortIllegalArgumentException(): Unit = {
+    val array = Array(0, 1, 3, 4)
+
+    val e1 = expectThrows(classOf[IllegalArgumentException],
+        Arrays.sort(array, 3, 2))
+    assertEquals("fromIndex(3) > toIndex(2)", e1.getMessage)
+
+    // start/end comparison is made before index ranges checks
+    val e2 = expectThrows(classOf[IllegalArgumentException],
+        Arrays.sort(array, 7, 5))
+    assertEquals("fromIndex(7) > toIndex(5)", e2.getMessage)
+  }
+
+  @Test def sortArrayIndexOutOfBoundsException(): Unit = {
+    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
+        hasCompliantArrayIndexOutOfBounds)
+
+    val array = Array(0, 1, 3, 4)
+
+    val e1 = expectThrows(classOf[ArrayIndexOutOfBoundsException],
+        Arrays.sort(array, -1, 4))
+    assertEquals("Array index out of range: -1", e1.getMessage)
+
+    val e2 = expectThrows(classOf[ArrayIndexOutOfBoundsException],
+        Arrays.sort(array, 0, 5))
+    assertEquals("Array index out of range: 5", e2.getMessage)
   }
 
   @Test def fill_Boolean(): Unit = {

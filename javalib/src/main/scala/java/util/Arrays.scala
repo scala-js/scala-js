@@ -102,14 +102,14 @@ object Arrays {
   @inline
   private def sortRangeImpl[@specialized T: ClassTag](
       a: Array[T], fromIndex: Int, toIndex: Int)(implicit ord: Ordering[T]): Unit = {
-    checkIndicesForCopyOfRange(a.length, fromIndex, toIndex)
+    checkRangeIndices(a.length, fromIndex, toIndex)
     stableMergeSort[T](a, fromIndex, toIndex)
   }
 
   @inline
   private def sortRangeAnyRefImpl(a: Array[AnyRef], fromIndex: Int, toIndex: Int)(
       implicit ord: Ordering[AnyRef]): Unit = {
-    checkIndicesForCopyOfRange(a.length, fromIndex, toIndex)
+    checkRangeIndices(a.length, fromIndex, toIndex)
     stableMergeSortAnyRef(a, fromIndex, toIndex)
   }
 
