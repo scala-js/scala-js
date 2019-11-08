@@ -603,7 +603,9 @@ object Arrays {
   @inline
   private def copyOfRangeImpl[T: ClassTag](original: Array[T],
       start: Int, end: Int): Array[T] = {
-    checkIndicesForCopyOfRange(original.length, start, end)
+    if (start > end)
+      throw new IllegalArgumentException("" + start + " > " + end)
+
     val retLength = end - start
     val copyLength = Math.min(retLength, original.length - start)
     val ret = new Array[T](retLength)
@@ -614,14 +616,6 @@ object Arrays {
   @inline private def checkArrayLength(len: Int): Unit = {
     if (len < 0)
       throw new NegativeArraySizeException
-  }
-
-  @inline private def checkIndicesForCopyOfRange(
-      len: Int, start: Int, end: Int): Unit = {
-    if (start > end)
-      throw new IllegalArgumentException("" + start + " > " + end)
-    SemanticsUtils.arrayIndexOutOfBoundsCheck(start < 0 || start > len,
-        new ArrayIndexOutOfBoundsException)
   }
 
   @noinline def asList[T <: AnyRef](a: Array[T]): List[T] = {
