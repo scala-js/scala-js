@@ -97,23 +97,9 @@ private[emitter] object CoreJSLib {
       def objectFreeze(tree: Tree): Tree =
         Apply(genIdentBracketSelect(ObjectRef, "freeze"), tree :: Nil)
 
-      def checkedBehaviorInt(behavior: CheckedBehavior): IntLiteral = {
-        int(behavior match {
-          case CheckedBehavior.Compliant => 0
-          case CheckedBehavior.Fatal     => 1
-          case CheckedBehavior.Unchecked => 2
-        })
-      }
-
       val linkingInfo = objectFreeze(ObjectConstr(List(
-          str("semantics") -> objectFreeze(ObjectConstr(List(
-              str("asInstanceOfs") -> checkedBehaviorInt(asInstanceOfs),
-              str("arrayIndexOutOfBounds") -> checkedBehaviorInt(arrayIndexOutOfBounds),
-              str("moduleInit") -> checkedBehaviorInt(moduleInit),
-              str("strictFloats") -> bool(strictFloats),
-              str("productionMode") -> bool(productionMode)
-          ))),
           str("assumingES6") -> bool(useECMAScript2015),
+          str("productionMode") -> bool(productionMode),
           str("linkerVersion") -> str(ScalaJSVersions.current),
           str("globalThis") -> This()
       )))
