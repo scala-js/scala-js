@@ -80,7 +80,7 @@ object Analysis {
     def owner: ClassInfo
     def methodName: MethodName
     def namespace: MemberNamespace
-    def isAbstract: Boolean
+    def isAbstractReachable: Boolean
     def isReachable: Boolean
     def calledFrom: scala.collection.Seq[From]
     def instantiatedSubclasses: scala.collection.Seq[ClassInfo]

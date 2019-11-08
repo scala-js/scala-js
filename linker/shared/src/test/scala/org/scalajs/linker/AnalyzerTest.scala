@@ -291,6 +291,29 @@ class AnalyzerTest {
   }
 
   @Test
+  def missingAbstractMethod(): AsyncResult = await {
+    val fooMethodName = m("foo", Nil, IntRef)
+
+    val classDefs = Seq(
+        classDef("A", superClass = Some(ObjectClass),
+            memberDefs = List(trivialCtor("A"))),
+        classDef("B", superClass = Some("A"),
+            memberDefs = List(
+                trivialCtor("B"),
+                MethodDef(EMF, fooMethodName, Nil, IntType, Some(int(5)))(EOH, None)
+            ))
+    )
+
+    val analysis = computeAnalysis(classDefs,
+        reqsFactory.instantiateClass("B", NoArgConstructorName) ++
+        reqsFactory.callMethod("A", fooMethodName))
+
+    assertContainsError("MissingMethod(A.foo;I)", analysis) {
+      case MissingMethod(MethInfo("A", "foo;I"), `fromUnitTest`) => true
+    }
+  }
+
+  @Test
   def conflictingDefaultMethods(): AsyncResult = await {
     val defaultMethodDef = MethodDef(EMF, m("foo", Nil, V), Nil,
         NoType, Some(Skip()))(EOH, None)
@@ -426,6 +449,63 @@ class AnalyzerTest {
       assertEquals(fooBMethodName, target)
     }
   }
+
+  @Test
+  def isAbstractReachable(): AsyncResult = await {
+    val fooMethodName = m("foo", Nil, IntRef)
+    val barMethodName = m("bar", Nil, IntRef)
+
+    val classDefs = Seq(
+        classDef("I1", kind = ClassKind.Interface,
+            memberDefs = List(
+                MethodDef(EMF, barMethodName, Nil, IntType, None)(EOH, None)
+            )),
+        classDef("I2", kind = ClassKind.Interface,
+            memberDefs = List(
+                MethodDef(EMF, barMethodName, Nil, IntType, None)(EOH, None)
+            )),
+        classDef("A", superClass = Some(ObjectClass), interfaces = List("I1"),
+            memberDefs = List(
+                trivialCtor("A"),
+                MethodDef(EMF, fooMethodName, Nil, IntType, None)(EOH, None)
+            )),
+        classDef("B", superClass = Some("A"), interfaces = List("I2"),
+            memberDefs = List(
+                trivialCtor("B"),
+                MethodDef(EMF, fooMethodName, Nil, IntType, Some(int(5)))(EOH, None)
+            )),
+        classDef("C", superClass = Some("B"),
+            memberDefs = List(
+                trivialCtor("C"),
+                MethodDef(EMF, barMethodName, Nil, IntType, Some(int(5)))(EOH, None)
+            ))
+    )
+
+    val analysisFuture = computeAnalysis(classDefs,
+        reqsFactory.instantiateClass("C", NoArgConstructorName) ++
+        reqsFactory.callMethod("A", fooMethodName) ++
+        reqsFactory.callMethod("B", barMethodName))
+
+    for (analysis <- analysisFuture) yield {
+      assertNoError(analysis)
+
+      val BClassInfo = analysis.classInfos("C")
+      assertEquals(List[ClassName]("C", "B", "A", ObjectClass, "I1", "I2"),
+          BClassInfo.ancestors.map(_.className))
+
+      val AfooMethodInfo = analysis.classInfos("A")
+        .methodInfos(MemberNamespace.Public)(fooMethodName)
+      assertTrue(AfooMethodInfo.isAbstractReachable)
+
+      val I1barMethodInfo = analysis.classInfos("I1")
+        .methodInfos(MemberNamespace.Public)(barMethodName)
+      assertTrue(I1barMethodInfo.isAbstractReachable)
+
+      val I2barMethodInfo = analysis.classInfos("I2")
+        .methodInfos(MemberNamespace.Public)(barMethodName)
+      assertFalse(I2barMethodInfo.isAbstractReachable)
+    }
+  }
 }
 
 object AnalyzerTest {
@@ -484,7 +564,7 @@ object AnalyzerTest {
       loader <- Future.traverse(stdlib.toList)(_.loader).map(_.headOption)
       analysis <- Analyzer.computeReachability(CommonPhaseConfig(),
           symbolRequirements, allowAddingSyntheticMethods = true,
-          inputProvider(loader))
+          checkAbstractReachability = true, inputProvider(loader))
     } yield {
       analysis
     }
