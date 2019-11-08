@@ -20,7 +20,6 @@ private trait ScalaJSClassData[A] extends js.Object {
   val isPrimitive: scala.Boolean = js.native
   val isInterface: scala.Boolean = js.native
   val isArrayClass: scala.Boolean = js.native
-  val isJSType: scala.Boolean = js.native
 
   def isInstance(obj: Object): scala.Boolean = js.native
   def isAssignableFrom(that: ScalaJSClassData[_]): scala.Boolean = js.native
@@ -68,9 +67,6 @@ final class Class[A] private (data0: Object) extends Object {
 
   def isPrimitive(): scala.Boolean =
     data.isPrimitive
-
-  private def isJSType(): scala.Boolean =
-    data.isJSType
 
   def getName(): String =
     data.name

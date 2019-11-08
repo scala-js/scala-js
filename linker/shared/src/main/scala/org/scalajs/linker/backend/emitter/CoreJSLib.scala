@@ -1178,9 +1178,9 @@ private[emitter] object CoreJSLib {
                       BracketSelect(obj DOT classData DOT "arrayBase" DOT "ancestors", internalName))))
                 })
               }),
+              privateFieldSet("isJSType", !(!isJSType)),
               publicFieldSet("name", fullName),
               publicFieldSet("isInterface", isInterface),
-              publicFieldSet("isJSType", !(!isJSType)),
               publicFieldSet("isInstance", isInstance || {
                 Function(arrow = false, paramList(obj), {
                   Return(!(!(obj && (obj DOT classData) &&
@@ -1373,7 +1373,7 @@ private[emitter] object CoreJSLib {
         val obj = varRef("obj")
         MethodDef(static = false, StringLiteral("checkCast"), paramList(obj),
           if (asInstanceOfs != CheckedBehavior.Unchecked) {
-            If((obj !== Null()) && !genIdentBracketSelect(This(), "isJSType") &&
+            If((obj !== Null()) && !(This() DOT "isJSType") &&
                 !Apply(genIdentBracketSelect(This(), "isInstance"), obj :: Nil),
               genCallHelper("throwClassCastException", obj, genIdentBracketSelect(This(), "name")),
               Skip())
