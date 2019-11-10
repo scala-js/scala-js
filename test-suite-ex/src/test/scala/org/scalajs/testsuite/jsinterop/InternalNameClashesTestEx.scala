@@ -43,7 +43,39 @@ class InternalNameClashesTestEx {
       val x: Int = 5
     }
 
-    assertEquals(121, foo.test(6))
+    assertEquals(1021, foo.test(6))
+  }
+
+  @Test def testLocalClashWithTempVar_issue2971(): Unit = {
+    @noinline def initValue: Int = 5
+
+    @noinline def sum(x: Int, y: Int): Int = x + y
+
+    val $x1 = initValue
+    val t = sum({
+      val y = sum($x1, 7)
+      sum(y, 3) // this will be assigned to a temporary var called `$x1`
+    }, {
+      val z = sum($x1, 12)
+      sum(z, 4)
+    })
+    assertEquals(36, t)
+    assertEquals(5, $x1)
+  }
+
+  @Test def testLocalVariableClashWithRecordField(): Unit = {
+    @noinline def test(): Boolean = true
+
+    // The two record fields will be called `babar__foo` and `babar__bar`
+    val babar =
+      if (test()) new LocalVariableClashWithRecordField(5, "one")
+      else new LocalVariableClashWithRecordField(6, "two")
+
+    val babar__foo = test()
+
+    assertEquals(5, babar.foo)
+    assertEquals("one", babar.bar)
+    assertEquals(true, babar__foo)
   }
 
 }
@@ -57,8 +89,16 @@ object InternalNameClashesTestEx {
 
     @noinline
     def test(y: Int): Int = {
+      /* We test both $thiz and $$thiz because GlobalScopeTestEx references the
+       * global variable `$thiz`, causing env fields for `$thiz` to be renamed
+       * to `$$thiz`.
+       */
       val $thiz = x + y
-      $thiz * $thiz
+      val $$thiz = x * y
+      ($thiz * $thiz) + ($$thiz * $$thiz)
     }
   }
+
+  @inline
+  class LocalVariableClashWithRecordField(val foo: Int, val bar: String)
 }

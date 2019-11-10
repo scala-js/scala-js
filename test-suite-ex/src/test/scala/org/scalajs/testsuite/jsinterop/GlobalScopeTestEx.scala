@@ -56,6 +56,23 @@ class GlobalScopeTestEx {
     assertSame(classOf[Array[Int]], a.getClass)
   }
 
+  @Test def access_global_ref_that_serves_as_this_in_default_methods_issue2972(): Unit = {
+    js.eval("""var $thiz = "evil thiz";""");
+
+    trait Foo {
+      @noinline def foo(): String = GlobalScope.`$thiz` + bar()
+
+      def bar(): String
+    }
+
+    class Bar(s: String) extends Foo {
+      @noinline def bar(): String = s
+    }
+
+    val bar = new Bar(" babar")
+    assertEquals("evil thiz babar", bar.foo())
+  }
+
 }
 
 object GlobalScopeTestEx {
@@ -63,5 +80,6 @@ object GlobalScopeTestEx {
   @JSGlobalScope
   object GlobalScope extends js.Any {
     var `$h_O`: String = js.native
+    var `$thiz`: String = js.native
   }
 }
