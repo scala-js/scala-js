@@ -700,7 +700,7 @@ object Serializers {
 
     def writeLocalIdent(ident: LocalIdent): Unit = {
       writePosition(ident.pos)
-      writeName(ident.name); writeString(ident.originalName.getOrElse(""))
+      writeName(ident.name); writeOriginalName(ident.originalName)
     }
 
     def writeLabelIdent(ident: LabelIdent): Unit = {
@@ -710,17 +710,17 @@ object Serializers {
 
     def writeFieldIdent(ident: FieldIdent): Unit = {
       writePosition(ident.pos)
-      writeName(ident.name); writeString(ident.originalName.getOrElse(""))
+      writeName(ident.name); writeOriginalName(ident.originalName)
     }
 
     def writeMethodIdent(ident: MethodIdent): Unit = {
       writePosition(ident.pos)
-      writeMethodName(ident.name); writeString(ident.originalName.getOrElse(""))
+      writeMethodName(ident.name); writeOriginalName(ident.originalName)
     }
 
     def writeClassIdent(ident: ClassIdent): Unit = {
       writePosition(ident.pos)
-      writeName(ident.name); writeString(ident.originalName.getOrElse(""))
+      writeName(ident.name); writeOriginalName(ident.originalName)
     }
 
     def writeClassIdents(idents: List[ClassIdent]): Unit = {
@@ -738,6 +738,12 @@ object Serializers {
 
     def writeMethodName(name: MethodName): Unit =
       buffer.writeInt(methodNameToIndex(name))
+
+    def writeOriginalName(originalName: OriginalName): Unit = {
+      buffer.writeBoolean(originalName.isDefined)
+      if (originalName.isDefined)
+        buffer.writeInt(encodedNameToIndex(originalName.get))
+    }
 
     def writeParamDef(paramDef: ParamDef): Unit = {
       writePosition(paramDef.pos)
@@ -782,7 +788,7 @@ object Serializers {
           buffer.writeInt(fields.size)
           for (RecordType.Field(name, originalName, tpe, mutable) <- fields) {
             writeName(name)
-            writeString(originalName.getOrElse(""))
+            writeOriginalName(originalName)
             writeType(tpe)
             buffer.writeBoolean(mutable)
           }
@@ -1209,9 +1215,7 @@ object Serializers {
 
     def readLocalIdent(): LocalIdent = {
       implicit val pos = readPosition()
-      val name = readLocalName()
-      val originalName = readString()
-      LocalIdent(name, if (originalName.isEmpty) None else Some(originalName))
+      LocalIdent(readLocalName(), readOriginalName())
     }
 
     def readLabelIdent(): LabelIdent = {
@@ -1221,23 +1225,17 @@ object Serializers {
 
     def readFieldIdent(): FieldIdent = {
       implicit val pos = readPosition()
-      val name = readFieldName()
-      val originalName = readString()
-      FieldIdent(name, if (originalName.isEmpty) None else Some(originalName))
+      FieldIdent(readFieldName(), readOriginalName())
     }
 
     def readMethodIdent(): MethodIdent = {
       implicit val pos = readPosition()
-      val name = readMethodName()
-      val originalName = readString()
-      MethodIdent(name, if (originalName.isEmpty) None else Some(originalName))
+      MethodIdent(readMethodName(), readOriginalName())
     }
 
     def readClassIdent(): ClassIdent = {
       implicit val pos = readPosition()
-      val name = readClassName()
-      val originalName = readString()
-      ClassIdent(name, if (originalName.isEmpty) None else Some(originalName))
+      ClassIdent(readClassName(), readOriginalName())
     }
 
     def readClassIdents(): List[ClassIdent] =
@@ -1283,9 +1281,7 @@ object Serializers {
             val originalName = readString()
             val tpe = readType()
             val mutable = readBoolean()
-            RecordType.Field(name,
-                if (originalName.isEmpty) None else Some(originalName),
-                tpe, mutable)
+            RecordType.Field(name, readOriginalName(), tpe, mutable)
           })
       }
     }
@@ -1460,6 +1456,10 @@ object Serializers {
 
     private def readMethodName(): MethodName =
       methodNames(readInt())
+
+    def readOriginalName(): OriginalName =
+      if (readBoolean()) OriginalName(encodedNames(readInt()))
+      else OriginalName.NoOriginalName
 
     private def readBoolean() = buf.get() != 0
     private def readByte() = buf.get()

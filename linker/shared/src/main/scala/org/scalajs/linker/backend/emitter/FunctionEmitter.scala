@@ -408,16 +408,16 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     }
 
     def makeRecordFieldIdent(recIdent: js.Ident,
-        fieldName: FieldName, fieldOrigName: Option[String])(
+        fieldName: FieldName, fieldOrigName: OriginalName)(
         implicit pos: Position): js.Ident = {
 
       /* "__" is a safe separator for generated names because JSGen avoids it
        * when generating `LocalName`s and `FieldName`s.
        */
       val name = recIdent.name + "__" + genName(fieldName)
-      val originalName = Some(
-          recIdent.originalName.getOrElse(recIdent.name) + "." +
-          fieldOrigName.getOrElse(fieldName.nameString))
+      val originalName = OriginalName(
+          recIdent.originalName.getOrElse(recIdent.name) ++ UTF8Period ++
+          fieldOrigName.getOrElse(fieldName))
       js.Ident(name, originalName)
     }
 
@@ -435,7 +435,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         implicit pos: Position): WithGlobals[js.Function] = {
 
       performOptimisticThenPessimisticRuns {
-        val thisIdent = envFieldIdent("thiz", Some("this"))
+        val thisIdent = envFieldIdent("thiz", thisOriginalName)
         val env = env0.withThisIdent(Some(thisIdent))
         val js.Function(jsArrow, jsParams, jsBody) =
           desugarToFunctionInternal(arrow = false, params, body, isStat, env)
@@ -779,8 +779,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   args: List[js.Tree]): js.Tree = {
                 referenceGlobalName("Object")
                 js.Apply(
-                  genIdentBracketSelect(
-                      js.VarRef(js.Ident("Object", Some("Object"))),
+                  genIdentBracketSelect(js.VarRef(js.Ident("Object")),
                       methodName),
                   args)
               }
@@ -2754,6 +2753,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 }
 
 private object FunctionEmitter {
+  private val UTF8Period: UTF8String = UTF8String(".")
+
+  private val thisOriginalName: OriginalName = OriginalName("this")
+
   private val MaybeHijackedClasses =
     (HijackedClasses ++ EmitterNames.AncestorsOfHijackedClasses) - ObjectClass
 

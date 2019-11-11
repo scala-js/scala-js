@@ -148,7 +148,7 @@ object Types {
   }
 
   object RecordType {
-    final case class Field(name: FieldName, originalName: Option[String],
+    final case class Field(name: FieldName, originalName: OriginalName,
         tpe: Type, mutable: Boolean)
   }
 

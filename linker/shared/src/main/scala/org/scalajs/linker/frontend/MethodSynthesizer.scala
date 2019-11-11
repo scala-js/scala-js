@@ -59,7 +59,7 @@ private[frontend] final class MethodSynthesizer(
       implicit val pos = targetMDef.pos
 
       val targetIdent = targetMDef.name.copy() // for the new pos
-      val proxyIdent = MethodIdent(methodName, None)
+      val proxyIdent = MethodIdent(methodName)
       val params = targetMDef.args.map(_.copy()) // for the new pos
       val currentClassType = ClassType(classInfo.className)
 

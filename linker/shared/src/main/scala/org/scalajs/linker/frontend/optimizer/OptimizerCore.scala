@@ -23,6 +23,7 @@ import scala.util.control.TailCalls.{done => _, _} // done is a too generic term
 
 import org.scalajs.ir._
 import org.scalajs.ir.Names._
+import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
@@ -404,7 +405,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case ForIn(obj, keyVar @ LocalIdent(name, originalName), body) =>
         val newObj = transformExpr(obj)
         val newName = freshLocalName(name, mutable = false)
-        val newOriginalName = originalName.orElse(Some(name.nameString))
+        val newOriginalName = originalName.orElse(name)
         val localDef = LocalDef(RefinedType(AnyType), mutable = false,
             ReplaceWithVarRef(newName, newOriginalName, newSimpleState(true), None))
         val newBody = {
@@ -417,7 +418,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         val newBlock = transform(block, isStat)
 
         val newName = freshLocalName(name, false)
-        val newOriginalName = originalName.orElse(Some(name.nameString))
+        val newOriginalName = originalName.orElse(name)
         val localDef = LocalDef(RefinedType(AnyType), true,
             ReplaceWithVarRef(newName, newOriginalName, newSimpleState(true), None))
         val newHandler = {
@@ -2520,7 +2521,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         value)
     withBinding(rtLongBinding) { (scope1, cont1) =>
       implicit val scope = scope1
-      val tRef = VarRef(LocalIdent(tName, None))(rtLongClassType)
+      val tRef = VarRef(LocalIdent(tName))(rtLongClassType)
       val newTree = New(LongImpl.RuntimeLongClass,
           MethodIdent(LongImpl.initFromParts),
           List(Apply(ApplyFlags.empty, tRef, MethodIdent(LongImpl.lo), Nil)(IntType),
@@ -3970,7 +3971,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       p @ ParamDef(ident @ LocalIdent(name, originalName), ptpe, mutable, rest) <- params
     } yield {
       val newName = freshLocalName(name, mutable)
-      val newOriginalName = originalName.orElse(Some(newName.nameString))
+      val newOriginalName = originalName.orElse(newName)
       val localDef = LocalDef(RefinedType(ptpe), mutable,
           ReplaceWithVarRef(newName, newOriginalName, newSimpleState(true), None))
       val newParamDef = ParamDef(
@@ -4229,8 +4230,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         // Otherwise, we effectively declare a new binding
         val newName = freshLocalName(bindingName, mutable)
         val newOriginalName = bindingName match {
-          case Binding.This => Some("this")
-          case Binding.Local(name, origName) => origName.orElse(Some(name.nameString))
+          case Binding.This                  => thisOriginalName
+          case Binding.Local(name, origName) => origName.orElse(name)
         }
 
         val used = newSimpleState(false)
@@ -4412,6 +4413,8 @@ private[optimizer] object OptimizerCore {
    *  base.
    */
   private val LocalThisNameForFresh = LocalName("this")
+
+  private val thisOriginalName: OriginalName = OriginalName("this")
 
   val NullPointerExceptionClass = ClassName("java.lang.NullPointerException")
   private val Tuple2Class = ClassName("scala.Tuple2")
@@ -4615,12 +4618,12 @@ private[optimizer] object OptimizerCore {
   private sealed abstract class LocalDefReplacement
 
   private final case class ReplaceWithVarRef(name: LocalName,
-      originalName: Option[String],
+      originalName: OriginalName,
       used: SimpleState[Boolean],
       longOpTree: Option[() => Tree]) extends LocalDefReplacement
 
   private final case class ReplaceWithRecordVarRef(name: LocalName,
-      originalName: Option[String],
+      originalName: OriginalName,
       recordType: RecordType,
       used: SimpleState[Boolean],
       cancelFun: CancelFun) extends LocalDefReplacement
@@ -4992,7 +4995,7 @@ private[optimizer] object OptimizerCore {
 
     case object This extends Name
 
-    final case class Local(name: LocalName, originalName: Option[String])
+    final case class Local(name: LocalName, originalName: OriginalName)
         extends Name
 
     def apply(localIdent: LocalIdent, declaredType: Type, mutable: Boolean,
@@ -5003,7 +5006,7 @@ private[optimizer] object OptimizerCore {
 
     def temp(baseName: LocalName, declaredType: Type, mutable: Boolean,
         value: PreTransform): Binding = {
-      apply(Local(baseName, None), declaredType, mutable, value)
+      apply(Local(baseName, NoOriginalName), declaredType, mutable, value)
     }
   }
 

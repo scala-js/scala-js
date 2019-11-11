@@ -20,6 +20,7 @@ import scala.collection.mutable
 
 import org.scalajs.ir._
 import org.scalajs.ir.Names._
+import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Types._
 import org.scalajs.ir.{Trees => irt}
 
@@ -474,7 +475,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
     spec match {
       case irt.JSNativeLoadSpec.Global(globalRef, path) =>
-        val globalVarRef = VarRef(Ident(globalRef, Some(globalRef)))
+        val globalVarRef = VarRef(Ident(globalRef))
         val globalVarNames = {
           if (keepOnlyDangerousVarNames && !trackAllGlobalRefs &&
               !GlobalRefUtils.isDangerousGlobalRef(globalRef)) {
@@ -572,7 +573,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
       if (containsOnlyValidChars()) "$i_" + module
       else buildValidName()
 
-    VarRef(Ident(avoidClashWithGlobalRef(varName), Some(module)))
+    VarRef(Ident(avoidClashWithGlobalRef(varName), OriginalName(module)))
   }
 
   def envField(field: String, typeRef: NonArrayTypeRef)(
@@ -584,18 +585,19 @@ private[emitter] final class JSGen(val semantics: Semantics,
     envField(field, genName(className))
 
   def envField(field: String, className: ClassName, fieldName: FieldName,
-      origName: Option[String])(
+      origName: OriginalName)(
       implicit pos: Position): VarRef = {
     envField(field, genName(className) + "__" + genName(fieldName), origName)
   }
 
   def envField(field: String, className: ClassName, methodName: MethodName,
-      origName: Option[String])(
+      origName: OriginalName)(
       implicit pos: Position): VarRef = {
     envField(field, genName(className) + "__" + genName(methodName), origName)
   }
 
-  def envField(field: String, subField: String, origName: Option[String] = None)(
+  def envField(field: String, subField: String,
+      origName: OriginalName = NoOriginalName)(
       implicit pos: Position): VarRef = {
     VarRef(envFieldIdent(field, subField, origName))
   }
@@ -625,7 +627,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
   }
 
   def envFieldIdent(field: String, subField: String,
-      origName: Option[String] = None)(
+      origName: OriginalName = NoOriginalName)(
       implicit pos: Position): Ident = {
     Ident(avoidClashWithGlobalRef("$" + field + "_" + subField), origName)
   }
@@ -634,9 +636,9 @@ private[emitter] final class JSGen(val semantics: Semantics,
     VarRef(envFieldIdent(field))
 
   def envFieldIdent(field: String)(implicit pos: Position): Ident =
-    envFieldIdent(field, None)
+    envFieldIdent(field, NoOriginalName)
 
-  def envFieldIdent(field: String, origName: Option[String])(
+  def envFieldIdent(field: String, origName: OriginalName)(
       implicit pos: Position): Ident = {
     Ident(avoidClashWithGlobalRef("$" + field), origName)
   }

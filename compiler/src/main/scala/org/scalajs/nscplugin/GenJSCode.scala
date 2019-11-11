@@ -5617,12 +5617,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       val classType = jstpe.ClassType(className)
 
-      // val f$1: Any
-      val fFieldIdent = js.FieldIdent(FieldName("f$1"), Some("f"))
+      // val f: Any
+      val fFieldIdent = js.FieldIdent(FieldName("f"))
       val fFieldDef = js.FieldDef(js.MemberFlags.empty, fFieldIdent,
           jstpe.AnyType)
 
-      // def this(f: Any) = { this.f$1 = f; super() }
+      // def this(f: Any) = { this.f = f; super() }
       val ctorDef = {
         val fParamDef = js.ParamDef(js.LocalIdent(LocalName("f")),
             jstpe.AnyType, mutable = false, rest = false)
@@ -5674,7 +5674,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         samsBuilder.result()
       }
 
-      // def samMethod(...params): resultType = this.f$f(...params)
+      // def samMethod(...params): resultType = this.f(...params)
       val samMethodDefs = for (sam <- sams) yield {
         val jsParams = for (param <- sam.tpe.params) yield {
           js.ParamDef(encodeLocalSym(param), toIRType(param.tpe),
@@ -5752,7 +5752,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         val paramTpe = paramTpes.getOrElse(paramSym.name, paramSym.tpe)
         val paramName = param.name
         val js.LocalIdent(name, origName) = paramName
-        val newOrigName = origName.getOrElse(name)
+        val newOrigName = origName.orElse(name)
         val newNameIdent = freshLocalIdent(name)(paramName.pos)
         val patchedParam = js.ParamDef(newNameIdent, jstpe.AnyType,
             mutable = false, rest = param.rest)(param.pos)

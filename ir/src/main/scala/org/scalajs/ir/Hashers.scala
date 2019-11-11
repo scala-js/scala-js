@@ -562,7 +562,7 @@ object Hashers {
         mixTag(TagRecordType)
         for (RecordType.Field(name, originalName, tpe, mutable) <- fields) {
           mixName(name)
-          originalName.foreach(mixString)
+          mixOriginalName(originalName)
           mixType(tpe)
           mixBoolean(mutable)
         }
@@ -571,7 +571,7 @@ object Hashers {
     def mixLocalIdent(ident: LocalIdent): Unit = {
       mixPos(ident.pos)
       mixName(ident.name)
-      ident.originalName.foreach(mixString)
+      mixOriginalName(ident.originalName)
     }
 
     def mixLabelIdent(ident: LabelIdent): Unit = {
@@ -582,26 +582,23 @@ object Hashers {
     def mixFieldIdent(ident: FieldIdent): Unit = {
       mixPos(ident.pos)
       mixName(ident.name)
-      ident.originalName.foreach(mixString)
+      mixOriginalName(ident.originalName)
     }
 
     def mixMethodIdent(ident: MethodIdent): Unit = {
       mixPos(ident.pos)
       mixMethodName(ident.name)
-      ident.originalName.foreach(mixString)
+      mixOriginalName(ident.originalName)
     }
 
     def mixClassIdent(ident: ClassIdent): Unit = {
       mixPos(ident.pos)
       mixName(ident.name)
-      ident.originalName.foreach(mixString)
+      mixOriginalName(ident.originalName)
     }
 
-    def mixName(name: Name): Unit = {
-      val encoded = name.encoded.bytes
-      digestStream.writeInt(encoded.length)
-      digestStream.write(encoded)
-    }
+    def mixName(name: Name): Unit =
+      mixBytes(name.encoded.bytes)
 
     def mixMethodName(name: MethodName): Unit = {
       mixName(name.simpleName)
@@ -610,6 +607,17 @@ object Hashers {
         mixTypeRef(typeRef)
       mixTypeRef(name.resultTypeRef)
       mixBoolean(name.isReflectiveProxy)
+    }
+
+    def mixOriginalName(originalName: OriginalName): Unit = {
+      mixBoolean(originalName.isDefined)
+      if (originalName.isDefined)
+        mixBytes(originalName.get.bytes)
+    }
+
+    private def mixBytes(bytes: Array[Byte]): Unit = {
+      digestStream.writeInt(bytes.length)
+      digestStream.write(bytes)
     }
 
     def mixPos(pos: Position): Unit = {

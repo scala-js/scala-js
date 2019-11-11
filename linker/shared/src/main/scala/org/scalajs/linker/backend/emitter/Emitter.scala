@@ -18,6 +18,7 @@ import scala.collection.mutable
 
 import org.scalajs.ir.{ClassKind, Position}
 import org.scalajs.ir.Names._
+import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees.{JSNativeLoadSpec, MemberNamespace}
 
 import org.scalajs.logging._
@@ -178,7 +179,7 @@ final class Emitter private (config: CommonPhaseConfig,
           }
         } {
           implicit val pos = NoPosition
-          val field = envField("f", className, methodName, None).ident
+          val field = envField("f", className, methodName, NoOriginalName).ident
           builder.addJSTree(js.VarDef(field, None))
         }
       }
@@ -195,7 +196,7 @@ final class Emitter private (config: CommonPhaseConfig,
           })
         if (!ctorIsDefined) {
           implicit val pos = NoPosition
-          val field = envField("ct", className, ctorName, None).ident
+          val field = envField("ct", className, ctorName, NoOriginalName).ident
           builder.addJSTree(js.VarDef(field, None))
         }
       }

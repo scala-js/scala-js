@@ -19,8 +19,9 @@ import java.{util => ju}
 import scala.collection.mutable.{ ListBuffer, HashMap, Stack, StringBuilder }
 
 import org.scalajs.ir
-import ir.Position
-import ir.Position._
+import org.scalajs.ir.OriginalName
+import org.scalajs.ir.Position
+import org.scalajs.ir.Position._
 
 private object SourceMapWriter {
   private val Base64Map =
@@ -154,9 +155,10 @@ private[javascript] class SourceMapWriter(
   }
 
   def startIdentNode(column: Int, originalPos: Position,
-      optOriginalName: Option[String]): Unit = {
+      optOriginalName: OriginalName): Unit = {
+    // TODO The then branch allocates a String; we should avoid that at some point
     val originalName =
-      if (optOriginalName.isDefined) optOriginalName.get
+      if (optOriginalName.isDefined) optOriginalName.get.toString()
       else null
     nodePosStack.push(originalPos, originalName)
     startSegment(column, originalPos, isIdent = true, originalName)

@@ -18,6 +18,7 @@ import org.junit.Test
 import org.junit.Assert._
 
 import Names._
+import OriginalName.NoOriginalName
 import Printers._
 import Trees._
 import Types._
@@ -117,8 +118,8 @@ class PrintersTest {
 
     assertPrintEquals("(x: int, var y: any)",
         RecordType(List(
-            RecordType.Field("x", None, IntType, mutable = false),
-            RecordType.Field("y", None, AnyType, mutable = true))))
+            RecordType.Field("x", NoOriginalName, IntType, mutable = false),
+            RecordType.Field("y", NoOriginalName, AnyType, mutable = true))))
   }
 
   @Test def printTypeRef(): Unit = {
@@ -591,8 +592,8 @@ class PrintersTest {
     assertPrintEquals("(x = 3, y = 4)",
         RecordValue(
             RecordType(List(
-                RecordType.Field("x", None, IntType, mutable = false),
-                RecordType.Field("y", None, IntType, mutable = true))),
+                RecordType.Field("x", NoOriginalName, IntType, mutable = false),
+                RecordType.Field("y", NoOriginalName, IntType, mutable = true))),
             List(i(3), i(4))))
   }
 

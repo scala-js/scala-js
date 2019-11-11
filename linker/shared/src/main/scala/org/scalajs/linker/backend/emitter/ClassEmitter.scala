@@ -14,6 +14,7 @@ package org.scalajs.linker.backend.emitter
 
 import org.scalajs.ir._
 import org.scalajs.ir.Names._
+import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Position._
 import org.scalajs.ir.Transformers._
 import org.scalajs.ir.Trees._
@@ -413,7 +414,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit val pos = field.pos
 
       val symbolValue = {
-        def description = origName.getOrElse(name.nameString)
+        def description = origName.getOrElse(name).toString()
         val args =
           if (semantics.productionMode) Nil
           else js.StringLiteral(description) :: Nil
@@ -459,7 +460,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     implicit val pos = tree.pos
     if (hasStaticInitializer(tree)) {
       val field = envField("sct", tree.className, StaticInitializerName,
-          Some("<clinit>"))
+          StaticInitializerOriginalName)
       js.Apply(field, Nil) :: Nil
     } else {
       Nil
@@ -1271,7 +1272,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   }
 
   private def envFunctionDef(field: String, subField: String,
-      args: List[js.ParamDef], body: js.Tree, origName: Option[String] = None)(
+      args: List[js.ParamDef], body: js.Tree,
+      origName: OriginalName = NoOriginalName)(
       implicit pos: Position): js.FunctionDef = {
 
     val globalVar = envField(field, subField, origName)
@@ -1288,7 +1290,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   }
 
   private def envFieldDef(field: String, className: ClassName,
-      fieldName: FieldName, value: js.Tree, origName: Option[String],
+      fieldName: FieldName, value: js.Tree, origName: OriginalName,
       mutable: Boolean)(
       implicit pos: Position): js.Tree = {
 
@@ -1298,7 +1300,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   }
 
   private def envFieldDef(field: String, className: ClassName,
-      methodName: MethodName, value: js.Tree, origName: Option[String])(
+      methodName: MethodName, value: js.Tree, origName: OriginalName)(
       implicit pos: Position): js.Tree = {
 
     envFieldDefGeneric(
@@ -1307,7 +1309,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   }
 
   private def envFieldDef(field: String, subField: String, value: js.Tree,
-      origName: Option[String], mutable: Boolean,
+      origName: OriginalName, mutable: Boolean,
       keepFunctionExpression: Boolean)(
       implicit pos: Position): js.Tree = {
 
@@ -1359,6 +1361,9 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 }
 
 private[emitter] object ClassEmitter {
+  private val StaticInitializerOriginalName: OriginalName =
+    OriginalName("<clinit>")
+
   private val ClassesWhoseDataReferToTheirInstanceTests =
     AncestorsOfHijackedClasses + BoxedStringClass
 

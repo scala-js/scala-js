@@ -15,6 +15,7 @@ package org.scalajs.ir
 import scala.annotation.switch
 
 import Names._
+import OriginalName.NoOriginalName
 import Position.NoPosition
 import Types._
 
@@ -47,43 +48,43 @@ object Trees {
 
   // Identifiers
 
-  case class LocalIdent(name: LocalName, originalName: Option[String])(
+  case class LocalIdent(name: LocalName, originalName: OriginalName)(
       implicit val pos: Position)
       extends IRNode
 
   object LocalIdent {
     def apply(name: LocalName)(implicit pos: Position): LocalIdent =
-      LocalIdent(name, None)
+      LocalIdent(name, NoOriginalName)
   }
 
   case class LabelIdent(name: LabelName)(implicit val pos: Position)
       extends IRNode
 
-  case class FieldIdent(name: FieldName, originalName: Option[String])(
+  case class FieldIdent(name: FieldName, originalName: OriginalName)(
       implicit val pos: Position)
       extends IRNode
 
   object FieldIdent {
     def apply(name: FieldName)(implicit pos: Position): FieldIdent =
-      FieldIdent(name, None)
+      FieldIdent(name, NoOriginalName)
   }
 
-  case class MethodIdent(name: MethodName, originalName: Option[String])(
+  case class MethodIdent(name: MethodName, originalName: OriginalName)(
       implicit val pos: Position)
       extends IRNode
 
   object MethodIdent {
     def apply(name: MethodName)(implicit pos: Position): MethodIdent =
-      MethodIdent(name, None)
+      MethodIdent(name, NoOriginalName)
   }
 
-  case class ClassIdent(name: ClassName, originalName: Option[String])(
+  case class ClassIdent(name: ClassName, originalName: OriginalName)(
       implicit val pos: Position)
       extends IRNode
 
   object ClassIdent {
     def apply(name: ClassName)(implicit pos: Position): ClassIdent =
-      ClassIdent(name, None)
+      ClassIdent(name, NoOriginalName)
   }
 
   /** Tests whether the given name is a valid JavaScript identifier name.
