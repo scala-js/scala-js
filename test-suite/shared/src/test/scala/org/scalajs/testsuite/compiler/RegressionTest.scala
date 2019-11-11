@@ -477,7 +477,38 @@ class RegressionTest {
     assertThrows(classOf[MatchError], bug.bug(2, false))
   }
 
-  @Test def return_x_match_issue_2928(): Unit = {
+  @Test def return_x_match_issue_2928_ints(): Unit = {
+    // scalastyle:off return
+
+    def testNonUnit(x: Int): Boolean = {
+      return x match {
+        case 1 => true
+        case _ => false
+      }
+    }
+
+    var r: Option[Boolean] = None
+
+    def testUnit(x: Int): Unit = {
+      return x match {
+        case 1 => r = Some(true)
+        case _ => r = Some(false)
+      }
+    }
+
+    assertEquals(true, testNonUnit(1))
+    assertEquals(false, testNonUnit(2))
+
+    testUnit(1)
+    assertEquals(Some(true), r)
+    r = None
+    testUnit(2)
+    assertEquals(Some(false), r)
+
+    // scalastyle:on return
+  }
+
+  @Test def return_x_match_issue_2928_strings(): Unit = {
     // scalastyle:off return
 
     def testNonUnit(x: String): Boolean = {
@@ -503,6 +534,41 @@ class RegressionTest {
     assertEquals(Some(true), r)
     r = None
     testUnit("not true")
+    assertEquals(Some(false), r)
+
+    // scalastyle:on return
+  }
+
+  @Test def return_x_match_issue_2928_lists(): Unit = {
+    // scalastyle:off return
+
+    def testNonUnit(x: List[String]): Boolean = {
+      return x match {
+        case "True" :: Nil => true
+        case _             => false
+      }
+    }
+
+    var r: Option[Boolean] = None
+
+    def testUnit(x: List[String]): Unit = {
+      return x match {
+        case "True" :: Nil => r = Some(true)
+        case _             => r = Some(false)
+      }
+    }
+
+    assertEquals(true, testNonUnit("True" :: Nil))
+    assertEquals(false, testNonUnit("not true" :: Nil))
+    assertEquals(false, testNonUnit("True" :: "second" :: Nil))
+
+    testUnit("True" :: Nil)
+    assertEquals(Some(true), r)
+    r = None
+    testUnit("not true" :: Nil)
+    assertEquals(Some(false), r)
+    r = None
+    testUnit("True" :: "second" :: Nil)
     assertEquals(Some(false), r)
 
     // scalastyle:on return
