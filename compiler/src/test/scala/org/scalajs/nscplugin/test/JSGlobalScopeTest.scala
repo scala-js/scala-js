@@ -165,6 +165,44 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def rejectInvalidJSIdentifiersInNestedObjectClass: Unit = {
+    """
+    @js.native
+    @JSGlobalScope
+    object EnclosingGlobalScope extends js.Any {
+      @js.native
+      class `not-a-valid-JS-identifier` extends js.Object
+
+      @js.native
+      @JSName("not-a-valid-JS-identifier")
+      object A extends js.Object
+
+      @js.native
+      @JSName("foo.bar")
+      object B extends js.Object
+
+      @js.native
+      @JSName("")
+      object C extends js.Object
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:43: error: The name of a JS global variable must be a valid JS identifier (got 'not-a-valid-JS-identifier')
+      |      class `not-a-valid-JS-identifier` extends js.Object
+      |            ^
+      |newSource1.scala:47: error: The name of a JS global variable must be a valid JS identifier (got 'not-a-valid-JS-identifier')
+      |      object A extends js.Object
+      |             ^
+      |newSource1.scala:51: error: The name of a JS global variable must be a valid JS identifier (got 'foo.bar')
+      |      object B extends js.Object
+      |             ^
+      |newSource1.scala:55: error: The name of a JS global variable must be a valid JS identifier (got '')
+      |      object C extends js.Object
+      |             ^
+    """
+  }
+
+  @Test
   def rejectJSOperators: Unit = {
     """
     object Main {

@@ -677,6 +677,19 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
         sym: Symbol): Option[JSNativeLoadSpec] = {
       import JSNativeLoadSpec._
 
+      def makeGlobalRefNativeLoadSpec(globalRef: String,
+          path: List[String]): Global = {
+        val validatedGlobalRef = if (!JSGlobalRef.isValidJSGlobalRefName(globalRef)) {
+          reporter.error(pos,
+              "The name of a JS global variable must be a valid JS " +
+              s"identifier (got '$globalRef')")
+          "erroneous"
+        } else {
+          globalRef
+        }
+        Global(validatedGlobalRef, path)
+      }
+
       if (enclosingOwner is OwnerKind.JSNative) {
         for (annot <- sym.annotations) {
           val annotSym = annot.symbol
@@ -703,14 +716,17 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
             case JSName.Computed(_)     => "<erroneous>" // compile error above
           }
 
-          val ownerLoadSpec = jsInterop.jsNativeLoadSpecOf(sym.owner)
+          val ownerLoadSpec = jsInterop.jsNativeLoadSpecOfOption(sym.owner)
           val loadSpec = ownerLoadSpec match {
-            case Global(globalRef, path) =>
+            case None =>
+              // The owner is a JSGlobalScope
+              makeGlobalRefNativeLoadSpec(jsName, Nil)
+            case Some(Global(globalRef, path)) =>
               Global(globalRef, path :+ jsName)
-            case Import(module, path) =>
+            case Some(Import(module, path)) =>
               Import(module, path :+ jsName)
-            case ImportWithGlobalFallback(
-                Import(module, modulePath), Global(globalRef, globalPath)) =>
+            case Some(ImportWithGlobalFallback(
+                Import(module, modulePath), Global(globalRef, globalPath))) =>
               ImportWithGlobalFallback(
                   Import(module, modulePath :+ jsName),
                   Global(globalRef, globalPath :+ jsName))
@@ -725,14 +741,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 
         def parseGlobalPath(pathName: String): Global = {
           val globalRef :: path = parsePath(pathName)
-          if (!JSGlobalRef.isValidJSGlobalRefName(globalRef)) {
-            reporter.error(pos,
-                "The name of a JS global variable must be a valid JS " +
-                s"identifier (got '$globalRef')")
-            JSNativeLoadSpec.Global("erroneous", path)
-          } else {
-            JSNativeLoadSpec.Global(globalRef, path)
-          }
+          makeGlobalRefNativeLoadSpec(globalRef, path)
         }
 
         checkAndGetJSNativeLoadingSpecAnnotOf(pos, sym) match {
@@ -774,8 +783,10 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
             Some(loadSpec)
 
           case None =>
-            // We already emitted an error. Just propagate something.
-            None
+            /* We already emitted an error. Invent something not to cause
+             * cascading errors.
+             */
+            Some(JSNativeLoadSpec.Global("erroneous", Nil))
         }
       }
     }
