@@ -368,6 +368,10 @@ class InteroperabilityTest {
       var interoperabilityTestGlobalScopeValueAsInt = function() {
         return parseInt(interoperabilityTestGlobalScopeValue);
       };
+      var InteroperabilityTestGlobalScopeObject = {foo: 456};
+      var InteroperabilityTestGlobalScopeClass = function() {
+        this.bar = 654;
+      };
     """)
 
     // Use alias for convenience: see end of file for definition
@@ -378,6 +382,14 @@ class InteroperabilityTest {
 
     Global.interoperabilityTestGlobalScopeValue = "42"
     assertEquals(42, Global.interoperabilityTestGlobalScopeValueAsInt)
+
+    assertEquals("object", js.typeOf(Global.InteroperabilityTestGlobalScopeObject))
+    assertEquals(456, Global.InteroperabilityTestGlobalScopeObject.foo)
+
+    assertEquals("function",
+        js.typeOf(js.constructorOf[Global.InteroperabilityTestGlobalScopeClassRenamed]))
+    val obj = new Global.InteroperabilityTestGlobalScopeClassRenamed
+    assertEquals(654, obj.bar)
   }
 
   @Test def should_protect_receiver_of_JS_apply_if_its_a_select_issue_804(): Unit = {
@@ -877,6 +889,17 @@ class InteroperabilityTestVariadicCtor(inargs: Any*) extends js.Object {
 object InteroperabilityTestGlobalScope extends js.Object {
   var interoperabilityTestGlobalScopeValue: String = js.native
   def interoperabilityTestGlobalScopeValueAsInt(): Int = js.native
+
+  @js.native
+  object InteroperabilityTestGlobalScopeObject extends js.Object {
+    val foo: Int = js.native
+  }
+
+  @js.native
+  @JSName("InteroperabilityTestGlobalScopeClass")
+  class InteroperabilityTestGlobalScopeClassRenamed extends js.Object {
+    val bar: Int = js.native
+  }
 }
 
 class SomeValueClass(val i: Int) extends AnyVal {
