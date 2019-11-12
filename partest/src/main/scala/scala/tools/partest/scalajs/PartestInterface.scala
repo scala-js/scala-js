@@ -98,7 +98,7 @@ case class PartestTask(taskDef: TaskDef, args: Array[String]) extends Task {
     maybeOptions foreach { options =>
       val runner = SBTRunner(
           Framework.fingerprint, eventHandler, loggers,
-          new File(s"../partest/fetchedSources/${scalaVersion}"),
+          new File(s"../../partest/fetchedSources/${scalaVersion}"),
           classLoader, null, null, Array.empty[String], Array("run", "pos", "neg"), options, scalaVersion)
 
       try runner.run()

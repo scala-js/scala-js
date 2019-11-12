@@ -29,7 +29,6 @@ val jUnitTestOutputsJVM = Build.jUnitTestOutputsJVM
 val jUnitPlugin = Build.jUnitPlugin
 val jUnitAsyncJS = Build.jUnitAsyncJS
 val jUnitAsyncJVM = Build.jUnitAsyncJVM
-val examples = Build.examples
 val helloworld = Build.helloworld
 val reversi = Build.reversi
 val testingExample = Build.testingExample

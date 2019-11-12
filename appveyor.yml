@@ -14,7 +14,7 @@ install:
 build: off
 test_script:
   # Very far from testing everything, but at least it is a good sanity check
-  - cmd: sbt ";clean;++%SCALA_VERSION%;testSuite/test"
+  - cmd: sbt ";clean;++%SCALA_VERSION%;testSuite2_12/test"
 cache:
   - C:\sbt
   - C:\Users\appveyor\.ivy2\cache

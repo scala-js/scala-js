@@ -40,7 +40,7 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
 
     var onOwnerChange: (OptPlayer, OptPlayer) => Unit = (oldP, newP) => ()
 
-    def owner = _owner
+    def owner: OptPlayer = _owner
     def owner_=(value: OptPlayer): Unit = {
       val previous = _owner
       if (value != previous) {
@@ -49,7 +49,7 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
       }
     }
 
-    override def toString() = "Square("+x+", "+y+", "+owner+")"
+    override def toString(): String = "Square("+x+", "+y+", "+owner+")"
   }
 
   val board = Array.tabulate[Square](BoardSize, BoardSize)(new Square(_, _))
@@ -63,19 +63,19 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
   val status = createStatus()
   buildUI()
 
-  def createResetButton() = {
+  def createResetButton(): JQuery = {
     jQuery("<input>", js.Dynamic.literal(
         `type` = "button", value = "Reset"
     )).click(() => reset())
   }
 
-  def createPassButton() = {
+  def createPassButton(): JQuery = {
     jQuery("<input>", js.Dynamic.literal(
         `type` = "button", value = "Pass"
     )).click(() => pass())
   }
 
-  def createStatus() = {
+  def createStatus(): JQuery = {
     jQuery("<span>")
   }
 

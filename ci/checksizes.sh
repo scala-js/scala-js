@@ -20,8 +20,8 @@ case $FULLVER in
     ;;
 esac
 
-REVERSI_PREOPT="$BASEDIR/examples/reversi/target/scala-$VER/reversi-fastopt.js"
-REVERSI_OPT="$BASEDIR/examples/reversi/target/scala-$VER/reversi-opt.js"
+REVERSI_PREOPT="$BASEDIR/examples/reversi/.$VER/target/scala-$VER/reversi-fastopt.js"
+REVERSI_OPT="$BASEDIR/examples/reversi/.$VER/target/scala-$VER/reversi-opt.js"
 
 REVERSI_PREOPT_SIZE=$(stat '-c%s' "$REVERSI_PREOPT")
 REVERSI_OPT_SIZE=$(stat '-c%s' "$REVERSI_OPT")
