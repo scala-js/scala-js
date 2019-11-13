@@ -139,11 +139,12 @@ class RegexMatcherTest  {
     parseExpect("abab(ab){1,2}?", "abababab", 0 -> 6, 4 -> 6)
     parseExpect("ab(?:ab)*", "abababab", 0 -> 8)
     if (!executingInJVM) {
-      parseExpect("ab(?:a(c))*ac", "abacacac", 0 -> 8, 5 -> 6)
-      parseExpect("ab(?:a(c))+ac", "abacacac", 0 -> 8, 5 -> 6)
+      parseExpect("ab(?:a(c))*ac", "abacacac", 0 -> 8, 5 -> 6) // JVM: 7 -> 8
+      parseExpect("ab(?:a(c))+ac", "abacacac", 0 -> 8, 5 -> 6) // JVM: 7 -> 8
     }
     parseExpect("ab(?:ac)*?ac", "abacacac", 0 -> 4)
     parseExpect("ab(?:ac)+?ac", "abacacac", 0 -> 6)
+    parseExpect("ab(?:(c){2})*d", "abccccd", 0 -> 7, 5 -> 6)
     parseExpect("ab((?=abab(ab))a(b))*a", "abababab", 0 -> 5, 2 -> 4, 6 -> 8, 3 -> 4)
   }
 

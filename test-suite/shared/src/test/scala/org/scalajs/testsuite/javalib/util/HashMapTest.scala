@@ -17,7 +17,7 @@ import java.{util => ju}
 import scala.reflect.ClassTag
 
 class HashMapTest extends MapTest {
-  def factory(): HashMapFactory = new HashMapFactory
+  def factory: HashMapFactory = new HashMapFactory
 }
 
 class HashMapFactory extends AbstractMapFactory {

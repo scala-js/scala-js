@@ -43,23 +43,23 @@ object Utils {
     }
   }
 
-  def enumerationIsEmpty(enum: ju.Enumeration[_]): Boolean =
-    !enum.hasMoreElements()
+  def enumerationIsEmpty(enumeration: ju.Enumeration[_]): Boolean =
+    !enumeration.hasMoreElements()
 
-  def enumerationSize(enum: ju.Enumeration[_]): Int = {
+  def enumerationSize(enumeration: ju.Enumeration[_]): Int = {
     var result = 0
-    while (enum.hasMoreElements()) {
-      enum.nextElement()
+    while (enumeration.hasMoreElements()) {
+      enumeration.nextElement()
       result += 1
     }
     result
   }
 
   def assertEnumSameElementsAsSet[A](expected: A*)(
-      enum: ju.Enumeration[_ <: A]): Unit = {
+      enumeration: ju.Enumeration[_ <: A]): Unit = {
     assertIteratorSameElementsAsSet(expected: _*)(new ju.Iterator[A] {
-      def hasNext(): Boolean = enum.hasMoreElements()
-      def next(): A = enum.nextElement()
+      def hasNext(): Boolean = enumeration.hasMoreElements()
+      def next(): A = enumeration.nextElement()
       override def remove(): Unit =
         throw new UnsupportedOperationException("Iterator.remove()")
     })
