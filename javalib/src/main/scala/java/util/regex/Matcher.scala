@@ -36,9 +36,6 @@ final class Matcher private[regex] (
   private var lastMatchIsValid = false
   private var canStillFind = true
 
-  // Group count
-  private var lastGroupCount: Option[Int] = None
-
   // Append state (updated by replacement methods)
   private var appendPos: Int = 0
 
@@ -73,7 +70,7 @@ final class Matcher private[regex] (
     } else {
       canStillFind = false
     }
-    startOfGroupCache = None
+    startOfGroupCache = null
     lastMatch ne null
   } else false
 
@@ -157,7 +154,7 @@ final class Matcher private[regex] (
     lastMatchIsValid = false
     canStillFind = true
     appendPos = 0
-    startOfGroupCache = None
+    startOfGroupCache = null
     this
   }
 
@@ -175,8 +172,7 @@ final class Matcher private[regex] (
     regexp = pattern.newJSRegExp()
     regexp.lastIndex = prevLastIndex
     lastMatch = null
-    lastGroupCount = None
-    startOfGroupCache = None
+    startOfGroupCache = null
     this
   }
 
@@ -188,21 +184,7 @@ final class Matcher private[regex] (
     lastMatch
   }
 
-  def groupCount(): Int = {
-    if (lastMatch != null) {
-      lastMatch.length-1
-    } else {
-      lastGroupCount match {
-        case Some(n) => n
-
-        case None =>
-          val groupCountRegex = new js.RegExp("|" + pattern0.jsPattern)
-          val newGroupCount = groupCountRegex.exec("").length-1
-          lastGroupCount = Some(newGroupCount)
-          newGroupCount
-      }
-    }
-  }
+  def groupCount(): Int = Matcher.getGroupCount(lastMatch, pattern())
 
   def start(): Int = ensureLastMatch.index
   def end(): Int = start() + group().length
@@ -228,7 +210,8 @@ final class Matcher private[regex] (
 
   // Seal the state
 
-  def toMatchResult(): MatchResult = new SealedResult(inputstr, lastMatch, pattern(), groupCount())
+  def toMatchResult(): MatchResult =
+    new SealedResult(inputstr, lastMatch, pattern(), startOfGroupCache)
 
   // Other query state methods
 
@@ -252,15 +235,13 @@ final class Matcher private[regex] (
   //def useAnchoringBounds(b: Boolean): Matcher
 
   // Lazily computed by `startOfGroup`, reset every time `lastMatch` changes
-  private var startOfGroupCache: Option[Int => Int] = None
+  private var startOfGroupCache: js.Array[Int] = _
 
   /** Returns a mapping from the group number to the respective start position. */
-  private def startOfGroup: Int => Int = {
-    startOfGroupCache.getOrElse {
-      val mapping = GroupStartMap(inputstr, start, pattern0)
-      startOfGroupCache = Some(mapping)
-      mapping
-    }
+  private def startOfGroup: js.Array[Int] = {
+    if (startOfGroupCache eq null)
+      startOfGroupCache = pattern0.groupStartMapper(inputstr, start())
+    startOfGroupCache
   }
 }
 
@@ -279,19 +260,31 @@ object Matcher {
     result
   }
 
+  private def getGroupCount(lastMatch: js.RegExp.ExecResult,
+      pattern: Pattern): Int = {
+    /* `pattern.groupCount` has the answer, but it can require some
+     * computation to get it, so try and use lastMatch's group count if we can.
+     */
+    if (lastMatch != null) lastMatch.length - 1
+    else pattern.groupCount
+  }
+
   private final class SealedResult(inputstr: String,
       lastMatch: js.RegExp.ExecResult, pattern: Pattern,
-      lastGroupCount: Int)
+      private var startOfGroupCache: js.Array[Int])
       extends MatchResult {
 
-    def groupCount(): Int = lastGroupCount
+    def groupCount(): Int = getGroupCount(lastMatch, pattern)
 
     def start(): Int = ensureLastMatch.index
     def end(): Int = start() + group().length
     def group(): String = ensureLastMatch(0).get
 
-    private lazy val startOfGroup =
-      GroupStartMap(inputstr, ensureLastMatch.index, pattern)
+    private def startOfGroup: js.Array[Int] = {
+      if (startOfGroupCache eq null)
+        startOfGroupCache = pattern.groupStartMapper(inputstr, start())
+      startOfGroupCache
+    }
 
     def start(group: Int): Int = {
       if (group == 0) start()

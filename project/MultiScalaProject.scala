@@ -84,8 +84,8 @@ object MultiScalaProject {
 
   private final val versions = Map[String, Seq[String]](
     "2.11" -> Seq("2.11.12"),
-    "2.12" -> Seq("2.12.1", "2.12.2", "2.12.3", "2.12.4", "2.12.5", "2.12.6", "2.12.7", "2.12.8"),
-    "2.13" -> Seq("2.13.0"),
+    "2.12" -> Seq("2.12.1", "2.12.2", "2.12.3", "2.12.4", "2.12.5", "2.12.6", "2.12.7", "2.12.8", "2.12.9", "2.12.10"),
+    "2.13" -> Seq("2.13.0", "2.13.1"),
   )
 
   private def projectID(id: String, major: String) = id + major.replace('.', '_')

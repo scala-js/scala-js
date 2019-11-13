@@ -304,18 +304,18 @@ class CollectionsTest extends CollectionsTestBase {
 
   @Test def enumeration(): Unit = {
     val coll = TrivialImmutableCollection(range: _*)
-    val enum = ju.Collections.enumeration(coll)
+    val enumeration = ju.Collections.enumeration(coll)
     for (elem <- range) {
-      assertTrue(enum.hasMoreElements)
-      assertEquals(elem, enum.nextElement())
+      assertTrue(enumeration.hasMoreElements)
+      assertEquals(elem, enumeration.nextElement())
     }
-    assertFalse(enum.hasMoreElements)
+    assertFalse(enumeration.hasMoreElements)
   }
 
   @Test def list(): Unit = {
     val elementCount = 30
 
-    val enum = new ju.Enumeration[Int] {
+    val enumeration = new ju.Enumeration[Int] {
       private var next: Int = 0
       def hasMoreElements(): Boolean = next != elementCount
       def nextElement(): Int = {
@@ -324,7 +324,7 @@ class CollectionsTest extends CollectionsTestBase {
       }
     }
 
-    val list = ju.Collections.list(enum)
+    val list = ju.Collections.list(enumeration)
     assertEquals(elementCount, list.size)
     for (i <- 0 until elementCount)
       assertEquals(i, list.get(i))
