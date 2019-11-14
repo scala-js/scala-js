@@ -111,12 +111,16 @@ object MyScalaJSPlugin extends AutoPlugin {
       },
 
       // Link source maps to GitHub sources
-      addScalaJSCompilerOption(Def.setting {
-        "mapSourceURI:" +
-        (baseDirectory in LocalProject("scalajs")).value.toURI +
-        "->https://raw.githubusercontent.com/scala-js/scala-js/v" +
-        scalaJSVersion + "/"
-      })
+      if (scalaJSVersion.endsWith("-SNAPSHOT")) {
+        Nil
+      } else {
+        addScalaJSCompilerOption(Def.setting {
+          "mapSourceURI:" +
+          (baseDirectory in LocalProject("scalajs")).value.toURI +
+          "->https://raw.githubusercontent.com/scala-js/scala-js/v" +
+          scalaJSVersion + "/"
+        })
+      }
   )
 }
 
@@ -980,13 +984,22 @@ object Build {
       /* Link source maps to the GitHub sources of the original scalalib
        * #2195 This must come *before* the option added by MyScalaJSPlugin
        * because mapSourceURI works on a first-match basis.
+       * That is why we cannot use addScalaJSCompilerOption.
        */
-      addScalaJSCompilerOption(Def.setting {
-        "mapSourceURI:" +
-        (artifactPath in fetchScalaSource).value.toURI +
-        "->https://raw.githubusercontent.com/scala/scala/v" +
-        scalaVersion.value + "/src/library/"
-      }),
+      scalacOptions := {
+        val prev = scalacOptions.value
+        if (isGeneratingForIDE) {
+          prev
+        } else {
+          val option = {
+            "-P:scalajs:mapSourceURI:" +
+            (artifactPath in fetchScalaSource).value.toURI +
+            "->https://raw.githubusercontent.com/scala/scala/v" +
+            scalaVersion.value + "/src/library/"
+          }
+          option +: prev
+        }
+      },
       name := "Scala library for Scala.js",
       publishArtifact in Compile := false,
       delambdafySetting,
