@@ -300,7 +300,7 @@ class AnalyzerTest {
         classDef("B", superClass = Some("A"),
             memberDefs = List(
                 trivialCtor("B"),
-                MethodDef(EMF, fooMethodName, Nil, IntType, Some(int(5)))(EOH, None)
+                MethodDef(EMF, fooMethodName, NON, Nil, IntType, Some(int(5)))(EOH, None)
             ))
     )
 
@@ -315,7 +315,7 @@ class AnalyzerTest {
 
   @Test
   def conflictingDefaultMethods(): AsyncResult = await {
-    val defaultMethodDef = MethodDef(EMF, m("foo", Nil, V), Nil,
+    val defaultMethodDef = MethodDef(EMF, m("foo", Nil, V), NON, Nil,
         NoType, Some(Skip()))(EOH, None)
     val classDefs = Seq(
         classDef("I1", kind = ClassKind.Interface,
@@ -387,7 +387,7 @@ class AnalyzerTest {
     val classDefs = Seq(
         classDef("A", superClass = Some(ObjectClass), memberDefs = List(
             trivialCtor("A"),
-            MethodDef(EMF, m("test", Nil, V), Nil, NoType, Some(Block(
+            MethodDef(EMF, m("test", Nil, V), NON, Nil, NoType, Some(Block(
                 Apply(EAF, systemMod, m("getProperty", List(T), T), List(emptyStr))(StringType),
                 Apply(EAF, systemMod, m("getProperty", List(T, T), T), List(emptyStr))(StringType),
                 Apply(EAF, systemMod, m("setProperty", List(T, T), T), List(emptyStr))(StringType),
@@ -425,9 +425,9 @@ class AnalyzerTest {
         classDef("X", superClass = Some(ObjectClass),
             memberDefs = List(
                 trivialCtor("X"),
-                MethodDef(EMF, fooAMethodName, Nil, ClassType("A"),
+                MethodDef(EMF, fooAMethodName, NON, Nil, ClassType("A"),
                     Some(Null()))(EOH, None),
-                MethodDef(EMF, fooBMethodName, Nil, ClassType("B"),
+                MethodDef(EMF, fooBMethodName, NON, Nil, ClassType("B"),
                     Some(Null()))(EOH, None)
             )
         )
@@ -458,26 +458,26 @@ class AnalyzerTest {
     val classDefs = Seq(
         classDef("I1", kind = ClassKind.Interface,
             memberDefs = List(
-                MethodDef(EMF, barMethodName, Nil, IntType, None)(EOH, None)
+                MethodDef(EMF, barMethodName, NON, Nil, IntType, None)(EOH, None)
             )),
         classDef("I2", kind = ClassKind.Interface,
             memberDefs = List(
-                MethodDef(EMF, barMethodName, Nil, IntType, None)(EOH, None)
+                MethodDef(EMF, barMethodName, NON, Nil, IntType, None)(EOH, None)
             )),
         classDef("A", superClass = Some(ObjectClass), interfaces = List("I1"),
             memberDefs = List(
                 trivialCtor("A"),
-                MethodDef(EMF, fooMethodName, Nil, IntType, None)(EOH, None)
+                MethodDef(EMF, fooMethodName, NON, Nil, IntType, None)(EOH, None)
             )),
         classDef("B", superClass = Some("A"), interfaces = List("I2"),
             memberDefs = List(
                 trivialCtor("B"),
-                MethodDef(EMF, fooMethodName, Nil, IntType, Some(int(5)))(EOH, None)
+                MethodDef(EMF, fooMethodName, NON, Nil, IntType, Some(int(5)))(EOH, None)
             )),
         classDef("C", superClass = Some("B"),
             memberDefs = List(
                 trivialCtor("C"),
-                MethodDef(EMF, barMethodName, Nil, IntType, Some(int(5)))(EOH, None)
+                MethodDef(EMF, barMethodName, NON, Nil, IntType, Some(int(5)))(EOH, None)
             ))
     )
 

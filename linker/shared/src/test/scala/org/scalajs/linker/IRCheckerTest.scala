@@ -61,7 +61,7 @@ class IRCheckerTest {
                 /* This method is called, but unreachable because there are no
                  * instances of `Bar`. It will therefore not make `Foo` reachable.
                  */
-                MethodDef(EMF, methMethodName,
+                MethodDef(EMF, methMethodName, NON,
                     List(paramDef("foo", ClassType("Foo"))), NoType,
                     Some(Skip()))(
                     EOH, None)
@@ -72,7 +72,7 @@ class IRCheckerTest {
             superClass = Some(ObjectClass),
             memberDefs = List(
                 trivialCtor("Test$"),
-                MethodDef(EMF, nullBarMethodName, Nil, ClassType("Bar"),
+                MethodDef(EMF, nullBarMethodName, NON, Nil, ClassType("Bar"),
                     Some(Null()))(
                     EOH, None),
                 mainMethodDef(Block(
@@ -116,35 +116,35 @@ class IRCheckerTest {
 
                 // Duplicate fields
 
-                FieldDef(EMF, "foobar", IntType),
-                FieldDef(EMF, "foobar", BoxedStringType),
+                FieldDef(EMF, "foobar", NON, IntType),
+                FieldDef(EMF, "foobar", NON, BoxedStringType),
 
                 // Duplicate constructors
 
                 MethodDef(EMF.withNamespace(MemberNamespace.Constructor),
-                    stringCtorName, List(paramDef("x", BoxedStringType)),
+                    stringCtorName, NON, List(paramDef("x", BoxedStringType)),
                     NoType, Some(callPrimaryCtorBody))(
                     EOH, None),
 
                 MethodDef(EMF.withNamespace(MemberNamespace.Constructor),
-                    stringCtorName, List(paramDef("y", BoxedStringType)),
+                    stringCtorName, NON, List(paramDef("y", BoxedStringType)),
                     NoType, Some(callPrimaryCtorBody))(
                     EOH, None),
 
                 // Duplicate methods
 
-                MethodDef(EMF, babarMethodName, List(paramDef("x", IntType)),
+                MethodDef(EMF, babarMethodName, NON, List(paramDef("x", IntType)),
                     IntType, Some(babarMethodBody("x")))(
                     EOH, None),
 
-                MethodDef(EMF, babarMethodName, List(paramDef("y", IntType)),
+                MethodDef(EMF, babarMethodName, NON, List(paramDef("y", IntType)),
                     IntType, Some(babarMethodBody("y")))(
                     EOH, None)
             )
         ),
 
         mainTestClassDef(Block(
-            VarDef("foo", FooType, mutable = false,
+            VarDef("foo", NON, FooType, mutable = false,
                 New(FooClass, stringCtorName, List(StringLiteral("hello")))),
             Apply(EAF, VarRef("foo")(FooType), babarMethodName, List(int(5)))(IntType)
         ))

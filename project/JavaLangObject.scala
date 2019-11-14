@@ -9,6 +9,7 @@ import java.io.ByteArrayOutputStream
 import org.scalajs.ir
 import org.scalajs.ir._
 import org.scalajs.ir.Names._
+import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 import org.scalajs.ir.Position.NoPosition
@@ -34,6 +35,7 @@ object JavaLangObject {
 
     val classDef = ClassDef(
       ClassIdent(ObjectClass),
+      NoOriginalName,
       ClassKind.Class,
       None,
       None,
@@ -45,6 +47,7 @@ object JavaLangObject {
         MethodDef(
           MemberFlags.empty.withNamespace(MemberNamespace.Constructor),
           MethodIdent(NoArgConstructorName),
+          NoOriginalName,
           Nil,
           NoType,
           Some(Skip()))(OptimizerHints.empty, None),
@@ -53,6 +56,7 @@ object JavaLangObject {
         MethodDef(
           MemberFlags.empty,
           MethodIdent(MethodName("getClass", Nil, ClassClassRef)),
+          NoOriginalName,
           Nil,
           ClassType(ClassClass),
           Some {
@@ -63,6 +67,7 @@ object JavaLangObject {
         MethodDef(
           MemberFlags.empty,
           MethodIdent(MethodName("hashCode", Nil, IntRef)),
+          NoOriginalName,
           Nil,
           IntType,
           Some {
@@ -77,7 +82,8 @@ object JavaLangObject {
         MethodDef(
           MemberFlags.empty,
           MethodIdent(MethodName("equals", List(ObjectClassRef), BooleanRef)),
-          List(ParamDef(LocalIdent(LocalName("that")), AnyType,
+          NoOriginalName,
+          List(ParamDef(LocalIdent(LocalName("that")), NoOriginalName, AnyType,
             mutable = false, rest = false)),
           BooleanType,
           Some {
@@ -93,6 +99,7 @@ object JavaLangObject {
         MethodDef(
           MemberFlags.empty,
           MethodIdent(MethodName("clone", Nil, ObjectClassRef)),
+          NoOriginalName,
           Nil,
           AnyType,
           Some {
@@ -112,6 +119,7 @@ object JavaLangObject {
         MethodDef(
           MemberFlags.empty,
           MethodIdent(MethodName("toString", Nil, StringClassRef)),
+          NoOriginalName,
           Nil,
           ClassType(BoxedStringClass),
           Some {
@@ -141,6 +149,7 @@ object JavaLangObject {
         MethodDef(
           MemberFlags.empty,
           MethodIdent(MethodName("notify", Nil, VoidRef)),
+          NoOriginalName,
           Nil,
           NoType,
           Some(Skip()))(OptimizerHints.empty, None),
@@ -149,6 +158,7 @@ object JavaLangObject {
         MethodDef(
           MemberFlags.empty,
           MethodIdent(MethodName("notifyAll", Nil, VoidRef)),
+          NoOriginalName,
           Nil,
           NoType,
           Some(Skip()))(OptimizerHints.empty, None),
@@ -157,6 +167,7 @@ object JavaLangObject {
         MethodDef(
           MemberFlags.empty,
           MethodIdent(MethodName("finalize", Nil, VoidRef)),
+          NoOriginalName,
           Nil,
           NoType,
           Some(Skip()))(OptimizerHints.empty, None),

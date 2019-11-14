@@ -117,11 +117,8 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   def freshLocalIdent()(implicit pos: ir.Position): js.LocalIdent =
     js.LocalIdent(freshName(xLocalName))
 
-  def freshLocalIdent(base: LocalName)(implicit pos: ir.Position): js.LocalIdent = {
-    val fresh = freshName(base)
-    js.LocalIdent(fresh,
-        if (fresh eq base) NoOriginalName else OriginalName(base.encoded))
-  }
+  def freshLocalIdent(base: LocalName)(implicit pos: ir.Position): js.LocalIdent =
+    js.LocalIdent(freshName(base))
 
   def freshLocalIdent(base: String)(implicit pos: ir.Position): js.LocalIdent =
     freshLocalIdent(LocalName(base))
@@ -180,7 +177,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   def encodeFieldSym(sym: Symbol)(implicit pos: Position): js.FieldIdent = {
     requireSymIsField(sym)
     val name = sym.name.dropLocal
-    js.FieldIdent(FieldName(name.toString()), originalNameOf(name))
+    js.FieldIdent(FieldName(name.toString()))
   }
 
   def encodeFieldSymAsStringLiteral(sym: Symbol)(
@@ -222,7 +219,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
         MethodName(simpleName, paramTypeRefs, paramOrResultTypeRef(tpe.resultType))
     }
 
-    js.MethodIdent(methodName, originalNameOf(name))
+    js.MethodIdent(methodName)
   }
 
   def encodeStaticMemberSym(sym: Symbol)(implicit pos: Position): js.MethodIdent = {
@@ -232,7 +229,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     val name = sym.name
     val resultTypeRef = paramOrResultTypeRef(sym.tpe)
     val methodName = MethodName(name.toString(), Nil, resultTypeRef)
-    js.MethodIdent(methodName, originalNameOf(name))
+    js.MethodIdent(methodName)
   }
 
   /** Computes the internal name for a type. */
@@ -254,12 +251,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     require(sym.isValueParameter ||
         (!sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule),
         "encodeLocalSym called with non-local symbol: " + sym)
-    val localName = localSymbolName(sym)
-    val unexpandedName = UTF8String(sym.unexpandedName.decoded)
-    val originalName =
-      if (UTF8String.equals(unexpandedName, localName.encoded)) NoOriginalName
-      else OriginalName(unexpandedName)
-    js.LocalIdent(localSymbolName(sym), originalName)
+    js.LocalIdent(localSymbolName(sym))
   }
 
   def foreignIsImplClass(sym: Symbol): Boolean =
@@ -276,7 +268,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   }
 
   def encodeClassNameIdent(sym: Symbol)(implicit pos: Position): js.ClassIdent =
-    js.ClassIdent(encodeClassName(sym), OriginalName(sym.fullName))
+    js.ClassIdent(encodeClassName(sym))
 
   private val BoxedStringModuleClassName = ClassName("java.lang.String$")
   private val BoxedVoidModuleClassName = ClassName("java.lang.Void$")
@@ -302,6 +294,22 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
 
   def needsModuleClassSuffix(sym: Symbol): Boolean =
     sym.isModuleClass && !foreignIsImplClass(sym)
+
+  def originalNameOfLocal(sym: Symbol): OriginalName = {
+    val irName = localSymbolName(sym)
+    val originalName = UTF8String(nme.unexpandedName(sym.name).decoded)
+    if (UTF8String.equals(originalName, irName.encoded)) NoOriginalName
+    else OriginalName(originalName)
+  }
+
+  def originalNameOfField(sym: Symbol): OriginalName =
+    originalNameOf(sym.name.dropLocal)
+
+  def originalNameOfMethod(sym: Symbol): OriginalName =
+    originalNameOf(sym.name)
+
+  def originalNameOfClass(sym: Symbol): OriginalName =
+    originalNameOf(sym.fullNameAsName('.'))
 
   private def originalNameOf(name: Name): OriginalName = {
     val originalName = nme.unexpandedName(name).decoded

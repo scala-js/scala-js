@@ -39,8 +39,8 @@ object Transformers {
       tree match {
         // Definitions
 
-        case VarDef(ident, vtpe, mutable, rhs) =>
-          VarDef(ident, vtpe, mutable, transformExpr(rhs))
+        case VarDef(ident, originalName, vtpe, mutable, rhs) =>
+          VarDef(ident, originalName, vtpe, mutable, transformExpr(rhs))
 
         // Control flow constructs
 
@@ -66,11 +66,12 @@ object Transformers {
         case DoWhile(body, cond) =>
           DoWhile(transformStat(body), transformExpr(cond))
 
-        case ForIn(obj, keyVar, body) =>
-          ForIn(transformExpr(obj), keyVar, transformStat(body))
+        case ForIn(obj, keyVar, keyVarOriginalName, body) =>
+          ForIn(transformExpr(obj), keyVar, keyVarOriginalName,
+              transformStat(body))
 
-        case TryCatch(block, errVar, handler) =>
-          TryCatch(transform(block, isStat), errVar,
+        case TryCatch(block, errVar, errVarOriginalName, handler) =>
+          TryCatch(transform(block, isStat), errVar, errVarOriginalName,
               transform(handler, isStat))(tree.tpe)
 
         case TryFinally(block, finalizer) =>
@@ -213,8 +214,8 @@ object Transformers {
   abstract class ClassTransformer extends Transformer {
     def transformClassDef(tree: ClassDef): ClassDef = {
       import tree._
-      ClassDef(name, kind, jsClassCaptures, superClass, interfaces,
-          jsSuperClass.map(transformExpr), jsNativeLoadSpec,
+      ClassDef(name, originalName, kind, jsClassCaptures, superClass,
+          interfaces, jsSuperClass.map(transformExpr), jsNativeLoadSpec,
           memberDefs.map(transformMemberDef),
           topLevelExportDefs.map(transformTopLevelExportDef))(
           tree.optimizerHints)(tree.pos)
@@ -228,9 +229,9 @@ object Transformers {
           memberDef
 
         case memberDef: MethodDef =>
-          val MethodDef(flags, name, args, resultType, body) = memberDef
+          val MethodDef(flags, name, originalName, args, resultType, body) = memberDef
           val newBody = body.map(transform(_, isStat = resultType == NoType))
-          MethodDef(flags, name, args, resultType, newBody)(
+          MethodDef(flags, name, originalName, args, resultType, newBody)(
               memberDef.optimizerHints, None)
 
         case memberDef: JSMethodDef =>

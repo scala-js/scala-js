@@ -107,7 +107,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
             val captureParamDefs = for (param <- jsClassCaptures) yield {
               implicit val pos = param.pos
               val ident = envFieldIdent("cc", genName(param.name.name),
-                  param.name.originalName)
+                  param.originalName.orElse(param.name.name))
               js.ParamDef(ident, rest = false)
             }
 
@@ -380,12 +380,12 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       fields: List[AnyFieldDef])(
       implicit globalKnowledge: GlobalKnowledge): List[js.Tree] = {
     for {
-      field <- fields
-      if !field.flags.namespace.isStatic
+      anyField <- fields
+      if !anyField.flags.namespace.isStatic
     } yield {
+      val field = anyField.asInstanceOf[FieldDef]
       implicit val pos = field.pos
-      val nameIdent = field.asInstanceOf[FieldDef].name
-      js.Assign(genSelect(js.This(), className, nameIdent),
+      js.Assign(genSelect(js.This(), className, field.name, field.originalName),
           genZeroOf(field.ftpe))
     }
   }
@@ -394,12 +394,12 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   def genCreateStaticFieldsOfScalaClass(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): List[js.Tree] = {
     for {
-      field @ FieldDef(flags, FieldIdent(name, origName), ftpe) <- tree.fields
+      field @ FieldDef(flags, FieldIdent(name), origName, ftpe) <- tree.fields
       if flags.namespace.isStatic
     } yield {
       implicit val pos = field.pos
-      envFieldDef("t", tree.className, name, genZeroOf(ftpe), origName,
-          flags.isMutable)
+      envFieldDef("t", tree.className, name, genZeroOf(ftpe),
+          origName.orElse(name), flags.isMutable)
     }
   }
 
@@ -408,7 +408,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
    */
   def genCreatePrivateJSFieldDefsOfJSClass(tree: LinkedClass): List[js.Tree] = {
     for {
-      field @ FieldDef(flags, FieldIdent(name, origName), _) <- tree.fields
+      field @ FieldDef(flags, FieldIdent(name), origName, _) <- tree.fields
       if !flags.namespace.isStatic
     } yield {
       implicit val pos = field.pos
@@ -425,7 +425,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
           genCallHelper("privateJSFieldSymbol", args: _*)
       }
 
-      envFieldDef("r", tree.className, name, symbolValue, origName,
+      envFieldDef("r", tree.className, name, symbolValue, origName.orElse(name),
           mutable = false)
     }
   }
@@ -444,9 +444,9 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         if (field.ftpe == CharType) js.VarRef(js.Ident("$bC0"))
         else genZeroOf(field.ftpe)
       field match {
-        case FieldDef(_, name, _) =>
+        case FieldDef(_, name, originalName, _) =>
           WithGlobals(
-              js.Assign(js.DotSelect(classVar, genMemberFieldIdent(name)), zero))
+              js.Assign(js.DotSelect(classVar, genMemberFieldIdent(name, originalName)), zero))
         case JSFieldDef(_, name, _) =>
           for (propName <- genMemberNameTree(name))
             yield js.Assign(genPropSelect(classVar, propName), zero)
@@ -507,6 +507,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       }
 
       val methodName = method.name
+      val originalName = method.originalName
+
       if (namespace != MemberNamespace.Public) {
         val field = namespace match {
           case MemberNamespace.Private           => "p"
@@ -516,9 +518,9 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
           case MemberNamespace.StaticConstructor => "sct"
         }
         envFieldDef(field, className, methodName.name, methodFun,
-            methodName.originalName)
+            originalName.orElse(methodName.name))
       } else {
-        val jsMethodName = genMemberMethodIdent(methodName)
+        val jsMethodName = genMemberMethodIdent(methodName, originalName)
         if (useClasses) {
           js.MethodDef(static = false, jsMethodName,
               methodFun.args, methodFun.body)
@@ -566,8 +568,9 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         className, method.args, method.body.get, method.resultType)
 
     for (methodFun <- methodFunWithGlobals) yield {
-      val MethodIdent(methodName, origName) = method.name
-      envFieldDef("f", className, methodName, methodFun, origName)
+      val methodName = method.name.name
+      envFieldDef("f", className, methodName, methodFun,
+          method.originalName.orElse(methodName))
     }
   }
 
@@ -717,11 +720,19 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     }
   }
 
-  private def genMemberFieldIdent(ident: FieldIdent): js.Ident =
-    js.Ident(genName(ident.name), ident.originalName)(ident.pos)
+  private def genMemberFieldIdent(ident: FieldIdent,
+      originalName: OriginalName): js.Ident = {
+    val jsName = genName(ident.name)
+    js.Ident(jsName, genOriginalName(ident.name, originalName, jsName))(
+        ident.pos)
+  }
 
-  private def genMemberMethodIdent(ident: MethodIdent): js.Ident =
-    js.Ident(genName(ident.name), ident.originalName)(ident.pos)
+  private def genMemberMethodIdent(ident: MethodIdent,
+      originalName: OriginalName): js.Ident = {
+    val jsName = genName(ident.name)
+    js.Ident(jsName, genOriginalName(ident.name, originalName, jsName))(
+        ident.pos)
+  }
 
   def needInstanceTests(tree: LinkedClass): Boolean = {
     tree.hasInstanceTests || {

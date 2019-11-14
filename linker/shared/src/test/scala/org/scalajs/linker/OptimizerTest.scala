@@ -64,22 +64,22 @@ class OptimizerTest {
         trivialCtor("Foo"),
 
         // @noinline def witness(): AnyRef = throw null
-        MethodDef(EMF, witnessMethodName, Nil, AnyType, Some {
+        MethodDef(EMF, witnessMethodName, NON, Nil, AnyType, Some {
           Throw(Null())
         })(EOH.withNoinline(true), None),
 
         // @noinline def reachClone(): Object = clone()
-        MethodDef(EMF, reachCloneMethodName, Nil, AnyType, Some {
+        MethodDef(EMF, reachCloneMethodName, NON, Nil, AnyType, Some {
           Apply(EAF, thisFoo, cloneMethodName, Nil)(AnyType)
         })(EOH.withNoinline(true), None),
 
         // @noinline def anArray(): Array[Int] = Array(1)
-        MethodDef(EMF, anArrayMethodName, Nil, intArrayType, Some {
+        MethodDef(EMF, anArrayMethodName, NON, Nil, intArrayType, Some {
           anArrayOfInts
         })(EOH.withNoinline(true), None),
 
         // @noinline def anObject(): AnyRef = Array(1)
-        MethodDef(EMF, anObjectMethodName, Nil, AnyType, Some {
+        MethodDef(EMF, anObjectMethodName, NON, Nil, AnyType, Some {
           anArrayOfInts
         })(EOH.withNoinline(true), None)
     ) ::: customMemberDefs
@@ -106,12 +106,12 @@ class OptimizerTest {
       val linkedClass = linkingUnit.classDefs.find(_.className == MainTestClassName).get
       val ObjectCloneClass = ClassName("java.lang.ObjectClone$")
       linkedClass.hasNot("any call to Foo.witness()") {
-        case Apply(_, receiver, MethodIdent(`witnessMethodName`, _), _) =>
+        case Apply(_, receiver, MethodIdent(`witnessMethodName`), _) =>
           receiver.tpe == ClassType("Foo")
       }.hasNot("any reference to ObjectClone") {
         case LoadModule(ObjectCloneClass) => true
       }.hasExactly(3, "calls to clone()") {
-        case Apply(_, _, MethodIdent(`cloneMethodName`, _), _) => true
+        case Apply(_, _, MethodIdent(`cloneMethodName`), _) => true
       }
     }
   }
@@ -121,7 +121,7 @@ class OptimizerTest {
   def testCloneOnArrayNotInlined_issue3778(): AsyncResult = await {
     testCloneOnArrayNotInlinedGeneric(List(
         // @inline override def clone(): AnyRef = witness()
-        MethodDef(EMF, cloneMethodName, Nil, AnyType, Some {
+        MethodDef(EMF, cloneMethodName, NON, Nil, AnyType, Some {
           Apply(EAF, This()(ClassType("Foo")), witnessMethodName, Nil)(AnyType)
         })(EOH.withInline(true), None)
     ))
@@ -142,7 +142,7 @@ class OptimizerTest {
   def testCloneOnArrayNotInlined_issue3778_ObjectCloneAndAnotherClone(): AsyncResult = await {
     testCloneOnArrayNotInlinedGeneric(List(
         // @inline override def clone(): AnyRef = witness()
-        MethodDef(EMF, cloneMethodName, Nil, AnyType, Some {
+        MethodDef(EMF, cloneMethodName, NON, Nil, AnyType, Some {
           Block(
               Apply(EAF, This()(ClassType("Foo")), witnessMethodName, Nil)(AnyType),
               ApplyStatically(EAF, This()(ClassType("Foo")),

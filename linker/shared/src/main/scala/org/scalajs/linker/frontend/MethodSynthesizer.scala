@@ -73,7 +73,8 @@ private[frontend] final class MethodSynthesizer(
         call
       }
 
-      MethodDef(MemberFlags.empty, proxyIdent, params, AnyType, Some(body))(
+      MethodDef(MemberFlags.empty, proxyIdent, targetMDef.originalName, params,
+          AnyType, Some(body))(
           OptimizerHints.empty, targetMDef.hash)
     }
   }
@@ -100,8 +101,8 @@ private[frontend] final class MethodSynthesizer(
           ApplyFlags.empty, This()(currentClassType), targetInterface,
           targetIdent, params.map(_.ref))(targetMDef.resultType)
 
-      MethodDef(MemberFlags.empty, bridgeIdent, params, targetMDef.resultType,
-          Some(body))(
+      MethodDef(MemberFlags.empty, bridgeIdent, targetMDef.originalName,
+          params, targetMDef.resultType, Some(body))(
           OptimizerHints.empty, targetMDef.hash)
     }
   }

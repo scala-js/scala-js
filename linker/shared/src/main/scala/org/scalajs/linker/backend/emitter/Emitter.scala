@@ -542,7 +542,8 @@ final class Emitter private (config: CommonPhaseConfig,
               methodDef.args.map(_.ref))(
               methodDef.resultType)
           val newMethodDef = MethodDef(MemberFlags.empty, methodName,
-              methodDef.args, methodDef.resultType, Some(newBody))(
+              methodDef.originalName, methodDef.args, methodDef.resultType,
+              Some(newBody))(
               OptimizerHints.empty, None)
           new Versioned(newMethodDef, m.version)
         }
