@@ -998,8 +998,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           allowUnpure && (lengths forall test)
         case ArrayValue(tpe, elems) =>
           allowUnpure && (elems forall test)
-        case ArraySelect(array, index) =>
-          allowUnpure && test(array) && test(index)
         case JSArrayConstr(items) =>
           allowUnpure && (items forall test)
         case tree @ JSObjectConstr(items) =>
@@ -1029,6 +1027,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           allowSideEffects && test(arg)
         case CallHelper(helper, args) =>
           allowSideEffects && (args forall test)
+
+        // Array access can throw ArrayIndexOutOfBounds exception
+        case ArraySelect(array, index) =>
+          (allowSideEffects || semantics.arrayIndexOutOfBounds == Unchecked && allowUnpure) &&
+          test(array) && test(index)
 
         // Casts
         case AsInstanceOf(expr, _) =>
