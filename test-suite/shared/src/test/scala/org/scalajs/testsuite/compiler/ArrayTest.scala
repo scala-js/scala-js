@@ -45,4 +45,15 @@ class ArrayTest {
     assertThrows(classOf[ArrayIndexOutOfBoundsException], a(Int.MaxValue) = 1)
   }
 
+  @Test
+  def arraySelectSideEffecting_issue_3848(): Unit = {
+    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
+        hasCompliantArrayIndexOutOfBounds)
+
+    // Force unit return type so the Emitter tries to get rid of the expression.
+    @noinline
+    def testAccess(a: Array[Int]): Unit = a(1)
+
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], testAccess(Array()))
+  }
 }
