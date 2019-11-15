@@ -25,7 +25,7 @@ object Traversers {
     def traverse(tree: Tree): Unit = tree match {
       // Definitions
 
-      case VarDef(ident, vtpe, mutable, rhs) =>
+      case VarDef(_, _, _, _, rhs) =>
         traverse(rhs)
 
       // Control flow constructs
@@ -56,11 +56,11 @@ object Traversers {
         traverse(body)
         traverse(cond)
 
-      case ForIn(obj, keyVar, body) =>
+      case ForIn(obj, _, _, body) =>
         traverse(obj)
         traverse(body)
 
-      case TryCatch(block, errVar, handler) =>
+      case TryCatch(block, _, _, handler) =>
         traverse(block)
         traverse(handler)
 
@@ -221,7 +221,7 @@ object Traversers {
       memberDef match {
         case _: AnyFieldDef =>
 
-        case MethodDef(_, _, _, _, body) =>
+        case MethodDef(_, _, _, _, _, body) =>
           body.foreach(traverse)
 
         case JSMethodDef(_, _, _, body) =>

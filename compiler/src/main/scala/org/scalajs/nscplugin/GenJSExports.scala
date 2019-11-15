@@ -22,6 +22,7 @@ import scala.reflect.internal.Flags
 import org.scalajs.ir
 import org.scalajs.ir.{Trees => js, Types => jstpe}
 import org.scalajs.ir.Names.LocalName
+import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees.OptimizerHints
 
 import org.scalajs.nscplugin.util.ScopedVar
@@ -332,9 +333,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           exported <- exporteds
           param <- exported.captureParamsFront ::: exported.captureParamsBack
         } yield {
-          implicit val pos = param.sym.pos
-          js.ParamDef(encodeLocalSym(param.sym), toIRType(param.tpe),
-              mutable = false, rest = false)
+          genParamDef(param.sym)
         })
       }
 
@@ -706,7 +705,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       val jsVarArgPrep = repeatedTpe map { tpe =>
         val rhs = genJSArrayToVarArgs(genVarargRef(normalArgc, minArgc))
         val ident = freshLocalIdent("prep" + normalArgc)
-        js.VarDef(ident, rhs.tpe, mutable = false, rhs)
+        js.VarDef(ident, NoOriginalName, rhs.tpe, mutable = false, rhs)
       }
 
       // normal arguments
@@ -760,7 +759,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           unboxedArg
         }
 
-        result += js.VarDef(freshLocalIdent("prep" + i),
+        result += js.VarDef(freshLocalIdent("prep" + i), NoOriginalName,
             verifiedOrDefault.tpe, mutable = false, verifiedOrDefault)
       }
 
@@ -1107,13 +1106,13 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
   }
 
   private def genFormalArg(index: Int)(implicit pos: Position): js.ParamDef = {
-    js.ParamDef(js.LocalIdent(LocalName("arg$" + index)), jstpe.AnyType,
-        mutable = false, rest = false)
+    js.ParamDef(js.LocalIdent(LocalName("arg$" + index)), NoOriginalName,
+        jstpe.AnyType, mutable = false, rest = false)
   }
 
   private def genRestFormalArg()(implicit pos: Position): js.ParamDef = {
-    js.ParamDef(js.LocalIdent(LocalName("arg$rest")), jstpe.AnyType,
-        mutable = false, rest = true)
+    js.ParamDef(js.LocalIdent(LocalName("arg$rest")), NoOriginalName,
+        jstpe.AnyType, mutable = false, rest = true)
   }
 
   private def genFormalArgRef(index: Int, minArgc: Int)(

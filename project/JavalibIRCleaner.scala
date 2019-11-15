@@ -192,7 +192,7 @@ object JavalibIRCleaner {
          * in the companion of serializable classes.
          */
         val newMemberDefs = memberDefs.filter {
-          case MethodDef(_, MethodIdent(`writeReplaceMethodName`, _), _, _, _) =>
+          case MethodDef(_, MethodIdent(`writeReplaceMethodName`), _, _, _, _) =>
             changed = true
             false
           case _ =>
@@ -200,8 +200,9 @@ object JavalibIRCleaner {
         }
 
         if (changed) {
-          ClassDef(name, kind, jsClassCaptures, superClass, newInterfaces,
-              jsSuperClass, jsNativeLoadSpec, newMemberDefs, topLevelExportDefs)(
+          ClassDef(name, originalName, kind, jsClassCaptures, superClass,
+              newInterfaces, jsSuperClass, jsNativeLoadSpec, newMemberDefs,
+              topLevelExportDefs)(
               optimizerHints)(pos)
         } else {
           tree
@@ -245,8 +246,8 @@ object JavalibIRCleaner {
 
     override def transformMemberDef(memberDef: MemberDef): MemberDef = {
       super.transformMemberDef(memberDef) match {
-        case m @ MethodDef(flags, name, args, resultType, body) =>
-          MethodDef(flags, transformMethodIdent(name), args,
+        case m @ MethodDef(flags, name, originalName, args, resultType, body) =>
+          MethodDef(flags, transformMethodIdent(name), originalName, args,
               resultType, body)(m.optimizerHints, m.hash)(m.pos)
         case m =>
           m
@@ -265,7 +266,7 @@ object JavalibIRCleaner {
          * that call and rewrite `tree` to `throw arg`.
          */
         case Throw(Apply(_, LoadModule(ScalaJSRuntimePackage),
-            MethodIdent(`unwrapJSExceptionMethodName`, _), arg :: Nil))
+            MethodIdent(`unwrapJSExceptionMethodName`), arg :: Nil))
             if enclosingClassName == JavaLangSemanticsUtils =>
           Throw(arg)
 
@@ -360,7 +361,7 @@ object JavalibIRCleaner {
       } else {
         val newMethodName = MethodName(methodName.simpleName,
             newParamTypeRefs, newResultTypeRef, methodName.isReflectiveProxy)
-        MethodIdent(newMethodName, ident.originalName)(ident.pos)
+        MethodIdent(newMethodName)
       }
     }
 
@@ -401,7 +402,7 @@ object JavalibIRCleaner {
       val seenMethodNames = mutable.Set.empty[(MemberNamespace, MethodName)]
       for (m <- classDef.memberDefs) {
         m match {
-          case MethodDef(flags, name, _, _, _) =>
+          case MethodDef(flags, name, _, _, _, _) =>
             if (!seenMethodNames.add((flags.namespace, name.name))) {
               reportError(
                   s"duplicate method name ${name.name.nameString} after erasure")(

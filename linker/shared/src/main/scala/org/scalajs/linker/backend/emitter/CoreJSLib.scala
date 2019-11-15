@@ -17,6 +17,7 @@ import scala.language.implicitConversions
 import org.scalajs.ir.ScalaJSVersions
 import org.scalajs.ir.Position
 import org.scalajs.ir.Names._
+import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees.{JSUnaryOp, JSBinaryOp}
 import org.scalajs.ir.Types._
 
@@ -605,7 +606,7 @@ private[emitter] object CoreJSLib {
         }
 
         def genHijackedMethodApply(className: ClassName): Tree =
-          Apply(envField("f", className, methodName, None), instance :: args)
+          Apply(envField("f", className, methodName, NoOriginalName), instance :: args)
 
         def genBodyNoSwitch(implementingHijackedClasses: List[ClassName]): Tree = {
           val normalCall = Apply(instance DOT genName(methodName), args)
@@ -1476,7 +1477,7 @@ private[emitter] object CoreJSLib {
 
     private def genScalaClassNew(className: ClassName, ctorName: MethodName,
         args: Tree*): Tree = {
-      Apply(envField("ct", className, ctorName, None),
+      Apply(envField("ct", className, ctorName, NoOriginalName),
           New(encodeClassVar(className), Nil) :: args.toList)
     }
 

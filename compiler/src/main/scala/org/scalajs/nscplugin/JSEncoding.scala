@@ -19,6 +19,9 @@ import scala.tools.nsc._
 import org.scalajs.ir
 import org.scalajs.ir.{Trees => js, Types => jstpe}
 import org.scalajs.ir.Names.{LocalName, LabelName, FieldName, SimpleMethodName, MethodName, ClassName}
+import org.scalajs.ir.OriginalName
+import org.scalajs.ir.OriginalName.NoOriginalName
+import org.scalajs.ir.UTF8String
 
 import org.scalajs.nscplugin.util.{ScopedVar, VarBox}
 import ScopedVar.withScopedVars
@@ -112,12 +115,10 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     freshName(LocalName(base))
 
   def freshLocalIdent()(implicit pos: ir.Position): js.LocalIdent =
-    js.LocalIdent(freshName(xLocalName), None)
+    js.LocalIdent(freshName(xLocalName))
 
-  def freshLocalIdent(base: LocalName)(implicit pos: ir.Position): js.LocalIdent = {
-    val fresh = freshName(base)
-    js.LocalIdent(fresh, if (fresh eq base) None else Some(base.nameString))
-  }
+  def freshLocalIdent(base: LocalName)(implicit pos: ir.Position): js.LocalIdent =
+    js.LocalIdent(freshName(base))
 
   def freshLocalIdent(base: String)(implicit pos: ir.Position): js.LocalIdent =
     freshLocalIdent(LocalName(base))
@@ -176,7 +177,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   def encodeFieldSym(sym: Symbol)(implicit pos: Position): js.FieldIdent = {
     requireSymIsField(sym)
     val name = sym.name.dropLocal
-    js.FieldIdent(FieldName(name.toString()), originalNameOf(name))
+    js.FieldIdent(FieldName(name.toString()))
   }
 
   def encodeFieldSymAsStringLiteral(sym: Symbol)(
@@ -218,7 +219,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
         MethodName(simpleName, paramTypeRefs, paramOrResultTypeRef(tpe.resultType))
     }
 
-    js.MethodIdent(methodName, originalNameOf(name))
+    js.MethodIdent(methodName)
   }
 
   def encodeStaticMemberSym(sym: Symbol)(implicit pos: Position): js.MethodIdent = {
@@ -228,7 +229,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     val name = sym.name
     val resultTypeRef = paramOrResultTypeRef(sym.tpe)
     val methodName = MethodName(name.toString(), Nil, resultTypeRef)
-    js.MethodIdent(methodName, originalNameOf(name))
+    js.MethodIdent(methodName)
   }
 
   /** Computes the internal name for a type. */
@@ -250,7 +251,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     require(sym.isValueParameter ||
         (!sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule),
         "encodeLocalSym called with non-local symbol: " + sym)
-    js.LocalIdent(localSymbolName(sym), Some(sym.unexpandedName.decoded))
+    js.LocalIdent(localSymbolName(sym))
   }
 
   def foreignIsImplClass(sym: Symbol): Boolean =
@@ -267,7 +268,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   }
 
   def encodeClassNameIdent(sym: Symbol)(implicit pos: Position): js.ClassIdent =
-    js.ClassIdent(encodeClassName(sym), Some(sym.fullName))
+    js.ClassIdent(encodeClassName(sym))
 
   private val BoxedStringModuleClassName = ClassName("java.lang.String$")
   private val BoxedVoidModuleClassName = ClassName("java.lang.Void$")
@@ -294,9 +295,25 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   def needsModuleClassSuffix(sym: Symbol): Boolean =
     sym.isModuleClass && !foreignIsImplClass(sym)
 
-  private def originalNameOf(name: Name): Option[String] = {
+  def originalNameOfLocal(sym: Symbol): OriginalName = {
+    val irName = localSymbolName(sym)
+    val originalName = UTF8String(nme.unexpandedName(sym.name).decoded)
+    if (UTF8String.equals(originalName, irName.encoded)) NoOriginalName
+    else OriginalName(originalName)
+  }
+
+  def originalNameOfField(sym: Symbol): OriginalName =
+    originalNameOf(sym.name.dropLocal)
+
+  def originalNameOfMethod(sym: Symbol): OriginalName =
+    originalNameOf(sym.name)
+
+  def originalNameOfClass(sym: Symbol): OriginalName =
+    originalNameOf(sym.fullNameAsName('.'))
+
+  private def originalNameOf(name: Name): OriginalName = {
     val originalName = nme.unexpandedName(name).decoded
-    if (originalName == name.toString) None
-    else Some(originalName)
+    if (originalName == name.toString) NoOriginalName
+    else OriginalName(originalName)
   }
 }

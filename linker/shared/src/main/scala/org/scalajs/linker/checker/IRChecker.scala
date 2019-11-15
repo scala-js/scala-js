@@ -106,7 +106,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       }
 
       classCaptures.foldLeft(Set.empty[LocalName]) {
-        case (alreadyDeclared, p @ ParamDef(ident, tpe, mutable, rest)) =>
+        case (alreadyDeclared, p @ ParamDef(ident, _, tpe, mutable, rest)) =>
           implicit val ctx = ErrorContext(p)
           val name = ident.name
           if (alreadyDeclared(name))
@@ -310,7 +310,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   private def checkMethodDef(methodDef: MethodDef,
       classDef: LinkedClass): Unit = withPerMethodState {
 
-    val MethodDef(flags, MethodIdent(name, _), params, resultType, body) =
+    val MethodDef(flags, MethodIdent(name), _, params, resultType, body) =
       methodDef
     implicit val ctx = ErrorContext(methodDef)
 
@@ -326,7 +326,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       return // things would go too badly otherwise
     }
 
-    for (ParamDef(name, tpe, _, rest) <- params) {
+    for (ParamDef(name, _, tpe, _, rest) <- params) {
       checkDeclareLocalVar(name)
       if (tpe == NoType)
         reportError(i"Parameter $name has type NoType")
@@ -538,7 +538,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     implicit val ctx = ErrorContext(tree)
 
     tree match {
-      case VarDef(ident, vtpe, mutable, rhs) =>
+      case VarDef(ident, _, vtpe, mutable, rhs) =>
         checkDeclareLocalVar(ident)
         typecheckExpect(rhs, env, vtpe)
         env.withLocal(LocalDef(ident.name, vtpe, mutable)(tree.pos))
@@ -548,10 +548,10 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
       case Assign(select, rhs) =>
         select match {
-          case Select(This(), className, FieldIdent(_, _))
+          case Select(This(), className, FieldIdent(_))
               if env.inConstructor && env.thisTpe == ClassType(className) =>
             // ok
-          case Select(receiver, className, FieldIdent(name, _)) =>
+          case Select(receiver, className, FieldIdent(name)) =>
             val c = lookupClass(className)
             for {
               f <- c.lookupField(name)
@@ -559,7 +559,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             } {
               reportError(i"Assignment to immutable field $name.")
             }
-          case SelectStatic(className, FieldIdent(name, _)) =>
+          case SelectStatic(className, FieldIdent(name)) =>
             val c = lookupClass(className)
             for {
               f <- c.lookupStaticField(name)
@@ -567,7 +567,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             } {
               reportError(i"Assignment to immutable static field $name.")
             }
-          case VarRef(LocalIdent(name, _)) if !env.locals(name).mutable =>
+          case VarRef(LocalIdent(name)) if !env.locals(name).mutable =>
             reportError(i"Assignment to immutable variable $name.")
           case _ =>
         }
@@ -612,14 +612,14 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         typecheckExpect(cond, env, BooleanType)
         env
 
-      case ForIn(obj, keyVar, body) =>
+      case ForIn(obj, keyVar, _, body) =>
         typecheckExpr(obj, env)
         val bodyEnv =
           env.withLocal(LocalDef(keyVar.name, AnyType, false)(keyVar.pos))
         typecheckStat(body, bodyEnv)
         env
 
-      case TryCatch(block, errVar, handler) =>
+      case TryCatch(block, errVar, _, handler) =>
         typecheckStat(block, env)
         val handlerEnv =
           env.withLocal(LocalDef(errVar.name, AnyType, false)(errVar.pos))
@@ -725,7 +725,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       case While(BooleanLiteral(true), body) if tree.tpe == NothingType =>
         typecheckStat(body, env)
 
-      case TryCatch(block, errVar, handler) =>
+      case TryCatch(block, errVar, _, handler) =>
         val tpe = tree.tpe
         typecheckExpect(block, env, tpe)
         val handlerEnv =
@@ -762,7 +762,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         if (clazz.kind != ClassKind.ModuleClass)
           reportError("LoadModule of non-module class $className")
 
-      case Select(qualifier, className, FieldIdent(item, _)) =>
+      case Select(qualifier, className, FieldIdent(item)) =>
         val c = lookupClass(className)
         val kind = c.kind
         if (!kind.isClass) {
@@ -793,7 +793,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           }
         }
 
-      case SelectStatic(className, FieldIdent(item, _)) =>
+      case SelectStatic(className, FieldIdent(item)) =>
         val checkedClass = lookupClass(className)
         if (checkedClass.kind.isJSType) {
           reportError(i"Cannot select static $item of JS type $className")
@@ -807,7 +807,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           }
         }
 
-      case Apply(flags, receiver, MethodIdent(method, _), args) =>
+      case Apply(flags, receiver, MethodIdent(method), args) =>
         if (flags.isPrivate)
           reportError("Illegal flag for Apply: Private")
         val receiverType = typecheckExpr(receiver, env)
@@ -838,12 +838,12 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             typecheckExpr(arg, env)
         }
 
-      case ApplyStatically(_, receiver, className, MethodIdent(method, _), args) =>
+      case ApplyStatically(_, receiver, className, MethodIdent(method), args) =>
         typecheckExpect(receiver, env, ClassType(className))
         checkApplyGeneric(method, i"$className.$method", args, tree.tpe,
             isStatic = false)
 
-      case ApplyStatic(_, className, MethodIdent(method, _), args) =>
+      case ApplyStatic(_, className, MethodIdent(method), args) =>
         val clazz = lookupClass(className)
         checkApplyGeneric(method, i"$className.$method", args, tree.tpe,
             isStatic = true)
@@ -1049,7 +1049,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
       // Atomic expressions
 
-      case VarRef(LocalIdent(name, _)) =>
+      case VarRef(LocalIdent(name)) =>
         env.locals.get(name).fold[Unit] {
           reportError(i"Cannot find variable $name in scope")
         } { localDef =>
@@ -1070,13 +1070,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           reportError("Mismatched size for captures: "+
               i"${captureParams.size} params vs ${captureValues.size} values")
 
-        for ((ParamDef(_, ctpe, _, _), value) <- captureParams zip captureValues) {
+        for ((ParamDef(_, _, ctpe, _, _), value) <- captureParams zip captureValues) {
           typecheckExpect(value, env, ctpe)
         }
 
         // Then check the closure params and body in its own per-method state
         withPerMethodState {
-          for (ParamDef(name, ctpe, mutable, rest) <- captureParams) {
+          for (ParamDef(name, _, ctpe, mutable, rest) <- captureParams) {
             checkDeclareLocalVar(name)
             if (mutable)
               reportError(i"Capture parameter $name cannot be mutable")
@@ -1104,7 +1104,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
                 i"${captureParams.size} params vs ${captureValues.size} values")
           }
 
-          for ((ParamDef(_, ctpe, _, _), value) <- captureParams.zip(captureValues))
+          for ((ParamDef(_, _, ctpe, _, _), value) <- captureParams.zip(captureValues))
             typecheckExpect(value, env, ctpe)
         }
 
@@ -1118,7 +1118,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   /** Check the parameters for a method with JS calling conventions. */
   private def checkJSParamDefs(params: List[ParamDef])(
       implicit ctx: ErrorContext): Unit = {
-    for (ParamDef(name, ptpe, _, _) <- params) {
+    for (ParamDef(name, _, ptpe, _, _) <- params) {
       checkDeclareLocalVar(name)
       if (ptpe == NoType)
         reportError(i"Parameter $name has type NoType")
@@ -1127,7 +1127,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
 
     if (params.nonEmpty) {
-      for (ParamDef(name, _, _, rest) <- params.init) {
+      for (ParamDef(name, _, _, _, rest) <- params.init) {
         if (rest)
           reportError(i"Non-last rest parameter $name is illegal")
       }
@@ -1295,7 +1295,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         isConstructor: Boolean = false): Env = {
       val allParams = jsClassCaptures.getOrElse(Nil) ::: params
       val paramLocalDefs =
-        for (p @ ParamDef(ident, tpe, mutable, _) <- allParams)
+        for (p @ ParamDef(ident, _, tpe, mutable, _) <- allParams)
           yield ident.name -> LocalDef(ident.name, tpe, mutable)(p.pos)
       new Env(thisType, paramLocalDefs.toMap, Map.empty, isConstructor)
     }
@@ -1337,7 +1337,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   private object CheckedClass {
     private def checkedFieldsOf(classDef: LinkedClass): List[CheckedField] = {
       classDef.fields.collect {
-        case FieldDef(flags, FieldIdent(name, _), tpe) =>
+        case FieldDef(flags, FieldIdent(name), _, tpe) =>
           new CheckedField(flags, name, tpe)
       }
     }

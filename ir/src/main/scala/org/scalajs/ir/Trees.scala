@@ -15,6 +15,7 @@ package org.scalajs.ir
 import scala.annotation.switch
 
 import Names._
+import OriginalName.NoOriginalName
 import Position.NoPosition
 import Types._
 
@@ -47,44 +48,20 @@ object Trees {
 
   // Identifiers
 
-  case class LocalIdent(name: LocalName, originalName: Option[String])(
-      implicit val pos: Position)
+  case class LocalIdent(name: LocalName)(implicit val pos: Position)
       extends IRNode
-
-  object LocalIdent {
-    def apply(name: LocalName)(implicit pos: Position): LocalIdent =
-      LocalIdent(name, None)
-  }
 
   case class LabelIdent(name: LabelName)(implicit val pos: Position)
       extends IRNode
 
-  case class FieldIdent(name: FieldName, originalName: Option[String])(
-      implicit val pos: Position)
+  case class FieldIdent(name: FieldName)(implicit val pos: Position)
       extends IRNode
 
-  object FieldIdent {
-    def apply(name: FieldName)(implicit pos: Position): FieldIdent =
-      FieldIdent(name, None)
-  }
-
-  case class MethodIdent(name: MethodName, originalName: Option[String])(
-      implicit val pos: Position)
+  case class MethodIdent(name: MethodName)(implicit val pos: Position)
       extends IRNode
 
-  object MethodIdent {
-    def apply(name: MethodName)(implicit pos: Position): MethodIdent =
-      MethodIdent(name, None)
-  }
-
-  case class ClassIdent(name: ClassName, originalName: Option[String])(
-      implicit val pos: Position)
+  case class ClassIdent(name: ClassName)(implicit val pos: Position)
       extends IRNode
-
-  object ClassIdent {
-    def apply(name: ClassName)(implicit pos: Position): ClassIdent =
-      ClassIdent(name, None)
-  }
 
   /** Tests whether the given name is a valid JavaScript identifier name.
    *
@@ -114,15 +91,16 @@ object Trees {
 
   // Definitions
 
-  case class VarDef(name: LocalIdent, vtpe: Type, mutable: Boolean, rhs: Tree)(
+  case class VarDef(name: LocalIdent, originalName: OriginalName, vtpe: Type,
+      mutable: Boolean, rhs: Tree)(
       implicit val pos: Position) extends Tree {
     val tpe = NoType // cannot be in expression position
 
     def ref(implicit pos: Position): VarRef = VarRef(name)(vtpe)
   }
 
-  case class ParamDef(name: LocalIdent, ptpe: Type, mutable: Boolean,
-      rest: Boolean)(
+  case class ParamDef(name: LocalIdent, originalName: OriginalName, ptpe: Type,
+      mutable: Boolean, rest: Boolean)(
       implicit val pos: Position) extends IRNode {
     def ref(implicit pos: Position): VarRef = VarRef(name)(ptpe)
   }
@@ -200,12 +178,14 @@ object Trees {
     val tpe = NoType // cannot be in expression position
   }
 
-  case class ForIn(obj: Tree, keyVar: LocalIdent, body: Tree)(
+  case class ForIn(obj: Tree, keyVar: LocalIdent,
+      keyVarOriginalName: OriginalName, body: Tree)(
       implicit val pos: Position) extends Tree {
     val tpe = NoType
   }
 
-  case class TryCatch(block: Tree, errVar: LocalIdent, handler: Tree)(
+  case class TryCatch(block: Tree, errVar: LocalIdent,
+      errVarOriginalName: OriginalName, handler: Tree)(
       val tpe: Type)(implicit val pos: Position) extends Tree
 
   case class TryFinally(block: Tree, finalizer: Tree)(
@@ -964,6 +944,7 @@ object Trees {
 
   final class ClassDef(
       val name: ClassIdent,
+      val originalName: OriginalName,
       val kind: ClassKind,
       /** JS class captures.
        *
@@ -1008,6 +989,7 @@ object Trees {
   object ClassDef {
     def apply(
         name: ClassIdent,
+        originalName: OriginalName,
         kind: ClassKind,
         jsClassCaptures: Option[List[ParamDef]],
         superClass: Option[ClassIdent],
@@ -1018,8 +1000,9 @@ object Trees {
         topLevelExportDefs: List[TopLevelExportDef])(
         optimizerHints: OptimizerHints)(
         implicit pos: Position): ClassDef = {
-      new ClassDef(name, kind, jsClassCaptures, superClass, interfaces,
-          jsSuperClass, jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
+      new ClassDef(name, originalName, kind, jsClassCaptures, superClass,
+          interfaces, jsSuperClass, jsNativeLoadSpec, memberDefs,
+          topLevelExportDefs)(
           optimizerHints)
     }
   }
@@ -1039,14 +1022,16 @@ object Trees {
     val ftpe: Type
   }
 
-  case class FieldDef(flags: MemberFlags, name: FieldIdent, ftpe: Type)(
+  case class FieldDef(flags: MemberFlags, name: FieldIdent,
+      originalName: OriginalName, ftpe: Type)(
       implicit val pos: Position) extends AnyFieldDef
 
   case class JSFieldDef(flags: MemberFlags, name: Tree, ftpe: Type)(
       implicit val pos: Position) extends AnyFieldDef
 
   case class MethodDef(flags: MemberFlags, name: MethodIdent,
-      args: List[ParamDef], resultType: Type, body: Option[Tree])(
+      originalName: OriginalName, args: List[ParamDef], resultType: Type,
+      body: Option[Tree])(
       val optimizerHints: OptimizerHints, val hash: Option[TreeHash])(
       implicit val pos: Position) extends MemberDef {
 

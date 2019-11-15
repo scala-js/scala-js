@@ -121,13 +121,14 @@ object Printers {
     }
 
     def print(paramDef: ParamDef): Unit = {
-      val ParamDef(ident, ptpe, mutable, rest) = paramDef
+      val ParamDef(ident, originalName, ptpe, mutable, rest) = paramDef
 
       if (mutable)
         print("var ")
       if (rest)
         print("...")
       print(ident)
+      print(originalName)
       print(": ")
       print(ptpe)
     }
@@ -136,12 +137,13 @@ object Printers {
       tree match {
         // Definitions
 
-        case VarDef(ident, vtpe, mutable, rhs) =>
+        case VarDef(ident, originalName, vtpe, mutable, rhs) =>
           if (mutable)
             print("var ")
           else
             print("val ")
           print(ident)
+          print(originalName)
           print(": ")
           print(vtpe)
           print(" = ")
@@ -215,29 +217,32 @@ object Printers {
           print(cond)
           print(')')
 
-        case ForIn(obj, keyVar, body) =>
+        case ForIn(obj, keyVar, keyVarOriginalName, body) =>
           print("for (val ")
           print(keyVar)
+          print(keyVarOriginalName)
           print(" in ")
           print(obj)
           print(") ")
           printBlock(body)
 
-        case TryFinally(TryCatch(block, errVar, handler), finalizer) =>
+        case TryFinally(TryCatch(block, errVar, errVarOriginalName, handler), finalizer) =>
           print("try ")
           printBlock(block)
           print(" catch (")
           print(errVar)
+          print(errVarOriginalName)
           print(") ")
           printBlock(handler)
           print(" finally ")
           printBlock(finalizer)
 
-        case TryCatch(block, errVar, handler) =>
+        case TryCatch(block, errVar, errVarOriginalName, handler) =>
           print("try ")
           printBlock(block)
           print(" catch (")
           print(errVar)
+          print(errVarOriginalName)
           print(") ")
           printBlock(handler)
 
@@ -858,6 +863,7 @@ object Printers {
         case ClassKind.NativeJSModuleClass => print("native js module class ")
       }
       print(name)
+      print(originalName)
       superClass.foreach { cls =>
         print(" extends ")
         print(cls)
@@ -887,13 +893,14 @@ object Printers {
 
     def print(memberDef: MemberDef): Unit = {
       memberDef match {
-        case FieldDef(flags, name, vtpe) =>
+        case FieldDef(flags, name, originalName, vtpe) =>
           print(flags.namespace.prefixString)
           if (flags.isMutable)
             print("var ")
           else
             print("val ")
           print(name)
+          print(originalName)
           print(": ")
           print(vtpe)
 
@@ -908,11 +915,12 @@ object Printers {
           print(vtpe)
 
         case tree: MethodDef =>
-          val MethodDef(flags, name, args, resultType, body) = tree
+          val MethodDef(flags, name, originalName, args, resultType, body) = tree
           print(tree.optimizerHints)
           print(flags.namespace.prefixString)
           print("def ")
           print(name)
+          print(originalName)
           printSig(args, resultType)
           body.fold {
             print("<abstract>")
@@ -1045,6 +1053,14 @@ object Printers {
 
     def print(name: MethodName): Unit =
       printEscapeJS(name.nameString, out)
+
+    def print(originalName: OriginalName): Unit = {
+      if (originalName.isDefined) {
+        print('{')
+        print(originalName.get.toString())
+        print('}')
+      }
+    }
 
     def printJSMemberName(name: Tree): Unit = name match {
       case name: StringLiteral =>

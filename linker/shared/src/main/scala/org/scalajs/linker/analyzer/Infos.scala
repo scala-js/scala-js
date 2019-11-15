@@ -595,7 +595,7 @@ object Infos {
               // This should only happen when called from the Refiner
               args.foreach(traverse)
 
-            case VarDef(_, vtpe, _, _) =>
+            case VarDef(_, _, vtpe, _, _) =>
               builder.maybeAddReferencedClass(vtpe)
 
             case _ =>

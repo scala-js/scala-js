@@ -27,11 +27,12 @@ object Hashers {
     if (methodDef.hash.isDefined) methodDef
     else {
       val hasher = new TreeHasher()
-      val MethodDef(flags, name, args, resultType, body) = methodDef
+      val MethodDef(flags, name, originalName, args, resultType, body) = methodDef
 
       hasher.mixPos(methodDef.pos)
       hasher.mixInt(MemberFlags.toBits(flags))
       hasher.mixMethodIdent(name)
+      hasher.mixOriginalName(originalName)
       hasher.mixParamDefs(args)
       hasher.mixType(resultType)
       body.foreach(hasher.mixTree)
@@ -39,7 +40,7 @@ object Hashers {
 
       val hash = hasher.finalizeHash()
 
-      MethodDef(flags, name, args, resultType, body)(
+      MethodDef(flags, name, originalName, args, resultType, body)(
           methodDef.optimizerHints, Some(hash))(methodDef.pos)
     }
   }
@@ -75,8 +76,8 @@ object Hashers {
   def hashClassDef(classDef: ClassDef): ClassDef = {
     import classDef._
     val newMemberDefs = hashMemberDefs(memberDefs)
-    ClassDef(name, kind, jsClassCaptures, superClass, interfaces, jsSuperClass,
-        jsNativeLoadSpec, newMemberDefs, topLevelExportDefs)(
+    ClassDef(name, originalName, kind, jsClassCaptures, superClass, interfaces,
+        jsSuperClass, jsNativeLoadSpec, newMemberDefs, topLevelExportDefs)(
         optimizerHints)
   }
 
@@ -115,6 +116,7 @@ object Hashers {
     def mixParamDef(paramDef: ParamDef): Unit = {
       mixPos(paramDef.pos)
       mixLocalIdent(paramDef.name)
+      mixOriginalName(paramDef.originalName)
       mixType(paramDef.ptpe)
       mixBoolean(paramDef.mutable)
       mixBoolean(paramDef.rest)
@@ -126,9 +128,10 @@ object Hashers {
     def mixTree(tree: Tree): Unit = {
       mixPos(tree.pos)
       tree match {
-        case VarDef(ident, vtpe, mutable, rhs) =>
+        case VarDef(ident, originalName, vtpe, mutable, rhs) =>
           mixTag(TagVarDef)
           mixLocalIdent(ident)
+          mixOriginalName(originalName)
           mixType(vtpe)
           mixBoolean(mutable)
           mixTree(rhs)
@@ -173,16 +176,18 @@ object Hashers {
           mixTree(body)
           mixTree(cond)
 
-        case ForIn(obj, keyVar, body) =>
+        case ForIn(obj, keyVar, keyVarOriginalName, body) =>
           mixTag(TagForIn)
           mixTree(obj)
           mixLocalIdent(keyVar)
+          mixOriginalName(keyVarOriginalName)
           mixTree(body)
 
-        case TryCatch(block, errVar, handler) =>
+        case TryCatch(block, errVar, errVarOriginalName, handler) =>
           mixTag(TagTryCatch)
           mixTree(block)
           mixLocalIdent(errVar)
+          mixOriginalName(errVarOriginalName)
           mixTree(handler)
           mixType(tree.tpe)
 
@@ -562,7 +567,7 @@ object Hashers {
         mixTag(TagRecordType)
         for (RecordType.Field(name, originalName, tpe, mutable) <- fields) {
           mixName(name)
-          originalName.foreach(mixString)
+          mixOriginalName(originalName)
           mixType(tpe)
           mixBoolean(mutable)
         }
@@ -571,7 +576,6 @@ object Hashers {
     def mixLocalIdent(ident: LocalIdent): Unit = {
       mixPos(ident.pos)
       mixName(ident.name)
-      ident.originalName.foreach(mixString)
     }
 
     def mixLabelIdent(ident: LabelIdent): Unit = {
@@ -582,26 +586,20 @@ object Hashers {
     def mixFieldIdent(ident: FieldIdent): Unit = {
       mixPos(ident.pos)
       mixName(ident.name)
-      ident.originalName.foreach(mixString)
     }
 
     def mixMethodIdent(ident: MethodIdent): Unit = {
       mixPos(ident.pos)
       mixMethodName(ident.name)
-      ident.originalName.foreach(mixString)
     }
 
     def mixClassIdent(ident: ClassIdent): Unit = {
       mixPos(ident.pos)
       mixName(ident.name)
-      ident.originalName.foreach(mixString)
     }
 
-    def mixName(name: Name): Unit = {
-      val encoded = name.encoded.bytes
-      digestStream.writeInt(encoded.length)
-      digestStream.write(encoded)
-    }
+    def mixName(name: Name): Unit =
+      mixBytes(name.encoded.bytes)
 
     def mixMethodName(name: MethodName): Unit = {
       mixName(name.simpleName)
@@ -610,6 +608,17 @@ object Hashers {
         mixTypeRef(typeRef)
       mixTypeRef(name.resultTypeRef)
       mixBoolean(name.isReflectiveProxy)
+    }
+
+    def mixOriginalName(originalName: OriginalName): Unit = {
+      mixBoolean(originalName.isDefined)
+      if (originalName.isDefined)
+        mixBytes(originalName.get.bytes)
+    }
+
+    private def mixBytes(bytes: Array[Byte]): Unit = {
+      digestStream.writeInt(bytes.length)
+      digestStream.write(bytes)
     }
 
     def mixPos(pos: Position): Unit = {

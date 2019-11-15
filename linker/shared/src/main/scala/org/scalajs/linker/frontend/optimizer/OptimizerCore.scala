@@ -23,6 +23,7 @@ import scala.util.control.TailCalls.{done => _, _} // done is a too generic term
 
 import org.scalajs.ir._
 import org.scalajs.ir.Names._
+import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
@@ -123,7 +124,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
   def optimize(thisType: Type, originalDef: MethodDef): MethodDef = {
     try {
-      val MethodDef(static, name, params, resultType, optBody) = originalDef
+      val MethodDef(static, name, originalName, params, resultType, optBody) =
+        originalDef
       val body = optBody getOrElse {
         throw new AssertionError("Methods to optimize must be concrete")
       }
@@ -144,7 +146,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       val newBody =
         if (originalDef.methodName == NoArgConstructorName) tryElimStoreModule(newBody1)
         else newBody1
-      MethodDef(static, name, newParams, resultType,
+      MethodDef(static, name, originalName, newParams, resultType,
           Some(newBody))(originalDef.optimizerHints, None)(originalDef.pos)
     } catch {
       case NonFatal(cause) =>
@@ -191,18 +193,29 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   private def addStateBackup(backup: StateBackup): Unit =
     stateBackupChain ::= backup
 
-  private def freshLocalName(base: LocalName, mutable: Boolean): LocalName = {
+  private def freshLocalNameWithoutOriginalName(base: LocalName,
+      mutable: Boolean): LocalName = {
     val result = localNameAllocator.freshName(base)
     if (mutable)
       mutableLocalNames += result
     result
   }
 
-  private def freshLocalName(base: Binding.Name, mutable: Boolean): LocalName = {
-    freshLocalName(base match {
-      case Binding.This           => LocalThisNameForFresh
-      case Binding.Local(name, _) => name
-    }, mutable)
+  private def freshLocalName(base: LocalName, originalName: OriginalName,
+      mutable: Boolean): (LocalName, OriginalName) = {
+    val newName = freshLocalNameWithoutOriginalName(base, mutable)
+    val newOriginalName = originalNameForFresh(base, originalName, newName)
+    (newName, newOriginalName)
+  }
+
+  private def freshLocalName(base: Binding.Name,
+      mutable: Boolean): (LocalName, OriginalName) = {
+    base match {
+      case Binding.This =>
+        freshLocalName(LocalThisNameForFresh, thisOriginalName, mutable)
+      case Binding.Local(name, originalName) =>
+        freshLocalName(name, originalName, mutable)
+    }
   }
 
   private def freshLabelName(base: LabelName): LabelName =
@@ -284,7 +297,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     val result = tree match {
       // Definitions
 
-      case VarDef(_, _, _, rhs) =>
+      case VarDef(_, _, _, _, rhs) =>
         /* A local var that is last (or alone) in its block is not terribly
          * useful. Get rid of it.
          * (Non-last VarDefs in blocks are handled in transformBlock.)
@@ -401,32 +414,32 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           case _                     => DoWhile(newBody, newCond)
         }
 
-      case ForIn(obj, keyVar @ LocalIdent(name, originalName), body) =>
+      case ForIn(obj, keyVar @ LocalIdent(name), originalName, body) =>
         val newObj = transformExpr(obj)
-        val newName = freshLocalName(name, mutable = false)
-        val newOriginalName = originalName.orElse(Some(name.nameString))
+        val (newName, newOriginalName) =
+          freshLocalName(name, originalName, mutable = false)
         val localDef = LocalDef(RefinedType(AnyType), mutable = false,
-            ReplaceWithVarRef(newName, newOriginalName, newSimpleState(true), None))
+            ReplaceWithVarRef(newName, newSimpleState(true), None))
         val newBody = {
           val bodyScope = scope.withEnv(scope.env.withLocalDef(name, localDef))
           transformStat(body)(bodyScope)
         }
-        ForIn(newObj, LocalIdent(newName, newOriginalName)(keyVar.pos), newBody)
+        ForIn(newObj, LocalIdent(newName)(keyVar.pos), newOriginalName, newBody)
 
-      case TryCatch(block, errVar @ LocalIdent(name, originalName), handler) =>
+      case TryCatch(block, errVar @ LocalIdent(name), originalName, handler) =>
         val newBlock = transform(block, isStat)
 
-        val newName = freshLocalName(name, false)
-        val newOriginalName = originalName.orElse(Some(name.nameString))
+        val (newName, newOriginalName) =
+          freshLocalName(name, originalName, mutable = false)
         val localDef = LocalDef(RefinedType(AnyType), true,
-            ReplaceWithVarRef(newName, newOriginalName, newSimpleState(true), None))
+            ReplaceWithVarRef(newName, newSimpleState(true), None))
         val newHandler = {
           val handlerScope = scope.withEnv(scope.env.withLocalDef(name, localDef))
           transform(handler, isStat)(handlerScope)
         }
 
         val refinedType = constrainedLub(newBlock.tpe, newHandler.tpe, tree.tpe)
-        TryCatch(newBlock, LocalIdent(newName, newOriginalName)(errVar.pos),
+        TryCatch(newBlock, LocalIdent(newName)(errVar.pos), newOriginalName,
             newHandler)(refinedType)
 
       case TryFinally(block, finalizer) =>
@@ -660,10 +673,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case last :: Nil =>
         transform(last, isStat)
 
-      case (VarDef(nameIdent, vtpe, mutable, rhs)) :: rest =>
+      case (VarDef(nameIdent, originalName, vtpe, mutable, rhs)) :: rest =>
         trampoline {
           pretransformExpr(rhs) { trhs =>
-            withBinding(Binding(nameIdent, vtpe, mutable, trhs)) {
+            withBinding(Binding(nameIdent, originalName, vtpe, mutable, trhs)) {
               (restScope, cont1) =>
                 val newRest = transformList(rest)(restScope)
                 cont1(PreTransTree(newRest, RefinedType(newRest.tpe)))
@@ -738,7 +751,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case tree: Block =>
         pretransformBlock(tree)(cont)
 
-      case VarRef(LocalIdent(name, _)) =>
+      case VarRef(LocalIdent(name)) =>
         val localDef = scope.env.localDefs.getOrElse(name, {
           throw new AssertionError(
               s"Cannot find local def '$name' at $pos\n" +
@@ -876,11 +889,11 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           } else {
             tryOrRollback { cancelFun =>
               val captureBindings = for {
-                (ParamDef(nameIdent, tpe, mutable, rest), value) <-
+                (ParamDef(nameIdent, originalName, tpe, mutable, rest), value) <-
                   captureParams zip tcaptureValues
               } yield {
                 assert(!rest, s"Found a rest capture parameter at $pos")
-                Binding(nameIdent, tpe, mutable, value)
+                Binding(nameIdent, originalName, tpe, mutable, value)
               }
               withNewLocalDefs(captureBindings) { (captureLocalDefs, cont1) =>
                 val replacement = TentativeClosureReplacement(
@@ -912,9 +925,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case last :: Nil =>
         pretransformExpr(last)(cont)
 
-      case (VarDef(nameIdent, vtpe, mutable, rhs)) :: rest =>
+      case (VarDef(nameIdent, originalName, vtpe, mutable, rhs)) :: rest =>
         pretransformExpr(rhs) { trhs =>
-          withBinding(Binding(nameIdent, vtpe, mutable, trhs)) {
+          withBinding(Binding(nameIdent, originalName, vtpe, mutable, trhs)) {
             (restScope, cont1) =>
               pretransformList(rest)(cont1)(restScope)
           } (cont)
@@ -1125,11 +1138,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
       case PreTransLocalDef(localDef @ LocalDef(tpe, _, replacement)) =>
         replacement match {
-          case ReplaceWithRecordVarRef(name, originalName,
-              recordType, used, cancelFun) =>
+          case ReplaceWithRecordVarRef(name, recordType, used, cancelFun) =>
             used.value = true
             PreTransRecordTree(
-                VarRef(LocalIdent(name, originalName))(recordType), tpe, cancelFun)
+                VarRef(LocalIdent(name))(recordType), tpe, cancelFun)
 
           case InlineClassInstanceReplacement(structure, fieldLocalDefs, cancelFun) =>
             val recordType = structure.recordType
@@ -1169,8 +1181,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
       case PreTransLocalDef(localDef @ LocalDef(tpe, _, replacement)) =>
         replacement match {
-          case ReplaceWithRecordVarRef(name, originalName,
-              recordType, used, cancelFun) =>
+          case ReplaceWithRecordVarRef(name, recordType, used, cancelFun) =>
             Some((recordType, cancelFun))
 
           case InlineClassInstanceReplacement(structure, fieldLocalDefs, cancelFun) =>
@@ -1244,9 +1255,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           case recordVarRef: VarRef =>
             createNewLong(recordVarRef)
           case _ =>
-            val varRefIdent = LocalIdent(freshLocalName(LocalName("x"), mutable = false))
+            val varRefIdent = LocalIdent(
+                freshLocalNameWithoutOriginalName(LocalName("x"), mutable = false))
             val recordVarDef =
-              VarDef(varRefIdent, tree.tpe, mutable = false, tree)
+              VarDef(varRefIdent, NoOriginalName, tree.tpe, mutable = false, tree)
             Block(recordVarDef, createNewLong(recordVarDef.ref))
         }
 
@@ -1324,29 +1336,29 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   private def finishTransformBindings(bindingsAndStats: List[BindingOrStat],
       result: Tree): Tree = {
     bindingsAndStats.foldRight(result) {
-      case (Left(PreTransBinding(localDef, value)), innerBody) =>
+      case (Left(PreTransBinding(originalName, localDef, value)), innerBody) =>
         implicit val pos = value.pos
 
         val LocalDef(tpe, mutable, replacement) = localDef
 
-        val (name, originalName, used) = (replacement: @unchecked) match {
-          case ReplaceWithVarRef(name, originalName, used, _) =>
-            (name, originalName, used)
-          case ReplaceWithRecordVarRef(name, originalName, _, used, _) =>
-            (name, originalName, used)
+        val (name, used) = (replacement: @unchecked) match {
+          case ReplaceWithVarRef(name, used, _) =>
+            (name, used)
+          case ReplaceWithRecordVarRef(name, _, used, _) =>
+            (name, used)
         }
 
         if (used.value) {
-          val ident = LocalIdent(name, originalName)
+          val ident = LocalIdent(name)
           val varDef = resolveLocalDef(value) match {
             case PreTransRecordTree(valueTree, valueTpe, cancelFun) =>
               val recordType = valueTree.tpe.asInstanceOf[RecordType]
               if (!isImmutableType(recordType))
                 cancelFun()
-              VarDef(ident, recordType, mutable, valueTree)
+              VarDef(ident, originalName, recordType, mutable, valueTree)
 
             case PreTransTree(valueTree, valueTpe) =>
-              VarDef(ident, tpe.base, mutable, valueTree)
+              VarDef(ident, originalName, tpe.base, mutable, valueTree)
           }
 
           Block(varDef, innerBody)
@@ -1364,7 +1376,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   private def keepOnlySideEffects(stat: Tree): Tree = stat match {
     case _:VarRef | _:This | _:Literal | _:SelectStatic =>
       Skip()(stat.pos)
-    case VarDef(_, _, _, rhs) =>
+    case VarDef(_, _, _, _, rhs) =>
       keepOnlySideEffects(rhs)
     case Block(init :+ last) =>
       keepOnlySideEffects(last) match {
@@ -1490,27 +1502,27 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     impls.forall(impl => impl.isForwarder && impl.inlineable) &&
     (getMethodBody(impls.head).body.get match {
       // Trait impl forwarder
-      case ApplyStatic(flags, staticCls, MethodIdent(methodName, _), _) =>
+      case ApplyStatic(flags, staticCls, MethodIdent(methodName), _) =>
         impls.tail.forall(getMethodBody(_).body.get match {
-          case ApplyStatic(`flags`, `staticCls`, MethodIdent(`methodName`, _), _) =>
+          case ApplyStatic(`flags`, `staticCls`, MethodIdent(`methodName`), _) =>
             true
           case _ =>
             false
         })
 
       // Shape of forwards to default methods
-      case ApplyStatically(flags, This(), className, MethodIdent(methodName, _), args) =>
+      case ApplyStatically(flags, This(), className, MethodIdent(methodName), args) =>
         impls.tail.forall(getMethodBody(_).body.get match {
-          case ApplyStatically(`flags`, This(), `className`, MethodIdent(`methodName`, _), _) =>
+          case ApplyStatically(`flags`, This(), `className`, MethodIdent(`methodName`), _) =>
             true
           case _ =>
             false
         })
 
       // Bridge method
-      case Apply(flags, This(), MethodIdent(methodName, _), referenceArgs) =>
+      case Apply(flags, This(), MethodIdent(methodName), referenceArgs) =>
         impls.tail.forall(getMethodBody(_).body.get match {
-          case Apply(`flags`, This(), MethodIdent(`methodName`, _), implArgs) =>
+          case Apply(`flags`, This(), MethodIdent(`methodName`), implArgs) =>
             referenceArgs.zip(implArgs) forall {
               case (MaybeUnbox(_, unboxID1), MaybeUnbox(_, unboxID2)) =>
                 unboxID1 == unboxID2
@@ -1552,7 +1564,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = {
     val ApplyStatically(flags, receiver, className,
-        methodIdent @ MethodIdent(methodName, _), args) = tree
+        methodIdent @ MethodIdent(methodName), args) = tree
     implicit val pos = tree.pos
 
     def treeNotInlined0(transformedReceiver: Tree, transformedArgs: List[Tree]) =
@@ -1605,7 +1617,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = {
     val ApplyStatic(flags, className,
-        methodIdent @ MethodIdent(methodName, _), args) = tree
+        methodIdent @ MethodIdent(methodName), args) = tree
     implicit val pos = tree.pos
 
     def treeNotInlined0(transformedArgs: List[Tree]) =
@@ -1838,7 +1850,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case PreTransLocalDef(localDef) =>
         (localDef.replacement match {
           case TentativeClosureReplacement(_, _, _, _, _, _)    => true
-          case ReplaceWithRecordVarRef(_, _, _, _, _)           => true
+          case ReplaceWithRecordVarRef(_, _, _, _)              => true
           case InlineClassBeingConstructedReplacement(_, _, _)  => true
           case InlineClassInstanceReplacement(_, _, _)          => true
           case _ =>
@@ -1872,7 +1884,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
     attemptedInlining += target
 
-    val MethodDef(flags, _, formals, resultType, optBody) = getMethodBody(target)
+    val MethodDef(flags, _, _, formals, resultType, optBody) = getMethodBody(target)
     assert(flags.namespace.isStatic == optReceiver.isEmpty,
         "There must be receiver if and only if the method is not static")
     val body = optBody.getOrElse {
@@ -1902,7 +1914,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         pretransformSelectCommon(body.tpe, optReceiver.get, className, field,
             isLhsOfAssign = false)(cont)
 
-      case Assign(lhs @ Select(This(), className, field), VarRef(LocalIdent(rhsName, _)))
+      case Assign(lhs @ Select(This(), className, field), VarRef(LocalIdent(rhsName)))
           if formals.size == 1 && formals.head.name.name == rhsName =>
         assert(isStat, "Found Assign in expression position")
         assert(optReceiver.isDefined,
@@ -1935,10 +1947,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     }
 
     val argsBindings = for {
-      (ParamDef(nameIdent, tpe, mutable, rest), arg) <- formals zip args
+      (ParamDef(nameIdent, originalName, tpe, mutable, rest), arg) <- formals zip args
     } yield {
       assert(!rest, s"Trying to inline a body with a rest parameter at $pos")
-      Binding(nameIdent, tpe, mutable, arg)
+      Binding(nameIdent, originalName, tpe, mutable, arg)
     }
 
     withBindings(optReceiverBinding ++: argsBindings) { (bodyScope, cont1) =>
@@ -2261,9 +2273,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     }
 
     val argsBindings = for {
-      (ParamDef(nameIdent, tpe, mutable, _), arg) <- formals zip args
+      (ParamDef(nameIdent, originalName, tpe, mutable, _), arg) <- formals zip args
     } yield {
-      Binding(nameIdent, tpe, mutable, arg)
+      Binding(nameIdent, originalName, tpe, mutable, arg)
     }
 
     withBindings(argsBindings) { (bodyScope, cont1) =>
@@ -2294,8 +2306,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case Assign(s @ Select(ths: This, className, field), value) :: rest
           if !inputFieldsLocalDefs(FieldID(className, field)).mutable =>
         pretransformExpr(value) { tvalue =>
+          val fieldID = FieldID(className, field)
+          val originalName = structure.fieldOriginalName(fieldID)
           val binding = Binding(
-              Binding.Local(field.name.toLocalName, field.originalName),
+              Binding.Local(field.name.toLocalName, originalName),
               s.tpe, false, tvalue)
           withNewLocalDef(binding) { (localDef, cont1) =>
             if (localDef.contains(thisLocalDef)) {
@@ -2305,7 +2319,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
               cancelFun()
             }
             val newFieldsLocalDefs =
-              inputFieldsLocalDefs.updated(FieldID(className, field), localDef)
+              inputFieldsLocalDefs.updated(fieldID, localDef)
             val newThisLocalDef = LocalDef(thisLocalDef.tpe, false,
                 InlineClassBeingConstructedReplacement(structure, newFieldsLocalDefs, cancelFun))
             val restScope =
@@ -2355,9 +2369,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           } (cont)
         }
 
-      case VarDef(nameIdent, tpe, mutable, rhs) :: rest =>
+      case VarDef(nameIdent, originalName, tpe, mutable, rhs) :: rest =>
         pretransformExpr(rhs) { trhs =>
-          withBinding(Binding(nameIdent, tpe, mutable, trhs)) { (restScope, cont1) =>
+          withBinding(Binding(nameIdent, originalName, tpe, mutable, trhs)) { (restScope, cont1) =>
             inlineClassConstructorBodyList(allocationSite, structure,
                 thisLocalDef, inputFieldsLocalDefs,
                 className, rest, cancelFun)(buildInner)(cont1)(restScope)
@@ -2520,7 +2534,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         value)
     withBinding(rtLongBinding) { (scope1, cont1) =>
       implicit val scope = scope1
-      val tRef = VarRef(LocalIdent(tName, None))(rtLongClassType)
+      val tRef = VarRef(LocalIdent(tName))(rtLongClassType)
       val newTree = New(LongImpl.RuntimeLongClass,
           MethodIdent(LongImpl.initFromParts),
           List(Apply(ApplyFlags.empty, tRef, MethodIdent(LongImpl.lo), Nil)(IntType),
@@ -3967,14 +3981,13 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       body: Tree,
       alreadyInlining: Set[Scope.InliningID]): (List[ParamDef], Tree) = {
     val (paramLocalDefs, newParamDefs) = (for {
-      p @ ParamDef(ident @ LocalIdent(name, originalName), ptpe, mutable, rest) <- params
+      p @ ParamDef(ident @ LocalIdent(name), originalName, ptpe, mutable, rest) <- params
     } yield {
-      val newName = freshLocalName(name, mutable)
-      val newOriginalName = originalName.orElse(Some(newName.nameString))
+      val (newName, newOriginalName) = freshLocalName(name, originalName, mutable)
       val localDef = LocalDef(RefinedType(ptpe), mutable,
-          ReplaceWithVarRef(newName, newOriginalName, newSimpleState(true), None))
-      val newParamDef = ParamDef(
-          LocalIdent(newName, newOriginalName)(ident.pos), ptpe, mutable, rest)(p.pos)
+          ReplaceWithVarRef(newName, newSimpleState(true), None))
+      val newParamDef = ParamDef(LocalIdent(newName)(ident.pos),
+          newOriginalName, ptpe, mutable, rest)(p.pos)
       ((name -> localDef), newParamDef)
     }).unzip
 
@@ -4227,25 +4240,20 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         }
       } else {
         // Otherwise, we effectively declare a new binding
-        val newName = freshLocalName(bindingName, mutable)
-        val newOriginalName = bindingName match {
-          case Binding.This => Some("this")
-          case Binding.Local(name, origName) => origName.orElse(Some(name.nameString))
-        }
+        val (newName, newOriginalName) = freshLocalName(bindingName, mutable)
 
         val used = newSimpleState(false)
 
         val (replacement, refinedType) = resolveRecordType(value) match {
           case Some((recordType, cancelFun)) =>
-            (ReplaceWithRecordVarRef(newName, newOriginalName, recordType,
-                used, cancelFun), value.tpe)
+            (ReplaceWithRecordVarRef(newName, recordType, used, cancelFun), value.tpe)
 
           case None =>
-            (ReplaceWithVarRef(newName, newOriginalName, used, None), tpe)
+            (ReplaceWithVarRef(newName, used, None), tpe)
         }
 
         val localDef = LocalDef(refinedType, mutable, replacement)
-        val preTransBinding = PreTransBinding(localDef, value)
+        val preTransBinding = PreTransBinding(newOriginalName, localDef, value)
 
         buildInner(localDef, { tinner =>
           cont(addPreTransBinding(preTransBinding, tinner))
@@ -4272,11 +4280,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           buildInner(LocalDef(refinedType, false,
               ReplaceWithConstant(literal)), cont)
 
-        case PreTransTree(VarRef(LocalIdent(refName, refOriginalName)), _)
+        case PreTransTree(VarRef(LocalIdent(refName)), _)
             if !localIsMutable(refName) =>
           buildInner(LocalDef(refinedType, false,
-              ReplaceWithVarRef(refName, refOriginalName,
-                  newSimpleState(true), None)), cont)
+              ReplaceWithVarRef(refName, newSimpleState(true), None)), cont)
 
         case _ =>
           withDedicatedVar(refinedType)
@@ -4413,6 +4420,8 @@ private[optimizer] object OptimizerCore {
    */
   private val LocalThisNameForFresh = LocalName("this")
 
+  private val thisOriginalName: OriginalName = OriginalName("this")
+
   val NullPointerExceptionClass = ClassName("java.lang.NullPointerException")
   private val Tuple2Class = ClassName("scala.Tuple2")
   private val NilClass = ClassName("scala.collection.immutable.Nil$")
@@ -4435,7 +4444,7 @@ private[optimizer] object OptimizerCore {
     private[OptimizerCore] val recordType: RecordType = {
       val allocator = new FreshNameAllocator.Field
       val recordFields = for {
-        (className, f @ FieldDef(flags, FieldIdent(name, originalName), ftpe)) <- allFields
+        (className, f @ FieldDef(flags, FieldIdent(name), originalName, ftpe)) <- allFields
       } yield {
         assert(!flags.namespace.isStatic,
             s"unexpected static field in InlineableClassStructure at ${f.pos}")
@@ -4450,6 +4459,9 @@ private[optimizer] object OptimizerCore {
         yield FieldID(className, fieldDef) -> recordField
       elems.toMap
     }
+
+    private[OptimizerCore] def fieldOriginalName(fieldID: FieldID): OriginalName =
+      recordFieldNames(fieldID).originalName
 
     override def equals(that: Any): Boolean = that match {
       case that: InlineableClassStructure =>
@@ -4552,20 +4564,20 @@ private[optimizer] object OptimizerCore {
     }
 
     def newReplacement(implicit pos: Position): Tree = replacement match {
-      case ReplaceWithVarRef(name, originalName, used, _) =>
+      case ReplaceWithVarRef(name, used, _) =>
         used.value = true
-        VarRef(LocalIdent(name, originalName))(tpe.base)
+        VarRef(LocalIdent(name))(tpe.base)
 
       /* Allocate an instance of RuntimeLong on the fly.
        * See the comment in finishTransformExpr about why it is desirable and
        * safe to do so.
        */
-      case ReplaceWithRecordVarRef(name, originalName, recordType, used, _)
+      case ReplaceWithRecordVarRef(name, recordType, used, _)
           if tpe.base == ClassType(LongImpl.RuntimeLongClass) =>
         used.value = true
-        createNewLong(VarRef(LocalIdent(name, originalName))(recordType))
+        createNewLong(VarRef(LocalIdent(name))(recordType))
 
-      case ReplaceWithRecordVarRef(_, _, _, _, cancelFun) =>
+      case ReplaceWithRecordVarRef(_, _, _, cancelFun) =>
         cancelFun()
 
       case ReplaceWithThis() =>
@@ -4615,12 +4627,10 @@ private[optimizer] object OptimizerCore {
   private sealed abstract class LocalDefReplacement
 
   private final case class ReplaceWithVarRef(name: LocalName,
-      originalName: Option[String],
       used: SimpleState[Boolean],
       longOpTree: Option[() => Tree]) extends LocalDefReplacement
 
   private final case class ReplaceWithRecordVarRef(name: LocalName,
-      originalName: Option[String],
       recordType: RecordType,
       used: SimpleState[Boolean],
       cancelFun: CancelFun) extends LocalDefReplacement
@@ -4737,8 +4747,8 @@ private[optimizer] object OptimizerCore {
     def contains(localDef: LocalDef): Boolean = this match {
       case PreTransBlock(bindingsAndStats, result) =>
         result.contains(localDef) || bindingsAndStats.exists {
-          case Left(PreTransBinding(_, value)) => value.contains(localDef)
-          case Right(_)                        => false
+          case Left(PreTransBinding(_, _, value)) => value.contains(localDef)
+          case Right(_)                           => false
         }
       case PreTransUnaryOp(_, lhs) =>
         lhs.contains(localDef)
@@ -4758,8 +4768,8 @@ private[optimizer] object OptimizerCore {
    *  Even though it is not encoded in the type system, `localDef.replacement`
    *  must be a [[ReplaceWithVarRef]] or a [[ReplaceWithRecordVarRef]].
    */
-  private final case class PreTransBinding(localDef: LocalDef,
-      value: PreTransform) {
+  private final case class PreTransBinding(originalName: OriginalName,
+      localDef: LocalDef, value: PreTransform) {
 
     assert(
         localDef.replacement.isInstanceOf[ReplaceWithVarRef] ||
@@ -4768,8 +4778,8 @@ private[optimizer] object OptimizerCore {
         localDef.replacement)
 
     def isAlreadyUsed: Boolean = (localDef.replacement: @unchecked) match {
-      case ReplaceWithVarRef(_, _, used, _)          => used.value
-      case ReplaceWithRecordVarRef(_, _, _, used, _) => used.value
+      case ReplaceWithVarRef(_, used, _)          => used.value
+      case ReplaceWithRecordVarRef(_, _, used, _) => used.value
     }
   }
 
@@ -4992,18 +5002,18 @@ private[optimizer] object OptimizerCore {
 
     case object This extends Name
 
-    final case class Local(name: LocalName, originalName: Option[String])
+    final case class Local(name: LocalName, originalName: OriginalName)
         extends Name
 
-    def apply(localIdent: LocalIdent, declaredType: Type, mutable: Boolean,
-        value: PreTransform): Binding = {
-      apply(Local(localIdent.name, localIdent.originalName), declaredType,
+    def apply(localIdent: LocalIdent, originalName: OriginalName,
+        declaredType: Type, mutable: Boolean, value: PreTransform): Binding = {
+      apply(Local(localIdent.name, originalName), declaredType,
           mutable, value)
     }
 
     def temp(baseName: LocalName, declaredType: Type, mutable: Boolean,
         value: PreTransform): Binding = {
-      apply(Local(baseName, None), declaredType, mutable, value)
+      apply(Local(baseName, NoOriginalName), declaredType, mutable, value)
     }
   }
 
@@ -5038,8 +5048,8 @@ private[optimizer] object OptimizerCore {
 
     val RecordType(List(loField, hiField)) = recordVarRef.tpe
     createNewLong(
-        RecordSelect(recordVarRef, FieldIdent(loField.name, loField.originalName))(IntType),
-        RecordSelect(recordVarRef, FieldIdent(hiField.name, hiField.originalName))(IntType))
+        RecordSelect(recordVarRef, FieldIdent(loField.name))(IntType),
+        RecordSelect(recordVarRef, FieldIdent(hiField.name))(IntType))
   }
 
   /** Creates a new instance of `RuntimeLong` from its `lo` and `hi` parts. */
@@ -5243,7 +5253,7 @@ private[optimizer] object OptimizerCore {
     var isForwarder: Boolean = false
 
     protected def updateInlineable(): Unit = {
-      val MethodDef(_, MethodIdent(methodName, _), params, _, optBody) = originalDef
+      val MethodDef(_, MethodIdent(methodName), _, params, _, optBody) = originalDef
       val body = optBody getOrElse {
         throw new AssertionError("Methods in optimizer must be concrete")
       }
@@ -5254,8 +5264,8 @@ private[optimizer] object OptimizerCore {
           ((args.size == params.size + 1) &&
               (args.head.isInstanceOf[This]) &&
               (args.tail.zip(params).forall {
-                case (VarRef(LocalIdent(aname, _)),
-                    ParamDef(LocalIdent(pname, _), _, _, _)) => aname == pname
+                case (VarRef(LocalIdent(aname)),
+                    ParamDef(LocalIdent(pname), _, _, _, _)) => aname == pname
                 case _ => false
               }))
 
@@ -5263,7 +5273,7 @@ private[optimizer] object OptimizerCore {
         case ApplyStatically(_, This(), className, method, args) =>
           args.size == params.size &&
           args.zip(params).forall {
-            case (VarRef(LocalIdent(aname, _)), ParamDef(LocalIdent(pname, _), _, _, _)) =>
+            case (VarRef(LocalIdent(aname)), ParamDef(LocalIdent(pname), _, _, _, _)) =>
               aname == pname
             case _ =>
               false
@@ -5273,8 +5283,8 @@ private[optimizer] object OptimizerCore {
         case Apply(_, This(), method, args) =>
           (args.size == params.size) &&
           args.zip(params).forall {
-            case (MaybeUnbox(VarRef(LocalIdent(aname, _)), _),
-                ParamDef(LocalIdent(pname, _), _, _, _)) => aname == pname
+            case (MaybeUnbox(VarRef(LocalIdent(aname)), _),
+                ParamDef(LocalIdent(pname), _, _, _, _)) => aname == pname
             case _ => false
           }
 
@@ -5328,7 +5338,7 @@ private[optimizer] object OptimizerCore {
       true
     case ApplyStatically(_, This(), _, _, Nil) =>
       true
-    case ApplyStatic(_, _, MethodIdent(methodName, _), This() :: Nil) =>
+    case ApplyStatic(_, _, MethodIdent(methodName), This() :: Nil) =>
       methodName.simpleName == TraitInitSimpleMethodName
     case _ =>
       false
@@ -5494,6 +5504,12 @@ private[optimizer] object OptimizerCore {
 
     final class Snapshot[N <: Name] private[FreshNameAllocator] (
         private[FreshNameAllocator] val usedNamesToNextCounter: Map[N, Int])
+  }
+
+  def originalNameForFresh(base: Name, originalName: OriginalName,
+      freshName: Name): OriginalName = {
+    if (originalName.isDefined || (freshName eq base)) originalName
+    else OriginalName(base)
   }
 
   final class FieldID private (val ownerClassName: ClassName, val name: FieldName) {

@@ -17,6 +17,8 @@ import scala.language.implicitConversions
 import org.scalajs.ir
 import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Names._
+import org.scalajs.ir.OriginalName
+import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
@@ -28,6 +30,7 @@ object TestIRBuilder {
   val EAF = ApplyFlags.empty
   val EMF = MemberFlags.empty
   val EOH = OptimizerHints.empty
+  val NON = NoOriginalName
 
   val V = VoidRef
   val I = IntRef
@@ -47,7 +50,7 @@ object TestIRBuilder {
       jsNativeLoadSpec: Option[JSNativeLoadSpec] = None,
       memberDefs: List[MemberDef] = Nil,
       topLevelExportDefs: List[TopLevelExportDef] = Nil): ClassDef = {
-    ClassDef(ClassIdent(className), kind, jsClassCaptures,
+    ClassDef(ClassIdent(className), NON, kind, jsClassCaptures,
         superClass.map(ClassIdent(_)), interfaces.map(ClassIdent(_)),
         jsSuperClass, jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
         EOH)
@@ -71,7 +74,7 @@ object TestIRBuilder {
 
   def trivialCtor(enclosingClassName: ClassName): MethodDef = {
     val flags = MemberFlags.empty.withNamespace(MemberNamespace.Constructor)
-    MethodDef(flags, MethodIdent(NoArgConstructorName), Nil, NoType,
+    MethodDef(flags, MethodIdent(NoArgConstructorName), NON, Nil, NoType,
         Some(ApplyStatically(EAF.withConstructor(true),
             This()(ClassType(enclosingClassName)),
             ObjectClass, MethodIdent(NoArgConstructorName),
@@ -84,12 +87,12 @@ object TestIRBuilder {
     val stringArrayType = ArrayType(stringArrayTypeRef)
     val argsParamDef = paramDef("args", stringArrayType)
     MethodDef(MemberFlags.empty,
-        m("main", List(stringArrayTypeRef), VoidRef),
+        m("main", List(stringArrayTypeRef), VoidRef), NON,
         List(argsParamDef), NoType, Some(body))(EOH, None)
   }
 
   def paramDef(name: LocalName, ptpe: Type): ParamDef =
-    ParamDef(LocalIdent(name), ptpe, mutable = false, rest = false)
+    ParamDef(LocalIdent(name), NON, ptpe, mutable = false, rest = false)
 
   def mainModuleInitializers(moduleClassName: String): List[ModuleInitializer] =
     ModuleInitializer.mainMethodWithArgs(moduleClassName, "main") :: Nil

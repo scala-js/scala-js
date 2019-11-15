@@ -280,7 +280,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
         val result = mutable.Map.empty[FieldName, List[String]]
         for (export <- linkedClass.topLevelExports) {
           export.value match {
-            case TopLevelFieldExportDef(exportName, FieldIdent(fieldName, _)) =>
+            case TopLevelFieldExportDef(exportName, FieldIdent(fieldName)) =>
               result(fieldName) = exportName :: result.getOrElse(fieldName, Nil)
             case _ =>
               ()

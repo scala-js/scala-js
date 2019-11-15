@@ -18,6 +18,7 @@ import scala.collection.mutable
 
 import org.scalajs.ir._
 import org.scalajs.ir.Names._
+import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Position._
 import org.scalajs.ir.Transformers._
 import org.scalajs.ir.Trees._
@@ -396,28 +397,30 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
     // Record names
 
-    def makeRecordFieldIdent(tree: RecordSelect)(
+    def makeRecordFieldIdentForVarRef(tree: RecordSelect)(
         implicit pos: Position): js.Ident = {
 
       val recIdent = (tree.record: @unchecked) match {
         case VarRef(ident)                 => transformLocalVarIdent(ident)
         case Transient(JSVarRef(ident, _)) => ident
-        case record: RecordSelect          => makeRecordFieldIdent(record)
+        case record: RecordSelect          => makeRecordFieldIdentForVarRef(record)
       }
-      makeRecordFieldIdent(recIdent, tree.field.name, tree.field.originalName)
+
+      // Since this is only used for VarRefs, we never need an original name
+      makeRecordFieldIdent(recIdent, tree.field.name, NoOriginalName)
     }
 
     def makeRecordFieldIdent(recIdent: js.Ident,
-        fieldName: FieldName, fieldOrigName: Option[String])(
+        fieldName: FieldName, fieldOrigName: OriginalName)(
         implicit pos: Position): js.Ident = {
 
       /* "__" is a safe separator for generated names because JSGen avoids it
        * when generating `LocalName`s and `FieldName`s.
        */
       val name = recIdent.name + "__" + genName(fieldName)
-      val originalName = Some(
-          recIdent.originalName.getOrElse(recIdent.name) + "." +
-          fieldOrigName.getOrElse(fieldName.nameString))
+      val originalName = OriginalName(
+          recIdent.originalName.getOrElse(recIdent.name) ++ UTF8Period ++
+          fieldOrigName.getOrElse(fieldName))
       js.Ident(name, originalName)
     }
 
@@ -435,7 +438,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         implicit pos: Position): WithGlobals[js.Function] = {
 
       performOptimisticThenPessimisticRuns {
-        val thisIdent = envFieldIdent("thiz", Some("this"))
+        val thisIdent = envFieldIdent("thiz", thisOriginalName)
         val env = env0.withThisIdent(Some(thisIdent))
         val js.Function(jsArrow, jsParams, jsBody) =
           desugarToFunctionInternal(arrow = false, params, body, isStat, env)
@@ -497,7 +500,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       val counterIdent = newSyntheticVar()
       val counter = js.VarRef(counterIdent)
 
-      val restParamIdent = transformLocalVarIdent(restParamDef.name)
+      val restParamIdent = transformLocalVarIdent(restParamDef.name,
+          restParamDef.originalName)
       val restParam = js.VarRef(restParamIdent)
 
       val arguments = js.VarRef(js.Ident("arguments"))
@@ -537,7 +541,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         // VarDefs at the end of block. Normal VarDefs are handled in
         // transformBlockStats
 
-        case VarDef(_, _, _, rhs) =>
+        case VarDef(_, _, _, _, rhs) =>
           pushLhsInto(Lhs.Discard, rhs, tailPosLabels)
 
         // Statement-only language constructs
@@ -574,8 +578,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           }
 
         case Assign(lhs: RecordSelect, rhs) =>
-          val newLhs =
-            Transient(JSVarRef(makeRecordFieldIdent(lhs), mutable = true))(lhs.tpe)
+          val newLhs = Transient(JSVarRef(makeRecordFieldIdentForVarRef(lhs),
+              mutable = true))(lhs.tpe)
           pushLhsInto(Lhs.Assign(newLhs), rhs, tailPosLabels)
 
         case Assign(select @ JSPrivateSelect(qualifier, className, field), rhs) =>
@@ -693,11 +697,12 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             })
           }
 
-        case ForIn(obj, keyVar, body) =>
+        case ForIn(obj, keyVar, keyVarOriginalName, body) =>
           unnest(obj) { (newObj, env0) =>
             implicit val env = env0
 
-            val lhs = genEmptyImmutableLet(transformLocalVarIdent(keyVar))
+            val lhs = genEmptyImmutableLet(
+                transformLocalVarIdent(keyVar, keyVarOriginalName))
             js.ForIn(lhs, transformExprNoChar(newObj), {
               transformStat(body, Set.empty)(
                   env.withDef(keyVar, mutable = false))
@@ -779,8 +784,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   args: List[js.Tree]): js.Tree = {
                 referenceGlobalName("Object")
                 js.Apply(
-                  genIdentBracketSelect(
-                      js.VarRef(js.Ident("Object", Some("Object"))),
+                  genIdentBracketSelect(js.VarRef(js.Ident("Object")),
                       methodName),
                   args)
               }
@@ -790,7 +794,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 else genZeroOf(field.ftpe)
 
               field match {
-                case FieldDef(_, name, _) =>
+                case FieldDef(_, name, _, _) =>
                   js.Assign(
                       genJSPrivateSelect(js.This(), enclosingClassName, name),
                       zero)
@@ -846,9 +850,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       @tailrec
       def transformLoop(trees: List[Tree], env: Env,
           acc: List[js.Tree]): (List[js.Tree], Env) = trees match {
-        case VarDef(ident, tpe, mutable, rhs) :: ts =>
+        case VarDef(ident, originalName, tpe, mutable, rhs) :: ts =>
           val newEnv = env.withDef(ident, mutable)
-          val lhs = Lhs.VarDef(transformLocalVarIdent(ident), tpe, mutable)
+          val lhs = Lhs.VarDef(transformLocalVarIdent(ident, originalName),
+              tpe, mutable)
           val newTree = pushLhsInto(lhs, rhs, Set.empty)(env)
           transformLoop(ts, newEnv, newTree :: acc)
 
@@ -934,7 +939,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 js.Block(jsStats) +=: extractedStatements
                 innerEnv = stats.foldLeft(innerEnv) { (prev, stat) =>
                   stat match {
-                    case VarDef(name, tpe, mutable, _) =>
+                    case VarDef(name, _, _, mutable, _) =>
                       prev.withDef(name, mutable)
                     case _ =>
                       prev
@@ -1287,7 +1292,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           val base = js.Assign(transformExpr(lhs, preserveChar = true),
               transformExpr(rhs, lhs.tpe))
           lhs match {
-            case SelectStatic(className, FieldIdent(field, _))
+            case SelectStatic(className, FieldIdent(field))
                 if moduleKind == ModuleKind.NoModule =>
               val mirrors =
                 globalKnowledge.getStaticFieldMirrors(className, field)
@@ -1474,12 +1479,13 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             }
           }
 
-        case TryCatch(block, errVar, handler) =>
+        case TryCatch(block, errVar, errVarOriginalName, handler) =>
           extractLet { newLhs =>
             val newBlock = pushLhsInto(newLhs, block, tailPosLabels)(env)
             val newHandler = pushLhsInto(newLhs, handler, tailPosLabels)(
                 env.withDef(errVar, mutable = false))
-            js.TryCatch(newBlock, transformLocalVarIdent(errVar), newHandler)
+            js.TryCatch(newBlock,
+                transformLocalVarIdent(errVar, errVarOriginalName), newHandler)
           }
 
         case TryFinally(block, finalizer) =>
@@ -1989,10 +1995,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           def genDispatchApply(): js.Tree =
             genCallHelper("dp_" + genName(methodName), newReceiver :: newArgs: _*)
 
-          def genHijackedMethodApply(className: ClassName): js.Tree = {
-            js.Apply(envField("f", className, methodName, method.originalName),
-                newReceiver :: newArgs)
-          }
+          def genHijackedMethodApply(className: ClassName): js.Tree =
+            js.Apply(envField("f", className, methodName), newReceiver :: newArgs)
 
           if (isMaybeHijackedClass(receiver.tpe) &&
               !methodName.isReflectiveProxy) {
@@ -2407,7 +2411,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           }
 
         case tree: RecordSelect =>
-          js.VarRef(makeRecordFieldIdent(tree))
+          js.VarRef(makeRecordFieldIdentForVarRef(tree))
 
         case IsInstanceOf(expr, testType) =>
           genIsInstanceOf(transformExprNoChar(expr), testType)
@@ -2572,7 +2576,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           if (env.isLocalVar(name))
             js.VarRef(transformLocalVarIdent(name))
           else
-            envField("cc", genName(name.name), name.originalName)
+            envField("cc", genName(name.name))
 
         case Transient(JSVarRef(name, _)) =>
           js.VarRef(name)
@@ -2679,7 +2683,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     )
 
     private def transformParamDef(paramDef: ParamDef): js.ParamDef = {
-      js.ParamDef(transformLocalVarIdent(paramDef.name), paramDef.rest)(
+      js.ParamDef(transformLocalVarIdent(paramDef.name, paramDef.originalName),
+          paramDef.rest)(
           paramDef.pos)
     }
 
@@ -2687,10 +2692,17 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       js.Ident(genName(ident.name))(ident.pos)
 
     private def transformMethodIdent(ident: MethodIdent): js.Ident =
-      js.Ident(genName(ident.name), ident.originalName)(ident.pos)
+      js.Ident(genName(ident.name))(ident.pos)
 
     private def transformLocalVarIdent(ident: LocalIdent): js.Ident =
-      js.Ident(transformLocalName(ident.name), ident.originalName)(ident.pos)
+      js.Ident(transformLocalName(ident.name))(ident.pos)
+
+    private def transformLocalVarIdent(ident: LocalIdent,
+        originalName: OriginalName): js.Ident = {
+      val jsName = transformLocalName(ident.name)
+      js.Ident(jsName, genOriginalName(ident.name, originalName, jsName))(
+          ident.pos)
+    }
 
     private def transformGlobalVarIdent(name: String)(
         implicit pos: Position): js.Ident = {
@@ -2716,8 +2728,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     private def genApplyStaticLike(field: String, className: ClassName,
         method: MethodIdent, args: List[js.Tree])(
         implicit pos: Position): js.Tree = {
-      js.Apply(envField(field, className, method.name, method.originalName),
-          args)
+      js.Apply(envField(field, className, method.name), args)
     }
 
     private def genFround(arg: js.Tree)(implicit pos: Position): js.Tree = {
@@ -2754,6 +2765,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 }
 
 private object FunctionEmitter {
+  private val UTF8Period: UTF8String = UTF8String(".")
+
+  private val thisOriginalName: OriginalName = OriginalName("this")
+
   private val MaybeHijackedClasses =
     (HijackedClasses ++ EmitterNames.AncestorsOfHijackedClasses) - ObjectClass
 
@@ -2825,8 +2840,7 @@ private object FunctionEmitter {
 
     def withParams(params: List[ParamDef]): Env = {
       params.foldLeft(this) {
-        case (env, ParamDef(name, tpe, mutable, _)) =>
-          // ParamDefs may not contain record types
+        case (env, ParamDef(name, _, _, mutable, _)) =>
           env.withDef(name, mutable)
       }
     }

@@ -59,7 +59,7 @@ private[frontend] final class MethodSynthesizer(
       implicit val pos = targetMDef.pos
 
       val targetIdent = targetMDef.name.copy() // for the new pos
-      val proxyIdent = MethodIdent(methodName, None)
+      val proxyIdent = MethodIdent(methodName)
       val params = targetMDef.args.map(_.copy()) // for the new pos
       val currentClassType = ClassType(classInfo.className)
 
@@ -73,7 +73,8 @@ private[frontend] final class MethodSynthesizer(
         call
       }
 
-      MethodDef(MemberFlags.empty, proxyIdent, params, AnyType, Some(body))(
+      MethodDef(MemberFlags.empty, proxyIdent, targetMDef.originalName, params,
+          AnyType, Some(body))(
           OptimizerHints.empty, targetMDef.hash)
     }
   }
@@ -100,8 +101,8 @@ private[frontend] final class MethodSynthesizer(
           ApplyFlags.empty, This()(currentClassType), targetInterface,
           targetIdent, params.map(_.ref))(targetMDef.resultType)
 
-      MethodDef(MemberFlags.empty, bridgeIdent, params, targetMDef.resultType,
-          Some(body))(
+      MethodDef(MemberFlags.empty, bridgeIdent, targetMDef.originalName,
+          params, targetMDef.resultType, Some(body))(
           OptimizerHints.empty, targetMDef.hash)
     }
   }

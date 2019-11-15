@@ -15,8 +15,9 @@ package org.scalajs.linker.backend.javascript
 import scala.annotation.switch
 
 import org.scalajs.ir
-import ir.Position
-import ir.Position.NoPosition
+import org.scalajs.ir.{OriginalName, Position}
+import org.scalajs.ir.OriginalName.NoOriginalName
+import org.scalajs.ir.Position.NoPosition
 
 object Trees {
   /** AST node of JavaScript. */
@@ -41,7 +42,7 @@ object Trees {
     def pos: Position
   }
 
-  case class Ident(name: String, originalName: Option[String])(
+  case class Ident(name: String, originalName: OriginalName)(
       implicit val pos: Position) extends PropertyName {
     require(Ident.isValidJSIdentifierName(name),
         s"'$name' is not a valid JS identifier name")
@@ -49,7 +50,7 @@ object Trees {
 
   object Ident {
     def apply(name: String)(implicit pos: Position): Ident =
-      new Ident(name, Some(name))
+      new Ident(name, NoOriginalName)
 
     /** Tests whether the given string is a valid `IdentifierName` for the
      *  ECMAScript language specification.

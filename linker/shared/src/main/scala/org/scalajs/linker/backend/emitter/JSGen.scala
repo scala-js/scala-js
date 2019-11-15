@@ -20,6 +20,7 @@ import scala.collection.mutable
 
 import org.scalajs.ir._
 import org.scalajs.ir.Names._
+import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Types._
 import org.scalajs.ir.{Trees => irt}
 
@@ -219,6 +220,53 @@ private[emitter] final class JSGen(val semantics: Semantics,
     })
   }
 
+  def genOriginalName(name: Name, originalName: OriginalName,
+      jsName: String): OriginalName = {
+    genOriginalName(name.encoded, originalName, jsName)
+  }
+
+  def genOriginalName(name: MethodName, originalName: OriginalName,
+      jsName: String): OriginalName = {
+    genOriginalName(name.simpleName, originalName, jsName)
+  }
+
+  private def genOriginalName(name: UTF8String, originalName: OriginalName,
+      jsName: String): OriginalName = {
+
+    def sameName: Boolean = {
+      /* This method compares a UTF-8 string and a (UTF-16) string
+       * element-wise, thus comparing bytes with chars, in order to avoid any
+       * recoding. We can do this here because:
+       *
+       * - for ASCII characters, the byte and char values are the same
+       * - for non-ASCII characters, the byte value is always negative while
+       *   the char values are always positive, so the comparison is always
+       *   false
+       * - the always-false result for non-ASCII characters is correct in the
+       *   case of `JSGen`, because all non-ASCII code points in `Name`s are
+       *   encoded in `genName()` byte-by-byte into Chars that have lost all
+       *   connection to what they meant, so any non-ASCII character will
+       *   require an original name to be generated.
+       */
+
+      // scalastyle:off return
+      if (name.length != jsName.length())
+        return false
+      var i = 0
+      while (i != name.length) {
+        if (name(i).toInt != jsName.charAt(i).toInt)
+          return false
+        i += 1
+      }
+      true
+      // scalastyle:on return
+    }
+
+    if (originalName.isDefined) originalName
+    else if (sameName) NoOriginalName
+    else OriginalName(name)
+  }
+
   def genZeroOf(tpe: Type)(implicit pos: Position): Tree = {
     tpe match {
       case BooleanType => BooleanLiteral(false)
@@ -277,17 +325,23 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genSelect(receiver: Tree, className: ClassName, field: irt.FieldIdent)(
       implicit pos: Position): Tree = {
-    DotSelect(receiver, genFieldIdent(className, field)(field.pos))
+    DotSelect(receiver, Ident(genFieldJSName(className, field))(field.pos))
   }
 
-  private def genFieldIdent(className: ClassName, field: irt.FieldIdent)(
-      implicit pos: Position): Ident = {
-    Ident(genName(className) + "__f_" + genName(field.name), field.originalName)
+  def genSelect(receiver: Tree, className: ClassName, field: irt.FieldIdent,
+      originalName: OriginalName)(
+      implicit pos: Position): Tree = {
+    val jsName = genFieldJSName(className, field)
+    val jsOrigName = genOriginalName(field.name, originalName, jsName)
+    DotSelect(receiver, Ident(jsName, jsOrigName)(field.pos))
   }
+
+  private def genFieldJSName(className: ClassName, field: irt.FieldIdent): String =
+    genName(className) + "__f_" + genName(field.name)
 
   def genSelectStatic(className: ClassName, item: irt.FieldIdent)(
       implicit pos: Position): VarRef = {
-    envField("t", className, item.name, item.originalName)
+    envField("t", className, item.name)
   }
 
   def genJSPrivateSelect(receiver: Tree, className: ClassName,
@@ -299,7 +353,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genJSPrivateFieldIdent(className: ClassName, field: irt.FieldIdent)(
       implicit pos: Position): Tree = {
-    envField("r", className, field.name, field.originalName)
+    envField("r", className, field.name)
   }
 
   def genIsInstanceOf(expr: Tree, tpe: Type)(
@@ -474,7 +528,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
     spec match {
       case irt.JSNativeLoadSpec.Global(globalRef, path) =>
-        val globalVarRef = VarRef(Ident(globalRef, Some(globalRef)))
+        val globalVarRef = VarRef(Ident(globalRef))
         val globalVarNames = {
           if (keepOnlyDangerousVarNames && !trackAllGlobalRefs &&
               !GlobalRefUtils.isDangerousGlobalRef(globalRef)) {
@@ -572,7 +626,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
       if (containsOnlyValidChars()) "$i_" + module
       else buildValidName()
 
-    VarRef(Ident(avoidClashWithGlobalRef(varName), Some(module)))
+    VarRef(Ident(avoidClashWithGlobalRef(varName), OriginalName(module)))
   }
 
   def envField(field: String, typeRef: NonArrayTypeRef)(
@@ -583,19 +637,30 @@ private[emitter] final class JSGen(val semantics: Semantics,
   def envField(field: String, className: ClassName)(implicit pos: Position): VarRef =
     envField(field, genName(className))
 
+  def envField(field: String, className: ClassName, fieldName: FieldName)(
+      implicit pos: Position): VarRef = {
+    envField(field, className, fieldName, NoOriginalName)
+  }
+
   def envField(field: String, className: ClassName, fieldName: FieldName,
-      origName: Option[String])(
+      origName: OriginalName)(
       implicit pos: Position): VarRef = {
     envField(field, genName(className) + "__" + genName(fieldName), origName)
   }
 
+  def envField(field: String, className: ClassName, methodName: MethodName)(
+      implicit pos: Position): VarRef = {
+    envField(field, className, methodName, NoOriginalName)
+  }
+
   def envField(field: String, className: ClassName, methodName: MethodName,
-      origName: Option[String])(
+      origName: OriginalName)(
       implicit pos: Position): VarRef = {
     envField(field, genName(className) + "__" + genName(methodName), origName)
   }
 
-  def envField(field: String, subField: String, origName: Option[String] = None)(
+  def envField(field: String, subField: String,
+      origName: OriginalName = NoOriginalName)(
       implicit pos: Position): VarRef = {
     VarRef(envFieldIdent(field, subField, origName))
   }
@@ -625,7 +690,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
   }
 
   def envFieldIdent(field: String, subField: String,
-      origName: Option[String] = None)(
+      origName: OriginalName = NoOriginalName)(
       implicit pos: Position): Ident = {
     Ident(avoidClashWithGlobalRef("$" + field + "_" + subField), origName)
   }
@@ -634,9 +699,9 @@ private[emitter] final class JSGen(val semantics: Semantics,
     VarRef(envFieldIdent(field))
 
   def envFieldIdent(field: String)(implicit pos: Position): Ident =
-    envFieldIdent(field, None)
+    envFieldIdent(field, NoOriginalName)
 
-  def envFieldIdent(field: String, origName: Option[String])(
+  def envFieldIdent(field: String, origName: OriginalName)(
       implicit pos: Position): Ident = {
     Ident(avoidClashWithGlobalRef("$" + field), origName)
   }

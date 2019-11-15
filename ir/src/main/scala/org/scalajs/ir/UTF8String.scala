@@ -51,6 +51,15 @@ final class UTF8String private (private[ir] val bytes: Array[Byte])
 }
 
 object UTF8String {
+  /** Unsafely creates a `UTF8String` from a byte array.
+   *
+   *  This method does not validate the input array nor copies its contents. It
+   *  should only be used to recreate a `UTF8String` from a byte array that has
+   *  been extracted from a correctly validated `UTF8String`.
+   */
+  private[ir] def unsafeCreate(bytes: Array[Byte]): UTF8String =
+    new UTF8String(bytes)
+
   /** Creates a UTF-8 string from a byte array.
    *
    *  The input byte array will be copied to ensure the immutability of
