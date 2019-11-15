@@ -15,7 +15,7 @@ package org.scalajs.linker
 import scala.collection.mutable
 
 private[linker] object CollectionsCompat {
-  implicit class MutableMapCompatOps[K, V](val __self: mutable.Map[K, V])
+  implicit class MutableMapCompatOps[K, V](private val self: mutable.Map[K, V])
       extends AnyVal {
 
     // filterInPlace replaces retain
@@ -23,9 +23,9 @@ private[linker] object CollectionsCompat {
       // Believe it or not, this is the implementation of `retain` in 2.12.x:
 
       // scala/bug#7269 toList avoids ConcurrentModificationException
-      for ((k, v) <- __self.toList) {
+      for ((k, v) <- self.toList) {
         if (!p(k, v))
-        __self -= k
+          self -= k
       }
     }
   }

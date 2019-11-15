@@ -4964,10 +4964,8 @@ private[optimizer] object OptimizerCore {
   }
 
   private implicit class OptimizerTreeOps private[OptimizerCore] (
-      val __private_self: Tree)
+      private val self: Tree)
       extends AnyVal {
-
-    @inline private def self: Tree = __private_self
 
     def toPreTransform: PreTransform = {
       self match {

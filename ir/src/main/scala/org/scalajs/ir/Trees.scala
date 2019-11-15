@@ -1120,10 +1120,8 @@ object Trees {
 
   // Miscellaneous
 
-  final class OptimizerHints private (val __private_bits: Int) extends AnyVal {
+  final class OptimizerHints private (private val bits: Int) extends AnyVal {
     import OptimizerHints._
-
-    @inline private def bits: Int = __private_bits
 
     def inline: Boolean = (bits & InlineMask) != 0
     def noinline: Boolean = (bits & NoinlineMask) != 0
@@ -1157,10 +1155,8 @@ object Trees {
       hints.bits
   }
 
-  final class ApplyFlags private (val __private_bits: Int) extends AnyVal {
+  final class ApplyFlags private (private val bits: Int) extends AnyVal {
     import ApplyFlags._
-
-    @inline private def bits: Int = __private_bits
 
     def isPrivate: Boolean = (bits & PrivateBit) != 0
 
@@ -1263,10 +1259,8 @@ object Trees {
       if (flags.isPrivate) PrivateStatic else PublicStatic
   }
 
-  final class MemberFlags private (val __private_bits: Int) extends AnyVal {
+  final class MemberFlags private (private val bits: Int) extends AnyVal {
     import MemberFlags._
-
-    @inline private def bits: Int = __private_bits
 
     def namespace: MemberNamespace =
       MemberNamespace.fromOrdinalUnchecked(bits & NamespaceMask)
