@@ -21,15 +21,15 @@ import org.junit.Assert._
 class InternalNameClashesTestEx {
   import InternalNameClashesTestEx._
 
-  @Test def testLocalVariableClashWithEnvField(): Unit = {
+  @Test def testLocalVariableClashWithCodegenVar(): Unit = {
     /* This tests that user-defined local variables cannot clash with
-     * compiler-generated "envFields".
+     * compiler-generated "codegenVars".
      */
     @noinline def someValue(): Int = 42
 
-    val $c_Lorg_scalajs_testsuite_jsinterop_InternalNameClashesTestEx$LocalVariableClashWithEnvField = someValue()
-    val foo = new LocalVariableClashWithEnvField(5)
-    assertEquals(42, $c_Lorg_scalajs_testsuite_jsinterop_InternalNameClashesTestEx$LocalVariableClashWithEnvField)
+    val $c_Lorg_scalajs_testsuite_jsinterop_InternalNameClashesTestEx$LocalVariableClashWithCodegenVar = someValue()
+    val foo = new LocalVariableClashWithCodegenVar(5)
+    assertEquals(42, $c_Lorg_scalajs_testsuite_jsinterop_InternalNameClashesTestEx$LocalVariableClashWithCodegenVar)
     assertEquals(5, foo.x)
   }
 
@@ -82,7 +82,7 @@ class InternalNameClashesTestEx {
 
 object InternalNameClashesTestEx {
   @noinline
-  class LocalVariableClashWithEnvField(val x: Int)
+  class LocalVariableClashWithCodegenVar(val x: Int)
 
   trait LocalVariableClashWithExplicitThisParamTrait {
     val x: Int
@@ -90,8 +90,8 @@ object InternalNameClashesTestEx {
     @noinline
     def test(y: Int): Int = {
       /* We test both $thiz and $$thiz because GlobalScopeTestEx references the
-       * global variable `$thiz`, causing env fields for `$thiz` to be renamed
-       * to `$$thiz`.
+       * global variable `$thiz`, causing codegen vars for `$thiz` to be
+       * renamed to `$$thiz`.
        */
       val $thiz = x + y
       val $$thiz = x * y
