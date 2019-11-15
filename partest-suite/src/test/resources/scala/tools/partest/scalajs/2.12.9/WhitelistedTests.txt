@@ -900,7 +900,6 @@ pos/t7596
 pos/t8793.scala
 pos/sammy_overload.scala
 pos/t6051.scala
-pos/t7683-stop-after-parser
 pos/t7750.scala
 pos/t5454.scala
 pos/t8962.scala
@@ -2541,9 +2540,6 @@ pos/t3249
 neg/t4749.scala
 neg/main1.scala
 neg/t7251
-neg/t7494-after-terminal
-neg/t7494-before-parser
-neg/t7494-right-after-terminal
 run/lazy-traits.scala
 run/OrderingTest.scala
 run/ReplacementMatching.scala
@@ -2613,7 +2609,6 @@ neg/t7834neg.scala
 neg/t7783.scala
 neg/t7848-interp-warn.scala
 neg/t7519-b
-neg/t7622-missing-dependency
 neg/t7870.scala
 neg/t7877.scala
 neg/t7895.scala
@@ -2660,7 +2655,6 @@ run/t7912.scala
 run/delambdafy-dependent-on-param-subst-2.scala
 run/t8048b
 run/t8091.scala
-run/macroPlugins-macroRuntime
 run/macro-default-params
 run/t6355.scala
 run/t7777
@@ -2668,14 +2662,11 @@ run/t8002.scala
 run/t8015-ffc.scala
 run/macro-subpatterns
 run/t7985.scala
-run/macroPlugins-macroArgs
 run/t7326.scala
 run/t5045.scala
 run/value-class-partial-func-depmet.scala
 run/t6329_vanilla_bug.scala
-run/macroPlugins-macroExpand
 run/t8010.scala
-run/macroPlugins-typedMacroBody
 run/t7406.scala
 pos/t8146a.scala
 pos/t8046c.scala
@@ -2767,9 +2758,7 @@ neg/t7475e.scala
 neg/t7475f.scala
 neg/macro-bundle-whitebox-use-raw
 neg/macro-bundle-whitebox-use-refined
-neg/macro-incompatible-macro-engine-b
 neg/t7980.scala
-neg/macro-incompatible-macro-engine-a
 neg/t8143a.scala
 neg/t8072.scala
 neg/t8207.scala
@@ -2956,7 +2945,6 @@ run/macro-rangepos-args
 run/t8610.scala
 run/macro-rangepos-subpatterns
 run/t8611c.scala
-run/macroPlugins-isBlackbox
 run/t8601d.scala
 run/t8607.scala
 run/bugs.scala
@@ -3037,7 +3025,6 @@ pos/t9479b.scala
 pos/t9442.scala
 pos/t9369.scala
 pos/t6666d.scala
-pos/t9370
 neg/t6810.scala
 neg/t8127a.scala
 neg/t8989.scala
@@ -3485,11 +3472,7 @@ run/imports.scala
 run/misc.scala
 
 # Adapt checkfiles for compiler phase list
-neg/t7494-no-options
-neg/t6446-list
-neg/t6446-missing
 neg/t6446-show-phases.scala
-neg/t6446-additional
 
 # Adapt checkfiles for different behavior with boxed types
 run/virtpatmat_typetag.scala
