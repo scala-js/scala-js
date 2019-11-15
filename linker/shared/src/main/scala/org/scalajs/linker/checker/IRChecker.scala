@@ -1418,6 +1418,7 @@ object IRChecker {
       new ErrorContext(linkedClass)
   }
 
-  private case class LocalDef(name: LocalName, tpe: Type, mutable: Boolean)(
+  private final case class LocalDef(name: LocalName, tpe: Type,
+      mutable: Boolean)(
       val pos: Position)
 }

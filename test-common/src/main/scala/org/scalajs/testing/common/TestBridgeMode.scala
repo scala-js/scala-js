@@ -17,7 +17,7 @@ private[testing] sealed abstract class TestBridgeMode
 
 private[testing] object TestBridgeMode {
   case object FullBridge extends TestBridgeMode
-  case class HTMLRunner(tests: IsolatedTestSet) extends TestBridgeMode
+  final case class HTMLRunner(tests: IsolatedTestSet) extends TestBridgeMode
 
   implicit object TestBridgeModeSerializer extends Serializer[TestBridgeMode] {
     def serialize(x: TestBridgeMode, out: Serializer.SerializeState): Unit = x match {
