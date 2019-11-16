@@ -6,6 +6,11 @@
 # Note that this test, by design, stress-tests type checking
 pos/t6367.scala
 
+# Scala 2.12.9 seems to have weird issues with compiler plugins
+# Those are fixed in 2.12.10
+pos/t7683-stop-after-parser
+pos/t9370
+
 #
 # NEG
 #
@@ -23,6 +28,19 @@ neg/inlineMaxSize.scala
 # Uses .java files
 run/t9200
 run/noInlineUnknownIndy
+
+# Scala 2.12.9 seems to have weird issues with compiler plugins
+# Those are fixed in 2.12.10
+neg/macro-incompatible-macro-engine-a
+neg/macro-incompatible-macro-engine-b
+neg/t6446-additional
+neg/t6446-list
+neg/t6446-missing
+neg/t7494-after-terminal
+neg/t7494-before-parser
+neg/t7494-no-options
+neg/t7494-right-after-terminal
+neg/t7622-missing-dependency
 
 #
 # RUN
@@ -1083,3 +1101,11 @@ run/t10594.scala
 # Badly uses constract of Console.print (no flush)
 run/t429.scala
 run/t6102.scala
+
+# Scala 2.12.9 seems to have weird issues with compiler plugins
+# Those are fixed in 2.12.10
+run/macroPlugins-isBlackbox
+run/macroPlugins-macroArgs
+run/macroPlugins-macroExpand
+run/macroPlugins-macroRuntime
+run/macroPlugins-typedMacroBody
