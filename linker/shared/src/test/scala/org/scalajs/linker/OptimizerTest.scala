@@ -169,6 +169,8 @@ object OptimizerTest {
 
     val symbolRequirements: SymbolRequirement = originalBackend.symbolRequirements
 
+    override def injectedIRFiles: Seq[IRFile] = originalBackend.injectedIRFiles
+
     def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger)(
         implicit ec: ExecutionContext): Future[Unit] = {
       _linkingUnit = unit

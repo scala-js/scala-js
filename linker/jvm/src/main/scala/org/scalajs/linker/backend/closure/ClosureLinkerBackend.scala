@@ -59,6 +59,8 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
 
+  override def injectedIRFiles: Seq[IRFile] = emitter.injectedIRFiles
+
   private val needsIIFEWrapper = moduleKind match {
     case ModuleKind.NoModule                             => true
     case ModuleKind.ESModule | ModuleKind.CommonJSModule => false
