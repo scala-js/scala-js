@@ -20,6 +20,11 @@ import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Position.NoPosition
 
 object Trees {
+  /* The case classes for JS Trees are sealed instead of final because making
+   * them final triggers bugs with Scala 2.11.x and 2.12.{1-4}, in combination
+   * with their `implicit val pos`.
+   */
+
   /** AST node of JavaScript. */
   abstract sealed class Tree {
     val pos: Position
@@ -34,7 +39,8 @@ object Trees {
 
   // Comments
 
-  case class DocComment(text: String)(implicit val pos: Position) extends Tree
+  sealed case class DocComment(text: String)(implicit val pos: Position)
+      extends Tree
 
   // Identifiers and properties
 
@@ -42,7 +48,7 @@ object Trees {
     def pos: Position
   }
 
-  case class Ident(name: String, originalName: OriginalName)(
+  sealed case class Ident(name: String, originalName: OriginalName)(
       implicit val pos: Position) extends PropertyName {
     require(Ident.isValidJSIdentifierName(name),
         s"'$name' is not a valid JS identifier name")
@@ -79,7 +85,7 @@ object Trees {
     }
   }
 
-  case class ComputedName(tree: Tree) extends PropertyName {
+  sealed case class ComputedName(tree: Tree) extends PropertyName {
     def pos: Position = tree.pos
   }
 
@@ -92,22 +98,30 @@ object Trees {
     def ref(implicit pos: Position): Tree = VarRef(name)
   }
 
-  case class VarDef(name: Ident, rhs: Option[Tree])(implicit val pos: Position) extends LocalDef {
+  sealed case class VarDef(name: Ident, rhs: Option[Tree])(
+      implicit val pos: Position)
+      extends LocalDef {
     def mutable: Boolean = true
   }
 
   /** ES6 let or const (depending on the mutable flag). */
-  case class Let(name: Ident, mutable: Boolean, rhs: Option[Tree])(implicit val pos: Position) extends LocalDef
+  sealed case class Let(name: Ident, mutable: Boolean, rhs: Option[Tree])(
+      implicit val pos: Position)
+      extends LocalDef
 
-  case class ParamDef(name: Ident, rest: Boolean)(implicit val pos: Position) extends LocalDef {
+  sealed case class ParamDef(name: Ident, rest: Boolean)(
+      implicit val pos: Position)
+      extends LocalDef {
     def mutable: Boolean = true
   }
 
   // Control flow constructs
 
-  case class Skip()(implicit val pos: Position) extends Tree
+  sealed case class Skip()(implicit val pos: Position) extends Tree
 
-  class Block private (val stats: List[Tree])(implicit val pos: Position) extends Tree {
+  sealed class Block private (val stats: List[Tree])(
+      implicit val pos: Position)
+      extends Tree {
     override def toString(): String =
       stats.mkString("Block(", ",", ")")
   }
@@ -132,59 +146,89 @@ object Trees {
     def unapply(block: Block): Some[List[Tree]] = Some(block.stats)
   }
 
-  case class Labeled(label: Ident, body: Tree)(implicit val pos: Position) extends Tree
+  sealed case class Labeled(label: Ident, body: Tree)(
+      implicit val pos: Position)
+      extends Tree
 
-  case class Assign(lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree {
+  sealed case class Assign(lhs: Tree, rhs: Tree)(implicit val pos: Position)
+      extends Tree {
     require(lhs match {
       case _:VarRef | _:DotSelect | _:BracketSelect => true
       case _ => false
     }, s"Invalid lhs for Assign: $lhs")
   }
 
-  case class Return(expr: Tree)(implicit val pos: Position) extends Tree
+  sealed case class Return(expr: Tree)(implicit val pos: Position) extends Tree
 
-  case class If(cond: Tree, thenp: Tree, elsep: Tree)(implicit val pos: Position) extends Tree
-
-  case class While(cond: Tree, body: Tree, label: Option[Ident] = None)(implicit val pos: Position) extends Tree
-
-  case class DoWhile(body: Tree, cond: Tree, label: Option[Ident] = None)(implicit val pos: Position) extends Tree
-
-  case class ForIn(lhs: Tree, obj: Tree, body: Tree)(implicit val pos: Position) extends Tree
-
-  case class For(init: Tree, guard: Tree, update: Tree, body: Tree)(
+  sealed case class If(cond: Tree, thenp: Tree, elsep: Tree)(
       implicit val pos: Position)
       extends Tree
 
-  case class TryCatch(block: Tree, errVar: Ident, handler: Tree)(implicit val pos: Position) extends Tree
+  sealed case class While(cond: Tree, body: Tree, label: Option[Ident] = None)(
+      implicit val pos: Position)
+      extends Tree
 
-  case class TryFinally(block: Tree, finalizer: Tree)(implicit val pos: Position) extends Tree
+  sealed case class DoWhile(body: Tree, cond: Tree, label: Option[Ident] = None)(
+      implicit val pos: Position)
+      extends Tree
 
-  case class Throw(expr: Tree)(implicit val pos: Position) extends Tree
+  sealed case class ForIn(lhs: Tree, obj: Tree, body: Tree)(
+      implicit val pos: Position)
+      extends Tree
 
-  case class Break(label: Option[Ident] = None)(implicit val pos: Position) extends Tree
+  sealed case class For(init: Tree, guard: Tree, update: Tree, body: Tree)(
+      implicit val pos: Position)
+      extends Tree
 
-  case class Continue(label: Option[Ident] = None)(implicit val pos: Position) extends Tree
+  sealed case class TryCatch(block: Tree, errVar: Ident, handler: Tree)(
+      implicit val pos: Position)
+      extends Tree
 
-  case class Switch(selector: Tree, cases: List[(Tree, Tree)], default: Tree)(implicit val pos: Position) extends Tree
+  sealed case class TryFinally(block: Tree, finalizer: Tree)(
+      implicit val pos: Position)
+      extends Tree
 
-  case class Debugger()(implicit val pos: Position) extends Tree
+  sealed case class Throw(expr: Tree)(implicit val pos: Position) extends Tree
+
+  sealed case class Break(label: Option[Ident] = None)(
+      implicit val pos: Position)
+      extends Tree
+
+  sealed case class Continue(label: Option[Ident] = None)(
+      implicit val pos: Position)
+      extends Tree
+
+  sealed case class Switch(selector: Tree, cases: List[(Tree, Tree)],
+      default: Tree)(
+      implicit val pos: Position)
+      extends Tree
+
+  sealed case class Debugger()(implicit val pos: Position) extends Tree
 
   // Expressions
 
-  case class New(ctor: Tree, args: List[Tree])(implicit val pos: Position) extends Tree
+  sealed case class New(ctor: Tree, args: List[Tree])(
+      implicit val pos: Position)
+      extends Tree
 
-  case class DotSelect(qualifier: Tree, item: Ident)(implicit val pos: Position) extends Tree
+  sealed case class DotSelect(qualifier: Tree, item: Ident)(
+      implicit val pos: Position)
+      extends Tree
 
-  case class BracketSelect(qualifier: Tree, item: Tree)(implicit val pos: Position) extends Tree
+  sealed case class BracketSelect(qualifier: Tree, item: Tree)(
+      implicit val pos: Position)
+      extends Tree
 
   /** Syntactic apply.
    *  It is a method call if fun is a dot-select or bracket-select. It is a
    *  function call otherwise.
    */
-  case class Apply(fun: Tree, args: List[Tree])(implicit val pos: Position) extends Tree
+  sealed case class Apply(fun: Tree, args: List[Tree])(
+      implicit val pos: Position)
+      extends Tree
 
   /** Dynamic `import(arg)`. */
-  case class ImportCall(arg: Tree)(implicit val pos: Position)
+  sealed case class ImportCall(arg: Tree)(implicit val pos: Position)
       extends Tree
 
   /** `...items`, the "spread" operator of ECMAScript 6.
@@ -194,9 +238,9 @@ object Trees {
    *
    *  @param items An iterable whose items will be spread
    */
-  case class Spread(items: Tree)(implicit val pos: Position) extends Tree
+  sealed case class Spread(items: Tree)(implicit val pos: Position) extends Tree
 
-  case class Delete(prop: Tree)(implicit val pos: Position) extends Tree {
+  sealed case class Delete(prop: Tree)(implicit val pos: Position) extends Tree {
     require(prop match {
       case _:DotSelect | _:BracketSelect => true
       case _ => false
@@ -208,7 +252,9 @@ object Trees {
    *  Operations which do not preserve pureness are not allowed in this tree.
    *  These are notably ++ and --
    */
-  case class UnaryOp(op: UnaryOp.Code, lhs: Tree)(implicit val pos: Position) extends Tree
+  sealed case class UnaryOp(op: UnaryOp.Code, lhs: Tree)(
+      implicit val pos: Position)
+      extends Tree
 
   object UnaryOp {
     /** Codes are the same as in the IR. */
@@ -216,7 +262,7 @@ object Trees {
   }
 
   /** `++x`, `x++`, `--x` or `x--`. */
-  case class IncDec(prefix: Boolean, inc: Boolean, arg: Tree)(
+  sealed case class IncDec(prefix: Boolean, inc: Boolean, arg: Tree)(
       implicit val pos: Position)
       extends Tree
 
@@ -225,67 +271,83 @@ object Trees {
    *  Operations which do not preserve pureness are not allowed in this tree.
    *  These are notably +=, -=, *=, /= and %=
    */
-  case class BinaryOp(op: BinaryOp.Code, lhs: Tree, rhs: Tree)(implicit val pos: Position) extends Tree
+  sealed case class BinaryOp(op: BinaryOp.Code, lhs: Tree, rhs: Tree)(
+      implicit val pos: Position)
+      extends Tree
 
   object BinaryOp {
     /** Codes are the same as in the IR. */
     type Code = ir.Trees.JSBinaryOp.Code
   }
 
-  case class ArrayConstr(items: List[Tree])(implicit val pos: Position) extends Tree
+  sealed case class ArrayConstr(items: List[Tree])(implicit val pos: Position)
+      extends Tree
 
-  case class ObjectConstr(fields: List[(PropertyName, Tree)])(implicit val pos: Position) extends Tree
+  sealed case class ObjectConstr(fields: List[(PropertyName, Tree)])(
+      implicit val pos: Position)
+      extends Tree
 
   // Literals
 
   /** Marker for literals. Literals are always pure. */
   sealed trait Literal extends Tree
 
-  case class Undefined()(implicit val pos: Position) extends Literal
+  sealed case class Undefined()(implicit val pos: Position) extends Literal
 
-  case class Null()(implicit val pos: Position) extends Literal
+  sealed case class Null()(implicit val pos: Position) extends Literal
 
-  case class BooleanLiteral(value: Boolean)(implicit val pos: Position) extends Literal
+  sealed case class BooleanLiteral(value: Boolean)(implicit val pos: Position)
+      extends Literal
 
-  case class IntLiteral(value: Int)(implicit val pos: Position) extends Literal
+  sealed case class IntLiteral(value: Int)(implicit val pos: Position)
+      extends Literal
 
-  case class DoubleLiteral(value: Double)(implicit val pos: Position) extends Literal
+  sealed case class DoubleLiteral(value: Double)(implicit val pos: Position)
+      extends Literal
 
-  case class StringLiteral(value: String)(
+  sealed case class StringLiteral(value: String)(
       implicit val pos: Position) extends Literal with PropertyName
 
-  case class BigIntLiteral(value: BigInt)(
+  sealed case class BigIntLiteral(value: BigInt)(
       implicit val pos: Position) extends Literal
 
   // Atomic expressions
 
-  case class VarRef(ident: Ident)(implicit val pos: Position) extends Tree
+  sealed case class VarRef(ident: Ident)(implicit val pos: Position)
+      extends Tree
 
-  case class This()(implicit val pos: Position) extends Tree
+  sealed case class This()(implicit val pos: Position) extends Tree
 
-  case class Function(arrow: Boolean, args: List[ParamDef], body: Tree)(
+  sealed case class Function(arrow: Boolean, args: List[ParamDef], body: Tree)(
       implicit val pos: Position) extends Tree
 
   // Named function definition
 
-  case class FunctionDef(name: Ident, args: List[ParamDef], body: Tree)(
+  sealed case class FunctionDef(name: Ident, args: List[ParamDef], body: Tree)(
       implicit val pos: Position) extends Tree
 
   // ECMAScript 6 classes
 
-  case class ClassDef(className: Option[Ident], parentClass: Option[Tree],
-      members: List[Tree])(implicit val pos: Position) extends Tree
+  sealed case class ClassDef(className: Option[Ident],
+      parentClass: Option[Tree], members: List[Tree])(
+      implicit val pos: Position)
+      extends Tree
 
-  case class MethodDef(static: Boolean, name: PropertyName, args: List[ParamDef],
-      body: Tree)(implicit val pos: Position) extends Tree
+  sealed case class MethodDef(static: Boolean, name: PropertyName,
+      args: List[ParamDef], body: Tree)(
+      implicit val pos: Position)
+      extends Tree
 
-  case class GetterDef(static: Boolean, name: PropertyName,
-      body: Tree)(implicit val pos: Position) extends Tree
+  sealed case class GetterDef(static: Boolean, name: PropertyName, body: Tree)(
+      implicit val pos: Position)
+      extends Tree
 
-  case class SetterDef(static: Boolean, name: PropertyName, param: ParamDef,
-      body: Tree)(implicit val pos: Position) extends Tree
+  sealed case class SetterDef(static: Boolean, name: PropertyName,
+      param: ParamDef, body: Tree)(
+      implicit val pos: Position)
+      extends Tree
 
-  case class Super()(implicit val pos: Position) extends Tree
+  sealed case class Super()(implicit val pos: Position) extends Tree
 
   // ECMAScript 6 modules
 
@@ -294,7 +356,7 @@ object Trees {
    *  It must be a valid `IdentifierName`, as tested by
    *  [[ExportName.isValidExportName]].
    */
-  case class ExportName(name: String)(implicit val pos: Position) {
+  sealed case class ExportName(name: String)(implicit val pos: Position) {
     require(ExportName.isValidExportName(name),
         s"'$name' is not a valid export name")
   }
@@ -366,7 +428,8 @@ object Trees {
    *    `import { binding } from 'from'`.
    *  - When `_1.name == "default"`, it is equivalent to a default import.
    */
-  case class Import(bindings: List[(ExportName, Ident)], from: StringLiteral)(
+  sealed case class Import(bindings: List[(ExportName, Ident)],
+      from: StringLiteral)(
       implicit val pos: Position)
       extends Tree
 
@@ -377,7 +440,7 @@ object Trees {
    *  import * as <binding> from <from>
    *  }}}
    */
-  case class ImportNamespace(binding: Ident, from: StringLiteral)(
+  sealed case class ImportNamespace(binding: Ident, from: StringLiteral)(
       implicit val pos: Position)
       extends Tree
 
@@ -391,7 +454,7 @@ object Trees {
    *  module that are exported. The `_2` parts are the names under which they
    *  are exported to other modules.
    */
-  case class Export(bindings: List[(Ident, ExportName)])(
+  sealed case class Export(bindings: List[(Ident, ExportName)])(
       implicit val pos: Position)
       extends Tree
 }

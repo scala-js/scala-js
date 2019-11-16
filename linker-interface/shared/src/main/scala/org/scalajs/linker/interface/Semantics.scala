@@ -140,12 +140,12 @@ object Semantics {
      * `j.u.regex.Pattern`, because the latter does not have meaningful
      * equality.
      */
-    private case class RegexReplace(pattern: String, flags: Int,
+    private final case class RegexReplace(pattern: String, flags: Int,
         replacement: String)(
         val compiledPattern: java.util.regex.Pattern)
         extends RuntimeClassNameMapper
 
-    private case class AndThen(first: RuntimeClassNameMapper,
+    private final case class AndThen(first: RuntimeClassNameMapper,
         second: RuntimeClassNameMapper)
         extends RuntimeClassNameMapper
 

@@ -1392,11 +1392,8 @@ object IRChecker {
    *  IR is invalid, so all bets are off and we can be slow and allocate stuff;
    *  we don't care.
    */
-  private final class ErrorContext private (
-      val __private_nodeOrLinkedClass: Any)
+  private final class ErrorContext private (private val nodeOrLinkedClass: Any)
       extends AnyVal {
-
-    @inline private def nodeOrLinkedClass: Any = __private_nodeOrLinkedClass
 
     override def toString(): String = {
       val (pos, name) = nodeOrLinkedClass match {
@@ -1418,6 +1415,7 @@ object IRChecker {
       new ErrorContext(linkedClass)
   }
 
-  private case class LocalDef(name: LocalName, tpe: Type, mutable: Boolean)(
+  private final case class LocalDef(name: LocalName, tpe: Type,
+      mutable: Boolean)(
       val pos: Position)
 }

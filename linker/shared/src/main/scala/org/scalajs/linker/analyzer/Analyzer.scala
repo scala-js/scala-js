@@ -280,7 +280,9 @@ private final class Analyzer(config: CommonPhaseConfig,
   private sealed trait LoadingResult
   private sealed trait ClassLoadingState
 
-  private case class CycleInfo(cycle: List[ClassName], root: LoadingClass)
+  // sealed instead of final because of spurious unchecked warnings
+  private sealed case class CycleInfo(cycle: List[ClassName],
+      root: LoadingClass)
       extends LoadingResult
 
   private final class LoadingClass(className: ClassName)

@@ -4483,7 +4483,7 @@ private[optimizer] object OptimizerCore {
   private type CancelFun = () => Nothing
   private type PreTransCont = PreTransform => TailRec[Tree]
 
-  private case class RefinedType private (base: Type, isExact: Boolean,
+  private final case class RefinedType private (base: Type, isExact: Boolean,
       isNullable: Boolean)(val allocationSite: AllocationSite, dummy: Int = 0) {
 
     def isNothingType: Boolean = base == NothingType
@@ -4551,7 +4551,7 @@ private[optimizer] object OptimizerCore {
     }
   }
 
-  private case class LocalDef(
+  private final case class LocalDef(
       tpe: RefinedType,
       mutable: Boolean,
       replacement: LocalDefReplacement) {
@@ -4964,10 +4964,8 @@ private[optimizer] object OptimizerCore {
   }
 
   private implicit class OptimizerTreeOps private[OptimizerCore] (
-      val __private_self: Tree)
+      private val self: Tree)
       extends AnyVal {
-
-    @inline private def self: Tree = __private_self
 
     def toPreTransform: PreTransform = {
       self match {

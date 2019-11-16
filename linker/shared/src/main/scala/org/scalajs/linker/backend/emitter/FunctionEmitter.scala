@@ -2785,14 +2785,14 @@ private object FunctionEmitter {
   }
 
   object Lhs {
-    case class Assign(lhs: Tree) extends Lhs
-    case class VarDef(name: js.Ident, tpe: Type, mutable: Boolean) extends Lhs
+    final case class Assign(lhs: Tree) extends Lhs
+    final case class VarDef(name: js.Ident, tpe: Type, mutable: Boolean) extends Lhs
 
     case object ReturnFromFunction extends Lhs {
       override def hasNothingType: Boolean = true
     }
 
-    case class Return(label: LabelIdent) extends Lhs {
+    final case class Return(label: LabelIdent) extends Lhs {
       override def hasNothingType: Boolean = true
     }
 

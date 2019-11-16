@@ -17,12 +17,14 @@ import scala.concurrent._
 import scala.util.{Try, Success, Failure}
 
 package object linker {
-  private[linker] implicit class FutureOps[T](val __self: Future[T]) extends AnyVal {
+  private[linker] implicit class FutureOps[T](private val self: Future[T])
+      extends AnyVal {
+
     def transformWith[S](f: Try[T] => Future[S])(implicit ec: ExecutionContext): Future[S] =
-      __self.map[Try[T]](Success(_)).recover { case t => Failure(t) }.flatMap(f)
+      self.map[Try[T]](Success(_)).recover { case t => Failure(t) }.flatMap(f)
 
     def finallyWith(f: => Future[Unit])(implicit ec: ExecutionContext): Future[T] = {
-      __self.transformWith {
+      self.transformWith {
         case Success(x) =>
           f.map(_ => x)
 

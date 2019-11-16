@@ -32,10 +32,8 @@ private[optimizer] object ConcurrencyUtils {
   }
 
   implicit class AtomicAccOps[T] private[ConcurrencyUtils] (
-      val __private_self: AtomicAcc[T])
+      private val self: AtomicAcc[T])
       extends AnyVal {
-
-    @inline private def self: AtomicAcc[T] = __private_self
 
     @inline final def size: Int = self.get.size
 
@@ -63,10 +61,8 @@ private[optimizer] object ConcurrencyUtils {
   type TrieSet[T] = TrieMap[T, Null]
 
   implicit class TrieSetOps[T] private[ConcurrencyUtils] (
-      val __private_self: TrieSet[T])
+      private val self: TrieSet[T])
       extends AnyVal {
-
-    @inline private def self: TrieSet[T] = __private_self
 
     @inline final def +=(x: T): Unit = self.put(x, null)
   }
@@ -76,10 +72,8 @@ private[optimizer] object ConcurrencyUtils {
   }
 
   implicit class TrieMapOps[K, V] private[ConcurrencyUtils] (
-      val __private_self: TrieMap[K, V])
+      private val self: TrieMap[K, V])
       extends AnyVal {
-
-    @inline private def self: TrieMap[K, V] = __private_self
 
     @inline final def getOrPut(k: K, default: => V): V = {
       self.get(k).getOrElse {
