@@ -61,7 +61,7 @@ object IRFileImpl {
             s"Failed to deserialize a file compiled with Scala.js ${e.version}" +
             s" (supported: ${e.supported.mkString(", ")}): $path", e)
 
-      case e: IOException =>
+      case e: Exception =>
         throw new IOException(s"Failed to deserialize $path", e)
     }
   }
