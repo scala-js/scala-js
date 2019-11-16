@@ -21,12 +21,8 @@ import scala.scalajs.js
 
 object BigIntTest {
   @BeforeClass
-  def assumeRuntimeSupportsBigInt(): Unit = {
-    assumeTrue(Platform.executingInNodeJS)
-    val bigIntConstructor =
-      js.Dynamic.global.BigInt.asInstanceOf[js.UndefOr[js.Any]]
-    assumeTrue(bigIntConstructor.isDefined)
-  }
+  def assumeRuntimeSupportsBigInt(): Unit =
+    assumeTrue(Platform.executingInNodeJS || Platform.executingInBrowser)
 }
 
 class BigIntTest {
@@ -53,8 +49,6 @@ class BigIntTest {
   }
 
   @Test def toLocaleString(): Unit = {
-    assumeTrue(Platform.executingInNodeJS)
-
     val bi = js.BigInt("42123456789123456789")
     assertEquals(bi.toString(), "42123456789123456789")
 
@@ -63,12 +57,9 @@ class BigIntTest {
         style = "currency"
         currency = "EUR"
       })
-    // Internationalization support is limited by default in Node.js.
-    // https://nodejs.org/api/intl.html#intl_internationalization_support
-    // toLocaleString may return as same as by toString
-    assertTrue(
-        currency == "€ 42,123,456,789,123,456,789.00" ||
-        currency == "42123456789123456789")
+
+    // The exact return value is not specified. Just check the type.
+    assertTrue(js.typeOf(currency) == "string")
   }
 
   @Test def valueOf(): Unit = {
