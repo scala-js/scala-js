@@ -118,7 +118,7 @@ private[emitter] object CoreJSLib {
           str("globalThis") -> This()
       )))
 
-      buf += const(envField("linkingInfo"), linkingInfo)
+      buf += const(codegenVar("linkingInfo"), linkingInfo)
     }
 
     private def defineJSBuiltinsSnapshotsAndPolyfills(): Unit = {
@@ -323,7 +323,7 @@ private[emitter] object CoreJSLib {
       }
 
       if (!useECMAScript2015) {
-        buf += const(envField("is"),
+        buf += const(codegenVar("is"),
             genIdentBracketSelect(ObjectRef, "is") || genPolyfillFor("is"))
       }
 
@@ -332,11 +332,11 @@ private[emitter] object CoreJSLib {
         val rhs =
           if (useECMAScript2015) rhs0
           else rhs0 || genPolyfillFor(builtinName)
-        const(envField(builtinName), rhs)
+        const(codegenVar(builtinName), rhs)
       }
 
       if (!useECMAScript2015) {
-        buf += const(envField("privateJSFieldSymbol"),
+        buf += const(codegenVar("privateJSFieldSymbol"),
             If(UnaryOp(JSUnaryOp.typeof, SymbolRef) !== str("undefined"),
                 SymbolRef, genPolyfillFor("privateJSFieldSymbol")))
       }
@@ -344,7 +344,7 @@ private[emitter] object CoreJSLib {
 
     private def declareCachedL0(): Unit = {
       if (!allowBigIntsForLongs)
-        buf += genEmptyMutableLet(envFieldIdent("L0"))
+        buf += genEmptyMutableLet(codegenVarIdent("L0"))
     }
 
     private def definePropertyName(): Unit = {
@@ -380,7 +380,7 @@ private[emitter] object CoreJSLib {
         })
       }
 
-      buf += genClassDef(envFieldIdent("Char"), None, List(ctor, toStr))
+      buf += genClassDef(codegenVarIdent("Char"), None, List(ctor, toStr))
     }
 
     private def defineRuntimeFunctions(): Unit = {
@@ -606,7 +606,7 @@ private[emitter] object CoreJSLib {
         }
 
         def genHijackedMethodApply(className: ClassName): Tree =
-          Apply(envField("f", className, methodName, NoOriginalName), instance :: args)
+          Apply(codegenVar("f", className, methodName, NoOriginalName), instance :: args)
 
         def genBodyNoSwitch(implementingHijackedClasses: List[ClassName]): Tree = {
           val normalCall = Apply(instance DOT genName(methodName), args)
@@ -915,8 +915,8 @@ private[emitter] object CoreJSLib {
       locally {
         val WeakMapRef = globalRef("WeakMap")
 
-        val lastIDHash = envField("lastIDHash")
-        val idHashCodeMap = envField("idHashCodeMap")
+        val lastIDHash = codegenVar("lastIDHash")
+        val idHashCodeMap = codegenVar("idHashCodeMap")
 
         buf += let(lastIDHash, 0)
         buf += const(idHashCodeMap,
@@ -987,7 +987,7 @@ private[emitter] object CoreJSLib {
           val f = weakMapBasedFunction
           buf += envFunctionDef("systemIdentityHashCode", f.args, f.body)
         } else {
-          buf += const(envField("systemIdentityHashCode"),
+          buf += const(codegenVar("systemIdentityHashCode"),
               If(idHashCodeMap !== Null(), weakMapBasedFunction, fieldBasedFunction))
         }
       }
@@ -1027,9 +1027,9 @@ private[emitter] object CoreJSLib {
       locally {
         val c = varRef("c")
         buf += envFunctionDef("bC", paramList(c), {
-          Return(New(envField("Char"), c :: Nil))
+          Return(New(codegenVar("Char"), c :: Nil))
         })
-        buf += const(envField("bC0"), genCallHelper("bC", 0))
+        buf += const(codegenVar("bC0"), genCallHelper("bC", 0))
       }
 
       val v = varRef("v")
@@ -1265,7 +1265,7 @@ private[emitter] object CoreJSLib {
             })
 
             genClassDef(ArrayClass.ident,
-                Some((encodeClassVar(ObjectClass), envField("h", ObjectClass))),
+                Some((encodeClassVar(ObjectClass), codegenVar("h", ObjectClass))),
                 ctor :: getAndSet ::: clone :: Nil)
           }
 
@@ -1318,7 +1318,7 @@ private[emitter] object CoreJSLib {
           Block(
               If(!(This() DOT "_arrayOf"),
                   This() DOT "_arrayOf" :=
-                    Apply(New(envField("TypeData"), Nil) DOT "initArray", This() :: Nil),
+                    Apply(New(codegenVar("TypeData"), Nil) DOT "initArray", This() :: Nil),
                   Skip()),
               Return(This() DOT "_arrayOf")
           )
@@ -1401,7 +1401,7 @@ private[emitter] object CoreJSLib {
         })
       }
 
-      buf += genClassDef(envFieldIdent("TypeData"), None, List(
+      buf += genClassDef(codegenVarIdent("TypeData"), None, List(
           ctor,
           initPrim,
           initClass,
@@ -1419,7 +1419,7 @@ private[emitter] object CoreJSLib {
       for (primRef <- orderedPrimRefs) {
         val obj = varRef("obj")
         val depth = varRef("depth")
-        buf += FunctionDef(envFieldIdent("isArrayOf", primRef), paramList(obj, depth), {
+        buf += FunctionDef(codegenVarIdent("isArrayOf", primRef), paramList(obj, depth), {
           Return(!(!(obj && (obj DOT classData) &&
               ((obj DOT classData DOT "arrayDepth") === depth) &&
               ((obj DOT classData DOT "arrayBase") === genClassDataOf(primRef)))))
@@ -1433,8 +1433,8 @@ private[emitter] object CoreJSLib {
           val charCodeStr = charCodeOfPrimRef(primRef)
           val obj = varRef("obj")
           val depth = varRef("depth")
-          buf += FunctionDef(envFieldIdent("asArrayOf", primRef), paramList(obj, depth), {
-            If(Apply(envField("isArrayOf", primRef), obj :: depth :: Nil) || (obj === Null()), {
+          buf += FunctionDef(codegenVarIdent("asArrayOf", primRef), paramList(obj, depth), {
+            If(Apply(codegenVar("isArrayOf", primRef), obj :: depth :: Nil) || (obj === Null()), {
               Return(obj)
             }, {
               genCallHelper("throwArrayCastException", obj, str(charCodeStr), depth)
@@ -1459,9 +1459,9 @@ private[emitter] object CoreJSLib {
         )
       } {
         val charCodeStr = charCodeOfPrimRef(primRef)
-        buf += const(envField("d", primRef), {
-          Apply(New(envField("TypeData"), Nil) DOT "initPrim",
-              List(zero, str(charCodeStr), str(displayName), envField("isArrayOf", primRef)))
+        buf += const(codegenVar("d", primRef), {
+          Apply(New(codegenVar("TypeData"), Nil) DOT "initPrim",
+              List(zero, str(charCodeStr), str(displayName), codegenVar("isArrayOf", primRef)))
         })
       }
     }
@@ -1477,7 +1477,7 @@ private[emitter] object CoreJSLib {
 
     private def genScalaClassNew(className: ClassName, ctorName: MethodName,
         args: Tree*): Tree = {
-      Apply(envField("ct", className, ctorName, NoOriginalName),
+      Apply(codegenVar("ct", className, ctorName, NoOriginalName),
           New(encodeClassVar(className), Nil) :: args.toList)
     }
 
@@ -1492,7 +1492,7 @@ private[emitter] object CoreJSLib {
      *  It can be observed in `classOf[Array[Prim]].getName()`, as well as in
      *  the error messages of `x.asInstanceOf[Array[Prim]]`.
      *
-     *  Even if we change the encoding of "envFields" for PrimRefs (which is an
+     *  Even if we change the encoding of "codegenVars" for PrimRefs (which is an
      *  implementation detail of the emitter), the mapping in
      *  `charCodeOfPrimRef` must not change.
      */
@@ -1515,7 +1515,7 @@ private[emitter] object CoreJSLib {
 
     private def envFunctionDef(name: String, args: List[ParamDef],
         body: Tree): FunctionDef = {
-      FunctionDef(envFieldIdent(name), args, body)
+      FunctionDef(codegenVarIdent(name), args, body)
     }
 
     private def genClassDef(className: Ident, parent: Option[(Tree, Tree)],

@@ -179,7 +179,7 @@ final class Emitter private (config: CommonPhaseConfig,
           }
         } {
           implicit val pos = NoPosition
-          val field = envField("f", className, methodName, NoOriginalName).ident
+          val field = codegenVar("f", className, methodName, NoOriginalName).ident
           builder.addJSTree(js.VarDef(field, None))
         }
       }
@@ -196,7 +196,7 @@ final class Emitter private (config: CommonPhaseConfig,
           })
         if (!ctorIsDefined) {
           implicit val pos = NoPosition
-          val field = envField("ct", className, ctorName, NoOriginalName).ident
+          val field = codegenVar("ct", className, ctorName, NoOriginalName).ident
           builder.addJSTree(js.VarDef(field, None))
         }
       }
@@ -372,7 +372,7 @@ final class Emitter private (config: CommonPhaseConfig,
 
     // $L0 = new RuntimeLong(0, 0)
     js.Assign(
-        jsGen.envField("L0"),
+        jsGen.codegenVar("L0"),
         js.New(jsGen.encodeClassVar(LongImpl.RuntimeLongClass),
             List(js.IntLiteral(0), js.IntLiteral(0)))
     )
