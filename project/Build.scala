@@ -400,18 +400,17 @@ object Build {
       products in Compile := {
         val s = streams.value
 
-        val prev = (products in Compile).value
-        assert(prev.size == 1)
-        val productsDir = prev.head
-
-        val dependencyClasspath =
-          Attributed.data((internalDependencyClasspath in Compile).value)
-
-        val inputsFinder = dependencyClasspath.foldLeft(productsDir ** "*.sjsir") {
-          (prev, classpathItem) => prev +++ classpathItem ** "*.sjsir"
-        }
+        val prevProducts = (products in Compile).value
 
         val outputDir = crossTarget.value / "cleaned-classes"
+
+        val libFileMappings = (PathFinder(prevProducts) ** "*.sjsir")
+          .pair(Path.rebase(prevProducts, outputDir))
+
+        val dependencyFiles = {
+          val cp = Attributed.data((internalDependencyClasspath in Compile).value)
+          (PathFinder(cp) ** "*.sjsir").get
+        }
 
         FileFunction.cached(s.cacheDirectory / "cleaned-sjsir",
             FilesInfo.lastModified, FilesInfo.exists) { _ =>
@@ -421,8 +420,8 @@ object Build {
             IO.delete(outputDir)
           IO.createDirectory(outputDir)
 
-          JavalibIRCleaner.cleanIR(dependencyClasspath, productsDir, outputDir, s.log)
-        } (inputsFinder.get.toSet)
+          JavalibIRCleaner.cleanIR(dependencyFiles, libFileMappings, s.log)
+        } ((dependencyFiles ++ libFileMappings.map(_._1)).toSet)
 
         Seq(outputDir)
       }
