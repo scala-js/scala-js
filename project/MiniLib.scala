@@ -47,13 +47,7 @@ object MiniLib {
         "Serializable"
     ).map("java/io/" + _)
 
-    // TODO Move UndefinedBehaviorError into the linker library (#3824)
-    val inScalaJSRuntime = List(
-        "UndefinedBehaviorError"
-    ).map("scala/scalajs/runtime/" + _)
-
-    val allBaseNames =
-      inJavaLang ::: inJavaIO ::: inScalaJSRuntime
+    val allBaseNames = inJavaLang ::: inJavaIO
 
     allBaseNames.flatMap(name => List(name + ".sjsir", name + "$.sjsir")).toSet
   }

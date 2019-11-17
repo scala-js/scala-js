@@ -10,14 +10,12 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.testsuite.library
+package scala.scalajs.runtime
 
 import scala.util.control.NonFatal
 
 import org.junit.Assert._
 import org.junit.Test
-
-import scala.scalajs.runtime.UndefinedBehaviorError
 
 class UndefinedBehaviorErrorTest {
 

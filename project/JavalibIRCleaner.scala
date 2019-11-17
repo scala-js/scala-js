@@ -36,7 +36,6 @@ import sbt.{Logger, MessageOnlyException}
  */
 object JavalibIRCleaner {
   private val JavaIOSerializable = ClassName("java.io.Serializable")
-  private val ScalaJSUndefinedBehaviorError = ClassName("scala.scalajs.runtime.UndefinedBehaviorError")
   private val ScalaSerializable = ClassName("scala.Serializable")
 
   private val writeReplaceMethodName =
@@ -403,7 +402,7 @@ object JavalibIRCleaner {
     }
 
     private def validateClassName(cls: ClassName)(implicit pos: Position): Unit = {
-      if (isScalaClassName(cls))
+      if (cls.nameString.startsWith("scala."))
         reportError(s"Illegal reference to Scala class ${cls.nameString}")
     }
 
@@ -412,11 +411,6 @@ object JavalibIRCleaner {
         reportError(s"Invalid reference to JS class ${cls.nameString}")
       else
         validateClassName(cls)
-    }
-
-    private def isScalaClassName(cls: ClassName): Boolean = {
-      cls.nameString.startsWith("scala.") &&
-      cls != ScalaJSUndefinedBehaviorError // TODO We need to get rid of this
     }
 
     private def reportError(msg: String)(implicit pos: Position): Unit = {

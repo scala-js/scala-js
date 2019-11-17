@@ -299,6 +299,7 @@ def Tasks = [
     setJavaVersion $java
     npm install &&
     sbt ++$scala linker$v/test &&
+    sbt linkerPrivateLibrary/test &&
     sbt ++$scala irJS$v/test linkerJS$v/test &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
         'set scalaJSStage in testSuite.v$v := FastOptStage' \
