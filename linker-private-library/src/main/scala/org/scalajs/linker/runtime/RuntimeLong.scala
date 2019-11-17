@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package scala.scalajs.runtime
+package org.scalajs.linker.runtime
 
 import scala.annotation.tailrec
 

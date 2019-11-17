@@ -29,7 +29,7 @@ private[emitter] object EmitterNames {
     ClassName("java.lang.CloneNotSupportedException")
 
   val UndefinedBehaviorErrorClass =
-    ClassName("scala.scalajs.runtime.UndefinedBehaviorError")
+    ClassName("org.scalajs.linker.runtime.UndefinedBehaviorError")
 
   /* In theory, some of the following could be computed from the Class
    * Hierarchy. However, that would be require dealing with incremental runs,

@@ -813,7 +813,7 @@ object Build {
           |  val files: Seq[IRFile] = {
           |    for ((name, contentBase64) <- namesAndContents) yield {
           |      new MemIRFileImpl(
-          |          path = "scala/scalajs/runtime/" + name,
+          |          path = "org/scalajs/linker/runtime/" + name,
           |          version = Some(""), // this indicates that the file never changes
           |          content = java.util.Base64.getDecoder().decode(contentBase64)
           |      )

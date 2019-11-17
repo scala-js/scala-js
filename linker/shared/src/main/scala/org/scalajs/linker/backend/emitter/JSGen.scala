@@ -76,13 +76,15 @@ private[emitter] final class JSGen(val semantics: Semantics,
     mutable.Map.empty[MethodName, String]
 
   private val genClassNameCache = {
-    /* Fill the cache with the compressed form of java.lang.Object and
-     * java.lang.String, so that we do not have to take care of them in
-     * genName(ClassName).
+    /* Fill the cache with the compressed form of java.lang.Object,
+     * java.lang.String and org.scalajs.linker.runtime.RuntimeLong, so that we
+     * do not have to take care of them in genName(ClassName).
      */
     val cache = mutable.Map.empty[ClassName, String]
     cache.put(ObjectClass, "O")
     cache.put(BoxedStringClass, "T")
+    cache.put(LongImpl.RuntimeLongClass, "RTLong")
+    cache.put(LongImpl.RuntimeLongModuleClass, "RTLong$")
     cache
   }
 

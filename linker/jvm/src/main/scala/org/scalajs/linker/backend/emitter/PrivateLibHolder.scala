@@ -18,7 +18,7 @@ import org.scalajs.linker.interface.IRFile
 import org.scalajs.linker.standard.MemIRFileImpl
 
 object PrivateLibHolder {
-  private val relativeDir = "scala/scalajs/runtime/"
+  private val relativeDir = "org/scalajs/linker/runtime/"
   private val sjsirNames = Seq(
       "RuntimeLong.sjsir",
       "RuntimeLong$.sjsir",
