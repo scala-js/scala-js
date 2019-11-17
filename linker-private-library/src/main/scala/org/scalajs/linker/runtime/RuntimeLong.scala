@@ -535,10 +535,7 @@ final class RuntimeLong(val lo: Int, val hi: Int)
 
 }
 
-/* `extends java.io.Serializable` prevents scalac from inserting
- * `extends scala.Serializable`.
- */
-object RuntimeLong extends java.io.Serializable {
+object RuntimeLong {
   private final val TwoPow32 = 4294967296.0
   private final val TwoPow63 = 9223372036854775808.0
 
