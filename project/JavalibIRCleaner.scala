@@ -31,8 +31,7 @@ import sbt.{Logger, MessageOnlyException}
  *    the JS load spec of the mentioned class ref.
  *
  *  Afterwards, we check that the IR does not contain any reference to classes
- *  undef the `scala.*` package, with the unfortunate exception of
- *  `scala.scalajs.runtime.UndefinedBehaviorError`.
+ *  under the `scala.*` package.
  */
 object JavalibIRCleaner {
   private val JavaIOSerializable = ClassName("java.io.Serializable")
