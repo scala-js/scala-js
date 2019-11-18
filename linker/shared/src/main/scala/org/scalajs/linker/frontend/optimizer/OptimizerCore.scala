@@ -3937,33 +3937,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
     import config.coreSpec._
 
-    @inline def default =
-      JSSelect(qualifier, item)
-
     (qualifier, item) match {
-      case (JSSelect(JSLinkingInfo(), StringLiteral("semantics")),
-          StringLiteral(semanticsStr)) =>
-        def behavior2IntLiteral(behavior: CheckedBehavior) = {
-          IntLiteral(behavior match {
-            case CheckedBehavior.Compliant => 0
-            case CheckedBehavior.Fatal     => 1
-            case CheckedBehavior.Unchecked => 2
-          })
-        }
-        semanticsStr match {
-          case "asInstanceOfs" =>
-            behavior2IntLiteral(semantics.asInstanceOfs)
-          case "arrayIndexOutOfBounds" =>
-            behavior2IntLiteral(semantics.arrayIndexOutOfBounds)
-          case "moduleInit" =>
-            behavior2IntLiteral(semantics.moduleInit)
-          case "strictFloats" =>
-            BooleanLiteral(semantics.strictFloats)
-          case "productionMode" =>
-            BooleanLiteral(semantics.productionMode)
-          case _ =>
-            default
-        }
+      case (JSLinkingInfo(), StringLiteral("productionMode")) =>
+        BooleanLiteral(semantics.productionMode)
 
       case (JSLinkingInfo(), StringLiteral("assumingES6")) =>
         BooleanLiteral(esFeatures.useECMAScript2015)
@@ -3972,7 +3948,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         StringLiteral(ScalaJSVersions.current)
 
       case _ =>
-        default
+        JSSelect(qualifier, item)
     }
   }
 

@@ -19,7 +19,11 @@ import org.scalajs.linker.standard.MemIRFileImpl
 
 object PrivateLibHolder {
   private val relativeDir = "scala/scalajs/runtime/"
-  private val sjsirNames = Seq("RuntimeLong.sjsir", "RuntimeLong$.sjsir")
+  private val sjsirNames = Seq(
+      "RuntimeLong.sjsir",
+      "RuntimeLong$.sjsir",
+      "UndefinedBehaviorError.sjsir"
+  )
 
   val files: Seq[IRFile] = {
     for (name <- sjsirNames) yield {

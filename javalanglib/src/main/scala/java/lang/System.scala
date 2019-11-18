@@ -103,13 +103,15 @@ object System {
       throw new ArrayStoreException("Incompatible array types")
 
     def impl(srcLen: Int, destLen: Int, f: js.Function2[Int, Int, Any]): Unit = {
-      SemanticsUtils.arrayIndexOutOfBoundsCheck({ () =>
-        srcPos < 0 || destPos < 0 || length < 0 ||
-        srcPos > srcLen - length ||
-        destPos > destLen - length
-      }, { () =>
-        new ArrayIndexOutOfBoundsException()
-      })
+      /* Perform dummy swaps to trigger an ArrayIndexOutOfBoundsException or
+       * UBE if the positions / lengths are bad.
+       */
+      if (srcPos < 0 || destPos < 0)
+        f(destPos, srcPos)
+      if (length < 0)
+        f(length, length)
+      if (srcPos > srcLen - length || destPos > destLen - length)
+        f(destPos + length, srcPos + length)
 
       if ((src ne dest) || destPos < srcPos || srcPos + length < destPos) {
         var i = 0

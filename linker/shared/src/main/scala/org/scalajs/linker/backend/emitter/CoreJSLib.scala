@@ -97,23 +97,9 @@ private[emitter] object CoreJSLib {
       def objectFreeze(tree: Tree): Tree =
         Apply(genIdentBracketSelect(ObjectRef, "freeze"), tree :: Nil)
 
-      def checkedBehaviorInt(behavior: CheckedBehavior): IntLiteral = {
-        int(behavior match {
-          case CheckedBehavior.Compliant => 0
-          case CheckedBehavior.Fatal     => 1
-          case CheckedBehavior.Unchecked => 2
-        })
-      }
-
       val linkingInfo = objectFreeze(ObjectConstr(List(
-          str("semantics") -> objectFreeze(ObjectConstr(List(
-              str("asInstanceOfs") -> checkedBehaviorInt(asInstanceOfs),
-              str("arrayIndexOutOfBounds") -> checkedBehaviorInt(arrayIndexOutOfBounds),
-              str("moduleInit") -> checkedBehaviorInt(moduleInit),
-              str("strictFloats") -> bool(strictFloats),
-              str("productionMode") -> bool(productionMode)
-          ))),
           str("assumingES6") -> bool(useECMAScript2015),
+          str("productionMode") -> bool(productionMode),
           str("linkerVersion") -> str(ScalaJSVersions.current),
           str("globalThis") -> This()
       )))
@@ -1178,9 +1164,9 @@ private[emitter] object CoreJSLib {
                       BracketSelect(obj DOT classData DOT "arrayBase" DOT "ancestors", internalName))))
                 })
               }),
+              privateFieldSet("isJSType", !(!isJSType)),
               publicFieldSet("name", fullName),
               publicFieldSet("isInterface", isInterface),
-              publicFieldSet("isJSType", !(!isJSType)),
               publicFieldSet("isInstance", isInstance || {
                 Function(arrow = false, paramList(obj), {
                   Return(!(!(obj && (obj DOT classData) &&
@@ -1369,6 +1355,20 @@ private[emitter] object CoreJSLib {
         })
       }
 
+      val checkCast = {
+        val obj = varRef("obj")
+        MethodDef(static = false, StringLiteral("checkCast"), paramList(obj),
+          if (asInstanceOfs != CheckedBehavior.Unchecked) {
+            If((obj !== Null()) && !(This() DOT "isJSType") &&
+                !Apply(genIdentBracketSelect(This(), "isInstance"), obj :: Nil),
+              genCallHelper("throwClassCastException", obj, genIdentBracketSelect(This(), "name")),
+              Skip())
+          } else {
+            Skip()
+          }
+        )
+      }
+
       val getSuperclass = {
         MethodDef(static = false, StringLiteral("getSuperclass"), Nil, {
           Return(If(This() DOT "parentData",
@@ -1409,6 +1409,7 @@ private[emitter] object CoreJSLib {
           getClassOf,
           getArrayOf,
           isAssignableFrom,
+          checkCast,
           getSuperclass,
           getComponentType,
           newArrayOfThisClass

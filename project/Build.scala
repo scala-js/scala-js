@@ -442,6 +442,16 @@ object Build {
       if (isGeneratingForIDE) project
       else project.dependsOn(compiler.v2_12 % "plugin")
     }
+
+    def withScalaJSJUnitPlugin2_12: Project = {
+      project.settings(
+          scalacOptions in Test ++= {
+            val jar = (packageBin in (jUnitPlugin.v2_12, Compile)).value
+            if (isGeneratingForIDE) Seq.empty
+            else Seq(s"-Xplugin:$jar")
+          }
+      )
+    }
   }
 
   implicit class MultiProjectOps(val project: MultiScalaProject) extends AnyVal {
@@ -703,7 +713,9 @@ object Build {
       name := "Scala.js linker private library",
       publishArtifact in Compile := false,
       delambdafySetting
-  ).withScalaJSCompiler2_12.dependsOn(library.v2_12)
+  ).withScalaJSCompiler2_12.withScalaJSJUnitPlugin2_12.dependsOn(
+      library.v2_12, jUnitRuntime.v2_12 % "test", testBridge.v2_12 % "test",
+  )
 
   def commonLinkerSettings(minilib: LocalProject, library: LocalProject) = Def.settings(
       commonSettings,

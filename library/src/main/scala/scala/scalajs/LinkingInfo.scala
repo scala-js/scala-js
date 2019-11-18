@@ -46,7 +46,7 @@ object LinkingInfo {
    */
   @inline
   def productionMode: Boolean =
-    linkingInfo.semantics.productionMode
+    linkingInfo.productionMode
 
   /** Returns true if we are linking for development, false otherwise.
    *

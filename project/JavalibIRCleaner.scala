@@ -35,15 +35,9 @@ import sbt.{Logger, MessageOnlyException}
  *  `scala.scalajs.runtime.UndefinedBehaviorError`.
  */
 object JavalibIRCleaner {
-  private val ThrowableClass = ClassName("java.lang.Throwable")
   private val JavaIOSerializable = ClassName("java.io.Serializable")
-  private val JavaLangSemanticsUtils = ClassName("java.lang.SemanticsUtils$")
-  private val ScalaJSRuntimePackage = ClassName("scala.scalajs.runtime.package$")
-  private val ScalaJSUndefinedBehaviorError = ClassName("scala.scalajs.runtime.UndefinedBehaviorError")
   private val ScalaSerializable = ClassName("scala.Serializable")
 
-  private val unwrapJSExceptionMethodName =
-    MethodName("unwrapJavaScriptException", List(ClassRef(ThrowableClass)), ClassRef(ObjectClass))
   private val writeReplaceMethodName =
     MethodName("writeReplace", Nil, ClassRef(ObjectClass))
 
@@ -257,24 +251,7 @@ object JavalibIRCleaner {
     override def transform(tree: Tree, isStat: Boolean): Tree = {
       implicit val pos = tree.pos
 
-      val preprocessedTree = tree match {
-        /* In SemanticsUtils, there is one generic `throw exception()` where
-         * `exception()` is one of the exceptions for undefined behavior. We
-         * as humans know that none of those can be a `JavaScriptException`,
-         * but the compiler doesn't, so it introduces a call to
-         * `sjs.runtime.unwrapJavaScriptExeption(arg)`. Here, we get rid of
-         * that call and rewrite `tree` to `throw arg`.
-         */
-        case Throw(Apply(_, LoadModule(ScalaJSRuntimePackage),
-            MethodIdent(`unwrapJSExceptionMethodName`), arg :: Nil))
-            if enclosingClassName == JavaLangSemanticsUtils =>
-          Throw(arg)
-
-        case _ =>
-          tree
-      }
-
-      val result = super.transform(preprocessedTree, isStat) match {
+      val result = super.transform(tree, isStat) match {
         case New(className, ctor, args) =>
           New(className, transformMethodIdent(ctor), args)
 
@@ -425,7 +402,7 @@ object JavalibIRCleaner {
     }
 
     private def validateClassName(cls: ClassName)(implicit pos: Position): Unit = {
-      if (isScalaClassName(cls))
+      if (cls.nameString.startsWith("scala."))
         reportError(s"Illegal reference to Scala class ${cls.nameString}")
     }
 
@@ -434,11 +411,6 @@ object JavalibIRCleaner {
         reportError(s"Invalid reference to JS class ${cls.nameString}")
       else
         validateClassName(cls)
-    }
-
-    private def isScalaClassName(cls: ClassName): Boolean = {
-      cls.nameString.startsWith("scala.") &&
-      cls != ScalaJSUndefinedBehaviorError // TODO We need to get rid of this
     }
 
     private def reportError(msg: String)(implicit pos: Position): Unit = {

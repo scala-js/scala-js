@@ -13,7 +13,6 @@
 package java.util
 
 import scala.scalajs.js
-import scala.scalajs.runtime.SemanticsUtils
 
 import scala.annotation.tailrec
 
@@ -102,14 +101,14 @@ object Arrays {
   @inline
   private def sortRangeImpl[@specialized T: ClassTag](
       a: Array[T], fromIndex: Int, toIndex: Int)(implicit ord: Ordering[T]): Unit = {
-    checkIndicesForCopyOfRange(a.length, fromIndex, toIndex)
+    checkRangeIndices(a, fromIndex, toIndex)
     stableMergeSort[T](a, fromIndex, toIndex)
   }
 
   @inline
   private def sortRangeAnyRefImpl(a: Array[AnyRef], fromIndex: Int, toIndex: Int)(
       implicit ord: Ordering[AnyRef]): Unit = {
-    checkIndicesForCopyOfRange(a.length, fromIndex, toIndex)
+    checkRangeIndices(a, fromIndex, toIndex)
     stableMergeSortAnyRef(a, fromIndex, toIndex)
   }
 
@@ -296,7 +295,7 @@ object Arrays {
     binarySearchImpl[Long](a, 0, a.length, key, _ < _)
 
   @noinline def binarySearch(a: Array[Long], startIndex: Int, endIndex: Int, key: Long): Int = {
-    checkRangeIndices(a.length, startIndex, endIndex)
+    checkRangeIndices(a, startIndex, endIndex)
     binarySearchImpl[Long](a, startIndex, endIndex, key, _ < _)
   }
 
@@ -304,7 +303,7 @@ object Arrays {
     binarySearchImpl[Int](a, 0, a.length, key, _ < _)
 
   @noinline def binarySearch(a: Array[Int], startIndex: Int, endIndex: Int, key: Int): Int = {
-    checkRangeIndices(a.length, startIndex, endIndex)
+    checkRangeIndices(a, startIndex, endIndex)
     binarySearchImpl[Int](a, startIndex, endIndex, key, _ < _)
   }
 
@@ -312,7 +311,7 @@ object Arrays {
     binarySearchImpl[Short](a, 0, a.length, key, _ < _)
 
   @noinline def binarySearch(a: Array[Short], startIndex: Int, endIndex: Int, key: Short): Int = {
-    checkRangeIndices(a.length, startIndex, endIndex)
+    checkRangeIndices(a, startIndex, endIndex)
     binarySearchImpl[Short](a, startIndex, endIndex, key, _ < _)
   }
 
@@ -320,7 +319,7 @@ object Arrays {
     binarySearchImpl[Char](a, 0, a.length, key, _ < _)
 
   @noinline def binarySearch(a: Array[Char], startIndex: Int, endIndex: Int, key: Char): Int = {
-    checkRangeIndices(a.length, startIndex, endIndex)
+    checkRangeIndices(a, startIndex, endIndex)
     binarySearchImpl[Char](a, startIndex, endIndex, key, _ < _)
   }
 
@@ -328,7 +327,7 @@ object Arrays {
     binarySearchImpl[Byte](a, 0, a.length, key, _ < _)
 
   @noinline def binarySearch(a: Array[Byte], startIndex: Int, endIndex: Int, key: Byte): Int = {
-    checkRangeIndices(a.length, startIndex, endIndex)
+    checkRangeIndices(a, startIndex, endIndex)
     binarySearchImpl[Byte](a, startIndex, endIndex, key, _ < _)
   }
 
@@ -336,7 +335,7 @@ object Arrays {
     binarySearchImpl[Double](a, 0, a.length, key, _ < _)
 
   @noinline def binarySearch(a: Array[Double], startIndex: Int, endIndex: Int, key: Double): Int = {
-    checkRangeIndices(a.length, startIndex, endIndex)
+    checkRangeIndices(a, startIndex, endIndex)
     binarySearchImpl[Double](a, startIndex, endIndex, key, _ < _)
   }
 
@@ -344,7 +343,7 @@ object Arrays {
     binarySearchImpl[Float](a, 0, a.length, key, _ < _)
 
   @noinline def binarySearch(a: Array[Float], startIndex: Int, endIndex: Int, key: Float): Int = {
-    checkRangeIndices(a.length, startIndex, endIndex)
+    checkRangeIndices(a, startIndex, endIndex)
     binarySearchImpl[Float](a, startIndex, endIndex, key, _ < _)
   }
 
@@ -352,7 +351,7 @@ object Arrays {
     binarySearchImplRef(a, 0, a.length, key)
 
   @noinline def binarySearch(a: Array[AnyRef], startIndex: Int, endIndex: Int, key: AnyRef): Int = {
-    checkRangeIndices(a.length, startIndex, endIndex)
+    checkRangeIndices(a, startIndex, endIndex)
     binarySearchImplRef(a, startIndex, endIndex, key)
   }
 
@@ -361,7 +360,7 @@ object Arrays {
 
   @noinline def binarySearch[T](a: Array[T], startIndex: Int, endIndex: Int, key: T,
       c: Comparator[_ >: T]): Int = {
-    checkRangeIndices(a.length, startIndex, endIndex)
+    checkRangeIndices(a, startIndex, endIndex)
     binarySearchImpl[T](a, startIndex, endIndex, key, (a, b) => c.compare(a, b) < 0)
   }
 
@@ -514,7 +513,7 @@ object Arrays {
   private def fillImpl[T](a: Array[T], fromIndex: Int, toIndex: Int,
       value: T, checkIndices: Boolean = true): Unit = {
     if (checkIndices)
-      checkRangeIndices(a.length, fromIndex, toIndex)
+      checkRangeIndices(a, fromIndex, toIndex)
     var i = fromIndex
     while (i != toIndex) {
       a(i) = value
@@ -603,7 +602,9 @@ object Arrays {
   @inline
   private def copyOfRangeImpl[T: ClassTag](original: Array[T],
       start: Int, end: Int): Array[T] = {
-    checkIndicesForCopyOfRange(original.length, start, end)
+    if (start > end)
+      throw new IllegalArgumentException("" + start + " > " + end)
+
     val retLength = end - start
     val copyLength = Math.min(retLength, original.length - start)
     val ret = new Array[T](retLength)
@@ -614,14 +615,6 @@ object Arrays {
   @inline private def checkArrayLength(len: Int): Unit = {
     if (len < 0)
       throw new NegativeArraySizeException
-  }
-
-  @inline private def checkIndicesForCopyOfRange(
-      len: Int, start: Int, end: Int): Unit = {
-    if (start > end)
-      throw new IllegalArgumentException("" + start + " > " + end)
-    SemanticsUtils.arrayIndexOutOfBoundsCheck(start < 0 || start > len,
-        new ArrayIndexOutOfBoundsException)
   }
 
   @noinline def asList[T <: AnyRef](a: Array[T]): List[T] = {
@@ -815,13 +808,17 @@ object Arrays {
   }
 
   @inline
-  private def checkRangeIndices(length: Int, start: Int, end: Int): Unit = {
+  private def checkRangeIndices[@specialized T](
+      a: Array[T], start: Int, end: Int): Unit = {
     if (start > end)
       throw new IllegalArgumentException("fromIndex(" + start + ") > toIndex(" + end + ")")
-    SemanticsUtils.arrayIndexOutOfBoundsCheck(start < 0,
-        new ArrayIndexOutOfBoundsException("Array index out of range: " + start))
-    SemanticsUtils.arrayIndexOutOfBoundsCheck(end > length,
-        new ArrayIndexOutOfBoundsException("Array index out of range: " + end))
+
+    // bounds checks
+    if (start < 0)
+      a(start)
+
+    if (end > 0)
+      a(end - 1)
   }
 
   @inline
