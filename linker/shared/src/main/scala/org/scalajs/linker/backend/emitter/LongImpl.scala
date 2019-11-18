@@ -16,8 +16,8 @@ import org.scalajs.ir.Names._
 import org.scalajs.ir.Types._
 
 private[linker] object LongImpl {
-  final val RuntimeLongClass = ClassName("scala.scalajs.runtime.RuntimeLong")
-  final val RuntimeLongModuleClass = ClassName("scala.scalajs.runtime.RuntimeLong$")
+  final val RuntimeLongClass = ClassName("org.scalajs.linker.runtime.RuntimeLong")
+  final val RuntimeLongModuleClass = ClassName("org.scalajs.linker.runtime.RuntimeLong$")
 
   final val lo = MethodName("lo", Nil, IntRef)
   final val hi = MethodName("hi", Nil, IntRef)

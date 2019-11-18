@@ -21,11 +21,7 @@ import org.junit.Assume._
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.Platform._
 
-/** Tests the compiler re-patching of native longs to
- *  scala.scalajs.runtime.Long
- *  see org.scalajs.testsuite.jsinterop.RuntimeLongTest
- *  for a test of the implementation itself
- */
+/** Tests the re-patching of native longs */
 class LongJSTest {
   @Test def `should_convert_to_js.Any`(): Unit = {
     val x = 5: js.Any

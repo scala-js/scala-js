@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package scala.scalajs.runtime
+package org.scalajs.linker.runtime
 
 /** Error thrown when an undefined behavior in Fatal mode has been detected.
  *  This error should never be caught. It indicates a severe programming bug.

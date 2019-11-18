@@ -406,6 +406,38 @@ object Build {
       scalacOptions += "-Xfatal-warnings"
   )
 
+  val cleanIRSettings = Def.settings(
+      products in Compile := {
+        val s = streams.value
+
+        val prev = (products in Compile).value
+        assert(prev.size == 1)
+        val productsDir = prev.head
+
+        val dependencyClasspath =
+          Attributed.data((internalDependencyClasspath in Compile).value)
+
+        val inputsFinder = dependencyClasspath.foldLeft(productsDir ** "*.sjsir") {
+          (prev, classpathItem) => prev +++ classpathItem ** "*.sjsir"
+        }
+
+        val outputDir = crossTarget.value / "cleaned-classes"
+
+        FileFunction.cached(s.cacheDirectory / "cleaned-sjsir",
+            FilesInfo.lastModified, FilesInfo.exists) { _ =>
+          s.log.info(s"Patching sjsir files for ${thisProject.value.id} ...")
+
+          if (outputDir.exists)
+            IO.delete(outputDir)
+          IO.createDirectory(outputDir)
+
+          JavalibIRCleaner.cleanIR(dependencyClasspath, productsDir, outputDir, s.log)
+        } (inputsFinder.get.toSet)
+
+        Seq(outputDir)
+      }
+  )
+
   private def publishToBintraySettings = Def.settings(
       publishTo := {
         val proj = bintrayProjectName.value
@@ -712,7 +744,8 @@ object Build {
       fatalWarningsSettings,
       name := "Scala.js linker private library",
       publishArtifact in Compile := false,
-      delambdafySetting
+      delambdafySetting,
+      cleanIRSettings
   ).withScalaJSCompiler2_12.withScalaJSJUnitPlugin2_12.dependsOn(
       library.v2_12, jUnitRuntime.v2_12 % "test", testBridge.v2_12 % "test",
   )
@@ -813,7 +846,7 @@ object Build {
           |  val files: Seq[IRFile] = {
           |    for ((name, contentBase64) <- namesAndContents) yield {
           |      new MemIRFileImpl(
-          |          path = "scala/scalajs/runtime/" + name,
+          |          path = "org/scalajs/linker/runtime/" + name,
           |          version = Some(""), // this indicates that the file never changes
           |          content = java.util.Base64.getDecoder().decode(contentBase64)
           |      )
@@ -1007,36 +1040,7 @@ object Build {
         Seq(output)
       }.taskValue,
       scalaJSExternalCompileSettings,
-
-      products in Compile := {
-        val s = streams.value
-
-        val prev = (products in Compile).value
-        assert(prev.size == 1)
-        val javalibDir = prev.head
-
-        val dependencyClasspath =
-          Attributed.data((internalDependencyClasspath in Compile).value)
-
-        val inputsFinder = dependencyClasspath.foldLeft(javalibDir ** "*.sjsir") {
-          (prev, classpathItem) => prev +++ classpathItem ** "*.sjsir"
-        }
-
-        val outputDir = crossTarget.value / "cleaned-classes"
-
-        FileFunction.cached(s.cacheDirectory / "cleaned-sjsir",
-            FilesInfo.lastModified, FilesInfo.exists) { _ =>
-          s.log.info(s"Patching sjsir files for javalanglib...")
-
-          if (outputDir.exists)
-            IO.delete(outputDir)
-          IO.createDirectory(outputDir)
-
-          JavalibIRCleaner.cleanIR(dependencyClasspath, javalibDir, outputDir, s.log)
-        } (inputsFinder.get.toSet)
-
-        Seq(outputDir)
-      }
+      cleanIRSettings,
   ).withScalaJSCompiler.dependsOnLibraryNoJar
 
   lazy val javalib: MultiScalaProject = MultiScalaProject(
