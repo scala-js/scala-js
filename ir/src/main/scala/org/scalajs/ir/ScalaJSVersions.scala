@@ -24,9 +24,6 @@ object ScalaJSVersions {
   /** Scala.js version. */
   val current: String = "1.0.0-SNAPSHOT"
 
-  /** true iff the Scala.js version is a snapshot version. */
-  val currentIsSnapshot: Boolean = current endsWith "-SNAPSHOT"
-
   /** Version of binary IR emitted by this version of Scala.js.
    *
    *  This should be either of:
