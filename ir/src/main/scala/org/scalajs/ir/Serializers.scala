@@ -68,11 +68,6 @@ object Serializers {
     finally buf.order(o)
   }
 
-  // true for easier debugging (not for "production", it adds 8 bytes per node)
-  private final val UseDebugMagic = false
-  private final val DebugMagic = 0x3fa8ef84
-  private final val PosDebugMagic = 0x65f0ec32
-
   private object PositionFormat {
     /* Positions are serialized incrementally as diffs wrt the last position.
      *
@@ -553,8 +548,6 @@ object Serializers {
               "Cannot serialize a transient IR node (its value is of class " +
               s"${value.getClass})")
       }
-      if (UseDebugMagic)
-        writeInt(DebugMagic)
     }
 
     def writeTrees(trees: List[Tree]): Unit = {
@@ -876,9 +869,6 @@ object Serializers {
 
         lastPosition = pos
       }
-
-      if (UseDebugMagic)
-        writeInt(PosDebugMagic)
     }
 
     def writeJSNativeLoadSpec(jsNativeLoadSpec: Option[JSNativeLoadSpec]): Unit = {
@@ -1030,7 +1020,7 @@ object Serializers {
 
     private def readTreeFromTag(tag: Byte): Tree = {
       implicit val pos = readPosition()
-      val result = (tag: @switch) match {
+      (tag: @switch) match {
         case TagEmptyTree =>
           throw new IOException("Found invalid TagEmptyTree")
 
@@ -1130,12 +1120,6 @@ object Serializers {
         case TagCreateJSClass =>
           CreateJSClass(readClassName(), readTrees())
       }
-      if (UseDebugMagic) {
-        val magic = readInt()
-        assert(magic == DebugMagic,
-            s"Bad magic after reading a ${result.getClass}!")
-      }
-      result
     }
 
     def readTrees(): List[Tree] =
@@ -1327,7 +1311,7 @@ object Serializers {
 
       val first = readByte()
 
-      val result = if (first == FormatNoPositionValue) {
+      if (first == FormatNoPositionValue) {
         Position.NoPosition
       } else {
         val result = if ((first & FormatFullMask) == FormatFullMaskValue) {
@@ -1359,14 +1343,6 @@ object Serializers {
         lastPosition = result
         result
       }
-
-      if (UseDebugMagic) {
-        val magic = readInt()
-        assert(magic == PosDebugMagic,
-            s"Bad magic after reading position with first byte $first")
-      }
-
-      result
     }
 
     def readJSNativeLoadSpec(): Option[JSNativeLoadSpec] = {
