@@ -23,13 +23,12 @@ object TypedArrayConversionTest extends Requires.TypedArray
 
 class TypedArrayConversionTest {
 
-  def data(factor: Double): js.Array[Double] =
-    js.Array(-1, 1, 2, 3, 4, 5, 6, 7, 8).map((_: Int) * factor)
+  val data = js.Array[Int](-1, 1, 2, 3, 4, 5, 6, 7, 8)
 
   def sum(factor: Double): Double = (8 * 9 / 2 - 1) * factor
 
   @Test def convert_an_Int8Array_to_a_scala_Array_Byte(): Unit = {
-    val x = new Int8Array(data(1))
+    val x = new Int8Array(data.map(_.toByte))
     val y = x.toArray
 
     assertTrue(y.getClass == classOf[scala.Array[Byte]])
@@ -41,7 +40,7 @@ class TypedArrayConversionTest {
   }
 
   @Test def convert_an_Int16Array_to_a_scala_Array_Short(): Unit = {
-    val x = new Int16Array(data(100))
+    val x = new Int16Array(data.map(x => (100 * x).toShort))
     val y = x.toArray
 
     assertTrue(y.getClass == classOf[scala.Array[Short]])
@@ -53,7 +52,7 @@ class TypedArrayConversionTest {
   }
 
   @Test def convert_an_Uint16Array_to_a_scala_Array_Char(): Unit = {
-    val data = js.Array((1 to 6).map(_ * 10000): _*)
+    val data = js.Array(1, 2, 3, 4, 5, 6).map(x => 10000 * x)
     val sum = (6*7/2*10000).toChar
 
     val x = new Uint16Array(data)
@@ -68,7 +67,7 @@ class TypedArrayConversionTest {
   }
 
   @Test def convert_an_Int32Array_to_a_scala_Array_Int(): Unit = {
-    val x = new Int32Array(data(10000))
+    val x = new Int32Array(data.map(x => 10000 * x))
     val y = x.toArray
 
     assertTrue(y.getClass == classOf[scala.Array[Int]])
@@ -80,7 +79,7 @@ class TypedArrayConversionTest {
   }
 
   @Test def convert_a_Float32Array_to_a_scala_Array_Float(): Unit = {
-    val x = new Float32Array(data(0.2))
+    val x = new Float32Array(data.map(x => 0.2f * x.toFloat))
     val y = x.toArray
 
     assertTrue(y.getClass == classOf[scala.Array[Float]])
@@ -92,7 +91,7 @@ class TypedArrayConversionTest {
   }
 
   @Test def convert_a_Float64Array_to_a_scala_Array_Double(): Unit = {
-    val x = new Float64Array(data(0.2))
+    val x = new Float64Array(data.map(x => 0.2 * x.toDouble))
     val y = x.toArray
 
     assertTrue(y.getClass == classOf[scala.Array[Double]])

@@ -31,10 +31,10 @@ class Uint8ClampedArray private[this] ()
    *
    *  The elements are converted before being stored in the new Int8Array.
    */
-  def this(typedArray: TypedArray[_, _]) = this()
+  def this(typedArray: Uint8ClampedArray) = this()
 
   /** Creates a new Uint8ClampedArray with the elements in the given array */
-  def this(array: js.Iterable[_]) = this()
+  def this(array: js.Iterable[Int]) = this()
 
   /** Creates a Uint8ClampedArray view on the given ArrayBuffer */
   def this(buffer: ArrayBuffer, byteOffset: Int = 0, length: Int = ???) = this()

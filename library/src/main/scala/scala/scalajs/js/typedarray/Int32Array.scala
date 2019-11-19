@@ -29,10 +29,10 @@ class Int32Array private[this] () extends TypedArray[Int, Int32Array] {
    *
    *  The elements are converted before being stored in the new Int8Array.
    */
-  def this(typedArray: TypedArray[_, _]) = this()
+  def this(typedArray: Int32Array) = this()
 
   /** Creates a new Int32Array with the elements in the given array */
-  def this(array: js.Iterable[_]) = this()
+  def this(array: js.Iterable[Int]) = this()
 
   /** Creates a Int32Array view on the given ArrayBuffer */
   def this(buffer: ArrayBuffer, byteOffset: Int = 0, length: Int = ???) = this()
