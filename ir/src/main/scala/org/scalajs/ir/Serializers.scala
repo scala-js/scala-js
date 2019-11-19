@@ -242,66 +242,71 @@ object Serializers {
 
     def writeTree(tree: Tree): Unit = {
       import buffer._
-      writePosition(tree.pos)
+
+      def writeTagAndPos(tag: Int): Unit = {
+        writeByte(tag)
+        writePosition(tree.pos)
+      }
+
       tree match {
         case VarDef(ident, originalName, vtpe, mutable, rhs) =>
-          writeByte(TagVarDef)
+          writeTagAndPos(TagVarDef)
           writeLocalIdent(ident); writeOriginalName(originalName)
           writeType(vtpe); writeBoolean(mutable); writeTree(rhs)
 
         case Skip() =>
-          writeByte(TagSkip)
+          writeTagAndPos(TagSkip)
 
         case Block(stats) =>
-          writeByte(TagBlock)
+          writeTagAndPos(TagBlock)
           writeTrees(stats)
 
         case Labeled(label, tpe, body) =>
-          writeByte(TagLabeled)
+          writeTagAndPos(TagLabeled)
           writeLabelIdent(label); writeType(tpe); writeTree(body)
 
         case Assign(lhs, rhs) =>
-          writeByte(TagAssign)
+          writeTagAndPos(TagAssign)
           writeTree(lhs); writeTree(rhs)
 
         case Return(expr, label) =>
-          writeByte(TagReturn)
+          writeTagAndPos(TagReturn)
           writeTree(expr); writeLabelIdent(label)
 
         case If(cond, thenp, elsep) =>
-          writeByte(TagIf)
+          writeTagAndPos(TagIf)
           writeTree(cond); writeTree(thenp); writeTree(elsep)
           writeType(tree.tpe)
 
         case While(cond, body) =>
-          writeByte(TagWhile)
+          writeTagAndPos(TagWhile)
           writeTree(cond); writeTree(body)
 
         case DoWhile(body, cond) =>
-          writeByte(TagDoWhile)
+          writeTagAndPos(TagDoWhile)
           writeTree(body); writeTree(cond)
 
         case ForIn(obj, keyVar, keyVarOriginalName, body) =>
-          writeByte(TagForIn)
+          writeTagAndPos(TagForIn)
           writeTree(obj); writeLocalIdent(keyVar)
           writeOriginalName(keyVarOriginalName); writeTree(body)
 
         case TryCatch(block, errVar, errVarOriginalName, handler) =>
-          writeByte(TagTryCatch)
+          writeTagAndPos(TagTryCatch)
           writeTree(block); writeLocalIdent(errVar)
           writeOriginalName(errVarOriginalName); writeTree(handler)
           writeType(tree.tpe)
 
         case TryFinally(block, finalizer) =>
-          writeByte(TagTryFinally)
+          writeTagAndPos(TagTryFinally)
           writeTree(block); writeTree(finalizer)
 
         case Throw(expr) =>
-          writeByte(TagThrow)
+          writeTagAndPos(TagThrow)
           writeTree(expr)
 
         case Match(selector, cases, default) =>
-          writeByte(TagMatch)
+          writeTagAndPos(TagMatch)
           writeTree(selector)
           writeInt(cases.size)
           cases foreach { caze =>
@@ -311,227 +316,227 @@ object Serializers {
           writeType(tree.tpe)
 
         case Debugger() =>
-          writeByte(TagDebugger)
+          writeTagAndPos(TagDebugger)
 
         case New(className, ctor, args) =>
-          writeByte(TagNew)
+          writeTagAndPos(TagNew)
           writeName(className); writeMethodIdent(ctor); writeTrees(args)
 
         case LoadModule(className) =>
-          writeByte(TagLoadModule)
+          writeTagAndPos(TagLoadModule)
           writeName(className)
 
         case StoreModule(className, value) =>
-          writeByte(TagStoreModule)
+          writeTagAndPos(TagStoreModule)
           writeName(className); writeTree(value)
 
         case Select(qualifier, className, field) =>
-          writeByte(TagSelect)
+          writeTagAndPos(TagSelect)
           writeTree(qualifier); writeName(className); writeFieldIdent(field)
           writeType(tree.tpe)
 
         case SelectStatic(className, field) =>
-          writeByte(TagSelectStatic)
+          writeTagAndPos(TagSelectStatic)
           writeName(className); writeFieldIdent(field)
           writeType(tree.tpe)
 
         case Apply(flags, receiver, method, args) =>
-          writeByte(TagApply)
+          writeTagAndPos(TagApply)
           writeApplyFlags(flags); writeTree(receiver); writeMethodIdent(method); writeTrees(args)
           writeType(tree.tpe)
 
         case ApplyStatically(flags, receiver, className, method, args) =>
-          writeByte(TagApplyStatically)
+          writeTagAndPos(TagApplyStatically)
           writeApplyFlags(flags); writeTree(receiver); writeName(className); writeMethodIdent(method); writeTrees(args)
           writeType(tree.tpe)
 
         case ApplyStatic(flags, className, method, args) =>
-          writeByte(TagApplyStatic)
+          writeTagAndPos(TagApplyStatic)
           writeApplyFlags(flags); writeName(className); writeMethodIdent(method); writeTrees(args)
           writeType(tree.tpe)
 
         case UnaryOp(op, lhs) =>
-          writeByte(TagUnaryOp)
+          writeTagAndPos(TagUnaryOp)
           writeByte(op); writeTree(lhs)
 
         case BinaryOp(op, lhs, rhs) =>
-          writeByte(TagBinaryOp)
+          writeTagAndPos(TagBinaryOp)
           writeByte(op); writeTree(lhs); writeTree(rhs)
 
         case NewArray(tpe, lengths) =>
-          writeByte(TagNewArray)
+          writeTagAndPos(TagNewArray)
           writeArrayTypeRef(tpe); writeTrees(lengths)
 
         case ArrayValue(tpe, elems) =>
-          writeByte(TagArrayValue)
+          writeTagAndPos(TagArrayValue)
           writeArrayTypeRef(tpe); writeTrees(elems)
 
         case ArrayLength(array) =>
-          writeByte(TagArrayLength)
+          writeTagAndPos(TagArrayLength)
           writeTree(array)
 
         case ArraySelect(array, index) =>
-          writeByte(TagArraySelect)
+          writeTagAndPos(TagArraySelect)
           writeTree(array); writeTree(index)
           writeType(tree.tpe)
 
         case RecordValue(tpe, elems) =>
-          writeByte(TagRecordValue)
+          writeTagAndPos(TagRecordValue)
           writeType(tpe); writeTrees(elems)
 
         case RecordSelect(record, field) =>
-          writeByte(TagRecordSelect)
+          writeTagAndPos(TagRecordSelect)
           writeTree(record); writeFieldIdent(field)
           writeType(tree.tpe)
 
         case IsInstanceOf(expr, testType) =>
-          writeByte(TagIsInstanceOf)
+          writeTagAndPos(TagIsInstanceOf)
           writeTree(expr); writeType(testType)
 
         case AsInstanceOf(expr, tpe) =>
-          writeByte(TagAsInstanceOf)
+          writeTagAndPos(TagAsInstanceOf)
           writeTree(expr); writeType(tpe)
 
         case GetClass(expr) =>
-          writeByte(TagGetClass)
+          writeTagAndPos(TagGetClass)
           writeTree(expr)
 
         case JSNew(ctor, args) =>
-          writeByte(TagJSNew)
+          writeTagAndPos(TagJSNew)
           writeTree(ctor); writeTreeOrJSSpreads(args)
 
         case JSPrivateSelect(qualifier, className, field) =>
-          writeByte(TagJSPrivateSelect)
+          writeTagAndPos(TagJSPrivateSelect)
           writeTree(qualifier); writeName(className); writeFieldIdent(field)
 
         case JSSelect(qualifier, item) =>
-          writeByte(TagJSSelect)
+          writeTagAndPos(TagJSSelect)
           writeTree(qualifier); writeTree(item)
 
         case JSFunctionApply(fun, args) =>
-          writeByte(TagJSFunctionApply)
+          writeTagAndPos(TagJSFunctionApply)
           writeTree(fun); writeTreeOrJSSpreads(args)
 
         case JSMethodApply(receiver, method, args) =>
-          writeByte(TagJSMethodApply)
+          writeTagAndPos(TagJSMethodApply)
           writeTree(receiver); writeTree(method); writeTreeOrJSSpreads(args)
 
         case JSSuperSelect(superClass, qualifier, item) =>
-          writeByte(TagJSSuperSelect)
+          writeTagAndPos(TagJSSuperSelect)
           writeTree(superClass); writeTree(qualifier); writeTree(item)
 
         case JSSuperMethodCall(superClass, receiver, method, args) =>
-          writeByte(TagJSSuperMethodCall)
+          writeTagAndPos(TagJSSuperMethodCall)
           writeTree(superClass); writeTree(receiver); writeTree(method); writeTreeOrJSSpreads(args)
 
         case JSSuperConstructorCall(args) =>
-          writeByte(TagJSSuperConstructorCall)
+          writeTagAndPos(TagJSSuperConstructorCall)
           writeTreeOrJSSpreads(args)
 
         case JSImportCall(arg) =>
-          writeByte(TagJSImportCall)
+          writeTagAndPos(TagJSImportCall)
           writeTree(arg)
 
         case LoadJSConstructor(className) =>
-          writeByte(TagLoadJSConstructor)
+          writeTagAndPos(TagLoadJSConstructor)
           writeName(className)
 
         case LoadJSModule(className) =>
-          writeByte(TagLoadJSModule)
+          writeTagAndPos(TagLoadJSModule)
           writeName(className)
 
         case JSDelete(qualifier, item) =>
-          writeByte(TagJSDelete)
+          writeTagAndPos(TagJSDelete)
           writeTree(qualifier)
           writeTree(item)
 
         case JSUnaryOp(op, lhs) =>
-          writeByte(TagJSUnaryOp)
+          writeTagAndPos(TagJSUnaryOp)
           writeInt(op); writeTree(lhs)
 
         case JSBinaryOp(op, lhs, rhs) =>
-          writeByte(TagJSBinaryOp)
+          writeTagAndPos(TagJSBinaryOp)
           writeInt(op); writeTree(lhs); writeTree(rhs)
 
         case JSArrayConstr(items) =>
-          writeByte(TagJSArrayConstr)
+          writeTagAndPos(TagJSArrayConstr)
           writeTreeOrJSSpreads(items)
 
         case JSObjectConstr(fields) =>
-          writeByte(TagJSObjectConstr)
+          writeTagAndPos(TagJSObjectConstr)
           writeInt(fields.size)
           fields.foreach { field =>
             writeTree(field._1); writeTree(field._2)
           }
 
         case JSGlobalRef(name) =>
-          writeByte(TagJSGlobalRef)
+          writeTagAndPos(TagJSGlobalRef)
           writeString(name)
 
         case JSTypeOfGlobalRef(globalRef) =>
-          writeByte(TagJSTypeOfGlobalRef)
+          writeTagAndPos(TagJSTypeOfGlobalRef)
           writeTree(globalRef)
 
         case JSLinkingInfo() =>
-          writeByte(TagJSLinkingInfo)
+          writeTagAndPos(TagJSLinkingInfo)
 
         case Undefined() =>
-          writeByte(TagUndefined)
+          writeTagAndPos(TagUndefined)
 
         case Null() =>
-          writeByte(TagNull)
+          writeTagAndPos(TagNull)
 
         case BooleanLiteral(value) =>
-          writeByte(TagBooleanLiteral)
+          writeTagAndPos(TagBooleanLiteral)
           writeBoolean(value)
 
         case CharLiteral(value) =>
-          writeByte(TagCharLiteral)
+          writeTagAndPos(TagCharLiteral)
           writeChar(value)
 
         case ByteLiteral(value) =>
-          writeByte(TagByteLiteral)
+          writeTagAndPos(TagByteLiteral)
           writeByte(value)
 
         case ShortLiteral(value) =>
-          writeByte(TagShortLiteral)
+          writeTagAndPos(TagShortLiteral)
           writeShort(value)
 
         case IntLiteral(value) =>
-          writeByte(TagIntLiteral)
+          writeTagAndPos(TagIntLiteral)
           writeInt(value)
 
         case LongLiteral(value) =>
-          writeByte(TagLongLiteral)
+          writeTagAndPos(TagLongLiteral)
           writeLong(value)
 
         case FloatLiteral(value) =>
-          writeByte(TagFloatLiteral)
+          writeTagAndPos(TagFloatLiteral)
           writeFloat(value)
 
         case DoubleLiteral(value) =>
-          writeByte(TagDoubleLiteral)
+          writeTagAndPos(TagDoubleLiteral)
           writeDouble(value)
 
         case StringLiteral(value) =>
-          writeByte(TagStringLiteral)
+          writeTagAndPos(TagStringLiteral)
           writeString(value)
 
         case ClassOf(typeRef) =>
-          writeByte(TagClassOf)
+          writeTagAndPos(TagClassOf)
           writeTypeRef(typeRef)
 
         case VarRef(ident) =>
-          writeByte(TagVarRef)
+          writeTagAndPos(TagVarRef)
           writeLocalIdent(ident)
           writeType(tree.tpe)
 
         case This() =>
-          writeByte(TagThis)
+          writeTagAndPos(TagThis)
           writeType(tree.tpe)
 
         case Closure(arrow, captureParams, params, body, captureValues) =>
-          writeByte(TagClosure)
+          writeTagAndPos(TagClosure)
           writeBoolean(arrow)
           writeParamDefs(captureParams)
           writeParamDefs(params)
@@ -539,7 +544,7 @@ object Serializers {
           writeTrees(captureValues)
 
         case CreateJSClass(className, captureValues) =>
-          writeByte(TagCreateJSClass)
+          writeTagAndPos(TagCreateJSClass)
           writeName(className)
           writeTrees(captureValues)
 
@@ -559,7 +564,6 @@ object Serializers {
 
     def writeOptTree(optTree: Option[Tree]): Unit = {
       optTree.fold {
-        writePosition(Position.NoPosition)
         buffer.writeByte(TagEmptyTree)
       } { tree =>
         writeTree(tree)
@@ -574,8 +578,8 @@ object Serializers {
     def writeTreeOrJSSpread(tree: TreeOrJSSpread): Unit = {
       tree match {
         case JSSpread(items) =>
-          writePosition(tree.pos)
           buffer.writeByte(TagJSSpread)
+          writePosition(tree.pos)
           writeTree(items)
         case tree: Tree =>
           writeTree(tree)
@@ -1002,32 +1006,30 @@ object Serializers {
       new EntryPointsInfo(name, hasEntryPoint)
     }
 
-    def readTree(): Tree = {
-      val pos = readPosition()
-      readTreeFromTag(readByte())(pos)
-    }
+    def readTree(): Tree =
+      readTreeFromTag(readByte())
 
     def readOptTree(): Option[Tree] = {
-      // TODO switch tag and position when we can break binary compat.
-      val pos = readPosition()
       val tag = readByte()
       if (tag == TagEmptyTree) None
-      else Some(readTreeFromTag(tag)(pos))
+      else Some(readTreeFromTag(tag))
     }
 
     def readTreeOrJSSpread(): TreeOrJSSpread = {
-      val pos = readPosition()
       val tag = readByte()
-      if (tag == TagJSSpread)
-        JSSpread(readTree())(pos)
-      else
-        readTreeFromTag(tag)(pos)
+      if (tag == TagJSSpread) {
+        implicit val pos = readPosition()
+        JSSpread(readTree())
+      } else {
+        readTreeFromTag(tag)
+      }
     }
 
     def readTreeOrJSSpreads(): List[TreeOrJSSpread] =
       List.fill(readInt())(readTreeOrJSSpread())
 
-    private def readTreeFromTag(tag: Byte)(implicit pos: Position): Tree = {
+    private def readTreeFromTag(tag: Byte): Tree = {
+      implicit val pos = readPosition()
       val result = (tag: @switch) match {
         case TagEmptyTree =>
           throw new IOException("Found invalid TagEmptyTree")
