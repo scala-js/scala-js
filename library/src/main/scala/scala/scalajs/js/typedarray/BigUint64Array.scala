@@ -31,7 +31,7 @@ class BigUint64Array private[this] ()
    *
    *  Each elements must be BigInt (no conversion).
    */
-  def this(typedArray: TypedArray[js.BigInt, _]) = this()
+  def this(typedArray: BigUint64Array) = this()
 
   /** Creates a new BigInt64Array with the elements in the given array.
    *

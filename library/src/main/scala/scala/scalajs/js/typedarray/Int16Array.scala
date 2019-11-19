@@ -29,10 +29,10 @@ class Int16Array private[this] () extends TypedArray[Short, Int16Array] {
    *
    *  The elements are converted before being stored in the new Int8Array.
    */
-  def this(typedArray: TypedArray[_, _]) = this()
+  def this(typedArray: Int16Array) = this()
 
   /** Creates a new Int16Array with the elements in the given array */
-  def this(array: js.Iterable[_]) = this()
+  def this(array: js.Iterable[Short]) = this()
 
   /** Creates a Int16Array view on the given ArrayBuffer */
   def this(buffer: ArrayBuffer, byteOffset: Int = 0, length: Int = ???) = this()
