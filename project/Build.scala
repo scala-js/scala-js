@@ -147,7 +147,7 @@ object Build {
     CrossVersion.binaryMapped(v => s"sjs${previousSJSBinaryVersion}_$v")
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.11.12", "2.12.8")
+    Set("2.11.12", "2.12.10")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
   */
@@ -938,7 +938,7 @@ object Build {
       normalizedName := "sbt-scalajs",
       bintrayProjectName := "sbt-scalajs-plugin", // "sbt-scalajs" was taken
       sbtPlugin := true,
-      crossScalaVersions := Seq("2.12.8"),
+      crossScalaVersions := Seq("2.12.10"),
       sbtVersion := "1.0.0",
       scalaBinaryVersion :=
         CrossVersion.binaryScalaVersion(scalaVersion.value),

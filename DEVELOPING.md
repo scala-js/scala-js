@@ -34,12 +34,12 @@ Otherwise, everything happens within sbt.
 
 Run the normal test suite using the entire Scala.js toolchain using
 
-    > testSuite/test
+    > testSuite2_12/test
 
 In order to test the tests themselves, run the cross-compiling tests on the JVM
 with:
 
-    > testSuiteJVM/test
+    > testSuiteJVM2_12/test
 
 If you have changed the IR or the compiler, you typically need to
 
@@ -47,8 +47,8 @@ If you have changed the IR or the compiler, you typically need to
 
 before testing anew.
 
-If you have changed the IR, the linker, the JS environments, the test adapter
-or the sbt plugin, you typically need to
+If you have changed the logging API, the linker interface, the JS environments,
+the test adapter or the sbt plugin, you typically need to
 
     > reload
 
@@ -58,25 +58,25 @@ To test in fullOpt stage:
 
 There are also a few additional tests in a separate testing project:
 
-    > testSuiteEx/test
+    > testSuiteEx2_12/test
 
 The compiler tests (mostly verifying expected compile error messages) can be
 run with
 
-    > compiler/test
+    > compiler2_12/test
 
 The full partest suite (tests of the Scala language, ported in Scala.js) are
 run with:
 
-    > partestSuite/test
+    > partestSuite2_12/test
 
 or, more typically,
 
-    > partestSuite/testOnly -- --fastOpt
+    > partestSuite2_12/testOnly -- --fastOpt
 
 The JUnit tests from scala/scala can be run with
 
-    > scalaTestSuite/test
+    > scalaTestSuite2_12/test
 
 ## Metals-based IDEs
 
@@ -109,8 +109,9 @@ The repository is organized as follows:
 
 * `ir/` The Intermediate Representation, produced by the compiler and consumed by the linker
 * `compiler/` The scalac compiler plugin
-* `io/` Virtual I/O abstractions
 * `logging/` A tiny logging API
+* `linker-private-library/` Some Scala.js files whose compiled .sjsir files are used as resources of the linker (2.12 only)
+* `linker-interface/` The linker interface, without its implementation
 * `linker/` The linker, optimizer, verifier, etc.: everything that happens at link time
 
 ### Library
@@ -140,9 +141,10 @@ There is a generic infrastructure that maps the sbt-testing-interface API
 across the JVM/JS boundary, so that Scala.js testing frameworks can be piloted
 from JVM processes such as sbt.
 
-* `test-interface/` JS side of the bridge, as well as the JS definition of the
-  sbt-testing-interface API
+* `test-interface/` the JS definition of the sbt-testing-interface API
+* `test-bridge/` JS side of the bridge
 * `test-adapter/` JVM side of the bridge
+* `test-common/` Code common between `test-bridge` and `test-adapter`
 
 This repository also contains a specific implementation of JUnit:
 
@@ -151,7 +153,7 @@ This repository also contains a specific implementation of JUnit:
 
 ### sbt plugin
 
-* `sbt-plugin/` The sbt plugin itself
+* `sbt-plugin/` The sbt plugin itself (2.12 only)
 
 ### Testing projects
 
@@ -172,7 +174,7 @@ The helloworld and reversi also have HTML pages to run them in real browsers.
 
 The build itself contains the entire sbt plugin (and all its dependencies) as
 part of its sources.
-If you change any of the IR, virtual IO, logging API, linker, JS environments,
+If you change any of the logging API, linker interface, JS environments,
 test adapter, or the sbt plugin itself, chances are you need to `reload` the
 build for your changes to take effect.
 
@@ -182,7 +184,8 @@ To publish your changes locally to be used in a separate project, use the
 following incantations.
 `SCALA_VERSION` refers to the Scala version used by the separate project.
 
+    > ;ir2_12/publishLocal;io2_12/publishLocal;logging2_12/publishLocal;linkerInterface2_12/publishLocal;linker2_12/publishLocal;jsEnvs2_12/publishLocal;jsEnvsTestKit2_12/publishLocal;nodeJSEnv2_12/publishLocal;testAdapter2_12/publishLocal;sbtPlugin/publishLocal
     > ++SCALA_VERSION
-    > ;compiler/publishLocal;library/publishLocal;testInterface/publishLocal;testBridge/publishLocal;jUnitRuntime/publishLocal;jUnitPlugin/publishLocal
-    > ++2.12.8
-    > ;ir/publishLocal;io/publishLocal;logging/publishLocal;linker/publishLocal;jsEnvs/publishLocal;jsEnvsTestKit/publishLocal;nodeJSEnv/publishLocal;testAdapter/publishLocal;sbtPlugin/publishLocal
+    > ;compiler2_12/publishLocal;library2_12/publishLocal;testInterface2_12/publishLocal;testBridge2_12/publishLocal;jUnitRuntime2_12/publishLocal;jUnitPlugin2_12/publishLocal
+
+If using a non-2.12.x version for the Scala version, the `2_12` suffixes must be adapted in the last command (not in the first command).
