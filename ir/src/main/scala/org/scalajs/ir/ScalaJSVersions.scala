@@ -12,32 +12,99 @@
 
 package org.scalajs.ir
 
-object ScalaJSVersions {
+import java.util.concurrent.ConcurrentHashMap
 
-  /* DO NOT MAKE THESE 'final val's!
-   * When referring to these "constants" from separate libraries, if it is a
-   * 'final val', the value will be copied in the binaries of those libraries.
-   * If they are then linked to a different version of the IR artifact, their
-   * copy of these constants will not be updated.
-   */
+import scala.util.matching.Regex
 
-  /** Scala.js version. */
-  val current: String = "1.0.0-SNAPSHOT"
+object ScalaJSVersions extends VersionChecks(
+    current = "1.0.0-SNAPSHOT",
+    binaryEmitted = "1.0-SNAPSHOT"
+)
 
-  /** Version of binary IR emitted by this version of Scala.js.
-   *
-   *  This should be either of:
-   *  - a prior release version (i.e. "0.5.0", *not* "0.5.0-SNAPSHOT")
-   *  - `current`
-   */
-  val binaryEmitted: String = current
+/** Helper class to allow for testing of logic. */
+class VersionChecks private[ir] (
+    /** Scala.js version. */
+    final val current: String,
+    /** Version of binary IR emitted by this version of Scala.js. */
+    final val binaryEmitted: String
+) {
+  import VersionChecks._
 
-  /** Versions whose binary files we can support (used by deserializer) */
-  val binarySupported: Set[String] = {
-    Set(binaryEmitted)
+  checkConsistent(current, binaryEmitted)
+
+  private val (binaryMajor, binaryMinor, binaryPreRelease) = parseBinary(binaryEmitted)
+
+  private val knownSupportedBinary = {
+    val m = new ConcurrentHashMap[String, Unit]()
+    m.put(binaryEmitted, ())
+    m
   }
 
-  // Just to be extra safe
-  assert(binarySupported contains binaryEmitted)
+  /** Check we can support this binary version (used by deserializer) */
+  final def checkSupported(version: String): Unit = {
+    if (!knownSupportedBinary.containsKey(version)) {
+      val (major, minor, preRelease) = parseBinary(version)
+      val supported = (
+          // the exact pre-release version is supported via knownSupportedBinary
+          preRelease.isEmpty &&
+          major == binaryMajor &&
+          minor <= binaryMinor &&
+          (binaryPreRelease.isEmpty || minor < binaryMinor)
+      )
 
+      if (supported) {
+        knownSupportedBinary.put(version, ())
+      } else {
+        throw new IRVersionNotSupportedException(version, binaryEmitted,
+            s"This version ($version) of Scala.js IR is not supported. " +
+            s"Supported versions are up to $binaryEmitted")
+      }
+    }
+  }
+}
+
+private object VersionChecks {
+  private val fullRE = """^([0-9]+)\.([0-9]+)\.([0-9]+)(-.*)?$""".r
+  private val binaryRE = """^([0-9]+)\.([0-9]+)(-.*)?$""".r
+
+  private def parseBinary(v: String): (Int, Int, Option[String]) = {
+    val m = mustMatch(binaryRE, v)
+    (m.group(1).toInt, m.group(2).toInt, preRelease(m.group(3)))
+  }
+
+  private def parseFull(v: String): (Int, Int, Int, Option[String]) = {
+    val m = mustMatch(fullRE, v)
+    (m.group(1).toInt, m.group(2).toInt, m.group(3).toInt, preRelease(m.group(4)))
+  }
+
+  private def mustMatch(re: Regex, v: String): Regex.Match = {
+    re.findFirstMatchIn(v).getOrElse(
+        throw new IllegalArgumentException("malformed version: " + v))
+  }
+
+  private def preRelease(v: String): Option[String] =
+    Option(v).map(_.stripPrefix("-"))
+
+  private def checkConsistent(current: String, binary: String) = {
+    val (binaryMajor, binaryMinor, binaryPreRelease) = parseBinary(binary)
+    val (currentMajor, currentMinor, currentPatch, currentPreRelease) = parseFull(current)
+
+    require(currentMajor == binaryMajor, "major(current) != major(binaryEmitted)")
+
+    require(currentMinor >= binaryMinor, "minor(current) < minor(binaryEmitted)")
+
+    require(
+        currentPreRelease.isEmpty ||
+        currentMinor > binaryMinor ||
+        currentPatch > 0 ||
+        binaryPreRelease == currentPreRelease,
+        "current is older than binaryEmitted through pre-release")
+
+    require(
+        binaryPreRelease.isEmpty || (
+            currentMinor == binaryMinor &&
+            currentPatch == 0 &&
+            binaryPreRelease == currentPreRelease),
+        "binaryEmitted is in pre-release but does not match current")
+  }
 }
