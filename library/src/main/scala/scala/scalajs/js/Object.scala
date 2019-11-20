@@ -123,6 +123,15 @@ object Object extends Object {
    */
   def getOwnPropertyNames(o: Object): Array[String] = native
 
+  /** <span class="badge badge-ecma2015" style="float: right;">ECMAScript 2015</span>
+   *
+   *  The Object.getOwnPropertySymbols() method returns an array of all symbol
+   *  properties found directly upon a given object.
+   *
+   *  MDN
+   */
+  def getOwnPropertySymbols(o: Object): Array[Symbol] = native
+
   /**
    * The Object.create() method creates a new object with the specified
    * prototype object and properties.
@@ -202,6 +211,37 @@ object Object extends Object {
    */
   def preventExtensions(o: Object): o.type = native
 
+  /** <span class="badge badge-ecma2015" style="float: right;">ECMAScript 2015</span>
+   *
+   *  Object.is() determines whether two values are the same value. Two values
+   *  are the same if one of the following holds:
+   *
+   *  <ul>
+   *    <li>both undefined
+   *    <li>both null
+   *    <li>both true or both false
+   *    <li>both strings of the same length with the same characters in the same
+   *        order
+   *    <li>both the same object (means both object have same reference)
+   *    <li>both numbers and
+   *      <ul>
+   *        <li>both +0
+   *        <li>both -0
+   *        <li>both NaN
+   *        <li>or both non-zero and both not NaN and both have the same value
+   *      </ul>
+   *    </li>
+   *  </ul>
+   *
+   *  This is not the same as being equal according to JavaScript's `===`
+   *  operator (exposed as `js.special.strictEquals`` in Scala.js). The `===`
+   *  operator treats the number values `-0` and `+0` as equal and treats `NaN`
+   *  as not equal to `NaN`.
+   *
+   *  MDN
+   */
+  def is(value1: scala.Any, value2: scala.Any): Boolean = native
+
   /**
    * Returns true if the object is sealed, otherwise false. An object is sealed
    * if it is not extensible and if all its properties are non-configurable and
@@ -256,4 +296,28 @@ object Object extends Object {
    *  this method (not just a subset).
    */
   def properties(o: Any): Array[String] = throw new java.lang.Error("stub")
+
+  /** <span class="badge badge-ecma2017" style="float: right;">ECMAScript 2017</span>
+   *
+   *  The Object.entries() method returns an array of a given object's own
+   *  enumerable string-keyed property [key, value] pairs, in the same order as
+   *  that provided by a for...in loop (the difference being that a for-in loop
+   *  enumerates properties in the prototype chain as well).
+   *
+   *  MDN
+   */
+  def entries(o: Object): Array[Tuple2[String, scala.Any]] = native
+
+  /** <span class="badge badge-ecma2017" style="float: right;">ECMAScript 2017</span>
+   */
+  def entries[A](dict: Dictionary[A]): Array[Tuple2[String, A]] = native
+
+  /** <span class="badge badge-ecma2020" style="float: right;">ECMAScript 2020</span>
+   *
+   *  The Object.fromEntries() method transforms a list of key-value pairs into
+   *  an object.
+   *
+   *  MDN
+   */
+  def fromEntries[A](iterable: Iterable[Tuple2[String, A]]): Dictionary[A] = native
 }
