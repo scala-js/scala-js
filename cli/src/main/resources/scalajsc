@@ -2,9 +2,9 @@
 
 SCALA_BIN_VER="@SCALA_BIN_VER@"
 SCALAJS_VER="@SCALAJS_VER@"
-SCALA_VER=$(scalac -version 2>&1 | grep -o '[0-9]\.[0-9][0-9]\.[0-9]')
+SCALA_VER=$(scalac -version 2>&1 | grep -o '[0-9]\.[0-9]\+\.[0-9]\+')
 
-if [ "$(echo $SCALA_VER | cut -b 1-4)" != "$SCALA_BIN_VER" ]; then
+if [ "$(echo $SCALA_VER | cut -d '.' -f 1-2)" != "$SCALA_BIN_VER" ]; then
     echo "This bundle of Scala.js CLI is for $SCALA_BIN_VER. Your scala version is $SCALA_VER!" >&2
     exit 1
 fi
