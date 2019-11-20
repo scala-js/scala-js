@@ -15,7 +15,9 @@ package scala.scalajs.js
 import scala.scalajs.js
 import scala.scalajs.js.annotation.{ JSGlobal, JSName }
 
-/** The Map object holds key-value pairs and remembers the original insertion
+/** <span class="badge badge-ecma2015" style="float: right;">ECMAScript 2015</span>
+ *
+ *  The Map object holds key-value pairs and remembers the original insertion
  *  order of the keys. Any value (both objects and primitive values) may be used
  *  as either a key or a value.
  *
