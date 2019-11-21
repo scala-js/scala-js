@@ -10,8 +10,8 @@ fi
 SUFFIXES="2_11 2_12 2_13"
 
 COMPILER="compiler jUnitPlugin"
-LIBS="library irJS loggingJS linkerJS testInterface testBridge jUnitRuntime"
-JVM_LIBS="ir logging linker jsEnvs jsEnvsTestKit nodeJSEnv testAdapter"
+LIBS="library irJS loggingJS linkerInterfaceJS linkerJS testInterface testBridge jUnitRuntime"
+JVM_LIBS="ir logging linkerInterface linker jsEnvs jsEnvsTestKit nodeJSEnv testAdapter"
 
 # Publish compiler
 for s in $SUFFIXES; do
