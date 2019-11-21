@@ -59,7 +59,7 @@ object IRFileImpl {
       case e: ir.IRVersionNotSupportedException =>
         throw new ir.IRVersionNotSupportedException(e.version, e.supported,
             s"Failed to deserialize a file compiled with Scala.js ${e.version}" +
-            s" (supported: ${e.supported.mkString(", ")}): $path", e)
+            s" (supported up to: ${e.supported}): $path", e)
 
       case e: Exception =>
         throw new IOException(s"Failed to deserialize $path", e)

@@ -977,12 +977,7 @@ object Serializers {
 
       // Check that we support this version of the IR
       val version = readUTF()
-      val supported = ScalaJSVersions.binarySupported
-      if (!supported.contains(version)) {
-        throw new IRVersionNotSupportedException(version, supported,
-            s"This version ($version) of Scala.js IR is not supported. " +
-            s"Supported versions are: ${supported.mkString(", ")}")
-      }
+      ScalaJSVersions.checkSupported(version)
 
       version
     }
