@@ -93,11 +93,6 @@ object MyScalaJSPlugin extends AutoPlugin {
         libDeps.filterNot(dep => blacklist.contains(dep.name))
       },
 
-      /* Most of our Scala.js libraries are not cross-compiled against the
-       * the Scala.js binary version number.
-       */
-      crossVersion := CrossVersion.binary,
-
       scalaJSLinkerConfig ~= (_.withCheckIR(true)),
 
       wantSourceMaps := true,
@@ -730,6 +725,8 @@ object Build {
 
   lazy val linkerInterfaceJS: MultiScalaProject = MultiScalaProject(
       id = "linkerInterfaceJS", base = file("linker-interface/js")
+  ).enablePlugins(
+      MyScalaJSPlugin
   ).settings(
       commonLinkerInterfaceSettings,
   ).withScalaJSCompiler.dependsOn(
@@ -817,8 +814,6 @@ object Build {
   ).zippedSettings("minilib", "library")(
       commonLinkerSettings _
   ).settings(
-      crossVersion := ScalaJSCrossVersion.binary,
-
       sourceGenerators in Compile += Def.task {
         val dir = (sourceManaged in Compile).value
         val privateLibProducts = (products in (linkerPrivateLibrary, Compile)).value
@@ -1245,6 +1240,7 @@ object Build {
   ).settings(
       commonSettings,
       publishSettings,
+      crossVersion := CrossVersion.binary, // no _sjs suffix
       fatalWarningsSettings,
       name := "Scala.js library",
       delambdafySetting,
@@ -1380,6 +1376,7 @@ object Build {
   ).settings(
       commonSettings,
       publishSettings,
+      crossVersion := CrossVersion.binary, // no _sjs suffix
       fatalWarningsSettings,
       name := "Scala.js test interface",
       delambdafySetting,
@@ -1394,6 +1391,7 @@ object Build {
   ).settings(
       commonSettings,
       publishSettings,
+      crossVersion := CrossVersion.binary, // no _sjs suffix
       fatalWarningsSettings,
       name := "Scala.js test bridge",
       delambdafySetting,
@@ -1417,6 +1415,7 @@ object Build {
   ).settings(
       commonSettings,
       publishSettings,
+      crossVersion := CrossVersion.binary, // no _sjs suffix
       fatalWarningsSettings,
       name := "Scala.js JUnit test runtime",
 
