@@ -397,11 +397,11 @@ def Tasks = [
     cd sbt-plugin-test &&
     setJavaVersion $java &&
     sbt noDOM/run \
-        noDOM/testHtml multiTestJS/testHtml \
-        test \
+        noDOM/testHtml \
+        noDOM/test \
         noDOM/clean &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
-        noDOM/testHtml multiTestJS/testHtml
+        noDOM/testHtml
   ''',
 
   "partest-noopt": '''
