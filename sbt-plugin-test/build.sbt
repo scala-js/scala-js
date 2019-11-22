@@ -1,5 +1,4 @@
 import org.scalajs.linker.interface.ModuleInitializer
-import org.scalajs.sbtplugin.ScalaJSCrossVersion
 
 name := "Scala.js sbt test"
 
@@ -92,13 +91,6 @@ lazy val multiTestJS = project.in(file("multiTest/js")).
   settings(
     name := "Multi test framework test JS",
 
-    // Test platformDepsCrossVersion (as a setting, it's evaluated when loading the build)
-    platformDepsCrossVersion ~= { value =>
-      assert(value eq ScalaJSCrossVersion.binary,
-          "platformDepsCrossVersion should be ScalaJSCrossVersion.binary in multiTestJS")
-      value
-    },
-
     // Test the scalaJSSourceMap attribute of fastOptJS and fullOptJS
     testScalaJSSourceMapAttribute in Test := {
       val fastOptFile = (fastOptJS in Test).value
@@ -121,13 +113,5 @@ lazy val multiTestJVM = project.in(file("multiTest/jvm")).
     name := "Multi test framework test JVM",
     libraryDependencies +=
       "com.novocode" % "junit-interface" % "0.9" % "test",
-
-    // Test platformDepsCrossVersion (as a setting, it's evaluated when loading the build)
-    platformDepsCrossVersion := {
-      val value = platformDepsCrossVersion.value
-      assert(value == CrossVersion.binary,
-          "platformDepsCrossVersion should be CrossVersion.binary in multiTestJVM")
-      value
-    }
   ).
   dependsOn(testFrameworkJVM % "test")
