@@ -52,7 +52,7 @@ class VersionChecksTest {
     bad("2.2.0-M1", "2.2")
 
     // binary is pre-release in non-matching version.
-    bad("2.3.0", "2.2-M1") 
+    bad("2.3.0", "2.2-M1")
     bad("2.2.1", "2.2-M1")
     bad("2.3.0-M1", "2.2-M1")
     bad("2.2.0", "2.2-M1")
@@ -85,5 +85,18 @@ class VersionChecksTest {
 
     assertThrows(v.checkSupported("3.2"))
     assertThrows(v.checkSupported("2.1-M1"))
+  }
+
+  @Test def binaryCrossVersion: Unit = {
+    def test(full: String, emitted: String, cross: String): Unit =
+      assertEquals(cross, new VersionChecks(full, emitted).binaryCross)
+
+    test("1.0.0", "1.0", "1")
+    test("1.0.2", "1.0", "1")
+    test("1.0.2-M1", "1.0", "1")
+    test("1.0.0-SNAPSHOT", "1.0-SNAPSHOT", "1.0-SNAPSHOT")
+    test("1.0.0-M1", "1.0-M1", "1.0-M1")
+    test("1.2.0-SNAPSHOT", "1.2-SNAPSHOT", "1")
+    test("1.2.0-M1", "1.2-M1", "1.2-M1")
   }
 }
