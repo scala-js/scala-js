@@ -10,8 +10,9 @@ fi
 SUFFIXES="2_11 2_12 2_13"
 
 COMPILER="compiler jUnitPlugin"
-LIBS="library irJS loggingJS linkerInterfaceJS linkerJS testInterface testBridge jUnitRuntime"
+JS_LIBS="library irJS loggingJS linkerInterfaceJS linkerJS testInterface testBridge jUnitRuntime"
 JVM_LIBS="ir logging linkerInterface linker jsEnvs jsEnvsTestKit nodeJSEnv testAdapter"
+LIBS="$JS_LIBS $JVM_LIBS"
 
 # Publish compiler
 for s in $SUFFIXES; do
@@ -26,15 +27,6 @@ done
 for s in $SUFFIXES; do
     ARGS=""
     for p in $LIBS; do
-        ARGS="$ARGS $p$s/publishSigned"
-    done
-    $CMD $ARGS
-done
-
-# Publish JVM libraries
-for v in $SUFFIXES; do
-    ARGS=""
-    for p in $JVM_LIBS; do
         ARGS="$ARGS $p$s/publishSigned"
     done
     $CMD $ARGS
