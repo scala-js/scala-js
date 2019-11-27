@@ -101,7 +101,7 @@ private[emitter] object CoreJSLib {
           str("assumingES6") -> bool(useECMAScript2015),
           str("productionMode") -> bool(productionMode),
           str("linkerVersion") -> str(ScalaJSVersions.current),
-          str("globalThis") -> This()
+          str("fileLevelThis") -> This()
       )))
 
       buf += const(codegenVar("linkingInfo"), linkingInfo)

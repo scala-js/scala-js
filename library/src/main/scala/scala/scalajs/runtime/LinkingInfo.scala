@@ -25,6 +25,6 @@ sealed trait LinkingInfo extends js.Object {
   /** Version of the linker */
   val linkerVersion: String
 
-  /** The value of the global JavaScript `this`. */
-  val globalThis: Any
+  /** The value of the file-level JavaScript `this`. */
+  val fileLevelThis: Any
 }

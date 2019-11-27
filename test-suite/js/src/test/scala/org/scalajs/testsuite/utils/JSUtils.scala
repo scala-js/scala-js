@@ -26,7 +26,7 @@ object JSUtils {
       g.global
     } else {
       // In all other well-known environment, we can use the global `this`
-      js.special.globalThis.asInstanceOf[js.Dynamic]
+      js.special.fileLevelThis.asInstanceOf[js.Dynamic]
     }
   }
 
