@@ -120,12 +120,6 @@ class SpecialTest {
     assertSame(js.Math, globalObject.Math)
   }
 
-  // js.special.globalThis (deprecated)
-
-  @Test def globalThis_is_fileLevelThis(): Unit = {
-    assertSame(js.special.fileLevelThis, js.special.globalThis)
-  }
-
   // js.special.debugger
 
   @Test def should_support_debugger_statements_through_the_whole_pipeline_issue_1402(): Unit = {
