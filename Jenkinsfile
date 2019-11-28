@@ -399,8 +399,7 @@ def Tasks = [
     sbt noDOM/run \
         noDOM/testHtml multiTestJS/testHtml \
         test \
-        noDOM/clean \
-        multiTestJS/test:testScalaJSSourceMapAttribute &&
+        noDOM/clean &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
         noDOM/testHtml multiTestJS/testHtml
   ''',

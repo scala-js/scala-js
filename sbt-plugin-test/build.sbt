@@ -16,9 +16,6 @@ val baseSettings = versionSettings ++ Seq(
     "non-existent-directory-please-dont-ever-create-this"
 )
 
-val testScalaJSSourceMapAttribute = TaskKey[Unit](
-  "testScalaJSSourceMapAttribute", "", KeyRanks.BTask)
-
 lazy val root = project.in(file(".")).
   aggregate(noDOM, multiTestJS, multiTestJVM)
 
@@ -71,19 +68,6 @@ lazy val multiTestJS = project.in(file("multiTest/js")).
   settings(baseSettings: _*).
   settings(
     name := "Multi test framework test JS",
-
-    // Test the scalaJSSourceMap attribute of fastOptJS and fullOptJS
-    testScalaJSSourceMapAttribute in Test := {
-      val fastOptFile = (fastOptJS in Test).value
-      assert(fastOptFile.get(scalaJSSourceMap).exists {
-        _.getPath == fastOptFile.data.getPath + ".map"
-      }, "fastOptJS does not have the correct scalaJSSourceMap attribute")
-
-      val fullOptFile = (fullOptJS in Test).value
-      assert(fullOptFile.get(scalaJSSourceMap).exists {
-        _.getPath == fullOptFile.data.getPath + ".map"
-      }, "fullOptJS does not have the correct scalaJSSourceMap attribute")
-    }
   ).
   dependsOn(testFrameworkJS % "test")
 
