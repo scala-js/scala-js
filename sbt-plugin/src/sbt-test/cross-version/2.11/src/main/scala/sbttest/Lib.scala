@@ -1,4 +1,4 @@
-package sbttest.noDOM
+package sbttest
 
 object Lib {
 

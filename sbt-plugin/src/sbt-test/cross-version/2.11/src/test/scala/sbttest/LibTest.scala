@@ -1,4 +1,4 @@
-package sbttest.noDOM
+package sbttest
 
 import org.junit.Test
 import org.junit.Assert._

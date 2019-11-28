@@ -380,30 +380,6 @@ def Tasks = [
     sbt ++$scala partest$v/compile
   ''',
 
-  "sbtplugin-test": '''
-    setJavaVersion 1.8
-    # Publish Scala.js artifacts locally
-    # Then go into standalone project and test
-    npm install &&
-    sbt ++2.11.12 compiler2_11/publishLocal library2_11/publishLocal \
-                  testInterface2_11/publishLocal testBridge2_11/publishLocal \
-                  jUnitPlugin2_11/publishLocal jUnitRuntime2_11/publishLocal &&
-    sbt ++$scala \
-        ir$v/publishLocal logging$v/publishLocal \
-        linkerInterface$v/publishLocal \
-        linker$v/publishLocal jsEnvs$v/publishLocal \
-        nodeJSEnv$v/publishLocal testAdapter$v/publishLocal \
-        sbtPlugin/publishLocal &&
-    cd sbt-plugin-test &&
-    setJavaVersion $java &&
-    sbt noDOM/run \
-        noDOM/testHtml \
-        noDOM/test \
-        noDOM/clean &&
-    sbt 'set scalaJSStage in Global := FullOptStage' \
-        noDOM/testHtml
-  ''',
-
   "partest-noopt": '''
     setJavaVersion $java
     npm install &&
@@ -463,7 +439,6 @@ allJavaVersions.each { javaVersion ->
   quickMatrix.add([task: "tools", scala: "2.11.12", java: javaVersion])
 }
 quickMatrix.add([task: "partestc", scala: "2.12.1", java: mainJavaVersion])
-quickMatrix.add([task: "sbtplugin-test", scala: "2.12.10", java: mainJavaVersion])
 
 // The 'full' matrix
 def fullMatrix = quickMatrix.clone()
