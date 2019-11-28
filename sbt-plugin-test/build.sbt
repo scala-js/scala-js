@@ -7,13 +7,7 @@ val versionSettings = Seq(
   scalaVersion := "2.11.12"
 )
 
-val baseSettings = versionSettings ++ Seq(
-  // Test that non-existent classpath entries are allowed - #2198
-  fullClasspath in Compile += (baseDirectory in LocalProject("root")).value /
-    "non-existent-directory-please-dont-ever-create-this"
-)
-
-lazy val noDOM = project.settings(baseSettings: _*).
+lazy val noDOM = project.settings(versionSettings: _*).
   enablePlugins(ScalaJSPlugin).
   enablePlugins(ScalaJSJUnitPlugin).
   settings(
