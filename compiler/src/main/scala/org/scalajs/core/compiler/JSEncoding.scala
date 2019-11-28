@@ -222,9 +222,6 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     js.Ident(localSymbolName(sym), Some(sym.unexpandedName.decoded))
   }
 
-  def foreignIsImplClass(sym: Symbol): Boolean =
-    sym.isModuleClass && nme.isImplClassName(sym.name)
-
   def encodeClassType(sym: Symbol): jstpe.Type = {
     if (sym == definitions.ObjectClass) jstpe.AnyType
     else if (isRawJSType(sym.toTypeConstructor)) jstpe.AnyType
@@ -245,7 +242,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   }
 
   def needsModuleClassSuffix(sym: Symbol): Boolean =
-    sym.isModuleClass && !foreignIsImplClass(sym)
+    sym.isModuleClass && !isImplClass(sym)
 
   def encodeComputedNameIdentity(sym: Symbol): String = {
     assert(sym.owner.isModuleClass, sym)

@@ -1514,7 +1514,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               mutatedLocalVars := mutable.Set.empty
           ) {
             def isTraitImplForwarder = dd.rhs match {
-              case app: Apply => foreignIsImplClass(app.symbol.owner)
+              case app: Apply => isImplClass(app.symbol.owner)
               case _          => false
             }
 
@@ -2724,7 +2724,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           genPrimitiveJSCall(tree, isStat)
         else
           genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))
-      } else if (foreignIsImplClass(sym.owner)) {
+      } else if (isImplClass(sym.owner)) {
         genTraitImplApply(sym, args map genExpr)
       } else if (sym.isClassConstructor) {
         /* See #66: we have to emit a statically linked call to avoid calling a
