@@ -1,5 +1,3 @@
-import org.scalajs.linker.interface.ModuleInitializer
-
 name := "Scala.js sbt test"
 
 version := scalaJSVersion
@@ -21,9 +19,6 @@ val baseSettings = versionSettings ++ Seq(
 val testScalaJSSourceMapAttribute = TaskKey[Unit](
   "testScalaJSSourceMapAttribute", "", KeyRanks.BTask)
 
-val testScalaJSModuleInitializers = TaskKey[Unit](
-  "testScalaJSModuleInitializers", "", KeyRanks.BTask)
-
 lazy val root = project.in(file(".")).
   aggregate(noDOM, multiTestJS, multiTestJVM)
 
@@ -33,20 +28,6 @@ lazy val noDOM = project.settings(baseSettings: _*).
   settings(
     name := "Scala.js sbt test w/o DOM",
     scalaJSUseMainModuleInitializer := true,
-    scalaJSModuleInitializers +=
-      ModuleInitializer.mainMethod("sbttest.noDOM.TestApp", "foo"),
-    scalaJSModuleInitializers in Test +=
-      ModuleInitializer.mainMethod("sbttest.noDOM.InitHolder", "foo"),
-
-    testScalaJSModuleInitializers := {
-      // Compile should have main module init and TestApp.foo
-      assert((scalaJSModuleInitializers in Compile).value.size == 2,
-        "Bad number of scalaJSModuleInitializers in Compile")
-
-      // Test should have test module init, InitHolder.foo and TestApp.foo
-      assert((scalaJSModuleInitializers in Test).value.size == 3,
-        "Bad number of scalaJSModuleInitializers in Test")
-    }
   )
 
 lazy val testFrameworkCommonSettings = Def.settings(
