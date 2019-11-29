@@ -40,53 +40,50 @@ object ModuleInitializer {
   private val ArrayOfStringTypeRef =
     ArrayTypeRef(ClassRef(BoxedStringClass), 1)
 
-  /** Makes an [[ModuleInitializer]] that calls a zero-argument method returning
-   *  `Unit` in a top-level `object`.
+  /** Makes a [[ModuleInitializer]] that calls a static zero-argument method
+   *  returning `Unit` in a top-level `class`.
    *
-   *  @param moduleClassName
-   *    The fully-qualified name of the module class, e.g., `"foo.bar.Babar"`.
-   *    Note that it does not end with `$`.
+   *  @param className
+   *    The fully-qualified name of the class, e.g., `"foo.bar.Babar"`.
    *  @param mainMethodName
    *    The name of the main method to invoke, e.g., `"main"`.
    */
-  def mainMethod(moduleClassName: String,
+  def mainMethod(className: String,
       mainMethodName: String): ModuleInitializer = {
-    VoidMainMethod(ClassName(moduleClassName + "$"),
+    VoidMainMethod(ClassName(className),
         MethodName(mainMethodName, Nil, VoidRef))
   }
 
-  /** Makes an [[ModuleInitializer]] that calls a method of a top-level
-   *  `object`, taking an `Array[String]` and returning `Unit`.
+  /** Makes a [[ModuleInitializer]] that calls a static method of a top-level
+   *  `class` taking an `Array[String]` and returning `Unit`.
    *
    *  An empty array is passed as argument.
    *
-   *  @param moduleClassName
-   *    The fully-qualified name of the module class, e.g., `"foo.bar.Babar"`.
-   *    Note that it does not end with `$`.
+   *  @param className
+   *    The fully-qualified name of the class, e.g., `"foo.bar.Babar"`.
    *  @param mainMethodName
    *    The name of the main method to invoke, e.g., `"main"`.
    */
-  def mainMethodWithArgs(moduleClassName: String,
+  def mainMethodWithArgs(className: String,
       mainMethodName: String): ModuleInitializer = {
-    mainMethodWithArgs(moduleClassName, mainMethodName, Nil)
+    mainMethodWithArgs(className, mainMethodName, Nil)
   }
 
-  /** Makes an [[ModuleInitializer]] that calls a method of a top-level
-   *  `object`, taking an `Array[String]` and returning `Unit`.
+  /** Makes a [[ModuleInitializer]] that calls a static method of a top-level
+   *  `class` taking an `Array[String]` and returning `Unit`.
    *
    *  An array containing the specified `args` is passed as argument.
    *
-   *  @param moduleClassName
-   *    The fully-qualified name of the module class, e.g., `"foo.bar.Babar"`.
-   *    Note that it does not end with `$`.
+   *  @param className
+   *    The fully-qualified name of the class, e.g., `"foo.bar.Babar"`.
    *  @param mainMethodName
    *    The name of the main method to invoke, e.g., `"main"`.
    *  @param args
    *    The arguments to pass as an array.
    */
-  def mainMethodWithArgs(moduleClassName: String, mainMethodName: String,
+  def mainMethodWithArgs(className: String, mainMethodName: String,
       args: List[String]): ModuleInitializer = {
-    MainMethodWithArgs(ClassName(moduleClassName + "$"),
+    MainMethodWithArgs(ClassName(className),
         MethodName(mainMethodName, ArrayOfStringTypeRef :: Nil, VoidRef),
         args)
   }

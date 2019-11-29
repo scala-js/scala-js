@@ -137,11 +137,11 @@ object SymbolRequirement {
     val factory = SymbolRequirement.factory("module initializers")
     val requirements = for (entryPoint <- entryPoints) yield {
       ModuleInitializerImpl.fromModuleInitializer(entryPoint) match {
-        case VoidMainMethod(moduleClassName, mainMethodName) =>
-          factory.callOnModule(moduleClassName, mainMethodName)
+        case VoidMainMethod(className, mainMethodName) =>
+          factory.callStaticMethod(className, mainMethodName)
 
-        case MainMethodWithArgs(moduleClassName, mainMethodName, _) =>
-          factory.callOnModule(moduleClassName, mainMethodName) ++
+        case MainMethodWithArgs(className, mainMethodName, _) =>
+          factory.callStaticMethod(className, mainMethodName) ++
           factory.classData(BoxedStringClass)
       }
     }
