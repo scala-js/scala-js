@@ -956,12 +956,33 @@ object Build {
 
       scriptedDependencies := {
         scriptedDependencies.dependsOn(
+            // Compiler Plugins
+            publishLocal in compiler.v2_11,
+            publishLocal in jUnitPlugin.v2_11,
+
             publishLocal in compiler.v2_12,
+            publishLocal in jUnitPlugin.v2_12,
+
+            publishLocal in compiler.v2_13,
+            publishLocal in jUnitPlugin.v2_13,
+
+            // JS libs
+            publishLocal in library.v2_11,
+            publishLocal in testInterface.v2_11,
+            publishLocal in testBridge.v2_11,
+            publishLocal in jUnitRuntime.v2_11,
+
             publishLocal in library.v2_12,
             publishLocal in testInterface.v2_12,
             publishLocal in testBridge.v2_12,
-            publishLocal in jUnitPlugin.v2_12,
             publishLocal in jUnitRuntime.v2_12,
+
+            publishLocal in library.v2_13,
+            publishLocal in testInterface.v2_13,
+            publishLocal in testBridge.v2_13,
+            publishLocal in jUnitRuntime.v2_13,
+
+            // JVM libs
             publishLocal in irProject.v2_12,
             publishLocal in logging.v2_12,
             publishLocal in linkerInterface.v2_12,
