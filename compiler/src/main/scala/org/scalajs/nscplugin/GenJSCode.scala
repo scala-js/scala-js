@@ -209,8 +209,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     // Global class generation state -------------------------------------------
 
     private val lazilyGeneratedAnonClasses = mutable.Map.empty[Symbol, ClassDef]
-    private val generatedClasses =
-      ListBuffer.empty[(Symbol, Option[String], js.ClassDef)]
+    private val generatedClasses = ListBuffer.empty[js.ClassDef]
 
     private def consumeLazilyGeneratedAnonClass(sym: Symbol): ClassDef = {
       /* If we are trying to generate an method as JSFunction, we cannot
@@ -335,7 +334,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                   genClass(cd)
                 }
 
-                generatedClasses += ((sym, None, tree))
+                generatedClasses += tree
               } catch {
                 case e: ir.InvalidIRException =>
                   e.tree match {
@@ -358,11 +357,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           }
         }
 
-        val clDefs = generatedClasses.map(_._3).toList
+        val clDefs = generatedClasses.toList
         generatedJSAST(clDefs)
 
-        for ((sym, suffix, tree) <- generatedClasses) {
-          genIRFile(cunit, sym, suffix, tree)
+        for (tree <- clDefs) {
+          genIRFile(cunit, tree)
         }
       } finally {
         lazilyGeneratedAnonClasses.clear()
@@ -705,7 +704,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             origJsClass.optimizerHints)
       }
 
-      generatedClasses += ((sym, None, newClassDef))
+      generatedClasses += newClassDef
 
       // Construct inline class definition
       val js.JSMethodDef(_, _, ctorParams, ctorBody) =
@@ -2727,8 +2726,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         val classDef = consumeLazilyGeneratedAnonClass(clsSym)
         tryGenAnonFunctionClass(classDef, args.map(genExpr)).getOrElse {
           // Cannot optimize anonymous function class. Generate full class.
-          generatedClasses +=
-            ((clsSym, None, nestedGenerateClass(clsSym)(genClass(classDef))))
+          generatedClasses += nestedGenerateClass(clsSym)(genClass(classDef))
           genNew(clsSym, ctor, genActualArgs(ctor, args))
         }
       } else if (isJSType(clsSym)) {
@@ -5665,7 +5663,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           Nil)(
           js.OptimizerHints.empty.withInline(true))
 
-      generatedClasses += ((currentClassSym.get, Some(suffix), classDef))
+      generatedClasses += classDef
 
       className
     }
