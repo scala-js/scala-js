@@ -260,7 +260,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  * Non-native JS class       -> `genNonNativeJSClass()`
      *  * Other JS type (<: js.Any) -> `genJSClassData()`
      *  * Interface                 -> `genInterface()`
-     *  * Implementation class      -> `genImplClass()`
      *  * Normal class              -> `genClass()`
      */
     override def apply(cunit: CompilationUnit): Unit = {
@@ -332,8 +331,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                   }
                 } else if (sym.isTraitOrInterface) {
                   genInterface(cd)
-                } else if (isImplClass(sym)) {
-                  genImplClass(cd)
                 } else {
                   genClass(cd)
                 }
@@ -383,7 +380,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val sym = cd.symbol
       implicit val pos = sym.pos
 
-      assert(!sym.isTraitOrInterface && !isImplClass(sym),
+      assert(!sym.isTraitOrInterface,
           "genClass() must be called only for normal classes: "+sym)
       assert(sym.superClass != NoSymbol, sym)
 
@@ -910,43 +907,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       js.ClassDef(classIdent, originalNameOfClass(sym), ClassKind.Interface,
           None, None, interfaces, None, None, hashedMemberDefs, Nil)(
           OptimizerHints.empty)
-    }
-
-    // Generate an implementation class of a trait -----------------------------
-
-    /** Gen the IR ClassDef for an implementation class (of a trait).
-     */
-    def genImplClass(cd: ClassDef): js.ClassDef = {
-      val ClassDef(mods, name, _, impl) = cd
-      val sym = cd.symbol
-      implicit val pos = sym.pos
-
-      def gen(tree: Tree): List[js.MethodDef] = {
-        tree match {
-          case EmptyTree => Nil
-          case Template(_, _, body) => body.flatMap(gen)
-
-          case dd: DefDef =>
-            assert(!dd.symbol.isDeferred,
-                s"Found an abstract method in an impl class at $pos: ${dd.symbol.fullName}")
-            val m = genMethod(dd)
-            m.toList
-
-          case _ => abort("Illegal tree in gen of genImplClass(): " + tree)
-        }
-      }
-      val generatedMethods = gen(impl)
-
-      val classIdent = encodeClassNameIdent(sym)
-      val objectClassIdent = encodeClassNameIdent(ObjectClass)
-
-      // Hashed definitions of the impl class
-      val hashedMemberDefs =
-        Hashers.hashMemberDefs(generatedMethods)
-
-      js.ClassDef(classIdent, originalNameOfClass(sym), ClassKind.Class, None,
-          Some(objectClassIdent), Nil, None, None,
-          hashedMemberDefs, Nil)(OptimizerHints.empty)
     }
 
     private lazy val jsTypeInterfacesBlacklist: Set[Symbol] =
@@ -1615,7 +1575,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                   sParam.tpe =:= symParam.tpe
               }
             }
-            Some(genTraitImplApply(implMethodSym,
+            Some(genApplyStatic(implMethodSym,
                 js.This()(currentClassType) :: jsParams.map(_.ref)))
           } else {
             None
@@ -1637,7 +1597,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               mutatedLocalVars := mutable.Set.empty
           ) {
             def isTraitImplForwarder = dd.rhs match {
-              case app: Apply => foreignIsImplClass(app.symbol.owner)
+              case app: Apply => isImplClass(app.symbol.owner)
               case _          => false
             }
 
@@ -1675,7 +1635,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               } else {
                 val resultIRType = toIRType(sym.tpe.resultType)
                 val namespace = {
-                  if (isImplClass(sym.owner)) {
+                  if (sym.isStaticMember) {
                     if (sym.isPrivate) js.MemberNamespace.PrivateStatic
                     else js.MemberNamespace.PublicStatic
                   } else {
@@ -2944,8 +2904,16 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           genPrimitiveJSCall(tree, isStat)
         else
           genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))
-      } else if (foreignIsImplClass(sym.owner)) {
-        genTraitImplApply(sym, args map genExpr)
+      } else if (sym.isStaticMember && !sym.isJavaDefined) {
+        if (sym.isMixinConstructor && isJSImplClass(sym.owner)) {
+          /* Do not emit a call to the $init$ method of JS traits.
+           * This exception is necessary because optional JS fields cause the
+           * creation of a $init$ method, which we must not call.
+           */
+          js.Skip()
+        } else {
+          genApplyStatic(sym, args.map(genExpr))
+        }
       } else {
         genApplyMethodMaybeStatically(genExpr(receiver), sym,
             genActualArgs(sym, args))
@@ -2982,19 +2950,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         else toIRType(method.tpe.resultType)
       js.ApplyStatically(flags, receiver, encodeClassName(method.owner),
           methodIdent, arguments)(resultType)
-    }
-
-    def genTraitImplApply(method: Symbol, arguments: List[js.Tree])(
-        implicit pos: Position): js.Tree = {
-      if (method.isMixinConstructor && isJSImplClass(method.owner)) {
-        /* Do not emit a call to the $init$ method of JS traits.
-         * This exception is necessary because @JSOptional fields cause the
-         * creation of a $init$ method, which we must not call.
-         */
-        js.Skip()
-      } else {
-        genApplyStatic(method, arguments)
-      }
     }
 
     def genApplyJSClassMethod(receiver: js.Tree, method: Symbol,
@@ -5544,9 +5499,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       val formalArgs = params.map(genParamDef(_))
 
-      val isInImplClass = isImplClass(target.owner)
-
-      val (allFormalCaptures, body, allActualCaptures) = if (!isInImplClass) {
+      val (allFormalCaptures, body, allActualCaptures) = if (!target.isStaticMember) {
         val thisActualCapture = genExpr(receiver)
         val thisFormalCapture = js.ParamDef(
             freshLocalIdent("this")(receiver.pos), thisOriginalName,
@@ -5564,7 +5517,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         (thisFormalCapture :: formalCaptures,
             body, thisActualCapture :: actualCaptures)
       } else {
-        val body = genTraitImplApply(target, allArgs)
+        val body = genApplyStatic(target, allArgs)
 
         (formalCaptures, body, actualCaptures)
       }
