@@ -51,6 +51,8 @@ object BinaryIncompatibilities {
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.JSGen.genOriginalName"),
       exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.keepOnlyTrackedGlobalRefs"),
+      exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.JSGen.this"),
       exclude[MissingClassProblem](
           "org.scalajs.linker.backend.emitter.JSGen$"),
