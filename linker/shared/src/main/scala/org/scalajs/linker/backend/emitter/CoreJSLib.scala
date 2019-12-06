@@ -33,6 +33,7 @@ private[emitter] object CoreJSLib {
 
   private class CoreJSLibBuilder(jsGen: JSGen) {
     import jsGen._
+    import nameGen._
     import esFeatures._
     import semantics._
     import TreeDSL._

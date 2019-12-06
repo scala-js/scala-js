@@ -11,6 +11,15 @@ object BinaryIncompatibilities {
   )
 
   val Linker = Seq(
+      // private[emitter], not an issue.
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.genName"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.genOriginalName"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.this"),
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.backend.emitter.JSGen$"),
   )
 
   val LinkerInterface = Seq(
