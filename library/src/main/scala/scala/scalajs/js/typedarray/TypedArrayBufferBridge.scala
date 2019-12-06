@@ -17,7 +17,7 @@
  * This file acts as bridge for scala.scalajs.js.typedarray to be able to
  * access the additional public API provided by java.nio, but which is not
  * part of the JDK API. Because javalib/ does not export its .class files,
- * we cannot call this additonal API directly from library/, even though the
+ * we cannot call this additional API directly from library/, even though the
  * members are public.
  *
  * In library/, this file has only the signatures, with stub implementations.

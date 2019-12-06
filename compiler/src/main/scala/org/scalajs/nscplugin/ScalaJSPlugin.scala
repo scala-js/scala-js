@@ -169,7 +169,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
       |     Change the location the source URIs in the emitted IR point to
       |     - strips away the prefix FROM_URI (if it matches)
       |     - optionally prefixes the TO_URI, where stripping has been performed
-      |     - any number of occurences are allowed. Processing is done on a first match basis.
+      |     - any number of occurrences are allowed. Processing is done on a first match basis.
       |  -P:$name:fixClassOf
       |     Repair calls to Predef.classOf that reach Scala.js.
       |     WARNING: This is a tremendous hack! Expect ugly errors if you use this option.

@@ -1339,7 +1339,7 @@ object Build {
            * (but not .class files)
            */
           mappings in packageBin := {
-            /* From library, we must take everyting, except the
+            /* From library, we must take everything, except the
              * java.nio.TypedArrayBufferBridge object, whose actual
              * implementation is in javalib.
              */

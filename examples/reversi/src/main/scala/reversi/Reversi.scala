@@ -118,7 +118,7 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
       }
     }
 
-    // Draw squares now, and everytime they change ownership
+    // Draw squares now, and every time they change ownership
     for (square <- allSquares) {
       drawSquare(square)
       square.onOwnerChange = { (prevOwner, newOwner) =>

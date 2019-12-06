@@ -495,7 +495,7 @@ private[util] object RedBlackTree {
        * `node` before deleting `node`. We can do this because we know that
        * `succ` has a null `left` child.
        *
-       * In fact we transplant the `onlyChildOfSucc` (orignally at
+       * In fact we transplant the `onlyChildOfSucc` (originally at
        * `succ.right`) in place of `succ`, then transplant `succ` in place of
        * `node` (also acquiring its color), and finally fixing up the tree
        * around `onlyChildOfSucc`.
