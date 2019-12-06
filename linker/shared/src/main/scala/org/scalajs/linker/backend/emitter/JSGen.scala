@@ -65,7 +65,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     if (useBigIntForLongs)
       BigIntLiteral(0L)
     else
-      codegenVar("L0")
+      coreJSLibVar("L0")
   }
 
   def genBoxedZeroOf(tpe: Type)(implicit pos: Position): Tree =
@@ -73,7 +73,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     else genZeroOf(tpe)
 
   def genBoxedCharZero()(implicit pos: Position): Tree =
-    codegenVar("bC0")
+    coreJSLibVar("bC0")
 
   def genLongModuleApply(methodName: MethodName, args: Tree*)(
       implicit pos: Position): Tree = {
@@ -126,7 +126,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genSelectStatic(className: ClassName, item: irt.FieldIdent)(
       implicit pos: Position): VarRef = {
-    codegenVar("t", className, item.name)
+    classVar("t", className, item.name)
   }
 
   def genJSPrivateSelect(receiver: Tree, className: ClassName,
@@ -138,7 +138,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genJSPrivateFieldIdent(className: ClassName, field: irt.FieldIdent)(
       implicit pos: Position): Tree = {
-    codegenVar("r", className, field.name)
+    classVar("r", className, field.name)
   }
 
   def genIsInstanceOf(expr: Tree, tpe: Type)(
@@ -153,17 +153,17 @@ private[emitter] final class JSGen(val semantics: Semantics,
           expr === Null()
         } else if (className != NumberClass && // the only non-object superclass of hijacked classes
             !globalKnowledge.isInterface(className)) {
-          expr instanceof codegenVar("c", className)
+          expr instanceof classVar("c", className)
         } else {
-          Apply(codegenVar("is", className), List(expr))
+          Apply(classVar("is", className), List(expr))
         }
 
       case ArrayType(ArrayTypeRef(base, depth)) =>
-        Apply(codegenVar("isArrayOf", base), List(expr, IntLiteral(depth)))
+        Apply(typeRefVar("isArrayOf", base), List(expr, IntLiteral(depth)))
 
       case UndefType   => expr === Undefined()
       case BooleanType => typeof(expr) === "boolean"
-      case CharType    => expr instanceof codegenVar("Char")
+      case CharType    => expr instanceof coreJSLibVar("Char")
       case ByteType    => genCallHelper("isByte", expr)
       case ShortType   => genCallHelper("isShort", expr)
       case IntType     => genCallHelper("isInt", expr)
@@ -185,7 +185,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     className match {
       case BoxedUnitClass      => expr === Undefined()
       case BoxedBooleanClass   => typeof(expr) === "boolean"
-      case BoxedCharacterClass => expr instanceof codegenVar("Char")
+      case BoxedCharacterClass => expr instanceof coreJSLibVar("Char")
       case BoxedByteClass      => genCallHelper("isByte", expr)
       case BoxedShortClass     => genCallHelper("isShort", expr)
       case BoxedIntegerClass   => genCallHelper("isInt", expr)
@@ -200,7 +200,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     import TreeDSL._
 
     if (useBigIntForLongs) genCallHelper("isLong", expr)
-    else expr instanceof codegenVar("c", LongImpl.RuntimeLongClass)
+    else expr instanceof classVar("c", LongImpl.RuntimeLongClass)
   }
 
   private def genIsFloat(expr: Tree)(implicit pos: Position): Tree = {
@@ -236,10 +236,10 @@ private[emitter] final class JSGen(val semantics: Semantics,
     } else {
       tpe match {
         case ClassType(className) =>
-          Apply(codegenVar("as", className), List(expr))
+          Apply(classVar("as", className), List(expr))
 
         case ArrayType(ArrayTypeRef(base, depth)) =>
-          Apply(codegenVar("asArrayOf", base), List(expr, IntLiteral(depth)))
+          Apply(typeRefVar("asArrayOf", base), List(expr, IntLiteral(depth)))
 
         case UndefType   => genCallHelper("uV", expr)
         case BooleanType => genCallHelper("uZ", expr)
@@ -261,22 +261,22 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genCallHelper(helperName: String, args: Tree*)(
       implicit pos: Position): Tree = {
-    Apply(codegenVar(helperName), args.toList)
+    Apply(coreJSLibVar(helperName), args.toList)
   }
 
   def genLoadModule(moduleClass: ClassName)(implicit pos: Position): Tree = {
     import TreeDSL._
-    Apply(codegenVar("m", moduleClass), Nil)
+    Apply(classVar("m", moduleClass), Nil)
   }
 
   def genScalaClassNew(className: ClassName, ctor: MethodName, args: Tree*)(
       implicit globalKnowledge: GlobalKnowledge, pos: Position): Tree = {
-    val encodedClassVar = codegenVar("c", className)
+    val encodedClassVar = classVar("c", className)
     val argsList = args.toList
     if (globalKnowledge.hasInlineableInit(className)) {
       New(encodedClassVar, argsList)
     } else {
-      Apply(codegenVar("ct", className, ctor), New(encodedClassVar, Nil) :: argsList)
+      Apply(classVar("ct", className, ctor), New(encodedClassVar, Nil) :: argsList)
     }
   }
 
@@ -306,7 +306,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genNonNativeJSClassConstructor(className: ClassName)(
       implicit pos: Position): Tree = {
-    Apply(codegenVar("a", className), Nil)
+    Apply(classVar("a", className), Nil)
   }
 
   def genLoadJSFromSpec(spec: irt.JSNativeLoadSpec,
@@ -367,7 +367,8 @@ private[emitter] final class JSGen(val semantics: Semantics,
   def genClassDataOf(typeRef: TypeRef)(implicit pos: Position): Tree = {
     typeRef match {
       case typeRef: NonArrayTypeRef =>
-        codegenVar("d", typeRef)
+        typeRefVar("d", typeRef)
+
       case ArrayTypeRef(base, dims) =>
         val baseData = genClassDataOf(base)
         (1 to dims).foldLeft[Tree](baseData) { (prev, _) =>
@@ -380,7 +381,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     genClassDataOf(ClassRef(className))
 
   def envModuleFieldIdent(module: String)(implicit pos: Position): Ident =
-    codegenVarIdent("i", genModuleName(module), OriginalName(module))
+    fileLevelVarIdent("i", genModuleName(module), OriginalName(module))
 
   def genPropSelect(qual: Tree, item: PropertyName)(
       implicit pos: Position): Tree = {

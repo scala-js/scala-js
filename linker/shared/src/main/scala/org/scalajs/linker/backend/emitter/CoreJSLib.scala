@@ -131,7 +131,7 @@ private[emitter] object CoreJSLib {
           str("fileLevelThis") -> This()
       )))
 
-      buf += const(codegenVar("linkingInfo"), linkingInfo)
+      buf += const(coreJSLibVar("linkingInfo"), linkingInfo)
     }
 
     private def defineJSBuiltinsSnapshotsAndPolyfills(): Unit = {
@@ -336,7 +336,7 @@ private[emitter] object CoreJSLib {
       }
 
       if (!useECMAScript2015) {
-        buf += const(codegenVar("is"),
+        buf += const(coreJSLibVar("is"),
             genIdentBracketSelect(ObjectRef, "is") || genPolyfillFor("is"))
       }
 
@@ -345,11 +345,11 @@ private[emitter] object CoreJSLib {
         val rhs =
           if (useECMAScript2015) rhs0
           else rhs0 || genPolyfillFor(builtinName)
-        const(codegenVar(builtinName), rhs)
+        const(coreJSLibVar(builtinName), rhs)
       }
 
       if (!useECMAScript2015) {
-        buf += const(codegenVar("privateJSFieldSymbol"),
+        buf += const(coreJSLibVar("privateJSFieldSymbol"),
             If(UnaryOp(JSUnaryOp.typeof, SymbolRef) !== str("undefined"),
                 SymbolRef, genPolyfillFor("privateJSFieldSymbol")))
       }
@@ -357,12 +357,12 @@ private[emitter] object CoreJSLib {
 
     private def declareCachedL0(): Unit = {
       if (!allowBigIntsForLongs)
-        buf += genEmptyMutableLet(codegenVarIdent("L0"))
+        buf += genEmptyMutableLet(coreJSLibVarIdent("L0"))
     }
 
     private def assignCachedL0(): Tree = {
       if (!allowBigIntsForLongs) {
-        codegenVar("L0") := genScalaClassNew(
+        coreJSLibVar("L0") := genScalaClassNew(
             LongImpl.RuntimeLongClass, LongImpl.initFromParts, 0, 0)
       } else {
         Skip()
@@ -382,7 +382,7 @@ private[emitter] object CoreJSLib {
        */
       val obj = varRef("obj")
       val prop = varRef("prop")
-      buf += envFunctionDef("propertyName", paramList(obj),
+      buf += coreJSLibFunctionDef("propertyName", paramList(obj),
           ForIn(genEmptyImmutableLet(prop.ident), obj, Return(prop))
       )
     }
@@ -402,7 +402,7 @@ private[emitter] object CoreJSLib {
         })
       }
 
-      buf += genClassDef(codegenVarIdent("Char"), None, List(ctor, toStr))
+      buf += genClassDef(coreJSLibVarIdent("Char"), None, List(ctor, toStr))
     }
 
     private def defineRuntimeFunctions(): Unit = {
@@ -410,7 +410,7 @@ private[emitter] object CoreJSLib {
         // throwClassCastException
         val instance = varRef("instance")
         val classFullName = varRef("classFullName")
-        buf += envFunctionDef("throwClassCastException", paramList(instance, classFullName), {
+        buf += coreJSLibFunctionDef("throwClassCastException", paramList(instance, classFullName), {
           Throw(maybeWrapInUBE(asInstanceOfs, {
             genScalaClassNew(ClassCastExceptionClass, StringArgConstructorName,
                 instance + str(" is not an instance of ") + classFullName)
@@ -420,7 +420,7 @@ private[emitter] object CoreJSLib {
         // throwArrayCastException
         val classArrayEncodedName = varRef("classArrayEncodedName")
         val depth = varRef("depth")
-        buf += envFunctionDef("throwArrayCastException",
+        buf += coreJSLibFunctionDef("throwArrayCastException",
             paramList(instance, classArrayEncodedName, depth), {
           Block(
               While(depth.prefix_--, {
@@ -435,7 +435,7 @@ private[emitter] object CoreJSLib {
         // throwArrayIndexOutOfBoundsException
         val i = varRef("i")
         val msg = varRef("msg")
-        buf += envFunctionDef("throwArrayIndexOutOfBoundsException", paramList(i), {
+        buf += coreJSLibFunctionDef("throwArrayIndexOutOfBoundsException", paramList(i), {
           Throw(maybeWrapInUBE(arrayIndexOutOfBounds, {
             genScalaClassNew(ArrayIndexOutOfBoundsExceptionClass,
                 StringArgConstructorName,
@@ -447,7 +447,7 @@ private[emitter] object CoreJSLib {
       if (moduleInit == CheckedBehavior.Fatal) {
         // throwModuleInitError
         val name = varRef("decodedName")
-        buf += envFunctionDef("throwModuleInitError", paramList(name), {
+        buf += coreJSLibFunctionDef("throwModuleInitError", paramList(name), {
           Throw(genScalaClassNew(UndefinedBehaviorErrorClass,
               StringArgConstructorName, str("Initializer of ") + name +
               str(" called before completion of its super constructor")))
@@ -457,7 +457,7 @@ private[emitter] object CoreJSLib {
       // noIsInstance
       locally {
         val instance = varRef("instance")
-        buf += envFunctionDef("noIsInstance", paramList(instance), {
+        buf += coreJSLibFunctionDef("noIsInstance", paramList(instance), {
           Throw(New(TypeErrorRef,
               str("Cannot call isInstance() on a Class representing a JS trait/object") :: Nil))
         })
@@ -470,12 +470,12 @@ private[emitter] object CoreJSLib {
         val lengthIndex = varRef("lengthIndex")
 
         // makeNativeArrayWrapper
-        buf += envFunctionDef("makeNativeArrayWrapper", paramList(arrayClassData, nativeArray), {
+        buf += coreJSLibFunctionDef("makeNativeArrayWrapper", paramList(arrayClassData, nativeArray), {
           Return(New(arrayClassData DOT "constr", nativeArray :: Nil))
         })
 
         // newArrayObject
-        buf += envFunctionDef("newArrayObject", paramList(arrayClassData, lengths), {
+        buf += coreJSLibFunctionDef("newArrayObject", paramList(arrayClassData, lengths), {
           Return(genCallHelper("newArrayObjectInternal", arrayClassData, lengths, int(0)))
         })
 
@@ -485,7 +485,7 @@ private[emitter] object CoreJSLib {
         val subLengthIndex = varRef("subLengthIndex")
         val underlying = varRef("underlying")
         val i = varRef("i")
-        buf += envFunctionDef("newArrayObjectInternal",
+        buf += coreJSLibFunctionDef("newArrayObjectInternal",
             paramList(arrayClassData, lengths, lengthIndex), {
           Block(
               const(result, New(arrayClassData DOT "constr",
@@ -514,7 +514,7 @@ private[emitter] object CoreJSLib {
 
         val instance = varRef("instance")
         val v = varRef("v")
-        buf += envFunctionDef(name, paramList(instance), {
+        buf += coreJSLibFunctionDef(name, paramList(instance), {
           Switch(typeof(instance), List(
               str("string") -> {
                 Return(constantClassResult(BoxedStringClass))
@@ -603,7 +603,7 @@ private[emitter] object CoreJSLib {
 
       def defineDispatcher(methodName: MethodName, args: List[VarRef],
           body: Tree): Unit = {
-        buf += envFunctionDef("dp_" + genName(methodName),
+        buf += coreJSLibFunctionDef("dp_" + genName(methodName),
             paramList((instance :: args): _*), body)
       }
 
@@ -641,7 +641,7 @@ private[emitter] object CoreJSLib {
         }
 
         def genHijackedMethodApply(className: ClassName): Tree =
-          Apply(codegenVar("f", className, methodName, NoOriginalName), instance :: args)
+          Apply(classVar("f", className, methodName, NoOriginalName), instance :: args)
 
         def genBodyNoSwitch(hijackedClasses: List[ClassName]): Tree = {
           val normalCall = Return(Apply(instance DOT genName(methodName), args))
@@ -658,7 +658,7 @@ private[emitter] object CoreJSLib {
 
           if (implementedInObject) {
             val staticObjectCall: Tree = {
-              val fun = codegenVar("c", ObjectClass).prototype DOT genName(methodName)
+              val fun = classVar("c", ObjectClass).prototype DOT genName(methodName)
               Return(Apply(fun DOT "call", instance :: args))
             }
 
@@ -740,12 +740,12 @@ private[emitter] object CoreJSLib {
       }
 
       locally {
-        buf += envFunctionDef("intDiv", paramList(x, y), {
+        buf += coreJSLibFunctionDef("intDiv", paramList(x, y), {
           If(y === 0, throwDivByZero, {
             Return((x / y) | 0)
           })
         })
-        buf += envFunctionDef("intMod", paramList(x, y), {
+        buf += coreJSLibFunctionDef("intMod", paramList(x, y), {
           If(y === 0, throwDivByZero, {
             Return((x % y) | 0)
           })
@@ -753,7 +753,7 @@ private[emitter] object CoreJSLib {
       }
 
       locally {
-        buf += envFunctionDef("doubleToInt", paramList(x), {
+        buf += coreJSLibFunctionDef("doubleToInt", paramList(x), {
           Return(If(x > 2147483647, 2147483647, If(x < -2147483648, -2147483648, x | 0)))
         })
       }
@@ -762,12 +762,12 @@ private[emitter] object CoreJSLib {
         def wrapBigInt64(tree: Tree): Tree =
           Apply(genIdentBracketSelect(BigIntRef, "asIntN"), 64 :: tree :: Nil)
 
-        buf += envFunctionDef("longDiv", paramList(x, y), {
+        buf += coreJSLibFunctionDef("longDiv", paramList(x, y), {
           If(y === BigIntLiteral(0), throwDivByZero, {
             Return(wrapBigInt64(x / y))
           })
         })
-        buf += envFunctionDef("longMod", paramList(x, y), {
+        buf += coreJSLibFunctionDef("longMod", paramList(x, y), {
           If(y === BigIntLiteral(0), throwDivByZero, {
             Return(wrapBigInt64(x % y))
           })
@@ -776,7 +776,7 @@ private[emitter] object CoreJSLib {
         val lo = varRef("lo")
         val rawHi = varRef("rawHi")
         val hi = varRef("hi")
-        buf += envFunctionDef("doubleToLong", paramList(x), {
+        buf += coreJSLibFunctionDef("doubleToLong", paramList(x), {
           /* BigInt(x) refuses to work if x is not a "safe integer", i.e., a
            * number with an integral x, whose absolute x is < 2^53. Therefore,
            * we basically use the same algorithm as in RuntimeLong.fromDouble.
@@ -808,7 +808,7 @@ private[emitter] object CoreJSLib {
         val args = varRef("args")
         val instance = varRef("instance")
         val result = varRef("result")
-        buf += envFunctionDef("newJSObjectWithVarargs", paramList(ctor, args), {
+        buf += coreJSLibFunctionDef("newJSObjectWithVarargs", paramList(ctor, args), {
           // This basically emulates the ECMAScript specification for 'new'.
           Block(
               const(instance, Apply(genIdentBracketSelect(ObjectRef, "create"), ctor.prototype :: Nil)),
@@ -829,7 +829,7 @@ private[emitter] object CoreJSLib {
         val getOwnPropertyDescriptor = varRef("getOwnPropertyDescriptor")
         val superProto = varRef("superProto")
         val desc = varRef("desc")
-        buf += envFunctionDef("resolveSuperRef", paramList(superClass, propName), {
+        buf += coreJSLibFunctionDef("resolveSuperRef", paramList(superClass, propName), {
           Block(
               const(getPrototypeOf, genIdentBracketSelect(ObjectRef, "getPrototyeOf")),
               const(getOwnPropertyDescriptor, genIdentBracketSelect(ObjectRef, "getOwnPropertyDescriptor")),
@@ -852,7 +852,7 @@ private[emitter] object CoreJSLib {
         val propName = varRef("propName")
         val desc = varRef("desc")
         val getter = varRef("getter")
-        buf += envFunctionDef("superGet", paramList(superClass, self, propName), {
+        buf += coreJSLibFunctionDef("superGet", paramList(superClass, self, propName), {
           Block(
               const(desc, genCallHelper("resolveSuperRef", superClass, propName)),
               If(desc !== Undefined(), {
@@ -877,7 +877,7 @@ private[emitter] object CoreJSLib {
         val value = varRef("value")
         val desc = varRef("desc")
         val setter = varRef("setter")
-        buf += envFunctionDef("superSet", paramList(superClass, self, propName, value), {
+        buf += coreJSLibFunctionDef("superSet", paramList(superClass, self, propName, value), {
           Block(
               const(desc, genCallHelper("resolveSuperRef", superClass, propName)),
               If(desc !== Undefined(), {
@@ -906,7 +906,7 @@ private[emitter] object CoreJSLib {
       // moduleDefault
       if (moduleKind == ModuleKind.CommonJSModule) {
         val m = varRef("m")
-        buf += envFunctionDef("moduleDefault", paramList(m), {
+        buf += coreJSLibFunctionDef("moduleDefault", paramList(m), {
           Return(If(
               m && (typeof(m) === str("object")) && (str("default") in m),
               BracketSelect(m, str("default")),
@@ -926,7 +926,7 @@ private[emitter] object CoreJSLib {
         val srcu = varRef("srcu")
         val destu = varRef("destu")
         val i = varRef("i")
-        buf += envFunctionDef("systemArraycopy", paramList(src, srcPos, dest, destPos, length), {
+        buf += coreJSLibFunctionDef("systemArraycopy", paramList(src, srcPos, dest, destPos, length), {
           Block(
               const(srcu, src DOT "u"),
               const(destu, dest DOT "u"),
@@ -958,8 +958,8 @@ private[emitter] object CoreJSLib {
       locally {
         val WeakMapRef = globalRef("WeakMap")
 
-        val lastIDHash = codegenVar("lastIDHash")
-        val idHashCodeMap = codegenVar("idHashCodeMap")
+        val lastIDHash = fileLevelVar("lastIDHash")
+        val idHashCodeMap = fileLevelVar("idHashCodeMap")
 
         buf += let(lastIDHash, 0)
         buf += const(idHashCodeMap,
@@ -1028,9 +1028,9 @@ private[emitter] object CoreJSLib {
 
         if (useECMAScript2015) {
           val f = weakMapBasedFunction
-          buf += envFunctionDef("systemIdentityHashCode", f.args, f.body)
+          buf += coreJSLibFunctionDef("systemIdentityHashCode", f.args, f.body)
         } else {
-          buf += const(codegenVar("systemIdentityHashCode"),
+          buf += const(coreJSLibVar("systemIdentityHashCode"),
               If(idHashCodeMap !== Null(), weakMapBasedFunction, fieldBasedFunction))
         }
       }
@@ -1040,7 +1040,7 @@ private[emitter] object CoreJSLib {
       val v = varRef("v")
 
       def defineIsIntLike(name: String, specificTest: Tree): Unit = {
-        buf += envFunctionDef(name, paramList(v), {
+        buf += coreJSLibFunctionDef(name, paramList(v), {
           Return((typeof(v) === str("number")) && specificTest &&
               ((int(1) / v) !== (int(1) / double(-0.0))))
         })
@@ -1051,14 +1051,14 @@ private[emitter] object CoreJSLib {
       defineIsIntLike("isInt", (v | 0) === v)
 
       if (allowBigIntsForLongs) {
-        buf += envFunctionDef("isLong", paramList(v), {
+        buf += coreJSLibFunctionDef("isLong", paramList(v), {
           Return((typeof(v) === str("bigint")) &&
               (Apply(genIdentBracketSelect(BigIntRef, "asIntN"), int(64) :: v :: Nil) === v))
         })
       }
 
       if (strictFloats) {
-        buf += envFunctionDef("isFloat", paramList(v), {
+        buf += coreJSLibFunctionDef("isFloat", paramList(v), {
           Return((typeof(v) === str("number")) &&
               ((v !== v) || (genCallHelper("fround", v) === v)))
         })
@@ -1069,10 +1069,10 @@ private[emitter] object CoreJSLib {
       // Boxes for Chars
       locally {
         val c = varRef("c")
-        buf += envFunctionDef("bC", paramList(c), {
-          Return(New(codegenVar("Char"), c :: Nil))
+        buf += coreJSLibFunctionDef("bC", paramList(c), {
+          Return(New(coreJSLibVar("Char"), c :: Nil))
         })
-        buf += const(codegenVar("bC0"), genCallHelper("bC", 0))
+        buf += const(coreJSLibVar("bC0"), genCallHelper("bC", 0))
       }
 
       val v = varRef("v")
@@ -1081,7 +1081,7 @@ private[emitter] object CoreJSLib {
         // Unboxes for everything
         def defineUnbox(name: String, boxedClassName: ClassName, resultExpr: Tree): Unit = {
           val fullName = boxedClassName.nameString
-          buf += envFunctionDef(name, paramList(v), Return {
+          buf += coreJSLibFunctionDef(name, paramList(v), Return {
             If(genIsInstanceOfHijackedClass(v, boxedClassName) || (v === Null()),
                 resultExpr,
                 genCallHelper("throwClassCastException", v, str(fullName)))
@@ -1105,10 +1105,10 @@ private[emitter] object CoreJSLib {
         defineUnbox("uT", BoxedStringClass, If(v === Null(), StringLiteral(""), v))
       } else {
         // Unboxes for Chars and Longs
-        buf += envFunctionDef("uC", paramList(v), {
+        buf += coreJSLibFunctionDef("uC", paramList(v), {
           Return(If(v === Null(), 0, v DOT "c"))
         })
-        buf += envFunctionDef("uJ", paramList(v), {
+        buf += coreJSLibFunctionDef("uJ", paramList(v), {
           Return(If(v === Null(), genLongZero(), v))
         })
       }
@@ -1130,10 +1130,10 @@ private[emitter] object CoreJSLib {
         val typedArrayClass = globalRef(typedArrayName)
         val shortNameUpperCase = "" + shortName.head.toUpper + shortName.tail
 
-        buf += envFunctionDef(shortName + "Array2TypedArray", paramList(value), {
+        buf += coreJSLibFunctionDef(shortName + "Array2TypedArray", paramList(value), {
           Return(New(typedArrayClass, (value DOT "u") :: Nil))
         })
-        buf += envFunctionDef("typedArray2" + shortNameUpperCase + "Array", paramList(value), {
+        buf += coreJSLibFunctionDef("typedArray2" + shortNameUpperCase + "Array", paramList(value), {
           Return(New(genClassDataOf(ArrayTypeRef(primRef, 1)) DOT "constr",
               New(typedArrayClass, value :: Nil) :: Nil))
         })
@@ -1314,7 +1314,7 @@ private[emitter] object CoreJSLib {
             })
 
             genClassDef(ArrayClass.ident,
-                Some((codegenVar("c", ObjectClass), codegenVar("h", ObjectClass))),
+                Some((classVar("c", ObjectClass), classVar("h", ObjectClass))),
                 ctor :: getAndSet ::: clone :: Nil)
           }
 
@@ -1359,7 +1359,7 @@ private[emitter] object CoreJSLib {
           Block(
               If(!(This() DOT "_arrayOf"),
                   This() DOT "_arrayOf" :=
-                    Apply(New(codegenVar("TypeData"), Nil) DOT "initArray", This() :: Nil),
+                    Apply(New(coreJSLibVar("TypeData"), Nil) DOT "initArray", This() :: Nil),
                   Skip()),
               Return(This() DOT "_arrayOf")
           )
@@ -1492,14 +1492,14 @@ private[emitter] object CoreJSLib {
           }
       )
 
-      buf += genClassDef(codegenVarIdent("TypeData"), None, members)
+      buf += genClassDef(coreJSLibVarIdent("TypeData"), None, members)
     }
 
     private def defineIsArrayOfPrimitiveFunctions(): Unit = {
       for (primRef <- orderedPrimRefs) {
         val obj = varRef("obj")
         val depth = varRef("depth")
-        buf += FunctionDef(codegenVarIdent("isArrayOf", primRef), paramList(obj, depth), {
+        buf += FunctionDef(coreJSLibVarIdent("isArrayOf", primRef), paramList(obj, depth), {
           Return(!(!(obj && (obj DOT classData) &&
               ((obj DOT classData DOT "arrayDepth") === depth) &&
               ((obj DOT classData DOT "arrayBase") === genClassDataOf(primRef)))))
@@ -1512,8 +1512,8 @@ private[emitter] object CoreJSLib {
         for (primRef <- orderedPrimRefs) {
           val obj = varRef("obj")
           val depth = varRef("depth")
-          buf += FunctionDef(codegenVarIdent("asArrayOf", primRef), paramList(obj, depth), {
-            If(Apply(codegenVar("isArrayOf", primRef), obj :: depth :: Nil) || (obj === Null()), {
+          buf += FunctionDef(coreJSLibVarIdent("asArrayOf", primRef), paramList(obj, depth), {
+            If(Apply(typeRefVar("isArrayOf", primRef), obj :: depth :: Nil) || (obj === Null()), {
               Return(obj)
             }, {
               genCallHelper("throwArrayCastException", obj,
@@ -1538,10 +1538,10 @@ private[emitter] object CoreJSLib {
             (DoubleRef, double(0))
         )
       } {
-        buf += const(codegenVar("d", primRef), {
-          Apply(New(codegenVar("TypeData"), Nil) DOT "initPrim",
+        buf += genConst(coreJSLibVarIdent("d", primRef), {
+          Apply(New(coreJSLibVar("TypeData"), Nil) DOT "initPrim",
               List(zero, str(primRef.charCode.toString()),
-                  str(primRef.displayName), codegenVar("isArrayOf", primRef)))
+                  str(primRef.displayName), typeRefVar("isArrayOf", primRef)))
         })
       }
     }
@@ -1561,9 +1561,9 @@ private[emitter] object CoreJSLib {
     private def genIsScalaJSObjectOrNull(obj: VarRef): Tree =
       genIsScalaJSObject(obj) || (obj === Null())
 
-    private def envFunctionDef(name: String, args: List[ParamDef],
+    private def coreJSLibFunctionDef(name: String, args: List[ParamDef],
         body: Tree): FunctionDef = {
-      FunctionDef(codegenVarIdent(name), args, body)
+      FunctionDef(coreJSLibVarIdent(name), args, body)
     }
 
     private def genClassDef(className: Ident, parent: Option[(Tree, Tree)],
