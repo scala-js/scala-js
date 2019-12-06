@@ -364,7 +364,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
     def newSyntheticVar()(implicit pos: Position): js.Ident = {
       syntheticVarCounter += 1
-      codegenVarIdent("$x" + syntheticVarCounter)
+      fileLevelVarIdent("$x" + syntheticVarCounter)
     }
 
     def resetSyntheticVarCounterIn[A](f: => A): A = {
@@ -453,7 +453,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         implicit pos: Position): WithGlobals[js.Function] = {
 
       performOptimisticThenPessimisticRuns {
-        val thisIdent = codegenVarIdent("thiz", thisOriginalName)
+        val thisIdent = fileLevelVarIdent("thiz", thisOriginalName)
         val env = env0.withThisIdent(Some(thisIdent))
         val js.Function(jsArrow, jsParams, jsBody) =
           desugarToFunctionInternal(arrow = false, params, body, isStat, env)
@@ -636,7 +636,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case StoreModule(className, value) =>
           unnest(value) { (newValue, env0) =>
             implicit val env = env0
-            js.Assign(codegenVar("n", className), transformExprNoChar(newValue))
+            js.Assign(envVar("n", className), transformExprNoChar(newValue))
           }
 
         case While(cond, body) =>
@@ -741,7 +741,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             } else {
               val superCtor = {
                 if (globalKnowledge.hasStoredSuperClass(enclosingClassName)) {
-                  codegenVar("superClass")
+                  fileLevelVar("superClass")
                 } else {
                   val superClass =
                     globalKnowledge.getSuperClassOfJSClass(enclosingClassName)
@@ -1992,7 +1992,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             genCallHelper("dp_" + genName(methodName), newReceiver :: newArgs: _*)
 
           def genHijackedMethodApply(className: ClassName): js.Tree =
-            js.Apply(codegenVar("f", className, methodName), newReceiver :: newArgs)
+            js.Apply(envVar("f", className, methodName), newReceiver :: newArgs)
 
           if (isMaybeHijackedClass(receiver.tpe) &&
               !methodName.isReflectiveProxy) {
@@ -2177,7 +2177,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                     newLhs, newRhs)
               } else {
                 val objectIs =
-                  if (!esFeatures.useECMAScript2015) codegenVar("is")
+                  if (!esFeatures.useECMAScript2015) coreJSLibVar("is")
                   else genIdentBracketSelect(genGlobalVarRef("Object"), "is")
                 val objectIsCall = js.Apply(objectIs, newLhs :: newRhs :: Nil)
                 if (op == ===) objectIsCall
@@ -2540,7 +2540,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           js.UnaryOp(JSUnaryOp.typeof, transformExprNoChar(globalRef))
 
         case JSLinkingInfo() =>
-          codegenVar("linkingInfo")
+          coreJSLibVar("linkingInfo")
 
         // Literals
 
@@ -2576,7 +2576,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           if (env.isLocalVar(name))
             js.VarRef(transformLocalVarIdent(name))
           else
-            codegenVar("cc", genName(name.name))
+            fileLevelVar("cc", genName(name.name))
 
         case Transient(JSVarRef(name, _)) =>
           js.VarRef(name)
@@ -2616,7 +2616,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             for ((value, expectedType) <- captureValues.zip(expectedTypes))
               yield transformExpr(value, expectedType)
           }
-          js.Apply(codegenVar("a", className), transformedArgs)
+          js.Apply(envVar("a", className), transformedArgs)
 
         // Invalid trees
 
@@ -2727,7 +2727,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     private def genApplyStaticLike(field: String, className: ClassName,
         method: MethodIdent, args: List[js.Tree])(
         implicit pos: Position): js.Tree = {
-      js.Apply(codegenVar(field, className, method.name), args)
+      js.Apply(envVar(field, className, method.name), args)
     }
 
     private def genFround(arg: js.Tree)(implicit pos: Position): js.Tree = {

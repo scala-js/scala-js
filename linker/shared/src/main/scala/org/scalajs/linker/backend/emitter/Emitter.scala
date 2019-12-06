@@ -256,7 +256,7 @@ final class Emitter private (config: CommonPhaseConfig,
         foreachImportedModule { (module, pos0) =>
           implicit val pos = pos0
           val from = js.StringLiteral(module)
-          val moduleBinding = jsGen.envModuleField(module).ident
+          val moduleBinding = jsGen.fileLevelModuleField(module).ident
           val importStat = js.ImportNamespace(moduleBinding, from)
           builder += importStat
         }
@@ -266,7 +266,7 @@ final class Emitter private (config: CommonPhaseConfig,
           implicit val pos = pos0
           val rhs = js.Apply(js.VarRef(js.Ident("require")),
               List(js.StringLiteral(module)))
-          val lhs = jsGen.envModuleField(module)
+          val lhs = jsGen.fileLevelModuleField(module)
           val decl = jsGen.genLet(lhs.ident, mutable = false, rhs)
           builder += decl
         }
@@ -282,7 +282,7 @@ final class Emitter private (config: CommonPhaseConfig,
 
     // $L0 = new RuntimeLong(0, 0)
     js.Assign(
-        jsGen.codegenVar("L0"),
+        jsGen.coreJSLibVar("L0"),
         jsGen.genScalaClassNew(
             LongImpl.RuntimeLongClass, LongImpl.initFromParts,
             js.IntLiteral(0), js.IntLiteral(0))

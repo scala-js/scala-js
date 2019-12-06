@@ -68,7 +68,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     if (useBigIntForLongs)
       BigIntLiteral(0L)
     else
-      codegenVar("L0")
+      coreJSLibVar("L0")
   }
 
   def genBoxedZeroOf(tpe: Type)(implicit pos: Position): Tree =
@@ -76,7 +76,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     else genZeroOf(tpe)
 
   def genBoxedCharZero()(implicit pos: Position): Tree =
-    codegenVar("bC0")
+    coreJSLibVar("bC0")
 
   def genLongModuleApply(methodName: MethodName, args: Tree*)(
       implicit pos: Position): Tree = {
@@ -129,7 +129,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genSelectStatic(className: ClassName, item: irt.FieldIdent)(
       implicit pos: Position): VarRef = {
-    codegenVar("t", className, item.name)
+    envVar("t", className, item.name)
   }
 
   def genJSPrivateSelect(receiver: Tree, className: ClassName,
@@ -141,7 +141,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genJSPrivateFieldIdent(className: ClassName, field: irt.FieldIdent)(
       implicit pos: Position): Tree = {
-    codegenVar("r", className, field.name)
+    envVar("r", className, field.name)
   }
 
   def genIsInstanceOf(expr: Tree, tpe: Type)(
@@ -158,15 +158,15 @@ private[emitter] final class JSGen(val semantics: Semantics,
             !globalKnowledge.isInterface(className)) {
           expr instanceof encodeClassVar(className)
         } else {
-          Apply(codegenVar("is", className), List(expr))
+          Apply(envVar("is", className), List(expr))
         }
 
       case ArrayType(ArrayTypeRef(base, depth)) =>
-        Apply(codegenVar("isArrayOf", base), List(expr, IntLiteral(depth)))
+        Apply(envVar("isArrayOf", base), List(expr, IntLiteral(depth)))
 
       case UndefType   => expr === Undefined()
       case BooleanType => typeof(expr) === "boolean"
-      case CharType    => expr instanceof codegenVar("Char")
+      case CharType    => expr instanceof coreJSLibVar("Char")
       case ByteType    => genCallHelper("isByte", expr)
       case ShortType   => genCallHelper("isShort", expr)
       case IntType     => genCallHelper("isInt", expr)
@@ -188,7 +188,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     className match {
       case BoxedUnitClass      => expr === Undefined()
       case BoxedBooleanClass   => typeof(expr) === "boolean"
-      case BoxedCharacterClass => expr instanceof codegenVar("Char")
+      case BoxedCharacterClass => expr instanceof coreJSLibVar("Char")
       case BoxedByteClass      => genCallHelper("isByte", expr)
       case BoxedShortClass     => genCallHelper("isShort", expr)
       case BoxedIntegerClass   => genCallHelper("isInt", expr)
@@ -239,10 +239,10 @@ private[emitter] final class JSGen(val semantics: Semantics,
     } else {
       tpe match {
         case ClassType(className) =>
-          Apply(codegenVar("as", className), List(expr))
+          Apply(envVar("as", className), List(expr))
 
         case ArrayType(ArrayTypeRef(base, depth)) =>
-          Apply(codegenVar("asArrayOf", base), List(expr, IntLiteral(depth)))
+          Apply(envVar("asArrayOf", base), List(expr, IntLiteral(depth)))
 
         case UndefType   => genCallHelper("uV", expr)
         case BooleanType => genCallHelper("uZ", expr)
@@ -264,15 +264,15 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genCallHelper(helperName: String, args: Tree*)(
       implicit pos: Position): Tree = {
-    Apply(codegenVar(helperName), args.toList)
+    Apply(coreJSLibVar(helperName), args.toList)
   }
 
   def encodeClassVar(className: ClassName)(implicit pos: Position): VarRef =
-    codegenVar("c", className)
+    envVar("c", className)
 
   def genLoadModule(moduleClass: ClassName)(implicit pos: Position): Tree = {
     import TreeDSL._
-    Apply(codegenVar("m", moduleClass), Nil)
+    Apply(envVar("m", moduleClass), Nil)
   }
 
   def genScalaClassNew(className: ClassName, ctor: MethodName, args: Tree*)(
@@ -282,7 +282,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     if (globalKnowledge.hasInlineableInit(className)) {
       New(encodedClassVar, argsList)
     } else {
-      Apply(codegenVar("ct", className, ctor), New(encodedClassVar, Nil) :: argsList)
+      Apply(envVar("ct", className, ctor), New(encodedClassVar, Nil) :: argsList)
     }
   }
 
@@ -312,7 +312,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genNonNativeJSClassConstructor(className: ClassName)(
       implicit pos: Position): Tree = {
-    Apply(codegenVar("a", className), Nil)
+    Apply(envVar("a", className), Nil)
   }
 
   def genLoadJSFromSpec(spec: irt.JSNativeLoadSpec,
@@ -339,7 +339,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
         WithGlobals(pathSelection(globalVarRef, path), globalVarNames)
 
       case irt.JSNativeLoadSpec.Import(module, path) =>
-        val moduleValue = envModuleField(module)
+        val moduleValue = fileLevelModuleField(module)
         path match {
           case "default" :: rest if moduleKind == ModuleKind.CommonJSModule =>
             val defaultField = genCallHelper("moduleDefault", moduleValue)
@@ -373,7 +373,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
   def genClassDataOf(typeRef: TypeRef)(implicit pos: Position): Tree = {
     typeRef match {
       case typeRef: NonArrayTypeRef =>
-        codegenVar("d", typeRef)
+        envVar("d", typeRef)
       case ArrayTypeRef(base, dims) =>
         val baseData = genClassDataOf(base)
         (1 to dims).foldLeft[Tree](baseData) { (prev, _) =>
@@ -385,7 +385,80 @@ private[emitter] final class JSGen(val semantics: Semantics,
   def genClassDataOf(className: ClassName)(implicit pos: Position): Tree =
     genClassDataOf(ClassRef(className))
 
-  def envModuleField(module: String)(implicit pos: Position): VarRef = {
+  // Compiler generated identifiers --------------------------------------------
+
+  /* We distinguish three types of compiler generated identifiers:
+   *
+   * - envVar: Things pertaining to a given class. Accessible from every chunk
+   *   of the Scala.js output by importing its module.
+   * - coreJSLibVar: Things defined by the CoreJSLib. Accessible from every
+   *   chunk by importing the root module.
+   * - fileLevelVar: Things that are local to an individual file.
+   */
+
+  def envVar(field: String, className: ClassName)(implicit pos: Position): VarRef =
+    fileLevelVar(field, genName(className))
+
+  def envVar(field: String, className: ClassName, fieldName: FieldName)(
+      implicit pos: Position): VarRef = {
+    envVar(field, className, fieldName, NoOriginalName)
+  }
+
+  def envVar(field: String, className: ClassName, fieldName: FieldName,
+      origName: OriginalName)(
+      implicit pos: Position): VarRef = {
+    fileLevelVar(field, genName(className) + "__" + genName(fieldName), origName)
+  }
+
+  def envVar(field: String, className: ClassName, methodName: MethodName)(
+      implicit pos: Position): VarRef = {
+    envVar(field, className, methodName, NoOriginalName)
+  }
+
+  def envVar(field: String, className: ClassName, methodName: MethodName,
+      origName: OriginalName)(
+      implicit pos: Position): VarRef = {
+    fileLevelVar(field, genName(className) + "__" + genName(methodName), origName)
+  }
+
+  def envVar(field: String, typeRef: NonArrayTypeRef)(
+      implicit pos: Position): VarRef = {
+    // The mapping in this function is an implementation detail of the emitter
+    typeRef match {
+      case primRef: PrimRef =>
+        VarRef(coreJSLibVarIdent(field, primRef))
+
+      case ClassRef(className) =>
+        envVar(field, className)
+    }
+  }
+
+  def coreJSLibVar(field: String)(implicit pos: Position): VarRef =
+    fileLevelVar(field)
+
+  def coreJSLibVarIdent(field: String)(implicit pos: Position): Ident =
+    fileLevelVarIdent(field)
+
+  def coreJSLibVarIdent(field: String, primRef: PrimRef)(
+      implicit pos: Position): Ident = {
+    // The mapping in this function is an implementation detail of the emitter
+    val subField = primRef.tpe match {
+      case NoType      => "V"
+      case BooleanType => "Z"
+      case CharType    => "C"
+      case ByteType    => "B"
+      case ShortType   => "S"
+      case IntType     => "I"
+      case LongType    => "J"
+      case FloatType   => "F"
+      case DoubleType  => "D"
+      case NullType    => "N"
+      case NothingType => "E"
+    }
+    fileLevelVarIdent(field, subField)
+  }
+
+  def fileLevelModuleField(module: String)(implicit pos: Position): VarRef = {
     /* This is written so that the happy path, when `module` contains only
      * valid characters, is fast.
      */
@@ -407,7 +480,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     }
 
     def buildValidName(): String = {
-      val result = new java.lang.StringBuilder("$i_")
+      val result = new java.lang.StringBuilder("")
       val len = module.length
       var i = 0
       while (i != len) {
@@ -421,91 +494,37 @@ private[emitter] final class JSGen(val semantics: Semantics,
       result.toString()
     }
 
-    val varName =
-      if (containsOnlyValidChars()) "$i_" + module
+    val subField =
+      if (containsOnlyValidChars()) module
       else buildValidName()
 
-    VarRef(Ident(avoidClashWithGlobalRef(varName), OriginalName(module)))
+    fileLevelVar("i", subField, OriginalName(module))
   }
 
-  def codegenVar(field: String, typeRef: NonArrayTypeRef)(
-      implicit pos: Position): VarRef = {
-    VarRef(codegenVarIdent(field, typeRef))
-  }
-
-  def codegenVar(field: String, className: ClassName)(implicit pos: Position): VarRef =
-    codegenVar(field, genName(className))
-
-  def codegenVar(field: String, className: ClassName, fieldName: FieldName)(
-      implicit pos: Position): VarRef = {
-    codegenVar(field, className, fieldName, NoOriginalName)
-  }
-
-  def codegenVar(field: String, className: ClassName, fieldName: FieldName,
-      origName: OriginalName)(
-      implicit pos: Position): VarRef = {
-    codegenVar(field, genName(className) + "__" + genName(fieldName), origName)
-  }
-
-  def codegenVar(field: String, className: ClassName, methodName: MethodName)(
-      implicit pos: Position): VarRef = {
-    codegenVar(field, className, methodName, NoOriginalName)
-  }
-
-  def codegenVar(field: String, className: ClassName, methodName: MethodName,
-      origName: OriginalName)(
-      implicit pos: Position): VarRef = {
-    codegenVar(field, genName(className) + "__" + genName(methodName), origName)
-  }
-
-  def codegenVar(field: String, subField: String,
+  def fileLevelVar(field: String, subField: String,
       origName: OriginalName = NoOriginalName)(
       implicit pos: Position): VarRef = {
-    VarRef(codegenVarIdent(field, subField, origName))
+    VarRef(fileLevelVarIdent(field, subField, origName))
   }
 
-  def codegenVarIdent(field: String, typeRef: NonArrayTypeRef)(
-      implicit pos: Position): Ident = {
-    // The mapping in this function is an implementation detail of the emitter
-    val subField = typeRef match {
-      case PrimRef(tpe) =>
-        tpe match {
-          case NoType      => "V"
-          case BooleanType => "Z"
-          case CharType    => "C"
-          case ByteType    => "B"
-          case ShortType   => "S"
-          case IntType     => "I"
-          case LongType    => "J"
-          case FloatType   => "F"
-          case DoubleType  => "D"
-          case NullType    => "N"
-          case NothingType => "E"
-        }
-      case ClassRef(className) =>
-        genName(className)
-    }
-    codegenVarIdent(field, subField)
-  }
+  def fileLevelVar(field: String)(implicit pos: Position): VarRef =
+    VarRef(fileLevelVarIdent(field))
 
-  def codegenVarIdent(field: String, subField: String,
+  def fileLevelVarIdent(field: String, subField: String,
       origName: OriginalName = NoOriginalName)(
       implicit pos: Position): Ident = {
     Ident(avoidClashWithGlobalRef("$" + field + "_" + subField), origName)
   }
 
-  def codegenVar(field: String)(implicit pos: Position): VarRef =
-    VarRef(codegenVarIdent(field))
+  def fileLevelVarIdent(field: String)(implicit pos: Position): Ident =
+    fileLevelVarIdent(field, NoOriginalName)
 
-  def codegenVarIdent(field: String)(implicit pos: Position): Ident =
-    codegenVarIdent(field, NoOriginalName)
-
-  def codegenVarIdent(field: String, origName: OriginalName)(
+  def fileLevelVarIdent(field: String, origName: OriginalName)(
       implicit pos: Position): Ident = {
     Ident(avoidClashWithGlobalRef("$" + field), origName)
   }
 
-  def avoidClashWithGlobalRef(codegenVarName: String): String = {
+  private def avoidClashWithGlobalRef(codegenVarName: String): String = {
     /* This is not cached because it should virtually never happen.
      * slowPath() is only called if we use a dangerous global ref, which should
      * already be very rare. And if do a second iteration in the loop only if
