@@ -376,8 +376,22 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       if (!isOptimisticNamingRun || !globalVarNames.exists(localVarNames)) {
         /* At this point, filter out the global refs that do not need to be
          * tracked across functions and classes.
+         *
+         * By default, only dangerous global refs need to be tracked outside of
+         * functions, to power `mentionedDangerousGlobalRefs` In that case, the
+         * set is hopefully already emptied at this point for the large majority
+         * of methods, if not all.
+         *
+         * However, when integrating with GCC, we must tell it a list of all the
+         * global variables that are accessed in an externs file. In that case, we
+         * need to track all global variables across functions and classes. This is
+         * slower, but running GCC will take most of the time anyway in that case.
          */
-        WithGlobals(result, keepOnlyTrackedGlobalRefs(globalVarNames.toSet))
+        val globalRefs =
+          if (trackAllGlobalRefs) globalVarNames.toSet
+          else GlobalRefUtils.keepOnlyDangerousGlobalRefs(globalVarNames.toSet)
+
+        WithGlobals(result, globalRefs)
       } else {
         /* Clear the local var names, but *not* the global var names.
          * In the pessimistic run, we will use the knowledge gathered during

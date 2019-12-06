@@ -37,6 +37,8 @@ object BinaryIncompatibilities {
           "org.scalajs.linker.backend.emitter.JSGen.codegenVarIdent$default$3"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.JSGen.envModuleField"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.keepOnlyTrackedGlobalRefs"),
       exclude[IncompatibleMethTypeProblem](
           "org.scalajs.linker.backend.emitter.JSGen.this"),
 
