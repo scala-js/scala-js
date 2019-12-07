@@ -209,8 +209,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     // Global class generation state -------------------------------------------
 
     private val lazilyGeneratedAnonClasses = mutable.Map.empty[Symbol, ClassDef]
-    private val generatedClasses =
-      ListBuffer.empty[(Symbol, Option[String], js.ClassDef)]
+    private val generatedClasses = ListBuffer.empty[js.ClassDef]
 
     private def consumeLazilyGeneratedAnonClass(sym: Symbol): ClassDef = {
       /* If we are trying to generate an method as JSFunction, we cannot
@@ -260,7 +259,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  * Non-native JS class       -> `genNonNativeJSClass()`
      *  * Other JS type (<: js.Any) -> `genJSClassData()`
      *  * Interface                 -> `genInterface()`
-     *  * Implementation class      -> `genImplClass()`
      *  * Normal class              -> `genClass()`
      */
     override def apply(cunit: CompilationUnit): Unit = {
@@ -332,13 +330,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                   }
                 } else if (sym.isTraitOrInterface) {
                   genInterface(cd)
-                } else if (isImplClass(sym)) {
-                  genImplClass(cd)
                 } else {
                   genClass(cd)
                 }
 
-                generatedClasses += ((sym, None, tree))
+                generatedClasses += tree
               } catch {
                 case e: ir.InvalidIRException =>
                   e.tree match {
@@ -361,11 +357,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           }
         }
 
-        val clDefs = generatedClasses.map(_._3).toList
+        val clDefs = generatedClasses.toList
         generatedJSAST(clDefs)
 
-        for ((sym, suffix, tree) <- generatedClasses) {
-          genIRFile(cunit, sym, suffix, tree)
+        for (tree <- clDefs) {
+          genIRFile(cunit, tree)
         }
       } finally {
         lazilyGeneratedAnonClasses.clear()
@@ -383,7 +379,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val sym = cd.symbol
       implicit val pos = sym.pos
 
-      assert(!sym.isTraitOrInterface && !isImplClass(sym),
+      assert(!sym.isTraitOrInterface,
           "genClass() must be called only for normal classes: "+sym)
       assert(sym.superClass != NoSymbol, sym)
 
@@ -395,6 +391,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
 
       val classIdent = encodeClassNameIdent(sym)
+      val originalName = originalNameOfClass(sym)
       val isHijacked = isHijackedClass(sym)
 
       // Optimizer hints
@@ -481,14 +478,51 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         val staticInitializerStats =
           reflectInit.toList ::: staticModuleInit.toList
         if (staticInitializerStats.nonEmpty)
-          Some(genStaticInitializerWithStats(js.Block(staticInitializerStats)))
+          List(genStaticInitializerWithStats(js.Block(staticInitializerStats)))
         else
-          None
+          Nil
+      }
+
+      val allMemberDefsExceptStaticForwarders =
+        generatedMembers ::: memberExports ::: optStaticInitializer
+
+      // Add static forwarders
+      val allMemberDefs = if (!isCandidateForForwarders(sym)) {
+        allMemberDefsExceptStaticForwarders
+      } else {
+        if (sym.isModuleClass) {
+          /* If the module class has no linked class, we must create one to
+           * hold the static forwarders. Otherwise, this is going to be handled
+           * when generating the companion class.
+           */
+          if (!sym.linkedClassOfClass.exists) {
+            val forwarders = genStaticForwardersFromModuleClass(Nil, sym)
+            if (forwarders.nonEmpty) {
+              val forwardersClassDef = js.ClassDef(
+                  js.ClassIdent(ClassName(classIdent.name.nameString.stripSuffix("$"))),
+                  originalName,
+                  ClassKind.Class,
+                  None,
+                  Some(js.ClassIdent(ir.Names.ObjectClass)),
+                  Nil,
+                  None,
+                  None,
+                  forwarders,
+                  Nil
+              )(js.OptimizerHints.empty)
+              generatedClasses += forwardersClassDef
+            }
+          }
+          allMemberDefsExceptStaticForwarders
+        } else {
+          val forwarders = genStaticForwardersForClassOrInterface(
+              allMemberDefsExceptStaticForwarders, sym)
+          allMemberDefsExceptStaticForwarders ::: forwarders
+        }
       }
 
       // Hashed definitions of the class
-      val hashedMemberDefs =
-        Hashers.hashMemberDefs(generatedMembers ++ memberExports ++ optStaticInitializer)
+      val hashedMemberDefs = Hashers.hashMemberDefs(allMemberDefs)
 
       // The complete class definition
       val kind =
@@ -498,7 +532,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       val classDefinition = js.ClassDef(
           classIdent,
-          originalNameOfClass(sym),
+          originalName,
           kind,
           None,
           Some(encodeClassNameIdent(sym.superClass)),
@@ -708,7 +742,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             origJsClass.optimizerHints)
       }
 
-      generatedClasses += ((sym, None, newClassDef))
+      generatedClasses += newClassDef
 
       // Construct inline class definition
       val js.JSMethodDef(_, _, ctorParams, ctorBody) =
@@ -903,50 +937,17 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val generatedMethods = gen(cd.impl)
       val interfaces = genClassInterfaces(sym, forJSClass = false)
 
+      val allMemberDefs =
+        if (!isCandidateForForwarders(sym)) generatedMethods
+        else generatedMethods ::: genStaticForwardersForClassOrInterface(generatedMethods, sym)
+
       // Hashed definitions of the interface
       val hashedMemberDefs =
-        Hashers.hashMemberDefs(generatedMethods)
+        Hashers.hashMemberDefs(allMemberDefs)
 
       js.ClassDef(classIdent, originalNameOfClass(sym), ClassKind.Interface,
           None, None, interfaces, None, None, hashedMemberDefs, Nil)(
           OptimizerHints.empty)
-    }
-
-    // Generate an implementation class of a trait -----------------------------
-
-    /** Gen the IR ClassDef for an implementation class (of a trait).
-     */
-    def genImplClass(cd: ClassDef): js.ClassDef = {
-      val ClassDef(mods, name, _, impl) = cd
-      val sym = cd.symbol
-      implicit val pos = sym.pos
-
-      def gen(tree: Tree): List[js.MethodDef] = {
-        tree match {
-          case EmptyTree => Nil
-          case Template(_, _, body) => body.flatMap(gen)
-
-          case dd: DefDef =>
-            assert(!dd.symbol.isDeferred,
-                s"Found an abstract method in an impl class at $pos: ${dd.symbol.fullName}")
-            val m = genMethod(dd)
-            m.toList
-
-          case _ => abort("Illegal tree in gen of genImplClass(): " + tree)
-        }
-      }
-      val generatedMethods = gen(impl)
-
-      val classIdent = encodeClassNameIdent(sym)
-      val objectClassIdent = encodeClassNameIdent(ObjectClass)
-
-      // Hashed definitions of the impl class
-      val hashedMemberDefs =
-        Hashers.hashMemberDefs(generatedMethods)
-
-      js.ClassDef(classIdent, originalNameOfClass(sym), ClassKind.Class, None,
-          Some(objectClassIdent), Nil, None, None,
-          hashedMemberDefs, Nil)(OptimizerHints.empty)
     }
 
     private lazy val jsTypeInterfacesBlacklist: Set[Symbol] =
@@ -967,6 +968,138 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       } yield {
         encodeClassNameIdent(typeSym)
       }
+    }
+
+    // Static forwarders -------------------------------------------------------
+
+    /* This mimics the logic in BCodeHelpers.addForwarders and the code that
+     * calls it, except that we never have collisions with existing methods in
+     * the companion class. This is because in the IR, only methods with the
+     * same `MethodName` (including signature) and that are also
+     * `PublicStatic` would collide. Since we never emit any `PublicStatic`
+     * method otherwise (except in 2.11 impl classes, which have no companion),
+     * there can be no collision. If that assumption is broken, an error
+     * message is emitted asking the user to report a bug.
+     *
+     * It is important that we always emit forwarders, because some Java APIs
+     * actually have a public static method and a public instance method with
+     * the same name. For example the class `Integer` has a
+     * `def hashCode(): Int` and a `static def hashCode(Int): Int`. The JVM
+     * back-end considers them as colliding because they have the same name,
+     * but we must not.
+     */
+
+    /** Is the given Scala class, interface or module class a candidate for
+     *  static forwarders?
+     */
+    def isCandidateForForwarders(sym: Symbol): Boolean = {
+      // it must be a top level class (name contains no $s)
+      !settings.noForwarders && exitingPickler {
+        !sym.name.containsChar('$') && !sym.isNestedClass
+      }
+    }
+
+    /** Gen the static forwarders to the members of a class or interface for
+     *  methods of its companion object.
+     *
+     *  This is only done if there exists a companion object and it is not a JS
+     *  type.
+     *
+     *  Precondition: `isCandidateForForwarders(sym)` is true
+     */
+    def genStaticForwardersForClassOrInterface(
+        existingMembers: List[js.MemberDef], sym: Symbol)(
+        implicit pos: Position): List[js.MemberDef] = {
+      val module = sym.companionModule
+      if (module == NoSymbol) {
+        Nil
+      } else {
+        val moduleClass = module.moduleClass
+        if (!isJSType(moduleClass))
+          genStaticForwardersFromModuleClass(existingMembers, moduleClass)
+        else
+          Nil
+      }
+    }
+
+    private lazy val dontUseExitingUncurryForForwarders =
+      scala.util.Properties.versionNumberString.startsWith("2.11.")
+
+    /** Gen the static forwarders for the methods of a module class.
+     *
+     *  Precondition: `isCandidateForForwarders(moduleClass)` is true
+     */
+    def genStaticForwardersFromModuleClass(existingMembers: List[js.MemberDef],
+        moduleClass: Symbol)(
+        implicit pos: Position): List[js.MemberDef] = {
+
+      assert(moduleClass.isModuleClass, moduleClass)
+
+      val hasAnyExistingPublicStaticMethod = existingMembers.exists {
+        case js.MethodDef(flags, _, _, _, _, _) =>
+          flags.namespace == js.MemberNamespace.PublicStatic
+        case _ =>
+          false
+      }
+      if (hasAnyExistingPublicStaticMethod) {
+        reporter.error(pos,
+            "Unexpected situation: found existing public static methods in " +
+            s"the class ${moduleClass.fullName} while trying to generate " +
+            "static forwarders for its companion object. " +
+            "Please report this as a bug in Scala.js.")
+      }
+
+      def listMembersBasedOnFlags = {
+        // Copy-pasted from BCodeHelpers (it's somewhere else in 2.11.x)
+        val ExcludedForwarderFlags: Long = {
+          import scala.tools.nsc.symtab.Flags._
+          SPECIALIZED | LIFTED | PROTECTED | STATIC | EXPANDEDNAME | PRIVATE | MACRO
+        }
+
+        moduleClass.info.membersBasedOnFlags(ExcludedForwarderFlags, symtab.Flags.METHOD)
+      }
+
+      /* See BCodeHelprs.addForwarders in 2.12+ for why we normally use
+       * exitingUncurry. In 2.11.x we do not use it, because Scala/JVM did not
+       * use it back then, and using it on that version causes mixed in methods
+       * not to be found (this notably breaks `extends App` as the `main`
+       * method that it defines is not found).
+       *
+       * This means that in 2.11.x we suffer from
+       * https://github.com/scala/bug/issues/10812, like upstream Scala/JVM,
+       * but it does not really affect Scala.js because the IR methods are not
+       * used for compilation, only for linking, and for linking it is fine to
+       * have additional, unexpected bridges.
+       */
+      val members =
+        if (dontUseExitingUncurryForForwarders) listMembersBasedOnFlags
+        else exitingUncurry(listMembersBasedOnFlags)
+
+      def isExcluded(m: Symbol): Boolean = {
+        m.isDeferred || m.isConstructor || m.hasAccessBoundary || {
+          val o = m.owner
+          (o eq ObjectClass) || (o eq AnyRefClass) || (o eq AnyClass)
+        }
+      }
+
+      val forwarders = for {
+        m <- members
+        if !isExcluded(m)
+      } yield {
+        withNewLocalNameScope {
+          val flags = js.MemberFlags.empty.withNamespace(js.MemberNamespace.PublicStatic)
+          val methodIdent = encodeMethodSym(m)
+          val originalName = originalNameOfMethod(m)
+          val jsParams = m.tpe.params.map(genParamDef(_))
+          val resultType = toIRType(m.tpe.resultType)
+
+          js.MethodDef(flags, methodIdent, originalName, jsParams, resultType, Some {
+            genApplyMethod(genLoadModule(moduleClass), m, jsParams.map(_.ref))
+          })(OptimizerHints.empty, None)
+        }
+      }
+
+      forwarders.toList
     }
 
     // Generate the fields of a class ------------------------------------------
@@ -1615,7 +1748,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                   sParam.tpe =:= symParam.tpe
               }
             }
-            Some(genTraitImplApply(implMethodSym,
+            Some(genApplyStatic(implMethodSym,
                 js.This()(currentClassType) :: jsParams.map(_.ref)))
           } else {
             None
@@ -1637,7 +1770,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               mutatedLocalVars := mutable.Set.empty
           ) {
             def isTraitImplForwarder = dd.rhs match {
-              case app: Apply => foreignIsImplClass(app.symbol.owner)
+              case app: Apply => isImplClass(app.symbol.owner)
               case _          => false
             }
 
@@ -1675,7 +1808,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               } else {
                 val resultIRType = toIRType(sym.tpe.resultType)
                 val namespace = {
-                  if (isImplClass(sym.owner)) {
+                  if (sym.isStaticMember) {
                     if (sym.isPrivate) js.MemberNamespace.PrivateStatic
                     else js.MemberNamespace.PublicStatic
                   } else {
@@ -2142,7 +2275,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             assert(!sym.isPackageClass, "Cannot use package as value: " + tree)
             genLoadModule(sym)
           } else if (sym.isStaticMember) {
-            genStaticMember(sym)
+            genStaticField(sym)
           } else if (paramAccessorLocals contains sym) {
             paramAccessorLocals(sym).ref
           } else if (isNonNativeJSClass(sym.owner)) {
@@ -2199,7 +2332,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             case ClazzTag =>
               js.ClassOf(toTypeRef(value.typeValue))
             case EnumTag =>
-              genStaticMember(value.symbolValue)
+              genStaticField(value.symbolValue)
           }
 
         case tree: Block =>
@@ -2767,8 +2900,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         val classDef = consumeLazilyGeneratedAnonClass(clsSym)
         tryGenAnonFunctionClass(classDef, args.map(genExpr)).getOrElse {
           // Cannot optimize anonymous function class. Generate full class.
-          generatedClasses +=
-            ((clsSym, None, nestedGenerateClass(clsSym)(genClass(classDef))))
+          generatedClasses += nestedGenerateClass(clsSym)(genClass(classDef))
           genNew(clsSym, ctor, genActualArgs(ctor, args))
         }
       } else if (isJSType(clsSym)) {
@@ -2944,8 +3076,16 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           genPrimitiveJSCall(tree, isStat)
         else
           genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))
-      } else if (foreignIsImplClass(sym.owner)) {
-        genTraitImplApply(sym, args map genExpr)
+      } else if (sym.isStaticMember) {
+        if (sym.isMixinConstructor && isJSImplClass(sym.owner)) {
+          /* Do not emit a call to the $init$ method of JS traits.
+           * This exception is necessary because optional JS fields cause the
+           * creation of a $init$ method, which we must not call.
+           */
+          js.Skip()
+        } else {
+          genApplyStatic(sym, args.map(genExpr))
+        }
       } else {
         genApplyMethodMaybeStatically(genExpr(receiver), sym,
             genActualArgs(sym, args))
@@ -2982,19 +3122,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         else toIRType(method.tpe.resultType)
       js.ApplyStatically(flags, receiver, encodeClassName(method.owner),
           methodIdent, arguments)(resultType)
-    }
-
-    def genTraitImplApply(method: Symbol, arguments: List[js.Tree])(
-        implicit pos: Position): js.Tree = {
-      if (method.isMixinConstructor && isJSImplClass(method.owner)) {
-        /* Do not emit a call to the $init$ method of JS traits.
-         * This exception is necessary because @JSOptional fields cause the
-         * creation of a $init$ method, which we must not call.
-         */
-        js.Skip()
-      } else {
-        genApplyStatic(method, arguments)
-      }
     }
 
     def genApplyJSClassMethod(receiver: js.Tree, method: Symbol,
@@ -3144,14 +3271,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       val flags = js.ApplyFlags.empty
       val className = encodeClassName(clazz)
-      val moduleClass = clazz.companionModule.moduleClass
 
       val initName = encodeMethodSym(ctor).name
       val newName = MethodName(newSimpleMethodName, initName.paramTypeRefs,
           jstpe.ClassRef(className))
       val newMethodIdent = js.MethodIdent(newName)
 
-      js.Apply(flags, genLoadModule(moduleClass), newMethodIdent, args)(
+      js.ApplyStatic(flags, className, newMethodIdent, args)(
           jstpe.ClassType(className))
     }
 
@@ -4060,9 +4186,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           } else platform.externalEquals
           // scalastyle:on line.size.limit
         }
-        val moduleClass = equalsMethod.owner
-        val instance = genLoadModule(moduleClass)
-        genApplyMethod(instance, equalsMethod, List(lsrc, rsrc))
+        if (BoxesRunTimeClass.isJavaDefined)
+          genApplyStatic(equalsMethod, List(lsrc, rsrc))
+        else // this happens when in the same compilation run as BoxesRunTime
+          genApplyMethod(genLoadModule(BoxesRunTimeClass), equalsMethod, List(lsrc, rsrc))
       } else {
         // if (lsrc eq null) rsrc eq null else lsrc.equals(rsrc)
         if (isStringType(ltpe)) {
@@ -5544,9 +5671,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       val formalArgs = params.map(genParamDef(_))
 
-      val isInImplClass = isImplClass(target.owner)
-
-      val (allFormalCaptures, body, allActualCaptures) = if (!isInImplClass) {
+      val (allFormalCaptures, body, allActualCaptures) = if (!target.isStaticMember) {
         val thisActualCapture = genExpr(receiver)
         val thisFormalCapture = js.ParamDef(
             freshLocalIdent("this")(receiver.pos), thisOriginalName,
@@ -5564,7 +5689,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         (thisFormalCapture :: formalCaptures,
             body, thisActualCapture :: actualCaptures)
       } else {
-        val body = genTraitImplApply(target, allArgs)
+        val body = genApplyStatic(target, allArgs)
 
         (formalCaptures, body, actualCaptures)
       }
@@ -5712,7 +5837,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           Nil)(
           js.OptimizerHints.empty.withInline(true))
 
-      generatedClasses += ((currentClassSym.get, Some(suffix), classDef))
+      generatedClasses += classDef
 
       className
     }
@@ -5979,16 +6104,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
     }
 
-    /** Generate access to a static member */
-    private def genStaticMember(sym: Symbol)(implicit pos: Position) = {
-      /* Actually, there is no static member in Scala.js. If we come here, that
-       * is because we found the symbol in a Java-emitted .class in the
-       * classpath. But the corresponding implementation in Scala.js will
-       * actually be a val in the companion module.
-       * We cannot use the .class files produced by our reimplementations of
-       * these classes (in which the symbol would be a Scala accessor) because
-       * that crashes the rest of scalac (at least for some choice symbols).
-       * Hence we cheat here.
+    /** Generate access to a static field. */
+    private def genStaticField(sym: Symbol)(implicit pos: Position): js.Tree = {
+      /* Static fields are not accessed directly at the IR level, because there
+       * is no lazily-executed static initializer to make sure they are
+       * initialized. Instead, reading a static field must always go through a
+       * static getter with the same name as the field, 0 argument, and with
+       * the field's type as result type. The static getter is responsible for
+       * proper initialization, if required.
        */
       import scalaPrimitives._
       import jsPrimitives._
@@ -5997,9 +6120,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           case UNITVAL => js.Undefined()
         }
       } else {
-        val instance = genLoadModule(sym.owner)
-        val method = encodeStaticMemberSym(sym)
-        js.Apply(js.ApplyFlags.empty, instance, method, Nil)(toIRType(sym.tpe))
+        val className = encodeClassName(sym.owner)
+        val method = encodeStaticFieldGetterSym(sym)
+        js.ApplyStatic(js.ApplyFlags.empty, className, method, Nil)(toIRType(sym.tpe))
       }
     }
   }

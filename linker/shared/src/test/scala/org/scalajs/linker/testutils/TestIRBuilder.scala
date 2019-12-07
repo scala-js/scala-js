@@ -56,7 +56,7 @@ object TestIRBuilder {
         EOH)
   }
 
-  final val MainTestClassName = ClassName("Test$")
+  final val MainTestClassName = ClassName("Test")
 
   val MainTestModuleInitializers = mainModuleInitializers("Test")
 
@@ -86,7 +86,7 @@ object TestIRBuilder {
     val stringArrayTypeRef = ArrayTypeRef(ClassRef(BoxedStringClass), 1)
     val stringArrayType = ArrayType(stringArrayTypeRef)
     val argsParamDef = paramDef("args", stringArrayType)
-    MethodDef(MemberFlags.empty,
+    MethodDef(MemberFlags.empty.withNamespace(MemberNamespace.PublicStatic),
         m("main", List(stringArrayTypeRef), VoidRef), NON,
         List(argsParamDef), NoType, Some(body))(EOH, None)
   }

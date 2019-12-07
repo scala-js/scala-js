@@ -68,15 +68,16 @@ class IRCheckerTest {
             )
         ),
 
-        classDef("Test$", kind = ClassKind.ModuleClass,
+        classDef(MainTestClassName,
             superClass = Some(ObjectClass),
             memberDefs = List(
-                trivialCtor("Test$"),
-                MethodDef(EMF, nullBarMethodName, NON, Nil, ClassType("Bar"),
+                trivialCtor(MainTestClassName),
+                MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
+                    nullBarMethodName, NON, Nil, ClassType("Bar"),
                     Some(Null()))(
                     EOH, None),
                 mainMethodDef(Block(
-                    callMethOn(Apply(EAF, This()(ClassType("Test$")),
+                    callMethOn(ApplyStatic(EAF, MainTestClassName,
                         nullBarMethodName, Nil)(ClassType("Bar"))),
                     callMethOn(Null()),
                     callMethOn(Throw(Null()))

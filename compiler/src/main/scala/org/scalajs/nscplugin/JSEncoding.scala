@@ -222,9 +222,11 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     js.MethodIdent(methodName)
   }
 
-  def encodeStaticMemberSym(sym: Symbol)(implicit pos: Position): js.MethodIdent = {
+  def encodeStaticFieldGetterSym(sym: Symbol)(
+      implicit pos: Position): js.MethodIdent = {
+
     require(sym.isStaticMember,
-        "encodeStaticMemberSym called with non-static symbol: " + sym)
+        "encodeStaticFieldGetterSym called with non-static symbol: " + sym)
 
     val name = sym.name
     val resultTypeRef = paramOrResultTypeRef(sym.tpe)
@@ -254,9 +256,6 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     js.LocalIdent(localSymbolName(sym))
   }
 
-  def foreignIsImplClass(sym: Symbol): Boolean =
-    sym.isModuleClass && nme.isImplClassName(sym.name)
-
   def encodeClassType(sym: Symbol): jstpe.Type = {
     if (sym == definitions.ObjectClass) jstpe.AnyType
     else if (isJSType(sym)) jstpe.AnyType
@@ -271,7 +270,6 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     js.ClassIdent(encodeClassName(sym))
 
   private val BoxedStringModuleClassName = ClassName("java.lang.String$")
-  private val BoxedVoidModuleClassName = ClassName("java.lang.Void$")
 
   def encodeClassName(sym: Symbol): ClassName = {
     assert(!sym.isPrimitiveValueClass,
@@ -280,20 +278,17 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
       ir.Names.BoxedStringClass
     } else if (sym == jsDefinitions.HackedStringModClass) {
       BoxedStringModuleClassName
-    } else if (sym == definitions.BoxedUnitClass) {
+    } else if (sym == definitions.BoxedUnitClass || sym == jsDefinitions.BoxedUnitModClass) {
       // Rewire scala.runtime.BoxedUnit to java.lang.Void, as the IR expects
       // BoxedUnit$ is a JVM artifact
       ir.Names.BoxedUnitClass
-    } else if (sym == jsDefinitions.BoxedUnitModClass) {
-      // Same for its module class
-      BoxedVoidModuleClassName
     } else {
       ClassName(sym.fullName + (if (needsModuleClassSuffix(sym)) "$" else ""))
     }
   }
 
   def needsModuleClassSuffix(sym: Symbol): Boolean =
-    sym.isModuleClass && !foreignIsImplClass(sym)
+    sym.isModuleClass && !sym.isJavaDefined && !isImplClass(sym)
 
   def originalNameOfLocal(sym: Symbol): OriginalName = {
     val irName = localSymbolName(sym)

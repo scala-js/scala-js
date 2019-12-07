@@ -35,11 +35,11 @@ sealed abstract class ModuleInitializerImpl extends ModuleInitializer {
 object ModuleInitializerImpl {
   def fromModuleInitializer(mi: ModuleInitializer): ModuleInitializerImpl = mi.impl
 
-  final case class VoidMainMethod(moduleClassName: ClassName,
+  final case class VoidMainMethod(className: ClassName,
       encodedMainMethodName: MethodName)
       extends ModuleInitializerImpl
 
-  final case class MainMethodWithArgs(moduleClassName: ClassName,
+  final case class MainMethodWithArgs(className: ClassName,
       encodedMainMethodName: MethodName, args: List[String])
       extends ModuleInitializerImpl
 }

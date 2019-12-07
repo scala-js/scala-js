@@ -1344,9 +1344,10 @@ object Build {
              * implementation is in javalib.
              */
             val superMappings = (mappings in packageBin).value
-            val libraryMappings = superMappings.filter(
-                _._2.replace('\\', '/') !=
-                  "scala/scalajs/js/typedarray/TypedArrayBufferBridge$.sjsir")
+            val libraryMappings = superMappings.filter { mapping =>
+              !mapping._2.replace('\\', '/').startsWith(
+                  "scala/scalajs/js/typedarray/TypedArrayBufferBridge")
+            }
 
             val filter = ("*.sjsir": NameFilter)
 

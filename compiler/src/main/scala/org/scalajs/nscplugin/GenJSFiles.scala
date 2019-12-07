@@ -30,31 +30,21 @@ trait GenJSFiles[G <: Global with Singleton] extends SubComponent {
   import global._
   import jsAddons._
 
-  def genIRFile(cunit: CompilationUnit, sym: Symbol, suffix: Option[String],
-      tree: ir.Trees.ClassDef): Unit = {
-    val outfile = getFileFor(cunit, sym, suffix.getOrElse("") + ".sjsir")
+  def genIRFile(cunit: CompilationUnit, tree: ir.Trees.ClassDef): Unit = {
+    val outfile = getFileFor(cunit, tree.name.name, ".sjsir")
     val output = outfile.bufferedOutput
     try ir.Serializers.serialize(output, tree)
     finally output.close()
   }
 
-  private def getFileFor(cunit: CompilationUnit, sym: Symbol,
-      suffix: String) = {
+  private def getFileFor(cunit: CompilationUnit, className: ir.Names.ClassName,
+      suffix: String): AbstractFile = {
     val baseDir: AbstractFile =
       settings.outputDirs.outputDirFor(cunit.source.file)
 
-    val fullName = sym.fullName match {
-      case "java.lang._String" => "java.lang.String"
-      case fullName            => fullName
-    }
-
-    val pathParts = fullName.split("[./]")
+    val pathParts = className.nameString.split('.')
     val dir = pathParts.init.foldLeft(baseDir)(_.subdirectoryNamed(_))
-
-    var filename = pathParts.last
-    if (sym.isModuleClass && !isImplClass(sym))
-      filename = filename + nme.MODULE_SUFFIX_STRING
-
-    dir fileNamed (filename + suffix)
+    val filename = pathParts.last
+    dir.fileNamed(filename + suffix)
   }
 }
