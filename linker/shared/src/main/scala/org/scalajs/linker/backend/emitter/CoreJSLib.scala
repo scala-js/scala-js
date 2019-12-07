@@ -107,7 +107,7 @@ private[emitter] object CoreJSLib {
           str("fileLevelThis") -> This()
       )))
 
-      buf += const(coreJSLibVar("linkingInfo"), linkingInfo)
+      buf += coreJSLibVarDef("linkingInfo", linkingInfo)
     }
 
     private def defineJSBuiltinsSnapshotsAndPolyfills(): Unit = {
@@ -312,7 +312,7 @@ private[emitter] object CoreJSLib {
       }
 
       if (!useECMAScript2015) {
-        buf += const(coreJSLibVar("is"),
+        buf += coreJSLibVarDef("is",
             genIdentBracketSelect(ObjectRef, "is") || genPolyfillFor("is"))
       }
 
@@ -321,11 +321,11 @@ private[emitter] object CoreJSLib {
         val rhs =
           if (useECMAScript2015) rhs0
           else rhs0 || genPolyfillFor(builtinName)
-        const(coreJSLibVar(builtinName), rhs)
+        coreJSLibVarDef(builtinName, rhs)
       }
 
       if (!useECMAScript2015) {
-        buf += const(coreJSLibVar("privateJSFieldSymbol"),
+        buf += coreJSLibVarDef("privateJSFieldSymbol",
             If(UnaryOp(JSUnaryOp.typeof, SymbolRef) !== str("undefined"),
                 SymbolRef, genPolyfillFor("privateJSFieldSymbol")))
       }
@@ -997,7 +997,7 @@ private[emitter] object CoreJSLib {
           val f = weakMapBasedFunction
           buf += envFunctionDef("systemIdentityHashCode", f.args, f.body)
         } else {
-          buf += const(coreJSLibVar("systemIdentityHashCode"),
+          buf += coreJSLibVarDef("systemIdentityHashCode",
               If(idHashCodeMap !== Null(), weakMapBasedFunction, fieldBasedFunction))
         }
       }
@@ -1039,7 +1039,7 @@ private[emitter] object CoreJSLib {
         buf += envFunctionDef("bC", paramList(c), {
           Return(New(coreJSLibVar("Char"), c :: Nil))
         })
-        buf += const(coreJSLibVar("bC0"), genCallHelper("bC", 0))
+        buf += coreJSLibVarDef("bC0", genCallHelper("bC", 0))
       }
 
       val v = varRef("v")
@@ -1592,6 +1592,9 @@ private[emitter] object CoreJSLib {
         Block(ctorFun :: inheritProto :: setMembers)
       }
     }
+
+    private def coreJSLibVarDef(name: String, rhs: Tree): LocalDef =
+      genConst(coreJSLibVarIdent(name), rhs)
 
     private def varRef(name: String): VarRef = VarRef(Ident(name))
 

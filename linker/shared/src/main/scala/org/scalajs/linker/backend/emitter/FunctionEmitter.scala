@@ -1978,7 +1978,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           genSelect(transformExprNoChar(qualifier), className, field)
 
         case SelectStatic(className, item) =>
-          genSelectStatic(className, item)
+          envVar("t", className, item.name)
 
         case Apply(_, receiver, method, args) =>
           val methodName = method.name

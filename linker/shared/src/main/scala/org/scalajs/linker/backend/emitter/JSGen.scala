@@ -127,11 +127,6 @@ private[emitter] final class JSGen(val semantics: Semantics,
   private def genFieldJSName(className: ClassName, field: irt.FieldIdent): String =
     genName(className) + "__f_" + genName(field.name)
 
-  def genSelectStatic(className: ClassName, item: irt.FieldIdent)(
-      implicit pos: Position): VarRef = {
-    envVar("t", className, item.name)
-  }
-
   def genJSPrivateSelect(receiver: Tree, className: ClassName,
       field: irt.FieldIdent)(
       implicit pos: Position): Tree = {
@@ -267,13 +262,11 @@ private[emitter] final class JSGen(val semantics: Semantics,
     Apply(coreJSLibVar(helperName), args.toList)
   }
 
-  def encodeClassVar(className: ClassName)(implicit pos: Position): VarRef =
+  def encodeClassVar(className: ClassName)(implicit pos: Position): Tree =
     envVar("c", className)
 
-  def genLoadModule(moduleClass: ClassName)(implicit pos: Position): Tree = {
-    import TreeDSL._
+  def genLoadModule(moduleClass: ClassName)(implicit pos: Position): Tree =
     Apply(envVar("m", moduleClass), Nil)
-  }
 
   def genScalaClassNew(className: ClassName, ctor: MethodName, args: Tree*)(
       implicit globalKnowledge: GlobalKnowledge, pos: Position): Tree = {
@@ -396,34 +389,57 @@ private[emitter] final class JSGen(val semantics: Semantics,
    * - fileLevelVar: Things that are local to an individual file.
    */
 
-  def envVar(field: String, className: ClassName)(implicit pos: Position): VarRef =
-    fileLevelVar(field, genName(className))
+  // Per class envVars.
+
+  def envVarIdent(field: String, className: ClassName)(implicit pos: Position): Ident =
+    fileLevelVarIdent(field, genName(className))
+
+  def envVar(field: String, className: ClassName)(implicit pos: Position): Tree =
+    VarRef(envVarIdent(field, className))
+
+  // Per field envVars.
+
+  def envVarIdent(field: String, className: ClassName, fieldName: FieldName,
+      origName: OriginalName)(implicit pos: Position): Ident = {
+    fileLevelVarIdent(field, genName(className) + "__" + genName(fieldName),
+        origName)
+  }
 
   def envVar(field: String, className: ClassName, fieldName: FieldName)(
-      implicit pos: Position): VarRef = {
-    envVar(field, className, fieldName, NoOriginalName)
+      implicit pos: Position): Tree = {
+    VarRef(envVarIdent(field, className, fieldName, NoOriginalName))
   }
 
   def envVar(field: String, className: ClassName, fieldName: FieldName,
       origName: OriginalName)(
-      implicit pos: Position): VarRef = {
-    fileLevelVar(field, genName(className) + "__" + genName(fieldName), origName)
+      implicit pos: Position): Tree = {
+    VarRef(envVarIdent(field, className, fieldName, origName))
+  }
+
+  // Per method envVars.
+
+  def envVarIdent(field: String, className: ClassName, methodName: MethodName,
+      origName: OriginalName)(
+      implicit pos: Position): Ident = {
+    fileLevelVarIdent(field, genName(className) + "__" + genName(methodName),
+        origName)
   }
 
   def envVar(field: String, className: ClassName, methodName: MethodName)(
-      implicit pos: Position): VarRef = {
-    envVar(field, className, methodName, NoOriginalName)
+      implicit pos: Position): Tree = {
+    VarRef(envVarIdent(field, className, methodName, NoOriginalName))
   }
 
   def envVar(field: String, className: ClassName, methodName: MethodName,
       origName: OriginalName)(
-      implicit pos: Position): VarRef = {
-    fileLevelVar(field, genName(className) + "__" + genName(methodName), origName)
+      implicit pos: Position): Tree = {
+    VarRef(envVarIdent(field, className, methodName, origName))
   }
 
+  // Per typeRef access.
+
   def envVar(field: String, typeRef: NonArrayTypeRef)(
-      implicit pos: Position): VarRef = {
-    // The mapping in this function is an implementation detail of the emitter
+      implicit pos: Position): Tree = {
     typeRef match {
       case primRef: PrimRef =>
         VarRef(coreJSLibVarIdent(field, primRef))
@@ -433,7 +449,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     }
   }
 
-  def coreJSLibVar(field: String)(implicit pos: Position): VarRef =
+  def coreJSLibVar(field: String)(implicit pos: Position): Tree =
     fileLevelVar(field)
 
   def coreJSLibVarIdent(field: String)(implicit pos: Position): Ident =
