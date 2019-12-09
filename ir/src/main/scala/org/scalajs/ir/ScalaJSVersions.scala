@@ -34,31 +34,19 @@ class VersionChecks private[ir] (
 
   private val (binaryMajor, binaryMinor, binaryPreRelease) = parseBinary(binaryEmitted)
 
-  /** The cross binary version
+  /** The cross binary version.
    *
    *  This is the version advertised in artifacts released by Scala.js users.
    *
-   *  For non-pre release versions, this is only the major version, since binary
-   *  minor versions are backwards compatible.
-   *
-   *  For pre-release versions, the story is a bit more complicated:
-   *
-   *  - Any pre-release version with a minor version == 0 is ''before'' the
-   *    final major version is released and typically fully breaking. Therefore,
-   *    the full [[binaryEmitted]] version is used.
-   *  - A SNAPSHOT pre-release version with minor version > 0 is a development
-   *    version with compatible binary version. Nothing should be published
-   *    using this version, but being able to ''read'' artifacts in the major
-   *    line is critical for fast testing. Therefore, only the major version is
-   *    used.
-   *  - A non-SNAPSHOT pre-release version with minor version > 0 is a milestone
-   *    or release candidate version that is published. As such, artifacts may
-   *    be published with it but will not be able to be read by the main line
-   *    versions. Therefore, the full [[binaryEmitted]] version is used.
+   *  - For a pre-release version with a minor version == 0, it is the full
+   *    [[binaryEmitted]]. Such a version is ''before'' the final major version
+   *    is released, and as such any release is typically fully breaking.
+   *  - For a non-pre-release, or the pre-release of a minor version, it is
+   *    only the major version, since binary minor versions are backwards
+   *    compatible.
    */
   final val binaryCross: String = {
-    val needsFull =
-      binaryPreRelease.fold(false)(_ != "SNAPSHOT" || binaryMinor == 0)
+    val needsFull = binaryPreRelease.isDefined && binaryMinor == 0
     if (needsFull) binaryEmitted
     else binaryMajor.toString
   }
