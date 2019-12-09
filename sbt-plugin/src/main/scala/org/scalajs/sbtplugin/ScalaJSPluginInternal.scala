@@ -481,7 +481,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
       },
 
       // Override default to avoid triggering a test:fastOptJS in a test:compile
-      // without loosing autocompletion.
+      // without losing autocompletion.
       definedTestNames := {
         definedTests.map(_.map(_.name).distinct)
           .storeAs(definedTestNames).triggeredBy(loadedTestFrameworks).value

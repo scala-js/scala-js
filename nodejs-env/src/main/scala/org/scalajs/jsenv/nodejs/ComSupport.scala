@@ -33,7 +33,7 @@ private final class ComRun(run: JSRun, handleMessage: String => Unit,
     serverSocket: ServerSocket) extends JSComRun {
   import ComRun._
 
-  /** Promise that completes once the reciever thread is completed. */
+  /** Promise that completes once the receiver thread is completed. */
   private[this] val promise = Promise[Unit]()
 
   @volatile

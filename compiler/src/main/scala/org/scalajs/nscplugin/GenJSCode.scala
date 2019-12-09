@@ -3708,7 +3708,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  trying to optimize it away as a reversed If.
      *
      *  If there was no `return` to the label at all, simply avoid generating
-     *  the `Labeled` block alltogether.
+     *  the `Labeled` block altogether.
      *
      *  If there was more than one `return`, do not optimize anything, as
      *  nothing could be good enough for `genOptimizedMatchEndLabeled` to do

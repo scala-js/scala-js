@@ -367,7 +367,7 @@ class RegressionTest {
 
   @Test def should_not_restrict_mutability_of_fields_issue_1021(): Unit = {
     class A {
-      /* This var is refered to in the lambda passed to `foreach`. Therefore
+      /* This var is referred to in the lambda passed to `foreach`. Therefore
        * it is altered in another compilation unit (even though it is
        * private[this]).
        * This test makes sure the compiler doesn't wrongly mark it as

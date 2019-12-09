@@ -29,7 +29,7 @@ import org.scalajs.linker.backend.javascript.Trees._
 
 import EmitterNames._
 
-/** Collection of tree generators that are used accross the board.
+/** Collection of tree generators that are used across the board.
  *  This class is fully stateless.
  *
  *  Also carries around config (semantics and esFeatures).
