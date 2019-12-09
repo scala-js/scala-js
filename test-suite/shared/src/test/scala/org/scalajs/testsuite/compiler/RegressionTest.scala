@@ -105,67 +105,6 @@ class RegressionTest {
     assertEquals(1, new B().value)
   }
 
-  @Test def should_correctly_mangle_JavaScript_reserved_identifiers_issue_153(): Unit = {
-    // scalastyle:off class.name
-
-    // Class name
-    class break {
-      // class variable
-      var continue: Int = 1
-      // method name
-      def switch: Int = {
-        // local name
-        val default = 2
-        default
-      }
-    }
-    trait Foo {
-      // static member (through mixin)
-      def function: Int = 3
-    }
-
-    val x = new break with Foo
-    assertEquals(1, x.continue)
-    assertEquals(2, x.switch)
-    assertEquals(3, x.function)
-
-    // scalastyle:on class.name
-  }
-
-  @Test def should_correctly_mangle_identifiers_starting_with_a_digit_issue_153(): Unit = {
-    // scalastyle:off class.name
-
-    // Class name
-    class `0` {
-      // class variable
-      var `1`: Int = 1
-      // method name
-      def `2`: Int = {
-        // local name
-        val `22` = 2
-        `22`
-      }
-    }
-    trait Foo {
-      // static member (through mixin)
-      def `3`: Int = 3
-    }
-
-    val x = new `0` with Foo
-    assertEquals(1, x.`1`)
-    assertEquals(2, x.`2`)
-    assertEquals(3, x.`3`)
-
-    // scalastyle:on class.name
-  }
-
-  @Test def should_reserve_eval_and_arguments_issue_743(): Unit = {
-    val eval = 5
-    assertEquals(5, eval)
-    val arguments = "hello"
-    assertEquals("hello", arguments)
-  }
-
   @Test def should_support_class_literals_for_existential_value_types_issue_218(): Unit = {
     import Platform.scalaVersion
 
@@ -862,6 +801,10 @@ class RegressionTest {
     assertEquals('a', d)
   }
 
+  @Test def nested_object_named_class_issue_3888(): Unit = {
+    assertEquals(6, `class`.foo(5))
+  }
+
 }
 
 object RegressionTest {
@@ -919,5 +862,9 @@ object RegressionTest {
 
     def overloaded(x: Any): Unit =
       fail("Bug3281.overloaded(x: Any) was called")
+  }
+
+  object `class` { // scalastyle:ignore
+    def foo(x: Int): Int = x + 1
   }
 }
