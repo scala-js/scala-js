@@ -862,6 +862,10 @@ class RegressionTest {
     assertEquals('a', d)
   }
 
+  @Test def nested_object_named_class_issue_3888(): Unit = {
+    assertEquals(6, `class`.foo(5))
+  }
+
 }
 
 object RegressionTest {
@@ -919,5 +923,9 @@ object RegressionTest {
 
     def overloaded(x: Any): Unit =
       fail("Bug3281.overloaded(x: Any) was called")
+  }
+
+  object `class` { // scalastyle:ignore
+    def foo(x: Int): Int = x + 1
   }
 }
