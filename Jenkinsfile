@@ -119,12 +119,10 @@ def Tasks = [
         helloworld$v/clean &&
     sbtretry ++$scala \
         'set artifactPath in (helloworld.v$v, Compile, fastOptJS) := (crossTarget in helloworld.v$v).value / "helloworld-fastopt.mjs"' \
-        'set jsEnv in helloworld.v$v := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         helloworld$v/run &&
     sbtretry ++$scala \
         'set artifactPath in (helloworld.v$v, Compile, fullOptJS) := (crossTarget in helloworld.v$v).value / "helloworld-opt.mjs"' \
-        'set jsEnv in helloworld.v$v := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         'set scalaJSStage in Global := FullOptStage' \
         helloworld$v/run \
@@ -174,11 +172,9 @@ def Tasks = [
         ++$scala $testSuite$v/test \
         $testSuite$v/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withAllowBigIntsForLongs(true)))' \
-        'set jsEnv in $testSuite.v$v := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--harmony-bigint")))' \
         ++$scala $testSuite$v/test \
         $testSuite$v/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withAllowBigIntsForLongs(true)).withOptimizer(false))' \
-        'set jsEnv in $testSuite.v$v := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--harmony-bigint")))' \
         ++$scala $testSuite$v/test \
         $testSuite$v/clean &&
     sbtretry 'set scalacOptions in $testSuite.v$v += "-Xexperimental"' \
@@ -193,11 +189,9 @@ def Tasks = [
         ++$scala $testSuite$v/test \
         $testSuite$v/clean &&
     sbtretry 'set artifactPath in ($testSuite.v$v, Test, fastOptJS) := (crossTarget in $testSuite.v$v).value / "testsuite-fastopt.mjs"' \
-        'set jsEnv in $testSuite.v$v := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set artifactPath in ($testSuite.v$v, Test, fullOptJS) := (crossTarget in $testSuite.v$v).value / "testsuite-opt.mjs"' \
-        'set jsEnv in $testSuite.v$v := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite$v/test
@@ -268,11 +262,9 @@ def Tasks = [
         ++$scala $testSuite$v/test \
         $testSuite$v/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false).withAllowBigIntsForLongs(true)))' \
-        'set jsEnv in $testSuite.v$v := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--harmony-bigint")))' \
         ++$scala $testSuite$v/test \
         $testSuite$v/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false).withAllowBigIntsForLongs(true)).withOptimizer(false))' \
-        'set jsEnv in $testSuite.v$v := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--harmony-bigint")))' \
         ++$scala $testSuite$v/test \
         $testSuite$v/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
@@ -285,12 +277,10 @@ def Tasks = [
         $testSuite$v/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
         'set artifactPath in ($testSuite.v$v, Test, fastOptJS) := (crossTarget in $testSuite.v$v).value / "testsuite-fastopt.mjs"' \
-        'set jsEnv in $testSuite.v$v := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
         'set artifactPath in ($testSuite.v$v, Test, fullOptJS) := (crossTarget in $testSuite.v$v).value / "testsuite-opt.mjs"' \
-        'set jsEnv in $testSuite.v$v := new org.scalajs.jsenv.nodejs.NodeJSEnv(org.scalajs.jsenv.nodejs.NodeJSEnv.Config().withArgs(List("--experimental-modules")))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite$v/test
