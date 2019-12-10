@@ -134,18 +134,13 @@ object Build {
   val shouldPartest = settingKey[Boolean](
     "Whether we should partest the current scala version (and fail if we can't)")
 
-  /* MiMa configuration -- irrelevant while in 1.0.0-SNAPSHOT.
-  val previousVersion = "0.6.29"
-  val previousSJSBinaryVersion =
-    ScalaJSCrossVersion.binaryScalaJSVersion(previousVersion)
-  val previousBinaryCrossVersion =
-    CrossVersion.binaryMapped(v => s"sjs${previousSJSBinaryVersion}_$v")
+  val previousVersion = "1.0.0-RC1"
+  val previousBinaryCrossVersion = CrossVersion.binaryWith("sjs1.0-RC1_", "")
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.11.12", "2.12.10")
+    Set("2.11.12", "2.12.10", "2.13.1")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
-  */
 
   def hasNewCollections(version: String): Boolean = {
     !version.startsWith("2.11.") &&
@@ -174,7 +169,6 @@ object Build {
 
   val previousArtifactSetting: Setting[_] = {
     mimaPreviousArtifacts ++= {
-      /* MiMa is completely disabled while we are in 1.0.0-SNAPSHOT.
       val scalaV = scalaVersion.value
       val scalaBinaryV = scalaBinaryVersion.value
       if (!scalaVersionsUsedForPublishing.contains(scalaV)) {
@@ -198,10 +192,8 @@ object Build {
           (thisProjectID.organization % thisProjectID.name % previousVersion)
             .cross(previousCrossVersion)
             .extra(prevExtraAttributes.toSeq: _*)
-        Set(CrossVersion(scalaV, scalaBinaryV)(prevProjectID).cross(CrossVersion.Disabled))
+        Set(prevProjectID)
       }
-      */
-      Set.empty
     }
   }
 
@@ -934,6 +926,7 @@ object Build {
       bintrayProjectName := "sbt-scalajs-plugin", // "sbt-scalajs" was taken
       sbtPlugin := true,
       crossScalaVersions := Seq("2.12.10"),
+      scalaVersion := crossScalaVersions.value.head,
       sbtVersion := "1.0.0",
       scalaBinaryVersion :=
         CrossVersion.binaryScalaVersion(scalaVersion.value),

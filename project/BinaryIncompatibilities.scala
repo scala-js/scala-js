@@ -14,6 +14,10 @@ object BinaryIncompatibilities {
   )
 
   val LinkerInterface = Seq(
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.interface.unstable.ModuleInitializerImpl#VoidMainMethod.moduleClassName"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.interface.unstable.ModuleInitializerImpl#MainMethodWithArgs.moduleClassName"),
   )
 
   val JSEnvs = Seq(
@@ -23,6 +27,12 @@ object BinaryIncompatibilities {
   )
 
   val SbtPlugin = Seq(
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.sbtplugin.ScalaJSCrossVersion.binaryScalaJSVersion"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.sbtplugin.ScalaJSCrossVersion.currentBinaryVersion"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.sbtplugin.ScalaJSCrossVersion.scalaJSMapped"),
   )
 
   val TestCommon = Seq(
@@ -31,10 +41,17 @@ object BinaryIncompatibilities {
   val TestAdapter = TestCommon ++ Seq(
   )
 
-  val CLI = Seq(
-  )
-
   val Library = Seq(
+      ProblemFilters.exclude[MissingClassProblem](
+          "scala.scalajs.js.JSArrayOps"),
+      ProblemFilters.exclude[MissingClassProblem](
+          "scala.scalajs.js.JSArrayOps$"),
+      ProblemFilters.exclude[ReversedMissingMethodProblem](
+          "scala.scalajs.runtime.LinkingInfo.fileLevelThis"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "scala.scalajs.runtime.LinkingInfo.globalThis"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "scala.scalajs.js.special.package.globalThis"),
   )
 
   val TestInterface = Seq(
