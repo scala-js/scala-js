@@ -17,7 +17,7 @@ Apache Harmony), to minimize the chance of copyright debate.
 
 Scala.js is entirely built with [sbt](https://www.scala-sbt.org/), and also
 requires [Node.js](https://nodejs.org/en/) to be installed. For complete
-support, Node.js >= 10.0.0 is required.
+support, Node.js >= 13.2.0 is required.
 
 The first time, or in the rare events where `package.json` changes
 ([history](https://github.com/scala-js/scala-js/commits/master/package.json)),
