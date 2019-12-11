@@ -47,18 +47,15 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
   /** Link and optionally optimize the given IR to a
    *  [[standard.LinkingUnit LinkingUnit]].
    */
-  def link(irFiles: Seq[IRFile],
-      moduleInitializers: Seq[ModuleInitializer],
-      symbolRequirements: SymbolRequirement, logger: Logger)(
-      implicit ec: ExecutionContext): Future[LinkingUnit] = {
+  def link(irFiles: Seq[IRFile], symbolRequirements: SymbolRequirement,
+      logger: Logger)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
     val preOptimizerRequirements = optOptimizer.fold(symbolRequirements) {
       optimizer => symbolRequirements ++ optimizer.symbolRequirements
     }
 
     val linkResult = logger.timeFuture("Linker") {
-      linker.link(irFiles, moduleInitializers, logger,
-          preOptimizerRequirements, config.checkIR)
+      linker.link(irFiles, logger, preOptimizerRequirements, config.checkIR)
     }
 
     optOptimizer.fold(linkResult) { optimizer =>

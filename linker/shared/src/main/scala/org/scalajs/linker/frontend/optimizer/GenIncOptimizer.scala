@@ -128,7 +128,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
         linkedClass.optimized(methods = newMethods)
       }
 
-      new LinkingUnit(unit.coreSpec, newLinkedClasses, unit.moduleInitializers)
+      new LinkingUnit(unit.coreSpec, newLinkedClasses)
     }
   }
 

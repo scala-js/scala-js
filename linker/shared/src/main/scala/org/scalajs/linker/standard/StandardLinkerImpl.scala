@@ -40,11 +40,16 @@ private final class StandardLinkerImpl private (
       throw new IllegalStateException("Linker used concurrently")
     }
 
+    val symbolRequirements = {
+      backend.symbolRequirements ++
+      SymbolRequirement.fromModuleInitializer(moduleInitializers)
+    }
+
     checkValid()
       .flatMap(_ => frontend.link(
-          irFiles ++ backend.injectedIRFiles, moduleInitializers,
-          backend.symbolRequirements, logger))
-      .flatMap(linkingUnit => backend.emit(linkingUnit, output, logger))
+          irFiles ++ backend.injectedIRFiles, symbolRequirements, logger))
+      .flatMap(linkingUnit => backend.emit(
+          linkingUnit, moduleInitializers, output, logger))
       .andThen { case t if t.isFailure => _valid = false }
       .andThen { case t => _linking.set(false) }
   }

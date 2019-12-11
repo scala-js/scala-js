@@ -67,12 +67,13 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
    *  @param unit [[standard.LinkingUnit LinkingUnit]] to emit
    *  @param output File to write to
    */
-  def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger)(
+  def emit(unit: LinkingUnit, moduleInitializers: Seq[ModuleInitializer],
+      output: LinkerOutput, logger: Logger)(
       implicit ec: ExecutionContext): Future[Unit] = {
     verifyUnit(unit)
 
     val emitterResult = logger.time("Emitter") {
-      emitter.emit(unit, logger)
+      emitter.emit(unit, moduleInitializers, logger)
     }
 
     val module = logger.time("Closure: Create trees)") {

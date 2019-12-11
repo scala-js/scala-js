@@ -21,7 +21,7 @@ import java.nio.charset.StandardCharsets
 
 import org.scalajs.logging.Logger
 
-import org.scalajs.linker.interface.{IRFile, LinkerOutput}
+import org.scalajs.linker.interface.{IRFile, LinkerOutput, ModuleInitializer}
 import org.scalajs.linker.interface.unstable.OutputFileImpl
 import org.scalajs.linker.standard._
 
@@ -46,12 +46,13 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
    *  @param unit [[standard.LinkingUnit LinkingUnit]] to emit
    *  @param output File to write to
    */
-  def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger)(
+  def emit(unit: LinkingUnit, moduleInitializers: Seq[ModuleInitializer],
+      output: LinkerOutput, logger: Logger)(
       implicit ec: ExecutionContext): Future[Unit] = {
     verifyUnit(unit)
 
     val emitterResult = logger.time("Emitter") {
-      emitter.emit(unit, logger)
+      emitter.emit(unit, moduleInitializers, logger)
     }
 
     logger.timeFuture("BasicBackend: Write result") {

@@ -41,12 +41,7 @@ final class Refiner(config: CommonPhaseConfig) {
     inputProvider.update(linkedClassesByName)
 
     val analysis = logger.timeFuture("Refiner: Compute reachability") {
-      val allSymbolRequirements = {
-        symbolRequirements ++
-        SymbolRequirement.fromModuleInitializer(unit.moduleInitializers)
-      }
-
-      analyze(allSymbolRequirements, logger)
+      analyze(symbolRequirements, logger)
     }
 
     for {
@@ -59,7 +54,7 @@ final class Refiner(config: CommonPhaseConfig) {
           refineClassDef(linkedClassesByName(info.className), info)
         }
 
-        new LinkingUnit(unit.coreSpec, linkedClassDefs.toList, unit.moduleInitializers)
+        new LinkingUnit(unit.coreSpec, linkedClassDefs.toList)
       }
 
       inputProvider.cleanAfterRun()

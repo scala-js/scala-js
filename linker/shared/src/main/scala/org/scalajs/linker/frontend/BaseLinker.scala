@@ -41,23 +41,17 @@ final class BaseLinker(config: CommonPhaseConfig) {
   private val inputProvider = new InputProvider
   private val methodSynthesizer = new MethodSynthesizer(inputProvider)
 
-  def link(irInput: Seq[IRFile],
-      moduleInitializers: Seq[ModuleInitializer], logger: Logger,
+  def link(irInput: Seq[IRFile], logger: Logger,
       symbolRequirements: SymbolRequirement, checkIR: Boolean)(
       implicit ec: ExecutionContext): Future[LinkingUnit] = {
-
-    val allSymbolRequirements = {
-      symbolRequirements ++
-      SymbolRequirement.fromModuleInitializer(moduleInitializers)
-    }
 
     val result = for {
       _ <- inputProvider.update(irInput)
       analysis <- logger.timeFuture("Linker: Compute reachability") {
-        analyze(allSymbolRequirements, logger)
+        analyze(symbolRequirements, logger)
       }
       linkResult <- logger.timeFuture("Linker: Assemble LinkedClasses") {
-        assemble(moduleInitializers, analysis)
+        assemble(analysis)
       }
     } yield {
       if (checkIR) {
@@ -110,8 +104,8 @@ final class BaseLinker(config: CommonPhaseConfig) {
     }
   }
 
-  private def assemble(moduleInitializers: Seq[ModuleInitializer],
-      analysis: Analysis)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
+  private def assemble(analysis: Analysis)(
+      implicit ec: ExecutionContext): Future[LinkingUnit] = {
     def assembleClass(info: ClassInfo) = {
       val classAndVersion = inputProvider.loadClassDefAndVersion(info.className)
       val syntheticMethods = methodSynthesizer.synthesizeMembers(info, analysis)
@@ -127,8 +121,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
     for {
       linkedClassDefs <- Future.traverse(analysis.classInfos.values)(assembleClass)
     } yield {
-      new LinkingUnit(config.coreSpec, linkedClassDefs.toList,
-          moduleInitializers.toList)
+      new LinkingUnit(config.coreSpec, linkedClassDefs.toList)
     }
   }
 

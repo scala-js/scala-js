@@ -102,7 +102,8 @@ final class Emitter private (config: CommonPhaseConfig,
         internalOptions.withTrackAllGlobalRefs(trackAllGlobalRefs))
   }
 
-  def emit(unit: LinkingUnit, logger: Logger): Result = {
+  def emit(unit: LinkingUnit, moduleInitializers: Seq[ModuleInitializer],
+      logger: Logger): Result = {
     val topLevelVars = topLevelVarDeclarations(unit)
 
     val header = {
@@ -117,7 +118,7 @@ final class Emitter private (config: CommonPhaseConfig,
 
     val footer = ifIIFE("}).call(this);\n")
 
-    val (body, globalRefs) = emitInternal(unit, logger)
+    val (body, globalRefs) = emitInternal(unit, moduleInitializers, logger)
 
     new Result(header, body, footer, topLevelVars, globalRefs)
   }
@@ -141,6 +142,7 @@ final class Emitter private (config: CommonPhaseConfig,
 
   /** Returns the emitted trees and the set of tracked global refs. */
   private def emitInternal(unit: LinkingUnit,
+      moduleInitializers: Seq[ModuleInitializer],
       logger: Logger): (List[js.Tree], Set[String]) = {
     startRun(unit)
     try {
@@ -163,7 +165,7 @@ final class Emitter private (config: CommonPhaseConfig,
 
         emitGeneratedClasses(trees, generatedClasses)
 
-        for (moduleInitializer <- unit.moduleInitializers)
+        for (moduleInitializer <- moduleInitializers)
           trees += classEmitter.genModuleInitializer(moduleInitializer)
 
         (trees.result(), trackedGlobalRefs ++ coreJSLibTrackedGlobalRefs)

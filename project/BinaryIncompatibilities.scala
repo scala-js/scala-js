@@ -11,7 +11,25 @@ object BinaryIncompatibilities {
   )
 
   val Linker = Seq(
+      // breaking in standard Linker API.
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.standard.LinkerBackend.emit"),
+      exclude[ReversedMissingMethodProblem](
+          "org.scalajs.linker.standard.LinkerBackend.emit"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.standard.LinkerFrontend.link"),
+      exclude[ReversedMissingMethodProblem](
+          "org.scalajs.linker.standard.LinkerFrontend.link"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.standard.LinkingUnit.moduleInitializers"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.standard.LinkingUnit.this"),
+
       // breaking in unstable Linker API.
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.BasicLinkerBackend.emit"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.closure.ClosureLinkerBackend.emit"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.Emitter.emitAll"),
       exclude[MissingClassProblem](
@@ -26,6 +44,10 @@ object BinaryIncompatibilities {
           "org.scalajs.linker.backend.javascript.Printers#JSTreePrinter.complete"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.javascript.Printers#JSTreePrinterWithSourceMap.complete"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.frontend.LinkerFrontendImpl.link"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.frontend.BaseLinker.link"),
 
       // private[backend], not an issue
       exclude[DirectMissingMethodProblem](

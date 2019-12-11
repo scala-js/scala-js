@@ -16,7 +16,7 @@ import scala.concurrent._
 
 import org.scalajs.logging._
 
-import org.scalajs.linker.interface.{IRFile, LinkerOutput}
+import org.scalajs.linker.interface.{IRFile, LinkerOutput, ModuleInitializer}
 
 /** A backend of a standard Scala.js linker.
  *
@@ -48,10 +48,12 @@ abstract class LinkerBackend {
    *  - contain the symbols listed in [[symbolRequirements]].
    *
    *  @param unit [[LinkingUnit]] to emit
+   *  @param moduleInitialiers module initializers to call
    *  @param output File to write to
    *  @param logger Logger to use
    */
-  def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger)(
+  def emit(unit: LinkingUnit, moduleInitializers: Seq[ModuleInitializer],
+      output: LinkerOutput, logger: Logger)(
       implicit ec: ExecutionContext): Future[Unit]
 
   /** Verify that a [[LinkingUnit]] can be processed by this [[LinkerBackend]].
