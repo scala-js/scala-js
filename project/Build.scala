@@ -134,8 +134,8 @@ object Build {
   val shouldPartest = settingKey[Boolean](
     "Whether we should partest the current scala version (and fail if we can't)")
 
-  val previousVersion = "1.0.0-RC1"
-  val previousBinaryCrossVersion = CrossVersion.binaryWith("sjs1.0-RC1_", "")
+  val previousVersion = "1.0.0-RC2"
+  val previousBinaryCrossVersion = CrossVersion.binaryWith("sjs1.0-RC2_", "")
 
   val scalaVersionsUsedForPublishing: Set[String] =
     Set("2.11.12", "2.12.10", "2.13.1")
