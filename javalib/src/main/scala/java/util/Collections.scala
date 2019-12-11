@@ -611,13 +611,6 @@ object Collections {
     }
   }
 
-  @inline
-  private implicit def comparatorToOrdering[E](cmp: Comparator[E]): Ordering[E] = {
-    new Ordering[E] {
-      final def compare(x: E, y: E): Int = cmp.compare(x, y)
-    }
-  }
-
   private trait WrappedEquals {
     protected def inner: AnyRef
 
