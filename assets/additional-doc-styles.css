@@ -1,8 +1,4 @@
-.badge-ecma6 {
-  background-color: #E68A00;
-}
-
-.badge-ecma2019 {
+.badge-ecma6, .badge-ecma2019 {
   background-color: #E68A00;
 }
 
