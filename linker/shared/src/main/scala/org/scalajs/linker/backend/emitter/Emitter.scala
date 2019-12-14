@@ -55,6 +55,8 @@ final class Emitter private (config: CommonPhaseConfig,
     val classEmitter: ClassEmitter = new ClassEmitter(jsGen)
 
     val coreJSLib: WithGlobals[js.Tree] = CoreJSLib.build(jsGen)
+
+    val classCaches: mutable.Map[List[ClassName], ClassCache] = mutable.Map.empty
   }
 
   private var state: State = new State(Set.empty)
@@ -62,8 +64,7 @@ final class Emitter private (config: CommonPhaseConfig,
   private def jsGen: JSGen = state.jsGen
   private def classEmitter: ClassEmitter = state.classEmitter
   private def coreJSLib: WithGlobals[js.Tree] = state.coreJSLib
-
-  private val classCaches = mutable.Map.empty[List[ClassName], ClassCache]
+  private def classCaches: mutable.Map[List[ClassName], ClassCache] = state.classCaches
 
   private[this] var statsClassesReused: Int = 0
   private[this] var statsClassesInvalidated: Int = 0
@@ -445,7 +446,6 @@ final class Emitter private (config: CommonPhaseConfig,
           "Going to re-generate the world.")
 
       state = new State(mentionedDangerousGlobalRefs)
-      classCaches.clear()
       genAllClasses(orderedClasses, logger, secondAttempt = true)
     }
   }
