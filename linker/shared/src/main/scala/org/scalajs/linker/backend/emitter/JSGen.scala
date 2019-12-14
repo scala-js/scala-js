@@ -268,6 +268,17 @@ private[emitter] final class JSGen(val semantics: Semantics,
     Apply(codegenVar("m", moduleClass), Nil)
   }
 
+  def genScalaClassNew(className: ClassName, ctor: MethodName, args: Tree*)(
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): Tree = {
+    val encodedClassVar = encodeClassVar(className)
+    val argsList = args.toList
+    if (globalKnowledge.hasInlineableInit(className)) {
+      New(encodedClassVar, argsList)
+    } else {
+      Apply(codegenVar("ct", className, ctor), New(encodedClassVar, Nil) :: argsList)
+    }
+  }
+
   def genJSClassConstructor(className: ClassName,
       keepOnlyDangerousVarNames: Boolean)(
       implicit globalKnowledge: GlobalKnowledge,
