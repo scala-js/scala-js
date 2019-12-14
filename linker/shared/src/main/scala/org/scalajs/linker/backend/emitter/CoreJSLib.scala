@@ -29,7 +29,7 @@ import EmitterNames._
 
 private[emitter] object CoreJSLib {
 
-  def build(jsGen: JSGen, globalKnowledge: GlobalKnowledge): WithGlobals[Tree] =
+  def build(jsGen: JSGen, globalKnowledge: GlobalKnowledge): WithInfo[Tree] =
     new CoreJSLibBuilder(jsGen)(globalKnowledge).build()
 
   private class CoreJSLibBuilder(jsGen: JSGen)(
@@ -71,7 +71,7 @@ private[emitter] object CoreJSLib {
           FloatRef, DoubleRef)
     }
 
-    def build(): WithGlobals[Tree] = {
+    def build(): WithInfo[Tree] = {
       defineLinkingInfo()
       defineJSBuiltinsSnapshotsAndPolyfills()
       declareCachedL0()
@@ -91,7 +91,7 @@ private[emitter] object CoreJSLib {
       defineAsArrayOfPrimitiveFunctions()
       definePrimitiveTypeDatas()
 
-      WithGlobals(Block(buf.result()), trackedGlobalRefs)
+      WithInfo(Block(buf.result()), trackedGlobalRefs)
     }
 
     private def defineLinkingInfo(): Unit = {

@@ -279,7 +279,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
   def genJSClassConstructor(className: ClassName,
       keepOnlyDangerousVarNames: Boolean)(
       implicit globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[Tree] = {
+      pos: Position): WithInfo[Tree] = {
 
     genJSClassConstructor(className,
         globalKnowledge.getJSNativeLoadSpec(className),
@@ -289,11 +289,11 @@ private[emitter] final class JSGen(val semantics: Semantics,
   def genJSClassConstructor(className: ClassName,
       spec: Option[irt.JSNativeLoadSpec],
       keepOnlyDangerousVarNames: Boolean)(
-      implicit pos: Position): WithGlobals[Tree] = {
+      implicit pos: Position): WithInfo[Tree] = {
     spec match {
       case None =>
         // This is a non-native JS class
-        WithGlobals(genNonNativeJSClassConstructor(className))
+        WithInfo(genNonNativeJSClassConstructor(className))
 
       case Some(spec) =>
         genLoadJSFromSpec(spec, keepOnlyDangerousVarNames)
@@ -307,7 +307,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genLoadJSFromSpec(spec: irt.JSNativeLoadSpec,
       keepOnlyDangerousVarNames: Boolean)(
-      implicit pos: Position): WithGlobals[Tree] = {
+      implicit pos: Position): WithInfo[Tree] = {
 
     def pathSelection(from: Tree, path: List[String]): Tree = {
       path.foldLeft(from) {
@@ -326,16 +326,16 @@ private[emitter] final class JSGen(val semantics: Semantics,
             Set(globalRef)
           }
         }
-        WithGlobals(pathSelection(globalVarRef, path), globalVarNames)
+        WithInfo(pathSelection(globalVarRef, path), globalVarNames)
 
       case irt.JSNativeLoadSpec.Import(module, path) =>
         val moduleValue = fileLevelModuleField(module)
         path match {
           case "default" :: rest if moduleKind == ModuleKind.CommonJSModule =>
             val defaultField = genCallHelper("moduleDefault", moduleValue)
-            WithGlobals(pathSelection(defaultField, rest))
+            WithInfo(pathSelection(defaultField, rest))
           case _ =>
-            WithGlobals(pathSelection(moduleValue, path))
+            WithInfo(pathSelection(moduleValue, path))
         }
 
       case irt.JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, globalSpec) =>

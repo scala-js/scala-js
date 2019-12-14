@@ -117,7 +117,7 @@ final class Emitter private (config: CommonPhaseConfig,
 
     val footer = ifIIFE("}).call(this);\n")
 
-    val WithGlobals(body, globalRefs) = emitInternal(unit, logger)
+    val WithInfo(body, globalRefs) = emitInternal(unit, logger)
 
     new Result(header, body, footer, topLevelVars, globalRefs)
   }
@@ -140,11 +140,11 @@ final class Emitter private (config: CommonPhaseConfig,
   }
 
   private def emitInternal(unit: LinkingUnit,
-      logger: Logger): WithGlobals[List[js.Tree]] = {
+      logger: Logger): WithInfo[List[js.Tree]] = {
     startRun(unit)
     try {
       val orderedClasses = unit.classDefs.sortWith(compareClasses)
-      val WithGlobals(generatedClasses, trackedGlobalRefs) = {
+      val WithInfo(generatedClasses, trackedGlobalRefs) = {
         logger.time("Emitter: Generate classes") {
           genAllClasses(orderedClasses, logger, secondAttempt = false)
         }
@@ -153,7 +153,7 @@ final class Emitter private (config: CommonPhaseConfig,
       val trees = mutable.ListBuffer.empty[js.Tree]
 
       logger.time("Emitter: Write trees") {
-        val WithGlobals(coreJSLibTree, coreJSLibTrackedGlobalRefs) =
+        val WithInfo(coreJSLibTree, coreJSLibTrackedGlobalRefs) =
           state.coreJSLibCache.tree
 
         trees += coreJSLibTree
@@ -165,7 +165,7 @@ final class Emitter private (config: CommonPhaseConfig,
         for (moduleInitializer <- unit.moduleInitializers)
           trees += classEmitter.genModuleInitializer(moduleInitializer)
 
-        WithGlobals(trees.result(), trackedGlobalRefs ++ coreJSLibTrackedGlobalRefs)
+        WithInfo(trees.result(), trackedGlobalRefs ++ coreJSLibTrackedGlobalRefs)
       }
     } finally {
       endRun(logger)
@@ -329,7 +329,7 @@ final class Emitter private (config: CommonPhaseConfig,
    */
   @tailrec
   private def genAllClasses(orderedClasses: List[LinkedClass], logger: Logger,
-      secondAttempt: Boolean): WithGlobals[List[GeneratedClass]] = {
+      secondAttempt: Boolean): WithInfo[List[GeneratedClass]] = {
 
     val objectClass = orderedClasses.find(_.name.name == ObjectClass).get
     val generatedClasses = orderedClasses.map(genClass(_, objectClass))
@@ -343,7 +343,7 @@ final class Emitter private (config: CommonPhaseConfig,
       else GlobalRefUtils.keepOnlyDangerousGlobalRefs(trackedGlobalRefs)
 
     if (mentionedDangerousGlobalRefs == state.lastMentionedDangerousGlobalRefs) {
-      WithGlobals(generatedClasses, trackedGlobalRefs)
+      WithInfo(generatedClasses, trackedGlobalRefs)
     } else {
       assert(!secondAttempt,
           "Uh oh! The second attempt gave a different set of dangerous " +
@@ -378,9 +378,9 @@ final class Emitter private (config: CommonPhaseConfig,
 
     def addToMainBase(tree: js.Tree): Unit = main ::= tree
 
-    def addToMain(treeWithGlobals: WithGlobals[js.Tree]): Unit = {
-      addToMainBase(treeWithGlobals.value)
-      addGlobalRefs(treeWithGlobals.globalVarNames)
+    def addToMain(treeWithInfo: WithInfo[js.Tree]): Unit = {
+      addToMainBase(treeWithInfo.value)
+      addGlobalRefs(treeWithInfo.globalVarNames)
     }
 
     val (linkedInlineableInit, linkedMethods) =
@@ -560,10 +560,10 @@ final class Emitter private (config: CommonPhaseConfig,
     val topLevelExports = if (linkedClass.topLevelExports.isEmpty) {
       Nil
     } else {
-      val treeWithGlobals = classTreeCache.topLevelExports.getOrElseUpdate(
+      val treeWithInfo = classTreeCache.topLevelExports.getOrElseUpdate(
           classEmitter.genTopLevelExports(linkedClass)(classCache))
-      addGlobalRefs(treeWithGlobals.globalVarNames)
-      treeWithGlobals.value
+      addGlobalRefs(treeWithInfo.globalVarNames)
+      treeWithInfo.value
     }
 
     // Build the result
@@ -658,7 +658,7 @@ final class Emitter private (config: CommonPhaseConfig,
   }
 
   private final class MethodCache extends knowledgeGuardian.KnowledgeAccessor {
-    private[this] var _tree: WithGlobals[js.Tree] = null
+    private[this] var _tree: WithInfo[js.Tree] = null
     private[this] var _lastVersion: Option[String] = None
     private[this] var _cacheUsed = false
 
@@ -671,7 +671,7 @@ final class Emitter private (config: CommonPhaseConfig,
     def startRun(): Unit = _cacheUsed = false
 
     def getOrElseUpdate(version: Option[String],
-        v: => WithGlobals[js.Tree]): WithGlobals[js.Tree] = {
+        v: => WithInfo[js.Tree]): WithInfo[js.Tree] = {
       if (_tree == null || _lastVersion.isEmpty || _lastVersion != version) {
         invalidate()
         statsMethodsInvalidated += 1
@@ -693,9 +693,9 @@ final class Emitter private (config: CommonPhaseConfig,
   }
 
   private class CoreJSLibCache extends knowledgeGuardian.KnowledgeAccessor {
-    private[this] var _tree: WithGlobals[js.Tree] = _
+    private[this] var _tree: WithInfo[js.Tree] = _
 
-    def tree: WithGlobals[js.Tree] = {
+    def tree: WithInfo[js.Tree] = {
       if (_tree == null)
         _tree = CoreJSLib.build(jsGen, this)
       _tree
@@ -720,13 +720,13 @@ object Emitter {
 
   private final class DesugaredClassCache {
     val privateJSFields = new OneTimeCache[List[js.Tree]]
-    val exportedMembers = new OneTimeCache[WithGlobals[js.Tree]]
+    val exportedMembers = new OneTimeCache[WithInfo[js.Tree]]
     val instanceTests = new OneTimeCache[js.Tree]
-    val typeData = new OneTimeCache[WithGlobals[js.Tree]]
+    val typeData = new OneTimeCache[WithInfo[js.Tree]]
     val setTypeData = new OneTimeCache[js.Tree]
     val moduleAccessor = new OneTimeCache[js.Tree]
     val staticFields = new OneTimeCache[List[js.Tree]]
-    val topLevelExports = new OneTimeCache[WithGlobals[List[js.Tree]]]
+    val topLevelExports = new OneTimeCache[WithInfo[List[js.Tree]]]
   }
 
   private final class GeneratedClass(

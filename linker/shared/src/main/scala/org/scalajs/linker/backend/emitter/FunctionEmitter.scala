@@ -252,7 +252,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
   def desugarToFunction(enclosingClassName: ClassName, params: List[ParamDef],
       body: Tree, resultType: Type)(
       implicit globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[js.Function] = {
+      pos: Position): WithInfo[js.Function] = {
     new JSDesugar().desugarToFunction(params, body,
         isStat = resultType == NoType,
         Env.empty(resultType).withEnclosingClassName(Some(enclosingClassName)))
@@ -264,7 +264,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
   def desugarToFunctionWithExplicitThis(enclosingClassName: ClassName,
       params: List[ParamDef], body: Tree, resultType: Type)(
       implicit globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[js.Function] = {
+      pos: Position): WithInfo[js.Function] = {
     new JSDesugar().desugarToFunctionWithExplicitThis(params, body,
         isStat = resultType == NoType,
         Env.empty(resultType).withEnclosingClassName(Some(enclosingClassName)))
@@ -274,7 +274,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
    */
   def desugarToFunction(params: List[ParamDef], body: Tree, resultType: Type)(
       implicit globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[js.Function] = {
+      pos: Position): WithInfo[js.Function] = {
     new JSDesugar().desugarToFunction(params, body,
         isStat = resultType == NoType, Env.empty(resultType))
   }
@@ -282,7 +282,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
   /** Desugars a class-level expression. */
   def desugarExpr(expr: Tree, resultType: Type)(
       implicit globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[js.Tree] = {
+      pos: Position): WithInfo[js.Tree] = {
     for (fun <- desugarToFunction(Nil, expr, resultType)) yield {
       fun match {
         case js.Function(_, Nil, js.Return(newExpr)) =>
@@ -329,10 +329,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     private def referenceGlobalName(name: String): Unit =
       globalVarNames += name
 
-    private def extractWithGlobals[A](withGlobals: WithGlobals[A]): A = {
-      for (globalRef <- withGlobals.globalVarNames)
+    private def extractWithInfo[A](withInfo: WithInfo[A]): A = {
+      for (globalRef <- withInfo.globalVarNames)
         referenceGlobalName(globalRef)
-      withGlobals.value
+      withInfo.value
     }
 
     private def transformLocalName(name: LocalName): String = {
@@ -377,7 +377,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     @inline
     @tailrec
     private def performOptimisticThenPessimisticRuns[A](
-        body: => A): WithGlobals[A] = {
+        body: => A): WithInfo[A] = {
       val result = body
       if (!isOptimisticNamingRun || !globalVarNames.exists(localVarNames)) {
         /* At this point, filter out the global refs that do not need to be
@@ -397,7 +397,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           if (trackAllGlobalRefs) globalVarNames.toSet
           else GlobalRefUtils.keepOnlyDangerousGlobalRefs(globalVarNames.toSet)
 
-        WithGlobals(result, globalRefs)
+        WithInfo(result, globalRefs)
       } else {
         /* Clear the local var names, but *not* the global var names.
          * In the pessimistic run, we will use the knowledge gathered during
@@ -450,7 +450,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
      */
     def desugarToFunctionWithExplicitThis(
         params: List[ParamDef], body: Tree, isStat: Boolean, env0: Env)(
-        implicit pos: Position): WithGlobals[js.Function] = {
+        implicit pos: Position): WithInfo[js.Function] = {
 
       performOptimisticThenPessimisticRuns {
         val thisIdent = fileLevelVarIdent("thiz", thisOriginalName)
@@ -466,7 +466,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
      */
     def desugarToFunction(
         params: List[ParamDef], body: Tree, isStat: Boolean, env0: Env)(
-        implicit pos: Position): WithGlobals[js.Function] = {
+        implicit pos: Position): WithInfo[js.Function] = {
       performOptimisticThenPessimisticRuns {
         desugarToFunctionInternal(arrow = false, params, body, isStat, env0)
       }
@@ -745,7 +745,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 } else {
                   val superClass =
                     globalKnowledge.getSuperClassOfJSClass(enclosingClassName)
-                  extractWithGlobals(genJSClassConstructor(superClass))
+                  extractWithInfo(genJSClassConstructor(superClass))
                 }
               }
 
@@ -2491,7 +2491,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           js.ImportCall(transformExprNoChar(arg))
 
         case LoadJSConstructor(className) =>
-          extractWithGlobals(genJSClassConstructor(className))
+          extractWithInfo(genJSClassConstructor(className))
 
         case LoadJSModule(className) =>
           globalKnowledge.getJSNativeLoadSpec(className) match {
@@ -2500,7 +2500,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               genLoadModule(className)
 
             case Some(spec) =>
-              extractWithGlobals(
+              extractWithInfo(
                   genLoadJSFromSpec(spec, keepOnlyDangerousVarNames = false))
           }
 
@@ -2719,7 +2719,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
      * dangerous ones. This helper makes it less annoying.
      */
     private def genJSClassConstructor(className: ClassName)(
-        implicit pos: Position): WithGlobals[js.Tree] = {
+        implicit pos: Position): WithInfo[js.Tree] = {
       jsGen.genJSClassConstructor(className,
           keepOnlyDangerousVarNames = false)
     }
