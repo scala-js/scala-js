@@ -92,23 +92,6 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
   }
 
   private def computeHasInlineableInit(linkingUnit: LinkingUnit): Set[ClassName] = {
-    /* Those classes are instantiated in CoreJSLib. Since they have
-     * multiple constructors and/or are not final, CoreJSLib is written
-     * with the assumption that they will not have an inlineable init. We
-     * therefore blacklist them here so that this is always true.
-     *
-     * Note that j.l.Class is not in this list, because it has only one
-     * constructor and is final, so even CoreJSLib can assume it always
-     * has an inlineable init.
-     */
-    val blackList = Set[ClassName](
-        ArithmeticExceptionClass,
-        ArrayIndexOutOfBoundsExceptionClass,
-        ClassCastExceptionClass,
-        CloneNotSupportedExceptionClass,
-        UndefinedBehaviorErrorClass
-    )
-
     val scalaClassDefs = linkingUnit.classDefs.filter(_.kind.isClass)
 
     val classesWithInstantiatedSubclasses = scalaClassDefs
@@ -119,13 +102,11 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
 
     def enableInlineableInitFor(classDef: LinkedClass): Boolean = {
       /* We can enable inlined init if all of the following apply:
-       * - The class is not blacklisted
        * - It does not have any instantiated subclass
        * - It has exactly one constructor
        *
        * By construction, this is always true for module classes.
        */
-      !blackList(classDef.className) &&
       !classesWithInstantiatedSubclasses(classDef.className) && {
         classDef.methods.count(
             x => x.value.flags.namespace == MemberNamespace.Constructor) == 1

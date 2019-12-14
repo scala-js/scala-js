@@ -1068,7 +1068,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       codegenVar("d", tree.name.name)
   }
 
-  def genModuleAccessor(tree: LinkedClass): js.Tree = {
+  def genModuleAccessor(tree: LinkedClass)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -1120,7 +1121,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
             val decodedName = className.nameString.stripSuffix("$")
             val msg = s"Initializer of $decodedName called before completion " +
               "of its super constructor"
-            val obj = js.New(encodeClassVar(UndefinedBehaviorErrorClass), Nil)
+            val obj = genScalaClassNew(UndefinedBehaviorErrorClass, NoArgConstructorName)
             val ctor = obj DOT js.Ident(genName(StringArgConstructorName))
             js.Throw(js.Apply(ctor, js.StringLiteral(msg) :: Nil))
           }, js.Skip()))

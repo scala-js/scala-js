@@ -28,10 +28,11 @@ import EmitterNames._
 
 private[emitter] object CoreJSLib {
 
-  def build(jsGen: JSGen): WithGlobals[Tree] =
-    new CoreJSLibBuilder(jsGen).build()
+  def build(jsGen: JSGen, globalKnowledge: GlobalKnowledge): WithGlobals[Tree] =
+    new CoreJSLibBuilder(jsGen)(globalKnowledge).build()
 
-  private class CoreJSLibBuilder(jsGen: JSGen) {
+  private class CoreJSLibBuilder(jsGen: JSGen)(
+      implicit globalKnowledge: GlobalKnowledge) {
     import jsGen._
     import esFeatures._
     import semantics._
@@ -1292,7 +1293,7 @@ private[emitter] object CoreJSLib {
         MethodDef(static = false, Ident("getClassOf"), Nil, {
           Block(
               If(!(This() DOT "_classOf"),
-                  This() DOT "_classOf" := New(encodeClassVar(ClassClass), This() :: Nil),
+                  This() DOT "_classOf" := genScalaClassNew(ClassClass, ObjectArgConstructorName, This()),
                   Skip()),
               Return(This() DOT "_classOf")
           )
@@ -1474,12 +1475,6 @@ private[emitter] object CoreJSLib {
       } else {
         exception
       }
-    }
-
-    private def genScalaClassNew(className: ClassName, ctorName: MethodName,
-        args: Tree*): Tree = {
-      Apply(codegenVar("ct", className, ctorName, NoOriginalName),
-          New(encodeClassVar(className), Nil) :: args.toList)
     }
 
     private def genIsScalaJSObject(obj: VarRef): Tree =

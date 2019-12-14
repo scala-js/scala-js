@@ -44,6 +44,10 @@ final class Emitter private (config: CommonPhaseConfig,
 
   private val knowledgeGuardian = new KnowledgeGuardian(config)
 
+  /** Dummy KnowledgeAccessor to generate uncached trees. */
+  private val uncachedKnowledgeAccessor =
+    new knowledgeGuardian.KnowledgeAccessor {}
+
   private class State(val lastMentionedDangerousGlobalRefs: Set[String]) {
     val jsGen: JSGen = {
       new JSGen(semantics, esFeatures, moduleKind, internalOptions,
@@ -52,7 +56,7 @@ final class Emitter private (config: CommonPhaseConfig,
 
     val classEmitter: ClassEmitter = new ClassEmitter(jsGen)
 
-    val coreJSLib: WithGlobals[js.Tree] = CoreJSLib.build(jsGen)
+    val coreJSLibCache: CoreJSLibCache = new CoreJSLibCache
 
     val classCaches: mutable.Map[List[ClassName], ClassCache] = mutable.Map.empty
   }
@@ -61,7 +65,6 @@ final class Emitter private (config: CommonPhaseConfig,
 
   private def jsGen: JSGen = state.jsGen
   private def classEmitter: ClassEmitter = state.classEmitter
-  private def coreJSLib: WithGlobals[js.Tree] = state.coreJSLib
   private def classCaches: mutable.Map[List[ClassName], ClassCache] = state.classCaches
 
   private[this] var statsClassesReused: Int = 0
@@ -242,7 +245,9 @@ final class Emitter private (config: CommonPhaseConfig,
       logger.time("Emitter: Write trees") {
         emitPrelude
 
-        val WithGlobals(coreJSLibTree, coreJSLibTrackedGlobalRefs) = coreJSLib
+        val WithGlobals(coreJSLibTree, coreJSLibTrackedGlobalRefs) =
+          state.coreJSLibCache.tree
+
         builder.addJSTree(coreJSLibTree)
 
         emitModuleImports(orderedClasses, builder, logger)
@@ -372,12 +377,14 @@ final class Emitter private (config: CommonPhaseConfig,
    */
   private def emitInitializeL0(): js.Tree = {
     implicit val pos = Position.NoPosition
+    implicit val globalKnowledge = uncachedKnowledgeAccessor
 
     // $L0 = new RuntimeLong(0, 0)
     js.Assign(
         jsGen.codegenVar("L0"),
-        js.New(jsGen.encodeClassVar(LongImpl.RuntimeLongClass),
-            List(js.IntLiteral(0), js.IntLiteral(0)))
+        jsGen.genScalaClassNew(
+            LongImpl.RuntimeLongClass, LongImpl.initFromParts,
+            js.IntLiteral(0), js.IntLiteral(0))
     )
   }
 
@@ -395,8 +402,10 @@ final class Emitter private (config: CommonPhaseConfig,
     statsMethodsInvalidated = 0
 
     val invalidateAll = knowledgeGuardian.update(unit)
-    if (invalidateAll)
+    if (invalidateAll) {
+      state.coreJSLibCache.invalidate()
       classCaches.clear()
+    }
 
     classCaches.valuesIterator.foreach(_.startRun())
   }
@@ -622,8 +631,7 @@ final class Emitter private (config: CommonPhaseConfig,
           classEmitter.genSetTypeData(linkedClass)))
 
     if (linkedClass.kind.hasModuleAccessor)
-      addToMainBase(classTreeCache.moduleAccessor.getOrElseUpdate(
-          classEmitter.genModuleAccessor(linkedClass)))
+      addToMainBase(classEmitter.genModuleAccessor(linkedClass)(classCache))
 
     // Static fields
 
@@ -790,6 +798,21 @@ final class Emitter private (config: CommonPhaseConfig,
       _cacheUsed
     }
   }
+
+  private class CoreJSLibCache extends knowledgeGuardian.KnowledgeAccessor {
+    private[this] var _tree: WithGlobals[js.Tree] = _
+
+    def tree: WithGlobals[js.Tree] = {
+      if (_tree == null)
+        _tree = CoreJSLib.build(jsGen, this)
+      _tree
+    }
+
+    override def invalidate(): Unit = {
+      super.invalidate()
+      _tree = null
+    }
+  }
 }
 
 private object Emitter {
@@ -799,7 +822,6 @@ private object Emitter {
     val instanceTests = new OneTimeCache[js.Tree]
     val typeData = new OneTimeCache[WithGlobals[js.Tree]]
     val setTypeData = new OneTimeCache[js.Tree]
-    val moduleAccessor = new OneTimeCache[js.Tree]
     val staticFields = new OneTimeCache[List[js.Tree]]
     val topLevelExports = new OneTimeCache[WithGlobals[List[js.Tree]]]
   }
