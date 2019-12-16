@@ -781,15 +781,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                * cannot clash with anything else in the prototype chain anyway.
                */
 
-              def makeObjectMethodApply(methodName: String,
-                  args: List[js.Tree]): js.Tree = {
-                referenceGlobalName("Object")
-                js.Apply(
-                  genIdentBracketSelect(js.VarRef(js.Ident("Object")),
-                      methodName),
-                  args)
-              }
-
               val zero =
                 if (field.ftpe == CharType) js.VarRef(js.Ident("$bC0"))
                 else genZeroOf(field.ftpe)
@@ -811,7 +802,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                         js.StringLiteral("value") -> zero
                     ))
 
-                    makeObjectMethodApply("defineProperty",
+                    js.Apply(
+                        genIdentBracketSelect(genGlobalVarRef("Object"), "defineProperty"),
                         List(js.This(), transformExprNoChar(newName), descriptor))
                   }
               }
@@ -1301,8 +1293,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               val mirrors =
                 globalKnowledge.getStaticFieldMirrors(className, field)
               mirrors.foldLeft(base) { (prev, mirror) =>
-                referenceGlobalName(mirror)
-                js.Assign(js.VarRef(js.Ident(mirror)), prev)
+                js.Assign(genGlobalVarRef(mirror), prev)
               }
             case _ =>
               base
@@ -2716,8 +2707,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
     private def genGlobalVarRef(name: String)(
         implicit pos: Position): js.VarRef = {
-      referenceGlobalName(name)
-      js.VarRef(js.Ident(name))
+      js.VarRef(transformGlobalVarIdent(name))
     }
 
     /* In FunctionEmitter, we must always keep all global var names, not only
