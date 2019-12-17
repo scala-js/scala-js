@@ -191,23 +191,6 @@ final class Emitter private (config: CommonPhaseConfig,
           builder.addJSTree(js.VarDef(field, None))
         }
       }
-
-      // CloneNotSupportedException's nullary constructor
-      locally {
-        val className = CloneNotSupportedExceptionClass
-        val ctorName = NoArgConstructorName
-        val ctorIsDefined = unit.classDefs
-          .find(_.className == className)
-          .fold(false)(_.methods.exists { m =>
-            m.value.flags.namespace == MemberNamespace.Constructor &&
-            m.value.methodName == ctorName
-          })
-        if (!ctorIsDefined) {
-          implicit val pos = NoPosition
-          val field = codegenVar("ct", className, ctorName, NoOriginalName).ident
-          builder.addJSTree(js.VarDef(field, None))
-        }
-      }
     }
 
     (topLevelVarDeclarations(unit), globalRefs)
