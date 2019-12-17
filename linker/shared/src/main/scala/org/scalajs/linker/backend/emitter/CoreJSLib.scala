@@ -409,6 +409,16 @@ private[emitter] object CoreJSLib {
         })
       }
 
+      if (moduleInit == CheckedBehavior.Fatal) {
+        // throwModuleInitError
+        val name = varRef("decodedName")
+        buf += envFunctionDef("throwModuleInitError", paramList(name), {
+          Throw(genScalaClassNew(UndefinedBehaviorErrorClass,
+              StringArgConstructorName, str("Initializer of ") + name +
+              str(" called before completion of its super constructor")))
+        })
+      }
+
       // noIsInstance
       locally {
         val instance = varRef("instance")
