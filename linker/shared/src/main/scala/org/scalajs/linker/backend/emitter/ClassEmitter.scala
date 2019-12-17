@@ -144,7 +144,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         if (shouldExtendJSError(tree))
           WithGlobals(js.VarRef(js.Ident("Error")))
         else
-          WithGlobals(encodeClassVar(parentIdent.name))
+          WithGlobals(envVar("c", parentIdent.name))
       } else if (tree.jsSuperClass.isDefined) {
         WithGlobals(fileLevelVar("superClass"))
       } else {
@@ -197,7 +197,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     val className = tree.name.name
     val isJSClass = tree.kind.isJSClass
-    val typeVar = encodeClassVar(className)
+    val typeVar = envVar("c", className)
 
     def makeInheritableCtorDef(ctorToMimic: js.Tree, field: String) = {
       js.Block(
@@ -550,7 +550,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         }
       } else {
         if (namespace.isStatic)
-          genAddToObject(encodeClassVar(className), methodName, methodFun)
+          genAddToObject(envVar("c", className), methodName, methodFun)
         else
           genAddToPrototype(className, method.name, methodFun)
       }
@@ -598,7 +598,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       genIdentBracketSelect(js.VarRef(js.Ident("Object")), "defineProperty")
 
     // class prototype
-    val classVar = encodeClassVar(className)
+    val classVar = envVar("c", className)
     val targetObject =
       if (property.flags.namespace.isStatic) classVar
       else classVar.prototype
@@ -681,7 +681,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Tree = {
     import TreeDSL._
 
-    genAddToObject(encodeClassVar(className).prototype, name, value)
+    genAddToObject(envVar("c", className).prototype, name, value)
   }
 
   /** Generate `classVar.prototype[name] = value` */
@@ -792,7 +792,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
           case _ =>
             var test = if (tree.kind.isClass) {
-              obj instanceof encodeClassVar(className)
+              obj instanceof envVar("c", className)
             } else {
               !(!(
                   genIsScalaJSObject(obj) &&
@@ -1063,7 +1063,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     assert(tree.kind.isClass)
 
-    encodeClassVar(tree.name.name).prototype DOT "$classData" :=
+    envVar("c", tree.name.name).prototype DOT "$classData" :=
       envVar("d", tree.name.name)
   }
 
@@ -1091,7 +1091,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
                 genNonNativeJSClassConstructor(className),
                 Nil)
           } else {
-            js.New(encodeClassVar(className), Nil)
+            js.New(envVar("c", className), Nil)
           }
         }
       }

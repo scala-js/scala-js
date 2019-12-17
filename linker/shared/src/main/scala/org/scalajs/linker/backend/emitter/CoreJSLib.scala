@@ -625,7 +625,7 @@ private[emitter] object CoreJSLib {
 
           if (implementedInObject) {
             val staticObjectCall: Tree = {
-              val fun = encodeClassVar(ObjectClass).prototype DOT genName(methodName)
+              val fun = envVar("c", ObjectClass).prototype DOT genName(methodName)
               Return(Apply(fun DOT "call", instance :: args))
             }
 
@@ -1281,7 +1281,7 @@ private[emitter] object CoreJSLib {
             })
 
             genClassDef(ArrayClass.ident,
-                Some((encodeClassVar(ObjectClass), envVar("h", ObjectClass))),
+                Some((envVar("c", ObjectClass), envVar("h", ObjectClass))),
                 ctor :: getAndSet ::: clone :: Nil)
           }
 

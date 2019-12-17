@@ -151,7 +151,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
           expr === Null()
         } else if (className != NumberClass && // the only non-object superclass of hijacked classes
             !globalKnowledge.isInterface(className)) {
-          expr instanceof encodeClassVar(className)
+          expr instanceof envVar("c", className)
         } else {
           Apply(envVar("is", className), List(expr))
         }
@@ -198,7 +198,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     import TreeDSL._
 
     if (useBigIntForLongs) genCallHelper("isLong", expr)
-    else expr instanceof encodeClassVar(LongImpl.RuntimeLongClass)
+    else expr instanceof envVar("c", LongImpl.RuntimeLongClass)
   }
 
   private def genIsFloat(expr: Tree)(implicit pos: Position): Tree = {
@@ -262,15 +262,12 @@ private[emitter] final class JSGen(val semantics: Semantics,
     Apply(coreJSLibVar(helperName), args.toList)
   }
 
-  def encodeClassVar(className: ClassName)(implicit pos: Position): Tree =
-    envVar("c", className)
-
   def genLoadModule(moduleClass: ClassName)(implicit pos: Position): Tree =
     Apply(envVar("m", moduleClass), Nil)
 
   def genScalaClassNew(className: ClassName, ctor: MethodName, args: Tree*)(
       implicit globalKnowledge: GlobalKnowledge, pos: Position): Tree = {
-    val encodedClassVar = encodeClassVar(className)
+    val encodedClassVar = envVar("c", className)
     val argsList = args.toList
     if (globalKnowledge.hasInlineableInit(className)) {
       New(encodedClassVar, argsList)
