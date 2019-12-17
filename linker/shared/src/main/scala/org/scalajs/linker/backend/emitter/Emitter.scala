@@ -44,9 +44,11 @@ final class Emitter private (config: CommonPhaseConfig,
 
   private val knowledgeGuardian = new KnowledgeGuardian(config)
 
+  private val nameGen: NameGen = new NameGen
+
   private class State(val lastMentionedDangerousGlobalRefs: Set[String]) {
     val jsGen: JSGen = {
-      new JSGen(semantics, esFeatures, moduleKind, internalOptions,
+      new JSGen(semantics, esFeatures, moduleKind, nameGen, internalOptions,
           lastMentionedDangerousGlobalRefs)
     }
 

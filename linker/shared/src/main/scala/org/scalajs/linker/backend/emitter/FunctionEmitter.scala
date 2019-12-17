@@ -245,6 +245,7 @@ import Transients._
 private[emitter] class FunctionEmitter(jsGen: JSGen) {
   import FunctionEmitter._
   import jsGen._
+  import nameGen._
 
   /** Desugars parameters and body to a JS function.
    */

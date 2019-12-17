@@ -38,6 +38,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   import ClassEmitter._
   import functionEmitter._
   import jsGen._
+  import nameGen._
 
   def buildClass(tree: LinkedClass, ctor: WithGlobals[js.Tree],
       memberDefs: List[WithGlobals[js.Tree]], exportedDefs: WithGlobals[js.Tree])(
