@@ -1961,14 +1961,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         // Scala expressions
 
         case New(className, ctor, args) =>
-          val encodedClassVar = encodeClassVar(className)
           val newArgs = transformTypedArgs(ctor.name, args)
-          if (globalKnowledge.hasInlineableInit(className)) {
-            js.New(encodedClassVar, newArgs)
-          } else {
-            genApplyStaticLike("ct", className, ctor,
-                js.New(encodedClassVar, Nil) :: newArgs)
-          }
+          genScalaClassNew(className, ctor.name, newArgs: _*)
 
         case LoadModule(className) =>
           genLoadModule(className)
@@ -2558,8 +2552,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             js.BigIntLiteral(value)
           } else {
             val (lo, hi) = LongImpl.extractParts(value)
-            js.New(encodeClassVar(LongImpl.RuntimeLongClass),
-                List(js.IntLiteral(lo), js.IntLiteral(hi)))
+            genScalaClassNew(
+                LongImpl.RuntimeLongClass, LongImpl.initFromParts,
+                js.IntLiteral(lo), js.IntLiteral(hi))
           }
 
         case ClassOf(typeRef) =>

@@ -1115,15 +1115,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
                 assignModule
             )
           }, js.If(moduleInstanceVar === js.Null(), {
-            // throw new UndefinedBehaviorError(
-            //     "Initializer of $className called before completion of its" +
-            //     "super constructor")
             val decodedName = className.nameString.stripSuffix("$")
-            val msg = s"Initializer of $decodedName called before completion " +
-              "of its super constructor"
-            val obj = js.New(encodeClassVar(UndefinedBehaviorErrorClass), Nil)
-            val ctor = obj DOT js.Ident(genName(StringArgConstructorName))
-            js.Throw(js.Apply(ctor, js.StringLiteral(msg) :: Nil))
+            genCallHelper("throwModuleInitError", js.StringLiteral(decodedName))
           }, js.Skip()))
       }
 
