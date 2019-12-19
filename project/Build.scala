@@ -744,7 +744,8 @@ object Build {
           val scalaJSEnv = {
             s"""
             {"javaSystemProperties": {
-              "scalajs.scalaVersion": "${scalaVersion.value}"
+              "scalajs.scalaVersion": "${scalaVersion.value}",
+              "scalajs.bootstrap": "true"
             }}
             """
           }
