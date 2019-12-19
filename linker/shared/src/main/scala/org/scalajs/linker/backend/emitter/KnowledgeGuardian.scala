@@ -28,14 +28,8 @@ import EmitterNames._
 private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
   import KnowledgeGuardian._
 
-  private var firstRun: Boolean = true
-
-  private var isParentDataAccessed: Boolean = _
-
+  private var specialInfo: SpecialInfo = _
   private val classes = mutable.Map.empty[ClassName, Class]
-
-  private def askIsParentDataAccessed(invalidatable: Invalidatable): Boolean =
-    isParentDataAccessed
 
   /** Returns `true` if *all* caches should be invalidated.
    *
@@ -48,7 +42,8 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
   def update(linkingUnit: LinkingUnit): Boolean = {
     val hasInlineableInit = computeHasInlineableInit(linkingUnit)
 
-    var newIsParentDataAccessed = false
+    var classClass: Option[LinkedClass] = None
+    val hijackedClasses = Iterable.newBuilder[LinkedClass]
 
     // Update classes
     for (linkedClass <- linkingUnit.classDefs) {
@@ -62,16 +57,13 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
         existingCls.update(linkedClass, thisClassHasInlineableInit)
       }
 
-      def methodExists(methodName: MethodName): Boolean = {
-        linkedClass.methods.exists { m =>
-          m.value.flags.namespace == MemberNamespace.Public &&
-          m.value.methodName == methodName
-        }
-      }
-
       linkedClass.className match {
         case ClassClass =>
-          newIsParentDataAccessed = methodExists(getSuperclassMethodName)
+          classClass = Some(linkedClass)
+
+        case name if HijackedClasses(name) =>
+          hijackedClasses += linkedClass
+
         case _ =>
       }
     }
@@ -79,15 +71,20 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     // Garbage collection
     classes.filterInPlace((_, cls) => cls.testAndResetIsAlive())
 
-    val invalidateAll = !firstRun && {
-      newIsParentDataAccessed != isParentDataAccessed
+    val invalidateAll = {
+      if (specialInfo == null) {
+        specialInfo = new SpecialInfo(classClass, hijackedClasses.result())
+        false
+      } else {
+        specialInfo.update(classClass, hijackedClasses.result())
+      }
     }
-    firstRun = false
 
-    isParentDataAccessed = newIsParentDataAccessed
-
-    if (invalidateAll)
+    if (invalidateAll) {
       classes.valuesIterator.foreach(_.unregisterAll())
+      specialInfo.unregisterAll()
+    }
+
     invalidateAll
   }
 
@@ -126,7 +123,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
      */
 
     def isParentDataAccessed: Boolean =
-      askIsParentDataAccessed(this)
+      specialInfo.askIsParentDataAccessed(this)
 
     def isInterface(className: ClassName): Boolean =
       classes(className).askIsInterface(this)
@@ -154,6 +151,11 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
 
     def getStaticFieldMirrors(className: ClassName, field: FieldName): List[String] =
       classes(className).askStaticFieldMirrors(this, field)
+
+    def hijackedClassHasPublicMethod(className: ClassName,
+        methodName: MethodName): Boolean = {
+      specialInfo.askHijackedClassHasPublicMethod(this, className, methodName)
+    }
   }
 
   private class Class(initClass: LinkedClass,
@@ -271,17 +273,6 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
       }
     }
 
-    private def invalidateAskers(askers: mutable.Set[Invalidatable]): Unit = {
-      /* Calling `invalidateAndUnregisterFromAll()` will cause the
-       * `Invalidatable` to call `unregister()` in this class, which will
-       * mutate the `askers` set. Therefore, we cannot directly iterate over
-       * `askers`, and need to take a snapshot instead.
-       */
-      val snapshot = askers.toSeq
-      askers.clear()
-      snapshot.foreach(_.invalidate())
-    }
-
     def testAndResetIsAlive(): Boolean = {
       val result = isAlive
       isAlive = false
@@ -368,6 +359,87 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
       superClassAskers.clear()
       fieldDefsAskers.clear()
     }
+  }
+
+  private class SpecialInfo(initClassClass: Option[LinkedClass],
+      initHijackedClasses: Iterable[LinkedClass]) extends Unregisterable {
+
+    private var isParentDataAccessed =
+      computeIsParentDataAccessed(initClassClass)
+
+    private var methodsInHijackedClasses =
+      computeMethodsInHijackedClasses(initHijackedClasses)
+
+    private val methodsInHijackedClassesAskers = mutable.Set.empty[Invalidatable]
+
+    def update(classClass: Option[LinkedClass],
+        hijackedClasses: Iterable[LinkedClass]): Boolean = {
+      val newMethodsInHijackedClasses = computeMethodsInHijackedClasses(hijackedClasses)
+
+      if (newMethodsInHijackedClasses != methodsInHijackedClasses) {
+        methodsInHijackedClasses = newMethodsInHijackedClasses
+        invalidateAskers(methodsInHijackedClassesAskers)
+      }
+
+      val newIsParentDataAccessed = computeIsParentDataAccessed(classClass)
+
+      val invalidateAll = isParentDataAccessed != newIsParentDataAccessed
+
+      invalidateAll
+    }
+
+    private def computeIsParentDataAccessed(classClass: Option[LinkedClass]): Boolean = {
+      def methodExists(linkedClass: LinkedClass, methodName: MethodName): Boolean = {
+        linkedClass.methods.exists { m =>
+          m.value.flags.namespace == MemberNamespace.Public &&
+          m.value.methodName == methodName
+        }
+      }
+
+      classClass.exists(methodExists(_, getSuperclassMethodName))
+    }
+
+    private def computeMethodsInHijackedClasses(
+        hijackedClasses: Iterable[LinkedClass]): Set[(ClassName, MethodName)] = {
+      val pairs = for {
+        hijackedClass <- hijackedClasses
+        method <- hijackedClass.methods
+        if method.value.flags.namespace == MemberNamespace.Public
+      } yield {
+        (hijackedClass.className, method.value.methodName)
+      }
+
+      pairs.toSet
+    }
+
+    def askIsParentDataAccessed(invalidatable: Invalidatable): Boolean =
+      isParentDataAccessed
+
+    def askHijackedClassHasPublicMethod(invalidatable: Invalidatable,
+        className: ClassName, methodName: MethodName): Boolean = {
+      invalidatable.registeredTo(this)
+      methodsInHijackedClassesAskers += invalidatable
+      methodsInHijackedClasses.contains((className, methodName))
+    }
+
+    def unregister(invalidatable: Invalidatable): Unit = {
+      methodsInHijackedClassesAskers -= invalidatable
+    }
+
+    /** Call this when we invalidate all caches. */
+    def unregisterAll(): Unit = {
+      methodsInHijackedClassesAskers.clear()
+    }
+  }
+
+  private def invalidateAskers(askers: mutable.Set[Invalidatable]): Unit = {
+    /* Calling `invalidate` cause the `Invalidatable` to call `unregister()` in
+     * this class, which will mutate the `askers` set. Therefore, we cannot
+     * directly iterate over `askers`, and need to take a snapshot instead.
+     */
+    val snapshot = askers.toSeq
+    askers.clear()
+    snapshot.foreach(_.invalidate())
   }
 }
 

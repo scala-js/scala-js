@@ -134,63 +134,7 @@ final class Emitter private (config: CommonPhaseConfig,
     val globalRefs = emitInternal(unit, builder, logger) {
       // no prelude
     } {
-      /* When emitting for GCC, we must make sure that every referenced
-       * variable is statically declared. This is usually the case, except for
-       * some methods of hijacked classes that are accessed by the dispatch
-       * functions $dp_xyz. If the target methods are not reachable, they will
-       * not be declared, and GCC won't be happy.
-       *
-       * The following code makes sure to provide declarations for those
-       * methods if they are not reachable, to appease GCC.
-       *
-       * It would be valid and appropriate to introduce those declarations for
-       * the non-GCC output as well. However, that is not necessary, so we
-       * avoid it simply so that we do not perform useless work.
-       *
-       * None of this would be necessary if we generated the $dp_xyz functions
-       * programmatically, based on the set of reachable methods of hijacked
-       * classes, which eventually we should do. But in the meantime, this
-       * makes things work.
-       */
-
-      import org.scalajs.ir.Position.NoPosition
-      import org.scalajs.ir.Trees.MethodDef
-
-      val jsGen = this.jsGen // stabilize it for the import
-      import jsGen._
-
-      val requiredDefaultMethodDecls = List(
-          BoxedBooleanClass -> List(hashCodeMethodName, compareToMethodName),
-          BoxedCharacterClass -> List(
-              equalsMethodName, hashCodeMethodName, compareToMethodName),
-          BoxedDoubleClass -> List(
-              equalsMethodName, hashCodeMethodName, compareToMethodName,
-              byteValueMethodName, shortValueMethodName, intValueMethodName,
-              longValueMethodName, floatValueMethodName, doubleValueMethodName
-          ),
-          BoxedUnitClass -> List(hashCodeMethodName),
-          BoxedStringClass -> List(
-              hashCodeMethodName, compareToMethodName, lengthMethodName,
-              charAtMethodName, subSequenceMethodName
-          )
-      )
-
-      for ((className, requiredMethodNames) <- requiredDefaultMethodDecls) {
-        val methods = unit.classDefs
-          .find(_.className == className)
-          .fold[List[Versioned[MethodDef]]](Nil)(_.methods)
-        for {
-          methodName <- requiredMethodNames
-          if !methods.exists { m =>
-            m.value.flags.namespace == MemberNamespace.Public &&
-            m.value.methodName == methodName
-          }
-        } {
-          implicit val pos = NoPosition
-          val field = codegenVar("f", className, methodName, NoOriginalName).ident
-          builder.addJSTree(js.VarDef(field, None))
-        }
-      }
+      // no postlude
     }
 
     (topLevelVarDeclarations(unit), globalRefs)
