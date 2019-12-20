@@ -162,9 +162,6 @@ def Tasks = [
         testingExample/clean &&
     sbtretry 'set scalaJSOptimizerOptions in testingExample ~= (_.withDisableOptimizer(true))' \
         ++$scala testingExample/test:run testingExample/test &&
-    sbtretry 'set inScope(ThisScope in testingExample)(jsEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
-        'set scalaJSOptimizerOptions in testingExample ~= (_.withDisableOptimizer(true))' \
-        ++$scala testingExample/test:run testingExample/test &&
     sbtretry ++$scala library/test &&
     sbtretry ++$scala testSuiteJVM/test testSuiteJVM/clean &&
     sbtretry ++$scala 'testSuite/test:runMain org.scalajs.testsuite.junit.JUnitBootstrapTest' &&
@@ -225,10 +222,6 @@ def Tasks = [
         ++$scala $testSuite/test &&
     sbtretry 'set scalaJSSemantics in $testSuite ~= makeCompliant' \
         'set scalaJSOptimizerOptions in $testSuite ~= (_.withDisableOptimizer(true))' \
-        ++$scala $testSuite/test \
-        $testSuite/clean &&
-    sbtretry 'set inScope(ThisScope in $testSuite)(jsEnv := new org.scalajs.jsenv.RetryingComJSEnv(PhantomJSEnv().value))' \
-        'set parallelExecution in ($testSuite, Test) := false' \
         ++$scala $testSuite/test \
         $testSuite/clean &&
     sbtretry 'set scalacOptions in $testSuite += "-Xexperimental"' \
