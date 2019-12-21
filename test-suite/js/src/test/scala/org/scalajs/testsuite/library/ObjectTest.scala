@@ -103,7 +103,15 @@ class ObjectTest {
     assertEquals(obj1("b"), "foo")
   }
 
-  // TODO: Add test for fromEntries(js.Map)
+  @Test def fromEntries_js_Map(): Unit = {
+    assumeTrue(
+      "Assuming newer methods existence, which are not honored by Rhino",
+      Platform.executingInNodeJS)
+    val map = js.Map("a" -> 42, "b" -> "foo")
+    val obj = js.Object.fromEntries(map)
+    assertEquals(obj("a"), 42)
+    assertEquals(obj("b"), "foo")
+  }
 }
 
 object ObjectTest {
