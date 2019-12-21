@@ -53,6 +53,8 @@ object Platform {
   def isInProductionMode: Boolean = sysProp("production-mode")
   def isInDevelopmentMode: Boolean = sysProp("development-mode")
 
+  def isInBootstrap: Boolean = sysProp("bootstrap")
+
   def hasCompliantAsInstanceOfs: Boolean = sysProp("compliant-asinstanceofs")
 
   def hasCompliantArrayIndexOutOfBounds: Boolean =

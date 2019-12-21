@@ -50,6 +50,8 @@ class StackTraceTest {
     assumeTrue("Assume node.js", executingInNodeJS)
     assumeFalse("Assume fullopt-stage", isInFullOpt)
 
+    assumeFalse("Does not work in bootstrap #3908", isInBootstrap)
+
     val Error = js.constructorOf[js.Error]
     val oldStackTraceLimit = Error.stackTraceLimit
     Error.stackTraceLimit = 20
