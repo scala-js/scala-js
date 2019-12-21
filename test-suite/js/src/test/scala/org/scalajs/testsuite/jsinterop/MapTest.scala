@@ -41,7 +41,7 @@ class MapTest {
     val obj = js.Map.empty[String, Int]
     obj("hello") = 1
 
-    assertTrue(obj.get("hello") == 1)
+    assertTrue(obj.get("hello").get == 1)
     assertFalse(obj.get("world").isDefined)
   }
 
