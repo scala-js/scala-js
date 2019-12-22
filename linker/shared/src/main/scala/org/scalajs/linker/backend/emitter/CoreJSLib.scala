@@ -593,7 +593,10 @@ private[emitter] object CoreJSLib {
 
       def defineStandardDispatcher(methodName: MethodName, args: List[VarRef],
           implementationInObject: Option[Tree],
-          implementingHijackedClasses: List[ClassName]): Unit = {
+          maybeImplementingHijackedClasses: List[ClassName]): Unit = {
+
+        val implementingHijackedClasses = maybeImplementingHijackedClasses
+          .filter(globalKnowledge.hijackedClassHasPublicMethod(_, methodName))
 
         def hijackedClassNameToTypeof(className: ClassName): Option[String] = className match {
           case BoxedStringClass  => Some("string")

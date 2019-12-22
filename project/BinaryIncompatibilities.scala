@@ -16,6 +16,8 @@ object BinaryIncompatibilities {
           "org.scalajs.linker.backend.emitter.ClassEmitter.genModuleAccessor"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.CoreJSLib.build"),
+      exclude[ReversedMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.GlobalKnowledge.hijackedClassHasPublicMethod"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.JSGen.genName"),
       exclude[DirectMissingMethodProblem](
