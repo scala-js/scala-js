@@ -28,6 +28,8 @@ object BinaryIncompatibilities {
           "org.scalajs.linker.backend.emitter.JSGen$"),
 
       // private, not an issue.
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.backend.closure.ClosureModuleBuilder$ScalaJSSourceAst"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.CoreJSLib#CoreJSLibBuilder.this"),
       exclude[DirectMissingMethodProblem](

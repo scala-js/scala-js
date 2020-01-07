@@ -32,8 +32,6 @@ import java.net.URI
 
 private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
 
-  private val inputId = new InputId("Scala.js IR")
-
   private val dummySourceName = new java.net.URI("virtualfile:scala.js-ir")
 
   def transformStat(tree: Tree)(implicit parentPos: Position): Node =
@@ -491,9 +489,14 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
 
   private def attachSourceFile(node: Node, source: URI): node.type = {
     val str = SourceFileUtil.webURI(relativizeBaseURI, source)
+    val file = new SourceFile(str, SourceKind.STRONG)
 
-    node.setInputId(inputId)
-    node.setStaticSourceFile(new SourceFile(str, SourceKind.STRONG))
+    /* A lot of Closure code makes the assumption that the InputId is the
+     * filename. We follow this assumption so we can use more of the already
+     * provided classes that make this assumption.
+     */
+    node.setInputId(new InputId(file.getName()))
+    node.setStaticSourceFile(file)
 
     node
   }

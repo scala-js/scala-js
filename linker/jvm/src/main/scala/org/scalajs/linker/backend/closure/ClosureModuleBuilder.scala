@@ -57,24 +57,9 @@ private[closure] class ClosureModuleBuilder(
     val trees = treeBuf.result()
     if (trees.nonEmpty) {
       val root = transformer.setNodePosition(IR.script(trees: _*), NoPosition)
-      val ast = new ClosureModuleBuilder.ScalaJSSourceAst(root)
-      module.add(new CompilerInput(ast, ast.getInputId(), false))
+      module.add(new CompilerInput(new SyntheticAst(root)))
     }
 
     module
-  }
-}
-
-private object ClosureModuleBuilder {
-  // Dummy Source AST class
-
-  private class ScalaJSSourceAst(root: Node) extends SourceAst {
-    def getAstRoot(compiler: AbstractCompiler): Node = root
-    def clearAst(): Unit = () // Just for GC. Nonsensical here.
-    def getInputId(): InputId = root.getInputId()
-    def getSourceFile(): SourceFile =
-      root.getStaticSourceFile().asInstanceOf[SourceFile]
-    def setSourceFile(file: SourceFile): Unit =
-      if (getSourceFile() ne file) throw new IllegalStateException
   }
 }
