@@ -97,7 +97,6 @@ class WrappedArrayTest {
 
     assertEquals(classOf[js.WrappedArray[Int]], res.getClass)
     assertArrayEquals(Array(10,12), res.toArray)
-    assertArrayEquals(Array(10,12), res.array.toArray)
   }
 
   @Test def diff(): Unit = {

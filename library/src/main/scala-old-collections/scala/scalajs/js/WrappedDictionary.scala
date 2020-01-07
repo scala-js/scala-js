@@ -22,7 +22,7 @@ import scala.collection.generic.CanBuildFrom
 
 /** Wrapper to use a js.Dictionary as a scala.mutable.Map */
 @inline
-class WrappedDictionary[A](val dict: js.Dictionary[A])
+class WrappedDictionary[A](dict: js.Dictionary[A])
     extends mutable.AbstractMap[String, A]
        with mutable.Map[String, A]
        with mutable.MapLike[String, A, js.WrappedDictionary[A]] {
