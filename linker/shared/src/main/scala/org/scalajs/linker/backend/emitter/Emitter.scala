@@ -86,6 +86,8 @@ final class Emitter private (config: CommonPhaseConfig,
     }
   }
 
+  private def ifIIFE(str: String): String = if (needsIIFEWrapper) str else ""
+
   // Private API for the Closure backend (could be opened if necessary)
   private[backend] def withOptimizeBracketSelects(
       optimizeBracketSelects: Boolean): Emitter = {
@@ -100,44 +102,24 @@ final class Emitter private (config: CommonPhaseConfig,
         internalOptions.withTrackAllGlobalRefs(trackAllGlobalRefs))
   }
 
-  def emitAll(unit: LinkingUnit, builder: JSLineBuilder,
-      logger: Logger): Unit = {
-    emitInternal(unit, builder, logger) {
-      val topLevelVars = topLevelVarDeclarations(unit)
-      if (topLevelVars.nonEmpty) {
+  def emit(unit: LinkingUnit, logger: Logger): Result = {
+    val topLevelVars = topLevelVarDeclarations(unit)
+
+    val header = {
+      val maybeTopLevelVarDecls = if (topLevelVars.nonEmpty) {
         val kw = if (esFeatures.useECMAScript2015) "let " else "var "
-        builder.addLine(topLevelVars.mkString(kw, ", ", ";"))
+        topLevelVars.mkString(kw, ",", ";\n")
+      } else {
+        ""
       }
-
-      if (needsIIFEWrapper)
-        builder.addLine("(function(){")
-
-      builder.addLine("'use strict';")
-    } {
-      if (needsIIFEWrapper)
-        builder.addLine("}).call(this);")
-    }
-  }
-
-  /** Emits everything but the core JS lib to the builder, and returns the
-   *  top-level var declarations.
-   *
-   *  This is special for the Closure back-end.
-   *
-   *  @return
-   *    A pair whose first element is the list of top-level variables to be
-   *    declared (only non-empty with `NoModule`), and whose second element is
-   *    the set of tracked global variables that are accessed.
-   */
-  private[backend] def emitForClosure(unit: LinkingUnit, builder: JSBuilder,
-      logger: Logger): (List[String], Set[String]) = {
-    val globalRefs = emitInternal(unit, builder, logger) {
-      // no prelude
-    } {
-      // no postlude
+      maybeTopLevelVarDecls + ifIIFE("(function(){") + "'use strict';\n"
     }
 
-    (topLevelVarDeclarations(unit), globalRefs)
+    val footer = ifIIFE("}).call(this);\n")
+
+    val (body, globalRefs) = emitInternal(unit, logger)
+
+    new Result(header, body, footer, topLevelVars, globalRefs)
   }
 
   private def topLevelVarDeclarations(unit: LinkingUnit): List[String] = {
@@ -157,11 +139,9 @@ final class Emitter private (config: CommonPhaseConfig,
     }
   }
 
-  /** Returns the set of tracked global refs. */
-  private def emitInternal(unit: LinkingUnit, builder: JSBuilder,
-      logger: Logger)(
-      emitPrelude: => Unit)(
-      emitPostlude: => Unit): Set[String] = {
+  /** Returns the emitted trees and the set of tracked global refs. */
+  private def emitInternal(unit: LinkingUnit,
+      logger: Logger): (List[js.Tree], Set[String]) = {
     startRun(unit)
     try {
       val orderedClasses = unit.classDefs.sortWith(compareClasses)
@@ -171,32 +151,29 @@ final class Emitter private (config: CommonPhaseConfig,
         }
       }
 
-      logger.time("Emitter: Write trees") {
-        emitPrelude
+      val trees = mutable.ListBuffer.empty[js.Tree]
 
+      logger.time("Emitter: Write trees") {
         val WithGlobals(coreJSLibTree, coreJSLibTrackedGlobalRefs) =
           state.coreJSLibCache.tree
 
-        builder.addJSTree(coreJSLibTree)
+        trees += coreJSLibTree
 
-        emitModuleImports(orderedClasses, builder, logger)
+        emitModuleImports(orderedClasses, trees, logger)
 
-        emitGeneratedClasses(builder, generatedClasses)
+        emitGeneratedClasses(trees, generatedClasses)
 
-        // Emit the module initializers
         for (moduleInitializer <- unit.moduleInitializers)
-          emitModuleInitializer(moduleInitializer, builder)
+          trees += classEmitter.genModuleInitializer(moduleInitializer)
 
-        emitPostlude
-
-        trackedGlobalRefs ++ coreJSLibTrackedGlobalRefs
+        (trees.result(), trackedGlobalRefs ++ coreJSLibTrackedGlobalRefs)
       }
     } finally {
       endRun(logger)
     }
   }
 
-  private def emitGeneratedClasses(builder: JSBuilder,
+  private def emitGeneratedClasses(builder: mutable.ListBuffer[js.Tree],
       generatedClasses: List[GeneratedClass]): Unit = {
     /* Emit all the classes, in the appropriate order:
      *
@@ -213,28 +190,24 @@ final class Emitter private (config: CommonPhaseConfig,
      *    causing JS static initializers to run. Those also must not observe
      *    a non-initialized state of other static fields.
      */
-
-    def emitJSTrees(trees: List[js.Tree]): Unit =
-      trees.foreach(builder.addJSTree(_))
-
     for (generatedClass <- generatedClasses)
-      emitJSTrees(generatedClass.main)
+      builder ++= generatedClass.main
 
     if (!jsGen.useBigIntForLongs)
-      builder.addJSTree(emitInitializeL0())
+      builder += emitInitializeL0()
 
     for (generatedClass <- generatedClasses)
-      emitJSTrees(generatedClass.staticFields)
+      builder ++= generatedClass.staticFields
 
     for (generatedClass <- generatedClasses)
-      emitJSTrees(generatedClass.staticInitialization)
+      builder ++= generatedClass.staticInitialization
 
     for (generatedClass <- generatedClasses)
-      emitJSTrees(generatedClass.topLevelExports)
+      builder ++= generatedClass.topLevelExports
   }
 
   private def emitModuleImports(orderedClasses: List[LinkedClass],
-      builder: JSBuilder, logger: Logger): Unit = {
+      builder: mutable.ListBuffer[js.Tree], logger: Logger): Unit = {
 
     def foreachImportedModule(f: (String, Position) => Unit): Unit = {
       val encounteredModuleNames = mutable.Set.empty[String]
@@ -286,7 +259,7 @@ final class Emitter private (config: CommonPhaseConfig,
           val from = js.StringLiteral(module)
           val moduleBinding = jsGen.envModuleField(module).ident
           val importStat = js.ImportNamespace(moduleBinding, from)
-          builder.addJSTree(importStat)
+          builder += importStat
         }
 
       case ModuleKind.CommonJSModule =>
@@ -296,7 +269,7 @@ final class Emitter private (config: CommonPhaseConfig,
               List(js.StringLiteral(module)))
           val lhs = jsGen.envModuleField(module)
           val decl = jsGen.genLet(lhs.ident, mutable = false, rhs)
-          builder.addJSTree(decl)
+          builder += decl
         }
     }
   }
@@ -605,15 +578,6 @@ final class Emitter private (config: CommonPhaseConfig,
     )
   }
 
-  /** Emits an [[EntryPoint]].
-   *
-   *  This is done at the very end of the emitted module/script.
-   */
-  private def emitModuleInitializer(moduleInitializer: ModuleInitializer,
-      builder: JSBuilder): Unit = {
-    builder.addJSTree(classEmitter.genModuleInitializer(moduleInitializer))
-  }
-
   // Helpers
 
   private def mergeVersions(v1: Option[String],
@@ -745,7 +709,16 @@ final class Emitter private (config: CommonPhaseConfig,
   }
 }
 
-private object Emitter {
+object Emitter {
+  /** Result of an emitter run. */
+  final class Result private[Emitter](
+      val header: String,
+      val body: List[js.Tree],
+      val footer: String,
+      val topLevelVarDecls: List[String],
+      val globalRefs: Set[String]
+  )
+
   private final class DesugaredClassCache {
     val privateJSFields = new OneTimeCache[List[js.Tree]]
     val exportedMembers = new OneTimeCache[WithGlobals[js.Tree]]

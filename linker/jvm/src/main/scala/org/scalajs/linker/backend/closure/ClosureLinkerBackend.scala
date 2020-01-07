@@ -32,6 +32,7 @@ import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable.{IRFileImpl, OutputFileImpl}
 import org.scalajs.linker.backend._
 import org.scalajs.linker.backend.emitter.Emitter
+import org.scalajs.linker.backend.javascript.{Trees => js}
 import org.scalajs.linker.standard._
 
 /** The Closure backend of the Scala.js linker.
@@ -61,11 +62,6 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
 
   override def injectedIRFiles: Seq[IRFile] = emitter.injectedIRFiles
 
-  private val needsIIFEWrapper = moduleKind match {
-    case ModuleKind.NoModule                             => true
-    case ModuleKind.ESModule | ModuleKind.CommonJSModule => false
-  }
-
   /** Emit the given [[standard.LinkingUnit LinkingUnit]] to the target output.
    *
    *  @param unit [[standard.LinkingUnit LinkingUnit]] to emit
@@ -73,45 +69,61 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
    */
   def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger)(
       implicit ec: ExecutionContext): Future[Unit] = {
-    Future(compile(unit, output, logger)).flatMap { case (topLevelVarDeclarations, code, sourceMap) =>
-      logger.timeFuture("Closure: Write result") {
-        writeResult(topLevelVarDeclarations, code, sourceMap, output)
-      }
+    verifyUnit(unit)
+
+    val emitterResult = logger.time("Emitter") {
+      emitter.emit(unit, logger)
+    }
+
+    val module = logger.time("Closure: Create trees)") {
+      buildModule(emitterResult.body)
+    }
+
+    val (code, sourceMap) = logger.time("Closure: Compiler pass") {
+      val options = closureOptions(output)
+
+      val externs = java.util.Arrays.asList(
+          ClosureSource.fromCode("ScalaJSExterns.js",
+              ClosureLinkerBackend.ScalaJSExterns),
+          ClosureSource.fromCode("ScalaJSGlobalRefs.js",
+              makeExternsForGlobalRefs(emitterResult.globalRefs)),
+          ClosureSource.fromCode("ScalaJSExportExterns.js",
+              makeExternsForExports(emitterResult.topLevelVarDecls, unit)))
+
+      compile(externs, module, options, logger)
+    }
+
+    logger.timeFuture("Closure: Write result") {
+      writeResult(emitterResult.header, code, emitterResult.footer, sourceMap, output)
     }
   }
 
-  private def compile(unit: LinkingUnit, output: LinkerOutput, logger: Logger) = {
-    verifyUnit(unit)
+  private def buildModule(trees: List[js.Tree]): JSModule = {
+    val root = ClosureAstTransformer.transformScript(
+        trees, config.relativizeSourceMapBase)
 
-    // Build Closure IR
-    val (topLevelVarDeclarations, globalRefs, module) = {
-      logger.time("Closure: Emitter (create Closure trees)") {
-        val builder = new ClosureModuleBuilder(config.relativizeSourceMapBase)
-        val (topLevelVarDeclarations, globalRefs) =
-          emitter.emitForClosure(unit, builder, logger)
-        (topLevelVarDeclarations, globalRefs, builder.result())
-      }
-    }
+    val module = new JSModule("Scala.js")
+    module.add(new CompilerInput(new SyntheticAst(root)))
+    module
+  }
 
-    // Compile the module
-    val closureExterns = java.util.Arrays.asList(
-        ClosureSource.fromCode("ScalaJSExterns.js", ClosureLinkerBackend.ScalaJSExterns),
-        ClosureSource.fromCode("ScalaJSGlobalRefs.js", makeExternsForGlobalRefs(globalRefs)),
-        ClosureSource.fromCode("ScalaJSExportExterns.js", makeExternsForExports(topLevelVarDeclarations, unit)))
-    val options = closureOptions(output)
-    val compiler = closureCompiler(logger)
+  private def compile(externs: java.util.List[ClosureSource], module: JSModule,
+      options: ClosureOptions, logger: Logger) = {
+    import com.google.common.collect.ImmutableSet
 
-    val result = logger.time("Closure: Compiler pass") {
-      compiler.compileModules(
-          closureExterns, java.util.Arrays.asList(module), options)
-    }
+    val compiler = new ClosureCompiler
+    compiler.setErrorManager(new SortingErrorManager(ImmutableSet.of(
+        new LoggerErrorReportGenerator(logger))))
+
+    val result = compiler.compileModules(externs,
+        java.util.Arrays.asList(module), options)
 
     if (!result.success) {
       throw new LinkingException(
           "There were errors when applying the Google Closure Compiler")
     }
 
-    (topLevelVarDeclarations, compiler.toSource + "\n", Option(compiler.getSourceMap()))
+    (compiler.toSource + "\n", Option(compiler.getSourceMap()))
   }
 
   /** Constructs an externs file listing all the global refs.
@@ -153,32 +165,9 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     content.toString()
   }
 
-  private def closureCompiler(logger: Logger) = {
-    import com.google.common.collect.ImmutableSet
-
-    val compiler = new ClosureCompiler
-    compiler.setErrorManager(new SortingErrorManager(ImmutableSet.of(
-        new LoggerErrorReportGenerator(logger))))
-    compiler
-  }
-
-  private def writeResult(topLevelVarDeclarations: List[String],
-      outputContent: String, sourceMap: Option[SourceMap], output: LinkerOutput)(
+  private def writeResult(header: String, body: String, footer: String,
+      sourceMap: Option[SourceMap], output: LinkerOutput)(
       implicit ec: ExecutionContext): Future[Unit] = {
-
-    def ifIIFE(str: String): String = if (needsIIFEWrapper) str else ""
-
-    val header = {
-      val maybeTopLevelVarDecls = if (topLevelVarDeclarations.nonEmpty) {
-        val kw = if (esFeatures.useECMAScript2015) "let " else "var "
-        topLevelVarDeclarations.mkString(kw, ",", ";\n")
-      } else {
-        ""
-      }
-      maybeTopLevelVarDecls + ifIIFE("(function(){") + "'use strict';\n"
-    }
-    val footer = ifIIFE("}).call(this);\n")
-
     def writeToFile(file: LinkerOutput.File)(content: Writer => Unit): Future[Unit] = {
       val out = new ByteArrayOutputStream()
       val writer = new OutputStreamWriter(out, StandardCharsets.UTF_8)
@@ -192,7 +181,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     // Write optimized code
     val codeWritten = writeToFile(output.jsFile) { w =>
       w.write(header)
-      w.write(outputContent)
+      w.write(body)
       w.write(footer)
       output.sourceMapURI.foreach(uri =>
           w.write("//# sourceMappingURL=" + uri.toASCIIString + "\n"))
