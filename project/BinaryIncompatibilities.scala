@@ -11,6 +11,34 @@ object BinaryIncompatibilities {
   )
 
   val Linker = Seq(
+      // breaking in unstable Linker API.
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.Emitter.emitAll"),
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.backend.javascript.JSBuilder"),
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.backend.javascript.JSFileBuilder"),
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.backend.javascript.JSFileBuilderWithSourceMap"),
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.backend.javascript.JSLineBuilder"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.javascript.Printers#JSTreePrinter.complete"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.javascript.Printers#JSTreePrinterWithSourceMap.complete"),
+
+      // private[backend], not an issue
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.Emitter.emitForClosure"),
+
+      // private[closure], not an issue.
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.closure.ClosureAstTransformer.setNodePosition"),
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.backend.closure.ClosureModuleBuilder"),
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.backend.closure.ClosureModuleBuilder$"),
+
       // private[emitter], not an issue.
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.ClassEmitter.genModuleAccessor"),
@@ -27,7 +55,25 @@ object BinaryIncompatibilities {
       exclude[MissingClassProblem](
           "org.scalajs.linker.backend.emitter.JSGen$"),
 
+      // private[javascript], not an issue.
+      exclude[FinalClassProblem](
+          "org.scalajs.linker.backend.javascript.SourceMapWriter"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.javascript.SourceMapWriter.<init>$default$3"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.javascript.SourceMapWriter.complete"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.javascript.SourceMapWriter.jsFileURI"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.javascript.SourceMapWriter.out"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.javascript.SourceMapWriter.relativizeBaseURI"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.javascript.SourceMapWriter.this"),
+
       // private, not an issue.
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.backend.closure.ClosureModuleBuilder$ScalaJSSourceAst"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.CoreJSLib#CoreJSLibBuilder.this"),
       exclude[DirectMissingMethodProblem](

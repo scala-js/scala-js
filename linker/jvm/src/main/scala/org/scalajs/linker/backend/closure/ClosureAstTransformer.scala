@@ -30,11 +30,33 @@ import scala.annotation.tailrec
 
 import java.net.URI
 
-private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
+private[closure] object ClosureAstTransformer {
+  def transformScript(trees: List[Tree], relativizeBaseURI: Option[URI]): Node = {
+    val transformer = new ClosureAstTransformer(relativizeBaseURI)
+    transformer.transformScript(trees)
+  }
+}
 
-  private val inputId = new InputId("Scala.js IR")
-
+private class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
   private val dummySourceName = new java.net.URI("virtualfile:scala.js-ir")
+
+  def transformScript(trees: List[Tree]): Node = {
+    /* Top-level `js.Block`s must be explicitly flattened here.
+     * Our `js.Block`s do not have the same semantics as GCC's `BLOCK`s: GCC's
+     * impose strict scoping for `let`s, `const`s and `class`es, while ours are
+     * only a means of putting together several statements in one `js.Tree`
+     * (in fact, they automatically flatten themselves out upon construction).
+     */
+    val treeBuf = mutable.ListBuffer.empty[Node]
+
+    trees.foreach {
+      case Block(stats) => treeBuf ++= transformBlockStats(stats)(NoPosition)
+      case Skip()       => // ignore
+      case tree         => treeBuf += transformStat(tree)(NoPosition)
+    }
+
+    setNodePosition(IR.script(treeBuf.result(): _*), NoPosition)
+  }
 
   def transformStat(tree: Tree)(implicit parentPos: Position): Node =
     innerTransformStat(tree, tree.pos orElse parentPos)
@@ -478,7 +500,7 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
     }
   }
 
-  def setNodePosition(node: Node, pos: ir.Position): node.type = {
+  private def setNodePosition(node: Node, pos: ir.Position): node.type = {
     if (pos != ir.Position.NoPosition) {
       attachSourceFile(node, pos.source)
       node.setLineno(pos.line+1)
@@ -491,9 +513,14 @@ private[closure] class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
 
   private def attachSourceFile(node: Node, source: URI): node.type = {
     val str = SourceFileUtil.webURI(relativizeBaseURI, source)
+    val file = new SourceFile(str, SourceKind.STRONG)
 
-    node.setInputId(inputId)
-    node.setStaticSourceFile(new SourceFile(str, SourceKind.STRONG))
+    /* A lot of Closure code makes the assumption that the InputId is the
+     * filename. We follow this assumption so we can use more of the already
+     * provided classes that make this assumption.
+     */
+    node.setInputId(new InputId(file.getName()))
+    node.setStaticSourceFile(file)
 
     node
   }

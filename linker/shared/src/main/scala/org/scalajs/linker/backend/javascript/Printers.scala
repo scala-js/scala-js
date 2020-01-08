@@ -17,8 +17,6 @@ import scala.annotation.switch
 // Unimport default print and println to avoid invoking them by mistake
 import scala.Predef.{print => _, println => _, _}
 
-import scala.util.control.Breaks
-
 import java.io.Writer
 
 import org.scalajs.ir
@@ -102,7 +100,7 @@ object Printers {
     protected def printArgs(args: List[Tree]): Unit =
       printRow(args, '(', ')')
 
-    def printStat(tree: Tree): Unit =
+    protected def printStat(tree: Tree): Unit =
       printTree(tree, isStat = true)
 
     protected def print(tree: Tree): Unit =
@@ -681,11 +679,6 @@ object Printers {
 
     protected def print(c: Int): Unit =
       out.write(c)
-
-    // Make it public
-    override def println(): Unit = super.println()
-
-    def complete(): Unit = ()
   }
 
   class JSTreePrinterWithSourceMap(_out: Writer,
@@ -715,7 +708,7 @@ object Printers {
         sourceMap.endNode(column)
     }
 
-    override def println(): Unit = {
+    override protected def println(): Unit = {
       super.println()
       sourceMap.nextLine()
       column = this.getIndentMargin()
@@ -731,11 +724,6 @@ object Printers {
       // assume c is not EOL, and assume c is an ASCII character
       super.print(c)
       column += 1
-    }
-
-    override def complete(): Unit = {
-      sourceMap.complete()
-      super.complete()
     }
   }
 

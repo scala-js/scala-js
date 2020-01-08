@@ -12,8 +12,10 @@
 
 package org.scalajs.linker.backend.javascript
 
-import java.io.Writer
+import java.io._
 import java.net.URI
+import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
 import java.{util => ju}
 
 import scala.collection.mutable.{ ListBuffer, HashMap, Stack, StringBuilder }
@@ -73,12 +75,13 @@ private object SourceMapWriter {
   }
 }
 
-private[javascript] class SourceMapWriter(
-    val out: Writer,
-    val jsFileURI: Option[URI],
-    val relativizeBaseURI: Option[URI] = None) {
+final class SourceMapWriter(jsFileURI: Option[URI],
+    relativizeBaseURI: Option[URI]) {
 
   import SourceMapWriter._
+
+  private val byteStream = new ByteArrayOutputStream
+  private val out = new OutputStreamWriter(byteStream, StandardCharsets.UTF_8)
 
   private val sources = new ListBuffer[String]
   private val _srcToIndex = new HashMap[SourceFile, Int]
@@ -245,7 +248,7 @@ private[javascript] class SourceMapWriter(
     // scalastyle:on return
   }
 
-  def complete(): Unit = {
+  def result(): ByteBuffer = {
     writePendingSegment()
 
     var restSources = sources.result()
@@ -269,6 +272,8 @@ private[javascript] class SourceMapWriter(
     out.write(lineCountInGenerated.toString)
     out.write("\n}\n")
     out.close()
+
+    ByteBuffer.wrap(byteStream.toByteArray())
   }
 
   /** Write the Base 64 VLQ of an integer to the mappings
