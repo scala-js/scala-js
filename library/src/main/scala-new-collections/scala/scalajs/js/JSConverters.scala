@@ -47,7 +47,10 @@ object JSConverters extends JSConvertersLowPrioImplicits {
 
     final def toJSArray: js.Array[T] = {
       col match {
-        case col: js.WrappedArray[T] => col.array
+        case col: js.WrappedArray[T] =>
+          // Avoiding a copy is consistent with Scala behavior for Arrays.
+          WrappedArray.toJSArray(col)
+
         case _ =>
           val result = new js.Array[T]
           col.iterator.foreach(x => result.push(x))

@@ -58,10 +58,16 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
        * instead, but that would prevent `toJSArray` to be inlined even when
        * `col` is stack-allocated (and we do want that to happen as in that
        * case the entire match disappears and `col` can stay stack-allocated).
+       *
+       * Note that avoiding a copy is consistent with Scala behavior for Arrays.
        */
       col match {
-        case col: js.ArrayOps[T]     => col.repr
-        case col: js.WrappedArray[T] => col.array
+        case col: js.ArrayOps[T] =>
+          col.repr
+
+        case col: js.WrappedArray[T] =>
+          WrappedArray.toJSArray(col)
+
         case _ =>
           val result = new js.Array[T]
           col.foreach(x => result.push(x))

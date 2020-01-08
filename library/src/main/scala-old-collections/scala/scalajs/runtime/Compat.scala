@@ -23,7 +23,8 @@ private[runtime] object Compat {
   def toJSVarArgsImpl[A](seq: Seq[A]): js.Array[A] = {
     seq match {
       case seq: js.WrappedArray[A] =>
-        seq.array
+        js.WrappedArray.toJSArray(seq)
+
       case _ =>
         val result = new js.Array[A]
         seq.foreach(x => result.push(x))

@@ -32,6 +32,13 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+      // Breaking (but still in RC).
+      exclude[DirectMissingMethodProblem](
+          "scala.scalajs.js.WrappedArray.array"),
+      exclude[FinalClassProblem](
+          "scala.scalajs.js.WrappedDictionary"),
+      exclude[DirectMissingMethodProblem](
+          "scala.scalajs.js.WrappedDictionary.dict"),
   )
 
   val TestInterface = Seq(
