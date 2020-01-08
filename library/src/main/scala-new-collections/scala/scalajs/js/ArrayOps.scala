@@ -441,7 +441,7 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *    the ordering `ord`.
    */
   def sorted[B >: A](implicit ord: Ordering[B]): js.Array[A] =
-    new js.WrappedArray(xs).sorted(ord.asInstanceOf[Ordering[A]]).array
+    new js.WrappedArray(xs).sorted(ord.asInstanceOf[Ordering[A]])
 
   /** Sorts this array according to a comparison function.
    *
@@ -1495,7 +1495,7 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *    will.
    */
   def diff[B >: A](that: Seq[B]): js.Array[A] =
-    new js.WrappedArray(xs).diff(that).array
+    new js.WrappedArray(xs).diff(that)
 
   /** Computes the multiset intersection between this array and another
    *  sequence.
@@ -1509,7 +1509,7 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *    any following occurrences will be omitted.
    */
   def intersect[B >: A](that: Seq[B]): js.Array[A] =
-    new js.WrappedArray(xs).intersect(that).array
+    new js.WrappedArray(xs).intersect(that)
 
   /** Groups elements in fixed size blocks by passing a "sliding window" over
    *  them (as opposed to partitioning them, as is done in grouped).
@@ -1526,15 +1526,15 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *    than `size` elements remaining to be grouped.
    */
   def sliding(size: Int, step: Int = 1): scala.collection.Iterator[js.Array[A]] =
-    new js.WrappedArray(xs).sliding(size, step).map(_.array)
+    new js.WrappedArray(xs).sliding(size, step).map(js.WrappedArray.toJSArray _)
 
   /** Iterates over combinations. */
   def combinations(n: Int): scala.collection.Iterator[js.Array[A]] =
-    new js.WrappedArray(xs).combinations(n).map(_.array)
+    new js.WrappedArray(xs).combinations(n).map(js.WrappedArray.toJSArray _)
 
   /** Iterates over distinct permutations. */
   def permutations: scala.collection.Iterator[js.Array[A]] =
-    new js.WrappedArray(xs).permutations.map(_.array)
+    new js.WrappedArray(xs).permutations.map(js.WrappedArray.toJSArray _)
 
   // we have another overload here, so we need to duplicate this method
   /** Tests whether this array contains the given sequence at a given index.
