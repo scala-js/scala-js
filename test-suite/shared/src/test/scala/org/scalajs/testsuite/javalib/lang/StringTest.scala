@@ -414,7 +414,6 @@ class StringTest {
       assertEquals(('a' + i % 6).toChar, str.charAt(i))
   }
 
-
   @Test def createFromLargeCodePointArray_issue2553(): Unit = {
     val largeCodePointArray =
       (1 to 100000).toArray.flatMap(_ => Array[Int]('a', 'b', 'c', 'd', 'e', 'f'))
