@@ -438,7 +438,7 @@ class StringTest {
     assertTrue(compare("Java", "Scala") < 0)
   }
 
-  @inline private def erasedArrayArray(array: Array[String]): Array[AnyRef] = {
+  @inline private def erasedArray(array: Array[String]): Array[AnyRef] = {
     array.asInstanceOf[Array[AnyRef]]
   }
 }
