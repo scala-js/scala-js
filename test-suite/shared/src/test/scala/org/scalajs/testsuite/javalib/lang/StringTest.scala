@@ -255,19 +255,19 @@ class StringTest {
   }
 
   @Test def split(): Unit = {
-    assertArrayEquals(Array[AnyRef]("Sc", "l", ".js"), erased("Scala.js".split("a")))
+    assertArrayEquals(Array[AnyRef]("Sc", "l", ".js"), erasedArray("Scala.js".split("a")))
     if (!executingInJVMOnJDK7OrLower) {
-      assertArrayEquals(Array[AnyRef]("a", "s", "d", "f"), erased("asdf".split("")))
-      assertArrayEquals(Array[AnyRef]("a", "s", "d", "f", ""), erased("asdf".split("", -1)))
+      assertArrayEquals(Array[AnyRef]("a", "s", "d", "f"), erasedArray("asdf".split("")))
+      assertArrayEquals(Array[AnyRef]("a", "s", "d", "f", ""), erasedArray("asdf".split("", -1)))
     }
   }
 
   @Test def split_with_char_as_argument(): Unit = {
-    assertArrayEquals(Array[AnyRef]("Scala","js"), erased("Scala.js".split('.')))
+    assertArrayEquals(Array[AnyRef]("Scala","js"), erasedArray("Scala.js".split('.')))
     for (i <- 0 to 32) {
       val c = i.toChar
       assertArrayEquals(Array[AnyRef]("blah", "blah", "blah", "blah"),
-          erased(s"blah${c}blah${c}blah${c}blah".split(c)))
+          erasedArray(s"blah${c}blah${c}blah${c}blah".split(c)))
     }
   }
 
@@ -438,7 +438,7 @@ class StringTest {
     assertTrue(compare("Java", "Scala") < 0)
   }
 
-  @inline private def erased(array: Array[String]): Array[AnyRef] = {
+  @inline private def erasedArrayArray(array: Array[String]): Array[AnyRef] = {
     array.asInstanceOf[Array[AnyRef]]
   }
 }
