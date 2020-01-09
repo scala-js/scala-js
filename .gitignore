@@ -9,4 +9,4 @@ target/
 /.idea/
 /.idea_modules/
 bin/
-node_modules/
+/node_modules/
