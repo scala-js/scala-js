@@ -33,27 +33,27 @@ final class WrappedSet[T](private val underlying: js.Set[T])
     underlying.size
 
   override def contains(value: T): Boolean = {
-    underlying.has(value)
+    underlying.asInstanceOf[js.Set.Raw[T]].has(value)
   }
 
   override def add(elem: T): Boolean = {
-    if (underlying.has(elem)) false
+    if (underlying.asInstanceOf[js.Set.Raw[T]].has(elem)) false
     else {
-      underlying.add(elem)
+      underlying.asInstanceOf[js.Set.Raw[T]].add(elem)
       true
     }
   }
 
   override def remove(elem: T): Boolean =
-    underlying.delete(elem)
+    underlying.asInstanceOf[js.Set.Raw[T]].delete(elem)
 
   def -=(key: T): this.type = {
-    underlying.delete(key)
+    remove(key)
     this
   }
 
   def +=(value: T): this.type = {
-    underlying.add(value)
+    underlying.asInstanceOf[js.Set.Raw[T]].add(value)
     this
   }
 
@@ -69,7 +69,7 @@ object WrappedSet {
   private final class SetIterator[+T](dict: js.Set[T])
     extends scala.collection.Iterator[T] {
 
-    private[this] val values = js.Array.from(dict.values())
+    private[this] val values = js.Array.from(dict.jsIterator())
     private[this] var index: Int = 0
 
     def hasNext(): Boolean = index < values.length

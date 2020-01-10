@@ -45,52 +45,9 @@ class MapTest {
     assertFalse(obj.get("world").isDefined)
   }
 
-  @Test def should_provide_has(): Unit = {
-    val obj = js.Map(1 -> "foo")
-    assertTrue(obj.has(1))
-    assertFalse(obj.has(2))
-  }
-
-  @Test def should_provide_delete(): Unit = {
-    val obj = js.Map(1 -> "foo")
-    assertTrue(obj.delete(1))
-    assertFalse(obj.has(1))
-  }
-
-  @Test def should_provide_set(): Unit = {
-    val obj = js.Map(1 -> "foo")
-    assertTrue(obj.set(1, "bar").set(2, "babar") == obj)
-    assertTrue(obj.get(1).get == "bar")
-    assertTrue(obj.get(2).get == "babar")
-  }
-
   @Test def `-=_should_ignore_deleting_a_non_existent_key`(): Unit = {
     val obj = js.Map("a" -> "A")
     assert(!obj.delete("b"))
-  }
-
-  @Test def should_provide_keys(): Unit = {
-    val obj = js.Map(1 -> "A", 2 -> "B")
-    val keys = obj.keys().toIterator.toSeq
-    assertEquals(2, keys.size)
-    assertTrue(keys.contains(1))
-    assertTrue(keys.contains(2))
-  }
-
-  @Test def should_provide_values(): Unit = {
-    val obj = js.Map("a" -> 1, "b" -> 3)
-    val values = obj.values().toIterator.toSeq
-    assertEquals(2, values.size)
-    assertTrue(values.contains(1))
-    assertTrue(values.contains(3))
-  }
-
-  @Test def should_provide_entries(): Unit = {
-    val obj = js.Map("a" -> 1, "b" -> 3)
-    val entries = obj.entries().toIterator.toSeq
-    assertEquals(2, entries.size)
-    assertTrue(entries(0)._1 == "a" && entries(0)._2 == 1)
-    assertTrue(entries(1)._1 == "b" && entries(1)._2 == 3)
   }
 
   @Test def should_provide_an_iterator(): Unit = {
@@ -116,6 +73,26 @@ class MapTest {
     val map2 = Map("a" -> "foo", "b" -> "bar").toJSMap
     assertEquals("foo", map2("a"))
     assertEquals("bar", map2("b"))
+  }
+
+  @Test def should_provide_contains(): Unit = {
+    val obj = js.Map(1 -> "foo")
+    assertTrue(obj.contains(1))
+    assertFalse(obj.contains(2))
+  }
+
+  @Test def should_provide_delete(): Unit = {
+    val obj = js.Map(1 -> "foo")
+    assertTrue(obj.delete(1))
+    assertFalse(obj.contains(1))
+  }
+
+  @Test def should_provide_update(): Unit = {
+    val obj = js.Map(1 -> "foo")
+    obj.update(1, "bar")
+    obj.update(2, "babar")
+    assertTrue(obj.get(1).get == "bar")
+    assertTrue(obj.get(2).get == "babar")
   }
 }
 

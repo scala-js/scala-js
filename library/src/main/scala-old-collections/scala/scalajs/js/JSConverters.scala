@@ -114,9 +114,9 @@ object JSConverters extends JSConvertersLowPrioImplicits {
       val map: GenMap[K, V]) extends AnyVal {
 
     @inline final def toJSMap: js.Map[K, V] = {
-      val result = js.Map.empty[K, V]
+      val result = js.Map.empty[K, V].asInstanceOf[js.Map.Raw[K, V]]
       map.foreach { case (key, value) => result.set(key, value) }
-      result
+      result.asInstanceOf[js.Map[K, V]]
     }
   }
 

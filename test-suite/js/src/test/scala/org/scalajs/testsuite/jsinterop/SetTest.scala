@@ -31,54 +31,11 @@ class SetTest {
 
   // scala.scalajs.js.Set
 
-  @Test def should_provide_has(): Unit = {
-    val obj = js.Set("foo")
-    assertTrue(obj.has("foo"))
-    assertFalse(obj.has("bar"))
-  }
-
-  @Test def should_provide_add(): Unit = {
-    val obj = js.Set[String]()
-    assertTrue(obj.add("foo").add("bar") == obj)
-    assertTrue(obj.has("foo"))
-    assertTrue(obj.has("bar"))
-  }
-
-  @Test def should_provide_delete(): Unit = {
-    val obj = js.Set("foo")
-    assertTrue(obj.delete("foo"))
-    assertFalse(obj.has("foo"))
-  }
-
   @Test def should_provide_clear(): Unit = {
     val obj = js.Set("foo",  "bar")
     assertTrue(obj.size == 2)
     obj.clear()
     assertTrue(obj.size == 0)
-  }
-
-  @Test def should_provide_keys(): Unit = {
-    val obj = js.Set("a", "b")
-    val keys = js.Array.from(obj.keys())
-    assertEquals(2, keys.size)
-    assertTrue(keys.contains("a"))
-    assertTrue(keys.contains("b"))
-  }
-
-  @Test def should_provide_values(): Unit = {
-    val obj = js.Set("a", "b")
-    val values = js.Array.from(obj.values())
-    assertEquals(2, values.size)
-    assertTrue(values.contains("a"))
-    assertTrue(values.contains("b"))
-  }
-
-  @Test def should_provide_entries(): Unit = {
-    val obj = js.Set("a", "b")
-    val entries = js.Array.from(obj.entries())
-    assertEquals(2, entries.size)
-    assertTrue(entries(0)._1 == "a")
-    assertTrue(entries(1)._2 == "b")
   }
 
   @Test def should_provide_an_iterator(): Unit = {
@@ -101,6 +58,26 @@ class SetTest {
     assertTrue(obj(1))
     assertTrue(obj(2))
     assertFalse(obj(3))
+  }
+
+  @Test def should_provide_add(): Unit = {
+    val obj = js.Set[String]()
+    assertTrue(obj.size == 0)
+    assertTrue(obj.add("foo"))
+    assertTrue(obj.add("bar"))
+    assertTrue(obj.size == 2)
+  }
+
+  @Test def should_provide_contains(): Unit = {
+    val obj = js.Set("foo")
+    assertTrue(obj.contains("foo"))
+    assertFalse(obj.contains("bar"))
+  }
+
+  @Test def should_provide_delete(): Unit = {
+    val obj = js.Set("foo")
+    assertTrue(obj.remove("foo"))
+    assertFalse(obj.contains("foo"))
   }
 }
 

@@ -30,34 +30,23 @@ class Set[T]() extends js.Object with js.Iterable[T] {
 
   def clear(): Unit = js.native
 
-  def delete(key: T): Boolean = js.native
-
-  def entries(): js.Iterator[js.Tuple2[T,T]] = js.native
-
-  @JSName("forEach")
-  def jsForEach[T](callbackfn: js.ThisFunction3[T, T, T, Set[T], _],
-                   thisArg: T): Unit = js.native
-  @JSName("forEach")
-  def jsForEach(callbackfn: js.Function3[T, T, Set[T], _]): Unit = js.native
-
-  def keys(): js.Iterator[T] = js.native
-
   @JSName(js.Symbol.iterator)
   override def jsIterator(): Iterator[T] = js.native
 
   def size: Int = js.native
-
-  def has(value: T): Boolean = js.native
-
-  def add(value: T): this.type = js.native
-
-  def values(): js.Iterator[T] = js.native
 }
 
 /** Factory for [[js.Set]] instances. */
 object Set {
   /** Returns a new empty map */
   @inline def empty[V]: js.Set[V] = new Set[V]()
+
+  @js.native
+  private[js] trait Raw[T] extends js.Object {
+    def add(value: T): this.type = js.native
+    def has(value: T): Boolean = js.native
+    def delete(value: T): Boolean = js.native
+  }
 
   @inline
   def apply[V](values: V*): js.Set[V] = new js.Set(js.Array(values: _*))
