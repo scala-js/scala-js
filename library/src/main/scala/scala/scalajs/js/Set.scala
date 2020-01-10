@@ -60,10 +60,5 @@ object Set {
   @inline def empty[V]: js.Set[V] = new Set[V]()
 
   @inline
-  def apply[V](values: V*): js.Set[V] = {
-    val set = empty[V]
-    for (value <- values)
-      set.add(value)
-    set
-  }
+  def apply[V](values: V*): js.Set[V] = new js.Set(js.Array(values: _*))
 }
