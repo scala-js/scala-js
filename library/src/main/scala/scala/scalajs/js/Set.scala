@@ -21,7 +21,6 @@ import scala.scalajs.js.annotation.{ JSGlobal, JSName }
  *  values or object references.
  *
  *  @tparam T A type of element.
- *  @note The class [[js.Set]] is added in ES6 (ES2015).
  *  @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Set
  */
 @js.native

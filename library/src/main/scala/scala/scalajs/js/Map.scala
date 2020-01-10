@@ -23,7 +23,6 @@ import scala.scalajs.js.annotation.{ JSGlobal, JSName }
  *
  *  @tparam K A type of key.
  *  @tparam V A type of value.
- *  @note The class [[js.Map]] is added in ES6 (ES2015).
  *  @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map
  */
 @js.native
