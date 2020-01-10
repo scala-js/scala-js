@@ -25,7 +25,7 @@ import scala.scalajs.js.annotation.{ JSGlobal, JSName }
  */
 @js.native
 @JSGlobal
-class Set[T]() extends js.Object with js.Iterable[js.Tuple2[T, T]] {
+class Set[T]() extends js.Object with js.Iterable[T] {
   def this(array: js.Iterable[T]) = this()
 
   def clear(): Unit = js.native
@@ -43,7 +43,7 @@ class Set[T]() extends js.Object with js.Iterable[js.Tuple2[T, T]] {
   def keys(): js.Iterator[T] = js.native
 
   @JSName(js.Symbol.iterator)
-  override def jsIterator(): Iterator[Tuple2[T, T]] = js.native
+  override def jsIterator(): Iterator[T] = js.native
 
   def size: Int = js.native
 
