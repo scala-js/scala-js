@@ -110,23 +110,23 @@ object JSConverters extends JSConvertersLowPrioImplicits {
   }
 
   implicit final class JSRichGenMapKV[K, V] private[JSConverters] (
-      private val map: Map[K, V])
+      private val __private_self: Map[K, V])
       extends AnyVal {
 
     @inline final def toJSMap: js.Map[K, V] = {
       val result = js.Map.empty[K, V]
-      map.foreach { case (key, value) => result.set(key, value) }
+      __private_self.foreach { case (key, value) => result.set(key, value) }
       result
     }
   }
 
   implicit final class JSRichSet[T] private[JSConverters] (
-      private val set: Set[T])
+      private val __private_set: Set[T])
       extends AnyVal {
 
     @inline final def toJSSet: js.Set[T] = {
       val result = js.Set.empty[T]
-      set.foreach { value => result.add(value) }
+      __private_set.foreach { value => result.add(value) }
       result
     }
   }
