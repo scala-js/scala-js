@@ -19,7 +19,7 @@ import scala.scalajs.js
 
 /** Wrapper to use a js.Map as a scala.mutable.Map */
 @inline
-class WrappedMap[K, V](val underlying: js.Map[K, V])
+final class WrappedMap[K, V](private val underlying: js.Map[K, V])
     extends mutable.AbstractMap[K, V]
        with mutable.Map[K, V]
        with mutable.MapLike[K, V, js.WrappedMap[K, V]] {
