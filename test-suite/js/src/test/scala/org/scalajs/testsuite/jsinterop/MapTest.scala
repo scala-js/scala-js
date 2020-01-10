@@ -24,7 +24,7 @@ object MapTest {
   @BeforeClass
   def assumeRuntimeSupportsMap(): Unit = {
     assumeTrue("Assume Map exists in Global",
-      Platform.hasInGlobal("Map"))
+      js.typeOf(js.constructorOf[js.Map[_, _]]) != "undefined")
   }
 }
 

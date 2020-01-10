@@ -69,8 +69,4 @@ object Platform {
 
   private def sysProp(key: String): Boolean =
     System.getProperty("scalajs." + key, "false") == "true"
-
-  def hasInGlobal(name: String): Boolean =
-    !js.isUndefined(js.Dynamic.global.selectDynamic(name))
-
 }

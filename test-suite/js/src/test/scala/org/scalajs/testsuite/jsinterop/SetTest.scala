@@ -23,7 +23,7 @@ object SetTest {
   @BeforeClass
   def assumeRuntimeSupportsSet(): Unit = {
     assumeTrue("Assume Set exists in Global",
-      Platform.hasInGlobal("Set"))
+      js.typeOf(js.constructorOf[js.Set[_]]) != "undefined")
   }
 }
 

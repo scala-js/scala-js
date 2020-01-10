@@ -24,7 +24,7 @@ object WrappedSetTest {
   @BeforeClass
   def assumeRuntimeSupportsSet(): Unit = {
     assumeTrue("Assume Map exists in Global",
-      Platform.hasInGlobal("Set"))
+      js.typeOf(js.constructorOf[js.Set[_]]) != "undefined")
   }
 }
 
