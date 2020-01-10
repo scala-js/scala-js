@@ -110,7 +110,7 @@ object JSConverters extends JSConvertersLowPrioImplicits {
     }
   }
 
-  implicit final class JSRichGenMapKV[K, V](
+  implicit final class JSRichMapKV[K, V](
       val map: GenMap[K, V]) extends AnyVal {
 
     @inline final def toJSMap: js.Map[K, V] = {
