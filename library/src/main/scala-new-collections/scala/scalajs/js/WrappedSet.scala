@@ -19,7 +19,7 @@ import scala.scalajs.js
 
 /** Wrapper to use a js.Set as a scala.mutable.Set */
 @inline
-class WrappedSet[T](val underlying: js.Set[T])
+final class WrappedSet[T](private val underlying: js.Set[T])
     extends mutable.AbstractSet[T]
        with mutable.SetOps[T, WrappedSet, WrappedSet[T]] {
 
@@ -29,25 +29,25 @@ class WrappedSet[T](val underlying: js.Set[T])
     underlying.size
 
   override def contains(value: T): Boolean =
-    underlying.has(value)
+    underlying.asInstanceOf[js.Set.Raw[T]].has(value)
 
   override def clear(): Unit =
     underlying.clear()
 
   override def addOne(elem: T): this.type = {
-    underlying.add(elem)
+    underlying.asInstanceOf[js.Set.Raw[T]].add(elem)
     this
   }
 
   override def subtractOne(elem: T): this.type = {
-    underlying.remove(elem)
+    underlying.asInstanceOf[js.Set.Raw[T]].delete(elem)
     this
   }
 
   override def add(elem: T): Boolean = {
-    if (underlying.has(elem)) false
+    if (underlying.asInstanceOf[js.Set.Raw[T]].has(elem)) false
     else {
-      underlying.add(elem)
+      underlying.asInstanceOf[js.Set.Raw[T]].add(elem)
       true
     }
   }
@@ -59,7 +59,7 @@ class WrappedSet[T](val underlying: js.Set[T])
     WrappedSet.newBuilder
 
   override def remove(elem: T): Boolean =
-    underlying.delete(elem)
+    underlying.asInstanceOf[js.Set.Raw[T]].delete(elem)
 
   override def iterableFactory: IterableFactory[WrappedSet] = WrappedSet
 
@@ -83,7 +83,7 @@ object WrappedSet extends IterableFactory[WrappedSet] {
   private final class SetIterator[+T](dict: js.Set[T])
     extends scala.collection.Iterator[T] {
 
-    private[this] val values = js.Array.from(dict.values())
+    private[this] val values = js.Array.from(dict.jsIterator())
     private[this] var index: Int = 0
 
     def hasNext(): Boolean = index < values.length

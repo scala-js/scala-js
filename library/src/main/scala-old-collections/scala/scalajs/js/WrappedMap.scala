@@ -28,14 +28,14 @@ final class WrappedMap[K, V](private val underlying: js.Map[K, V])
 
   def get(key: K): Option[V] = {
     if (contains(key))
-      Some(underlying.get(key).asInstanceOf[V])
+      Some(underlying.asInstanceOf[js.Map.Raw[K, V]].get(key))
     else
       None
   }
 
   override def apply(key: K): V = {
     if (contains(key))
-      underlying.get(key).asInstanceOf[V]
+      underlying.asInstanceOf[js.Map.Raw[K, V]].get(key)
     else
       throw new NoSuchElementException("key not found: " + key)
   }
@@ -43,9 +43,8 @@ final class WrappedMap[K, V](private val underlying: js.Map[K, V])
   override def size(): Int =
     underlying.size
 
-  override def contains(key: K): Boolean = {
-    underlying.contains(key)
-  }
+  override def contains(key: K): Boolean =
+    underlying.asInstanceOf[js.Map.Raw[K, V]].has(key)
 
   def -=(key: K): this.type = {
     underlying.delete(key)
@@ -85,7 +84,7 @@ object WrappedMap {
     def next(): (K, V) = {
       val key = keys(index)
       index += 1
-      (key, underlying.get(key).asInstanceOf[V])
+      (key, underlying.asInstanceOf[js.Map.Raw[K, V]].get(key))
     }
   }
 

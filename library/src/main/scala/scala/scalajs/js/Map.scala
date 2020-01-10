@@ -51,6 +51,7 @@ object Map {
     def has(key: K): Boolean = js.native
     def keys(): js.Iterator[K] = js.native
     def set(key: K, value: V): js.Map[K, V] = js.native
+    def get(key: K): V = js.native
   }
 
   @inline

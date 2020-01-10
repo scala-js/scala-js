@@ -115,7 +115,9 @@ object JSConverters extends JSConvertersLowPrioImplicits {
 
     @inline final def toJSMap: js.Map[K, V] = {
       val result = js.Map.empty[K, V]
-      __private_self.foreach { case (key, value) => result.set(key, value) }
+      __private_self.foreach { case (key, value) =>
+        result.asInstanceOf[js.Map.Raw[K, V]].set(key, value)
+      }
       result
     }
   }
