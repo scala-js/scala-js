@@ -19,6 +19,7 @@ import org.junit.Assert._
 import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.Any2StringAdd
 
 import org.scalajs.testsuite.utils.Platform
 
@@ -74,6 +75,7 @@ class RegressionTest {
   }
 
   @Test def String_concatenation_with_null_issue_26(): Unit = {
+    import Any2StringAdd._
     val x: Object = null
     assertEquals("nullcheck", x + "check")
   }
@@ -90,6 +92,7 @@ class RegressionTest {
   }
 
   @Test def should_correctly_concat_primitive_values_to_strings_issue_113(): Unit = {
+    import Any2StringAdd._
     assertEquals("4foo", 4 + "foo")
     assertEquals("afoo", 'a' + "foo")
   }
