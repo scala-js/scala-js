@@ -21,6 +21,13 @@ import org.junit.Assert._
 import BaseCharsetTest._
 
 class UTF8Test extends BaseCharsetTest(Charset.forName("UTF-8")) {
+  @Test def testHeuristicProperties(): Unit = {
+    assertEquals(1.0f, charset.newDecoder().averageCharsPerByte(), 0.0f)
+    assertEquals(1.0f, charset.newDecoder().maxCharsPerByte(), 0.0f)
+    assertEquals(1.1f, charset.newEncoder().averageBytesPerChar(), 0.0f)
+    assertEquals(3.0f, charset.newEncoder().maxBytesPerChar(), 0.0f)
+  }
+
   @Test def decode1byte(): Unit = {
     // 1-byte characters
     testDecode(bb"42 6f 6e 6a 6f 75 72")(cb"Bonjour")
