@@ -110,13 +110,23 @@ class ClassTest {
           left.isAssignableFrom(right))
     }
 
+    /* Positive tests with the special classes Object and String, as well as
+     * with normal traits and classes.
+     */
+
     assertTrue(classOf[Object].isAssignableFrom(classOf[String]))
     assertTrue(classOf[Seq[_]].isAssignableFrom(classOf[List[_]]))
+    assertTrue(classOf[List[_]].isAssignableFrom(classOf[::[_]]))
+    assertTrue(classOf[Seq[_]].isAssignableFrom(classOf[::[_]]))
     assertTrue(classOf[Object].isAssignableFrom(classOf[Array[String]]))
     assertTrue(classOf[Array[Seq[_]]].isAssignableFrom(classOf[Array[List[_]]]))
 
+    // Negative tests
+
     assertFalse(classOf[String].isAssignableFrom(classOf[Object]))
     assertFalse(classOf[List[_]].isAssignableFrom(classOf[Seq[_]]))
+    assertFalse(classOf[Option[_]].isAssignableFrom(classOf[::[_]]))
+    assertFalse(classOf[Set[_]].isAssignableFrom(classOf[::[_]]))
     assertFalse(classOf[Array[String]].isAssignableFrom(classOf[Object]))
     assertFalse(classOf[Array[List[_]]].isAssignableFrom(classOf[Array[Seq[_]]]))
 
