@@ -111,11 +111,11 @@ object JSConverters extends JSConvertersLowPrioImplicits {
   }
 
   implicit final class JSRichMapKV[K, V](
-      val map: GenMap[K, V]) extends AnyVal {
+      val __private_self: GenMap[K, V]) extends AnyVal {
 
     @inline final def toJSMap: js.Map[K, V] = {
       val result = js.Map.empty[K, V].asInstanceOf[js.Map.Raw[K, V]]
-      map.foreach { case (key, value) => result.set(key, value) }
+      __private_self.foreach { case (key, value) => result.set(key, value) }
       result.asInstanceOf[js.Map[K, V]]
     }
   }
