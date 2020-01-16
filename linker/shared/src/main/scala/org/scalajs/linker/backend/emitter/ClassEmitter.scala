@@ -440,9 +440,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     } yield {
       implicit val pos = field.pos
       val classVar = codegenVar("c", className)
-      val zero =
-        if (field.ftpe == CharType) js.VarRef(js.Ident("$bC0"))
-        else genZeroOf(field.ftpe)
+      val zero = genBoxedZeroOf(field.ftpe)
       field match {
         case FieldDef(_, name, originalName, _) =>
           WithGlobals(
