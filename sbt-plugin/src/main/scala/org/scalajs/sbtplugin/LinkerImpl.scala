@@ -75,6 +75,17 @@ object LinkerImpl {
     private val parentPrefixes = List(
       "java.",
       "scala.",
+      /**
+       * This is a workaround for java.lang.NoClassDefFoundError: jdk/internal/reflect/MethodAccessorImpl,
+       * which happened when compiling multiple Scala.js projects:
+       * https://github.com/scala-js/scala-js/issues/3921
+       *
+       * The cause is java.lang.reflect.Method becomes invalid after 14 "invokes".
+       * The default threshold of -Dsun.reflect.inflationThreshold is 15:
+       * https://www.ibm.com/developerworks/community/forums/html/threadTopic?id=77777777-0000-0000-0000-000013894489&ps=25
+       *
+       * So we will delegate the access to sun.* packages to the parent class loader instead of using reflection.
+       */
       "sun.",
       "org.scalajs.linker.interface.",
       "org.scalajs.logging.",
