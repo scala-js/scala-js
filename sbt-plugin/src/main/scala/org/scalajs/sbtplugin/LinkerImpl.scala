@@ -75,6 +75,7 @@ object LinkerImpl {
     private val parentPrefixes = List(
       "java.",
       "scala.",
+      "sun.",
       "org.scalajs.linker.interface.",
       "org.scalajs.logging.",
       "org.scalajs.ir."
