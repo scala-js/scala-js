@@ -789,9 +789,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   args)
               }
 
-              val zero =
-                if (field.ftpe == CharType) js.VarRef(js.Ident("$bC0"))
-                else genZeroOf(field.ftpe)
+              val zero = genBoxedZeroOf(field.ftpe)
 
               field match {
                 case FieldDef(_, name, _, _) =>
