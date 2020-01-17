@@ -78,6 +78,24 @@ class RegressionJSTest {
     assertEquals(4, sourceMapper(4))
   }
 
+  @Test def lambda_returning_object_literal_issue_3926(): Unit = {
+    @noinline
+    def f(): () => js.Dynamic =
+      () => js.Dynamic.literal(foo = 5)
+
+    val obj1 = f()()
+    assertEquals("object", js.typeOf(obj1))
+    assertEquals(5, obj1.foo)
+
+    @noinline
+    def g(): js.Function0[js.Dynamic] =
+      () => js.Dynamic.literal(bar = 6)
+
+    val obj2 = g()()
+    assertEquals("object", js.typeOf(obj2))
+    assertEquals(6, obj2.bar)
+  }
+
 }
 
 object RegressionJSTest {
