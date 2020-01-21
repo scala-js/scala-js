@@ -120,11 +120,12 @@ object JSConverters extends JSConvertersLowPrioImplicits {
     }
   }
 
-  implicit final class JSRichSet[T](val set: GenSet[T]) extends AnyVal {
+  implicit final class JSRichSet[T](
+     val __private_self: GenSet[T]) extends AnyVal {
 
     @inline final def toJSSet: js.Set[T] = {
       val result = js.Set.empty[T]
-      set.foreach { value => result.add(value) }
+      __private_self.foreach { value => result.add(value) }
       result
     }
   }
