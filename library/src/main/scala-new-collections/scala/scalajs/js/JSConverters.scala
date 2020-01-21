@@ -123,12 +123,12 @@ object JSConverters extends JSConvertersLowPrioImplicits {
   }
 
   implicit final class JSRichSet[T] private[JSConverters] (
-      private val __private_set: Set[T])
+      private val __private_self: Set[T])
       extends AnyVal {
 
     @inline final def toJSSet: js.Set[T] = {
       val result = js.Set.empty[T]
-      __private_set.foreach { value => result.add(value) }
+      __private_self.foreach { value => result.add(value) }
       result
     }
   }
