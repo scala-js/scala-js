@@ -90,9 +90,9 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
             (exp, ctor) <- namedExports
           } yield {
             implicit val pos = exp.pos
-            ExportedBody(List(JSAnyTpe),
-              genNamedExporterBody(ctor, genFormalArg(1).ref),
-              nme.CONSTRUCTOR.toString, pos)
+            new ExportedBody(List(JSAnyTpe),
+                argsRegistry => genNamedExporterBody(ctor, argsRegistry.genArgRef(0)),
+                nme.CONSTRUCTOR.toString, pos)
           }
 
           val ctors = normalCtors ++ namedCtors
@@ -262,22 +262,22 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       if (isAbstractMethod(dd)) {
         None
       } else {
-        val sym = dd.symbol
+        withNewLocalNameScope {
+          val sym = dd.symbol
 
-        val Block(Apply(fun, _) :: Nil, _) = dd.rhs
-        val trgSym = fun.symbol
+          val Block(Apply(fun, _) :: Nil, _) = dd.rhs
+          val trgSym = fun.symbol
 
-        val inArg =
-          js.ParamDef(js.Ident("namedParams"), jstpe.AnyType,
+          val inArg = js.ParamDef(freshLocalIdent("namedParams"), jstpe.AnyType,
               mutable = false, rest = false)
-        val inArgRef = inArg.ref
 
-        val methodIdent = encodeMethodSym(sym)
+          val methodIdent = encodeMethodSym(sym)
 
-        Some(js.MethodDef(static = false, methodIdent,
-            List(inArg), toIRType(sym.tpe.resultType),
-            Some(genNamedExporterBody(trgSym, inArg.ref)))(
-            OptimizerHints.empty, None))
+          Some(js.MethodDef(static = false, methodIdent,
+              List(inArg), toIRType(sym.tpe.resultType),
+              Some(genNamedExporterBody(trgSym, inArg.ref)))(
+              OptimizerHints.empty, None))
+        }
       }
     }
 
@@ -294,7 +294,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       } yield {
         val rhs = js.JSBracketSelect(inArg,
             js.StringLiteral(pSym.name.decoded))
-        js.VarDef(js.Ident("namedArg$" + index), jstpe.AnyType,
+        js.VarDef(freshLocalIdent("namedArg"), jstpe.AnyType,
             mutable = false, rhs = rhs)
       }
 
@@ -399,16 +399,17 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         }
       }
 
-      val getterBody = getter.headOption.map(genApplyForSym(minArgc = 0,
-          hasRestParam = false, _, static))
+      val getterBody = getter.headOption.map(
+          genApplyForSym(new FormalArgsRegistry(0, false), _, static))
 
       val setterArgAndBody = {
         if (setters.isEmpty) {
           None
         } else {
-          val arg = genFormalArg(1)
-          val body = genExportSameArgc(jsName, minArgc = 1,
-              hasRestParam = false, alts = setters.map(ExportedSymbol),
+          val formalArgsRegistry = new FormalArgsRegistry(1, false)
+          val List(arg) = formalArgsRegistry.genFormalArgs()
+          val body = genExportSameArgc(jsName, formalArgsRegistry,
+              alts = setters.map(ExportedSymbol),
               paramIndex = 0, static = static)
           Some((arg, body))
         }
@@ -482,14 +483,14 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       val methodByArgCount =
         methodArgCounts.groupBy(_._1).map(kv => kv._1 -> kv._2.map(_._2).toSet)
 
-      // Minimum number of arguments that must be given
+      // Create the formal args registry
       val minArgc = methodByArgCount.keys.min
-
       val hasVarArg = varArgMeths.nonEmpty
+      val needsRestParam = maxArgc != minArgc || hasVarArg
+      val formalArgsRegistry = new FormalArgsRegistry(minArgc, needsRestParam)
 
       // List of formal parameters
-      val needsRestParam = maxArgc != minArgc || hasVarArg
-      val formalArgs = genFormalArgs(minArgc, needsRestParam)
+      val formalArgs = formalArgsRegistry.genFormalArgs()
 
       // Create tuples: (methods, argCounts). This will be the cases we generate
       val caseDefinitions =
@@ -511,7 +512,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         if methods != varArgMeths.toSet
 
         // body of case to disambiguates methods with current count
-        caseBody = genExportSameArgc(jsName, minArgc, needsRestParam,
+        caseBody = genExportSameArgc(jsName, formalArgsRegistry,
             methods.toList, paramIndex = 0, static, Some(argcs.min))
 
         // argc in reverse order
@@ -522,7 +523,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         if (!hasVarArg) {
           genThrowTypeError()
         } else {
-          genExportSameArgc(jsName, minArgc, needsRestParam, varArgMeths,
+          genExportSameArgc(jsName, formalArgsRegistry, varArgMeths,
               paramIndex = 0, static = static)
         }
       }
@@ -537,7 +538,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
               "Trying to read rest param length but needsRestParam is false")
           js.Match(
               js.Unbox(js.JSBracketSelect(
-                  genRestArgRef(),
+                  formalArgsRegistry.genRestArgRef(),
                   js.StringLiteral("length")),
                   'I'),
               cases.toList, defaultCase)(jstpe.AnyType)
@@ -556,15 +557,16 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
      * @param paramIndex Index where to start disambiguation
      * @param maxArgc only use that many arguments
      */
-    private def genExportSameArgc(jsName: JSName, minArgc: Int,
-        hasRestParam: Boolean, alts: List[Exported], paramIndex: Int,
-        static: Boolean, maxArgc: Option[Int] = None): js.Tree = {
+    private def genExportSameArgc(jsName: JSName,
+        formalArgsRegistry: FormalArgsRegistry, alts: List[Exported],
+        paramIndex: Int, static: Boolean,
+        maxArgc: Option[Int] = None): js.Tree = {
 
       implicit val pos = alts.head.pos
 
-      if (alts.size == 1)
-        alts.head.genBody(minArgc, hasRestParam, static)
-      else if (maxArgc.exists(_ <= paramIndex) ||
+      if (alts.size == 1) {
+        alts.head.genBody(formalArgsRegistry, static)
+      } else if (maxArgc.exists(_ <= paramIndex) ||
         !alts.exists(_.params.size > paramIndex)) {
         // We reach here in three cases:
         // 1. The parameter list has been exhausted
@@ -584,8 +586,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
         if (altsByTypeTest.size == 1) {
           // Testing this parameter is not doing any us good
-          genExportSameArgc(jsName, minArgc, hasRestParam, alts,
-              paramIndex+1, static, maxArgc)
+          genExportSameArgc(jsName, formalArgsRegistry, alts, paramIndex + 1,
+              static, maxArgc)
         } else {
           // Sort them so that, e.g., isInstanceOf[String]
           // comes before isInstanceOf[Object]
@@ -598,9 +600,9 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
             val (typeTest, subAlts) = elem
             implicit val pos = subAlts.head.pos
 
-            val paramRef = genFormalArgRef(paramIndex+1, minArgc)
-            val genSubAlts = genExportSameArgc(jsName, minArgc, hasRestParam,
-                subAlts, paramIndex+1, static, maxArgc)
+            val paramRef = formalArgsRegistry.genArgRef(paramIndex)
+            val genSubAlts = genExportSameArgc(jsName, formalArgsRegistry,
+                subAlts, paramIndex + 1, static, maxArgc)
 
             def hasDefaultParam = subAlts.exists {
               case ExportedSymbol(p) =>
@@ -720,27 +722,22 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
      * and potentially the argument array. Also inserts default parameters if
      * required.
      */
-    private def genApplyForSym(minArgc: Int, hasRestParam: Boolean,
+    private def genApplyForSym(formalArgsRegistry: FormalArgsRegistry,
         sym: Symbol, static: Boolean): js.Tree = {
       if (isScalaJSDefinedJSClass(currentClassSym) &&
           sym.owner != currentClassSym.get) {
         assert(!static, s"nonsensical JS super call in static export of $sym")
-        genApplyForSymJSSuperCall(minArgc, hasRestParam, sym)
+        genApplyForSymJSSuperCall(formalArgsRegistry, sym)
       } else {
-        genApplyForSymNonJSSuperCall(minArgc, sym, static)
+        genApplyForSymNonJSSuperCall(formalArgsRegistry, sym, static)
       }
     }
 
-    private def genApplyForSymJSSuperCall(minArgc: Int, hasRestParam: Boolean,
-        sym: Symbol): js.Tree = {
+    private def genApplyForSymJSSuperCall(
+        formalArgsRegistry: FormalArgsRegistry, sym: Symbol): js.Tree = {
       implicit val pos = sym.pos
 
-      val restArg =
-        if (hasRestParam) js.JSSpread(genRestArgRef()) :: Nil
-        else Nil
-
-      val allArgs =
-        (1 to minArgc).map(genFormalArgRef(_, minArgc)) ++: restArg
+      val allArgs = formalArgsRegistry.genAllArgsRefsForForwarder()
 
       val cls = jstpe.ClassType(encodeClassFullName(currentClassSym))
       val receiver = js.This()(jstpe.AnyType)
@@ -760,8 +757,9 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       }
     }
 
-    private def genApplyForSymNonJSSuperCall(minArgc: Int,
-        sym: Symbol, static: Boolean): js.Tree = {
+    private def genApplyForSymNonJSSuperCall(
+        formalArgsRegistry: FormalArgsRegistry, sym: Symbol,
+        static: Boolean): js.Tree = {
       implicit val pos = sym.pos
 
       // the (single) type of the repeated parameter if any
@@ -777,13 +775,13 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
       // optional repeated parameter list
       val jsVarArgPrep = repeatedTpe map { tpe =>
-        val rhs = genJSArrayToVarArgs(genVarargRef(normalArgc, minArgc))
-        js.VarDef(js.Ident("prep" + normalArgc), rhs.tpe, mutable = false, rhs)
+        val rhs = genJSArrayToVarArgs(formalArgsRegistry.genVarargRef(normalArgc))
+        js.VarDef(freshLocalIdent("prep"), rhs.tpe, mutable = false, rhs)
       }
 
       // normal arguments
-      val jsArgRefs = (1 to normalArgc).toList.map(
-          i => genFormalArgRef(i, minArgc))
+      val jsArgRefs =
+        (0 until normalArgc).toList.map(formalArgsRegistry.genArgRef(_))
 
       // Generate JS code to prepare arguments (default getters and unboxes)
       val jsArgPrep = genPrepareArgs(jsArgRefs, sym) ++ jsVarArgPrep
@@ -873,8 +871,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         }
 
         result +=
-          js.VarDef(js.Ident("prep"+i),
-              verifiedOrDefault.tpe, mutable = false, verifiedOrDefault)
+          js.VarDef(freshLocalIdent("prep"), verifiedOrDefault.tpe,
+              mutable = false, verifiedOrDefault)
       }
 
       result.toList
@@ -910,7 +908,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
     private sealed abstract class Exported {
       def pos: Position
       def params: List[Type]
-      def genBody(minArgc: Int, hasRestParam: Boolean, static: Boolean): js.Tree
+      def genBody(formalArgsRegistry: FormalArgsRegistry, static: Boolean): js.Tree
       def typeInfo: String
       def hasRepeatedParam: Boolean
     }
@@ -919,16 +917,21 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       def pos: Position = sym.pos
       def params: List[Type] = sym.tpe.params.map(_.tpe)
 
-      def genBody(minArgc: Int, hasRestParam: Boolean, static: Boolean): js.Tree =
-        genApplyForSym(minArgc, hasRestParam, sym, static)
+      def genBody(formalArgsRegistry: FormalArgsRegistry, static: Boolean): js.Tree =
+        genApplyForSym(formalArgsRegistry, sym, static)
 
       def typeInfo: String = sym.tpe.toString
       def hasRepeatedParam: Boolean = GenJSExports.this.hasRepeatedParam(sym)
     }
 
-    private case class ExportedBody(params: List[Type], body: js.Tree,
-        name: String, pos: Position) extends Exported {
-      def genBody(minArgc: Int, hasRestParam: Boolean, static: Boolean): js.Tree = body
+    private class ExportedBody(val params: List[Type],
+        genBodyFun: FormalArgsRegistry => js.Tree, name: String,
+        val pos: Position)
+        extends Exported {
+
+      def genBody(formalArgsRegistry: FormalArgsRegistry, static: Boolean): js.Tree =
+        genBodyFun(formalArgsRegistry)
+
       def typeInfo: String = params.mkString("(", ", ", ")")
       val hasRepeatedParam: Boolean = false
     }
@@ -1058,45 +1061,67 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
     js.Throw(js.StringLiteral(msg))
   }
 
-  private def genFormalArgs(minArgc: Int, needsRestParam: Boolean)(
-      implicit pos: Position): List[js.ParamDef] = {
-    val fixedParams = (1 to minArgc map genFormalArg).toList
-    if (needsRestParam) fixedParams :+ genRestFormalArg()
-    else fixedParams
-  }
+  private class FormalArgsRegistry(minArgc: Int, needsRestParam: Boolean) {
+    private val fixedParamNames: scala.collection.immutable.IndexedSeq[String] =
+      (0 until minArgc).toIndexedSeq.map(_ => freshLocalIdent("arg")(NoPosition).name)
 
-  private def genFormalArg(index: Int)(implicit pos: Position): js.ParamDef = {
-    js.ParamDef(js.Ident("arg$" + index), jstpe.AnyType,
-        mutable = false, rest = false)
-  }
+    private val restParamName: String =
+      if (needsRestParam) freshLocalIdent("rest")(NoPosition).name
+      else ""
 
-  private def genRestFormalArg()(implicit pos: Position): js.ParamDef = {
-    js.ParamDef(js.Ident("arg$rest"), jstpe.AnyType,
-        mutable = false, rest = true)
-  }
+    def genFormalArgs()(implicit pos: Position): List[js.ParamDef] = {
+      val fixedParamDefs = fixedParamNames.toList.map { paramName =>
+        js.ParamDef(js.Ident(paramName), jstpe.AnyType,
+            mutable = false, rest = false)
+      }
 
-  private def genFormalArgRef(index: Int, minArgc: Int)(
-      implicit pos: Position): js.Tree = {
-    if (index <= minArgc)
-      js.VarRef(js.Ident("arg$" + index))(jstpe.AnyType)
-    else
-      js.JSBracketSelect(genRestArgRef(), js.IntLiteral(index - 1 - minArgc))
-  }
+      if (needsRestParam) {
+        val restParamDef = js.ParamDef(js.Ident(restParamName), jstpe.AnyType,
+            mutable = false, rest = true)
+        fixedParamDefs :+ restParamDef
+      } else {
+        fixedParamDefs
+      }
+    }
 
-  private def genVarargRef(fixedParamCount: Int, minArgc: Int)(
-      implicit pos: Position): js.Tree = {
-    val restParam = genRestArgRef()
-    assert(fixedParamCount >= minArgc,
-        s"genVarargRef($fixedParamCount, $minArgc) at $pos")
-    if (fixedParamCount == minArgc) restParam
-    else {
-      js.JSBracketMethodApply(restParam, js.StringLiteral("slice"), List(
-          js.IntLiteral(fixedParamCount - minArgc)))
+    def genArgRef(index: Int)(implicit pos: Position): js.Tree = {
+      if (index < minArgc)
+        js.VarRef(js.Ident(fixedParamNames(index)))(jstpe.AnyType)
+      else
+        js.JSBracketSelect(genRestArgRef(), js.IntLiteral(index - minArgc))
+    }
+
+    def genVarargRef(fixedParamCount: Int)(implicit pos: Position): js.Tree = {
+      val restParam = genRestArgRef()
+      assert(fixedParamCount >= minArgc,
+          s"genVarargRef($fixedParamCount) with minArgc = $minArgc at $pos")
+      if (fixedParamCount == minArgc) {
+        restParam
+      } else {
+        js.JSBracketMethodApply(restParam, js.StringLiteral("slice"), List(
+            js.IntLiteral(fixedParamCount - minArgc)))
+      }
+    }
+
+    def genRestArgRef()(implicit pos: Position): js.Tree = {
+      assert(needsRestParam,
+          s"trying to generate a reference to non-existent rest param at $pos")
+      js.VarRef(js.Ident(restParamName))(jstpe.AnyType)
+    }
+
+    def genAllArgsRefsForForwarder()(implicit pos: Position): List[js.Tree] = {
+      val fixedArgRefs = fixedParamNames.toList.map { paramName =>
+        js.VarRef(js.Ident(paramName))(jstpe.AnyType)
+      }
+
+      if (needsRestParam) {
+        val restArgRef = js.VarRef(js.Ident(restParamName))(jstpe.AnyType)
+        fixedArgRefs :+ restArgRef
+      } else {
+        fixedArgRefs
+      }
     }
   }
-
-  private def genRestArgRef()(implicit pos: Position): js.Tree =
-    js.VarRef(js.Ident("arg$rest"))(jstpe.AnyType)
 
   private def hasRepeatedParam(sym: Symbol) =
     enteringPhase(currentRun.uncurryPhase) {
