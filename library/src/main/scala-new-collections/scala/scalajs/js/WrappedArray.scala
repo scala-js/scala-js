@@ -21,7 +21,7 @@ import scala.scalajs.js
 
 /** Equivalent of scm.WrappedArray for js.Array */
 @inline
-final class WrappedArray[A](val array: js.Array[A])
+final class WrappedArray[A](private val array: js.Array[A])
     extends mutable.AbstractBuffer[A]
     with StrictOptimizedSeqOps[A, js.WrappedArray, js.WrappedArray[A]]
     with mutable.IndexedSeq[A]

@@ -21,6 +21,13 @@ import org.junit.Assert._
 import BaseCharsetTest._
 
 class Latin1Test extends BaseCharsetTest(Charset.forName("ISO-8859-1")) {
+  @Test def testHeuristicProperties(): Unit = {
+    assertEquals(1.0f, charset.newDecoder().averageCharsPerByte(), 0.0f)
+    assertEquals(1.0f, charset.newDecoder().maxCharsPerByte(), 0.0f)
+    assertEquals(1.0f, charset.newEncoder().averageBytesPerChar(), 0.0f)
+    assertEquals(1.0f, charset.newEncoder().maxBytesPerChar(), 0.0f)
+  }
+
   @Test def decode(): Unit = {
     // Simple tests
 

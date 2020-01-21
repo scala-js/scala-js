@@ -196,6 +196,11 @@ class NonNativeJSTypeTest {
     assertEquals(15, dyn.sum())
   }
 
+  @Test def constructor_with_param_name_clashes_issue_3933(): Unit = {
+    val obj = new ConstructorWithParamNameClashes(1, 2, 3, 4, 5, 6)
+    assertEquals(List(1, 2, 3, 4, 5, 6), obj.allArgs)
+  }
+
   @Test def default_values_for_fields(): Unit = {
     val obj = new DefaultFieldValues
     assertEquals(0, obj.int)
@@ -1951,6 +1956,12 @@ object NonNativeJSTypeTest {
 
   class SimpleConstructorParamAccessors(x: Int, y: Int) extends js.Object {
     def sum(): Int = x + y
+  }
+
+  class ConstructorWithParamNameClashes(arg: Int, arg$1: Int, arg$2: Int,
+      prep: Int, prep$1: Int, prep$2: Int)
+      extends js.Object {
+    val allArgs = List(arg, arg$1, arg$2, prep, prep$1, prep$2)
   }
 
   class DefaultFieldValues extends js.Object {

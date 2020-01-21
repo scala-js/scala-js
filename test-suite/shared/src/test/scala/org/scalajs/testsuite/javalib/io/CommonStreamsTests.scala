@@ -18,6 +18,7 @@ import scala.language.implicitConversions
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.AssertThrows._
 
@@ -165,5 +166,19 @@ trait CommonStreamsTests {
     assertEquals(254, stream.read())
     assertEquals(253, stream.read())
     assertEquals(-1, stream.read())
+  }
+
+  @Test
+  def readWithZeroLengthReturns0AtEOF(): Unit = {
+    val stream = mkStream(Seq(1, 2, 3, 4, 5))
+
+    // See comment in ByteArrayInputStreamTest
+    assumeFalse("ByteArrayInputStream has a contradicting spec",
+        stream.isInstanceOf[ByteArrayInputStream])
+
+    val buf = new Array[Byte](10)
+    assertEquals(5, stream.read(buf, 0, 5))
+    assertEquals(0, stream.read(buf, 0, 0))
+    assertEquals(-1, stream.read(buf, 0, 1))
   }
 }

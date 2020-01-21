@@ -31,6 +31,18 @@ class ClassTest {
       classOf[Double]
   )
 
+  private val BoxedClassOfs = Seq(
+      classOf[java.lang.Void],
+      classOf[java.lang.Boolean],
+      classOf[java.lang.Character],
+      classOf[java.lang.Byte],
+      classOf[java.lang.Short],
+      classOf[java.lang.Integer],
+      classOf[java.lang.Long],
+      classOf[java.lang.Float],
+      classOf[java.lang.Double]
+  )
+
   @Test def getPrimitiveTypeName(): Unit = {
     assertEquals("void", classOf[Unit].getName)
     assertEquals("boolean", classOf[Boolean].getName)
@@ -79,7 +91,7 @@ class ClassTest {
 
   @Test def isAssignableFrom(): Unit = {
     val SelectedClassOfs =
-      PrimitiveClassOfs ++ Seq(classOf[Object], classOf[String])
+      PrimitiveClassOfs ++ BoxedClassOfs ++ Seq(classOf[Object], classOf[String])
 
     // All Classes are assignable from themselves
     for (cls <- SelectedClassOfs) {
@@ -98,15 +110,39 @@ class ClassTest {
           left.isAssignableFrom(right))
     }
 
+    /* Positive tests with the special classes Object and String, as well as
+     * with normal traits and classes.
+     */
+
     assertTrue(classOf[Object].isAssignableFrom(classOf[String]))
     assertTrue(classOf[Seq[_]].isAssignableFrom(classOf[List[_]]))
+    assertTrue(classOf[List[_]].isAssignableFrom(classOf[::[_]]))
+    assertTrue(classOf[Seq[_]].isAssignableFrom(classOf[::[_]]))
     assertTrue(classOf[Object].isAssignableFrom(classOf[Array[String]]))
     assertTrue(classOf[Array[Seq[_]]].isAssignableFrom(classOf[Array[List[_]]]))
 
+    // Negative tests
+
     assertFalse(classOf[String].isAssignableFrom(classOf[Object]))
     assertFalse(classOf[List[_]].isAssignableFrom(classOf[Seq[_]]))
+    assertFalse(classOf[Option[_]].isAssignableFrom(classOf[::[_]]))
+    assertFalse(classOf[Set[_]].isAssignableFrom(classOf[::[_]]))
     assertFalse(classOf[Array[String]].isAssignableFrom(classOf[Object]))
     assertFalse(classOf[Array[List[_]]].isAssignableFrom(classOf[Array[Seq[_]]]))
+
+    /* All the boxed classes except Void extend Comparable, and since they are
+     * hijacked, the code paths to test that they are assignable to Comparable
+     * are different than for normal classes. The following test makes sure
+     * these code paths are covered.
+     */
+    for {
+      cls <- BoxedClassOfs
+      if cls != classOf[java.lang.Void]
+    } {
+      assertTrue(
+          s"classOf[Comparable[_]].isAssignableFrom($cls) should be true",
+          classOf[Comparable[_]].isAssignableFrom(cls))
+    }
   }
 
   @Test def getComponentType(): Unit = {

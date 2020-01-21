@@ -77,7 +77,36 @@ object LinkerImpl {
       "scala.",
       "org.scalajs.linker.interface.",
       "org.scalajs.logging.",
-      "org.scalajs.ir."
+      "org.scalajs.ir.",
+      /*
+       * A workaround for the OpenJDK bug 6265952 (#3921)
+       * https://bugs.java.com/bugdatabase/view_bug.do?bug_id=6265952
+       *
+       * It manifests as a `java.lang.NoClassDefFoundError` being thrown,
+       * claiming the class `MethodAccessorImpl` is missing. The package of the
+       * class is implementation specific. The currently known packages are
+       * listed as prefixes below.
+       *
+       * The bug is triggered when calling `java.lang.Method#invoke` if both of
+       * the following conditions are met:
+       *
+       * - this is the 15th (or later) time `invoke` is called on this instance,
+       * - the `ClassLoader` of the method's owning class does not make
+       *   `MethodAccessorImpl` available.
+       *
+       * Depending on the JDK implementation, the system property
+       * `sun.reflect.inflationThreshold` controls the invocation count
+       * threshold and can serve as a temporary workaround (e.g. set
+       * `-Dsun.reflect.inflationThreshold=30`)
+       *
+       * To work around the issue, this `ClassLoader` delegates loading of
+       * classes in these internal packages to the parent `ClassLoader`.
+       * Additional package prefixes may need to be added in the future if the
+       * internal package names change or another implementation uses a
+       * different name.
+       */
+      "sun.reflect.",
+      "jdk.internal.reflect."
     )
 
     override def loadClass(name: String, resolve: Boolean): Class[_] = {

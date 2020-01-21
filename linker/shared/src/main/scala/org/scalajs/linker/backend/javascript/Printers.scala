@@ -531,6 +531,13 @@ object Printers {
             printSig(args)
             print("=> ")
             body match {
+              case Return(expr: ObjectConstr) =>
+                /* #3926 An ObjectConstr needs to be wrapped in () not to be
+                 * parsed as a block.
+                 */
+                print('(')
+                print(expr)
+                print(')')
               case Return(expr) =>
                 print(expr)
               case _ =>

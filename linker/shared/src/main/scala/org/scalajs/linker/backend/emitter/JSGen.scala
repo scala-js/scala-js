@@ -71,6 +71,13 @@ private[emitter] final class JSGen(val semantics: Semantics,
       codegenVar("L0")
   }
 
+  def genBoxedZeroOf(tpe: Type)(implicit pos: Position): Tree =
+    if (tpe == CharType) genBoxedCharZero()
+    else genZeroOf(tpe)
+
+  def genBoxedCharZero()(implicit pos: Position): Tree =
+    codegenVar("bC0")
+
   def genLongModuleApply(methodName: MethodName, args: Tree*)(
       implicit pos: Position): Tree = {
     import TreeDSL._
