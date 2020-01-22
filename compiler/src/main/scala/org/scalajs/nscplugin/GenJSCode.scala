@@ -2232,18 +2232,22 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
          * our `WrapArray` extractor.
          *
          * Replaces `Array(Predef.wrapArray(ArrayValue(...).$asInstanceOf[...]), <tag>)`
-         * with just `ArrayValue(...).$asInstanceOf[...]`
+         * with just `ArrayValue(...)`
          *
          * See scala/bug#6611; we must *only* do this for literal vararg arrays.
          *
          * This is normally done by `cleanup` but it comes later than this phase.
          */
-        case Apply(appMeth, Apply(wrapRefArrayMeth, (arg @ StripCast(ArrayValue(_, _))) :: Nil) :: _ :: Nil)
+        case Apply(appMeth, Apply(wrapRefArrayMeth, StripCast(arg @ ArrayValue(_, _)) :: Nil) :: _ :: Nil)
             if wrapRefArrayMeth.symbol == WrapArray.wrapRefArrayMethod && appMeth.symbol == ArrayModule_genericApply =>
-          genStatOrExpr(arg, isStat)
+          genArrayValue(arg)
         case Apply(appMeth, elem0 :: WrapArray(rest @ ArrayValue(elemtpt, _)) :: Nil)
             if appMeth.symbol == ArrayModule_apply(elemtpt.tpe) =>
-          genStatOrExpr(treeCopy.ArrayValue(rest, rest.elemtpt, elem0 :: rest.elems), isStat)
+          genArrayValue(rest, elem0 :: rest.elems)
+        case Apply(appMeth, elem :: (nil: RefTree) :: Nil)
+            if nil.symbol == NilModule && appMeth.symbol == ArrayModule_apply(elem.tpe.widen) &&
+            treeInfo.isExprSafeToInline(nil) =>
+          genArrayValue(tree, elem :: Nil)
 
         case app: Apply =>
           genApply(app, isStat)
@@ -3296,14 +3300,19 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       js.NewArray(arrayTypeRef, arguments)
     }
 
-    /** Gen JS code for an array literal.
-     */
-    def genArrayValue(tree: Tree): js.Tree = {
-      implicit val pos = tree.pos
+    /** Gen JS code for an array literal. */
+    def genArrayValue(tree: ArrayValue): js.Tree = {
       val ArrayValue(tpt @ TypeTree(), elems) = tree
+      genArrayValue(tree, elems)
+    }
 
+    /** Gen JS code for an array literal, in the context of `tree` (its `tpe`
+     *  and `pos`) but with the elements `elems`.
+     */
+    def genArrayValue(tree: Tree, elems: List[Tree]): js.Tree = {
+      implicit val pos = tree.pos
       val arrayTypeRef = toTypeRef(tree.tpe).asInstanceOf[jstpe.ArrayTypeRef]
-      js.ArrayValue(arrayTypeRef, elems map genExpr)
+      js.ArrayValue(arrayTypeRef, elems.map(genExpr))
     }
 
     /** Gen JS code for a Match, i.e., a switch-able pattern match.
