@@ -21,7 +21,7 @@ import scala.scalajs.js.annotation._
 
 /** Wrapper to use a js.Dictionary as a scala.mutable.Map */
 @inline
-class WrappedDictionary[A](val dict: js.Dictionary[A])
+final class WrappedDictionary[A](dict: js.Dictionary[A])
     extends mutable.AbstractMap[String, A]
     with mutable.MapOps[String, A, mutable.Map, js.WrappedDictionary[A]] {
 

@@ -187,7 +187,13 @@ private[regex] object GroupStartMapper {
 
     def propagate(matchResult: js.RegExp.ExecResult,
         groupStartMap: js.Array[Int], start: Int, end: Int): Unit = {
-      groupStartMap(number) = start
+      /* #3901: A GroupNode within a negative look-ahead node may receive
+       * `start != -1` from above, yet not match anything itself. We must
+       * always keep the default `-1` if this group node does not match
+       * anything.
+       */
+      if (matchResult(newGroup).isDefined)
+        groupStartMap(number) = start
       inner.propagateFromStart(matchResult, groupStartMap, start)
     }
   }

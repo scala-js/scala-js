@@ -146,6 +146,7 @@ class RegexMatcherTest  {
     parseExpect("ab(?:ac)+?ac", "abacacac", 0 -> 6)
     parseExpect("ab(?:(c){2})*d", "abccccd", 0 -> 7, 5 -> 6)
     parseExpect("ab((?=abab(ab))a(b))*a", "abababab", 0 -> 5, 2 -> 4, 6 -> 8, 3 -> 4)
+    parseExpect("(?!(a))(b)", "b", 0 -> 1, -1 -> -1, 0 -> 1) // #3901
   }
 
   @Test def parseRegex_backgroups_test(): Unit = {

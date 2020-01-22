@@ -23,8 +23,9 @@ abstract class CharsetEncoder protected (cs: Charset,
   import CharsetEncoder._
 
   protected def this(cs: Charset, _averageBytesPerChar: Float,
-      _maxBytesPerChar: Float) =
-    this(cs, _averageBytesPerChar, _averageBytesPerChar, Array('?'.toByte))
+      _maxBytesPerChar: Float) = {
+    this(cs, _averageBytesPerChar, _maxBytesPerChar, Array('?'.toByte))
+  }
 
   // Config
 

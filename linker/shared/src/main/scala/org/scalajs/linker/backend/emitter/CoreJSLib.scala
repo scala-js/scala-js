@@ -1351,13 +1351,17 @@ private[emitter] object CoreJSLib {
                     }, {
                       thatFakeInstance := int(0)
                     }, {
-                      If(that === genClassOf(BoxedLongClass), {
+                      If(that === genClassDataOf(BoxedLongClass), {
                         thatFakeInstance := genLongZero()
                       }, {
-                        If(that === genClassOf(BoxedUnitClass), {
-                          thatFakeInstance := Undefined()
+                        If(that === genClassDataOf(BoxedCharacterClass), {
+                          thatFakeInstance := genBoxedCharZero()
                         }, {
-                          thatFakeInstance := ObjectConstr(List(classData -> that))
+                          If(that === genClassDataOf(BoxedUnitClass), {
+                            thatFakeInstance := Undefined()
+                          }, {
+                            thatFakeInstance := ObjectConstr(List(classData -> that))
+                          })
                         })
                       })
                     })
