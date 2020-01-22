@@ -62,6 +62,10 @@ class OptimizationTest extends JSASTTest {
       val c = Array('a', 'b')
       val d = Array(Nil)
       val e = Array(5.toByte, 7.toByte, 9.toByte, -3.toByte)
+
+      // Also with exactly 1 element of a primitive type (#3938)
+      val f = Array('a')
+      val g = Array(5.toByte)
     }
     """.
     hasNot("any LoadModule of the scala.Array companion") {
@@ -80,9 +84,11 @@ class OptimizationTest extends JSASTTest {
     class A {
       val a = Array[Int](5, 7, 9, -3)
       val b = Array[Byte](5, 7, 9, -3)
+      val c = Array[Int](5)
+      val d = Array[Byte](5)
     }
     """.
-    hasExactly(2, "calls to Array.apply methods") {
+    hasExactly(4, "calls to Array.apply methods") {
       case js.Apply(js.LoadModule(jstpe.ClassType("s_Array$")), js.Ident(methodName, _), _)
           if methodName.startsWith("apply__") =>
     }
