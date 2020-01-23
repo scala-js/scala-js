@@ -198,10 +198,14 @@ object ScalaJSPlugin extends AutoPlugin {
           val s = streams.value
           val log = s.log
           val retrieveDir = s.cacheDirectory / "scalajs-linker" / scalaJSVersion
+          // We can't use `dependencyResolution.value` because it's only defined in
+          // the project scope
           val lm = {
             import sbt.librarymanagement.ivy._
+            val resolvers = Classpaths.appRepositories(appConfiguration.value)
+              .getOrElse(Vector(Resolver.defaultLocal, Resolver.mavenCentral))
             val ivyConfig = InlineIvyConfiguration()
-              .withResolvers(Vector(Resolver.defaultLocal, Resolver.mavenCentral))
+              .withResolvers(resolvers)
               .withLog(log)
             IvyDependencyResolution(ivyConfig)
           }
