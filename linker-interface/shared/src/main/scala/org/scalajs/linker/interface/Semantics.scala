@@ -113,7 +113,7 @@ object Semantics {
     def andThen(that: RuntimeClassNameMapper): RuntimeClassNameMapper =
       AndThen(this, that)
 
-    private[linker] def apply(className: String): String = {
+    private[interface] def apply(className: String): String = {
       def rec(mapper: RuntimeClassNameMapper, className: String): String = {
         mapper match {
           case KeepAll =>
