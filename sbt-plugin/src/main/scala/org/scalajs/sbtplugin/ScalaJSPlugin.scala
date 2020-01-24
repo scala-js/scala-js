@@ -97,8 +97,12 @@ object ScalaJSPlugin extends AutoPlugin {
     val scalaJSLinkerImpl = TaskKey[LinkerImpl]("scalaJSLinkerImpl",
         "Implementation of the Scala.js linker to use: By default, this is " +
         "reflectively loading the standard linker implementation. Users may " +
-        "set this to provide custom linker implementations.",
+        "set this to provide custom linker implementations. In that case, " +
+        "they *must* store the linker impl in scalaJSLinkerImplBox.",
         KeyRanks.Invisible)
+
+    val scalaJSLinkerImplBox = SettingKey[CacheBox[LinkerImpl]]("scalaJSLinkerImplBox",
+        "CacheBox for scalaJSLinkerImpl", KeyRanks.Invisible)
 
     val scalaJSLinkerBox = SettingKey[CacheBox[ClearableLinker]]("scalaJSLinkerBox",
         "Scala.js internal: CacheBox for a Scala.js linker", KeyRanks.Invisible)
@@ -227,15 +231,20 @@ object ScalaJSPlugin extends AutoPlugin {
           }
         },
 
+        scalaJSLinkerImplBox := new CacheBox,
+
         scalaJSLinkerImpl := {
           val s = streams.value
           val log = s.log
           val retrieveDir = s.cacheDirectory / "scalajs-linker" / scalaJSVersion
           val lm = (dependencyResolution in scalaJSLinkerImpl).value
-          lm.retrieve(
-              "org.scala-js" % "scalajs-linker_2.12" % scalaJSVersion,
-              scalaModuleInfo = None, retrieveDir, log)
-            .fold(w => throw w.resolveException, LinkerImpl.default _)
+
+          scalaJSLinkerImplBox.value.ensure {
+            lm.retrieve(
+                "org.scala-js" % "scalajs-linker_2.12" % scalaJSVersion,
+                scalaModuleInfo = None, retrieveDir, log)
+              .fold(w => throw w.resolveException, LinkerImpl.default _)
+          }
         },
 
         scalaJSGlobalIRCacheBox := new CacheBox,
