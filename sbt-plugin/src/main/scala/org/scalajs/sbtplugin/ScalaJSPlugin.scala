@@ -194,17 +194,44 @@ object ScalaJSPlugin extends AutoPlugin {
 
         scalaJSLinkerConfig := StandardConfig(),
 
-        scalaJSLinkerImpl := {
-          val s = streams.value
-          val log = s.log
-          val retrieveDir = s.cacheDirectory / "scalajs-linker" / scalaJSVersion
-          val lm = {
+        dependencyResolution in scalaJSLinkerImpl := {
+          val log = streams.value.log
+
+          /* We first try to use the dependencyResolution of the root project
+           * of this build. In a typical build, this will always have a value.
+           * However, if someone does something weird and has a build whose
+           * root project does not have the built-in sbt.plugins.IvyPlugin,
+           * `dependencyResolution` won't be set, and this will be None.
+           */
+          val rootDependencyResolution =
+            (dependencyResolution in LocalRootProject).?.value
+
+          /* In case the above is None, fall back to something reasonable, and
+           * warn.
+           */
+          rootDependencyResolution.getOrElse {
+            log.warn(
+                "Falling back on a default `dependencyResolution` to " +
+                "resolve the Scala.js linker because `dependencyResolution` " +
+                "is not set in the root project of this build.")
+            log.warn(
+                "Consider explicitly setting " +
+                "`Global / scalaJSLinkerImpl / dependencyResolution` " +
+                "instead of relying on the default.")
+
             import sbt.librarymanagement.ivy._
             val ivyConfig = InlineIvyConfiguration()
               .withResolvers(Vector(Resolver.defaultLocal, Resolver.mavenCentral))
               .withLog(log)
             IvyDependencyResolution(ivyConfig)
           }
+        },
+
+        scalaJSLinkerImpl := {
+          val s = streams.value
+          val log = s.log
+          val retrieveDir = s.cacheDirectory / "scalajs-linker" / scalaJSVersion
+          val lm = (dependencyResolution in scalaJSLinkerImpl).value
           lm.retrieve(
               "org.scala-js" % "scalajs-linker_2.12" % scalaJSVersion,
               scalaModuleInfo = None, retrieveDir, log)
