@@ -233,17 +233,21 @@ object ScalaJSPlugin extends AutoPlugin {
 
         scalaJSLinkerImplBox := new CacheBox,
 
-        scalaJSLinkerImpl := {
+        fullClasspath in scalaJSLinkerImpl := {
           val s = streams.value
           val log = s.log
           val retrieveDir = s.cacheDirectory / "scalajs-linker" / scalaJSVersion
           val lm = (dependencyResolution in scalaJSLinkerImpl).value
+          lm.retrieve(
+              "org.scala-js" % "scalajs-linker_2.12" % scalaJSVersion,
+              scalaModuleInfo = None, retrieveDir, log)
+            .fold(w => throw w.resolveException, Attributed.blankSeq(_))
+        },
 
+        scalaJSLinkerImpl := {
+          val linkerImplClasspath = (fullClasspath in scalaJSLinkerImpl).value
           scalaJSLinkerImplBox.value.ensure {
-            lm.retrieve(
-                "org.scala-js" % "scalajs-linker_2.12" % scalaJSVersion,
-                scalaModuleInfo = None, retrieveDir, log)
-              .fold(w => throw w.resolveException, LinkerImpl.default _)
+            LinkerImpl.reflect(Attributed.data(linkerImplClasspath))
           }
         },
 

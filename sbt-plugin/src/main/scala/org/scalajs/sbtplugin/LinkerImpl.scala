@@ -39,12 +39,9 @@ trait LinkerImpl {
 }
 
 object LinkerImpl {
-  /** Returns the default implementation.
-   *
-   *  It loads a StandardLinker via reflection.
-   */
-  def default(files: Seq[File]): LinkerImpl = {
-    val urls = files.map(_.toURI.toURL).toArray
+  /** Returns an implementation of the standard linker loaded via reflection. */
+  def reflect(classpath: Seq[File]): LinkerImpl = {
+    val urls = classpath.map(_.toURI.toURL).toArray
     val loader = new URLClassLoader(urls, new FilteringClassLoader(getClass.getClassLoader))
     new Reflect(loader)
   }

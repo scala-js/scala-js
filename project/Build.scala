@@ -84,11 +84,8 @@ object MyScalaJSPlugin extends AutoPlugin {
   }
 
   override def globalSettings: Seq[Setting[_]] = Def.settings(
-      scalaJSLinkerImpl := {
-        val cp = (fullClasspath in (Build.linker.v2_12, Runtime)).value
-        scalaJSLinkerImplBox.value.ensure {
-          LinkerImpl.default(Attributed.data(cp))
-        }
+      fullClasspath in scalaJSLinkerImpl := {
+        (fullClasspath in (Build.linker.v2_12, Runtime)).value
       },
   )
 
