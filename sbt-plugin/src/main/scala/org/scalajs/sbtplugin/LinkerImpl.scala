@@ -40,7 +40,7 @@ trait LinkerImpl {
 
 object LinkerImpl {
   /** Returns an implementation of the standard linker loaded via reflection. */
-  def reflect(classpath: Seq[File]): LinkerImpl = {
+  def reflect(classpath: Seq[File]): LinkerImpl.Reflect = {
     val urls = classpath.map(_.toURI.toURL).toArray
     val loader = new URLClassLoader(urls, new FilteringClassLoader(getClass.getClassLoader))
     new Reflect(loader)
@@ -114,7 +114,13 @@ object LinkerImpl {
     }
   }
 
-  private final class Reflect(loader: ClassLoader) extends LinkerImpl {
+  /** A `LinkerImpl` that loads the linker via reflection.
+   *
+   *  Instances can be created with the [[LinkerImpl.reflect]] method.
+   */
+  final class Reflect private[LinkerImpl] (val loader: ClassLoader)
+      extends LinkerImpl {
+
     private def loadMethod(clazz: String, method: String, result: Class[_], params: Class[_]*): Method = {
       val m = Class.forName("org.scalajs.linker." + clazz, true, loader).getMethod(method, params: _*)
       require(Modifier.isStatic(m.getModifiers()))
