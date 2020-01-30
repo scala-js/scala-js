@@ -16,19 +16,25 @@ package org.scalajs.sbtplugin
  *
  *  A CacheBox is needed, once the cached result needs to depend on a task,
  *  since then it cannot simply be made a setting anymore.
+ *
+ *  @note
+ *    **Unstable API**: this API is subject to backward incompatible changes in
+ *    future minor versions of Scala.js.
  */
-private[sbtplugin] final class CacheBox[T] {
+final class CacheBox[T] {
+  private[this] var initialized: Boolean = _
   private[this] var value: T = _
 
   def ensure(f: => T): T = synchronized {
-    if (value == null) {
+    if (!initialized) {
       value = f
+      initialized = true
     }
     value
   }
 
   def foreach(f: T => Unit): Unit = synchronized {
-    if (value != null) {
+    if (initialized) {
       f(value)
     }
   }

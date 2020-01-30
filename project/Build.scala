@@ -83,6 +83,12 @@ object MyScalaJSPlugin extends AutoPlugin {
     }
   }
 
+  override def globalSettings: Seq[Setting[_]] = Def.settings(
+      fullClasspath in scalaJSLinkerImpl := {
+        (fullClasspath in (Build.linker.v2_12, Runtime)).value
+      },
+  )
+
   override def projectSettings: Seq[Setting[_]] = Def.settings(
       /* Remove libraryDependencies on ourselves; we use .dependsOn() instead
        * inside this build.
@@ -99,11 +105,6 @@ object MyScalaJSPlugin extends AutoPlugin {
 
       jsEnv := new NodeJSEnv(
           NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)),
-
-      scalaJSLinkerImpl := {
-        val cp = (fullClasspath in (Build.linker.v2_12, Runtime)).value
-        LinkerImpl.default(Attributed.data(cp))
-      },
 
       // Link source maps to GitHub sources
       if (scalaJSVersion.endsWith("-SNAPSHOT")) {

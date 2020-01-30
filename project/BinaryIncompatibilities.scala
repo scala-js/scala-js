@@ -23,6 +23,9 @@ object BinaryIncompatibilities {
   )
 
   val SbtPlugin = Seq(
+      // Breaking (but still in RC).
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.sbtplugin.LinkerImpl.default")
   )
 
   val TestCommon = Seq(
