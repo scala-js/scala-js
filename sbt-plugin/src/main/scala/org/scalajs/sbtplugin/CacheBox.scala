@@ -16,6 +16,10 @@ package org.scalajs.sbtplugin
  *
  *  A CacheBox is needed, once the cached result needs to depend on a task,
  *  since then it cannot simply be made a setting anymore.
+ *
+ *  @note
+ *    **Unstable API**: this API is subject to backward incompatible changes in
+ *    future minor versions of Scala.js.
  */
 final class CacheBox[T] {
   private[this] var initialized: Boolean = _
