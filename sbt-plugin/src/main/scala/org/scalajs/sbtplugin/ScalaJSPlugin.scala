@@ -57,10 +57,22 @@ object ScalaJSPlugin extends AutoPlugin {
 
     // All our public-facing keys
 
+    /** A cache box for the IR found on a classpath.
+     *
+     *  @note
+     *    **Unstable API**: this API is subject to backward incompatible
+     *    changes in future minor versions of Scala.js.
+     */
     val scalaJSIRCacheBox = SettingKey[CacheBox[IRFileCache.Cache]](
         "scalaJSIRCacheBox",
         "Scala.js internal: CacheBox for a cache.", KeyRanks.Invisible)
 
+    /** A cache box for the global IR cache.
+     *
+     *  @note
+     *    **Unstable API**: this API is subject to backward incompatible
+     *    changes in future minor versions of Scala.js.
+     */
     val scalaJSGlobalIRCacheBox = SettingKey[CacheBox[IRFileCache]](
         "scalaJSGlobalIRCacheBox",
         "Scala.js internal: CacheBox for the global cache.", KeyRanks.Invisible)
@@ -89,17 +101,49 @@ object ScalaJSPlugin extends AutoPlugin {
      *
      *  Do not set this value. Instead, set [[scalaJSLinkerImpl]]. This will
      *  automatically set up the correct caching behavior.
+     *
+     *  @note
+     *    **Writing to this key is an unstable API**: the caching contracts
+     *    are subject to backward incompatible changes in future minor versions
+     *    of Scala.js.
      */
     val scalaJSLinker = TaskKey[ClearableLinker]("scalaJSLinker",
         "Access task for a Scala.js linker. Use this if you want to use the linker.",
         KeyRanks.Invisible)
 
+    /** Implementation of the Scala.js linker to use.
+     *
+     *  By default, this is reflectively loading the standard linker
+     *  implementation. Users may set this to provide custom linker
+     *  implementations. In that case, they *must* store the linker impl in
+     *  [[scalaJSLinkerImplBox]].
+     *
+     *  @note
+     *    **Unstable API**: this API is subject to backward incompatible
+     *    changes in future minor versions of Scala.js.
+     */
     val scalaJSLinkerImpl = TaskKey[LinkerImpl]("scalaJSLinkerImpl",
         "Implementation of the Scala.js linker to use: By default, this is " +
         "reflectively loading the standard linker implementation. Users may " +
-        "set this to provide custom linker implementations.",
+        "set this to provide custom linker implementations. In that case, " +
+        "they *must* store the linker impl in scalaJSLinkerImplBox.",
         KeyRanks.Invisible)
 
+    /** A cache box for the [[scalaJSLinkerImpl]].
+     *
+     *  @note
+     *    **Unstable API**: this API is subject to backward incompatible
+     *    changes in future minor versions of Scala.js.
+     */
+    val scalaJSLinkerImplBox = SettingKey[CacheBox[LinkerImpl]]("scalaJSLinkerImplBox",
+        "CacheBox for scalaJSLinkerImpl", KeyRanks.Invisible)
+
+    /** A cache box for [[scalaJSLinker]].
+     *
+     *  @note
+     *    **Unstable API**: this API is subject to backward incompatible
+     *    changes in future minor versions of Scala.js.
+     */
     val scalaJSLinkerBox = SettingKey[CacheBox[ClearableLinker]]("scalaJSLinkerBox",
         "Scala.js internal: CacheBox for a Scala.js linker", KeyRanks.Invisible)
 
@@ -194,21 +238,57 @@ object ScalaJSPlugin extends AutoPlugin {
 
         scalaJSLinkerConfig := StandardConfig(),
 
-        scalaJSLinkerImpl := {
-          val s = streams.value
-          val log = s.log
-          val retrieveDir = s.cacheDirectory / "scalajs-linker" / scalaJSVersion
-          val lm = {
+        dependencyResolution in scalaJSLinkerImpl := {
+          val log = streams.value.log
+
+          /* We first try to use the dependencyResolution of the root project
+           * of this build. In a typical build, this will always have a value.
+           * However, if someone does something weird and has a build whose
+           * root project does not have the built-in sbt.plugins.IvyPlugin,
+           * `dependencyResolution` won't be set, and this will be None.
+           */
+          val rootDependencyResolution =
+            (dependencyResolution in LocalRootProject).?.value
+
+          /* In case the above is None, fall back to something reasonable, and
+           * warn.
+           */
+          rootDependencyResolution.getOrElse {
+            log.warn(
+                "Falling back on a default `dependencyResolution` to " +
+                "resolve the Scala.js linker because `dependencyResolution` " +
+                "is not set in the root project of this build.")
+            log.warn(
+                "Consider explicitly setting " +
+                "`Global / scalaJSLinkerImpl / dependencyResolution` " +
+                "instead of relying on the default.")
+
             import sbt.librarymanagement.ivy._
             val ivyConfig = InlineIvyConfiguration()
               .withResolvers(Vector(Resolver.defaultLocal, Resolver.mavenCentral))
               .withLog(log)
             IvyDependencyResolution(ivyConfig)
           }
+        },
+
+        scalaJSLinkerImplBox := new CacheBox,
+
+        fullClasspath in scalaJSLinkerImpl := {
+          val s = streams.value
+          val log = s.log
+          val retrieveDir = s.cacheDirectory / "scalajs-linker" / scalaJSVersion
+          val lm = (dependencyResolution in scalaJSLinkerImpl).value
           lm.retrieve(
               "org.scala-js" % "scalajs-linker_2.12" % scalaJSVersion,
               scalaModuleInfo = None, retrieveDir, log)
-            .fold(w => throw w.resolveException, LinkerImpl.default _)
+            .fold(w => throw w.resolveException, Attributed.blankSeq(_))
+        },
+
+        scalaJSLinkerImpl := {
+          val linkerImplClasspath = (fullClasspath in scalaJSLinkerImpl).value
+          scalaJSLinkerImplBox.value.ensure {
+            LinkerImpl.reflect(Attributed.data(linkerImplClasspath))
+          }
         },
 
         scalaJSGlobalIRCacheBox := new CacheBox,

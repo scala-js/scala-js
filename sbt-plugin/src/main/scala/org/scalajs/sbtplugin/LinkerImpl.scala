@@ -23,9 +23,9 @@ import org.scalajs.linker.interface._
 
 /** Abstract implementation of a linker as needed by the sbt plugin.
  *
- *  @note This trait does not guarantee full compatibility: Methods may be added
- *      / removed in the future. Use [[LinkerImpl.Forwarding]] to override things
- *      selectively in a compatible manner.
+ *  @note
+ *    **Unstable API**: this API is subject to backward incompatible changes in
+ *    future minor versions of Scala.js.
  */
 trait LinkerImpl {
   def clearableLinker(cfg: StandardConfig): ClearableLinker
@@ -38,13 +38,16 @@ trait LinkerImpl {
   def outputFile(path: Path): LinkerOutput.File
 }
 
+/** Factory methods and concrete implementations of `LinkerImpl`.
+ *
+ *  @note
+ *    **Unstable API**: this API is subject to backward incompatible changes in
+ *    future minor versions of Scala.js.
+ */
 object LinkerImpl {
-  /** Returns the default implementation.
-   *
-   *  It loads a StandardLinker via reflection.
-   */
-  def default(files: Seq[File]): LinkerImpl = {
-    val urls = files.map(_.toURI.toURL).toArray
+  /** Returns an implementation of the standard linker loaded via reflection. */
+  def reflect(classpath: Seq[File]): LinkerImpl.Reflect = {
+    val urls = classpath.map(_.toURI.toURL).toArray
     val loader = new URLClassLoader(urls, new FilteringClassLoader(getClass.getClassLoader))
     new Reflect(loader)
   }
@@ -54,6 +57,10 @@ object LinkerImpl {
    *  This is useful if only parts of the linker implementation need to be
    *  replaced. A subclass only overriding these can be created, ensuring easier
    *  transition when methods get added.
+   *
+   *  @note
+   *    **Unstable API**: this API is subject to backward incompatible changes
+   *    in future minor versions of Scala.js.
    */
   class Forwarding(parent: LinkerImpl) extends LinkerImpl {
     def clearableLinker(cfg: StandardConfig): ClearableLinker =
@@ -117,7 +124,17 @@ object LinkerImpl {
     }
   }
 
-  private final class Reflect(loader: ClassLoader) extends LinkerImpl {
+  /** A `LinkerImpl` that loads the linker via reflection.
+   *
+   *  Instances can be created with the [[LinkerImpl.reflect]] method.
+   *
+   *  @note
+   *    **Unstable API**: this API is subject to backward incompatible changes
+   *    in future minor versions of Scala.js.
+   */
+  final class Reflect private[LinkerImpl] (val loader: ClassLoader)
+      extends LinkerImpl {
+
     private def loadMethod(clazz: String, method: String, result: Class[_], params: Class[_]*): Method = {
       val m = Class.forName("org.scalajs.linker." + clazz, true, loader).getMethod(method, params: _*)
       require(Modifier.isStatic(m.getModifiers()))
