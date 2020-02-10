@@ -29,7 +29,9 @@ object TestSuiteLinkerOptions {
     List(
         ModuleInitializer.mainMethod(module, "mainNoArgs"),
         ModuleInitializer.mainMethodWithArgs(module, "mainWithArgs"),
-        ModuleInitializer.mainMethodWithArgs(module, "mainWithArgs", List("foo", "bar"))
+        ModuleInitializer.mainMethodWithArgs(module, "mainWithArgs", List("foo", "bar")),
+        ModuleInitializer.mainMethod(module + "$NoLinkedClass", "main"),
+        ModuleInitializer.mainMethod(module + "$WithLinkedClass", "main")
     )
   }
 }

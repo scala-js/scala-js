@@ -23,7 +23,9 @@ class ModuleInitializersTest {
         Array[AnyRef](
             NoArgs,
             WithArgs + "()",
-            WithArgs + "(foo, bar)"
+            WithArgs + "(foo, bar)",
+            NestedNoLinkedClass,
+            NestedWithLinkedClass
         ),
         moduleInitializersEffects.toArray[AnyRef])
   }
@@ -32,6 +34,8 @@ class ModuleInitializersTest {
 object ModuleInitializersTest {
   final val NoArgs = "NoArgs"
   final val WithArgs = "WithArgs"
+  final val NestedNoLinkedClass = "NestedNoLinkedClass"
+  final val NestedWithLinkedClass = "NestedWithLinkedClass"
 
   val moduleInitializersEffects =
     new scala.collection.mutable.ListBuffer[String]
@@ -45,4 +49,16 @@ object ModuleInitializers {
 
   def mainWithArgs(args: Array[String]): Unit =
     moduleInitializersEffects += WithArgs + args.mkString("(", ", ", ")")
+
+  object NoLinkedClass {
+    def main(): Unit =
+      moduleInitializersEffects += NestedNoLinkedClass
+  }
+
+  class WithLinkedClass
+
+  object WithLinkedClass {
+    def main(): Unit =
+      moduleInitializersEffects += NestedWithLinkedClass
+  }
 }
