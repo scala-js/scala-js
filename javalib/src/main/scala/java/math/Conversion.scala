@@ -286,7 +286,7 @@ private[math] object Conversion {
 
   def bigInteger2Double(bi: BigInteger): Double = {
     if (bi.numberLength < 2 || ((bi.numberLength == 2) && (bi.digits(1) > 0))) {
-      bi.longValue()
+      bi.longValue().toDouble
     } else if (bi.numberLength > 32) {
       if (bi.sign > 0) Double.PositiveInfinity
       else Double.NegativeInfinity

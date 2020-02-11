@@ -95,8 +95,8 @@ object Array {
     case array: Array[Char]  => array(index)
     case array: Array[Byte]  => array(index)
     case array: Array[Short] => array(index)
-    case array: Array[Int]   => array(index)
-    case array: Array[Long]  => array(index)
+    case array: Array[Int]   => array(index).toFloat
+    case array: Array[Long]  => array(index).toFloat
     case _ => throw new IllegalArgumentException("argument type mismatch")
   }
 
@@ -106,7 +106,7 @@ object Array {
     case array: Array[Byte]   => array(index)
     case array: Array[Short]  => array(index)
     case array: Array[Int]    => array(index)
-    case array: Array[Long]   => array(index)
+    case array: Array[Long]   => array(index).toDouble
     case array: Array[Float]  => array(index)
     case _ => throw new IllegalArgumentException("argument type mismatch")
   }
@@ -163,15 +163,15 @@ object Array {
   def setInt(array: AnyRef, index: Int, value: Int): Unit = array match {
     case array: Array[Int]    => array(index) = value
     case array: Array[Long]   => array(index) = value
-    case array: Array[Float]  => array(index) = value
+    case array: Array[Float]  => array(index) = value.toFloat
     case array: Array[Double] => array(index) = value
     case _ => throw new IllegalArgumentException("argument type mismatch")
   }
 
   def setLong(array: AnyRef, index: Int, value: Long): Unit = array match {
     case array: Array[Long]   => array(index) = value
-    case array: Array[Float]  => array(index) = value
-    case array: Array[Double] => array(index) = value
+    case array: Array[Float]  => array(index) = value.toFloat
+    case array: Array[Double] => array(index) = value.toDouble
     case _ => throw new IllegalArgumentException("argument type mismatch")
   }
 
