@@ -36,7 +36,7 @@ class Date private (private val date: js.Date) extends Object
   def this(year: Int, month: Int, date: Int) =
     this(year, month, date, 0, 0, 0)
 
-  def this(date: Long) = this(new js.Date(date))
+  def this(date: Long) = this(new js.Date(date.toDouble))
 
   @Deprecated
   def this(date: String) = this(new js.Date(date))
@@ -98,7 +98,7 @@ class Date private (private val date: js.Date) extends Object
   @Deprecated
   def setSeconds(seconds: Int): Unit = date.setSeconds(seconds)
 
-  def setTime(time: Long): Unit = date.setTime(time)
+  def setTime(time: Long): Unit = date.setTime(time.toDouble)
 
   @Deprecated
   def setYear(year: Int): Unit = date.setFullYear(1900 + year)
