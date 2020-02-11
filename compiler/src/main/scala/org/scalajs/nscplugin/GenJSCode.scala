@@ -987,17 +987,17 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      * `def hashCode(): Int` and a `static def hashCode(Int): Int`. The JVM
      * back-end considers them as colliding because they have the same name,
      * but we must not.
+     *
+     * Further, unlike scalac, we emit forwarders for *any* static object, not
+     * just top-level ones. This is important so we can implement static methods
+     * of nested static classes of JDK APIs (see #3950).
      */
 
     /** Is the given Scala class, interface or module class a candidate for
      *  static forwarders?
      */
-    def isCandidateForForwarders(sym: Symbol): Boolean = {
-      // it must be a top level class (name contains no $s)
-      !settings.noForwarders && exitingPickler {
-        !sym.name.containsChar('$') && !sym.isNestedClass
-      }
-    }
+    def isCandidateForForwarders(sym: Symbol): Boolean =
+      !settings.noForwarders && sym.isStatic && !isImplClass(sym)
 
     /** Gen the static forwarders to the members of a class or interface for
      *  methods of its companion object.
@@ -1010,7 +1010,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     def genStaticForwardersForClassOrInterface(
         existingMembers: List[js.MemberDef], sym: Symbol)(
         implicit pos: Position): List[js.MemberDef] = {
-      val module = sym.companionModule
+      /* Phase travel is necessary for non-top-level classes, because flatten
+       * breaks their companionModule. This is tracked upstream at
+       * https://github.com/scala/scala-dev/issues/403
+       */
+      val module = exitingPhase(currentRun.picklerPhase)(sym.companionModule)
       if (module == NoSymbol) {
         Nil
       } else {
