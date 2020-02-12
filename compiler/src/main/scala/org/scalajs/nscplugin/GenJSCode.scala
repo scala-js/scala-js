@@ -1843,7 +1843,22 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               }
             }
 
-            Some(methodDefWithoutUselessVars)
+            /* See: https://github.com/scala-js/scala-js/issues/3953 */
+            val methodDefWithPatchedTypes = {
+              val symParamTypes =
+                if (sym.paramss.isEmpty) Nil
+                else sym.paramss.head.map(p => toIRType(p.tpe))
+
+              assert(symParamTypes.length == params.length,
+                  "symParams and vparams have different lengths")
+
+              val patchedParamTypes = collection.mutable.Map(
+                  (params.map(encodeLocalSym(_).name) zip symParamTypes): _*)
+
+              patchTypesOfLocals(methodDefWithoutUselessVars, patchedParamTypes)
+            }
+
+            Some(methodDefWithPatchedTypes)
           }
         }
       }
@@ -1905,6 +1920,38 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       js.MethodDef(flags, methodName, originalName, newParams, resultType,
           newBody)(methodDef.optimizerHints, None)(methodDef.pos)
     }
+
+    private def patchTypesOfLocals(methodDef: js.MethodDef,
+        patches: mutable.Map[LocalName, ir.Types.Type]) = {
+
+      val js.MethodDef(flags, methodName, originalName, params, resultType, body) =
+        methodDef
+
+      val transformer = new ir.Transformers.Transformer {
+        override def transform(tree: js.Tree, isStat: Boolean): js.Tree = tree match {
+          case js.VarRef(ident) =>
+            val patchedTpe = patches.getOrElse(ident.name, tree.tpe)
+            js.VarRef(ident)(patchedTpe)(tree.pos)
+          case js.Closure(arrow, captureParams, params, body, captureValues) =>
+            val patchedCaptureValues = captureValues.map(transformExpr(_))
+            js.Closure(arrow, captureParams, params, body, patchedCaptureValues)(tree.pos)
+          case _ =>
+            super.transform(tree, isStat)
+        }
+      }
+
+      val newParams = params.map {
+        case pd @ ir.Trees.ParamDef(name, originalName, ptpe, mutable, rest) =>
+          val patchedPtpe = patches.getOrElse(name.name, ptpe)
+          ir.Trees.ParamDef(name, originalName, patchedPtpe, mutable, rest)(pd.pos)
+      }
+
+      val newBody = body.map(transformer.transform(_, isStat = resultType == jstpe.NoType))
+
+      js.MethodDef(flags, methodName, originalName, newParams, resultType,
+          newBody)(methodDef.optimizerHints, None)(methodDef.pos)
+    }
+
 
     /** Moves all statements after the super constructor call.
      *
