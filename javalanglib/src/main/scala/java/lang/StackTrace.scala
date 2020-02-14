@@ -56,7 +56,7 @@ private[lang] object StackTrace {
        * prototypes.
        */
       captureState(throwable, throwable)
-    } else if (Utils.isUndefined(js.constructorOf[js.Error].captureStackTrace)) {
+    } else if (js.constructorOf[js.Error].captureStackTrace eq ().asInstanceOf[AnyRef]) {
       captureState(throwable, createException())
     } else {
       /* V8-specific.

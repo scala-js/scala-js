@@ -28,7 +28,8 @@ object MiniLib {
         "FloatingPointBits",
         "FloatingPointBits$EncodeIEEE754Result",
 
-        // "Throwable" is overridden in minilib/
+        "Throwable",
+        "StackTrace",
         "Error",
         "VirtualMachineError",
         "Exception",
