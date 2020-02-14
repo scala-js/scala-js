@@ -337,15 +337,20 @@ private[sbtplugin] object ScalaJSPluginInternal {
             "are running a JVM REPL. JavaScript things won't work.")
       }).value,
 
-      // Use the Scala.js linked file as the default Input for the JSEnv
-      jsEnvInput := {
+      /* Do not inherit jsEnvInput from the parent configuration.
+       * Instead, always derive it straight from the Zero configuration scope.
+       */
+      jsEnvInput := (jsEnvInput in (This, Zero, This)).value,
+
+      // Add the Scala.js linked file to the Input for the JSEnv.
+      jsEnvInput += {
         val linkedFile = scalaJSLinkedFile.value.data.toPath
-        val input = scalaJSLinkerConfig.value.moduleKind match {
+
+        scalaJSLinkerConfig.value.moduleKind match {
           case ModuleKind.NoModule       => Input.Script(linkedFile)
           case ModuleKind.ESModule       => Input.ESModule(linkedFile)
           case ModuleKind.CommonJSModule => Input.CommonJSModule(linkedFile)
         }
-        List(input)
       },
 
       scalaJSMainModuleInitializer := {
@@ -526,6 +531,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
       scalaJSModuleInitializers := Seq(),
       scalaJSUseMainModuleInitializer := false,
+      jsEnvInput := Nil,
 
       // you will need the Scala.js compiler plugin
       addCompilerPlugin(
