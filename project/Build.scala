@@ -135,6 +135,8 @@ object Build {
   val shouldPartest = settingKey[Boolean](
     "Whether we should partest the current scala version (and fail if we can't)")
 
+  val packageMinilib = taskKey[File]("Produces the minilib jar.")
+
   val previousVersion = "1.0.0"
   val previousBinaryCrossVersion = CrossVersion.binaryWith("sjs1_", "")
 
@@ -543,7 +545,7 @@ object Build {
             compiler, irProject, irProjectJS, logging, loggingJS,
             linkerInterface, linkerInterfaceJS, linker, linkerJS,
             jsEnvs, jsEnvsTestKit, nodeJSEnv, testAdapter,
-            javalanglib, javalib, scalalib, libraryAux, library, minilib,
+            javalanglib, javalib, scalalib, libraryAux, library,
             testInterface, jUnitRuntime, testBridge, jUnitPlugin, jUnitAsyncJS,
             jUnitAsyncJVM, jUnitTestOutputsJS, jUnitTestOutputsJVM,
             helloworld, reversi, testingExample, testSuite, testSuiteJVM,
@@ -740,7 +742,7 @@ object Build {
       library.v2_12, jUnitRuntime.v2_12 % "test", testBridge.v2_12 % "test",
   )
 
-  def commonLinkerSettings(minilib: LocalProject, library: LocalProject) = Def.settings(
+  def commonLinkerSettings(library: LocalProject) = Def.settings(
       commonSettings,
       publishSettings,
       fatalWarningsSettings,
@@ -759,7 +761,7 @@ object Build {
           ConstantHolderGenerator.generate(
               (sourceManaged in Test).value,
               "org.scalajs.linker.testutils.StdlibHolder",
-              "minilib" -> (packageBin in (minilib, Compile)).value,
+              "minilib" -> (packageMinilib in (library, Compile)).value,
               "fulllib" -> (packageBin in (library, Compile)).value)
         }.taskValue
       },
@@ -773,7 +775,7 @@ object Build {
 
   lazy val linker: MultiScalaProject = MultiScalaProject(
       id = "linker", base = file("linker/jvm")
-  ).zippedSettings("minilib", "library")(
+  ).zippedSettings("library")(
     commonLinkerSettings _
   ).settings(
       libraryDependencies ++= Seq(
@@ -804,7 +806,7 @@ object Build {
       id = "linkerJS", base = file("linker/js")
   ).enablePlugins(
       MyScalaJSPlugin
-  ).zippedSettings("minilib", "library")(
+  ).zippedSettings("library")(
       commonLinkerSettings _
   ).settings(
       sourceGenerators in Compile += Def.task {
@@ -1354,35 +1356,20 @@ object Build {
               otherProducts.flatMap(base => Path.selectSubpaths(base, filter))
 
             libraryMappings ++ otherMappings
+          },
+
+          packageMinilib := {
+            val sources = (mappings in packageBin).value.filter { mapping =>
+              MiniLib.Whitelist.contains(mapping._2.replace('\\', '/'))
+            }
+            val jar = crossTarget.value / "minilib.jar"
+            val config = new sbt.Package.Configuration(sources, jar, Nil)
+            val s = streams.value
+            sbt.Package(config, s.cacheStoreFactory, s.log)
+            jar
           }
       ))
   ).withScalaJSCompiler
-
-  lazy val minilib: MultiScalaProject = MultiScalaProject(
-      id = "minilib", base = file("minilib")
-  ).enablePlugins(
-      MyScalaJSPlugin
-  ).settings(
-      commonSettings,
-      fatalWarningsSettings,
-      name := "scalajs-minilib",
-
-      noClassFilesSettings,
-      scalaJSExternalCompileSettings,
-  ).zippedSettings(library)(library =>
-      inConfig(Compile)(Seq(
-          mappings in packageBin := {
-            val superMappings = (mappings in packageBin).value
-            val libraryMappings = (mappings in (library, packageBin)).value
-
-            val whitelisted = libraryMappings.filter { mapping =>
-              MiniLib.Whitelist.contains(mapping._2.replace('\\', '/'))
-            }
-
-            whitelisted ++ superMappings
-          }
-      ))
-  ).withScalaJSCompiler.dependsOn(library)
 
   // The Scala.js version of sbt-testing-interface
   lazy val testInterface: MultiScalaProject = MultiScalaProject(

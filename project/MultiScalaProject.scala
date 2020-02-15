@@ -36,11 +36,6 @@ final class MultiScalaProject private (private val projects: Map[String, Project
   def zippedSettings(project: String)(ss: LocalProject => SettingsDefinition): MultiScalaProject =
     zippedSettings(Seq(project))(ps => ss(ps(0)))
 
-  def zippedSettings(pn0: String, pn1: String)(
-      ss: (LocalProject, LocalProject) => SettingsDefinition): MultiScalaProject = {
-    zippedSettings(Seq(pn0, pn1))(ps => ss(ps(0), ps(1)))
-  }
-
   /** Set settings on this MultiScalaProject depending on other MultiScalaProjects by name.
    *
    *  For every Scala version of this MultiScalaProject, `ss` is invoked onced
