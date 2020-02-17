@@ -150,10 +150,10 @@ class FloatTest {
     assertTrue(compare(0.0f, 5.5f) < 0)
     assertTrue(compare(10.5f, 10.2f) > 0)
     assertTrue(compare(-2.1f, -1.0f) < 0)
-    assertEquals(0, compare(3.14f, 3.14f), 0.0f)
+    assertEquals(0, compare(3.14f, 3.14f))
 
     // From compareTo's point of view, NaN is equal to NaN
-    assertEquals(0, compare(Float.NaN, Float.NaN), 0.0f)
+    assertEquals(0, compare(Float.NaN, Float.NaN))
 
     // And -0.0 < 0.0
     assertTrue(compare(-0.0f, 0.0f) < 0)
@@ -167,10 +167,10 @@ class FloatTest {
     assertTrue(compare(0.0f, 5.5f) < 0)
     assertTrue(compare(10.5f, 10.2f) > 0)
     assertTrue(compare(-2.1f, -1.0f) < 0)
-    assertEquals(0, compare(3.14f, 3.14f), 0.0f)
+    assertEquals(0, compare(3.14f, 3.14f))
 
     // From compareTo's point of view, NaN is equal to NaN
-    assertEquals(0, compare(Float.NaN, Float.NaN), 0.0f)
+    assertEquals(0, compare(Float.NaN, Float.NaN))
 
     // And -0.0 < 0.0
     assertTrue(compare(-0.0f, 0.0f) < 0)

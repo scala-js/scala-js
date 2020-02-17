@@ -1483,7 +1483,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     /* A similar code like in doubleValue() could be repeated here,
      * but this simple implementation is quite efficient. */
     val powerOfTwo = this._bitLength - (_scale / Log2).toLong
-    val floatResult0: Float = signum()
+    val floatResult0: Float = signum().toFloat
     val floatResult: Float = {
       if (powerOfTwo < -149 || floatResult0 == 0.0f) // 'this' is very small
         floatResult0 * 0.0f
@@ -1716,7 +1716,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
         val frac = java.lang.Long.signum(fraction) * (5 + compRem)
         val intPart1 = intPart0 + roundingBehavior(intPart0.toInt & 1, frac, mc.roundingMode)
         // If after to add the increment the precision changed, we normalize the size
-        if (Math.log10(Math.abs(intPart1)) >= mc.precision)
+        if (Math.log10(Math.abs(intPart1).toDouble) >= mc.precision)
           (newScale0 - 1, intPart1 / 10)
         else
           (newScale0, intPart1)
