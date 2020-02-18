@@ -21,7 +21,7 @@ import java.net.URI
 
 import org.scalajs.linker.interface.unstable.OutputFileImpl
 
-/** Output specification for a linker run.
+/** Output specification for a single JavaScript file and its source map.
  *
  *  @param jsFile The JavaScript file a [[Linker]] writes to.
  *

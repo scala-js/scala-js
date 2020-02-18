@@ -23,8 +23,21 @@ import org.scalajs.logging.Logger
  *  .js file.
  */
 abstract class Linker private[interface] () {
-  def link(irFiles: Seq[IRFile],
+  final def link(irFiles: Seq[IRFile],
       moduleInitializers: Seq[ModuleInitializer],
       output: LinkerOutput, logger: Logger)(
+      implicit ec: ExecutionContext): Future[Unit] = {
+    val module = ModuleOutputSpec.Module("core")
+      .withInitializers(moduleInitializers: _*)
+
+    val spec = ModuleOutputSpec()
+      .addModule(ModuleOutputSpec.Selector.default, module)
+
+    val moduleOutput = ModuleLinkerOutput(module.id, output)
+
+    link(irFiles, spec, Seq(moduleOutput), logger)
+  }
+
+  def link(irFiles: Seq[IRFile], moduleSpec: ModuleOutputSpec, outputs: Seq[ModuleLinkerOutput], logger: Logger)(
       implicit ec: ExecutionContext): Future[Unit]
 }
