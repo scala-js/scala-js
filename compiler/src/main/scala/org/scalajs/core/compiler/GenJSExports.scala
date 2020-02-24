@@ -341,7 +341,15 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
     private def genJSClassDispatcher(classSym: Symbol, name: JSName): js.Tree = {
       val alts = classSym.info.members.toList.filter { sym =>
-        sym.isMethod && !sym.isBridge && jsNameOf(sym) == name
+        sym.isMethod &&
+        !sym.isBridge &&
+        /* #3939: Object is not a "real" superclass of JS types.
+         * as such, its methods do not participate in overload resolution.
+         * An exception is toString, which is handled specially in
+         * genExportMethod.
+         */
+        sym.owner != ObjectClass &&
+        jsNameOf(sym) == name
       }
 
       assert(!alts.isEmpty,
