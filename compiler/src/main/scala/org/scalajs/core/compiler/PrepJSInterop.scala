@@ -932,16 +932,29 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       if (sym.isAccessor && !sym.hasAnnotation(JSNameAnnotation))
         sym.accessed.getAnnotation(JSNameAnnotation).foreach(sym.addAnnotation)
 
-      if (sym.name == nme.apply && !sym.hasAnnotation(JSNameAnnotation)) {
-        if (jsInterop.isJSGetter(sym)) {
-          reporter.error(sym.pos, s"A member named apply represents function " +
-              "application in JavaScript. A parameterless member should be " +
-              "exported as a property. You must add @JSName(\"apply\")")
-        } else if (enclosingOwner is OwnerKind.JSNonNative) {
-          reporter.error(sym.pos,
-              "A Scala.js-defined JavaScript class cannot declare a method " +
-              "named `apply` without `@JSName`")
-        }
+      sym.name match {
+        case nme.apply if !sym.hasAnnotation(JSNameAnnotation) =>
+          if (jsInterop.isJSGetter(sym)) {
+            reporter.error(sym.pos, s"A member named apply represents function " +
+                "application in JavaScript. A parameterless member should be " +
+                "exported as a property. You must add @JSName(\"apply\")")
+          } else if (enclosingOwner is OwnerKind.JSNonNative) {
+            reporter.error(sym.pos,
+                "A Scala.js-defined JavaScript class cannot declare a method " +
+                "named `apply` without `@JSName`")
+          }
+
+        case nme.equals_ if sym.tpe.matches(Any_equals.tpe) =>
+          reporter.warning(sym.pos, "Overriding equals in a JS class does " +
+              "not change how it is compared. To silence this warning, change " +
+              "the name of the method and optionally add @JSName(\"equals\").")
+
+        case nme.hashCode_ if sym.tpe.matches(Any_hashCode.tpe) =>
+          reporter.warning(sym.pos, "Overriding hashCode in a JS class does " +
+              "not change its hash code. To silence this warning, change " +
+              "the name of the method and optionally add @JSName(\"hashCode\").")
+
+        case _ =>
       }
 
       if (jsInterop.isJSSetter(sym))
