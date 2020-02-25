@@ -2946,4 +2946,91 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |                       ^
     """
   }
+
+  @Test // # 3969
+  def overrideEqualsHashCode: Unit = {
+    for {
+      obj <- List("class", "object")
+    } {
+      s"""
+      $obj A extends js.Object {
+        override def hashCode(): Int = 1
+        override def equals(obj: Any): Boolean = false
+
+        // this one works as expected (so allowed)
+        override def toString(): String = "frobber"
+
+        /* these are allowed, since they are protected in jl.Object.
+         * as a result, only the overrides can be called. So the fact that they
+         * do not truly override the methods in jl.Object is not observable.
+         */
+        override def clone(): Object = null
+        override def finalize(): Unit = ()
+
+        // other methods in jl.Object are final.
+      }
+      """ hasWarns
+      """
+         |newSource1.scala:6: warning: Overriding hashCode in a JS class does not change its hash code. To silence this warning, change the name of the method and optionally add @JSName("hashCode").
+         |        override def hashCode(): Int = 1
+         |                     ^
+         |newSource1.scala:7: warning: Overriding equals in a JS class does not change how it is compared. To silence this warning, change the name of the method and optionally add @JSName("equals").
+         |        override def equals(obj: Any): Boolean = false
+         |                     ^
+      """
+    }
+
+    for {
+      obj <- List("class", "object")
+    } {
+      s"""
+      @js.native
+      @JSGlobal
+      $obj A extends js.Object {
+        override def hashCode(): Int = js.native
+        override def equals(obj: Any): Boolean = js.native
+      }
+      """ hasWarns
+      """
+         |newSource1.scala:8: warning: Overriding hashCode in a JS class does not change its hash code. To silence this warning, change the name of the method and optionally add @JSName("hashCode").
+         |        override def hashCode(): Int = js.native
+         |                     ^
+         |newSource1.scala:9: warning: Overriding equals in a JS class does not change how it is compared. To silence this warning, change the name of the method and optionally add @JSName("equals").
+         |        override def equals(obj: Any): Boolean = js.native
+         |                     ^
+      """
+    }
+
+    """
+    @js.native
+    trait A extends js.Any {
+      override def hashCode(): Int = js.native
+      override def equals(obj: Any): Boolean = js.native
+    }
+    """ hasWarns
+    """
+       |newSource1.scala:7: warning: Overriding hashCode in a JS class does not change its hash code. To silence this warning, change the name of the method and optionally add @JSName("hashCode").
+       |      override def hashCode(): Int = js.native
+       |                   ^
+       |newSource1.scala:8: warning: Overriding equals in a JS class does not change how it is compared. To silence this warning, change the name of the method and optionally add @JSName("equals").
+       |      override def equals(obj: Any): Boolean = js.native
+       |                   ^
+    """
+
+    """
+    trait A extends js.Any {
+      override def hashCode(): Int
+      override def equals(obj: Any): Boolean
+    }
+    """ hasWarns
+    """
+       |newSource1.scala:6: warning: Overriding hashCode in a JS class does not change its hash code. To silence this warning, change the name of the method and optionally add @JSName("hashCode").
+       |      override def hashCode(): Int
+       |                   ^
+       |newSource1.scala:7: warning: Overriding equals in a JS class does not change how it is compared. To silence this warning, change the name of the method and optionally add @JSName("equals").
+       |      override def equals(obj: Any): Boolean
+       |                   ^
+    """
+  }
+
 }

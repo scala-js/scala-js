@@ -36,56 +36,44 @@ trait TestHelpers extends DirectTest {
 
   /** pimps a string to compile it and apply the specified test */
   implicit class CompileTests(val code: String) {
+    private lazy val (success, output) = {
+      errBuffer.reset()
+      val success = compileString(preamble + code)
+      val output = errBuffer.toString.replaceAll("\r\n?", "\n").trim
+      (success, output)
+    }
 
     def hasErrors(expected: String): Unit = {
-      val reps = repResult {
-        assertFalse("snippet shouldn't compile", compileString(preamble + code))
-      }
-      assertEquals("should have right errors",
-          expected.stripMargin.trim, reps.trim)
+      assertFalse("snippet shouldn't compile", success)
+      assertEquals("should have right errors", expected.stripMargin.trim, output)
     }
 
     def hasWarns(expected: String): Unit = {
-      val reps = repResult {
-        assertTrue("snippet should compile", compileString(preamble + code))
-      }
-      assertEquals("should have right warnings",
-          expected.stripMargin.trim, reps.trim)
+      assertTrue("snippet should compile\n" + output, success)
+      assertEquals("should have right warnings", expected.stripMargin.trim, output)
     }
 
     def containsWarns(expected: String): Unit = {
-      val reps = repResult {
-        assertTrue("snippet should compile", compileString(preamble + code))
-      }
+      assertTrue("snippet should compile\n" + output, success)
       assertTrue("should contain the right warnings",
-          reps.trim.contains(expected.stripMargin.trim))
+          output.contains(expected.stripMargin.trim))
     }
 
     def hasNoWarns(): Unit = {
-      val reps = repResult {
-        assertTrue("snippet should compile", compileString(preamble + code))
-      }
-      assertTrue("should not have warnings", reps.isEmpty)
+      assertTrue("snippet should compile\n" + output, success)
+      assertTrue("should not have warnings\n" + output, output.isEmpty)
     }
 
     def fails(): Unit =
-      assertFalse("snippet shouldn't compile", compileString(preamble + code))
+      assertFalse("snippet shouldn't compile", success)
 
     def warns(): Unit = {
-      val reps = repResult {
-        assertTrue("snippet should compile", compileString(preamble + code))
-      }
-      assertFalse("should have warnings", reps.isEmpty)
+      assertTrue("snippet should compile\n" + output, success)
+      assertFalse("should have warnings", output.isEmpty)
     }
 
     def succeeds(): Unit =
-      assertTrue("snippet should compile", compileString(preamble + code))
-
-    private def repResult(body: => Unit) = {
-      errBuffer.reset()
-      body
-      errBuffer.toString.replaceAll("\r\n?", "\n")
-    }
+      assertTrue("snippet should compile\n" + output, success)
   }
 
   implicit class CodeWrappers(sc: StringContext) {
