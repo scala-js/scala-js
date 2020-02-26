@@ -74,7 +74,7 @@ final class WrappedMap[K, V](private val underlying: js.Map[K, V])
 
   @inline
   override def keys: scala.collection.Iterable[K] =
-    js.Array.from(underlying.asInstanceOf[js.Map.Raw[K, V]].keys())
+    js.Array.from(underlying.asInstanceOf[js.Map.Raw[K, V]].keys().asInstanceOf[js.Iterable[K]])
 
   override def empty: js.WrappedMap[K, V] =
     new js.WrappedMap(js.Map.empty)

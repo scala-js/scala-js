@@ -186,7 +186,4 @@ object Array extends Object {
 
   /** Creates a new array from the given iterable */
   def from[A](iterable: Iterable[A]): Array[A] = native
-
-  /** Creates a new array from the given iterator */
-  def from[A](iterator: Iterator[A]): Array[A] = native
 }

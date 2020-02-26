@@ -83,7 +83,7 @@ object WrappedSet extends IterableFactory[WrappedSet] {
   private final class SetIterator[+T](dict: js.Set[T])
     extends scala.collection.Iterator[T] {
 
-    private[this] val values = js.Array.from(dict.jsIterator())
+    private[this] val values = js.Array.from(dict.jsIterator().asInstanceOf[js.Iterable[T]])
     private[this] var index: Int = 0
 
     def hasNext(): Boolean = index < values.length

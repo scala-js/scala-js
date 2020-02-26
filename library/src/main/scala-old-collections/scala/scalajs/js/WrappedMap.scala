@@ -64,7 +64,7 @@ final class WrappedMap[K, V](private val underlying: js.Map[K, V])
 
   @inline
   override def keys: scala.collection.Iterable[K] =
-    js.Array.from(underlying.asInstanceOf[js.Map.Raw[K, V]].keys())
+    js.Array.from(underlying.asInstanceOf[js.Map.Raw[K, V]].keys().asInstanceOf[js.Iterable[K]])
 
   override def empty: js.WrappedMap[K, V] =
     new js.WrappedMap(js.Map.empty[K, V])
@@ -76,7 +76,7 @@ object WrappedMap {
   private final class MapIterator[K, +V](underlying: js.Map[K, V])
       extends scala.collection.Iterator[(K, V)] {
 
-    private[this] val keys = js.Array.from(underlying.asInstanceOf[js.Map.Raw[K, V]].keys())
+    private[this] val keys = js.Array.from(underlying.asInstanceOf[js.Map.Raw[K, V]].keys().asInstanceOf[js.Iterable[K]])
     private[this] var index: Int = 0
 
     def hasNext(): Boolean = index < keys.length
