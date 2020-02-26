@@ -758,7 +758,6 @@ object Emitter {
       if (p) v else none()
 
     multiple(
-        instantiateClass(ObjectClass, NoArgConstructorName),
         classData(ObjectClass),
 
         cond(asInstanceOfs != Unchecked) {
