@@ -758,8 +758,6 @@ object Emitter {
       if (p) v else none()
 
     multiple(
-        classData(ObjectClass),
-
         cond(asInstanceOfs != Unchecked) {
           instantiateClass(ClassCastExceptionClass, StringArgConstructorName)
         },

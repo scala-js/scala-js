@@ -1095,7 +1095,10 @@ private[emitter] object CoreJSLib {
         MethodDef(static = false, Ident("constructor"), Nil, {
           Block(
               privateFieldSet("constr", Undefined()),
-              privateFieldSet("parentData", Undefined()),
+              if (globalKnowledge.isParentDataAccessed)
+                privateFieldSet("parentData", Undefined())
+              else
+                Skip(),
               privateFieldSet("ancestors", Null()),
               privateFieldSet("componentData", Null()),
               privateFieldSet("arrayBase", Null()),
@@ -1155,7 +1158,10 @@ private[emitter] object CoreJSLib {
                 isJSType, parentData, isInstance, isArrayOf), {
           Block(
               const(internalName, genCallHelper("propertyName", internalNameObj)),
-              privateFieldSet("parentData", parentData),
+              if (globalKnowledge.isParentDataAccessed)
+                privateFieldSet("parentData", parentData)
+              else
+                Skip(),
               privateFieldSet("ancestors", ancestors),
               privateFieldSet("arrayEncodedName", str("L") + fullName + str(";")),
               privateFieldSet("isArrayOf", isArrayOf || {
@@ -1269,7 +1275,10 @@ private[emitter] object CoreJSLib {
               const(componentBase, (componentData DOT "arrayBase") || componentData),
               const(arrayDepth, (componentData DOT "arrayDepth") + 1),
               privateFieldSet("constr", ArrayClass),
-              privateFieldSet("parentData", genClassDataOf(ObjectClass)),
+              if (globalKnowledge.isParentDataAccessed)
+                privateFieldSet("parentData", genClassDataOf(ObjectClass))
+              else
+                Skip(),
               privateFieldSet("ancestors", ObjectConstr(List(
                   Ident(genName(ObjectClass)) -> 1,
                   Ident(genName(CloneableClass)) -> 1,
