@@ -25,9 +25,6 @@ private[emitter] object EmitterNames {
   val ClassCastExceptionClass =
     ClassName("java.lang.ClassCastException")
 
-  val CloneNotSupportedExceptionClass =
-    ClassName("java.lang.CloneNotSupportedException")
-
   val UndefinedBehaviorErrorClass =
     ClassName("org.scalajs.linker.runtime.UndefinedBehaviorError")
 

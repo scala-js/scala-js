@@ -761,8 +761,6 @@ object Emitter {
         instantiateClass(ObjectClass, NoArgConstructorName),
         classData(ObjectClass),
 
-        instantiateClass(CloneNotSupportedExceptionClass, NoArgConstructorName),
-
         cond(asInstanceOfs != Unchecked) {
           instantiateClass(ClassCastExceptionClass, StringArgConstructorName)
         },

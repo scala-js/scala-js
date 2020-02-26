@@ -76,10 +76,10 @@ private[emitter] trait GlobalKnowledge {
   /** The global variables that mirror a given static field. */
   def getStaticFieldMirrors(className: ClassName, field: FieldName): List[String]
 
-  /** Whether the given public non-static method exists on the given hijacked class.
+  /** Whether the given public non-static method exists on the given representative class.
    *
    *  @returns false if the class or the method does not exist.
    */
-  def hijackedClassHasPublicMethod(className: ClassName,
+  def representativeClassHasPublicMethod(className: ClassName,
       methodName: MethodName): Boolean
 }

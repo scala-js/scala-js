@@ -100,6 +100,11 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     implicit val from = fromAnalyzer
 
+    /* java.lang.Object is always instantiated, because it is the
+     * representative class for JS objects.
+     */
+    objectClassInfo.instantiated()
+
     /* Hijacked classes are always instantiated, because values of primitive
      * types are their instances.
      */

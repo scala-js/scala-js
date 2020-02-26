@@ -545,7 +545,7 @@ private[emitter] object CoreJSLib {
             paramList((instance :: args): _*), body)
       }
 
-      // toString()java.lang.String
+      // toString()java.lang.String is special as per IR spec.
       locally {
         defineDispatcher(toStringMethodName, Nil, {
           Return(If(instance === Undefined(),
@@ -554,49 +554,22 @@ private[emitter] object CoreJSLib {
         })
       }
 
-      // getClass()java.lang.Class
-      locally {
-        defineDispatcher(getClassMethodName, Nil, {
-          Return(genCallHelper("objectGetClass", instance))
-        })
-      }
+      /* A standard dispatcher performs a type test on the instance and then
+       * calls the relevant implementation which is either of:
+       *
+       * - A normal method call if the instance is a normal scala class.
+       * - A method in the relevant hijacked class.
+       * - The implementation in java.lang.Object (if this is a JS object).
+       */
+      def defineStandardDispatcher(methodName: MethodName,
+          targetHijackedClasses: List[ClassName],
+          overrideObjectImpl: Option[Tree] = None): Unit = {
 
-      // clone()java.lang.Object
-      locally {
-        defineDispatcher(cloneMethodName, Nil, {
-          If(genIsScalaJSObjectOrNull(instance), {
-            Return(Apply(instance DOT genName(cloneMethodName), Nil))
-          }, {
-            Throw(genScalaClassNew(CloneNotSupportedExceptionClass,
-                NoArgConstructorName))
-          })
-        })
-      }
+        val args =
+          methodName.paramTypeRefs.indices.map(i => varRef("x" + i)).toList
 
-      // notify()V and notifyAll()V (final and no-op in Object)
-      locally {
-        for (name <- List(notifyMethodName, notifyAllMethodName)) {
-          defineDispatcher(name, Nil, {
-            If(instance === Null(), Apply(instance DOT genName(name), Nil), Skip())
-          })
-        }
-      }
-
-      // finalize()V
-      locally {
-        defineDispatcher(finalizeMethodName, Nil, {
-          If(genIsScalaJSObjectOrNull(instance),
-              Apply(instance DOT genName(finalizeMethodName), Nil),
-              Skip())
-        })
-      }
-
-      def defineStandardDispatcher(methodName: MethodName, args: List[VarRef],
-          implementationInObject: Option[Tree],
-          maybeImplementingHijackedClasses: List[ClassName]): Unit = {
-
-        val implementingHijackedClasses = maybeImplementingHijackedClasses
-          .filter(globalKnowledge.hijackedClassHasPublicMethod(_, methodName))
+        val implementingHijackedClasses = targetHijackedClasses
+          .filter(globalKnowledge.representativeClassHasPublicMethod(_, methodName))
 
         def hijackedClassNameToTypeof(className: ClassName): Option[String] = className match {
           case BoxedStringClass  => Some("string")
@@ -609,23 +582,36 @@ private[emitter] object CoreJSLib {
         def genHijackedMethodApply(className: ClassName): Tree =
           Apply(codegenVar("f", className, methodName, NoOriginalName), instance :: args)
 
-        def genBodyNoSwitch(implementingHijackedClasses: List[ClassName]): Tree = {
-          val normalCall = Apply(instance DOT genName(methodName), args)
-          val defaultCall: Tree = Return(implementationInObject.getOrElse(normalCall))
+        def genBodyNoSwitch(hijackedClasses: List[ClassName]): Tree = {
+          val normalCall = Return(Apply(instance DOT genName(methodName), args))
+          val implementedInObject =
+            globalKnowledge.representativeClassHasPublicMethod(ObjectClass, methodName)
 
-          val allButNormal = implementingHijackedClasses.foldRight(defaultCall) { (className, next) =>
-            If(genIsInstanceOfHijackedClass(instance, className),
-                Return(genHijackedMethodApply(className)),
-                next)
+          def hijackedDispatch(default: Tree) = {
+            hijackedClasses.foldRight(default) { (className, next) =>
+              If(genIsInstanceOfHijackedClass(instance, className),
+                  Return(genHijackedMethodApply(className)),
+                  next)
+            }
           }
 
-          if (implementationInObject.isDefined)
-            If(genIsScalaJSObjectOrNull(instance), Return(normalCall), allButNormal)
-          else
-            allButNormal
+          if (implementedInObject) {
+            def staticObjectCall: Tree = {
+              val fun = encodeClassVar(ObjectClass).prototype DOT genName(methodName)
+              Return(Apply(fun DOT "call", instance :: args))
+            }
+
+            val default = overrideObjectImpl.getOrElse(staticObjectCall)
+
+            If(genIsScalaJSObjectOrNull(instance),
+                normalCall,
+                hijackedDispatch(default))
+          } else {
+            hijackedDispatch(normalCall)
+          }
         }
 
-        def genBodyMaybeSwitch(): Tree = {
+        defineDispatcher(methodName, args, {
           val maybeWithoutLong =
             if (allowBigIntsForLongs) implementingHijackedClasses
             else implementingHijackedClasses.filter(_ != BoxedLongClass)
@@ -645,37 +631,37 @@ private[emitter] object CoreJSLib {
           } else {
             genBodyNoSwitch(maybeWithoutLong)
           }
-        }
-
-        defineDispatcher(methodName, args, {
-          genBodyMaybeSwitch()
         })
       }
 
-      val rhs = varRef("rhs")
+      for {
+        methodName <- List(getClassMethodName, cloneMethodName,
+            notifyMethodName, notifyAllMethodName, finalizeMethodName)
+      } {
+        defineStandardDispatcher(methodName, Nil)
+      }
 
-      defineStandardDispatcher(equalsMethodName, varRef("rhs") :: Nil,
-          Some(instance === rhs),
+      defineStandardDispatcher(equalsMethodName,
           List(BoxedDoubleClass, BoxedLongClass, BoxedCharacterClass))
 
-      defineStandardDispatcher(hashCodeMethodName, Nil,
-          Some(genCallHelper("systemIdentityHashCode", instance)),
+      defineStandardDispatcher(hashCodeMethodName,
           List(BoxedStringClass, BoxedDoubleClass, BoxedBooleanClass,
-              BoxedUnitClass, BoxedLongClass, BoxedCharacterClass))
+              BoxedUnitClass, BoxedLongClass, BoxedCharacterClass),
+          // #3976: stdlib relies on wrong dispatch here.
+          overrideObjectImpl = Some(
+              Return(genCallHelper("systemIdentityHashCode", instance))))
 
-      defineStandardDispatcher(compareToMethodName, varRef("rhs") :: Nil,
-          None,
+      defineStandardDispatcher(compareToMethodName,
           List(BoxedStringClass, BoxedDoubleClass, BoxedBooleanClass,
               BoxedLongClass, BoxedCharacterClass))
 
-      defineStandardDispatcher(lengthMethodName, Nil, None,
+      defineStandardDispatcher(lengthMethodName,
           List(BoxedStringClass))
 
-      defineStandardDispatcher(charAtMethodName, varRef("index") :: Nil, None,
+      defineStandardDispatcher(charAtMethodName,
           List(BoxedStringClass))
 
       defineStandardDispatcher(subSequenceMethodName,
-          varRef("start") :: varRef("end") :: Nil, None,
           List(BoxedStringClass))
 
       for {
@@ -683,7 +669,7 @@ private[emitter] object CoreJSLib {
             intValueMethodName, longValueMethodName, floatValueMethodName,
             doubleValueMethodName)
       } {
-        defineStandardDispatcher(methodName, Nil, None,
+        defineStandardDispatcher(methodName,
             List(BoxedDoubleClass, BoxedLongClass))
       }
     }
