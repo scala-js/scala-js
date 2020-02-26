@@ -341,6 +341,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         prevConfig
           .withSemantics(_.optimized)
           .withClosureCompiler(useClosure)
+          .withCheckIR(true)  // for safety, fullOpt is slow anyways.
       },
 
       scalaJSLinkedFile := Def.settingDyn {
