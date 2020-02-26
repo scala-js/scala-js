@@ -777,8 +777,6 @@ object Emitter {
               StringArgConstructorName)
         },
 
-        instantiateClass(ClassClass, ObjectArgConstructorName),
-
         cond(!coreSpec.esFeatures.allowBigIntsForLongs) {
           multiple(
               instanceTests(LongImpl.RuntimeLongClass),

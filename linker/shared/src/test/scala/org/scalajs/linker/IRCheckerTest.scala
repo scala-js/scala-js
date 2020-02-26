@@ -212,20 +212,18 @@ object IRCheckerTest {
       .withCheckIR(true)
       .withOptimizer(false)
     val linkerFrontend = StandardLinkerFrontend(config)
-    val linkerBackend = StandardLinkerBackend(config)
+
+    val noSymbolRequirements = SymbolRequirement
+      .factory("IRCheckerTest")
+      .none()
 
     TestIRRepo.minilib.stdlibIRFiles.flatMap { stdLibFiles =>
       val irFiles = (
-          /* TODO(#3853): Split symbol requirements such that injectedIRFiles
-           * are not needed anymore.
-           */
-          linkerBackend.injectedIRFiles ++
           stdLibFiles ++
           classDefs.map(MemClassDefIRFile(_))
       )
 
-      linkerFrontend.link(irFiles, moduleInitializers,
-          linkerBackend.symbolRequirements, logger)
+      linkerFrontend.link(irFiles, moduleInitializers, noSymbolRequirements, logger)
     }.map(_ => ())
   }
 }
