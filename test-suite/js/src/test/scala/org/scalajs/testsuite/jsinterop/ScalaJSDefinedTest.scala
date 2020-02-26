@@ -196,6 +196,11 @@ class ScalaJSDefinedTest {
     assertEquals(15, dyn.sum())
   }
 
+  @Test def constructor_with_param_name_clashes_issue_3933(): Unit = {
+    val obj = new ConstructorWithParamNameClashes(1, 2, 3, 4, 5, 6)
+    assertEquals(List(1, 2, 3, 4, 5, 6), obj.allArgs)
+  }
+
   @Test def default_values_for_fields(): Unit = {
     val obj = new DefaultFieldValues
     assertEquals(0, obj.int)
@@ -1711,6 +1716,36 @@ class ScalaJSDefinedTest {
     assertEquals(5, x.callPrivate())
     assertEquals(5, x.callNested())
   }
+
+  // #3939
+  @Test def java_lang_object_method_names(): Unit = {
+    class JavaLangObjectMethods extends js.Object {
+      @JSName("clone")
+      def myClone(): String = "myClone"
+
+      @JSName("equals")
+      def myEquals(): String = "myEquals"
+
+      @JSName("finalize")
+      def myFinalize(): String = "myFinalize"
+
+      @JSName("hashCode")
+      def myHashCode(): String = "myHashCode"
+
+      @JSName("notify")
+      def myNotify(): String = "myNotify"
+
+      @JSName("notifyAll")
+      def myNotifyAll(): String = "myNotifyAll"
+
+      @JSName("wait")
+      def myWait(): String = "myWait"
+    }
+
+    val x = (new JavaLangObjectMethods).asInstanceOf[js.Dynamic]
+
+    assertEquals("myClone", x.applyDynamic("clone")())
+  }
 }
 
 object ScalaJSDefinedTest {
@@ -1891,6 +1926,12 @@ object ScalaJSDefinedTest {
 
   class SimpleConstructorParamAccessors(x: Int, y: Int) extends js.Object {
     def sum(): Int = x + y
+  }
+
+  class ConstructorWithParamNameClashes(arg: Int, arg$1: Int, arg$2: Int,
+      prep: Int, prep$1: Int, prep$2: Int)
+      extends js.Object {
+    val allArgs = List(arg, arg$1, arg$2, prep, prep$1, prep$2)
   }
 
   class DefaultFieldValues extends js.Object {

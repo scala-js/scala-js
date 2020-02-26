@@ -36,13 +36,13 @@ class ByteArrayInputStream(
     if (off < 0 || reqLen < 0 || reqLen > b.length - off)
       throw new IndexOutOfBoundsException
 
-    val len = Math.min(reqLen, count - pos)
-
-    if (reqLen == 0)
-      0  // 0 requested, 0 returned
-    else if (len == 0)
-      -1 // nothing to read at all
-    else {
+    if (pos == count) {
+      /* There is nothing left to read.
+       * #3913: return -1 even if reqLen == 0.
+       */
+      -1
+    } else {
+      val len = Math.min(reqLen, count - pos)
       System.arraycopy(buf, pos, b, off, len)
       pos += len
       len

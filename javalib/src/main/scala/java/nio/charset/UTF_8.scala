@@ -315,7 +315,7 @@ private[charset] object UTF_8 extends Charset("UTF-8", Array(
     }
   }
 
-  private class Encoder extends CharsetEncoder(UTF_8, 1.1f, 4.0f) {
+  private class Encoder extends CharsetEncoder(UTF_8, 1.1f, 3.0f) {
     def encodeLoop(in: CharBuffer, out: ByteBuffer): CoderResult = {
       if (in.hasArray && out.hasArray)
         encodeLoopArray(in, out)
