@@ -24,8 +24,6 @@ import org.scalajs.linker.backend.emitter.Transients._
 
 object Infos {
 
-  private val ArithmeticExceptionClass = ClassName("java.lang.ArithmeticException")
-
   private val StringArgConstructorName =
     MethodName.constructor(List(ClassRef(BoxedStringClass)))
 

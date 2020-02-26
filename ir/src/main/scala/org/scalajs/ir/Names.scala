@@ -460,6 +460,18 @@ object Names {
   /** The class of things returned by `ClassOf` and `GetClass`. */
   val ClassClass: ClassName = ClassName("java.lang.Class")
 
+  /** The exception thrown by a division by 0. */
+  val ArithmeticExceptionClass: ClassName =
+    ClassName("java.lang.ArithmeticException")
+
+  /** The exception thrown by an `ArraySelect` that is out of bounds. */
+  val ArrayIndexOutOfBoundsExceptionClass: ClassName =
+    ClassName("java.lang.ArrayIndexOutOfBoundsException")
+
+  /** The excpetion thrown by an `AsInstanceOf` that fails. */
+  val ClassCastExceptionClass: ClassName =
+    ClassName("java.lang.ClassCastException")
+
   /** The set of classes and interfaces that are ancestors of array classes. */
   private[ir] val AncestorsOfPseudoArrayClass: Set[ClassName] = {
     /* This would logically be defined in Types, but that introduces a cyclic
@@ -475,6 +487,10 @@ object Names {
    */
   final val NoArgConstructorName: MethodName =
     MethodName.constructor(Nil)
+
+  /** This is used to construct a java.lang.Class. */
+  final val ObjectArgConstructorName: MethodName =
+    MethodName.constructor(List(ClassRef(ObjectClass)))
 
   /** Name of the static initializer method. */
   final val StaticInitializerName: MethodName =
