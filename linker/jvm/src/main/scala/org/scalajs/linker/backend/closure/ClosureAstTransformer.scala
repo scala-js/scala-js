@@ -377,7 +377,7 @@ private class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
         genFunction(name.name, args, body)
 
       case Spread(items) =>
-        new Node(Token.SPREAD, transformExpr(items))
+        new Node(Token.ITER_SPREAD, transformExpr(items))
 
       case _ =>
         throw new TransformException(s"Unknown tree of class ${tree.getClass()}")
@@ -398,7 +398,7 @@ private class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
     val pos = if (param.pos.isDefined) param.pos else parentPos
     val node = transformName(param.name)(pos)
     if (param.rest)
-      setNodePosition(new Node(Token.REST, node), pos)
+      setNodePosition(new Node(Token.ITER_REST, node), pos)
     else
       node
   }
