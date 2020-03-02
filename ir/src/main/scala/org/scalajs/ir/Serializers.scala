@@ -926,7 +926,7 @@ object Serializers {
   private final class Deserializer(buf: ByteBuffer) {
     require(buf.order() == ByteOrder.BIG_ENDIAN)
 
-    private[this] var sourceVersion: String = _
+    private[this] var hacks: Hacks = _
     private[this] var files: Array[URI] = _
     private[this] var encodedNames: Array[UTF8String] = _
     private[this] var localNames: Array[LocalName] = _
@@ -940,12 +940,12 @@ object Serializers {
     private[this] var lastPosition: Position = Position.NoPosition
 
     def deserializeEntryPointsInfo(): EntryPointsInfo = {
-      sourceVersion = readHeader()
+      hacks = new Hacks(sourceVersion = readHeader())
       readEntryPointsInfo()
     }
 
     def deserialize(): ClassDef = {
-      sourceVersion = readHeader()
+      hacks = new Hacks(sourceVersion = readHeader())
       readEntryPointsInfo() // discarded
       files = Array.fill(readInt())(new URI(readUTF()))
       encodedNames = Array.fill(readInt()) {
@@ -1172,7 +1172,8 @@ object Serializers {
           val body = readOptTree()
           val optimizerHints = OptimizerHints.fromBits(readInt())
 
-          if (flags.namespace == MemberNamespace.Public &&
+          if (hacks.use10 &&
+              flags.namespace == MemberNamespace.Public &&
               owner == HackNames.SystemModule &&
               name.name == HackNames.identityHashCodeName) {
             /* #3976: 1.0 javalib relied on wrong linker dispatch.
@@ -1530,6 +1531,11 @@ object Serializers {
 
       res
     }
+  }
+
+  /** Hacks for backwards compatible deserializing. */
+  private final class Hacks(sourceVersion: String) {
+    val use10: Boolean = sourceVersion == "1.0"
   }
 
   /** Names needed for hacks. */

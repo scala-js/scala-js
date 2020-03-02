@@ -53,13 +53,14 @@ abstract class JSPrimitives {
   final val CREATE_LOCAL_JS_CLASS = CREATE_INNER_JS_CLASS + 1          // runtime.createLocalJSClass
   final val WITH_CONTEXTUAL_JS_CLASS_VALUE = CREATE_LOCAL_JS_CLASS + 1 // runtime.withContextualJSClassValue
   final val LINKING_INFO = WITH_CONTEXTUAL_JS_CLASS_VALUE + 1          // runtime.linkingInfo
+  final val IDENTITY_HASH_CODE = LINKING_INFO + 1                      // runtime.identityHashCode
 
-  final val STRICT_EQ = LINKING_INFO + 1 // js.special.strictEquals
-  final val IN = STRICT_EQ + 1           // js.special.in
-  final val INSTANCEOF = IN + 1          // js.special.instanceof
-  final val DELETE = INSTANCEOF + 1      // js.special.delete
-  final val FORIN = DELETE + 1           // js.special.forin
-  final val DEBUGGER = FORIN + 1         // js.special.debugger
+  final val STRICT_EQ = IDENTITY_HASH_CODE + 1 // js.special.strictEquals
+  final val IN = STRICT_EQ + 1                 // js.special.in
+  final val INSTANCEOF = IN + 1                // js.special.instanceof
+  final val DELETE = INSTANCEOF + 1            // js.special.delete
+  final val FORIN = DELETE + 1                 // js.special.forin
+  final val DEBUGGER = FORIN + 1               // js.special.debugger
 
   final val LastJSPrimitiveCode = DEBUGGER
 
@@ -98,6 +99,7 @@ abstract class JSPrimitives {
     addPrimitive(Runtime_withContextualJSClassValue,
         WITH_CONTEXTUAL_JS_CLASS_VALUE)
     addPrimitive(Runtime_linkingInfo, LINKING_INFO)
+    addPrimitive(Runtime_identityHashCode, IDENTITY_HASH_CODE)
 
     addPrimitive(Special_strictEquals, STRICT_EQ)
     addPrimitive(Special_in, IN)

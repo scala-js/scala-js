@@ -101,4 +101,7 @@ package object runtime {
    */
   def linkingInfo: LinkingInfo = throw new Error("stub")
 
+  /** Identity hash code of an object. */
+  def identityHashCode(x: Object): Int = throw new Error("stub")
+
 }
