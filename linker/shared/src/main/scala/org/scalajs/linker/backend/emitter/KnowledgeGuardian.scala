@@ -43,7 +43,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     val hasInlineableInit = computeHasInlineableInit(linkingUnit)
 
     var classClass: Option[LinkedClass] = None
-    val hijackedClasses = Iterable.newBuilder[LinkedClass]
+    val representativeClasses = Iterable.newBuilder[LinkedClass]
 
     // Update classes
     for (linkedClass <- linkingUnit.classDefs) {
@@ -61,8 +61,11 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
         case ClassClass =>
           classClass = Some(linkedClass)
 
+        case ObjectClass =>
+          representativeClasses += linkedClass
+
         case name if HijackedClasses(name) =>
-          hijackedClasses += linkedClass
+          representativeClasses += linkedClass
 
         case _ =>
       }
@@ -73,10 +76,10 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
 
     val invalidateAll = {
       if (specialInfo == null) {
-        specialInfo = new SpecialInfo(classClass, hijackedClasses.result())
+        specialInfo = new SpecialInfo(classClass, representativeClasses.result())
         false
       } else {
-        specialInfo.update(classClass, hijackedClasses.result())
+        specialInfo.update(classClass, representativeClasses.result())
       }
     }
 
@@ -152,9 +155,9 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     def getStaticFieldMirrors(className: ClassName, field: FieldName): List[String] =
       classes(className).askStaticFieldMirrors(this, field)
 
-    def hijackedClassHasPublicMethod(className: ClassName,
+    def representativeClassHasPublicMethod(className: ClassName,
         methodName: MethodName): Boolean = {
-      specialInfo.askHijackedClassHasPublicMethod(this, className, methodName)
+      specialInfo.askRepresentativeClassHasPublicMethod(this, className, methodName)
     }
   }
 
@@ -362,23 +365,23 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
   }
 
   private class SpecialInfo(initClassClass: Option[LinkedClass],
-      initHijackedClasses: Iterable[LinkedClass]) extends Unregisterable {
+      initRepresentativeClasses: Iterable[LinkedClass]) extends Unregisterable {
 
     private var isParentDataAccessed =
       computeIsParentDataAccessed(initClassClass)
 
-    private var methodsInHijackedClasses =
-      computeMethodsInHijackedClasses(initHijackedClasses)
+    private var methodsInRepresentativeClasses =
+      computeMethodsInRepresentativeClasses(initRepresentativeClasses)
 
-    private val methodsInHijackedClassesAskers = mutable.Set.empty[Invalidatable]
+    private val methodsInRepresentativeClassesAskers = mutable.Set.empty[Invalidatable]
 
     def update(classClass: Option[LinkedClass],
-        hijackedClasses: Iterable[LinkedClass]): Boolean = {
-      val newMethodsInHijackedClasses = computeMethodsInHijackedClasses(hijackedClasses)
+        representativeClasses: Iterable[LinkedClass]): Boolean = {
+      val newMethodsInRepresentativeClasses = computeMethodsInRepresentativeClasses(representativeClasses)
 
-      if (newMethodsInHijackedClasses != methodsInHijackedClasses) {
-        methodsInHijackedClasses = newMethodsInHijackedClasses
-        invalidateAskers(methodsInHijackedClassesAskers)
+      if (newMethodsInRepresentativeClasses != methodsInRepresentativeClasses) {
+        methodsInRepresentativeClasses = newMethodsInRepresentativeClasses
+        invalidateAskers(methodsInRepresentativeClassesAskers)
       }
 
       val newIsParentDataAccessed = computeIsParentDataAccessed(classClass)
@@ -399,14 +402,14 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
       classClass.exists(methodExists(_, getSuperclassMethodName))
     }
 
-    private def computeMethodsInHijackedClasses(
-        hijackedClasses: Iterable[LinkedClass]): Set[(ClassName, MethodName)] = {
+    private def computeMethodsInRepresentativeClasses(
+        representativeClasses: Iterable[LinkedClass]): Set[(ClassName, MethodName)] = {
       val pairs = for {
-        hijackedClass <- hijackedClasses
-        method <- hijackedClass.methods
+        representativeClass <- representativeClasses
+        method <- representativeClass.methods
         if method.value.flags.namespace == MemberNamespace.Public
       } yield {
-        (hijackedClass.className, method.value.methodName)
+        (representativeClass.className, method.value.methodName)
       }
 
       pairs.toSet
@@ -415,20 +418,20 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     def askIsParentDataAccessed(invalidatable: Invalidatable): Boolean =
       isParentDataAccessed
 
-    def askHijackedClassHasPublicMethod(invalidatable: Invalidatable,
+    def askRepresentativeClassHasPublicMethod(invalidatable: Invalidatable,
         className: ClassName, methodName: MethodName): Boolean = {
       invalidatable.registeredTo(this)
-      methodsInHijackedClassesAskers += invalidatable
-      methodsInHijackedClasses.contains((className, methodName))
+      methodsInRepresentativeClassesAskers += invalidatable
+      methodsInRepresentativeClasses.contains((className, methodName))
     }
 
     def unregister(invalidatable: Invalidatable): Unit = {
-      methodsInHijackedClassesAskers -= invalidatable
+      methodsInRepresentativeClassesAskers -= invalidatable
     }
 
     /** Call this when we invalidate all caches. */
     def unregisterAll(): Unit = {
-      methodsInHijackedClassesAskers.clear()
+      methodsInRepresentativeClassesAskers.clear()
     }
   }
 

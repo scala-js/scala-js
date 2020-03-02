@@ -44,8 +44,18 @@ object BinaryIncompatibilities {
           "org.scalajs.linker.backend.emitter.ClassEmitter.genModuleAccessor"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.CoreJSLib.build"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.EmitterNames.ArithmeticExceptionClass"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.EmitterNames.ArrayIndexOutOfBoundsExceptionClass"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.EmitterNames.ClassCastExceptionClass"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.EmitterNames.CloneNotSupportedExceptionClass"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.EmitterNames.ObjectArgConstructorName"),
       exclude[ReversedMissingMethodProblem](
-          "org.scalajs.linker.backend.emitter.GlobalKnowledge.hijackedClassHasPublicMethod"),
+          "org.scalajs.linker.backend.emitter.GlobalKnowledge.representativeClassHasPublicMethod"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.JSGen.genName"),
       exclude[DirectMissingMethodProblem](

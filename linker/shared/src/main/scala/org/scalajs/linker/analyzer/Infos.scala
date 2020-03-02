@@ -24,8 +24,6 @@ import org.scalajs.linker.backend.emitter.Transients._
 
 object Infos {
 
-  private val ArithmeticExceptionClass = ClassName("java.lang.ArithmeticException")
-
   private val StringArgConstructorName =
     MethodName.constructor(List(ClassRef(BoxedStringClass)))
 
@@ -546,7 +544,16 @@ object Infos {
 
             case IsInstanceOf(_, testType) =>
               builder.maybeAddUsedInstanceTest(testType)
+
             case AsInstanceOf(_, tpe) =>
+              /* In theory, we'd need to reach ClassCastException
+               * here (conditional on the semantics) by IR spec.
+               * However, since the exact *constructor* is not specified, this
+               * makes little sense.
+               * Instead, the Emitter simply requests the exception in its
+               * symbol requirements.
+               */
+
               builder.maybeAddUsedInstanceTest(tpe)
 
             case BinaryOp(op, _, rhs) =>
@@ -574,10 +581,28 @@ object Infos {
 
             case NewArray(typeRef, _) =>
               builder.maybeAddAccessedClassData(typeRef)
+
             case ArrayValue(typeRef, _) =>
               builder.maybeAddAccessedClassData(typeRef)
+
+            case ArraySelect(_, _) =>
+              /* In theory, we'd need to reach ArrayIndexOutOfBoundsException
+               * here (conditional on the semantics) by IR spec.
+               * However, since the exact *constructor* is not specified, this
+               * makes little sense.
+               * Instead, the Emitter simply requests the exception in its
+               * symbol requirements.
+               */
+
             case ClassOf(cls) =>
               builder.maybeAddAccessedClassData(cls)
+
+              // `ClassOf` instantiates a java.lang.Class.
+              builder.addInstantiatedClass(ClassClass, ObjectArgConstructorName)
+
+            case GetClass(_) =>
+              // `GetClass` instantiates a java.lang.Class.
+              builder.addInstantiatedClass(ClassClass, ObjectArgConstructorName)
 
             case JSPrivateSelect(qualifier, className, field) =>
               builder.addPrivateJSFieldUsed(className, field.name)

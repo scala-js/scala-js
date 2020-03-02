@@ -758,11 +758,6 @@ object Emitter {
       if (p) v else none()
 
     multiple(
-        instantiateClass(ObjectClass, NoArgConstructorName),
-        classData(ObjectClass),
-
-        instantiateClass(CloneNotSupportedExceptionClass, NoArgConstructorName),
-
         cond(asInstanceOfs != Unchecked) {
           instantiateClass(ClassCastExceptionClass, StringArgConstructorName)
         },
@@ -781,8 +776,6 @@ object Emitter {
           instantiateClass(UndefinedBehaviorErrorClass,
               StringArgConstructorName)
         },
-
-        instantiateClass(ClassClass, ObjectArgConstructorName),
 
         cond(!coreSpec.esFeatures.allowBigIntsForLongs) {
           multiple(

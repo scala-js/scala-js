@@ -16,18 +16,6 @@ import org.scalajs.ir.Names._
 import org.scalajs.ir.Types._
 
 private[emitter] object EmitterNames {
-  val ArithmeticExceptionClass =
-    ClassName("java.lang.ArithmeticException")
-
-  val ArrayIndexOutOfBoundsExceptionClass =
-    ClassName("java.lang.ArrayIndexOutOfBoundsException")
-
-  val ClassCastExceptionClass =
-    ClassName("java.lang.ClassCastException")
-
-  val CloneNotSupportedExceptionClass =
-    ClassName("java.lang.CloneNotSupportedException")
-
   val UndefinedBehaviorErrorClass =
     ClassName("org.scalajs.linker.runtime.UndefinedBehaviorError")
 
@@ -66,7 +54,6 @@ private[emitter] object EmitterNames {
 
   // Method names
 
-  val ObjectArgConstructorName = MethodName.constructor(List(ClassRef(ObjectClass)))
   val StringArgConstructorName = MethodName.constructor(List(ClassRef(BoxedStringClass)))
   val ThrowableArgConsructorName = MethodName.constructor(List(ClassRef(ThrowableClass)))
 
