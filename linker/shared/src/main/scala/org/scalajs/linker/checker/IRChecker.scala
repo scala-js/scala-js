@@ -936,6 +936,9 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       case GetClass(expr) =>
         typecheckExpr(expr, env)
 
+      case IdentityHashCode(expr) =>
+        typecheckExpr(expr, env)
+
       // JavaScript expressions
 
       case JSNew(ctor, args) =>

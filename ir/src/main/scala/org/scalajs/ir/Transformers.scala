@@ -140,6 +140,9 @@ object Transformers {
         case GetClass(expr) =>
           GetClass(transformExpr(expr))
 
+        case IdentityHashCode(expr) =>
+          IdentityHashCode(transformExpr(expr))
+
         // JavaScript expressions
 
         case JSNew(ctor, args) =>

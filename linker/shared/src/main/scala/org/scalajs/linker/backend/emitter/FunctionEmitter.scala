@@ -1134,6 +1134,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case ArrayLength(array)      => test(array)
         case RecordSelect(record, _) => test(record)
         case IsInstanceOf(expr, _)   => test(expr)
+        case IdentityHashCode(expr)  => test(expr)
 
         // Expressions preserving side-effect freedom
         case NewArray(tpe, lengths) =>
@@ -1605,6 +1606,11 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case GetClass(expr) =>
           unnest(expr) { (newExpr, env) =>
             redo(GetClass(newExpr))(env)
+          }
+
+        case IdentityHashCode(expr) =>
+          unnest(expr) { (newExpr, env) =>
+            redo(IdentityHashCode(newExpr))(env)
           }
 
         case Transient(CallHelper(helper, args)) =>
@@ -2408,6 +2414,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         case GetClass(expr) =>
           genCallHelper("objectGetClass", transformExprNoChar(expr))
+
+        case IdentityHashCode(expr) =>
+          genCallHelper("systemIdentityHashCode", transformExprNoChar(expr))
 
         case Transient(CallHelper(helper, args)) =>
           helper match {

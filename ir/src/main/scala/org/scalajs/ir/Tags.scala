@@ -101,6 +101,10 @@ private[ir] object Tags {
    * serialized nor hashed.
    */
 
+  // New in 1.1
+
+  final val TagIdentityHashCode = TagCreateJSClass + 1
+
   // Tags for member defs
 
   final val TagFieldDef = 1

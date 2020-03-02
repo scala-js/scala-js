@@ -462,6 +462,11 @@ object Trees {
     val tpe = ClassType(ClassClass)
   }
 
+  sealed case class IdentityHashCode(expr: Tree)(implicit val pos: Position)
+      extends Tree {
+    val tpe = IntType
+  }
+
   // JavaScript expressions
 
   sealed case class JSNew(ctor: Tree, args: List[TreeOrJSSpread])(

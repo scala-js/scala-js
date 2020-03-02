@@ -591,8 +591,7 @@ private[emitter] object CoreJSLib {
        * - The implementation in java.lang.Object (if this is a JS object).
        */
       def defineStandardDispatcher(methodName: MethodName,
-          targetHijackedClasses: List[ClassName],
-          overrideObjectImpl: Option[Tree] = None): Unit = {
+          targetHijackedClasses: List[ClassName]): Unit = {
 
         val args =
           methodName.paramTypeRefs.indices.map(i => varRef("x" + i)).toList
@@ -625,16 +624,14 @@ private[emitter] object CoreJSLib {
           }
 
           if (implementedInObject) {
-            def staticObjectCall: Tree = {
+            val staticObjectCall: Tree = {
               val fun = encodeClassVar(ObjectClass).prototype DOT genName(methodName)
               Return(Apply(fun DOT "call", instance :: args))
             }
 
-            val default = overrideObjectImpl.getOrElse(staticObjectCall)
-
             If(genIsScalaJSObjectOrNull(instance),
                 normalCall,
-                hijackedDispatch(default))
+                hijackedDispatch(staticObjectCall))
           } else {
             hijackedDispatch(normalCall)
           }
@@ -675,10 +672,7 @@ private[emitter] object CoreJSLib {
 
       defineStandardDispatcher(hashCodeMethodName,
           List(BoxedStringClass, BoxedDoubleClass, BoxedBooleanClass,
-              BoxedUnitClass, BoxedLongClass, BoxedCharacterClass),
-          // #3976: stdlib relies on wrong dispatch here.
-          overrideObjectImpl = Some(
-              Return(genCallHelper("systemIdentityHashCode", instance))))
+              BoxedUnitClass, BoxedLongClass, BoxedCharacterClass))
 
       defineStandardDispatcher(compareToMethodName,
           List(BoxedStringClass, BoxedDoubleClass, BoxedBooleanClass,
