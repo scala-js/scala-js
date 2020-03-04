@@ -138,6 +138,9 @@ object Trees {
       }
     }
 
+    def apply(stats: List[Tree], expr: Tree)(implicit pos: Position): Tree =
+      apply(stats :+ expr)
+
     def apply(stats: Tree*)(implicit pos: Position): Tree =
       apply(stats.toList)
 

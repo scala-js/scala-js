@@ -17,6 +17,9 @@ import org.scalajs.ir.Trees.{AnyFieldDef, JSNativeLoadSpec}
 import org.scalajs.ir.Types.Type
 
 private[emitter] trait GlobalKnowledge {
+  /** Tests whether the `java.lang.Class` class is instantiated. */
+  def isClassClassInstantiated: Boolean
+
   /** Tests whether the parent class data is accessed in the linking unit. */
   def isParentDataAccessed: Boolean
 

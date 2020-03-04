@@ -128,6 +128,9 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     def isParentDataAccessed: Boolean =
       specialInfo.askIsParentDataAccessed(this)
 
+    def isClassClassInstantiated: Boolean =
+      specialInfo.askIsClassClassInstantiated(this)
+
     def isInterface(className: ClassName): Boolean =
       classes(className).askIsInterface(this)
 
@@ -367,6 +370,11 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
   private class SpecialInfo(initClassClass: Option[LinkedClass],
       initRepresentativeClasses: Iterable[LinkedClass]) extends Unregisterable {
 
+    private var isClassClassInstantiated =
+      computeIsClassClassInstantiated(initClassClass)
+
+    private val isClassClassInstantiatedAskers = mutable.Set.empty[Invalidatable]
+
     private var isParentDataAccessed =
       computeIsParentDataAccessed(initClassClass)
 
@@ -384,11 +392,23 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
         invalidateAskers(methodsInRepresentativeClassesAskers)
       }
 
+      val newIsClassClassInstantiated = computeIsClassClassInstantiated(classClass)
+      if (newIsClassClassInstantiated != isClassClassInstantiated) {
+        isClassClassInstantiated = newIsClassClassInstantiated
+        invalidateAskers(isClassClassInstantiatedAskers)
+      }
+
       val newIsParentDataAccessed = computeIsParentDataAccessed(classClass)
 
       val invalidateAll = isParentDataAccessed != newIsParentDataAccessed
 
       invalidateAll
+    }
+
+    private def computeIsClassClassInstantiated(classClass: Option[LinkedClass]): Boolean = {
+      classClass.exists(_.methods.exists { m =>
+        m.value.flags.namespace == MemberNamespace.Constructor
+      })
     }
 
     private def computeIsParentDataAccessed(classClass: Option[LinkedClass]): Boolean = {
@@ -415,6 +435,12 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
       pairs.toSet
     }
 
+    def askIsClassClassInstantiated(invalidatable: Invalidatable): Boolean = {
+      invalidatable.registeredTo(this)
+      isClassClassInstantiatedAskers += invalidatable
+      isClassClassInstantiated
+    }
+
     def askIsParentDataAccessed(invalidatable: Invalidatable): Boolean =
       isParentDataAccessed
 
@@ -426,11 +452,13 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     }
 
     def unregister(invalidatable: Invalidatable): Unit = {
+      isClassClassInstantiatedAskers -= invalidatable
       methodsInRepresentativeClassesAskers -= invalidatable
     }
 
     /** Call this when we invalidate all caches. */
     def unregisterAll(): Unit = {
+      isClassClassInstantiatedAskers.clear()
       methodsInRepresentativeClassesAskers.clear()
     }
   }

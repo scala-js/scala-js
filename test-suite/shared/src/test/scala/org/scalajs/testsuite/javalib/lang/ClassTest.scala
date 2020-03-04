@@ -17,6 +17,8 @@ import org.junit.Assert._
 
 import scala.runtime.BoxedUnit
 
+import org.scalajs.testsuite.utils.Platform._
+
 class ClassTest {
 
   private val PrimitiveClassOfs = Seq(
@@ -44,15 +46,65 @@ class ClassTest {
   )
 
   @Test def getPrimitiveTypeName(): Unit = {
-    assertEquals("void", classOf[Unit].getName)
-    assertEquals("boolean", classOf[Boolean].getName)
-    assertEquals("char", classOf[Char].getName)
-    assertEquals("byte", classOf[Byte].getName)
-    assertEquals("short", classOf[Short].getName)
-    assertEquals("int", classOf[Int].getName)
-    assertEquals("long", classOf[Long].getName)
-    assertEquals("float", classOf[Float].getName)
-    assertEquals("double", classOf[Double].getName)
+    @noinline
+    def testNoInline(expected: String, cls: Class[_]): Unit =
+      assertEquals(expected, cls.getName())
+
+    @inline
+    def test(expected: String, cls: Class[_]): Unit = {
+      testNoInline(expected, cls)
+      assertEquals(expected, cls.getName())
+    }
+
+    test("void", classOf[Unit])
+    test("boolean", classOf[Boolean])
+    test("char", classOf[Char])
+    test("byte", classOf[Byte])
+    test("short", classOf[Short])
+    test("int", classOf[Int])
+    test("long", classOf[Long])
+    test("float", classOf[Float])
+    test("double", classOf[Double])
+  }
+
+  @Test def getClassGetName(): Unit = {
+    // x.getClass().getName() is subject to optimizations
+
+    @noinline
+    def getClassOfNoInline(x: Any): Class[_] =
+      x.getClass()
+
+    @noinline
+    def testNoInline(expected: String, x: Any): Unit = {
+      assertEquals(expected, getClassOfNoInline(x).getName())
+      assertEquals(expected, x.getClass().getName())
+    }
+
+    @inline
+    def test(expected: String, x: Any): Unit = {
+      testNoInline(expected, x)
+      assertEquals(expected, x.getClass().getName())
+    }
+
+    test(if (executingInJVM) "scala.runtime.BoxedUnit" else "java.lang.Void", ())
+    test("java.lang.Boolean", true)
+    test("java.lang.Character", 'A')
+    test("java.lang.Byte", 0.toByte)
+    test("java.lang.Byte", 5.toByte)
+    test("java.lang.Short", 300.toShort)
+    test("java.lang.Integer", 100000)
+    test("java.lang.Long", Long.MaxValue)
+    test("java.lang.Float", -0.0f)
+    test("java.lang.Float", 1.5f)
+    test("java.lang.Float", Float.NaN)
+    test(if (hasStrictFloats) "java.lang.Double" else "java.lang.Float", 1.4)
+    test("java.lang.String", "hello")
+    test("java.lang.Object", new Object)
+    test("scala.Some", Some(5))
+    test("org.scalajs.testsuite.javalib.lang.ClassTest", this)
+
+    test("[[I", new Array[Array[Int]](1))
+    test("[[[Ljava.lang.String;", new Array[Array[Array[String]]](1))
   }
 
   @Test def wellKnownClasses(): Unit = {

@@ -91,6 +91,14 @@ object TestIRBuilder {
         List(argsParamDef), NoType, Some(body))(EOH, None)
   }
 
+  def predefPrintln(expr: Tree): Tree = {
+    val PredefModuleClass = ClassName("scala.Predef$")
+    val printlnMethodName = m("println", List(O), VoidRef)
+
+    Apply(EAF, LoadModule(PredefModuleClass), printlnMethodName, List(expr))(
+        NoType)
+  }
+
   def paramDef(name: LocalName, ptpe: Type): ParamDef =
     ParamDef(LocalIdent(name), NON, ptpe, mutable = false, rest = false)
 
