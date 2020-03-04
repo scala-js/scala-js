@@ -112,7 +112,7 @@ final class Emitter private (config: CommonPhaseConfig,
       } else {
         ""
       }
-      maybeTopLevelVarDecls + ifIIFE("(function(){") + "'use strict';\n"
+      maybeTopLevelVarDecls + ifIIFE("(function(){\n")
     }
 
     val footer = ifIIFE("}).call(this);\n")
