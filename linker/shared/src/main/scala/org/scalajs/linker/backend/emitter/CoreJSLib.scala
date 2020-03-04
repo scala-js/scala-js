@@ -483,12 +483,11 @@ private[emitter] object CoreJSLib {
               },
               str("number") -> {
                 Block(
-                    const(v, instance | 0),
-                    If(v === instance, { // is the value integral?
-                      If(genCallHelper("isByte", v), {
+                    If(genCallHelper("isInt", instance), {
+                      If((instance << 24 >> 24) === instance, {
                         Return(genClassOf(BoxedByteClass))
                       }, {
-                        If(genCallHelper("isShort", v), {
+                        If((instance << 16 >> 16) === instance, {
                           Return(genClassOf(BoxedShortClass))
                         }, {
                           Return(genClassOf(BoxedIntegerClass))
@@ -496,7 +495,7 @@ private[emitter] object CoreJSLib {
                       })
                     }, {
                       if (strictFloats) {
-                        If(genCallHelper("isFloat", v), {
+                        If(genCallHelper("isFloat", instance), {
                           Return(genClassOf(BoxedFloatClass))
                         }, {
                           Return(genClassOf(BoxedDoubleClass))

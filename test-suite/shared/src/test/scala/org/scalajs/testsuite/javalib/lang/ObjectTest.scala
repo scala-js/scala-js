@@ -16,19 +16,42 @@ import org.junit.Test
 import org.junit.Assert._
 
 import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.Platform._
 
 // scalastyle:off disallow.space.before.token
 
 class ObjectTest {
 
   @Test def testGetClass(): Unit = {
-    class Foo
-    val foo = new Foo
+    @noinline
+    def testNoInline(expected: Class[_], x: Any): Unit =
+      assertSame(expected, x.getClass())
 
-    @noinline def fooAny: Any = foo
+    @inline
+    def test(expected: Class[_], x: Any): Unit = {
+      testNoInline(expected, x)
+      assertSame(expected, x.getClass())
+    }
 
-    assertSame(classOf[Foo], foo.getClass)
-    assertSame(classOf[Foo], fooAny.getClass)
+    test(if (executingInJVM) classOf[scala.runtime.BoxedUnit] else classOf[java.lang.Void], ())
+    test(classOf[java.lang.Boolean], true)
+    test(classOf[java.lang.Character], 'A')
+    test(classOf[java.lang.Byte], 0.toByte)
+    test(classOf[java.lang.Byte], 5.toByte)
+    test(classOf[java.lang.Short], 300.toShort)
+    test(classOf[java.lang.Integer], 100000)
+    test(classOf[java.lang.Long], Long.MaxValue)
+    test(classOf[java.lang.Float], -0.0f)
+    test(classOf[java.lang.Float], 1.5f)
+    test(classOf[java.lang.Float], Float.NaN)
+    test(if (hasStrictFloats) classOf[java.lang.Double] else classOf[java.lang.Float], 1.4)
+    test(classOf[java.lang.String], "hello")
+    test(classOf[java.lang.Object], new Object)
+    test(classOf[Some[_]], Some(5))
+    test(classOf[ObjectTest], this)
+
+    test(classOf[Array[Array[Int]]], new Array[Array[Int]](1))
+    test(classOf[Array[Array[Array[String]]]], new Array[Array[Array[String]]](1))
   }
 
   @Test def equals(): Unit = {
