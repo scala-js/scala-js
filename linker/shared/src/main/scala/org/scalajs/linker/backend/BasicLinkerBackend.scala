@@ -59,6 +59,7 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
         val code = withWriter { writer =>
           val printer = new Printers.JSTreePrinter(writer)
           writer.write(emitterResult.header)
+          writer.write("'use strict';\n")
           emitterResult.body.foreach(printer.printTopLevelTree _)
           writer.write(emitterResult.footer)
         }
@@ -74,6 +75,9 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
           writer.write(emitterResult.header)
           for (_ <- 0 until emitterResult.header.count(_ == '\n'))
             sourceMapWriter.nextLine()
+
+          writer.write("'use strict';\n")
+          sourceMapWriter.nextLine()
 
           emitterResult.body.foreach(printer.printTopLevelTree _)
 
