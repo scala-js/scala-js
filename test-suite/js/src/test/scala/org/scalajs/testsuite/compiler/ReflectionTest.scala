@@ -39,7 +39,17 @@ class ReflectionTest {
   }
 
   @Test def java_lang_Class_getName_under_normal_circumstances(): Unit = {
-    assertEquals("scala.Some", classOf[scala.Some[_]].getName)
+    @noinline
+    def testNoInline(expected: String, cls: Class[_]): Unit =
+      assertEquals(expected, cls.getName())
+
+    @inline
+    def test(expected: String, cls: Class[_]): Unit = {
+      testNoInline(expected, cls)
+      assertEquals(expected, cls.getName())
+    }
+
+    test("scala.Some", classOf[scala.Some[_]])
   }
 
   @Test def should_append_$_to_class_name_of_objects(): Unit = {
@@ -48,13 +58,51 @@ class ReflectionTest {
   }
 
   @Test def java_lang_Class_getName_renamed_through_semantics(): Unit = {
-    assertEquals("renamed.test.Class", classOf[RenamedTestClass].getName)
-    assertEquals("renamed.test.byprefix.RenamedTestClass1",
-        classOf[PrefixRenamedTestClass1].getName)
-    assertEquals("renamed.test.byprefix.RenamedTestClass2",
-        classOf[PrefixRenamedTestClass2].getName)
-    assertEquals("renamed.test.byotherprefix.RenamedTestClass",
-        classOf[OtherPrefixRenamedTestClass].getName)
+    @noinline
+    def testNoInline(expected: String, cls: Class[_]): Unit =
+      assertEquals(expected, cls.getName())
+
+    @inline
+    def test(expected: String, cls: Class[_]): Unit = {
+      testNoInline(expected, cls)
+      assertEquals(expected, cls.getName())
+    }
+
+    test("renamed.test.Class", classOf[RenamedTestClass])
+    test("renamed.test.byprefix.RenamedTestClass1",
+        classOf[PrefixRenamedTestClass1])
+    test("renamed.test.byprefix.RenamedTestClass2",
+        classOf[PrefixRenamedTestClass2])
+    test("renamed.test.byotherprefix.RenamedTestClass",
+        classOf[OtherPrefixRenamedTestClass])
+  }
+
+  @Test def java_lang_Object_getClass_getName_renamed_through_semantics(): Unit = {
+    // x.getClass().getName() is subject to optimizations
+
+    @noinline
+    def getClassOfNoInline(x: Any): Class[_] =
+      x.getClass()
+
+    @noinline
+    def testNoInline(expected: String, x: Any): Unit = {
+      assertEquals(expected, getClassOfNoInline(x).getName())
+      assertEquals(expected, x.getClass().getName())
+    }
+
+    @inline
+    def test(expected: String, x: Any): Unit = {
+      testNoInline(expected, x)
+      assertEquals(expected, x.getClass().getName())
+    }
+
+    test("renamed.test.Class", new RenamedTestClass)
+    test("renamed.test.byprefix.RenamedTestClass1",
+        new PrefixRenamedTestClass1)
+    test("renamed.test.byprefix.RenamedTestClass2",
+        new PrefixRenamedTestClass2)
+    test("renamed.test.byotherprefix.RenamedTestClass",
+        new OtherPrefixRenamedTestClass)
   }
 
   @Test def should_support_isInstance(): Unit = {

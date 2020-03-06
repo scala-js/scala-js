@@ -29,6 +29,7 @@ import org.scalajs.ir.Types._
 
 import org.scalajs.logging._
 import org.scalajs.linker.interface._
+import org.scalajs.linker.interface.unstable.RuntimeClassNameMapperImpl
 import org.scalajs.linker.standard._
 import org.scalajs.linker.backend.emitter.LongImpl
 import org.scalajs.linker.backend.emitter.Transients.CallHelper
@@ -1381,7 +1382,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     case Block(init :+ last) =>
       keepOnlySideEffects(last) match {
         case Skip()      => keepOnlySideEffects(Block(init)(stat.pos))
-        case lastEffects => Block(init :+ lastEffects)(stat.pos)
+        case lastEffects => Block(init, lastEffects)(stat.pos)
       }
     case LoadModule(moduleClassName) =>
       if (hasElidableModuleAccessor(moduleClassName)) Skip()(stat.pos)
@@ -1900,7 +1901,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
       case _: Literal =>
         cont(PreTransTree(
-            Block((optReceiver ++: args).map(finishTransformStat) :+ body),
+            Block((optReceiver ++: args).map(finishTransformStat), body),
             RefinedType(body.tpe)))
 
       case This() if args.isEmpty =>
@@ -2113,6 +2114,36 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             contTree(Null())
           case receiver =>
             defaultApply(ClassType(ClassClass))
+        }
+
+      case ClassGetName =>
+        newReceiver match {
+          case BlockOrAlone(stats, ClassOf(typeRef)) =>
+            def mappedClassName(className: ClassName): String = {
+              RuntimeClassNameMapperImpl.map(
+                  config.coreSpec.semantics.runtimeClassNameMapper,
+                  className.nameString)
+            }
+
+            val nameString = typeRef match {
+              case primRef: PrimRef =>
+                primRef.displayName
+              case ClassRef(className) =>
+                mappedClassName(className)
+              case ArrayTypeRef(primRef: PrimRef, dimensions) =>
+                "[" * dimensions + primRef.charCode
+              case ArrayTypeRef(ClassRef(className), dimensions) =>
+                "[" * dimensions + "L" + mappedClassName(className) + ";"
+            }
+
+            contTree(Block(stats, StringLiteral(nameString)))
+
+          case BlockOrAlone(stats, GetClass(expr)) =>
+            contTree(Block(stats,
+                callHelper("objectClassName", expr)(StringClassType)))
+
+          case _ =>
+            defaultApply(StringClassType)
         }
 
       // java.lang.reflect.Array
@@ -4104,7 +4135,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
                 val result1 =
                   if (refinedType == NoType) keepOnlySideEffects(result)
                   else result
-                Some(Block(prep :+ result1)(body.pos))
+                Some(Block(prep, result1)(body.pos))
 
               case _ =>
                 None
@@ -5078,8 +5109,9 @@ private[optimizer] object OptimizerCore {
     final val GenericArrayBuilderResult = ArrayBuilderZeroOf + 1
 
     final val ClassGetComponentType = GenericArrayBuilderResult + 1
+    final val ClassGetName = ClassGetComponentType + 1
 
-    final val ArrayNewInstance = ClassGetComponentType + 1
+    final val ArrayNewInstance = ClassGetName + 1
 
     final val ObjectLiteral = ArrayNewInstance + 1
 
@@ -5107,6 +5139,7 @@ private[optimizer] object OptimizerCore {
     private val J = LongRef
     private val O = ClassRef(ObjectClass)
     private val ClassClassRef = ClassRef(ClassClass)
+    private val StringClassRef = ClassRef(BoxedStringClass)
     private val SeqClassRef = ClassRef(ClassName("scala.collection.Seq"))
     private val JSObjectClassRef = ClassRef(ClassName("scala.scalajs.js.Object"))
     private val JSArrayClassRef = ClassRef(ClassName("scala.scalajs.js.Array"))
@@ -5135,7 +5168,8 @@ private[optimizer] object OptimizerCore {
             m("scala$collection$mutable$ArrayBuilder$$genericArrayBuilderResult", List(ClassClassRef, JSArrayClassRef), O) -> GenericArrayBuilderResult
         ),
         ClassName("java.lang.Class") -> List(
-            m("getComponentType", Nil, ClassClassRef) -> ClassGetComponentType
+            m("getComponentType", Nil, ClassClassRef) -> ClassGetComponentType,
+            m("getName", Nil, StringClassRef) -> ClassGetName
         ),
         ClassName("java.lang.reflect.Array$") -> List(
             m("newInstance", List(ClassClassRef, I), O) -> ArrayNewInstance

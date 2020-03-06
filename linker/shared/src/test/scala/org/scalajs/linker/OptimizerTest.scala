@@ -152,6 +152,22 @@ class OptimizerTest {
     ))
   }
 
+  /** Makes sure that a hello world does not need java.lang.Class after
+   *  optimizations.
+   */
+  @Test
+  def testHelloWorldDoesNotNeedClassClass(): AsyncResult = await {
+    val classDefs = Seq(
+        mainTestClassDef({
+          predefPrintln(StringLiteral("Hello world!"))
+        })
+    )
+
+    for (linkingUnit <- linkToLinkingUnit(classDefs, MainTestModuleInitializers, TestIRRepo.fulllib)) yield {
+      assertFalse(linkingUnit.classDefs.exists(_.className == ClassClass))
+    }
+  }
+
 }
 
 object OptimizerTest {
@@ -188,6 +204,13 @@ object OptimizerTest {
       moduleInitializers: List[ModuleInitializer])(
       implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
+    linkToLinkingUnit(classDefs, moduleInitializers, TestIRRepo.minilib)
+  }
+
+  def linkToLinkingUnit(classDefs: Seq[ClassDef],
+      moduleInitializers: List[ModuleInitializer], irRepo: TestIRRepo)(
+      implicit ec: ExecutionContext): Future[LinkingUnit] = {
+
     val config = StandardConfig()
     val frontend = StandardLinkerFrontend(config)
     val backend = new StoreLinkingUnitLinkerBackend(StandardLinkerBackend(config))
@@ -196,7 +219,7 @@ object OptimizerTest {
     val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
     val output = LinkerOutput(MemOutputFile())
 
-    TestIRRepo.minilib.stdlibIRFiles.flatMap { stdLibFiles =>
+    irRepo.stdlibIRFiles.flatMap { stdLibFiles =>
       linker.link(stdLibFiles ++ classDefsFiles, moduleInitializers,
           output, new ScalaConsoleLogger(Level.Error))
     }.map { _ =>

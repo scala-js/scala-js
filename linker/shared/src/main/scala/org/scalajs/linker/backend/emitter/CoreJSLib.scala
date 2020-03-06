@@ -22,6 +22,7 @@ import org.scalajs.ir.Trees.{JSUnaryOp, JSBinaryOp}
 import org.scalajs.ir.Types._
 
 import org.scalajs.linker.interface.{CheckedBehavior, ModuleKind}
+import org.scalajs.linker.interface.unstable.RuntimeClassNameMapperImpl
 import org.scalajs.linker.backend.javascript.Trees._
 
 import EmitterNames._
@@ -472,61 +473,64 @@ private[emitter] object CoreJSLib {
         })
       }
 
-      // objectGetClass
-      locally {
+      // objectGetClass and objectClassName
+
+      def defineObjectGetClassBasedFun(name: String,
+          constantClassResult: ClassName => Tree,
+          scalaObjectResult: VarRef => Tree, jsObjectResult: Tree): Unit = {
+
         val instance = varRef("instance")
         val v = varRef("v")
-        buf += envFunctionDef("objectGetClass", paramList(instance), {
+        buf += envFunctionDef(name, paramList(instance), {
           Switch(typeof(instance), List(
               str("string") -> {
-                Return(genClassOf(BoxedStringClass))
+                Return(constantClassResult(BoxedStringClass))
               },
               str("number") -> {
                 Block(
-                    const(v, instance | 0),
-                    If(v === instance, { // is the value integral?
-                      If(genCallHelper("isByte", v), {
-                        Return(genClassOf(BoxedByteClass))
+                    If(genCallHelper("isInt", instance), {
+                      If((instance << 24 >> 24) === instance, {
+                        Return(constantClassResult(BoxedByteClass))
                       }, {
-                        If(genCallHelper("isShort", v), {
-                          Return(genClassOf(BoxedShortClass))
+                        If((instance << 16 >> 16) === instance, {
+                          Return(constantClassResult(BoxedShortClass))
                         }, {
-                          Return(genClassOf(BoxedIntegerClass))
+                          Return(constantClassResult(BoxedIntegerClass))
                         })
                       })
                     }, {
                       if (strictFloats) {
-                        If(genCallHelper("isFloat", v), {
-                          Return(genClassOf(BoxedFloatClass))
+                        If(genCallHelper("isFloat", instance), {
+                          Return(constantClassResult(BoxedFloatClass))
                         }, {
-                          Return(genClassOf(BoxedDoubleClass))
+                          Return(constantClassResult(BoxedDoubleClass))
                         })
                       } else {
-                        Return(genClassOf(BoxedFloatClass))
+                        Return(constantClassResult(BoxedFloatClass))
                       }
                     })
                 )
               },
               str("boolean") -> {
-                Return(genClassOf(BoxedBooleanClass))
+                Return(constantClassResult(BoxedBooleanClass))
               },
               str("undefined") -> {
-                Return(genClassOf(BoxedUnitClass))
+                Return(constantClassResult(BoxedUnitClass))
               }
           ), {
             If(instance === Null(), {
               Return(Apply(instance DOT genName(getClassMethodName), Nil))
             }, {
               If(genIsInstanceOfHijackedClass(instance, BoxedLongClass), {
-                Return(genClassOf(BoxedLongClass))
+                Return(constantClassResult(BoxedLongClass))
               }, {
                 If(genIsInstanceOfHijackedClass(instance, BoxedCharacterClass), {
-                  Return(genClassOf(BoxedCharacterClass))
+                  Return(constantClassResult(BoxedCharacterClass))
                 }, {
                   If(genIsScalaJSObject(instance), {
-                    Return(Apply(instance DOT classData DOT "getClassOf", Nil))
+                    Return(scalaObjectResult(instance))
                   }, {
-                    Return(Null())
+                    Return(jsObjectResult)
                   })
                 })
               })
@@ -534,6 +538,31 @@ private[emitter] object CoreJSLib {
           })
         })
       }
+
+      /* We use isClassClassInstantiated as an over-approximation of whether
+       * the program contains any `GetClass` node. If `j.l.Class` is not
+       * instantiated, then we know that there is no `GetClass` node, and it is
+       * safe to omit the definition of `objectGetClass`. However, it is
+       * possible that we generate `objectGetClass` even if it is not
+       * necessary, in the case that `j.l.Class` is otherwise instantiated
+       * (i.e., through a `ClassOf` node).
+       */
+      if (globalKnowledge.isClassClassInstantiated) {
+        defineObjectGetClassBasedFun("objectGetClass",
+            className => genClassOf(className),
+            instance => Apply(instance DOT classData DOT "getClassOf", Nil),
+            Null()
+        )
+      }
+
+      defineObjectGetClassBasedFun("objectClassName",
+          { className =>
+            StringLiteral(RuntimeClassNameMapperImpl.map(
+                semantics.runtimeClassNameMapper, className.nameString))
+          },
+          instance => genIdentBracketSelect(instance DOT classData, "name"),
+          Apply(Null() DOT genName(getNameMethodName), Nil)
+      )
     }
 
     private def defineDispatchFunctions(): Unit = {
@@ -1298,17 +1327,6 @@ private[emitter] object CoreJSLib {
         })
       }
 
-      val getClassOf = {
-        MethodDef(static = false, Ident("getClassOf"), Nil, {
-          Block(
-              If(!(This() DOT "_classOf"),
-                  This() DOT "_classOf" := genScalaClassNew(ClassClass, ObjectArgConstructorName, This()),
-                  Skip()),
-              Return(This() DOT "_classOf")
-          )
-        })
-      }
-
       val getArrayOf = {
         MethodDef(static = false, Ident("getArrayOf"), Nil, {
           Block(
@@ -1321,7 +1339,18 @@ private[emitter] object CoreJSLib {
         })
       }
 
-      val isAssignableFrom = {
+      def getClassOf = {
+        MethodDef(static = false, Ident("getClassOf"), Nil, {
+          Block(
+              If(!(This() DOT "_classOf"),
+                  This() DOT "_classOf" := genScalaClassNew(ClassClass, ObjectArgConstructorName, This()),
+                  Skip()),
+              Return(This() DOT "_classOf")
+          )
+        })
+      }
+
+      def isAssignableFrom = {
         val that = varRef("that")
         val thatFakeInstance = varRef("thatFakeInstance")
         MethodDef(static = false, StringLiteral("isAssignableFrom"),
@@ -1369,7 +1398,7 @@ private[emitter] object CoreJSLib {
         })
       }
 
-      val checkCast = {
+      def checkCast = {
         val obj = varRef("obj")
         MethodDef(static = false, StringLiteral("checkCast"), paramList(obj),
           if (asInstanceOfs != CheckedBehavior.Unchecked) {
@@ -1383,7 +1412,7 @@ private[emitter] object CoreJSLib {
         )
       }
 
-      val getSuperclass = {
+      def getSuperclass = {
         MethodDef(static = false, StringLiteral("getSuperclass"), Nil, {
           Return(If(This() DOT "parentData",
               Apply(This() DOT "parentData" DOT "getClassOf", Nil),
@@ -1391,7 +1420,7 @@ private[emitter] object CoreJSLib {
         })
       }
 
-      val getComponentType = {
+      def getComponentType = {
         MethodDef(static = false, StringLiteral("getComponentType"), Nil, {
           Return(If(This() DOT "componentData",
               Apply(This() DOT "componentData" DOT "getClassOf", Nil),
@@ -1399,7 +1428,7 @@ private[emitter] object CoreJSLib {
         })
       }
 
-      val newArrayOfThisClass = {
+      def newArrayOfThisClass = {
         val lengths = varRef("lengths")
         val arrayClassData = varRef("arrayClassData")
         val i = varRef("i")
@@ -1415,19 +1444,28 @@ private[emitter] object CoreJSLib {
         })
       }
 
-      buf += genClassDef(codegenVarIdent("TypeData"), None, List(
+      val members = List(
           ctor,
           initPrim,
           initClass,
           initArray,
-          getClassOf,
-          getArrayOf,
-          isAssignableFrom,
-          checkCast,
-          getSuperclass,
-          getComponentType,
-          newArrayOfThisClass
-      ))
+          getArrayOf
+      ) ::: (
+          if (globalKnowledge.isClassClassInstantiated) {
+            List(
+                getClassOf,
+                isAssignableFrom,
+                checkCast,
+                getSuperclass,
+                getComponentType,
+                newArrayOfThisClass
+            )
+          } else {
+            Nil
+          }
+      )
+
+      buf += genClassDef(codegenVarIdent("TypeData"), None, members)
     }
 
     private def defineIsArrayOfPrimitiveFunctions(): Unit = {
@@ -1445,14 +1483,14 @@ private[emitter] object CoreJSLib {
     private def defineAsArrayOfPrimitiveFunctions(): Unit = {
       if (asInstanceOfs != CheckedBehavior.Unchecked) {
         for (primRef <- orderedPrimRefs) {
-          val charCodeStr = charCodeOfPrimRef(primRef)
           val obj = varRef("obj")
           val depth = varRef("depth")
           buf += FunctionDef(codegenVarIdent("asArrayOf", primRef), paramList(obj, depth), {
             If(Apply(codegenVar("isArrayOf", primRef), obj :: depth :: Nil) || (obj === Null()), {
               Return(obj)
             }, {
-              genCallHelper("throwArrayCastException", obj, str(charCodeStr), depth)
+              genCallHelper("throwArrayCastException", obj,
+                  str(primRef.charCode.toString()), depth)
             })
           })
         }
@@ -1461,22 +1499,22 @@ private[emitter] object CoreJSLib {
 
     private def definePrimitiveTypeDatas(): Unit = {
       for {
-        (primRef, zero, displayName) <- List(
-            (VoidRef, Undefined(), "void"),
-            (BooleanRef, bool(false), "boolean"),
-            (CharRef, int(0), "char"),
-            (ByteRef, int(0), "byte"),
-            (ShortRef, int(0), "short"),
-            (IntRef, int(0), "int"),
-            (LongRef, if (allowBigIntsForLongs) genLongZero() else str("longZero"), "long"),
-            (FloatRef, double(0), "float"),
-            (DoubleRef, double(0), "double")
+        (primRef, zero) <- List(
+            (VoidRef, Undefined()),
+            (BooleanRef, bool(false)),
+            (CharRef, int(0)),
+            (ByteRef, int(0)),
+            (ShortRef, int(0)),
+            (IntRef, int(0)),
+            (LongRef, if (allowBigIntsForLongs) genLongZero() else str("longZero")),
+            (FloatRef, double(0)),
+            (DoubleRef, double(0))
         )
       } {
-        val charCodeStr = charCodeOfPrimRef(primRef)
         buf += const(codegenVar("d", primRef), {
           Apply(New(codegenVar("TypeData"), Nil) DOT "initPrim",
-              List(zero, str(charCodeStr), str(displayName), codegenVar("isArrayOf", primRef)))
+              List(zero, str(primRef.charCode.toString()),
+                  str(primRef.displayName), codegenVar("isArrayOf", primRef)))
         })
       }
     }
@@ -1495,32 +1533,6 @@ private[emitter] object CoreJSLib {
 
     private def genIsScalaJSObjectOrNull(obj: VarRef): Tree =
       genIsScalaJSObject(obj) || (obj === Null())
-
-    /** This mapping is by-spec of run-time behavior.
-     *
-     *  It can be observed in `classOf[Array[Prim]].getName()`, as well as in
-     *  the error messages of `x.asInstanceOf[Array[Prim]]`.
-     *
-     *  Even if we change the encoding of "codegenVars" for PrimRefs (which is an
-     *  implementation detail of the emitter), the mapping in
-     *  `charCodeOfPrimRef` must not change.
-     */
-    private def charCodeOfPrimRef(primRef: PrimRef): String = primRef.tpe match {
-      case NoType      => "V"
-      case BooleanType => "Z"
-      case CharType    => "C"
-      case ByteType    => "B"
-      case ShortType   => "S"
-      case IntType     => "I"
-      case LongType    => "J"
-      case FloatType   => "F"
-      case DoubleType  => "D"
-
-      case NullType | NothingType =>
-        throw new AssertionError(
-            s"Trying to call charCodeOfPrimRef() for $primRef which has no " +
-            "specified char code")
-    }
 
     private def envFunctionDef(name: String, args: List[ParamDef],
         body: Tree): FunctionDef = {

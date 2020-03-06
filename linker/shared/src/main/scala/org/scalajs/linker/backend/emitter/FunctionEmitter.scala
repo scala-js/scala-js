@@ -2427,7 +2427,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                   js.Ident("zero"))
             case _ =>
               genCallHelper(helper,
-                  args.map(transformExpr(_, preserveChar = true)): _*)
+                  args.map(transformExpr(_, preserveChar = false)): _*)
           }
 
         // JavaScript expressions
