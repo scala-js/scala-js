@@ -17,13 +17,15 @@ import java.{util => ju, lang => jl}
 import org.junit.Test
 import org.junit.Assert._
 
+import org.scalajs.testsuite.javalib.lang.IterableFactory
+import org.scalajs.testsuite.javalib.lang.IterableTest
 import org.scalajs.testsuite.utils.AssertThrows._
 
 import scala.reflect.ClassTag
 
 import Utils._
 
-trait CollectionTest {
+trait CollectionTest extends IterableTest {
 
   def factory: CollectionFactory
 
@@ -287,14 +289,13 @@ trait CollectionTest {
 
 }
 
-trait CollectionFactory {
-  def implementationName: String
+trait CollectionFactory extends IterableFactory {
   def empty[E: ClassTag]: ju.Collection[E]
   def allowsMutationThroughIterator: Boolean = true
   def allowsNullElementQuery: Boolean = true
   def allowsNullElement: Boolean = true
 
-  def fromElements[E: ClassTag](elems: E*): ju.Collection[E] = {
+  override def fromElements[E: ClassTag](elems: E*): ju.Collection[E] = {
     val coll = empty[E]
     coll.addAll(TrivialImmutableCollection(elems: _*))
     coll
