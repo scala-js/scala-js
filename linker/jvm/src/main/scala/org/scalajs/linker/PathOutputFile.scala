@@ -33,11 +33,17 @@ object PathOutputFile {
   private final class PathOutputFileImpl(path: Path) extends OutputFileImpl {
     def newChannel()(implicit ec: ExecutionContext): Future[Channel] =
       Future(blocking(new PathChannel(path)))
+
+    def sibling(name: String): OutputFileImpl =
+      new PathOutputFileImpl(path.resolveSibling(name))
   }
 
   private final class AtomicPathOutputFileImpl(path: Path) extends OutputFileImpl {
     def newChannel()(implicit ec: ExecutionContext): Future[Channel] =
       Future(blocking(newAtomicChannel(path)))
+
+    def sibling(name: String): OutputFileImpl =
+      new AtomicPathOutputFileImpl(path.resolveSibling(name))
   }
 
   private def newAtomicChannel(path: Path): Channel = {

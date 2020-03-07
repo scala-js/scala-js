@@ -55,44 +55,58 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
     }
 
     logger.timeFuture("BasicBackend: Write result") {
-      output.sourceMap.filter(_ => config.sourceMap).fold {
-        val code = withWriter { writer =>
-          val printer = new Printers.JSTreePrinter(writer)
-          writer.write(emitterResult.header)
-          writer.write("'use strict';\n")
-          emitterResult.body.foreach(printer.printTopLevelTree _)
-          writer.write(emitterResult.footer)
-        }
+      Future.traverse(emitterResult) { case (i, result) =>
+        writeResult(output, i.toString, result)
+      }.map(_ => ())
+    }
+  }
 
-        write(output.jsFile, code)
-      } { sourceMapFile =>
-        val sourceMapWriter = new SourceMapWriter(output.jsFileURI,
-            config.relativizeSourceMapBase)
+  private def writeResult(output: LinkerOutput, name: String,
+      emitterResult: Emitter.Result)(
+      implicit ec: ExecutionContext): Future[Unit] = {
+    output.sourceMap.filter(_ => config.sourceMap).fold {
+      val code = withWriter { writer =>
+        val printer = new Printers.JSTreePrinter(writer)
+        writer.write(emitterResult.header)
+        writer.write("'use strict';\n")
+        emitterResult.body.foreach(printer.printTopLevelTree _)
+        writer.write(emitterResult.footer)
+      }
 
-        val code = withWriter { writer =>
-          val printer = new Printers.JSTreePrinterWithSourceMap(writer, sourceMapWriter)
+      OutputFileImpl.fromOutputFile(output.jsFile)
+        .sibling(config.jsFilePattern.format(name))
+        .writeFull(code)
+    } { sourceMapFile =>
+      val sourceMapWriter = new SourceMapWriter(output.jsFileURI,
+        config.relativizeSourceMapBase)
 
-          writer.write(emitterResult.header)
-          for (_ <- 0 until emitterResult.header.count(_ == '\n'))
-            sourceMapWriter.nextLine()
+      val code = withWriter { writer =>
+        val printer = new Printers.JSTreePrinterWithSourceMap(writer, sourceMapWriter)
 
-          writer.write("'use strict';\n")
+        writer.write(emitterResult.header)
+        for (_ <- 0 until emitterResult.header.count(_ == '\n'))
           sourceMapWriter.nextLine()
 
-          emitterResult.body.foreach(printer.printTopLevelTree _)
+        writer.write("'use strict';\n")
+        sourceMapWriter.nextLine()
 
-          writer.write(emitterResult.footer)
+        emitterResult.body.foreach(printer.printTopLevelTree _)
 
-          output.sourceMapURI.foreach { uri =>
-            writer.write("//# sourceMappingURL=" + uri.toASCIIString() + "\n")
-          }
+        writer.write(emitterResult.footer)
+
+        output.sourceMapURI.foreach { uri =>
+          writer.write("//# sourceMappingURL=" + uri.toASCIIString() + "\n")
         }
-
-        val sourceMap = sourceMapWriter.result()
-
-        write(output.jsFile, code)
-          .flatMap(_ => write(sourceMapFile, sourceMap))
       }
+
+      val sourceMap = sourceMapWriter.result()
+
+      OutputFileImpl.fromOutputFile(output.jsFile)
+        .sibling(config.jsFilePattern.format(name))
+        .writeFull(code)
+        .flatMap(_ => OutputFileImpl.fromOutputFile(sourceMapFile)
+            .sibling(config.sourceMapPattern.format(name))
+            .writeFull(sourceMap))
     }
   }
 
@@ -102,10 +116,5 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
     body(out)
     out.close()
     ByteBuffer.wrap(byteStream.toByteArray())
-  }
-
-  private def write(file: LinkerOutput.File, buf: ByteBuffer)(
-      implicit ec: ExecutionContext): Future[Unit] = {
-    OutputFileImpl.fromOutputFile(file).writeFull(buf)
   }
 }

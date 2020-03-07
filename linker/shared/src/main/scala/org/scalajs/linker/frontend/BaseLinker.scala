@@ -44,7 +44,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
   def link(irInput: Seq[IRFile],
       moduleInitializers: Seq[ModuleInitializer], logger: Logger,
       symbolRequirements: SymbolRequirement, checkIR: Boolean)(
-      implicit ec: ExecutionContext): Future[LinkingUnit] = {
+      implicit ec: ExecutionContext): Future[(LinkingUnit, Analysis)] = {
 
     val allSymbolRequirements = {
       symbolRequirements ++
@@ -70,7 +70,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
         }
       }
 
-      linkResult
+      (linkResult, analysis)
     }
 
     result.andThen { case _ => inputProvider.cleanAfterRun() }
@@ -128,7 +128,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
       linkedClassDefs <- Future.traverse(analysis.classInfos.values)(assembleClass)
     } yield {
       new LinkingUnit(config.coreSpec, linkedClassDefs.toList,
-          moduleInitializers.toList)
+          moduleInitializers.toList, Map.empty)
     }
   }
 
@@ -213,6 +213,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
         hasInstances = analyzerInfo.isAnySubclassInstantiated,
         hasInstanceTests = analyzerInfo.areInstanceTestsUsed,
         hasRuntimeTypeInfo = analyzerInfo.isDataAccessed,
+        outputModule = None,
         version)
   }
 }

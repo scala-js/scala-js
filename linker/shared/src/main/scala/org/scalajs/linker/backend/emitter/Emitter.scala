@@ -102,24 +102,8 @@ final class Emitter private (config: CommonPhaseConfig,
         internalOptions.withTrackAllGlobalRefs(trackAllGlobalRefs))
   }
 
-  def emit(unit: LinkingUnit, logger: Logger): Result = {
-    val topLevelVars = topLevelVarDeclarations(unit)
-
-    val header = {
-      val maybeTopLevelVarDecls = if (topLevelVars.nonEmpty) {
-        val kw = if (esFeatures.useECMAScript2015) "let " else "var "
-        topLevelVars.mkString(kw, ",", ";\n")
-      } else {
-        ""
-      }
-      maybeTopLevelVarDecls + ifIIFE("(function(){\n")
-    }
-
-    val footer = ifIIFE("}).call(this);\n")
-
-    val WithInfo(body, globalRefs, _) = emitInternal(unit, logger)
-
-    new Result(header, body, footer, topLevelVars, globalRefs)
+  def emit(unit: LinkingUnit, logger: Logger): Map[Int, Result] = {
+    emitInternal(unit, logger)
   }
 
   private def topLevelVarDeclarations(unit: LinkingUnit): List[String] = {
@@ -139,33 +123,62 @@ final class Emitter private (config: CommonPhaseConfig,
     }
   }
 
-  private def emitInternal(unit: LinkingUnit,
-      logger: Logger): WithInfo[List[js.Tree]] = {
+  private def emitInternal(unit: LinkingUnit, logger: Logger): Map[Int, Result] = {
     startRun(unit)
     try {
-      val orderedClasses = unit.classDefs.sortWith(compareClasses)
-      val WithInfo(generatedClasses, trackedGlobalRefs, _) = {
+      val orderedClasses = unit.classDefs
+        .filter(_.outputModule.isDefined)
+        .groupBy(_.outputModule.get)
+        .mapValues(_.sortWith(compareClasses))
+      val generatedClasses = {
         logger.time("Emitter: Generate classes") {
           genAllClasses(orderedClasses, logger, secondAttempt = false)
         }
       }
 
-      val trees = mutable.ListBuffer.empty[js.Tree]
-
       logger.time("Emitter: Write trees") {
         val WithInfo(coreJSLibTree, coreJSLibTrackedGlobalRefs, _) =
           state.coreJSLibCache.tree
 
-        trees += coreJSLibTree
+        for {
+          (module, deps) <- unit.moduleDeps
+        } yield {
+          val trees = mutable.ListBuffer.empty[js.Tree]
+          //var refs = Set.empty[String]
+  
+          if (deps.isEmpty) {
+            // This is the root module.
+            trees += coreJSLibTree
+            //refs += coreJSLibTrackedGlobalRefs
+          }
 
-        emitModuleImports(orderedClasses, trees, logger)
+          implicit val pos = Position.NoPosition
 
-        emitGeneratedClasses(trees, generatedClasses)
+          for (d <- deps) {
+            trees += js.ImportNamespace(
+                js.Ident("$i_" + d.toString),
+                // TODO use configured pattern.
+                js.StringLiteral("%s.js".format(d.toString)))
+          }
 
-        //for (moduleInitializer <- unit.moduleInitializers)
-        //  trees += classEmitter.genModuleInitializer(moduleInitializer)(uncachedKnowledgeAccessor)
+          // For now, we just emit all module imports everywhere.
+          emitModuleImports(orderedClasses.valuesIterator.flatten, trees, logger)
 
-        WithInfo(trees.result(), trackedGlobalRefs ++ coreJSLibTrackedGlobalRefs, ???)
+          // TODO remove this
+          for (c <- orderedClasses(module)) {
+            trees += js.StringLiteral(c.name.name.toString)
+          }
+
+          val classes = generatedClasses(module)
+          emitGeneratedClasses(trees, classes)
+          //classes.foreach(refs += _)
+  
+          // TODO fix
+          //for (moduleInitializer <- unit.moduleInitializers)
+          //  trees += classEmitter.genModuleInitializer(moduleInitializer)
+  
+          module -> new Result("", trees.result(), "", Nil, Set.empty)
+        }
       }
     } finally {
       endRun(logger)
@@ -205,7 +218,7 @@ final class Emitter private (config: CommonPhaseConfig,
       builder ++= generatedClass.topLevelExports
   }
 
-  private def emitModuleImports(orderedClasses: List[LinkedClass],
+  private def emitModuleImports(orderedClasses: Iterator[LinkedClass],
       builder: mutable.ListBuffer[js.Tree], logger: Logger): Unit = {
 
     def foreachImportedModule(f: (String, Position) => Unit): Unit = {
@@ -329,12 +342,19 @@ final class Emitter private (config: CommonPhaseConfig,
    *  succeed, ...
    */
   @tailrec
-  private def genAllClasses(orderedClasses: List[LinkedClass], logger: Logger,
-      secondAttempt: Boolean): WithInfo[List[GeneratedClass]] = {
+  private def genAllClasses(orderedClasses: Map[Int, List[LinkedClass]], logger: Logger,
+      secondAttempt: Boolean): Map[Int, List[GeneratedClass]] = {
 
-    val objectClass = orderedClasses.find(_.name.name == ObjectClass).get
-    val generatedClasses = orderedClasses.map(genClass(_, objectClass))
-    val trackedGlobalRefs = generatedClasses.foldLeft(Set.empty[String]) {
+    val objectClass = orderedClasses.valuesIterator.flatten
+      .find(_.name.name == ObjectClass).get
+
+    val generatedClasses = for {
+      (module, classes) <- orderedClasses
+    } yield {
+      module -> classes.map(genClass(_, objectClass))
+    }
+
+    val trackedGlobalRefs = generatedClasses.valuesIterator.flatten.foldLeft(Set.empty[String]) {
       (prev, generatedClass) =>
         unionPreserveEmpty(prev, generatedClass.trackedGlobalRefs)
     }
@@ -344,7 +364,7 @@ final class Emitter private (config: CommonPhaseConfig,
       else GlobalRefUtils.keepOnlyDangerousGlobalRefs(trackedGlobalRefs)
 
     if (mentionedDangerousGlobalRefs == state.lastMentionedDangerousGlobalRefs) {
-      WithInfo(generatedClasses, trackedGlobalRefs, ???)
+      generatedClasses
     } else {
       assert(!secondAttempt,
           "Uh oh! The second attempt gave a different set of dangerous " +

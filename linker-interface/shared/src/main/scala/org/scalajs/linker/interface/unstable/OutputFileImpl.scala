@@ -21,6 +21,8 @@ import org.scalajs.linker.interface.LinkerOutput
 abstract class OutputFileImpl extends LinkerOutput.File {
   final private[interface] def impl: OutputFileImpl = this
 
+  def sibling(name: String): OutputFileImpl
+
   def newChannel()(implicit ec: ExecutionContext): Future[OutputFileImpl.Channel]
 
   def writeFull(buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = {

@@ -18,6 +18,7 @@ import org.scalajs.logging.Logger
 
 import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
+import org.scalajs.linker.analyzer._
 import org.scalajs.linker.frontend.optimizer.{GenIncOptimizer, IncOptimizer}
 
 /** The frontend of the Scala.js linker.
@@ -61,14 +62,25 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
           preOptimizerRequirements, config.checkIR)
     }
 
-    optOptimizer.fold(linkResult) { optimizer =>
-      linkResult.flatMap(optimize(_, symbolRequirements, optimizer, logger))
+    val optimizedResult = optOptimizer.fold(linkResult) { optimizer =>
+      for {
+        (unit, _) <- linkResult
+        optimized <- optimize(unit, symbolRequirements, optimizer, logger)
+      } yield optimized
+    }
+
+    for {
+      (unit, analysis) <- optimizedResult
+    } yield {
+      logger.time("Modularizer") {
+        modularize(unit, analysis)
+      }
     }
   }
 
   private def optimize(unit: LinkingUnit, symbolRequirements: SymbolRequirement,
       optimizer: GenIncOptimizer, logger: Logger)(
-      implicit ec: ExecutionContext): Future[LinkingUnit] = {
+      implicit ec: ExecutionContext): Future[(LinkingUnit, Analysis)] = {
     val optimized = logger.time("Optimizer") {
       optimizer.update(unit, logger)
     }
@@ -76,6 +88,20 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
     logger.timeFuture("Refiner") {
       refiner.refine(optimized, symbolRequirements, logger)
     }
+  }
+
+  private def modularize(unit: LinkingUnit, analysis: Analysis): LinkingUnit = {
+    val moduleAnalysis = ModuleAnalyzer.analyze(analysis)
+
+    val newClassDefs = for {
+      classDef <- unit.classDefs
+    } yield {
+      val module = moduleAnalysis.moduleForClass(classDef.name.name)
+      classDef.modularized(module)
+    }
+
+    new LinkingUnit(unit.coreSpec, newClassDefs, unit.moduleInitializers,
+        moduleAnalysis.moduleDeps.toMap)
   }
 }
 

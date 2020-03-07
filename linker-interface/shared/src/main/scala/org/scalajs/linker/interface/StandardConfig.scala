@@ -24,6 +24,10 @@ final class StandardConfig private (
     val moduleKind: ModuleKind,
     /** ECMAScript features to use. */
     val esFeatures: ESFeatures,
+    /** JS filename pattern. */
+    val jsFilePattern: String,
+    /** Source map pattern. */
+    val sourceMapPattern: String,
     /** If true, performs expensive checks of the IR for the used parts. */
     val checkIR: Boolean,
     /** Whether to use the Scala.js optimizer. */
@@ -60,6 +64,8 @@ final class StandardConfig private (
         semantics = Semantics.Defaults,
         moduleKind = ModuleKind.NoModule,
         esFeatures = ESFeatures.Defaults,
+        jsFilePattern = "%s.js",
+        sourceMapPattern = "%s.js.map",
         checkIR = true,
         optimizer = true,
         parallel = true,
@@ -115,6 +121,7 @@ final class StandardConfig private (
        |  semantics                  = $semantics,
        |  moduleKind                 = $moduleKind,
        |  esFeatures                 = $esFeatures,
+       |  // TODO add patterns
        |  checkIR                    = $checkIR,
        |  optimizer                  = $optimizer,
        |  parallel                   = $parallel,
@@ -143,6 +150,8 @@ final class StandardConfig private (
         semantics,
         moduleKind,
         esFeatures,
+        jsFilePattern,
+        sourceMapPattern,
         checkIR,
         optimizer,
         parallel,

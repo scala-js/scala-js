@@ -1254,6 +1254,9 @@ object Trees {
       new MemberNamespace(ordinal)
     }
 
+    def all: Iterator[MemberNamespace] =
+      (0 until Count).iterator.map(fromOrdinalUnchecked(_))
+
     private[Trees] def fromOrdinalUnchecked(ordinal: Int): MemberNamespace =
       new MemberNamespace(ordinal)
 

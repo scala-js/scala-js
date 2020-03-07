@@ -53,6 +53,7 @@ final class LinkedClass(
     val hasInstances: Boolean,
     val hasInstanceTests: Boolean,
     val hasRuntimeTypeInfo: Boolean,
+    val outputModule: Option[Int],
     val version: Option[String]) {
 
   def className: ClassName = name.name
@@ -88,6 +89,9 @@ final class LinkedClass(
     copy(methods = methods)
   }
 
+  private[linker] def modularized(module: Option[Int]): LinkedClass =
+    copy(outputModule = module)
+
   private def copy(
       name: ClassIdent = this.name,
       kind: ClassKind = this.kind,
@@ -106,6 +110,7 @@ final class LinkedClass(
       hasInstances: Boolean = this.hasInstances,
       hasInstanceTests: Boolean = this.hasInstanceTests,
       hasRuntimeTypeInfo: Boolean = this.hasRuntimeTypeInfo,
+      outputModule: Option[Int] = this.outputModule,
       version: Option[String] = this.version): LinkedClass = {
     new LinkedClass(
         name,
@@ -125,6 +130,7 @@ final class LinkedClass(
         hasInstances,
         hasInstanceTests,
         hasRuntimeTypeInfo,
+        outputModule,
         version)
   }
 }

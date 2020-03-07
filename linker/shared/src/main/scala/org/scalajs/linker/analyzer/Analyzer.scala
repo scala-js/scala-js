@@ -109,14 +109,14 @@ private final class Analyzer(config: CommonPhaseConfig,
      * types are their instances.
      */
     for (hijacked <- HijackedClasses)
-      lookupClass(hijacked)(_.instantiated())
+      topLevelResolver.lookupClass(hijacked)(_.instantiated())
 
     // External symbol requirements, including module initializers
     reachSymbolRequirement(symbolRequirements)
 
     // Entry points (top-level exports and static initializers)
     for (className <- inputProvider.classesWithEntryPoints())
-      lookupClass(className)(_.reachEntryPoints())
+      topLevelResolver.lookupClass(className)(_.reachEntryPoints())
   }
 
   private def postLoad(): Unit = {
@@ -139,7 +139,7 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     def withClass(className: ClassName)(onSuccess: ClassInfo => Unit)(
         implicit from: From): Unit = {
-      lookupClass(className, ignoreMissing = optional)(onSuccess)
+      topLevelResolver.lookupClass(className, ignoreMissing = optional)(onSuccess)
     }
 
     def withMethod(className: ClassName, methodName: MethodName)(
@@ -249,18 +249,20 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
-  private def lookupClass(className: ClassName,
-      ignoreMissing: Boolean = false)(
-      onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
-    lookupClassForLinking(className, Set.empty) {
-      case info: ClassInfo =>
-        if (!info.nonExistent || !ignoreMissing) {
-          info.link()
-          onSuccess(info)
-        }
+  private object topLevelResolver extends ClassResolver {
+    def lookupClass(className: ClassName,
+        ignoreMissing: Boolean = false)(
+        onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
+      lookupClassForLinking(className, Set.empty) {
+        case info: ClassInfo =>
+          if (!info.nonExistent || !ignoreMissing) {
+            info.link()
+            onSuccess(info)
+          }
 
-      case CycleInfo(cycle, _) =>
-        _errors += CycleInInheritanceChain(cycle, fromAnalyzer)
+        case CycleInfo(cycle, _) =>
+          _errors += CycleInInheritanceChain(cycle, fromAnalyzer)
+      }
     }
   }
 
@@ -403,6 +405,8 @@ private final class Analyzer(config: CommonPhaseConfig,
       }
     }
 
+    val classDependencies: mutable.Set[ClassName] = mutable.Set.empty
+
     _classInfos(className) = this
 
     def link()(implicit from: From): Unit = {
@@ -410,6 +414,15 @@ private final class Analyzer(config: CommonPhaseConfig,
         _errors += MissingClass(this, from)
 
       linkedFrom ::= from
+    }
+
+    object classDepResolver extends ClassResolver {
+      def lookupClass(className: ClassName,
+          ignoreMissing: Boolean = false)(
+          onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
+        classDependencies += className
+        topLevelResolver.lookupClass(className, ignoreMissing)(onSuccess)
+      }
     }
 
     private[this] def validateSuperClass(superClass: Option[ClassInfo]): Option[ClassInfo] = {
@@ -786,8 +799,8 @@ private final class Analyzer(config: CommonPhaseConfig,
         } else {
           val promise = Promise[Boolean]()
 
-          lookupClass(leftCls) { leftInfo =>
-            lookupClass(rightCls) { rightInfo =>
+          topLevelResolver.lookupClass(leftCls) { leftInfo =>
+            topLevelResolver.lookupClass(rightCls) { rightInfo =>
               promise.success(leftInfo.ancestors.contains(rightInfo))
             }
           }
@@ -865,7 +878,7 @@ private final class Analyzer(config: CommonPhaseConfig,
 
       // Top-level exports
       for (reachabilityInfo <- data.topLevelExportedMembers)
-        followReachabilityInfo(reachabilityInfo)
+        followReachabilityInfo(reachabilityInfo, classDepResolver)
     }
 
     def accessModule()(implicit from: From): Unit = {
@@ -901,7 +914,7 @@ private final class Analyzer(config: CommonPhaseConfig,
          * SelectStatic expression has the same type as the field.
          */
         for (className <- data.referencedFieldClasses)
-          lookupClass(className)(_ => ())
+          classDepResolver.lookupClass(className)(_ => ())
 
         if (isScalaClass) {
           accessData()
@@ -934,7 +947,7 @@ private final class Analyzer(config: CommonPhaseConfig,
           }
 
           for (reachabilityInfo <- data.exportedMembers)
-            followReachabilityInfo(reachabilityInfo)(FromExports)
+            followReachabilityInfo(reachabilityInfo, classDepResolver)
         }
       }
     }
@@ -944,10 +957,12 @@ private final class Analyzer(config: CommonPhaseConfig,
       if (!isAnySubclassInstantiated && (isScalaClass || isJSType)) {
         isAnySubclassInstantiated = true
 
+        superClass.foreach(classDependencies += _.className)
+
         // Reach exported members
         if (!isJSClass) {
           for (reachabilityInfo <- data.exportedMembers)
-            followReachabilityInfo(reachabilityInfo)(FromExports)
+            followReachabilityInfo(reachabilityInfo, classDepResolver)(FromExports)
         }
       }
     }
@@ -958,8 +973,10 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
 
     def accessData()(implicit from: From): Unit = {
-      if (!isDataAccessed)
+      if (!isDataAccessed) {
         isDataAccessed = true
+        interfaces.foreach(classDependencies += _.className)
+      }
     }
 
     def callMethod(methodName: MethodName)(implicit from: From): Unit = {
@@ -1095,11 +1112,12 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
 
     private[this] def doReach(): Unit =
-      followReachabilityInfo(data.reachabilityInfo)(FromMethod(this))
+      followReachabilityInfo(data.reachabilityInfo, owner.classDepResolver)(FromMethod(this))
   }
 
-  private def followReachabilityInfo(data: ReachabilityInfo)(
+  private def followReachabilityInfo(data: ReachabilityInfo, resolver: ClassResolver)(
       implicit from: From): Unit = {
+    import resolver.lookupClass
 
     for (moduleName <- data.accessedModules)
       lookupClass(moduleName)(_.accessModule())
@@ -1198,6 +1216,10 @@ private final class Analyzer(config: CommonPhaseConfig,
         reachabilityInfo)
   }
 
+  private trait ClassResolver {
+    def lookupClass(className: ClassName, ignoreMissing: Boolean = false)(
+        onSuccess: ClassInfo => Unit)(implicit from: From): Unit
+  }
 }
 
 object Analyzer {

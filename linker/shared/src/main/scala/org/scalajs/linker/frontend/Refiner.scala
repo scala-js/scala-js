@@ -34,7 +34,7 @@ final class Refiner(config: CommonPhaseConfig) {
   private val inputProvider = new InputProvider
 
   def refine(unit: LinkingUnit, symbolRequirements: SymbolRequirement,
-      logger: Logger)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
+      logger: Logger)(implicit ec: ExecutionContext): Future[(LinkingUnit, Analysis)] = {
 
     val linkedClassesByName =
       Map(unit.classDefs.map(c => c.className -> c): _*)
@@ -59,12 +59,13 @@ final class Refiner(config: CommonPhaseConfig) {
           refineClassDef(linkedClassesByName(info.className), info)
         }
 
-        new LinkingUnit(unit.coreSpec, linkedClassDefs.toList, unit.moduleInitializers)
+        new LinkingUnit(unit.coreSpec, linkedClassDefs.toList, unit.moduleInitializers,
+            unit.moduleDeps)
       }
 
       inputProvider.cleanAfterRun()
 
-      result
+      (result, analysis)
     }
   }
 

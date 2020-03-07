@@ -76,7 +76,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     verifyUnit(unit)
 
     val emitterResult = logger.time("Emitter") {
-      emitter.emit(unit, logger)
+      ??? : Emitter.Result //emitter.emit(unit, logger)
     }
 
     val module = logger.time("Closure: Create trees)") {

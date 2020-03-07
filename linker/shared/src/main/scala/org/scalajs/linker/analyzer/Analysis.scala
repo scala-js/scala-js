@@ -67,6 +67,8 @@ object Analysis {
     def methodInfos(
         namespace: MemberNamespace): scala.collection.Map[MethodName, MethodInfo]
 
+    def classDependencies: scala.collection.Set[ClassName]
+
     def displayName: String = className.nameString
   }
 

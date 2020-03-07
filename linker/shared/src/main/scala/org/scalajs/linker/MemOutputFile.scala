@@ -41,6 +41,8 @@ object MemOutputFile {
       _content
     }
 
+    def sibling(name: String): Nothing = ???
+
     def newChannel()(implicit ec: ExecutionContext): Future[OutputFileImpl.Channel] =
       Future.successful(new Channel)
 
