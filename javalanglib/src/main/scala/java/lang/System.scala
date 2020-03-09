@@ -181,83 +181,9 @@ object System {
     })
   }
 
-  // identityHashCode ---------------------------------------------------------
-
-  private object IDHashCode {
-    private[this] var lastIDHashCode: Int = 0
-
-    private[this] val idHashCodeMap = {
-      if (linkingInfo.assumingES6 || js.typeOf(global.WeakMap) != "undefined")
-        js.Dynamic.newInstance(global.WeakMap)()
-      else
-        null
-    }
-
-    @inline
-    private def nextIDHashCode(): Int = {
-      val r = lastIDHashCode + 1
-      lastIDHashCode = r
-      r
-    }
-
-    def idHashCode(x: Object): scala.Int = {
-      (x: Any) match {
-        case null =>
-          0
-        case _:scala.Boolean | _:scala.Double | _:String | () =>
-          x.hashCode()
-        case _ =>
-          if (x.getClass == null) {
-            /* x is not a Scala.js object: we have delegate to x.hashCode().
-             * This is very important, as we really need to go through
-             * `$objectHashCode()` in `CoreJSLib` instead of using our own
-             * `idHashCodeMap`. That's because `$objectHashCode()` uses the
-             * intrinsic `$systemIdentityHashCode` for JS objects, regardless
-             * of whether the optimizer is enabled or not. If we use our own
-             * `idHashCodeMap`, we will get different hash codes when obtained
-             * through `System.identityHashCode(x)` than with `x.hashCode()`.
-             */
-            x.hashCode()
-          } else if (linkingInfo.assumingES6 || idHashCodeMap != null) {
-            // Use the global WeakMap of attributed id hash codes
-            val hash = idHashCodeMap.get(x.asInstanceOf[js.Any])
-            if (hash ne ().asInstanceOf[AnyRef]) {
-              hash.asInstanceOf[Int]
-            } else {
-              val newHash = nextIDHashCode()
-              idHashCodeMap.set(x.asInstanceOf[js.Any],
-                  newHash.asInstanceOf[js.Any])
-              newHash
-            }
-          } else {
-            val hash = x.asInstanceOf[js.Dynamic].selectDynamic("$idHashCode$0")
-            if (hash ne ().asInstanceOf[AnyRef]) {
-              /* Note that this can work even if x is sealed, if
-               * identityHashCode() was called for the first time before x was
-               * sealed.
-               */
-              hash.asInstanceOf[Int]
-            } else if (!js.Object.isSealed(x.asInstanceOf[js.Object])) {
-              /* If x is not sealed, we can (almost) safely create an
-               * additional field with a bizarre and relatively long name, even
-               * though it is technically undefined behavior.
-               */
-              val newHash = nextIDHashCode()
-              x.asInstanceOf[js.Dynamic].updateDynamic("$idHashCode$0")(
-                  newHash.asInstanceOf[js.Any])
-              newHash
-            } else {
-              // Otherwise, we unfortunately have to return a constant.
-              42
-            }
-          }
-      }
-    }
-  }
-
-  // Intrinsic
+  @inline
   def identityHashCode(x: Object): scala.Int =
-    IDHashCode.idHashCode(x)
+    scala.scalajs.runtime.identityHashCode(x)
 
   // System properties --------------------------------------------------------
 

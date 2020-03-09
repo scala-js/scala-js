@@ -568,6 +568,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           }
         }
 
+      case IdentityHashCode(expr) =>
+        IdentityHashCode(transformExpr(expr))
+
       // JavaScript expressions
 
       case JSNew(ctor, args) =>
@@ -1997,8 +2000,6 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case ArrayCopy =>
         assert(isStat, "System.arraycopy must be used in statement position")
         contTree(callHelper("systemArraycopy", newArgs)(NoType))
-      case IdentityHashCode =>
-        contTree(callHelper("systemIdentityHashCode", newArgs)(IntType))
 
       // scala.runtime.ScalaRunTime object
 
@@ -5091,10 +5092,9 @@ private[optimizer] object OptimizerCore {
   }
 
   private object Intrinsics {
-    final val ArrayCopy        = 1
-    final val IdentityHashCode = ArrayCopy + 1
+    final val ArrayCopy   = 1
 
-    final val ArrayApply  = IdentityHashCode + 1
+    final val ArrayApply  = ArrayCopy + 1
     final val ArrayUpdate = ArrayApply       + 1
     final val ArrayLength = ArrayUpdate      + 1
 
@@ -5152,8 +5152,7 @@ private[optimizer] object OptimizerCore {
     // scalastyle:off line.size.limit
     private val baseIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
         ClassName("java.lang.System$") -> List(
-            m("arraycopy", List(O, I, O, I, I), V) -> ArrayCopy,
-            m("identityHashCode", List(O), I) -> IdentityHashCode
+            m("arraycopy", List(O, I, O, I, I), V) -> ArrayCopy
         ),
         ClassName("scala.runtime.ScalaRunTime$") -> List(
             m("array_apply", List(O, I), O) -> ArrayApply,

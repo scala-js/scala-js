@@ -133,6 +133,9 @@ object Traversers {
       case GetClass(expr) =>
         traverse(expr)
 
+      case IdentityHashCode(expr) =>
+        traverse(expr)
+
       // JavaScript expressions
 
       case JSNew(ctor, args) =>

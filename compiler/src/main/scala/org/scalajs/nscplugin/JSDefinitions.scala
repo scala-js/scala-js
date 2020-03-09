@@ -118,6 +118,7 @@ trait JSDefinitions {
       lazy val Runtime_withContextualJSClassValue = getMemberMethod(RuntimePackageModule, newTermName("withContextualJSClassValue"))
       lazy val Runtime_privateFieldsSymbol        = getMemberMethod(RuntimePackageModule, newTermName("privateFieldsSymbol"))
       lazy val Runtime_linkingInfo                = getMemberMethod(RuntimePackageModule, newTermName("linkingInfo"))
+      lazy val Runtime_identityHashCode           = getMemberMethod(RuntimePackageModule, newTermName("identityHashCode"))
 
     lazy val Tuple2_apply = getMemberMethod(TupleClass(2).companionModule, nme.apply)
 

@@ -522,6 +522,11 @@ object Printers {
           print(expr)
           print(".getClass()")
 
+        case IdentityHashCode(expr) =>
+          print("<identityHashCode>(")
+          print(expr)
+          print(')')
+
         // JavaScript expressions
 
         case JSNew(ctor, args) =>

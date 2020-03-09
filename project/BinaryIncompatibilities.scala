@@ -5,12 +5,26 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 
 object BinaryIncompatibilities {
   val IR = Seq(
+      // private, not an issue.
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.ir.Serializers#Deserializer.readMemberDef"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.ir.Serializers#Deserializer.readMemberDefs"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.ir.Serializers#Deserializer.readTopLevelExportDef"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.ir.Serializers#Deserializer.readTopLevelExportDefs"),
   )
 
   val Logging = Seq(
   )
 
   val Linker = Seq(
+      // private, not an issue.
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.CoreJSLib#CoreJSLibBuilder.org$scalajs$linker$backend$emitter$CoreJSLib$CoreJSLibBuilder$$defineStandardDispatcher$default$3$1"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.frontend.optimizer.OptimizerCore#Intrinsics.IdentityHashCode"),
   )
 
   val LinkerInterface = Seq(

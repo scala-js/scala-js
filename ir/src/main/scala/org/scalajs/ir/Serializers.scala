@@ -396,6 +396,10 @@ object Serializers {
           writeTagAndPos(TagGetClass)
           writeTree(expr)
 
+        case IdentityHashCode(expr) =>
+          writeTagAndPos(TagIdentityHashCode)
+          writeTree(expr)
+
         case JSNew(ctor, args) =>
           writeTagAndPos(TagJSNew)
           writeTree(ctor); writeTreeOrJSSpreads(args)
@@ -922,7 +926,7 @@ object Serializers {
   private final class Deserializer(buf: ByteBuffer) {
     require(buf.order() == ByteOrder.BIG_ENDIAN)
 
-    private[this] var sourceVersion: String = _
+    private[this] var hacks: Hacks = _
     private[this] var files: Array[URI] = _
     private[this] var encodedNames: Array[UTF8String] = _
     private[this] var localNames: Array[LocalName] = _
@@ -936,12 +940,12 @@ object Serializers {
     private[this] var lastPosition: Position = Position.NoPosition
 
     def deserializeEntryPointsInfo(): EntryPointsInfo = {
-      sourceVersion = readHeader()
+      hacks = new Hacks(sourceVersion = readHeader())
       readEntryPointsInfo()
     }
 
     def deserialize(): ClassDef = {
-      sourceVersion = readHeader()
+      hacks = new Hacks(sourceVersion = readHeader())
       readEntryPointsInfo() // discarded
       files = Array.fill(readInt())(new URI(readUTF()))
       encodedNames = Array.fill(readInt()) {
@@ -1059,16 +1063,17 @@ object Serializers {
           ApplyStatic(readApplyFlags(), readClassName(), readMethodIdent(),
               readTrees())(readType())
 
-        case TagUnaryOp      => UnaryOp(readByte(), readTree())
-        case TagBinaryOp     => BinaryOp(readByte(), readTree(), readTree())
-        case TagNewArray     => NewArray(readArrayTypeRef(), readTrees())
-        case TagArrayValue   => ArrayValue(readArrayTypeRef(), readTrees())
-        case TagArrayLength  => ArrayLength(readTree())
-        case TagArraySelect  => ArraySelect(readTree(), readTree())(readType())
-        case TagRecordValue  => RecordValue(readType().asInstanceOf[RecordType], readTrees())
-        case TagIsInstanceOf => IsInstanceOf(readTree(), readType())
-        case TagAsInstanceOf => AsInstanceOf(readTree(), readType())
-        case TagGetClass     => GetClass(readTree())
+        case TagUnaryOp          => UnaryOp(readByte(), readTree())
+        case TagBinaryOp         => BinaryOp(readByte(), readTree(), readTree())
+        case TagNewArray         => NewArray(readArrayTypeRef(), readTrees())
+        case TagArrayValue       => ArrayValue(readArrayTypeRef(), readTrees())
+        case TagArrayLength      => ArrayLength(readTree())
+        case TagArraySelect      => ArraySelect(readTree(), readTree())(readType())
+        case TagRecordValue      => RecordValue(readType().asInstanceOf[RecordType], readTrees())
+        case TagIsInstanceOf     => IsInstanceOf(readTree(), readType())
+        case TagAsInstanceOf     => AsInstanceOf(readTree(), readType())
+        case TagGetClass         => GetClass(readTree())
+        case TagIdentityHashCode => IdentityHashCode(readTree())
 
         case TagJSNew                => JSNew(readTree(), readTreeOrJSSpreads())
         case TagJSPrivateSelect      => JSPrivateSelect(readTree(), readClassName(), readFieldIdent())
@@ -1133,15 +1138,15 @@ object Serializers {
       val parents = readClassIdents()
       val jsSuperClass = readOptTree()
       val jsNativeLoadSpec = readJSNativeLoadSpec()
-      val memberDefs = readMemberDefs()
-      val topLevelExportDefs = readTopLevelExportDefs()
+      val memberDefs = readMemberDefs(name.name)
+      val topLevelExportDefs = readTopLevelExportDefs(name.name)
       val optimizerHints = OptimizerHints.fromBits(readInt())
       ClassDef(name, originalName, kind, jsClassCaptures, superClass, parents,
           jsSuperClass, jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
           optimizerHints)
     }
 
-    def readMemberDef(): MemberDef = {
+    def readMemberDef(owner: ClassName): MemberDef = {
       implicit val pos = readPosition()
       val tag = readByte()
 
@@ -1158,9 +1163,34 @@ object Serializers {
           // read and discard the length
           val len = readInt()
           assert(len >= 0)
-          MethodDef(MemberFlags.fromBits(readInt()), readMethodIdent(),
-              readOriginalName(), readParamDefs(), readType(), readOptTree())(
-              OptimizerHints.fromBits(readInt()), optHash)
+
+          val flags = MemberFlags.fromBits(readInt())
+          val name = readMethodIdent()
+          val originalName = readOriginalName()
+          val args = readParamDefs()
+          val resultType = readType()
+          val body = readOptTree()
+          val optimizerHints = OptimizerHints.fromBits(readInt())
+
+          if (hacks.use10 &&
+              flags.namespace == MemberNamespace.Public &&
+              owner == HackNames.SystemModule &&
+              name.name == HackNames.identityHashCodeName) {
+            /* #3976: 1.0 javalib relied on wrong linker dispatch.
+             * We simply replace it with a correct implementation.
+             */
+            assert(args.length == 1)
+
+            val body = Some(IdentityHashCode(args(0).ref))
+            val optimizerHints = OptimizerHints.empty.withInline(true)
+
+            MethodDef(flags, name, originalName, args, resultType, body)(
+                optimizerHints, optHash)
+          } else {
+            MethodDef(flags, name, originalName, args, resultType, body)(
+                optimizerHints, optHash)
+          }
+
 
         case TagJSMethodDef =>
           val optHash = readOptHash()
@@ -1185,23 +1215,23 @@ object Serializers {
       }
     }
 
-    def readMemberDefs(): List[MemberDef] =
-      List.fill(readInt())(readMemberDef())
+    def readMemberDefs(owner: ClassName): List[MemberDef] =
+      List.fill(readInt())(readMemberDef(owner))
 
-    def readTopLevelExportDef(): TopLevelExportDef = {
+    def readTopLevelExportDef(owner: ClassName): TopLevelExportDef = {
       implicit val pos = readPosition()
       val tag = readByte()
 
       (tag: @switch) match {
         case TagTopLevelJSClassExportDef => TopLevelJSClassExportDef(readString())
         case TagTopLevelModuleExportDef  => TopLevelModuleExportDef(readString())
-        case TagTopLevelMethodExportDef  => TopLevelMethodExportDef(readMemberDef().asInstanceOf[JSMethodDef])
+        case TagTopLevelMethodExportDef  => TopLevelMethodExportDef(readMemberDef(owner).asInstanceOf[JSMethodDef])
         case TagTopLevelFieldExportDef   => TopLevelFieldExportDef(readString(), readFieldIdent())
       }
     }
 
-    def readTopLevelExportDefs(): List[TopLevelExportDef] =
-      List.fill(readInt())(readTopLevelExportDef())
+    def readTopLevelExportDefs(owner: ClassName): List[TopLevelExportDef] =
+      List.fill(readInt())(readTopLevelExportDef(owner))
 
     def readLocalIdent(): LocalIdent = {
       implicit val pos = readPosition()
@@ -1501,5 +1531,17 @@ object Serializers {
 
       res
     }
+  }
+
+  /** Hacks for backwards compatible deserializing. */
+  private final class Hacks(sourceVersion: String) {
+    val use10: Boolean = sourceVersion == "1.0"
+  }
+
+  /** Names needed for hacks. */
+  private object HackNames {
+    val SystemModule: ClassName = ClassName("java.lang.System$")
+    val identityHashCodeName: MethodName =
+      MethodName("identityHashCode", List(ClassRef(ObjectClass)), IntRef)
   }
 }

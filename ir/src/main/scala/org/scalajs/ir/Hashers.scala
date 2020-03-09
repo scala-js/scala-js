@@ -323,6 +323,10 @@ object Hashers {
           mixTag(TagGetClass)
           mixTree(expr)
 
+        case IdentityHashCode(expr) =>
+          mixTag(TagIdentityHashCode)
+          mixTree(expr)
+
         case JSNew(ctor, args) =>
           mixTag(TagJSNew)
           mixTree(ctor)

@@ -4727,6 +4727,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           // runtime.linkingInfo
           js.JSLinkingInfo()
 
+        case IDENTITY_HASH_CODE =>
+          // runtime.identityHashCode(arg)
+          val arg = genArgs1
+          js.IdentityHashCode(arg)
+
         case DEBUGGER =>
           // js.special.debugger()
           js.Debugger()
