@@ -1743,23 +1743,12 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             val objVarDef =
               genLet(objVarIdent, mutable = false, js.ObjectConstr(Nil))
 
-            val assignFields = fields.foldRight((Set.empty[String], List.empty[Tree])) {
-              case ((key, value), (namesSeen, statsAcc)) =>
-                implicit val pos = value.pos
-                val nameForDupes = key match {
-                  case StringLiteral(s) => Some(s)
-                  case _                => None
-                }
-                val stat = if (nameForDupes.exists(namesSeen)) {
-                  /* Important: do not emit the assignment, otherwise
-                   * Closure recreates a literal with the duplicate field!
-                   */
-                  value
-                } else {
-                  Assign(JSSelect(objVarRef, key), value)
-                }
-                (namesSeen ++ nameForDupes, stat :: statsAcc)
-            }._2
+            val assignFields = for {
+              (key, value) <- fields
+            } yield {
+              implicit val pos = value.pos
+              Assign(JSSelect(objVarRef, key), value)
+            }
 
             js.Block(
                 objVarDef,
