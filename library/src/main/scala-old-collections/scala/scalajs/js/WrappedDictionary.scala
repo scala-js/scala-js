@@ -12,6 +12,8 @@
 
 package scala.scalajs.js
 
+import scala.language.implicitConversions
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
@@ -22,7 +24,7 @@ import scala.collection.generic.CanBuildFrom
 
 /** Wrapper to use a js.Dictionary as a scala.mutable.Map */
 @inline
-final class WrappedDictionary[A](dict: js.Dictionary[A])
+final class WrappedDictionary[A](private val dict: js.Dictionary[A])
     extends mutable.AbstractMap[String, A]
        with mutable.Map[String, A]
        with mutable.MapLike[String, A, js.WrappedDictionary[A]] {
@@ -151,5 +153,8 @@ object WrappedDictionary {
     def result(): js.WrappedDictionary[A] =
       new js.WrappedDictionary(dict)
   }
+
+  implicit def toJSDictionary[A](wrappedDict: js.WrappedDictionary[A]): js.Dictionary[A] =
+    wrappedDict.dict
 
 }

@@ -85,6 +85,15 @@ class DictionaryTest {
     assertEquals("foo", dict2("a"))
     assertEquals("bar", dict2("b"))
   }
+
+  @Test def should_provide_underlying_JSDictionary(): Unit = {
+    val original = js.Dictionary("a" -> 1, "b" -> 2, "c" -> 3)
+    val dict: js.Dictionary[Int] = original.filter(_._1 != "b")
+
+    assertEquals(1, dict("a"))
+    assertEquals(None, dict.get("b"))
+    assertEquals(3, dict("c"))
+  }
 }
 
 object DictionaryTest {
