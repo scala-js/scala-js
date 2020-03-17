@@ -10,10 +10,8 @@
  * additional information regarding copyright ownership.
  */
 
-package java.util.concurrent
+package java.util.function
 
-import java.util.function.BiConsumer
-
-trait CompletionStage[T] {
-  def whenComplete(action: BiConsumer[_ <: T, _ <: Throwable]): CompletionStage[T]
+trait BiConsumer[T, U] {
+  def accept(t: T, ex: Throwable): Unit
 }
