@@ -51,4 +51,8 @@ object Thread {
     currentThread.interruptedState = false
     ret
   }
+
+  trait UncaughtExceptionHandler {
+    def uncaughtException(t: Thread, e: Throwable): Unit
+  }
 }
