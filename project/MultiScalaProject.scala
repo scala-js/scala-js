@@ -83,15 +83,22 @@ object MultiScalaProject {
     "2.13" -> Seq("2.13.0", "2.13.1"),
   )
 
+  private final val ideVersion = "2.12"
+
   private def projectID(id: String, major: String) = id + major.replace('.', '_')
 
   def apply(id: String, base: File): MultiScalaProject = {
     val projects = for {
       (major, minors) <- versions
     } yield {
+      val noIDEExportSettings =
+        if (major == ideVersion) Nil
+        else NoIDEExport.noIDEExportSettings
+
       major -> Project(id = projectID(id, major), base = new File(base, "." + major)).settings(
         scalaVersion := minors.last,
         crossScalaVersions := minors,
+        noIDEExportSettings,
       )
     }
 

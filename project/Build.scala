@@ -537,6 +537,7 @@ object Build {
       commonSettings,
       name := "Scala.js",
       publishArtifact in Compile := false,
+      NoIDEExport.noIDEExportSettings,
 
       {
         val allProjects: Seq[Project] = Seq(
@@ -1110,6 +1111,7 @@ object Build {
       },
       name := "Scala library for Scala.js",
       publishArtifact in Compile := false,
+      NoIDEExport.noIDEExportSettings,
       delambdafySetting,
       noClassFilesSettings,
 
@@ -1245,6 +1247,7 @@ object Build {
       fatalWarningsSettings,
       name := "Scala.js aux library",
       publishArtifact in Compile := false,
+      NoIDEExport.noIDEExportSettings,
       delambdafySetting,
       noClassFilesSettings,
       scalaJSExternalCompileSettings
@@ -2027,6 +2030,7 @@ object Build {
       commonSettings,
       fatalWarningsSettings,
       name := "Scala.js partest suite",
+      NoIDEExport.noIDEExportSettings,
 
       fork in Test := true,
       javaOptions in Test += "-Xmx1G",
@@ -2069,6 +2073,7 @@ object Build {
   ).settings(
       commonSettings,
       publishArtifact in Compile := false,
+      NoIDEExport.noIDEExportSettings,
 
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
   ).zippedSettings(partest)(partest =>
