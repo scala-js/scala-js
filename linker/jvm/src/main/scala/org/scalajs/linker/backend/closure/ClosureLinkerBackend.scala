@@ -62,6 +62,10 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
 
   override def injectedIRFiles: Seq[IRFile] = emitter.injectedIRFiles
 
+  private val languageMode =
+    if (esFeatures.useECMAScript2015) ClosureOptions.LanguageMode.ECMASCRIPT_2015
+    else ClosureOptions.LanguageMode.ECMASCRIPT5_STRICT
+
   /** Emit the given [[standard.LinkingUnit LinkingUnit]] to the target output.
    *
    *  @param unit [[standard.LinkingUnit LinkingUnit]] to emit
@@ -99,8 +103,8 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
   }
 
   private def buildModule(trees: List[js.Tree]): JSModule = {
-    val root = ClosureAstTransformer.transformScript(
-        trees, config.relativizeSourceMapBase)
+    val root = ClosureAstTransformer.transformScript(trees,
+        languageMode.toFeatureSet(), config.relativizeSourceMapBase)
 
     val module = new JSModule("Scala.js")
     module.add(new CompilerInput(new SyntheticAst(root)))
@@ -206,12 +210,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     options.setPrettyPrint(config.prettyPrint)
     CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options)
 
-    val language =
-      if (esFeatures.useECMAScript2015) ClosureOptions.LanguageMode.ECMASCRIPT_2015
-      else ClosureOptions.LanguageMode.ECMASCRIPT5_STRICT
-    options.setLanguageIn(language)
-    options.setLanguageOut(language)
-
+    options.setLanguage(languageMode)
     options.setCheckGlobalThisLevel(CheckLevel.OFF)
     options.setWarningLevel(DiagnosticGroups.DUPLICATE_VARS, CheckLevel.OFF)
     options.setWarningLevel(DiagnosticGroups.CHECK_REGEXP, CheckLevel.OFF)
