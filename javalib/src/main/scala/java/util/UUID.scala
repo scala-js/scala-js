@@ -136,7 +136,7 @@ object UUID {
   private final val NameBased = 3
   private final val Random = 4
 
-  private lazy val rng = new Random() // TODO Use java.security.SecureRandom
+  private lazy val rng = new SecureRandom()
 
   def randomUUID(): UUID = {
     val i1 = rng.nextInt()
