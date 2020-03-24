@@ -1977,4 +1977,8 @@ object ScalaJSDefinedTest {
     final val MethodName = "myMethod"
   }
 
+  // #3998
+  trait SelfTypeTest1 extends js.Object { self => }
+  trait SelfTypeTest2 extends js.Object { self: js.Date => }
+  trait SelfTypeTest3 extends js.Object { this: js.Date => }
 }
