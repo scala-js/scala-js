@@ -20,7 +20,13 @@ object BinaryIncompatibilities {
   )
 
   val Linker = Seq(
+      // private[closure], not an issue.
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.closure.ClosureAstTransformer.transformScript"),
+
       // private, not an issue.
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.closure.ClosureAstTransformer.this"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.CoreJSLib#CoreJSLibBuilder.org$scalajs$linker$backend$emitter$CoreJSLib$CoreJSLibBuilder$$defineStandardDispatcher$default$3$1"),
       exclude[DirectMissingMethodProblem](

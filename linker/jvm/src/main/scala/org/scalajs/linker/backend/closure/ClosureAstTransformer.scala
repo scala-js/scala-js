@@ -23,21 +23,23 @@ import org.scalajs.linker.backend.javascript.SourceFileUtil
 
 import com.google.javascript.rhino._
 import com.google.javascript.rhino.StaticSourceFile.SourceKind
-import com.google.javascript.jscomp._
+import com.google.javascript.jscomp.SourceFile
+import com.google.javascript.jscomp.parsing.parser.FeatureSet
 
-import scala.collection.mutable
 import scala.annotation.tailrec
 
 import java.net.URI
 
 private[closure] object ClosureAstTransformer {
-  def transformScript(trees: List[Tree], relativizeBaseURI: Option[URI]): Node = {
-    val transformer = new ClosureAstTransformer(relativizeBaseURI)
+  def transformScript(trees: List[Tree], featureSet: FeatureSet,
+      relativizeBaseURI: Option[URI]): Node = {
+    val transformer = new ClosureAstTransformer(featureSet, relativizeBaseURI)
     transformer.transformScript(trees)
   }
 }
 
-private class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
+private class ClosureAstTransformer(featureSet: FeatureSet,
+    relativizeBaseURI: Option[URI]) {
   private val dummySourceName = new java.net.URI("virtualfile:scala.js-ir")
 
   def transformScript(trees: List[Tree]): Node = {
@@ -47,15 +49,21 @@ private class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
      * only a means of putting together several statements in one `js.Tree`
      * (in fact, they automatically flatten themselves out upon construction).
      */
-    val treeBuf = mutable.ListBuffer.empty[Node]
+    val script = setNodePosition(new Node(Token.SCRIPT), NoPosition)
 
     trees.foreach {
-      case Block(stats) => treeBuf ++= transformBlockStats(stats)(NoPosition)
-      case Skip()       => // ignore
-      case tree         => treeBuf += transformStat(tree)(NoPosition)
+      case Block(stats) =>
+        transformBlockStats(stats)(NoPosition).foreach(script.addChildToBack(_))
+
+      case Skip() =>
+
+      case tree =>
+        script.addChildToBack(transformStat(tree)(NoPosition))
     }
 
-    setNodePosition(IR.script(treeBuf.result(): _*), NoPosition)
+    script.putProp(Node.FEATURE_SET, featureSet)
+
+    script
   }
 
   def transformStat(tree: Tree)(implicit parentPos: Position): Node =
