@@ -227,6 +227,12 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 
           enterOwner(OwnerKind.NonEnumScalaMod) { super.transform(modDef) }
 
+        case Template(parents, self, body) =>
+          /* Do not transform `self`. We do not need to perform any checks on
+           * it (#3998).
+           */
+          treeCopy.Template(tree, parents.map(transform(_)), self, body.map(transform(_)))
+
         // ValOrDefDef's that are local to a block must not be transformed
         case vddef: ValOrDefDef if vddef.symbol.isLocalToBlock =>
           super.transform(tree)
