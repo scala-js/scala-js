@@ -413,7 +413,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
 
     private[this] def validateSuperClass(superClass: Option[ClassInfo]): Option[ClassInfo] = {
-      implicit def from = FromClass(this)
+      def from = FromClass(this)
 
       kind match {
         case ClassKind.Class | ClassKind.ModuleClass | ClassKind.HijackedClass =>
@@ -488,7 +488,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
 
     private[this] def validateInterfaces(interfaces: List[ClassInfo]): List[ClassInfo] = {
-      implicit def from = FromClass(this)
+      def from = FromClass(this)
 
       val validSuperIntfKind = kind match {
         case ClassKind.Class | ClassKind.ModuleClass |

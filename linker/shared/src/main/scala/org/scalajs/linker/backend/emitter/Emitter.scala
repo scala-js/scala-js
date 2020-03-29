@@ -117,7 +117,7 @@ final class Emitter private (config: CommonPhaseConfig,
 
     val footer = ifIIFE("}).call(this);\n")
 
-    val (body, globalRefs) = emitInternal(unit, logger)
+    val WithGlobals(body, globalRefs) = emitInternal(unit, logger)
 
     new Result(header, body, footer, topLevelVars, globalRefs)
   }
@@ -139,9 +139,8 @@ final class Emitter private (config: CommonPhaseConfig,
     }
   }
 
-  /** Returns the emitted trees and the set of tracked global refs. */
   private def emitInternal(unit: LinkingUnit,
-      logger: Logger): (List[js.Tree], Set[String]) = {
+      logger: Logger): WithGlobals[List[js.Tree]] = {
     startRun(unit)
     try {
       val orderedClasses = unit.classDefs.sortWith(compareClasses)
@@ -166,7 +165,7 @@ final class Emitter private (config: CommonPhaseConfig,
         for (moduleInitializer <- unit.moduleInitializers)
           trees += classEmitter.genModuleInitializer(moduleInitializer)
 
-        (trees.result(), trackedGlobalRefs ++ coreJSLibTrackedGlobalRefs)
+        WithGlobals(trees.result(), trackedGlobalRefs ++ coreJSLibTrackedGlobalRefs)
       }
     } finally {
       endRun(logger)
