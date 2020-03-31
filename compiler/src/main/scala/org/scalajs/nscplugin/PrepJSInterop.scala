@@ -206,6 +206,12 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 
           enterOwner(OwnerKind.NonEnumScalaMod) { super.transform(modDef) }
 
+        case Template(parents, self, body) =>
+          /* Do not transform `self`. We do not need to perform any checks on
+           * it (#3998).
+           */
+          treeCopy.Template(tree, parents.map(transform(_)), self, body.map(transform(_)))
+
         // ValOrDefDef's that are local to a block must not be transformed
         case vddef: ValOrDefDef if vddef.symbol.isLocalToBlock =>
           super.transform(tree)
@@ -837,16 +843,29 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       if (sym.isAccessor && !sym.hasAnnotation(JSNameAnnotation))
         sym.accessed.getAnnotation(JSNameAnnotation).foreach(sym.addAnnotation)
 
-      if (sym.name == nme.apply && !sym.hasAnnotation(JSNameAnnotation)) {
-        if (jsInterop.isJSGetter(sym)) {
-          reporter.error(sym.pos, s"A member named apply represents function " +
-              "application in JavaScript. A parameterless member should be " +
-              "exported as a property. You must add @JSName(\"apply\")")
-        } else if (enclosingOwner is OwnerKind.JSNonNative) {
-          reporter.error(sym.pos,
-              "A non-native JS class cannot declare a method " +
-              "named `apply` without `@JSName`")
-        }
+      sym.name match {
+        case nme.apply if !sym.hasAnnotation(JSNameAnnotation) =>
+          if (jsInterop.isJSGetter(sym)) {
+            reporter.error(sym.pos, s"A member named apply represents function " +
+                "application in JavaScript. A parameterless member should be " +
+                "exported as a property. You must add @JSName(\"apply\")")
+          } else if (enclosingOwner is OwnerKind.JSNonNative) {
+            reporter.error(sym.pos,
+                "A non-native JS class cannot declare a method " +
+                "named `apply` without `@JSName`")
+          }
+
+        case nme.equals_ if sym.tpe.matches(Any_equals.tpe) =>
+          reporter.warning(sym.pos, "Overriding equals in a JS class does " +
+              "not change how it is compared. To silence this warning, change " +
+              "the name of the method and optionally add @JSName(\"equals\").")
+
+        case nme.hashCode_ if sym.tpe.matches(Any_hashCode.tpe) =>
+          reporter.warning(sym.pos, "Overriding hashCode in a JS class does " +
+              "not change its hash code. To silence this warning, change " +
+              "the name of the method and optionally add @JSName(\"hashCode\").")
+
+        case _ =>
       }
 
       if (jsInterop.isJSSetter(sym))

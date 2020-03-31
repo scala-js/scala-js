@@ -1776,6 +1776,36 @@ class NonNativeJSTypeTest {
     assertEquals(5, x.callPrivate())
     assertEquals(5, x.callNested())
   }
+
+  // #3939
+  @Test def java_lang_object_method_names(): Unit = {
+    class JavaLangObjectMethods extends js.Object {
+      @JSName("clone")
+      def myClone(): String = "myClone"
+
+      @JSName("equals")
+      def myEquals(): String = "myEquals"
+
+      @JSName("finalize")
+      def myFinalize(): String = "myFinalize"
+
+      @JSName("hashCode")
+      def myHashCode(): String = "myHashCode"
+
+      @JSName("notify")
+      def myNotify(): String = "myNotify"
+
+      @JSName("notifyAll")
+      def myNotifyAll(): String = "myNotifyAll"
+
+      @JSName("wait")
+      def myWait(): String = "myWait"
+    }
+
+    val x = (new JavaLangObjectMethods).asInstanceOf[js.Dynamic]
+
+    assertEquals("myClone", x.applyDynamic("clone")())
+  }
 }
 
 object NonNativeJSTypeTest {
@@ -2007,4 +2037,8 @@ object NonNativeJSTypeTest {
     final val MethodName = "myMethod"
   }
 
+  // #3998
+  trait SelfTypeTest1 extends js.Object { self => }
+  trait SelfTypeTest2 extends js.Object { self: js.Date => }
+  trait SelfTypeTest3 extends js.Object { this: js.Date => }
 }

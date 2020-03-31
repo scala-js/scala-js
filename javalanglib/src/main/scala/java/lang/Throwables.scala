@@ -254,7 +254,10 @@ class ClassFormatError(s: String) extends LinkageError(s) {
   def this() = this(null)
 }
 
-class Error(s: String, e: Throwable) extends Throwable(s, e) {
+class Error protected (s: String, e: Throwable,
+    enableSuppression: scala.Boolean, writableStackTrace: scala.Boolean)
+    extends Throwable(s, e, enableSuppression, writableStackTrace) {
+  def this(message: String, cause: Throwable) = this(message, cause, true, true)
   def this() = this(null, null)
   def this(s: String) = this(s, null)
   def this(e: Throwable) = this(if (e == null) null else e.toString, e)
@@ -372,7 +375,10 @@ class EnumConstantNotPresentException(e: Class[_ <: Enum[_]], c: String)
   def constantName(): String = c
 }
 
-class Exception(s: String, e: Throwable) extends Throwable(s, e) {
+class Exception protected (s: String, e: Throwable,
+    enableSuppression: scala.Boolean, writableStackTrace: scala.Boolean)
+    extends Throwable(s, e, enableSuppression, writableStackTrace) {
+  def this(message: String, cause: Throwable) = this(message, cause, true, true)
   def this(e: Throwable) = this(if (e == null) null else e.toString, e)
   def this(s: String) = this(s, null)
   def this() = this(null, null)
@@ -446,7 +452,10 @@ class RejectedExecutionException(s: String, e: Throwable) extends RuntimeExcepti
   def this() = this(null, null)
 }
 
-class RuntimeException(s: String, e: Throwable) extends Exception(s, e) {
+class RuntimeException protected (s: String, e: Throwable,
+    enableSuppression: scala.Boolean, writableStackTrace: scala.Boolean)
+    extends Exception(s, e, enableSuppression, writableStackTrace) {
+  def this(message: String, cause: Throwable) = this(message, cause, true, true)
   def this(e: Throwable) = this(if (e == null) null else e.toString, e)
   def this(s: String) = this(s, null)
   def this() = this(null, null)
