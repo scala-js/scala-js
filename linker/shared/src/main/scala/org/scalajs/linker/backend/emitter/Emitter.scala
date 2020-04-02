@@ -117,7 +117,7 @@ final class Emitter private (config: CommonPhaseConfig,
 
     val footer = ifIIFE("}).call(this);\n")
 
-    val WithInfo(body, globalRefs) = emitInternal(unit, logger)
+    val WithInfo(body, globalRefs, _) = emitInternal(unit, logger)
 
     new Result(header, body, footer, topLevelVars, globalRefs)
   }
@@ -144,7 +144,7 @@ final class Emitter private (config: CommonPhaseConfig,
     startRun(unit)
     try {
       val orderedClasses = unit.classDefs.sortWith(compareClasses)
-      val WithInfo(generatedClasses, trackedGlobalRefs) = {
+      val WithInfo(generatedClasses, trackedGlobalRefs, _) = {
         logger.time("Emitter: Generate classes") {
           genAllClasses(orderedClasses, logger, secondAttempt = false)
         }
@@ -153,7 +153,7 @@ final class Emitter private (config: CommonPhaseConfig,
       val trees = mutable.ListBuffer.empty[js.Tree]
 
       logger.time("Emitter: Write trees") {
-        val WithInfo(coreJSLibTree, coreJSLibTrackedGlobalRefs) =
+        val WithInfo(coreJSLibTree, coreJSLibTrackedGlobalRefs, _) =
           state.coreJSLibCache.tree
 
         trees += coreJSLibTree
@@ -162,10 +162,10 @@ final class Emitter private (config: CommonPhaseConfig,
 
         emitGeneratedClasses(trees, generatedClasses)
 
-        for (moduleInitializer <- unit.moduleInitializers)
-          trees += classEmitter.genModuleInitializer(moduleInitializer)
+        //for (moduleInitializer <- unit.moduleInitializers)
+        //  trees += classEmitter.genModuleInitializer(moduleInitializer)(uncachedKnowledgeAccessor)
 
-        WithInfo(trees.result(), trackedGlobalRefs ++ coreJSLibTrackedGlobalRefs)
+        WithInfo(trees.result(), trackedGlobalRefs ++ coreJSLibTrackedGlobalRefs, ???)
       }
     } finally {
       endRun(logger)
@@ -192,8 +192,8 @@ final class Emitter private (config: CommonPhaseConfig,
     for (generatedClass <- generatedClasses)
       builder ++= generatedClass.main
 
-    if (!jsGen.useBigIntForLongs)
-      builder += emitInitializeL0()
+    //if (!jsGen.useBigIntForLongs)
+    //  builder += emitInitializeL0()(uncachedKnowledgeAccessor)
 
     for (generatedClass <- generatedClasses)
       builder ++= generatedClass.staticFields
@@ -276,17 +276,18 @@ final class Emitter private (config: CommonPhaseConfig,
   /** Emits the initialization of the global variable `$L0`, which holds the
    *  zero of type `Long`.
    */
-  private def emitInitializeL0(): js.Tree = {
+  private def emitInitializeL0(): WithInfo[js.Tree] = {
     implicit val pos = Position.NoPosition
     implicit val globalKnowledge = uncachedKnowledgeAccessor
 
     // $L0 = new RuntimeLong(0, 0)
-    js.Assign(
-        jsGen.coreJSLibVar("L0"),
-        jsGen.genScalaClassNew(
-            LongImpl.RuntimeLongClass, LongImpl.initFromParts,
-            js.IntLiteral(0), js.IntLiteral(0))
-    )
+    for {
+      rhs <- jsGen.genScalaClassNew(
+          LongImpl.RuntimeLongClass, LongImpl.initFromParts,
+          js.IntLiteral(0), js.IntLiteral(0))
+    } yield {
+      js.Assign(jsGen.coreJSLibVar("L0"), rhs)
+    }
   }
 
   private def compareClasses(lhs: LinkedClass, rhs: LinkedClass) = {
@@ -343,7 +344,7 @@ final class Emitter private (config: CommonPhaseConfig,
       else GlobalRefUtils.keepOnlyDangerousGlobalRefs(trackedGlobalRefs)
 
     if (mentionedDangerousGlobalRefs == state.lastMentionedDangerousGlobalRefs) {
-      WithInfo(generatedClasses, trackedGlobalRefs)
+      WithInfo(generatedClasses, trackedGlobalRefs, ???)
     } else {
       assert(!secondAttempt,
           "Uh oh! The second attempt gave a different set of dangerous " +
@@ -368,9 +369,13 @@ final class Emitter private (config: CommonPhaseConfig,
     // Global ref management
 
     var trackedGlobalRefs: Set[String] = Set.empty
+    var trackedInternalModuleDeps: Set[String] = Set.empty
 
-    def addGlobalRefs(globalRefs: Set[String]): Unit =
-      trackedGlobalRefs = unionPreserveEmpty(globalRefs, trackedGlobalRefs)
+    def extractWithInfo[A](withInfo: WithInfo[A]): A = {
+      trackedGlobalRefs = unionPreserveEmpty(withInfo.globalVarNames, trackedGlobalRefs)
+      trackedInternalModuleDeps = unionPreserveEmpty(withInfo.internalModuleDeps, trackedInternalModuleDeps)
+      withInfo.value
+    }
 
     // Main part
 
@@ -378,10 +383,8 @@ final class Emitter private (config: CommonPhaseConfig,
 
     def addToMainBase(tree: js.Tree): Unit = main ::= tree
 
-    def addToMain(treeWithInfo: WithInfo[js.Tree]): Unit = {
-      addToMainBase(treeWithInfo.value)
-      addGlobalRefs(treeWithInfo.globalVarNames)
-    }
+    def addToMain(treeWithInfo: WithInfo[js.Tree]): Unit =
+      addToMainBase(extractWithInfo(treeWithInfo))
 
     val (linkedInlineableInit, linkedMethods) =
       classEmitter.extractInlineableInit(linkedClass)(classCache)
@@ -562,8 +565,7 @@ final class Emitter private (config: CommonPhaseConfig,
     } else {
       val treeWithInfo = classTreeCache.topLevelExports.getOrElseUpdate(
           classEmitter.genTopLevelExports(linkedClass)(classCache))
-      addGlobalRefs(treeWithInfo.globalVarNames)
-      treeWithInfo.value
+      extractWithInfo(treeWithInfo)
     }
 
     // Build the result
@@ -573,7 +575,8 @@ final class Emitter private (config: CommonPhaseConfig,
         staticFields,
         staticInitialization,
         topLevelExports,
-        trackedGlobalRefs
+        trackedGlobalRefs,
+        trackedInternalModuleDeps,
     )
   }
 
@@ -583,9 +586,6 @@ final class Emitter private (config: CommonPhaseConfig,
       v2: Option[String]): Option[String] = {
     v1.flatMap(s1 => v2.map(s2 => "" + s1.length + "-" + s1 + s2))
   }
-
-  private def getClassTreeCache(linkedClass: LinkedClass): DesugaredClassCache =
-    getClassCache(linkedClass.ancestors).getCache(linkedClass.version)
 
   private def getClassCache(ancestors: List[ClassName]) =
     classCaches.getOrElseUpdate(ancestors, new ClassCache)
@@ -734,7 +734,8 @@ object Emitter {
       val staticFields: List[js.Tree],
       val staticInitialization: List[js.Tree],
       val topLevelExports: List[js.Tree],
-      val trackedGlobalRefs: Set[String]
+      val trackedGlobalRefs: Set[String],
+      val internalModuleDeps: Set[String]
   )
 
   private final class OneTimeCache[A >: Null] {

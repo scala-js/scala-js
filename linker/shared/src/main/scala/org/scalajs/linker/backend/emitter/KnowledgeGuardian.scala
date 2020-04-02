@@ -158,6 +158,8 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     def getStaticFieldMirrors(className: ClassName, field: FieldName): List[String] =
       classes(className).askStaticFieldMirrors(this, field)
 
+    def getContainingModuleName(className: ClassName): Option[String] = ??? // TODO
+
     def representativeClassHasPublicMethod(className: ClassName,
         methodName: MethodName): Boolean = {
       specialInfo.askRepresentativeClassHasPublicMethod(this, className, methodName)

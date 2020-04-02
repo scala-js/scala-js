@@ -323,6 +323,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
     private val globalVarNames = mutable.Set.empty[String]
     private val localVarNames = mutable.Set.empty[String]
+    private val internalModuleDeps = mutable.Set.empty[String]
 
     private lazy val localVarAllocs = mutable.Map.empty[LocalName, String]
 
@@ -332,6 +333,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     private def extractWithInfo[A](withInfo: WithInfo[A]): A = {
       for (globalRef <- withInfo.globalVarNames)
         referenceGlobalName(globalRef)
+
+      internalModuleDeps ++= withInfo.internalModuleDeps
+
       withInfo.value
     }
 
@@ -397,7 +401,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           if (trackAllGlobalRefs) globalVarNames.toSet
           else GlobalRefUtils.keepOnlyDangerousGlobalRefs(globalVarNames.toSet)
 
-        WithInfo(result, globalRefs)
+        WithInfo(result, globalRefs, Set.empty)
       } else {
         /* Clear the local var names, but *not* the global var names.
          * In the pessimistic run, we will use the knowledge gathered during
@@ -601,8 +605,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
             implicit val env = env0
             js.Assign(
-                genJSPrivateSelect(transformExprNoChar(newQualifier),
-                    className, field)(select.pos),
+                extractWithInfo(genJSPrivateSelect(
+                    transformExprNoChar(newQualifier),
+                    className, field)(globalKnowledge, select.pos)),
                 transformExprNoChar(newRhs))
           }
 
@@ -620,7 +625,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           unnest(List(superClass, qualifier, item, rhs)) {
             case (List(newSuperClass, newQualifier, newItem, newRhs), env0) =>
               implicit val env = env0
-              genCallHelper("superSet", transformExprNoChar(newSuperClass),
+              genCallHelper("superSet",
+                  transformExprNoChar(newSuperClass),
                   transformExprNoChar(newQualifier), transformExprNoChar(item),
                   transformExprNoChar(rhs))
           }
@@ -636,7 +642,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         case StoreModule(className, value) =>
           unnest(value) { (newValue, env0) =>
             implicit val env = env0
-            js.Assign(envVar("n", className), transformExprNoChar(newValue))
+            js.Assign(extractWithInfo(envVar("n", className)),
+                transformExprNoChar(newValue))
           }
 
         case While(cond, body) =>
@@ -799,9 +806,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
               field match {
                 case FieldDef(_, name, _, _) =>
-                  js.Assign(
-                      genJSPrivateSelect(js.This(), enclosingClassName, name),
-                      zero)
+                  js.Assign(extractWithInfo(
+                      genJSPrivateSelect(js.This(), enclosingClassName, name)), zero)
 
                 case JSFieldDef(_, name, _) =>
                   unnest(name) { (newName, env0) =>
@@ -1946,7 +1952,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         }
       }
 
-      val baseResult = tree match {
+      val baseResult: js.Tree = tree match {
         // Control flow constructs
 
         case Block(stats :+ expr) =>
@@ -1969,16 +1975,16 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         case New(className, ctor, args) =>
           val newArgs = transformTypedArgs(ctor.name, args)
-          genScalaClassNew(className, ctor.name, newArgs: _*)
+          extractWithInfo(genScalaClassNew(className, ctor.name, newArgs: _*))
 
         case LoadModule(className) =>
-          genLoadModule(className)
+          extractWithInfo(genLoadModule(className))
 
         case Select(qualifier, className, field) =>
           genSelect(transformExprNoChar(qualifier), className, field)
 
         case SelectStatic(className, item) =>
-          envVar("t", className, item.name)
+          extractWithInfo(envVar("t", className, item.name))
 
         case Apply(_, receiver, method, args) =>
           val methodName = method.name
@@ -1991,8 +1997,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           def genDispatchApply(): js.Tree =
             genCallHelper("dp_" + genName(methodName), newReceiver :: newArgs: _*)
 
-          def genHijackedMethodApply(className: ClassName): js.Tree =
-            js.Apply(envVar("f", className, methodName), newReceiver :: newArgs)
+          def genHijackedMethodApply(className: ClassName): js.Tree = {
+            val method = extractWithInfo(envVar("f", className, methodName))
+            js.Apply(method, newReceiver :: newArgs)
+          }
 
           if (isMaybeHijackedClass(receiver.tpe) &&
               !methodName.isReflectiveProxy) {
@@ -2071,7 +2079,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             genApplyStaticLike("f", className, method, transformedArgs)
           } else {
             val fun =
-              envVar("c", className).prototype DOT transformMethodIdent(method)
+              extractWithInfo(envVar("c", className)).prototype DOT transformMethodIdent(method)
             js.Apply(fun DOT "call", transformedArgs)
           }
 
@@ -2176,9 +2184,13 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 js.BinaryOp(if (op == ===) JSBinaryOp.=== else JSBinaryOp.!==,
                     newLhs, newRhs)
               } else {
-                val objectIs =
-                  if (!esFeatures.useECMAScript2015) coreJSLibVar("is")
-                  else genIdentBracketSelect(genGlobalVarRef("Object"), "is")
+                val objectIs = {
+                  if (!esFeatures.useECMAScript2015)
+                    coreJSLibVar("is")
+                  else
+                    genIdentBracketSelect(genGlobalVarRef("Object"), "is")
+                }
+
                 val objectIsCall = js.Apply(objectIs, newLhs :: newRhs :: Nil)
                 if (op == ===) objectIsCall
                 else js.UnaryOp(JSUnaryOp.!, objectIsCall)
@@ -2203,7 +2215,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 case IntLiteral(0) => or0(js.UnaryOp(JSUnaryOp.-, newRhs))
                 case _             => or0(js.BinaryOp(JSBinaryOp.-, newLhs, newRhs))
               }
-            case Int_* => genCallHelper("imul", newLhs, newRhs)
+
+            case Int_* =>
+              genCallHelper("imul", newLhs, newRhs)
+
             case Int_/ =>
               rhs match {
                 case IntLiteral(r) if r != 0 =>
@@ -2211,6 +2226,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
                 case _ =>
                   genCallHelper("intDiv", newLhs, newRhs)
               }
+
             case Int_% =>
               rhs match {
                 case IntLiteral(r) if r != 0 =>
@@ -2382,7 +2398,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         case NewArray(typeRef, lengths) =>
           genCallHelper("newArrayObject",
-              genClassDataOf(typeRef),
+              extractWithInfo(genClassDataOf(typeRef)),
               js.ArrayConstr(lengths.map(transformExprNoChar)))
 
         case ArrayValue(typeRef, elems) =>
@@ -2390,7 +2406,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             case ArrayTypeRef(CharRef, 1) => true
             case _                        => false
           }
-          genArrayValue(typeRef, elems.map(transformExpr(_, preserveChar)))
+          extractWithInfo(genArrayValue(typeRef,
+              elems.map(transformExpr(_, preserveChar))))
 
         case ArrayLength(array) =>
           genIdentBracketSelect(js.DotSelect(transformExprNoChar(array),
@@ -2410,10 +2427,10 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           js.VarRef(makeRecordFieldIdentForVarRef(tree))
 
         case IsInstanceOf(expr, testType) =>
-          genIsInstanceOf(transformExprNoChar(expr), testType)
+          extractWithInfo(genIsInstanceOf(transformExprNoChar(expr), testType))
 
         case AsInstanceOf(expr, tpe) =>
-          genAsInstanceOf(transformExprNoChar(expr), tpe)
+          extractWithInfo(genAsInstanceOf(transformExprNoChar(expr), tpe))
 
         case GetClass(expr) =>
           genCallHelper("objectGetClass", transformExprNoChar(expr))
@@ -2426,7 +2443,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             case "classDataOf" =>
               args.head match {
                 case ClassOf(tpe) =>
-                  genClassDataOf(tpe)
+                  extractWithInfo(genClassDataOf(tpe))
                 case jlClass =>
                   js.DotSelect(transformExprNoChar(jlClass), js.Ident("jl_Class__f_data"))
               }
@@ -2448,7 +2465,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           js.New(transformExprNoChar(constr), args.map(transformJSArg))
 
         case JSPrivateSelect(qualifier, className, field) =>
-          genJSPrivateSelect(transformExprNoChar(qualifier), className, field)
+          extractWithInfo(genJSPrivateSelect(transformExprNoChar(qualifier),
+              className, field))
 
         case JSSelect(qualifier, item) =>
           genBracketSelect(transformExprNoChar(qualifier),
@@ -2484,8 +2502,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
               transformExprNoChar(method)), args.map(transformJSArg))
 
         case JSSuperSelect(superClass, qualifier, item) =>
-          genCallHelper("superGet", transformExprNoChar(superClass),
-              transformExprNoChar(qualifier), transformExprNoChar(item))
+          genCallHelper("superGet",
+              transformExprNoChar(superClass), transformExprNoChar(qualifier),
+              transformExprNoChar(item))
 
         case JSImportCall(arg) =>
           js.ImportCall(transformExprNoChar(arg))
@@ -2497,7 +2516,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           globalKnowledge.getJSNativeLoadSpec(className) match {
             case None =>
               // this is a non-native JS module class
-              genLoadModule(className)
+              extractWithInfo(genLoadModule(className))
 
             case Some(spec) =>
               extractWithInfo(
@@ -2557,18 +2576,19 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         case LongLiteral(0L) =>
           genLongZero()
+
         case LongLiteral(value) =>
           if (useBigIntForLongs) {
             js.BigIntLiteral(value)
           } else {
             val (lo, hi) = LongImpl.extractParts(value)
-            genScalaClassNew(
+            extractWithInfo(genScalaClassNew(
                 LongImpl.RuntimeLongClass, LongImpl.initFromParts,
-                js.IntLiteral(lo), js.IntLiteral(hi))
+                js.IntLiteral(lo), js.IntLiteral(hi)))
           }
 
         case ClassOf(typeRef) =>
-          genClassOf(typeRef)
+          extractWithInfo(genClassOf(typeRef))
 
         // Atomic expressions
 
@@ -2616,7 +2636,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             for ((value, expectedType) <- captureValues.zip(expectedTypes))
               yield transformExpr(value, expectedType)
           }
-          js.Apply(envVar("a", className), transformedArgs)
+          js.Apply(extractWithInfo(envVar("a", className)), transformedArgs)
 
         // Invalid trees
 
@@ -2727,7 +2747,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
     private def genApplyStaticLike(field: String, className: ClassName,
         method: MethodIdent, args: List[js.Tree])(
         implicit pos: Position): js.Tree = {
-      js.Apply(envVar(field, className, method.name), args)
+      js.Apply(extractWithInfo(envVar(field, className, method.name)), args)
     }
 
     private def genFround(arg: js.Tree)(implicit pos: Position): js.Tree = {
@@ -2759,6 +2779,14 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
         args: js.Tree*)(implicit pos: Position): js.Tree = {
       import TreeDSL._
       js.Apply(receiver DOT genName(methodName), args.toList)
+    }
+
+    private def genLongModuleApply(methodName: MethodName, args: js.Tree*)(
+        implicit pos: Position): js.Tree = {
+      import TreeDSL._
+      js.Apply(
+          extractWithInfo(genLoadModule(LongImpl.RuntimeLongModuleClass)) DOT genName(methodName),
+          args.toList)
     }
   }
 }

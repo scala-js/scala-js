@@ -78,14 +78,6 @@ private[emitter] final class JSGen(val semantics: Semantics,
   def genBoxedCharZero()(implicit pos: Position): Tree =
     coreJSLibVar("bC0")
 
-  def genLongModuleApply(methodName: MethodName, args: Tree*)(
-      implicit pos: Position): Tree = {
-    import TreeDSL._
-    Apply(
-        genLoadModule(LongImpl.RuntimeLongModuleClass) DOT genName(methodName),
-        args.toList)
-  }
-
   def genConst(name: Ident, rhs: Tree)(implicit pos: Position): LocalDef =
     genLet(name, mutable = false, rhs)
 
@@ -129,19 +121,22 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genJSPrivateSelect(receiver: Tree, className: ClassName,
       field: irt.FieldIdent)(
-      implicit pos: Position): Tree = {
-    BracketSelect(receiver,
-        genJSPrivateFieldIdent(className, field)(field.pos))
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
+    for {
+      ident <- genJSPrivateFieldIdent(className, field)(globalKnowledge, field.pos)
+    } yield BracketSelect(receiver, ident)
   }
 
   def genJSPrivateFieldIdent(className: ClassName, field: irt.FieldIdent)(
-      implicit pos: Position): Tree = {
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
     envVar("r", className, field.name)
   }
 
   def genIsInstanceOf(expr: Tree, tpe: Type)(
-      implicit globalKnowledge: GlobalKnowledge, pos: Position): Tree = {
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
     import TreeDSL._
+
+    implicit def withInfo(t: Tree): WithInfo[Tree] = WithInfo(t)
 
     tpe match {
       case ClassType(className) =>
@@ -151,13 +146,13 @@ private[emitter] final class JSGen(val semantics: Semantics,
           expr === Null()
         } else if (className != NumberClass && // the only non-object superclass of hijacked classes
             !globalKnowledge.isInterface(className)) {
-          expr instanceof envVar("c", className)
+          envVar("c", className).map(expr instanceof _)
         } else {
-          Apply(envVar("is", className), List(expr))
+          envVar("is", className).map(Apply(_, List(expr)))
         }
 
       case ArrayType(ArrayTypeRef(base, depth)) =>
-        Apply(envVar("isArrayOf", base), List(expr, IntLiteral(depth)))
+        envVar("isArrayOf", base).map(Apply(_, List(expr, IntLiteral(depth))))
 
       case UndefType   => expr === Undefined()
       case BooleanType => typeof(expr) === "boolean"
@@ -197,8 +192,14 @@ private[emitter] final class JSGen(val semantics: Semantics,
   private def genIsLong(expr: Tree)(implicit pos: Position): Tree = {
     import TreeDSL._
 
-    if (useBigIntForLongs) genCallHelper("isLong", expr)
-    else expr instanceof envVar("c", LongImpl.RuntimeLongClass)
+    if (useBigIntForLongs) {
+      genCallHelper("isLong", expr)
+    } else {
+      /* HACK: RuntimeLong is not always local but is always available as it is
+       * always in the root module.
+       */
+      expr instanceof localEnvVar("c", LongImpl.RuntimeLongClass)
+    }
   }
 
   private def genIsFloat(expr: Tree)(implicit pos: Position): Tree = {
@@ -208,11 +209,12 @@ private[emitter] final class JSGen(val semantics: Semantics,
     else typeof(expr) === "number"
   }
 
-  def genAsInstanceOf(expr: Tree, tpe: Type)(implicit pos: Position): Tree = {
+  def genAsInstanceOf(expr: Tree, tpe: Type)(
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
     import TreeDSL._
 
     if (semantics.asInstanceOfs == CheckedBehavior.Unchecked) {
-      tpe match {
+      val tree = tpe match {
         case _:ClassType | _:ArrayType | AnyType =>
           expr
 
@@ -231,25 +233,27 @@ private[emitter] final class JSGen(val semantics: Semantics,
         case NoType | NullType | NothingType | _:RecordType =>
           throw new AssertionError(s"Unexpected type $tpe in genAsInstanceOf")
       }
+
+      WithInfo(tree)
     } else {
       tpe match {
         case ClassType(className) =>
-          Apply(envVar("as", className), List(expr))
+          envVar("as", className).map(Apply(_, List(expr)))
 
         case ArrayType(ArrayTypeRef(base, depth)) =>
-          Apply(envVar("asArrayOf", base), List(expr, IntLiteral(depth)))
+          envVar("asArrayOf", base).map(Apply(_, List(expr, IntLiteral(depth))))
 
-        case UndefType   => genCallHelper("uV", expr)
-        case BooleanType => genCallHelper("uZ", expr)
-        case CharType    => genCallHelper("uC", expr)
-        case ByteType    => genCallHelper("uB", expr)
-        case ShortType   => genCallHelper("uS", expr)
-        case IntType     => genCallHelper("uI", expr)
-        case LongType    => genCallHelper("uJ", expr)
-        case FloatType   => genCallHelper("uF", expr)
-        case DoubleType  => genCallHelper("uD", expr)
-        case StringType  => genCallHelper("uT", expr)
-        case AnyType     => expr
+        case UndefType   => WithInfo(genCallHelper("uV", expr))
+        case BooleanType => WithInfo(genCallHelper("uZ", expr))
+        case CharType    => WithInfo(genCallHelper("uC", expr))
+        case ByteType    => WithInfo(genCallHelper("uB", expr))
+        case ShortType   => WithInfo(genCallHelper("uS", expr))
+        case IntType     => WithInfo(genCallHelper("uI", expr))
+        case LongType    => WithInfo(genCallHelper("uJ", expr))
+        case FloatType   => WithInfo(genCallHelper("uF", expr))
+        case DoubleType  => WithInfo(genCallHelper("uD", expr))
+        case StringType  => WithInfo(genCallHelper("uT", expr))
+        case AnyType     => WithInfo(expr)
 
         case NoType | NullType | NothingType | _:RecordType =>
           throw new AssertionError(s"Unexpected type $tpe in genAsInstanceOf")
@@ -262,17 +266,24 @@ private[emitter] final class JSGen(val semantics: Semantics,
     Apply(coreJSLibVar(helperName), args.toList)
   }
 
-  def genLoadModule(moduleClass: ClassName)(implicit pos: Position): Tree =
-    Apply(envVar("m", moduleClass), Nil)
+  def genLoadModule(moduleClass: ClassName)(
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
+    envVar("m", moduleClass).map(Apply(_, Nil))
+  }
 
   def genScalaClassNew(className: ClassName, ctor: MethodName, args: Tree*)(
-      implicit globalKnowledge: GlobalKnowledge, pos: Position): Tree = {
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
     val encodedClassVar = envVar("c", className)
     val argsList = args.toList
     if (globalKnowledge.hasInlineableInit(className)) {
-      New(encodedClassVar, argsList)
+      encodedClassVar.map(New(_, argsList))
     } else {
-      Apply(envVar("ct", className, ctor), New(encodedClassVar, Nil) :: argsList)
+      for {
+        classVar <- encodedClassVar
+        ctor <- envVar("ct", className, ctor)
+      } yield {
+        Apply(ctor, New(classVar, Nil) :: argsList)
+      }
     }
   }
 
@@ -289,11 +300,12 @@ private[emitter] final class JSGen(val semantics: Semantics,
   def genJSClassConstructor(className: ClassName,
       spec: Option[irt.JSNativeLoadSpec],
       keepOnlyDangerousVarNames: Boolean)(
-      implicit pos: Position): WithInfo[Tree] = {
+      implicit globalKnowledge: GlobalKnowledge,
+      pos: Position): WithInfo[Tree] = {
     spec match {
       case None =>
         // This is a non-native JS class
-        WithInfo(genNonNativeJSClassConstructor(className))
+        genNonNativeJSClassConstructor(className)
 
       case Some(spec) =>
         genLoadJSFromSpec(spec, keepOnlyDangerousVarNames)
@@ -301,8 +313,8 @@ private[emitter] final class JSGen(val semantics: Semantics,
   }
 
   def genNonNativeJSClassConstructor(className: ClassName)(
-      implicit pos: Position): Tree = {
-    Apply(envVar("a", className), Nil)
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
+    envVar("a", className).map(Apply(_, Nil))
   }
 
   def genLoadJSFromSpec(spec: irt.JSNativeLoadSpec,
@@ -326,7 +338,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
             Set(globalRef)
           }
         }
-        WithInfo(pathSelection(globalVarRef, path), globalVarNames)
+        WithInfo(pathSelection(globalVarRef, path), globalVarNames, Set.empty)
 
       case irt.JSNativeLoadSpec.Import(module, path) =>
         val moduleValue = fileLevelModuleField(module)
@@ -349,31 +361,40 @@ private[emitter] final class JSGen(val semantics: Semantics,
   }
 
   def genArrayValue(arrayTypeRef: ArrayTypeRef, elems: List[Tree])(
-      implicit pos: Position): Tree = {
-    genCallHelper("makeNativeArrayWrapper", genClassDataOf(arrayTypeRef),
-        ArrayConstr(elems))
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
+    genClassDataOf(arrayTypeRef).map(data =>
+        genCallHelper("makeNativeArrayWrapper", data, ArrayConstr(elems)))
   }
 
-  def genClassOf(typeRef: TypeRef)(implicit pos: Position): Tree =
-    Apply(DotSelect(genClassDataOf(typeRef), Ident("getClassOf")), Nil)
+  def genClassOf(typeRef: TypeRef)(
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
+    genClassDataOf(typeRef).map(data =>
+        Apply(DotSelect(data, Ident("getClassOf")), Nil))
+  }
 
-  def genClassOf(className: ClassName)(implicit pos: Position): Tree =
+  def genClassOf(className: ClassName)(
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
     genClassOf(ClassRef(className))
+  }
 
-  def genClassDataOf(typeRef: TypeRef)(implicit pos: Position): Tree = {
+  def genClassDataOf(typeRef: TypeRef)(
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
     typeRef match {
       case typeRef: NonArrayTypeRef =>
         envVar("d", typeRef)
       case ArrayTypeRef(base, dims) =>
-        val baseData = genClassDataOf(base)
-        (1 to dims).foldLeft[Tree](baseData) { (prev, _) =>
-          Apply(DotSelect(prev, Ident("getArrayOf")), Nil)
+        for (baseData <- genClassDataOf(base)) yield {
+          (1 to dims).foldLeft[Tree](baseData) { (prev, _) =>
+            Apply(DotSelect(prev, Ident("getArrayOf")), Nil)
+          }
         }
     }
   }
 
-  def genClassDataOf(className: ClassName)(implicit pos: Position): Tree =
+  def genClassDataOf(className: ClassName)(
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
     genClassDataOf(ClassRef(className))
+  }
 
   // Compiler generated identifiers --------------------------------------------
 
@@ -388,34 +409,39 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   // Per class envVars.
 
-  def envVarIdent(field: String, className: ClassName)(implicit pos: Position): Ident =
+  def localEnvVarIdent(field: String, className: ClassName)(implicit pos: Position): Ident =
     fileLevelVarIdent(field, genName(className))
 
-  def envVar(field: String, className: ClassName)(implicit pos: Position): Tree =
-    VarRef(envVarIdent(field, className))
+  def localEnvVar(field: String, className: ClassName)(implicit pos: Position): Tree =
+    VarRef(localEnvVarIdent(field, className))
+
+  def envVar(field: String, className: ClassName)(
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
+    withInfoForClass(VarRef(localEnvVarIdent(field, className)), className)
+  }
 
   // Per field envVars.
 
-  def envVarIdent(field: String, className: ClassName, fieldName: FieldName,
+  def localEnvVarIdent(field: String, className: ClassName, fieldName: FieldName,
       origName: OriginalName)(implicit pos: Position): Ident = {
     fileLevelVarIdent(field, genName(className) + "__" + genName(fieldName),
         origName)
   }
 
   def envVar(field: String, className: ClassName, fieldName: FieldName)(
-      implicit pos: Position): Tree = {
-    VarRef(envVarIdent(field, className, fieldName, NoOriginalName))
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
+    envVar(field, className, fieldName, NoOriginalName)
   }
 
   def envVar(field: String, className: ClassName, fieldName: FieldName,
       origName: OriginalName)(
-      implicit pos: Position): Tree = {
-    VarRef(envVarIdent(field, className, fieldName, origName))
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
+    withInfoForClass(VarRef(localEnvVarIdent(field, className, fieldName, origName)), className)
   }
 
   // Per method envVars.
 
-  def envVarIdent(field: String, className: ClassName, methodName: MethodName,
+  def localEnvVarIdent(field: String, className: ClassName, methodName: MethodName,
       origName: OriginalName)(
       implicit pos: Position): Ident = {
     fileLevelVarIdent(field, genName(className) + "__" + genName(methodName),
@@ -423,23 +449,23 @@ private[emitter] final class JSGen(val semantics: Semantics,
   }
 
   def envVar(field: String, className: ClassName, methodName: MethodName)(
-      implicit pos: Position): Tree = {
-    VarRef(envVarIdent(field, className, methodName, NoOriginalName))
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
+    envVar(field, className, methodName, NoOriginalName)
   }
 
   def envVar(field: String, className: ClassName, methodName: MethodName,
       origName: OriginalName)(
-      implicit pos: Position): Tree = {
-    VarRef(envVarIdent(field, className, methodName, origName))
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
+    withInfoForClass(VarRef(localEnvVarIdent(field, className, methodName, origName)), className)
   }
 
   // Per typeRef access.
 
   def envVar(field: String, typeRef: NonArrayTypeRef)(
-      implicit pos: Position): Tree = {
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
     typeRef match {
       case primRef: PrimRef =>
-        VarRef(coreJSLibVarIdent(field, primRef))
+        WithInfo(VarRef(coreJSLibVarIdent(field, primRef)))
 
       case ClassRef(className) =>
         envVar(field, className)
@@ -561,6 +587,12 @@ private[emitter] final class JSGen(val semantics: Semantics,
       slowPath(codegenVarName)
     else
       codegenVarName
+  }
+
+  private def withInfoForClass[A](v: A, className: ClassName)(
+      implicit globalKnowledge: GlobalKnowledge): WithInfo[A] = {
+    val module = globalKnowledge.getContainingModuleName(className).toSet
+    WithInfo(v, Set.empty, module)
   }
 
   def genPropSelect(qual: Tree, item: PropertyName)(

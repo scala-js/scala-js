@@ -27,23 +27,24 @@ import GlobalRefUtils.unionPreserveEmpty
  *  adapting said proof to `WithInfo` as an exercise to the reader.
  */
 private[emitter] final case class WithInfo[+A](
-    value: A, globalVarNames: Set[String]) {
+    value: A, globalVarNames: Set[String], internalModuleDeps: Set[String]) {
 
   import WithInfo._
 
   def map[B](f: A => B): WithInfo[B] =
-    WithInfo(f(value), globalVarNames)
+    WithInfo(f(value), globalVarNames, internalModuleDeps)
 
   def flatMap[B](f: A => WithInfo[B]): WithInfo[B] = {
     val t = f(value)
-    WithInfo(t.value, unionPreserveEmpty(globalVarNames, t.globalVarNames))
+    WithInfo(t.value, unionPreserveEmpty(globalVarNames, t.globalVarNames),
+        unionPreserveEmpty(internalModuleDeps, t.internalModuleDeps))
   }
 }
 
 private[emitter] object WithInfo {
   /** Constructs a `WithInfo` with an empty set `globalVarNames`. */
   def apply[A](value: A): WithInfo[A] =
-    new WithInfo(value, Set.empty)
+    new WithInfo(value, Set.empty, Set.empty)
 
   def list[A](xs: List[WithInfo[A]]): WithInfo[List[A]] = {
     /* This could be a cascade of flatMap's, but the following should be more
@@ -53,7 +54,10 @@ private[emitter] object WithInfo {
     val globalVarNames = xs.foldLeft(Set.empty[String]) { (prev, x) =>
       unionPreserveEmpty(prev, x.globalVarNames)
     }
-    WithInfo(values, globalVarNames)
+    val internalModuleDeps = xs.foldLeft(Set.empty[String]) { (prev, x) =>
+      unionPreserveEmpty(prev, x.internalModuleDeps)
+    }
+    WithInfo(values, globalVarNames, internalModuleDeps)
   }
 
   def option[A](xs: Option[WithInfo[A]]): WithInfo[Option[A]] =

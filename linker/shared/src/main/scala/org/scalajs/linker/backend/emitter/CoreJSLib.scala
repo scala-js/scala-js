@@ -53,6 +53,14 @@ private[emitter] object CoreJSLib {
       varRef(name)
     }
 
+    private def extractWithInfo(withInfo: WithInfo[Tree]): Tree = {
+      assert(!withInfo.globalVarNames.exists(GlobalRefUtils.isDangerousGlobalRef _),
+          "tree used by CoreJSLib generated dangerous global ref")
+      assert(withInfo.internalModuleDeps.isEmpty,
+          "tree used by CoreJSLib depends on non-core module")
+      withInfo.value
+    }
+
     // Unconditional global references
     private val ObjectRef = globalRef("Object")
     private val ArrayRef = globalRef("Array")
@@ -91,7 +99,7 @@ private[emitter] object CoreJSLib {
       defineAsArrayOfPrimitiveFunctions()
       definePrimitiveTypeDatas()
 
-      WithInfo(Block(buf.result()), trackedGlobalRefs)
+      WithInfo(Block(buf.result()), trackedGlobalRefs, Set.empty)
     }
 
     private def defineLinkingInfo(): Unit = {
@@ -607,8 +615,11 @@ private[emitter] object CoreJSLib {
           case _                 => None
         }
 
-        def genHijackedMethodApply(className: ClassName): Tree =
-          Apply(envVar("f", className, methodName, NoOriginalName), instance :: args)
+        def genHijackedMethodApply(className: ClassName): Tree = {
+          val method =
+            extractWithInfo(envVar("f", className, methodName, NoOriginalName))
+          Apply(method, instance :: args)
+        }
 
         def genBodyNoSwitch(hijackedClasses: List[ClassName]): Tree = {
           val normalCall = Return(Apply(instance DOT genName(methodName), args))
@@ -625,7 +636,8 @@ private[emitter] object CoreJSLib {
 
           if (implementedInObject) {
             val staticObjectCall: Tree = {
-              val fun = envVar("c", ObjectClass).prototype DOT genName(methodName)
+              val obj = extractWithInfo(envVar("c", ObjectClass))
+              val fun = obj.prototype DOT genName(methodName)
               Return(Apply(fun DOT "call", instance :: args))
             }
 
@@ -1101,8 +1113,10 @@ private[emitter] object CoreJSLib {
           Return(New(typedArrayClass, (value DOT "u") :: Nil))
         })
         buf += envFunctionDef("typedArray2" + shortNameUpperCase + "Array", paramList(value), {
-          Return(New(genClassDataOf(ArrayTypeRef(primRef, 1)) DOT "constr",
-              New(typedArrayClass, value :: Nil) :: Nil))
+          val data = extractWithInfo(
+              jsGen.genClassDataOf(ArrayTypeRef(primRef, 1)))
+
+          Return(New(data DOT "constr", New(typedArrayClass, value :: Nil) :: Nil))
         })
       }
     }
@@ -1280,8 +1294,12 @@ private[emitter] object CoreJSLib {
               } :: Nil))
             })
 
-            genClassDef(ArrayClass.ident,
-                Some((envVar("c", ObjectClass), envVar("h", ObjectClass))),
+            val parent = (
+              extractWithInfo(envVar("c", ObjectClass)),
+              extractWithInfo(envVar("h", ObjectClass)),
+            )
+
+            genClassDef(ArrayClass.ident, Some(parent),
                 ctor :: getAndSet ::: clone :: Nil)
           }
 
@@ -1467,9 +1485,10 @@ private[emitter] object CoreJSLib {
         val obj = varRef("obj")
         val depth = varRef("depth")
         buf += FunctionDef(coreJSLibVarIdent("isArrayOf", primRef), paramList(obj, depth), {
+          val baseData = VarRef(coreJSLibVarIdent("d", primRef))
           Return(!(!(obj && (obj DOT classData) &&
               ((obj DOT classData DOT "arrayDepth") === depth) &&
-              ((obj DOT classData DOT "arrayBase") === genClassDataOf(primRef)))))
+              ((obj DOT classData DOT "arrayBase") === baseData))))
         })
       }
     }
@@ -1480,7 +1499,7 @@ private[emitter] object CoreJSLib {
           val obj = varRef("obj")
           val depth = varRef("depth")
           buf += FunctionDef(coreJSLibVarIdent("asArrayOf", primRef), paramList(obj, depth), {
-            If(Apply(envVar("isArrayOf", primRef), obj :: depth :: Nil) || (obj === Null()), {
+            If(Apply(VarRef(coreJSLibVarIdent("isArrayOf", primRef)), obj :: depth :: Nil) || (obj === Null()), {
               Return(obj)
             }, {
               genCallHelper("throwArrayCastException", obj,
@@ -1508,7 +1527,7 @@ private[emitter] object CoreJSLib {
         buf += genConst(coreJSLibVarIdent("d", primRef), {
           Apply(New(coreJSLibVar("TypeData"), Nil) DOT "initPrim",
               List(zero, str(primRef.charCode.toString()),
-                  str(primRef.displayName), envVar("isArrayOf", primRef)))
+                  str(primRef.displayName), VarRef(coreJSLibVarIdent("isArrayOf", primRef))))
         })
       }
     }
@@ -1617,5 +1636,14 @@ private[emitter] object CoreJSLib {
     private implicit def int(i: Int): IntLiteral = IntLiteral(i)
 
     private def double(d: Double): DoubleLiteral = DoubleLiteral(d)
+
+    private def genClassOf(className: ClassName) =
+      extractWithInfo(jsGen.genClassOf(className))
+
+    private def genClassDataOf(className: ClassName) =
+      extractWithInfo(jsGen.genClassDataOf(className))
+
+    private def genScalaClassNew(className: ClassName, ctor: MethodName, args: Tree*) =
+      extractWithInfo(jsGen.genScalaClassNew(className, ctor, args: _*))
   }
 }
