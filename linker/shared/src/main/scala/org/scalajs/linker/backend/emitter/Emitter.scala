@@ -144,32 +144,35 @@ final class Emitter private (config: CommonPhaseConfig,
           (module, deps) <- unit.moduleDeps
         } yield {
           val trees = mutable.ListBuffer.empty[js.Tree]
-          //var refs = Set.empty[String]
+          var globalRefs = Set.empty[String]
   
           if (deps.isEmpty) {
             // This is the root module.
             trees += coreJSLibTree
-            //refs += coreJSLibTrackedGlobalRefs
+            //globalRefs = unionPreserveEmpty(globalRefs, coreJSLibTrackedGlobalRefs)
           }
+
+          // TODO merge globalRefs
 
           implicit val pos = Position.NoPosition
 
-          for (d <- deps) {
-            trees += js.ImportNamespace(
-                js.Ident("$i_" + d.toString),
-                // TODO use configured pattern.
-                js.StringLiteral("%s.js".format(d.toString)))
+          val classes = generatedClasses(module)
+
+          for {
+            (mod, elems) <- classes.map(_.internalModuleDeps).flatten.groupBy(_._1)
+            if mod != module
+          } {
+            assert(deps.contains(mod), s"module $module depends on $mod but " +
+                s"this was not reported in the analysis: $deps. This is a Scala.js bug")
+
+            val from = js.StringLiteral("%s.js".format(mod.toString))
+            val bindings = elems.unzip._2.map(x => (js.ExportName(x), js.Ident(x)))
+            trees += js.Import(bindings, from)
           }
 
           // For now, we just emit all module imports everywhere.
           emitModuleImports(orderedClasses.valuesIterator.flatten, trees, logger)
 
-          // TODO remove this
-          for (c <- orderedClasses(module)) {
-            trees += js.StringLiteral(c.name.name.toString)
-          }
-
-          val classes = generatedClasses(module)
           emitGeneratedClasses(trees, classes)
           //classes.foreach(refs += _)
   
@@ -177,7 +180,7 @@ final class Emitter private (config: CommonPhaseConfig,
           //for (moduleInitializer <- unit.moduleInitializers)
           //  trees += classEmitter.genModuleInitializer(moduleInitializer)
   
-          module -> new Result("", trees.result(), "", Nil, Set.empty)
+          module -> new Result("", trees.result(), "", Nil, globalRefs)
         }
       }
     } finally {

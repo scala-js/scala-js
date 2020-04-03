@@ -401,7 +401,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           if (trackAllGlobalRefs) globalVarNames.toSet
           else GlobalRefUtils.keepOnlyDangerousGlobalRefs(globalVarNames.toSet)
 
-        WithInfo(result, globalRefs, Set.empty)
+        WithInfo(result, globalRefs, internalModuleDeps.toSet)
       } else {
         /* Clear the local var names, but *not* the global var names.
          * In the pessimistic run, we will use the knowledge gathered during

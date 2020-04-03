@@ -56,8 +56,8 @@ private[emitter] object CoreJSLib {
     private def extractWithInfo(withInfo: WithInfo[Tree]): Tree = {
       assert(!withInfo.globalVarNames.exists(GlobalRefUtils.isDangerousGlobalRef _),
           "tree used by CoreJSLib generated dangerous global ref")
-      assert(withInfo.internalModuleDeps.isEmpty,
-          "tree used by CoreJSLib depends on non-core module")
+      //assert(withInfo.internalModuleDeps.isEmpty,
+      //    "tree used by CoreJSLib depends on non-core module")
       withInfo.value
     }
 
