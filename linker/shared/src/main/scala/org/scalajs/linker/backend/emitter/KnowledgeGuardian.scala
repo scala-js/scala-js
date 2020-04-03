@@ -353,6 +353,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
       jsNativeLoadSpecAskers -= invalidatable
       superClassAskers -= invalidatable
       fieldDefsAskers -= invalidatable
+      staticFieldMirrorsAskers -= invalidatable
     }
 
     /** Call this when we invalidate all caches. */
@@ -364,6 +365,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
       jsNativeLoadSpecAskers.clear()
       superClassAskers.clear()
       fieldDefsAskers.clear()
+      staticFieldMirrorsAskers.clear()
     }
   }
 
