@@ -389,11 +389,11 @@ final class Emitter private (config: CommonPhaseConfig,
     // Global ref management
 
     var trackedGlobalRefs: Set[String] = Set.empty
-    var trackedInternalModuleDeps: Set[String] = Set.empty
+    var trackedInternalModuleDeps: Set[(Int, String)] = Set.empty
 
     def extractWithInfo[A](withInfo: WithInfo[A]): A = {
       trackedGlobalRefs = unionPreserveEmpty(withInfo.globalVarNames, trackedGlobalRefs)
-      trackedInternalModuleDeps = unionPreserveEmpty(withInfo.internalModuleDeps, trackedInternalModuleDeps)
+      trackedInternalModuleDeps ++= withInfo.internalModuleDeps
       withInfo.value
     }
 
@@ -755,7 +755,7 @@ object Emitter {
       val staticInitialization: List[js.Tree],
       val topLevelExports: List[js.Tree],
       val trackedGlobalRefs: Set[String],
-      val internalModuleDeps: Set[String]
+      val internalModuleDeps: Set[(Int, String)]
   )
 
   private final class OneTimeCache[A >: Null] {

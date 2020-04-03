@@ -323,7 +323,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
     private val globalVarNames = mutable.Set.empty[String]
     private val localVarNames = mutable.Set.empty[String]
-    private val internalModuleDeps = mutable.Set.empty[String]
+    private val internalModuleDeps = mutable.Set.empty[(Int, String)]
 
     private lazy val localVarAllocs = mutable.Map.empty[LocalName, String]
 

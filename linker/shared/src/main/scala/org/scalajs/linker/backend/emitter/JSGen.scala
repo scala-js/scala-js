@@ -417,7 +417,8 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def envVar(field: String, className: ClassName)(
       implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
-    withInfoForClass(VarRef(localEnvVarIdent(field, className)), className)
+    val ident = localEnvVarIdent(field, className)
+    withModuleInfo(VarRef(ident), className, ident)
   }
 
   // Per field envVars.
@@ -436,7 +437,8 @@ private[emitter] final class JSGen(val semantics: Semantics,
   def envVar(field: String, className: ClassName, fieldName: FieldName,
       origName: OriginalName)(
       implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
-    withInfoForClass(VarRef(localEnvVarIdent(field, className, fieldName, origName)), className)
+    val ident = localEnvVarIdent(field, className, fieldName, origName)
+    withModuleInfo(VarRef(ident), className, ident)
   }
 
   // Per method envVars.
@@ -456,7 +458,8 @@ private[emitter] final class JSGen(val semantics: Semantics,
   def envVar(field: String, className: ClassName, methodName: MethodName,
       origName: OriginalName)(
       implicit globalKnowledge: GlobalKnowledge, pos: Position): WithInfo[Tree] = {
-    withInfoForClass(VarRef(localEnvVarIdent(field, className, methodName, origName)), className)
+    val ident = localEnvVarIdent(field, className, methodName, origName)
+    withModuleInfo(VarRef(ident), className, ident)
   }
 
   // Per typeRef access.
@@ -589,10 +592,10 @@ private[emitter] final class JSGen(val semantics: Semantics,
       codegenVarName
   }
 
-  private def withInfoForClass[A](v: A, className: ClassName)(
+  private def withModuleInfo[A](v: A, className: ClassName, ident: Ident)(
       implicit globalKnowledge: GlobalKnowledge): WithInfo[A] = {
-    val module = globalKnowledge.getContainingModuleName(className).toSet
-    WithInfo(v, Set.empty, module)
+    val module = globalKnowledge.getModule(className).get
+    WithInfo(v, Set.empty, Set((module, ident.name)))
   }
 
   def genPropSelect(qual: Tree, item: PropertyName)(

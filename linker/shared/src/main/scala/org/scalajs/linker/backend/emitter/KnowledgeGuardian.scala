@@ -158,7 +158,8 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     def getStaticFieldMirrors(className: ClassName, field: FieldName): List[String] =
       classes(className).askStaticFieldMirrors(this, field)
 
-    def getContainingModuleName(className: ClassName): Option[String] = ??? // TODO
+    def getModule(className: ClassName): Option[Int] =
+      classes(className).askModule(this)
 
     def representativeClassHasPublicMethod(className: ClassName,
         methodName: MethodName): Boolean = {
@@ -182,6 +183,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     private var superClass = computeSuperClass(initClass)
     private var fieldDefs = computeFieldDefs(initClass)
     private var staticFieldMirrors = computeStaticFieldMirrors(initClass)
+    private var module = computeModule(initClass)
 
     private val isInterfaceAskers = mutable.Set.empty[Invalidatable]
     private val hasInlineableInitAskers = mutable.Set.empty[Invalidatable]
@@ -191,6 +193,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     private val superClassAskers = mutable.Set.empty[Invalidatable]
     private val fieldDefsAskers = mutable.Set.empty[Invalidatable]
     private val staticFieldMirrorsAskers = mutable.Set.empty[Invalidatable]
+    private val moduleAskers = mutable.Set.empty[Invalidatable]
 
     def update(linkedClass: LinkedClass, newHasInlineableInit: Boolean): Unit = {
       isAlive = true
@@ -241,6 +244,12 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
         staticFieldMirrors = newStaticFieldMirrors
         invalidateAskers(staticFieldMirrorsAskers)
       }
+
+      val newModule = computeModule(linkedClass)
+      if (newModule != module) {
+        module = newModule
+        invalidateAskers(moduleAskers)
+      }
     }
 
     private def computeIsInterface(linkedClass: LinkedClass): Boolean =
@@ -280,6 +289,9 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
         result.toMap
       }
     }
+
+    private def computeModule(linkedClass: LinkedClass): Option[Int] =
+      linkedClass.outputModule
 
     def testAndResetIsAlive(): Boolean = {
       val result = isAlive
@@ -347,6 +359,12 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
       staticFieldMirrors.getOrElse(field, Nil)
     }
 
+    def askModule(invalidatable: Invalidatable): Option[Int] = {
+      invalidatable.registeredTo(this)
+      moduleAskers += invalidatable
+      module
+    }
+
     def unregister(invalidatable: Invalidatable): Unit = {
       isInterfaceAskers -= invalidatable
       hasInlineableInitAskers -= invalidatable
@@ -356,6 +374,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
       superClassAskers -= invalidatable
       fieldDefsAskers -= invalidatable
       staticFieldMirrorsAskers -= invalidatable
+      moduleAskers -= invalidatable
     }
 
     /** Call this when we invalidate all caches. */
@@ -368,6 +387,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
       superClassAskers.clear()
       fieldDefsAskers.clear()
       staticFieldMirrorsAskers.clear()
+      moduleAskers.clear()
     }
   }
 

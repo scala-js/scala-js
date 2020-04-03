@@ -81,9 +81,9 @@ private[emitter] trait GlobalKnowledge {
 
   /** The module containing this class definition.
    *
-   *  @returns Module name or None if this class is in the root module.
+   *  @returns Module name or None if this class is not in any module.
    */
-  def getContainingModuleName(className: ClassName): Option[String]
+  def getModule(className: ClassName): Option[Int]
 
   /** Whether the given public non-static method exists on the given representative class.
    *

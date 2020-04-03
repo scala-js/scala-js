@@ -27,7 +27,7 @@ import GlobalRefUtils.unionPreserveEmpty
  *  adapting said proof to `WithInfo` as an exercise to the reader.
  */
 private[emitter] final case class WithInfo[+A](
-    value: A, globalVarNames: Set[String], internalModuleDeps: Set[String]) {
+    value: A, globalVarNames: Set[String], internalModuleDeps: Set[(Int, String)]) {
 
   import WithInfo._
 
@@ -37,7 +37,7 @@ private[emitter] final case class WithInfo[+A](
   def flatMap[B](f: A => WithInfo[B]): WithInfo[B] = {
     val t = f(value)
     WithInfo(t.value, unionPreserveEmpty(globalVarNames, t.globalVarNames),
-        unionPreserveEmpty(internalModuleDeps, t.internalModuleDeps))
+        internalModuleDeps ++ t.internalModuleDeps)
   }
 }
 
@@ -54,9 +54,9 @@ private[emitter] object WithInfo {
     val globalVarNames = xs.foldLeft(Set.empty[String]) { (prev, x) =>
       unionPreserveEmpty(prev, x.globalVarNames)
     }
-    val internalModuleDeps = xs.foldLeft(Set.empty[String]) { (prev, x) =>
-      unionPreserveEmpty(prev, x.internalModuleDeps)
-    }
+    val internalModuleDeps = xs.foldLeft(Set.empty[(Int, String)]) { (prev, x) =>
+      prev ++ x.internalModuleDeps
+  }
     WithInfo(values, globalVarNames, internalModuleDeps)
   }
 
