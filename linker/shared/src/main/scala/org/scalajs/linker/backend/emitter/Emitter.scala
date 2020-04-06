@@ -380,11 +380,16 @@ final class Emitter private (config: CommonPhaseConfig,
     // Global ref management
 
     var trackedGlobalRefs: Set[String] = Set.empty
-    var trackedClassDeps: Set[(ClassName, String)] = Set.empty
+    var trackedClassDeps: Map[ClassName, Set[String]] = Map.empty
 
     def extractWithInfo[A](withInfo: WithInfo[A]): A = {
       trackedGlobalRefs = unionPreserveEmpty(withInfo.globalVarNames, trackedGlobalRefs)
-      trackedClassDeps ++= withInfo.classDeps
+
+      for ((clazz, field) <- withInfo.classDeps) {
+        val newFields = trackedClassDeps.getOrElse(clazz, Set.empty) + field
+        trackedClassDeps = trackedClassDeps.updated(clazz, newFields)
+      }
+
       withInfo.value
     }
 
@@ -750,7 +755,7 @@ object Emitter {
       val staticInitialization: List[js.Tree],
       val topLevelExports: List[js.Tree],
       val trackedGlobalRefs: Set[String],
-      val classDeps: Set[(ClassName, String)],
+      val classDeps: Map[ClassName, Set[String]],
   ) extends Ordered[GeneratedClass] {
     def isEmpty: Boolean = {
       main.isEmpty &&

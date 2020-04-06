@@ -19,7 +19,7 @@ import org.scalajs.ir.Names.{ClassName, ObjectClass}
 import org.scalajs.ir.Trees.MemberNamespace
 
 object ModuleAnalyzer {
-  def analyze(classes: Map[ClassName, Set[(ClassName, String)]]): ModuleAnalysis = {
+  def analyze(classes: Map[ClassName, Map[ClassName, Set[String]]]): ModuleAnalysis = {
     val analyzer = new ModuleAnalyzer(classes)
     analyzer.analyze()
     analyzer
@@ -38,7 +38,7 @@ object ModuleAnalyzer {
   private final case class Component(id: Int) extends Result
 }
 
-private class ModuleAnalyzer(classes: Map[ClassName, Set[(ClassName, String)]])
+private class ModuleAnalyzer(classes: Map[ClassName, Map[ClassName, Set[String]]])
     extends ModuleAnalyzer.ModuleAnalysis {
   import ModuleAnalyzer._
 
@@ -59,36 +59,44 @@ private class ModuleAnalyzer(classes: Map[ClassName, Set[(ClassName, String)]])
   private def strongconnect(clazz: ClassName): Result = {
     val v = newNode(clazz)
 
-    val result = classes(clazz).foldLeft(
-      Partial(v.index, Vector(v), Map.empty)
-    ) { case (acc, (clazzDep, fieldDep)) =>
-      val Partial(thisLowlink, thisNodes, thisDeps) = acc
+    var lowlink = v.index
+    var nodes = Vector(v)
+    var deps = Map.empty[Int, Set[String]]
 
-      visitedNodes.get(clazzDep).fold {
-        strongconnect(clazzDep) match {
+    def addDep(id: Int, fields: Set[String]) = {
+      val newDep = deps.getOrElse(id, Set.empty).union(fields)
+      deps = deps.updated(id, newDep)
+    }
+
+    // For all dependencies
+    for ((clazz, fields) <- classes(clazz)) {
+      visitedNodes.get(clazz).fold {
+        // We have not visited this dependency. It is part of our spanning tree.
+        strongconnect(clazz) match {
           case Partial(thatLowlink, thatNodes, thatDeps) =>
-            Partial(math.min(thisLowlink, thatLowlink),
-                thisNodes ++ thatNodes, thisDeps ++ thatDeps)
+            lowlink = math.min(lowlink, thatLowlink)
+            nodes ++= thatNodes
+
+            for ((id, fields) <- thatDeps)
+              addDep(id, fields)
 
           case Component(id) =>
-            val newDeps = thisDeps.updated(id, thisDeps.getOrElse(id, Set.empty) + fieldDep)
-            Partial(thisLowlink, thisNodes, newDeps)
+            addDep(id, fields)
         }
       } { w =>
+        // We have already visited this node.
         if (w.compId == -1) {
           // This is a back link.
-          Partial(math.min(thisLowlink, w.index), thisNodes, thisDeps)
+          lowlink = math.min(lowlink, w.index)
         } else {
-          val id = w.compId
-          val newDeps = thisDeps.updated(id, thisDeps.getOrElse(id, Set.empty) + fieldDep)
-          Partial(thisLowlink, thisNodes, newDeps)
+          addDep(w.compId, fields)
         }
       }
     }
 
-    if (result.lowlink == v.index) {
+    if (lowlink == v.index) {
       // This node is the root node of a component/module.
-      val Partial(id, nodes, deps) = result
+      val id = v.index
       nodes.foreach(_.compId = id)
       val classes = nodes.map(_.clazz)
 
@@ -96,7 +104,7 @@ private class ModuleAnalyzer(classes: Map[ClassName, Set[(ClassName, String)]])
 
       Component(id)
     } else {
-      result
+      Partial(lowlink, nodes, deps)
     }
   }
 
