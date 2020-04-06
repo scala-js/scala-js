@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.backend.emitter
 
+import org.scalajs.ir.Names.ClassName
+
 import GlobalRefUtils.unionPreserveEmpty
 
 /** A monad that associates additional information to a value.
@@ -27,17 +29,18 @@ import GlobalRefUtils.unionPreserveEmpty
  *  adapting said proof to `WithInfo` as an exercise to the reader.
  */
 private[emitter] final case class WithInfo[+A](
-    value: A, globalVarNames: Set[String], internalModuleDeps: Set[(Int, String)]) {
+  value: A, globalVarNames: Set[String],
+  classDeps: Set[(ClassName, String)]) {
 
   import WithInfo._
 
   def map[B](f: A => B): WithInfo[B] =
-    WithInfo(f(value), globalVarNames, internalModuleDeps)
+    WithInfo(f(value), globalVarNames, classDeps)
 
   def flatMap[B](f: A => WithInfo[B]): WithInfo[B] = {
     val t = f(value)
     WithInfo(t.value, unionPreserveEmpty(globalVarNames, t.globalVarNames),
-        internalModuleDeps ++ t.internalModuleDeps)
+        classDeps ++ t.classDeps)
   }
 }
 
@@ -54,10 +57,10 @@ private[emitter] object WithInfo {
     val globalVarNames = xs.foldLeft(Set.empty[String]) { (prev, x) =>
       unionPreserveEmpty(prev, x.globalVarNames)
     }
-    val internalModuleDeps = xs.foldLeft(Set.empty[(Int, String)]) { (prev, x) =>
-      prev ++ x.internalModuleDeps
+    val classDeps = xs.foldLeft(Set.empty[(ClassName, String)]) { (prev, x) =>
+      prev ++ x.classDeps
   }
-    WithInfo(values, globalVarNames, internalModuleDeps)
+    WithInfo(values, globalVarNames, classDeps)
   }
 
   def option[A](xs: Option[WithInfo[A]]): WithInfo[Option[A]] =

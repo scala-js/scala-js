@@ -323,7 +323,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
     private val globalVarNames = mutable.Set.empty[String]
     private val localVarNames = mutable.Set.empty[String]
-    private val internalModuleDeps = mutable.Set.empty[(Int, String)]
+    private val classDeps = mutable.Set.empty[(ClassName, String)]
 
     private lazy val localVarAllocs = mutable.Map.empty[LocalName, String]
 
@@ -334,7 +334,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       for (globalRef <- withInfo.globalVarNames)
         referenceGlobalName(globalRef)
 
-      internalModuleDeps ++= withInfo.internalModuleDeps
+      classDeps ++= withInfo.classDeps
 
       withInfo.value
     }
@@ -401,7 +401,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           if (trackAllGlobalRefs) globalVarNames.toSet
           else GlobalRefUtils.keepOnlyDangerousGlobalRefs(globalVarNames.toSet)
 
-        WithInfo(result, globalRefs, internalModuleDeps.toSet)
+        WithInfo(result, globalRefs, classDeps.toSet)
       } else {
         /* Clear the local var names, but *not* the global var names.
          * In the pessimistic run, we will use the knowledge gathered during

@@ -594,8 +594,8 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   private def withModuleInfo[A](v: A, className: ClassName, ident: Ident)(
       implicit globalKnowledge: GlobalKnowledge): WithInfo[A] = {
-    val module = globalKnowledge.getModule(className).get
-    WithInfo(v, Set.empty, Set((module, ident.name)))
+    //val module = globalKnowledge.getModule(className).get
+    WithInfo(v, Set.empty, Set((className, ident.name)))
   }
 
   def genPropSelect(qual: Tree, item: PropertyName)(

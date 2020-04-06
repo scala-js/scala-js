@@ -23,6 +23,7 @@ import org.scalajs.ir.Trees.{JSNativeLoadSpec, MemberNamespace}
 
 import org.scalajs.logging._
 
+import org.scalajs.linker.analyzer.ModuleAnalyzer
 import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.backend.javascript.{Trees => js, _}
@@ -126,13 +127,18 @@ final class Emitter private (config: CommonPhaseConfig,
   private def emitInternal(unit: LinkingUnit, logger: Logger): Map[Int, Result] = {
     startRun(unit)
     try {
-      val orderedClasses = unit.classDefs
-        .filter(_.outputModule.isDefined)
-        .groupBy(_.outputModule.get)
-        .mapValues(_.sortWith(compareClasses))
       val generatedClasses = {
         logger.time("Emitter: Generate classes") {
-          genAllClasses(orderedClasses, logger, secondAttempt = false)
+          genAllClasses(unit.classDefs, logger, secondAttempt = false)
+            .filterNot(_.isEmpty)
+            .map(x => x.name -> x)
+            .toMap
+        }
+      }
+
+      val moduleAnalysis = {
+        logger.time("Emitter: Analyze Modules") {
+          ModuleAnalyzer.analyze(generatedClasses.mapValues(_.classDeps))
         }
       }
 
@@ -140,13 +146,11 @@ final class Emitter private (config: CommonPhaseConfig,
         val WithInfo(coreJSLibTree, coreJSLibTrackedGlobalRefs, _) =
           state.coreJSLibCache.tree
 
-        for {
-          (module, deps) <- unit.moduleDeps
-        } yield {
+        for (module <- moduleAnalysis.modules) yield {
           val trees = mutable.ListBuffer.empty[js.Tree]
           var globalRefs = Set.empty[String]
   
-          if (deps.isEmpty) {
+          if (module.deps.isEmpty) {
             // This is the root module.
             trees += coreJSLibTree
             //globalRefs = unionPreserveEmpty(globalRefs, coreJSLibTrackedGlobalRefs)
@@ -156,22 +160,19 @@ final class Emitter private (config: CommonPhaseConfig,
 
           implicit val pos = Position.NoPosition
 
-          val classes = generatedClasses(module)
-
-          for {
-            (mod, elems) <- classes.map(_.internalModuleDeps).flatten.groupBy(_._1)
-            if mod != module
-          } {
-            assert(deps.contains(mod), s"module $module depends on $mod but " +
-                s"this was not reported in the analysis: $deps. This is a Scala.js bug")
-
+          for ((mod, elems) <- module.deps) {
             val from = js.StringLiteral("%s.js".format(mod.toString))
-            val bindings = elems.unzip._2.map(x => (js.ExportName(x), js.Ident(x)))
+            val bindings = elems.toList.sorted.map(x => (js.ExportName(x), js.Ident(x)))
             trees += js.Import(bindings, from)
           }
 
           // For now, we just emit all module imports everywhere.
-          emitModuleImports(orderedClasses.valuesIterator.flatten, trees, logger)
+          // TODO fix.
+          emitModuleImports(unit.classDefs.iterator, trees, logger)
+
+          val classes = module.classes
+            .map(generatedClasses(_))
+            .sorted
 
           emitGeneratedClasses(trees, classes)
           //classes.foreach(refs += _)
@@ -180,16 +181,16 @@ final class Emitter private (config: CommonPhaseConfig,
           //for (moduleInitializer <- unit.moduleInitializers)
           //  trees += classEmitter.genModuleInitializer(moduleInitializer)
   
-          module -> new Result("", trees.result(), "", Nil, globalRefs)
+          module.id -> new Result("", trees.result(), "", Nil, globalRefs)
         }
-      }
+      }.toMap
     } finally {
       endRun(logger)
     }
   }
 
   private def emitGeneratedClasses(builder: mutable.ListBuffer[js.Tree],
-      generatedClasses: List[GeneratedClass]): Unit = {
+      generatedClasses: Seq[GeneratedClass]): Unit = {
     /* Emit all the classes, in the appropriate order:
      *
      * 1. All class definitions, which depend on nothing but their
@@ -306,13 +307,6 @@ final class Emitter private (config: CommonPhaseConfig,
     }
   }
 
-  private def compareClasses(lhs: LinkedClass, rhs: LinkedClass) = {
-    val lhsAC = lhs.ancestors.size
-    val rhsAC = rhs.ancestors.size
-    if (lhsAC != rhsAC) lhsAC < rhsAC
-    else lhs.className.compareTo(rhs.className) < 0
-  }
-
   private def startRun(unit: LinkingUnit): Unit = {
     statsClassesReused = 0
     statsClassesInvalidated = 0
@@ -345,19 +339,13 @@ final class Emitter private (config: CommonPhaseConfig,
    *  succeed, ...
    */
   @tailrec
-  private def genAllClasses(orderedClasses: Map[Int, List[LinkedClass]], logger: Logger,
-      secondAttempt: Boolean): Map[Int, List[GeneratedClass]] = {
+  private def genAllClasses(classes: List[LinkedClass], logger: Logger,
+      secondAttempt: Boolean): List[GeneratedClass] = {
 
-    val objectClass = orderedClasses.valuesIterator.flatten
-      .find(_.name.name == ObjectClass).get
+    val objectClass = classes.find(_.name.name == ObjectClass).get
+    val generatedClasses = classes.map(genClass(_, objectClass))
 
-    val generatedClasses = for {
-      (module, classes) <- orderedClasses
-    } yield {
-      module -> classes.map(genClass(_, objectClass))
-    }
-
-    val trackedGlobalRefs = generatedClasses.valuesIterator.flatten.foldLeft(Set.empty[String]) {
+    val trackedGlobalRefs = generatedClasses.foldLeft(Set.empty[String]) {
       (prev, generatedClass) =>
         unionPreserveEmpty(prev, generatedClass.trackedGlobalRefs)
     }
@@ -378,7 +366,7 @@ final class Emitter private (config: CommonPhaseConfig,
           "Going to re-generate the world.")
 
       state = new State(mentionedDangerousGlobalRefs)
-      genAllClasses(orderedClasses, logger, secondAttempt = true)
+      genAllClasses(classes, logger, secondAttempt = true)
     }
   }
 
@@ -392,11 +380,11 @@ final class Emitter private (config: CommonPhaseConfig,
     // Global ref management
 
     var trackedGlobalRefs: Set[String] = Set.empty
-    var trackedInternalModuleDeps: Set[(Int, String)] = Set.empty
+    var trackedClassDeps: Set[(ClassName, String)] = Set.empty
 
     def extractWithInfo[A](withInfo: WithInfo[A]): A = {
       trackedGlobalRefs = unionPreserveEmpty(withInfo.globalVarNames, trackedGlobalRefs)
-      trackedInternalModuleDeps ++= withInfo.internalModuleDeps
+      trackedClassDeps ++= withInfo.classDeps
       withInfo.value
     }
 
@@ -594,12 +582,14 @@ final class Emitter private (config: CommonPhaseConfig,
     // Build the result
 
     new GeneratedClass(
+        linkedClass.className,
+        linkedClass.ancestors.size,
         main.reverse,
         staticFields,
         staticInitialization,
         topLevelExports,
         trackedGlobalRefs,
-        trackedInternalModuleDeps,
+        trackedClassDeps
     )
   }
 
@@ -753,13 +743,28 @@ object Emitter {
   }
 
   private final class GeneratedClass(
+      val name: ClassName,
+      private val ancestorCount: Int,
       val main: List[js.Tree],
       val staticFields: List[js.Tree],
       val staticInitialization: List[js.Tree],
       val topLevelExports: List[js.Tree],
       val trackedGlobalRefs: Set[String],
-      val internalModuleDeps: Set[(Int, String)]
-  )
+      val classDeps: Set[(ClassName, String)],
+  ) extends Ordered[GeneratedClass] {
+    def isEmpty: Boolean = {
+      main.isEmpty &&
+      staticFields.isEmpty &&
+      staticInitialization.isEmpty &&
+      topLevelExports.isEmpty
+    }
+
+    override def compare(that: GeneratedClass): Int = {
+      val a = this.ancestorCount - that.ancestorCount
+      if (a != 0) a
+      else this.name.compareTo(that.name)
+    }
+  }
 
   private final class OneTimeCache[A >: Null] {
     private[this] var value: A = null

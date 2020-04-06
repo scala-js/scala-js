@@ -72,9 +72,10 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
     for {
       (unit, analysis) <- optimizedResult
     } yield {
-      logger.time("Modularizer") {
-        modularize(unit, analysis)
-      }
+      unit
+      //logger.time("Modularizer") {
+      //  modularize(unit, analysis)
+      //}
     }
   }
 
@@ -90,19 +91,19 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
     }
   }
 
-  private def modularize(unit: LinkingUnit, analysis: Analysis): LinkingUnit = {
-    val moduleAnalysis = ModuleAnalyzer.analyze(analysis)
-
-    val newClassDefs = for {
-      classDef <- unit.classDefs
-    } yield {
-      val module = moduleAnalysis.moduleForClass(classDef.name.name)
-      classDef.modularized(module)
-    }
-
-    new LinkingUnit(unit.coreSpec, newClassDefs, unit.moduleInitializers,
-        moduleAnalysis.moduleDeps.toMap)
-  }
+  //private def modularize(unit: LinkingUnit, analysis: Analysis): LinkingUnit = {
+  //  val moduleAnalysis = ModuleAnalyzer.analyze(analysis)
+  //
+  //  val newClassDefs = for {
+  //    classDef <- unit.classDefs
+  //  } yield {
+  //    val module = moduleAnalysis.moduleForClass(classDef.name.name)
+  //    classDef.modularized(module)
+  //  }
+  //
+  //  new LinkingUnit(unit.coreSpec, newClassDefs, unit.moduleInitializers,
+  //      moduleAnalysis.moduleDeps.toMap)
+  //}
 }
 
 object LinkerFrontendImpl {
