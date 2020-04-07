@@ -127,13 +127,10 @@ final class Emitter private (config: CommonPhaseConfig,
   private def emitInternal(unit: LinkingUnit, logger: Logger): (Result, Map[Int, Result]) = {
     startRun(unit)
     try {
-      val WithInfo((coreJSLibDefs, coreJSLibInits), coreJSLibTrackedGlobalRefs, coreJSLibDeps) =
+      val WithInfo((js.Block(coreJSLibDefs), coreJSLibInits), coreJSLibTrackedGlobalRefs, coreJSLibDeps) =
         state.coreJSLibCache.tree
 
-      val coreJSLibFields = coreJSLibDefs match {
-        case js.Block(stats) => stats.flatMap(jsGen.asExport _).toSet
-        case _ => ??? // yolo
-      }
+      val coreJSLibFields = coreJSLibDefs.flatMap(jsGen.asExport _).toSet
 
       val generatedClasses = {
         logger.time("Emitter: Generate classes") {
@@ -157,7 +154,7 @@ final class Emitter private (config: CommonPhaseConfig,
 
           if (module.deps.isEmpty) {
             // This is the root module.
-            trees += coreJSLibDefs
+            trees ++= coreJSLibDefs
             //globalRefs = unionPreserveEmpty(globalRefs, coreJSLibTrackedGlobalRefs)
           }
 
@@ -209,7 +206,8 @@ final class Emitter private (config: CommonPhaseConfig,
           val export = {
             implicit val pos = Position.NoPosition
 
-            val bindings = for (e <- baseTrees.flatMap(jsGen.asExport _)) yield {
+            val js.Block(flatStats) = js.Block(baseTrees)
+            val bindings = for (e <- flatStats.flatMap(jsGen.asExport _)) yield {
               (js.Ident(e), js.ExportName(e))
             }
 
@@ -222,11 +220,14 @@ final class Emitter private (config: CommonPhaseConfig,
         }
 
         val bottom = {
-          val WithInfo(moduleInitializers, _, deps) =
-            WithInfo.list(unit.moduleInitializers.map(classEmitter.genModuleInitializer(_)(uncachedKnowledgeAccessor)))
+          val WithInfo(moduleInitializers, _, deps) = WithInfo.list(
+              unit.moduleInitializers.map(
+                  classEmitter.genModuleInitializer(_)(uncachedKnowledgeAccessor)))
+
+          val allDeps = deps ++ coreJSLibFields.map(ObjectClass -> _)
 
           val initDeps =
-            deps.groupBy(x => moduleAnalysis.moduleForClass(x._1).get).mapValues(_.map(_._2).toSet)
+            allDeps.groupBy(x => moduleAnalysis.moduleForClass(x._1).get).mapValues(_.map(_._2).toSet)
 
           val trees = mutable.ListBuffer.empty[js.Tree]
 
