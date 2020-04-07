@@ -50,18 +50,20 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
       implicit ec: ExecutionContext): Future[Unit] = {
     verifyUnit(unit)
 
-    val emitterResult = logger.time("Emitter") {
+    val (bottom, modules) = logger.time("Emitter") {
       emitter.emit(unit, logger)
     }
 
     logger.timeFuture("BasicBackend: Write result") {
-      Future.traverse(emitterResult) { case (i, result) =>
-        writeResult(output, i.toString, result)
-      }.map(_ => ())
+      Future.traverse(modules) { case (i, result) =>
+        writeResult(output, Some(i.toString), result)
+      }.map { _ =>
+        writeResult(output, None, bottom)
+      }
     }
   }
 
-  private def writeResult(output: LinkerOutput, name: String,
+  private def writeResult(output: LinkerOutput, name: Option[String],
       emitterResult: Emitter.Result)(
       implicit ec: ExecutionContext): Future[Unit] = {
     output.sourceMap.filter(_ => config.sourceMap).fold {
@@ -73,9 +75,7 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
         writer.write(emitterResult.footer)
       }
 
-      OutputFileImpl.fromOutputFile(output.jsFile)
-        .sibling(config.jsFilePattern.format(name))
-        .writeFull(code)
+      file(output.jsFile, name, config.jsFilePattern).writeFull(code)
     } { sourceMapFile =>
       val sourceMapWriter = new SourceMapWriter(output.jsFileURI,
         config.relativizeSourceMapBase)
@@ -101,13 +101,17 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
 
       val sourceMap = sourceMapWriter.result()
 
-      OutputFileImpl.fromOutputFile(output.jsFile)
-        .sibling(config.jsFilePattern.format(name))
+      file(output.jsFile, name, config.jsFilePattern)
         .writeFull(code)
-        .flatMap(_ => OutputFileImpl.fromOutputFile(sourceMapFile)
-            .sibling(config.sourceMapPattern.format(name))
-            .writeFull(sourceMap))
+        .flatMap(_ =>
+            file(sourceMapFile, name, config.sourceMapPattern)
+              .writeFull(sourceMap))
     }
+  }
+
+  private def file(f: LinkerOutput.File, name: Option[String], pat: String): OutputFileImpl = {
+    val i = OutputFileImpl.fromOutputFile(f)
+    name.fold(i)(n => i.sibling(pat.format(n)))
   }
 
   private def withWriter(body: Writer => Unit): ByteBuffer = {

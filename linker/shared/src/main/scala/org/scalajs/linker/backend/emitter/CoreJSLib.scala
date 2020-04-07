@@ -44,6 +44,7 @@ private[emitter] object CoreJSLib {
 
     private val buf = List.newBuilder[Tree]
     private var trackedGlobalRefs = Set.empty[String]
+    private var trackedClassDeps: Set[(ClassName, String)] = Set.empty
 
     private def globalRef(name: String): VarRef = {
       // We never access dangerous global refs from the core JS lib
@@ -56,8 +57,10 @@ private[emitter] object CoreJSLib {
     private def extractWithInfo(withInfo: WithInfo[Tree]): Tree = {
       assert(!withInfo.globalVarNames.exists(GlobalRefUtils.isDangerousGlobalRef _),
           "tree used by CoreJSLib generated dangerous global ref")
-      //assert(withInfo.internalModuleDeps.isEmpty,
-      //    "tree used by CoreJSLib depends on non-core module")
+
+      trackedGlobalRefs ++= withInfo.globalVarNames
+      trackedClassDeps ++= withInfo.classDeps
+
       withInfo.value
     }
 
@@ -99,7 +102,7 @@ private[emitter] object CoreJSLib {
       defineAsArrayOfPrimitiveFunctions()
       definePrimitiveTypeDatas()
 
-      WithInfo(Block(buf.result()), trackedGlobalRefs, Set.empty)
+      WithInfo(Block(buf.result()), trackedGlobalRefs, trackedClassDeps)
     }
 
     private def defineLinkingInfo(): Unit = {

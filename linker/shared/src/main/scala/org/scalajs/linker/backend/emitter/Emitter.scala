@@ -103,7 +103,7 @@ final class Emitter private (config: CommonPhaseConfig,
         internalOptions.withTrackAllGlobalRefs(trackAllGlobalRefs))
   }
 
-  def emit(unit: LinkingUnit, logger: Logger): Map[Int, Result] = {
+  def emit(unit: LinkingUnit, logger: Logger): (Result, Map[Int, Result]) = {
     emitInternal(unit, logger)
   }
 
@@ -124,7 +124,7 @@ final class Emitter private (config: CommonPhaseConfig,
     }
   }
 
-  private def emitInternal(unit: LinkingUnit, logger: Logger): Map[Int, Result] = {
+  private def emitInternal(unit: LinkingUnit, logger: Logger): (Result, Map[Int, Result]) = {
     startRun(unit)
     try {
       val generatedClasses = {
@@ -146,25 +146,17 @@ final class Emitter private (config: CommonPhaseConfig,
         val WithInfo(coreJSLibTree, coreJSLibTrackedGlobalRefs, _) =
           state.coreJSLibCache.tree
 
-        for (module <- moduleAnalysis.modules) yield {
+        val mods = for (module <- moduleAnalysis.modules) yield {
           val trees = mutable.ListBuffer.empty[js.Tree]
           var globalRefs = Set.empty[String]
-  
+
           if (module.deps.isEmpty) {
             // This is the root module.
             trees += coreJSLibTree
             //globalRefs = unionPreserveEmpty(globalRefs, coreJSLibTrackedGlobalRefs)
           }
 
-          // TODO merge globalRefs
-
-          implicit val pos = Position.NoPosition
-
-          for ((mod, elems) <- module.deps) {
-            val from = js.StringLiteral("%s.js".format(mod.toString))
-            val bindings = elems.toList.sorted.map(x => (js.ExportName(x), js.Ident(x)))
-            trees += js.Import(bindings, from)
-          }
+          emitInternalImports(module.deps, trees)
 
           // For now, we just emit all module imports everywhere.
           // TODO fix.
@@ -174,52 +166,73 @@ final class Emitter private (config: CommonPhaseConfig,
             .map(generatedClasses(_))
             .sorted
 
-          emitGeneratedClasses(trees, classes)
+          /* Emit all the classes, in the appropriate order:
+           *
+           * 1. All class definitions, which depend on nothing but their
+           *    superclasses.
+           * 2. The initialization of $L0, the Long zero, which depends on the
+           *    definition of the RuntimeLong class.
+           * 3. All static field definitions, which depend on nothing, except those
+           *    of type Long which need $L0.
+           * 4. All static initializers, which in the worst case can observe some
+           *    "zero" state of other static field definitions, but must not
+           *    observe a *non-initialized* (undefined) state.
+           * 5. All the exports, during which some JS class creation can happen,
+           *    causing JS static initializers to run. Those also must not observe
+           *    a non-initialized state of other static fields.
+           */
+          for (c <- classes)
+            trees ++= c.main
+
+          //if (!jsGen.useBigIntForLongs)
+          //  builder += emitInitializeL0()(uncachedKnowledgeAccessor)
+
+          for (c <- classes)
+            trees ++= c.staticFields
+
+          for (c <- classes)
+            trees ++= c.staticInitialization
+
+          for (c <- classes)
+            trees ++= c.topLevelExports
+
           //classes.foreach(refs += _)
-  
-          // TODO fix
-          //for (moduleInitializer <- unit.moduleInitializers)
-          //  trees += classEmitter.genModuleInitializer(moduleInitializer)
-  
+
           module.id -> new Result("", trees.result(), "", Nil, globalRefs)
         }
-      }.toMap
+
+        val bottom = {
+          val WithInfo(moduleInitializers, _, deps) =
+            WithInfo.list(unit.moduleInitializers.map(classEmitter.genModuleInitializer(_)(uncachedKnowledgeAccessor)))
+
+          val initDeps =
+            deps.groupBy(x => moduleAnalysis.moduleForClass(x._1).get).mapValues(_.map(_._2).toSet)
+
+          val trees = mutable.ListBuffer.empty[js.Tree]
+
+          emitInternalImports(initDeps, trees)
+
+          trees ++= moduleInitializers
+
+          new Result("", trees.result(), "", Nil, Set.empty)
+        }
+
+        (bottom, mods.toMap)
+      }
     } finally {
       endRun(logger)
     }
   }
 
-  private def emitGeneratedClasses(builder: mutable.ListBuffer[js.Tree],
-      generatedClasses: Seq[GeneratedClass]): Unit = {
-    /* Emit all the classes, in the appropriate order:
-     *
-     * 1. All class definitions, which depend on nothing but their
-     *    superclasses.
-     * 2. The initialization of $L0, the Long zero, which depends on the
-     *    definition of the RuntimeLong class.
-     * 3. All static field definitions, which depend on nothing, except those
-     *    of type Long which need $L0.
-     * 4. All static initializers, which in the worst case can observe some
-     *    "zero" state of other static field definitions, but must not
-     *    observe a *non-initialized* (undefined) state.
-     * 5. All the exports, during which some JS class creation can happen,
-     *    causing JS static initializers to run. Those also must not observe
-     *    a non-initialized state of other static fields.
-     */
-    for (generatedClass <- generatedClasses)
-      builder ++= generatedClass.main
+  private def emitInternalImports(deps: Map[Int, Set[String]],
+      builder: mutable.ListBuffer[js.Tree]): Unit = {
+    implicit val pos = Position.NoPosition
 
-    //if (!jsGen.useBigIntForLongs)
-    //  builder += emitInitializeL0()(uncachedKnowledgeAccessor)
-
-    for (generatedClass <- generatedClasses)
-      builder ++= generatedClass.staticFields
-
-    for (generatedClass <- generatedClasses)
-      builder ++= generatedClass.staticInitialization
-
-    for (generatedClass <- generatedClasses)
-      builder ++= generatedClass.topLevelExports
+    for ((mod, elems) <- deps) {
+      val from = js.StringLiteral("%s.js".format(mod.toString))
+      val bindings = elems.toList.sorted.map(x => (js.ExportName(x), js.Ident(x)))
+      builder += js.Import(bindings, from)
+    }
   }
 
   private def emitModuleImports(orderedClasses: Iterator[LinkedClass],
