@@ -65,8 +65,8 @@ object LinkerBackendImpl {
     }
 
     // TODO
-    val jsFilePattern = "%s.js"
-    val sourceMapPattern = "%s.js.map"
+    val jsFilePattern = "%s.mjs"
+    val sourceMapPattern = "%s.mjs.map"
 
     def withCommonConfig(commonConfig: CommonPhaseConfig): Config =
       copy(commonConfig = commonConfig)

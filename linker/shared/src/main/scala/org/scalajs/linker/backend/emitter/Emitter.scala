@@ -203,9 +203,22 @@ final class Emitter private (config: CommonPhaseConfig,
           for (c <- classes)
             trees ++= c.topLevelExports
 
+          val baseTrees = trees.result()
+
+          // Export everything!!!
+          val export = {
+            implicit val pos = Position.NoPosition
+
+            val bindings = for (e <- baseTrees.flatMap(jsGen.asExport _)) yield {
+              (js.Ident(e), js.ExportName(e))
+            }
+
+            js.Export(bindings)
+          }
+
           //classes.foreach(refs += _)
 
-          module.id -> new Result("", trees.result(), "", Nil, globalRefs)
+          module.id -> new Result("", baseTrees :+ export, "", Nil, globalRefs)
         }
 
         val bottom = {
@@ -236,7 +249,7 @@ final class Emitter private (config: CommonPhaseConfig,
     implicit val pos = Position.NoPosition
 
     for ((mod, elems) <- deps) {
-      val from = js.StringLiteral("%s.js".format(mod.toString))
+      val from = js.StringLiteral("./%s.mjs".format(mod.toString))
       val bindings = elems.toList.sorted.map(x => (js.ExportName(x), js.Ident(x)))
       builder += js.Import(bindings, from)
     }
