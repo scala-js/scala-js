@@ -634,4 +634,14 @@ private[emitter] final class JSGen(val semantics: Semantics,
       implicit pos: Position): Function = {
     Function(useArrowFunctions, args, body)
   }
+
+  // HACK, definitely does not belong here.
+  def asExport(t: Tree): Option[String] = {
+    Some(t).collect {
+      case ClassDef(Some(className), _, _) => className
+      case FunctionDef(name, _, _)         => name
+      case VarDef(name, _)                 => name
+      case Let(name, _ , _)                => name
+    }.map(_.name)
+  }
 }

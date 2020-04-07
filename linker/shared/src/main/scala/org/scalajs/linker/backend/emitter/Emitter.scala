@@ -127,6 +127,14 @@ final class Emitter private (config: CommonPhaseConfig,
   private def emitInternal(unit: LinkingUnit, logger: Logger): (Result, Map[Int, Result]) = {
     startRun(unit)
     try {
+      val WithInfo((coreJSLibDefs, coreJSLibInits), coreJSLibTrackedGlobalRefs, coreJSLibDeps) =
+        state.coreJSLibCache.tree
+
+      val coreJSLibFields = coreJSLibDefs match {
+        case js.Block(stats) => stats.flatMap(jsGen.asExport _).toSet
+        case _ => ??? // yolo
+      }
+
       val generatedClasses = {
         logger.time("Emitter: Generate classes") {
           genAllClasses(unit.classDefs, logger, secondAttempt = false)
@@ -138,21 +146,18 @@ final class Emitter private (config: CommonPhaseConfig,
 
       val moduleAnalysis = {
         logger.time("Emitter: Analyze Modules") {
-          ModuleAnalyzer.analyze(generatedClasses.mapValues(_.classDeps))
+          ModuleAnalyzer.analyze(generatedClasses.mapValues(_.classDeps), coreJSLibDeps, coreJSLibFields)
         }
       }
 
       logger.time("Emitter: Write trees") {
-        val WithInfo(coreJSLibTree, coreJSLibTrackedGlobalRefs, _) =
-          state.coreJSLibCache.tree
-
         val mods = for (module <- moduleAnalysis.modules) yield {
           val trees = mutable.ListBuffer.empty[js.Tree]
           var globalRefs = Set.empty[String]
 
           if (module.deps.isEmpty) {
             // This is the root module.
-            trees += coreJSLibTree
+            trees += coreJSLibDefs
             //globalRefs = unionPreserveEmpty(globalRefs, coreJSLibTrackedGlobalRefs)
           }
 
@@ -184,8 +189,10 @@ final class Emitter private (config: CommonPhaseConfig,
           for (c <- classes)
             trees ++= c.main
 
-          //if (!jsGen.useBigIntForLongs)
-          //  builder += emitInitializeL0()(uncachedKnowledgeAccessor)
+          if (module.deps.isEmpty) {
+            // This is the root module.
+            trees += coreJSLibInits
+          }
 
           for (c <- classes)
             trees ++= c.staticFields
@@ -306,19 +313,6 @@ final class Emitter private (config: CommonPhaseConfig,
   /** Emits the initialization of the global variable `$L0`, which holds the
    *  zero of type `Long`.
    */
-  private def emitInitializeL0(): WithInfo[js.Tree] = {
-    implicit val pos = Position.NoPosition
-    implicit val globalKnowledge = uncachedKnowledgeAccessor
-
-    // $L0 = new RuntimeLong(0, 0)
-    for {
-      rhs <- jsGen.genScalaClassNew(
-          LongImpl.RuntimeLongClass, LongImpl.initFromParts,
-          js.IntLiteral(0), js.IntLiteral(0))
-    } yield {
-      js.Assign(jsGen.coreJSLibVar("L0"), rhs)
-    }
-  }
 
   private def startRun(unit: LinkingUnit): Unit = {
     statsClassesReused = 0
@@ -393,16 +387,11 @@ final class Emitter private (config: CommonPhaseConfig,
     // Global ref management
 
     var trackedGlobalRefs: Set[String] = Set.empty
-    var trackedClassDeps: Map[ClassName, Set[String]] = Map.empty
+    var trackedClassDeps: Set[(ClassName, String)] = Set.empty
 
     def extractWithInfo[A](withInfo: WithInfo[A]): A = {
       trackedGlobalRefs = unionPreserveEmpty(withInfo.globalVarNames, trackedGlobalRefs)
-
-      for ((clazz, field) <- withInfo.classDeps) {
-        val newFields = trackedClassDeps.getOrElse(clazz, Set.empty) + field
-        trackedClassDeps = trackedClassDeps.updated(clazz, newFields)
-      }
-
+      trackedClassDeps ++= withInfo.classDeps
       withInfo.value
     }
 
@@ -724,9 +713,9 @@ final class Emitter private (config: CommonPhaseConfig,
   }
 
   private class CoreJSLibCache extends knowledgeGuardian.KnowledgeAccessor {
-    private[this] var _tree: WithInfo[js.Tree] = _
+    private[this] var _tree: WithInfo[(js.Tree, js.Tree)] = _
 
-    def tree: WithInfo[js.Tree] = {
+    def tree: WithInfo[(js.Tree, js.Tree)] = {
       if (_tree == null)
         _tree = CoreJSLib.build(jsGen, this)
       _tree
@@ -768,7 +757,7 @@ object Emitter {
       val staticInitialization: List[js.Tree],
       val topLevelExports: List[js.Tree],
       val trackedGlobalRefs: Set[String],
-      val classDeps: Map[ClassName, Set[String]],
+      val classDeps: Set[(ClassName, String)],
   ) extends Ordered[GeneratedClass] {
     def isEmpty: Boolean = {
       main.isEmpty &&

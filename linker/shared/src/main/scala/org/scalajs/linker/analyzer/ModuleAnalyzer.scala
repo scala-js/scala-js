@@ -19,8 +19,9 @@ import org.scalajs.ir.Names.{ClassName, ObjectClass}
 import org.scalajs.ir.Trees.MemberNamespace
 
 object ModuleAnalyzer {
-  def analyze(classes: Map[ClassName, Map[ClassName, Set[String]]]): ModuleAnalysis = {
-    val analyzer = new ModuleAnalyzer(classes)
+  def analyze(classes: Map[ClassName, Deps], coreJSLibDeps: Deps,
+      coreJSLibFields: Set[String]): ModuleAnalysis = {
+    val analyzer = new ModuleAnalyzer(classes, coreJSLibDeps, coreJSLibFields)
     analyzer.analyze()
     analyzer
   }
@@ -30,6 +31,8 @@ object ModuleAnalyzer {
     def moduleForClass(name: ClassName): Option[Int]
   }
 
+  type Deps = Set[(ClassName, String)]
+
   final class Module(val id: Int, val deps: Map[Int, Set[String]], val classes: Seq[ClassName])
 
   private final class Node(val clazz: ClassName, val index: Int, var compId: Int)
@@ -38,7 +41,8 @@ object ModuleAnalyzer {
   private final case class Component(id: Int) extends Result
 }
 
-private class ModuleAnalyzer(classes: Map[ClassName, Map[ClassName, Set[String]]])
+private class ModuleAnalyzer(classes: Map[ClassName, ModuleAnalyzer.Deps],
+    coreJSLibDeps: ModuleAnalyzer.Deps, coreJSLibFields: Set[String])
     extends ModuleAnalyzer.ModuleAnalysis {
   import ModuleAnalyzer._
 
@@ -69,7 +73,7 @@ private class ModuleAnalyzer(classes: Map[ClassName, Map[ClassName, Set[String]]
     }
 
     // For all dependencies
-    for ((clazz, fields) <- classes(clazz)) {
+    for ((clazz, fields) <- dependencies(clazz)) {
       visitedNodes.get(clazz).fold {
         // We have not visited this dependency. It is part of our spanning tree.
         strongconnect(clazz) match {
@@ -106,6 +110,19 @@ private class ModuleAnalyzer(classes: Map[ClassName, Map[ClassName, Set[String]]
     } else {
       Partial(lowlink, nodes, deps)
     }
+  }
+
+  private def dependencies(clazz: ClassName): Map[ClassName, Set[String]] = {
+    // Everything depends on j.l.Object for the CoreJSLib.
+    val coreJSDeps = {
+      if (clazz == ObjectClass) coreJSLibDeps
+      else coreJSLibFields.map(ObjectClass -> _)
+    }
+
+    classes(clazz)
+      .union(coreJSDeps)
+      .groupBy(_._1)
+      .mapValues(_.map(_._2))
   }
 
   private def newNode(clazz: ClassName): Node = {

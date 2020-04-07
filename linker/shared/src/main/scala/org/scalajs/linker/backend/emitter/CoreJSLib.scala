@@ -29,7 +29,7 @@ import EmitterNames._
 
 private[emitter] object CoreJSLib {
 
-  def build(jsGen: JSGen, globalKnowledge: GlobalKnowledge): WithInfo[Tree] =
+  def build(jsGen: JSGen, globalKnowledge: GlobalKnowledge): WithInfo[(Tree, Tree)] =
     new CoreJSLibBuilder(jsGen)(globalKnowledge).build()
 
   private class CoreJSLibBuilder(jsGen: JSGen)(
@@ -82,7 +82,7 @@ private[emitter] object CoreJSLib {
           FloatRef, DoubleRef)
     }
 
-    def build(): WithInfo[Tree] = {
+    def build(): WithInfo[(Tree, Tree)] = {
       defineLinkingInfo()
       defineJSBuiltinsSnapshotsAndPolyfills()
       declareCachedL0()
@@ -102,7 +102,9 @@ private[emitter] object CoreJSLib {
       defineAsArrayOfPrimitiveFunctions()
       definePrimitiveTypeDatas()
 
-      WithInfo(Block(buf.result()), trackedGlobalRefs, trackedClassDeps)
+      val l0 = initializeCachedL0()
+
+      WithInfo((Block(buf.result()), l0), trackedGlobalRefs, trackedClassDeps)
     }
 
     private def defineLinkingInfo(): Unit = {
@@ -345,6 +347,16 @@ private[emitter] object CoreJSLib {
     private def declareCachedL0(): Unit = {
       if (!allowBigIntsForLongs)
         buf += genEmptyMutableLet(coreJSLibVarIdent("L0"))
+    }
+
+    private def initializeCachedL0(): Tree = {
+      // $L0 = new RuntimeLong(0, 0)
+      if (!allowBigIntsForLongs) {
+        coreJSLibVar("L0") := genScalaClassNew(
+            LongImpl.RuntimeLongClass, LongImpl.initFromParts, 0, 0)
+      } else {
+        Skip()
+      }
     }
 
     private def definePropertyName(): Unit = {
