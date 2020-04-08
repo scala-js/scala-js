@@ -80,6 +80,11 @@ class ModulesTest {
     assertEquals("", decoder.end())
   }
 
+  // #4001
+  @Test def testNoImportUnusedSuperClass(): Unit = {
+    new ExistentSubClass
+    ExistentSubObject
+  }
 }
 
 object ModulesTest {
@@ -118,4 +123,17 @@ object ModulesTest {
 
     def isBuffer(x: Any): Boolean = js.native
   }
+
+  // #4001 - Test that unused super-classes are not imported.
+  @js.native
+  @JSImport("non-existent", "Foo")
+  class NonExistentSuperClass extends js.Object
+
+  @js.native
+  @JSImport("string_decoder", "StringDecoder")
+  class ExistentSubClass extends NonExistentSuperClass
+
+  @js.native
+  @JSImport("querystring", JSImport.Namespace)
+  object ExistentSubObject extends NonExistentSuperClass
 }
