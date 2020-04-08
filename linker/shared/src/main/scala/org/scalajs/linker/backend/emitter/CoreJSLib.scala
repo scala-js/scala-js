@@ -29,8 +29,22 @@ import EmitterNames._
 
 private[emitter] object CoreJSLib {
 
-  def build(jsGen: JSGen, globalKnowledge: GlobalKnowledge): WithGlobals[Tree] =
+  def build(jsGen: JSGen, globalKnowledge: GlobalKnowledge): WithGlobals[Lib] =
     new CoreJSLibBuilder(jsGen)(globalKnowledge).build()
+
+  /** A fully built CoreJSLib
+   *
+   *  @param definitions The bulk of the CoreJSLib.
+   *      Definitions that do not depend on any other Scala.js emitted code
+   *      (notably RuntimeLong). These must be available to all Scala.js emitted
+   *      code.
+   *
+   *  @param initialization Things that depend on Scala.js generated classes.
+   *      These must have class definitions (but not static fields) available.
+   */
+  final class Lib private[CoreJSLib] (
+      val definitions: Tree,
+      val initialization: Tree)
 
   private class CoreJSLibBuilder(jsGen: JSGen)(
       implicit globalKnowledge: GlobalKnowledge) {
@@ -71,7 +85,12 @@ private[emitter] object CoreJSLib {
           FloatRef, DoubleRef)
     }
 
-    def build(): WithGlobals[Tree] = {
+    def build(): WithGlobals[Lib] = {
+      val lib = new Lib(buildDefinitions(), buildInitializations())
+      WithGlobals(lib, trackedGlobalRefs)
+    }
+
+    private def buildDefinitions(): Tree = {
       defineLinkingInfo()
       defineJSBuiltinsSnapshotsAndPolyfills()
       declareCachedL0()
@@ -91,7 +110,11 @@ private[emitter] object CoreJSLib {
       defineAsArrayOfPrimitiveFunctions()
       definePrimitiveTypeDatas()
 
-      WithGlobals(Block(buf.result()), trackedGlobalRefs)
+      Block(buf.result())
+    }
+
+    private def buildInitializations(): Tree = {
+      assignCachedL0()
     }
 
     private def defineLinkingInfo(): Unit = {
@@ -334,6 +357,15 @@ private[emitter] object CoreJSLib {
     private def declareCachedL0(): Unit = {
       if (!allowBigIntsForLongs)
         buf += genEmptyMutableLet(codegenVarIdent("L0"))
+    }
+
+    private def assignCachedL0(): Tree = {
+      if (!allowBigIntsForLongs) {
+        codegenVar("L0") := genScalaClassNew(
+            LongImpl.RuntimeLongClass, LongImpl.initFromParts, 0, 0)
+      } else {
+        Skip()
+      }
     }
 
     private def definePropertyName(): Unit = {

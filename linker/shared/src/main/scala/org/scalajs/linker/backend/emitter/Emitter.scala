@@ -46,10 +46,6 @@ final class Emitter private (config: CommonPhaseConfig,
 
   private val nameGen: NameGen = new NameGen
 
-  /** Dummy KnowledgeAccessor to generate uncached trees. */
-  private val uncachedKnowledgeAccessor =
-    new knowledgeGuardian.KnowledgeAccessor {}
-
   private class State(val lastMentionedDangerousGlobalRefs: Set[String]) {
     val jsGen: JSGen = {
       new JSGen(semantics, esFeatures, moduleKind, nameGen, internalOptions,
@@ -153,15 +149,53 @@ final class Emitter private (config: CommonPhaseConfig,
       val trees = mutable.ListBuffer.empty[js.Tree]
 
       logger.time("Emitter: Write trees") {
-        val WithGlobals(coreJSLibTree, coreJSLibTrackedGlobalRefs) =
-          state.coreJSLibCache.tree
+        val WithGlobals(coreJSLib, coreJSLibTrackedGlobalRefs) =
+          state.coreJSLibCache.lib
 
-        trees += coreJSLibTree
+        // Emit everything in the appropriate order.
 
+        /* The definitions of the CoreJSLib, which depend on nothing.
+         * All classes potentially depend on it.
+         */
+        trees += coreJSLib.definitions
+
+        /* Module imports, which depend on nothing.
+         * All classes potentially depend on them.
+         */
         emitModuleImports(orderedClasses, trees, logger)
 
-        emitGeneratedClasses(trees, generatedClasses)
+        /* All class definitions, which depend on nothing but their
+         * superclasses.
+         */
+        for (generatedClass <- generatedClasses)
+          trees ++= generatedClass.main
 
+        /* The initialization of the CoreJSLib, which depends on the
+         * definition of classes (notably RuntimeLong).
+         */
+        trees += coreJSLib.initialization
+
+        /* All static field definitions, which depend on nothing, except
+         * those of type Long which need $L0.
+         */
+        for (generatedClass <- generatedClasses)
+          trees ++= generatedClass.staticFields
+
+        /* All static initializers, which in the worst case can observe some
+         * "zero" state of other static field definitions, but must not
+         * observe a *non-initialized* (undefined) state.
+         */
+        for (generatedClass <- generatedClasses)
+          trees ++= generatedClass.staticInitialization
+
+        /* All the exports, during which some JS class creation can happen,
+         * causing JS static initializers to run. Those also must not observe
+         * a non-initialized state of other static fields.
+         */
+        for (generatedClass <- generatedClasses)
+          trees ++= generatedClass.topLevelExports
+
+        /* Module initializers, which by spec run at the end. */
         for (moduleInitializer <- unit.moduleInitializers)
           trees += classEmitter.genModuleInitializer(moduleInitializer)
 
@@ -170,39 +204,6 @@ final class Emitter private (config: CommonPhaseConfig,
     } finally {
       endRun(logger)
     }
-  }
-
-  private def emitGeneratedClasses(builder: mutable.ListBuffer[js.Tree],
-      generatedClasses: List[GeneratedClass]): Unit = {
-    /* Emit all the classes, in the appropriate order:
-     *
-     * 1. All class definitions, which depend on nothing but their
-     *    superclasses.
-     * 2. The initialization of $L0, the Long zero, which depends on the
-     *    definition of the RuntimeLong class.
-     * 3. All static field definitions, which depend on nothing, except those
-     *    of type Long which need $L0.
-     * 4. All static initializers, which in the worst case can observe some
-     *    "zero" state of other static field definitions, but must not
-     *    observe a *non-initialized* (undefined) state.
-     * 5. All the exports, during which some JS class creation can happen,
-     *    causing JS static initializers to run. Those also must not observe
-     *    a non-initialized state of other static fields.
-     */
-    for (generatedClass <- generatedClasses)
-      builder ++= generatedClass.main
-
-    if (!jsGen.useBigIntForLongs)
-      builder += emitInitializeL0()
-
-    for (generatedClass <- generatedClasses)
-      builder ++= generatedClass.staticFields
-
-    for (generatedClass <- generatedClasses)
-      builder ++= generatedClass.staticInitialization
-
-    for (generatedClass <- generatedClasses)
-      builder ++= generatedClass.topLevelExports
   }
 
   private def emitModuleImports(orderedClasses: List[LinkedClass],
@@ -271,22 +272,6 @@ final class Emitter private (config: CommonPhaseConfig,
           builder += decl
         }
     }
-  }
-
-  /** Emits the initialization of the global variable `$L0`, which holds the
-   *  zero of type `Long`.
-   */
-  private def emitInitializeL0(): js.Tree = {
-    implicit val pos = Position.NoPosition
-    implicit val globalKnowledge = uncachedKnowledgeAccessor
-
-    // $L0 = new RuntimeLong(0, 0)
-    js.Assign(
-        jsGen.codegenVar("L0"),
-        jsGen.genScalaClassNew(
-            LongImpl.RuntimeLongClass, LongImpl.initFromParts,
-            js.IntLiteral(0), js.IntLiteral(0))
-    )
   }
 
   private def compareClasses(lhs: LinkedClass, rhs: LinkedClass) = {
@@ -693,17 +678,17 @@ final class Emitter private (config: CommonPhaseConfig,
   }
 
   private class CoreJSLibCache extends knowledgeGuardian.KnowledgeAccessor {
-    private[this] var _tree: WithGlobals[js.Tree] = _
+    private[this] var _lib: WithGlobals[CoreJSLib.Lib] = _
 
-    def tree: WithGlobals[js.Tree] = {
-      if (_tree == null)
-        _tree = CoreJSLib.build(jsGen, this)
-      _tree
+    def lib: WithGlobals[CoreJSLib.Lib] = {
+      if (_lib == null)
+        _lib = CoreJSLib.build(jsGen, this)
+      _lib
     }
 
     override def invalidate(): Unit = {
       super.invalidate()
-      _tree = null
+      _lib = null
     }
   }
 }
