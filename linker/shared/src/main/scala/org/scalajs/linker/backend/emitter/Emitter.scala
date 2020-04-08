@@ -204,14 +204,13 @@ final class Emitter private (config: CommonPhaseConfig,
 
   private def genModuleImports(orderedClasses: List[LinkedClass],
       logger: Logger): List[js.Tree] = {
-    val builder = mutable.ListBuffer.empty[js.Tree]
-
-    def foreachImportedModule(f: (String, Position) => Unit): Unit = {
+    def mapImportedModule(f: (String, Position) => js.Tree): List[js.Tree]  = {
+      val builder = mutable.ListBuffer.empty[js.Tree]
       val encounteredModuleNames = mutable.Set.empty[String]
       for (classDef <- orderedClasses) {
         def addModuleRef(module: String): Unit = {
           if (encounteredModuleNames.add(module))
-            f(module, classDef.pos)
+            builder += f(module, classDef.pos)
         }
         classDef.jsNativeLoadSpec match {
           case None =>
@@ -223,6 +222,7 @@ final class Emitter private (config: CommonPhaseConfig,
             addModuleRef(module)
         }
       }
+      builder.result()
     }
 
     moduleKind match {
@@ -248,29 +248,27 @@ final class Emitter private (config: CommonPhaseConfig,
               "variables, but module support is disabled.\n" +
               "To enable module support, set `scalaJSLinkerConfig ~= " +
               "(_.withModuleKind(ModuleKind.CommonJSModule))`.")
+        } else {
+          Nil
         }
 
       case ModuleKind.ESModule =>
-        foreachImportedModule { (module, pos0) =>
+        mapImportedModule { (module, pos0) =>
           implicit val pos = pos0
           val from = js.StringLiteral(module)
           val moduleBinding = jsGen.envModuleField(module).ident
-          val importStat = js.ImportNamespace(moduleBinding, from)
-          builder += importStat
+          js.ImportNamespace(moduleBinding, from)
         }
 
       case ModuleKind.CommonJSModule =>
-        foreachImportedModule { (module, pos0) =>
+        mapImportedModule { (module, pos0) =>
           implicit val pos = pos0
           val rhs = js.Apply(js.VarRef(js.Ident("require")),
               List(js.StringLiteral(module)))
           val lhs = jsGen.envModuleField(module)
-          val decl = jsGen.genLet(lhs.ident, mutable = false, rhs)
-          builder += decl
+          jsGen.genLet(lhs.ident, mutable = false, rhs)
         }
     }
-
-    builder.result()
   }
 
   private def compareClasses(lhs: LinkedClass, rhs: LinkedClass) = {
