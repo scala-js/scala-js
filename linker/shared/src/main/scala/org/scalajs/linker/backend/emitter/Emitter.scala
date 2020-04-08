@@ -146,68 +146,65 @@ final class Emitter private (config: CommonPhaseConfig,
         }
       }
 
-      val trees = mutable.ListBuffer.empty[js.Tree]
-
       logger.time("Emitter: Write trees") {
         val WithGlobals(coreJSLib, coreJSLibTrackedGlobalRefs) =
           state.coreJSLibCache.lib
 
+        def classIter = generatedClasses.iterator
+
         // Emit everything in the appropriate order.
+        val treesIter: Iterator[js.Tree] = (
+            /* The definitions of the CoreJSLib, which depend on nothing.
+             * All classes potentially depend on it.
+             */
+            Iterator.single(coreJSLib.definitions) ++
 
-        /* The definitions of the CoreJSLib, which depend on nothing.
-         * All classes potentially depend on it.
-         */
-        trees += coreJSLib.definitions
+            /* Module imports, which depend on nothing.
+             * All classes potentially depend on them.
+             */
+            genModuleImports(orderedClasses, logger) ++
 
-        /* Module imports, which depend on nothing.
-         * All classes potentially depend on them.
-         */
-        emitModuleImports(orderedClasses, trees, logger)
+            /* All class definitions, which depend on nothing but their
+             * superclasses.
+             */
+            classIter.flatMap(_.main) ++
 
-        /* All class definitions, which depend on nothing but their
-         * superclasses.
-         */
-        for (generatedClass <- generatedClasses)
-          trees ++= generatedClass.main
+            /* The initialization of the CoreJSLib, which depends on the
+             * definition of classes (n.b. the RuntimeLong class).
+             */
+            Iterator.single(coreJSLib.initialization) ++
 
-        /* The initialization of the CoreJSLib, which depends on the
-         * definition of classes (notably RuntimeLong).
-         */
-        trees += coreJSLib.initialization
+            /* All static field definitions, which depend on nothing, except
+             * those of type Long which need $L0.
+             */
+            classIter.flatMap(_.staticFields) ++
 
-        /* All static field definitions, which depend on nothing, except
-         * those of type Long which need $L0.
-         */
-        for (generatedClass <- generatedClasses)
-          trees ++= generatedClass.staticFields
+            /* All static initializers, which in the worst case can observe some
+             * "zero" state of other static field definitions, but must not
+             * observe a *non-initialized* (undefined) state.
+             */
+            classIter.flatMap(_.staticInitialization) ++
 
-        /* All static initializers, which in the worst case can observe some
-         * "zero" state of other static field definitions, but must not
-         * observe a *non-initialized* (undefined) state.
-         */
-        for (generatedClass <- generatedClasses)
-          trees ++= generatedClass.staticInitialization
+            /* All the exports, during which some JS class creation can happen,
+             * causing JS static initializers to run. Those also must not observe
+             * a non-initialized state of other static fields.
+             */
+            classIter.flatMap(_.topLevelExports) ++
 
-        /* All the exports, during which some JS class creation can happen,
-         * causing JS static initializers to run. Those also must not observe
-         * a non-initialized state of other static fields.
-         */
-        for (generatedClass <- generatedClasses)
-          trees ++= generatedClass.topLevelExports
+            /* Module initializers, which by spec run at the end. */
+            unit.moduleInitializers.iterator.map(classEmitter.genModuleInitializer(_))
+        )
 
-        /* Module initializers, which by spec run at the end. */
-        for (moduleInitializer <- unit.moduleInitializers)
-          trees += classEmitter.genModuleInitializer(moduleInitializer)
-
-        WithGlobals(trees.result(), trackedGlobalRefs ++ coreJSLibTrackedGlobalRefs)
+        WithGlobals(treesIter.toList, trackedGlobalRefs ++ coreJSLibTrackedGlobalRefs)
       }
     } finally {
       endRun(logger)
     }
   }
 
-  private def emitModuleImports(orderedClasses: List[LinkedClass],
-      builder: mutable.ListBuffer[js.Tree], logger: Logger): Unit = {
+  private def genModuleImports(orderedClasses: List[LinkedClass],
+      logger: Logger): List[js.Tree] = {
+    val builder = mutable.ListBuffer.empty[js.Tree]
 
     def foreachImportedModule(f: (String, Position) => Unit): Unit = {
       val encounteredModuleNames = mutable.Set.empty[String]
@@ -272,6 +269,8 @@ final class Emitter private (config: CommonPhaseConfig,
           builder += decl
         }
     }
+
+    builder.result()
   }
 
   private def compareClasses(lhs: LinkedClass, rhs: LinkedClass) = {
