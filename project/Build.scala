@@ -1730,7 +1730,7 @@ object Build {
        */
       setModuleLoopbackScript in Test := Def.settingDyn[Task[Option[java.nio.file.Path]]] {
         (scalaJSLinkerConfig in Test).value.moduleKind match {
-          case ModuleKind.ESModule =>
+          case ModuleKind.ESModule if false =>
             Def.task {
               val linkedFile = (scalaJSLinkedFile in Test).value.data
               val uri = linkedFile.toURI.toASCIIString
