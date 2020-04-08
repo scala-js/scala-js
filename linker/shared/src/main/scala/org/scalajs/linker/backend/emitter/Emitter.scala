@@ -46,10 +46,6 @@ final class Emitter private (config: CommonPhaseConfig,
 
   private val nameGen: NameGen = new NameGen
 
-  /** Dummy KnowledgeAccessor to generate uncached trees. */
-  private val uncachedKnowledgeAccessor =
-    new knowledgeGuardian.KnowledgeAccessor {}
-
   private class State(val lastMentionedDangerousGlobalRefs: Set[String]) {
     val jsGen: JSGen = {
       new JSGen(semantics, esFeatures, moduleKind, nameGen, internalOptions,
@@ -150,70 +146,71 @@ final class Emitter private (config: CommonPhaseConfig,
         }
       }
 
-      val trees = mutable.ListBuffer.empty[js.Tree]
-
       logger.time("Emitter: Write trees") {
-        val WithGlobals(coreJSLibTree, coreJSLibTrackedGlobalRefs) =
-          state.coreJSLibCache.tree
+        val WithGlobals(coreJSLib, coreJSLibTrackedGlobalRefs) =
+          state.coreJSLibCache.lib
 
-        trees += coreJSLibTree
+        def classIter = generatedClasses.iterator
 
-        emitModuleImports(orderedClasses, trees, logger)
+        // Emit everything in the appropriate order.
+        val treesIter: Iterator[js.Tree] = (
+            /* The definitions of the CoreJSLib, which depend on nothing.
+             * All classes potentially depend on it.
+             */
+            Iterator.single(coreJSLib.definitions) ++
 
-        emitGeneratedClasses(trees, generatedClasses)
+            /* Module imports, which depend on nothing.
+             * All classes potentially depend on them.
+             */
+            genModuleImports(orderedClasses, logger) ++
 
-        for (moduleInitializer <- unit.moduleInitializers)
-          trees += classEmitter.genModuleInitializer(moduleInitializer)
+            /* All class definitions, which depend on nothing but their
+             * superclasses.
+             */
+            classIter.flatMap(_.main) ++
 
-        WithGlobals(trees.result(), trackedGlobalRefs ++ coreJSLibTrackedGlobalRefs)
+            /* The initialization of the CoreJSLib, which depends on the
+             * definition of classes (n.b. the RuntimeLong class).
+             */
+            Iterator.single(coreJSLib.initialization) ++
+
+            /* All static field definitions, which depend on nothing, except
+             * those of type Long which need $L0.
+             */
+            classIter.flatMap(_.staticFields) ++
+
+            /* All static initializers, which in the worst case can observe some
+             * "zero" state of other static field definitions, but must not
+             * observe a *non-initialized* (undefined) state.
+             */
+            classIter.flatMap(_.staticInitialization) ++
+
+            /* All the exports, during which some JS class creation can happen,
+             * causing JS static initializers to run. Those also must not observe
+             * a non-initialized state of other static fields.
+             */
+            classIter.flatMap(_.topLevelExports) ++
+
+            /* Module initializers, which by spec run at the end. */
+            unit.moduleInitializers.iterator.map(classEmitter.genModuleInitializer(_))
+        )
+
+        WithGlobals(treesIter.toList, trackedGlobalRefs ++ coreJSLibTrackedGlobalRefs)
       }
     } finally {
       endRun(logger)
     }
   }
 
-  private def emitGeneratedClasses(builder: mutable.ListBuffer[js.Tree],
-      generatedClasses: List[GeneratedClass]): Unit = {
-    /* Emit all the classes, in the appropriate order:
-     *
-     * 1. All class definitions, which depend on nothing but their
-     *    superclasses.
-     * 2. The initialization of $L0, the Long zero, which depends on the
-     *    definition of the RuntimeLong class.
-     * 3. All static field definitions, which depend on nothing, except those
-     *    of type Long which need $L0.
-     * 4. All static initializers, which in the worst case can observe some
-     *    "zero" state of other static field definitions, but must not
-     *    observe a *non-initialized* (undefined) state.
-     * 5. All the exports, during which some JS class creation can happen,
-     *    causing JS static initializers to run. Those also must not observe
-     *    a non-initialized state of other static fields.
-     */
-    for (generatedClass <- generatedClasses)
-      builder ++= generatedClass.main
-
-    if (!jsGen.useBigIntForLongs)
-      builder += emitInitializeL0()
-
-    for (generatedClass <- generatedClasses)
-      builder ++= generatedClass.staticFields
-
-    for (generatedClass <- generatedClasses)
-      builder ++= generatedClass.staticInitialization
-
-    for (generatedClass <- generatedClasses)
-      builder ++= generatedClass.topLevelExports
-  }
-
-  private def emitModuleImports(orderedClasses: List[LinkedClass],
-      builder: mutable.ListBuffer[js.Tree], logger: Logger): Unit = {
-
-    def foreachImportedModule(f: (String, Position) => Unit): Unit = {
+  private def genModuleImports(orderedClasses: List[LinkedClass],
+      logger: Logger): List[js.Tree] = {
+    def mapImportedModule(f: (String, Position) => js.Tree): List[js.Tree]  = {
+      val builder = mutable.ListBuffer.empty[js.Tree]
       val encounteredModuleNames = mutable.Set.empty[String]
       for (classDef <- orderedClasses) {
         def addModuleRef(module: String): Unit = {
           if (encounteredModuleNames.add(module))
-            f(module, classDef.pos)
+            builder += f(module, classDef.pos)
         }
         classDef.jsNativeLoadSpec match {
           case None =>
@@ -225,6 +222,7 @@ final class Emitter private (config: CommonPhaseConfig,
             addModuleRef(module)
         }
       }
+      builder.result()
     }
 
     moduleKind match {
@@ -250,43 +248,27 @@ final class Emitter private (config: CommonPhaseConfig,
               "variables, but module support is disabled.\n" +
               "To enable module support, set `scalaJSLinkerConfig ~= " +
               "(_.withModuleKind(ModuleKind.CommonJSModule))`.")
+        } else {
+          Nil
         }
 
       case ModuleKind.ESModule =>
-        foreachImportedModule { (module, pos0) =>
+        mapImportedModule { (module, pos0) =>
           implicit val pos = pos0
           val from = js.StringLiteral(module)
           val moduleBinding = jsGen.envModuleField(module).ident
-          val importStat = js.ImportNamespace(moduleBinding, from)
-          builder += importStat
+          js.ImportNamespace(moduleBinding, from)
         }
 
       case ModuleKind.CommonJSModule =>
-        foreachImportedModule { (module, pos0) =>
+        mapImportedModule { (module, pos0) =>
           implicit val pos = pos0
           val rhs = js.Apply(js.VarRef(js.Ident("require")),
               List(js.StringLiteral(module)))
           val lhs = jsGen.envModuleField(module)
-          val decl = jsGen.genLet(lhs.ident, mutable = false, rhs)
-          builder += decl
+          jsGen.genLet(lhs.ident, mutable = false, rhs)
         }
     }
-  }
-
-  /** Emits the initialization of the global variable `$L0`, which holds the
-   *  zero of type `Long`.
-   */
-  private def emitInitializeL0(): js.Tree = {
-    implicit val pos = Position.NoPosition
-    implicit val globalKnowledge = uncachedKnowledgeAccessor
-
-    // $L0 = new RuntimeLong(0, 0)
-    js.Assign(
-        jsGen.codegenVar("L0"),
-        jsGen.genScalaClassNew(
-            LongImpl.RuntimeLongClass, LongImpl.initFromParts,
-            js.IntLiteral(0), js.IntLiteral(0))
-    )
   }
 
   private def compareClasses(lhs: LinkedClass, rhs: LinkedClass) = {
@@ -693,17 +675,17 @@ final class Emitter private (config: CommonPhaseConfig,
   }
 
   private class CoreJSLibCache extends knowledgeGuardian.KnowledgeAccessor {
-    private[this] var _tree: WithGlobals[js.Tree] = _
+    private[this] var _lib: WithGlobals[CoreJSLib.Lib] = _
 
-    def tree: WithGlobals[js.Tree] = {
-      if (_tree == null)
-        _tree = CoreJSLib.build(jsGen, this)
-      _tree
+    def lib: WithGlobals[CoreJSLib.Lib] = {
+      if (_lib == null)
+        _lib = CoreJSLib.build(jsGen, this)
+      _lib
     }
 
     override def invalidate(): Unit = {
       super.invalidate()
-      _tree = null
+      _lib = null
     }
   }
 }

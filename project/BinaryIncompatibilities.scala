@@ -26,7 +26,9 @@ object BinaryIncompatibilities {
 
       // private, not an issue.
       exclude[DirectMissingMethodProblem](
-          "org.scalajs.linker.backend.closure.ClosureAstTransformer.this"),
+        "org.scalajs.linker.backend.closure.ClosureAstTransformer.this"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.Emitter#CoreJSLibCache.tree"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.CoreJSLib#CoreJSLibBuilder.org$scalajs$linker$backend$emitter$CoreJSLib$CoreJSLibBuilder$$defineStandardDispatcher$default$3$1"),
       exclude[DirectMissingMethodProblem](
