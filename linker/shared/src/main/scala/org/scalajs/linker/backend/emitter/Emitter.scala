@@ -204,10 +204,12 @@ final class Emitter private (config: CommonPhaseConfig,
 
   private def genModuleImports(orderedClasses: List[LinkedClass],
       logger: Logger): List[js.Tree] = {
+    val instantiatedClasses = orderedClasses.withFilter(_.hasInstances)
+
     def mapImportedModule(f: (String, Position) => js.Tree): List[js.Tree]  = {
       val builder = mutable.ListBuffer.empty[js.Tree]
       val encounteredModuleNames = mutable.Set.empty[String]
-      for (classDef <- orderedClasses) {
+      for (classDef <- instantiatedClasses) {
         def addModuleRef(module: String): Unit = {
           if (encounteredModuleNames.add(module))
             builder += f(module, classDef.pos)
@@ -229,7 +231,7 @@ final class Emitter private (config: CommonPhaseConfig,
       case ModuleKind.NoModule =>
         var importsFound: Boolean = false
 
-        for (classDef <- orderedClasses) {
+        for (classDef <- instantiatedClasses) {
           classDef.jsNativeLoadSpec match {
             case Some(JSNativeLoadSpec.Import(module, _)) =>
               val displayName = classDef.className.nameString

@@ -874,18 +874,17 @@ private final class Analyzer(config: CommonPhaseConfig,
       } else if (!isModuleAccessed) {
         isModuleAccessed = true
 
-        if (kind != ClassKind.NativeJSModuleClass) {
-          instantiated()
-          if (isScalaClass)
-            callMethodStatically(MemberNamespace.Constructor, NoArgConstructorName)
-        }
+        instantiated()
+        if (isScalaClass)
+          callMethodStatically(MemberNamespace.Constructor, NoArgConstructorName)
       }
     }
 
     def instantiated()(implicit from: From): Unit = {
       instantiatedFrom ::= from
 
-      val isNativeJSClass = kind == ClassKind.NativeJSClass
+      val isNativeJSClass =
+        kind == ClassKind.NativeJSClass || kind == ClassKind.NativeJSModuleClass
 
       /* TODO? When the second line is false, shouldn't this be a linking error
        * instead?
