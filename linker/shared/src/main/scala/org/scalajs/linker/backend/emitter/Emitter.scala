@@ -148,6 +148,8 @@ final class Emitter private (config: CommonPhaseConfig,
       }
 
       logger.time("Emitter: Write trees") {
+        val hasInit = mutable.Set.empty[Int]
+
         val mods = for (module <- moduleAnalysis.modules) yield {
           val trees = mutable.ListBuffer.empty[js.Tree]
           var globalRefs = Set.empty[String]
@@ -197,6 +199,10 @@ final class Emitter private (config: CommonPhaseConfig,
           for (c <- classes)
             trees ++= c.staticInitialization
 
+          if (classes.exists(_.staticInitialization.nonEmpty)) {
+            hasInit += module.id
+          }
+
           for (c <- classes)
             trees ++= c.topLevelExports
 
@@ -232,6 +238,9 @@ final class Emitter private (config: CommonPhaseConfig,
           val trees = mutable.ListBuffer.empty[js.Tree]
 
           emitInternalImports(initDeps, trees)
+
+          // Import side effects.
+          emitInternalImports(hasInit.map(_ -> Set.empty[String]).toMap, trees)
 
           trees ++= moduleInitializers
 
