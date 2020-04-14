@@ -932,6 +932,7 @@ object Build {
       crossScalaVersions := Seq("2.12.10"),
       scalaVersion := crossScalaVersions.value.head,
       sbtVersion := "1.0.0",
+      crossSbtVersions := List("1.0.0"),
       scalaBinaryVersion :=
         CrossVersion.binaryScalaVersion(scalaVersion.value),
       previousArtifactSetting,
