@@ -367,13 +367,6 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       codegenVarIdent("$x" + syntheticVarCounter)
     }
 
-    def resetSyntheticVarCounterIn[A](f: => A): A = {
-      val savedCounter = syntheticVarCounter
-      syntheticVarCounter = 0
-      try f
-      finally syntheticVarCounter = savedCounter
-    }
-
     @inline
     @tailrec
     private def performOptimisticThenPessimisticRuns[A](
