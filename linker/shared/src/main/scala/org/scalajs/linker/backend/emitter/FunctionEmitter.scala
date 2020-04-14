@@ -2065,7 +2065,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             genApplyStaticLike("f", className, method, transformedArgs)
           } else {
             val fun =
-              encodeClassVar(className).prototype DOT transformMethodIdent(method)
+              codegenVar("c", className).prototype DOT transformMethodIdent(method)
             js.Apply(fun DOT "call", transformedArgs)
           }
 
