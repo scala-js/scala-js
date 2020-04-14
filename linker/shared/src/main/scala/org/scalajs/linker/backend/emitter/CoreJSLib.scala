@@ -50,6 +50,7 @@ private[emitter] object CoreJSLib {
       implicit globalKnowledge: GlobalKnowledge) {
     import jsGen._
     import nameGen._
+    import varGen._
     import esFeatures._
     import semantics._
     import TreeDSL._

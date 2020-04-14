@@ -48,8 +48,8 @@ final class Emitter private (config: CommonPhaseConfig,
 
   private class State(val lastMentionedDangerousGlobalRefs: Set[String]) {
     val jsGen: JSGen = {
-      new JSGen(semantics, esFeatures, moduleKind, nameGen, internalOptions,
-          lastMentionedDangerousGlobalRefs)
+      val varGen = new VarGen(nameGen, lastMentionedDangerousGlobalRefs)
+      new JSGen(semantics, esFeatures, moduleKind, nameGen, varGen, internalOptions)
     }
 
     val classEmitter: ClassEmitter = new ClassEmitter(jsGen)

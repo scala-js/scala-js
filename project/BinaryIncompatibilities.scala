@@ -26,7 +26,19 @@ object BinaryIncompatibilities {
 
       // private[emitter], not an issue.
       exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.avoidClashWithGlobalRef"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.codegenVar"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.codegenVar$default$3"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.codegenVarIdent"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.codegenVarIdent$default$3"),
+      exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.JSGen.envModuleField"),
+      exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.this"),
 
       // private, not an issue.
       exclude[DirectMissingMethodProblem](

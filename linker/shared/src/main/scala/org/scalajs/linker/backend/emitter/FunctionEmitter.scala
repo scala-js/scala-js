@@ -246,6 +246,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
   import FunctionEmitter._
   import jsGen._
   import nameGen._
+  import varGen._
 
   /** Desugars parameters and body to a JS function.
    */
