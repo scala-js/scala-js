@@ -360,9 +360,9 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       }
     }
 
-    var syntheticVarCounter: Int = 0
+    private var syntheticVarCounter: Int = 0
 
-    def newSyntheticVar()(implicit pos: Position): js.Ident = {
+    private def newSyntheticVar()(implicit pos: Position): js.Ident = {
       syntheticVarCounter += 1
       codegenVarIdent("$x" + syntheticVarCounter)
     }
