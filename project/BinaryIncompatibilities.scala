@@ -24,6 +24,10 @@ object BinaryIncompatibilities {
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.closure.ClosureAstTransformer.transformScript"),
 
+      // private[emitter], not an issue.
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.envModuleField"),
+
       // private, not an issue.
       exclude[DirectMissingMethodProblem](
         "org.scalajs.linker.backend.closure.ClosureAstTransformer.this"),

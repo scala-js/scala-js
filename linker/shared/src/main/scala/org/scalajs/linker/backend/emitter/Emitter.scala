@@ -258,7 +258,7 @@ final class Emitter private (config: CommonPhaseConfig,
         mapImportedModule { (module, pos0) =>
           implicit val pos = pos0
           val from = js.StringLiteral(module)
-          val moduleBinding = jsGen.envModuleField(module).ident
+          val moduleBinding = jsGen.envModuleFieldIdent(module)
           js.ImportNamespace(moduleBinding, from)
         }
 
@@ -267,8 +267,8 @@ final class Emitter private (config: CommonPhaseConfig,
           implicit val pos = pos0
           val rhs = js.Apply(js.VarRef(js.Ident("require")),
               List(js.StringLiteral(module)))
-          val lhs = jsGen.envModuleField(module)
-          jsGen.genLet(lhs.ident, mutable = false, rhs)
+          val lhs = jsGen.envModuleFieldIdent(module)
+          jsGen.genLet(lhs, mutable = false, rhs)
         }
     }
   }

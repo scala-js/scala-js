@@ -339,7 +339,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
         WithGlobals(pathSelection(globalVarRef, path), globalVarNames)
 
       case irt.JSNativeLoadSpec.Import(module, path) =>
-        val moduleValue = envModuleField(module)
+        val moduleValue = VarRef(envModuleFieldIdent(module))
         path match {
           case "default" :: rest if moduleKind == ModuleKind.CommonJSModule =>
             val defaultField = genCallHelper("moduleDefault", moduleValue)
@@ -385,48 +385,8 @@ private[emitter] final class JSGen(val semantics: Semantics,
   def genClassDataOf(className: ClassName)(implicit pos: Position): Tree =
     genClassDataOf(ClassRef(className))
 
-  def envModuleField(module: String)(implicit pos: Position): VarRef = {
-    /* This is written so that the happy path, when `module` contains only
-     * valid characters, is fast.
-     */
-
-    def isValidChar(c: Char): Boolean =
-      (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
-
-    def containsOnlyValidChars(): Boolean = {
-      // scalastyle:off return
-      val len = module.length
-      var i = 0
-      while (i != len) {
-        if (!isValidChar(module.charAt(i)))
-          return false
-        i += 1
-      }
-      true
-      // scalastyle:on return
-    }
-
-    def buildValidName(): String = {
-      val result = new java.lang.StringBuilder("$i_")
-      val len = module.length
-      var i = 0
-      while (i != len) {
-        val c = module.charAt(i)
-        if (isValidChar(c))
-          result.append(c)
-        else
-          result.append("$%04x".format(c.toInt))
-        i += 1
-      }
-      result.toString()
-    }
-
-    val varName =
-      if (containsOnlyValidChars()) "$i_" + module
-      else buildValidName()
-
-    VarRef(Ident(avoidClashWithGlobalRef(varName), OriginalName(module)))
-  }
+  def envModuleFieldIdent(module: String)(implicit pos: Position): Ident =
+    codegenVarIdent("i", genModuleName(module), OriginalName(module))
 
   def codegenVar(field: String, typeRef: NonArrayTypeRef)(
       implicit pos: Position): VarRef = {
