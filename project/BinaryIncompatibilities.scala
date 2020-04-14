@@ -32,6 +32,14 @@ object BinaryIncompatibilities {
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.CoreJSLib#CoreJSLibBuilder.org$scalajs$linker$backend$emitter$CoreJSLib$CoreJSLibBuilder$$defineStandardDispatcher$default$3$1"),
       exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.FunctionEmitter#JSDesugar.newSyntheticVar"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.FunctionEmitter#JSDesugar.resetSyntheticVarCounterIn"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.FunctionEmitter#JSDesugar.syntheticVarCounter"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.FunctionEmitter#JSDesugar.syntheticVarCounter_="),
+      exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.frontend.optimizer.OptimizerCore#Intrinsics.IdentityHashCode"),
   )
 
