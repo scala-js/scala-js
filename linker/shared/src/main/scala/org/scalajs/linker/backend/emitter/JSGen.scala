@@ -14,11 +14,8 @@ package org.scalajs.linker.backend.emitter
 
 import scala.language.implicitConversions
 
-import scala.annotation.tailrec
-
 import org.scalajs.ir._
 import org.scalajs.ir.Names._
-import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Types._
 import org.scalajs.ir.{Trees => irt}
 
@@ -34,11 +31,11 @@ import EmitterNames._
  */
 private[emitter] final class JSGen(val semantics: Semantics,
     val esFeatures: ESFeatures, val moduleKind: ModuleKind,
-    val nameGen: NameGen,
-    internalOptions: InternalOptions,
-    mentionedDangerousGlobalRefs: Set[String]) {
+    val nameGen: NameGen, val varGen: VarGen,
+    internalOptions: InternalOptions) {
 
   import nameGen._
+  import varGen._
 
   val useClasses = esFeatures.useECMAScript2015
 
@@ -68,7 +65,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     if (useBigIntForLongs)
       BigIntLiteral(0L)
     else
-      codegenVar("L0")
+      coreJSLibVar("L0")
   }
 
   def genBoxedZeroOf(tpe: Type)(implicit pos: Position): Tree =
@@ -76,7 +73,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     else genZeroOf(tpe)
 
   def genBoxedCharZero()(implicit pos: Position): Tree =
-    codegenVar("bC0")
+    coreJSLibVar("bC0")
 
   def genLongModuleApply(methodName: MethodName, args: Tree*)(
       implicit pos: Position): Tree = {
@@ -128,8 +125,8 @@ private[emitter] final class JSGen(val semantics: Semantics,
     genName(className) + "__f_" + genName(field.name)
 
   def genSelectStatic(className: ClassName, item: irt.FieldIdent)(
-      implicit pos: Position): VarRef = {
-    codegenVar("t", className, item.name)
+      implicit pos: Position): Tree = {
+    classVar("t", className, item.name)
   }
 
   def genJSPrivateSelect(receiver: Tree, className: ClassName,
@@ -141,7 +138,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genJSPrivateFieldIdent(className: ClassName, field: irt.FieldIdent)(
       implicit pos: Position): Tree = {
-    codegenVar("r", className, field.name)
+    classVar("r", className, field.name)
   }
 
   def genIsInstanceOf(expr: Tree, tpe: Type)(
@@ -156,17 +153,17 @@ private[emitter] final class JSGen(val semantics: Semantics,
           expr === Null()
         } else if (className != NumberClass && // the only non-object superclass of hijacked classes
             !globalKnowledge.isInterface(className)) {
-          expr instanceof encodeClassVar(className)
+          expr instanceof classVar("c", className)
         } else {
-          Apply(codegenVar("is", className), List(expr))
+          Apply(classVar("is", className), List(expr))
         }
 
       case ArrayType(ArrayTypeRef(base, depth)) =>
-        Apply(codegenVar("isArrayOf", base), List(expr, IntLiteral(depth)))
+        Apply(typeRefVar("isArrayOf", base), List(expr, IntLiteral(depth)))
 
       case UndefType   => expr === Undefined()
       case BooleanType => typeof(expr) === "boolean"
-      case CharType    => expr instanceof codegenVar("Char")
+      case CharType    => expr instanceof coreJSLibVar("Char")
       case ByteType    => genCallHelper("isByte", expr)
       case ShortType   => genCallHelper("isShort", expr)
       case IntType     => genCallHelper("isInt", expr)
@@ -188,7 +185,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     className match {
       case BoxedUnitClass      => expr === Undefined()
       case BoxedBooleanClass   => typeof(expr) === "boolean"
-      case BoxedCharacterClass => expr instanceof codegenVar("Char")
+      case BoxedCharacterClass => expr instanceof coreJSLibVar("Char")
       case BoxedByteClass      => genCallHelper("isByte", expr)
       case BoxedShortClass     => genCallHelper("isShort", expr)
       case BoxedIntegerClass   => genCallHelper("isInt", expr)
@@ -203,7 +200,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     import TreeDSL._
 
     if (useBigIntForLongs) genCallHelper("isLong", expr)
-    else expr instanceof encodeClassVar(LongImpl.RuntimeLongClass)
+    else expr instanceof classVar("c", LongImpl.RuntimeLongClass)
   }
 
   private def genIsFloat(expr: Tree)(implicit pos: Position): Tree = {
@@ -239,10 +236,10 @@ private[emitter] final class JSGen(val semantics: Semantics,
     } else {
       tpe match {
         case ClassType(className) =>
-          Apply(codegenVar("as", className), List(expr))
+          Apply(classVar("as", className), List(expr))
 
         case ArrayType(ArrayTypeRef(base, depth)) =>
-          Apply(codegenVar("asArrayOf", base), List(expr, IntLiteral(depth)))
+          Apply(typeRefVar("asArrayOf", base), List(expr, IntLiteral(depth)))
 
         case UndefType   => genCallHelper("uV", expr)
         case BooleanType => genCallHelper("uZ", expr)
@@ -264,25 +261,22 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genCallHelper(helperName: String, args: Tree*)(
       implicit pos: Position): Tree = {
-    Apply(codegenVar(helperName), args.toList)
+    Apply(coreJSLibVar(helperName), args.toList)
   }
-
-  def encodeClassVar(className: ClassName)(implicit pos: Position): VarRef =
-    codegenVar("c", className)
 
   def genLoadModule(moduleClass: ClassName)(implicit pos: Position): Tree = {
     import TreeDSL._
-    Apply(codegenVar("m", moduleClass), Nil)
+    Apply(classVar("m", moduleClass), Nil)
   }
 
   def genScalaClassNew(className: ClassName, ctor: MethodName, args: Tree*)(
       implicit globalKnowledge: GlobalKnowledge, pos: Position): Tree = {
-    val encodedClassVar = encodeClassVar(className)
+    val encodedClassVar = classVar("c", className)
     val argsList = args.toList
     if (globalKnowledge.hasInlineableInit(className)) {
       New(encodedClassVar, argsList)
     } else {
-      Apply(codegenVar("ct", className, ctor), New(encodedClassVar, Nil) :: argsList)
+      Apply(classVar("ct", className, ctor), New(encodedClassVar, Nil) :: argsList)
     }
   }
 
@@ -312,7 +306,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genNonNativeJSClassConstructor(className: ClassName)(
       implicit pos: Position): Tree = {
-    Apply(codegenVar("a", className), Nil)
+    Apply(classVar("a", className), Nil)
   }
 
   def genLoadJSFromSpec(spec: irt.JSNativeLoadSpec,
@@ -339,7 +333,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
         WithGlobals(pathSelection(globalVarRef, path), globalVarNames)
 
       case irt.JSNativeLoadSpec.Import(module, path) =>
-        val moduleValue = envModuleField(module)
+        val moduleValue = VarRef(envModuleFieldIdent(module))
         path match {
           case "default" :: rest if moduleKind == ModuleKind.CommonJSModule =>
             val defaultField = genCallHelper("moduleDefault", moduleValue)
@@ -373,7 +367,8 @@ private[emitter] final class JSGen(val semantics: Semantics,
   def genClassDataOf(typeRef: TypeRef)(implicit pos: Position): Tree = {
     typeRef match {
       case typeRef: NonArrayTypeRef =>
-        codegenVar("d", typeRef)
+        typeRefVar("d", typeRef)
+
       case ArrayTypeRef(base, dims) =>
         val baseData = genClassDataOf(base)
         (1 to dims).foldLeft[Tree](baseData) { (prev, _) =>
@@ -385,167 +380,8 @@ private[emitter] final class JSGen(val semantics: Semantics,
   def genClassDataOf(className: ClassName)(implicit pos: Position): Tree =
     genClassDataOf(ClassRef(className))
 
-  def envModuleField(module: String)(implicit pos: Position): VarRef = {
-    /* This is written so that the happy path, when `module` contains only
-     * valid characters, is fast.
-     */
-
-    def isValidChar(c: Char): Boolean =
-      (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
-
-    def containsOnlyValidChars(): Boolean = {
-      // scalastyle:off return
-      val len = module.length
-      var i = 0
-      while (i != len) {
-        if (!isValidChar(module.charAt(i)))
-          return false
-        i += 1
-      }
-      true
-      // scalastyle:on return
-    }
-
-    def buildValidName(): String = {
-      val result = new java.lang.StringBuilder("$i_")
-      val len = module.length
-      var i = 0
-      while (i != len) {
-        val c = module.charAt(i)
-        if (isValidChar(c))
-          result.append(c)
-        else
-          result.append("$%04x".format(c.toInt))
-        i += 1
-      }
-      result.toString()
-    }
-
-    val varName =
-      if (containsOnlyValidChars()) "$i_" + module
-      else buildValidName()
-
-    VarRef(Ident(avoidClashWithGlobalRef(varName), OriginalName(module)))
-  }
-
-  def codegenVar(field: String, typeRef: NonArrayTypeRef)(
-      implicit pos: Position): VarRef = {
-    VarRef(codegenVarIdent(field, typeRef))
-  }
-
-  def codegenVar(field: String, className: ClassName)(implicit pos: Position): VarRef =
-    codegenVar(field, genName(className))
-
-  def codegenVar(field: String, className: ClassName, fieldName: FieldName)(
-      implicit pos: Position): VarRef = {
-    codegenVar(field, className, fieldName, NoOriginalName)
-  }
-
-  def codegenVar(field: String, className: ClassName, fieldName: FieldName,
-      origName: OriginalName)(
-      implicit pos: Position): VarRef = {
-    codegenVar(field, genName(className) + "__" + genName(fieldName), origName)
-  }
-
-  def codegenVar(field: String, className: ClassName, methodName: MethodName)(
-      implicit pos: Position): VarRef = {
-    codegenVar(field, className, methodName, NoOriginalName)
-  }
-
-  def codegenVar(field: String, className: ClassName, methodName: MethodName,
-      origName: OriginalName)(
-      implicit pos: Position): VarRef = {
-    codegenVar(field, genName(className) + "__" + genName(methodName), origName)
-  }
-
-  def codegenVar(field: String, subField: String,
-      origName: OriginalName = NoOriginalName)(
-      implicit pos: Position): VarRef = {
-    VarRef(codegenVarIdent(field, subField, origName))
-  }
-
-  def codegenVarIdent(field: String, typeRef: NonArrayTypeRef)(
-      implicit pos: Position): Ident = {
-    // The mapping in this function is an implementation detail of the emitter
-    val subField = typeRef match {
-      case PrimRef(tpe) =>
-        tpe match {
-          case NoType      => "V"
-          case BooleanType => "Z"
-          case CharType    => "C"
-          case ByteType    => "B"
-          case ShortType   => "S"
-          case IntType     => "I"
-          case LongType    => "J"
-          case FloatType   => "F"
-          case DoubleType  => "D"
-          case NullType    => "N"
-          case NothingType => "E"
-        }
-      case ClassRef(className) =>
-        genName(className)
-    }
-    codegenVarIdent(field, subField)
-  }
-
-  def codegenVarIdent(field: String, subField: String,
-      origName: OriginalName = NoOriginalName)(
-      implicit pos: Position): Ident = {
-    Ident(avoidClashWithGlobalRef("$" + field + "_" + subField), origName)
-  }
-
-  def codegenVar(field: String)(implicit pos: Position): VarRef =
-    VarRef(codegenVarIdent(field))
-
-  def codegenVarIdent(field: String)(implicit pos: Position): Ident =
-    codegenVarIdent(field, NoOriginalName)
-
-  def codegenVarIdent(field: String, origName: OriginalName)(
-      implicit pos: Position): Ident = {
-    Ident(avoidClashWithGlobalRef("$" + field), origName)
-  }
-
-  def avoidClashWithGlobalRef(codegenVarName: String): String = {
-    /* This is not cached because it should virtually never happen.
-     * slowPath() is only called if we use a dangerous global ref, which should
-     * already be very rare. And if do a second iteration in the loop only if
-     * we refer to the global variables `$foo` *and* `$$foo`. At this point the
-     * likelihood is so close to 0 that caching would be more expensive than
-     * not caching.
-     */
-    @tailrec
-    def slowPath(lastNameTried: String): String = {
-      val nextNameToTry = "$" + lastNameTried
-      if (mentionedDangerousGlobalRefs.contains(nextNameToTry))
-        slowPath(nextNameToTry)
-      else
-        nextNameToTry
-    }
-
-    /* Hopefully this is JIT'ed away as `false` because
-     * `mentionedDangerousGlobalRefs` is in fact `Set.EmptySet`.
-     */
-    if (mentionedDangerousGlobalRefs.contains(codegenVarName))
-      slowPath(codegenVarName)
-    else
-      codegenVarName
-  }
-
-  /** Keeps only the global refs that need to be tracked.
-   *
-   *  By default, only dangerous global refs need to be tracked outside of
-   *  functions, to power `mentionedDangerousGlobalRefs` and therefore
-   *  `avoidClashWithGlobalRef`. In that case, the set is hopefully already
-   *  emptied at this point for the large majority of methods, if not all.
-   *
-   *  However, when integrating with GCC, we must tell it a list of all the
-   *  global variables that are accessed in an externs file. In that case, we
-   *  need to track all global variables across functions and classes. This is
-   *  slower, but running GCC will take most of the time anyway in that case.
-   */
-  def keepOnlyTrackedGlobalRefs(globalRefs: Set[String]): Set[String] =
-    if (trackAllGlobalRefs) globalRefs
-    else GlobalRefUtils.keepOnlyDangerousGlobalRefs(globalRefs)
+  def envModuleFieldIdent(module: String)(implicit pos: Position): Ident =
+    fileLevelVarIdent("i", genModuleName(module), OriginalName(module))
 
   def genPropSelect(qual: Tree, item: PropertyName)(
       implicit pos: Position): Tree = {

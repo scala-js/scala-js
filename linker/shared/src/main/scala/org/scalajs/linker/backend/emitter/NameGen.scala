@@ -19,7 +19,11 @@ import org.scalajs.ir.Names._
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Types._
 
-/** Converts IR names to JavaScript names. */
+/** Performs state independent name mangling.
+ *
+ *  - Converts IR names to JavaScript names.
+ *  - Converts module names to JavaScript names.
+ */
 private[emitter] final class NameGen {
   import NameGen._
 
@@ -243,6 +247,45 @@ private[emitter] final class NameGen {
     else OriginalName(name)
   }
 
+  def genModuleName(module: String): String = {
+    /* This is written so that the happy path, when `module` contains only
+     * valid characters, is fast.
+     */
+
+    def isValidChar(c: Char): Boolean =
+      (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+
+    def containsOnlyValidChars(): Boolean = {
+      // scalastyle:off return
+      val len = module.length
+      var i = 0
+      while (i != len) {
+        if (!isValidChar(module.charAt(i)))
+          return false
+        i += 1
+      }
+      true
+      // scalastyle:on return
+    }
+
+    def buildValidName(): String = {
+      val result = new java.lang.StringBuilder()
+      val len = module.length
+      var i = 0
+      while (i != len) {
+        val c = module.charAt(i)
+        if (isValidChar(c))
+          result.append(c)
+        else
+          result.append("$%04x".format(c.toInt))
+        i += 1
+      }
+      result.toString()
+    }
+
+    if (containsOnlyValidChars()) module
+    else buildValidName()
+  }
 }
 
 private object NameGen {

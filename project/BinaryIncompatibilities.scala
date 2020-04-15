@@ -24,6 +24,32 @@ object BinaryIncompatibilities {
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.closure.ClosureAstTransformer.transformScript"),
 
+      // private[emitter], not an issue.
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.ClassEmitter.org$scalajs$linker$backend$emitter$ClassEmitter$$codegenVarDef$default$4"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.ClassEmitter.org$scalajs$linker$backend$emitter$ClassEmitter$$codegenVarDef$default$5"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.avoidClashWithGlobalRef"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.codegenVar"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.codegenVar$default$3"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.codegenVarIdent"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.codegenVarIdent$default$3"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.encodeClassVar"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.envModuleField"),
+      exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.genSelectStatic"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.keepOnlyTrackedGlobalRefs"),
+      exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.this"),
+
       // private, not an issue.
       exclude[DirectMissingMethodProblem](
         "org.scalajs.linker.backend.closure.ClosureAstTransformer.this"),
