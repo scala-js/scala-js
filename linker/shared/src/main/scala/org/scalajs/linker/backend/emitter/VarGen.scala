@@ -29,8 +29,11 @@ import org.scalajs.linker.backend.javascript.Trees._
  *  - coreJSLibVar: Vars defined by the CoreJSLib.
  *  - fileLevelVar: Vars that are local to an individual file.
  *
- *  At the moment, this distinction is theoretical. It will become relevant for
- *  module splitting (#2681).
+ *  All of these have `*Ident` variants (e.g. `classVarIdent`). These are
+ *  intended to be used for definitions.
+ *
+ *  At the moment, these distinctions are theoretical. They will become relevant
+ *  for module splitting (#2681).
  */
 private[emitter] final class VarGen(nameGen: NameGen,
     mentionedDangerousGlobalRefs: Set[String]) {
@@ -39,33 +42,48 @@ private[emitter] final class VarGen(nameGen: NameGen,
 
   // ClassName scoped.
 
-  def classVar(field: String, className: ClassName)(implicit pos: Position): VarRef =
-    VarRef(genericIdent(field, genName(className)))
+  def classVar(field: String, className: ClassName)(implicit pos: Position): Tree =
+    VarRef(classVarIdent(field, className))
 
-  def classVar(field: String, className: ClassName, fieldName: FieldName)(
-      implicit pos: Position): VarRef = {
-    classVar(field, className, fieldName, NoOriginalName)
+  def classVarIdent(field: String, className: ClassName)(
+      implicit pos: Position): Ident = {
+    genericIdent(field, genName(className))
   }
 
   // ClassName, FieldName scoped.
 
+  def classVar(field: String, className: ClassName, fieldName: FieldName)(
+      implicit pos: Position): Tree = {
+    classVar(field, className, fieldName, NoOriginalName)
+  }
+
   def classVar(field: String, className: ClassName, fieldName: FieldName,
       origName: OriginalName)(
-      implicit pos: Position): VarRef = {
-    VarRef(genericIdent(field, genName(className) + "__" + genName(fieldName), origName))
+      implicit pos: Position): Tree = {
+    VarRef(classVarIdent(field, className, fieldName, origName))
+  }
+
+  def classVarIdent(field: String, className: ClassName, fieldName: FieldName,
+      origName: OriginalName)(implicit pos: Position): Ident = {
+    genericIdent(field, genName(className) + "__" + genName(fieldName), origName)
   }
 
   // ClassName, MethodName scoped.
 
   def classVar(field: String, className: ClassName, methodName: MethodName)(
-      implicit pos: Position): VarRef = {
+      implicit pos: Position): Tree = {
     classVar(field, className, methodName, NoOriginalName)
   }
 
   def classVar(field: String, className: ClassName, methodName: MethodName,
       origName: OriginalName)(
-      implicit pos: Position): VarRef = {
-    VarRef(genericIdent(field, genName(className) + "__" + genName(methodName), origName))
+      implicit pos: Position): Tree = {
+    VarRef(classVarIdent(field, className, methodName, origName))
+  }
+
+  def classVarIdent(field: String, className: ClassName, methodName: MethodName,
+      origName: OriginalName)(implicit pos: Position): Ident = {
+    genericIdent(field, genName(className) + "__" + genName(methodName), origName)
   }
 
   /** Dispatch based on type ref.
@@ -73,7 +91,7 @@ private[emitter] final class VarGen(nameGen: NameGen,
    *  Returns the relevant coreJSLibVar for primitive types, classVar otherwise.
    */
   def typeRefVar(field: String, typeRef: NonArrayTypeRef)(
-      implicit pos: Position): VarRef = {
+      implicit pos: Position): Tree = {
     typeRef match {
       case primRef: PrimRef =>
         VarRef(coreJSLibVarIdent(field, primRef))
@@ -83,7 +101,7 @@ private[emitter] final class VarGen(nameGen: NameGen,
     }
   }
 
-  def coreJSLibVar(field: String)(implicit pos: Position): VarRef =
+  def coreJSLibVar(field: String)(implicit pos: Position): Tree =
     VarRef(coreJSLibVarIdent(field))
 
   def coreJSLibVarIdent(field: String)(implicit pos: Position): Ident =

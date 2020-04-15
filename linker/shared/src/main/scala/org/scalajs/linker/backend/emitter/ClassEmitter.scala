@@ -138,7 +138,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     require(useClasses)
 
     val className = tree.name.name
-    val classIdent = classVar("c", className)(tree.name.pos).ident
+    val classIdent = classVarIdent("c", className)(tree.name.pos)
 
     val parentVarWithGlobals = for (parentIdent <- tree.superClass) yield {
       implicit val pos = parentIdent.pos
@@ -749,7 +749,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     val className = tree.className
 
     if (esFeatures.useECMAScript2015) {
-      js.ClassDef(Some(classVar("c", className).ident), None, Nil)
+      js.ClassDef(Some(classVarIdent("c", className)), None, Nil)
     } else {
       js.Block(
           js.DocComment("@constructor"),
@@ -1237,7 +1237,10 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
             genSelectStatic(cd.className, field))
 
       case ModuleKind.ESModule =>
-        val staticVarIdent = genSelectStatic(cd.className, field).ident
+        // Hack: Use a classVarIdent even though this is a usage site.
+        val staticVarIdent =
+          classVarIdent("t", cd.className, field.name, NoOriginalName)
+
         WithGlobals(
             js.Export((staticVarIdent -> js.ExportName(exportName)) :: Nil))
 
@@ -1272,17 +1275,14 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   private def classFunctionDef(field: String, className: ClassName,
       args: List[js.ParamDef], body: js.Tree)(
       implicit pos: Position): js.FunctionDef = {
-
-    val globalVar = classVar(field, className)
-    val globalVarIdent = globalVar.ident
-    js.FunctionDef(globalVarIdent, args, body)
+    js.FunctionDef(classVarIdent(field, className), args, body)
   }
 
   private def classVarDef(field: String, className: ClassName, value: js.Tree,
       mutable: Boolean = false, keepFunctionExpression: Boolean = false)(
       implicit pos: Position): js.Tree = {
 
-    classVarDefGeneric(classVar(field, className), value, mutable,
+    classVarDefGeneric(classVarIdent(field, className), value, mutable,
         keepFunctionExpression)
   }
 
@@ -1292,7 +1292,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit pos: Position): js.Tree = {
 
     classVarDefGeneric(
-        classVar(field, className, fieldName, origName), value, mutable,
+        classVarIdent(field, className, fieldName, origName), value, mutable,
         keepFunctionExpression = false)
   }
 
@@ -1301,29 +1301,26 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       implicit pos: Position): js.Tree = {
 
     classVarDefGeneric(
-        classVar(field, className, methodName, origName), value,
+        classVarIdent(field, className, methodName, origName), value,
         mutable = false, keepFunctionExpression = false)
   }
 
-  private def classVarDefGeneric(globalVar: js.VarRef, value: js.Tree,
+  private def classVarDefGeneric(ident: js.Ident, value: js.Tree,
       mutable: Boolean, keepFunctionExpression: Boolean)(
       implicit pos: Position): js.Tree = {
-
-    val globalVarIdent = globalVar.ident
-
     if (esFeatures.useECMAScript2015) {
-      genLet(globalVarIdent, mutable, value)
+      genLet(ident, mutable, value)
     } else {
       value match {
         case js.Function(false, args, body) =>
           // Make sure the function has a meaningful `name` property
-          val functionExpr = js.FunctionDef(globalVarIdent, args, body)
+          val functionExpr = js.FunctionDef(ident, args, body)
           if (keepFunctionExpression)
-            js.VarDef(globalVarIdent, Some(functionExpr))
+            js.VarDef(ident, Some(functionExpr))
           else
             functionExpr
         case _ =>
-          js.VarDef(globalVarIdent, Some(value))
+          js.VarDef(ident, Some(value))
       }
     }
   }

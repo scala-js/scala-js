@@ -43,6 +43,8 @@ object BinaryIncompatibilities {
           "org.scalajs.linker.backend.emitter.JSGen.encodeClassVar"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.JSGen.envModuleField"),
+      exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.genSelectStatic"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.JSGen.keepOnlyTrackedGlobalRefs"),
       exclude[IncompatibleMethTypeProblem](

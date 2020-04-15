@@ -125,7 +125,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
     genName(className) + "__f_" + genName(field.name)
 
   def genSelectStatic(className: ClassName, item: irt.FieldIdent)(
-      implicit pos: Position): VarRef = {
+      implicit pos: Position): Tree = {
     classVar("t", className, item.name)
   }
 
