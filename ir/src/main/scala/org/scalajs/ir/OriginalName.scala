@@ -70,6 +70,10 @@ final class OriginalName private (private val bytes: Array[Byte])
     if (isDefined) unsafeGet
     else UTF8String(name)
   }
+
+  override def toString(): String =
+    if (isDefined) s"OriginalName($unsafeGet)"
+    else "NoOriginalName"
 }
 
 object OriginalName {
