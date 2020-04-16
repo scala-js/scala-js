@@ -102,20 +102,10 @@ object JavalibIRCleaner {
 
   private def readIR(file: File): ClassDef = {
     import java.nio.ByteBuffer
-    import java.nio.channels.FileChannel
 
-    val channel = FileChannel.open(file.toPath())
-    try {
-      val fileSize = channel.size()
-      if (fileSize > Int.MaxValue.toLong)
-        throw new IOException(s"IR file too large: $file")
-      val buffer = ByteBuffer.allocate(fileSize.toInt)
-      channel.read(buffer)
-      buffer.flip()
-      Serializers.deserialize(buffer)
-    } finally {
-      channel.close()
-    }
+    val bytes = Files.readAllBytes(file.toPath())
+    val buffer = ByteBuffer.wrap(bytes)
+    Serializers.deserialize(buffer)
   }
 
   private def writeIRFile(file: File, tree: ClassDef): Unit = {
