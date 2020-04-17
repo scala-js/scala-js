@@ -7,8 +7,7 @@ import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
 import java.io._
-import java.nio.file.{Files, Path}
-import java.{util => ju}
+import java.nio.file.Files
 
 import scala.collection.mutable
 
@@ -40,32 +39,33 @@ object JavalibIRCleaner {
   private val writeReplaceMethodName =
     MethodName("writeReplace", Nil, ClassRef(ObjectClass))
 
-  def cleanIR(dependencyClasspath: Seq[File], javalibDir: File, outputDir: File,
+  def cleanIR(dependencyFiles: Seq[File], libFileMappings: Seq[(File, File)],
       logger: Logger): Set[File] = {
 
     val errorManager = new ErrorManager(logger)
 
-    val javalibDirPath = javalibDir.toPath()
-    val outputDirPath = outputDir.toPath()
+    val libIRMappings = for {
+      (input, output) <- libFileMappings
+    } yield {
+      (readIR(input), output)
+    }
 
-    val libraryIRFiles = dependencyClasspath.flatMap(f => listIRFiles(f.toPath()))
-    val javalibIRFiles = listIRFiles(javalibDirPath)
-
-    val jsTypes = getJSTypes(libraryIRFiles ++ javalibIRFiles)
+    val jsTypes = {
+      val dependencyIR = dependencyFiles.iterator.map(readIR(_))
+      val libIR = libIRMappings.iterator.map(_._1)
+      getJSTypes(dependencyIR ++ libIR)
+    }
 
     val resultBuilder = Set.newBuilder[File]
 
-    for (irFile <- javalibIRFiles) {
+    for ((tree, output) <- libIRMappings) {
       import ClassKind._
 
-      val tree = irFile.tree
       tree.kind match {
         case Class | ModuleClass | Interface | HijackedClass =>
           val cleanedTree = cleanTree(tree, jsTypes, errorManager)
-          val outputPath =
-            outputDirPath.resolve(javalibDirPath.relativize(irFile.path))
-          writeIRFile(outputPath, cleanedTree)
-          resultBuilder += outputPath.toFile()
+          writeIRFile(output, cleanedTree)
+          resultBuilder += output
 
         case AbstractJSType | NativeJSClass | NativeJSModuleClass =>
           // discard
@@ -100,49 +100,18 @@ object JavalibIRCleaner {
     def errorCount: Int = _errorCount
   }
 
-  private final class IRFile(val path: Path, val tree: ClassDef)
-
-  private def listIRFiles(path: Path): Seq[IRFile] = {
-    import java.nio.file._
-    import java.nio.file.attribute.BasicFileAttributes
-
-    val builder = Seq.newBuilder[IRFile]
-
-    val dirVisitor = new SimpleFileVisitor[Path] {
-      override def visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult = {
-        if (path.getFileName().toString().endsWith(".sjsir"))
-          builder += new IRFile(path, readIRFile(path))
-        super.visitFile(path, attrs)
-      }
-    }
-
-    Files.walkFileTree(path, ju.EnumSet.of(FileVisitOption.FOLLOW_LINKS),
-        Int.MaxValue, dirVisitor)
-    builder.result()
-  }
-
-  private def readIRFile(path: Path): ClassDef = {
+  private def readIR(file: File): ClassDef = {
     import java.nio.ByteBuffer
-    import java.nio.channels.FileChannel
 
-    val channel = FileChannel.open(path)
-    try {
-      val fileSize = channel.size()
-      if (fileSize > Int.MaxValue.toLong)
-        throw new IOException(s"IR file too large: $path")
-      val buffer = ByteBuffer.allocate(fileSize.toInt)
-      channel.read(buffer)
-      buffer.flip()
-      Serializers.deserialize(buffer)
-    } finally {
-      channel.close()
-    }
+    val bytes = Files.readAllBytes(file.toPath())
+    val buffer = ByteBuffer.wrap(bytes)
+    Serializers.deserialize(buffer)
   }
 
-  private def writeIRFile(path: Path, tree: ClassDef): Unit = {
-    Files.createDirectories(path.getParent())
+  private def writeIRFile(file: File, tree: ClassDef): Unit = {
+    Files.createDirectories(file.toPath().getParent())
     val outputStream =
-      new BufferedOutputStream(new FileOutputStream(path.toFile()))
+      new BufferedOutputStream(new FileOutputStream(file))
     try {
       Serializers.serialize(outputStream, tree)
     } finally {
@@ -150,15 +119,8 @@ object JavalibIRCleaner {
     }
   }
 
-  private def getJSTypes(irFiles: Seq[IRFile]): Map[ClassName, ClassDef] = {
-    (for {
-      irFile <- irFiles
-      if irFile.tree.kind.isJSType
-    } yield {
-      val tree = irFile.tree
-      tree.className -> tree
-    }).toMap
-  }
+  private def getJSTypes(trees: Iterator[ClassDef]): Map[ClassName, ClassDef] =
+    trees.filter(_.kind.isJSType).map(t => t.className -> t).toMap
 
   private def cleanTree(tree: ClassDef, jsTypes: Map[ClassName, ClassDef],
       errorManager: ErrorManager): ClassDef = {
