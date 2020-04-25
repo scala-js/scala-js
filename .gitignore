@@ -9,3 +9,8 @@ target/
 /.idea/
 /.idea_modules/
 bin/
+
+# metals files/directories
+/.bloop/
+/.metals/
+/project/metals.sbt
