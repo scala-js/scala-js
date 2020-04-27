@@ -149,17 +149,8 @@ final class BaseLinker(config: CommonPhaseConfig) {
     }
 
     classDef.memberDefs.foreach {
-      case field: FieldDef =>
-        val isNeeded = {
-          if (field.flags.namespace.isStatic) analyzerInfo.isAnyStaticFieldUsed
-          else if (classDef.kind.isJSType) analyzerInfo.isAnyPrivateJSFieldUsed
-          else analyzerInfo.isAnySubclassInstantiated
-        }
-        if (isNeeded)
-          fields += field
-
-      case field: JSFieldDef =>
-        if (analyzerInfo.isAnySubclassInstantiated)
+      case field: AnyFieldDef =>
+        if (isFieldDefNeeded(analyzerInfo, field))
           fields += field
 
       case m: MethodDef =>
@@ -217,7 +208,22 @@ final class BaseLinker(config: CommonPhaseConfig) {
   }
 }
 
-private object BaseLinker {
+private[frontend] object BaseLinker {
+  private[frontend] def isFieldDefNeeded(classInfo: ClassInfo,
+      field: ir.Trees.AnyFieldDef): Boolean = {
+    import ir.Trees._
+
+    field match {
+      case field: FieldDef =>
+        if (field.flags.namespace.isStatic) classInfo.isAnyStaticFieldUsed
+        else if (classInfo.kind.isJSType) classInfo.isAnyPrivateJSFieldUsed
+        else classInfo.isAnySubclassInstantiated
+
+      case field: JSFieldDef =>
+        classInfo.isAnySubclassInstantiated
+    }
+  }
+
   private class InputProvider extends Analyzer.InputProvider with MethodSynthesizer.InputProvider {
     private var classNameToFile: collection.Map[ClassName, IRFileImpl] = _
     private var entryPoints: collection.Set[ClassName] = _

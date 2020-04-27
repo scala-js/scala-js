@@ -91,6 +91,9 @@ object TestIRBuilder {
         List(argsParamDef), NoType, Some(body))(EOH, None)
   }
 
+  def consoleLog(expr: Tree): Tree =
+    JSMethodApply(JSGlobalRef("console"), StringLiteral("log"), List(expr))
+
   def predefPrintln(expr: Tree): Tree = {
     val PredefModuleClass = ClassName("scala.Predef$")
     val printlnMethodName = m("println", List(O), VoidRef)

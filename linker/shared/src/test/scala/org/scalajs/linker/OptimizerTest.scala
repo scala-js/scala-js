@@ -21,6 +21,7 @@ import org.scalajs.ir.ClassKind
 import org.scalajs.ir.EntryPointsInfo
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
+import org.scalajs.ir.Trees.MemberNamespace._
 import org.scalajs.ir.Types._
 
 import org.scalajs.logging._
@@ -165,6 +166,42 @@ class OptimizerTest {
 
     for (linkingUnit <- linkToLinkingUnit(classDefs, MainTestModuleInitializers, TestIRRepo.fulllib)) yield {
       assertFalse(linkingUnit.classDefs.exists(_.className == ClassClass))
+    }
+  }
+
+  @Test
+  def testOptimizerDoesNotEliminateRequiredStaticField_issue4021(): AsyncResult = await {
+    val StringType = ClassType(BoxedStringClass)
+    val fooGetter = m("foo", Nil, T)
+    val classDefs = Seq(
+        classDef(
+            MainTestClassName,
+            kind = ClassKind.Class,
+            superClass = Some(ObjectClass),
+            memberDefs = List(
+                trivialCtor(MainTestClassName),
+                // static var foo: java.lang.String
+                FieldDef(EMF.withNamespace(PublicStatic).withMutable(true),
+                    "foo", NON, StringType),
+                // static def foo(): java.lang.String = Test::foo
+                MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
+                    fooGetter, NON, Nil, StringType, Some({
+                      SelectStatic(MainTestClassName, "foo")(StringType)
+                    }))(EOH, None),
+                // static def main(args: String[]) { println(Test::foo()) }
+                mainMethodDef({
+                  consoleLog(ApplyStatic(EAF, MainTestClassName, fooGetter, Nil)(StringType))
+                })
+            )
+        )
+    )
+
+    for (linkingUnit <- linkToLinkingUnit(classDefs, MainTestModuleInitializers)) yield {
+      val mainClassDef = linkingUnit.classDefs.find(_.className == MainTestClassName).get
+      assertTrue(mainClassDef.fields.exists {
+        case FieldDef(_, FieldIdent(name), _, _) => name == FieldName("foo")
+        case _                                   => false
+      })
     }
   }
 
