@@ -63,6 +63,18 @@ class ModulesWithGlobalFallbackTest {
     assertEquals("foo:bar;baz:qux", QueryStringAsDefault.stringify(dict, ";", ":"))
   }
 
+  @Test def testImportFunctionInModule(): Unit = {
+    val dict = js.Dictionary("foo" -> "bar", "baz" -> "qux")
+
+    assertEquals("foo=bar&baz=qux", QueryStringWithNativeDef.stringify(dict))
+    assertEquals("foo:bar;baz:qux", QueryStringWithNativeDef.stringify(dict, ";", ":"))
+  }
+
+  @Test def testImportFieldInModule(): Unit = {
+    assertEquals("string", js.typeOf(OSWithNativeVal.EOL))
+    assertEquals("string", js.typeOf(OSWithNativeVal.EOLAsDef))
+  }
+
   @Test def testImportObjectInModule(): Unit = {
     assertTrue((Buffer: Any).isInstanceOf[js.Object])
     assertFalse(Buffer.isBuffer(5))
@@ -101,6 +113,10 @@ object ModulesWithGlobalFallbackTest {
       }
       result
     }
+  }
+
+  private object OSFallbackImpl extends js.Object {
+    val EOL: String = "\n"
   }
 
   private class StringDecoderFallbackImpl(charsetName: String = "utf8")
@@ -158,6 +174,8 @@ object ModulesWithGlobalFallbackTest {
       val global = org.scalajs.testsuite.utils.JSUtils.globalObject
       global.ModulesWithGlobalFallbackTest_QueryString =
         QueryStringFallbackImpl
+      global.ModulesWithGlobalFallbackTest_OS =
+        OSFallbackImpl
       global.ModulesWithGlobalFallbackTest_StringDecoder =
         js.constructorOf[StringDecoderFallbackImpl]
       global.ModulesWithGlobalFallbackTest_Buffer =
@@ -181,6 +199,26 @@ object ModulesWithGlobalFallbackTest {
   object QueryStringAsDefault extends js.Object {
     def stringify(obj: js.Dictionary[String], sep: String = "&",
         eq: String = "="): String = js.native
+  }
+
+  object QueryStringWithNativeDef {
+    @js.native
+    @JSImport("querystring", "stringify",
+        globalFallback = "ModulesWithGlobalFallbackTest_QueryString.stringify")
+    def stringify(obj: js.Dictionary[String], sep: String = "&",
+        eq: String = "="): String = js.native
+  }
+
+  object OSWithNativeVal {
+    @js.native
+    @JSImport("os", "EOL",
+        globalFallback = "ModulesWithGlobalFallbackTest_OS.EOL")
+    val EOL: String = js.native
+
+    @js.native
+    @JSImport("os", "EOL",
+        globalFallback = "ModulesWithGlobalFallbackTest_OS.EOL")
+    def EOLAsDef: String = js.native
   }
 
   @js.native

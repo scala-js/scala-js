@@ -209,7 +209,7 @@ object Traversers {
 
       // Trees that need not be traversed
 
-      case _:Skip | _:Debugger | _:LoadModule | _:SelectStatic |
+      case _:Skip | _:Debugger | _:LoadModule | _:SelectStatic | _:SelectJSNativeMember |
           _:LoadJSConstructor | _:LoadJSModule | _:JSLinkingInfo | _:Literal |
           _:VarRef | _:This | _:JSGlobalRef | _:Transient =>
     }
@@ -222,7 +222,7 @@ object Traversers {
 
     def traverseMemberDef(memberDef: MemberDef): Unit = {
       memberDef match {
-        case _: AnyFieldDef =>
+        case _:AnyFieldDef | _:JSNativeMemberDef =>
 
         case MethodDef(_, _, _, _, _, body) =>
           body.foreach(traverse)

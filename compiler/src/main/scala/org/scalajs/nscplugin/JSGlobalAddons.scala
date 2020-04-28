@@ -264,31 +264,19 @@ trait JSGlobalAddons extends JSDefinitions
     /** Stores the JS native load spec of a symbol for the current compilation
      *  run.
      */
-    def storeJSNativeLoadSpec(sym: Symbol, spec: JSNativeLoadSpec): Unit = {
-      assert(sym.isClass,
-          s"storeJSNativeLoadSpec called for non-class symbol $sym")
-
+    def storeJSNativeLoadSpec(sym: Symbol, spec: JSNativeLoadSpec): Unit =
       jsNativeLoadSpecs(sym) = spec
-    }
 
     /** Gets the JS native load spec of a symbol in the current compilation run.
      */
-    def jsNativeLoadSpecOf(sym: Symbol): JSNativeLoadSpec = {
-      assert(sym.isClass,
-          s"jsNativeLoadSpecOf called for non-class symbol $sym")
-
+    def jsNativeLoadSpecOf(sym: Symbol): JSNativeLoadSpec =
       jsNativeLoadSpecs(sym)
-    }
 
     /** Gets the JS native load spec of a symbol in the current compilation run,
      *  if it has one.
      */
-    def jsNativeLoadSpecOfOption(sym: Symbol): Option[JSNativeLoadSpec] = {
-      assert(sym.isClass,
-          s"jsNativeLoadSpecOfOption called for non-class symbol $sym")
-
+    def jsNativeLoadSpecOfOption(sym: Symbol): Option[JSNativeLoadSpec] =
       jsNativeLoadSpecs.get(sym)
-    }
 
   }
 

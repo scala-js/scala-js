@@ -212,8 +212,13 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
            */
           treeCopy.Template(tree, parents.map(transform(_)), self, body.map(transform(_)))
 
+        // Native JS val or def
+        case vddef: ValOrDefDef if vddef.symbol.hasAnnotation(JSNativeAnnotation) =>
+          transformJSNativeValOrDefDef(vddef)
+
         // ValOrDefDef's that are local to a block must not be transformed
         case vddef: ValOrDefDef if vddef.symbol.isLocalToBlock =>
+          checkJSNativeSpecificAnnotsOnNonJSNative(vddef)
           super.transform(tree)
 
         // Catch ValDef in js.Any
@@ -231,8 +236,9 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
           treeCopy.ValDef(tree, mods, name, transform(tpt), nrhs)
 
         // Exporter generation
-        case _: ValOrDefDef if tree.symbol.isMethod =>
+        case tree: ValOrDefDef if tree.symbol.isMethod =>
           val sym = tree.symbol
+          checkJSNativeSpecificAnnotsOnNonJSNative(tree)
           if (shouldPrepareExports) {
             // Generate exporters for this ddef if required
             exporters.getOrElseUpdate(sym.owner,
@@ -583,37 +589,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       }
 
       // Checks for native JS stuff, excluding JS anon functions
-      if (isJSNative && !isJSAnonFun) {
-        // Check if we may have a JS native here
-        if (sym.isLocalToBlock) {
-          reporter.error(implDef.pos,
-              "Local native JS classes and objects are not allowed")
-        } else if (anyEnclosingOwner is OwnerKind.ScalaClass) {
-          reporter.error(implDef.pos,
-              "Scala traits and classes may not have inner native JS " +
-              "traits, classes or objects")
-        } else if (enclosingOwner is OwnerKind.JSNonNative) {
-          reporter.error(implDef.pos, "non-native JS classes, traits and " +
-              "objects may not have inner native JS classes, traits or objects")
-        } else if (!sym.isTrait) {
-          /* Compute the loading spec now, before `flatten` destroys the name.
-           * We store it in a global map.
-           */
-          val optLoadSpec = checkAndComputeJSNativeLoadSpecOf(implDef.pos, sym)
-          for (loadSpec <- optLoadSpec)
-            jsInterop.storeJSNativeLoadSpec(sym, loadSpec)
-        } else {
-          assert(sym.isTrait, sym) // just tested in the previous `if`
-          for (annot <- sym.annotations) {
-            val annotSym = annot.symbol
-            if (JSNativeLoadingSpecAnnots.contains(annotSym) ||
-                annotSym == JSNameAnnotation) {
-              reporter.error(annot.pos,
-                  s"Traits may not have an @${annotSym.nameString} annotation.")
-            }
-          }
-        }
-      }
+      if (isJSNative && !isJSAnonFun)
+        checkJSNativeDefinition(implDef.pos, sym)
 
       if (shouldPrepareExports)
         registerClassOrModuleExports(sym)
@@ -679,6 +656,41 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       enterOwner(kind) { super.transform(implDef) }
     }
 
+    private def checkJSNativeDefinition(pos: Position, sym: Symbol): Unit = {
+      // Check if we may have a JS native here
+      if (sym.isLocalToBlock) {
+        reporter.error(pos,
+            "@js.native is not allowed on local definitions")
+      } else if (!sym.isClass && (anyEnclosingOwner is (OwnerKind.ScalaClass | OwnerKind.JSType))) {
+        reporter.error(pos,
+            "@js.native vals and defs can only appear in static Scala objects")
+      } else if (anyEnclosingOwner is OwnerKind.ScalaClass) {
+        reporter.error(pos,
+            "Scala traits and classes may not have native JS members")
+      } else if (enclosingOwner is OwnerKind.JSNonNative) {
+        reporter.error(pos,
+            "non-native JS classes, traits and objects may not have " +
+            "native JS members")
+      } else if (!sym.isTrait) {
+        /* Compute the loading spec now, before `flatten` destroys the name.
+         * We store it in a global map.
+         */
+        val optLoadSpec = checkAndComputeJSNativeLoadSpecOf(pos, sym)
+        for (loadSpec <- optLoadSpec)
+          jsInterop.storeJSNativeLoadSpec(sym, loadSpec)
+      } else {
+        assert(sym.isTrait, sym) // just tested in the previous `if`
+        for (annot <- sym.annotations) {
+          val annotSym = annot.symbol
+          if (JSNativeLoadingSpecAnnots.contains(annotSym) ||
+              annotSym == JSNameAnnotation) {
+            reporter.error(annot.pos,
+                s"Traits may not have an @${annotSym.nameString} annotation.")
+          }
+        }
+      }
+    }
+
     private def checkAndComputeJSNativeLoadSpecOf(pos: Position,
         sym: Symbol): Option[JSNativeLoadSpec] = {
       import JSNativeLoadSpec._
@@ -697,6 +709,13 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       }
 
       if (enclosingOwner is OwnerKind.JSNative) {
+        /* We cannot get here for @js.native vals and defs. That would mean we
+         * have an @js.native val/def inside a JavaScript type, which is not
+         * allowed and already caught in checkJSNativeDefinition().
+         */
+        assert(sym.isClass,
+            s"undetected @js.native val or def ${sym.fullName} inside JS type at $pos")
+
         for (annot <- sym.annotations) {
           val annotSym = annot.symbol
 
@@ -767,7 +786,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 
               if (needsExplicitJSName) {
                 reporter.error(annot.pos,
-                    "Native JS classes and objects inside non-native objects " +
+                    "Native JS members inside non-native objects " +
                     "must have an explicit name in @JSGlobal")
               }
               jsInterop.defaultJSNameOf(sym)
@@ -795,6 +814,48 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
             Some(JSNativeLoadSpec.Global("erroneous", Nil))
         }
       }
+    }
+
+    /** Verify a ValOrDefDef that is annotated with `@js.native`. */
+    private def transformJSNativeValOrDefDef(tree: ValOrDefDef): ValOrDefDef = {
+      val sym = tree.symbol
+
+      def kind = kindStrFor(sym)
+
+      checkJSNativeDefinition(tree.pos, sym)
+
+      if (shouldPrepareExports) {
+        /* Exports are never valid on members of JS native vals and defs, but
+         * delegate complaining.
+         */
+        val exports = genExportMember(sym)
+        assert(exports.isEmpty, s"Generated exports for native JS $kind.")
+      }
+
+      if (sym.isLazy || jsInterop.isJSSetter(sym)) {
+        reporter.error(tree.pos,
+            "@js.native is not allowed on vars, lazy vals and setter defs")
+      } else if (jsInterop.isJSBracketAccess(sym)) {
+        reporter.error(tree.pos,
+            "@JSBracketAccess is not allowed on @js.native vals and defs")
+      } else if (jsInterop.isJSBracketCall(sym)) {
+        reporter.error(tree.pos,
+            "@JSBracketCall is not allowed on @js.native vals and defs")
+      }
+
+      if (!sym.isAccessor)
+        checkRHSCallsJSNative(tree, s"@js.native ${kind}")
+
+      if (sym.isMethod) { // i.e., it is not a field
+        for (overridden <- sym.allOverriddenSymbols.headOption) {
+          val verb = if (overridden.isDeferred) "implement" else "override"
+          reporter.error(tree.pos,
+              s"An @js.native member cannot $verb the inherited member " +
+              overridden.fullName)
+        }
+      }
+
+      tree
     }
 
     /** Verify a ValOrDefDef inside a js.Any */
@@ -1059,26 +1120,33 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
                 "extending js.Any may only call the primary constructor")
         }
       } else {
-        // Check that the tree's body is either empty or calls js.native
-        tree.rhs match {
-          case sel: Select if sel.symbol == JSPackage_native =>
-          case _ =>
-            val pos = if (tree.rhs != EmptyTree) tree.rhs.pos else tree.pos
-            reporter.error(pos,
-                "Concrete members of JS native types may only call js.native.")
-        }
-
-        if (sym.tpe.resultType.typeSymbol == NothingClass &&
-            tree.tpt.asInstanceOf[TypeTree].original == null) {
-          // Warn if resultType is Nothing and not ascribed
-          val name = sym.name.decoded.trim
-          reporter.warning(tree.pos, s"The type of $name got inferred " +
-              "as Nothing. To suppress this warning, explicitly ascribe " +
-              "the type.")
-        }
+        // Check that the tree's rhs is exactly `= js.native`
+        checkRHSCallsJSNative(tree, "Concrete members of JS native types")
       }
 
       super.transform(tree)
+    }
+
+    private def checkRHSCallsJSNative(tree: ValOrDefDef,
+        longKindStr: => String): Unit = {
+      // Check that the rhs is exactly `= js.native`
+      tree.rhs match {
+        case sel: Select if sel.symbol == JSPackage_native =>
+          // ok
+        case _ =>
+          val pos = if (tree.rhs != EmptyTree) tree.rhs.pos else tree.pos
+          reporter.error(pos, s"$longKindStr may only call js.native.")
+      }
+
+      // Warn if resultType is Nothing and not ascribed
+      val sym = tree.symbol
+      if (sym.tpe.resultType.typeSymbol == NothingClass &&
+          tree.tpt.asInstanceOf[TypeTree].original == null) {
+        val name = sym.name.decoded.trim
+        reporter.warning(tree.pos,
+            s"The type of $name got inferred as Nothing. " +
+            "To suppress this warning, explicitly ascribe the type.")
+      }
     }
 
     private def checkJSAnySpecificAnnotsOnNonJSAny(implDef: ImplDef): Unit = {
@@ -1094,8 +1162,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
     }
 
     private def checkJSNativeSpecificAnnotsOnNonJSNative(
-        implDef: ImplDef): Unit = {
-      val sym = implDef.symbol
+        memberDef: MemberDef): Unit = {
+      val sym = memberDef.symbol
 
       val allowJSName = {
         sym.isModuleOrModuleClass &&
@@ -1103,19 +1171,24 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
         shouldModuleBeExposed(sym)
       }
 
+      def kindStr: String = kindStrFor(sym)
+
       for (annot <- sym.annotations) {
         if (annot.symbol == JSNameAnnotation && !allowJSName) {
-          reporter.error(annot.pos,
-              "Non JS-native classes, traits and objects may not have an " +
-              "@JSName annotation.")
+          if (sym.isClass || sym.isModule) {
+            reporter.error(annot.pos,
+                s"Non JS-native $kindStr may not have an @JSName annotation.")
+          } else {
+            reporter.error(annot.pos,
+                s"$kindStr in Scala classes, traits and objects may not " +
+                "have an @JSName annotation.")
+          }
         } else if (annot.symbol == JSGlobalAnnotation) {
           reporter.error(annot.pos,
-              "Non JS-native classes, traits and objects may not have an " +
-              "@JSGlobal annotation.")
+              s"Non JS-native $kindStr may not have an @JSGlobal annotation.")
         } else if (annot.symbol == JSImportAnnotation) {
           reporter.error(annot.pos,
-              "Non JS-native classes, traits and objects may not have an " +
-              "@JSImport annotation.")
+              s"Non JS-native $kindStr may not have an @JSImport annotation.")
         } else if (annot.symbol == JSGlobalScopeAnnotation) {
           reporter.error(annot.pos,
               "Only native JS objects can have an @JSGlobalScope annotation.")
@@ -1347,18 +1420,31 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 
   private def checkAndGetJSNativeLoadingSpecAnnotOf(
       pos: Position, sym: Symbol): Option[Annotation] = {
+
+    def kindStr: String = kindStrFor(sym)
+
     for (annot <- sym.getAnnotation(JSNameAnnotation)) {
-      reporter.error(annot.pos, "@JSName annotations are not allowed on top " +
-          "level classes or objects (or classes and objects inside Scala objects).")
+      if (sym.isClass) {
+        reporter.error(annot.pos,
+            "@JSName annotations are not allowed on top level " +
+            s"$kindStr (or $kindStr inside Scala objects).")
+      } else {
+        reporter.error(annot.pos,
+            s"@JSName annotations are not allowed on native JS $kindStr.")
+      }
     }
 
     val annots = sym.annotations.filter { annot =>
       JSNativeLoadingSpecAnnots.contains(annot.symbol)
     }
 
-    val badAnnotCountMsg =
-      "Native JS classes and objects must have exactly one " +
-      "annotation among @JSGlobal, @JSImport and @JSGlobalScope."
+    val badAnnotCountMsg = if (sym.isModuleClass) {
+      "Native JS objects must have exactly one annotation among " +
+      "@JSGlobal, @JSImport and @JSGlobalScope."
+    } else {
+      s"Native JS $kindStr must have exactly one annotation among " +
+      "@JSGlobal and @JSImport."
+    }
 
     annots match {
       case Nil =>
@@ -1441,6 +1527,16 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
         }
       }
     }
+  }
+
+  private def kindStrFor(sym: Symbol): String = {
+    if (sym.isAccessor) kindStrFor(sym.accessed)
+    else if (sym.isModuleOrModuleClass) "objects"
+    else if (sym.isTrait) "traits"
+    else if (sym.isClass) "classes"
+    else if (sym.isMethod) "defs"
+    else if (sym.isMutable) "vars"
+    else "vals"
   }
 }
 

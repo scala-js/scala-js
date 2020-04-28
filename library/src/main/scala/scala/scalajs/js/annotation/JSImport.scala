@@ -12,6 +12,8 @@
 
 package scala.scalajs.js.annotation
 
+import scala.annotation.meta._
+
 /** Marks the annotated class or object as imported from another JS module.
  *
  *  Intuitively, this corresponds to ECMAScript import directives. See the
@@ -22,6 +24,7 @@ package scala.scalajs.js.annotation
  *  bundling the JavaScript modules that you are importing using other
  *  mechanisms.
  */
+@field @getter @setter
 class JSImport private () extends scala.annotation.StaticAnnotation {
 
   /** Named import of a member of the module.

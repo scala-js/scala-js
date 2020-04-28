@@ -149,6 +149,9 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     def getJSNativeLoadSpec(className: ClassName): Option[JSNativeLoadSpec] =
       classes(className).askJSNativeLoadSpec(this)
 
+    def getJSNativeLoadSpec(className: ClassName, member: MethodName): JSNativeLoadSpec =
+      classes(className).askJSNativeLoadSpec(this, member)
+
     def getSuperClassOfJSClass(className: ClassName): ClassName =
       classes(className).askJSSuperClass(this)
 
@@ -177,6 +180,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     private var hasStoredSuperClass = computeHasStoredSuperClass(initClass)
     private var jsClassCaptureTypes = computeJSClassCaptureTypes(initClass)
     private var jsNativeLoadSpec = computeJSNativeLoadSpec(initClass)
+    private var jsNativeMemberLoadSpecs = computeJSNativeMemberLoadSpecs(initClass)
     private var superClass = computeSuperClass(initClass)
     private var fieldDefs = computeFieldDefs(initClass)
     private var staticFieldMirrors = computeStaticFieldMirrors(initClass)
@@ -186,6 +190,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
     private val hasStoredSuperClassAskers = mutable.Set.empty[Invalidatable]
     private val jsClassCaptureTypesAskers = mutable.Set.empty[Invalidatable]
     private val jsNativeLoadSpecAskers = mutable.Set.empty[Invalidatable]
+    private val jsNativeMemberLoadSpecsAskers = mutable.Set.empty[Invalidatable]
     private val superClassAskers = mutable.Set.empty[Invalidatable]
     private val fieldDefsAskers = mutable.Set.empty[Invalidatable]
     private val staticFieldMirrorsAskers = mutable.Set.empty[Invalidatable]
@@ -222,6 +227,12 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
         invalidateAskers(jsNativeLoadSpecAskers)
       }
 
+      val newJSNativeMemberLoadSpecs = computeJSNativeMemberLoadSpecs(linkedClass)
+      if (newJSNativeMemberLoadSpecs != jsNativeMemberLoadSpecs) {
+        jsNativeMemberLoadSpecs = newJSNativeMemberLoadSpecs
+        invalidateAskers(jsNativeMemberLoadSpecsAskers)
+      }
+
       val newSuperClass = computeSuperClass(linkedClass)
       if (newSuperClass != superClass) {
         superClass = newSuperClass
@@ -252,6 +263,18 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
 
     private def computeJSNativeLoadSpec(linkedClass: LinkedClass): Option[JSNativeLoadSpec] =
       linkedClass.jsNativeLoadSpec
+
+    private def computeJSNativeMemberLoadSpecs(
+        linkedClass: LinkedClass): Map[MethodName, JSNativeLoadSpec] = {
+      if (linkedClass.jsNativeMembers.isEmpty) {
+        // Fast path
+        Map.empty
+      } else {
+        linkedClass.jsNativeMembers
+          .map(m => m.name.name -> m.jsNativeLoadSpec)
+          .toMap
+      }
+    }
 
     private def computeSuperClass(linkedClass: LinkedClass): ClassName =
       linkedClass.superClass.fold[ClassName](null.asInstanceOf[ClassName])(_.name)
@@ -326,6 +349,12 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
       jsNativeLoadSpec
     }
 
+    def askJSNativeLoadSpec(invalidatable: Invalidatable, member: MethodName): JSNativeLoadSpec = {
+      invalidatable.registeredTo(this)
+      jsNativeMemberLoadSpecsAskers += invalidatable
+      jsNativeMemberLoadSpecs(member)
+    }
+
     def askJSSuperClass(invalidatable: Invalidatable): ClassName = {
       invalidatable.registeredTo(this)
       superClassAskers += invalidatable
@@ -351,6 +380,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
       hasStoredSuperClassAskers -= invalidatable
       jsClassCaptureTypesAskers -= invalidatable
       jsNativeLoadSpecAskers -= invalidatable
+      jsNativeMemberLoadSpecsAskers -= invalidatable
       superClassAskers -= invalidatable
       fieldDefsAskers -= invalidatable
       staticFieldMirrorsAskers -= invalidatable
@@ -363,6 +393,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
       hasStoredSuperClassAskers.clear()
       jsClassCaptureTypesAskers.clear()
       jsNativeLoadSpecAskers.clear()
+      jsNativeMemberLoadSpecsAskers.clear()
       superClassAskers.clear()
       fieldDefsAskers.clear()
       staticFieldMirrorsAskers.clear()

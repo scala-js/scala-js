@@ -62,6 +62,7 @@ object Analysis {
     def isDataAccessed: Boolean
     def isAnyStaticFieldUsed: Boolean
     def isAnyPrivateJSFieldUsed: Boolean
+    def jsNativeMembersUsed: scala.collection.Set[MethodName]
     def linkedFrom: scala.collection.Seq[From]
     def instantiatedFrom: scala.collection.Seq[From]
     def methodInfos(

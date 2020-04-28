@@ -199,25 +199,32 @@ final class Emitter private (config: CommonPhaseConfig,
 
   private def genModuleImports(orderedClasses: List[LinkedClass],
       logger: Logger): List[js.Tree] = {
-    val instantiatedClasses = orderedClasses.withFilter(_.hasInstances)
 
     def mapImportedModule(f: (String, Position) => js.Tree): List[js.Tree]  = {
       val builder = mutable.ListBuffer.empty[js.Tree]
       val encounteredModuleNames = mutable.Set.empty[String]
-      for (classDef <- instantiatedClasses) {
+      for (classDef <- orderedClasses) {
         def addModuleRef(module: String): Unit = {
           if (encounteredModuleNames.add(module))
             builder += f(module, classDef.pos)
         }
-        classDef.jsNativeLoadSpec match {
-          case None =>
-          case Some(JSNativeLoadSpec.Global(_, _)) =>
-          case Some(JSNativeLoadSpec.Import(module, _)) =>
-            addModuleRef(module)
-          case Some(JSNativeLoadSpec.ImportWithGlobalFallback(
-              JSNativeLoadSpec.Import(module, _), _)) =>
-            addModuleRef(module)
+
+        def addModuleRefFor(jsNativeLoadSpec: JSNativeLoadSpec): Unit = {
+          jsNativeLoadSpec match {
+            case JSNativeLoadSpec.Global(_, _) =>
+            case JSNativeLoadSpec.Import(module, _) =>
+              addModuleRef(module)
+            case JSNativeLoadSpec.ImportWithGlobalFallback(
+                JSNativeLoadSpec.Import(module, _), _) =>
+              addModuleRef(module)
+          }
         }
+
+        if (classDef.hasInstances)
+          classDef.jsNativeLoadSpec.foreach(addModuleRefFor(_))
+
+        if (classDef.jsNativeMembers.nonEmpty) // likely false
+          classDef.jsNativeMembers.foreach(m => addModuleRefFor(m.jsNativeLoadSpec))
       }
       builder.result()
     }
@@ -226,16 +233,35 @@ final class Emitter private (config: CommonPhaseConfig,
       case ModuleKind.NoModule =>
         var importsFound: Boolean = false
 
-        for (classDef <- instantiatedClasses) {
-          classDef.jsNativeLoadSpec match {
-            case Some(JSNativeLoadSpec.Import(module, _)) =>
-              val displayName = classDef.className.nameString
-              logger.error(s"$displayName needs to be imported from module " +
-                  s"'$module' but module support is disabled.")
-              importsFound = true
+        for (classDef <- orderedClasses) {
+          def displayName = classDef.className.nameString
 
-            case _ =>
-              // ok
+          if (classDef.hasInstances) {
+            classDef.jsNativeLoadSpec match {
+              case Some(JSNativeLoadSpec.Import(module, _)) =>
+                logger.error(s"$displayName needs to be imported from module " +
+                    s"'$module' but module support is disabled.")
+                importsFound = true
+
+              case _ =>
+                // ok
+            }
+          }
+
+          if (classDef.jsNativeMembers.nonEmpty) { // likely false
+            for (nativeMember <- classDef.jsNativeMembers) {
+              nativeMember.jsNativeLoadSpec match {
+                case JSNativeLoadSpec.Import(module, _) =>
+                  logger.error(
+                      s"$displayName.${nativeMember.name.name.displayName} " +
+                      s"needs to be imported from module '$module' but " +
+                      "module support is disabled")
+                  importsFound = true
+
+                case _ =>
+                  // ok
+              }
+            }
           }
         }
 

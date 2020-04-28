@@ -392,6 +392,65 @@ class InteroperabilityTest {
     assertEquals(654, obj.bar)
   }
 
+  @Test def should_access_top_level_JS_vars_and_functions_via_Scala_object_with_native_vals_and_defs(): Unit = {
+    js.eval("""
+      var interoperabilityTestGlobalValDefConstant = 654321;
+      var interoperabilityTestGlobalValDefVariable = 7357;
+      var interoperabilityTestGlobalValDefGetVariable = function() {
+        return interoperabilityTestGlobalValDefVariable;
+      }
+      var interoperabilityTestGlobalValDefSetVariable = function(x) {
+        interoperabilityTestGlobalValDefVariable = x;
+      }
+      var interoperabilityTestGlobalValDefFunction = function(x) {
+        return interoperabilityTestGlobalValDefVariable + x;
+      };
+    """)
+
+    // Use alias for convenience: see end of file for definition
+    import org.scalajs.testsuite.compiler.{InteroperabilityTestGlobalValsAndDefs => Global}
+
+    assertEquals(654321, Global.interoperabilityTestGlobalValDefConstant)
+
+    assertEquals(7357, Global.interoperabilityTestGlobalValDefVariable)
+    assertEquals(7357, Global.interoperabilityTestGlobalValDefGetVariable())
+    assertEquals(7360, Global.interoperabilityTestGlobalValDefFunction(3))
+
+    Global.interoperabilityTestGlobalValDefSetVariable(123)
+    assertEquals(123, Global.interoperabilityTestGlobalValDefGetVariable())
+    assertEquals(126, Global.interoperabilityTestGlobalValDefFunction(3))
+  }
+
+  @Test def should_access_top_level_JS_vars_and_functions_via_package_object_with_native_vals_and_defs(): Unit = {
+    js.eval("""
+      var interoperabilityTestGlobalValDefConstantInPackageObject = 654321;
+      var interoperabilityTestGlobalValDefVariableInPackageObject = 7357;
+      var interoperabilityTestGlobalValDefGetVariableInPackageObject = function() {
+        return interoperabilityTestGlobalValDefVariableInPackageObject;
+      }
+      var interoperabilityTestGlobalValDefSetVariableInPackageObject = function(x) {
+        interoperabilityTestGlobalValDefVariableInPackageObject = x;
+      }
+      var interoperabilityTestGlobalValDefFunctionInPackageObject = function(x) {
+        return interoperabilityTestGlobalValDefVariableInPackageObject + x;
+      };
+    """)
+
+    // Use alias for convenience: see end of file for definition
+    import org.scalajs.testsuite.compiler.{interoperabilitytestglobalvalsanddefspackageobject => pack}
+
+    assertEquals(654321, pack.interoperabilityTestGlobalValDefConstant)
+
+    assertEquals(7357, pack.interoperabilityTestGlobalValDefVariable)
+    assertEquals(7357, pack.interoperabilityTestGlobalValDefGetVariable())
+    assertEquals(7360, pack.interoperabilityTestGlobalValDefFunction(3))
+
+    pack.interoperabilityTestGlobalValDefSetVariable(123)
+    assertEquals(123, pack.interoperabilityTestGlobalValDefGetVariable())
+    assertEquals(126, pack.interoperabilityTestGlobalValDefFunction(3))
+  }
+
+
   @Test def should_protect_receiver_of_JS_apply_if_its_a_select_issue_804(): Unit = {
     val obj = js.eval("""
       var interoperabilityTestJSFunctionFieldApply = {
@@ -900,6 +959,50 @@ object InteroperabilityTestGlobalScope extends js.Object {
   class InteroperabilityTestGlobalScopeClassRenamed extends js.Object {
     val bar: Int = js.native
   }
+}
+
+object InteroperabilityTestGlobalValsAndDefs {
+  @js.native
+  @JSGlobal("interoperabilityTestGlobalValDefConstant")
+  val interoperabilityTestGlobalValDefConstant: Int = js.native
+
+  @js.native
+  @JSGlobal("interoperabilityTestGlobalValDefVariable")
+  def interoperabilityTestGlobalValDefVariable: Int = js.native
+
+  @js.native
+  @JSGlobal("interoperabilityTestGlobalValDefGetVariable")
+  def interoperabilityTestGlobalValDefGetVariable(): Int = js.native
+
+  @js.native
+  @JSGlobal("interoperabilityTestGlobalValDefSetVariable")
+  def interoperabilityTestGlobalValDefSetVariable(x: Int): Unit = js.native
+
+  @js.native
+  @JSGlobal("interoperabilityTestGlobalValDefFunction")
+  def interoperabilityTestGlobalValDefFunction(x: Int): Int = js.native
+}
+
+package object interoperabilitytestglobalvalsanddefspackageobject {
+  @js.native
+  @JSGlobal("interoperabilityTestGlobalValDefConstantInPackageObject")
+  val interoperabilityTestGlobalValDefConstant: Int = js.native
+
+  @js.native
+  @JSGlobal("interoperabilityTestGlobalValDefVariableInPackageObject")
+  def interoperabilityTestGlobalValDefVariable: Int = js.native
+
+  @js.native
+  @JSGlobal("interoperabilityTestGlobalValDefGetVariableInPackageObject")
+  def interoperabilityTestGlobalValDefGetVariable(): Int = js.native
+
+  @js.native
+  @JSGlobal("interoperabilityTestGlobalValDefSetVariableInPackageObject")
+  def interoperabilityTestGlobalValDefSetVariable(x: Int): Unit = js.native
+
+  @js.native
+  @JSGlobal("interoperabilityTestGlobalValDefFunctionInPackageObject")
+  def interoperabilityTestGlobalValDefFunction(x: Int): Int = js.native
 }
 
 class SomeValueClass(val i: Int) extends AnyVal {

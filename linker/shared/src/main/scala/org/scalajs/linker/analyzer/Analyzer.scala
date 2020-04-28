@@ -521,6 +521,8 @@ private final class Analyzer(config: CommonPhaseConfig,
     var isAnyStaticFieldUsed: Boolean = false
     var isAnyPrivateJSFieldUsed: Boolean = false
 
+    val jsNativeMembersUsed: mutable.Set[MethodName] = mutable.Set.empty
+
     var instantiatedFrom: List[From] = Nil
 
     /** List of all instantiated (Scala) subclasses of this Scala class/trait.
@@ -670,10 +672,8 @@ private final class Analyzer(config: CommonPhaseConfig,
 
       val syntheticInfo = makeSyntheticMethodInfo(
           methodName = methodName,
-          methodsCalledStatically = Map(
-              targetOwner.className -> List(
-                  NamespacedMethodName(MemberNamespace.Public, methodName)
-              )))
+          methodsCalledStatically = List(
+              targetOwner.className -> NamespacedMethodName(MemberNamespace.Public, methodName)))
       val m = new MethodInfo(this, syntheticInfo)
       m.syntheticKind = MethodSyntheticKind.DefaultBridge(
           targetOwner.className)
@@ -817,8 +817,7 @@ private final class Analyzer(config: CommonPhaseConfig,
 
       val syntheticInfo = makeSyntheticMethodInfo(
           methodName = proxyName,
-          methodsCalled = Map(
-              this.className -> List(targetName)))
+          methodsCalled = List(this.className -> targetName))
       val m = new MethodInfo(this, syntheticInfo)
       m.syntheticKind = MethodSyntheticKind.ReflectiveProxy(targetName)
       publicMethodInfos += proxyName -> m
@@ -1157,44 +1156,38 @@ private final class Analyzer(config: CommonPhaseConfig,
           classInfo.callMethodStatically(methodName)
       }
     }
+
+    val jsNativeMembersUsedIterator = data.jsNativeMembersUsed.iterator
+    while (jsNativeMembersUsedIterator.hasNext) {
+      val (className, members) = jsNativeMembersUsedIterator.next()
+      lookupClass(className) { classInfo =>
+        classInfo.jsNativeMembersUsed ++= members
+      }
+    }
   }
 
   private def createMissingClassInfo(className: ClassName): Infos.ClassInfo = {
-    Infos.ClassInfo(
-        className = className,
-        isExported = false,
-        kind = ClassKind.Class,
-        superClass = Some(ObjectClass),
-        interfaces = Nil,
-        referencedFieldClasses = Nil,
-        methods = List(makeSyntheticMethodInfo(NoArgConstructorName)),
-        exportedMembers = Nil,
-        topLevelExportedMembers = Nil,
-        topLevelExportNames = Nil
-    )
+    new Infos.ClassInfoBuilder(className)
+      .setKind(ClassKind.Class)
+      .setSuperClass(Some(ObjectClass))
+      .addMethod(makeSyntheticMethodInfo(NoArgConstructorName))
+      .result()
   }
 
   private def makeSyntheticMethodInfo(
       methodName: MethodName,
       namespace: MemberNamespace = MemberNamespace.Public,
-      methodsCalled: Map[ClassName, List[MethodName]] = Map.empty,
-      methodsCalledStatically: Map[ClassName, List[NamespacedMethodName]] = Map.empty,
+      methodsCalled: List[(ClassName, MethodName)] = Nil,
+      methodsCalledStatically: List[(ClassName, NamespacedMethodName)] = Nil,
       instantiatedClasses: List[ClassName] = Nil
   ): Infos.MethodInfo = {
-    val reachabilityInfo = ReachabilityInfo(
-        privateJSFieldsUsed = Map.empty,
-        staticFieldsRead = Map.empty,
-        staticFieldsWritten = Map.empty,
-        methodsCalled = methodsCalled,
-        methodsCalledStatically = methodsCalledStatically,
-        instantiatedClasses = instantiatedClasses,
-        accessedModules = Nil,
-        usedInstanceTests = Nil,
-        accessedClassData = Nil,
-        referencedClasses = Nil
-    )
+    val reachabilityInfoBuilder = new Infos.ReachabilityInfoBuilder()
+    for ((className, methodName) <- methodsCalled)
+      reachabilityInfoBuilder.addMethodCalled(className, methodName)
+    for ((className, methodName) <- methodsCalledStatically)
+      reachabilityInfoBuilder.addMethodCalledStatically(className, methodName)
     Infos.MethodInfo(methodName, namespace, isAbstract = false,
-        reachabilityInfo)
+        reachabilityInfoBuilder.result())
   }
 
 }

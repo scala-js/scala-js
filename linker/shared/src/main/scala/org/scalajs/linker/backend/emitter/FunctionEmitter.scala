@@ -1186,6 +1186,8 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
           (allowSideEffects || semantics.asInstanceOfs == Unchecked) && test(expr)
 
         // JavaScript expressions that can always have side-effects
+        case SelectJSNativeMember(_, _) =>
+          allowSideEffects
         case JSNew(fun, args) =>
           allowSideEffects && test(fun) && (args.forall(testJSArg))
         case JSPrivateSelect(qualifier, _, _) =>
@@ -1973,6 +1975,12 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
 
         case SelectStatic(className, item) =>
           genSelectStatic(className, item)
+
+        case SelectJSNativeMember(className, member) =>
+          val jsNativeLoadSpec =
+            globalKnowledge.getJSNativeLoadSpec(className, member.name)
+          extractWithGlobals(genLoadJSFromSpec(
+              jsNativeLoadSpec, keepOnlyDangerousVarNames = false))
 
         case Apply(_, receiver, method, args) =>
           val methodName = method.name

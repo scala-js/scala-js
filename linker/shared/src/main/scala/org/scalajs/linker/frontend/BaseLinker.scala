@@ -139,9 +139,10 @@ final class BaseLinker(config: CommonPhaseConfig) {
       analyzerInfo: ClassInfo, analysis: Analysis): LinkedClass = {
     import ir.Trees._
 
-    val fields = mutable.Buffer.empty[AnyFieldDef]
-    val methods = mutable.Buffer.empty[Versioned[MethodDef]]
-    val exportedMembers = mutable.Buffer.empty[Versioned[JSMethodPropDef]]
+    val fields = List.newBuilder[AnyFieldDef]
+    val methods = List.newBuilder[Versioned[MethodDef]]
+    val jsNativeMembers = List.newBuilder[JSNativeMemberDef]
+    val exportedMembers = List.newBuilder[Versioned[JSMethodPropDef]]
 
     def linkedMethod(m: MethodDef) = {
       val version = m.hash.map(Hashers.hashAsVersion(_))
@@ -173,6 +174,10 @@ final class BaseLinker(config: CommonPhaseConfig) {
       case m: JSPropertyDef =>
         if (analyzerInfo.isAnySubclassInstantiated)
           exportedMembers += new Versioned(m, None)
+
+      case m: JSNativeMemberDef =>
+        if (analyzerInfo.jsNativeMembersUsed.contains(m.name.name))
+          jsNativeMembers += m
     }
 
     methods ++= syntheticMethodDefs.map(linkedMethod)
@@ -191,9 +196,10 @@ final class BaseLinker(config: CommonPhaseConfig) {
         classDef.interfaces,
         classDef.jsSuperClass,
         classDef.jsNativeLoadSpec,
-        fields.toList,
-        methods.toList,
-        exportedMembers.toList,
+        fields.result(),
+        methods.result(),
+        exportedMembers.result(),
+        jsNativeMembers.result(),
         classDef.topLevelExportDefs,
         classDef.optimizerHints,
         classDef.pos,

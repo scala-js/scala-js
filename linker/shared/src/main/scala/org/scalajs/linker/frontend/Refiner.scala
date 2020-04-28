@@ -105,6 +105,10 @@ final class Refiner(config: CommonPhaseConfig) {
         .isReachable
     }
 
+    val jsNativeMembers = classDef.jsNativeMembers.filter { m =>
+      info.jsNativeMembersUsed.contains(m.name.name)
+    }
+
     val kind =
       if (info.isModuleAccessed) classDef.kind
       else classDef.kind.withoutModuleAccessor
@@ -113,6 +117,7 @@ final class Refiner(config: CommonPhaseConfig) {
         kind = kind,
         fields = fields,
         methods = methods,
+        jsNativeMembers = jsNativeMembers,
         hasInstances = info.isAnySubclassInstantiated,
         hasInstanceTests = info.areInstanceTestsUsed,
         hasRuntimeTypeInfo = info.isDataAccessed)

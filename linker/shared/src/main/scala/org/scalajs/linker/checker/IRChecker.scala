@@ -191,6 +191,20 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           i"Duplicate definition of ${namespace.prefixString}method " +
           i"'$name' in class '${classDef.className}'")
     }
+
+    /* JS native members
+     * They are all in the public static namespace, as checked by an assertion
+     * in the constructor, so we do not have to group by namespace.
+     */
+    for {
+      (name, dupes) <- classDef.jsNativeMembers.groupBy(m => m.name.name)
+      member <- dupes.tail
+    } {
+      implicit val ctx: ErrorContext = ErrorContext(member)
+      reportError(
+          i"Duplicate definition of JS native member " +
+          i"'$name' in class '${classDef.className}'")
+    }
   }
 
   private def checkScalaClassDef(classDef: LinkedClass): Unit = {
@@ -806,6 +820,11 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           }
         }
 
+      case SelectJSNativeMember(className, MethodIdent(member)) =>
+        val checkedClass = lookupClass(className)
+        if (!checkedClass.hasJSNativeMember(member))
+          reportError(i"Class $className does not have JS native member $member")
+
       case Apply(flags, receiver, MethodIdent(method), args) =>
         if (flags.isPrivate)
           reportError("Illegal flag for Apply: Private")
@@ -1236,8 +1255,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       implicit ctx: ErrorContext): CheckedClass = {
     classes.getOrElseUpdate(className, {
       reportError(i"Cannot find class $className")
-      new CheckedClass(className, ClassKind.Class, None,
-          Some(ObjectClass), Set(ObjectClass), hasInstances = true, None, Nil)
+      new CheckedClass(className, ClassKind.Class, None, Some(ObjectClass),
+          Set(ObjectClass), hasInstances = true, None, Nil, Set.empty)
     })
   }
 
@@ -1311,7 +1330,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       val ancestors: Set[ClassName],
       val hasInstances: Boolean,
       val jsNativeLoadSpec: Option[JSNativeLoadSpec],
-      _fields: List[CheckedField])(
+      _fields: List[CheckedField],
+      val jsNativeMembers: Set[MethodName])(
       implicit ctx: ErrorContext) {
 
     val fields = _fields.filter(!_.flags.namespace.isStatic).map(f => f.name -> f).toMap
@@ -1326,7 +1346,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           classDef.ancestors.toSet,
           classDef.hasInstances,
           classDef.jsNativeLoadSpec,
-          CheckedClass.checkedFieldsOf(classDef))
+          CheckedClass.checkedFieldsOf(classDef),
+          classDef.jsNativeMembers.map(_.name.name).toSet)
     }
 
     def lookupField(name: FieldName): Option[CheckedField] =
@@ -1334,6 +1355,9 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
     def lookupStaticField(name: FieldName): Option[CheckedField] =
       staticFields.get(name)
+
+    def hasJSNativeMember(name: MethodName): Boolean =
+      jsNativeMembers.contains(name)
   }
 
   private object CheckedClass {
