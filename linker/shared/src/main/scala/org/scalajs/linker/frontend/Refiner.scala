@@ -95,9 +95,9 @@ final class Refiner(config: CommonPhaseConfig) {
   private def refineClassDef(classDef: LinkedClass,
       info: Analysis.ClassInfo): LinkedClass = {
 
-    val fields =
-      if (info.isAnySubclassInstantiated) classDef.fields
-      else Nil
+    val fields = classDef.fields.filter { f =>
+      BaseLinker.isFieldDefNeeded(info, f)
+    }
 
     val methods = classDef.methods.filter { m =>
       val methodDef = m.value

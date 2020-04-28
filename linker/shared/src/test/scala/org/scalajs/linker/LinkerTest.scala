@@ -42,8 +42,7 @@ class LinkerTest {
   def linkHelloWorld(): AsyncResult = await {
     val classDefs = Seq(
         mainTestClassDef({
-          JSMethodApply(JSGlobalRef("console"), StringLiteral("log"),
-              List(StringLiteral("Hello world!")))
+          consoleLog(StringLiteral("Hello world!"))
         })
     )
     testLink(classDefs, MainTestModuleInitializers)
