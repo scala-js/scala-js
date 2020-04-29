@@ -87,7 +87,7 @@ object Build {
     else sourceDir / "scala-old-collections"
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.10.7", "2.11.12", "2.12.11")
+    Set("2.10.7", "2.11.12", "2.12.11", "2.13.2")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
 
