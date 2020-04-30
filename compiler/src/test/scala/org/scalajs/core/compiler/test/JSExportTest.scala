@@ -13,9 +13,10 @@
 package org.scalajs.core.compiler.test
 
 import org.scalajs.core.compiler.test.util._
-import org.junit.Test
+import org.scalajs.core.compiler.test.util.VersionDependentMessages.methodSig
 
 import org.junit.Assume._
+import org.junit.Test
 
 // scalastyle:off line.size.limit
 
@@ -267,10 +268,10 @@ class JSExportTest extends DirectTest with TestHelpers {
       def foo(x: Int*) = x
     }
     """ hasErrors
-    """
+    s"""
       |newSource1.scala:7: error: Cannot disambiguate overloads for exported method foo with types
-      |  (x: Int, ys: Seq)Object
-      |  (x: Seq)Object
+      |  ${methodSig("(x: Int, ys: Seq)", "Object")}
+      |  ${methodSig("(x: Seq)", "Object")}
       |      @JSExport
       |       ^
     """
@@ -283,10 +284,10 @@ class JSExportTest extends DirectTest with TestHelpers {
       def foo(x: String*) = x
     }
     """ hasErrors
-    """
+    s"""
       |newSource1.scala:6: error: Cannot disambiguate overloads for exported method foo with types
-      |  (x: Int)Object
-      |  (x: Seq)Object
+      |  ${methodSig("(x: Int)", "Object")}
+      |  ${methodSig("(x: Seq)", "Object")}
       |      @JSExport
       |       ^
     """
@@ -1637,10 +1638,10 @@ class JSExportTest extends DirectTest with TestHelpers {
       def bar(x: Int): Int = x + 1
     }
     """ hasErrors
-    """
+    s"""
       |newSource1.scala:10: error: Cannot disambiguate overloads for exported method foo with types
-      |  (x: Int)Int
-      |  (x: Int)Int
+      |  ${methodSig("(x: Int)", "Int")}
+      |  ${methodSig("(x: Int)", "Int")}
       |      def bar(x: Int): Int = x + 1
       |          ^
     """
@@ -1679,10 +1680,10 @@ class JSExportTest extends DirectTest with TestHelpers {
       def bar_=(v: Int): Unit = ()
     }
     """ hasErrors
-    """
+    s"""
       |newSource1.scala:10: error: Cannot disambiguate overloads for exported method foo with types
-      |  (v: Int)Unit
-      |  (v: Int)Unit
+      |  ${methodSig("(v: Int)", "Unit")}
+      |  ${methodSig("(v: Int)", "Unit")}
       |      def bar_=(v: Int): Unit = ()
       |          ^
     """
