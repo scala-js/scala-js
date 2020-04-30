@@ -45,14 +45,14 @@ final class ClosureLinkerBackend(
 
   @deprecated("Use the overload with an explicit OutputMode", "0.6.28")
   def this(semantics: Semantics, moduleKind: ModuleKind, withSourceMap: Boolean,
-      config: LinkerBackend.Config) {
+      config: LinkerBackend.Config) = {
     this(semantics, OutputMode.ECMAScript51Isolated, moduleKind, withSourceMap,
         config)
   }
 
   @deprecated("Use the overload with an explicit ModuleKind", "0.6.13")
   def this(semantics: Semantics, withSourceMap: Boolean,
-      config: LinkerBackend.Config) {
+      config: LinkerBackend.Config) = {
     this(semantics, ModuleKind.NoModule, withSourceMap, config)
   }
 

@@ -35,7 +35,7 @@ final class BasicLinkerBackend(
 
   @deprecated("Use the overload with an explicit ModuleKind", "0.6.13")
   def this(semantics: Semantics, outputMode: OutputMode, withSourceMap: Boolean,
-      config: LinkerBackend.Config) {
+      config: LinkerBackend.Config) = {
     this(semantics, outputMode, ModuleKind.NoModule, withSourceMap, config)
   }
 

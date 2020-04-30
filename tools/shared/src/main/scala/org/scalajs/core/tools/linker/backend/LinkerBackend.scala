@@ -37,7 +37,7 @@ abstract class LinkerBackend(
 
   @deprecated("Use the overload with an explicit ModuleKind", "0.6.13")
   def this(semantics: Semantics, esLevel: ESLevel, withSourceMap: Boolean,
-      config: LinkerBackend.Config) {
+      config: LinkerBackend.Config) = {
     this(semantics, esLevel, ModuleKind.NoModule, withSourceMap, config)
   }
 
