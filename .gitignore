@@ -9,6 +9,7 @@ target/
 /.idea/
 /.idea_modules/
 bin/
+node_modules/
 
 # metals files/directories
 /.bloop/
