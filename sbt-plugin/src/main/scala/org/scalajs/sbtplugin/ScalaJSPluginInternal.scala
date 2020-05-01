@@ -41,7 +41,6 @@ import org.scalajs.testing.adapter.{TestAdapter, HTMLRunnerBuilder, TestAdapterI
 import Loggers._
 
 import sjsonnew.BasicJsonProtocol._
-import sjsonnew.BasicJsonProtocol.seqFormat
 
 /** Implementation details of `ScalaJSPlugin`. */
 private[sbtplugin] object ScalaJSPluginInternal {
@@ -158,6 +157,12 @@ private[sbtplugin] object ScalaJSPluginInternal {
       concurrentRestrictions in Global +=
         Tags.limit((usesScalaJSLinkerTag in key).value, 1),
 
+      scalaJSModuleInitializersFingerprints in key :=
+        scalaJSModuleInitializers.value.map(ModuleInitializer.fingerprint),
+
+      scalaJSLinkerConfigFingerprint in key :=
+        StandardConfig.fingerprint((scalaJSLinkerConfig in key).value),
+
       key := Def.taskDyn {
         /* It is very important that we evaluate all of those `.value`s from
          * here, and not from within the `Def.task { ... }`, otherwise the
@@ -179,6 +184,19 @@ private[sbtplugin] object ScalaJSPluginInternal {
           val log = s.log
           val realFiles = irInfo.get(scalaJSSourceFiles).get
           val ir = irInfo.data
+
+          def moduleInitializersChanged = (scalaJSModuleInitializersFingerprints in key)
+            .previous
+            .exists(_ != (scalaJSModuleInitializersFingerprints in key).value)
+
+          def linkerConfigChanged = (scalaJSLinkerConfigFingerprint in key)
+            .previous
+            .exists(_ != (scalaJSLinkerConfigFingerprint in key).value)
+
+          val configChanged = moduleInitializersChanged || linkerConfigChanged
+          if (configChanged && output.exists()) {
+            output.delete() // triggers re-linking through FileFunction.cached
+          }
 
           FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
               FilesInfo.exists) { _ => // We don't need the files

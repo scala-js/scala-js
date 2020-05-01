@@ -16,6 +16,8 @@ import scala.language.implicitConversions
 
 import java.net.URI
 
+import Fingerprint.FingerprintBuilder
+
 /** Configuration of a standard linker. */
 final class StandardConfig private (
     /** Scala.js semantics. */
@@ -157,6 +159,31 @@ final class StandardConfig private (
 
 object StandardConfig {
   import StandardConfigPlatformExtensions.ConfigExt
+
+  private implicit object StandardConfigFingerprint
+      extends Fingerprint[StandardConfig] {
+
+    override def fingerprint(config: StandardConfig): String = {
+      new FingerprintBuilder("StandardConfig")
+        .addField("semantics", config.semantics)
+        .addField("moduleKind", config.moduleKind)
+        .addField("esFeatures", config.esFeatures)
+        .addField("checkIR", config.checkIR)
+        .addField("optimizer", config.optimizer)
+        .addField("parallel", config.parallel)
+        .addField("sourceMap", config.sourceMap)
+        .addField("relativizeSourceMapBase",
+            config.relativizeSourceMapBase.map(_.toASCIIString()))
+        .addField("closureCompilerIfAvailable",
+            config.closureCompilerIfAvailable)
+        .addField("prettyPrint", config.prettyPrint)
+        .addField("batchMode", config.batchMode)
+        .build()
+    }
+  }
+
+  def fingerprint(config: StandardConfig): String =
+    Fingerprint.fingerprint(config)
 
   /** Returns the default [[StandardConfig]].
    *
