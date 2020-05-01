@@ -298,7 +298,7 @@ def Tasks = [
     sbt ++$scala irJS$v/test linkerJS$v/test &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
         'set scalaJSStage in testSuite.v$v := FastOptStage' \
-        ++$scala irJS$v/test linkerJS$v/test &&
+        ++$scala irJS$v/test linkerJS$v/test linkerInterfaceJS$v/test &&
     sbt ++$scala testSuite$v/bootstrap:test &&
     sbt 'set scalaJSStage in Global := FullOptStage' \
         'set scalaJSStage in testSuite.v$v := FastOptStage' \
@@ -311,7 +311,7 @@ def Tasks = [
   "tools": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala ir$v/test logging$v/compile linkerInterface$v/compile \
+    sbt ++$scala ir$v/test logging$v/compile linkerInterface$v/test \
         linker$v/compile jsEnvs$v/test nodeJSEnv$v/test testAdapter$v/test \
         ir$v/mimaReportBinaryIssues logging$v/mimaReportBinaryIssues \
         linkerInterface$v/mimaReportBinaryIssues linker$v/mimaReportBinaryIssues \
@@ -341,8 +341,7 @@ def Tasks = [
         ir$v/scalastyle compiler$v/scalastyle \
         compiler$v/test:scalastyle \
         logging$v/scalastyle logging$v/test:scalastyle \
-        linkerInterface$v/scalastyle \
-        linkerInterface$v/scalastyle \
+        linkerInterface$v/scalastyle linkerInterface$v/test:scalastyle \
         linker$v/scalastyle linker$v/test:scalastyle \
         jsEnvs$v/scalastyle jsEnvsTestKit$v/scalastyle nodeJSEnv$v/scalastyle \
         jsEnvs$v/test:scalastyle nodeJSEnv$v/test:scalastyle testAdapter$v/scalastyle \

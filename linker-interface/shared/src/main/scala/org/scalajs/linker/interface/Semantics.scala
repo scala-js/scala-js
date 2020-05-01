@@ -13,6 +13,7 @@
 package org.scalajs.linker.interface
 
 import CheckedBehavior._
+import Fingerprint.FingerprintBuilder
 
 final class Semantics private (
     val asInstanceOfs: CheckedBehavior,
@@ -177,6 +178,45 @@ object Semantics {
     def regexReplace(regex: scala.util.matching.Regex,
         replacement: String): RuntimeClassNameMapper = {
       regexReplace(regex.pattern, replacement)
+    }
+
+    private[interface] implicit object RuntimeClassNameMapperFingerprint
+        extends Fingerprint[RuntimeClassNameMapper] {
+
+      override def fingerprint(mapper: RuntimeClassNameMapper): String = {
+        mapper match {
+          case KeepAll    => "KeepAll"
+          case DiscardAll => "DiscardAll"
+
+          case RegexReplace(pattern, flags, replacement) =>
+            new FingerprintBuilder("RegexReplace")
+              .addField("pattern", pattern)
+              .addField("flags", flags)
+              .addField("replacement", replacement)
+              .build()
+
+          case AndThen(first, second) =>
+            new FingerprintBuilder("AndThen")
+              .addField("first", fingerprint(first))
+              .addField("second", fingerprint(second))
+              .build()
+        }
+      }
+    }
+  }
+
+  private[interface] implicit object SemanticsFingerprint
+      extends Fingerprint[Semantics] {
+
+    override def fingerprint(semantics: Semantics): String = {
+      new FingerprintBuilder("Semantics")
+        .addField("asInstanceOfs", semantics.asInstanceOfs)
+        .addField("arrayIndexOutOfBounds", semantics.arrayIndexOutOfBounds)
+        .addField("moduleInit", semantics.moduleInit)
+        .addField("strictFloats", semantics.strictFloats)
+        .addField("productionMode", semantics.productionMode)
+        .addField("runtimeClassNameMapper", semantics.runtimeClassNameMapper)
+        .build()
     }
   }
 

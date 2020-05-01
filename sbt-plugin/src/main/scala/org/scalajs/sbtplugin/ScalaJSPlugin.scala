@@ -176,6 +176,10 @@ object ScalaJSPlugin extends AutoPlugin {
         "Module initializers of the Scala.js application, to be called when it starts.",
         AMinusTask)
 
+    val scalaJSModuleInitializersFingerprints = TaskKey[Seq[String]]("scalaJSModuleInitializersFingerprints",
+        "An internal task used to track changes to the `scalaJSModuleInitializers` setting",
+        KeyRanks.Invisible)
+
     val scalaJSUseMainModuleInitializer = SettingKey[Boolean]("scalaJSUseMainModuleInitializer",
         "If true, adds the `mainClass` as a module initializer of the Scala.js module",
         APlusSetting)
@@ -194,6 +198,10 @@ object ScalaJSPlugin extends AutoPlugin {
         "scalaJSLinkerConfig",
         "Configuration of the Scala.js linker",
         BPlusSetting)
+
+    val scalaJSLinkerConfigFingerprint = TaskKey[String]("scalaJSLinkerConfigFingerprint",
+        "An internal task used to track changes to the `scalaJSLinkerConfig` setting",
+        KeyRanks.Invisible)
 
     val scalaJSStage = SettingKey[Stage]("scalaJSStage",
         "The optimization stage at which run and test are executed", APlusSetting)

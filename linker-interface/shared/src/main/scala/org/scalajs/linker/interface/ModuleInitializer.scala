@@ -17,6 +17,8 @@ import org.scalajs.ir.Types._
 
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
 
+import Fingerprint.FingerprintBuilder
+
 /** A module initializer for a Scala.js application.
  *
  *  When linking a Scala.js application, a sequence of `ModuleInitializer`s can
@@ -87,4 +89,39 @@ object ModuleInitializer {
         MethodName(mainMethodName, ArrayOfStringTypeRef :: Nil, VoidRef),
         args)
   }
+
+  private implicit object MethodNameFingerprint
+      extends Fingerprint[MethodName] {
+
+    override def fingerprint(methodName: MethodName): String =
+      methodName.nameString
+  }
+
+  private implicit object ClassNameFingerprint extends Fingerprint[ClassName] {
+    override def fingerprint(className: ClassName): String =
+      className.nameString
+  }
+
+  private implicit object ModuleInitializerFingerprint
+      extends Fingerprint[ModuleInitializer] {
+
+    override def fingerprint(moduleInitializer: ModuleInitializer): String =
+      moduleInitializer.impl match {
+        case VoidMainMethod(className, encodedMainMethodName) =>
+          new FingerprintBuilder("VoidMainMethod")
+            .addField("className", className)
+            .addField("encodedMainMethodName", encodedMainMethodName)
+            .build()
+
+        case MainMethodWithArgs(className, encodedMainMethodName, args) =>
+          new FingerprintBuilder("MainMethodWithArgs")
+            .addField("className", className)
+            .addField("encodedMainMethodName", encodedMainMethodName)
+            .addField("args", args)
+            .build()
+      }
+  }
+
+  def fingerprint(moduleInitializer: ModuleInitializer): String =
+    Fingerprint.fingerprint(moduleInitializer)
 }

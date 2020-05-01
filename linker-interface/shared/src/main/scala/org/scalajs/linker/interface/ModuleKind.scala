@@ -49,4 +49,15 @@ object ModuleKind {
    */
   case object CommonJSModule extends ModuleKind
 
+  private[interface] implicit object ModuleKindFingerprint
+      extends Fingerprint[ModuleKind] {
+
+    override def fingerprint(moduleKind: ModuleKind): String = {
+      moduleKind match {
+        case NoModule       => "NoModule"
+        case ESModule       => "ESModule"
+        case CommonJSModule => "CommonJSModule"
+      }
+    }
+  }
 }

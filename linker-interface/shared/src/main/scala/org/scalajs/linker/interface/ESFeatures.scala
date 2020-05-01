@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.interface
 
+import Fingerprint.FingerprintBuilder
+
 /** ECMAScript features to use when linking to JavaScript.
  *
  *  The options in `ESFeatures` specify what features of modern versions of
@@ -94,4 +96,15 @@ object ESFeatures {
    *  - `allowBigIntsForLongs`: false
    */
   val Defaults: ESFeatures = new ESFeatures()
+
+  private[interface] implicit object ESFeaturesFingerprint
+      extends Fingerprint[ESFeatures] {
+
+    override def fingerprint(esFeatures: ESFeatures): String = {
+      new FingerprintBuilder("ESFeatures")
+        .addField("useECMAScript2015", esFeatures.useECMAScript2015)
+        .addField("allowBigIntsForLongs", esFeatures.allowBigIntsForLongs)
+        .build()
+    }
+  }
 }

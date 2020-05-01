@@ -1,0 +1,16 @@
+$ copy-file Main.scala.first Main.scala
+> fastOptJS
+$ copy-file target/scala-2.12/change-config-and-source-fastopt.js target/scala-2.12/output-1.js
+
+# When the linker config and source both change, re-running fastOptJS should re-link:
+> set scalaJSUseMainModuleInitializer := true
+$ copy-file Main.scala.second Main.scala
+> fastOptJS
+-$ must-mirror target/scala-2.12/change-config-and-source-fastopt.js target/scala-2.12/output-1.js
+$ newer target/scala-2.12/change-config-and-source-fastopt.js target/scala-2.12/output-1.js
+$ copy-file target/scala-2.12/change-config-and-source-fastopt.js target/scala-2.12/output-2.js
+
+# However, this re-linking should not happen more than once:
+> fastOptJS
+$ must-mirror target/scala-2.12/change-config-and-source-fastopt.js target/scala-2.12/output-2.js
+-$ newer target/scala-2.12/change-config-and-source-fastopt.js target/scala-2.12/output-2.js
