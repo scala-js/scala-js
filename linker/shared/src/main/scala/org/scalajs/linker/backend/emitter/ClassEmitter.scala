@@ -1161,7 +1161,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         case e: TopLevelMethodExportDef =>
           genTopLevelMethodExportDef(e)
         case e: TopLevelFieldExportDef =>
-          genTopLevelFieldExportDef(tree, e)
+          genTopLevelFieldExportDef(tree.className, e)
       }
     }
 
@@ -1217,7 +1217,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         dangerousGlobalRefs)
   }
 
-  private def genTopLevelFieldExportDef(cd: LinkedClass,
+  private def genTopLevelFieldExportDef(className: ClassName,
       tree: TopLevelFieldExportDef)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import TreeDSL._
@@ -1232,12 +1232,12 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
          * when we assign to the static field.
          */
         genAssignToNoModuleExportVar(exportName,
-            genSelectStatic(cd.className, field))
+            genSelectStatic(className, field))
 
       case ModuleKind.ESModule =>
         // Hack: Use a classVarIdent even though this is a usage site.
         val staticVarIdent =
-          classVarIdent("t", cd.className, field.name, NoOriginalName)
+          classVarIdent("t", className, field.name, NoOriginalName)
 
         WithGlobals(
             js.Export((staticVarIdent -> js.ExportName(exportName)) :: Nil))
@@ -1252,7 +1252,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         // optional getter definition
         val getterDef = {
           js.StringLiteral("get") -> js.Function(arrow = false, Nil, {
-            js.Return(genSelectStatic(cd.className, field))
+            js.Return(genSelectStatic(className, field))
           })
         }
 
