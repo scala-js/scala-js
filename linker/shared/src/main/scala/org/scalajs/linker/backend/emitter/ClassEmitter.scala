@@ -1159,7 +1159,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         case TopLevelModuleExportDef(exportName) =>
           genConstValueExportDef(exportName, genLoadModule(tree.name.name))
         case e: TopLevelMethodExportDef =>
-          genTopLevelMethodExportDef(tree, e)
+          genTopLevelMethodExportDef(e)
         case e: TopLevelFieldExportDef =>
           genTopLevelFieldExportDef(tree, e)
       }
@@ -1168,8 +1168,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     WithGlobals.list(exportsWithGlobals)
   }
 
-  private def genTopLevelMethodExportDef(cd: LinkedClass,
-      tree: TopLevelMethodExportDef)(
+  private def genTopLevelMethodExportDef(tree: TopLevelMethodExportDef)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import TreeDSL._
 
@@ -1180,8 +1179,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     implicit val pos = tree.pos
 
-    val methodDefWithGlobals =
-      desugarToFunction(cd.className, args, body, AnyType)
+    val methodDefWithGlobals = desugarToFunction(args, body, AnyType)
 
     methodDefWithGlobals.flatMap { methodDef =>
       genConstValueExportDef(exportName, methodDef)
