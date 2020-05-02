@@ -47,7 +47,7 @@ The following changes must cause a minor version bump.
   `sbtplugin.*` (including any addition of public API)
 * Backward source incompatible changes in `jsenv.*` or `testadapter.*`
 * Backward binary incompatible change in `ir.*`, `linker.interface.unstable.*`,
-  `linker.*` or `linker.stable.*`
+  `linker.*` or `linker.standard.*`
 
 # Patch Changes
 
@@ -55,7 +55,7 @@ All other changes cause a patch version bump only. Explicitly (but not
 exhaustively):
 
 * Backward source incompatible change in `ir.*`, `linker.interface.unstable.*`,
-  `linker.*` or `linker.stable.*`
+  `linker.*` or `linker.standard.*`
 * Backward source/binary incompatible changes elsewhere in `linker.**`
 * Fixes or additions in the JDK libs (since they are always backward source and
   binary compatible)
