@@ -126,7 +126,7 @@ final class Emitter private (config: CommonPhaseConfig,
           classDef <- unit.classDefs
           export <- classDef.topLevelExports
         } {
-          topLevelExportNames += export.value.topLevelExportName
+          topLevelExportNames += export.topLevelExportName
         }
         topLevelExportNames.toList
 

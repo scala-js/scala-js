@@ -1148,8 +1148,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
   def genTopLevelExports(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
-    val exportsWithGlobals = tree.topLevelExports.map { versionedTopLevelExport =>
-      val topLevelExport = versionedTopLevelExport.value
+    val exportsWithGlobals = tree.topLevelExports.map { topLevelExport =>
       implicit val pos = topLevelExport.pos
 
       topLevelExport match {

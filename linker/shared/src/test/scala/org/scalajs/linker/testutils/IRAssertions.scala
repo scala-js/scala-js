@@ -90,7 +90,7 @@ object IRAssertions {
           for (memberDef <- node.exportedMembers)
             traverseMemberDef(memberDef.value)
           for (topLevelExportDef <- node.topLevelExports)
-            traverseTopLevelExportDef(topLevelExportDef.value)
+            traverseTopLevelExportDef(topLevelExportDef)
         }
       }
     }
