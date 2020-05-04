@@ -37,11 +37,6 @@ object Trees {
     }
   }
 
-  // Comments
-
-  sealed case class DocComment(text: String)(implicit val pos: Position)
-      extends Tree
-
   // Identifiers and properties
 
   sealed trait PropertyName {

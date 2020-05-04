@@ -204,7 +204,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     def makeInheritableCtorDef(ctorToMimic: js.Tree, field: String) = {
       js.Block(
-        js.DocComment("@constructor"),
         classVarDef(field, className, js.Function(false, Nil, js.Skip()),
             keepFunctionExpression = isJSClass),
         classVar(field, className).prototype := ctorToMimic.prototype
@@ -249,7 +248,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       ctorFun <- ctorFunWithGlobals
       chainProto <- chainProtoWithGlobals
     } yield {
-      val docComment = js.DocComment("@constructor")
       val ctorDef = classVarDef("c", className, ctorFun,
           keepFunctionExpression = isJSClass)
 
@@ -257,7 +255,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         if (isJSClass) js.Skip()
         else makeInheritableCtorDef(typeVar, "h")
 
-      js.Block(docComment, ctorDef, chainProto, inheritableCtorDef)
+      js.Block(ctorDef, chainProto, inheritableCtorDef)
     }
   }
 
@@ -753,7 +751,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       js.ClassDef(Some(classVarIdent("c", className)), None, Nil)
     } else {
       js.Block(
-          js.DocComment("@constructor"),
           classVarDef("c", className,
               js.Function(arrow = false, Nil, js.Skip()),
               keepFunctionExpression = false)

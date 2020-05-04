@@ -54,8 +54,8 @@ object Printers {
     }
 
     protected def shouldPrintSepAfterTree(tree: Tree): Boolean = tree match {
-      case _:DocComment | _:FunctionDef | _:ClassDef => false
-      case _                                         => true
+      case _:FunctionDef | _:ClassDef => false
+      case _                          => true
     }
 
     protected def printRow(ts: List[Tree], start: Char, end: Char): Unit = {
@@ -108,28 +108,6 @@ object Printers {
 
     def printTree(tree: Tree, isStat: Boolean): Unit = {
       tree match {
-        // Comments
-
-        case DocComment(text) =>
-          val lines = text.split("\n").toList
-          if (lines.tail.isEmpty) {
-            print("/** ")
-            print(lines.head)
-            print(" */")
-          } else {
-            print("/** ")
-            print(lines.head)
-            println()
-            var rest = lines.tail
-            while (rest.nonEmpty) {
-              print(" *  ")
-              print(rest.head)
-              println()
-              rest = rest.tail
-            }
-            print(" */")
-          }
-
         // Definitions
 
         case VarDef(ident, optRhs) =>

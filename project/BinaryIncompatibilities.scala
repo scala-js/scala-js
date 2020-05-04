@@ -27,6 +27,10 @@ object BinaryIncompatibilities {
           "org.scalajs.linker.backend.emitter.Emitter.withOptimizeBracketSelects"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.Emitter.withTrackAllGlobalRefs"),
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.backend.javascript.Trees$DocComment"),
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.backend.javascript.Trees$DocComment$"),
 
       // private[closure], not an issue.
       exclude[DirectMissingMethodProblem](
@@ -76,7 +80,9 @@ object BinaryIncompatibilities {
 
       // private, not an issue.
       exclude[DirectMissingMethodProblem](
-        "org.scalajs.linker.backend.closure.ClosureAstTransformer.this"),
+          "org.scalajs.linker.backend.closure.ClosureAstTransformer.this"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.closure.ClosureAstTransformer.transformBlockStats"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.Emitter#CoreJSLibCache.tree"),
       exclude[DirectMissingMethodProblem](
