@@ -38,6 +38,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
   import ClassEmitter._
   import functionEmitter._
   import jsGen._
+  import config._
   import nameGen._
   import varGen._
 

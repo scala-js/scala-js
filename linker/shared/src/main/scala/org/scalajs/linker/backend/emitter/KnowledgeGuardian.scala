@@ -25,7 +25,7 @@ import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
 import EmitterNames._
 
-private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
+private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
   import KnowledgeGuardian._
 
   private var specialInfo: SpecialInfo = _
@@ -284,7 +284,7 @@ private[emitter] final class KnowledgeGuardian(config: CommonPhaseConfig) {
 
     private def computeStaticFieldMirrors(
         linkedClass: LinkedClass): Map[FieldName, List[String]] = {
-      if (config.coreSpec.moduleKind != ModuleKind.NoModule ||
+      if (config.moduleKind != ModuleKind.NoModule ||
           linkedClass.topLevelExports.isEmpty) {
         // Fast path
         Map.empty

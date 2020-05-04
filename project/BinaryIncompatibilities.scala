@@ -29,6 +29,12 @@ object BinaryIncompatibilities {
           "org.scalajs.linker.analyzer.Infos$ClassInfo$"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.analyzer.Infos#ReachabilityInfo.apply"),
+      exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.linker.backend.emitter.Emitter.this"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.Emitter.withOptimizeBracketSelects"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.Emitter.withTrackAllGlobalRefs"),
 
       // Additions to traits marked as not to be extended in user code, not an issue.
       exclude[ReversedMissingMethodProblem](
@@ -49,6 +55,10 @@ object BinaryIncompatibilities {
           "org.scalajs.linker.backend.emitter.ClassEmitter.org$scalajs$linker$backend$emitter$ClassEmitter$$codegenVarDef$default$5"),
       exclude[ReversedMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.GlobalKnowledge.getJSNativeLoadSpec"),
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.backend.emitter.InternalOptions"),
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.backend.emitter.InternalOptions$"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.JSGen.avoidClashWithGlobalRef"),
       exclude[DirectMissingMethodProblem](
@@ -62,13 +72,25 @@ object BinaryIncompatibilities {
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.JSGen.encodeClassVar"),
       exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.esFeatures"),
+      exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.JSGen.envModuleField"),
       exclude[IncompatibleResultTypeProblem](
           "org.scalajs.linker.backend.emitter.JSGen.genSelectStatic"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.JSGen.keepOnlyTrackedGlobalRefs"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.moduleKind"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.semantics"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.this"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.trackAllGlobalRefs"),
       exclude[IncompatibleMethTypeProblem](
           "org.scalajs.linker.backend.emitter.JSGen.this"),
+      exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.linker.backend.emitter.KnowledgeGuardian.this"),
 
       // private, not an issue.
       exclude[IncompatibleResultTypeProblem](

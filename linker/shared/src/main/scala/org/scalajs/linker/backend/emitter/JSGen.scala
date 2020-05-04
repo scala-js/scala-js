@@ -29,11 +29,13 @@ import EmitterNames._
  *
  *  Also carries around config (semantics and esFeatures).
  */
-private[emitter] final class JSGen(val semantics: Semantics,
-    val esFeatures: ESFeatures, val moduleKind: ModuleKind,
-    val nameGen: NameGen, val varGen: VarGen,
-    internalOptions: InternalOptions) {
+private[emitter] final class JSGen(
+    val config: Emitter.Config,
+    val nameGen: NameGen,
+    val varGen: VarGen
+) {
 
+  import config._
   import nameGen._
   import varGen._
 
@@ -42,8 +44,6 @@ private[emitter] final class JSGen(val semantics: Semantics,
   val useArrowFunctions = esFeatures.useECMAScript2015
 
   val useBigIntForLongs = esFeatures.allowBigIntsForLongs
-
-  val trackAllGlobalRefs = internalOptions.trackAllGlobalRefs
 
   def genZeroOf(tpe: Type)(implicit pos: Position): Tree = {
     tpe match {
@@ -394,7 +394,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
 
   def genBracketSelect(qual: Tree, item: Tree)(implicit pos: Position): Tree = {
     item match {
-      case StringLiteral(name) if internalOptions.optimizeBracketSelects &&
+      case StringLiteral(name) if optimizeBracketSelects &&
           Ident.isValidJSIdentifierName(name) && name != "eval" =>
         /* We exclude "eval" because we do not want to rely too much on the
          * strict mode peculiarities of eval(), so that we can keep running
@@ -409,7 +409,7 @@ private[emitter] final class JSGen(val semantics: Semantics,
   def genIdentBracketSelect(qual: Tree, item: String)(
       implicit pos: Position): Tree = {
     require(item != "eval")
-    if (internalOptions.optimizeBracketSelects)
+    if (optimizeBracketSelects)
       DotSelect(qual, Ident(item))
     else
       BracketSelect(qual, StringLiteral(item))

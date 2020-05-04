@@ -49,6 +49,7 @@ private[emitter] object CoreJSLib {
   private class CoreJSLibBuilder(jsGen: JSGen)(
       implicit globalKnowledge: GlobalKnowledge) {
     import jsGen._
+    import config._
     import nameGen._
     import varGen._
     import esFeatures._
