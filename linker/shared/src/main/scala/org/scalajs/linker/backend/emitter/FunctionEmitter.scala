@@ -245,6 +245,7 @@ import Transients._
 private[emitter] class FunctionEmitter(jsGen: JSGen) {
   import FunctionEmitter._
   import jsGen._
+  import config._
   import nameGen._
   import varGen._
 
@@ -388,7 +389,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
          * slower, but running GCC will take most of the time anyway in that case.
          */
         val globalRefs =
-          if (trackAllGlobalRefs) globalVarNames.toSet
+          if (config.trackAllGlobalRefs) globalVarNames.toSet
           else GlobalRefUtils.keepOnlyDangerousGlobalRefs(globalVarNames.toSet)
 
         WithGlobals(result, globalRefs)

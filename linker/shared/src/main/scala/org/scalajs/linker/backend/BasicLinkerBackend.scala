@@ -35,7 +35,10 @@ import org.scalajs.linker.backend.javascript.{Printers, SourceMapWriter}
 final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
     extends LinkerBackendImpl(config) {
 
-  private[this] val emitter = new Emitter(config.commonConfig)
+  private[this] val emitter = {
+    val emitterConfig = Emitter.Config(config.commonConfig.coreSpec)
+    new Emitter(emitterConfig)
+  }
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
 

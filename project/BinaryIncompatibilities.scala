@@ -20,6 +20,14 @@ object BinaryIncompatibilities {
   )
 
   val Linker = Seq(
+      // !! Breaking the unstable linker API, allowed per our versioning policy
+      exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.linker.backend.emitter.Emitter.this"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.Emitter.withOptimizeBracketSelects"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.Emitter.withTrackAllGlobalRefs"),
+
       // private[closure], not an issue.
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.closure.ClosureAstTransformer.transformScript"),
@@ -29,6 +37,10 @@ object BinaryIncompatibilities {
           "org.scalajs.linker.backend.emitter.ClassEmitter.org$scalajs$linker$backend$emitter$ClassEmitter$$codegenVarDef$default$4"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.ClassEmitter.org$scalajs$linker$backend$emitter$ClassEmitter$$codegenVarDef$default$5"),
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.backend.emitter.InternalOptions"),
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.backend.emitter.InternalOptions$"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.JSGen.avoidClashWithGlobalRef"),
       exclude[DirectMissingMethodProblem](
@@ -42,13 +54,25 @@ object BinaryIncompatibilities {
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.JSGen.encodeClassVar"),
       exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.esFeatures"),
+      exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.JSGen.envModuleField"),
       exclude[IncompatibleResultTypeProblem](
           "org.scalajs.linker.backend.emitter.JSGen.genSelectStatic"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.JSGen.keepOnlyTrackedGlobalRefs"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.moduleKind"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.semantics"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.this"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.JSGen.trackAllGlobalRefs"),
       exclude[IncompatibleMethTypeProblem](
           "org.scalajs.linker.backend.emitter.JSGen.this"),
+      exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.linker.backend.emitter.KnowledgeGuardian.this"),
 
       // private, not an issue.
       exclude[DirectMissingMethodProblem](

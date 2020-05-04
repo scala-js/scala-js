@@ -53,9 +53,11 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
       s"Cannot use module kind $moduleKind with the Closure Compiler")
 
   private[this] val emitter = {
-    new Emitter(config.commonConfig)
+    val emitterConfig = Emitter.Config(config.commonConfig.coreSpec)
       .withOptimizeBracketSelects(false)
       .withTrackAllGlobalRefs(true)
+
+    new Emitter(emitterConfig)
   }
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements

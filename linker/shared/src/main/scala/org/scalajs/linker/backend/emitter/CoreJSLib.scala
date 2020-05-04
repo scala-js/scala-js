@@ -49,6 +49,7 @@ private[emitter] object CoreJSLib {
   private class CoreJSLibBuilder(jsGen: JSGen)(
       implicit globalKnowledge: GlobalKnowledge) {
     import jsGen._
+    import config._
     import nameGen._
     import varGen._
     import esFeatures._
@@ -63,7 +64,7 @@ private[emitter] object CoreJSLib {
     private def globalRef(name: String): VarRef = {
       // We never access dangerous global refs from the core JS lib
       assert(!GlobalRefUtils.isDangerousGlobalRef(name))
-      if (trackAllGlobalRefs)
+      if (config.trackAllGlobalRefs)
         trackedGlobalRefs += name
       varRef(name)
     }
