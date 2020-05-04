@@ -335,6 +335,10 @@ object Serializers {
           writeName(className); writeFieldIdent(field)
           writeType(tree.tpe)
 
+        case SelectJSNativeMember(className, member) =>
+          writeTagAndPos(TagSelectJSNativeMember)
+          writeName(className); writeMethodIdent(member)
+
         case Apply(flags, receiver, method, args) =>
           writeTagAndPos(TagApply)
           writeApplyFlags(flags); writeTree(receiver); writeMethodIdent(method); writeTrees(args)
@@ -669,6 +673,12 @@ object Serializers {
           setterArgAndBody foreach { case (arg, body) =>
             writeParamDef(arg); writeTree(body)
           }
+
+        case JSNativeMemberDef(flags, name, jsNativeLoadSpec) =>
+          writeByte(TagJSNativeMemberDef)
+          writeInt(MemberFlags.toBits(flags))
+          writeMethodIdent(name)
+          writeJSNativeLoadSpec(Some(jsNativeLoadSpec))
       }
     }
 
@@ -1052,6 +1062,7 @@ object Serializers {
         case TagStoreModule  => StoreModule(readClassName(), readTree())
         case TagSelect       => Select(readTree(), readClassName(), readFieldIdent())(readType())
         case TagSelectStatic => SelectStatic(readClassName(), readFieldIdent())(readType())
+        case TagSelectJSNativeMember => SelectJSNativeMember(readClassName(), readMethodIdent())
 
         case TagApply =>
           Apply(readApplyFlags(), readTree(), readMethodIdent(), readTrees())(
@@ -1212,6 +1223,12 @@ object Serializers {
               None
           }
           JSPropertyDef(flags, name, getterBody, setterArgAndBody)
+
+        case TagJSNativeMemberDef =>
+          val flags = MemberFlags.fromBits(readInt())
+          val name = readMethodIdent()
+          val jsNativeLoadSpec = readJSNativeLoadSpec().get
+          JSNativeMemberDef(flags, name, jsNativeLoadSpec)
       }
     }
 

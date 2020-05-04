@@ -32,7 +32,7 @@ object Infos {
   final case class NamespacedMethodName(
       namespace: MemberNamespace, methodName: MethodName)
 
-  final class ClassInfo private (
+  final class ClassInfo private[Infos] (
       val className: ClassName,
       val isExported: Boolean,
       val kind: ClassKind,
@@ -40,29 +40,12 @@ object Infos {
       val interfaces: List[ClassName], // direct parent interfaces only
       val referencedFieldClasses: List[ClassName],
       val methods: List[MethodInfo],
+      val jsNativeMembers: List[MethodName],
       val exportedMembers: List[ReachabilityInfo],
       val topLevelExportedMembers: List[ReachabilityInfo],
       val topLevelExportNames: List[String]
   ) {
     override def toString(): String = className.nameString
-  }
-
-  object ClassInfo {
-    def apply(
-        className: ClassName,
-        isExported: Boolean,
-        kind: ClassKind,
-        superClass: Option[ClassName],
-        interfaces: List[ClassName],
-        referencedFieldClasses: List[ClassName],
-        methods: List[MethodInfo],
-        exportedMembers: List[ReachabilityInfo],
-        topLevelExportedMembers: List[ReachabilityInfo],
-        topLevelExportNames: List[String]): ClassInfo = {
-      new ClassInfo(className, isExported, kind, superClass,
-          interfaces, referencedFieldClasses, methods, exportedMembers,
-          topLevelExportedMembers, topLevelExportNames)
-    }
   }
 
   final class MethodInfo private (
@@ -84,12 +67,13 @@ object Infos {
     }
   }
 
-  final class ReachabilityInfo private (
+  final class ReachabilityInfo private[Infos] (
       val privateJSFieldsUsed: Map[ClassName, List[FieldName]],
       val staticFieldsRead: Map[ClassName, List[FieldName]],
       val staticFieldsWritten: Map[ClassName, List[FieldName]],
       val methodsCalled: Map[ClassName, List[MethodName]],
       val methodsCalledStatically: Map[ClassName, List[NamespacedMethodName]],
+      val jsNativeMembersUsed: Map[ClassName, List[MethodName]],
       /** For a Scala class, it is instantiated with a `New`; for a JS class,
        *  its constructor is accessed with a `JSLoadConstructor`.
        */
@@ -102,26 +86,8 @@ object Infos {
 
   object ReachabilityInfo {
     val Empty: ReachabilityInfo = {
-      ReachabilityInfo(
-          Map.empty, Map.empty, Map.empty, Map.empty, Map.empty,
-          Nil, Nil, Nil, Nil, Nil)
-    }
-
-    def apply(
-        privateJSFieldsUsed: Map[ClassName, List[FieldName]],
-        staticFieldsRead: Map[ClassName, List[FieldName]],
-        staticFieldsWritten: Map[ClassName, List[FieldName]],
-        methodsCalled: Map[ClassName, List[MethodName]],
-        methodsCalledStatically: Map[ClassName, List[NamespacedMethodName]],
-        instantiatedClasses: List[ClassName],
-        accessedModules: List[ClassName],
-        usedInstanceTests: List[ClassName],
-        accessedClassData: List[ClassName],
-        referencedClasses: List[ClassName]): ReachabilityInfo = {
-      new ReachabilityInfo(privateJSFieldsUsed, staticFieldsRead,
-          staticFieldsWritten, methodsCalled, methodsCalledStatically,
-          instantiatedClasses, accessedModules, usedInstanceTests,
-          accessedClassData, referencedClasses)
+      new ReachabilityInfo(Map.empty, Map.empty, Map.empty, Map.empty,
+          Map.empty, Map.empty, Nil, Nil, Nil, Nil, Nil)
     }
   }
 
@@ -132,6 +98,7 @@ object Infos {
     private val interfaces = mutable.ListBuffer.empty[ClassName]
     private val referencedFieldClasses = mutable.Set.empty[ClassName]
     private val methods = mutable.ListBuffer.empty[MethodInfo]
+    private val jsNativeMembers = mutable.Set.empty[MethodName]
     private val exportedMembers = mutable.ListBuffer.empty[ReachabilityInfo]
     private val topLevelExportedMembers = mutable.ListBuffer.empty[ReachabilityInfo]
     private var topLevelExportNames: List[String] = Nil
@@ -178,6 +145,11 @@ object Infos {
       this
     }
 
+    def addJSNativeMember(memberName: MethodName): this.type = {
+      jsNativeMembers += memberName
+      this
+    }
+
     def addExportedMember(reachabilityInfo: ReachabilityInfo): this.type = {
       exportedMembers += reachabilityInfo
       this
@@ -194,10 +166,10 @@ object Infos {
     }
 
     def result(): ClassInfo = {
-      ClassInfo(className, isExported, kind, superClass,
+      new ClassInfo(className, isExported, kind, superClass,
           interfaces.toList, referencedFieldClasses.toList, methods.toList,
-          exportedMembers.toList, topLevelExportedMembers.toList,
-          topLevelExportNames)
+          jsNativeMembers.toList, exportedMembers.toList,
+          topLevelExportedMembers.toList, topLevelExportNames)
     }
   }
 
@@ -207,6 +179,7 @@ object Infos {
     private val staticFieldsWritten = mutable.Map.empty[ClassName, mutable.Set[FieldName]]
     private val methodsCalled = mutable.Map.empty[ClassName, mutable.Set[MethodName]]
     private val methodsCalledStatically = mutable.Map.empty[ClassName, mutable.Set[NamespacedMethodName]]
+    private val jsNativeMembersUsed = mutable.Map.empty[ClassName, mutable.Set[MethodName]]
     private val instantiatedClasses = mutable.Set.empty[ClassName]
     private val accessedModules = mutable.Set.empty[ClassName]
     private val usedInstanceTests = mutable.Set.empty[ClassName]
@@ -277,6 +250,11 @@ object Infos {
     def addMethodCalledStatically(cls: ClassName,
         method: NamespacedMethodName): this.type = {
       methodsCalledStatically.getOrElseUpdate(cls, mutable.Set.empty) += method
+      this
+    }
+
+    def addJSNativeMemberUsed(cls: ClassName, member: MethodName): this.type = {
+      jsNativeMembersUsed.getOrElseUpdate(cls, mutable.Set.empty) += member
       this
     }
 
@@ -358,12 +336,13 @@ object Infos {
       def toMapOfLists[A, B](m: mutable.Map[A, mutable.Set[B]]): Map[A, List[B]] =
         m.map(kv => kv._1 -> kv._2.toList).toMap
 
-      ReachabilityInfo(
+      new ReachabilityInfo(
           privateJSFieldsUsed = toMapOfLists(privateJSFieldsUsed),
           staticFieldsRead = toMapOfLists(staticFieldsRead),
           staticFieldsWritten = toMapOfLists(staticFieldsWritten),
           methodsCalled = toMapOfLists(methodsCalled),
           methodsCalledStatically = toMapOfLists(methodsCalledStatically),
+          jsNativeMembersUsed = toMapOfLists(jsNativeMembersUsed),
           instantiatedClasses = instantiatedClasses.toList,
           accessedModules = accessedModules.toList,
           usedInstanceTests = usedInstanceTests.toList,
@@ -394,6 +373,9 @@ object Infos {
 
       case propertyDef: JSPropertyDef =>
         builder.addExportedMember(generateJSPropertyInfo(propertyDef))
+
+      case nativeMemberDef: JSNativeMemberDef =>
+        builder.addJSNativeMember(nativeMemberDef.name.name)
     }
 
     if (classDef.topLevelExportDefs.nonEmpty) {
@@ -527,6 +509,8 @@ object Infos {
               builder.addReferencedClass(className)
             case SelectStatic(className, field) =>
               builder.addStaticFieldRead(className, field.name)
+            case SelectJSNativeMember(className, member) =>
+              builder.addJSNativeMemberUsed(className, member.name)
 
             case Apply(flags, receiver, method, _) =>
               builder.addMethodCalled(receiver.tpe, method.name)

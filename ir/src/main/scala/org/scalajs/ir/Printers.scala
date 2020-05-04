@@ -308,6 +308,11 @@ object Printers {
           print("::")
           print(field)
 
+        case SelectJSNativeMember(className, member) =>
+          print(className)
+          print("::")
+          print(member)
+
         case Apply(flags, receiver, method, args) =>
           print(receiver)
           print(".")
@@ -962,6 +967,13 @@ object Printers {
             printSig(arg :: Nil, NoType)
             printBlock(body)
           }
+
+        case JSNativeMemberDef(flags, name, jsNativeLoadSpec) =>
+          print(flags.namespace.prefixString)
+          print("native ")
+          print(name)
+          print(" loadfrom ")
+          print(jsNativeLoadSpec)
       }
     }
 

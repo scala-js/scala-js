@@ -414,7 +414,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       // Generate members (constructor + methods)
 
-      val generatedMethods = new ListBuffer[js.MethodDef]
+      val generatedNonFieldMembers = new ListBuffer[js.MemberDef]
 
       def gen(tree: Tree): Unit = {
         tree match {
@@ -425,7 +425,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             () // fields are added via genClassFields()
 
           case dd: DefDef =>
-            generatedMethods ++= genMethod(dd)
+            if (dd.symbol.hasAnnotation(JSNativeAnnotation))
+              generatedNonFieldMembers += genJSNativeMemberDef(dd)
+            else
+              generatedNonFieldMembers ++= genMethod(dd)
 
           case _ => abort("Illegal tree in gen of genClass(): " + tree)
         }
@@ -435,8 +438,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       // Generate fields if necessary (and add to methods + ctors)
       val generatedMembers =
-        if (!isHijacked) genClassFields(cd) ++ generatedMethods.toList
-        else generatedMethods.toList // No fields needed
+        if (!isHijacked) genClassFields(cd) ++ generatedNonFieldMembers.toList
+        else generatedNonFieldMembers.toList // No fields needed
 
       // Generate member exports
       val memberExports = genMemberExports(sym)
@@ -726,6 +729,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
         case property: js.JSPropertyDef =>
           instanceMembers += property
+
+        case nativeMemberDef: js.JSNativeMemberDef =>
+          abort("illegal native JS member in JS class at " + nativeMemberDef.pos)
       }
 
       assert(origJsClass.topLevelExportDefs.isEmpty,
@@ -795,6 +801,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           js.JSMethodApply(js.JSGlobalRef("Object"),
               js.StringLiteral("defineProperty"),
               List(selfRef, pdef.name, descriptor))
+
+        case nativeMemberDef: js.JSNativeMemberDef =>
+          abort("illegal native JS member in JS class at " + nativeMemberDef.pos)
       }
 
       val memberDefinitions = if (privateFieldDefs.isEmpty) {
@@ -1125,7 +1134,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       (for {
         f <- classSym.info.decls
         if !f.isMethod && f.isTerm && !f.isModule
-        if !f.hasAnnotation(JSOptionalAnnotation)
+        if !f.hasAnnotation(JSOptionalAnnotation) && !f.hasAnnotation(JSNativeAnnotation)
         static = jsInterop.isFieldStatic(f)
         if !static || isStaticBecauseOfTopLevelExport(f)
       } yield {
@@ -1937,6 +1946,17 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           afterSuper)(body.pos)
     }
 
+    /** Generates the JSNativeMemberDef of a JS native method. */
+    def genJSNativeMemberDef(tree: DefDef): js.JSNativeMemberDef = {
+      implicit val pos = tree.pos
+
+      val sym = tree.symbol
+      val flags = js.MemberFlags.empty.withNamespace(js.MemberNamespace.PublicStatic)
+      val methodName = encodeMethodSym(sym)
+      val jsNativeLoadSpec = jsInterop.jsNativeLoadSpecOf(sym)
+      js.JSNativeMemberDef(flags, methodName, jsNativeLoadSpec)
+    }
+
     /** Generates the MethodDef of a (non-constructor) method
      *
      *  Most normal methods are emitted straightforwardly. If the result
@@ -2356,7 +2376,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           val sym = lhs.symbol
           if (sym.isStaticMember)
             abort(s"Assignment to static member ${sym.fullName} not supported")
-          val genRhs = genExpr(rhs)
+          def genRhs = genExpr(rhs)
           lhs match {
             case Select(qualifier, _) =>
               val ctorAssignment = (
@@ -2386,6 +2406,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               if (isNonNativeJSClass(sym.owner)) {
                 js.Assign(genNonNativeJSClassSelectAsBoxed(genQual, sym),
                     genBoxedRhs)
+              } else if (sym.hasAnnotation(JSNativeAnnotation)) {
+                /* This is an assignment to a @js.native field. Since we reject
+                 * `@js.native var`s as compile errors, this can only happen in
+                 * the constructor of the enclosing object.
+                 * We simply ignore the assignment, since the field will not be
+                 * emitted at all.
+                 */
+                js.Skip()
               } else if (jsInterop.isFieldStatic(sym)) {
                 js.Assign(genSelectStaticFieldAsBoxed(sym), genBoxedRhs)
               } else {
@@ -2697,26 +2725,25 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         if (isCtorDefaultParam(sym)) {
           isJSCtorDefaultParam(sym)
         } else {
-          sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM) &&
-          isJSType(sym.owner) && {
-            /* If this is a default parameter accessor on a
-             * non-native JS class, we need to know if the method for which we
-             * are the default parameter is exposed or not.
-             * We do this by removing the $default suffix from the method name,
-             * and looking up a member with that name in the owner.
-             * Note that this does not work for local methods. But local methods
-             * are never exposed.
-             * Further note that overloads are easy, because either all or none
-             * of them are exposed.
-             */
-            def isAttachedMethodExposed = {
-              val methodName = nme.defaultGetterToMethod(sym.name)
-              val ownerMethod = sym.owner.info.decl(methodName)
-              ownerMethod.filter(isExposed).exists
-            }
-
-            !isNonNativeJSClass(sym.owner) || isAttachedMethodExposed
+          /* If this is a default parameter accessor on a
+           * non-native JS class, we need to know if the method for which we
+           * are the default parameter is exposed or not.
+           * We do this by removing the $default suffix from the method name,
+           * and looking up a member with that name in the owner.
+           * Note that this does not work for local methods. But local methods
+           * are never exposed.
+           * Further note that overloads are easy, because either all or none
+           * of them are exposed.
+           */
+          def isAttachedMethodExposed = {
+            val methodName = nme.defaultGetterToMethod(sym.name)
+            val ownerMethod = sym.owner.info.decl(methodName)
+            ownerMethod.filter(isExposed).exists
           }
+
+          sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM) && (
+              (isJSType(sym.owner) && (!isNonNativeJSClass(sym.owner) || isAttachedMethodExposed)) ||
+              sym.hasAnnotation(JSNativeAnnotation))
         }
       }
 
@@ -3084,6 +3111,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           genPrimitiveJSCall(tree, isStat)
         else
           genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))
+      } else if (sym.hasAnnotation(JSNativeAnnotation)) {
+        genJSNativeMemberCall(tree, isStat)
       } else if (sym.isStaticMember) {
         if (sym.isMixinConstructor && isJSImplClass(sym.owner)) {
           /* Do not emit a call to the $init$ method of JS traits.
@@ -4832,6 +4861,25 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val args = genPrimitiveJSArgs(sym, args0)
 
       genJSCallGeneric(sym, receiver, args, isStat)
+    }
+
+    /** Gen JS code for a call to a native JS def or val. */
+    private def genJSNativeMemberCall(tree: Apply, isStat: Boolean): js.Tree = {
+      val sym = tree.symbol
+      val Apply(_, args0) = tree
+
+      implicit val pos = tree.pos
+
+      val jsNativeMemberValue =
+        js.SelectJSNativeMember(encodeClassName(sym.owner), encodeMethodSym(sym))
+
+      val boxedResult =
+        if (jsInterop.isJSGetter(sym)) jsNativeMemberValue
+        else js.JSFunctionApply(jsNativeMemberValue, genPrimitiveJSArgs(sym, args0))
+
+      fromAny(boxedResult, enteringPhase(currentRun.posterasurePhase) {
+        sym.tpe.resultType
+      })
     }
 
     private def genJSSuperCall(tree: Apply, isStat: Boolean): js.Tree = {

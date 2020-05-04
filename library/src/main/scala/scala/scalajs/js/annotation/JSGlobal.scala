@@ -12,6 +12,8 @@
 
 package scala.scalajs.js.annotation
 
+import scala.annotation.meta._
+
 /** Marks the annotated class or object as being a member of the JavaScript
  *  global scope.
  *
@@ -45,6 +47,7 @@ package scala.scalajs.js.annotation
  *
  *  @see [[http://www.scala-js.org/doc/calling-javascript.html Calling JavaScript from Scala.js]]
  */
+@field @getter @setter
 class JSGlobal extends scala.annotation.StaticAnnotation {
   def this(name: String) = this()
 }

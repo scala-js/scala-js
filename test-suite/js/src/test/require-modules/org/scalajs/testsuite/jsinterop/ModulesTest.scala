@@ -56,6 +56,30 @@ class ModulesTest {
     assertEquals("foo:bar;baz:qux", QueryStringAsDefault.stringify(dict, ";", ":"))
   }
 
+  @Test def testImportFunctionInModule(): Unit = {
+    val dict = js.Dictionary("foo" -> "bar", "baz" -> "qux")
+
+    assertEquals("foo=bar&baz=qux", QueryStringWithNativeDef.stringify(dict))
+    assertEquals("foo:bar;baz:qux", QueryStringWithNativeDef.stringify(dict, ";", ":"))
+  }
+
+  @Test def testImportFieldInModule(): Unit = {
+    assertEquals("string", js.typeOf(OSWithNativeVal.EOL))
+    assertEquals("string", js.typeOf(OSWithNativeVal.EOLAsDef))
+  }
+
+  @Test def testImportFunctionInModulePackageObject(): Unit = {
+    val dict = js.Dictionary("foo" -> "bar", "baz" -> "qux")
+
+    assertEquals("foo=bar&baz=qux", modulestestpackageobject.stringify(dict))
+    assertEquals("foo:bar;baz:qux", modulestestpackageobject.stringify(dict, ";", ":"))
+  }
+
+  @Test def testImportFieldInModulePackageObject(): Unit = {
+    assertEquals("string", js.typeOf(modulestestpackageobject.EOL))
+    assertEquals("string", js.typeOf(modulestestpackageobject.EOLAsDef))
+  }
+
   @Test def testImportObjectInModule(): Unit = {
     assertTrue((Buffer: Any).isInstanceOf[js.Object])
     assertFalse(Buffer.isBuffer(5))
@@ -87,6 +111,21 @@ class ModulesTest {
   }
 }
 
+package object modulestestpackageobject {
+  @js.native
+  @JSImport("querystring", "stringify")
+  def stringify(obj: js.Dictionary[String], sep: String = "&",
+      eq: String = "="): String = js.native
+
+  @js.native
+  @JSImport("os", "EOL")
+  val EOL: String = js.native
+
+  @js.native
+  @JSImport("os", "EOL")
+  def EOLAsDef: String = js.native
+}
+
 object ModulesTest {
   @js.native
   @JSImport("querystring", JSImport.Namespace)
@@ -100,6 +139,23 @@ object ModulesTest {
   object QueryStringAsDefault extends js.Object {
     def stringify(obj: js.Dictionary[String], sep: String = "&",
         eq: String = "="): String = js.native
+  }
+
+  object QueryStringWithNativeDef {
+    @js.native
+    @JSImport("querystring", "stringify")
+    def stringify(obj: js.Dictionary[String], sep: String = "&",
+        eq: String = "="): String = js.native
+  }
+
+  object OSWithNativeVal {
+    @js.native
+    @JSImport("os", "EOL")
+    val EOL: String = js.native
+
+    @js.native
+    @JSImport("os", "EOL")
+    def EOLAsDef: String = js.native
   }
 
   @js.native

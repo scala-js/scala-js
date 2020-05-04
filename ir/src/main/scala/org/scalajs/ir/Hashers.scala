@@ -242,6 +242,11 @@ object Hashers {
           mixFieldIdent(field)
           mixType(tree.tpe)
 
+        case SelectJSNativeMember(className, member) =>
+          mixTag(TagSelectJSNativeMember)
+          mixName(className)
+          mixMethodIdent(member)
+
         case Apply(flags, receiver, method, args) =>
           mixTag(TagApply)
           mixInt(ApplyFlags.toBits(flags))

@@ -246,6 +246,12 @@ object Trees {
       val tpe: Type)(
       implicit val pos: Position) extends Tree
 
+  sealed case class SelectJSNativeMember(className: ClassName, member: MethodIdent)(
+      implicit val pos: Position)
+      extends Tree {
+    val tpe = AnyType
+  }
+
   /** Apply an instance method with dynamic dispatch (the default). */
   sealed case class Apply(flags: ApplyFlags, receiver: Tree, method: MethodIdent,
       args: List[Tree])(
@@ -1081,6 +1087,16 @@ object Trees {
       extends JSMethodPropDef {
 
     require(!flags.isMutable, "nonsensical mutable PropertyDef")
+  }
+
+  sealed case class JSNativeMemberDef(flags: MemberFlags, name: MethodIdent,
+      jsNativeLoadSpec: JSNativeLoadSpec)(
+      implicit val pos: Position)
+      extends MemberDef {
+
+    require(!flags.isMutable, "nonsensical mutable JSNativeMemberDef")
+    require(flags.namespace == MemberNamespace.PublicStatic,
+        "JSNativeMemberDef must have the namespace PublicStatic")
   }
 
   // Top-level export defs

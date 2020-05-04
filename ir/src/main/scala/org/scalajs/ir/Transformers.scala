@@ -206,7 +206,7 @@ object Transformers {
 
         // Trees that need not be transformed
 
-        case _:Skip | _:Debugger | _:LoadModule | _:SelectStatic |
+        case _:Skip | _:Debugger | _:LoadModule | _:SelectStatic | _:SelectJSNativeMember |
             _:LoadJSConstructor | _:LoadJSModule  | _:JSLinkingInfo |
             _:Literal | _:VarRef | _:This | _:JSGlobalRef | _:Transient  =>
           tree
@@ -228,7 +228,7 @@ object Transformers {
       implicit val pos = memberDef.pos
 
       memberDef match {
-        case _: AnyFieldDef =>
+        case _:AnyFieldDef | _:JSNativeMemberDef =>
           memberDef
 
         case memberDef: MethodDef =>
