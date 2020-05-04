@@ -31,15 +31,13 @@ import scala.annotation.tailrec
 import java.net.URI
 
 private[closure] object ClosureAstTransformer {
-  def transformScript(trees: List[Tree], featureSet: FeatureSet,
-      relativizeBaseURI: Option[URI]): Node = {
-    val transformer = new ClosureAstTransformer(featureSet, relativizeBaseURI)
+  def transformScript(trees: List[Tree], relativizeBaseURI: Option[URI]): Node = {
+    val transformer = new ClosureAstTransformer(relativizeBaseURI)
     transformer.transformScript(trees)
   }
 }
 
-private class ClosureAstTransformer(featureSet: FeatureSet,
-    relativizeBaseURI: Option[URI]) {
+private class ClosureAstTransformer(relativizeBaseURI: Option[URI]) {
   private val dummySourceName = new java.net.URI("virtualfile:scala.js-ir")
 
   def transformScript(trees: List[Tree]): Node = {
@@ -61,7 +59,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
         script.addChildToBack(transformStat(tree)(NoPosition))
     }
 
-    script.putProp(Node.FEATURE_SET, featureSet)
+    script.putProp(Node.FEATURE_SET, FeatureSet.ES6_MODULES)
 
     script
   }

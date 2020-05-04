@@ -54,6 +54,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
 
   private[this] val emitter = {
     val emitterConfig = Emitter.Config(config.commonConfig.coreSpec)
+      .withESFeatures(_.withUseECMAScript2015(true))
       .withOptimizeBracketSelects(false)
       .withTrackAllGlobalRefs(true)
 
@@ -63,10 +64,6 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
 
   override def injectedIRFiles: Seq[IRFile] = emitter.injectedIRFiles
-
-  private val languageMode =
-    if (esFeatures.useECMAScript2015) ClosureOptions.LanguageMode.ECMASCRIPT_2015
-    else ClosureOptions.LanguageMode.ECMASCRIPT5_STRICT
 
   /** Emit the given [[standard.LinkingUnit LinkingUnit]] to the target output.
    *
@@ -106,7 +103,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
 
   private def buildModule(trees: List[js.Tree]): JSModule = {
     val root = ClosureAstTransformer.transformScript(trees,
-        languageMode.toFeatureSet(), config.relativizeSourceMapBase)
+        config.relativizeSourceMapBase)
 
     val module = new JSModule("Scala.js")
     module.add(new CompilerInput(new SyntheticAst(root)))
@@ -212,7 +209,10 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     options.setPrettyPrint(config.prettyPrint)
     CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options)
 
-    options.setLanguage(languageMode)
+    options.setLanguageIn(ClosureOptions.LanguageMode.ECMASCRIPT_2015)
+    options.setLanguageOut(
+        if (esFeatures.useECMAScript2015) ClosureOptions.LanguageMode.ECMASCRIPT_2015
+        else ClosureOptions.LanguageMode.ECMASCRIPT5_STRICT)
     options.setCheckGlobalThisLevel(CheckLevel.OFF)
     options.setWarningLevel(DiagnosticGroups.DUPLICATE_VARS, CheckLevel.OFF)
     options.setWarningLevel(DiagnosticGroups.CHECK_REGEXP, CheckLevel.OFF)
