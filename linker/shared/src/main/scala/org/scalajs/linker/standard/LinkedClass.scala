@@ -44,7 +44,7 @@ final class LinkedClass(
     val fields: List[AnyFieldDef],
     val methods: List[Versioned[MethodDef]],
     val exportedMembers: List[Versioned[JSMethodPropDef]],
-    val topLevelExports: List[Versioned[TopLevelExportDef]],
+    val topLevelExports: List[TopLevelExportDef],
     val optimizerHints: OptimizerHints,
     val pos: Position,
 
@@ -99,7 +99,7 @@ final class LinkedClass(
       fields: List[AnyFieldDef] = this.fields,
       methods: List[Versioned[MethodDef]] = this.methods,
       exportedMembers: List[Versioned[JSMethodPropDef]] = this.exportedMembers,
-      topLevelExports: List[Versioned[TopLevelExportDef]] = this.topLevelExports,
+      topLevelExports: List[TopLevelExportDef] = this.topLevelExports,
       optimizerHints: OptimizerHints = this.optimizerHints,
       pos: Position = this.pos,
       ancestors: List[ClassName] = this.ancestors,

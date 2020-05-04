@@ -121,14 +121,9 @@ final class Emitter private (config: CommonPhaseConfig,
   private def topLevelVarDeclarations(unit: LinkingUnit): List[String] = {
     moduleKind match {
       case ModuleKind.NoModule =>
-        val topLevelExportNames = mutable.Set.empty[String]
-        for {
-          classDef <- unit.classDefs
-          export <- classDef.topLevelExports
-        } {
-          topLevelExportNames += export.value.topLevelExportName
-        }
-        topLevelExportNames.toList
+        unit.classDefs
+          .flatMap(_.topLevelExports)
+          .map(_.topLevelExportName)
 
       case ModuleKind.ESModule | ModuleKind.CommonJSModule =>
         Nil

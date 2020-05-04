@@ -1148,8 +1148,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
   def genTopLevelExports(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
-    val exportsWithGlobals = tree.topLevelExports.map { versionedTopLevelExport =>
-      val topLevelExport = versionedTopLevelExport.value
+    val exportsWithGlobals = tree.topLevelExports.map { topLevelExport =>
       implicit val pos = topLevelExport.pos
 
       topLevelExport match {
@@ -1159,17 +1158,16 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         case TopLevelModuleExportDef(exportName) =>
           genConstValueExportDef(exportName, genLoadModule(tree.name.name))
         case e: TopLevelMethodExportDef =>
-          genTopLevelMethodExportDef(tree, e)
+          genTopLevelMethodExportDef(e)
         case e: TopLevelFieldExportDef =>
-          genTopLevelFieldExportDef(tree, e)
+          genTopLevelFieldExportDef(tree.className, e)
       }
     }
 
     WithGlobals.list(exportsWithGlobals)
   }
 
-  private def genTopLevelMethodExportDef(cd: LinkedClass,
-      tree: TopLevelMethodExportDef)(
+  private def genTopLevelMethodExportDef(tree: TopLevelMethodExportDef)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import TreeDSL._
 
@@ -1180,8 +1178,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     implicit val pos = tree.pos
 
-    val methodDefWithGlobals =
-      desugarToFunction(cd.className, args, body, AnyType)
+    val methodDefWithGlobals = desugarToFunction(args, body, AnyType)
 
     methodDefWithGlobals.flatMap { methodDef =>
       genConstValueExportDef(exportName, methodDef)
@@ -1219,7 +1216,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         dangerousGlobalRefs)
   }
 
-  private def genTopLevelFieldExportDef(cd: LinkedClass,
+  private def genTopLevelFieldExportDef(className: ClassName,
       tree: TopLevelFieldExportDef)(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import TreeDSL._
@@ -1234,12 +1231,12 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
          * when we assign to the static field.
          */
         genAssignToNoModuleExportVar(exportName,
-            genSelectStatic(cd.className, field))
+            genSelectStatic(className, field))
 
       case ModuleKind.ESModule =>
         // Hack: Use a classVarIdent even though this is a usage site.
         val staticVarIdent =
-          classVarIdent("t", cd.className, field.name, NoOriginalName)
+          classVarIdent("t", className, field.name, NoOriginalName)
 
         WithGlobals(
             js.Export((staticVarIdent -> js.ExportName(exportName)) :: Nil))
@@ -1254,7 +1251,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         // optional getter definition
         val getterDef = {
           js.StringLiteral("get") -> js.Function(arrow = false, Nil, {
-            js.Return(genSelectStatic(cd.className, field))
+            js.Return(genSelectStatic(className, field))
           })
         }
 

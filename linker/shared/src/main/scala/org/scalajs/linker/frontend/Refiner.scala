@@ -193,7 +193,7 @@ private object Refiner {
           builder.setIsExported(true)
 
           val optInfo = Infos.generateTopLevelExportsInfo(
-              linkedClass.className, linkedClass.topLevelExports.map(_.value))
+              linkedClass.className, linkedClass.topLevelExports)
           optInfo.foreach(builder.addTopLevelExportedMember(_))
         }
 

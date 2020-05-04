@@ -177,9 +177,6 @@ final class BaseLinker(config: CommonPhaseConfig) {
 
     methods ++= syntheticMethodDefs.map(linkedMethod)
 
-    val topLevelExports =
-      classDef.topLevelExportDefs.map(new Versioned(_, version))
-
     val kind =
       if (analyzerInfo.isModuleAccessed) classDef.kind
       else classDef.kind.withoutModuleAccessor
@@ -197,7 +194,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
         fields.toList,
         methods.toList,
         exportedMembers.toList,
-        topLevelExports,
+        classDef.topLevelExportDefs,
         classDef.optimizerHints,
         classDef.pos,
         ancestors.toList,

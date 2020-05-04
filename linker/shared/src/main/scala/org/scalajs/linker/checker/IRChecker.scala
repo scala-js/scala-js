@@ -233,8 +233,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       }
 
       // Check top-level exports
-      for (topLevelExport <- classDef.topLevelExports) {
-        val tree = topLevelExport.value
+      for (tree <- classDef.topLevelExports) {
         implicit val ctx = ErrorContext(tree)
 
         tree match {
