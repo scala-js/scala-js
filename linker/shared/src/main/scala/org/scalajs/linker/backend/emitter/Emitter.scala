@@ -32,15 +32,10 @@ import EmitterNames._
 import GlobalRefUtils._
 
 /** Emits a desugared JS tree to a builder */
-final class Emitter private (config: CommonPhaseConfig,
-    internalOptions: InternalOptions) {
+final class Emitter(config: Emitter.Config) {
 
   import Emitter._
-  import config.coreSpec._
-
-  def this(config: CommonPhaseConfig) = {
-    this(config, InternalOptions())
-  }
+  import config._
 
   private val knowledgeGuardian = new KnowledgeGuardian(config)
 
@@ -49,7 +44,7 @@ final class Emitter private (config: CommonPhaseConfig,
   private class State(val lastMentionedDangerousGlobalRefs: Set[String]) {
     val jsGen: JSGen = {
       val varGen = new VarGen(nameGen, lastMentionedDangerousGlobalRefs)
-      new JSGen(semantics, esFeatures, moduleKind, nameGen, varGen, internalOptions)
+      new JSGen(config, nameGen, varGen)
     }
 
     val classEmitter: ClassEmitter = new ClassEmitter(jsGen)
@@ -71,7 +66,7 @@ final class Emitter private (config: CommonPhaseConfig,
   private[this] var statsMethodsInvalidated: Int = 0
 
   val symbolRequirements: SymbolRequirement =
-    Emitter.symbolRequirements(config.coreSpec)
+    Emitter.symbolRequirements(config)
 
   val injectedIRFiles: Seq[IRFile] = PrivateLibHolder.files
 
@@ -83,20 +78,6 @@ final class Emitter private (config: CommonPhaseConfig,
   }
 
   private def ifIIFE(str: String): String = if (needsIIFEWrapper) str else ""
-
-  // Private API for the Closure backend (could be opened if necessary)
-  private[backend] def withOptimizeBracketSelects(
-      optimizeBracketSelects: Boolean): Emitter = {
-    new Emitter(config,
-        internalOptions.withOptimizeBracketSelects(optimizeBracketSelects))
-  }
-
-  // Private API for the Closure backend (could be opened if necessary)
-  private[backend] def withTrackAllGlobalRefs(
-      trackAllGlobalRefs: Boolean): Emitter = {
-    new Emitter(config,
-        internalOptions.withTrackAllGlobalRefs(trackAllGlobalRefs))
-  }
 
   def emit(unit: LinkingUnit, logger: Logger): Result = {
     val topLevelVars = topLevelVarDeclarations(unit)
@@ -344,7 +325,7 @@ final class Emitter private (config: CommonPhaseConfig,
     }
 
     val mentionedDangerousGlobalRefs =
-      if (!internalOptions.trackAllGlobalRefs) trackedGlobalRefs
+      if (!trackAllGlobalRefs) trackedGlobalRefs
       else GlobalRefUtils.keepOnlyDangerousGlobalRefs(trackedGlobalRefs)
 
     if (mentionedDangerousGlobalRefs == state.lastMentionedDangerousGlobalRefs) {
@@ -723,6 +704,57 @@ object Emitter {
       val globalRefs: Set[String]
   )
 
+  /** Configuration for the Emitter. */
+  final class Config private (
+      val semantics: Semantics,
+      val moduleKind: ModuleKind,
+      val esFeatures: ESFeatures,
+      val optimizeBracketSelects: Boolean,
+      val trackAllGlobalRefs: Boolean
+  ) {
+    private def this(
+        semantics: Semantics,
+        moduleKind: ModuleKind,
+        esFeatures: ESFeatures) = {
+      this(
+          semantics,
+          moduleKind,
+          esFeatures,
+          optimizeBracketSelects = true,
+          trackAllGlobalRefs = false)
+    }
+
+    def withSemantics(f: Semantics => Semantics): Config =
+      copy(semantics = f(semantics))
+
+    def withModuleKind(moduleKind: ModuleKind): Config =
+      copy(moduleKind = moduleKind)
+
+    def withESFeatures(f: ESFeatures => ESFeatures): Config =
+      copy(esFeatures = f(esFeatures))
+
+    def withOptimizeBracketSelects(optimizeBracketSelects: Boolean): Config =
+      copy(optimizeBracketSelects = optimizeBracketSelects)
+
+    def withTrackAllGlobalRefs(trackAllGlobalRefs: Boolean): Config =
+      copy(trackAllGlobalRefs = trackAllGlobalRefs)
+
+    private def copy(
+        semantics: Semantics = semantics,
+        moduleKind: ModuleKind = moduleKind,
+        esFeatures: ESFeatures = esFeatures,
+        optimizeBracketSelects: Boolean = optimizeBracketSelects,
+        trackAllGlobalRefs: Boolean = trackAllGlobalRefs): Config = {
+      new Config(semantics, moduleKind, esFeatures, optimizeBracketSelects,
+          trackAllGlobalRefs)
+    }
+  }
+
+  object Config {
+    def apply(coreSpec: CoreSpec): Config =
+      new Config(coreSpec.semantics, coreSpec.moduleKind, coreSpec.esFeatures)
+  }
+
   private final class DesugaredClassCache {
     val privateJSFields = new OneTimeCache[List[js.Tree]]
     val exportedMembers = new OneTimeCache[WithGlobals[js.Tree]]
@@ -751,8 +783,8 @@ object Emitter {
     }
   }
 
-  private def symbolRequirements(coreSpec: CoreSpec): SymbolRequirement = {
-    import coreSpec.semantics._
+  private def symbolRequirements(config: Config): SymbolRequirement = {
+    import config.semantics._
     import CheckedBehavior._
 
     val factory = SymbolRequirement.factory("emitter")
@@ -781,7 +813,7 @@ object Emitter {
               StringArgConstructorName)
         },
 
-        cond(!coreSpec.esFeatures.allowBigIntsForLongs) {
+        cond(!config.esFeatures.allowBigIntsForLongs) {
           multiple(
               instanceTests(LongImpl.RuntimeLongClass),
               instantiateClass(LongImpl.RuntimeLongClass, LongImpl.AllConstructors.toList),
