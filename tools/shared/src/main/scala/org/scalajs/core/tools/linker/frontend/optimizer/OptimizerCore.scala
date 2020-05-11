@@ -3451,40 +3451,6 @@ private[optimizer] abstract class OptimizerCore(
           case _ => default
         }
 
-      case Float_+ =>
-        (lhs, rhs) match {
-          case (PreTransLit(FloatLiteral(0)), _) =>
-            rhs
-          case (_, PreTransLit(FloatLiteral(_))) =>
-            foldBinaryOp(Float_+, rhs, lhs)
-
-          case (PreTransLit(FloatLiteral(x)),
-              PreTransBinaryOp(innerOp @ (Float_+ | Float_-),
-                  PreTransLit(FloatLiteral(y)), z)) =>
-            foldBinaryOp(innerOp, PreTransLit(FloatLiteral(x + y)), z)
-
-          case _ => default
-        }
-
-      case Float_- =>
-        (lhs, rhs) match {
-          case (_, PreTransLit(FloatLiteral(r))) =>
-            foldBinaryOp(Float_+, lhs, PreTransLit(FloatLiteral(-r)))
-
-          case (PreTransLit(FloatLiteral(x)),
-              PreTransBinaryOp(Float_+, PreTransLit(FloatLiteral(y)), z)) =>
-            foldBinaryOp(Float_-, PreTransLit(FloatLiteral(x - y)), z)
-          case (PreTransLit(FloatLiteral(x)),
-              PreTransBinaryOp(Float_-, PreTransLit(FloatLiteral(y)), z)) =>
-            foldBinaryOp(Float_+, PreTransLit(FloatLiteral(x - y)), z)
-
-          case (_, PreTransBinaryOp(BinaryOp.Float_-,
-              PreTransLit(FloatLiteral(0)), x)) =>
-            foldBinaryOp(Float_+, lhs, x)
-
-          case _ => default
-        }
-
       case Float_* =>
         (lhs, rhs) match {
           case (_, PreTransLit(FloatLiteral(_))) =>
@@ -3492,8 +3458,9 @@ private[optimizer] abstract class OptimizerCore(
 
           case (PreTransLit(FloatLiteral(1)), _) =>
             rhs
-          case (PreTransLit(FloatLiteral(-1)), _) =>
-            foldBinaryOp(Float_-, PreTransLit(FloatLiteral(0)), rhs)
+          case (PreTransLit(FloatLiteral(-1)),
+              PreTransBinaryOp(Float_*, PreTransLit(FloatLiteral(-1)), z)) =>
+            z
 
           case _ => default
         }
@@ -3503,48 +3470,13 @@ private[optimizer] abstract class OptimizerCore(
           case (_, PreTransLit(FloatLiteral(1))) =>
             lhs
           case (_, PreTransLit(FloatLiteral(-1))) =>
-            foldBinaryOp(Float_-, PreTransLit(FloatLiteral(0)), lhs)
+            foldBinaryOp(Float_*, PreTransLit(FloatLiteral(-1)), lhs)
 
           case _ => default
         }
 
       case Float_% =>
         (lhs, rhs) match {
-          case _ => default
-        }
-
-      case Double_+ =>
-        (lhs, rhs) match {
-          case (PreTransLit(NumberLiteral(0)), _) =>
-            rhs
-          case (_, PreTransLit(NumberLiteral(_))) =>
-            foldBinaryOp(Double_+, rhs, lhs)
-
-          case (PreTransLit(NumberLiteral(x)),
-              PreTransBinaryOp(innerOp @ (Double_+ | Double_-),
-                  PreTransLit(NumberLiteral(y)), z)) =>
-            foldBinaryOp(innerOp, PreTransLit(DoubleLiteral(x + y)), z)
-
-          case _ => default
-        }
-
-      case Double_- =>
-        (lhs, rhs) match {
-          case (_, PreTransLit(NumberLiteral(r))) =>
-            foldBinaryOp(Double_+, lhs, PreTransLit(DoubleLiteral(-r)))
-
-          case (PreTransLit(NumberLiteral(x)),
-              PreTransBinaryOp(Double_+, PreTransLit(NumberLiteral(y)), z)) =>
-            foldBinaryOp(Double_-, PreTransLit(DoubleLiteral(x - y)), z)
-
-          case (PreTransLit(NumberLiteral(x)),
-              PreTransBinaryOp(Double_-, PreTransLit(NumberLiteral(y)), z)) =>
-            foldBinaryOp(Double_+, PreTransLit(DoubleLiteral(x - y)), z)
-
-          case (_, PreTransBinaryOp(BinaryOp.Double_-,
-              PreTransLit(NumberLiteral(0)), x)) =>
-            foldBinaryOp(Double_+, lhs, x)
-
           case _ => default
         }
 
@@ -3555,8 +3487,9 @@ private[optimizer] abstract class OptimizerCore(
 
           case (PreTransLit(NumberLiteral(1)), _) =>
             rhs
-          case (PreTransLit(NumberLiteral(-1)), _) =>
-            foldBinaryOp(Double_-, PreTransLit(DoubleLiteral(0)), rhs)
+          case (PreTransLit(NumberLiteral(-1)),
+              PreTransBinaryOp(Double_*, PreTransLit(NumberLiteral(-1)), z)) =>
+            z
 
           case _ => default
         }
@@ -3566,7 +3499,7 @@ private[optimizer] abstract class OptimizerCore(
           case (_, PreTransLit(NumberLiteral(1))) =>
             lhs
           case (_, PreTransLit(NumberLiteral(-1))) =>
-            foldBinaryOp(Double_-, PreTransLit(DoubleLiteral(0)), lhs)
+            foldBinaryOp(Double_*, PreTransLit(DoubleLiteral(-1)), lhs)
 
           case _ => default
         }
