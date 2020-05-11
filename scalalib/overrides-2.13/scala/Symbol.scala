@@ -29,7 +29,7 @@ import scala.scalajs.js
 final class Symbol private (val name: String) extends Serializable {
   /** Converts this symbol to a string.
    */
-  override def toString(): String = "'" + name
+  override def toString(): String = "Symbol(" + name + ")"
 
   @throws(classOf[java.io.ObjectStreamException])
   private def readResolve(): Any = Symbol.apply(name)
