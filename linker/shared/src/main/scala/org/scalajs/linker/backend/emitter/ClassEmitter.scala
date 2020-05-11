@@ -1161,21 +1161,21 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       yield js.Block(exports)(tree.pos)
   }
 
-  def genTopLevelExports(tree: LinkedClass)(
+  def genTopLevelExports(topLevelExports: List[LinkedTopLevelExport])(
       implicit globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
-    val exportsWithGlobals = tree.topLevelExports.map { topLevelExport =>
-      implicit val pos = topLevelExport.pos
+    val exportsWithGlobals = topLevelExports.map { topLevelExport =>
+      implicit val pos = topLevelExport.tree.pos
 
-      topLevelExport match {
+      topLevelExport.tree match {
         case TopLevelJSClassExportDef(exportName) =>
           genConstValueExportDef(
-              exportName, genNonNativeJSClassConstructor(tree.name.name))
+              exportName, genNonNativeJSClassConstructor(topLevelExport.owningClass))
         case TopLevelModuleExportDef(exportName) =>
-          genConstValueExportDef(exportName, genLoadModule(tree.name.name))
+          genConstValueExportDef(exportName, genLoadModule(topLevelExport.owningClass))
         case e: TopLevelMethodExportDef =>
           genTopLevelMethodExportDef(e)
         case e: TopLevelFieldExportDef =>
-          genTopLevelFieldExportDef(tree.className, e)
+          genTopLevelFieldExportDef(topLevelExport.owningClass, e)
       }
     }
 

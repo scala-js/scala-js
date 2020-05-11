@@ -38,7 +38,7 @@ final class Refiner(config: CommonPhaseConfig) {
 
     val linkedClassesByName =
       Map(unit.classDefs.map(c => c.className -> c): _*)
-    inputProvider.update(linkedClassesByName)
+    inputProvider.update(linkedClassesByName, unit.topLevelExports)
 
     val analysis = logger.timeFuture("Refiner: Compute reachability") {
       val allSymbolRequirements = {
@@ -59,7 +59,8 @@ final class Refiner(config: CommonPhaseConfig) {
           refineClassDef(linkedClassesByName(info.className), info)
         }
 
-        new LinkingUnit(unit.coreSpec, linkedClassDefs.toList, unit.moduleInitializers)
+        new LinkingUnit(unit.coreSpec, linkedClassDefs.toList, unit.topLevelExports,
+            unit.moduleInitializers)
       }
 
       inputProvider.cleanAfterRun()
@@ -128,19 +129,27 @@ final class Refiner(config: CommonPhaseConfig) {
 private object Refiner {
   private class InputProvider extends Analyzer.InputProvider {
     private var linkedClassesByName: Map[ClassName, LinkedClass] = _
+    private var topLevelExports: List[LinkedTopLevelExport] = _
     private val cache = mutable.Map.empty[ClassName, LinkedClassInfoCache]
 
-    def update(linkedClassesByName: Map[ClassName, LinkedClass]): Unit = {
+    def update(linkedClassesByName: Map[ClassName, LinkedClass],
+        topLevelExports: List[LinkedTopLevelExport]): Unit = {
       this.linkedClassesByName = linkedClassesByName
+      this.topLevelExports = topLevelExports
     }
 
     def classesWithEntryPoints(): Iterable[ClassName] = {
-      (for {
-        linkedClass <- linkedClassesByName.valuesIterator
-        if linkedClass.hasEntryPoint
-      } yield {
-        linkedClass.className
-      }).toList
+      linkedClassesByName.values
+        .filter(_.hasStaticInitializer)
+        .map(_.className)
+    }
+
+    def loadTopLevelExportInfos()(
+        implicit ec: ExecutionContext): Future[List[Infos.TopLevelExportInfo]] = Future {
+      /* We do not cache top-level exports, because they're quite rare,
+       * and usually quite small when they exist.
+       */
+      Infos.generateTopLevelExportInfos(topLevelExports)
     }
 
     def loadInfo(className: ClassName)(implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] =
@@ -191,15 +200,6 @@ private object Refiner {
           builder.addJSNativeMember(jsNativeMember)
         for (info <- exportedMembersInfoCaches.getInfos(linkedClass.exportedMembers))
           builder.addExportedMember(info)
-
-        if (linkedClass.topLevelExports.nonEmpty) {
-          /* We do not cache top-level exports, because they're quite rare,
-           * and usually quite small when they exist.
-           */
-          val info = Infos.generateTopLevelExportsInfo(
-              linkedClass.className, linkedClass.topLevelExports)
-          builder.addTopLevelExportedMember(info)
-        }
 
         info = builder.result()
       }

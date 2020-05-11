@@ -21,6 +21,7 @@ import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
 import org.scalajs.linker.backend.emitter.Transients._
+import org.scalajs.linker.standard.LinkedTopLevelExport
 
 object Infos {
 
@@ -41,9 +42,7 @@ object Infos {
       val referencedFieldClasses: List[ClassName],
       val methods: List[MethodInfo],
       val jsNativeMembers: Map[MethodName, JSNativeLoadSpec],
-      val exportedMembers: List[ReachabilityInfo],
-      val topLevelExportedMembers: List[ReachabilityInfo],
-      val topLevelExportNames: List[String]
+      val exportedMembers: List[ReachabilityInfo]
   ) {
     override def toString(): String = className.nameString
   }
@@ -66,6 +65,12 @@ object Infos {
       new MethodInfo(methodName, namespace, isAbstract, reachabilityInfo)
     }
   }
+
+  final class TopLevelExportInfo private[Infos] (
+      val owningClass: ClassName,
+      val reachability: ReachabilityInfo,
+      val name: String
+  )
 
   final class ReachabilityInfo private[Infos] (
       val privateJSFieldsUsed: Map[ClassName, List[FieldName]],
@@ -102,8 +107,6 @@ object Infos {
     private val methods = mutable.ListBuffer.empty[MethodInfo]
     private val jsNativeMembers = mutable.Map.empty[MethodName, JSNativeLoadSpec]
     private val exportedMembers = mutable.ListBuffer.empty[ReachabilityInfo]
-    private val topLevelExportedMembers = mutable.ListBuffer.empty[ReachabilityInfo]
-    private var topLevelExportNames: List[String] = Nil
 
     def maybeAddReferencedFieldClass(tpe: Type): this.type = {
       tpe match {
@@ -132,21 +135,10 @@ object Infos {
       this
     }
 
-    def addTopLevelExportedMember(reachabilityInfo: ReachabilityInfo): this.type = {
-      topLevelExportedMembers += reachabilityInfo
-      this
-    }
-
-    def setTopLevelExportNames(names: List[String]): this.type = {
-      topLevelExportNames = names
-      this
-    }
-
     def result(): ClassInfo = {
       new ClassInfo(className, kind, superClass,
           interfaces, jsNativeLoadSpec, referencedFieldClasses.toList,
-          methods.toList, jsNativeMembers.toMap, exportedMembers.toList,
-          topLevelExportedMembers.toList, topLevelExportNames)
+          methods.toList, jsNativeMembers.toMap, exportedMembers.toList)
     }
   }
 
@@ -354,15 +346,25 @@ object Infos {
         builder.addJSNativeMember(nativeMemberDef)
     }
 
-    if (classDef.topLevelExportDefs.nonEmpty) {
-      val info = generateTopLevelExportsInfo(classDef.name.name, classDef.topLevelExportDefs)
-      builder.addTopLevelExportedMember(info)
-
-      val names = classDef.topLevelExportDefs.map(_.topLevelExportName)
-      builder.setTopLevelExportNames(names)
-    }
-
     builder.result()
+  }
+
+  def generateTopLevelExportInfos(classDef: ClassDef): List[TopLevelExportInfo] = {
+    classDef.topLevelExportDefs.map { topLevelExportDef =>
+      val info = generateTopLevelExportInfo(classDef.name.name, topLevelExportDef)
+      new TopLevelExportInfo(classDef.name.name, info, topLevelExportDef.topLevelExportName)
+    }
+  }
+
+  def generateTopLevelExportInfos(
+      topLevelExports: List[LinkedTopLevelExport]): List[TopLevelExportInfo] = {
+    for {
+      topLevelExport <- topLevelExports
+    } yield {
+      val infos = Infos.generateTopLevelExportInfo(
+          topLevelExport.owningClass, topLevelExport.tree)
+      new TopLevelExportInfo(topLevelExport.owningClass, infos, topLevelExport.exportName)
+    }
   }
 
   /** Generates the [[MethodInfo]] of a
@@ -384,10 +386,10 @@ object Infos {
     new GenInfoTraverser().generateJSPropertyInfo(propertyDef)
 
   /** Generates the [[MethodInfo]] for the top-level exports. */
-  def generateTopLevelExportsInfo(enclosingClass: ClassName,
-      topLevelExportDefs: List[TopLevelExportDef]): ReachabilityInfo = {
-    new GenInfoTraverser().generateTopLevelExportsInfo(enclosingClass,
-        topLevelExportDefs)
+  def generateTopLevelExportInfo(enclosingClass: ClassName,
+      topLevelExportDef: TopLevelExportDef): ReachabilityInfo = {
+    new GenInfoTraverser().generateTopLevelExportInfo(enclosingClass,
+        topLevelExportDef)
   }
 
   private final class GenInfoTraverser extends Traverser {
@@ -427,9 +429,9 @@ object Infos {
       builder.result()
     }
 
-    def generateTopLevelExportsInfo(enclosingClass: ClassName,
-        topLevelExportDefs: List[TopLevelExportDef]): ReachabilityInfo = {
-      topLevelExportDefs.foreach {
+    def generateTopLevelExportInfo(enclosingClass: ClassName,
+        topLevelExportDef: TopLevelExportDef): ReachabilityInfo = {
+      topLevelExportDef match {
         case _:TopLevelJSClassExportDef =>
           builder.addInstantiatedClass(enclosingClass)
 

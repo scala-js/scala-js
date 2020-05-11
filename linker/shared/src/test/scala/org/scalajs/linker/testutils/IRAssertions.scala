@@ -89,8 +89,6 @@ object IRAssertions {
             traverseMemberDef(memberDef.value)
           for (memberDef <- node.exportedMembers)
             traverseMemberDef(memberDef.value)
-          for (topLevelExportDef <- node.topLevelExports)
-            traverseTopLevelExportDef(topLevelExportDef)
         }
       }
     }

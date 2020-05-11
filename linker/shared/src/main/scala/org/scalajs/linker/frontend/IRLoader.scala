@@ -52,32 +52,37 @@ final class IRLoader extends Analyzer.InputProvider with MethodSynthesizer.Input
 
   def classesWithEntryPoints(): Iterable[ClassName] = entryPoints
 
+  def loadTopLevelExportInfos()(implicit ec: ExecutionContext): Future[List[Infos.TopLevelExportInfo]] = {
+    Future.traverse(entryPoints)(get(_, _.topLevelExportInfos))
+      .map(_.flatten.toList)
+  }
+
   def loadInfo(className: ClassName)(
-      implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] =
-    getCache(className).map(_.loadInfo(classNameToFile(className)))
+      implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] = {
+    maybeGet(className, _.classInfo)
+  }
 
   def loadClassDefAndVersion(className: ClassName)(
       implicit ec: ExecutionContext): Future[(ClassDef, Option[String])] = {
-    val fileCache = getCache(className).getOrElse {
-      throw new AssertionError(s"Cannot load file for class $className")
-    }
-    fileCache.loadClassDefAndVersion(classNameToFile(className))
+    get(className, u => (u.classDef, u.version))
   }
 
   def loadClassDef(className: ClassName)(
       implicit ec: ExecutionContext): Future[ClassDef] = {
-    loadClassDefAndVersion(className).map(_._1)
+    get(className, _.classDef)
   }
 
-  private def getCache(className: ClassName): Option[ClassDefAndInfoCache] = {
-    cache.get(className).orElse {
-      if (classNameToFile.contains(className)) {
-        val fileCache = new ClassDefAndInfoCache
-        cache += className -> fileCache
-        Some(fileCache)
-      } else {
-        None
-      }
+  private def get[T](className: ClassName, f: ClassDefAndInfoCache.Update => T)(
+      implicit ec: ExecutionContext): Future[T] = {
+    maybeGet(className, f).getOrElse {
+      throw new AssertionError(s"Cannot load file for class $className")
+    }
+  }
+
+  private def maybeGet[T](className: ClassName, f: ClassDefAndInfoCache.Update => T)(
+      implicit ec: ExecutionContext): Option[Future[T]] = {
+    classNameToFile.get(className).map { irFile =>
+      cache.getOrElseUpdate(className, new ClassDefAndInfoCache).update(irFile).map(f)
     }
   }
 
@@ -88,23 +93,23 @@ final class IRLoader extends Analyzer.InputProvider with MethodSynthesizer.Input
   }
 }
 
+private object ClassDefAndInfoCache {
+  final class Update(
+      val classDef: ClassDef,
+      val classInfo: Infos.ClassInfo,
+      val topLevelExportInfos: List[Infos.TopLevelExportInfo],
+      val version: Option[String])
+}
+
 private final class ClassDefAndInfoCache {
+  import ClassDefAndInfoCache.Update
+
   private var cacheUsed: Boolean = false
   private var version: Option[String] = None
-  private var cacheUpdate: Future[(ClassDef, Infos.ClassInfo)] = _
+  private var cacheUpdate: Future[Update] = _
 
-  def loadInfo(irFile: IRFileImpl)(
-      implicit ec: ExecutionContext): Future[Infos.ClassInfo] = {
-    update(irFile).map(_._2)
-  }
-
-  def loadClassDefAndVersion(irFile: IRFileImpl)(
-      implicit ec: ExecutionContext): Future[(ClassDef, Option[String])] = {
-    update(irFile).map(s => (s._1, version))
-  }
-
-  private def update(irFile: IRFileImpl)(
-      implicit ec: ExecutionContext): Future[(ClassDef, Infos.ClassInfo)] = synchronized {
+  def update(irFile: IRFileImpl)(
+      implicit ec: ExecutionContext): Future[Update] = synchronized {
     /* If the cache was already used in this run, the classDef and info are
      * already correct, no matter what the versions say.
      */
@@ -115,7 +120,10 @@ private final class ClassDefAndInfoCache {
       if (version.isEmpty || newVersion.isEmpty ||
           version.get != newVersion.get) {
         version = newVersion
-        cacheUpdate = irFile.tree.map(t => (t, Infos.generateClassInfo(t)))
+        cacheUpdate = irFile.tree.map { tree =>
+          new Update(tree, Infos.generateClassInfo(tree),
+              Infos.generateTopLevelExportInfos(tree), version)
+        }
       }
     }
 

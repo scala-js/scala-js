@@ -110,21 +110,28 @@ final class BaseLinker(config: CommonPhaseConfig) {
   private def assemble(moduleInitializers: Seq[ModuleInitializer],
       analysis: Analysis)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
     def assembleClass(info: ClassInfo) = {
-      val classAndVersion = irLoader.loadClassDefAndVersion(info.className)
+      val className = info.className
+      val classAndVersion = irLoader.loadClassDefAndVersion(className)
       val syntheticMethods = methodSynthesizer.synthesizeMembers(info, analysis)
 
       for {
         (classDef, version) <- classAndVersion
         syntheticMethods <- syntheticMethods
       } yield {
-        linkedClassDef(classDef, version, syntheticMethods, info)
+        val linkedClass = linkedClassDef(classDef, version, syntheticMethods, info)
+        val linkedTopLevelExports =
+          classDef.topLevelExportDefs.map(new LinkedTopLevelExport(className, _))
+        (linkedClass, linkedTopLevelExports)
       }
     }
 
     for {
-      linkedClassDefs <- Future.traverse(analysis.classInfos.values)(assembleClass)
+      assembled <- Future.traverse(analysis.classInfos.values)(assembleClass)
     } yield {
+      val (linkedClassDefs, linkedTopLevelExports) = assembled.unzip
+
       new LinkingUnit(config.coreSpec, linkedClassDefs.toList,
+          linkedTopLevelExports.flatten.toList,
           moduleInitializers.toList)
     }
   }
@@ -197,7 +204,6 @@ final class BaseLinker(config: CommonPhaseConfig) {
         methods.result(),
         exportedMembers.result(),
         jsNativeMembers.result(),
-        classDef.topLevelExportDefs,
         classDef.optimizerHints,
         classDef.pos,
         ancestors.toList,
