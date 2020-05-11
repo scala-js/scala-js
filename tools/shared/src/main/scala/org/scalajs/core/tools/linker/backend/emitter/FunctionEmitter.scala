@@ -1884,22 +1884,22 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
             case Int_>>  => js.BinaryOp(JSBinaryOp.>>, newLhs, newRhs)
 
             case Float_+ => genFround(js.BinaryOp(JSBinaryOp.+, newLhs, newRhs))
-            case Float_- =>
+            case Float_- => genFround(js.BinaryOp(JSBinaryOp.-, newLhs, newRhs))
+            case Float_* =>
               genFround(lhs match {
-                case DoubleLiteral(0.0) => js.UnaryOp(JSUnaryOp.-, newRhs)
-                case _                  => js.BinaryOp(JSBinaryOp.-, newLhs, newRhs)
+                case FloatLiteral(-1.0f) => js.UnaryOp(JSUnaryOp.-, newRhs)
+                case _                   => js.BinaryOp(JSBinaryOp.*, newLhs, newRhs)
               })
-            case Float_* => genFround(js.BinaryOp(JSBinaryOp.*, newLhs, newRhs))
             case Float_/ => genFround(js.BinaryOp(JSBinaryOp./, newLhs, newRhs))
             case Float_% => genFround(js.BinaryOp(JSBinaryOp.%, newLhs, newRhs))
 
             case Double_+ => js.BinaryOp(JSBinaryOp.+, newLhs, newRhs)
-            case Double_- =>
+            case Double_- => js.BinaryOp(JSBinaryOp.-, newLhs, newRhs)
+            case Double_* =>
               lhs match {
-                case DoubleLiteral(0.0) => js.UnaryOp(JSUnaryOp.-, newRhs)
-                case _                  => js.BinaryOp(JSBinaryOp.-, newLhs, newRhs)
+                case DoubleLiteral(-1.0) => js.UnaryOp(JSUnaryOp.-, newRhs)
+                case _                   => js.BinaryOp(JSBinaryOp.*, newLhs, newRhs)
               }
-            case Double_* => js.BinaryOp(JSBinaryOp.*, newLhs, newRhs)
             case Double_/ => js.BinaryOp(JSBinaryOp./, newLhs, newRhs)
             case Double_% => js.BinaryOp(JSBinaryOp.%, newLhs, newRhs)
 
