@@ -358,9 +358,9 @@ class AnalyzerTest {
     val analysis = computeAnalysis(classDefs)
 
     assertContainsError("ConflictingTopLevelExport(foo, A, B)", analysis) {
-      case ConflictingTopLevelExport("foo", List(ClsInfo("A"), ClsInfo("B"))) =>
+      case ConflictingTopLevelExport("foo", List(ClsName("A"), ClsName("B"))) =>
         true
-      case ConflictingTopLevelExport("foo", List(ClsInfo("B"), ClsInfo("A"))) =>
+      case ConflictingTopLevelExport("foo", List(ClsName("B"), ClsName("A"))) =>
         true
     }
   }
@@ -602,5 +602,10 @@ object AnalyzerTest {
   object MethInfo {
     def unapply(methodInfo: Analysis.MethodInfo): Some[(String, String)] =
       Some((methodInfo.owner.className.nameString, methodInfo.methodName.nameString))
+  }
+
+  object ClsName {
+    def unapply(className: ClassName): Some[String] =
+      Some(className.nameString)
   }
 }

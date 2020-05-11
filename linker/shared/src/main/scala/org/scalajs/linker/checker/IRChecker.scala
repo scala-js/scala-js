@@ -80,8 +80,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             ClassKind.NativeJSModuleClass =>
           if (classDef.fields.nonEmpty ||
               classDef.methods.exists(!_.value.flags.namespace.isStatic) ||
-              classDef.exportedMembers.nonEmpty ||
-              classDef.topLevelExports.nonEmpty) {
+              classDef.exportedMembers.nonEmpty) {
             val kind =
               if (classDef.kind == ClassKind.AbstractJSType) "Abstract"
               else "Native"
@@ -92,6 +91,37 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           checkScalaClassDef(classDef)
       }
     }
+
+    for (topLevelExport <- unit.topLevelExports) {
+      implicit val ctx = ErrorContext(topLevelExport.tree)
+
+      val clazz = lookupClass(topLevelExport.owningClass)
+
+      if (!clazz.kind.isAnyNonNativeClass) {
+        reportError("only non-native classes may have exports")
+      }
+
+      topLevelExport.tree match {
+        case tree: TopLevelJSClassExportDef =>
+          checkTopLevelJSClassExportDef(tree, clazz)
+
+        case tree: TopLevelModuleExportDef =>
+          checkTopLevelModuleExportDef(tree, clazz)
+
+        case TopLevelMethodExportDef(methodDef) =>
+          checkExportedMethodDef(methodDef, clazz, isTopLevel = true)
+
+        case TopLevelFieldExportDef(_, field) =>
+          clazz.lookupStaticField(field.name).fold {
+            reportError(i"Cannot export non-existent static field '$field'")
+          } { checkedField =>
+            val tpe = checkedField.tpe
+            if (tpe != AnyType)
+              reportError(i"Cannot export field '$field' of type $tpe")
+          }
+      }
+    }
+
     errorCount
   }
 
@@ -228,46 +258,23 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           reportError("Module class must have a parameterless constructor")
       }
 
+      val checkedClass = classes(classDef.name.name)
+
       // Check exported members
       for (member <- classDef.exportedMembers) {
         implicit val ctx = ErrorContext(member.value)
 
         member.value match {
           case m: JSMethodDef =>
-            checkExportedMethodDef(m, classDef, isTopLevel = false)
+            checkExportedMethodDef(m, checkedClass, isTopLevel = false)
 
           case p: JSPropertyDef =>
-            checkExportedPropertyDef(p, classDef)
+            checkExportedPropertyDef(p, checkedClass)
 
           // Anything else is illegal
           case _ =>
             reportError("Illegal exported class member of type " +
                 member.value.getClass.getName)
-        }
-      }
-
-      // Check top-level exports
-      for (tree <- classDef.topLevelExports) {
-        implicit val ctx = ErrorContext(tree)
-
-        tree match {
-          case tree: TopLevelJSClassExportDef =>
-            checkTopLevelJSClassExportDef(tree, classDef)
-
-          case tree: TopLevelModuleExportDef =>
-            checkTopLevelModuleExportDef(tree, classDef)
-
-          case TopLevelMethodExportDef(methodDef) =>
-            checkExportedMethodDef(methodDef, classDef, isTopLevel = true)
-
-          case TopLevelFieldExportDef(_, field) =>
-            lookupClass(classDef.name.name).lookupStaticField(field.name).fold {
-              reportError(i"Cannot export non-existent static field '$field'")
-            } { checkedField =>
-              val tpe = checkedField.tpe
-              if (tpe != AnyType)
-                reportError(i"Cannot export field '$field' of type $tpe")
-            }
         }
       }
     } else {
@@ -280,7 +287,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       if (classDef.fields.nonEmpty)
         reportError(i"$kindStr may not have fields")
 
-      if (classDef.exportedMembers.nonEmpty || classDef.topLevelExports.nonEmpty)
+      if (classDef.exportedMembers.nonEmpty)
         reportError(i"$kindStr may not have exports")
     }
 
@@ -385,7 +392,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   }
 
   private def checkExportedMethodDef(methodDef: JSMethodDef,
-      classDef: LinkedClass, isTopLevel: Boolean): Unit = withPerMethodState {
+      clazz: CheckedClass, isTopLevel: Boolean): Unit = withPerMethodState {
     val JSMethodDef(flags, pName, params,  body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
@@ -396,18 +403,18 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     if (flags.namespace.isPrivate)
       reportError("An exported method cannot be private")
 
-    if (!isTopLevel && !classDef.kind.isAnyNonNativeClass) {
+    if (!isTopLevel && !clazz.kind.isAnyNonNativeClass) {
       reportError(i"Exported method def can only appear in a class")
       return
     }
 
-    if (!isTopLevel && static && classDef.kind != ClassKind.JSClass)
+    if (!isTopLevel && static && clazz.kind != ClassKind.JSClass)
       reportError("Exported method def in non-JS class cannot be static")
 
     if (isTopLevel && !static)
       reportError("Top level export must be static")
 
-    checkExportedPropertyName(pName, classDef, isTopLevel)
+    checkExportedPropertyName(pName, clazz, isTopLevel)
     checkJSParamDefs(params)
 
     def isJSConstructor = {
@@ -417,23 +424,23 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       })
     }
 
-    if (classDef.kind.isJSClass && isJSConstructor) {
-      checkJSClassConstructor(methodDef, classDef)
+    if (clazz.kind.isJSClass && isJSConstructor) {
+      checkJSClassConstructor(methodDef, clazz)
     } else {
       val thisType = {
         if (static) NoType
-        else if (classDef.kind.isJSClass) AnyType
-        else ClassType(classDef.name.name)
+        else if (clazz.kind.isJSClass) AnyType
+        else ClassType(clazz.name)
       }
 
-      val bodyEnv = Env.fromSignature(thisType, classDef.jsClassCaptures,
+      val bodyEnv = Env.fromSignature(thisType, clazz.jsClassCaptures,
           params, AnyType)
       typecheckExpect(body, bodyEnv, AnyType)
     }
   }
 
   private def checkJSClassConstructor(methodDef: JSMethodDef,
-      classDef: LinkedClass): Unit = {
+      clazz: CheckedClass): Unit = {
     val JSMethodDef(static, _, params, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
@@ -455,7 +462,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         (JSSuperConstructorCall(Nil)(methodDef.pos), Nil)
     }
 
-    val initialEnv = Env.fromSignature(NoType, classDef.jsClassCaptures,
+    val initialEnv = Env.fromSignature(NoType, clazz.jsClassCaptures,
         params, NoType, isConstructor = true)
 
     val preparedEnv = prepStats.foldLeft(initialEnv) { (prevEnv, stat) =>
@@ -470,7 +477,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   }
 
   private def checkExportedPropertyDef(propDef: JSPropertyDef,
-      classDef: LinkedClass): Unit = withPerMethodState {
+      clazz: CheckedClass): Unit = withPerMethodState {
     val JSPropertyDef(flags, pName, getterBody, setterArgAndBody) = propDef
     implicit val ctx = ErrorContext(propDef)
 
@@ -481,20 +488,20 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     if (flags.namespace.isPrivate)
       reportError("An exported property def cannot be private")
 
-    if (!classDef.kind.isAnyNonNativeClass) {
+    if (!clazz.kind.isAnyNonNativeClass) {
       reportError(i"Exported property def can only appear in a class")
       return
     }
 
-    checkExportedPropertyName(pName, classDef, isTopLevel = false)
+    checkExportedPropertyName(pName, clazz, isTopLevel = false)
 
     val thisType =
       if (static) NoType
-      else if (classDef.kind.isJSClass) AnyType
-      else ClassType(classDef.name.name)
+      else if (clazz.kind.isJSClass) AnyType
+      else ClassType(clazz.name)
 
     getterBody.foreach { getterBody =>
-      val getterBodyEnv = Env.fromSignature(thisType, classDef.jsClassCaptures,
+      val getterBodyEnv = Env.fromSignature(thisType, clazz.jsClassCaptures,
           Nil, AnyType)
       typecheckExpect(getterBody, getterBodyEnv, AnyType)
     }
@@ -507,41 +514,41 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       if (setterArg.rest)
         reportError(i"Rest parameter ${setterArg.name} is illegal in setter")
 
-      val setterBodyEnv = Env.fromSignature(thisType, classDef.jsClassCaptures,
+      val setterBodyEnv = Env.fromSignature(thisType, clazz.jsClassCaptures,
           List(setterArg), NoType)
       typecheckStat(setterBody, setterBodyEnv)
     }
   }
 
   private def checkExportedPropertyName(propName: Tree,
-      classDef: LinkedClass, isTopLevel: Boolean)(
+      clazz: CheckedClass, isTopLevel: Boolean)(
       implicit ctx: ErrorContext): Unit = {
     propName match {
       case StringLiteral(name) =>
-        if (!classDef.kind.isJSClass && name.contains("__"))
+        if (!clazz.kind.isJSClass && name.contains("__"))
           reportError("Exported method def name cannot contain __")
 
       case _ =>
-        if (isTopLevel || !classDef.kind.isJSClass)
+        if (isTopLevel || !clazz.kind.isJSClass)
           reportError("Only JS classes may contain members with computed names")
         typecheckExpect(propName, Env.empty, AnyType)
     }
   }
 
   private def checkTopLevelJSClassExportDef(
-      classExportDef: TopLevelJSClassExportDef, classDef: LinkedClass): Unit = {
+      classExportDef: TopLevelJSClassExportDef, clazz: CheckedClass): Unit = {
     implicit val ctx = ErrorContext(classExportDef)
 
-    if (classDef.kind != ClassKind.JSClass)
+    if (clazz.kind != ClassKind.JSClass)
       reportError(i"Exported JS class def can only appear in a JS class")
   }
 
   private def checkTopLevelModuleExportDef(
       topLevelModuleDef: TopLevelModuleExportDef,
-      classDef: LinkedClass): Unit = {
+      clazz: CheckedClass): Unit = {
     implicit val ctx = ErrorContext(topLevelModuleDef)
 
-    if (!classDef.kind.hasModuleAccessor) {
+    if (!clazz.kind.hasModuleAccessor) {
       reportError(
           "Top-level module export def can only appear in a module class")
     }

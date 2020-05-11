@@ -75,9 +75,7 @@ final class Emitter(config: Emitter.Config) {
 
     moduleKind match {
       case ModuleKind.NoModule =>
-        val topLevelVars = unit.classDefs
-          .flatMap(_.topLevelExports)
-          .map(_.topLevelExportName)
+        val topLevelVars = unit.topLevelExports.map(_.exportName)
 
         val header = {
           val maybeTopLevelVarDecls = if (topLevelVars.nonEmpty) {
@@ -112,6 +110,12 @@ final class Emitter(config: Emitter.Config) {
       logger.time("Emitter: Write trees") {
         val WithGlobals(coreJSLib, coreJSLibTrackedGlobalRefs) =
           state.coreJSLibCache.lib
+
+        val WithGlobals(topLevelExports, topLevelExportsTrackedGlobalRefs) = {
+          // We do not cache top level exports since typically there are few.
+          val knowledgeAccessor = new knowledgeGuardian.KnowledgeAccessor {}
+          classEmitter.genTopLevelExports(unit.topLevelExports)(knowledgeAccessor)
+        }
 
         def classIter = generatedClasses.iterator
 
@@ -152,13 +156,14 @@ final class Emitter(config: Emitter.Config) {
              * causing JS static initializers to run. Those also must not observe
              * a non-initialized state of other static fields.
              */
-            classIter.flatMap(_.topLevelExports) ++
+            topLevelExports ++
 
             /* Module initializers, which by spec run at the end. */
             unit.moduleInitializers.iterator.map(classEmitter.genModuleInitializer(_))
         )
 
-        WithGlobals(treesIter.toList, trackedGlobalRefs ++ coreJSLibTrackedGlobalRefs)
+        WithGlobals(treesIter.toList,
+            trackedGlobalRefs ++ coreJSLibTrackedGlobalRefs ++ topLevelExportsTrackedGlobalRefs)
       }
     } finally {
       endRun(logger)
@@ -528,24 +533,12 @@ final class Emitter(config: Emitter.Config) {
       classEmitter.genStaticInitialization(linkedClass)
     }
 
-    // Top-level exports
-
-    val topLevelExports = if (linkedClass.topLevelExports.isEmpty) {
-      Nil
-    } else {
-      val treeWithGlobals = classTreeCache.topLevelExports.getOrElseUpdate(
-          classEmitter.genTopLevelExports(linkedClass)(classCache))
-      addGlobalRefs(treeWithGlobals.globalVarNames)
-      treeWithGlobals.value
-    }
-
     // Build the result
 
     new GeneratedClass(
         main.reverse,
         staticFields,
         staticInitialization,
-        topLevelExports,
         trackedGlobalRefs
     )
   }
@@ -757,7 +750,6 @@ object Emitter {
       val main: List[js.Tree],
       val staticFields: List[js.Tree],
       val staticInitialization: List[js.Tree],
-      val topLevelExports: List[js.Tree],
       val trackedGlobalRefs: Set[String]
   )
 

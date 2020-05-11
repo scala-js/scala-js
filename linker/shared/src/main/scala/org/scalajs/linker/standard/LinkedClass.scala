@@ -45,7 +45,6 @@ final class LinkedClass(
     val methods: List[Versioned[MethodDef]],
     val exportedMembers: List[Versioned[JSMethodPropDef]],
     val jsNativeMembers: List[JSNativeMemberDef],
-    val topLevelExports: List[TopLevelExportDef],
     val optimizerHints: OptimizerHints,
     val pos: Position,
 
@@ -58,10 +57,8 @@ final class LinkedClass(
 
   def className: ClassName = name.name
 
-  val hasEntryPoint: Boolean = {
-    topLevelExports.nonEmpty ||
+  val hasStaticInitializer: Boolean =
     methods.exists(_.value.flags.namespace == MemberNamespace.StaticConstructor)
-  }
 
   def fullName: String = className.nameString
 
@@ -103,7 +100,6 @@ final class LinkedClass(
       methods: List[Versioned[MethodDef]] = this.methods,
       exportedMembers: List[Versioned[JSMethodPropDef]] = this.exportedMembers,
       jsNativeMembers: List[JSNativeMemberDef] = this.jsNativeMembers,
-      topLevelExports: List[TopLevelExportDef] = this.topLevelExports,
       optimizerHints: OptimizerHints = this.optimizerHints,
       pos: Position = this.pos,
       ancestors: List[ClassName] = this.ancestors,
@@ -123,7 +119,6 @@ final class LinkedClass(
         methods,
         exportedMembers,
         jsNativeMembers,
-        topLevelExports,
         optimizerHints,
         pos,
         ancestors,

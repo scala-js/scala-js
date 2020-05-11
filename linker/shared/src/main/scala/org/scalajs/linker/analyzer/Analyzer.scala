@@ -117,6 +117,9 @@ private final class Analyzer(config: CommonPhaseConfig,
     // Entry points (top-level exports and static initializers)
     for (className <- inputProvider.classesWithEntryPoints())
       lookupClass(className)(_.reachEntryPoints())
+
+    // Reach top level exports
+    reachTopLevelExports()
   }
 
   private def postLoad(): Unit = {
@@ -129,9 +132,6 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     // Reach additional data, based on reflection methods used
     reachDataThroughReflection(infos)
-
-    // Make sure top-level export names do not conflict
-    checkConflictingExports(infos)
   }
 
   private def reachSymbolRequirement(requirement: SymbolRequirement,
@@ -201,6 +201,18 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
+  private def reachTopLevelExports(): Unit = {
+    workQueue.enqueue(inputProvider.loadTopLevelExportInfos()(ec)) { infos =>
+      // Reach exports.
+      infos.foreach(i => followReachabilityInfo(i.reachability)(FromExports))
+
+      // Check conflicts.
+      for ((name, i) <- infos.groupBy(_.name) if i.size > 1) {
+        _errors += ConflictingTopLevelExport(name, i.map(_.owningClass))
+      }
+    }
+  }
+
   /** Reach additional class data based on reflection methods being used. */
   private def reachDataThroughReflection(
       classInfos: scala.collection.Map[ClassName, ClassInfo]): Unit = {
@@ -229,23 +241,6 @@ private final class Analyzer(config: CommonPhaseConfig,
         }
         loop(classInfo)
       }
-    }
-  }
-
-  private def checkConflictingExports(
-      classInfos: scala.collection.Map[ClassName, ClassInfo]): Unit = {
-    val namesAndInfos = for {
-      info <- classInfos.values
-      name <- info.topLevelExportNames
-    } yield {
-      name -> info
-    }
-
-    for {
-      (name, targets) <- namesAndInfos.groupBy(_._1)
-      if targets.size > 1
-    } {
-      _errors += ConflictingTopLevelExport(name, targets.map(_._2).toList)
     }
   }
 
@@ -377,7 +372,6 @@ private final class Analyzer(config: CommonPhaseConfig,
     val isJSClass = data.kind.isJSClass
     val isJSType = data.kind.isJSType
     val isAnyClass = isScalaClass || isJSClass
-    val topLevelExportNames = data.topLevelExportNames
 
     // Note: j.l.Object is special and is validated upfront
 
@@ -852,10 +846,6 @@ private final class Analyzer(config: CommonPhaseConfig,
           _.reachStatic()(fromAnalyzer)
         }
       }
-
-      // Top-level exports
-      for (reachabilityInfo <- data.topLevelExportedMembers)
-        followReachabilityInfo(reachabilityInfo)
     }
 
     def accessModule()(implicit from: From): Unit = {
@@ -1199,6 +1189,9 @@ object Analyzer {
 
   trait InputProvider {
     def classesWithEntryPoints(): Iterable[ClassName]
+
+    def loadTopLevelExportInfos()(
+        implicit ec: ExecutionContext): Future[List[Infos.TopLevelExportInfo]]
 
     def loadInfo(className: ClassName)(
         implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]]

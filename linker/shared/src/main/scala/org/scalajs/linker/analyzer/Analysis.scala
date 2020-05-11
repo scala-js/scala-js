@@ -162,7 +162,7 @@ object Analysis {
   final case class NotAModule(info: ClassInfo, from: From) extends Error
   final case class MissingMethod(info: MethodInfo, from: From) extends Error
   final case class ConflictingDefaultMethods(infos: List[MethodInfo], from: From) extends Error
-  final case class ConflictingTopLevelExport(name: String, infos: List[ClassInfo]) extends Error {
+  final case class ConflictingTopLevelExport(name: String, infos: List[ClassName]) extends Error {
     def from: From = FromExports
   }
 
@@ -203,7 +203,7 @@ object Analysis {
         s"Conflicting default methods: ${infos.map(_.fullDisplayName).mkString(" ")}"
       case ConflictingTopLevelExport(name, infos) =>
         s"Conflicting top level export for name $name involving " +
-        infos.map(_.displayName).mkString(", ")
+        infos.map(_.nameString).mkString(", ")
     }
 
     logger.log(level, headMsg)

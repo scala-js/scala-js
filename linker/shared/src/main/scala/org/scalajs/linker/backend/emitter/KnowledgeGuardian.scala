@@ -41,6 +41,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
    */
   def update(linkingUnit: LinkingUnit): Boolean = {
     val hasInlineableInit = computeHasInlineableInit(linkingUnit)
+    val staticFieldMirrors =
+      computeStaticFieldMirrors(linkingUnit.topLevelExports)
 
     var classClass: Option[LinkedClass] = None
     val representativeClasses = Iterable.newBuilder[LinkedClass]
@@ -49,12 +51,14 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     for (linkedClass <- linkingUnit.classDefs) {
       val className = linkedClass.className
       val thisClassHasInlineableInit = hasInlineableInit(className)
+      val thisClassStaticFieldMirrors = staticFieldMirrors(className)
+
       classes.get(className).fold[Unit] {
         // new class
         classes.put(className,
-            new Class(linkedClass, thisClassHasInlineableInit))
+            new Class(linkedClass, thisClassHasInlineableInit, thisClassStaticFieldMirrors))
       } { existingCls =>
-        existingCls.update(linkedClass, thisClassHasInlineableInit)
+        existingCls.update(linkedClass, thisClassHasInlineableInit, thisClassStaticFieldMirrors)
       }
 
       linkedClass.className match {
@@ -119,6 +123,30 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       .toSet
   }
 
+  private def computeStaticFieldMirrors(
+      topLevelExports: List[LinkedTopLevelExport]): scala.collection.Map[ClassName, Map[FieldName, List[String]]] = {
+    if (config.moduleKind != ModuleKind.NoModule) {
+      Map.empty
+    } else {
+      val result = mutable.Map.empty[ClassName, Map[FieldName, List[String]]]
+        .withDefaultValue(Map.empty)
+      for (export <- topLevelExports) {
+        export.tree match {
+          case TopLevelFieldExportDef(exportName, FieldIdent(fieldName)) =>
+            val className = export.owningClass
+            val mirrors = result(className)
+            val newMirrors = mirrors
+              .updated(fieldName, exportName :: mirrors.getOrElse(fieldName, Nil))
+
+            result(className) = newMirrors
+
+          case _ =>
+        }
+      }
+      result
+    }
+  }
+
   abstract class KnowledgeAccessor extends GlobalKnowledge with Invalidatable {
     /* In theory, a KnowledgeAccessor should *contain* a GlobalKnowledge, not
      * *be* a GlobalKnowledge. We organize it that way to reduce memory
@@ -168,7 +196,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
   }
 
   private class Class(initClass: LinkedClass,
-      initHasInlineableInit: Boolean)
+      initHasInlineableInit: Boolean,
+      initStaticFieldMirrors: Map[FieldName, List[String]])
       extends Unregisterable {
 
     private val className = initClass.className
@@ -183,7 +212,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private var jsNativeMemberLoadSpecs = computeJSNativeMemberLoadSpecs(initClass)
     private var superClass = computeSuperClass(initClass)
     private var fieldDefs = computeFieldDefs(initClass)
-    private var staticFieldMirrors = computeStaticFieldMirrors(initClass)
+    private var staticFieldMirrors = initStaticFieldMirrors
 
     private val isInterfaceAskers = mutable.Set.empty[Invalidatable]
     private val hasInlineableInitAskers = mutable.Set.empty[Invalidatable]
@@ -195,7 +224,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private val fieldDefsAskers = mutable.Set.empty[Invalidatable]
     private val staticFieldMirrorsAskers = mutable.Set.empty[Invalidatable]
 
-    def update(linkedClass: LinkedClass, newHasInlineableInit: Boolean): Unit = {
+    def update(linkedClass: LinkedClass, newHasInlineableInit: Boolean,
+        newStaticFieldMirrors: Map[FieldName, List[String]]): Unit = {
       isAlive = true
 
       val newIsInterface = computeIsInterface(linkedClass)
@@ -245,7 +275,6 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
         invalidateAskers(fieldDefsAskers)
       }
 
-      val newStaticFieldMirrors = computeStaticFieldMirrors(linkedClass)
       if (newStaticFieldMirrors != staticFieldMirrors) {
         staticFieldMirrors = newStaticFieldMirrors
         invalidateAskers(staticFieldMirrorsAskers)
@@ -281,26 +310,6 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
     private def computeFieldDefs(linkedClass: LinkedClass): List[AnyFieldDef] =
       linkedClass.fields
-
-    private def computeStaticFieldMirrors(
-        linkedClass: LinkedClass): Map[FieldName, List[String]] = {
-      if (config.moduleKind != ModuleKind.NoModule ||
-          linkedClass.topLevelExports.isEmpty) {
-        // Fast path
-        Map.empty
-      } else {
-        val result = mutable.Map.empty[FieldName, List[String]]
-        for (export <- linkedClass.topLevelExports) {
-          export match {
-            case TopLevelFieldExportDef(exportName, FieldIdent(fieldName)) =>
-              result(fieldName) = exportName :: result.getOrElse(fieldName, Nil)
-            case _ =>
-              ()
-          }
-        }
-        result.toMap
-      }
-    }
 
     def testAndResetIsAlive(): Boolean = {
       val result = isAlive
