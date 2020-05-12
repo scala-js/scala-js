@@ -70,44 +70,31 @@ final class Emitter(config: Emitter.Config) {
 
   val injectedIRFiles: Seq[IRFile] = PrivateLibHolder.files
 
-  private val needsIIFEWrapper = {
-    moduleKind match {
-      case ModuleKind.NoModule                             => true
-      case ModuleKind.ESModule | ModuleKind.CommonJSModule => false
-    }
-  }
-
-  private def ifIIFE(str: String): String = if (needsIIFEWrapper) str else ""
-
   def emit(unit: LinkingUnit, logger: Logger): Result = {
-    val topLevelVars = topLevelVarDeclarations(unit)
-
-    val header = {
-      val maybeTopLevelVarDecls = if (topLevelVars.nonEmpty) {
-        val kw = if (esFeatures.useECMAScript2015) "let " else "var "
-        topLevelVars.mkString(kw, ",", ";\n")
-      } else {
-        ""
-      }
-      maybeTopLevelVarDecls + ifIIFE("(function(){\n")
-    }
-
-    val footer = ifIIFE("}).call(this);\n")
-
     val WithGlobals(body, globalRefs) = emitInternal(unit, logger)
 
-    new Result(header, body, footer, topLevelVars, globalRefs)
-  }
-
-  private def topLevelVarDeclarations(unit: LinkingUnit): List[String] = {
     moduleKind match {
       case ModuleKind.NoModule =>
-        unit.classDefs
+        val topLevelVars = unit.classDefs
           .flatMap(_.topLevelExports)
           .map(_.topLevelExportName)
 
+        val header = {
+          val maybeTopLevelVarDecls = if (topLevelVars.nonEmpty) {
+            val kw = if (esFeatures.useECMAScript2015) "let " else "var "
+            topLevelVars.mkString(kw, ",", ";\n")
+          } else {
+            ""
+          }
+          maybeTopLevelVarDecls + "(function(){\n"
+        }
+
+        val footer = "}).call(this);\n"
+
+        new Result(header, body, footer, topLevelVars, globalRefs)
+
       case ModuleKind.ESModule | ModuleKind.CommonJSModule =>
-        Nil
+        new Result("", body, "", Nil, globalRefs)
     }
   }
 
