@@ -120,7 +120,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
         (classDef, version) <- classAndVersion
         syntheticMethods <- syntheticMethods
       } yield {
-        linkedClassDef(classDef, version, syntheticMethods, info, analysis)
+        linkedClassDef(classDef, version, syntheticMethods, info)
       }
     }
 
@@ -136,7 +136,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
    */
   private def linkedClassDef(classDef: ClassDef, version: Option[String],
       syntheticMethodDefs: Iterator[MethodDef],
-      analyzerInfo: ClassInfo, analysis: Analysis): LinkedClass = {
+      analyzerInfo: ClassInfo): LinkedClass = {
     import ir.Trees._
 
     val fields = List.newBuilder[AnyFieldDef]
