@@ -34,7 +34,6 @@ object Infos {
 
   final class ClassInfo private[Infos] (
       val className: ClassName,
-      val isExported: Boolean,
       val kind: ClassKind,
       val superClass: Option[ClassName], // always None for interfaces
       val interfaces: List[ClassName], // direct parent interfaces only
@@ -93,7 +92,6 @@ object Infos {
 
   final class ClassInfoBuilder(private val className: ClassName) {
     private var kind: ClassKind = ClassKind.Class
-    private var isExported: Boolean = false
     private var superClass: Option[ClassName] = None
     private val interfaces = mutable.ListBuffer.empty[ClassName]
     private val referencedFieldClasses = mutable.Set.empty[ClassName]
@@ -105,11 +103,6 @@ object Infos {
 
     def setKind(kind: ClassKind): this.type = {
       this.kind = kind
-      this
-    }
-
-    def setIsExported(isExported: Boolean): this.type = {
-      this.isExported = isExported
       this
     }
 
@@ -166,7 +159,7 @@ object Infos {
     }
 
     def result(): ClassInfo = {
-      new ClassInfo(className, isExported, kind, superClass,
+      new ClassInfo(className, kind, superClass,
           interfaces.toList, referencedFieldClasses.toList, methods.toList,
           jsNativeMembers.toList, exportedMembers.toList,
           topLevelExportedMembers.toList, topLevelExportNames)
@@ -379,11 +372,8 @@ object Infos {
     }
 
     if (classDef.topLevelExportDefs.nonEmpty) {
-      builder.setIsExported(true)
-
-      val optInfo = generateTopLevelExportsInfo(classDef.name.name,
-          classDef.topLevelExportDefs)
-      optInfo.foreach(builder.addTopLevelExportedMember(_))
+      val info = generateTopLevelExportsInfo(classDef.name.name, classDef.topLevelExportDefs)
+      builder.addTopLevelExportedMember(info)
 
       val names = classDef.topLevelExportDefs.map(_.topLevelExportName)
       builder.setTopLevelExportNames(names)
@@ -412,25 +402,9 @@ object Infos {
 
   /** Generates the [[MethodInfo]] for the top-level exports. */
   def generateTopLevelExportsInfo(enclosingClass: ClassName,
-      topLevelExportDefs: List[TopLevelExportDef]): Option[ReachabilityInfo] = {
-
-    var topLevelMethodExports: List[TopLevelMethodExportDef] = Nil
-    var topLevelFieldExports: List[TopLevelFieldExportDef] = Nil
-
-    topLevelExportDefs.foreach {
-      case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef =>
-      case topLevelMethodExport: TopLevelMethodExportDef =>
-        topLevelMethodExports ::= topLevelMethodExport
-      case topLevelFieldExport: TopLevelFieldExportDef =>
-        topLevelFieldExports ::= topLevelFieldExport
-    }
-
-    if (topLevelMethodExports.nonEmpty || topLevelFieldExports.nonEmpty) {
-      Some(new GenInfoTraverser().generateTopLevelExportsInfo(enclosingClass,
-          topLevelMethodExports, topLevelFieldExports))
-    } else {
-      None
-    }
+      topLevelExportDefs: List[TopLevelExportDef]): ReachabilityInfo = {
+    new GenInfoTraverser().generateTopLevelExportsInfo(enclosingClass,
+        topLevelExportDefs)
   }
 
   private final class GenInfoTraverser extends Traverser {
@@ -471,18 +445,22 @@ object Infos {
     }
 
     def generateTopLevelExportsInfo(enclosingClass: ClassName,
-        topLevelMethodExports: List[TopLevelMethodExportDef],
-        topLevelFieldExports: List[TopLevelFieldExportDef]): ReachabilityInfo = {
+        topLevelExportDefs: List[TopLevelExportDef]): ReachabilityInfo = {
+      topLevelExportDefs.foreach {
+        case _:TopLevelJSClassExportDef =>
+          builder.addInstantiatedClass(enclosingClass)
 
-      for (topLevelMethodExport <- topLevelMethodExports) {
-        assert(topLevelMethodExport.methodDef.name.isInstanceOf[StringLiteral])
-        traverse(topLevelMethodExport.methodDef.body)
-      }
+        case _:TopLevelModuleExportDef =>
+          builder.addAccessedModule(enclosingClass)
 
-      for (topLevelFieldExport <- topLevelFieldExports) {
-        val field = topLevelFieldExport.field.name
-        builder.addStaticFieldRead(enclosingClass, field)
-        builder.addStaticFieldWritten(enclosingClass, field)
+        case topLevelMethodExport: TopLevelMethodExportDef =>
+          assert(topLevelMethodExport.methodDef.name.isInstanceOf[StringLiteral])
+          traverse(topLevelMethodExport.methodDef.body)
+
+        case topLevelFieldExport: TopLevelFieldExportDef =>
+          val field = topLevelFieldExport.field.name
+          builder.addStaticFieldRead(enclosingClass, field)
+          builder.addStaticFieldWritten(enclosingClass, field)
       }
 
       builder.result()

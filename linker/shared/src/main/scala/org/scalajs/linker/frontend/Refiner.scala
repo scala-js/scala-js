@@ -195,11 +195,9 @@ private object Refiner {
           /* We do not cache top-level exports, because they're quite rare,
            * and usually quite small when they exist.
            */
-          builder.setIsExported(true)
-
-          val optInfo = Infos.generateTopLevelExportsInfo(
+          val info = Infos.generateTopLevelExportsInfo(
               linkedClass.className, linkedClass.topLevelExports)
-          optInfo.foreach(builder.addTopLevelExportedMember(_))
+          builder.addTopLevelExportedMember(info)
         }
 
         info = builder.result()

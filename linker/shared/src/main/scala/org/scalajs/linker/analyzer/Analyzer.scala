@@ -377,7 +377,6 @@ private final class Analyzer(config: CommonPhaseConfig,
     val isJSClass = data.kind.isJSClass
     val isJSType = data.kind.isJSType
     val isAnyClass = isScalaClass || isJSClass
-    val isExported = data.isExported
     val topLevelExportNames = data.topLevelExportNames
 
     // Note: j.l.Object is special and is validated upfront
@@ -845,14 +844,6 @@ private final class Analyzer(config: CommonPhaseConfig,
     /** Start the reachability algorithm with the entry points of this class. */
     def reachEntryPoints(): Unit = {
       implicit val from = FromExports
-
-      // Myself
-      if (isExported) {
-        if (isAnyModuleClass)
-          accessModule()
-        else
-          instantiated()
-      }
 
       // Static initializer
       if (!isJSType) {

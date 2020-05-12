@@ -25,10 +25,20 @@ object BinaryIncompatibilities {
           "org.scalajs.linker.standard.LinkedClass.this"),
 
       // !! Breaking the unstable linker API, allowed per our versioning policy
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.analyzer.Analyzer#ClassInfo.isExported"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.analyzer.Infos#ClassInfo.isExported"),
+      exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.linker.analyzer.Infos#ClassInfo.this"),
       exclude[MissingClassProblem](
           "org.scalajs.linker.analyzer.Infos$ClassInfo$"),
       exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.analyzer.Infos#ClassInfoBuilder.setIsExported"),
+      exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.analyzer.Infos#ReachabilityInfo.apply"),
+      exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.linker.analyzer.Infos.generateTopLevelExportsInfo"),
       exclude[IncompatibleMethTypeProblem](
           "org.scalajs.linker.backend.emitter.Emitter.this"),
       exclude[DirectMissingMethodProblem](
@@ -101,6 +111,8 @@ object BinaryIncompatibilities {
           "org.scalajs.linker.analyzer.Infos#ClassInfo.this"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.analyzer.Infos#ReachabilityInfo.this"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.analyzer.Infos#GenInfoTraverser.generateTopLevelExportsInfo"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.closure.ClosureAstTransformer.this"),
       exclude[DirectMissingMethodProblem](
