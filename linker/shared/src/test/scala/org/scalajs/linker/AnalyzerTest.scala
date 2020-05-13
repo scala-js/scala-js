@@ -28,6 +28,7 @@ import org.scalajs.junit.async._
 import org.scalajs.logging.NullLogger
 import org.scalajs.linker._
 import org.scalajs.linker.analyzer._
+import org.scalajs.linker.frontend.IRLoader
 import org.scalajs.linker.standard._
 
 import Analysis._
@@ -546,7 +547,7 @@ object AnalyzerTest {
     val classNameToInfo =
       classDefs.map(c => c.name.name -> Infos.generateClassInfo(c)).toMap
 
-    def inputProvider(loader: Option[TestIRRepo.InfoLoader]) = new Analyzer.InputProvider {
+    def inputProvider(loader: Option[IRLoader]) = new Analyzer.InputProvider {
       def classesWithEntryPoints(): Iterable[ClassName] = classesWithEntryPoints0
 
       def loadInfo(className: ClassName)(
@@ -561,7 +562,7 @@ object AnalyzerTest {
     }
 
     for {
-      loader <- Future.traverse(stdlib.toList)(_.loader).map(_.headOption)
+      loader <- Future.traverse(stdlib.toList)(_.irLoader).map(_.headOption)
       analysis <- Analyzer.computeReachability(CommonPhaseConfig(),
           symbolRequirements, allowAddingSyntheticMethods = true,
           checkAbstractReachability = true, inputProvider(loader))
