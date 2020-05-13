@@ -15,7 +15,6 @@ package org.scalajs.linker.testutils
 import scala.concurrent._
 
 import org.scalajs.linker.StandardImpl
-import org.scalajs.linker.frontend.IRLoader
 import org.scalajs.linker.interface.IRFile
 
 object TestIRRepo {
@@ -32,7 +31,4 @@ final class TestIRRepo(stdlibPath: String) {
     Platform.loadJar(stdlibPath)
       .flatMap(globalIRCache.newCache.cached _)
   }
-
-  lazy val irLoader: Future[IRLoader] =
-    stdlibIRFiles.flatMap((new IRLoader).update(_))
 }
