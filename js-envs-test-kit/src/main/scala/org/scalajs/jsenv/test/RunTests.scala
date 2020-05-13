@@ -77,7 +77,7 @@ private[test] class RunTests(config: JSEnvSuiteConfig, withCom: Boolean) {
 
   @Test // Failed in Phantom - #2053
   def utf8Test: Unit = {
-    withRun("""console.log("\u1234")""") {
+    withRun("console.log('\u1234')") {
       _.expectOut("\u1234\n")
         .closeRun()
     }

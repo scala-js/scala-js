@@ -13,9 +13,10 @@
 package org.scalajs.nscplugin.test
 
 import org.scalajs.nscplugin.test.util._
-import org.junit.Test
+import org.scalajs.nscplugin.test.util.VersionDependentMessages.methodSig
 
 import org.junit.Assume._
+import org.junit.Test
 
 // scalastyle:off line.size.limit
 
@@ -218,11 +219,11 @@ class JSExportTest extends DirectTest with TestHelpers {
       def ub(x: Box[Int]): Int = x.x
     }
     """ hasErrors
-    """
+    s"""
       |newSource1.scala:8: error: double definition:
-      |def $js$exported$meth$ub(x: Confl.this.Box[String]): Any at line 6 and
-      |def $js$exported$meth$ub(x: Confl.this.Box[Int]): Any at line 8
-      |have same type after erasure: (x: Confl#Box)Object
+      |def ${"$js$exported$meth$ub"}(x: Confl.this.Box[String]): Any at line 6 and
+      |def ${"$js$exported$meth$ub"}(x: Confl.this.Box[Int]): Any at line 8
+      |have same type after erasure: ${methodSig("(x: Confl#Box)", "Object")}
       |      @JSExport
       |       ^
     """
@@ -236,10 +237,10 @@ class JSExportTest extends DirectTest with TestHelpers {
       def rtType(x: js.Dynamic) = x
     }
     """ hasErrors
-    """
+    s"""
       |newSource1.scala:7: error: Cannot disambiguate overloads for exported method rtType with types
-      |  (x: scala.scalajs.js.Any)Object
-      |  (x: scala.scalajs.js.Dynamic)Object
+      |  ${methodSig("(x: scala.scalajs.js.Any)", "Object")}
+      |  ${methodSig("(x: scala.scalajs.js.Dynamic)", "Object")}
       |      @JSExport
       |       ^
     """
@@ -253,10 +254,10 @@ class JSExportTest extends DirectTest with TestHelpers {
       def foo(x: Int*) = x
     }
     """ hasErrors
-    """
+    s"""
       |newSource1.scala:7: error: Cannot disambiguate overloads for exported method foo with types
-      |  (x: Int, ys: Seq)Object
-      |  (x: Seq)Object
+      |  ${methodSig("(x: Int, ys: Seq)", "Object")}
+      |  ${methodSig("(x: Seq)", "Object")}
       |      @JSExport
       |       ^
     """
@@ -269,10 +270,10 @@ class JSExportTest extends DirectTest with TestHelpers {
       def foo(x: String*) = x
     }
     """ hasErrors
-    """
+    s"""
       |newSource1.scala:6: error: Cannot disambiguate overloads for exported method foo with types
-      |  (x: Int)Object
-      |  (x: Seq)Object
+      |  ${methodSig("(x: Int)", "Object")}
+      |  ${methodSig("(x: Seq)", "Object")}
       |      @JSExport
       |       ^
     """
@@ -285,10 +286,10 @@ class JSExportTest extends DirectTest with TestHelpers {
       def foo(x: Double, y: String)(z: String*) = x
     }
     """ hasErrors
-    """
+    s"""
       |newSource1.scala:6: error: Cannot disambiguate overloads for exported method foo with types
-      |  (x: Double, y: String, z: Int)Object
-      |  (x: Double, y: String, z: Seq)Object
+      |  ${methodSig("(x: Double, y: String, z: Int)", "Object")}
+      |  ${methodSig("(x: Double, y: String, z: Seq)", "Object")}
       |      @JSExport
       |       ^
     """
@@ -302,10 +303,10 @@ class JSExportTest extends DirectTest with TestHelpers {
       def a(x: Any) = 2
     }
     """ hasErrors
-    """
+    s"""
       |newSource1.scala:7: error: Cannot disambiguate overloads for exported method a with types
-      |  (x: Object)Object
-      |  (x: scala.scalajs.js.Any)Object
+      |  ${methodSig("(x: Object)", "Object")}
+      |  ${methodSig("(x: scala.scalajs.js.Any)", "Object")}
       |      @JSExport
       |       ^
     """
@@ -1556,10 +1557,10 @@ class JSExportTest extends DirectTest with TestHelpers {
       def bar(x: Int): Int = x + 1
     }
     """ hasErrors
-    """
+    s"""
       |newSource1.scala:10: error: Cannot disambiguate overloads for exported method foo with types
-      |  (x: Int)Int
-      |  (x: Int)Int
+      |  ${methodSig("(x: Int)", "Int")}
+      |  ${methodSig("(x: Int)", "Int")}
       |      def bar(x: Int): Int = x + 1
       |          ^
     """
@@ -1598,10 +1599,10 @@ class JSExportTest extends DirectTest with TestHelpers {
       def bar_=(v: Int): Unit = ()
     }
     """ hasErrors
-    """
+    s"""
       |newSource1.scala:10: error: Cannot disambiguate overloads for exported method foo with types
-      |  (v: Int)Unit
-      |  (v: Int)Unit
+      |  ${methodSig("(v: Int)", "Unit")}
+      |  ${methodSig("(v: Int)", "Unit")}
       |      def bar_=(v: Int): Unit = ()
       |          ^
     """

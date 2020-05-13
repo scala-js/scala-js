@@ -13,6 +13,7 @@
 package org.scalajs.nscplugin.test
 
 import org.scalajs.nscplugin.test.util._
+import org.scalajs.nscplugin.test.util.VersionDependentMessages.methodSig
 
 import org.junit.Test
 import org.junit.Ignore
@@ -134,10 +135,10 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def bar(): Int = 24
     }
     """ hasErrors
-    """
+    s"""
       |newSource1.scala:9: error: Cannot disambiguate overloads for method bar with types
-      |  ()Int
-      |  ()Int
+      |  ${methodSig("()", "Int")}
+      |  ${methodSig("()", "Int")}
       |      def bar(): Int = 24
       |          ^
     """
@@ -150,10 +151,10 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def foo(): Int = 42
     }
     """ hasErrors
-    """
+    s"""
       |newSource1.scala:9: error: Cannot disambiguate overloads for method bar with types
-      |  ()Int
-      |  ()Int
+      |  ${methodSig("()", "Int")}
+      |  ${methodSig("()", "Int")}
       |      def foo(): Int = 42
       |          ^
     """
@@ -168,10 +169,10 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def bar(): Int = 24
     }
     """ hasErrors
-    """
+    s"""
       |newSource1.scala:11: error: Cannot disambiguate overloads for method bar with types
-      |  ()Int
-      |  ()Int
+      |  ${methodSig("()", "Int")}
+      |  ${methodSig("()", "Int")}
       |      def bar(): Int = 24
       |          ^
     """
@@ -188,10 +189,10 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def bar(): Int = 24
     }
     """ hasErrors
-    """
+    s"""
       |newSource1.scala:13: error: Cannot disambiguate overloads for method bar with types
-      |  ()Int
-      |  ()Int
+      |  ${methodSig("()", "Int")}
+      |  ${methodSig("()", "Int")}
       |      def bar(): Int = 24
       |          ^
     """
@@ -210,10 +211,10 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       def foo(): Int = 42
     }
     """ hasErrors
-    """
+    s"""
       |newSource1.scala:14: error: Cannot disambiguate overloads for method foo with types
-      |  (x: Int)Int
-      |  (x: Int)Int
+      |  ${methodSig("(x: Int)", "Int")}
+      |  ${methodSig("(x: Int)", "Int")}
       |    class Bar extends Foo {
       |          ^
     """
