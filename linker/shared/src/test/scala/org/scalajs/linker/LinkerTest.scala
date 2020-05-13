@@ -99,7 +99,7 @@ object LinkerTest {
     val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
     val output = LinkerOutput(MemOutputFile())
 
-    TestIRRepo.minilib.stdlibIRFiles.flatMap { stdLibFiles =>
+    TestIRRepo.minilib.flatMap { stdLibFiles =>
       linker.link(stdLibFiles ++ classDefsFiles, moduleInitializers,
           output, new ScalaConsoleLogger(Level.Error))
     }

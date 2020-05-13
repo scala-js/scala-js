@@ -28,6 +28,8 @@ import org.scalajs.junit.async._
 import org.scalajs.logging.NullLogger
 import org.scalajs.linker._
 import org.scalajs.linker.analyzer._
+import org.scalajs.linker.frontend.IRLoader
+import org.scalajs.linker.interface.IRFile
 import org.scalajs.linker.standard._
 
 import Analysis._
@@ -47,7 +49,7 @@ class AnalyzerTest {
 
   @Test
   def missingJavaLangObject(): AsyncResult = await {
-    val analysis = computeAnalysis(Nil, stdlib = None)
+    val analysis = computeAnalysis(Nil, stdlib = TestIRRepo.empty)
     assertExactErrors(analysis, MissingJavaLangObjectClass(fromAnalyzer))
   }
 
@@ -63,7 +65,7 @@ class AnalyzerTest {
     )
 
     Future.traverse(invalidJLObjectDefs) { jlObjectDef =>
-      val analysis = computeAnalysis(Seq(jlObjectDef), stdlib = None)
+      val analysis = computeAnalysis(Seq(jlObjectDef), stdlib = TestIRRepo.empty)
       assertExactErrors(analysis,
           InvalidJavaLangObjectClass(fromAnalyzer))
     }
@@ -400,7 +402,7 @@ class AnalyzerTest {
       analysis <- computeAnalysis(classDefs,
           reqsFactory.instantiateClass("A", NoArgConstructorName) ++
           reqsFactory.callMethod("A", m("test", Nil, V)),
-          stdlib = Some(TestIRRepo.fulllib))
+          stdlib = TestIRRepo.fulllib)
     } yield {
       assertNoError(analysis)
 
@@ -535,36 +537,14 @@ object AnalyzerTest {
 
   private def computeAnalysis(classDefs: Seq[ClassDef],
       symbolRequirements: SymbolRequirement = reqsFactory.none(),
-      stdlib: Option[TestIRRepo] = Some(TestIRRepo.minilib))(
+      stdlib: Future[Seq[IRFile]] = TestIRRepo.minilib)(
       implicit ec: ExecutionContext): Future[Analysis] = {
-
-    val classesWithEntryPoints0 = classDefs
-      .map(EntryPointsInfo.forClassDef)
-      .withFilter(_.hasEntryPoint)
-      .map(_.className)
-
-    val classNameToInfo =
-      classDefs.map(c => c.name.name -> Infos.generateClassInfo(c)).toMap
-
-    def inputProvider(loader: Option[TestIRRepo.InfoLoader]) = new Analyzer.InputProvider {
-      def classesWithEntryPoints(): Iterable[ClassName] = classesWithEntryPoints0
-
-      def loadInfo(className: ClassName)(
-          implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] = {
-        /* Note: We could use Future.successful here to complete the future
-         * immediately. However, in order to exercise as much asynchronizity as
-         * possible, we don't.
-         */
-        val own = classNameToInfo.get(className).map(Future(_))
-        own.orElse(loader.flatMap(_.loadInfo(className)))
-      }
-    }
-
     for {
-      loader <- Future.traverse(stdlib.toList)(_.loader).map(_.headOption)
+      baseFiles <- stdlib
+      irLoader <- new IRLoader().update(classDefs.map(MemClassDefIRFile(_)) ++ baseFiles)
       analysis <- Analyzer.computeReachability(CommonPhaseConfig(),
           symbolRequirements, allowAddingSyntheticMethods = true,
-          checkAbstractReachability = true, inputProvider(loader))
+          checkAbstractReachability = true, irLoader)
     } yield {
       analysis
     }

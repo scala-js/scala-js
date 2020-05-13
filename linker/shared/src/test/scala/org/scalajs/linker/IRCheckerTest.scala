@@ -217,7 +217,7 @@ object IRCheckerTest {
       .factory("IRCheckerTest")
       .none()
 
-    TestIRRepo.minilib.stdlibIRFiles.flatMap { stdLibFiles =>
+    TestIRRepo.minilib.flatMap { stdLibFiles =>
       val irFiles = (
           stdLibFiles ++
           classDefs.map(MemClassDefIRFile(_))

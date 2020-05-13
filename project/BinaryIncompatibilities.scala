@@ -129,6 +129,10 @@ object BinaryIncompatibilities {
           "org.scalajs.linker.backend.emitter.FunctionEmitter#JSDesugar.syntheticVarCounter"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.FunctionEmitter#JSDesugar.syntheticVarCounter_="),
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.frontend.BaseLinker$ClassDefAndInfoCache"),
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.frontend.BaseLinker$InputProvider"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.frontend.optimizer.OptimizerCore#Intrinsics.IdentityHashCode"),
   )
