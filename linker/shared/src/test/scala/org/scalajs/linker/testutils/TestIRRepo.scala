@@ -13,21 +13,18 @@
 package org.scalajs.linker.testutils
 
 import scala.concurrent._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 import org.scalajs.linker.StandardImpl
 import org.scalajs.linker.interface.IRFile
 
 object TestIRRepo {
-  val minilib = new TestIRRepo(StdlibHolder.minilib)
-  val fulllib = new TestIRRepo(StdlibHolder.fulllib)
-}
+  val minilib: Future[Seq[IRFile]] = load(StdlibHolder.minilib)
+  val fulllib: Future[Seq[IRFile]] = load(StdlibHolder.fulllib)
+  val empty: Future[Seq[IRFile]] = Future.successful(Nil)
 
-final class TestIRRepo(stdlibPath: String) {
-  import scala.concurrent.ExecutionContext.Implicits.global
-
-  private val globalIRCache = StandardImpl.irFileCache()
-
-  val stdlibIRFiles: Future[Seq[IRFile]] = {
+  private def load(stdlibPath: String) = {
+    val globalIRCache = StandardImpl.irFileCache()
     Platform.loadJar(stdlibPath)
       .flatMap(globalIRCache.newCache.cached _)
   }

@@ -245,7 +245,7 @@ object OptimizerTest {
   }
 
   def linkToLinkingUnit(classDefs: Seq[ClassDef],
-      moduleInitializers: List[ModuleInitializer], irRepo: TestIRRepo)(
+      moduleInitializers: List[ModuleInitializer], stdlib: Future[Seq[IRFile]])(
       implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
     val config = StandardConfig()
@@ -256,7 +256,7 @@ object OptimizerTest {
     val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
     val output = LinkerOutput(MemOutputFile())
 
-    irRepo.stdlibIRFiles.flatMap { stdLibFiles =>
+    stdlib.flatMap { stdLibFiles =>
       linker.link(stdLibFiles ++ classDefsFiles, moduleInitializers,
           output, new ScalaConsoleLogger(Level.Error))
     }.map { _ =>

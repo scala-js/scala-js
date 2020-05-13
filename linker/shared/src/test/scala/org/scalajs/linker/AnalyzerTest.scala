@@ -29,6 +29,7 @@ import org.scalajs.logging.NullLogger
 import org.scalajs.linker._
 import org.scalajs.linker.analyzer._
 import org.scalajs.linker.frontend.IRLoader
+import org.scalajs.linker.interface.IRFile
 import org.scalajs.linker.standard._
 
 import Analysis._
@@ -48,7 +49,7 @@ class AnalyzerTest {
 
   @Test
   def missingJavaLangObject(): AsyncResult = await {
-    val analysis = computeAnalysis(Nil, stdlib = None)
+    val analysis = computeAnalysis(Nil, stdlib = TestIRRepo.empty)
     assertExactErrors(analysis, MissingJavaLangObjectClass(fromAnalyzer))
   }
 
@@ -64,7 +65,7 @@ class AnalyzerTest {
     )
 
     Future.traverse(invalidJLObjectDefs) { jlObjectDef =>
-      val analysis = computeAnalysis(Seq(jlObjectDef), stdlib = None)
+      val analysis = computeAnalysis(Seq(jlObjectDef), stdlib = TestIRRepo.empty)
       assertExactErrors(analysis,
           InvalidJavaLangObjectClass(fromAnalyzer))
     }
@@ -401,7 +402,7 @@ class AnalyzerTest {
       analysis <- computeAnalysis(classDefs,
           reqsFactory.instantiateClass("A", NoArgConstructorName) ++
           reqsFactory.callMethod("A", m("test", Nil, V)),
-          stdlib = Some(TestIRRepo.fulllib))
+          stdlib = TestIRRepo.fulllib)
     } yield {
       assertNoError(analysis)
 
@@ -536,10 +537,10 @@ object AnalyzerTest {
 
   private def computeAnalysis(classDefs: Seq[ClassDef],
       symbolRequirements: SymbolRequirement = reqsFactory.none(),
-      stdlib: Option[TestIRRepo] = Some(TestIRRepo.minilib))(
+      stdlib: Future[Seq[IRFile]] = TestIRRepo.minilib)(
       implicit ec: ExecutionContext): Future[Analysis] = {
     for {
-      baseFiles <- stdlib.map(_.stdlibIRFiles).getOrElse(Future(Nil))
+      baseFiles <- stdlib
       irLoader <- new IRLoader().update(classDefs.map(MemClassDefIRFile(_)) ++ baseFiles)
       analysis <- Analyzer.computeReachability(CommonPhaseConfig(),
           symbolRequirements, allowAddingSyntheticMethods = true,
