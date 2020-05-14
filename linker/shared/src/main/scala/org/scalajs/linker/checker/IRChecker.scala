@@ -71,6 +71,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       implicit val ctx = ErrorContext(classDef)
 
       checkJSClassCaptures(classDef)
+      checkJSSuperClass(classDef)
       checkJSNativeLoadSpec(classDef)
       checkStaticMembers(classDef)
       checkDuplicateMembers(classDef)
@@ -132,6 +133,25 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             i"The non-top-level JS class ${classDef.name} cannot have a " +
             "static initializer")
       }
+    }
+  }
+
+  private def checkJSSuperClass(classDef: LinkedClass): Unit = {
+    implicit val ctx = ErrorContext(classDef)
+
+    if (classDef.kind.isJSClass) {
+      classDef.jsSuperClass.fold {
+        // .get is OK: the Analyzer checks that a super class is present.
+        val superClass = lookupClass(classDef.superClass.get.name)
+        if (superClass.jsClassCaptures.isDefined)
+          reportError(i"super class ${superClass.name} may not have jsClassCaptures")
+      } { tree =>
+        val env = Env.fromSignature(NoType, classDef.jsClassCaptures, Nil, AnyType)
+        typecheckExpect(tree, env, AnyType)
+      }
+    } else {
+      if (classDef.jsSuperClass.isDefined)
+        reportError("Only non-native JS types may have a jsSuperClass")
     }
   }
 
