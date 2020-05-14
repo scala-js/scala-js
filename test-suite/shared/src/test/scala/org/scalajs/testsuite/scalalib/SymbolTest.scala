@@ -15,6 +15,8 @@ package org.scalajs.testsuite.scalalib
 import org.junit.Test
 import org.junit.Assert._
 
+import org.scalajs.testsuite.utils.Platform.scalaVersion
+
 class SymbolTest {
 
   @Test def should_ensure_unique_identity(): Unit = {
@@ -52,12 +54,31 @@ class SymbolTest {
   @Test def should_support_toString(): Unit = {
     val scalajs = 'ScalaJS
 
-    assertEquals("'ScalaJS", scalajs.toString)
-    assertEquals("'$", Symbol("$").toString)
-    assertEquals("'$$", '$$.toString)
-    assertEquals("'-", '-.toString)
-    assertEquals("'*", '*.toString)
-    assertEquals("''", Symbol("'").toString)
-    assertEquals("'\"", Symbol("\"").toString)
+    val toStringUsesQuoteSyntax = {
+      scalaVersion.startsWith("2.10.") ||
+      scalaVersion.startsWith("2.11.") ||
+      scalaVersion.startsWith("2.12.") ||
+      scalaVersion == "2.13.0" ||
+      scalaVersion == "2.13.1" ||
+      scalaVersion == "2.13.2"
+    }
+
+    if (toStringUsesQuoteSyntax) {
+      assertEquals("'ScalaJS", scalajs.toString)
+      assertEquals("'$", Symbol("$").toString)
+      assertEquals("'$$", '$$.toString)
+      assertEquals("'-", '-.toString)
+      assertEquals("'*", '*.toString)
+      assertEquals("''", Symbol("'").toString)
+      assertEquals("'\"", Symbol("\"").toString)
+    } else {
+      assertEquals("Symbol(ScalaJS)", scalajs.toString)
+      assertEquals("Symbol($)", Symbol("$").toString)
+      assertEquals("Symbol($$)", '$$.toString)
+      assertEquals("Symbol(-)", '-.toString)
+      assertEquals("Symbol(*)", '*.toString)
+      assertEquals("Symbol(')", Symbol("'").toString)
+      assertEquals("Symbol(\")", Symbol("\"").toString)
+    }
   }
 }

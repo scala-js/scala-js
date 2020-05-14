@@ -3985,9 +3985,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                 case jstpe.LongType =>
                   js.BinaryOp(js.BinaryOp.Long_-, js.LongLiteral(0), src)
                 case jstpe.FloatType =>
-                  js.BinaryOp(js.BinaryOp.Float_-, js.FloatLiteral(0.0f), src)
+                  js.BinaryOp(js.BinaryOp.Float_*, js.FloatLiteral(-1.0f), src)
                 case jstpe.DoubleType =>
-                  js.BinaryOp(js.BinaryOp.Double_-, js.DoubleLiteral(0), src)
+                  js.BinaryOp(js.BinaryOp.Double_*, js.DoubleLiteral(-1.0), src)
               }
             case NOT =>
               (opType: @unchecked) match {
