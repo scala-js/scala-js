@@ -39,6 +39,8 @@ final class Emitter(config: Emitter.Config) {
 
   private val knowledgeGuardian = new KnowledgeGuardian(config)
 
+  private val uncachedKnowledge = new knowledgeGuardian.KnowledgeAccessor {}
+
   private val nameGen: NameGen = new NameGen
 
   private class State(val lastMentionedDangerousGlobalRefs: Set[String]) {
@@ -304,8 +306,7 @@ final class Emitter(config: Emitter.Config) {
   private def genAllClasses(orderedClasses: List[LinkedClass], logger: Logger,
       secondAttempt: Boolean): WithGlobals[List[GeneratedClass]] = {
 
-    val objectClass = orderedClasses.find(_.name.name == ObjectClass).get
-    val generatedClasses = orderedClasses.map(genClass(_, objectClass))
+    val generatedClasses = orderedClasses.map(genClass(_))
     val trackedGlobalRefs = generatedClasses.foldLeft(Set.empty[String]) {
       (prev, generatedClass) =>
         unionPreserveEmpty(prev, generatedClass.trackedGlobalRefs)
@@ -331,8 +332,7 @@ final class Emitter(config: Emitter.Config) {
     }
   }
 
-  private def genClass(linkedClass: LinkedClass,
-      objectClass: LinkedClass): GeneratedClass = {
+  private def genClass(linkedClass: LinkedClass): GeneratedClass = {
     val className = linkedClass.className
     val classCache = getClassCache(linkedClass.ancestors)
     val classTreeCache = classCache.getCache(linkedClass.version)
@@ -410,8 +410,7 @@ final class Emitter(config: Emitter.Config) {
           .toSet
 
         val bridges = for {
-          m <- objectClass.methods
-          if m.value.flags.namespace == MemberNamespace.Public
+          m <- uncachedKnowledge.methodsInObject()
           methodName = m.value.methodName
           if !existingMethods.contains(methodName)
         } yield {

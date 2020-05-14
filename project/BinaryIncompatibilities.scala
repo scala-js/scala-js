@@ -14,12 +14,19 @@ object BinaryIncompatibilities {
       // private[emitter], not an issue.
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.ClassEmitter.org$scalajs$linker$backend$emitter$ClassEmitter$$classVarDef$default$5"),
+      exclude[ReversedMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.GlobalKnowledge.methodsInObject"),
 
       // private[linker], not an issue.
       exclude[MissingClassProblem]("org.scalajs.linker.NodeFS$FS$"),
 
       // private, not an issue.
-      exclude[MissingClassProblem]("org.scalajs.linker.NodeIRContainer$Path$")
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.NodeIRContainer$Path$"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.KnowledgeGuardian#SpecialInfo.this"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.KnowledgeGuardian#SpecialInfo.update"),
   )
 
   val LinkerInterface = Seq(

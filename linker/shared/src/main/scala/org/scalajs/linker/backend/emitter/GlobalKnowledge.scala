@@ -13,8 +13,10 @@
 package org.scalajs.linker.backend.emitter
 
 import org.scalajs.ir.Names._
-import org.scalajs.ir.Trees.{AnyFieldDef, JSNativeLoadSpec}
+import org.scalajs.ir.Trees.{AnyFieldDef, MethodDef, JSNativeLoadSpec}
 import org.scalajs.ir.Types.Type
+
+import org.scalajs.linker.standard.Versioned
 
 private[emitter] trait GlobalKnowledge {
   /** Tests whether the `java.lang.Class` class is instantiated. */
@@ -89,4 +91,7 @@ private[emitter] trait GlobalKnowledge {
    */
   def representativeClassHasPublicMethod(className: ClassName,
       methodName: MethodName): Boolean
+
+  /** The public (non-static) methods of java.lang.Object. */
+  def methodsInObject(): List[Versioned[MethodDef]]
 }

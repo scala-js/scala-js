@@ -42,8 +42,9 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
   def update(linkingUnit: LinkingUnit): Boolean = {
     val hasInlineableInit = computeHasInlineableInit(linkingUnit)
 
+    var objectClass: LinkedClass = null
     var classClass: Option[LinkedClass] = None
-    val representativeClasses = Iterable.newBuilder[LinkedClass]
+    val hijackedClasses = Iterable.newBuilder[LinkedClass]
 
     // Update classes
     for (linkedClass <- linkingUnit.classDefs) {
@@ -62,10 +63,10 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
           classClass = Some(linkedClass)
 
         case ObjectClass =>
-          representativeClasses += linkedClass
+          objectClass = linkedClass
 
         case name if HijackedClasses(name) =>
-          representativeClasses += linkedClass
+          hijackedClasses += linkedClass
 
         case _ =>
       }
@@ -76,10 +77,10 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
     val invalidateAll = {
       if (specialInfo == null) {
-        specialInfo = new SpecialInfo(classClass, representativeClasses.result())
+        specialInfo = new SpecialInfo(objectClass, classClass, hijackedClasses.result())
         false
       } else {
-        specialInfo.update(classClass, representativeClasses.result())
+        specialInfo.update(objectClass, classClass, hijackedClasses.result())
       }
     }
 
@@ -165,6 +166,9 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
         methodName: MethodName): Boolean = {
       specialInfo.askRepresentativeClassHasPublicMethod(this, className, methodName)
     }
+
+    def methodsInObject(): List[Versioned[MethodDef]] =
+      specialInfo.askMethodsInObject(this)
   }
 
   private class Class(initClass: LinkedClass,
@@ -400,36 +404,47 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     }
   }
 
-  private class SpecialInfo(initClassClass: Option[LinkedClass],
-      initRepresentativeClasses: Iterable[LinkedClass]) extends Unregisterable {
+  private class SpecialInfo(initObjectClass: LinkedClass,
+      initClassClass: Option[LinkedClass],
+      initHijackedClasses: Iterable[LinkedClass]) extends Unregisterable {
 
     private var isClassClassInstantiated =
       computeIsClassClassInstantiated(initClassClass)
-
-    private val isClassClassInstantiatedAskers = mutable.Set.empty[Invalidatable]
 
     private var isParentDataAccessed =
       computeIsParentDataAccessed(initClassClass)
 
     private var methodsInRepresentativeClasses =
-      computeMethodsInRepresentativeClasses(initRepresentativeClasses)
+      computeMethodsInRepresentativeClasses(initObjectClass, initHijackedClasses)
 
+    private var methodsInObject =
+      computeMethodsInObject(initObjectClass)
+
+    private val isClassClassInstantiatedAskers = mutable.Set.empty[Invalidatable]
     private val methodsInRepresentativeClassesAskers = mutable.Set.empty[Invalidatable]
+    private val methodsInObjectAskers = mutable.Set.empty[Invalidatable]
 
-    def update(classClass: Option[LinkedClass],
-        representativeClasses: Iterable[LinkedClass]): Boolean = {
-      val newMethodsInRepresentativeClasses = computeMethodsInRepresentativeClasses(representativeClasses)
-
-      if (newMethodsInRepresentativeClasses != methodsInRepresentativeClasses) {
-        methodsInRepresentativeClasses = newMethodsInRepresentativeClasses
-        invalidateAskers(methodsInRepresentativeClassesAskers)
-      }
-
+    def update(objectClass: LinkedClass, classClass: Option[LinkedClass],
+        hijackedClasses: Iterable[LinkedClass]): Boolean = {
       val newIsClassClassInstantiated = computeIsClassClassInstantiated(classClass)
       if (newIsClassClassInstantiated != isClassClassInstantiated) {
         isClassClassInstantiated = newIsClassClassInstantiated
         invalidateAskers(isClassClassInstantiatedAskers)
       }
+
+      val newMethodsInRepresentativeClasses =
+          computeMethodsInRepresentativeClasses(objectClass, hijackedClasses)
+      if (newMethodsInRepresentativeClasses != methodsInRepresentativeClasses) {
+        methodsInRepresentativeClasses = newMethodsInRepresentativeClasses
+        invalidateAskers(methodsInRepresentativeClassesAskers)
+      }
+
+      /* Usage-sites of methodsInObject never cache.
+       * Therefore, we do not bother comparing (which is expensive), but simply
+       * invalidate.
+       */
+      methodsInObject = computeMethodsInObject(objectClass)
+      invalidateAskers(methodsInObjectAskers)
 
       val newIsParentDataAccessed = computeIsParentDataAccessed(classClass)
 
@@ -455,8 +470,11 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       classClass.exists(methodExists(_, getSuperclassMethodName))
     }
 
-    private def computeMethodsInRepresentativeClasses(
-        representativeClasses: Iterable[LinkedClass]): Set[(ClassName, MethodName)] = {
+    private def computeMethodsInRepresentativeClasses(objectClass: LinkedClass,
+        hijackedClasses: Iterable[LinkedClass]): Set[(ClassName, MethodName)] = {
+      val representativeClasses =
+        Iterator.single(objectClass) ++ hijackedClasses.iterator
+
       val pairs = for {
         representativeClass <- representativeClasses
         method <- representativeClass.methods
@@ -466,6 +484,10 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       }
 
       pairs.toSet
+    }
+
+    private def computeMethodsInObject(objectClass: LinkedClass): List[Versioned[MethodDef]] = {
+      objectClass.methods.filter(_.value.flags.namespace == MemberNamespace.Public)
     }
 
     def askIsClassClassInstantiated(invalidatable: Invalidatable): Boolean = {
@@ -484,15 +506,23 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       methodsInRepresentativeClasses.contains((className, methodName))
     }
 
+    def askMethodsInObject(invalidatable: Invalidatable): List[Versioned[MethodDef]] = {
+      invalidatable.registeredTo(this)
+      methodsInObjectAskers += invalidatable
+      methodsInObject
+    }
+
     def unregister(invalidatable: Invalidatable): Unit = {
       isClassClassInstantiatedAskers -= invalidatable
       methodsInRepresentativeClassesAskers -= invalidatable
+      methodsInObjectAskers -= invalidatable
     }
 
     /** Call this when we invalidate all caches. */
     def unregisterAll(): Unit = {
       isClassClassInstantiatedAskers.clear()
       methodsInRepresentativeClassesAskers.clear()
+      methodsInObjectAskers.clear()
     }
   }
 
