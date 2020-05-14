@@ -118,6 +118,10 @@ object BinaryIncompatibilities {
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.checker.IRChecker#CheckedClass.this"),
       exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.checker.IRChecker#Env.fromSignature"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.checker.IRChecker#Env.fromSignature$default$5"),
+      exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.Emitter#CoreJSLibCache.tree"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.CoreJSLib#CoreJSLibBuilder.org$scalajs$linker$backend$emitter$CoreJSLib$CoreJSLibBuilder$$defineStandardDispatcher$default$3$1"),
