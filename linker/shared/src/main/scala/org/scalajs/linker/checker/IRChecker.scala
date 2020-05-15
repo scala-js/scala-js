@@ -71,6 +71,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       implicit val ctx = ErrorContext(classDef)
 
       checkJSClassCaptures(classDef)
+      checkJSSuperClass(classDef)
       checkJSNativeLoadSpec(classDef)
       checkStaticMembers(classDef)
       checkDuplicateMembers(classDef)
@@ -132,6 +133,25 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             i"The non-top-level JS class ${classDef.name} cannot have a " +
             "static initializer")
       }
+    }
+  }
+
+  private def checkJSSuperClass(classDef: LinkedClass): Unit = {
+    implicit val ctx = ErrorContext(classDef)
+
+    if (classDef.kind.isJSClass) {
+      classDef.jsSuperClass.fold {
+        // .get is OK: the Analyzer checks that a super class is present.
+        val superClass = lookupClass(classDef.superClass.get.name)
+        if (superClass.jsClassCaptures.isDefined)
+          reportError(i"super class ${superClass.name} may not have jsClassCaptures")
+      } { tree =>
+        val env = Env.fromSignature(NoType, classDef.jsClassCaptures, Nil)
+        typecheckExpect(tree, env, AnyType)
+      }
+    } else {
+      if (classDef.jsSuperClass.isDefined)
+        reportError("Only non-native JS types may have a jsSuperClass")
     }
   }
 
@@ -367,8 +387,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     val thisType =
       if (static) NoType
       else ClassType(classDef.name.name)
-    val bodyEnv = Env.fromSignature(thisType, None, params, resultType,
-        isConstructor)
+    val bodyEnv = Env.fromSignature(thisType, None, params, isConstructor)
 
     body.fold {
       // Abstract
@@ -426,8 +445,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         else ClassType(classDef.name.name)
       }
 
-      val bodyEnv = Env.fromSignature(thisType, classDef.jsClassCaptures,
-          params, AnyType)
+      val bodyEnv = Env.fromSignature(thisType, classDef.jsClassCaptures, params)
       typecheckExpect(body, bodyEnv, AnyType)
     }
   }
@@ -456,7 +474,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
 
     val initialEnv = Env.fromSignature(NoType, classDef.jsClassCaptures,
-        params, NoType, isConstructor = true)
+        params, isConstructor = true)
 
     val preparedEnv = prepStats.foldLeft(initialEnv) { (prevEnv, stat) =>
       typecheckStat(stat, prevEnv)
@@ -494,8 +512,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       else ClassType(classDef.name.name)
 
     getterBody.foreach { getterBody =>
-      val getterBodyEnv = Env.fromSignature(thisType, classDef.jsClassCaptures,
-          Nil, AnyType)
+      val getterBodyEnv = Env.fromSignature(thisType, classDef.jsClassCaptures, Nil)
       typecheckExpect(getterBody, getterBodyEnv, AnyType)
     }
 
@@ -508,7 +525,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         reportError(i"Rest parameter ${setterArg.name} is illegal in setter")
 
       val setterBodyEnv = Env.fromSignature(thisType, classDef.jsClassCaptures,
-          List(setterArg), NoType)
+          List(setterArg))
       typecheckStat(setterBody, setterBodyEnv)
     }
   }
@@ -1110,8 +1127,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           checkJSParamDefs(params)
 
           val thisType = if (arrow) NoType else AnyType
-          val bodyEnv = Env.fromSignature(
-              thisType, None, captureParams ++ params, AnyType)
+          val bodyEnv = Env.fromSignature(thisType, None, captureParams ++ params)
           typecheckExpect(body, bodyEnv, AnyType)
         }
 
@@ -1312,8 +1328,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     val empty: Env = new Env(NoType, Map.empty, Map.empty, false)
 
     def fromSignature(thisType: Type, jsClassCaptures: Option[List[ParamDef]],
-        params: List[ParamDef], resultType: Type,
-        isConstructor: Boolean = false): Env = {
+        params: List[ParamDef], isConstructor: Boolean = false): Env = {
       val allParams = jsClassCaptures.getOrElse(Nil) ::: params
       val paramLocalDefs =
         for (p @ ParamDef(ident, _, tpe, mutable, _) <- allParams)
