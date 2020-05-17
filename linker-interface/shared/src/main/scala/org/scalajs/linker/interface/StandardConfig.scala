@@ -62,7 +62,7 @@ final class StandardConfig private (
         semantics = Semantics.Defaults,
         moduleKind = ModuleKind.NoModule,
         esFeatures = ESFeatures.Defaults,
-        checkIR = true,
+        checkIR = false,
         optimizer = true,
         parallel = true,
         sourceMap = true,
