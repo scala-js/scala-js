@@ -1290,6 +1290,16 @@ class ExportsTest {
     }
   }
 
+  @Test def default_params_top_level_export_issue4052(): Unit = {
+    if (isNoModule) {
+      assertEquals(7, global.TopLevelExport_defaultParams(6))
+      assertEquals(11, global.TopLevelExport_defaultParams(6, 5))
+    } else {
+      assertEquals(7, exportsNamespace.TopLevelExport_defaultParams(6))
+      assertEquals(11, exportsNamespace.TopLevelExport_defaultParams(6, 5))
+    }
+  }
+
   @Test def top_level_export_uses_unique_object(): Unit = {
     if (isNoModule) {
       global.TopLevelExport_set(3)
@@ -1507,6 +1517,9 @@ object TopLevelExports {
 
   @JSExportTopLevel("TopLevelExport_overload")
   def overload(x: Int, y: Int*): Int = x + y.sum
+
+  @JSExportTopLevel("TopLevelExport_defaultParams")
+  def defaultParams(x: Int, y: Int = 1): Int = x + y
 
   var myVar: Int = _
 
