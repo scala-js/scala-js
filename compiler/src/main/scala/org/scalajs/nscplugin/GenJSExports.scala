@@ -720,7 +720,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         (0 until normalArgc).toList.map(formalArgsRegistry.genArgRef(_))
 
       // Generate JS code to prepare arguments (default getters and unboxes)
-      val jsArgPrep = genPrepareArgs(jsArgRefs, exported) ++ jsVarArgPrep
+      val jsArgPrep = genPrepareArgs(jsArgRefs, exported, static) ++ jsVarArgPrep
       val jsArgPrepRefs = jsArgPrep.map(_.ref)
 
       // Combine prep'ed formal arguments with captures
@@ -740,7 +740,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
     /** Generate the necessary JavaScript code to prepare the arguments of an
      *  exported method (unboxing and default parameter handling)
      */
-    private def genPrepareArgs(jsArgs: List[js.Tree], exported: Exported)(
+    private def genPrepareArgs(jsArgs: List[js.Tree], exported: Exported,
+        static: Boolean)(
         implicit pos: Position): List[js.VarDef] = {
 
       val result = new mutable.ListBuffer[js.VarDef]
@@ -754,7 +755,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         // If argument is undefined and there is a default getter, call it
         val verifiedOrDefault = if (param.hasDefault) {
           js.If(js.BinaryOp(js.BinaryOp.===, jsArg, js.Undefined()), {
-            genCallDefaultGetter(exported.sym, i, param.sym.pos) {
+            genCallDefaultGetter(exported.sym, i, param.sym.pos, static) {
               prevArgsCount => result.take(prevArgsCount).toList.map(_.ref)
             }
           }, {
@@ -774,7 +775,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
     }
 
     private def genCallDefaultGetter(sym: Symbol, paramIndex: Int,
-        paramPos: Position)(
+        paramPos: Position, static: Boolean)(
         previousArgsValues: Int => List[js.Tree])(
         implicit pos: Position): js.Tree = {
 
@@ -801,7 +802,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           s"found overloaded default getter $defaultGetter")
 
       val trgTree = {
-        if (sym.isClassConstructor) genLoadModule(trgSym)
+        if (sym.isClassConstructor || static) genLoadModule(trgSym)
         else js.This()(encodeClassType(trgSym))
       }
 
