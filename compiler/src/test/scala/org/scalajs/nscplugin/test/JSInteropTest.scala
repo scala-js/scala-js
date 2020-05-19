@@ -175,10 +175,10 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:6: error: Non JS-native objects may not have an @JSName annotation.
+      |newSource1.scala:6: error: @JSName cannot be used on private members
       |      @JSName("foo")
       |       ^
-      |newSource1.scala:9: error: Non JS-native objects may not have an @JSName annotation.
+      |newSource1.scala:9: error: @JSName cannot be used on private members
       |      @JSName("bar")
       |       ^
     """
@@ -471,25 +471,28 @@ class JSInteropTest extends DirectTest with TestHelpers {
   def noJSNameAnnotOnTrait: Unit = {
 
     s"""
-    @js.native
-    @JSName("foo")
-    trait A extends js.Object
-
     object Sym {
       val sym = js.Symbol()
     }
 
-    @js.native
-    @JSName(Sym.sym)
-    trait B extends js.Object
+    @js.native @JSGlobal
+    object Container extends js.Object {
+      @js.native
+      @JSName("foo")
+      trait A extends js.Object
+
+      @js.native
+      @JSName(Sym.sym)
+      trait B extends js.Object
+    }
     """ hasErrors
     s"""
-      |newSource1.scala:6: error: Traits may not have an @JSName annotation.
-      |    @JSName("foo")
-      |     ^
-      |newSource1.scala:14: error: Traits may not have an @JSName annotation.
-      |    @JSName(Sym.sym)
-      |     ^
+      |newSource1.scala:12: error: Traits may not have an @JSName annotation.
+      |      @JSName("foo")
+      |       ^
+      |newSource1.scala:16: error: Traits may not have an @JSName annotation.
+      |      @JSName(Sym.sym)
+      |       ^
     """
 
   }
@@ -749,53 +752,73 @@ class JSInteropTest extends DirectTest with TestHelpers {
   @Test
   def noJSNativeAnnotWithoutJSAny: Unit = {
 
+    // With the correct amount of native load spec annotations
     """
-    @js.native
+    @js.native @JSGlobal
     class A
+
+    @js.native
+    trait B
+
+    @js.native @JSGlobal
+    object C
+
+    @js.native @JSGlobal
+    class D extends Enumeration
+
+    @js.native @JSGlobal
+    object E extends Enumeration
     """ hasErrors
     """
       |newSource1.scala:6: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
       |    class A
       |          ^
-    """
-
-    """
-    @js.native
-    trait A
-    """ hasErrors
-    """
-      |newSource1.scala:6: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
-      |    trait A
+      |newSource1.scala:9: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
+      |    trait B
       |          ^
-    """
-
-    """
-    @js.native
-    object A
-    """ hasErrors
-    """
-      |newSource1.scala:6: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
-      |    object A
+      |newSource1.scala:12: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
+      |    object C
+      |           ^
+      |newSource1.scala:15: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
+      |    class D extends Enumeration
+      |          ^
+      |newSource1.scala:18: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
+      |    object E extends Enumeration
       |           ^
     """
 
+    // With an incorrect amount of native load spec annotations
     """
     @js.native
-    class A extends Enumeration
-    """ hasErrors
-    """
-      |newSource1.scala:6: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
-      |    class A extends Enumeration
-      |          ^
-    """
+    class A
 
-    """
+    @js.native @JSGlobal
+    trait B
+
     @js.native
-    object A extends Enumeration
+    object C
+
+    @js.native
+    class D extends Enumeration
+
+    @js.native
+    object E extends Enumeration
     """ hasErrors
     """
       |newSource1.scala:6: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
-      |    object A extends Enumeration
+      |    class A
+      |          ^
+      |newSource1.scala:9: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
+      |    trait B
+      |          ^
+      |newSource1.scala:12: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
+      |    object C
+      |           ^
+      |newSource1.scala:15: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
+      |    class D extends Enumeration
+      |          ^
+      |newSource1.scala:18: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
+      |    object E extends Enumeration
       |           ^
     """
 
@@ -2115,6 +2138,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
   def noJSGlobalOnMembersOfClassesAndTraits: Unit = {
 
     for (outer <- Seq("class", "trait")) {
+      // There is a bug in kindStrFor() for vars in traits in Scala 2.12+
+      val varKind =
+        if (outer == "trait" && !scala.util.Properties.versionNumberString.startsWith("2.11.")) "vals"
+        else "vars"
+
       s"""
       @js.native ${if (outer == "trait") "" else "@JSGlobal"}
       $outer Foo extends js.Object {
@@ -2142,16 +2170,16 @@ class JSInteropTest extends DirectTest with TestHelpers {
         object InnerImplied extends js.Object
       }
       """ hasErrors
-      """
-        |newSource1.scala:8: error: Methods and fields cannot be annotated with @JSGlobal.
-        |        val bar1: Int = js.native
-        |            ^
-        |newSource1.scala:10: error: Methods and fields cannot be annotated with @JSGlobal.
-        |        var bar2: Int = js.native
-        |            ^
-        |newSource1.scala:12: error: Methods and fields cannot be annotated with @JSGlobal.
-        |        def bar3: Int = js.native
-        |            ^
+      s"""
+        |newSource1.scala:7: error: Non JS-native vals may not have an @JSGlobal annotation.
+        |        @JSGlobal("bar1")
+        |         ^
+        |newSource1.scala:9: error: Non JS-native $varKind may not have an @JSGlobal annotation.
+        |        @JSGlobal("bar2")
+        |         ^
+        |newSource1.scala:11: error: Non JS-native defs may not have an @JSGlobal annotation.
+        |        @JSGlobal("bar3")
+        |         ^
         |newSource1.scala:15: error: Nested JS classes and objects cannot have an @JSGlobal annotation.
         |        @JSGlobal("Inner")
         |         ^
@@ -2199,16 +2227,16 @@ class JSInteropTest extends DirectTest with TestHelpers {
       object InnerImplied extends js.Object
     }
     """ hasErrors
-    """
-      |newSource1.scala:8: error: Methods and fields cannot be annotated with @JSGlobal.
-      |      val bar1: Int = js.native
-      |          ^
-      |newSource1.scala:10: error: Methods and fields cannot be annotated with @JSGlobal.
-      |      var bar2: Int = js.native
-      |          ^
-      |newSource1.scala:12: error: Methods and fields cannot be annotated with @JSGlobal.
-      |      def bar3: Int = js.native
-      |          ^
+    s"""
+      |newSource1.scala:7: error: Non JS-native vals may not have an @JSGlobal annotation.
+      |      @JSGlobal("bar1")
+      |       ^
+      |newSource1.scala:9: error: Non JS-native vars may not have an @JSGlobal annotation.
+      |      @JSGlobal("bar2")
+      |       ^
+      |newSource1.scala:11: error: Non JS-native defs may not have an @JSGlobal annotation.
+      |      @JSGlobal("bar3")
+      |       ^
       |newSource1.scala:15: error: Nested JS classes and objects cannot have an @JSGlobal annotation.
       |      @JSGlobal("Inner")
       |       ^
@@ -2232,6 +2260,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       outer <- Seq("class", "trait")
       fallbackStr <- Seq("", ", globalFallback = \"Foo\"")
     } {
+      // There is a bug in kindStrFor() for vars in traits in Scala 2.12+
+      val varKind =
+        if (outer == "trait" && !scala.util.Properties.versionNumberString.startsWith("2.11.")) "vals"
+        else "vars"
+
       s"""
       @js.native ${if (outer == "trait") "" else "@JSGlobal"}
       $outer Foo extends js.Object {
@@ -2252,15 +2285,15 @@ class JSInteropTest extends DirectTest with TestHelpers {
       }
       """ hasErrors
       s"""
-        |newSource1.scala:8: error: Methods and fields cannot be annotated with @JSImport.
-        |        val bar1: Int = js.native
-        |            ^
-        |newSource1.scala:10: error: Methods and fields cannot be annotated with @JSImport.
-        |        var bar2: Int = js.native
-        |            ^
-        |newSource1.scala:12: error: Methods and fields cannot be annotated with @JSImport.
-        |        def bar3: Int = js.native
-        |            ^
+        |newSource1.scala:7: error: Non JS-native vals may not have an @JSImport annotation.
+        |        @JSImport("bar1", JSImport.Namespace$fallbackStr)
+        |         ^
+        |newSource1.scala:9: error: Non JS-native $varKind may not have an @JSImport annotation.
+        |        @JSImport("bar2", JSImport.Namespace$fallbackStr)
+        |         ^
+        |newSource1.scala:11: error: Non JS-native defs may not have an @JSImport annotation.
+        |        @JSImport("bar3", JSImport.Namespace$fallbackStr)
+        |         ^
         |newSource1.scala:15: error: Nested JS classes and objects cannot have an @JSImport annotation.
         |        @JSImport("Inner", JSImport.Namespace$fallbackStr)
         |         ^
@@ -2298,15 +2331,15 @@ class JSInteropTest extends DirectTest with TestHelpers {
       }
       """ hasErrors
       s"""
-        |newSource1.scala:8: error: Methods and fields cannot be annotated with @JSImport.
-        |        val bar1: Int = js.native
-        |            ^
-        |newSource1.scala:10: error: Methods and fields cannot be annotated with @JSImport.
-        |        var bar2: Int = js.native
-        |            ^
-        |newSource1.scala:12: error: Methods and fields cannot be annotated with @JSImport.
-        |        def bar3: Int = js.native
-        |            ^
+        |newSource1.scala:7: error: Non JS-native vals may not have an @JSImport annotation.
+        |        @JSImport("bar1", JSImport.Namespace$fallbackStr)
+        |         ^
+        |newSource1.scala:9: error: Non JS-native vars may not have an @JSImport annotation.
+        |        @JSImport("bar2", JSImport.Namespace$fallbackStr)
+        |         ^
+        |newSource1.scala:11: error: Non JS-native defs may not have an @JSImport annotation.
+        |        @JSImport("bar3", JSImport.Namespace$fallbackStr)
+        |         ^
         |newSource1.scala:15: error: Nested JS classes and objects cannot have an @JSImport annotation.
         |        @JSImport("Inner", JSImport.Namespace$fallbackStr)
         |         ^

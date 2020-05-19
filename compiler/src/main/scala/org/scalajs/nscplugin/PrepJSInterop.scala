@@ -146,89 +146,118 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
     private val exporters = mutable.Map.empty[Symbol, mutable.ListBuffer[Tree]]
 
     override def transform(tree: Tree): Tree = {
-      checkInternalAnnotations(tree)
+      tree match {
+        case tree: MemberDef => transformMemberDef(tree)
+        case tree: Template  => transformTemplateTree(tree)
+        case _               => transformStatOrExpr(tree)
+      }
+    }
 
-      val preTransformedTree = tree match {
-        // Handle js.Anys
-        case idef: ImplDef if isJSAny(idef) =>
-          transformJSAny(idef)
+    private def transformMemberDef(tree: MemberDef): Tree = {
+      val sym = moduleToModuleClass(tree.symbol)
 
-        // In native JS things, only js.Any stuff is allowed
-        case idef: ImplDef if enclosingOwner is OwnerKind.JSNative =>
-          /* We have to allow synthetic companion objects here, as they get
-           * generated when a nested native JS class has default arguments in
-           * its constructor (see #1891).
-           */
-          if (!idef.symbol.isSynthetic) {
-            reporter.error(idef.pos,
-                "Native JS traits, classes and objects cannot contain inner " +
-                "Scala traits, classes or objects (i.e., not extending js.Any)")
-          }
-          super.transform(tree)
+      checkInternalAnnotations(sym)
 
-        // Catch the definition of scala.Enumeration itself
-        case cldef: ClassDef if cldef.symbol == ScalaEnumClass =>
-          enterOwner(OwnerKind.EnumImpl) { super.transform(cldef) }
+      /* Checks related to @js.native:
+       * - if @js.native, verify that it is allowed in this context, and if
+       *   yes, compute and store the JS native load spec
+       * - if not @js.native, verify that we do not use any other annotation
+       *   reserved for @js.native members (namely, JS native load spec annots)
+       */
+      val isJSNative = sym.hasAnnotation(JSNativeAnnotation)
+      if (isJSNative)
+        checkJSNativeDefinition(tree.pos, sym)
+      else
+        checkJSNativeSpecificAnnotsOnNonJSNative(tree)
 
-        // Catch Scala Enumerations to transform calls to scala.Enumeration.Value
-        case idef: ImplDef if isScalaEnum(idef) =>
-          val sym = idef.symbol
+      checkJSNameAnnots(sym)
 
-          checkJSAnySpecificAnnotsOnNonJSAny(idef)
-
-          val kind =
-            if (idef.isInstanceOf[ModuleDef]) OwnerKind.EnumMod
-            else OwnerKind.EnumClass
-          enterOwner(kind) { super.transform(idef) }
-
-        // Catch (Scala) ClassDefs to forbid js.Anys
-        case cldef: ClassDef =>
-          val sym = cldef.symbol
-
-          checkJSAnySpecificAnnotsOnNonJSAny(cldef)
-
-          if (sym == UnionClass)
-            sym.addAnnotation(JSTypeAnnot)
-
+      val transformedTree: Tree = tree match {
+        case tree: ImplDef =>
           if (shouldPrepareExports)
             registerClassOrModuleExports(sym)
 
-          enterOwner(OwnerKind.NonEnumScalaClass) { super.transform(cldef) }
+          if (isJSAny(sym))
+            transformJSImplDef(tree)
+          else
+            transformScalaImplDef(tree)
 
-        // Module export sanity check (export generated in JSCode phase)
-        case modDef: ModuleDef =>
-          val sym = modDef.symbol
-
-          checkJSAnySpecificAnnotsOnNonJSAny(modDef)
-
-          if (shouldPrepareExports)
-            registerClassOrModuleExports(sym.moduleClass)
-
-          enterOwner(OwnerKind.NonEnumScalaMod) { super.transform(modDef) }
-
-        case Template(parents, self, body) =>
-          /* Do not transform `self`. We do not need to perform any checks on
-           * it (#3998).
+        case tree: ValOrDefDef =>
+          /* Prepare exports for methods, local defs and local variables.
+           * Avoid *fields* (non-local non-method) because they all have a
+           * corresponding getter, which is the one that handles exports.
+           * (Note that local-to-block can never have exports, but the error
+           * messages for that are handled by genExportMember).
            */
-          treeCopy.Template(tree, parents.map(transform(_)), self, body.map(transform(_)))
+          if (shouldPrepareExports && (sym.isMethod || sym.isLocalToBlock)) {
+            exporters.getOrElseUpdate(sym.owner, mutable.ListBuffer.empty) ++=
+              genExportMember(sym)
+          }
 
-        // Native JS val or def
-        case vddef: ValOrDefDef if vddef.symbol.hasAnnotation(JSNativeAnnotation) =>
-          transformJSNativeValOrDefDef(vddef)
+          if (sym.isLocalToBlock) {
+            super.transform(tree)
+          } else if (isJSNative) {
+            transformJSNativeValOrDefDef(tree)
+          } else if (enclosingOwner is OwnerKind.JSType) {
+            val fixedTree = tree match {
+              case tree: DefDef => fixPublicBeforeTyper(tree)
+              case _            => tree
+            }
+            transformValOrDefDefInJSType(fixedTree)
+          } else {
+            transformScalaValOrDefDef(tree)
+          }
 
-        // ValOrDefDef's that are local to a block must not be transformed
-        case vddef: ValOrDefDef if vddef.symbol.isLocalToBlock =>
-          checkJSNativeSpecificAnnotsOnNonJSNative(vddef)
+        case _:TypeDef | _:PackageDef =>
           super.transform(tree)
+      }
 
-        // Catch ValDef in js.Any
-        case vdef: ValDef if enclosingOwner is OwnerKind.JSType =>
-          transformValOrDefDefInJSType(vdef)
+      /* Give tree.symbol, not sym, so that for modules it is the module
+       * symbol, not the module class symbol.
+       *
+       * #1899 This must be done *after* transforming the member def tree,
+       * because fixPublicBeforeTyper must have run.
+       */
+      markExposedIfRequired(tree.symbol)
 
-        // Catch DefDef in js.Any
-        case ddef: DefDef if enclosingOwner is OwnerKind.JSType =>
-          transformValOrDefDefInJSType(fixPublicBeforeTyper(ddef))
+      transformedTree
+    }
 
+    private def transformScalaImplDef(tree: ImplDef): Tree = {
+      val sym = moduleToModuleClass(tree.symbol)
+      val isModuleDef = tree.isInstanceOf[ModuleDef]
+
+      // In native JS things, only js.Any stuff is allowed
+      if (enclosingOwner is OwnerKind.JSNative) {
+        /* We have to allow synthetic companion objects here, as they get
+         * generated when a nested native JS class has default arguments in
+         * its constructor (see #1891).
+         */
+        if (!sym.isSynthetic) {
+          reporter.error(tree.pos,
+              "Native JS traits, classes and objects cannot contain inner " +
+              "Scala traits, classes or objects (i.e., not extending js.Any)")
+        }
+      }
+
+      if (sym == UnionClass)
+        sym.addAnnotation(JSTypeAnnot)
+
+      val kind = if (sym.isSubClass(ScalaEnumClass)) {
+        if (isModuleDef) OwnerKind.EnumMod
+        else if (sym == ScalaEnumClass) OwnerKind.EnumImpl
+        else OwnerKind.EnumClass
+      } else {
+        if (isModuleDef) OwnerKind.NonEnumScalaMod
+        else OwnerKind.NonEnumScalaClass
+      }
+      enterOwner(kind) {
+        super.transform(tree)
+      }
+    }
+
+    private def transformScalaValOrDefDef(tree: ValOrDefDef): Tree = {
+      tree match {
         // Catch ValDefs in enumerations with simple calls to Value
         case ValDef(mods, name, tpt, ScalaEnumValue.NoName(optPar))
             if anyEnclosingOwner is OwnerKind.Enum =>
@@ -236,16 +265,57 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
           treeCopy.ValDef(tree, mods, name, transform(tpt), nrhs)
 
         // Exporter generation
-        case tree: ValOrDefDef if tree.symbol.isMethod =>
-          val sym = tree.symbol
-          checkJSNativeSpecificAnnotsOnNonJSNative(tree)
-          if (shouldPrepareExports) {
-            // Generate exporters for this ddef if required
-            exporters.getOrElseUpdate(sym.owner,
-                mutable.ListBuffer.empty) ++= genExportMember(sym)
-          }
+        case _ =>
           super.transform(tree)
+      }
+    }
 
+    private def transformTemplateTree(tree: Template): Template = {
+      val Template(parents, self, body) = tree
+
+      /* Do not transform `self`. We do not need to perform any checks on
+       * it (#3998).
+       */
+      val transformedParents = parents.map(transform(_))
+      val nonTransformedSelf = self
+      val transformedBody = body.map(transform(_))
+
+      val clsSym = tree.symbol.owner
+
+      // Check that @JSExportStatic fields come first
+      if (clsSym.isModuleClass) { // quick check to avoid useless work
+        var foundStatOrNonStaticVal: Boolean = false
+        for (tree <- transformedBody) {
+          tree match {
+            case vd: ValDef if vd.symbol.hasAnnotation(JSExportStaticAnnotation) =>
+              if (foundStatOrNonStaticVal) {
+                reporter.error(vd.pos,
+                    "@JSExportStatic vals and vars must be defined before " +
+                    "any other val/var, and before any constructor " +
+                    "statement.")
+              }
+            case vd: ValDef if !vd.symbol.isLazy =>
+              foundStatOrNonStaticVal = true
+            case _: MemberDef =>
+            case _ =>
+              foundStatOrNonStaticVal = true
+          }
+        }
+      }
+
+      // Add exports to the template, if there are any
+      val transformedBodyWithExports = exporters.get(clsSym).fold {
+        transformedBody
+      } { exports =>
+        transformedBody ::: exports.toList
+      }
+
+      treeCopy.Template(tree, transformedParents, nonTransformedSelf,
+          transformedBodyWithExports)
+    }
+
+    private def transformStatOrExpr(tree: Tree): Tree = {
+      tree match {
         /* Anonymous function, need to check that it is not used as a SAM for a
          * JS type, unless it is js.FunctionN or js.ThisFunctionN.
          * See #2921.
@@ -404,8 +474,6 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 
         case _ => super.transform(tree)
       }
-
-      postTransform(preTransformedTree)
     }
 
     private def validateJSConstructorOf(tree: Tree, tpeArg: Tree): Unit = {
@@ -428,90 +496,47 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       }
     }
 
-    private def postTransform(tree: Tree) = tree match {
-      case _ if !shouldPrepareExports =>
-        tree
-
-      case Template(parents, self, body) =>
-        val clsSym = tree.symbol.owner
-
-        // Check that @JSExportStatic fields come first
-        if (clsSym.isModuleClass) { // quick check to avoid useless work
-          var foundStatOrNonStaticVal: Boolean = false
-          for (tree <- body) {
-            tree match {
-              case vd: ValDef if vd.symbol.hasAnnotation(JSExportStaticAnnotation) =>
-                if (foundStatOrNonStaticVal) {
-                  reporter.error(vd.pos,
-                      "@JSExportStatic vals and vars must be defined before " +
-                      "any other val/var, and before any constructor " +
-                      "statement.")
-                }
-              case vd: ValDef if !vd.symbol.isLazy =>
-                foundStatOrNonStaticVal = true
-              case _: MemberDef =>
-              case _ =>
-                foundStatOrNonStaticVal = true
-            }
-          }
-        }
-
-        // Add exports to the template, if there are any
-        exporters.get(clsSym).fold {
-          tree // nothing to change
-        } { exports =>
-          treeCopy.Template(tree, parents, self, body ::: exports.toList)
-        }
-
-      case memDef: MemberDef =>
-        val sym = memDef.symbol
-        if (shouldPrepareExports && sym.isLocalToBlock) {
-          // Exports are never valid on local definitions, but delegate complaining.
-          val exports = genExportMember(sym)
-          assert(exports.isEmpty, "Generated exports for local definition.")
-        }
-
-        // Expose objects (modules) members of non-native JS classes
-        if (sym.isModule && (enclosingOwner is OwnerKind.JSNonNative)) {
-          if (shouldModuleBeExposed(sym))
-            sym.addAnnotation(ExposedJSMemberAnnot)
-        }
-
-        memDef
-
-      case _ => tree
-    }
-
-    /**
-     * Performs checks and rewrites specific to classes / objects extending
-     * js.Any
+    /** Performs checks and rewrites specific to classes / objects extending
+     *  js.Any.
      */
-    private def transformJSAny(implDef: ImplDef) = {
-      val sym = implDef match {
-        case _: ModuleDef => implDef.symbol.moduleClass
-        case _            => implDef.symbol
-      }
-
-      lazy val badParent = sym.info.parents find { t =>
-        /* We have to allow scala.Dynamic to be able to define js.Dynamic
-         * and similar constructs. This causes the unsoundness filed as #1385.
-         */
-        !(t <:< JSAnyClass.tpe || t =:= AnyRefClass.tpe || t =:= DynamicClass.tpe)
-      }
-
-      def isNativeJSTraitType(tpe: Type): Boolean = {
-        val sym = tpe.typeSymbol
-        sym.isTrait && sym.hasAnnotation(JSNativeAnnotation)
-      }
-
-      val isJSAnonFun = isJSLambda(sym)
+    private def transformJSImplDef(implDef: ImplDef): Tree = {
+      val sym = moduleToModuleClass(implDef.symbol)
 
       sym.addAnnotation(JSTypeAnnot)
 
-      /* Anonymous functions are considered native, since they are handled
-       * specially in the backend.
+      val isJSLambda =
+        sym.isAnonymousClass && AllJSFunctionClasses.exists(sym.isSubClass(_))
+      if (isJSLambda)
+        transformJSLambdaImplDef(implDef)
+      else
+        transformNonLambdaJSImplDef(implDef)
+    }
+
+    /** Performs checks and rewrites specific to JS lambdas, i.e., anonymous
+     *  classes extending one of the JS function types.
+     *
+     *  JS lambdas are special because they are completely hijacked by the
+     *  back-end, so although at this phase they look like normal anonymous
+     *  classes, they do not behave like ones.
+     */
+    private def transformJSLambdaImplDef(implDef: ImplDef): Tree = {
+      /* For the purposes of checking inner members, a JS lambda acts as a JS
+       * native class owner.
+       *
+       * TODO This is probably not right, but historically it has always been
+       * that way. It should be revisited.
        */
-      val isJSNative = sym.hasAnnotation(JSNativeAnnotation) || isJSAnonFun
+      enterOwner(OwnerKind.JSNativeClass) {
+        super.transform(implDef)
+      }
+    }
+
+    /** Performs checks and rewrites for all JS classes, traits and objects
+     *  except JS lambdas.
+     */
+    private def transformNonLambdaJSImplDef(implDef: ImplDef): Tree = {
+      val sym = moduleToModuleClass(implDef.symbol)
+      val isJSNative = sym.hasAnnotation(JSNativeAnnotation)
 
       // Forbid @EnableReflectiveInstantiation on JS types
       sym.getAnnotation(EnableReflectiveInstantiationAnnotation).foreach {
@@ -521,13 +546,9 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
               "extending js.Any.")
       }
 
+      // Forbid package objects that extends js.Any
       if (sym.isPackageObjectClass)
         reporter.error(implDef.pos, "Package objects may not extend js.Any.")
-
-      def strKind =
-        if (sym.isTrait) "trait"
-        else if (sym.isModuleClass) "object"
-        else "class"
 
       // Check that we do not have a case modifier
       if (implDef.mods.hasFlag(Flag.CASE)) {
@@ -535,11 +556,43 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
             "js.Any may not have a case modifier")
       }
 
-      // Check that we do not extend a trait that does not extends js.Any
-      if (!isJSAnonFun && badParent.isDefined) {
-        val badName = badParent.get.typeSymbol.fullName
-        reporter.error(implDef.pos, s"${sym.nameString} extends ${badName} " +
-            "which does not extend js.Any.")
+      // Check the parents
+      for (parent <- sym.info.parents) {
+        def strKind =
+          if (sym.isTrait) "trait"
+          else if (sym.isModuleClass) "object"
+          else "class"
+
+        parent.typeSymbol match {
+          case AnyRefClass | ObjectClass =>
+            // AnyRef is valid, except for non-native JS traits
+            if (!isJSNative && !sym.isTrait) {
+              reporter.error(implDef.pos,
+                  s"A non-native JS $strKind cannot directly extend AnyRef. " +
+                  "It must extend a JS class (native or not).")
+            }
+          case parentSym if isJSAny(parentSym) =>
+            // A non-native JS type cannot extend a native JS trait
+            // Otherwise, extending a JS type is valid
+            if (!isJSNative && parentSym.isTrait &&
+                parentSym.hasAnnotation(JSNativeAnnotation)) {
+              reporter.error(implDef.pos,
+                  s"A non-native JS $strKind cannot directly extend a "+
+                  "native JS trait.")
+            }
+          case DynamicClass =>
+            /* We have to allow scala.Dynamic to be able to define js.Dynamic
+             * and similar constructs.
+             * This causes the unsoundness filed as #1385.
+             */
+          case parentSym =>
+            /* This is a Scala class or trait other than AnyRef and Dynamic,
+             * which is never valid.
+             */
+            reporter.error(implDef.pos,
+                s"${sym.nameString} extends ${parentSym.fullName} " +
+                "which does not extend js.Any.")
+        }
       }
 
       // Checks for non-native JS stuff
@@ -558,42 +611,12 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
               "classes or objects")
         }
 
-        // Unless it is a trait, it cannot inherit directly from AnyRef
-        if (!sym.isTrait && sym.info.parents.exists(_ =:= AnyRefClass.tpe)) {
-          reporter.error(implDef.pos,
-              s"A non-native JS $strKind cannot directly extend AnyRef. " +
-              "It must extend a JS class (native or not).")
-        }
-
-        // Check that we do not inherit directly from a native JS trait
-        if (sym.info.parents.exists(isNativeJSTraitType)) {
-          reporter.error(implDef.pos,
-              s"A non-native JS $strKind cannot directly extend a "+
-              "native JS trait.")
-        }
-
         // Local JS classes cannot be abstract (implementation restriction)
         if (!sym.isTrait && sym.isAbstractClass && sym.isLocalToBlock) {
           reporter.error(implDef.pos,
               "Implementation restriction: local JS classes cannot be abstract")
         }
-
-        // Check that there is no JS-native-specific annotation
-        checkJSNativeSpecificAnnotsOnNonJSNative(implDef)
       }
-
-      if (shouldCheckLiterals) {
-        checkJSNameArgument(implDef)
-        checkJSGlobalLiteral(sym)
-        checkJSImportLiteral(sym)
-      }
-
-      // Checks for native JS stuff, excluding JS anon functions
-      if (isJSNative && !isJSAnonFun)
-        checkJSNativeDefinition(implDef.pos, sym)
-
-      if (shouldPrepareExports)
-        registerClassOrModuleExports(sym)
 
       // Check for consistency of JS semantics across overriding
       for (overridingPair <- new overridingPairs.Cursor(sym).iterator) {
@@ -653,7 +676,9 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
           else OwnerKind.JSNativeClass
         }
       }
-      enterOwner(kind) { super.transform(implDef) }
+      enterOwner(kind) {
+        super.transform(implDef)
+      }
     }
 
     private def checkJSNativeDefinition(pos: Position, sym: Symbol): Unit = {
@@ -664,6 +689,10 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       } else if (!sym.isClass && (anyEnclosingOwner is (OwnerKind.ScalaClass | OwnerKind.JSType))) {
         reporter.error(pos,
             "@js.native vals and defs can only appear in static Scala objects")
+      } else if (sym.isClass && !isJSAny(sym)) {
+        reporter.error(pos,
+            "Classes, traits and objects not extending js.Any may not have " +
+            "an @js.native annotation")
       } else if (anyEnclosingOwner is OwnerKind.ScalaClass) {
         reporter.error(pos,
             "Scala traits and classes may not have native JS members")
@@ -682,8 +711,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
         assert(sym.isTrait, sym) // just tested in the previous `if`
         for (annot <- sym.annotations) {
           val annotSym = annot.symbol
-          if (JSNativeLoadingSpecAnnots.contains(annotSym) ||
-              annotSym == JSNameAnnotation) {
+          if (JSNativeLoadingSpecAnnots.contains(annotSym)) {
             reporter.error(annot.pos,
                 s"Traits may not have an @${annotSym.nameString} annotation.")
           }
@@ -778,6 +806,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
             None
 
           case Some(annot) if annot.symbol == JSGlobalAnnotation =>
+            if (shouldCheckLiterals)
+              checkJSGlobalLiteral(annot)
             val pathName = annot.stringArg(0).getOrElse {
               val needsExplicitJSName = {
                 (enclosingOwner is OwnerKind.ScalaMod) &&
@@ -794,8 +824,10 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
             Some(parseGlobalPath(pathName))
 
           case Some(annot) if annot.symbol == JSImportAnnotation =>
+            if (shouldCheckLiterals)
+              checkJSImportLiteral(annot)
             val module = annot.stringArg(0).getOrElse {
-              "" // do not care because it does not compile anyway
+              "" // an error is reported by checkJSImportLiteral in this case
             }
             val path = annot.stringArg(1).fold[List[String]](Nil)(parsePath)
             val importSpec = Import(module, path)
@@ -821,16 +853,6 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       val sym = tree.symbol
 
       def kind = kindStrFor(sym)
-
-      checkJSNativeDefinition(tree.pos, sym)
-
-      if (shouldPrepareExports) {
-        /* Exports are never valid on members of JS native vals and defs, but
-         * delegate complaining.
-         */
-        val exports = genExportMember(sym)
-        assert(exports.isEmpty, s"Generated exports for native JS $kind.")
-      }
 
       if (sym.isLazy || jsInterop.isJSSetter(sym)) {
         reporter.error(tree.pos,
@@ -859,50 +881,10 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
     }
 
     /** Verify a ValOrDefDef inside a js.Any */
-    private def transformValOrDefDefInJSType(tree: ValOrDefDef) = {
+    private def transformValOrDefDefInJSType(tree: ValOrDefDef): Tree = {
       val sym = tree.symbol
 
       assert(!sym.isLocalToBlock, s"$tree at ${tree.pos}")
-
-      if (shouldPrepareExports) {
-        // Exports are never valid on members of JS types, but delegate
-        // complaining.
-        val exports = genExportMember(sym)
-        assert(exports.isEmpty, "Generated exports for member JS type.")
-
-        /* Add the @ExposedJSMember annotation to exposed symbols in
-         * non-native JS classes.
-         */
-        if (enclosingOwner is OwnerKind.JSNonNative) {
-          def shouldBeExposed: Boolean = {
-            !sym.isConstructor &&
-            !sym.isValueParameter &&
-            !sym.isParamWithDefault &&
-            !sym.isSynthetic &&
-            !isPrivateMaybeWithin(sym)
-          }
-          if (shouldBeExposed) {
-            sym.addAnnotation(ExposedJSMemberAnnot)
-
-            /* The field being accessed must also be exposed, although it's
-             * private.
-             */
-            if (sym.isAccessor)
-              sym.accessed.addAnnotation(ExposedJSMemberAnnot)
-          }
-        }
-      }
-
-      /* If this is an accessor, copy a potential @JSName annotation from
-       * the field since otherwise it will get lost for traits (since they
-       * have no fields).
-       *
-       * Do this only if the accessor does not already have an @JSName itself
-       * (this happens almost all the time now that @JSName is annotated with
-       * @field @getter @setter).
-       */
-      if (sym.isAccessor && !sym.hasAnnotation(JSNameAnnotation))
-        sym.accessed.getAnnotation(JSNameAnnotation).foreach(sym.addAnnotation)
 
       sym.name match {
         case nme.apply if !sym.hasAnnotation(JSNameAnnotation) =>
@@ -978,24 +960,6 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       if (sym.hasAnnotation(NativeAttr)) {
         // Native methods are not allowed
         reporter.error(tree.pos, "Methods in a js.Any may not be @native")
-      }
-
-      if (sym.hasAnnotation(JSGlobalAnnotation)) {
-        reporter.error(tree.pos,
-            "Methods and fields cannot be annotated with @JSGlobal.")
-      } else if (sym.hasAnnotation(JSImportAnnotation)) {
-        reporter.error(tree.pos,
-            "Methods and fields cannot be annotated with @JSImport.")
-      }
-
-      if (shouldCheckLiterals)
-        checkJSNameArgument(tree)
-
-      // Check that there is at most one @JSName annotation.
-      val allJSNameAnnots = sym.annotations.filter(_.symbol == JSNameAnnotation)
-      for (duplicate <- allJSNameAnnots.drop(1)) { // does not throw if empty
-        reporter.error(duplicate.pos,
-            "A member can only have a single @JSName annotation.")
       }
 
       /* In native JS types, there should not be any private member, except
@@ -1149,33 +1113,36 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       }
     }
 
-    private def checkJSAnySpecificAnnotsOnNonJSAny(implDef: ImplDef): Unit = {
-      val sym = implDef.symbol
-
-      if (sym.hasAnnotation(JSNativeAnnotation)) {
-        reporter.error(implDef.pos,
-            "Classes, traits and objects not extending js.Any may not have an " +
-            "@js.native annotation")
-      } else {
-        checkJSNativeSpecificAnnotsOnNonJSNative(implDef)
-      }
-    }
-
     private def checkJSNativeSpecificAnnotsOnNonJSNative(
         memberDef: MemberDef): Unit = {
       val sym = memberDef.symbol
 
-      val allowJSName = {
-        sym.isModuleOrModuleClass &&
-        (enclosingOwner is OwnerKind.JSNonNative) &&
-        shouldModuleBeExposed(sym)
-      }
-
-      def kindStr: String = kindStrFor(sym)
+      def kindStr: String = kindStrFor(moduleToModuleClass(sym))
 
       for (annot <- sym.annotations) {
-        if (annot.symbol == JSNameAnnotation && !allowJSName) {
-          if (sym.isClass || sym.isModule) {
+        annot.symbol match {
+          case JSGlobalAnnotation =>
+            reporter.error(annot.pos,
+                s"Non JS-native $kindStr may not have an @JSGlobal annotation.")
+          case JSImportAnnotation =>
+            reporter.error(annot.pos,
+                s"Non JS-native $kindStr may not have an @JSImport annotation.")
+          case JSGlobalScopeAnnotation =>
+            reporter.error(annot.pos,
+                "Only native JS objects can have an @JSGlobalScope annotation.")
+          case _ =>
+            // ok
+        }
+      }
+    }
+
+    private def checkJSNameAnnots(sym: Symbol): Unit = {
+      def kindStr: String = kindStrFor(sym)
+
+      for (annot <- sym.getAnnotation(JSNameAnnotation)) {
+        // Check everything about the first @JSName annotation
+        if (sym.isLocalToBlock || (enclosingOwner isnt OwnerKind.JSType)) {
+          if (sym.isClass) {
             reporter.error(annot.pos,
                 s"Non JS-native $kindStr may not have an @JSName annotation.")
           } else {
@@ -1183,15 +1150,22 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
                 s"$kindStr in Scala classes, traits and objects may not " +
                 "have an @JSName annotation.")
           }
-        } else if (annot.symbol == JSGlobalAnnotation) {
+        } else if (sym.isTrait) {
           reporter.error(annot.pos,
-              s"Non JS-native $kindStr may not have an @JSGlobal annotation.")
-        } else if (annot.symbol == JSImportAnnotation) {
+              "Traits may not have an @JSName annotation.")
+        } else if ((sym.isMethod || sym.isClass) && isPrivateMaybeWithin(sym)) {
           reporter.error(annot.pos,
-              s"Non JS-native $kindStr may not have an @JSImport annotation.")
-        } else if (annot.symbol == JSGlobalScopeAnnotation) {
-          reporter.error(annot.pos,
-              "Only native JS objects can have an @JSGlobalScope annotation.")
+              "@JSName cannot be used on private members")
+        } else {
+          if (shouldCheckLiterals)
+            checkJSNameArgument(sym, annot)
+        }
+
+        // Check that there is at most one @JSName annotation.
+        val allJSNameAnnots = sym.annotations.filter(_.symbol == JSNameAnnotation)
+        for (duplicate <- allJSNameAnnots.tail) {
+          reporter.error(duplicate.pos,
+              "A member can only have a single @JSName annotation.")
         }
       }
     }
@@ -1199,35 +1173,63 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
     /** Checks that argument to @JSName on [[member]] is a literal.
      *  Reports an error on each annotation where this is not the case.
      */
-    private def checkJSNameArgument(member: MemberDef): Unit = {
-      for (annot <- member.symbol.getAnnotation(JSNameAnnotation)) {
-        val argTree = annot.args.head
-        if (argTree.tpe.typeSymbol == StringClass) {
-          if (!argTree.isInstanceOf[Literal]) {
-            reporter.error(argTree.pos,
-                "A string argument to JSName must be a literal string")
-          }
-        } else {
-          // We have a js.Symbol
-          val sym = argTree.symbol
-          if (!sym.isStatic || !sym.isStable) {
-            reporter.error(argTree.pos,
-                "A js.Symbol argument to JSName must be a static, stable identifier")
-          } else if ((enclosingOwner is OwnerKind.JSNonNative) &&
-              sym.owner == member.symbol.owner) {
-            reporter.warning(argTree.pos,
-                "This symbol is defined in the same object as the annotation's " +
-                "target. This will cause a stackoverflow at runtime")
-          }
+    private def checkJSNameArgument(memberSym: Symbol, annot: AnnotationInfo): Unit = {
+      val argTree = annot.args.head
+      if (argTree.tpe.typeSymbol == StringClass) {
+        if (!argTree.isInstanceOf[Literal]) {
+          reporter.error(argTree.pos,
+              "A string argument to JSName must be a literal string")
         }
+      } else {
+        // We have a js.Symbol
+        val sym = argTree.symbol
+        if (!sym.isStatic || !sym.isStable) {
+          reporter.error(argTree.pos,
+              "A js.Symbol argument to JSName must be a static, stable identifier")
+        } else if ((enclosingOwner is OwnerKind.JSNonNative) &&
+            sym.owner == memberSym.owner) {
+          reporter.warning(argTree.pos,
+              "This symbol is defined in the same object as the annotation's " +
+              "target. This will cause a stackoverflow at runtime")
+        }
+      }
+    }
 
+    /** Mark the symbol as exposed if it is a non-private term member of a
+     *  non-native JS class.
+     *
+     *  @param sym
+     *    The symbol, which must be the module symbol for a module, not its
+     *    module class symbol.
+     */
+    private def markExposedIfRequired(sym: Symbol): Unit = {
+      def shouldBeExposed: Boolean = {
+        // it is a member of a non-native JS class
+        (enclosingOwner is OwnerKind.JSNonNative) && !sym.isLocalToBlock &&
+        // it is a term member
+        (sym.isModule || sym.isMethod) &&
+        // it is not private
+        !isPrivateMaybeWithin(sym) &&
+        // it is not a kind of term member that we never expose
+        !sym.isConstructor && !sym.isValueParameter && !sym.isParamWithDefault &&
+        // it is not synthetic
+        !sym.isSynthetic
+      }
+
+      if (shouldPrepareExports && shouldBeExposed) {
+        sym.addAnnotation(ExposedJSMemberAnnot)
+        /* For accessors, the field being accessed must also be exposed,
+         * although it is private.
+         */
+        if (sym.isAccessor)
+          sym.accessed.addAnnotation(ExposedJSMemberAnnot)
       }
     }
 
   }
 
   def isJSAny(sym: Symbol): Boolean =
-    sym.tpe.typeSymbol isSubClass JSAnyClass
+    sym.isSubClass(JSAnyClass)
 
   /** Checks that a setter has the right signature.
    *
@@ -1256,29 +1258,19 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
     }
   }
 
-  private def isJSAny(implDef: ImplDef): Boolean = isJSAny(implDef.symbol)
-
-  private def isJSLambda(sym: Symbol) = sym.isAnonymousClass &&
-    AllJSFunctionClasses.exists(sym.tpe.typeSymbol isSubClass _)
-
-  private def isScalaEnum(implDef: ImplDef) =
-    implDef.symbol.tpe.typeSymbol isSubClass ScalaEnumClass
-
   /** Tests whether the symbol has `private` in any form, either `private`,
    *  `private[this]` or `private[Enclosing]`.
    */
   def isPrivateMaybeWithin(sym: Symbol): Boolean =
     sym.isPrivate || (sym.hasAccessBoundary && !sym.isProtected)
 
-  /** Checks that the optional argument to `@JSGlobal` on [[sym]] is a literal.
+  /** Checks that the optional argument to an `@JSGlobal` annotation is a
+   *  literal.
    *
-   *  Reports an error on each annotation where this is not the case.
+   *  Reports an error on the annotation if it is not the case.
    */
-  private def checkJSGlobalLiteral(sym: Symbol): Unit = {
-    for {
-      annot <- sym.getAnnotation(JSGlobalAnnotation)
-      if annot.args.nonEmpty
-    } {
+  private def checkJSGlobalLiteral(annot: AnnotationInfo): Unit = {
+    if (annot.args.nonEmpty) {
       assert(annot.args.size == 1,
           s"@JSGlobal annotation $annot has more than 1 argument")
 
@@ -1290,42 +1282,38 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
     }
   }
 
-  /** Checks that arguments to `@JSImport` on [[sym]] are literals.
+  /** Checks that arguments to an `@JSImport` annotation are literals.
    *
    *  The second argument can also be the singleton `JSImport.Namespace`
    *  object.
    *
-   *  Reports an error on each annotation where this is not the case.
+   *  Reports an error on the annotation if it is not the case.
    */
-  private def checkJSImportLiteral(sym: Symbol): Unit = {
-    for {
-      annot <- sym.getAnnotation(JSImportAnnotation)
-    } {
-      assert(annot.args.size == 2 || annot.args.size == 3,
-          s"@JSImport annotation $annot does not have exactly 2 or 3 arguments")
+  private def checkJSImportLiteral(annot: AnnotationInfo): Unit = {
+    assert(annot.args.size == 2 || annot.args.size == 3,
+        s"@JSImport annotation $annot does not have exactly 2 or 3 arguments")
 
-      val firstArgIsValid = annot.stringArg(0).isDefined
-      if (!firstArgIsValid) {
-        reporter.error(annot.args.head.pos,
-            "The first argument to @JSImport must be a literal string.")
-      }
+    val firstArgIsValid = annot.stringArg(0).isDefined
+    if (!firstArgIsValid) {
+      reporter.error(annot.args.head.pos,
+          "The first argument to @JSImport must be a literal string.")
+    }
 
-      val secondArgIsValid = {
-        annot.stringArg(1).isDefined ||
-        annot.args(1).symbol == JSImportNamespaceObject
-      }
-      if (!secondArgIsValid) {
-        reporter.error(annot.args(1).pos,
-            "The second argument to @JSImport must be literal string or the " +
-            "JSImport.Namespace object.")
-      }
+    val secondArgIsValid = {
+      annot.stringArg(1).isDefined ||
+      annot.args(1).symbol == JSImportNamespaceObject
+    }
+    if (!secondArgIsValid) {
+      reporter.error(annot.args(1).pos,
+          "The second argument to @JSImport must be literal string or the " +
+          "JSImport.Namespace object.")
+    }
 
-      val thirdArgIsValid = annot.args.size < 3 || annot.stringArg(2).isDefined
-      if (!thirdArgIsValid) {
-        reporter.error(annot.args(2).pos,
-            "The third argument to @JSImport, when present, must be a " +
-            "literal string.")
-      }
+    val thirdArgIsValid = annot.args.size < 3 || annot.stringArg(2).isDefined
+    if (!thirdArgIsValid) {
+      reporter.error(annot.args(2).pos,
+          "The third argument to @JSImport, when present, must be a " +
+          "literal string.")
     }
   }
 
@@ -1483,11 +1471,6 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       case ctor: MethodSymbol if ctor.isPrimaryConstructor => ctor
     }
 
-  private def shouldModuleBeExposed(sym: Symbol) = {
-    assert(sym.isModuleOrModuleClass, sym)
-    !sym.isLocalToBlock && !sym.isSynthetic && !isPrivateMaybeWithin(sym)
-  }
-
   private def wasPublicBeforeTyper(sym: Symbol): Boolean =
     sym.hasAnnotation(WasPublicBeforeTyperClass)
 
@@ -1508,7 +1491,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
     }
   }
 
-  private def checkInternalAnnotations(tree: Tree): Unit = {
+  private def checkInternalAnnotations(sym: Symbol): Unit = {
     /** Returns true iff it is a compiler annotations. This does not include
      *  annotations inserted before the typer (such as `@WasPublicBeforeTyper`).
      */
@@ -1518,26 +1501,28 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       annotation.symbol == JSOptionalAnnotation
     }
 
-    if (tree.isInstanceOf[MemberDef]) {
-      for (annotation <- tree.symbol.annotations) {
-        if (isCompilerAnnotation(annotation)) {
-          reporter.error(annotation.pos,
-              s"$annotation is for compiler internal use only. " +
-              "Do not use it yourself.")
-        }
+    for (annotation <- sym.annotations) {
+      if (isCompilerAnnotation(annotation)) {
+        reporter.error(annotation.pos,
+            s"$annotation is for compiler internal use only. " +
+            "Do not use it yourself.")
       }
     }
   }
 
   private def kindStrFor(sym: Symbol): String = {
     if (sym.isAccessor) kindStrFor(sym.accessed)
-    else if (sym.isModuleOrModuleClass) "objects"
+    else if (sym.isModuleClass) "objects"
     else if (sym.isTrait) "traits"
     else if (sym.isClass) "classes"
     else if (sym.isMethod) "defs"
     else if (sym.isMutable) "vars"
     else "vals"
   }
+
+  private def moduleToModuleClass(sym: Symbol): Symbol =
+    if (sym.isModule) sym.moduleClass
+    else sym
 }
 
 object PrepJSInterop {
