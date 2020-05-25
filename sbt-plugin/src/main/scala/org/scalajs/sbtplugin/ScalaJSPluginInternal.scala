@@ -125,9 +125,10 @@ private[sbtplugin] object ScalaJSPluginInternal {
         if (config.moduleKind != scalaJSLinkerConfig.value.moduleKind) {
           val keyName = key.key.label
           log.warn(
-              s"The module kind in `scalaJSLinkerConfig in ($projectID, " +
-              s"$configName, $keyName)` is different than the one `in " +
-              s"`($projectID, $configName)`. " +
+              "The module kind in " +
+              s"`$projectID / $configName / $keyName / scalaJSLinkerConfig` " +
+              "is different than the one in " +
+              s"`$projectID / $configName / scalaJSLinkerConfig`. " +
               "Some things will go wrong.")
         }
 
@@ -457,8 +458,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
         if (useTest) {
           if (useMain) {
             throw new MessageOnlyException("You may only set one of " +
-                s"`scalaJSUseMainModuleInitializer in $configName` and " +
-                s"`scalaJSUseTestModuleInitializer in $configName` to true")
+                s"`$configName / scalaJSUseMainModuleInitializer` " +
+                s"`$configName / scalaJSUseTestModuleInitializer` true")
           }
 
           Seq(
@@ -476,15 +477,14 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
         if (fork.value) {
           throw new MessageOnlyException(
-              s"`test in $configName` tasks in a Scala.js project require " +
-              s"`fork in $configName := false`.")
+              s"`$configName / test` tasks in a Scala.js project require " +
+              s"`$configName / fork := false`.")
         }
 
         if (!scalaJSUseTestModuleInitializer.value) {
           throw new MessageOnlyException(
-              s"You may only use `test in $configName` tasks in " +
-              "a Scala.js project if `scalaJSUseTestModuleInitializer in " +
-              s"$configName := true`")
+              s"You may only use `$configName / test` tasks in a Scala.js project if " +
+              s"`$configName / scalaJSUseTestModuleInitializer := true`.")
         }
 
         val frameworks = testFrameworks.value

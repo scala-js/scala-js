@@ -87,9 +87,9 @@ object ScalaJSPlugin extends AutoPlugin {
      *  thing, by tagging the task with the value of [[usesScalaJSLinkerTag]]
      *  in the same scope. The typical shape of such a task will be:
      *  {{{
-     *  myTask in (Compile, fastOptJS) := Def.taskDyn {
-     *    val linker = (scalaJSLinker in (Compile, fastOptJS)).value
-     *    val usesLinkerTag = (usesScalaJSLinkerTag in (Compile, fastOptJS)).value
+     *  Compile / fastOptJS / myTask := Def.taskDyn {
+     *    val linker = (Compile / fastOptJS / scalaJSLinker).value
+     *    val usesLinkerTag = (Compile / fastOptJS / usesScalaJSLinkerTag).value
      *    // Read the `.value` of other settings and tasks here
      *
      *    Def.task {
