@@ -474,6 +474,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
       loadedTestFrameworks := {
         val configName = configuration.value.name
+        val input = jsEnvInput.value
 
         if (fork.value) {
           throw new MessageOnlyException(
@@ -487,9 +488,16 @@ private[sbtplugin] object ScalaJSPluginInternal {
               s"`$configName / scalaJSUseTestModuleInitializer := true`.")
         }
 
+        if (input.isEmpty) {
+          throw new MessageOnlyException(
+              s"`$configName / test` got called but `$configName / jsEnvInput` is empty. " +
+              "This is not allowed, since running tests requires the generated Scala.js code. " +
+              s"If you want to call `$configName / test` but not have it do anything, " +
+              s"set `$configName / test` := {}`.")
+        }
+
         val frameworks = testFrameworks.value
         val env = jsEnv.value
-        val input = jsEnvInput.value
         val frameworkNames = frameworks.map(_.implClassNames.toList).toList
 
         val logger = sbtLogger2ToolsLogger(streams.value.log)
