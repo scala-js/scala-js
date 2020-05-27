@@ -34,7 +34,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
     class A extends js.Any
     """ hasErrors
     """
-      |newSource1.scala:5: error: A non-native JS class cannot directly extend AnyRef. It must extend a JS class (native or not).
+      |newSource1.scala:5: error: Non-native JS classes and objects cannot directly extend AnyRef. They must extend a JS class (native or not).
       |    class A extends js.Any
       |          ^
     """
@@ -43,7 +43,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
     object A extends js.Any
     """ hasErrors
     """
-      |newSource1.scala:5: error: A non-native JS object cannot directly extend AnyRef. It must extend a JS class (native or not).
+      |newSource1.scala:5: error: Non-native JS classes and objects cannot directly extend AnyRef. They must extend a JS class (native or not).
       |    object A extends js.Any
       |           ^
     """
@@ -66,16 +66,16 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:8: error: A non-native JS class cannot directly extend a native JS trait.
+      |newSource1.scala:8: error: Non-native JS types cannot directly extend native JS traits.
       |    class A extends NativeTrait
       |          ^
-      |newSource1.scala:10: error: A non-native JS trait cannot directly extend a native JS trait.
+      |newSource1.scala:10: error: Non-native JS types cannot directly extend native JS traits.
       |    trait B extends NativeTrait
       |          ^
-      |newSource1.scala:12: error: A non-native JS object cannot directly extend a native JS trait.
+      |newSource1.scala:12: error: Non-native JS types cannot directly extend native JS traits.
       |    object C extends NativeTrait
       |           ^
-      |newSource1.scala:15: error: A non-native JS class cannot directly extend a native JS trait.
+      |newSource1.scala:15: error: Non-native JS types cannot directly extend native JS traits.
       |      val x = new NativeTrait {}
       |                  ^
     """

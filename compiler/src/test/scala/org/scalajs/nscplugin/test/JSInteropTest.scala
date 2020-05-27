@@ -35,10 +35,6 @@ class JSInteropTest extends DirectTest with TestHelpers {
       "JSGlobalScope" -> "@JSGlobalScope"
   )
 
-  private def pluralOfKind(kind: String): String =
-    if (kind == "class") "classes"
-    else kind + "s" // object, trait, val, var, def
-
   private def ifHasNewRefChecks(msg: String): String = {
     val version = scala.util.Properties.versionNumberString
     if (version.startsWith("2.11.") ||
@@ -80,11 +76,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName(Sym.sym)
       $obj B extends js.Object
       """ hasErrors
-      s"""
-        |newSource1.scala:5: error: Non JS-native ${pluralOfKind(obj)} may not have an @JSName annotation.
+      """
+        |newSource1.scala:5: error: @JSName can only be used on members of JS types.
         |      @JSName("foo")
         |       ^
-        |newSource1.scala:12: error: Non JS-native ${pluralOfKind(obj)} may not have an @JSName annotation.
+        |newSource1.scala:12: error: @JSName can only be used on members of JS types.
         |      @JSName(Sym.sym)
         |       ^
       """
@@ -104,11 +100,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName(Sym.sym)
       $obj B
       """ hasErrors
-      s"""
-        |newSource1.scala:5: error: Non JS-native ${pluralOfKind(obj)} may not have an @JSName annotation.
+      """
+        |newSource1.scala:5: error: @JSName can only be used on members of JS types.
         |      @JSName("foo")
         |       ^
-        |newSource1.scala:12: error: Non JS-native ${pluralOfKind(obj)} may not have an @JSName annotation.
+        |newSource1.scala:12: error: @JSName can only be used on members of JS types.
         |      @JSName(Sym.sym)
         |       ^
       """
@@ -133,19 +129,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:6: error: vals in Scala classes, traits and objects may not have an @JSName annotation.
+      |newSource1.scala:6: error: @JSName can only be used on members of JS types.
       |      @JSName("foo")
       |       ^
-      |newSource1.scala:9: error: vars in Scala classes, traits and objects may not have an @JSName annotation.
+      |newSource1.scala:9: error: @JSName can only be used on members of JS types.
       |      @JSName("foo")
       |       ^
-      |newSource1.scala:12: error: defs in Scala classes, traits and objects may not have an @JSName annotation.
+      |newSource1.scala:12: error: @JSName can only be used on members of JS types.
       |      @JSName("foo")
       |       ^
-      |newSource1.scala:15: error: defs in Scala classes, traits and objects may not have an @JSName annotation.
+      |newSource1.scala:15: error: @JSName can only be used on members of JS types.
       |      @JSName("foo")
       |       ^
-      |newSource1.scala:18: error: defs in Scala classes, traits and objects may not have an @JSName annotation.
+      |newSource1.scala:18: error: @JSName can only be used on members of JS types.
       |      @JSName("foo")
       |       ^
     """
@@ -175,10 +171,10 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:6: error: @JSName cannot be used on private members
+      |newSource1.scala:6: error: @JSName cannot be used on private members.
       |      @JSName("foo")
       |       ^
-      |newSource1.scala:9: error: @JSName cannot be used on private members
+      |newSource1.scala:9: error: @JSName cannot be used on private members.
       |      @JSName("bar")
       |       ^
     """
@@ -198,11 +194,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSGlobal("Foo")
       $obj B extends js.Object
       """ hasErrors
-      s"""
-        |newSource1.scala:5: error: Non JS-native ${pluralOfKind(obj)} may not have an @JSGlobal annotation.
+      """
+        |newSource1.scala:5: error: @JSGlobal can only be used on native JS definitions (with @js.native).
         |      @JSGlobal
         |       ^
-        |newSource1.scala:8: error: Non JS-native ${pluralOfKind(obj)} may not have an @JSGlobal annotation.
+        |newSource1.scala:8: error: @JSGlobal can only be used on native JS definitions (with @js.native).
         |      @JSGlobal("Foo")
         |       ^
       """
@@ -218,11 +214,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSGlobal("Foo")
       $obj B
       """ hasErrors
-      s"""
-        |newSource1.scala:5: error: Non JS-native ${pluralOfKind(obj)} may not have an @JSGlobal annotation.
+      """
+        |newSource1.scala:5: error: @JSGlobal can only be used on native JS definitions (with @js.native).
         |      @JSGlobal
         |       ^
-        |newSource1.scala:8: error: Non JS-native ${pluralOfKind(obj)} may not have an @JSGlobal annotation.
+        |newSource1.scala:8: error: @JSGlobal can only be used on native JS definitions (with @js.native).
         |      @JSGlobal("Foo")
         |       ^
       """
@@ -247,19 +243,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:6: error: Non JS-native vals may not have an @JSGlobal annotation.
+      |newSource1.scala:6: error: @JSGlobal can only be used on native JS definitions (with @js.native).
       |      @JSGlobal
       |       ^
-      |newSource1.scala:9: error: Non JS-native vars may not have an @JSGlobal annotation.
+      |newSource1.scala:9: error: @JSGlobal can only be used on native JS definitions (with @js.native).
       |      @JSGlobal
       |       ^
-      |newSource1.scala:12: error: Non JS-native defs may not have an @JSGlobal annotation.
+      |newSource1.scala:12: error: @JSGlobal can only be used on native JS definitions (with @js.native).
       |      @JSGlobal
       |       ^
-      |newSource1.scala:15: error: Non JS-native defs may not have an @JSGlobal annotation.
+      |newSource1.scala:15: error: @JSGlobal can only be used on native JS definitions (with @js.native).
       |      @JSGlobal
       |       ^
-      |newSource1.scala:18: error: Non JS-native defs may not have an @JSGlobal annotation.
+      |newSource1.scala:18: error: @JSGlobal can only be used on native JS definitions (with @js.native).
       |      @JSGlobal
       |       ^
     """
@@ -276,8 +272,8 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSImport("foo", JSImport.Namespace)
       $obj A extends js.Object
       """ hasErrors
-      s"""
-        |newSource1.scala:5: error: Non JS-native ${pluralOfKind(obj)} may not have an @JSImport annotation.
+      """
+        |newSource1.scala:5: error: @JSImport can only be used on native JS definitions (with @js.native).
         |      @JSImport("foo", JSImport.Namespace)
         |       ^
       """
@@ -290,8 +286,8 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSImport("foo", JSImport.Namespace)
       $obj A
       """ hasErrors
-      s"""
-        |newSource1.scala:5: error: Non JS-native ${pluralOfKind(obj)} may not have an @JSImport annotation.
+      """
+        |newSource1.scala:5: error: @JSImport can only be used on native JS definitions (with @js.native).
         |      @JSImport("foo", JSImport.Namespace)
         |       ^
       """
@@ -316,19 +312,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:6: error: Non JS-native vals may not have an @JSImport annotation.
+      |newSource1.scala:6: error: @JSImport can only be used on native JS definitions (with @js.native).
       |      @JSImport("foo", "bar")
       |       ^
-      |newSource1.scala:9: error: Non JS-native vars may not have an @JSImport annotation.
+      |newSource1.scala:9: error: @JSImport can only be used on native JS definitions (with @js.native).
       |      @JSImport("foo", "bar")
       |       ^
-      |newSource1.scala:12: error: Non JS-native defs may not have an @JSImport annotation.
+      |newSource1.scala:12: error: @JSImport can only be used on native JS definitions (with @js.native).
       |      @JSImport("foo", "bar")
       |       ^
-      |newSource1.scala:15: error: Non JS-native defs may not have an @JSImport annotation.
+      |newSource1.scala:15: error: @JSImport can only be used on native JS definitions (with @js.native).
       |      @JSImport("foo", "bar")
       |       ^
-      |newSource1.scala:18: error: Non JS-native defs may not have an @JSImport annotation.
+      |newSource1.scala:18: error: @JSImport can only be used on native JS definitions (with @js.native).
       |      @JSImport("foo", "bar")
       |       ^
     """
@@ -340,8 +336,8 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
       $obj A extends js.Object
       """ hasErrors
-      s"""
-        |newSource1.scala:5: error: Non JS-native ${pluralOfKind(obj)} may not have an @JSImport annotation.
+      """
+        |newSource1.scala:5: error: @JSImport can only be used on native JS definitions (with @js.native).
         |      @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
         |       ^
       """
@@ -354,8 +350,8 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
       $obj A
       """ hasErrors
-      s"""
-        |newSource1.scala:5: error: Non JS-native ${pluralOfKind(obj)} may not have an @JSImport annotation.
+      """
+        |newSource1.scala:5: error: @JSImport can only be used on native JS definitions (with @js.native).
         |      @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
         |       ^
       """
@@ -380,19 +376,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:6: error: Non JS-native vals may not have an @JSImport annotation.
+      |newSource1.scala:6: error: @JSImport can only be used on native JS definitions (with @js.native).
       |      @JSImport("foo", "bar", globalFallback = "Foo")
       |       ^
-      |newSource1.scala:9: error: Non JS-native vars may not have an @JSImport annotation.
+      |newSource1.scala:9: error: @JSImport can only be used on native JS definitions (with @js.native).
       |      @JSImport("foo", "bar", globalFallback = "Foo")
       |       ^
-      |newSource1.scala:12: error: Non JS-native defs may not have an @JSImport annotation.
+      |newSource1.scala:12: error: @JSImport can only be used on native JS definitions (with @js.native).
       |      @JSImport("foo", "bar", globalFallback = "Foo")
       |       ^
-      |newSource1.scala:15: error: Non JS-native defs may not have an @JSImport annotation.
+      |newSource1.scala:15: error: @JSImport can only be used on native JS definitions (with @js.native).
       |      @JSImport("foo", "bar", globalFallback = "Foo")
       |       ^
-      |newSource1.scala:18: error: Non JS-native defs may not have an @JSImport annotation.
+      |newSource1.scala:18: error: @JSImport can only be used on native JS definitions (with @js.native).
       |      @JSImport("foo", "bar", globalFallback = "Foo")
       |       ^
     """
@@ -407,7 +403,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     object A extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:5: error: Only native JS objects can have an @JSGlobalScope annotation.
+      |newSource1.scala:5: error: @JSGlobalScope can only be used on native JS objects (with @js.native).
       |    @JSGlobalScope
       |     ^
     """
@@ -417,7 +413,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     object A
     """ hasErrors
     """
-      |newSource1.scala:5: error: Only native JS objects can have an @JSGlobalScope annotation.
+      |newSource1.scala:5: error: @JSGlobalScope can only be used on native JS objects (with @js.native).
       |    @JSGlobalScope
       |     ^
     """
@@ -435,16 +431,16 @@ class JSInteropTest extends DirectTest with TestHelpers {
     abstract class B extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:6: error: @JSName annotations are not allowed on top level classes (or classes inside Scala objects).
+      |newSource1.scala:6: error: @JSName can only be used on members of JS types.
       |    @JSName("Foo")
       |     ^
-      |newSource1.scala:7: error: Native JS classes must have exactly one annotation among @JSGlobal and @JSImport.
+      |newSource1.scala:7: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |    class A extends js.Object
       |          ^
-      |newSource1.scala:10: error: @JSName annotations are not allowed on top level classes (or classes inside Scala objects).
+      |newSource1.scala:10: error: @JSName can only be used on members of JS types.
       |    @JSName("Foo")
       |     ^
-      |newSource1.scala:11: error: Native JS classes must have exactly one annotation among @JSGlobal and @JSImport.
+      |newSource1.scala:11: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |    abstract class B extends js.Object
       |                   ^
     """
@@ -458,7 +454,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     object A extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:6: error: @JSName annotations are not allowed on top level objects (or objects inside Scala objects).
+      |newSource1.scala:6: error: @JSName can only be used on members of JS types.
       |    @JSName("Foo")
       |     ^
       |newSource1.scala:7: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
@@ -486,11 +482,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       trait B extends js.Object
     }
     """ hasErrors
-    s"""
-      |newSource1.scala:12: error: Traits may not have an @JSName annotation.
+    """
+      |newSource1.scala:12: error: @JSName cannot be used on traits.
       |      @JSName("foo")
       |       ^
-      |newSource1.scala:16: error: Traits may not have an @JSName annotation.
+      |newSource1.scala:16: error: @JSName cannot be used on traits.
       |      @JSName(Sym.sym)
       |       ^
     """
@@ -531,41 +527,41 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def f(x: Int): Int = js.native
     }
     """ hasErrors
-    s"""
-      |newSource1.scala:11: error: @JSName annotations are not allowed on native JS vals.
+    """
+      |newSource1.scala:11: error: @JSName can only be used on members of JS types.
       |      @JSName("foo")
       |       ^
-      |newSource1.scala:12: error: Native JS vals must have exactly one annotation among @JSGlobal and @JSImport.
+      |newSource1.scala:12: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |      val a: Int = js.native
       |          ^
-      |newSource1.scala:15: error: @JSName annotations are not allowed on native JS defs.
+      |newSource1.scala:15: error: @JSName can only be used on members of JS types.
       |      @JSName("foo")
       |       ^
-      |newSource1.scala:16: error: Native JS defs must have exactly one annotation among @JSGlobal and @JSImport.
+      |newSource1.scala:16: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |      def b: Int = js.native
       |          ^
-      |newSource1.scala:19: error: @JSName annotations are not allowed on native JS defs.
+      |newSource1.scala:19: error: @JSName can only be used on members of JS types.
       |      @JSName("foo")
       |       ^
-      |newSource1.scala:20: error: Native JS defs must have exactly one annotation among @JSGlobal and @JSImport.
+      |newSource1.scala:20: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |      def c(x: Int): Int = js.native
       |          ^
-      |newSource1.scala:23: error: @JSName annotations are not allowed on native JS vals.
+      |newSource1.scala:23: error: @JSName can only be used on members of JS types.
       |      @JSName(Sym.sym)
       |       ^
-      |newSource1.scala:24: error: Native JS vals must have exactly one annotation among @JSGlobal and @JSImport.
+      |newSource1.scala:24: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |      val d: Int = js.native
       |          ^
-      |newSource1.scala:27: error: @JSName annotations are not allowed on native JS defs.
+      |newSource1.scala:27: error: @JSName can only be used on members of JS types.
       |      @JSName(Sym.sym)
       |       ^
-      |newSource1.scala:28: error: Native JS defs must have exactly one annotation among @JSGlobal and @JSImport.
+      |newSource1.scala:28: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |      def e: Int = js.native
       |          ^
-      |newSource1.scala:31: error: @JSName annotations are not allowed on native JS defs.
+      |newSource1.scala:31: error: @JSName can only be used on members of JS types.
       |      @JSName(Sym.sym)
       |       ^
-      |newSource1.scala:32: error: Native JS defs must have exactly one annotation among @JSGlobal and @JSImport.
+      |newSource1.scala:32: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |      def f(x: Int): Int = js.native
       |          ^
     """
@@ -652,28 +648,28 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: Only native JS objects can have an @JSGlobalScope annotation.
+      |newSource1.scala:5: error: @JSGlobalScope can only be used on native JS objects (with @js.native).
       |    @js.native @JSGlobalScope
       |                ^
       |newSource1.scala:8: error: Traits may not have an @JSGlobalScope annotation.
       |    @js.native @JSGlobalScope
       |                ^
-      |newSource1.scala:12: error: Only native JS objects can have an @JSGlobalScope annotation.
+      |newSource1.scala:12: error: @JSGlobalScope can only be used on native JS objects (with @js.native).
       |      @js.native @JSGlobalScope
       |                  ^
       |newSource1.scala:15: error: Traits may not have an @JSGlobalScope annotation.
       |      @js.native @JSGlobalScope
       |                  ^
-      |newSource1.scala:18: error: Only native JS objects can have an @JSGlobalScope annotation.
+      |newSource1.scala:18: error: @JSGlobalScope can only be used on native JS objects (with @js.native).
       |      @js.native @JSGlobalScope
       |                  ^
-      |newSource1.scala:19: error: Native JS vals must have exactly one annotation among @JSGlobal and @JSImport.
+      |newSource1.scala:19: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |      val a: Int = js.native
       |          ^
-      |newSource1.scala:21: error: Only native JS objects can have an @JSGlobalScope annotation.
+      |newSource1.scala:21: error: @JSGlobalScope can only be used on native JS objects (with @js.native).
       |      @js.native @JSGlobalScope
       |                  ^
-      |newSource1.scala:24: error: Only native JS objects can have an @JSGlobalScope annotation.
+      |newSource1.scala:24: error: @JSGlobalScope can only be used on native JS objects (with @js.native).
       |      @js.native @JSGlobalScope
       |                  ^
     """
@@ -710,7 +706,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
           |newSource1.scala:7: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
           |$secondAnnot
           | ^
-          |newSource1.scala:12: error: Native JS classes must have exactly one annotation among @JSGlobal and @JSImport.
+          |newSource1.scala:12: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
           |$secondAnnot
           | ^
         """
@@ -734,13 +730,13 @@ class JSInteropTest extends DirectTest with TestHelpers {
             |  def c(x: Int): Int = js.native
             |}
           """.stripMargin hasErrors s"""
-          |newSource1.scala:8: error: Native JS vals must have exactly one annotation among @JSGlobal and @JSImport.
+          |newSource1.scala:8: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
           |  $secondAnnot
           |   ^
-          |newSource1.scala:13: error: Native JS defs must have exactly one annotation among @JSGlobal and @JSImport.
+          |newSource1.scala:13: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
           |  $secondAnnot
           |   ^
-          |newSource1.scala:18: error: Native JS defs must have exactly one annotation among @JSGlobal and @JSImport.
+          |newSource1.scala:18: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
           |  $secondAnnot
           |   ^
           """
@@ -959,13 +955,13 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:7: error: @js.native vals may only call js.native.
+      |newSource1.scala:7: error: @js.native members may only call js.native.
       |      val a: Int = 1
       |                   ^
-      |newSource1.scala:10: error: @js.native defs may only call js.native.
+      |newSource1.scala:10: error: @js.native members may only call js.native.
       |      def b: Int = 3
       |                   ^
-      |newSource1.scala:13: error: @js.native defs may only call js.native.
+      |newSource1.scala:13: error: @js.native members may only call js.native.
       |      def c(x: Int): Int = x + 1
       |                             ^
     """
@@ -1828,10 +1824,10 @@ class JSInteropTest extends DirectTest with TestHelpers {
     abstract class B extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:6: error: Native JS classes must have exactly one annotation among @JSGlobal and @JSImport.
+      |newSource1.scala:6: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |    class A extends js.Object
       |          ^
-      |newSource1.scala:9: error: Native JS classes must have exactly one annotation among @JSGlobal and @JSImport.
+      |newSource1.scala:9: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |    abstract class B extends js.Object
       |                   ^
     """
@@ -1860,7 +1856,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:7: error: Native JS classes must have exactly one annotation among @JSGlobal and @JSImport.
+      |newSource1.scala:7: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |      class B extends js.Object
       |            ^
     """
@@ -1931,7 +1927,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:7: error: Native JS classes must have exactly one annotation among @JSGlobal and @JSImport.
+      |newSource1.scala:7: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |      class B extends js.Object
       |            ^
     """
@@ -1952,19 +1948,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:6: error: @JSName annotations are not allowed on top level classes (or classes inside Scala objects).
+      |newSource1.scala:6: error: @JSName can only be used on members of JS types.
       |      @JSName("InnerB")
       |       ^
-      |newSource1.scala:8: error: Native JS classes must have exactly one annotation among @JSGlobal and @JSImport.
+      |newSource1.scala:8: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |      class B extends js.Object
       |            ^
-      |newSource1.scala:10: error: @JSName annotations are not allowed on top level classes (or classes inside Scala objects).
+      |newSource1.scala:10: error: @JSName can only be used on members of JS types.
       |      @JSName("InnerC")
       |       ^
-      |newSource1.scala:12: error: Native JS classes must have exactly one annotation among @JSGlobal and @JSImport.
+      |newSource1.scala:12: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |      abstract class C extends js.Object
       |                     ^
-      |newSource1.scala:14: error: @JSName annotations are not allowed on top level objects (or objects inside Scala objects).
+      |newSource1.scala:14: error: @JSName can only be used on members of JS types.
       |      @JSName("InnerD")
       |       ^
       |newSource1.scala:16: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
@@ -2138,11 +2134,6 @@ class JSInteropTest extends DirectTest with TestHelpers {
   def noJSGlobalOnMembersOfClassesAndTraits: Unit = {
 
     for (outer <- Seq("class", "trait")) {
-      // There is a bug in kindStrFor() for vars in traits in Scala 2.12+
-      val varKind =
-        if (outer == "trait" && !scala.util.Properties.versionNumberString.startsWith("2.11.")) "vals"
-        else "vars"
-
       s"""
       @js.native ${if (outer == "trait") "" else "@JSGlobal"}
       $outer Foo extends js.Object {
@@ -2170,14 +2161,14 @@ class JSInteropTest extends DirectTest with TestHelpers {
         object InnerImplied extends js.Object
       }
       """ hasErrors
-      s"""
-        |newSource1.scala:7: error: Non JS-native vals may not have an @JSGlobal annotation.
+      """
+        |newSource1.scala:7: error: @JSGlobal can only be used on native JS definitions (with @js.native).
         |        @JSGlobal("bar1")
         |         ^
-        |newSource1.scala:9: error: Non JS-native $varKind may not have an @JSGlobal annotation.
+        |newSource1.scala:9: error: @JSGlobal can only be used on native JS definitions (with @js.native).
         |        @JSGlobal("bar2")
         |         ^
-        |newSource1.scala:11: error: Non JS-native defs may not have an @JSGlobal annotation.
+        |newSource1.scala:11: error: @JSGlobal can only be used on native JS definitions (with @js.native).
         |        @JSGlobal("bar3")
         |         ^
         |newSource1.scala:15: error: Nested JS classes and objects cannot have an @JSGlobal annotation.
@@ -2227,14 +2218,14 @@ class JSInteropTest extends DirectTest with TestHelpers {
       object InnerImplied extends js.Object
     }
     """ hasErrors
-    s"""
-      |newSource1.scala:7: error: Non JS-native vals may not have an @JSGlobal annotation.
+    """
+      |newSource1.scala:7: error: @JSGlobal can only be used on native JS definitions (with @js.native).
       |      @JSGlobal("bar1")
       |       ^
-      |newSource1.scala:9: error: Non JS-native vars may not have an @JSGlobal annotation.
+      |newSource1.scala:9: error: @JSGlobal can only be used on native JS definitions (with @js.native).
       |      @JSGlobal("bar2")
       |       ^
-      |newSource1.scala:11: error: Non JS-native defs may not have an @JSGlobal annotation.
+      |newSource1.scala:11: error: @JSGlobal can only be used on native JS definitions (with @js.native).
       |      @JSGlobal("bar3")
       |       ^
       |newSource1.scala:15: error: Nested JS classes and objects cannot have an @JSGlobal annotation.
@@ -2260,11 +2251,6 @@ class JSInteropTest extends DirectTest with TestHelpers {
       outer <- Seq("class", "trait")
       fallbackStr <- Seq("", ", globalFallback = \"Foo\"")
     } {
-      // There is a bug in kindStrFor() for vars in traits in Scala 2.12+
-      val varKind =
-        if (outer == "trait" && !scala.util.Properties.versionNumberString.startsWith("2.11.")) "vals"
-        else "vars"
-
       s"""
       @js.native ${if (outer == "trait") "" else "@JSGlobal"}
       $outer Foo extends js.Object {
@@ -2285,13 +2271,13 @@ class JSInteropTest extends DirectTest with TestHelpers {
       }
       """ hasErrors
       s"""
-        |newSource1.scala:7: error: Non JS-native vals may not have an @JSImport annotation.
+        |newSource1.scala:7: error: @JSImport can only be used on native JS definitions (with @js.native).
         |        @JSImport("bar1", JSImport.Namespace$fallbackStr)
         |         ^
-        |newSource1.scala:9: error: Non JS-native $varKind may not have an @JSImport annotation.
+        |newSource1.scala:9: error: @JSImport can only be used on native JS definitions (with @js.native).
         |        @JSImport("bar2", JSImport.Namespace$fallbackStr)
         |         ^
-        |newSource1.scala:11: error: Non JS-native defs may not have an @JSImport annotation.
+        |newSource1.scala:11: error: @JSImport can only be used on native JS definitions (with @js.native).
         |        @JSImport("bar3", JSImport.Namespace$fallbackStr)
         |         ^
         |newSource1.scala:15: error: Nested JS classes and objects cannot have an @JSImport annotation.
@@ -2331,13 +2317,13 @@ class JSInteropTest extends DirectTest with TestHelpers {
       }
       """ hasErrors
       s"""
-        |newSource1.scala:7: error: Non JS-native vals may not have an @JSImport annotation.
+        |newSource1.scala:7: error: @JSImport can only be used on native JS definitions (with @js.native).
         |        @JSImport("bar1", JSImport.Namespace$fallbackStr)
         |         ^
-        |newSource1.scala:9: error: Non JS-native vars may not have an @JSImport annotation.
+        |newSource1.scala:9: error: @JSImport can only be used on native JS definitions (with @js.native).
         |        @JSImport("bar2", JSImport.Namespace$fallbackStr)
         |         ^
-        |newSource1.scala:11: error: Non JS-native defs may not have an @JSImport annotation.
+        |newSource1.scala:11: error: @JSImport can only be used on native JS definitions (with @js.native).
         |        @JSImport("bar3", JSImport.Namespace$fallbackStr)
         |         ^
         |newSource1.scala:15: error: Nested JS classes and objects cannot have an @JSImport annotation.

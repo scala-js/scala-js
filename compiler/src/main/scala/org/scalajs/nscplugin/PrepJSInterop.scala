@@ -558,18 +558,13 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 
       // Check the parents
       for (parent <- sym.info.parents) {
-        def strKind =
-          if (sym.isTrait) "trait"
-          else if (sym.isModuleClass) "object"
-          else "class"
-
         parent.typeSymbol match {
           case AnyRefClass | ObjectClass =>
             // AnyRef is valid, except for non-native JS traits
             if (!isJSNative && !sym.isTrait) {
               reporter.error(implDef.pos,
-                  s"A non-native JS $strKind cannot directly extend AnyRef. " +
-                  "It must extend a JS class (native or not).")
+                  "Non-native JS classes and objects cannot directly extend " +
+                  "AnyRef. They must extend a JS class (native or not).")
             }
           case parentSym if isJSAny(parentSym) =>
             // A non-native JS type cannot extend a native JS trait
@@ -577,8 +572,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
             if (!isJSNative && parentSym.isTrait &&
                 parentSym.hasAnnotation(JSNativeAnnotation)) {
               reporter.error(implDef.pos,
-                  s"A non-native JS $strKind cannot directly extend a "+
-                  "native JS trait.")
+                  "Non-native JS types cannot directly extend native JS " +
+                  "traits.")
             }
           case DynamicClass =>
             /* We have to allow scala.Dynamic to be able to define js.Dynamic
@@ -801,7 +796,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
           case Some(annot) if annot.symbol == JSGlobalScopeAnnotation =>
             if (!sym.isModuleClass) {
               reporter.error(annot.pos,
-                  "Only native JS objects can have an @JSGlobalScope annotation.")
+                  "@JSGlobalScope can only be used on native JS objects (with @js.native).")
             }
             None
 
@@ -852,8 +847,6 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
     private def transformJSNativeValOrDefDef(tree: ValOrDefDef): ValOrDefDef = {
       val sym = tree.symbol
 
-      def kind = kindStrFor(sym)
-
       if (sym.isLazy || jsInterop.isJSSetter(sym)) {
         reporter.error(tree.pos,
             "@js.native is not allowed on vars, lazy vals and setter defs")
@@ -866,7 +859,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       }
 
       if (!sym.isAccessor)
-        checkRHSCallsJSNative(tree, s"@js.native ${kind}")
+        checkRHSCallsJSNative(tree, "@js.native members")
 
       if (sym.isMethod) { // i.e., it is not a field
         for (overridden <- sym.allOverriddenSymbols.headOption) {
@@ -1092,7 +1085,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
     }
 
     private def checkRHSCallsJSNative(tree: ValOrDefDef,
-        longKindStr: => String): Unit = {
+        longKindStr: String): Unit = {
       // Check that the rhs is exactly `= js.native`
       tree.rhs match {
         case sel: Select if sel.symbol == JSPackage_native =>
@@ -1117,19 +1110,17 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
         memberDef: MemberDef): Unit = {
       val sym = memberDef.symbol
 
-      def kindStr: String = kindStrFor(moduleToModuleClass(sym))
-
       for (annot <- sym.annotations) {
         annot.symbol match {
           case JSGlobalAnnotation =>
             reporter.error(annot.pos,
-                s"Non JS-native $kindStr may not have an @JSGlobal annotation.")
+                "@JSGlobal can only be used on native JS definitions (with @js.native).")
           case JSImportAnnotation =>
             reporter.error(annot.pos,
-                s"Non JS-native $kindStr may not have an @JSImport annotation.")
+                "@JSImport can only be used on native JS definitions (with @js.native).")
           case JSGlobalScopeAnnotation =>
             reporter.error(annot.pos,
-                "Only native JS objects can have an @JSGlobalScope annotation.")
+                "@JSGlobalScope can only be used on native JS objects (with @js.native).")
           case _ =>
             // ok
         }
@@ -1137,25 +1128,17 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
     }
 
     private def checkJSNameAnnots(sym: Symbol): Unit = {
-      def kindStr: String = kindStrFor(sym)
-
       for (annot <- sym.getAnnotation(JSNameAnnotation)) {
         // Check everything about the first @JSName annotation
         if (sym.isLocalToBlock || (enclosingOwner isnt OwnerKind.JSType)) {
-          if (sym.isClass) {
-            reporter.error(annot.pos,
-                s"Non JS-native $kindStr may not have an @JSName annotation.")
-          } else {
-            reporter.error(annot.pos,
-                s"$kindStr in Scala classes, traits and objects may not " +
-                "have an @JSName annotation.")
-          }
+          reporter.error(annot.pos,
+              "@JSName can only be used on members of JS types.")
         } else if (sym.isTrait) {
           reporter.error(annot.pos,
-              "Traits may not have an @JSName annotation.")
+              "@JSName cannot be used on traits.")
         } else if ((sym.isMethod || sym.isClass) && isPrivateMaybeWithin(sym)) {
           reporter.error(annot.pos,
-              "@JSName cannot be used on private members")
+              "@JSName cannot be used on private members.")
         } else {
           if (shouldCheckLiterals)
             checkJSNameArgument(sym, annot)
@@ -1409,17 +1392,9 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
   private def checkAndGetJSNativeLoadingSpecAnnotOf(
       pos: Position, sym: Symbol): Option[Annotation] = {
 
-    def kindStr: String = kindStrFor(sym)
-
     for (annot <- sym.getAnnotation(JSNameAnnotation)) {
-      if (sym.isClass) {
-        reporter.error(annot.pos,
-            "@JSName annotations are not allowed on top level " +
-            s"$kindStr (or $kindStr inside Scala objects).")
-      } else {
-        reporter.error(annot.pos,
-            s"@JSName annotations are not allowed on native JS $kindStr.")
-      }
+      reporter.error(annot.pos,
+          "@JSName can only be used on members of JS types.")
     }
 
     val annots = sym.annotations.filter { annot =>
@@ -1430,8 +1405,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       "Native JS objects must have exactly one annotation among " +
       "@JSGlobal, @JSImport and @JSGlobalScope."
     } else {
-      s"Native JS $kindStr must have exactly one annotation among " +
-      "@JSGlobal and @JSImport."
+      "Native JS classes, vals and defs must have exactly one annotation " +
+      "among @JSGlobal and @JSImport."
     }
 
     annots match {
@@ -1508,16 +1483,6 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
             "Do not use it yourself.")
       }
     }
-  }
-
-  private def kindStrFor(sym: Symbol): String = {
-    if (sym.isAccessor) kindStrFor(sym.accessed)
-    else if (sym.isModuleClass) "objects"
-    else if (sym.isTrait) "traits"
-    else if (sym.isClass) "classes"
-    else if (sym.isMethod) "defs"
-    else if (sym.isMutable) "vars"
-    else "vals"
   }
 
   private def moduleToModuleClass(sym: Symbol): Symbol =
