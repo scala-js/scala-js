@@ -148,7 +148,7 @@ private[testing] abstract class RPCCore()(implicit ec: ExecutionContext) {
     val msg = makeRPCMsg(opCode, id, req)
 
     // Register pending call.
-    val promise = Promise[Resp]
+    val promise = Promise[Resp]()
     val oldCall = pending.put(id, PendingCall(promise))
 
     if (oldCall != null) {

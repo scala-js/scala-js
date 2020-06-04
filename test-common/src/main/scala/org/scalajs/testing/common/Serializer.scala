@@ -174,16 +174,16 @@ private[testing] object Serializer {
     def serialize(fp: Fingerprint, out: SerializeState): Unit = fp match {
       case fp: AnnotatedFingerprint =>
         out.write(Annotated)
-        out.write(fp.isModule)
-        out.write(fp.annotationName)
+        out.write(fp.isModule())
+        out.write(fp.annotationName())
       case fp: SubclassFingerprint =>
         out.write(Subclass)
-        out.write(fp.isModule)
-        out.write(fp.superclassName)
-        out.write(fp.requireNoArgConstructor)
+        out.write(fp.isModule())
+        out.write(fp.superclassName())
+        out.write(fp.requireNoArgConstructor())
       case _ =>
         throw new IllegalArgumentException(
-            s"Unknown Fingerprint type: ${fp.getClass}")
+            s"Unknown Fingerprint type: ${fp.getClass()}")
     }
 
     def deserialize(in: DeserializeState): Fingerprint = in.read[Byte]() match {
@@ -218,24 +218,24 @@ private[testing] object Serializer {
 
       case sel: TestSelector =>
         out.write(Test)
-        out.write(sel.testName)
+        out.write(sel.testName())
 
       case sel: NestedSuiteSelector =>
         out.write(NestedSuite)
-        out.write(sel.suiteId)
+        out.write(sel.suiteId())
 
       case sel: NestedTestSelector =>
         out.write(NestedTest)
-        out.write(sel.suiteId)
-        out.write(sel.testName)
+        out.write(sel.suiteId())
+        out.write(sel.testName())
 
       case sel: TestWildcardSelector =>
         out.write(TestWildcard)
-        out.write(sel.testWildcard)
+        out.write(sel.testWildcard())
 
       case _ =>
         throw new IllegalArgumentException(
-            s"Unknown Selector type: ${sel.getClass}")
+            s"Unknown Selector type: ${sel.getClass()}")
     }
 
     def deserialize(in: DeserializeState): Selector = in.read[Byte]() match {
@@ -250,10 +250,10 @@ private[testing] object Serializer {
 
   implicit object TaskDefSerializer extends Serializer[TaskDef] {
     def serialize(x: TaskDef, out: SerializeState): Unit = {
-      out.write(x.fullyQualifiedName)
-      out.write(x.fingerprint)
-      out.write(x.explicitlySpecified)
-      out.write(x.selectors.toList)
+      out.write(x.fullyQualifiedName())
+      out.write(x.fingerprint())
+      out.write(x.explicitlySpecified())
+      out.write(x.selectors().toList)
     }
 
     def deserialize(in: DeserializeState): TaskDef = {
@@ -289,12 +289,12 @@ private[testing] object Serializer {
 
   implicit object EventSerializer extends Serializer[Event] {
     def serialize(x: Event, out: SerializeState): Unit = {
-      out.write(x.fullyQualifiedName)
-      out.write(x.fingerprint)
-      out.write(x.selector)
-      out.write(x.status)
-      out.write(x.throwable)
-      out.write(x.duration)
+      out.write(x.fullyQualifiedName())
+      out.write(x.fingerprint())
+      out.write(x.selector())
+      out.write(x.status())
+      out.write(x.throwable())
+      out.write(x.duration())
     }
 
     def deserialize(in: DeserializeState): Event = new Event {

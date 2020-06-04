@@ -44,7 +44,7 @@ class RPCCoreTest {
 
   @Test
   def multiplePendingCalls: AsyncResult = await {
-    val p = Promise[Int]
+    val p = Promise[Int]()
 
     x.attachAsync(eps.number)(_ => p.future)
 
@@ -150,7 +150,7 @@ class RPCCoreTest {
   @Test
   def closeChannel: AsyncResult = await {
     // Attach something that never completes.
-    x.attachAsync(eps.number)((_: Unit) => Promise[Int].future)
+    x.attachAsync(eps.number)((_: Unit) => Promise[Int]().future)
 
     val future = y.call(eps.number)(())
 
