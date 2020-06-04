@@ -40,7 +40,7 @@ protected[bridge] object HTMLRunner {
       private[this] var _hasErrors = false
 
       def handle(event: Event): Unit = {
-        val status = event.status
+        val status = event.status()
         _hasErrors ||= isErrorStatus(status)
         counts(status) += 1
       }
@@ -62,12 +62,12 @@ protected[bridge] object HTMLRunner {
       search.split("&").map(decodeURIComponent).toList match {
         case "i" :: excludedHash :: included =>
           val includeSet = included.toSet
-          (t => includeSet.contains(t.fullyQualifiedName),
+          (t => includeSet.contains(t.fullyQualifiedName()),
               Some(excludedHash.toInt))
 
         case "e" :: excluded =>
           val excludeSet = excluded.toSet
-          (t => !excludeSet.contains(t.fullyQualifiedName), None)
+          (t => !excludeSet.contains(t.fullyQualifiedName()), None)
 
         case _ =>
           // Invalid parameter. Run everything.
@@ -83,7 +83,7 @@ protected[bridge] object HTMLRunner {
     val ui = new UI(excludedTests, totalTestCount)
 
     // Warn if test set changed.
-    def excludedHash = excludedTests.map(_.fullyQualifiedName).toSet.##
+    def excludedHash = excludedTests.map(_.fullyQualifiedName()).toSet.##
     if (optExcludedHash.exists(_ != excludedHash)) {
       ui.warnTestSetChanged()
     }
@@ -117,17 +117,17 @@ protected[bridge] object HTMLRunner {
     for (ok <- runAllTasks(tasks)) yield {
       val resultStr = runner.done()
       if (resultStr.nonEmpty)
-        ui.reportFrameworkResult(ok, framework.name, resultStr)
+        ui.reportFrameworkResult(ok, framework.name(), resultStr)
       ok
     }
   }
 
   private def scheduleTask(task: Task, ui: UI): Future[(Boolean, Array[Task])] = {
-    val uiBox = ui.newTestTask(task.taskDef.fullyQualifiedName)
+    val uiBox = ui.newTestTask(task.taskDef().fullyQualifiedName())
     val handler = new EventCounter.Handler
 
     // Schedule test via timeout so we yield to the UI event thread.
-    val newTasks = Promise[Array[Task]]
+    val newTasks = Promise[Array[Task]]()
     val invocation = Future(task.execute(handler, Array(uiBox.logger),
         newTasks.success))(QueueExecutionContext.timeouts())
 
@@ -213,7 +213,7 @@ protected[bridge] object HTMLRunner {
         val total = counts.values.sum
         val countStrs = {
           s"Total: $total" +:
-          Status.values.map(status => s"$status: ${counts(status)}")
+          Status.values().map(status => s"$status: ${counts(status)}")
         }
         countStrs.mkString(", ")
       }
@@ -401,7 +401,7 @@ protected[bridge] object HTMLRunner {
       box.checkbox.onclick = testUpdater(excludedTests, box.checkbox)
 
       for (taskDef <- excludedTaskDefs) {
-        excludedTests += new ExcludedTest(taskDef.fullyQualifiedName)
+        excludedTests += new ExcludedTest(taskDef.fullyQualifiedName())
       }
 
       def setNextSibling(that: TestBox): Unit = box.setNextSibling(that)

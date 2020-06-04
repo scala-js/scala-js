@@ -19,11 +19,11 @@ import org.scalajs.testing.common.{TaskInfo, Serializer}
 private[bridge] object TaskInfoBuilder {
   def detachTask(task: Task, runner: Runner): TaskInfo = {
     def optSerializer(t: TaskDef) =
-      if (t == task.taskDef) ""
+      if (t == task.taskDef()) ""
       else Serializer.serialize(t)
 
     new TaskInfo(runner.serializeTask(task, optSerializer),
-        task.taskDef, task.tags.toList)
+        task.taskDef(), task.tags().toList)
   }
 
   def attachTask(info: TaskInfo, runner: Runner): Task = {
