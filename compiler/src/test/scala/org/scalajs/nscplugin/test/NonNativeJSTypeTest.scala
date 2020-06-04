@@ -398,7 +398,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
 
       class C private[Enclosing] () extends js.Object
     }
-    """.succeeds
+    """.succeeds()
 
     """
     object Enclosing {
@@ -406,7 +406,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
         final private[Enclosing] def foo(i: Int): Int = i
       }
     }
-    """.succeeds
+    """.succeeds()
 
     """
     object Enclosing {
@@ -415,7 +415,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
         private[this] def bar(i: Int): Int = i + 1
       }
     }
-    """.succeeds
+    """.succeeds()
 
     """
     object Enclosing {
@@ -423,7 +423,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
         final private[Enclosing] def foo(i: Int): Int = i
       }
     }
-    """.succeeds
+    """.succeeds()
 
     """
     object Enclosing {
@@ -432,7 +432,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
         private[this] def bar(i: Int): Int = i + 1
       }
     }
-    """.succeeds
+    """.succeeds()
 
     """
     object Enclosing {
@@ -560,7 +560,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       @JSName("apply")
       def apply: Int = 42
     }
-    """.succeeds
+    """.succeeds()
 
     // val apply
 
@@ -580,7 +580,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       @JSName("apply")
       val apply: Int = 42
     }
-    """.succeeds
+    """.succeeds()
 
     // var apply
 
@@ -600,7 +600,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       @JSName("apply")
       var apply: Int = 42
     }
-    """.succeeds
+    """.succeeds()
   }
 
   @Test

@@ -108,7 +108,7 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExport("b")
       def c = 1
     }
-    """.hasNoWarns
+    """.hasNoWarns()
   }
 
   @Test
@@ -186,7 +186,7 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExportTopLevel("__d")
       val d: Boolean = true
     }
-    """.hasNoWarns
+    """.hasNoWarns()
   }
 
   @Test
@@ -1001,7 +1001,7 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExport("apply")
       def apply(): Int = 1
     }
-    """.hasNoWarns
+    """.hasNoWarns()
 
   }
 
@@ -1011,7 +1011,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     """
     @JSExportTopLevel("toString")
     object ExportAsToString
-    """.succeeds
+    """.succeeds()
 
   }
 
@@ -1907,6 +1907,6 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExportStatic
       var c: Int = 1
     }
-    """.succeeds
+    """.succeeds()
   }
 }

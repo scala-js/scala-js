@@ -159,7 +159,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName("bar")
       object tata extends js.Object
     }
-    """.hasNoWarns
+    """.hasNoWarns()
 
     """
     class A extends js.Object {
@@ -914,7 +914,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @js.native @JSGlobal object A extends js.Object {
       @js.native class B(x: Int = ???) extends js.Object
     }
-    """.succeeds
+    """.succeeds()
 
   }
 
@@ -1660,7 +1660,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def value: Int
       val x: Int
     }
-    """.hasNoWarns
+    """.hasNoWarns()
 
     """
     @js.native
@@ -1668,7 +1668,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def value: Int
       val x: Int
     }
-    """.hasNoWarns
+    """.hasNoWarns()
 
   }
 
@@ -1772,7 +1772,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @js.native
     @JSGlobal
     class A private[this] () extends js.Object
-    """.hasNoWarns
+    """.hasNoWarns()
 
   }
 
@@ -1978,7 +1978,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.native
       object C extends js.Object
     }
-    """.hasNoWarns
+    """.hasNoWarns()
 
     """
     object A {
@@ -1990,7 +1990,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.native
       object C extends js.Object
     }
-    """.hasNoWarns
+    """.hasNoWarns()
 
     """
     object A {
@@ -2002,14 +2002,14 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.native
       object C extends js.Object
     }
-    """.hasNoWarns
+    """.hasNoWarns()
 
     """
     object A {
       @js.native
       trait B extends js.Object
     }
-    """.hasNoWarns
+    """.hasNoWarns()
 
     """
     @js.native
@@ -2024,7 +2024,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.native
       object D extends js.Object
     }
-    """.hasNoWarns
+    """.hasNoWarns()
 
   }
 
@@ -2126,7 +2126,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName(a)
       def foo: Int = js.native
     }
-    """.succeeds
+    """.succeeds()
 
   }
 
@@ -2685,7 +2685,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName("apply")
       def apply: Int = js.native
     }
-    """.succeeds
+    """.succeeds()
 
     // val apply
 
@@ -2709,7 +2709,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName("apply")
       val apply: Int = js.native
     }
-    """.succeeds
+    """.succeeds()
 
     // var apply
 
@@ -2733,7 +2733,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName("apply")
       var apply: Int = js.native
     }
-    """.succeeds
+    """.succeeds()
 
   }
 
@@ -2877,7 +2877,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class B extends A {
       override def bar() = 1
     }
-    """.hasNoWarns
+    """.hasNoWarns()
 
     """
     trait A extends js.Object {
@@ -2888,7 +2888,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName("foo")
       override def bar() = 1
     }
-    """.hasNoWarns
+    """.hasNoWarns()
 
     """
     abstract class A extends js.Object {
@@ -2899,7 +2899,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName("foo")
       override def bar() = 1
     }
-    """.hasNoWarns
+    """.hasNoWarns()
 
     """
     abstract class A extends js.Object {
@@ -3226,7 +3226,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName(Syms.sym1)
       override def bar() = 1
     }
-    """.hasNoWarns
+    """.hasNoWarns()
 
     """
     object Syms {
@@ -3241,7 +3241,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName(Syms.sym1)
       override def bar() = 1
     }
-    """.hasNoWarns
+    """.hasNoWarns()
 
     """
     object Syms {

@@ -33,7 +33,7 @@ abstract class DirectTest {
   /** create settings objects for test from arg string */
   def newSettings(args: List[String]): Settings = {
     val s = new Settings
-    s processArguments (args, true)
+    s.processArguments(args, true)
     s
   }
 
