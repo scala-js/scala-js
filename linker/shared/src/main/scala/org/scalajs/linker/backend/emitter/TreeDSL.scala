@@ -41,11 +41,11 @@ private[emitter] object TreeDSL {
     def !==(that: Tree)(implicit pos: Position): Tree =
       BinaryOp(ir.Trees.JSBinaryOp.!==, self, that)
 
-    def unary_+()(implicit pos: Position): Tree =
+    def unary_+(implicit pos: Position): Tree =
       UnaryOp(ir.Trees.JSUnaryOp.+, self)
-    def unary_-()(implicit pos: Position): Tree =
+    def unary_-(implicit pos: Position): Tree =
       UnaryOp(ir.Trees.JSUnaryOp.-, self)
-    def unary_!()(implicit pos: Position): Tree =
+    def unary_!(implicit pos: Position): Tree =
       UnaryOp(ir.Trees.JSUnaryOp.!, self)
 
     def &&(that: Tree)(implicit pos: Position): Tree =

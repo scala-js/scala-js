@@ -45,11 +45,11 @@ sealed trait Dynamic extends js.Any with scala.Dynamic {
   /** Calls this object as a callable. */
   def apply(args: js.Any*): js.Dynamic = js.native
 
-  def unary_!(): js.Dynamic = js.native
+  def unary_! : js.Dynamic = js.native // scalastyle:ignore
 
-  def unary_+(): js.Dynamic = js.native
-  def unary_-(): js.Dynamic = js.native
-  def unary_~(): js.Dynamic = js.native
+  def unary_+ : js.Dynamic = js.native // scalastyle:ignore
+  def unary_- : js.Dynamic = js.native // scalastyle:ignore
+  def unary_~ : js.Dynamic = js.native // scalastyle:ignore
 
   def +(that: js.Dynamic): js.Dynamic = js.native
   def -(that: js.Dynamic): js.Dynamic = js.native
