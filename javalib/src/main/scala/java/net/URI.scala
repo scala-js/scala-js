@@ -123,7 +123,7 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
       cmpScheme
     } else {
       // A hierarchical URI is less than an opaque URI
-      val cmpIsOpaque = java.lang.Boolean.compare(this.isOpaque, that.isOpaque)
+      val cmpIsOpaque = java.lang.Boolean.compare(this.isOpaque(), that.isOpaque())
       if (cmpIsOpaque != 0) {
         cmpIsOpaque
       } else {
@@ -294,7 +294,7 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
       uri._authority.fold(false)(a2 => URI.escapeAwareCompare(a1, a2) == 0)
     }
 
-    if (this.isOpaque || uri.isOpaque ||
+    if (this.isOpaque() || uri.isOpaque() ||
       this._scheme != uri._scheme || !authoritiesEqual) uri
     else {
       val thisN = this.normalize()
@@ -690,10 +690,10 @@ object URI {
       str
     } else {
       val inBuf = CharBuffer.wrap(str)
-      val outBuf = CharBuffer.allocate(inBuf.capacity)
+      val outBuf = CharBuffer.allocate(inBuf.capacity())
       val byteBuf = ByteBuffer.allocate(64)
       var decoding = false
-      val decoder = StandardCharsets.UTF_8.newDecoder
+      val decoder = StandardCharsets.UTF_8.newDecoder()
         .onMalformedInput(CodingErrorAction.REPLACE)
         .onUnmappableCharacter(CodingErrorAction.REPLACE)
 
@@ -709,10 +709,10 @@ object URI {
         }
       }
 
-      while (inBuf.hasRemaining) {
+      while (inBuf.hasRemaining()) {
         inBuf.get() match {
           case '%' =>
-            if (!byteBuf.hasRemaining)
+            if (!byteBuf.hasRemaining())
               decode(false)
 
             // get two chars - they must exist, otherwise the URI would not have
@@ -741,8 +741,8 @@ object URI {
     val buf = StandardCharsets.UTF_8.encode(str)
 
     var res = ""
-    while (buf.hasRemaining) {
-      val c = buf.get & 0xff
+    while (buf.hasRemaining()) {
+      val c = buf.get() & 0xff
       res += (if (c <= 0xf) "%0" else "%") + Integer.toHexString(c).toUpperCase
     }
 

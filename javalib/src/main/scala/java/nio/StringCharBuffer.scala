@@ -25,13 +25,13 @@ private[nio] final class StringCharBuffer private (
   def isDirect(): Boolean = false
 
   def slice(): CharBuffer = {
-    val cap = remaining
+    val cap = remaining()
     new StringCharBuffer(cap, _csq, _csqOffset + position(), 0, cap)
   }
 
   def duplicate(): CharBuffer = {
-    val result = new StringCharBuffer(capacity, _csq, _csqOffset,
-        position, limit)
+    val result = new StringCharBuffer(capacity(), _csq, _csqOffset,
+        position(), limit())
     result._mark = this._mark
     result
   }
@@ -39,9 +39,9 @@ private[nio] final class StringCharBuffer private (
   def asReadOnlyBuffer(): CharBuffer = duplicate()
 
   def subSequence(start: Int, end: Int): CharBuffer = {
-    if (start < 0 || end < start || end > remaining)
+    if (start < 0 || end < start || end > remaining())
       throw new IndexOutOfBoundsException
-    new StringCharBuffer(capacity, _csq, _csqOffset,
+    new StringCharBuffer(capacity(), _csq, _csqOffset,
         position() + start, position() + end)
   }
 

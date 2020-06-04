@@ -1208,7 +1208,7 @@ object Analyzer {
     private val queue = new ConcurrentLinkedQueue[() => Unit]()
     private val working = new AtomicBoolean(false)
     private val pending = new AtomicInteger(0)
-    private val promise = Promise[Unit]
+    private val promise = Promise[Unit]()
 
     def enqueue[T](fut: Future[T])(onSuccess: T => Unit): Unit = {
       val got = pending.incrementAndGet()

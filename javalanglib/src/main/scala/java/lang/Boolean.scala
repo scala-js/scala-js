@@ -30,13 +30,13 @@ final class Boolean private ()
     this eq that.asInstanceOf[AnyRef]
 
   @inline override def hashCode(): Int =
-    if (booleanValue) 1231 else 1237
+    if (booleanValue()) 1231 else 1237
 
   @inline override def compareTo(that: Boolean): Int =
-    Boolean.compare(booleanValue, that.booleanValue)
+    Boolean.compare(booleanValue(), that.booleanValue())
 
   @inline override def toString(): String =
-    Boolean.toString(booleanValue)
+    Boolean.toString(booleanValue())
 
 }
 

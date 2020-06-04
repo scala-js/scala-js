@@ -115,7 +115,8 @@ private[junit] final class Reporter(eventHandler: EventHandler,
     }
   }
 
-  private lazy val formattedTestClass = formatClass(taskDef.fullyQualifiedName, Ansi.YELLOW)
+  private lazy val formattedTestClass =
+    formatClass(taskDef.fullyQualifiedName(), Ansi.YELLOW)
 
   private def formatClass(fullName: String, color: String): String = {
     val (prefix, name) = fullName.splitAt(fullName.lastIndexOf(".") + 1)
@@ -123,8 +124,8 @@ private[junit] final class Reporter(eventHandler: EventHandler,
   }
 
   private def emitEvent(method: Option[String], status: Status): Unit = {
-    val testName = method.fold(taskDef.fullyQualifiedName)(method =>
-        taskDef.fullyQualifiedName + "." + settings.decodeName(method))
+    val testName = method.fold(taskDef.fullyQualifiedName())(method =>
+        taskDef.fullyQualifiedName() + "." + settings.decodeName(method))
     val selector = new TestSelector(testName)
     eventHandler.handle(new JUnitEvent(taskDef, status, selector))
   }
@@ -140,9 +141,9 @@ private[junit] final class Reporter(eventHandler: EventHandler,
 
   private def logTrace(t: Throwable): Unit = {
     val trace = t.getStackTrace.dropWhile { p =>
-      p.getFileName != null && {
-        p.getFileName.contains("StackTrace.scala") ||
-        p.getFileName.contains("Throwables.scala")
+      p.getFileName() != null && {
+        p.getFileName().contains("StackTrace.scala") ||
+        p.getFileName().contains("Throwables.scala")
       }
     }
     val testFileName = {
@@ -150,7 +151,7 @@ private[junit] final class Reporter(eventHandler: EventHandler,
       else null
     }
     val i = trace.indexWhere {
-      p => p.getFileName != null && p.getFileName.contains("JUnitExecuteTest.scala")
+      p => p.getFileName() != null && p.getFileName().contains("JUnitExecuteTest.scala")
     } - 1
     val m = if (i > 0) i else trace.length - 1
     logStackTracePart(trace, m, trace.length - m - 1, t, testFileName)
@@ -215,26 +216,26 @@ private[junit] final class Reporter(eventHandler: EventHandler,
   }
 
   private def findTestFileName(trace: Array[StackTraceElement]): String =
-    trace.find(_.getClassName == taskDef.fullyQualifiedName).map(_.getFileName).orNull
+    trace.find(_.getClassName() == taskDef.fullyQualifiedName()).map(_.getFileName()).orNull
 
   private def stackTraceElementToString(e: StackTraceElement, testFileName: String): String = {
     val highlight = settings.color && {
-      taskDef.fullyQualifiedName == e.getClassName ||
-      (testFileName != null && testFileName == e.getFileName)
+      taskDef.fullyQualifiedName() == e.getClassName() ||
+      (testFileName != null && testFileName == e.getFileName())
     }
     var r = ""
-    r += settings.decodeName(e.getClassName + '.' + e.getMethodName)
+    r += settings.decodeName(e.getClassName() + '.' + e.getMethodName())
     r += '('
 
     if (e.isNativeMethod) {
       r += Ansi.c("Native Method", if (highlight) Ansi.YELLOW else null)
-    } else if (e.getFileName == null) {
+    } else if (e.getFileName() == null) {
       r += Ansi.c("Unknown Source", if (highlight) Ansi.YELLOW else null)
     } else {
-      r += Ansi.c(e.getFileName, if (highlight) Ansi.MAGENTA else null)
-      if (e.getLineNumber >= 0) {
+      r += Ansi.c(e.getFileName(), if (highlight) Ansi.MAGENTA else null)
+      if (e.getLineNumber() >= 0) {
         r += ':'
-        r += Ansi.c(String.valueOf(e.getLineNumber), if (highlight) Ansi.YELLOW else null)
+        r += Ansi.c(String.valueOf(e.getLineNumber()), if (highlight) Ansi.YELLOW else null)
       }
     }
     r += ')'

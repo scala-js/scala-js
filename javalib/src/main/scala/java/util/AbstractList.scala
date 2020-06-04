@@ -21,7 +21,7 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
   self =>
 
   override def add(element: E): Boolean = {
-    add(size, element)
+    add(size(), element)
     true
   }
 
@@ -40,15 +40,15 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
   def lastIndexOf(o: Any): Int = {
     @tailrec
     def findIndex(iter: ListIterator[E]): Int = {
-      if (!iter.hasPrevious) -1
-      else if (Objects.equals(iter.previous(), o)) iter.nextIndex
+      if (!iter.hasPrevious()) -1
+      else if (Objects.equals(iter.previous(), o)) iter.nextIndex()
       else findIndex(iter)
     }
-    findIndex(listIterator(size))
+    findIndex(listIterator(size()))
   }
 
   override def clear(): Unit =
-    removeRange(0, size)
+    removeRange(0, size())
 
   def addAll(index: Int, c: Collection[_ <: E]): Boolean = {
     checkIndexOnBounds(index)
@@ -58,7 +58,7 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
       add(i, iter.next())
       i += 1
     }
-    !c.isEmpty
+    !c.isEmpty()
   }
 
   def iterator(): Iterator[E] =
@@ -72,13 +72,13 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
     // By default we use RandomAccessListIterator because we only have access to
     // the get(index) operation in the API. Subclasses override this if needs
     // using their knowledge of the structure instead.
-    new RandomAccessListIterator(self, index, 0, size)
+    new RandomAccessListIterator(self, index, 0, size())
   }
 
   def subList(fromIndex: Int, toIndex: Int): List[E] = {
     if (fromIndex < 0)
       throw new IndexOutOfBoundsException(fromIndex.toString)
-    else if (toIndex > size)
+    else if (toIndex > size())
       throw new IndexOutOfBoundsException(toIndex.toString)
     else if (fromIndex > toIndex)
       throw new IllegalArgumentException
@@ -114,8 +114,8 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
     } else {
       o match {
         case o: List[_] =>
-          val oIter = o.listIterator
-          this.scalaOps.forall(oIter.hasNext && Objects.equals(_, oIter.next())) && !oIter.hasNext
+          val oIter = o.listIterator()
+          this.scalaOps.forall(oIter.hasNext() && Objects.equals(_, oIter.next())) && !oIter.hasNext()
         case _ => false
       }
     }
@@ -136,12 +136,12 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
   }
 
   protected[this] def checkIndexInBounds(index: Int): Unit = {
-    if (index < 0 || index >= size)
+    if (index < 0 || index >= size())
       throw new IndexOutOfBoundsException(index.toString)
   }
 
   protected[this] def checkIndexOnBounds(index: Int): Unit = {
-    if (index < 0 || index > size)
+    if (index < 0 || index > size())
       throw new IndexOutOfBoundsException(index.toString)
   }
 }
@@ -158,13 +158,13 @@ private abstract class AbstractListView[E](protected val list: List[E],
   override def addAll(index: Int, c: Collection[_ <: E]): Boolean = {
     checkIndexOnBounds(index)
     list.addAll(fromIndex + index, c)
-    val elementsAdded = c.size
+    val elementsAdded = c.size()
     toIndex += elementsAdded
     elementsAdded != 0
   }
 
   override def addAll(c: Collection[_ <: E]): Boolean =
-    addAll(size, c)
+    addAll(size(), c)
 
   def get(index: Int): E = {
     checkIndexInBounds(index)
@@ -229,7 +229,7 @@ private class BackedUpListIterator[E](innerIterator: ListIterator[E], fromIndex:
   }
 
   private def i: Int =
-    innerIterator.nextIndex - fromIndex
+    innerIterator.nextIndex() - fromIndex
 }
 
 /* RandomAccessListIterator implementation assumes that the has an efficient

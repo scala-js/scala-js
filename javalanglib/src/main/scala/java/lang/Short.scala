@@ -23,23 +23,23 @@ final class Short private () extends Number with Comparable[Short] {
   @inline override def shortValue(): scala.Short =
     this.asInstanceOf[scala.Short]
 
-  @inline override def byteValue(): scala.Byte = shortValue.toByte
-  @inline def intValue(): scala.Int = shortValue.toInt
-  @inline def longValue(): scala.Long = shortValue.toLong
-  @inline def floatValue(): scala.Float = shortValue.toFloat
-  @inline def doubleValue(): scala.Double = shortValue.toDouble
+  @inline override def byteValue(): scala.Byte = shortValue().toByte
+  @inline def intValue(): scala.Int = shortValue().toInt
+  @inline def longValue(): scala.Long = shortValue().toLong
+  @inline def floatValue(): scala.Float = shortValue().toFloat
+  @inline def doubleValue(): scala.Double = shortValue().toDouble
 
   @inline override def equals(that: Any): scala.Boolean =
     this eq that.asInstanceOf[AnyRef]
 
   @inline override def hashCode(): Int =
-    shortValue
+    shortValue()
 
   @inline override def compareTo(that: Short): Int =
-    Short.compare(shortValue, that.shortValue)
+    Short.compare(shortValue(), that.shortValue())
 
   @inline override def toString(): String =
-    Short.toString(shortValue)
+    Short.toString(shortValue())
 
 }
 

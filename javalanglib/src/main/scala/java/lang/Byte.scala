@@ -25,23 +25,23 @@ final class Byte private () extends Number with Comparable[Byte] {
   @inline override def byteValue(): scala.Byte =
     this.asInstanceOf[scala.Byte]
 
-  @inline override def shortValue(): scala.Short = byteValue.toShort
-  @inline def intValue(): scala.Int = byteValue.toInt
-  @inline def longValue(): scala.Long = byteValue.toLong
-  @inline def floatValue(): scala.Float = byteValue.toFloat
-  @inline def doubleValue(): scala.Double = byteValue.toDouble
+  @inline override def shortValue(): scala.Short = byteValue().toShort
+  @inline def intValue(): scala.Int = byteValue().toInt
+  @inline def longValue(): scala.Long = byteValue().toLong
+  @inline def floatValue(): scala.Float = byteValue().toFloat
+  @inline def doubleValue(): scala.Double = byteValue().toDouble
 
   @inline override def equals(that: Any): scala.Boolean =
     this eq that.asInstanceOf[AnyRef]
 
   @inline override def hashCode(): Int =
-    byteValue
+    byteValue()
 
   @inline override def compareTo(that: Byte): Int =
-    Byte.compare(byteValue, that.byteValue)
+    Byte.compare(byteValue(), that.byteValue())
 
   @inline override def toString(): String =
-    Byte.toString(byteValue)
+    Byte.toString(byteValue())
 }
 
 object Byte {

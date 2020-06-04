@@ -116,7 +116,7 @@ object WrappedDictionary {
     private[this] val keys = js.Object.keys(dict.asInstanceOf[js.Object])
     private[this] var index: Int = 0
 
-    def hasNext(): Boolean = index < keys.length
+    def hasNext: Boolean = index < keys.length
 
     def next(): (String, A) = {
       val key = keys(index)

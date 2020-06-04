@@ -30,16 +30,16 @@ abstract class Charset protected (canonicalName: String,
   final def aliases(): java.util.Set[String] = aliasesSet
 
   override final def equals(that: Any): Boolean = that match {
-    case that: Charset => this.name == that.name
+    case that: Charset => this.name() == that.name()
     case _             => false
   }
 
   override final def toString(): String = name()
 
-  override final def hashCode(): Int = name.##
+  override final def hashCode(): Int = name().##
 
   override final def compareTo(that: Charset): Int =
-    name.compareToIgnoreCase(that.name)
+    name().compareToIgnoreCase(that.name())
 
   def contains(cs: Charset): Boolean
 
@@ -69,7 +69,7 @@ abstract class Charset protected (canonicalName: String,
   final def encode(str: String): ByteBuffer =
     encode(CharBuffer.wrap(str))
 
-  def displayName(): String = name
+  def displayName(): String = name()
 }
 
 object Charset {
@@ -88,7 +88,7 @@ object Charset {
   private lazy val CharsetMap = {
     val m = js.Dictionary.empty[Charset]
     for (c <- js.Array(US_ASCII, ISO_8859_1, UTF_8, UTF_16BE, UTF_16LE, UTF_16)) {
-      m(c.name.toLowerCase) = c
+      m(c.name().toLowerCase) = c
       val aliases = c._aliases
       for (i <- 0 until aliases.length)
         m(aliases(i).toLowerCase) = c

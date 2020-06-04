@@ -25,23 +25,23 @@ final class Integer private () extends Number with Comparable[Integer] {
   @inline def intValue(): scala.Int =
     this.asInstanceOf[scala.Int]
 
-  @inline override def byteValue(): scala.Byte = intValue.toByte
-  @inline override def shortValue(): scala.Short = intValue.toShort
-  @inline def longValue(): scala.Long = intValue.toLong
-  @inline def floatValue(): scala.Float = intValue.toFloat
-  @inline def doubleValue(): scala.Double = intValue.toDouble
+  @inline override def byteValue(): scala.Byte = intValue().toByte
+  @inline override def shortValue(): scala.Short = intValue().toShort
+  @inline def longValue(): scala.Long = intValue().toLong
+  @inline def floatValue(): scala.Float = intValue().toFloat
+  @inline def doubleValue(): scala.Double = intValue().toDouble
 
   @inline override def equals(that: Any): scala.Boolean =
     this eq that.asInstanceOf[AnyRef]
 
   @inline override def hashCode(): Int =
-    intValue
+    intValue()
 
   @inline override def compareTo(that: Integer): Int =
-    Integer.compare(intValue, that.intValue)
+    Integer.compare(intValue(), that.intValue())
 
   @inline override def toString(): String =
-    Integer.toString(intValue)
+    Integer.toString(intValue())
 }
 
 object Integer {

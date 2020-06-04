@@ -29,7 +29,7 @@ final class Optional[T] private (value: T) {
   //def flatMap[U](mapper: Function[_ >: T, Optional[U]]): Optional[U]
 
   def orElse(other: T): T = {
-    if (isPresent) value
+    if (isPresent()) value
     else other
   }
 

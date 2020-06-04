@@ -40,7 +40,7 @@ private[nio] object GenDataViewBuffer {
     val dataView = newDataView(
         byteArray.buffer, byteArray.byteOffset + byteBufferPos, byteLength)
     newDataViewBuffer(dataView,
-        0, viewCapacity, byteBuffer.isReadOnly, byteBuffer.isBigEndian)
+        0, viewCapacity, byteBuffer.isReadOnly(), byteBuffer.isBigEndian)
   }
 
   /* Work around for https://github.com/joyent/node/issues/6051
@@ -74,19 +74,19 @@ private[nio] final class GenDataViewBuffer[B <: Buffer] private (val self: B)
       implicit newDataViewBuffer: NewThisDataViewBuffer): BufferType = {
     val bytesPerElem = newDataViewBuffer.bytesPerElem
     val dataView = _dataView
-    val pos = position
-    val newCapacity = limit - pos
+    val pos = position()
+    val newCapacity = limit() - pos
     val slicedDataView = newDataView(dataView.buffer,
         dataView.byteOffset + bytesPerElem*pos, bytesPerElem*newCapacity)
     newDataViewBuffer(slicedDataView,
-        0, newCapacity, isReadOnly, isBigEndian)
+        0, newCapacity, isReadOnly(), isBigEndian)
   }
 
   @inline
   def generic_duplicate()(
       implicit newDataViewBuffer: NewThisDataViewBuffer): BufferType = {
     val result = newDataViewBuffer(_dataView,
-        position, limit, isReadOnly, isBigEndian)
+        position(), limit(), isReadOnly(), isBigEndian)
     result._mark = _mark
     result
   }
@@ -95,7 +95,7 @@ private[nio] final class GenDataViewBuffer[B <: Buffer] private (val self: B)
   def generic_asReadOnlyBuffer()(
       implicit newDataViewBuffer: NewThisDataViewBuffer): BufferType = {
     val result = newDataViewBuffer(_dataView,
-        position, limit, true, isBigEndian)
+        position(), limit(), true, isBigEndian)
     result._mark = _mark
     result
   }
@@ -103,18 +103,18 @@ private[nio] final class GenDataViewBuffer[B <: Buffer] private (val self: B)
   @inline
   def generic_compact()(
       implicit newDataViewBuffer: NewThisDataViewBuffer): BufferType = {
-    if (isReadOnly)
+    if (isReadOnly())
       throw new ReadOnlyBufferException
 
     val dataView = _dataView
     val bytesPerElem = newDataViewBuffer.bytesPerElem
     val byteArray = new Int8Array(dataView.buffer,
         dataView.byteOffset, dataView.byteLength)
-    val pos = position
-    val lim = limit
+    val pos = position()
+    val lim = limit()
     byteArray.set(byteArray.subarray(bytesPerElem * pos, bytesPerElem * lim))
     _mark = -1
-    limit(capacity)
+    limit(capacity())
     position(lim - pos)
     self
   }

@@ -80,7 +80,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
         val f = SomeGlobalScope.bracketCall("validDef")(4)
       }
     }
-    """.hasNoWarns
+    """.hasNoWarns()
   }
 
   @Test

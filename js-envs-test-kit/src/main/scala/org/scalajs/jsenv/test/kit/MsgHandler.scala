@@ -26,7 +26,7 @@ import java.util.concurrent.TimeoutException
 private[kit] final class MsgHandler {
   private[this] var msgs: immutable.Queue[String] =
     immutable.Queue.empty[String]
-  private[this] val run = Promise[Unit]
+  private[this] val run = Promise[Unit]()
 
   def onMessage(msg: String): Unit = synchronized {
     if (run.isCompleted) {

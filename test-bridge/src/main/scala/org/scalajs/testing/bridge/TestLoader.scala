@@ -30,7 +30,7 @@ private[bridge] object TestLoader {
     } yield {
       val fingerprints = framework.fingerprints()
       val eligibleTaskDefs = tests.definedTests.filter(taskDef =>
-          fingerprints.exists(fingerprintMatches(_, taskDef.fingerprint)))
+          fingerprints.exists(fingerprintMatches(_, taskDef.fingerprint())))
       (framework, eligibleTaskDefs.toSeq)
     }
   }
@@ -39,10 +39,10 @@ private[bridge] object TestLoader {
   private def fingerprintMatches(a: Fingerprint, b: Fingerprint): Boolean = {
     (a, b) match {
       case (a: SubclassFingerprint, b: SubclassFingerprint) =>
-        a.isModule == b.isModule && a.superclassName == b.superclassName
+        a.isModule() == b.isModule() && a.superclassName() == b.superclassName()
 
       case (a: AnnotatedFingerprint, b: AnnotatedFingerprint) =>
-        a.isModule == b.isModule && a.annotationName == b.annotationName
+        a.isModule() == b.isModule() && a.annotationName() == b.annotationName()
 
       case _ => false
     }

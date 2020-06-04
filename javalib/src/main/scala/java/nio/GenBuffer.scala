@@ -61,8 +61,8 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
     if (src eq self)
       throw new IllegalArgumentException
     ensureNotReadOnly()
-    val srcLimit = src.limit
-    var srcPos = src.position
+    val srcLimit = src.limit()
+    var srcPos = src.position()
     val length = srcLimit - srcPos
     var selfPos = getPosAndAdvanceWrite(length)
     src.position(srcLimit)
@@ -92,14 +92,14 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
 
   @inline
   def generic_hasArray(): Boolean =
-    _array != null && !isReadOnly
+    _array != null && !isReadOnly()
 
   @inline
   def generic_array(): Array[ElementType] = {
     val a = _array
     if (a == null)
       throw new UnsupportedOperationException
-    if (isReadOnly)
+    if (isReadOnly())
       throw new ReadOnlyBufferException
     a
   }
@@ -109,7 +109,7 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
     val o = _arrayOffset
     if (o == -1)
       throw new UnsupportedOperationException
-    if (isReadOnly)
+    if (isReadOnly())
       throw new ReadOnlyBufferException
     o
   }
@@ -117,8 +117,8 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
   @inline
   def generic_hashCode(hashSeed: Int): Int = {
     import scala.util.hashing.MurmurHash3._
-    val start = position
-    val end = limit
+    val start = position()
+    val end = limit()
     var h = hashSeed
     var i = start
     while (i != end) {
@@ -135,10 +135,10 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
     if (self eq that) {
       0
     } else {
-      val thisStart = self.position
-      val thisRemaining = self.limit - thisStart
-      val thatStart = that.position
-      val thatRemaining = that.limit - thatStart
+      val thisStart = self.position()
+      val thisRemaining = self.limit() - thisStart
+      val thatStart = that.position()
+      val thatRemaining = that.limit() - thatStart
       val shortestLength = Math.min(thisRemaining, thatRemaining)
 
       var i = 0

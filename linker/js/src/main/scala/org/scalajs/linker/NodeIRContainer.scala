@@ -35,7 +35,7 @@ object NodeIRContainer {
       implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[String])] = {
     Future.traverse(classpath) { entry =>
       cbFuture[Stats](FS.stat(entry, _)).transformWith {
-        case Success(stat) if stat.isDirectory =>
+        case Success(stat) if stat.isDirectory() =>
           fromDirectory(entry)
 
         case Success(stat) if entry.endsWith(".jar") =>
@@ -57,7 +57,7 @@ object NodeIRContainer {
   private def fromDirectory(dir: String)(
       implicit ec: ExecutionContext): Future[Seq[(IRContainer, String)]] = {
     cbFuture[js.Array[Dirent]](FS.readdir(dir, ReadDirOpt, _)).flatMap { entries =>
-      val (dirs, files) = entries.toSeq.partition(_.isDirectory)
+      val (dirs, files) = entries.toSeq.partition(_.isDirectory())
 
       val subdirFiles = Future.traverse(dirs) { e =>
         val path = Path.join(dir, e.name)
@@ -81,7 +81,7 @@ object NodeIRContainer {
     (e.asInstanceOf[js.Dynamic].code: Any) == "ENOENT"
 
   private final class NodeJarIRContainer(path: String, version: Option[js.Date])
-      extends IRContainerImpl(path, version.map(_.getTime.toString)) {
+      extends IRContainerImpl(path, version.map(_.getTime().toString)) {
     import NodeFS._
 
     def sjsirFiles(implicit ec: ExecutionContext): Future[List[IRFile]] = {

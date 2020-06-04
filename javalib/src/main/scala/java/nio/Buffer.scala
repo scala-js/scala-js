@@ -25,7 +25,7 @@ abstract class Buffer private[nio] (val _capacity: Int) {
 
   // Normal implementation of Buffer
 
-  private var _limit: Int = capacity
+  private var _limit: Int = capacity()
   private var _position: Int = 0
   private[nio] var _mark: Int = -1
 
@@ -71,7 +71,7 @@ abstract class Buffer private[nio] (val _capacity: Int) {
   def clear(): Buffer = {
     _mark = -1
     _position = 0
-    _limit = capacity
+    _limit = capacity()
     this
   }
 
@@ -88,9 +88,9 @@ abstract class Buffer private[nio] (val _capacity: Int) {
     this
   }
 
-  @inline final def remaining(): Int = limit - position
+  @inline final def remaining(): Int = limit() - position()
 
-  @inline final def hasRemaining(): Boolean = position != limit
+  @inline final def hasRemaining(): Boolean = position() != limit()
 
   def isReadOnly(): Boolean
 
@@ -106,42 +106,42 @@ abstract class Buffer private[nio] (val _capacity: Int) {
   def isDirect(): Boolean
 
   override def toString(): String =
-    s"${getClass.getName}[pos=$position lim=$limit cap=$capacity]"
+    s"${getClass().getName()}[pos=${position()} lim=${limit()} cap=${capacity()}]"
 
   /* Extended API - exposed to user-space with a hacky bridge and extension
    * methods.
    */
 
   def hasArrayBuffer(): Boolean =
-    _arrayBuffer != null && !isReadOnly
+    _arrayBuffer != null && !isReadOnly()
 
   def arrayBuffer(): ArrayBuffer = {
     val buffer = _arrayBuffer
-    if (buffer == null || isReadOnly)
+    if (buffer == null || isReadOnly())
       throw new UnsupportedOperationException
     buffer
   }
 
   def arrayBufferOffset(): Int = {
     val offset = _arrayBufferOffset
-    if (offset == -1 || isReadOnly)
+    if (offset == -1 || isReadOnly())
       throw new UnsupportedOperationException
     offset
   }
 
   def dataView(): DataView = {
     val view = _dataView
-    if (view == null || isReadOnly)
+    if (view == null || isReadOnly())
       throw new UnsupportedOperationException
     view
   }
 
   def hasTypedArray(): Boolean =
-    _typedArray != null && !isReadOnly
+    _typedArray != null && !isReadOnly()
 
   def typedArray(): TypedArrayType = {
     val array = _typedArray
-    if (array == null || isReadOnly)
+    if (array == null || isReadOnly())
       throw new UnsupportedOperationException
     array
   }
@@ -187,7 +187,7 @@ abstract class Buffer private[nio] (val _capacity: Int) {
   // Helpers
 
   @inline private[nio] def ensureNotReadOnly(): Unit = {
-    if (isReadOnly)
+    if (isReadOnly())
       throw new ReadOnlyBufferException
   }
 
@@ -199,7 +199,7 @@ abstract class Buffer private[nio] (val _capacity: Int) {
 
   @inline private[nio] def getPosAndAdvanceRead(): Int = {
     val p = _position
-    if (p == limit)
+    if (p == limit())
       throw new BufferUnderflowException
     _position = p + 1
     p
@@ -208,7 +208,7 @@ abstract class Buffer private[nio] (val _capacity: Int) {
   @inline private[nio] def getPosAndAdvanceRead(length: Int): Int = {
     val p = _position
     val newPos = p + length
-    if (newPos > limit)
+    if (newPos > limit())
       throw new BufferUnderflowException
     _position = newPos
     p
@@ -216,7 +216,7 @@ abstract class Buffer private[nio] (val _capacity: Int) {
 
   @inline private[nio] def getPosAndAdvanceWrite(): Int = {
     val p = _position
-    if (p == limit)
+    if (p == limit())
       throw new BufferOverflowException
     _position = p + 1
     p
@@ -225,20 +225,20 @@ abstract class Buffer private[nio] (val _capacity: Int) {
   @inline private[nio] def getPosAndAdvanceWrite(length: Int): Int = {
     val p = _position
     val newPos = p + length
-    if (newPos > limit)
+    if (newPos > limit())
       throw new BufferOverflowException
     _position = newPos
     p
   }
 
   @inline private[nio] def validateIndex(index: Int): Int = {
-    if (index < 0 || index >= limit)
+    if (index < 0 || index >= limit())
       throw new IndexOutOfBoundsException
     index
   }
 
   @inline private[nio] def validateIndex(index: Int, length: Int): Int = {
-    if (index < 0 || index + length > limit)
+    if (index < 0 || index + length > limit())
       throw new IndexOutOfBoundsException
     index
   }

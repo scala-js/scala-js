@@ -255,7 +255,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     expr"""
     val a = "x"
     lit("a" -> "1", a -> "2", a -> "3")
-    """.hasNoWarns
+    """.hasNoWarns()
 
     // should not warn if the key/value pairs are not literal
     """
@@ -263,7 +263,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
       val tup = "x" -> lit()
       def foo = lit(tup, tup)
     }
-    """.hasNoWarns
+    """.hasNoWarns()
 
     // should warn only for the literal keys when in
     // the presence of non literal keys

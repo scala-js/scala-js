@@ -28,7 +28,7 @@ object Collections {
       new AbstractSet[Any] with Serializable {
         override def size(): Int = 0
 
-        override def iterator(): Iterator[Any] = emptyIterator[Any]
+        override def iterator(): Iterator[Any] = emptyIterator[Any]()
       })
   }
 
@@ -58,7 +58,7 @@ object Collections {
 
   private lazy val EMPTY_ENUMERATION: Enumeration[_] = {
     new Enumeration[Any] {
-      def hasMoreElements: Boolean = false
+      def hasMoreElements(): Boolean = false
 
       def nextElement(): Any =
         throw new NoSuchElementException
@@ -78,7 +78,7 @@ object Collections {
 
     list match {
       case list: RandomAccess => copyImpl(sortedList, list)
-      case _                  => copyImpl(sortedList, list.listIterator)
+      case _                  => copyImpl(sortedList, list.listIterator())
     }
   }
 
@@ -109,18 +109,18 @@ object Collections {
 
     list match {
       case _: RandomAccess =>
-        binarySearch(0, list.size, list.get(_))
+        binarySearch(0, list.size(), list.get(_))
 
       case _ =>
         def getFrom(iter: ListIterator[E])(index: Int): E = {
-          val shift = index - iter.nextIndex
+          val shift = index - iter.nextIndex()
           if (shift > 0)
             (0 until shift).foreach(_ => iter.next())
           else
             (0 until -shift).foreach(_ => iter.previous())
           iter.next()
         }
-        binarySearch(0, list.size, getFrom(list.listIterator))
+        binarySearch(0, list.size(), getFrom(list.listIterator()))
     }
   }
 
@@ -129,7 +129,7 @@ object Collections {
 
   @inline
   def reverseImpl[T](list: List[T]): Unit = {
-    val size = list.size
+    val size = list.size()
     list match {
       case list: RandomAccess =>
         for (i <- 0 until size / 2) {
@@ -180,7 +180,7 @@ object Collections {
       case _ =>
         val buffer = new ArrayList[T](list)
         shuffleInPlace(buffer)
-        copyImpl(buffer, list.listIterator)
+        copyImpl(buffer, list.listIterator())
     }
   }
 
@@ -198,7 +198,7 @@ object Collections {
       case _ =>
         val it1 = list.listIterator(i)
         val it2 = list.listIterator(j)
-        if (!it1.hasNext || !it2.hasNext)
+        if (!it1.hasNext() || !it2.hasNext())
           throw new IndexOutOfBoundsException
         val tmp = it1.next()
         it1.set(it2.next())
@@ -209,11 +209,11 @@ object Collections {
   def fill[T](list: List[_ >: T], obj: T): Unit = {
     list match {
       case list: RandomAccess =>
-        (0 until list.size).foreach(list.set(_, obj))
+        (0 until list.size()).foreach(list.set(_, obj))
 
       case _ =>
-        val iter = list.listIterator
-        while (iter.hasNext) {
+        val iter = list.listIterator()
+        while (iter.hasNext()) {
           iter.next()
           iter.set(obj)
         }
@@ -223,21 +223,21 @@ object Collections {
   def copy[T](dest: List[_ >: T], src: List[_ <: T]): Unit = {
     (dest, src) match {
       case (dest: RandomAccess, src: RandomAccess) => copyImpl(src, dest)
-      case (dest: RandomAccess, _)                 => copyImpl(src.iterator, dest)
-      case (_, src: RandomAccess)                  => copyImpl(src, dest.listIterator)
-      case (_, _)                                  => copyImpl(src.iterator, dest.listIterator)
+      case (dest: RandomAccess, _)                 => copyImpl(src.iterator(), dest)
+      case (_, src: RandomAccess)                  => copyImpl(src, dest.listIterator())
+      case (_, _)                                  => copyImpl(src.iterator(), dest.listIterator())
     }
   }
 
   private def copyImpl[T](source: List[_ <: T] with RandomAccess,
       dest: List[T] with RandomAccess): Unit = {
-    (0 until source.size).foreach(i => dest.set(i, source.get(i)))
+    (0 until source.size()).foreach(i => dest.set(i, source.get(i)))
   }
 
   private def copyImpl[T](source: Iterator[_ <: T], dest: List[T] with RandomAccess): Unit = {
     val destEnd = dest.size()
     var i = 0
-    while (source.hasNext) {
+    while (source.hasNext()) {
       if (i < destEnd)
         dest.set(i, source.next())
       else
@@ -247,8 +247,8 @@ object Collections {
   }
 
   private def copyImpl[T](source: List[_ <: T] with RandomAccess, dest: ListIterator[T]): Unit = {
-    for (i <- 0 until source.size) {
-      if (dest.hasNext) {
+    for (i <- 0 until source.size()) {
+      if (dest.hasNext()) {
         dest.next()
         dest.set(source.get(i))
       } else {
@@ -258,8 +258,8 @@ object Collections {
   }
 
   private def copyImpl[T](source: Iterator[_ <: T], dest: ListIterator[T]): Unit = {
-    while (source.hasNext) {
-      if (dest.hasNext) {
+    while (source.hasNext()) {
+      if (dest.hasNext()) {
         dest.next()
         dest.set(source.next())
       } else {
@@ -286,7 +286,7 @@ object Collections {
     rotateImpl(list, distance)
 
   private def rotateImpl[T](list: List[T], distance: Int): Unit = {
-    val listSize = list.size
+    val listSize = list.size()
     if (listSize > 1 && distance % listSize != 0) {
       def exchangeRotation(): Unit = {
         def indexModulo(i: Int): Int = modulo(i, listSize)
@@ -326,7 +326,7 @@ object Collections {
     list match {
       case _: RandomAccess =>
         var modified = false
-        for (i <- 0 until list.size) {
+        for (i <- 0 until list.size()) {
           if (Objects.equals(list.get(i), oldVal)) {
             list.set(i, newVal)
             modified = true
@@ -337,7 +337,7 @@ object Collections {
       case _ =>
         @tailrec
         def replaceAll(iter: ListIterator[T], mod: Boolean): Boolean = {
-          if (iter.hasNext) {
+          if (iter.hasNext()) {
             val isEqual = Objects.equals(iter.next(), oldVal)
             if (isEqual)
               iter.set(newVal)
@@ -559,8 +559,8 @@ object Collections {
   def enumeration[T](c: Collection[T]): Enumeration[T] = {
     val it = c.iterator
     new Enumeration[T] {
-      override def hasMoreElements: Boolean =
-        it.hasNext
+      override def hasMoreElements(): Boolean =
+        it.hasNext()
 
       override def nextElement(): T =
         it.next()
@@ -577,7 +577,7 @@ object Collections {
     c.scalaOps.count(Objects.equals(_, o))
 
   def disjoint(c1: Collection[_], c2: Collection[_]): Boolean = {
-    if (c1.size < c2.size)
+    if (c1.size() < c2.size())
       !c1.scalaOps.exists(elem => c2.contains(elem))
     else
       !c2.scalaOps.exists(elem => c1.contains(elem))
@@ -596,12 +596,12 @@ object Collections {
   }
 
   def newSetFromMap[E](map: Map[E, java.lang.Boolean]): Set[E] = {
-    if (!map.isEmpty)
+    if (!map.isEmpty())
       throw new IllegalArgumentException
 
     new WrappedSet[E, Set[E]] {
       override protected val inner: Set[E] =
-        map.keySet
+        map.keySet()
 
       override def add(e: E): Boolean =
         map.put(e, java.lang.Boolean.TRUE) == null
@@ -647,18 +647,18 @@ object Collections {
     protected def inner: Coll
 
     def size(): Int =
-      inner.size
+      inner.size()
 
-    def isEmpty: Boolean =
-      inner.isEmpty
+    def isEmpty(): Boolean =
+      inner.isEmpty()
 
     def contains(o: Any): Boolean =
       inner.contains(o)
 
     def iterator(): Iterator[E] =
-      inner.iterator
+      inner.iterator()
 
-    def toArray: Array[AnyRef] =
+    def toArray(): Array[AnyRef] =
       inner.toArray()
 
     def toArray[T <: AnyRef](a: Array[T]): Array[T] =
@@ -708,10 +708,10 @@ object Collections {
       inner.headSet(toElement)
 
     def first(): E =
-      inner.first
+      inner.first()
 
     def last(): E =
-      inner.last
+      inner.last()
   }
 
   private trait WrappedList[E]
@@ -756,8 +756,8 @@ object Collections {
     def size(): Int =
       inner.size()
 
-    def isEmpty: Boolean =
-      inner.isEmpty
+    def isEmpty(): Boolean =
+      inner.isEmpty()
 
     def containsKey(key: scala.Any): Boolean =
       inner.containsKey(key)
@@ -781,13 +781,13 @@ object Collections {
       inner.clear()
 
     def keySet(): Set[K] =
-      inner.keySet
+      inner.keySet()
 
     def values(): Collection[V] =
-      inner.values
+      inner.values()
 
     def entrySet(): Set[Map.Entry[K, V]] =
-      inner.entrySet.asInstanceOf[Set[Map.Entry[K, V]]]
+      inner.entrySet().asInstanceOf[Set[Map.Entry[K, V]]]
 
     override def toString(): String =
       inner.toString
@@ -808,17 +808,17 @@ object Collections {
       inner.tailMap(fromKey)
 
     def firstKey(): K =
-      inner.firstKey
+      inner.firstKey()
 
     def lastKey(): K =
-      inner.lastKey
+      inner.lastKey()
   }
 
   private trait WrappedIterator[E, Iter <: Iterator[E]] extends Iterator[E] {
     protected def inner: Iter
 
     def hasNext(): Boolean =
-      inner.hasNext
+      inner.hasNext()
 
     def next(): E =
       inner.next()
@@ -830,16 +830,16 @@ object Collections {
   private trait WrappedListIterator[E]
       extends WrappedIterator[E, ListIterator[E]] with ListIterator[E] {
     def hasPrevious(): Boolean =
-      inner.hasPrevious
+      inner.hasPrevious()
 
     def previous(): E =
       inner.previous()
 
     def nextIndex(): Int =
-      inner.nextIndex
+      inner.nextIndex()
 
     def previousIndex(): Int =
-      inner.previousIndex
+      inner.previousIndex()
 
     def set(e: E): Unit =
       inner.set(e)
@@ -854,12 +854,12 @@ object Collections {
     protected val eagerThrow: Boolean = true
 
     override def clear(): Unit = {
-      if (eagerThrow || !isEmpty)
+      if (eagerThrow || !isEmpty())
         throw new UnsupportedOperationException
     }
 
     override def iterator(): Iterator[E] =
-      new UnmodifiableIterator(inner.iterator)
+      new UnmodifiableIterator(inner.iterator())
 
     override def add(e: E): Boolean =
       throw new UnsupportedOperationException
@@ -869,7 +869,7 @@ object Collections {
       else false
 
     override def addAll(c: Collection[_ <: E]): Boolean =
-      if (eagerThrow || !c.isEmpty) throw new UnsupportedOperationException
+      if (eagerThrow || !c.isEmpty()) throw new UnsupportedOperationException
       else false
 
     override def removeAll(c: Collection[_]): Boolean = {
@@ -912,7 +912,7 @@ object Collections {
       extends UnmodifiableCollection[E, List[E]](inner) with WrappedList[E] {
 
     override def addAll(index: Int, c: Collection[_ <: E]): Boolean =
-      if (eagerThrow || !c.isEmpty) throw new UnsupportedOperationException
+      if (eagerThrow || !c.isEmpty()) throw new UnsupportedOperationException
       else false
 
     override def set(index: Int, element: E): E =
@@ -953,23 +953,23 @@ object Collections {
     }
 
     override def putAll(m: Map[_ <: K, _ <: V]): Unit = {
-      if (eagerThrow || !m.isEmpty)
+      if (eagerThrow || !m.isEmpty())
         throw new UnsupportedOperationException
     }
 
     override def clear(): Unit = {
-      if (eagerThrow || !isEmpty)
+      if (eagerThrow || !isEmpty())
         throw new UnsupportedOperationException
     }
 
     override def keySet(): Set[K] =
-      unmodifiableSet(super.keySet)
+      unmodifiableSet(super.keySet())
 
     override def values(): Collection[V] =
-      unmodifiableCollection(super.values)
+      unmodifiableCollection(super.values())
 
     override def entrySet(): Set[Map.Entry[K, V]] =
-      unmodifiableSet(super.entrySet)
+      unmodifiableSet(super.entrySet())
   }
 
   private class ImmutableMap[K, V](
@@ -1077,7 +1077,7 @@ object Collections {
 
     override def putAll(m: Map[_ <: K, _ <: V]): Unit = {
       m.entrySet().scalaOps.foreach {
-        entry => checkKeyAndValue(entry.getKey, entry.getValue)
+        entry => checkKeyAndValue(entry.getKey(), entry.getValue())
       }
       super.putAll(m)
     }

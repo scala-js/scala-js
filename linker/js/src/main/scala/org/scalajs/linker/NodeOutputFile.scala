@@ -37,7 +37,7 @@ object NodeOutputFile {
     def write(buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = {
       val pos = buf.position()
       val write = {
-        if (buf.hasTypedArray) {
+        if (buf.hasTypedArray()) {
           cbFuture[Int](FS.write(fd, buf.typedArray(), pos, buf.remaining(), (), _))
         } else {
           val ta = ByteBuffer.allocateDirect(buf.remaining()).put(buf).typedArray()

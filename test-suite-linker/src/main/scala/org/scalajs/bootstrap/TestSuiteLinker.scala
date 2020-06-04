@@ -42,7 +42,7 @@ object QuickLinker {
       .withSourceMapURI(relURI(smPath))
       .withJSFileURI(relURI(outputPath))
 
-    val cache = StandardImpl.irFileCache.newCache
+    val cache = StandardImpl.irFileCache().newCache
 
     NodeIRContainer.fromClasspath(cp.toSeq)
       .map(_._1)

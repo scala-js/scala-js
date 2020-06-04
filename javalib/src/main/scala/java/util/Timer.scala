@@ -38,7 +38,7 @@ class Timer() {
   }
 
   private def checkTime(time: Date): Unit = {
-    if (time.getTime < 0)
+    if (time.getTime() < 0)
       throw new IllegalArgumentException(s"Negative time: $time.")
   }
 
@@ -56,7 +56,7 @@ class Timer() {
   }
 
   private def getMillisUntil(time: Date): Long =
-    math.max(0L, time.getTime - System.currentTimeMillis())
+    math.max(0L, time.getTime() - System.currentTimeMillis())
 
   def schedule(task: TimerTask, delay: Long): Unit = {
     checkDelay(delay)

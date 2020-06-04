@@ -39,10 +39,10 @@ private[nio] final class HeapCharBuffer private (
     GenHeapBuffer(this).generic_asReadOnlyBuffer()
 
   def subSequence(start: Int, end: Int): CharBuffer = {
-    if (start < 0 || end < start || end > remaining)
+    if (start < 0 || end < start || end > remaining())
       throw new IndexOutOfBoundsException
-    new HeapCharBuffer(capacity, _array, _arrayOffset,
-        position() + start, position() + end, isReadOnly)
+    new HeapCharBuffer(capacity(), _array, _arrayOffset,
+        position() + start, position() + end, isReadOnly())
   }
 
   @noinline

@@ -32,18 +32,18 @@ class Character private ()
   @inline def charValue(): scala.Char =
     this.asInstanceOf[scala.Char]
 
-  @inline override def hashCode(): Int = charValue.toInt
+  @inline override def hashCode(): Int = charValue().toInt
 
   @inline override def equals(that: Any): scala.Boolean = {
     that.isInstanceOf[Character] &&
-    (charValue == that.asInstanceOf[Character].charValue)
+    (charValue() == that.asInstanceOf[Character].charValue())
   }
 
   @inline override def toString(): String =
-    Character.toString(charValue)
+    Character.toString(charValue())
 
   @inline override def compareTo(that: Character): Int =
-    Character.compare(charValue, that.charValue)
+    Character.compare(charValue(), that.charValue())
 }
 
 object Character {

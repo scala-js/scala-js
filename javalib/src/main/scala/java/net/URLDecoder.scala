@@ -19,7 +19,7 @@ import java.nio.charset.{Charset, MalformedInputException}
 object URLDecoder {
 
   @Deprecated
-  def decode(s: String): String = decodeImpl(s, Charset.defaultCharset)
+  def decode(s: String): String = decodeImpl(s, Charset.defaultCharset())
 
   def decode(s: String, enc: String): String = {
     /* An exception is thrown only if the
@@ -78,7 +78,7 @@ object URLDecoder {
           val decodeResult = decoder.decode(buffer, charBuffer, true)
           val flushResult = decoder.flush(charBuffer)
 
-          if (decodeResult.isError || flushResult.isError)
+          if (decodeResult.isError() || flushResult.isError())
             throwIllegalHex()
 
       case c =>

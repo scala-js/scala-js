@@ -55,7 +55,7 @@ final class _String private () // scalastyle:ignore
 
   def codePointAt(index: Int): Int = {
     val high = charAt(index)
-    if (index+1 < length) {
+    if (index+1 < length()) {
       val low = charAt(index+1)
       if (Character.isSurrogatePair(high, low))
         Character.toCodePoint(high, low)
@@ -80,7 +80,7 @@ final class _String private () // scalastyle:ignore
   }
 
   def codePointCount(beginIndex: Int, endIndex: Int): Int = {
-    if (endIndex > length || beginIndex < 0 || endIndex < beginIndex)
+    if (endIndex > length() || beginIndex < 0 || endIndex < beginIndex)
       throw new IndexOutOfBoundsException
     var res = endIndex - beginIndex
     var i = beginIndex
@@ -94,7 +94,7 @@ final class _String private () // scalastyle:ignore
   }
 
   def offsetByCodePoints(index: Int, codePointOffset: Int): Int = {
-    val len = length
+    val len = length()
     if (index < 0 || index > len)
       throw new StringIndexOutOfBoundsException(index)
 
@@ -135,7 +135,7 @@ final class _String private () // scalastyle:ignore
   override def hashCode(): Int = {
     var res = 0
     var mul = 1 // holds pow(31, length-i-1)
-    var i = length-1
+    var i = length() - 1
     while (i >= 0) {
       res += charAt(i) * mul
       mul *= 31
@@ -172,7 +172,7 @@ final class _String private () // scalastyle:ignore
     indexOf(s.toString) != -1
 
   def endsWith(suffix: String): scala.Boolean =
-    thisString.jsSubstring(this.length - suffix.length) == suffix
+    thisString.jsSubstring(this.length() - suffix.length()) == suffix
 
   def getBytes(): Array[scala.Byte] =
     getBytes(Charset.defaultCharset)
@@ -189,7 +189,7 @@ final class _String private () // scalastyle:ignore
 
   def getChars(srcBegin: Int, srcEnd: Int, dst: Array[Char],
       dstBegin: Int): Unit = {
-    if (srcEnd > length || srcBegin < 0 || srcEnd < 0 || srcBegin > srcEnd)
+    if (srcEnd > length() || srcBegin < 0 || srcEnd < 0 || srcBegin > srcEnd)
       throw new StringIndexOutOfBoundsException("Index out of Bound")
 
     val offset = dstBegin - srcBegin
@@ -255,8 +255,8 @@ final class _String private () // scalastyle:ignore
       ooffset: Int, len: Int): scala.Boolean = {
     if (other == null) {
       throw new NullPointerException()
-    } else if (toffset < 0 || ooffset < 0 || toffset + len > this.length ||
-        ooffset + len > other.length) {
+    } else if (toffset < 0 || ooffset < 0 || toffset + len > this.length() ||
+        ooffset + len > other.length()) {
       false
     } else if (len <= 0) {
       true
@@ -300,8 +300,8 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def startsWith(prefix: String, toffset: Int): scala.Boolean = {
-    (toffset <= length && toffset >= 0 &&
-        thisString.jsSubstring(toffset, toffset + prefix.length) == prefix)
+    (toffset <= length() && toffset >= 0 &&
+        thisString.jsSubstring(toffset, toffset + prefix.length()) == prefix)
   }
 
   @inline
@@ -320,7 +320,7 @@ final class _String private () // scalastyle:ignore
   }
 
   def toCharArray(): Array[Char] = {
-    val len = length
+    val len = length()
     val result = new Array[Char](len)
     var i = 0
     while (i < len) {

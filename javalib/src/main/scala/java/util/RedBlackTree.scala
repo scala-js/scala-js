@@ -134,7 +134,7 @@ private[util] object RedBlackTree {
       Objects.hashCode(key) ^ Objects.hashCode(value)
 
     override def toString(): String =
-      "" + getKey + "=" + getValue
+      "" + getKey() + "=" + getValue()
 
     @inline private[RedBlackTree] def isRoot: Boolean =
       parent eq null

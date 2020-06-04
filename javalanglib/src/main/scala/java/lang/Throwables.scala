@@ -111,10 +111,10 @@ class Throwable protected (s: String, private var e: Throwable,
 
     // Causes
     var wCause: Throwable = this
-    while ((wCause ne wCause.getCause) && (wCause.getCause ne null)) {
-      val parentTrace = wCause.getStackTrace
-      wCause = wCause.getCause
-      val thisTrace = wCause.getStackTrace
+    while ((wCause ne wCause.getCause()) && (wCause.getCause() ne null)) {
+      val parentTrace = wCause.getStackTrace()
+      wCause = wCause.getCause()
+      val thisTrace = wCause.getStackTrace()
 
       val thisLength = thisTrace.length
       val parentLength = parentTrace.length
@@ -158,7 +158,7 @@ class Throwable protected (s: String, private var e: Throwable,
    */
   @JSExport
   override def toString(): String = {
-    val className = getClass.getName
+    val className = getClass().getName()
     val message = getMessage()
     if (message eq null) className
     else className + ": " + message
@@ -195,7 +195,7 @@ class Throwable protected (s: String, private var e: Throwable,
    */
   @JSExport("name")
   @inline
-  protected def js_name: String = getClass.getName
+  protected def js_name: String = getClass().getName()
 
   /* A JavaScript Error object should have a `message` property containing a
    * string representation of the message associated with the error.

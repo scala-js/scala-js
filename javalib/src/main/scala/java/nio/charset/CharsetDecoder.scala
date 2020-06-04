@@ -42,7 +42,7 @@ abstract class CharsetDecoder protected (cs: Charset,
   final def replaceWith(newReplacement: String): CharsetDecoder = {
     if (newReplacement == null || newReplacement == "")
       throw new IllegalArgumentException("Invalid replacement: "+newReplacement)
-    if (newReplacement.length > maxCharsPerByte)
+    if (newReplacement.length() > maxCharsPerByte())
       throw new IllegalArgumentException(
           "Replacement string cannot be longer than maxCharsPerByte")
     _replacement = newReplacement
@@ -99,8 +99,8 @@ abstract class CharsetDecoder protected (cs: Charset,
           throw new CoderMalfunctionError(ex)
       }
 
-      val result2 = if (result1.isUnderflow) {
-        val remaining = in.remaining
+      val result2 = if (result1.isUnderflow()) {
+        val remaining = in.remaining()
         if (endOfInput && remaining > 0)
           CoderResult.malformedForLength(remaining)
         else
@@ -109,26 +109,26 @@ abstract class CharsetDecoder protected (cs: Charset,
         result1
       }
 
-      if (result2.isUnderflow || result2.isOverflow) {
+      if (result2.isUnderflow() || result2.isOverflow()) {
         result2
       } else {
         val action =
-          if (result2.isUnmappable) unmappableCharacterAction
-          else malformedInputAction
+          if (result2.isUnmappable()) unmappableCharacterAction()
+          else malformedInputAction()
 
         action match {
           case CodingErrorAction.REPLACE =>
-            if (out.remaining < replacement.length) {
+            if (out.remaining() < replacement().length) {
               CoderResult.OVERFLOW
             } else {
-              out.put(replacement)
-              in.position(in.position() + result2.length)
+              out.put(replacement())
+              in.position(in.position() + result2.length())
               loop()
             }
           case CodingErrorAction.REPORT =>
             result2
           case CodingErrorAction.IGNORE =>
-            in.position(in.position() + result2.length)
+            in.position(in.position() + result2.length())
             loop()
         }
       }
@@ -141,7 +141,7 @@ abstract class CharsetDecoder protected (cs: Charset,
     (status: @switch) match {
       case END =>
         val result = implFlush(out)
-        if (result.isUnderflow)
+        if (result.isUnderflow())
           status = FLUSHED
         result
       case FLUSHED =>
@@ -166,10 +166,10 @@ abstract class CharsetDecoder protected (cs: Charset,
 
   final def decode(in: ByteBuffer): CharBuffer = {
     def grow(out: CharBuffer): CharBuffer = {
-      if (out.capacity == 0) {
+      if (out.capacity() == 0) {
         CharBuffer.allocate(1)
       } else {
-        val result = CharBuffer.allocate(out.capacity*2)
+        val result = CharBuffer.allocate(out.capacity() * 2)
         out.flip()
         result.put(out)
         result
@@ -180,11 +180,11 @@ abstract class CharsetDecoder protected (cs: Charset,
     @tailrec
     def loopDecode(out: CharBuffer): CharBuffer = {
       val result = decode(in, out, endOfInput = true)
-      if (result.isUnderflow) {
-        if (in.hasRemaining)
+      if (result.isUnderflow()) {
+        if (in.hasRemaining())
           throw new AssertionError
         out
-      } else if (result.isOverflow) {
+      } else if (result.isOverflow()) {
         loopDecode(grow(out))
       } else {
         result.throwException()
@@ -196,9 +196,9 @@ abstract class CharsetDecoder protected (cs: Charset,
     @tailrec
     def loopFlush(out: CharBuffer): CharBuffer = {
       val result = flush(out)
-      if (result.isUnderflow) {
+      if (result.isUnderflow()) {
         out
-      } else if (result.isOverflow) {
+      } else if (result.isOverflow()) {
         loopFlush(grow(out))
       } else {
         result.throwException()
@@ -207,7 +207,7 @@ abstract class CharsetDecoder protected (cs: Charset,
     }
 
     reset()
-    val initLength = (in.remaining.toDouble * averageCharsPerByte).toInt
+    val initLength = (in.remaining().toDouble * averageCharsPerByte()).toInt
     val out = loopFlush(loopDecode(CharBuffer.allocate(initLength)))
     out.flip()
     out

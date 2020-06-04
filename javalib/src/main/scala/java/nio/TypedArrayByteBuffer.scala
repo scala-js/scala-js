@@ -21,7 +21,7 @@ private[nio] final class TypedArrayByteBuffer private (
     extends ByteBuffer(_typedArray.length, null, -1) {
 
   override private[nio] lazy val _dataView: DataView =
-    new DataView(_typedArray.buffer, _typedArray.byteOffset, capacity)
+    new DataView(_typedArray.buffer, _typedArray.byteOffset, capacity())
 
   position(_initialPosition)
   limit(_initialLimit)

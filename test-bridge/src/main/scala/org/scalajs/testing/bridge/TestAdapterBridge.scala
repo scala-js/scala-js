@@ -37,7 +37,7 @@ private[bridge] object TestAdapterBridge {
     FrameworkLoader.detectFrameworkNames(names).map { maybeName =>
       maybeName.map { name =>
         val framework = FrameworkLoader.loadFramework(name)
-        new FrameworkInfo(name, framework.name, framework.fingerprints.toList)
+        new FrameworkInfo(name, framework.name(), framework.fingerprints().toList)
       }
     }
   }
@@ -92,7 +92,7 @@ private[bridge] object TestAdapterBridge {
       (withColor, i) <- req.loggerColorSupport.zipWithIndex
     } yield new RemoteLogger(runID, i, withColor)
 
-    val promise = Promise[List[TaskInfo]]
+    val promise = Promise[List[TaskInfo]]()
 
     def cont(tasks: Array[Task]) = {
       val result = Try(tasks.map(TaskInfoBuilder.detachTask(_, runner)).toList)

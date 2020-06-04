@@ -88,7 +88,7 @@ class IdentityHashMap[K, V] private (
     override def remove(o: Any): Boolean = {
       @tailrec
       def findAndRemove(iter: Iterator[V]): Boolean = {
-        if (iter.hasNext) {
+        if (iter.hasNext()) {
           if (same(iter.next(), o)) {
             iter.remove()
             true
@@ -108,7 +108,7 @@ class IdentityHashMap[K, V] private (
     override def retainAll(c: Collection[_]): Boolean = {
       val iter = iterator()
       var changed = false
-      while (iter.hasNext) {
+      while (iter.hasNext()) {
         val elem = iter.next()
         if (!findSame(elem, c)) {
           iter.remove()
@@ -152,12 +152,12 @@ class IdentityHashMap[K, V] private (
     }
 
     override def removeAll(c: Collection[_]): Boolean = {
-      if (size > c.size) {
+      if (size() > c.size()) {
         c.scalaOps.foldLeft(false)((prev, elem) => this.remove(elem) || prev)
       } else {
         @tailrec
         def removeAll(iter: Iterator[K], modified: Boolean): Boolean = {
-          if (iter.hasNext) {
+          if (iter.hasNext()) {
             if (findSame(iter.next(), c)) {
               iter.remove()
               removeAll(iter, true)
@@ -175,7 +175,7 @@ class IdentityHashMap[K, V] private (
     override def retainAll(c: Collection[_]): Boolean = {
       val iter = iterator()
       var changed = false
-      while (iter.hasNext) {
+      while (iter.hasNext()) {
         val elem = iter.next()
         if (!findSame(elem, c)) {
           iter.remove()
@@ -260,7 +260,7 @@ object IdentityHashMap {
   private def findSame[K](elem: K, c: Collection[_]): Boolean = {
     // scalastyle:off return
     val iter = c.iterator()
-    while (iter.hasNext) {
+    while (iter.hasNext()) {
       if (same(elem, iter.next()))
         return true
     }

@@ -62,7 +62,7 @@ class ReentrantLock(fair: Boolean) extends Lock with Serializable {
   final def isFair(): Boolean = fair
 
   protected def getOwner(): Thread = {
-    if (isLocked)
+    if (isLocked())
       Thread.currentThread()
     else
       null

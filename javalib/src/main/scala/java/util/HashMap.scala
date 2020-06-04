@@ -518,6 +518,6 @@ object HashMap {
       unimproveHash(hash) ^ Objects.hashCode(value)
 
     override def toString(): String =
-      "" + getKey + "=" + getValue
+      "" + getKey() + "=" + getValue()
   }
 }

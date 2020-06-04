@@ -40,7 +40,7 @@ private[nio] object GenTypedArrayBuffer {
     val viewTypedArray = newTypedArrayBuffer.newTypedArray(
         byteArray.buffer, byteArray.byteOffset + byteBufferPos, viewCapacity)
     newTypedArrayBuffer(viewTypedArray,
-        0, viewCapacity, byteBuffer.isReadOnly)
+        0, viewCapacity, byteBuffer.isReadOnly())
   }
 }
 
@@ -59,15 +59,15 @@ private[nio] final class GenTypedArrayBuffer[B <: Buffer] private (val self: B)
   @inline
   def generic_slice()(
       implicit newTypedArrayBuffer: NewThisTypedArrayBuffer): BufferType = {
-    val slicedTypedArray = _typedArray.subarray(position, limit)
+    val slicedTypedArray = _typedArray.subarray(position(), limit())
     newTypedArrayBuffer(slicedTypedArray,
-        0, slicedTypedArray.length, isReadOnly)
+        0, slicedTypedArray.length, isReadOnly())
   }
 
   @inline
   def generic_duplicate()(
       implicit newTypedArrayBuffer: NewThisTypedArrayBuffer): BufferType = {
-    val result = newTypedArrayBuffer(_typedArray, position, limit, isReadOnly)
+    val result = newTypedArrayBuffer(_typedArray, position(), limit(), isReadOnly())
     result._mark = _mark
     result
   }
@@ -75,7 +75,7 @@ private[nio] final class GenTypedArrayBuffer[B <: Buffer] private (val self: B)
   @inline
   def generic_asReadOnlyBuffer()(
       implicit newTypedArrayBuffer: NewThisTypedArrayBuffer): BufferType = {
-    val result = newTypedArrayBuffer(_typedArray, position, limit, true)
+    val result = newTypedArrayBuffer(_typedArray, position(), limit(), true)
     result._mark = _mark
     result
   }
@@ -85,11 +85,11 @@ private[nio] final class GenTypedArrayBuffer[B <: Buffer] private (val self: B)
     ensureNotReadOnly()
 
     val typedArray = _typedArray
-    val pos = position
-    val lim = limit
+    val pos = position()
+    val lim = limit()
     typedArray.set(typedArray.subarray(pos, lim))
     _mark = -1
-    limit(capacity)
+    limit(capacity())
     position(lim - pos)
     self
   }
@@ -107,7 +107,7 @@ private[nio] final class GenTypedArrayBuffer[B <: Buffer] private (val self: B)
       implicit newTypedArrayBuffer: NewThisTypedArrayBuffer): DataView = {
     val bytesPerElem = newTypedArrayBuffer.bytesPerElem
     val array = _typedArray
-    new DataView(array.buffer, array.byteOffset, capacity * bytesPerElem)
+    new DataView(array.buffer, array.byteOffset, capacity() * bytesPerElem)
   }
 
 }

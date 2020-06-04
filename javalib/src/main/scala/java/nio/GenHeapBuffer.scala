@@ -50,16 +50,16 @@ private[nio] final class GenHeapBuffer[B <: Buffer] private (val self: B)
   @inline
   def generic_slice()(
       implicit newHeapBuffer: NewThisHeapBuffer): BufferType = {
-    val newCapacity = remaining
-    newHeapBuffer(newCapacity, _array, _arrayOffset + position,
-        0, newCapacity, isReadOnly)
+    val newCapacity = remaining()
+    newHeapBuffer(newCapacity, _array, _arrayOffset + position(),
+        0, newCapacity, isReadOnly())
   }
 
   @inline
   def generic_duplicate()(
       implicit newHeapBuffer: NewThisHeapBuffer): BufferType = {
-    val result = newHeapBuffer(capacity, _array, _arrayOffset,
-        position, limit, isReadOnly)
+    val result = newHeapBuffer(capacity(), _array, _arrayOffset,
+        position(), limit(), isReadOnly())
     result._mark = _mark
     result
   }
@@ -67,8 +67,8 @@ private[nio] final class GenHeapBuffer[B <: Buffer] private (val self: B)
   @inline
   def generic_asReadOnlyBuffer()(
       implicit newHeapBuffer: NewThisHeapBuffer): BufferType = {
-    val result = newHeapBuffer(capacity, _array, _arrayOffset,
-        position, limit, true)
+    val result = newHeapBuffer(capacity(), _array, _arrayOffset,
+        position(), limit(), true)
     result._mark = _mark
     result
   }
@@ -77,10 +77,10 @@ private[nio] final class GenHeapBuffer[B <: Buffer] private (val self: B)
   def generic_compact(): BufferType = {
     ensureNotReadOnly()
 
-    val len = remaining
-    System.arraycopy(_array, _arrayOffset + position, _array, _arrayOffset, len)
+    val len = remaining()
+    System.arraycopy(_array, _arrayOffset + position(), _array, _arrayOffset, len)
     _mark = -1
-    limit(capacity)
+    limit(capacity())
     position(len)
     self
   }

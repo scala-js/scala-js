@@ -22,24 +22,24 @@ abstract class AbstractCollection[E] protected () extends Collection[E] {
   def iterator(): Iterator[E]
   def size(): Int
 
-  def isEmpty(): Boolean = size == 0
+  def isEmpty(): Boolean = size() == 0
 
   def contains(o: Any): Boolean =
     this.scalaOps.exists(Objects.equals(o, _))
 
   def toArray(): Array[AnyRef] =
-    toArray(new Array[AnyRef](size))
+    toArray(new Array[AnyRef](size()))
 
   def toArray[T <: AnyRef](a: Array[T]): Array[T] = {
     val toFill: Array[T] =
-      if (a.length >= size) a
-      else jlr.Array.newInstance(a.getClass.getComponentType, size).asInstanceOf[Array[T]]
+      if (a.length >= size()) a
+      else jlr.Array.newInstance(a.getClass.getComponentType, size()).asInstanceOf[Array[T]]
 
     val iter = iterator
-    for (i <- 0 until size)
+    for (i <- 0 until size())
       toFill(i) = iter.next().asInstanceOf[T]
-    if (toFill.length > size)
-      toFill(size) = null.asInstanceOf[T]
+    if (toFill.length > size())
+      toFill(size()) = null.asInstanceOf[T]
     toFill
   }
 
@@ -49,7 +49,7 @@ abstract class AbstractCollection[E] protected () extends Collection[E] {
   def remove(o: Any): Boolean = {
     @tailrec
     def findAndRemove(iter: Iterator[E]): Boolean = {
-      if (iter.hasNext) {
+      if (iter.hasNext()) {
         if (Objects.equals(iter.next(), o)) {
           iter.remove()
           true
@@ -81,7 +81,7 @@ abstract class AbstractCollection[E] protected () extends Collection[E] {
   private def removeWhere(p: Any => Boolean): Boolean = {
     val iter = iterator()
     var changed = false
-    while (iter.hasNext) {
+    while (iter.hasNext()) {
       if (p(iter.next())) {
         iter.remove()
         changed = true
