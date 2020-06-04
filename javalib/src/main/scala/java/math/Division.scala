@@ -253,7 +253,7 @@ private[math] object Division {
   def evenModPow(base: BigInteger, exponent: BigInteger,
       modulus: BigInteger): BigInteger = {
     // STEP 1: Obtain the factorization 'modulus'= q * 2^j.
-    val j = modulus.getLowestSetBit
+    val j = modulus.getLowestSetBit()
     val q = modulus.shiftRight(j)
 
     // STEP 2: Compute x1 := base^exponent (mod q).
@@ -319,8 +319,8 @@ private[math] object Division {
      * Divide both number the maximal possible times by 2 without rounding
      * gcd(2*a, 2*b) = 2 * gcd(a,b)
      */
-    val lsb1 = op1.getLowestSetBit
-    val lsb2 = op2.getLowestSetBit
+    val lsb1 = op1.getLowestSetBit()
+    val lsb2 = op2.getLowestSetBit()
     val pow2Count = Math.min(lsb1, lsb2)
     BitLevel.inplaceShiftRight(op1, lsb1)
     BitLevel.inplaceShiftRight(op2, lsb2)
@@ -347,21 +347,21 @@ private[math] object Division {
         if (op2.numberLength > op1.numberLength * 1.2) {
           op2 = op2.remainder(op1)
           if (op2.signum() != 0) {
-            BitLevel.inplaceShiftRight(op2, op2.getLowestSetBit)
+            BitLevel.inplaceShiftRight(op2, op2.getLowestSetBit())
           }
         } else {
           // Use Knuth's algorithm of successive subtract and shifting
           do {
             Elementary.inplaceSubtract(op2, op1)
-            BitLevel.inplaceShiftRight(op2, op2.getLowestSetBit)
-          } while (op2.compareTo(op1) >= BigInteger.EQUALS);
+            BitLevel.inplaceShiftRight(op2, op2.getLowestSetBit())
+          } while (op2.compareTo(op1) >= BigInteger.EQUALS)
         }
         // now op1 >= op2
         val swap: BigInteger = op2
         op2 = op1
         op1 = swap
         if (op1.sign != 0)
-          loop
+          loop()
       }
     }
 
@@ -529,8 +529,8 @@ private[math] object Division {
     s.digits(0) = 1
 
     var k = 0
-    val lsbu = u.getLowestSetBit
-    val lsbv = v.getLowestSetBit
+    val lsbu = u.getLowestSetBit()
+    val lsbv = v.getLowestSetBit()
     if (lsbu > lsbv) {
       BitLevel.inplaceShiftRight(u, lsbu)
       BitLevel.inplaceShiftRight(v, lsbv)
@@ -547,7 +547,7 @@ private[math] object Division {
     while (v.signum() > 0) {
       while (u.compareTo(v) > BigInteger.EQUALS) {
         Elementary.inplaceSubtract(u, v)
-        val toShift = u.getLowestSetBit
+        val toShift = u.getLowestSetBit()
         BitLevel.inplaceShiftRight(u, toShift)
         Elementary.inplaceAdd(r, s)
         BitLevel.inplaceShiftLeft(s, toShift)
@@ -560,7 +560,7 @@ private[math] object Division {
         if (u.compareTo(v) <= BigInteger.EQUALS) {
           Elementary.inplaceSubtract(v, u)
           if (v.signum() != 0) {
-            val toShift = v.getLowestSetBit
+            val toShift = v.getLowestSetBit()
             BitLevel.inplaceShiftRight(v, toShift)
             Elementary.inplaceAdd(s, r)
             BitLevel.inplaceShiftLeft(r, toShift)
@@ -854,7 +854,7 @@ private[math] object Division {
       while (bi.testBit(i)) {
         i -= 1
       }
-      n - 1 - Math.max(i, bi.getLowestSetBit)
+      n - 1 - Math.max(i, bi.getLowestSetBit())
     }
   }
 

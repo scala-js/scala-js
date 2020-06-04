@@ -194,7 +194,8 @@ list.map { x =>
 }.toMap
 ```
 
-When calling a method declared with an empty pair of parentheses, use `()`, except if the method is Java-defined *and* does not have side-effects.
+When calling a method declared with an empty pair of parentheses, use `()`.
+Not doing so causes (fatal) warnings in Scala 2.13.3+.
 
 ### Method definition
 

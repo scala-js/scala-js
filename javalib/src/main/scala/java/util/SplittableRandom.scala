@@ -127,6 +127,6 @@ final class SplittableRandom private (private var seed: Long, gamma: Long) {
 
   // this should be properly tested
   // looks to work but just by chance maybe
-  def nextBoolean(): Boolean = nextInt < 0
+  def nextBoolean(): Boolean = nextInt() < 0
 
 }

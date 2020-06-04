@@ -248,7 +248,7 @@ private[math] object Primality {
     var y: BigInteger = null
     val nMinus1 = n.subtract(BigInteger.ONE)
     val bitLength = nMinus1.bitLength()
-    val k = nMinus1.getLowestSetBit
+    val k = nMinus1.getLowestSetBit()
     val q = nMinus1.shiftRight(k)
     val rnd = new Random()
     for (i <- 0 until t) {

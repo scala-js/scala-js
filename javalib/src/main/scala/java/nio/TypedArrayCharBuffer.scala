@@ -42,10 +42,10 @@ private[nio] final class TypedArrayCharBuffer private (
     GenTypedArrayBuffer(this).generic_asReadOnlyBuffer()
 
   def subSequence(start: Int, end: Int): CharBuffer = {
-    if (start < 0 || end < start || end > remaining)
+    if (start < 0 || end < start || end > remaining())
       throw new IndexOutOfBoundsException
     new TypedArrayCharBuffer(_typedArray,
-        position() + start, position() + end, isReadOnly)
+        position() + start, position() + end, isReadOnly())
   }
 
   @noinline

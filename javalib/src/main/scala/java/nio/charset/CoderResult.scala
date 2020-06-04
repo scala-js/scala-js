@@ -26,7 +26,7 @@ class CoderResult private (kind: Int, _length: Int) {
   @inline def isMalformed(): Boolean  = kind == Malformed
   @inline def isUnmappable(): Boolean = kind == Unmappable
 
-  @inline def isError(): Boolean = isMalformed || isUnmappable
+  @inline def isError(): Boolean = isMalformed() || isUnmappable()
 
   @inline def length(): Int = {
     val l = _length

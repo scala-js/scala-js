@@ -52,7 +52,7 @@ abstract class CharBuffer private[nio] (
 
   def read(target: CharBuffer): Int = {
     // Attention: this method must not change this buffer's position
-    val n = remaining
+    val n = remaining()
     if (n == 0) -1
     else if (_array != null) { // even if read-only
       target.put(_array, _arrayOffset, n)
@@ -166,9 +166,9 @@ abstract class CharBuffer private[nio] (
 
   override def toString(): String = {
     if (_array != null) { // even if read-only
-      new String(_array, position() + _arrayOffset, remaining)
+      new String(_array, position() + _arrayOffset, remaining())
     } else {
-      val chars = new Array[Char](remaining)
+      val chars = new Array[Char](remaining())
       val savedPos = position()
       get(chars)
       position(savedPos)
@@ -176,7 +176,7 @@ abstract class CharBuffer private[nio] (
     }
   }
 
-  final def length(): Int = remaining
+  final def length(): Int = remaining()
 
   final def charAt(index: Int): Char = get(position() + index)
 

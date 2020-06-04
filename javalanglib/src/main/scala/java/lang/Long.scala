@@ -26,25 +26,25 @@ final class Long private () extends Number with Comparable[Long] {
   @inline def longValue(): scala.Long =
     this.asInstanceOf[scala.Long]
 
-  @inline override def byteValue(): scala.Byte = longValue.toByte
-  @inline override def shortValue(): scala.Short = longValue.toShort
-  @inline def intValue(): scala.Int = longValue.toInt
-  @inline def floatValue(): scala.Float = longValue.toFloat
-  @inline def doubleValue(): scala.Double = longValue.toDouble
+  @inline override def byteValue(): scala.Byte = longValue().toByte
+  @inline override def shortValue(): scala.Short = longValue().toShort
+  @inline def intValue(): scala.Int = longValue().toInt
+  @inline def floatValue(): scala.Float = longValue().toFloat
+  @inline def doubleValue(): scala.Double = longValue().toDouble
 
   @inline override def equals(that: Any): scala.Boolean = that match {
-    case that: Long => longValue == that.longValue
+    case that: Long => longValue() == that.longValue()
     case _          => false
   }
 
   @inline override def hashCode(): Int =
-    Long.hashCode(longValue)
+    Long.hashCode(longValue())
 
   @inline override def compareTo(that: Long): Int =
-    Long.compare(longValue, that.longValue)
+    Long.compare(longValue(), that.longValue())
 
   @inline override def toString(): String =
-    Long.toString(longValue)
+    Long.toString(longValue())
 
 }
 

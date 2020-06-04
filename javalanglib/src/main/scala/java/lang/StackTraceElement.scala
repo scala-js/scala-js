@@ -39,10 +39,10 @@ final class StackTraceElement(declaringClass: String, methodName: String,
 
   override def equals(that: Any): scala.Boolean = that match {
     case that: StackTraceElement =>
-      (getFileName == that.getFileName) &&
-      (getLineNumber == that.getLineNumber) &&
-      (getClassName == that.getClassName) &&
-      (getMethodName == that.getMethodName)
+      (getFileName() == that.getFileName()) &&
+      (getLineNumber() == that.getLineNumber()) &&
+      (getClassName() == that.getClassName()) &&
+      (getMethodName() == that.getMethodName())
     case _ =>
       false
   }
@@ -53,7 +53,7 @@ final class StackTraceElement(declaringClass: String, methodName: String,
       result += declaringClass + "."
     result += methodName
     if (fileName eq null) {
-      if (isNativeMethod)
+      if (isNativeMethod())
         result += "(Native Method)"
       else
         result += "(Unknown Source)"

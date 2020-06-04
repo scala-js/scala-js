@@ -21,5 +21,5 @@ abstract class Permission(name: String) extends Guard with Serializable {
   def getActions(): String
   //def newPermissionCollection(): PermissionCollection
   override def toString(): String =
-    s"ClassName ${this.getClass.getName} ${getActions}"
+    s"ClassName ${this.getClass().getName()} ${getActions()}"
 }

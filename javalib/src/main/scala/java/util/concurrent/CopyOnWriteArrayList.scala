@@ -48,8 +48,8 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
   def size(): Int =
     inner.size
 
-  def isEmpty: Boolean =
-    size == 0
+  def isEmpty(): Boolean =
+    size() == 0
 
   def contains(o: scala.Any): Boolean =
     iterator.scalaOps.exists(Objects.equals(o, _))
@@ -68,30 +68,30 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
   def lastIndexOf(e: E, index: Int): Int = {
     @tailrec
     def findIndex(iter: ListIterator[E]): Int = {
-      if (!iter.hasPrevious) -1
-      else if (Objects.equals(iter.previous(), e)) iter.nextIndex
+      if (!iter.hasPrevious()) -1
+      else if (Objects.equals(iter.previous(), e)) iter.nextIndex()
       else findIndex(iter)
     }
-    findIndex(listIterator(size))
+    findIndex(listIterator(size()))
   }
 
   override def clone(): AnyRef =
     new CopyOnWriteArrayList[E](this)
 
   def toArray(): Array[AnyRef] =
-    toArray(new Array[AnyRef](size))
+    toArray(new Array[AnyRef](size()))
 
   def toArray[T](a: Array[T]): Array[T] = {
     val componentType = a.getClass.getComponentType
     val toFill: Array[T] =
-      if (a.length >= size) a
-      else jlr.Array.newInstance(componentType, size).asInstanceOf[Array[T]]
+      if (a.length >= size()) a
+      else jlr.Array.newInstance(componentType, size()).asInstanceOf[Array[T]]
 
     val iter = iterator
-    for (i <- 0 until size)
+    for (i <- 0 until size())
       toFill(i) = iter.next().asInstanceOf[T]
-    if (toFill.length > size)
-      toFill(size) = null.asInstanceOf[T]
+    if (toFill.length > size())
+      toFill(size()) = null.asInstanceOf[T]
     toFill
   }
 
@@ -178,13 +178,13 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
   }
 
   def addAll(c: Collection[_ <: E]): Boolean =
-    addAll(size, c)
+    addAll(size(), c)
 
   def addAll(index: Int, c: Collection[_ <: E]): Boolean = {
     checkIndexOnBounds(index)
     copyIfNeeded()
     innerInsertMany(index, c)
-    !c.isEmpty
+    !c.isEmpty()
   }
 
   /* Override Collection.removeIf() because our iterators do not support
@@ -229,8 +229,8 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
     } else {
       obj match {
         case obj: List[_] =>
-          val oIter = obj.listIterator
-          this.scalaOps.forall(elem => oIter.hasNext && Objects.equals(elem, oIter.next())) && !oIter.hasNext
+          val oIter = obj.listIterator()
+          this.scalaOps.forall(elem => oIter.hasNext() && Objects.equals(elem, oIter.next())) && !oIter.hasNext()
         case _ => false
       }
     }
@@ -250,11 +250,11 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
 
   def listIterator(index: Int): ListIterator[E] = {
     checkIndexOnBounds(index)
-    new CopyOnWriteArrayListIterator[E](innerSnapshot(), index, 0, size)
+    new CopyOnWriteArrayListIterator[E](innerSnapshot(), index, 0, size())
   }
 
   def subList(fromIndex: Int, toIndex: Int): List[E] = {
-    if (fromIndex < 0 || fromIndex > toIndex || toIndex > size)
+    if (fromIndex < 0 || fromIndex > toIndex || toIndex > size())
       throw new IndexOutOfBoundsException
     new CopyOnWriteArrayListView(fromIndex, toIndex)
   }
@@ -304,8 +304,8 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
 
     override def clear(): Unit = {
       copyIfNeeded()
-      self.innerRemoveMany(fromIndex, size)
-      changeSize(-size)
+      self.innerRemoveMany(fromIndex, size())
+      changeSize(-size())
     }
 
     override def listIterator(index: Int): ListIterator[E] = {
@@ -317,7 +317,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
     }
 
     override def subList(fromIndex: Int, toIndex: Int): List[E] = {
-      if (fromIndex < 0 || fromIndex > toIndex || toIndex > size)
+      if (fromIndex < 0 || fromIndex > toIndex || toIndex > size())
         throw new IndexOutOfBoundsException
 
       new CopyOnWriteArrayListView(viewSelf.fromIndex + fromIndex,
@@ -375,12 +375,12 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
   }
 
   protected def checkIndexInBounds(index: Int): Unit = {
-    if (index < 0 || index >= size)
+    if (index < 0 || index >= size())
       throw new IndexOutOfBoundsException(index.toString)
   }
 
   protected def checkIndexOnBounds(index: Int): Unit = {
-    if (index < 0 || index > size)
+    if (index < 0 || index > size())
       throw new IndexOutOfBoundsException(index.toString)
   }
 }

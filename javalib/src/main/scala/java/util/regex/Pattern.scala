@@ -40,7 +40,7 @@ final class Pattern private (jsRegExp: js.RegExp, _pattern: String, _flags: Int)
   private[regex] lazy val groupStartMapper: GroupStartMapper =
     GroupStartMapper(jsPattern, jsFlags)
 
-  override def toString(): String = pattern
+  override def toString(): String = pattern()
 
   private[regex] def newJSRegExp(): js.RegExp = {
     val r = new js.RegExp(jsRegExp)
@@ -78,16 +78,16 @@ final class Pattern private (jsRegExp: js.RegExp, _pattern: String, _flags: Int)
       var prevEnd = 0
       var size = 0
       while ((size < lim-1) && matcher.find()) {
-        if (matcher.end == 0) {
+        if (matcher.end() == 0) {
           /* If there is a zero-width match at the beginning of the string,
            * ignore it, i.e., omit the resulting empty string at the beginning
            * of the array.
            */
         } else {
-          builder += inputStr.substring(prevEnd, matcher.start)
+          builder += inputStr.substring(prevEnd, matcher.start())
           size += 1
         }
-        prevEnd = matcher.end
+        prevEnd = matcher.end()
       }
       builder += inputStr.substring(prevEnd)
       val result = builder.result()

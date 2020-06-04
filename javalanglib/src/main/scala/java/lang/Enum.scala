@@ -30,7 +30,7 @@ abstract class Enum[E <: Enum[E]] protected (_name: String, _ordinal: Int)
   override protected final def clone(): AnyRef =
     throw new CloneNotSupportedException("Enums are not cloneable")
 
-  final def compareTo(o: E): Int = Integer.compare(_ordinal, o.ordinal)
+  final def compareTo(o: E): Int = Integer.compare(_ordinal, o.ordinal())
 
   // Not implemented:
   // final def getDeclaringClass(): Class[E]

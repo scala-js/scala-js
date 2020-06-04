@@ -25,29 +25,29 @@ final class Double private () extends Number with Comparable[Double] {
   @inline def doubleValue(): scala.Double =
     this.asInstanceOf[scala.Double]
 
-  @inline override def byteValue(): scala.Byte = doubleValue.toByte
-  @inline override def shortValue(): scala.Short = doubleValue.toShort
-  @inline def intValue(): scala.Int = doubleValue.toInt
-  @inline def longValue(): scala.Long = doubleValue.toLong
-  @inline def floatValue(): scala.Float = doubleValue.toFloat
+  @inline override def byteValue(): scala.Byte = doubleValue().toByte
+  @inline override def shortValue(): scala.Short = doubleValue().toShort
+  @inline def intValue(): scala.Int = doubleValue().toInt
+  @inline def longValue(): scala.Long = doubleValue().toLong
+  @inline def floatValue(): scala.Float = doubleValue().toFloat
 
   @inline override def equals(that: Any): scala.Boolean =
     this eq that.asInstanceOf[AnyRef]
 
   @inline override def hashCode(): Int =
-    Double.hashCode(doubleValue)
+    Double.hashCode(doubleValue())
 
   @inline override def compareTo(that: Double): Int =
-    Double.compare(doubleValue, that.doubleValue)
+    Double.compare(doubleValue(), that.doubleValue())
 
   @inline override def toString(): String =
-    Double.toString(doubleValue)
+    Double.toString(doubleValue())
 
   @inline def isNaN(): scala.Boolean =
-    Double.isNaN(doubleValue)
+    Double.isNaN(doubleValue())
 
   @inline def isInfinite(): scala.Boolean =
-    Double.isInfinite(doubleValue)
+    Double.isInfinite(doubleValue())
 
 }
 

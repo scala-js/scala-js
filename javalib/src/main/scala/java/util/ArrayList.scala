@@ -79,7 +79,7 @@ class ArrayList[E] private (private[ArrayList] val inner: js.Array[E])
     c match {
       case other: ArrayList[_] =>
         inner.splice(index, 0, other.inner.toSeq: _*)
-        other.size > 0
+        other.size() > 0
       case _ => super.addAll(index, c)
     }
   }

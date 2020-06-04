@@ -39,22 +39,22 @@ private[charset] abstract class ISO_8859_1_And_US_ASCII_Common protected (
     def decodeLoop(in: ByteBuffer, out: CharBuffer): CoderResult = {
       // scalastyle:off return
       val maxValue = ISO_8859_1_And_US_ASCII_Common.this.maxValue
-      val inRemaining = in.remaining
+      val inRemaining = in.remaining()
       if (inRemaining == 0) {
         CoderResult.UNDERFLOW
       } else {
-        val outRemaining = out.remaining
+        val outRemaining = out.remaining()
         val overflow = outRemaining < inRemaining
         val rem = if (overflow) outRemaining else inRemaining
 
-        if (in.hasArray && out.hasArray) {
-          val inArr = in.array
-          val inOffset = in.arrayOffset
+        if (in.hasArray() && out.hasArray()) {
+          val inArr = in.array()
+          val inOffset = in.arrayOffset()
           val inStart = in.position() + inOffset
           val inEnd = inStart + rem
 
-          val outArr = out.array
-          val outOffset = out.arrayOffset
+          val outArr = out.array()
+          val outOffset = out.arrayOffset()
           val outStart = out.position() + outOffset
 
           var inPos = inStart
@@ -105,22 +105,22 @@ private[charset] abstract class ISO_8859_1_And_US_ASCII_Common protected (
       import java.lang.Character.{MIN_SURROGATE, MAX_SURROGATE}
 
       val maxValue = ISO_8859_1_And_US_ASCII_Common.this.maxValue
-      val inRemaining = in.remaining
+      val inRemaining = in.remaining()
       if (inRemaining == 0) {
         CoderResult.UNDERFLOW
       } else {
-        if (in.hasArray && out.hasArray) {
-          val outRemaining = out.remaining
+        if (in.hasArray() && out.hasArray()) {
+          val outRemaining = out.remaining()
           val overflow = outRemaining < inRemaining
           val rem = if (overflow) outRemaining else inRemaining
 
-          val inArr = in.array
-          val inOffset = in.arrayOffset
+          val inArr = in.array()
+          val inOffset = in.arrayOffset()
           val inStart = in.position() + inOffset
           val inEnd = inStart + rem
 
-          val outArr = out.array
-          val outOffset = out.arrayOffset
+          val outArr = out.array()
+          val outOffset = out.arrayOffset()
           val outStart = out.position() + outOffset
 
           @inline
@@ -171,9 +171,9 @@ private[charset] abstract class ISO_8859_1_And_US_ASCII_Common protected (
           @inline
           @tailrec
           def loop(): CoderResult = {
-            if (!in.hasRemaining) {
+            if (!in.hasRemaining()) {
               CoderResult.UNDERFLOW
-            } else if (!out.hasRemaining) {
+            } else if (!out.hasRemaining()) {
               CoderResult.OVERFLOW
             } else {
               val c = in.get()
@@ -185,7 +185,7 @@ private[charset] abstract class ISO_8859_1_And_US_ASCII_Common protected (
                   in.position(in.position() - 1)
                   CoderResult.malformedForLength(1)
                 } else if (Character.isHighSurrogate(c)) {
-                  if (in.hasRemaining) {
+                  if (in.hasRemaining()) {
                     val c2 = in.get()
                     in.position(in.position() - 2)
                     if (Character.isLowSurrogate(c2)) {

@@ -48,7 +48,7 @@ final class Matcher private[regex] (
     // Further, it might be wrong to just use ^$ delimiters for two reasons:
     // - They might already be there
     // - They might not behave as expected when newline characters are present
-    if ((lastMatch ne null) && (start != 0 || end != inputstr.length))
+    if ((lastMatch ne null) && (start() != 0 || end() != inputstr.length()))
       reset()
     lastMatch ne null
   }
@@ -56,7 +56,7 @@ final class Matcher private[regex] (
   def lookingAt(): Boolean = {
     reset()
     find()
-    if ((lastMatch ne null) && (start != 0))
+    if ((lastMatch ne null) && (start() != 0))
       reset()
     lastMatch ne null
   }
@@ -83,7 +83,7 @@ final class Matcher private[regex] (
   // Replace methods
 
   def appendReplacement(sb: StringBuffer, replacement: String): Matcher = {
-    sb.append(inputstr.substring(appendPos, start))
+    sb.append(inputstr.substring(appendPos, start()))
 
     @inline def isDigit(c: Char) = c >= '0' && c <= '9'
 
@@ -111,7 +111,7 @@ final class Matcher private[regex] (
       }
     }
 
-    appendPos = end
+    appendPos = end()
     this
   }
 

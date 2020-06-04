@@ -47,8 +47,8 @@ object Thread {
   def currentThread(): Thread = SingleThread
 
   def interrupted(): scala.Boolean = {
-    val ret = currentThread.isInterrupted
-    currentThread.interruptedState = false
+    val ret = currentThread().isInterrupted()
+    currentThread().interruptedState = false
     ret
   }
 }

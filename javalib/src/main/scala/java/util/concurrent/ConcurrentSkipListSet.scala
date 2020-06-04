@@ -36,10 +36,10 @@ class ConcurrentSkipListSet[E] private (inner: TreeSet[E])
     new ConcurrentSkipListSet(this)
 
   def size(): Int =
-    inner.size
+    inner.size()
 
   override def isEmpty(): Boolean =
-    inner.isEmpty
+    inner.isEmpty()
 
   override def contains(o: Any): Boolean =
     if (o == null) false
@@ -87,10 +87,10 @@ class ConcurrentSkipListSet[E] private (inner: TreeSet[E])
     inner.comparator()
 
   def first(): E =
-    inner.first
+    inner.first()
 
   def last(): E =
-    inner.last
+    inner.last()
 
   def subSet(fromElement: E, fromInclusive: Boolean, toElement: E,
       toInclusive: Boolean): NavigableSet[E] =

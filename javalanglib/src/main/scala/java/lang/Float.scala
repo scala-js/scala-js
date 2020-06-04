@@ -23,29 +23,29 @@ final class Float private () extends Number with Comparable[Float] {
   @inline def floatValue(): scala.Float =
     this.asInstanceOf[scala.Float]
 
-  @inline override def byteValue(): scala.Byte = floatValue.toByte
-  @inline override def shortValue(): scala.Short = floatValue.toShort
-  @inline def intValue(): scala.Int = floatValue.toInt
-  @inline def longValue(): scala.Long = floatValue.toLong
-  @inline def doubleValue(): scala.Double = floatValue.toDouble
+  @inline override def byteValue(): scala.Byte = floatValue().toByte
+  @inline override def shortValue(): scala.Short = floatValue().toShort
+  @inline def intValue(): scala.Int = floatValue().toInt
+  @inline def longValue(): scala.Long = floatValue().toLong
+  @inline def doubleValue(): scala.Double = floatValue().toDouble
 
   @inline override def equals(that: Any): scala.Boolean =
     this eq that.asInstanceOf[AnyRef]
 
   @inline override def hashCode(): Int =
-    Float.hashCode(floatValue)
+    Float.hashCode(floatValue())
 
   @inline override def compareTo(that: Float): Int =
-    Float.compare(floatValue, that.floatValue)
+    Float.compare(floatValue(), that.floatValue())
 
   @inline override def toString(): String =
-    Float.toString(floatValue)
+    Float.toString(floatValue())
 
   @inline def isNaN(): scala.Boolean =
-    Float.isNaN(floatValue)
+    Float.isNaN(floatValue())
 
   @inline def isInfinite(): scala.Boolean =
-    Float.isInfinite(floatValue)
+    Float.isInfinite(floatValue())
 
 }
 

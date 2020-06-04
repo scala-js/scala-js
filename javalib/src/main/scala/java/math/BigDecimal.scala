@@ -132,8 +132,8 @@ object BigDecimal {
       val unscaled = thisValue._smallValue + augPlusPowLength
       valueOf(unscaled, thisValue._scale)
     } else {
-      val bi = Multiplication.multiplyByTenPow(augend.getUnscaledValue(), diffScale)
-      new BigDecimal(thisValue.getUnscaledValue().add(bi), thisValue.scale)
+      val bi = Multiplication.multiplyByTenPow(augend.getUnscaledValue, diffScale)
+      new BigDecimal(thisValue.getUnscaledValue.add(bi), thisValue.scale())
     }
   }
 
@@ -792,7 +792,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
       val p = thisUnscaled.divide(gcd)
       val q1 = divisorUnscaled.divide(gcd)
       // To simplify all "2" factors of q, dividing by 2^k
-      val k = q1.getLowestSetBit // number of factors "2" in 'q'
+      val k = q1.getLowestSetBit() // number of factors "2" in 'q'
 
       @inline
       @tailrec
@@ -1116,7 +1116,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
       else if (_smallValue > 0) 1
       else 0
     } else {
-      getUnscaledValue().signum()
+      getUnscaledValue.signum()
     }
   }
 
@@ -1439,7 +1439,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
       getUnscaledValue.multiply(powerOf10(-_scale.toLong))
     } else { // (scale > 0)
       // An optimization before do a heavy division
-      if (_scale > approxPrecision() || _scale > getUnscaledValue.getLowestSetBit)
+      if (_scale > approxPrecision() || _scale > getUnscaledValue.getLowestSetBit())
         throw new ArithmeticException("Rounding necessary")
 
       val integerAndFraction = getUnscaledValue.divideAndRemainder(powerOf10(_scale))
@@ -1535,7 +1535,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
         }
       }
 
-      val lowestSetBit = mantissa.getLowestSetBit
+      val lowestSetBit = mantissa.getLowestSetBit()
       val discardedSize = mantissa.bitLength() - 54
       var bits: Long = 0L // IEEE-754 Standard
       var tempBits: Long = 0L // for temporal calculations
@@ -1672,7 +1672,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     }
   }
 
-  private def isZero(): Boolean = _bitLength == 0 && this._smallValue != -1
+  private def isZero: Boolean = _bitLength == 0 && this._smallValue != -1
 
   private def movePoint(newScale: Long): BigDecimal = {
     def lptbLen = LongTenPowsBitLength(-newScale.toInt)
@@ -1749,7 +1749,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
    */
   private def valueExact(bitLengthOfType: Int): Long = {
     // Fast path to avoid some large BigInteger creations by toBigIntegerExact
-    if (-scale.toLong + approxPrecision() > 19) {
+    if (-scale().toLong + approxPrecision() > 19) {
       /* If there are more digits than the number of digits of Long.MaxValue in
        * base 10, this BigDecimal cannot possibly be an exact Long.
        */
@@ -1777,7 +1777,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     else ((this._bitLength - 1) * Log2).toInt + 1
   }
 
-  private def getUnscaledValue(): BigInteger = {
+  private def getUnscaledValue: BigInteger = {
     if (_intVal == null)
       _intVal = BigInteger.valueOf(_smallValue)
     _intVal

@@ -65,7 +65,7 @@ class Properties(protected val defaults: Properties)
     val set = new ju.HashSet[String]
     foreachAncestor { ancestor =>
       ancestor.entrySet().scalaOps.foreach { entry =>
-        (entry.getKey, entry.getValue) match {
+        (entry.getKey(), entry.getValue()) match {
           case (key: String, _: String) => set.add(key)
           case _                        => // Ignore key
         }

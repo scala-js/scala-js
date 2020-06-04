@@ -43,10 +43,10 @@ private[nio] final class DataViewCharBuffer private (
     GenDataViewBuffer(this).generic_asReadOnlyBuffer()
 
   def subSequence(start: Int, end: Int): CharBuffer = {
-    if (start < 0 || end < start || end > remaining)
+    if (start < 0 || end < start || end > remaining())
       throw new IndexOutOfBoundsException
     new DataViewCharBuffer(_dataView,
-        position() + start, position() + end, isReadOnly, isBigEndian)
+        position() + start, position() + end, isReadOnly(), isBigEndian)
   }
 
   @noinline

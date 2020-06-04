@@ -789,7 +789,7 @@ class BigInteger extends Number with Comparable[BigInteger] {
     // scalastyle:on return
   }
 
-  private[math] def getFirstNonzeroDigit(): Int = {
+  private[math] def getFirstNonzeroDigit: Int = {
     if (firstNonzeroDigit == firstNonzeroDigitNotSet) {
       firstNonzeroDigit = {
         if (this.sign == 0) {
@@ -807,7 +807,7 @@ class BigInteger extends Number with Comparable[BigInteger] {
   }
 
   /** Tests if {@code this.abs()} is equals to {@code ONE}. */
-  private[math] def isOne(): Boolean =
+  private[math] def isOne: Boolean =
     numberLength == 1 && digits(0) == 1
 
   private[math] def shiftLeftOneBit(): BigInteger = {

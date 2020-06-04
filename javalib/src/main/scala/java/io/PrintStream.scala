@@ -64,7 +64,7 @@ class PrintStream private (_out: OutputStream, autoFlush: Boolean,
 
   private lazy val encoder = {
     val c =
-      if (charset == null) Charset.defaultCharset
+      if (charset == null) Charset.defaultCharset()
       else charset
     /* We pass `this` as the output stream for the encoding writer so that
      * we can apply auto-flushing. Note that this will flush() more often

@@ -169,8 +169,8 @@ class DataInputStream(in: InputStream) extends FilterInputStream(in)
   // Methods on FilterInputStream.
   // Overridden to track pushedBack / pushedBackMark
   override def available(): Int = {
-    if (pushedBack != -1) in.available + 1
-    else in.available
+    if (pushedBack != -1) in.available() + 1
+    else in.available()
   }
 
   override def mark(readlimit: Int): Unit = {
