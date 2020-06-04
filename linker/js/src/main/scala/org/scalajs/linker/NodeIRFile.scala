@@ -35,7 +35,7 @@ object NodeIRFile {
   }
 
   private final class NodeIRFileImpl(path: String, version: Option[js.Date])
-      extends IRFileImpl(path, version.map(_.getTime.toString)) {
+      extends IRFileImpl(path, version.map(_.getTime().toString)) {
 
     def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] = {
       def loop(fd: Int, buf: ByteBuffer): Future[ir.EntryPointsInfo] = {
