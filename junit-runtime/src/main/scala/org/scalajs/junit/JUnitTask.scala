@@ -30,7 +30,7 @@ import sbt.testing._
 private[junit] final class JUnitTask(val taskDef: TaskDef,
     runSettings: RunSettings) extends Task {
 
-  def tags: Array[String] = Array.empty
+  def tags(): Array[String] = Array.empty
 
   def execute(eventHandler: EventHandler, loggers: Array[Logger],
       continuation: Array[Task] => Unit): Unit = {
@@ -76,7 +76,7 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
     } { _ =>
       catchAll(bootstrapper.beforeClass())
     } { _ =>
-      runTests(bootstrapper.tests.toList)
+      runTests(bootstrapper.tests().toList)
     } { _ =>
       catchAll(bootstrapper.afterClass())
     }
@@ -145,7 +145,7 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
 
   private def loadBootstrapper(reporter: Reporter): Option[Bootstrapper] = {
     val bootstrapperName =
-      taskDef.fullyQualifiedName + "$scalajs$junit$bootstrapper$"
+      taskDef.fullyQualifiedName() + "$scalajs$junit$bootstrapper$"
 
     try {
       val b = Reflect
