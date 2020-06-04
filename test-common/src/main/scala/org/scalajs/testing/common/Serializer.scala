@@ -72,32 +72,6 @@ private[testing] object Serializer {
     new String(byteOut.toByteArray.map(b => (b & 0xFF).toChar))
   }
 
-  implicit def listSerializer[T: Serializer]: Serializer[List[T]] = {
-    new Serializer[List[T]] {
-      def serialize(x: List[T], out: SerializeState): Unit = {
-        out.write(x.size)
-        x.foreach(out.write(_))
-      }
-
-      def deserialize(in: DeserializeState): List[T] =
-        List.fill(in.read[Int]())(in.read[T]())
-    }
-  }
-
-  implicit def optionSerializer[T: Serializer]: Serializer[Option[T]] = {
-    new Serializer[Option[T]] {
-      def serialize(x: Option[T], out: SerializeState): Unit = {
-        out.write(x.isDefined)
-        x.foreach(out.write(_))
-      }
-
-      def deserialize(in: DeserializeState): Option[T] = {
-        if (in.read[Boolean]()) Some(in.read[T]())
-        else None
-      }
-    }
-  }
-
   implicit object BooleanSerializer extends Serializer[Boolean] {
     def serialize(x: Boolean, out: SerializeState): Unit = out.out.writeBoolean(x)
     def deserialize(in: DeserializeState): Boolean = in.in.readBoolean()
@@ -126,6 +100,32 @@ private[testing] object Serializer {
   implicit object UnitSerializer extends Serializer[Unit] {
     def serialize(x: Unit, out: SerializeState): Unit = ()
     def deserialize(in: DeserializeState): Unit = ()
+  }
+
+  implicit def listSerializer[T: Serializer]: Serializer[List[T]] = {
+    new Serializer[List[T]] {
+      def serialize(x: List[T], out: SerializeState): Unit = {
+        out.write(x.size)
+        x.foreach(out.write(_))
+      }
+
+      def deserialize(in: DeserializeState): List[T] =
+        List.fill(in.read[Int]())(in.read[T]())
+    }
+  }
+
+  implicit def optionSerializer[T: Serializer]: Serializer[Option[T]] = {
+    new Serializer[Option[T]] {
+      def serialize(x: Option[T], out: SerializeState): Unit = {
+        out.write(x.isDefined)
+        x.foreach(out.write(_))
+      }
+
+      def deserialize(in: DeserializeState): Option[T] = {
+        if (in.read[Boolean]()) Some(in.read[T]())
+        else None
+      }
+    }
   }
 
   implicit object StackTraceElementSerializer extends Serializer[StackTraceElement] {
