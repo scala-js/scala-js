@@ -486,9 +486,18 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
       val newParams =
         (if (translateRestParam) params.init else params).map(transformParamDef)
 
-      val newBody =
-        if (isStat) transformStat(body, Set.empty)(env)
-        else pushLhsInto(Lhs.ReturnFromFunction, body, Set.empty)(env)
+      val newBody = if (isStat) {
+        body match {
+          // Necessary to optimize away top-level _return: {} blocks
+          case Labeled(label, _, body) =>
+            transformStat(body, Set.empty)(
+                env.withLabeledExprLHS(label, Lhs.ReturnFromFunction))
+          case _ =>
+            transformStat(body, Set.empty)(env)
+        }
+      } else {
+        pushLhsInto(Lhs.ReturnFromFunction, body, Set.empty)(env)
+      }
 
       val cleanedNewBody = newBody match {
         case js.Block(stats :+ js.Return(js.Undefined())) => js.Block(stats)
