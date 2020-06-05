@@ -85,13 +85,15 @@ abstract class JSASTTest extends DirectTest {
 
     def has(trgName: String)(pf: Pat): this.type = {
       val tr = new PFTraverser(pf)
-      assertTrue(s"AST should have $trgName", tr.find)
+      if (!tr.find)
+        fail(s"AST should have $trgName but was\n$show")
       this
     }
 
     def hasNot(trgName: String)(pf: Pat): this.type = {
       val tr = new PFTraverser(pf)
-      assertFalse(s"AST should not have $trgName", tr.find)
+      if (tr.find)
+        fail(s"AST should not have $trgName but was\n$show")
       this
     }
 
@@ -99,7 +101,8 @@ abstract class JSASTTest extends DirectTest {
       var actualCount = 0
       val tr = new PFTraverser(pf.andThen(_ => actualCount += 1))
       tr.traverse()
-      assertEquals(s"AST has the wrong number of $trgName", count, actualCount)
+      if (actualCount != count)
+        fail(s"AST has $actualCount $trgName but expected $count; it was\n$show")
       this
     }
 
@@ -109,10 +112,8 @@ abstract class JSASTTest extends DirectTest {
       this
     }
 
-    def show: this.type = {
-      clDefs foreach println _
-      this
-    }
+    def show: String =
+      clDefs.map(_.show).mkString("\n")
 
   }
 
