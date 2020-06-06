@@ -34,8 +34,7 @@ object QuickLinker {
 
     val smPath = outputPath + ".map"
 
-    def relURI(path: String) =
-      new URI(null, null, NodePath.basename(path), null)
+    def relURI(path: String) = new URI(null, null, basename(path), null)
 
     val out = LinkerOutput(NodeOutputFile(outputPath))
       .withSourceMap(NodeOutputFile(smPath))
@@ -51,9 +50,7 @@ object QuickLinker {
       .toJSPromise
   }
 
-  @JSImport("path", JSImport.Namespace)
+  @JSImport("path", "basename")
   @js.native
-  private object NodePath extends js.Object {
-    def basename(str: String): String = js.native
-  }
+  private def basename(str: String): String = js.native
 }

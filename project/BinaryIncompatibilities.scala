@@ -11,6 +11,11 @@ object BinaryIncompatibilities {
   )
 
   val Linker = Seq(
+      // private[linker], not an issue.
+      exclude[MissingClassProblem]("org.scalajs.linker.NodeFS$FS$"),
+
+      // private, not an issue.
+      exclude[MissingClassProblem]("org.scalajs.linker.NodeIRContainer$Path$")
   )
 
   val LinkerInterface = Seq(

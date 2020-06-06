@@ -23,13 +23,13 @@ import org.scalajs.linker.interface.LinkerOutput
 import org.scalajs.linker.interface.unstable.OutputFileImpl
 
 object NodeOutputFile {
-  import NodeFS._
+  import NodeFS.cbFuture
 
   def apply(path: String): LinkerOutput.File = new NodeOutputFileImpl(path)
 
   private final class NodeOutputFileImpl(path: String) extends OutputFileImpl {
     def newChannel()(implicit ec: ExecutionContext): Future[OutputFileImpl.Channel] = {
-      cbFuture[Int](FS.open(path, "w", _)).map(new NodeOutputChannel(_))
+      cbFuture[Int](NodeFS.open(path, "w", _)).map(new NodeOutputChannel(_))
     }
   }
 
@@ -38,10 +38,10 @@ object NodeOutputFile {
       val pos = buf.position()
       val write = {
         if (buf.hasTypedArray()) {
-          cbFuture[Int](FS.write(fd, buf.typedArray(), pos, buf.remaining(), (), _))
+          cbFuture[Int](NodeFS.write(fd, buf.typedArray(), pos, buf.remaining(), (), _))
         } else {
           val ta = ByteBuffer.allocateDirect(buf.remaining()).put(buf).typedArray()
-          cbFuture[Int](FS.write(fd, ta, 0, ta.length, js.undefined, _))
+          cbFuture[Int](NodeFS.write(fd, ta, 0, ta.length, js.undefined, _))
         }
       }
 
@@ -49,6 +49,6 @@ object NodeOutputFile {
     }
 
     def close()(implicit ec: ExecutionContext): Future[Unit] =
-      cbFuture[Unit](FS.close(fd, _))
+      cbFuture[Unit](NodeFS.close(fd, _))
   }
 }

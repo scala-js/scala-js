@@ -52,23 +52,34 @@ private[linker] object NodeFS {
     def isDirectory(): Boolean
   }
 
-  @JSImport("fs", JSImport.Namespace)
+  @JSImport("fs", "open")
   @js.native
-  object FS extends js.Object {
-    def open(path: String, flags: String, callback: CB[Int]): Unit = js.native
-    def close(fd: Int, callback: CB[Unit]): Unit = js.native
+  def open(path: String, flags: String, callback: CB[Int]): Unit = js.native
 
-    def read(fd: Int, buffer: TypedArray[_, _], offset: Int, length: Int, position: Int,
-        callback: CB[Int]): Unit = js.native
+  @JSImport("fs", "close")
+  @js.native
+  def close(fd: Int, callback: CB[Unit]): Unit = js.native
 
-    def write(fd: Int, buffer: TypedArray[_, _], offset: Int, length: Int,
-        position: js.UndefOr[Int], callback: CB[Int]): Int = js.native
+  @JSImport("fs", "read")
+  @js.native
+  def read(fd: Int, buffer: TypedArray[_, _], offset: Int, length: Int, position: Int,
+      callback: CB[Int]): Unit = js.native
 
-    def readdir(path: String, opts: ReadDirOpt.type,
-        cb: CB[js.Array[Dirent]]): Unit = js.native
+  @JSImport("fs", "write")
+  @js.native
+  def write(fd: Int, buffer: TypedArray[_, _], offset: Int, length: Int,
+      position: js.UndefOr[Int], callback: CB[Int]): Unit = js.native
 
-    def readFile(path: String, cb: CB[Uint8Array]): Unit = js.native
+  @JSImport("fs", "readdir")
+  @js.native
+  def readdir(path: String, opts: ReadDirOpt.type,
+      cb: CB[js.Array[Dirent]]): Unit = js.native
 
-    def stat(path: String, cb: CB[Stats]): Unit = js.native
-  }
+  @JSImport("fs", "readFile")
+  @js.native
+  def readFile(path: String, cb: CB[Uint8Array]): Unit = js.native
+
+  @JSImport("fs", "stat")
+  @js.native
+  def stat(path: String, cb: CB[Stats]): Unit = js.native
 }
