@@ -127,6 +127,17 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     val arg_outer = newTermName("arg$outer")
   }
 
+  private sealed abstract class EnclosingLabelDefInfo {
+    var generatedReturns: Int = 0
+  }
+
+  private final class EnclosingLabelDefInfoWithResultAsReturn()
+      extends EnclosingLabelDefInfo
+
+  private final class EnclosingLabelDefInfoWithResultAsAssigns(
+      val paramSyms: List[Symbol])
+      extends EnclosingLabelDefInfo
+
   class JSCodePhase(prev: Phase) extends StdPhase(prev) with JSExportsPhase {
 
     override def name: String = phaseName
@@ -144,10 +155,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     private val currentMethodSym = new ScopedVar[Symbol]
     private val thisLocalVarIdent = new ScopedVar[Option[js.LocalIdent]]
     private val fakeTailJumpParamRepl = new ScopedVar[(Symbol, Symbol)]
-    private val enclosingLabelDefParams = new ScopedVar[Map[Symbol, List[Symbol]]]
+    private val enclosingLabelDefInfos = new ScopedVar[Map[Symbol, EnclosingLabelDefInfo]]
     private val isModuleInitialized = new ScopedVar[VarBox[Boolean]]
-    private val countsOfReturnsToMatchCase = new ScopedVar[mutable.Map[Symbol, Int]]
-    private val countsOfReturnsToMatchEnd = new ScopedVar[mutable.Map[Symbol, Int]]
     private val undefinedDefaultParams = new ScopedVar[mutable.Set[Symbol]]
 
     // For some method bodies
@@ -194,10 +203,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           currentMethodSym := null,
           thisLocalVarIdent := null,
           fakeTailJumpParamRepl := null,
-          enclosingLabelDefParams := null,
+          enclosingLabelDefInfos := null,
           isModuleInitialized := null,
-          countsOfReturnsToMatchCase := null,
-          countsOfReturnsToMatchEnd := null,
           undefinedDefaultParams := null,
           mutableLocalVars := null,
           mutatedLocalVars := null,
@@ -1725,10 +1732,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           currentMethodSym := sym,
           thisLocalVarIdent := None,
           fakeTailJumpParamRepl := (NoSymbol, NoSymbol),
-          enclosingLabelDefParams := Map.empty,
+          enclosingLabelDefInfos := Map.empty,
           isModuleInitialized := new VarBox(false),
-          countsOfReturnsToMatchCase := mutable.Map.empty,
-          countsOfReturnsToMatchEnd := mutable.Map.empty,
           undefinedDefaultParams := mutable.Set.empty
       ) {
         assert(vparamss.isEmpty || vparamss.tail.isEmpty,
@@ -2579,10 +2584,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           val labelParamSyms = labelParams.map(_.symbol) map {
             s => if (s == fakeTailJumpParamRepl._1) fakeTailJumpParamRepl._2 else s
           }
+          val info = new EnclosingLabelDefInfoWithResultAsAssigns(labelParamSyms)
 
           withScopedVars(
-            enclosingLabelDefParams :=
-              enclosingLabelDefParams.get + (tree.symbol -> labelParamSyms)
+            enclosingLabelDefInfos :=
+              enclosingLabelDefInfos.get + (tree.symbol -> info)
           ) {
             val bodyType = toIRType(tree.tpe)
             val labelIdent = encodeLabelSym(tree.symbol)
@@ -2963,50 +2969,43 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val Apply(fun, args) = tree
       val sym = fun.symbol
 
-      if (enclosingLabelDefParams.contains(sym)) {
-        genEnclosingLabelApply(tree)
-      } else if (countsOfReturnsToMatchCase.contains(sym)) {
-        /* Jump the to a next-`case` label of a pattern match.
-         *
-         * Such labels are not enclosing. Instead, they are forward jumps to a
-         * following case LabelDef. For those labels, we generate a js.Return
-         * and keep track of how many such returns we generate, so that the
-         * enclosing `genTranslatedMatch` can optimize away the labeled blocks
-         * in some cases, notably when they are not used at all or used only
-         * once.
-         *
-         * Next-case labels have no argument.
-         */
-        assert(args.isEmpty, tree)
-        countsOfReturnsToMatchCase(sym) += 1
-        js.Return(js.Undefined(), encodeLabelSym(sym))
-      } else if (countsOfReturnsToMatchEnd.contains(sym)) {
-        /* Jump the to the match-end of a pattern match.
-         * This is similar to the jumps to next-case (see above), except that
-         * match-end labels hae exactly one argument, which is the result of the
-         * pattern match (of type BoxedUnit if the match is in statement position).
-         * We simply `return` the argument as the result of the labeled block
-         * surrounding the match.
-         */
-        assert(args.size == 1, tree)
-        countsOfReturnsToMatchEnd(sym) += 1
-        js.Return(genExpr(args.head), encodeLabelSym(sym))
-      } else {
-        /* No other label apply should ever happen. If it does, then we
-         * have missed a pattern of LabelDef/LabelApply and some new
-         * translation must be found for it.
-         */
+      val info = enclosingLabelDefInfos.getOrElse(sym, {
         abort("Found unknown label apply at "+tree.pos+": "+tree)
+      })
+
+      val labelIdent = encodeLabelSym(sym)
+      info.generatedReturns += 1
+
+      def assertArgCountMatches(expected: Int): Unit = {
+        assert(args.size == expected,
+            s"argument count mismatch for label-apply at $pos: " +
+            s"expected $expected but got ${args.size}")
+      }
+
+      info match {
+        case info: EnclosingLabelDefInfoWithResultAsAssigns =>
+          val paramSyms = info.paramSyms
+          assertArgCountMatches(paramSyms.size)
+
+          val jump = js.Return(js.Undefined(), labelIdent)
+
+          if (args.isEmpty) {
+            // fast path, applicable notably to loops and case labels
+            jump
+          } else {
+            js.Block(genMultiAssign(paramSyms, args), jump)
+          }
+
+        case _: EnclosingLabelDefInfoWithResultAsReturn =>
+          assertArgCountMatches(1)
+          js.Return(genExpr(args.head), labelIdent)
       }
     }
 
-    /** Gen a label-apply to an enclosing label def.
+    /** Gen multiple "parallel" assignments.
      *
-     *  This is typically used for tail-recursive calls.
-     *
-     *  Basically this is compiled into
-     *  continue labelDefIdent;
-     *  but arguments need to be updated beforehand.
+     *  This is used when assigning the new value of multiple parameters of a
+     *  label-def, notably for the ones generated for tail-recursive methods.
      *
      *  Since the rhs for the new value of an argument can depend on the value
      *  of another argument (and since deciding if it is indeed the case is
@@ -3018,19 +3017,16 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  If, after elimination of trivial assignments, only one assignment
      *  remains, then we do not use a temporary variable for this one.
      */
-    private def genEnclosingLabelApply(tree: Apply): js.Tree = {
-      implicit val pos = tree.pos
-      val Apply(fun, args) = tree
-      val sym = fun.symbol
+    private def genMultiAssign(targetSyms: List[Symbol], values: List[Tree])(
+        implicit pos: Position): List[js.Tree] = {
 
       // Prepare quadruplets of (formalArg, irType, tempVar, actualArg)
       // Do not include trivial assignments (when actualArg == formalArg)
       val quadruplets = {
-        val formalArgs = enclosingLabelDefParams(sym)
         val quadruplets =
           List.newBuilder[(js.VarRef, jstpe.Type, js.LocalIdent, js.Tree)]
 
-        for ((formalArgSym, arg) <- formalArgs.zip(args)) {
+        for ((formalArgSym, arg) <- targetSyms.zip(values)) {
           val formalArg = encodeLocalSym(formalArgSym)
           val actualArg = genExpr(arg)
 
@@ -3070,16 +3066,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         quadruplets.result()
       }
 
-      // The actual jump (return(labelDefIdent) undefined;)
-      val jump = js.Return(js.Undefined(), encodeLabelSym(sym))
-
       quadruplets match {
-        case Nil => jump
+        case Nil =>
+          Nil
 
-        case (formalArg, argType, _, actualArg) :: Nil =>
-          js.Block(
-              js.Assign(formalArg, actualArg),
-              jump)
+        case (formalArg, _, _, actualArg) :: Nil =>
+          js.Assign(formalArg, actualArg) :: Nil
 
         case _ =>
           val tempAssignments =
@@ -3088,7 +3080,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           val trueAssignments =
             for ((formalArg, argType, tempArg, _) <- quadruplets)
               yield js.Assign(formalArg, js.VarRef(tempArg)(argType))
-          js.Block(tempAssignments ++ trueAssignments :+ jump)
+          tempAssignments ::: trueAssignments
       }
     }
 
@@ -3649,7 +3641,19 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
     }
 
-    /** Gen JS code for a translated match
+    /** Gen JS code for a translated match.
+     *
+     *  A translated match consists of consecutive `case` LabelDefs directly
+     *  followed by a `matchEnd` LabelDef.
+     */
+    private def genTranslatedMatch(cases: List[LabelDef], matchEnd: LabelDef)(
+        implicit pos: Position): js.Tree = {
+      genMatchEnd(matchEnd) {
+        genTranslatedCases(cases, isStat = true)
+      }
+    }
+
+    /** Gen JS code for the cases of a patmat-transformed match.
      *
      *  This implementation relies heavily on the patterns of trees emitted
      *  by the pattern match phase, including its variants across versions of
@@ -3657,75 +3661,105 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *
      *  The trees output by the pattern matcher are assumed to follow these
      *  rules:
-     *  * Each case LabelDef (in `cases`) must not take any argument.
-     *  * The last one must be a catch-all (case _ =>) that never falls through.
-     *  * Jumps to the `matchEnd` are allowed anywhere in the body of the
-     *    corresponding case label-defs, but not outside.
-     *  * Jumps to case label-defs are restricted to jumping to the very next
-     *    case, and only in positions denoted by <jump> in:
-     *    <case-body> ::=
-     *        If(_, <case-body>, <case-body>)
-     *      | Block(_, <case-body>)
-     *      | <jump>
-     *      | _
-     *    These restrictions, together with the fact that we are in statement
-     *    position (thanks to the above transformation), mean that they can be
-     *    simply replaced by `skip`.
      *
-     *  To implement jumps to `matchEnd`, which have one argument which is the
-     *  result of the match, we enclose all the cases in one big labeled block.
-     *  Jumps are then compiled as `return`s out of the block.
+     *  - Each case LabelDef (in `cases`) must not take any argument.
+     *  - Jumps to case label-defs are restricted to jumping to the very next
+     *    case.
+     *
+     *  There is an optimization to avoid generating jumps that are in tail
+     *  position of a case, if they are in positions denoted by <jump> in:
+     *  {{{
+     *  <case-body> ::=
+     *      If(_, <case-body>, <case-body>)
+     *    | Block(_, <case-body>)
+     *    | <jump>
+     *    | _
+     *  }}}
+     *  Since all but the last case (which cannot have jumps) are in statement
+     *  position, those jumps in tail position can be replaced by `skip`.
      */
-    def genTranslatedMatch(cases: List[LabelDef],
-        matchEnd: LabelDef)(implicit pos: Position): js.Tree = {
+    private def genTranslatedCases(cases: List[LabelDef], isStat: Boolean)(
+        implicit pos: Position): List[js.Tree] = {
 
-      val matchEndSym = matchEnd.symbol
-      countsOfReturnsToMatchEnd(matchEndSym) = 0
+      assert(!cases.isEmpty,
+          s"genTranslatedCases called with no cases at $pos")
 
-      val nextCaseSyms = (cases.tail map (_.symbol)) :+ NoSymbol
-
-      val translatedCases = for {
-        (LabelDef(_, Nil, rhs), nextCaseSym) <- cases zip nextCaseSyms
+      val translatedCasesInit = for {
+        (caseLabelDef, nextCaseSym) <- cases.zip(cases.tail.map(_.symbol))
       } yield {
-        if (nextCaseSym.exists)
-          countsOfReturnsToMatchCase(nextCaseSym) = 0
+        implicit val pos = caseLabelDef.pos
+        assert(caseLabelDef.params.isEmpty,
+            s"found case LabelDef with parameters at $pos")
 
-        def genCaseBody(tree: Tree): js.Tree = {
-          implicit val pos = tree.pos
-          tree match {
-            case If(cond, thenp, elsep) =>
-              js.If(genExpr(cond), genCaseBody(thenp), genCaseBody(elsep))(
-                  jstpe.NoType)
+        val info = new EnclosingLabelDefInfoWithResultAsAssigns(Nil)
 
-            case Block(stats, expr) =>
-              js.Block((stats map genStat) :+ genCaseBody(expr))
+        val translatedBody = withScopedVars(
+            enclosingLabelDefInfos :=
+              enclosingLabelDefInfos.get + (nextCaseSym -> info)
+        ) {
+          /* Eager optimization of jumps in tail position, following the shapes
+           * produced by scala until 2.12.8. 2.12.9 introduced flat patmat
+           * translation, which does not trigger those optimizations.
+           */
+          def genCaseBody(tree: Tree): js.Tree = {
+            implicit val pos = tree.pos
+            tree match {
+              case If(cond, thenp, elsep) =>
+                js.If(genExpr(cond), genCaseBody(thenp), genCaseBody(elsep))(
+                    jstpe.NoType)
 
-            case Apply(_, Nil) if tree.symbol == nextCaseSym =>
-              js.Skip()
+              case Block(stats, expr) =>
+                js.Block((stats map genStat) :+ genCaseBody(expr))
 
-            case _ =>
-              genStat(tree)
+              case Apply(_, Nil) if tree.symbol == nextCaseSym =>
+                js.Skip()
+
+              case _ =>
+                genStat(tree)
+            }
           }
+
+          genCaseBody(caseLabelDef.rhs)
         }
 
-        val translatedBody = genCaseBody(rhs)
-
-        if (!nextCaseSym.exists) {
-          translatedBody
-        } else {
-          val returnCount = countsOfReturnsToMatchCase.remove(nextCaseSym).get
-          genOptimizedCaseLabeled(encodeLabelSym(nextCaseSym), translatedBody,
-              returnCount)
-        }
+        genOptimizedCaseLabeled(encodeLabelSym(nextCaseSym), translatedBody,
+            info.generatedReturns)
       }
 
-      val returnCount = countsOfReturnsToMatchEnd.remove(matchEndSym).get
+      val translatedLastCase = genStatOrExpr(cases.last.rhs, isStat)
+
+      translatedCasesInit :+ translatedLastCase
+    }
+
+    /** Gen JS code for a match-end label def following match-cases.
+     *
+     *  The preceding cases, which are allowed to jump to this match-end, must
+     *  be generated in the `genTranslatedCases` callback. During the execution
+     *  of this callback, the enclosing label infos contain appropriate info
+     *  for this match-end.
+     *
+     *  The translation of the match-end itself is straightforward, but is
+     *  augmented with several optimizations to remove as many labeled blocks
+     *  as possible.
+     */
+    private def genMatchEnd(matchEnd: LabelDef)(
+        genTranslatedCases: => List[js.Tree])(
+        implicit pos: Position): js.Tree = {
+
+      val sym = matchEnd.symbol
+      val info = new EnclosingLabelDefInfoWithResultAsReturn()
+
+      val translatedCases = withScopedVars(
+          enclosingLabelDefInfos := enclosingLabelDefInfos.get + (sym -> info)
+      ) {
+        genTranslatedCases
+      }
 
       val LabelDef(_, List(matchEndParam), matchEndBody) = matchEnd
 
       val innerResultType = toIRType(matchEndParam.tpe)
-      val optimized = genOptimizedMatchEndLabeled(encodeLabelSym(matchEndSym),
-          innerResultType, translatedCases, returnCount)
+      val optimized = genOptimizedMatchEndLabeled(encodeLabelSym(sym),
+          innerResultType, translatedCases, info.generatedReturns)
 
       matchEndBody match {
         case Ident(_) if matchEndParam.symbol == matchEndBody.symbol =>
