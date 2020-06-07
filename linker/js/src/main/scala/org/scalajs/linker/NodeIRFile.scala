@@ -30,7 +30,7 @@ object NodeIRFile {
   import NodeFS._
 
   def apply(path: String)(implicit ec: ExecutionContext): Future[IRFile] = {
-    cbFuture[Stats](FS.stat(path, _)).map(stats =>
+    cbFuture[Stats](stat(path, _)).map(stats =>
         new NodeIRFileImpl(path, stats.mtime.toOption))
   }
 
@@ -42,7 +42,7 @@ object NodeIRFile {
         val len = buf.remaining()
         val off = buf.position()
 
-        cbFuture[Int](FS.read(fd, buf.typedArray(), off, len, off, _)).map { bytesRead =>
+        cbFuture[Int](read(fd, buf.typedArray(), off, len, off, _)).map { bytesRead =>
           if (bytesRead <= 0)
             throw new EOFException
 
@@ -68,16 +68,16 @@ object NodeIRFile {
         }
       }
 
-      val result = cbFuture[Int](FS.open(path, "r", _)).flatMap { fd =>
+      val result = cbFuture[Int](open(path, "r", _)).flatMap { fd =>
         loop(fd, ByteBuffer.allocateDirect(1024))
-          .finallyWith(cbFuture[Unit](FS.close(fd, _)))
+          .finallyWith(cbFuture[Unit](close(fd, _)))
       }
 
       IRFileImpl.withPathExceptionContext(path, result)
     }
 
     def tree(implicit ec: ExecutionContext): Future[ir.Trees.ClassDef] = {
-      val result = cbFuture[Uint8Array](FS.readFile(path, _)).map { arr =>
+      val result = cbFuture[Uint8Array](readFile(path, _)).map { arr =>
         ir.Serializers.deserialize(TypedArrayBuffer.wrap(arr.buffer))
       }
 

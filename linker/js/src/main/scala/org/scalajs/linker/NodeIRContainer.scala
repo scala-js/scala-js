@@ -29,12 +29,11 @@ import org.scalajs.linker.standard.MemIRFileImpl
 
 object NodeIRContainer {
   import NodeFS._
-  import FS._
 
   def fromClasspath(classpath: Seq[String])(
       implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[String])] = {
     Future.traverse(classpath) { entry =>
-      cbFuture[Stats](FS.stat(entry, _)).transformWith {
+      cbFuture[Stats](stat(entry, _)).transformWith {
         case Success(stat) if stat.isDirectory() =>
           fromDirectory(entry)
 
@@ -56,17 +55,16 @@ object NodeIRContainer {
 
   private def fromDirectory(dir: String)(
       implicit ec: ExecutionContext): Future[Seq[(IRContainer, String)]] = {
-    cbFuture[js.Array[Dirent]](FS.readdir(dir, ReadDirOpt, _)).flatMap { entries =>
+    cbFuture[js.Array[Dirent]](readdir(dir, ReadDirOpt, _)).flatMap { entries =>
       val (dirs, files) = entries.toSeq.partition(_.isDirectory())
 
       val subdirFiles = Future.traverse(dirs) { e =>
-        val path = Path.join(dir, e.name)
-        fromDirectory(path)
+        fromDirectory(join(dir, e.name))
       }
 
       val irFileNames = files.map(_.name).filter(_.endsWith(".sjsir"))
       val directFiles = Future.traverse(irFileNames) { n =>
-        val path = Path.join(dir, n)
+        val path = join(dir, n)
         NodeIRFile(path).map(f => (IRContainer.fromIRFile(f), path))
       }
 
@@ -86,7 +84,7 @@ object NodeIRContainer {
 
     def sjsirFiles(implicit ec: ExecutionContext): Future[List[IRFile]] = {
       for {
-        arr <- cbFuture[Uint8Array](FS.readFile(path, _))
+        arr <- cbFuture[Uint8Array](readFile(path, _))
         zip <- JSZip.loadAsync(arr).toFuture
         files <- loadFromZip(zip)
       } yield {
@@ -127,9 +125,7 @@ object NodeIRContainer {
     def loadAsync(data: Uint8Array): js.Promise[JSZip] = js.native
   }
 
-  @JSImport("path", JSImport.Namespace)
+  @JSImport("path", "join")
   @js.native
-  private object Path extends js.Object {
-    def join(paths: String*): String = js.native
-  }
+  private def join(paths: String*): String = js.native
 }
