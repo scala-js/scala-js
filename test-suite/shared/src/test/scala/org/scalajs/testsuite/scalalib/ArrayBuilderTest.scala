@@ -193,7 +193,7 @@ class ArrayBuilderTest {
 
   @Test def Unit_normal_case_inline(): Unit = {
     val b = ArrayBuilder.make[Unit]
-    b += ()
+    b += (())
     val a = b.result()
 
     assertSame(classOf[Array[Unit]], a.getClass)
@@ -204,7 +204,7 @@ class ArrayBuilderTest {
 
   @Test def Unit_normal_case_noinline(): Unit = {
     val b = makeNoInline[Unit]
-    b += ()
+    b += (())
     val a = b.result()
 
     assertSame(classOf[Array[Unit]], a.getClass)
