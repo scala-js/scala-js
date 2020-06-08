@@ -51,6 +51,11 @@ object BinaryIncompatibilities {
           "scala.scalajs.js.JSON.stringify"),
       exclude[IncompatibleResultTypeProblem](
           "scala.scalajs.js.JSON.stringify$default$3"),
+      // New methods in sealed traits, not an issue.
+      exclude[ReversedMissingMethodProblem](
+          "scala.scalajs.js.LowPrioAnyImplicits.wrapMap"),
+      exclude[ReversedMissingMethodProblem](
+          "scala.scalajs.js.LowPrioAnyImplicits.wrapSet"),
   )
 
   val TestInterface = Seq(

@@ -96,7 +96,12 @@ class ObjectTest {
     assertEquals(obj1("b"), "foo")
   }
 
-  // TODO: Add test for fromEntries(js.Map)
+  @Test def fromEntries_js_Map(): Unit = {
+    val map = js.Map("a" -> 42, "b" -> "foo")
+    val obj = js.Object.fromEntries(map)
+    assertEquals(42, obj("a"))
+    assertEquals("foo", obj("b"))
+  }
 }
 
 object ObjectTest {
