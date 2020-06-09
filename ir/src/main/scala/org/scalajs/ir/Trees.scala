@@ -77,20 +77,19 @@ object Trees {
     /* This method is called in the constructor of some IR node classes, such
      * as JSGlobalRef; it should be fast.
      */
-    val len = name.length()
-    if (len == 0)
-      return false
-    val c = name.charAt(0)
-    if (c != '$' && c != '_' && !Character.isUnicodeIdentifierStart(c))
-      return false
-    var i = 1
-    while (i != len) {
-      val c = name.charAt(i)
-      if (c != '$' && !Character.isUnicodeIdentifierPart(c))
-        return false
-      i += 1
+    def innerFunc(nameLength: Int, index: Int): Boolean = {
+      val c = name.charAt(index)
+      index match {
+        case i if nameLength == 0 || (i == 0 && c != '$' &&
+          c != '_' && !Character.isUnicodeIdentifierStart(c)) => false
+        case i if i == nameLength => true
+        case _ =>
+          if (c != '$' && !Character.isUnicodeIdentifierPart(c)) false
+          else innerFunc(nameLength, index + 1)
+      }
     }
-    true
+
+    innerFunc(name.length, 0)
     // scalastyle:on return
   }
 
