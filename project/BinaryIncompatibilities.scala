@@ -11,6 +11,10 @@ object BinaryIncompatibilities {
   )
 
   val Linker = Seq(
+      // private[emitter], not an issue.
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.ClassEmitter.org$scalajs$linker$backend$emitter$ClassEmitter$$classVarDef$default$5"),
+
       // private[linker], not an issue.
       exclude[MissingClassProblem]("org.scalajs.linker.NodeFS$FS$"),
 
