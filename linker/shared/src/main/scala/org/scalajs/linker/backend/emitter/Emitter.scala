@@ -287,7 +287,7 @@ final class Emitter(config: Emitter.Config) {
                   logger.error(
                       s"$displayName.${nativeMember.name.name.displayName} " +
                       s"needs to be imported from module '$module' but " +
-                      "module support is disabled")
+                      "module support is disabled.")
                   importsFound = true
 
                 case _ =>
