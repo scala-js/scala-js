@@ -138,9 +138,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     require(useClasses)
 
-    val className = tree.name.name
-    val classIdent = classVarIdent("c", className)(tree.name.pos)
-
     val parentVarWithGlobals = for (parentIdent <- tree.superClass) yield {
       implicit val pos = parentIdent.pos
       if (!tree.kind.isJSClass) {
@@ -157,7 +154,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     }
 
     for (parentVar <- WithGlobals.option(parentVarWithGlobals))
-      yield js.ClassDef(Some(classIdent), parentVar, members)(tree.pos)
+      yield classClassDef("c", tree.name.name, parentVar, members)(tree.pos)
   }
 
   /** Extracts the inlineable init method, if there is one. */
@@ -205,8 +202,8 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     def makeInheritableCtorDef(ctorToMimic: js.Tree, field: String) = {
       js.Block(
         js.DocComment("@constructor"),
-        classVarDef(field, className, js.Function(false, Nil, js.Skip()),
-            keepFunctionExpression = isJSClass),
+        if (isJSClass) classVarDef(field, className, js.Function(false, Nil, js.Skip()))
+        else classFunctionDef(field, className, Nil, js.Skip()),
         classVar(field, className).prototype := ctorToMimic.prototype
       )
     }
@@ -250,8 +247,9 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
       chainProto <- chainProtoWithGlobals
     } yield {
       val docComment = js.DocComment("@constructor")
-      val ctorDef = classVarDef("c", className, ctorFun,
-          keepFunctionExpression = isJSClass)
+      val ctorDef =
+        if (isJSClass) classVarDef("c", className, ctorFun)
+        else classFunctionDef("c", className, ctorFun.args, ctorFun.body)
 
       val inheritableCtorDef =
         if (isJSClass) js.Skip()
@@ -570,7 +568,7 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     for (methodFun <- methodFunWithGlobals) yield {
       val methodName = method.name.name
-      classVarDef("f", className, methodName, methodFun,
+      classFunctionDef("f", className, methodName, methodFun.args, methodFun.body,
           method.originalName.orElse(methodName))
     }
   }
@@ -750,13 +748,11 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
     val className = tree.className
 
     if (esFeatures.useECMAScript2015) {
-      js.ClassDef(Some(classVarIdent("c", className)), None, Nil)
+      classClassDef("c", className, None, Nil)
     } else {
       js.Block(
           js.DocComment("@constructor"),
-          classVarDef("c", className,
-              js.Function(arrow = false, Nil, js.Skip()),
-              keepFunctionExpression = false)
+          classFunctionDef("c", className, Nil, js.Skip())
       )
     }
   }
@@ -1270,57 +1266,43 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
   // Helpers
 
+  private def classClassDef(field: String, className: ClassName,
+      parentClass: Option[js.Tree], members: List[js.Tree])(
+      implicit pos: Position): js.Tree = {
+    val ident = classVarIdent(field, className)
+    js.ClassDef(Some(ident), parentClass, members)
+  }
+
   private def classFunctionDef(field: String, className: ClassName,
       args: List[js.ParamDef], body: js.Tree)(
-      implicit pos: Position): js.FunctionDef = {
+      implicit pos: Position): js.Tree = {
     js.FunctionDef(classVarIdent(field, className), args, body)
   }
 
-  private def classVarDef(field: String, className: ClassName, value: js.Tree,
-      mutable: Boolean = false, keepFunctionExpression: Boolean = false)(
+  private def classFunctionDef(field: String, className: ClassName,
+      methodName: MethodName, args: List[js.ParamDef], body: js.Tree,
+      origName: OriginalName)(
       implicit pos: Position): js.Tree = {
+    js.FunctionDef(classVarIdent(field, className, methodName, origName), args, body)
+  }
 
-    classVarDefGeneric(classVarIdent(field, className), value, mutable,
-        keepFunctionExpression)
+  private def classVarDef(field: String, className: ClassName, value: js.Tree,
+      mutable: Boolean = false)(
+      implicit pos: Position): js.Tree = {
+    genLet(classVarIdent(field, className), mutable, value)
   }
 
   private def classVarDef(field: String, className: ClassName,
       fieldName: FieldName, value: js.Tree, origName: OriginalName,
       mutable: Boolean)(
       implicit pos: Position): js.Tree = {
-
-    classVarDefGeneric(
-        classVarIdent(field, className, fieldName, origName), value, mutable,
-        keepFunctionExpression = false)
+    genLet(classVarIdent(field, className, fieldName, origName), mutable, value)
   }
 
   private def classVarDef(field: String, className: ClassName,
       methodName: MethodName, value: js.Tree, origName: OriginalName)(
       implicit pos: Position): js.Tree = {
-
-    classVarDefGeneric(
-        classVarIdent(field, className, methodName, origName), value,
-        mutable = false, keepFunctionExpression = false)
-  }
-
-  private def classVarDefGeneric(ident: js.Ident, value: js.Tree,
-      mutable: Boolean, keepFunctionExpression: Boolean)(
-      implicit pos: Position): js.Tree = {
-    if (esFeatures.useECMAScript2015) {
-      genLet(ident, mutable, value)
-    } else {
-      value match {
-        case js.Function(false, args, body) =>
-          // Make sure the function has a meaningful `name` property
-          val functionExpr = js.FunctionDef(ident, args, body)
-          if (keepFunctionExpression)
-            js.VarDef(ident, Some(functionExpr))
-          else
-            functionExpr
-        case _ =>
-          js.VarDef(ident, Some(value))
-      }
-    }
+    genLet(classVarIdent(field, className, methodName, origName), mutable = false, value)
   }
 
   /** Gen JS code for an [[ModuleInitializer]]. */
