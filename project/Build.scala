@@ -810,48 +810,53 @@ object Build {
   ).zippedSettings("library")(
       commonLinkerSettings _
   ).settings(
-      sourceGenerators in Compile += Def.task {
-        val dir = (sourceManaged in Compile).value
-        val privateLibProducts = (products in (linkerPrivateLibrary, Compile)).value
+      if (isGeneratingForIDE) {
+        unmanagedSourceDirectories in Compile +=
+          baseDirectory.value.getParentFile.getParentFile / "js/src/main/scala-ide-stubs"
+      } else {
+        sourceGenerators in Compile += Def.task {
+          val dir = (sourceManaged in Compile).value
+          val privateLibProducts = (products in (linkerPrivateLibrary, Compile)).value
 
-        val content = {
-          val namesAndContents = for {
-            f <- (privateLibProducts ** "*.sjsir").get
-          } yield {
-            val bytes = IO.readBytes(f)
-            val base64 = java.util.Base64.getEncoder().encodeToString(bytes)
-            s""""${f.getName}" -> "$base64""""
+          val content = {
+            val namesAndContents = for {
+              f <- (privateLibProducts ** "*.sjsir").get
+            } yield {
+              val bytes = IO.readBytes(f)
+              val base64 = java.util.Base64.getEncoder().encodeToString(bytes)
+              s""""${f.getName}" -> "$base64""""
+            }
+
+            s"""
+            |package org.scalajs.linker.backend.emitter
+            |
+            |import org.scalajs.linker.interface.IRFile
+            |import org.scalajs.linker.standard.MemIRFileImpl
+            |
+            |object PrivateLibHolder {
+            |  private val namesAndContents = Seq(
+            |    ${namesAndContents.mkString(",\n    ")}
+            |  )
+            |
+            |  val files: Seq[IRFile] = {
+            |    for ((name, contentBase64) <- namesAndContents) yield {
+            |      new MemIRFileImpl(
+            |          path = "org/scalajs/linker/runtime/" + name,
+            |          version = Some(""), // this indicates that the file never changes
+            |          content = java.util.Base64.getDecoder().decode(contentBase64)
+            |      )
+            |    }
+            |  }
+            |}
+            """.stripMargin
           }
 
-          s"""
-          |package org.scalajs.linker.backend.emitter
-          |
-          |import org.scalajs.linker.interface.IRFile
-          |import org.scalajs.linker.standard.MemIRFileImpl
-          |
-          |object PrivateLibHolder {
-          |  private val namesAndContents = Seq(
-          |    ${namesAndContents.mkString(",\n    ")}
-          |  )
-          |
-          |  val files: Seq[IRFile] = {
-          |    for ((name, contentBase64) <- namesAndContents) yield {
-          |      new MemIRFileImpl(
-          |          path = "org/scalajs/linker/runtime/" + name,
-          |          version = Some(""), // this indicates that the file never changes
-          |          content = java.util.Base64.getDecoder().decode(contentBase64)
-          |      )
-          |    }
-          |  }
-          |}
-          """.stripMargin
-        }
-
-        IO.createDirectory(dir)
-        val output = dir / "PrivateLibHolder.scala"
-        IO.write(output, content)
-        Seq(output)
-      }.taskValue,
+          IO.createDirectory(dir)
+          val output = dir / "PrivateLibHolder.scala"
+          IO.write(output, content)
+          Seq(output)
+        }.taskValue,
+      },
 
       scalaJSLinkerConfig in Test ~= (_.withModuleKind(ModuleKind.CommonJSModule))
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
