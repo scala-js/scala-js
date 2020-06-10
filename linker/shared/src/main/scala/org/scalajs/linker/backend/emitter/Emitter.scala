@@ -39,6 +39,8 @@ final class Emitter(config: Emitter.Config) {
 
   private val knowledgeGuardian = new KnowledgeGuardian(config)
 
+  private val uncachedKnowledge = new knowledgeGuardian.KnowledgeAccessor {}
+
   private val nameGen: NameGen = new NameGen
 
   private class State(val lastMentionedDangerousGlobalRefs: Set[String]) {
@@ -100,68 +102,130 @@ final class Emitter(config: Emitter.Config) {
 
   private def emitInternal(unit: LinkingUnit,
       logger: Logger): WithGlobals[List[js.Tree]] = {
-    startRun(unit)
+    // Reset caching stats.
+    statsClassesReused = 0
+    statsClassesInvalidated = 0
+    statsMethodsReused = 0
+    statsMethodsInvalidated = 0
+
+    // Update GlobalKnowledge.
+    val invalidateAll = knowledgeGuardian.update(unit)
+    if (invalidateAll) {
+      state.coreJSLibCache.invalidate()
+      classCaches.clear()
+    }
+
+    // Inform caches about new run.
+    classCaches.valuesIterator.foreach(_.startRun())
+
     try {
-      val orderedClasses = unit.classDefs.sortWith(compareClasses)
-      val WithGlobals(generatedClasses, trackedGlobalRefs) = {
-        logger.time("Emitter: Generate classes") {
-          genAllClasses(orderedClasses, logger, secondAttempt = false)
-        }
-      }
-
-      logger.time("Emitter: Write trees") {
-        val WithGlobals(coreJSLib, coreJSLibTrackedGlobalRefs) =
-          state.coreJSLibCache.lib
-
-        def classIter = generatedClasses.iterator
-
-        // Emit everything in the appropriate order.
-        val treesIter: Iterator[js.Tree] = (
-            /* The definitions of the CoreJSLib, which depend on nothing.
-             * All classes potentially depend on it.
-             */
-            Iterator.single(coreJSLib.definitions) ++
-
-            /* Module imports, which depend on nothing.
-             * All classes potentially depend on them.
-             */
-            genModuleImports(orderedClasses, logger) ++
-
-            /* All class definitions, which depend on nothing but their
-             * superclasses.
-             */
-            classIter.flatMap(_.main) ++
-
-            /* The initialization of the CoreJSLib, which depends on the
-             * definition of classes (n.b. the RuntimeLong class).
-             */
-            Iterator.single(coreJSLib.initialization) ++
-
-            /* All static field definitions, which depend on nothing, except
-             * those of type Long which need $L0.
-             */
-            classIter.flatMap(_.staticFields) ++
-
-            /* All static initializers, which in the worst case can observe some
-             * "zero" state of other static field definitions, but must not
-             * observe a *non-initialized* (undefined) state.
-             */
-            classIter.flatMap(_.staticInitialization) ++
-
-            /* All the exports, during which some JS class creation can happen,
-             * causing JS static initializers to run. Those also must not observe
-             * a non-initialized state of other static fields.
-             */
-            classIter.flatMap(_.topLevelExports) ++
-
-            /* Module initializers, which by spec run at the end. */
-            unit.moduleInitializers.iterator.map(classEmitter.genModuleInitializer(_))
-        )
-
-        WithGlobals(treesIter.toList, trackedGlobalRefs ++ coreJSLibTrackedGlobalRefs)
-      }
+      emitAvoidGlobalClash(unit, logger, secondAttempt = false)
     } finally {
-      endRun(logger)
+      // Report caching stats.
+      logger.debug(
+          s"Emitter: Class tree cache stats: reused: $statsClassesReused -- "+
+          s"invalidated: $statsClassesInvalidated")
+      logger.debug(
+          s"Emitter: Method tree cache stats: reused: $statsMethodsReused -- "+
+          s"invalidated: $statsMethodsInvalidated")
+
+      // Inform caches about run completion.
+      classCaches.filterInPlace((_, c) => c.cleanAfterRun())
+    }
+  }
+
+  /** Emits all JavaScript code avoiding clashes with global refs.
+   *
+   *  If, at the end of the process, the set of accessed dangerous globals has
+   *  changed, invalidate *everything* and start over. If at first you don't
+   *  succeed, ...
+   */
+  @tailrec
+  private def emitAvoidGlobalClash(unit: LinkingUnit,
+      logger: Logger, secondAttempt: Boolean): WithGlobals[List[js.Tree]] = {
+    val result = emitOnce(unit, logger)
+
+    val mentionedDangerousGlobalRefs =
+      if (!trackAllGlobalRefs) result.globalVarNames
+      else GlobalRefUtils.keepOnlyDangerousGlobalRefs(result.globalVarNames)
+
+    if (mentionedDangerousGlobalRefs == state.lastMentionedDangerousGlobalRefs) {
+      result
+    } else {
+      assert(!secondAttempt,
+          "Uh oh! The second attempt gave a different set of dangerous " +
+          "global refs than the first one.")
+
+      logger.debug(
+          "Emitter: The set of dangerous global refs has changed. " +
+          "Going to re-generate the world.")
+
+      state = new State(mentionedDangerousGlobalRefs)
+      emitAvoidGlobalClash(unit, logger, secondAttempt = true)
+    }
+  }
+
+  private def emitOnce(unit: LinkingUnit,
+      logger: Logger): WithGlobals[List[js.Tree]] = {
+    val orderedClasses = unit.classDefs.sortWith(compareClasses)
+    val generatedClasses = logger.time("Emitter: Generate classes") {
+      orderedClasses.map(genClass(_))
+    }
+
+    logger.time("Emitter: Write trees") {
+      val WithGlobals(coreJSLib, coreJSLibTrackedGlobalRefs) =
+        state.coreJSLibCache.lib
+
+      def classIter = generatedClasses.iterator
+
+      // Emit everything in the appropriate order.
+      val treesIter: Iterator[js.Tree] = (
+          /* The definitions of the CoreJSLib, which depend on nothing.
+           * All classes potentially depend on it.
+           */
+          Iterator.single(coreJSLib.definitions) ++
+
+          /* Module imports, which depend on nothing.
+           * All classes potentially depend on them.
+           */
+          genModuleImports(orderedClasses, logger) ++
+
+          /* All class definitions, which depend on nothing but their
+           * superclasses.
+           */
+          classIter.flatMap(_.main) ++
+
+          /* The initialization of the CoreJSLib, which depends on the
+           * definition of classes (n.b. the RuntimeLong class).
+           */
+          Iterator.single(coreJSLib.initialization) ++
+
+          /* All static field definitions, which depend on nothing, except
+           * those of type Long which need $L0.
+           */
+          classIter.flatMap(_.staticFields) ++
+
+          /* All static initializers, which in the worst case can observe some
+           * "zero" state of other static field definitions, but must not
+           * observe a *non-initialized* (undefined) state.
+           */
+          classIter.flatMap(_.staticInitialization) ++
+
+          /* All the exports, during which some JS class creation can happen,
+           * causing JS static initializers to run. Those also must not observe
+           * a non-initialized state of other static fields.
+           */
+          classIter.flatMap(_.topLevelExports) ++
+
+          /* Module initializers, which by spec run at the end. */
+          unit.moduleInitializers.iterator.map(classEmitter.genModuleInitializer(_))
+      )
+
+      val trackedGlobalRefs = classIter
+        .map(_.trackedGlobalRefs)
+        .foldLeft(coreJSLibTrackedGlobalRefs)(unionPreserveEmpty(_, _))
+
+      WithGlobals(treesIter.toList, trackedGlobalRefs)
     }
   }
 
@@ -269,70 +333,7 @@ final class Emitter(config: Emitter.Config) {
     else lhs.className.compareTo(rhs.className) < 0
   }
 
-  private def startRun(unit: LinkingUnit): Unit = {
-    statsClassesReused = 0
-    statsClassesInvalidated = 0
-    statsMethodsReused = 0
-    statsMethodsInvalidated = 0
-
-    val invalidateAll = knowledgeGuardian.update(unit)
-    if (invalidateAll) {
-      state.coreJSLibCache.invalidate()
-      classCaches.clear()
-    }
-
-    classCaches.valuesIterator.foreach(_.startRun())
-  }
-
-  private def endRun(logger: Logger): Unit = {
-    logger.debug(
-        s"Emitter: Class tree cache stats: reused: $statsClassesReused -- "+
-        s"invalidated: $statsClassesInvalidated")
-    logger.debug(
-        s"Emitter: Method tree cache stats: reused: $statsMethodsReused -- "+
-        s"invalidated: $statsMethodsInvalidated")
-    classCaches.filterInPlace((_, c) => c.cleanAfterRun())
-  }
-
-  /** Generates all the desugared classes.
-   *
-   *  If, at the end of the process, the set of accessed dangerous globals has
-   *  changed, invalidate *everything* and start over. If at first you don't
-   *  succeed, ...
-   */
-  @tailrec
-  private def genAllClasses(orderedClasses: List[LinkedClass], logger: Logger,
-      secondAttempt: Boolean): WithGlobals[List[GeneratedClass]] = {
-
-    val objectClass = orderedClasses.find(_.name.name == ObjectClass).get
-    val generatedClasses = orderedClasses.map(genClass(_, objectClass))
-    val trackedGlobalRefs = generatedClasses.foldLeft(Set.empty[String]) {
-      (prev, generatedClass) =>
-        unionPreserveEmpty(prev, generatedClass.trackedGlobalRefs)
-    }
-
-    val mentionedDangerousGlobalRefs =
-      if (!trackAllGlobalRefs) trackedGlobalRefs
-      else GlobalRefUtils.keepOnlyDangerousGlobalRefs(trackedGlobalRefs)
-
-    if (mentionedDangerousGlobalRefs == state.lastMentionedDangerousGlobalRefs) {
-      WithGlobals(generatedClasses, trackedGlobalRefs)
-    } else {
-      assert(!secondAttempt,
-          "Uh oh! The second attempt gave a different set of dangerous " +
-          "global refs than the first one.")
-
-      logger.debug(
-          "Emitter: The set of dangerous global refs has changed. " +
-          "Going to re-generate the world.")
-
-      state = new State(mentionedDangerousGlobalRefs)
-      genAllClasses(orderedClasses, logger, secondAttempt = true)
-    }
-  }
-
-  private def genClass(linkedClass: LinkedClass,
-      objectClass: LinkedClass): GeneratedClass = {
+  private def genClass(linkedClass: LinkedClass): GeneratedClass = {
     val className = linkedClass.className
     val classCache = getClassCache(linkedClass.ancestors)
     val classTreeCache = classCache.getCache(linkedClass.version)
@@ -410,8 +411,7 @@ final class Emitter(config: Emitter.Config) {
           .toSet
 
         val bridges = for {
-          m <- objectClass.methods
-          if m.value.flags.namespace == MemberNamespace.Public
+          m <- uncachedKnowledge.methodsInObject()
           methodName = m.value.methodName
           if !existingMethods.contains(methodName)
         } yield {
