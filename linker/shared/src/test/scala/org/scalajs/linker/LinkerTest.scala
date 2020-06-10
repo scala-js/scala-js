@@ -95,13 +95,7 @@ object LinkerTest {
       moduleInitializers: List[ModuleInitializer])(
       implicit ec: ExecutionContext): Future[Unit] = {
 
-    val linker = StandardImpl.linker(StandardConfig())
-    val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
-    val output = LinkerOutput(MemOutputFile())
-
-    TestIRRepo.minilib.flatMap { stdLibFiles =>
-      linker.link(stdLibFiles ++ classDefsFiles, moduleInitializers,
-          output, new ScalaConsoleLogger(Level.Error))
-    }
+    LinkingUtils.expectSuccess(LinkingUtils.linkAndEmit(
+        classDefs, moduleInitializers, StandardConfig()))
   }
 }

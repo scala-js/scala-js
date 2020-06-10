@@ -152,12 +152,12 @@ class IRCheckerTest {
     )
 
     for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
-      assertContainsLogLine(
-          "Duplicate definition of field 'foobar' in class 'Foo'", log)
-      assertContainsLogLine(
-          "Duplicate definition of constructor method '<init>(java.lang.String)void' in class 'Foo'", log)
-      assertContainsLogLine(
-          "Duplicate definition of method 'babar(int)int' in class 'Foo'", log)
+      log.assertContainsLogLine(
+          "Duplicate definition of field 'foobar' in class 'Foo'")
+      log.assertContainsLogLine(
+          "Duplicate definition of constructor method '<init>(java.lang.String)void' in class 'Foo'")
+      log.assertContainsLogLine(
+          "Duplicate definition of method 'babar(int)int' in class 'Foo'")
     }
   }
 
@@ -167,63 +167,25 @@ object IRCheckerTest {
   def testLinkNoIRError(classDefs: Seq[ClassDef],
       moduleInitializers: List[ModuleInitializer])(
       implicit ec: ExecutionContext): Future[Unit] = {
-    link(classDefs, moduleInitializers, new ScalaConsoleLogger(Level.Error))
-  }
 
-  def assertContainsLogLine(expected: String, log: List[String]): Unit = {
-    assertTrue(
-        s"expected a log line containing '$expected', but got " +
-        log.mkString("\n  ", "\n  ", ""),
-        containsLogLine(expected, log))
+    LinkingUtils.expectSuccess(LinkingUtils.linkOnly(
+        classDefs, moduleInitializers,
+        StandardConfig().withOptimizer(false)))
   }
-
-  def containsLogLine(expected: String, log: List[String]): Boolean =
-    log.exists(_.contains(expected))
 
   def testLinkIRErrors(classDefs: Seq[ClassDef],
       moduleInitializers: List[ModuleInitializer])(
-      implicit ec: ExecutionContext): Future[List[String]] = {
+      implicit ec: ExecutionContext): Future[TestLogger] = {
 
-    val logBuilder = List.newBuilder[String]
+    val failedResult = LinkingUtils.expectFailure(LinkingUtils.linkOnly(
+        classDefs, moduleInitializers,
+        StandardConfig().withOptimizer(false)))
 
-    object ErrorLogger extends org.scalajs.logging.Logger {
-      def log(level: Level, message: => String): Unit = {
-        if (level == Level.Error)
-          logBuilder += message
-      }
-
-      def trace(t: => Throwable): Unit =
-        logBuilder += t.toString()
+    for (result <- failedResult) yield {
+      val exception = result.exception
+      assertTrue(exception.getMessage(),
+          exception.getMessage().contains("IR checking error"))
+      result.log
     }
-
-    // We cannot use `transform` because of 2.11.
-    link(classDefs, moduleInitializers, ErrorLogger).failed.recoverWith {
-      case _: NoSuchElementException =>
-        Future.failed(new AssertionError("IR checking did not fail"))
-    }.map { _ =>
-      logBuilder.result()
-    }
-  }
-
-  private def link(classDefs: Seq[ClassDef],
-      moduleInitializers: List[ModuleInitializer],
-      logger: Logger)(implicit ec: ExecutionContext): Future[Unit] = {
-    val config = StandardConfig()
-      .withCheckIR(true)
-      .withOptimizer(false)
-    val linkerFrontend = StandardLinkerFrontend(config)
-
-    val noSymbolRequirements = SymbolRequirement
-      .factory("IRCheckerTest")
-      .none()
-
-    TestIRRepo.minilib.flatMap { stdLibFiles =>
-      val irFiles = (
-          stdLibFiles ++
-          classDefs.map(MemClassDefIRFile(_))
-      )
-
-      linkerFrontend.link(irFiles, moduleInitializers, noSymbolRequirements, logger)
-    }.map(_ => ())
   }
 }

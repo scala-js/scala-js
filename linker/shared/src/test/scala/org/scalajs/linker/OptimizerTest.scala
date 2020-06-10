@@ -211,32 +211,6 @@ object OptimizerTest {
   private val cloneMethodName = m("clone", Nil, O)
   private val witnessMethodName = m("witness", Nil, O)
 
-  private final class StoreLinkingUnitLinkerBackend(
-      originalBackend: LinkerBackend)
-      extends LinkerBackend {
-
-    @volatile
-    private var _linkingUnit: LinkingUnit = _
-
-    val coreSpec: CoreSpec = originalBackend.coreSpec
-
-    val symbolRequirements: SymbolRequirement = originalBackend.symbolRequirements
-
-    override def injectedIRFiles: Seq[IRFile] = originalBackend.injectedIRFiles
-
-    def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger)(
-        implicit ec: ExecutionContext): Future[Unit] = {
-      _linkingUnit = unit
-      Future.successful(())
-    }
-
-    def linkingUnit: LinkingUnit = {
-      if (_linkingUnit == null)
-        throw new IllegalStateException("Cannot access linkingUnit before emit is called")
-      _linkingUnit
-    }
-  }
-
   def linkToLinkingUnit(classDefs: Seq[ClassDef],
       moduleInitializers: List[ModuleInitializer])(
       implicit ec: ExecutionContext): Future[LinkingUnit] = {
@@ -248,19 +222,7 @@ object OptimizerTest {
       moduleInitializers: List[ModuleInitializer], stdlib: Future[Seq[IRFile]])(
       implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
-    val config = StandardConfig()
-    val frontend = StandardLinkerFrontend(config)
-    val backend = new StoreLinkingUnitLinkerBackend(StandardLinkerBackend(config))
-    val linker = StandardLinkerImpl(frontend, backend)
-
-    val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
-    val output = LinkerOutput(MemOutputFile())
-
-    stdlib.flatMap { stdLibFiles =>
-      linker.link(stdLibFiles ++ classDefsFiles, moduleInitializers,
-          output, new ScalaConsoleLogger(Level.Error))
-    }.map { _ =>
-      backend.linkingUnit
-    }
+    LinkingUtils.expectSuccess(LinkingUtils.linkToLinkingUnit(
+        classDefs, moduleInitializers, StandardConfig(), stdlib))
   }
 }
