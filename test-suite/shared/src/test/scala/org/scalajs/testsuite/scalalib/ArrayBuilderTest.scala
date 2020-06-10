@@ -273,14 +273,6 @@ class ArrayBuilderTest {
     assertEquals(null, erase(a(0)))
   }
 
-  @Test def Nothing_and_Null(): Unit = {
-    assertSame(classOf[Array[Nothing]], ArrayBuilder.make[Nothing].result().getClass)
-    assertSame(classOf[Array[Null]], ArrayBuilder.make[Null].result().getClass)
-
-    assertSame(classOf[Array[Nothing]], makeNoInline[Nothing].result().getClass)
-    assertSame(classOf[Array[Null]], makeNoInline[Null].result().getClass)
-  }
-
   @Test def addAll(): Unit = {
     assumeFalse("Needs at least Scala 2.13",
         scalaVersion.startsWith("2.11.") ||

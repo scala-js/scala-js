@@ -51,8 +51,6 @@ class ClassTagTest {
     assertSame(ClassTag.Object, classTag[Object])
     assertSame(ClassTag.AnyVal, classTag[AnyVal])
     assertSame(ClassTag.AnyRef, classTag[AnyRef])
-    assertSame(ClassTag.Nothing, classTag[Nothing])
-    assertSame(ClassTag.Null, classTag[Null])
   }
 
   @Test def runtimeClass(): Unit = {
@@ -76,18 +74,10 @@ class ClassTagTest {
     assertSame(classOf[Integer], classTag[Integer].runtimeClass)
     assertSame(classOf[Seq[_]], classTag[Seq[_]].runtimeClass)
 
-    assertSame(classOf[Array[_]], classTag[Array[_]].runtimeClass)
     assertSame(classOf[Array[Object]], classTag[Array[Object]].runtimeClass)
-    assertSame(classOf[Array[_ <: AnyRef]], classTag[Array[_ <: AnyRef]].runtimeClass)
     assertSame(classOf[Array[String]], classTag[Array[String]].runtimeClass)
-    assertSame(classOf[Array[_ <: Seq[_]]], classTag[Array[_ <: Seq[_]]].runtimeClass)
     assertSame(classOf[Array[Int]], classTag[Array[Int]].runtimeClass)
     assertSame(classOf[Array[Unit]], classTag[Array[Unit]].runtimeClass)
-
-    // Weird, those two return Array[s.r.Nothing$] instead of Array[Object]
-    // The same happens on the JVM
-    assertSame(classOf[Array[scala.runtime.Nothing$]], classTag[Array[Nothing]].runtimeClass)
-    assertSame(classOf[Array[scala.runtime.Null$]], classTag[Array[Null]].runtimeClass)
 
     assertSame(classOf[String], ClassTag(classOf[String]).runtimeClass)
     assertSame(classOf[Integer], ClassTag(classOf[Integer]).runtimeClass)
