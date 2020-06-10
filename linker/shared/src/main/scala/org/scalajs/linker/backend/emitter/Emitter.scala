@@ -77,9 +77,25 @@ final class Emitter(config: Emitter.Config) {
 
     moduleKind match {
       case ModuleKind.NoModule =>
-        val topLevelVars = unit.classDefs
-          .flatMap(_.topLevelExports)
-          .map(_.topLevelExportName)
+        // #4061 Detect invalid top-level export names for Scripts
+        var hasInvalidTopLevelVar: Boolean = false
+        val topLevelVars = unit.classDefs.flatMap(_.topLevelExports).map {
+          topLevelExport =>
+            val exportName = topLevelExport.topLevelExportName
+            if (!js.ExportName.isValidExportNameInScript(exportName)) {
+              hasInvalidTopLevelVar = true
+              val pos = topLevelExport.pos
+              logger.error(
+                  s"${pos.source}(${pos.line+1}:${pos.column+1}): " +
+                  s"Invalid export as '$exportName' in a script (NoModule) " +
+                  "because it is not a valid JavaScript identifier. " +
+                  "Did you want to emit a module instead?")
+            }
+            exportName
+        }
+        if (hasInvalidTopLevelVar) {
+          throw new LinkingException("There were invalid exports in a script.")
+        }
 
         val header = {
           val maybeTopLevelVarDecls = if (topLevelVars.nonEmpty) {

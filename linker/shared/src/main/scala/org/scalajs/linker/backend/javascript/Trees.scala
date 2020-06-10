@@ -411,6 +411,16 @@ object Trees {
       true
       // scalastyle:on return
     }
+
+    /** Tests whether a string is a valid export name in a Script.
+     *
+     *  This is true iff it is a valid export name in general, as tested by
+     *  [[isValidExportName]], *and* it is a valid name for a global variable,
+     *  as tested by
+     *  [[org.scalajs.ir.Trees.JSGlobalRef.isValidJSGlobalRefName]].
+     */
+    def isValidExportNameInScript(name: String): Boolean =
+      isValidExportName(name) && ir.Trees.JSGlobalRef.isValidJSGlobalRefName(name)
   }
 
   /** `import` statement, except namespace import.

@@ -82,4 +82,49 @@ class EmitterTest {
           "imported from module 'bar.js' but module support is disabled.")
     }
   }
+
+  @Test
+  def testLinkingErrorForNonJSIdentifierExportInScript(): AsyncResult = await {
+    val classDefs = Seq(
+        classDef(
+            "ExportNonJSIdentifier",
+            kind = ClassKind.ModuleClass,
+            superClass = Some(ObjectClass),
+            topLevelExportDefs = List(
+                TopLevelMethodExportDef(JSMethodDef(
+                    EMF.withNamespace(MemberNamespace.PublicStatic),
+                    StringLiteral("default"), Nil, Undefined())(
+                    EOH, None))
+            )
+        )
+    )
+
+    val linkResult = LinkingUtils.expectFailure(LinkingUtils.linkAndEmit(
+        classDefs,
+        Nil,
+        StandardConfig().withModuleKind(ModuleKind.NoModule)))
+
+    val scriptResult = for (result <- linkResult) yield {
+      val exception = result.exception
+      assertTrue(
+          exception.getMessage() + "\n" + result.log.show,
+          exception.getMessage().startsWith(
+              "There were invalid exports in a script."))
+
+      val log = result.log
+      log.assertContainsLogLine(
+          "Invalid export as 'default' in a script (NoModule) because it is " +
+          "not a valid JavaScript identifier.")
+    }
+
+    val modulesResults = for {
+      kind <- ModuleKind.All
+      if kind != ModuleKind.NoModule
+    } yield {
+      LinkingUtils.expectSuccess(LinkingUtils.linkAndEmit(
+          classDefs, Nil, StandardConfig().withModuleKind(kind)))
+    }
+
+    Future.sequence(scriptResult :: modulesResults).map(_ => ())
+  }
 }
