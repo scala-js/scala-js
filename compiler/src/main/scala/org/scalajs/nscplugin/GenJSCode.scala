@@ -3673,11 +3673,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      */
     private def isCaseLabelDef(tree: Tree): Boolean = {
       tree.isInstanceOf[LabelDef] && hasSynthCaseSymbol(tree) &&
-      tree.asInstanceOf[LabelDef].params.isEmpty
+      !tree.symbol.name.startsWith("matchEnd")
     }
 
+    /** Predicate satisfied by matchEnd LabelDefs produced by the pattern
+     *  matcher.
+     */
     private def isMatchEndLabelDef(tree: LabelDef): Boolean =
-      hasSynthCaseSymbol(tree) && tree.params.nonEmpty
+      hasSynthCaseSymbol(tree) && tree.symbol.name.startsWith("matchEnd")
 
     private def genBlock(tree: Block, isStat: Boolean): js.Tree = {
       implicit val pos = tree.pos
@@ -3852,42 +3855,78 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  The translation of the match-end itself is straightforward, but is
      *  augmented with several optimizations to remove as many labeled blocks
      *  as possible.
+     *
+     *  Most of the time, a match-end label has exactly one parameter. However,
+     *  with the async transform, it can sometimes have no parameter instead.
+     *  We handle those cases very differently.
      */
     private def genMatchEnd(matchEnd: LabelDef)(
         genTranslatedCases: => List[js.Tree])(
         implicit pos: Position): js.Tree = {
 
       val sym = matchEnd.symbol
-      val info = new EnclosingLabelDefInfoWithResultAsReturn()
+      val labelIdent = encodeLabelSym(sym)
+      val matchEndBody = matchEnd.rhs
 
-      val translatedCases = withScopedVars(
-          enclosingLabelDefInfos := enclosingLabelDefInfos.get + (sym -> info)
-      ) {
-        genTranslatedCases
+      def genMatchEndBody(): js.Tree = {
+        genStatOrExpr(matchEndBody,
+            isStat = toIRType(matchEndBody.tpe) == jstpe.NoType)
       }
 
-      val LabelDef(_, List(matchEndParam), matchEndBody) = matchEnd
+      matchEnd.params match {
+        // Optimizable common case produced by the regular pattern matcher
+        case List(matchEndParam) =>
+          val info = new EnclosingLabelDefInfoWithResultAsReturn()
 
-      val innerResultType = toIRType(matchEndParam.tpe)
-      val optimized = genOptimizedMatchEndLabeled(encodeLabelSym(sym),
-          innerResultType, translatedCases, info.generatedReturns)
+          val translatedCases = withScopedVars(
+              enclosingLabelDefInfos := enclosingLabelDefInfos.get + (sym -> info)
+          ) {
+            genTranslatedCases
+          }
 
-      matchEndBody match {
-        case Ident(_) if matchEndParam.symbol == matchEndBody.symbol =>
-          // matchEnd is identity.
-          optimized
+          val innerResultType = toIRType(matchEndParam.tpe)
+          val optimized = genOptimizedMatchEndLabeled(encodeLabelSym(sym),
+              innerResultType, translatedCases, info.generatedReturns)
 
-        case Literal(Constant(())) =>
-          // Unit return type.
-          optimized
+          matchEndBody match {
+            case Ident(_) if matchEndParam.symbol == matchEndBody.symbol =>
+              // matchEnd is identity.
+              optimized
 
-        case _ =>
-          // matchEnd does something.
-          js.Block(
-              js.VarDef(encodeLocalSym(matchEndParam.symbol),
-                  originalNameOfLocal(matchEndParam.symbol),
-                  innerResultType, mutable = false, optimized),
-              genExpr(matchEndBody))
+            case Literal(Constant(())) =>
+              // Unit return type.
+              optimized
+
+            case _ =>
+              // matchEnd does something.
+              js.Block(
+                  js.VarDef(encodeLocalSym(matchEndParam.symbol),
+                      originalNameOfLocal(matchEndParam.symbol),
+                      innerResultType, mutable = false, optimized),
+                  genMatchEndBody())
+          }
+
+        /* Other cases, notably the matchEnd's produced by the async transform,
+         * which have no parameters. The case of more than one parameter is
+         * hypothetical, but it costs virtually nothing to handle it here.
+         */
+        case params =>
+          val paramSyms = params.map(_.symbol)
+          val varDefs = for (s <- paramSyms) yield {
+            implicit val pos = s.pos
+            val irType = toIRType(s.tpe)
+            js.VarDef(encodeLocalSym(s), originalNameOfLocal(s), irType,
+                mutable = true, jstpe.zeroOf(irType))
+          }
+          val info = new EnclosingLabelDefInfoWithResultAsAssigns(paramSyms)
+          val translatedCases = withScopedVars(
+              enclosingLabelDefInfos := enclosingLabelDefInfos.get + (sym -> info)
+          ) {
+            genTranslatedCases
+          }
+          val optimized = genOptimizedMatchEndLabeled(labelIdent, jstpe.NoType,
+              translatedCases, info.generatedReturns)
+          js.Block(varDefs ::: optimized :: genMatchEndBody() :: Nil)
       }
     }
 
