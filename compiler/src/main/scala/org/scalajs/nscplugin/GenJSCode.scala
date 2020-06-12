@@ -3814,6 +3814,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           /* Eager optimization of jumps in tail position, following the shapes
            * produced by scala until 2.12.8. 2.12.9 introduced flat patmat
            * translation, which does not trigger those optimizations.
+           * These shapes are also often produced by the async transformation.
            */
           def genCaseBody(tree: Tree): js.Tree = {
             implicit val pos = tree.pos
@@ -3821,6 +3822,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               case If(cond, thenp, elsep) =>
                 js.If(genExpr(cond), genCaseBody(thenp), genCaseBody(elsep))(
                     jstpe.NoType)
+
+              case Block(stats, Literal(Constant(()))) =>
+                // Generated a lot by the async transform
+                if (stats.isEmpty) js.Skip()
+                else js.Block(stats.init.map(genStat(_)), genCaseBody(stats.last))
 
               case Block(stats, expr) =>
                 js.Block((stats map genStat) :+ genCaseBody(expr))
