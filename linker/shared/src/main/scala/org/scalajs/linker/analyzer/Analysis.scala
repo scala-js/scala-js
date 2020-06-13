@@ -162,6 +162,11 @@ object Analysis {
   final case class NotAModule(info: ClassInfo, from: From) extends Error
   final case class MissingMethod(info: MethodInfo, from: From) extends Error
   final case class ConflictingDefaultMethods(infos: List[MethodInfo], from: From) extends Error
+
+  final case class InvalidTopLevelExportInScript(name: String, info: ClassInfo) extends Error {
+    def from: From = FromExports
+  }
+
   final case class ConflictingTopLevelExport(name: String, infos: List[ClassInfo]) extends Error {
     def from: From = FromExports
   }
@@ -201,6 +206,11 @@ object Analysis {
         s"Referring to non-existent method ${info.fullDisplayName}"
       case ConflictingDefaultMethods(infos, _) =>
         s"Conflicting default methods: ${infos.map(_.fullDisplayName).mkString(" ")}"
+      case InvalidTopLevelExportInScript(name, info) =>
+        s"Invalid top level export for name '$name' in class " +
+        s"${info.displayName} when emitting a Script (NoModule) because it " +
+        "is not a valid JavaScript identifier " +
+        "(did you want to emit a module instead?)"
       case ConflictingTopLevelExport(name, infos) =>
         s"Conflicting top level export for name $name involving " +
         infos.map(_.displayName).mkString(", ")

@@ -29,6 +29,7 @@ import org.scalajs.ir.Trees.MemberNamespace
 import org.scalajs.ir.Types.ClassRef
 
 import org.scalajs.linker._
+import org.scalajs.linker.interface.ModuleKind
 import org.scalajs.linker.standard._
 
 import Analysis._
@@ -130,8 +131,8 @@ private final class Analyzer(config: CommonPhaseConfig,
     // Reach additional data, based on reflection methods used
     reachDataThroughReflection(infos)
 
-    // Make sure top-level export names do not conflict
-    checkConflictingExports(infos)
+    // Make sure top-level export names are valid and do not conflict
+    checkTopLevelExports(infos)
   }
 
   private def reachSymbolRequirement(requirement: SymbolRequirement,
@@ -232,13 +233,21 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
-  private def checkConflictingExports(
+  private def checkTopLevelExports(
       classInfos: scala.collection.Map[ClassName, ClassInfo]): Unit = {
     val namesAndInfos = for {
       info <- classInfos.values
       name <- info.topLevelExportNames
     } yield {
       name -> info
+    }
+
+    if (config.coreSpec.moduleKind == ModuleKind.NoModule) {
+      for ((name, info) <- namesAndInfos) {
+        if (!ir.Trees.JSGlobalRef.isValidJSGlobalRefName(name)) {
+          _errors += InvalidTopLevelExportInScript(name, info)
+        }
+      }
     }
 
     for {
