@@ -29,7 +29,7 @@ import org.scalajs.logging.NullLogger
 import org.scalajs.linker._
 import org.scalajs.linker.analyzer._
 import org.scalajs.linker.frontend.IRLoader
-import org.scalajs.linker.interface.IRFile
+import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
 
 import Analysis._
@@ -346,6 +346,41 @@ class AnalyzerTest {
   }
 
   @Test
+  def invalidTopLevelExportInScript(): AsyncResult = await {
+    val classDefs = Seq(
+        classDef(
+            "A",
+            kind = ClassKind.ModuleClass,
+            superClass = Some(ObjectClass),
+            topLevelExportDefs = List(
+                TopLevelMethodExportDef(JSMethodDef(
+                    EMF.withNamespace(MemberNamespace.PublicStatic),
+                    StringLiteral("default"), Nil, Undefined())(
+                    EOH, None))
+            )
+        )
+    )
+
+    val scriptAnalysis = computeAnalysis(classDefs,
+        config = StandardConfig().withModuleKind(ModuleKind.NoModule))
+
+    val scriptResult = assertContainsError("InvalidTopLevelExportInScript(foo, A)", scriptAnalysis) {
+      case InvalidTopLevelExportInScript("default", ClsInfo("A")) =>
+        true
+    }
+
+    val modulesResults = for {
+      kind <- ModuleKind.All
+      if kind != ModuleKind.NoModule
+    } yield {
+      assertNoError(computeAnalysis(classDefs,
+          config = StandardConfig().withModuleKind(kind)))
+    }
+
+    Future.sequence(scriptResult :: modulesResults).map(_ => ())
+  }
+
+  @Test
   def conflictingTopLevelExports(): AsyncResult = await {
     def singleDef(name: String) = {
       classDef(name,
@@ -537,12 +572,14 @@ object AnalyzerTest {
 
   private def computeAnalysis(classDefs: Seq[ClassDef],
       symbolRequirements: SymbolRequirement = reqsFactory.none(),
+      config: StandardConfig = StandardConfig(),
       stdlib: Future[Seq[IRFile]] = TestIRRepo.minilib)(
       implicit ec: ExecutionContext): Future[Analysis] = {
     for {
       baseFiles <- stdlib
       irLoader <- new IRLoader().update(classDefs.map(MemClassDefIRFile(_)) ++ baseFiles)
-      analysis <- Analyzer.computeReachability(CommonPhaseConfig(),
+      analysis <- Analyzer.computeReachability(
+          CommonPhaseConfig.fromStandardConfig(config),
           symbolRequirements, allowAddingSyntheticMethods = true,
           checkAbstractReachability = true, irLoader)
     } yield {
