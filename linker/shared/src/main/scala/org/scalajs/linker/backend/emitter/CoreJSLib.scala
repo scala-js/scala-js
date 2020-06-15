@@ -358,7 +358,7 @@ private[emitter] object CoreJSLib {
 
     private def declareCachedL0(): Unit = {
       if (!allowBigIntsForLongs)
-        buf += genEmptyMutableLet(coreJSLibVarIdent("L0"))
+        buf += coreJSLibVarDecl("L0")
     }
 
     private def assignCachedL0(): Tree = {
@@ -403,12 +403,11 @@ private[emitter] object CoreJSLib {
         })
       }
 
-      val ident = coreJSLibVarIdent("Char")
       if (useECMAScript2015) {
-        buf += ClassDef(Some(ident), None, ctor :: toStr :: Nil)
+        buf += coreJSLibClassDef("Char", None, ctor :: toStr :: Nil)
       } else {
-        buf += FunctionDef(ident, ctor.args, ctor.body)
-        buf += assignES5ClassMembers(VarRef(ident), List(toStr))
+        buf += coreJSLibFunctionDef("Char", ctor.args, ctor.body)
+        buf += assignES5ClassMembers(coreJSLibVar("Char"), List(toStr))
       }
     }
 
@@ -1509,12 +1508,11 @@ private[emitter] object CoreJSLib {
           }
       )
 
-      val ident = coreJSLibVarIdent("TypeData")
       if (useECMAScript2015) {
-        buf += ClassDef(Some(ident), None, ctor :: members)
+        buf += coreJSLibClassDef("TypeData", None, ctor :: members)
       } else {
-        buf += FunctionDef(ident, ctor.args, ctor.body)
-        buf += assignES5ClassMembers(VarRef(ident), members)
+        buf += coreJSLibFunctionDef("TypeData", ctor.args, ctor.body)
+        buf += assignES5ClassMembers(coreJSLibVar("TypeData"), members)
       }
     }
 
@@ -1522,7 +1520,7 @@ private[emitter] object CoreJSLib {
       for (primRef <- orderedPrimRefs) {
         val obj = varRef("obj")
         val depth = varRef("depth")
-        buf += FunctionDef(coreJSLibVarIdent("isArrayOf", primRef), paramList(obj, depth), {
+        buf += coreJSLibFunctionDef("isArrayOf", primRef, paramList(obj, depth), {
           Return(!(!(obj && (obj DOT classData) &&
               ((obj DOT classData DOT "arrayDepth") === depth) &&
               ((obj DOT classData DOT "arrayBase") === genClassDataOf(primRef)))))
@@ -1535,7 +1533,7 @@ private[emitter] object CoreJSLib {
         for (primRef <- orderedPrimRefs) {
           val obj = varRef("obj")
           val depth = varRef("depth")
-          buf += FunctionDef(coreJSLibVarIdent("asArrayOf", primRef), paramList(obj, depth), {
+          buf += coreJSLibFunctionDef("asArrayOf", primRef, paramList(obj, depth), {
             If(Apply(typeRefVar("isArrayOf", primRef), obj :: depth :: Nil) || (obj === Null()), {
               Return(obj)
             }, {
@@ -1561,7 +1559,7 @@ private[emitter] object CoreJSLib {
             (DoubleRef, double(0))
         )
       } {
-        buf += genConst(coreJSLibVarIdent("d", primRef), {
+        buf += coreJSLibVarDef("d", primRef, {
           Apply(New(coreJSLibVar("TypeData"), Nil) DOT "initPrim",
               List(zero, str(primRef.charCode.toString()),
                   str(primRef.displayName), typeRefVar("isArrayOf", primRef)))
@@ -1595,13 +1593,29 @@ private[emitter] object CoreJSLib {
       Block(stats)
     }
 
+    private def coreJSLibClassDef(name: String, parentClass: Option[Tree],
+        members: List[Tree]): Tree = {
+      ClassDef(Some(coreJSLibVarIdent(name)), parentClass, members)
+    }
+
     private def coreJSLibFunctionDef(name: String, args: List[ParamDef],
-        body: Tree): FunctionDef = {
+        body: Tree): Tree = {
       FunctionDef(coreJSLibVarIdent(name), args, body)
     }
 
-    private def coreJSLibVarDef(name: String, rhs: Tree): LocalDef =
+    private def coreJSLibFunctionDef(name: String, primRef: PrimRef,
+        args: List[ParamDef], body: Tree): Tree = {
+      FunctionDef(coreJSLibVarIdent(name, primRef), args, body)
+    }
+
+    private def coreJSLibVarDecl(name: String): Tree =
+      genEmptyMutableLet(coreJSLibVarIdent(name))
+
+    private def coreJSLibVarDef(name: String, rhs: Tree): Tree =
       genConst(coreJSLibVarIdent(name), rhs)
+
+    private def coreJSLibVarDef(name: String, primRef: PrimRef, rhs: Tree): Tree =
+      genConst(coreJSLibVarIdent(name, primRef), rhs)
 
     private def varRef(name: String): VarRef = VarRef(Ident(name))
 
