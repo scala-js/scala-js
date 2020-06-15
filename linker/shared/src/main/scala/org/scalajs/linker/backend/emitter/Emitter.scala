@@ -335,8 +335,12 @@ final class Emitter(config: Emitter.Config) {
 
   private def genClass(linkedClass: LinkedClass): GeneratedClass = {
     val className = linkedClass.className
-    val classCache = getClassCache(linkedClass.ancestors)
-    val classTreeCache = classCache.getCache(linkedClass.version)
+
+    val classCache =
+      classCaches.getOrElseUpdate(linkedClass.ancestors, new ClassCache)
+    val classTreeCache =
+      classCache.getCache(linkedClass.version)
+
     val kind = linkedClass.kind
 
     // Global ref management
@@ -513,9 +517,6 @@ final class Emitter(config: Emitter.Config) {
     val staticFields = if (linkedClass.kind.isJSType) {
       Nil
     } else {
-      val classCache = getClassCache(linkedClass.ancestors)
-      val classTreeCache = classCache.getCache(linkedClass.version)
-
       classTreeCache.staticFields.getOrElseUpdate(
           classEmitter.genCreateStaticFieldsOfScalaClass(linkedClass)(classCache))
     }
@@ -556,12 +557,6 @@ final class Emitter(config: Emitter.Config) {
       v2: Option[String]): Option[String] = {
     v1.flatMap(s1 => v2.map(s2 => "" + s1.length + "-" + s1 + s2))
   }
-
-  private def getClassTreeCache(linkedClass: LinkedClass): DesugaredClassCache =
-    getClassCache(linkedClass.ancestors).getCache(linkedClass.version)
-
-  private def getClassCache(ancestors: List[ClassName]) =
-    classCaches.getOrElseUpdate(ancestors, new ClassCache)
 
   // Caching
 
