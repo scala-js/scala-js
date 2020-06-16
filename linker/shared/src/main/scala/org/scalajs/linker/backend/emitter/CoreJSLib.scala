@@ -29,8 +29,8 @@ import EmitterNames._
 
 private[emitter] object CoreJSLib {
 
-  def build(jsGen: JSGen, globalKnowledge: GlobalKnowledge): WithGlobals[Lib] =
-    new CoreJSLibBuilder(jsGen)(globalKnowledge).build()
+  def build(sjsGen: SJSGen, globalKnowledge: GlobalKnowledge): WithGlobals[Lib] =
+    new CoreJSLibBuilder(sjsGen)(globalKnowledge).build()
 
   /** A fully built CoreJSLib
    *
@@ -46,8 +46,9 @@ private[emitter] object CoreJSLib {
       val definitions: Tree,
       val initialization: Tree)
 
-  private class CoreJSLibBuilder(jsGen: JSGen)(
+  private class CoreJSLibBuilder(sjsGen: SJSGen)(
       implicit globalKnowledge: GlobalKnowledge) {
+    import sjsGen._
     import jsGen._
     import config._
     import nameGen._

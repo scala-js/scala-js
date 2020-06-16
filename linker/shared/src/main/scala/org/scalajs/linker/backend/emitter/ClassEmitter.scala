@@ -31,12 +31,13 @@ import CheckedBehavior.Unchecked
 import EmitterNames._
 
 /** Emitter for the skeleton of classes. */
-private[emitter] final class ClassEmitter(jsGen: JSGen) {
+private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
-  private val functionEmitter = new FunctionEmitter(jsGen)
+  private val functionEmitter = new FunctionEmitter(sjsGen)
 
   import ClassEmitter._
   import functionEmitter._
+  import sjsGen._
   import jsGen._
   import config._
   import nameGen._
