@@ -46,7 +46,7 @@ final class Emitter(config: Emitter.Config) {
   private class State(val lastMentionedDangerousGlobalRefs: Set[String]) {
     val sjsGen: SJSGen = {
       val jsGen = new JSGen(config)
-      val varGen = new VarGen(nameGen, lastMentionedDangerousGlobalRefs)
+      val varGen = new VarGen(jsGen, nameGen, lastMentionedDangerousGlobalRefs)
       new SJSGen(jsGen, nameGen, varGen)
     }
 

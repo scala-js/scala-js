@@ -13,6 +13,8 @@ object BinaryIncompatibilities {
   val Linker = Seq(
       // private[emitter], not an issue.
       exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.ClassEmitter.org$scalajs$linker$backend$emitter$ClassEmitter$$classVarDef$default$4"),
+      exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.ClassEmitter.org$scalajs$linker$backend$emitter$ClassEmitter$$classVarDef$default$5"),
       exclude[IncompatibleMethTypeProblem](
           "org.scalajs.linker.backend.emitter.ClassEmitter.this"),
@@ -84,6 +86,16 @@ object BinaryIncompatibilities {
           "org.scalajs.linker.backend.emitter.JSGen.useBigIntForLongs"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.JSGen.varGen"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.VarGen.classVarIdent"),
+      exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.linker.backend.emitter.VarGen.classVarIdent"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.VarGen.coreJSLibVarIdent"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.VarGen.coreJSLibVarIdent"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.VarGen.this"),
 
       // private[linker], not an issue.
       exclude[MissingClassProblem]("org.scalajs.linker.NodeFS$FS$"),

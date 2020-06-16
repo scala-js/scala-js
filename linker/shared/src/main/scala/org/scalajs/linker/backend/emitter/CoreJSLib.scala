@@ -1594,30 +1594,6 @@ private[emitter] object CoreJSLib {
       Block(stats)
     }
 
-    private def coreJSLibClassDef(name: String, parentClass: Option[Tree],
-        members: List[Tree]): Tree = {
-      ClassDef(Some(coreJSLibVarIdent(name)), parentClass, members)
-    }
-
-    private def coreJSLibFunctionDef(name: String, args: List[ParamDef],
-        body: Tree): Tree = {
-      FunctionDef(coreJSLibVarIdent(name), args, body)
-    }
-
-    private def coreJSLibFunctionDef(name: String, primRef: PrimRef,
-        args: List[ParamDef], body: Tree): Tree = {
-      FunctionDef(coreJSLibVarIdent(name, primRef), args, body)
-    }
-
-    private def coreJSLibVarDecl(name: String): Tree =
-      genEmptyMutableLet(coreJSLibVarIdent(name))
-
-    private def coreJSLibVarDef(name: String, rhs: Tree): Tree =
-      genConst(coreJSLibVarIdent(name), rhs)
-
-    private def coreJSLibVarDef(name: String, primRef: PrimRef, rhs: Tree): Tree =
-      genConst(coreJSLibVarIdent(name, primRef), rhs)
-
     private def varRef(name: String): VarRef = VarRef(Ident(name))
 
     private def const(ref: VarRef, rhs: Tree): LocalDef =
