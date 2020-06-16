@@ -109,7 +109,6 @@ The repository is organized as follows:
 
 * `ir/` The Intermediate Representation, produced by the compiler and consumed by the linker
 * `compiler/` The scalac compiler plugin
-* `logging/` A tiny logging API
 * `linker-private-library/` Some Scala.js files whose compiled .sjsir files are used as resources of the linker (2.12 only)
 * `linker-interface/` The linker interface, without its implementation
 * `linker/` The linker, optimizer, verifier, etc.: everything that happens at link time
@@ -123,17 +122,6 @@ The repository is organized as follows:
 * `library-aux/` A few files of the Scala library that need to be compiled separately
 
 All of these are packaged in `scalajs-library.jar`.
-
-### JS environments
-
-The JS environments are JVM libraries that abstract the details of using a
-JavaScript engine to run JS code.
-
-* `js-envs/` The generic definitions of JavaScript environments and runners
-* `nodejs-env/` The Node.js environment
-
-Other JS environments are developed in separate repositories under the
-`scala-js` organization.
 
 ### Testing infrastructure
 
@@ -174,7 +162,7 @@ The helloworld and reversi also have HTML pages to run them in real browsers.
 
 The build itself contains the entire sbt plugin (and all its dependencies) as
 part of its sources.
-If you change any of the logging API, linker interface, JS environments,
+If you change any of the linker interface, linker,
 test adapter, or the sbt plugin itself, chances are you need to `reload` the
 build for your changes to take effect.
 
@@ -184,7 +172,7 @@ To publish your changes locally to be used in a separate project, use the
 following incantations.
 `SCALA_VERSION` refers to the Scala version used by the separate project.
 
-    > ;ir2_12/publishLocal;logging2_12/publishLocal;linkerInterface2_12/publishLocal;linker2_12/publishLocal;jsEnvs2_12/publishLocal;jsEnvsTestKit2_12/publishLocal;nodeJSEnv2_12/publishLocal;testAdapter2_12/publishLocal;sbtPlugin/publishLocal
+    > ;ir2_12/publishLocal;linkerInterface2_12/publishLocal;linker2_12/publishLocal;testAdapter2_12/publishLocal;sbtPlugin/publishLocal
     > ++SCALA_VERSION
     > ;compiler2_12/publishLocal;library2_12/publishLocal;testInterface2_12/publishLocal;testBridge2_12/publishLocal;jUnitRuntime2_12/publishLocal;jUnitPlugin2_12/publishLocal
 

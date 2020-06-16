@@ -542,9 +542,9 @@ object Build {
         val allProjects: Seq[Project] = Seq(
             plugin, linkerPrivateLibrary
         ) ++ Seq(
-            compiler, irProject, irProjectJS, logging, loggingJS,
+            compiler, irProject, irProjectJS,
             linkerInterface, linkerInterfaceJS, linker, linkerJS,
-            jsEnvs, jsEnvsTestKit, nodeJSEnv, testAdapter,
+            testAdapter,
             javalanglib, javalib, scalalib, libraryAux, library,
             testInterface, jUnitRuntime, testBridge, jUnitPlugin, jUnitAsyncJS,
             jUnitAsyncJVM, jUnitTestOutputsJS, jUnitTestOutputsJVM,
@@ -665,35 +665,6 @@ object Build {
       }
   ).dependsOnSource(irProject)
 
-  val commonLoggingSettings = Def.settings(
-      commonSettings,
-      publishSettings,
-      fatalWarningsSettings,
-      name := "Scala.js Logging",
-      previousArtifactSetting,
-      mimaBinaryIssueFilters ++= BinaryIncompatibilities.Logging,
-      exportJars := true, // required so ScalaDoc linking works
-
-      unmanagedSourceDirectories in Compile +=
-        baseDirectory.value.getParentFile.getParentFile / "shared/src/main/scala"
-  )
-
-  lazy val logging: MultiScalaProject = MultiScalaProject(
-      id = "logging", base = file("logging/jvm")
-  ).settings(
-      commonLoggingSettings
-  )
-
-  lazy val loggingJS: MultiScalaProject = MultiScalaProject(
-      id = "loggingJS", base = file("logging/js")
-  ).enablePlugins(
-      MyScalaJSPlugin
-  ).settings(
-      commonLoggingSettings,
-  ).withScalaJSCompiler.dependsOn(
-      library
-  )
-
   val commonLinkerInterfaceSettings = Def.settings(
       commonSettings,
       publishSettings,
@@ -716,8 +687,11 @@ object Build {
       id = "linkerInterface", base = file("linker-interface/jvm")
   ).settings(
       commonLinkerInterfaceSettings,
-      libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test",
-  ).dependsOn(irProject, logging)
+      libraryDependencies ++= Seq(
+          "org.scala-js" %% "scalajs-logging" % "1.1.1",
+          "com.novocode" % "junit-interface" % "0.11" % "test",
+      ),
+  ).dependsOn(irProject)
 
   lazy val linkerInterfaceJS: MultiScalaProject = MultiScalaProject(
       id = "linkerInterfaceJS", base = file("linker-interface/js")
@@ -726,7 +700,7 @@ object Build {
   ).settings(
       commonLinkerInterfaceSettings,
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      library, irProjectJS, loggingJS, jUnitRuntime % "test", testBridge % "test", jUnitAsyncJS % "test",
+      library, irProjectJS, jUnitRuntime % "test", testBridge % "test", jUnitAsyncJS % "test",
   )
 
   lazy val linkerPrivateLibrary: Project = (project in file("linker-private-library")).enablePlugins(
@@ -801,7 +775,7 @@ object Build {
       }.taskValue,
 
       fork in Test := true
-  ).dependsOn(linkerInterface, irProject, logging, jUnitAsyncJVM % "test")
+  ).dependsOn(linkerInterface, irProject, jUnitAsyncJVM % "test")
 
   lazy val linkerJS: MultiScalaProject = MultiScalaProject(
       id = "linkerJS", base = file("linker/js")
@@ -860,52 +834,8 @@ object Build {
 
       scalaJSLinkerConfig in Test ~= (_.withModuleKind(ModuleKind.CommonJSModule))
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      linkerInterfaceJS, library, irProjectJS, loggingJS, jUnitRuntime % "test", testBridge % "test", jUnitAsyncJS % "test"
+      linkerInterfaceJS, library, irProjectJS, jUnitRuntime % "test", testBridge % "test", jUnitAsyncJS % "test"
   )
-
-  lazy val jsEnvs: MultiScalaProject = MultiScalaProject(
-      id = "jsEnvs", base = file("js-envs")
-  ).settings(
-      commonSettings,
-      publishSettings,
-      fatalWarningsSettings,
-      name := "Scala.js JS Envs",
-      libraryDependencies += "com.novocode" % "junit-interface" % "0.9" % "test",
-      previousArtifactSetting,
-      mimaBinaryIssueFilters ++= BinaryIncompatibilities.JSEnvs
-  ).dependsOn(logging)
-
-  lazy val jsEnvsTestKit: MultiScalaProject = MultiScalaProject(
-      id = "jsEnvsTestKit", base = file("js-envs-test-kit")
-  ).settings(
-      commonSettings,
-      publishSettings,
-      fatalWarningsSettings,
-      name := "Scala.js JS Envs Test Kit",
-      libraryDependencies ++= Seq(
-          "com.google.jimfs" % "jimfs" % "1.1",
-          "junit" % "junit" % "4.12",
-          "com.novocode" % "junit-interface" % "0.9" % "test"
-      ),
-      previousArtifactSetting,
-      mimaBinaryIssueFilters ++= BinaryIncompatibilities.JSEnvsTestKit
-  ).dependsOn(jsEnvs)
-
-  lazy val nodeJSEnv: MultiScalaProject = MultiScalaProject(
-      id = "nodeJSEnv", base = file("nodejs-env")
-  ).settings(
-      commonSettings,
-      publishSettings,
-      fatalWarningsSettings,
-      name := "Scala.js Node.js env",
-      normalizedName := "scalajs-nodejs-env",
-      moduleName := "scalajs-env-nodejs",
-      libraryDependencies ++= Seq(
-          "com.google.jimfs" % "jimfs" % "1.1",
-          "com.novocode" % "junit-interface" % "0.9" % "test"
-      ),
-      previousArtifactSetting
-  ).dependsOn(jsEnvs, jsEnvsTestKit % "test")
 
   lazy val testAdapter: MultiScalaProject = MultiScalaProject(
       id = "testAdapter", base = file("test-adapter")
@@ -914,16 +844,18 @@ object Build {
       publishSettings,
       fatalWarningsSettings,
       name := "Scala.js sbt test adapter",
-      libraryDependencies += "org.scala-sbt" % "test-interface" % "1.0",
-      libraryDependencies +=
-        "com.novocode" % "junit-interface" % "0.11" % "test",
+      libraryDependencies ++= Seq(
+          "org.scala-sbt" % "test-interface" % "1.0",
+          "org.scala-js" %% "scalajs-js-envs" % "1.1.1",
+          "com.novocode" % "junit-interface" % "0.11" % "test",
+      ),
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestAdapter,
       unmanagedSourceDirectories in Compile +=
         baseDirectory.value.getParentFile.getParentFile / "test-common/src/main/scala",
       unmanagedSourceDirectories in Test +=
         baseDirectory.value.getParentFile.getParentFile / "test-common/src/test/scala"
-  ).dependsOn(jsEnvs, jUnitAsyncJVM % "test")
+  ).dependsOn(jUnitAsyncJVM % "test")
 
   lazy val plugin: Project = Project(id = "sbtPlugin", base = file("sbt-plugin"))
       .enablePlugins(ScriptedPlugin).settings(
@@ -943,6 +875,8 @@ object Build {
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
 
       addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.0"),
+      libraryDependencies += "org.scala-js" %% "scalajs-js-envs" % "1.1.1",
+      libraryDependencies += "org.scala-js" %% "scalajs-env-nodejs" % "1.1.1",
 
       scriptedLaunchOpts += "-Dplugin.version=" + version.value,
 
@@ -986,13 +920,9 @@ object Build {
 
             // JVM libs
             publishLocal in irProject.v2_12,
-            publishLocal in logging.v2_12,
             publishLocal in linkerInterface.v2_12,
             publishLocal in linker.v2_12,
-            publishLocal in jsEnvs.v2_12,
-            publishLocal in nodeJSEnv.v2_12,
             publishLocal in testAdapter.v2_12,
-            publishLocal in jsEnvs.v2_12,
         ).value
       },
 
@@ -1010,7 +940,7 @@ object Build {
 
         sbtJars.map(_.data -> docUrl).toMap
       }
-  ).dependsOn(linkerInterface.v2_12, jsEnvs.v2_12, nodeJSEnv.v2_12, testAdapter.v2_12)
+  ).dependsOn(linkerInterface.v2_12, testAdapter.v2_12)
 
   lazy val delambdafySetting = {
     scalacOptions ++= (
@@ -1972,6 +1902,8 @@ object Build {
 
       resolvers += Resolver.typesafeIvyRepo("releases"),
 
+      libraryDependencies += "org.scala-js" %% "scalajs-env-nodejs" % "1.1.1",
+
       artifactPath in fetchScalaSource :=
         baseDirectory.value.getParentFile / "fetchedSources" / scalaVersion.value,
 
@@ -2027,7 +1959,7 @@ object Build {
       }
   ).zippedSettings("partestSuite")(partestSuite =>
       shouldPartestSetting(partestSuite)
-  ).dependsOn(compiler, linker, nodeJSEnv)
+  ).dependsOn(compiler, linker)
 
   lazy val partestSuite: MultiScalaProject = MultiScalaProject(
       id = "partestSuite", base = file("partest-suite")
