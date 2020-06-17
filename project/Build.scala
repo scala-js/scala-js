@@ -699,6 +699,42 @@ object Build {
       MyScalaJSPlugin
   ).settings(
       commonLinkerInterfaceSettings,
+
+      /* Add the sources of scalajs-logging to managed sources. This is outside
+       * of `target/` so that `clean` does not remove them, making IDE happier.
+       */
+      managedSourceDirectories in Compile +=
+        baseDirectory.value / "scalajs-logging-src",
+
+      // Source generator to retrieve the sources of scalajs-logging
+      sourceGenerators in Compile += Def.task {
+        val s = streams.value
+        val log = s.log
+
+        // Retrieve the source jar of scalajs-logging
+        val retrieveDir = baseDirectory.value / "scalajs-logging-src-jars"
+        val binVer = scalaBinaryVersion.value
+        val lm = dependencyResolution.value
+        val jars = lm.retrieve(
+            "org.scala-js" % s"scalajs-logging_$binVer" % "1.1.1" classifier "sources" intransitive(),
+            scalaModuleInfo = None, retrieveDir, log)
+          .fold(w => throw w.resolveException, _.distinct)
+        assert(jars.size == 1, jars.toString())
+        val jar = jars.head
+
+        // Extract it
+        val targetDir = baseDirectory.value / "scalajs-logging-src"
+        val cacheDir = s.cacheDirectory / "scalajs-logging-src-cache"
+        val fileSet = FileFunction.cached(cacheDir, FilesInfo.lastModified, FilesInfo.exists) { _ =>
+          s.log.info(s"Unpacking scalajs-logging sources to $targetDir...")
+          if (targetDir.exists)
+            IO.delete(targetDir)
+          IO.createDirectory(targetDir)
+          IO.unzip(jar, targetDir)
+        } (Set(jar))
+
+        fileSet.toSeq.filter(_.getPath().endsWith(".scala"))
+      }.taskValue,
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, irProjectJS, jUnitRuntime % "test", testBridge % "test", jUnitAsyncJS % "test",
   )
