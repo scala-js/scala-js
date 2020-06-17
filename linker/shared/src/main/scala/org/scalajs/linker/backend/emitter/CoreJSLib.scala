@@ -29,8 +29,8 @@ import EmitterNames._
 
 private[emitter] object CoreJSLib {
 
-  def build(jsGen: JSGen, globalKnowledge: GlobalKnowledge): WithGlobals[Lib] =
-    new CoreJSLibBuilder(jsGen)(globalKnowledge).build()
+  def build(sjsGen: SJSGen, globalKnowledge: GlobalKnowledge): WithGlobals[Lib] =
+    new CoreJSLibBuilder(sjsGen)(globalKnowledge).build()
 
   /** A fully built CoreJSLib
    *
@@ -46,8 +46,9 @@ private[emitter] object CoreJSLib {
       val definitions: Tree,
       val initialization: Tree)
 
-  private class CoreJSLibBuilder(jsGen: JSGen)(
+  private class CoreJSLibBuilder(sjsGen: SJSGen)(
       implicit globalKnowledge: GlobalKnowledge) {
+    import sjsGen._
     import jsGen._
     import config._
     import nameGen._
@@ -358,7 +359,7 @@ private[emitter] object CoreJSLib {
 
     private def declareCachedL0(): Unit = {
       if (!allowBigIntsForLongs)
-        buf += genEmptyMutableLet(coreJSLibVarIdent("L0"))
+        buf += coreJSLibVarDecl("L0")
     }
 
     private def assignCachedL0(): Tree = {
@@ -403,7 +404,12 @@ private[emitter] object CoreJSLib {
         })
       }
 
-      buf += genClassDef(coreJSLibVarIdent("Char"), None, List(ctor, toStr))
+      if (useECMAScript2015) {
+        buf += coreJSLibClassDef("Char", None, ctor :: toStr :: Nil)
+      } else {
+        buf += coreJSLibFunctionDef("Char", ctor.args, ctor.body)
+        buf += assignES5ClassMembers(coreJSLibVar("Char"), List(toStr))
+      }
     }
 
     private def defineRuntimeFunctions(): Unit = {
@@ -1259,7 +1265,10 @@ private[emitter] object CoreJSLib {
               MethodDef(static = false, Ident("constructor"),
                   paramList(arg), {
                 Block(
-                    Apply(Super(), Nil),
+                    {
+                      if (useECMAScript2015) Apply(Super(), Nil)
+                      else Skip()
+                    },
                     If(typeof(arg) === str("number"), {
                       // arg is the length of the array
                       Block(
@@ -1314,9 +1323,17 @@ private[emitter] object CoreJSLib {
               } :: Nil))
             })
 
-            genClassDef(ArrayClass.ident,
-                Some((classVar("c", ObjectClass), classVar("h", ObjectClass))),
-                ctor :: getAndSet ::: clone :: Nil)
+            if (useECMAScript2015) {
+              ClassDef(Some(ArrayClass.ident), Some(classVar("c", ObjectClass)),
+                  ctor :: getAndSet ::: clone :: Nil)
+            } else {
+              Block(
+                  FunctionDef(ArrayClass.ident, ctor.args, ctor.body),
+                  ArrayClass.prototype := New(classVar("h", ObjectClass), Nil),
+                  ArrayClass.prototype DOT "constructor" := ArrayClass,
+                  assignES5ClassMembers(ArrayClass, getAndSet ::: clone :: Nil)
+              )
+            }
           }
 
           Block(
@@ -1473,7 +1490,6 @@ private[emitter] object CoreJSLib {
       }
 
       val members = List(
-          ctor,
           initPrim,
           initClass,
           initArray,
@@ -1493,14 +1509,19 @@ private[emitter] object CoreJSLib {
           }
       )
 
-      buf += genClassDef(coreJSLibVarIdent("TypeData"), None, members)
+      if (useECMAScript2015) {
+        buf += coreJSLibClassDef("TypeData", None, ctor :: members)
+      } else {
+        buf += coreJSLibFunctionDef("TypeData", ctor.args, ctor.body)
+        buf += assignES5ClassMembers(coreJSLibVar("TypeData"), members)
+      }
     }
 
     private def defineIsArrayOfPrimitiveFunctions(): Unit = {
       for (primRef <- orderedPrimRefs) {
         val obj = varRef("obj")
         val depth = varRef("depth")
-        buf += FunctionDef(coreJSLibVarIdent("isArrayOf", primRef), paramList(obj, depth), {
+        buf += coreJSLibFunctionDef("isArrayOf", primRef, paramList(obj, depth), {
           Return(!(!(obj && (obj DOT classData) &&
               ((obj DOT classData DOT "arrayDepth") === depth) &&
               ((obj DOT classData DOT "arrayBase") === genClassDataOf(primRef)))))
@@ -1513,7 +1534,7 @@ private[emitter] object CoreJSLib {
         for (primRef <- orderedPrimRefs) {
           val obj = varRef("obj")
           val depth = varRef("depth")
-          buf += FunctionDef(coreJSLibVarIdent("asArrayOf", primRef), paramList(obj, depth), {
+          buf += coreJSLibFunctionDef("asArrayOf", primRef, paramList(obj, depth), {
             If(Apply(typeRefVar("isArrayOf", primRef), obj :: depth :: Nil) || (obj === Null()), {
               Return(obj)
             }, {
@@ -1539,7 +1560,7 @@ private[emitter] object CoreJSLib {
             (DoubleRef, double(0))
         )
       } {
-        buf += genConst(coreJSLibVarIdent("d", primRef), {
+        buf += coreJSLibVarDef("d", primRef, {
           Apply(New(coreJSLibVar("TypeData"), Nil) DOT "initPrim",
               List(zero, str(primRef.charCode.toString()),
                   str(primRef.displayName), typeRefVar("isArrayOf", primRef)))
@@ -1562,73 +1583,16 @@ private[emitter] object CoreJSLib {
     private def genIsScalaJSObjectOrNull(obj: VarRef): Tree =
       genIsScalaJSObject(obj) || (obj === Null())
 
-    private def coreJSLibFunctionDef(name: String, args: List[ParamDef],
-        body: Tree): FunctionDef = {
-      FunctionDef(coreJSLibVarIdent(name), args, body)
-    }
-
-    private def genClassDef(className: Ident, parent: Option[(Tree, Tree)],
-        members: List[Tree]): Tree = {
-      if (useECMAScript2015) {
-        ClassDef(Some(className), parent.map(_._1), members)
-      } else {
-        val classRef = VarRef(className)
-
-        val ctor = members.collectFirst {
-          case m @ MethodDef(false, Ident("constructor", _), _, _) => m
-        }.getOrElse {
-          MethodDef(false, Ident("constructor"), Nil, Skip())
-        }
-
-        val patchedCtorBody = {
-          def patchSuper(stat: Tree): Tree = stat match {
-            case Apply(Super(), args) =>
-              /* All the super constructor calls we have in the core JS lib are
-               * actually no-op, so we just omit them.
-               */
-              assert(args.isEmpty)
-              Skip()
-            case _ =>
-              stat
-          }
-
-          ctor.body match {
-            case Block(stats) => Block(stats.map(patchSuper(_)))
-            case stat         => patchSuper(stat)
-          }
-        }
-
-        val ctorFun = FunctionDef(className, ctor.args, patchedCtorBody)
-
-        val prototype = classRef.prototype
-
-        val inheritProto = parent.fold[Tree] {
-          Skip()
-        } { parent =>
-          val inheritableCtor = parent._2
-          Block(
-              prototype := New(inheritableCtor, Nil),
-              (prototype DOT "constructor") := classRef
-          )
-        }
-
-        val setMembers = for (member <- members) yield {
-          (member: @unchecked) match {
-            case MethodDef(false, Ident("constructor", _), _, _) =>
-              Skip()
-
-            case MethodDef(static, name, args, body) =>
-              val target = if (static) classRef else prototype
-              genPropSelect(target, name) := Function(arrow = false, args, body)
-          }
-        }
-
-        Block(ctorFun :: inheritProto :: setMembers)
+    private def assignES5ClassMembers(classRef: Tree, members: List[MethodDef]): Tree = {
+      val stats = for {
+        MethodDef(static, name, args, body) <- members
+      } yield {
+        val target = if (static) classRef else classRef.prototype
+        genPropSelect(target, name) := Function(arrow = false, args, body)
       }
-    }
 
-    private def coreJSLibVarDef(name: String, rhs: Tree): LocalDef =
-      genConst(coreJSLibVarIdent(name), rhs)
+      Block(stats)
+    }
 
     private def varRef(name: String): VarRef = VarRef(Ident(name))
 

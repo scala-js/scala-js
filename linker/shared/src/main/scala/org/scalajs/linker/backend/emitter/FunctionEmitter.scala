@@ -242,8 +242,9 @@ import Transients._
  *
  *  @author Sébastien Doeraene
  */
-private[emitter] class FunctionEmitter(jsGen: JSGen) {
+private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
   import FunctionEmitter._
+  import sjsGen._
   import jsGen._
   import config._
   import nameGen._
@@ -2732,7 +2733,7 @@ private[emitter] class FunctionEmitter(jsGen: JSGen) {
      */
     private def genJSClassConstructor(className: ClassName)(
         implicit pos: Position): WithGlobals[js.Tree] = {
-      jsGen.genJSClassConstructor(className,
+      sjsGen.genJSClassConstructor(className,
           keepOnlyDangerousVarNames = false)
     }
 

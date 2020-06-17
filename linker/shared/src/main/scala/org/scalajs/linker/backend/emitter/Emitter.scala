@@ -44,12 +44,13 @@ final class Emitter(config: Emitter.Config) {
   private val nameGen: NameGen = new NameGen
 
   private class State(val lastMentionedDangerousGlobalRefs: Set[String]) {
-    val jsGen: JSGen = {
-      val varGen = new VarGen(nameGen, lastMentionedDangerousGlobalRefs)
-      new JSGen(config, nameGen, varGen)
+    val sjsGen: SJSGen = {
+      val jsGen = new JSGen(config)
+      val varGen = new VarGen(jsGen, nameGen, lastMentionedDangerousGlobalRefs)
+      new SJSGen(jsGen, nameGen, varGen)
     }
 
-    val classEmitter: ClassEmitter = new ClassEmitter(jsGen)
+    val classEmitter: ClassEmitter = new ClassEmitter(sjsGen)
 
     val coreJSLibCache: CoreJSLibCache = new CoreJSLibCache
 
@@ -58,7 +59,8 @@ final class Emitter(config: Emitter.Config) {
 
   private var state: State = new State(Set.empty)
 
-  private def jsGen: JSGen = state.jsGen
+  private def jsGen: JSGen = state.sjsGen.jsGen
+  private def sjsGen: SJSGen = state.sjsGen
   private def classEmitter: ClassEmitter = state.classEmitter
   private def classCaches: mutable.Map[List[ClassName], ClassCache] = state.classCaches
 
@@ -311,7 +313,7 @@ final class Emitter(config: Emitter.Config) {
         mapImportedModule { (module, pos0) =>
           implicit val pos = pos0
           val from = js.StringLiteral(module)
-          val moduleBinding = jsGen.envModuleFieldIdent(module)
+          val moduleBinding = sjsGen.envModuleFieldIdent(module)
           js.ImportNamespace(moduleBinding, from)
         }
 
@@ -320,7 +322,7 @@ final class Emitter(config: Emitter.Config) {
           implicit val pos = pos0
           val rhs = js.Apply(js.VarRef(js.Ident("require")),
               List(js.StringLiteral(module)))
-          val lhs = jsGen.envModuleFieldIdent(module)
+          val lhs = sjsGen.envModuleFieldIdent(module)
           jsGen.genLet(lhs, mutable = false, rhs)
         }
     }
@@ -665,7 +667,7 @@ final class Emitter(config: Emitter.Config) {
 
     def lib: WithGlobals[CoreJSLib.Lib] = {
       if (_lib == null)
-        _lib = CoreJSLib.build(jsGen, this)
+        _lib = CoreJSLib.build(sjsGen, this)
       _lib
     }
 

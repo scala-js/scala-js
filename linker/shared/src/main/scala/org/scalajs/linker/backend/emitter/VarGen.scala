@@ -29,15 +29,16 @@ import org.scalajs.linker.backend.javascript.Trees._
  *  - coreJSLibVar: Vars defined by the CoreJSLib.
  *  - fileLevelVar: Vars that are local to an individual file.
  *
- *  All of these have `*Ident` variants (e.g. `classVarIdent`). These are
- *  intended to be used for definitions.
+ *  The first two of these have `*Def` variants (e.g. `classFunctionDef`) to
+ *  define said identifiers.
  *
- *  At the moment, these distinctions are theoretical. They will become relevant
- *  for module splitting (#2681).
+ *  While all these distinctions are a bit theoretical at the moment, they will
+ *  become relevant for module splitting (#2681).
  */
-private[emitter] final class VarGen(nameGen: NameGen,
+private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     mentionedDangerousGlobalRefs: Set[String]) {
 
+  import jsGen._
   import nameGen._
 
   // ClassName scoped.
@@ -45,7 +46,26 @@ private[emitter] final class VarGen(nameGen: NameGen,
   def classVar(field: String, className: ClassName)(implicit pos: Position): Tree =
     VarRef(classVarIdent(field, className))
 
-  def classVarIdent(field: String, className: ClassName)(
+  def classClassDef(field: String, className: ClassName,
+      parentClass: Option[Tree], members: List[Tree])(
+      implicit pos: Position): Tree = {
+    val ident = classVarIdent(field, className)
+    ClassDef(Some(ident), parentClass, members)
+  }
+
+  def classFunctionDef(field: String, className: ClassName,
+      args: List[ParamDef], body: Tree)(
+      implicit pos: Position): Tree = {
+    FunctionDef(classVarIdent(field, className), args, body)
+  }
+
+  def classVarDef(field: String, className: ClassName, value: Tree,
+      mutable: Boolean = false)(
+      implicit pos: Position): Tree = {
+    genLet(classVarIdent(field, className), mutable, value)
+  }
+
+  private def classVarIdent(field: String, className: ClassName)(
       implicit pos: Position): Ident = {
     genericIdent(field, genName(className))
   }
@@ -63,6 +83,14 @@ private[emitter] final class VarGen(nameGen: NameGen,
     VarRef(classVarIdent(field, className, fieldName, origName))
   }
 
+  def classVarDef(field: String, className: ClassName,
+      fieldName: FieldName, value: Tree, origName: OriginalName,
+      mutable: Boolean)(
+      implicit pos: Position): Tree = {
+    genLet(classVarIdent(field, className, fieldName, origName), mutable, value)
+  }
+
+  // Still public for field exports.
   def classVarIdent(field: String, className: ClassName, fieldName: FieldName,
       origName: OriginalName)(implicit pos: Position): Ident = {
     genericIdent(field, genName(className) + "__" + genName(fieldName), origName)
@@ -81,7 +109,20 @@ private[emitter] final class VarGen(nameGen: NameGen,
     VarRef(classVarIdent(field, className, methodName, origName))
   }
 
-  def classVarIdent(field: String, className: ClassName, methodName: MethodName,
+  def classFunctionDef(field: String, className: ClassName,
+      methodName: MethodName, args: List[ParamDef], body: Tree,
+      origName: OriginalName)(
+      implicit pos: Position): Tree = {
+    FunctionDef(classVarIdent(field, className, methodName, origName), args, body)
+  }
+
+  def classVarDef(field: String, className: ClassName,
+      methodName: MethodName, value: Tree, origName: OriginalName)(
+      implicit pos: Position): Tree = {
+    genLet(classVarIdent(field, className, methodName, origName), mutable = false, value)
+  }
+
+  private def classVarIdent(field: String, className: ClassName, methodName: MethodName,
       origName: OriginalName)(implicit pos: Position): Ident = {
     genericIdent(field, genName(className) + "__" + genName(methodName), origName)
   }
@@ -104,10 +145,36 @@ private[emitter] final class VarGen(nameGen: NameGen,
   def coreJSLibVar(field: String)(implicit pos: Position): Tree =
     VarRef(coreJSLibVarIdent(field))
 
-  def coreJSLibVarIdent(field: String)(implicit pos: Position): Ident =
+  def coreJSLibClassDef(name: String, parentClass: Option[Tree],
+      members: List[Tree])(implicit pos: Position): Tree = {
+    ClassDef(Some(coreJSLibVarIdent(name)), parentClass, members)
+  }
+
+  def coreJSLibFunctionDef(name: String, args: List[ParamDef],
+      body: Tree)(implicit pos: Position): Tree = {
+    FunctionDef(coreJSLibVarIdent(name), args, body)
+  }
+
+  def coreJSLibFunctionDef(name: String, primRef: PrimRef,
+      args: List[ParamDef], body: Tree)(implicit pos: Position): Tree = {
+    FunctionDef(coreJSLibVarIdent(name, primRef), args, body)
+  }
+
+  def coreJSLibVarDecl(name: String)(implicit pos: Position): Tree =
+    genEmptyMutableLet(coreJSLibVarIdent(name))
+
+  def coreJSLibVarDef(name: String, rhs: Tree)(implicit pos: Position): Tree =
+    genConst(coreJSLibVarIdent(name), rhs)
+
+  def coreJSLibVarDef(name: String, primRef: PrimRef, rhs: Tree)(
+      implicit pos: Position): Tree = {
+    genConst(coreJSLibVarIdent(name, primRef), rhs)
+  }
+
+  private def coreJSLibVarIdent(field: String)(implicit pos: Position): Ident =
     genericIdent(field)
 
-  def coreJSLibVarIdent(field: String, primRef: PrimRef)(
+  private def coreJSLibVarIdent(field: String, primRef: PrimRef)(
       implicit pos: Position): Ident = {
     // The mapping in this function is an implementation detail of the emitter
     val subField = primRef.tpe match {

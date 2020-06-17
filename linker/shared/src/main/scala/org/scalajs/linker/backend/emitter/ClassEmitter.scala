@@ -31,12 +31,13 @@ import CheckedBehavior.Unchecked
 import EmitterNames._
 
 /** Emitter for the skeleton of classes. */
-private[emitter] final class ClassEmitter(jsGen: JSGen) {
+private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
-  private val functionEmitter = new FunctionEmitter(jsGen)
+  private val functionEmitter = new FunctionEmitter(sjsGen)
 
   import ClassEmitter._
   import functionEmitter._
+  import sjsGen._
   import jsGen._
   import config._
   import nameGen._
@@ -1262,47 +1263,6 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
         WithGlobals(js.Apply(defProp,
             exportsVarRef :: js.StringLiteral(exportName) :: descriptor :: Nil))
     }
-  }
-
-  // Helpers
-
-  private def classClassDef(field: String, className: ClassName,
-      parentClass: Option[js.Tree], members: List[js.Tree])(
-      implicit pos: Position): js.Tree = {
-    val ident = classVarIdent(field, className)
-    js.ClassDef(Some(ident), parentClass, members)
-  }
-
-  private def classFunctionDef(field: String, className: ClassName,
-      args: List[js.ParamDef], body: js.Tree)(
-      implicit pos: Position): js.Tree = {
-    js.FunctionDef(classVarIdent(field, className), args, body)
-  }
-
-  private def classFunctionDef(field: String, className: ClassName,
-      methodName: MethodName, args: List[js.ParamDef], body: js.Tree,
-      origName: OriginalName)(
-      implicit pos: Position): js.Tree = {
-    js.FunctionDef(classVarIdent(field, className, methodName, origName), args, body)
-  }
-
-  private def classVarDef(field: String, className: ClassName, value: js.Tree,
-      mutable: Boolean = false)(
-      implicit pos: Position): js.Tree = {
-    genLet(classVarIdent(field, className), mutable, value)
-  }
-
-  private def classVarDef(field: String, className: ClassName,
-      fieldName: FieldName, value: js.Tree, origName: OriginalName,
-      mutable: Boolean)(
-      implicit pos: Position): js.Tree = {
-    genLet(classVarIdent(field, className, fieldName, origName), mutable, value)
-  }
-
-  private def classVarDef(field: String, className: ClassName,
-      methodName: MethodName, value: js.Tree, origName: OriginalName)(
-      implicit pos: Position): js.Tree = {
-    genLet(classVarIdent(field, className, methodName, origName), mutable = false, value)
   }
 
   /** Gen JS code for an [[ModuleInitializer]]. */
