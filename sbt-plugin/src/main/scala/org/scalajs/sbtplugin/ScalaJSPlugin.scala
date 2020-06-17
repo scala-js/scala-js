@@ -17,8 +17,6 @@ import scala.language.implicitConversions
 import sbt._
 import sbt.Keys._
 
-import org.scalajs.ir.ScalaJSVersions
-
 import org.scalajs.linker.interface._
 
 import org.scalajs.jsenv.{Input, JSEnv}
@@ -31,7 +29,7 @@ object ScalaJSPlugin extends AutoPlugin {
     import KeyRanks._
 
     /** The current version of the Scala.js sbt plugin and tool chain. */
-    val scalaJSVersion = ScalaJSVersions.current
+    val scalaJSVersion = "1.1.1-SNAPSHOT"
 
     /** Declares [[sbt.Tags.Tag Tag]]s which may be used to limit the
      *  concurrency of build tasks.

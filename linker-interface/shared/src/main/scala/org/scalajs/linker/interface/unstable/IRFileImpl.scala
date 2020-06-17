@@ -14,10 +14,6 @@ package org.scalajs.linker.interface.unstable
 
 import scala.concurrent._
 
-import java.io.IOException
-
-import org.scalajs.ir
-
 import org.scalajs.linker.interface.IRFile
 
 /** A virtual Scala.js IR file.
@@ -44,25 +40,15 @@ abstract class IRFileImpl(
   private[interface] final def impl: IRFileImpl = this
 
   /** Entry points information for this file. */
-  def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo]
+  def entryPointsInfo(implicit ec: ExecutionContext): Future[IRFileImpl.EntryPointsInfo]
 
   /** IR Tree of this file. */
-  def tree(implicit ec: ExecutionContext): Future[ir.Trees.ClassDef]
+  def tree(implicit ec: ExecutionContext): Future[IRFileImpl.ClassDef]
 }
 
 object IRFileImpl {
+  type EntryPointsInfo
+  type ClassDef
+
   def fromIRFile(irFile: IRFile): IRFileImpl = irFile.impl
-
-  def withPathExceptionContext[A](path: String, future: Future[A])(
-      implicit ec: ExecutionContext): Future[A] = {
-    future.recover {
-      case e: ir.IRVersionNotSupportedException =>
-        throw new ir.IRVersionNotSupportedException(e.version, e.supported,
-            s"Failed to deserialize a file compiled with Scala.js ${e.version}" +
-            s" (supported up to: ${e.supported}): $path", e)
-
-      case e: Exception =>
-        throw new IOException(s"Failed to deserialize $path", e)
-    }
-  }
 }

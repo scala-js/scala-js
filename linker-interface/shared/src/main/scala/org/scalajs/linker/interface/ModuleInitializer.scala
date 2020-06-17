@@ -12,9 +12,6 @@
 
 package org.scalajs.linker.interface
 
-import org.scalajs.ir.Names._
-import org.scalajs.ir.Types._
-
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
 
 import Fingerprint.FingerprintBuilder
@@ -39,9 +36,6 @@ abstract class ModuleInitializer private[interface] () {
 object ModuleInitializer {
   import ModuleInitializerImpl._
 
-  private val ArrayOfStringTypeRef =
-    ArrayTypeRef(ClassRef(BoxedStringClass), 1)
-
   /** Makes a [[ModuleInitializer]] that calls a static zero-argument method
    *  returning `Unit` in a top-level `class`.
    *
@@ -52,8 +46,7 @@ object ModuleInitializer {
    */
   def mainMethod(className: String,
       mainMethodName: String): ModuleInitializer = {
-    VoidMainMethod(ClassName(className),
-        MethodName(mainMethodName, Nil, VoidRef))
+    VoidMainMethod(className, mainMethodName)
   }
 
   /** Makes a [[ModuleInitializer]] that calls a static method of a top-level
@@ -85,21 +78,7 @@ object ModuleInitializer {
    */
   def mainMethodWithArgs(className: String, mainMethodName: String,
       args: List[String]): ModuleInitializer = {
-    MainMethodWithArgs(ClassName(className),
-        MethodName(mainMethodName, ArrayOfStringTypeRef :: Nil, VoidRef),
-        args)
-  }
-
-  private implicit object MethodNameFingerprint
-      extends Fingerprint[MethodName] {
-
-    override def fingerprint(methodName: MethodName): String =
-      methodName.nameString
-  }
-
-  private implicit object ClassNameFingerprint extends Fingerprint[ClassName] {
-    override def fingerprint(className: ClassName): String =
-      className.nameString
+    MainMethodWithArgs(className, mainMethodName, args)
   }
 
   private implicit object ModuleInitializerFingerprint

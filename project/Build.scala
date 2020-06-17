@@ -691,7 +691,7 @@ object Build {
           "org.scala-js" %% "scalajs-logging" % "1.1.1",
           "com.novocode" % "junit-interface" % "0.11" % "test",
       ),
-  ).dependsOn(irProject)
+  )
 
   lazy val linkerInterfaceJS: MultiScalaProject = MultiScalaProject(
       id = "linkerInterfaceJS", base = file("linker-interface/js")
@@ -736,7 +736,7 @@ object Build {
         fileSet.toSeq.filter(_.getPath().endsWith(".scala"))
       }.taskValue,
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      library, irProjectJS, jUnitRuntime % "test", testBridge % "test", jUnitAsyncJS % "test",
+      library, jUnitRuntime % "test", testBridge % "test", jUnitAsyncJS % "test",
   )
 
   lazy val linkerPrivateLibrary: Project = (project in file("linker-private-library")).enablePlugins(

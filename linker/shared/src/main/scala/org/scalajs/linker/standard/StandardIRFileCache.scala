@@ -21,9 +21,6 @@ import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
-import org.scalajs.ir.EntryPointsInfo
-import org.scalajs.ir.Trees.ClassDef
-
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable._
 
@@ -216,15 +213,15 @@ final class StandardIRFileCache extends IRFileCacheImpl {
       implicit ec: ExecutionContext) extends IRFileImpl(_irFile.path, _irFile.version) {
 
     @volatile
-    private[this] var _tree: Future[ClassDef] = null
+    private[this] var _tree: Future[IRFileImpl.ClassDef] = null
 
     // Force reading of entry points since we'll definitely need them.
-    private[this] val _entryPointsInfo: Future[EntryPointsInfo] = _irFile.entryPointsInfo
+    private[this] val _entryPointsInfo: Future[IRFileImpl.EntryPointsInfo] = _irFile.entryPointsInfo
 
-    override def entryPointsInfo(implicit ec: ExecutionContext): Future[EntryPointsInfo] =
+    override def entryPointsInfo(implicit ec: ExecutionContext): Future[IRFileImpl.EntryPointsInfo] =
       _entryPointsInfo
 
-    override def tree(implicit ec: ExecutionContext): Future[ClassDef] = {
+    override def tree(implicit ec: ExecutionContext): Future[IRFileImpl.ClassDef] = {
       if (_tree == null) {
         synchronized {
           if (_tree == null) { // check again, race!

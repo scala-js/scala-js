@@ -13,6 +13,7 @@
 package org.scalajs.linker.standard
 
 import org.scalajs.ir.Names._
+import org.scalajs.ir.Types._
 
 import org.scalajs.linker.interface.ModuleInitializer
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
@@ -130,6 +131,9 @@ object SymbolRequirement {
     case object NoRequirement extends SymbolRequirement
   }
 
+  private val ArrayOfStringTypeRef =
+    ArrayTypeRef(ClassRef(BoxedStringClass), 1)
+
   private[linker] def fromModuleInitializer(
       entryPoints: Seq[ModuleInitializer]): SymbolRequirement = {
     import ModuleInitializerImpl._
@@ -138,10 +142,12 @@ object SymbolRequirement {
     val requirements = for (entryPoint <- entryPoints) yield {
       ModuleInitializerImpl.fromModuleInitializer(entryPoint) match {
         case VoidMainMethod(className, mainMethodName) =>
-          factory.callStaticMethod(className, mainMethodName)
+          factory.callStaticMethod(ClassName(className),
+              MethodName(mainMethodName, Nil, VoidRef))
 
         case MainMethodWithArgs(className, mainMethodName, _) =>
-          factory.callStaticMethod(className, mainMethodName) ++
+          factory.callStaticMethod(ClassName(className),
+              MethodName(mainMethodName, ArrayOfStringTypeRef :: Nil, VoidRef)) ++
           factory.classData(BoxedStringClass)
       }
     }

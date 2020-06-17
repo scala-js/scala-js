@@ -1313,11 +1313,13 @@ private[emitter] final class ClassEmitter(jsGen: JSGen) {
 
     ModuleInitializerImpl.fromModuleInitializer(moduleInitializer) match {
       case VoidMainMethod(className, mainMethodName) =>
-        js.Apply(classVar("s", className, mainMethodName), Nil)
+        js.Apply(classVar("s", ClassName(className),
+            MethodName(mainMethodName, Nil, VoidRef)), Nil)
 
       case MainMethodWithArgs(className, mainMethodName, args) =>
         val stringArrayTypeRef = ArrayTypeRef(ClassRef(BoxedStringClass), 1)
-        js.Apply(classVar("s", className, mainMethodName),
+        js.Apply(classVar("s", ClassName(className),
+            MethodName(mainMethodName, stringArrayTypeRef :: Nil, VoidRef)),
             genArrayValue(stringArrayTypeRef, args.map(js.StringLiteral(_))) :: Nil)
     }
   }

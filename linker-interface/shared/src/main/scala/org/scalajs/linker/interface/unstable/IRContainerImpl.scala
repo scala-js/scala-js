@@ -16,7 +16,6 @@ import scala.concurrent._
 
 import java.io.IOException
 
-import org.scalajs.ir
 import org.scalajs.linker.interface.{IRContainer, IRFile}
 
 /** A virtual file containing Scala.js IR.

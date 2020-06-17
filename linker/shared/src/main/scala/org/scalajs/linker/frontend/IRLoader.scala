@@ -18,6 +18,7 @@ import scala.concurrent._
 import org.scalajs.linker.analyzer._
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable._
+import org.scalajs.linker.standard.ConcreteIRFileImpl._
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
 import org.scalajs.ir
@@ -35,12 +36,14 @@ final class IRLoader extends Analyzer.InputProvider with MethodSynthesizer.Input
       val entryPoints = mutable.Set.empty[ClassName]
 
       for ((input, info) <- irInput.zip(infos)) {
-        // Remove duplicates. Just like the JVM
-        if (!classNameToFile.contains(info.className))
-          classNameToFile += info.className -> IRFileImpl.fromIRFile(input)
+        val info1 = fromIRFileImplEntryPointsInfo(info)
 
-        if (info.hasEntryPoint)
-          entryPoints += info.className
+        // Remove duplicates. Just like the JVM
+        if (!classNameToFile.contains(info1.className))
+          classNameToFile += info1.className -> IRFileImpl.fromIRFile(input)
+
+        if (info1.hasEntryPoint)
+          entryPoints += info1.className
       }
 
       this.classNameToFile = classNameToFile
@@ -115,7 +118,10 @@ private final class ClassDefAndInfoCache {
       if (version.isEmpty || newVersion.isEmpty ||
           version.get != newVersion.get) {
         version = newVersion
-        cacheUpdate = irFile.tree.map(t => (t, Infos.generateClassInfo(t)))
+        cacheUpdate = irFile.tree.map { t =>
+          val classDef = fromIRFileImplClassDef(t)
+          (classDef, Infos.generateClassInfo(classDef))
+        }
       }
     }
 

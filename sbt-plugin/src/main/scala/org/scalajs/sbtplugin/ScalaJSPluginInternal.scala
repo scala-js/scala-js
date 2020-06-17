@@ -12,6 +12,8 @@
 
 package org.scalajs.sbtplugin
 
+import scala.language.reflectiveCalls
+
 import scala.annotation.tailrec
 
 // Import Future explicitly to avoid collision with sbt.Future.
@@ -32,9 +34,6 @@ import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable.IRFileImpl
 
 import org.scalajs.jsenv._
-
-import org.scalajs.ir.IRVersionNotSupportedException
-import org.scalajs.ir.Printers.IRTreePrinter
 
 import org.scalajs.testing.adapter.{TestAdapter, HTMLRunnerBuilder, TestAdapterInitializer}
 
@@ -73,13 +72,23 @@ private[sbtplugin] object ScalaJSPluginInternal {
     createdTestAdapters.getAndSet(Nil).foreach(_.close())
 
   private def enhanceIRVersionNotSupportedException[A](body: => A): A = {
+    object IRVersionNotSupportedException {
+      def unapply(e: java.io.IOException): Option[String] = {
+        if (e.getClass().getName() == "org.scalajs.ir.IRVersionNotSupportedException") {
+          Some((e.asInstanceOf[{ def version: String }].version))
+        } else {
+          None
+        }
+      }
+    }
+
     try {
       body
     } catch {
-      case e: IRVersionNotSupportedException =>
-        throw new IRVersionNotSupportedException(e.version, e.supported,
+      case e @ IRVersionNotSupportedException(version) =>
+        throw new java.io.IOException(
             s"${e.getMessage}\nYou may need to upgrade the Scala.js sbt " +
-            s"plugin to version ${e.version} or later.",
+            s"plugin to version $version or later.",
             e)
     }
   }
@@ -286,36 +295,34 @@ private[sbtplugin] object ScalaJSPluginInternal {
       },
 
       scalaJSClassNamesOnClasspath := Def.task {
-        val none = Future.successful(None)
+        val linkerImpl = scalaJSLinkerImpl.value
 
         await(streams.value.log) { eci =>
           implicit val ec = eci
-          Future.traverse(scalaJSIR.value.data) { ir =>
-            IRFileImpl.fromIRFile(ir)
-              .entryPointsInfo
-              .map(i => Some(i.className.nameString))
-              .fallbackTo(none)
+          Future.traverse(scalaJSIR.value.data) { irFile =>
+            linkerImpl.irFileClassName(irFile)
+              .map(Some(_))
+              .fallbackTo(Future.successful(None))
           }
         }.flatten
       }.storeAs(scalaJSClassNamesOnClasspath).triggeredBy(scalaJSIR).value,
 
       scalajsp := {
         val name = scalajspParser.parsed
+        val linkerImpl = scalaJSLinkerImpl.value
 
         enhanceIRVersionNotSupportedException {
           val log = streams.value.log
-          val stdout = new java.io.PrintWriter(System.out)
-          val tree = await(log) { eci =>
+          val prettyPrintedTree = await(log) { eci =>
             implicit val ec = eci
             Future.traverse(scalaJSIR.value.data) { irFile =>
-              val ir = IRFileImpl.fromIRFile(irFile)
-              ir.entryPointsInfo.map { i =>
-                if (i.className.nameString == name) Success(Some(ir))
+              linkerImpl.irFileClassName(irFile).map { className =>
+                if (className == name) Success(Some(irFile))
                 else Success(None)
               }.recover { case t => Failure(t) }
             }.flatMap { irs =>
               irs.collectFirst {
-                case Success(Some(f)) => f.tree
+                case Success(Some(f)) => linkerImpl.prettyPrintIRFile(f)
               }.getOrElse {
                 val t = new MessageOnlyException(s"class $name not found on classpath")
                 irs.collect { case Failure(st) => t.addSuppressed(st) }
@@ -324,8 +331,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
             }
           }
 
-          new IRTreePrinter(stdout).print(tree)
-          stdout.flush()
+          System.out.println(prettyPrintedTree)
         }
       },
 

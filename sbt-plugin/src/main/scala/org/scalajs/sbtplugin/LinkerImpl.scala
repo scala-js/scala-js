@@ -12,6 +12,8 @@
 
 package org.scalajs.sbtplugin
 
+import scala.language.reflectiveCalls
+
 import scala.concurrent._
 
 import java.lang.reflect.{Method, Modifier}
@@ -20,6 +22,8 @@ import java.net.URLClassLoader
 import java.nio.file.Path
 
 import org.scalajs.linker.interface._
+import java.io.Writer
+import org.scalajs.linker.interface.unstable.IRFileImpl
 
 /** Abstract implementation of a linker as needed by the sbt plugin.
  *
@@ -36,6 +40,12 @@ trait LinkerImpl {
       implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[Path])]
 
   def outputFile(path: Path): LinkerOutput.File
+
+  def irFileClassName(irFile: IRFile)(
+      implicit ec: ExecutionContext): Future[String]
+
+  def prettyPrintIRFile(irFile: IRFile)(
+      implicit ec: ExecutionContext): Future[String]
 }
 
 /** Factory methods and concrete implementations of `LinkerImpl`.
@@ -75,6 +85,14 @@ object LinkerImpl {
 
     def outputFile(path: Path): LinkerOutput.File =
       parent.outputFile(path)
+
+    def irFileClassName(irFile: IRFile)(
+        implicit ec: ExecutionContext): Future[String] =
+      parent.irFileClassName(irFile)
+
+    def prettyPrintIRFile(irFile: IRFile)(
+        implicit ec: ExecutionContext): Future[String] =
+      parent.prettyPrintIRFile(irFile)
   }
 
   private final class FilteringClassLoader(parent: ClassLoader)
@@ -84,7 +102,7 @@ object LinkerImpl {
       "scala.",
       "org.scalajs.linker.interface.",
       "org.scalajs.logging.",
-      "org.scalajs.ir.",
+      //"org.scalajs.ir.",
       /*
        * A workaround for the OpenJDK bug 6265952 (#3921)
        * https://bugs.java.com/bugdatabase/view_bug.do?bug_id=6265952
@@ -175,5 +193,21 @@ object LinkerImpl {
 
     def outputFile(path: Path): LinkerOutput.File =
       invoke(outputFileMethod, path)
+
+    def irFileClassName(irFile: IRFile)(
+        implicit ec: ExecutionContext): Future[String] = {
+      IRFileImpl.fromIRFile(irFile).entryPointsInfo.map { info =>
+        info
+          .asInstanceOf[{ def className: AnyRef }].className
+          .asInstanceOf[{ def nameString: String }].nameString
+      }
+    }
+
+    def prettyPrintIRFile(irFile: IRFile)(
+        implicit ec: ExecutionContext): Future[String] = {
+      IRFileImpl.fromIRFile(irFile).tree.map { tree =>
+        tree.asInstanceOf[{ def show: String }].show
+      }
+    }
   }
 }

@@ -14,10 +14,8 @@ package org.scalajs.sbtplugin
 
 import sbt._
 
-import org.scalajs.ir.ScalaJSVersions
-
 object ScalaJSCrossVersion {
-  private val sjsPrefix = "sjs" + ScalaJSVersions.binaryCross + "_"
+  private val sjsPrefix = "sjs1_"
 
   val binary: CrossVersion =
     CrossVersion.binaryWith(prefix = sjsPrefix, suffix = "")

@@ -20,6 +20,7 @@ import scala.scalajs.js.typedarray.TypedArrayBufferOps._
 
 import org.scalajs.linker.interface.IRFile
 import org.scalajs.linker.interface.unstable.IRFileImpl
+import org.scalajs.linker.standard.ConcreteIRFileImpl._
 
 import java.io.EOFException
 import java.nio._
@@ -37,8 +38,8 @@ object NodeIRFile {
   private final class NodeIRFileImpl(path: String, version: Option[js.Date])
       extends IRFileImpl(path, version.map(_.getTime().toString)) {
 
-    def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] = {
-      def loop(fd: Int, buf: ByteBuffer): Future[ir.EntryPointsInfo] = {
+    def entryPointsInfo(implicit ec: ExecutionContext): Future[IRFileImpl.EntryPointsInfo] = {
+      def loop(fd: Int, buf: ByteBuffer): Future[IRFileImpl.EntryPointsInfo] = {
         val len = buf.remaining()
         val off = buf.position()
 
@@ -48,7 +49,7 @@ object NodeIRFile {
 
           buf.position(buf.position() + bytesRead)
           buf.flip()
-          ir.Serializers.deserializeEntryPointsInfo(buf)
+          toIRFileImplEntryPointsInfo(ir.Serializers.deserializeEntryPointsInfo(buf))
         }.recoverWith {
           case _: BufferUnderflowException =>
             // Reset to write again.
@@ -73,15 +74,16 @@ object NodeIRFile {
           .finallyWith(cbFuture[Unit](close(fd, _)))
       }
 
-      IRFileImpl.withPathExceptionContext(path, result)
+      withPathExceptionContext(path, result)
     }
 
-    def tree(implicit ec: ExecutionContext): Future[ir.Trees.ClassDef] = {
+    def tree(implicit ec: ExecutionContext): Future[IRFileImpl.ClassDef] = {
       val result = cbFuture[Uint8Array](readFile(path, _)).map { arr =>
-        ir.Serializers.deserialize(TypedArrayBuffer.wrap(arr.buffer))
+        toIRFileImplClassDef(
+            ir.Serializers.deserialize(TypedArrayBuffer.wrap(arr.buffer)))
       }
 
-      IRFileImpl.withPathExceptionContext(path, result)
+      withPathExceptionContext(path, result)
     }
   }
 }

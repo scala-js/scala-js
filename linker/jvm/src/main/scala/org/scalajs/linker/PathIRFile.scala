@@ -23,6 +23,7 @@ import java.nio.file.attribute._
 import org.scalajs.ir
 import org.scalajs.linker.interface.IRFile
 import org.scalajs.linker.interface.unstable.IRFileImpl
+import org.scalajs.linker.standard.ConcreteIRFileImpl._
 
 object PathIRFile {
   def apply(path: Path)(implicit ec: ExecutionContext): Future[IRFile] = {
@@ -32,11 +33,11 @@ object PathIRFile {
 
   private[linker] final class PathIRFileImpl(path: Path, lastModified: FileTime)
       extends IRFileImpl(path.toString, Some(lastModified.toString)) {
-    def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] = {
-      def loop(chan: AsynchronousFileChannel, buf: ByteBuffer): Future[ir.EntryPointsInfo] = {
+    def entryPointsInfo(implicit ec: ExecutionContext): Future[IRFileImpl.EntryPointsInfo] = {
+      def loop(chan: AsynchronousFileChannel, buf: ByteBuffer): Future[IRFileImpl.EntryPointsInfo] = {
         readAsync(chan, buf).map { _ =>
           buf.flip()
-          ir.Serializers.deserializeEntryPointsInfo(buf)
+          toIRFileImplEntryPointsInfo(ir.Serializers.deserializeEntryPointsInfo(buf))
         }.recoverWith {
           case _: BufferUnderflowException =>
             // Reset to write again.
@@ -59,7 +60,7 @@ object PathIRFile {
       withChannel(loop(_, ByteBuffer.allocate(1024)))
     }
 
-    def tree(implicit ec: ExecutionContext): Future[ir.Trees.ClassDef] = {
+    def tree(implicit ec: ExecutionContext): Future[IRFileImpl.ClassDef] = {
       withChannel { chan =>
         val s = chan.size()
         if (s > Int.MaxValue) {
@@ -73,7 +74,7 @@ object PathIRFile {
 
           read().map { _ =>
             buf.flip()
-            ir.Serializers.deserialize(buf)
+            toIRFileImplClassDef(ir.Serializers.deserialize(buf))
           }
         }
       }
@@ -85,7 +86,7 @@ object PathIRFile {
         body(chan).finallyWith(Future(blocking(chan.close())))
       }
 
-      IRFileImpl.withPathExceptionContext(path.toString, result)
+      withPathExceptionContext(path.toString, result)
     }
   }
 
