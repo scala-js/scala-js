@@ -7,9 +7,6 @@ object BinaryIncompatibilities {
   val IR = Seq(
   )
 
-  val Logging = Seq(
-  )
-
   val Linker = Seq(
       // private[emitter], not an issue.
       exclude[DirectMissingMethodProblem](
@@ -30,12 +27,6 @@ object BinaryIncompatibilities {
   )
 
   val LinkerInterface = Seq(
-  )
-
-  val JSEnvs = Seq(
-  )
-
-  val JSEnvsTestKit = Seq(
   )
 
   val SbtPlugin = Seq(

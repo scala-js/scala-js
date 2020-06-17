@@ -17,9 +17,8 @@ Severe changes can break the ecosystem of sbt plugins and other build tools, but
 not the ecosystem of libraries (which would be major). Severe changes should be
 done only if absolutely necessary. The following are considered severe changes:
 
-* Backward binary incompatible changes in `logging.*`, `linker.interface.*` or
-  `sbtplugin.*`
-* Backward binary incompatible changes in `jsenv.*` or `testadapter.*`
+* Backward binary incompatible changes in `linker.interface.*` or `sbtplugin.*`
+* Backward binary incompatible changes in `testadapter.*`
 
 Severe changes are difficult from a versioning point of view, since they require
 a careful tradeoff:
@@ -43,10 +42,10 @@ The following changes must cause a minor version bump.
 * Forward incompatible change in the IR
 * Backward source incompatible change at the language level or at the standard
   library level (including any addition of public API in the stdlib)
-* Backward source incompatible change in `logging.*`, `linker.interface.*` or
-  `sbtplugin.*` (including any addition of public API)
-* Backward source incompatible changes in `jsenv.*` or `testadapter.*`
-* Backward binary incompatible change in `ir.*`, `linker.interface.unstable.*`,
+* Backward source incompatible change in `linker.interface.*` or `sbtplugin.*`
+  (including any addition of public API)
+* Backward source incompatible changes in `testadapter.*`
+* Backward binary incompatible changes in `ir.*`, `linker.interface.unstable.*`,
   `linker.*` or `linker.standard.*`
 
 # Patch Changes

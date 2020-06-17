@@ -304,47 +304,38 @@ def Tasks = [
         'set scalaJSStage in testSuite.v$v := FastOptStage' \
         ++$scala testSuite$v/bootstrap:test &&
     sbt ++$scala irJS$v/mimaReportBinaryIssues \
-        loggingJS$v/mimaReportBinaryIssues \
         linkerInterfaceJS$v/mimaReportBinaryIssues linkerJS$v/mimaReportBinaryIssues
   ''',
 
   "tools": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala ir$v/test logging$v/compile linkerInterface$v/test \
-        linker$v/compile jsEnvs$v/test nodeJSEnv$v/test testAdapter$v/test \
-        ir$v/mimaReportBinaryIssues logging$v/mimaReportBinaryIssues \
+    sbt ++$scala ir$v/test linkerInterface$v/test \
+        linker$v/compile testAdapter$v/test \
+        ir$v/mimaReportBinaryIssues \
         linkerInterface$v/mimaReportBinaryIssues linker$v/mimaReportBinaryIssues \
-        jsEnvs$v/mimaReportBinaryIssues jsEnvsTestKit$v/mimaReportBinaryIssues \
-        nodeJSEnv$v/mimaReportBinaryIssues \
         testAdapter$v/mimaReportBinaryIssues &&
-    sbt ++$scala ir$v/compile:doc logging$v/compile:doc \
-        linkerInterface$v/compile:doc \
-        linker$v/compile:doc jsEnvs$v/compile:doc \
-        jsEnvsTestKit$v/compile:doc nodeJSEnv$v/compile:doc \
+    sbt ++$scala ir$v/compile:doc \
+        linkerInterface$v/compile:doc linker$v/compile:doc \
         testAdapter$v/compile:doc
   ''',
 
   "tools-sbtplugin": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala ir$v/test logging$v/compile linkerInterface$v/compile \
-        linker$v/compile jsEnvs$v/test nodeJSEnv$v/test testAdapter$v/test \
+    sbt ++$scala ir$v/test linkerInterface$v/compile \
+        linker$v/compile testAdapter$v/test \
         sbtPlugin/package \
-        ir$v/mimaReportBinaryIssues logging$v/mimaReportBinaryIssues \
+        ir$v/mimaReportBinaryIssues \
         linkerInterface$v/mimaReportBinaryIssues linker$v/mimaReportBinaryIssues \
-        jsEnvs$v/mimaReportBinaryIssues jsEnvsTestKit$v/mimaReportBinaryIssues \
-        nodeJSEnv$v/mimaReportBinaryIssues \
         testAdapter$v/mimaReportBinaryIssues \
         sbtPlugin/mimaReportBinaryIssues &&
     sbt ++$scala library$v/scalastyle javalanglib$v/scalastyle javalib$v/scalastyle \
         ir$v/scalastyle compiler$v/scalastyle \
         compiler$v/test:scalastyle \
-        logging$v/scalastyle logging$v/test:scalastyle \
         linkerInterface$v/scalastyle linkerInterface$v/test:scalastyle \
         linker$v/scalastyle linker$v/test:scalastyle \
-        jsEnvs$v/scalastyle jsEnvsTestKit$v/scalastyle nodeJSEnv$v/scalastyle \
-        jsEnvs$v/test:scalastyle nodeJSEnv$v/test:scalastyle testAdapter$v/scalastyle \
+        testAdapter$v/scalastyle \
         sbtPlugin/scalastyle testInterface$v/scalastyle testBridge$v/scalastyle \
         testSuite$v/scalastyle testSuite$v/test:scalastyle \
         testSuiteJVM$v/test:scalastyle \
@@ -354,10 +345,8 @@ def Tasks = [
         jUnitPlugin$v/scalastyle jUnitRuntime$v/scalastyle \
         jUnitTestOutputsJVM$v/scalastyle jUnitTestOutputsJVM$v/test:scalastyle \
         jUnitTestOutputsJS$v/scalastyle jUnitTestOutputsJS$v/test:scalastyle &&
-    sbt ++$scala ir$v/compile:doc logging$v/compile:doc \
-        linkerInterface$v/compile:doc \
-        linker$v/compile:doc jsEnvs$v/compile:doc \
-        jsEnvsTestKit$v/compile:doc nodeJSEnv$v/compile:doc \
+    sbt ++$scala ir$v/compile:doc \
+        linkerInterface$v/compile:doc linker$v/compile:doc \
         testAdapter$v/compile:doc \
         sbtPlugin/compile:doc &&
     sbt sbtPlugin/scripted
