@@ -127,6 +127,17 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     val arg_outer = newTermName("arg$outer")
   }
 
+  private sealed abstract class EnclosingLabelDefInfo {
+    var generatedReturns: Int = 0
+  }
+
+  private final class EnclosingLabelDefInfoWithResultAsReturn()
+      extends EnclosingLabelDefInfo
+
+  private final class EnclosingLabelDefInfoWithResultAsAssigns(
+      val paramSyms: List[Symbol])
+      extends EnclosingLabelDefInfo
+
   class JSCodePhase(prev: Phase) extends StdPhase(prev) with JSExportsPhase {
 
     override def name: String = phaseName
@@ -144,10 +155,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     private val currentMethodSym = new ScopedVar[Symbol]
     private val thisLocalVarIdent = new ScopedVar[Option[js.LocalIdent]]
     private val fakeTailJumpParamRepl = new ScopedVar[(Symbol, Symbol)]
-    private val enclosingLabelDefParams = new ScopedVar[Map[Symbol, List[Symbol]]]
+    private val enclosingLabelDefInfos = new ScopedVar[Map[Symbol, EnclosingLabelDefInfo]]
     private val isModuleInitialized = new ScopedVar[VarBox[Boolean]]
-    private val countsOfReturnsToMatchCase = new ScopedVar[mutable.Map[Symbol, Int]]
-    private val countsOfReturnsToMatchEnd = new ScopedVar[mutable.Map[Symbol, Int]]
     private val undefinedDefaultParams = new ScopedVar[mutable.Set[Symbol]]
 
     // For some method bodies
@@ -194,10 +203,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           currentMethodSym := null,
           thisLocalVarIdent := null,
           fakeTailJumpParamRepl := null,
-          enclosingLabelDefParams := null,
+          enclosingLabelDefInfos := null,
           isModuleInitialized := null,
-          countsOfReturnsToMatchCase := null,
-          countsOfReturnsToMatchEnd := null,
           undefinedDefaultParams := null,
           mutableLocalVars := null,
           mutatedLocalVars := null,
@@ -1725,10 +1732,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           currentMethodSym := sym,
           thisLocalVarIdent := None,
           fakeTailJumpParamRepl := (NoSymbol, NoSymbol),
-          enclosingLabelDefParams := Map.empty,
+          enclosingLabelDefInfos := Map.empty,
           isModuleInitialized := new VarBox(false),
-          countsOfReturnsToMatchCase := mutable.Map.empty,
-          countsOfReturnsToMatchEnd := mutable.Map.empty,
           undefinedDefaultParams := mutable.Set.empty
       ) {
         assert(vparamss.isEmpty || vparamss.tail.isEmpty,
@@ -2195,7 +2200,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       tree match {
         /** LabelDefs (for while and do..while loops) */
         case lblDf: LabelDef =>
-          genLabelDef(lblDf)
+          genLabelDef(lblDf, isStat)
 
         /** Local val or var declaration */
         case ValDef(_, name, _, rhs) =>
@@ -2508,97 +2513,185 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
     }
 
-    /** Gen JS code for LabelDef
-     *  The only LabelDefs that can reach here are the desugaring of
-     *  while and do..while loops. All other LabelDefs (for tail calls or
-     *  matches) are caught upstream and transformed in ad hoc ways.
+    /** Gen JS code for LabelDef.
      *
-     *  So here we recognize all the possible forms of trees that can result
-     *  of while or do..while loops, and we reconstruct the loop for emission
-     *  to JS.
+     *  If a LabelDef reaches this method, then the only valid jumps are from
+     *  within it, which means it basically represents a loop. Other kinds of
+     *  LabelDefs, notably those for matches, are caught upstream and
+     *  transformed in ad hoc ways.
+     *
+     *  The general transformation for
+     *  {{{
+     *  labelName(...labelParams) {
+     *    rhs
+     *  }: T
+     *  }}}
+     *  is the following:
+     *  {{{
+     *  block[T]: {
+     *    while (true) {
+     *      labelName[void]: {
+     *        return@block transformedRhs
+     *      }
+     *    }
+     *  }
+     *  }}}
+     *  where all jumps to the label inside the rhs of the form
+     *  {{{
+     *  labelName(...args)
+     *  }}}
+     *  are transformed into
+     *  {{{
+     *  ...labelParams = ...args;
+     *  return@labelName (void 0)
+     *  }}}
+     *
+     *  This is always correct, so it can handle arbitrary labels and jumps
+     *  such as those produced by loops, tail-recursive calls and even some
+     *  compiler plugins (see for example #1148). However, the result is
+     *  unnecessarily ugly for simple `while` and `do while` loops, so we have
+     *  some post-processing to simplify those.
      */
-    def genLabelDef(tree: LabelDef): js.Tree = {
+    def genLabelDef(tree: LabelDef, isStat: Boolean): js.Tree = {
       implicit val pos = tree.pos
       val sym = tree.symbol
 
-      tree match {
-        // while (cond) { body }
-        case LabelDef(lname, Nil,
-            If(cond,
-                Block(bodyStats, Apply(target @ Ident(lname2), Nil)),
-                Literal(_))) if (target.symbol == sym) =>
-          js.While(genExpr(cond), js.Block(bodyStats map genStat))
+      val labelParamSyms = tree.params.map(_.symbol).map { s =>
+        if (s == fakeTailJumpParamRepl._1) fakeTailJumpParamRepl._2 else s
+      }
+      val info = new EnclosingLabelDefInfoWithResultAsAssigns(labelParamSyms)
 
-        // while (cond) { body }; result
-        case LabelDef(lname, Nil,
-            Block(List(
-                If(cond,
-                    Block(bodyStats, Apply(target @ Ident(lname2), Nil)),
-                    Literal(_))),
-                result)) if (target.symbol == sym) =>
-          js.Block(
-              js.While(genExpr(cond), js.Block(bodyStats map genStat)),
-              genExpr(result))
+      val labelIdent = encodeLabelSym(sym)
+      val labelName = labelIdent.name
 
-        // while (true) { body }
-        case LabelDef(lname, Nil,
-            Block(bodyStats,
-                Apply(target @ Ident(lname2), Nil))) if (target.symbol == sym) =>
-          js.While(js.BooleanLiteral(true), js.Block(bodyStats map genStat))
+      val transformedRhs = withScopedVars(
+        enclosingLabelDefInfos := enclosingLabelDefInfos.get + (sym -> info)
+      ) {
+        genStatOrExpr(tree.rhs, isStat)
+      }
 
-        // while (false) { body }
-        case LabelDef(lname, Nil, Literal(Constant(()))) =>
-          js.Skip()
+      /** Matches a `js.Return` to the current `labelName`, and returns the
+       *  `exprToStat()` of the returned expression.
+       *  We only keep the `exprToStat()` because this label has a `void` type,
+       *  so the expression is always discarded except for its side effects.
+       */
+      object ReturnFromThisLabel {
+        def unapply(tree: js.Return): Option[js.Tree] = {
+          if (tree.label.name == labelName) Some(exprToStat(tree.expr))
+          else None
+        }
+      }
 
-        // do { body } while (cond)
-        case LabelDef(lname, Nil,
-            Block(bodyStats,
-                If(cond,
-                    Apply(target @ Ident(lname2), Nil),
-                    Literal(_)))) if (target.symbol == sym) =>
-          js.DoWhile(js.Block(bodyStats map genStat), genExpr(cond))
-
-        // do { body } while (cond); result
-        case LabelDef(lname, Nil,
-            Block(
-                bodyStats :+
-                If(cond,
-                    Apply(target @ Ident(lname2), Nil),
-                    Literal(_)),
-                result)) if (target.symbol == sym) =>
-          js.Block(
-              js.DoWhile(js.Block(bodyStats map genStat), genExpr(cond)),
-              genExpr(result))
-
-        /* Arbitrary other label - we can jump to it from inside it.
-         * This is typically for the label-defs implementing tail-calls.
-         * It can also handle other weird LabelDefs generated by some compiler
-         * plugins (see for example #1148).
-         */
-        case LabelDef(labelName, labelParams, rhs) =>
-          val labelParamSyms = labelParams.map(_.symbol) map {
-            s => if (s == fakeTailJumpParamRepl._1) fakeTailJumpParamRepl._2 else s
-          }
-
-          withScopedVars(
-            enclosingLabelDefParams :=
-              enclosingLabelDefParams.get + (tree.symbol -> labelParamSyms)
-          ) {
-            val bodyType = toIRType(tree.tpe)
-            val labelIdent = encodeLabelSym(tree.symbol)
-            val blockLabelIdent = freshLabelIdent("block")
-
-            js.Labeled(blockLabelIdent, bodyType, {
-              js.While(js.BooleanLiteral(true), {
-                js.Labeled(labelIdent, jstpe.NoType, {
-                  if (bodyType == jstpe.NoType)
-                    js.Block(genStat(rhs), js.Return(js.Undefined(), blockLabelIdent))
-                  else
-                    js.Return(genExpr(rhs), blockLabelIdent)
-                })
+      def genDefault(): js.Tree = {
+        if (transformedRhs.tpe == jstpe.NothingType) {
+          // In this case, we do not need the outer block label
+          js.While(js.BooleanLiteral(true), {
+            js.Labeled(labelIdent, jstpe.NoType, {
+              transformedRhs match {
+                // Eliminate a trailing return@lab
+                case js.Block(stats :+ ReturnFromThisLabel(exprAsStat)) =>
+                  js.Block(stats :+ exprAsStat)
+                case _ =>
+                  transformedRhs
+              }
+            })
+          })
+        } else {
+          // When all else has failed, we need the full machinery
+          val blockLabelIdent = freshLabelIdent("block")
+          val bodyType =
+            if (isStat) jstpe.NoType
+            else toIRType(tree.tpe)
+          js.Labeled(blockLabelIdent, bodyType, {
+            js.While(js.BooleanLiteral(true), {
+              js.Labeled(labelIdent, jstpe.NoType, {
+                if (isStat)
+                  js.Block(transformedRhs, js.Return(js.Undefined(), blockLabelIdent))
+                else
+                  js.Return(transformedRhs, blockLabelIdent)
               })
             })
+          })
+        }
+      }
+
+      info.generatedReturns match {
+        case 0 =>
+          /* There are no jumps to the loop label. Therefore we can remove
+           * the labeled block and and the loop altogether.
+           * This happens for `while (false)` and `do while (false)` loops.
+           */
+          transformedRhs
+
+        case 1 =>
+          /* There is exactly one jump. Let us see if we can isolate where it
+           * is to try and remove unnecessary labeled blocks and keep only
+           * the loop.
+           */
+          transformedRhs match {
+            /* { stats; return@lab expr }
+             * -> while (true) { stats; expr }
+             * This happens for `while (true)` and `do while (true)` loops.
+             */
+            case BlockOrAlone(stats, ReturnFromThisLabel(exprAsStat)) =>
+              js.While(js.BooleanLiteral(true), {
+                js.Block(stats, exprAsStat)
+              })
+
+            /* if (cond) { stats; return@lab expr } else elsep [; rest]
+             * -> while (cond) { stats; expr }; elsep; rest
+             * This happens for `while (cond)` loops with a non-constant `cond`.
+             * There is a `rest` if the while loop is on the rhs of a case in a
+             * patmat.
+             */
+            case FirstInBlockOrAlone(
+                js.If(cond, BlockOrAlone(stats, ReturnFromThisLabel(exprAsStat)), elsep),
+                rest) =>
+              js.Block(
+                  js.While(cond, {
+                    js.Block(stats, exprAsStat)
+                  }) ::
+                  elsep ::
+                  rest
+              )
+
+            /* { stats; if (cond) { return@lab pureExpr } else { skip } }
+             *
+             * !! `cond` could refer to VarDefs declared in stats, and we have
+             * no way of telling (short of traversing `cond` again) so we
+             * generate a `while` loop anyway:
+             *
+             * -> while ({ stats; cond }) { skip }
+             *
+             * The `pureExpr` must be pure because we cannot add it after the
+             * `cond` above. It must be eliminated, which is only valid if it
+             * is pure.
+             *
+             * This happens for `do while (cond)` loops with a non-constant
+             * `cond`.
+             *
+             * There is no need for BlockOrAlone because the alone case would
+             * also be caught by the `case js.If` above.
+             */
+            case js.Block(stats :+ js.If(cond, ReturnFromThisLabel(js.Skip()), js.Skip())) =>
+              js.While(js.Block(stats, cond), js.Skip())
+
+            /* { stats; if (cond) { return@lab pureExpr } else { skip }; literal }
+             *
+             * Same as above, but there is an additional `literal` at the end.
+             *
+             * This happens for `do while (cond)` loops with a non-constant
+             * `cond` that are in the rhs of a case in a patmat.
+             */
+            case js.Block(stats :+ js.If(cond, ReturnFromThisLabel(js.Skip()), js.Skip()) :+ (res: js.Literal)) =>
+              js.Block(js.While(js.Block(stats, cond), js.Skip()), res)
+
+            case _ =>
+              genDefault()
           }
+
+        case moreThan1 =>
+          genDefault()
       }
     }
 
@@ -2953,60 +3046,57 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     }
 
     /** Gen jump to a label.
-     *  Most label-applys are caught upstream (while and do..while loops,
-     *  jumps to next case of a pattern match), but some are still handled here:
-     *  * Jumps to enclosing label-defs, including tail-recursive calls
-     *  * Jump to the end of a pattern match
+     *
+     *  Some label-applys are caught upstream (jumps to next case of a pattern
+     *  match that are in tail-pos or their own case), but most are handled
+     *  here, notably:
+     *
+     *  - Jumps to the beginning label of loops, including tail-recursive calls
+     *  - Jumps to the next case label that are not in tail position
+     *  - Jumps to the end of a pattern match
      */
     private def genLabelApply(tree: Apply): js.Tree = {
       implicit val pos = tree.pos
       val Apply(fun, args) = tree
       val sym = fun.symbol
 
-      if (enclosingLabelDefParams.contains(sym)) {
-        genEnclosingLabelApply(tree)
-      } else if (countsOfReturnsToMatchCase.contains(sym)) {
-        /* Jump the to a next-`case` label of a pattern match.
-         *
-         * Such labels are not enclosing. Instead, they are forward jumps to a
-         * following case LabelDef. For those labels, we generate a js.Return
-         * and keep track of how many such returns we generate, so that the
-         * enclosing `genTranslatedMatch` can optimize away the labeled blocks
-         * in some cases, notably when they are not used at all or used only
-         * once.
-         *
-         * Next-case labels have no argument.
-         */
-        assert(args.isEmpty, tree)
-        countsOfReturnsToMatchCase(sym) += 1
-        js.Return(js.Undefined(), encodeLabelSym(sym))
-      } else if (countsOfReturnsToMatchEnd.contains(sym)) {
-        /* Jump the to the match-end of a pattern match.
-         * This is similar to the jumps to next-case (see above), except that
-         * match-end labels hae exactly one argument, which is the result of the
-         * pattern match (of type BoxedUnit if the match is in statement position).
-         * We simply `return` the argument as the result of the labeled block
-         * surrounding the match.
-         */
-        assert(args.size == 1, tree)
-        countsOfReturnsToMatchEnd(sym) += 1
-        js.Return(genExpr(args.head), encodeLabelSym(sym))
-      } else {
-        /* No other label apply should ever happen. If it does, then we
-         * have missed a pattern of LabelDef/LabelApply and some new
-         * translation must be found for it.
-         */
+      val info = enclosingLabelDefInfos.getOrElse(sym, {
         abort("Found unknown label apply at "+tree.pos+": "+tree)
+      })
+
+      val labelIdent = encodeLabelSym(sym)
+      info.generatedReturns += 1
+
+      def assertArgCountMatches(expected: Int): Unit = {
+        assert(args.size == expected,
+            s"argument count mismatch for label-apply at $pos: " +
+            s"expected $expected but got ${args.size}")
+      }
+
+      info match {
+        case info: EnclosingLabelDefInfoWithResultAsAssigns =>
+          val paramSyms = info.paramSyms
+          assertArgCountMatches(paramSyms.size)
+
+          val jump = js.Return(js.Undefined(), labelIdent)
+
+          if (args.isEmpty) {
+            // fast path, applicable notably to loops and case labels
+            jump
+          } else {
+            js.Block(genMultiAssign(paramSyms, args), jump)
+          }
+
+        case _: EnclosingLabelDefInfoWithResultAsReturn =>
+          assertArgCountMatches(1)
+          js.Return(genExpr(args.head), labelIdent)
       }
     }
 
-    /** Gen a label-apply to an enclosing label def.
+    /** Gen multiple "parallel" assignments.
      *
-     *  This is typically used for tail-recursive calls.
-     *
-     *  Basically this is compiled into
-     *  continue labelDefIdent;
-     *  but arguments need to be updated beforehand.
+     *  This is used when assigning the new value of multiple parameters of a
+     *  label-def, notably for the ones generated for tail-recursive methods.
      *
      *  Since the rhs for the new value of an argument can depend on the value
      *  of another argument (and since deciding if it is indeed the case is
@@ -3018,19 +3108,16 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  If, after elimination of trivial assignments, only one assignment
      *  remains, then we do not use a temporary variable for this one.
      */
-    private def genEnclosingLabelApply(tree: Apply): js.Tree = {
-      implicit val pos = tree.pos
-      val Apply(fun, args) = tree
-      val sym = fun.symbol
+    private def genMultiAssign(targetSyms: List[Symbol], values: List[Tree])(
+        implicit pos: Position): List[js.Tree] = {
 
       // Prepare quadruplets of (formalArg, irType, tempVar, actualArg)
       // Do not include trivial assignments (when actualArg == formalArg)
       val quadruplets = {
-        val formalArgs = enclosingLabelDefParams(sym)
         val quadruplets =
           List.newBuilder[(js.VarRef, jstpe.Type, js.LocalIdent, js.Tree)]
 
-        for ((formalArgSym, arg) <- formalArgs.zip(args)) {
+        for ((formalArgSym, arg) <- targetSyms.zip(values)) {
           val formalArg = encodeLocalSym(formalArgSym)
           val actualArg = genExpr(arg)
 
@@ -3070,16 +3157,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         quadruplets.result()
       }
 
-      // The actual jump (return(labelDefIdent) undefined;)
-      val jump = js.Return(js.Undefined(), encodeLabelSym(sym))
-
       quadruplets match {
-        case Nil => jump
+        case Nil =>
+          Nil
 
-        case (formalArg, argType, _, actualArg) :: Nil =>
-          js.Block(
-              js.Assign(formalArg, actualArg),
-              jump)
+        case (formalArg, _, _, actualArg) :: Nil =>
+          js.Assign(formalArg, actualArg) :: Nil
 
         case _ =>
           val tempAssignments =
@@ -3088,7 +3171,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           val trueAssignments =
             for ((formalArg, argType, tempArg, _) <- quadruplets)
               yield js.Assign(formalArg, js.VarRef(tempArg)(argType))
-          js.Block(tempAssignments ++ trueAssignments :+ jump)
+          tempAssignments ::: trueAssignments
       }
     }
 
@@ -3585,71 +3668,106 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
     }
 
+    /** Predicate satisfied by LabelDefs produced by the pattern matcher,
+     *  except matchEnd's.
+     */
+    private def isCaseLabelDef(tree: Tree): Boolean = {
+      tree.isInstanceOf[LabelDef] && hasSynthCaseSymbol(tree) &&
+      !tree.symbol.name.startsWith("matchEnd")
+    }
+
+    /** Predicate satisfied by matchEnd LabelDefs produced by the pattern
+     *  matcher.
+     */
+    private def isMatchEndLabelDef(tree: LabelDef): Boolean =
+      hasSynthCaseSymbol(tree) && tree.symbol.name.startsWith("matchEnd")
+
     private def genBlock(tree: Block, isStat: Boolean): js.Tree = {
       implicit val pos = tree.pos
       val Block(stats, expr) = tree
 
-      /** Predicate satisfied by LabelDefs produced by the pattern matcher */
-      def isCaseLabelDef(tree: Tree) =
-        tree.isInstanceOf[LabelDef] && hasSynthCaseSymbol(tree)
-
-      def translateMatch(expr: LabelDef) = {
-        /* Block that appeared as the result of a translated match
-         * Such blocks are recognized by having at least one element that is
-         * a so-called case-label-def.
-         * The method `genTranslatedMatch()` takes care of compiling the
-         * actual match.
-         *
-         * The assumption is once we encounter a case, the remainder of the
-         * block will consist of cases.
-         * The prologue may be empty, usually it is the valdef that stores
-         * the scrut.
-         */
-        val (prologue, cases) = stats.span(s => !isCaseLabelDef(s))
-        assert(cases.forall(isCaseLabelDef),
-            "Assumption on the form of translated matches broken: " + tree)
-
-        val genPrologue = prologue map genStat
-        val translatedMatch =
-          genTranslatedMatch(cases.map(_.asInstanceOf[LabelDef]), expr)
-
-        js.Block(genPrologue :+ translatedMatch)
+      val genStatsAndExpr = if (!stats.exists(isCaseLabelDef(_))) {
+        // fast path
+        stats.map(genStat(_)) :+ genStatOrExpr(expr, isStat)
+      } else {
+        genBlockWithCaseLabelDefs(stats :+ expr, isStat)
       }
 
-      expr match {
-        case expr: LabelDef if isCaseLabelDef(expr) =>
-          translateMatch(expr)
+      /* A bit of dead code elimination: we drop all statements and
+       * expressions after the first statement of type `NothingType`.
+       * This helps other optimizations.
+       */
+      val (nonNothing, rest) = genStatsAndExpr.span(_.tpe != jstpe.NothingType)
+      if (rest.isEmpty || rest.tail.isEmpty)
+        js.Block(genStatsAndExpr)
+      else
+        js.Block(nonNothing, rest.head)
+    }
 
-        // Sometimes the pattern matcher casts its final result
-        case Apply(TypeApply(Select(expr: LabelDef, nme.asInstanceOf_Ob),
-            List(targ)), Nil)
-            if isCaseLabelDef(expr) =>
-          genIsAsInstanceOf(translateMatch(expr), expr.tpe, targ.tpe,
-              cast = true)
+    private def genBlockWithCaseLabelDefs(trees: List[Tree], isStat: Boolean)(
+        implicit pos: Position): List[js.Tree] = {
 
-        // Peculiar shape generated by `return x match {...}` - #2928
-        case Return(retExpr: LabelDef) if isCaseLabelDef(retExpr) =>
-          val result = translateMatch(retExpr)
-          val label = getEnclosingReturnLabel()
-          if (result.tpe == jstpe.NoType) {
-            // Could not actually reproduce this, but better be safe than sorry
-            js.Block(result, js.Return(js.Undefined(), label))
-          } else {
-            js.Return(result, label)
-          }
+      val (prologue, casesAndRest) = trees.span(!isCaseLabelDef(_))
 
-        case _ =>
-          assert(!stats.exists(isCaseLabelDef), "Found stats with case label " +
-              s"def in non-match block at ${tree.pos}: $tree")
+      if (casesAndRest.isEmpty) {
+        if (prologue.isEmpty) Nil
+        else if (isStat) prologue.map(genStat(_))
+        else prologue.init.map(genStat(_)) :+ genExpr(prologue.last)
+      } else {
+        val genPrologue = prologue.map(genStat(_))
 
-          /* Normal block */
-          val statements = stats map genStat
-          val expression = genStatOrExpr(expr, isStat)
-          js.Block(statements :+ expression)
+        val (cases0, rest) = casesAndRest.span(isCaseLabelDef(_))
+        val cases = cases0.asInstanceOf[List[LabelDef]]
+
+        val genCasesAndRest = rest match {
+          case (matchEnd: LabelDef) :: more if isMatchEndLabelDef(matchEnd) =>
+            val translatedMatch = genTranslatedMatch(cases, matchEnd)
+            translatedMatch :: genBlockWithCaseLabelDefs(more, isStat)
+
+          // Sometimes the pattern matcher casts its final result
+          case Apply(TypeApply(Select(matchEnd: LabelDef, nme.asInstanceOf_Ob),
+              List(targ)), Nil) :: more
+              if isMatchEndLabelDef(matchEnd) =>
+            val translatedMatch = genTranslatedMatch(cases, matchEnd)
+            genIsAsInstanceOf(translatedMatch, matchEnd.tpe, targ.tpe,
+                cast = true) :: genBlockWithCaseLabelDefs(more, isStat)
+
+          // Peculiar shape generated by `return x match {...}` - #2928
+          case Return(matchEnd: LabelDef) :: more if isMatchEndLabelDef(matchEnd) =>
+            val translatedMatch = genTranslatedMatch(cases, matchEnd)
+            val genMore = genBlockWithCaseLabelDefs(more, isStat)
+            val label = getEnclosingReturnLabel()
+            if (translatedMatch.tpe == jstpe.NoType) {
+              // Could not actually reproduce this, but better be safe than sorry
+              translatedMatch :: js.Return(js.Undefined(), label) :: genMore
+            } else {
+              js.Return(translatedMatch, label) :: genMore
+            }
+
+          // Otherwise, there is no matchEnd, only consecutive cases
+          case Nil =>
+            genTranslatedCases(cases, isStat)
+          case _ =>
+            genTranslatedCases(cases, isStat = false) ::: genBlockWithCaseLabelDefs(rest, isStat)
+        }
+
+        genPrologue ::: genCasesAndRest
       }
     }
 
-    /** Gen JS code for a translated match
+    /** Gen JS code for a translated match.
+     *
+     *  A translated match consists of consecutive `case` LabelDefs directly
+     *  followed by a `matchEnd` LabelDef.
+     */
+    private def genTranslatedMatch(cases: List[LabelDef], matchEnd: LabelDef)(
+        implicit pos: Position): js.Tree = {
+      genMatchEnd(matchEnd) {
+        genTranslatedCases(cases, isStat = true)
+      }
+    }
+
+    /** Gen JS code for the cases of a patmat-transformed match.
      *
      *  This implementation relies heavily on the patterns of trees emitted
      *  by the pattern match phase, including its variants across versions of
@@ -3657,92 +3775,164 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *
      *  The trees output by the pattern matcher are assumed to follow these
      *  rules:
-     *  * Each case LabelDef (in `cases`) must not take any argument.
-     *  * The last one must be a catch-all (case _ =>) that never falls through.
-     *  * Jumps to the `matchEnd` are allowed anywhere in the body of the
-     *    corresponding case label-defs, but not outside.
-     *  * Jumps to case label-defs are restricted to jumping to the very next
-     *    case, and only in positions denoted by <jump> in:
-     *    <case-body> ::=
-     *        If(_, <case-body>, <case-body>)
-     *      | Block(_, <case-body>)
-     *      | <jump>
-     *      | _
-     *    These restrictions, together with the fact that we are in statement
-     *    position (thanks to the above transformation), mean that they can be
-     *    simply replaced by `skip`.
      *
-     *  To implement jumps to `matchEnd`, which have one argument which is the
-     *  result of the match, we enclose all the cases in one big labeled block.
-     *  Jumps are then compiled as `return`s out of the block.
+     *  - Each case LabelDef (in `cases`) must not take any argument.
+     *  - Jumps to case label-defs are restricted to jumping to the very next
+     *    case.
+     *
+     *  There is an optimization to avoid generating jumps that are in tail
+     *  position of a case, if they are in positions denoted by <jump> in:
+     *  {{{
+     *  <case-body> ::=
+     *      If(_, <case-body>, <case-body>)
+     *    | Block(_, <case-body>)
+     *    | <jump>
+     *    | _
+     *  }}}
+     *  Since all but the last case (which cannot have jumps) are in statement
+     *  position, those jumps in tail position can be replaced by `skip`.
      */
-    def genTranslatedMatch(cases: List[LabelDef],
-        matchEnd: LabelDef)(implicit pos: Position): js.Tree = {
+    private def genTranslatedCases(cases: List[LabelDef], isStat: Boolean)(
+        implicit pos: Position): List[js.Tree] = {
 
-      val matchEndSym = matchEnd.symbol
-      countsOfReturnsToMatchEnd(matchEndSym) = 0
+      assert(!cases.isEmpty,
+          s"genTranslatedCases called with no cases at $pos")
 
-      val nextCaseSyms = (cases.tail map (_.symbol)) :+ NoSymbol
-
-      val translatedCases = for {
-        (LabelDef(_, Nil, rhs), nextCaseSym) <- cases zip nextCaseSyms
+      val translatedCasesInit = for {
+        (caseLabelDef, nextCaseSym) <- cases.zip(cases.tail.map(_.symbol))
       } yield {
-        if (nextCaseSym.exists)
-          countsOfReturnsToMatchCase(nextCaseSym) = 0
+        implicit val pos = caseLabelDef.pos
+        assert(caseLabelDef.params.isEmpty,
+            s"found case LabelDef with parameters at $pos")
 
-        def genCaseBody(tree: Tree): js.Tree = {
-          implicit val pos = tree.pos
-          tree match {
-            case If(cond, thenp, elsep) =>
-              js.If(genExpr(cond), genCaseBody(thenp), genCaseBody(elsep))(
-                  jstpe.NoType)
+        val info = new EnclosingLabelDefInfoWithResultAsAssigns(Nil)
 
-            case Block(stats, expr) =>
-              js.Block((stats map genStat) :+ genCaseBody(expr))
+        val translatedBody = withScopedVars(
+            enclosingLabelDefInfos :=
+              enclosingLabelDefInfos.get + (nextCaseSym -> info)
+        ) {
+          /* Eager optimization of jumps in tail position, following the shapes
+           * produced by scala until 2.12.8. 2.12.9 introduced flat patmat
+           * translation, which does not trigger those optimizations.
+           * These shapes are also often produced by the async transformation.
+           */
+          def genCaseBody(tree: Tree): js.Tree = {
+            implicit val pos = tree.pos
+            tree match {
+              case If(cond, thenp, elsep) =>
+                js.If(genExpr(cond), genCaseBody(thenp), genCaseBody(elsep))(
+                    jstpe.NoType)
 
-            case Apply(_, Nil) if tree.symbol == nextCaseSym =>
-              js.Skip()
+              case Block(stats, Literal(Constant(()))) =>
+                // Generated a lot by the async transform
+                if (stats.isEmpty) js.Skip()
+                else js.Block(stats.init.map(genStat(_)), genCaseBody(stats.last))
 
-            case _ =>
-              genStat(tree)
+              case Block(stats, expr) =>
+                js.Block((stats map genStat) :+ genCaseBody(expr))
+
+              case Apply(_, Nil) if tree.symbol == nextCaseSym =>
+                js.Skip()
+
+              case _ =>
+                genStat(tree)
+            }
           }
+
+          genCaseBody(caseLabelDef.rhs)
         }
 
-        val translatedBody = genCaseBody(rhs)
-
-        if (!nextCaseSym.exists) {
-          translatedBody
-        } else {
-          val returnCount = countsOfReturnsToMatchCase.remove(nextCaseSym).get
-          genOptimizedCaseLabeled(encodeLabelSym(nextCaseSym), translatedBody,
-              returnCount)
-        }
+        genOptimizedCaseLabeled(encodeLabelSym(nextCaseSym), translatedBody,
+            info.generatedReturns)
       }
 
-      val returnCount = countsOfReturnsToMatchEnd.remove(matchEndSym).get
+      val translatedLastCase = genStatOrExpr(cases.last.rhs, isStat)
 
-      val LabelDef(_, List(matchEndParam), matchEndBody) = matchEnd
+      translatedCasesInit :+ translatedLastCase
+    }
 
-      val innerResultType = toIRType(matchEndParam.tpe)
-      val optimized = genOptimizedMatchEndLabeled(encodeLabelSym(matchEndSym),
-          innerResultType, translatedCases, returnCount)
+    /** Gen JS code for a match-end label def following match-cases.
+     *
+     *  The preceding cases, which are allowed to jump to this match-end, must
+     *  be generated in the `genTranslatedCases` callback. During the execution
+     *  of this callback, the enclosing label infos contain appropriate info
+     *  for this match-end.
+     *
+     *  The translation of the match-end itself is straightforward, but is
+     *  augmented with several optimizations to remove as many labeled blocks
+     *  as possible.
+     *
+     *  Most of the time, a match-end label has exactly one parameter. However,
+     *  with the async transform, it can sometimes have no parameter instead.
+     *  We handle those cases very differently.
+     */
+    private def genMatchEnd(matchEnd: LabelDef)(
+        genTranslatedCases: => List[js.Tree])(
+        implicit pos: Position): js.Tree = {
 
-      matchEndBody match {
-        case Ident(_) if matchEndParam.symbol == matchEndBody.symbol =>
-          // matchEnd is identity.
-          optimized
+      val sym = matchEnd.symbol
+      val labelIdent = encodeLabelSym(sym)
+      val matchEndBody = matchEnd.rhs
 
-        case Literal(Constant(())) =>
-          // Unit return type.
-          optimized
+      def genMatchEndBody(): js.Tree = {
+        genStatOrExpr(matchEndBody,
+            isStat = toIRType(matchEndBody.tpe) == jstpe.NoType)
+      }
 
-        case _ =>
-          // matchEnd does something.
-          js.Block(
-              js.VarDef(encodeLocalSym(matchEndParam.symbol),
-                  originalNameOfLocal(matchEndParam.symbol),
-                  innerResultType, mutable = false, optimized),
-              genExpr(matchEndBody))
+      matchEnd.params match {
+        // Optimizable common case produced by the regular pattern matcher
+        case List(matchEndParam) =>
+          val info = new EnclosingLabelDefInfoWithResultAsReturn()
+
+          val translatedCases = withScopedVars(
+              enclosingLabelDefInfos := enclosingLabelDefInfos.get + (sym -> info)
+          ) {
+            genTranslatedCases
+          }
+
+          val innerResultType = toIRType(matchEndParam.tpe)
+          val optimized = genOptimizedMatchEndLabeled(encodeLabelSym(sym),
+              innerResultType, translatedCases, info.generatedReturns)
+
+          matchEndBody match {
+            case Ident(_) if matchEndParam.symbol == matchEndBody.symbol =>
+              // matchEnd is identity.
+              optimized
+
+            case Literal(Constant(())) =>
+              // Unit return type.
+              optimized
+
+            case _ =>
+              // matchEnd does something.
+              js.Block(
+                  js.VarDef(encodeLocalSym(matchEndParam.symbol),
+                      originalNameOfLocal(matchEndParam.symbol),
+                      innerResultType, mutable = false, optimized),
+                  genMatchEndBody())
+          }
+
+        /* Other cases, notably the matchEnd's produced by the async transform,
+         * which have no parameters. The case of more than one parameter is
+         * hypothetical, but it costs virtually nothing to handle it here.
+         */
+        case params =>
+          val paramSyms = params.map(_.symbol)
+          val varDefs = for (s <- paramSyms) yield {
+            implicit val pos = s.pos
+            val irType = toIRType(s.tpe)
+            js.VarDef(encodeLocalSym(s), originalNameOfLocal(s), irType,
+                mutable = true, jstpe.zeroOf(irType))
+          }
+          val info = new EnclosingLabelDefInfoWithResultAsAssigns(paramSyms)
+          val translatedCases = withScopedVars(
+              enclosingLabelDefInfos := enclosingLabelDefInfos.get + (sym -> info)
+          ) {
+            genTranslatedCases
+          }
+          val optimized = genOptimizedMatchEndLabeled(labelIdent, jstpe.NoType,
+              translatedCases, info.generatedReturns)
+          js.Block(varDefs ::: optimized :: genMatchEndBody() :: Nil)
       }
     }
 
@@ -6382,4 +6572,18 @@ private object GenJSCode {
     MethodName.constructor(List(jstpe.ClassRef(ir.Names.ObjectClass)))
 
   private val thisOriginalName = OriginalName("this")
+
+  private object BlockOrAlone {
+    def unapply(tree: js.Tree): Some[(List[js.Tree], js.Tree)] = tree match {
+      case js.Block(trees) => Some((trees.init, trees.last))
+      case _               => Some((Nil, tree))
+    }
+  }
+
+  private object FirstInBlockOrAlone {
+    def unapply(tree: js.Tree): Some[(js.Tree, List[js.Tree])] = tree match {
+      case js.Block(trees) => Some((trees.head, trees.tail))
+      case _               => Some((tree, Nil))
+    }
+  }
 }

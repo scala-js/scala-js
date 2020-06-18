@@ -181,6 +181,152 @@ class OptimizationTest extends JSASTTest {
   }
 
   @Test
+  def noLabeledBlockForWhileLoops: Unit = {
+    """
+    class Test {
+      def testWhileStatWithCond(): Unit = {
+        var x: Int = 5
+        while (x != 0) {
+          x -= 1
+        }
+        println(x)
+      }
+
+      def testWhileExprWithCond(s: Any): Unit = {
+        var x: Int = 5
+        s match {
+          case s: String =>
+            while (x != 0) {
+              x -= 1
+            }
+        }
+      }
+
+      def testWhileTrueStat(): Unit = {
+        var x: Int = 5
+        while (true) {
+          x -= 1
+          if (x == 0)
+            return
+          println(x)
+        }
+      }
+
+      def testWhileTrueExpr(s: Any): Unit = {
+        var x: Int = 5
+        s match {
+          case s: String =>
+            while (true) {
+              x -= 1
+              if (x == 0)
+                return
+              println(x)
+            }
+        }
+      }
+
+      def testWhileFalseStat(): Unit = {
+        var x: Int = 5
+        while (false) {
+          x -= 1
+          if (x == 0)
+            return
+          println(x)
+        }
+      }
+
+      def testWhileFalseExpr(s: Any): Unit = {
+        var x: Int = 5
+        s match {
+          case s: String =>
+            while (false) {
+              x -= 1
+              if (x == 0)
+                return
+              println(x)
+            }
+        }
+      }
+    }
+    """.hasNot("non-return labeled block") {
+      case js.Labeled(name, _, _) if !name.name.nameString.startsWith("_return") =>
+    }
+  }
+
+  @Test
+  def noLabeledBlockForDoWhileLoops: Unit = {
+    """
+    class Test {
+      def testDoWhileStatWithCond(): Unit = {
+        var x: Int = 5
+        do {
+          x -= 1
+        } while (x != 0)
+        println(x)
+      }
+
+      def testDoWhileExprWithCond(s: Any): Unit = {
+        var x: Int = 5
+        s match {
+          case s: String =>
+            do {
+              x -= 1
+            } while (x != 0)
+        }
+      }
+
+      def testDoWhileTrueStat(): Unit = {
+        var x: Int = 5
+        do {
+          x -= 1
+          if (x == 0)
+            return
+          println(x)
+        } while (true)
+      }
+
+      def testDoWhileTrueExpr(s: Any): Unit = {
+        var x: Int = 5
+        s match {
+          case s: String =>
+            do {
+              x -= 1
+              if (x == 0)
+                return
+              println(x)
+            } while (true)
+        }
+      }
+
+      def testDoWhileFalseStat(): Unit = {
+        var x: Int = 5
+        do {
+          x -= 1
+          if (x == 0)
+            return
+          println(x)
+        } while (false)
+      }
+
+      def testDoWhileFalseExpr(s: Any): Unit = {
+        var x: Int = 5
+        s match {
+          case s: String =>
+            do {
+              x -= 1
+              if (x == 0)
+                return
+              println(x)
+            } while (false)
+        }
+      }
+    }
+    """.hasNot("non-return labeled block") {
+      case js.Labeled(name, _, _) if !name.name.nameString.startsWith("_return") =>
+    }
+  }
+
+  @Test
   def noLabeledBlockForPatmatWithToplevelCaseClassesOnlyAndNoGuards: Unit = {
     """
     sealed abstract class Foo
