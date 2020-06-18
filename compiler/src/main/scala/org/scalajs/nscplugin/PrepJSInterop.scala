@@ -1203,8 +1203,11 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
         sym.addAnnotation(ExposedJSMemberAnnot)
         /* For accessors, the field being accessed must also be exposed,
          * although it is private.
+         *
+         * #4089 Don't do this if `sym.accessed == NoSymbol`. This happens in
+         * 2.12+, where fields are created later than this phase.
          */
-        if (sym.isAccessor)
+        if (sym.isAccessor && sym.accessed != NoSymbol)
           sym.accessed.addAnnotation(ExposedJSMemberAnnot)
       }
     }
