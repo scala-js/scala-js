@@ -252,10 +252,10 @@ private[math] object Conversion {
         result = (prev - v * 10).toInt.toString + result
       } while (v != 0)
 
-      val exponent = resLengthInChars - currentChar - scale - 1
+      val exponent: Long = resLengthInChars - currentChar - scale.toLong - 1
 
-      if (scale > 0 && exponent >= -6) {
-        val index = exponent + 1
+      if (scale > 0 && exponent >= -6L) {
+        val index = exponent.toInt + 1
         if (index > 0) {
           // special case 1
           result = result.substring(0, index) + "." + result.substring(index)
@@ -266,17 +266,16 @@ private[math] object Conversion {
           }
           result = "0." + result
         }
-      } else if (scale !=0) {
-        var result1 =  exponent.toString
-        if (exponent > 0)
-          result1 = "+" + result1
-        result1 = "E" + result1
+      } else if (scale != 0) {
+        val exponentStr =
+          if (exponent > 0) "E+" + exponent
+          else "E" + exponent
 
         result =
           if (resLengthInChars - currentChar > 1)
-            result.substring(0, 1) + "." + result.substring(1) + result1
+            result.substring(0, 1) + "." + result.substring(1) + exponentStr
           else
-            result + result1
+            result + exponentStr
       }
 
       if (negNumber) "-" + result
