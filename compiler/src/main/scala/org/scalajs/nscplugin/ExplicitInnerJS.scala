@@ -91,11 +91,18 @@ abstract class ExplicitInnerJS[G <: Global with Singleton](val global: G)
   protected def newTransformer(unit: CompilationUnit): Transformer =
     new ExplicitInnerJSTransformer(unit)
 
-  /** Is the given clazz an inner JS class? */
-  private def isInnerJSClass(clazz: Symbol): Boolean = {
-    clazz.hasAnnotation(JSTypeAnnot) &&
-    !clazz.isPackageClass && !clazz.outerClass.isStaticOwner &&
-    !clazz.isLocalToBlock && !clazz.isModuleClass && !clazz.isTrait
+  /** Is the given symbol an owner for which this transformation applies?
+   *
+   *  This applies if it is not a static owner.
+   */
+  private def isApplicableOwner(sym: Symbol): Boolean =
+    !sym.isStaticOwner
+
+  /** Is the given symbol a JS class (that is not a trait nor an object)? */
+  private def isJSClass(sym: Symbol): Boolean = {
+    sym.isClass &&
+    !sym.hasFlag(Flags.TRAIT | Flags.MODULE) &&
+    sym.hasAnnotation(JSTypeAnnot)
   }
 
   /** Transforms the info of types to add the `Inner\$jsclass` fields.
@@ -103,8 +110,8 @@ abstract class ExplicitInnerJS[G <: Global with Singleton](val global: G)
    *  This method was inspired by `ExplicitOuter.transformInfo`.
    */
   def transformInfo(sym: Symbol, tp: Type): Type = tp match {
-    case ClassInfoType(parents, decls, clazz) if !clazz.isJava =>
-      val innerJSClasses = decls.filter(isInnerJSClass)
+    case ClassInfoType(parents, decls, clazz) if !clazz.isJava && isApplicableOwner(clazz) =>
+      val innerJSClasses = decls.filter(isJSClass)
       if (innerJSClasses.isEmpty) {
         tp
       } else {
@@ -168,21 +175,20 @@ abstract class ExplicitInnerJS[G <: Global with Singleton](val global: G)
 
     /** The main transformation method. */
     override def transform(tree: Tree): Tree = {
-      val sym = tree.symbol
       tree match {
         // Add the ValDefs for inner JS class values
-        case Template(parents, self, decls) =>
+        case Template(parents, self, decls) if isApplicableOwner(currentOwner) =>
           val newDecls = mutable.ListBuffer.empty[Tree]
           atOwner(tree, currentOwner) {
             for (decl <- decls) {
-              if ((decl.symbol ne null) && isInnerJSClass(decl.symbol)) {
-                val clazz = decl.symbol
-                val jsclassAccessor = jsclassAccessorFor(clazz)
+              val declSym = decl.symbol
+              if ((declSym ne null) && isJSClass(declSym)) {
+                val jsclassAccessor = jsclassAccessorFor(declSym)
 
-                val rhs = if (sym.hasAnnotation(JSNativeAnnotation)) {
+                val rhs = if (currentOwner.hasAnnotation(JSNativeAnnotation)) {
                   gen.mkAttributedRef(JSPackage_native)
                 } else {
-                  val clazzValue = gen.mkClassOf(clazz.tpe_*)
+                  val clazzValue = gen.mkClassOf(declSym.tpe_*)
                   val parentTpe =
                     extractSuperTpeFromImpl(decl.asInstanceOf[ClassDef].impl)
                   val superClassCtor = gen.mkNullaryCall(
