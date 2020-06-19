@@ -73,11 +73,6 @@ class RegressionTest {
     assertEquals(39, strQuotes.charAt(1).toInt)
   }
 
-  @Test def String_concatenation_with_null_issue_26(): Unit = {
-    val x: Object = null
-    assertEquals("nullcheck", x + "check")
-  }
-
   @Test def should_emit_static_calls_when_forwarding_to_another_constructor_issue_66(): Unit = {
     new Bug66B("", "")
   }
