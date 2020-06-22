@@ -23,6 +23,11 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+      // Native types, not an issue.
+      exclude[IncompatibleMethTypeProblem](
+          "scala.scalajs.js.JSON.stringify"),
+      exclude[IncompatibleResultTypeProblem](
+          "scala.scalajs.js.JSON.stringify$default$3"),
   )
 
   val TestInterface = Seq(

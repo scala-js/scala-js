@@ -72,15 +72,22 @@ object JSON extends js.Object {
    * @param replacer If a function, transforms values and properties encountered
    *                 while stringifying; if an array, specifies the set of
    *                 properties included in objects in the final string.
-   * @param space Causes the resulting string to be pretty-printed.
+   * @param space A String or Int that's used to insert white space into the
+   *              output JSON string for readability purposes. If this is an
+   *              Int, it indicates the number of space characters to use as
+   *              white space; this number is capped at 10; values less than 1
+   *              indicate that no space should be used. If this is a String,
+   *              the string (or the first 10 characters of the string, if it's
+   *              longer than that) is used as white space. If this parameter is
+   *              not provided (or is null), no white space is used.
    *
    * MDN
    */
   // scalastyle:on line.size.limit
   def stringify(value: js.Any,
       replacer: js.Function2[String, js.Any, js.Any] = ???,
-      space: js.Any = ???): String = js.native
+      space: Int | String = ???): String = js.native
   def stringify(value: js.Any, replacer: js.Array[Any]): String = js.native
   def stringify(value: js.Any, replacer: js.Array[Any],
-      space: js.Any): String = js.native
+      space: Int | String): String = js.native
 }
