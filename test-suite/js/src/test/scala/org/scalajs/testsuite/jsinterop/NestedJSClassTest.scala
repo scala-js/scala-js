@@ -355,6 +355,10 @@ class NestedJSClassTest {
     assertTrue(inner2.isInstanceOf[container1.InnerJSClass])
     assertTrue(js.special.instanceof(inner2, innerJSClass))
 
+    assertTrue(js.isUndefined(container1.asInstanceOf[js.Dynamic].InnerScalaClass))
+    val scalaInner = new container1.InnerScalaClass(543)
+    assertEquals(543, scalaInner.zzz)
+
     val container2 = new JSClassContainer("hi")
     val innerJSClass2 = container2.getInnerJSClass
     assertNotSame(innerJSClass, innerJSClass2)
@@ -394,6 +398,29 @@ class NestedJSClassTest {
 
     assertFalse(inner3.isInstanceOf[container1.InnerJSClass])
     assertFalse(js.special.instanceof(inner3, innerJSClass))
+  }
+
+  @Test def innerJSClassObject_accessibleFromJS_ifInsideTopJSObject_issue4086(): Unit = {
+    val container = NestedJSClassTest_TopLevelJSObject_Issue4086.asInstanceOf[js.Dynamic]
+
+    assertEquals("object", js.typeOf(container.InnerScalaObject))
+    assertEquals("the InnerScalaObject of issue 4086", container.InnerScalaObject.toString())
+    assertSame(NestedJSClassTest_TopLevelJSObject_Issue4086.InnerScalaObject, container.InnerScalaObject)
+
+    assertEquals("object", js.typeOf(container.InnerJSObject))
+    assertEquals("the InnerJSObject of issue 4086", container.InnerJSObject.toString())
+    assertSame(NestedJSClassTest_TopLevelJSObject_Issue4086.InnerJSObject, container.InnerJSObject)
+
+    assertTrue(js.isUndefined(container.InnerScalaClass))
+    val innerScalaObj = new NestedJSClassTest_TopLevelJSObject_Issue4086.InnerScalaClass(543)
+    assertEquals(543, innerScalaObj.x)
+
+    val cls = container.InnerJSClass
+    assertEquals("function", js.typeOf(cls))
+    assertSame(js.constructorOf[NestedJSClassTest_TopLevelJSObject_Issue4086.InnerJSClass], cls)
+    val obj = js.Dynamic.newInstance(cls)(5)
+    assertEquals(5, obj.x)
+    assertEquals("InnerJSClass(5) of issue 4086", obj.toString())
   }
 
   @Test def localJSClassCapturesCharThatMustBeBoxed(): Unit = {
@@ -596,6 +623,26 @@ object NestedJSClassTest {
 
     def getInnerJSClass: js.Dynamic =
       js.constructorOf[InnerJSClass]
+
+    // Not visible from JS, but can be instantiated from Scala.js code
+    class InnerScalaClass(val zzz: Int)
   }
 
+}
+
+object NestedJSClassTest_TopLevelJSObject_Issue4086 extends js.Object {
+  object InnerScalaObject {
+    override def toString(): String = "the InnerScalaObject of issue 4086"
+  }
+
+  object InnerJSObject extends js.Object {
+    override def toString(): String = "the InnerJSObject of issue 4086"
+  }
+
+  // Not visible from JS, but can be instantiated from Scala.js code
+  class InnerScalaClass(val x: Int)
+
+  class InnerJSClass(val x: Int) extends js.Object {
+    override def toString(): String = s"InnerJSClass($x) of issue 4086"
+  }
 }
