@@ -213,7 +213,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options)
 
     options.setLanguage(languageMode)
-    options.setCheckGlobalThisLevel(CheckLevel.OFF)
+    options.setWarningLevel(DiagnosticGroups.GLOBAL_THIS, CheckLevel.OFF)
     options.setWarningLevel(DiagnosticGroups.DUPLICATE_VARS, CheckLevel.OFF)
     options.setWarningLevel(DiagnosticGroups.CHECK_REGEXP, CheckLevel.OFF)
     options.setWarningLevel(DiagnosticGroups.CHECK_TYPES, CheckLevel.OFF)
