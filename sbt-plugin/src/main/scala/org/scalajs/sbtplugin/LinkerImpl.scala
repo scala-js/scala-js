@@ -30,7 +30,9 @@ import org.scalajs.linker.interface._
 trait LinkerImpl {
   def clearableLinker(cfg: StandardConfig): ClearableLinker
 
-  def irFileCache(): IRFileCache
+  final def irFileCache(): IRFileCache = irFileCache(IRFileCacheConfig())
+
+  def irFileCache(cfg: IRFileCacheConfig): IRFileCache
 
   def irContainers(classpath: Seq[Path])(
       implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[Path])]
@@ -66,8 +68,8 @@ object LinkerImpl {
     def clearableLinker(cfg: StandardConfig): ClearableLinker =
       parent.clearableLinker(cfg)
 
-    def irFileCache(): IRFileCache =
-      parent.irFileCache()
+    def irFileCache(cfg: IRFileCacheConfig): IRFileCache =
+      parent.irFileCache(cfg)
 
     def irContainers(classpath: Seq[Path])(
         implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[Path])] =
@@ -152,7 +154,7 @@ object LinkerImpl {
       loadMethod("StandardImpl", "clearableLinker", classOf[ClearableLinker], classOf[StandardConfig])
 
     private val irFileCacheMethod =
-      loadMethod("StandardImpl", "irFileCache", classOf[IRFileCache])
+      loadMethod("StandardImpl", "irFileCache", classOf[IRFileCache], classOf[IRFileCacheConfig])
 
     private val irContainersMethod = {
       loadMethod("PathIRContainer", "fromClasspath", classOf[Future[_]],
@@ -165,8 +167,8 @@ object LinkerImpl {
     def clearableLinker(cfg: StandardConfig): ClearableLinker =
       invoke(clearableLinkerMethod, cfg)
 
-    def irFileCache(): IRFileCache =
-      invoke(irFileCacheMethod)
+    def irFileCache(cfg: IRFileCacheConfig): IRFileCache =
+      invoke(irFileCacheMethod, cfg)
 
     def irContainers(classpath: Seq[Path])(
         implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[Path])] = {

@@ -14,6 +14,13 @@ object BinaryIncompatibilities {
   )
 
   val SbtPlugin = Seq(
+      // Changes in LinkerImpl, which is declared that we can break it.
+      exclude[ReversedMissingMethodProblem](
+          "org.scalajs.sbtplugin.LinkerImpl.irFileCache"),
+      exclude[FinalMethodProblem](
+          "org.scalajs.sbtplugin.LinkerImpl#Reflect.irFileCache"),
+      exclude[FinalMethodProblem](
+          "org.scalajs.sbtplugin.LinkerImpl#Forwarding.irFileCache"),
   )
 
   val TestCommon = Seq(
