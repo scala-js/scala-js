@@ -16,7 +16,11 @@ import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
 
 object StandardImpl {
-  def irFileCache(): IRFileCache = new StandardIRFileCache()
+  def irFileCache(): IRFileCache =
+    irFileCache(IRFileCacheConfig())
+
+  def irFileCache(config: IRFileCacheConfig): IRFileCache =
+    new StandardIRFileCache(config)
 
   def linker(config: StandardConfig): Linker = {
     StandardLinkerImpl(StandardLinkerFrontend(config),

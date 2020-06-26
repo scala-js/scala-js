@@ -18,7 +18,7 @@ import scala.util.Failure
 
 import java.net.URI
 
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.{ConcurrentHashMap, ConcurrentLinkedQueue}
 import java.util.concurrent.atomic.AtomicInteger
 
 import org.scalajs.ir.EntryPointsInfo
@@ -27,16 +27,21 @@ import org.scalajs.ir.Trees.ClassDef
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable._
 
-final class StandardIRFileCache extends IRFileCacheImpl {
+final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheImpl {
   /* General implementation comment: We always synchronize before doing I/O
    * (instead of using a calculate and CAS pattern). This is since we assume
    * that paying the cost for synchronization is lower than I/O.
    */
 
+  def this() = this(IRFileCacheConfig())
+
   import StandardIRFileCache.Stats
 
   /** Holds the cached IR */
   private[this] val globalCache = new ConcurrentHashMap[String, PersistedFiles]
+
+  private[this] val ioThrottler =
+    new StandardIRFileCache.IOThrottler(config.maxConcurrentReads)
 
   // Statistics
   private[this] val statsReused = new AtomicInteger(0)
@@ -198,8 +203,8 @@ final class StandardIRFileCache extends IRFileCacheImpl {
             statsReused.incrementAndGet()
           } else {
             statsInvalidated.incrementAndGet()
-            _files = clearOnFail {
-              file.sjsirFiles.map { files =>
+            _files = {
+              performIO(file.sjsirFiles).map { files =>
                 files.map { file =>
                   new PersistentIRFile(IRFileImpl.fromIRFile(file))
                 }
@@ -219,7 +224,10 @@ final class StandardIRFileCache extends IRFileCacheImpl {
     private[this] var _tree: Future[ClassDef] = null
 
     // Force reading of entry points since we'll definitely need them.
-    private[this] val _entryPointsInfo: Future[EntryPointsInfo] = _irFile.entryPointsInfo
+    private[this] val _entryPointsInfo: Future[EntryPointsInfo] = {
+      val irFile = _irFile // stable ref
+      performIO(irFile.entryPointsInfo)
+    }
 
     override def entryPointsInfo(implicit ec: ExecutionContext): Future[EntryPointsInfo] =
       _entryPointsInfo
@@ -239,7 +247,8 @@ final class StandardIRFileCache extends IRFileCacheImpl {
     /** Must be called under synchronization only */
     private def loadTree()(implicit ec: ExecutionContext): Unit = {
       statsTreesRead.incrementAndGet()
-      _tree = clearOnFail(_irFile.tree) // This can fail due to I/O
+      val irFile = _irFile // stable ref
+      _tree = performIO(irFile.tree)
       _irFile = null // Free for GC
     }
   }
@@ -250,8 +259,11 @@ final class StandardIRFileCache extends IRFileCacheImpl {
    *  are not anymore.
    */
   @inline
-  private def clearOnFail[T](v: => Future[T])(implicit ec: ExecutionContext): Future[T] =
-    clearOnThrow(v).andThen { case Failure(_) => globalCache.clear() }
+  private def performIO[T](v: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
+    clearOnThrow(ioThrottler.throttle(v)).andThen {
+      case Failure(_) => globalCache.clear()
+    }
+  }
 
   @inline
   private def clearOnThrow[T](body: => T): T = {
@@ -275,6 +287,67 @@ object StandardIRFileCache {
       s"reused: $reused -- " +
       s"invalidated: $invalidated -- " +
       s"trees read: $treesRead"
+    }
+  }
+
+  private final class IOThrottler(totalSlots: Int) {
+    /* This is basically a java.util.concurrent.Semaphore, but it is not
+     * implemented in the javalib.
+     */
+    private val slots = new AtomicInteger(totalSlots)
+    private val queue = new ConcurrentLinkedQueue[() => Unit]()
+
+    def throttle[T](future: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
+      if (tryGetSlot()) {
+        // Fast path.
+        val result = future
+        result.onComplete(onComplete)
+        result
+      } else {
+        val promise = Promise[T]()
+
+        queue.add { () =>
+          val result = future
+          promise.completeWith(result)
+          result.onComplete(onComplete)
+        }
+
+        // Ensure our task is not victim of a race.
+        process()
+
+        promise.future
+      }
+    }
+
+    private val onComplete: Any => Unit = { _ =>
+      slots.incrementAndGet()
+      process()
+    }
+
+    private def process(): Unit = {
+      while (!queue.isEmpty() && tryGetSlot()) {
+        val work = queue.poll()
+        if (work == null) {
+          // We raced. Release the slot and try again.
+          slots.incrementAndGet()
+        } else {
+          work()
+        }
+      }
+    }
+
+    @tailrec
+    private def tryGetSlot(): Boolean = {
+      val s = slots.get()
+      if (s > 0) {
+        if (slots.compareAndSet(s, s - 1)) {
+          true
+        } else {
+          tryGetSlot()
+        }
+      } else {
+        false
+      }
     }
   }
 }
