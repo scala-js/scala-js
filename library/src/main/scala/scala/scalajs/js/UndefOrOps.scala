@@ -229,7 +229,7 @@ final class UndefOrOps[A] private[js] (private val self: js.UndefOr[A])
    *  if this $option is nonempty, [[scala.None None]] otherwise.
    */
   @inline final def toOption: Option[A] =
-    if (isEmpty) None else Some(this.forceGet)
+    if (isEmpty) None else Option(this.forceGet)
 }
 
 object UndefOrOps {
