@@ -104,8 +104,8 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     }
   }
 
-  private def buildModule(trees: List[js.Tree]): JSModule = {
-    val root = ClosureAstTransformer.transformScript(trees,
+  private def buildModule(tree: js.Tree): JSModule = {
+    val root = ClosureAstTransformer.transformScript(tree,
         languageMode.toFeatureSet(), config.relativizeSourceMapBase)
 
     val module = new JSModule("Scala.js")

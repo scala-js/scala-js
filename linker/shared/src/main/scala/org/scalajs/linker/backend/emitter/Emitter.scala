@@ -102,8 +102,8 @@ final class Emitter(config: Emitter.Config) {
     }
   }
 
-  private def emitInternal(unit: LinkingUnit,
-      logger: Logger): WithGlobals[List[js.Tree]] = {
+  private def emitInternal(
+      unit: LinkingUnit, logger: Logger): WithGlobals[js.Tree] = {
     // Reset caching stats.
     statsClassesReused = 0
     statsClassesInvalidated = 0
@@ -144,7 +144,7 @@ final class Emitter(config: Emitter.Config) {
    */
   @tailrec
   private def emitAvoidGlobalClash(unit: LinkingUnit,
-      logger: Logger, secondAttempt: Boolean): WithGlobals[List[js.Tree]] = {
+      logger: Logger, secondAttempt: Boolean): WithGlobals[js.Tree] = {
     val result = emitOnce(unit, logger)
 
     val mentionedDangerousGlobalRefs =
@@ -167,8 +167,8 @@ final class Emitter(config: Emitter.Config) {
     }
   }
 
-  private def emitOnce(unit: LinkingUnit,
-      logger: Logger): WithGlobals[List[js.Tree]] = {
+  private def emitOnce(
+      unit: LinkingUnit, logger: Logger): WithGlobals[js.Tree] = {
     val orderedClasses = unit.classDefs.sortWith(compareClasses)
     val generatedClasses = logger.time("Emitter: Generate classes") {
       orderedClasses.map(genClass(_))
@@ -181,7 +181,7 @@ final class Emitter(config: Emitter.Config) {
       def classIter = generatedClasses.iterator
 
       // Emit everything in the appropriate order.
-      val treesIter: Iterator[js.Tree] = (
+      val tree = js.Block(
           /* The definitions of the CoreJSLib, which depend on nothing.
            * All classes potentially depend on it.
            */
@@ -221,13 +221,13 @@ final class Emitter(config: Emitter.Config) {
 
           /* Module initializers, which by spec run at the end. */
           unit.moduleInitializers.iterator.map(classEmitter.genModuleInitializer(_))
-      )
+      )(Position.NoPosition)
 
       val trackedGlobalRefs = classIter
         .map(_.trackedGlobalRefs)
         .foldLeft(coreJSLibTrackedGlobalRefs)(unionPreserveEmpty(_, _))
 
-      WithGlobals(treesIter.toList, trackedGlobalRefs)
+      WithGlobals(tree, trackedGlobalRefs)
     }
   }
 
@@ -682,7 +682,7 @@ object Emitter {
   /** Result of an emitter run. */
   final class Result private[Emitter](
       val header: String,
-      val body: List[js.Tree],
+      val body: js.Tree,
       val footer: String,
       val topLevelVarDecls: List[String],
       val globalRefs: Set[String]

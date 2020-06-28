@@ -8,6 +8,16 @@ object BinaryIncompatibilities {
   )
 
   val Linker = Seq(
+      // Breaking in the unstable API.
+      exclude[IncompatibleResultTypeProblem](
+          "org.scalajs.linker.backend.emitter.Emitter#Result.body"),
+      exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.linker.backend.javascript.Trees#Block.apply"),
+
+      // private[closure], not an issue.
+      exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.linker.backend.closure.ClosureAstTransformer.transformScript"),
+
       // private[emitter], not an issue.
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.ClassEmitter.org$scalajs$linker$backend$emitter$ClassEmitter$$classVarDef$default$4"),
@@ -83,6 +93,8 @@ object BinaryIncompatibilities {
           "org.scalajs.linker.backend.emitter.JSGen.useBigIntForLongs"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.JSGen.varGen"),
+      exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.linker.backend.emitter.Emitter#Result.this"),
       exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.VarGen.classVarIdent"),
       exclude[IncompatibleMethTypeProblem](
