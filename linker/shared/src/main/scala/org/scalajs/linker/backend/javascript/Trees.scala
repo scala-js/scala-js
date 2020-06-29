@@ -127,21 +127,35 @@ object Trees {
   }
 
   object Block {
-    def apply(stats: List[Tree])(implicit pos: Position): Tree = {
-      val flattenedStats = stats flatMap {
-        case Skip() => Nil
-        case Block(subStats) => subStats
-        case other => other :: Nil
+    def apply(stats: Iterable[Tree])(implicit pos: Position): Tree =
+      apply(stats.iterator)
+
+    def apply(stats: Iterator[Tree])(implicit pos: Position): Tree = {
+      /* Do a fused _.flatMap(...).toList on our own. This is the only
+       * implementation I could come up with that:
+       * - Is efficient.
+       * - Works on 2.12 and 2.13.
+       * - Does not duplicate code.
+       *
+       * Not fusing this would produce a relatively complex iterator construct for no reason.
+       */
+      val builder = List.newBuilder[Tree]
+
+      val flattenedStats = stats.foreach {
+        case Skip()          => // skip :)
+        case Block(subStats) => builder ++= subStats
+        case other           => builder += other
       }
-      flattenedStats match {
-        case Nil => Skip()
+
+      builder.result() match {
+        case Nil         => Skip()
         case only :: Nil => only
-        case _ => new Block(flattenedStats)
+        case stats       => new Block(stats)
       }
     }
 
     def apply(stats: Tree*)(implicit pos: Position): Tree =
-      apply(stats.toList)
+      apply(stats)
 
     def unapply(block: Block): Some[List[Tree]] = Some(block.stats)
   }

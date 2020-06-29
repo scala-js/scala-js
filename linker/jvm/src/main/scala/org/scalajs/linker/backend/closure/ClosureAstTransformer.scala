@@ -31,10 +31,10 @@ import scala.annotation.tailrec
 import java.net.URI
 
 private[closure] object ClosureAstTransformer {
-  def transformScript(trees: List[Tree], featureSet: FeatureSet,
+  def transformScript(tree: Tree, featureSet: FeatureSet,
       relativizeBaseURI: Option[URI]): Node = {
     val transformer = new ClosureAstTransformer(featureSet, relativizeBaseURI)
-    transformer.transformScript(trees)
+    transformer.transformScript(tree)
   }
 }
 
@@ -42,7 +42,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
     relativizeBaseURI: Option[URI]) {
   private val dummySourceName = new java.net.URI("virtualfile:scala.js-ir")
 
-  def transformScript(trees: List[Tree]): Node = {
+  def transformScript(tree: Tree): Node = {
     /* Top-level `js.Block`s must be explicitly flattened here.
      * Our `js.Block`s do not have the same semantics as GCC's `BLOCK`s: GCC's
      * impose strict scoping for `let`s, `const`s and `class`es, while ours are
@@ -51,7 +51,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
      */
     val script = setNodePosition(new Node(Token.SCRIPT), NoPosition)
 
-    trees.foreach {
+    tree match {
       case Block(stats) =>
         transformBlockStats(stats)(NoPosition).foreach(script.addChildToBack(_))
 
