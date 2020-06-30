@@ -9,6 +9,8 @@ object BinaryIncompatibilities {
 
   val Linker = Seq(
       // Breaking in the unstable API.
+      exclude[ReversedMissingMethodProblem](
+          "org.scalajs.linker.analyzer.Analysis.isParentDataAccessed"),
       exclude[IncompatibleResultTypeProblem](
           "org.scalajs.linker.backend.emitter.Emitter#Result.body"),
       exclude[IncompatibleMethTypeProblem](
@@ -96,6 +98,8 @@ object BinaryIncompatibilities {
       exclude[IncompatibleMethTypeProblem](
           "org.scalajs.linker.backend.emitter.Emitter#Result.this"),
       exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.backend.emitter.EmitterNames.getSuperclassMethodName"),
+      exclude[DirectMissingMethodProblem](
           "org.scalajs.linker.backend.emitter.VarGen.classVarIdent"),
       exclude[IncompatibleMethTypeProblem](
           "org.scalajs.linker.backend.emitter.VarGen.classVarIdent"),
@@ -108,6 +112,8 @@ object BinaryIncompatibilities {
 
       // private[linker], not an issue.
       exclude[MissingClassProblem]("org.scalajs.linker.NodeFS$FS$"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.standard.LinkingUnit.this"),
 
       // private, not an issue.
       exclude[MissingClassProblem](

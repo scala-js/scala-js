@@ -59,6 +59,8 @@ private final class Analyzer(config: CommonPhaseConfig,
   def classInfos: scala.collection.Map[ClassName, Analysis.ClassInfo] =
     _loadedClassInfos
 
+  var isParentDataAccessed: Boolean = false
+
   def errors: scala.collection.Seq[Error] = _errors
 
   def computeReachability(): Future[Unit] = {
@@ -216,6 +218,8 @@ private final class Analyzer(config: CommonPhaseConfig,
         classClassInfo.flatMap(_.publicMethodInfos.get(getSuperclassMethodName))
       if getSuperclassMethodInfo.isReachable
     } {
+      isParentDataAccessed = true
+
       // calledFrom should always be nonEmpty if isReachable, but let's be robust
       implicit val from =
         getSuperclassMethodInfo.calledFrom.headOption.getOrElse(fromAnalyzer)

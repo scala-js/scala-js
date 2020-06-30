@@ -77,6 +77,5 @@ private[emitter] object EmitterNames {
   val floatValueMethodName = MethodName("floatValue", Nil, FloatRef)
   val doubleValueMethodName = MethodName("doubleValue", Nil, DoubleRef)
   val getNameMethodName = MethodName("getName", Nil, ClassRef(BoxedStringClass))
-  val getSuperclassMethodName = MethodName("getSuperclass", Nil, ClassRef(ClassClass))
 
 }

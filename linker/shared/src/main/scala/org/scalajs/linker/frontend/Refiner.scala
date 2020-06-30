@@ -59,7 +59,8 @@ final class Refiner(config: CommonPhaseConfig) {
           refineClassDef(linkedClassesByName(info.className), info)
         }
 
-        new LinkingUnit(unit.coreSpec, linkedClassDefs.toList, unit.moduleInitializers)
+        new LinkingUnit(unit.coreSpec, linkedClassDefs.toList,
+            unit.moduleInitializers, analysis.isParentDataAccessed)
       }
 
       inputProvider.cleanAfterRun()

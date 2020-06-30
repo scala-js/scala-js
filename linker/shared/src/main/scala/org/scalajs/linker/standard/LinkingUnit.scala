@@ -17,5 +17,6 @@ import org.scalajs.linker.interface.ModuleInitializer
 final class LinkingUnit private[linker] (
     val coreSpec: CoreSpec,
     val classDefs: List[LinkedClass],
-    val moduleInitializers: List[ModuleInitializer]
+    val moduleInitializers: List[ModuleInitializer],
+    val isParentDataAccessed: Boolean
 )

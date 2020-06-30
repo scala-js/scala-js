@@ -125,7 +125,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
       linkedClassDefs <- Future.traverse(analysis.classInfos.values)(assembleClass)
     } yield {
       new LinkingUnit(config.coreSpec, linkedClassDefs.toList,
-          moduleInitializers.toList)
+          moduleInitializers.toList, analysis.isParentDataAccessed)
     }
   }
 

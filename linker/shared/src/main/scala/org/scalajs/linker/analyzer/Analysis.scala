@@ -33,6 +33,7 @@ trait Analysis {
   import Analysis._
 
   def classInfos: scala.collection.Map[ClassName, ClassInfo]
+  def isParentDataAccessed: Boolean
   def errors: scala.collection.Seq[Error]
 }
 
