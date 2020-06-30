@@ -3496,7 +3496,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
        */
       val genSelector = genExpr(selector)
 
-      val resultType = toIRType(tree.tpe)
+      val resultType =
+        if (isStat) jstpe.NoType
+        else toIRType(tree.tpe)
 
       val defaultLabelSym = cases.collectFirst {
         case CaseDef(Ident(nme.WILDCARD), EmptyTree,

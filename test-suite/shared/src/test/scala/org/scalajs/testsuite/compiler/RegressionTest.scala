@@ -12,7 +12,7 @@
 
 package org.scalajs.testsuite.compiler
 
-import scala.annotation.tailrec
+import scala.annotation.{switch, tailrec}
 
 import org.junit.Test
 import org.junit.Assert._
@@ -409,6 +409,43 @@ class RegressionTest {
     bug.bug(1, true)
     assertEquals(579, bug.result)
     assertThrows(classOf[MatchError], bug.bug(2, false))
+  }
+
+  @Test def switch_match_with_a_guard_in_statement_pos_but_with_non_unit_branches_issue_4105(): Unit = {
+    def encodeString(string: String, isKey: Boolean): String = {
+      val buffer = new java.lang.StringBuilder()
+      val length = string.length
+      var index = 0
+      while (index < length) {
+        val ch = string.charAt(index)
+        (ch: @switch) match { // note that this is a switch, in statement position
+          case '\t' =>
+            buffer.append("\\t") // note that all branches return a StringBuilder
+          case '\n' =>
+            buffer.append("\\n")
+          case '\f' =>
+            buffer.append("\\f")
+          case '\r' =>
+            buffer.append("\\r")
+          case '\\' | '#' | '!' | '=' | ':' =>
+            buffer.append('\\')
+            buffer.append(ch)
+          case ' ' if isKey => // note the guard here!
+            buffer.append("\\ ")
+          case _ =>
+            buffer.append(ch)
+        }
+        index += 1
+      }
+      buffer.toString()
+    }
+
+    assertEquals("abc", encodeString("abc", false))
+    assertEquals("abc", encodeString("abc", true))
+    assertEquals("abc def", encodeString("abc def", false))
+    assertEquals("abc\\ def", encodeString("abc def", true))
+    assertEquals("1\\t2\\n3\\f4\\r5\\\\6\\!7 8a9", encodeString("1\t2\n3\f4\r5\\6!7 8a9", false))
+    assertEquals("1\\t2\\n3\\f4\\r5\\\\6\\!7\\ 8a9", encodeString("1\t2\n3\f4\r5\\6!7 8a9", true))
   }
 
   @Test def return_x_match_issue_2928_ints(): Unit = {
