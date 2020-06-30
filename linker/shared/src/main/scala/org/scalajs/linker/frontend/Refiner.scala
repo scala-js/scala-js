@@ -22,6 +22,7 @@ import org.scalajs.ir.Trees._
 import org.scalajs.logging._
 
 import org.scalajs.linker._
+import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.analyzer._
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
@@ -100,10 +101,16 @@ final class Refiner(config: CommonPhaseConfig) {
       BaseLinker.isFieldDefNeeded(info, f)
     }
 
-    val methods = classDef.methods.filter { m =>
-      val methodDef = m.value
-      info.methodInfos(methodDef.flags.namespace)(methodDef.methodName)
-        .isReachable
+    val methods = List.newBuilder[Versioned[MethodDef]]
+
+    for (method <- classDef.methods) {
+      val methodDef = method.value
+      val methodInfo =
+        info.methodInfos(methodDef.flags.namespace)(methodDef.methodName)
+
+      if (methodInfo.isReachable) {
+        methods += method
+      }
     }
 
     val jsNativeMembers = classDef.jsNativeMembers.filter { m =>
@@ -117,11 +124,13 @@ final class Refiner(config: CommonPhaseConfig) {
     classDef.refined(
         kind = kind,
         fields = fields,
-        methods = methods,
+        methods = methods.result(),
         jsNativeMembers = jsNativeMembers,
         hasInstances = info.isAnySubclassInstantiated,
         hasInstanceTests = info.areInstanceTestsUsed,
-        hasRuntimeTypeInfo = info.isDataAccessed)
+        hasRuntimeTypeInfo = info.isDataAccessed,
+        staticDependencies = info.staticDependencies.toSet
+    )
   }
 
 }

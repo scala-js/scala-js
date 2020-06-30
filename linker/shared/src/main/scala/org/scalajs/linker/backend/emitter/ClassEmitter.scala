@@ -45,7 +45,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   def buildClass(tree: LinkedClass, ctor: js.Tree, memberDefs: List[js.MethodDef],
       exportedDefs: js.Tree)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
 
     implicit val pos = tree.pos
 
@@ -73,7 +74,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           else WithGlobals(globalVar("c", parentIdent.name))
         }
 
-        for (parentVar <- WithGlobals.option(parentVarWithGlobals)) yield {
+        WithGlobals.option(parentVarWithGlobals).flatMap { parentVar =>
           globalClassDef("c", className, parentVar, allES6Defs)
         }
       } else {
@@ -91,6 +92,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
       val classValueIdent = fileLevelVarIdent("b", genName(className))
       val classValueVar = js.VarRef(classValueIdent)
+      val createClassValueVar = genEmptyMutableLet(classValueIdent)
 
       val entireClassDefWithGlobals = if (useClasses) {
         genJSSuperCtor(tree).map { jsSuperClass =>
@@ -100,49 +102,47 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         allES5Defs(classValueVar)
       }
 
-      for {
+      val classDefStatsWithGlobals = for {
         optStoreJSSuperClass <- WithGlobals.option(genStoreJSSuperClass)
         entireClassDef <- entireClassDefWithGlobals
         createStaticFields <- genCreateStaticFieldsOfJSClass(tree)
       } yield {
-        tree.jsClassCaptures.fold {
-          val createClassValueVar = genEmptyMutableLet(classValueIdent)
+        optStoreJSSuperClass.toList ::: entireClassDef :: createStaticFields
+      }
 
-          val createAccessor = {
-            val body = js.Block(
-                js.If(!classValueVar, {
-                  js.Block(
-                      optStoreJSSuperClass.toList :::
-                      entireClassDef ::
-                      createStaticFields :::
-                      genClassInitialization(tree)
-                  )
-                }, {
-                  js.Skip()
-                }),
-                js.Return(classValueVar)
-            )
-
-            globalFunctionDef("a", className, Nil, body)
-          }
-
+      tree.jsClassCaptures.fold {
+        for {
+          classDefStats <- classDefStatsWithGlobals
+          body = js.Block(
+              js.If(!classValueVar, {
+                js.Block(
+                    classDefStats :::
+                    genClassInitialization(tree)
+                )
+              }, {
+                js.Skip()
+              }),
+              js.Return(classValueVar)
+          )
+          createAccessor <- globalFunctionDef("a", className, Nil, body)
+        } yield {
           js.Block(createClassValueVar, createAccessor)
-        } { jsClassCaptures =>
-          val captureParamDefs = for (param <- jsClassCaptures) yield {
-            implicit val pos = param.pos
-            val ident = fileLevelVarIdent("cc", genName(param.name.name),
-                param.originalName.orElse(param.name.name))
-            js.ParamDef(ident, rest = false)
-          }
+        }
+      } { jsClassCaptures =>
+        val captureParamDefs = for (param <- jsClassCaptures) yield {
+          implicit val pos = param.pos
+          val ident = fileLevelVarIdent("cc", genName(param.name.name),
+              param.originalName.orElse(param.name.name))
+          js.ParamDef(ident, rest = false)
+        }
 
-          assert(!hasClassInitializer(tree),
-              s"Found a class initializer in the non-top-level class $className")
+        assert(!hasClassInitializer(tree),
+            s"Found a class initializer in the non-top-level class $className")
 
+        classDefStatsWithGlobals.flatMap { classDefStats =>
           val body = js.Block(
-              genEmptyMutableLet(classValueIdent) ::
-              optStoreJSSuperClass.toList :::
-              entireClassDef ::
-              createStaticFields :::
+              createClassValueVar ::
+              classDefStats :::
               js.Return(classValueVar) ::
               Nil
           )
@@ -172,7 +172,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   /** Generates the JS constructor for a class. */
   def genConstructor(tree: LinkedClass, initToInline: Option[MethodDef])(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
 
     assert(tree.kind.isAnyNonNativeClass)
     assert(tree.superClass.isDefined || tree.name.name == ObjectClass,
@@ -187,7 +188,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   /** Generates the JS constructor for a class, ES5 style. */
   private def genES5Constructor(tree: LinkedClass,
       initToInline: Option[MethodDef])(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import TreeDSL._
     implicit val pos = tree.pos
 
@@ -220,18 +222,22 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
       for {
         ctorFun <- genJSConstructorFun(tree, initToInline)
+        realCtorDef <-
+            globalFunctionDef("c", className, ctorFun.args, ctorFun.body)
+        inheritableCtorDef <-
+            globalFunctionDef("h", className, Nil, js.Skip())
         chainProto <- chainProtoWithGlobals
       } yield {
         js.Block(
             // Real constructor
             js.DocComment("@constructor"),
-            globalFunctionDef("c", className, ctorFun.args, ctorFun.body),
+            realCtorDef,
             chainProto,
             genIdentBracketSelect(ctorVar.prototype, "constructor") := ctorVar,
 
             // Inheritable constructor
             js.DocComment("@constructor"),
-            globalFunctionDef("h", className, Nil, js.Skip()),
+            inheritableCtorDef,
             globalVar("h", className).prototype := ctorVar.prototype
         )
       }
@@ -255,7 +261,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   /** Generates the JS constructor for a class, ES6 style. */
   private def genES6Constructor(tree: LinkedClass,
       initToInline: Option[MethodDef])(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     implicit val pos = tree.pos
 
     if (tree.kind.isJSClass) {
@@ -285,7 +292,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   }
 
   private def genJSSuperCtor(tree: LinkedClass)(
-      implicit globalKnowledge: GlobalKnowledge, pos: Position): WithGlobals[js.Tree] = {
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): WithGlobals[js.Tree] = {
     assert(tree.kind.isJSClass)
 
     if (tree.jsSuperClass.isDefined) {
@@ -324,7 +332,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
    */
   private def genJSConstructorFun(tree: LinkedClass,
       initToInline: Option[MethodDef])(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Function] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Function] = {
 
     implicit val pos = tree.pos
 
@@ -366,7 +375,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   }
 
   private def genConstructorFunForJSClass(tree: LinkedClass)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Function] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Function] = {
     implicit val pos = tree.pos
 
     require(tree.kind.isJSClass)
@@ -384,7 +394,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   /** Generates the creation of fields for a Scala class. */
   private def genFieldDefsOfScalaClass(className: ClassName,
       fields: List[AnyFieldDef])(
-      implicit globalKnowledge: GlobalKnowledge): List[js.Tree] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): List[js.Tree] = {
     for {
       anyField <- fields
       if !anyField.flags.namespace.isStatic
@@ -398,8 +409,9 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   /** Generates the creation of the static fields for a Scala class. */
   def genCreateStaticFieldsOfScalaClass(tree: LinkedClass)(
-      implicit globalKnowledge: GlobalKnowledge): List[js.Tree] = {
-    for {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
+    val defs = for {
       field @ FieldDef(flags, FieldIdent(name), origName, ftpe) <- tree.fields
       if flags.namespace.isStatic
     } yield {
@@ -407,13 +419,17 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       globalVarDef("t", (tree.className, name), genZeroOf(ftpe),
           origName.orElse(name), flags.isMutable)
     }
+
+    WithGlobals.list(defs)
   }
 
   /** Generates the creation of the private JS field defs for a JavaScript
    *  class.
    */
-  def genCreatePrivateJSFieldDefsOfJSClass(tree: LinkedClass): List[js.Tree] = {
-    for {
+  def genCreatePrivateJSFieldDefsOfJSClass(tree: LinkedClass)(
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
+    val defs = for {
       field @ FieldDef(flags, FieldIdent(name), origName, _) <- tree.fields
       if !flags.namespace.isStatic
     } yield {
@@ -434,11 +450,14 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       globalVarDef("r", (tree.className, name), symbolValue,
           origName.orElse(name))
     }
+
+    WithGlobals.list(defs)
   }
 
   /** Generates the creation of the static fields for a JavaScript class. */
   private def genCreateStaticFieldsOfJSClass(tree: LinkedClass)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
     val className = tree.className
     val statsWithGlobals = for {
       field <- tree.fields
@@ -460,7 +479,9 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   }
 
   /** Generates the static initializer invocation of a class. */
-  def genStaticInitialization(tree: LinkedClass): List[js.Tree] = {
+  def genStaticInitialization(tree: LinkedClass)(
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): List[js.Tree] = {
     implicit val pos = tree.pos
     val hasStaticInit = tree.methods.exists { m =>
       m.value.flags.namespace == MemberNamespace.StaticConstructor &&
@@ -476,7 +497,9 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   }
 
   /** Generates the class initializer invocation of a class. */
-  private def genClassInitialization(tree: LinkedClass): List[js.Tree] = {
+  private def genClassInitialization(tree: LinkedClass)(
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): List[js.Tree] = {
     implicit val pos = tree.pos
     if (hasClassInitializer(tree)) {
       val field = globalVar("sct", (tree.className, ClassInitializerName),
@@ -495,7 +518,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   }
 
   def genMemberMethod(className: ClassName, method: MethodDef)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.MethodDef] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.MethodDef] = {
     assert(method.flags.namespace == MemberNamespace.Public)
 
     implicit val pos = method.pos
@@ -509,7 +533,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   }
 
   def genStaticLikeMethod(className: ClassName, method: MethodDef)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     val methodBody = method.body.getOrElse(
         throw new AssertionError("Cannot generate an abstract method"))
 
@@ -527,7 +552,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       }
     }
 
-    methodFun0WithGlobals.map { methodFun0 =>
+    methodFun0WithGlobals.flatMap { methodFun0 =>
       val methodFun = if (namespace == MemberNamespace.Constructor) {
         // init methods have to return `this` so that we can chain them to `new`
         js.Function(arrow = false, methodFun0.args, {
@@ -560,7 +585,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   /** Generates a JS method. */
   private def genJSMethod(tree: LinkedClass, method: JSMethodDef)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     implicit val pos = method.pos
 
     val namespace = method.flags.namespace
@@ -581,13 +607,14 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   /** Generates a default method. */
   def genDefaultMethod(className: ClassName, method: MethodDef)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     implicit val pos = method.pos
 
     val methodFunWithGlobals = desugarToFunctionWithExplicitThis(
         className, method.args, method.body.get, method.resultType)
 
-    for (methodFun <- methodFunWithGlobals) yield {
+    methodFunWithGlobals.flatMap { methodFun =>
       val methodName = method.name.name
       globalFunctionDef("f", (className, methodName), methodFun.args, methodFun.body,
           method.originalName.orElse(methodName))
@@ -596,14 +623,16 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   /** Generates an instance method of a hijacked class. */
   def genHijackedMethod(className: ClassName, method: MethodDef)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     // We abuse `genDefaultMethod` as it does everything the way we want
     genDefaultMethod(className, method)
   }
 
   /** Generates a property. */
   private def genJSProperty(tree: LinkedClass, property: JSPropertyDef)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     if (useClasses)
       genJSPropertyES6(tree.className, property)
     else
@@ -611,7 +640,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   }
 
   private def genJSPropertyES5(tree: LinkedClass, property: JSPropertyDef)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     implicit val pos = property.pos
 
     val targetObject = exportTargetES5(tree, property.flags.namespace)
@@ -643,7 +673,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   }
 
   private def genJSPropertyES6(className: ClassName, property: JSPropertyDef)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     implicit val pos = property.pos
 
     val static = property.flags.namespace.isStatic
@@ -673,7 +704,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   }
 
   private def exportTargetES5(tree: LinkedClass, namespace: MemberNamespace)(
-      implicit pos: Position): js.Tree = {
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): js.Tree = {
     import TreeDSL._
 
     val classVarRef =
@@ -685,7 +717,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   }
 
   def genMemberNameTree(name: Tree)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.PropertyName] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.PropertyName] = {
     name match {
       case StringLiteral(value) =>
         WithGlobals(js.StringLiteral(value)(name.pos))
@@ -717,13 +750,19 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     }
   }
 
-  def genInstanceTests(tree: LinkedClass)(
-      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
-    js.Block(genSingleInstanceTests(tree) ::: genArrayInstanceTests(tree))(tree.pos)
+  def genInstanceTests(tree: LinkedClass)(implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+    for {
+      single <- genSingleInstanceTests(tree)
+      array <- genArrayInstanceTests(tree)
+    } yield {
+      js.Block(single ::: array)(tree.pos)
+    }
   }
 
   private def genSingleInstanceTests(tree: LinkedClass)(
-      implicit globalKnowledge: GlobalKnowledge): List[js.Tree] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -793,14 +832,14 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           true
       })
 
-      val createIsStat = if (needIsFunction) {
+      val createIsStatWithGlobals = if (needIsFunction) {
         globalFunctionDef("is", className, List(objParam), js.Return(isExpression))
       } else {
-        js.Skip()
+        WithGlobals(js.Skip())
       }
 
-      val createAsStat = if (semantics.asInstanceOfs == Unchecked) {
-        js.Skip()
+      val createAsStatWithGlobals = if (semantics.asInstanceOfs == Unchecked) {
+        WithGlobals(js.Skip())
       } else {
         globalFunctionDef("as", className, List(objParam), js.Return {
           className match {
@@ -822,13 +861,20 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         })
       }
 
-      List(createIsStat, createAsStat)
+      for {
+        createIsStat <- createIsStatWithGlobals
+        createAsStat <- createAsStatWithGlobals
+      } yield {
+        List(createIsStat, createAsStat)
+      }
     } else {
-      Nil
+      WithGlobals(Nil)
     }
   }
 
-  private def genArrayInstanceTests(tree: LinkedClass): List[js.Tree] = {
+  private def genArrayInstanceTests(tree: LinkedClass)(
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -842,7 +888,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     val depthParam = js.ParamDef(js.Ident("depth"), rest = false)
     val depth = depthParam.ref
 
-    val createIsArrayOfStat = {
+    val createIsArrayOfStatWithGlobals = {
       globalFunctionDef("isArrayOf", className, List(objParam, depthParam), {
         className match {
           case ObjectClass =>
@@ -883,8 +929,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       })
     }
 
-    val createAsArrayOfStat = if (semantics.asInstanceOfs == Unchecked) {
-      js.Skip()
+    val createAsArrayOfStatWithGlobals = if (semantics.asInstanceOfs == Unchecked) {
+      WithGlobals(js.Skip())
     } else {
       globalFunctionDef("asArrayOf", className, List(objParam, depthParam), {
         js.Return {
@@ -899,7 +945,12 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       })
     }
 
-    List(createIsArrayOfStat, createAsArrayOfStat)
+    for {
+      createIsArrayOfStat <- createIsArrayOfStatWithGlobals
+      createAsArrayOfStat <- createAsArrayOfStatWithGlobals
+    } yield {
+      List(createIsArrayOfStat, createAsArrayOfStat)
+    }
   }
 
   private def genIsScalaJSObject(obj: js.Tree)(implicit pos: Position): js.Tree = {
@@ -915,7 +966,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   }
 
   def genTypeData(tree: LinkedClass)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -998,7 +1050,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       }
     }
 
-    for (isInstanceFun <- isInstanceFunWithGlobals) yield {
+    isInstanceFunWithGlobals.flatMap { isInstanceFun =>
       val allParams = List(
           js.ObjectConstr(List(js.Ident(genName(className)) -> js.IntLiteral(0))),
           js.BooleanLiteral(kind == ClassKind.Interface),
@@ -1021,7 +1073,9 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     }
   }
 
-  def genSetTypeData(tree: LinkedClass): js.Tree = {
+  def genSetTypeData(tree: LinkedClass)(
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): js.Tree = {
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -1032,7 +1086,9 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       globalVar("d", tree.name.name)
   }
 
-  def genModuleAccessor(tree: LinkedClass): js.Tree = {
+  def genModuleAccessor(tree: LinkedClass)(
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -1089,11 +1145,12 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       globalFunctionDef("m", className, Nil, body)
     }
 
-    js.Block(createModuleInstanceField, createAccessor)
+    createAccessor.map(js.Block(createModuleInstanceField, _))
   }
 
   def genExportedMembers(tree: LinkedClass)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     val exportsWithGlobals = tree.exportedMembers map { member =>
       member.value match {
         case JSMethodDef(flags, StringLiteral("constructor"), _, _)
@@ -1111,15 +1168,16 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   }
 
   def genTopLevelExports(topLevelExports: List[LinkedTopLevelExport])(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
     val exportsWithGlobals = topLevelExports.map { topLevelExport =>
       implicit val pos = topLevelExport.tree.pos
 
       topLevelExport.tree match {
-        case TopLevelJSClassExportDef(exportName) =>
+        case TopLevelJSClassExportDef(_, exportName) =>
           genConstValueExportDef(
               exportName, genNonNativeJSClassConstructor(topLevelExport.owningClass))
-        case TopLevelModuleExportDef(exportName) =>
+        case TopLevelModuleExportDef(_, exportName) =>
           genConstValueExportDef(exportName, genLoadModule(topLevelExport.owningClass))
         case e: TopLevelMethodExportDef =>
           genTopLevelMethodExportDef(e)
@@ -1132,7 +1190,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   }
 
   private def genTopLevelMethodExportDef(tree: TopLevelMethodExportDef)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import TreeDSL._
 
     val JSMethodDef(flags, StringLiteral(exportName), args, body) =
@@ -1183,10 +1242,11 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   private def genTopLevelFieldExportDef(className: ClassName,
       tree: TopLevelFieldExportDef)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import TreeDSL._
 
-    val TopLevelFieldExportDef(exportName, field) = tree
+    val TopLevelFieldExportDef(_, exportName, field) = tree
 
     implicit val pos = tree.pos
 
@@ -1199,12 +1259,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
             genSelectStatic(className, field))
 
       case ModuleKind.ESModule =>
-        // Hack: Use a globalVarIdent even though this is a usage site.
-        val staticVarIdent =
-          globalVarIdent("t", (className, field.name))
-
         WithGlobals(
-            js.Export((staticVarIdent -> js.ExportName(exportName)) :: Nil))
+            globalVarExport("t", (className, field.name), js.ExportName(exportName)))
 
       case ModuleKind.CommonJSModule =>
         globalRef("exports").flatMap { exportsVarRef =>
@@ -1223,12 +1279,14 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   }
 
   /** Gen JS code for an [[ModuleInitializer]]. */
-  def genModuleInitializer(moduleInitializer: ModuleInitializer): js.Tree = {
+  def genModuleInitializer(initializer: ModuleInitializer.Initializer)(
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): js.Tree = {
     import ModuleInitializerImpl._
 
     implicit val pos = Position.NoPosition
 
-    ModuleInitializerImpl.fromModuleInitializer(moduleInitializer) match {
+    ModuleInitializerImpl.fromInitializer(initializer) match {
       case VoidMainMethod(className, mainMethodName) =>
         js.Apply(globalVar("s", (className, mainMethodName)), Nil)
 

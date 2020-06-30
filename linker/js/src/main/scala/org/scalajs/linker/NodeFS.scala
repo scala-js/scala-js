@@ -81,4 +81,16 @@ private[linker] object NodeFS {
   @JSImport("fs", "stat")
   @js.native
   def stat(path: String, cb: CB[Stats]): Unit = js.native
+
+  @JSImport("path", "join")
+  @js.native
+  def join(paths: String*): String = js.native
+
+  @JSImport("path", "basename")
+  @js.native
+  def basename(path: String): String = js.native
+
+  @JSImport("path", "dirname")
+  @js.native
+  def dirname(path: String): String = js.native
 }

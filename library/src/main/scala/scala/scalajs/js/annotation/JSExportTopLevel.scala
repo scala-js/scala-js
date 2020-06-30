@@ -19,4 +19,6 @@ import scala.annotation.meta._
  *  @see [[http://www.scala-js.org/doc/export-to-javascript.html Export Scala.js APIs to JavaScript]]
  */
 @field @getter @setter
-class JSExportTopLevel(name: String) extends scala.annotation.StaticAnnotation
+class JSExportTopLevel(name: String) extends scala.annotation.StaticAnnotation {
+  def this(name: String, moduleID: String) = this(name)
+}

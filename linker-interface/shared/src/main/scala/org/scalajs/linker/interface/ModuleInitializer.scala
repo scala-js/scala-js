@@ -31,13 +31,24 @@ import Fingerprint.FingerprintBuilder
  *  Instances of `ModuleInitializer` can be created with methods of
  *  [[ModuleInitializer$ the ModuleInitializer companion object]].
  */
-abstract class ModuleInitializer private[interface] () {
-  private[interface] def impl: ModuleInitializerImpl
+final class ModuleInitializer private (
+    val initializer: ModuleInitializer.Initializer,
+    val module: String
+) {
+  private def this(initializer: ModuleInitializer.Initializer) =
+    this(initializer, DefaultModuleID)
+
+  def withModule(module: String): ModuleInitializer =
+    new ModuleInitializer(initializer, module)
 }
 
 /** Factory for [[ModuleInitializer]]s. */
 object ModuleInitializer {
   import ModuleInitializerImpl._
+
+  abstract class Initializer private[interface] () {
+    private[interface] def impl: ModuleInitializerImpl
+  }
 
   private val ArrayOfStringTypeRef =
     ArrayTypeRef(ClassRef(BoxedStringClass), 1)
@@ -52,8 +63,8 @@ object ModuleInitializer {
    */
   def mainMethod(className: String,
       mainMethodName: String): ModuleInitializer = {
-    VoidMainMethod(ClassName(className),
-        MethodName(mainMethodName, Nil, VoidRef))
+    new ModuleInitializer(VoidMainMethod(ClassName(className),
+        MethodName(mainMethodName, Nil, VoidRef)))
   }
 
   /** Makes a [[ModuleInitializer]] that calls a static method of a top-level
@@ -85,9 +96,9 @@ object ModuleInitializer {
    */
   def mainMethodWithArgs(className: String, mainMethodName: String,
       args: List[String]): ModuleInitializer = {
-    MainMethodWithArgs(ClassName(className),
+    new ModuleInitializer(MainMethodWithArgs(ClassName(className),
         MethodName(mainMethodName, ArrayOfStringTypeRef :: Nil, VoidRef),
-        args)
+        args))
   }
 
   private implicit object MethodNameFingerprint
@@ -102,11 +113,11 @@ object ModuleInitializer {
       className.nameString
   }
 
-  private implicit object ModuleInitializerFingerprint
-      extends Fingerprint[ModuleInitializer] {
+  private implicit object InitializerFingerprint
+      extends Fingerprint[Initializer] {
 
-    override def fingerprint(moduleInitializer: ModuleInitializer): String =
-      moduleInitializer.impl match {
+    override def fingerprint(initializer: Initializer): String =
+      initializer.impl match {
         case VoidMainMethod(className, encodedMainMethodName) =>
           new FingerprintBuilder("VoidMainMethod")
             .addField("className", className)
@@ -120,6 +131,16 @@ object ModuleInitializer {
             .addField("args", args)
             .build()
       }
+  }
+
+  private implicit object ModuleInitializerFingerprint
+      extends Fingerprint[ModuleInitializer] {
+    override def fingerprint(moduleInitializer: ModuleInitializer): String = {
+      new FingerprintBuilder("ModuleInitializer")
+        .addField("initializer", moduleInitializer.initializer)
+        .addField("module", moduleInitializer.module)
+        .build()
+    }
   }
 
   def fingerprint(moduleInitializer: ModuleInitializer): String =

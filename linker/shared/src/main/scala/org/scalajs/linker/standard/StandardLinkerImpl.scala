@@ -34,8 +34,8 @@ private final class StandardLinkerImpl private (
 
   def link(irFiles: Seq[IRFile],
       moduleInitializers: Seq[ModuleInitializer],
-      output: LinkerOutput, logger: Logger)(
-      implicit ec: ExecutionContext): Future[Unit] = {
+      output: OutputDirectory, logger: Logger)(
+      implicit ec: ExecutionContext): Future[Report] = {
     if (!_linking.compareAndSet(false, true)) {
       throw new IllegalStateException("Linker used concurrently")
     }

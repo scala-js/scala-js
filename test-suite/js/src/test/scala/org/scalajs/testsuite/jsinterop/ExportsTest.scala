@@ -57,18 +57,9 @@ object ExportsTest {
    */
   def exportsNameSpace: js.Dynamic = {
     explicitlySetExportsNamespace.getOrElse {
-      assert(!Platform.isESModule,
-          "The exportsNamespace should have been explicitly set for an ES " +
-          "module")
-      if (Platform.isNoModule) {
-        null // need to use `global` instead
-      } else if (Platform.isCommonJSModule) {
-        js.Dynamic.global.exports
-      } else {
-        throw new NotImplementedError(
-            "Don't know how to fetch the exports namespace in an unknown " +
-            "module kind.")
-      }
+      assert(Platform.isNoModule,
+          "The exportsNamespace should have been explicitly set for a module")
+      null // need to use `global` instead
     }
   }
 }

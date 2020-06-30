@@ -49,6 +49,10 @@ object ExposedValues extends AutoPlugin {
 
     val CheckedBehavior = org.scalajs.linker.interface.CheckedBehavior
 
+    val OutputPatterns = org.scalajs.linker.interface.OutputPatterns
+
+    val ModuleSplitStyle = org.scalajs.linker.interface.ModuleSplitStyle
+
     type NodeJSEnvForcePolyfills = build.NodeJSEnvForcePolyfills
   }
 }
@@ -1530,7 +1534,13 @@ object Build {
         throw new MessageOnlyException(
             "testingExample/test is not supported because it requires DOM " +
             "support. Use testingExample/testHtml instead.")
-      }
+      },
+
+      // HACK: Test Module support.
+      scalaJSLinkerConfig ~= { _
+        .withModuleKind(ModuleKind.ESModule)
+        .withModuleSplitStyle(ModuleSplitStyle.SmallestModules)
+      },
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, jUnitRuntime % "test", testBridge % "test"
   )
@@ -1721,45 +1731,56 @@ object Build {
        * See the comment in ExportsTest for more details.
        */
       setModuleLoopbackScript in Test := Def.settingDyn[Task[Option[java.nio.file.Path]]] {
-        (scalaJSLinkerConfig in Test).value.moduleKind match {
-          case ModuleKind.ESModule =>
-            Def.task {
-              val linkedFile = (scalaJSLinkedFile in Test).value.data
-              val uri = linkedFile.toURI.toASCIIString
+        val moduleKind = (scalaJSLinkerConfig in Test).value.moduleKind
 
-              val ext = {
-                val name = linkedFile.getName
-                val dotPos = name.lastIndexOf('.')
-                if (dotPos < 0) ".js" else name.substring(dotPos)
-              }
+        if (moduleKind == ModuleKind.NoModule) {
+          Def.task(None)
+        } else {
+          Def.task {
+            val linkedFile = (scalaJSLinkedFile in Test).value.data
+            val uri = linkedFile.getName()
 
-              val setNamespaceScriptFile =
-                crossTarget.value / (linkedFile.getName + "-loopback" + ext)
-
-              /* Due to the asynchronous nature of ES module loading, there
-               * exists a theoretical risk for a race condition here. It is
-               * possible that tests will start running and reaching the
-               * ExportsTest before this module is executed. It's quite
-               * unlikely, though, given all the message passing for the com
-               * and all that.
-               */
-              IO.write(setNamespaceScriptFile,
-                  s"""
-                    |import * as mod from "${escapeJS(uri)}";
-                    |mod.setExportsNamespaceForExportsTest(mod);
-                  """.stripMargin)
-
-              Some(setNamespaceScriptFile.toPath)
+            val ext = {
+              val name = linkedFile.getName
+              val dotPos = name.lastIndexOf('.')
+              if (dotPos < 0) ".js" else name.substring(dotPos)
             }
 
-          case _ =>
-            Def.task {
-              None
+            val setNamespaceScriptFile =
+              linkedFile.getParentFile() / (linkedFile.getName + "-loopback" + ext)
+
+            val content = moduleKind match {
+              case ModuleKind.ESModule =>
+                /* Due to the asynchronous nature of ES module loading, there
+                 * exists a theoretical risk for a race condition here. It is
+                 * possible that tests will start running and reaching the
+                 * ExportsTest before this module is executed. It's quite
+                 * unlikely, though, given all the message passing for the com
+                 * and all that.
+                 */
+                s"""
+                   |import * as mod from "./${escapeJS(uri)}";
+                   |mod.setExportsNamespaceForExportsTest(mod);
+                """.stripMargin
+
+              case ModuleKind.CommonJSModule =>
+                s"""
+                   |var mod = require("./${escapeJS(uri)}");
+                   |mod.setExportsNamespaceForExportsTest(mod);
+                """.stripMargin
+
+              case ModuleKind.NoModule =>
+                throw new AssertionError("fail!")
             }
+
+            IO.write(setNamespaceScriptFile, content)
+            Some(setNamespaceScriptFile.toPath)
+          }
         }
       }.value,
 
       jsEnvInput in Test ++=
+        // TODO: Fix Input type.
         (setModuleLoopbackScript in Test).value.toList.map(Input.ESModule(_)),
 
       if (isGeneratingForIDE) {
@@ -1873,6 +1894,13 @@ object Build {
           actual
         }
       },
+
+      // HACK: Test Module support.
+      scalaJSLinkerConfig ~= { _
+        .withModuleKind(ModuleKind.ESModule)
+        .withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs"))
+        .withModuleSplitStyle(ModuleSplitStyle.SmallestModules)
+      },
   ).zippedSettings(testSuiteLinker)(
       l => inConfig(Bootstrap)(testSuiteBootstrapSetting(l))
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
@@ -1920,7 +1948,13 @@ object Build {
       name := "Scala.js test suite ex",
       publishArtifact in Compile := false,
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
-      scalacOptions in Test ~= (_.filter(_ != "-deprecation"))
+      scalacOptions in Test ~= (_.filter(_ != "-deprecation")),
+
+      // HACK: Test Module support.
+      scalaJSLinkerConfig ~= { _
+        .withModuleKind(ModuleKind.CommonJSModule)
+        .withModuleSplitStyle(ModuleSplitStyle.SmallestModules)
+      },
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, jUnitRuntime, testBridge % "test", testSuite
   )

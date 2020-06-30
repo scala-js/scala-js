@@ -37,7 +37,7 @@ trait LinkerImpl {
   def irContainers(classpath: Seq[Path])(
       implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[Path])]
 
-  def outputFile(path: Path): LinkerOutput.File
+  def outputDirectory(path: Path): OutputDirectory
 }
 
 /** Factory methods and concrete implementations of `LinkerImpl`.
@@ -75,8 +75,8 @@ object LinkerImpl {
         implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[Path])] =
       parent.irContainers(classpath)
 
-    def outputFile(path: Path): LinkerOutput.File =
-      parent.outputFile(path)
+    def outputDirectory(path: Path): OutputDirectory =
+      parent.outputDirectory(path)
   }
 
   private final class FilteringClassLoader(parent: ClassLoader)
@@ -161,8 +161,8 @@ object LinkerImpl {
           classOf[Seq[Path]], classOf[ExecutionContext])
     }
 
-    private val outputFileMethod =
-      loadMethod("PathOutputFile", "atomic", classOf[LinkerOutput.File], classOf[Path])
+    private val outputDirectoryMethod =
+      loadMethod("PathOutputDirectory", "apply", classOf[OutputDirectory], classOf[Path])
 
     def clearableLinker(cfg: StandardConfig): ClearableLinker =
       invoke(clearableLinkerMethod, cfg)
@@ -175,7 +175,7 @@ object LinkerImpl {
       invoke(irContainersMethod, classpath, ec)
     }
 
-    def outputFile(path: Path): LinkerOutput.File =
-      invoke(outputFileMethod, path)
+    def outputDirectory(path: Path): OutputDirectory =
+      invoke(outputDirectoryMethod, path)
   }
 }

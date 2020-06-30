@@ -17,6 +17,7 @@ import org.scalajs.ir.Trees.{AnyFieldDef, MethodDef, JSNativeLoadSpec}
 import org.scalajs.ir.Types.Type
 
 import org.scalajs.linker.standard.Versioned
+import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 private[emitter] trait GlobalKnowledge {
   /** Tests whether the `java.lang.Class` class is instantiated. */
@@ -87,6 +88,9 @@ private[emitter] trait GlobalKnowledge {
 
   /** The global variables that mirror a given static field. */
   def getStaticFieldMirrors(className: ClassName, field: FieldName): List[String]
+
+  /** The module containing this class definition. */
+  def getModule(className: ClassName): ModuleID
 
   /** Whether the given public non-static method exists on the given representative class.
    *

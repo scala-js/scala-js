@@ -25,6 +25,18 @@ import org.scalajs.logging.Logger
 abstract class Linker private[interface] () {
   def link(irFiles: Seq[IRFile],
       moduleInitializers: Seq[ModuleInitializer],
+      output: OutputDirectory, logger: Logger)(
+      implicit ec: ExecutionContext): Future[Report]
+
+  final def link(irFiles: Seq[IRFile],
+      moduleInitializers: Seq[ModuleInitializer],
       output: LinkerOutput, logger: Logger)(
-      implicit ec: ExecutionContext): Future[Unit]
+      implicit ec: ExecutionContext): Future[Unit] = {
+    // TODO:
+    // 1. Run the linker, with output in memory.
+    // 2. Recover the JS and source map file (using the LinkingReport).
+    // 3. Copy the output to the actual files, replacing the sourcemap / js file links.
+
+    ???
+  }
 }

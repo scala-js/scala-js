@@ -21,6 +21,7 @@ import org.scalajs.ir.Types.Type
 
 import org.scalajs.linker.interface.ModuleKind
 import org.scalajs.linker.standard._
+import org.scalajs.linker.standard.ModuleSet.ModuleID
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
 import EmitterNames._
@@ -39,17 +40,25 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
    *  maintaining it. It is a better trade-off to invalidate everything in
    *  the rare events where they do change.
    */
-  def update(linkingUnit: LinkingUnit): Boolean = {
-    val hasInlineableInit = computeHasInlineableInit(linkingUnit)
-    val staticFieldMirrors =
-      computeStaticFieldMirrors(linkingUnit.topLevelExports)
+  def update(moduleSet: ModuleSet): Boolean = {
+    val hasInlineableInit = computeHasInlineableInit(moduleSet)
+    val staticFieldMirrors = computeStaticFieldMirrors(moduleSet)
 
     var objectClass: LinkedClass = null
     var classClass: Option[LinkedClass] = None
     val hijackedClasses = Iterable.newBuilder[LinkedClass]
 
     // Update classes
-    for (linkedClass <- linkingUnit.classDefs) {
+    for {
+      module <- moduleSet.modules
+      linkedClass <- module.classDefs
+    } {
+      updateClass(linkedClass, Some(module.id))
+    }
+
+    moduleSet.abstractClasses.foreach(updateClass(_, module = None))
+
+    def updateClass(linkedClass: LinkedClass, module: Option[ModuleID]): Unit = {
       val className = linkedClass.className
       val thisClassHasInlineableInit = hasInlineableInit(className)
       val thisClassStaticFieldMirrors =
@@ -58,9 +67,9 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       classes.get(className).fold[Unit] {
         // new class
         classes.put(className,
-            new Class(linkedClass, thisClassHasInlineableInit, thisClassStaticFieldMirrors))
+            new Class(linkedClass, thisClassHasInlineableInit, thisClassStaticFieldMirrors, module))
       } { existingCls =>
-        existingCls.update(linkedClass, thisClassHasInlineableInit, thisClassStaticFieldMirrors)
+        existingCls.update(linkedClass, thisClassHasInlineableInit, thisClassStaticFieldMirrors, module)
       }
 
       linkedClass.className match {
@@ -97,8 +106,10 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     invalidateAll
   }
 
-  private def computeHasInlineableInit(linkingUnit: LinkingUnit): Set[ClassName] = {
-    val scalaClassDefs = linkingUnit.classDefs.filter(_.kind.isClass)
+  private def computeHasInlineableInit(moduleSet: ModuleSet): Set[ClassName] = {
+    val scalaClassDefs = moduleSet.modules
+      .flatMap(_.classDefs)
+      .filter(_.kind.isClass)
 
     val classesWithInstantiatedSubclasses = scalaClassDefs
       .withFilter(_.hasInstances)
@@ -126,14 +137,17 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
   }
 
   private def computeStaticFieldMirrors(
-      topLevelExports: List[LinkedTopLevelExport]): Map[ClassName, Map[FieldName, List[String]]] = {
+      moduleSet: ModuleSet): Map[ClassName, Map[FieldName, List[String]]] = {
     if (config.moduleKind != ModuleKind.NoModule) {
       Map.empty
     } else {
       var result = Map.empty[ClassName, Map[FieldName, List[String]]]
-      for (export <- topLevelExports) {
+      for {
+        module <- moduleSet.modules
+        export <- module.topLevelExports
+      } yield {
         export.tree match {
-          case TopLevelFieldExportDef(exportName, FieldIdent(fieldName)) =>
+          case TopLevelFieldExportDef(_, exportName, FieldIdent(fieldName)) =>
             val className = export.owningClass
             val mirrors = result.getOrElse(className, Map.empty)
             val newExportNames = exportName :: mirrors.getOrElse(fieldName, Nil)
@@ -192,6 +206,9 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     def getStaticFieldMirrors(className: ClassName, field: FieldName): List[String] =
       classes(className).askStaticFieldMirrors(this, field)
 
+    def getModule(className: ClassName): ModuleID =
+      classes(className).askModule(this)
+
     def representativeClassHasPublicMethod(className: ClassName,
         methodName: MethodName): Boolean = {
       specialInfo.askRepresentativeClassHasPublicMethod(this, className, methodName)
@@ -203,7 +220,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
   private class Class(initClass: LinkedClass,
       initHasInlineableInit: Boolean,
-      initStaticFieldMirrors: Map[FieldName, List[String]])
+      initStaticFieldMirrors: Map[FieldName, List[String]],
+      initModule: Option[ModuleID])
       extends Unregisterable {
 
     private val className = initClass.className
@@ -220,6 +238,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private var superClass = computeSuperClass(initClass)
     private var fieldDefs = computeFieldDefs(initClass)
     private var staticFieldMirrors = initStaticFieldMirrors
+    private var module = initModule
 
     private val isInterfaceAskers = mutable.Set.empty[Invalidatable]
     private val hasInlineableInitAskers = mutable.Set.empty[Invalidatable]
@@ -231,9 +250,11 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private val superClassAskers = mutable.Set.empty[Invalidatable]
     private val fieldDefsAskers = mutable.Set.empty[Invalidatable]
     private val staticFieldMirrorsAskers = mutable.Set.empty[Invalidatable]
+    private val moduleAskers = mutable.Set.empty[Invalidatable]
 
     def update(linkedClass: LinkedClass, newHasInlineableInit: Boolean,
-        newStaticFieldMirrors: Map[FieldName, List[String]]): Unit = {
+        newStaticFieldMirrors: Map[FieldName, List[String]],
+        newModule: Option[ModuleID]): Unit = {
       isAlive = true
 
       val newIsInterface = computeIsInterface(linkedClass)
@@ -292,6 +313,11 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       if (newStaticFieldMirrors != staticFieldMirrors) {
         staticFieldMirrors = newStaticFieldMirrors
         invalidateAskers(staticFieldMirrorsAskers)
+      }
+
+      if (newModule != module) {
+        module = newModule
+        invalidateAskers(moduleAskers)
       }
     }
 
@@ -403,6 +429,15 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       staticFieldMirrors.getOrElse(field, Nil)
     }
 
+    def askModule(invalidatable: Invalidatable): ModuleID = {
+      invalidatable.registeredTo(this)
+      moduleAskers += invalidatable
+      module.getOrElse {
+        throw new AssertionError(
+            "trying to get module of abstract class " + className.nameString)
+      }
+    }
+
     def unregister(invalidatable: Invalidatable): Unit = {
       isInterfaceAskers -= invalidatable
       hasInlineableInitAskers -= invalidatable
@@ -414,6 +449,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       superClassAskers -= invalidatable
       fieldDefsAskers -= invalidatable
       staticFieldMirrorsAskers -= invalidatable
+      moduleAskers -= invalidatable
     }
 
     /** Call this when we invalidate all caches. */
@@ -428,6 +464,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       superClassAskers.clear()
       fieldDefsAskers.clear()
       staticFieldMirrorsAskers.clear()
+      moduleAskers.clear()
     }
   }
 

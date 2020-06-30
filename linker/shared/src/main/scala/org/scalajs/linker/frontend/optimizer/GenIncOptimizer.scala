@@ -27,6 +27,7 @@ import org.scalajs.logging._
 
 import org.scalajs.linker._
 import org.scalajs.linker.backend.emitter.LongImpl
+import org.scalajs.linker.frontend.LinkingUnit
 import org.scalajs.linker.standard._
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 

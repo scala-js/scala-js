@@ -107,8 +107,8 @@ final class BaseLinker(config: CommonPhaseConfig) {
     }
   }
 
-  private def assemble(moduleInitializers: Seq[ModuleInitializer],
-      analysis: Analysis)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
+  private def assemble(moduleInitializers: Seq[ModuleInitializer], analysis: Analysis)(
+      implicit ec: ExecutionContext): Future[LinkingUnit] = {
     def assembleClass(info: ClassInfo) = {
       val className = info.className
       val classAndVersion = irLoader.loadClassDefAndVersion(className)
@@ -119,8 +119,14 @@ final class BaseLinker(config: CommonPhaseConfig) {
         syntheticMethods <- syntheticMethods
       } yield {
         val linkedClass = linkedClassDef(classDef, version, syntheticMethods, info)
-        val linkedTopLevelExports =
-          classDef.topLevelExportDefs.map(new LinkedTopLevelExport(className, _))
+        val linkedTopLevelExports = for {
+          topLevelExport <- classDef.topLevelExportDefs
+        } yield {
+          val infos = analysis.topLevelExportInfos(topLevelExport.topLevelExportName)
+          new LinkedTopLevelExport(className, topLevelExport,
+              infos.staticDependencies.toSet, infos.externalDependencies.toSet)
+        }
+
         (linkedClass, linkedTopLevelExports)
       }
     }
@@ -210,6 +216,8 @@ final class BaseLinker(config: CommonPhaseConfig) {
         hasInstances = analyzerInfo.isAnySubclassInstantiated,
         hasInstanceTests = analyzerInfo.areInstanceTestsUsed,
         hasRuntimeTypeInfo = analyzerInfo.isDataAccessed,
+        staticDependencies = analyzerInfo.staticDependencies.toSet,
+        externalDependencies = analyzerInfo.externalDependencies.toSet,
         version)
   }
 }

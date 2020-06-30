@@ -75,13 +75,10 @@ private object SourceMapWriter {
   }
 }
 
-final class SourceMapWriter(jsFileURI: Option[URI],
+final class SourceMapWriter(out: Writer, jsFileName: String,
     relativizeBaseURI: Option[URI]) {
 
   import SourceMapWriter._
-
-  private val byteStream = new ByteArrayOutputStream
-  private val out = new OutputStreamWriter(byteStream, StandardCharsets.UTF_8)
 
   private val sources = new ListBuffer[String]
   private val _srcToIndex = new HashMap[SourceFile, Int]
@@ -134,10 +131,8 @@ final class SourceMapWriter(jsFileURI: Option[URI],
 
   private def writeHeader(): Unit = {
     out.write("{\n\"version\": 3")
-    jsFileURI.foreach { uri =>
-      out.write(",\n\"file\": ")
-      printJSONString(uri.toASCIIString, out)
-    }
+    out.write(",\n\"file\": ")
+    printJSONString(jsFileName, out)
     out.write(",\n\"mappings\": \"")
   }
 
@@ -248,7 +243,7 @@ final class SourceMapWriter(jsFileURI: Option[URI],
     // scalastyle:on return
   }
 
-  def result(): ByteBuffer = {
+  def complete(): Unit = {
     writePendingSegment()
 
     var restSources = sources.result()
@@ -271,9 +266,6 @@ final class SourceMapWriter(jsFileURI: Option[URI],
     out.write("],\n\"lineCount\": ")
     out.write(lineCountInGenerated.toString)
     out.write("\n}\n")
-    out.close()
-
-    ByteBuffer.wrap(byteStream.toByteArray())
   }
 
   /** Write the Base 64 VLQ of an integer to the mappings

@@ -131,12 +131,12 @@ object SymbolRequirement {
   }
 
   private[linker] def fromModuleInitializer(
-      entryPoints: Seq[ModuleInitializer]): SymbolRequirement = {
+      entryPoints: Iterable[ModuleInitializer]): SymbolRequirement = {
     import ModuleInitializerImpl._
 
     val factory = SymbolRequirement.factory("module initializers")
     val requirements = for (entryPoint <- entryPoints) yield {
-      ModuleInitializerImpl.fromModuleInitializer(entryPoint) match {
+      ModuleInitializerImpl.fromInitializer(entryPoint.initializer) match {
         case VoidMainMethod(className, mainMethodName) =>
           factory.callStaticMethod(className, mainMethodName)
 
@@ -145,6 +145,6 @@ object SymbolRequirement {
           factory.classData(BoxedStringClass)
       }
     }
-    factory.multiple(requirements: _*)
+    factory.multiple(requirements.toSeq: _*)
   }
 }

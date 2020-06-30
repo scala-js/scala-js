@@ -45,6 +45,8 @@ private final class Analyzer(config: CommonPhaseConfig,
 
   import Analyzer._
 
+  private val isNoModule = config.coreSpec.moduleKind == ModuleKind.NoModule
+
   private var objectClassInfo: ClassInfo = _
   private[this] val _classInfos = mutable.Map.empty[ClassName, ClassLoadingState]
 
@@ -58,6 +60,8 @@ private final class Analyzer(config: CommonPhaseConfig,
 
   def classInfos: scala.collection.Map[ClassName, Analysis.ClassInfo] =
     _loadedClassInfos
+
+  var topLevelExportInfos: Map[String, Analysis.TopLevelExportInfo] = _
 
   def errors: scala.collection.Seq[Error] = _errors
 
@@ -203,22 +207,19 @@ private final class Analyzer(config: CommonPhaseConfig,
   }
 
   private def reachTopLevelExports(): Unit = {
-    workQueue.enqueue(inputProvider.loadTopLevelExportInfos()(ec)) { infos =>
-      // Reach exports.
-      infos.foreach(i => followReachabilityInfo(i.reachability)(FromExports))
+    workQueue.enqueue(inputProvider.loadTopLevelExportInfos()(ec)) { data =>
+      // Assemble individual infos.
+      val infos = data.map(new TopLevelExportInfo(_))
 
-      // Check invalid names.
-      if (config.coreSpec.moduleKind == ModuleKind.NoModule) {
-        for (info <- infos) {
-          if (!ir.Trees.JSGlobalRef.isValidJSGlobalRefName(info.name)) {
-            _errors += InvalidTopLevelExportInScript(info.name, info.owningClass)
-          }
-        }
-      }
+      infos.foreach(_.reach())
 
-      // Check conflicts.
-      for ((name, i) <- infos.groupBy(_.name) if i.size > 1) {
-        _errors += ConflictingTopLevelExport(name, i.map(_.owningClass))
+      // Check conflicts, record infos
+      topLevelExportInfos = infos.groupBy(_.name).map {
+        case (name, infos) =>
+          if (infos.size > 1)
+            _errors += ConflictingTopLevelExport(name, infos)
+
+          name -> infos.head
       }
     }
   }
@@ -245,7 +246,9 @@ private final class Analyzer(config: CommonPhaseConfig,
         def loop(classInfo: ClassInfo): Unit = {
           classInfo.accessData()
           classInfo.superClass match {
-            case Some(superClass) => loop(superClass)
+            case Some(superClass) =>
+              classInfo.staticDependencies += superClass.className
+              loop(superClass)
             case None             =>
           }
         }
@@ -365,7 +368,7 @@ private final class Analyzer(config: CommonPhaseConfig,
   }
 
   private class ClassInfo(
-      val data: Infos.ClassInfo,
+      data: Infos.ClassInfo,
       unvalidatedSuperClass: Option[ClassInfo],
       unvalidatedInterfaces: List[ClassInfo],
       val nonExistent: Boolean)
@@ -525,6 +528,11 @@ private final class Analyzer(config: CommonPhaseConfig,
     var isAnyPrivateJSFieldUsed: Boolean = false
 
     val jsNativeMembersUsed: mutable.Set[MethodName] = mutable.Set.empty
+
+    val jsNativeLoadSpec: Option[JSNativeLoadSpec] = data.jsNativeLoadSpec
+
+    val staticDependencies: mutable.Set[ClassName] = mutable.Set.empty
+    val externalDependencies: mutable.Set[String] = mutable.Set.empty
 
     var instantiatedFrom: List[From] = Nil
 
@@ -849,8 +857,8 @@ private final class Analyzer(config: CommonPhaseConfig,
       implicit val from = FromExports
 
       tryLookupStaticLikeMethod(MemberNamespace.StaticConstructor,
-          StaticInitializerName).foreach {
-        _.reachStatic()(fromAnalyzer)
+          StaticInitializerName).foreach { initializer =>
+        initializer.reachStatic()(fromAnalyzer)
       }
     }
 
@@ -884,7 +892,11 @@ private final class Analyzer(config: CommonPhaseConfig,
          * Note that the classes referenced by static fields are reached
          * implicitly by the call-sites that read or write the field: the
          * SelectStatic expression has the same type as the field.
+         *
+         * We do not need to add this to staticDependencies: The definition
+         * site will not reference the classes in the final JS code.
          */
+        // TODO: Why is this not in subclassInstantiated()?
         for (className <- data.referencedFieldClasses)
           lookupClass(className)(_ => ())
 
@@ -926,7 +938,8 @@ private final class Analyzer(config: CommonPhaseConfig,
           }
 
           for (reachabilityInfo <- data.exportedMembers)
-            followReachabilityInfo(reachabilityInfo)(FromExports)
+            followReachabilityInfo(reachabilityInfo, staticDependencies,
+                externalDependencies)(FromExports)
         }
       }
     }
@@ -936,10 +949,15 @@ private final class Analyzer(config: CommonPhaseConfig,
       if (!isAnySubclassInstantiated && (isScalaClass || isJSType)) {
         isAnySubclassInstantiated = true
 
+        staticDependencies ++= superClass
+          .filter(_.kind.isAnyNonNativeClass)
+          .map(_.className)
+
         // Reach exported members
         if (!isJSClass) {
           for (reachabilityInfo <- data.exportedMembers)
-            followReachabilityInfo(reachabilityInfo)(FromExports)
+            followReachabilityInfo(reachabilityInfo, staticDependencies,
+                externalDependencies)(FromExports)
         }
       }
     }
@@ -1003,20 +1021,22 @@ private final class Analyzer(config: CommonPhaseConfig,
         lookupMethod(methodName).reachStatic()
     }
 
-    def useJSNativeMember(name: MethodName)(implicit from: From): Unit = {
+    def useJSNativeMember(name: MethodName)(implicit from: From): Option[JSNativeLoadSpec] = {
+      val maybeJSNativeLoadSpec = data.jsNativeMembers.get(name)
       if (jsNativeMembersUsed.add(name)) {
-        data.jsNativeMembers.get(name) match {
+        maybeJSNativeLoadSpec match {
           case None =>
             _errors += MissingJSNativeMember(this, name, from)
           case Some(jsNativeLoadSpec) =>
             validateLoadSpec(jsNativeLoadSpec, Some(name))
         }
       }
+      maybeJSNativeLoadSpec
     }
 
     private def validateLoadSpec(jsNativeLoadSpec: JSNativeLoadSpec,
         jsNativeMember: Option[MethodName])(implicit from: From): Unit = {
-      if (config.coreSpec.moduleKind == ModuleKind.NoModule) {
+      if (isNoModule) {
         jsNativeLoadSpec match {
           case JSNativeLoadSpec.Import(module, _) =>
             _errors += ImportWithoutModuleSupport(module, this, jsNativeMember, from)
@@ -1108,27 +1128,83 @@ private final class Analyzer(config: CommonPhaseConfig,
         _errors += MissingMethod(this, from)
     }
 
-    private[this] def doReach(): Unit =
-      followReachabilityInfo(data.reachabilityInfo)(FromMethod(this))
+    private[this] def doReach(): Unit = {
+      followReachabilityInfo(data.reachabilityInfo, owner.staticDependencies,
+          owner.externalDependencies)(FromMethod(this))
+    }
   }
 
-  private def followReachabilityInfo(data: ReachabilityInfo)(
+  private class TopLevelExportInfo(data: Infos.TopLevelExportInfo) extends Analysis.TopLevelExportInfo {
+    val owningClass: ClassName = data.owningClass
+    val name: String = data.name
+
+    if (isNoModule && !ir.Trees.JSGlobalRef.isValidJSGlobalRefName(name)) {
+      _errors += InvalidTopLevelExportInScript(this)
+    }
+
+    val staticDependencies: mutable.Set[ClassName] = mutable.Set.empty
+    val externalDependencies: mutable.Set[String] = mutable.Set.empty
+
+    def reach(): Unit = {
+      followReachabilityInfo(data.reachability, staticDependencies,
+          externalDependencies)(FromExports)
+    }
+  }
+
+  private def followReachabilityInfo(data: ReachabilityInfo,
+      staticDependencies: mutable.Set[ClassName],
+      externalDependencies: mutable.Set[String])(
       implicit from: From): Unit = {
 
-    for (moduleName <- data.accessedModules)
-      lookupClass(moduleName)(_.accessModule())
+    @tailrec
+    def addLoadSpec(jsNativeLoadSpec: JSNativeLoadSpec): Unit = {
+      jsNativeLoadSpec match {
+        case _: JSNativeLoadSpec.Global =>
 
-    for (className <- data.instantiatedClasses)
-      lookupClass(className)(_.instantiated())
+        case JSNativeLoadSpec.Import(module, _) =>
+          externalDependencies += module
 
-    for (className <- data.usedInstanceTests)
+        case JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, _) if !isNoModule =>
+          addLoadSpec(importSpec)
+      }
+    }
+
+    def addInstanceDependency(info: ClassInfo) = {
+      info.jsNativeLoadSpec.foreach(addLoadSpec(_))
+      if (info.kind.isAnyNonNativeClass)
+        staticDependencies += info.className
+    }
+
+    for (moduleName <- data.accessedModules) {
+      lookupClass(moduleName) { module =>
+        module.accessModule()
+        addInstanceDependency(module)
+      }
+    }
+
+    for (className <- data.instantiatedClasses) {
+      lookupClass(className) { clazz =>
+        clazz.instantiated()
+        addInstanceDependency(clazz)
+      }
+    }
+
+    for (className <- data.usedInstanceTests) {
+      staticDependencies += className
       lookupClass(className)(_.useInstanceTests())
+    }
 
-    for (className <- data.accessedClassData)
+    for (className <- data.accessedClassData) {
+      staticDependencies += className
       lookupClass(className)(_.accessData())
+    }
 
-    for (className <- data.referencedClasses)
+    for (className <- data.referencedClasses) {
+      /* No need to add to staticDependencies: The classes will not be
+       * referenced in the final JS code.
+       */
       lookupClass(className)(_ => ())
+    }
 
     /* `for` loops on maps are written with `while` loops to help the JIT
      * compiler to inline and stack allocate tuples created by the iterators
@@ -1137,27 +1213,34 @@ private final class Analyzer(config: CommonPhaseConfig,
     val privateJSFieldsUsedIterator = data.privateJSFieldsUsed.iterator
     while (privateJSFieldsUsedIterator.hasNext) {
       val (className, fields) = privateJSFieldsUsedIterator.next()
-      if (fields.nonEmpty)
+      if (fields.nonEmpty) {
+        staticDependencies += className
         lookupClass(className)(_.isAnyPrivateJSFieldUsed = true)
+      }
     }
 
     val staticFieldsReadIterator = data.staticFieldsRead.iterator
     while (staticFieldsReadIterator.hasNext) {
       val (className, fields) = staticFieldsReadIterator.next()
-      if (fields.nonEmpty)
+      if (fields.nonEmpty) {
+        staticDependencies += className
         lookupClass(className)(_.isAnyStaticFieldUsed = true)
+      }
     }
 
     val staticFieldsWrittenIterator = data.staticFieldsWritten.iterator
     while (staticFieldsWrittenIterator.hasNext) {
       val (className, fields) = staticFieldsWrittenIterator.next()
-      if (fields.nonEmpty)
+      if (fields.nonEmpty) {
+        staticDependencies += className
         lookupClass(className)(_.isAnyStaticFieldUsed = true)
+      }
     }
 
     val methodsCalledIterator = data.methodsCalled.iterator
     while (methodsCalledIterator.hasNext) {
       val (className, methods) = methodsCalledIterator.next()
+      // Do not add to staticDependencies: We call these on the object.
       lookupClass(className) { classInfo =>
         for (methodName <- methods)
           classInfo.callMethod(methodName)
@@ -1167,6 +1250,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     val methodsCalledStaticallyIterator = data.methodsCalledStatically.iterator
     while (methodsCalledStaticallyIterator.hasNext) {
       val (className, methods) = methodsCalledStaticallyIterator.next()
+      staticDependencies += className
       lookupClass(className) { classInfo =>
         for (methodName <- methods)
           classInfo.callMethodStatically(methodName)
@@ -1177,8 +1261,10 @@ private final class Analyzer(config: CommonPhaseConfig,
     while (jsNativeMembersUsedIterator.hasNext) {
       val (className, members) = jsNativeMembersUsedIterator.next()
       lookupClass(className) { classInfo =>
-        for (member <- members)
+        for (member <- members) {
           classInfo.useJSNativeMember(member)
+            .foreach(addLoadSpec(_))
+        }
       }
     }
   }

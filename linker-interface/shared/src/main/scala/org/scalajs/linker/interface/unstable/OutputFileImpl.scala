@@ -16,12 +16,19 @@ import scala.concurrent._
 
 import java.nio.ByteBuffer
 
-import org.scalajs.linker.interface.LinkerOutput
+import org.scalajs.linker.interface.{LinkerOutput, OutputDirectory}
 
-abstract class OutputFileImpl extends LinkerOutput.File {
+class OutputFileImpl(
+    val name: String,
+    val directory: OutputDirectory
+) extends LinkerOutput.File {
   final private[interface] def impl: OutputFileImpl = this
 
-  def writeFull(buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit]
+  /** Convenience method to write this file in its output directory. */
+  final def writeFull(buf: ByteBuffer)(
+      implicit ec: ExecutionContext): Future[Unit] = {
+    OutputDirectoryImpl.fromOutputDirectory(directory).writeFull(name, buf)
+  }
 }
 
 object OutputFileImpl {

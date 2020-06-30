@@ -14,6 +14,8 @@ package org.scalajs.linker.standard
 
 import scala.collection.mutable
 
+import org.scalajs.linker.analyzer.Infos
+
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.{ClassKind, Position}
 import org.scalajs.ir.Names.ClassName
@@ -53,6 +55,10 @@ final class LinkedClass(
     val hasInstances: Boolean,
     val hasInstanceTests: Boolean,
     val hasRuntimeTypeInfo: Boolean,
+
+    val staticDependencies: Set[ClassName],
+    val externalDependencies: Set[String],  // TODO better type.
+
     val version: Option[String]) {
 
   def className: ClassName = name.name
@@ -64,6 +70,13 @@ final class LinkedClass(
       methodDef.methodName.isStaticInitializer
     }
   }
+  def hasAnyDefinitions: Boolean = {
+    fields.nonEmpty ||
+    methods.nonEmpty ||
+    exportedMembers.nonEmpty ||
+    hasInstanceTests ||
+    hasRuntimeTypeInfo
+  }
 
   def fullName: String = className.nameString
 
@@ -74,7 +87,8 @@ final class LinkedClass(
       jsNativeMembers: List[JSNativeMemberDef],
       hasInstances: Boolean,
       hasInstanceTests: Boolean,
-      hasRuntimeTypeInfo: Boolean
+      hasRuntimeTypeInfo: Boolean,
+      staticDependencies: Set[ClassName],
   ): LinkedClass = {
     copy(
         kind = kind,
@@ -83,7 +97,8 @@ final class LinkedClass(
         jsNativeMembers = jsNativeMembers,
         hasInstances = hasInstances,
         hasInstanceTests = hasInstanceTests,
-        hasRuntimeTypeInfo = hasRuntimeTypeInfo
+        hasRuntimeTypeInfo = hasRuntimeTypeInfo,
+        staticDependencies = staticDependencies
     )
   }
 
@@ -111,6 +126,8 @@ final class LinkedClass(
       hasInstances: Boolean = this.hasInstances,
       hasInstanceTests: Boolean = this.hasInstanceTests,
       hasRuntimeTypeInfo: Boolean = this.hasRuntimeTypeInfo,
+      staticDependencies: Set[ClassName] = this.staticDependencies,
+      externalDependencies: Set[String] = this.externalDependencies,
       version: Option[String] = this.version): LinkedClass = {
     new LinkedClass(
         name,
@@ -130,6 +147,8 @@ final class LinkedClass(
         hasInstances,
         hasInstanceTests,
         hasRuntimeTypeInfo,
+        staticDependencies,
+        externalDependencies,
         version)
   }
 }

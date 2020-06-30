@@ -19,6 +19,7 @@ import java.net.URI
 import org.scalajs.logging.Logger
 
 import org.scalajs.linker._
+import org.scalajs.linker.interface.OutputPatterns
 import org.scalajs.linker.standard._
 
 /** A backend of the Scala.js linker.
@@ -46,6 +47,8 @@ object LinkerBackendImpl {
       val commonConfig: CommonPhaseConfig,
       /** Whether to emit a source map. */
       val sourceMap: Boolean,
+      /** Name patterns for output. */
+      val outputPatterns: OutputPatterns,
       /** Base path to relativize paths in the source map. */
       val relativizeSourceMapBase: Option[URI],
       /** Whether to use the Google Closure Compiler pass, if it is available.
@@ -59,6 +62,7 @@ object LinkerBackendImpl {
       this(
           commonConfig = CommonPhaseConfig(),
           sourceMap = true,
+          outputPatterns = OutputPatterns.Defaults,
           relativizeSourceMapBase = None,
           closureCompilerIfAvailable = false,
           prettyPrint = false)
@@ -69,6 +73,9 @@ object LinkerBackendImpl {
 
     def withSourceMap(sourceMap: Boolean): Config =
       copy(sourceMap = sourceMap)
+
+    def withOutputPatterns(outputPatterns: OutputPatterns): Config =
+      copy(outputPatterns = outputPatterns)
 
     def withRelativizeSourceMapBase(relativizeSourceMapBase: Option[URI]): Config =
       copy(relativizeSourceMapBase = relativizeSourceMapBase)
@@ -82,11 +89,12 @@ object LinkerBackendImpl {
     private def copy(
         commonConfig: CommonPhaseConfig = commonConfig,
         sourceMap: Boolean = sourceMap,
+        outputPatterns: OutputPatterns = outputPatterns,
         relativizeSourceMapBase: Option[URI] = relativizeSourceMapBase,
         closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
         prettyPrint: Boolean = prettyPrint): Config = {
-      new Config(commonConfig, sourceMap, relativizeSourceMapBase,
-          closureCompilerIfAvailable, prettyPrint)
+      new Config(commonConfig, sourceMap, outputPatterns,
+          relativizeSourceMapBase, closureCompilerIfAvailable, prettyPrint)
     }
   }
 

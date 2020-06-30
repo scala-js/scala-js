@@ -36,5 +36,5 @@ abstract class LinkerFrontend {
   def link(irFiles: Seq[IRFile],
       moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger)(
-      implicit ec: ExecutionContext): Future[LinkingUnit]
+      implicit ec: ExecutionContext): Future[ModuleSet]
 }

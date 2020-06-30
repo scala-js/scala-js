@@ -14,12 +14,16 @@ package org.scalajs.linker.standard
 
 import scala.collection.mutable
 
+import org.scalajs.linker.analyzer.Infos
+
 import org.scalajs.ir.Trees.TopLevelExportDef
 import org.scalajs.ir.Names.ClassName
 
 final class LinkedTopLevelExport(
     val owningClass: ClassName,
-    val tree: TopLevelExportDef
+    val tree: TopLevelExportDef,
+    val staticDependencies: Set[ClassName],
+    val externalDependencies: Set[String]
 ) {
   def exportName: String = tree.topLevelExportName
 }

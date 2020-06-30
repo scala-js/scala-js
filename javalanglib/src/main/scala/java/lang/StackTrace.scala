@@ -174,8 +174,9 @@ private[lang] object StackTrace {
    *    \$f_<encoded class name>__<encoded method name>
    *    \$m_<encoded module name>
    *  }}}
-   *  all of them optionally prefixed by `Object.` or `[object Object].`.
-   *  (it comes after the "new " for the patterns where it start with a "new ")
+   *  all of them optionally prefixed by `Object.`, `[object Object].` or
+   *  `Module.`. (it comes after the "new " for the patterns where it start with
+   *  a "new ")
    *
    *  When the function name is none of those, the pair
    *    `("<jscode>", functionName)`
@@ -189,11 +190,11 @@ private[lang] object StackTrace {
    *    javalanglib.
    */
   private def extractClassMethod(functionName: String): js.Array[String] = {
-    val PatBC = """^(?:Object\.|\[object Object\]\.)?\$[bc]_([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
-    val PatS = """^(?:Object\.|\[object Object\]\.)?\$(?:ps?|s|f)_((?:_[^_]|[^_])+)__([^\.]+)$""".re
-    val PatCT = """^(?:Object\.|\[object Object\]\.)?\$ct_((?:_[^_]|[^_])+)__([^\.]*)$""".re
-    val PatN = """^new (?:Object\.|\[object Object\]\.)?\$c_([^\.]+)$""".re
-    val PatM = """^(?:Object\.|\[object Object\]\.)?\$m_([^\.]+)$""".re
+    val PatBC = """^(?:Object\.|\[object Object\]\.|Module\.)?\$[bc]_([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
+    val PatS = """^(?:Object\.|\[object Object\]\.|Module\.)?\$(?:ps?|s|f)_((?:_[^_]|[^_])+)__([^\.]+)$""".re
+    val PatCT = """^(?:Object\.|\[object Object\]\.|Module\.)?\$ct_((?:_[^_]|[^_])+)__([^\.]*)$""".re
+    val PatN = """^new (?:Object\.|\[object Object\]\.|Module\.)?\$c_([^\.]+)$""".re
+    val PatM = """^(?:Object\.|\[object Object\]\.|Module\.)?\$m_([^\.]+)$""".re
 
     val matchBC = PatBC.exec(functionName)
     val matchBCOrS = if (matchBC ne null) matchBC else PatS.exec(functionName)

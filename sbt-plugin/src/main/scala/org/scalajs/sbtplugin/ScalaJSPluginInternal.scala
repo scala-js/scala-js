@@ -162,76 +162,54 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val s = streams.value
         val irInfo = (scalaJSIR in key).value
         val moduleInitializers = scalaJSModuleInitializers.value
-        val output = (artifactPath in key).value
+        val outputDir = (artifactPath in key).value
         val linker = (scalaJSLinker in key).value
         val linkerImpl = (scalaJSLinkerImpl in key).value
         val usesLinkerTag = (usesScalaJSLinkerTag in key).value
-        val sourceMapFile = new File(output.getPath + ".map")
-
-        /* This is somewhat not nice: We must make assumptions about the
-         * specification of the specific linker in use. Otherwise, we do not
-         * know how to interpret / load the resulting file.
-         *
-         * See jsEnvInput (via scalaJSLinkedFile) to see how this is used.
-         */
-        val moduleKind = (scalaJSLinkerConfig in key).value.moduleKind
-
-        val configChanged = {
-          def moduleInitializersChanged = (scalaJSModuleInitializersFingerprints in key)
-            .previous
-            .exists(_ != (scalaJSModuleInitializersFingerprints in key).value)
-
-          def linkerConfigChanged = (scalaJSLinkerConfigFingerprint in key)
-            .previous
-            .exists(_ != (scalaJSLinkerConfigFingerprint in key).value)
-
-          moduleInitializersChanged || linkerConfigChanged
-        }
 
         Def.task {
           val log = s.log
-          val realFiles = irInfo.get(scalaJSSourceFiles).get
           val ir = irInfo.data
 
-          if (configChanged && output.exists()) {
-            output.delete() // triggers re-linking through FileFunction.cached
+          val stageName = stage match {
+            case Stage.FastOpt => "Fast"
+            case Stage.FullOpt => "Full"
           }
 
-          FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
-              FilesInfo.exists) { _ => // We don't need the files
+          log.info(s"$stageName optimizing $outputDir")
 
-            val stageName = stage match {
-              case Stage.FastOpt => "Fast"
-              case Stage.FullOpt => "Full"
+          IO.createDirectory(outputDir)
+
+          val out = linkerImpl.outputDirectory(outputDir.toPath)
+
+          val report = try {
+            enhanceIRVersionNotSupportedException {
+              val tlog = sbtLogger2ToolsLogger(log)
+              await(log)(linker.link(ir, moduleInitializers, out, tlog)(_))
             }
+          } catch {
+            case e: LinkingException =>
+              throw new MessageOnlyException(e.getMessage)
+          }
 
-            log.info(s"$stageName optimizing $output")
+          val modules = report.publicModules
 
-            IO.createDirectory(output.getParentFile)
+          if (modules.size != 1) {
+            // TODO: Improve.
+            throw new MessageOnlyException(
+                s"got more than one public module: $report")
+          }
 
-            def relURI(path: String) = new URI(null, null, path, null)
+          val module = modules.head
 
-            val out = LinkerOutput(linkerImpl.outputFile(output.toPath))
-              .withSourceMap(linkerImpl.outputFile(sourceMapFile.toPath))
-              .withSourceMapURI(relURI(sourceMapFile.getName))
-              .withJSFileURI(relURI(output.getName))
+          val result0 = Attributed.blank(outputDir / module.jsFileName)
+            .put(scalaJSModuleKind, module.moduleKind)
 
-            try {
-              enhanceIRVersionNotSupportedException {
-                val tlog = sbtLogger2ToolsLogger(log)
-                await(log)(linker.link(ir, moduleInitializers, out, tlog)(_))
-              }
-            } catch {
-              case e: LinkingException =>
-                throw new MessageOnlyException(e.getMessage)
-            }
-
-            Set(output, sourceMapFile)
-          } (realFiles.toSet)
-
-          Attributed.blank(output)
-            .put(scalaJSSourceMap, sourceMapFile)
-            .put(scalaJSModuleKind, moduleKind)
+          module.sourceMapName.fold {
+            result0
+          } { sourceMapName =>
+            result0.put(scalaJSSourceMap, outputDir / sourceMapName)
+          }
         }.tag(usesLinkerTag, ScalaJSTags.Link)
       }.value
   )
@@ -329,11 +307,11 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
       artifactPath in fastOptJS :=
         ((crossTarget in fastOptJS).value /
-            ((moduleName in fastOptJS).value + "-fastopt.js")),
+            ((moduleName in fastOptJS).value + "-fastopt")),
 
       artifactPath in fullOptJS :=
         ((crossTarget in fullOptJS).value /
-            ((moduleName in fullOptJS).value + "-opt.js")),
+            ((moduleName in fullOptJS).value + "-opt")),
 
       scalaJSLinkerConfig in fullOptJS ~= { prevConfig =>
         val useClosure = prevConfig.moduleKind != ModuleKind.ESModule

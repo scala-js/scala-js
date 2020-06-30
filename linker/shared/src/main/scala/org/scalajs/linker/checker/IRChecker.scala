@@ -28,6 +28,7 @@ import org.scalajs.ir.Types._
 
 import org.scalajs.logging._
 
+import org.scalajs.linker.frontend.LinkingUnit
 import org.scalajs.linker.standard._
 import org.scalajs.linker.analyzer.{Analyzer, Infos}
 
@@ -69,6 +70,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   def check(): Int = {
     for (classDef <- unit.classDefs) {
       implicit val ctx = ErrorContext(classDef)
+
+      // TODO: Check that injectedReverseDependencies imply static initializer.
 
       checkJSClassCaptures(classDef)
       checkClassInitializer(classDef)

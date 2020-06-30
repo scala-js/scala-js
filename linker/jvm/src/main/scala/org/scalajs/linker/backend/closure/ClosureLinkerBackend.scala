@@ -14,10 +14,7 @@ package org.scalajs.linker.backend.closure
 
 import scala.concurrent._
 
-import java.io._
-import java.net.URI
-import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets
+import java.io.Writer
 
 import com.google.javascript.jscomp.{
   SourceFile => ClosureSource,
@@ -29,11 +26,12 @@ import com.google.javascript.jscomp.{
 import org.scalajs.logging.Logger
 
 import org.scalajs.linker.interface._
-import org.scalajs.linker.interface.unstable.{IRFileImpl, OutputFileImpl}
+import org.scalajs.linker.interface.unstable.OutputPatternsImpl
 import org.scalajs.linker.backend._
 import org.scalajs.linker.backend.emitter.Emitter
 import org.scalajs.linker.backend.javascript.{Trees => js}
 import org.scalajs.linker.standard._
+import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 /** The Closure backend of the Scala.js linker.
  *
@@ -56,6 +54,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     val emitterConfig = Emitter.Config(config.commonConfig.coreSpec)
       .withOptimizeBracketSelects(false)
       .withTrackAllGlobalRefs(true)
+      .withInternalModulePattern(m => OutputPatternsImpl.moduleName(config.outputPatterns, m.id))
 
     new Emitter(emitterConfig)
   }
@@ -73,20 +72,25 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
    *  @param unit [[standard.LinkingUnit LinkingUnit]] to emit
    *  @param output File to write to
    */
-  def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger)(
-      implicit ec: ExecutionContext): Future[Unit] = {
-    verifyUnit(unit)
+  def emit(moduleSet: ModuleSet, output: OutputDirectory, logger: Logger)(
+      implicit ec: ExecutionContext): Future[Report] = {
+    verifyModuleSet(moduleSet)
+
+    require(moduleSet.modules.size == 1,
+        "Cannot use multiple modules with the Closure Compiler")
+
+    val sjsModule = moduleSet.modules.head
 
     val emitterResult = logger.time("Emitter") {
-      emitter.emit(unit, logger)
+      emitter.emit(moduleSet, logger)
     }
 
-    val module = logger.time("Closure: Create trees)") {
-      buildModule(emitterResult.body)
+    val closureModule = logger.time("Closure: Create trees)") {
+      buildModule(emitterResult.body(sjsModule.id))
     }
 
     val (code, sourceMap) = logger.time("Closure: Compiler pass") {
-      val options = closureOptions(output)
+      val options = closureOptions(sjsModule.id)
 
       val externs = java.util.Arrays.asList(
           ClosureSource.fromCode("ScalaJSExterns.js",
@@ -94,13 +98,13 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
           ClosureSource.fromCode("ScalaJSGlobalRefs.js",
               makeExternsForGlobalRefs(emitterResult.globalRefs)),
           ClosureSource.fromCode("ScalaJSExportExterns.js",
-              makeExternsForExports(emitterResult.topLevelVarDecls, unit)))
+              makeExternsForExports(emitterResult.topLevelVarDecls, sjsModule)))
 
-      compile(externs, module, options, logger)
+      compile(externs, closureModule, options, logger)
     }
 
     logger.timeFuture("Closure: Write result") {
-      writeResult(emitterResult.header, code, emitterResult.footer, sourceMap, output)
+      writeResult(moduleSet, emitterResult.header, code, emitterResult.footer, sourceMap, output)
     }
   }
 
@@ -129,7 +133,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
           "There were errors when applying the Google Closure Compiler")
     }
 
-    (compiler.toSource + "\n", Option(compiler.getSourceMap()))
+    (compiler.toSource + "\n", compiler.getSourceMap())
   }
 
   /** Constructs an externs file listing all the global refs.
@@ -143,7 +147,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
    *  This is necessary to avoid name clashes with renamed properties (#2491).
    */
   private def makeExternsForExports(topLevelVarDeclarations: List[String],
-      linkingUnit: LinkingUnit): String = {
+      sjsModule: ModuleSet.Module): String = {
     import org.scalajs.ir.Trees._
     import org.scalajs.linker.backend.javascript.Trees.Ident.isValidJSIdentifierName
 
@@ -154,7 +158,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     }
 
     val exportedPropertyNames = for {
-      classDef <- linkingUnit.classDefs
+      classDef <- sjsModule.classDefs
       member <- classDef.exportedMembers
       name <- exportName(member.value)
       if isValidJSIdentifierName(name)
@@ -171,51 +175,38 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     content.toString()
   }
 
-  private def writeResult(header: String, body: String, footer: String,
-      sourceMap: Option[SourceMap], output: LinkerOutput)(
-      implicit ec: ExecutionContext): Future[Unit] = {
-    def writeToFile(file: LinkerOutput.File)(content: Writer => Unit): Future[Unit] = {
-      val out = new ByteArrayOutputStream()
-      val writer = new OutputStreamWriter(out, StandardCharsets.UTF_8)
-      try content(writer)
-      finally writer.close()
+  private def writeResult(moduleSet: ModuleSet, header: String, body: String,
+      footer: String, sourceMap: SourceMap, output: OutputDirectory)(
+      implicit ec: ExecutionContext): Future[Report] = {
 
-      OutputFileImpl.fromOutputFile(file)
-        .writeFull(ByteBuffer.wrap(out.toByteArray))
-    }
+    val writer = new OutputWriter(output, config) {
+      private def writeCode(writer: Writer): Unit = {
+        writer.write(header)
+        writer.write(body)
+        writer.write(footer)
+      }
 
-    // Write optimized code
-    val codeWritten = writeToFile(output.jsFile) { w =>
-      w.write(header)
-      w.write(body)
-      w.write(footer)
+      protected def writeModule(moduleID: ModuleID, jsFileWriter: Writer): Unit = {
+        writeCode(jsFileWriter)
+      }
 
-      /* #4174: Do not add the sourceMappingURL if we do not actually emit the
-       * source map. This is also specified by `LinkerOutput.sourceMapURI`,
-       * which says that it should be ignored if `output.sourceMap` is not set
-       * or if source map production is disabled.
-       */
-      if (sourceMap.isDefined && output.sourceMap.isDefined) {
-        output.sourceMapURI.foreach(
-            uri => w.write("//# sourceMappingURL=" + uri.toASCIIString + "\n"))
+      protected def writeModule(moduleID: ModuleID, jsFileWriter: Writer,
+          sourceMapWriter: Writer): Unit = {
+        val jsFileURI = OutputPatternsImpl.jsFileURI(config.outputPatterns, moduleID.id)
+        val sourceMapURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)
+
+        writeCode(jsFileWriter)
+        jsFileWriter.write("//# sourceMappingURL=" + sourceMapURI + "\n")
+
+        sourceMap.setWrapperPrefix(header)
+        sourceMap.appendTo(sourceMapWriter, jsFileURI)
       }
     }
 
-    // Write source map (if available)
-    val smWritten = for {
-      sm  <- sourceMap
-      smf <- output.sourceMap
-    } yield {
-      sm.setWrapperPrefix(header)
-      writeToFile(smf) { w =>
-        sm.appendTo(w, output.jsFileURI.fold("")(_.toASCIIString))
-      }
-    }
-
-    smWritten.fold(codeWritten)(_.flatMap(_ => codeWritten))
+    writer.write(moduleSet)
   }
 
-  private def closureOptions(output: LinkerOutput) = {
+  private def closureOptions(moduleID: ModuleID) = {
     val options = new ClosureOptions
     options.setPrettyPrint(config.prettyPrint)
     CompilationLevel.ADVANCED_OPTIMIZATIONS.setOptionsForCompilationLevel(options)
@@ -227,10 +218,12 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     options.setWarningLevel(DiagnosticGroups.CHECK_TYPES, CheckLevel.OFF)
     options.setWarningLevel(DiagnosticGroups.CHECK_USELESS_CODE, CheckLevel.OFF)
 
-    if (config.sourceMap && output.sourceMap.isDefined) {
+    if (config.sourceMap) {
+      val sourceMapFileName =
+        OutputPatternsImpl.sourceMapFile(config.outputPatterns, moduleID.id)
+
       options.setSourceMapDetailLevel(SourceMap.DetailLevel.ALL)
-      output.sourceMapURI.foreach(uri =>
-        options.setSourceMapOutputPath(uri.toASCIIString))
+      options.setSourceMapOutputPath(sourceMapFileName)
     }
 
     options

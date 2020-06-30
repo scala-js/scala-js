@@ -118,11 +118,21 @@ def Tasks = [
         helloworld$v/run \
         helloworld$v/clean &&
     sbtretry ++$scala \
-        'set artifactPath in (helloworld.v$v, Compile, fastOptJS) := (crossTarget in helloworld.v$v).value / "helloworld-fastopt.mjs"' \
+        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
+	'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
+        helloworld$v/run \
+        helloworld$v/clean &&
+    sbtretry ++$scala \
+        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         helloworld$v/run &&
     sbtretry ++$scala \
-        'set artifactPath in (helloworld.v$v, Compile, fullOptJS) := (crossTarget in helloworld.v$v).value / "helloworld-opt.mjs"' \
+        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
+	'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
+	'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
+        helloworld$v/run &&
+    sbtretry ++$scala \
+        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         'set scalaJSStage in Global := FullOptStage' \
         helloworld$v/run \
@@ -189,10 +199,10 @@ def Tasks = [
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite$v/test \
         $testSuite$v/clean &&
-    sbtretry 'set artifactPath in ($testSuite.v$v, Test, fastOptJS) := (crossTarget in $testSuite.v$v).value / "testsuite-fastopt.mjs"' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         ++$scala $testSuite$v/test &&
-    sbtretry 'set artifactPath in ($testSuite.v$v, Test, fullOptJS) := (crossTarget in $testSuite.v$v).value / "testsuite-opt.mjs"' \
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite$v/test
@@ -277,11 +287,11 @@ def Tasks = [
         ++$scala $testSuite$v/test \
         $testSuite$v/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set artifactPath in ($testSuite.v$v, Test, fastOptJS) := (crossTarget in $testSuite.v$v).value / "testsuite-fastopt.mjs"' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set artifactPath in ($testSuite.v$v, Test, fullOptJS) := (crossTarget in $testSuite.v$v).value / "testsuite-opt.mjs"' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite$v/test

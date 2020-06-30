@@ -19,6 +19,7 @@ import org.scalajs.logging.Logger
 import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.frontend.optimizer.{GenIncOptimizer, IncOptimizer}
+import org.scalajs.linker.frontend.modulesplitter._
 
 /** The frontend of the Scala.js linker.
  *
@@ -44,13 +45,18 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
 
   private[this] val refiner: Refiner = new Refiner(config.commonConfig)
 
+  private[this] val splitter: ModuleSplitter = config.moduleSplitStyle match {
+    case ModuleSplitStyle.FewestModules   => ModuleSplitter.max()
+    case ModuleSplitStyle.SmallestModules => ModuleSplitter.min()
+  }
+
   /** Link and optionally optimize the given IR to a
    *  [[standard.LinkingUnit LinkingUnit]].
    */
   def link(irFiles: Seq[IRFile],
       moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger)(
-      implicit ec: ExecutionContext): Future[LinkingUnit] = {
+      implicit ec: ExecutionContext): Future[ModuleSet] = {
 
     val preOptimizerRequirements = optOptimizer.fold(symbolRequirements) {
       optimizer => symbolRequirements ++ optimizer.symbolRequirements
@@ -61,12 +67,17 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
           preOptimizerRequirements, config.checkIR)
     }
 
-    optOptimizer.fold(linkResult) { optimizer =>
+    val optimizedResult = optOptimizer.fold(linkResult) { optimizer =>
       linkResult.flatMap(optimize(_, symbolRequirements, optimizer, logger))
+    }
+
+    logger.timeFuture("Module Splitter") {
+      optimizedResult.map(splitter.split(_, symbolRequirements, logger))
     }
   }
 
-  private def optimize(unit: LinkingUnit, symbolRequirements: SymbolRequirement,
+  private def optimize(unit: LinkingUnit,
+      symbolRequirements: SymbolRequirement,
       optimizer: GenIncOptimizer, logger: Logger)(
       implicit ec: ExecutionContext): Future[LinkingUnit] = {
     val optimized = logger.time("Optimizer") {
@@ -87,6 +98,8 @@ object LinkerFrontendImpl {
   final class Config private (
       /** Common phase config. */
       val commonConfig: CommonPhaseConfig,
+      /** How to split modules (if at all). */
+      val moduleSplitStyle: ModuleSplitStyle,
       /** If true, performs expensive checks of the IR for the used parts. */
       val checkIR: Boolean,
       /** Whether to use the Scala.js optimizer. */
@@ -95,12 +108,16 @@ object LinkerFrontendImpl {
     private def this() = {
       this(
           commonConfig = CommonPhaseConfig(),
+          moduleSplitStyle = ModuleSplitStyle.FewestModules,
           checkIR = false,
           optimizer = true)
     }
 
     def withCommonConfig(commonConfig: CommonPhaseConfig): Config =
       copy(commonConfig = commonConfig)
+
+    def withModuleSplitStyle(moduleSplitStyle: ModuleSplitStyle): Config =
+      copy(moduleSplitStyle = moduleSplitStyle)
 
     def withCheckIR(checkIR: Boolean): Config =
       copy(checkIR = checkIR)
@@ -110,9 +127,10 @@ object LinkerFrontendImpl {
 
     private def copy(
         commonConfig: CommonPhaseConfig = commonConfig,
+        moduleSplitStyle: ModuleSplitStyle = moduleSplitStyle,
         checkIR: Boolean = checkIR,
         optimizer: Boolean = optimizer): Config = {
-      new Config(commonConfig, checkIR, optimizer)
+      new Config(commonConfig, moduleSplitStyle, checkIR, optimizer)
     }
   }
 

@@ -14,16 +14,14 @@ package org.scalajs.linker.backend
 
 import scala.concurrent._
 
-import java.io._
-import java.net.URI
-import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets
+import java.io.Writer
 
 import org.scalajs.logging.Logger
 
-import org.scalajs.linker.interface.{IRFile, LinkerOutput}
-import org.scalajs.linker.interface.unstable.OutputFileImpl
+import org.scalajs.linker.interface.{IRFile, OutputDirectory, Report}
+import org.scalajs.linker.interface.unstable.OutputPatternsImpl
 import org.scalajs.linker.standard._
+import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 import org.scalajs.linker.backend.emitter.Emitter
 import org.scalajs.linker.backend.javascript.{Printers, SourceMapWriter}
@@ -37,6 +35,8 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
 
   private[this] val emitter = {
     val emitterConfig = Emitter.Config(config.commonConfig.coreSpec)
+      .withInternalModulePattern(m => OutputPatternsImpl.moduleName(config.outputPatterns, m.id))
+
     new Emitter(emitterConfig)
   }
 
@@ -49,66 +49,51 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
    *  @param unit [[standard.LinkingUnit LinkingUnit]] to emit
    *  @param output File to write to
    */
-  def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger)(
-      implicit ec: ExecutionContext): Future[Unit] = {
-    verifyUnit(unit)
+  def emit(moduleSet: ModuleSet, output: OutputDirectory, logger: Logger)(
+      implicit ec: ExecutionContext): Future[Report] = {
+    verifyModuleSet(moduleSet)
 
     val emitterResult = logger.time("Emitter") {
-      emitter.emit(unit, logger)
+      emitter.emit(moduleSet, logger)
+    }
+
+    val writer = new OutputWriter(output, config) {
+      protected def writeModule(moduleID: ModuleID, jsFileWriter: Writer): Unit = {
+        val printer = new Printers.JSTreePrinter(jsFileWriter)
+        jsFileWriter.write(emitterResult.header)
+        jsFileWriter.write("'use strict';\n")
+        printer.printTopLevelTree(emitterResult.body(moduleID))
+        jsFileWriter.write(emitterResult.footer)
+      }
+
+      protected def writeModule(moduleID: ModuleID, jsFileWriter: Writer,
+          sourceMapWriter: Writer): Unit = {
+        val jsFileURI = OutputPatternsImpl.jsFileURI(config.outputPatterns, moduleID.id)
+        val sourceMapURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)
+
+        val smWriter = new SourceMapWriter(sourceMapWriter, jsFileURI,
+            config.relativizeSourceMapBase)
+
+        val printer = new Printers.JSTreePrinterWithSourceMap(jsFileWriter, smWriter)
+
+        jsFileWriter.write(emitterResult.header)
+        for (_ <- 0 until emitterResult.header.count(_ == '\n'))
+          smWriter.nextLine()
+
+        jsFileWriter.write("'use strict';\n")
+        smWriter.nextLine()
+
+        printer.printTopLevelTree(emitterResult.body(moduleID))
+
+        jsFileWriter.write(emitterResult.footer)
+        jsFileWriter.write("//# sourceMappingURL=" + sourceMapURI + "\n")
+
+        smWriter.complete()
+      }
     }
 
     logger.timeFuture("BasicBackend: Write result") {
-      output.sourceMap.filter(_ => config.sourceMap).fold {
-        val code = withWriter { writer =>
-          val printer = new Printers.JSTreePrinter(writer)
-          writer.write(emitterResult.header)
-          writer.write("'use strict';\n")
-          printer.printTopLevelTree(emitterResult.body)
-          writer.write(emitterResult.footer)
-        }
-
-        write(output.jsFile, code)
-      } { sourceMapFile =>
-        val sourceMapWriter = new SourceMapWriter(output.jsFileURI,
-            config.relativizeSourceMapBase)
-
-        val code = withWriter { writer =>
-          val printer = new Printers.JSTreePrinterWithSourceMap(writer, sourceMapWriter)
-
-          writer.write(emitterResult.header)
-          for (_ <- 0 until emitterResult.header.count(_ == '\n'))
-            sourceMapWriter.nextLine()
-
-          writer.write("'use strict';\n")
-          sourceMapWriter.nextLine()
-
-          printer.printTopLevelTree(emitterResult.body)
-
-          writer.write(emitterResult.footer)
-
-          output.sourceMapURI.foreach { uri =>
-            writer.write("//# sourceMappingURL=" + uri.toASCIIString() + "\n")
-          }
-        }
-
-        val sourceMap = sourceMapWriter.result()
-
-        write(output.jsFile, code)
-          .flatMap(_ => write(sourceMapFile, sourceMap))
-      }
+      writer.write(moduleSet)
     }
-  }
-
-  private def withWriter(body: Writer => Unit): ByteBuffer = {
-    val byteStream = new ByteArrayOutputStream
-    val out = new OutputStreamWriter(byteStream, StandardCharsets.UTF_8)
-    body(out)
-    out.close()
-    ByteBuffer.wrap(byteStream.toByteArray())
-  }
-
-  private def write(file: LinkerOutput.File, buf: ByteBuffer)(
-      implicit ec: ExecutionContext): Future[Unit] = {
-    OutputFileImpl.fromOutputFile(file).writeFull(buf)
   }
 }

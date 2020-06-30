@@ -351,8 +351,7 @@ object Infos {
 
   def generateTopLevelExportInfos(classDef: ClassDef): List[TopLevelExportInfo] = {
     classDef.topLevelExportDefs.map { topLevelExportDef =>
-      val info = generateTopLevelExportInfo(classDef.name.name, topLevelExportDef)
-      new TopLevelExportInfo(classDef.name.name, info, topLevelExportDef.topLevelExportName)
+      generateTopLevelExportInfo(classDef.name.name, topLevelExportDef)
     }
   }
 
@@ -361,9 +360,7 @@ object Infos {
     for {
       topLevelExport <- topLevelExports
     } yield {
-      val infos = Infos.generateTopLevelExportInfo(
-          topLevelExport.owningClass, topLevelExport.tree)
-      new TopLevelExportInfo(topLevelExport.owningClass, infos, topLevelExport.exportName)
+      Infos.generateTopLevelExportInfo(topLevelExport.owningClass, topLevelExport.tree)
     }
   }
 
@@ -387,9 +384,10 @@ object Infos {
 
   /** Generates the [[MethodInfo]] for the top-level exports. */
   def generateTopLevelExportInfo(enclosingClass: ClassName,
-      topLevelExportDef: TopLevelExportDef): ReachabilityInfo = {
-    new GenInfoTraverser().generateTopLevelExportInfo(enclosingClass,
-        topLevelExportDef)
+      topLevelExportDef: TopLevelExportDef): TopLevelExportInfo = {
+    val info = new GenInfoTraverser().generateTopLevelExportInfo(enclosingClass,
+      topLevelExportDef)
+    new TopLevelExportInfo(enclosingClass, info, topLevelExportDef.topLevelExportName)
   }
 
   private final class GenInfoTraverser extends Traverser {
