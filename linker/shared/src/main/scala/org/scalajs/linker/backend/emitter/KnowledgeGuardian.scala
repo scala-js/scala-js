@@ -453,11 +453,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       invalidateAll
     }
 
-    private def computeIsClassClassInstantiated(classClass: Option[LinkedClass]): Boolean = {
-      classClass.exists(_.methods.exists { m =>
-        m.value.flags.namespace == MemberNamespace.Constructor
-      })
-    }
+    private def computeIsClassClassInstantiated(classClass: Option[LinkedClass]): Boolean =
+      classClass.exists(_.hasInstances)
 
     private def computeIsParentDataAccessed(classClass: Option[LinkedClass]): Boolean = {
       def methodExists(linkedClass: LinkedClass, methodName: MethodName): Boolean = {
