@@ -80,7 +80,17 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
       case Let(ident, mutable, optRhs) =>
         val node = transformName(ident)
         optRhs.foreach(rhs => node.addChildToFront(transformExpr(rhs)))
-        new Node(if (mutable) Token.LET else Token.CONST, node)
+        /* #4098 The following line should be
+         *   new Node(if (mutable) Token.LET else Token.CONST, node)
+         * however, due to an unknown bug in how we build GCC trees or inside
+         * GCC itself, using `let`s and `const`s can result in a crash deep
+         * inside GCC in some obscure cases.
+         * As a workaround, we always emit `var`s instead. This has no visible
+         * semantic change because the Emitter never relies on the specific
+         * semantics of `let`s and `const`s.
+         * TODO We should properly fix this at the root (filed as #4109).
+         */
+        new Node(Token.VAR, node)
       case Skip() =>
         new Node(Token.EMPTY)
       case Block(stats) =>

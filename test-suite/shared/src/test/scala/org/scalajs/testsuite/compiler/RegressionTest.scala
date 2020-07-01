@@ -837,6 +837,13 @@ class RegressionTest {
     assertEquals(6, `class`.foo(5))
   }
 
+  @Test def gcc_crash_with_let_const_issue_4098(): Unit = {
+    val set = new java.util.HashSet[String]()
+    set.remove("")
+    set.remove("1") // only if remove is called twice
+    assertEquals(0, set.size())
+  }
+
 }
 
 object RegressionTest {
