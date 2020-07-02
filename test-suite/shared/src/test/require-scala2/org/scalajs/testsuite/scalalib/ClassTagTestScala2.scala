@@ -25,6 +25,9 @@ class ClassTagTestScala2 {
    * @see [[https://github.com/lampepfl/dotty/issues/1730]]
    */
   @Test def apply_should_get_the_existing_instances_for_predefined_ClassTags(): Unit = {
+    assertSame(ClassTag.Nothing, ClassTag(classOf[Nothing]))
+    assertSame(ClassTag.Null, ClassTag(classOf[Null]))
+
     assertSame(ClassTag.Nothing, classTag[Nothing])
     assertSame(ClassTag.Null, classTag[Null])
   }
@@ -36,6 +39,9 @@ class ClassTagTestScala2 {
    * @see [[https://github.com/lampepfl/dotty/issues/1730]]
    */
   @Test def runtimeClass(): Unit = {
+    assertSame(classOf[Nothing], ClassTag.Nothing.runtimeClass)
+    assertSame(classOf[Null], ClassTag.Null.runtimeClass)
+
     assertSame(classOf[Array[_]], classTag[Array[_]].runtimeClass)
     assertSame(classOf[Array[_ <: AnyRef]], classTag[Array[_ <: AnyRef]].runtimeClass)
     assertSame(classOf[Array[_ <: Seq[_]]], classTag[Array[_ <: Seq[_]]].runtimeClass)
@@ -44,5 +50,7 @@ class ClassTagTestScala2 {
     // The same happens on the JVM
     assertSame(classOf[Array[scala.runtime.Nothing$]], classTag[Array[Nothing]].runtimeClass)
     assertSame(classOf[Array[scala.runtime.Null$]], classTag[Array[Null]].runtimeClass)
+
+    assertSame(classOf[Array[Nothing]], ClassTag(classOf[Array[Nothing]]).runtimeClass)
   }
 }

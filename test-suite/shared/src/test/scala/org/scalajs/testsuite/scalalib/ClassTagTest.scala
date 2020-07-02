@@ -35,8 +35,6 @@ class ClassTagTest {
     assertSame(ClassTag.Boolean, ClassTag(classOf[Boolean]))
     assertSame(ClassTag.Unit, ClassTag(classOf[Unit]))
     assertSame(ClassTag.Object, ClassTag(classOf[Object]))
-    assertSame(ClassTag.Nothing, ClassTag(classOf[Nothing]))
-    assertSame(ClassTag.Null, ClassTag(classOf[Null]))
 
     assertSame(ClassTag.Byte, classTag[Byte])
     assertSame(ClassTag.Short, classTag[Short])
@@ -67,8 +65,6 @@ class ClassTagTest {
     assertSame(classOf[Object], ClassTag.Object.runtimeClass)
     assertSame(classOf[AnyVal], ClassTag.AnyVal.runtimeClass)
     assertSame(classOf[AnyRef], ClassTag.AnyRef.runtimeClass)
-    assertSame(classOf[Nothing], ClassTag.Nothing.runtimeClass)
-    assertSame(classOf[Null], ClassTag.Null.runtimeClass)
 
     assertSame(classOf[String], classTag[String].runtimeClass)
     assertSame(classOf[Integer], classTag[Integer].runtimeClass)
@@ -91,8 +87,6 @@ class ClassTagTest {
     assertSame(classOf[Array[Int]], ClassTag(classOf[Array[Int]]).runtimeClass)
     assertSame(classOf[Array[Unit]], ClassTag(classOf[Array[Unit]]).runtimeClass)
 
-    // These work as expected, though
-    assertSame(classOf[Array[Nothing]], ClassTag(classOf[Array[Nothing]]).runtimeClass)
     assertSame(classOf[Array[Null]], ClassTag(classOf[Array[Null]]).runtimeClass)
   }
 
