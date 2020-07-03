@@ -423,6 +423,34 @@ class NestedJSClassTest {
     assertEquals("InnerJSClass(5) of issue 4086", obj.toString())
   }
 
+  @Test def doublyNestedInnerObject_issue4114(): Unit = {
+    val outer1 = new DoublyNestedInnerObject_Issue4114().asInstanceOf[js.Dynamic]
+    val outer2 = new DoublyNestedInnerObject_Issue4114().asInstanceOf[js.Dynamic]
+
+    outer2.middle.inner.x = 10
+
+    assertEquals("object", js.typeOf(outer1.middle))
+    assertEquals(1, outer1.middle.inner.x)
+    assertEquals(10, outer2.middle.inner.x)
+  }
+
+  @Test def triplyNestedObject_issue4114(): Unit = {
+    val obj = TriplyNestedObject_Issue4114.asInstanceOf[js.Dynamic]
+
+    assertEquals("object", js.typeOf(obj.middle))
+    assertEquals("object", js.typeOf(obj.middle.inner))
+    assertEquals(1, obj.middle.inner.x)
+
+    obj.middle.inner.x = 10
+
+    assertEquals(10, obj.middle.inner.x)
+  }
+
+  @Test def triplyNestedClassSuperDispatch_issue4114(): Unit = {
+    val x = new TriplyNestedClass_Issue4114().asInstanceOf[js.Dynamic]
+    assertEquals(3, x.foo(3))
+  }
+
   @Test def localJSClassCapturesCharThatMustBeBoxed(): Unit = {
     @inline def makeChar(): Any = 'A'
 
@@ -628,6 +656,29 @@ object NestedJSClassTest {
     class InnerScalaClass(val zzz: Int)
   }
 
+  class DoublyNestedInnerObject_Issue4114 extends js.Object {
+    object middle extends js.Object {
+      object inner extends js.Object {
+        var x = 1
+      }
+    }
+  }
+
+  object TriplyNestedObject_Issue4114 extends js.Object {
+    object middle extends js.Object {
+      object inner extends js.Object {
+        var x = 1
+      }
+
+      class InnerClass extends js.Object {
+        def foo(x: Int): Int = x
+      }
+    }
+  }
+
+  class TriplyNestedClass_Issue4114 extends TriplyNestedObject_Issue4114.middle.InnerClass {
+    def foo(x: String): String = x
+  }
 }
 
 object NestedJSClassTest_TopLevelJSObject_Issue4086 extends js.Object {
