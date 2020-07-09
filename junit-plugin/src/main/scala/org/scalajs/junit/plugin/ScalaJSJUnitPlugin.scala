@@ -12,11 +12,8 @@
 
 package org.scalajs.junit.plugin
 
-import scala.language.reflectiveCalls
-
 import scala.annotation.tailrec
 
-import scala.reflect.internal.Flags
 import scala.tools.nsc._
 import scala.tools.nsc.plugins.{
   Plugin => NscPlugin, PluginComponent => NscPluginComponent
@@ -41,8 +38,7 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
   val description: String = "Makes JUnit test classes invokable in Scala.js"
 
   object ScalaJSJUnitPluginComponent
-      extends plugins.PluginComponent with transform.Transform
-      with CompatComponent {
+      extends plugins.PluginComponent with transform.Transform {
 
     val global: Global = ScalaJSJUnitPlugin.this.global
     import global._
