@@ -6413,7 +6413,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     !sym.isTrait && isJSType(sym) && !sym.hasAnnotation(JSNativeAnnotation)
 
   def isNestedJSClass(sym: Symbol): Boolean =
-    sym.isLifted && !sym.originalOwner.isModuleClass && isJSType(sym)
+    sym.isLifted && !isStaticModule(sym.originalOwner) && isJSType(sym)
 
   /** Tests whether the given class is a JS native class. */
   private def isJSNativeClass(sym: Symbol): Boolean =
