@@ -18,7 +18,7 @@ import scala.util.matching.Regex
 
 object ScalaJSVersions extends VersionChecks(
     current = "1.2.0-SNAPSHOT",
-    binaryEmitted = "1.1"
+    binaryEmitted = "1.2-SNAPSHOT"
 )
 
 /** Helper class to allow for testing of logic. */
