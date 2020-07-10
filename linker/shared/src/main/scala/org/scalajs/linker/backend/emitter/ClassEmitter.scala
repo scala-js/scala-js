@@ -95,7 +95,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
                         entireClassDef ::
                         createStaticFields :::
                         (classValueVar := classVar("c", className)) ::
-                        genStaticInitialization(tree)
+                        genClassInitialization(tree)
                     )
                   }, {
                     js.Skip()
@@ -115,8 +115,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
               js.ParamDef(ident, rest = false)
             }
 
-            assert(!hasStaticInitializer(tree),
-                s"Found a static initializer in the non-top-level class $className")
+            assert(!hasClassInitializer(tree),
+                s"Found a class initializer in the non-top-level class $className")
 
             val body = js.Block(
                 optStoreJSSuperClass.toList :::
@@ -458,7 +458,11 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   /** Generates the static initializer invocation of a class. */
   def genStaticInitialization(tree: LinkedClass): List[js.Tree] = {
     implicit val pos = tree.pos
-    if (hasStaticInitializer(tree)) {
+    val hasStaticInit = tree.methods.exists { m =>
+      m.value.flags.namespace == MemberNamespace.StaticConstructor &&
+      m.value.methodName.isStaticInitializer
+    }
+    if (hasStaticInit) {
       val field = classVar("sct", tree.className, StaticInitializerName,
           StaticInitializerOriginalName)
       js.Apply(field, Nil) :: Nil
@@ -467,9 +471,22 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     }
   }
 
-  private def hasStaticInitializer(tree: LinkedClass): Boolean = {
+  /** Generates the class initializer invocation of a class. */
+  private def genClassInitialization(tree: LinkedClass): List[js.Tree] = {
+    implicit val pos = tree.pos
+    if (hasClassInitializer(tree)) {
+      val field = classVar("sct", tree.className, ClassInitializerName,
+          ClassInitializerOriginalName)
+      js.Apply(field, Nil) :: Nil
+    } else {
+      Nil
+    }
+  }
+
+  private def hasClassInitializer(tree: LinkedClass): Boolean = {
     tree.methods.exists { m =>
-      m.value.flags.namespace == MemberNamespace.StaticConstructor
+      m.value.flags.namespace == MemberNamespace.StaticConstructor &&
+      m.value.methodName.isClassInitializer
     }
   }
 
@@ -1286,6 +1303,9 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
 private[emitter] object ClassEmitter {
   private val StaticInitializerOriginalName: OriginalName =
+    OriginalName("<stinit>")
+
+  private val ClassInitializerOriginalName: OriginalName =
     OriginalName("<clinit>")
 
   private val ClassesWhoseDataReferToTheirInstanceTests =

@@ -27,6 +27,7 @@ object EntryPointsInfo {
       classDef.memberDefs.exists {
         case m: MethodDef =>
           m.flags.namespace == MemberNamespace.StaticConstructor
+            // && m.methodName.isStaticInitializer // Temp: emulate 1.1.x codegen
         case _ =>
           false
       }

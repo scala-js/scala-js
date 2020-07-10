@@ -21,6 +21,9 @@ object Names {
     UTF8String("<init>")
 
   private final val StaticInitializerSimpleEncodedName: UTF8String =
+    UTF8String("<stinit>")
+
+  private final val ClassInitializerSimpleEncodedName: UTF8String =
     UTF8String("<clinit>")
 
   // scalastyle:off equals.hash.code
@@ -181,7 +184,7 @@ object Names {
    *
    *  Simple names must be non-empty, and can contain any Unicode code point
    *  except `/ . ; [`. In addition, they must not contain the code point `<`
-   *  unless they are the string `<init>` or the string `<clinit>`.
+   *  unless they are one of `<init>`, `<stinit>` or `<clinit>`.
    */
   final class SimpleMethodName private (encoded: UTF8String)
       extends Name(encoded) with Comparable[SimpleMethodName] {
@@ -204,6 +207,10 @@ object Names {
     /** Returns `true` iff this is the name of a static initializer. */
     def isStaticInitializer: Boolean =
       this eq SimpleMethodName.StaticInitializer // globally unique, so `eq` is fine
+
+    /** Returns `true` iff this is the name of a class initializer. */
+    def isClassInitializer: Boolean =
+      this eq SimpleMethodName.ClassInitializer // globally unique, so `eq` is fine
   }
 
   object SimpleMethodName {
@@ -211,9 +218,13 @@ object Names {
     private val Constructor: SimpleMethodName =
       new SimpleMethodName(ConstructorSimpleEncodedName)
 
-    /** The unique `SimpleMethodName` with encoded name `<clinit>`. */
+    /** The unique `SimpleMethodName` with encoded name `<stinit>`. */
     private val StaticInitializer: SimpleMethodName =
       new SimpleMethodName(StaticInitializerSimpleEncodedName)
+
+    /** The unique `SimpleMethodName` with encoded name `<clinit>`. */
+    private val ClassInitializer: SimpleMethodName =
+      new SimpleMethodName(ClassInitializerSimpleEncodedName)
 
     def apply(name: UTF8String): SimpleMethodName = {
       val len = name.length
@@ -221,17 +232,18 @@ object Names {
         throwInvalidEncodedName(name)
 
       /* Handle constructor names and static initializer names. When we find
-       * those, we normalize the returned instance to be unique `Constructor`
-       * and `StaticInitializer` instances, ensuring that they remain globally
-       * unique.
+       * those, we normalize the returned instance to be one of the unique
+       * instances, ensuring that they remain globally unique.
        */
       if (name(0) == '<') {
-        // Must be either '<init>' or '<clinit>'
+        // Must be one of '<init>', '<stinit>' or '<clinit>'
         len match {
           case 6 if UTF8String.equals(name, ConstructorSimpleEncodedName) =>
             Constructor
           case 8 if UTF8String.equals(name, StaticInitializerSimpleEncodedName) =>
             StaticInitializer
+          case 8 if UTF8String.equals(name, ClassInitializerSimpleEncodedName) =>
+            ClassInitializer
           case _ =>
             throwInvalidEncodedName(name)
         }
@@ -251,6 +263,9 @@ object Names {
 
   val StaticInitializerSimpleName: SimpleMethodName =
     SimpleMethodName(StaticInitializerSimpleEncodedName)
+
+  val ClassInitializerSimpleName: SimpleMethodName =
+    SimpleMethodName(ClassInitializerSimpleEncodedName)
 
   /** The full name of a method, including its simple name and its signature.
    */
@@ -343,6 +358,9 @@ object Names {
 
     /** Returns `true` iff this is the name of a static initializer. */
     def isStaticInitializer: Boolean = simpleName.isStaticInitializer
+
+    /** Returns `true` iff this is the name of a class initializer. */
+    def isClassInitializer: Boolean = simpleName.isClassInitializer
   }
 
   object MethodName {
@@ -351,8 +369,8 @@ object Names {
 
     def apply(simpleName: SimpleMethodName, paramTypeRefs: List[TypeRef],
         resultTypeRef: TypeRef, isReflectiveProxy: Boolean): MethodName = {
-      if ((simpleName.isConstructor || simpleName.isStaticInitializer) &&
-          resultTypeRef != VoidRef) {
+      if ((simpleName.isConstructor || simpleName.isStaticInitializer ||
+          simpleName.isClassInitializer) && resultTypeRef != VoidRef) {
         throw new IllegalArgumentException(
             "A constructor or static initializer must have a void result type")
       }
@@ -495,6 +513,10 @@ object Names {
   /** Name of the static initializer method. */
   final val StaticInitializerName: MethodName =
     MethodName(StaticInitializerSimpleName, Nil, VoidRef)
+
+  /** Name of the class initializer method. */
+  final val ClassInitializerName: MethodName =
+    MethodName(ClassInitializerSimpleName, Nil, VoidRef)
 
   // ---------------------------------------------------
   // ----- Private helpers for validation of names -----

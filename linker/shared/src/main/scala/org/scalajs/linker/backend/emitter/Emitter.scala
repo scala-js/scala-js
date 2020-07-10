@@ -483,11 +483,7 @@ final class Emitter(config: Emitter.Config) {
 
     // Static initialization
 
-    val staticInitialization = if (linkedClass.kind.isJSType) {
-      Nil
-    } else {
-      classEmitter.genStaticInitialization(linkedClass)
-    }
+    val staticInitialization = classEmitter.genStaticInitialization(linkedClass)
 
     // Top-level exports
 

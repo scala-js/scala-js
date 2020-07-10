@@ -60,7 +60,11 @@ final class LinkedClass(
 
   val hasEntryPoint: Boolean = {
     topLevelExports.nonEmpty ||
-    methods.exists(_.value.flags.namespace == MemberNamespace.StaticConstructor)
+    methods.exists { m =>
+      val methodDef = m.value
+      methodDef.flags.namespace == MemberNamespace.StaticConstructor &&
+      methodDef.methodName.isStaticInitializer
+    }
   }
 
   def fullName: String = className.nameString

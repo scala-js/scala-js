@@ -113,11 +113,14 @@ private[emitter] final class NameGen {
     genMethodNameCache.getOrElseUpdate(name, {
       val builder = new java.lang.StringBuilder()
 
-      // For constructors and static initializers, we only need the param type refs
-      val onlyParamTypeRefs = name.isConstructor || name.isStaticInitializer
-
       // First encode the simple name
-      if (!onlyParamTypeRefs) {
+      if (name.isConstructor) {
+        // No encoded name is emitted. Param type refs are enough
+      } else if (name.isStaticInitializer) {
+        builder.append("stinit__")
+      } else if (name.isClassInitializer) {
+        builder.append("clinit__")
+      } else {
         val encoded = name.simpleName.encoded
         builder.append(startByteToChar(encoded(0) & 0xff))
         val len = encoded.length
@@ -167,8 +170,10 @@ private[emitter] final class NameGen {
         builder.append('_').append('_')
       }
 
-      if (!onlyParamTypeRefs && !name.isReflectiveProxy)
+      if (!name.isConstructor && !name.isStaticInitializer &&
+          !name.isClassInitializer && !name.isReflectiveProxy) {
         appendTypeRef(name.resultTypeRef)
+      }
 
       builder.toString()
     })

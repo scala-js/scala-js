@@ -71,6 +71,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       implicit val ctx = ErrorContext(classDef)
 
       checkJSClassCaptures(classDef)
+      checkClassInitializer(classDef)
       checkJSSuperClass(classDef)
       checkJSNativeLoadSpec(classDef)
       checkStaticMembers(classDef)
@@ -120,18 +121,23 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             reportError(i"The JS class capture $name cannot be a rest param")
           alreadyDeclared + name
       }
+    }
+  }
 
-      def isStaticInit(methodDef: Versioned[MethodDef]): Boolean = {
-        val m = methodDef.value
-        m.flags.namespace == MemberNamespace.PublicStatic &&
-        m.methodName.isStaticInitializer
+  private def checkClassInitializer(classDef: LinkedClass): Unit = {
+    for (classInit <- classDef.methods.find(_.value.methodName.isClassInitializer)) {
+      implicit val ctx = ErrorContext(classInit.value)
+
+      if (!classDef.kind.isJSClass) {
+        reportError(
+            i"The non JS class ${classDef.name} cannot have a class " +
+            "initializer")
       }
 
-      for (staticInit <- classDef.methods.find(isStaticInit)) {
-        implicit val ctx = ErrorContext(staticInit.value)
+      if (classDef.jsClassCaptures.isDefined) {
         reportError(
             i"The non-top-level JS class ${classDef.name} cannot have a " +
-            "static initializer")
+            "class initializer")
       }
     }
   }
@@ -372,8 +378,9 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     if (isConstructor != name.isConstructor)
       reportError("A method must have a constructor name iff it is a constructor")
 
-    if ((namespace == MemberNamespace.StaticConstructor) != name.isStaticInitializer)
-      reportError("A method must have a static initializer name iff it is a static constructor")
+    val hasStaticConstructorName = name.isStaticInitializer || name.isClassInitializer
+    if ((namespace == MemberNamespace.StaticConstructor) != hasStaticConstructorName)
+      reportError("A method must have a static constructor name iff it is a static constructor")
 
     val advertizedSig = (params.map(_.ptpe), resultType)
     val sigFromName = inferMethodType(name, static)

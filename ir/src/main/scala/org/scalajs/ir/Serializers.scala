@@ -1149,15 +1149,15 @@ object Serializers {
       val parents = readClassIdents()
       val jsSuperClass = readOptTree()
       val jsNativeLoadSpec = readJSNativeLoadSpec()
-      val memberDefs = readMemberDefs(name.name)
-      val topLevelExportDefs = readTopLevelExportDefs(name.name)
+      val memberDefs = readMemberDefs(name.name, kind)
+      val topLevelExportDefs = readTopLevelExportDefs(name.name, kind)
       val optimizerHints = OptimizerHints.fromBits(readInt())
       ClassDef(name, originalName, kind, jsClassCaptures, superClass, parents,
           jsSuperClass, jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
           optimizerHints)
     }
 
-    def readMemberDef(owner: ClassName): MemberDef = {
+    def readMemberDef(owner: ClassName, ownerKind: ClassKind): MemberDef = {
       implicit val pos = readPosition()
       val tag = readByte()
 
@@ -1176,7 +1176,25 @@ object Serializers {
           assert(len >= 0)
 
           val flags = MemberFlags.fromBits(readInt())
-          val name = readMethodIdent()
+
+          val name = {
+            /* In versions 1.0 and 1.1 of the IR, static initializers and
+             * class initializers were conflated into one concept, which was
+             * handled differently in the linker based on whether the owner
+             * was a JS type or not. They were serialized as `<clinit>`.
+             * Starting with 1.2, `<clinit>` is only for class initializers.
+             * If we read a definition for a `<clinit>` in a non-JS type, we
+             * rewrite it as a static initializers instead (`<stinit>`).
+             */
+            val name0 = readMethodIdent()
+            if (name0.name == ClassInitializerName &&
+                !ownerKind.isJSType) {
+              MethodIdent(StaticInitializerName)(name0.pos)
+            } else {
+              name0
+            }
+          }
+
           val originalName = readOriginalName()
           val args = readParamDefs()
           val resultType = readType()
@@ -1232,23 +1250,29 @@ object Serializers {
       }
     }
 
-    def readMemberDefs(owner: ClassName): List[MemberDef] =
-      List.fill(readInt())(readMemberDef(owner))
+    def readMemberDefs(owner: ClassName, ownerKind: ClassKind): List[MemberDef] =
+      List.fill(readInt())(readMemberDef(owner, ownerKind))
 
-    def readTopLevelExportDef(owner: ClassName): TopLevelExportDef = {
+    def readTopLevelExportDef(owner: ClassName,
+        ownerKind: ClassKind): TopLevelExportDef = {
       implicit val pos = readPosition()
       val tag = readByte()
+
+      def readJSMethodDef(): JSMethodDef =
+        readMemberDef(owner, ownerKind).asInstanceOf[JSMethodDef]
 
       (tag: @switch) match {
         case TagTopLevelJSClassExportDef => TopLevelJSClassExportDef(readString())
         case TagTopLevelModuleExportDef  => TopLevelModuleExportDef(readString())
-        case TagTopLevelMethodExportDef  => TopLevelMethodExportDef(readMemberDef(owner).asInstanceOf[JSMethodDef])
+        case TagTopLevelMethodExportDef  => TopLevelMethodExportDef(readJSMethodDef())
         case TagTopLevelFieldExportDef   => TopLevelFieldExportDef(readString(), readFieldIdent())
       }
     }
 
-    def readTopLevelExportDefs(owner: ClassName): List[TopLevelExportDef] =
-      List.fill(readInt())(readTopLevelExportDef(owner))
+    def readTopLevelExportDefs(owner: ClassName,
+        ownerKind: ClassKind): List[TopLevelExportDef] = {
+      List.fill(readInt())(readTopLevelExportDef(owner, ownerKind))
+    }
 
     def readLocalIdent(): LocalIdent = {
       implicit val pos = readPosition()

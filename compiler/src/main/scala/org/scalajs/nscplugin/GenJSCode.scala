@@ -487,10 +487,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
         val staticInitializerStats =
           reflectInit.toList ::: staticModuleInit.toList
-        if (staticInitializerStats.nonEmpty)
-          List(genStaticInitializerWithStats(js.Block(staticInitializerStats)))
-        else
+        if (staticInitializerStats.nonEmpty) {
+          List(genStaticConstructorWithStats(
+              ir.Names.ClassInitializerName, // temp: emulate codegen of 1.1.x
+              js.Block(staticInitializerStats)))
+        } else {
           Nil
+        }
       }
 
       val allMemberDefsExceptStaticForwarders =
@@ -627,9 +630,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             genStaticExports(companionModuleClass)
           }
           if (exports.exists(_.isInstanceOf[js.JSFieldDef])) {
-            val staticInitializer =
-              genStaticInitializerWithStats(genLoadModule(companionModuleClass))
-            exports :+ staticInitializer
+            val classInitializer = genStaticConstructorWithStats(
+                ir.Names.ClassInitializerName,
+                genLoadModule(companionModuleClass))
+            exports :+ classInitializer
           } else {
             exports
           }
@@ -1199,11 +1203,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     // Static initializers -----------------------------------------------------
 
-    private def genStaticInitializerWithStats(stats: js.Tree)(
+    private def genStaticConstructorWithStats(name: MethodName, stats: js.Tree)(
         implicit pos: Position): js.MethodDef = {
       js.MethodDef(
           js.MemberFlags.empty.withNamespace(js.MemberNamespace.StaticConstructor),
-          js.MethodIdent(ir.Names.StaticInitializerName),
+          js.MethodIdent(name),
           NoOriginalName,
           Nil,
           jstpe.NoType,
