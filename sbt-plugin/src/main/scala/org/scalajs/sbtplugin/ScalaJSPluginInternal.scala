@@ -257,9 +257,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
       scalaJSIR := {
         val linkerImpl = (scalaJSLinkerImpl in scalaJSIR).value
-
-        val globalIRCache = scalaJSGlobalIRCacheBox.value
-          .ensure(linkerImpl.irFileCache())
+        val globalIRCache = (scalaJSGlobalIRCache in scalaJSIR).value
 
         val cache = scalaJSIRCacheBox.value
           .ensure(registerResource(allocatedIRCaches, globalIRCache.newCache))

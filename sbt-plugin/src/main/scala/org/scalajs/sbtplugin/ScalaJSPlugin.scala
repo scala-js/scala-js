@@ -77,6 +77,14 @@ object ScalaJSPlugin extends AutoPlugin {
         "scalaJSGlobalIRCacheBox",
         "Scala.js internal: CacheBox for the global cache.", KeyRanks.Invisible)
 
+    val scalaJSGlobalIRCacheConfig = SettingKey[IRFileCacheConfig](
+        "scalaJSGlobalIRCacheConfig",
+        "Configuration for the global IR cache.", CSetting)
+
+    val scalaJSGlobalIRCache = TaskKey[IRFileCache](
+        "scalaJSGlobalIRCache",
+        "Scala.js internal: Access task for a the global IR cache")
+
     /** Instance of the Scala.js linker.
      *
      *  This task must be scoped per project, configuration, and stage task
@@ -299,7 +307,16 @@ object ScalaJSPlugin extends AutoPlugin {
           }
         },
 
+        scalaJSGlobalIRCacheConfig := IRFileCacheConfig(),
+
         scalaJSGlobalIRCacheBox := new CacheBox,
+
+        scalaJSGlobalIRCache := {
+          val linkerImpl = scalaJSLinkerImpl.value
+          val config = scalaJSGlobalIRCacheConfig.value
+          scalaJSGlobalIRCacheBox.value
+            .ensure(linkerImpl.irFileCache(config))
+        },
 
         jsEnv := new NodeJSEnv(),
 
