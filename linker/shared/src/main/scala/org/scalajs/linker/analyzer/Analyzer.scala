@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import org.scalajs.ir
 import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Names._
-import org.scalajs.ir.Trees.MemberNamespace
+import org.scalajs.ir.Trees.{MemberNamespace, JSNativeLoadSpec}
 import org.scalajs.ir.Types.ClassRef
 
 import org.scalajs.linker._
@@ -929,6 +929,13 @@ private final class Analyzer(config: CommonPhaseConfig,
                 StaticInitializerName).foreach {
               staticInit => staticInit.reachStatic()
             }
+          } else {
+            data.jsNativeLoadSpec match {
+              case None =>
+                _errors += MissingJSNativeLoadSpec(this, from)
+              case Some(jsNativeLoadSpec) =>
+                validateLoadSpec(jsNativeLoadSpec, jsNativeMember = None)
+            }
           }
 
           for (reachabilityInfo <- data.exportedMembers)
@@ -1007,6 +1014,28 @@ private final class Analyzer(config: CommonPhaseConfig,
         lookupStaticLikeMethod(namespace, methodName).reachStatic()
       else
         lookupMethod(methodName).reachStatic()
+    }
+
+    def useJSNativeMember(name: MethodName)(implicit from: From): Unit = {
+      if (jsNativeMembersUsed.add(name)) {
+        data.jsNativeMembers.get(name) match {
+          case None =>
+            _errors += MissingJSNativeMember(this, name, from)
+          case Some(jsNativeLoadSpec) =>
+            validateLoadSpec(jsNativeLoadSpec, Some(name))
+        }
+      }
+    }
+
+    private def validateLoadSpec(jsNativeLoadSpec: JSNativeLoadSpec,
+        jsNativeMember: Option[MethodName])(implicit from: From): Unit = {
+      if (config.coreSpec.moduleKind == ModuleKind.NoModule) {
+        jsNativeLoadSpec match {
+          case JSNativeLoadSpec.Import(module, _) =>
+            _errors += ImportWithoutModuleSupport(module, this, jsNativeMember, from)
+          case _ =>
+        }
+      }
     }
   }
 
@@ -1161,14 +1190,15 @@ private final class Analyzer(config: CommonPhaseConfig,
     while (jsNativeMembersUsedIterator.hasNext) {
       val (className, members) = jsNativeMembersUsedIterator.next()
       lookupClass(className) { classInfo =>
-        classInfo.jsNativeMembersUsed ++= members
+        for (member <- members)
+          classInfo.useJSNativeMember(member)
       }
     }
   }
 
   private def createMissingClassInfo(className: ClassName): Infos.ClassInfo = {
     new Infos.ClassInfoBuilder(className, ClassKind.Class,
-        superClass = Some(ObjectClass), interfaces = Nil)
+        superClass = Some(ObjectClass), interfaces = Nil, jsNativeLoadSpec = None)
       .addMethod(makeSyntheticMethodInfo(NoArgConstructorName))
       .result()
   }
