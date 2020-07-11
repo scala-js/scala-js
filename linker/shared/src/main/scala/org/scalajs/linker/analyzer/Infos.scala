@@ -37,9 +37,10 @@ object Infos {
       val kind: ClassKind,
       val superClass: Option[ClassName], // always None for interfaces
       val interfaces: List[ClassName], // direct parent interfaces only
+      val jsNativeLoadSpec: Option[JSNativeLoadSpec],
       val referencedFieldClasses: List[ClassName],
       val methods: List[MethodInfo],
-      val jsNativeMembers: List[MethodName],
+      val jsNativeMembers: Map[MethodName, JSNativeLoadSpec],
       val exportedMembers: List[ReachabilityInfo],
       val topLevelExportedMembers: List[ReachabilityInfo],
       val topLevelExportNames: List[String]
@@ -90,36 +91,19 @@ object Infos {
     }
   }
 
-  final class ClassInfoBuilder(private val className: ClassName) {
-    private var kind: ClassKind = ClassKind.Class
-    private var superClass: Option[ClassName] = None
-    private val interfaces = mutable.ListBuffer.empty[ClassName]
+  final class ClassInfoBuilder(
+      private val className: ClassName,
+      private val kind: ClassKind,
+      private val superClass: Option[ClassName],
+      private val interfaces: List[ClassName],
+      private val jsNativeLoadSpec: Option[JSNativeLoadSpec]
+  ) {
     private val referencedFieldClasses = mutable.Set.empty[ClassName]
     private val methods = mutable.ListBuffer.empty[MethodInfo]
-    private val jsNativeMembers = mutable.Set.empty[MethodName]
+    private val jsNativeMembers = mutable.Map.empty[MethodName, JSNativeLoadSpec]
     private val exportedMembers = mutable.ListBuffer.empty[ReachabilityInfo]
     private val topLevelExportedMembers = mutable.ListBuffer.empty[ReachabilityInfo]
     private var topLevelExportNames: List[String] = Nil
-
-    def setKind(kind: ClassKind): this.type = {
-      this.kind = kind
-      this
-    }
-
-    def setSuperClass(superClass: Option[ClassName]): this.type = {
-      this.superClass = superClass
-      this
-    }
-
-    def addInterface(interface: ClassName): this.type = {
-      interfaces += interface
-      this
-    }
-
-    def addInterfaces(interfaces: List[ClassName]): this.type = {
-      this.interfaces ++= interfaces
-      this
-    }
 
     def maybeAddReferencedFieldClass(tpe: Type): this.type = {
       tpe match {
@@ -138,8 +122,8 @@ object Infos {
       this
     }
 
-    def addJSNativeMember(memberName: MethodName): this.type = {
-      jsNativeMembers += memberName
+    def addJSNativeMember(member: JSNativeMemberDef): this.type = {
+      jsNativeMembers.put(member.name.name, member.jsNativeLoadSpec)
       this
     }
 
@@ -160,8 +144,8 @@ object Infos {
 
     def result(): ClassInfo = {
       new ClassInfo(className, kind, superClass,
-          interfaces.toList, referencedFieldClasses.toList, methods.toList,
-          jsNativeMembers.toList, exportedMembers.toList,
+          interfaces, jsNativeLoadSpec, referencedFieldClasses.toList,
+          methods.toList, jsNativeMembers.toMap, exportedMembers.toList,
           topLevelExportedMembers.toList, topLevelExportNames)
     }
   }
@@ -349,10 +333,9 @@ object Infos {
    *  [[org.scalajs.ir.Trees.ClassDef Trees.ClassDef]].
    */
   def generateClassInfo(classDef: ClassDef): ClassInfo = {
-    val builder = new ClassInfoBuilder(classDef.name.name)
-      .setKind(classDef.kind)
-      .setSuperClass(classDef.superClass.map(_.name))
-      .addInterfaces(classDef.interfaces.map(_.name))
+    val builder = new ClassInfoBuilder(classDef.name.name, classDef.kind,
+        classDef.superClass.map(_.name), classDef.interfaces.map(_.name),
+        classDef.jsNativeLoadSpec)
 
     classDef.memberDefs foreach {
       case fieldDef: AnyFieldDef =>
@@ -368,7 +351,7 @@ object Infos {
         builder.addExportedMember(generateJSPropertyInfo(propertyDef))
 
       case nativeMemberDef: JSNativeMemberDef =>
-        builder.addJSNativeMember(nativeMemberDef.name.name)
+        builder.addJSNativeMember(nativeMemberDef)
     }
 
     if (classDef.topLevelExportDefs.nonEmpty) {

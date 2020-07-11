@@ -263,6 +263,27 @@ class AnalyzerTest {
   }
 
   @Test
+  def missingJSNativeLoadSpec(): AsyncResult = await {
+    val kinds = Seq(
+        ClassKind.NativeJSClass,
+        ClassKind.NativeJSModuleClass
+    )
+
+    Future.traverse(kinds) { kind =>
+      val classDefs = Seq(
+          classDef("A", kind = kind, superClass = Some(ObjectClass))
+      )
+
+      val analysis = computeAnalysis(classDefs,
+          reqsFactory.instantiateClass("A", NoArgConstructorName))
+
+      assertContainsError("MissingJSNativeLoadSpec(A)", analysis) {
+        case MissingJSNativeLoadSpec(ClsInfo("A"), `fromUnitTest`) => true
+      }
+    }
+  }
+
+  @Test
   def notAModule(): AsyncResult = await {
     val classDefs = Seq(
         classDef("A", superClass = Some(ObjectClass),
@@ -312,6 +333,28 @@ class AnalyzerTest {
 
     assertContainsError("MissingMethod(A.foo;I)", analysis) {
       case MissingMethod(MethInfo("A", "foo;I"), `fromUnitTest`) => true
+    }
+  }
+
+  @Test
+  def missingJSNativeMember(): AsyncResult = await {
+    val mainName = m("main", Nil, V)
+    val testName = m("test", Nil, O)
+    val method = MethodDef(
+        EMF.withNamespace(MemberNamespace.PublicStatic),
+        mainName, NON, Nil, NoType,
+        Some(SelectJSNativeMember("A", testName)))(EOH, None)
+
+    val classDefs = Seq(
+        classDef("A", memberDefs = List(method))
+    )
+
+    val analysis = computeAnalysis(classDefs,
+        reqsFactory.callStaticMethod("A", mainName))
+
+    assertContainsError("MissingJSNativeMember(A.test;O)", analysis) {
+      case MissingJSNativeMember(ClsInfo("A"), `testName`,
+          FromMethod(MethInfo("A", "main;V"))) => true
     }
   }
 
@@ -412,6 +455,56 @@ class AnalyzerTest {
     val analysis = computeAnalysis(classDefs)
     assertContainsError("ConflictingTopLevelExport(foo, <degenerate>)", analysis) {
       case ConflictingTopLevelExport("foo", _) => true
+    }
+  }
+
+  @Test
+  def importClassWithoutModuleSupport(): AsyncResult = await {
+    val kinds = Seq(
+        ClassKind.NativeJSClass,
+        ClassKind.NativeJSModuleClass
+    )
+
+    Future.traverse(kinds) { kind =>
+      val classDefs = Seq(
+          classDef("A", kind = kind, superClass = Some(ObjectClass),
+              jsNativeLoadSpec = Some(JSNativeLoadSpec.Import("my-module", List("A"))))
+      )
+
+      val analysis = computeAnalysis(classDefs,
+          reqsFactory.instantiateClass("A", NoArgConstructorName),
+          config = StandardConfig().withModuleKind(ModuleKind.NoModule))
+
+      assertContainsError("ImportWithoutModuleSupport(my-module, A, None)", analysis) {
+        case ImportWithoutModuleSupport("my-module", ClsInfo("A"), None, `fromUnitTest`) =>
+          true
+      }
+    }
+  }
+
+  @Test
+  def importJSNativeMemberWithoutModuleSupport(): AsyncResult = await {
+    val mainName = m("main", Nil, V)
+    val testName = m("test", Nil, O)
+
+    val mainMethod = MethodDef(
+        EMF.withNamespace(MemberNamespace.PublicStatic),
+        mainName, NON, Nil, NoType,
+        Some(SelectJSNativeMember("A", testName)))(EOH, None)
+    val nativeMember = JSNativeMemberDef(
+        EMF.withNamespace(MemberNamespace.PublicStatic), testName,
+        JSNativeLoadSpec.Import("my-module", List("test")))
+
+    val classDefs = Seq(
+        classDef("A", memberDefs = List(mainMethod, nativeMember))
+    )
+
+    val analysis = computeAnalysis(classDefs,
+        reqsFactory.callStaticMethod("A", mainName))
+
+    assertContainsError("ImportWithoutModuleSupport(my-module, A, None)", analysis) {
+      case ImportWithoutModuleSupport("my-module", ClsInfo("A"), Some(`testName`),
+          FromMethod(MethInfo("A", "main;V"))) => true
     }
   }
 

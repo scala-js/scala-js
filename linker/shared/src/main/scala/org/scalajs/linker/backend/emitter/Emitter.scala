@@ -265,49 +265,7 @@ final class Emitter(config: Emitter.Config) {
 
     moduleKind match {
       case ModuleKind.NoModule =>
-        var importsFound: Boolean = false
-
-        for (classDef <- orderedClasses) {
-          def displayName = classDef.className.nameString
-
-          if (classDef.hasInstances) {
-            classDef.jsNativeLoadSpec match {
-              case Some(JSNativeLoadSpec.Import(module, _)) =>
-                logger.error(s"$displayName needs to be imported from module " +
-                    s"'$module' but module support is disabled.")
-                importsFound = true
-
-              case _ =>
-                // ok
-            }
-          }
-
-          if (classDef.jsNativeMembers.nonEmpty) { // likely false
-            for (nativeMember <- classDef.jsNativeMembers) {
-              nativeMember.jsNativeLoadSpec match {
-                case JSNativeLoadSpec.Import(module, _) =>
-                  logger.error(
-                      s"$displayName.${nativeMember.name.name.displayName} " +
-                      s"needs to be imported from module '$module' but " +
-                      "module support is disabled")
-                  importsFound = true
-
-                case _ =>
-                  // ok
-              }
-            }
-          }
-        }
-
-        if (importsFound) {
-          throw new LinkingException(
-              "There were module imports without fallback to global " +
-              "variables, but module support is disabled.\n" +
-              "To enable module support, set `scalaJSLinkerConfig ~= " +
-              "(_.withModuleKind(ModuleKind.CommonJSModule))`.")
-        } else {
-          Nil
-        }
+        Nil
 
       case ModuleKind.ESModule =>
         mapImportedModule { (module, pos0) =>

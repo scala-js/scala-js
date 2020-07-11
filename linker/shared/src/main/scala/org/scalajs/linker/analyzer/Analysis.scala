@@ -159,8 +159,11 @@ object Analysis {
       subClassInfo: ClassInfo, from: From)
       extends Error
 
+  final case class MissingJSNativeLoadSpec(info: ClassInfo, from: From) extends Error
+
   final case class NotAModule(info: ClassInfo, from: From) extends Error
   final case class MissingMethod(info: MethodInfo, from: From) extends Error
+  final case class MissingJSNativeMember(info: ClassInfo, name: MethodName, from: From) extends Error
   final case class ConflictingDefaultMethods(infos: List[MethodInfo], from: From) extends Error
 
   final case class InvalidTopLevelExportInScript(name: String, info: ClassInfo) extends Error {
@@ -170,6 +173,9 @@ object Analysis {
   final case class ConflictingTopLevelExport(name: String, infos: List[ClassInfo]) extends Error {
     def from: From = FromExports
   }
+
+  final case class ImportWithoutModuleSupport(module: String, info: ClassInfo,
+      jsNativeMember: Option[MethodName], from: From) extends Error
 
   sealed trait From
   final case class FromMethod(methodInfo: MethodInfo) extends From
@@ -200,10 +206,14 @@ object Analysis {
         s"${superIntfInfo.displayName} (of kind ${superIntfInfo.kind}) is " +
         s"not a valid interface implemented by ${subClassInfo.displayName} " +
         s"(of kind ${subClassInfo.kind})"
+      case MissingJSNativeLoadSpec(info, _) =>
+        s"${info.displayName} is a native class but does not have a JSNativeLoadSpec"
       case NotAModule(info, _) =>
         s"Cannot access module for non-module ${info.displayName}"
       case MissingMethod(info, _) =>
         s"Referring to non-existent method ${info.fullDisplayName}"
+      case MissingJSNativeMember(info, name, _) =>
+        s"Referring to non-existent js native member ${info.displayName}.${name.displayName}"
       case ConflictingDefaultMethods(infos, _) =>
         s"Conflicting default methods: ${infos.map(_.fullDisplayName).mkString(" ")}"
       case InvalidTopLevelExportInScript(name, info) =>
@@ -214,6 +224,13 @@ object Analysis {
       case ConflictingTopLevelExport(name, infos) =>
         s"Conflicting top level export for name $name involving " +
         infos.map(_.displayName).mkString(", ")
+      case ImportWithoutModuleSupport(module, info, None, _) =>
+        s"${info.displayName} needs to be imported from module " +
+        s"'$module' but module support is disabled"
+      case ImportWithoutModuleSupport(module, info, Some(jsNativeMember), _) =>
+        s"${info.displayName}.${jsNativeMember.displayName} " +
+        s"needs to be imported from module '$module' but " +
+        "module support is disabled"
     }
 
     logger.log(level, headMsg)
