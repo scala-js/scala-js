@@ -179,10 +179,9 @@ private object Refiner {
       if (!cacheUsed) {
         cacheUsed = true
 
-        val builder = new Infos.ClassInfoBuilder(linkedClass.className)
-          .setKind(linkedClass.kind)
-          .setSuperClass(linkedClass.superClass.map(_.name))
-          .addInterfaces(linkedClass.interfaces.map(_.name))
+        val builder = new Infos.ClassInfoBuilder(linkedClass.className,
+            linkedClass.kind, linkedClass.superClass.map(_.name),
+            linkedClass.interfaces.map(_.name))
 
         for (field <- linkedClass.fields)
           builder.maybeAddReferencedFieldClass(field.ftpe)

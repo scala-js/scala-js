@@ -90,36 +90,18 @@ object Infos {
     }
   }
 
-  final class ClassInfoBuilder(private val className: ClassName) {
-    private var kind: ClassKind = ClassKind.Class
-    private var superClass: Option[ClassName] = None
-    private val interfaces = mutable.ListBuffer.empty[ClassName]
+  final class ClassInfoBuilder(
+      private val className: ClassName,
+      private val kind: ClassKind,
+      private val superClass: Option[ClassName],
+      private val interfaces: List[ClassName]
+  ) {
     private val referencedFieldClasses = mutable.Set.empty[ClassName]
     private val methods = mutable.ListBuffer.empty[MethodInfo]
     private val jsNativeMembers = mutable.Set.empty[MethodName]
     private val exportedMembers = mutable.ListBuffer.empty[ReachabilityInfo]
     private val topLevelExportedMembers = mutable.ListBuffer.empty[ReachabilityInfo]
     private var topLevelExportNames: List[String] = Nil
-
-    def setKind(kind: ClassKind): this.type = {
-      this.kind = kind
-      this
-    }
-
-    def setSuperClass(superClass: Option[ClassName]): this.type = {
-      this.superClass = superClass
-      this
-    }
-
-    def addInterface(interface: ClassName): this.type = {
-      interfaces += interface
-      this
-    }
-
-    def addInterfaces(interfaces: List[ClassName]): this.type = {
-      this.interfaces ++= interfaces
-      this
-    }
 
     def maybeAddReferencedFieldClass(tpe: Type): this.type = {
       tpe match {
@@ -160,7 +142,7 @@ object Infos {
 
     def result(): ClassInfo = {
       new ClassInfo(className, kind, superClass,
-          interfaces.toList, referencedFieldClasses.toList, methods.toList,
+          interfaces, referencedFieldClasses.toList, methods.toList,
           jsNativeMembers.toList, exportedMembers.toList,
           topLevelExportedMembers.toList, topLevelExportNames)
     }
@@ -349,10 +331,8 @@ object Infos {
    *  [[org.scalajs.ir.Trees.ClassDef Trees.ClassDef]].
    */
   def generateClassInfo(classDef: ClassDef): ClassInfo = {
-    val builder = new ClassInfoBuilder(classDef.name.name)
-      .setKind(classDef.kind)
-      .setSuperClass(classDef.superClass.map(_.name))
-      .addInterfaces(classDef.interfaces.map(_.name))
+    val builder = new ClassInfoBuilder(classDef.name.name, classDef.kind,
+      classDef.superClass.map(_.name), classDef.interfaces.map(_.name))
 
     classDef.memberDefs foreach {
       case fieldDef: AnyFieldDef =>

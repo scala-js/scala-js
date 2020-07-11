@@ -1167,9 +1167,8 @@ private final class Analyzer(config: CommonPhaseConfig,
   }
 
   private def createMissingClassInfo(className: ClassName): Infos.ClassInfo = {
-    new Infos.ClassInfoBuilder(className)
-      .setKind(ClassKind.Class)
-      .setSuperClass(Some(ObjectClass))
+    new Infos.ClassInfoBuilder(className, ClassKind.Class,
+        superClass = Some(ObjectClass), interfaces = Nil)
       .addMethod(makeSyntheticMethodInfo(NoArgConstructorName))
       .result()
   }
