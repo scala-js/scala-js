@@ -1187,7 +1187,8 @@ object Serializers {
              * rewrite it as a static initializers instead (`<stinit>`).
              */
             val name0 = readMethodIdent()
-            if (name0.name == ClassInitializerName &&
+            if (hacks.use11 &&
+                name0.name == ClassInitializerName &&
                 !ownerKind.isJSType) {
               MethodIdent(StaticInitializerName)(name0.pos)
             } else {
@@ -1577,6 +1578,8 @@ object Serializers {
   /** Hacks for backwards compatible deserializing. */
   private final class Hacks(sourceVersion: String) {
     val use10: Boolean = sourceVersion == "1.0"
+
+    val use11: Boolean = use10 || sourceVersion == "1.1"
   }
 
   /** Names needed for hacks. */

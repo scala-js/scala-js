@@ -489,7 +489,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           reflectInit.toList ::: staticModuleInit.toList
         if (staticInitializerStats.nonEmpty) {
           List(genStaticConstructorWithStats(
-              ir.Names.ClassInitializerName, // temp: emulate codegen of 1.1.x
+              ir.Names.StaticInitializerName,
               js.Block(staticInitializerStats)))
         } else {
           Nil
