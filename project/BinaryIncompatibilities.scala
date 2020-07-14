@@ -5,6 +5,15 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 
 object BinaryIncompatibilities {
   val IR = Seq(
+      // private, not an issue
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.ir.Serializers#Deserializer.readMemberDef"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.ir.Serializers#Deserializer.readMemberDefs"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.ir.Serializers#Deserializer.readTopLevelExportDef"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.ir.Serializers#Deserializer.readTopLevelExportDefs"),
   )
 
   val Linker = Seq(

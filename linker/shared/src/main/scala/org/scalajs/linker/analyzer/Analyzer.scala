@@ -855,11 +855,9 @@ private final class Analyzer(config: CommonPhaseConfig,
       implicit val from = FromExports
 
       // Static initializer
-      if (!isJSType) {
-        tryLookupStaticLikeMethod(MemberNamespace.StaticConstructor,
-            StaticInitializerName).foreach {
-          _.reachStatic()(fromAnalyzer)
-        }
+      tryLookupStaticLikeMethod(MemberNamespace.StaticConstructor,
+          StaticInitializerName).foreach {
+        _.reachStatic()(fromAnalyzer)
       }
 
       // Top-level exports
@@ -926,7 +924,7 @@ private final class Analyzer(config: CommonPhaseConfig,
           if (isJSClass) {
             superClass.foreach(_.instantiated())
             tryLookupStaticLikeMethod(MemberNamespace.StaticConstructor,
-                StaticInitializerName).foreach {
+                ClassInitializerName).foreach {
               staticInit => staticInit.reachStatic()
             }
           } else {

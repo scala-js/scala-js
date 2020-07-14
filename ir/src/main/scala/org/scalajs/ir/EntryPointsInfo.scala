@@ -26,7 +26,8 @@ object EntryPointsInfo {
       classDef.topLevelExportDefs.nonEmpty ||
       classDef.memberDefs.exists {
         case m: MethodDef =>
-          m.flags.namespace == MemberNamespace.StaticConstructor
+          m.flags.namespace == MemberNamespace.StaticConstructor &&
+          m.methodName.isStaticInitializer
         case _ =>
           false
       }
