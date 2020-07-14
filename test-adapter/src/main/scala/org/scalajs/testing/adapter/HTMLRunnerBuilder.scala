@@ -12,10 +12,11 @@
 
 package org.scalajs.testing.adapter
 
-import java.io.{File, InputStream}
-import java.net.URI
+import java.io.{File, IOException}
+import java.nio.CharBuffer
 import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.{Files, StandardCopyOption}
+import java.nio.file._
+import java.nio.file.attribute.BasicFileAttributes
 
 import sbt.testing.{Framework, TaskDef}
 
@@ -26,85 +27,88 @@ import org.scalajs.testing.common._
 
 /** Template for the HTML runner. */
 object HTMLRunnerBuilder {
-
-  private val tmpSuffixRE = """[a-zA-Z0-9-_.]*$""".r
-
-  private def tmpFile(path: String, in: InputStream): URI = {
-    try {
-      /* - createTempFile requires a prefix of at least 3 chars
-       * - we use a safe part of the path as suffix so the extension stays (some
-       *   browsers need that) and there is a clue which file it came from.
-       */
-      val suffix = tmpSuffixRE.findFirstIn(path).orNull
-
-      val f = File.createTempFile("tmp-", suffix)
-      f.deleteOnExit()
-      Files.copy(in, f.toPath(), StandardCopyOption.REPLACE_EXISTING)
-      f.toURI()
-    } finally {
-      in.close()
-    }
-  }
-
+  @deprecated("Use write instead", "1.2.0")
   def writeToFile(output: File, title: String, input: Seq[Input],
       frameworkImplClassNames: List[List[String]],
       taskDefs: List[TaskDef]): Unit = {
+    val outputPath = output.toPath()
+    val artifactsDir =
+      Files.createTempDirectory(outputPath.getParent(), ".html-artifacts")
 
-    val jsFiles = input.map {
-      case Input.Script(script) => script
+    sys.addShutdownHook {
+      Files.walkFileTree(artifactsDir, new SimpleFileVisitor[Path] {
+        override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
+          Files.delete(file)
+          FileVisitResult.CONTINUE
+        }
+
+        override def postVisitDirectory(dir: Path, exc: IOException): FileVisitResult = {
+          Files.delete(dir)
+          FileVisitResult.CONTINUE
+        }
+      })
+    }
+
+    write(outputPath, artifactsDir, title, input, frameworkImplClassNames, taskDefs)
+  }
+
+  def write(output: Path, artifactsDir: Path, title: String, input: Seq[Input],
+      frameworkImplClassNames: List[List[String]],
+      taskDefs: List[TaskDef]): Unit = {
+
+    def artifactPath(name: String): (String, Path) = {
+      val path = artifactsDir.resolve(name)
+      val relPath = output.getParent().relativize(path)
+      (joinRelPath(relPath), path)
+    }
+
+    def scriptTag(index: Int, tpe: String, content: Path) = {
+      val (src, target) = artifactPath(f"input$index-${content.getFileName()}")
+      Files.copy(content, target, StandardCopyOption.REPLACE_EXISTING)
+      s"""<script defer type="$tpe" src="${htmlEscaped(src)}"></script>"""
+    }
+
+    val loadJSTags = input.zipWithIndex.map {
+      case (Input.Script(script), i)   => scriptTag(i, "text/javascript", script)
+      case (Input.ESModule(module), i) => scriptTag(i, "module", module)
 
       case _ =>
         throw new UnsupportedInputException(
             s"Unsupported input for the generation of an HTML runner: $input")
     }
 
-    val jsFileURIs = jsFiles.map { f =>
-      try {
-        f.toFile.toURI
-      } catch {
-        case _: UnsupportedOperationException =>
-          tmpFile(f.toString, Files.newInputStream(f))
-      }
+    val bridgeModeStr = {
+      val tests = new IsolatedTestSet(frameworkImplClassNames, taskDefs)
+      val mode = TestBridgeMode.HTMLRunner(tests)
+      Serializer.serialize[TestBridgeMode](mode)
     }
 
-    val cssURI = {
+    val cssHref = {
       val name = "test-runner.css"
-      tmpFile(name, getClass.getResourceAsStream(name))
+      val (href, target) = artifactPath(name)
+      val in = getClass.getResourceAsStream(name)
+      try Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING)
+      finally in.close()
+      href
     }
 
-    val tests = new IsolatedTestSet(frameworkImplClassNames, taskDefs)
+    val htmlContent = s"""
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${htmlEscaped(title)}</title>
+          <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+          <link rel="stylesheet" type="text/css" href="${htmlEscaped(cssHref)}" />
+          <script type="text/javascript">
+            var __ScalaJSTestBridgeMode = "${escapeJS(bridgeModeStr)}";
+          </script>
+          ${loadJSTags.mkString("\n")}
+        </head>
+        <body></body>
+      </html>
+    """
 
-    val htmlContent = render(title, jsFileURIs, cssURI, tests)
-
-    Files.write(output.toPath, java.util.Arrays.asList(htmlContent), UTF_8)
-  }
-
-  private def render(title: String, jsFiles: Seq[URI],
-      css: URI, tests: IsolatedTestSet): String = {
-    def uristr(uri: URI) = htmlEscaped(uri.toASCIIString)
-
-    s"""
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>${htmlEscaped(title)}</title>
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-        <link rel="stylesheet" type="text/css" href="${uristr(css)}" />
-        <script type="text/javascript">
-        ${injectBridgeMode(tests)}
-        </script>
-        ${(for (jsFile <- jsFiles) yield s"""
-        <script type="text/javascript" src="${uristr(jsFile)}"></script>
-        """).mkString("")}
-      </head>
-      <body></body>
-    </html>"""
-  }
-
-  private def injectBridgeMode(tests: IsolatedTestSet): String = {
-    val mode = TestBridgeMode.HTMLRunner(tests)
-    val ser = Serializer.serialize[TestBridgeMode](mode)
-    s"""var __ScalaJSTestBridgeMode = "${escapeJS(ser)}";"""
+    Files.write(output, java.util.Arrays.asList(htmlContent), UTF_8)
   }
 
   private def htmlEscaped(str: String): String = str.flatMap {
@@ -113,5 +117,20 @@ object HTMLRunnerBuilder {
     case '"' => "&quot;"
     case '&' => "&amp;"
     case c   => c.toString()
+  }
+
+  // <parts>.map(_.toString()).mkString("/")
+  private def joinRelPath(p: Path): String = {
+    require(p.getRoot() == null)
+
+    val partsIter = p.iterator()
+    val result = new StringBuilder()
+    while (partsIter.hasNext()) {
+      result.append(partsIter.next())
+      if (partsIter.hasNext())
+        result.append('/')
+    }
+
+    result.toString()
   }
 }

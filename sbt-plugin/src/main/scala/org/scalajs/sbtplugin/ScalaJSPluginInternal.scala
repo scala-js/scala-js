@@ -517,19 +517,24 @@ private[sbtplugin] object ScalaJSPluginInternal {
           .storeAs(definedTestNames).triggeredBy(loadedTestFrameworks).value
       },
 
-      artifactPath in testHtml := {
+      scalaJSTestHTMLArtifactDirectory := {
         val stageSuffix = scalaJSStage.value match {
           case Stage.FastOpt => "fastopt"
           case Stage.FullOpt => "opt"
         }
         val config = configuration.value.name
         ((crossTarget in testHtml).value /
-            ((moduleName in testHtml).value + s"-$stageSuffix-$config.html"))
+            ((moduleName in testHtml).value + s"-$stageSuffix-$config-html"))
       },
+
+      artifactPath in testHtml :=
+        scalaJSTestHTMLArtifactDirectory.value / "index.html",
 
       testHtml := {
         val log = streams.value.log
         val output = (artifactPath in testHtml).value
+        val artifactDirectory = scalaJSTestHTMLArtifactDirectory.value
+
         val title = name.value + " - tests"
         val input = (jsEnvInput in testHtml).value
 
@@ -542,10 +547,18 @@ private[sbtplugin] object ScalaJSPluginInternal {
               td.explicitlySpecified, td.selectors)
         }
 
-        HTMLRunnerBuilder.writeToFile(output, title, input,
-            frameworkImplClassNames, taskDefs.toList)
+        IO.createDirectory(artifactDirectory)
 
-        log.info(s"Wrote HTML test runner. Point your browser to ${output.toURI}")
+        HTMLRunnerBuilder.write(output.toPath(), artifactDirectory.toPath(),
+            title, input, frameworkImplClassNames, taskDefs.toList)
+
+        if (input.exists(_.isInstanceOf[Input.ESModule])) {
+          log.info(s"Wrote HTML test runner to $output. You must serve it " +
+              "through an HTTP server (e.g. `python3 -m http.server`), since " +
+              "it loads at least one ESModule.")
+        } else {
+          log.info(s"Wrote HTML test runner. Point your browser to ${output.toURI}")
+        }
 
         Attributed.blank(output)
       }

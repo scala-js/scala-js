@@ -244,6 +244,10 @@ object ScalaJSPlugin extends AutoPlugin {
     val scalaJSSourceMap = AttributeKey[File]("scalaJSSourceMap",
         "Source map file attached to an Attributed .js file.",
         BSetting)
+
+    val scalaJSTestHTMLArtifactDirectory = SettingKey[File]("scalaJSTestHTMLArtifactDirectory",
+        "Directory for artifacts produced by testHtml.",
+        BSetting)
   }
 
   import autoImport._
