@@ -449,9 +449,6 @@ class JSExportTest extends DirectTest with TestHelpers {
       @JSExportTopLevel("B")
       def this() = this(5)
     }
-
-    @JSExportTopLevel("C")
-    abstract class C extends js.Object
     """ hasErrors
     """
       |newSource1.scala:3: error: You may not export an abstract class
@@ -460,9 +457,6 @@ class JSExportTest extends DirectTest with TestHelpers {
       |newSource1.scala:7: error: You may not export an abstract class
       |      @JSExportTopLevel("B")
       |       ^
-      |newSource1.scala:11: error: You may not export an abstract class
-      |    @JSExportTopLevel("C")
-      |     ^
     """
 
   }

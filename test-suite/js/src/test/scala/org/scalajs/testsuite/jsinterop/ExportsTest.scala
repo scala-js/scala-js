@@ -811,6 +811,51 @@ class ExportsTest {
     assertSame(constr, js.constructorOf[SJSDefinedTopLevelExportedClass])
   }
 
+  @Test def toplevel_exports_for_abstract_JS_classes_issue4117(): Unit = {
+    val constr =
+      if (isNoModule) global.TopLevelExportedAbstractJSClass
+      else exportsNamespace.TopLevelExportedAbstractJSClass
+
+    assertEquals("function", js.typeOf(constr))
+
+    val body = if (assumeES2015) {
+      """
+      class SubClass extends constr {
+        constructor(x) {
+          super(x);
+        }
+        foo(y) {
+           return y + this.x;
+        }
+      }
+      return SubClass;
+      """
+    } else {
+      """
+      function SubClass(x) {
+        constr.call(this, x);
+      }
+      SubClass.prototype = Object.create(constr.prototype);
+      SubClass.prototype.foo = function(y) {
+        return y + this.x;
+      };
+      return SubClass;
+      """
+    }
+
+    val subclassFun = new js.Function("constr", body)
+      .asInstanceOf[js.Function1[js.Dynamic, js.Dynamic]]
+    val subclass = subclassFun(constr)
+    assertEquals("function", js.typeOf(subclass))
+
+    val obj = js.Dynamic.newInstance(subclass)(5)
+      .asInstanceOf[TopLevelExportedAbstractJSClass]
+
+    assertEquals(5, obj.x)
+    assertEquals(11, obj.foo(6))
+    assertEquals(33, obj.bar(6))
+  }
+
   @Test def toplevel_exports_for_nested_classes(): Unit = {
     val constr =
       if (isNoModule) global.NestedExportedClass
@@ -1468,6 +1513,13 @@ class TopLevelExportedClass(_x: Int) {
 
 @JSExportTopLevel("SJSDefinedTopLevelExportedClass")
 class SJSDefinedTopLevelExportedClass(val x: Int) extends js.Object
+
+@JSExportTopLevel("TopLevelExportedAbstractJSClass")
+abstract class TopLevelExportedAbstractJSClass(val x: Int) extends js.Object {
+  def foo(y: Int): Int
+
+  def bar(y: Int): Int = 3 * foo(y)
+}
 
 @JSExportTopLevel("ProtectedExportedClass")
 protected class ProtectedExportedClass(_x: Int) {
