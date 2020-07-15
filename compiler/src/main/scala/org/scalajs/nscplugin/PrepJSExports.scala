@@ -154,7 +154,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
     } else if (!sym.isStatic) {
       err("You may not export a nested " +
           (if (isMod) "object" else s"class. $createFactoryInOuterClassHint"))
-    } else if (sym.isAbstractClass) {
+    } else if (sym.isAbstractClass && !isJSAny(sym)) {
       err("You may not export an abstract class")
     } else if (!isMod && !hasAnyNonPrivateCtor) {
       /* This test is only relevant for JS classes but doesn't hurt for Scala
