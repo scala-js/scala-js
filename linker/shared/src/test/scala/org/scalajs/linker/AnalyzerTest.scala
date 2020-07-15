@@ -81,7 +81,7 @@ class AnalyzerTest {
     val analysis = computeAnalysis(classDefs, reqsFactory.classData("A"))
 
     assertContainsError("CycleInInheritanceChain(A, B)", analysis) {
-      case CycleInInheritanceChain(List(AClass, BClass), `fromAnalyzer`) => true
+      case CycleInInheritanceChain(List(ClsName("A"), ClsName("B")), `fromAnalyzer`) => true
     }
   }
 
@@ -95,7 +95,7 @@ class AnalyzerTest {
     val analysis = computeAnalysis(classDefs, reqsFactory.classData("A"))
 
     assertContainsError("CycleInInheritanceChain(A, B)", analysis) {
-      case CycleInInheritanceChain(List(AClass, BClass), `fromAnalyzer`) => true
+      case CycleInInheritanceChain(List(ClsName("A"), ClsName("B")), `fromAnalyzer`) => true
     }
   }
 
@@ -113,8 +113,8 @@ class AnalyzerTest {
 
     val analysis = computeAnalysis(classDefs, reqsFactory.classData("A"))
 
-    assertContainsError("CycleInInheritanceChain(B, C, D)", analysis) {
-      case CycleInInheritanceChain(List(CClass, DClass, EClass), `fromAnalyzer`) => true
+    assertContainsError("CycleInInheritanceChain(C, D, E)", analysis) {
+      case CycleInInheritanceChain(List(ClsName("C"), ClsName("D"), ClsName("E")), `fromAnalyzer`) => true
     }
   }
 
@@ -643,12 +643,6 @@ object AnalyzerTest {
 
   private val fromAnalyzer = FromCore("analyzer")
   private val fromUnitTest = FromCore("unit test")
-
-  private val AClass = ClassName("A")
-  private val BClass = ClassName("B")
-  private val CClass = ClassName("C")
-  private val DClass = ClassName("D")
-  private val EClass = ClassName("E")
 
   private def validParentForKind(kind: ClassKind): Option[ClassName] = {
     import ClassKind._
