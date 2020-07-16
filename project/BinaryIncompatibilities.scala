@@ -17,8 +17,13 @@ object BinaryIncompatibilities {
   )
 
   val Linker = Seq(
+      // Breaking in stable API. OK in Minor version.
+      exclude[ProblemRef]("org.scalajs.linker.standard.*"),
+
       // Breaking in unstable packages
       exclude[ProblemRef]("org.scalajs.linker.analyzer.*"),
+      exclude[ProblemRef]("org.scalajs.linker.backend.*"),
+      exclude[ProblemRef]("org.scalajs.linker.frontend.*"),
   )
 
   val LinkerInterface = Seq(

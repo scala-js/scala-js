@@ -12,11 +12,14 @@
 
 package org.scalajs.linker.standard
 
-import org.scalajs.linker.interface.ModuleInitializer
+import scala.collection.mutable
 
-final class LinkingUnit private[linker] (
-    val coreSpec: CoreSpec,
-    val classDefs: List[LinkedClass],
-    val topLevelExports: List[LinkedTopLevelExport],
-    val moduleInitializers: List[ModuleInitializer]
-)
+import org.scalajs.ir.Trees.TopLevelExportDef
+import org.scalajs.ir.Names.ClassName
+
+final class LinkedTopLevelExport(
+    val owningClass: ClassName,
+    val tree: TopLevelExportDef
+) {
+  def exportName: String = tree.topLevelExportName
+}
