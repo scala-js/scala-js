@@ -284,8 +284,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
   /** Desugars a class-level expression. */
   def desugarExpr(expr: Tree, resultType: Type)(
-      implicit globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[js.Tree] = {
+      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+    implicit val pos = expr.pos
+
     for (fun <- desugarToFunction(Nil, expr, resultType)) yield {
       fun match {
         case js.Function(_, Nil, js.Return(newExpr)) =>
