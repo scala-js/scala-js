@@ -813,16 +813,15 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   unnest(name) { (newName, env0) =>
                     implicit val env = env0
 
-                    val descriptor = js.ObjectConstr(List(
-                        js.StringLiteral("configurable") -> js.BooleanLiteral(true),
-                        js.StringLiteral("enumerable") -> js.BooleanLiteral(true),
-                        js.StringLiteral("writable") -> js.BooleanLiteral(true),
-                        js.StringLiteral("value") -> zero
-                    ))
+                    val descriptor = List(
+                        "configurable" -> js.BooleanLiteral(true),
+                        "enumerable" -> js.BooleanLiteral(true),
+                        "writable" -> js.BooleanLiteral(true),
+                        "value" -> zero
+                    )
 
-                    js.Apply(
-                        genIdentBracketSelect(genGlobalVarRef("Object"), "defineProperty"),
-                        List(js.This(), transformExprNoChar(newName), descriptor))
+                    extractWithGlobals(
+                        genDefineProperty(js.This(), transformExprNoChar(newName), descriptor))
                   }
               }
             }

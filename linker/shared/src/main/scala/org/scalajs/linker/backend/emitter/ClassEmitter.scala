@@ -612,10 +612,6 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     import TreeDSL._
     implicit val pos = property.pos
 
-    // defineProperty method
-    val defProp =
-      genIdentBracketSelect(js.VarRef(js.Ident("Object")), "defineProperty")
-
     // class prototype
     val classVarRef = classVar("c", className)
     val targetObject =
@@ -635,18 +631,16 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     for {
       propName <- desugarExpr(property.name, resultType = AnyType)
-      optGetter <- WithGlobals.option(optGetterWithGlobals)
-      optSetter <- WithGlobals.option(optSetterWithGlobals)
-    } yield {
-      // Options passed to the defineProperty method
-      val descriptor = js.ObjectConstr(
-        optGetter.map(js.StringLiteral("get") -> _).toList :::
-        optSetter.map(js.StringLiteral("set") -> _).toList :::
-        (js.StringLiteral("configurable") -> js.BooleanLiteral(true)) ::
-        Nil
+      getter <- WithGlobals.option(optGetterWithGlobals)
+      setter <- WithGlobals.option(optSetterWithGlobals)
+      descriptor = (
+          getter.map("get" -> _).toList :::
+          setter.map("set" -> _).toList :::
+          List("configurable" -> js.BooleanLiteral(true))
       )
-
-      js.Apply(defProp, targetObject :: propName :: descriptor :: Nil)
+      tree <- genDefineProperty(targetObject, propName, descriptor)
+    } yield {
+      tree
     }
   }
 
@@ -1243,28 +1237,16 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
             js.Export((staticVarIdent -> js.ExportName(exportName)) :: Nil))
 
       case ModuleKind.CommonJSModule =>
-        // defineProperty method
-        val defProp =
-          genIdentBracketSelect(js.VarRef(js.Ident("Object")), "defineProperty")
-
-        val exportsVarRef = js.VarRef(js.Ident("exports"))
-
-        // optional getter definition
-        val getterDef = {
-          js.StringLiteral("get") -> js.Function(arrow = false, Nil, {
-            js.Return(genSelectStatic(className, field))
-          })
-        }
-
-        // Options passed to the defineProperty method
-        val descriptor = js.ObjectConstr(
-            getterDef ::
-            (js.StringLiteral("configurable") -> js.BooleanLiteral(true)) ::
-            Nil
+        genDefineProperty(
+            js.VarRef(js.Ident("exports")),
+            js.StringLiteral(exportName),
+            List(
+                "get" -> js.Function(arrow = false, Nil, {
+                  js.Return(genSelectStatic(className, field))
+                }),
+                "configurable" -> js.BooleanLiteral(true)
+            )
         )
-
-        WithGlobals(js.Apply(defProp,
-            exportsVarRef :: js.StringLiteral(exportName) :: descriptor :: Nil))
     }
   }
 
