@@ -63,6 +63,8 @@ object MyScalaJSPlugin extends AutoPlugin {
 
   val wantSourceMaps = settingKey[Boolean]("Whether source maps should be used")
 
+  val testHtmlJSDom = taskKey[Unit]("Run testHtml through JSDom")
+
   def addScalaJSCompilerOption(option: String): Setting[_] =
     addScalaJSCompilerOption(Def.setting(option))
 
@@ -116,6 +118,18 @@ object MyScalaJSPlugin extends AutoPlugin {
           "->https://raw.githubusercontent.com/scala-js/scala-js/v" +
           scalaJSVersion + "/"
         })
+      },
+
+      testHtmlJSDom in Test := {
+        val runner = (testHtml in Test).value.data.getAbsolutePath()
+
+        val code = new ProcessBuilder("node", "scripts/test-html.js", runner)
+          .inheritIO()
+          .start()
+          .waitFor()
+
+        if (code != 0)
+          throw new MessageOnlyException("testHtmlJSDom failed")
       }
   )
 }
