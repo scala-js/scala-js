@@ -622,9 +622,6 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       if (property.flags.namespace.isStatic) classVarRef
       else classVarRef.prototype
 
-    // property name
-    val propNameWithGlobals = genMemberNameTree(property.name)
-
     // optional getter definition
     val optGetterWithGlobals = property.getterBody map { body =>
       desugarToFunction(className, Nil, body, resultType = AnyType)
@@ -637,21 +634,10 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     }
 
     for {
-      propName <- propNameWithGlobals
+      propName <- desugarExpr(property.name, resultType = AnyType)
       optGetter <- WithGlobals.option(optGetterWithGlobals)
       optSetter <- WithGlobals.option(optSetterWithGlobals)
     } yield {
-      val name = propName match {
-        case value: js.StringLiteral => value
-        case js.ComputedName(tree)   => tree
-
-        case id: js.Ident =>
-          // We need to work around the closure compiler. Call propertyName to
-          // get a string representation of the optimized name
-          genCallHelper("propertyName",
-              js.ObjectConstr(id -> js.IntLiteral(0) :: Nil))
-      }
-
       // Options passed to the defineProperty method
       val descriptor = js.ObjectConstr(
         optGetter.map(js.StringLiteral("get") -> _).toList :::
@@ -660,7 +646,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         Nil
       )
 
-      js.Apply(defProp, targetObject :: name :: descriptor :: Nil)
+      js.Apply(defProp, targetObject :: propName :: descriptor :: Nil)
     }
   }
 
