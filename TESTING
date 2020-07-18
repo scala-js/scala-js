@@ -7,16 +7,6 @@ The following HTML-runners must be manually tested:
     examples/helloworld/helloworld-{2.11|2.12}{|-fastopt}.html
     examples/reversi/reversi-{2.11|2.12}{|-fastopt}.html
 
-The following sbt-plugin generated test runners must be manually tested
-(in `FastOptStage` and `FullOptStage`):
-
-    testingExample2_11/testHtml
-    testingExample2_12/testHtml
-    testingExample2_13/testHtml
-    testSuite2_11/testHtml
-    testSuite2_12/testHtml
-    testSuite2_13/testHtml
-
 ## Sourcemaps
 
 To test source maps, do the following on:

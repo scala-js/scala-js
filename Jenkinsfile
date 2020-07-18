@@ -127,9 +127,9 @@ def Tasks = [
         'set scalaJSStage in Global := FullOptStage' \
         helloworld$v/run \
         helloworld$v/clean &&
-    sbtretry ++$scala testingExample$v/testHtml &&
+    sbtretry ++$scala testingExample$v/testHtmlJSDom &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala testingExample$v/testHtml \
+        ++$scala testingExample$v/testHtmlJSDom \
         testingExample$v/clean &&
     sbtretry ++$scala testSuiteJVM$v/test testSuiteJVM$v/clean &&
     sbtretry ++$scala testSuite$v/test &&
@@ -151,9 +151,10 @@ def Tasks = [
     npm install &&
     sbtretry ++$scala jUnitTestOutputsJVM$v/test jUnitTestOutputsJS$v/test testBridge$v/test \
         'set scalaJSStage in Global := FullOptStage' jUnitTestOutputsJS$v/test testBridge$v/test &&
-    sbtretry ++$scala $testSuite$v/test &&
+    sbtretry ++$scala $testSuite$v/test $testSuite$v/testHtmlJSDom &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite$v/test \
+	$testSuite$v/testHtmlJSDom \
         $testSuite$v/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
         ++$scala $testSuite$v/test &&
