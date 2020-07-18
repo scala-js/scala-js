@@ -83,4 +83,16 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
       implicit pos: Position): Function = {
     Function(useArrowFunctions, args, body)
   }
+
+  def genDefineProperty(obj: Tree, prop: Tree, descriptor: List[(String, Tree)])(
+      implicit pos: Position): WithGlobals[Tree] = {
+    val descriptorTree =
+        ObjectConstr(descriptor.map(x => StringLiteral(x._1) -> x._2))
+
+    val tree = Apply(
+        genIdentBracketSelect(VarRef(Ident("Object")), "defineProperty"),
+        List(obj, prop, descriptorTree))
+
+    WithGlobals(tree, Set("Object"))
+  }
 }

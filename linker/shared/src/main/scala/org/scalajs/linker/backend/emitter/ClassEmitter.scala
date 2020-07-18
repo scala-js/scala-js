@@ -612,18 +612,11 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     import TreeDSL._
     implicit val pos = property.pos
 
-    // defineProperty method
-    val defProp =
-      genIdentBracketSelect(js.VarRef(js.Ident("Object")), "defineProperty")
-
     // class prototype
     val classVarRef = classVar("c", className)
     val targetObject =
       if (property.flags.namespace.isStatic) classVarRef
       else classVarRef.prototype
-
-    // property name
-    val propNameWithGlobals = genMemberNameTree(property.name)
 
     // optional getter definition
     val optGetterWithGlobals = property.getterBody map { body =>
@@ -637,30 +630,17 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     }
 
     for {
-      propName <- propNameWithGlobals
-      optGetter <- WithGlobals.option(optGetterWithGlobals)
-      optSetter <- WithGlobals.option(optSetterWithGlobals)
-    } yield {
-      val name = propName match {
-        case value: js.StringLiteral => value
-        case js.ComputedName(tree)   => tree
-
-        case id: js.Ident =>
-          // We need to work around the closure compiler. Call propertyName to
-          // get a string representation of the optimized name
-          genCallHelper("propertyName",
-              js.ObjectConstr(id -> js.IntLiteral(0) :: Nil))
-      }
-
-      // Options passed to the defineProperty method
-      val descriptor = js.ObjectConstr(
-        optGetter.map(js.StringLiteral("get") -> _).toList :::
-        optSetter.map(js.StringLiteral("set") -> _).toList :::
-        (js.StringLiteral("configurable") -> js.BooleanLiteral(true)) ::
-        Nil
+      propName <- desugarExpr(property.name, resultType = AnyType)
+      getter <- WithGlobals.option(optGetterWithGlobals)
+      setter <- WithGlobals.option(optSetterWithGlobals)
+      descriptor = (
+          getter.map("get" -> _).toList :::
+          setter.map("set" -> _).toList :::
+          List("configurable" -> js.BooleanLiteral(true))
       )
-
-      js.Apply(defProp, targetObject :: name :: descriptor :: Nil)
+      tree <- genDefineProperty(targetObject, propName, descriptor)
+    } yield {
+      tree
     }
   }
 
@@ -1257,28 +1237,16 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
             js.Export((staticVarIdent -> js.ExportName(exportName)) :: Nil))
 
       case ModuleKind.CommonJSModule =>
-        // defineProperty method
-        val defProp =
-          genIdentBracketSelect(js.VarRef(js.Ident("Object")), "defineProperty")
-
-        val exportsVarRef = js.VarRef(js.Ident("exports"))
-
-        // optional getter definition
-        val getterDef = {
-          js.StringLiteral("get") -> js.Function(arrow = false, Nil, {
-            js.Return(genSelectStatic(className, field))
-          })
-        }
-
-        // Options passed to the defineProperty method
-        val descriptor = js.ObjectConstr(
-            getterDef ::
-            (js.StringLiteral("configurable") -> js.BooleanLiteral(true)) ::
-            Nil
+        genDefineProperty(
+            js.VarRef(js.Ident("exports")),
+            js.StringLiteral(exportName),
+            List(
+                "get" -> js.Function(arrow = false, Nil, {
+                  js.Return(genSelectStatic(className, field))
+                }),
+                "configurable" -> js.BooleanLiteral(true)
+            )
         )
-
-        WithGlobals(js.Apply(defProp,
-            exportsVarRef :: js.StringLiteral(exportName) :: descriptor :: Nil))
     }
   }
 
