@@ -15,9 +15,11 @@ package org.scalajs.testsuite.javalib.util
 import java.util.Date
 
 import org.junit.Assert._
+import org.junit.Assume._
 import org.junit.Test
 
 import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 /**
   * tests the implementation of the java standard library Date
@@ -114,5 +116,38 @@ class DateTest {
     assertEquals("3 Nov 1997 05:23:27 GMT", new Date(Date.UTC(97, 10, 3, 5, 23, 27)).toGMTString)
     assertEquals("5 Jan 1902 08:01:09 GMT", new Date(Date.UTC(1, 12, 5, 8, 1, 9)).toGMTString)
     assertEquals("9 Jan 2900 05:03:04 GMT", new Date(Date.UTC(1000, 0, 9, 5, 3, 4)).toGMTString)
+  }
+
+  // #4131
+  @Test def largeValues(): Unit = {
+    val hi = new Date(8640000000000001L)
+    assertEquals(8640000000000001L, hi.getTime())
+
+    val lo = new Date(-8640000000000001L)
+    assertEquals(-8640000000000001L, lo.getTime())
+  }
+
+  @Test def largeToString(): Unit = {
+    assumeFalse(executingInJVM)
+    assertEquals("java.util.Date(8640000000000001)", new Date(8640000000000001L).toString())
+  }
+
+  @Test def preventsUnsafeRead(): Unit = {
+    assumeFalse(executingInJVM)
+    assertThrows(classOf[IllegalArgumentException], new Date(8640000000000001L).getDate())
+    assertThrows(classOf[IllegalArgumentException], new Date(-8640000000000001L).getDate())
+  }
+
+  @Test def preventsUnsafeWrite(): Unit = {
+    assumeFalse(executingInJVM)
+    val date = new Date(0L)
+    assertThrows(classOf[IllegalArgumentException], date.setYear(300000))
+    assertEquals(0L, date.getTime())
+    assertThrows(classOf[IllegalArgumentException], date.setYear(-300000))
+  }
+
+  @Test def preventsUnsafeConstruct(): Unit = {
+    assumeFalse(executingInJVM)
+    assertThrows(classOf[IllegalArgumentException], new Date(3000000, 1, 1))
   }
 }
