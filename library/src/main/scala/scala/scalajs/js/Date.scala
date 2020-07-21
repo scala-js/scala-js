@@ -50,6 +50,13 @@ class Date extends js.Object {
 
   override def valueOf(): Double = js.native
 
+  /**
+   * Returns the numeric value of the specified date as the number of
+   * milliseconds since January 1, 1970, 00:00:00 UTC.
+   * (Negative values are returned for prior times).
+   *
+   * MDN
+   */
   def getTime(): Double = js.native
 
   /**
