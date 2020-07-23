@@ -804,7 +804,7 @@ object Build {
     commonLinkerSettings _
   ).settings(
       libraryDependencies ++= Seq(
-          "com.google.javascript" % "closure-compiler" % "v20200614",
+          "com.google.javascript" % "closure-compiler" % "v20200719",
           "com.novocode" % "junit-interface" % "0.9" % "test"
       ) ++ (
           parallelCollectionsDependencies(scalaVersion.value)
