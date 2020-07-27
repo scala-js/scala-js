@@ -308,6 +308,26 @@ final class _String private () // scalastyle:ignore
     regionMatches(false, toffset, other, ooffset, len)
   }
 
+  def repeat(count: Int): String = {
+    if (count < 0) {
+      throw new IllegalArgumentException
+    } else if (thisString == "" || count == 0) {
+      ""
+    } else if (thisString.length > (Int.MaxValue / count)) {
+      throw new OutOfMemoryError
+    } else {
+      var str = thisString
+      val resultLength = thisString.length * count
+      var remainingIters = 31 - Integer.numberOfLeadingZeros(count)
+      while (remainingIters > 0) {
+        str += str
+        remainingIters -= 1
+      }
+      str += str.jsSubstring(0, resultLength - str.length)
+      str
+    }
+  }
+
   @inline
   def replace(oldChar: Char, newChar: Char): String =
     replace(oldChar.toString, newChar.toString)
