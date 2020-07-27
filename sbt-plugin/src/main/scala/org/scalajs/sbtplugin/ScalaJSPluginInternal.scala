@@ -118,19 +118,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val config = (scalaJSLinkerConfig in key).value
         val box = (scalaJSLinkerBox in key).value
         val linkerImpl = (scalaJSLinkerImpl in key).value
-        val projectID = thisProject.value.id
-        val configName = configuration.value.name
-        val log = streams.value.log
-
-        if (config.moduleKind != scalaJSLinkerConfig.value.moduleKind) {
-          val keyName = key.key.label
-          log.warn(
-              "The module kind in " +
-              s"`$projectID / $configName / $keyName / scalaJSLinkerConfig` " +
-              "is different than the one in " +
-              s"`$projectID / $configName / scalaJSLinkerConfig`. " +
-              "Some things will go wrong.")
-        }
 
         box.ensure(linkerImpl.clearableLinker(config))
       },
@@ -180,6 +167,14 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val linkerImpl = (scalaJSLinkerImpl in key).value
         val usesLinkerTag = (usesScalaJSLinkerTag in key).value
         val sourceMapFile = new File(output.getPath + ".map")
+
+        /* This is somewhat not nice: We must make assumptions about the
+         * specification of the specific linker in use. Otherwise, we do not
+         * know how to interpret / load the resulting file.
+         *
+         * See jsEnvInput (via scalaJSLinkedFile) to see how this is used.
+         */
+        val moduleKind = (scalaJSLinkerConfig in key).value.moduleKind
 
         Def.task {
           val log = s.log
@@ -231,7 +226,9 @@ private[sbtplugin] object ScalaJSPluginInternal {
             Set(output, sourceMapFile)
           } (realFiles.toSet)
 
-          Attributed.blank(output).put(scalaJSSourceMap, sourceMapFile)
+          Attributed.blank(output)
+            .put(scalaJSSourceMap, sourceMapFile)
+            .put(scalaJSModuleKind, moduleKind)
         }.tag(usesLinkerTag, ScalaJSTags.Link)
       }.value
   )
@@ -362,12 +359,22 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
       // Add the Scala.js linked file to the Input for the JSEnv.
       jsEnvInput += {
-        val linkedFile = scalaJSLinkedFile.value.data.toPath
+        val projectID = thisProject.value.id
+        val configName = configuration.value.name
 
-        scalaJSLinkerConfig.value.moduleKind match {
-          case ModuleKind.NoModule       => Input.Script(linkedFile)
-          case ModuleKind.ESModule       => Input.ESModule(linkedFile)
-          case ModuleKind.CommonJSModule => Input.CommonJSModule(linkedFile)
+        val linkedFile = scalaJSLinkedFile.value
+
+        val path = linkedFile.data.toPath
+        val moduleKind = linkedFile.get(scalaJSModuleKind).getOrElse {
+          throw new MessageOnlyException(
+              s"`$projectID / $configName / scalaJSLinkedFile` does not have " +
+              "the required scalaJSModuleKind attribute.")
+        }
+
+        moduleKind match {
+          case ModuleKind.NoModule       => Input.Script(path)
+          case ModuleKind.ESModule       => Input.ESModule(path)
+          case ModuleKind.CommonJSModule => Input.CommonJSModule(path)
         }
       },
 

@@ -1664,6 +1664,7 @@ object Build {
         } ((cpFiles :+ linkerModule).toSet)
 
         Attributed.blank(out)
+          .put(scalaJSModuleKind, ModuleKind.NoModule)
       },
 
       compile := (compile in Test).value,
