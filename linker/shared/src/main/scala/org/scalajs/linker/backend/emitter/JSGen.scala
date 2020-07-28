@@ -89,10 +89,12 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
     val descriptorTree =
         ObjectConstr(descriptor.map(x => StringLiteral(x._1) -> x._2))
 
-    val tree = Apply(
-        genIdentBracketSelect(VarRef(Ident("Object")), "defineProperty"),
-        List(obj, prop, descriptorTree))
-
-    WithGlobals(tree, Set("Object"))
+    globalRef("Object").map { objRef =>
+      Apply(genIdentBracketSelect(objRef, "defineProperty"),
+          List(obj, prop, descriptorTree))
+    }
   }
+
+  def globalRef(name: String)(implicit pos: Position): WithGlobals[Tree] =
+    WithGlobals(VarRef(Ident(name)), Set(name))
 }

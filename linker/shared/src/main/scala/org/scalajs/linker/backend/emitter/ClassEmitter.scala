@@ -1196,10 +1196,11 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         WithGlobals(js.Block(let, export))
 
       case ModuleKind.CommonJSModule =>
-        val exportsVarRef = js.VarRef(js.Ident("exports"))
-        WithGlobals(js.Assign(
-            genBracketSelect(exportsVarRef, js.StringLiteral(exportName)),
-            exportedValue))
+        globalRef("exports").map { exportsVarRef =>
+          js.Assign(
+              genBracketSelect(exportsVarRef, js.StringLiteral(exportName)),
+              exportedValue)
+        }
     }
   }
 
@@ -1239,16 +1240,18 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
             js.Export((staticVarIdent -> js.ExportName(exportName)) :: Nil))
 
       case ModuleKind.CommonJSModule =>
-        genDefineProperty(
-            js.VarRef(js.Ident("exports")),
-            js.StringLiteral(exportName),
-            List(
-                "get" -> js.Function(arrow = false, Nil, {
-                  js.Return(genSelectStatic(className, field))
-                }),
-                "configurable" -> js.BooleanLiteral(true)
-            )
-        )
+        globalRef("exports").flatMap { exportsVarRef =>
+          genDefineProperty(
+              exportsVarRef,
+              js.StringLiteral(exportName),
+              List(
+                  "get" -> js.Function(arrow = false, Nil, {
+                    js.Return(genSelectStatic(className, field))
+                  }),
+                  "configurable" -> js.BooleanLiteral(true)
+              )
+          )
+        }
     }
   }
 

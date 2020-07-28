@@ -244,7 +244,6 @@ private object ClosureLinkerBackend {
    *  * `call` is generated for super calls
    *  * `apply` is generated when desugaring `...spread` arguments
    *  * `require` is generated for module imports when emitting CommonJS
-   *  * `exports` is generated for exports when emitting CommonJS
    *  * `NaN`, `Infinity` and `undefined` need to be in externs for
    *    Closure not to crash in cases where it constant-folds an expression into
    *    one of these (this was confirmed to us as intended by Closure devs).
@@ -260,7 +259,6 @@ private object ClosureLinkerBackend {
     Function.prototype.call;
     Function.prototype.apply;
     var require;
-    var exports;
     var NaN = 0.0/0.0, Infinity = 1.0/0.0, undefined = void 0;
     """
 }
