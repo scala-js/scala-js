@@ -176,11 +176,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
          */
         val moduleKind = (scalaJSLinkerConfig in key).value.moduleKind
 
-        Def.task {
-          val log = s.log
-          val realFiles = irInfo.get(scalaJSSourceFiles).get
-          val ir = irInfo.data
-
+        val configChanged = {
           def moduleInitializersChanged = (scalaJSModuleInitializersFingerprints in key)
             .previous
             .exists(_ != (scalaJSModuleInitializersFingerprints in key).value)
@@ -189,7 +185,14 @@ private[sbtplugin] object ScalaJSPluginInternal {
             .previous
             .exists(_ != (scalaJSLinkerConfigFingerprint in key).value)
 
-          val configChanged = moduleInitializersChanged || linkerConfigChanged
+          moduleInitializersChanged || linkerConfigChanged
+        }
+
+        Def.task {
+          val log = s.log
+          val realFiles = irInfo.get(scalaJSSourceFiles).get
+          val ir = irInfo.data
+
           if (configChanged && output.exists()) {
             output.delete() // triggers re-linking through FileFunction.cached
           }
