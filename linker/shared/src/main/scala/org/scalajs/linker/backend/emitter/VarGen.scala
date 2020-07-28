@@ -59,10 +59,9 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     FunctionDef(classVarIdent(field, className), args, body)
   }
 
-  def classVarDef(field: String, className: ClassName, value: Tree,
-      mutable: Boolean = false)(
+  def classVarDef(field: String, className: ClassName, value: Tree)(
       implicit pos: Position): Tree = {
-    genLet(classVarIdent(field, className), mutable, value)
+    genLet(classVarIdent(field, className), mutable = false, value)
   }
 
   private def classVarIdent(field: String, className: ClassName)(

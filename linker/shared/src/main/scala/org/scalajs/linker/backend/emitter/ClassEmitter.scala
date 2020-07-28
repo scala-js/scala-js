@@ -82,11 +82,12 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           createStaticFields <- genCreateStaticFieldsOfJSClass(tree)
         } yield {
           tree.jsClassCaptures.fold {
-            val createClassValueVar =
-              classVarDef("b", className, js.Undefined(), mutable = true)
+            val classValueIdent = fileLevelVarIdent("b", genName(className))
+
+            val createClassValueVar = genEmptyMutableLet(classValueIdent)
 
             val createAccessor = {
-              val classValueVar = classVar("b", className)
+              val classValueVar = js.VarRef(classValueIdent)
 
               val body = js.Block(
                   js.If(!classValueVar, {
@@ -1075,11 +1076,12 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     require(tree.kind.hasModuleAccessor,
         s"genModuleAccessor called with non-module class: $className")
 
-    val createModuleInstanceField =
-      classVarDef("n", className, js.Undefined(), mutable = true)
+    val moduleInstance = fileLevelVarIdent("n", genName(className))
+
+    val createModuleInstanceField = genEmptyMutableLet(moduleInstance)
 
     val createAccessor = {
-      val moduleInstanceVar = classVar("n", className)
+      val moduleInstanceVar = js.VarRef(moduleInstance)
 
       val assignModule = {
         moduleInstanceVar := {
