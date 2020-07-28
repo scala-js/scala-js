@@ -697,7 +697,6 @@ object Emitter {
     val setTypeData = new OneTimeCache[js.Tree]
     val moduleAccessor = new OneTimeCache[js.Tree]
     val staticFields = new OneTimeCache[List[js.Tree]]
-    val topLevelExports = new OneTimeCache[WithGlobals[List[js.Tree]]]
   }
 
   private final class GeneratedClass(
