@@ -739,24 +739,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     }
   }
 
-  def genFakeClass(tree: LinkedClass): js.Tree = {
-    assert(tree.kind.isClass)
-
-    implicit val pos = tree.pos
-
-    val className = tree.className
-
-    if (esFeatures.useECMAScript2015) {
-      classClassDef("c", className, None, Nil)
-    } else {
-      js.Block(
-          js.DocComment("@constructor"),
-          classFunctionDef("c", className, Nil, js.Skip())
-      )
-    }
-  }
-
-  def genInstanceTests(tree: LinkedClass): js.Tree = {
+  def genInstanceTests(tree: LinkedClass)(
+      implicit globalKnowledge: GlobalKnowledge): js.Tree = {
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -790,7 +774,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
           case _ =>
             var test = if (tree.kind.isClass) {
-              obj instanceof classVar("c", className)
+              genIsInstanceOfClass(obj, className)
             } else {
               !(!(
                   genIsScalaJSObject(obj) &&

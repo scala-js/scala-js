@@ -124,7 +124,7 @@ private[emitter] final class SJSGen(
           expr === Null()
         } else if (className != NumberClass && // the only non-object superclass of hijacked classes
             !globalKnowledge.isInterface(className)) {
-          expr instanceof classVar("c", className)
+          genIsInstanceOfClass(expr, className)
         } else {
           Apply(classVar("is", className), List(expr))
         }
@@ -146,6 +146,21 @@ private[emitter] final class SJSGen(
 
       case NoType | NullType | NothingType | _:RecordType =>
         throw new AssertionError(s"Unexpected type $tpe in genIsInstanceOf")
+    }
+  }
+
+  def genIsInstanceOfClass(expr: Tree, className: ClassName)(
+      implicit globalKnowledge: GlobalKnowledge, pos: Position): Tree = {
+    import TreeDSL._
+
+    if (!globalKnowledge.hasInstances(className)) {
+      /* We need to constant-fold the instance test, to avoid emitting
+       * `x instanceof $c_TheClass`, because `$c_TheClass` won't be
+       * declared at all. Otherwise, we'd get a `ReferenceError`.
+       */
+      BooleanLiteral(false)
+    } else {
+      expr instanceof classVar("c", className)
     }
   }
 

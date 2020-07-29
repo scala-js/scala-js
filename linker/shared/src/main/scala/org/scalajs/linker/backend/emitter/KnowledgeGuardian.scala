@@ -171,6 +171,9 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     def hasStoredSuperClass(className: ClassName): Boolean =
       classes(className).askHasStoredSuperClass(this)
 
+    def hasInstances(className: ClassName): Boolean =
+      classes(className).askHasInstances(this)
+
     def getJSClassCaptureTypes(className: ClassName): Option[List[Type]] =
       classes(className).askJSClassCaptureTypes(this)
 
@@ -210,6 +213,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private var isInterface = computeIsInterface(initClass)
     private var hasInlineableInit = initHasInlineableInit
     private var hasStoredSuperClass = computeHasStoredSuperClass(initClass)
+    private var hasInstances = initClass.hasInstances
     private var jsClassCaptureTypes = computeJSClassCaptureTypes(initClass)
     private var jsNativeLoadSpec = computeJSNativeLoadSpec(initClass)
     private var jsNativeMemberLoadSpecs = computeJSNativeMemberLoadSpecs(initClass)
@@ -220,6 +224,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private val isInterfaceAskers = mutable.Set.empty[Invalidatable]
     private val hasInlineableInitAskers = mutable.Set.empty[Invalidatable]
     private val hasStoredSuperClassAskers = mutable.Set.empty[Invalidatable]
+    private val hasInstancesAskers = mutable.Set.empty[Invalidatable]
     private val jsClassCaptureTypesAskers = mutable.Set.empty[Invalidatable]
     private val jsNativeLoadSpecAskers = mutable.Set.empty[Invalidatable]
     private val jsNativeMemberLoadSpecsAskers = mutable.Set.empty[Invalidatable]
@@ -246,6 +251,12 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       if (newHasStoredSuperClass != hasStoredSuperClass) {
         hasStoredSuperClass = newHasStoredSuperClass
         invalidateAskers(hasStoredSuperClassAskers)
+      }
+
+      val newHasInstances = linkedClass.hasInstances
+      if (newHasInstances != hasInstances) {
+        hasInstances = newHasInstances
+        invalidateAskers(hasInstancesAskers)
       }
 
       val newJSClassCaptureTypes = computeJSClassCaptureTypes(linkedClass)
@@ -349,6 +360,12 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       hasStoredSuperClass
     }
 
+    def askHasInstances(invalidatable: Invalidatable): Boolean = {
+      invalidatable.registeredTo(this)
+      hasInstancesAskers += invalidatable
+      hasInstances
+    }
+
     def askJSClassCaptureTypes(invalidatable: Invalidatable): Option[List[Type]] = {
       invalidatable.registeredTo(this)
       jsClassCaptureTypesAskers += invalidatable
@@ -390,6 +407,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       isInterfaceAskers -= invalidatable
       hasInlineableInitAskers -= invalidatable
       hasStoredSuperClassAskers -= invalidatable
+      hasInstancesAskers -= invalidatable
       jsClassCaptureTypesAskers -= invalidatable
       jsNativeLoadSpecAskers -= invalidatable
       jsNativeMemberLoadSpecsAskers -= invalidatable
@@ -403,6 +421,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       isInterfaceAskers.clear()
       hasInlineableInitAskers.clear()
       hasStoredSuperClassAskers.clear()
+      hasInstancesAskers.clear()
       jsClassCaptureTypesAskers.clear()
       jsNativeLoadSpecAskers.clear()
       jsNativeMemberLoadSpecsAskers.clear()

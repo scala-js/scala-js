@@ -53,6 +53,9 @@ private[emitter] trait GlobalKnowledge {
   /** Tests whether the specified class locally stores its super class. */
   def hasStoredSuperClass(className: ClassName): Boolean
 
+  /** Tests whether the specified class has any instances at all. */
+  def hasInstances(className: ClassName): Boolean
+
   /** Gets the types of the `jsClassCaptures` of the given class. */
   def getJSClassCaptureTypes(className: ClassName): Option[List[Type]]
 
