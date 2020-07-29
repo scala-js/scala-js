@@ -217,6 +217,12 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
     def methodsInObject(): List[Versioned[MethodDef]] =
       specialInfo.askMethodsInObject(this)
+
+    def hijackedDescendants(className: ClassName): Set[ClassName] =
+      specialInfo.askHijackedDescendants(this).getOrElse(className, Set.empty)
+
+    def isAncestorOfHijackedClass(className: ClassName): Boolean =
+      specialInfo.askHijackedDescendants(this).contains(className)
   }
 
   private class Class(initClass: LinkedClass,
@@ -485,16 +491,27 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private var methodsInObject =
       computeMethodsInObject(initObjectClass)
 
+    private var hijackedDescendants =
+      computeHijackedDescendants(initHijackedClasses)
+
     private val isClassClassInstantiatedAskers = mutable.Set.empty[Invalidatable]
     private val methodsInRepresentativeClassesAskers = mutable.Set.empty[Invalidatable]
     private val methodsInObjectAskers = mutable.Set.empty[Invalidatable]
 
     def update(objectClass: Option[LinkedClass], classClass: Option[LinkedClass],
         hijackedClasses: Iterable[LinkedClass]): Boolean = {
+      var invalidateAll = false
+
       val newIsClassClassInstantiated = computeIsClassClassInstantiated(classClass)
       if (newIsClassClassInstantiated != isClassClassInstantiated) {
         isClassClassInstantiated = newIsClassClassInstantiated
         invalidateAskers(isClassClassInstantiatedAskers)
+      }
+
+      val newIsParentDataAccessed = computeIsParentDataAccessed(classClass)
+      if (newIsParentDataAccessed != isParentDataAccessed) {
+        isParentDataAccessed = newIsParentDataAccessed
+        invalidateAll = true
       }
 
       val newMethodsInRepresentativeClasses =
@@ -511,9 +528,11 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       methodsInObject = computeMethodsInObject(objectClass)
       invalidateAskers(methodsInObjectAskers)
 
-      val newIsParentDataAccessed = computeIsParentDataAccessed(classClass)
-
-      val invalidateAll = isParentDataAccessed != newIsParentDataAccessed
+      val newHijackedDescendants = computeHijackedDescendants(hijackedClasses)
+      if (newHijackedDescendants != hijackedDescendants) {
+        hijackedDescendants = newHijackedDescendants
+        invalidateAll = true
+      }
 
       invalidateAll
     }
@@ -553,6 +572,23 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
           _.methods.filter(_.value.flags.namespace == MemberNamespace.Public))
     }
 
+    private def computeHijackedDescendants(
+        hijackedClasses: Iterable[LinkedClass]): Map[ClassName, Set[ClassName]] = {
+      val pairs = for {
+        hijackedClass <- hijackedClasses
+        ancestor <- hijackedClass.ancestors
+        if ancestor != hijackedClass.className
+      } yield {
+        (ancestor, hijackedClass)
+      }
+
+      for {
+        (ancestor, pairs) <- pairs.groupBy(_._1)
+      } yield {
+        (ancestor, pairs.map(_._2.className).toSet)
+      }
+    }
+
     def askIsClassClassInstantiated(invalidatable: Invalidatable): Boolean = {
       invalidatable.registeredTo(this)
       isClassClassInstantiatedAskers += invalidatable
@@ -573,6 +609,11 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       invalidatable.registeredTo(this)
       methodsInObjectAskers += invalidatable
       methodsInObject
+    }
+
+    def askHijackedDescendants(
+        invalidatable: Invalidatable): Map[ClassName, Set[ClassName]] = {
+      hijackedDescendants
     }
 
     def unregister(invalidatable: Invalidatable): Unit = {

@@ -2714,7 +2714,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     def isMaybeHijackedClass(tpe: Type): Boolean = tpe match {
       case ClassType(className) =>
-        MaybeHijackedClasses.contains(className)
+        HijackedClasses.contains(className) ||
+        className != ObjectClass && globalKnowledge.isAncestorOfHijackedClass(className)
+
       case AnyType | UndefType | BooleanType | CharType | ByteType | ShortType |
           IntType | LongType | FloatType | DoubleType | StringType =>
         true
@@ -2847,9 +2849,6 @@ private object FunctionEmitter {
   private val UTF8Period: UTF8String = UTF8String(".")
 
   private val thisOriginalName: OriginalName = OriginalName("this")
-
-  private val MaybeHijackedClasses =
-    (HijackedClasses ++ EmitterNames.AncestorsOfHijackedClasses) - ObjectClass
 
   private final case class JSVarRef(ident: js.Ident, mutable: Boolean)
       extends Transient.Value {
