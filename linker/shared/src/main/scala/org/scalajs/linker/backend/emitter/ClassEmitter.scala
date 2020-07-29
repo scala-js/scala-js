@@ -144,7 +144,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       implicit val pos = parentIdent.pos
       if (!tree.kind.isJSClass) {
         if (shouldExtendJSError(tree))
-          WithGlobals(js.VarRef(js.Ident("Error")))
+          globalRef("Error")
         else
           WithGlobals(classVar("c", parentIdent.name))
       } else if (tree.jsSuperClass.isDefined) {
@@ -219,9 +219,10 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     } { parentIdent =>
       val (inheritedCtorDefWithGlobals, inheritedCtorRef) = if (!isJSClass) {
         if (shouldExtendJSError(tree)) {
-          val inheritableCtorDef =
-            makeInheritableCtorDef(js.VarRef(js.Ident("Error")), "hh")
-          (WithGlobals(inheritableCtorDef), classVar("hh", className))
+          val inheritableCtorDefWithGlobals = globalRef("Error").map { errorRef =>
+            makeInheritableCtorDef(errorRef, "hh")
+          }
+          (inheritableCtorDefWithGlobals, classVar("hh", className))
         } else {
           (WithGlobals(js.Skip()), classVar("h", parentIdent.name))
         }
@@ -1196,10 +1197,11 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         WithGlobals(js.Block(let, export))
 
       case ModuleKind.CommonJSModule =>
-        val exportsVarRef = js.VarRef(js.Ident("exports"))
-        WithGlobals(js.Assign(
-            genBracketSelect(exportsVarRef, js.StringLiteral(exportName)),
-            exportedValue))
+        globalRef("exports").map { exportsVarRef =>
+          js.Assign(
+              genBracketSelect(exportsVarRef, js.StringLiteral(exportName)),
+              exportedValue)
+        }
     }
   }
 
@@ -1239,16 +1241,18 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
             js.Export((staticVarIdent -> js.ExportName(exportName)) :: Nil))
 
       case ModuleKind.CommonJSModule =>
-        genDefineProperty(
-            js.VarRef(js.Ident("exports")),
-            js.StringLiteral(exportName),
-            List(
-                "get" -> js.Function(arrow = false, Nil, {
-                  js.Return(genSelectStatic(className, field))
-                }),
-                "configurable" -> js.BooleanLiteral(true)
-            )
-        )
+        globalRef("exports").flatMap { exportsVarRef =>
+          genDefineProperty(
+              exportsVarRef,
+              js.StringLiteral(exportName),
+              List(
+                  "get" -> js.Function(arrow = false, Nil, {
+                    js.Return(genSelectStatic(className, field))
+                  }),
+                  "configurable" -> js.BooleanLiteral(true)
+              )
+          )
+        }
     }
   }
 

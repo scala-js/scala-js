@@ -181,6 +181,9 @@ final class Emitter(config: Emitter.Config) {
         classEmitter.genTopLevelExports(unit.topLevelExports)(uncachedKnowledge)
       }
 
+      val WithGlobals(moduleImports, moduleImportsTrackedGlobalRefs) =
+        genModuleImports(orderedClasses)
+
       def classIter = generatedClasses.iterator
 
       // Emit everything in the appropriate order.
@@ -193,7 +196,7 @@ final class Emitter(config: Emitter.Config) {
           /* Module imports, which depend on nothing.
            * All classes potentially depend on them.
            */
-          genModuleImports(orderedClasses, logger) ++
+          moduleImports ++
 
           /* All class definitions, which depend on nothing but their
            * superclasses.
@@ -227,23 +230,24 @@ final class Emitter(config: Emitter.Config) {
       )(Position.NoPosition)
 
       val trackedGlobalRefs = {
-        val init = unionPreserveEmpty(
-            coreJSLibTrackedGlobalRefs, topLevelExportsTrackedGlobalRefs)
+        val sets = Iterator(
+            coreJSLibTrackedGlobalRefs,
+            topLevelExportsTrackedGlobalRefs,
+            moduleImportsTrackedGlobalRefs
+        ) ++ classIter.map(_.trackedGlobalRefs)
 
-        classIter
-          .map(_.trackedGlobalRefs)
-          .foldLeft(init)(unionPreserveEmpty(_, _))
+        sets.foldLeft[Set[String]](Set.empty)(unionPreserveEmpty(_, _))
       }
 
       WithGlobals(tree, trackedGlobalRefs)
     }
   }
 
-  private def genModuleImports(orderedClasses: List[LinkedClass],
-      logger: Logger): List[js.Tree] = {
+  private def genModuleImports(
+      orderedClasses: List[LinkedClass]): WithGlobals[List[js.Tree]] = {
 
-    def mapImportedModule(f: (String, Position) => js.Tree): List[js.Tree]  = {
-      val builder = mutable.ListBuffer.empty[js.Tree]
+    def mapImportedModule[T](f: (String, Position) => T): List[T]  = {
+      val builder = mutable.ListBuffer.empty[T]
       val encounteredModuleNames = mutable.Set.empty[String]
       for (classDef <- orderedClasses) {
         def addModuleRef(module: String): Unit = {
@@ -273,24 +277,27 @@ final class Emitter(config: Emitter.Config) {
 
     moduleKind match {
       case ModuleKind.NoModule =>
-        Nil
+        WithGlobals(Nil)
 
       case ModuleKind.ESModule =>
-        mapImportedModule { (module, pos0) =>
+        val imports = mapImportedModule { (module, pos0) =>
           implicit val pos = pos0
           val from = js.StringLiteral(module)
           val moduleBinding = sjsGen.envModuleFieldIdent(module)
           js.ImportNamespace(moduleBinding, from)
         }
+        WithGlobals(imports)
 
       case ModuleKind.CommonJSModule =>
-        mapImportedModule { (module, pos0) =>
+        val imports = mapImportedModule { (module, pos0) =>
           implicit val pos = pos0
-          val rhs = js.Apply(js.VarRef(js.Ident("require")),
-              List(js.StringLiteral(module)))
-          val lhs = sjsGen.envModuleFieldIdent(module)
-          jsGen.genLet(lhs, mutable = false, rhs)
+          for (requireRef <- jsGen.globalRef("require")) yield {
+            val rhs = js.Apply(requireRef, List(js.StringLiteral(module)))
+            val lhs = sjsGen.envModuleFieldIdent(module)
+            jsGen.genLet(lhs, mutable = false, rhs)
+          }
         }
+        WithGlobals.list(imports)
     }
   }
 
