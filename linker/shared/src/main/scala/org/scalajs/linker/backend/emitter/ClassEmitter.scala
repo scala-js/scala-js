@@ -741,6 +741,11 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   def genInstanceTests(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): js.Tree = {
+    js.Block(genSingleInstanceTests(tree) ::: genArrayInstanceTests(tree))(tree.pos)
+  }
+
+  private def genSingleInstanceTests(tree: LinkedClass)(
+      implicit globalKnowledge: GlobalKnowledge): List[js.Tree] = {
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -839,13 +844,13 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         })
       }
 
-      js.Block(createIsStat, createAsStat)
+      List(createIsStat, createAsStat)
     } else {
-      js.Skip()
+      Nil
     }
   }
 
-  def genArrayInstanceTests(tree: LinkedClass): js.Tree = {
+  private def genArrayInstanceTests(tree: LinkedClass): List[js.Tree] = {
     import TreeDSL._
 
     implicit val pos = tree.pos
@@ -916,7 +921,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       })
     }
 
-    js.Block(createIsArrayOfStat, createAsArrayOfStat)
+    List(createIsArrayOfStat, createAsArrayOfStat)
   }
 
   private def genIsScalaJSObject(obj: js.Tree)(implicit pos: Position): js.Tree = {

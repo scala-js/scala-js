@@ -453,10 +453,8 @@ final class Emitter(config: Emitter.Config) {
     }
 
     if (classEmitter.needInstanceTests(linkedClass)) {
-      addToMainBase(classTreeCache.instanceTests.getOrElseUpdate(js.Block(
-          classEmitter.genInstanceTests(linkedClass)(classCache),
-          classEmitter.genArrayInstanceTests(linkedClass)
-      )(linkedClass.pos)))
+      addToMainBase(classTreeCache.instanceTests.getOrElseUpdate(
+          classEmitter.genInstanceTests(linkedClass)(classCache)))
     }
 
     if (linkedClass.hasRuntimeTypeInfo) {
