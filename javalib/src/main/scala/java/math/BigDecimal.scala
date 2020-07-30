@@ -1282,9 +1282,9 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     if (_hashCode != 0) {
       _hashCode
     } else if (_bitLength < 64) {
-      _hashCode = _smallValue.toInt
-      _hashCode = 33 * _hashCode + (_smallValue >> 32).toInt
-      _hashCode = 17 * _hashCode + _scale
+      var hashCode  = _smallValue.toInt
+      hashCode = 33 * hashCode + (_smallValue >> 32).toInt
+      _hashCode = 17 * hashCode + _scale
       _hashCode
     } else {
       _hashCode = 17 * _intVal.hashCode + _scale

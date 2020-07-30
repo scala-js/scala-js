@@ -486,14 +486,16 @@ class BigInteger extends Number with Comparable[BigInteger] {
     if (_hashCode != 0) {
       _hashCode
     } else {
-      for (i <- 0 until numberLength) {
-        _hashCode = _hashCode * 33 + digits(i)
+      var hashCode = 0
+      var i = 0
+      while (i < numberLength) {
+        hashCode = hashCode * 33 + digits(i)
+        i += 1
       }
-      _hashCode = _hashCode * sign
+      _hashCode = hashCode * sign
       _hashCode
     }
   }
-
   override def intValue(): Int = sign * digits(0)
 
   def isProbablePrime(certainty: Int): Boolean =
