@@ -817,7 +817,10 @@ class BigInteger extends Number with Comparable[BigInteger] {
     else BitLevel.shiftLeftOneBit(this)
   }
 
-  private[math] def unCache(): Unit = firstNonzeroDigit = firstNonzeroDigitNotSet
+  private[math] def unCache(): Unit = {
+    firstNonzeroDigit = firstNonzeroDigitNotSet
+    _hashCode = 0
+  }
 
   /** Puts a big-endian byte array into a little-endian applying two complement. */
   private def putBytesNegativeToIntegers(byteValues: Array[Byte]): Unit = {
