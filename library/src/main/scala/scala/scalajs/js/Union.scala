@@ -63,6 +63,13 @@ object | { // scalastyle:ignore
     /** If `A <: B1`, then `A <: B1 | B2`. */
     implicit def left[A, B1, B2](implicit ev: Evidence[A, B1]): Evidence[A, B1 | B2] =
       ReusableEvidence.asInstanceOf[Evidence[A, B1 | B2]]
+
+    /** Explicit rules for `A <: A | Unit`.
+     *
+     * This helps type inference in with `js.UndefOr[A]` which is aliased to `A | Unit`.
+     */
+    implicit def addUnit[A]: Evidence[A, A | Unit] =
+      ReusableEvidence.asInstanceOf[Evidence[A,  A | Unit]]
   }
 
   object Evidence extends EvidenceLowPrioImplicits {
@@ -81,6 +88,15 @@ object | { // scalastyle:ignore
    *  This needs evidence that `A <: B1 | B2`.
    */
   implicit def from[A, B1, B2](a: A)(implicit ev: Evidence[A, B1 | B2]): B1 | B2 =
+    a.asInstanceOf[B1 | B2]
+
+  /** Upcast `Nothing | A2` to `B1 | B2`.
+   *
+   * This is mostly useful to upcast `js.undefined` to `T` where `T` is an alias `type T = js.UndefOr[A]`.
+   * In that case, the @uncheckedVariance on `js.UndefOr` is lost at use-site and we need an implicit upcast.
+   */
+  implicit def fromNothing[A2, B1, B2](a: Nothing | A2)(
+      implicit ev: Evidence[A2, B2]): B1 | B2 =
     a.asInstanceOf[B1 | B2]
 
   /** Upcast `F[A]` to `F[B]`.

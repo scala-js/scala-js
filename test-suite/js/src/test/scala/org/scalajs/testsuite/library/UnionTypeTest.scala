@@ -182,6 +182,32 @@ class UnionTypeTest {
     assertEquals(a, a: js.UndefOr[js.UndefOr[Int] | Object | String])
     assertEquals(a, a: js.UndefOr[js.UndefOr[Object] | String | Int])
     assertEquals(a, a: js.UndefOr[js.UndefOr[Object] | Object | String])
+
+    // Test with type aliases.
+    // Using a type alias hides the @uncheckedVariance annotation of `js.UndefOr`,
+    // which forces the use of an implicit conversion.
+    type Foo = Int
+    type FooOpt = js.UndefOr[Foo]
+    val foo: js.UndefOr[Foo] = js.undefined
+    val foo2: js.UndefOr[Foo] = 1
+    val fooOpt: FooOpt = js.undefined
+    val fooOpt2: FooOpt = 1
+
+    // More complex tests with type aliases on multiple levels
+    type ANumber = (Float | Int) | Double
+    trait Element
+    type Node = (Null | ANumber) | Element
+    type NodeOpt = js.UndefOr[Node]
+    val node: Node = 1
+    val undefOrNode: js.UndefOr[Node] = node
+    val undefOrNode2: js.UndefOr[Node] = js.undefined
+    val undefOrNodeOpt: NodeOpt = node.merge // Merge necessary here
+    val undefOrNodeOpt2: NodeOpt = js.undefined
+    assertEquals(1, node)
+    assertEquals(1, undefOrNode)
+    assertEquals((), undefOrNode2)
+    assertEquals(1, undefOrNodeOpt)
+    assertEquals((), undefOrNodeOpt2)
   }
 
   @Test def covariant_type_constructor(): Unit = {
