@@ -1149,11 +1149,32 @@ object Serializers {
       val parents = readClassIdents()
       val jsSuperClass = readOptTree()
       val jsNativeLoadSpec = readJSNativeLoadSpec()
-      val memberDefs = readMemberDefs(name.name, kind)
+
+      val memberDefs0 = readMemberDefs(name.name, kind)
+      val memberDefs = {
+        memberDefs0.filter {
+          case m: MethodDef => !m.name.name.isStaticInitializer
+          case _            => true
+        }
+      }
+
       val topLevelExportDefs = readTopLevelExportDefs(name.name, kind)
+
+      val foreignStaticInitializers = {
+        memberDefs0.collect {
+          case m @ MethodDef(_, name, _, _, _, Some(body))
+              if name.name.isStaticInitializer =>
+            /* Pre-1.2, static initializers were always executed. Attaching to
+             * Object emulates this.
+             */
+            ForeignStaticInitializer(ObjectClass, body)(m.pos)
+        }
+      }
+
       val optimizerHints = OptimizerHints.fromBits(readInt())
       ClassDef(name, originalName, kind, jsClassCaptures, superClass, parents,
-          jsSuperClass, jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
+          jsSuperClass, jsNativeLoadSpec, memberDefs, topLevelExportDefs,
+          foreignStaticInitializers)(
           optimizerHints)
     }
 

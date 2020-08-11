@@ -220,7 +220,8 @@ object Transformers {
       ClassDef(name, originalName, kind, jsClassCaptures, superClass,
           interfaces, jsSuperClass.map(transformExpr), jsNativeLoadSpec,
           memberDefs.map(transformMemberDef),
-          topLevelExportDefs.map(transformTopLevelExportDef))(
+          topLevelExportDefs.map(transformTopLevelExportDef),
+          foreignStaticInitializers.map(transformForeignStaticIntializers))(
           tree.optimizerHints)(tree.pos)
     }
 
@@ -267,6 +268,13 @@ object Transformers {
           TopLevelMethodExportDef(
               transformMemberDef(methodDef).asInstanceOf[JSMethodDef])
       }
+    }
+
+    def transformForeignStaticIntializers(
+        foreignStaticInitializer: ForeignStaticInitializer): ForeignStaticInitializer = {
+      import foreignStaticInitializer._
+
+      ForeignStaticInitializer(target, transformStat(stats))(pos)
     }
   }
 

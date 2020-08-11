@@ -138,18 +138,18 @@ private object Refiner {
       this.topLevelExports = topLevelExports
     }
 
-    def classesWithEntryPoints(): Iterable[ClassName] = {
-      linkedClassesByName.values
-        .filter(_.hasStaticInitializer)
-        .map(_.className)
-    }
-
     def loadTopLevelExportInfos()(
         implicit ec: ExecutionContext): Future[List[Infos.TopLevelExportInfo]] = Future {
       /* We do not cache top-level exports, because they're quite rare,
        * and usually quite small when they exist.
        */
       Infos.generateTopLevelExportInfos(topLevelExports)
+    }
+
+    def loadForeignStaticInitializerInfos()(
+        implicit ec: ExecutionContext): Future[List[Infos.ForeignStaticInitializerInfo]] = {
+      // All foreign static initializers are resolved during linking.
+      Future.successful(Nil)
     }
 
     def loadInfo(className: ClassName)(implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] =

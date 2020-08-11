@@ -137,6 +137,9 @@ object Analysis {
      */
     final case class DefaultBridge(targetInterface: ClassName)
         extends MethodSyntheticKind
+
+    final case class CompoundStaticInitializer(origins: List[ClassName])
+        extends MethodSyntheticKind
   }
 
   sealed trait Error {
@@ -180,6 +183,8 @@ object Analysis {
   sealed trait From
   final case class FromMethod(methodInfo: MethodInfo) extends From
   final case class FromClass(classInfo: ClassInfo) extends From
+  final case class FromForeignStaticInitializer(
+      owningClass: ClassName, targetClass: ClassName) extends From
   final case class FromCore(moduleName: String) extends From
   case object FromExports extends From
 
@@ -285,6 +290,10 @@ object Analysis {
               case FromClass(classInfo) =>
                 log(level, s"$verb from ${classInfo.displayName}")
                 loopTrace(classInfo.linkedFrom.lastOption)
+              case FromForeignStaticInitializer(owningClass, targetClass) =>
+                log(level, s"$verb from foreign static initializer " +
+                    s"(owningClass = ${owningClass.nameString}, " +
+                    s"targetClass = ${targetClass.nameString})")
               case FromCore(moduleName) =>
                 log(level, s"$verb from core module $moduleName")
               case FromExports =>

@@ -157,7 +157,7 @@ object JavalibIRCleaner {
         if (changed) {
           ClassDef(name, originalName, kind, jsClassCaptures, superClass,
               newInterfaces, jsSuperClass, jsNativeLoadSpec, newMemberDefs,
-              topLevelExportDefs)(
+              topLevelExportDefs, foreignStaticInitializers)(
               optimizerHints)(pos)
         } else {
           tree

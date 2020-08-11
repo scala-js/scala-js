@@ -49,11 +49,12 @@ object TestIRBuilder {
       jsSuperClass: Option[Tree] = None,
       jsNativeLoadSpec: Option[JSNativeLoadSpec] = None,
       memberDefs: List[MemberDef] = Nil,
-      topLevelExportDefs: List[TopLevelExportDef] = Nil): ClassDef = {
+      topLevelExportDefs: List[TopLevelExportDef] = Nil,
+      foreignStaticInitializers: List[ForeignStaticInitializer] = Nil): ClassDef = {
     ClassDef(ClassIdent(className), NON, kind, jsClassCaptures,
         superClass.map(ClassIdent(_)), interfaces.map(ClassIdent(_)),
-        jsSuperClass, jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
-        EOH)
+        jsSuperClass, jsNativeLoadSpec, memberDefs, topLevelExportDefs,
+        foreignStaticInitializers)(EOH)
   }
 
   final val MainTestClassName = ClassName("Test")

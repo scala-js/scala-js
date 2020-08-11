@@ -162,7 +162,13 @@ final class BaseLinker(config: CommonPhaseConfig) {
         val methodInfo =
           analyzerInfo.methodInfos(m.flags.namespace)(m.methodName)
 
-        if (methodInfo.isReachable) {
+        /* Synthetic methods take precedence over non-synthetic ones.
+         * This happens if a class has its own and foreign static initializers.
+         */
+        val isSynthetic =
+          methodInfo.syntheticKind != MethodSyntheticKind.None
+
+        if (methodInfo.isReachable && !isSynthetic) {
           assert(m.body.isDefined,
               s"The abstract method ${classDef.name.name}.${m.methodName} " +
               "is reachable.")

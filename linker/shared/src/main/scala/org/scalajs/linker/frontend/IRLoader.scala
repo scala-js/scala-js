@@ -50,7 +50,11 @@ final class IRLoader extends Analyzer.InputProvider with MethodSynthesizer.Input
     }
   }
 
-  def classesWithEntryPoints(): Iterable[ClassName] = entryPoints
+  def loadForeignStaticInitializerInfos()(
+      implicit ec: ExecutionContext): Future[List[Infos.ForeignStaticInitializerInfo]] = {
+    Future.traverse(entryPoints)(get(_, _.foreignStaticInitializerInfos))
+      .map(_.flatten.toList)
+  }
 
   def loadTopLevelExportInfos()(implicit ec: ExecutionContext): Future[List[Infos.TopLevelExportInfo]] = {
     Future.traverse(entryPoints)(get(_, _.topLevelExportInfos))
@@ -98,6 +102,7 @@ private object ClassDefAndInfoCache {
       val classDef: ClassDef,
       val classInfo: Infos.ClassInfo,
       val topLevelExportInfos: List[Infos.TopLevelExportInfo],
+      val foreignStaticInitializerInfos: List[Infos.ForeignStaticInitializerInfo],
       val version: Option[String])
 }
 
@@ -122,7 +127,8 @@ private final class ClassDefAndInfoCache {
         version = newVersion
         cacheUpdate = irFile.tree.map { tree =>
           new Update(tree, Infos.generateClassInfo(tree),
-              Infos.generateTopLevelExportInfos(tree), version)
+              Infos.generateTopLevelExportInfos(tree),
+              Infos.generateForeignStaticInitializerInfo(tree), version)
         }
       }
     }

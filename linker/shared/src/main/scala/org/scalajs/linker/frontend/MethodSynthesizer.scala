@@ -19,7 +19,10 @@ import scala.concurrent._
 import org.scalajs.linker.analyzer._
 
 import org.scalajs.ir
+import org.scalajs.ir.Hashers
 import org.scalajs.ir.Names._
+import org.scalajs.ir.OriginalName.NoOriginalName
+import org.scalajs.ir.Position
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
@@ -30,8 +33,11 @@ private[frontend] final class MethodSynthesizer(
 
   def synthesizeMembers(classInfo: ClassInfo, analysis: Analysis)(
       implicit ec: ExecutionContext): Future[Iterator[MethodDef]] = {
-    val publicMethodInfos = classInfo.methodInfos(MemberNamespace.Public)
-    val futures = publicMethodInfos.valuesIterator.filter(_.isReachable).flatMap { m =>
+    val relevantInfos = (
+        classInfo.methodInfos(MemberNamespace.Public).valuesIterator ++
+        classInfo.methodInfos(MemberNamespace.StaticConstructor).valuesIterator
+    )
+    val futures = relevantInfos.filter(_.isReachable).flatMap { m =>
       m.syntheticKind match {
         case MethodSyntheticKind.None =>
           Nil
@@ -41,6 +47,9 @@ private[frontend] final class MethodSynthesizer(
 
         case MethodSyntheticKind.DefaultBridge(targetInterface) =>
           List(synthesizeDefaultBridge(classInfo, m, targetInterface, analysis))
+
+        case MethodSyntheticKind.CompoundStaticInitializer(origins) =>
+          List(synthesizeCompoundStaticInitializer(classInfo, origins))
       }
     }
 
@@ -129,6 +138,10 @@ private[frontend] final class MethodSynthesizer(
               throw new AssertionError(
                   s"Cannot recursively follow $ancestorInfo.$methodName of " +
                   s"kind ${m.syntheticKind}")
+
+            case MethodSyntheticKind.CompoundStaticInitializer(_) =>
+              throw new AssertionError(
+                  "found CompoundStaticInitializer in Public namespace")
           }
 
         case None =>
@@ -144,17 +157,65 @@ private[frontend] final class MethodSynthesizer(
   private def findMethodDef(classInfo: ClassInfo, methodName: MethodName)(
       implicit ec: ExecutionContext): Future[MethodDef] = {
     for {
+      maybeMethod <- tryFindMethodDef(classInfo, MemberNamespace.Public, methodName)
+    } yield {
+      maybeMethod.getOrElse {
+        throw new AssertionError(
+            s"Cannot find ${methodName.nameString} in ${classInfo.className.nameString}")
+      }
+    }
+  }
+
+  private def tryFindMethodDef(classInfo: ClassInfo, namespace: MemberNamespace,
+      methodName: MethodName)(implicit ec: ExecutionContext): Future[Option[MethodDef]] = {
+    for {
       classDef <- inputProvider.loadClassDef(classInfo.className)
     } yield {
       classDef.memberDefs.collectFirst {
         case mDef: MethodDef
-            if mDef.flags.namespace == MemberNamespace.Public &&
-                mDef.methodName == methodName =>
+            if mDef.flags.namespace == namespace && mDef.methodName == methodName =>
           mDef
-      }.getOrElse {
-        throw new AssertionError(
-            s"Cannot find ${methodName.nameString} in ${classInfo.className.nameString}")
       }
+    }
+  }
+
+  private def synthesizeCompoundStaticInitializer(classInfo: ClassInfo,
+      origins: List[ClassName])(implicit ec: ExecutionContext): Future[MethodDef] = {
+    val foreignStatsFuture = for {
+      classes <- Future.traverse(origins)(inputProvider.loadClassDef(_))
+    } yield {
+      classes
+        .flatMap(_.foreignStaticInitializers)
+        .filter(_.target == classInfo.className)
+        .map(_.stats)
+    }
+
+    for {
+      maybeBaseStaticInit <- tryFindMethodDef(classInfo,
+          MemberNamespace.StaticConstructor, StaticInitializerName)
+      foreignStats <- foreignStatsFuture
+    } yield {
+      val unhashed = maybeBaseStaticInit.fold {
+        implicit val pos = Position.NoPosition
+
+        val flags =
+          MemberFlags.empty.withNamespace(MemberNamespace.StaticConstructor)
+
+        val body = Block(foreignStats)
+
+        MethodDef(flags, MethodIdent(StaticInitializerName), NoOriginalName, Nil,
+            NoType, Some(body))(OptimizerHints.empty, None)
+      } { baseStaticInit =>
+        implicit val pos = baseStaticInit.pos
+
+        val MethodDef(flags, name, originalName, args, resultType, Some(baseBody)) = baseStaticInit
+        val body = Block(baseBody :: foreignStats)
+
+        MethodDef(flags, name, originalName, args, resultType, Some(body))(
+            baseStaticInit.optimizerHints, None)
+      }
+
+      Hashers.hashMethodDef(unhashed)
     }
   }
 }

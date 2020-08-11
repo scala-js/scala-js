@@ -1009,7 +1009,8 @@ object Trees {
       val jsSuperClass: Option[Tree],
       val jsNativeLoadSpec: Option[JSNativeLoadSpec],
       val memberDefs: List[MemberDef],
-      val topLevelExportDefs: List[TopLevelExportDef]
+      val topLevelExportDefs: List[TopLevelExportDef],
+      val foreignStaticInitializers: List[ForeignStaticInitializer]
   )(
       val optimizerHints: OptimizerHints
   )(implicit val pos: Position) extends IRNode {
@@ -1027,12 +1028,13 @@ object Trees {
         jsSuperClass: Option[Tree],
         jsNativeLoadSpec: Option[JSNativeLoadSpec],
         memberDefs: List[MemberDef],
-        topLevelExportDefs: List[TopLevelExportDef])(
+        topLevelExportDefs: List[TopLevelExportDef],
+        foreignStaticInitializers: List[ForeignStaticInitializer])(
         optimizerHints: OptimizerHints)(
         implicit pos: Position): ClassDef = {
       new ClassDef(name, originalName, kind, jsClassCaptures, superClass,
           interfaces, jsSuperClass, jsNativeLoadSpec, memberDefs,
-          topLevelExportDefs)(
+          topLevelExportDefs, foreignStaticInitializers)(
           optimizerHints)
     }
   }
@@ -1141,6 +1143,11 @@ object Trees {
   sealed case class TopLevelFieldExportDef(exportName: String,
       field: FieldIdent)(
       implicit val pos: Position) extends TopLevelExportDef
+
+  // ForeignStaticInitializer
+
+  sealed case class ForeignStaticInitializer(target: ClassName, stats: Tree)(
+      implicit val pos: Position) extends IRNode
 
   // Miscellaneous
 

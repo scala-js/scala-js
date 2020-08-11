@@ -521,6 +521,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                   None,
                   None,
                   forwarders,
+                  Nil,
                   Nil
               )(js.OptimizerHints.empty)
               generatedClasses += forwardersClassDef
@@ -553,7 +554,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           None,
           None,
           hashedMemberDefs,
-          topLevelExportDefs)(
+          topLevelExportDefs,
+          Nil)(
           optimizerHints)
 
       classDefinition
@@ -682,7 +684,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           jsSuperClass,
           None,
           hashedMemberDefs,
-          topLevelExports)(
+          topLevelExports,
+          Nil)(
           OptimizerHints.empty)
 
       classDefinition
@@ -755,7 +758,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         js.ClassDef(origJsClass.name, origJsClass.originalName,
             ClassKind.AbstractJSType, None, Some(parent), interfaces = Nil,
             jsSuperClass = None, jsNativeLoadSpec = None,
-            classDefMembers.toList, Nil)(
+            classDefMembers.toList, Nil, Nil)(
             origJsClass.optimizerHints)
       }
 
@@ -927,7 +930,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       js.ClassDef(classIdent, originalNameOfClass(sym), kind, None, superClass,
           genClassInterfaces(sym, forJSClass = true), None, jsNativeLoadSpec,
-          Nil, Nil)(
+          Nil, Nil, Nil)(
           OptimizerHints.empty)
     }
 
@@ -966,7 +969,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         Hashers.hashMemberDefs(allMemberDefs)
 
       js.ClassDef(classIdent, originalNameOfClass(sym), ClassKind.Interface,
-          None, None, interfaces, None, None, hashedMemberDefs, Nil)(
+          None, None, interfaces, None, None, hashedMemberDefs, Nil, Nil)(
           OptimizerHints.empty)
     }
 
@@ -6096,6 +6099,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           None,
           None,
           fFieldDef :: ctorDef :: samMethodDefs,
+          Nil,
           Nil)(
           js.OptimizerHints.empty.withInline(true))
 

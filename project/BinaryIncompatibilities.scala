@@ -5,6 +5,12 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 
 object BinaryIncompatibilities {
   val IR = Seq(
+      // Breaking in IR. OK in Minor version.
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.ir.Trees#ClassDef.this"),
+      ProblemFilters.exclude[DirectMissingMethodProblem](
+          "org.scalajs.ir.Trees#ClassDef.apply"),
+
       // private, not an issue
       ProblemFilters.exclude[DirectMissingMethodProblem](
           "org.scalajs.ir.Serializers#Deserializer.readMemberDef"),

@@ -72,6 +72,12 @@ object Infos {
       val name: String
   )
 
+  final class ForeignStaticInitializerInfo private[Infos] (
+      val owningClass: ClassName,
+      val targetClass: ClassName,
+      val reachability: ReachabilityInfo
+  )
+
   final class ReachabilityInfo private[Infos] (
       val privateJSFieldsUsed: Map[ClassName, List[FieldName]],
       val staticFieldsRead: Map[ClassName, List[FieldName]],
@@ -367,6 +373,20 @@ object Infos {
     }
   }
 
+  def generateForeignStaticInitializerInfo(
+      classDef: ClassDef): List[ForeignStaticInitializerInfo] = {
+    classDef.foreignStaticInitializers.map { foreignStaticInitializer =>
+      val reachability =
+        new GenInfoTraverser().generateTreeInfo(foreignStaticInitializer.stats)
+
+      new ForeignStaticInitializerInfo(
+          owningClass = classDef.name.name,
+          targetClass = foreignStaticInitializer.target,
+          reachability = reachability
+      )
+    }
+  }
+
   /** Generates the [[MethodInfo]] of a
    *  [[org.scalajs.ir.Trees.MethodDef Trees.MethodDef]].
    */
@@ -448,6 +468,11 @@ object Infos {
           builder.addStaticFieldWritten(enclosingClass, field)
       }
 
+      builder.result()
+    }
+
+    def generateTreeInfo(tree: Tree): ReachabilityInfo = {
+      traverse(tree)
       builder.result()
     }
 

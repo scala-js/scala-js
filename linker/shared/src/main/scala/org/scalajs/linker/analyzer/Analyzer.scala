@@ -115,12 +115,9 @@ private final class Analyzer(config: CommonPhaseConfig,
     // External symbol requirements, including module initializers
     reachSymbolRequirement(symbolRequirements)
 
-    // Reach static initializers.
-    for (className <- inputProvider.classesWithEntryPoints())
-      lookupClass(className)(_.reachStaticInitializer())
-
-    // Reach top level exports
     reachTopLevelExports()
+
+    reachForeignStaticInitializers()
   }
 
   private def postLoad(): Unit = {
@@ -219,6 +216,16 @@ private final class Analyzer(config: CommonPhaseConfig,
       // Check conflicts.
       for ((name, i) <- infos.groupBy(_.name) if i.size > 1) {
         _errors += ConflictingTopLevelExport(name, i.map(_.owningClass))
+      }
+    }
+  }
+
+  private def reachForeignStaticInitializers(): Unit = {
+    workQueue.enqueue(inputProvider.loadForeignStaticInitializerInfos()(ec)) { infos =>
+      for (info <- infos) {
+        implicit val from =
+          FromForeignStaticInitializer(info.owningClass, info.targetClass)
+        lookupClass(info.targetClass)(_.attachForeignStaticInitializer(info))
       }
     }
   }
@@ -331,6 +338,8 @@ private final class Analyzer(config: CommonPhaseConfig,
 
         implicit val from = FromClass(info)
         classes.foreach(_.link())
+
+        info.reachStaticInitializer()
 
         promise.success(info)
       } { cycleInfo =>
@@ -846,12 +855,17 @@ private final class Analyzer(config: CommonPhaseConfig,
     override def toString(): String = className.nameString
 
     def reachStaticInitializer(): Unit = {
-      implicit val from = FromExports
+      implicit val from = fromAnalyzer
 
       tryLookupStaticLikeMethod(MemberNamespace.StaticConstructor,
           StaticInitializerName).foreach {
         _.reachStatic()(fromAnalyzer)
       }
+    }
+
+    def attachForeignStaticInitializer(info: Infos.ForeignStaticInitializerInfo): Unit = {
+      lookupStaticLikeMethod(MemberNamespace.StaticConstructor, StaticInitializerName)
+        .attachForeignStaticInitializer(info)
     }
 
     def accessModule()(implicit from: From): Unit = {
@@ -1103,6 +1117,30 @@ private final class Analyzer(config: CommonPhaseConfig,
       }
     }
 
+    def attachForeignStaticInitializer(info: Infos.ForeignStaticInitializerInfo): Unit = {
+      assert(methodName.isStaticInitializer)
+      assert(allowAddingSyntheticMethods)
+
+      isReachable = true
+      nonExistent = false
+
+      syntheticKind = syntheticKind match {
+        case MethodSyntheticKind.None =>
+          MethodSyntheticKind.CompoundStaticInitializer(info.owningClass :: Nil)
+
+        case MethodSyntheticKind.CompoundStaticInitializer(origins) =>
+          MethodSyntheticKind.CompoundStaticInitializer(info.owningClass :: origins)
+
+        case syntheticKind =>
+          throw new AssertionError(
+              s"unexpected synthetic kind for static initializer: $syntheticKind")
+      }
+
+      val from = FromForeignStaticInitializer(info.owningClass, info.targetClass)
+
+      followReachabilityInfo(info.reachability)(from)
+    }
+
     private def checkExistent()(implicit from: From) = {
       if (nonExistent)
         _errors += MissingMethod(this, from)
@@ -1223,10 +1261,11 @@ object Analyzer {
   }
 
   trait InputProvider {
-    def classesWithEntryPoints(): Iterable[ClassName]
-
     def loadTopLevelExportInfos()(
         implicit ec: ExecutionContext): Future[List[Infos.TopLevelExportInfo]]
+
+    def loadForeignStaticInitializerInfos()(
+        implicit ec: ExecutionContext): Future[List[Infos.ForeignStaticInitializerInfo]]
 
     def loadInfo(className: ClassName)(
         implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]]

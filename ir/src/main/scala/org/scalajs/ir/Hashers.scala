@@ -77,8 +77,8 @@ object Hashers {
     import classDef._
     val newMemberDefs = hashMemberDefs(memberDefs)
     ClassDef(name, originalName, kind, jsClassCaptures, superClass, interfaces,
-        jsSuperClass, jsNativeLoadSpec, newMemberDefs, topLevelExportDefs)(
-        optimizerHints)
+        jsSuperClass, jsNativeLoadSpec, newMemberDefs, topLevelExportDefs,
+        foreignStaticInitializers)(optimizerHints)
   }
 
   def hashesEqual(x: TreeHash, y: TreeHash): Boolean =

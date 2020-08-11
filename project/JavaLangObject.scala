@@ -185,6 +185,7 @@ object JavaLangObject {
                 Nil)(ClassType(BoxedStringClass))
           })(OptimizerHints.empty, None)
       ),
+      Nil,
       Nil)(OptimizerHints.empty)
 
     Hashers.hashClassDef(classDef)

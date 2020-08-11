@@ -106,17 +106,18 @@ object Printers {
 
     def printAnyNode(node: IRNode): Unit = {
       node match {
-        case node: LocalIdent        => print(node)
-        case node: LabelIdent        => print(node)
-        case node: FieldIdent        => print(node)
-        case node: MethodIdent       => print(node)
-        case node: ClassIdent        => print(node)
-        case node: ParamDef          => print(node)
-        case node: Tree              => print(node)
-        case node: JSSpread          => print(node)
-        case node: ClassDef          => print(node)
-        case node: MemberDef         => print(node)
-        case node: TopLevelExportDef => print(node)
+        case node: LocalIdent               => print(node)
+        case node: LabelIdent               => print(node)
+        case node: FieldIdent               => print(node)
+        case node: MethodIdent              => print(node)
+        case node: ClassIdent               => print(node)
+        case node: ParamDef                 => print(node)
+        case node: Tree                     => print(node)
+        case node: JSSpread                 => print(node)
+        case node: ClassDef                 => print(node)
+        case node: MemberDef                => print(node)
+        case node: TopLevelExportDef        => print(node)
+        case node: ForeignStaticInitializer => print(node)
       }
     }
 
@@ -898,7 +899,7 @@ object Printers {
         print(spec)
       }
       print(" ")
-      printColumn(memberDefs ::: topLevelExportDefs, "{", "", "}")
+      printColumn(memberDefs ::: topLevelExportDefs ::: foreignStaticInitializers, "{", "", "}")
     }
 
     def print(memberDef: MemberDef): Unit = {
@@ -1000,6 +1001,13 @@ object Printers {
           printEscapeJS(exportName, out)
           print('\"')
       }
+    }
+
+    def print(foreignStaticInitializer: ForeignStaticInitializer): Unit = {
+      print("foreign <stinit> for ")
+      print(foreignStaticInitializer.target)
+      print(" ")
+      printBlock(foreignStaticInitializer.stats)
     }
 
     def print(typeRef: TypeRef): Unit = typeRef match {
