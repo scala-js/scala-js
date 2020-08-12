@@ -603,6 +603,7 @@ object Serializers {
       writeJSNativeLoadSpec(jsNativeLoadSpec)
       writeMemberDefs(memberDefs)
       writeTopLevelExportDefs(topLevelExportDefs)
+      writeForeignStaticInitializers(foreignStaticInitializers)
       writeInt(OptimizerHints.toBits(optimizerHints))
     }
 
@@ -713,6 +714,19 @@ object Serializers {
         topLevelExportDefs: List[TopLevelExportDef]): Unit = {
       buffer.writeInt(topLevelExportDefs.size)
       topLevelExportDefs.foreach(writeTopLevelExportDef)
+    }
+
+    def writeForeignStaticInitializer(
+        foreignStaticInitializer: ForeignStaticInitializer): Unit = {
+      writePosition(foreignStaticInitializer.pos)
+      writeName(foreignStaticInitializer.target)
+      writeTree(foreignStaticInitializer.stats)
+    }
+
+    def writeForeignStaticInitializers(
+        foreignStaticInitializers: List[ForeignStaticInitializer]): Unit = {
+      buffer.writeInt(foreignStaticInitializers.size)
+      foreignStaticInitializers.foreach(writeForeignStaticInitializer)
     }
 
     def writeLocalIdent(ident: LocalIdent): Unit = {
@@ -1152,22 +1166,30 @@ object Serializers {
 
       val memberDefs0 = readMemberDefs(name.name, kind)
       val memberDefs = {
-        memberDefs0.filter {
-          case m: MethodDef => !m.name.name.isStaticInitializer
-          case _            => true
+        if (hacks.use11) {
+          memberDefs0.filter {
+            case m: MethodDef => !m.name.name.isStaticInitializer
+            case _            => true
+          }
+        } else {
+          memberDefs0
         }
       }
 
       val topLevelExportDefs = readTopLevelExportDefs(name.name, kind)
 
       val foreignStaticInitializers = {
-        memberDefs0.collect {
-          case m @ MethodDef(_, name, _, _, _, Some(body))
-              if name.name.isStaticInitializer =>
-            /* Pre-1.2, static initializers were always executed. Attaching to
-             * Object emulates this.
-             */
-            ForeignStaticInitializer(ObjectClass, body)(m.pos)
+        if (hacks.use11) {
+          memberDefs0.collect {
+            case m @ MethodDef(_, name, _, _, _, Some(body))
+                if name.name.isStaticInitializer =>
+              /* Pre-1.2, static initializers were always executed. Attaching to
+               * Object emulates this.
+               */
+              ForeignStaticInitializer(ObjectClass, body)(m.pos)
+          }
+        } else {
+          readForeignStaticInitializers()
         }
       }
 
@@ -1295,6 +1317,14 @@ object Serializers {
         ownerKind: ClassKind): List[TopLevelExportDef] = {
       List.fill(readInt())(readTopLevelExportDef(owner, ownerKind))
     }
+
+    def readForeignStaticInitializer(): ForeignStaticInitializer = {
+      implicit val pos = readPosition()
+      ForeignStaticInitializer(readClassName(), readTree())
+    }
+
+    def readForeignStaticInitializers(): List[ForeignStaticInitializer] =
+      List.fill(readInt())(readForeignStaticInitializer())
 
     def readLocalIdent(): LocalIdent = {
       implicit val pos = readPosition()

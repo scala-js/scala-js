@@ -465,36 +465,20 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       // Static initializer
       val optStaticInitializer = {
-        // Initialization of reflection data, if required
-        val reflectInit = {
-          val enableReflectiveInstantiation = {
-            (sym :: sym.ancestors).exists { ancestor =>
-              ancestor.hasAnnotation(EnableReflectiveInstantiationAnnotation)
-            }
-          }
-          if (enableReflectiveInstantiation)
-            genRegisterReflectiveInstantiation(sym)
-          else
-            None
-        }
-
-        // Initialization of the module because of field exports
         val needsStaticModuleInit =
           topLevelExportDefs.exists(_.isInstanceOf[js.TopLevelFieldExportDef])
-        val staticModuleInit =
-          if (!needsStaticModuleInit) None
-          else Some(genLoadModule(sym))
 
-        val staticInitializerStats =
-          reflectInit.toList ::: staticModuleInit.toList
-        if (staticInitializerStats.nonEmpty) {
-          List(genStaticConstructorWithStats(
-              ir.Names.StaticInitializerName,
-              js.Block(staticInitializerStats)))
-        } else {
+        if (!needsStaticModuleInit) {
           Nil
+        } else {
+          val body = genLoadModule(sym)
+          List(genStaticConstructorWithStats(ir.Names.StaticInitializerName, body))
         }
       }
+
+      // Foreign static initializer
+      val foreignStaticInitializers =
+        genRegisterReflectiveInstantiation(sym).toList
 
       val allMemberDefsExceptStaticForwarders =
         generatedMembers ::: memberExports ::: optStaticInitializer
@@ -555,7 +539,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           None,
           hashedMemberDefs,
           topLevelExportDefs,
-          Nil)(
+          foreignStaticInitializers)(
           optimizerHints)
 
       classDefinition
@@ -1219,30 +1203,40 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     }
 
     private def genRegisterReflectiveInstantiation(sym: Symbol)(
-        implicit pos: Position): Option[js.Tree] = {
-      if (isStaticModule(sym))
-        genRegisterReflectiveInstantiationForModuleClass(sym)
-      else if (sym.isModuleClass)
-        None // #3228
-      else if (sym.isLifted && !sym.originalOwner.isClass)
-        None // #3227
-      else
-        genRegisterReflectiveInstantiationForNormalClass(sym)
+        implicit pos: Position): Option[js.ForeignStaticInitializer] = {
+      val enable = (sym :: sym.ancestors)
+        .exists(_.hasAnnotation(EnableReflectiveInstantiationAnnotation))
+
+      val tree = {
+        if (!enable)
+          None
+        else if (isStaticModule(sym))
+          Some(genRegisterReflectiveInstantiationForModuleClass(sym))
+        else if (sym.isModuleClass)
+          None // #3228
+        else if (sym.isLifted && !sym.originalOwner.isClass)
+          None // #3227
+        else
+          genRegisterReflectiveInstantiationForNormalClass(sym)
+      }
+
+      tree.map { tree =>
+        val reflectName = encodeClassName(ReflectModule.moduleClass)
+        js.ForeignStaticInitializer(reflectName, tree)
+      }
     }
 
     private def genRegisterReflectiveInstantiationForModuleClass(sym: Symbol)(
-        implicit pos: Position): Option[js.Tree] = {
+        implicit pos: Position): js.Tree = {
       val fqcnArg = js.StringLiteral(sym.fullName + "$")
       val runtimeClassArg = js.ClassOf(toTypeRef(sym.info))
       val loadModuleFunArg =
         js.Closure(arrow = true, Nil, Nil, genLoadModule(sym), Nil)
 
-      val stat = genApplyMethod(
+      genApplyMethod(
           genLoadModule(ReflectModule),
           Reflect_registerLoadableModuleClass,
           List(fqcnArg, runtimeClassArg, loadModuleFunArg))
-
-      Some(stat)
     }
 
     private def genRegisterReflectiveInstantiationForNormalClass(sym: Symbol)(
