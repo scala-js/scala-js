@@ -170,8 +170,7 @@ object JavalibIRCleaner {
       for (interface <- preprocessedTree.interfaces)
         validateClassName(interface.name)
 
-      val transformedClassDef =
-        Hashers.hashClassDef(this.transformClassDef(preprocessedTree))
+      val transformedClassDef = this.transformClassDef(preprocessedTree)
 
       postTransformChecks(transformedClassDef)
       transformedClassDef

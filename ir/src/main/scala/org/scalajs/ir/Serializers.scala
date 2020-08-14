@@ -17,6 +17,7 @@ import scala.annotation.switch
 import java.io._
 import java.nio._
 import java.net.URI
+import java.security.{MessageDigest, DigestOutputStream}
 
 import scala.collection.mutable
 import scala.concurrent._
@@ -26,8 +27,6 @@ import Position._
 import Trees._
 import Types._
 import Tags._
-
-import Utils.JumpBackByteArrayOutputStream
 
 object Serializers {
   /** Scala.js IR File Magic Number
@@ -114,21 +113,355 @@ object Serializers {
   }
 
   private final class Serializer {
-    private[this] val bufferUnderlying = new JumpBackByteArrayOutputStream
+    private[this] val bufferUnderlying = new ByteArrayOutputStream
     private[this] val buffer = new DataOutputStream(bufferUnderlying)
 
-    private[this] val files = mutable.ListBuffer.empty[URI]
-    private[this] val fileIndexMap = mutable.Map.empty[URI, Int]
-    private def fileToIndex(file: URI): Int =
-      fileIndexMap.getOrElseUpdate(file, (files += file).size - 1)
+    private[this] val nameWriter = new HoistedNameWriter(buffer)
+    private[this] val stringWriter = new HoistedStringWriter(buffer)
+    private[this] val positionWriter = new IncrementalPositionWriter(buffer)
 
-    private[this] val encodedNames = mutable.ListBuffer.empty[UTF8String]
-    private[this] val encodedNameIndexMap = mutable.Map.empty[EncodedNameKey, Int]
-    private def encodedNameToIndex(encoded: UTF8String): Int = {
-      val byteString = new EncodedNameKey(encoded)
-      encodedNameIndexMap.getOrElseUpdate(byteString,
-          (encodedNames += encoded).size - 1)
+    private[this] val treeWriter =
+      new TreeWriter(buffer, nameWriter, stringWriter, positionWriter)
+
+    def serialize(stream: OutputStream, classDef: ClassDef): Unit = {
+      // Write tree to buffer and record files, names and strings
+      writeClassDef(classDef)
+
+      val s = new DataOutputStream(stream)
+
+      // Write the Scala.js IR magic number
+      s.writeInt(IRMagicNumber)
+
+      // Write the Scala.js Version
+      s.writeUTF(ScalaJSVersions.binaryEmitted)
+
+      // Write the entry points info
+      val entryPointsInfo = EntryPointsInfo.forClassDef(classDef)
+      val entryPointEncodedName = entryPointsInfo.className.encoded.bytes
+      s.writeInt(entryPointEncodedName.length)
+      s.write(entryPointEncodedName)
+      s.writeBoolean(entryPointsInfo.hasEntryPoint)
+
+      positionWriter.flushFiles(s)
+      nameWriter.flushNames(s)
+      stringWriter.flushStrings(s)
+
+      // Paste the buffer
+      bufferUnderlying.writeTo(s)
+
+      s.flush()
     }
+
+    def writeClassDef(classDef: ClassDef): Unit = {
+      import buffer._
+      import nameWriter._
+      import positionWriter._
+      import treeWriter._
+      import classDef._
+
+      writePosition(classDef.pos)
+      writeClassIdent(name)
+      writeOriginalName(originalName)
+      writeByte(ClassKind.toByte(kind))
+      writeBoolean(jsClassCaptures.isDefined)
+      jsClassCaptures.foreach(writeParamDefs(_))
+      writeOptClassIdent(superClass)
+      writeClassIdents(interfaces)
+      writeOptTree(jsSuperClass)
+      writeJSNativeLoadSpec(jsNativeLoadSpec)
+      writeMemberDefs(memberDefs)
+      writeTopLevelExportDefs(topLevelExportDefs)
+      writeInt(OptimizerHints.toBits(optimizerHints))
+    }
+
+    def writeMemberDef(memberDef: MemberDef): Unit = {
+      import buffer._
+      import nameWriter._
+      import positionWriter._
+      import treeWriter._
+
+      memberDef match {
+        case FieldDef(flags, name, originalName, ftpe) =>
+          writePosition(memberDef.pos)
+          writeByte(TagFieldDef)
+          writeInt(MemberFlags.toBits(flags))
+          writeFieldIdent(name)
+          writeOriginalName(originalName)
+          writeType(ftpe)
+
+        case JSFieldDef(flags, name, ftpe) =>
+          writePosition(memberDef.pos)
+          writeByte(TagJSFieldDef)
+          writeInt(MemberFlags.toBits(flags))
+          writeTree(name)
+          writeType(ftpe)
+
+        case methodDef: MethodDef =>
+          val hashing = new HashingWriter(nameWriter, stringWriter, positionWriter)
+          hashing.writeMethodDef(methodDef)
+          hashing.flushTree(buffer)
+
+        case methodDef: JSMethodDef =>
+          val hashing = new HashingWriter(nameWriter, stringWriter, positionWriter)
+          hashing.writeJSMethodDef(methodDef)
+          hashing.flushTree(buffer)
+
+        case JSPropertyDef(flags, name, getter, setterArgAndBody) =>
+          writePosition(memberDef.pos)
+          writeByte(TagJSPropertyDef)
+          writeInt(MemberFlags.toBits(flags))
+          writeTree(name)
+          writeOptTree(getter)
+          writeBoolean(setterArgAndBody.isDefined)
+          setterArgAndBody foreach { case (arg, body) =>
+            writeParamDef(arg); writeTree(body)
+          }
+
+        case JSNativeMemberDef(flags, name, jsNativeLoadSpec) =>
+          writePosition(memberDef.pos)
+          writeByte(TagJSNativeMemberDef)
+          writeInt(MemberFlags.toBits(flags))
+          writeMethodIdent(name)
+          writeJSNativeLoadSpec(Some(jsNativeLoadSpec))
+      }
+    }
+
+    def writeMemberDefs(memberDefs: List[MemberDef]): Unit = {
+      buffer.writeInt(memberDefs.size)
+      memberDefs.foreach(writeMemberDef)
+    }
+
+    def writeTopLevelExportDef(topLevelExportDef: TopLevelExportDef): Unit = {
+      import buffer._
+      import positionWriter._
+      import stringWriter._
+      import treeWriter._
+
+      writePosition(topLevelExportDef.pos)
+      topLevelExportDef match {
+        case TopLevelJSClassExportDef(exportName) =>
+          writeByte(TagTopLevelJSClassExportDef)
+          writeString(exportName)
+
+        case TopLevelModuleExportDef(exportName) =>
+          writeByte(TagTopLevelModuleExportDef)
+          writeString(exportName)
+
+        case TopLevelMethodExportDef(methodDef) =>
+          writeByte(TagTopLevelMethodExportDef)
+          writeMemberDef(methodDef)
+
+        case TopLevelFieldExportDef(exportName, field) =>
+          writeByte(TagTopLevelFieldExportDef)
+          writeString(exportName); writeFieldIdent(field)
+      }
+    }
+
+    def writeTopLevelExportDefs(
+        topLevelExportDefs: List[TopLevelExportDef]): Unit = {
+      buffer.writeInt(topLevelExportDefs.size)
+      topLevelExportDefs.foreach(writeTopLevelExportDef)
+    }
+
+    def writeJSNativeLoadSpec(jsNativeLoadSpec: Option[JSNativeLoadSpec]): Unit = {
+      import buffer._
+      import stringWriter._
+
+      def writeStrings(strings: List[String]): Unit = {
+        buffer.writeInt(strings.size)
+        strings.foreach(writeString)
+      }
+
+      def writeGlobalSpec(spec: JSNativeLoadSpec.Global): Unit = {
+        writeString(spec.globalRef)
+        writeStrings(spec.path)
+      }
+
+      def writeImportSpec(spec: JSNativeLoadSpec.Import): Unit = {
+        writeString(spec.module)
+        writeStrings(spec.path)
+      }
+
+      jsNativeLoadSpec.fold {
+        writeByte(TagJSNativeLoadSpecNone)
+      } { spec =>
+        spec match {
+          case spec: JSNativeLoadSpec.Global =>
+            writeByte(TagJSNativeLoadSpecGlobal)
+            writeGlobalSpec(spec)
+
+          case spec: JSNativeLoadSpec.Import =>
+            writeByte(TagJSNativeLoadSpecImport)
+            writeImportSpec(spec)
+
+          case JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, globalSpec) =>
+            writeByte(TagJSNativeLoadSpecImportWithGlobalFallback)
+            writeImportSpec(importSpec)
+            writeGlobalSpec(globalSpec)
+        }
+      }
+    }
+  }
+
+  private class HashingWriter(
+      underlyingNameWriter: FullNameWriter,
+      underlyingStringWriter: StringWriter,
+      underlyingPositionWriter: PositionWriter) {
+
+    private[this] val digest = MessageDigest.getInstance("SHA-1")
+
+    private[this] val buffer = new ByteArrayOutputStream
+
+    private[this] val digestOut = {
+      val sink = new OutputStream {
+        def write(b: Int): Unit = ()
+      }
+      new DataOutputStream(new DigestOutputStream(sink, digest))
+    }
+
+    private[this] val directOut = new DataOutputStream(new DigestOutputStream(buffer, digest))
+
+    private[this] val nameHasher = new BaseNameWriter {
+      def writeName(name: Name): Unit = {
+        digestOut.writeInt(name.encoded.bytes.length)
+        digestOut.write(name.encoded.bytes)
+      }
+    }
+
+    private[this] val methodNameHasher =
+      new MethodNameWriter(digestOut, nameHasher)
+
+    private[this] val nameWriter = new FullNameWriter {
+      def writeName(name: Name): Unit = {
+        nameHasher.writeName(name)
+        underlyingNameWriter.writeName(name)
+      }
+
+      def writeMethodName(name: MethodName): Unit = {
+        methodNameHasher.writeMethodName(name)
+        underlyingNameWriter.writeMethodName(name)
+      }
+
+      def writeOriginalName(originalName: OriginalName): Unit = {
+        digestOut.writeBoolean(originalName.isDefined)
+        if (originalName.isDefined) {
+          digestOut.writeInt(originalName.get.bytes.size)
+          digestOut.write(originalName.get.bytes)
+        }
+        underlyingNameWriter.writeOriginalName(originalName)
+      }
+
+      private def mixBytes(bytes: Array[Byte]): Unit = {
+        digestOut.writeInt(bytes.length)
+        digestOut.write(bytes)
+      }
+    }
+
+    private[this] val stringWriter = new StringWriter {
+      def writeString(s: String): Unit = {
+        digestOut.writeUTF(s)
+        underlyingStringWriter.writeString(s)
+      }
+    }
+
+    private[this] val positionWriter = new PositionWriter {
+      def writePosition(pos: Position): Unit = {
+        digestOut.writeUTF(pos.source.toString)
+        digestOut.writeInt(pos.line)
+        digestOut.writeInt(pos.column)
+        underlyingPositionWriter.writePosition(pos)
+      }
+    }
+
+    private[this] val treeWriter =
+      new TreeWriter(directOut, nameWriter, stringWriter, positionWriter)
+
+    def flushTree(out: DataOutputStream): Unit = {
+      val hash = digest.digest()
+      assert(hash.length == 20)
+
+      val bodyBytes = buffer.toByteArray()
+
+      out.writeInt(bodyBytes.length)
+      out.writeBoolean(true) // hashes used to be optional.
+      out.write(hash)
+      out.write(bodyBytes)
+    }
+
+    import directOut._
+    import nameWriter._
+    import positionWriter._
+    import treeWriter._
+
+    def writeMethodDef(methodDef: MethodDef): Unit = {
+      writePosition(methodDef.pos)
+
+      val MethodDef(flags, name, originalName, args, resultType, body) = methodDef
+
+      writeByte(TagMethodDef)
+      writeInt(MemberFlags.toBits(flags)); writeMethodIdent(name)
+      writeOriginalName(originalName)
+      writeParamDefs(args); writeType(resultType); writeOptTree(body)
+      writeInt(OptimizerHints.toBits(methodDef.optimizerHints))
+    }
+
+    def writeJSMethodDef(methodDef: JSMethodDef): Unit = {
+      writePosition(methodDef.pos)
+
+      val JSMethodDef(flags, name, args, body) = methodDef
+
+      writeByte(TagJSMethodDef)
+      writeInt(MemberFlags.toBits(flags)); writeTree(name)
+      writeParamDefs(args); writeTree(body)
+      writeInt(OptimizerHints.toBits(methodDef.optimizerHints))
+    }
+  }
+
+  private trait BaseNameWriter {
+    def writeName(name: Name): Unit
+  }
+
+  private trait FullNameWriter extends BaseNameWriter {
+    def writeMethodName(name: MethodName): Unit
+    def writeOriginalName(originalName: OriginalName): Unit
+  }
+
+  private trait StringWriter {
+    def writeString(s: String): Unit
+  }
+
+  private trait PositionWriter {
+    def writePosition(pos: Position): Unit
+  }
+
+  private final class Indexer[T] {
+    private[this] val list = mutable.Buffer.empty[T]
+    private[this] val indices = mutable.Map.empty[T, Int]
+    def toIndex(value: T): Int = indices.getOrElseUpdate(value, (list += value).size - 1)
+    def result: scala.collection.Seq[T] = list
+  }
+
+  private class MethodNameWriter(rawOut: DataOutputStream, nameWriter: BaseNameWriter) {
+    private[this] val typeRefWriter = new TypeRefWriter(rawOut, nameWriter)
+
+    import rawOut._
+    import nameWriter._
+    import typeRefWriter._
+
+    def writeMethodName(methodName: MethodName): Unit = {
+      writeName(methodName.simpleName)
+      writeInt(methodName.paramTypeRefs.size)
+      methodName.paramTypeRefs.foreach(writeTypeRef(_))
+      writeTypeRef(methodName.resultTypeRef)
+      writeBoolean(methodName.isReflectiveProxy)
+    }
+  }
+
+  private final class HoistedNameWriter(rawOut: DataOutputStream) extends FullNameWriter {
+    private[this] val encodedNames = new Indexer[EncodedNameKey]
+
+    private def encodedNameToIndex(encoded: UTF8String): Int =
+      encodedNames.toIndex(new EncodedNameKey(encoded))
 
     private[this] val methodNames = mutable.ListBuffer.empty[MethodName]
     private[this] val methodNameIndexMap = mutable.Map.empty[MethodName, Int]
@@ -152,92 +485,150 @@ object Serializers {
       })
     }
 
-    private[this] val strings = mutable.ListBuffer.empty[String]
-    private[this] val stringIndexMap = mutable.Map.empty[String, Int]
-    private def stringToIndex(str: String): Int =
-      stringIndexMap.getOrElseUpdate(str, (strings += str).size - 1)
-
-    private[this] var lastPosition: Position = Position.NoPosition
-
-    def serialize(stream: OutputStream, classDef: ClassDef): Unit = {
-      // Write tree to buffer and record files, names and strings
-      writeClassDef(classDef)
-
-      val s = new DataOutputStream(stream)
-
-      // Write the Scala.js IR magic number
-      s.writeInt(IRMagicNumber)
-
-      // Write the Scala.js Version
-      s.writeUTF(ScalaJSVersions.binaryEmitted)
-
-      // Write the entry points info
-      val entryPointsInfo = EntryPointsInfo.forClassDef(classDef)
-      val entryPointEncodedName = entryPointsInfo.className.encoded.bytes
-      s.writeInt(entryPointEncodedName.length)
-      s.write(entryPointEncodedName)
-      s.writeBoolean(entryPointsInfo.hasEntryPoint)
-
-      // Emit the files
-      s.writeInt(files.size)
-      files.foreach(f => s.writeUTF(f.toString))
-
-      // Emit the names
-      s.writeInt(encodedNames.size)
-      encodedNames.foreach { encodedName =>
-        s.writeInt(encodedName.length)
-        s.write(encodedName.bytes)
+    def flushNames(out: DataOutputStream): Unit = {
+      // Encoded Names
+      val names = encodedNames.result
+      out.writeInt(names.size)
+      names.foreach { encodedName =>
+        out.writeInt(encodedName.encoded.length)
+        out.write(encodedName.encoded.bytes)
       }
 
-      def writeTypeRef(typeRef: TypeRef): Unit = typeRef match {
-        case PrimRef(tpe) =>
-          tpe match {
-            case NoType      => s.writeByte(TagVoidRef)
-            case BooleanType => s.writeByte(TagBooleanRef)
-            case CharType    => s.writeByte(TagCharRef)
-            case ByteType    => s.writeByte(TagByteRef)
-            case ShortType   => s.writeByte(TagShortRef)
-            case IntType     => s.writeByte(TagIntRef)
-            case LongType    => s.writeByte(TagLongRef)
-            case FloatType   => s.writeByte(TagFloatRef)
-            case DoubleType  => s.writeByte(TagDoubleRef)
-            case NullType    => s.writeByte(TagNullRef)
-            case NothingType => s.writeByte(TagNothingRef)
-          }
-        case ClassRef(className) =>
-          s.writeByte(TagClassRef)
-          s.writeInt(encodedNameIndexMap(new EncodedNameKey(className.encoded)))
-        case ArrayTypeRef(base, dimensions) =>
-          s.writeByte(TagArrayTypeRef)
-          writeTypeRef(base)
-          s.writeInt(dimensions)
+      val nameWriter = new BaseNameWriter {
+        def writeName(name: Name): Unit =
+          out.writeInt(encodedNameToIndex(name.encoded))
       }
 
-      // Emit the method names
-      s.writeInt(methodNames.size)
-      methodNames.foreach { methodName =>
-        s.writeInt(encodedNameIndexMap(
-            new EncodedNameKey(methodName.simpleName.encoded)))
-        s.writeInt(methodName.paramTypeRefs.size)
-        methodName.paramTypeRefs.foreach(writeTypeRef(_))
-        writeTypeRef(methodName.resultTypeRef)
-        s.writeBoolean(methodName.isReflectiveProxy)
-        writeName(methodName.simpleName)
-      }
+      val methodNameWriter = new MethodNameWriter(out, nameWriter)
 
-      // Emit the strings
-      s.writeInt(strings.size)
-      strings.foreach(s.writeUTF)
-
-      // Paste the buffer
-      bufferUnderlying.writeTo(s)
-
-      s.flush()
+      out.writeInt(methodNames.size)
+      methodNames.foreach(methodNameWriter.writeMethodName(_))
     }
 
-    def writeTree(tree: Tree): Unit = {
-      import buffer._
+    def writeName(name: Name): Unit =
+      rawOut.writeInt(encodedNameToIndex(name.encoded))
 
+    def writeMethodName(name: MethodName): Unit =
+      rawOut.writeInt(methodNameToIndex(name))
+
+    def writeOriginalName(originalName: OriginalName): Unit = {
+      rawOut.writeBoolean(originalName.isDefined)
+      if (originalName.isDefined)
+        rawOut.writeInt(encodedNameToIndex(originalName.get))
+    }
+  }
+
+  private final class HoistedStringWriter(rawOut: DataOutputStream) extends StringWriter {
+    private[this] val strings = new Indexer[String]
+
+    def flushStrings(out: DataOutputStream): Unit = {
+      out.writeInt(strings.result.size)
+      strings.result.foreach(out.writeUTF)
+    }
+
+    def writeString(s: String): Unit =
+      rawOut.writeInt(strings.toIndex(s))
+  }
+
+  private final class IncrementalPositionWriter(rawOut: DataOutputStream) extends PositionWriter {
+    private[this] val files = new Indexer[URI]
+    private[this] var lastPosition: Position = Position.NoPosition
+
+    def flushFiles(out: DataOutputStream): Unit = {
+      val result = files.result
+
+      out.writeInt(result.size)
+      result.foreach(f => out.writeUTF(f.toString))
+    }
+
+    def writePosition(pos: Position): Unit = {
+      import rawOut._
+      import PositionFormat._
+
+      def writeFull(): Unit = {
+        writeByte(FormatFullMaskValue)
+        writeInt(files.toIndex(pos.source))
+        writeInt(pos.line)
+        writeInt(pos.column)
+      }
+
+      if (pos == Position.NoPosition) {
+        writeByte(FormatNoPositionValue)
+      } else if (lastPosition == Position.NoPosition ||
+          pos.source != lastPosition.source) {
+        writeFull()
+        lastPosition = pos
+      } else {
+        val line = pos.line
+        val column = pos.column
+        val lineDiff = line - lastPosition.line
+        val columnDiff = column - lastPosition.column
+        val columnIsByte = column >= 0 && column < 256
+
+        if (lineDiff == 0 && columnDiff >= -64 && columnDiff < 64) {
+          writeByte((columnDiff << Format1Shift) | Format1MaskValue)
+        } else if (lineDiff >= -32 && lineDiff < 32 && columnIsByte) {
+          writeByte((lineDiff << Format2Shift) | Format2MaskValue)
+          writeByte(column)
+        } else if (lineDiff >= Short.MinValue && lineDiff <= Short.MaxValue && columnIsByte) {
+          writeByte(Format3MaskValue)
+          writeShort(lineDiff)
+          writeByte(column)
+        } else {
+          writeFull()
+        }
+
+        lastPosition = pos
+      }
+    }
+  }
+
+  private final class TypeRefWriter(rawOut: DataOutputStream,
+      nameWriter: BaseNameWriter) {
+    import rawOut._
+    import nameWriter._
+
+    final def writeTypeRef(typeRef: TypeRef): Unit = typeRef match {
+      case PrimRef(tpe) =>
+        tpe match {
+          case NoType      => writeByte(TagVoidRef)
+          case BooleanType => writeByte(TagBooleanRef)
+          case CharType    => writeByte(TagCharRef)
+          case ByteType    => writeByte(TagByteRef)
+          case ShortType   => writeByte(TagShortRef)
+          case IntType     => writeByte(TagIntRef)
+          case LongType    => writeByte(TagLongRef)
+          case FloatType   => writeByte(TagFloatRef)
+          case DoubleType  => writeByte(TagDoubleRef)
+          case NullType    => writeByte(TagNullRef)
+          case NothingType => writeByte(TagNothingRef)
+        }
+      case ClassRef(className) =>
+        writeByte(TagClassRef)
+        writeName(className)
+      case typeRef: ArrayTypeRef =>
+        writeByte(TagArrayTypeRef)
+        writeArrayTypeRef(typeRef)
+    }
+
+    final def writeArrayTypeRef(typeRef: ArrayTypeRef): Unit = {
+      writeTypeRef(typeRef.base)
+      writeInt(typeRef.dimensions)
+    }
+  }
+
+  private final class TreeWriter(rawOut: DataOutputStream,
+      nameWriter: FullNameWriter, stringWriter: StringWriter,
+      positionWriter: PositionWriter) {
+    import rawOut._
+    import nameWriter._
+    import stringWriter._
+    import positionWriter._
+
+    private val typeRefWriter = new TypeRefWriter(rawOut, nameWriter)
+    import typeRefWriter._
+
+    final def writeTree(tree: Tree): Unit = {
       def writeTagAndPos(tag: Int): Unit = {
         writeByte(tag)
         writePosition(tree.pos)
@@ -558,28 +949,28 @@ object Serializers {
       }
     }
 
-    def writeTrees(trees: List[Tree]): Unit = {
-      buffer.writeInt(trees.size)
+    final def writeTrees(trees: List[Tree]): Unit = {
+      writeInt(trees.size)
       trees.foreach(writeTree)
     }
 
-    def writeOptTree(optTree: Option[Tree]): Unit = {
+    final def writeOptTree(optTree: Option[Tree]): Unit = {
       optTree.fold {
-        buffer.writeByte(TagEmptyTree)
+        writeByte(TagEmptyTree)
       } { tree =>
         writeTree(tree)
       }
     }
 
-    def writeTreeOrJSSpreads(trees: List[TreeOrJSSpread]): Unit = {
-      buffer.writeInt(trees.size)
+    final def writeTreeOrJSSpreads(trees: List[TreeOrJSSpread]): Unit = {
+      writeInt(trees.size)
       trees.foreach(writeTreeOrJSSpread)
     }
 
-    def writeTreeOrJSSpread(tree: TreeOrJSSpread): Unit = {
+    final def writeTreeOrJSSpread(tree: TreeOrJSSpread): Unit = {
       tree match {
         case JSSpread(items) =>
-          buffer.writeByte(TagJSSpread)
+          writeByte(TagJSSpread)
           writePosition(tree.pos)
           writeTree(items)
         case tree: Tree =>
@@ -587,350 +978,94 @@ object Serializers {
       }
     }
 
-    def writeClassDef(classDef: ClassDef): Unit = {
-      import buffer._
-      import classDef._
-
-      writePosition(classDef.pos)
-      writeClassIdent(name)
-      writeOriginalName(originalName)
-      writeByte(ClassKind.toByte(kind))
-      writeBoolean(jsClassCaptures.isDefined)
-      jsClassCaptures.foreach(writeParamDefs(_))
-      writeOptClassIdent(superClass)
-      writeClassIdents(interfaces)
-      writeOptTree(jsSuperClass)
-      writeJSNativeLoadSpec(jsNativeLoadSpec)
-      writeMemberDefs(memberDefs)
-      writeTopLevelExportDefs(topLevelExportDefs)
-      writeInt(OptimizerHints.toBits(optimizerHints))
-    }
-
-    def writeMemberDef(memberDef: MemberDef): Unit = {
-      import buffer._
-      writePosition(memberDef.pos)
-      memberDef match {
-        case FieldDef(flags, name, originalName, ftpe) =>
-          writeByte(TagFieldDef)
-          writeInt(MemberFlags.toBits(flags))
-          writeFieldIdent(name)
-          writeOriginalName(originalName)
-          writeType(ftpe)
-
-        case JSFieldDef(flags, name, ftpe) =>
-          writeByte(TagJSFieldDef)
-          writeInt(MemberFlags.toBits(flags))
-          writeTree(name)
-          writeType(ftpe)
-
-        case methodDef: MethodDef =>
-          val MethodDef(flags, name, originalName, args, resultType, body) = methodDef
-
-          writeByte(TagMethodDef)
-          writeOptHash(methodDef.hash)
-
-          // Prepare for back-jump and write dummy length
-          bufferUnderlying.markJump()
-          writeInt(-1)
-
-          // Write out method def
-          writeInt(MemberFlags.toBits(flags)); writeMethodIdent(name)
-          writeOriginalName(originalName)
-          writeParamDefs(args); writeType(resultType); writeOptTree(body)
-          writeInt(OptimizerHints.toBits(methodDef.optimizerHints))
-
-          // Jump back and write true length
-          val length = bufferUnderlying.jumpBack()
-          writeInt(length)
-          bufferUnderlying.continue()
-
-        case methodDef: JSMethodDef =>
-          val JSMethodDef(flags, name, args, body) = methodDef
-
-          writeByte(TagJSMethodDef)
-          writeOptHash(methodDef.hash)
-
-          // Prepare for back-jump and write dummy length
-          bufferUnderlying.markJump()
-          writeInt(-1)
-
-          // Write out method def
-          writeInt(MemberFlags.toBits(flags)); writeTree(name)
-          writeParamDefs(args); writeTree(body)
-          writeInt(OptimizerHints.toBits(methodDef.optimizerHints))
-
-          // Jump back and write true length
-          val length = bufferUnderlying.jumpBack()
-          writeInt(length)
-          bufferUnderlying.continue()
-
-        case JSPropertyDef(flags, name, getter, setterArgAndBody) =>
-          writeByte(TagJSPropertyDef)
-          writeInt(MemberFlags.toBits(flags))
-          writeTree(name)
-          writeOptTree(getter)
-          writeBoolean(setterArgAndBody.isDefined)
-          setterArgAndBody foreach { case (arg, body) =>
-            writeParamDef(arg); writeTree(body)
-          }
-
-        case JSNativeMemberDef(flags, name, jsNativeLoadSpec) =>
-          writeByte(TagJSNativeMemberDef)
-          writeInt(MemberFlags.toBits(flags))
-          writeMethodIdent(name)
-          writeJSNativeLoadSpec(Some(jsNativeLoadSpec))
-      }
-    }
-
-    def writeMemberDefs(memberDefs: List[MemberDef]): Unit = {
-      buffer.writeInt(memberDefs.size)
-      memberDefs.foreach(writeMemberDef)
-    }
-
-    def writeTopLevelExportDef(topLevelExportDef: TopLevelExportDef): Unit = {
-      import buffer._
-      writePosition(topLevelExportDef.pos)
-      topLevelExportDef match {
-        case TopLevelJSClassExportDef(exportName) =>
-          writeByte(TagTopLevelJSClassExportDef)
-          writeString(exportName)
-
-        case TopLevelModuleExportDef(exportName) =>
-          writeByte(TagTopLevelModuleExportDef)
-          writeString(exportName)
-
-        case TopLevelMethodExportDef(methodDef) =>
-          writeByte(TagTopLevelMethodExportDef)
-          writeMemberDef(methodDef)
-
-        case TopLevelFieldExportDef(exportName, field) =>
-          writeByte(TagTopLevelFieldExportDef)
-          writeString(exportName); writeFieldIdent(field)
-      }
-    }
-
-    def writeTopLevelExportDefs(
-        topLevelExportDefs: List[TopLevelExportDef]): Unit = {
-      buffer.writeInt(topLevelExportDefs.size)
-      topLevelExportDefs.foreach(writeTopLevelExportDef)
-    }
-
-    def writeLocalIdent(ident: LocalIdent): Unit = {
-      writePosition(ident.pos)
-      writeName(ident.name)
-    }
-
-    def writeLabelIdent(ident: LabelIdent): Unit = {
-      writePosition(ident.pos)
-      writeName(ident.name)
-    }
-
-    def writeFieldIdent(ident: FieldIdent): Unit = {
-      writePosition(ident.pos)
-      writeName(ident.name)
-    }
-
-    def writeMethodIdent(ident: MethodIdent): Unit = {
-      writePosition(ident.pos)
-      writeMethodName(ident.name)
-    }
-
-    def writeClassIdent(ident: ClassIdent): Unit = {
-      writePosition(ident.pos)
-      writeName(ident.name)
-    }
-
-    def writeClassIdents(idents: List[ClassIdent]): Unit = {
-      buffer.writeInt(idents.size)
-      idents.foreach(writeClassIdent)
-    }
-
-    def writeOptClassIdent(optIdent: Option[ClassIdent]): Unit = {
-      buffer.writeBoolean(optIdent.isDefined)
-      optIdent.foreach(writeClassIdent)
-    }
-
-    def writeName(name: Name): Unit =
-      buffer.writeInt(encodedNameToIndex(name.encoded))
-
-    def writeMethodName(name: MethodName): Unit =
-      buffer.writeInt(methodNameToIndex(name))
-
-    def writeOriginalName(originalName: OriginalName): Unit = {
-      buffer.writeBoolean(originalName.isDefined)
-      if (originalName.isDefined)
-        buffer.writeInt(encodedNameToIndex(originalName.get))
-    }
-
-    def writeParamDef(paramDef: ParamDef): Unit = {
-      writePosition(paramDef.pos)
-      writeLocalIdent(paramDef.name)
-      writeOriginalName(paramDef.originalName)
-      writeType(paramDef.ptpe)
-      buffer.writeBoolean(paramDef.mutable)
-      buffer.writeBoolean(paramDef.rest)
-    }
-
-    def writeParamDefs(paramDefs: List[ParamDef]): Unit = {
-      buffer.writeInt(paramDefs.size)
-      paramDefs.foreach(writeParamDef)
-    }
-
-    def writeType(tpe: Type): Unit = {
+    final def writeType(tpe: Type): Unit = {
       tpe match {
-        case AnyType     => buffer.write(TagAnyType)
-        case NothingType => buffer.write(TagNothingType)
-        case UndefType   => buffer.write(TagUndefType)
-        case BooleanType => buffer.write(TagBooleanType)
-        case CharType    => buffer.write(TagCharType)
-        case ByteType    => buffer.write(TagByteType)
-        case ShortType   => buffer.write(TagShortType)
-        case IntType     => buffer.write(TagIntType)
-        case LongType    => buffer.write(TagLongType)
-        case FloatType   => buffer.write(TagFloatType)
-        case DoubleType  => buffer.write(TagDoubleType)
-        case StringType  => buffer.write(TagStringType)
-        case NullType    => buffer.write(TagNullType)
-        case NoType      => buffer.write(TagNoType)
+        case AnyType     => write(TagAnyType)
+        case NothingType => write(TagNothingType)
+        case UndefType   => write(TagUndefType)
+        case BooleanType => write(TagBooleanType)
+        case CharType    => write(TagCharType)
+        case ByteType    => write(TagByteType)
+        case ShortType   => write(TagShortType)
+        case IntType     => write(TagIntType)
+        case LongType    => write(TagLongType)
+        case FloatType   => write(TagFloatType)
+        case DoubleType  => write(TagDoubleType)
+        case StringType  => write(TagStringType)
+        case NullType    => write(TagNullType)
+        case NoType      => write(TagNoType)
 
         case ClassType(className) =>
-          buffer.write(TagClassType)
+          write(TagClassType)
           writeName(className)
 
         case ArrayType(arrayTypeRef) =>
-          buffer.write(TagArrayType)
+          write(TagArrayType)
           writeArrayTypeRef(arrayTypeRef)
 
         case RecordType(fields) =>
-          buffer.write(TagRecordType)
-          buffer.writeInt(fields.size)
+          write(TagRecordType)
+          writeInt(fields.size)
           for (RecordType.Field(name, originalName, tpe, mutable) <- fields) {
             writeName(name)
             writeOriginalName(originalName)
             writeType(tpe)
-            buffer.writeBoolean(mutable)
+            writeBoolean(mutable)
           }
       }
     }
 
-    def writeTypeRef(typeRef: TypeRef): Unit = typeRef match {
-      case PrimRef(tpe) =>
-        tpe match {
-          case NoType      => buffer.writeByte(TagVoidRef)
-          case BooleanType => buffer.writeByte(TagBooleanRef)
-          case CharType    => buffer.writeByte(TagCharRef)
-          case ByteType    => buffer.writeByte(TagByteRef)
-          case ShortType   => buffer.writeByte(TagShortRef)
-          case IntType     => buffer.writeByte(TagIntRef)
-          case LongType    => buffer.writeByte(TagLongRef)
-          case FloatType   => buffer.writeByte(TagFloatRef)
-          case DoubleType  => buffer.writeByte(TagDoubleRef)
-          case NullType    => buffer.writeByte(TagNullRef)
-          case NothingType => buffer.writeByte(TagNothingRef)
-        }
-      case ClassRef(className) =>
-        buffer.writeByte(TagClassRef)
-        writeName(className)
-      case typeRef: ArrayTypeRef =>
-        buffer.writeByte(TagArrayTypeRef)
-        writeArrayTypeRef(typeRef)
+    final def writeLocalIdent(ident: LocalIdent): Unit = {
+      writePosition(ident.pos)
+      writeName(ident.name)
     }
 
-    def writeArrayTypeRef(typeRef: ArrayTypeRef): Unit = {
-      writeTypeRef(typeRef.base)
-      buffer.writeInt(typeRef.dimensions)
+    final def writeLabelIdent(ident: LabelIdent): Unit = {
+      writePosition(ident.pos)
+      writeName(ident.name)
     }
 
-    def writeApplyFlags(flags: ApplyFlags): Unit =
-      buffer.writeInt(ApplyFlags.toBits(flags))
-
-    def writePosition(pos: Position): Unit = {
-      import buffer._
-      import PositionFormat._
-
-      def writeFull(): Unit = {
-        writeByte(FormatFullMaskValue)
-        writeInt(fileToIndex(pos.source))
-        writeInt(pos.line)
-        writeInt(pos.column)
-      }
-
-      if (pos == Position.NoPosition) {
-        writeByte(FormatNoPositionValue)
-      } else if (lastPosition == Position.NoPosition ||
-          pos.source != lastPosition.source) {
-        writeFull()
-        lastPosition = pos
-      } else {
-        val line = pos.line
-        val column = pos.column
-        val lineDiff = line - lastPosition.line
-        val columnDiff = column - lastPosition.column
-        val columnIsByte = column >= 0 && column < 256
-
-        if (lineDiff == 0 && columnDiff >= -64 && columnDiff < 64) {
-          writeByte((columnDiff << Format1Shift) | Format1MaskValue)
-        } else if (lineDiff >= -32 && lineDiff < 32 && columnIsByte) {
-          writeByte((lineDiff << Format2Shift) | Format2MaskValue)
-          writeByte(column)
-        } else if (lineDiff >= Short.MinValue && lineDiff <= Short.MaxValue && columnIsByte) {
-          writeByte(Format3MaskValue)
-          writeShort(lineDiff)
-          writeByte(column)
-        } else {
-          writeFull()
-        }
-
-        lastPosition = pos
-      }
+    final def writeFieldIdent(ident: FieldIdent): Unit = {
+      writePosition(ident.pos)
+      writeName(ident.name)
     }
 
-    def writeJSNativeLoadSpec(jsNativeLoadSpec: Option[JSNativeLoadSpec]): Unit = {
-      import buffer._
-
-      def writeGlobalSpec(spec: JSNativeLoadSpec.Global): Unit = {
-        writeString(spec.globalRef)
-        writeStrings(spec.path)
-      }
-
-      def writeImportSpec(spec: JSNativeLoadSpec.Import): Unit = {
-        writeString(spec.module)
-        writeStrings(spec.path)
-      }
-
-      jsNativeLoadSpec.fold {
-        writeByte(TagJSNativeLoadSpecNone)
-      } { spec =>
-        spec match {
-          case spec: JSNativeLoadSpec.Global =>
-            writeByte(TagJSNativeLoadSpecGlobal)
-            writeGlobalSpec(spec)
-
-          case spec: JSNativeLoadSpec.Import =>
-            writeByte(TagJSNativeLoadSpecImport)
-            writeImportSpec(spec)
-
-          case JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, globalSpec) =>
-            writeByte(TagJSNativeLoadSpecImportWithGlobalFallback)
-            writeImportSpec(importSpec)
-            writeGlobalSpec(globalSpec)
-        }
-      }
+    final def writeMethodIdent(ident: MethodIdent): Unit = {
+      writePosition(ident.pos)
+      writeMethodName(ident.name)
     }
 
-    def writeOptHash(optHash: Option[TreeHash]): Unit = {
-      buffer.writeBoolean(optHash.isDefined)
-      for (hash <- optHash)
-        buffer.write(hash.hash)
+    final def writeClassIdent(ident: ClassIdent): Unit = {
+      writePosition(ident.pos)
+      writeName(ident.name)
     }
 
-    def writeString(s: String): Unit =
-      buffer.writeInt(stringToIndex(s))
-
-    def writeStrings(strings: List[String]): Unit = {
-      buffer.writeInt(strings.size)
-      strings.foreach(writeString)
+    final def writeClassIdents(idents: List[ClassIdent]): Unit = {
+      writeInt(idents.size)
+      idents.foreach(writeClassIdent)
     }
+
+    final def writeOptClassIdent(optIdent: Option[ClassIdent]): Unit = {
+      writeBoolean(optIdent.isDefined)
+      optIdent.foreach(writeClassIdent)
+    }
+
+    final def writeParamDef(paramDef: ParamDef): Unit = {
+      writePosition(paramDef.pos)
+      writeLocalIdent(paramDef.name)
+      writeOriginalName(paramDef.originalName)
+      writeType(paramDef.ptpe)
+      writeBoolean(paramDef.mutable)
+      writeBoolean(paramDef.rest)
+    }
+
+    final def writeParamDefs(paramDefs: List[ParamDef]): Unit = {
+      writeInt(paramDefs.size)
+      paramDefs.foreach(writeParamDef)
+    }
+
+    final def writeApplyFlags(flags: ApplyFlags): Unit =
+      writeInt(ApplyFlags.toBits(flags))
   }
 
   private final class Deserializer(buf: ByteBuffer) {

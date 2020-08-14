@@ -33,7 +33,7 @@ object JavaLangObject {
 
     val EAF = ApplyFlags.empty
 
-    val classDef = ClassDef(
+    ClassDef(
       ClassIdent(ObjectClass),
       NoOriginalName,
       ClassKind.Class,
@@ -186,8 +186,6 @@ object JavaLangObject {
           })(OptimizerHints.empty, None)
       ),
       Nil)(OptimizerHints.empty)
-
-    Hashers.hashClassDef(classDef)
   }
 
   val irBytes: Array[Byte] = {

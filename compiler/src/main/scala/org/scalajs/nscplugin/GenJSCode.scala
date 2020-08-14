@@ -24,7 +24,7 @@ import scala.tools.nsc._
 import scala.annotation.tailrec
 
 import org.scalajs.ir
-import org.scalajs.ir.{Trees => js, Types => jstpe, ClassKind, Hashers, OriginalName}
+import org.scalajs.ir.{Trees => js, Types => jstpe, ClassKind, OriginalName}
 import org.scalajs.ir.Names.{LocalName, FieldName, SimpleMethodName, MethodName, ClassName}
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees.OptimizerHints
@@ -582,9 +582,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }
       }
 
-      // Hashed definitions of the class
-      val hashedMemberDefs = Hashers.hashMemberDefs(allMemberDefs)
-
       // The complete class definition
       val kind =
         if (isStaticModule(sym)) ClassKind.ModuleClass
@@ -600,7 +597,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           genClassInterfaces(sym, forJSClass = false),
           None,
           None,
-          hashedMemberDefs,
+          allMemberDefs,
           topLevelExportDefs)(
           optimizerHints)
 
@@ -708,10 +705,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         staticMembers
       }
 
-      // Hashed definitions of the class
-      val hashedMemberDefs =
-        Hashers.hashMemberDefs(generatedMembers)
-
       // The complete class definition
       val kind =
         if (isStaticModule(sym)) ClassKind.JSModuleClass
@@ -726,7 +719,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           genClassInterfaces(sym, forJSClass = true),
           jsSuperClass,
           None,
-          hashedMemberDefs,
+          generatedMembers,
           topLevelExports)(
           OptimizerHints.empty)
 
@@ -1013,12 +1006,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         if (!isCandidateForForwarders(sym)) generatedMethods
         else generatedMethods ::: genStaticForwardersForClassOrInterface(generatedMethods, sym)
 
-      // Hashed definitions of the interface
-      val hashedMemberDefs =
-        Hashers.hashMemberDefs(allMemberDefs)
-
       js.ClassDef(classIdent, originalNameOfClass(sym), ClassKind.Interface,
-          None, None, interfaces, None, None, hashedMemberDefs, Nil)(
+          None, None, interfaces, None, None, allMemberDefs, Nil)(
           OptimizerHints.empty)
     }
 

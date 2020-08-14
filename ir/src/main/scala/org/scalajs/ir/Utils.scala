@@ -68,43 +68,4 @@ private[ir] object Utils {
    * js-envs/.../JSUtils.scala
    */
 
-  /** A ByteArrayOutput stream that allows to jump back to a given
-   *  position and complete some bytes. Methods must be called in the
-   *  following order only:
-   *  - [[markJump]]
-   *  - [[jumpBack]]
-   *  - [[continue]]
-   */
-  private[ir] class JumpBackByteArrayOutputStream
-      extends java.io.ByteArrayOutputStream {
-    protected var jumpBackPos: Int = -1
-    protected var headPos: Int = -1
-
-    /** Marks the current location for a jumpback */
-    def markJump(): Unit = {
-      assert(jumpBackPos == -1)
-      assert(headPos == -1)
-      jumpBackPos = count
-    }
-
-    /** Jumps back to the mark. Returns the number of bytes jumped */
-    def jumpBack(): Int = {
-      assert(jumpBackPos >= 0)
-      assert(headPos == -1)
-      val jumped = count - jumpBackPos
-      headPos = count
-      count = jumpBackPos
-      jumpBackPos = -1
-      jumped
-    }
-
-    /** Continues to write at the head. */
-    def continue(): Unit = {
-      assert(jumpBackPos == -1)
-      assert(headPos >= 0)
-      count = headPos
-      headPos = -1
-    }
-  }
-
 }
