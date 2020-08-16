@@ -844,6 +844,14 @@ class RegressionTest {
     assertEquals(0, set.size())
   }
 
+  @Test def nestedObjectsAndClassesWhoseNamesDifferOnlyInCase_issue_4148(): Unit = {
+    // These tests mostly assert that all four objects and classes link
+    assertEquals(1, staticForwardersAvoidanceObjectBeforeClass.checkValue)
+    assertEquals(2, new StaticForwardersAvoidanceObjectBeforeClass().checkValue)
+    assertEquals(3, new StaticForwardersAvoidanceObjectAfterClass().checkValue)
+    assertEquals(4, staticForwardersAvoidanceObjectAfterClass.checkValue)
+  }
+
 }
 
 object RegressionTest {
@@ -905,5 +913,31 @@ object RegressionTest {
 
   object `class` { // scalastyle:ignore
     def foo(x: Int): Int = x + 1
+  }
+
+  /* The objects and classes here intentionally have names that differ only in
+   * case, and are intentionally defined in a specific order. This is required
+   * to properly test the fix for #4148 (static forwarders can overwrite
+   * companion classes with a name that differs only in case on
+   * case-insensitive file systems). Depending on the order of which comes
+   * first or second, different strategies can fail, so we test both. For
+   * example, prior to the fix, #4148 would only manifest itself when the
+   * object was declared *after* the class, but not before.
+   */
+
+  object staticForwardersAvoidanceObjectBeforeClass {
+    def checkValue: Int = 1
+  }
+
+  class StaticForwardersAvoidanceObjectBeforeClass {
+    def checkValue: Int = 2
+  }
+
+  class StaticForwardersAvoidanceObjectAfterClass {
+    def checkValue: Int = 3
+  }
+
+  object staticForwardersAvoidanceObjectAfterClass {
+    def checkValue: Int = 4
   }
 }
