@@ -844,6 +844,14 @@ class RegressionTest {
     assertEquals(0, set.size())
   }
 
+  @Test def nestedObjectsAndClassesWhoseNamesDifferOnlyInCase_issue_4148(): Unit = {
+    // These tests mostly assert that all four objects and classes link
+    assertEquals(1, bug4148ObjectBeforeClass.checkValue)
+    assertEquals(2, new Bug4148ObjectBeforeClass().checkValue)
+    assertEquals(3, new Bug4148ObjectAfterClass().checkValue)
+    assertEquals(4, bug4148ObjectAfterClass.checkValue)
+  }
+
 }
 
 object RegressionTest {
@@ -905,5 +913,25 @@ object RegressionTest {
 
   object `class` { // scalastyle:ignore
     def foo(x: Int): Int = x + 1
+  }
+
+  /* #4148: The objects and classes here intentionally have names that differ
+   * only in case, and are intentionally defined in a specific order.
+   */
+
+  object bug4148ObjectBeforeClass {
+    def checkValue: Int = 1
+  }
+
+  class Bug4148ObjectBeforeClass {
+    def checkValue: Int = 2
+  }
+
+  class Bug4148ObjectAfterClass {
+    def checkValue: Int = 3
+  }
+
+  object bug4148ObjectAfterClass {
+    def checkValue: Int = 4
   }
 }
