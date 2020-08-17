@@ -217,7 +217,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     private val lazilyGeneratedAnonClasses = mutable.Map.empty[Symbol, ClassDef]
     private val generatedClasses = ListBuffer.empty[js.ClassDef]
-    private val generatedStaticForwarderClasses = ListBuffer.empty[js.ClassDef]
+    private val generatedStaticForwarderClasses = ListBuffer.empty[(Symbol, js.ClassDef)]
 
     private def consumeLazilyGeneratedAnonClass(sym: Symbol): ClassDef = {
       /* If we are trying to generate an method as JSFunction, we cannot
@@ -393,9 +393,22 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
           val generatedCaseInsensitiveNames =
             regularClasses.map(caseInsensitiveNameOf).toSet
-          val staticForwarderClasses = generatedStaticForwarderClasses.toList.filter { classDef =>
-            !generatedCaseInsensitiveNames.contains(caseInsensitiveNameOf(classDef))
-          }
+          val staticForwarderClasses = generatedStaticForwarderClasses.toList
+            .withFilter { case (site, classDef) =>
+              if (!generatedCaseInsensitiveNames.contains(caseInsensitiveNameOf(classDef))) {
+                true
+              } else {
+                global.runReporting.warning(
+                    site.pos,
+                    s"Not generating the static forwarders of ${classDef.name.name.nameString} " +
+                    "because its name differs only in case from the name of another class or " +
+                    "trait in this compilation unit.",
+                    WarningCategory.Other,
+                    site)
+                false
+              }
+            }
+            .map(_._2)
 
           regularClasses ::: staticForwarderClasses
         }
@@ -559,7 +572,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                   forwarders,
                   Nil
               )(js.OptimizerHints.empty)
-              generatedStaticForwarderClasses += forwardersClassDef
+              generatedStaticForwarderClasses += sym -> forwardersClassDef
             }
           }
           allMemberDefsExceptStaticForwarders

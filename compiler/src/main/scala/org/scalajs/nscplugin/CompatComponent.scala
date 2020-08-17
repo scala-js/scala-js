@@ -46,6 +46,12 @@ trait CompatComponent {
     object originalOwner {
       def getOrElse(sym: Symbol, orElse: => Symbol): Symbol = infiniteLoop()
     }
+
+    // Added in Scala 2.13.2 for configurable warnings
+    object runReporting {
+      def warning(pos: Position, msg: String, cat: Any, site: Symbol): Unit =
+        reporter.warning(pos, msg)
+    }
   }
 
   private implicit final class FlagsCompat(self: Flags.type) {
@@ -103,6 +109,26 @@ trait CompatComponent {
 
   implicit class BTypesCompat(bTypes: genBCode.bTypes.type) {
     def initializeCoreBTypes(): Unit = ()
+  }
+
+  // WarningCategory was added in Scala 2.13.2 for configurable warnings
+
+  object WarningCategoryCompat {
+    object Reporting {
+      object WarningCategory {
+        val Other: Any = null
+      }
+    }
+  }
+
+  // Of type Reporting.WarningCategory.type, but we cannot explicit write it
+  val WarningCategory = {
+    import WarningCategoryCompat._
+
+    {
+      import scala.tools.nsc._
+      Reporting.WarningCategory
+    }
   }
 }
 
