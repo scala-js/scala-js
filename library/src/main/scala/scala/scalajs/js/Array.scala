@@ -178,6 +178,7 @@ object Array {
   @JSGlobal("Array")
   private object NativeArray extends js.Object {
     def isArray(arg: scala.Any): Boolean = js.native
+    def from[A](iterable: js.Iterable[A]): js.Array[A] = js.native
   }
 
   /** Creates a new array with the given items. */
@@ -186,4 +187,11 @@ object Array {
   /** Returns true if the given value is an array. */
   @inline
   def isArray(arg: scala.Any): Boolean = NativeArray.isArray(arg)
+
+  /** <span class="badge badge-ecma2015" style="float: right;">ECMAScript 2015</span>
+   *
+   *  Creates a new array from js.Iterable.
+   */
+  @inline
+  def from[A](iterable: js.Iterable[A]): js.Array[A] = NativeArray.from(iterable)
 }
