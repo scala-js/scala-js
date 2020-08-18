@@ -1008,16 +1008,22 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      * back-end considers them as colliding because they have the same name,
      * but we must not.
      *
-     * Further, unlike scalac, we emit forwarders for *any* static object, not
-     * just top-level ones. This is important so we can implement static methods
+     * By default, we only emit forwarders for top-level objects, like scalac.
+     * However, if requested via a compiler option, we enable them for all
+     * static objects. This is important so we can implement static methods
      * of nested static classes of JDK APIs (see #3950).
      */
 
     /** Is the given Scala class, interface or module class a candidate for
      *  static forwarders?
      */
-    def isCandidateForForwarders(sym: Symbol): Boolean =
-      !settings.noForwarders && sym.isStatic && !isImplClass(sym)
+    def isCandidateForForwarders(sym: Symbol): Boolean = {
+      !settings.noForwarders && sym.isStatic && !isImplClass(sym) && {
+        // Reject non-top-level objects unless opted in via the appropriate option
+        scalaJSOpts.genStaticForwardersForNonTopLevelObjects ||
+        !sym.name.containsChar('$') // this is the same test that scalac performs
+      }
+    }
 
     /** Gen the static forwarders to the members of a class or interface for
      *  methods of its companion object.

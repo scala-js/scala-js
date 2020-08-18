@@ -55,6 +55,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
   object scalaJSOpts extends ScalaJSOptions {
     import ScalaJSOptions.URIMap
     var fixClassOf: Boolean = false
+    var genStaticForwardersForNonTopLevelObjects: Boolean = false
     lazy val sourceURIMaps: List[URIMap] = {
       if (_sourceURIMaps.nonEmpty)
         _sourceURIMaps.reverse
@@ -118,6 +119,8 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     for (option <- options) {
       if (option == "fixClassOf") {
         fixClassOf = true
+      } else if (option == "genStaticForwardersForNonTopLevelObjects") {
+        genStaticForwardersForNonTopLevelObjects = true
       } else if (option.startsWith("mapSourceURI:")) {
         val uris = option.stripPrefix("mapSourceURI:").split("->")
 
@@ -170,6 +173,10 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
       |     - strips away the prefix FROM_URI (if it matches)
       |     - optionally prefixes the TO_URI, where stripping has been performed
       |     - any number of occurrences are allowed. Processing is done on a first match basis.
+      |  -P:$name:genStaticForwardersForNonTopLevelObjects
+      |     Generate static forwarders for non-top-level objects.
+      |     This option should be used by codebases that implement JDK classes.
+      |     When used together with -Xno-forwarders, this option has no effect.
       |  -P:$name:fixClassOf
       |     Repair calls to Predef.classOf that reach Scala.js.
       |     WARNING: This is a tremendous hack! Expect ugly errors if you use this option.
