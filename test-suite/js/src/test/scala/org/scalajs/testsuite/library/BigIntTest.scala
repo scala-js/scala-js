@@ -46,14 +46,14 @@ class BigIntTest {
     val bi = js.BigInt("42123456789123456789")
     assertEquals(bi.toString(), "42123456789123456789")
 
-    val currency = bi
+    val result = bi
       .toLocaleString("de-DE", new js.BigInt.ToLocaleStringOptions {
         style = "currency"
         currency = "EUR"
       })
 
     // The exact return value is not specified. Just check the type.
-    assertTrue(js.typeOf(currency) == "string")
+    assertTrue(js.typeOf(result) == "string")
   }
 
   @Test def valueOf(): Unit = {
