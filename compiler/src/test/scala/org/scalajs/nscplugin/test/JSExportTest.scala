@@ -13,7 +13,7 @@
 package org.scalajs.nscplugin.test
 
 import org.scalajs.nscplugin.test.util._
-import org.scalajs.nscplugin.test.util.VersionDependentMessages.methodSig
+import org.scalajs.nscplugin.test.util.VersionDependentUtils.methodSig
 
 import org.junit.Assume._
 import org.junit.Test

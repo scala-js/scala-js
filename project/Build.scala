@@ -1026,6 +1026,8 @@ object Build {
        * flag prevents these mistakes from happening.
        */
       scalacOptions += "-Yno-predef",
+      // We implement JDK classes, so we emit static forwarders for all static objects
+      scalacOptions += "-P:scalajs:genStaticForwardersForNonTopLevelObjects",
 
       resourceGenerators in Compile += Def.task {
         val output = (resourceManaged in Compile).value / "java/lang/Object.sjsir"
@@ -1059,6 +1061,8 @@ object Build {
        * we rely on the Scala library.
        */
       scalacOptions += "-Yno-predef",
+      // We implement JDK classes, so we emit static forwarders for all static objects
+      scalacOptions += "-P:scalajs:genStaticForwardersForNonTopLevelObjects",
 
       headerSources in Compile ~= { srcs =>
         srcs.filter { src =>
@@ -1705,6 +1709,8 @@ object Build {
         includeIf(testDir / "require-dynamic-import",
             moduleKind == ModuleKind.ESModule) // this is an approximation that works for now
       },
+
+      scalacOptions in Test += "-P:scalajs:genStaticForwardersForNonTopLevelObjects",
 
       scalaJSLinkerConfig ~= { _.withSemantics(TestSuiteLinkerOptions.semantics _) },
       scalaJSModuleInitializers in Test ++= TestSuiteLinkerOptions.moduleInitializers,

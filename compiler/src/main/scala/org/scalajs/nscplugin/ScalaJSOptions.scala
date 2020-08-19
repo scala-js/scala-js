@@ -26,6 +26,14 @@ trait ScalaJSOptions {
    *  If false, bad calls to classOf will cause an error. */
   def fixClassOf: Boolean
 
+  /** Should static forwarders be emitted for non-top-level objects.
+   *
+   *  Scala/JVM does not do that. Since Scala.js 1.2.0, we do not do it by
+   *  default either, but this option can be used to opt in. This is necessary
+   *  for implementations of JDK classes.
+   */
+  def genStaticForwardersForNonTopLevelObjects: Boolean
+
   /** which source locations in source maps should be relativized (or where
    *  should they be mapped to)? */
   def sourceURIMaps: List[URIMap]

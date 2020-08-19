@@ -217,6 +217,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     private val lazilyGeneratedAnonClasses = mutable.Map.empty[Symbol, ClassDef]
     private val generatedClasses = ListBuffer.empty[js.ClassDef]
+    private val generatedStaticForwarderClasses = ListBuffer.empty[(Symbol, js.ClassDef)]
 
     private def consumeLazilyGeneratedAnonClass(sym: Symbol): ClassDef = {
       /* If we are trying to generate an method as JSFunction, we cannot
@@ -364,7 +365,54 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           }
         }
 
-        val clDefs = generatedClasses.toList
+        val clDefs = if (generatedStaticForwarderClasses.isEmpty) {
+          /* Fast path, applicable under -Xno-forwarders, as well as when all
+           * the `object`s of a compilation unit have a companion class.
+           */
+          generatedClasses.toList
+        } else {
+          val regularClasses = generatedClasses.toList
+
+          /* #4148 Add generated static forwarder classes, except those that
+           * would collide with regular classes on case insensitive file
+           * systems.
+           */
+
+          /* I could not find any reference anywhere about what locale is used
+           * by case insensitive file systems to compare case-insensitively.
+           * In doubt, force the English locale, which is probably going to do
+           * the right thing in virtually all cases (especially if users stick
+           * to ASCII class names), and it has the merit of being deterministic,
+           * as opposed to using the OS' default locale.
+           * The JVM backend performs a similar test to emit a warning for
+           * conflicting top-level classes. However, it uses `toLowerCase()`
+           * without argument, which is not deterministic.
+           */
+          def caseInsensitiveNameOf(classDef: js.ClassDef): String =
+            classDef.name.name.nameString.toLowerCase(java.util.Locale.ENGLISH)
+
+          val generatedCaseInsensitiveNames =
+            regularClasses.map(caseInsensitiveNameOf).toSet
+          val staticForwarderClasses = generatedStaticForwarderClasses.toList
+            .withFilter { case (site, classDef) =>
+              if (!generatedCaseInsensitiveNames.contains(caseInsensitiveNameOf(classDef))) {
+                true
+              } else {
+                global.runReporting.warning(
+                    site.pos,
+                    s"Not generating the static forwarders of ${classDef.name.name.nameString} " +
+                    "because its name differs only in case from the name of another class or " +
+                    "trait in this compilation unit.",
+                    WarningCategory.Other,
+                    site)
+                false
+              }
+            }
+            .map(_._2)
+
+          regularClasses ::: staticForwarderClasses
+        }
+
         generatedJSAST(clDefs)
 
         for (tree <- clDefs) {
@@ -372,6 +420,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }
       } finally {
         lazilyGeneratedAnonClasses.clear()
+        generatedStaticForwarderClasses.clear()
         generatedClasses.clear()
         pos2irPosCache.clear()
       }
@@ -523,7 +572,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                   forwarders,
                   Nil
               )(js.OptimizerHints.empty)
-              generatedClasses += forwardersClassDef
+              generatedStaticForwarderClasses += sym -> forwardersClassDef
             }
           }
           allMemberDefsExceptStaticForwarders
@@ -1008,16 +1057,22 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      * back-end considers them as colliding because they have the same name,
      * but we must not.
      *
-     * Further, unlike scalac, we emit forwarders for *any* static object, not
-     * just top-level ones. This is important so we can implement static methods
+     * By default, we only emit forwarders for top-level objects, like scalac.
+     * However, if requested via a compiler option, we enable them for all
+     * static objects. This is important so we can implement static methods
      * of nested static classes of JDK APIs (see #3950).
      */
 
     /** Is the given Scala class, interface or module class a candidate for
      *  static forwarders?
      */
-    def isCandidateForForwarders(sym: Symbol): Boolean =
-      !settings.noForwarders && sym.isStatic && !isImplClass(sym)
+    def isCandidateForForwarders(sym: Symbol): Boolean = {
+      !settings.noForwarders && sym.isStatic && !isImplClass(sym) && {
+        // Reject non-top-level objects unless opted in via the appropriate option
+        scalaJSOpts.genStaticForwardersForNonTopLevelObjects ||
+        !sym.name.containsChar('$') // this is the same test that scalac performs
+      }
+    }
 
     /** Gen the static forwarders to the members of a class or interface for
      *  methods of its companion object.
