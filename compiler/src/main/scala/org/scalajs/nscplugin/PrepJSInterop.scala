@@ -83,12 +83,6 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 
   class JSInteropTransformer(unit: CompilationUnit) extends Transformer {
 
-    // Force evaluation of JSDynamicLiteral: Strangely, we are unable to find
-    // nested objects in the JSCode phase (probably after flatten).
-    // Therefore we force the symbol of js.Dynamic.literal here in order to
-    // have access to it in JSCode.
-    JSDynamicLiteral
-
     /** Kind of the directly enclosing (most nested) owner. */
     private var enclosingOwner: OwnerKind = OwnerKind.None
 
@@ -1434,20 +1428,6 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
   }
 
   private lazy val ScalaEnumClass = getRequiredClass("scala.Enumeration")
-
-  /** checks if the primary constructor of the ClassDef `cldef` does not
-   *  take any arguments
-   */
-  private def primCtorNoArg(cldef: ClassDef) =
-    getPrimCtor(cldef.symbol.tpe).forall(_.paramss == List(List()))
-
-  /** return the MethodSymbol of the primary constructor of the given type
-   *  if it exists
-   */
-  private def getPrimCtor(tpe: Type) =
-    tpe.declaration(nme.CONSTRUCTOR).alternatives.collectFirst {
-      case ctor: MethodSymbol if ctor.isPrimaryConstructor => ctor
-    }
 
   private def wasPublicBeforeTyper(sym: Symbol): Boolean =
     sym.hasAnnotation(WasPublicBeforeTyperClass)
