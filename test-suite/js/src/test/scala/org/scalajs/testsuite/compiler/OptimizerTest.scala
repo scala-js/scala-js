@@ -416,12 +416,10 @@ class OptimizerTest {
   }
 
   @Test def must_not_break_when_folding_boolean_and_stringLit(): Unit = {
-    assertEquals("false is not true", false + " is not true")
     assertEquals("false is not true", "false is not " + true)
   }
 
   @Test def must_not_break_when_folding_unit_and_stringLit(): Unit = {
-    assertEquals("undefined is undefined?", () + " is undefined?")
     assertEquals("undefined is undefined", "undefined is " +())
   }
 

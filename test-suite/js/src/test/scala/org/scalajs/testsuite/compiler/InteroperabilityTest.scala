@@ -121,8 +121,8 @@ class InteroperabilityTest {
 
     val obj = new InteroperabilityTestPattern("Scala.js")
     assertEquals(42, obj.field)
-    assertEquals("42", obj.method)
-    assertEquals("Scala.js", obj.getConstructorParam)
+    assertEquals("42", obj.method())
+    assertEquals("Scala.js", obj.getConstructorParam())
   }
 
   @Test def should_acces_top_level_JS_objects_via_Scala_objects_inheriting_from_js_Object(): Unit = {
@@ -141,7 +141,7 @@ class InteroperabilityTest {
     val TopLevel = InteroperabilityTestTopLevel
     val obj = TopLevel("7357")
     assertEquals("7357", obj.value)
-    assertEquals(7357, obj.valueAsInt)
+    assertEquals(7357, obj.valueAsInt())
   }
 
   @Test def should_access_native_JS_classes_and_objects_nested_in_JS_objects(): Unit = {
@@ -290,13 +290,13 @@ class InteroperabilityTest {
     val elems = Seq[js.Any]("plop", 42, 51)
 
     val dyn = obj.asInstanceOf[js.Dynamic]
-    assertArrayDynEquals(Array(), dyn.foo())
+    assertArrayDynEquals(Array[String](), dyn.foo())
     assertArrayDynEquals(Array(3, 6), dyn.foo(3, 6))
     assertArrayDynEquals(Array("hello", false), dyn.foo("hello", false))
     assertArrayDynEquals(Array("plop", 42, 51), dyn.applyDynamic("foo")(elems: _*))
 
     val stat = obj.asInstanceOf[InteroperabilityTestVariadicMethod]
-    assertArrayEquals(Array(), stat.foo())
+    assertArrayEquals(Array[String](), stat.foo())
     assertArrayEquals(Array(3, 6), stat.foo(3, 6))
     assertArrayEquals(Array("hello", false), stat.foo("hello", false))
     assertArrayEquals(Array("plop", 42, 51), stat.foo(elems: _*))
@@ -347,7 +347,7 @@ class InteroperabilityTest {
     val ctor = js.Dynamic.global.InteroperabilityTestVariadicCtor
 
     val args0 = jsnew(ctor)().args
-    assertArrayDynEquals(Array(), args0)
+    assertArrayDynEquals(Array[String](), args0)
     val args1 = jsnew(ctor)(3, 6).args
     assertArrayDynEquals(Array(3, 6), args1)
     val args2 = jsnew(ctor)("hello", false).args
@@ -356,7 +356,7 @@ class InteroperabilityTest {
     assertArrayDynEquals(Array("plop", 42, 51), args3)
 
     import org.scalajs.testsuite.compiler.{InteroperabilityTestVariadicCtor => C}
-    assertArrayEquals(Array(), new C().args)
+    assertArrayEquals(Array[String](), new C().args)
     assertArrayEquals(Array(3, 6), new C(3, 6).args)
     assertArrayEquals(Array("hello", false), new C("hello", false).args)
     assertArrayEquals(Array("plop", 42, 51), new C(elems: _*).args)
@@ -378,10 +378,10 @@ class InteroperabilityTest {
     import org.scalajs.testsuite.compiler.{InteroperabilityTestGlobalScope => Global}
 
     assertEquals("7357", Global.interoperabilityTestGlobalScopeValue)
-    assertEquals(7357, Global.interoperabilityTestGlobalScopeValueAsInt)
+    assertEquals(7357, Global.interoperabilityTestGlobalScopeValueAsInt())
 
     Global.interoperabilityTestGlobalScopeValue = "42"
-    assertEquals(42, Global.interoperabilityTestGlobalScopeValueAsInt)
+    assertEquals(42, Global.interoperabilityTestGlobalScopeValueAsInt())
 
     assertEquals("object", js.typeOf(Global.InteroperabilityTestGlobalScopeObject))
     assertEquals(456, Global.InteroperabilityTestGlobalScopeObject.foo)
