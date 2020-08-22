@@ -262,6 +262,10 @@ sealed trait LowPrioAnyImplicits extends LowestPrioAnyImplicits {
     new js.WrappedArray(array)
   implicit def wrapDictionary[A](dict: js.Dictionary[A]): js.WrappedDictionary[A] =
     new js.WrappedDictionary(dict)
+  implicit def wrapSet[A](set: js.Set[A]): js.WrappedSet[A] =
+    new js.WrappedSet(set)
+  implicit def wrapMap[K, V](map: js.Map[K, V]): js.WrappedMap[K, V] =
+    new js.WrappedMap(map)
 }
 
 sealed trait LowestPrioAnyImplicits {
