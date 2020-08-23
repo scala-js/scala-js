@@ -65,7 +65,7 @@ final class WrappedSet[T](private val underlying: js.Set[T])
   override def iterableFactory: IterableFactory[WrappedSet] = WrappedSet
 
   override def iterator: scala.collection.Iterator[T] =
-    underlying.jsIterator.toIterator
+    underlying.jsIterator().toIterator
 
   override def empty: WrappedSet[T] =
     new WrappedSet(js.Set.empty[T])
@@ -98,4 +98,3 @@ object WrappedSet extends IterableFactory[WrappedSet] {
       new js.WrappedSet(set)
   }
 }
-
