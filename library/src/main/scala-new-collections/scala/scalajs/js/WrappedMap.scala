@@ -72,7 +72,7 @@ final class WrappedMap[K, V](private val underlying: js.Map[K, V])
   }
 
   def iterator: scala.collection.Iterator[(K, V)] =
-    underlying.jsIterator.toIterator.map(kv => (kv._1, kv._2))
+    underlying.jsIterator().toIterator.map(kv => (kv._1, kv._2))
 
   @inline
   override def keys: scala.collection.Iterable[K] =
