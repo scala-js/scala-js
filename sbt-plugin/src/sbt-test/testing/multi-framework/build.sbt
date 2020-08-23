@@ -1,5 +1,5 @@
 inThisBuild(version := scalaJSVersion)
-inThisBuild(scalaVersion := "2.12.11")
+inThisBuild(scalaVersion := "2.12.12")
 
 lazy val root = project.in(file(".")).
   aggregate(multiTestJS, multiTestJVM)

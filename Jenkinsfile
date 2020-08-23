@@ -383,8 +383,8 @@ def otherJavaVersions = []
 def allJavaVersions = otherJavaVersions.clone()
 allJavaVersions << mainJavaVersion
 
-def mainScalaVersion = "2.12.11"
-def mainScalaVersions = ["2.11.12", "2.12.11", "2.13.2"]
+def mainScalaVersion = "2.12.12"
+def mainScalaVersions = ["2.11.12", "2.12.12", "2.13.2"]
 def otherScalaVersions = [
   "2.11.12",
   "2.12.1",
@@ -397,6 +397,7 @@ def otherScalaVersions = [
   "2.12.8",
   "2.12.9",
   "2.12.10",
+  "2.12.11",
   "2.13.0",
   "2.13.1"
 ]
@@ -416,7 +417,7 @@ mainScalaVersions.each { scalaVersion ->
 }
 quickMatrix.add([task: "test-suite-ecma-script5-force-polyfills", scala: mainScalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
 allJavaVersions.each { javaVersion ->
-  quickMatrix.add([task: "tools-sbtplugin", scala: "2.12.11", java: javaVersion])
+  quickMatrix.add([task: "tools-sbtplugin", scala: "2.12.12", java: javaVersion])
   quickMatrix.add([task: "tools", scala: "2.11.12", java: javaVersion])
   quickMatrix.add([task: "tools", scala: "2.13.2", java: javaVersion])
 }
