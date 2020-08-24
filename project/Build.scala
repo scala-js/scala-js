@@ -135,7 +135,7 @@ object MyScalaJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  import MyScalaJSPlugin.{addScalaJSCompilerOption, isGeneratingForIDE}
+  import MyScalaJSPlugin.{addScalaJSCompilerOption, addScalaJSCompilerOptionInConfig, isGeneratingForIDE}
 
   val bintrayProjectName = settingKey[String](
       "Project name on Bintray")
@@ -1027,7 +1027,7 @@ object Build {
        */
       scalacOptions += "-Yno-predef",
       // We implement JDK classes, so we emit static forwarders for all static objects
-      scalacOptions += "-P:scalajs:genStaticForwardersForNonTopLevelObjects",
+      addScalaJSCompilerOption("genStaticForwardersForNonTopLevelObjects"),
 
       resourceGenerators in Compile += Def.task {
         val output = (resourceManaged in Compile).value / "java/lang/Object.sjsir"
@@ -1062,7 +1062,7 @@ object Build {
        */
       scalacOptions += "-Yno-predef",
       // We implement JDK classes, so we emit static forwarders for all static objects
-      scalacOptions += "-P:scalajs:genStaticForwardersForNonTopLevelObjects",
+      addScalaJSCompilerOption("genStaticForwardersForNonTopLevelObjects"),
 
       headerSources in Compile ~= { srcs =>
         srcs.filter { src =>
@@ -1710,7 +1710,7 @@ object Build {
             moduleKind == ModuleKind.ESModule) // this is an approximation that works for now
       },
 
-      scalacOptions in Test += "-P:scalajs:genStaticForwardersForNonTopLevelObjects",
+      addScalaJSCompilerOptionInConfig(Test, "genStaticForwardersForNonTopLevelObjects"),
 
       scalaJSLinkerConfig ~= { _.withSemantics(TestSuiteLinkerOptions.semantics _) },
       scalaJSModuleInitializers in Test ++= TestSuiteLinkerOptions.moduleInitializers,
