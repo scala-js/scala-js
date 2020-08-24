@@ -155,7 +155,7 @@ object Build {
   val previousBinaryCrossVersion = CrossVersion.binaryWith("sjs1_", "")
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.11.12", "2.12.12", "2.13.2")
+    Set("2.11.12", "2.12.12", "2.13.3")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
 
