@@ -23,14 +23,13 @@ import org.scalajs.linker.backend.javascript.Trees._
 
 /** Manages name generation for non-local, generated fields.
  *
- *  We distinguish three types of linker generated identifiers:
+ *  We distinguish two types of linker generated identifiers:
  *
- *  - classVar: Vars pertaining to a given class.
- *  - coreJSLibVar: Vars defined by the CoreJSLib.
+ *  - globalVar: Vars accessible in the entire generated JS program
+ *    (typically pertaining to a given class).
  *  - fileLevelVar: Vars that are local to an individual file.
  *
- *  The first two of these have `*Def` variants (e.g. `classFunctionDef`) to
- *  define said identifiers.
+ *  `globalVar`s have `*Def` variants (e.g. `classFunctionDef`) to define them.
  *
  *  While all these distinctions are a bit theoretical at the moment, they will
  *  become relevant for module splitting (#2681).
@@ -41,155 +40,58 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
   import jsGen._
   import nameGen._
 
-  // ClassName scoped.
+  def globalVar[T: Scope](field: String, scope: T,
+      origName: OriginalName = NoOriginalName)(implicit pos: Position): Tree = {
+    VarRef(globalVarIdent(field, scope, origName))
+  }
 
-  def classVar(field: String, className: ClassName)(implicit pos: Position): Tree =
-    VarRef(classVarIdent(field, className))
-
-  def classClassDef(field: String, className: ClassName,
-      parentClass: Option[Tree], members: List[Tree])(
+  def globalClassDef[T: Scope](field: String, scope: T,
+      parentClass: Option[Tree], members: List[Tree],
+      origName: OriginalName = NoOriginalName)(
       implicit pos: Position): Tree = {
-    val ident = classVarIdent(field, className)
+    val ident = globalVarIdent(field, scope, origName)
     ClassDef(Some(ident), parentClass, members)
   }
 
-  def classFunctionDef(field: String, className: ClassName,
-      args: List[ParamDef], body: Tree)(
+  def globalFunctionDef[T: Scope](field: String, scope: T,
+      args: List[ParamDef], body: Tree,
+      origName: OriginalName = NoOriginalName)(
       implicit pos: Position): Tree = {
-    FunctionDef(classVarIdent(field, className), args, body)
+    FunctionDef(globalVarIdent(field, scope, origName), args, body)
   }
 
-  def classVarDef(field: String, className: ClassName, value: Tree)(
+  def globalVarDef[T: Scope](field: String, scope: T, value: Tree,
+      origName: OriginalName = NoOriginalName, mutable: Boolean = false)(
       implicit pos: Position): Tree = {
-    genLet(classVarIdent(field, className), mutable = false, value)
+    genLet(globalVarIdent(field, scope, origName), mutable, value)
   }
 
-  private def classVarIdent(field: String, className: ClassName)(
-      implicit pos: Position): Ident = {
-    genericIdent(field, genName(className))
-  }
-
-  // ClassName, FieldName scoped.
-
-  def classVar(field: String, className: ClassName, fieldName: FieldName)(
+  def globalVarDecl[T: Scope](field: String, scope: T,
+      origName: OriginalName = NoOriginalName)(
       implicit pos: Position): Tree = {
-    classVar(field, className, fieldName, NoOriginalName)
-  }
-
-  def classVar(field: String, className: ClassName, fieldName: FieldName,
-      origName: OriginalName)(
-      implicit pos: Position): Tree = {
-    VarRef(classVarIdent(field, className, fieldName, origName))
-  }
-
-  def classVarDef(field: String, className: ClassName,
-      fieldName: FieldName, value: Tree, origName: OriginalName,
-      mutable: Boolean)(
-      implicit pos: Position): Tree = {
-    genLet(classVarIdent(field, className, fieldName, origName), mutable, value)
+    genEmptyMutableLet(globalVarIdent(field, scope, origName))
   }
 
   // Still public for field exports.
-  def classVarIdent(field: String, className: ClassName, fieldName: FieldName,
-      origName: OriginalName)(implicit pos: Position): Ident = {
-    genericIdent(field, genName(className) + "__" + genName(fieldName), origName)
-  }
-
-  // ClassName, MethodName scoped.
-
-  def classVar(field: String, className: ClassName, methodName: MethodName)(
-      implicit pos: Position): Tree = {
-    classVar(field, className, methodName, NoOriginalName)
-  }
-
-  def classVar(field: String, className: ClassName, methodName: MethodName,
-      origName: OriginalName)(
-      implicit pos: Position): Tree = {
-    VarRef(classVarIdent(field, className, methodName, origName))
-  }
-
-  def classFunctionDef(field: String, className: ClassName,
-      methodName: MethodName, args: List[ParamDef], body: Tree,
-      origName: OriginalName)(
-      implicit pos: Position): Tree = {
-    FunctionDef(classVarIdent(field, className, methodName, origName), args, body)
-  }
-
-  def classVarDef(field: String, className: ClassName,
-      methodName: MethodName, value: Tree, origName: OriginalName)(
-      implicit pos: Position): Tree = {
-    genLet(classVarIdent(field, className, methodName, origName), mutable = false, value)
-  }
-
-  private def classVarIdent(field: String, className: ClassName, methodName: MethodName,
-      origName: OriginalName)(implicit pos: Position): Ident = {
-    genericIdent(field, genName(className) + "__" + genName(methodName), origName)
+  def globalVarIdent[T](field: String, scope: T,
+      origName: OriginalName = NoOriginalName)(
+      implicit pos: Position, scopeType: Scope[T]): Ident = {
+    genericIdent(field, scopeType.subField(scope), origName)
   }
 
   /** Dispatch based on type ref.
    *
-   *  Returns the relevant coreJSLibVar for primitive types, classVar otherwise.
+   *  Returns the relevant coreJSLibVar for primitive types, globalVar otherwise.
    */
   def typeRefVar(field: String, typeRef: NonArrayTypeRef)(
       implicit pos: Position): Tree = {
     typeRef match {
       case primRef: PrimRef =>
-        VarRef(coreJSLibVarIdent(field, primRef))
+        globalVar(field, primRef)
 
       case ClassRef(className) =>
-        classVar(field, className)
+        globalVar(field, className)
     }
-  }
-
-  def coreJSLibVar(field: String)(implicit pos: Position): Tree =
-    VarRef(coreJSLibVarIdent(field))
-
-  def coreJSLibClassDef(name: String, parentClass: Option[Tree],
-      members: List[Tree])(implicit pos: Position): Tree = {
-    ClassDef(Some(coreJSLibVarIdent(name)), parentClass, members)
-  }
-
-  def coreJSLibFunctionDef(name: String, args: List[ParamDef],
-      body: Tree)(implicit pos: Position): Tree = {
-    FunctionDef(coreJSLibVarIdent(name), args, body)
-  }
-
-  def coreJSLibFunctionDef(name: String, primRef: PrimRef,
-      args: List[ParamDef], body: Tree)(implicit pos: Position): Tree = {
-    FunctionDef(coreJSLibVarIdent(name, primRef), args, body)
-  }
-
-  def coreJSLibVarDecl(name: String)(implicit pos: Position): Tree =
-    genEmptyMutableLet(coreJSLibVarIdent(name))
-
-  def coreJSLibVarDef(name: String, rhs: Tree)(implicit pos: Position): Tree =
-    genConst(coreJSLibVarIdent(name), rhs)
-
-  def coreJSLibVarDef(name: String, primRef: PrimRef, rhs: Tree)(
-      implicit pos: Position): Tree = {
-    genConst(coreJSLibVarIdent(name, primRef), rhs)
-  }
-
-  private def coreJSLibVarIdent(field: String)(implicit pos: Position): Ident =
-    genericIdent(field)
-
-  private def coreJSLibVarIdent(field: String, primRef: PrimRef)(
-      implicit pos: Position): Ident = {
-    // The mapping in this function is an implementation detail of the emitter
-    val subField = primRef.tpe match {
-      case NoType      => "V"
-      case BooleanType => "Z"
-      case CharType    => "C"
-      case ByteType    => "B"
-      case ShortType   => "S"
-      case IntType     => "I"
-      case LongType    => "J"
-      case FloatType   => "F"
-      case DoubleType  => "D"
-      case NullType    => "N"
-      case NothingType => "E"
-    }
-    genericIdent(field, subField)
   }
 
   def fileLevelVar(field: String, subField: String,
@@ -212,23 +114,17 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
 
   def fileLevelVarIdent(field: String, origName: OriginalName)(
       implicit pos: Position): Ident = {
-    genericIdent(field, origName)
-  }
-
-  private def genericIdent(field: String)(
-      implicit pos: Position): Ident = {
-    genericIdent(field, NoOriginalName)
-  }
-
-  private def genericIdent(field: String, origName: OriginalName)(
-      implicit pos: Position): Ident = {
-    Ident(avoidClashWithGlobalRef("$" + field), origName)
+    genericIdent(field, "", origName)
   }
 
   private def genericIdent(field: String, subField: String,
       origName: OriginalName = NoOriginalName)(
       implicit pos: Position): Ident = {
-    Ident(avoidClashWithGlobalRef("$" + field + "_" + subField), origName)
+    val name =
+      if (subField == "") "$" + field
+      else "$" + field + "_" + subField
+
+    Ident(avoidClashWithGlobalRef(name), origName)
   }
 
   private def avoidClashWithGlobalRef(codegenVarName: String): String = {
@@ -255,5 +151,53 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
       slowPath(codegenVarName)
     else
       codegenVarName
+  }
+
+  /** Scopes a globalVar to a certain sub field. */
+  trait Scope[T] {
+    def subField(x: T): String
+  }
+
+  /** Marker value for a CoreJSLibVar. */
+  object CoreVar
+
+  object Scope {
+    implicit object ClassScope extends Scope[ClassName] {
+      def subField(x: ClassName): String = genName(x)
+    }
+
+    implicit object FieldScope extends Scope[(ClassName, FieldName)] {
+      def subField(x: (ClassName, FieldName)): String =
+        genName(x._1) + "__" + genName(x._2)
+    }
+
+    implicit object MethodScope extends Scope[(ClassName, MethodName)] {
+      def subField(x: (ClassName, MethodName)): String =
+        genName(x._1) + "__" + genName(x._2)
+    }
+
+    implicit object CoreJSLibScope extends Scope[CoreVar.type] {
+      def subField(x: CoreVar.type): String = ""
+    }
+
+    /** The PrimRefScope is implied to be in the CoreJSLib. */
+    implicit object PrimRefScope extends Scope[PrimRef] {
+      def subField(x: PrimRef): String = {
+        // The mapping in this function is an implementation detail of the emitter
+        x.tpe match {
+          case NoType      => "V"
+          case BooleanType => "Z"
+          case CharType    => "C"
+          case ByteType    => "B"
+          case ShortType   => "S"
+          case IntType     => "I"
+          case LongType    => "J"
+          case FloatType   => "F"
+          case DoubleType  => "D"
+          case NullType    => "N"
+          case NothingType => "E"
+        }
+      }
+    }
   }
 }
