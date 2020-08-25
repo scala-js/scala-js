@@ -197,20 +197,27 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
         node.addChildToFront(rhs)
         new Node(Token.VAR, node)
 
-      case ClassDef(className, parentClass, members) =>
-        val membersBlock = new Node(Token.CLASS_MEMBERS)
-        for (member <- members)
-          membersBlock.addChildToBack(transformClassMember(member))
-        new Node(
-            Token.CLASS,
-            className.fold(new Node(Token.EMPTY))(transformName(_)),
-            parentClass.fold(new Node(Token.EMPTY))(transformExpr(_)),
-            membersBlock)
+      case classDef: ClassDef =>
+        transformClassDef(classDef)
 
       case _ =>
         // We just assume it is an expression
         new Node(Token.EXPR_RESULT, transformExpr(tree))
     }
+  }
+
+  private def transformClassDef(classDef: ClassDef)(
+      implicit pos: Position): Node = {
+    val ClassDef(className, parentClass, members) = classDef
+
+    val membersBlock = new Node(Token.CLASS_MEMBERS)
+    for (member <- members)
+      membersBlock.addChildToBack(transformClassMember(member))
+    new Node(
+        Token.CLASS,
+        className.fold(new Node(Token.EMPTY))(transformName(_)),
+        parentClass.fold(new Node(Token.EMPTY))(transformExpr(_)),
+        membersBlock)
   }
 
   private def transformClassMember(member: Tree): Node = {
@@ -393,6 +400,9 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
         node
       case FunctionDef(name, args, body) =>
         genFunction(name.name, args, body)
+
+      case classDef: ClassDef =>
+        transformClassDef(classDef)
 
       case Spread(items) =>
         new Node(Token.ITER_SPREAD, transformExpr(items))
