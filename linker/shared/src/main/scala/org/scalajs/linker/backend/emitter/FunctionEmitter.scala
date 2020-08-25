@@ -642,7 +642,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case StoreModule(className, value) =>
           unnest(value) { (newValue, env0) =>
             implicit val env = env0
-            js.Assign(classVar("n", className), transformExprNoChar(newValue))
+            js.Assign(globalVar("n", className), transformExprNoChar(newValue))
           }
 
         case While(cond, body) =>
@@ -2005,7 +2005,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             genCallHelper("dp_" + genName(methodName), newReceiver :: newArgs: _*)
 
           def genHijackedMethodApply(className: ClassName): js.Tree =
-            js.Apply(classVar("f", className, methodName), newReceiver :: newArgs)
+            js.Apply(globalVar("f", (className, methodName)), newReceiver :: newArgs)
 
           if (isMaybeHijackedClass(receiver.tpe) &&
               !methodName.isReflectiveProxy) {
@@ -2084,7 +2084,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             genApplyStaticLike("f", className, method, transformedArgs)
           } else {
             val fun =
-              classVar("c", className).prototype DOT transformMethodIdent(method)
+              globalVar("c", className).prototype DOT transformMethodIdent(method)
             js.Apply(fun DOT "call", transformedArgs)
           }
 
@@ -2190,7 +2190,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                     newLhs, newRhs)
               } else {
                 val objectIs =
-                  if (!esFeatures.useECMAScript2015) coreJSLibVar("is")
+                  if (!esFeatures.useECMAScript2015) globalVar("is", CoreVar)
                   else genIdentBracketSelect(genGlobalVarRef("Object"), "is")
                 val objectIsCall = js.Apply(objectIs, newLhs :: newRhs :: Nil)
                 if (op == ===) objectIsCall
@@ -2553,7 +2553,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           js.UnaryOp(JSUnaryOp.typeof, transformExprNoChar(globalRef))
 
         case JSLinkingInfo() =>
-          coreJSLibVar("linkingInfo")
+          globalVar("linkingInfo", CoreVar)
 
         // Literals
 
@@ -2629,7 +2629,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             for ((value, expectedType) <- captureValues.zip(expectedTypes))
               yield transformExpr(value, expectedType)
           }
-          js.Apply(classVar("a", className), transformedArgs)
+          js.Apply(globalVar("a", className), transformedArgs)
 
         // Invalid trees
 
@@ -2740,7 +2740,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     private def genApplyStaticLike(field: String, className: ClassName,
         method: MethodIdent, args: List[js.Tree])(
         implicit pos: Position): js.Tree = {
-      js.Apply(classVar(field, className, method.name), args)
+      js.Apply(globalVar(field, (className, method.name)), args)
     }
 
     private def genFround(arg: js.Tree)(implicit pos: Position): js.Tree = {

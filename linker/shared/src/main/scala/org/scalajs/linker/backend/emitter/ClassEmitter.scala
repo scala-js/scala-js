@@ -95,7 +95,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
                         optStoreJSSuperClass.toList :::
                         entireClassDef ::
                         createStaticFields :::
-                        (classValueVar := classVar("c", className)) ::
+                        (classValueVar := globalVar("c", className)) ::
                         genClassInitialization(tree)
                     )
                   }, {
@@ -104,7 +104,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
                   js.Return(classValueVar)
               )
 
-              classFunctionDef("a", className, Nil, body)
+              globalFunctionDef("a", className, Nil, body)
             }
 
             js.Block(createClassValueVar, createAccessor)
@@ -123,11 +123,11 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
                 optStoreJSSuperClass.toList :::
                 entireClassDef ::
                 createStaticFields :::
-                js.Return(classVar("c", className)) ::
+                js.Return(globalVar("c", className)) ::
                 Nil
             )
 
-            classFunctionDef("a", className, captureParamDefs, body)
+            globalFunctionDef("a", className, captureParamDefs, body)
           }
         }
       }
@@ -146,7 +146,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         if (shouldExtendJSError(tree))
           globalRef("Error")
         else
-          WithGlobals(classVar("c", parentIdent.name))
+          WithGlobals(globalVar("c", parentIdent.name))
       } else if (tree.jsSuperClass.isDefined) {
         WithGlobals(fileLevelVar("superClass"))
       } else {
@@ -155,8 +155,10 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       }
     }
 
-    for (parentVar <- WithGlobals.option(parentVarWithGlobals))
-      yield classClassDef("c", tree.name.name, parentVar, members)(tree.pos)
+    for (parentVar <- WithGlobals.option(parentVarWithGlobals)) yield {
+      implicit val pos = tree.pos
+      globalClassDef("c", tree.name.name, parentVar, members)
+    }
   }
 
   /** Extracts the inlineable init method, if there is one. */
@@ -199,14 +201,14 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     val className = tree.name.name
     val isJSClass = tree.kind.isJSClass
-    val typeVar = classVar("c", className)
+    val typeVar = globalVar("c", className)
 
     def makeInheritableCtorDef(ctorToMimic: js.Tree, field: String) = {
       js.Block(
         js.DocComment("@constructor"),
-        if (isJSClass) classVarDef(field, className, js.Function(false, Nil, js.Skip()))
-        else classFunctionDef(field, className, Nil, js.Skip()),
-        classVar(field, className).prototype := ctorToMimic.prototype
+        if (isJSClass) globalVarDef(field, className, js.Function(false, Nil, js.Skip()))
+        else globalFunctionDef(field, className, Nil, js.Skip()),
+        globalVar(field, className).prototype := ctorToMimic.prototype
       )
     }
 
@@ -222,9 +224,9 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           val inheritableCtorDefWithGlobals = globalRef("Error").map { errorRef =>
             makeInheritableCtorDef(errorRef, "hh")
           }
-          (inheritableCtorDefWithGlobals, classVar("hh", className))
+          (inheritableCtorDefWithGlobals, globalVar("hh", className))
         } else {
-          (WithGlobals(js.Skip()), classVar("h", parentIdent.name))
+          (WithGlobals(js.Skip()), globalVar("h", parentIdent.name))
         }
       } else {
         val superCtor = if (tree.jsSuperClass.isDefined) {
@@ -233,7 +235,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           genJSClassConstructor(parentIdent.name,
               keepOnlyDangerousVarNames = true)
         }
-        (superCtor.map(makeInheritableCtorDef(_, "h")), classVar("h", className))
+        (superCtor.map(makeInheritableCtorDef(_, "h")), globalVar("h", className))
       }
 
       for (inheritedCtorDef <- inheritedCtorDefWithGlobals) yield {
@@ -251,8 +253,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     } yield {
       val docComment = js.DocComment("@constructor")
       val ctorDef =
-        if (isJSClass) classVarDef("c", className, ctorFun)
-        else classFunctionDef("c", className, ctorFun.args, ctorFun.body)
+        if (isJSClass) globalVarDef("c", className, ctorFun)
+        else globalFunctionDef("c", className, ctorFun.args, ctorFun.body)
 
       val inheritableCtorDef =
         if (isJSClass) js.Skip()
@@ -402,7 +404,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       if flags.namespace.isStatic
     } yield {
       implicit val pos = field.pos
-      classVarDef("t", tree.className, name, genZeroOf(ftpe),
+      globalVarDef("t", (tree.className, name), genZeroOf(ftpe),
           origName.orElse(name), flags.isMutable)
     }
   }
@@ -429,8 +431,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           genCallHelper("privateJSFieldSymbol", args: _*)
       }
 
-      classVarDef("r", tree.className, name, symbolValue,
-          origName.orElse(name), mutable = false)
+      globalVarDef("r", (tree.className, name), symbolValue,
+          origName.orElse(name))
     }
   }
 
@@ -443,7 +445,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       if field.flags.namespace.isStatic
     } yield {
       implicit val pos = field.pos
-      val classVarRef = classVar("c", className)
+      val classVarRef = globalVar("c", className)
       val zero = genBoxedZeroOf(field.ftpe)
       field match {
         case FieldDef(_, name, originalName, _) =>
@@ -465,7 +467,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       m.value.methodName.isStaticInitializer
     }
     if (hasStaticInit) {
-      val field = classVar("sct", tree.className, StaticInitializerName,
+      val field = globalVar("sct", (tree.className, StaticInitializerName),
           StaticInitializerOriginalName)
       js.Apply(field, Nil) :: Nil
     } else {
@@ -477,7 +479,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   private def genClassInitialization(tree: LinkedClass): List[js.Tree] = {
     implicit val pos = tree.pos
     if (hasClassInitializer(tree)) {
-      val field = classVar("sct", tree.className, ClassInitializerName,
+      val field = globalVar("sct", (tree.className, ClassInitializerName),
           ClassInitializerOriginalName)
       js.Apply(field, Nil) :: Nil
     } else {
@@ -536,7 +538,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           case MemberNamespace.Constructor       => "ct"
           case MemberNamespace.StaticConstructor => "sct"
         }
-        classVarDef(field, className, methodName.name, methodFun,
+        globalVarDef(field, (className, methodName.name), methodFun,
             originalName.orElse(methodName.name))
       } else {
         val jsMethodName = genMemberMethodIdent(methodName, originalName)
@@ -571,7 +573,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         }
       } else {
         if (namespace.isStatic)
-          genAddToObject(classVar("c", className), methodName, methodFun)
+          genAddToObject(globalVar("c", className), methodName, methodFun)
         else
           genAddToPrototype(className, method.name, methodFun)
       }
@@ -588,7 +590,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     for (methodFun <- methodFunWithGlobals) yield {
       val methodName = method.name.name
-      classFunctionDef("f", className, methodName, methodFun.args, methodFun.body,
+      globalFunctionDef("f", (className, methodName), methodFun.args, methodFun.body,
           method.originalName.orElse(methodName))
     }
   }
@@ -615,7 +617,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     implicit val pos = property.pos
 
     // class prototype
-    val classVarRef = classVar("c", className)
+    val classVarRef = globalVar("c", className)
     val targetObject =
       if (property.flags.namespace.isStatic) classVarRef
       else classVarRef.prototype
@@ -682,7 +684,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       implicit globalKnowledge: GlobalKnowledge, pos: Position): js.Tree = {
     import TreeDSL._
 
-    genAddToObject(classVar("c", className).prototype, name, value)
+    genAddToObject(globalVar("c", className).prototype, name, value)
   }
 
   /** Generate `classVar.prototype[name] = value` */
@@ -802,7 +804,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
             if (isAncestorOfBoxedBooleanClass)
               test = test || typeOfTest("boolean")
             if (isAncestorOfBoxedCharacterClass)
-              test = test || (obj instanceof coreJSLibVar("Char"))
+              test = test || (obj instanceof globalVar("Char", CoreVar))
 
             test
         }
@@ -817,7 +819,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       })
 
       val createIsStat = if (needIsFunction) {
-        classFunctionDef("is", className, List(objParam), js.Return(isExpression))
+        globalFunctionDef("is", className, List(objParam), js.Return(isExpression))
       } else {
         js.Skip()
       }
@@ -825,14 +827,14 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       val createAsStat = if (semantics.asInstanceOfs == Unchecked) {
         js.Skip()
       } else {
-        classFunctionDef("as", className, List(objParam), js.Return {
+        globalFunctionDef("as", className, List(objParam), js.Return {
           className match {
             case ObjectClass =>
               obj
 
             case _ =>
               val isCond =
-                if (needIsFunction) js.Apply(classVar("is", className), List(obj))
+                if (needIsFunction) js.Apply(globalVar("is", className), List(obj))
                 else isExpression
 
               js.If(isCond || (obj === js.Null()), {
@@ -866,7 +868,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     val depth = depthParam.ref
 
     val createIsArrayOfStat = {
-      classFunctionDef("isArrayOf", className, List(objParam, depthParam), {
+      globalFunctionDef("isArrayOf", className, List(objParam, depthParam), {
         className match {
           case ObjectClass =>
             val dataVarDef = genLet(js.Ident("data"), mutable = false, {
@@ -909,9 +911,9 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     val createAsArrayOfStat = if (semantics.asInstanceOfs == Unchecked) {
       js.Skip()
     } else {
-      classFunctionDef("asArrayOf", className, List(objParam, depthParam), {
+      globalFunctionDef("asArrayOf", className, List(objParam, depthParam), {
         js.Return {
-          js.If(js.Apply(classVar("isArrayOf", className), List(obj, depth)) ||
+          js.If(js.Apply(globalVar("isArrayOf", className), List(obj, depth)) ||
               (obj === js.Null()), {
             obj
           }, {
@@ -964,7 +966,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         if (isObjectClass) js.Null()
         else js.Undefined()
       } { parent =>
-        classVar("d", parent.name)
+        globalVar("d", parent.name)
       }
     } else {
       js.Undefined()
@@ -978,7 +980,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         /* Ancestors of hijacked classes, including java.lang.Object, have a
          * normal $is_pack_Class test but with a non-standard behavior.
          */
-        WithGlobals(classVar("is", className))
+        WithGlobals(globalVar("is", className))
       } else if (isHijackedClass) {
         /* Hijacked classes have a special isInstanceOf test. */
         val xParam = js.ParamDef(js.Ident("x"), rest = false)
@@ -994,7 +996,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
          * cannot be performed and must throw.
          */
         if (kind != ClassKind.JSClass && kind != ClassKind.NativeJSClass) {
-          WithGlobals(coreJSLibVar("noIsInstance"))
+          WithGlobals(globalVar("noIsInstance", CoreVar))
         } else {
           for {
             jsCtor <- genJSClassConstructor(className, tree.jsNativeLoadSpec,
@@ -1014,7 +1016,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     val isArrayOfFun = {
       if (isObjectClass) {
         // Object is the only class that has a special $isArrayOf_O.
-        classVar("isArrayOf", className)
+        globalVar("isArrayOf", className)
       } else {
         // For other classes, the isArrayOf function can be inferred.
         js.Undefined()
@@ -1037,10 +1039,10 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       val prunedParams =
         allParams.reverse.dropWhile(_.isInstanceOf[js.Undefined]).reverse
 
-      val typeData = js.Apply(js.New(coreJSLibVar("TypeData"), Nil) DOT "initClass",
+      val typeData = js.Apply(js.New(globalVar("TypeData", CoreVar), Nil) DOT "initClass",
           prunedParams)
 
-      classVarDef("d", className, typeData)
+      globalVarDef("d", className, typeData)
     }
   }
 
@@ -1051,8 +1053,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     assert(tree.kind.isClass)
 
-    classVar("c", tree.name.name).prototype DOT "$classData" :=
-      classVar("d", tree.name.name)
+    globalVar("c", tree.name.name).prototype DOT "$classData" :=
+      globalVar("d", tree.name.name)
   }
 
   def genModuleAccessor(tree: LinkedClass): js.Tree = {
@@ -1080,7 +1082,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
                 genNonNativeJSClassConstructor(className),
                 Nil)
           } else {
-            js.New(classVar("c", className), Nil)
+            js.New(globalVar("c", className), Nil)
           }
         }
       }
@@ -1109,7 +1111,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
       val body = js.Block(initBlock, js.Return(moduleInstanceVar))
 
-      classFunctionDef("m", className, Nil, body)
+      globalFunctionDef("m", className, Nil, body)
     }
 
     js.Block(createModuleInstanceField, createAccessor)
@@ -1222,9 +1224,9 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
             genSelectStatic(className, field))
 
       case ModuleKind.ESModule =>
-        // Hack: Use a classVarIdent even though this is a usage site.
+        // Hack: Use a globalVarIdent even though this is a usage site.
         val staticVarIdent =
-          classVarIdent("t", className, field.name, NoOriginalName)
+          globalVarIdent("t", (className, field.name))
 
         WithGlobals(
             js.Export((staticVarIdent -> js.ExportName(exportName)) :: Nil))
@@ -1253,11 +1255,11 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     ModuleInitializerImpl.fromModuleInitializer(moduleInitializer) match {
       case VoidMainMethod(className, mainMethodName) =>
-        js.Apply(classVar("s", className, mainMethodName), Nil)
+        js.Apply(globalVar("s", (className, mainMethodName)), Nil)
 
       case MainMethodWithArgs(className, mainMethodName, args) =>
         val stringArrayTypeRef = ArrayTypeRef(ClassRef(BoxedStringClass), 1)
-        js.Apply(classVar("s", className, mainMethodName),
+        js.Apply(globalVar("s", (className, mainMethodName)),
             genArrayValue(stringArrayTypeRef, args.map(js.StringLiteral(_))) :: Nil)
     }
   }
