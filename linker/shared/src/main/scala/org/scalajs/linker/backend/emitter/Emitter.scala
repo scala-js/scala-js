@@ -354,17 +354,17 @@ final class Emitter(config: Emitter.Config) {
 
       if (namespace != MemberNamespace.Public) {
         val methodCache =
-          classCache.getMethodCache(namespace, methodDef.methodName)
+          classCache.getStaticLikeMethodCache(namespace, methodDef.methodName)
 
         addToMain(methodCache.getOrElseUpdate(m.version,
-            classEmitter.genMethod(className, m.value)(methodCache)))
+            classEmitter.genStaticLikeMethod(className, m.value)(methodCache)))
       }
     }
 
     // Class definition
     if (linkedClass.hasInstances && kind.isAnyNonNativeClass) {
       // JS constructor
-      val ctor = {
+      val ctorWithGlobals = {
         /* The constructor depends both on the class version, and the version
          * of the inlineable init, if there is one.
          */
@@ -418,23 +418,31 @@ final class Emitter(config: Emitter.Config) {
       }
 
       // Normal methods
-      val memberMethods = for {
+      val memberMethodsWithGlobals = for {
         m <- linkedMethodsAndBridges
         if m.value.flags.namespace == MemberNamespace.Public
       } yield {
         val methodCache =
-          classCache.getMethodCache(MemberNamespace.Public, m.value.methodName)
+          classCache.getMemberMethodCache(m.value.methodName)
 
         methodCache.getOrElseUpdate(m.version,
-            classEmitter.genMethod(className, m.value)(methodCache))
+            classEmitter.genMemberMethod(className, m.value)(methodCache))
       }
 
       // Exported Members
-      val exportedMembers = classTreeCache.exportedMembers.getOrElseUpdate(
+      val exportedMembersWithGlobals = classTreeCache.exportedMembers.getOrElseUpdate(
           classEmitter.genExportedMembers(linkedClass)(classCache))
 
-      addToMain(classEmitter.buildClass(linkedClass, ctor, memberMethods,
-          exportedMembers)(classCache))
+      val fullClass = for {
+        ctor <- ctorWithGlobals
+        memberMethods <- WithGlobals.list(memberMethodsWithGlobals)
+        exportedMembers <- exportedMembersWithGlobals
+        clazz <- classEmitter.buildClass(linkedClass, ctor, memberMethods, exportedMembers)(classCache)
+      } yield {
+        clazz
+      }
+
+      addToMain(fullClass)
     } else if (kind == ClassKind.Interface) {
       // Default methods
       for {
@@ -442,7 +450,7 @@ final class Emitter(config: Emitter.Config) {
         if m.value.flags.namespace == MemberNamespace.Public
       } yield {
         val methodCache =
-          classCache.getMethodCache(MemberNamespace.Public, m.value.methodName)
+          classCache.getStaticLikeMethodCache(MemberNamespace.Public, m.value.methodName)
         addToMain(methodCache.getOrElseUpdate(m.version,
             classEmitter.genDefaultMethod(className, m.value)(methodCache)))
       }
@@ -453,7 +461,7 @@ final class Emitter(config: Emitter.Config) {
         if m.value.flags.namespace == MemberNamespace.Public
       } yield {
         val methodCache =
-          classCache.getMethodCache(MemberNamespace.Public, m.value.methodName)
+          classCache.getStaticLikeMethodCache(MemberNamespace.Public, m.value.methodName)
         addToMain(methodCache.getOrElseUpdate(m.version,
             classEmitter.genHijackedMethod(className, m.value)(methodCache)))
       }
@@ -515,9 +523,12 @@ final class Emitter(config: Emitter.Config) {
     private[this] var _cacheUsed = false
 
     private[this] val _methodCaches =
-      Array.fill(MemberNamespace.Count)(mutable.Map.empty[MethodName, MethodCache])
+      Array.fill(MemberNamespace.Count)(mutable.Map.empty[MethodName, MethodCache[js.Tree]])
 
-    private[this] var _constructorCache: Option[MethodCache] = None
+    private[this] val _memberMethodCache =
+      mutable.Map.empty[MethodName, MethodCache[js.MethodDef]]
+
+    private[this] var _constructorCache: Option[MethodCache[js.Tree]] = None
 
     override def invalidate(): Unit = {
       /* Do not invalidate contained methods, as they have their own
@@ -547,15 +558,20 @@ final class Emitter(config: Emitter.Config) {
       _cache
     }
 
-    def getMethodCache(namespace: MemberNamespace,
-        methodName: MethodName): MethodCache = {
+    def getMemberMethodCache(
+        methodName: MethodName): MethodCache[js.MethodDef] = {
+      _memberMethodCache.getOrElseUpdate(methodName, new MethodCache)
+    }
+
+    def getStaticLikeMethodCache(namespace: MemberNamespace,
+        methodName: MethodName): MethodCache[js.Tree] = {
       _methodCaches(namespace.ordinal)
         .getOrElseUpdate(methodName, new MethodCache)
     }
 
-    def getConstructorCache(): MethodCache = {
+    def getConstructorCache(): MethodCache[js.Tree] = {
       _constructorCache.getOrElse {
-        val cache = new MethodCache
+        val cache = new MethodCache[js.Tree]
         _constructorCache = Some(cache)
         cache
       }
@@ -563,6 +579,7 @@ final class Emitter(config: Emitter.Config) {
 
     def cleanAfterRun(): Boolean = {
       _methodCaches.foreach(_.filterInPlace((_, c) => c.cleanAfterRun()))
+      _memberMethodCache.filterInPlace((_, c) => c.cleanAfterRun())
 
       if (_constructorCache.exists(!_.cleanAfterRun()))
         _constructorCache = None
@@ -574,8 +591,8 @@ final class Emitter(config: Emitter.Config) {
     }
   }
 
-  private final class MethodCache extends knowledgeGuardian.KnowledgeAccessor {
-    private[this] var _tree: WithGlobals[js.Tree] = null
+  private final class MethodCache[T <: js.Tree] extends knowledgeGuardian.KnowledgeAccessor {
+    private[this] var _tree: WithGlobals[T] = null
     private[this] var _lastVersion: Option[String] = None
     private[this] var _cacheUsed = false
 
@@ -588,7 +605,7 @@ final class Emitter(config: Emitter.Config) {
     def startRun(): Unit = _cacheUsed = false
 
     def getOrElseUpdate(version: Option[String],
-        v: => WithGlobals[js.Tree]): WithGlobals[js.Tree] = {
+        v: => WithGlobals[T]): WithGlobals[T] = {
       if (_tree == null || _lastVersion.isEmpty || _lastVersion != version) {
         invalidate()
         statsMethodsInvalidated += 1

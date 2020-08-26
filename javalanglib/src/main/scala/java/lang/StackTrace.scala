@@ -167,7 +167,9 @@ private[lang] object StackTrace {
    *  {{{
    *    new \$c_<encoded class name>
    *    \$c_<encoded class name>.prototype.<encoded method name>
+   *    \$b_<encoded class name>.prototype.<encoded method name>
    *    \$c_<encoded class name>.<encoded method name>
+   *    \$b_<encoded class name>.<encoded method name>
    *    \$s_<encoded class name>__<encoded method name>
    *    \$f_<encoded class name>__<encoded method name>
    *    \$m_<encoded module name>
@@ -187,17 +189,17 @@ private[lang] object StackTrace {
    *    javalanglib.
    */
   private def extractClassMethod(functionName: String): js.Array[String] = {
-    val PatC = """^(?:Object\.|\[object Object\]\.)?\$c_([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
+    val PatBC = """^(?:Object\.|\[object Object\]\.)?\$[bc]_([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
     val PatS = """^(?:Object\.|\[object Object\]\.)?\$(?:ps?|s|f)_((?:_[^_]|[^_])+)__([^\.]+)$""".re
     val PatCT = """^(?:Object\.|\[object Object\]\.)?\$ct_((?:_[^_]|[^_])+)__([^\.]*)$""".re
     val PatN = """^new (?:Object\.|\[object Object\]\.)?\$c_([^\.]+)$""".re
     val PatM = """^(?:Object\.|\[object Object\]\.)?\$m_([^\.]+)$""".re
 
-    val matchC = PatC.exec(functionName)
-    val matchCOrS = if (matchC ne null) matchC else PatS.exec(functionName)
-    if (matchCOrS ne null) {
-      js.Array[String](decodeClassName(undefOrForceGet(matchCOrS(1))),
-          decodeMethodName(undefOrForceGet(matchCOrS(2))))
+    val matchBC = PatBC.exec(functionName)
+    val matchBCOrS = if (matchBC ne null) matchBC else PatS.exec(functionName)
+    if (matchBCOrS ne null) {
+      js.Array[String](decodeClassName(undefOrForceGet(matchBCOrS(1))),
+          decodeMethodName(undefOrForceGet(matchBCOrS(2))))
     } else {
       val matchCT = PatCT.exec(functionName)
       val matchCTOrN = if (matchCT ne null) matchCT else PatN.exec(functionName)

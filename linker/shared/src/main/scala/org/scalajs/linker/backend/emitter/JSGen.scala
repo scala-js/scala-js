@@ -97,4 +97,27 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
 
   def globalRef(name: String)(implicit pos: Position): WithGlobals[Tree] =
     WithGlobals(VarRef(Ident(name)), Set(name))
+
+  def genPropSelect(qual: Tree, item: PropertyName)(
+      implicit pos: Position): Tree = {
+    item match {
+      case item: Ident         => DotSelect(qual, item)
+      case item: StringLiteral => genBracketSelect(qual, item)
+      case ComputedName(tree)  => genBracketSelect(qual, tree)
+    }
+  }
+
+  def assignES5ClassMembers(classRef: Tree, members: List[MethodDef])(
+      implicit pos: Position): Tree = {
+    import TreeDSL._
+
+    val stats = for {
+      MethodDef(static, name, args, body) <- members
+    } yield {
+      val target = if (static) classRef else classRef.prototype
+      genPropSelect(target, name) := Function(arrow = false, args, body)
+    }
+
+    Block(stats)
+  }
 }

@@ -368,13 +368,4 @@ private[emitter] final class SJSGen(
 
   def envModuleFieldIdent(module: String)(implicit pos: Position): Ident =
     fileLevelVarIdent("i", genModuleName(module), OriginalName(module))
-
-  def genPropSelect(qual: Tree, item: PropertyName)(
-      implicit pos: Position): Tree = {
-    item match {
-      case item: Ident         => DotSelect(qual, item)
-      case item: StringLiteral => genBracketSelect(qual, item)
-      case ComputedName(tree)  => genBracketSelect(qual, tree)
-    }
-  }
 }

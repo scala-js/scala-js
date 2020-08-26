@@ -1583,17 +1583,6 @@ private[emitter] object CoreJSLib {
     private def genIsScalaJSObjectOrNull(obj: VarRef): Tree =
       genIsScalaJSObject(obj) || (obj === Null())
 
-    private def assignES5ClassMembers(classRef: Tree, members: List[MethodDef]): Tree = {
-      val stats = for {
-        MethodDef(static, name, args, body) <- members
-      } yield {
-        val target = if (static) classRef else classRef.prototype
-        genPropSelect(target, name) := Function(arrow = false, args, body)
-      }
-
-      Block(stats)
-    }
-
     private def varRef(name: String): VarRef = VarRef(Ident(name))
 
     private def const(ref: VarRef, rhs: Tree): LocalDef =
