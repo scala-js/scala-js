@@ -13,6 +13,7 @@
 package org.scalajs.testsuite.library
 
 import scala.scalajs.js
+import scala.scalajs.js.annotation.JSName
 
 import org.junit.Assert._
 import org.junit.Assume._
@@ -32,7 +33,7 @@ class StackTraceTest {
       case e: IllegalArgumentException =>
         val trace = e.getStackTrace()
         for ((className, methodName) <- places) {
-          assertTrue(trace exists { elem =>
+          val found = trace.exists { elem =>
             /* We use startsWith for class name because some VMs will add
              * additional information at the end of the class name, for some
              * reason + there can be a '$class' suffix for methods in impl
@@ -41,7 +42,9 @@ class StackTraceTest {
             val prefix = "org.scalajs.testsuite.library.StackTraceTest$"
             (elem.getClassName.startsWith(prefix + className) &&
                 elem.getMethodName == methodName)
-          })
+          }
+
+          assertTrue(s"expected class: $className method: $methodName in:\n${trace.mkString("\n")}", found)
         }
     }
   }
@@ -75,6 +78,14 @@ class StackTraceTest {
       verifyClassMethodNames("Foo" -> "f", "Bar" -> "g",
           "Foobar$" -> "<clinit>", "Foobar$" -> "<init>") {
         Foobar.z
+      }
+
+      verifyClassMethodNames(
+          "Foo" -> "f",
+          "SJS" -> "m", // Scala method actually implementing m()
+          "SJS" -> "n"  // Exported JS method forwarding to m()
+      ) {
+        new SJS().m()
       }
     } finally {
       Error.stackTraceLimit = oldStackTraceLimit
@@ -113,5 +124,10 @@ object StackTraceTest {
 
   object Foobar {
     val z = new Bar().g(7)
+  }
+
+  class SJS extends js.Object {
+    @JSName("n")
+    def m(): Int = new Foo().f(20)
   }
 }
