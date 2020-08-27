@@ -58,8 +58,6 @@ class Random(seed_in: Long) extends AnyRef with java.io.Serializable {
 
     // seed = (seed * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1)
 
-    val twoPow24 = (1 << 24).toDouble
-
     val oldSeedHi = seedHi
     val oldSeedLo = seedLo
 
