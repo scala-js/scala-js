@@ -501,16 +501,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val memberExports = genMemberExports(sym)
 
       // Generate the exported members, constructors and accessors
-      val topLevelExportDefs = {
-        // Generate exported constructors or accessors
-        val exportedConstructorsOrAccessors =
-          if (isStaticModule(sym)) genModuleAccessorExports(sym)
-          else genConstructorExports(sym)
-
-        val topLevelExports = genTopLevelExports(sym)
-
-        exportedConstructorsOrAccessors ++ topLevelExports
-      }
+      val topLevelExportDefs = genTopLevelExports(sym)
 
       // Static initializer
       val optStaticInitializer = {
@@ -689,10 +680,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }
       }
 
-      // Generate top-level exporters
-      val topLevelExports =
-        if (isStaticModule(sym)) genModuleAccessorExports(sym)
-        else genJSClassExports(sym)
+      val topLevelExports = genTopLevelExports(sym)
 
       val (jsClassCaptures, generatedConstructor) =
         genJSClassCapturesAndConstructor(sym, constructorTrees.toList)
@@ -1193,18 +1181,16 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       val isJSClass = isNonNativeJSClass(classSym)
 
-      def isStaticBecauseOfTopLevelExport(f: Symbol): Boolean =
-        jsInterop.registeredExportsOf(f).head.destination == ExportDestination.TopLevel
-
       // Non-method term members are fields, except for module members.
       (for {
         f <- classSym.info.decls
         if !f.isMethod && f.isTerm && !f.isModule
         if !f.hasAnnotation(JSOptionalAnnotation) && !f.hasAnnotation(JSNativeAnnotation)
-        static = jsInterop.isFieldStatic(f)
-        if !static || isStaticBecauseOfTopLevelExport(f)
+        if jsInterop.staticExportsOf(f).isEmpty
       } yield {
         implicit val pos = f.pos
+
+        val static = jsInterop.topLevelExportsOf(f).nonEmpty
 
         val mutable = {
           static || // static fields must always be mutable
@@ -6394,20 +6380,16 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }
 
         (f, true)
-      } else if (jsInterop.isFieldStatic(sym)) {
-        val exportInfos = jsInterop.staticFieldInfoOf(sym)
-        val f = (exportInfos.head.destination: @unchecked) match {
-          case ExportDestination.TopLevel =>
-            js.SelectStatic(encodeClassName(sym.owner), encodeFieldSym(sym))(
-                jstpe.AnyType)
-
-          case ExportDestination.Static =>
-            val exportInfo = exportInfos.head
-            val companionClass = patchedLinkedClassOfClass(sym.owner)
-            js.JSSelect(
-                genPrimitiveJSClass(companionClass),
-                js.StringLiteral(exportInfo.jsName))
-        }
+      } else if (jsInterop.topLevelExportsOf(sym).nonEmpty) {
+        val f = js.SelectStatic(encodeClassName(sym.owner),
+            encodeFieldSym(sym))(jstpe.AnyType)
+        (f, true)
+      } else if (jsInterop.staticExportsOf(sym).nonEmpty) {
+        val exportInfo = jsInterop.staticExportsOf(sym).head
+        val companionClass = patchedLinkedClassOfClass(sym.owner)
+        val f = js.JSSelect(
+            genPrimitiveJSClass(companionClass),
+            js.StringLiteral(exportInfo.jsName))
 
         (f, true)
       } else {
