@@ -26,6 +26,7 @@ import org.scalajs.jsenv.JSUtils.escapeJS
 import org.scalajs.jsenv.nodejs.NodeJSEnv
 
 import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
+import org.scalastyle.sbt.ScalastylePlugin.autoImport.scalastyle
 import ExternalCompile.scalaJSExternalCompileSettings
 import Loggers._
 
@@ -144,6 +145,8 @@ object Build {
       "In the test suite, under ES modules, the script that sets the " +
       "loopback module namespace")
 
+  val scalastyleCheck = taskKey[Unit]("Run scalastyle")
+
   val fetchScalaSource = taskKey[File](
     "Fetches the scala source for the current scala version")
   val shouldPartest = settingKey[Boolean](
@@ -248,6 +251,11 @@ object Build {
           "-feature",
           "-encoding", "utf8"
       ),
+
+      scalastyleCheck := Def.task {
+        val _ = (scalastyle in Compile).toTask("").value
+        (scalastyle in Test).toTask("").value
+      }.value,
 
       // Scaladoc linking
       apiURL := {
@@ -570,7 +578,7 @@ object Build {
 
         val keys = Seq[TaskKey[_]](
             clean, headerCreate in Compile, headerCreate in Test,
-            headerCheck in Compile, headerCheck in Test
+            headerCheck in Compile, headerCheck in Test, scalastyleCheck
         )
 
         for (key <- keys) yield {
@@ -1103,6 +1111,9 @@ object Build {
       NoIDEExport.noIDEExportSettings,
       delambdafySetting,
       noClassFilesSettings,
+
+      // Ignore scalastyle for this project
+      scalastyleCheck := {},
 
       // The Scala lib is full of warnings we don't want to see
       scalacOptions ~= (_.filterNot(
@@ -2009,6 +2020,9 @@ object Build {
           Seq()
         }
       },
+
+      // Ignore scalastyle for this project
+      scalastyleCheck := {},
 
       sources in Compile := {
         val s = (sources in Compile).value
