@@ -633,8 +633,17 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   transformExprNoChar(rhs))
           }
 
-        case Assign(lhs @ (_:VarRef | Transient(JSVarRef(_, _)) |
-            _:SelectStatic | _:JSGlobalRef), rhs) =>
+        case Assign(select @ SelectStatic(className, item), rhs) =>
+          globallyMutableVarSetter("u", (className, item.name)).fold {
+            pushLhsInto(Lhs.Assign(select), rhs, tailPosLabels)
+          } { setterTree =>
+            unnest(rhs) { (rhs, env0) =>
+              implicit val env = env0
+              js.Apply(setterTree, transformExprNoChar(rhs) :: Nil)
+            }
+          }
+
+        case Assign(lhs @ (_:VarRef | Transient(JSVarRef(_, _)) | _:JSGlobalRef), rhs) =>
           pushLhsInto(Lhs.Assign(lhs), rhs, tailPosLabels)
 
         case Assign(_, _) =>
@@ -1987,7 +1996,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           genSelect(transformExprNoChar(qualifier), className, field)
 
         case SelectStatic(className, item) =>
-          genSelectStatic(className, item)
+          globalVar("t", (className, item.name))
 
         case SelectJSNativeMember(className, member) =>
           val jsNativeLoadSpec =

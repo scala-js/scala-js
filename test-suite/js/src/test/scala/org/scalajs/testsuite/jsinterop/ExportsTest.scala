@@ -1469,6 +1469,19 @@ class ExportsTest {
     }
   }
 
+  @Test def top_level_export_field_is_writiable_accross_modules(): Unit = {
+    /* We write to basicVar exported above from a different object to test writing
+     * of static fields accross module boundaries (when module splitting is
+     * enabled).
+     */
+
+    assertEquals("hello", TopLevelFieldExports.inlineVar)
+    TopLevelFieldExports.inlineVar = "hello modules"
+    assertEquals("hello modules", TopLevelFieldExports.inlineVar)
+
+    // Reset var
+    TopLevelFieldExports.inlineVar = "hello"
+  }
 }
 
 object ExportNameHolder {
@@ -1616,6 +1629,11 @@ object TopLevelFieldExports {
 
   @JSExportTopLevel("TopLevelExport_uninitializedVarChar")
   var uninitializedVarChar: Char = _
+
+  // the export is only to make the field IR-static
+  @JSExportTopLevel("TopLevelExport_irrelevant")
+  @(inline @meta.getter @meta.setter)
+  var inlineVar: String = "hello"
 }
 
 /* This object and its static initializer are only reachable via the top-level

@@ -416,8 +416,14 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       if flags.namespace.isStatic
     } yield {
       implicit val pos = field.pos
-      globalVarDef("t", (tree.className, name), genZeroOf(ftpe),
-          origName.orElse(name), flags.isMutable)
+
+      val varScope = (tree.className, name)
+      val value = genZeroOf(ftpe)
+
+      if (flags.isMutable)
+        globallyMutableVarDef("t", "u", varScope, value, origName.orElse(name))
+      else
+        globalVarDef("t", varScope, value, origName.orElse(name))
     }
 
     WithGlobals.list(defs)
@@ -1250,17 +1256,17 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     implicit val pos = tree.pos
 
+    val varScope = (className, field.name)
+
     moduleKind match {
       case ModuleKind.NoModule =>
         /* Initial value of the export. Updates are taken care of explicitly
          * when we assign to the static field.
          */
-        genAssignToNoModuleExportVar(exportName,
-            genSelectStatic(className, field))
+        genAssignToNoModuleExportVar(exportName, globalVar("t", varScope))
 
       case ModuleKind.ESModule =>
-        WithGlobals(
-            globalVarExport("t", (className, field.name), js.ExportName(exportName)))
+        WithGlobals(globalVarExport("t", varScope, js.ExportName(exportName)))
 
       case ModuleKind.CommonJSModule =>
         globalRef("exports").flatMap { exportsVarRef =>
@@ -1269,7 +1275,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
               js.StringLiteral(exportName),
               List(
                   "get" -> js.Function(arrow = false, Nil, {
-                    js.Return(genSelectStatic(className, field))
+                    js.Return(globalVar("t", varScope))
                   }),
                   "configurable" -> js.BooleanLiteral(true)
               )

@@ -106,12 +106,6 @@ private[emitter] final class SJSGen(
   private def genFieldJSName(className: ClassName, field: irt.FieldIdent): String =
     genName(className) + "__f_" + genName(field.name)
 
-  def genSelectStatic(className: ClassName, item: irt.FieldIdent)(
-      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): Tree = {
-    globalVar("t", (className, item.name))
-  }
-
   def genJSPrivateSelect(receiver: Tree, className: ClassName,
       field: irt.FieldIdent)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,

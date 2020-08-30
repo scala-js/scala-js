@@ -44,7 +44,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
     val ident = globalVarIdent(field, scope, origName)
-    foldSameModule(scope) {
+    foldSameModule[T, Tree](scope) {
       VarRef(ident)
     } { module =>
       DotSelect(VarRef(internalModuleFieldIdent(module)), ident)
@@ -56,7 +56,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
       origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext, pos: Position): WithGlobals[Tree] = {
     val ident = globalVarIdent(field, scope, origName)
-    maybeExport(ident, ClassDef(Some(ident), parentClass, members))
+    maybeExport(ident, ClassDef(Some(ident), parentClass, members), mutable = false)
   }
 
   def globalFunctionDef[T: Scope](field: String, scope: T,
@@ -64,29 +64,62 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
       origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext, pos: Position): WithGlobals[Tree] = {
     val ident = globalVarIdent(field, scope, origName)
-    maybeExport(ident, FunctionDef(ident, args, body))
+    maybeExport(ident, FunctionDef(ident, args, body), mutable = false)
   }
 
   def globalVarDef[T: Scope](field: String, scope: T, value: Tree,
-      origName: OriginalName = NoOriginalName, mutable: Boolean = false)(
+      origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext, pos: Position): WithGlobals[Tree] = {
     val ident = globalVarIdent(field, scope, origName)
-    maybeExport(ident, genLet(ident, mutable, value))
+    maybeExport(ident, genLet(ident, mutable = false, value), mutable = false)
   }
 
   def globalVarDecl[T: Scope](field: String, scope: T,
       origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext, pos: Position): WithGlobals[Tree] = {
     val ident = globalVarIdent(field, scope, origName)
-    maybeExport(ident, genEmptyMutableLet(ident))
+    maybeExport(ident, genEmptyMutableLet(ident), mutable = true)
+  }
+
+  def globallyMutableVarDef[T: Scope](field: String, setterField: String,
+      scope: T, value: Tree, origName: OriginalName = NoOriginalName)(
+      implicit moduleContext: ModuleContext, pos: Position): WithGlobals[Tree] = {
+    val ident = globalVarIdent(field, scope, origName)
+    val varDef = genLet(ident, mutable = true, value)
+
+    if (config.moduleKind == ModuleKind.ESModule && !moduleContext.public) {
+      val setterIdent = globalVarIdent(setterField, scope, origName)
+      val x = Ident("x")
+      val setter = FunctionDef(setterIdent, List(ParamDef(x, rest = false)), {
+          Assign(VarRef(ident), VarRef(x))
+      })
+
+      val exports =
+        Export(genExportIdent(ident) :: genExportIdent(setterIdent) :: Nil)
+
+      WithGlobals(Block(varDef, setter, exports))
+    } else {
+      maybeExport(ident, varDef, mutable = true)
+    }
+  }
+
+  def globallyMutableVarSetter[T: Scope](setterField: String, scope: T)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Option[Tree] = {
+    if (config.moduleKind != ModuleKind.ESModule)
+      None
+    else
+      foldSameModule[T, Option[Tree]](scope)(None)(_ => Some(globalVar(setterField, scope)))
   }
 
   def globalVarExport[T: Scope](field: String, scope: T, exportName: ExportName,
       origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
+    assert(config.moduleKind == ModuleKind.ESModule)
+
     val ident = globalVarIdent(field, scope, origName)
-    foldSameModule(scope) {
+    foldSameModule[T, Tree](scope) {
       Export((ident -> exportName) :: Nil)
     } { module =>
       val importName = ExportName(ident.name)
@@ -101,9 +134,9 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     genericIdent(field, scopeType.subField(scope), origName)
   }
 
-  private def foldSameModule[T](scope: T)(same: => Tree)(other: ModuleID => Tree)(
+  private def foldSameModule[T, S](scope: T)(same: => S)(other: ModuleID => S)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      scopeType: Scope[T]): Tree = {
+      scopeType: Scope[T]): S = {
     val reprClass = scopeType.reprClass(scope)
     val targetModule = globalKnowledge.getModule(reprClass)
     if (targetModule == moduleContext.moduleID) same
@@ -164,7 +197,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     Ident(avoidClashWithGlobalRef(name), origName)
   }
 
-  private def maybeExport(ident: Ident, tree: Tree, mutable: Boolean = false)(
+  private def maybeExport(ident: Ident, tree: Tree, mutable: Boolean)(
       implicit moduleContext: ModuleContext, pos: Position): WithGlobals[Tree] = {
     if (moduleContext.public) {
       WithGlobals(tree)
@@ -174,8 +207,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
           throw new AssertionError("non-leaf module in NoModule mode")
 
         case ModuleKind.ESModule =>
-          // TODO: Mutable export!
-          WithGlobals(Export((ident -> ExportName(ident.name)) :: Nil))
+          WithGlobals(Export(genExportIdent(ident) :: Nil))
 
         case ModuleKind.CommonJSModule =>
           globalRef("exports").flatMap { exportsVarRef =>
@@ -281,5 +313,10 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
 
       def reprClass(x: PrimRef): ClassName = ObjectClass
     }
+  }
+
+  private def genExportIdent(ident: Ident): (Ident, ExportName) = {
+    implicit val pos = ident.pos
+    ident -> ExportName(ident.name)
   }
 }
