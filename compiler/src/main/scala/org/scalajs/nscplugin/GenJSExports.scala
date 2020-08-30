@@ -237,7 +237,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
         // Generate the export
 
-        val exportedMember = genMemberExportOrDispatcher(classSym,
+        val exportedMember = genMemberExportOrDispatcher(
             JSName.Literal(jsName), isProp, alts, static = true)
 
         val exportDef = {
@@ -282,8 +282,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
             s"Exported $kind $jsName conflicts with ${alts.head.fullName}")
       }
 
-      genMemberExportOrDispatcher(classSym, JSName.Literal(jsName), isProp,
-          alts, static = false)
+      genMemberExportOrDispatcher(JSName.Literal(jsName), isProp, alts, static = false)
     }
 
     private def genJSClassDispatcher(classSym: Symbol, name: JSName): js.MemberDef = {
@@ -311,13 +310,12 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         implicit val pos = alts.head.pos
         js.JSPropertyDef(js.MemberFlags.empty, genExpr(name), None, None)
       } else {
-        genMemberExportOrDispatcher(classSym, name, isProp, alts,
-            static = false)
+        genMemberExportOrDispatcher(name, isProp, alts, static = false)
       }
     }
 
-    def genMemberExportOrDispatcher(classSym: Symbol, jsName: JSName,
-        isProp: Boolean, alts: List[Symbol], static: Boolean): js.MemberDef = {
+    def genMemberExportOrDispatcher(jsName: JSName, isProp: Boolean,
+        alts: List[Symbol], static: Boolean): js.MemberDef = {
       withNewLocalNameScope {
         if (isProp)
           genExportProperty(alts, jsName, static)
