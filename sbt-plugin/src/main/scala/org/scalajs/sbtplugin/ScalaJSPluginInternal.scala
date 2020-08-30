@@ -162,35 +162,72 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val s = streams.value
         val irInfo = (scalaJSIR in key).value
         val moduleInitializers = scalaJSModuleInitializers.value
+        val reportFile = s.cacheDirectory / "linking-report.bin"
         val outputDir = (artifactPath in key).value
         val linker = (scalaJSLinker in key).value
         val linkerImpl = (scalaJSLinkerImpl in key).value
         val usesLinkerTag = (usesScalaJSLinkerTag in key).value
 
+        val configChanged = {
+          def moduleInitializersChanged = (scalaJSModuleInitializersFingerprints in key)
+            .previous
+            .exists(_ != (scalaJSModuleInitializersFingerprints in key).value)
+
+          def linkerConfigChanged = (scalaJSLinkerConfigFingerprint in key)
+            .previous
+            .exists(_ != (scalaJSLinkerConfigFingerprint in key).value)
+
+          moduleInitializersChanged || linkerConfigChanged
+        }
+
+        def reportIncompatible =
+          Report.deserialize(IO.readBytes(reportFile)).isEmpty
+
+        if (reportFile.exists() && (configChanged || reportIncompatible)) {
+          reportFile.delete() // triggers re-linking through FileFunction.cached
+        }
+
         Def.task {
           val log = s.log
+          val realFiles = irInfo.get(scalaJSSourceFiles).get
           val ir = irInfo.data
 
-          val stageName = stage match {
-            case Stage.FastOpt => "Fast"
-            case Stage.FullOpt => "Full"
-          }
+          FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
+              FilesInfo.exists) { _ => // We don't need the files
 
-          log.info(s"$stageName optimizing $outputDir")
-
-          IO.createDirectory(outputDir)
-
-          val out = linkerImpl.outputDirectory(outputDir.toPath)
-
-          val report = try {
-            enhanceIRVersionNotSupportedException {
-              val tlog = sbtLogger2ToolsLogger(log)
-              await(log)(linker.link(ir, moduleInitializers, out, tlog)(_))
+            val stageName = stage match {
+              case Stage.FastOpt => "Fast"
+              case Stage.FullOpt => "Full"
             }
-          } catch {
-            case e: LinkingException =>
-              throw new MessageOnlyException(e.getMessage)
+
+            log.info(s"$stageName optimizing $outputDir")
+
+            IO.createDirectory(outputDir)
+
+            val out = linkerImpl.outputDirectory(outputDir.toPath)
+
+            val report = try {
+              enhanceIRVersionNotSupportedException {
+                val tlog = sbtLogger2ToolsLogger(log)
+                await(log)(linker.link(ir, moduleInitializers, out, tlog)(_))
+              }
+            } catch {
+              case e: LinkingException =>
+                throw new MessageOnlyException(e.getMessage)
+            }
+
+            IO.write(reportFile, Report.serialize(report))
+
+            Set(reportFile)
+          } (realFiles.toSet)
+
+          val report = Report.deserialize(IO.readBytes(reportFile)).getOrElse {
+            throw new MessageOnlyException("failed to deserialize report after " +
+                "linking. Please file this as s Scala.js bug")
           }
+
+          // TODO: All this below should be in the legacy tasks.
+          // New-style `fastOptJS` (however, we'll call it) should return a `Report`.
 
           val modules = report.publicModules
 
@@ -210,6 +247,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
           } { sourceMapName =>
             result0.put(scalaJSSourceMap, outputDir / sourceMapName)
           }
+
         }.tag(usesLinkerTag, ScalaJSTags.Link)
       }.value
   )
