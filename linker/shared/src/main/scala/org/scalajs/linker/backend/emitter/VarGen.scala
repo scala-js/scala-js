@@ -220,7 +220,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
                   "set" -> Function(arrow = false, List(ParamDef(x, rest = false)), {
                       Assign(VarRef(ident), VarRef(x))
                   }),
-                  "configurable" -> BooleanLiteral(true),
+                  "configurable" -> BooleanLiteral(true)
               ))
             } else {
               WithGlobals(Assign(genBracketSelect(exportsVarRef, name), VarRef(ident)))

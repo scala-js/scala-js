@@ -89,7 +89,7 @@ private class MinModuleAnalyzer(unit: LinkingUnit, symbolRequirements: SymbolReq
         public = true,
         classDefs = Nil,
         topLevelExports = topLevelExports(id),
-        initializers = moduleInitializers(id),
+        initializers = moduleInitializers(id)
       )
     }
   }
@@ -170,7 +170,7 @@ private class MinModuleAnalyzer(unit: LinkingUnit, symbolRequirements: SymbolReq
       public = false,
       classDefs = classes.map(linkedClassesByName(_)).toList,
       topLevelExports = Nil,
-      initializers = Nil,
+      initializers = Nil
     )
   }
 }

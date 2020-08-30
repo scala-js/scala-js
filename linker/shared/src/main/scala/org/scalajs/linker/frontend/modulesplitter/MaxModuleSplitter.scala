@@ -43,7 +43,7 @@ private[modulesplitter] final class MaxModuleSplitter extends ModuleSplitter {
           public = true,
           classDefs = unit.classDefs,
           topLevelExports = unit.topLevelExports,
-          initializers = moduleInitializers(id),
+          initializers = moduleInitializers(id)
       )
 
       new ModuleSet(unit.coreSpec, List(module), Nil)
@@ -73,7 +73,7 @@ private[modulesplitter] final class MaxModuleSplitter extends ModuleSplitter {
           public = true,
           classDefs = classes.map(linkedClassesByName(_)).toList,
           topLevelExports = topLevelExports(id),
-          initializers = moduleInitializers(id),
+          initializers = moduleInitializers(id)
         )
       }
 

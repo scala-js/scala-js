@@ -88,7 +88,7 @@ final class LinkedClass(
       hasInstances: Boolean,
       hasInstanceTests: Boolean,
       hasRuntimeTypeInfo: Boolean,
-      staticDependencies: Set[ClassName],
+      staticDependencies: Set[ClassName]
   ): LinkedClass = {
     copy(
         kind = kind,

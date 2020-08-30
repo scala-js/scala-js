@@ -633,7 +633,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   transformExprNoChar(rhs))
           }
 
-        case Assign(select @ SelectStatic(className, item), rhs) =>
+        case Assign(select: SelectStatic, rhs) =>
+          // Destructure separately, otherwise 2.11 crashes.
+          val SelectStatic(className, item) = select
+
           globallyMutableVarSetter("u", (className, item.name)).fold {
             pushLhsInto(Lhs.Assign(select), rhs, tailPosLabels)
           } { setterTree =>

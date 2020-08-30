@@ -253,7 +253,7 @@ final class Emitter(config: Emitter.Config) {
         trackedGlobalRefs = unionPreserveEmpty(trackedGlobalRefs, genClass.trackedGlobalRefs)
       }
 
-      module.id -> allTrees,
+      module.id -> allTrees
     }
 
     WithGlobals(moduleTrees.toMap, trackedGlobalRefs)
