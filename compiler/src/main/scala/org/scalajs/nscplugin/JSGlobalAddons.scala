@@ -197,11 +197,11 @@ trait JSGlobalAddons extends JSDefinitions
 
     /** has this symbol to be translated into a JS getter (both directions)? */
     def isJSGetter(sym: Symbol): Boolean = {
-      /* We only get here when `sym.isMethod`, thus `sym.isModule` implies that
-       * `sym` is the module's accessor. In 2.12, module accessors are synthesized
+      /* `sym.isMethod && sym.isModule` implies that `sym` is the module's
+       * accessor. In 2.12, module accessors are synthesized
        * after uncurry, thus their first info is a MethodType at phase fields.
        */
-      sym.isModule || (sym.tpe.params.isEmpty && enteringUncurryIfAtPhaseAfter {
+      (sym.isMethod && sym.isModule) || (sym.tpe.params.isEmpty && enteringUncurryIfAtPhaseAfter {
         sym.tpe match {
           case _: NullaryMethodType              => true
           case PolyType(_, _: NullaryMethodType) => true
