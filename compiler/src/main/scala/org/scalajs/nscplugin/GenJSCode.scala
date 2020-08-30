@@ -2370,14 +2370,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             genStaticField(sym)
           } else if (paramAccessorLocals contains sym) {
             paramAccessorLocals(sym).ref
-          } else if (isNonNativeJSClass(sym.owner)) {
-            unboxFieldValue(
-                genNonNativeJSClassSelectAsBoxed(genExpr(qualifier), sym))
-          } else if (jsInterop.isFieldStatic(sym)) {
-            unboxFieldValue(genSelectStaticFieldAsBoxed(sym))
           } else {
-            js.Select(genExpr(qualifier), encodeClassName(sym.owner),
-                encodeFieldSym(sym))(toIRType(sym.tpe))
+            val (field, boxed) = genAssignableField(sym, qualifier)
+            if (boxed) unboxFieldValue(field)
+            else field
           }
 
         case Ident(name) =>
@@ -2451,8 +2447,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               if (!ctorAssignment && !suspectFieldMutable(sym))
                 unexpectedMutatedFields += sym
 
-              val genQual = genExpr(qualifier)
-
               def genBoxedRhs: js.Tree = {
                 val tpeEnteringPosterasure =
                   enteringPhase(currentRun.posterasurePhase)(rhs.tpe)
@@ -2467,10 +2461,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                 }
               }
 
-              if (isNonNativeJSClass(sym.owner)) {
-                js.Assign(genNonNativeJSClassSelectAsBoxed(genQual, sym),
-                    genBoxedRhs)
-              } else if (sym.hasAnnotation(JSNativeAnnotation)) {
+              if (sym.hasAnnotation(JSNativeAnnotation)) {
                 /* This is an assignment to a @js.native field. Since we reject
                  * `@js.native var`s as compile errors, this can only happen in
                  * the constructor of the enclosing object.
@@ -2478,14 +2469,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                  * emitted at all.
                  */
                 js.Skip()
-              } else if (jsInterop.isFieldStatic(sym)) {
-                js.Assign(genSelectStaticFieldAsBoxed(sym), genBoxedRhs)
               } else {
-                js.Assign(
-                    js.Select(genQual, encodeClassName(sym.owner),
-                        encodeFieldSym(sym))(toIRType(sym.tpe)),
-                    genRhs)
+                val (field, boxed) = genAssignableField(sym, qualifier)
+
+                if (boxed) js.Assign(field, genBoxedRhs)
+                else js.Assign(field,genRhs)
               }
+
             case _ =>
               mutatedLocalVars += sym
               js.Assign(
@@ -2535,40 +2525,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             currentClassType
         }
         js.VarRef(thisLocalIdent.copy())(tpe)
-      }
-    }
-
-    private def genNonNativeJSClassSelectAsBoxed(qual: js.Tree, sym: Symbol)(
-        implicit pos: Position): js.Tree = {
-
-      if (isExposed(sym)) {
-        js.JSSelect(qual, genExpr(jsNameOf(sym)))
-      } else {
-        if (sym.owner.isAnonymousClass) {
-          js.JSSelect(
-              js.JSSelect(qual, genPrivateFieldsSymbol()),
-              encodeFieldSymAsStringLiteral(sym))
-        } else {
-          js.JSPrivateSelect(qual, encodeClassName(sym.owner),
-              encodeFieldSym(sym))
-        }
-      }
-    }
-
-    private def genSelectStaticFieldAsBoxed(sym: Symbol)(
-        implicit pos: Position): js.Tree = {
-      val exportInfos = jsInterop.staticFieldInfoOf(sym)
-      (exportInfos.head.destination: @unchecked) match {
-        case ExportDestination.TopLevel =>
-          js.SelectStatic(encodeClassName(sym.owner), encodeFieldSym(sym))(
-              jstpe.AnyType)
-
-        case ExportDestination.Static =>
-          val exportInfo = exportInfos.head
-          val companionClass = patchedLinkedClassOfClass(sym.owner)
-          js.JSSelect(
-              genPrimitiveJSClass(companionClass),
-              js.StringLiteral(exportInfo.jsName))
       }
     }
 
@@ -6418,6 +6374,47 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                   GenericGlobalObjectInformationMsg)
               js.Undefined()
           }
+      }
+    }
+
+    private def genAssignableField(sym: Symbol, qualifier: Tree)(
+        implicit pos: Position): (js.Tree, Boolean) = {
+      def qual = genExpr(qualifier)
+
+      if (isNonNativeJSClass(sym.owner)) {
+        val f = if (isExposed(sym)) {
+          js.JSSelect(qual, genExpr(jsNameOf(sym)))
+        } else if (sym.owner.isAnonymousClass) {
+          js.JSSelect(
+              js.JSSelect(qual, genPrivateFieldsSymbol()),
+              encodeFieldSymAsStringLiteral(sym))
+        } else {
+          js.JSPrivateSelect(qual, encodeClassName(sym.owner),
+              encodeFieldSym(sym))
+        }
+
+        (f, true)
+      } else if (jsInterop.isFieldStatic(sym)) {
+        val exportInfos = jsInterop.staticFieldInfoOf(sym)
+        val f = (exportInfos.head.destination: @unchecked) match {
+          case ExportDestination.TopLevel =>
+            js.SelectStatic(encodeClassName(sym.owner), encodeFieldSym(sym))(
+                jstpe.AnyType)
+
+          case ExportDestination.Static =>
+            val exportInfo = exportInfos.head
+            val companionClass = patchedLinkedClassOfClass(sym.owner)
+            js.JSSelect(
+                genPrimitiveJSClass(companionClass),
+                js.StringLiteral(exportInfo.jsName))
+        }
+
+        (f, true)
+      } else {
+        val f = js.Select(qual, encodeClassName(sym.owner),
+            encodeFieldSym(sym))(toIRType(sym.tpe))
+
+        (f, false)
       }
     }
 
