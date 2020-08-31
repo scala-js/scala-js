@@ -104,8 +104,9 @@ class OptimizerTest {
         ))
     )
 
-    for (linkingUnit <- linkToLinkingUnit(classDefs, MainTestModuleInitializers)) yield {
-      val linkedClass = linkingUnit.classDefs.find(_.className == MainTestClassName).get
+    for (moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers)) yield {
+      val linkedClass = moduleSet.modules.flatMap(_.classDefs)
+        .find(_.className == MainTestClassName).get
       val ObjectCloneClass = ClassName("java.lang.ObjectClone$")
       linkedClass.hasNot("any call to Foo.witness()") {
         case Apply(_, receiver, MethodIdent(`witnessMethodName`), _) =>
@@ -165,8 +166,8 @@ class OptimizerTest {
         })
     )
 
-    for (linkingUnit <- linkToLinkingUnit(classDefs, MainTestModuleInitializers, TestIRRepo.fulllib)) yield {
-      assertFalse(linkingUnit.classDefs.exists(_.className == ClassClass))
+    for (moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers, TestIRRepo.fulllib)) yield {
+      assertFalse(moduleSet.modules.flatMap(_.classDefs).exists(_.className == ClassClass))
     }
   }
 
@@ -197,8 +198,9 @@ class OptimizerTest {
         )
     )
 
-    for (linkingUnit <- linkToLinkingUnit(classDefs, MainTestModuleInitializers)) yield {
-      val mainClassDef = linkingUnit.classDefs.find(_.className == MainTestClassName).get
+    for (moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers)) yield {
+      val mainClassDef = moduleSet.modules.flatMap(_.classDefs)
+        .find(_.className == MainTestClassName).get
       assertTrue(mainClassDef.fields.exists {
         case FieldDef(_, FieldIdent(name), _, _) => name == FieldName("foo")
         case _                                   => false
@@ -276,12 +278,12 @@ object OptimizerTest {
   private val cloneMethodName = m("clone", Nil, O)
   private val witnessMethodName = m("witness", Nil, O)
 
-  private final class StoreLinkingUnitLinkerBackend(
+  private final class StoreModuleSetLinkerBackend(
       originalBackend: LinkerBackend)
       extends LinkerBackend {
 
     @volatile
-    private var _linkingUnit: LinkingUnit = _
+    private var _moduleSet: ModuleSet = _
 
     val coreSpec: CoreSpec = originalBackend.coreSpec
 
@@ -289,43 +291,43 @@ object OptimizerTest {
 
     override def injectedIRFiles: Seq[IRFile] = originalBackend.injectedIRFiles
 
-    def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger)(
-        implicit ec: ExecutionContext): Future[Unit] = {
-      _linkingUnit = unit
-      Future.successful(())
+    def emit(moduleSet: ModuleSet, output: OutputDirectory, logger: Logger)(
+        implicit ec: ExecutionContext): Future[Report] = {
+      _moduleSet = moduleSet
+      originalBackend.emit(moduleSet, output, logger)
     }
 
-    def linkingUnit: LinkingUnit = {
-      if (_linkingUnit == null)
-        throw new IllegalStateException("Cannot access linkingUnit before emit is called")
-      _linkingUnit
+    def moduleSet: ModuleSet = {
+      if (_moduleSet == null)
+        throw new IllegalStateException("Cannot access moduleSet before emit is called")
+      _moduleSet
     }
   }
 
-  def linkToLinkingUnit(classDefs: Seq[ClassDef],
+  def linkToModuleSet(classDefs: Seq[ClassDef],
       moduleInitializers: List[ModuleInitializer])(
-      implicit ec: ExecutionContext): Future[LinkingUnit] = {
+      implicit ec: ExecutionContext): Future[ModuleSet] = {
 
-    linkToLinkingUnit(classDefs, moduleInitializers, TestIRRepo.minilib)
+    linkToModuleSet(classDefs, moduleInitializers, TestIRRepo.minilib)
   }
 
-  def linkToLinkingUnit(classDefs: Seq[ClassDef],
+  def linkToModuleSet(classDefs: Seq[ClassDef],
       moduleInitializers: List[ModuleInitializer], stdlib: Future[Seq[IRFile]])(
-      implicit ec: ExecutionContext): Future[LinkingUnit] = {
+      implicit ec: ExecutionContext): Future[ModuleSet] = {
 
     val config = StandardConfig()
     val frontend = StandardLinkerFrontend(config)
-    val backend = new StoreLinkingUnitLinkerBackend(StandardLinkerBackend(config))
+    val backend = new StoreModuleSetLinkerBackend(StandardLinkerBackend(config))
     val linker = StandardLinkerImpl(frontend, backend)
 
     val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
-    val output = LinkerOutput(MemOutputFile())
+    val output = MemOutputDirectory()
 
     stdlib.flatMap { stdLibFiles =>
       linker.link(stdLibFiles ++ classDefsFiles, moduleInitializers,
           output, new ScalaConsoleLogger(Level.Error))
     }.map { _ =>
-      backend.linkingUnit
+      backend.moduleSet
     }
   }
 }

@@ -58,8 +58,8 @@ class LinkerTest {
 
     val linker = StandardImpl.linker(StandardConfig())
 
-    def callLink(): Future[Unit] = {
-      val out = LinkerOutput(MemOutputFile())
+    def callLink(): Future[Report] = {
+      val out = MemOutputDirectory()
       linker.link(badSeq, Nil, out, NullLogger)
     }
 
@@ -84,4 +84,5 @@ class LinkerTest {
     (1 to 4).foldLeft(firstRun)((p, _) => callInFailedState(p))
   }
 
+  // TODO: Test legacy API.
 }

@@ -29,6 +29,8 @@ import org.junit.Test
 import org.scalajs.testsuite.utils.{JSUtils, Platform}
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
+// TODO: Add tests for multiple exported modules.
+
 object ExportsTest {
   /* When using ES modules, there is no way to get hold of our own exports
    * namespace from within. The build instead sets up a small script that will

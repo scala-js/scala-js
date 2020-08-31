@@ -19,6 +19,7 @@ import org.scalajs.logging._
 
 import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
+import org.scalajs.linker.standard.ModuleSet.ModuleID
 import org.scalajs.linker.checker._
 import org.scalajs.linker.analyzer._
 
@@ -122,7 +123,8 @@ final class BaseLinker(config: CommonPhaseConfig) {
         val linkedTopLevelExports = for {
           topLevelExport <- classDef.topLevelExportDefs
         } yield {
-          val infos = analysis.topLevelExportInfos(topLevelExport.topLevelExportName)
+          val infos = analysis.topLevelExportInfos(
+              (new ModuleID(topLevelExport.moduleID), topLevelExport.topLevelExportName))
           new LinkedTopLevelExport(className, topLevelExport,
               infos.staticDependencies.toSet, infos.externalDependencies.toSet)
         }

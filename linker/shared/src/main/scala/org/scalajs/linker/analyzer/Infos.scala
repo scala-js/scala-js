@@ -22,6 +22,7 @@ import org.scalajs.ir.Types._
 
 import org.scalajs.linker.backend.emitter.Transients._
 import org.scalajs.linker.standard.LinkedTopLevelExport
+import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 object Infos {
 
@@ -69,7 +70,8 @@ object Infos {
   final class TopLevelExportInfo private[Infos] (
       val owningClass: ClassName,
       val reachability: ReachabilityInfo,
-      val name: String
+      val moduleID: ModuleID,
+      val exportName: String
   )
 
   final class ReachabilityInfo private[Infos] (
@@ -387,7 +389,9 @@ object Infos {
       topLevelExportDef: TopLevelExportDef): TopLevelExportInfo = {
     val info = new GenInfoTraverser().generateTopLevelExportInfo(enclosingClass,
       topLevelExportDef)
-    new TopLevelExportInfo(enclosingClass, info, topLevelExportDef.topLevelExportName)
+    new TopLevelExportInfo(enclosingClass, info,
+        new ModuleID(topLevelExportDef.moduleID),
+        topLevelExportDef.topLevelExportName)
   }
 
   private final class GenInfoTraverser extends Traverser {

@@ -31,6 +31,7 @@ import org.scalajs.ir.Types.ClassRef
 import org.scalajs.linker._
 import org.scalajs.linker.interface.ModuleKind
 import org.scalajs.linker.standard._
+import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 import Analysis._
 import Infos.{NamespacedMethodName, ReachabilityInfo}
@@ -61,7 +62,7 @@ private final class Analyzer(config: CommonPhaseConfig,
   def classInfos: scala.collection.Map[ClassName, Analysis.ClassInfo] =
     _loadedClassInfos
 
-  var topLevelExportInfos: Map[String, Analysis.TopLevelExportInfo] = _
+  var topLevelExportInfos: Map[(ModuleID, String), Analysis.TopLevelExportInfo] = _
 
   def errors: scala.collection.Seq[Error] = _errors
 
@@ -213,13 +214,24 @@ private final class Analyzer(config: CommonPhaseConfig,
 
       infos.foreach(_.reach())
 
-      // Check conflicts, record infos
-      topLevelExportInfos = infos.groupBy(_.name).map {
-        case (name, infos) =>
-          if (infos.size > 1)
-            _errors += ConflictingTopLevelExport(name, infos)
+      if (isNoModule) {
+        // We need stricter checking, since moduleID will be ignored.
+        for {
+          (exportName, infos) <- infos.groupBy(_.exportName)
+          if infos.size > 1
+        } {
+          _errors += ConflictingTopLevelExport(None, exportName, infos)
+        }
+      }
 
-          name -> infos.head
+      // Check conflicts, record infos
+      topLevelExportInfos = for {
+        (id @ (moduleID, exportName), infos) <- infos.groupBy(i => (i.moduleID, i.exportName))
+      } yield {
+        if (infos.size > 1)
+          _errors += ConflictingTopLevelExport(Some(moduleID), exportName, infos)
+
+        id -> infos.head
       }
     }
   }
@@ -1136,9 +1148,10 @@ private final class Analyzer(config: CommonPhaseConfig,
 
   private class TopLevelExportInfo(data: Infos.TopLevelExportInfo) extends Analysis.TopLevelExportInfo {
     val owningClass: ClassName = data.owningClass
-    val name: String = data.name
+    val moduleID: ModuleID = data.moduleID
+    val exportName: String = data.exportName
 
-    if (isNoModule && !ir.Trees.JSGlobalRef.isValidJSGlobalRefName(name)) {
+    if (isNoModule && !ir.Trees.JSGlobalRef.isValidJSGlobalRefName(exportName)) {
       _errors += InvalidTopLevelExportInScript(this)
     }
 

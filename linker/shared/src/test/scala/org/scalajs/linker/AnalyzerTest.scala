@@ -31,6 +31,7 @@ import org.scalajs.linker.analyzer._
 import org.scalajs.linker.frontend.IRLoader
 import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
+import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 import Analysis._
 
@@ -396,7 +397,7 @@ class AnalyzerTest {
             kind = ClassKind.ModuleClass,
             superClass = Some(ObjectClass),
             topLevelExportDefs = List(
-                TopLevelMethodExportDef(JSMethodDef(
+                TopLevelMethodExportDef("main", JSMethodDef(
                     EMF.withNamespace(MemberNamespace.PublicStatic),
                     StringLiteral("default"), Nil, Undefined())(
                     EOH, None))
@@ -404,42 +405,70 @@ class AnalyzerTest {
         )
     )
 
-    val scriptAnalysis = computeAnalysis(classDefs,
-        config = StandardConfig().withModuleKind(ModuleKind.NoModule))
-
-    val scriptResult = assertContainsError("InvalidTopLevelExportInScript(foo, A)", scriptAnalysis) {
-      case InvalidTopLevelExportInScript("default", ClsName("A")) =>
-        true
+    testScriptAndModule(classDefs) { scriptAnalysis =>
+      assertContainsError("InvalidTopLevelExportInScript(foo, A)", scriptAnalysis) {
+        case InvalidTopLevelExportInScript(TLEInfo(ModID("main"), "default", ClsName("A"))) =>
+          true
+      }
+    } { moduleAnalysis =>
+      assertNoError(moduleAnalysis)
     }
-
-    val modulesResults = for {
-      kind <- ModuleKind.All
-      if kind != ModuleKind.NoModule
-    } yield {
-      assertNoError(computeAnalysis(classDefs,
-          config = StandardConfig().withModuleKind(kind)))
-    }
-
-    Future.sequence(scriptResult :: modulesResults).map(_ => ())
   }
 
   @Test
-  def conflictingTopLevelExports(): AsyncResult = await {
+  def conflictingTopLevelExportsDifferentModules(): AsyncResult = await {
     def singleDef(name: String) = {
       classDef(name,
           kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
           memberDefs = List(trivialCtor(name)),
-          topLevelExportDefs = List(TopLevelModuleExportDef("foo")))
+          topLevelExportDefs = List(TopLevelModuleExportDef(name, "foo")))
     }
 
     val classDefs = Seq(singleDef("A"), singleDef("B"))
-    val analysis = computeAnalysis(classDefs)
 
-    assertContainsError("ConflictingTopLevelExport(foo, A, B)", analysis) {
-      case ConflictingTopLevelExport("foo", List(ClsName("A"), ClsName("B"))) =>
-        true
-      case ConflictingTopLevelExport("foo", List(ClsName("B"), ClsName("A"))) =>
-        true
+    testScriptAndModule(classDefs) { scriptAnalysis =>
+      assertContainsError("ConflictingTopLevelExport(None, foo, A, B)", scriptAnalysis) {
+        case ConflictingTopLevelExport(None, "foo",
+            List(TLEInfo(_, _, ClsName("A")), TLEInfo(_, _, ClsName("B")))) =>
+          true
+        case ConflictingTopLevelExport(None, "foo",
+            List(TLEInfo(_, _, ClsName("B")), TLEInfo(_, _, ClsName("A")))) =>
+          true
+      }
+    } { moduleAnalysis =>
+      assertNoError(moduleAnalysis)
+    }
+  }
+
+  @Test
+  def conflictingTopLevelExportsSameModule(): AsyncResult = await {
+    def singleDef(name: String) = {
+      classDef(name,
+          kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
+          memberDefs = List(trivialCtor(name)),
+          topLevelExportDefs = List(TopLevelModuleExportDef("main", "foo")))
+    }
+
+    val classDefs = Seq(singleDef("A"), singleDef("B"))
+
+    testScriptAndModule(classDefs) { scriptAnalysis =>
+      assertContainsError("ConflictingTopLevelExport(None, foo, A, B)", scriptAnalysis) {
+        case ConflictingTopLevelExport(None, "foo",
+            List(TLEInfo(_, _, ClsName("A")), TLEInfo(_, _, ClsName("B")))) =>
+          true
+        case ConflictingTopLevelExport(None, "foo",
+            List(TLEInfo(_, _, ClsName("B")), TLEInfo(_, _, ClsName("A")))) =>
+          true
+      }
+    } { moduleAnalysis =>
+      assertContainsError("ConflictingTopLevelExport(Some(main), foo, A, B)", moduleAnalysis) {
+        case ConflictingTopLevelExport(Some(ModID("main")), "foo",
+            List(TLEInfo(_, _, ClsName("A")), TLEInfo(_, _, ClsName("B")))) =>
+          true
+        case ConflictingTopLevelExport(Some(ModID("main")), "foo",
+            List(TLEInfo(_, _, ClsName("B")), TLEInfo(_, _, ClsName("A")))) =>
+          true
+      }
     }
   }
 
@@ -449,12 +478,12 @@ class AnalyzerTest {
         kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
         memberDefs = List(trivialCtor("A")),
         topLevelExportDefs = List(
-            TopLevelModuleExportDef("foo"),
-            TopLevelModuleExportDef("foo"))))
+            TopLevelModuleExportDef("main", "foo"),
+            TopLevelModuleExportDef("main", "foo"))))
 
     val analysis = computeAnalysis(classDefs)
-    assertContainsError("ConflictingTopLevelExport(foo, <degenerate>)", analysis) {
-      case ConflictingTopLevelExport("foo", _) => true
+    assertContainsError("ConflictingTopLevelExport(_, foo, <degenerate>)", analysis) {
+      case ConflictingTopLevelExport(_, "foo", _) => true
     }
   }
 
@@ -674,6 +703,28 @@ object AnalyzerTest {
     }
   }
 
+  private def testScriptAndModule(classDefs: Seq[ClassDef])(
+      scriptTest: Analysis => Unit)(
+      moduleTest: Analysis => Unit)(
+      implicit ec: ExecutionContext): Future[Unit] = {
+
+    val scriptAnalysis = computeAnalysis(classDefs,
+        config = StandardConfig().withModuleKind(ModuleKind.NoModule))
+
+    val scriptResult = scriptAnalysis.map(scriptTest(_))
+
+    val modulesResults = for {
+      kind <- ModuleKind.All
+      if kind != ModuleKind.NoModule
+    } yield {
+      val analysis = computeAnalysis(classDefs,
+          config = StandardConfig().withModuleKind(kind))
+      analysis.map(moduleTest(_))
+    }
+
+    Future.sequence(scriptResult :: modulesResults).map(_ => ())
+  }
+
   private def assertNoError(analysis: Future[Analysis])(
       implicit ec: ExecutionContext): Future[Unit] = {
     assertExactErrors(analysis)
@@ -728,8 +779,18 @@ object AnalyzerTest {
       Some((methodInfo.owner.className.nameString, methodInfo.methodName.nameString))
   }
 
+  object TLEInfo {
+    def unapply(tleInfo: Analysis.TopLevelExportInfo): Some[(ModuleID, String, ClassName)] =
+      Some((tleInfo.moduleID, tleInfo.exportName, tleInfo.owningClass))
+  }
+
   object ClsName {
     def unapply(className: ClassName): Some[String] =
       Some(className.nameString)
+  }
+
+  object ModID {
+    def unapply(moduleID: ModuleID): Some[String] =
+      Some(moduleID.id)
   }
 }
