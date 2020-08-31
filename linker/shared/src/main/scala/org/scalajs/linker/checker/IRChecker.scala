@@ -71,8 +71,6 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     for (classDef <- unit.classDefs) {
       implicit val ctx = ErrorContext(classDef)
 
-      // TODO: Check that injectedReverseDependencies imply static initializer.
-
       checkJSClassCaptures(classDef)
       checkClassInitializer(classDef)
       checkJSSuperClass(classDef)
