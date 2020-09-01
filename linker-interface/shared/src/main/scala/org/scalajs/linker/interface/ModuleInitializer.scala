@@ -33,13 +33,13 @@ import Fingerprint.FingerprintBuilder
  */
 final class ModuleInitializer private (
     val initializer: ModuleInitializer.Initializer,
-    val module: String
+    val moduleID: String
 ) {
   private def this(initializer: ModuleInitializer.Initializer) =
     this(initializer, DefaultModuleID)
 
-  def withModule(module: String): ModuleInitializer =
-    new ModuleInitializer(initializer, module)
+  def withModuleID(moduleID: String): ModuleInitializer =
+    new ModuleInitializer(initializer, moduleID)
 }
 
 /** Factory for [[ModuleInitializer]]s. */
@@ -138,7 +138,7 @@ object ModuleInitializer {
     override def fingerprint(moduleInitializer: ModuleInitializer): String = {
       new FingerprintBuilder("ModuleInitializer")
         .addField("initializer", moduleInitializer.initializer)
-        .addField("module", moduleInitializer.module)
+        .addField("moduleID", moduleInitializer.moduleID)
         .build()
     }
   }

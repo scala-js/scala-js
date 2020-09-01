@@ -264,12 +264,14 @@ final class Emitter(config: Emitter.Config) {
     implicit val pos = Position.NoPosition
 
     def importParts = (
-        module.externalDeps.map(x =>
-            sjsGen.varGen.externalModuleFieldIdent(x) -> x)
-    ) ++ (
-        module.internalDeps.map(x =>
-            sjsGen.varGen.internalModuleFieldIdent(x) -> config.internalModulePattern(x))
-    )
+        (
+            module.externalDependencies.map(x =>
+                sjsGen.varGen.externalModuleFieldIdent(x) -> x)
+        ) ++ (
+            module.internalDependencies.map(x =>
+                sjsGen.varGen.internalModuleFieldIdent(x) -> config.internalModulePattern(x))
+        )
+    ).toList.sortBy(_._1.name)
 
     moduleKind match {
       case ModuleKind.NoModule =>

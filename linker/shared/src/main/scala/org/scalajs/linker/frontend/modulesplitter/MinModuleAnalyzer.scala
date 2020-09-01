@@ -1,0 +1,135 @@
+/*
+ * Scala.js (https://www.scala-js.org/)
+ *
+ * Copyright EPFL.
+ *
+ * Licensed under Apache License 2.0
+ * (https://www.apache.org/licenses/LICENSE-2.0).
+ *
+ * See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+ */
+
+package org.scalajs.linker.frontend.modulesplitter
+
+import scala.annotation.tailrec
+import scala.collection.mutable
+
+import org.scalajs.ir.Names.{ClassName, ObjectClass}
+import org.scalajs.linker.standard.ModuleSet.ModuleID
+
+/** Build smallest possible modules.
+ *
+ *  Generates a module per class, except when there are circular dependencies.
+ *
+ *  In practice, this means it generates a module per strongly connected
+ *  component of the (static) dependency graph.
+ */
+private[modulesplitter] final class MinModuleAnalyzer extends ModuleAnalyzer {
+  def analyze(info: ModuleAnalyzer.DependencyInfo): ModuleAnalyzer.Analysis = {
+    val run = new MinModuleAnalyzer.Run(info)
+    run.analyze()
+    run
+  }
+}
+
+private object MinModuleAnalyzer {
+  private final class Node(val className: ClassName, val index: Int) {
+    var lowlink: Int = index
+    var componentID: Int = -1
+  }
+
+  private class Run(info: ModuleAnalyzer.DependencyInfo)
+      extends ModuleAnalyzer.Analysis {
+
+    private[this] var nextIndex = 0
+    private[this] val nodes = mutable.Map.empty[ClassName, Node]
+    private[this] val stack = mutable.ArrayStack.empty[Node]
+    private[this] val modules = mutable.Map.empty[Int, ModuleID]
+
+    def moduleForClass(className: ClassName): Option[ModuleID] =
+      nodes.get(className).map(n => modules(n.componentID))
+
+    def analyze(): Unit = {
+      info.publicModuleDependencies
+        .valuesIterator
+        .flatten
+        .filter(!nodes.contains(_))
+        .foreach(strongconnect(_))
+    }
+
+    private def strongconnect(className: ClassName): Node = {
+      /* Tarjan's algorithm for strongly connected components.
+       *
+       * The intuition is as follows: We determine a single spanning tree using
+       * a DFS (recursive calls to `strongconnect`).
+       *
+       * Whenever we find a back-edge (i.e. an edge to a node already visited),
+       * we know that the current sub-branch (up to that node) is strongly
+       * connected. This is because it can be "cycled through" through the cycle
+       * we just discovered.
+       *
+       * A strongly connected component is identified by the lowest index node
+       * that is part of it. This makes it easy to propagate and merge
+       * components.
+       *
+       * More:
+       * https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
+       */
+      assert(!nodes.contains(className))
+
+      val node = new Node(className, nextIndex)
+      nextIndex += 1
+
+      nodes(className) = node
+      stack.push(node)
+
+      for (depName <- info.classDependencies(className)) {
+        nodes.get(depName).fold {
+          // We have not visited this dependency. It is part of our spanning tree.
+          val depNode = strongconnect(depName)
+          node.lowlink = math.min(node.lowlink, depNode.lowlink)
+        } { depNode =>
+          // We have already visited this node.
+          if (depNode.componentID == -1) {
+            // This is a back link.
+            node.lowlink = math.min(node.lowlink, depNode.index)
+          }
+        }
+      }
+
+      if (node.lowlink == node.index) {
+        // This node is the root node of a component/module.
+        val id = node.index
+
+        var name = node.className
+
+        @tailrec
+        def pop(): Unit = {
+          val n = stack.pop()
+          n.componentID = id
+
+          /* Take the lexographically smallest name as a stable name of the
+           * module, with the exception of j.l.Object which identifies the root
+           * module.
+           */
+          if (name != ObjectClass) {
+            if (n.className == ObjectClass)
+              name = ObjectClass
+            else if (n.className.compareTo(name) < 0)
+              name = n.className
+          }
+
+          if (n ne node) pop()
+        }
+
+        pop()
+
+        // TODO: Dedup.
+        modules(id) = new ModuleID(name.nameString)
+      }
+
+      node
+    }
+  }
+}

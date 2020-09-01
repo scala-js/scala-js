@@ -70,6 +70,7 @@ final class LinkedClass(
       methodDef.methodName.isStaticInitializer
     }
   }
+
   def hasAnyDefinitions: Boolean = {
     fields.nonEmpty ||
     methods.nonEmpty ||

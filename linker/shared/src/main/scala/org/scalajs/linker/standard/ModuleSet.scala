@@ -35,18 +35,20 @@ final class ModuleSet private[linker] (
     val modules: List[ModuleSet.Module],
     val abstractClasses: List[LinkedClass]
 ) {
-  require(modules.count(_.isRoot) == 1, "Must have exactly one root module")
+  require(modules.count(_.isRoot) <= 1, "Must have at most one root module")
 
   // TODO: Check that public modules are leafs?
 }
 
 object ModuleSet {
-  final class ModuleID(val id: String) extends AnyVal
+  final class ModuleID(val id: String) extends AnyVal {
+    override def toString(): String = s"ModuleID($id)"
+  }
 
   final class Module(
       val id: ModuleID,
-      val internalDeps: Set[ModuleID],
-      val externalDeps: List[String],
+      val internalDependencies: Set[ModuleID],
+      val externalDependencies: Set[String],
       val public: Boolean,
       val classDefs: List[LinkedClass],
       val topLevelExports: List[LinkedTopLevelExport],
@@ -55,6 +57,9 @@ object ModuleSet {
     require(public || topLevelExports.isEmpty,
         "Only public modules may have top-level exports")
 
-    def isRoot: Boolean = internalDeps.isEmpty
+    require(!internalDependencies.contains(id),
+        "A module may not depend on itself")
+
+    def isRoot: Boolean = internalDependencies.isEmpty
   }
 }
