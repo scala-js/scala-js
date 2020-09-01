@@ -383,6 +383,54 @@ class CharacterTest {
     assertFalse(Character.isDigit('\uFBFC'))
   }
 
+  @Test def codePointCount_String(): Unit = {
+    val s: String =
+      "abc\uD834\uDF06de\uD834\uDF06fgh\uD834ij\uDF06\uD834kl\uDF06"
+
+    assertEquals(18, Character.codePointCount(s, 0, s.length))
+    assertEquals(1, Character.codePointCount(s, 3, 5))
+    assertEquals(1, Character.codePointCount(s, 2, 3))
+    assertEquals(2, Character.codePointCount(s, 2, 4))
+    assertEquals(2, Character.codePointCount(s, 2, 5))
+    assertEquals(3, Character.codePointCount(s, 2, 6))
+    assertEquals(5, Character.codePointCount(s, 12, 17))
+    assertEquals(2, Character.codePointCount(s, 8, 10))
+    assertEquals(2, Character.codePointCount(s, 7, 10))
+    assertEquals(0, Character.codePointCount(s, 7, 7))
+    assertEquals(1, Character.codePointCount(s, s.length - 1, s.length))
+    assertEquals(0, Character.codePointCount(s, s.length - 1, s.length - 1))
+    assertEquals(0, Character.codePointCount(s, s.length, s.length))
+
+    expectThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(s, -3, 4))
+    expectThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(s, 6, 2))
+    expectThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(s, 10, 30))
+  }
+
+  @Test def codePointCount_CharSequence(): Unit = {
+    import WrappedStringCharSequence.charSequence
+
+    val cs: CharSequence =
+      charSequence("abc\uD834\uDF06de\uD834\uDF06fgh\uD834ij\uDF06\uD834kl\uDF06")
+
+    assertEquals(18, Character.codePointCount(cs, 0, cs.length))
+    assertEquals(1, Character.codePointCount(cs, 3, 5))
+    assertEquals(1, Character.codePointCount(cs, 2, 3))
+    assertEquals(2, Character.codePointCount(cs, 2, 4))
+    assertEquals(2, Character.codePointCount(cs, 2, 5))
+    assertEquals(3, Character.codePointCount(cs, 2, 6))
+    assertEquals(5, Character.codePointCount(cs, 12, 17))
+    assertEquals(2, Character.codePointCount(cs, 8, 10))
+    assertEquals(2, Character.codePointCount(cs, 7, 10))
+    assertEquals(0, Character.codePointCount(cs, 7, 7))
+    assertEquals(1, Character.codePointCount(cs, cs.length - 1, cs.length))
+    assertEquals(0, Character.codePointCount(cs, cs.length - 1, cs.length - 1))
+    assertEquals(0, Character.codePointCount(cs, cs.length, cs.length))
+
+    expectThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(cs, -3, 4))
+    expectThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(cs, 6, 2))
+    expectThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(cs, 10, 30))
+  }
+
   @Test def compareTo(): Unit = {
     def compare(x: Char, y: Char): Int =
       new Character(x).compareTo(new Character(y))

@@ -256,6 +256,20 @@ object Character {
 
   // --- End of UTF-16 surrogate pairs handling ---
 
+  def codePointCount(seq: CharSequence, beginIndex: Int, endIndex: Int): Int = {
+    if (endIndex > seq.length() || beginIndex < 0 || endIndex < beginIndex)
+      throw new IndexOutOfBoundsException
+    var res = endIndex - beginIndex
+    var i = beginIndex
+    val end = endIndex - 1
+    while (i < end) {
+      if (isSurrogatePair(seq.charAt(i), seq.charAt(i + 1)))
+        res -= 1
+      i += 1
+    }
+    res
+  }
+
   def isLowerCase(c: scala.Char): scala.Boolean =
     isLowerCase(c.toInt)
 

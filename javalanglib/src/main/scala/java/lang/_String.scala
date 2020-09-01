@@ -79,19 +79,8 @@ final class _String private () // scalastyle:ignore
     }
   }
 
-  def codePointCount(beginIndex: Int, endIndex: Int): Int = {
-    if (endIndex > length() || beginIndex < 0 || endIndex < beginIndex)
-      throw new IndexOutOfBoundsException
-    var res = endIndex - beginIndex
-    var i = beginIndex
-    val end = endIndex - 1
-    while (i < end) {
-      if (Character.isSurrogatePair(charAt(i), charAt(i + 1)))
-        res -= 1
-      i += 1
-    }
-    res
-  }
+  def codePointCount(beginIndex: Int, endIndex: Int): Int =
+    Character.codePointCount(this, beginIndex, endIndex)
 
   def offsetByCodePoints(index: Int, codePointOffset: Int): Int = {
     val len = length()
