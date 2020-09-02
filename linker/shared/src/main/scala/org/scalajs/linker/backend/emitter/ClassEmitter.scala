@@ -1179,6 +1179,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     val exportsWithGlobals = topLevelExports.map { topLevelExport =>
       implicit val pos = topLevelExport.tree.pos
 
+      assert(moduleContext.moduleID.id == topLevelExport.tree.moduleID)
+
       topLevelExport.tree match {
         case TopLevelJSClassExportDef(_, exportName) =>
           genConstValueExportDef(
