@@ -72,7 +72,7 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
     }
 
     logger.timeFuture("Module Splitter") {
-      optimizedResult.map(splitter.split(_, symbolRequirements, logger))
+      optimizedResult.map(splitter.split(_, logger))
     }
   }
 

@@ -113,9 +113,16 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     /* Hijacked classes are always instantiated, because values of primitive
      * types are their instances.
+     *
+     * Also, they are part of the core infrastructure. As such, j.l.Object
+     * depends on them.
      */
-    for (hijacked <- HijackedClasses)
-      lookupClass(hijacked)(_.instantiated())
+    for (hijacked <- HijackedClasses) {
+      lookupClass(hijacked) { clazz =>
+        objectClassInfo.staticDependencies += clazz.className
+        clazz.instantiated()
+      }
+    }
 
     // External symbol requirements, including module initializers
     reachSymbolRequirement(symbolRequirements)
@@ -143,6 +150,11 @@ private final class Analyzer(config: CommonPhaseConfig,
   private def reachSymbolRequirement(requirement: SymbolRequirement,
       optional: Boolean = false): Unit = {
 
+    /* We use j.l.Object as representation of the core infrastructure.
+     * As such, everything depends on j.l.Object and j.l.Object depends on all
+     * symbol requirements.
+     */
+
     def withClass(className: ClassName)(onSuccess: ClassInfo => Unit)(
         implicit from: From): Unit = {
       lookupClass(className, ignoreMissing = optional)(onSuccess)
@@ -163,36 +175,51 @@ private final class Analyzer(config: CommonPhaseConfig,
     requirement match {
       case AccessModule(origin, moduleName) =>
         implicit val from = FromCore(origin)
-        withClass(moduleName)(_.accessModule())
+        withClass(moduleName) { clazz =>
+          objectClassInfo.staticDependencies += clazz.className
+
+          clazz.accessModule()
+        }
 
       case InstantiateClass(origin, className, constructor) =>
         implicit val from = FromCore(origin)
         withMethod(className, constructor) { clazz =>
+          objectClassInfo.staticDependencies += clazz.className
+
           clazz.instantiated()
           clazz.callMethodStatically(MemberNamespace.Constructor, constructor)
         }
 
       case InstanceTests(origin, className) =>
         implicit val from = FromCore(origin)
-        withClass(className)(_.useInstanceTests())
+        withClass(className){ clazz =>
+          objectClassInfo.staticDependencies += clazz.className
+          clazz.useInstanceTests()
+        }
 
       case ClassData(origin, className) =>
         implicit val from = FromCore(origin)
-        withClass(className)(_.accessData())
+        withClass(className) { clazz =>
+          objectClassInfo.staticDependencies += clazz.className
+          clazz.accessData()
+        }
 
       case CallMethod(origin, className, methodName, statically) =>
         implicit val from = FromCore(origin)
-        withMethod(className, methodName) { classInfo =>
-          if (statically)
-            classInfo.callMethodStatically(MemberNamespace.Public, methodName)
-          else
-            classInfo.callMethod(methodName)
+        withMethod(className, methodName) { clazz =>
+          if (statically) {
+            objectClassInfo.staticDependencies += clazz.className
+            clazz.callMethodStatically(MemberNamespace.Public, methodName)
+          } else {
+            clazz.callMethod(methodName)
+          }
         }
 
       case CallStaticMethod(origin, className, methodName) =>
         implicit val from = FromCore(origin)
-        withMethod(className, methodName) { classInfo =>
-          classInfo.callMethodStatically(MemberNamespace.PublicStatic,
+        withMethod(className, methodName) { clazz =>
+          objectClassInfo.staticDependencies += clazz.className
+          clazz.callMethodStatically(MemberNamespace.PublicStatic,
               methodName)
         }
 
@@ -543,7 +570,13 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     val jsNativeLoadSpec: Option[JSNativeLoadSpec] = data.jsNativeLoadSpec
 
-    val staticDependencies: mutable.Set[ClassName] = mutable.Set.empty
+    /* j.l.Object represents the core infrastructure. As such, everything
+     * depends on it unconditionally.
+     */
+    val staticDependencies: mutable.Set[ClassName] =
+      if (className == ObjectClass) mutable.Set.empty
+      else mutable.Set(ObjectClass)
+
     val externalDependencies: mutable.Set[String] = mutable.Set.empty
 
     var instantiatedFrom: List[From] = Nil

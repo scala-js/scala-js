@@ -30,10 +30,12 @@ final class ModuleSplitter private (analyzer: ModuleAnalyzer) {
   import ModuleSplitter._
   import ModuleAnalyzer.DependencyInfo
 
-  def split(unit: LinkingUnit, symbolRequirements: SymbolRequirement,
-      logger: Logger): ModuleSet = {
+  def split(unit: LinkingUnit, logger: Logger): ModuleSet = {
     val dependencyInfo = logger.time("Module Splitter: Calculate Dependency Info") {
-      calculateDependencyInfo(unit, symbolRequirements)
+      val classDeps =
+        unit.classDefs.map(c => c.className -> c.staticDependencies).toMap
+
+      new DependencyInfo(classDeps, publicModuleDependencies(unit))
     }
 
     if (dependencyInfo.publicModuleDependencies.isEmpty) {
@@ -50,33 +52,13 @@ final class ModuleSplitter private (analyzer: ModuleAnalyzer) {
     }
 
     logger.time("Module Splitter: Assemble Modules") {
-      assembleModules(unit, analysis, dependencyInfo)
+      assembleModules(unit, analysis, dependencyInfo.publicModuleDependencies)
     }
-  }
-
-  private def calculateDependencyInfo(unit: LinkingUnit,
-      symbolRequirements: SymbolRequirement): DependencyInfo = {
-    def classDep(classDef: LinkedClass): Set[ClassName] = {
-      val base = classDef.staticDependencies
-
-      /* We use j.l.Object as representation of the core infrastructure.
-       * As such, everything depends on j.l.Object and j.l.Object depends on all
-       * symbol requirements.
-       */
-      if (classDef.className == ObjectClass)
-        base ++ HijackedClasses ++ symbolRequirementDeps(symbolRequirements)
-      else
-        base + ObjectClass
-    }
-
-    val classDeps = unit.classDefs.map(c => c.className -> classDep(c)).toMap
-
-    new DependencyInfo(classDeps, publicModuleDependencies(unit))
   }
 
   private def assembleModules(unit: LinkingUnit,
       analysis: ModuleAnalyzer.Analysis,
-      dependencyInfo: DependencyInfo): ModuleSet = {
+      publicModuleDependencies: Map[ModuleID, Set[ClassName]]): ModuleSet = {
 
     // LinkedHashMap for stability.
     val builders = mutable.LinkedHashMap.empty[ModuleID, ModuleBuilder]
@@ -96,7 +78,7 @@ final class ModuleSplitter private (analyzer: ModuleAnalyzer) {
           val builder = getBuilder(moduleID)
           builder.classDefs += classDef
 
-          for (dep <- dependencyInfo.classDependencies(classDef.className)) {
+          for (dep <- classDef.staticDependencies) {
             val dependencyModuleID = analysis.moduleForClass(dep).get
             if (dependencyModuleID != moduleID)
               builder.internalDependencies += dependencyModuleID
@@ -120,7 +102,7 @@ final class ModuleSplitter private (analyzer: ModuleAnalyzer) {
     }
 
     for {
-      (moduleID, deps) <- dependencyInfo.publicModuleDependencies
+      (moduleID, deps) <- publicModuleDependencies
     } {
       // Avoid getBuilder: All modules should be present. Otherwise it's a bug.
       val builder = builders(moduleID)
@@ -191,27 +173,6 @@ object ModuleSplitter {
 
   def maxSplitter(): ModuleSplitter =
     new ModuleSplitter(new MaxModuleAnalyzer())
-
-  private def symbolRequirementDeps(requirement: SymbolRequirement): List[ClassName] = {
-    import SymbolRequirement.Nodes._
-
-    requirement match {
-      case AccessModule(_, moduleName)        => List(moduleName)
-      case InstantiateClass(_, className, _)  => List(className)
-      case InstanceTests(_, className)        => List(className)
-      case ClassData(_, className)            => List(className)
-      case CallStaticMethod(_, className, _)  => List(className)
-
-      case _: CallMethod | NoRequirement =>
-        Nil
-
-      case Optional(requirement) =>
-        ??? // TODO: How do filter this?
-
-      case Multiple(requirements) =>
-        requirements.flatMap(symbolRequirementDeps(_))
-    }
-  }
 
   private class ModuleBuilder(id: ModuleID) {
     val internalDependencies: Builder[ModuleID, Set[ModuleID]] = Set.newBuilder
