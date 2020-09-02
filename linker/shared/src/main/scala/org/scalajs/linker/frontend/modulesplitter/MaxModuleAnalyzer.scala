@@ -12,6 +12,7 @@
 
 package org.scalajs.linker.frontend.modulesplitter
 
+import scala.collection.immutable
 import scala.collection.mutable
 
 import org.scalajs.ir.Names.ClassName
@@ -31,9 +32,7 @@ private[modulesplitter] final class MaxModuleAnalyzer extends ModuleAnalyzer {
     if (info.publicModuleDependencies.size == 1) {
       new SingleModuleAnalysis(info.publicModuleDependencies.head._1)
     } else {
-      val run = new Run(info)
-      run.analyze()
-      run
+      new Run(info).analyze()
     }
   }
 }
@@ -46,24 +45,22 @@ private object MaxModuleAnalyzer {
       Some(moduleID)
   }
 
-  private final class Run(infos: ModuleAnalyzer.DependencyInfo)
+  private final class FullAnalysis(map: Map[ClassName, ModuleID])
       extends ModuleAnalyzer.Analysis {
+    def moduleForClass(className: ClassName): Option[ModuleID] =
+      map.get(className)
+  }
 
+  private final class Run(infos: ModuleAnalyzer.DependencyInfo) {
     private[this] val allTags =
       mutable.Map.empty[ClassName, mutable.Set[ModuleID]]
 
     private[this] val toProcess = mutable.Set.empty[ClassName]
 
-    private[this] val classModule =
-      mutable.Map.empty[ClassName, ModuleID]
-
-    def moduleForClass(className: ClassName): Option[ModuleID] =
-      classModule.get(className)
-
-    def analyze(): Unit = {
+    def analyze(): ModuleAnalyzer.Analysis = {
       tagEntryPoints()
       processTags()
-      buildModules()
+      new FullAnalysis(buildModuleMap())
     }
 
     private def tagEntryPoints(): Unit = {
@@ -108,18 +105,41 @@ private object MaxModuleAnalyzer {
         toProcess.add(className)
     }
 
-    private def buildModules(): Unit = {
-      val ids = mutable.Map.empty[scala.collection.Set[ModuleID], ModuleID]
+    private def buildModuleMap(): Map[ClassName, ModuleID] = {
+      val ids = buildModuleIDs()
+      allTags.mapValues(ids(_)).toMap
+    }
 
-      def mkID(names: mutable.Set[ModuleID]) =
-        new ModuleID(names.map(_.id).toList.sorted.mkString("-"))
-
-      // TODO: Dedupe.
-
-      for ((className, moduleIDs) <- allTags) {
-        val id = ids.getOrElseUpdate(moduleIDs, mkID(moduleIDs))
-        classModule.put(className, id)
+    private def buildModuleIDs(): Map[scala.collection.Set[ModuleID], ModuleID] = {
+      /* We build the new module IDs independent of the actually present
+       * modules to ensure stability.
+       *
+       * We sort the ModuleIDs to not depend on map iteration order (or the
+       * order of the input files).
+       */
+      val publicIDs = {
+        val b = immutable.SortedSet.newBuilder(Ordering.by[ModuleID, String](_.id))
+        infos.publicModuleDependencies.keysIterator.foreach(b += _)
+        b.result()
       }
+
+      val seenIDs = mutable.Set.empty[ModuleID]
+
+      val tups = for {
+        modules <- publicIDs.subsets()
+        if modules.nonEmpty
+      } yield {
+        var candidate = new ModuleID(modules.map(_.id).mkString("-"))
+
+        while (seenIDs.contains(candidate))
+          candidate = new ModuleID(candidate.id + "$")
+
+        seenIDs.add(candidate)
+
+        modules -> candidate
+      }
+
+      tups.toMap
     }
   }
 }
