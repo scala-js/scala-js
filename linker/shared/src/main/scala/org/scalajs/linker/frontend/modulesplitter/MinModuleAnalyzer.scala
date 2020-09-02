@@ -36,7 +36,7 @@ private[modulesplitter] final class MinModuleAnalyzer extends ModuleAnalyzer {
 private object MinModuleAnalyzer {
   private final class Node(val className: ClassName, val index: Int) {
     var lowlink: Int = index
-    var componentID: Int = -1
+    var moduleIndex: Int = -1
   }
 
   private class Run(info: ModuleAnalyzer.DependencyInfo)
@@ -45,10 +45,10 @@ private object MinModuleAnalyzer {
     private[this] var nextIndex = 0
     private[this] val nodes = mutable.Map.empty[ClassName, Node]
     private[this] val stack = mutable.ArrayStack.empty[Node]
-    private[this] val modules = mutable.Map.empty[Int, ModuleID]
+    private[this] val moduleIndexToID = mutable.Map.empty[Int, ModuleID]
 
     def moduleForClass(className: ClassName): Option[ModuleID] =
-      nodes.get(className).map(n => modules(n.componentID))
+      nodes.get(className).map(n => moduleIndexToID(n.moduleIndex))
 
     def analyze(): Unit = {
       info.publicModuleDependencies
@@ -91,7 +91,7 @@ private object MinModuleAnalyzer {
           node.lowlink = math.min(node.lowlink, depNode.lowlink)
         } { depNode =>
           // We have already visited this node.
-          if (depNode.componentID == -1) {
+          if (depNode.moduleIndex == -1) {
             // This is a back link.
             node.lowlink = math.min(node.lowlink, depNode.index)
           }
@@ -100,18 +100,21 @@ private object MinModuleAnalyzer {
 
       if (node.lowlink == node.index) {
         // This node is the root node of a component/module.
-        val id = node.index
+        val moduleIndex = node.index
 
         var name = node.className
 
         @tailrec
         def pop(): Unit = {
           val n = stack.pop()
-          n.componentID = id
+          n.moduleIndex = moduleIndex
 
           /* Take the lexographically smallest name as a stable name of the
            * module, with the exception of j.l.Object which identifies the root
            * module.
+           *
+           * We do this, because it is simple and stable (i.e. does not depend
+           * on traversal order).
            */
           if (name != ObjectClass) {
             if (n.className == ObjectClass)
@@ -125,8 +128,22 @@ private object MinModuleAnalyzer {
 
         pop()
 
-        // TODO: Dedup.
-        modules(id) = new ModuleID(name.nameString)
+        /* Build a module ID that doesn't collide with others.
+         *
+         * We observe:
+         * - Class names are unique, so they never collide with each other.
+         * - Appending a dot ('.') to a class name results in an illegal class name.
+         *
+         * So we append dots until we hit a ModuleID not used by a public module.
+         *
+         * Note that this is stable, because it does not depend on the order we
+         * iterate over nodes.
+         */
+        var moduleID = new ModuleID(name.nameString)
+        while (info.publicModuleDependencies.contains(moduleID))
+          moduleID = new ModuleID(moduleID.id + ".")
+
+        moduleIndexToID(moduleIndex) = moduleID
       }
 
       node
