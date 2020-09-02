@@ -218,7 +218,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
             IO.write(reportFile, Report.serialize(report))
 
-            Set(reportFile)
+            IO.listFiles(outputDir).toSet + reportFile
           } (realFiles.toSet)
 
           val report = Report.deserialize(IO.readBytes(reportFile)).getOrElse {
