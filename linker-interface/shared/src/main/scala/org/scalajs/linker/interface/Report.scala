@@ -20,6 +20,15 @@ import org.scalajs.linker.interface.unstable.ReportImpl
 
 abstract class Report private[interface] {
   def publicModules: Iterable[Report.Module]
+
+  override def toString(): String = {
+    s"""Report(
+       |  publicModules = [
+       |    ${publicModules.mkString(",\n    ")}
+       |  ],
+       |)""".stripMargin
+    publicModules.mkString(",\n")
+  }
 }
 
 object Report {
@@ -28,6 +37,15 @@ object Report {
     def jsFileName: String
     def sourceMapName: Option[String]
     def moduleKind: ModuleKind
+
+    override def toString(): String = {
+      s"""Module(
+         |  moduleID      = $moduleID,
+         |  jsFileName    = $jsFileName,
+         |  sourceMapName = $sourceMapName,
+         |  moduleKind    = $moduleKind,
+         |)""".stripMargin
+    }
   }
 
   def serialize(report: Report): Array[Byte] = {

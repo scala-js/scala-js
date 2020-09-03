@@ -174,6 +174,12 @@ object ScalaJSPlugin extends AutoPlugin {
     val fullOptJS = TaskKey[Attributed[File]]("fullOptJS",
         "Link all compiled JavaScript into a single file and fully optimize", APlusTask)
 
+    val linkJSDev = TaskKey[Attributed[Report]]("linkJSDev",
+        "Quickly link all compiled JavaScript into a single file", APlusTask)
+
+    val linkJSProd = TaskKey[Attributed[Report]]("linkJSProd",
+        "Link all compiled JavaScript into a single file and fully optimize", APlusTask)
+
     val testHtml = TaskKey[Attributed[File]]("testHtml",
         "Create an HTML test runner. Honors `scalaJSStage`.", AMinusTask)
 
@@ -251,6 +257,10 @@ object ScalaJSPlugin extends AutoPlugin {
 
     val scalaJSTestHTMLArtifactDirectory = SettingKey[File]("scalaJSTestHTMLArtifactDirectory",
         "Directory for artifacts produced by testHtml.",
+        BSetting)
+
+    val scalaJSLinkerOutputDirectory = SettingKey[File]("scalaJSLinkerOutputDirectory",
+        "Directory for linker output.",
         BSetting)
   }
 

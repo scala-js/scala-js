@@ -110,7 +110,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
   /** Settings for the production key (e.g. fastOptJS) of a given stage */
   private def scalaJSStageSettings(stage: Stage,
-      key: TaskKey[Attributed[File]]): Seq[Setting[_]] = Seq(
+      key: TaskKey[Attributed[Report]],
+      legacyKey: TaskKey[Attributed[File]]): Seq[Setting[_]] = Seq(
 
       scalaJSLinkerBox in key := new CacheBox,
 
@@ -163,7 +164,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val irInfo = (scalaJSIR in key).value
         val moduleInitializers = scalaJSModuleInitializers.value
         val reportFile = s.cacheDirectory / "linking-report.bin"
-        val outputDir = (artifactPath in key).value
+        val outputDir = (scalaJSLinkerOutputDirectory in key).value
         val linker = (scalaJSLinker in key).value
         val linkerImpl = (scalaJSLinkerImpl in key).value
         val usesLinkerTag = (usesScalaJSLinkerTag in key).value
@@ -223,40 +224,71 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
           val report = Report.deserialize(IO.readBytes(reportFile)).getOrElse {
             throw new MessageOnlyException("failed to deserialize report after " +
-                "linking. Please file this as s Scala.js bug")
+                "linking. Please report this as s Scala.js bug.")
           }
 
-          // TODO: All this below should be in the legacy tasks.
-          // New-style `fastOptJS` (however, we'll call it) should return a `Report`.
-
-          val modules = report.publicModules
-
-          if (modules.size != 1) {
-            // TODO: Improve.
-            throw new MessageOnlyException(
-                s"got more than one public module: $report")
-          }
-
-          val module = modules.head
-
-          val result0 = Attributed.blank(outputDir / module.jsFileName)
-            .put(scalaJSModuleKind, module.moduleKind)
-
-          module.sourceMapName.fold {
-            result0
-          } { sourceMapName =>
-            result0.put(scalaJSSourceMap, outputDir / sourceMapName)
-          }
-
+          Attributed.blank(report)
+            .put(scalaJSLinkerOutputDirectory.key, outputDir)
         }.tag(usesLinkerTag, ScalaJSTags.Link)
-      }.value
+      }.value,
+
+      legacyKey := {
+        val linkingResult = key.value
+
+        val module = {
+          val report = linkingResult.data
+
+          if (report.publicModules.size != 1) {
+            throw new MessageOnlyException(
+                "linking returned more that one public module. " +
+                s"${legacyKey.key} can only deal with a single module. " +
+                s"Did you mean to invoke ${key.key} instead? " +
+                s"Full report:\n$report")
+          }
+
+          report.publicModules.head
+        }
+
+        val linkerOutputDir = {
+          linkingResult.get(scalaJSLinkerOutputDirectory.key).getOrElse {
+            throw new MessageOnlyException(
+                "linking report was not attributed with output directory. " +
+                "Please report this as s Scala.js bug.")
+          }
+        }
+
+        val inputJSFile = linkerOutputDir / module.jsFileName
+        val inputSourceMapFile = module.sourceMapName.map(linkerOutputDir / _)
+
+        val expectedInputFiles = Set(inputJSFile) ++ inputSourceMapFile
+
+        if (IO.listFiles(linkerOutputDir).toSet != expectedInputFiles) {
+          throw new MessageOnlyException(
+              "linking produced more than a single JS file (and source map). " +
+              "this is likely due to multiple modules being output. " +
+              s"${legacyKey.key} can only deal with a single module. " +
+              s"Did you mean to invoke ${key.key} instead?")
+        }
+
+        val outputJSFile = (artifactPath in legacyKey).value
+        val outputSourceMapFile = new File(outputJSFile.getPath + ".map")
+
+        IO.copyFile(inputJSFile, outputJSFile, preserveLastModified = true)
+        inputSourceMapFile.foreach(
+            IO.copyFile(_, outputSourceMapFile, preserveLastModified = true))
+
+        Attributed.blank(outputJSFile)
+          // we have always attached a source map, even if it wasn't written.
+          .put(scalaJSSourceMap, outputSourceMapFile)
+          .put(scalaJSModuleKind, module.moduleKind)
+      }
   )
 
   val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
       incOptions ~= scalaJSPatchIncOptions
   ) ++ (
-      scalaJSStageSettings(Stage.FastOpt, fastOptJS) ++
-      scalaJSStageSettings(Stage.FullOpt, fullOptJS)
+      scalaJSStageSettings(Stage.FastOpt, linkJSDev, fastOptJS) ++
+      scalaJSStageSettings(Stage.FullOpt, linkJSProd, fullOptJS)
   ) ++ (
       Seq(fastOptJS, fullOptJS).map { key =>
         moduleName in key := {
@@ -343,13 +375,21 @@ private[sbtplugin] object ScalaJSPluginInternal {
         }
       },
 
+      scalaJSLinkerOutputDirectory in linkJSDev :=
+        ((crossTarget in fastOptJS).value /
+            ((moduleName in fastOptJS).value + "-dev")),
+
+      scalaJSLinkerOutputDirectory in linkJSProd :=
+        ((crossTarget in fullOptJS).value /
+            ((moduleName in fullOptJS).value + "-prod")),
+
       artifactPath in fastOptJS :=
         ((crossTarget in fastOptJS).value /
-            ((moduleName in fastOptJS).value + "-fastopt")),
+            ((moduleName in fastOptJS).value + "-fastopt.js")),
 
       artifactPath in fullOptJS :=
         ((crossTarget in fullOptJS).value /
-            ((moduleName in fullOptJS).value + "-opt")),
+            ((moduleName in fullOptJS).value + "-opt.js")),
 
       scalaJSLinkerConfig in fullOptJS ~= { prevConfig =>
         val useClosure = prevConfig.moduleKind != ModuleKind.ESModule
