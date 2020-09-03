@@ -119,7 +119,7 @@ def Tasks = [
         helloworld$v/clean &&
     sbtretry ++$scala \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
-	'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
+        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
         helloworld$v/run \
         helloworld$v/clean &&
     sbtretry ++$scala \
@@ -128,8 +128,8 @@ def Tasks = [
         helloworld$v/run &&
     sbtretry ++$scala \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
-	'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
-	'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
+        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
+        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         helloworld$v/run &&
     sbtretry ++$scala \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
