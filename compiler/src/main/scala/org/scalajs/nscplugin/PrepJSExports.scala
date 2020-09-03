@@ -270,12 +270,10 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
           val moduleID = if (annot.args.size == 1) {
             DefaultModuleID
           } else {
-            annot.stringArg(1).fold {
-              reporter.error(annot.args(1).pos, "moduleID must be a literal string")
+            annot.stringArg(1).getOrElse {
+              reporter.error(annot.args(1).pos,
+                  "moduleID must be a literal string")
               DefaultModuleID
-            } { str =>
-              // TODO: Check module ID
-              str
             }
           }
 
