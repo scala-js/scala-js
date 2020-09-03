@@ -878,7 +878,7 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  is defined, and applies the partial function to it.
    */
   def collectFirst[B](f: PartialFunction[A, B]): Option[B] = {
-    // scalastyle:return off
+    // scalastyle:off return
     var i = 0
     var matched = true
     def d(x: A): B = {
@@ -894,7 +894,7 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
       i += 1
     }
     None
-    // scalastyle:return on
+    // scalastyle:on return
   }
 
   /** Returns an array formed from this array and another iterable collection
@@ -1418,7 +1418,7 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *    `offset`, otherwise `false`.
    */
   def startsWith[B >: A](that: js.Array[B], offset: Int): Boolean = {
-    // scalastyle:return off
+    // scalastyle:off return
     val safeOffset = offset.max(0)
     val thatl = that.length
     if (thatl > xs.length - safeOffset) {
@@ -1432,7 +1432,7 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
       }
       true
     }
-    // scalastyle:return on
+    // scalastyle:on return
   }
 
   /** Tests whether this array ends with the given array.
