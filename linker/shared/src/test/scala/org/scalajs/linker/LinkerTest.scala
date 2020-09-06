@@ -17,9 +17,6 @@ import scala.concurrent._
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.ir.ClassKind
-import org.scalajs.ir.EntryPointsInfo
-import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 
 import org.scalajs.logging._
@@ -28,12 +25,11 @@ import org.scalajs.junit.async._
 
 import org.scalajs.linker.interface._
 import org.scalajs.linker.testutils._
+import org.scalajs.linker.testutils.LinkingUtils._
 import org.scalajs.linker.testutils.TestIRBuilder._
 
 class LinkerTest {
   import scala.concurrent.ExecutionContext.Implicits.global
-
-  import LinkerTest._
 
   /** Makes sure that the minilib is sufficient to completely link a hello
    *  world.
@@ -88,20 +84,4 @@ class LinkerTest {
     (1 to 4).foldLeft(firstRun)((p, _) => callInFailedState(p))
   }
 
-}
-
-object LinkerTest {
-  def testLink(classDefs: Seq[ClassDef],
-      moduleInitializers: List[ModuleInitializer])(
-      implicit ec: ExecutionContext): Future[Unit] = {
-
-    val linker = StandardImpl.linker(StandardConfig())
-    val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
-    val output = LinkerOutput(MemOutputFile())
-
-    TestIRRepo.minilib.flatMap { stdLibFiles =>
-      linker.link(stdLibFiles ++ classDefsFiles, moduleInitializers,
-          output, new ScalaConsoleLogger(Level.Error))
-    }
-  }
 }

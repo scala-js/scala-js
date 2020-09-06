@@ -33,6 +33,7 @@ import org.scalajs.linker.standard._
 
 import org.scalajs.linker.testutils._
 import org.scalajs.linker.testutils.IRAssertions._
+import org.scalajs.linker.testutils.LinkingUtils._
 import org.scalajs.linker.testutils.TestIRBuilder._
 
 class OptimizerTest {
@@ -203,6 +204,70 @@ class OptimizerTest {
         case _                                   => false
       })
     }
+  }
+
+  @Test
+  def testOptimizerDoesNotEliminateRequiredLabeledBlockEmittedByDotty_issue4171(): AsyncResult = await {
+    /* For the following source code:
+     *
+     * (null: Any) match {
+     *   case (_: Int) | (_: String) =>
+     * }
+     *
+     * the dotty compiler generates the following IR:
+     *
+     * matchResult1: {
+     *   val x1: any = null;
+     *   matchAlts1: {
+     *     matchAlts2: {
+     *       if (x1.isInstanceOf[java.lang.Integer]) {
+     *         return@matchAlts2 (void 0)
+     *       };
+     *       if (x1.isInstanceOf[java.lang.String]) {
+     *         return@matchAlts2 (void 0)
+     *       };
+     *       return@matchAlts1 (void 0)
+     *     };
+     *     return@matchResult1 (void 0)
+     *   };
+     *   throw new scala.MatchError().<init>;Ljava.lang.Object;V(x1)
+     * }
+     *
+     * The optimizer used to erroneously get rid of the `matchAlts1` labeled
+     * block, although it could not remove the `return@matchAlts1`. This led to
+     * a crash in the Emitter.
+     *
+     * This test reproduces that exact IR by hand, and verifies that the
+     * optimized code can be linked all the way to the Emitter.
+     */
+
+    val matchResult1 = LabelIdent("matchResult1")
+    val x1 = LocalIdent("x1")
+    val matchAlts1 = LabelIdent("matchAlts1")
+    val matchAlts2 = LabelIdent("matchAlts2")
+
+    val classDefs = Seq(
+        mainTestClassDef(Block(
+            Labeled(matchResult1, NoType, Block(
+                VarDef(x1, NON, AnyType, mutable = false, Null()),
+                Labeled(matchAlts1, NoType, Block(
+                    Labeled(matchAlts2, NoType, Block(
+                        If(IsInstanceOf(VarRef(x1)(AnyType), ClassType(BoxedIntegerClass)), {
+                          Return(Undefined(), matchAlts2)
+                        }, Skip())(NoType),
+                        If(IsInstanceOf(VarRef(x1)(AnyType), ClassType(BoxedStringClass)), {
+                          Return(Undefined(), matchAlts2)
+                        }, Skip())(NoType),
+                        Return(Undefined(), matchAlts1)
+                    )),
+                    Return(Undefined(), matchResult1)
+                )),
+                Throw(New("java.lang.Exception", NoArgConstructorName, Nil))
+            ))
+        ))
+    )
+
+    testLink(classDefs, MainTestModuleInitializers)
   }
 
 }

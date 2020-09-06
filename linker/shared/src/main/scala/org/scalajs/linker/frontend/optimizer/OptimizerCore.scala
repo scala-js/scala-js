@@ -3969,7 +3969,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         returnedTypes.reduce(constrainedLub(_, _, resultType))
       val returnCount = returnedTypes.size - 1
 
-      tryOptimizePatternMatch(oldLabelName, refinedType,
+      tryOptimizePatternMatch(oldLabelName, newLabel, refinedType,
           returnCount, newBody) getOrElse {
         Labeled(LabelIdent(newLabel), refinedType, newBody)
       }
@@ -4040,8 +4040,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
    *  !!! There is quite of bit of code duplication with
    *      GenJSCode.genOptimizedMatchEndLabeled.
    */
-  def tryOptimizePatternMatch(oldLabelName: LabelName, refinedType: Type,
-      returnCount: Int, body: Tree): Option[Tree] = {
+  def tryOptimizePatternMatch(oldLabelName: LabelName, newLabelName: LabelName,
+      refinedType: Type, returnCount: Int, body: Tree): Option[Tree] = {
     // Heuristic for speed: only try to optimize labels likely named 'matchEnd...'
     val isMaybeMatchEndLabel = {
       val oldEncodedName = oldLabelName.encoded
@@ -4065,7 +4065,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
           if (revAlts.size == returnCount - 1) {
             def tryDropReturn(body: Tree): Option[Tree] = body match {
-              case BlockOrAlone(prep, Return(result, _)) =>
+              case BlockOrAlone(prep, Return(result, LabelIdent(`newLabelName`))) =>
                 val result1 =
                   if (refinedType == NoType) keepOnlySideEffects(result)
                   else result
