@@ -1189,9 +1189,9 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: Duplicate top-level export with name 'foo': a field may not share its exported name with another field or method
-      |      val a: Int = 1
-      |          ^
+      |newSource1.scala:4: error: export overload conflicts with export of variable b: a field may not share its exported name with another export
+      |      @JSExportTopLevel("foo")
+      |       ^
     """
   }
 
@@ -1207,7 +1207,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:7: error: Duplicate top-level export with name 'foo': a field may not share its exported name with another field or method
+      |newSource1.scala:4: error: export overload conflicts with export of method b: they are of different types (Field / Method)
       |      @JSExportTopLevel("foo")
       |       ^
     """
@@ -1222,7 +1222,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:4: error: Duplicate top-level export with name 'foo': a field may not share its exported name with another field or method
+      |newSource1.scala:4: error: export overload conflicts with export of value b: they are of different types (Method / Field)
       |      @JSExportTopLevel("foo")
       |       ^
     """
@@ -1616,9 +1616,9 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:7: error: Duplicate static export with name 'a': a field may not share its exported name with another field or method
-      |      val a: Int = 1
-      |          ^
+      |newSource1.scala:6: error: export overload conflicts with export of variable b: a field may not share its exported name with another export
+      |      @JSExportStatic
+      |       ^
     """
   }
 
@@ -1636,8 +1636,8 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:9: error: Duplicate static export with name 'a': a field may not share its exported name with another field or method
-      |      @JSExportStatic("a")
+      |newSource1.scala:6: error: export overload conflicts with export of method b: they are of different types (Field / Method)
+      |      @JSExportStatic
       |       ^
     """
 
@@ -1653,7 +1653,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:6: error: Duplicate static export with name 'a': a field may not share its exported name with another field or method
+      |newSource1.scala:6: error: export overload conflicts with export of value b: they are of different types (Method / Field)
       |      @JSExportStatic
       |       ^
     """
@@ -1673,8 +1673,8 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:9: error: Duplicate static export with name 'a': a field may not share its exported name with another field or method
-      |      @JSExportStatic("a")
+      |newSource1.scala:6: error: export overload conflicts with export of method b: they are of different types (Field / Property)
+      |      @JSExportStatic
       |       ^
     """
 
@@ -1690,7 +1690,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:6: error: Duplicate static export with name 'a': a field may not share its exported name with another field or method
+      |newSource1.scala:6: error: export overload conflicts with export of value b: they are of different types (Property / Field)
       |      @JSExportStatic
       |       ^
     """
@@ -1710,9 +1710,9 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:7: error: Exported property a conflicts with b
-      |      def a: Int = 1
-      |          ^
+      |newSource1.scala:6: error: export overload conflicts with export of method b: they are of different types (Property / Method)
+      |      @JSExportStatic
+      |       ^
     """
 
     """
@@ -1727,9 +1727,9 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:7: error: Exported method a conflicts with b
-      |      def a(x: Int): Int = x + 1
-      |          ^
+      |newSource1.scala:6: error: export overload conflicts with export of method b: they are of different types (Method / Property)
+      |      @JSExportStatic
+      |       ^
     """
   }
 

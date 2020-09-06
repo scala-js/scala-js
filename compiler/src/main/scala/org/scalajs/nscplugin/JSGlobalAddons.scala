@@ -37,21 +37,6 @@ trait JSGlobalAddons extends JSDefinitions
       JSGlobalAddons.this.asInstanceOf[ThisJSGlobalAddons]
   }
 
-  sealed abstract class ExportDestination
-
-  object ExportDestination {
-    /** Export in the "normal" way: as an instance member, or at the top-level
-     *  for naturally top-level things (classes and modules).
-     */
-    case object Normal extends ExportDestination
-
-    /** Export at the top-level. */
-    case object TopLevel extends ExportDestination
-
-    /** Export as a static member of the companion class. */
-    case object Static extends ExportDestination
-  }
-
   /** Extracts the super type of a `Template`, with type parameters reinvented
    *  so that the type is well-formed outside of the `Template`, i.e., at the
    *  same level where the corresponding `ImplDef` is defined.
@@ -101,9 +86,13 @@ trait JSGlobalAddons extends JSDefinitions
     import scala.reflect.NameTransformer
     import scala.reflect.internal.Flags
 
-    /** Symbols of constructors and modules that are to be exported */
-    private val exportedSymbols =
-      mutable.Map.empty[Symbol, List[ExportInfo]]
+    /** TopLevel exports, by owner. */
+    private val topLevelExports =
+      mutable.Map.empty[Symbol, List[TopLevelExportInfo]]
+
+    /** Static exports, by owner. */
+    private val staticExports =
+      mutable.Map.empty[Symbol, List[StaticExportInfo]]
 
     /** JS native load specs of the symbols in the current compilation run. */
     private val jsNativeLoadSpecs =
@@ -113,11 +102,18 @@ trait JSGlobalAddons extends JSDefinitions
     private val methodExportPrefix = exportPrefix + "meth$"
     private val propExportPrefix = exportPrefix + "prop$"
 
-    trait ExportInfo {
-      val jsName: String
+    /** Info for a non-member export. */
+    sealed trait ExportInfo {
       val pos: Position
-      val destination: ExportDestination
     }
+
+    /* Not final because it causes the follwing compile warning:
+     * "The outer reference in this type test cannot be checked at run time."
+     */
+    case class TopLevelExportInfo(jsName: String)(val pos: Position)
+        extends ExportInfo
+    case class StaticExportInfo(jsName: String)(val pos: Position)
+        extends ExportInfo
 
     sealed abstract class JSName {
       def displayName: String
@@ -136,19 +132,26 @@ trait JSGlobalAddons extends JSDefinitions
     }
 
     def clearGlobalState(): Unit = {
-      exportedSymbols.clear()
+      topLevelExports.clear()
+      staticExports.clear()
       jsNativeLoadSpecs.clear()
     }
 
-    def registerForExport(sym: Symbol, infos: List[ExportInfo]): Unit = {
-      assert(!exportedSymbols.contains(sym),
-          "Same symbol exported twice: " + sym)
-      exportedSymbols.put(sym, infos)
+    def registerTopLevelExports(sym: Symbol, infos: List[TopLevelExportInfo]): Unit = {
+      assert(!topLevelExports.contains(sym), s"symbol exported twice: $sym")
+      topLevelExports.put(sym, infos)
     }
 
-    def registeredExportsOf(sym: Symbol): List[ExportInfo] = {
-      exportedSymbols.getOrElse(sym, Nil)
+    def registerStaticExports(sym: Symbol, infos: List[StaticExportInfo]): Unit = {
+      assert(!staticExports.contains(sym), s"symbol exported twice: $sym")
+      staticExports.put(sym, infos)
     }
+
+    def topLevelExportsOf(sym: Symbol): List[TopLevelExportInfo] =
+      topLevelExports.getOrElse(sym, Nil)
+
+    def staticExportsOf(sym: Symbol): List[StaticExportInfo] =
+      staticExports.getOrElse(sym, Nil)
 
     /** creates a name for an export specification */
     def scalaExportName(jsName: String, isProp: Boolean): TermName = {
@@ -197,11 +200,11 @@ trait JSGlobalAddons extends JSDefinitions
 
     /** has this symbol to be translated into a JS getter (both directions)? */
     def isJSGetter(sym: Symbol): Boolean = {
-      /* We only get here when `sym.isMethod`, thus `sym.isModule` implies that
-       * `sym` is the module's accessor. In 2.12, module accessors are synthesized
+      /* `sym.isMethod && sym.isModule` implies that `sym` is the module's
+       * accessor. In 2.12, module accessors are synthesized
        * after uncurry, thus their first info is a MethodType at phase fields.
        */
-      sym.isModule || (sym.tpe.params.isEmpty && enteringUncurryIfAtPhaseAfter {
+      (sym.isMethod && sym.isModule) || (sym.tpe.params.isEmpty && enteringUncurryIfAtPhaseAfter {
         sym.tpe match {
           case _: NullaryMethodType              => true
           case PolyType(_, _: NullaryMethodType) => true
@@ -213,23 +216,6 @@ trait JSGlobalAddons extends JSDefinitions
     /** has this symbol to be translated into a JS setter (both directions)? */
     def isJSSetter(sym: Symbol): Boolean =
       nme.isSetterName(sym.name) && sym.isMethod && !sym.isConstructor
-
-    /** Is this field symbol a static field at the IR level? */
-    def isFieldStatic(sym: Symbol): Boolean = {
-      sym.owner.isModuleClass && // usually false, avoids a lookup in the map
-      registeredExportsOf(sym).nonEmpty
-    }
-
-    /** The export info of a static field.
-     *
-     *  Requires `isFieldStatic(sym)`.
-     *
-     *  The result is non-empty. If it contains an `ExportInfo` with
-     *  `isStatic = true`, then it is the only element in the list. Otherwise,
-     *  all elements have `isTopLevel = true`.
-     */
-    def staticFieldInfoOf(sym: Symbol): List[ExportInfo] =
-      registeredExportsOf(sym)
 
     /** has this symbol to be translated into a JS bracket access (JS to Scala) */
     def isJSBracketAccess(sym: Symbol): Boolean =

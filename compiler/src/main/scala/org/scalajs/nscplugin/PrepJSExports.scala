@@ -32,9 +32,26 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
 
   import scala.reflect.internal.Flags
 
-  case class ExportInfo(jsName: String,
+  private sealed abstract class ExportDestination
+
+  private object ExportDestination {
+    /** Export in the "normal" way: as an instance member, or at the top-level
+     *  for naturally top-level things (classes and modules).
+     */
+    case object Normal extends ExportDestination
+
+    /** Export at the top-level. */
+    case object TopLevel extends ExportDestination
+
+    /** Export as a static member of the companion class. */
+    case object Static extends ExportDestination
+  }
+
+  /* Not final because it causes the follwing compile warning:
+   * "The outer reference in this type test cannot be checked at run time."
+   */
+  private case class ExportInfo(jsName: String,
       destination: ExportDestination)(val pos: Position)
-      extends jsInterop.ExportInfo
 
   /** Generate the exporter for the given DefDef
    *  or ValDef (abstract val in class, val in trait or lazy val;
@@ -84,7 +101,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
       // do not need inheritance and such. But we want to check their sanity
       // here by previous tests and the following ones.
       if (checkClassOrModuleExports(clsSym, exports.head.pos))
-        jsInterop.registerForExport(baseSym, exports)
+        registerStaticAndTopLevelExports(baseSym, exports)
 
       Nil
     } else {
@@ -100,7 +117,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
       /* We can handle top level exports and static exports entirely in the
        * backend. So just register them here.
        */
-      jsInterop.registerForExport(baseSym, topLevelAndStaticExports)
+      registerStaticAndTopLevelExports(baseSym, topLevelAndStaticExports)
 
       // Actually generate exporter methods
       normalExports.flatMap(exp => genExportDefs(baseSym, exp.jsName, exp.pos))
@@ -118,8 +135,27 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
 
     if (exports.nonEmpty && checkClassOrModuleExports(sym, exports.head.pos) &&
         !isScalaClass) {
-      jsInterop.registerForExport(sym, exports)
+      registerStaticAndTopLevelExports(sym, exports)
     }
+  }
+
+  private def registerStaticAndTopLevelExports(sym: Symbol,
+      exports: List[ExportInfo]): Unit = {
+    val topLevel = exports.collect {
+      case info @ ExportInfo(jsName, ExportDestination.TopLevel) =>
+        jsInterop.TopLevelExportInfo(jsName)(info.pos)
+    }
+
+    if (topLevel.nonEmpty)
+      jsInterop.registerTopLevelExports(sym, topLevel)
+
+    val static = exports.collect {
+      case info @ ExportInfo(jsName, ExportDestination.Static) =>
+        jsInterop.StaticExportInfo(jsName)(info.pos)
+    }
+
+    if (static.nonEmpty)
+      jsInterop.registerStaticExports(sym, static)
   }
 
   /** Check a class or module for export.
@@ -416,7 +452,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
           }
         }
 
-        jsInterop.registerForExport(sym.accessed, topLevelAndStaticExportInfos)
+        registerStaticAndTopLevelExports(sym.accessed, topLevelAndStaticExportInfos)
       }
 
       actualExportInfos

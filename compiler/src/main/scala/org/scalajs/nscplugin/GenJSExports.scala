@@ -71,188 +71,146 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         .map(genJSClassDispatcher(classSym, _))
     }
 
-    def genConstructorExports(
-        classSym: Symbol): List[js.TopLevelMethodExportDef] = {
+    private sealed trait ExportKind
 
-      val constructors = classSym.tpe.member(nme.CONSTRUCTOR).alternatives
+    private object ExportKind {
+      case object Module extends ExportKind
+      case object JSClass extends ExportKind
+      case object Constructor extends ExportKind
+      case object Method extends ExportKind
+      case object Property extends ExportKind
+      case object Field extends ExportKind
 
-      // Generate exports from constructors and their annotations
-      val ctorExports = for {
-        ctor <- constructors
-        exp  <- jsInterop.registeredExportsOf(ctor)
-      } yield (exp, ctor)
-
-      if (ctorExports.isEmpty) {
-        Nil
-      } else {
-        val exports = for {
-          (jsName, specs) <- ctorExports.groupBy(_._1.jsName) // group by exported name
-        } yield {
-          val ctors = specs.map(s => ExportedSymbol(s._2))
-
-          implicit val pos = ctors.head.pos
-
-          val methodDef = withNewLocalNameScope {
-            genExportMethod(ctors, JSName.Literal(jsName), static = true)
-          }
-
-          js.TopLevelMethodExportDef(methodDef)
-        }
-
-        exports.toList
+      def apply(sym: Symbol): ExportKind = {
+        if (isStaticModule(sym)) Module
+        else if (sym.isClass) JSClass
+        else if (sym.isConstructor) Constructor
+        else if (!sym.isMethod) Field
+        else if (jsInterop.isJSProperty(sym)) Property
+        else Method
       }
     }
 
-    def genJSClassExports(
-        classSym: Symbol): List[js.TopLevelJSClassExportDef] = {
-      for {
-        exp <- jsInterop.registeredExportsOf(classSym)
+    private def checkSameKind(tups: List[(jsInterop.ExportInfo, Symbol)]): Option[ExportKind] = {
+      assert(tups.nonEmpty, "must have at least one export")
+
+      val firstSym = tups.head._2
+      val overallKind = ExportKind(firstSym)
+      var bad = false
+
+      for ((info, sym) <- tups.tail) {
+        val kind = ExportKind(sym)
+
+        if (kind != overallKind) {
+          bad = true
+          reporter.error(info.pos, "export overload conflicts with export of " +
+              s"$firstSym: they are of different types ($kind / $overallKind)")
+        }
+      }
+
+      if (bad) None
+      else Some(overallKind)
+    }
+
+    private def checkSingleField(tups: List[(jsInterop.ExportInfo, Symbol)]): Symbol = {
+      assert(tups.nonEmpty, "must have at least one export")
+
+      val firstSym = tups.head._2
+
+      for ((info, _) <- tups.tail) {
+        reporter.error(info.pos, "export overload conflicts with export of " +
+            s"$firstSym: a field may not share its exported name with another export")
+      }
+
+      firstSym
+    }
+
+    def genTopLevelExports(classSym: Symbol): List[js.TopLevelExportDef] = {
+      val exports = for {
+        sym <- List(classSym) ++ classSym.info.members
+        info <- jsInterop.topLevelExportsOf(sym)
       } yield {
-        implicit val pos = exp.pos
-
-        exp.destination match {
-          case ExportDestination.Normal | ExportDestination.TopLevel =>
-            js.TopLevelJSClassExportDef(exp.jsName)
-          case ExportDestination.Static =>
-            throw new AssertionError(
-                "Found a class export static for " + classSym.fullName)
-        }
-      }
-    }
-
-    def genModuleAccessorExports(
-        classSym: Symbol): List[js.TopLevelExportDef] = {
-
-      for {
-        exp <- jsInterop.registeredExportsOf(classSym)
-      } yield {
-        implicit val pos = exp.pos
-
-        exp.destination match {
-          case ExportDestination.Normal =>
-            throw new AssertionError(
-                "Found a non-top-level module export for " + classSym.fullName)
-          case ExportDestination.TopLevel =>
-            js.TopLevelModuleExportDef(exp.jsName)
-          case ExportDestination.Static =>
-            throw new AssertionError(
-                "Found a module export static for " + classSym.fullName)
-        }
-      }
-    }
-
-    def genTopLevelExports(classSym: Symbol): List[js.TopLevelExportDef] =
-      genTopLevelOrStaticExports[js.TopLevelExportDef](classSym, ExportDestination.TopLevel)
-
-    def genStaticExports(classSym: Symbol): List[js.MemberDef] =
-      genTopLevelOrStaticExports[js.MemberDef](classSym, ExportDestination.Static)
-
-    private def genTopLevelOrStaticExports[A <: js.IRNode: ClassTag](
-        classSym: Symbol, destination: ExportDestination): List[A] = {
-      require(
-          destination == ExportDestination.TopLevel ||
-          destination == ExportDestination.Static,
-          destination)
-
-      val exportsNamesAndPositions = {
-        genTopLevelOrStaticFieldExports(classSym, destination) ++
-        genTopLevelOrStaticMethodExports(classSym, destination)
+        (info, sym)
       }
 
-      for {
-        exportsWithSameName <- exportsNamesAndPositions.groupBy(_._2).values
-        duplicate <- exportsWithSameName.tail
-      } {
-        val strKind =
-          if (destination == ExportDestination.TopLevel) "top-level"
-          else "static"
-        reporter.error(duplicate._3,
-            s"Duplicate $strKind export with name '${duplicate._2}': " +
-            "a field may not share its exported name with another field or " +
-            "method")
-      }
-
-      exportsNamesAndPositions.map(_._1)
-    }
-
-    private def genTopLevelOrStaticFieldExports[A <: js.IRNode: ClassTag](
-        classSym: Symbol,
-        destination: ExportDestination): List[(A, String, Position)] = {
       (for {
-        fieldSym <- classSym.info.members
-        if !fieldSym.isMethod && fieldSym.isTerm && !fieldSym.isModule
-        export <- jsInterop.registeredExportsOf(fieldSym)
-        if export.destination == destination
+        (info, tups) <- exports.groupBy(_._1)
+        kind <- checkSameKind(tups)
       } yield {
-        implicit val pos = fieldSym.pos
+        import ExportKind._
 
-        val tree = if (destination == ExportDestination.Static) {
-          // static fields must always be mutable
-          val flags = js.MemberFlags.empty
-            .withNamespace(js.MemberNamespace.PublicStatic)
-            .withMutable(true)
-          val name = js.StringLiteral(export.jsName)
-          val irTpe = genExposedFieldIRType(fieldSym)
-          checkedCast[A](js.JSFieldDef(flags, name, irTpe))
-        } else {
-          checkedCast[A](
-              js.TopLevelFieldExportDef(export.jsName, encodeFieldSym(fieldSym)))
+        implicit val pos = info.pos
+
+        kind match {
+          case Module =>
+            js.TopLevelModuleExportDef(info.jsName)
+
+          case JSClass =>
+            assert(isNonNativeJSClass(classSym), "found export on non-JS class")
+            js.TopLevelJSClassExportDef(info.jsName)
+
+          case Constructor | Method =>
+            val exported = tups.map(t => ExportedSymbol(t._2))
+
+            val methodDef = withNewLocalNameScope {
+              genExportMethod(exported, JSName.Literal(info.jsName), static = true)
+            }
+
+            js.TopLevelMethodExportDef(methodDef)
+
+          case Property =>
+            throw new AssertionError("found top-level exported property")
+
+          case Field =>
+            val sym = checkSingleField(tups)
+            js.TopLevelFieldExportDef(info.jsName, encodeFieldSym(sym))
         }
-
-        (tree, export.jsName, pos)
       }).toList
     }
 
-    private def genTopLevelOrStaticMethodExports[A <: js.IRNode: ClassTag](
-        classSym: Symbol,
-        destination: ExportDestination): List[(A, String, Position)] = {
-      val allRelevantExports = for {
-        methodSym <- classSym.info.members
-        if methodSym.isMethod && !methodSym.isConstructor
-        export <- jsInterop.registeredExportsOf(methodSym)
-        if export.destination == destination
+    def genStaticExports(classSym: Symbol): List[js.MemberDef] = {
+      val exports = (for {
+        sym <- classSym.info.members
+        info <- jsInterop.staticExportsOf(sym)
       } yield {
-        (export, methodSym)
-      }
+        (info, sym)
+      }).toList
 
-      for {
-        (jsName, tups) <- allRelevantExports.groupBy(_._1.jsName).toList
+      (for {
+        (info, tups) <- exports.groupBy(_._1)
+        kind <- checkSameKind(tups)
       } yield {
-        implicit val pos = tups.head._1.pos
+        def alts = tups.map(_._2)
 
-        val alts = tups.map(_._2).toList
-        val firstAlt = alts.head
-        val isProp = jsInterop.isJSProperty(firstAlt)
+        implicit val pos = info.pos
 
-        // Check for conflict between method vs property
+        import ExportKind._
 
-        for {
-          conflicting <- alts.tail
-          if jsInterop.isJSProperty(conflicting) != isProp
-        } {
-          val kindStr = if (isProp) "method" else "property"
-          reporter.error(conflicting.pos,
-              s"Exported $kindStr $jsName conflicts with ${firstAlt.nameString}")
+        kind match {
+          case Method =>
+            genMemberExportOrDispatcher(
+                JSName.Literal(info.jsName), isProp = false, alts, static = true)
+
+          case Property =>
+            genMemberExportOrDispatcher(
+                JSName.Literal(info.jsName), isProp = true, alts, static = true)
+
+          case Field =>
+            val sym = checkSingleField(tups)
+
+            // static fields must always be mutable
+            val flags = js.MemberFlags.empty
+              .withNamespace(js.MemberNamespace.PublicStatic)
+              .withMutable(true)
+            val name = js.StringLiteral(info.jsName)
+            val irTpe = genExposedFieldIRType(sym)
+            js.JSFieldDef(flags, name, irTpe)
+
+          case kind =>
+            throw new AssertionError(s"unexpected static export kind: $kind")
         }
-
-        // Generate the export
-
-        val exportedMember = genMemberExportOrDispatcher(classSym,
-            JSName.Literal(jsName), isProp, alts, static = true)
-
-        val exportDef = {
-          if (destination == ExportDestination.Static)
-            checkedCast[A](exportedMember)
-          else
-            checkedCast[A](js.TopLevelMethodExportDef(exportedMember.asInstanceOf[js.JSMethodDef]))
-        }
-
-        (exportDef, jsName, pos)
-      }
+      }).toList
     }
-
-    private def checkedCast[A: ClassTag](x: js.IRNode): A =
-      classTag[A].runtimeClass.asInstanceOf[Class[A]].cast(x)
 
     private def genMemberExport(classSym: Symbol, name: TermName): js.MemberDef = {
       /* This used to be `.member(name)`, but it caused #3538, since we were
@@ -282,8 +240,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
             s"Exported $kind $jsName conflicts with ${alts.head.fullName}")
       }
 
-      genMemberExportOrDispatcher(classSym, JSName.Literal(jsName), isProp,
-          alts, static = false)
+      genMemberExportOrDispatcher(JSName.Literal(jsName), isProp, alts, static = false)
     }
 
     private def genJSClassDispatcher(classSym: Symbol, name: JSName): js.MemberDef = {
@@ -311,13 +268,12 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         implicit val pos = alts.head.pos
         js.JSPropertyDef(js.MemberFlags.empty, genExpr(name), None, None)
       } else {
-        genMemberExportOrDispatcher(classSym, name, isProp, alts,
-            static = false)
+        genMemberExportOrDispatcher(name, isProp, alts, static = false)
       }
     }
 
-    def genMemberExportOrDispatcher(classSym: Symbol, jsName: JSName,
-        isProp: Boolean, alts: List[Symbol], static: Boolean): js.MemberDef = {
+    def genMemberExportOrDispatcher(jsName: JSName, isProp: Boolean,
+        alts: List[Symbol], static: Boolean): js.MemberDef = {
       withNewLocalNameScope {
         if (isProp)
           genExportProperty(alts, jsName, static)
