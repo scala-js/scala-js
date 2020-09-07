@@ -87,12 +87,6 @@ class RuntimeTypesTest {
     assertThrows(classOf[ClassCastException], "a".asInstanceOf[Null])
   }
 
-  @Test def scala_Null_classTag_of_scala_Null_should_contain_proper_Class_issue_297(): Unit = {
-    val tag = scala.reflect.classTag[Null]
-    assertTrue(tag.runtimeClass != null)
-    assertEquals("scala.runtime.Null$", tag.runtimeClass.getName)
-  }
-
   @Test def scala_Null_casts_to_scala_Null_should_succeed_on_null(): Unit = {
     null.asInstanceOf[Null]
   }
