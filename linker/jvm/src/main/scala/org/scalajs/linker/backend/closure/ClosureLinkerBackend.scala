@@ -189,8 +189,16 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
       w.write(header)
       w.write(body)
       w.write(footer)
-      output.sourceMapURI.foreach(uri =>
-          w.write("//# sourceMappingURL=" + uri.toASCIIString + "\n"))
+
+      /* #4174: Do not add the sourceMappingURL if we do not actually emit the
+       * source map. This is also specified by `LinkerOutput.sourceMapURI`,
+       * which says that it should be ignored if `output.sourceMap` is not set
+       * or if source map production is disabled.
+       */
+      if (sourceMap.isDefined && output.sourceMap.isDefined) {
+        output.sourceMapURI.foreach(
+            uri => w.write("//# sourceMappingURL=" + uri.toASCIIString + "\n"))
+      }
     }
 
     // Write source map (if available)
