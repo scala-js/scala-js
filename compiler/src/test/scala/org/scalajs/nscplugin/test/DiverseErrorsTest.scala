@@ -299,4 +299,23 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
 
   }
 
+  @Test
+  def veryLongStringLiteral(): Unit = {
+    // Create a string whose length is greater than 65,635 bytes
+    val len = 70000
+    val charArray = new Array[Char](len)
+    java.util.Arrays.fill(charArray, 'A')
+    val veryLongString = new String(charArray)
+
+    s"""
+    object Foo {
+      val bar: String = "$veryLongString"
+    }
+    """ hasErrors
+    """
+      |error: Error while emitting newSource1.scala
+      |encoded string too long: 70000 bytes
+    """
+  }
+
 }
