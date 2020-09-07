@@ -418,6 +418,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         for (tree <- clDefs) {
           genIRFile(cunit, tree)
         }
+      } catch {
+        // Handle exceptions in exactly the same way as the JVM backend
+        case ex: InterruptedException =>
+          throw ex
+        case ex: Throwable =>
+          if (settings.debug)
+            ex.printStackTrace()
+          globalError(s"Error while emitting ${cunit.source}\n${ex.getMessage}")
       } finally {
         lazilyGeneratedAnonClasses.clear()
         generatedStaticForwarderClasses.clear()
