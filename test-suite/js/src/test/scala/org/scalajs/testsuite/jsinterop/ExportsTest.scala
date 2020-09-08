@@ -29,8 +29,6 @@ import org.junit.Test
 import org.scalajs.testsuite.utils.{JSUtils, Platform}
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
-// TODO: Add tests for multiple exported modules.
-
 object ExportsTest {
   /* When using ES modules, there is no way to get hold of our own exports
    * namespace from within. The build instead sets up a small script that will
@@ -38,11 +36,12 @@ object ExportsTest {
    * module namespace.
    */
 
-  private[this] var explicitlySetExportsNamespace: Option[js.Dynamic] = None
+  private[this] var explicitlySetExportsNamespaces: Option[js.Dictionary[js.Dynamic]] =
+    None
 
   @JSExportTopLevel("setExportsNamespaceForExportsTest")
-  def setExportsNamespaceForExportsTest(value: js.Dynamic): Unit =
-    explicitlySetExportsNamespace = Some(value)
+  def setExportsNamespaceForExportsTest(value: js.Dictionary[js.Dynamic]): Unit =
+    explicitlySetExportsNamespaces = Some(value)
 
   /** The namespace in which top-level exports are stored.
    *
@@ -57,11 +56,13 @@ object ExportsTest {
    *  module-global variable, which we can retrieve as if it were in the global
    *  scope.
    */
-  def exportsNameSpace: js.Dynamic = {
-    explicitlySetExportsNamespace.getOrElse {
+  def exportsNameSpace(moduleID: String): js.Dynamic = {
+    explicitlySetExportsNamespaces.fold[js.Dynamic] {
       assert(Platform.isNoModule,
           "The exportsNamespace should have been explicitly set for a module")
       null // need to use `global` instead
+    } { dict =>
+      dict(moduleID)
     }
   }
 }
@@ -69,7 +70,7 @@ object ExportsTest {
 class ExportsTest {
 
   /** The namespace in which top-level exports are stored. */
-  val exportsNamespace = ExportsTest.exportsNameSpace
+  val exportsNamespace = ExportsTest.exportsNameSpace("main")
 
   // @JSExport
 

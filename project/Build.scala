@@ -144,10 +144,6 @@ object Build {
   val bintrayProjectName = settingKey[String](
       "Project name on Bintray")
 
-  val setModuleLoopbackScript = taskKey[Option[java.nio.file.Path]](
-      "In the test suite, under ES modules, the script that sets the " +
-      "loopback module namespace")
-
   val fetchScalaSource = taskKey[File](
     "Fetches the scala source for the current scala version")
   val shouldPartest = settingKey[Boolean](
@@ -1705,11 +1701,15 @@ object Build {
         val testDir = (sourceDirectory in Test).value
         val scalaV = scalaVersion.value
 
-        val moduleKind = scalaJSLinkerConfig.value.moduleKind
+        val config = scalaJSLinkerConfig.value
+        val moduleKind = config.moduleKind
+        val hasModules = moduleKind != ModuleKind.NoModule
 
         collectionsEraDependentDirectory(scalaV, testDir) ::
         includeIf(testDir / "require-modules",
-            moduleKind != ModuleKind.NoModule) :::
+            hasModules) :::
+        includeIf(testDir / "require-multi-modules",
+            hasModules && !config.closureCompiler) :::
         includeIf(testDir / "require-dynamic-import",
             moduleKind == ModuleKind.ESModule) // this is an approximation that works for now
       },
@@ -1724,58 +1724,60 @@ object Build {
        * Only when using an ES module.
        * See the comment in ExportsTest for more details.
        */
-      setModuleLoopbackScript in Test := Def.settingDyn[Task[Option[java.nio.file.Path]]] {
+      jsEnvInput in Test ++= {
         val moduleKind = (scalaJSLinkerConfig in Test).value.moduleKind
+        val linkerResult = (scalaJSLinkerResult in Test).value
 
-        if (moduleKind == ModuleKind.NoModule) {
-          Def.task(None)
-        } else {
-          Def.task {
-            val linkedFile = (scalaJSLinkedFile in Test).value.data
-            val uri = linkedFile.getName()
+        val report = linkerResult.data
 
-            val ext = {
-              val name = linkedFile.getName
-              val dotPos = name.lastIndexOf('.')
-              if (dotPos < 0) ".js" else name.substring(dotPos)
-            }
+        val outputFile = {
+          val outputDir = linkerResult.get(scalaJSLinkerOutputDirectory.key).get
 
-            val setNamespaceScriptFile =
-              linkedFile.getParentFile() / (linkedFile.getName + "-loopback" + ext)
-
-            val content = moduleKind match {
-              case ModuleKind.ESModule =>
-                /* Due to the asynchronous nature of ES module loading, there
-                 * exists a theoretical risk for a race condition here. It is
-                 * possible that tests will start running and reaching the
-                 * ExportsTest before this module is executed. It's quite
-                 * unlikely, though, given all the message passing for the com
-                 * and all that.
-                 */
-                s"""
-                   |import * as mod from "./${escapeJS(uri)}";
-                   |mod.setExportsNamespaceForExportsTest(mod);
-                """.stripMargin
-
-              case ModuleKind.CommonJSModule =>
-                s"""
-                   |var mod = require("./${escapeJS(uri)}");
-                   |mod.setExportsNamespaceForExportsTest(mod);
-                """.stripMargin
-
-              case ModuleKind.NoModule =>
-                throw new AssertionError("fail!")
-            }
-
-            IO.write(setNamespaceScriptFile, content)
-            Some(setNamespaceScriptFile.toPath)
+          val ext = {
+            val name = report.publicModules.head.jsFileName
+            val dotPos = name.lastIndexOf('.')
+            if (dotPos < 0) ".js" else name.substring(dotPos)
           }
-        }
-      }.value,
 
-      jsEnvInput in Test ++=
-        // TODO: Fix Input type.
-        (setModuleLoopbackScript in Test).value.toList.map(Input.ESModule(_)),
+          outputDir / ("export-loopback" + ext)
+        }
+
+        val setDict = {
+          val dict = report.publicModules.map(m =>
+              s"${m.moduleID}: ${m.moduleID}"
+          ).mkString("{", ",", "}")
+
+          s"main.setExportsNamespaceForExportsTest($dict);"
+        }
+
+        moduleKind match {
+          case ModuleKind.ESModule =>
+            /* Due to the asynchronous nature of ES module loading, there
+             * exists a theoretical risk for a race condition here. It is
+             * possible that tests will start running and reaching the
+             * ExportsTest before this module is executed. It's quite
+             * unlikely, though, given all the message passing for the com
+             * and all that.
+             */
+            val imports = report.publicModules.map(m =>
+                s"""import * as ${m.moduleID} from "./${escapeJS(m.jsFileName)}";\n"""
+            ).mkString
+
+            IO.write(outputFile, imports + setDict)
+            List(Input.ESModule(outputFile.toPath))
+
+          case ModuleKind.CommonJSModule =>
+            val requires = report.publicModules.map(m =>
+                s"""var ${m.moduleID} = require("./${escapeJS(m.jsFileName)}");\n"""
+            ).mkString
+
+            IO.write(outputFile, requires + setDict)
+            List(Input.CommonJSModule(outputFile.toPath))
+
+          case ModuleKind.NoModule =>
+            Nil
+        }
+      },
 
       if (isGeneratingForIDE) {
         unmanagedSourceDirectories in Compile +=
