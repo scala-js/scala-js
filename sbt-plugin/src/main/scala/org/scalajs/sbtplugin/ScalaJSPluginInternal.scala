@@ -240,7 +240,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
           if (report.publicModules.size != 1) {
             throw new MessageOnlyException(
-                "linking returned more that one public module. " +
+                "Linking returned more that one public module. " +
                 s"${legacyKey.key} can only deal with a single module. " +
                 s"Did you mean to invoke ${key.key} instead? " +
                 s"Full report:\n$report")
@@ -252,7 +252,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val linkerOutputDir = {
           linkingResult.get(scalaJSLinkerOutputDirectory.key).getOrElse {
             throw new MessageOnlyException(
-                "linking report was not attributed with output directory. " +
+                "Linking report was not attributed with output directory. " +
                 "Please report this as s Scala.js bug.")
           }
         }
@@ -264,8 +264,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
         if (IO.listFiles(linkerOutputDir).toSet != expectedInputFiles) {
           throw new MessageOnlyException(
-              "linking produced more than a single JS file (and source map). " +
-              "this is likely due to multiple modules being output. " +
+              "Linking produced more than a single JS file (and source map). " +
+              "This is likely due to multiple modules being output. " +
               s"${legacyKey.key} can only deal with a single module. " +
               s"Did you mean to invoke ${key.key} instead?")
         }

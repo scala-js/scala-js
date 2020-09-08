@@ -37,7 +37,7 @@ object MemOutputDirectory {
     }
 
     def writeFull(name: String, buf: ByteBuffer)(
-        implicit ec: ExecutionContext): Future[Unit] = {
+        implicit ec: ExecutionContext): Future[Unit] = synchronized {
       val c = new Array[Byte](buf.remaining())
       buf.get(c)
       _content(name) = c

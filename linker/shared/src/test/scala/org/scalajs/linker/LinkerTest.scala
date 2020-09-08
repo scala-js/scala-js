@@ -14,6 +14,9 @@ package org.scalajs.linker
 
 import scala.concurrent._
 
+import java.net.URI
+import java.nio.charset.StandardCharsets
+
 import org.junit.Test
 import org.junit.Assert._
 
@@ -84,5 +87,41 @@ class LinkerTest {
     (1 to 4).foldLeft(firstRun)((p, _) => callInFailedState(p))
   }
 
-  // TODO: Test legacy API.
+  @Test
+  def testLegacyAPI(): AsyncResult = await {
+    val classDefs = Seq(
+        mainTestClassDef({
+          consoleLog(StringLiteral("Hello world!"))
+        })
+    )
+
+    val linker = StandardImpl.linker(StandardConfig())
+    val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
+
+    val jsOutput = MemOutputFile()
+    val smOutput = MemOutputFile()
+
+    val output = LinkerOutput(jsOutput)
+      .withSourceMap(smOutput)
+      .withSourceMapURI(new URI("http://example.org/my-source-map-uri"))
+      .withJSFileURI(new URI("http://example.org/my-js-file-uri"))
+
+    for {
+      minilib <- TestIRRepo.minilib
+      _ <- linker.link(minilib ++ classDefsFiles, MainTestModuleInitializers,
+          output, new ScalaConsoleLogger(Level.Error))
+    } yield {
+      val jsContent = new String(jsOutput.content, StandardCharsets.UTF_8)
+
+      // Check we replaced the source map reference.
+      assertTrue(jsContent.contains("\n//# sourceMappingURL=http://example.org/my-source-map-uri\n"))
+      assertFalse(jsContent.contains("//# sourceMappingURL=main.js.map"))
+
+      val smContent = new String(smOutput.content, StandardCharsets.UTF_8)
+
+      // Check we replaced the js file reference.
+      assertTrue(smContent.contains(""""file": "http://example.org/my-js-file-uri""""))
+      assertFalse(smContent.contains("main.js"))
+    }
+  }
 }
