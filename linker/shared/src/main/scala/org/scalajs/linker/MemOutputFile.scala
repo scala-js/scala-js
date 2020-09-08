@@ -41,35 +41,11 @@ object MemOutputFile {
       _content
     }
 
-    def newChannel()(implicit ec: ExecutionContext): Future[OutputFileImpl.Channel] =
-      Future.successful(new Channel)
-
-    override def writeFull(buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = {
+    def writeFull(buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = {
       val c = new Array[Byte](buf.remaining())
       buf.get(c)
       _content = c
       Future.successful(())
-    }
-
-    private class Channel extends OutputFileImpl.Channel {
-      private val out = new ByteArrayOutputStream
-
-      def write(buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = Future {
-        val promise = Promise[Unit]()
-        if (buf.hasArray()) {
-          out.write(buf.array(), buf.arrayOffset() + buf.position(), buf.remaining())
-          buf.position(buf.limit())
-        } else {
-          val c = new Array[Byte](buf.remaining())
-          buf.get(c)
-          out.write(c)
-        }
-      }
-
-      def close()(implicit ec: ExecutionContext): Future[Unit] = {
-        _content = out.toByteArray
-        Future.successful(())
-      }
     }
   }
 }

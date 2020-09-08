@@ -24,9 +24,33 @@ object BinaryIncompatibilities {
       exclude[ProblemRef]("org.scalajs.linker.analyzer.*"),
       exclude[ProblemRef]("org.scalajs.linker.backend.*"),
       exclude[ProblemRef]("org.scalajs.linker.frontend.*"),
+
+      // private, not an issue.
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.MemOutputFile#MemFileImpl.newChannel"),
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.MemOutputFile$MemFileImpl$Channel"),
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.PathOutputFile$AtomicChannel"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.PathOutputFile#AtomicPathOutputFileImpl.newChannel"),
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.PathOutputFile$PathChannel"),
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.PathOutputFile$PathChannel$Handler$"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.PathOutputFile#PathOutputFileImpl.newChannel"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.NodeFS.write"),
+      exclude[DirectMissingMethodProblem](
+          "org.scalajs.linker.NodeOutputFile#NodeOutputFileImpl.newChannel"),
+      exclude[MissingClassProblem](
+          "org.scalajs.linker.NodeOutputFile$NodeOutputChannel"),
   )
 
   val LinkerInterface = Seq(
+      // Breaking in stable API. OK in Minor version.
+      exclude[ProblemRef]("org.scalajs.linker.interface.unstable.*"),
   )
 
   val SbtPlugin = Seq(
