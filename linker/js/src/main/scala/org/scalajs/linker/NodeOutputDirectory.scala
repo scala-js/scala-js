@@ -38,6 +38,12 @@ object NodeOutputDirectory {
       cbFuture[Unit](NodeFS.writeFile(path, data, _))
         .map(_ => buf.position(buf.limit()))
     }
+
+    def listFiles()(implicit ec: ExecutionContext): Future[Iterable[String]] =
+      cbFuture[js.Array[String]](NodeFS.readdir(directory, _)).map(x => x)
+
+    def delete(name: String)(implicit ec: ExecutionContext): Future[Unit] =
+      cbFuture[Unit](NodeFS.unlink(name, _))
   }
 }
 
