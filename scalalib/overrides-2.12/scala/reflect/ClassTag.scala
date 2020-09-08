@@ -3,6 +3,9 @@ package reflect
 
 import java.lang.{ Class => jClass }
 
+import scala.collection.mutable
+import scala.runtime.BoxedUnit
+
 /**
  *
  * A `ClassTag[T]` stores the erased class of a given type `T`, accessible via the `runtimeClass`
@@ -34,6 +37,22 @@ import java.lang.{ Class => jClass }
  */
 @scala.annotation.implicitNotFound(msg = "No ClassTag available for ${T}")
 trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serializable {
+
+  /* Scala.js deviation: emptyArray and emptyWrappedArray are
+   * `@transient lazy val`s on the JVM, but we make them `def`s. On the JVM,
+   * instances of `ClassTag` are cached, so that makes sense. On JS, however,
+   * `ClassTag`s are usually stack-allocated instead, hence the lazy vals
+   * contribute more useless code than actual caching. `def`s are more
+   * appropriate.
+   */
+  private[scala] def emptyArray: Array[T] = {
+    val componentType =
+      if (runtimeClass eq classOf[Void]) classOf[BoxedUnit] else runtimeClass
+    java.lang.reflect.Array.newInstance(componentType, 0).asInstanceOf[Array[T]]
+  }
+  private[scala] def emptyWrappedArray: mutable.WrappedArray[T] =
+    mutable.WrappedArray.make[T](emptyArray)
+
   // please, don't add any APIs here, like it was with `newWrappedArray` and `newArrayBuilder`
   // class tags, and all tags in general, should be as minimalistic as possible
 
