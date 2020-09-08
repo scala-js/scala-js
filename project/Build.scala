@@ -151,7 +151,7 @@ object Build {
 
   val packageMinilib = taskKey[File]("Produces the minilib jar.")
 
-  val previousVersion = "1.1.1"
+  val previousVersion = "1.2.0"
   val previousBinaryCrossVersion = CrossVersion.binaryWith("sjs1_", "")
 
   val scalaVersionsUsedForPublishing: Set[String] =

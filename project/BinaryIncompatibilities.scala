@@ -5,62 +5,15 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 
 object BinaryIncompatibilities {
   val IR = Seq(
-      // private, not an issue
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-          "org.scalajs.ir.Serializers#Deserializer.readMemberDef"),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-          "org.scalajs.ir.Serializers#Deserializer.readMemberDefs"),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-          "org.scalajs.ir.Serializers#Deserializer.readTopLevelExportDef"),
-      ProblemFilters.exclude[DirectMissingMethodProblem](
-          "org.scalajs.ir.Serializers#Deserializer.readTopLevelExportDefs"),
   )
 
   val Linker = Seq(
-      // Breaking in stable API. OK in Minor version.
-      exclude[ProblemRef]("org.scalajs.linker.standard.*"),
-
-      // Breaking in unstable packages
-      exclude[ProblemRef]("org.scalajs.linker.analyzer.*"),
-      exclude[ProblemRef]("org.scalajs.linker.backend.*"),
-      exclude[ProblemRef]("org.scalajs.linker.frontend.*"),
-
-      // private, not an issue.
-      exclude[DirectMissingMethodProblem](
-          "org.scalajs.linker.MemOutputFile#MemFileImpl.newChannel"),
-      exclude[MissingClassProblem](
-          "org.scalajs.linker.MemOutputFile$MemFileImpl$Channel"),
-      exclude[MissingClassProblem](
-          "org.scalajs.linker.PathOutputFile$AtomicChannel"),
-      exclude[DirectMissingMethodProblem](
-          "org.scalajs.linker.PathOutputFile#AtomicPathOutputFileImpl.newChannel"),
-      exclude[MissingClassProblem](
-          "org.scalajs.linker.PathOutputFile$PathChannel"),
-      exclude[MissingClassProblem](
-          "org.scalajs.linker.PathOutputFile$PathChannel$Handler$"),
-      exclude[DirectMissingMethodProblem](
-          "org.scalajs.linker.PathOutputFile#PathOutputFileImpl.newChannel"),
-      exclude[DirectMissingMethodProblem](
-          "org.scalajs.linker.NodeFS.write"),
-      exclude[DirectMissingMethodProblem](
-          "org.scalajs.linker.NodeOutputFile#NodeOutputFileImpl.newChannel"),
-      exclude[MissingClassProblem](
-          "org.scalajs.linker.NodeOutputFile$NodeOutputChannel"),
   )
 
   val LinkerInterface = Seq(
-      // Breaking in stable API. OK in Minor version.
-      exclude[ProblemRef]("org.scalajs.linker.interface.unstable.*"),
   )
 
   val SbtPlugin = Seq(
-      // Changes in LinkerImpl, which is declared that we can break it.
-      exclude[ReversedMissingMethodProblem](
-          "org.scalajs.sbtplugin.LinkerImpl.irFileCache"),
-      exclude[FinalMethodProblem](
-          "org.scalajs.sbtplugin.LinkerImpl#Reflect.irFileCache"),
-      exclude[FinalMethodProblem](
-          "org.scalajs.sbtplugin.LinkerImpl#Forwarding.irFileCache"),
   )
 
   val TestCommon = Seq(
@@ -70,16 +23,6 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
-      // Native types, not an issue.
-      exclude[IncompatibleMethTypeProblem](
-          "scala.scalajs.js.JSON.stringify"),
-      exclude[IncompatibleResultTypeProblem](
-          "scala.scalajs.js.JSON.stringify$default$3"),
-      // New methods in sealed traits, not an issue.
-      exclude[ReversedMissingMethodProblem](
-          "scala.scalajs.js.LowPrioAnyImplicits.wrapMap"),
-      exclude[ReversedMissingMethodProblem](
-          "scala.scalajs.js.LowPrioAnyImplicits.wrapSet"),
   )
 
   val TestInterface = Seq(
