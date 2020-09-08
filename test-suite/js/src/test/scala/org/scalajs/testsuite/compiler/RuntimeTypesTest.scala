@@ -70,43 +70,13 @@ class RuntimeTypesTest {
     test(null)
   }
 
-  @Test def scala_Nothing_Array_Nothing_should_be_allowed_to_exists_and_be_castable(): Unit = {
-    val arr = Array[Nothing]()
-    arr.asInstanceOf[Array[Nothing]]
-  }
-
-  @Test def scala_Nothing_Array_Array_Nothing_too(): Unit = {
-    val arr = Array[Array[Nothing]]()
-    arr.asInstanceOf[Array[Array[Nothing]]]
-    // This apparently works too... Dunno why
-    arr.asInstanceOf[Array[Nothing]]
-  }
-
   @Test def scala_Null_casts_to_scala_Null_should_fail_for_everything_else_but_null(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
     assertThrows(classOf[ClassCastException], "a".asInstanceOf[Null])
   }
 
-  @Test def scala_Null_classTag_of_scala_Null_should_contain_proper_Class_issue_297(): Unit = {
-    val tag = scala.reflect.classTag[Null]
-    assertTrue(tag.runtimeClass != null)
-    assertEquals("scala.runtime.Null$", tag.runtimeClass.getName)
-  }
-
   @Test def scala_Null_casts_to_scala_Null_should_succeed_on_null(): Unit = {
     null.asInstanceOf[Null]
-  }
-
-  @Test def scala_Null_Array_Null_should_be_allowed_to_exist_and_be_castable(): Unit = {
-    val arr = Array.fill[Null](5)(null)
-    arr.asInstanceOf[Array[Null]]
-  }
-
-  @Test def scala_Null_Array_Array_Null_too(): Unit = {
-    val arr = Array.fill[Null](5,5)(null)
-    arr.asInstanceOf[Array[Array[Null]]]
-    // This apparently works too... Dunno why
-    arr.asInstanceOf[Array[Null]]
   }
 
   @Test def scala_Arrays_of_JS_types(): Unit = {

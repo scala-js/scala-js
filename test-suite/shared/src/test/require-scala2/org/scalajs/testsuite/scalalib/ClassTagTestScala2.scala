@@ -15,7 +15,7 @@ package org.scalajs.testsuite.scalalib
 import scala.reflect._
 
 import org.junit.Test
-import org.junit.Assert.assertSame
+import org.junit.Assert._
 
 class ClassTagTestScala2 {
 
@@ -44,5 +44,16 @@ class ClassTagTestScala2 {
     // The same happens on the JVM
     assertSame(classOf[Array[scala.runtime.Nothing$]], classTag[Array[Nothing]].runtimeClass)
     assertSame(classOf[Array[scala.runtime.Null$]], classTag[Array[Null]].runtimeClass)
+  }
+
+  /**
+   * This is a Scala 2.x only test because:
+   * Dotty does not have [[ClassTag]] instances for [[Nothing]] or for [[Null]].
+   * @see [[https://github.com/lampepfl/dotty/issues/1730]]
+   */
+  @Test def scala_Null_classTag_of_scala_Null_should_contain_proper_Class_issue_297(): Unit = {
+    val tag = classTag[Null]
+    assertTrue(tag.runtimeClass != null)
+    assertEquals("scala.runtime.Null$", tag.runtimeClass.getName)
   }
 }
