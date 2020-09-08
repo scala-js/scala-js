@@ -28,27 +28,13 @@ object NodeOutputFile {
   def apply(path: String): LinkerOutput.File = new NodeOutputFileImpl(path)
 
   private final class NodeOutputFileImpl(path: String) extends OutputFileImpl {
-    def newChannel()(implicit ec: ExecutionContext): Future[OutputFileImpl.Channel] = {
-      cbFuture[Int](NodeFS.open(path, "w", _)).map(new NodeOutputChannel(_))
+    def writeFull(buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = {
+      val data =
+        if (buf.hasTypedArray()) buf.typedArray().subarray(buf.position(), buf.limit())
+        else ByteBuffer.allocateDirect(buf.remaining()).put(buf).typedArray()
+
+      cbFuture[Unit](NodeFS.writeFile(path, data, _))
+        .map(_ => buf.position(buf.limit()))
     }
-  }
-
-  private final class NodeOutputChannel(fd: Int) extends OutputFileImpl.Channel {
-    def write(buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = {
-      val pos = buf.position()
-      val write = {
-        if (buf.hasTypedArray()) {
-          cbFuture[Int](NodeFS.write(fd, buf.typedArray(), pos, buf.remaining(), (), _))
-        } else {
-          val ta = ByteBuffer.allocateDirect(buf.remaining()).put(buf).typedArray()
-          cbFuture[Int](NodeFS.write(fd, ta, 0, ta.length, js.undefined, _))
-        }
-      }
-
-      write.map(bytesWritten => buf.position(pos + bytesWritten))
-    }
-
-    def close()(implicit ec: ExecutionContext): Future[Unit] =
-      cbFuture[Unit](NodeFS.close(fd, _))
   }
 }
