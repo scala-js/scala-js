@@ -1535,12 +1535,6 @@ object Build {
             "testingExample/test is not supported because it requires DOM " +
             "support. Use testingExample/testHtml instead.")
       },
-
-      // HACK: Test Module support.
-      scalaJSLinkerConfig ~= { _
-        .withModuleKind(ModuleKind.ESModule)
-        .withModuleSplitStyle(ModuleSplitStyle.SmallestModules)
-      },
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, jUnitRuntime % "test", testBridge % "test"
   )

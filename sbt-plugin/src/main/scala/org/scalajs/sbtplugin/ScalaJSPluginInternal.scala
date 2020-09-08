@@ -84,6 +84,14 @@ private[sbtplugin] object ScalaJSPluginInternal {
     }
   }
 
+  private def linkerOutputDirectory(v: Attributed[Report]): File = {
+    v.get(scalaJSLinkerOutputDirectory.key).getOrElse {
+      throw new MessageOnlyException(
+          "Linking report was not attributed with output directory. " +
+          "Please report this as s Scala.js bug.")
+    }
+  }
+
   private def await[T](log: Logger)(body: ExecutionContext => Future[T]): T = {
     val ec = ExecutionContext.fromExecutor(
         ExecutionContext.global, t => log.trace(t))
@@ -249,13 +257,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
           report.publicModules.head
         }
 
-        val linkerOutputDir = {
-          linkingResult.get(scalaJSLinkerOutputDirectory.key).getOrElse {
-            throw new MessageOnlyException(
-                "Linking report was not attributed with output directory. " +
-                "Please report this as s Scala.js bug.")
-          }
-        }
+        val linkerOutputDir = linkerOutputDirectory(linkingResult)
 
         val inputJSFile = linkerOutputDir / module.jsFileName
         val inputSourceMapFile = module.sourceMapName.map(linkerOutputDir / _)
@@ -399,6 +401,13 @@ private[sbtplugin] object ScalaJSPluginInternal {
           .withCheckIR(true)  // for safety, fullOpt is slow anyways.
       },
 
+      scalaJSLinkerResult := Def.settingDyn {
+        scalaJSStage.value match {
+          case Stage.FastOpt => linkJSDev
+          case Stage.FullOpt => linkJSProd
+        }
+      }.value,
+
       scalaJSLinkedFile := Def.settingDyn {
         scalaJSStage.value match {
           case Stage.FastOpt => fastOptJS
@@ -418,19 +427,20 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
       // Add the Scala.js linked file to the Input for the JSEnv.
       jsEnvInput += {
-        val projectID = thisProject.value.id
-        val configName = configuration.value.name
+        val linkingResult = scalaJSLinkerResult.value
 
-        val linkedFile = scalaJSLinkedFile.value
+        val report = linkingResult.data
 
-        val path = linkedFile.data.toPath
-        val moduleKind = linkedFile.get(scalaJSModuleKind).getOrElse {
+        val mainModule = report.publicModules.find(_.moduleID == "main").getOrElse {
           throw new MessageOnlyException(
-              s"`$projectID / $configName / scalaJSLinkedFile` does not have " +
-              "the required scalaJSModuleKind attribute.")
+              "Cannot determine `jsEnvInput`: Linking result does not have a " +
+              "module named `main`. Set jsEnvInput manually?")
         }
 
-        moduleKind match {
+        val path =
+          (linkerOutputDirectory(linkingResult) / mainModule.jsFileName).toPath
+
+        mainModule.moduleKind match {
           case ModuleKind.NoModule       => Input.Script(path)
           case ModuleKind.ESModule       => Input.ESModule(path)
           case ModuleKind.CommonJSModule => Input.CommonJSModule(path)
