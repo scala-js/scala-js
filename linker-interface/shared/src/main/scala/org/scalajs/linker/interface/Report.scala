@@ -60,7 +60,7 @@ object Report {
 
   /** Tries to deserialize the given bytes as a [[Report]].
    *
-   *  @returns None If the provided bytes are not compatible with the current
+   *  @return None If the provided bytes are not compatible with the current
    *      linker version, Some(<report>) otherwise.
    */
   def deserialize(bytes: Array[Byte]): Option[Report] = {
