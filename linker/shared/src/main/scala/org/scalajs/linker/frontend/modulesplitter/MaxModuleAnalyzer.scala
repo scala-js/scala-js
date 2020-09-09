@@ -107,7 +107,7 @@ private object MaxModuleAnalyzer {
 
     private def buildModuleMap(): Map[ClassName, ModuleID] = {
       val ids = buildModuleIDs()
-      allTags.mapValues(ids(_)).toMap
+      allTags.map { case (className, tags) => className -> ids(tags) }.toMap
     }
 
     private def buildModuleIDs(): Map[scala.collection.Set[ModuleID], ModuleID] = {

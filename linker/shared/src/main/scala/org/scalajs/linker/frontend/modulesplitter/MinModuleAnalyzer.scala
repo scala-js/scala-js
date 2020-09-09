@@ -44,7 +44,7 @@ private object MinModuleAnalyzer {
 
     private[this] var nextIndex = 0
     private[this] val nodes = mutable.Map.empty[ClassName, Node]
-    private[this] val stack = mutable.ArrayStack.empty[Node]
+    private[this] val stack = mutable.Stack.empty[Node]
     private[this] val moduleIndexToID = mutable.Map.empty[Int, ModuleID]
 
     def moduleForClass(className: ClassName): Option[ModuleID] =
