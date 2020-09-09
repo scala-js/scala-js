@@ -138,6 +138,12 @@ def Tasks = [
         helloworld$v/run \
         helloworld$v/clean &&
     sbtretry ++$scala testingExample$v/testHtmlJSDom &&
+    sbtretry ++$scala \
+        'set scalaJSLinkerConfig in testingExample.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
+        'set scalaJSLinkerConfig in testingExample.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
+        'set scalaJSLinkerConfig in testingExample.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
+        testingExample$v/testHtml \
+        testingExample$v/clean &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala testingExample$v/testHtmlJSDom \
         testingExample$v/clean &&
@@ -146,7 +152,12 @@ def Tasks = [
     sbtretry ++$scala testSuiteEx$v/test &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala testSuiteEx$v/test &&
-    sbtretry ++$scala testSuite$v/test:doc library$v/test compiler$v/test reversi$v/fastOptJS reversi$v/fullOptJS &&
+    sbtretry ++$scala testSuite$v/test:doc library$v/test compiler$v/test &&
+    sbtretry ++$scala reversi$v/fastOptJS reversi$v/fullOptJS &&
+    sbtretry ++$scala \
+        'set scalaJSLinkerConfig in reversi.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
+        'set scalaJSLinkerConfig in reversi.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
+        reversi$v/linkJSDev reversi$v/linkJSProd &&
     sbtretry ++$scala compiler$v/compile:doc library$v/compile:doc \
         testInterface$v/compile:doc testBridge$v/compile:doc &&
     sbtretry ++$scala headerCheck &&
