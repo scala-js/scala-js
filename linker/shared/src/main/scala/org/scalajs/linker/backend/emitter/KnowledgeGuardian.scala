@@ -44,7 +44,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     val hasInlineableInit = computeHasInlineableInit(moduleSet)
     val staticFieldMirrors = computeStaticFieldMirrors(moduleSet)
 
-    var objectClass: LinkedClass = null
+    // Object is optional, because the module splitter might remove everything.
+    var objectClass: Option[LinkedClass] = None
     var classClass: Option[LinkedClass] = None
     val hijackedClasses = Iterable.newBuilder[LinkedClass]
 
@@ -77,7 +78,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
           classClass = Some(linkedClass)
 
         case ObjectClass =>
-          objectClass = linkedClass
+          objectClass = Some(linkedClass)
 
         case name if HijackedClasses(name) =>
           hijackedClasses += linkedClass
@@ -468,7 +469,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     }
   }
 
-  private class SpecialInfo(initObjectClass: LinkedClass,
+  private class SpecialInfo(initObjectClass: Option[LinkedClass],
       initClassClass: Option[LinkedClass],
       initHijackedClasses: Iterable[LinkedClass]) extends Unregisterable {
 
@@ -488,7 +489,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private val methodsInRepresentativeClassesAskers = mutable.Set.empty[Invalidatable]
     private val methodsInObjectAskers = mutable.Set.empty[Invalidatable]
 
-    def update(objectClass: LinkedClass, classClass: Option[LinkedClass],
+    def update(objectClass: Option[LinkedClass], classClass: Option[LinkedClass],
         hijackedClasses: Iterable[LinkedClass]): Boolean = {
       val newIsClassClassInstantiated = computeIsClassClassInstantiated(classClass)
       if (newIsClassClassInstantiated != isClassClassInstantiated) {
@@ -531,10 +532,10 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       classClass.exists(methodExists(_, getSuperclassMethodName))
     }
 
-    private def computeMethodsInRepresentativeClasses(objectClass: LinkedClass,
+    private def computeMethodsInRepresentativeClasses(objectClass: Option[LinkedClass],
         hijackedClasses: Iterable[LinkedClass]): Set[(ClassName, MethodName)] = {
       val representativeClasses =
-        Iterator.single(objectClass) ++ hijackedClasses.iterator
+        objectClass.iterator ++ hijackedClasses.iterator
 
       val pairs = for {
         representativeClass <- representativeClasses
@@ -547,8 +548,9 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       pairs.toSet
     }
 
-    private def computeMethodsInObject(objectClass: LinkedClass): List[Versioned[MethodDef]] = {
-      objectClass.methods.filter(_.value.flags.namespace == MemberNamespace.Public)
+    private def computeMethodsInObject(objectClass: Option[LinkedClass]): List[Versioned[MethodDef]] = {
+      objectClass.toList.flatMap(
+          _.methods.filter(_.value.flags.namespace == MemberNamespace.Public))
     }
 
     def askIsClassClassInstantiated(invalidatable: Invalidatable): Boolean = {

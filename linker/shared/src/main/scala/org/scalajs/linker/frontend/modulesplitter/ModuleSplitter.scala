@@ -45,14 +45,14 @@ final class ModuleSplitter private (analyzer: ModuleAnalyzer) {
        * non-abstract classes are reached through a static path.
        */
       new ModuleSet(unit.coreSpec, Nil, Nil)
-    }
+    } else {
+      val analysis = logger.time("Module Splitter: Analyze Modules") {
+        analyzer.analyze(dependencyInfo)
+      }
 
-    val analysis = logger.time("Module Splitter: Analyze Modules") {
-      analyzer.analyze(dependencyInfo)
-    }
-
-    logger.time("Module Splitter: Assemble Modules") {
-      assembleModules(unit, analysis, dependencyInfo.publicModuleDependencies)
+      logger.time("Module Splitter: Assemble Modules") {
+        assembleModules(unit, analysis, dependencyInfo.publicModuleDependencies)
+      }
     }
   }
 

@@ -47,6 +47,14 @@ class LinkerTest {
     testLink(classDefs, MainTestModuleInitializers)
   }
 
+  @Test
+  def linkEmpty(): AsyncResult = await {
+    /* Check a degenerate case where there are not public modules at all.
+     * See the special check on ModuleSplitter for details.
+     */
+    testLink(Nil, Nil)
+  }
+
   /** This test exposes a problem where a linker in error state is called
    *  multiple times and ends up thinking it is being used concurrently.
    */
