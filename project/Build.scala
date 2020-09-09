@@ -1890,13 +1890,6 @@ object Build {
           actual
         }
       },
-
-      // HACK: Test Module support.
-      scalaJSLinkerConfig ~= { _
-        .withModuleKind(ModuleKind.ESModule)
-        .withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs"))
-        .withModuleSplitStyle(ModuleSplitStyle.SmallestModules)
-      },
   ).zippedSettings(testSuiteLinker)(
       l => inConfig(Bootstrap)(testSuiteBootstrapSetting(l))
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
@@ -1945,12 +1938,6 @@ object Build {
       publishArtifact in Compile := false,
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
       scalacOptions in Test ~= (_.filter(_ != "-deprecation")),
-
-      // HACK: Test Module support.
-      scalaJSLinkerConfig ~= { _
-        .withModuleKind(ModuleKind.CommonJSModule)
-        .withModuleSplitStyle(ModuleSplitStyle.SmallestModules)
-      },
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, jUnitRuntime, testBridge % "test", testSuite
   )
