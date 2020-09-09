@@ -1210,8 +1210,9 @@ private final class Analyzer(config: CommonPhaseConfig,
         case JSNativeLoadSpec.Import(module, _) =>
           externalDependencies += module
 
-        case JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, _) if !isNoModule =>
-          addLoadSpec(importSpec)
+        case JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, _) =>
+          if (!isNoModule)
+            addLoadSpec(importSpec)
       }
     }
 
