@@ -1796,8 +1796,8 @@ object Build {
           val stage = scalaJSStage.value
 
           val linkerConfig = stage match {
-            case FastOptStage => (scalaJSLinkerConfig in (Compile, fastOptJS)).value
-            case FullOptStage => (scalaJSLinkerConfig in (Compile, fullOptJS)).value
+            case FastOptStage => (scalaJSLinkerConfig in (Compile, linkJSDev)).value
+            case FullOptStage => (scalaJSLinkerConfig in (Compile, linkJSProd)).value
           }
 
           val moduleKind = linkerConfig.moduleKind
