@@ -44,12 +44,15 @@ object QuickLinker {
       .toJSPromise
   }
 
-  private def writeReport(path: String, report: Report): Future[Unit] =
-    PromisesFS.writeFile(path, Report.serialize(report).toTypedArray).toFuture
+  private def writeReport(path: String, report: Report): Future[Unit] = {
+    val int8arr = Report.serialize(report).toTypedArray
+    val uint8arr = new Uint8Array(int8arr.buffer, int8arr.byteOffset, int8arr.byteLength)
+    PromisesFS.writeFile(path, uint8arr).toFuture
+  }
 
   @JSImport("fs", "promises")
   @js.native
   object PromisesFS extends js.Object {
-    def writeFile(path: String, data: Int8Array): js.Promise[Unit] = js.native
+    def writeFile(path: String, data: Uint8Array): js.Promise[Unit] = js.native
   }
 }

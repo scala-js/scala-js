@@ -24,10 +24,9 @@ abstract class Report private[interface] {
   override def toString(): String = {
     s"""Report(
        |  publicModules = [
-       |    ${publicModules.mkString(",\n    ")}
+       |    ${publicModules.mkString(",\n")}
        |  ],
        |)""".stripMargin
-    publicModules.mkString(",\n")
   }
 }
 
