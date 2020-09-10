@@ -48,10 +48,11 @@ Note that breaking a line right after the `=` sign of an initialization or assig
 
 * Never put two blank lines in a row
 * (Almost) always put a blank line between two declarations in a class
-* Always put blank lines around a `case` whose body spans several lines
 * Insert blank lines at will between logical blocks of statements in a method
+* Always put blank lines around a `case` whose body contains a blank line
+* In general, if some kind of block of code *contains* a blank line inside it, it should also be *surrounded* by blank lines (this prevents the brain from visually parsing blocks in the wrong way)
 
-The blank line between two consecutive declarations in a class can sometimes be omitted, if the declarations are single-line (which also means ScalaDocless) and strongly related.
+The blank line between two consecutive declarations in a class can sometimes be omitted, if the declarations are single-line (which also means Scaladocless) and strongly related.
 This happens pretty rarely (mostly a series of private fields).
 The rule of thumb is to always put a blank line.
 
@@ -114,7 +115,7 @@ def abs(x: Int): Int =
 
 #### Long expressions with binary operators
 
-Very long expressions consisting of binary operators at their "top-level" can be broken *without indentation* if they are alone in their brace-delimited block.
+Very long expressions consisting of binary operators at their "top-level" can be broken *without indentation* if they are alone in their brace-delimited block or their actual parameter.
 This happens mostly for long chains of `&&`s, `||`s, or string concatenations.
 Here is an example:
 
@@ -123,6 +124,12 @@ val isValidIdent = {
   ident != "" &&
   ident.charAt(0).isUnicodeIdentifierStart &&
   ident.tail.forall(_.isUnicodeIdentifierPart)
+}
+
+if (!isValidIdent) {
+  reportError(
+      "This string is very long and will " +
+      "span several lines.")
 }
 ```
 
@@ -145,20 +152,27 @@ val someLongIdentifierWithHighIdentation = {
 }
 ```
 
+If a lambda is a one-liner, we do not use braces at all:
+
+```scala
+val f = (x: Int) => body
+
+val ys = xs.map(x => x + 1)
+```
+
 ### Spaces
 
 There must not be any space before the following tokens: `:` `,` `;` `)`
 
 There must be exactly one space after the following tokens: `:` `,` `;` `if` `for` `while`
-Sometimes, it is acceptable to have several spaces, for vertical alignment reasons.
+
+There must be exactly one space before the tokens `=` and `=>`, and either exactly one space or a new line after them.
+Exception: `=>` may be vertically aligned instead in some scenarios: see [the "Pattern matching" section](#pattern-matching).
 
 There must be exactly one space before and after `{` and `}`.
 With the exception of partial import, where there is no space on either side.
 
-Binary operators, including `=>`, must have a single space on both sides.
-Sometimes, spaces can be removed to highlight the relatively higher priority wrt. to a neighboring operator, for easier visual parsing.
-For example, instead of `x < len - 1`, it is better to write `x < len-1`, highlighting that `-` has a higher priority than `<`.
-
+Binary operators must have a single space on both sides.
 Unary operators must not be followed by a space.
 
 ### Method call style
@@ -167,16 +181,15 @@ Usually, parentheses should be used for actual parameters to a method call.
 Braces should be used instead if an argument list has only a lambda, and that lambda does not fit in an inline one-liner.
 
 In general, dot-notation should be used for non-symbolic methods, and infix notation should be used for symbolic methods.
-Infix notation is also used if the only argument is a brace lambda.
 
 Examples:
 
 ```scala
-// inline lambda, hence (), hence dot-notation
+// inline lambda, hence ()
 list.map(x => x * 2)
 
-// long lambda, hence braces, hence infix notation
-list map { x =>
+// long lambda, hence braces
+list.map { x =>
   if (x < 5) x
   else x * 2
 }
@@ -185,21 +198,15 @@ list map { x =>
 value :: list
 ```
 
-Using dot-notation with a brace lambda is possible to force priorities.
-This is typically the case if the call is chained to a parameterless method call, as in
-
-```scala
-list.map { x =>
-  // complicated stuff
-}.toMap
-```
-
-When calling a method declared with an empty pair of parentheses, use `()`.
-Not doing so causes (fatal) warnings in Scala 2.13.3+.
+When calling a method declared with an empty pair of parentheses, always use `()`.
+Not doing so causes (fatal) warnings when calling Scala-declared methods in Scala 2.13.3+.
+For consistency, we also apply this rule to all Java-defined methods, including `toString()`.
 
 ### Method definition
 
 All public and protected methods must have an explicit result type.
+Private methods are encouraged to have an explicit result type as well, as it helps reading the code.
+Local methods do not need an explicit result type.
 
 Procedure syntax must not be used.
 `: Unit =` must be used instead.
@@ -280,16 +287,16 @@ If you import more than 3 or so items from a namespace, use a wildcard import.
 
 Avoid importing mutable collections directly; prefer importing `mutable` and then use `mutable.ListBuffer`.
 
-### ScalaDoc
+### Scaladoc
 
-ScalaDoc comments that fit in one line must be written as
+Scaladoc comments that fit in one line must be written as
 
 ```scala
 /** Returns the maximum of a and b. */
 def max(a: Int, b: Int): Int = ???
 ```
 
-Multi-line ScalaDoc comments must use the following style:
+Multi-line Scaladoc comments must use the following style:
 
 ```scala
 /** Returns the maximum of a and b.
@@ -299,7 +306,7 @@ Multi-line ScalaDoc comments must use the following style:
 def max(a: Int, b: Int): Int = ???
 ```
 
-### Non-ScalaDoc comments
+### Non-Scaladoc comments
 
 Normal comments fitting on one-line should use `//`.
 A comment that does not fit on one line should use the multi-line comment syntax and follow this style:
@@ -322,7 +329,7 @@ class Foo(val x: Int) extends Bar with Foobar { self =>
 
 However, this tends to become too long in many cases.
 
-If the declaration does not fit on one line, the self type must be on dedicated line, indented 2 spaces only, and followed by a blank line:
+If the declaration does not fit on one line, the first thing to do is to put the self type on a dedicated line, indented 2 spaces only, and followed by a blank line:
 
 ```scala
 class Foo(val x: Int) extends Bar with Foobar {
@@ -331,11 +338,32 @@ class Foo(val x: Int) extends Bar with Foobar {
   // declarations start here
 ```
 
+The second thing to do is to break the line just before the `extends` keyword, indented 4 spaces:
+
+```scala
+class Foo(val x: Int)
+    extends Bar with Foobar {
+
+  // declarations start here
+```
+
+The `extends` clause can be further broken up before `with`s, if necessary.
+Additional lines are also indented 4 spaces wrt. the `class` keyword.
+
+```scala
+class Foo(val x: Int)
+    extends Bar with Foobar with AnotherTrait with YetAnotherTrait
+    with HowManyTraitsAreThere with TooManyTraits {
+
+  // declarations start here
+```
+
 If too long in itself, the list of constructor parameters should be broken similarly to formal parameters to a method, i.e., indented 4 spaces, and followed by a blank line:
 
 ```scala
 class Foo(val x: Int, val y: Int,
-    val z: Int) extends Bar with Foobar {
+    val z: Int)
+    extends Bar with Foobar {
 
   // declarations start here
 ```
@@ -362,26 +390,6 @@ class Foo[A](
 )(implicit ct: ClassTag[A]) extends Bar with Foobar {
 ```
 
-If too long, the `extends` clause itself should go to the next line, indented 4 spaces, and followed by a blank line:
-
-```scala
-class Foo(val x: Int)
-    extends Bar with Foobar with AnotherTrait {
-
-  // declarations start here
-```
-
-The `extends` clause can be broken further before `with`s, if necessary.
-Additional lines are also indented 4 spaces wrt. the `class` keyword.
-
-```scala
-class Foo(val x: Int)
-    extends Bar with Foobar with AnotherTrait with YetAnotherTrait
-    with HowManyTraitsAreThere with TooManyTraits {
-
-  // declarations start here
-```
-
 
 ## Usages of higher-order methods
 
@@ -397,7 +405,7 @@ Higher-order methods should be favored over loops and tail-recursive methods whe
 Do not reinvent the wheel: use the most appropriate method in the collection API (e.g., use `forall` instead of a custom-made `foldLeft`).
 
 Methods other than `foreach` should however be avoided if the lambda that is passed to them has side-effects.
-In order words, a `foldLeft` with a side-effecting function should be avoided, and a `while` loop or a `foreach` used instead.
+In other words, a `foldLeft` with a side-effecting function should be avoided, and a `while` loop or a `foreach` used instead.
 
 Use `xs.map(x => x * 2)` instead of `for (x <- xs) yield x * 2` for short, one-liner `map`s, `flatMap`s and `foreach`es.
 Otherwise, favor for comprehensions.
@@ -433,31 +441,48 @@ val x = {
 }
 ```
 
-If one of the brances requires braces, then put braces on both branches:
+If one of the brances requires braces, then put braces on both branches (or *all* branches if it is a chain of `if/else`s):
 
 ```scala
 val x = {
   if (condition) {
     val x = someExpr
     x + 5
-  } else {
+  } else if (secondCondition) {
     anotherExpr
+  } else {
+    aThirdExpr
   }
 }
 ```
 
-`if`s and `if/else`s in statement position should always have their branch(es) on dedicated lines:
+`if`s and `if/else`s in statement position must always have their branch(es) on dedicated lines.
+The following example is incorrect:
+
+```scala
+if (index >= size) throw new IndexOutOfBoundsException
+
+if (x > y) i += 1
+else i -= 1
+```
+
+and should instead be formatted as:
 
 ```scala
 if (index >= size)
   throw new IndexOutOfBoundsException
+
+if (x > y)
+  i += 1
+else
+  i -= 1
 ```
 
 If the `condition` of an `if` (or `while`, for that matter) is too long, it can be broken *at most once* with 4 spaces of indentation.
-In that case, the if and else parts must surrounded by braces, even if they are single-line.
+In that case, the if and else parts must be surrounded by braces, even if they are single-line.
 Obviously, the two-liner `if/else` formatting cannot be applied.
 
-If the condition is so long that two lines are not enough, then it should be extracted in a local `def` before it, such as:
+If the condition is so long that two lines are not enough, then it should be extracted in a local `val` or `def` before it, such as:
 
 ```scala
 val ident: String = ???
@@ -467,7 +492,6 @@ def isValidIdent = {
   ident.charAt(0).isUnicodeIdentifierStart &&
   ident.tail.forall(_.isUnicodeIdentifierPart)
 }
-
 if (isValidIdent)
   doSomething()
 else
@@ -487,17 +511,34 @@ x match {
 ```
 
 If the body of a case does not fit on the same line, then put the body on the next line, indented 2 spaces, without braces around it.
-In that case, also put blank lines around that `case`, and do not align its arrow with the other groups:
+In that case, also put blank lines around that `case`, and do not align its arrow with the other cases:
 
 ```scala
 x match {
-  case Foo(a, b) => a + b
-
+  case Foo(a, b) =>
+    val x = a + b
+    x * 2
   case Bar(y) =>
     if (y < 5) y
     else y * 2
 }
 ```
+
+A single pattern match can have *both* one-liners with aligned arrows and multi-line cases.
+In that case, there must be a blank line between every change of style:
+
+```scala
+x match {
+  case Foo(a, b) => a + b
+  case Bar(y)    => 2 * y
+
+  case Foobar(y, z) =>
+    if (y < 5) z
+    else z * 2
+}
+```
+
+The arrows of multi-line cases must never be aligned with other arrows, either from neighboring multi-line cases or from blocks of one-liner cases.
 
 When pattern-matching based on specific subtypes of a value, reuse the same identifier for the refined binding, e.g.,
 
@@ -517,10 +558,23 @@ that match {
 }
 ```
 
-This is an instantiation of the rule saying that spaces can be removed around a binary operator to highlight its higher priority wrt. its neighbors.
+This helps visually parsing the relative priority of `:` over `|`.
 
 As a reminder, avoid pattern-matching on `Option` types.
 Use `fold` instead.
+
+
+## Explicit types
+
+As already mentioned, public and protected `def`s must always have explicit types.
+Private `def`s are encouraged to have an explicit type as well.
+
+Public and protected `val`s and `var`s of public classes and traits should also have explicit types, as they are part of the binary API, and therefore must not be subject to the whims of type inference.
+
+Private `val`s and `var`s as well as local `val`s, `var`s and `def`s typically need not have an explicit type.
+They can have one if it helps readability or type inference.
+
+Sometimes, `var`s need an explicit type because their initial value has a more specific type than required (e.g., `None.type` even though we assign it later to a `List`).
 
 
 ## Implementing the Java lib
