@@ -393,7 +393,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         ((crossTarget in fullOptJS).value /
             ((moduleName in fullOptJS).value + "-opt.js")),
 
-      scalaJSLinkerConfig in fullOptJS ~= { prevConfig =>
+      scalaJSLinkerConfig in linkJSProd ~= { prevConfig =>
         val useClosure = prevConfig.moduleKind != ModuleKind.ESModule
         prevConfig
           .withSemantics(_.optimized)
