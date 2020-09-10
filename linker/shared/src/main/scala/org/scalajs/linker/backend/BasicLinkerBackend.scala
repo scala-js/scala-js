@@ -44,10 +44,10 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
 
   override def injectedIRFiles: Seq[IRFile] = emitter.injectedIRFiles
 
-  /** Emit the given [[standard.LinkingUnit LinkingUnit]] to the target output.
+  /** Emit the given [[standard.ModuleSet ModuleSet]] to the target output.
    *
-   *  @param unit [[standard.LinkingUnit LinkingUnit]] to emit
-   *  @param output File to write to
+   *  @param moduleSet [[standard.ModuleSet ModuleSet]] to emit
+   *  @param output File Directory write to
    */
   def emit(moduleSet: ModuleSet, output: OutputDirectory, logger: Logger)(
       implicit ec: ExecutionContext): Future[Report] = {

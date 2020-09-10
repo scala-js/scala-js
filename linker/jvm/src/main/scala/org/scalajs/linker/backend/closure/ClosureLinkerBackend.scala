@@ -67,10 +67,10 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     if (esFeatures.useECMAScript2015) ClosureOptions.LanguageMode.ECMASCRIPT_2015
     else ClosureOptions.LanguageMode.ECMASCRIPT5_STRICT
 
-  /** Emit the given [[standard.LinkingUnit LinkingUnit]] to the target output.
+  /** Emit the given [[standard.ModuleSet ModuleSet]] to the target output.
    *
-   *  @param unit [[standard.LinkingUnit LinkingUnit]] to emit
-   *  @param output File to write to
+   *  @param moduleSet [[standard.ModuleSet ModuleSet]] to emit
+   *  @param output Directory to write to
    */
   def emit(moduleSet: ModuleSet, output: OutputDirectory, logger: Logger)(
       implicit ec: ExecutionContext): Future[Report] = {

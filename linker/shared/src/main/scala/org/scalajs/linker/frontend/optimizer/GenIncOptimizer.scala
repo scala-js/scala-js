@@ -33,7 +33,7 @@ import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
 /** Incremental optimizer.
  *
- *  An incremental optimizer optimizes a [[standard.LinkingUnit LinkingUnit]]
+ *  An incremental optimizer optimizes a [[LinkingUnit]]
  *  in an incremental way.
  *
  *  It maintains state between runs to do a minimal amount of work on every

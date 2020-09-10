@@ -27,8 +27,7 @@ import org.scalajs.linker.standard._
 import org.scalajs.linker.analyzer._
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
-/** Does a dead code elimination pass on a [[standard.LinkingUnit LinkingUnit]].
- */
+/** Does a dead code elimination pass on a [[LinkingUnit]]. */
 final class Refiner(config: CommonPhaseConfig) {
   import Refiner._
 

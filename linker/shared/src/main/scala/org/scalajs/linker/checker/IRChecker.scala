@@ -1438,7 +1438,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 }
 
 object IRChecker {
-  /** Checks that the IR in a [[standard.LinkingUnit LinkingUnit]] is correct.
+  /** Checks that the IR in a [[frontend.LinkingUnit LinkingUnit]] is correct.
    *
    *  @return Count of IR checking errors (0 in case of success)
    */

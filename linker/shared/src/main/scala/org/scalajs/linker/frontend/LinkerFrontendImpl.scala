@@ -23,7 +23,7 @@ import org.scalajs.linker.frontend.modulesplitter._
 
 /** The frontend of the Scala.js linker.
  *
- *  Produces a [[standard.LinkingUnit LinkingUnit]].
+ *  Produces a [[standard.ModuleSet ModuleSet]].
  *
  *  You probably want to use an instance of [[interface.Linker]], rather than
  *  this low-level class.
@@ -51,7 +51,7 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
   }
 
   /** Link and optionally optimize the given IR to a
-   *  [[standard.LinkingUnit LinkingUnit]].
+   *  [[standard.ModuleSet ModuleSet]].
    */
   def link(irFiles: Seq[IRFile],
       moduleInitializers: Seq[ModuleInitializer],

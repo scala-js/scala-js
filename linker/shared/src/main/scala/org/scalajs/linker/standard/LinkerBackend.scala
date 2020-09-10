@@ -40,23 +40,23 @@ abstract class LinkerBackend {
    */
   def injectedIRFiles: Seq[IRFile]
 
-  /** Emit the given [[LinkingUnit]] to the target output.
+  /** Emit the given [[ModuleSet]] to the target output.
    *
    *  The linking unit given to `emit` must:
    *
    *  - have the same `coreSpec` as this linker backend, and
    *  - contain the symbols listed in [[symbolRequirements]].
    *
-   *  @param unit [[LinkingUnit]] to emit
-   *  @param output File to write to
+   *  @param moduleSet [[ModuleSet]] to emit
+   *  @param output Directory to write to
    *  @param logger Logger to use
    */
   def emit(moduleSet: ModuleSet, output: OutputDirectory, logger: Logger)(
       implicit ec: ExecutionContext): Future[Report]
 
-  /** Verify that a [[LinkingUnit]] can be processed by this [[LinkerBackend]].
+  /** Verify that a [[ModuleSet]] can be processed by this [[LinkerBackend]].
    *
-   *  Currently, this only tests that the linking unit core specification
+   *  Currently, this only tests that the module set core specification
    *  matches [[coreSpec]].
    *
    *  In the future, this test could be extended to test [[symbolRequirements]]

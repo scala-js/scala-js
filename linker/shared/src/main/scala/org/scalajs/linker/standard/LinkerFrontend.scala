@@ -20,7 +20,7 @@ import org.scalajs.linker.interface._
 
 /** A frontend for a standard Scala.js linker.
  *
- *  Produces a [[LinkingUnit]].
+ *  Produces a [[ModuleSet]].
  *
  *  You probably want to use an instance of [[interface.Linker]], rather than
  *  this low-level class.
@@ -32,7 +32,7 @@ abstract class LinkerFrontend {
   /** Core specification that this linker frontend implements. */
   val coreSpec: CoreSpec
 
-  /** Link and optionally optimize the given IR to a [[LinkingUnit]]. */
+  /** Link and optionally optimize the given IR to a [[ModuleSet]]. */
   def link(irFiles: Seq[IRFile],
       moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger)(
