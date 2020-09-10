@@ -96,18 +96,22 @@ class MainGenericRunner {
     val linker = StandardImpl.linker(linkerConfig)
 
     val sjsCode = {
-      val file = Jimfs.newFileSystem().getPath("partest.js")
+      val dir = Jimfs.newFileSystem().getPath("/tmp")
+      Files.createDirectory(dir)
 
       val cache = StandardImpl.irFileCache().newCache
       val result = PathIRContainer
         .fromClasspath(command.settings.classpathURLs.map(urlToPath _))
         .map(_._1)
         .flatMap(cache.cached _)
-        .flatMap(linker.link(_, moduleInitializers, LinkerOutput(PathOutputFile(file)), logger))
+        .flatMap(linker.link(_, moduleInitializers, PathOutputDirectory(dir), logger))
 
-      Await.result(result, Duration.Inf)
+      val report = Await.result(result, Duration.Inf)
 
-      file
+      if (report.publicModules.size != 1)
+        throw new AssertionError(s"got more than 1 module: $report")
+
+      dir.resolve(report.publicModules.head.jsFileName)
     }
 
     val input = Input.Script(sjsCode) :: Nil
