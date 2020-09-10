@@ -71,8 +71,10 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
       linkResult.flatMap(optimize(_, symbolRequirements, optimizer, logger))
     }
 
-    logger.timeFuture("Module Splitter") {
-      optimizedResult.map(splitter.split(_, logger))
+    optimizedResult.map { unit =>
+      logger.time("Module Splitter") {
+        splitter.split(unit, logger)
+      }
     }
   }
 

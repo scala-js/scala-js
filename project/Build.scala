@@ -1613,14 +1613,15 @@ object Build {
       Defaults.testSettings,
       ScalaJSPlugin.testConfigSettings,
 
-      fullOptJS := {
-        throw new MessageOnlyException("fullOptJS is not supported in Bootstrap")
+      linkJSProd := {
+        throw new MessageOnlyException("linkJSProd is not supported in Bootstrap")
       },
 
-      fastOptJS := {
+      linkJSDev := {
         val s = streams.value
 
-        val out = (artifactPath in fastOptJS).value
+        val reportFile = s.cacheDirectory / "linking-report.bin"
+        val outputDir = (scalaJSLinkerOutputDirectory in linkJSDev).value
 
         val linkerModule =
           (scalaJSLinkedFile in (testSuiteLinker, Compile)).value.data
@@ -1631,16 +1632,16 @@ object Build {
         FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
             FilesInfo.exists) { _ =>
 
-          val cpPaths = cp
-            .map(f => "\"" + escapeJS(f.getAbsolutePath) + "\"")
-            .mkString("[", ", ", "]")
+          def jsstr(f: File) = "\"" + escapeJS(f.getAbsolutePath) + "\""
+
+          val cpPaths = cp.map(jsstr(_)).mkString("[", ", ", "]")
 
           val code = {
             s"""
-              var toolsTestModule = require("${escapeJS(linkerModule.getPath)}");
+              var toolsTestModule = require(${jsstr(linkerModule)});
               var linker = toolsTestModule.TestSuiteLinker;
               var result =
-                linker.linkTestSuiteNode($cpPaths, "${escapeJS(out.getAbsolutePath)}");
+                linker.linkTestSuiteNode($cpPaths, ${jsstr(outputDir)}, ${jsstr(reportFile)});
 
               result.catch(e => {
                 console.error(e);
@@ -1657,6 +1658,8 @@ object Build {
 
           s.log.info(s"Linking test suite with JS linker")
 
+          IO.createDirectory(outputDir)
+
           val jsEnv = new NodeJSEnv(
             NodeJSEnv.Config()
               .withArgs(List("--max_old_space_size=3072"))
@@ -1664,11 +1667,17 @@ object Build {
 
           val run = jsEnv.start(input, config)
           Await.result(run.future, Duration.Inf)
-          Set(out)
+
+          IO.listFiles(outputDir).toSet + reportFile
         } ((cpFiles :+ linkerModule).toSet)
 
-        Attributed.blank(out)
-          .put(scalaJSModuleKind, ModuleKind.NoModule)
+        val report = Report.deserialize(IO.readBytes(reportFile)).getOrElse {
+            throw new MessageOnlyException("failed to deserialize report after " +
+                "bootstrapped linking. version mismatch?")
+        }
+
+        Attributed.blank(report)
+          .put(scalaJSLinkerOutputDirectory.key, outputDir)
       },
 
       compile := (compile in Test).value,
