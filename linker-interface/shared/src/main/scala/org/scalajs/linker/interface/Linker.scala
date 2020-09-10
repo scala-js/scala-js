@@ -50,7 +50,7 @@ abstract class Linker private[interface] () {
               "`link` method was called. Call the overload taking an " +
               s"OutputDirectory instead. Full report:\n$report")
         }
-  
+
         report.publicModules.head
       }
 
