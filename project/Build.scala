@@ -1627,7 +1627,7 @@ object Build {
           (scalaJSLinkedFile in (testSuiteLinker, Compile)).value.data
 
         val cp = Attributed.data(fullClasspath.value)
-        val cpFiles = (scalaJSIR in fastOptJS).value.get(scalaJSSourceFiles).get
+        val cpFiles = (scalaJSIR in linkJSDev).value.get(scalaJSSourceFiles).get
 
         FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
             FilesInfo.exists) { _ =>
@@ -1883,7 +1883,7 @@ object Build {
        * `scalaJSStage`, it is ill-advised to invoke a linking task that does
        * not correspond to the current `scalaJSStage`.
        */
-      for ((key, stage) <- Seq(fastOptJS -> FastOptStage, fullOptJS -> FullOptStage)) yield {
+      for ((key, stage) <- Seq(linkJSDev -> FastOptStage, linkJSProd -> FullOptStage)) yield {
         key in Test := {
           /* Note that due to the way dependencies between tasks work, the
            * actual linking *will* be computed anyway, but it's not too late to
