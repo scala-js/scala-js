@@ -16,4 +16,5 @@ target/
 bin/
 /.bloop/
 /.metals/
-/project/metals.sbt
+/project/**/metals.sbt
+/.vscode/
