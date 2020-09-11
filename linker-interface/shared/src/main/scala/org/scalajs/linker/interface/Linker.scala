@@ -46,7 +46,7 @@ abstract class Linker private[interface] () {
       val module = {
         if (report.publicModules.size != 1) {
           throw new LinkingException(
-              "Linking returned more that one public module but the legacy " +
+              "Linking did not return exactly one public module, but the legacy " +
               "`link` method was called. Call the overload taking an " +
               s"OutputDirectory instead. Full report:\n$report")
         }

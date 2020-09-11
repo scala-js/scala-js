@@ -248,7 +248,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
           if (report.publicModules.size != 1) {
             throw new MessageOnlyException(
-                "Linking returned more that one public module. " +
+                "Linking did not return exactly one public module. " +
                 s"${legacyKey.key} can only deal with a single module. " +
                 s"Did you mean to invoke ${key.key} instead? " +
                 s"Full report:\n$report")
