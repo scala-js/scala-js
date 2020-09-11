@@ -41,7 +41,7 @@ object CustomScalaJSLinkerPlugin extends AutoPlugin {
   }
 
   private def scalaJSStageSettings(stage: Stage,
-      key: TaskKey[Attributed[File]]): Seq[Setting[_]] = {
+      key: TaskKey[Attributed[Report]]): Seq[Setting[_]] = {
     val entryPointOutputFileName =
       s"entrypoints-${stage.toString.toLowerCase}.txt"
 
@@ -91,8 +91,8 @@ object CustomScalaJSLinkerPlugin extends AutoPlugin {
   )
 
   private lazy val configSettings: Seq[Setting[_]] = Def.settings(
-    scalaJSStageSettings(FastOptStage, fastOptJS),
-    scalaJSStageSettings(FullOptStage, fullOptJS),
+    scalaJSStageSettings(FastOptStage, linkJSDev),
+    scalaJSStageSettings(FullOptStage, linkJSProd),
   )
 
   override def projectSettings: Seq[Setting[_]] = Def.settings(

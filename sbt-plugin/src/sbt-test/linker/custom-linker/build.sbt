@@ -36,7 +36,7 @@ lazy val main = project
   )
 
 check := {
-  val modules = (scalaJSImportedModules in (main, Compile, fastOptJS)).value
+  val modules = (scalaJSImportedModules in (main, Compile, linkJSDev)).value
   val expected = Set("foo.js", "bar.js")
   // test sizes as well to make sure that there are no duplicates in `modules`
   assert(modules.size == expected.size && modules.toSet == expected,
