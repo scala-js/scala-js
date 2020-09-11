@@ -1710,15 +1710,19 @@ object Build {
         val testDir = (sourceDirectory in Test).value
         val scalaV = scalaVersion.value
 
-        val config = scalaJSLinkerConfig.value
-        val moduleKind = config.moduleKind
+        val linkerConfig = scalaJSStage.value match {
+          case FastOptStage => (scalaJSLinkerConfig in (Compile, linkJSDev)).value
+          case FullOptStage => (scalaJSLinkerConfig in (Compile, linkJSProd)).value
+        }
+
+        val moduleKind = linkerConfig.moduleKind
         val hasModules = moduleKind != ModuleKind.NoModule
 
         collectionsEraDependentDirectory(scalaV, testDir) ::
         includeIf(testDir / "require-modules",
             hasModules) :::
         includeIf(testDir / "require-multi-modules",
-            hasModules && !config.closureCompiler) :::
+            hasModules && !linkerConfig.closureCompiler) :::
         includeIf(testDir / "require-dynamic-import",
             moduleKind == ModuleKind.ESModule) // this is an approximation that works for now
       },
