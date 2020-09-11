@@ -1,6 +1,6 @@
 $ copy-file Data.scala.good Data.scala
-> fastOptJS
+> linkJSDev
 $ copy-file Data.scala.broken Data.scala
--> fastOptJS
+-> linkJSDev
 $ copy-file Data.scala.fixed Data.scala
-> fastOptJS
+> linkJSDev
