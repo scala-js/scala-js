@@ -44,7 +44,7 @@ object ScalaJSPlugin extends AutoPlugin {
      *  }}}
      */
     object ScalaJSTags {
-      /** This tag is applied to the [[fastOptJS]] and [[fullOptJS]] tasks. */
+      /** This tag is applied to the [[linkJSDev]] and [[linkJSProd]] tasks. */
       val Link = Tags.Tag("scalajs-link")
     }
 
@@ -88,16 +88,16 @@ object ScalaJSPlugin extends AutoPlugin {
     /** Instance of the Scala.js linker.
      *
      *  This task must be scoped per project, configuration, and stage task
-     *  (`fastOptJS` or `fullOptJS`).
+     *  (`linkJSDev` or `linkJSProd`).
      *
      *  If a task uses the `link` method of the `ClearableLinker`, it must be
      *  protected from running in parallel with any other task doing the same
      *  thing, by tagging the task with the value of [[usesScalaJSLinkerTag]]
      *  in the same scope. The typical shape of such a task will be:
      *  {{{
-     *  Compile / fastOptJS / myTask := Def.taskDyn {
-     *    val linker = (Compile / fastOptJS / scalaJSLinker).value
-     *    val usesLinkerTag = (Compile / fastOptJS / usesScalaJSLinkerTag).value
+     *  Compile / linkJSDev / myTask := Def.taskDyn {
+     *    val linker = (Compile / linkJSDev / scalaJSLinker).value
+     *    val usesLinkerTag = (Compile / linkJSDev / usesScalaJSLinkerTag).value
      *    // Read the `.value` of other settings and tasks here
      *
      *    Def.task {

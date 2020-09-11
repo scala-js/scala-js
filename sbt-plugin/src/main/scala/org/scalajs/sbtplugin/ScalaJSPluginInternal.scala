@@ -116,7 +116,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
     incOptions.withExternalHooks(newExternalHooks)
   }
 
-  /** Settings for the production key (e.g. fastOptJS) of a given stage */
+  /** Settings for the production key (e.g. linkJSDev) of a given stage */
   private def scalaJSStageSettings(stage: Stage,
       key: TaskKey[Attributed[Report]],
       legacyKey: TaskKey[Attributed[File]]): Seq[Setting[_]] = Seq(
@@ -130,6 +130,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
         box.ensure(linkerImpl.clearableLinker(config))
       },
+
+      scalaJSLinker in legacyKey := (scalaJSLinker in key).value,
 
       // Have `clean` reset the state of the incremental linker
       clean in (This, Zero, This) := {
@@ -150,6 +152,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
         Tags.Tag(s"uses-scalajs-linker-$projectPart-$configPart-$stagePart")
       },
 
+      usesScalaJSLinkerTag in legacyKey := (usesScalaJSLinkerTag in key).value,
+
       // Prevent this linker from being used concurrently
       concurrentRestrictions in Global +=
         Tags.limit((usesScalaJSLinkerTag in key).value, 1),
@@ -159,6 +163,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
       scalaJSLinkerConfigFingerprint in key :=
         StandardConfig.fingerprint((scalaJSLinkerConfig in key).value),
+
+      moduleName in legacyKey := (moduleName in key).value,
 
       key := Def.taskDyn {
         /* It is very important that we evaluate all of those `.value`s from
@@ -292,7 +298,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
       scalaJSStageSettings(Stage.FastOpt, linkJSDev, fastOptJS) ++
       scalaJSStageSettings(Stage.FullOpt, linkJSProd, fullOptJS)
   ) ++ (
-      Seq(fastOptJS, fullOptJS).map { key =>
+      Seq(linkJSDev, linkJSProd).map { key =>
         moduleName in key := {
           val configSuffix = configuration.value match {
             case Compile => ""
@@ -378,12 +384,12 @@ private[sbtplugin] object ScalaJSPluginInternal {
       },
 
       scalaJSLinkerOutputDirectory in linkJSDev :=
-        ((crossTarget in fastOptJS).value /
-            ((moduleName in fastOptJS).value + "-dev")),
+        ((crossTarget in linkJSDev).value /
+            ((moduleName in linkJSDev).value + "-dev")),
 
       scalaJSLinkerOutputDirectory in linkJSProd :=
-        ((crossTarget in fullOptJS).value /
-            ((moduleName in fullOptJS).value + "-prod")),
+        ((crossTarget in linkJSProd).value /
+            ((moduleName in linkJSProd).value + "-prod")),
 
       artifactPath in fastOptJS :=
         ((crossTarget in fastOptJS).value /
@@ -586,7 +592,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         }.toMap
       },
 
-      // Override default to avoid triggering a test:fastOptJS in a test:compile
+      // Override default to avoid triggering a test:linkJSDev in a test:compile
       // without losing autocompletion.
       definedTestNames := {
         definedTests.map(_.map(_.name).distinct)
