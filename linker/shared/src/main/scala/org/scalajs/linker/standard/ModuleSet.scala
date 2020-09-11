@@ -35,7 +35,8 @@ final class ModuleSet private[linker] (
     val modules: List[ModuleSet.Module],
     val abstractClasses: List[LinkedClass]
 ) {
-  require(modules.count(_.isRoot) <= 1, "Must have at most one root module")
+  require(modules.isEmpty || modules.count(_.isRoot) == 1,
+      "Must have exactly one root module")
 
   // TODO: Check that public modules are leafs?
 }

@@ -55,12 +55,24 @@ private object MaxModuleAnalyzer {
     private[this] val allTags =
       mutable.Map.empty[ClassName, mutable.Set[ModuleID]]
 
-    private[this] val toProcess = mutable.Set.empty[ClassName]
-
     def analyze(): ModuleAnalyzer.Analysis = {
       tagEntryPoints()
-      processTags()
-      new FullAnalysis(buildModuleMap())
+
+      val moduleIDs = buildModuleIDs()
+
+      val moduleMap = allTags.map {
+        case (className, tags) => className -> moduleIDs(tags)
+      }.toMap
+
+      new FullAnalysis(moduleMap)
+    }
+
+    private def tag(className: ClassName, moduleID: ModuleID): Unit = {
+      val perClassTags = allTags.getOrElseUpdate(className, mutable.Set.empty)
+      if (perClassTags.add(moduleID)) {
+        infos.classDependencies(className)
+          .foreach(tag(_, moduleID))
+      }
     }
 
     private def tagEntryPoints(): Unit = {
@@ -68,46 +80,8 @@ private object MaxModuleAnalyzer {
         (moduleID, deps) <- infos.publicModuleDependencies
         className <- deps
       } {
-        tag(className, moduleID :: Nil)
+        tag(className, moduleID /*:: Nil*/)
       }
-    }
-
-    private def processTags(): Unit = {
-      /* We process tags in a pseudo breadth-first manner (pseudo because we can
-       * process each node multiple times).
-       *
-       * Observe that the provenance of a tag does not matter when propagating
-       * from any given node. Using the "BFS" strategy, we try to accumulate all
-       * tags on a given node first and only then propagate forward. This is an
-       * attempt to avoid traversing the same subtree multiple times.
-       */
-
-      while (toProcess.nonEmpty) {
-        val next = toProcess.head
-        toProcess.remove(next)
-
-        val deps = infos.classDependencies(next)
-        val tags = allTags(next)
-
-        deps.foreach(tag(_, tags))
-      }
-    }
-
-    private def tag(className: ClassName, tags: Iterable[ModuleID]): Unit = {
-      val base = allTags.getOrElseUpdate(className, mutable.Set.empty)
-
-      var changed = false
-
-      for (t <- tags)
-        changed ||= base.add(t)
-
-      if (changed)
-        toProcess.add(className)
-    }
-
-    private def buildModuleMap(): Map[ClassName, ModuleID] = {
-      val ids = buildModuleIDs()
-      allTags.map { case (className, tags) => className -> ids(tags) }.toMap
     }
 
     private def buildModuleIDs(): Map[scala.collection.Set[ModuleID], ModuleID] = {
