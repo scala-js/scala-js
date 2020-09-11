@@ -80,7 +80,7 @@ private object MaxModuleAnalyzer {
         (moduleID, deps) <- infos.publicModuleDependencies
         className <- deps
       } {
-        tag(className, moduleID /*:: Nil*/)
+        tag(className, moduleID)
       }
     }
 
