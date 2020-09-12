@@ -8,3 +8,4 @@ disablePlugins(sbt.plugins.IvyPlugin)
 
 lazy val `my-project` = project
   .enablePlugins(ScalaJSPlugin)
+  .settings(scalaJSUseMainModuleInitializer := true)
