@@ -15,6 +15,8 @@ scalaVersion := "2.12.12"
 
 enablePlugins(ScalaJSPlugin)
 
+scalaJSUseMainModuleInitializer := true
+
 /* This hopefully exposes concurrent uses of the linker. If it fails/gets
  * flaky, there is a bug somewhere - #2202
  */
