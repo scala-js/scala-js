@@ -193,26 +193,29 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     val className = tree.name.name
 
+    def chainPrototypeWithLocalCtor(ctorVar: js.Tree, superCtor: js.Tree): js.Tree = {
+      val dummyCtor = fileLevelVar("hh", genName(className))
+
+      js.Block(
+          js.DocComment("@constructor"),
+          genConst(dummyCtor.ident, js.Function(false, Nil, js.Skip())),
+          dummyCtor.prototype := superCtor.prototype,
+          ctorVar.prototype := js.New(dummyCtor, Nil)
+      )
+    }
+
     if (!tree.kind.isJSClass) {
       val ctorVar = globalVar("c", className)
 
-      val chainProtoWithGlobals = tree.superClass.fold[WithGlobals[js.Tree]] {
-        WithGlobals(js.Skip())
-      } { parentIdent =>
-        if (shouldExtendJSError(tree)) {
-          for {
-            errorRef <- globalRef("Error")
-          } yield {
-            js.Block(
-                js.DocComment("@constructor"),
-                globalFunctionDef("hh", className, Nil, js.Skip()),
-                globalVar("hh", className).prototype := errorRef.prototype,
-                ctorVar.prototype := js.New(globalVar("hh", className), Nil)
-            )
-          }
-        } else {
+      val chainProtoWithGlobals = tree.superClass match {
+        case None =>
+          WithGlobals(js.Skip())
+
+        case Some(_) if shouldExtendJSError(tree) =>
+          globalRef("Error").map(chainPrototypeWithLocalCtor(ctorVar, _))
+
+        case Some(parentIdent) =>
           WithGlobals(ctorVar.prototype := js.New(globalVar("h", parentIdent.name), Nil))
-        }
       }
 
       for {
@@ -242,10 +245,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         js.Block(
             js.DocComment("@constructor"),
             ctorVar := ctorFun,
-            js.DocComment("@constructor"),
-            globalVarDef("h", className, js.Function(false, Nil, js.Skip())),
-            globalVar("h", className).prototype := superCtor.prototype,
-            ctorVar.prototype := js.New(globalVar("h", className), Nil),
+            chainPrototypeWithLocalCtor(ctorVar, superCtor),
             genIdentBracketSelect(ctorVar.prototype, "constructor") := ctorVar
         )
       }
