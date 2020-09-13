@@ -1,16 +1,16 @@
 $ copy-file Main.scala.first Main.scala
 > linkJSDev
-$ copy-file target/scala-2.12/change-config-and-source-fastopt.js target/scala-2.12/output-1.js
+$ copy-file target/scala-2.12/change-config-and-source-dev/main.js target/scala-2.12/output-1.js
 
 # When the linker config and source both change, re-running linkJSDev should re-link:
 > set scalaJSLinkerConfig ~= (_.withOptimizer(false))
 $ copy-file Main.scala.second Main.scala
 > linkJSDev
--$ must-mirror target/scala-2.12/change-config-and-source-fastopt.js target/scala-2.12/output-1.js
-$ newer target/scala-2.12/change-config-and-source-fastopt.js target/scala-2.12/output-1.js
-$ copy-file target/scala-2.12/change-config-and-source-fastopt.js target/scala-2.12/output-2.js
+-$ must-mirror target/scala-2.12/change-config-and-source-dev/main.js target/scala-2.12/output-1.js
+$ newer target/scala-2.12/change-config-and-source-dev/main.js target/scala-2.12/output-1.js
+$ copy-file target/scala-2.12/change-config-and-source-dev/main.js target/scala-2.12/output-2.js
 
 # However, this re-linking should not happen more than once:
 > linkJSDev
-$ must-mirror target/scala-2.12/change-config-and-source-fastopt.js target/scala-2.12/output-2.js
--$ newer target/scala-2.12/change-config-and-source-fastopt.js target/scala-2.12/output-2.js
+$ must-mirror target/scala-2.12/change-config-and-source-dev/main.js target/scala-2.12/output-2.js
+-$ newer target/scala-2.12/change-config-and-source-dev/main.js target/scala-2.12/output-2.js
