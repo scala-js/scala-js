@@ -192,63 +192,63 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     implicit val pos = tree.pos
 
     val className = tree.name.name
-    val isJSClass = tree.kind.isJSClass
-    val typeVar =
-      if (isJSClass) fileLevelVar("b", genName(className))
-      else globalVar("c", className)
 
-    def makeInheritableCtorDef(ctorToMimic: js.Tree, field: String) = {
-      js.Block(
-        js.DocComment("@constructor"),
-        if (isJSClass) globalVarDef(field, className, js.Function(false, Nil, js.Skip()))
-        else globalFunctionDef(field, className, Nil, js.Skip()),
-        globalVar(field, className).prototype := ctorToMimic.prototype
-      )
-    }
+    if (!tree.kind.isJSClass) {
+      val ctorVar = globalVar("c", className)
 
-    val ctorFunWithGlobals =
-      if (!isJSClass) genJSConstructorFun(tree, initToInline)
-      else genConstructorFunForJSClass(tree)
-
-    val chainProtoWithGlobals = tree.superClass.fold[WithGlobals[js.Tree]] {
-      WithGlobals(js.Skip())
-    } { parentIdent =>
-      val (inheritedCtorDefWithGlobals, inheritedCtorRef) = if (!isJSClass) {
+      val chainProtoWithGlobals = tree.superClass.fold[WithGlobals[js.Tree]] {
+        WithGlobals(js.Skip())
+      } { parentIdent =>
         if (shouldExtendJSError(tree)) {
-          val inheritableCtorDefWithGlobals = globalRef("Error").map { errorRef =>
-            makeInheritableCtorDef(errorRef, "hh")
+          for {
+            errorRef <- globalRef("Error")
+          } yield {
+            js.Block(
+                js.DocComment("@constructor"),
+                globalFunctionDef("hh", className, Nil, js.Skip()),
+                globalVar("hh", className).prototype := errorRef.prototype,
+                ctorVar.prototype := js.New(globalVar("hh", className), Nil)
+            )
           }
-          (inheritableCtorDefWithGlobals, globalVar("hh", className))
         } else {
-          (WithGlobals(js.Skip()), globalVar("h", parentIdent.name))
+          WithGlobals(ctorVar.prototype := js.New(globalVar("h", parentIdent.name), Nil))
         }
-      } else {
-        (genJSSuperCtor(tree).map(makeInheritableCtorDef(_, "h")), globalVar("h", className))
       }
 
-      for (inheritedCtorDef <- inheritedCtorDefWithGlobals) yield {
+      for {
+        ctorFun <- genJSConstructorFun(tree, initToInline)
+        chainProto <- chainProtoWithGlobals
+      } yield {
         js.Block(
-            inheritedCtorDef,
-            typeVar.prototype := js.New(inheritedCtorRef, Nil),
-            js.Assign(genIdentBracketSelect(typeVar.prototype, "constructor"), typeVar)
+            // Real constructor
+            js.DocComment("@constructor"),
+            globalFunctionDef("c", className, ctorFun.args, ctorFun.body),
+            chainProto,
+            genIdentBracketSelect(ctorVar.prototype, "constructor") := ctorVar,
+
+            // Inheritable constructor
+            js.DocComment("@constructor"),
+            globalFunctionDef("h", className, Nil, js.Skip()),
+            globalVar("h", className).prototype := ctorVar.prototype
         )
       }
-    }
+    } else {
+      for {
+        ctorFun <- genConstructorFunForJSClass(tree)
+        superCtor <- genJSSuperCtor(tree)
+      } yield {
+        val ctorVar = fileLevelVar("b", genName(className))
 
-    for {
-      ctorFun <- ctorFunWithGlobals
-      chainProto <- chainProtoWithGlobals
-    } yield {
-      val docComment = js.DocComment("@constructor")
-      val ctorDef =
-        if (isJSClass) typeVar := ctorFun
-        else globalFunctionDef("c", className, ctorFun.args, ctorFun.body)
-
-      val inheritableCtorDef =
-        if (isJSClass) js.Skip()
-        else makeInheritableCtorDef(typeVar, "h")
-
-      js.Block(docComment, ctorDef, chainProto, inheritableCtorDef)
+        js.Block(
+            js.DocComment("@constructor"),
+            ctorVar := ctorFun,
+            js.DocComment("@constructor"),
+            globalVarDef("h", className, js.Function(false, Nil, js.Skip())),
+            globalVar("h", className).prototype := superCtor.prototype,
+            ctorVar.prototype := js.New(globalVar("h", className), Nil),
+            genIdentBracketSelect(ctorVar.prototype, "constructor") := ctorVar
+        )
+      }
     }
   }
 
