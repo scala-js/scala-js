@@ -314,9 +314,18 @@ trait MapTest {
     mp.put("TWO", "two")
     assertEquals(2, mp.size())
     mp.clear()
+
+    // Test the content size
     assertEquals(0, mp.size())
+
+    // Test the hash table
     assertNull(mp.get("ONE"))
     assertNull(mp.get("TWO"))
+
+    // Test the iterators (different from the hash table for LinkedHashMap)
+    assertFalse(mp.entrySet().iterator().hasNext())
+    assertFalse(mp.keySet().iterator().hasNext())
+    assertFalse(mp.values().iterator().hasNext())
 
     // can be reused after clear()
     mp.put("TWO", "value 2")

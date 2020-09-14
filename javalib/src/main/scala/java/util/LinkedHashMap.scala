@@ -93,6 +93,17 @@ class LinkedHashMap[K, V](initialCapacity: Int, loadFactor: Float,
       younger.older = older
   }
 
+  override def clear(): Unit = {
+    super.clear()
+
+    /* #4195 HashMap.clear() won't call `nodeWasRemoved` for every node, which
+     * would be inefficient, so `eldest` and `yougest` are not automatically
+     * updated. We must explicitly set them to `null` here.
+     */
+    eldest = null
+    youngest = null
+  }
+
   protected def removeEldestEntry(eldest: Map.Entry[K, V]): Boolean = false
 
   private[util] override def nodeIterator(): ju.Iterator[HashMap.Node[K, V]] =
