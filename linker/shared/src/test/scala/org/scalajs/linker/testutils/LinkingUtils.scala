@@ -23,7 +23,8 @@ import org.scalajs.linker.interface._
 
 object LinkingUtils {
   def testLink(classDefs: Seq[ClassDef],
-      moduleInitializers: List[ModuleInitializer])(
+      moduleInitializers: List[ModuleInitializer],
+      output: OutputDirectory = MemOutputDirectory())(
       implicit ec: ExecutionContext): Future[Report] = {
 
     val linker = StandardImpl.linker(StandardConfig())
@@ -31,7 +32,7 @@ object LinkingUtils {
 
     TestIRRepo.minilib.flatMap { stdLibFiles =>
       linker.link(stdLibFiles ++ classDefsFiles, moduleInitializers,
-          MemOutputDirectory(), new ScalaConsoleLogger(Level.Error))
+          output, new ScalaConsoleLogger(Level.Error))
     }
   }
 }

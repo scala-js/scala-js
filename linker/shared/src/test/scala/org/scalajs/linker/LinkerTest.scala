@@ -15,6 +15,7 @@ package org.scalajs.linker
 import scala.concurrent._
 
 import java.net.URI
+import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
 import org.junit.Test
@@ -27,6 +28,7 @@ import org.scalajs.logging._
 import org.scalajs.junit.async._
 
 import org.scalajs.linker.interface._
+import org.scalajs.linker.interface.unstable.OutputDirectoryImpl
 import org.scalajs.linker.testutils._
 import org.scalajs.linker.testutils.LinkingUtils._
 import org.scalajs.linker.testutils.TestIRBuilder._
@@ -34,17 +36,18 @@ import org.scalajs.linker.testutils.TestIRBuilder._
 class LinkerTest {
   import scala.concurrent.ExecutionContext.Implicits.global
 
+  val helloWorldClassDefs = Seq(
+      mainTestClassDef({
+        consoleLog(StringLiteral("Hello world!"))
+      })
+  )
+
   /** Makes sure that the minilib is sufficient to completely link a hello
    *  world.
    */
   @Test
   def linkHelloWorld(): AsyncResult = await {
-    val classDefs = Seq(
-        mainTestClassDef({
-          consoleLog(StringLiteral("Hello world!"))
-        })
-    )
-    testLink(classDefs, MainTestModuleInitializers)
+    testLink(helloWorldClassDefs, MainTestModuleInitializers)
   }
 
   @Test
@@ -53,6 +56,24 @@ class LinkerTest {
      * See the special check on ModuleSplitter for details.
      */
     testLink(Nil, Nil)
+  }
+
+  @Test
+  def cleanOutputDir(): AsyncResult = await {
+    val staleFileName = "stale-code.js"
+
+    val outputDirectory = MemOutputDirectory()
+
+    for {
+      // Simulate a stale output in the output directory.
+      _ <- OutputDirectoryImpl.fromOutputDirectory(outputDirectory)
+        .writeFull(staleFileName, ByteBuffer.wrap(Array()))
+      report <- testLink(helloWorldClassDefs, MainTestModuleInitializers,
+          outputDirectory)
+    } yield {
+      assertFalse(outputDirectory.content(staleFileName).isDefined)
+      assertTrue(outputDirectory.content(report.publicModules.head.jsFileName).isDefined)
+    }
   }
 
   /** This test exposes a problem where a linker in error state is called

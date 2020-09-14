@@ -805,7 +805,8 @@ object Build {
   ).settings(
       libraryDependencies ++= Seq(
           "com.google.javascript" % "closure-compiler" % "v20200719",
-          "com.novocode" % "junit-interface" % "0.9" % "test"
+          "com.novocode" % "junit-interface" % "0.9" % "test",
+          "com.google.jimfs" % "jimfs" % "1.1" % "test"
       ) ++ (
           parallelCollectionsDependencies(scalaVersion.value)
       ),
