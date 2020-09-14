@@ -210,6 +210,7 @@ object StandardConfig {
             config.closureCompilerIfAvailable)
         .addField("prettyPrint", config.prettyPrint)
         .addField("batchMode", config.batchMode)
+        .addField("maxConcurrentWrites", config.maxConcurrentWrites)
         .build()
     }
   }
@@ -234,6 +235,7 @@ object StandardConfig {
    *  - `closureCompilerIfAvailable`: `false`
    *  - `prettyPrint`: `false`
    *  - `batchMode`: `false`
+   *  - `maxConcurrentWrites`: `50`
    */
   def apply(): StandardConfig = new StandardConfig()
 
