@@ -56,7 +56,9 @@ object LinkerBackendImpl {
        */
       val closureCompilerIfAvailable: Boolean,
       /** Pretty-print the output. */
-      val prettyPrint: Boolean
+      val prettyPrint: Boolean,
+      /** The maximum number of (file) writes executed concurrently. */
+      val maxConcurrentWrites: Int
   ) {
     private def this() = {
       this(
@@ -65,7 +67,8 @@ object LinkerBackendImpl {
           outputPatterns = OutputPatterns.Defaults,
           relativizeSourceMapBase = None,
           closureCompilerIfAvailable = false,
-          prettyPrint = false)
+          prettyPrint = false,
+          maxConcurrentWrites = 50)
     }
 
     def withCommonConfig(commonConfig: CommonPhaseConfig): Config =
@@ -86,15 +89,20 @@ object LinkerBackendImpl {
     def withPrettyPrint(prettyPrint: Boolean): Config =
       copy(prettyPrint = prettyPrint)
 
+    def withMaxConcurrentWrites(maxConcurrentWrites: Int): Config =
+      copy(maxConcurrentWrites = maxConcurrentWrites)
+
     private def copy(
         commonConfig: CommonPhaseConfig = commonConfig,
         sourceMap: Boolean = sourceMap,
         outputPatterns: OutputPatterns = outputPatterns,
         relativizeSourceMapBase: Option[URI] = relativizeSourceMapBase,
         closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
-        prettyPrint: Boolean = prettyPrint): Config = {
+        prettyPrint: Boolean = prettyPrint,
+        maxConcurrentWrites: Int = maxConcurrentWrites): Config = {
       new Config(commonConfig, sourceMap, outputPatterns,
-          relativizeSourceMapBase, closureCompilerIfAvailable, prettyPrint)
+          relativizeSourceMapBase, closureCompilerIfAvailable, prettyPrint,
+          maxConcurrentWrites)
     }
   }
 

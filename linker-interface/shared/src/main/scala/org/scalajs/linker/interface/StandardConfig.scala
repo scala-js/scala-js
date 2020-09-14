@@ -59,7 +59,9 @@ final class StandardConfig private (
      *  linker mainly designed for incremental runs may ignore
      *  `batchMode = true`.
      */
-    val batchMode: Boolean
+    val batchMode: Boolean,
+    /** The maximum number of (file) writes executed concurrently. */
+    val maxConcurrentWrites: Int
 ) {
   private def this() = {
     this(
@@ -75,7 +77,8 @@ final class StandardConfig private (
         outputPatterns = OutputPatterns.Defaults,
         closureCompilerIfAvailable = false,
         prettyPrint = false,
-        batchMode = false
+        batchMode = false,
+        maxConcurrentWrites = 50
     )
   }
 
@@ -127,6 +130,9 @@ final class StandardConfig private (
   def withBatchMode(batchMode: Boolean): StandardConfig =
     copy(batchMode = batchMode)
 
+  def withMaxConcurrentWrites(maxConcurrentWrites: Int): StandardConfig =
+    copy(maxConcurrentWrites = maxConcurrentWrites)
+
   override def toString(): String = {
     s"""StandardConfig(
        |  semantics                  = $semantics,
@@ -142,6 +148,7 @@ final class StandardConfig private (
        |  closureCompilerIfAvailable = $closureCompilerIfAvailable,
        |  prettyPrint                = $prettyPrint,
        |  batchMode                  = $batchMode,
+       |  maxConcurrentWrites        = $maxConcurrentWrites,
        |)""".stripMargin
   }
 
@@ -158,7 +165,8 @@ final class StandardConfig private (
       relativizeSourceMapBase: Option[URI] = relativizeSourceMapBase,
       closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
       prettyPrint: Boolean = prettyPrint,
-      batchMode: Boolean = batchMode
+      batchMode: Boolean = batchMode,
+      maxConcurrentWrites: Int = maxConcurrentWrites
   ): StandardConfig = {
     new StandardConfig(
         semantics,
@@ -173,7 +181,8 @@ final class StandardConfig private (
         outputPatterns,
         closureCompilerIfAvailable,
         prettyPrint,
-        batchMode
+        batchMode,
+        maxConcurrentWrites
     )
   }
 }

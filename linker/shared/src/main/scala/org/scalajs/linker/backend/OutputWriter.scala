@@ -20,7 +20,7 @@ import java.nio.charset.StandardCharsets
 
 import org.scalajs.linker.interface.{OutputDirectory, Report}
 import org.scalajs.linker.interface.unstable.{OutputDirectoryImpl, OutputPatternsImpl, ReportImpl}
-import org.scalajs.linker.standard.ModuleSet
+import org.scalajs.linker.standard.{ModuleSet, IOThrottler}
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 private[backend] abstract class OutputWriter(output: OutputDirectory,
@@ -36,14 +36,17 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
       sourceMapWriter: Writer): Unit
 
   def write(moduleSet: ModuleSet)(implicit ec: ExecutionContext): Future[Report] = {
+    val ioThrottler = new IOThrottler(config.maxConcurrentWrites)
+
     def filesToRemove(seen: Iterable[String], reports: List[Report.Module]): Set[String] =
       seen.toSet -- reports.flatMap(r => r.jsFileName :: r.sourceMapName.toList)
 
     for {
       currentFiles <- outputImpl.listFiles()
-      // TODO: Throttle writes!
-      reports <- Future.traverse(moduleSet.modules)(m => writeModule(m.id))
-      _ <- Future.traverse(filesToRemove(currentFiles, reports))(outputImpl.delete(_))
+      reports <- Future.traverse(moduleSet.modules)(m =>
+          ioThrottler.throttle(writeModule(m.id)))
+      _ <- Future.traverse(filesToRemove(currentFiles, reports))(f =>
+          ioThrottler.throttle(outputImpl.delete(f)))
     } yield {
       val publicModules = for {
         (module, report) <- moduleSet.modules.zip(reports)
