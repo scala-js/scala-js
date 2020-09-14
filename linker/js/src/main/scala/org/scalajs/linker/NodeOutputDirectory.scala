@@ -29,7 +29,7 @@ object NodeOutputDirectory {
 
   private final class Impl(directory: String) extends OutputDirectoryImpl {
     def writeFull(name: String, buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = {
-      val path = NodeFS.join(directory, name)
+      val path = getPath(name)
 
       val data =
         if (buf.hasTypedArray()) buf.typedArray().subarray(buf.position(), buf.limit())
@@ -43,7 +43,9 @@ object NodeOutputDirectory {
       cbFuture[js.Array[String]](NodeFS.readdir(directory, _)).map(x => x)
 
     def delete(name: String)(implicit ec: ExecutionContext): Future[Unit] =
-      cbFuture[Unit](NodeFS.unlink(name, _))
+      cbFuture[Unit](NodeFS.unlink(getPath(name), _))
+
+    private def getPath(name: String) = NodeFS.join(directory, name)
   }
 }
 

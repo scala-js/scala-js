@@ -18,7 +18,13 @@ import org.scalajs.ir.ScalaJSVersions
 
 import org.scalajs.linker.interface.unstable.ReportImpl
 
+/** Information about a linker run. */
 abstract class Report private[interface] {
+  /** Public modules resulting from linking.
+   *
+   *  An incremental linker must return all public modules here, even if some
+   *  were not re-written during this linking run.
+   */
   def publicModules: Iterable[Report.Module]
 
   override def toString(): String = {
@@ -31,10 +37,20 @@ abstract class Report private[interface] {
 }
 
 object Report {
+  /** Information about a module produced by the linker. */
   abstract class Module private[interface] {
+    /** The module ID of this module. */
     def moduleID: String
+
+    /** The name of the JS file in the linker's [[OutputDirectory]]. */
     def jsFileName: String
+
+    /** The name of the source map (if one was generated) in the linker's
+     *  [[OutputDirectory]].
+     */
     def sourceMapName: Option[String]
+
+    /** The [[ModuleKind]] of this module. */
     def moduleKind: ModuleKind
 
     override def toString(): String = {
@@ -47,6 +63,12 @@ object Report {
     }
   }
 
+  /** Serializes this [[Report]] to a byte array.
+   *
+   *  A report serialized with the exact same binary version is guaranteed to
+   *  deserializable using [[deserialize]]. If the binary version is different,
+   * no guarantee is given.
+   */
   def serialize(report: Report): Array[Byte] = {
     val bytes = new ByteArrayOutputStream
     val out = new DataOutputStream(bytes)
@@ -59,8 +81,9 @@ object Report {
 
   /** Tries to deserialize the given bytes as a [[Report]].
    *
-   *  @return None If the provided bytes are not compatible with the current
-   *      linker version, Some(<report>) otherwise.
+   *  @return `None` If the provided bytes are not compatible with the current
+   *      linker version, `Some(<report>)` otherwise.
+   *  @see [[serialize]] about when this is guaranteed to return `Some(<report>)`.
    */
   def deserialize(bytes: Array[Byte]): Option[Report] = {
     val in = new DataInputStream(new ByteArrayInputStream(bytes))

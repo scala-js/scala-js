@@ -23,13 +23,15 @@ import Fingerprint.FingerprintBuilder
  *
  *  When linking a Scala.js application, a sequence of `ModuleInitializer`s can
  *  be given. Those module initializers will be executed at the startup of the
- *  application. More specifically, the top-level code of the ECMAScript 2015
- *  module emitted for the application will invoke the specified module
+ *  application. More specifically, the top-level code of the relevant
+ *  ECMAScript 2015 module emitted will invoke the specified module
  *  initializers in the specified order, after having initialized everything
  *  else (notably static initializers).
  *
  *  Instances of `ModuleInitializer` can be created with methods of
  *  [[ModuleInitializer$ the ModuleInitializer companion object]].
+ *
+ *  The module which they belong to can be adjusted using [[withModuleID]].
  */
 final class ModuleInitializer private (
     val initializer: ModuleInitializer.Initializer,

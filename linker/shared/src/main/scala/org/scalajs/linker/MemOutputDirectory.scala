@@ -21,7 +21,9 @@ import java.nio.ByteBuffer
 import org.scalajs.linker.interface.OutputDirectory
 import org.scalajs.linker.interface.unstable.OutputDirectoryImpl
 
+/** OutputDirectory that simply writes to memory. */
 sealed trait MemOutputDirectory extends OutputDirectory {
+  /** Content of the file with `name` or `None` if the file was not written. */
   def content(name: String): Option[Array[Byte]]
 }
 

@@ -19,9 +19,7 @@ import java.nio.channels._
 import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
 
-import java.security.MessageDigest
-
-import java.util.{Arrays, EnumSet}
+import java.util.EnumSet
 
 import java.io.IOException
 
@@ -49,6 +47,10 @@ object PathOutputDirectory {
     def listFiles()(implicit ec: ExecutionContext): Future[Iterable[String]] = Future {
       blocking {
         val builder = Iterable.newBuilder[String]
+
+        /* Files.list(...) would be simpler, but it requires Java Streams which
+         * are, at the time of this writing, not implemented in Scala.js.
+         */
         val dirVisitor = new SimpleFileVisitor[Path] {
           override def visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult = {
             if (path != directory)
@@ -69,23 +71,21 @@ object PathOutputDirectory {
     private def getPath(name: String) = directory.resolve(name)
   }
 
-  private def writeAtomic(path: Path, buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = {
-    Future(blocking(Files.createTempFile(
-        path.getParent(), ".tmp-" + path.getFileName(), ".tmp"))).flatMap { tmpFile =>
-      writeToPath(tmpFile, buf)
-        .flatMap(_ => Future(blocking(move(tmpFile, path))))
-        .finallyWith(Future(blocking(Files.deleteIfExists(tmpFile))))
-    }
-  }
-
-  private def writeToPath(path: Path, buf: ByteBuffer)(
+  private def writeAtomic(path: Path, buf: ByteBuffer)(
       implicit ec: ExecutionContext): Future[Unit] = {
     import StandardOpenOption._
 
-    Future(blocking(AsynchronousFileChannel.open(
-        path, WRITE, CREATE, TRUNCATE_EXISTING))).flatMap { chan =>
-      writeToChannel(chan, buf)
-        .finallyWith(Future(blocking(chan.close())))
+    val tmpFileFuture = Future(blocking(
+        Files.createTempFile(path.getParent(), ".tmp-" + path.getFileName(), ".tmp")))
+
+    tmpFileFuture.flatMap { tmpFile =>
+      val writeFuture = withChannel(path, WRITE, CREATE, TRUNCATE_EXISTING) { chan =>
+        writeToChannel(chan, buf)
+      }
+
+      writeFuture
+        .flatMap(_ => Future(blocking(move(tmpFile, path))))
+        .finallyWith(Future(blocking(Files.deleteIfExists(tmpFile))))
     }
   }
 
@@ -114,6 +114,17 @@ object PathOutputDirectory {
     promise.future
   }
 
+  private def withChannel[T](f: Path, openOptions: OpenOption*)(
+      body: AsynchronousFileChannel => Future[T])(
+      implicit ec: ExecutionContext): Future[T] = {
+    val chanFuture =
+      Future(blocking(AsynchronousFileChannel.open(f, openOptions: _*)))
+
+    chanFuture.flatMap { chan =>
+      body(chan).finallyWith(Future(blocking(chan.close())))
+    }
+  }
+
   private def move(from: Path, to: Path): Unit = {
     try {
       // Try atomic move.
@@ -136,46 +147,56 @@ object PathOutputDirectory {
       if (!exists) {
         Future.successful(true)
       } else {
-        for (currentDigest <- readDigest(path)) yield {
-          val writeDigest = MessageDigest.getInstance("SHA-1")
-          writeDigest.update(buf.slice()) // slice to retain position.
-
-          !Arrays.equals(currentDigest, writeDigest.digest())
+        withChannel(path, StandardOpenOption.READ) { chan =>
+          // slice buf to protect position / limit.
+          fileDiffers(chan, buf.slice())
         }
       }
     }
   }
 
-  private def readDigest(file: Path): Future[Array[Byte]] = {
-    var _pos = 0L
-    val chan = AsynchronousFileChannel.open(file, StandardOpenOption.READ)
+  private def fileDiffers(chan: AsynchronousFileChannel, cmpBuf: ByteBuffer): Future[Boolean] = {
+    if (chan.size() != cmpBuf.remaining()) {
+      Future.successful(true)
+    } else {
+      var _pos = 0L
 
-    val digest = MessageDigest.getInstance("SHA-1")
-    val promise = Promise[Array[Byte]]()
-    val buf = ByteBuffer.allocate(2048)
+      val promise = Promise[Boolean]()
+      val readBuf = ByteBuffer.allocate(Math.min(2048, cmpBuf.remaining()))
 
-    def readNext(): Unit = {
-      buf.clear()
-      chan.read(buf, _pos, null, Handler)
-    }
-
-    object Handler extends CompletionHandler[Integer, Null] {
-      def completed(read: Integer, n: Null): Unit = {
-        if (read == -1) {
-          promise.success(digest.digest())
-        } else {
-          _pos += read
-          buf.flip()
-          digest.update(buf)
-          readNext()
-        }
+      def readNext(): Unit = {
+        readBuf.clear()
+        chan.read(readBuf, _pos, null, Handler)
       }
 
-      def failed(exc: Throwable, n: Null): Unit =
-        promise.failure(exc)
-    }
+      object Handler extends CompletionHandler[Integer, Null] {
+        def completed(read: Integer, n: Null): Unit = {
+          if (read == -1) {
+            // We have checked the file size beforehand.
+            promise.success(false)
+          } else {
+            _pos += read
 
-    readNext()
-    promise.future
+            readBuf.flip()
+
+            cmpBuf.limit(cmpBuf.position() + readBuf.remaining())
+
+            if (readBuf != cmpBuf) {
+              promise.success(true)
+            } else {
+              cmpBuf.position(cmpBuf.limit())
+              cmpBuf.limit(cmpBuf.capacity())
+              readNext()
+            }
+          }
+        }
+
+        def failed(exc: Throwable, n: Null): Unit =
+          promise.failure(exc)
+      }
+
+      readNext()
+      promise.future
+    }
   }
 }
