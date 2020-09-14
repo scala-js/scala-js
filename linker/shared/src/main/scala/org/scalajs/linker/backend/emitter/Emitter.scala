@@ -260,7 +260,6 @@ final class Emitter(config: Emitter.Config) {
   }
 
   private def genModuleImports(module: ModuleSet.Module): WithGlobals[List[js.Tree]] = {
-    // TODO: NoPosition is probably not good here.
     implicit val pos = Position.NoPosition
 
     def importParts = (

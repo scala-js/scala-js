@@ -37,8 +37,6 @@ final class ModuleSet private[linker] (
 ) {
   require(modules.isEmpty || modules.count(_.isRoot) == 1,
       "Must have exactly one root module")
-
-  // TODO: Check that public modules are leafs?
 }
 
 object ModuleSet {

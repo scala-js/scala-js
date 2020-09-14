@@ -57,7 +57,7 @@ final class LinkedClass(
     val hasRuntimeTypeInfo: Boolean,
 
     val staticDependencies: Set[ClassName],
-    val externalDependencies: Set[String],  // TODO better type.
+    val externalDependencies: Set[String],
 
     val version: Option[String]) {
 
