@@ -1263,7 +1263,7 @@ object Serializers {
         readMemberDef(owner, ownerKind).asInstanceOf[JSMethodDef]
 
       def readModuleID(): String =
-        if (hacks.use11) DefaultModuleID
+        if (hacks.use12) DefaultModuleID
         else readString()
 
       (tag: @switch) match {
@@ -1584,6 +1584,8 @@ object Serializers {
     val use10: Boolean = sourceVersion == "1.0"
 
     val use11: Boolean = use10 || sourceVersion == "1.1"
+
+    val use12: Boolean = use11 || sourceVersion == "1.2"
   }
 
   /** Names needed for hacks. */
