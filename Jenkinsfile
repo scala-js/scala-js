@@ -157,8 +157,8 @@ def Tasks = [
         'set scalaJSLinkerConfig in reversi.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
         'set scalaJSLinkerConfig in reversi.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         reversi$v/linkJSDev \
-	reversi$v/linkJSProd \
-	reversi$v/clean &&
+        reversi$v/linkJSProd \
+        reversi$v/clean &&
     sbtretry ++$scala reversi$v/linkJSDev reversi$v/linkJSProd &&
     sbtretry ++$scala compiler$v/compile:doc library$v/compile:doc \
         testInterface$v/compile:doc testBridge$v/compile:doc &&
@@ -177,7 +177,7 @@ def Tasks = [
     sbtretry ++$scala $testSuite$v/test $testSuite$v/testHtmlJSDom &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite$v/test \
-	$testSuite$v/testHtmlJSDom \
+        $testSuite$v/testHtmlJSDom \
         $testSuite$v/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
         ++$scala $testSuite$v/test &&
@@ -221,7 +221,7 @@ def Tasks = [
         ++$scala $testSuite$v/test &&
     sbtretry \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
-	'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
@@ -305,7 +305,7 @@ def Tasks = [
         ++$scala $testSuite$v/test &&
     sbtretry \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-	'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
@@ -319,7 +319,7 @@ def Tasks = [
         ++$scala $testSuite$v/test &&
     sbtretry \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-	'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         ++$scala $testSuite$v/test &&
