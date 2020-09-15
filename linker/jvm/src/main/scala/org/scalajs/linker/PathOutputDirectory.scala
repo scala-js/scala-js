@@ -79,7 +79,7 @@ object PathOutputDirectory {
         Files.createTempFile(path.getParent(), ".tmp-" + path.getFileName(), ".tmp")))
 
     tmpFileFuture.flatMap { tmpFile =>
-      val writeFuture = withChannel(path, WRITE, CREATE, TRUNCATE_EXISTING) { chan =>
+      val writeFuture = withChannel(tmpFile, WRITE, CREATE, TRUNCATE_EXISTING) { chan =>
         writeToChannel(chan, buf)
       }
 
@@ -172,20 +172,22 @@ object PathOutputDirectory {
       object Handler extends CompletionHandler[Integer, Null] {
         def completed(read: Integer, n: Null): Unit = {
           if (read == -1) {
-            // We have checked the file size beforehand.
+            /* We have checked the file size beforehand. So if we get here,
+             * there's no diff.
+             */
             promise.success(false)
           } else {
             _pos += read
 
             readBuf.flip()
 
-            cmpBuf.limit(cmpBuf.position() + readBuf.remaining())
+            val tmpCmpBuf = cmpBuf.slice()
+            tmpCmpBuf.limit(read)
 
-            if (readBuf != cmpBuf) {
+            if (readBuf != tmpCmpBuf) {
               promise.success(true)
             } else {
-              cmpBuf.position(cmpBuf.limit())
-              cmpBuf.limit(cmpBuf.capacity())
+              cmpBuf.position(cmpBuf.position() + read)
               readNext()
             }
           }
