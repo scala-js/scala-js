@@ -48,11 +48,6 @@ private[emitter] object CoreJSLib {
       val definitions: Tree,
       val initialization: Tree)
 
-  def empty: Lib = {
-    implicit val noPosition: Position = Position.NoPosition
-    new Lib(Skip(), Skip())
-  }
-
   private class CoreJSLibBuilder(sjsGen: SJSGen)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge) {
 
@@ -71,15 +66,19 @@ private[emitter] object CoreJSLib {
     private var trackedGlobalRefs = Set.empty[String]
 
     private def globalRef(name: String): VarRef = {
+      trackGlobalRef(name)
+      varRef(name)
+    }
+
+    private def trackGlobalRef(name: String): Unit = {
       // We never access dangerous global refs from the core JS lib
       assert(!GlobalRefUtils.isDangerousGlobalRef(name))
       if (trackAllGlobalRefs)
         trackedGlobalRefs += name
-      varRef(name)
     }
 
     private def extractWithGlobals[A](withGlobals: WithGlobals[A]): A = {
-      trackedGlobalRefs ++= withGlobals.globalVarNames
+      withGlobals.globalVarNames.foreach(trackGlobalRef(_))
       withGlobals.value
     }
 
@@ -145,7 +144,6 @@ private[emitter] object CoreJSLib {
           str("linkerVersion") -> str(ScalaJSVersions.current),
           str("fileLevelThis") -> This()
       )))
-
 
       buf += extractWithGlobals(globalVarDef("linkingInfo", CoreVar, linkingInfo))
     }

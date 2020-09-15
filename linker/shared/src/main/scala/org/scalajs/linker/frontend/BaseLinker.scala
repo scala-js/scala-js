@@ -108,8 +108,8 @@ final class BaseLinker(config: CommonPhaseConfig) {
     }
   }
 
-  private def assemble(moduleInitializers: Seq[ModuleInitializer], analysis: Analysis)(
-      implicit ec: ExecutionContext): Future[LinkingUnit] = {
+  private def assemble(moduleInitializers: Seq[ModuleInitializer],
+      analysis: Analysis)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
     def assembleClass(info: ClassInfo) = {
       val className = info.className
       val classAndVersion = irLoader.loadClassDefAndVersion(className)

@@ -110,14 +110,12 @@ private[emitter] final class SJSGen(
       field: irt.FieldIdent)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
-    BracketSelect(receiver, genJSPrivateFieldIdent(className, field)(
-        moduleContext, globalKnowledge, field.pos))
-  }
+    val fieldName = {
+      implicit val pos = field.pos
+      globalVar("r", (className, field.name))
+    }
 
-  def genJSPrivateFieldIdent(className: ClassName, field: irt.FieldIdent)(
-      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): Tree = {
-    globalVar("r", (className, field.name))
+    BracketSelect(receiver, fieldName)
   }
 
   def genIsInstanceOf(expr: Tree, tpe: Type)(

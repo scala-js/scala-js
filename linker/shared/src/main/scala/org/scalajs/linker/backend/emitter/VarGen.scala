@@ -44,10 +44,10 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
     val ident = globalVarIdent(field, scope, origName)
-    foldSameModule[T, Tree](scope) {
+    foldSameModule(scope) {
       VarRef(ident)
-    } { module =>
-      DotSelect(VarRef(internalModuleFieldIdent(module)), ident)
+    } { moduleID =>
+      DotSelect(VarRef(internalModuleFieldIdent(moduleID)), ident)
     }
   }
 
@@ -71,9 +71,10 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
       origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext, pos: Position): WithGlobals[Tree] = {
     val ident = globalVarIdent(field, scope, origName)
-    maybeExport(ident, genLet(ident, mutable = false, value), mutable = false)
+    maybeExport(ident, genConst(ident, value), mutable = false)
   }
 
+  /** Attention: A globalVarDecl may only be modified from the module it was declared in. */
   def globalVarDecl[T: Scope](field: String, scope: T,
       origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext, pos: Position): WithGlobals[Tree] = {
@@ -81,6 +82,10 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     maybeExport(ident, genEmptyMutableLet(ident), mutable = true)
   }
 
+  /** Unlike a mutable VarDecl, a globallyMutableVarDef may be modified from any
+   *  module. As such, an additional field needs to be provided for an
+   *  additional setter. This is used when generating ES modules.
+   */
   def globallyMutableVarDef[T: Scope](field: String, setterField: String,
       scope: T, value: Tree, origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext, pos: Position): WithGlobals[Tree] = {
@@ -103,13 +108,12 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     }
   }
 
-  def globallyMutableVarSetter[T: Scope](setterField: String, scope: T)(
+  /** Whether the var setter needs to be used on the given scope. */
+  def needToUseGloballyMutableVarSetter[T](scope: T)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): Option[Tree] = {
-    if (config.moduleKind != ModuleKind.ESModule)
-      None
-    else
-      foldSameModule[T, Option[Tree]](scope)(None)(_ => Some(globalVar(setterField, scope)))
+      scopeType: Scope[T]): Boolean = {
+    config.moduleKind == ModuleKind.ESModule &&
+    globalKnowledge.getModule(scopeType.reprClass(scope)) != moduleContext.moduleID
   }
 
   def globalVarExport[T: Scope](field: String, scope: T, exportName: ExportName,
@@ -119,11 +123,11 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     assert(config.moduleKind == ModuleKind.ESModule)
 
     val ident = globalVarIdent(field, scope, origName)
-    foldSameModule[T, Tree](scope) {
+    foldSameModule(scope) {
       Export((ident -> exportName) :: Nil)
-    } { module =>
+    } { moduleID =>
       val importName = ExportName(ident.name)
-      val moduleName = config.internalModulePattern(module)
+      val moduleName = config.internalModulePattern(moduleID)
       ExportImport((importName -> exportName) :: Nil, StringLiteral(moduleName))
     }
   }
@@ -134,9 +138,9 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     genericIdent(field, scopeType.subField(scope), origName)
   }
 
-  private def foldSameModule[T, S](scope: T)(same: => S)(other: ModuleID => S)(
+  private def foldSameModule[T](scope: T)(same: => Tree)(other: ModuleID => Tree)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      scopeType: Scope[T]): S = {
+      scopeType: Scope[T]): Tree = {
     val reprClass = scopeType.reprClass(scope)
     val targetModule = globalKnowledge.getModule(reprClass)
     if (targetModule == moduleContext.moduleID) same
@@ -173,6 +177,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
       implicit pos: Position): Ident = {
     genericIdent(field, subField, origName)
   }
+
   def fileLevelVarIdent(field: String)(implicit pos: Position): Ident =
     fileLevelVarIdent(field, NoOriginalName)
 

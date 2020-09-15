@@ -388,7 +388,7 @@ object Infos {
   def generateTopLevelExportInfo(enclosingClass: ClassName,
       topLevelExportDef: TopLevelExportDef): TopLevelExportInfo = {
     val info = new GenInfoTraverser().generateTopLevelExportInfo(enclosingClass,
-      topLevelExportDef)
+        topLevelExportDef)
     new TopLevelExportInfo(enclosingClass, info,
         new ModuleID(topLevelExportDef.moduleID),
         topLevelExportDef.topLevelExportName)

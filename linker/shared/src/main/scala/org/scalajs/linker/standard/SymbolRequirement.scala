@@ -131,7 +131,7 @@ object SymbolRequirement {
   }
 
   private[linker] def fromModuleInitializer(
-      entryPoints: Iterable[ModuleInitializer]): SymbolRequirement = {
+      entryPoints: Seq[ModuleInitializer]): SymbolRequirement = {
     import ModuleInitializerImpl._
 
     val factory = SymbolRequirement.factory("module initializers")
@@ -145,6 +145,6 @@ object SymbolRequirement {
           factory.classData(BoxedStringClass)
       }
     }
-    factory.multiple(requirements.toSeq: _*)
+    factory.multiple(requirements: _*)
   }
 }

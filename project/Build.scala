@@ -1531,7 +1531,7 @@ object Build {
         throw new MessageOnlyException(
             "testingExample/test is not supported because it requires DOM " +
             "support. Use testingExample/testHtml instead.")
-      },
+      }
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, jUnitRuntime % "test", testBridge % "test"
   )
@@ -1951,7 +1951,7 @@ object Build {
       name := "Scala.js test suite ex",
       publishArtifact in Compile := false,
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
-      scalacOptions in Test ~= (_.filter(_ != "-deprecation")),
+      scalacOptions in Test ~= (_.filter(_ != "-deprecation"))
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, jUnitRuntime, testBridge % "test", testSuite
   )

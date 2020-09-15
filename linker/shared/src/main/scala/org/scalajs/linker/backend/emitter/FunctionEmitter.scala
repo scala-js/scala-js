@@ -637,13 +637,16 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           // Destructure separately, otherwise 2.11 crashes.
           val SelectStatic(className, item) = select
 
-          globallyMutableVarSetter("u", (className, item.name)).fold {
-            pushLhsInto(Lhs.Assign(select), rhs, tailPosLabels)
-          } { setterTree =>
+          val scope = (className, item.name)
+
+          if (needToUseGloballyMutableVarSetter(scope)) {
             unnest(rhs) { (rhs, env0) =>
               implicit val env = env0
-              js.Apply(setterTree, transformExprNoChar(rhs) :: Nil)
+              js.Apply(globalVar("u", scope), transformExprNoChar(rhs) :: Nil)
             }
+          } else {
+            // Assign normally.
+            pushLhsInto(Lhs.Assign(select), rhs, tailPosLabels)
           }
 
         case Assign(lhs @ (_:VarRef | Transient(JSVarRef(_, _)) | _:JSGlobalRef), rhs) =>

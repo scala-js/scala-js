@@ -109,7 +109,7 @@ class MainGenericRunner {
       val report = Await.result(result, Duration.Inf)
 
       if (report.publicModules.size != 1)
-        throw new AssertionError(s"got more than 1 module: $report")
+        throw new AssertionError(s"got other than 1 module: $report")
 
       dir.resolve(report.publicModules.head.jsFileName)
     }

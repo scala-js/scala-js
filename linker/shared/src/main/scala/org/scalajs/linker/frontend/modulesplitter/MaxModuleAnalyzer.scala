@@ -22,14 +22,15 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
  *
  *  Calculates a transitive closure over the dependency graph for each public
  *  module. After that, each class ends up with set of "tags": one "tag" for
- *  each public module it can be reached by. It then creates a module for each
- *  (distinct) set of tags.
+ *  each public module it can be reached by. We then create a module for each
+ *  distinct set of tags.
  */
 private[modulesplitter] final class MaxModuleAnalyzer extends ModuleAnalyzer {
   import MaxModuleAnalyzer._
 
   def analyze(info: ModuleAnalyzer.DependencyInfo): ModuleAnalyzer.Analysis = {
     if (info.publicModuleDependencies.size == 1) {
+      // Fast path.
       new SingleModuleAnalysis(info.publicModuleDependencies.head._1)
     } else {
       new Run(info).analyze()
@@ -69,10 +70,8 @@ private object MaxModuleAnalyzer {
 
     private def tag(className: ClassName, moduleID: ModuleID): Unit = {
       val perClassTags = allTags.getOrElseUpdate(className, mutable.Set.empty)
-      if (perClassTags.add(moduleID)) {
-        infos.classDependencies(className)
-          .foreach(tag(_, moduleID))
-      }
+      if (perClassTags.add(moduleID))
+        infos.classDependencies(className).foreach(tag(_, moduleID))
     }
 
     private def tagEntryPoints(): Unit = {
@@ -92,6 +91,7 @@ private object MaxModuleAnalyzer {
        * order of the input files).
        */
       val publicIDs = {
+        // Best way I could find to create SortedSet from a Set :-/
         val b = immutable.SortedSet.newBuilder(Ordering.by[ModuleID, String](_.id))
         infos.publicModuleDependencies.keysIterator.foreach(b += _)
         b.result()

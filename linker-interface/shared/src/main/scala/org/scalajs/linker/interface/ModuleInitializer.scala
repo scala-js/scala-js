@@ -31,7 +31,8 @@ import Fingerprint.FingerprintBuilder
  *  Instances of `ModuleInitializer` can be created with methods of
  *  [[ModuleInitializer$ the ModuleInitializer companion object]].
  *
- *  The module which they belong to can be adjusted using [[withModuleID]].
+ *  The module in which a `ModuleInitializer` is going to be placed can be
+ *  adjusted using [[withModuleID]].
  */
 final class ModuleInitializer private (
     val initializer: ModuleInitializer.Initializer,

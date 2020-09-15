@@ -12,10 +12,6 @@
 
 package org.scalajs.linker.standard
 
-import scala.collection.mutable
-
-import org.scalajs.linker.analyzer.Infos
-
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.{ClassKind, Position}
 import org.scalajs.ir.Names.ClassName

@@ -48,4 +48,3 @@ object NodeOutputDirectory {
     private def getPath(name: String) = NodeFS.join(directory, name)
   }
 }
-

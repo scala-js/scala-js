@@ -12,22 +12,10 @@
 
 package org.scalajs.testsuite.jsinterop
 
-import scala.scalajs.js
 import scala.scalajs.js.annotation._
-import scala.scalajs.js.Dynamic.global
-
-import org.scalajs.testsuite.utils.AssertThrows._
-import org.scalajs.testsuite.utils.JSAssert._
-import org.scalajs.testsuite.utils.Platform._
-
-import scala.annotation.meta
 
 import org.junit.Assert._
-import org.junit.Assume._
 import org.junit.Test
-
-import org.scalajs.testsuite.utils.{JSUtils, Platform}
-import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class MultiExportsTest {
   import ExportsTest.exportsNameSpace

@@ -169,16 +169,16 @@ object ScalaJSPlugin extends AutoPlugin {
         KeyRanks.Invisible)
 
     val fastOptJS = TaskKey[Attributed[File]]("fastOptJS",
-        "Quickly link all compiled JavaScript into a single file", APlusTask)
+        "Deprecated: Use linkJSDev instead", KeyRanks.Invisible)
 
     val fullOptJS = TaskKey[Attributed[File]]("fullOptJS",
-        "Link all compiled JavaScript into a single file and fully optimize", APlusTask)
+        "Deprecated: Use linkJSProd instead", KeyRanks.Invisible)
 
     val linkJSDev = TaskKey[Attributed[Report]]("linkJSDev",
-        "Quickly link all compiled JavaScript into a single file", APlusTask)
+        "Quickly link all compiled JavaScript", APlusTask)
 
     val linkJSProd = TaskKey[Attributed[Report]]("linkJSProd",
-        "Link all compiled JavaScript into a single file and fully optimize", APlusTask)
+        "Link all compiled JavaScript and fully optimize", APlusTask)
 
     val testHtml = TaskKey[Attributed[File]]("testHtml",
         "Create an HTML test runner. Honors `scalaJSStage`.", AMinusTask)
@@ -225,8 +225,7 @@ object ScalaJSPlugin extends AutoPlugin {
         "depending on the stage.", DTask)
 
     val scalaJSLinkedFile = TaskKey[Attributed[File]]("scalaJSLinkedFile",
-        "Linked Scala.js file. This is the result of fastOptJS or fullOptJS, " +
-        "depending on the stage.", DTask)
+        "Deprecated: Use scalaJSLinkerResult instead", KeyRanks.Invisible)
 
     val jsEnv = TaskKey[JSEnv]("jsEnv",
         "The JavaScript environment in which to run and test Scala.js applications.",

@@ -170,90 +170,103 @@ final class Emitter(config: Emitter.Config) {
 
   private def emitOnce(moduleSet: ModuleSet,
       logger: Logger): WithGlobals[Map[ModuleID, js.Tree]] = {
+    // Genreate classes first so we can measure time separately.
+    val generatedClasses = logger.time("Emitter: Generate Classes") {
+      moduleSet.modules.map { module =>
+        val moduleContext = ModuleContext.fromModule(module)
+        val orderedClasses = module.classDefs.sortWith(compareClasses)
+        module.id -> orderedClasses.map(genClass(_, moduleContext))
+      }.toMap
+    }
+
     var trackedGlobalRefs = Set.empty[String]
     def extractWithGlobals[T](x: WithGlobals[T]) = {
       trackedGlobalRefs = unionPreserveEmpty(trackedGlobalRefs, x.globalVarNames)
       x.value
     }
 
-    val moduleTrees = moduleSet.modules.map { module =>
-      val moduleContext = new ModuleContext(module.id, module.public)
+    val moduleTrees = logger.time("Emitter: Write trees") {
+      moduleSet.modules.map { module =>
+        val moduleContext = ModuleContext.fromModule(module)
 
-      val orderedClasses = module.classDefs.sortWith(compareClasses)
-      val generatedClasses = orderedClasses.map(genClass(_, moduleContext))
+        val moduleClasses = generatedClasses(module.id)
 
-      val topLevelExports = extractWithGlobals {
-        // We do not cache top level exports since typically there are few.
-        classEmitter.genTopLevelExports(module.topLevelExports)(
-            moduleContext, uncachedKnowledge)
+        val topLevelExports = extractWithGlobals {
+          // We do not cache top level exports since typically there are few.
+          classEmitter.genTopLevelExports(module.topLevelExports)(
+              moduleContext, uncachedKnowledge)
+        }
+
+        val (coreDefinitions, coreInitialization) = {
+          if (module.isRoot) {
+            val coreJSLib =
+              extractWithGlobals(state.coreJSLibCache.build(moduleContext))
+            (Iterator.single(coreJSLib.definitions), Iterator.single(coreJSLib.initialization))
+          } else {
+            (Iterator.empty, Iterator.empty)
+          }
+        }
+
+        def classIter = moduleClasses
+
+        // Emit everything in the appropriate order.
+        val defTrees = js.Block(
+            /* The definitions of the CoreJSLib, which depend on nothing.
+             * All classes potentially depend on it.
+             */
+            coreDefinitions ++
+
+            /* All class definitions, which depend on nothing but their
+             * superclasses.
+             */
+            classIter.flatMap(_.main) ++
+
+            /* The initialization of the CoreJSLib, which depends on the
+             * definition of classes (n.b. the RuntimeLong class).
+             */
+            coreInitialization ++
+
+            /* All static field definitions, which depend on nothing, except
+             * those of type Long which need $L0.
+             */
+            classIter.flatMap(_.staticFields) ++
+
+            /* All static initializers, which in the worst case can observe some
+             * "zero" state of other static field definitions, but must not
+             * observe a *non-initialized* (undefined) state.
+             */
+            classIter.flatMap(_.staticInitialization) ++
+
+            /* All the exports, during which some JS class creation can happen,
+             * causing JS static initializers to run. Those also must not observe
+             * a non-initialized state of other static fields.
+             */
+            topLevelExports ++
+
+            /* Module initializers, which by spec run at the end. */
+            module.initializers.iterator.map(classEmitter.genModuleInitializer(_)(
+                moduleContext, uncachedKnowledge))
+        )(Position.NoPosition)
+
+        assert(!defTrees.isInstanceOf[js.Skip], {
+            val classNames = module.classDefs.map(_.fullName).mkString(", ")
+            s"Module ${module.id} is empty. Classes in this module: $classNames"
+        })
+
+        val allTrees = js.Block(
+            /* Module imports, which depend on nothing.
+             * All classes potentially depend on them.
+             */
+            extractWithGlobals(genModuleImports(module)) ++
+            Iterator.single(defTrees)
+        )(Position.NoPosition)
+
+        classIter.foreach { genClass =>
+          trackedGlobalRefs = unionPreserveEmpty(trackedGlobalRefs, genClass.trackedGlobalRefs)
+        }
+
+        module.id -> allTrees
       }
-
-      val coreJSLib = {
-        if (module.isRoot)
-          extractWithGlobals(state.coreJSLibCache.build(moduleContext))
-        else
-          CoreJSLib.empty
-      }
-
-      def classIter = generatedClasses.iterator
-
-      // Emit everything in the appropriate order.
-      val defTrees = js.Block(
-          /* The definitions of the CoreJSLib, which depend on nothing.
-           * All classes potentially depend on it.
-           */
-          Iterator.single(coreJSLib.definitions) ++
-
-          /* All class definitions, which depend on nothing but their
-           * superclasses.
-           */
-          classIter.flatMap(_.main) ++
-
-          /* The initialization of the CoreJSLib, which depends on the
-           * definition of classes (n.b. the RuntimeLong class).
-           */
-          Iterator.single(coreJSLib.initialization) ++
-
-          /* All static field definitions, which depend on nothing, except
-           * those of type Long which need $L0.
-           */
-          classIter.flatMap(_.staticFields) ++
-
-          /* All static initializers, which in the worst case can observe some
-           * "zero" state of other static field definitions, but must not
-           * observe a *non-initialized* (undefined) state.
-           */
-          classIter.flatMap(_.staticInitialization) ++
-
-          /* All the exports, during which some JS class creation can happen,
-           * causing JS static initializers to run. Those also must not observe
-           * a non-initialized state of other static fields.
-           */
-          topLevelExports ++
-
-          /* Module initializers, which by spec run at the end. */
-          module.initializers.iterator.map(classEmitter.genModuleInitializer(_)(
-              moduleContext, uncachedKnowledge))
-      )(Position.NoPosition)
-
-      assert(!defTrees.isInstanceOf[js.Skip], {
-          val classNames = module.classDefs.map(_.fullName).mkString(", ")
-          f"Module ${module.id} is empty. Classes in this module: $classNames"
-      })
-
-      val allTrees = js.Block(
-          /* Module imports, which depend on nothing.
-           * All classes potentially depend on them.
-           */
-          extractWithGlobals(genModuleImports(module)) ++
-          Iterator.single(defTrees)
-      )(Position.NoPosition)
-
-      classIter.foreach { genClass =>
-        trackedGlobalRefs = unionPreserveEmpty(trackedGlobalRefs, genClass.trackedGlobalRefs)
-      }
-
-      module.id -> allTrees
     }
 
     WithGlobals(moduleTrees.toMap, trackedGlobalRefs)
@@ -667,7 +680,7 @@ object Emitter {
           semantics,
           moduleKind,
           esFeatures,
-          internalModulePattern = _.id,
+          internalModulePattern = "./" + _.id,
           optimizeBracketSelects = true,
           trackAllGlobalRefs = false)
     }

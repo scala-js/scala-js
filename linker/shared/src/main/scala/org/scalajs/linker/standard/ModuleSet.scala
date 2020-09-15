@@ -33,6 +33,12 @@ import org.scalajs.linker.interface.ModuleInitializer
 final class ModuleSet private[linker] (
     val coreSpec: CoreSpec,
     val modules: List[ModuleSet.Module],
+
+    /** Abstract classes may not have any definitions, but are still required
+     *  for proper code generation.
+     *
+     *  For example, a native JS class that is needed for its load spec.
+     */
     val abstractClasses: List[LinkedClass]
 ) {
   require(modules.isEmpty || modules.count(_.isRoot) == 1,

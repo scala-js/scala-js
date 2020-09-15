@@ -78,8 +78,7 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
     }
   }
 
-  private def optimize(unit: LinkingUnit,
-      symbolRequirements: SymbolRequirement,
+  private def optimize(unit: LinkingUnit, symbolRequirements: SymbolRequirement,
       optimizer: GenIncOptimizer, logger: Logger)(
       implicit ec: ExecutionContext): Future[LinkingUnit] = {
     val optimized = logger.time("Optimizer") {

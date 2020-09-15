@@ -269,13 +269,24 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val inputSourceMapFile = module.sourceMapName.map(linkerOutputDir / _)
 
         val expectedInputFiles = Set(inputJSFile) ++ inputSourceMapFile
+        val foundInputFiles = IO.listFiles(linkerOutputDir).toSet
 
-        if (IO.listFiles(linkerOutputDir).toSet != expectedInputFiles) {
-          throw new MessageOnlyException(
-              "Linking produced more than a single JS file (and source map). " +
-              "This is likely due to multiple modules being output. " +
-              s"${legacyKey.key} can only deal with a single module. " +
-              s"Did you mean to invoke ${key.key} instead?")
+        if (foundInputFiles != expectedInputFiles) {
+          if (expectedInputFiles.subsetOf(foundInputFiles)) {
+            throw new MessageOnlyException(
+                "Linking produced more than a single JS file (and source map). " +
+                "This is likely due to multiple modules being output. " +
+                s"${legacyKey.key} can only deal with a single module. " +
+                s"Did you mean to invoke ${key.key} instead?" +
+                s"Expected files:\n$expectedInputFiles\n" +
+                s"Produced files:\n$foundInputFiles")
+          } else {
+            throw new MessageOnlyException(
+                "Linking did not produce the files mentioned in the report. " +
+                "This is a bug in the linker." +
+                s"Expected files:\n$expectedInputFiles\n" +
+                s"Produced files:\n$foundInputFiles")
+          }
         }
 
         val outputJSFile = (artifactPath in legacyKey).value
@@ -440,7 +451,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val mainModule = report.publicModules.find(_.moduleID == "main").getOrElse {
           throw new MessageOnlyException(
               "Cannot determine `jsEnvInput`: Linking result does not have a " +
-              "module named `main`. Set jsEnvInput manually?")
+              "module named `main`. Set jsEnvInput manually?\n" +
+              s"Full report:\n$report")
         }
 
         val path =

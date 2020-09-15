@@ -756,7 +756,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     }
   }
 
-  def genInstanceTests(tree: LinkedClass)(implicit moduleContext: ModuleContext,
+  def genInstanceTests(tree: LinkedClass)(
+      implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     for {
       single <- genSingleInstanceTests(tree)

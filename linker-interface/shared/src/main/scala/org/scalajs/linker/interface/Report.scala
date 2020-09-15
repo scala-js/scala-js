@@ -65,9 +65,9 @@ object Report {
 
   /** Serializes this [[Report]] to a byte array.
    *
-   *  A report serialized with the exact same binary version is guaranteed to
-   *  deserializable using [[deserialize]]. If the binary version is different,
-   * no guarantee is given.
+   *  A report serialized with the exact same linker version is guaranteed to
+   *  deserializable using [[deserialize]]. If the linker version is different,
+   *  no guarantee is given.
    */
   def serialize(report: Report): Array[Byte] = {
     val bytes = new ByteArrayOutputStream

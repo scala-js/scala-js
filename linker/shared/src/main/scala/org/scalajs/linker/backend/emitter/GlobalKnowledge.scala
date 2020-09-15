@@ -89,7 +89,10 @@ private[emitter] trait GlobalKnowledge {
   /** The global variables that mirror a given static field. */
   def getStaticFieldMirrors(className: ClassName, field: FieldName): List[String]
 
-  /** The module containing this class definition. */
+  /** The module containing this class definition.
+   *
+   *  It is invalid to call this method for an abstract class.
+   */
   def getModule(className: ClassName): ModuleID
 
   /** Whether the given public non-static method exists on the given representative class.

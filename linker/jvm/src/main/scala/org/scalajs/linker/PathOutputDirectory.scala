@@ -159,14 +159,14 @@ object PathOutputDirectory {
     if (chan.size() != cmpBuf.remaining()) {
       Future.successful(true)
     } else {
-      var _pos = 0L
+      var pos = 0L
 
       val promise = Promise[Boolean]()
       val readBuf = ByteBuffer.allocate(Math.min(2048, cmpBuf.remaining()))
 
       def readNext(): Unit = {
         readBuf.clear()
-        chan.read(readBuf, _pos, null, Handler)
+        chan.read(readBuf, pos, null, Handler)
       }
 
       object Handler extends CompletionHandler[Integer, Null] {
@@ -177,7 +177,7 @@ object PathOutputDirectory {
              */
             promise.success(false)
           } else {
-            _pos += read
+            pos += read
 
             readBuf.flip()
 

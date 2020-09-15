@@ -12,9 +12,11 @@
 
 package org.scalajs.linker.backend.emitter
 
+import org.scalajs.linker.standard.ModuleSet
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
-private[emitter] final class ModuleContext(
+/** Provides information about the module a piece of code is generated in. */
+private[emitter] final class ModuleContext private (
     val moduleID: ModuleID,
     val public: Boolean
 ) {
@@ -35,7 +37,10 @@ private[emitter] final class ModuleContext(
   }
 }
 
-private object ModuleContext {
+object ModuleContext {
+  def fromModule(module: ModuleSet.Module): ModuleContext =
+    new ModuleContext(module.id, module.public)
+
   private val HashSeed =
     scala.util.hashing.MurmurHash3.stringHash(classOf[ModuleContext].getName)
 }

@@ -47,7 +47,7 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
   /** Emit the given [[standard.ModuleSet ModuleSet]] to the target output.
    *
    *  @param moduleSet [[standard.ModuleSet ModuleSet]] to emit
-   *  @param output File Directory write to
+   *  @param output Directory to write to
    */
   def emit(moduleSet: ModuleSet, output: OutputDirectory, logger: Logger)(
       implicit ec: ExecutionContext): Future[Report] = {

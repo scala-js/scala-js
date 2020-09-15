@@ -177,7 +177,6 @@ private final class Analyzer(config: CommonPhaseConfig,
         implicit val from = FromCore(origin)
         withClass(moduleName) { clazz =>
           objectClassInfo.staticDependencies += clazz.className
-
           clazz.accessModule()
         }
 
@@ -185,7 +184,6 @@ private final class Analyzer(config: CommonPhaseConfig,
         implicit val from = FromCore(origin)
         withMethod(className, constructor) { clazz =>
           objectClassInfo.staticDependencies += clazz.className
-
           clazz.instantiated()
           clazz.callMethodStatically(MemberNamespace.Constructor, constructor)
         }
@@ -219,8 +217,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         implicit val from = FromCore(origin)
         withMethod(className, methodName) { clazz =>
           objectClassInfo.staticDependencies += clazz.className
-          clazz.callMethodStatically(MemberNamespace.PublicStatic,
-              methodName)
+          clazz.callMethodStatically(MemberNamespace.PublicStatic, methodName)
         }
 
       case Optional(requirement) =>
@@ -288,7 +285,8 @@ private final class Analyzer(config: CommonPhaseConfig,
             case Some(superClass) =>
               classInfo.staticDependencies += superClass.className
               loop(superClass)
-            case None             =>
+
+            case None =>
           }
         }
         loop(classInfo)
@@ -407,7 +405,7 @@ private final class Analyzer(config: CommonPhaseConfig,
   }
 
   private class ClassInfo(
-      data: Infos.ClassInfo,
+      val data: Infos.ClassInfo,
       unvalidatedSuperClass: Option[ClassInfo],
       unvalidatedInterfaces: List[ClassInfo],
       val nonExistent: Boolean)
@@ -902,8 +900,8 @@ private final class Analyzer(config: CommonPhaseConfig,
       implicit val from = FromExports
 
       tryLookupStaticLikeMethod(MemberNamespace.StaticConstructor,
-          StaticInitializerName).foreach { initializer =>
-        initializer.reachStatic()(fromAnalyzer)
+          StaticInitializerName).foreach {
+        _.reachStatic()(fromAnalyzer)
       }
     }
 
@@ -994,9 +992,12 @@ private final class Analyzer(config: CommonPhaseConfig,
       if (!isAnySubclassInstantiated && (isScalaClass || isJSType)) {
         isAnySubclassInstantiated = true
 
-        staticDependencies ++= superClass
-          .filter(_.kind.isAnyNonNativeClass)
-          .map(_.className)
+        for {
+          clazz <- superClass
+          if clazz.kind.isAnyNonNativeClass
+        } {
+          staticDependencies += clazz.className
+        }
 
         // Reach exported members
         if (!isJSClass) {
@@ -1066,7 +1067,8 @@ private final class Analyzer(config: CommonPhaseConfig,
         lookupMethod(methodName).reachStatic()
     }
 
-    def useJSNativeMember(name: MethodName)(implicit from: From): Option[JSNativeLoadSpec] = {
+    def useJSNativeMember(name: MethodName)(
+        implicit from: From): Option[JSNativeLoadSpec] = {
       val maybeJSNativeLoadSpec = data.jsNativeMembers.get(name)
       if (jsNativeMembersUsed.add(name)) {
         maybeJSNativeLoadSpec match {
@@ -1308,10 +1310,8 @@ private final class Analyzer(config: CommonPhaseConfig,
     while (jsNativeMembersUsedIterator.hasNext) {
       val (className, members) = jsNativeMembersUsedIterator.next()
       lookupClass(className) { classInfo =>
-        for (member <- members) {
-          classInfo.useJSNativeMember(member)
-            .foreach(addLoadSpec(_))
-        }
+        for (member <- members)
+          classInfo.useJSNativeMember(member).foreach(addLoadSpec(_))
       }
     }
   }

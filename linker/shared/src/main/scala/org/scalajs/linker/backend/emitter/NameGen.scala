@@ -19,8 +19,6 @@ import org.scalajs.ir.Names._
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Types._
 
-import org.scalajs.linker.standard.ModuleSet.ModuleID
-
 /** Performs state independent name mangling.
  *
  *  - Converts IR names to JavaScript names.
