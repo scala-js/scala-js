@@ -130,10 +130,18 @@ private object Linker {
     sourceMapRe.findFirstMatchIn(content).fold {
       content + newLine.fold("")("\n" + _ + "\n")
     } { reMatch =>
-      reMatch.before +
-      // Replace the line with an empty line to not break a potential source map
-      newLine.getOrElse("") +
-      reMatch.after
+      val res = new StringBuilder
+
+      res.append(reMatch.before)
+
+      /* If there is no source map link, keep an empty line to not break a
+       * potential (unlinked) source map
+       */
+      newLine.foreach(res.append(_))
+
+      res.append(reMatch.after)
+
+      res.toString()
     }
   }
 
