@@ -117,6 +117,7 @@ class LinkerTest {
   }
 
   @Test
+  @deprecated("Mark deprecated to silence warnings", "never/always")
   def testLegacyAPI(): AsyncResult = await {
     val classDefs = Seq(
         mainTestClassDef({

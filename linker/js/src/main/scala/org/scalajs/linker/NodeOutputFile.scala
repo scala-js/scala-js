@@ -15,6 +15,7 @@ package org.scalajs.linker
 import org.scalajs.linker.interface.LinkerOutput
 import org.scalajs.linker.interface.unstable.OutputFileImpl
 
+@deprecated("Part of old Linker interface. Use NodeOutputDirectory instead.", "1.3.0")
 object NodeOutputFile {
   import NodeFS._
 

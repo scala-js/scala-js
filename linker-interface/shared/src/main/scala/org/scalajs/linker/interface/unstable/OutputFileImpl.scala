@@ -18,6 +18,7 @@ import java.nio.ByteBuffer
 
 import org.scalajs.linker.interface.{LinkerOutput, OutputDirectory}
 
+@deprecated("Part of old Linker interface", "1.3.0")
 class OutputFileImpl(
     val name: String,
     val directory: OutputDirectory
@@ -31,6 +32,7 @@ class OutputFileImpl(
   }
 }
 
+@deprecated("Part of old Linker interface", "1.3.0")
 object OutputFileImpl {
   def fromOutputFile(f: LinkerOutput.File): OutputFileImpl = f.impl
 }

@@ -40,6 +40,7 @@ import org.scalajs.linker.interface.unstable.OutputFileImpl
  *      is typically a relative URI but is not required. A [[Linker]] may use
  *      this even if [[sourceMap]] is not set, but it is typically meaningless.
  */
+@deprecated("Part of old Linker interface", "1.3.0")
 final class LinkerOutput private (
     val jsFile: LinkerOutput.File,
     val sourceMap: Option[LinkerOutput.File],
@@ -67,9 +68,11 @@ final class LinkerOutput private (
   }
 }
 
+@deprecated("Part of old Linker interface", "1.3.0")
 object LinkerOutput {
   def apply(jsFile: LinkerOutput.File): LinkerOutput = new LinkerOutput(jsFile)
 
+  @deprecated("Part of old Linker interface", "1.3.0")
   abstract class File private[interface] () {
     private[interface] def impl: OutputFileImpl
   }
