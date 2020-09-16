@@ -518,6 +518,9 @@ object Names {
   final val ClassInitializerName: MethodName =
     MethodName(ClassInitializerSimpleName, Nil, VoidRef)
 
+  /** ModuleID of the default module */
+  final val DefaultModuleID: String = "main"
+
   // ---------------------------------------------------
   // ----- Private helpers for validation of names -----
   // ---------------------------------------------------

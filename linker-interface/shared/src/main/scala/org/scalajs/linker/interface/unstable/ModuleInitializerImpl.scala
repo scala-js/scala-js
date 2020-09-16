@@ -28,12 +28,12 @@ import org.scalajs.linker.interface.ModuleInitializer
  *  Instances of `ModuleInitializer` can be created with methods of
  *  [[ModuleInitializer$ the ModuleInitializer companion object]].
  */
-sealed abstract class ModuleInitializerImpl extends ModuleInitializer {
+sealed abstract class ModuleInitializerImpl extends ModuleInitializer.Initializer {
   private[interface] def impl: ModuleInitializerImpl = this
 }
 
 object ModuleInitializerImpl {
-  def fromModuleInitializer(mi: ModuleInitializer): ModuleInitializerImpl = mi.impl
+  def fromInitializer(mi: ModuleInitializer.Initializer): ModuleInitializerImpl = mi.impl
 
   final case class VoidMainMethod(className: ClassName,
       encodedMainMethodName: MethodName)

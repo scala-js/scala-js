@@ -1145,7 +1145,7 @@ class PrintersTest {
           |module class Test extends java.lang.Object {
           |  val x: int
           |  var y: int
-          |  export top module "Foo"
+          |  export top[moduleID="main"] module "Foo"
           |}
         """,
         ClassDef("Test", NON, ClassKind.ModuleClass, None, Some(ObjectClass),
@@ -1154,7 +1154,7 @@ class PrintersTest {
                 FieldDef(MemberFlags.empty, "x", NON, IntType),
                 FieldDef(MemberFlags.empty.withMutable(true), "y", NON, IntType)),
             List(
-                TopLevelModuleExportDef("Foo")))(
+                TopLevelModuleExportDef("main", "Foo")))(
             NoOptHints))
   }
 
@@ -1357,23 +1357,23 @@ class PrintersTest {
 
   @Test def printJSClassExportDef(): Unit = {
     assertPrintEquals(
-        """export top class "Foo"""",
-        TopLevelJSClassExportDef("Foo"))
+        """export top[moduleID="my-mod"] class "Foo"""",
+        TopLevelJSClassExportDef("my-mod", "Foo"))
   }
 
   @Test def printTopLevelModuleExportDef(): Unit = {
     assertPrintEquals(
-        """export top module "Foo"""",
-        TopLevelModuleExportDef("Foo"))
+        """export top[moduleID="bar"] module "Foo"""",
+        TopLevelModuleExportDef("bar", "Foo"))
   }
 
   @Test def printTopLevelMethodExportDef(): Unit = {
     assertPrintEquals(
         """
-          |export top static def "foo"(x: any): any = {
+          |export top[moduleID="main"] static def "foo"(x: any): any = {
           |  5
           |}""",
-        TopLevelMethodExportDef(JSMethodDef(
+        TopLevelMethodExportDef("main", JSMethodDef(
             MemberFlags.empty.withNamespace(Static), StringLiteral("foo"),
             List(ParamDef("x", NON, AnyType, mutable = false, rest = false)),
             i(5))(NoOptHints, None)))
@@ -1382,8 +1382,8 @@ class PrintersTest {
   @Test def printTopLevelFieldExportDef(): Unit = {
     assertPrintEquals(
         """
-          |export top static field x$1 as "x"
+          |export top[moduleID="main"] static field x$1 as "x"
         """,
-        TopLevelFieldExportDef("x", "x$1"))
+        TopLevelFieldExportDef("main", "x", "x$1"))
   }
 }

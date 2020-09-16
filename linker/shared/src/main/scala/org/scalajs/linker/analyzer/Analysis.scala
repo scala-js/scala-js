@@ -18,6 +18,8 @@ import scala.collection.mutable
 
 import org.scalajs.logging._
 
+import org.scalajs.linker.standard.ModuleSet.ModuleID
+
 import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees.MemberNamespace
@@ -33,6 +35,8 @@ trait Analysis {
   import Analysis._
 
   def classInfos: scala.collection.Map[ClassName, ClassInfo]
+  def topLevelExportInfos: Map[(ModuleID, String), TopLevelExportInfo]
+
   def errors: scala.collection.Seq[Error]
 }
 
@@ -63,6 +67,10 @@ object Analysis {
     def isAnyStaticFieldUsed: Boolean
     def isAnyPrivateJSFieldUsed: Boolean
     def jsNativeMembersUsed: scala.collection.Set[MethodName]
+
+    def staticDependencies: scala.collection.Set[ClassName]
+    def externalDependencies: scala.collection.Set[String]
+
     def linkedFrom: scala.collection.Seq[From]
     def instantiatedFrom: scala.collection.Seq[From]
     def methodInfos(
@@ -139,6 +147,14 @@ object Analysis {
         extends MethodSyntheticKind
   }
 
+  trait TopLevelExportInfo {
+    def moduleID: ModuleID
+    def exportName: String
+    def owningClass: ClassName
+    def staticDependencies: scala.collection.Set[ClassName]
+    def externalDependencies: scala.collection.Set[String]
+  }
+
   sealed trait Error {
     def from: From
   }
@@ -166,11 +182,12 @@ object Analysis {
   final case class MissingJSNativeMember(info: ClassInfo, name: MethodName, from: From) extends Error
   final case class ConflictingDefaultMethods(infos: List[MethodInfo], from: From) extends Error
 
-  final case class InvalidTopLevelExportInScript(name: String, info: ClassName) extends Error {
+  final case class InvalidTopLevelExportInScript(info: TopLevelExportInfo) extends Error {
     def from: From = FromExports
   }
 
-  final case class ConflictingTopLevelExport(name: String, infos: List[ClassName]) extends Error {
+  final case class ConflictingTopLevelExport(moduleID: Option[ModuleID], exportName: String,
+      infos: List[TopLevelExportInfo]) extends Error {
     def from: From = FromExports
   }
 
@@ -216,14 +233,17 @@ object Analysis {
         s"Referring to non-existent js native member ${info.displayName}.${name.displayName}"
       case ConflictingDefaultMethods(infos, _) =>
         s"Conflicting default methods: ${infos.map(_.fullDisplayName).mkString(" ")}"
-      case InvalidTopLevelExportInScript(name, info) =>
-        s"Invalid top level export for name '$name' in class " +
-        s"${info.nameString} when emitting a Script (NoModule) because it " +
+      case InvalidTopLevelExportInScript(info) =>
+        s"Invalid top level export for name '${info.exportName}' in class " +
+        s"${info.owningClass.nameString} when emitting a Script (NoModule) because it " +
         "is not a valid JavaScript identifier " +
         "(did you want to emit a module instead?)"
-      case ConflictingTopLevelExport(name, infos) =>
-        s"Conflicting top level export for name $name involving " +
-        infos.map(_.nameString).mkString(", ")
+      case ConflictingTopLevelExport(Some(moduleID), exportName, infos) =>
+        s"Conflicting top level exports for module $moduleID, name $exportName "
+        "involving " + infos.map(_.owningClass.nameString).mkString(", ")
+      case ConflictingTopLevelExport(None, exportName, infos) =>
+        s"Conflicting top level exports for name $exportName involving " +
+        infos.map(_.owningClass.nameString).mkString(", ")
       case ImportWithoutModuleSupport(module, info, None, _) =>
         s"${info.displayName} needs to be imported from module " +
         s"'$module' but module support is disabled"

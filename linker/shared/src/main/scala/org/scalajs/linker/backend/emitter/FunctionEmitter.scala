@@ -254,7 +254,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
    */
   def desugarToFunction(enclosingClassName: ClassName, params: List[ParamDef],
       body: Tree, resultType: Type)(
-      implicit globalKnowledge: GlobalKnowledge,
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[js.Function] = {
     new JSDesugar().desugarToFunction(params, body,
         isStat = resultType == NoType,
@@ -266,7 +266,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
    */
   def desugarToFunctionWithExplicitThis(enclosingClassName: ClassName,
       params: List[ParamDef], body: Tree, resultType: Type)(
-      implicit globalKnowledge: GlobalKnowledge,
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[js.Function] = {
     new JSDesugar().desugarToFunctionWithExplicitThis(params, body,
         isStat = resultType == NoType,
@@ -276,7 +276,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
   /** Desugars parameters and body to a JS function.
    */
   def desugarToFunction(params: List[ParamDef], body: Tree, resultType: Type)(
-      implicit globalKnowledge: GlobalKnowledge,
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[js.Function] = {
     new JSDesugar().desugarToFunction(params, body,
         isStat = resultType == NoType, Env.empty(resultType))
@@ -284,7 +284,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
   /** Desugars a class-level expression. */
   def desugarExpr(expr: Tree, resultType: Type)(
-      implicit globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     implicit val pos = expr.pos
 
     for (fun <- desugarToFunction(Nil, expr, resultType)) yield {
@@ -298,7 +299,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     }
   }
 
-  private class JSDesugar()(implicit globalKnowledge: GlobalKnowledge) {
+  private class JSDesugar()(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge) {
 
     // Name management
 
@@ -608,7 +610,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             implicit val env = env0
             js.Assign(
                 genJSPrivateSelect(transformExprNoChar(newQualifier),
-                    className, field)(select.pos),
+                    className, field)(moduleContext, globalKnowledge, select.pos),
                 transformExprNoChar(newRhs))
           }
 
@@ -631,8 +633,23 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   transformExprNoChar(rhs))
           }
 
-        case Assign(lhs @ (_:VarRef | Transient(JSVarRef(_, _)) |
-            _:SelectStatic | _:JSGlobalRef), rhs) =>
+        case Assign(select: SelectStatic, rhs) =>
+          // Destructure separately, otherwise 2.11 crashes.
+          val SelectStatic(className, item) = select
+
+          val scope = (className, item.name)
+
+          if (needToUseGloballyMutableVarSetter(scope)) {
+            unnest(rhs) { (rhs, env0) =>
+              implicit val env = env0
+              js.Apply(globalVar("u", scope), transformExpr(rhs, select.tpe) :: Nil)
+            }
+          } else {
+            // Assign normally.
+            pushLhsInto(Lhs.Assign(select), rhs, tailPosLabels)
+          }
+
+        case Assign(lhs @ (_:VarRef | Transient(JSVarRef(_, _)) | _:JSGlobalRef), rhs) =>
           pushLhsInto(Lhs.Assign(lhs), rhs, tailPosLabels)
 
         case Assign(_, _) =>
@@ -1985,7 +2002,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           genSelect(transformExprNoChar(qualifier), className, field)
 
         case SelectStatic(className, item) =>
-          genSelectStatic(className, item)
+          globalVar("t", (className, item.name))
 
         case SelectJSNativeMember(className, member) =>
           val jsNativeLoadSpec =

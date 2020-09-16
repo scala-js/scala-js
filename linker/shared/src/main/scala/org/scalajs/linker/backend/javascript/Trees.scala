@@ -471,4 +471,18 @@ object Trees {
   sealed case class Export(bindings: List[(Ident, ExportName)])(
       implicit val pos: Position)
       extends Tree
+
+  /** "forwarding" `export` statement.
+   *
+   *  This corresponds to the following syntax:
+   *  {{{
+   *  export { <binding1_1> as <binding1_2>, ..., <bindingN_1> as <bindingN_2> } from <from>
+   *  }}}
+   *  The `_1` parts of bindings are the identifiers that are imported.
+   *  The `_2` parts are the names under which they are exported.
+   */
+  sealed case class ExportImport(bindings: List[(ExportName, ExportName)],
+      from: StringLiteral)(
+      implicit val pos: Position)
+      extends Tree
 }

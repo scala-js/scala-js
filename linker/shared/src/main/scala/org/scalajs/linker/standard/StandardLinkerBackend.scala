@@ -20,9 +20,11 @@ object StandardLinkerBackend {
     val backendConfig = LinkerBackendImpl.Config()
       .withCommonConfig(CommonPhaseConfig.fromStandardConfig(config))
       .withSourceMap(config.sourceMap)
+      .withOutputPatterns(config.outputPatterns)
       .withRelativizeSourceMapBase(config.relativizeSourceMapBase)
       .withClosureCompilerIfAvailable(config.closureCompilerIfAvailable)
       .withPrettyPrint(config.prettyPrint)
+      .withMaxConcurrentWrites(config.maxConcurrentWrites)
 
     LinkerBackendImpl(backendConfig)
   }

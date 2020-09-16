@@ -18,7 +18,7 @@ package org.scalajs.linker.interface
  *  that it can be used again without being affected by previous calls to
  *  `link`, even of those would have corrupted the internal state.
  *
- *  In addition to the contract of [[Linker]], if [[Linker.link]] throws an
+ *  In addition to the contract of [[Linker]], if {{Linker.link}} throws an
  *  exception, the `ClearableLinker` is automatically `clear()`'ed.
  *
  *  Implementations are allowed to automatically `clear()` in other cases, but
