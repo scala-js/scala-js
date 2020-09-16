@@ -2,16 +2,8 @@
 
 ## Very important notice about the Javalib
 
-Scala.js contains a reimplementation of part of the JDK in Scala.js itself.
-
-***To contribute to this code, it is strictly forbidden to even look at the
-source code of the Oracle JDK or OpenJDK!***
-
-This is for license considerations: these JDKs are under a GPL-based license,
-which is not compatible with our BSD 3-clause license.
-
-It is also recommended *not to look at any other JDK implementation* (such as
-Apache Harmony), to minimize the chance of copyright debate.
+If you haven't read it, ***read the very important notice about the Javalib
+in the [Javalib documentation](./JAVALIB.md)*** .
 
 ## Building
 
