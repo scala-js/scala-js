@@ -15,6 +15,7 @@ package org.scalajs.linker
 import org.scalajs.linker.interface.LinkerOutput
 import org.scalajs.linker.interface.unstable.OutputFileImpl
 
+@deprecated("Part of old Linker interface. Use MemOutputDirectory instead.", "1.3.0")
 sealed trait MemOutputFile extends LinkerOutput.File {
   /** Content that has been written to this [[MemOutputFile]].
    *
@@ -23,6 +24,7 @@ sealed trait MemOutputFile extends LinkerOutput.File {
   def content: Array[Byte]
 }
 
+@deprecated("Part of old Linker interface. Use MemOutputDirectory instead.", "1.3.0")
 object MemOutputFile {
   private final val name = "mem-file.js"
 

@@ -84,6 +84,14 @@ private[sbtplugin] object ScalaJSPluginInternal {
     }
   }
 
+  private def linkerOutputDirectory(v: Attributed[Report]): File = {
+    v.get(scalaJSLinkerOutputDirectory.key).getOrElse {
+      throw new MessageOnlyException(
+          "Linking report was not attributed with output directory. " +
+          "Please report this as s Scala.js bug.")
+    }
+  }
+
   private def await[T](log: Logger)(body: ExecutionContext => Future[T]): T = {
     val ec = ExecutionContext.fromExecutor(
         ExecutionContext.global, t => log.trace(t))
@@ -108,19 +116,22 @@ private[sbtplugin] object ScalaJSPluginInternal {
     incOptions.withExternalHooks(newExternalHooks)
   }
 
-  /** Settings for the production key (e.g. fastOptJS) of a given stage */
+  /** Settings for the production key (e.g. fastLinkJS) of a given stage */
   private def scalaJSStageSettings(stage: Stage,
-      key: TaskKey[Attributed[File]]): Seq[Setting[_]] = Seq(
+      key: TaskKey[Attributed[Report]],
+      legacyKey: TaskKey[Attributed[File]]): Seq[Setting[_]] = Seq(
 
       scalaJSLinkerBox in key := new CacheBox,
 
-      scalaJSLinker in key := {
+      scalaJSLinker in legacyKey := {
         val config = (scalaJSLinkerConfig in key).value
         val box = (scalaJSLinkerBox in key).value
         val linkerImpl = (scalaJSLinkerImpl in key).value
 
         box.ensure(linkerImpl.clearableLinker(config))
       },
+
+      scalaJSLinker in key := (scalaJSLinker in legacyKey).value,
 
       // Have `clean` reset the state of the incremental linker
       clean in (This, Zero, This) := {
@@ -129,7 +140,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         ()
       },
 
-      usesScalaJSLinkerTag in key := {
+      usesScalaJSLinkerTag in legacyKey := {
         val projectPart = thisProject.value.id
         val configPart = configuration.value.name
 
@@ -141,6 +152,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
         Tags.Tag(s"uses-scalajs-linker-$projectPart-$configPart-$stagePart")
       },
 
+      usesScalaJSLinkerTag in key := (usesScalaJSLinkerTag in legacyKey).value,
+
       // Prevent this linker from being used concurrently
       concurrentRestrictions in Global +=
         Tags.limit((usesScalaJSLinkerTag in key).value, 1),
@@ -150,6 +163,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
       scalaJSLinkerConfigFingerprint in key :=
         StandardConfig.fingerprint((scalaJSLinkerConfig in key).value),
+
+      moduleName in key := (moduleName in legacyKey).value,
 
       key := Def.taskDyn {
         /* It is very important that we evaluate all of those `.value`s from
@@ -162,19 +177,11 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val s = streams.value
         val irInfo = (scalaJSIR in key).value
         val moduleInitializers = scalaJSModuleInitializers.value
-        val output = (artifactPath in key).value
+        val reportFile = s.cacheDirectory / "linking-report.bin"
+        val outputDir = (scalaJSLinkerOutputDirectory in key).value
         val linker = (scalaJSLinker in key).value
         val linkerImpl = (scalaJSLinkerImpl in key).value
         val usesLinkerTag = (usesScalaJSLinkerTag in key).value
-        val sourceMapFile = new File(output.getPath + ".map")
-
-        /* This is somewhat not nice: We must make assumptions about the
-         * specification of the specific linker in use. Otherwise, we do not
-         * know how to interpret / load the resulting file.
-         *
-         * See jsEnvInput (via scalaJSLinkedFile) to see how this is used.
-         */
-        val moduleKind = (scalaJSLinkerConfig in key).value.moduleKind
 
         val configChanged = {
           def moduleInitializersChanged = (scalaJSModuleInitializersFingerprints in key)
@@ -188,14 +195,17 @@ private[sbtplugin] object ScalaJSPluginInternal {
           moduleInitializersChanged || linkerConfigChanged
         }
 
+        def reportIncompatible =
+          Report.deserialize(IO.readBytes(reportFile)).isEmpty
+
+        if (reportFile.exists() && (configChanged || reportIncompatible)) {
+          reportFile.delete() // triggers re-linking through FileFunction.cached
+        }
+
         Def.task {
           val log = s.log
           val realFiles = irInfo.get(scalaJSSourceFiles).get
           val ir = irInfo.data
-
-          if (configChanged && output.exists()) {
-            output.delete() // triggers re-linking through FileFunction.cached
-          }
 
           FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
               FilesInfo.exists) { _ => // We don't need the files
@@ -205,18 +215,13 @@ private[sbtplugin] object ScalaJSPluginInternal {
               case Stage.FullOpt => "Full"
             }
 
-            log.info(s"$stageName optimizing $output")
+            log.info(s"$stageName optimizing $outputDir")
 
-            IO.createDirectory(output.getParentFile)
+            IO.createDirectory(outputDir)
 
-            def relURI(path: String) = new URI(null, null, path, null)
+            val out = linkerImpl.outputDirectory(outputDir.toPath)
 
-            val out = LinkerOutput(linkerImpl.outputFile(output.toPath))
-              .withSourceMap(linkerImpl.outputFile(sourceMapFile.toPath))
-              .withSourceMapURI(relURI(sourceMapFile.getName))
-              .withJSFileURI(relURI(output.getName))
-
-            try {
+            val report = try {
               enhanceIRVersionNotSupportedException {
                 val tlog = sbtLogger2ToolsLogger(log)
                 await(log)(linker.link(ir, moduleInitializers, out, tlog)(_))
@@ -226,21 +231,83 @@ private[sbtplugin] object ScalaJSPluginInternal {
                 throw new MessageOnlyException(e.getMessage)
             }
 
-            Set(output, sourceMapFile)
+            IO.write(reportFile, Report.serialize(report))
+
+            IO.listFiles(outputDir).toSet + reportFile
           } (realFiles.toSet)
 
-          Attributed.blank(output)
-            .put(scalaJSSourceMap, sourceMapFile)
-            .put(scalaJSModuleKind, moduleKind)
+          val report = Report.deserialize(IO.readBytes(reportFile)).getOrElse {
+            throw new MessageOnlyException("failed to deserialize report after " +
+                "linking. Please report this as s Scala.js bug.")
+          }
+
+          Attributed.blank(report)
+            .put(scalaJSLinkerOutputDirectory.key, outputDir)
         }.tag(usesLinkerTag, ScalaJSTags.Link)
-      }.value
+      }.value,
+
+      legacyKey := {
+        val linkingResult = key.value
+
+        val module = {
+          val report = linkingResult.data
+
+          if (report.publicModules.size != 1) {
+            throw new MessageOnlyException(
+                "Linking did not return exactly one public module. " +
+                s"${legacyKey.key} can only deal with a single module. " +
+                s"Did you mean to invoke ${key.key} instead? " +
+                s"Full report:\n$report")
+          }
+
+          report.publicModules.head
+        }
+
+        val linkerOutputDir = linkerOutputDirectory(linkingResult)
+
+        val inputJSFile = linkerOutputDir / module.jsFileName
+        val inputSourceMapFile = module.sourceMapName.map(linkerOutputDir / _)
+
+        val expectedInputFiles = Set(inputJSFile) ++ inputSourceMapFile
+        val foundInputFiles = IO.listFiles(linkerOutputDir).toSet
+
+        if (foundInputFiles != expectedInputFiles) {
+          if (expectedInputFiles.subsetOf(foundInputFiles)) {
+            throw new MessageOnlyException(
+                "Linking produced more than a single JS file (and source map). " +
+                "This is likely due to multiple modules being output. " +
+                s"${legacyKey.key} can only deal with a single module. " +
+                s"Did you mean to invoke ${key.key} instead?" +
+                s"Expected files:\n$expectedInputFiles\n" +
+                s"Produced files:\n$foundInputFiles")
+          } else {
+            throw new MessageOnlyException(
+                "Linking did not produce the files mentioned in the report. " +
+                "This is a bug in the linker." +
+                s"Expected files:\n$expectedInputFiles\n" +
+                s"Produced files:\n$foundInputFiles")
+          }
+        }
+
+        val outputJSFile = (artifactPath in legacyKey).value
+        val outputSourceMapFile = new File(outputJSFile.getPath + ".map")
+
+        IO.copyFile(inputJSFile, outputJSFile, preserveLastModified = true)
+        inputSourceMapFile.foreach(
+            IO.copyFile(_, outputSourceMapFile, preserveLastModified = true))
+
+        Attributed.blank(outputJSFile)
+          // we have always attached a source map, even if it wasn't written.
+          .put(scalaJSSourceMap, outputSourceMapFile)
+          .put(scalaJSModuleKind, module.moduleKind)
+      }
   )
 
   val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
       incOptions ~= scalaJSPatchIncOptions
   ) ++ (
-      scalaJSStageSettings(Stage.FastOpt, fastOptJS) ++
-      scalaJSStageSettings(Stage.FullOpt, fullOptJS)
+      scalaJSStageSettings(Stage.FastOpt, fastLinkJS, fastOptJS) ++
+      scalaJSStageSettings(Stage.FullOpt, fullLinkJS, fullOptJS)
   ) ++ (
       Seq(fastOptJS, fullOptJS).map { key =>
         moduleName in key := {
@@ -327,6 +394,14 @@ private[sbtplugin] object ScalaJSPluginInternal {
         }
       },
 
+      scalaJSLinkerOutputDirectory in fastLinkJS :=
+        ((crossTarget in fastLinkJS).value /
+            ((moduleName in fastLinkJS).value + "-dev")),
+
+      scalaJSLinkerOutputDirectory in fullLinkJS :=
+        ((crossTarget in fullLinkJS).value /
+            ((moduleName in fullLinkJS).value + "-prod")),
+
       artifactPath in fastOptJS :=
         ((crossTarget in fastOptJS).value /
             ((moduleName in fastOptJS).value + "-fastopt.js")),
@@ -342,6 +417,16 @@ private[sbtplugin] object ScalaJSPluginInternal {
           .withClosureCompiler(useClosure)
           .withCheckIR(true)  // for safety, fullOpt is slow anyways.
       },
+
+      scalaJSLinkerConfig in fastLinkJS := (scalaJSLinkerConfig in fastOptJS).value,
+      scalaJSLinkerConfig in fullLinkJS := (scalaJSLinkerConfig in fullOptJS).value,
+
+      scalaJSLinkerResult := Def.settingDyn {
+        scalaJSStage.value match {
+          case Stage.FastOpt => fastLinkJS
+          case Stage.FullOpt => fullLinkJS
+        }
+      }.value,
 
       scalaJSLinkedFile := Def.settingDyn {
         scalaJSStage.value match {
@@ -362,19 +447,21 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
       // Add the Scala.js linked file to the Input for the JSEnv.
       jsEnvInput += {
-        val projectID = thisProject.value.id
-        val configName = configuration.value.name
+        val linkingResult = scalaJSLinkerResult.value
 
-        val linkedFile = scalaJSLinkedFile.value
+        val report = linkingResult.data
 
-        val path = linkedFile.data.toPath
-        val moduleKind = linkedFile.get(scalaJSModuleKind).getOrElse {
+        val mainModule = report.publicModules.find(_.moduleID == "main").getOrElse {
           throw new MessageOnlyException(
-              s"`$projectID / $configName / scalaJSLinkedFile` does not have " +
-              "the required scalaJSModuleKind attribute.")
+              "Cannot determine `jsEnvInput`: Linking result does not have a " +
+              "module named `main`. Set jsEnvInput manually?\n" +
+              s"Full report:\n$report")
         }
 
-        moduleKind match {
+        val path =
+          (linkerOutputDirectory(linkingResult) / mainModule.jsFileName).toPath
+
+        mainModule.moduleKind match {
           case ModuleKind.NoModule       => Input.Script(path)
           case ModuleKind.ESModule       => Input.ESModule(path)
           case ModuleKind.CommonJSModule => Input.CommonJSModule(path)
@@ -520,7 +607,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         }.toMap
       },
 
-      // Override default to avoid triggering a test:fastOptJS in a test:compile
+      // Override default to avoid triggering a test:fastLinkJS in a test:compile
       // without losing autocompletion.
       definedTestNames := {
         definedTests.map(_.map(_.name).distinct)

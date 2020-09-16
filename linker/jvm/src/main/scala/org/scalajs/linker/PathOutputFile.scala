@@ -17,6 +17,7 @@ import java.nio.file.Path
 import org.scalajs.linker.interface.LinkerOutput
 import org.scalajs.linker.interface.unstable.OutputFileImpl
 
+@deprecated("Part of old Linker interface. Use PathOutputDirectory instead.", "1.3.0")
 object PathOutputFile {
   def apply(path: Path): LinkerOutput.File = {
     val dir = PathOutputDirectory(path.getParent())

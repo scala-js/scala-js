@@ -117,6 +117,7 @@ class LinkerTest {
   }
 
   @Test
+  @deprecated("Mark deprecated to silence warnings", "never/always")
   def testLegacyAPI(): AsyncResult = await {
     val linker = StandardImpl.linker(StandardConfig())
     val classDefsFiles = helloWorldClassDefs.map(MemClassDefIRFile(_))

@@ -38,6 +38,7 @@ abstract class Linker private[interface] () {
       output: OutputDirectory, logger: Logger)(
       implicit ec: ExecutionContext): Future[Report]
 
+  @deprecated("Use the overload taking an OutputDirectory instead", "1.3.0")
   final def link(irFiles: Seq[IRFile],
       moduleInitializers: Seq[ModuleInitializer],
       output: LinkerOutput, logger: Logger)(

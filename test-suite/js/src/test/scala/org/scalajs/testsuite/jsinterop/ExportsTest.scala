@@ -36,11 +36,12 @@ object ExportsTest {
    * module namespace.
    */
 
-  private[this] var explicitlySetExportsNamespace: Option[js.Dynamic] = None
+  private[this] var explicitlySetExportsNamespaces: Option[js.Dictionary[js.Dynamic]] =
+    None
 
   @JSExportTopLevel("setExportsNamespaceForExportsTest")
-  def setExportsNamespaceForExportsTest(value: js.Dynamic): Unit =
-    explicitlySetExportsNamespace = Some(value)
+  def setExportsNamespaceForExportsTest(value: js.Dictionary[js.Dynamic]): Unit =
+    explicitlySetExportsNamespaces = Some(value)
 
   /** The namespace in which top-level exports are stored.
    *
@@ -55,20 +56,13 @@ object ExportsTest {
    *  module-global variable, which we can retrieve as if it were in the global
    *  scope.
    */
-  def exportsNameSpace: js.Dynamic = {
-    explicitlySetExportsNamespace.getOrElse {
-      assert(!Platform.isESModule,
-          "The exportsNamespace should have been explicitly set for an ES " +
-          "module")
-      if (Platform.isNoModule) {
-        null // need to use `global` instead
-      } else if (Platform.isCommonJSModule) {
-        js.Dynamic.global.exports
-      } else {
-        throw new NotImplementedError(
-            "Don't know how to fetch the exports namespace in an unknown " +
-            "module kind.")
-      }
+  def exportsNameSpace(moduleID: String): js.Dynamic = {
+    explicitlySetExportsNamespaces.fold[js.Dynamic] {
+      assert(Platform.isNoModule,
+          "The exportsNamespace should have been explicitly set for a module")
+      null // need to use `global` instead
+    } { dict =>
+      dict(moduleID)
     }
   }
 }
@@ -76,7 +70,7 @@ object ExportsTest {
 class ExportsTest {
 
   /** The namespace in which top-level exports are stored. */
-  val exportsNamespace = ExportsTest.exportsNameSpace
+  val exportsNamespace = ExportsTest.exportsNameSpace("main")
 
   // @JSExport
 
@@ -1478,6 +1472,19 @@ class ExportsTest {
     }
   }
 
+  @Test def top_level_export_field_is_writable_accross_modules(): Unit = {
+    /* We write to basicVar exported above from a different object to test writing
+     * of static fields accross module boundaries (when module splitting is
+     * enabled).
+     */
+
+    assertEquals("hello", TopLevelFieldExports.inlineVar)
+    TopLevelFieldExports.inlineVar = "hello modules"
+    assertEquals("hello modules", TopLevelFieldExports.inlineVar)
+
+    // Reset var
+    TopLevelFieldExports.inlineVar = "hello"
+  }
 }
 
 object ExportNameHolder {
@@ -1625,6 +1632,11 @@ object TopLevelFieldExports {
 
   @JSExportTopLevel("TopLevelExport_uninitializedVarChar")
   var uninitializedVarChar: Char = _
+
+  // the export is only to make the field IR-static
+  @JSExportTopLevel("TopLevelExport_irrelevant")
+  @(inline @meta.getter @meta.setter)
+  var inlineVar: String = "hello"
 }
 
 /* This object and its static initializer are only reachable via the top-level
