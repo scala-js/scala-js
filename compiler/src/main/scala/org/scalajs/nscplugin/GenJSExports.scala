@@ -143,11 +143,11 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
         kind match {
           case Module =>
-            js.TopLevelModuleExportDef("", info.jsName) // temp: emulate 1.2.x
+            js.TopLevelModuleExportDef(info.moduleID, info.jsName)
 
           case JSClass =>
             assert(isNonNativeJSClass(classSym), "found export on non-JS class")
-            js.TopLevelJSClassExportDef("", info.jsName) // temp: emulate 1.2.x
+            js.TopLevelJSClassExportDef(info.moduleID, info.jsName)
 
           case Constructor | Method =>
             val exported = tups.map(t => ExportedSymbol(t._2))
@@ -156,14 +156,14 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
               genExportMethod(exported, JSName.Literal(info.jsName), static = true)
             }
 
-            js.TopLevelMethodExportDef("", methodDef) // temp: emulate 1.2.x
+            js.TopLevelMethodExportDef(info.moduleID, methodDef)
 
           case Property =>
             throw new AssertionError("found top-level exported property")
 
           case Field =>
             val sym = checkSingleField(tups)
-            js.TopLevelFieldExportDef("", info.jsName, encodeFieldSym(sym)) // temp: emulate 1.2.x
+            js.TopLevelFieldExportDef(info.moduleID, info.jsName, encodeFieldSym(sym))
         }
       }).toList
     }

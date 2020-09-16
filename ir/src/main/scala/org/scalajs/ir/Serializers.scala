@@ -693,19 +693,19 @@ object Serializers {
       topLevelExportDef match {
         case TopLevelJSClassExportDef(moduleID, exportName) =>
           writeByte(TagTopLevelJSClassExportDef)
-          writeString(exportName)
+          writeString(moduleID); writeString(exportName)
 
         case TopLevelModuleExportDef(moduleID, exportName) =>
           writeByte(TagTopLevelModuleExportDef)
-          writeString(exportName)
+          writeString(moduleID); writeString(exportName)
 
         case TopLevelMethodExportDef(moduleID, methodDef) =>
           writeByte(TagTopLevelMethodExportDef)
-          writeMemberDef(methodDef)
+          writeString(moduleID); writeMemberDef(methodDef)
 
         case TopLevelFieldExportDef(moduleID, exportName, field) =>
           writeByte(TagTopLevelFieldExportDef)
-          writeString(exportName); writeFieldIdent(field)
+          writeString(moduleID); writeString(exportName); writeFieldIdent(field)
       }
     }
 
@@ -1263,7 +1263,8 @@ object Serializers {
         readMemberDef(owner, ownerKind).asInstanceOf[JSMethodDef]
 
       def readModuleID(): String =
-        DefaultModuleID // temp: test backwards compat
+        if (hacks.use12) DefaultModuleID
+        else readString()
 
       (tag: @switch) match {
         case TagTopLevelJSClassExportDef => TopLevelJSClassExportDef(readModuleID(), readString())
@@ -1583,6 +1584,8 @@ object Serializers {
     val use10: Boolean = sourceVersion == "1.0"
 
     val use11: Boolean = use10 || sourceVersion == "1.1"
+
+    val use12: Boolean = use11 || sourceVersion == "1.2"
   }
 
   /** Names needed for hacks. */
