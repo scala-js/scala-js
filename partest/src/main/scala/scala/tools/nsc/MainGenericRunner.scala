@@ -96,7 +96,7 @@ class MainGenericRunner {
     val linker = StandardImpl.linker(linkerConfig)
 
     val sjsCode = {
-      val file = Jimfs.newFileSystem().getPath("partest.js")
+      val file = Jimfs.newFileSystem().getPath("/partest.js")
 
       val cache = StandardImpl.irFileCache().newCache
       val result = PathIRContainer
