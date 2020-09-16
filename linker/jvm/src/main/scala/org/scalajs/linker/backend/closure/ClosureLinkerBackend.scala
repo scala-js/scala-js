@@ -76,35 +76,38 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
       implicit ec: ExecutionContext): Future[Report] = {
     verifyModuleSet(moduleSet)
 
-    require(moduleSet.modules.size == 1,
+    require(moduleSet.modules.size <= 1,
         "Cannot use multiple modules with the Closure Compiler")
 
-    val sjsModule = moduleSet.modules.head
-
+    // Run Emitter even with 0 modules, to keep its internal state consistent.
     val emitterResult = logger.time("Emitter") {
       emitter.emit(moduleSet, logger)
     }
 
-    val closureModule = logger.time("Closure: Create trees)") {
-      buildModule(emitterResult.body(sjsModule.id))
-    }
+    val gccResult = for {
+      sjsModule <- moduleSet.modules.headOption
+    } yield {
+      val closureModule = logger.time("Closure: Create trees)") {
+        buildModule(emitterResult.body(sjsModule.id))
+      }
 
-    val (code, sourceMap) = logger.time("Closure: Compiler pass") {
-      val options = closureOptions(sjsModule.id)
+      logger.time("Closure: Compiler pass") {
+        val options = closureOptions(sjsModule.id)
 
-      val externs = java.util.Arrays.asList(
-          ClosureSource.fromCode("ScalaJSExterns.js",
-              ClosureLinkerBackend.ScalaJSExterns),
-          ClosureSource.fromCode("ScalaJSGlobalRefs.js",
-              makeExternsForGlobalRefs(emitterResult.globalRefs)),
-          ClosureSource.fromCode("ScalaJSExportExterns.js",
-              makeExternsForExports(emitterResult.topLevelVarDecls, sjsModule)))
+        val externs = java.util.Arrays.asList(
+            ClosureSource.fromCode("ScalaJSExterns.js",
+                ClosureLinkerBackend.ScalaJSExterns),
+            ClosureSource.fromCode("ScalaJSGlobalRefs.js",
+                makeExternsForGlobalRefs(emitterResult.globalRefs)),
+            ClosureSource.fromCode("ScalaJSExportExterns.js",
+                makeExternsForExports(emitterResult.topLevelVarDecls, sjsModule)))
 
-      compile(externs, closureModule, options, logger)
+        compile(externs, closureModule, options, logger)
+      }
     }
 
     logger.timeFuture("Closure: Write result") {
-      writeResult(moduleSet, emitterResult.header, code, emitterResult.footer, sourceMap, output)
+      writeResult(moduleSet, emitterResult.header, emitterResult.footer, gccResult, output)
     }
   }
 
@@ -175,14 +178,18 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     content.toString()
   }
 
-  private def writeResult(moduleSet: ModuleSet, header: String, body: String,
-      footer: String, sourceMap: SourceMap, output: OutputDirectory)(
+  private def writeResult(moduleSet: ModuleSet, header: String, footer: String,
+      gccResult: Option[(String, SourceMap)], output: OutputDirectory)(
       implicit ec: ExecutionContext): Future[Report] = {
+    /* `gccResult` is an Option, because we might have no module at all.
+     * We call `.get` in the write methods to fail if we get a called anyways.
+     */
 
     val writer = new OutputWriter(output, config) {
       private def writeCode(writer: Writer): Unit = {
+        val code = gccResult.get._1
         writer.write(header)
-        writer.write(body)
+        writer.write(code)
         writer.write(footer)
       }
 
@@ -198,6 +205,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
         writeCode(jsFileWriter)
         jsFileWriter.write("//# sourceMappingURL=" + sourceMapURI + "\n")
 
+        val sourceMap = gccResult.get._2
         sourceMap.setWrapperPrefix(header)
         sourceMap.appendTo(sourceMapWriter, jsFileURI)
       }

@@ -24,10 +24,11 @@ import org.scalajs.linker.interface._
 object LinkingUtils {
   def testLink(classDefs: Seq[ClassDef],
       moduleInitializers: List[ModuleInitializer],
+      config: StandardConfig = StandardConfig(),
       output: OutputDirectory = MemOutputDirectory())(
       implicit ec: ExecutionContext): Future[Report] = {
 
-    val linker = StandardImpl.linker(StandardConfig())
+    val linker = StandardImpl.linker(config)
     val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
 
     TestIRRepo.minilib.flatMap { stdLibFiles =>

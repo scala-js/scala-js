@@ -69,7 +69,7 @@ class LinkerTest {
       _ <- OutputDirectoryImpl.fromOutputDirectory(outputDirectory)
         .writeFull(staleFileName, ByteBuffer.wrap(Array()))
       report <- testLink(helloWorldClassDefs, MainTestModuleInitializers,
-          outputDirectory)
+          output = outputDirectory)
     } yield {
       assertFalse(outputDirectory.content(staleFileName).isDefined)
       assertTrue(outputDirectory.content(report.publicModules.head.jsFileName).isDefined)
