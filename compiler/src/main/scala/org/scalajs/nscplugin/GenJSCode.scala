@@ -737,11 +737,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *
      *  @param sym Class to generate the instance of
      *  @param jsSuperClassValue JS class value of the super class
-     *  @param args Arguments to the constructor
+     *  @param args Arguments to the Scala constructor, which map to JS class captures
      *  @param pos Position of the original New tree
      */
     def genAnonJSClassNew(sym: Symbol, jsSuperClassValue: js.Tree,
-        args: List[js.TreeOrJSSpread])(
+        args: List[js.Tree])(
         implicit pos: Position): js.Tree = {
       assert(sym.isAnonymousClass && !isJSFunctionDef(sym),
           "Generating AnonJSClassNew of non anonymous JS class")
@@ -807,14 +807,27 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       generatedClasses += newClassDef
 
       // Construct inline class definition
-      val js.JSMethodDef(_, _, ctorParams, ctorBody) =
-        constructor.getOrElse(throw new AssertionError("No ctor found"))
 
-      val jsSuperClassParam = js.ParamDef(freshLocalIdent("super")(pos),
-          NoOriginalName, jstpe.AnyType, mutable = false, rest = false)(pos)
-      def jsSuperClassRef(implicit pos: ir.Position) =
-        jsSuperClassParam.ref
+      val jsClassCaptures = origJsClass.jsClassCaptures.getOrElse {
+        throw new AssertionError(
+            s"no class captures for anonymous JS class at $pos")
+      }
+      val js.JSMethodDef(_, _, ctorParams, ctorBody) = constructor.getOrElse {
+        throw new AssertionError("No ctor found")
+      }
+      assert(ctorParams.isEmpty,
+          s"non-empty constructor params for anonymous JS class at $pos")
 
+      /* The first class capture is always a reference to the super class.
+       * This is enforced by genJSClassCapturesAndConstructor.
+       */
+      def jsSuperClassRef(implicit pos: ir.Position): js.VarRef =
+        jsClassCaptures.head.ref
+
+      /* The `this` reference.
+       * FIXME This could clash with a local variable of the constructor or a JS
+       * class capture. How do we avoid this?
+       */
       val selfName = freshLocalIdent("this")(pos)
       def selfRef(implicit pos: ir.Position) =
         js.VarRef(selfName)(jstpe.AnyType)
@@ -939,15 +952,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }
       }.transform(ctorBody, isStat = true)
 
-      val invocation = {
-        val closure = js.Closure(arrow = true, Nil,
-            jsSuperClassParam :: ctorParams,
-            js.Block(inlinedCtorStats, selfRef), Nil)
-
-        js.JSFunctionApply(closure, jsSuperClassValue :: args)
-      }
-
-      invocation
+      val closure = js.Closure(arrow = true, jsClassCaptures, Nil,
+          js.Block(inlinedCtorStats, selfRef), jsSuperClassValue :: args)
+      js.JSFunctionApply(closure, Nil)
     }
 
     // Generate the class data of a JS class -----------------------------------
@@ -5314,7 +5321,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         else if (cls == JSArrayClass && args0.isEmpty)
           js.JSArrayConstr(Nil)
         else if (cls.isAnonymousClass)
-          genAnonJSClassNew(cls, jsClassValue.get, args)(fun.pos)
+          genAnonJSClassNew(cls, jsClassValue.get, args0.map(genExpr))(fun.pos)
         else if (!nestedJSClass)
           js.JSNew(genPrimitiveJSClass(cls), args)
         else if (!cls.isModuleClass)
