@@ -93,6 +93,12 @@ You will still have to fix a few things:
 * Uncheck the "Allow output directories per source directory" in Build path
 * Add transitive project dependencies in Build path
 
+## Preparing a Pull Request
+
+One common build failure is code styling. Reproduce results locally with:
+
+   $ sbt scalastyleCheck
+
 ## Organization of the repository
 
 The repository is organized as follows:

@@ -331,21 +331,7 @@ def Tasks = [
         linkerInterface$v/mimaReportBinaryIssues linker$v/mimaReportBinaryIssues \
         testAdapter$v/mimaReportBinaryIssues \
         sbtPlugin/mimaReportBinaryIssues &&
-    sbt ++$scala library$v/scalastyle javalanglib$v/scalastyle javalib$v/scalastyle \
-        ir$v/scalastyle compiler$v/scalastyle \
-        compiler$v/test:scalastyle \
-        linkerInterface$v/scalastyle linkerInterface$v/test:scalastyle \
-        linker$v/scalastyle linker$v/test:scalastyle \
-        testAdapter$v/scalastyle \
-        sbtPlugin/scalastyle testInterface$v/scalastyle testBridge$v/scalastyle \
-        testSuite$v/scalastyle testSuite$v/test:scalastyle \
-        testSuiteJVM$v/test:scalastyle \
-        testSuiteEx$v/test:scalastyle helloworld$v/scalastyle \
-        reversi$v/scalastyle testingExample$v/scalastyle \
-        testingExample$v/test:scalastyle \
-        jUnitPlugin$v/scalastyle jUnitRuntime$v/scalastyle \
-        jUnitTestOutputsJVM$v/scalastyle jUnitTestOutputsJVM$v/test:scalastyle \
-        jUnitTestOutputsJS$v/scalastyle jUnitTestOutputsJS$v/test:scalastyle &&
+    sbt ++$scala scalastyleCheck &&
     sbt ++$scala ir$v/compile:doc \
         linkerInterface$v/compile:doc linker$v/compile:doc \
         testAdapter$v/compile:doc \
