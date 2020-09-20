@@ -840,9 +840,6 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
     }
 
     private case class ExportedSymbol(sym: Symbol) extends Exported {
-      private val isAnonJSClassConstructor =
-        sym.isClassConstructor && sym.owner.isAnonymousClass && isJSType(sym.owner)
-
       val isLiftedJSConstructor =
         sym.isClassConstructor && isNestedJSClass(sym.owner)
 
@@ -863,7 +860,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           }
         }
 
-        if (!isLiftedJSConstructor && !isAnonJSClassConstructor) {
+        if (!isLiftedJSConstructor) {
           /* Easy case: all params are formal params, and we only need to
            * travel back before uncurry to handle repeated params, or before
            * posterasure for other params.
@@ -908,16 +905,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
             allParamsNow.splitAt(startOfRealParams)
           val captureParamsBack = restOfParamsNow.drop(formalParams.size)
 
-          if (isAnonJSClassConstructor) {
-            /* For an anonymous JS class constructor, we put the capture
-             * parameters back as formal parameters.
-             */
-            val allFormalParams =
-              captureParamsFront ::: formalParams ::: captureParamsBack
-            (allFormalParams.toIndexedSeq, Nil, Nil)
-          } else {
-            (formalParams.toIndexedSeq, captureParamsFront, captureParamsBack)
-          }
+          (formalParams.toIndexedSeq, captureParamsFront, captureParamsBack)
         }
       }
 
