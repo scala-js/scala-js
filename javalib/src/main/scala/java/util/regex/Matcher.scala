@@ -225,8 +225,14 @@ final class Matcher private[regex] (
 
   def regionStart(): Int = regionStart0
   def regionEnd(): Int = regionEnd0
-  def region(start: Int, end: Int): Matcher =
-    new Matcher(pattern0, input0, start, end)
+
+  def region(start: Int, end: Int): Matcher = {
+    regionStart0 = start
+    regionEnd0 = end
+    inputstr = input0.subSequence(regionStart0, regionEnd0).toString
+    reset()
+    this
+  }
 
   def hasTransparentBounds(): Boolean = false
   //def useTransparentBounds(b: Boolean): Matcher
