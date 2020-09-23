@@ -269,43 +269,41 @@ class RegexMatcherTest  {
   @Test def region(): Unit = {
     val matcher0 = Pattern.compile("S[a-z]+").matcher("A Scalable Solution")
 
-    val region0to3 = matcher0.region(0, 3)
-    assertEquals(0, region0to3.regionStart)
-    assertEquals(3, region0to3.regionEnd)
-    assertFalse(region0to3.find())
+    assertSame(matcher0, matcher0.region(0, 3))
+    assertEquals(0, matcher0.regionStart)
+    assertEquals(3, matcher0.regionEnd)
+    assertFalse(matcher0.find())
 
-    val region0to15 = matcher0.region(0, 15)
-    assertEquals(0, region0to15.regionStart)
-    assertEquals(15, region0to15.regionEnd)
-    assertTrue(region0to15.find())
-    assertEquals("Scalable", region0to15.group)
+    matcher0.region(0, 15)
+    assertEquals(0, matcher0.regionStart)
+    assertEquals(15, matcher0.regionEnd)
+    assertTrue(matcher0.find())
+    assertEquals("Scalable", matcher0.group)
 
-    val region2to7 = region0to15.region(2, 7)
-    assertEquals(2, region2to7.regionStart)
-    assertEquals(7, region2to7.regionEnd)
-    assertTrue(region2to7.find())
-    assertEquals("Scala", region2to7.group)
+    matcher0.region(2, 7)
+    assertEquals(2, matcher0.regionStart)
+    assertEquals(7, matcher0.regionEnd)
+    assertTrue(matcher0.find())
+    assertEquals("Scala", matcher0.group)
 
-    val region5toEnd = matcher0.region(5, matcher0.regionEnd)
-    assertEquals(5, region5toEnd.regionStart)
-    if (!executingInJVM) {
-      assertEquals(19, region5toEnd.regionEnd)
-      assertTrue(region5toEnd.find())
-      assertEquals("Solution", region5toEnd.group)
-    }
+    matcher0.region(5, 19)
+    assertEquals(5, matcher0.regionStart)
+    assertEquals(19, matcher0.regionEnd)
+    assertTrue(matcher0.find())
+    assertEquals("Solution", matcher0.group)
 
     val matcher1 = Pattern.compile("0[xX][A-Fa-f0-9]{3}$").matcher("In CSS, 0xc4fe is not a color")
 
-    val region5to13 = matcher1.region(5, 13)
-    assertEquals(5, region5to13.regionStart)
-    assertEquals(13, region5to13.regionEnd)
-    assertTrue(region5to13.find())
-    assertEquals("0xc4f", region5to13.group)
+    matcher1.region(5, 13)
+    assertEquals(5, matcher1.regionStart)
+    assertEquals(13, matcher1.regionEnd)
+    assertTrue(matcher1.find())
+    assertEquals("0xc4f", matcher1.group)
 
-    val region5to20 = matcher1.region(5, 20)
-    assertEquals(5, region5to20.regionStart)
-    assertEquals(20, region5to20.regionEnd)
-    assertFalse(region5to20.find())
+    matcher1.region(5, 20)
+    assertEquals(5, matcher1.regionStart)
+    assertEquals(20, matcher1.regionEnd)
+    assertFalse(matcher1.find())
   }
 
   @Test def appendReplacement_and_appendTail(): Unit = {
