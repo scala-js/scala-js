@@ -762,7 +762,7 @@ object _String { // scalastyle:ignore
 
   // Helpers
 
-  private def fromCodePoint(codePoint: Int): String = {
+  private[lang] def fromCodePoint(codePoint: Int): String = {
     if ((codePoint & ~Character.MAX_VALUE) == 0) {
       NativeJSString.fromCharCode(codePoint)
     } else if (codePoint < 0 || codePoint > Character.MAX_CODE_POINT) {

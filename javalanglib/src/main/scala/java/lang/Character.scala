@@ -461,8 +461,52 @@ object Character {
   //def getDirectionality(c: scala.Char): scala.Byte
 
   /* Conversions */
-  def toUpperCase(c: scala.Char): scala.Char = c.toString.toUpperCase().charAt(0)
-  def toLowerCase(c: scala.Char): scala.Char = c.toString.toLowerCase().charAt(0)
+  def toUpperCase(ch: Char): Char = toUpperCase(ch.toInt).toChar
+
+  def toUpperCase(codePoint: scala.Int): scala.Int = {
+    codePoint match {
+      case 0x1fb3 | 0x1fc3 | 0x1ff3 =>
+        (codePoint + 0x0009)
+      case _ if codePoint >= 0x1f80 && codePoint <= 0x1faf =>
+        (codePoint | 0x0008)
+      case _ =>
+        val upperChars = _String.fromCodePoint(codePoint).toUpperCase()
+        upperChars.length match {
+          case 1 =>
+            upperChars.charAt(0).toInt
+          case 2 =>
+            val high = upperChars.charAt(0)
+            val low = upperChars.charAt(1)
+            if (isSurrogatePair(high, low))
+              toCodePoint(high, low)
+            else
+              codePoint
+          case _ =>
+            codePoint
+        }
+    }
+  }
+
+  def toLowerCase(ch: scala.Char): scala.Char = toLowerCase(ch.toInt).toChar
+
+  def toLowerCase(codePoint: scala.Int): scala.Int = {
+    val lowerChars = _String.fromCodePoint(codePoint).toLowerCase()
+
+    lowerChars.length match {
+      case 1 =>
+        lowerChars.charAt(0).toInt
+      case 2 =>
+        val high = lowerChars.charAt(0)
+        val low = lowerChars.charAt(1)
+        if (isSurrogatePair(high, low))
+          toCodePoint(high, low)
+        else
+          codePoint
+      case _ =>
+        codePoint
+    }
+  }
+
   //def toTitleCase(c: scala.Char): scala.Char
   //def getNumericValue(c: scala.Char): Int
 
