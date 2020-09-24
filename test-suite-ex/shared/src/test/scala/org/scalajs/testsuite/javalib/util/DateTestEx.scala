@@ -37,4 +37,30 @@ class DateTestEx {
     test(-9223372036854776L, 192000000, Long.MinValue)
     test(9223372036854775L, 807000000, Long.MaxValue)
   }
+
+  @Test def testFromInstant(): Unit = {
+    def test(expectedTime: Long, epochSecond: Long, nano: Int): Unit = {
+      assertEquals(new Date(expectedTime),
+          Date.from(Instant.ofEpochSecond(epochSecond, nano)))
+    }
+
+    test(123456L, 123L, 456000000)
+    test(123456L, 123L, 456987654)
+    test(8640000000000001L, 8640000000000L, 1000000)
+    test(-8640000000000001L, -8640000000001L, 999000000)
+    test(-8640000000000001L, -8640000000001L, 999123456)
+    test(Long.MinValue, -9223372036854776L, 192000000)
+    test(Long.MaxValue, 9223372036854775L, 807000000)
+    test(Long.MaxValue, 9223372036854775L, 807999999)
+
+    def testException(epochSecond: Long, nano: Int): Unit = {
+      val instant = Instant.ofEpochSecond(epochSecond, nano) // does not throw
+      assertThrows(classOf[IllegalArgumentException], Date.from(instant))
+    }
+
+    testException(-9223372036854776L, 191999999)
+    testException(-9223372036854777L, 999999999)
+    testException(9223372036854775L, 808000000)
+    testException(9223372036854776L, 0)
+  }
 }
