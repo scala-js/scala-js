@@ -29,6 +29,7 @@ val reversi = Build.reversi
 val testingExample = Build.testingExample
 val testSuite = Build.testSuite
 val testSuiteJVM = Build.testSuiteJVM
+val javalibExtDummies = Build.javalibExtDummies
 val testSuiteEx = Build.testSuiteEx
 val testSuiteExJVM = Build.testSuiteExJVM
 val testSuiteLinker = Build.testSuiteLinker

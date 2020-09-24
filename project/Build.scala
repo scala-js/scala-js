@@ -571,7 +571,7 @@ object Build {
             testInterface, jUnitRuntime, testBridge, jUnitPlugin, jUnitAsyncJS,
             jUnitAsyncJVM, jUnitTestOutputsJS, jUnitTestOutputsJVM,
             helloworld, reversi, testingExample, testSuite, testSuiteJVM,
-            testSuiteEx, testSuiteExJVM, testSuiteLinker,
+            javalibExtDummies, testSuiteEx, testSuiteExJVM, testSuiteLinker,
             partest, partestSuite,
             scalaTestSuite
         ).flatMap(_.componentProjects)
@@ -1912,6 +1912,44 @@ object Build {
         "com.novocode" % "junit-interface" % "0.11" % "test"
   )
 
+  /* Dummies for javalib extensions that can be implemented outside the core.
+   * The dummies in this project are used in testSuiteEx to test some
+   * (fortunately rare) methods implemented in the core even though they cannot
+   * link without an additional javalib extension.
+   *
+   * Examples include:
+   *
+   * - java.time.Instant, referred to in java.util.Date
+   *
+   * The dummies are definitely not suited for general use. They work just
+   * enough for our tests of other features to work. As such, they must not be
+   * published.
+   */
+  lazy val javalibExtDummies: MultiScalaProject = MultiScalaProject(
+      id = "javalibExtDummies", base = file("javalib-ext-dummies")
+  ).enablePlugins(
+      MyScalaJSPlugin
+  ).settings(
+      commonSettings,
+      fatalWarningsSettings,
+      name := "Java Ext Dummies library for Scala.js",
+      publishArtifact in Compile := false,
+      delambdafySetting,
+      ensureSAMSupportSetting,
+      noClassFilesSettings,
+      scalaJSExternalCompileSettings,
+      exportJars := true,
+
+      /* Do not import `Predef._` so that we have a better control of when
+       * we rely on the Scala library.
+       */
+      scalacOptions += "-Yno-predef",
+      // We implement JDK classes, so we emit static forwarders for all static objects
+      addScalaJSCompilerOption("genStaticForwardersForNonTopLevelObjects"),
+  ).withScalaJSCompiler.dependsOn(
+      library
+  )
+
   def testSuiteExCommonSettings(isJSTest: Boolean): Seq[Setting[_]] = Def.settings(
       publishArtifact in Compile := false,
 
@@ -1922,10 +1960,14 @@ object Build {
   )
 
   /* Additional test suite, for tests that should not be part of the normal
-   * test suite for various reasons. The most common reason is that the tests
-   * in there "fail to fail" if they happen in the larger test suite, due to
-   * all the other code that's there (can have impact on dce, optimizations,
-   * GCC, etc.).
+   * test suite for various reasons. There are two common reasons:
+   *
+   * - some tests in there "fail to fail" if they happen in the larger test
+   *   suite, due to all the other code that's there (can have impact on dce,
+   *   optimizations, GCC, etc.)
+   * - some tests pollute the linking state at a global scale, and therefore
+   *   would have an impact on the main test suite (dangerous global refs,
+   *   javalib extension dummies, etc.)
    *
    * TODO Ideally, we should have a mechanism to separately compile, link and
    * test each file in this test suite, so that we're sure that do not
@@ -1941,7 +1983,7 @@ object Build {
       name := "Scala.js test suite ex",
       publishArtifact in Compile := false,
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
-      library, jUnitRuntime, testBridge % "test", testSuite
+      library, javalibExtDummies, jUnitRuntime, testBridge % "test", testSuite
   )
 
   lazy val testSuiteExJVM: MultiScalaProject = MultiScalaProject(

@@ -128,7 +128,6 @@ class Date(private var millis: Long) extends Object
       pad0(date.getUTCSeconds().toInt) +" GMT"
   }
 
-  /* Calling this requires java.time so it's not tested in this repository. */
   def toInstant(): Instant = Instant.ofEpochMilli(getTime())
 
   @Deprecated
