@@ -30,6 +30,7 @@ val testingExample = Build.testingExample
 val testSuite = Build.testSuite
 val testSuiteJVM = Build.testSuiteJVM
 val testSuiteEx = Build.testSuiteEx
+val testSuiteExJVM = Build.testSuiteExJVM
 val testSuiteLinker = Build.testSuiteLinker
 val partest = Build.partest
 val partestSuite = Build.partestSuite

@@ -12,8 +12,6 @@
 
 package org.scalajs.testsuite.javalib.lang
 
-import scala.scalajs.js
-
 import org.junit.Test
 import org.junit.Assert._
 

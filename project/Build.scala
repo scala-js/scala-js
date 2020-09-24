@@ -571,7 +571,7 @@ object Build {
             testInterface, jUnitRuntime, testBridge, jUnitPlugin, jUnitAsyncJS,
             jUnitAsyncJVM, jUnitTestOutputsJS, jUnitTestOutputsJVM,
             helloworld, reversi, testingExample, testSuite, testSuiteJVM,
-            testSuiteEx, testSuiteLinker,
+            testSuiteEx, testSuiteExJVM, testSuiteLinker,
             partest, partestSuite,
             scalaTestSuite
         ).flatMap(_.componentProjects)
@@ -1912,6 +1912,15 @@ object Build {
         "com.novocode" % "junit-interface" % "0.11" % "test"
   )
 
+  def testSuiteExCommonSettings(isJSTest: Boolean): Seq[Setting[_]] = Def.settings(
+      publishArtifact in Compile := false,
+
+      testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
+
+      unmanagedSourceDirectories in Test +=
+        (sourceDirectory in Test).value.getParentFile.getParentFile.getParentFile / "shared/src/test",
+  )
+
   /* Additional test suite, for tests that should not be part of the normal
    * test suite for various reasons. The most common reason is that the tests
    * in there "fail to fail" if they happen in the larger test suite, due to
@@ -1923,17 +1932,38 @@ object Build {
    * interfere with other.
    */
   lazy val testSuiteEx: MultiScalaProject = MultiScalaProject(
-      id = "testSuiteEx", base = file("test-suite-ex")
+      id = "testSuiteEx", base = file("test-suite-ex/js")
   ).enablePlugins(
       MyScalaJSPlugin
   ).settings(
       commonSettings,
+      testSuiteExCommonSettings(isJSTest = true),
       name := "Scala.js test suite ex",
       publishArtifact in Compile := false,
-      testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
-      scalacOptions in Test ~= (_.filter(_ != "-deprecation"))
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, jUnitRuntime, testBridge % "test", testSuite
+  )
+
+  lazy val testSuiteExJVM: MultiScalaProject = MultiScalaProject(
+      id = "testSuiteExJVM", base = file("test-suite-ex/jvm")
+  ).settings(
+      commonSettings,
+      testSuiteExCommonSettings(isJSTest = false),
+      name := "Scala.js test suite ex on JVM",
+
+      /* Scala.js always assumes en-US, UTF-8 and NL as line separator by
+       * default. Since some of our tests rely on these defaults (notably to
+       * test them), we have to force the same values on the JVM.
+       */
+      fork in Test := true,
+      javaOptions in Test ++= Seq(
+          "-Dfile.encoding=UTF-8",
+          "-Duser.country=US", "-Duser.language=en",
+          "-Dline.separator=\n"
+      ),
+
+      libraryDependencies +=
+        "com.novocode" % "junit-interface" % "0.11" % "test",
   )
 
   lazy val testSuiteLinker: MultiScalaProject = MultiScalaProject(

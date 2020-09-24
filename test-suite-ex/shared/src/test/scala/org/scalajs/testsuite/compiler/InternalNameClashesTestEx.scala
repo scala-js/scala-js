@@ -10,7 +10,7 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.testsuite.jsinterop
+package org.scalajs.testsuite.compiler
 
 import org.junit.Test
 import org.junit.Assert._
@@ -27,9 +27,9 @@ class InternalNameClashesTestEx {
      */
     @noinline def someValue(): Int = 42
 
-    val $c_Lorg_scalajs_testsuite_jsinterop_InternalNameClashesTestEx$LocalVariableClashWithCodegenVar = someValue()
+    val $c_Lorg_scalajs_testsuite_compiler_InternalNameClashesTestEx$LocalVariableClashWithCodegenVar = someValue()
     val foo = new LocalVariableClashWithCodegenVar(5)
-    assertEquals(42, $c_Lorg_scalajs_testsuite_jsinterop_InternalNameClashesTestEx$LocalVariableClashWithCodegenVar)
+    assertEquals(42, $c_Lorg_scalajs_testsuite_compiler_InternalNameClashesTestEx$LocalVariableClashWithCodegenVar)
     assertEquals(5, foo.x)
   }
 
