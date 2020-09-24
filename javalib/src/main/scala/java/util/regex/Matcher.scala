@@ -186,7 +186,7 @@ final class Matcher private[regex] (
 
   def groupCount(): Int = Matcher.getGroupCount(lastMatch, pattern())
 
-  def start(): Int = ensureLastMatch.index
+  def start(): Int = ensureLastMatch.index + regionStart()
   def end(): Int = start() + group().length
   def group(): String = ensureLastMatch(0).get
 
@@ -211,7 +211,7 @@ final class Matcher private[regex] (
   // Seal the state
 
   def toMatchResult(): MatchResult =
-    new SealedResult(inputstr, lastMatch, pattern(), startOfGroupCache)
+    new SealedResult(inputstr, lastMatch, pattern(), regionStart(), startOfGroupCache)
 
   // Other query state methods
 
@@ -277,12 +277,12 @@ object Matcher {
 
   private final class SealedResult(inputstr: String,
       lastMatch: js.RegExp.ExecResult, pattern: Pattern,
-      private var startOfGroupCache: js.Array[Int])
+      regionStart: Int, private var startOfGroupCache: js.Array[Int])
       extends MatchResult {
 
     def groupCount(): Int = getGroupCount(lastMatch, pattern)
 
-    def start(): Int = ensureLastMatch.index
+    def start(): Int = ensureLastMatch.index + regionStart
     def end(): Int = start() + group().length
     def group(): String = ensureLastMatch(0).get
 

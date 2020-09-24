@@ -105,6 +105,19 @@ class RegexMatcherTest  {
         "(?i)(a)".r.findAllMatchIn("aA").map(_.matched).toList)
   }
 
+  @Test def start_end_group_with_region_issue4204(): Unit = {
+    val matcher = Pattern
+      .compile("([a-z]+) ([a-z]+)(frobber)?")
+      .matcher("This is only a test")
+      .region(5, 18)
+    checkGroups(matcher,
+        (5, 12, "is only"),
+        (5, 7, "is"),
+        (8, 12, "only"),
+        (-1, -1, null) // make sure we don't add regionStart0 to -1
+    )
+  }
+
   def parseExpect(regex: String, str: String, pos: (Int, Int)*): Unit = {
     val matcher = Pattern.compile(regex).matcher(str)
     assertEquals(pos.length - 1, matcher.groupCount)
