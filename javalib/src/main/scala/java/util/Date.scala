@@ -128,7 +128,6 @@ class Date(private var millis: Long) extends Object
       pad0(date.getUTCSeconds().toInt) +" GMT"
   }
 
-  /* Calling this requires java.time so it's not tested in this repository. */
   def toInstant(): Instant = Instant.ofEpochMilli(getTime())
 
   @Deprecated
@@ -178,8 +177,14 @@ object Date {
     if (str.length < 2) "0" + str else str
   }
 
-  /* Calling this requires java.time so it's not tested in this repository. */
-  def from(instant: Instant): Date = new Date(instant.toEpochMilli())
+  def from(instant: Instant): Date = {
+    try {
+      new Date(instant.toEpochMilli())
+    } catch {
+      case ex: ArithmeticException =>
+        throw new IllegalArgumentException(ex)
+    }
+  }
 
   @Deprecated
   def UTC(year: Int, month: Int, date: Int,

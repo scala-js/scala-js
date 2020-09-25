@@ -131,7 +131,7 @@ def Tasks = [
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala testingExample$v/testHtmlJSDom \
         testingExample$v/clean &&
-    sbtretry ++$scala testSuiteJVM$v/test testSuiteJVM$v/clean &&
+    sbtretry ++$scala testSuiteJVM$v/test testSuiteJVM$v/clean testSuiteExJVM$v/test testSuiteExJVM$v/clean &&
     sbtretry ++$scala testSuite$v/test &&
     sbtretry ++$scala testSuiteEx$v/test &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
