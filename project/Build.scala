@@ -794,6 +794,7 @@ object Build {
       publishSettings,
       fatalWarningsSettings,
       name := "Scala.js linker",
+      ensureSAMSupportSetting,
 
       unmanagedSourceDirectories in Compile +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/main/scala",
