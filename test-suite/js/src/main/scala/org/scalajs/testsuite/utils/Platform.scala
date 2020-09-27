@@ -74,6 +74,8 @@ object Platform {
 
   def hasCompliantModuleInit: Boolean = BuildInfo.compliantModuleInit
 
+  def hasDirectBuffers: Boolean = typedArrays
+
   /** Do we use strict-floats semantics?
    *
    *  If yes, `number` values that cannot be exactly represented as `Float`
