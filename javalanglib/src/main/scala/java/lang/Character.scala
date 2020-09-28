@@ -119,11 +119,8 @@ object Character {
     charTypesFirst256(codePoint)
 
   private[this] def getTypeGE256(codePoint: Int): Int = {
-    // the idx is increased by 1 due to the differences in indexing
-    // between charTypeIndices and charType
-    val idx = Arrays.binarySearch(charTypeIndices, codePoint) + 1
-    // in the case where idx is negative (-insertionPoint - 1)
-    charTypes(Math.abs(idx))
+    charTypes(findIndexOfRange(
+        charTypeIndices, codePoint, hasEmptyRanges = false))
   }
 
   @inline
@@ -456,8 +453,9 @@ object Character {
     isMirrored(c.toInt)
 
   def isMirrored(codePoint: Int): scala.Boolean = {
-    val idx = Arrays.binarySearch(isMirroredIndices, codePoint) + 1
-    (Math.abs(idx) & 1) != 0
+    val indexOfRange = findIndexOfRange(
+        isMirroredIndices, codePoint, hasEmptyRanges = false)
+    (indexOfRange & 1) != 0
   }
 
   //def getDirectionality(c: scala.Char): scala.Byte
@@ -1300,6 +1298,118 @@ println("    )")
     uncompressDeltas(deltas)
   }
 
+  private[lang] final val CombiningClassIsNone = 0
+  private[lang] final val CombiningClassIsAbove = 1
+  private[lang] final val CombiningClassIsOther = 2
+
+  /* Indices representing the start of ranges of codePoint that have the same
+   * `combiningClassNoneOrAboveOrOther` result. The results cycle modulo 3 at
+   * every range:
+   *
+   * - 0 for the range [0, array(0))
+   * - 1 for the range [array(0), array(1))
+   * - 2 for the range [array(1), array(2))
+   * - 0 for the range [array(2), array(3))
+   * - etc.
+   *
+   * In general, for a range ending at `array(i)` (excluded), the result is
+   * `i % 3`.
+   *
+   * A range can be empty, i.e., it can happen that `array(i) == array(i + 1)`
+   * (but then it is different from `array(i - 1)` and `array(i + 2)`).
+   *
+   * They where generated with the following script, which can be pasted into
+   * a Scala REPL.
+
+val url = new java.net.URL("http://unicode.org/Public/UCD/latest/ucd/UnicodeData.txt")
+val cpToValue = scala.io.Source.fromURL(url, "UTF-8")
+  .getLines()
+  .filter(!_.startsWith("#"))
+  .map(_.split(';'))
+  .map { arr =>
+    val cp = Integer.parseInt(arr(0), 16)
+    val value = arr(3).toInt match {
+      case 0   => 0
+      case 230 => 1
+      case _   => 2
+    }
+    cp -> value
+  }
+  .toMap
+  .withDefault(_ => 0)
+
+var lastValue = 0
+val indicesBuilder = List.newBuilder[Int]
+for (cp <- 0 to Character.MAX_CODE_POINT) {
+  val value = cpToValue(cp)
+  while (lastValue != value) {
+    indicesBuilder += cp
+    lastValue = (lastValue + 1) % 3
+  }
+}
+val indices = indicesBuilder.result()
+
+val indicesDeltas = indices
+  .zip(0 :: indices.init)
+  .map(tup => tup._1 - tup._2)
+println("combiningClassNoneOrAboveOrOtherIndices, deltas:")
+println("    Array(")
+println(formatLargeArray(indicesDeltas.toArray, "        "))
+println("    )")
+
+   */
+  private[this] lazy val combiningClassNoneOrAboveOrOtherIndices: Array[Int] = {
+    val deltas = Array(
+        768, 21, 40, 0, 8, 1, 0, 1, 3, 0, 3, 2, 1, 3, 4, 0, 1, 3, 0, 1, 7, 0,
+        13, 0, 275, 5, 0, 265, 0, 1, 0, 4, 1, 0, 3, 2, 0, 6, 6, 0, 2, 1, 0, 2,
+        2, 0, 1, 14, 1, 0, 1, 1, 0, 2, 1, 1, 1, 1, 0, 1, 72, 8, 3, 48, 0, 8, 0,
+        2, 2, 0, 5, 1, 0, 2, 1, 16, 0, 1, 101, 7, 0, 2, 4, 1, 0, 1, 0, 2, 2, 0,
+        1, 0, 1, 0, 2, 1, 35, 0, 1, 30, 1, 1, 0, 2, 1, 0, 2, 3, 0, 1, 2, 0, 1,
+        1, 0, 3, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 2, 0, 160, 7, 1, 0, 1, 0, 9,
+        0, 1, 24, 4, 0, 1, 9, 0, 1, 3, 0, 1, 5, 0, 43, 0, 3, 119, 0, 1, 0, 14,
+        0, 1, 0, 1, 0, 2, 1, 0, 2, 1, 0, 3, 6, 0, 3, 1, 0, 2, 2, 0, 5, 0, 60,
+        0, 1, 16, 0, 1, 3, 1, 1, 0, 2, 0, 103, 0, 1, 16, 0, 1, 48, 1, 0, 61, 0,
+        1, 16, 0, 1, 110, 0, 1, 16, 0, 1, 110, 0, 1, 16, 0, 1, 127, 0, 1, 127,
+        0, 1, 7, 0, 2, 101, 0, 1, 16, 0, 1, 109, 0, 2, 16, 0, 1, 124, 0, 1,
+        109, 0, 3, 13, 0, 4, 108, 0, 3, 13, 0, 4, 76, 0, 2, 27, 0, 1, 1, 0, 1,
+        1, 0, 1, 55, 0, 2, 1, 0, 1, 5, 0, 4, 2, 0, 1, 1, 2, 1, 1, 2, 0, 62, 0,
+        1, 112, 0, 1, 1, 0, 2, 82, 0, 1, 719, 3, 0, 948, 0, 1, 31, 0, 1, 157,
+        0, 1, 10, 1, 0, 203, 0, 1, 143, 0, 1, 0, 1, 1, 219, 1, 1, 71, 0, 1, 20,
+        8, 0, 2, 0, 1, 48, 5, 6, 0, 2, 1, 1, 0, 2, 115, 0, 1, 15, 0, 1, 38, 1,
+        1, 0, 7, 0, 54, 0, 2, 58, 0, 1, 11, 0, 2, 67, 0, 1, 152, 3, 0, 1, 0, 6,
+        0, 2, 4, 0, 1, 0, 1, 0, 7, 4, 0, 1, 6, 1, 0, 3, 2, 0, 198, 2, 1, 0, 7,
+        1, 0, 2, 4, 0, 37, 4, 1, 1, 2, 0, 1, 1, 720, 2, 2, 0, 4, 3, 0, 2, 0, 4,
+        1, 0, 3, 0, 2, 0, 1, 1, 0, 1, 6, 0, 1, 0, 3070, 3, 0, 141, 0, 1, 96,
+        32, 0, 554, 0, 6, 105, 0, 2, 30164, 1, 0, 4, 10, 0, 32, 2, 0, 80, 2, 0,
+        276, 0, 1, 37, 0, 1, 151, 0, 1, 27, 18, 0, 57, 0, 3, 37, 0, 1, 95, 0,
+        1, 12, 0, 1, 239, 1, 0, 1, 2, 1, 2, 2, 0, 5, 2, 0, 1, 1, 0, 52, 0, 1,
+        246, 0, 1, 20272, 0, 1, 769, 7, 7, 0, 2, 0, 973, 0, 1, 226, 0, 1, 149,
+        5, 0, 1682, 0, 1, 1, 1, 0, 40, 1, 2, 4, 0, 1, 165, 1, 1, 573, 4, 0,
+        387, 2, 0, 153, 0, 2, 0, 3, 1, 0, 1, 4, 245, 0, 1, 56, 0, 1, 57, 0, 2,
+        69, 3, 0, 48, 0, 2, 62, 0, 1, 76, 0, 1, 9, 0, 1, 106, 0, 2, 178, 0, 2,
+        80, 0, 2, 16, 0, 1, 24, 7, 0, 3, 5, 0, 205, 0, 1, 3, 0, 1, 23, 1, 0,
+        99, 0, 2, 251, 0, 2, 126, 0, 1, 118, 0, 2, 115, 0, 1, 269, 0, 2, 258,
+        0, 2, 4, 0, 1, 156, 0, 1, 83, 0, 1, 18, 0, 1, 81, 0, 1, 421, 0, 1, 258,
+        0, 1, 1, 0, 2, 81, 0, 1, 19800, 0, 5, 59, 7, 0, 1209, 0, 2, 19628, 0,
+        1, 5318, 0, 5, 3, 0, 6, 8, 0, 8, 2, 5, 2, 30, 4, 0, 148, 3, 0, 3515, 7,
+        0, 1, 17, 0, 2, 7, 0, 1, 2, 0, 1, 5, 0, 261, 7, 0, 437, 4, 0, 1504, 0,
+        7, 109, 6, 1
+    )
+    uncompressDeltas(deltas)
+  }
+
+  /** Tests whether the given code point's combining class is 0 (None), 230
+   *  (Above) or something else (Other).
+   *
+   *  This is a special-purpose method for use by `String.toLowerCase` and
+   *  `String.toUpperCase`.
+   */
+  private[lang] def combiningClassNoneOrAboveOrOther(cp: Int): Int = {
+    val indexOfRange = findIndexOfRange(
+        combiningClassNoneOrAboveOrOtherIndices, cp, hasEmptyRanges = true)
+    indexOfRange % 3
+  }
+
   private[this] def uncompressDeltas(deltas: Array[Int]): Array[Int] = {
     var acc = deltas(0)
     var i = 1
@@ -1310,6 +1420,34 @@ println("    )")
       i += 1
     }
     deltas
+  }
+
+  private[this] def findIndexOfRange(startOfRangesArray: Array[Int],
+      value: Int, hasEmptyRanges: scala.Boolean): Int = {
+    val i = Arrays.binarySearch(startOfRangesArray, value)
+    if (i >= 0) {
+      /* `value` is at the start of a range. Its range index is therefore
+       * `i + 1`, since there is an implicit range starting at 0 in the
+       * beginning.
+       *
+       * If the array has empty ranges, we may need to advance further than
+       * `i + 1` until the first index `j > i` where
+       * `startOfRangesArray(j) != value`.
+       */
+      if (hasEmptyRanges) {
+        var j = i + 1
+        while (j < startOfRangesArray.length && startOfRangesArray(j) == value)
+          j += 1
+        j
+      } else {
+        i + 1
+      }
+    } else {
+      /* i is `-p - 1` where `p` is the insertion point. In that case the index
+       * of the range is precisely `p`.
+       */
+      -i - 1
+    }
   }
 
   /** All the non-ASCII code points that map to the digit 0.

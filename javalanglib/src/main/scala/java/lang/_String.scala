@@ -12,6 +12,8 @@
 
 package java.lang
 
+import scala.annotation.{switch, tailrec}
+
 import java.util.Comparator
 
 import scala.scalajs.js
@@ -19,6 +21,7 @@ import scala.scalajs.js.annotation._
 
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
+import java.util.Locale
 import java.util.regex._
 
 import Utils.Implicits.enableJSStringOps
@@ -319,13 +322,325 @@ final class _String private () // scalastyle:ignore
     result
   }
 
+  /* toLowerCase() and toUpperCase()
+   *
+   * The overloads without an explicit locale use the default locale, which
+   * is English by specification. They are implemented by direct delegation to
+   * ECMAScript's `toLowerCase()` and `toUpperCase()`, which are specified as
+   * locale-insensitive. This is correct because those two operations are
+   * equivalent for English and for locale-insensitive. In fact, only
+   * Lithuanian (lt), Turkish (tr) and Azeri (az) have different behaviors than
+   * locale-insensitive.
+   *
+   * The overloads with a `Locale` specificially test for those three languages
+   * and delegate to dedicated methods to handle them. Those methods start by
+   * handling their respective special cases, then delegate to the locale-
+   * insensitive version. The special cases are specified in the Unicode
+   * reference file at
+   *
+   *   https://unicode.org/Public/13.0.0/ucd/SpecialCasing.txt
+   *
+   * That file first contains a bunch of locale-insensitive special cases,
+   * which we do not need to handle. Only the last two sections about locale-
+   * sensitive special-cases are important for us.
+   *
+   * Some of the rules are further context-sensitive, using predicates that are
+   * defined in Section 3.13 "Default Case Algorithms" of the Unicode Standard,
+   * available at
+   *
+   *   http://www.unicode.org/versions/Unicode13.0.0/
+   *
+   * We based the implementations on Unicode 13.0.0. It is worth noting that
+   * there has been no non-comment changes in the SpecialCasing.txt file
+   * between Unicode 4.1.0 and 13.0.0 (perhaps even earlier; the version 4.1.0
+   * is the earliest that is easily accessible).
+   */
+
+  def toLowerCase(locale: Locale): String = {
+    locale.getLanguage() match {
+      case "lt"        => toLowerCaseLithuanian()
+      case "tr" | "az" => toLowerCaseTurkishAndAzeri()
+      case _           => toLowerCase()
+    }
+  }
+
+  private def toLowerCaseLithuanian(): String = {
+    /* Relevant excerpt from SpecialCasing.txt
+     *
+     * # Lithuanian
+     *
+     * # Lithuanian retains the dot in a lowercase i when followed by accents.
+     *
+     * [...]
+     *
+     * # Introduce an explicit dot above when lowercasing capital I's and J's
+     * # whenever there are more accents above.
+     * # (of the accents used in Lithuanian: grave, acute, tilde above, and ogonek)
+     *
+     * 0049; 0069 0307; 0049; 0049; lt More_Above; # LATIN CAPITAL LETTER I
+     * 004A; 006A 0307; 004A; 004A; lt More_Above; # LATIN CAPITAL LETTER J
+     * 012E; 012F 0307; 012E; 012E; lt More_Above; # LATIN CAPITAL LETTER I WITH OGONEK
+     * 00CC; 0069 0307 0300; 00CC; 00CC; lt; # LATIN CAPITAL LETTER I WITH GRAVE
+     * 00CD; 0069 0307 0301; 00CD; 00CD; lt; # LATIN CAPITAL LETTER I WITH ACUTE
+     * 0128; 0069 0307 0303; 0128; 0128; lt; # LATIN CAPITAL LETTER I WITH TILDE
+     */
+
+    /* Tests whether we are in an `More_Above` context.
+     * From Table 3.17 in the Unicode standard:
+     * - Description: C is followed by a character of combining class
+     *   230 (Above) with no intervening character of combining class 0 or
+     *   230 (Above).
+     * - Regex, after C: [^\p{ccc=230}\p{ccc=0}]*[\p{ccc=230}]
+     */
+    def moreAbove(i: Int): scala.Boolean = {
+      import Character._
+      val len = length()
+
+      @tailrec def loop(j: Int): scala.Boolean = {
+        if (j == len) {
+          false
+        } else {
+          val cp = this.codePointAt(j)
+          combiningClassNoneOrAboveOrOther(cp) match {
+            case CombiningClassIsNone  => false
+            case CombiningClassIsAbove => true
+            case _                     => loop(j + charCount(cp))
+          }
+        }
+      }
+
+      loop(i + 1)
+    }
+
+    val preprocessed = replaceCharsAtIndex { i =>
+      (this.charAt(i): @switch) match {
+        case '\u0049' if moreAbove(i) => "\u0069\u0307"
+        case '\u004A' if moreAbove(i) => "\u006A\u0307"
+        case '\u012E' if moreAbove(i) => "\u012F\u0307"
+        case '\u00CC'                 => "\u0069\u0307\u0300"
+        case '\u00CD'                 => "\u0069\u0307\u0301"
+        case '\u0128'                 => "\u0069\u0307\u0303"
+        case _                        => null
+      }
+    }
+
+    preprocessed.toLowerCase()
+  }
+
+  private def toLowerCaseTurkishAndAzeri(): String = {
+    /* Relevant excerpt from SpecialCasing.txt
+     *
+     * # Turkish and Azeri
+     *
+     * # I and i-dotless; I-dot and i are case pairs in Turkish and Azeri
+     * # The following rules handle those cases.
+     *
+     * 0130; 0069; 0130; 0130; tr; # LATIN CAPITAL LETTER I WITH DOT ABOVE
+     * 0130; 0069; 0130; 0130; az; # LATIN CAPITAL LETTER I WITH DOT ABOVE
+     *
+     * # When lowercasing, remove dot_above in the sequence I + dot_above, which will turn into i.
+     * # This matches the behavior of the canonically equivalent I-dot_above
+     *
+     * 0307; ; 0307; 0307; tr After_I; # COMBINING DOT ABOVE
+     * 0307; ; 0307; 0307; az After_I; # COMBINING DOT ABOVE
+     *
+     * # When lowercasing, unless an I is before a dot_above, it turns into a dotless i.
+     *
+     * 0049; 0131; 0049; 0049; tr Not_Before_Dot; # LATIN CAPITAL LETTER I
+     * 0049; 0131; 0049; 0049; az Not_Before_Dot; # LATIN CAPITAL LETTER I
+     */
+
+    /* Tests whether we are in an `After_I` context.
+     * From Table 3.17 in the Unicode standard:
+     * - Description: There is an uppercase I before C, and there is no
+     *   intervening combining character class 230 (Above) or 0.
+     * - Regex, before C: [I]([^\p{ccc=230}\p{ccc=0}])*
+     */
+    def afterI(i: Int): scala.Boolean = {
+      val j = skipCharsWithCombiningClassOtherThanNoneOrAboveBackwards(i)
+      j > 0 && charAt(j - 1) == 'I'
+    }
+
+    /* Tests whether we are in an `Before_Dot` context.
+     * From Table 3.17 in the Unicode standard:
+     * - Description: C is followed by combining dot above (U+0307). Any
+     *   sequence of characters with a combining class that is neither 0 nor
+     *   230 may intervene between the current character and the combining dot
+     *   above.
+     * - Regex, after C: ([^\p{ccc=230}\p{ccc=0}])*[\u0307]
+     */
+    def beforeDot(i: Int): scala.Boolean = {
+      val j = skipCharsWithCombiningClassOtherThanNoneOrAboveForwards(i + 1)
+      j != length() && charAt(j) == '\u0307'
+    }
+
+    val preprocessed = replaceCharsAtIndex { i =>
+      (this.charAt(i): @switch) match {
+        case '\u0130'                  => "\u0069"
+        case '\u0307' if afterI(i)     => ""
+        case '\u0049' if !beforeDot(i) => "\u0131"
+        case _                         => null
+      }
+    }
+
+    preprocessed.toLowerCase()
+  }
+
   @inline
   def toLowerCase(): String =
     thisJSString.toLowerCase()
 
+  def toUpperCase(locale: Locale): String = {
+    locale.getLanguage() match {
+      case "lt"        => toUpperCaseLithuanian()
+      case "tr" | "az" => toUpperCaseTurkishAndAzeri()
+      case _           => toUpperCase()
+    }
+  }
+
+  private def toUpperCaseLithuanian(): String = {
+    /* Relevant excerpt from SpecialCasing.txt
+     *
+     * # Lithuanian
+     *
+     * # Lithuanian retains the dot in a lowercase i when followed by accents.
+     *
+     * # Remove DOT ABOVE after "i" with upper or titlecase
+     *
+     * 0307; 0307; ; ; lt After_Soft_Dotted; # COMBINING DOT ABOVE
+     */
+
+    /* Tests whether we are in an `After_Soft_Dotted` context.
+     * From Table 3.17 in the Unicode standard:
+     * - Description: There is a Soft_Dotted character before C, with no
+     *   intervening character of combining class 0 or 230 (Above).
+     * - Regex, before C: [\p{Soft_Dotted}]([^\p{ccc=230} \p{ccc=0}])*
+     *
+     * According to https://unicode.org/Public/13.0.0/ucd/PropList.txt, there
+     * are 44 code points with the Soft_Dotted property. However,
+     * experimentation on the JVM reveals that the JDK (8 and 14 were tested)
+     * only recognizes 8 code points when deciding whether to remove the 0x0307
+     * code points. The following script reproduces the list:
+
+for (cp <- 0 to Character.MAX_CODE_POINT) {
+  val input = new String(Array(cp, 0x0307, 0x0301), 0, 3)
+  val output = input.toUpperCase(new java.util.Locale("lt"))
+  if (!output.contains('\u0307'))
+    println(cp.toHexString)
+}
+
+     */
+    def afterSoftDotted(i: Int): scala.Boolean = {
+      val j = skipCharsWithCombiningClassOtherThanNoneOrAboveBackwards(i)
+      j > 0 && (codePointBefore(j) match {
+        case 0x0069 | 0x006a | 0x012f | 0x0268 | 0x0456 | 0x0458 | 0x1e2d | 0x1ecb => true
+        case _                                                                     => false
+      })
+    }
+
+    val preprocessed = replaceCharsAtIndex { i =>
+      (this.charAt(i): @switch) match {
+        case '\u0307' if afterSoftDotted(i) => ""
+        case _                              => null
+      }
+    }
+
+    preprocessed.toUpperCase()
+  }
+
+  private def toUpperCaseTurkishAndAzeri(): String = {
+    /* Relevant excerpt from SpecialCasing.txt
+     *
+     * # Turkish and Azeri
+     *
+     * # When uppercasing, i turns into a dotted capital I
+     *
+     * 0069; 0069; 0130; 0130; tr; # LATIN SMALL LETTER I
+     * 0069; 0069; 0130; 0130; az; # LATIN SMALL LETTER I
+     */
+
+    val preprocessed = replaceCharsAtIndex { i =>
+      (this.charAt(i): @switch) match {
+        case '\u0069' => "\u0130"
+        case _        => null
+      }
+    }
+
+    preprocessed.toUpperCase()
+  }
+
   @inline
   def toUpperCase(): String =
     thisJSString.toUpperCase()
+
+  /** Replaces special characters in this string (possibly in special contexts)
+   *  by dedicated strings.
+   *
+   *  This method encodes the general pattern of
+   *
+   *  - `toLowerCaseLithuanian()`
+   *  - `toLowerCaseTurkishAndAzeri()`
+   *  - `toUpperCaseLithuanian()`
+   *  - `toUpperCaseTurkishAndAzeri()`
+   *
+   *  @param replacementAtIndex
+   *    A function from index to `String | Null`, which should return a special
+   *    replacement string for the character at the given index, or `null` if
+   *    the character at the given index is not special.
+   */
+  @inline
+  private def replaceCharsAtIndex(
+      replacementAtIndex: js.Function1[Int, String]): String = {
+
+    var prep = ""
+    val len = this.length()
+    var i = 0
+    var startOfSegment = 0
+
+    while (i != len) {
+      val replacement = replacementAtIndex(i)
+      if (replacement != null) {
+        prep += this.substring(startOfSegment, i)
+        prep += replacement
+        startOfSegment = i + 1
+      }
+      i += 1
+    }
+
+    if (startOfSegment == 0)
+      thisString // opt: no character needed replacing, directly return the original string
+    else
+      prep + this.substring(startOfSegment, i)
+  }
+
+  private def skipCharsWithCombiningClassOtherThanNoneOrAboveForwards(i: Int): Int = {
+    // scalastyle:off return
+    import Character._
+    val len = length()
+    var j = i
+    while (j != len) {
+      val cp = codePointAt(j)
+      if (combiningClassNoneOrAboveOrOther(cp) != CombiningClassIsOther)
+        return j
+      j += charCount(cp)
+    }
+    j
+    // scalastyle:on return
+  }
+
+  private def skipCharsWithCombiningClassOtherThanNoneOrAboveBackwards(i: Int): Int = {
+    // scalastyle:off return
+    import Character._
+    var j = i
+    while (j > 0) {
+      val cp = codePointBefore(j)
+      if (combiningClassNoneOrAboveOrOther(cp) != CombiningClassIsOther)
+        return j
+      j -= charCount(cp)
+    }
+    0
+    // scalastyle:on return
+  }
 
   @inline
   def trim(): String =
