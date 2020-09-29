@@ -324,15 +324,16 @@ final class _String private () // scalastyle:ignore
 
   /* toLowerCase() and toUpperCase()
    *
-   * The overloads without an explicit locale use the default locale, which
-   * is English by specification. They are implemented by direct delegation to
-   * ECMAScript's `toLowerCase()` and `toUpperCase()`, which are specified as
-   * locale-insensitive. This is correct because those two operations are
-   * equivalent for English and for locale-insensitive. In fact, only
-   * Lithuanian (lt), Turkish (tr) and Azeri (az) have different behaviors than
-   * locale-insensitive.
+   * The overloads without an explicit locale use the default locale, which is
+   * the root locale by specification. They are implemented by direct
+   * delegation to ECMAScript's `toLowerCase()` and `toUpperCase()`, which are
+   * specified as locale-insensitive, therefore equivalent to the root locale.
    *
-   * The overloads with a `Locale` specificially test for those three languages
+   * It turns out virtually every locale behaves in the same way as the root
+   * locale for default case algorithms. Only Lithuanian (lt), Turkish (tr)
+   * and Azeri (az) have different behaviors.
+   *
+   * The overloads with a `Locale` specifically test for those three languages
    * and delegate to dedicated methods to handle them. Those methods start by
    * handling their respective special cases, then delegate to the locale-
    * insensitive version. The special cases are specified in the Unicode
