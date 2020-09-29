@@ -18,7 +18,8 @@ import scala.scalajs.js
 import java.lang.{Double => JDouble}
 import java.io._
 
-final class Formatter(private[this] var dest: Appendable)
+final class Formatter private (private[this] var dest: Appendable,
+    formatterLocaleInfo: Formatter.LocaleInfo)
     extends Closeable with Flushable {
 
   import Formatter._
@@ -39,7 +40,13 @@ final class Formatter(private[this] var dest: Appendable)
   private[this] var closed: Boolean = false
   private[this] var lastIOException: IOException = null
 
-  def this() = this(null: Appendable)
+  def this() = this(null: Appendable, Formatter.RootLocaleInfo)
+
+  def this(a: Appendable) = this(a, Formatter.RootLocaleInfo)
+
+  def this(l: Locale) = this(null: Appendable, new Formatter.LocaleLocaleInfo(l))
+
+  def this(a: Appendable, l: Locale) = this(a, new Formatter.LocaleLocaleInfo(l))
 
   @inline
   private def trapIOExceptions(body: => Unit): Unit = {
@@ -105,7 +112,14 @@ final class Formatter(private[this] var dest: Appendable)
     }
   }
 
-  def format(format: String, args: Array[AnyRef]): Formatter = {
+  def format(format: String, args: Array[AnyRef]): Formatter =
+    this.format(formatterLocaleInfo, format, args)
+
+  def format(l: Locale, format: String, args: Array[AnyRef]): Formatter =
+    this.format(new LocaleLocaleInfo(l), format, args)
+
+  private def format(localeInfo: LocaleInfo, format: String,
+      args: Array[AnyRef]): Formatter = {
     // scalastyle:off return
 
     checkNotClosed()
@@ -191,7 +205,7 @@ final class Formatter(private[this] var dest: Appendable)
         args(argIndex - 1)
       }
 
-      formatArg(arg, conversion, flags, width, precision)
+      formatArg(localeInfo, arg, conversion, flags, width, precision)
     }
 
     this
@@ -243,8 +257,8 @@ final class Formatter(private[this] var dest: Appendable)
     }
   }
 
-  private def formatArg(arg: Any, conversion: Char, flags: Flags, width: Int,
-      precision: Int): Unit = {
+  private def formatArg(localeInfo: LocaleInfo, arg: Any, conversion: Char,
+      flags: Flags, width: Int, precision: Int): Unit = {
 
     @inline def rejectPrecision(): Unit = {
       if (precision >= 0)
@@ -272,7 +286,7 @@ final class Formatter(private[this] var dest: Appendable)
              * decimal separator.
              */
             val forceDecimalSep = flags.altFormat
-            formatNumericString(flags, width,
+            formatNumericString(localeInfo, flags, width,
                 notation(arg, precisionWithDefault, forceDecimalSep))
           }
         case _ =>
@@ -342,14 +356,15 @@ final class Formatter(private[this] var dest: Appendable)
         rejectPrecision()
         arg match {
           case arg: Int =>
-            formatNumericString(flags, width, arg.toString())
+            formatNumericString(localeInfo, flags, width, arg.toString())
           case arg: Long =>
-            formatNumericString(flags, width, arg.toString())
+            formatNumericString(localeInfo, flags, width, arg.toString())
           case _ =>
             formatNullOrThrowIllegalFormatConversion()
         }
 
       case 'o' =>
+        // Octal formatting is not localized
         validateFlags(flags, conversion,
             invalidFlags = InvalidFlagsForOctalAndHex)
         rejectPrecision()
@@ -358,16 +373,17 @@ final class Formatter(private[this] var dest: Appendable)
           else ""
         arg match {
           case arg: Int =>
-            padAndSendToDest(flags, width, prefix,
+            padAndSendToDest(RootLocaleInfo, flags, width, prefix,
                 java.lang.Integer.toOctalString(arg))
           case arg: Long =>
-            padAndSendToDest(flags, width, prefix,
+            padAndSendToDest(RootLocaleInfo, flags, width, prefix,
                 java.lang.Long.toOctalString(arg))
           case _ =>
             formatNullOrThrowIllegalFormatConversion()
         }
 
       case 'x' | 'X' =>
+        // Hex formatting is not localized
         validateFlags(flags, conversion,
             invalidFlags = InvalidFlagsForOctalAndHex)
         rejectPrecision()
@@ -378,10 +394,10 @@ final class Formatter(private[this] var dest: Appendable)
         }
         arg match {
           case arg: Int =>
-            padAndSendToDest(flags, width, prefix,
+            padAndSendToDest(RootLocaleInfo, flags, width, prefix,
                 applyUpperCase(flags, java.lang.Integer.toHexString(arg)))
           case arg: Long =>
-            padAndSendToDest(flags, width, prefix,
+            padAndSendToDest(RootLocaleInfo, flags, width, prefix,
                 applyUpperCase(flags, java.lang.Long.toHexString(arg)))
           case _ =>
             formatNullOrThrowIllegalFormatConversion()
@@ -554,6 +570,8 @@ final class Formatter(private[this] var dest: Appendable)
   }
 
   private def formatNaNOrInfinite(flags: Flags, width: Int, x: Double): Unit = {
+    // NaN and Infinite formatting are not localized
+
     val str = if (JDouble.isNaN(x)) {
       "NaN"
     } else if (x > 0.0) {
@@ -568,7 +586,8 @@ final class Formatter(private[this] var dest: Appendable)
     padAndSendToDestNoZeroPad(flags, width, applyUpperCase(flags, str))
   }
 
-  private def formatNumericString(flags: Flags, width: Int, str: String): Unit = {
+  private def formatNumericString(localeInfo: LocaleInfo, flags: Flags,
+      width: Int, str: String): Unit = {
     /* Flags for which a numeric string needs to be decomposed and transformed,
      * not just padded and/or uppercased. We can write fast-paths in this
      * method if none of them are present.
@@ -578,10 +597,10 @@ final class Formatter(private[this] var dest: Appendable)
 
     if (str.length >= width && !flags.hasAnyOf(TransformativeFlags)) {
       // Super-fast-path
-      sendToDest(applyUpperCase(flags, str))
+      sendToDest(localeInfo.localizeNumber(applyUpperCase(flags, str)))
     } else if (!flags.hasAnyOf(TransformativeFlags | ZeroPad)) {
       // Fast-path that does not need to inspect the string
-      formatNonNumericString(flags, width, -1, str)
+      formatNonNumericString(flags, width, -1, localeInfo.localizeNumber(str))
     } else {
       // Extract prefix and rest, based on flags and the presence of a sign
       val (prefix, rest0) = if (str.charAt(0) != '-') {
@@ -600,29 +619,41 @@ final class Formatter(private[this] var dest: Appendable)
 
       // Insert grouping separators, if required
       val rest =
-        if (flags.useGroupingSeps) insertGroupingSeps(rest0)
+        if (flags.useGroupingSeps) insertGroupingCommas(localeInfo, rest0)
         else rest0
 
-      // Apply uppercase, pad and send
-      padAndSendToDest(flags, width, prefix, applyUpperCase(flags, rest))
+      // Apply uppercase, localization, pad and send
+      padAndSendToDest(localeInfo, flags, width, prefix,
+          localeInfo.localizeNumber(applyUpperCase(flags, rest)))
     }
   }
 
-  private def insertGroupingSeps(s: String): String = {
+  /** Inserts grouping commas at the right positions for the locale.
+   *
+   *  We already insert the ',' character, regardless of the locale. That is
+   *  fixed later by `localeInfo.localizeNumber`. The only locale-sensitive
+   *  behavior in this method is the grouping size.
+   *
+   *  The reason is that we do not want to insert a character that would
+   *  collide with another meaning (such as '.') at this point.
+   */
+  private def insertGroupingCommas(localeInfo: LocaleInfo, s: String): String = {
+    val groupingSize = localeInfo.groupingSize
+
     val len = s.length
     var index = 0
     while (index != len && { val c = s.charAt(index); c >= '0' && c <= '9' }) {
       index += 1
     }
 
-    index -= 3
+    index -= groupingSize
 
     if (index <= 0) {
       s
     } else {
       var result = s.substring(index)
-      while (index > 3) {
-        val next = index - 3
+      while (index > groupingSize) {
+        val next = index - groupingSize
         result = s.substring(next, index) + "," + result
         index = next
       }
@@ -631,7 +662,7 @@ final class Formatter(private[this] var dest: Appendable)
   }
 
   private def applyUpperCase(flags: Flags, str: String): String =
-    if (flags.upperCase) str.toUpperCase
+    if (flags.upperCase) str.toUpperCase() // uppercasing is not localized
     else str
 
   /** This method ignores `flags.zeroPad` and `flags.upperCase`. */
@@ -649,15 +680,15 @@ final class Formatter(private[this] var dest: Appendable)
   }
 
   /** This method ignores `flags.upperCase`. */
-  private def padAndSendToDest(flags: Flags, width: Int, prefix: String,
-      str: String): Unit = {
+  private def padAndSendToDest(localeInfo: LocaleInfo, flags: Flags,
+      width: Int, prefix: String, str: String): Unit = {
 
     val len = prefix.length + str.length
 
     if (len >= width)
       sendToDest(prefix, str)
     else if (flags.zeroPad)
-      sendToDest(prefix, strRepeat("0", width - len), str)
+      sendToDest(prefix, strRepeat(localeInfo.zeroDigitString, width - len), str)
     else if (flags.leftAlign)
       sendToDest(prefix, str, strRepeat(" ", width - len))
     else
@@ -678,7 +709,7 @@ final class Formatter(private[this] var dest: Appendable)
 
   def locale(): Locale = {
     checkNotClosed()
-    null
+    formatterLocaleInfo.locale
   }
 
   def out(): Appendable = {
@@ -756,5 +787,77 @@ object Formatter {
 
     final val AllWrittenFlags =
       LeftAlign | AltFormat | NumericOnlyFlags | UseLastIndex
+  }
+
+  /** A proxy for a `java.util.Locale` or for the root locale that provides
+   *  the info required by `Formatter`.
+   *
+   *  The purpose of this abstraction is to allow `java.util.Formatter` to link
+   *  when `java.util.Locale` and `java.text.*` are not on the classpath, as
+   *  long as only methods that do not take an explicit `Locale` are used.
+   *
+   *  While the `LocaleLocaleInfo` subclass actually delegates to a `Locale`
+   *  (and hence cannot link without `Locale`), the object `RootLocaleInfo`
+   *  hard-codes the required information about the Root locale.
+   *
+   *  We use object-oriented method calls so that the reachability analysis
+   *  never reaches the `Locale`-dependent code if `LocaleLocaleInfo` is never
+   *  instantiated, which is the case as long the methods and constructors
+   *  taking an explicit `Locale` are not called.
+   *
+   *  When `LocaleLocaleInfo` can be dead-code-eliminated, the optimizer can
+   *  even inline and constant-fold all the methods of `RootLocaleInfo`,
+   *  resulting in top efficiency.
+   */
+  private sealed abstract class LocaleInfo {
+    def locale: Locale
+    def groupingSize: Int
+    def zeroDigitString: String
+    def localizeNumber(str: String): String
+  }
+
+  private object RootLocaleInfo extends LocaleInfo {
+    def locale: Locale = Locale.ROOT
+    def groupingSize: Int = 3
+    def zeroDigitString: String = "0"
+    def localizeNumber(str: String): String = str
+  }
+
+  private final class LocaleLocaleInfo(val locale: Locale) extends LocaleInfo {
+    import java.text._
+
+    private def actualLocale: Locale =
+      if (locale == null) Locale.ROOT
+      else locale
+
+    private lazy val decimalFormatSymbols: DecimalFormatSymbols =
+      DecimalFormatSymbols.getInstance(actualLocale)
+
+    lazy val groupingSize: Int = {
+      NumberFormat.getNumberInstance(actualLocale) match {
+        case decimalFormat: DecimalFormat => decimalFormat.getGroupingSize()
+        case _                            => 3
+      }
+    }
+
+    def zeroDigitString: String = decimalFormatSymbols.getZeroDigit().toString()
+
+    def localizeNumber(str: String): String = {
+      val formatSymbols = decimalFormatSymbols
+      val digitOffset = formatSymbols.getZeroDigit() - '0'
+      var result = ""
+      val len = str.length()
+      var i = 0
+      while (i != len) {
+        result += (str.charAt(i) match {
+          case c if c >= '0' && c <= '9' => (c + digitOffset).toChar
+          case '.'                       => formatSymbols.getDecimalSeparator()
+          case ','                       => formatSymbols.getGroupingSeparator()
+          case c                         => c
+        })
+        i += 1
+      }
+      result
+    }
   }
 }
