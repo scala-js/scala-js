@@ -26,6 +26,12 @@ import org.scalajs.testsuite.utils.AssertThrows._
  *  cause tests to "fail to fail" if they are not respected.
  */
 class LocaleTest {
+  @Test def testDefaultLocaleIsRoot(): Unit = {
+    assertEquals(Locale.ROOT, Locale.getDefault())
+    assertEquals("", Locale.ROOT.getLanguage())
+    assertEquals("", Locale.ROOT.getCountry())
+  }
+
   @Test def testLanguageIsNormalizedLowerCase(): Unit = {
     /* Our implementations of `String.toLowerCase(locale: Locale)` and
      * `String.toUpperCase(locale: Locale)` assume that the result of

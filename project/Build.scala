@@ -1897,14 +1897,14 @@ object Build {
       testSuiteCommonSettings(isJSTest = false),
       name := "Scala.js test suite on JVM",
 
-      /* Scala.js always assumes en-US, UTF-8 and NL as line separator by
+      /* Scala.js always assumes Locale.ROOT, UTF-8 and NL as line separator by
        * default. Since some of our tests rely on these defaults (notably to
        * test them), we have to force the same values on the JVM.
        */
       fork in Test := true,
       javaOptions in Test ++= Seq(
           "-Dfile.encoding=UTF-8",
-          "-Duser.country=US", "-Duser.language=en",
+          "-Duser.country=", "-Duser.language=",
           "-Dline.separator=\n"
       ),
 
@@ -1993,14 +1993,14 @@ object Build {
       testSuiteExCommonSettings(isJSTest = false),
       name := "Scala.js test suite ex on JVM",
 
-      /* Scala.js always assumes en-US, UTF-8 and NL as line separator by
+      /* Scala.js always assumes Locale.ROOT, UTF-8 and NL as line separator by
        * default. Since some of our tests rely on these defaults (notably to
        * test them), we have to force the same values on the JVM.
        */
       fork in Test := true,
       javaOptions in Test ++= Seq(
           "-Dfile.encoding=UTF-8",
-          "-Duser.country=US", "-Duser.language=en",
+          "-Duser.country=", "-Duser.language=",
           "-Dline.separator=\n"
       ),
 
