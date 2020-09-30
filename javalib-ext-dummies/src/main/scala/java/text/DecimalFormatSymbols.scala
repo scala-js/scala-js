@@ -22,17 +22,11 @@ import java.util.Locale
  */
 class DecimalFormatSymbols(locale: Locale) extends NumberFormat {
   def getZeroDigit(): Char = {
-    locale.getLanguage() match {
-      case "hi" =>
-        locale.getCountry() match {
-          case "IN" => '\u0966' // '०' DEVANAGARI DIGIT ZERO
-          case _    => unsupported()
-        }
-      case "" | "en" | "fr" =>
-        '0'
-      case _ =>
-        unsupported()
-    }
+    val ext = locale.getExtension('u')
+    if (ext != null && ext.contains("nu-deva"))
+      '\u0966' // '०' DEVANAGARI DIGIT ZERO
+    else
+      '0'
   }
 
   def getGroupingSeparator(): Char = {
