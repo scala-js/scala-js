@@ -690,9 +690,24 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     // scalastyle:on return
   }
 
-  @inline
-  def trim(): String =
-    thisJSString.trim()
+  def trim(): String = {
+    val len = length()
+    var start = 0
+    while (start != len && charAt(start) <= ' ')
+      start += 1
+    if (start == len) {
+      ""
+    } else {
+      /* If we get here, 0 <= start < len, so the original string is not empty.
+       * We also know that charAt(start) > ' '.
+       */
+      var end = len
+      while (charAt(end - 1) <= ' ') // no need for a bounds check here since charAt(start) > ' '
+        end -= 1
+      if (start == 0 && end == len) thisString
+      else substring(start, end)
+    }
+  }
 
   @inline
   override def toString(): String =
@@ -706,7 +721,6 @@ object _String { // scalastyle:ignore
   private trait SpecialJSStringOps extends js.Any {
     def toLowerCase(): String
     def toUpperCase(): String
-    def trim(): String
   }
 
   final lazy val CASE_INSENSITIVE_ORDER: Comparator[String] = {

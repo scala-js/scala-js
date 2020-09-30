@@ -421,6 +421,27 @@ class StringTest {
     assertTrue(testU.regionMatches(true, 1, "bCdx", 1, -3))
   }
 
+  @Test def trim(): Unit = {
+    // Char values <= ' ' are trimmed
+    for (c <- '\u0000' to '\u0020') {
+      // on the left
+      assertEquals(c.toInt.toString, s"foo${c}bar", s"${c} foo${c}bar".trim())
+      // on the right
+      assertEquals(c.toInt.toString, s"foo${c}bar", s"foo${c}bar\n${c}".trim())
+      // on both sides
+      assertEquals(c.toInt.toString, s"foo${c}bar", s"${c} foo${c}bar\n${c}".trim())
+    }
+
+    // Char values > ' ' are not trimmed, even Unicode Whitespace characters
+    for (c <- '\u0021' to Char.MaxValue)
+      assertEquals(c.toInt.toString, s"${c}foo${c}bar${c}", s"${c}foo${c}bar${c}")
+
+    // Potential corner cases
+    assertEquals("", "".trim())
+    assertEquals("", " \n\r".trim())
+    assertEquals("foo bar", "foo bar".trim())
+  }
+
   @Test def createFromLargeCharArray_issue2553(): Unit = {
     val largeCharArray =
       (1 to 100000).toArray.flatMap(_ => Array('a', 'b', 'c', 'd', 'e', 'f'))
