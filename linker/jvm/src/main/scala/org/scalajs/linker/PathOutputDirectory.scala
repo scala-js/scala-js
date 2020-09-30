@@ -17,8 +17,11 @@ import scala.concurrent._
 import java.nio._
 import java.nio.channels._
 import java.nio.file._
+import java.nio.file.attribute.PosixFilePermission
 
 import java.io.IOException
+
+import java.util.EnumSet
 
 import org.scalajs.linker.interface.OutputDirectory
 import org.scalajs.linker.interface.unstable.OutputDirectoryImpl
@@ -60,9 +63,35 @@ object PathOutputDirectory {
   private def writeAtomic(path: Path, buf: ByteBuffer)(
       implicit ec: ExecutionContext): Future[Unit] = {
     import StandardOpenOption._
+    import PosixFilePermission._
 
-    val tmpFileFuture = Future(blocking(
-        Files.createTempFile(path.getParent(), ".tmp-" + path.getFileName(), ".tmp")))
+
+    val tmpFileFuture = Future {
+      blocking {
+        val tmpFile = Files.createTempFile(
+            path.getParent(), ".tmp-" + path.getFileName(), ".tmp")
+
+        /* Set file permissions for temporary file as in Linux it is created
+         * with permissions 0600 which deviates from the standard 0644 used
+         * in *.class and *.jar files.
+         * 
+         * Uses setPosixFilePermissions instead of passing the permissions to
+         * createTempFile to cover systems (if any exist) that uses POSIX
+         * permissions, but can't set them atomically while creating a
+         * temporary file.
+         */
+        val permissions = EnumSet.of(
+            OWNER_READ, OWNER_WRITE, GROUP_READ, OTHERS_READ)
+
+        try {
+          Files.setPosixFilePermissions(tmpFile, permissions)
+        } catch {
+          case _: UnsupportedOperationException =>
+        }
+
+        tmpFile
+      }
+    }
 
     tmpFileFuture.flatMap { tmpFile =>
       val writeFuture = withChannel(tmpFile, WRITE, CREATE, TRUNCATE_EXISTING) { chan =>
