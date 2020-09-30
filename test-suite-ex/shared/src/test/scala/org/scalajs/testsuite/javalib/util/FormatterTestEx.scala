@@ -16,6 +16,9 @@ import java.util.{Formatter, Locale}
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
+
+import org.scalajs.testsuite.utils.Platform.executingInJVMOnJDK8OrLower
 
 /** Additional tests for java.lang.String that require `java.util.Locale`
  *  as well as classes in `java.text.*`.
@@ -83,9 +86,20 @@ class FormatterTestEx {
   }
 
   @Test def testFormatTurkish(): Unit = {
-    // Uppercasing does not follow the locale
-    assertF(Turkish, "TITLE", "%S", "title")
+    assumeFalse("Affected by https://bugs.openjdk.java.net/browse/JDK-8060094",
+        executingInJVMOnJDK8OrLower)
+
+    // U+0130 LATIN CAPITAL LETTER I WITH DOT ABOVE
+    assertF(Turkish, "TİTLE", "%S", "title")
+    assertF(Turkish, "İ", "%C", 'i')
+
+    // But Infinity is not localized
     assertF(Turkish, "INFINITY", "%E", Double.PositiveInfinity)
+
+    // Neither are booleans and null, although it does not matter as they have no 'i'
+    assertF(Turkish, "FALSE", "%B", false)
+    assertF(Turkish, "TRUE", "%B", true)
+    assertF(Turkish, "NULL", "%S", null)
   }
 
   @Test def testFormatNullLocale(): Unit = {

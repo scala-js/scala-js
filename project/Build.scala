@@ -2006,6 +2006,8 @@ object Build {
 
       libraryDependencies +=
         "com.novocode" % "junit-interface" % "0.11" % "test",
+  ).dependsOn(
+      testSuiteJVM
   )
 
   lazy val testSuiteLinker: MultiScalaProject = MultiScalaProject(
