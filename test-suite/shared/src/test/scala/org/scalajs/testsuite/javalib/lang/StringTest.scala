@@ -44,19 +44,40 @@ class StringTest {
     assertTrue("åløb".equalsIgnoreCase("ÅLØb"))
     assertFalse("Scala.js".equalsIgnoreCase("Java"))
     assertFalse("Scala.js".equalsIgnoreCase(null))
+
+    // Case folding that changes the string length are not supported,
+    // therefore ligatures are not equal to their expansion.
+    // U+FB00 LATIN SMALL LIGATURE FF
+    assertFalse("Eﬀet".equalsIgnoreCase("effEt"))
+    assertFalse("Eﬀet".equalsIgnoreCase("eFFEt"))
+
+    // "ı" and 'i' are considered equal, as well as their uppercase variants
+    assertTrue("ıiIİ ıiIİ ıiIİ ıiIİ".equalsIgnoreCase("ıııı iiii IIII İİİİ"))
+
+    // null is a valid input
+    assertFalse("foo".equalsIgnoreCase(null))
   }
 
   @Test def compareTo(): Unit = {
-    assertTrue("Scala.js".compareTo("Scala") > 0)
+    assertEquals(3, "Scala.js".compareTo("Scala"))
     assertEquals(0, "Scala.js".compareTo("Scala.js"))
-    assertTrue("Scala.js".compareTo("banana") < 0)
+    assertEquals(-15, "Scala.js".compareTo("banana"))
   }
 
   @Test def compareToIgnoreCase(): Unit = {
     assertEquals(0, "Scala.JS".compareToIgnoreCase("Scala.js"))
-    assertTrue("Scala.JS".compareToIgnoreCase("scala") > 0)
+    assertEquals(3, "Scala.JS".compareToIgnoreCase("scala"))
     assertEquals(0, "åløb".compareToIgnoreCase("ÅLØB"))
-    assertTrue("Java".compareToIgnoreCase("Scala") < 0)
+    assertEquals(-9, "Java".compareToIgnoreCase("Scala"))
+
+    // Case folding that changes the string length are not supported,
+    // therefore ligatures are not equal to their expansion.
+    // U+FB00 LATIN SMALL LIGATURE FF
+    assertEquals(64154, "Eﬀet".compareToIgnoreCase("effEt"))
+    assertEquals(64154, "Eﬀet".compareToIgnoreCase("eFFEt"))
+
+    // "ı" and 'i' are considered equal, as well as their uppercase variants
+    assertEquals(0, "ıiIİ ıiIİ ıiIİ ıiIİ".compareToIgnoreCase("ıııı iiii IIII İİİİ"))
   }
 
   @Test def isEmpty(): Unit = {

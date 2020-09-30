@@ -140,20 +140,67 @@ final class _String private () // scalastyle:ignore
   override def equals(that: Any): scala.Boolean =
     this eq that.asInstanceOf[AnyRef]
 
-  @inline
   def compareTo(anotherString: String): Int = {
-    if (this.equals(anotherString)) 0
-    else if ((this.asInstanceOf[js.Dynamic] <
-        anotherString.asInstanceOf[js.Dynamic]).asInstanceOf[scala.Boolean]) -1
-    else 1
+    // scalastyle:off return
+    val thisLength = this.length()
+    val strLength = anotherString.length()
+    val minLength = Math.min(thisLength, strLength)
+
+    var i = 0
+    while (i != minLength) {
+      val cmp = this.charAt(i) - anotherString.charAt(i)
+      if (cmp != 0)
+        return cmp
+      i += 1
+    }
+    thisLength - strLength
+    // scalastyle:on return
   }
 
-  def compareToIgnoreCase(str: String): Int =
-    this.toLowerCase().compareTo(str.toLowerCase())
+  def compareToIgnoreCase(str: String): Int = {
+    // scalastyle:off return
+    val thisLength = this.length()
+    val strLength = str.length()
+    val minLength = Math.min(thisLength, strLength)
+
+    var i = 0
+    while (i != minLength) {
+      val cmp = caseFold(this.charAt(i)) - caseFold(str.charAt(i))
+      if (cmp != 0)
+        return cmp
+      i += 1
+    }
+    thisLength - strLength
+    // scalastyle:on return
+  }
 
   @inline
-  def equalsIgnoreCase(that: String): scala.Boolean =
-    this.toLowerCase() == (if (that == null) null else that.toLowerCase())
+  def equalsIgnoreCase(anotherString: String): scala.Boolean = {
+    // scalastyle:off return
+    val len = length()
+    if (anotherString == null || anotherString.length() != len) {
+      false
+    } else {
+      var i = 0
+      while (i != len) {
+        if (caseFold(this.charAt(i)) != caseFold(anotherString.charAt(i)))
+          return false
+        i += 1
+      }
+      true
+    }
+    // scalastyle:on return
+  }
+
+  /** Perfoms case folding of a single character for use by `equalsIgnoreCase`
+   *  and `compareToIgnoreCase`.
+   *
+   *  This implementation respects the specification of those two methods,
+   *  although that behavior does not generally conform to Unicode Case
+   *  Folding.
+   */
+  @inline private def caseFold(c: Char): Char =
+    Character.toLowerCase(Character.toUpperCase(c))
 
   @inline
   def concat(s: String): String =
