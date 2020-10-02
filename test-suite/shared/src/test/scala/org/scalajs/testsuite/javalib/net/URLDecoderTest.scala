@@ -14,7 +14,9 @@ package org.scalajs.testsuite.javalib.net
 
 import org.junit.Test
 import org.junit.Assert._
+
 import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 import java.net.URLDecoder
 import java.io.UnsupportedEncodingException
@@ -75,8 +77,13 @@ class URLDecoderTest {
     // invalid encoding
     unsupportedEncoding("2a%20b%20c", enc = "dummy")
 
-    // doesn't throw when charset is not needed
-    test("a+b+c", "a b c", enc = "dummy")
+    // doesn't throw when charset is not needed (not respected by JDK 11)
+    try {
+      test("a+b+c", "a b c", enc = "dummy")
+    } catch {
+      case th: UnsupportedEncodingException if executingInJVM =>
+        () // ok
+    }
 
     // other charsets
     test("a%20%A3%20c", "a £ c", enc = "iso-8859-1")

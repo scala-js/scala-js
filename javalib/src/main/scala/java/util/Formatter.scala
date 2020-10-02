@@ -267,7 +267,7 @@ final class Formatter private (private[this] var dest: Appendable,
 
     def formatNullOrThrowIllegalFormatConversion(): Unit = {
       if (arg == null)
-        formatNonNumericString(flags, width, precision, "null")
+        formatNonNumericString(localeInfo, flags, width, precision, "null")
       else
         throw new IllegalFormatConversionException(conversion, arg.getClass)
     }
@@ -301,7 +301,7 @@ final class Formatter private (private[this] var dest: Appendable,
         val str =
           if ((arg.asInstanceOf[AnyRef] eq false.asInstanceOf[AnyRef]) || arg == null) "false"
           else "true"
-        formatNonNumericString(flags, width, precision, str)
+        formatNonNumericString(RootLocaleInfo, flags, width, precision, str)
 
       case 'h' | 'H' =>
         validateFlags(flags, conversion,
@@ -309,7 +309,7 @@ final class Formatter private (private[this] var dest: Appendable,
         val str =
           if (arg == null) "null"
           else Integer.toHexString(arg.hashCode)
-        formatNonNumericString(flags, width, precision, str)
+        formatNonNumericString(RootLocaleInfo, flags, width, precision, str)
 
       case 's' | 'S' =>
         arg match {
@@ -326,7 +326,7 @@ final class Formatter private (private[this] var dest: Appendable,
             validateFlags(flags, conversion,
                 invalidFlags = NumericOnlyFlags | AltFormat)
             val str = String.valueOf(arg)
-            formatNonNumericString(flags, width, precision, str)
+            formatNonNumericString(localeInfo, flags, width, precision, str)
         }
 
       case 'c' | 'C' =>
@@ -335,7 +335,7 @@ final class Formatter private (private[this] var dest: Appendable,
         rejectPrecision()
         arg match {
           case arg: Char =>
-            formatNonNumericString(flags, width, -1, arg.toString)
+            formatNonNumericString(localeInfo, flags, width, -1, arg.toString)
           case arg: Int =>
             if (!Character.isValidCodePoint(arg))
               throw new IllegalFormatCodePointException(arg)
@@ -346,7 +346,8 @@ final class Formatter private (private[this] var dest: Appendable,
                   0xd800 | ((arg >> 10) - (0x10000 >> 10)),
                   0xdc00 | (arg & 0x3ff))
             }
-            formatNonNumericString(flags, width, -1, str.asInstanceOf[String])
+            formatNonNumericString(localeInfo, flags, width, -1,
+                str.asInstanceOf[String])
           case _ =>
             formatNullOrThrowIllegalFormatConversion()
         }
@@ -395,10 +396,10 @@ final class Formatter private (private[this] var dest: Appendable,
         arg match {
           case arg: Int =>
             padAndSendToDest(RootLocaleInfo, flags, width, prefix,
-                applyUpperCase(flags, java.lang.Integer.toHexString(arg)))
+                applyNumberUpperCase(flags, java.lang.Integer.toHexString(arg)))
           case arg: Long =>
             padAndSendToDest(RootLocaleInfo, flags, width, prefix,
-                applyUpperCase(flags, java.lang.Long.toHexString(arg)))
+                applyNumberUpperCase(flags, java.lang.Long.toHexString(arg)))
           case _ =>
             formatNullOrThrowIllegalFormatConversion()
         }
@@ -560,13 +561,14 @@ final class Formatter private (private[this] var dest: Appendable,
       s2
   }
 
-  private def formatNonNumericString(flags: Flags, width: Int, precision: Int,
-      str: String): Unit = {
+  private def formatNonNumericString(localeInfo: LocaleInfo, flags: Flags,
+      width: Int, precision: Int, str: String): Unit = {
 
     val truncatedStr =
       if (precision < 0) str
       else str.substring(0, precision)
-    padAndSendToDestNoZeroPad(flags, width, applyUpperCase(flags, truncatedStr))
+    padAndSendToDestNoZeroPad(flags, width,
+        applyUpperCase(localeInfo, flags, truncatedStr))
   }
 
   private def formatNaNOrInfinite(flags: Flags, width: Int, x: Double): Unit = {
@@ -583,7 +585,7 @@ final class Formatter private (private[this] var dest: Appendable,
       else "-Infinity"
     }
 
-    padAndSendToDestNoZeroPad(flags, width, applyUpperCase(flags, str))
+    padAndSendToDestNoZeroPad(flags, width, applyNumberUpperCase(flags, str))
   }
 
   private def formatNumericString(localeInfo: LocaleInfo, flags: Flags,
@@ -597,10 +599,10 @@ final class Formatter private (private[this] var dest: Appendable,
 
     if (str.length >= width && !flags.hasAnyOf(TransformativeFlags)) {
       // Super-fast-path
-      sendToDest(localeInfo.localizeNumber(applyUpperCase(flags, str)))
+      sendToDest(localeInfo.localizeNumber(applyNumberUpperCase(flags, str)))
     } else if (!flags.hasAnyOf(TransformativeFlags | ZeroPad)) {
       // Fast-path that does not need to inspect the string
-      formatNonNumericString(flags, width, -1, localeInfo.localizeNumber(str))
+      padAndSendToDestNoZeroPad(flags, width, applyNumberUpperCase(flags, str))
     } else {
       // Extract prefix and rest, based on flags and the presence of a sign
       val (prefix, rest0) = if (str.charAt(0) != '-') {
@@ -624,7 +626,7 @@ final class Formatter private (private[this] var dest: Appendable,
 
       // Apply uppercase, localization, pad and send
       padAndSendToDest(localeInfo, flags, width, prefix,
-          localeInfo.localizeNumber(applyUpperCase(flags, rest)))
+          localeInfo.localizeNumber(applyNumberUpperCase(flags, rest)))
     }
   }
 
@@ -661,8 +663,12 @@ final class Formatter private (private[this] var dest: Appendable,
     }
   }
 
-  private def applyUpperCase(flags: Flags, str: String): String =
-    if (flags.upperCase) str.toUpperCase() // uppercasing is not localized
+  private def applyNumberUpperCase(flags: Flags, str: String): String =
+    if (flags.upperCase) str.toUpperCase() // uppercasing is not localized for numbers
+    else str
+
+  private def applyUpperCase(localeInfo: LocaleInfo, flags: Flags, str: String): String =
+    if (flags.upperCase) localeInfo.toUpperCase(str)
     else str
 
   /** This method ignores `flags.zeroPad` and `flags.upperCase`. */
@@ -814,6 +820,7 @@ object Formatter {
     def groupingSize: Int
     def zeroDigitString: String
     def localizeNumber(str: String): String
+    def toUpperCase(str: String): String
   }
 
   private object RootLocaleInfo extends LocaleInfo {
@@ -821,6 +828,7 @@ object Formatter {
     def groupingSize: Int = 3
     def zeroDigitString: String = "0"
     def localizeNumber(str: String): String = str
+    def toUpperCase(str: String): String = str.toUpperCase()
   }
 
   private final class LocaleLocaleInfo(val locale: Locale) extends LocaleInfo {
@@ -859,5 +867,7 @@ object Formatter {
       }
       result
     }
+
+    def toUpperCase(str: String): String = str.toUpperCase(actualLocale)
   }
 }

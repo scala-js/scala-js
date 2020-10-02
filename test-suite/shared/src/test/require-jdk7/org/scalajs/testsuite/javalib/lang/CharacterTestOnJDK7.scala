@@ -188,7 +188,7 @@ class CharacterTestOnJDK7 {
     assertFalse(Character.isAlphabetic(1077935))
     assertFalse(Character.isAlphabetic(108164))
     assertFalse(Character.isAlphabetic(117071))
-    assertFalse(Character.isAlphabetic(180747))
+    assertFalse(Character.isAlphabetic(59053))
     assertFalse(Character.isAlphabetic(235975))
     assertFalse(Character.isAlphabetic(256440))
     assertFalse(Character.isAlphabetic(291721))
@@ -227,7 +227,7 @@ class CharacterTestOnJDK7 {
     assertFalse(Character.isAlphabetic(948273))
     assertFalse(Character.isAlphabetic(974041))
     assertFalse(Character.isAlphabetic(977329))
-    assertFalse(Character.isAlphabetic(99202))
+    assertFalse(Character.isAlphabetic(1085154))
     assertFalse(Character.isAlphabetic(993967))
   }
 

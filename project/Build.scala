@@ -415,7 +415,21 @@ object Build {
   )
 
   val fatalWarningsSettings = Def.settings(
-      scalacOptions += "-Xfatal-warnings"
+      scalacOptions += "-Xfatal-warnings",
+
+      scalacOptions in (Compile, doc) := {
+        val prev = (scalacOptions in (Compile, doc)).value
+        val scalaV = scalaVersion.value
+        def scaladocFullySupportsJDKgreaterThan8 = {
+          !scalaV.startsWith("2.11.") &&
+          !scalaV.startsWith("2.12.") &&
+          scalaV != "2.13.0" && scalaV != "2.13.1" && scalaV != "2.13.2"
+        }
+        if (javaVersion.value > 8 && !scaladocFullySupportsJDKgreaterThan8)
+          prev.filter(_ != "-Xfatal-warnings")
+        else
+          prev
+      }
   )
 
   val cleanIRSettings = Def.settings(
@@ -2006,6 +2020,8 @@ object Build {
 
       libraryDependencies +=
         "com.novocode" % "junit-interface" % "0.11" % "test",
+  ).dependsOn(
+      testSuiteJVM
   )
 
   lazy val testSuiteLinker: MultiScalaProject = MultiScalaProject(

@@ -378,9 +378,6 @@ class StringTest {
     assertFalse(testU.regionMatches(true, 1, "bCdx", 1, 3))
     assertTrue(testU.regionMatches(true, 0, "xaBcd", 1, 4))
 
-    expectThrows(classOf[NullPointerException], test.regionMatches(-1, null, -1, -1))
-    expectThrows(classOf[NullPointerException], test.regionMatches(true, -1, null, -1, -1))
-
     // scalastyle:off line.size.limit
     /* If len is negative, you must return true in some cases. See
      * http://docs.oracle.com/javase/8/docs/api/java/lang/String.html#regionMatches-boolean-int-java.lang.String-int-int-

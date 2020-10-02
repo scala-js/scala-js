@@ -16,6 +16,9 @@ import java.util.{Formatter, Locale}
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
+
+import org.scalajs.testsuite.utils.Platform.executingInJVMOnJDK8OrLower
 
 /** Additional tests for java.lang.String that require `java.util.Locale`
  *  as well as classes in `java.text.*`.
@@ -26,9 +29,16 @@ class FormatterTestEx {
    * not find any locale for which it would be different from 3.
    */
 
-  val French = new Locale("fr")           // decimal sep ','  grouping sep '\u00A0'
-  val HindiIndia = new Locale("hi", "IN") // non-ASCII digits
-  val Turkish = new Locale("tr")          // special uppercase behavior
+  val French = new Locale("fr")  // decimal sep ','  grouping sep '\u00A0'
+  val Turkish = new Locale("tr") // special uppercase behavior
+
+  // non-ASCII digits
+  val HindiWithDevanagariDigits = {
+    new Locale.Builder()
+      .setLanguage("hi")
+      .setExtension('u', "nu-deva")
+      .build()
+  }
 
   def assertF(locale: Locale, expected: String, format: String, args: Any*): Unit = {
     // Locale passed as constructor parameter
@@ -53,7 +63,7 @@ class FormatterTestEx {
 
     // Calling `format` with an explicit locale does not change the `locale()`
     val formatter = new Formatter(French)
-    formatter.format(HindiIndia, "")
+    formatter.format(HindiWithDevanagariDigits, "")
     assertSame(French, formatter.locale())
   }
 
@@ -64,21 +74,32 @@ class FormatterTestEx {
     assertF(French, "0012", "%04d", 12)
   }
 
-  @Test def testFormatHindiIndia(): Unit = {
+  @Test def testFormatHindiWithDevanagariDigits(): Unit = {
     // U+0966 DEVANAGARI DIGIT ZERO through U+096F DEVANAGARI DIGIT NINE
-    assertF(HindiIndia, "१,२३४,५६७", "%,d", 1234567)
-    assertF(HindiIndia, "१,२३४,५६७.८९", "%,.2f", 1234567.89)
-    assertF(HindiIndia, "००१२", "%04d", 12)
+    assertF(HindiWithDevanagariDigits, "१,२३४,५६७", "%,d", 1234567)
+    assertF(HindiWithDevanagariDigits, "१,२३४,५६७.८९", "%,.2f", 1234567.89)
+    assertF(HindiWithDevanagariDigits, "००१२", "%04d", 12)
 
-    assertF(HindiIndia, "0x0012", "%#06x", 0x12)
-    assertF(HindiIndia, "0X0012", "%#06X", 0x12)
-    assertF(HindiIndia, "000014", "%#06o", 12)
+    assertF(HindiWithDevanagariDigits, "0x0012", "%#06x", 0x12)
+    assertF(HindiWithDevanagariDigits, "0X0012", "%#06X", 0x12)
+    assertF(HindiWithDevanagariDigits, "000014", "%#06o", 12)
   }
 
   @Test def testFormatTurkish(): Unit = {
-    // Uppercasing does not follow the locale
-    assertF(Turkish, "TITLE", "%S", "title")
+    assumeFalse("Affected by https://bugs.openjdk.java.net/browse/JDK-8060094",
+        executingInJVMOnJDK8OrLower)
+
+    // U+0130 LATIN CAPITAL LETTER I WITH DOT ABOVE
+    assertF(Turkish, "TİTLE", "%S", "title")
+    assertF(Turkish, "İ", "%C", 'i')
+
+    // But Infinity is not localized
     assertF(Turkish, "INFINITY", "%E", Double.PositiveInfinity)
+
+    // Neither are booleans and null, although it does not matter as they have no 'i'
+    assertF(Turkish, "FALSE", "%B", false)
+    assertF(Turkish, "TRUE", "%B", true)
+    assertF(Turkish, "NULL", "%S", null)
   }
 
   @Test def testFormatNullLocale(): Unit = {
