@@ -17,8 +17,6 @@ import scala.language.implicitConversions
 import scala.scalajs.js
 import js.JSConverters._
 
-import js.annotation.JSExport
-
 import org.junit.Assert._
 import org.junit.Test
 
@@ -36,35 +34,6 @@ class DynamicTest {
     dyn.asInstanceOf[AnyRef]
 
   // scala.scalajs.js.Dynamic
-
-  @Test def should_workaround_Scala_2_10_issue_with_implicit_conversion_for_dynamic_fields_named_x_issue_8(): Unit = {
-    class Point(val x: Int, val y: Int)
-
-    def jsonToPoint(json: js.Dynamic): Point = {
-      new Point(json.x.toString.toInt, json.y.toString.toInt)
-    }
-
-    val json = js.eval("var dynamicTestPoint = { x: 1, y: 2 }; dynamicTestPoint;")
-    val point = jsonToPoint(json.asInstanceOf[js.Dynamic])
-
-    assertEquals(1, point.x)
-    assertEquals(2, point.y)
-  }
-
-  @Test def should_allow_to_call_functions_with_arguments_named_x(): Unit = {
-    class A {
-      def a: Int = 1
-    }
-
-    class B extends A {
-      @JSExport
-      def x(par: Int): Int = a + par // make sure `this` is bound correctly in JS
-    }
-
-    val b = (new B).asInstanceOf[js.Dynamic]
-
-    assertEquals(11, b.x(10))
-  }
 
   @Test def should_allow_instanciating_JS_classes_dynamically_issue_10(): Unit = {
     val DynamicTestClass = js.eval("""
