@@ -1595,7 +1595,8 @@ object Build {
 
         List(sharedTestDir / "scala", sharedTestDir / "require-jdk7",
             sharedTestDir / "require-jdk8", sharedTestDir / "require-scala2") ++
-        includeIf(testDir / "require-2.12", isJSTest && isScalaAtLeast212)
+        includeIf(testDir / "require-2.12", isJSTest && isScalaAtLeast212) ++
+        includeIf(testDir / "require-scala2", isJSTest)
       },
 
       sources in Test ++= {
