@@ -26,7 +26,7 @@ import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.Test
 
-import org.scalajs.testsuite.utils.{JSUtils, Platform}
+import org.scalajs.testsuite.utils.Platform
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 object ExportsTest {
@@ -955,15 +955,14 @@ class ExportsTest {
     }
     val foo = (new Foo).asInstanceOf[js.Dynamic]
 
-    val funs = js.eval("""
-        var funs = {
-          testIsChar: function(JSUtils, foo) { return JSUtils.isChar(foo.bar(65)); },
-          testCharValue: function(JSUtils, foo) { return JSUtils.charToString(foo.bar(65)); }
-        }; funs;
-        """).asInstanceOf[js.Dynamic]
+    val charAsAny: Any = foo.bar(65)
+    assertTrue(charAsAny.isInstanceOf[Character])
+    assertEquals("A", charAsAny.toString())
 
-    assertTrue(funs.testIsChar(JSUtils, foo).asInstanceOf[Boolean])
-    assertEquals("A", funs.testCharValue(JSUtils, foo))
+    /* Do not use `assertEquals` otherwise it would re-box the Char, defeating
+     * the purpose of this test.
+     */
+    assertTrue('A' == charAsAny.asInstanceOf[Char])
   }
 
   @Test def should_take_boxed_Chars_as_parameter(): Unit = {
@@ -973,12 +972,8 @@ class ExportsTest {
     }
     val foo = (new Foo).asInstanceOf[js.Dynamic]
 
-    val f = js.eval("""
-        var f = function(JSUtils, foo) { return foo.bar(JSUtils.stringToChar('e')); };
-        f;
-        """).asInstanceOf[js.Dynamic]
-
-    assertEquals('e'.toInt, f(JSUtils, foo))
+    @noinline def eCharAsAny: Any = Character.valueOf('e')
+    assertEquals('e'.toInt, foo.bar(eCharAsAny.asInstanceOf[js.Any]))
   }
 
   @Test def should_be_able_to_disambiguate_an_Int_from_a_Char(): Unit = {
@@ -990,15 +985,11 @@ class ExportsTest {
     }
     val foo = (new Foo).asInstanceOf[js.Dynamic]
 
-    val funs = js.eval("""
-        var funs = {
-          testChar: function(JSUtils, foo) { return foo.bar(JSUtils.stringToChar('S')); },
-          testInt: function(foo) { return foo.bar(68); }
-        }; funs;
-        """).asInstanceOf[js.Dynamic]
+    @noinline def charAsAny: Any = Character.valueOf('S')
+    assertEquals("char: S", foo.bar(charAsAny.asInstanceOf[js.Any]))
 
-    assertEquals("char: S", funs.testChar(JSUtils, foo))
-    assertEquals("int: 68", funs.testInt(foo))
+    @noinline def intAsAny: Any = Integer.valueOf(68)
+    assertEquals("int: 68", foo.bar(intAsAny.asInstanceOf[js.Any]))
   }
 
   @Test def exporting_constructor_parameter_fields_issue_970(): Unit = {
