@@ -524,22 +524,6 @@ class InteroperabilityTest {
     assertArrayEquals(Array(10, 2), new InteroperabilityTestCtor(10, 2).values)
   }
 
-  @Test def should_generate_exports_for_methods_inherited_from_traits_issue_178(): Unit = {
-    import js.annotation.JSExport
-
-    trait Foo {
-      @JSExport
-      def theValue: Int = 1
-    }
-    class Bar extends Foo
-
-    val x = (new Bar).asInstanceOf[js.Dynamic]
-
-    // Call the export by using js.Dynamic
-    val theValue = x.theValue
-    assertEquals(1, theValue)
-  }
-
   @Test def should_allow_constructor_params_that_are_vals_vars_in_facades_issue_1277(): Unit = {
     js.eval("""
         var InteroparabilityCtorInlineValue = function(x,y) {

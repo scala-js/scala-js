@@ -360,7 +360,13 @@ class ExportsTest {
       def x: Int
 
       @JSExport
+      def y: Int = 42
+
+      @JSExport
       def method(x: Int): Int
+
+      @JSExport
+      def otherMethod(x: Int): Int = 3 * x
     }
 
     class Bar extends Foo {
@@ -370,8 +376,11 @@ class ExportsTest {
 
     val bar = (new Bar).asInstanceOf[js.Dynamic]
     assertEquals(1, bar.x)
+    assertEquals(42, bar.y)
     assertEquals("function", js.typeOf(bar.method))
     assertEquals(4, bar.method(2))
+    assertEquals("function", js.typeOf(bar.otherMethod))
+    assertEquals(6, bar.otherMethod(2))
   }
 
   @Test def should_inherit_exports_from_traits_with_value_classes(): Unit = {
