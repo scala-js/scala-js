@@ -240,10 +240,10 @@ final class _String private () // scalastyle:ignore
   }
 
   def indexOf(ch: Int): Int =
-    indexOf(fromCodePoint(ch))
+    indexOf(Character.toString(ch))
 
   def indexOf(ch: Int, fromIndex: Int): Int =
-    indexOf(fromCodePoint(ch), fromIndex)
+    indexOf(Character.toString(ch), fromIndex)
 
   @inline
   def indexOf(str: String): Int =
@@ -264,11 +264,11 @@ final class _String private () // scalastyle:ignore
   def isEmpty(): scala.Boolean = (this: AnyRef) eq ("": AnyRef)
 
   def lastIndexOf(ch: Int): Int =
-    lastIndexOf(fromCodePoint(ch))
+    lastIndexOf(Character.toString(ch))
 
   def lastIndexOf(ch: Int, fromIndex: Int): Int =
     if (fromIndex < 0) -1
-    else lastIndexOf(fromCodePoint(ch), fromIndex)
+    else lastIndexOf(Character.toString(ch), fromIndex)
 
   @inline
   def lastIndexOf(str: String): Int =
@@ -778,7 +778,7 @@ object _String { // scalastyle:ignore
     var result = ""
     var i = offset
     while (i != end) {
-      result += fromCodePoint(codePoints(i))
+      result += Character.toString(codePoints(i))
       i += 1
     }
     result
@@ -819,26 +819,6 @@ object _String { // scalastyle:ignore
     val res = frm.format(format, args: _*).toString()
     frm.close()
     res
-  }
-
-  // Helpers
-
-  private[lang] def fromCodePoint(codePoint: Int): String = {
-    if ((codePoint & ~Character.MAX_VALUE) == 0) {
-      NativeJSString.fromCharCode(codePoint)
-    } else if (codePoint < 0 || codePoint > Character.MAX_CODE_POINT) {
-      throw new IllegalArgumentException
-    } else {
-      val offsetCp = codePoint - 0x10000
-      NativeJSString.fromCharCode(
-          (offsetCp >> 10) | 0xd800, (offsetCp & 0x3ff) | 0xdc00)
-    }
-  }
-
-  @js.native
-  @JSGlobal("String")
-  private object NativeJSString extends js.Object {
-    def fromCharCode(charCodes: Int*): String = js.native
   }
 
 }
