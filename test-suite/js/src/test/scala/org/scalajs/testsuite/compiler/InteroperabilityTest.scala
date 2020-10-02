@@ -454,8 +454,8 @@ class InteroperabilityTest {
   @Test def should_protect_receiver_of_JS_apply_if_its_a_select_issue_804(): Unit = {
     val obj = js.eval("""
       var interoperabilityTestJSFunctionFieldApply = {
-        member: 0xbad,
-        check: function(x) { return this.member ? this.member : x; }
+        toString: function() { return "bad" },
+        check: function(x) { "use strict"; return this ? this.toString() : x; }
       };
       interoperabilityTestJSFunctionFieldApply;
     """).asInstanceOf[InteroperabilityTestJSFunctionFieldApply]
@@ -465,9 +465,8 @@ class InteroperabilityTest {
     val check = obj.check
     assertEquals(0x600d, check(0x600d))
 
-    class InScalaSelect(check: js.Function1[Int, Int]) {
-      @JSExport
-      val member: Int = 0xbad2
+    class InScalaSelect(check: js.Function1[Int, Any]) {
+      override def toString(): String = "bad"
       def test(): Unit = assertEquals(5894, check(5894))
     }
     new InScalaSelect(check).test()
@@ -728,7 +727,7 @@ object InteroperabilityTest {
 
   @js.native
   trait InteroperabilityTestJSFunctionFieldApply extends js.Object {
-    val check: js.Function1[Int, Int] = js.native
+    val check: js.Function1[Int, Any] = js.native
   }
 
   /** Trait with different method signatures, all forwarded to the same JS
