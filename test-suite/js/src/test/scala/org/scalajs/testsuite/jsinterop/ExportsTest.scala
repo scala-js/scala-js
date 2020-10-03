@@ -26,7 +26,7 @@ import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.Test
 
-import org.scalajs.testsuite.utils.{JSUtils, Platform}
+import org.scalajs.testsuite.utils.Platform
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 object ExportsTest {
@@ -360,7 +360,13 @@ class ExportsTest {
       def x: Int
 
       @JSExport
+      def y: Int = 42
+
+      @JSExport
       def method(x: Int): Int
+
+      @JSExport
+      def otherMethod(x: Int): Int = 3 * x
     }
 
     class Bar extends Foo {
@@ -370,8 +376,11 @@ class ExportsTest {
 
     val bar = (new Bar).asInstanceOf[js.Dynamic]
     assertEquals(1, bar.x)
+    assertEquals(42, bar.y)
     assertEquals("function", js.typeOf(bar.method))
     assertEquals(4, bar.method(2))
+    assertEquals("function", js.typeOf(bar.otherMethod))
+    assertEquals(6, bar.otherMethod(2))
   }
 
   @Test def should_inherit_exports_from_traits_with_value_classes(): Unit = {
@@ -946,15 +955,14 @@ class ExportsTest {
     }
     val foo = (new Foo).asInstanceOf[js.Dynamic]
 
-    val funs = js.eval("""
-        var funs = {
-          testIsChar: function(JSUtils, foo) { return JSUtils.isChar(foo.bar(65)); },
-          testCharValue: function(JSUtils, foo) { return JSUtils.charToString(foo.bar(65)); }
-        }; funs;
-        """).asInstanceOf[js.Dynamic]
+    val charAsAny: Any = foo.bar(65)
+    assertTrue(charAsAny.isInstanceOf[Character])
+    assertEquals("A", charAsAny.toString())
 
-    assertTrue(funs.testIsChar(JSUtils, foo).asInstanceOf[Boolean])
-    assertEquals("A", funs.testCharValue(JSUtils, foo))
+    /* Do not use `assertEquals` otherwise it would re-box the Char, defeating
+     * the purpose of this test.
+     */
+    assertTrue('A' == charAsAny.asInstanceOf[Char])
   }
 
   @Test def should_take_boxed_Chars_as_parameter(): Unit = {
@@ -964,12 +972,8 @@ class ExportsTest {
     }
     val foo = (new Foo).asInstanceOf[js.Dynamic]
 
-    val f = js.eval("""
-        var f = function(JSUtils, foo) { return foo.bar(JSUtils.stringToChar('e')); };
-        f;
-        """).asInstanceOf[js.Dynamic]
-
-    assertEquals('e'.toInt, f(JSUtils, foo))
+    @noinline def eCharAsAny: Any = Character.valueOf('e')
+    assertEquals('e'.toInt, foo.bar(eCharAsAny.asInstanceOf[js.Any]))
   }
 
   @Test def should_be_able_to_disambiguate_an_Int_from_a_Char(): Unit = {
@@ -981,15 +985,11 @@ class ExportsTest {
     }
     val foo = (new Foo).asInstanceOf[js.Dynamic]
 
-    val funs = js.eval("""
-        var funs = {
-          testChar: function(JSUtils, foo) { return foo.bar(JSUtils.stringToChar('S')); },
-          testInt: function(foo) { return foo.bar(68); }
-        }; funs;
-        """).asInstanceOf[js.Dynamic]
+    @noinline def charAsAny: Any = Character.valueOf('S')
+    assertEquals("char: S", foo.bar(charAsAny.asInstanceOf[js.Any]))
 
-    assertEquals("char: S", funs.testChar(JSUtils, foo))
-    assertEquals("int: 68", funs.testInt(foo))
+    @noinline def intAsAny: Any = Integer.valueOf(68)
+    assertEquals("int: 68", foo.bar(intAsAny.asInstanceOf[js.Any]))
   }
 
   @Test def exporting_constructor_parameter_fields_issue_970(): Unit = {
@@ -1286,29 +1286,6 @@ class ExportsTest {
     testExposure(getJSObj2())
     testExposure(getJSObj3())
     testExposure(getJSObj4())
-
-    // Test that non js.Any classes were unaffected by the fix.
-
-    def getObj(): AnyRef = new {
-      val x1 = "x1"
-      var y1 = "y1"
-      def z1() = "z1"
-      private val x2 = "x2"
-      private var y2 = "y2"
-      private def z2() = "z2"
-      private[this] val x3 = "x3"
-      private[this] var y3 = "y3"
-      private[this] def z3() = "z3"
-    }
-
-    import scala.language.reflectiveCalls
-
-    val obj2 = getObj().asInstanceOf[{ val x1: String; var y1: String; def z1(): String }]
-
-    assertThrows(classOf[Throwable], obj2.x1)
-    assertThrows(classOf[Throwable], obj2.y1)
-    assertThrows(classOf[Throwable], obj2.y1 = "y1+")
-    assertThrows(classOf[Throwable], obj2.z1)
   }
 
   // @JSExportTopLevel

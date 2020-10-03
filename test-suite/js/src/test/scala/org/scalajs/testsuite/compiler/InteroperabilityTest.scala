@@ -22,7 +22,6 @@ import org.junit.Assert._
 import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.AssertThrows._
-import org.scalajs.testsuite.utils.JSUtils
 import org.scalajs.testsuite.utils.Platform._
 
 /*
@@ -454,8 +453,8 @@ class InteroperabilityTest {
   @Test def should_protect_receiver_of_JS_apply_if_its_a_select_issue_804(): Unit = {
     val obj = js.eval("""
       var interoperabilityTestJSFunctionFieldApply = {
-        member: 0xbad,
-        check: function(x) { return this.member ? this.member : x; }
+        toString: function() { return "bad" },
+        check: function(x) { "use strict"; return this ? this.toString() : x; }
       };
       interoperabilityTestJSFunctionFieldApply;
     """).asInstanceOf[InteroperabilityTestJSFunctionFieldApply]
@@ -465,9 +464,8 @@ class InteroperabilityTest {
     val check = obj.check
     assertEquals(0x600d, check(0x600d))
 
-    class InScalaSelect(check: js.Function1[Int, Int]) {
-      @JSExport
-      val member: Int = 0xbad2
+    class InScalaSelect(check: js.Function1[Int, Any]) {
+      override def toString(): String = "bad"
       def test(): Unit = assertEquals(5894, check(5894))
     }
     new InScalaSelect(check).test()
@@ -524,22 +522,6 @@ class InteroperabilityTest {
     assertArrayEquals(Array(10, 2), new InteroperabilityTestCtor(10, 2).values)
   }
 
-  @Test def should_generate_exports_for_methods_inherited_from_traits_issue_178(): Unit = {
-    import js.annotation.JSExport
-
-    trait Foo {
-      @JSExport
-      def theValue: Int = 1
-    }
-    class Bar extends Foo
-
-    val x = (new Bar).asInstanceOf[js.Dynamic]
-
-    // Call the export by using js.Dynamic
-    val theValue = x.theValue
-    assertEquals(1, theValue)
-  }
-
   @Test def should_allow_constructor_params_that_are_vals_vars_in_facades_issue_1277(): Unit = {
     js.eval("""
         var InteroparabilityCtorInlineValue = function(x,y) {
@@ -562,23 +544,31 @@ class InteroperabilityTest {
   @Test def should_unbox_Chars_received_from_calling_a_JS_interop_method(): Unit = {
     val obj = js.eval("""
       var obj = {
-        get: function(JSUtils) { return JSUtils.stringToChar('e'); }
+        anyAsChar: function(x) { return x; }
       };
       obj;
     """).asInstanceOf[InteroperabilityTestCharResult]
 
-    assertEquals('e'.toInt, obj.get(JSUtils).toInt)
+    @noinline def eCharAsAny: Any = Character.valueOf('e')
+    val c: Char = obj.anyAsChar(eCharAsAny)
+
+    /* Do not use `assertEquals` otherwise it would re-box the Char, defeating
+     * the purpose of this test.
+     */
+    assertTrue('e' == c)
   }
 
   @Test def should_box_Chars_given_to_a_JS_interop_method(): Unit = {
     val obj = js.eval("""
       var obj = {
-        twice: function(JSUtils, c) { c = JSUtils.charToString(c); return c+c; }
+        charAsAny: function(c) { return c; }
       };
       obj;
     """).asInstanceOf[InteroperabilityTestCharParam]
 
-    assertEquals("xx", obj.twice(JSUtils, 'x'))
+    val any: Any = obj.charAsAny('x')
+    assertTrue(any.isInstanceOf[Character])
+    assertEquals('x', any)
   }
 
   @Test def should_unbox_value_classes_received_from_calling_a_JS_interop_method(): Unit = {
@@ -744,7 +734,7 @@ object InteroperabilityTest {
 
   @js.native
   trait InteroperabilityTestJSFunctionFieldApply extends js.Object {
-    val check: js.Function1[Int, Int] = js.native
+    val check: js.Function1[Int, Any] = js.native
   }
 
   /** Trait with different method signatures, all forwarded to the same JS
@@ -762,12 +752,12 @@ object InteroperabilityTest {
 
   @js.native
   trait InteroperabilityTestCharResult extends js.Object {
-    def get(jsUtils: JSUtils.type): Char = js.native
+    def anyAsChar(x: Any): Char = js.native
   }
 
   @js.native
   trait InteroperabilityTestCharParam extends js.Object {
-    def twice(jsUtils: JSUtils.type, c: Char): String = js.native
+    def charAsAny(c: Char): Any = js.native
   }
 
   @js.native

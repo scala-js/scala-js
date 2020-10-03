@@ -209,11 +209,10 @@ class NonNativeJSTypeTest {
     assertNull(obj.string)
     assertJSUndefined(obj.unit)
 
-    /* Value class fields are initialized to null, instead of a boxed
-     * representation of the zero of their underlying types, as for a
-     * Scala class.
+    /* There is an additional test for value class fields in
+     * NonNativeJSTypeTestScala2.scala, which asserts that they are (wrongly)
+     * instantiated to `null`.
      */
-    assertNull(obj.asInstanceOf[js.Dynamic].valueClass)
   }
 
   @Test def lazy_vals(): Unit = {
@@ -2000,7 +1999,6 @@ object NonNativeJSTypeTest {
     var char: Char = _
     var string: String = _
     var unit: Unit = _
-    var valueClass: SomeValueClass = _
   }
 
   trait LazyValFieldsSuperTrait extends js.Object {
@@ -2030,8 +2028,6 @@ object NonNativeJSTypeTest {
 
   class SimpleInheritedFromNative(
       x: Int, val y: Int) extends NativeParentClass(x)
-
-  class SomeValueClass(val i: Int) extends AnyVal
 
   object JSNameHolder {
     final val MethodName = "myMethod"
