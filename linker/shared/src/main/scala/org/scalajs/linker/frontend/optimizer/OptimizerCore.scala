@@ -5286,7 +5286,7 @@ private[optimizer] object OptimizerCore {
 
   private object SimpleMethodBody {
     @tailrec
-    def unapply(body: Tree): Boolean = body match {
+    final def unapply(body: Tree): Boolean = body match {
       case New(_, _, args)                          => areSimpleArgs(args)
       case Apply(_, receiver, _, args)              => areSimpleArgs(receiver :: args)
       case ApplyStatically(_, receiver, _, _, args) => areSimpleArgs(receiver :: args)

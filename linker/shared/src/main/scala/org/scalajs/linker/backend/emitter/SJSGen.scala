@@ -41,7 +41,9 @@ private[emitter] final class SJSGen(
 
   val useBigIntForLongs = esFeatures.allowBigIntsForLongs
 
-  def genZeroOf(tpe: Type)(implicit pos: Position): Tree = {
+  def genZeroOf(tpe: Type)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
     tpe match {
       case BooleanType => BooleanLiteral(false)
       case CharType    => IntLiteral(0)
@@ -57,22 +59,31 @@ private[emitter] final class SJSGen(
     }
   }
 
-  def genLongZero()(implicit pos: Position): Tree = {
+  def genLongZero()(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
     if (useBigIntForLongs)
       BigIntLiteral(0L)
     else
       globalVar("L0", CoreVar)
   }
 
-  def genBoxedZeroOf(tpe: Type)(implicit pos: Position): Tree =
+  def genBoxedZeroOf(tpe: Type)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
     if (tpe == CharType) genBoxedCharZero()
     else genZeroOf(tpe)
+  }
 
-  def genBoxedCharZero()(implicit pos: Position): Tree =
+  def genBoxedCharZero()(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
     globalVar("bC0", CoreVar)
+  }
 
   def genLongModuleApply(methodName: MethodName, args: Tree*)(
-      implicit pos: Position): Tree = {
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
     import TreeDSL._
     Apply(
         genLoadModule(LongImpl.RuntimeLongModuleClass) DOT genName(methodName),
@@ -95,25 +106,21 @@ private[emitter] final class SJSGen(
   private def genFieldJSName(className: ClassName, field: irt.FieldIdent): String =
     genName(className) + "__f_" + genName(field.name)
 
-  def genSelectStatic(className: ClassName, item: irt.FieldIdent)(
-      implicit pos: Position): Tree = {
-    globalVar("t", (className, item.name))
-  }
-
   def genJSPrivateSelect(receiver: Tree, className: ClassName,
       field: irt.FieldIdent)(
-      implicit pos: Position): Tree = {
-    BracketSelect(receiver,
-        genJSPrivateFieldIdent(className, field)(field.pos))
-  }
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
+    val fieldName = {
+      implicit val pos = field.pos
+      globalVar("r", (className, field.name))
+    }
 
-  def genJSPrivateFieldIdent(className: ClassName, field: irt.FieldIdent)(
-      implicit pos: Position): Tree = {
-    globalVar("r", (className, field.name))
+    BracketSelect(receiver, fieldName)
   }
 
   def genIsInstanceOf(expr: Tree, tpe: Type)(
-      implicit globalKnowledge: GlobalKnowledge, pos: Position): Tree = {
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
     import TreeDSL._
 
     tpe match {
@@ -150,7 +157,8 @@ private[emitter] final class SJSGen(
   }
 
   def genIsInstanceOfClass(expr: Tree, className: ClassName)(
-      implicit globalKnowledge: GlobalKnowledge, pos: Position): Tree = {
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
     import TreeDSL._
 
     if (!globalKnowledge.hasInstances(className)) {
@@ -165,7 +173,8 @@ private[emitter] final class SJSGen(
   }
 
   def genIsInstanceOfHijackedClass(expr: Tree, className: ClassName)(
-      implicit pos: Position): Tree = {
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
     import TreeDSL._
 
     className match {
@@ -182,21 +191,27 @@ private[emitter] final class SJSGen(
     }
   }
 
-  private def genIsLong(expr: Tree)(implicit pos: Position): Tree = {
+  private def genIsLong(expr: Tree)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
     import TreeDSL._
 
     if (useBigIntForLongs) genCallHelper("isLong", expr)
     else expr instanceof globalVar("c", LongImpl.RuntimeLongClass)
   }
 
-  private def genIsFloat(expr: Tree)(implicit pos: Position): Tree = {
+  private def genIsFloat(expr: Tree)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
     import TreeDSL._
 
     if (semantics.strictFloats) genCallHelper("isFloat", expr)
     else typeof(expr) === "number"
   }
 
-  def genAsInstanceOf(expr: Tree, tpe: Type)(implicit pos: Position): Tree = {
+  def genAsInstanceOf(expr: Tree, tpe: Type)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
     import TreeDSL._
 
     if (semantics.asInstanceOfs == CheckedBehavior.Unchecked) {
@@ -246,17 +261,21 @@ private[emitter] final class SJSGen(
   }
 
   def genCallHelper(helperName: String, args: Tree*)(
-      implicit pos: Position): Tree = {
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
     Apply(globalVar(helperName, CoreVar), args.toList)
   }
 
-  def genLoadModule(moduleClass: ClassName)(implicit pos: Position): Tree = {
+  def genLoadModule(moduleClass: ClassName)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
     import TreeDSL._
     Apply(globalVar("m", moduleClass), Nil)
   }
 
   def genScalaClassNew(className: ClassName, ctor: MethodName, args: Tree*)(
-      implicit globalKnowledge: GlobalKnowledge, pos: Position): Tree = {
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
     val encodedClassVar = globalVar("c", className)
     val argsList = args.toList
     if (globalKnowledge.hasInlineableInit(className)) {
@@ -268,7 +287,7 @@ private[emitter] final class SJSGen(
 
   def genJSClassConstructor(className: ClassName,
       keepOnlyDangerousVarNames: Boolean)(
-      implicit globalKnowledge: GlobalKnowledge,
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[Tree] = {
 
     genJSClassConstructor(className,
@@ -279,7 +298,8 @@ private[emitter] final class SJSGen(
   def genJSClassConstructor(className: ClassName,
       spec: Option[irt.JSNativeLoadSpec],
       keepOnlyDangerousVarNames: Boolean)(
-      implicit pos: Position): WithGlobals[Tree] = {
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): WithGlobals[Tree] = {
     spec match {
       case None =>
         // This is a non-native JS class
@@ -291,13 +311,15 @@ private[emitter] final class SJSGen(
   }
 
   def genNonNativeJSClassConstructor(className: ClassName)(
-      implicit pos: Position): Tree = {
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
     Apply(globalVar("a", className), Nil)
   }
 
   def genLoadJSFromSpec(spec: irt.JSNativeLoadSpec,
       keepOnlyDangerousVarNames: Boolean)(
-      implicit pos: Position): WithGlobals[Tree] = {
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): WithGlobals[Tree] = {
 
     def pathSelection(from: Tree, path: List[String]): Tree = {
       path.foldLeft(from) {
@@ -319,7 +341,7 @@ private[emitter] final class SJSGen(
         WithGlobals(pathSelection(globalVarRef, path), globalVarNames)
 
       case irt.JSNativeLoadSpec.Import(module, path) =>
-        val moduleValue = VarRef(envModuleFieldIdent(module))
+        val moduleValue = VarRef(externalModuleFieldIdent(module))
         path match {
           case "default" :: rest if moduleKind == ModuleKind.CommonJSModule =>
             val defaultField = genCallHelper("moduleDefault", moduleValue)
@@ -339,18 +361,27 @@ private[emitter] final class SJSGen(
   }
 
   def genArrayValue(arrayTypeRef: ArrayTypeRef, elems: List[Tree])(
-      implicit pos: Position): Tree = {
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
     genCallHelper("makeNativeArrayWrapper", genClassDataOf(arrayTypeRef),
         ArrayConstr(elems))
   }
 
-  def genClassOf(typeRef: TypeRef)(implicit pos: Position): Tree =
+  def genClassOf(typeRef: TypeRef)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
     Apply(DotSelect(genClassDataOf(typeRef), Ident("getClassOf")), Nil)
+  }
 
-  def genClassOf(className: ClassName)(implicit pos: Position): Tree =
+  def genClassOf(className: ClassName)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
     genClassOf(ClassRef(className))
+  }
 
-  def genClassDataOf(typeRef: TypeRef)(implicit pos: Position): Tree = {
+  def genClassDataOf(typeRef: TypeRef)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
     typeRef match {
       case typeRef: NonArrayTypeRef =>
         typeRefVar("d", typeRef)
@@ -363,9 +394,9 @@ private[emitter] final class SJSGen(
     }
   }
 
-  def genClassDataOf(className: ClassName)(implicit pos: Position): Tree =
+  def genClassDataOf(className: ClassName)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
     genClassDataOf(ClassRef(className))
-
-  def envModuleFieldIdent(module: String)(implicit pos: Position): Ident =
-    fileLevelVarIdent("i", genModuleName(module), OriginalName(module))
+  }
 }

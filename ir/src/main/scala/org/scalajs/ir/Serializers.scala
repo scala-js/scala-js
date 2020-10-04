@@ -691,21 +691,21 @@ object Serializers {
       import buffer._
       writePosition(topLevelExportDef.pos)
       topLevelExportDef match {
-        case TopLevelJSClassExportDef(exportName) =>
+        case TopLevelJSClassExportDef(moduleID, exportName) =>
           writeByte(TagTopLevelJSClassExportDef)
-          writeString(exportName)
+          writeString(moduleID); writeString(exportName)
 
-        case TopLevelModuleExportDef(exportName) =>
+        case TopLevelModuleExportDef(moduleID, exportName) =>
           writeByte(TagTopLevelModuleExportDef)
-          writeString(exportName)
+          writeString(moduleID); writeString(exportName)
 
-        case TopLevelMethodExportDef(methodDef) =>
+        case TopLevelMethodExportDef(moduleID, methodDef) =>
           writeByte(TagTopLevelMethodExportDef)
-          writeMemberDef(methodDef)
+          writeString(moduleID); writeMemberDef(methodDef)
 
-        case TopLevelFieldExportDef(exportName, field) =>
+        case TopLevelFieldExportDef(moduleID, exportName, field) =>
           writeByte(TagTopLevelFieldExportDef)
-          writeString(exportName); writeFieldIdent(field)
+          writeString(moduleID); writeString(exportName); writeFieldIdent(field)
       }
     }
 
@@ -1262,11 +1262,15 @@ object Serializers {
       def readJSMethodDef(): JSMethodDef =
         readMemberDef(owner, ownerKind).asInstanceOf[JSMethodDef]
 
+      def readModuleID(): String =
+        if (hacks.use12) DefaultModuleID
+        else readString()
+
       (tag: @switch) match {
-        case TagTopLevelJSClassExportDef => TopLevelJSClassExportDef(readString())
-        case TagTopLevelModuleExportDef  => TopLevelModuleExportDef(readString())
-        case TagTopLevelMethodExportDef  => TopLevelMethodExportDef(readJSMethodDef())
-        case TagTopLevelFieldExportDef   => TopLevelFieldExportDef(readString(), readFieldIdent())
+        case TagTopLevelJSClassExportDef => TopLevelJSClassExportDef(readModuleID(), readString())
+        case TagTopLevelModuleExportDef  => TopLevelModuleExportDef(readModuleID(), readString())
+        case TagTopLevelMethodExportDef  => TopLevelMethodExportDef(readModuleID(), readJSMethodDef())
+        case TagTopLevelFieldExportDef   => TopLevelFieldExportDef(readModuleID(), readString(), readFieldIdent())
       }
     }
 
@@ -1580,6 +1584,8 @@ object Serializers {
     val use10: Boolean = sourceVersion == "1.0"
 
     val use11: Boolean = use10 || sourceVersion == "1.1"
+
+    val use12: Boolean = use11 || sourceVersion == "1.2"
   }
 
   /** Names needed for hacks. */

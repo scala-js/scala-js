@@ -28,29 +28,13 @@ final class EntryPointAnalyzerBackend(linkerConfig: StandardConfig,
 
   def injectedIRFiles: Seq[IRFile] = standard.injectedIRFiles
 
-  def emit(unit: LinkingUnit, output: LinkerOutput, logger: Logger)(
-      implicit ec: ExecutionContext): Future[Unit] = {
+  def emit(moduleSet: ModuleSet, output: OutputDirectory, logger: Logger)(
+      implicit ec: ExecutionContext): Future[Report] = {
 
-    val modules = importedModules(unit)
+    val modules = moduleSet.modules.flatMap(_.externalDependencies).toSet
     Files.write(entryPointOutputFile, modules.toIterable.asJava,
         StandardCharsets.UTF_8)
 
-    standard.emit(unit, output, logger)
-  }
-
-  private def importedModules(linkingUnit: LinkingUnit): List[String] = {
-    def importedModulesOf(loadSpec: JSNativeLoadSpec): List[String] = {
-      import JSNativeLoadSpec._
-      loadSpec match {
-        case Import(module, _)                              => List(module)
-        case ImportWithGlobalFallback(Import(module, _), _) => List(module)
-        case Global(_, _)                                   => Nil
-      }
-    }
-
-    linkingUnit.classDefs
-      .flatMap(_.jsNativeLoadSpec)
-      .flatMap(importedModulesOf(_))
-      .distinct
+    standard.emit(moduleSet, output, logger)
   }
 }

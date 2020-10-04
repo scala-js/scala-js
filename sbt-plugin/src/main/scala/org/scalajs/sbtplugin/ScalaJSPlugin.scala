@@ -44,7 +44,7 @@ object ScalaJSPlugin extends AutoPlugin {
      *  }}}
      */
     object ScalaJSTags {
-      /** This tag is applied to the [[fastOptJS]] and [[fullOptJS]] tasks. */
+      /** This tag is applied to the [[fastLinkJS]] and [[fullLinkJS]] tasks. */
       val Link = Tags.Tag("scalajs-link")
     }
 
@@ -88,16 +88,16 @@ object ScalaJSPlugin extends AutoPlugin {
     /** Instance of the Scala.js linker.
      *
      *  This task must be scoped per project, configuration, and stage task
-     *  (`fastOptJS` or `fullOptJS`).
+     *  (`fastLinkJS` or `fullLinkJS`).
      *
      *  If a task uses the `link` method of the `ClearableLinker`, it must be
      *  protected from running in parallel with any other task doing the same
      *  thing, by tagging the task with the value of [[usesScalaJSLinkerTag]]
      *  in the same scope. The typical shape of such a task will be:
      *  {{{
-     *  Compile / fastOptJS / myTask := Def.taskDyn {
-     *    val linker = (Compile / fastOptJS / scalaJSLinker).value
-     *    val usesLinkerTag = (Compile / fastOptJS / usesScalaJSLinkerTag).value
+     *  Compile / fastLinkJS / myTask := Def.taskDyn {
+     *    val linker = (Compile / fastLinkJS / scalaJSLinker).value
+     *    val usesLinkerTag = (Compile / fastLinkJS / usesScalaJSLinkerTag).value
      *    // Read the `.value` of other settings and tasks here
      *
      *    Def.task {
@@ -169,10 +169,16 @@ object ScalaJSPlugin extends AutoPlugin {
         KeyRanks.Invisible)
 
     val fastOptJS = TaskKey[Attributed[File]]("fastOptJS",
-        "Quickly link all compiled JavaScript into a single file", APlusTask)
+        "Deprecated: Use fastLinkJS instead", KeyRanks.Invisible)
 
     val fullOptJS = TaskKey[Attributed[File]]("fullOptJS",
-        "Link all compiled JavaScript into a single file and fully optimize", APlusTask)
+        "Deprecated: Use fullLinkJS instead", KeyRanks.Invisible)
+
+    val fastLinkJS = TaskKey[Attributed[Report]]("fastLinkJS",
+        "Quickly link all compiled JavaScript", APlusTask)
+
+    val fullLinkJS = TaskKey[Attributed[Report]]("fullLinkJS",
+        "Link all compiled JavaScript and fully optimize", APlusTask)
 
     val testHtml = TaskKey[Attributed[File]]("testHtml",
         "Create an HTML test runner. Honors `scalaJSStage`.", AMinusTask)
@@ -214,9 +220,12 @@ object ScalaJSPlugin extends AutoPlugin {
     val scalaJSStage = SettingKey[Stage]("scalaJSStage",
         "The optimization stage at which run and test are executed", APlusSetting)
 
-    val scalaJSLinkedFile = TaskKey[Attributed[File]]("scalaJSLinkedFile",
-        "Linked Scala.js file. This is the result of fastOptJS or fullOptJS, " +
+    val scalaJSLinkerResult = TaskKey[Attributed[Report]]("scalaJSLinkerResult",
+        "Result of the Scala.js linker. This is the result of fastLinkJS or fullLinkJS, " +
         "depending on the stage.", DTask)
+
+    val scalaJSLinkedFile = TaskKey[Attributed[File]]("scalaJSLinkedFile",
+        "Deprecated: Use scalaJSLinkerResult instead", KeyRanks.Invisible)
 
     val jsEnv = TaskKey[JSEnv]("jsEnv",
         "The JavaScript environment in which to run and test Scala.js applications.",
@@ -251,6 +260,10 @@ object ScalaJSPlugin extends AutoPlugin {
 
     val scalaJSTestHTMLArtifactDirectory = SettingKey[File]("scalaJSTestHTMLArtifactDirectory",
         "Directory for artifacts produced by testHtml.",
+        BSetting)
+
+    val scalaJSLinkerOutputDirectory = SettingKey[File]("scalaJSLinkerOutputDirectory",
+        "Directory for linker output.",
         BSetting)
   }
 

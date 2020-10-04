@@ -22,12 +22,12 @@ import org.scalajs.ir.Trees._
 import org.scalajs.logging._
 
 import org.scalajs.linker._
+import org.scalajs.linker.interface.ModuleInitializer
 import org.scalajs.linker.standard._
 import org.scalajs.linker.analyzer._
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
-/** Does a dead code elimination pass on a [[standard.LinkingUnit LinkingUnit]].
- */
+/** Does a dead code elimination pass on a [[LinkingUnit]]. */
 final class Refiner(config: CommonPhaseConfig) {
   import Refiner._
 
@@ -41,12 +41,7 @@ final class Refiner(config: CommonPhaseConfig) {
     inputProvider.update(linkedClassesByName, unit.topLevelExports)
 
     val analysis = logger.timeFuture("Refiner: Compute reachability") {
-      val allSymbolRequirements = {
-        symbolRequirements ++
-        SymbolRequirement.fromModuleInitializer(unit.moduleInitializers)
-      }
-
-      analyze(allSymbolRequirements, logger)
+      analyze(unit.moduleInitializers, symbolRequirements, logger)
     }
 
     for {
@@ -69,10 +64,12 @@ final class Refiner(config: CommonPhaseConfig) {
     }
   }
 
-  private def analyze(symbolRequirements: SymbolRequirement, logger: Logger)(
+  private def analyze(moduleInitializers: Seq[ModuleInitializer],
+      symbolRequirements: SymbolRequirement, logger: Logger)(
       implicit ec: ExecutionContext): Future[Analysis] = {
     for {
-      analysis <- Analyzer.computeReachability(config, symbolRequirements,
+      analysis <- Analyzer.computeReachability(config,
+          moduleInitializers.map(_.initializer), symbolRequirements,
           allowAddingSyntheticMethods = false,
           checkAbstractReachability = false, inputProvider)
     } yield {
@@ -121,7 +118,10 @@ final class Refiner(config: CommonPhaseConfig) {
         jsNativeMembers = jsNativeMembers,
         hasInstances = info.isAnySubclassInstantiated,
         hasInstanceTests = info.areInstanceTestsUsed,
-        hasRuntimeTypeInfo = info.isDataAccessed)
+        hasRuntimeTypeInfo = info.isDataAccessed,
+        staticDependencies = info.staticDependencies.toSet,
+        externalDependencies = info.externalDependencies.toSet
+    )
   }
 
 }

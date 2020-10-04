@@ -19,6 +19,7 @@ import org.scalajs.logging._
 
 import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
+import org.scalajs.linker.standard.ModuleSet.ModuleID
 import org.scalajs.linker.checker._
 import org.scalajs.linker.analyzer._
 
@@ -43,15 +44,10 @@ final class BaseLinker(config: CommonPhaseConfig) {
       symbolRequirements: SymbolRequirement, checkIR: Boolean)(
       implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
-    val allSymbolRequirements = {
-      symbolRequirements ++
-      SymbolRequirement.fromModuleInitializer(moduleInitializers)
-    }
-
     val result = for {
       _ <- irLoader.update(irInput)
       analysis <- logger.timeFuture("Linker: Compute reachability") {
-        analyze(allSymbolRequirements, logger)
+        analyze(moduleInitializers, symbolRequirements, logger)
       }
       linkResult <- logger.timeFuture("Linker: Assemble LinkedClasses") {
         assemble(moduleInitializers, analysis)
@@ -73,7 +69,8 @@ final class BaseLinker(config: CommonPhaseConfig) {
     result.andThen { case _ => irLoader.cleanAfterRun() }
   }
 
-  private def analyze(symbolRequirements: SymbolRequirement, logger: Logger)(
+  private def analyze(moduleInitializers: Seq[ModuleInitializer],
+      symbolRequirements: SymbolRequirement, logger: Logger)(
       implicit ec: ExecutionContext): Future[Analysis] = {
     def reportErrors(errors: scala.collection.Seq[Analysis.Error]) = {
       require(errors.nonEmpty)
@@ -95,7 +92,8 @@ final class BaseLinker(config: CommonPhaseConfig) {
     }
 
     for {
-      analysis <- Analyzer.computeReachability(config, symbolRequirements,
+      analysis <- Analyzer.computeReachability(config,
+          moduleInitializers.map(_.initializer), symbolRequirements,
           allowAddingSyntheticMethods = true, checkAbstractReachability = true,
           irLoader)
     } yield {
@@ -119,8 +117,15 @@ final class BaseLinker(config: CommonPhaseConfig) {
         syntheticMethods <- syntheticMethods
       } yield {
         val linkedClass = linkedClassDef(classDef, version, syntheticMethods, info)
-        val linkedTopLevelExports =
-          classDef.topLevelExportDefs.map(new LinkedTopLevelExport(className, _))
+        val linkedTopLevelExports = for {
+          topLevelExport <- classDef.topLevelExportDefs
+        } yield {
+          val infos = analysis.topLevelExportInfos(
+              (ModuleID(topLevelExport.moduleID), topLevelExport.topLevelExportName))
+          new LinkedTopLevelExport(className, topLevelExport,
+              infos.staticDependencies.toSet, infos.externalDependencies.toSet)
+        }
+
         (linkedClass, linkedTopLevelExports)
       }
     }
@@ -210,6 +215,8 @@ final class BaseLinker(config: CommonPhaseConfig) {
         hasInstances = analyzerInfo.isAnySubclassInstantiated,
         hasInstanceTests = analyzerInfo.areInstanceTestsUsed,
         hasRuntimeTypeInfo = analyzerInfo.isDataAccessed,
+        staticDependencies = analyzerInfo.staticDependencies.toSet,
+        externalDependencies = analyzerInfo.externalDependencies.toSet,
         version)
   }
 }

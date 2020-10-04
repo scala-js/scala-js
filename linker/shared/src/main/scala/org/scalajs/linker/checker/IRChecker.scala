@@ -28,6 +28,7 @@ import org.scalajs.ir.Types._
 
 import org.scalajs.logging._
 
+import org.scalajs.linker.frontend.LinkingUnit
 import org.scalajs.linker.standard._
 import org.scalajs.linker.analyzer.{Analyzer, Infos}
 
@@ -1437,7 +1438,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 }
 
 object IRChecker {
-  /** Checks that the IR in a [[standard.LinkingUnit LinkingUnit]] is correct.
+  /** Checks that the IR in a [[frontend.LinkingUnit LinkingUnit]] is correct.
    *
    *  @return Count of IR checking errors (0 in case of success)
    */

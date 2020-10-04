@@ -12,14 +12,10 @@
 
 package org.scalajs.linker
 
-import scala.concurrent._
-
-import java.io.ByteArrayOutputStream
-import java.nio.ByteBuffer
-
 import org.scalajs.linker.interface.LinkerOutput
 import org.scalajs.linker.interface.unstable.OutputFileImpl
 
+@deprecated("Part of old Linker interface. Use MemOutputDirectory instead.", "1.3.0")
 sealed trait MemOutputFile extends LinkerOutput.File {
   /** Content that has been written to this [[MemOutputFile]].
    *
@@ -28,24 +24,18 @@ sealed trait MemOutputFile extends LinkerOutput.File {
   def content: Array[Byte]
 }
 
+@deprecated("Part of old Linker interface. Use MemOutputDirectory instead.", "1.3.0")
 object MemOutputFile {
-  def apply(): MemOutputFile = new MemFileImpl()
+  private final val name = "mem-file.js"
 
-  private final class MemFileImpl extends OutputFileImpl with MemOutputFile {
-    @volatile
-    private var _content: Array[Byte] = _
+  def apply(): MemOutputFile = new Impl(MemOutputDirectory())
 
+  private final class Impl(dir: MemOutputDirectory)
+      extends OutputFileImpl(name, dir) with MemOutputFile {
     def content: Array[Byte] = {
-      if (_content == null)
+      dir.content(name).getOrElse {
         throw new IllegalStateException("content hasn't been written yet")
-      _content
-    }
-
-    def writeFull(buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = {
-      val c = new Array[Byte](buf.remaining())
-      buf.get(c)
-      _content = c
-      Future.successful(())
+      }
     }
   }
 }

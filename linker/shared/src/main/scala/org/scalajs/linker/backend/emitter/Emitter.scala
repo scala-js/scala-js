@@ -25,6 +25,7 @@ import org.scalajs.logging._
 
 import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
+import org.scalajs.linker.standard.ModuleSet.ModuleID
 import org.scalajs.linker.backend.javascript.{Trees => js, _}
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
@@ -54,7 +55,7 @@ final class Emitter(config: Emitter.Config) {
 
     val coreJSLibCache: CoreJSLibCache = new CoreJSLibCache
 
-    val classCaches: mutable.Map[List[ClassName], ClassCache] = mutable.Map.empty
+    val classCaches: mutable.Map[ClassID, ClassCache] = mutable.Map.empty
   }
 
   private var state: State = new State(Set.empty)
@@ -62,7 +63,7 @@ final class Emitter(config: Emitter.Config) {
   private def jsGen: JSGen = state.sjsGen.jsGen
   private def sjsGen: SJSGen = state.sjsGen
   private def classEmitter: ClassEmitter = state.classEmitter
-  private def classCaches: mutable.Map[List[ClassName], ClassCache] = state.classCaches
+  private def classCaches: mutable.Map[ClassID, ClassCache] = state.classCaches
 
   private[this] var statsClassesReused: Int = 0
   private[this] var statsClassesInvalidated: Int = 0
@@ -74,12 +75,16 @@ final class Emitter(config: Emitter.Config) {
 
   val injectedIRFiles: Seq[IRFile] = PrivateLibHolder.files
 
-  def emit(unit: LinkingUnit, logger: Logger): Result = {
-    val WithGlobals(body, globalRefs) = emitInternal(unit, logger)
+  def emit(moduleSet: ModuleSet, logger: Logger): Result = {
+    val WithGlobals(body, globalRefs) = emitInternal(moduleSet, logger)
 
     moduleKind match {
       case ModuleKind.NoModule =>
-        val topLevelVars = unit.topLevelExports.map(_.exportName)
+        assert(moduleSet.modules.size <= 1)
+        val topLevelVars = moduleSet.modules
+          .headOption.toList
+          .flatMap(_.topLevelExports)
+          .map(_.exportName)
 
         val header = {
           val maybeTopLevelVarDecls = if (topLevelVars.nonEmpty) {
@@ -100,8 +105,8 @@ final class Emitter(config: Emitter.Config) {
     }
   }
 
-  private def emitInternal(
-      unit: LinkingUnit, logger: Logger): WithGlobals[js.Tree] = {
+  private def emitInternal(moduleSet: ModuleSet,
+      logger: Logger): WithGlobals[Map[ModuleID, js.Tree]] = {
     // Reset caching stats.
     statsClassesReused = 0
     statsClassesInvalidated = 0
@@ -109,7 +114,7 @@ final class Emitter(config: Emitter.Config) {
     statsMethodsInvalidated = 0
 
     // Update GlobalKnowledge.
-    val invalidateAll = knowledgeGuardian.update(unit)
+    val invalidateAll = knowledgeGuardian.update(moduleSet)
     if (invalidateAll) {
       state.coreJSLibCache.invalidate()
       classCaches.clear()
@@ -119,7 +124,7 @@ final class Emitter(config: Emitter.Config) {
     classCaches.valuesIterator.foreach(_.startRun())
 
     try {
-      emitAvoidGlobalClash(unit, logger, secondAttempt = false)
+      emitAvoidGlobalClash(moduleSet, logger, secondAttempt = false)
     } finally {
       // Report caching stats.
       logger.debug(
@@ -141,9 +146,9 @@ final class Emitter(config: Emitter.Config) {
    *  succeed, ...
    */
   @tailrec
-  private def emitAvoidGlobalClash(unit: LinkingUnit,
-      logger: Logger, secondAttempt: Boolean): WithGlobals[js.Tree] = {
-    val result = emitOnce(unit, logger)
+  private def emitAvoidGlobalClash(moduleSet: ModuleSet,
+      logger: Logger, secondAttempt: Boolean): WithGlobals[Map[ModuleID, js.Tree]] = {
+    val result = emitOnce(moduleSet, logger)
 
     val mentionedDangerousGlobalRefs =
       if (!trackAllGlobalRefs) result.globalVarNames
@@ -161,140 +166,150 @@ final class Emitter(config: Emitter.Config) {
           "Going to re-generate the world.")
 
       state = new State(mentionedDangerousGlobalRefs)
-      emitAvoidGlobalClash(unit, logger, secondAttempt = true)
+      emitAvoidGlobalClash(moduleSet, logger, secondAttempt = true)
     }
   }
 
-  private def emitOnce(
-      unit: LinkingUnit, logger: Logger): WithGlobals[js.Tree] = {
-    val orderedClasses = unit.classDefs.sortWith(compareClasses)
-    val generatedClasses = logger.time("Emitter: Generate classes") {
-      orderedClasses.map(genClass(_))
+  private def emitOnce(moduleSet: ModuleSet,
+      logger: Logger): WithGlobals[Map[ModuleID, js.Tree]] = {
+    // Genreate classes first so we can measure time separately.
+    val generatedClasses = logger.time("Emitter: Generate Classes") {
+      moduleSet.modules.map { module =>
+        val moduleContext = ModuleContext.fromModule(module)
+        val orderedClasses = module.classDefs.sortWith(compareClasses)
+        module.id -> orderedClasses.map(genClass(_, moduleContext))
+      }.toMap
     }
 
-    logger.time("Emitter: Write trees") {
-      val WithGlobals(coreJSLib, coreJSLibTrackedGlobalRefs) =
-        state.coreJSLibCache.lib
-
-      val WithGlobals(topLevelExports, topLevelExportsTrackedGlobalRefs) = {
-        // We do not cache top level exports since typically there are few.
-        classEmitter.genTopLevelExports(unit.topLevelExports)(uncachedKnowledge)
-      }
-
-      val WithGlobals(moduleImports, moduleImportsTrackedGlobalRefs) =
-        genModuleImports(orderedClasses)
-
-      def classIter = generatedClasses.iterator
-
-      // Emit everything in the appropriate order.
-      val tree = js.Block(
-          /* The definitions of the CoreJSLib, which depend on nothing.
-           * All classes potentially depend on it.
-           */
-          Iterator.single(coreJSLib.definitions) ++
-
-          /* Module imports, which depend on nothing.
-           * All classes potentially depend on them.
-           */
-          moduleImports ++
-
-          /* All class definitions, which depend on nothing but their
-           * superclasses.
-           */
-          classIter.flatMap(_.main) ++
-
-          /* The initialization of the CoreJSLib, which depends on the
-           * definition of classes (n.b. the RuntimeLong class).
-           */
-          Iterator.single(coreJSLib.initialization) ++
-
-          /* All static field definitions, which depend on nothing, except
-           * those of type Long which need $L0.
-           */
-          classIter.flatMap(_.staticFields) ++
-
-          /* All static initializers, which in the worst case can observe some
-           * "zero" state of other static field definitions, but must not
-           * observe a *non-initialized* (undefined) state.
-           */
-          classIter.flatMap(_.staticInitialization) ++
-
-          /* All the exports, during which some JS class creation can happen,
-           * causing JS static initializers to run. Those also must not observe
-           * a non-initialized state of other static fields.
-           */
-          topLevelExports ++
-
-          /* Module initializers, which by spec run at the end. */
-          unit.moduleInitializers.iterator.map(classEmitter.genModuleInitializer(_))
-      )(Position.NoPosition)
-
-      val trackedGlobalRefs = {
-        val sets = Iterator(
-            coreJSLibTrackedGlobalRefs,
-            topLevelExportsTrackedGlobalRefs,
-            moduleImportsTrackedGlobalRefs
-        ) ++ classIter.map(_.trackedGlobalRefs)
-
-        sets.foldLeft[Set[String]](Set.empty)(unionPreserveEmpty(_, _))
-      }
-
-      WithGlobals(tree, trackedGlobalRefs)
+    var trackedGlobalRefs = Set.empty[String]
+    def extractWithGlobals[T](x: WithGlobals[T]) = {
+      trackedGlobalRefs = unionPreserveEmpty(trackedGlobalRefs, x.globalVarNames)
+      x.value
     }
-  }
 
-  private def genModuleImports(
-      orderedClasses: List[LinkedClass]): WithGlobals[List[js.Tree]] = {
+    val moduleTrees = logger.time("Emitter: Write trees") {
+      moduleSet.modules.map { module =>
+        val moduleContext = ModuleContext.fromModule(module)
 
-    def mapImportedModule[T](f: (String, Position) => T): List[T]  = {
-      val builder = mutable.ListBuffer.empty[T]
-      val encounteredModuleNames = mutable.Set.empty[String]
-      for (classDef <- orderedClasses) {
-        def addModuleRef(module: String): Unit = {
-          if (encounteredModuleNames.add(module))
-            builder += f(module, classDef.pos)
+        val moduleClasses = generatedClasses(module.id)
+
+        val topLevelExports = extractWithGlobals {
+          // We do not cache top level exports since typically there are few.
+          classEmitter.genTopLevelExports(module.topLevelExports)(
+              moduleContext, uncachedKnowledge)
         }
 
-        def addModuleRefFor(jsNativeLoadSpec: JSNativeLoadSpec): Unit = {
-          jsNativeLoadSpec match {
-            case JSNativeLoadSpec.Global(_, _) =>
-            case JSNativeLoadSpec.Import(module, _) =>
-              addModuleRef(module)
-            case JSNativeLoadSpec.ImportWithGlobalFallback(
-                JSNativeLoadSpec.Import(module, _), _) =>
-              addModuleRef(module)
+        val (coreDefinitions, coreInitialization) = {
+          if (module.isRoot) {
+            val coreJSLib =
+              extractWithGlobals(state.coreJSLibCache.build(moduleContext))
+            (Iterator.single(coreJSLib.definitions), Iterator.single(coreJSLib.initialization))
+          } else {
+            (Iterator.empty, Iterator.empty)
           }
         }
 
-        if (classDef.hasInstances)
-          classDef.jsNativeLoadSpec.foreach(addModuleRefFor(_))
+        def classIter = moduleClasses.iterator
 
-        if (classDef.jsNativeMembers.nonEmpty) // likely false
-          classDef.jsNativeMembers.foreach(m => addModuleRefFor(m.jsNativeLoadSpec))
+        /* Emit everything but module imports in the appropriate order.
+         *
+         * We do not emit module imports to be able to assert that the
+         * resulting module is non-empty. This is a non-trivial condition that
+         * requires consistency between the Analyzer and the Emitter. As such,
+         * it is crucial that we verify it.
+         */
+        val defTrees = js.Block(
+            /* The definitions of the CoreJSLib, which depend on nothing.
+             * All classes potentially depend on it.
+             */
+            coreDefinitions ++
+
+            /* All class definitions, which depend on nothing but their
+             * superclasses.
+             */
+            classIter.flatMap(_.main) ++
+
+            /* The initialization of the CoreJSLib, which depends on the
+             * definition of classes (n.b. the RuntimeLong class).
+             */
+            coreInitialization ++
+
+            /* All static field definitions, which depend on nothing, except
+             * those of type Long which need $L0.
+             */
+            classIter.flatMap(_.staticFields) ++
+
+            /* All static initializers, which in the worst case can observe some
+             * "zero" state of other static field definitions, but must not
+             * observe a *non-initialized* (undefined) state.
+             */
+            classIter.flatMap(_.staticInitialization) ++
+
+            /* All the exports, during which some JS class creation can happen,
+             * causing JS static initializers to run. Those also must not observe
+             * a non-initialized state of other static fields.
+             */
+            topLevelExports ++
+
+            /* Module initializers, which by spec run at the end. */
+            module.initializers.iterator.map(classEmitter.genModuleInitializer(_)(
+                moduleContext, uncachedKnowledge))
+        )(Position.NoPosition)
+
+        assert(!defTrees.isInstanceOf[js.Skip], {
+            val classNames = module.classDefs.map(_.fullName).mkString(", ")
+            s"Module ${module.id} is empty. Classes in this module: $classNames"
+        })
+
+        val allTrees = js.Block(
+            /* Module imports, which depend on nothing.
+             * All classes potentially depend on them.
+             */
+            extractWithGlobals(genModuleImports(module)) :+ defTrees
+        )(Position.NoPosition)
+
+        classIter.foreach { genClass =>
+          trackedGlobalRefs = unionPreserveEmpty(trackedGlobalRefs, genClass.trackedGlobalRefs)
+        }
+
+        module.id -> allTrees
       }
-      builder.result()
     }
+
+    WithGlobals(moduleTrees.toMap, trackedGlobalRefs)
+  }
+
+  private def genModuleImports(module: ModuleSet.Module): WithGlobals[List[js.Tree]] = {
+    implicit val pos = Position.NoPosition
+
+    def importParts = (
+        (
+            module.externalDependencies.map { x =>
+              sjsGen.varGen.externalModuleFieldIdent(x) -> x
+            }
+        ) ++ (
+            module.internalDependencies.map { x =>
+              sjsGen.varGen.internalModuleFieldIdent(x) -> config.internalModulePattern(x)
+            }
+        )
+    ).toList.sortBy(_._1.name)
 
     moduleKind match {
       case ModuleKind.NoModule =>
         WithGlobals(Nil)
 
       case ModuleKind.ESModule =>
-        val imports = mapImportedModule { (module, pos0) =>
-          implicit val pos = pos0
-          val from = js.StringLiteral(module)
-          val moduleBinding = sjsGen.envModuleFieldIdent(module)
-          js.ImportNamespace(moduleBinding, from)
+        val imports = importParts.map { case (ident, moduleName) =>
+          val from = js.StringLiteral(moduleName)
+          js.ImportNamespace(ident, from)
         }
         WithGlobals(imports)
 
       case ModuleKind.CommonJSModule =>
-        val imports = mapImportedModule { (module, pos0) =>
-          implicit val pos = pos0
+        val imports = importParts.map { case (ident, moduleName) =>
           for (requireRef <- jsGen.globalRef("require")) yield {
-            val rhs = js.Apply(requireRef, List(js.StringLiteral(module)))
-            val lhs = sjsGen.envModuleFieldIdent(module)
-            jsGen.genLet(lhs, mutable = false, rhs)
+            val rhs = js.Apply(requireRef, List(js.StringLiteral(moduleName)))
+            jsGen.genLet(ident, mutable = false, rhs)
           }
         }
         WithGlobals.list(imports)
@@ -308,11 +323,13 @@ final class Emitter(config: Emitter.Config) {
     else lhs.className.compareTo(rhs.className) < 0
   }
 
-  private def genClass(linkedClass: LinkedClass): GeneratedClass = {
+  private def genClass(linkedClass: LinkedClass,
+      moduleContext: ModuleContext): GeneratedClass = {
     val className = linkedClass.className
 
-    val classCache =
-      classCaches.getOrElseUpdate(linkedClass.ancestors, new ClassCache)
+    val classCache = classCaches.getOrElseUpdate(
+        new ClassID(linkedClass.ancestors, moduleContext), new ClassCache)
+
     val classTreeCache =
       classCache.getCache(linkedClass.version)
 
@@ -322,19 +339,17 @@ final class Emitter(config: Emitter.Config) {
 
     var trackedGlobalRefs: Set[String] = Set.empty
 
-    def addGlobalRefs(globalRefs: Set[String]): Unit =
-      trackedGlobalRefs = unionPreserveEmpty(globalRefs, trackedGlobalRefs)
+    def extractWithGlobals[T](withGlobals: WithGlobals[T]): T = {
+      trackedGlobalRefs = unionPreserveEmpty(trackedGlobalRefs, withGlobals.globalVarNames)
+      withGlobals.value
+    }
 
     // Main part
 
-    var main: List[js.Tree] = Nil
+    val main = List.newBuilder[js.Tree]
 
-    def addToMainBase(tree: js.Tree): Unit = main ::= tree
-
-    def addToMain(treeWithGlobals: WithGlobals[js.Tree]): Unit = {
-      addToMainBase(treeWithGlobals.value)
-      addGlobalRefs(treeWithGlobals.globalVarNames)
-    }
+    def addToMain(treeWithGlobals: WithGlobals[js.Tree]): Unit =
+      main += extractWithGlobals(treeWithGlobals)
 
     val (linkedInlineableInit, linkedMethods) =
       classEmitter.extractInlineableInit(linkedClass)(classCache)
@@ -342,9 +357,10 @@ final class Emitter(config: Emitter.Config) {
     // Symbols for private JS fields
     if (kind.isJSClass) {
       val fieldDefs = classTreeCache.privateJSFields.getOrElseUpdate {
-        classEmitter.genCreatePrivateJSFieldDefsOfJSClass(linkedClass)
+        classEmitter.genCreatePrivateJSFieldDefsOfJSClass(linkedClass)(
+            moduleContext, classCache)
       }
-      fieldDefs.foreach(addToMainBase(_))
+      main ++= extractWithGlobals(fieldDefs)
     }
 
     // Static-like methods
@@ -357,7 +373,7 @@ final class Emitter(config: Emitter.Config) {
           classCache.getStaticLikeMethodCache(namespace, methodDef.methodName)
 
         addToMain(methodCache.getOrElseUpdate(m.version,
-            classEmitter.genStaticLikeMethod(className, m.value)(methodCache)))
+            classEmitter.genStaticLikeMethod(className, m.value)(moduleContext, methodCache)))
       }
     }
 
@@ -376,7 +392,7 @@ final class Emitter(config: Emitter.Config) {
         }
         val initToInline = linkedInlineableInit.map(_.value)
         ctorCache.getOrElseUpdate(ctorVersion,
-            classEmitter.genConstructor(linkedClass, initToInline)(ctorCache))
+            classEmitter.genConstructor(linkedClass, initToInline)(moduleContext, ctorCache))
       }
 
       /* Bridges from Throwable to methods of Object, which are necessary
@@ -426,18 +442,18 @@ final class Emitter(config: Emitter.Config) {
           classCache.getMemberMethodCache(m.value.methodName)
 
         methodCache.getOrElseUpdate(m.version,
-            classEmitter.genMemberMethod(className, m.value)(methodCache))
+            classEmitter.genMemberMethod(className, m.value)(moduleContext, methodCache))
       }
 
       // Exported Members
       val exportedMembersWithGlobals = classTreeCache.exportedMembers.getOrElseUpdate(
-          classEmitter.genExportedMembers(linkedClass)(classCache))
+          classEmitter.genExportedMembers(linkedClass)(moduleContext, classCache))
 
       val fullClass = for {
         ctor <- ctorWithGlobals
         memberMethods <- WithGlobals.list(memberMethodsWithGlobals)
         exportedMembers <- exportedMembersWithGlobals
-        clazz <- classEmitter.buildClass(linkedClass, ctor, memberMethods, exportedMembers)(classCache)
+        clazz <- classEmitter.buildClass(linkedClass, ctor, memberMethods, exportedMembers)(moduleContext, classCache)
       } yield {
         clazz
       }
@@ -452,7 +468,7 @@ final class Emitter(config: Emitter.Config) {
         val methodCache =
           classCache.getStaticLikeMethodCache(MemberNamespace.Public, m.value.methodName)
         addToMain(methodCache.getOrElseUpdate(m.version,
-            classEmitter.genDefaultMethod(className, m.value)(methodCache)))
+            classEmitter.genDefaultMethod(className, m.value)(moduleContext, methodCache)))
       }
     } else if (kind == ClassKind.HijackedClass) {
       // Hijacked methods
@@ -463,45 +479,46 @@ final class Emitter(config: Emitter.Config) {
         val methodCache =
           classCache.getStaticLikeMethodCache(MemberNamespace.Public, m.value.methodName)
         addToMain(methodCache.getOrElseUpdate(m.version,
-            classEmitter.genHijackedMethod(className, m.value)(methodCache)))
+            classEmitter.genHijackedMethod(className, m.value)(moduleContext, methodCache)))
       }
     }
 
     if (classEmitter.needInstanceTests(linkedClass)) {
-      addToMainBase(classTreeCache.instanceTests.getOrElseUpdate(
-          classEmitter.genInstanceTests(linkedClass)(classCache)))
+      addToMain(classTreeCache.instanceTests.getOrElseUpdate(
+          classEmitter.genInstanceTests(linkedClass)(moduleContext, classCache)))
     }
 
     if (linkedClass.hasRuntimeTypeInfo) {
       addToMain(classTreeCache.typeData.getOrElseUpdate(
-          classEmitter.genTypeData(linkedClass)(classCache)))
+          classEmitter.genTypeData(linkedClass)(moduleContext, classCache)))
     }
 
     if (linkedClass.hasInstances && kind.isClass && linkedClass.hasRuntimeTypeInfo)
-      addToMainBase(classTreeCache.setTypeData.getOrElseUpdate(
-          classEmitter.genSetTypeData(linkedClass)))
+      main += classTreeCache.setTypeData.getOrElseUpdate(
+          classEmitter.genSetTypeData(linkedClass)(moduleContext, classCache))
 
     if (linkedClass.kind.hasModuleAccessor)
-      addToMainBase(classTreeCache.moduleAccessor.getOrElseUpdate(
-          classEmitter.genModuleAccessor(linkedClass)))
+      addToMain(classTreeCache.moduleAccessor.getOrElseUpdate(
+          classEmitter.genModuleAccessor(linkedClass)(moduleContext, classCache)))
 
     // Static fields
 
     val staticFields = if (linkedClass.kind.isJSType) {
       Nil
     } else {
-      classTreeCache.staticFields.getOrElseUpdate(
-          classEmitter.genCreateStaticFieldsOfScalaClass(linkedClass)(classCache))
+      extractWithGlobals(classTreeCache.staticFields.getOrElseUpdate(
+          classEmitter.genCreateStaticFieldsOfScalaClass(linkedClass)(moduleContext, classCache)))
     }
 
     // Static initialization
 
-    val staticInitialization = classEmitter.genStaticInitialization(linkedClass)
+    val staticInitialization =
+      classEmitter.genStaticInitialization(linkedClass)(moduleContext, uncachedKnowledge)
 
     // Build the result
 
     new GeneratedClass(
-        main.reverse,
+        main.result(),
         staticFields,
         staticInitialization,
         trackedGlobalRefs
@@ -627,11 +644,14 @@ final class Emitter(config: Emitter.Config) {
   }
 
   private class CoreJSLibCache extends knowledgeGuardian.KnowledgeAccessor {
+    private[this] var _lastModuleContext: ModuleContext = _
     private[this] var _lib: WithGlobals[CoreJSLib.Lib] = _
 
-    def lib: WithGlobals[CoreJSLib.Lib] = {
-      if (_lib == null)
-        _lib = CoreJSLib.build(sjsGen, this)
+    def build(moduleContext: ModuleContext): WithGlobals[CoreJSLib.Lib] = {
+      if (_lib == null || _lastModuleContext != moduleContext) {
+        _lib = CoreJSLib.build(sjsGen, moduleContext, this)
+        _lastModuleContext = moduleContext
+      }
       _lib
     }
 
@@ -646,7 +666,7 @@ object Emitter {
   /** Result of an emitter run. */
   final class Result private[Emitter](
       val header: String,
-      val body: js.Tree,
+      val body: Map[ModuleID, js.Tree],
       val footer: String,
       val topLevelVarDecls: List[String],
       val globalRefs: Set[String]
@@ -657,6 +677,7 @@ object Emitter {
       val semantics: Semantics,
       val moduleKind: ModuleKind,
       val esFeatures: ESFeatures,
+      val internalModulePattern: ModuleID => String,
       val optimizeBracketSelects: Boolean,
       val trackAllGlobalRefs: Boolean
   ) {
@@ -668,6 +689,7 @@ object Emitter {
           semantics,
           moduleKind,
           esFeatures,
+          internalModulePattern = "./" + _.id,
           optimizeBracketSelects = true,
           trackAllGlobalRefs = false)
     }
@@ -681,6 +703,9 @@ object Emitter {
     def withESFeatures(f: ESFeatures => ESFeatures): Config =
       copy(esFeatures = f(esFeatures))
 
+    def withInternalModulePattern(internalModulePattern: ModuleID => String): Config =
+      copy(internalModulePattern = internalModulePattern)
+
     def withOptimizeBracketSelects(optimizeBracketSelects: Boolean): Config =
       copy(optimizeBracketSelects = optimizeBracketSelects)
 
@@ -691,10 +716,11 @@ object Emitter {
         semantics: Semantics = semantics,
         moduleKind: ModuleKind = moduleKind,
         esFeatures: ESFeatures = esFeatures,
+        internalModulePattern: ModuleID => String = internalModulePattern,
         optimizeBracketSelects: Boolean = optimizeBracketSelects,
         trackAllGlobalRefs: Boolean = trackAllGlobalRefs): Config = {
-      new Config(semantics, moduleKind, esFeatures, optimizeBracketSelects,
-          trackAllGlobalRefs)
+      new Config(semantics, moduleKind, esFeatures, internalModulePattern,
+          optimizeBracketSelects, trackAllGlobalRefs)
     }
   }
 
@@ -704,13 +730,13 @@ object Emitter {
   }
 
   private final class DesugaredClassCache {
-    val privateJSFields = new OneTimeCache[List[js.Tree]]
+    val privateJSFields = new OneTimeCache[WithGlobals[List[js.Tree]]]
     val exportedMembers = new OneTimeCache[WithGlobals[js.Tree]]
-    val instanceTests = new OneTimeCache[js.Tree]
+    val instanceTests = new OneTimeCache[WithGlobals[js.Tree]]
     val typeData = new OneTimeCache[WithGlobals[js.Tree]]
     val setTypeData = new OneTimeCache[js.Tree]
-    val moduleAccessor = new OneTimeCache[js.Tree]
-    val staticFields = new OneTimeCache[List[js.Tree]]
+    val moduleAccessor = new OneTimeCache[WithGlobals[js.Tree]]
+    val staticFields = new OneTimeCache[WithGlobals[List[js.Tree]]]
   }
 
   private final class GeneratedClass(
@@ -728,6 +754,9 @@ object Emitter {
       value
     }
   }
+
+  private case class ClassID(
+      ancestors: List[ClassName], moduleContext: ModuleContext)
 
   private def symbolRequirements(config: Config): SymbolRequirement = {
     import config.semantics._

@@ -50,6 +50,10 @@ object ExposedValues extends AutoPlugin {
 
     val CheckedBehavior = org.scalajs.linker.interface.CheckedBehavior
 
+    val OutputPatterns = org.scalajs.linker.interface.OutputPatterns
+
+    val ModuleSplitStyle = org.scalajs.linker.interface.ModuleSplitStyle
+
     type NodeJSEnvForcePolyfills = build.NodeJSEnvForcePolyfills
   }
 }
@@ -140,10 +144,6 @@ object Build {
 
   val bintrayProjectName = settingKey[String](
       "Project name on Bintray")
-
-  val setModuleLoopbackScript = taskKey[Option[java.nio.file.Path]](
-      "In the test suite, under ES modules, the script that sets the " +
-      "loopback module namespace")
 
   val scalastyleCheck = taskKey[Unit]("Run scalastyle")
 
@@ -794,6 +794,7 @@ object Build {
       publishSettings,
       fatalWarningsSettings,
       name := "Scala.js linker",
+      ensureSAMSupportSetting,
 
       unmanagedSourceDirectories in Compile +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/main/scala",
@@ -827,7 +828,8 @@ object Build {
   ).settings(
       libraryDependencies ++= Seq(
           "com.google.javascript" % "closure-compiler" % "v20200719",
-          "com.novocode" % "junit-interface" % "0.9" % "test"
+          "com.novocode" % "junit-interface" % "0.9" % "test",
+          "com.google.jimfs" % "jimfs" % "1.1" % "test"
       ) ++ (
           parallelCollectionsDependencies(scalaVersion.value)
       ),
@@ -1639,34 +1641,35 @@ object Build {
       Defaults.testSettings,
       ScalaJSPlugin.testConfigSettings,
 
-      fullOptJS := {
-        throw new MessageOnlyException("fullOptJS is not supported in Bootstrap")
+      fullLinkJS := {
+        throw new MessageOnlyException("fullLinkJS is not supported in Bootstrap")
       },
 
-      fastOptJS := {
+      fastLinkJS := {
         val s = streams.value
 
-        val out = (artifactPath in fastOptJS).value
+        val reportFile = s.cacheDirectory / "linking-report.bin"
+        val outputDir = (scalaJSLinkerOutputDirectory in fastLinkJS).value
 
         val linkerModule =
           (scalaJSLinkedFile in (testSuiteLinker, Compile)).value.data
 
         val cp = Attributed.data(fullClasspath.value)
-        val cpFiles = (scalaJSIR in fastOptJS).value.get(scalaJSSourceFiles).get
+        val cpFiles = (scalaJSIR in fastLinkJS).value.get(scalaJSSourceFiles).get
 
         FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
             FilesInfo.exists) { _ =>
 
-          val cpPaths = cp
-            .map(f => "\"" + escapeJS(f.getAbsolutePath) + "\"")
-            .mkString("[", ", ", "]")
+          def jsstr(f: File) = "\"" + escapeJS(f.getAbsolutePath) + "\""
+
+          val cpPaths = cp.map(jsstr(_)).mkString("[", ", ", "]")
 
           val code = {
             s"""
-              var toolsTestModule = require("${escapeJS(linkerModule.getPath)}");
+              var toolsTestModule = require(${jsstr(linkerModule)});
               var linker = toolsTestModule.TestSuiteLinker;
               var result =
-                linker.linkTestSuiteNode($cpPaths, "${escapeJS(out.getAbsolutePath)}");
+                linker.linkTestSuiteNode($cpPaths, ${jsstr(outputDir)}, ${jsstr(reportFile)});
 
               result.catch(e => {
                 console.error(e);
@@ -1683,6 +1686,8 @@ object Build {
 
           s.log.info(s"Linking test suite with JS linker")
 
+          IO.createDirectory(outputDir)
+
           val jsEnv = new NodeJSEnv(
             NodeJSEnv.Config()
               .withArgs(List("--max_old_space_size=3072"))
@@ -1690,11 +1695,17 @@ object Build {
 
           val run = jsEnv.start(input, config)
           Await.result(run.future, Duration.Inf)
-          Set(out)
+
+          IO.listFiles(outputDir).toSet + reportFile
         } ((cpFiles :+ linkerModule).toSet)
 
-        Attributed.blank(out)
-          .put(scalaJSModuleKind, ModuleKind.NoModule)
+        val report = Report.deserialize(IO.readBytes(reportFile)).getOrElse {
+            throw new MessageOnlyException("failed to deserialize report after " +
+                "bootstrapped linking. version mismatch?")
+        }
+
+        Attributed.blank(report)
+          .put(scalaJSLinkerOutputDirectory.key, outputDir)
       },
 
       compile := (compile in Test).value,
@@ -1727,11 +1738,19 @@ object Build {
         val testDir = (sourceDirectory in Test).value
         val scalaV = scalaVersion.value
 
-        val moduleKind = scalaJSLinkerConfig.value.moduleKind
+        val linkerConfig = scalaJSStage.value match {
+          case FastOptStage => (scalaJSLinkerConfig in (Compile, fastLinkJS)).value
+          case FullOptStage => (scalaJSLinkerConfig in (Compile, fullLinkJS)).value
+        }
+
+        val moduleKind = linkerConfig.moduleKind
+        val hasModules = moduleKind != ModuleKind.NoModule
 
         collectionsEraDependentDirectory(scalaV, testDir) ::
         includeIf(testDir / "require-modules",
-            moduleKind != ModuleKind.NoModule) :::
+            hasModules) :::
+        includeIf(testDir / "require-multi-modules",
+            hasModules && !linkerConfig.closureCompiler) :::
         includeIf(testDir / "require-dynamic-import",
             moduleKind == ModuleKind.ESModule) // this is an approximation that works for now
       },
@@ -1746,47 +1765,60 @@ object Build {
        * Only when using an ES module.
        * See the comment in ExportsTest for more details.
        */
-      setModuleLoopbackScript in Test := Def.settingDyn[Task[Option[java.nio.file.Path]]] {
-        (scalaJSLinkerConfig in Test).value.moduleKind match {
-          case ModuleKind.ESModule =>
-            Def.task {
-              val linkedFile = (scalaJSLinkedFile in Test).value.data
-              val uri = linkedFile.toURI.toASCIIString
+      jsEnvInput in Test ++= {
+        val moduleKind = (scalaJSLinkerConfig in Test).value.moduleKind
+        val linkerResult = (scalaJSLinkerResult in Test).value
 
-              val ext = {
-                val name = linkedFile.getName
-                val dotPos = name.lastIndexOf('.')
-                if (dotPos < 0) ".js" else name.substring(dotPos)
-              }
+        val report = linkerResult.data
 
-              val setNamespaceScriptFile =
-                crossTarget.value / (linkedFile.getName + "-loopback" + ext)
+        val outputFile = {
+          val outputDir = linkerResult.get(scalaJSLinkerOutputDirectory.key).get
 
-              /* Due to the asynchronous nature of ES module loading, there
-               * exists a theoretical risk for a race condition here. It is
-               * possible that tests will start running and reaching the
-               * ExportsTest before this module is executed. It's quite
-               * unlikely, though, given all the message passing for the com
-               * and all that.
-               */
-              IO.write(setNamespaceScriptFile,
-                  s"""
-                    |import * as mod from "${escapeJS(uri)}";
-                    |mod.setExportsNamespaceForExportsTest(mod);
-                  """.stripMargin)
+          val ext = {
+            val name = report.publicModules.head.jsFileName
+            val dotPos = name.lastIndexOf('.')
+            if (dotPos < 0) ".js" else name.substring(dotPos)
+          }
 
-              Some(setNamespaceScriptFile.toPath)
-            }
-
-          case _ =>
-            Def.task {
-              None
-            }
+          outputDir / ("export-loopback" + ext)
         }
-      }.value,
 
-      jsEnvInput in Test ++=
-        (setModuleLoopbackScript in Test).value.toList.map(Input.ESModule(_)),
+        val setDict = {
+          val dict = report.publicModules
+            .map(m => s"${m.moduleID}: ${m.moduleID}")
+            .mkString("{", ",", "}")
+
+          s"main.setExportsNamespaceForExportsTest($dict);"
+        }
+
+        moduleKind match {
+          case ModuleKind.ESModule =>
+            /* Due to the asynchronous nature of ES module loading, there
+             * exists a theoretical risk for a race condition here. It is
+             * possible that tests will start running and reaching the
+             * ExportsTest before this module is executed. It's quite
+             * unlikely, though, given all the message passing for the com
+             * and all that.
+             */
+            val imports = report.publicModules
+              .map(m => s"""import * as ${m.moduleID} from "./${escapeJS(m.jsFileName)}";\n""")
+              .mkString
+
+            IO.write(outputFile, imports + setDict)
+            List(Input.ESModule(outputFile.toPath))
+
+          case ModuleKind.CommonJSModule =>
+            val requires = report.publicModules
+              .map(m => s"""var ${m.moduleID} = require("./${escapeJS(m.jsFileName)}");\n""")
+              .mkString
+
+            IO.write(outputFile, requires + setDict)
+            List(Input.CommonJSModule(outputFile.toPath))
+
+          case ModuleKind.NoModule =>
+            Nil
+        }
+      },
 
       if (isGeneratingForIDE) {
         unmanagedSourceDirectories in Compile +=
@@ -1796,8 +1828,8 @@ object Build {
           val stage = scalaJSStage.value
 
           val linkerConfig = stage match {
-            case FastOptStage => (scalaJSLinkerConfig in (Compile, fastOptJS)).value
-            case FullOptStage => (scalaJSLinkerConfig in (Compile, fullOptJS)).value
+            case FastOptStage => (scalaJSLinkerConfig in (Compile, fastLinkJS)).value
+            case FullOptStage => (scalaJSLinkerConfig in (Compile, fullLinkJS)).value
           }
 
           val moduleKind = linkerConfig.moduleKind
@@ -1883,7 +1915,7 @@ object Build {
        * `scalaJSStage`, it is ill-advised to invoke a linking task that does
        * not correspond to the current `scalaJSStage`.
        */
-      for ((key, stage) <- Seq(fastOptJS -> FastOptStage, fullOptJS -> FullOptStage)) yield {
+      for ((key, stage) <- Seq(fastLinkJS -> FastOptStage, fullLinkJS -> FullOptStage)) yield {
         key in Test := {
           /* Note that due to the way dependencies between tasks work, the
            * actual linking *will* be computed anyway, but it's not too late to

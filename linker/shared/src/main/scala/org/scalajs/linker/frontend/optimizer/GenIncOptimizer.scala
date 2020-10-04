@@ -27,12 +27,13 @@ import org.scalajs.logging._
 
 import org.scalajs.linker._
 import org.scalajs.linker.backend.emitter.LongImpl
+import org.scalajs.linker.frontend.LinkingUnit
 import org.scalajs.linker.standard._
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
 /** Incremental optimizer.
  *
- *  An incremental optimizer optimizes a [[standard.LinkingUnit LinkingUnit]]
+ *  An incremental optimizer optimizes a [[LinkingUnit]]
  *  in an incremental way.
  *
  *  It maintains state between runs to do a minimal amount of work on every

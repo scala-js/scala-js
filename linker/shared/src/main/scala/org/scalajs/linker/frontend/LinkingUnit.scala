@@ -10,11 +10,13 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.linker.standard
+package org.scalajs.linker.frontend
 
 import org.scalajs.linker.interface.ModuleInitializer
 
-final class LinkingUnit private[linker] (
+import org.scalajs.linker.standard._
+
+final class LinkingUnit private[frontend] (
     val coreSpec: CoreSpec,
     val classDefs: List[LinkedClass],
     val topLevelExports: List[LinkedTopLevelExport],

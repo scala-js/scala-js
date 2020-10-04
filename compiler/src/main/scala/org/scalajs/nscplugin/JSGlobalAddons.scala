@@ -110,8 +110,8 @@ trait JSGlobalAddons extends JSDefinitions
     /* Not final because it causes the follwing compile warning:
      * "The outer reference in this type test cannot be checked at run time."
      */
-    case class TopLevelExportInfo(jsName: String)(val pos: Position)
-        extends ExportInfo
+    case class TopLevelExportInfo(moduleID: String, jsName: String)(
+        val pos: Position) extends ExportInfo
     case class StaticExportInfo(jsName: String)(val pos: Position)
         extends ExportInfo
 

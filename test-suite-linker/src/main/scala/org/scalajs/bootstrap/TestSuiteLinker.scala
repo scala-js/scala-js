@@ -5,9 +5,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
+import scala.scalajs.js.typedarray._
 import scala.scalajs.js.JSConverters._
-
-import java.net.URI
 
 import org.scalajs.logging._
 
@@ -18,7 +17,8 @@ import org.scalajs.linker.interface._
 object QuickLinker {
   /** Link the Scala.js test suite on Node.js */
   @JSExport
-  def linkTestSuiteNode(cp: js.Array[String], outputPath: String): js.Promise[Unit] = {
+  def linkTestSuiteNode(cp: js.Array[String], outputDir: String,
+      reportPath: String): js.Promise[Unit] = {
     val config = StandardConfig()
       .withSemantics(build.TestSuiteLinkerOptions.semantics _)
       .withCheckIR(true)
@@ -32,14 +32,7 @@ object QuickLinker {
       ModuleInitializer.mainMethod("org.scalajs.testing.bridge.Bridge", "start")
     }
 
-    val smPath = outputPath + ".map"
-
-    def relURI(path: String) = new URI(null, null, basename(path), null)
-
-    val out = LinkerOutput(NodeOutputFile(outputPath))
-      .withSourceMap(NodeOutputFile(smPath))
-      .withSourceMapURI(relURI(smPath))
-      .withJSFileURI(relURI(outputPath))
+    val out = NodeOutputDirectory(outputDir)
 
     val cache = StandardImpl.irFileCache().newCache
 
@@ -47,10 +40,19 @@ object QuickLinker {
       .map(_._1)
       .flatMap(cache.cached _)
       .flatMap(linker.link(_, moduleInitializers, out, new ScalaConsoleLogger))
+      .flatMap(writeReport(reportPath, _))
       .toJSPromise
   }
 
-  @JSImport("path", "basename")
+  private def writeReport(path: String, report: Report): Future[Unit] = {
+    val int8arr = Report.serialize(report).toTypedArray
+    val uint8arr = new Uint8Array(int8arr.buffer, int8arr.byteOffset, int8arr.byteLength)
+    PromisesFS.writeFile(path, uint8arr).toFuture
+  }
+
+  @JSImport("fs", "promises")
   @js.native
-  private def basename(str: String): String = js.native
+  private object PromisesFS extends js.Object {
+    def writeFile(path: String, data: Uint8Array): js.Promise[Unit] = js.native
+  }
 }

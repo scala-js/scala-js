@@ -124,8 +124,4 @@ object NodeIRContainer {
 
     def loadAsync(data: Uint8Array): js.Promise[JSZip] = js.native
   }
-
-  @JSImport("path", "join")
-  @js.native
-  private def join(paths: String*): String = js.native
 }

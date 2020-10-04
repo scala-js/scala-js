@@ -12,29 +12,15 @@
 
 package org.scalajs.linker
 
-import scala.concurrent._
-
-import scala.scalajs.js
-import scala.scalajs.js.typedarray.TypedArrayBufferOps._
-
-import java.nio.ByteBuffer
-
 import org.scalajs.linker.interface.LinkerOutput
 import org.scalajs.linker.interface.unstable.OutputFileImpl
 
+@deprecated("Part of old Linker interface. Use NodeOutputDirectory instead.", "1.3.0")
 object NodeOutputFile {
-  import NodeFS.cbFuture
+  import NodeFS._
 
-  def apply(path: String): LinkerOutput.File = new NodeOutputFileImpl(path)
-
-  private final class NodeOutputFileImpl(path: String) extends OutputFileImpl {
-    def writeFull(buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = {
-      val data =
-        if (buf.hasTypedArray()) buf.typedArray().subarray(buf.position(), buf.limit())
-        else ByteBuffer.allocateDirect(buf.remaining()).put(buf).typedArray()
-
-      cbFuture[Unit](NodeFS.writeFile(path, data, _))
-        .map(_ => buf.position(buf.limit()))
-    }
+  def apply(path: String): LinkerOutput.File = {
+    val dir = NodeOutputDirectory(dirname(path))
+    new OutputFileImpl(basename(path), dir)
   }
 }

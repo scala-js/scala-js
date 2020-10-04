@@ -16,6 +16,7 @@ import scala.collection.mutable
 
 import scala.tools.nsc.Global
 
+import org.scalajs.ir.Names.DefaultModuleID
 import org.scalajs.ir.Trees.TopLevelExportDef.isValidTopLevelExportName
 
 /**
@@ -41,7 +42,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
     case object Normal extends ExportDestination
 
     /** Export at the top-level. */
-    case object TopLevel extends ExportDestination
+    case class TopLevel(moduleID: String) extends ExportDestination
 
     /** Export as a static member of the companion class. */
     case object Static extends ExportDestination
@@ -142,8 +143,8 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
   private def registerStaticAndTopLevelExports(sym: Symbol,
       exports: List[ExportInfo]): Unit = {
     val topLevel = exports.collect {
-      case info @ ExportInfo(jsName, ExportDestination.TopLevel) =>
-        jsInterop.TopLevelExportInfo(jsName)(info.pos)
+      case info @ ExportInfo(jsName, ExportDestination.TopLevel(moduleID)) =>
+        jsInterop.TopLevelExportInfo(moduleID, jsName)(info.pos)
     }
 
     if (topLevel.nonEmpty)
@@ -248,23 +249,40 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
       assert(!isTopLevelExport || hasExplicitName,
           "Found a top-level export without an explicit name at " + annot.pos)
 
-      def explicitName = annot.stringArg(0).getOrElse {
-        reporter.error(annot.pos,
-            s"The argument to ${annot.symbol.name} must be a literal string")
-        "dummy"
-      }
-
       val name = {
-        if (hasExplicitName) explicitName
-        else if (sym.isConstructor) decodedFullName(sym.owner)
-        else if (sym.isClass) decodedFullName(sym)
-        else sym.unexpandedName.decoded.stripSuffix("_=")
+        if (hasExplicitName) {
+          annot.stringArg(0).getOrElse {
+            reporter.error(annot.args(0).pos,
+                s"The argument to ${annot.symbol.name} must be a literal string")
+            "dummy"
+          }
+        } else if (sym.isConstructor) {
+          decodedFullName(sym.owner)
+        } else if (sym.isClass) {
+          decodedFullName(sym)
+        } else {
+          sym.unexpandedName.decoded.stripSuffix("_=")
+        }
       }
 
       val destination = {
-        if (isTopLevelExport) ExportDestination.TopLevel
-        else if (isStaticExport) ExportDestination.Static
-        else ExportDestination.Normal
+        if (isTopLevelExport) {
+          val moduleID = if (annot.args.size == 1) {
+            DefaultModuleID
+          } else {
+            annot.stringArg(1).getOrElse {
+              reporter.error(annot.args(1).pos,
+                  "moduleID must be a literal string")
+              DefaultModuleID
+            }
+          }
+
+          ExportDestination.TopLevel(moduleID)
+        } else if (isStaticExport) {
+          ExportDestination.Static
+        } else {
+          ExportDestination.Normal
+        }
       }
 
       // Enforce proper setter signature
@@ -304,7 +322,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
                   "name apply.")
             }
 
-          case ExportDestination.TopLevel =>
+          case _: ExportDestination.TopLevel =>
             throw new AssertionError(
                 "Found a top-level export without an explicit name at " +
                 annot.pos)
@@ -341,7 +359,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
                 "Use @JSExportTopLevel instead.")
           }
 
-        case ExportDestination.TopLevel =>
+        case _: ExportDestination.TopLevel =>
           if (sym.isLazy) {
             reporter.error(annot.pos,
                 "You may not export a lazy val to the top level")

@@ -74,6 +74,10 @@ private[linker] object NodeFS {
   def readdir(path: String, opts: ReadDirOpt.type,
       cb: CB[js.Array[Dirent]]): Unit = js.native
 
+  @JSImport("fs", "readdir")
+  @js.native
+  def readdir(path: String, cb: CB[js.Array[String]]): Unit = js.native
+
   @JSImport("fs", "readFile")
   @js.native
   def readFile(path: String, cb: CB[Uint8Array]): Unit = js.native
@@ -81,4 +85,20 @@ private[linker] object NodeFS {
   @JSImport("fs", "stat")
   @js.native
   def stat(path: String, cb: CB[Stats]): Unit = js.native
+
+  @JSImport("fs", "unlink")
+  @js.native
+  def unlink(path: String, cb: CB[Unit]): Unit = js.native
+
+  @JSImport("path", "join")
+  @js.native
+  def join(paths: String*): String = js.native
+
+  @JSImport("path", "basename")
+  @js.native
+  def basename(path: String): String = js.native
+
+  @JSImport("path", "dirname")
+  @js.native
+  def dirname(path: String): String = js.native
 }

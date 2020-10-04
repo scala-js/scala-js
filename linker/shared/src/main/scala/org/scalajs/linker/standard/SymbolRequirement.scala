@@ -129,22 +129,4 @@ object SymbolRequirement {
         extends SymbolRequirement
     case object NoRequirement extends SymbolRequirement
   }
-
-  private[linker] def fromModuleInitializer(
-      entryPoints: Seq[ModuleInitializer]): SymbolRequirement = {
-    import ModuleInitializerImpl._
-
-    val factory = SymbolRequirement.factory("module initializers")
-    val requirements = for (entryPoint <- entryPoints) yield {
-      ModuleInitializerImpl.fromModuleInitializer(entryPoint) match {
-        case VoidMainMethod(className, mainMethodName) =>
-          factory.callStaticMethod(className, mainMethodName)
-
-        case MainMethodWithArgs(className, mainMethodName, _) =>
-          factory.callStaticMethod(className, mainMethodName) ++
-          factory.classData(BoxedStringClass)
-      }
-    }
-    factory.multiple(requirements: _*)
-  }
 }

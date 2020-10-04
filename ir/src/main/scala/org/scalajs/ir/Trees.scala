@@ -1104,15 +1104,17 @@ object Trees {
   sealed abstract class TopLevelExportDef extends IRNode {
     import TopLevelExportDef._
 
-    final def topLevelExportName: String = this match {
-      case TopLevelModuleExportDef(name)  => name
-      case TopLevelJSClassExportDef(name) => name
+    def moduleID: String
 
-      case TopLevelMethodExportDef(JSMethodDef(_, propName, _, _)) =>
+    final def topLevelExportName: String = this match {
+      case TopLevelModuleExportDef(_, name)  => name
+      case TopLevelJSClassExportDef(_, name) => name
+
+      case TopLevelMethodExportDef(_, JSMethodDef(_, propName, _, _)) =>
         val StringLiteral(name) = propName
         name
 
-      case TopLevelFieldExportDef(name, _) => name
+      case TopLevelFieldExportDef(_, name, _) => name
     }
 
     require(isValidTopLevelExportName(topLevelExportName),
@@ -1124,7 +1126,7 @@ object Trees {
       isJSIdentifierName(exportName)
   }
 
-  sealed case class TopLevelJSClassExportDef(exportName: String)(
+  sealed case class TopLevelJSClassExportDef(moduleID: String, exportName: String)(
       implicit val pos: Position) extends TopLevelExportDef
 
   /** Export for a top-level object.
@@ -1132,14 +1134,15 @@ object Trees {
    *  This exports the singleton instance of the containing module class.
    *  The instance is initialized during ES module instantiation.
    */
-  sealed case class TopLevelModuleExportDef(exportName: String)(
+  sealed case class TopLevelModuleExportDef(moduleID: String, exportName: String)(
       implicit val pos: Position) extends TopLevelExportDef
 
-  sealed case class TopLevelMethodExportDef(methodDef: JSMethodDef)(
+  sealed case class TopLevelMethodExportDef(moduleID: String,
+      methodDef: JSMethodDef)(
       implicit val pos: Position) extends TopLevelExportDef
 
-  sealed case class TopLevelFieldExportDef(exportName: String,
-      field: FieldIdent)(
+  sealed case class TopLevelFieldExportDef(moduleID: String,
+      exportName: String, field: FieldIdent)(
       implicit val pos: Position) extends TopLevelExportDef
 
   // Miscellaneous

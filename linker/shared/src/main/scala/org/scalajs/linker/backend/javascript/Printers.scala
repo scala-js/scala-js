@@ -656,6 +656,24 @@ object Printers {
           }
           print(" }")
 
+        case ExportImport(bindings, from) =>
+          print("export { ")
+          var first = true
+          var rest = bindings
+          while (rest.nonEmpty) {
+            val binding = rest.head
+            if (first)
+              first = false
+            else
+              print(", ")
+            print(binding._1)
+            print(" as ")
+            print(binding._2)
+            rest = rest.tail
+          }
+          print(" } from ")
+          print(from: Tree)
+
         case _ =>
           throw new IllegalArgumentException(
               s"Unexpected tree of class ${tree.getClass.getName} at ${tree.pos}")

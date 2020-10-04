@@ -944,7 +944,31 @@ class JSExportTest extends DirectTest with TestHelpers {
     """
       |newSource1.scala:9: error: The argument to JSExport must be a literal string
       |      @JSExport(A.a)
-      |       ^
+      |                  ^
+    """
+
+  }
+
+  @Test
+  def noNonLiteralModuleID: Unit = {
+
+    """
+    object A {
+      val a = "Hello"
+      final val b = "World"
+    }
+
+    object B {
+      @JSExportTopLevel("foo", A.a)
+      def foo() = 1
+      @JSExportTopLevel("foo", A.b)
+      def bar() = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:9: error: moduleID must be a literal string
+      |      @JSExportTopLevel("foo", A.a)
+      |                                 ^
     """
 
   }
