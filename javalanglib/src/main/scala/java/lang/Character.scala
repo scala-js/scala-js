@@ -12,7 +12,7 @@
 
 package java.lang
 
-import scala.annotation.tailrec
+import scala.annotation.{tailrec, switch}
 import scala.scalajs.js
 
 import java.util.{ArrayList, Arrays, HashMap}
@@ -507,7 +507,38 @@ object Character {
     }
   }
 
-  //def toTitleCase(c: scala.Char): scala.Char
+  def toTitleCase(ch: scala.Char): scala.Char = toTitleCase(ch.toInt).toChar
+
+/*
+def format(codePoint: Int): String = "0x%04x".format(codePoint)
+
+for (cp <- 0 to Character.MAX_CODE_POINT) {
+  val titleCaseCP: Int = Character.toTitleCase(cp)
+  val upperCaseCP: Int = Character.toUpperCase(cp)
+
+  if (titleCaseCP != upperCaseCP) {
+    println(s"    case ${format(cp)} => ${format(titleCaseCP)}")
+  }
+}
+*/
+  def toTitleCase(codePoint: scala.Int): scala.Int = {
+    (codePoint: @switch) match {
+      case 0x01c4 => 0x01c5
+      case 0x01c5 => 0x01c5
+      case 0x01c6 => 0x01c5
+      case 0x01c7 => 0x01c8
+      case 0x01c8 => 0x01c8
+      case 0x01c9 => 0x01c8
+      case 0x01ca => 0x01cb
+      case 0x01cb => 0x01cb
+      case 0x01cc => 0x01cb
+      case 0x01f1 => 0x01f2
+      case 0x01f2 => 0x01f2
+      case 0x01f3 => 0x01f2
+      case _      => toUpperCase(codePoint)
+    }
+  }
+
   //def getNumericValue(c: scala.Char): Int
 
   /* Misc */
