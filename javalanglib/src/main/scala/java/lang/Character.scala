@@ -490,20 +490,24 @@ object Character {
   def toLowerCase(ch: scala.Char): scala.Char = toLowerCase(ch.toInt).toChar
 
   def toLowerCase(codePoint: scala.Int): scala.Int = {
-    val lowerChars = _String.fromCodePoint(codePoint).toLowerCase()
-
-    lowerChars.length match {
-      case 1 =>
-        lowerChars.charAt(0).toInt
-      case 2 =>
-        val high = lowerChars.charAt(0)
-        val low = lowerChars.charAt(1)
-        if (isSurrogatePair(high, low))
-          toCodePoint(high, low)
-        else
-          codePoint
+    codePoint match {
+      case 0x0130 =>
+        0x0069 // İ => i
       case _ =>
-        codePoint
+        val lowerChars = _String.fromCodePoint(codePoint).toLowerCase()
+        lowerChars.length match {
+          case 1 =>
+            lowerChars.charAt(0).toInt
+          case 2 =>
+            val high = lowerChars.charAt(0)
+            val low = lowerChars.charAt(1)
+            if (isSurrogatePair(high, low))
+              toCodePoint(high, low)
+            else
+              codePoint
+          case _ =>
+            codePoint
+        }
     }
   }
 

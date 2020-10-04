@@ -426,6 +426,37 @@ class CharacterTest {
     assertEquals(0x10ffff, Character.toLowerCase(0x10ffff)) // 􏿿 => 􏿿
   }
 
+  /* Test all the code points that are specially handled in our implementation
+   * of `toLowerCase(codePoint: Int)`.
+   *
+   * This list happens to coincide with the code points tested in the following
+   * test.
+   */
+  @Test def toLowerCase_CodePoint_special_cases(): Unit = {
+    assertEquals(0x0069, Character.toLowerCase(0x0130))
+  }
+
+  /* Test all the code points for which delegating to `String.toLowerCase()`
+   * is not a valid implementation.
+   *
+   * The list can be reproduced with the following script. It happens to
+   * coincide with the code points tested in the previous test.
+
+def format(codePoint: Int): String = "0x%04x".format(codePoint)
+
+for (cp <- 0 to Character.MAX_CODE_POINT) {
+  val cpStr: String = new String(Array(cp), 0, 1)
+  val lowerCP: Int = Character.toLowerCase(cp)
+  val lowerCPStr: String = new String(Array(lowerCP), 0, 1)
+
+  if (cpStr.toLowerCase() != lowerCPStr)
+    println(s"    assertEquals(${format(lowerCP)}, Character.toLowerCase(${format(cp)})) // $cpStr => $lowerCPStr")
+}
+  */
+  @Test def toLowerCase_CodePoint_StringLowerCase_diff_CharacterLowerCase(): Unit = {
+    assertEquals(0x0069, Character.toLowerCase(0x0130)) // İ => i
+  }
+
   @Test def toUpperCase_compare_char_and_codepoint(): Unit = {
     for (ch <- Character.MIN_VALUE to Character.MAX_VALUE)
       assertEquals(Character.toUpperCase(ch), Character.toUpperCase(ch.toInt).toChar)
@@ -463,6 +494,9 @@ class CharacterTest {
     assertEquals(0x10ffff, Character.toUpperCase(0x10ffff)) // 􏿿 => 􏿿
   }
 
+  /* Test all the code points that are specially handled in our implementation
+   * of `toUpperCase(codePoint: Int)`.
+   */
   @Test def toUpperCase_CodePoint_special_cases(): Unit = {
     assertEquals(0x1fbc, Character.toUpperCase(0x1fb3))
     assertEquals(0x1fcc, Character.toUpperCase(0x1fc3))
@@ -518,7 +552,11 @@ class CharacterTest {
     assertEquals(0x1faf, Character.toUpperCase(0x1faf))
   }
 
-/*
+  /* Test all the code points for which delegating to `String.toUpperCase()`
+   * is not a valid implementation.
+   *
+   * The list can be reproduced with the following script.
+
 def format(codePoint: Int): String = "0x%04x".format(codePoint)
 
 for (cp <- 0 to Character.MAX_CODE_POINT) {
@@ -529,7 +567,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
   if (cpStr.toUpperCase() != upperCPStr)
     println(s"    assertEquals(${format(upperCP)}, Character.toUpperCase(${format(cp)})) // $cpStr => $upperCPStr")
 }
-*/
+  */
   @Test def toUpperCase_CodePoint_StringUpperCase_diff_CharacterUpperCase(): Unit = {
     assertEquals(0x00df, Character.toUpperCase(0x00df)) // ß => ß
     assertEquals(0x0149, Character.toUpperCase(0x0149)) // ŉ => ŉ
