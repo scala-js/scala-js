@@ -45,10 +45,6 @@ final class _String private () // scalastyle:ignore
     this.asInstanceOf[String]
 
   @inline
-  private def thisJSString: SpecialJSStringOps =
-    this.asInstanceOf[SpecialJSStringOps]
-
-  @inline
   def charAt(index: Int): Char = {
     this.asInstanceOf[js.Dynamic]
       .charCodeAt(index.asInstanceOf[js.Dynamic])
@@ -536,7 +532,7 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def toLowerCase(): String =
-    thisJSString.toLowerCase()
+    this.asInstanceOf[js.Dynamic].toLowerCase().asInstanceOf[String]
 
   def toUpperCase(locale: Locale): String = {
     locale.getLanguage() match {
@@ -619,7 +615,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
 
   @inline
   def toUpperCase(): String =
-    thisJSString.toUpperCase()
+    this.asInstanceOf[js.Dynamic].toUpperCase().asInstanceOf[String]
 
   /** Replaces special characters in this string (possibly in special contexts)
    *  by dedicated strings.
@@ -715,14 +711,6 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
 }
 
 object _String { // scalastyle:ignore
-  /** Operations on a primitive JS string that are shadowed by Scala methods,
-   *  and that we need to implement these very Scala methods.
-   */
-  private trait SpecialJSStringOps extends js.Any {
-    def toLowerCase(): String
-    def toUpperCase(): String
-  }
-
   final lazy val CASE_INSENSITIVE_ORDER: Comparator[String] = {
     new Comparator[String] with Serializable {
       def compare(o1: String, o2: String): Int = o1.compareToIgnoreCase(o2)
