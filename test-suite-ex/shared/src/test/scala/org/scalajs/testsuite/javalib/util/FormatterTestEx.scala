@@ -52,6 +52,9 @@ class FormatterTestEx {
     val res2 = fmt2.format(locale, format, args.asInstanceOf[Seq[AnyRef]]: _*).toString()
     fmt2.close()
     assertEquals(expected, res2)
+
+    // String.format
+    assertEquals(expected, String.format(locale, format, args.asInstanceOf[Seq[AnyRef]]: _*))
   }
 
   @Test def testLocale(): Unit = {

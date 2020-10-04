@@ -814,11 +814,10 @@ object _String { // scalastyle:ignore
   def valueOf(data: Array[Char], offset: Int, count: Int): String =
     `new`(data, offset, count)
 
-  def format(format: String, args: Array[AnyRef]): String = {
-    val frm = new java.util.Formatter()
-    val res = frm.format(format, args: _*).toString()
-    frm.close()
-    res
-  }
+  def format(format: String, args: Array[AnyRef]): String =
+    new java.util.Formatter().format(format, args: _*).toString()
+
+  def format(l: Locale, format: String, args: Array[AnyRef]): String =
+    new java.util.Formatter(l).format(format, args: _*).toString()
 
 }
