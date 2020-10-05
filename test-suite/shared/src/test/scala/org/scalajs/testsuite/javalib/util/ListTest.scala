@@ -16,12 +16,14 @@ import org.junit.Test
 import org.junit.Assert._
 
 import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.CollectionsTestBase
 
+import java.{lang => jl}
 import java.{util => ju}
 
 import scala.reflect.ClassTag
 
-trait ListTest extends CollectionTest {
+trait ListTest extends CollectionTest with CollectionsTestBase {
 
   def factory: ListFactory
 
@@ -436,6 +438,92 @@ trait ListTest extends CollectionTest {
       assertTrue(ll.isEmpty())
     }
   }
+
+  @Test def sortWithNaturalOrdering(): Unit = {
+    testSortWithNaturalOrdering[CustomComparable](new CustomComparable(_),
+        absoluteOrder = false)
+    testSortWithNaturalOrdering[jl.Integer](jl.Integer.valueOf)
+    testSortWithNaturalOrdering[jl.Long](_.toLong)
+    testSortWithNaturalOrdering[jl.Double](_.toDouble)
+  }
+
+  @Test def sortWithComparator(): Unit = {
+    testSortWithComparator[CustomComparable](new CustomComparable(_),
+        (x, y) => x.compareTo(y), absoluteOrder = false)
+    testSortWithComparator[jl.Integer](_.toInt, (x, y) => x.compareTo(y))
+    testSortWithComparator[jl.Long](_.toLong, (x, y) => x.compareTo(y))
+    testSortWithComparator[jl.Double](_.toDouble, (x, y) => x.compareTo(y))
+  }
+
+  private def testSortWithNaturalOrdering[T <: AnyRef with Comparable[T]: ClassTag](
+      toElem: Int => T, absoluteOrder: Boolean = true): Unit = {
+
+    val list = factory.empty[T]
+
+    def testIfSorted(rangeValues: Boolean): Unit = {
+      for (i <- range.init)
+        assertTrue(list.get(i).compareTo(list.get(i + 1)) <= 0)
+      if (absoluteOrder && rangeValues) {
+        for (i <- range)
+          assertEquals(0, list.get(i).compareTo(toElem(i)))
+      }
+    }
+
+    list.addAll(rangeOfElems(toElem))
+    list.sort(null)
+    testIfSorted(true)
+
+    list.clear()
+    list.addAll(TrivialImmutableCollection(range.reverse.map(toElem): _*))
+    list.sort(null)
+    testIfSorted(true)
+
+    for (seed <- List(0, 1, 42, -5432, 2341242)) {
+      val rnd = new scala.util.Random(seed)
+      list.clear()
+      list.addAll(
+          TrivialImmutableCollection(range.map(_ => toElem(rnd.nextInt())): _*))
+      list.sort(null)
+      testIfSorted(false)
+    }
+  }
+
+  private def testSortWithComparator[T: ClassTag](toElem: Int => T,
+      cmpFun: (T, T) => Int, absoluteOrder: Boolean = true): Unit = {
+
+    val list = factory.empty[T]
+
+    def testIfSorted(rangeValues: Boolean): Unit = {
+      for (i <- range.init)
+        assertTrue(cmpFun(list.get(i), list.get(i + 1)) <= 0)
+      if (absoluteOrder && rangeValues) {
+        for (i <- range)
+          assertEquals(0, cmpFun(list.get(i), toElem(i)))
+      }
+    }
+
+    val cmp = new ju.Comparator[T] {
+      override def compare(o1: T, o2: T): Int = cmpFun(o1, o2)
+    }
+
+    list.addAll(rangeOfElems(toElem))
+    list.sort(cmp)
+    testIfSorted(true)
+
+    list.clear()
+    list.addAll(TrivialImmutableCollection(range.reverse.map(toElem): _*))
+    list.sort(cmp)
+    testIfSorted(true)
+
+    for (seed <- List(0, 1, 42, -5432, 2341242)) {
+      val rnd = new scala.util.Random(seed)
+      list.clear()
+      list.addAll(
+          TrivialImmutableCollection(range.map(_ => toElem(rnd.nextInt())): _*))
+      list.sort(cmp)
+      testIfSorted(false)
+    }
+  }
 }
 
 trait ListFactory extends CollectionFactory {
@@ -447,8 +535,4 @@ trait ListFactory extends CollectionFactory {
     coll.addAll(TrivialImmutableCollection(elems: _*))
     coll
   }
-
-  /** Sortable using java.util.Collections.sort
-   */
-  def sortableUsingCollections: Boolean = true
 }

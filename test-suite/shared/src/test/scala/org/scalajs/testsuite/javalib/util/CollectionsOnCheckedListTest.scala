@@ -41,9 +41,6 @@ trait CollectionsCheckedListTest
 
       override def allowsMutationThroughIterator: Boolean =
         originalFactory.allowsMutationThroughIterator
-
-      override def sortableUsingCollections: Boolean =
-        originalFactory.sortableUsingCollections
     }
   }
 

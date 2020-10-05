@@ -67,20 +67,10 @@ object Collections {
 
   // Differs from original type definition, original: [T <: jl.Comparable[_ >: T]]
   def sort[T <: jl.Comparable[T]](list: List[T]): Unit =
-    sort(list, naturalComparator[T])
+    list.sort(null)
 
-  def sort[T](list: List[T], c: Comparator[_ >: T]): Unit = {
-    val arrayBuf = list.toArray()
-    Arrays.sort[AnyRef with T](arrayBuf.asInstanceOf[Array[AnyRef with T]], c)
-
-    // The spec of `Arrays.asList()` guarantees that its result implements RandomAccess
-    val sortedList = Arrays.asList(arrayBuf).asInstanceOf[List[T] with RandomAccess]
-
-    list match {
-      case list: RandomAccess => copyImpl(sortedList, list)
-      case _                  => copyImpl(sortedList, list.listIterator())
-    }
-  }
+  def sort[T](list: List[T], c: Comparator[_ >: T]): Unit =
+    list.sort(c)
 
   def binarySearch[T](list: List[_ <: jl.Comparable[_ >: T]], key: T): Int =
     binarySearchImpl(list, (elem: Comparable[_ >: T]) => elem.compareTo(key))

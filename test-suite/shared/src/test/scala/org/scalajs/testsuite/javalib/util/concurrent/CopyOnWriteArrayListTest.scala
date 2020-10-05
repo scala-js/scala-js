@@ -116,8 +116,4 @@ class CopyOnWriteArrayListFactory extends ListFactory {
 
   def newFrom[E <: AnyRef](arr: Array[E]): ju.concurrent.CopyOnWriteArrayList[E] =
     new ju.concurrent.CopyOnWriteArrayList[E](arr)
-
-  // Sorting a CopyOnWriteArrayListFactory was not supported until JDK8.
-  // See CollectionsOnCopyOnWriteArrayListTestOnJDK8.
-  override def sortableUsingCollections: Boolean = false
 }

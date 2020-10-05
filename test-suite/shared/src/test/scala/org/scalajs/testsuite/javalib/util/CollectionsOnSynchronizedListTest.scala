@@ -33,9 +33,6 @@ trait CollectionsSynchronizedListTest
 
       override def allowsMutationThroughIterator: Boolean =
         originalFactory.allowsMutationThroughIterator
-
-      override def sortableUsingCollections: Boolean =
-        originalFactory.sortableUsingCollections
     }
   }
 }
