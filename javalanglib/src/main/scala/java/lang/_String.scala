@@ -45,10 +45,6 @@ final class _String private () // scalastyle:ignore
     this.asInstanceOf[String]
 
   @inline
-  private def thisJSString: SpecialJSStringOps =
-    this.asInstanceOf[SpecialJSStringOps]
-
-  @inline
   def charAt(index: Int): Char = {
     this.asInstanceOf[js.Dynamic]
       .charCodeAt(index.asInstanceOf[js.Dynamic])
@@ -140,20 +136,67 @@ final class _String private () // scalastyle:ignore
   override def equals(that: Any): scala.Boolean =
     this eq that.asInstanceOf[AnyRef]
 
-  @inline
   def compareTo(anotherString: String): Int = {
-    if (this.equals(anotherString)) 0
-    else if ((this.asInstanceOf[js.Dynamic] <
-        anotherString.asInstanceOf[js.Dynamic]).asInstanceOf[scala.Boolean]) -1
-    else 1
+    // scalastyle:off return
+    val thisLength = this.length()
+    val strLength = anotherString.length()
+    val minLength = Math.min(thisLength, strLength)
+
+    var i = 0
+    while (i != minLength) {
+      val cmp = this.charAt(i) - anotherString.charAt(i)
+      if (cmp != 0)
+        return cmp
+      i += 1
+    }
+    thisLength - strLength
+    // scalastyle:on return
   }
 
-  def compareToIgnoreCase(str: String): Int =
-    this.toLowerCase().compareTo(str.toLowerCase())
+  def compareToIgnoreCase(str: String): Int = {
+    // scalastyle:off return
+    val thisLength = this.length()
+    val strLength = str.length()
+    val minLength = Math.min(thisLength, strLength)
+
+    var i = 0
+    while (i != minLength) {
+      val cmp = caseFold(this.charAt(i)) - caseFold(str.charAt(i))
+      if (cmp != 0)
+        return cmp
+      i += 1
+    }
+    thisLength - strLength
+    // scalastyle:on return
+  }
 
   @inline
-  def equalsIgnoreCase(that: String): scala.Boolean =
-    this.toLowerCase() == (if (that == null) null else that.toLowerCase())
+  def equalsIgnoreCase(anotherString: String): scala.Boolean = {
+    // scalastyle:off return
+    val len = length()
+    if (anotherString == null || anotherString.length() != len) {
+      false
+    } else {
+      var i = 0
+      while (i != len) {
+        if (caseFold(this.charAt(i)) != caseFold(anotherString.charAt(i)))
+          return false
+        i += 1
+      }
+      true
+    }
+    // scalastyle:on return
+  }
+
+  /** Perfoms case folding of a single character for use by `equalsIgnoreCase`
+   *  and `compareToIgnoreCase`.
+   *
+   *  This implementation respects the specification of those two methods,
+   *  although that behavior does not generally conform to Unicode Case
+   *  Folding.
+   */
+  @inline private def caseFold(c: Char): Char =
+    Character.toLowerCase(Character.toUpperCase(c))
 
   @inline
   def concat(s: String): String =
@@ -193,10 +236,10 @@ final class _String private () // scalastyle:ignore
   }
 
   def indexOf(ch: Int): Int =
-    indexOf(fromCodePoint(ch))
+    indexOf(Character.toString(ch))
 
   def indexOf(ch: Int, fromIndex: Int): Int =
-    indexOf(fromCodePoint(ch), fromIndex)
+    indexOf(Character.toString(ch), fromIndex)
 
   @inline
   def indexOf(str: String): Int =
@@ -217,11 +260,11 @@ final class _String private () // scalastyle:ignore
   def isEmpty(): scala.Boolean = (this: AnyRef) eq ("": AnyRef)
 
   def lastIndexOf(ch: Int): Int =
-    lastIndexOf(fromCodePoint(ch))
+    lastIndexOf(Character.toString(ch))
 
   def lastIndexOf(ch: Int, fromIndex: Int): Int =
     if (fromIndex < 0) -1
-    else lastIndexOf(fromCodePoint(ch), fromIndex)
+    else lastIndexOf(Character.toString(ch), fromIndex)
 
   @inline
   def lastIndexOf(str: String): Int =
@@ -489,7 +532,7 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def toLowerCase(): String =
-    thisJSString.toLowerCase()
+    this.asInstanceOf[js.Dynamic].toLowerCase().asInstanceOf[String]
 
   def toUpperCase(locale: Locale): String = {
     locale.getLanguage() match {
@@ -572,7 +615,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
 
   @inline
   def toUpperCase(): String =
-    thisJSString.toUpperCase()
+    this.asInstanceOf[js.Dynamic].toUpperCase().asInstanceOf[String]
 
   /** Replaces special characters in this string (possibly in special contexts)
    *  by dedicated strings.
@@ -643,9 +686,24 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     // scalastyle:on return
   }
 
-  @inline
-  def trim(): String =
-    thisJSString.trim()
+  def trim(): String = {
+    val len = length()
+    var start = 0
+    while (start != len && charAt(start) <= ' ')
+      start += 1
+    if (start == len) {
+      ""
+    } else {
+      /* If we get here, 0 <= start < len, so the original string is not empty.
+       * We also know that charAt(start) > ' '.
+       */
+      var end = len
+      while (charAt(end - 1) <= ' ') // no need for a bounds check here since charAt(start) > ' '
+        end -= 1
+      if (start == 0 && end == len) thisString
+      else substring(start, end)
+    }
+  }
 
   @inline
   override def toString(): String =
@@ -653,15 +711,6 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
 }
 
 object _String { // scalastyle:ignore
-  /** Operations on a primitive JS string that are shadowed by Scala methods,
-   *  and that we need to implement these very Scala methods.
-   */
-  private trait SpecialJSStringOps extends js.Any {
-    def toLowerCase(): String
-    def toUpperCase(): String
-    def trim(): String
-  }
-
   final lazy val CASE_INSENSITIVE_ORDER: Comparator[String] = {
     new Comparator[String] with Serializable {
       def compare(o1: String, o2: String): Int = o1.compareToIgnoreCase(o2)
@@ -717,7 +766,7 @@ object _String { // scalastyle:ignore
     var result = ""
     var i = offset
     while (i != end) {
-      result += fromCodePoint(codePoints(i))
+      result += Character.toString(codePoints(i))
       i += 1
     }
     result
@@ -753,31 +802,10 @@ object _String { // scalastyle:ignore
   def valueOf(data: Array[Char], offset: Int, count: Int): String =
     `new`(data, offset, count)
 
-  def format(format: String, args: Array[AnyRef]): String = {
-    val frm = new java.util.Formatter()
-    val res = frm.format(format, args: _*).toString()
-    frm.close()
-    res
-  }
+  def format(format: String, args: Array[AnyRef]): String =
+    new java.util.Formatter().format(format, args: _*).toString()
 
-  // Helpers
-
-  private[lang] def fromCodePoint(codePoint: Int): String = {
-    if ((codePoint & ~Character.MAX_VALUE) == 0) {
-      NativeJSString.fromCharCode(codePoint)
-    } else if (codePoint < 0 || codePoint > Character.MAX_CODE_POINT) {
-      throw new IllegalArgumentException
-    } else {
-      val offsetCp = codePoint - 0x10000
-      NativeJSString.fromCharCode(
-          (offsetCp >> 10) | 0xd800, (offsetCp & 0x3ff) | 0xdc00)
-    }
-  }
-
-  @js.native
-  @JSGlobal("String")
-  private object NativeJSString extends js.Object {
-    def fromCharCode(charCodes: Int*): String = js.native
-  }
+  def format(l: Locale, format: String, args: Array[AnyRef]): String =
+    new java.util.Formatter(l).format(format, args: _*).toString()
 
 }

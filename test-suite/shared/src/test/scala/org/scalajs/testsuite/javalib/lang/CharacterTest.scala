@@ -20,6 +20,186 @@ import org.scalajs.testsuite.utils.Platform._
 
 class CharacterTest {
 
+  @Test def hashCodeChar(): Unit = {
+    assertEquals(0, Character.hashCode('\u0000'))
+    assertEquals(65, Character.hashCode('A'))
+    assertEquals(0x1234, Character.hashCode('\u1234'))
+    assertEquals(0xffff, Character.hashCode('\uFFFF'))
+  }
+
+  @Test def toStringChar(): Unit = {
+    assertEquals("a", Character.toString('a'))
+    assertEquals("\u1234", Character.toString('\u1234'))
+    assertEquals("\uD845", Character.toString('\uD845')) // high surrogate
+    assertEquals("\uDC54", Character.toString('\uDC54')) // low surrogate
+    assertEquals("\uFFFF", Character.toString('\uFFFF'))
+  }
+
+  @Test def isValidCodePoint(): Unit = {
+    assertTrue(Character.isValidCodePoint(0))
+    assertTrue(Character.isValidCodePoint(1234))
+    assertTrue(Character.isValidCodePoint(0xd845))
+    assertTrue(Character.isValidCodePoint(0xdc54))
+    assertTrue(Character.isValidCodePoint(0xffff))
+
+    assertTrue(Character.isValidCodePoint(0x10000))
+    assertTrue(Character.isValidCodePoint(0x12345))
+    assertTrue(Character.isValidCodePoint(0x10ffff))
+
+    assertFalse(Character.isValidCodePoint(0x110000))
+    assertFalse(Character.isValidCodePoint(0x234567))
+    assertFalse(Character.isValidCodePoint(-1))
+    assertFalse(Character.isValidCodePoint(Int.MinValue))
+  }
+
+  @Test def isBmpCodePoint(): Unit = {
+    assertTrue(Character.isBmpCodePoint(0))
+    assertTrue(Character.isBmpCodePoint(1234))
+    assertTrue(Character.isBmpCodePoint(0xd845))
+    assertTrue(Character.isBmpCodePoint(0xdc54))
+    assertTrue(Character.isBmpCodePoint(0xffff))
+
+    assertFalse(Character.isBmpCodePoint(0x10000))
+    assertFalse(Character.isBmpCodePoint(0x12345))
+    assertFalse(Character.isBmpCodePoint(0x10ffff))
+
+    assertFalse(Character.isBmpCodePoint(0x110000))
+    assertFalse(Character.isBmpCodePoint(0x234567))
+    assertFalse(Character.isBmpCodePoint(-1))
+    assertFalse(Character.isBmpCodePoint(Int.MinValue))
+  }
+
+  @Test def isSupplementaryCodePoint(): Unit = {
+    assertFalse(Character.isSupplementaryCodePoint(0))
+    assertFalse(Character.isSupplementaryCodePoint(1234))
+    assertFalse(Character.isSupplementaryCodePoint(0xd845))
+    assertFalse(Character.isSupplementaryCodePoint(0xdc54))
+    assertFalse(Character.isSupplementaryCodePoint(0xffff))
+
+    assertTrue(Character.isSupplementaryCodePoint(0x10000))
+    assertTrue(Character.isSupplementaryCodePoint(0x12345))
+    assertTrue(Character.isSupplementaryCodePoint(0x10ffff))
+
+    assertFalse(Character.isSupplementaryCodePoint(0x110000))
+    assertFalse(Character.isSupplementaryCodePoint(0x234567))
+    assertFalse(Character.isSupplementaryCodePoint(-1))
+    assertFalse(Character.isSupplementaryCodePoint(Int.MinValue))
+  }
+
+  @Test def isHighSurrogate(): Unit = {
+    assertFalse(Character.isHighSurrogate(0))
+    assertFalse(Character.isHighSurrogate(1234))
+    assertFalse(Character.isHighSurrogate(0xd7ff))
+
+    assertTrue(Character.isHighSurrogate(0xd800))
+    assertTrue(Character.isHighSurrogate(0xd954))
+    assertTrue(Character.isHighSurrogate(0xdbff))
+
+    assertFalse(Character.isHighSurrogate(0xdc00))
+    assertFalse(Character.isHighSurrogate(0xdd45))
+    assertFalse(Character.isHighSurrogate(0xdfff))
+
+    assertFalse(Character.isHighSurrogate(0xe000))
+    assertFalse(Character.isHighSurrogate(0xea65))
+    assertFalse(Character.isHighSurrogate(0xffff))
+  }
+
+  @Test def isLowSurrogate(): Unit = {
+    assertFalse(Character.isLowSurrogate(0))
+    assertFalse(Character.isLowSurrogate(1234))
+    assertFalse(Character.isLowSurrogate(0xd7ff))
+
+    assertFalse(Character.isLowSurrogate(0xd800))
+    assertFalse(Character.isLowSurrogate(0xd954))
+    assertFalse(Character.isLowSurrogate(0xdbff))
+
+    assertTrue(Character.isLowSurrogate(0xdc00))
+    assertTrue(Character.isLowSurrogate(0xdd45))
+    assertTrue(Character.isLowSurrogate(0xdfff))
+
+    assertFalse(Character.isLowSurrogate(0xe000))
+    assertFalse(Character.isLowSurrogate(0xea65))
+    assertFalse(Character.isLowSurrogate(0xffff))
+  }
+
+  @Test def isSurrogate(): Unit = {
+    assertFalse(Character.isSurrogate(0))
+    assertFalse(Character.isSurrogate(1234))
+    assertFalse(Character.isSurrogate(0xd7ff))
+
+    assertTrue(Character.isSurrogate(0xd800))
+    assertTrue(Character.isSurrogate(0xd954))
+    assertTrue(Character.isSurrogate(0xdbff))
+
+    assertTrue(Character.isSurrogate(0xdc00))
+    assertTrue(Character.isSurrogate(0xdd45))
+    assertTrue(Character.isSurrogate(0xdfff))
+
+    assertFalse(Character.isSurrogate(0xe000))
+    assertFalse(Character.isSurrogate(0xea65))
+    assertFalse(Character.isSurrogate(0xffff))
+  }
+
+  @Test def isSurrogatePair(): Unit = {
+    val chars = List[Char](0, 1234, 0xd7ff, 0xd800, 0xd954, 0xdbff, 0xdc00,
+        0xdd45, 0xdfff, 0xe000, 0xea65, 0xffff)
+
+    for {
+      high <- chars
+      low <- chars
+    } {
+      val expected = Character.isHighSurrogate(high) && Character.isLowSurrogate(low)
+      assertEquals(expected, Character.isSurrogatePair(high, low))
+    }
+  }
+
+  @Test def charCount(): Unit = {
+    assertEquals(1, Character.charCount(0))
+    assertEquals(1, Character.charCount(1234))
+    assertEquals(1, Character.charCount(0xd845))
+    assertEquals(1, Character.charCount(0xdc54))
+    assertEquals(1, Character.charCount(0xffff))
+
+    assertEquals(2, Character.charCount(0x10000))
+    assertEquals(2, Character.charCount(0x12345))
+    assertEquals(2, Character.charCount(0x10ffff))
+
+    /* It is unclear whether the result is actually specified for invalid
+     * code points. However, JDK 8 through 14 all agree on the following
+     * results.
+     */
+
+    assertEquals(2, Character.charCount(0x110000))
+    assertEquals(2, Character.charCount(0x234567))
+
+    assertEquals(1, Character.charCount(-1))
+    assertEquals(1, Character.charCount(Int.MinValue))
+  }
+
+  @Test def toCodePoint(): Unit = {
+    assertEquals(0x10000, Character.toCodePoint(0xd800, 0xdc00))
+    assertEquals(0x12345, Character.toCodePoint(0xd808, 0xdf45))
+    assertEquals(0x10ffff, Character.toCodePoint(0xdbff, 0xdfff))
+
+    // unspecified for inputs that are not surrogate pairs
+  }
+
+  @Test def highSurrogate(): Unit = {
+    assertEquals(0xd800, Character.highSurrogate(0x10000))
+    assertEquals(0xd808, Character.highSurrogate(0x12345))
+    assertEquals(0xdbff, Character.highSurrogate(0x10ffff))
+
+    // unspecified for non-supplementary code points
+  }
+
+  @Test def lowSurrogate(): Unit = {
+    assertEquals(0xdc00, Character.lowSurrogate(0x10000))
+    assertEquals(0xdf45, Character.lowSurrogate(0x12345))
+    assertEquals(0xdfff, Character.lowSurrogate(0x10ffff))
+
+    // unspecified for non-supplementary code points
+  }
+
   @Test def isISOControl(): Unit = {
     val isoControlChars = (('\u0000' to '\u001F') ++
         ('\u007F' to '\u009F')).map(_.toInt).toSet
@@ -115,26 +295,6 @@ class CharacterTest {
       assertEquals(i, Character.digit(Character.forDigit(i, 36), 36))
     }
     assertEquals('9', Character.forDigit(9, 10))
-  }
-
-  @Test def charCount(): Unit = {
-    val rnd = new scala.util.Random(0x61c78a41cee81f34L)
-    def random(from: Int, to: Int): Int =
-      rnd.nextInt(to - from + 1) + from
-
-    assertEquals(1, Character.charCount(Character.MIN_VALUE))
-    assertEquals(1, Character.charCount(Character.MAX_VALUE))
-    val bmpCodePoints = List.fill(100)(random(Character.MIN_VALUE, Character.MAX_VALUE))
-    bmpCodePoints foreach { cp =>
-      assertEquals(1, Character.charCount(cp))
-    }
-
-    assertEquals(2, Character.charCount(Character.MIN_SUPPLEMENTARY_CODE_POINT))
-    assertEquals(2, Character.charCount(Character.MAX_CODE_POINT))
-    val supCodePoints = List.fill(100)(random(Character.MIN_SUPPLEMENTARY_CODE_POINT, Character.MAX_CODE_POINT))
-    supCodePoints foreach { cp =>
-      assertEquals(2, Character.charCount(cp))
-    }
   }
 
   @Test def toChars(): Unit = {
@@ -426,6 +586,37 @@ class CharacterTest {
     assertEquals(0x10ffff, Character.toLowerCase(0x10ffff)) // 􏿿 => 􏿿
   }
 
+  /* Test all the code points that are specially handled in our implementation
+   * of `toLowerCase(codePoint: Int)`.
+   *
+   * This list happens to coincide with the code points tested in the following
+   * test.
+   */
+  @Test def toLowerCase_CodePoint_special_cases(): Unit = {
+    assertEquals(0x0069, Character.toLowerCase(0x0130))
+  }
+
+  /* Test all the code points for which delegating to `String.toLowerCase()`
+   * is not a valid implementation.
+   *
+   * The list can be reproduced with the following script. It happens to
+   * coincide with the code points tested in the previous test.
+
+def format(codePoint: Int): String = "0x%04x".format(codePoint)
+
+for (cp <- 0 to Character.MAX_CODE_POINT) {
+  val cpStr: String = new String(Array(cp), 0, 1)
+  val lowerCP: Int = Character.toLowerCase(cp)
+  val lowerCPStr: String = new String(Array(lowerCP), 0, 1)
+
+  if (cpStr.toLowerCase() != lowerCPStr)
+    println(s"    assertEquals(${format(lowerCP)}, Character.toLowerCase(${format(cp)})) // $cpStr => $lowerCPStr")
+}
+  */
+  @Test def toLowerCase_CodePoint_StringLowerCase_diff_CharacterLowerCase(): Unit = {
+    assertEquals(0x0069, Character.toLowerCase(0x0130)) // İ => i
+  }
+
   @Test def toUpperCase_compare_char_and_codepoint(): Unit = {
     for (ch <- Character.MIN_VALUE to Character.MAX_VALUE)
       assertEquals(Character.toUpperCase(ch), Character.toUpperCase(ch.toInt).toChar)
@@ -463,6 +654,9 @@ class CharacterTest {
     assertEquals(0x10ffff, Character.toUpperCase(0x10ffff)) // 􏿿 => 􏿿
   }
 
+  /* Test all the code points that are specially handled in our implementation
+   * of `toUpperCase(codePoint: Int)`.
+   */
   @Test def toUpperCase_CodePoint_special_cases(): Unit = {
     assertEquals(0x1fbc, Character.toUpperCase(0x1fb3))
     assertEquals(0x1fcc, Character.toUpperCase(0x1fc3))
@@ -518,7 +712,11 @@ class CharacterTest {
     assertEquals(0x1faf, Character.toUpperCase(0x1faf))
   }
 
-/*
+  /* Test all the code points for which delegating to `String.toUpperCase()`
+   * is not a valid implementation.
+   *
+   * The list can be reproduced with the following script.
+
 def format(codePoint: Int): String = "0x%04x".format(codePoint)
 
 for (cp <- 0 to Character.MAX_CODE_POINT) {
@@ -529,7 +727,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
   if (cpStr.toUpperCase() != upperCPStr)
     println(s"    assertEquals(${format(upperCP)}, Character.toUpperCase(${format(cp)})) // $cpStr => $upperCPStr")
 }
-*/
+  */
   @Test def toUpperCase_CodePoint_StringUpperCase_diff_CharacterUpperCase(): Unit = {
     assertEquals(0x00df, Character.toUpperCase(0x00df)) // ß => ß
     assertEquals(0x0149, Character.toUpperCase(0x0149)) // ŉ => ŉ
@@ -870,6 +1068,13 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     expectThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(cs, -3, 4))
     expectThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(cs, 6, 2))
     expectThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(cs, 10, 30))
+  }
+
+  @Test def compare(): Unit = {
+    assertTrue(Character.compare('0', '5') < 0)
+    assertTrue(Character.compare('o', 'g') > 0)
+    assertTrue(Character.compare('A', 'a') < 0)
+    assertEquals(0, Character.compare('b', 'b'))
   }
 
   @Test def compareTo(): Unit = {
@@ -3736,5 +3941,9 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertFalse(Character.isJavaIdentifierStart(875116))
     assertFalse(Character.isJavaIdentifierStart(955913))
     assertFalse(Character.isJavaIdentifierStart(958246))
+  }
+
+  @Test def reverseBytes(): Unit = {
+    assertEquals('\u3412', Character.reverseBytes('\u1234'))
   }
 }

@@ -33,7 +33,8 @@ class Character private ()
   @inline def charValue(): scala.Char =
     this.asInstanceOf[scala.Char]
 
-  @inline override def hashCode(): Int = charValue().toInt
+  @inline override def hashCode(): Int =
+    Character.hashCode(charValue())
 
   @inline override def equals(that: Any): scala.Boolean = {
     that.isInstanceOf[Character] &&
@@ -105,6 +106,124 @@ object Character {
   final val MIN_CODE_POINT = 0
   final val MAX_CODE_POINT = 0x10ffff
   final val MIN_SUPPLEMENTARY_CODE_POINT = 0x10000
+
+  // Hash code and toString ---------------------------------------------------
+
+  @inline def hashCode(value: Char): Int = value.toInt
+
+  @inline def toString(c: Char): String = {
+    js.Dynamic.global.String
+      .fromCharCode(c.toInt.asInstanceOf[js.Dynamic])
+      .asInstanceOf[String]
+  }
+
+  def toString(codePoint: Int): String = {
+    if (isBmpCodePoint(codePoint)) {
+      js.Dynamic.global.String
+        .fromCharCode(codePoint.asInstanceOf[js.Dynamic])
+        .asInstanceOf[String]
+    } else if (isValidCodePoint(codePoint)) {
+      js.Dynamic.global.String
+        .fromCharCode(
+            highSurrogate(codePoint).toInt.asInstanceOf[js.Dynamic],
+            lowSurrogate(codePoint).toInt.asInstanceOf[js.Dynamic]
+        )
+        .asInstanceOf[String]
+    } else {
+      throw new IllegalArgumentException()
+    }
+  }
+
+  // Low-level code point and code unit manipulations -------------------------
+
+  private final val HighSurrogateMask       = 0xfc00 // 111111 00  00000000
+  private final val HighSurrogateID         = 0xd800 // 110110 00  00000000
+  private final val LowSurrogateMask        = 0xfc00 // 111111 00  00000000
+  private final val LowSurrogateID          = 0xdc00 // 110111 00  00000000
+  private final val SurrogateMask           = 0xf800 // 111110 00  00000000
+  private final val SurrogateID             = 0xd800 // 110110 00  00000000
+  private final val SurrogateUsefulPartMask = 0x03ff // 000000 11  11111111
+
+  private final val SurrogatePairMask = (HighSurrogateMask << 16) | LowSurrogateMask
+  private final val SurrogatePairID = (HighSurrogateID << 16) | LowSurrogateID
+
+  private final val HighSurrogateShift = 10
+  private final val HighSurrogateAddValue = 0x10000 >> HighSurrogateShift
+
+  @inline def isValidCodePoint(codePoint: Int): scala.Boolean =
+    (codePoint >= 0) && (codePoint <= MAX_CODE_POINT)
+
+  @inline def isBmpCodePoint(codePoint: Int): scala.Boolean =
+    (codePoint >= 0) && (codePoint < MIN_SUPPLEMENTARY_CODE_POINT)
+
+  @inline def isSupplementaryCodePoint(codePoint: Int): scala.Boolean =
+    (codePoint >= MIN_SUPPLEMENTARY_CODE_POINT) && (codePoint <= MAX_CODE_POINT)
+
+  @inline def isHighSurrogate(ch: Char): scala.Boolean =
+    (ch & HighSurrogateMask) == HighSurrogateID
+
+  @inline def isLowSurrogate(ch: Char): scala.Boolean =
+    (ch & LowSurrogateMask) == LowSurrogateID
+
+  @inline def isSurrogate(ch: Char): scala.Boolean =
+    (ch & SurrogateMask) == SurrogateID
+
+  @inline def isSurrogatePair(high: Char, low: Char): scala.Boolean =
+    (((high << 16) | low) & SurrogatePairMask) == SurrogatePairID
+
+  @inline def charCount(codePoint: Int): Int =
+    if (codePoint >= MIN_SUPPLEMENTARY_CODE_POINT) 2 else 1
+
+  @inline def toCodePoint(high: Char, low: Char): Int = {
+    (((high & SurrogateUsefulPartMask) + HighSurrogateAddValue) << HighSurrogateShift) |
+      (low & SurrogateUsefulPartMask)
+  }
+
+  @inline def highSurrogate(codePoint: Int): Char =
+    (HighSurrogateID | ((codePoint >> HighSurrogateShift) - HighSurrogateAddValue)).toChar
+
+  @inline def lowSurrogate(codePoint: Int): Char =
+    (LowSurrogateID | (codePoint & SurrogateUsefulPartMask)).toChar
+
+  // Code point manipulation in character sequences ---------------------------
+
+  def toChars(codePoint: Int, dst: Array[Char], dstIndex: Int): Int = {
+    if (isBmpCodePoint(codePoint)) {
+      dst(dstIndex) = codePoint.toChar
+      1
+    } else if (isValidCodePoint(codePoint)) {
+      dst(dstIndex) = highSurrogate(codePoint)
+      dst(dstIndex + 1) = lowSurrogate(codePoint)
+      2
+    } else {
+      throw new IllegalArgumentException()
+    }
+  }
+
+  def toChars(codePoint: Int): Array[Char] = {
+    if (isBmpCodePoint(codePoint))
+      Array(codePoint.toChar)
+    else if (isValidCodePoint(codePoint))
+      Array(highSurrogate(codePoint), lowSurrogate(codePoint))
+    else
+      throw new IllegalArgumentException()
+  }
+
+  def codePointCount(seq: CharSequence, beginIndex: Int, endIndex: Int): Int = {
+    if (endIndex > seq.length() || beginIndex < 0 || endIndex < beginIndex)
+      throw new IndexOutOfBoundsException
+    var res = endIndex - beginIndex
+    var i = beginIndex
+    val end = endIndex - 1
+    while (i < end) {
+      if (isSurrogatePair(seq.charAt(i), seq.charAt(i + 1)))
+        res -= 1
+      i += 1
+    }
+    res
+  }
+
+  // Unicode Character Database-related functions -----------------------------
 
   def getType(ch: scala.Char): Int = getType(ch.toInt)
 
@@ -228,46 +347,6 @@ object Character {
   @inline private[this] def isSpaceCharImpl(tpe: Int): scala.Boolean =
     tpe == SPACE_SEPARATOR || tpe == LINE_SEPARATOR || tpe == PARAGRAPH_SEPARATOR
 
-  // --- UTF-16 surrogate pairs handling ---
-  // See http://en.wikipedia.org/wiki/UTF-16
-
-  private final val HighSurrogateMask       = 0xfc00 // 111111 00  00000000
-  private final val HighSurrogateID         = 0xd800 // 110110 00  00000000
-  private final val LowSurrogateMask        = 0xfc00 // 111111 00  00000000
-  private final val LowSurrogateID          = 0xdc00 // 110111 00  00000000
-  private final val SurrogateUsefulPartMask = 0x03ff // 000000 11  11111111
-
-  @inline def isHighSurrogate(c: scala.Char): scala.Boolean =
-    (c & HighSurrogateMask) == HighSurrogateID
-  @inline def isLowSurrogate(c: scala.Char): scala.Boolean =
-    (c & LowSurrogateMask) == LowSurrogateID
-  @inline def isSurrogate(c: scala.Char): scala.Boolean =
-    isHighSurrogate(c) || isLowSurrogate(c)
-  @inline def isSurrogatePair(high: scala.Char, low: scala.Char): scala.Boolean =
-    isHighSurrogate(high) && isLowSurrogate(low)
-
-  @inline def charCount(codePoint: Int): Int =
-    if (codePoint >= MIN_SUPPLEMENTARY_CODE_POINT) 2 else 1
-
-  @inline def toCodePoint(high: scala.Char, low: scala.Char): Int =
-    ((high & SurrogateUsefulPartMask) << 10) + (low & SurrogateUsefulPartMask) + 0x10000
-
-  // --- End of UTF-16 surrogate pairs handling ---
-
-  def codePointCount(seq: CharSequence, beginIndex: Int, endIndex: Int): Int = {
-    if (endIndex > seq.length() || beginIndex < 0 || endIndex < beginIndex)
-      throw new IndexOutOfBoundsException
-    var res = endIndex - beginIndex
-    var i = beginIndex
-    val end = endIndex - 1
-    while (i < end) {
-      if (isSurrogatePair(seq.charAt(i), seq.charAt(i + 1)))
-        res -= 1
-      i += 1
-    }
-    res
-  }
-
   def isLowerCase(c: scala.Char): scala.Boolean =
     isLowerCase(c.toInt)
 
@@ -296,15 +375,6 @@ object Character {
     ('\u2160' <= c && c <= '\u216F') || ('\u24B6' <= c && c <= '\u24CF') ||
     getType(c) == UPPERCASE_LETTER
   }
-
-  @inline def isValidCodePoint(codePoint: Int): scala.Boolean =
-    codePoint >= MIN_CODE_POINT && codePoint <= MAX_CODE_POINT
-
-  @inline def isBmpCodePoint(codePoint: Int): scala.Boolean =
-    codePoint >= MIN_VALUE && codePoint <= MAX_VALUE
-
-  @inline def isSupplementaryCodePoint(codePoint: Int): scala.Boolean =
-    codePoint >= MIN_SUPPLEMENTARY_CODE_POINT && codePoint <= MAX_CODE_POINT
 
   def isTitleCase(c: scala.Char): scala.Boolean =
     isTitleCase(c.toInt)
@@ -470,7 +540,7 @@ object Character {
       case _ if codePoint >= 0x1f80 && codePoint <= 0x1faf =>
         (codePoint | 0x0008)
       case _ =>
-        val upperChars = _String.fromCodePoint(codePoint).toUpperCase()
+        val upperChars = toString(codePoint).toUpperCase()
         upperChars.length match {
           case 1 =>
             upperChars.charAt(0).toInt
@@ -490,20 +560,24 @@ object Character {
   def toLowerCase(ch: scala.Char): scala.Char = toLowerCase(ch.toInt).toChar
 
   def toLowerCase(codePoint: scala.Int): scala.Int = {
-    val lowerChars = _String.fromCodePoint(codePoint).toLowerCase()
-
-    lowerChars.length match {
-      case 1 =>
-        lowerChars.charAt(0).toInt
-      case 2 =>
-        val high = lowerChars.charAt(0)
-        val low = lowerChars.charAt(1)
-        if (isSurrogatePair(high, low))
-          toCodePoint(high, low)
-        else
-          codePoint
+    codePoint match {
+      case 0x0130 =>
+        0x0069 // İ => i
       case _ =>
-        codePoint
+        val lowerChars = toString(codePoint).toLowerCase()
+        lowerChars.length match {
+          case 1 =>
+            lowerChars.charAt(0).toInt
+          case 2 =>
+            val high = lowerChars.charAt(0)
+            val low = lowerChars.charAt(1)
+            if (isSurrogatePair(high, low))
+              toCodePoint(high, low)
+            else
+              codePoint
+          case _ =>
+            codePoint
+        }
     }
   }
 
@@ -541,57 +615,13 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
 
   //def getNumericValue(c: scala.Char): Int
 
-  /* Misc */
-  //def reverseBytes(ch: scala.Char): scala.Char
-
-  def toChars(codePoint: Int): Array[Char] = {
-    if (!isValidCodePoint(codePoint))
-      throw new IllegalArgumentException()
-
-    if (isSupplementaryCodePoint(codePoint))
-      Array(highSurrogateOf(codePoint), lowSurrogateOf(codePoint))
-    else
-      Array(codePoint.toChar)
-  }
-
-  def toChars(codePoint: Int, dst: Array[Char], dstIndex: Int): Int = {
-    if (!isValidCodePoint(codePoint))
-      throw new IllegalArgumentException()
-
-    if (isSupplementaryCodePoint(codePoint)) {
-      dst(dstIndex) = highSurrogateOf(codePoint)
-      dst(dstIndex + 1) = lowSurrogateOf(codePoint)
-      2
-    } else {
-      dst(dstIndex) = codePoint.toChar
-      1
-    }
-  }
-
-  private[lang] def codePointToString(codePoint: Int): String = {
-    if (!isValidCodePoint(codePoint))
-      throw new IllegalArgumentException()
-
-    if (isSupplementaryCodePoint(codePoint))
-      highSurrogateOf(codePoint).toString + lowSurrogateOf(codePoint).toString
-    else
-      codePoint.toChar.toString
-  }
-
-  @inline private def highSurrogateOf(codePoint: Int): Char =
-    (0xd800 | ((codePoint >> 10) - (0x10000 >> 10))).toChar
-
-  @inline private def lowSurrogateOf(codePoint: Int): Char =
-    (0xdc00 | (codePoint & 0x3ff)).toChar
-
-  @inline def toString(c: scala.Char): String = {
-    js.Dynamic.global.String
-      .fromCharCode(c.toInt.asInstanceOf[js.Dynamic])
-      .asInstanceOf[String]
-  }
+  // Miscellaneous ------------------------------------------------------------
 
   @inline def compare(x: scala.Char, y: scala.Char): Int =
     x - y
+
+  @inline def reverseBytes(ch: scala.Char): scala.Char =
+    ((ch >> 8) | (ch << 8)).toChar
 
   // UnicodeBlock
 

@@ -66,7 +66,7 @@ class StringBuilder
   def append(d: scala.Double): StringBuilder = append(d.toString())
 
   def appendCodePoint(codePoint: Int): StringBuilder =
-    append(Character.codePointToString(codePoint))
+    append(Character.toString(codePoint))
 
   def delete(start: Int, end: Int): StringBuilder =
     replace(start, end, "")
