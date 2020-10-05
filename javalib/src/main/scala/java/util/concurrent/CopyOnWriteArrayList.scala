@@ -14,7 +14,7 @@ package java.util.concurrent
 
 import java.lang.{reflect => jlr}
 import java.util._
-import java.util.function.Predicate
+import java.util.function.{Predicate, UnaryOperator}
 
 import scala.annotation.tailrec
 
@@ -218,6 +218,18 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
     }
     false // the outer loop finished without entering the inner one
     // scalastyle:on return
+  }
+
+  override def replaceAll(operator: UnaryOperator[E]): Unit = {
+    val size = this.size()
+    if (size != 0) {
+      copyIfNeeded()
+      var i = 0
+      while (i != size) {
+        innerSet(i, operator.apply(innerGet(i)))
+        i += 1
+      }
+    }
   }
 
   override def toString: String =

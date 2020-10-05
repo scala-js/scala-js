@@ -20,6 +20,7 @@ import org.scalajs.testsuite.utils.CollectionsTestBase
 
 import java.{lang => jl}
 import java.{util => ju}
+import java.util.function.UnaryOperator
 
 import scala.reflect.ClassTag
 
@@ -437,6 +438,20 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
 
       assertTrue(ll.isEmpty())
     }
+  }
+
+  @Test def replaceAll(): Unit = {
+    val list = factory.fromElements(2, 45, 8, -2, 4)
+    list.replaceAll(new UnaryOperator[Int] {
+      def apply(t: Int): Int = t * 3
+    })
+
+    assertEquals(5, list.size())
+    assertEquals(6, list.get(0))
+    assertEquals(135, list.get(1))
+    assertEquals(24, list.get(2))
+    assertEquals(-6, list.get(3))
+    assertEquals(12, list.get(4))
   }
 
   @Test def sortWithNaturalOrdering(): Unit = {
