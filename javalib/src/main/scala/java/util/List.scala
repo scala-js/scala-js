@@ -12,7 +12,42 @@
 
 package java.util
 
+import java.util.function.UnaryOperator
+
+import scala.scalajs.js.annotation.JavaDefaultMethod
+
 trait List[E] extends Collection[E] {
+  @JavaDefaultMethod
+  def replaceAll(operator: UnaryOperator[E]): Unit = {
+    val iter = listIterator()
+    while (iter.hasNext())
+      iter.set(operator.apply(iter.next()))
+  }
+
+  @JavaDefaultMethod
+  def sort(c: Comparator[_ >: E]): Unit = {
+    val arrayBuf = toArray()
+    Arrays.sort[AnyRef with E](arrayBuf.asInstanceOf[Array[AnyRef with E]], c)
+
+    val len = arrayBuf.length
+
+    if (this.isInstanceOf[RandomAccess]) {
+      var i = 0
+      while (i != len) {
+        set(i, arrayBuf(i).asInstanceOf[E])
+        i += 1
+      }
+    } else {
+      var i = 0
+      val iter = listIterator()
+      while (i != len) {
+        iter.next()
+        iter.set(arrayBuf(i).asInstanceOf[E])
+        i += 1
+      }
+    }
+  }
+
   def get(index: Int): E
   def set(index: Int, element: E): E
   def add(index: Int, element: E): Unit

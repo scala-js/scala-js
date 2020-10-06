@@ -822,9 +822,13 @@ object Arrays {
   }
 
   @inline
-  private def toOrdering[T](cmp: Comparator[T]): Ordering[T] = {
-    new Ordering[T] {
-      def compare(x: T, y: T): Int = cmp.compare(x, y)
+  private def toOrdering[T <: AnyRef](cmp: Comparator[_ >: T]): Ordering[T] = {
+    if (cmp == null) {
+      naturalOrdering[T]
+    } else {
+      new Ordering[T] {
+        def compare(x: T, y: T): Int = cmp.compare(x, y)
+      }
     }
   }
 }

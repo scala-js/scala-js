@@ -27,26 +27,22 @@ object CollectionsOnListTest extends CollectionsTestBase {
 
   // Test: sort[T<:Comparable[T]](List[T])
   def sort_on_comparables(factory: ListFactory): Unit = {
-    if (factory.sortableUsingCollections) {
-      test_sort_on_comparables[CustomComparable](factory,
+    test_sort_on_comparables[CustomComparable](factory,
         new CustomComparable(_), false)
-      test_sort_on_comparables[jl.Integer](factory, jl.Integer.valueOf)
-      test_sort_on_comparables[jl.Long](factory, _.toLong)
-      test_sort_on_comparables[jl.Double](factory, _.toDouble)
-    }
+    test_sort_on_comparables[jl.Integer](factory, jl.Integer.valueOf)
+    test_sort_on_comparables[jl.Long](factory, _.toLong)
+    test_sort_on_comparables[jl.Double](factory, _.toDouble)
   }
 
   // Test: sort[T](List[T], Comparator[T])
   def sort_with_comparator(factory: ListFactory): Unit = {
-    if (factory.sortableUsingCollections) {
-      test_sort_with_comparator[CustomComparable](factory,
+    test_sort_with_comparator[CustomComparable](factory,
         new CustomComparable(_), (x, y) => x.compareTo(y), false)
-      test_sort_with_comparator[jl.Integer](factory, _.toInt, (x, y) => x.compareTo(y))
-      test_sort_with_comparator[jl.Long](factory, _.toLong,
+    test_sort_with_comparator[jl.Integer](factory, _.toInt, (x, y) => x.compareTo(y))
+    test_sort_with_comparator[jl.Long](factory, _.toLong,
         (x, y) => x.compareTo(y))
-      test_sort_with_comparator[jl.Double](factory, _.toDouble,
+    test_sort_with_comparator[jl.Double](factory, _.toDouble,
         (x, y) => x.compareTo(y))
-    }
   }
 
   private def test_sort_on_comparables[T <: AnyRef with Comparable[T]: ClassTag](
