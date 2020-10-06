@@ -427,12 +427,10 @@ class AnalyzerTest {
     val classDefs = Seq(singleDef("A"), singleDef("B"))
 
     testScriptAndModule(classDefs) { scriptAnalysis =>
-      assertContainsError("ConflictingTopLevelExport(None, foo, A, B)", scriptAnalysis) {
-        case ConflictingTopLevelExport(None, "foo",
-            List(TLEInfo(_, _, ClsName("A")), TLEInfo(_, _, ClsName("B")))) =>
+      assertContainsError("MultiplePublicModulesWithoutModuleSupport(A, B)", scriptAnalysis) {
+        case MultiplePublicModulesWithoutModuleSupport(List(ModID("A"), ModID("B"))) =>
           true
-        case ConflictingTopLevelExport(None, "foo",
-            List(TLEInfo(_, _, ClsName("B")), TLEInfo(_, _, ClsName("A")))) =>
+        case MultiplePublicModulesWithoutModuleSupport(List(ModID("B"), ModID("A"))) =>
           true
       }
     } { moduleAnalysis =>
@@ -451,24 +449,14 @@ class AnalyzerTest {
 
     val classDefs = Seq(singleDef("A"), singleDef("B"))
 
-    testScriptAndModule(classDefs) { scriptAnalysis =>
-      assertContainsError("ConflictingTopLevelExport(None, foo, A, B)", scriptAnalysis) {
-        case ConflictingTopLevelExport(None, "foo",
-            List(TLEInfo(_, _, ClsName("A")), TLEInfo(_, _, ClsName("B")))) =>
-          true
-        case ConflictingTopLevelExport(None, "foo",
-            List(TLEInfo(_, _, ClsName("B")), TLEInfo(_, _, ClsName("A")))) =>
-          true
-      }
-    } { moduleAnalysis =>
-      assertContainsError("ConflictingTopLevelExport(Some(main), foo, A, B)", moduleAnalysis) {
-        case ConflictingTopLevelExport(Some(ModID("main")), "foo",
-            List(TLEInfo(_, _, ClsName("A")), TLEInfo(_, _, ClsName("B")))) =>
-          true
-        case ConflictingTopLevelExport(Some(ModID("main")), "foo",
-            List(TLEInfo(_, _, ClsName("B")), TLEInfo(_, _, ClsName("A")))) =>
-          true
-      }
+    val analysis = computeAnalysis(classDefs)
+    assertContainsError("ConflictingTopLevelExport(main, foo, A, B)", analysis) {
+      case ConflictingTopLevelExport(ModID("main"), "foo",
+          List(TLEInfo(_, _, ClsName("A")), TLEInfo(_, _, ClsName("B")))) =>
+        true
+      case ConflictingTopLevelExport(ModID("main"), "foo",
+          List(TLEInfo(_, _, ClsName("B")), TLEInfo(_, _, ClsName("A")))) =>
+        true
     }
   }
 
@@ -484,6 +472,31 @@ class AnalyzerTest {
     val analysis = computeAnalysis(classDefs)
     assertContainsError("ConflictingTopLevelExport(_, foo, <degenerate>)", analysis) {
       case ConflictingTopLevelExport(_, "foo", _) => true
+    }
+  }
+
+  @Test
+  def multipleModulesTopLevelExportAndModuleInitializer(): AsyncResult = await {
+    val classDefs = Seq(classDef("A",
+        kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
+        memberDefs = List(
+            trivialCtor("A"),
+            mainMethodDef(Skip())
+        ),
+        topLevelExportDefs = List(TopLevelModuleExportDef("A", "foo"))))
+
+    val moduleInitializer =
+      ModuleInitializer.mainMethodWithArgs("A", "main").withModuleID("B")
+
+    testScriptAndModule(classDefs, moduleInitializers = List(moduleInitializer)) { scriptAnalysis =>
+      assertContainsError("MultiplePublicModulesWithoutModuleSupport(A, B)", scriptAnalysis) {
+        case MultiplePublicModulesWithoutModuleSupport(List(ModID("A"), ModID("B"))) =>
+          true
+        case MultiplePublicModulesWithoutModuleSupport(List(ModID("B"), ModID("A"))) =>
+          true
+      }
+    } { moduleAnalysis =>
+      assertNoError(moduleAnalysis)
     }
   }
 
@@ -688,6 +701,7 @@ object AnalyzerTest {
 
   private def computeAnalysis(classDefs: Seq[ClassDef],
       symbolRequirements: SymbolRequirement = reqsFactory.none(),
+      moduleInitializers: Seq[ModuleInitializer] = Nil,
       config: StandardConfig = StandardConfig(),
       stdlib: Future[Seq[IRFile]] = TestIRRepo.minilib)(
       implicit ec: ExecutionContext): Future[Analysis] = {
@@ -695,7 +709,7 @@ object AnalyzerTest {
       baseFiles <- stdlib
       irLoader <- new IRLoader().update(classDefs.map(MemClassDefIRFile(_)) ++ baseFiles)
       analysis <- Analyzer.computeReachability(
-          CommonPhaseConfig.fromStandardConfig(config), initializers = Nil,
+          CommonPhaseConfig.fromStandardConfig(config), moduleInitializers,
           symbolRequirements, allowAddingSyntheticMethods = true,
           checkAbstractReachability = true, irLoader)
     } yield {
@@ -703,12 +717,14 @@ object AnalyzerTest {
     }
   }
 
-  private def testScriptAndModule(classDefs: Seq[ClassDef])(
+  private def testScriptAndModule(classDefs: Seq[ClassDef],
+      moduleInitializers: Seq[ModuleInitializer] = Nil)(
       scriptTest: Analysis => Unit)(
       moduleTest: Analysis => Unit)(
       implicit ec: ExecutionContext): Future[Unit] = {
 
     val scriptAnalysis = computeAnalysis(classDefs,
+        moduleInitializers = moduleInitializers,
         config = StandardConfig().withModuleKind(ModuleKind.NoModule))
 
     val scriptResult = scriptAnalysis.map(scriptTest(_))

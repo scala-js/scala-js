@@ -186,13 +186,18 @@ object Analysis {
     def from: From = FromExports
   }
 
-  final case class ConflictingTopLevelExport(moduleID: Option[ModuleID], exportName: String,
+  final case class ConflictingTopLevelExport(moduleID: ModuleID, exportName: String,
       infos: List[TopLevelExportInfo]) extends Error {
     def from: From = FromExports
   }
 
   final case class ImportWithoutModuleSupport(module: String, info: ClassInfo,
       jsNativeMember: Option[MethodName], from: From) extends Error
+
+  final case class MultiplePublicModulesWithoutModuleSupport(
+      moduleIDs: List[ModuleID]) extends Error {
+    def from: From = FromExports
+  }
 
   sealed trait From
   final case class FromMethod(methodInfo: MethodInfo) extends From
@@ -238,12 +243,9 @@ object Analysis {
         s"${info.owningClass.nameString} when emitting a Script (NoModule) because it " +
         "is not a valid JavaScript identifier " +
         "(did you want to emit a module instead?)"
-      case ConflictingTopLevelExport(Some(moduleID), exportName, infos) =>
+      case ConflictingTopLevelExport(moduleID, exportName, infos) =>
         s"Conflicting top level exports for module $moduleID, name $exportName "
         "involving " + infos.map(_.owningClass.nameString).mkString(", ")
-      case ConflictingTopLevelExport(None, exportName, infos) =>
-        s"Conflicting top level exports for name $exportName involving " +
-        infos.map(_.owningClass.nameString).mkString(", ")
       case ImportWithoutModuleSupport(module, info, None, _) =>
         s"${info.displayName} needs to be imported from module " +
         s"'$module' but module support is disabled"
@@ -251,6 +253,9 @@ object Analysis {
         s"${info.displayName}.${jsNativeMember.displayName} " +
         s"needs to be imported from module '$module' but " +
         "module support is disabled"
+      case MultiplePublicModulesWithoutModuleSupport(moduleIDs) =>
+        "Found multiple public modules but module support is disabled: " +
+        moduleIDs.map(_.id).mkString("[", ", ", "]")
     }
 
     logger.log(level, headMsg)
