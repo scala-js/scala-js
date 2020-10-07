@@ -12,8 +12,13 @@
 
 package java.util
 
+import scala.scalajs.js.annotation.JavaDefaultMethod
+
 trait Iterator[E] {
   def hasNext(): Boolean
   def next(): E
-  def remove(): Unit
+
+  @JavaDefaultMethod
+  def remove(): Unit =
+    throw new UnsupportedOperationException("remove")
 }

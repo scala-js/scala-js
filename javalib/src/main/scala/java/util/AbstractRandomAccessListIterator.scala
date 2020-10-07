@@ -39,7 +39,7 @@ abstract private[util] class AbstractRandomAccessListIterator[E](private var i: 
 
   def previousIndex(): Int = i - 1
 
-  def remove(): Unit = {
+  override def remove(): Unit = {
     checkThatHasLast()
     remove(last)
     if (last < i)

@@ -18,5 +18,6 @@ trait ListIterator[E] extends Iterator[E] {
   def previous(): E
   def previousIndex(): Int
   def nextIndex(): Int
+  def remove(): Unit
   def set(e: E): Unit
 }

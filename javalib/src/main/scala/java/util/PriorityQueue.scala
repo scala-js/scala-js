@@ -151,7 +151,7 @@ class PriorityQueue[E] private (
         last
       }
 
-      def remove(): Unit = {
+      override def remove(): Unit = {
         /* Once we start removing elements, the inner array of the enclosing
          * PriorityQueue will be modified in arbitrary ways. In particular,
          * entries yet to be iterated can be moved before `nextIdx` if the

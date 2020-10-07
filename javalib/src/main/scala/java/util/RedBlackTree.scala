@@ -748,7 +748,7 @@ private[util] object RedBlackTree {
       nextResult(node)
     }
 
-    def remove(): Unit = {
+    override def remove(): Unit = {
       val node = lastNode
       if (node eq null)
         throw new IllegalStateException()

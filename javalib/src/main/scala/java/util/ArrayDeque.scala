@@ -176,7 +176,7 @@ class ArrayDeque[E] private (private var inner: js.Array[E])
         inner(index)
       }
 
-      def remove(): Unit = {
+      override def remove(): Unit = {
         checkStatus()
         if (index < 0 || index >= inner.size) {
           throw new IllegalStateException()

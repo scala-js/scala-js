@@ -143,7 +143,7 @@ class ConcurrentLinkedQueue[E]()
         lastNode.value.value
       }
 
-      def remove(): Unit = {
+      override def remove(): Unit = {
         if (lastNode eq null)
           throw new IllegalStateException()
 

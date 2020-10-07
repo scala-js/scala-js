@@ -133,7 +133,7 @@ class IdentityHashMap[K, V] private (
         def next(): K =
           iter.next().inner
 
-        def remove(): Unit =
+        override def remove(): Unit =
           iter.remove()
       }
     }
@@ -200,7 +200,7 @@ class IdentityHashMap[K, V] private (
         def next(): Map.Entry[K, V] =
           new MapEntry(iter.next())
 
-        def remove(): Unit =
+        override def remove(): Unit =
           iter.remove()
       }
     }
