@@ -79,7 +79,7 @@ class ConcurrentHashMap[K, V] private (initialCapacity: Int, loadFactor: Float)
   override def equals(o: Any): Boolean =
     inner.equals(o)
 
-  def putIfAbsent(key: K, value: V): V = {
+  override def putIfAbsent(key: K, value: V): V = {
     if (value == null)
       throw new NullPointerException()
     val old = inner.get(key) // throws if `key` is null
@@ -88,11 +88,9 @@ class ConcurrentHashMap[K, V] private (initialCapacity: Int, loadFactor: Float)
     old
   }
 
-  def remove(key: Any, value: Any): Boolean = {
-    if (value == null)
-      throw new NullPointerException()
+  override def remove(key: Any, value: Any): Boolean = {
     val old = inner.get(key) // throws if `key` is null
-    if (value.equals(old)) { // false if `old` is null
+    if (old != null && old.equals(value)) { // false if `value` is null
       inner.remove(key)
       true
     } else {

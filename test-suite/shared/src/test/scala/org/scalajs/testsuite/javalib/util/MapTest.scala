@@ -13,6 +13,7 @@
 package org.scalajs.testsuite.javalib.util
 
 import java.{util => ju}
+import java.util.function.{BiConsumer, BiFunction, Function}
 
 import org.junit.Test
 import org.junit.Assert._
@@ -1119,6 +1120,305 @@ trait MapTest {
     assertEquals(TestObj(56), entry.getValue())
     assertEquals(TestObj(56), mp.get(key))
   }
+
+  @Test def testGetOrDefault(): Unit = {
+    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+
+    assertEquals("one", mp.getOrDefault("ONE", "def"))
+    assertEquals("def", mp.getOrDefault("FOUR", "def"))
+    assertNull(mp.getOrDefault("FIVE", null))
+
+    if (factory.allowsNullValues) {
+      mp.put("nullable", null)
+      assertNull(mp.getOrDefault("nullable", "def"))
+    }
+  }
+
+  @Test def testForEach(): Unit = {
+    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+
+    val b = List.newBuilder[(String, String)]
+    mp.forEach(new BiConsumer[String, String] {
+      def accept(key: String, value: String): Unit =
+        b += ((key, value))
+    })
+    val result = b.result()
+
+    val expected = List("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+
+    if (factory.guaranteesInsertionOrder)
+      assertEquals(expected, result)
+    else
+      assertEquals(expected.toSet, result.toSet)
+  }
+
+  @Test def testReplaceAll(): Unit = {
+    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+
+    mp.replaceAll(new BiFunction[String, String, String] {
+      def apply(key: String, value: String): String =
+        s"$key -> $value"
+    })
+
+    assertEquals(3, mp.size())
+    assertEquals("ONE -> one", mp.get("ONE"))
+    assertEquals("TWO -> two", mp.get("TWO"))
+    assertEquals("THREE -> three", mp.get("THREE"))
+
+    if (factory.allowsNullValues) {
+      mp.put("nullable", null)
+
+      mp.replaceAll(new BiFunction[String, String, String] {
+        def apply(key: String, value: String): String =
+          if (key.startsWith("ONE")) null
+          else if (value == null) "it was null"
+          else value
+      })
+
+      assertTrue(mp.containsKey("ONE"))
+      assertNull(mp.get("ONE"))
+      assertEquals("it was null", mp.get("nullable"))
+    } else {
+      assertThrows(classOf[NullPointerException], mp.replaceAll(new BiFunction[String, String, String] {
+        def apply(key: String, value: String): String = null
+      }))
+    }
+  }
+
+  @Test def testPutIfAbsent(): Unit = {
+    val mp = factory.empty[String, String]
+    assertNull(mp.putIfAbsent("abc", "def"))
+    assertEquals("def", mp.get("abc"))
+    assertNull(mp.putIfAbsent("123", "456"))
+    assertEquals("456", mp.get("123"))
+    assertEquals("def", mp.putIfAbsent("abc", "def"))
+    assertEquals("def", mp.putIfAbsent("abc", "ghi"))
+    assertEquals("456", mp.putIfAbsent("123", "789"))
+    assertEquals("def", mp.putIfAbsent("abc", "jkl"))
+
+    if (factory.allowsNullValues) {
+      mp.put("nullable", null)
+      assertNull(mp.putIfAbsent("nullable", "non null"))
+      assertEquals("non null", mp.get("nullable"))
+    }
+  }
+
+  @Test def testConditionalRemove(): Unit = {
+    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+
+    assertFalse(mp.remove("non existing", "value"))
+    assertFalse(mp.containsKey("non existing"))
+
+    assertFalse(mp.remove("TWO", "one"))
+    assertEquals("two", mp.get("TWO"))
+    assertFalse(mp.remove("TWO", null))
+    assertEquals("two", mp.get("TWO"))
+
+    assertTrue(mp.remove("ONE", "one"))
+    assertFalse(mp.containsKey("ONE"))
+
+    if (factory.allowsNullValues) {
+      mp.put("nullable", null)
+      assertFalse(mp.remove("nullable", "value"))
+      assertTrue(mp.containsKey("nullable"))
+      assertTrue(mp.remove("nullable", null))
+      assertFalse(mp.containsKey("nullable"))
+    }
+  }
+
+  @Test def testConditionalReplace(): Unit = {
+    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+
+    assertTrue(mp.replace("ONE", "one", "four"))
+    assertEquals("four", mp.get("ONE"))
+    assertFalse(mp.replace("TWO", "not two", "five"))
+    assertEquals("two", mp.get("TWO"))
+    assertFalse(mp.replace("non existing", "foo", "bar"))
+    assertFalse(mp.containsKey("non existing"))
+
+    if (factory.allowsNullValues) {
+      assertFalse(mp.replace("ONE", null, "new value"))
+      assertEquals("four", mp.get("ONE"))
+
+      mp.put("nullable", null)
+      assertFalse(mp.replace("nullable", "not null", "new value"))
+      assertTrue(mp.replace("nullable", null, "nullable value"))
+      assertEquals("nullable value", mp.get("nullable"))
+
+      assertTrue(mp.replace("nullable", "nullable value", null))
+      assertTrue(mp.containsKey("nullable"))
+      assertNull(mp.get("nullable"))
+    } else {
+      assertThrows(classOf[NullPointerException], mp.replace("ONE", null, "one"))
+      assertThrows(classOf[NullPointerException], mp.replace("ONE", "four", null))
+    }
+  }
+
+  @Test def testUnconditionalReplace(): Unit = {
+    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+
+    assertEquals("one", mp.replace("ONE", "four"))
+    assertEquals("four", mp.get("ONE"))
+    assertEquals("two", mp.get("TWO"))
+
+    assertNull(mp.replace("non existing", "value"))
+    assertFalse(mp.containsKey("non existing"))
+
+    if (factory.allowsNullValues) {
+      assertEquals("four", mp.replace("ONE", null))
+      assertTrue(mp.containsKey("ONE"))
+      assertNull(mp.get("ONE"))
+
+      assertNull(mp.replace("ONE", "new one"))
+      assertEquals("new one", mp.get("ONE"))
+    } else {
+      assertThrows(classOf[NullPointerException], mp.replace("ONE", null))
+      assertEquals("four", mp.get("ONE"))
+    }
+
+    if (factory.allowsNullKeys) {
+      assertEquals(null, mp.replace(null, "value"))
+      assertFalse(mp.containsKey(null))
+
+      mp.put(null, "null value")
+      assertEquals("null value", mp.replace(null, "new value"))
+      assertEquals("new value", mp.get(null))
+    } else {
+      assertThrows(classOf[NullPointerException], mp.replace(null, "one"))
+    }
+  }
+
+  @Test def testComputeIfAbsent(): Unit = {
+    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+
+    val notCalled = new Function[String, String] {
+      def apply(key: String): String =
+        throw new AssertionError(s"function should not have been called for $key")
+    }
+
+    val lengthAsString = new Function[String, String] {
+      def apply(key: String): String = key.length().toString()
+    }
+
+    val returnsNull = new Function[String, String] {
+      def apply(key: String): String = null
+    }
+
+    assertEquals("two", mp.computeIfAbsent("TWO", notCalled))
+    assertEquals("5", mp.computeIfAbsent("SEVEN", lengthAsString))
+    assertEquals("5", mp.get("SEVEN"))
+
+    assertNull(mp.computeIfAbsent("non existing", returnsNull))
+    assertFalse(mp.containsKey("non existing"))
+
+    if (factory.allowsNullValues) {
+      mp.put("nullable", null)
+      assertEquals("8", mp.computeIfAbsent("nullable", lengthAsString))
+      assertEquals("8", mp.get("nullable"))
+    }
+  }
+
+  @Test def testComputeIfPresent(): Unit = {
+    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+
+    val notCalled = new BiFunction[String, String, String] {
+      def apply(key: String, value: String): String =
+        throw new AssertionError(s"function should not have been called for $key")
+    }
+
+    val remappingFun = new BiFunction[String, String, String] {
+      def apply(key: String, value: String): String = s"$key - $value"
+    }
+
+    val returnsNull = new BiFunction[String, String, String] {
+      def apply(key: String, value: String): String = null
+    }
+
+    assertEquals("TWO - two", mp.computeIfPresent("TWO", remappingFun))
+    assertEquals("TWO - two", mp.get("TWO"))
+
+    assertNull(mp.computeIfPresent("ONE", returnsNull))
+    assertFalse(mp.containsKey("ONE"))
+
+    assertNull(mp.computeIfPresent("non existing", notCalled))
+    assertFalse(mp.containsKey("non existing"))
+
+    if (factory.allowsNullValues) {
+      mp.put("nullable", null)
+      assertNull(mp.computeIfPresent("nullable", notCalled))
+      assertTrue(mp.containsKey("nullable"))
+      assertNull(mp.get("nullable"))
+    }
+  }
+
+  @Test def testCompute(): Unit = {
+    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+
+    val remappingFun = new BiFunction[String, String, String] {
+      def apply(key: String, value: String): String = s"$key - $value"
+    }
+
+    val returnsNull = new BiFunction[String, String, String] {
+      def apply(key: String, value: String): String = null
+    }
+
+    assertEquals("TWO - two", mp.compute("TWO", remappingFun))
+    assertEquals("TWO - two", mp.get("TWO"))
+
+    assertEquals("SEVEN - null", mp.compute("SEVEN", remappingFun))
+    assertEquals("SEVEN - null", mp.get("SEVEN"))
+
+    assertNull(mp.compute("non existing", returnsNull))
+    assertFalse(mp.containsKey("non existing"))
+
+    assertNull(mp.compute("ONE", returnsNull))
+    assertFalse(mp.containsKey("ONE"))
+
+    if (factory.allowsNullValues) {
+      mp.put("nullable", null)
+      assertNull(mp.compute("nullable", returnsNull))
+      assertFalse(mp.containsKey("nullable"))
+
+      mp.put("nullable", null)
+      assertEquals("nullable - null", mp.compute("nullable", remappingFun))
+      assertEquals("nullable - null", mp.get("nullable"))
+    }
+  }
+
+  @Test def testMerge(): Unit = {
+    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+
+    val notCalled = new BiFunction[String, String, String] {
+      def apply(prevValue: String, newValue: String): String =
+        throw new AssertionError(s"function should not have been called for $prevValue")
+    }
+
+    val remappingFun = new BiFunction[String, String, String] {
+      def apply(prevValue: String, newValue: String): String = s"$prevValue - $newValue"
+    }
+
+    val returnsNull = new BiFunction[String, String, String] {
+      def apply(prevValue: String, newValue: String): String = null
+    }
+
+    assertEquals("two - def", mp.merge("TWO", "def", remappingFun))
+    assertEquals("two - def", mp.get("TWO"))
+
+    assertEquals("def", mp.merge("SEVEN", "def", notCalled))
+    assertEquals("def", mp.get("SEVEN"))
+
+    assertThrows(classOf[NullPointerException], mp.merge("non existing", null, notCalled))
+    assertThrows(classOf[NullPointerException], mp.merge("ONE", null, notCalled))
+
+    assertNull(mp.merge("ONE", "def", returnsNull))
+    assertFalse(mp.containsKey("ONE"))
+
+    if (factory.allowsNullValues) {
+      mp.put("nullable", null)
+      assertEquals("def", mp.merge("nullable", "def", notCalled))
+      assertEquals("def", mp.get("nullable"))
+    }
+  }
 }
 
 object MapTest {
@@ -1129,6 +1429,13 @@ trait MapFactory {
   def implementationName: String
 
   def empty[K: ClassTag, V: ClassTag]: ju.Map[K, V]
+
+  def fromKeyValuePairs[K: ClassTag, V: ClassTag](pairs: (K, V)*): ju.Map[K, V] = {
+    val result = empty[K, V]
+    for ((key, value) <- pairs)
+      result.put(key, value)
+    result
+  }
 
   def allowsNullKeys: Boolean
 
@@ -1141,4 +1448,6 @@ trait MapFactory {
   def withSizeLimit: Option[Int] = None
 
   def isIdentityBased: Boolean = false
+
+  def guaranteesInsertionOrder: Boolean = false
 }
