@@ -38,7 +38,7 @@ import Analysis._
 import Infos.{NamespacedMethodName, ReachabilityInfo}
 
 private final class Analyzer(config: CommonPhaseConfig,
-    initializers: Seq[ModuleInitializer.Initializer],
+    moduleInitializers: Seq[ModuleInitializer],
     symbolRequirements: SymbolRequirement,
     allowAddingSyntheticMethods: Boolean,
     checkAbstractReachability: Boolean,
@@ -126,15 +126,15 @@ private final class Analyzer(config: CommonPhaseConfig,
       }
     }
 
-    // External symbol requirements, including module initializers
+    // External symbol requirements.
     reachSymbolRequirement(symbolRequirements)
 
     // Reach static initializers.
     for (className <- inputProvider.classesWithEntryPoints())
       lookupClass(className)(_.reachStaticInitializer())
 
-    // Reach (module) initializers.
-    reachInitializers(initializers)
+    // Reach module initializers.
+    reachInitializers(moduleInitializers)
 
     // Reach top level exports
     reachTopLevelExports()
@@ -237,13 +237,13 @@ private final class Analyzer(config: CommonPhaseConfig,
   }
 
   private def reachInitializers(
-      initializers: Seq[ModuleInitializer.Initializer]): Unit = {
+      moduleInitializers: Seq[ModuleInitializer]): Unit = {
     implicit val from = FromCore("module initializers")
 
-    for (initializer <- initializers) {
+    for (moduleInitializer <- moduleInitializers) {
       import ModuleInitializerImpl._
 
-      fromInitializer(initializer) match {
+      fromInitializer(moduleInitializer.initializer) match {
         case VoidMainMethod(className, mainMethodName) =>
           lookupClass(className) { classInfo =>
             classInfo.callMethodStatically(MemberNamespace.PublicStatic, mainMethodName)
@@ -268,13 +268,14 @@ private final class Analyzer(config: CommonPhaseConfig,
       infos.foreach(_.reach())
 
       if (isNoModule) {
-        // We need stricter checking, since moduleID will be ignored.
-        for {
-          (exportName, infos) <- infos.groupBy(_.exportName)
-          if infos.size > 1
-        } {
-          _errors += ConflictingTopLevelExport(None, exportName, infos)
-        }
+        // Check there is only a single module.
+        val publicModuleIDs = (
+            infos.map(_.moduleID) ++
+            moduleInitializers.map(i => ModuleID(i.moduleID))
+        ).distinct
+
+        if (publicModuleIDs.size > 1)
+          _errors += MultiplePublicModulesWithoutModuleSupport(publicModuleIDs)
       }
 
       // Check conflicts, record infos
@@ -282,7 +283,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         (id @ (moduleID, exportName), infos) <- infos.groupBy(i => (i.moduleID, i.exportName))
       } yield {
         if (infos.size > 1)
-          _errors += ConflictingTopLevelExport(Some(moduleID), exportName, infos)
+          _errors += ConflictingTopLevelExport(moduleID, exportName, infos)
 
         id -> infos.head
       }
@@ -1375,12 +1376,12 @@ object Analyzer {
     MethodName("getSuperclass", Nil, ClassRef(ClassClass))
 
   def computeReachability(config: CommonPhaseConfig,
-      initializers: Seq[ModuleInitializer.Initializer],
+      moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement,
       allowAddingSyntheticMethods: Boolean,
       checkAbstractReachability: Boolean,
       inputProvider: InputProvider)(implicit ec: ExecutionContext): Future[Analysis] = {
-    val analyzer = new Analyzer(config, initializers, symbolRequirements,
+    val analyzer = new Analyzer(config, moduleInitializers, symbolRequirements,
         allowAddingSyntheticMethods, checkAbstractReachability, inputProvider, ec)
     analyzer.computeReachability().map(_ => analyzer)
   }

@@ -68,9 +68,8 @@ final class Refiner(config: CommonPhaseConfig) {
       symbolRequirements: SymbolRequirement, logger: Logger)(
       implicit ec: ExecutionContext): Future[Analysis] = {
     for {
-      analysis <- Analyzer.computeReachability(config,
-          moduleInitializers.map(_.initializer), symbolRequirements,
-          allowAddingSyntheticMethods = false,
+      analysis <- Analyzer.computeReachability(config, moduleInitializers,
+          symbolRequirements, allowAddingSyntheticMethods = false,
           checkAbstractReachability = false, inputProvider)
     } yield {
       /* There must not be linking errors at this point. If there are, it is a

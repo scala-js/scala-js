@@ -92,10 +92,9 @@ final class BaseLinker(config: CommonPhaseConfig) {
     }
 
     for {
-      analysis <- Analyzer.computeReachability(config,
-          moduleInitializers.map(_.initializer), symbolRequirements,
-          allowAddingSyntheticMethods = true, checkAbstractReachability = true,
-          irLoader)
+      analysis <- Analyzer.computeReachability(config, moduleInitializers,
+          symbolRequirements, allowAddingSyntheticMethods = true,
+          checkAbstractReachability = true, irLoader)
     } yield {
       if (analysis.errors.nonEmpty) {
         reportErrors(analysis.errors)
