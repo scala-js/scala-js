@@ -17,7 +17,7 @@ import org.junit.Assert._
 
 import java.{util => ju}
 
-class ComparatorTestOnJDK8 {
+class ComparatorTest {
 
   @Test def reversed(): Unit = {
     class IntComparator extends ju.Comparator[Int] {

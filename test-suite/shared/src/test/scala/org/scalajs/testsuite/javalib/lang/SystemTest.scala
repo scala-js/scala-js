@@ -192,6 +192,15 @@ class SystemTest {
     }
   }
 
+  @Test def lineSeparator(): Unit = {
+    val lineSep = System.lineSeparator()
+
+    if (!executingInJVM)
+      assertEquals("\n", lineSep)
+    else
+      assertTrue(Set("\n", "\r", "\r\n").contains(lineSep))
+  }
+
   @Test def getenv_should_return_an_unmodifiable_map(): Unit = {
     assertTrue(System.getenv().isInstanceOf[java.util.Map[String, String]])
 

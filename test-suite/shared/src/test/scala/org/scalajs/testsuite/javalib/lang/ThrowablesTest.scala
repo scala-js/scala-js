@@ -100,6 +100,11 @@ class ThrowablesTest {
     test2(new Throwable(_))
     test3(new Throwable(_, _))
 
+    test0(new BootstrapMethodError)
+    test1(new BootstrapMethodError(_))
+    test2(new BootstrapMethodError(_))
+    test3(new BootstrapMethodError(_, _))
+
     test0(new Exception)
     test1(new Exception(_))
     test2(new Exception(_))
@@ -114,6 +119,11 @@ class ThrowablesTest {
     test1(new IllegalStateException(_))
     test2(new IllegalStateException(_))
     test3(new IllegalStateException(_, _))
+
+    test0(new ReflectiveOperationException)
+    test1(new ReflectiveOperationException(_))
+    test2(new ReflectiveOperationException(_))
+    test3(new ReflectiveOperationException(_, _))
 
     test0(new RuntimeException)
     test1(new RuntimeException(_))
@@ -147,6 +157,50 @@ class ThrowablesTest {
     import java.util.concurrent.ExecutionException
     test2(new ExecutionException(_))
     test3(new ExecutionException(_, _))
+  }
+
+  @Test def noWritableStackTrace(): Unit = {
+    class NoStackTraceException(msg: String)
+        extends Throwable(msg, null, true, false) {
+
+      override def fillInStackTrace(): Throwable = {
+        fail("NoStackTraceException.fillInStackTrace() must not be called")
+        this
+      }
+    }
+
+    val e = new NoStackTraceException("error")
+    assertEquals(0, e.getStackTrace().length)
+
+    e.setStackTrace(Array(new StackTraceElement("class", "method", "file", 0)))
+    assertEquals(0, e.getStackTrace().length)
+  }
+
+  @Test def suppression(): Unit = {
+    val e = new Exception("error")
+    assertEquals(0, e.getSuppressed().length)
+
+    val suppressed1 = new IllegalArgumentException("suppressed 1")
+    val suppressed2 = new UnsupportedOperationException("suppressed 2")
+
+    // There is no ordering guarantee in suppressed exceptions, so we compare sets
+
+    e.addSuppressed(suppressed1)
+    assertEquals(Set(suppressed1), e.getSuppressed().toSet)
+
+    e.addSuppressed(suppressed2)
+    assertEquals(Set(suppressed1, suppressed2), e.getSuppressed().toSet)
+  }
+
+  @Test def noSuppression(): Unit = {
+    class NoSuppressionException(msg: String)
+        extends Throwable(msg, null, false, true)
+
+    val e = new NoSuppressionException("error")
+    assertEquals(0, e.getSuppressed().length)
+
+    e.addSuppressed(new Exception("suppressed"))
+    assertEquals(0, e.getSuppressed().length)
   }
 
   @Test def throwableStillHasMethodsOfObject(): Unit = {
@@ -197,9 +251,14 @@ class ThrowablesTest {
     assertMessageNoCause("1.5", new AssertionError(1.5f))
     assertMessageNoCause("2.5", new AssertionError(2.5))
 
-    val th = new RuntimeException("kaboom")
-    val e = new AssertionError(th)
-    assertEquals(th.toString, e.getMessage)
-    assertSame(th, e.getCause)
+    val th1 = new RuntimeException("kaboom")
+    val e1 = new AssertionError(th1)
+    assertEquals(th1.toString, e1.getMessage)
+    assertSame(th1, e1.getCause)
+
+    val th2 = new RuntimeException("kaboom")
+    val e2 = new AssertionError("boom", th2)
+    assertEquals("boom", e2.getMessage)
+    assertSame(th2, e2.getCause)
   }
 }

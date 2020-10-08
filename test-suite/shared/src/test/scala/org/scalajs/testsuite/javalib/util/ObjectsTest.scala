@@ -18,9 +18,9 @@ import org.junit.Test
 import org.junit.Assert._
 import org.scalajs.testsuite.utils.AssertThrows._
 
-class ObjectsTestOnJDK7 {
+class ObjectsTest {
 
-  @Test def equals(): Unit = {
+  @Test def testEquals(): Unit = {
     val obj = new Object
     assertTrue(ju.Objects.equals(null, null))
     assertFalse(ju.Objects.equals(null, obj))
@@ -33,7 +33,7 @@ class ObjectsTestOnJDK7 {
     assertFalse(ju.Objects.equals("abc", "abd"))
   }
 
-  @Test def test_equals(): Unit = {
+  @Test def testDeepEquals(): Unit = {
     val obj = new Object
     assertTrue(ju.Objects.deepEquals(null, null))
     assertFalse(ju.Objects.deepEquals(null, obj))
@@ -50,7 +50,7 @@ class ObjectsTestOnJDK7 {
     assertTrue(ju.Objects.deepEquals(Array(Array(1)), Array(Array(1))))
   }
 
-  @Test def test_hashCode(): Unit = {
+  @Test def testHashCode(): Unit = {
     val obj = new Object
     assertEquals(0, ju.Objects.hashCode(null))
     assertEquals(obj.hashCode, ju.Objects.hashCode(obj))
@@ -65,7 +65,7 @@ class ObjectsTestOnJDK7 {
     assertEquals(ju.Arrays.hashCode(Array[AnyRef]("1", null)), ju.Objects.hash("1", null))
   }
 
-  @Test def test_toString(): Unit = {
+  @Test def testToString(): Unit = {
     val obj = new Object
     assertEquals("null", ju.Objects.toString(null))
     assertEquals("abc", ju.Objects.toString(null, "abc"))
@@ -92,5 +92,15 @@ class ObjectsTestOnJDK7 {
     assertThrows(classOf[NullPointerException], ju.Objects.requireNonNull(null, "message"))
     assertEquals("abc", ju.Objects.requireNonNull("abc"))
     assertEquals("abc", ju.Objects.requireNonNull("abc", ""))
+  }
+
+  @Test def isNull(): Unit = {
+    assertTrue(ju.Objects.isNull(null))
+    assertFalse(ju.Objects.isNull(new Object))
+  }
+
+  @Test def nonNull(): Unit = {
+    assertFalse(ju.Objects.nonNull(null))
+    assertTrue(ju.Objects.nonNull(new Object))
   }
 }
