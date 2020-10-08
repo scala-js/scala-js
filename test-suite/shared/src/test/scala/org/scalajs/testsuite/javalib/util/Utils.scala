@@ -37,9 +37,6 @@ object Utils {
       def hasNext(): Boolean = iter.hasNext()
 
       def next(): B = f(iter.next())
-
-      override def remove(): Unit =
-        throw new UnsupportedOperationException("Iterator.remove()")
     }
   }
 
@@ -60,8 +57,6 @@ object Utils {
     assertIteratorSameElementsAsSet(expected: _*)(new ju.Iterator[A] {
       def hasNext(): Boolean = enumeration.hasMoreElements()
       def next(): A = enumeration.nextElement()
-      override def remove(): Unit =
-        throw new UnsupportedOperationException("Iterator.remove()")
     })
   }
 

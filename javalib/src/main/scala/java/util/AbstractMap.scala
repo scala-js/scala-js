@@ -138,7 +138,7 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] {
 
           def next(): K = iter.next().getKey()
 
-          def remove(): Unit = iter.remove()
+          override def remove(): Unit = iter.remove()
         }
       }
     }
@@ -156,7 +156,7 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] {
 
           def next(): V = iter.next().getValue()
 
-          def remove(): Unit = iter.remove()
+          override def remove(): Unit = iter.remove()
         }
       }
     }

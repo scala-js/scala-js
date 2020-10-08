@@ -215,7 +215,7 @@ private class BackedUpListIterator[E](innerIterator: ListIterator[E], fromIndex:
 
   def previousIndex(): Int = i - 1
 
-  def remove(): Unit = {
+  override def remove(): Unit = {
     innerIterator.remove()
     changeSize(-1)
   }

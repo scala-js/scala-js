@@ -56,7 +56,6 @@ class IterableDefaultTest extends IterableTest {
           new ju.Iterator[E] {
             override def hasNext(): Boolean = false
             override def next(): E = throw new NoSuchElementException()
-            override def remove(): Unit = throw new NoSuchElementException()
           }
         }
       }
@@ -69,7 +68,6 @@ class IterableDefaultTest extends IterableTest {
           new ju.Iterator[E] {
             override def hasNext(): Boolean = l.hasNext
             override def next(): E = l.next
-            override def remove(): Unit = throw new NoSuchElementException()
           }
         }
       }

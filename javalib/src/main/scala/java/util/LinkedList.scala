@@ -323,7 +323,7 @@ class LinkedList[E]() extends AbstractSequentialList[E]
 
       def previousIndex(): Int = (i - 1).toInt
 
-      def remove(): Unit = {
+      override def remove(): Unit = {
         checkThatHasLast()
 
         if (currentNode eq null) {
@@ -384,7 +384,7 @@ class LinkedList[E]() extends AbstractSequentialList[E]
         ret.value
       }
 
-      def remove(): Unit = {
+      override def remove(): Unit = {
         if (!removeEnabled)
           throw new IllegalStateException()
 

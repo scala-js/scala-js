@@ -33,9 +33,6 @@ final class TrivialImmutableMap[K, V] private (contents: List[Entry[K, V]])
             remaining = remaining.tail
             head
           }
-
-          override def remove(): Unit =
-            throw new UnsupportedOperationException("Iterator.remove()")
         }
       }
     }

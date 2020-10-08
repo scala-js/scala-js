@@ -52,9 +52,6 @@ final class TrivialImmutableCollection[A] private (contents: Array[AnyRef])
         nextIndex += 1
         result
       }
-
-      override def remove(): Unit =
-        throw new UnsupportedOperationException("Iterator.remove()")
     }
   }
 

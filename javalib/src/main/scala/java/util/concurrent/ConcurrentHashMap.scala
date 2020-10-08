@@ -190,7 +190,7 @@ object ConcurrentHashMap {
         extract(node)
       }
 
-      def remove(): Unit = {
+      override def remove(): Unit = {
         val last = lastNode
         if (last eq null)
           throw new IllegalStateException("next must be called at least once before remove")
