@@ -18,3 +18,7 @@ bin/
 /.metals/
 /project/**/metals.sbt
 /.vscode/
+
+# User specific
+/.jvmopts
+/.sbtopts
