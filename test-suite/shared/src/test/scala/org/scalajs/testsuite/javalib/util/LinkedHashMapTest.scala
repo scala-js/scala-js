@@ -14,8 +14,10 @@ package org.scalajs.testsuite.javalib.util
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import java.{util => ju, lang => jl}
+import java.util.function.{BiConsumer, BiFunction, Function}
 
 import scala.reflect.ClassTag
 
@@ -80,18 +82,20 @@ abstract class LinkedHashMapTest extends HashMapTest {
     lhm.put("0", "new 0")
     lhm.put("100", "elem 100")
     lhm.put("42", "new 42")
+    lhm.putIfAbsent("101", "elem 101")
     lhm.put("52", "new 52")
     lhm.put("1", "new 1")
+    lhm.putIfAbsent("42", "ignored")
     lhm.put("98", "new 98")
 
     val expectedKeys = {
       if (factory.accessOrder) {
         val keys = (2 until 42) ++ (43 until 52) ++ (53 until 98) ++
-            List(99, 0, 100, 42, 52, 1, 98)
+            List(99, 0, 100, 101, 52, 1, 42, 98)
         keys.takeRight(withSizeLimit.getOrElse(keys.length))
       } else {
-        if (withSizeLimit.isDefined) (55 until 100) ++ List(0, 100, 42, 52, 1)
-        else 0 to 100
+        if (withSizeLimit.isDefined) (56 until 100) ++ List(0, 100, 42, 101, 52, 1)
+        else 0 to 101
       }
     }.map(_.toString())
 
@@ -107,7 +111,7 @@ abstract class LinkedHashMapTest extends HashMapTest {
     assertSameEntriesOrdered(expected: _*)(lhm)
   }
 
-  @Test def should_iterate_in__after_accessing_elements(): Unit = {
+  @Test def should_iterate_in_order_after_accessing_elements(): Unit = {
     val lhm = factory.empty[String, String]
     (0 until 100).foreach(key => lhm.put(key.toString(), s"elem $key"))
 
@@ -150,6 +154,108 @@ abstract class LinkedHashMapTest extends HashMapTest {
     assertSameEntriesOrdered(expected: _*)(lhm)
   }
 
+  @Test def testAccessOrderWithAllTheMethods(): Unit = {
+    /* Relevant JavaDoc excerpt:
+     *
+     * > Invoking the put, putIfAbsent, get, getOrDefault, compute,
+     * > computeIfAbsent, computeIfPresent, or merge methods results in an
+     * > access to the corresponding entry (assuming it exists after the
+     * > invocation completes).
+     * >
+     * > The replace methods only result in an access of the entry if the value
+     * > is replaced.
+     */
+
+    assumeTrue("relevant for access-order only", factory.accessOrder)
+    assumeFalse("assuming that entries are not going to be automatically removed",
+        factory.withSizeLimit.isDefined)
+
+    val initialElems = (0 until 100).map(key => key.toString() -> s"elem $key").toList
+    val lhm = factory.fromKeyValuePairs[String, String](initialElems: _*)
+
+    (0 until 100).foreach(key => lhm.put(key.toString(), s"elem $key"))
+
+    val biFunctionReturnsNull = new BiFunction[String, String, String] {
+      def apply(x: String, y: String): String = null
+    }
+
+    val computeFunKeep = new BiFunction[String, String, String] {
+      def apply(key: String, value: String): String = s"$key - $value"
+    }
+
+    val computeFunDrop = biFunctionReturnsNull
+
+    val computeIfAbsentFunAdd = new Function[String, String] {
+      def apply(key: String): String = s"computed $key"
+    }
+
+    val computeIfAbsentFunNoAdd = new Function[String, String] {
+      def apply(key: String): String = null
+    }
+
+    val computeIfPresentFunReplace = new BiFunction[String, String, String] {
+      def apply(key: String, value: String): String = s"replaced $key - $value"
+    }
+
+    val computeIfPresentFunDrop = biFunctionReturnsNull
+
+    val mergeFunAddOrReplace = new BiFunction[String, String, String] {
+      def apply(oldValue: String, value: String): String = s"merged $oldValue - $value"
+    }
+
+    val mergeFunDrop = biFunctionReturnsNull
+
+    lhm.put("30", "new 30")
+    lhm.putIfAbsent("42", "ignored") // no-op, affects order
+    lhm.putIfAbsent("123", "elem 123") // appends
+    lhm.get("23") // no-op, affects order
+    lhm.getOrDefault("54", "ignored") // no-op, affects order
+    lhm.getOrDefault("321", "used") // does not affect order
+    lhm.containsKey("25") // no-op, does not affect order
+    lhm.containsValue("elem 10") // no-op, does not affect order
+    lhm.compute("43", computeFunKeep)
+    lhm.compute("432", computeFunKeep) // appends
+    lhm.compute("65", computeFunDrop) // removes
+    lhm.remove("21", "not 21") // no-op, does not affect order
+    lhm.computeIfAbsent("76", computeIfAbsentFunAdd) // no-op, affects order
+    lhm.computeIfAbsent("532", computeIfAbsentFunAdd)
+    lhm.computeIfAbsent("567", computeIfAbsentFunNoAdd) // no-op, does not affect order
+    lhm.computeIfPresent("33", computeIfPresentFunReplace)
+    lhm.computeIfPresent("456", computeIfPresentFunReplace) // no-op, does not affect order
+    lhm.computeIfPresent("78", computeIfPresentFunDrop) // removes
+    lhm.merge("92", "append", mergeFunAddOrReplace)
+    lhm.merge("987", "default", mergeFunAddOrReplace) // appends
+    lhm.merge("27", "unused", mergeFunDrop) // removes
+    lhm.replace("48", "new 48")
+    lhm.replace("543", "unused") // no-op, does not affect order
+    lhm.replace("12", "elem 12", "new 12") // affects order
+    lhm.replace("14", "not elem 14", "unused") // not replaced, does not affect order!
+
+    val latestAccesses: List[(String, String)] = List(
+        "30" -> "new 30",
+        "42" -> "elem 42",
+        "123" -> "elem 123",
+        "23" -> "elem 23",
+        "54" -> "elem 54",
+        "43" -> "43 - elem 43",
+        "432" -> "432 - null",
+        "76" -> "elem 76",
+        "532" -> "computed 532",
+        "33" -> "replaced 33 - elem 33",
+        "92" -> "merged elem 92 - append",
+        "987" -> "default",
+        "48" -> "new 48",
+        "12" -> "new 12"
+    )
+
+    val removedKeys = Set("65", "78", "27")
+
+    val alteredKeys = latestAccesses.map(_._1).toSet ++ removedKeys
+    val allElems = initialElems.filterNot(kv => alteredKeys(kv._1)) ::: latestAccesses
+
+    assertSameEntriesOrdered(allElems: _*)(lhm)
+  }
+
   private def assertSameEntriesOrdered[A, B](expected: (A, B)*)(
       map: ju.Map[A, B]): Unit = {
 
@@ -185,6 +291,19 @@ abstract class LinkedHashMapTest extends HashMapTest {
     assertFalse(entryIter.hasNext())
     assertFalse(keyIter.hasNext())
     assertFalse(valueIter.hasNext())
+
+    // Traversal with forEach should also be in the same order
+
+    val expectedIter2 = expected.iterator
+    map.forEach(new BiConsumer[A, B] {
+      def accept(key: A, value: B): Unit = {
+        assertTrue(expectedIter2.hasNext)
+        val (expectedKey, expectedValue) = expectedIter2.next()
+        assertEquals(expectedKey, key)
+        assertEquals(expectedValue, value)
+      }
+    })
+    assertFalse(expectedIter2.hasNext)
   }
 
 }
@@ -213,4 +332,6 @@ class LinkedHashMapFactory(val accessOrder: Boolean,
         new ju.LinkedHashMap[K, V](16, 0.75f, accessOrder)
     }
   }
+
+  override def guaranteesInsertionOrder: Boolean = !accessOrder
 }

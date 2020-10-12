@@ -40,36 +40,6 @@ class ConcurrentHashMapTest extends MapTest {
     assertFalse(elements.hasMoreElements)
   }
 
-  @Test def `should replace contained items`(): Unit = {
-    val chm = factory.empty[String, String]
-
-    chm.put("ONE", "one")
-    assertEquals("one", chm.replace("ONE", "two"))
-    expectThrows(classOf[NullPointerException], chm.replace("ONE", null))
-    expectThrows(classOf[NullPointerException], chm.replace(null, "one"))
-    assertEquals("two", chm.get("ONE"))
-
-    assertFalse(chm.replace("ONE", "one", "two"))
-    expectThrows(classOf[NullPointerException], chm.replace(null, "two", "one"))
-    expectThrows(classOf[NullPointerException], chm.replace("ONE", null, "one"))
-    expectThrows(classOf[NullPointerException], chm.replace("ONE", "two", null))
-
-    assertTrue(chm.replace("ONE", "two", "one"))
-    assertEquals("one", chm.get("ONE"))
-  }
-
-  @Test def testPutIfAbsent_issue_2539(): Unit = {
-    val chm = factory.empty[String, String]
-    assertNull(chm.putIfAbsent("abc", "def"))
-    assertEquals("def", chm.get("abc"))
-    assertNull(chm.putIfAbsent("123", "456"))
-    assertEquals("456", chm.get("123"))
-    assertEquals("def", chm.putIfAbsent("abc", "def"))
-    assertEquals("def", chm.putIfAbsent("abc", "ghi"))
-    assertEquals("456", chm.putIfAbsent("123", "789"))
-    assertEquals("def", chm.putIfAbsent("abc", "jkl"))
-  }
-
   @Test def testIteratorsAreWeaklyConsistent(): Unit = {
     /* The Javadoc says the following about weakly consistent iterators:
      * > they are guaranteed to traverse elements as they existed upon

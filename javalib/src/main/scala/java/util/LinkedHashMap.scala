@@ -13,6 +13,7 @@
 package java.util
 
 import java.{util => ju}
+import java.util.function.BiConsumer
 
 class LinkedHashMap[K, V](initialCapacity: Int, loadFactor: Float,
     accessOrder: Boolean)
@@ -105,6 +106,14 @@ class LinkedHashMap[K, V](initialCapacity: Int, loadFactor: Float,
   }
 
   protected def removeEldestEntry(eldest: Map.Entry[K, V]): Boolean = false
+
+  override def forEach(action: BiConsumer[_ >: K, _ >: V]): Unit = {
+    var node = eldest
+    while (node ne null) {
+      action.accept(node.key, node.value)
+      node = node.younger
+    }
+  }
 
   private[util] override def nodeIterator(): ju.Iterator[HashMap.Node[K, V]] =
     new NodeIterator

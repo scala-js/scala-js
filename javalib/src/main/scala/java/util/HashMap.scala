@@ -15,6 +15,7 @@ package java.util
 import scala.annotation.tailrec
 
 import java.{util => ju}
+import java.util.function.BiConsumer
 
 import ScalaOps._
 
@@ -80,21 +81,14 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
   override def isEmpty(): Boolean =
     contentSize == 0
 
-  override def get(key: Any): V = {
-    val node = findNode(key)
-    if (node eq null) {
-      null.asInstanceOf[V]
-    } else {
-      nodeWasAccessed(node)
-      node.value
-    }
-  }
+  override def get(key: Any): V =
+    getOrDefaultImpl(key, null.asInstanceOf[V])
 
   override def containsKey(key: Any): Boolean =
     findNode(key) ne null
 
   override def put(key: K, value: V): V =
-    put0(key, value)
+    put0(key, value, ifAbsent = false)
 
   override def putAll(m: Map[_ <: K, _ <: V]): Unit = {
     m match {
@@ -102,7 +96,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
         val iter = m.nodeIterator()
         while (iter.hasNext()) {
           val next = iter.next()
-          put0(next.key, next.value, next.hash)
+          put0(next.key, next.value, next.hash, ifAbsent = false)
         }
       case _ =>
         super.putAll(m)
@@ -131,6 +125,73 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
 
   def entrySet(): ju.Set[ju.Map.Entry[K, V]] =
     new EntrySet
+
+  override def getOrDefault(key: Any, defaultValue: V): V =
+    getOrDefaultImpl(key, defaultValue)
+
+  /** Common implementation for get() and getOrDefault().
+   *
+   *  It is not directly inside the body of getOrDefault(), because subclasses
+   *  could override getOrDefault() to re-rely on get().
+   */
+  private def getOrDefaultImpl(key: Any, defaultValue: V): V = {
+    val node = findNode(key)
+    if (node eq null) {
+      defaultValue
+    } else {
+      nodeWasAccessed(node)
+      node.value
+    }
+  }
+
+  override def putIfAbsent(key: K, value: V): V =
+    put0(key, value, ifAbsent = true)
+
+  override def remove(key: Any, value: Any): Boolean = {
+    val (node, idx) = findNodeAndIndexForRemoval(key)
+    if ((node ne null) && Objects.equals(node.value, value)) {
+      remove0(node, idx)
+      true
+    } else {
+      false
+    }
+  }
+
+  override def replace(key: K, oldValue: V, newValue: V): Boolean = {
+    val node = findNode(key)
+    if ((node ne null) && Objects.equals(node.value, oldValue)) {
+      node.value = newValue
+      nodeWasAccessed(node)
+      true
+    } else {
+      false
+    }
+  }
+
+  override def replace(key: K, value: V): V = {
+    val node = findNode(key)
+    if (node ne null) {
+      val old = node.value
+      node.value = value
+      nodeWasAccessed(node)
+      old
+    } else {
+      null.asInstanceOf[V]
+    }
+  }
+
+  override def forEach(action: BiConsumer[_ >: K, _ >: V]): Unit = {
+    val len = table.length
+    var i = 0
+    while (i != len) {
+      var node = table(i)
+      while (node ne null) {
+        action.accept(node.key, node.value)
+        node = node.next
+      }
+      i += 1
+    }
+  }
 
   override def clone(): AnyRef =
     new HashMap[K, V](this)
@@ -172,24 +233,26 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
    *
    *  @param key the key to add
    *  @param value the value to add
+   *  @param ifAbsent if true, do not override an existing mapping
    *  @return the old value associated with `key`, or `null` if there was none
    */
   @inline
-  private[this] def put0(key: K, value: V): V =
-    put0(key, value, computeHash(key))
+  private[this] def put0(key: K, value: V, ifAbsent: Boolean): V =
+    put0(key, value, computeHash(key), ifAbsent)
 
   /** Adds a key-value pair to this map
    *
    *  @param key the key to add
    *  @param value the value to add
    *  @param hash the **improved** hashcode of `key` (see computeHash)
+   *  @param ifAbsent if true, do not override an existing mapping
    *  @return the old value associated with `key`, or `null` if there was none
    */
-  private[this] def put0(key: K, value: V, hash: Int): V = {
+  private[this] def put0(key: K, value: V, hash: Int, ifAbsent: Boolean): V = {
     if (contentSize + 1 >= threshold)
       growTable()
     val idx = index(hash)
-    put0(key, value, hash, idx)
+    put0(key, value, hash, idx, ifAbsent)
   }
 
   /** Adds a key-value pair to this map
@@ -198,9 +261,11 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
    *  @param value the value to add
    *  @param hash the **improved** hashcode of `key` (see computeHash)
    *  @param idx the index in the `table` corresponding to the `hash`
+   *  @param ifAbsent if true, do not override an existing mapping
    *  @return the old value associated with `key`, or `null` if there was none
    */
-  private[this] def put0(key: K, value: V, hash: Int, idx: Int): V = {
+  private[this] def put0(key: K, value: V, hash: Int, idx: Int,
+      ifAbsent: Boolean): V = {
     // scalastyle:off return
     val newNode = table(idx) match {
       case null =>
@@ -214,7 +279,8 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
           if (n.hash == hash && Objects.equals(key, n.key)) {
             nodeWasAccessed(n)
             val old = n.value
-            n.value = value
+            if (!ifAbsent || (old == null))
+              n.value = value
             return old
           }
           prev = n
