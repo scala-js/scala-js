@@ -229,10 +229,16 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
 
   // Heavy lifting: modifications
 
-  /** Adds a key-value pair to this map
+  /** Puts a key-value pair into this map.
    *
-   *  @param key the key to add
-   *  @param value the value to add
+   *  If an entry already exists for the given key, `nodeWasAccessed` is
+   *  called, and, unless `ifAbsent` is true, its value is updated.
+   *
+   *  If no entry existed for the given key, a new entry is created with the
+   *  given value, and `nodeWasAdded` is called.
+   *
+   *  @param key the key to put
+   *  @param value the value to put
    *  @param ifAbsent if true, do not override an existing mapping
    *  @return the old value associated with `key`, or `null` if there was none
    */
@@ -240,33 +246,26 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
   private[this] def put0(key: K, value: V, ifAbsent: Boolean): V =
     put0(key, value, computeHash(key), ifAbsent)
 
-  /** Adds a key-value pair to this map
+  /** Puts a key-value pair into this map.
    *
-   *  @param key the key to add
-   *  @param value the value to add
+   *  If an entry already exists for the given key, `nodeWasAccessed` is
+   *  called, and, unless `ifAbsent` is true, its value is updated.
+   *
+   *  If no entry existed for the given key, a new entry is created with the
+   *  given value, and `nodeWasAdded` is called.
+   *
+   *  @param key the key to put
+   *  @param value the value to put
    *  @param hash the **improved** hashcode of `key` (see computeHash)
    *  @param ifAbsent if true, do not override an existing mapping
    *  @return the old value associated with `key`, or `null` if there was none
    */
   private[this] def put0(key: K, value: V, hash: Int, ifAbsent: Boolean): V = {
-    if (contentSize + 1 >= threshold)
+    // scalastyle:off return
+    val newContentSize = contentSize + 1
+    if (newContentSize >= threshold)
       growTable()
     val idx = index(hash)
-    put0(key, value, hash, idx, ifAbsent)
-  }
-
-  /** Adds a key-value pair to this map
-   *
-   *  @param key the key to add
-   *  @param value the value to add
-   *  @param hash the **improved** hashcode of `key` (see computeHash)
-   *  @param idx the index in the `table` corresponding to the `hash`
-   *  @param ifAbsent if true, do not override an existing mapping
-   *  @return the old value associated with `key`, or `null` if there was none
-   */
-  private[this] def put0(key: K, value: V, hash: Int, idx: Int,
-      ifAbsent: Boolean): V = {
-    // scalastyle:off return
     val newNode = table(idx) match {
       case null =>
         val newNode = this.newNode(key, hash, value, null, null)
@@ -295,7 +294,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
           n.previous = newNode
         newNode
     }
-    contentSize += 1
+    contentSize = newContentSize
     nodeWasAdded(newNode)
     null.asInstanceOf[V]
     // scalastyle:on return
