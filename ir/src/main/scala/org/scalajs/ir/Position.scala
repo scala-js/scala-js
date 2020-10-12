@@ -12,12 +12,15 @@
 
 package org.scalajs.ir
 
+/** Represents a character position in a source file
+ *
+ *  @param source Source file
+ *  @param line Zero-based line number
+ *  @param column Zero-based column number
+ */
 final case class Position(
-    /** Source file. */
     source: Position.SourceFile,
-    /** Zero-based line number. */
     line: Int,
-    /** Zero-based column number. */
     column: Int
 ) {
   def show: String = s"$line:$column"
