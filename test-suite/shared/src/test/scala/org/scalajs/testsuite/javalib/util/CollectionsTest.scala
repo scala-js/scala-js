@@ -84,6 +84,40 @@ class CollectionsTest extends CollectionsTestBase {
       map.clear() // Should not throw
   }
 
+  @Test def emptyIterator(): Unit = {
+    def freshIter: ju.Iterator[Int] = ju.Collections.emptyIterator[Int]
+
+    assertFalse(freshIter.hasNext)
+    expectThrows(classOf[NoSuchElementException], freshIter.next())
+    expectThrows(classOf[IllegalStateException], freshIter.remove())
+  }
+
+  @Test def emptyListIterator(): Unit = {
+    def test[E: ClassTag](toElem: Int => E): Unit = {
+      def freshIter: ju.ListIterator[E] = ju.Collections.emptyListIterator[E]
+
+      assertFalse(freshIter.hasNext)
+      assertFalse(freshIter.hasPrevious)
+      expectThrows(classOf[NoSuchElementException], freshIter.next())
+      expectThrows(classOf[NoSuchElementException], freshIter.previous())
+      expectThrows(classOf[IllegalStateException], freshIter.remove())
+      expectThrows(classOf[UnsupportedOperationException],
+          freshIter.add(toElem(0)))
+      expectThrows(classOf[IllegalStateException], freshIter.set(toElem(0)))
+    }
+
+    test[Int](_.toInt)
+    test[Long](_.toLong)
+    test[Double](_.toDouble)
+  }
+
+  @Test def emptyEnumeration(): Unit = {
+    def freshEnum: ju.Enumeration[Int] = ju.Collections.emptyEnumeration[Int]
+
+    assertFalse(freshEnum.hasMoreElements)
+    expectThrows(classOf[NoSuchElementException], freshEnum.nextElement())
+  }
+
   @Test def emptySet(): Unit = {
     def test[E: ClassTag](toElem: Int => E): Unit = {
       val emptySet = ju.Collections.emptySet[E]

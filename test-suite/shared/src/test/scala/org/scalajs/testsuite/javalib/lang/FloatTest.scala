@@ -14,6 +14,7 @@ package org.scalajs.testsuite.javalib.lang
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import java.lang.{Float => JFloat}
 
@@ -268,5 +269,56 @@ class FloatTest {
     assertEquals(0x80000001, f(-Float.MinPositiveValue)) // smallest neg subnormal form
     assertEquals(0x807fffff, f(-1.1754942e-38f))         // largest neg subnormal form
     assertEquals(0x807c5d44, f(-1.1421059e-38f))         // an arbitrary neg subnormal form
+  }
+
+  @Test def isFinite(): Unit = {
+    assertFalse(JFloat.isFinite(Float.PositiveInfinity))
+    assertFalse(JFloat.isFinite(Float.NegativeInfinity))
+    assertFalse(JFloat.isFinite(Float.NaN))
+    assertFalse(JFloat.isFinite(1f/0))
+    assertFalse(JFloat.isFinite(-1f/0))
+
+    assertTrue(JFloat.isFinite(0f))
+    assertTrue(JFloat.isFinite(1f))
+    assertTrue(JFloat.isFinite(123456f))
+    assertTrue(JFloat.isFinite(Float.MinValue))
+    assertTrue(JFloat.isFinite(Float.MaxValue))
+    assertTrue(JFloat.isFinite(Float.MinPositiveValue))
+  }
+
+  @Test def testStaticHashCode(): Unit = {
+    assumeFalse("Hash codes for doubles are different in JS than on the JVM",
+        executingInJVM)
+
+    def test(x: Float, expected: Int): Unit =
+      assertEquals(expected, JFloat.hashCode(x))
+
+    test(0.0f, 0)
+    test(-0.0f, -2147483648)
+    test(1234.0f, 1234)
+    test(1.5f, 1073217536)
+    test(-54.0f, -54)
+
+    test(Float.MinPositiveValue, 916455424)
+    test(Float.MinValue, 670040063)
+    test(Float.MaxValue, -1477443585)
+
+    test(Float.NaN, 2146959360)
+    test(Float.PositiveInfinity, 2146435072)
+    test(Float.NegativeInfinity, -1048576)
+  }
+
+  // The following tests are only to make sure that things link
+
+  @Test def sum(): Unit = {
+    assertEquals(12f, JFloat.sum(5f, 7f), 0f)
+  }
+
+  @Test def max(): Unit = {
+    assertEquals(7f, JFloat.max(5f, 7f), 0f)
+  }
+
+  @Test def min(): Unit = {
+    assertEquals(5f, JFloat.min(5f, 7f), 0f)
   }
 }
