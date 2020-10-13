@@ -20,6 +20,7 @@ import java.net.URLClassLoader
 import java.nio.file.Path
 
 import org.scalajs.linker.interface._
+import org.scalajs.linker.interface.unstable.OutputFileImpl
 
 /** Abstract implementation of a linker as needed by the sbt plugin.
  *
@@ -38,6 +39,10 @@ trait LinkerImpl {
       implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[Path])]
 
   def outputDirectory(path: Path): OutputDirectory
+
+  @deprecated("Use outputDirectory instead", "1.3.0")
+  final def outputFile(path: Path): LinkerOutput.File =
+    new OutputFileImpl(path.getFileName().toString(), outputDirectory(path.getParent()))
 }
 
 /** Factory methods and concrete implementations of `LinkerImpl`.

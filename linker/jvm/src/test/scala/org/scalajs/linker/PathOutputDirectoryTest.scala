@@ -54,4 +54,23 @@ class PathOutputDirectoryTest {
       assertEquals(lastModifiedBefore, lastModifiedAfter)
     }
   }
+
+  @Test
+  def readFull(): AsyncResult = await {
+    val dir = Jimfs.newFileSystem().getPath("/tmp")
+    Files.createDirectory(dir)
+
+    val fileName = "file.js"
+    val filePath = dir.resolve(fileName)
+
+    Files.write(filePath, dummyContent)
+
+    val readOp = OutputDirectoryImpl
+      .fromOutputDirectory(PathOutputDirectory(dir))
+      .readFull(fileName)
+
+    readOp.map { buf =>
+      assertEquals(ByteBuffer.wrap(dummyContent), buf)
+    }
+  }
 }

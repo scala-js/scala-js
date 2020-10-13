@@ -41,6 +41,9 @@ object PathOutputDirectory {
       }
     }
 
+    def readFull(name: String)(implicit ec: ExecutionContext): Future[ByteBuffer] =
+      withChannel(getPath(name), StandardOpenOption.READ)(readFromChannel(_))
+
     def listFiles()(implicit ec: ExecutionContext): Future[List[String]] = Future {
       blocking {
         val builder = List.newBuilder[String]
@@ -97,6 +100,37 @@ object PathOutputDirectory {
     }
 
     writeLoop()
+    promise.future
+  }
+
+  private def readFromChannel(chan: AsynchronousFileChannel): Future[ByteBuffer] = {
+    val size = blocking(chan.size())
+
+    if (size > Int.MaxValue)
+      throw new IOException(s"file is too large ($size bytes)")
+
+    val buf = ByteBuffer.allocate(size.toInt)
+
+    val promise = Promise[ByteBuffer]()
+
+    def readLoop(): Unit =
+      chan.read(buf, buf.position(), (), Handler)
+
+    object Handler extends CompletionHandler[Integer, Unit] {
+      def completed(read: Integer, unit: Unit): Unit = {
+        if (read == -1 || !buf.hasRemaining()) {
+          buf.flip()
+          promise.success(buf)
+        } else {
+          readLoop()
+        }
+      }
+
+      def failed(exc: Throwable, unit: Unit): Unit =
+        promise.failure(exc)
+    }
+
+    readLoop()
     promise.future
   }
 

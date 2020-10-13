@@ -249,57 +249,51 @@ private[sbtplugin] object ScalaJSPluginInternal {
       legacyKey := {
         val linkingResult = key.value
 
-        val module = {
-          val report = linkingResult.data
+        val linkerImpl = (scalaJSLinkerImpl in key).value
 
-          if (report.publicModules.size != 1) {
-            throw new MessageOnlyException(
-                "Linking did not return exactly one public module. " +
-                s"${legacyKey.key} can only deal with a single module. " +
-                s"Did you mean to invoke ${key.key} instead? " +
-                s"Full report:\n$report")
-          }
-
-          report.publicModules.head
-        }
-
-        val linkerOutputDir = linkerOutputDirectory(linkingResult)
-
-        val inputJSFile = linkerOutputDir / module.jsFileName
-        val inputSourceMapFile = module.sourceMapName.map(linkerOutputDir / _)
-
-        val expectedInputFiles = Set(inputJSFile) ++ inputSourceMapFile
-        val foundInputFiles = IO.listFiles(linkerOutputDir).toSet
-
-        if (foundInputFiles != expectedInputFiles) {
-          if (expectedInputFiles.subsetOf(foundInputFiles)) {
-            throw new MessageOnlyException(
-                "Linking produced more than a single JS file (and source map). " +
-                "This is likely due to multiple modules being output. " +
-                s"${legacyKey.key} can only deal with a single module. " +
-                s"Did you mean to invoke ${key.key} instead?" +
-                s"Expected files:\n$expectedInputFiles\n" +
-                s"Produced files:\n$foundInputFiles")
-          } else {
-            throw new MessageOnlyException(
-                "Linking did not produce the files mentioned in the report. " +
-                "This is a bug in the linker." +
-                s"Expected files:\n$expectedInputFiles\n" +
-                s"Produced files:\n$foundInputFiles")
-          }
-        }
+        val report = linkingResult.data
+        val outDir =
+          linkerImpl.outputDirectory(linkerOutputDirectory(linkingResult).toPath())
 
         val outputJSFile = (artifactPath in legacyKey).value
         val outputSourceMapFile = new File(outputJSFile.getPath + ".map")
 
-        IO.copyFile(inputJSFile, outputJSFile, preserveLastModified = true)
-        inputSourceMapFile.foreach(
-            IO.copyFile(_, outputSourceMapFile, preserveLastModified = true))
+        IO.createDirectory(outputJSFile.getParentFile)
+
+        // Dummy class to silence deprecation warnings.
+        abstract class Converter {
+          def convert(): Unit
+        }
+
+        object Converter extends Converter {
+          @deprecated("Deprecate to silence warnings", "never/always")
+          def convert(): Unit = {
+            val legacyOutput = {
+              def relURI(path: String) = new URI(null, null, path, null)
+              LinkerOutput(linkerImpl.outputFile(outputJSFile.toPath()))
+                .withSourceMap(linkerImpl.outputFile(outputSourceMapFile.toPath()))
+                .withSourceMapURI(relURI(outputSourceMapFile.getName()))
+                .withJSFileURI(relURI(outputJSFile.getName()))
+            }
+
+            await(streams.value.log) { eci =>
+              implicit val ec = eci
+              ReportToLinkerOutputAdapter.convert(report, outDir, legacyOutput).recover {
+                case e: ReportToLinkerOutputAdapter.UnsupportedLinkerOutputException =>
+                  throw new MessageOnlyException(
+                      "The linker produced a result not supported by the legacy " +
+                      s"task ${legacyKey.key}. Did you mean to invoke ${key.key} " +
+                      "instead? " + e.getMessage())
+              }
+            }
+          }
+        }
+
+        (Converter: Converter).convert()
 
         Attributed.blank(outputJSFile)
-          // we have always attached a source map, even if it wasn't written.
           .put(scalaJSSourceMap, outputSourceMapFile)
-          .put(scalaJSModuleKind, module.moduleKind)
+          .put(scalaJSModuleKind, report.publicModules.head.moduleKind)
       }
   )
 

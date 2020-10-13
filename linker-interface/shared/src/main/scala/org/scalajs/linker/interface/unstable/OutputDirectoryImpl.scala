@@ -30,6 +30,10 @@ abstract class OutputDirectoryImpl extends OutputDirectory {
   def writeFull(name: String, buf: ByteBuffer)(
       implicit ec: ExecutionContext): Future[Unit]
 
+  /** Fully read the given file into a new ByteBuffer. */
+  def readFull(name: String)(
+      implicit ec: ExecutionContext): Future[ByteBuffer]
+
   /** Lists all the files in the directory. */
   def listFiles()(implicit ec: ExecutionContext): Future[List[String]]
 
