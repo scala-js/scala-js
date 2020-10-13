@@ -396,11 +396,11 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
       scalaJSLinkerOutputDirectory in fastLinkJS :=
         ((crossTarget in fastLinkJS).value /
-            ((moduleName in fastLinkJS).value + "-dev")),
+            ((moduleName in fastLinkJS).value + "-fastopt")),
 
       scalaJSLinkerOutputDirectory in fullLinkJS :=
         ((crossTarget in fullLinkJS).value /
-            ((moduleName in fullLinkJS).value + "-prod")),
+            ((moduleName in fullLinkJS).value + "-opt")),
 
       artifactPath in fastOptJS :=
         ((crossTarget in fastOptJS).value /
