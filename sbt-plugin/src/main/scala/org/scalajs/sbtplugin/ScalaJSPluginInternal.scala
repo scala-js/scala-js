@@ -247,6 +247,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
       }.value,
 
       legacyKey := {
+        val s = streams.value
         val linkingResult = key.value
 
         val module = {
@@ -291,10 +292,32 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
         val outputJSFile = (artifactPath in legacyKey).value
         val outputSourceMapFile = new File(outputJSFile.getPath + ".map")
+        val hasSourceMap = inputSourceMapFile.isDefined
 
-        IO.copyFile(inputJSFile, outputJSFile, preserveLastModified = true)
-        inputSourceMapFile.foreach(
-            IO.copyFile(_, outputSourceMapFile, preserveLastModified = true))
+        FileFunction.cached(s.cacheDirectory, FilesInfo.lastModified,
+            FilesInfo.exists) { _ => // We don't need the files
+          import java.nio.charset.StandardCharsets.UTF_8
+          import org.scalajs.linker.interface.Linker
+
+          val sourceMapURI =
+            if (hasSourceMap) Some(new URI(outputSourceMapFile.getName()))
+            else None
+
+          val inputJSFileContent = IO.read(inputJSFile, UTF_8)
+          val patchedJSFileContent = Linker.patchJSFileContent(
+              inputJSFileContent, sourceMapURI)
+          IO.write(outputJSFile, patchedJSFileContent, UTF_8)
+
+          for (inputMapFile <- inputSourceMapFile) {
+            val jsFileURI = Some(new URI(outputJSFile.getName()))
+            val inputMapFileContent = IO.read(inputMapFile, UTF_8)
+            val patchedMapFileContent = Linker.patchSourceMapContent(
+                inputMapFileContent, jsFileURI)
+            IO.write(outputSourceMapFile, patchedMapFileContent, UTF_8)
+          }
+
+          (if (hasSourceMap) Set(outputSourceMapFile) else Set.empty[File]) + outputJSFile
+        } (Set(inputJSFile) ++ inputSourceMapFile.toIterable)
 
         Attributed.blank(outputJSFile)
           // we have always attached a source map, even if it wasn't written.

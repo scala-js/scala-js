@@ -98,7 +98,7 @@ abstract class Linker private[interface] () {
   }
 }
 
-private object Linker {
+private[scalajs] object Linker {
   private val sourceMapRe = """(?m)^//# sourceMappingURL=.*$""".r
 
   /* It is somewhat acceptable to parse the JSON field "file" with a Regex
@@ -157,7 +157,7 @@ private object Linker {
    *  URL with the provided `sourceMapURI`. In case `sourceMapURI` is None, the
    *  line is replaced with an empty line.
    */
-  private def patchJSFileContent(content: String,
+  private[scalajs] def patchJSFileContent(content: String,
       sourceMapURI: Option[URI]): String = {
 
     val newLine =
@@ -187,7 +187,7 @@ private object Linker {
    *  replaces it's value with `jsFileURI`. In case `jsFileURI` is None, it
    *  removes the key from the object.
    */
-  private def patchSourceMapContent(content: String,
+  private[scalajs] def patchSourceMapContent(content: String,
       jsFileURI: Option[URI]): String = {
 
     // No need for quoting: toASCIIString never returns '"'
