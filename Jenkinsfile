@@ -375,6 +375,7 @@ def Tasks = [
         testAdapter$v/mimaReportBinaryIssues \
         sbtPlugin/mimaReportBinaryIssues &&
     sbt ++$scala scalastyleCheck &&
+    sbt ++$scala scalafmtCheckAll &&
     sbt ++$scala ir$v/compile:doc \
         linkerInterface$v/compile:doc linker$v/compile:doc \
         testAdapter$v/compile:doc \
