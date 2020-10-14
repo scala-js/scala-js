@@ -19,7 +19,7 @@ package java.util
  *  their specifications.
  */
 private[util] class NullRejectingHashMap[K, V](
-    initialCapacity: Int, loadFactor: Double)
+    initialCapacity: Int, loadFactor: Float)
     extends HashMap[K, V](initialCapacity, loadFactor) {
 
   def this() =

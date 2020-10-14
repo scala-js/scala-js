@@ -19,7 +19,7 @@ import java.util.function.BiConsumer
 
 import ScalaOps._
 
-class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
+class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
     extends AbstractMap[K, V] with Serializable with Cloneable {
   self =>
 
@@ -27,7 +27,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
 
   if (initialCapacity < 0)
     throw new IllegalArgumentException("initialCapacity < 0")
-  if (loadFactor <= 0.0)
+  if (loadFactor <= 0.0f)
     throw new IllegalArgumentException("loadFactor <= 0.0")
 
   def this() =
@@ -381,7 +381,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
     Math.min(Integer.highestOneBit(Math.max(capacity - 1, 4)) * 2, 1 << 30)
 
   @inline private[this] def newThreshold(size: Int): Int =
-    (size.toDouble * loadFactor).toInt
+    (size.toDouble * loadFactor.toDouble).toInt
 
   // Iterators
 
