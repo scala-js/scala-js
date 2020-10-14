@@ -15,6 +15,7 @@ package org.scalajs.linker
 import scala.concurrent._
 
 import scala.scalajs.js
+import scala.scalajs.js.typedarray._
 import scala.scalajs.js.typedarray.TypedArrayBufferOps._
 
 import java.nio.ByteBuffer
@@ -42,6 +43,13 @@ object NodeOutputDirectory {
       }
 
       cbFuture[Unit](NodeFS.writeFile(path, data, _))
+    }
+
+    def readFull(name: String)(
+        implicit ec: ExecutionContext): Future[ByteBuffer] = {
+      cbFuture[Uint8Array](NodeFS.readFile(name, _)).map { ta =>
+        TypedArrayBuffer.wrap(ta.buffer, ta.byteOffset, ta.byteLength)
+      }
     }
 
     def listFiles()(implicit ec: ExecutionContext): Future[List[String]] =

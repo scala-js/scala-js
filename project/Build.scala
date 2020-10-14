@@ -727,7 +727,7 @@ object Build {
           "org.scala-js" %% "scalajs-logging" % "1.1.1",
           "com.novocode" % "junit-interface" % "0.11" % "test",
       ),
-  ).dependsOn(irProject)
+  ).dependsOn(irProject, jUnitAsyncJVM % "test")
 
   lazy val linkerInterfaceJS: MultiScalaProject = MultiScalaProject(
       id = "linkerInterfaceJS", base = file("linker-interface/js")

@@ -46,6 +46,15 @@ object MemOutputDirectory {
       Future.successful(())
     }
 
+    def readFull(name: String)(
+        implicit ec: ExecutionContext): Future[ByteBuffer] = {
+      _content.get(name).fold[Future[ByteBuffer]] {
+        fileNotFound(name)
+      } { c =>
+        Future.successful(ByteBuffer.wrap(c).asReadOnlyBuffer())
+      }
+    }
+
     def listFiles()(implicit ec: ExecutionContext): Future[List[String]] = synchronized {
       Future.successful(_content.keys.toList)
     }
@@ -54,7 +63,10 @@ object MemOutputDirectory {
       if (_content.remove(name).isDefined)
         Future.successful(())
       else
-        Future.failed(new IOException(s"file $name does not exist"))
+        fileNotFound(name)
     }
+
+    private def fileNotFound(name: String): Future[Nothing] =
+      Future.failed(new IOException(s"file $name does not exist"))
   }
 }
