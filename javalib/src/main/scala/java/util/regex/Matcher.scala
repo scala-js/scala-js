@@ -48,7 +48,7 @@ final class Matcher private[regex] (
     // Further, it might be wrong to just use ^$ delimiters for two reasons:
     // - They might already be there
     // - They might not behave as expected when newline characters are present
-    if ((lastMatch ne null) && (start() != 0 || end() != inputstr.length()))
+    if ((lastMatch ne null) && (ensureLastMatch.index != 0 || group().length() != inputstr.length()))
       reset()
     lastMatch ne null
   }
@@ -56,7 +56,7 @@ final class Matcher private[regex] (
   def lookingAt(): Boolean = {
     reset()
     find()
-    if ((lastMatch ne null) && (start() != 0))
+    if ((lastMatch ne null) && (ensureLastMatch.index != 0))
       reset()
     lastMatch ne null
   }
