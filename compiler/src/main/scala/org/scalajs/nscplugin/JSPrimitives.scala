@@ -54,8 +54,9 @@ abstract class JSPrimitives {
   final val WITH_CONTEXTUAL_JS_CLASS_VALUE = CREATE_LOCAL_JS_CLASS + 1 // runtime.withContextualJSClassValue
   final val LINKING_INFO = WITH_CONTEXTUAL_JS_CLASS_VALUE + 1          // runtime.linkingInfo
   final val IDENTITY_HASH_CODE = LINKING_INFO + 1                      // runtime.identityHashCode
+  final val DYNAMIC_IMPORT = IDENTITY_HASH_CODE + 1                    // runtime.dynamicImport
 
-  final val STRICT_EQ = IDENTITY_HASH_CODE + 1 // js.special.strictEquals
+  final val STRICT_EQ = DYNAMIC_IMPORT + 1     // js.special.strictEquals
   final val IN = STRICT_EQ + 1                 // js.special.in
   final val INSTANCEOF = IN + 1                // js.special.instanceof
   final val DELETE = INSTANCEOF + 1            // js.special.delete
@@ -100,6 +101,7 @@ abstract class JSPrimitives {
         WITH_CONTEXTUAL_JS_CLASS_VALUE)
     addPrimitive(Runtime_linkingInfo, LINKING_INFO)
     addPrimitive(Runtime_identityHashCode, IDENTITY_HASH_CODE)
+    addPrimitive(Runtime_dynamicImport, DYNAMIC_IMPORT)
 
     addPrimitive(Special_strictEquals, STRICT_EQ)
     addPrimitive(Special_in, IN)

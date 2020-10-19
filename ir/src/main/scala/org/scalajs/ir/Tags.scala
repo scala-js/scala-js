@@ -106,6 +106,10 @@ private[ir] object Tags {
   final val TagIdentityHashCode = TagCreateJSClass + 1
   final val TagSelectJSNativeMember = TagIdentityHashCode + 1
 
+  // New in 1.4
+
+  final val TagApplyDynamicImport = TagSelectJSNativeMember + 1
+
   // Tags for member defs
 
   final val TagFieldDef = 1

@@ -460,6 +460,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       // Optimizer hints
 
+      val isDynamicImportThunk = sym.isSubClass(DynamicImportThunkClass)
+
       def isStdLibClassWithAdHocInlineAnnot(sym: Symbol): Boolean = {
         val fullName = sym.fullName
         (fullName.startsWith("scala.Tuple") && !fullName.endsWith("$")) ||
@@ -467,6 +469,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
 
       val shouldMarkInline = (
+          isDynamicImportThunk ||
           sym.hasAnnotation(InlineAnnotationClass) ||
           (sym.isAnonymousFunction && !sym.isSubClass(PartialFunctionClass)) ||
           isStdLibClassWithAdHocInlineAnnot(sym))
@@ -544,8 +547,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }
       }
 
+      val optDynamicImportForwarder =
+        if (isDynamicImportThunk) List(genDynamicImportForwarder(sym))
+        else Nil
+
       val allMemberDefsExceptStaticForwarders =
-        generatedMembers ::: memberExports ::: optStaticInitializer
+        generatedMembers ::: memberExports ::: optStaticInitializer ::: optDynamicImportForwarder
 
       // Add static forwarders
       val allMemberDefs = if (!isCandidateForForwarders(sym)) {
@@ -5001,6 +5008,45 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           val arg = genArgs1
           js.JSImportCall(arg)
 
+        case DYNAMIC_IMPORT =>
+          assert(args.size == 1,
+              s"Expected exactly 1 argument for JS primitive $code but got " +
+              s"${args.size} at $pos")
+
+          args.head match {
+            case Block(stats, expr @ Apply(fun @ Select(New(tpt), _), args)) =>
+              /* stats is always empty if no other compiler plugin is present.
+               * However, code instrumentation (notably scoverage) might add
+               * statements here. If this is the case, the thunk anonymous class
+               * has already been created when the other plugin runs (i.e. the
+               * plugin ran after jsinterop).
+               *
+               * Therefore, it is OK to leave the statements on our side of the
+               * dynamic loading boundary.
+               */
+
+              val clsSym = tpt.symbol
+              val ctor = fun.symbol
+
+              assert(clsSym.isSubClass(DynamicImportThunkClass),
+                  s"expected subclass of DynamicImportThunk, got: $clsSym at: ${expr.pos}")
+              assert(ctor.isPrimaryConstructor,
+                  s"expected primary constructor, got: $ctor at: ${expr.pos}")
+
+              js.Block(
+                  stats.map(genStat(_)),
+                  js.ApplyDynamicImport(
+                      js.ApplyFlags.empty,
+                      encodeClassName(clsSym),
+                      encodeDynamicImportForwarderIdent(ctor.tpe.params),
+                      genActualArgs(ctor, args))
+              )
+
+            case tree =>
+              abort("Unexpected argument tree in dynamicImport: " +
+                  tree + "/" + tree.getClass + " at: " + tree.pos)
+          }
+
         case STRICT_EQ =>
           // js.special.strictEquals(arg1, arg2)
           val (arg1, arg2) = genArgs2
@@ -6123,6 +6169,37 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           paramsLocal :+ ensureBoxed(body, methodType.resultType))
 
       (patchedParams, patchedBody)
+    }
+
+    /** Generates a static method instantiating and calling this
+     *  DynamicImportThunk's `apply`:
+     *
+     *  {{{
+     *  static def dynamicImport$;<params>;Ljava.lang.Object(<params>): any = {
+     *    new <clsSym>.<init>;<params>:V(<params>).apply;Ljava.lang.Object()
+     *  }
+     *  }}}
+     */
+    private def genDynamicImportForwarder(clsSym: Symbol)(
+        implicit pos: Position): js.MethodDef = {
+      withNewLocalNameScope {
+        val ctor = clsSym.primaryConstructor
+        val paramSyms = ctor.tpe.params
+        val paramDefs = paramSyms.map(genParamDef(_))
+
+        val body = {
+          val inst = genNew(clsSym, ctor, paramDefs.map(_.ref))
+          genApplyMethod(inst, DynamicImportThunkClass_apply, Nil)
+        }
+
+        js.MethodDef(
+            js.MemberFlags.empty.withNamespace(js.MemberNamespace.PublicStatic),
+            encodeDynamicImportForwarderIdent(paramSyms),
+            NoOriginalName,
+            paramDefs,
+            jstpe.AnyType,
+            Some(body))(OptimizerHints.empty, None)
+      }
     }
 
     // Methods to deal with JSName ---------------------------------------------

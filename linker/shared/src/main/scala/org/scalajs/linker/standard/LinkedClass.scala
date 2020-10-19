@@ -54,6 +54,7 @@ final class LinkedClass(
 
     val staticDependencies: Set[ClassName],
     val externalDependencies: Set[String],
+    val dynamicDependencies: Set[ClassName],
 
     val version: Option[String]) {
 
@@ -86,7 +87,8 @@ final class LinkedClass(
       hasInstanceTests: Boolean,
       hasRuntimeTypeInfo: Boolean,
       staticDependencies: Set[ClassName],
-      externalDependencies: Set[String]
+      externalDependencies: Set[String],
+      dynamicDependencies: Set[ClassName]
   ): LinkedClass = {
     copy(
         kind = kind,
@@ -97,7 +99,8 @@ final class LinkedClass(
         hasInstanceTests = hasInstanceTests,
         hasRuntimeTypeInfo = hasRuntimeTypeInfo,
         staticDependencies = staticDependencies,
-        externalDependencies = externalDependencies
+        externalDependencies = externalDependencies,
+        dynamicDependencies = dynamicDependencies
     )
   }
 
@@ -127,6 +130,7 @@ final class LinkedClass(
       hasRuntimeTypeInfo: Boolean = this.hasRuntimeTypeInfo,
       staticDependencies: Set[ClassName] = this.staticDependencies,
       externalDependencies: Set[String] = this.externalDependencies,
+      dynamicDependencies: Set[ClassName] = this.dynamicDependencies,
       version: Option[String] = this.version): LinkedClass = {
     new LinkedClass(
         name,
@@ -148,6 +152,7 @@ final class LinkedClass(
         hasRuntimeTypeInfo,
         staticDependencies,
         externalDependencies,
+        dynamicDependencies,
         version)
   }
 }

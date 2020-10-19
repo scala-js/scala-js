@@ -32,8 +32,11 @@ private[modulesplitter] object ModuleAnalyzer {
     def moduleForClass(className: ClassName): Option[ModuleID]
   }
 
+  final class ClassInfo(val staticDependencies: Set[ClassName],
+      val dynamicDependencies: Set[ClassName])
+
   final class DependencyInfo(
-      val classDependencies: Map[ClassName, Set[ClassName]],
+      val classDependencies: Map[ClassName, ClassInfo],
       val publicModuleDependencies: Map[ModuleID, Set[ClassName]]
   )
 }

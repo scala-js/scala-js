@@ -425,6 +425,11 @@ class PrintersTest {
             Nil)(NoType))
   }
 
+  @Test def printApplyDynamicImportStatic(): Unit = {
+    assertPrintEquals("dynamicImport test.Test::m;Ljava.lang.Object()",
+        ApplyDynamicImport(EAF, "test.Test", MethodName("m", Nil, O), Nil))
+  }
+
   @Test def printUnaryOp(): Unit = {
     import UnaryOp._
 

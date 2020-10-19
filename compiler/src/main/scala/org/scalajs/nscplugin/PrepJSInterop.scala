@@ -377,6 +377,51 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
             }
           }
 
+        /* Rewrite js.dynamicImport[T](body) into
+         *
+         * runtime.dynamicImport[T](
+         *   new DynamicImportThunk { def apply(): Any = body }
+         * )
+         */
+        case Apply(TypeApply(fun, List(tpeArg)), List(body))
+            if fun.symbol == JSPackage_dynamicImport =>
+          val pos = tree.pos
+
+          assert(currentOwner.isTerm, s"unexpected owner: $currentOwner at $pos")
+
+          val clsSym = currentOwner.newClass(tpnme.ANON_CLASS_NAME, pos)
+          clsSym.setInfo( // do not enter the symbol, owner is a term.
+              ClassInfoType(List(DynamicImportThunkClass.tpe), newScope, clsSym))
+
+          val ctorSym = clsSym.newClassConstructor(pos)
+          ctorSym.setInfoAndEnter(MethodType(Nil, clsSym.tpe))
+
+          val applySym = clsSym.newMethod(nme.apply)
+          applySym.setInfoAndEnter(MethodType(Nil, AnyTpe))
+
+          body.changeOwner(currentOwner -> applySym)
+          val newBody = atOwner(applySym)(transform(body))
+
+          typer.typed {
+            atPos(tree.pos) {
+              // class $anon extends DynamicImportThunk
+              val clsDef = ClassDef(clsSym, List(
+                  // def <init>() = super.<init>()
+                  DefDef(ctorSym, Block(gen.mkMethodCall(
+                      Super(clsSym, tpnme.EMPTY), ObjectClass.primaryConstructor, Nil, Nil))),
+                  // def apply(): Any = body
+                  DefDef(applySym, newBody)))
+
+              /* runtime.DynamicImport[A]({
+               *   class $anon ...
+               *   new $anon
+               * })
+               */
+              Apply(TypeApply(gen.mkAttributedRef(Runtime_dynamicImport),
+                  List(tpeArg)), List(Block(clsDef, New(clsSym))))
+            }
+          }
+
         /* Catch calls to Predef.classOf[T]. These should NEVER reach this phase
          * but unfortunately do. In normal cases, the typer phase replaces these
          * calls by a literal constant of the given type. However, when we compile

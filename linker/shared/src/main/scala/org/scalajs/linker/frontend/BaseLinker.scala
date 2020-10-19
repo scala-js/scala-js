@@ -216,6 +216,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
         hasRuntimeTypeInfo = analyzerInfo.isDataAccessed,
         staticDependencies = analyzerInfo.staticDependencies.toSet,
         externalDependencies = analyzerInfo.externalDependencies.toSet,
+        dynamicDependencies = analyzerInfo.dynamicDependencies.toSet,
         version)
   }
 }

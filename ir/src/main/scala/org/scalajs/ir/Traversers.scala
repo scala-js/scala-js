@@ -98,6 +98,9 @@ object Traversers {
       case ApplyStatic(_, _, _, args) =>
         args foreach traverse
 
+      case ApplyDynamicImport(_, _, _, args) =>
+        args.foreach(traverse)
+
       case UnaryOp(op, lhs) =>
         traverse(lhs)
 

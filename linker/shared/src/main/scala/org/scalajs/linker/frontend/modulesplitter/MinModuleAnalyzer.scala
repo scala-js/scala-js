@@ -46,6 +46,7 @@ private object MinModuleAnalyzer {
     private[this] val nodes = mutable.Map.empty[ClassName, Node]
     private[this] val stack = mutable.ArrayBuffer.empty[Node]
     private[this] val moduleIndexToID = mutable.Map.empty[Int, ModuleID]
+    private[this] val toConnect = mutable.Queue.empty[ClassName]
 
     def moduleForClass(className: ClassName): Option[ModuleID] =
       nodes.get(className).map(n => moduleIndexToID(n.moduleIndex))
@@ -56,6 +57,14 @@ private object MinModuleAnalyzer {
         .flatten
         .filter(!nodes.contains(_))
         .foreach(strongconnect(_))
+
+      assert(stack.isEmpty)
+
+      while (toConnect.nonEmpty) {
+        val clazz = toConnect.dequeue()
+        if (!nodes.contains(clazz))
+          strongconnect(clazz)
+      }
     }
 
     private def strongconnect(className: ClassName): Node = {
@@ -84,7 +93,23 @@ private object MinModuleAnalyzer {
       nodes(className) = node
       stack += node
 
-      for (depName <- info.classDependencies(className)) {
+      val classInfo = info.classDependencies(className)
+
+      /* Dynamic dependencies do not affect the import graph: It is OK to have
+       * cyclic, dynamic dependencies (because we never generate top-level
+       * awaits).
+       *
+       * However, we need to make sure the dynamic dependency is actually put
+       * into a module. For this, we schedule it to be connected later (we
+       * cannot connect it immediately, otherwise we'd mess up the
+       * stack/spanning tree state).
+       */
+      classInfo.dynamicDependencies
+        // avoid enqueuing things we've already reached anyways.
+        .filter(!nodes.contains(_))
+        .foreach(toConnect.enqueue(_))
+
+      for (depName <- classInfo.staticDependencies) {
         nodes.get(depName).fold {
           // We have not visited this dependency. It is part of our spanning tree.
           val depNode = strongconnect(depName)

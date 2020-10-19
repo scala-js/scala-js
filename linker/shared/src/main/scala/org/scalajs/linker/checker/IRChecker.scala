@@ -932,6 +932,18 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         checkApplyGeneric(method, i"$className.$method", args, tree.tpe,
             isStatic = true)
 
+      case ApplyDynamicImport(_, className, MethodIdent(method), args) =>
+        val clazz = lookupClass(className)
+        val methodFullName = i"$className.$method"
+
+        checkApplyGeneric(method, methodFullName, args, AnyType, isStatic = true)
+
+        val resultType = method.resultTypeRef
+        if (resultType != ClassRef(ObjectClass)) {
+          reportError(i"illegal dynamic import call to $methodFullName with " +
+              i"non-object result type: $resultType")
+        }
+
       case UnaryOp(op, lhs) =>
         import UnaryOp._
         val expectedArgType = (op: @switch) match {

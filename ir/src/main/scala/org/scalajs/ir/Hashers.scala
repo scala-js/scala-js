@@ -272,6 +272,13 @@ object Hashers {
           mixTrees(args)
           mixType(tree.tpe)
 
+        case ApplyDynamicImport(flags, className, method, args) =>
+          mixTag(TagApplyDynamicImport)
+          mixInt(ApplyFlags.toBits(flags))
+          mixName(className)
+          mixMethodIdent(method)
+          mixTrees(args)
+
         case UnaryOp(op, lhs) =>
           mixTag(TagUnaryOp)
           mixInt(op)

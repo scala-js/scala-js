@@ -107,6 +107,9 @@ object Transformers {
         case ApplyStatic(flags, className, method, args) =>
           ApplyStatic(flags, className, method, args map transformExpr)(tree.tpe)
 
+        case ApplyDynamicImport(flags, className, method, args) =>
+          ApplyDynamicImport(flags, className, method, args.map(transformExpr))
+
         case UnaryOp(op, lhs) =>
           UnaryOp(op, transformExpr(lhs))
 

@@ -551,6 +551,37 @@ class AnalyzerTest {
   }
 
   @Test
+  def importDynamicWithoutModuleSupport(): AsyncResult = await {
+    val dynName = m("dyn", Nil, O)
+
+    val classDefs = Seq(
+        classDef("A",
+            kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
+            memberDefs = List(
+                trivialCtor("A"),
+                mainMethodDef(ApplyDynamicImport(EAF, "B", dynName, Nil)))
+        ),
+        classDef("B",
+            kind = ClassKind.Class, superClass = Some(ObjectClass),
+            memberDefs = List(
+                MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
+                    dynName, NON, Nil, AnyType,
+                    Some(consoleLog(StringLiteral("hello world"))))(EOH, None)))
+    )
+
+    val moduleInitializer = ModuleInitializer.mainMethodWithArgs("A", "main")
+
+    testScriptAndModule(classDefs, moduleInitializers = List(moduleInitializer)) { scriptAnalysis =>
+      assertContainsError("DynamicImportWithoutModuleSupport", scriptAnalysis) {
+        case DynamicImportWithoutModuleSupport(_) =>
+          true
+      }
+    } { moduleAnalysis =>
+      assertNoError(moduleAnalysis)
+    }
+  }
+
+  @Test
   def juPropertiesNotReachableWhenUsingGetSetClearProperty(): AsyncResult = await {
     val systemMod = LoadModule("java.lang.System$")
     val emptyStr = StringLiteral("")

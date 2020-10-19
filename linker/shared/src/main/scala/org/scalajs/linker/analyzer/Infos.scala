@@ -80,6 +80,7 @@ object Infos {
       val staticFieldsWritten: Map[ClassName, List[FieldName]],
       val methodsCalled: Map[ClassName, List[MethodName]],
       val methodsCalledStatically: Map[ClassName, List[NamespacedMethodName]],
+      val methodsCalledDynamicImport: Map[ClassName, List[NamespacedMethodName]],
       val jsNativeMembersUsed: Map[ClassName, List[MethodName]],
       /** For a Scala class, it is instantiated with a `New`; for a JS class,
        *  its constructor is accessed with a `JSLoadConstructor`.
@@ -94,7 +95,7 @@ object Infos {
   object ReachabilityInfo {
     val Empty: ReachabilityInfo = {
       new ReachabilityInfo(Map.empty, Map.empty, Map.empty, Map.empty,
-          Map.empty, Map.empty, Nil, Nil, Nil, Nil, Nil)
+          Map.empty, Map.empty, Map.empty, Nil, Nil, Nil, Nil, Nil)
     }
   }
 
@@ -150,6 +151,7 @@ object Infos {
     private val staticFieldsWritten = mutable.Map.empty[ClassName, mutable.Set[FieldName]]
     private val methodsCalled = mutable.Map.empty[ClassName, mutable.Set[MethodName]]
     private val methodsCalledStatically = mutable.Map.empty[ClassName, mutable.Set[NamespacedMethodName]]
+    private val methodsCalledDynamicImport = mutable.Map.empty[ClassName, mutable.Set[NamespacedMethodName]]
     private val jsNativeMembersUsed = mutable.Map.empty[ClassName, mutable.Set[MethodName]]
     private val instantiatedClasses = mutable.Set.empty[ClassName]
     private val accessedModules = mutable.Set.empty[ClassName]
@@ -221,6 +223,12 @@ object Infos {
     def addMethodCalledStatically(cls: ClassName,
         method: NamespacedMethodName): this.type = {
       methodsCalledStatically.getOrElseUpdate(cls, mutable.Set.empty) += method
+      this
+    }
+
+    def addMethodCalledDynamicImport(cls: ClassName,
+        method: NamespacedMethodName): this.type = {
+      methodsCalledDynamicImport.getOrElseUpdate(cls, mutable.Set.empty) += method
       this
     }
 
@@ -313,6 +321,7 @@ object Infos {
           staticFieldsWritten = toMapOfLists(staticFieldsWritten),
           methodsCalled = toMapOfLists(methodsCalled),
           methodsCalledStatically = toMapOfLists(methodsCalledStatically),
+          methodsCalledDynamicImport = toMapOfLists(methodsCalledDynamicImport),
           jsNativeMembersUsed = toMapOfLists(jsNativeMembersUsed),
           instantiatedClasses = instantiatedClasses.toList,
           accessedModules = accessedModules.toList,
@@ -486,6 +495,10 @@ object Infos {
             case ApplyStatic(flags, className, method, _) =>
               val namespace = MemberNamespace.forStaticCall(flags)
               builder.addMethodCalledStatically(className,
+                  NamespacedMethodName(namespace, method.name))
+            case ApplyDynamicImport(flags, className, method, _) =>
+              val namespace = MemberNamespace.forStaticCall(flags)
+              builder.addMethodCalledDynamicImport(className,
                   NamespacedMethodName(namespace, method.name))
 
             case LoadModule(className) =>
