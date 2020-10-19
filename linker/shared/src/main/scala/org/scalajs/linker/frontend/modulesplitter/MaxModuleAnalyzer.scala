@@ -33,8 +33,53 @@ private[modulesplitter] final class MaxModuleAnalyzer extends ModuleAnalyzer {
       // Fast path.
       new SingleModuleAnalysis(info.publicModuleDependencies.head._1)
     } else {
-      new Run(info).analyze()
+      val allTags = new Tagger(info).tagAll()
+
+      val moduleIDs = buildModuleIDs(info.publicModuleDependencies.keys)
+
+      val moduleMap = allTags.map {
+        case (className, tags) => className -> moduleIDs(tags)
+      }.toMap
+
+      new FullAnalysis(moduleMap)
     }
+  }
+
+  private def buildModuleIDs(
+      publicIDsUnordered: Iterable[ModuleID]): Map[scala.collection.Set[ModuleID], ModuleID] = {
+    /* We build the new module IDs independent of the actually present
+     * modules to ensure stability.
+     *
+     * We sort the ModuleIDs to not depend on map iteration order (or the
+     * order of the input files).
+     *
+     * All of this is to avoid module ID collisions, for example with the
+     * following set of public modules: {`a`, `b`, `a-b`}.
+     */
+    val publicIDs = {
+      // Best way I could find to create SortedSet from an Iterable :-/
+      val b = immutable.SortedSet.newBuilder(Ordering.by[ModuleID, String](_.id))
+      publicIDsUnordered.foreach(b += _)
+      b.result()
+    }
+
+    val seenIDs = mutable.Set.empty[ModuleID]
+
+    val tups = for {
+      modules <- publicIDs.subsets()
+      if modules.nonEmpty
+    } yield {
+      var candidate = ModuleID(modules.map(_.id).mkString("-"))
+
+      while (seenIDs.contains(candidate))
+        candidate = ModuleID(candidate.id + "$")
+
+      seenIDs.add(candidate)
+
+      modules -> candidate
+    }
+
+    tups.toMap
   }
 }
 
@@ -52,20 +97,13 @@ private object MaxModuleAnalyzer {
       map.get(className)
   }
 
-  private final class Run(infos: ModuleAnalyzer.DependencyInfo) {
+  private final class Tagger(infos: ModuleAnalyzer.DependencyInfo) {
     private[this] val allTags =
       mutable.Map.empty[ClassName, mutable.Set[ModuleID]]
 
-    def analyze(): ModuleAnalyzer.Analysis = {
+    def tagAll(): scala.collection.Map[ClassName, scala.collection.Set[ModuleID]] = {
       tagEntryPoints()
-
-      val moduleIDs = buildModuleIDs()
-
-      val moduleMap = allTags.map {
-        case (className, tags) => className -> moduleIDs(tags)
-      }.toMap
-
-      new FullAnalysis(moduleMap)
+      allTags
     }
 
     private def tag(className: ClassName, moduleID: ModuleID): Unit = {
@@ -81,42 +119,6 @@ private object MaxModuleAnalyzer {
       } {
         tag(className, moduleID)
       }
-    }
-
-    private def buildModuleIDs(): Map[scala.collection.Set[ModuleID], ModuleID] = {
-      /* We build the new module IDs independent of the actually present
-       * modules to ensure stability.
-       *
-       * We sort the ModuleIDs to not depend on map iteration order (or the
-       * order of the input files).
-       *
-       * All of this is to avoid module ID collisions, for example with the
-       * following set of public modules: {`a`, `b`, `a-b`}.
-       */
-      val publicIDs = {
-        // Best way I could find to create SortedSet from a Set :-/
-        val b = immutable.SortedSet.newBuilder(Ordering.by[ModuleID, String](_.id))
-        infos.publicModuleDependencies.keysIterator.foreach(b += _)
-        b.result()
-      }
-
-      val seenIDs = mutable.Set.empty[ModuleID]
-
-      val tups = for {
-        modules <- publicIDs.subsets()
-        if modules.nonEmpty
-      } yield {
-        var candidate = ModuleID(modules.map(_.id).mkString("-"))
-
-        while (seenIDs.contains(candidate))
-          candidate = ModuleID(candidate.id + "$")
-
-        seenIDs.add(candidate)
-
-        modules -> candidate
-      }
-
-      tups.toMap
     }
   }
 }
