@@ -17,6 +17,7 @@ import scala.scalajs.js
 
 import java.lang.{Double => JDouble}
 import java.io._
+import java.math.BigInteger
 
 final class Formatter private (private[this] var dest: Appendable,
     formatterLocaleInfo: Formatter.LocaleInfo)
@@ -360,6 +361,8 @@ final class Formatter private (private[this] var dest: Appendable,
             formatNumericString(localeInfo, flags, width, arg.toString())
           case arg: Long =>
             formatNumericString(localeInfo, flags, width, arg.toString())
+          case arg: BigInteger =>
+            formatNumericString(localeInfo, flags, width, arg.toString())
           case _ =>
             formatNullOrThrowIllegalFormatConversion()
         }
@@ -379,6 +382,9 @@ final class Formatter private (private[this] var dest: Appendable,
           case arg: Long =>
             padAndSendToDest(RootLocaleInfo, flags, width, prefix,
                 java.lang.Long.toOctalString(arg))
+          case arg: BigInteger =>
+            formatNumericString(RootLocaleInfo, flags, width,
+                arg.toString(8), prefix)
           case _ =>
             formatNullOrThrowIllegalFormatConversion()
         }
@@ -400,6 +406,9 @@ final class Formatter private (private[this] var dest: Appendable,
           case arg: Long =>
             padAndSendToDest(RootLocaleInfo, flags, width, prefix,
                 applyNumberUpperCase(flags, java.lang.Long.toHexString(arg)))
+          case arg: BigInteger =>
+            formatNumericString(RootLocaleInfo, flags, width,
+                arg.toString(16), prefix)
           case _ =>
             formatNullOrThrowIllegalFormatConversion()
         }
@@ -589,13 +598,13 @@ final class Formatter private (private[this] var dest: Appendable,
   }
 
   private def formatNumericString(localeInfo: LocaleInfo, flags: Flags,
-      width: Int, str: String): Unit = {
+      width: Int, str: String, basePrefix: String = ""): Unit = {
     /* Flags for which a numeric string needs to be decomposed and transformed,
      * not just padded and/or uppercased. We can write fast-paths in this
      * method if none of them are present.
      */
     val TransformativeFlags =
-      PositivePlus | PositiveSpace | UseGroupingSeps | NegativeParen
+      PositivePlus | PositiveSpace | UseGroupingSeps | NegativeParen | AltFormat
 
     if (str.length >= width && !flags.hasAnyOf(TransformativeFlags)) {
       // Super-fast-path
@@ -605,7 +614,7 @@ final class Formatter private (private[this] var dest: Appendable,
       padAndSendToDestNoZeroPad(flags, width, applyNumberUpperCase(flags, str))
     } else {
       // Extract prefix and rest, based on flags and the presence of a sign
-      val (prefix, rest0) = if (str.charAt(0) != '-') {
+      val (numberPrefix, rest0) = if (str.charAt(0) != '-') {
         if (flags.positivePlus)
           ("+", str)
         else if (flags.positiveSpace)
@@ -618,6 +627,8 @@ final class Formatter private (private[this] var dest: Appendable,
         else
           ("-", str.substring(1))
       }
+
+      val prefix = numberPrefix + basePrefix
 
       // Insert grouping separators, if required
       val rest =

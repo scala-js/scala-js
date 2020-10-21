@@ -13,6 +13,7 @@
 package org.scalajs.testsuite.javalib.util
 
 import java.util.{Formatter, Locale}
+import java.math.BigInteger
 
 import org.junit.Test
 import org.junit.Assert._
@@ -75,6 +76,17 @@ class FormatterTestEx {
     assertF(French, "1\u00A0234\u00A0567", "%,d", 1234567)
     assertF(French, "1\u00A0234\u00A0567,89", "%,.2f", 1234567.89)
     assertF(French, "0012", "%04d", 12)
+    assertF(French, "0012", "%04d", new BigInteger("12"))
+
+    assertF(French, "0014", "%04o", new BigInteger("12"))
+    assertF(French, "-014", "%04o", new BigInteger("-12"))
+    assertF(French, "14", "%o", new BigInteger("12"))
+    assertF(French, "-14", "%o", new BigInteger("-12"))
+
+    assertF(French, "0x0c", "%#04x", new BigInteger("12"))
+    assertF(French, "-0xc", "%#04x", new BigInteger("-12"))
+    assertF(French, "12", "%x", new BigInteger("18"))
+    assertF(French, "-12", "%x", new BigInteger("-18"))
   }
 
   @Test def testFormatHindiWithDevanagariDigits(): Unit = {
@@ -86,6 +98,16 @@ class FormatterTestEx {
     assertF(HindiWithDevanagariDigits, "0x0012", "%#06x", 0x12)
     assertF(HindiWithDevanagariDigits, "0X0012", "%#06X", 0x12)
     assertF(HindiWithDevanagariDigits, "000014", "%#06o", 12)
+
+    assertF(HindiWithDevanagariDigits, "0x0012", "%#06x", new BigInteger("18"))
+    assertF(HindiWithDevanagariDigits, "-0x012", "%#06x", new BigInteger("-18"))
+    assertF(HindiWithDevanagariDigits, "12", "%x", new BigInteger("18"))
+    assertF(HindiWithDevanagariDigits, "-12", "%x", new BigInteger("-18"))
+
+    assertF(HindiWithDevanagariDigits, "000014", "%#06o", new BigInteger("12"))
+    assertF(HindiWithDevanagariDigits, "-00014", "%#06o", new BigInteger("-12"))
+    assertF(HindiWithDevanagariDigits, "14", "%o", new BigInteger("12"))
+    assertF(HindiWithDevanagariDigits, "-14", "%o", new BigInteger("-12"))
   }
 
   @Test def testFormatTurkish(): Unit = {

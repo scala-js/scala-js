@@ -12,6 +12,8 @@
 
 package org.scalajs.testsuite.javalib.util
 
+import java.math.BigInteger
+
 import org.junit.Assert._
 import org.junit.Test
 
@@ -274,10 +276,17 @@ class FormatterTest {
   @Test def `should_provide_d_conversion`(): Unit = {
     assertF("5", "%d", 5)
     assertF("-5", "%d", -5)
+    assertF("5", "%d", new BigInteger("5"))
+    assertF("-5", "%d", new BigInteger("-5"))
+
 
     assertF("00005", "%05d", 5)
     assertF("  -10", "%5d", -10)
     assertF("-0010", "%05d", -10)
+
+    assertF("00005", "%05d", new BigInteger("5"))
+    assertF("  -10", "%5d", new BigInteger("-10"))
+    assertF("-0010", "%05d", new BigInteger("-10"))
 
     assertF("345,678", "%,d", 345678)
     assertF("-345,678", "%,d", -345678)
@@ -285,6 +294,9 @@ class FormatterTest {
     assertF("    12,345,678", "%,14d", 12345678)
     assertF("000012,345,678", "%,014d", 12345678)
     assertF("   -12,345,678", "%,14d", -12345678)
+
+    assertF("0012,345,678,987,654", "%,020d", new BigInteger("12345678987654"))
+    assertF(" -12,345,678,987,654", "%,20d", new BigInteger("-12345678987654"))
 
     assertF("2,345,678", "%,d", 2345678)
     assertF("345,678", "%,d", 345678)
@@ -312,6 +324,8 @@ class FormatterTest {
     assertF("56    ", "%-6d", 56)
     assertF("-56   ", "%-6d", -56)
 
+    assertF("43212345678987654321", "%d", new BigInteger("43212345678987654321"))
+
     testWithNull('d', "+ (", acceptPrecision = false, acceptUpperCase = false)
 
     expectIllegalFormatFlags("%+- (5d", "-+ (", 56)
@@ -321,10 +335,15 @@ class FormatterTest {
 
   @Test def `should_provide_o_conversion`(): Unit = {
     assertF("10", "%o", 8)
+    assertF("52", "%o", new BigInteger("42"))
 
     assertF("00020", "%05o", 16)
     assertF("37777777766", "%5o", -10)
     assertF("37777777766", "%05o", -10)
+
+    assertF("00020", "%05o", new BigInteger("16"))
+    assertF("  -12", "%5o", new BigInteger("-10"))
+    assertF("-0012", "%05o", new BigInteger("-10"))
 
     assertF("   21", "%5o", 17)
     assertF("21   ", "%-5o", 17)
@@ -346,6 +365,15 @@ class FormatterTest {
     assertF("    0664", "%#8o", 436)
     assertF("00000664", "%#08o", 436)
 
+    assertF("0664", "%#o", new BigInteger("436"))
+    assertF("-0664", "%#o", new BigInteger("-436"))
+    assertF("    0664", "%#8o", new BigInteger("436"))
+    assertF("   -0664", "%#8o", new BigInteger("-436"))
+    assertF("00000664", "%#08o", new BigInteger("436"))
+    assertF("-0000664", "%#08o", new BigInteger("-436"))
+
+    assertF("04536610567107334372261", "%#o", new BigInteger("43212345678987654321"))
+
     /* Negative Bytes and Shorts are formatted as if they were Ints.
      * This is a consequence of the non-boxing behavior of numbers in Scala.js.
      */
@@ -365,11 +393,18 @@ class FormatterTest {
     assertF("ffff2bcf", "%x", -54321)
     assertF("D431", "%X", 54321)
     assertF("FFFF2BCF", "%X", -54321)
+    assertF("2a", "%x", new BigInteger("42"))
+    assertF("2A", "%X", new BigInteger("42"))
 
     assertF("0xd431", "%#x", 54321)
     assertF("0xffff2bcf", "%#x", -54321)
     assertF("0XD431", "%#X", 54321)
     assertF("0XFFFF2BCF", "%#X", -54321)
+
+    assertF("0xd431", "%#x", new BigInteger("54321"))
+    assertF("-0xd431", "%#x", new BigInteger("-54321"))
+    assertF("0XD431", "%#X", new BigInteger("54321"))
+    assertF("-0XD431", "%#X", new BigInteger("-54321"))
 
     assertF("         d431", "%13x", 54321)
     assertF("     ffff2bcf", "%13x", -54321)
@@ -388,6 +423,11 @@ class FormatterTest {
     assertF("0x0000000d431", "%0#13x", 54321)
     assertF("0x000ffff2bcf", "%0#13x", -54321)
 
+    assertF("000003ade68b1", "%013x", new BigInteger("987654321"))
+    assertF("-00003ade68b1", "%013x", new BigInteger("-987654321"))
+    assertF("0x0003ade68b1", "%0#13x", new BigInteger("987654321"))
+    assertF("-0x003ade68b1", "%0#13x", new BigInteger("-987654321"))
+
     assertF("fffffffc", "%x", asIntOnJVM(-4.toByte))
     assertF("0x005", "%0#5x", 5.toByte)
     assertF("  0x5", "%#5x", 5.toByte)
@@ -401,6 +441,8 @@ class FormatterTest {
 
     assertF("ffffffffffff2bcf", "%x", -54321L)
     assertF("28EEA4CB1", "%X", 10987654321L)
+
+    assertF("0x257b117723b71f4b1", "%#x", new BigInteger("43212345678987654321"))
 
     testWithNull('x', "#0", acceptPrecision = false)
 
