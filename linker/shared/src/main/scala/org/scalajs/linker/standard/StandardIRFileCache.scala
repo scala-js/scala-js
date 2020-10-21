@@ -76,10 +76,8 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
 
         @tailrec
         def putContents(): PersistedFiles = {
-          val newValue = new PersistedFiles(file.path)
-          val oldValue = globalCache.putIfAbsent(file.path, newValue)
-
-          val contents = if (oldValue != null) oldValue else newValue
+          val contents =
+            globalCache.computeIfAbsent(file.path, new PersistedFiles(_))
 
           if (contents.reference()) contents
           else putContents()
