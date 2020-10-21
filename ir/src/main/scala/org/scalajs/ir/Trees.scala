@@ -1067,6 +1067,14 @@ object Trees {
 
     require(!flags.isMutable, "nonsensical mutable MethodDef")
 
+    require(!name.name.isReflectiveProxy || flags.namespace == MemberNamespace.Public,
+        "reflective proxies must be in the public (non-static) namespace")
+    require(name.name.isConstructor == (flags.namespace == MemberNamespace.Constructor),
+        "a member can have a constructor name iff it is in the constructor namespace")
+    require((name.name.isStaticInitializer || name.name.isClassInitializer) ==
+        (flags.namespace == MemberNamespace.StaticConstructor),
+        "a member can have a static constructor name iff it is in the static constructor namespace")
+
     def methodName: MethodName = name.name
   }
 

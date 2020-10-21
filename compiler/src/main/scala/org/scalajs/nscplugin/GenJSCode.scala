@@ -1800,9 +1800,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             "Malformed parameter list: " + vparamss)
         val params = if (vparamss.isEmpty) Nil else vparamss.head map (_.symbol)
 
-        val isJSClassConstructor =
-          sym.isClassConstructor && isNonNativeJSClass(currentClassSym)
-
         val methodName = encodeMethodSym(sym)
         val originalName = originalNameOfMethod(sym)
 
@@ -1870,18 +1867,20 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                 withNoinline(shouldMarkNoinline)
 
             val methodDef = {
-              if (isJSClassConstructor) {
+              if (sym.isClassConstructor) {
                 val body0 = genStat(rhs)
-                val body1 =
-                  if (!sym.isPrimaryConstructor) body0
-                  else moveAllStatementsAfterSuperConstructorCall(body0)
-                js.MethodDef(js.MemberFlags.empty, methodName, originalName,
-                    jsParams, jstpe.NoType, Some(body1))(optimizerHints, None)
-              } else if (sym.isClassConstructor) {
+                val body1 = {
+                  val needsMove =
+                    isNonNativeJSClass(currentClassSym) && sym.isPrimaryConstructor
+
+                  if (needsMove) moveAllStatementsAfterSuperConstructorCall(body0)
+                  else body0
+                }
+
                 val namespace = js.MemberNamespace.Constructor
                 js.MethodDef(
                     js.MemberFlags.empty.withNamespace(namespace), methodName,
-                    originalName, jsParams, jstpe.NoType, Some(genStat(rhs)))(
+                    originalName, jsParams, jstpe.NoType, Some(body1))(
                     optimizerHints, None)
               } else {
                 val resultIRType = toIRType(sym.tpe.resultType)
