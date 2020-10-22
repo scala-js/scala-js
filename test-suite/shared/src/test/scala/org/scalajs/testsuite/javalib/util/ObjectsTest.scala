@@ -94,6 +94,27 @@ class ObjectsTest {
     assertEquals("abc", ju.Objects.requireNonNull("abc", ""))
   }
 
+  @Test def requireNonNullWithMsgSupplier(): Unit = {
+    val message = "All is well!"
+
+    val successSupplier = new ju.function.Supplier[String] {
+      def get(): String = message
+    }
+
+    val failureSupplier = new ju.function.Supplier[String] {
+      def get(): String = {
+        throw new AssertionError(
+            "Objects.requireNonNull() should not have called Supplier")
+      }
+    }
+
+    val e = expectThrows(classOf[NullPointerException],
+        ju.Objects.requireNonNull(null, successSupplier))
+    assertEquals(message, e.getMessage())
+
+    assertEquals("abc", ju.Objects.requireNonNull("abc", failureSupplier))
+  }
+
   @Test def isNull(): Unit = {
     assertTrue(ju.Objects.isNull(null))
     assertFalse(ju.Objects.isNull(new Object))
