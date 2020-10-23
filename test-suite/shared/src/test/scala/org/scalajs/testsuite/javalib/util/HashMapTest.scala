@@ -16,8 +16,17 @@ import java.{util => ju}
 
 import scala.reflect.ClassTag
 
+import org.junit.Test
+import org.junit.Assert.assertNotNull
+
 class HashMapTest extends MapTest {
   def factory: HashMapFactory = new HashMapFactory
+
+  @Test def testConstructorWithLoadFactorArg(): Unit = {
+    // Test constructor has correct binary signature for calling from user code
+    // and direct use links.
+    new ju.HashMap[Int,String](10, 0.5f)
+  }
 }
 
 class HashMapFactory extends AbstractMapFactory {
