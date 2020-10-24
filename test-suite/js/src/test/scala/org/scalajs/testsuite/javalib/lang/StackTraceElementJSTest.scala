@@ -39,7 +39,7 @@ class StackTraceElementJSTest {
     assertEquals(5, getColumnNumber(ste))
   }
 
-  @Test def should_use_the_additional_columnNumber_field_in_its_toString(): Unit = {
+  @Test def additionalColumnNumberFieldInToString(): Unit = {
     val ste = new StackTraceElement("MyClass", "myMethod", "myFile.scala", 1)
     assertEquals("MyClass.myMethod(myFile.scala:1)", ste.toString)
     setColumnNumber(ste, 5)

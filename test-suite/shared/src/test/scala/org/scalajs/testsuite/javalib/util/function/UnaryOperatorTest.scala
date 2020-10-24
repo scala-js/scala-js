@@ -25,7 +25,7 @@ class UnaryOperatorTest {
     assertEquals("scala", unaryOperatorString.apply("scala"))
   }
 
-  @Test def create_and_apply(): Unit = {
+  @Test def createAndApply(): Unit = {
     val double: UnaryOperator[Int] = makeUnaryOperator(_ * 2)
     assertEquals(20, double.apply(10))
     assertEquals(20, double.apply(10))

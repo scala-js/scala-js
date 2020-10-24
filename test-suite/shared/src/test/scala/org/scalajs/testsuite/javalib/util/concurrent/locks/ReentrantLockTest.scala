@@ -23,7 +23,7 @@ import org.scalajs.testsuite.utils.AssertThrows._
 
 class ReentrantLockTest {
 
-  @Test def should_lock_and_unlock(): Unit = {
+  @Test def lockAndUnlock(): Unit = {
     val lock = new ReentrantLock()
     assertFalse(lock.isLocked)
     lock.lock()
@@ -32,7 +32,7 @@ class ReentrantLockTest {
     assertFalse(lock.isLocked)
   }
 
-  @Test def properly_tryLock(): Unit = {
+  @Test def tryLock(): Unit = {
     val lock = new ReentrantLock()
     assertFalse(lock.isLocked)
     lock.tryLock()
@@ -47,7 +47,7 @@ class ReentrantLockTest {
     assertThrows(classOf[InterruptedException], lock.tryLock(1L, TimeUnit.SECONDS))
   }
 
-  @Test def properly_lockInterruptibly(): Unit = {
+  @Test def lockInterruptibly(): Unit = {
     val lock = new ReentrantLock()
     assertFalse(lock.isLocked)
     lock.lockInterruptibly()
@@ -58,14 +58,14 @@ class ReentrantLockTest {
     assertThrows(classOf[InterruptedException], lock.lockInterruptibly)
   }
 
-  @Test def check_if_is_held_by_current_Thread(): Unit = {
+  @Test def isHeldByCurrentThread(): Unit = {
     val lock = new ReentrantLock()
     assertFalse(lock.isHeldByCurrentThread())
     lock.lock()
     assertTrue(lock.isHeldByCurrentThread())
   }
 
-  @Test def should_be_created_with_a_fair_option(): Unit = {
+  @Test def isFair(): Unit = {
     val l1 = new ReentrantLock()
     assertFalse(l1.isFair)
     val l2 = new ReentrantLock(false)
@@ -74,7 +74,7 @@ class ReentrantLockTest {
     assertTrue(l3.isFair)
   }
 
-  @Test def should_count_properly_number_of_locks(): Unit = {
+  @Test def getHoldCount(): Unit = {
     val lock = new ReentrantLock()
     assertFalse(lock.isLocked)
     assertEquals(0, lock.getHoldCount())

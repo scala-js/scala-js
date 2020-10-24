@@ -23,7 +23,7 @@ class ByteArrayInputStreamTest extends CommonStreamsTests {
   }
 
   @Test
-  def readWithZeroLengthReturnsMinus1AtEOF_issue_3913(): Unit = {
+  def readWithZeroLengthReturnsMinus1AtEof_Issue3913(): Unit = {
     /* Contrary to the spec in the base class InputStream, read(_, _, 0) must
      * return -1 if the stream is at the end of the buffer, instead of 0.
      */

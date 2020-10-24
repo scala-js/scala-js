@@ -27,7 +27,7 @@ class UndefOrTest {
 
   // scala.scalajs.js.UndefOr[A]
 
-  @Test def convert_A_to_js_UndefOr_A(): Unit = {
+  @Test def convertAToJSUndefOrA(): Unit = {
     val x: js.UndefOr[Int] = 42
     assertFalse(x.isEmpty)
     assertTrue(x.isDefined)
@@ -35,7 +35,7 @@ class UndefOrTest {
     assertEquals(42, x.get)
   }
 
-  @Test def convert_undefined_to_js_UndefOr_A(): Unit = {
+  @Test def convertUndefinedToJSUndefOrA(): Unit = {
     val x: js.UndefOr[Int] = js.undefined
     assertTrue(x.isEmpty)
     assertFalse(x.isDefined)
@@ -43,7 +43,7 @@ class UndefOrTest {
     assertThrows(classOf[NoSuchElementException], x.get)
   }
 
-  @Test def explicitly_convert_A_to_js_UndefOr_A(): Unit = {
+  @Test def explicitlyConvertAToJSUndefOrA(): Unit = {
     val x: js.UndefOr[Int] = js.defined(42)
     assertFalse(x.isEmpty)
     assertEquals(42, x.get)
@@ -53,7 +53,7 @@ class UndefOrTest {
     assertEquals(6, f.get(5))
   }
 
-  @Test def `convert_to_js_Any_when_A_<%_js_Any`(): Unit = {
+  @Test def convertToJSAnyWhenViewBoundToJSAny(): Unit = {
     val x: js.UndefOr[Int] = 42
     assertEquals(42, x)
 
@@ -158,7 +158,7 @@ class UndefOrTest {
     }))
   }
 
-  @Test def collect_should_call_guard_at_most_once(): Unit = {
+  @Test def collectCallsGuardAtMostOnce(): Unit = {
     var witness = 0
     def guard(x: String): Boolean = {
       witness += 1
@@ -186,7 +186,7 @@ class UndefOrTest {
     assertEquals(List.empty[String], none[String].toList)
   }
 
-  @Test def toLeft_and_toRight(): Unit = {
+  @Test def toLeftAndToRight(): Unit = {
     assertTrue(some("left").toLeft("right").isInstanceOf[Left[_, _]])
     assertTrue(none[String].toLeft("right").isInstanceOf[Right[_, _]])
     assertTrue(some("right").toRight("left").isInstanceOf[Right[_, _]])
@@ -202,7 +202,7 @@ class UndefOrTest {
 
   import js.JSConverters._
 
-  @Test def should_provide_orUndefined(): Unit = {
+  @Test def orUndefined(): Unit = {
     assertEquals("asdf", Some("asdf").orUndefined)
     assertJSUndefined((None: Option[String]).orUndefined)
     assertJSUndefined(None.orUndefined)

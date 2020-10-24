@@ -55,7 +55,7 @@ class ObjectTest {
     assertFalse(js.Object.is(-0.0, +0.0))
   }
 
-  @Test def entries_from_object(): Unit = {
+  @Test def entriesFromObject(): Unit = {
     val obj = new js.Object {
       val a = 42
       val b = "foo"
@@ -72,7 +72,7 @@ class ObjectTest {
     assertEquals("foo", value2.asInstanceOf[String])
   }
 
-  @Test def entries_from_dictionary(): Unit = {
+  @Test def entriesFromDictionary(): Unit = {
     val dict = js.Dictionary[Int]("a" -> 42, "b" -> 0)
     val entries = js.Object.entries(dict)
     assertEquals(2, entries.length)
@@ -88,7 +88,7 @@ class ObjectTest {
     assertEquals(0, value2IsInt)
   }
 
-  @Test def fromEntries_array(): Unit = {
+  @Test def fromEntriesArray(): Unit = {
     // from Array
     val array = js.Array(js.Tuple2("a", 42), js.Tuple2("b", "foo"))
     val obj1 = js.Object.fromEntries(array)
@@ -96,7 +96,7 @@ class ObjectTest {
     assertEquals(obj1("b"), "foo")
   }
 
-  @Test def fromEntries_js_Map(): Unit = {
+  @Test def fromEntriesJSMap(): Unit = {
     assumeTrue("requires js.Map", Platform.jsMaps)
 
     val map = js.Map("a" -> 42, "b" -> "foo")

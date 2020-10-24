@@ -79,8 +79,7 @@ class LinkerTest {
   /** This test exposes a problem where a linker in error state is called
    *  multiple times and ends up thinking it is being used concurrently.
    */
-  @Test
-  def clean_linking_state(): AsyncResult = await {
+  @Test def cleanLinkingState(): AsyncResult = await {
     class DummyException extends Exception
 
     val badSeq = new IndexedSeq[IRFile] {

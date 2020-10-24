@@ -28,7 +28,7 @@ import org.scalajs.testsuite.utils.Platform.executingInJVM
 class PriorityQueueTest extends CollectionTest {
   def factory: PriorityQueueFactory = new PriorityQueueFactory
 
-  @Test def should_store_and_remove_ordered_integers(): Unit = {
+  @Test def addAndRemoveInt(): Unit = {
     val pq = new PriorityQueue[Int]()
 
     assertEquals(0, pq.size())
@@ -46,7 +46,7 @@ class PriorityQueueTest extends CollectionTest {
     assertFalse(pq.remove(222))
   }
 
-  @Test def should_store_and_remove_ordered_strings(): Unit = {
+  @Test def addAndRemoveString(): Unit = {
     val pq = new PriorityQueue[String]()
 
     assertEquals(0, pq.size())
@@ -65,7 +65,7 @@ class PriorityQueueTest extends CollectionTest {
     assertNull(pq.poll())
   }
 
-  @Test def should_store_objects_with_custom_comparables(): Unit = {
+  @Test def addAndRemoveObjectWithCustomComparator(): Unit = {
     case class Rect(x: Int, y: Int)
 
     val areaComp = new Comparator[Rect] {
@@ -104,7 +104,7 @@ class PriorityQueueTest extends CollectionTest {
     assertTrue(pq.poll() eq null)
   }
 
-  @Test def should_store_ordered_Double_even_in_corner_cases(): Unit = {
+  @Test def addAndRemoveDoubleCornerCases(): Unit = {
     val pq = new PriorityQueue[Double]()
 
     assertTrue(pq.add(1.0))
@@ -125,7 +125,7 @@ class PriorityQueueTest extends CollectionTest {
     assertTrue(pq.isEmpty)
   }
 
-  @Test def could_be_instantiated_with_a_prepopulated_Collection(): Unit = {
+  @Test def ctorCollectionInt(): Unit = {
     val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val pq = new PriorityQueue[Int](l)
 
@@ -136,7 +136,7 @@ class PriorityQueueTest extends CollectionTest {
     assertTrue(pq.isEmpty)
   }
 
-  @Test def could_be_instantiated_with_a_prepopulated_PriorityQueue(): Unit = {
+  @Test def ctorPriorityQueueInt(): Unit = {
     val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val pq1 = new PriorityQueue[Int](l)
     val pq2 = new PriorityQueue[Int](pq1)
@@ -150,7 +150,7 @@ class PriorityQueueTest extends CollectionTest {
     assertTrue(pq2.isEmpty)
   }
 
-  @Test def could_be_instantiated_with_a_prepopulated_SortedSet(): Unit = {
+  @Test def ctorSortedSetInt(): Unit = {
     val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val ss = new java.util.concurrent.ConcurrentSkipListSet[Int](l)
     val pq1 = new PriorityQueue[Int](l)
@@ -165,7 +165,7 @@ class PriorityQueueTest extends CollectionTest {
     assertTrue(pq2.isEmpty)
   }
 
-  @Test def should_be_cleared_in_a_single_operation(): Unit = {
+  @Test def testClear(): Unit = {
     val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val pq = new PriorityQueue[Int](l)
 
@@ -174,7 +174,7 @@ class PriorityQueueTest extends CollectionTest {
     assertEquals(0, pq.size())
   }
 
-  @Test def should_add_multiple_elemnt_in_one_operation(): Unit = {
+  @Test def addAllCollectionIntAndAddInt(): Unit = {
     val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val pq = new PriorityQueue[Int]()
 
@@ -185,7 +185,7 @@ class PriorityQueueTest extends CollectionTest {
     assertEquals(6, pq.size())
   }
 
-  @Test def should_check_contained_values_even_in_double_corner_cases(): Unit = {
+  @Test def containsDoubleCornerCasesPriorityQueue(): Unit = {
     val pq = new PriorityQueue[Double]()
 
     assertTrue(pq.add(11111.0))
@@ -220,7 +220,7 @@ class PriorityQueueTest extends CollectionTest {
     assertTrue(pq.contains(-0.0))
   }
 
-  @Test def should_retrieve_the_first_element(): Unit = {
+  @Test def pollIntStringDouble(): Unit = {
     val pqInt = new PriorityQueue[Int]()
 
     assertTrue(pqInt.add(1000))
@@ -240,7 +240,7 @@ class PriorityQueueTest extends CollectionTest {
     assertEquals(-0.987, pqDouble.poll(), 0.0)
   }
 
-  @Test def poll(): Unit = {
+  @Test def pollIntEntireQueue(): Unit = {
     val pq = newPriorityQueueWith0Until100()
 
     var nextExpected = 0
@@ -251,7 +251,7 @@ class PriorityQueueTest extends CollectionTest {
     assertEquals(100, nextExpected)
   }
 
-  @Test def removingAnArbitraryElementPreservesPriorities(): Unit = {
+  @Test def removePreservesPriorities(): Unit = {
     for (itemToRemove <- 0 until 100) {
       val pq = newPriorityQueueWith0Until100()
 
@@ -272,7 +272,7 @@ class PriorityQueueTest extends CollectionTest {
     }
   }
 
-  @Test def removingAnArbitraryElementWithAnIteratorPreservesPriorities(): Unit = {
+  @Test def iteratorRemovePreservesPriorities(): Unit = {
     for (itemToRemove <- 0 until 100) {
       val pq = newPriorityQueueWith0Until100()
 
@@ -315,7 +315,7 @@ class PriorityQueueTest extends CollectionTest {
    * the future.
    */
 
-  @Test def removingAnArbitraryElementWithAnIteratorPreservesPrioritiesCornerCase(): Unit = {
+  @Test def iteratorRemovePreservesPrioritiesIntCornerCase(): Unit = {
     /* This tests the specific scenario where `Iterator.remove()` causes the
      * array to be reordered in such a way that a) elements yet to be iterated
      * are moved before the iteration cursor, and b) elements already iteratoed
@@ -355,7 +355,7 @@ class PriorityQueueTest extends CollectionTest {
     assertFalse(iter.hasNext())
   }
 
-  @Test def removingAnArbitraryElementWithAnIteratorDoubleCornerCase(): Unit = {
+  @Test def iteratorRemoveDoubleCornerCase(): Unit = {
     /* This tests that when `Iterator.remove()` is supposed to remove a zero,
      * it does not accidentally remove a zero of the opposite sign.
      *
@@ -391,7 +391,7 @@ class PriorityQueueTest extends CollectionTest {
     assertFalse(iter.hasNext())
   }
 
-  @Test def removingAnArbitraryElementWithAnIteratorReferenceCornerCase(): Unit = {
+  @Test def iteratorRemoveCustomObjectCornerCase(): Unit = {
     /* This tests that when `Iterator.remove()` is supposed to remove an
      * object, it does not accidentally remove an other object that happens to
      * be `equals` to it (but with a different identity).

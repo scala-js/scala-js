@@ -28,7 +28,7 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
 
   def factory: ListFactory
 
-  @Test def shouldStoreStrings_List(): Unit = {
+  @Test def addStringGetIndex(): Unit = {
     val lst = factory.empty[String]
 
     assertEquals(0, lst.size())
@@ -44,7 +44,7 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     expectThrows(classOf[IndexOutOfBoundsException], lst.get(lst.size))
   }
 
-  @Test def shouldStoreIntegers_List(): Unit = {
+  @Test def addIntGetIndex(): Unit = {
     val lst = factory.empty[Int]
 
     lst.add(1)
@@ -59,7 +59,7 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     expectThrows(classOf[IndexOutOfBoundsException], lst.get(lst.size))
   }
 
-  @Test def shouldStoreDoubles_List(): Unit = {
+  @Test def addDoubleGetIndex(): Unit = {
     val lst = factory.empty[Double]
 
     lst.add(1.234)
@@ -83,7 +83,7 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     expectThrows(classOf[IndexOutOfBoundsException], lst.get(lst.size))
   }
 
-  @Test def shouldStoreCustomObjects_List(): Unit = {
+  @Test def addCustomObjectsGetIndex(): Unit = {
     case class TestObj(num: Int)
 
     val lst = factory.empty[TestObj]
@@ -96,7 +96,7 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     expectThrows(classOf[IndexOutOfBoundsException], lst.get(lst.size))
   }
 
-  @Test def shouldRemoveStoredElements_List(): Unit = {
+  @Test def removeStringRemoveIndex(): Unit = {
     val lst = factory.empty[String]
 
     lst.add("one")
@@ -115,7 +115,7 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     expectThrows(classOf[IndexOutOfBoundsException], lst.remove(lst.size))
   }
 
-  @Test def shouldRemoveStoredElementsOnDoubleCornerCases_List(): Unit = {
+  @Test def removeDoubleOnCornerCases(): Unit = {
     val al = factory.empty[Double]
 
     al.add(1.234)
@@ -143,7 +143,7 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     assertTrue(al.isEmpty)
   }
 
-  @Test def shouldBeClearedWithOneOperation_List(): Unit = {
+  @Test def clearList(): Unit = {
     val al = factory.empty[String]
 
     al.add("one")
@@ -153,7 +153,7 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     assertEquals(0, al.size)
   }
 
-  @Test def shouldCheckContainedPresence_List(): Unit = {
+  @Test def containsStringList(): Unit = {
     val al = factory.empty[String]
 
     al.add("one")
@@ -162,7 +162,7 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     assertFalse(al.contains(null))
   }
 
-  @Test def shouldCheckContainedPresenceForDoubleCornerCases_List(): Unit = {
+  @Test def containedDoubleOnCornerCases(): Unit = {
     val al = factory.empty[Double]
 
     al.add(-0.0)
@@ -176,7 +176,7 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     assertTrue(al.contains(+0.0))
   }
 
-  @Test def shouldGiveAProperSetOperation(): Unit = {
+  @Test def setString(): Unit = {
     val al = factory.empty[String]
     al.add("one")
     al.add("two")
@@ -191,13 +191,13 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     expectThrows(classOf[IndexOutOfBoundsException], al.set(al.size, ""))
   }
 
-  @Test def shouldGiveProperIteratorOverElements_List(): Unit = {
+  @Test def iterator(): Unit = {
     val al = factory.empty[String]
     al.add("one")
     al.add("two")
     al.add("three")
 
-    val elements = al.iterator
+    val elements = al.iterator()
     assertTrue(elements.hasNext)
     assertEquals("one", elements.next())
     assertTrue(elements.hasNext)
@@ -207,13 +207,13 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     assertFalse(elements.hasNext)
   }
 
-  @Test def shouldGiveProperListIteratorOverElements(): Unit = {
+  @Test def listIterator(): Unit = {
     val lst = factory.empty[String]
     lst.add("one")
     lst.add("two")
     lst.add("three")
 
-    val elements = lst.listIterator
+    val elements = lst.listIterator()
     assertFalse(elements.hasPrevious)
     assertTrue(elements.hasNext)
     assertEquals("one", elements.next())
@@ -230,7 +230,7 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     assertEquals("one", elements.previous())
   }
 
-  @Test def shouldAddElementsAtAGivenIndex(): Unit = {
+  @Test def addIndex(): Unit = {
     val al = factory.empty[String]
     al.add(0, "one") // ["one"]
     al.add(0, "two") // ["two", "one"]
@@ -244,7 +244,7 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     expectThrows(classOf[IndexOutOfBoundsException], al.add(al.size + 1, ""))
   }
 
-  @Test def shouldGiveTheFirstIndexOfAnElement(): Unit = {
+  @Test def indexOf(): Unit = {
     val al = factory.empty[String]
     al.add("one")
     al.add("two")
@@ -259,7 +259,7 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     assertEquals(-1, al.indexOf("four"))
   }
 
-  @Test def shouldGiveTheLastIndexOfAnElement(): Unit = {
+  @Test def lastIndexOf(): Unit = {
     val al = factory.empty[String]
     al.add("one")
     al.add("two")
@@ -274,7 +274,7 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     assertEquals(-1, al.lastIndexOf("four"))
   }
 
-  @Test def shouldGiveTheFirstOrLastIndexOfAnElementForDoubleCornerCases(): Unit = {
+  @Test def indexOfLastIndexOfDoubleCornerCases(): Unit = {
     val al = factory.empty[Double]
 
     al.add(-0.0)
@@ -293,9 +293,9 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     assertEquals(5, al.lastIndexOf(Double.NaN))
   }
 
-  @Test def shouldGiveASublistBackedUpByTheOriginalList(): Unit = {
+  @Test def subListBackedByList(): Unit = {
     def testListIterator(list: ju.List[String], expected: Seq[String]): Unit = {
-      val iter = list.listIterator
+      val iter = list.listIterator()
       for (elem <- expected) {
         assertTrue(iter.hasNext)
         assertEquals(elem, iter.next())
@@ -380,7 +380,7 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     }
   }
 
-  @Test def shouldIterateAndModifyElementsWithAListIteratorIfAllowed(): Unit = {
+  @Test def iteratorSetRemoveIfAllowed(): Unit = {
     if (factory.allowsMutationThroughIterator) {
       val s = Seq("one", "two", "three")
       val ll = factory.empty[String]

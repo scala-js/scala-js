@@ -25,7 +25,7 @@ class LinkedListTest extends AbstractListTest {
 
   override def factory: LinkedListFactory = new LinkedListFactory
 
-  @Test def add_and_remove_properly_in_head_and_last_positions(): Unit = {
+  @Test def addRemovePeekFirstAndLast(): Unit = {
     val ll = new LinkedList[Int]()
 
     ll.addLast(1)
@@ -41,7 +41,7 @@ class LinkedListTest extends AbstractListTest {
     assertEquals(2, ll.peekLast())
   }
 
-  @Test def could_be_instantiated_with_a_prepopulated_Collection(): Unit = {
+  @Test def ctorCollectionInt(): Unit = {
     val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val ll = new LinkedList[Int](l)
 
@@ -53,7 +53,7 @@ class LinkedListTest extends AbstractListTest {
     assertTrue(ll.isEmpty)
   }
 
-  @Test def should_add_multiple_element_in_one_operation(): Unit = {
+  @Test def addAllAndAdd(): Unit = {
     val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val ll = new LinkedList[Int]()
 
@@ -64,7 +64,7 @@ class LinkedListTest extends AbstractListTest {
     assertEquals(6, ll.size())
   }
 
-  @Test def `could_be_instantiated_with_a_prepopulated_Collection_-_LinkedListTest`(): Unit = {
+  @Test def poll(): Unit = {
     val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val ll = new LinkedList[Int](l)
 
@@ -76,7 +76,7 @@ class LinkedListTest extends AbstractListTest {
     assertTrue(ll.isEmpty)
   }
 
-  @Test def should_retrieve_the_last_element(): Unit = {
+  @Test def pollLast(): Unit = {
     val llInt = new LinkedList[Int]()
 
     assertTrue(llInt.add(1000))
@@ -96,7 +96,7 @@ class LinkedListTest extends AbstractListTest {
     assertEquals(-0.987, llDouble.pollLast(), 0.0)
   }
 
-  @Test def should_perform_as_a_stack_with_push_and_pop(): Unit = {
+  @Test def pushAndPop(): Unit = {
     val llInt = new LinkedList[Int]()
 
     llInt.push(1000)
@@ -122,7 +122,7 @@ class LinkedListTest extends AbstractListTest {
     assertTrue(llString.isEmpty())
   }
 
-  @Test def should_poll_and_peek_elements(): Unit = {
+  @Test def peekPollFirstAndLast(): Unit = {
     val pq = new LinkedList[String]()
 
     assertTrue(pq.add("one"))
@@ -145,7 +145,7 @@ class LinkedListTest extends AbstractListTest {
     assertNull(pq.pollLast)
   }
 
-  @Test def should_remove_occurrences_of_provided_elements(): Unit = {
+  @Test def removeFirstOccurrence(): Unit = {
     val l = TrivialImmutableCollection("one", "two", "three", "two", "one")
     val ll = new LinkedList[String](l)
 
@@ -160,7 +160,7 @@ class LinkedListTest extends AbstractListTest {
     assertTrue(ll.isEmpty)
   }
 
-  @Test def should_iterate_over_elements_in_both_directions(): Unit = {
+  @Test def iteratorAndDescendingIterator(): Unit = {
     val l = TrivialImmutableCollection("one", "two", "three")
     val ll = new LinkedList[String](l)
 

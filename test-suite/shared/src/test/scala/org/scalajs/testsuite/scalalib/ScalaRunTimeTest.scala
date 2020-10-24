@@ -19,7 +19,7 @@ import scala.concurrent.Future
 
 class ScalaRunTimeTest {
 
-  @Test def ScalaRunTime_isArray(): Unit = {
+  @Test def scalaRunTimeIsArray(): Unit = {
     def isScalaArray(x: Any): Boolean = {
       x match {
         case _: Array[_] => true

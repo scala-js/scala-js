@@ -22,7 +22,7 @@ import org.scalajs.ir.{Trees => js}
 class JSExportASTTest extends JSASTTest {
 
   @Test
-  def inheritExportMethods: Unit = {
+  def inheritExportMethods(): Unit = {
     """
     import scala.scalajs.js.annotation.JSExport
 

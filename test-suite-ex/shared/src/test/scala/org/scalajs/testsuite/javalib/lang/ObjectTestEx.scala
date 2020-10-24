@@ -25,7 +25,7 @@ import org.scalajs.testsuite.utils.AssertThrows._
  */
 class ObjectTestEx {
 
-  @Test def clone_issue_2010(): Unit = {
+  @Test def clone_Issue2010(): Unit = {
     class NotCloneable extends Object {
       override def clone(): NotCloneable =
         super.clone().asInstanceOf[NotCloneable]

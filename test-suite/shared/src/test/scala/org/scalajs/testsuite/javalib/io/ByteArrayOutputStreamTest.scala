@@ -21,7 +21,7 @@ import org.junit.Assert._
 
 class ByteArrayOutputStreamTest {
 
-  @Test def should_support_simple_write_int(): Unit = {
+  @Test def simpleWriteInt(): Unit = {
     val out = new ByteArrayOutputStream()
 
     for (i <- 0 to 9)
@@ -30,7 +30,7 @@ class ByteArrayOutputStreamTest {
     assertArrayEquals(Array[Byte](0, 1, 2, 3, 4, 5, 6, 7, 8, 9), out.toByteArray)
   }
 
-  @Test def should_support_simple_write_byte_array(): Unit = {
+  @Test def simpleWriteByteArray(): Unit = {
     val out = new ByteArrayOutputStream()
     val arr = Array[Byte](0, 1, 2, 3, 4, 5)
 
@@ -40,7 +40,7 @@ class ByteArrayOutputStreamTest {
     assertArrayEquals(Array[Byte](1, 2, 3, 4, 0, 1, 2, 3, 4, 5), out.toByteArray)
   }
 
-  @Test def should_support_write_byte_array_with_buffer_resize(): Unit = {
+  @Test def writeByteArrayWithBufferResize(): Unit = {
     val out = new ByteArrayOutputStream(16)
     val arr = Array[Byte](0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
 
@@ -50,7 +50,7 @@ class ByteArrayOutputStreamTest {
     assertArrayEquals(arr ++ arr, out.toByteArray)
   }
 
-  @Test def should_support_toString_with_UTF8(): Unit = {
+  @Test def toStringWithUTF8(): Unit = {
     val buf = Array[Byte](72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100,
       46, -29, -127, -109, -29, -126, -109, -29, -127, -85, -29, -127, -95,
       -29, -127, -81, -26, -105, -91, -26, -100, -84, -24, -86, -98, -29,
@@ -63,7 +63,7 @@ class ByteArrayOutputStreamTest {
     assertEquals("Hello World.こんにちは日本語を読めますか。", out.toString)
   }
 
-  @Test def should_support_reset(): Unit = {
+  @Test def reset(): Unit = {
     val out = new ByteArrayOutputStream()
     for (i <- 0 to 9) out.write(i)
     out.reset()
@@ -72,7 +72,7 @@ class ByteArrayOutputStreamTest {
     assertArrayEquals(Array[Byte](0, 1, 2, 3, 4, 5, 6, 7, 8, 9), out.toByteArray)
   }
 
-  @Test def buf_field(): Unit = {
+  @Test def bufField(): Unit = {
     class ByteArrayOutputStreamWithBufAccess extends ByteArrayOutputStream {
       def getBuf(): Array[Byte] = buf
       def setBuf(b: Array[Byte]): Unit = buf = b
@@ -91,7 +91,7 @@ class ByteArrayOutputStreamTest {
     assertNotSame(newBuf, output)
   }
 
-  @Test def count_field(): Unit = {
+  @Test def countField(): Unit = {
     class ByteArrayOutputStreamWithCountAccess extends ByteArrayOutputStream {
       def getCount(): Int = count
       def setCount(c: Int): Unit = count = c

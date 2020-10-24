@@ -26,26 +26,26 @@ import scala.reflect.ClassTag
 object CollectionsOnListTest extends CollectionsTestBase {
 
   // Test: sort[T<:Comparable[T]](List[T])
-  def sort_on_comparables(factory: ListFactory): Unit = {
-    test_sort_on_comparables[CustomComparable](factory,
+  def sortOnComparables(factory: ListFactory): Unit = {
+    testSortOnComparables[CustomComparable](factory,
         new CustomComparable(_), false)
-    test_sort_on_comparables[jl.Integer](factory, jl.Integer.valueOf)
-    test_sort_on_comparables[jl.Long](factory, _.toLong)
-    test_sort_on_comparables[jl.Double](factory, _.toDouble)
+    testSortOnComparables[jl.Integer](factory, jl.Integer.valueOf)
+    testSortOnComparables[jl.Long](factory, _.toLong)
+    testSortOnComparables[jl.Double](factory, _.toDouble)
   }
 
   // Test: sort[T](List[T], Comparator[T])
-  def sort_with_comparator(factory: ListFactory): Unit = {
-    test_sort_with_comparator[CustomComparable](factory,
+  def sortWithComparator(factory: ListFactory): Unit = {
+    testSortWithComparator[CustomComparable](factory,
         new CustomComparable(_), (x, y) => x.compareTo(y), false)
-    test_sort_with_comparator[jl.Integer](factory, _.toInt, (x, y) => x.compareTo(y))
-    test_sort_with_comparator[jl.Long](factory, _.toLong,
+    testSortWithComparator[jl.Integer](factory, _.toInt, (x, y) => x.compareTo(y))
+    testSortWithComparator[jl.Long](factory, _.toLong,
         (x, y) => x.compareTo(y))
-    test_sort_with_comparator[jl.Double](factory, _.toDouble,
+    testSortWithComparator[jl.Double](factory, _.toDouble,
         (x, y) => x.compareTo(y))
   }
 
-  private def test_sort_on_comparables[T <: AnyRef with Comparable[T]: ClassTag](
+  private def testSortOnComparables[T <: AnyRef with Comparable[T]: ClassTag](
       factory: ListFactory, toElem: Int => T,
       absoluteOrder: Boolean = true): Unit = {
 
@@ -79,7 +79,7 @@ object CollectionsOnListTest extends CollectionsTestBase {
     }
   }
 
-  private def test_sort_with_comparator[T: ClassTag](factory: ListFactory, toElem: Int => T,
+  private def testSortWithComparator[T: ClassTag](factory: ListFactory, toElem: Int => T,
       cmpFun: (T, T) => Int, absoluteOrder: Boolean = true): Unit = {
 
     val list = factory.empty[T]
@@ -121,13 +121,13 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
 
   def factory: ListFactory
 
-  @Test def sort_on_comparables(): Unit =
-    CollectionsOnListTest.sort_on_comparables(factory)
+  @Test def sortOnComparables(): Unit =
+    CollectionsOnListTest.sortOnComparables(factory)
 
-  @Test def sort_with_comparator(): Unit =
-    CollectionsOnListTest.sort_with_comparator(factory)
+  @Test def sortWithComparator(): Unit =
+    CollectionsOnListTest.sortWithComparator(factory)
 
-  @Test def binarySearch_on_comparables(): Unit = {
+  @Test def binarySearchOnComparables(): Unit = {
     // Test: binarySearch[T](list: List[Comparable[T]], T)
     def test[T <: AnyRef with Comparable[T]: ClassTag](toElem: Int => T): Unit = {
       val list = factory.fromElements[T](range.map(toElem).sorted: _*)
@@ -154,7 +154,7 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
     test[jl.Double](_.toDouble)
   }
 
-  @Test def binarySearch_with_comparator(): Unit = {
+  @Test def binarySearchWithComparator(): Unit = {
     // Test: binarySearch[T](List[T], key: T, Comparator[T]))
     def test[T: ClassTag](toElem: Int => T, cmpFun: (T, T) => Int): Unit = {
       val cmp = new ju.Comparator[T] {

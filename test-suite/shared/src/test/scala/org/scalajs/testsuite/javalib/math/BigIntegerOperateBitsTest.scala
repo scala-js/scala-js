@@ -568,7 +568,7 @@ class BigIntegerOperateBitsTest {
     assertEquals(1, result.signum())
   }
 
-  @Test def testSetBitBug1331(): Unit = {
+  @Test def testSetBit_Issue1331(): Unit = {
     val result = BigInteger.valueOf(0L).setBit(191)
     assertEquals("3138550867693340381917894711603833208051177722232017256448", result.toString)
     assertEquals(1, result.signum())

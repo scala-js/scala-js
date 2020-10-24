@@ -30,7 +30,7 @@ class ConcurrentHashMapTest extends MapTest {
 
   def factory: ConcurrentHashMapFactory = new ConcurrentHashMapFactory
 
-  @Test def `should give proper Enumerator over elements`(): Unit = {
+  @Test def testEnumeration(): Unit = {
     val chm = factory.empty[String, String]
 
     chm.put("ONE", "one")

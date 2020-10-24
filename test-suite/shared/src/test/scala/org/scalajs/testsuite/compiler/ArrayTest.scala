@@ -46,7 +46,7 @@ class ArrayTest {
   }
 
   @Test
-  def arraySelectSideEffecting_issue_3848(): Unit = {
+  def arraySelectSideEffecting_Issue3848(): Unit = {
     assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
         hasCompliantArrayIndexOutOfBounds)
 

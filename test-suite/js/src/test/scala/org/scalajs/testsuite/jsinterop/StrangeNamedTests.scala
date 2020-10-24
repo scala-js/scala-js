@@ -15,6 +15,8 @@ package org.scalajs.testsuite.jsinterop
 import org.junit.Test
 import org.scalajs.testsuite.junit.JUnitUtil
 
+// Strange named tests are part of the test
+
 class `1_TestName` { // scalastyle:ignore
   @Test def `a test with name 1_TestName`(): Unit = ()
 }

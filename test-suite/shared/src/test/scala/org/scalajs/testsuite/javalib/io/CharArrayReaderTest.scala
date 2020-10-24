@@ -27,13 +27,13 @@ class CharArrayReaderTest {
       closeable.close()
   }
 
-  @Test def should_support_constructor_char_array(): Unit = {
+  @Test def ctorCharArray(): Unit = {
     withClose(new CharArrayReader(hw)) { cr =>
       assertTrue("Failed to create reader", cr.ready())
     }
   }
 
-  @Test def should_support_constructor_char_array_with_offset_and_length(): Unit = {
+  @Test def ctorCharArrayWithOffsetAndLength(): Unit = {
     // CharArrayReader for "Worl"
     withClose(new CharArrayReader(hw, 5, 4)) { cr =>
       assertTrue("Failed to create reader", cr.ready())
@@ -47,7 +47,7 @@ class CharArrayReaderTest {
     }
   }
 
-  @Test def should_support_constructor_char_array_with_offset_and_larger_length(): Unit = {
+  @Test def ctorCharArrayWithOffsetAndLargerLength(): Unit = {
     // CharArrayReader for "World"
     withClose(new CharArrayReader(hw, 5, 100)) { cr =>
       assertTrue("Failed to create reader", cr.ready())
@@ -61,20 +61,20 @@ class CharArrayReaderTest {
     }
   }
 
-  @Test def read_should_throw_IOException_after_close(): Unit = {
+  @Test def readThrowsIOExceptionAfterClose(): Unit = {
     withClose(new CharArrayReader(hw)) { cr =>
       cr.close()
       assertThrows(classOf[IOException], cr.read())
     }
   }
 
-  @Test def should_support_markSupported(): Unit = {
+  @Test def markSupported(): Unit = {
     withClose(new CharArrayReader(hw)) { cr =>
       assertTrue("markSupported returned false", cr.markSupported)
     }
   }
 
-  @Test def should_support_read_char(): Unit = {
+  @Test def readChar(): Unit = {
     withClose(new CharArrayReader(hw)) { cr =>
       assertEquals("Read returned incorrect char", 'H', cr.read())
     }
@@ -84,7 +84,7 @@ class CharArrayReaderTest {
     }
   }
 
-  @Test def should_support_read_char_array(): Unit = {
+  @Test def readCharArray(): Unit = {
     withClose(new CharArrayReader(hw)) { cr =>
       val c = new Array[Char](11)
       cr.read(c, 1, 10)
@@ -92,7 +92,7 @@ class CharArrayReaderTest {
     }
   }
 
-  @Test def ready_should_throw_IOException(): Unit = {
+  @Test def readyThrowsIOException(): Unit = {
     withClose(new CharArrayReader(hw)) { cr =>
       assertTrue("ready returned false", cr.ready())
       cr.skip(1000L)
@@ -108,7 +108,7 @@ class CharArrayReaderTest {
     }
   }
 
-  @Test def should_support_reset_after_mark(): Unit = {
+  @Test def resetAfterMark(): Unit = {
     withClose(new CharArrayReader(hw)) { cr =>
       cr.skip(5L)
       // Mark current position
@@ -120,7 +120,7 @@ class CharArrayReaderTest {
     }
   }
 
-  @Test def mark_limit_should_be_ignored(): Unit = {
+  @Test def markLimitMinusOneIgnored(): Unit = {
     withClose(new CharArrayReader(hw)) { cr =>
       cr.skip(5L)
       // Mark current position
@@ -135,25 +135,25 @@ class CharArrayReaderTest {
     }
   }
 
-  @Test def should_support_negative_skip(): Unit = {
+  @Test def skipNegative(): Unit = {
     withClose(new CharArrayReader(hw)) { cr =>
       assertEquals("Negative skip values should return zero", 0, cr.skip(-1L))
     }
   }
 
-  @Test def should_support_skip_zero(): Unit = {
+  @Test def skipZero(): Unit = {
     withClose(new CharArrayReader(hw)) { cr =>
       assertEquals("Zero skip value should return zero", 0, cr.skip(0L))
     }
   }
 
-  @Test def skip_should_return_array_size_when_greater(): Unit = {
+  @Test def skipReturnsArraySizeWhenGreater(): Unit = {
     withClose(new CharArrayReader(hw)) { cr =>
       assertEquals("Skip didn't return array size", 10L, cr.skip(1000L))
     }
   }
 
-  @Test def should_support_reset_from_offset_reader(): Unit = {
+  @Test def resetFromOffsetReader(): Unit = {
     val data = "offsetHello world!".toCharArray
     val offsetLength = 6
     val length = data.length - offsetLength
@@ -168,7 +168,7 @@ class CharArrayReaderTest {
     }
   }
 
-  @Test def should_support_skip(): Unit = {
+  @Test def skip(): Unit = {
     withClose(new CharArrayReader(hw)) { cr =>
       val skipped = cr.skip(5L)
       assertEquals("Failed to skip correct number of chars", 5L, skipped)

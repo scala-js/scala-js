@@ -38,7 +38,7 @@ class ReflectionTest {
     case _ => false
   }
 
-  @Test def java_lang_Class_getName_under_normal_circumstances(): Unit = {
+  @Test def javaLangClassGetNameUnderNormalCircumstances(): Unit = {
     @noinline
     def testNoInline(expected: String, cls: Class[_]): Unit =
       assertEquals(expected, cls.getName())
@@ -52,12 +52,12 @@ class ReflectionTest {
     test("scala.Some", classOf[scala.Some[_]])
   }
 
-  @Test def should_append_$_to_class_name_of_objects(): Unit = {
+  @Test def appendDollarSignToClassNameOfObjects(): Unit = {
     assertEquals("org.scalajs.testsuite.compiler.ReflectionTest$TestObject$",
       TestObject.getClass.getName)
   }
 
-  @Test def java_lang_Class_getName_renamed_through_semantics(): Unit = {
+  @Test def javaLangClassGetNameRenamedThroughSemantics(): Unit = {
     @noinline
     def testNoInline(expected: String, cls: Class[_]): Unit =
       assertEquals(expected, cls.getName())
@@ -77,7 +77,7 @@ class ReflectionTest {
         classOf[OtherPrefixRenamedTestClass])
   }
 
-  @Test def java_lang_Object_getClass_getName_renamed_through_semantics(): Unit = {
+  @Test def javaLangObjectGetClassGetNameRenamedThroughSemantics(): Unit = {
     // x.getClass().getName() is subject to optimizations
 
     @noinline
@@ -105,7 +105,7 @@ class ReflectionTest {
         new OtherPrefixRenamedTestClass)
   }
 
-  @Test def should_support_isInstance(): Unit = {
+  @Test def isInstance(): Unit = {
     class A
     class B extends A
     val b = new B
@@ -126,7 +126,7 @@ class ReflectionTest {
     assertTrue(classOf[Cloneable].isInstance(new Array[String](1)))
   }
 
-  @Test def isInstance_for_JS_class(): Unit = {
+  @Test def isInstanceForJSClass(): Unit = {
     js.eval("""var ReflectionTestJSClass = (function() {})""")
 
     val obj = new ReflectionTestJSClass
@@ -145,7 +145,7 @@ class ReflectionTest {
     assertFalse(implicitClassTagTest[ReflectionTestJSClass](other))
   }
 
-  @Test def isInstance_for_JS_traits_should_fail(): Unit = {
+  @Test def isInstanceForJSTraitsThrows(): Unit = {
     assertThrows(classOf[Exception], classOf[ReflectionTestJSTrait].isInstance(5))
 
     val ct = classTag[ReflectionTestJSTrait]
@@ -154,7 +154,7 @@ class ReflectionTest {
     assertThrows(classOf[Exception], implicitClassTagTest[ReflectionTestJSTrait](new AnyRef))
   }
 
-  @Test def getClass_for_normal_types(): Unit = {
+  @Test def getClassForNormalTypes(): Unit = {
     class Foo {
       def bar(): Class[_] = super.getClass()
     }
@@ -163,7 +163,7 @@ class ReflectionTest {
     assertSame(foo.bar(), classOf[Foo])
   }
 
-  @Test def getClass_for_anti_boxed_primitive_types(): Unit = {
+  @Test def getClassForAntiBoxedPrimitiveTypes(): Unit = {
     implicit def classAsAny(c: java.lang.Class[_]): js.Any =
       c.asInstanceOf[js.Any]
     assertEquals(classOf[java.lang.Boolean], (false: Any).getClass)
@@ -177,7 +177,7 @@ class ReflectionTest {
     assertEquals(classOf[scala.runtime.BoxedUnit], ((): Any).getClass)
   }
 
-  @Test def getSuperclass_issue_1489(): Unit = {
+  @Test def getSuperclass_Issue1489(): Unit = {
     assertEquals(classOf[SomeParentClass], classOf[SomeChildClass].getSuperclass)
     assertNull(classOf[AnyRef].getSuperclass)
     assertEquals(classOf[AnyRef], classOf[String].getSuperclass)
@@ -187,7 +187,7 @@ class ReflectionTest {
       classOf[ChildClassWhoseDataIsAccessedDirectly].getSuperclass.getName)
   }
 
-  @Test def cast_positive(): Unit = {
+  @Test def castPositive(): Unit = {
     assertNull(classOf[String].cast(null))
     assertEquals("hello", classOf[String].cast("hello"))
     assertEquals(List(1, 2), classOf[Seq[_]].cast(List(1, 2)))
@@ -196,7 +196,7 @@ class ReflectionTest {
     classOf[Object].cast(js.Array(3, 4)) // should not throw
   }
 
-  @Test def cast_negative(): Unit = {
+  @Test def castNegative(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
     assertThrows(classOf[Exception], classOf[String].cast(5))
     assertThrows(classOf[Exception], classOf[Seq[_]].cast(Some("foo")))

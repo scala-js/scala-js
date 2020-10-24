@@ -19,7 +19,7 @@ import org.junit.Assert._
 
 class NameTransformerTest {
 
-  @Test def decode_issue_1602(): Unit = {
+  @Test def decode_Issue1602(): Unit = {
     /* Mostly to make sure it links.
      * We trust the Scala implementation for correctness. And if it isn't,
      * well, behaving the same as Scala is the correct thing do for us

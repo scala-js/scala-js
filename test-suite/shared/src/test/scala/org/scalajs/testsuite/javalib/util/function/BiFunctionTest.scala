@@ -20,7 +20,7 @@ import org.junit.Test
 class BiFunctionTest {
   import BiFunctionTest._
 
-  @Test def create_and_apply(): Unit = {
+  @Test def createAndApply(): Unit = {
     assertEquals(3, addBiFunc(1, 2))
   }
 

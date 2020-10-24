@@ -33,7 +33,7 @@ class UnionTypeTest {
 
   // js.| (postive)
 
-  @Test def left_and_right(): Unit = {
+  @Test def leftAndRight(): Unit = {
     val x1: Int | String = 4
     assertEquals(4, x1)
 
@@ -41,7 +41,7 @@ class UnionTypeTest {
     assertEquals("hello", x2)
   }
 
-  @Test def left_and_right_with_subtyping(): Unit = {
+  @Test def leftAndRightWithSubtyping(): Unit = {
     val list = List(1, 2, 3)
 
     val x1: Seq[Int] | CharSequence = list
@@ -52,7 +52,7 @@ class UnionTypeTest {
     assertEquals("hello", x2)
   }
 
-  @Test def three_types(): Unit = {
+  @Test def threeTypes(): Unit = {
     val x1: Int | String | Boolean = 3
     assertEquals(3, x1)
 
@@ -69,18 +69,18 @@ class UnionTypeTest {
     assertEquals("hello", x2)
   }
 
-  @Test def int_as_Double(): Unit = {
+  @Test def intAsDouble(): Unit = {
     val x1: Double | String = 3
     assertEquals(3, x1)
   }
 
-  @Test def swap_base_types(): Unit = {
+  @Test def swapBaseTypes(): Unit = {
     val x1: Int | String = 3
     val x2: String | Int = x1
     assertEquals(3, x2)
   }
 
-  @Test def permutations_for_3_base_types(): Unit = {
+  @Test def permutationsFor3BaseTypes(): Unit = {
     val x: Int | String | Boolean = 3
 
     val x1: Int | Boolean | String = x
@@ -96,7 +96,7 @@ class UnionTypeTest {
     assertEquals(3, x5)
   }
 
-  @Test def permutations_of_2_base_types_to_3_base_types(): Unit = {
+  @Test def permutationsOf2BaseTypesTo3BaseTypes(): Unit = {
     val x1: Int | String = 3
     val x2: Int | Boolean = false
     val x3: Boolean | String = "hello"
@@ -110,7 +110,7 @@ class UnionTypeTest {
     assertEquals("hello", y3)
   }
 
-  @Test def partial_upper_bound(): Unit = {
+  @Test def partialUpperBound(): Unit = {
     val x: Int | String | Boolean = "hello"
 
     val x1: AnyVal | String = x
@@ -142,7 +142,7 @@ class UnionTypeTest {
     assertEquals(Seq(3, 5), y4)
   }
 
-  @Test def js_UndefOr_A_or_B_inference(): Unit = {
+  @Test def jsUndefOrAOrBInference(): Unit = {
     val a: String = "hello"
 
     assertEquals(a, a: Int | String)
@@ -184,7 +184,7 @@ class UnionTypeTest {
     assertEquals(a, a: js.UndefOr[js.UndefOr[Object] | Object | String])
   }
 
-  @Test def covariant_type_constructor(): Unit = {
+  @Test def covariantTypeConstructor(): Unit = {
     val a: List[Int] = List(5)
 
     assertSame(a, a: List[Int | String])
@@ -195,7 +195,7 @@ class UnionTypeTest {
     assertSame(a, b: AnyVal | List[Int | String])
   }
 
-  @Test def contravariant_type_constructor(): Unit = {
+  @Test def contravariantTypeConstructor(): Unit = {
     val a: Consumer[CharSequence | Int] = new Consumer
 
     assertSame(a, a: Consumer[Int])
@@ -213,49 +213,49 @@ class UnionTypeTest {
    * not test them.
    */
 
-  @Test def neither_left_nor_right(): Unit = {
+  @Test def neitherLeftNorRight(): Unit = {
     typeError(
         "3: Boolean | String")
   }
 
-  @Test def none_of_three_types(): Unit = {
+  @Test def noneOfThreeTypes(): Unit = {
     typeError(
         "3: Boolean | String | List[Int]")
   }
 
-  @Test def wrong_type_parameter_on_left_or_right(): Unit = {
+  @Test def wrongTypeParameterOnLeftOrRight(): Unit = {
     typeError(
         "List(1, 2): List[String] | String")
     typeError(
         "List(1, 2): String | List[String]")
   }
 
-  @Test def left_of_OR_type_is_not_a_subtype_of_rhs(): Unit = {
+  @Test def leftOfOrTypeIsNotSubtypeOfRhs(): Unit = {
     typeError(
         "(1: Int | List[String]): String | List[String]")
   }
 
-  @Test def right_of_OR_type_is_not_a_subtype_of_rhs(): Unit = {
+  @Test def rightOfOrTypeIsNotSubtypeOfRhs(): Unit = {
     typeError(
         "(1: Int | List[String]): String | Int")
   }
 
-  @Test def merge_with_an_incorrect_subtype(): Unit = {
+  @Test def mergeWithAnIncorrectSubtype(): Unit = {
     typeError(
         "(List(1, 2): List[Int] | Set[Int]).merge: Seq[Int]")
   }
 
-  @Test def invariant_type_constructor(): Unit = {
+  @Test def invariantTypeConstructor(): Unit = {
     typeError(
         "(Array[Int]()): Array[Int | String]")
   }
 
-  @Test def covariant_type_constructor_in_contravariant_pos(): Unit = {
+  @Test def covariantTypeConstructorInContravariantPos(): Unit = {
     typeError(
         "(Nil: List[Int | String]): List[Int]")
   }
 
-  @Test def contravariant_type_constructor_in_covariant_pos(): Unit = {
+  @Test def contravariantTypeConstructorInCovariantPos(): Unit = {
     typeError(
         "(new Consumer[Int]): Consumer[Int | String]")
   }

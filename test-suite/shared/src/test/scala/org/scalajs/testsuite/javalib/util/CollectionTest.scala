@@ -29,7 +29,7 @@ trait CollectionTest extends IterableTest {
 
   def factory: CollectionFactory
 
-  @Test def shouldStoreStrings(): Unit = {
+  @Test def testWithString(): Unit = {
     val coll = factory.empty[String]
 
     assertEquals(0, coll.size())
@@ -49,7 +49,7 @@ trait CollectionTest extends IterableTest {
     assertTrue(coll.size() >= 1)
   }
 
-  @Test def shouldStoreIntegers(): Unit = {
+  @Test def testWithInt(): Unit = {
     val coll = factory.empty[Int]
 
     assertEquals(0, coll.size())
@@ -69,7 +69,7 @@ trait CollectionTest extends IterableTest {
     assertTrue(coll.size() >= 1)
   }
 
-  @Test def shouldStoreDoubles(): Unit = {
+  @Test def testWithDouble(): Unit = {
     val coll = factory.empty[Double]
 
     assertEquals(0, coll.size())
@@ -104,7 +104,7 @@ trait CollectionTest extends IterableTest {
     assertTrue(coll.contains(Double.NaN))
   }
 
-  @Test def shouldStoreCustomObjects(): Unit = {
+  @Test def testWithCustomClass(): Unit = {
     case class TestObj(num: Int) extends jl.Comparable[TestObj] {
       def compareTo(o: TestObj): Int =
         o.num.compareTo(num)
@@ -118,7 +118,7 @@ trait CollectionTest extends IterableTest {
     assertFalse(coll.contains(TestObj(200)))
   }
 
-  @Test def shouldRemoveStoredElements(): Unit = {
+  @Test def removeString(): Unit = {
     val coll = factory.empty[String]
 
     coll.add("one")
@@ -135,7 +135,7 @@ trait CollectionTest extends IterableTest {
     assertEquals(initialSize - 2, coll.size())
   }
 
-  @Test def shouldRemoveStoredElementsOnDoubleCornerCases(): Unit = {
+  @Test def removeDoubleCornerCases(): Unit = {
     val coll = factory.empty[Double]
 
     coll.add(1.234)
@@ -163,7 +163,7 @@ trait CollectionTest extends IterableTest {
     assertTrue(coll.isEmpty)
   }
 
-  @Test def shouldBeClearedWithOneOperation(): Unit = {
+  @Test def clear(): Unit = {
     val coll = factory.empty[String]
 
     coll.add("one")
@@ -173,7 +173,7 @@ trait CollectionTest extends IterableTest {
     assertEquals(0, coll.size)
   }
 
-  @Test def shouldCheckContainedPresence(): Unit = {
+  @Test def containsString(): Unit = {
     val coll = factory.empty[String]
 
     coll.add("one")
@@ -186,7 +186,7 @@ trait CollectionTest extends IterableTest {
     }
   }
 
-  @Test def shouldCheckContainedPresenceForDoubleCornerCases(): Unit = {
+  @Test def containsDoubleCornerCases(): Unit = {
     val coll = factory.empty[Double]
 
     coll.add(-0.0)
@@ -200,7 +200,7 @@ trait CollectionTest extends IterableTest {
     assertTrue(coll.contains(+0.0))
   }
 
-  @Test def shouldGiveProperIteratorOverElements(): Unit = {
+  @Test def iteratorString(): Unit = {
     val coll = factory.empty[String]
     coll.add("one")
     coll.add("two")
@@ -229,18 +229,18 @@ trait CollectionTest extends IterableTest {
     assertIteratorSameElementsAsSet(-45, 0, 12, 32, 42)(coll.iterator())
   }
 
-  @Test def toStringShouldConvertEmptyCollection(): Unit = {
+  @Test def toStringCollectionDoubleEmpty(): Unit = {
     val coll = factory.empty[Double]
     assertEquals("[]", coll.toString())
   }
 
-  @Test def toStringShouldConvertOneElementCollection(): Unit = {
+  @Test def toStringCollectionDoubleOneElement(): Unit = {
     val coll = factory.fromElements[Double](1.01)
     // JavaScript displays n.0 as n, so one trailing digit must be non-zero.
     assertEquals("[1.01]", coll.toString())
   }
 
-  @Test def toStringShouldUseCommaSpace(): Unit = {
+  @Test def toStringCollectionDoubleHasCommaSpace(): Unit = {
     // Choose Doubles which display the same in Java and Scala.js.
     // JavaScript displays n.0 as n, so one trailing digit must be non-zero.
     val elements = Seq(88.42, -23.36, 60.173)
@@ -258,7 +258,7 @@ trait CollectionTest extends IterableTest {
         expected.contains(result))
   }
 
-  @Test def toStringShouldHandleNullElements(): Unit = {
+  @Test def toStringCollectionAnyWithNull(): Unit = {
     if (factory.allowsNullElement) {
       val elements = Seq(-1, -2, null, -3)
 
@@ -272,7 +272,7 @@ trait CollectionTest extends IterableTest {
     }
   }
 
-  @Test def toStringInCustomClassShouldWork(): Unit = {
+  @Test def toStringCollectionCustomClass(): Unit = {
     case class Custom(name: String, id: Int) extends Ordered[Custom] {
       def compare(that: Custom): Int = this.id - that.id
     }

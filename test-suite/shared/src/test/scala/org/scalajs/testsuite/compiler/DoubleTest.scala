@@ -53,7 +53,7 @@ class DoubleTest {
   }
 
   @Test
-  def noReverseComparisons_issue3575(): Unit = {
+  def noReverseComparisons_Issue3575(): Unit = {
     import Double.NaN
 
     @noinline def test_not_==(x: Double, y: Double): Boolean = !(x == y)
@@ -107,7 +107,7 @@ class DoubleTest {
   }
 
   @Test
-  def negate_issue4034(): Unit = {
+  def negate_Issue4034(): Unit = {
     @noinline
     def testNoInline(expected: Double, x: Double): Unit = {
       assertExactEquals(expected, -x)

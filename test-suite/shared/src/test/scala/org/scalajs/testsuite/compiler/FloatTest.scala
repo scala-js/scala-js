@@ -54,7 +54,7 @@ class FloatTest {
   }
 
   @Test
-  def noReverseComparisons_issue3575(): Unit = {
+  def noReverseComparisons_Issue3575(): Unit = {
     import Float.NaN
 
     @noinline def test_not_==(x: Float, y: Float): Boolean = !(x == y)
@@ -108,7 +108,7 @@ class FloatTest {
   }
 
   @Test
-  def negate_issue4034(): Unit = {
+  def negate_Issue4034(): Unit = {
     @noinline
     def testNoInline(expected: Float, x: Float): Unit = {
       assertExactEquals(expected, -x)

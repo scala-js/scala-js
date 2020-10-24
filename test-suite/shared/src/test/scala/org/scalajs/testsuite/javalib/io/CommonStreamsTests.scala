@@ -32,7 +32,7 @@ trait CommonStreamsTests {
   private implicit def seqToArray(seq: Seq[Int]): Array[Byte] =
     seq.toArray.map(_.toByte)
 
-  @Test def should_provide_read()(): Unit = {
+  @Test def read(): Unit = {
     val stream = newStream
 
     for (i <- 1 to length)
@@ -42,7 +42,7 @@ trait CommonStreamsTests {
       assertEquals(-1, stream.read())
   }
 
-  @Test def should_provide_read_from_buf(): Unit = {
+  @Test def testReadArrayByte(): Unit = {
     val stream = newStream
     val buf = new Array[Byte](10)
 
@@ -58,7 +58,7 @@ trait CommonStreamsTests {
     assertEquals(-1, stream.read())
   }
 
-  @Test def should_provide_full_argument_read(): Unit = {
+  @Test def readArrayByteIntInt(): Unit = {
     val stream = newStream
     val buf = new Array[Byte](20)
 
@@ -87,7 +87,7 @@ trait CommonStreamsTests {
 
   }
 
-  @Test def should_provide_available(): Unit = {
+  @Test def available(): Unit = {
     val stream = newStream
 
     def mySkip(n: Int) = for (_ <- 1 to n) assertNotEquals(stream.read(), -1)
@@ -104,7 +104,7 @@ trait CommonStreamsTests {
     check(0)
   }
 
-  @Test def should_provide_skip(): Unit = {
+  @Test def testSkip(): Unit = {
     val stream = newStream
 
     assertEquals(7L, stream.skip(7))
@@ -121,11 +121,11 @@ trait CommonStreamsTests {
     assertEquals(0L, stream.skip(30))
   }
 
-  @Test def should_return_true_from_markSupported(): Unit = {
+  @Test def markSupported(): Unit = {
     assertTrue(newStream.markSupported)
   }
 
-  @Test def should_provide_no_op_close(): Unit = {
+  @Test def close(): Unit = {
     val stream = newStream
 
     for (i <- 1 to length) {
@@ -134,7 +134,7 @@ trait CommonStreamsTests {
     }
   }
 
-  @Test def should_provide_mark_and_reset(): Unit = {
+  @Test def markAndReset(): Unit = {
     val stream = newStream
 
     def read(range: Range) = for (i <- range) assertEquals(i, stream.read())
@@ -160,7 +160,7 @@ trait CommonStreamsTests {
     assertEquals(-1, stream.read())
   }
 
-  @Test def should_return_positive_integers_when_calling_read(): Unit = {
+  @Test def readReturnsPositiveIntegers(): Unit = {
     val stream = mkStream(Seq(-1, -2, -3))
     assertEquals(255, stream.read())
     assertEquals(254, stream.read())

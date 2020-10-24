@@ -15,7 +15,7 @@ package org.scalajs.testsuite.javalib.security
 import org.junit.Test
 
 class ThrowablesTest {
-  @Test def should_define_all_java_security_Errors_and_Exceptions(): Unit = {
+  @Test def allJavaSecurityErrorsAndExceptions(): Unit = {
     import java.security._
     new AccessControlException("", null)
   }

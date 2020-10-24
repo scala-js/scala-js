@@ -38,7 +38,7 @@ class BigIntegerHashCodeTest {
     }
   }
 
-  @Test def hashCodeIssue2159(): Unit = {
+  @Test def hashCode_Issue2159(): Unit = {
     val a = 936417286865811553L
     val b = 1136802186495971562L
     val c = BigInteger.valueOf(a).add(BigInteger.valueOf(b))

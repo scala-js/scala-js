@@ -26,7 +26,7 @@ import scala.scalajs.js.annotation._
  */
 class NonNativeJSTypeTestEx {
 
-  @Test def constructor_property_on_the_prototype_issue_1963(): Unit = {
+  @Test def constructorPropertyOnThePrototype_Issue1963(): Unit = {
     class ParentClass extends js.Object
 
     class ChildClass extends ParentClass

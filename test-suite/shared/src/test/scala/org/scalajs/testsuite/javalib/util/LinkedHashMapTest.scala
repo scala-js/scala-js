@@ -46,7 +46,7 @@ abstract class LinkedHashMapTest extends HashMapTest {
   val accessOrder = factory.accessOrder
   val withSizeLimit = factory.withSizeLimit
 
-  @Test def should_iterate_in_insertion_order_after_building(): Unit = {
+  @Test def iteratorOrder(): Unit = {
     val lhm = factory.empty[String, String]
     (0 until 100).foreach(key => lhm.put(key.toString(), s"elem $key"))
 
@@ -61,7 +61,7 @@ abstract class LinkedHashMapTest extends HashMapTest {
     assertSameEntriesOrdered(expected: _*)(lhm)
   }
 
-  @Test def should_iterate_in_the_same_order_after_removal_of_elements(): Unit = {
+  @Test def iteratorOrderAfterRemove(): Unit = {
     val lhm = factory.empty[String, String]
     (0 until 100).foreach(key => lhm.put(key.toString(), s"elem $key"))
 
@@ -75,7 +75,7 @@ abstract class LinkedHashMapTest extends HashMapTest {
     assertSameEntriesOrdered(expected: _*)(lhm)
   }
 
-  @Test def should_iterate_in_order_after_adding_elements(): Unit = {
+  @Test def iteratorOrderAfterPutPutIfAbsent(): Unit = {
     val lhm = factory.empty[String, String]
     (0 until 100).foreach(key => lhm.put(key.toString(), s"elem $key"))
 
@@ -111,7 +111,7 @@ abstract class LinkedHashMapTest extends HashMapTest {
     assertSameEntriesOrdered(expected: _*)(lhm)
   }
 
-  @Test def should_iterate_in_order_after_accessing_elements(): Unit = {
+  @Test def iteratorOrderAfterGet(): Unit = {
     val lhm = factory.empty[String, String]
     (0 until 100).foreach(key => lhm.put(key.toString(), s"elem $key"))
 
@@ -154,7 +154,7 @@ abstract class LinkedHashMapTest extends HashMapTest {
     assertSameEntriesOrdered(expected: _*)(lhm)
   }
 
-  @Test def testAccessOrderWithAllTheMethods(): Unit = {
+  @Test def iteratorOrderAfterUsingAllMethods(): Unit = {
     /* Relevant JavaDoc excerpt:
      *
      * > Invoking the put, putIfAbsent, get, getOrDefault, compute,

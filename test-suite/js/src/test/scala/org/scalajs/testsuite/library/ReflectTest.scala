@@ -229,12 +229,12 @@ class ReflectTest {
     }
   }
 
-  @Test def testInnerObjectWithEnableReflectiveInstantiation_issue_3228(): Unit = {
+  @Test def testInnerObjectWithEnableReflectiveInstantiation_Issue3228(): Unit = {
     assertFalse(Reflect.lookupLoadableModuleClass(NameInnerObject).isDefined)
     assertFalse(Reflect.lookupInstantiatableClass(NameInnerObject).isDefined)
   }
 
-  @Test def testLocalClassWithReflectiveInstantiationInLambda_issue_3227(): Unit = {
+  @Test def testLocalClassWithReflectiveInstantiationInLambda_Issue3227(): Unit = {
     // Test that the presence of the following code does not prevent linking
     { () =>
       @EnableReflectiveInstantiation

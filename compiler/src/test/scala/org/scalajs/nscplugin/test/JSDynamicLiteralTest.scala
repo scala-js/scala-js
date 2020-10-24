@@ -24,7 +24,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
     """
 
   @Test
-  def callApplyOnly: Unit = {
+  def callApplyOnly(): Unit = {
 
     // selectDynamic (with any name)
     expr"""
@@ -61,7 +61,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def goodTypesOnly: Unit = {
+  def goodTypesOnly(): Unit = {
 
     // Bad value type (applyDynamic)
     """
@@ -113,7 +113,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noNonLiteralMethodName: Unit = {
+  def noNonLiteralMethodName(): Unit = {
 
     // applyDynamicNamed
     """
@@ -144,7 +144,7 @@ class JSDynamicLiteralTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def keyDuplicationWarning: Unit = {
+  def keyDuplicationWarning(): Unit = {
     // detects duplicate named keys
     expr"""
     lit(a = "1", b = "2", a = "3")

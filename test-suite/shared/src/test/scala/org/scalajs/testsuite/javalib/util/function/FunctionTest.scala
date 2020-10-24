@@ -24,7 +24,7 @@ class FunctionTest {
     assertEquals(10, identityFunc(10))
   }
 
-  @Test def create_and_apply(): Unit = {
+  @Test def createAndApply(): Unit = {
     assertEquals(2, doubleFunc(1))
   }
 
@@ -38,7 +38,7 @@ class FunctionTest {
     assertEquals(22, incFunc.andThen(doubleFunc)(10))
   }
 
-  @Test def identity_compose_andThen(): Unit = {
+  @Test def identityComposeAndThen(): Unit = {
     // i.e. (self + 1) * 2
     val combined = identityFunc.andThen(doubleFunc).compose(incFunc)
     assertEquals(42, combined(20))

@@ -156,7 +156,7 @@ class FormatterTest {
     assertEquals(conversion.toString, e.getConversion)
   }
 
-  @Test def `should_provide_b_conversion`(): Unit = {
+  @Test def formatB(): Unit = {
     assertF("false", "%b", null)
     assertF("true", "%b", true)
     assertF("false", "%b", false)
@@ -177,7 +177,7 @@ class FormatterTest {
     expectFormatFlagsConversionMismatch('b', "#+ 0,(", true)
   }
 
-  @Test def `should_provide_h_conversion`(): Unit = {
+  @Test def formatH(): Unit = {
     val x = new HelperClass
     assertF("f1e2a3", "%h", x)
     assertF("F1E2A3", "%H", x)
@@ -191,7 +191,7 @@ class FormatterTest {
     expectFormatFlagsConversionMismatch('h', "#+ 0,(", x)
   }
 
-  @Test def sConversionWithNonFormattable(): Unit = {
+  @Test def formatSWithNonFormattable(): Unit = {
     assertF("abcdef", "ab%sef", "cd")
     assertF("true", "%s", true)
     assertF("12345", "%s", 12345)
@@ -210,7 +210,7 @@ class FormatterTest {
         if (executingInJVMOnJDK6) "+ 0,(" else "#+ 0,(", "hello")
   }
 
-  @Test def sConversionWithFormattable(): Unit = {
+  @Test def formatSWithFormattable(): Unit = {
     import FormattableFlags._
 
     class FormattableClass extends Formattable {
@@ -254,7 +254,7 @@ class FormatterTest {
     x.expectNotCalled()
   }
 
-  @Test def `should_provide_c_conversion`(): Unit = {
+  @Test def formatC(): Unit = {
     assertF("a", "%c", 'a')
     assertF("A", "%C", 'A')
     assertF("A", "%c", 65)
@@ -273,7 +273,7 @@ class FormatterTest {
     assertEquals(0x123456, e.getCodePoint)
   }
 
-  @Test def `should_provide_d_conversion`(): Unit = {
+  @Test def formatD(): Unit = {
     assertF("5", "%d", 5)
     assertF("-5", "%d", -5)
     assertF("5", "%d", new BigInteger("5"))
@@ -333,7 +333,7 @@ class FormatterTest {
     expectIllegalFormatPrecision('d', 5)
   }
 
-  @Test def `should_provide_o_conversion`(): Unit = {
+  @Test def formatO(): Unit = {
     assertF("10", "%o", 8)
     assertF("52", "%o", new BigInteger("42"))
 
@@ -388,7 +388,7 @@ class FormatterTest {
     expectIllegalFormatPrecision('o', 5)
   }
 
-  @Test def `should_provide_x_conversion`(): Unit = {
+  @Test def formatX(): Unit = {
     assertF("d431", "%x", 54321)
     assertF("ffff2bcf", "%x", -54321)
     assertF("D431", "%X", 54321)
@@ -450,7 +450,7 @@ class FormatterTest {
     expectIllegalFormatPrecision('x', 5)
   }
 
-  @Test def `should_provide_e_conversion`(): Unit = {
+  @Test def formatE(): Unit = {
     assertF("1.000000e+03", "%e", 1000.0)
     assertF("1e+100", "%.0e", 1.2e100)
     assertF("0.000e+00", "%.3e", 0.0)
@@ -496,7 +496,7 @@ class FormatterTest {
     expectIllegalFormatFlags("% +e", "+ ", 5.5)
   }
 
-  @Test def `should_provide_g_conversion`(): Unit = {
+  @Test def formatG(): Unit = {
     assertF("5.00000e-05", "%g", 0.5e-4)
     assertF("-5.00000e-05", "%g", -0.5e-4)
     assertF("0.000300000", "%g", 3e-4)
@@ -556,7 +556,7 @@ class FormatterTest {
     expectIllegalFormatFlags("% +g", "+ ", 5.5)
   }
 
-  @Test def `should_provide_f_conversion`(): Unit = {
+  @Test def formatF(): Unit = {
     assertF("3.300000", "%f", 3.3)
     assertF("(04.6000)", "%0(9.4f", -4.6)
 
@@ -621,7 +621,7 @@ class FormatterTest {
     expectIllegalFormatFlags("% +f", "+ ", 5.5)
   }
 
-  @Test def `should_support_%%`(): Unit = {
+  @Test def formatPercentPercent(): Unit = {
     assertF("1%2", "%d%%%d", 1, 2)
 
     /* https://bugs.java.com/bugdatabase/view_bug.do?bug_id=JDK-8204229
@@ -636,7 +636,7 @@ class FormatterTest {
     expectIllegalFormatPrecision('%', null)
   }
 
-  @Test def `should_support_%n`(): Unit = {
+  @Test def formatPercentN(): Unit = {
     assertF("1\n2", "%d%n%d", 1, 2)
 
     expectIllegalFormatFlags("%0-,+< (#n", "-#+ 0,(<", null)
@@ -644,13 +644,13 @@ class FormatterTest {
     expectIllegalFormatWidth('n', null)
   }
 
-  @Test def should_allow_positional_arguments(): Unit = {
+  @Test def formatPositional(): Unit = {
     assertF("2 1", "%2$d %1$d", 1, 2)
     assertF("2 2 1", "%2$d %2$d %d", 1, 2)
     assertF("2 2 1", "%2$d %<d %d", 1, 2)
   }
 
-  @Test def unknownFormatConversion(): Unit = {
+  @Test def formatUnknown(): Unit = {
     // Correct format, unknown conversion
     expectUnknownFormatConversion("abc%udf", 'u')
     expectUnknownFormatConversion("abc%2$-(<034.12udf", 'u')
@@ -678,7 +678,7 @@ class FormatterTest {
     }
   }
 
-  @Test def indexTooLargeIsLikeUseLastIndex(): Unit = {
+  @Test def indexTooLargeUsesLastIndex(): Unit = {
     expectFormatterThrows(classOf[MissingFormatArgumentException],
         "%9876543210$d", 56, 78)
 
@@ -690,13 +690,13 @@ class FormatterTest {
     assertF("56 78", "%d %.9876543210d", 56, 78)
   }
 
-  @Test def should_fail_when_called_after_close(): Unit = {
+  @Test def closeThenUseThrows(): Unit = {
     val f = new Formatter()
     f.close()
     assertThrows(classOf[FormatterClosedException], f.toString())
   }
 
-  @Test def should_fail_with_bad_format_specifier(): Unit = {
+  @Test def formatBadFormatStringThrows(): Unit = {
     expectFormatterThrows(classOf[Exception], "hello world%")
     expectFormatterThrows(classOf[Exception], "%%%")
     expectFormatterThrows(classOf[Exception], "%q")
@@ -704,7 +704,7 @@ class FormatterTest {
     expectFormatterThrows(classOf[Exception], "%_f")
   }
 
-  @Test def should_fail_with_not_enough_arguments(): Unit = {
+  @Test def formatNotEnoughArgumentsThrows(): Unit = {
     expectFormatterThrows(classOf[MissingFormatArgumentException], "%f")
     expectFormatterThrows(classOf[MissingFormatArgumentException], "%d%d%d",
         1, 1)

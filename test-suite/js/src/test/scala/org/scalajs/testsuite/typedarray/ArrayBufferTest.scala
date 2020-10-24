@@ -29,14 +29,14 @@ class ArrayBufferTest {
     assertEquals(100, x.byteLength)
   }
 
-  @Test def slice_with_one_arg(): Unit = {
+  @Test def sliceWithOneArg(): Unit = {
     val x = new ArrayBuffer(100)
     val y = x.slice(10)
     assertEquals(90, y.byteLength)
 
   }
 
-  @Test def slice_with_two_args(): Unit = {
+  @Test def sliceWithTwoArgs(): Unit = {
     val x = new ArrayBuffer(100)
     val y = x.slice(10, 20)
     assertEquals(10, y.byteLength)

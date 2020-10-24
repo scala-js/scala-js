@@ -23,7 +23,7 @@ import org.scalajs.testsuite.utils.AssertThrows._
  */
 class ByteTest {
 
-  @Test def compareTo(): Unit = {
+  @Test def compareToJavaByte(): Unit = {
     def compare(x: Byte, y: Byte): Int =
       new JByte(x).compareTo(new JByte(y))
 
@@ -33,7 +33,7 @@ class ByteTest {
     assertEquals(0, compare(3.toByte, 3.toByte))
   }
 
-  @Test def should_be_a_Comparable(): Unit = {
+  @Test def compareTo(): Unit = {
     def compare(x: Any, y: Any): Int =
       x.asInstanceOf[Comparable[Any]].compareTo(y)
 
@@ -43,7 +43,7 @@ class ByteTest {
     assertEquals(0, compare(3.toByte, 3.toByte))
   }
 
-  @Test def should_parse_strings(): Unit = {
+  @Test def parseString(): Unit = {
     def test(s: String, v: Byte): Unit = {
       assertEquals(v, JByte.parseByte(s))
       assertEquals(v, JByte.valueOf(s).byteValue())
@@ -57,7 +57,7 @@ class ByteTest {
     test("-100", -100)
   }
 
-  @Test def should_reject_invalid_strings_when_parsing(): Unit = {
+  @Test def parseStringInvalidThrows(): Unit = {
     def test(s: String): Unit = {
       expectThrows(classOf[NumberFormatException], JByte.parseByte(s))
       expectThrows(classOf[NumberFormatException], JByte.decode(s))
@@ -68,7 +68,7 @@ class ByteTest {
     test("200") // out of range
   }
 
-  @Test def should_parse_strings_in_base_16(): Unit = {
+  @Test def parseStringBase16(): Unit = {
     def test(s: String, v: Byte): Unit = {
       assertEquals(v, JByte.parseByte(s, 16))
       assertEquals(v, JByte.valueOf(s, 16).intValue())
@@ -85,7 +85,7 @@ class ByteTest {
     test("-9", -0x9)
   }
 
-  @Test def testDecodeBase8(): Unit = {
+  @Test def decodeStringBase8(): Unit = {
     def test(s: String, v: Byte): Unit = {
       assertEquals(v, JByte.decode(s))
     }
@@ -95,7 +95,7 @@ class ByteTest {
     test("-012", -10)
   }
 
-  @Test def testDecodeInvalid(): Unit = {
+  @Test def decodeInvalidThrows(): Unit = {
     def test(s: String): Unit =
       assertThrows(classOf[NumberFormatException], JByte.decode(s))
 

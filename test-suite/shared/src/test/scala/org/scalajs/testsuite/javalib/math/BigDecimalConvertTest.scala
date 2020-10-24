@@ -159,7 +159,7 @@ class BigDecimalConvertTest {
     test(-15L, 1)
   }
 
-  @Test def bigDecimal_9_223372E285625056_should_not_be_a_valid_long_issue_2314(): Unit = {
+  @Test def bigDecimal9Point223372E285625056IsNotValidLong_Issue2314(): Unit = {
     val num = new BigDecimal("9.223372E+285625056")
 
     // Sanity checks

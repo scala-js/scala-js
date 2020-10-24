@@ -307,7 +307,7 @@ class CharacterTest {
     expectThrows(classOf[IllegalArgumentException], Character.toChars(Integer.MAX_VALUE))
   }
 
-  @Test def toChars_in_place(): Unit = {
+  @Test def toCharsInPlace(): Unit = {
     locally {
       val dst = new Array[Char](2)
       assertEquals(1, Character.toChars(0x61, dst, 0))
@@ -543,12 +543,12 @@ class CharacterTest {
     assertFalse(Character.isDigit('\uFBFC'))
   }
 
-  @Test def toLowerCase_compare_char_and_codepoint(): Unit = {
+  @Test def toLowerCaseCompareCharAndCodepoint(): Unit = {
     for (ch <- Character.MIN_VALUE to Character.MAX_VALUE)
       assertEquals(Character.toLowerCase(ch), Character.toLowerCase(ch.toInt).toChar)
   }
 
-  @Test def toLowerCase_Int(): Unit = {
+  @Test def toLowerCaseInt(): Unit = {
     // ASCII, not a letter
     assertEquals(0x000a, Character.toLowerCase(0x000a)) // '\n' => '\n'
     assertEquals(0x0037, Character.toLowerCase(0x0037)) // '7' => '7'
@@ -592,7 +592,7 @@ class CharacterTest {
    * This list happens to coincide with the code points tested in the following
    * test.
    */
-  @Test def toLowerCase_CodePoint_special_cases(): Unit = {
+  @Test def toLowerCaseCodePointSpecialCases(): Unit = {
     assertEquals(0x0069, Character.toLowerCase(0x0130))
   }
 
@@ -613,16 +613,16 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     println(s"    assertEquals(${format(lowerCP)}, Character.toLowerCase(${format(cp)})) // $cpStr => $lowerCPStr")
 }
   */
-  @Test def toLowerCase_CodePoint_StringLowerCase_diff_CharacterLowerCase(): Unit = {
+  @Test def toLowerCaseCodePointStringLowerCaseDiffCharacterLowerCase(): Unit = {
     assertEquals(0x0069, Character.toLowerCase(0x0130)) // İ => i
   }
 
-  @Test def toUpperCase_compare_char_and_codepoint(): Unit = {
+  @Test def toUpperCaseCompareCharAndCodepoint(): Unit = {
     for (ch <- Character.MIN_VALUE to Character.MAX_VALUE)
       assertEquals(Character.toUpperCase(ch), Character.toUpperCase(ch.toInt).toChar)
   }
 
-  @Test def toUpperCase_Int(): Unit = {
+  @Test def toUpperCaseInt(): Unit = {
     // ASCII, not a letter
     assertEquals(0x000a, Character.toUpperCase(0x000a)) // '\n' => '\n'
     assertEquals(0x0037, Character.toUpperCase(0x0037)) // '7' => '7'
@@ -657,7 +657,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
   /* Test all the code points that are specially handled in our implementation
    * of `toUpperCase(codePoint: Int)`.
    */
-  @Test def toUpperCase_CodePoint_special_cases(): Unit = {
+  @Test def toUpperCaseCodePointSpecialCases(): Unit = {
     assertEquals(0x1fbc, Character.toUpperCase(0x1fb3))
     assertEquals(0x1fcc, Character.toUpperCase(0x1fc3))
     assertEquals(0x1ffc, Character.toUpperCase(0x1ff3))
@@ -728,7 +728,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     println(s"    assertEquals(${format(upperCP)}, Character.toUpperCase(${format(cp)})) // $cpStr => $upperCPStr")
 }
   */
-  @Test def toUpperCase_CodePoint_StringUpperCase_diff_CharacterUpperCase(): Unit = {
+  @Test def toUpperCaseCodePointStringUpperCaseDiffCharacterUpperCase(): Unit = {
     assertEquals(0x00df, Character.toUpperCase(0x00df)) // ß => ß
     assertEquals(0x0149, Character.toUpperCase(0x0149)) // ŉ => ŉ
     assertEquals(0x01f0, Character.toUpperCase(0x01f0)) // ǰ => ǰ
@@ -833,12 +833,12 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertEquals(0xfb17, Character.toUpperCase(0xfb17)) // ﬗ => ﬗ
   }
 
-  @Test def toTitleCase_compare_char_and_codepoint(): Unit = {
+  @Test def toTitleCaseCompareCharAndCodepoint(): Unit = {
     for (ch <- Character.MIN_VALUE to Character.MAX_VALUE)
       assertEquals(Character.toTitleCase(ch), Character.toTitleCase(ch.toInt).toChar)
   }
 
-  @Test def toTitleCase_CodePoint_special_cases(): Unit = {
+  @Test def toTitleCaseCodePointSpecialCases(): Unit = {
     assertEquals(0x1fbc, Character.toTitleCase(0x1fb3))
     assertEquals(0x1fcc, Character.toTitleCase(0x1fc3))
     assertEquals(0x1ffc, Character.toTitleCase(0x1ff3))
@@ -905,7 +905,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     println(s"    assertEquals(${format(titleCP)}, Character.toTitleCase(${format(cp)})) // $cpStr => $titleCPStr")
 }
 */
-  @Test def toTitleCase_CodePoint_StringUpperCase_diff_CharacterTitleCase(): Unit = {
+  @Test def toTitleCaseCodePointStringUpperCaseDiffCharacterTitleCase(): Unit = {
     assertEquals(0x00df, Character.toTitleCase(0x00df)) // ß => ß
     assertEquals(0x0149, Character.toTitleCase(0x0149)) // ŉ => ŉ
     assertEquals(0x01c5, Character.toTitleCase(0x01c4)) // Ǆ => ǅ
@@ -1022,7 +1022,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertEquals(0xfb17, Character.toTitleCase(0xfb17)) // ﬗ => ﬗ
   }
 
-  @Test def codePointCount_String(): Unit = {
+  @Test def codePointCountString(): Unit = {
     val s: String =
       "abc\uD834\uDF06de\uD834\uDF06fgh\uD834ij\uDF06\uD834kl\uDF06"
 
@@ -1045,7 +1045,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     expectThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(s, 10, 30))
   }
 
-  @Test def codePointCount_CharSequence(): Unit = {
+  @Test def codePointCountCharSequence(): Unit = {
     import WrappedStringCharSequence.charSequence
 
     val cs: CharSequence =
@@ -1087,7 +1087,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertEquals(0, compare('b', 'b'))
   }
 
-  @Test def should_be_a_Comparable(): Unit = {
+  @Test def compareToAnyAny(): Unit = {
     def compare(x: Any, y: Any): Int =
       x.asInstanceOf[Comparable[Any]].compareTo(y)
 
@@ -2501,8 +2501,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertFalse(Character.isLetterOrDigit('\uFE4B'))
   }
 
-  @Test
-  def shouldProvideIsAlphabetic(): Unit = {
+  @Test def isAlphabetic(): Unit = {
     // 50 randomly chosen characters that produce true
     assertTrue(Character.isAlphabetic('\u04F8'))
     assertTrue(Character.isAlphabetic('\u05DB'))
@@ -2608,8 +2607,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertFalse(Character.isAlphabetic(993967))
   }
 
-  @Test
-  def shouldProvideIsIdeographic(): Unit = {
+  @Test def isIdeographic(): Unit = {
     // 50 randomly chosen characters that produce true
     assertTrue(Character.isIdeographic('\u388F'))
     assertTrue(Character.isIdeographic('\u4711'))

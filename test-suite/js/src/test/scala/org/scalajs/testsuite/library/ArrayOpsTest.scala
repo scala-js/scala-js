@@ -952,7 +952,7 @@ class ArrayOpsTest {
         js.Array[Int]().reduceRight(_ + _))
   }
 
-  @Test def toList_issue_843(): Unit = {
+  @Test def toList_Issue843(): Unit = {
     val array = js.Array(1,2,1,3,1,10,9)
     val list = array.toList
     assertArrayEquals(array.toArray, list.toArray)

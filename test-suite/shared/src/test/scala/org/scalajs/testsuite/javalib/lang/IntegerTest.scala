@@ -467,7 +467,7 @@ class IntegerTest {
     assertEquals("17777777777", Integer.toOctalString(Int.MaxValue))
   }
 
-  @Test def compareTo(): Unit = {
+  @Test def compareToInteger(): Unit = {
     def compare(x: Int, y: Int): Int =
       new Integer(x).compareTo(new Integer(y))
 
@@ -477,7 +477,7 @@ class IntegerTest {
     assertEquals(0, compare(3, 3))
   }
 
-  @Test def should_be_a_Comparable(): Unit = {
+  @Test def compareTo(): Unit = {
     def compare(x: Any, y: Any): Int =
       x.asInstanceOf[Comparable[Any]].compareTo(y)
 
@@ -487,7 +487,7 @@ class IntegerTest {
     assertEquals(0, compare(3, 3))
   }
 
-  @Test def should_parse_strings(): Unit = {
+  @Test def parseString(): Unit = {
     def test(s: String, v: Int, radix: Int = 10): Unit = {
       assertEquals(v, Integer.parseInt(s, radix))
       assertEquals(v, Integer.valueOf(s, radix).intValue())
@@ -519,7 +519,7 @@ class IntegerTest {
     test("\uff41\uff54", 389, 36)
   }
 
-  @Test def should_reject_invalid_strings_when_parsing(): Unit = {
+  @Test def parseStringInvalidThrows(): Unit = {
     def test(s: String, radix: Int = 10): Unit = {
       expectThrows(classOf[NumberFormatException], Integer.parseInt(s, radix))
       if (radix == 10 && s != null)
@@ -568,7 +568,7 @@ class IntegerTest {
     test("\uff41\uff54", 389, 36)
   }
 
-  @Test def parseUnsignedIntInvalid(): Unit = {
+  @Test def parseUnsignedIntInvalidThrows(): Unit = {
     def test(s: String, radix: Int = 10): Unit = {
       expectThrows(classOf[NumberFormatException],
           Integer.parseUnsignedInt(s, radix))
@@ -596,7 +596,7 @@ class IntegerTest {
     test("\ud804\udcf0")
   }
 
-  @Test def should_parse_strings_in_base_16(): Unit = {
+  @Test def parseStringBase16(): Unit = {
     def test(s: String, v: Int): Unit = {
       assertEquals(v, Integer.parseInt(s, 16))
       assertEquals(v, Integer.valueOf(s, 16).intValue())
@@ -613,7 +613,7 @@ class IntegerTest {
     test("-90000", -0x90000)
   }
 
-  @Test def testDecodeBase8(): Unit = {
+  @Test def decodeStringBase8(): Unit = {
     def test(s: String, v: Int): Unit = {
       assertEquals(v, Integer.decode(s))
     }
@@ -623,7 +623,7 @@ class IntegerTest {
     test("-012", -10)
   }
 
-  @Test def testDecodeInvalid(): Unit = {
+  @Test def decodeStringInvalidThrows(): Unit = {
     def test(s: String): Unit =
       assertThrows(classOf[NumberFormatException], Integer.decode(s))
 
@@ -673,7 +673,7 @@ class IntegerTest {
     assertEquals(Int.MinValue, Integer.lowestOneBit(Int.MinValue))
   }
 
-  @Test def toString_without_radix(): Unit = {
+  @Test def testToString(): Unit = {
     /* Spec ported from
      * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/IntegerTest.java
      */
@@ -686,7 +686,7 @@ class IntegerTest {
     assertEquals("0", Integer.toString(0))
   }
 
-  @Test def toString_with_radix(): Unit = {
+  @Test def toStringRadix(): Unit = {
     /* Spec ported from
      * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/IntegerTest.java
      */
@@ -704,7 +704,7 @@ class IntegerTest {
     assertEquals("-2147483648", Integer.toString(-2147483648, 10))
   }
 
-  @Test def parseUnsignedIntWithRadix(): Unit = {
+  @Test def parseUnsignedIntRadix(): Unit = {
     def test(s: String, v: Int, radix: Int = 10): Unit = {
       assertEquals(v, Integer.parseUnsignedInt(s, radix))
     }
@@ -722,7 +722,7 @@ class IntegerTest {
     test("4294967295", 0xFFFFFFFF)
   }
 
-  @Test def parseUnsignedIntWithRadixFailures(): Unit = {
+  @Test def parseUnsignedIntRadixInvalidThrows(): Unit = {
     def test(s: String, radix: Int = 10): Unit =
       expectThrows(classOf[NumberFormatException], Integer.parseUnsignedInt(s, radix))
 
@@ -805,7 +805,7 @@ class IntegerTest {
     assertThrows(classOf[ArithmeticException], Integer.remainderUnsigned(5, 0))
   }
 
-  @Test def toUnsignedString_without_radix(): Unit = {
+  @Test def toUnsignedString(): Unit = {
     assertEquals("0", Integer.toUnsignedString(0))
     assertEquals("12345", Integer.toUnsignedString(12345))
     assertEquals("242134", Integer.toUnsignedString(242134))
@@ -814,7 +814,7 @@ class IntegerTest {
     assertEquals("4000000000", Integer.toUnsignedString(0xEE6B2800))
   }
 
-  @Test def toUnsignedString_with_radix(): Unit = {
+  @Test def toUnsignedStringRadix(): Unit = {
     assertEquals("17777777777", Integer.toUnsignedString(2147483647, 8))
     assertEquals("7fffffff", Integer.toUnsignedString(2147483647, 16))
     assertEquals("1111111111111111111111111111111",

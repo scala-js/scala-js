@@ -17,8 +17,7 @@ import org.junit.Assert._
 
 class ByteTest {
 
-  @Test
-  def `should_always_be_in_their_range`(): Unit = {
+  @Test def toByteAndToCharAreInRange(): Unit = {
     def test(x: Int, y: Byte): Unit =
       assertEquals(y, x.toByte)
 

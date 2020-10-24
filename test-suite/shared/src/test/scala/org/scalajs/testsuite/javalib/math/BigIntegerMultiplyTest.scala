@@ -322,7 +322,7 @@ class BigIntegerMultiplyTest {
     assertEquals(1, result.signum())
   }
 
-  @Test def testPow31_issue_2045(): Unit = {
+  @Test def testPow31_Issue2045(): Unit = {
     assertEquals(BigInt("2147483648"), BigInt(2).pow(31))
     assertEquals(BigInt("1326443518324400147398656"), BigInt(6).pow(31))
     assertEquals(BigInt("10000000000000000000000000000000"), BigInt(10).pow(31))

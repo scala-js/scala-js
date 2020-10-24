@@ -22,7 +22,7 @@ class ArrayListTest extends AbstractListTest {
 
   override def factory: AbstractListFactory = new ArrayListFactory
 
-  @Test def `should_not_fail_with_pre-allocation_methods`(): Unit = {
+  @Test def ensureCapacity(): Unit = {
     // note that these methods become no ops in js
     val al = new ju.ArrayList[String]
     al.ensureCapacity(0)

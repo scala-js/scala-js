@@ -72,7 +72,7 @@ class OutputStreamWriterTest {
     assertArrayEquals(expected.map(_.toByte), bos.toByteArray)
   }
 
-  @Test def write_ASCII_repertoire(): Unit = {
+  @Test def writeASCIIRepertoire(): Unit = {
     // Pure ASCII
     testW(_.write('\n'), Array('\n'))
     testW(_.write("hello\n"), Array('h', 'e', 'l', 'l', 'o', '\n'))
@@ -81,7 +81,7 @@ class OutputStreamWriterTest {
     testW(_.write(Array('A', 'B', '\n', 'C'), 1, 2), Array('B', '\n'))
   }
 
-  @Test def write_Unicode_repertoire_without_surrogates(): Unit = {
+  @Test def writeUnicodeRepertoireWithoutSurrogates(): Unit = {
     testW(_.write('é'), Array(0xc3, 0xa9))
     testW(_.write("こんにちは"), Array(
         0xe3, 0x81, 0x93, 0xe3, 0x82, 0x93, 0xe3, 0x81, 0xab, 0xe3, 0x81, 0xa1, 0xe3, 0x81, 0xaf))
@@ -89,12 +89,12 @@ class OutputStreamWriterTest {
         0xce, 0xb7, 0xce, 0xbc, 0xce, 0xad, 0xcf, 0x81))
   }
 
-  @Test def write_surrogate_pairs(): Unit = {
+  @Test def writeSurrogatePairs(): Unit = {
     testW(_.write("\ud83d\udca9"), Array(0xf0, 0x9f, 0x92, 0xa9))
     testW(_.write("ab\ud83d\udca9cd", 1, 3), Array('b', 0xf0, 0x9f, 0x92, 0xa9))
   }
 
-  @Test def write_surrogate_pairs_spread_across_multiple_writes(): Unit = {
+  @Test def writeSurrogatePairsSpreadAcrossMultipleWrites(): Unit = {
     testW({ osw => osw.write('\ud83d'); osw.write('\udca9') },
         Array(0xf0, 0x9f, 0x92, 0xa9))
 
@@ -111,12 +111,12 @@ class OutputStreamWriterTest {
         Array('b', 0xf0, 0x9f, 0x92, 0xa9, 'c'))
   }
 
-  @Test def write_malformed_surrogates(): Unit = {
+  @Test def writeMalformedSurrogates(): Unit = {
     testW(_.write("\ud83da"), Array('?', 'a'))
     testW(_.write("\udca9"), Array('?'))
   }
 
-  @Test def write_malformed_surrogates_spread_across_multiple_writes(): Unit = {
+  @Test def writeMalformedSurrogatesSpreadAcrossMultipleWrites(): Unit = {
     testW({ osw => osw.write('\ud83d'); osw.write('a') },
         Array('?', 'a'))
 
@@ -127,7 +127,7 @@ class OutputStreamWriterTest {
         Array('a', 'b', '?', '?', 'c'))
   }
 
-  @Test def write_malformed_surrogates_at_end_of_input(): Unit = {
+  @Test def writeMalformedSurrogatesAtEndOfInput(): Unit = {
     testW({ osw => osw.write('\ud83d'); osw.close() },
         Array('?'), alreadyFlushed = true)
 
@@ -135,7 +135,7 @@ class OutputStreamWriterTest {
         Array('a', 'b', '?'), alreadyFlushed = true)
   }
 
-  @Test def constructor_throw_UnsupportedEncodingException_if_unsupported_charset_name_given(): Unit = {
+  @Test def constructorThrowUnsupportedEncodingExceptionIfUnsupportedCharsetNameGiven(): Unit = {
     val ex = expectThrows(classOf[UnsupportedEncodingException],
       new OutputStreamWriter(new ByteArrayOutputStream(), "UNSUPPORTED-CHARSET"))
     assertTrue("Cause should be null since constructor does not accept cause",

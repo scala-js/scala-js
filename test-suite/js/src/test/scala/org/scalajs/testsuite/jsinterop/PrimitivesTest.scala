@@ -17,7 +17,7 @@ import org.junit.Test
 
 class PrimitivesTest {
 
-  @Test def should_convert_Java_boxed_types_to_js_Any(): Unit = {
+  @Test def javaBoxedTypesToJSAny(): Unit = {
     assertEquals(false, new java.lang.Boolean(false))
     assertNull(null: java.lang.Boolean)
 

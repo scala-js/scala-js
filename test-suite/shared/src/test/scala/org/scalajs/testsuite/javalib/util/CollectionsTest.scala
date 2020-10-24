@@ -238,7 +238,7 @@ class CollectionsTest extends CollectionsTestBase {
     test[Double](_.toDouble)
   }
 
-  @Test def reverseOrder_on_comparables(): Unit = {
+  @Test def reverseOrderOnComparables(): Unit = {
     def testNumerical[E](toElem: Int => E): Unit = {
       val rCmp = ju.Collections.reverseOrder[E]
       for (i <- range) {
@@ -270,7 +270,7 @@ class CollectionsTest extends CollectionsTestBase {
     assertTrue(rCmp.compare("aaa", "aa") < 0)
   }
 
-  @Test def reverseOrder_with_comparator(): Unit = {
+  @Test def reverseOrderWithComparator(): Unit = {
     val rCmp1 = new ju.Comparator[Int] {
       override def compare(o1: Int, o2: Int): Int = o2 - o1
     }
@@ -302,7 +302,7 @@ class CollectionsTest extends CollectionsTestBase {
     }
   }
 
-  @Test def reverseOrder_with_null_comparator(): Unit = {
+  @Test def reverseOrderWithNullComparator(): Unit = {
     // Essentially equivalent to reverseOrder_on_comparables
 
     def testNumerical[E](toElem: Int => E): Unit = {

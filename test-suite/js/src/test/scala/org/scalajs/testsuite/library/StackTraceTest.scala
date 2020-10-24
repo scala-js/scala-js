@@ -49,7 +49,7 @@ class StackTraceTest {
     }
   }
 
-  @Test def decode_class_name_and_method_name(): Unit = {
+  @Test def decodeClassNameAndMethodName(): Unit = {
     assumeTrue("Assume Node.js", executingInNodeJS)
     assumeFalse("Assume fullopt-stage", isInFullOpt)
 

@@ -26,7 +26,7 @@ import java.lang.{Float => JFloat, Double => JDouble}
 class ReflectiveCallTest {
   import ReflectiveCallTest._
 
-  @Test def should_allow_subtyping_in_return_types(): Unit = {
+  @Test def subtypingInReturnTypes(): Unit = {
     class A { def x: Int = 1 }
     class B extends A { override def x: Int = 2 }
 
@@ -39,7 +39,7 @@ class ReflectiveCallTest {
     assertEquals(2, f(Generator).x)
   }
 
-  @Test def should_allow_this_type_in_return_types(): Unit = {
+  @Test def thisTypeInReturnTypes(): Unit = {
     type ValueType = { def value: this.type }
     def f(x: ValueType): ValueType = x.value
 
@@ -51,7 +51,7 @@ class ReflectiveCallTest {
     assertEquals("StringValue(foo)", f(new StringValue("foo")).toString)
   }
 
-  @Test def should_allow_generic_return_types(): Unit = {
+  @Test def genericReturnTypes(): Unit = {
     case class Tata(name: String)
 
     object Rec {
@@ -64,7 +64,7 @@ class ReflectiveCallTest {
     assertEquals("Tata(iei)", m[Tata](Rec).toString)
   }
 
-  @Test def should_work_with_unary_methods_on_primitive_types(): Unit = {
+  @Test def unaryMethodsOnPrimitiveTypes(): Unit = {
     // scalastyle:off disallow.space.before.token
     def fInt(x: Any { def unary_- : Int }): Int = -x
     assertEquals(-1, fInt(1.toByte))
@@ -87,7 +87,7 @@ class ReflectiveCallTest {
     // scalastyle:on disallow.space.before.token
   }
 
-  @Test def should_work_with_binary_operators_on_primitive_types(): Unit = {
+  @Test def binaryOperatorsOnPrimitiveTypes(): Unit = {
     def fLong(x: Any { def +(x: Long): Long }): Long = x + 5L
     assertEquals(10L, fLong(5.toByte))
     assertEquals(15L, fLong(10.toShort))
@@ -118,7 +118,7 @@ class ReflectiveCallTest {
     assertTrue(fBoolean(true))
   }
 
-  @Test def should_work_with_equality_operators_on_primitive_types(): Unit = {
+  @Test def qualityOperatorsOnPrimitiveTypes(): Unit = {
     assumeFalse("Reflective call to == and != is broken on the JVM",
         Platform.executingInJVM)
 
@@ -163,7 +163,7 @@ class ReflectiveCallTest {
     assertFalse(fBoolN(false))
   }
 
-  @Test def should_work_with_compareTo_for_primitives(): Unit = {
+  @Test def compareToForPrimitives(): Unit = {
     def fCompareToBoolean(x: { def compareTo(y: java.lang.Boolean): Int }, y: Boolean): Int =
       x.compareTo(y)
     assertTrue(fCompareToBoolean(false, true) < 0)
@@ -197,7 +197,7 @@ class ReflectiveCallTest {
     assertTrue(fCompareToDouble(5.5, 6.5) < 0)
   }
 
-  @Test def should_work_with_concat_for_primitives(): Unit = {
+  @Test def concatForPrimitives(): Unit = {
     // See https://github.com/scala/bug/issues/10469
     assumeFalse("Reflective call prim.+(String) broken on the JVM",
         Platform.executingInJVM)
@@ -214,7 +214,7 @@ class ReflectiveCallTest {
     assertEquals("5.5foo", concat(5.5, "foo"))
   }
 
-  @Test def should_work_with_Arrays(): Unit = {
+  @Test def arrays(): Unit = {
     type UPD = { def update(i: Int, x: String): Unit }
     type APL = { def apply(i: Int): String }
     type LEN = { def length: Int }
@@ -235,7 +235,7 @@ class ReflectiveCallTest {
     assertEquals("foo", y(1))
   }
 
-  @Test def should_work_with_Arrays_of_primitive_values(): Unit = {
+  @Test def arraysOfPrimitiveValues(): Unit = {
     type UPD = { def update(i: Int, x: Int): Unit }
     type APL = { def apply(i: Int): Int}
     type LEN = { def length: Int }
@@ -256,7 +256,7 @@ class ReflectiveCallTest {
     assertEquals(2, y(1))
   }
 
-  @Test def should_work_with_Strings(): Unit = {
+  @Test def strings(): Unit = {
     def get(obj: { def codePointAt(str: Int): Int }): Int =
       obj.codePointAt(1)
     assertEquals('i'.toInt, get("Hi"))
@@ -273,7 +273,7 @@ class ReflectiveCallTest {
     assertTrue(compareToString("hello", "world") < 0)
   }
 
-  @Test def should_properly_generate_forwarders_for_inherited_methods(): Unit = {
+  @Test def forwardersForInheritedMethods(): Unit = {
     trait A {
       def foo: Int
     }
@@ -289,7 +289,7 @@ class ReflectiveCallTest {
     assertEquals(1, call(new C))
   }
 
-  @Test def should_be_bug_compatible_with_Scala_JVM_for_inherited_overloads(): Unit = {
+  @Test def bugCompatibleWithScalaJVMForInheritedOverloads(): Unit = {
     class Base {
       def foo(x: Option[Int]): String = "a"
     }
@@ -307,7 +307,7 @@ class ReflectiveCallTest {
     assertEquals(1, y.foo(Some("hello")))
   }
 
-  @Test def should_work_on_java_lang_Object_notify_notifyAll_issue_303(): Unit = {
+  @Test def javaLangObjectNotifyNotifyAll_Issue303(): Unit = {
     type ObjNotifyLike = Any {
       def notify(): Unit
       def notifyAll(): Unit
@@ -326,7 +326,7 @@ class ReflectiveCallTest {
     }
   }
 
-  @Test def should_work_on_java_lang_Object_clone_issue_303(): Unit = {
+  @Test def javaLangObjectClone_Issue303(): Unit = {
     type ObjCloneLike = Any { def clone(): AnyRef }
     def objCloneTest(obj: ObjCloneLike): AnyRef = obj.clone()
 
@@ -341,7 +341,7 @@ class ReflectiveCallTest {
     assertEquals(1, bClone.x)
   }
 
-  @Test def should_not_work_on_scala_AnyRef_eq_ne_synchronized_issue_2709(): Unit = {
+  @Test def scalaAnyRefEqNeSynchronized_Issue2709(): Unit = {
     // Bug compatible with Scala/JVM
 
     assumeFalse(
@@ -383,7 +383,7 @@ class ReflectiveCallTest {
     testWith(objSynchronizedTest(a1, "hello"))
   }
 
-  @Test def should_work_on_AnyVal_eq_ne_synchronized_issue_2709(): Unit = {
+  @Test def anyValEqNeSynchronized_Issue2709(): Unit = {
     type ObjWithAnyRefPrimitives = Any {
       def eq(that: AnyRef): Boolean
       def ne(that: AnyRef): Boolean
@@ -408,7 +408,7 @@ class ReflectiveCallTest {
     assertEquals("hellothere", objSynchronizedTest(a, "hello"))
   }
 
-  @Test def should_work_on_java_lang_Float_Double_isNaN_isInfinite(): Unit = {
+  @Test def javaLangFloatDoubleIsNaNIsInfinite(): Unit = {
     type FloatingNumberLike = Any {
       def isNaN(): Boolean
       def isInfinite(): Boolean
@@ -430,7 +430,7 @@ class ReflectiveCallTest {
     test(new JDouble(54.67), false, false)
   }
 
-  @Test def should_work_with_default_arguments_issue_390(): Unit = {
+  @Test def defaultArguments_Issue390(): Unit = {
     def pimpIt(a: Int) = new { // scalastyle:ignore
       def foo(b: Int, c: Int = 1): Int = a + b + c
     }
@@ -439,7 +439,7 @@ class ReflectiveCallTest {
     assertEquals(8, pimpIt(2).foo(2,4))
   }
 
-  @Test def should_unbox_all_types_of_arguments_issue_899(): Unit = {
+  @Test def unboxAllTypesOfArguments_Issue899(): Unit = {
     class Foo {
       def makeInt: Int = 5
       def testInt(x: Int): Unit = assertEquals(5, x)

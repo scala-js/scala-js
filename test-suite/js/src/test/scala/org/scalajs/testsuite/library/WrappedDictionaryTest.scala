@@ -34,7 +34,7 @@ class WrappedDictionaryTest {
     assertTrue(map.get("f") == None)
   }
 
-  @Test def `+=_and_-=`(): Unit = {
+  @Test def plusEqualAndMinusEqual(): Unit = {
     val dict = js.Dictionary[String]()
     val map: mutable.Map[String, String] = dict
 

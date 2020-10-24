@@ -23,7 +23,7 @@ import org.junit.Test
 class NestedJSClassTest {
   import NestedJSClassTest._
 
-  @Test def innerJSClass_basics(): Unit = {
+  @Test def innerJSClassBasics(): Unit = {
     val container1 = new ScalaClassContainer("hello")
     val innerJSClass = container1.getInnerJSClass
     assertSame(innerJSClass, container1.getInnerJSClass)
@@ -56,7 +56,7 @@ class NestedJSClassTest {
     assertFalse(js.special.instanceof(inner3, innerJSClass))
   }
 
-  @Test def localJSClass_basics(): Unit = {
+  @Test def localJSClassBasics(): Unit = {
     val container1 = new ScalaClassContainer("hello")
     val localJSClass1 = container1.makeLocalJSClass("wide1")
     assertEquals("function", js.typeOf(localJSClass1))
@@ -82,7 +82,7 @@ class NestedJSClassTest {
     assertFalse(inner3.isInstanceOf[container1.InnerJSClass])
   }
 
-  @Test def innerJSClass_basicsInsideTrait(): Unit = {
+  @Test def innerJSClassBasicsInsideTrait(): Unit = {
     val container1 = new ScalaTraitContainerSubclass("hello")
     val innerJSClass = container1.getInnerJSClass
     assertSame(innerJSClass, container1.getInnerJSClass)
@@ -115,7 +115,7 @@ class NestedJSClassTest {
     assertFalse(js.special.instanceof(inner3, innerJSClass))
   }
 
-  @Test def localJSClass_basicsInsideTrait(): Unit = {
+  @Test def localJSClassBasicsInsideTrait(): Unit = {
     val container1 = new ScalaTraitContainerSubclass("hello")
     val localJSClass1 = container1.makeLocalJSClass("wide1")
     assertEquals("function", js.typeOf(localJSClass1))
@@ -141,7 +141,7 @@ class NestedJSClassTest {
     assertFalse(inner3.isInstanceOf[container1.InnerJSClass])
   }
 
-  @Test def innerJSObject_basics(): Unit = {
+  @Test def innerJSObjectBasics(): Unit = {
     val container1 = new ScalaClassContainerWithObject("hello")
     val inner1 = container1.InnerJSObject
     assertSame(inner1, container1.InnerJSObject)
@@ -162,7 +162,7 @@ class NestedJSClassTest {
     assertFalse(inner2.isInstanceOf[container1.InnerJSObject.type])
   }
 
-  @Test def localJSObject_basics(): Unit = {
+  @Test def localJSObjectBasics(): Unit = {
     val container1 = new ScalaClassContainerWithObject("hello")
     val inner1 = container1.makeLocalJSObject("world1")
 
@@ -338,7 +338,7 @@ class NestedJSClassTest {
     assertTrue(localJSObject.isInstanceOf[parentsContainer.GenericJSSuperClass[_, _]])
   }
 
-  @Test def innerJSClass_basicsInsideJSClass(): Unit = {
+  @Test def innerJSClassBasicsInsideJSClass(): Unit = {
     val container1 = new JSClassContainer("hello")
     val innerJSClass = container1.getInnerJSClass
     assertSame(innerJSClass, container1.getInnerJSClass)
@@ -375,7 +375,7 @@ class NestedJSClassTest {
     assertFalse(js.special.instanceof(inner3, innerJSClass))
   }
 
-  @Test def innerJSClass_accessibleFromJS_ifInsideJSClass(): Unit = {
+  @Test def innerJSClassAccessibleFromJSIfInsideJSClass(): Unit = {
     val container1 = new JSClassContainer("hello")
     val innerJSClass = container1.asInstanceOf[js.Dynamic].getInnerJSClass
     assertSame(innerJSClass, container1.getInnerJSClass)
@@ -402,7 +402,7 @@ class NestedJSClassTest {
     assertFalse(js.special.instanceof(inner3, innerJSClass))
   }
 
-  @Test def innerJSClassObject_accessibleFromJS_ifInsideTopJSObject_issue4086(): Unit = {
+  @Test def innerJSClassObjectAccessibleFromJSIfInsideTopJSObject_Issue4086(): Unit = {
     val container = NestedJSClassTest_TopLevelJSObject_Issue4086.asInstanceOf[js.Dynamic]
 
     assertEquals("object", js.typeOf(container.InnerScalaObject))
@@ -425,7 +425,7 @@ class NestedJSClassTest {
     assertEquals("InnerJSClass(5) of issue 4086", obj.toString())
   }
 
-  @Test def doublyNestedInnerObject_issue4114(): Unit = {
+  @Test def doublyNestedInnerObject_Issue4114(): Unit = {
     val outer1 = new DoublyNestedInnerObject_Issue4114().asInstanceOf[js.Dynamic]
     val outer2 = new DoublyNestedInnerObject_Issue4114().asInstanceOf[js.Dynamic]
 
@@ -436,7 +436,7 @@ class NestedJSClassTest {
     assertEquals(10, outer2.middle.inner.x)
   }
 
-  @Test def triplyNestedObject_issue4114(): Unit = {
+  @Test def triplyNestedObject_Issue4114(): Unit = {
     val obj = TriplyNestedObject_Issue4114.asInstanceOf[js.Dynamic]
 
     assertEquals("object", js.typeOf(obj.middle))
@@ -448,7 +448,7 @@ class NestedJSClassTest {
     assertEquals(10, obj.middle.inner.x)
   }
 
-  @Test def triplyNestedClassSuperDispatch_issue4114(): Unit = {
+  @Test def triplyNestedClassSuperDispatch_Issue4114(): Unit = {
     val x = new TriplyNestedClass_Issue4114().asInstanceOf[js.Dynamic]
     assertEquals(3, x.foo(3))
   }

@@ -41,7 +41,7 @@ class RegexMatcherTest  {
     assertFalse(matcher.find())
   }
 
-  @Test def start_end_group_and_toMatchResult(): Unit = {
+  @Test def startEndGroupAndToMatchResult(): Unit = {
     val matcher = Pattern
       .compile("\\s(([A-Za-z]{5}(hum)?).js)\\s")
       .matcher("Write Scala.js everyday!")
@@ -53,7 +53,7 @@ class RegexMatcherTest  {
     )
   }
 
-  @Test def start_end_group_tricky_and_toMatchResult(): Unit = {
+  @Test def startEndGroupTrickyAndToMatchResult(): Unit = {
     val matcher = Pattern
       .compile("(Scala\\.js).*(Scala)$")
       .matcher("Scala.js is a Scalable javascript compiler based on Scala")
@@ -64,7 +64,7 @@ class RegexMatcherTest  {
     )
   }
 
-  @Test def start_end_group_matchnot_and_toMatchResult(): Unit = {
+  @Test def startEndGroupMatchnotAndToMatchResult(): Unit = {
     val matcher = Pattern
       .compile("(?!Scala\\.js)(Scala)")
       .matcher("There is a difference between Scala.js and Scala, but both are Scalable")
@@ -78,7 +78,7 @@ class RegexMatcherTest  {
     )
   }
 
-  @Test def start_end_group_multiple_and_toMatchResult(): Unit = {
+  @Test def startEndGroupMultipleAndToMatchResult(): Unit = {
     val matcher = Pattern
       .compile("(?=Scala\\.js is (nice|awesome))(Scala)\\.js")
       .matcher("Scala.js is nice, Scala.js is awesome")
@@ -94,7 +94,7 @@ class RegexMatcherTest  {
     )
   }
 
-  @Test def start_end_group_and_toMatchResult_with_inline_flags_issue3406(): Unit = {
+  @Test def startEndGroupAndToMatchResultWithInlineFlags_Issue3406(): Unit = {
     val matcher = Pattern
       .compile("(?i)(a).*(aa)")
       .matcher("bBaccAaD")
@@ -109,7 +109,7 @@ class RegexMatcherTest  {
         "(?i)(a)".r.findAllMatchIn("aA").map(_.matched).toList)
   }
 
-  @Test def start_end_group_with_region_issue4204(): Unit = {
+  @Test def startEndGroupWithRegion_Issue4204(): Unit = {
     val matcher = Pattern
       .compile("([a-z]+) ([a-z]+)(frobber)?")
       .matcher("This is only a test")
@@ -135,7 +135,7 @@ class RegexMatcherTest  {
     }
   }
 
-  @Test def parseRegex_test(): Unit = {
+  @Test def parseRegexTest(): Unit = {
     parseExpect("aa", "aa", 0 -> 2)
     parseExpect("a(a)", "aa", 0 -> 2, 1 -> 2)
     parseExpect("ABC(A(B))(C)", "ABCABC", 0 -> 6, 3 -> 5, 4 -> 5, 5 -> 6)
@@ -166,12 +166,12 @@ class RegexMatcherTest  {
     parseExpect("(?!(a))(b)", "b", 0 -> 1, -1 -> -1, 0 -> 1) // #3901
   }
 
-  @Test def parseRegex_backgroups_test(): Unit = {
+  @Test def parseRegexBackgroupsTest(): Unit = {
     parseExpect("bc(.c).c(\\1)", "bczcxczc", 0 -> 8, 2 -> 4, 6 -> 8)
     parseExpect("(bc(.c).c)(\\2)", "bczcxczc", 0 -> 8, 0 -> 6, 2 -> 4, 6 -> 8)
   }
 
-  @Test def parseRegex_disjunctions_test(): Unit = {
+  @Test def parseRegexDisjunctionsTest(): Unit = {
     parseExpect("a(b)|b(c)", "ab", 0 -> 2, 1 -> 2, -1 -> -1)
     parseExpect("a(b)|b(c)", "bc", 0 -> 2, -1 -> -1, 1 -> 2)
     if (!executingInJVM) {
@@ -218,7 +218,7 @@ class RegexMatcherTest  {
     assertFalse(matcher1.matches())
   }
 
-  @Test def several_matches_from_the_same_pattern_should_be_independent(): Unit = {
+  @Test def matchersFromTheSamePatternAreIndependent(): Unit = {
     val pattern = Pattern.compile("S[a-z]+")
     val matcher0 = pattern.matcher("Scalable")
     val matcher1 = pattern.matcher("Scalable")
@@ -243,7 +243,7 @@ class RegexMatcherTest  {
     assertTrue(matcher.find())
   }
 
-  @Test def reset_string(): Unit = {
+  @Test def resetString(): Unit = {
     val matcher = Pattern.compile("S[a-z]+").matcher("Scalable")
 
     assertTrue(matcher.matches())
@@ -352,7 +352,7 @@ class RegexMatcherTest  {
     assertEquals(20, matcher1.regionEnd)
   }
 
-  @Test def appendReplacement_and_appendTail(): Unit = {
+  @Test def appendReplacementAndAppendTail(): Unit = {
     // From the JavaDoc
     val matcher = Pattern.compile("cat").matcher("one cat two cats in the yard")
     val sb = new StringBuffer
@@ -383,7 +383,7 @@ class RegexMatcherTest  {
     assertEquals("zzzcatzzzdogzzz", matcher.replaceFirst("cat"))
   }
 
-  @Test def should_throw_exception_if_match_accessors_are_called_before_find(): Unit = {
+  @Test def usingMatchAccessorsBeforeFindThrows(): Unit = {
     def checkInvalidAccess(block: => Unit): Unit = {
       val exception: Throwable = try {
         block
@@ -412,7 +412,7 @@ class RegexMatcherTest  {
     checkInvalidAccess { matchResult.group(42) }
   }
 
-  @Test def should_correctly_handle_zero_length_matches(): Unit = {
+  @Test def zeroLengthMatches(): Unit = {
     val pat = Pattern.compile("a*?")
     val mat = pat.matcher("aaaaa")
     for (i <- 0 to 5) {
@@ -427,7 +427,7 @@ class RegexMatcherTest  {
     }
   }
 
-  @Test def should_support_in_pattern_flags_issue_997(): Unit = {
+  @Test def inPatternFlags_Issue997(): Unit = {
     val p0 = Pattern.compile("(?i)abc")
 
     assertNotEquals(0, p0.flags() & Pattern.CASE_INSENSITIVE)
@@ -451,7 +451,7 @@ class RegexMatcherTest  {
     assertFalse(m1.find())
   }
 
-  @Test def should_link_and_fail_on_group_of_String_issue_2381(): Unit = {
+  @Test def groupAndGroupName_Issue2381(): Unit = {
     val r = new Regex("a(b*)c", "Bee")
     val ms = r findAllIn "stuff abbbc more abc and so on"
     if (!executingInJVM)

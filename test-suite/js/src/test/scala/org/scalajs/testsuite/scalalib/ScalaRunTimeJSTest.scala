@@ -19,7 +19,7 @@ import scala.scalajs.js
 
 class ScalaRunTimeJSTest {
 
-  @Test def ScalaRunTime_isArray_should_not_fail_with_JS_objects(): Unit = {
+  @Test def isArrayWorksWithJSObjects(): Unit = {
     def isScalaArray(x: Any): Boolean = {
       x match {
         case _: Array[_] => true

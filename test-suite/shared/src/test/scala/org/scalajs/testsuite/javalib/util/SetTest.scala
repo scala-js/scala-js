@@ -29,7 +29,7 @@ trait SetTest extends CollectionTest {
 
   def factory: SetFactory
 
-  @Test def shouldCheckSetSize(): Unit = {
+  @Test def size(): Unit = {
     val hs = factory.empty[String]
 
     assertEquals(0, hs.size())
@@ -39,7 +39,7 @@ trait SetTest extends CollectionTest {
     assertEquals(2, hs.size())
   }
 
-  @Test def shouldStoreIntegers_Set(): Unit = {
+  @Test def addInt(): Unit = {
     val hs = factory.empty[Int]
 
     assertTrue(hs.add(100))
@@ -48,7 +48,7 @@ trait SetTest extends CollectionTest {
     assertEquals(100, hs.iterator.next())
   }
 
-  @Test def shouldStoreObjectsWithSameHashCodeButDifferentTypes(): Unit = {
+  @Test def addAnyRefCustomObjectsWithSameHashCode(): Unit = {
     val hs = factory.empty[AnyRef]
     trait A extends Comparable[A] {
       def compareTo(o: A): Int = toString.compareTo(o.toString)
@@ -65,7 +65,7 @@ trait SetTest extends CollectionTest {
     assertEquals(2, hs.size())
   }
 
-  @Test def shouldStoreDoublesAlsoInCornerCases(): Unit = {
+  @Test def addDoubleCornerCases(): Unit = {
     val hs = factory.empty[Double]
 
     assertTrue(hs.add(11111.0))
@@ -100,7 +100,7 @@ trait SetTest extends CollectionTest {
     assertTrue(hs.contains(-0.0))
   }
 
-  @Test def shouldStoreCustomObjects_Set(): Unit = {
+  @Test def addCustomClass(): Unit = {
     case class TestObj(num: Int) extends jl.Comparable[TestObj] {
       override def compareTo(o: TestObj): Int = o.num - num
     }
@@ -113,7 +113,7 @@ trait SetTest extends CollectionTest {
     assertEquals(100, hs.iterator.next().num)
   }
 
-  @Test def shouldRemoveStoredElements_Set(): Unit = {
+  @Test def removeRemoveAllRetainAll(): Unit = {
     val hs = factory.empty[String]
 
     assertEquals(0, hs.size())
@@ -143,7 +143,7 @@ trait SetTest extends CollectionTest {
     assertFalse(hs.contains("TWO"))
   }
 
-  @Test def shouldBeClearedWithOneOperation_Set(): Unit = {
+  @Test def clearSet(): Unit = {
     val hs = factory.empty[String]
 
     assertTrue(hs.add("ONE"))
@@ -155,7 +155,7 @@ trait SetTest extends CollectionTest {
     assertTrue(hs.isEmpty)
   }
 
-  @Test def shouldCheckContainedElemsPresence(): Unit = {
+  @Test def contains(): Unit = {
     val hs = factory.empty[String]
 
     assertTrue(hs.add("ONE"))
@@ -170,7 +170,7 @@ trait SetTest extends CollectionTest {
     }
   }
 
-  @Test def shouldPutAWholeCollectionInto(): Unit = {
+  @Test def addAllCollectionStringSet(): Unit = {
     val hs = factory.empty[String]
 
     val l = TrivialImmutableCollection("ONE", "TWO", null)
@@ -186,7 +186,7 @@ trait SetTest extends CollectionTest {
     }
   }
 
-  @Test def shouldIterateOverElements(): Unit = {
+  @Test def iterator(): Unit = {
     val hs = factory.empty[String]
 
     val l = {

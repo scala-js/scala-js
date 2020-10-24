@@ -22,7 +22,7 @@ class NonNativeJSTypeTestScala2 {
   import NonNativeJSTypeTestScala2._
 
   /** Complements NonNativeJSTypeTest.default_values_for_fields(). */
-  @Test def default_values_for_fields(): Unit = {
+  @Test def defaultValuesForFields(): Unit = {
     val obj = new DefaultFieldValues
 
     /* Value class fields are initialized to null, instead of a boxed

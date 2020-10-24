@@ -6,19 +6,16 @@ import org.junit.Assert._
 
 class DOMExistenceTest {
 
-  @Test
-  def should_initialize_document(): Unit = {
+  @Test def initializeDocument(): Unit = {
     assertFalse(js.isUndefined(global.document))
     assertEquals("#document", global.document.nodeName)
   }
 
-  @Test
-  def should_initialize_document_body(): Unit = {
+  @Test def initializeDocumentBody(): Unit = {
     assertFalse(js.isUndefined(global.document.body))
   }
 
-  @Test
-  def should_initialize_windod(): Unit = {
+  @Test def initializeWindow(): Unit = {
     assertFalse(js.isUndefined(global.window))
   }
 }

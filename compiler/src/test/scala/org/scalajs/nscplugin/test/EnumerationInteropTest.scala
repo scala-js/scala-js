@@ -19,7 +19,7 @@ import org.junit.Test
 class EnumerationInteropTest extends DirectTest with TestHelpers {
 
   @Test
-  def warnIfUnableToTransformValue: Unit = {
+  def warnIfUnableToTransformValue(): Unit = {
 
     """
     class A extends Enumeration {
@@ -49,7 +49,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def warnIfNoNameVal: Unit = {
+  def warnIfNoNameVal(): Unit = {
 
     """
     class A extends Enumeration {
@@ -73,7 +73,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def warnIfNullValue: Unit = {
+  def warnIfNullValue(): Unit = {
 
     """
     class A extends Enumeration {
@@ -97,7 +97,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def warnIfNullNewVal: Unit = {
+  def warnIfNullNewVal(): Unit = {
 
     """
     class A extends Enumeration {
@@ -121,7 +121,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def warnIfExtNoNameVal: Unit = {
+  def warnIfExtNoNameVal(): Unit = {
 
     """
     class A extends Enumeration {
@@ -145,7 +145,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def warnIfExtNullNameVal: Unit = {
+  def warnIfExtNullNameVal(): Unit = {
 
     """
     class A extends Enumeration {

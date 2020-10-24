@@ -26,7 +26,7 @@ class ArrayTest {
 
   // scala.scalajs.js.Array
 
-  @Test def should_provide_implicit_conversion_from_js_Array_to_ArrayOps_String(): Unit = {
+  @Test def implicitConversionFromJSArrayToArrayOpsString(): Unit = {
     var propCount = 0
     var propString = ""
 
@@ -40,7 +40,7 @@ class ArrayTest {
     assertEquals("Scala.js", propString)
   }
 
-  @Test def should_provide_implicit_conversion_from_js_Array_to_ArrayOps_Int(): Unit = {
+  @Test def implicitConversionFromJSArrayToArrayOpsInt(): Unit = {
     var propCount = 0
     var propString = ""
 
@@ -54,7 +54,7 @@ class ArrayTest {
     assertEquals("7357", propString)
   }
 
-  @Test def should_provide_implicit_conversion_from_js_Array_to_ArrayOps_Char(): Unit = {
+  @Test def implicitConversionFromJSArrayToArrayOpsChar(): Unit = {
     var propCount = 0
     var propString = ""
 
@@ -68,7 +68,7 @@ class ArrayTest {
     assertEquals("Scala", propString)
   }
 
-  @Test def should_provide_implicit_conversion_from_js_Array_to_ArrayOps_value_class(): Unit = {
+  @Test def implicitConversionFromJSArrayToArrayOpsValueClass(): Unit = {
     var propCount = 0
     var propString = ""
 
@@ -84,7 +84,7 @@ class ArrayTest {
 
   // scala.scalajs.js.JSConverters.JSRichGenTraversableOnce
 
-  @Test def should_provide_toJSArray(): Unit = {
+  @Test def toJSArray(): Unit = {
     import js.JSConverters._
     assertJSArrayEquals(js.Array("foo", "bar"), List("foo", "bar").toJSArray)
     assertJSArrayEquals(js.Array(1, 2, 3), Iterator(1, 2, 3).toJSArray)

@@ -213,7 +213,7 @@ class  BigDecimalArithmeticTest {
     assertEquals(result(1).scale(), remScale)
   }
 
-  @Test def testDivideAndRemainderMathContextDOWN(): Unit = {
+  @Test def testDivideAndRemainderMathContextDown(): Unit = {
     val a = "3736186567876876578956958765675671119238118911893939591735"
     val aScale = 45
     val b = "134432345432345748766876876723342238476237823787879183470"
@@ -300,7 +300,7 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), resScale)
   }
 
-  @Test def testDivideBigDecimalScaleMathContextDOWN(): Unit = {
+  @Test def testDivideBigDecimalScaleMathContextDown(): Unit = {
     val a = "3736186567876876578956958765675671119238118911893939591735"
     val aScale = 15
     val b = "748766876876723342238476237823787879183470"
@@ -317,7 +317,7 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), resScale)
   }
 
-  @Test def testDivideBigDecimalScaleMathContextFLOOR(): Unit = {
+  @Test def testDivideBigDecimalScaleMathContextFloor(): Unit = {
     val a = "3736186567876876578956958765675671119238118911893939591735"
     val aScale = 15
     val b = "748766876876723342238476237823787879183470"
@@ -334,7 +334,7 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), resScale)
   }
 
-  @Test def testDivideBigDecimalScaleMathContextHALF_DOWN(): Unit = {
+  @Test def testDivideBigDecimalScaleMathContextHalfDown(): Unit = {
     val a = "3736186567876876578956958765675671119238118911893939591735"
     val aScale = 45
     val b = "134432345432345748766876876723342238476237823787879183470"
@@ -351,7 +351,7 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), resScale)
   }
 
-  @Test def testDivideBigDecimalScaleMathContextHALF_EVEN(): Unit = {
+  @Test def testDivideBigDecimalScaleMathContextHalfEven(): Unit = {
     val a = "3736186567876876578956958765675671119238118911893939591735"
     val aScale = 45
     val b = "134432345432345748766876876723342238476237823787879183470"
@@ -368,7 +368,7 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), resScale)
   }
 
-  @Test def testDivideBigDecimalScaleMathContextHALF_UP(): Unit = {
+  @Test def testDivideBigDecimalScaleMathContextHalfUp(): Unit = {
     val a = "3736186567876876578956958765675671119238118911893939591735"
     val aScale = 45
     val b = "134432345432345748766876876723342238476237823787879183470"
@@ -385,7 +385,7 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), resScale)
   }
 
-  @Test def testDivideBigDecimalScaleMathContextUP(): Unit = {
+  @Test def testDivideBigDecimalScaleMathContextUp(): Unit = {
     val a = "3736186567876876578956958765675671119238118911893939591735"
     val aScale = 15
     val b = "748766876876723342238476237823787879183470"
@@ -417,7 +417,7 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), newScale)
   }
 
-  @Test def testDivideBigDecimalScaleRoundingModeDOWN(): Unit = {
+  @Test def testDivideBigDecimalScaleRoundingModeDown(): Unit = {
     val a = "-37361671119238118911893939591735"
     val aScale = 10
     val b = "74723342238476237823787879183470"
@@ -432,7 +432,7 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), newScale)
   }
 
-  @Test def testDivideBigDecimalScaleRoundingModeFLOOR(): Unit = {
+  @Test def testDivideBigDecimalScaleRoundingModeFloor(): Unit = {
     val a = "3736186567876876578956958765675671119238118911893939591735"
     val aScale = 100
     val b = "74723342238476237823787879183470"
@@ -447,7 +447,7 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), newScale)
   }
 
-  @Test def testDivideBigDecimalScaleRoundingModeHALF_DOWN(): Unit = {
+  @Test def testDivideBigDecimalScaleRoundingModeHalfDown(): Unit = {
     val a = "3736186567876876578956958765675671119238118911893939591735"
     val aScale = 5
     val b = "74723342238476237823787879183470"
@@ -462,7 +462,7 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), newScale)
   }
 
-  @Test def testDivideBigDecimalScaleRoundingModeHALF_EVEN(): Unit = {
+  @Test def testDivideBigDecimalScaleRoundingModeHalfEven(): Unit = {
     val a = "3736186567876876578956958765675671119238118911893939591735"
     val aScale = 5
     val b = "74723342238476237823787879183470"
@@ -477,7 +477,7 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), newScale)
   }
 
-  @Test def testDivideBigDecimalScaleRoundingModeHALF_UP(): Unit = {
+  @Test def testDivideBigDecimalScaleRoundingModeHalfUp(): Unit = {
     val a = "3736186567876876578956958765675671119238118911893939591735"
     val aScale = -51
     val b = "74723342238476237823787879183470"
@@ -509,7 +509,7 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), newScale)
   }
 
-  @Test def testDivideBigDecimalScale_issue2755(): Unit = {
+  @Test def testDivideBigDecimalScale_Issue2755(): Unit = {
     val a = new BigDecimal(2L)
     val b = new BigDecimal(1L)
     val r = a.divide(b, 1, RoundingMode.UNNECESSARY)
@@ -958,7 +958,7 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), resScale)
   }
 
-  @Test def testDivideToIntegralValueMathContextDOWN(): Unit = {
+  @Test def testDivideToIntegralValueMathContextDown(): Unit = {
     val a = "3736186567876876578956958769675785435673453453653543654354365435675671119238118911893939591735"
     val aScale = 45
     val b = "134432345432345748766876876723342238476237823787879183470"
@@ -1002,7 +1002,7 @@ class  BigDecimalArithmeticTest {
     expectThrows(classOf[ArithmeticException], BigDecimal.ONE.divideToIntegralValue(BigDecimal.ZERO))
   }
 
-  @Test def testDivideToIntegralValue_on_floating_points__issue_1979(): Unit = {
+  @Test def testDivideToIntegralValueOnFloatingPoints_Issue1979(): Unit = {
     val one = new BigDecimal(1.0)
     val oneAndHalf = new BigDecimal(1.5)
     val a0 = new BigDecimal(3.0)
@@ -1124,7 +1124,7 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), cScale)
   }
 
-  @Test def testMultiplySmallOverflow_issue2587(): Unit = {
+  @Test def testMultiplySmallOverflow_Issue2587(): Unit = {
     val x = new BigDecimal(Int.MinValue)
     val y = new BigDecimal(Int.MinValue.toLong * 2L)
     val z = new BigDecimal("9223372036854775808")
@@ -1200,7 +1200,7 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), resScale)
   }
 
-  @Test def testRemainderMathContextHALF_DOWN(): Unit = {
+  @Test def testRemainderMathContextHalfDown(): Unit = {
     val a = "3736186567876876578956958765675671119238118911893939591735"
     val aScale = -45
     val b = "134432345432345748766876876723342238476237823787879183470"
@@ -1217,7 +1217,7 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), resScale)
   }
 
-  @Test def testRemainderMathContextHALF_UP(): Unit = {
+  @Test def testRemainderMathContextHalfUp(): Unit = {
     val a = "3736186567876876578956958765675671119238118911893939591735"
     val aScale = 45
     val b = "134432345432345748766876876723342238476237823787879183470"
@@ -1234,7 +1234,7 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), resScale)
   }
 
-  @Test def testRoundMathContextCEILING(): Unit = {
+  @Test def testRoundMathContextCeiling(): Unit = {
     var `val` = BigDecimal.valueOf(1.5)
     val result = `val`.round(new MathContext(1, RoundingMode.CEILING))
     assertEquals(result.toString, "2")
@@ -1251,7 +1251,7 @@ class  BigDecimalArithmeticTest {
       .round(new MathContext(1, RoundingMode.CEILING))
   }
 
-  @Test def testRoundMathContextHALF_DOWN(): Unit = {
+  @Test def testRoundMathContextHalfDown(): Unit = {
     val a = "3736186567876876578956958765675671119238118911893939591735"
     val aScale = -45
     val precision = 75
@@ -1265,7 +1265,7 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), resScale)
   }
 
-  @Test def testRoundMathContextHALF_UP(): Unit = {
+  @Test def testRoundMathContextHalfUp(): Unit = {
     val a = "3736186567876876578956958765675671119238118911893939591735"
     val aScale = 45
     val precision = 15

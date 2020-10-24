@@ -27,23 +27,23 @@ class CharArrayWriterTest {
       closeable.close()
   }
 
-  @Test def should_construct_with_correct_size_when_supplied(): Unit = {
+  @Test def ctorSize: Unit = {
     withClose(new CharArrayWriter(90)) { cw =>
       assertEquals(0, cw.size)
     }
   }
 
-  @Test def should_construct_with_exception(): Unit = {
+  @Test def ctorSizeNegativeThrows(): Unit = {
     assertThrows(classOf[IllegalArgumentException], new CharArrayWriter(-1))
   }
 
-  @Test def should_construct_with_correct_size_default(): Unit = {
+  @Test def ctorSizeDefault(): Unit = {
     withClose(new CharArrayWriter) { cw =>
       assertEquals(0, cw.size)
     }
   }
 
-  @Test def should_support_close(): Unit = {
+  @Test def close(): Unit = {
     withClose(new CharArrayWriter) { cw =>
       cw.close()
       cw.close() // no-op
@@ -51,13 +51,13 @@ class CharArrayWriterTest {
     }
   }
 
-  @Test def should_support_flush(): Unit = {
+  @Test def flush(): Unit = {
     withClose(new CharArrayWriter) { cw =>
       cw.flush()
     }
   }
 
-  @Test def should_support_reset(): Unit = {
+  @Test def reset(): Unit = {
     withClose(new CharArrayWriter) { cw =>
       cw.write("HelloWorld", 5, 5)
       cw.reset()
@@ -67,7 +67,7 @@ class CharArrayWriterTest {
     }
   }
 
-  @Test def should_support_size(): Unit = {
+  @Test def size(): Unit = {
     withClose(new CharArrayWriter) { cw =>
       assertEquals(0, cw.size)
       cw.write(hw, 5, 5)
@@ -75,21 +75,21 @@ class CharArrayWriterTest {
     }
   }
 
-  @Test def should_support_toCharArray(): Unit = {
+  @Test def toCharArray(): Unit = {
     withClose(new CharArrayWriter) { cw =>
       cw.write("HelloWorld", 0, 10)
       assertArrayEquals("HelloWorld".toCharArray, cw.toCharArray)
     }
   }
 
-  @Test def should_support_toString(): Unit = {
+  @Test def testToString(): Unit = {
     withClose(new CharArrayWriter) { cw =>
       cw.write("HelloWorld", 5, 5)
       assertEquals("World", cw.toString)
     }
   }
 
-  @Test def should_support_write_char_array(): Unit = {
+  @Test def writeSubArrayToCharArray(): Unit = {
     withClose(new CharArrayWriter) { cw =>
       cw.write(hw, 5, 5)
       assertEquals("World", cw.toString)
@@ -97,14 +97,14 @@ class CharArrayWriterTest {
     }
   }
 
-  @Test def write_should_throw_IndexOutOfBoundsException(): Unit = {
+  @Test def throwsIndexOutOfBoundsException(): Unit = {
     withClose(new CharArrayWriter) { obj =>
       assertThrows(classOf[IndexOutOfBoundsException],
           obj.write(Array[Char]('0'), 0, -1))
     }
   }
 
-  @Test def should_support_write_char(): Unit = {
+  @Test def writeChar(): Unit = {
     withClose(new CharArrayWriter) { cw =>
       cw.write('T')
       assertEquals("T", cw.toString)
@@ -112,7 +112,7 @@ class CharArrayWriterTest {
     }
   }
 
-  @Test def write_should_support_write_string(): Unit = {
+  @Test def writeString(): Unit = {
     withClose(new CharArrayWriter) { cw =>
       cw.write("HelloWorld", 5, 5)
       assertEquals("World", cw.toString)
@@ -120,7 +120,7 @@ class CharArrayWriterTest {
     }
   }
 
-  @Test def should_support_writeTo_StringWriter(): Unit = {
+  @Test def writeToStringWriter(): Unit = {
     withClose(new CharArrayWriter) { cw =>
       cw.write("HelloWorld", 0, 10)
       withClose(new StringWriter) { sw =>
@@ -130,7 +130,7 @@ class CharArrayWriterTest {
     }
   }
 
-  @Test def should_support_append_char(): Unit = {
+  @Test def appendChar(): Unit = {
     withClose(new CharArrayWriter(10)) { cw =>
       val testChar = ' '
       cw.append(testChar)
@@ -140,7 +140,7 @@ class CharArrayWriterTest {
     }
   }
 
-  @Test def should_support_append_CharSequence(): Unit = {
+  @Test def appendCharSequence(): Unit = {
     withClose(new CharArrayWriter(10)) { cw =>
       val testString: CharSequence = "My Test String"
       cw.append(testString)
@@ -150,7 +150,7 @@ class CharArrayWriterTest {
     }
   }
 
-  @Test def should_support_append_CharSequence_with_offset(): Unit = {
+  @Test def appendCharSequenceWithOffset(): Unit = {
     withClose(new CharArrayWriter(10)) { cw =>
       val testString: String = "My Test String"
       cw.append(testString, 1, 3)

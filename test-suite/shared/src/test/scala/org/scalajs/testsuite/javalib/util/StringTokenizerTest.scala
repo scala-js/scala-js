@@ -22,19 +22,19 @@ import org.scalajs.testsuite.utils.AssertThrows._
 class StringTokenizerTest {
   import StringTokenizerTest.assertTokenizerResult
 
-  @Test def constructor_with_delim(): Unit = {
+  @Test def ctorWithDelim(): Unit = {
     assertTokenizerResult("This", "is", "a", "test", "String") {
       new StringTokenizer(":This:is:a:test:String:", ":")
     }
   }
 
-  @Test def constructor_with_delim_with_returnDelims(): Unit = {
+  @Test def ctorWithDelimWithReturnDelims(): Unit = {
     assertTokenizerResult(":", "This", ":", "is", ":", "a", ":", "test", ":", "String", ":") {
       new StringTokenizer(":This:is:a:test:String:", ":", true)
     }
   }
 
-  @Test def default_delimiters_should_work(): Unit = {
+  @Test def defaultDelimiters(): Unit = {
     assertTokenizerResult("This", "is", "a", "test", "String") {
       new StringTokenizer(" This\tis\na\rtest\fString ")
     }
@@ -45,12 +45,12 @@ class StringTokenizerTest {
     assertEquals(5, st.countTokens())
   }
 
-  @Test def countTokens_with_returnDelims(): Unit = {
+  @Test def countTokensWithReturnDelims(): Unit = {
     val st = new StringTokenizer("This is a test String", " ", true)
     assertEquals(9, st.countTokens())
   }
 
-  @Test def empty_token_should_work(): Unit = {
+  @Test def ctorEmptyString(): Unit = {
     val st = new StringTokenizer("")
     assertFalse(st.hasMoreTokens())
     assertFalse(st.hasMoreElements())
@@ -58,7 +58,7 @@ class StringTokenizerTest {
     assertThrows(classOf[NoSuchElementException], st.nextElement())
   }
 
-  @Test def no_delimeter_string_should_work(): Unit = {
+  @Test def ctorNoDelimitersInString(): Unit = {
     assertTokenizerResult("ThisisatestString") {
       new StringTokenizer("ThisisatestString")
     }
@@ -68,7 +68,7 @@ class StringTokenizerTest {
     }
   }
 
-  @Test def nextToken_with_new_delim(): Unit = {
+  @Test def nextTokenWithNewDelim(): Unit = {
     val st = new StringTokenizer("ab;cd;:", ";")
     assertEquals("ab", st.nextToken())
     assertEquals("cd", st.nextToken())
@@ -77,13 +77,13 @@ class StringTokenizerTest {
     assertFalse("hasMoreTokens returned true", st.hasMoreTokens())
   }
 
-  @Test def consecutive_returnDelims_false(): Unit = {
+  @Test def consecutiveReturnDelimsFalse(): Unit = {
     assertTokenizerResult("This", "is", "a", "test", "String") {
       new StringTokenizer("::This::is::a::test::String::", ":")
     }
   }
 
-  @Test def consecutive_returnDelims_true(): Unit = {
+  @Test def consecutiveReturnDelimsTrue(): Unit = {
     assertTokenizerResult(":", ":", "This", ":", ":", "is",
         ":", ":", "a", ":", ":", "test", ":", ":", "String", ":", ":") {
       new StringTokenizer("::This::is::a::test::String::", ":", true)

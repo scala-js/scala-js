@@ -85,7 +85,7 @@ class SystemTest {
         chars.filter(_ != null).map(_.mkString).mkString)
   }
 
-  @Test def arraycopy_with_range_overlaps_for_the_same_array(): Unit = {
+  @Test def arraycopyWithRangeOverlapsForTheSameArray(): Unit = {
     val array = new Array[Int](10)
 
     for (i <- 1 to 6) {
@@ -165,7 +165,7 @@ class SystemTest {
     assertEquals(x2.hashCode(), System.identityHashCode(x2))
   }
 
-  @Test def identityHashCode_should_by_pass_hashCode(): Unit = {
+  @Test def identityHashCodeNotEqualHashCodeForList(): Unit = {
     val list1 = List(1, 3, 5)
     val list2 = List(1, 3, 5)
     assertEquals(list2, list1)
@@ -173,11 +173,11 @@ class SystemTest {
     assertNotEquals(System.identityHashCode(list1), System.identityHashCode(list2))
   }
 
-  @Test def identityHashCode_of_null(): Unit = {
+  @Test def identityHashCodeOfNull(): Unit = {
     assertEquals(0, System.identityHashCode(null))
   }
 
-  @Test def identityHashCode_of_values_implemented_as_JS_primitives(): Unit = {
+  @Test def identityHashCodeOfValuesImplementedAsJSPrimitives(): Unit = {
     if (!executingInJVM) {
       assertEquals("foo".hashCode(), System.identityHashCode("foo"))
       assertEquals("".hashCode(), System.identityHashCode(""))
@@ -201,13 +201,13 @@ class SystemTest {
       assertTrue(Set("\n", "\r", "\r\n").contains(lineSep))
   }
 
-  @Test def getenv_should_return_an_unmodifiable_map(): Unit = {
+  @Test def getenvReturnsUnmodifiableMap(): Unit = {
     assertTrue(System.getenv().isInstanceOf[java.util.Map[String, String]])
 
     expectThrows(classOf[Exception], System.getenv.put("", ""))
   }
 
-  @Test def getenv_should_link_and_does_not_throw(): Unit = {
+  @Test def getenvLinksAndDoesNotThrow(): Unit = {
     assertEquals(null, System.getenv(":${PATH}"))
   }
 }
