@@ -15,7 +15,7 @@ package java.util
 import scala.annotation.tailrec
 
 import java.{util => ju}
-import java.util.function.BiConsumer
+import java.util.function.{BiConsumer, BiFunction, Function}
 
 import ScalaOps._
 
@@ -180,6 +180,44 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
     }
   }
 
+  override def computeIfAbsent(key: K, mappingFunction: Function[_ >: K, _ <: V]): V = {
+    val (node, hash, idx, oldValue) = getNode0(key)
+    if (oldValue != null) {
+      oldValue
+    } else {
+      val newValue = mappingFunction.apply(key)
+      if (newValue != null)
+        put0(key, newValue, hash, node)
+      newValue
+    }
+  }
+
+  override def computeIfPresent(key: K, remappingFunction: BiFunction[_ >: K, _ >: V, _ <: V]): V = {
+    val (node, hash, idx, oldValue) = getNode0(key)
+    if (oldValue == null) {
+      oldValue
+    } else {
+      val newValue = remappingFunction.apply(key, oldValue)
+      putOrRemove0(key, hash, idx, node, newValue)
+    }
+  }
+
+  override def compute(key: K, remappingFunction: BiFunction[_ >: K, _ >: V, _ <: V]): V = {
+    val (node, hash, idx, oldValue) = getNode0(key)
+    val newValue = remappingFunction.apply(key, oldValue)
+    putOrRemove0(key, hash, idx, node, newValue)
+  }
+
+  override def merge(key: K, value: V, remappingFunction: BiFunction[_ >: V, _ >: V, _ <: V]): V = {
+    Objects.requireNonNull(value)
+
+    val (node, hash, idx, oldValue) = getNode0(key)
+    val newValue =
+      if (oldValue == null) value
+      else remappingFunction.apply(oldValue, value)
+    putOrRemove0(key, hash, idx, node, newValue)
+  }
+
   override def forEach(action: BiConsumer[_ >: K, _ >: V]): Unit = {
     val len = table.length
     var i = 0
@@ -227,12 +265,43 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
     loop(table(idx))
   }
 
+  // Helpers for compute-like methods
+
+  @inline
+  private def getNode0(key: Any): (Node[K, V], Int, Int, V) = {
+    val hash = computeHash(key)
+    val idx = index(hash)
+    val node = findNode0(key, hash, idx)
+    val value = if (node eq null) {
+      null.asInstanceOf[V]
+    } else {
+      nodeWasAccessed(node)
+      node.value
+    }
+    (node, hash, idx, value)
+  }
+
+  private def putOrRemove0(key: K, hash: Int, idx: Int, node: Node[K, V],
+      newValue: V): V = {
+    if (newValue != null)
+      put0(key, newValue, hash, node)
+    else if (node ne null)
+      remove0(node, idx)
+    newValue
+  }
+
   // Heavy lifting: modifications
 
-  /** Adds a key-value pair to this map
+  /** Puts a key-value pair into this map.
    *
-   *  @param key the key to add
-   *  @param value the value to add
+   *  If an entry already exists for the given key, `nodeWasAccessed` is
+   *  called, and, unless `ifAbsent` is true, its value is updated.
+   *
+   *  If no entry existed for the given key, a new entry is created with the
+   *  given value, and `nodeWasAdded` is called.
+   *
+   *  @param key the key to put
+   *  @param value the value to put
    *  @param ifAbsent if true, do not override an existing mapping
    *  @return the old value associated with `key`, or `null` if there was none
    */
@@ -240,33 +309,26 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
   private[this] def put0(key: K, value: V, ifAbsent: Boolean): V =
     put0(key, value, computeHash(key), ifAbsent)
 
-  /** Adds a key-value pair to this map
+  /** Puts a key-value pair into this map.
    *
-   *  @param key the key to add
-   *  @param value the value to add
+   *  If an entry already exists for the given key, `nodeWasAccessed` is
+   *  called, and, unless `ifAbsent` is true, its value is updated.
+   *
+   *  If no entry existed for the given key, a new entry is created with the
+   *  given value, and `nodeWasAdded` is called.
+   *
+   *  @param key the key to put
+   *  @param value the value to put
    *  @param hash the **improved** hashcode of `key` (see computeHash)
    *  @param ifAbsent if true, do not override an existing mapping
    *  @return the old value associated with `key`, or `null` if there was none
    */
   private[this] def put0(key: K, value: V, hash: Int, ifAbsent: Boolean): V = {
-    if (contentSize + 1 >= threshold)
+    // scalastyle:off return
+    val newContentSize = contentSize + 1
+    if (newContentSize >= threshold)
       growTable()
     val idx = index(hash)
-    put0(key, value, hash, idx, ifAbsent)
-  }
-
-  /** Adds a key-value pair to this map
-   *
-   *  @param key the key to add
-   *  @param value the value to add
-   *  @param hash the **improved** hashcode of `key` (see computeHash)
-   *  @param idx the index in the `table` corresponding to the `hash`
-   *  @param ifAbsent if true, do not override an existing mapping
-   *  @return the old value associated with `key`, or `null` if there was none
-   */
-  private[this] def put0(key: K, value: V, hash: Int, idx: Int,
-      ifAbsent: Boolean): V = {
-    // scalastyle:off return
     val newNode = table(idx) match {
       case null =>
         val newNode = this.newNode(key, hash, value, null, null)
@@ -295,10 +357,62 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
           n.previous = newNode
         newNode
     }
-    contentSize += 1
+    contentSize = newContentSize
     nodeWasAdded(newNode)
     null.asInstanceOf[V]
     // scalastyle:on return
+  }
+
+  /** Puts a key-value pair into this map, given the result of an existing
+   *  lookup.
+   *
+   *  The parameter `node` must be the result of a lookup for the given key.
+   *  If null, this method assumes that there is no entry for the given key in
+   *  the map.
+   *
+   *  `nodeWasAccessed` is NOT called by this method, since it must already
+   *  have been called by the prerequisite lookup.
+   *
+   *  If no entry existed for the given key, a new entry is created with the
+   *  given value, and `nodeWasAdded` is called.
+   *
+   *  @param key the key to add
+   *  @param value the value to add
+   *  @param hash the **improved** hashcode of `key` (see computeHash)
+   *  @param node the entry for the given `key`, or `null` if there is no such entry
+   */
+  private[this] def put0(key: K, value: V, hash: Int, node: Node[K, V]): Unit = {
+    if (node ne null) {
+      node.value = value
+    } else {
+      val newContentSize = contentSize + 1
+      if (newContentSize >= threshold)
+        growTable()
+      val idx = index(hash)
+      val newNode = table(idx) match {
+        case null =>
+          val newNode = this.newNode(key, hash, value, null, null)
+          table(idx) = newNode
+          newNode
+        case first =>
+          var prev: Node[K, V] = null
+          var n = first
+          while ((n ne null) && n.hash < hash) {
+            prev = n
+            n = n.next
+          }
+          val newNode = this.newNode(key, hash, value, prev, n)
+          if (prev eq null)
+            table(idx) = newNode
+          else
+            prev.next = newNode
+          if (n ne null)
+            n.previous = newNode
+          newNode
+      }
+      contentSize = newContentSize
+      nodeWasAdded(newNode)
+    }
   }
 
   /** Removes a key from this map if it exists.
