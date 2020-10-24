@@ -32,8 +32,13 @@ private[lang] object Utils {
 
   @inline
   def undefOrGetOrElse[A](x: js.UndefOr[A], default: A): A =
-    if (undefOrIsDefined(x)) x.asInstanceOf[A]
+    if (undefOrIsDefined(x)) undefOrForceGet(x)
     else default
+
+  @inline
+  def undefOrGetOrElseCompute[A](x: js.UndefOr[A])(default: js.Function0[A]): A =
+    if (undefOrIsDefined(x)) undefOrForceGet(x)
+    else default()
 
   @inline
   def undefOrFold[A, B](x: js.UndefOr[A])(default: B, f: js.Function1[A, B]): B =
@@ -97,6 +102,25 @@ private[lang] object Utils {
   @inline
   def dictSet[A](dict: js.Dictionary[A], key: String, value: A): Unit =
     dict.asInstanceOf[DictionaryRawApply[A]].rawUpdate(key, value)
+
+  @js.native
+  private trait MapRaw[K, V] extends js.Object {
+    def has(key: K): scala.Boolean = js.native
+    def get(key: K): js.UndefOr[V] = js.native
+    def set(key: K, value: V): Unit = js.native
+  }
+
+  @inline
+  def mapHas[K, V](map: js.Map[K, V], key: K): scala.Boolean =
+    map.asInstanceOf[MapRaw[K, V]].has(key)
+
+  @inline
+  def mapGet[K, V](map: js.Map[K, V], key: K): js.UndefOr[V] =
+    map.asInstanceOf[MapRaw[K, V]].get(key)
+
+  @inline
+  def mapSet[K, V](map: js.Map[K, V], key: K, value: V): Unit =
+    map.asInstanceOf[MapRaw[K, V]].set(key, value)
 
   @inline
   def forArrayElems[A](array: js.Array[A])(f: js.Function1[A, Any]): Unit = {
