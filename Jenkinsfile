@@ -234,30 +234,30 @@ def Tasks = [
     setJavaVersion $java
     npm install &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills()' \
+        'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := false)' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills()' \
+        'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := false)' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite$v/test \
         $testSuite$v/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills()' \
+        'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := false)' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
         ++$scala $testSuite$v/test \
         $testSuite$v/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills()' \
+        'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := false)' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills()' \
+        'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := false)' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite$v/test \
         $testSuite$v/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills()' \
+        'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := false)' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
         ++$scala $testSuite$v/test \
