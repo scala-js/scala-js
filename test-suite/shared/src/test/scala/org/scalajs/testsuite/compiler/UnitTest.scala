@@ -23,14 +23,12 @@ class UnitTest {
   }
 
   @Test def `should_equal_itself`(): Unit = {
-    assertTrue(().equals(()))
-    assertTrue(((): Any).equals((): Any))
+    assertTrue(().asInstanceOf[AnyRef].equals(().asInstanceOf[AnyRef]))
   }
 
   @Test def `should_not_equal_other_values`(): Unit = {
     def testAgainst(v: Any): Unit = {
-      assertFalse(().equals(v))
-      assertFalse(((): Any).equals(v))
+      assertFalse(().asInstanceOf[AnyRef].equals(v.asInstanceOf[AnyRef]))
     }
 
     testAgainst(0)

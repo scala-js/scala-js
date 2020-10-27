@@ -331,7 +331,7 @@ class IntTest {
 
   @Test def `percent_should_never_produce_a_negative_0_#1984`(): Unit = {
     @noinline def value: Int = -8
-    assertTrue((value % 8).asInstanceOf[java.lang.Integer].equals(0))
+    assertEquals(0, value % 8)
   }
 
   @Test def `should_support_shift_left`(): Unit = {

@@ -123,10 +123,10 @@ class DoubleTest {
             r1.equals(v))
         val r2 = JDouble.valueOf(s2)
         assertTrue(s"""Double.valueOf("$s2") must be $v, was $r2""",
-            r2.equals(v))
+            r2.equals(JDouble.valueOf(v)))
         val r3 = new JDouble(s2)
         assertTrue(s"""new Double("$s2") must be $v, was $r3""",
-            r3.equals(v))
+            r3.equals(JDouble.valueOf(v)))
       }
 
       // Specials
