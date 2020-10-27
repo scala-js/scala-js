@@ -1088,6 +1088,24 @@ object Build {
       // We implement JDK classes, so we emit static forwarders for all static objects
       addScalaJSCompilerOption("genStaticForwardersForNonTopLevelObjects"),
 
+      /* In the javalib, we often need to perform `a.equals(b)` with operands
+       * of unconstrained types in order to implement the JDK specs. Scala
+       * 2.13.4+ warns for such calls, but those warnings are always noise in
+       * the javalib, so we globally silence them.
+       */
+      scalacOptions ++= {
+        val scalaV = scalaVersion.value
+        val scalaWarnsForNonCooperativeEquals = {
+          !scalaV.startsWith("2.11.") &&
+          !scalaV.startsWith("2.12.") &&
+          scalaV != "2.13.0" && scalaV != "2.13.1" && scalaV != "2.13.2" && scalaV != "2.13.3"
+        }
+        if (scalaWarnsForNonCooperativeEquals)
+          Seq("-Wconf:cat=other-non-cooperative-equals:s")
+        else
+          Nil
+      },
+
       headerSources in Compile ~= { srcs =>
         srcs.filter { src =>
           val path = src.getPath.replace('\\', '/')
