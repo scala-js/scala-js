@@ -452,6 +452,8 @@ private final class Analyzer(config: CommonPhaseConfig,
     val isJSClass = data.kind.isJSClass
     val isJSType = data.kind.isJSType
     val isAnyClass = isScalaClass || isJSClass
+    val isNativeJSClass =
+      kind == ClassKind.NativeJSClass || kind == ClassKind.NativeJSModuleClass
 
     // Note: j.l.Object is special and is validated upfront
 
@@ -950,9 +952,6 @@ private final class Analyzer(config: CommonPhaseConfig,
     def instantiated()(implicit from: From): Unit = {
       instantiatedFrom ::= from
 
-      val isNativeJSClass =
-        kind == ClassKind.NativeJSClass || kind == ClassKind.NativeJSModuleClass
-
       /* TODO? When the second line is false, shouldn't this be a linking error
        * instead?
        */
@@ -1022,11 +1021,15 @@ private final class Analyzer(config: CommonPhaseConfig,
       if (!isAnySubclassInstantiated && (isScalaClass || isJSType)) {
         isAnySubclassInstantiated = true
 
-        for {
-          clazz <- superClass
-          if clazz.kind.isAnyNonNativeClass
-        } {
-          staticDependencies += clazz.className
+        if (!isNativeJSClass) {
+          for (clazz <- superClass) {
+            clazz.jsNativeLoadSpec match {
+              case None =>
+                staticDependencies += clazz.className
+              case Some(loadSpec) =>
+                addLoadSpec(externalDependencies, loadSpec)
+            }
+          }
         }
 
         // Reach exported members
@@ -1234,22 +1237,8 @@ private final class Analyzer(config: CommonPhaseConfig,
       externalDependencies: mutable.Set[String])(
       implicit from: From): Unit = {
 
-    @tailrec
-    def addLoadSpec(jsNativeLoadSpec: JSNativeLoadSpec): Unit = {
-      jsNativeLoadSpec match {
-        case _: JSNativeLoadSpec.Global =>
-
-        case JSNativeLoadSpec.Import(module, _) =>
-          externalDependencies += module
-
-        case JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, _) =>
-          if (!isNoModule)
-            addLoadSpec(importSpec)
-      }
-    }
-
     def addInstanceDependency(info: ClassInfo) = {
-      info.jsNativeLoadSpec.foreach(addLoadSpec(_))
+      info.jsNativeLoadSpec.foreach(addLoadSpec(externalDependencies, _))
       if (info.kind.isAnyNonNativeClass)
         staticDependencies += info.className
     }
@@ -1341,8 +1330,24 @@ private final class Analyzer(config: CommonPhaseConfig,
       val (className, members) = jsNativeMembersUsedIterator.next()
       lookupClass(className) { classInfo =>
         for (member <- members)
-          classInfo.useJSNativeMember(member).foreach(addLoadSpec(_))
+          classInfo.useJSNativeMember(member)
+            .foreach(addLoadSpec(externalDependencies, _))
       }
+    }
+  }
+
+  @tailrec
+  private def addLoadSpec(externalDependencies: mutable.Set[String],
+      jsNativeLoadSpec: JSNativeLoadSpec): Unit = {
+    jsNativeLoadSpec match {
+      case _: JSNativeLoadSpec.Global =>
+
+      case JSNativeLoadSpec.Import(module, _) =>
+        externalDependencies += module
+
+      case JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, _) =>
+        if (!isNoModule)
+          addLoadSpec(externalDependencies, importSpec)
     }
   }
 
