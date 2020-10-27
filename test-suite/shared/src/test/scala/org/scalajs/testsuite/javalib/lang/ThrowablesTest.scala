@@ -205,7 +205,8 @@ class ThrowablesTest {
 
   @Test def throwableStillHasMethodsOfObject(): Unit = {
     @noinline
-    def callEquals(a: Any, b: Any): Boolean = a.equals(b)
+    def callEquals(a: Any, b: Any): Boolean =
+      a.asInstanceOf[AnyRef].equals(b.asInstanceOf[AnyRef])
 
     val t = new Throwable("foo")
     assertTrue(callEquals(t, t))

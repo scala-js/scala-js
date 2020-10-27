@@ -3,6 +3,8 @@
  */
 package org.junit
 
+import java.util.Objects
+
 import org.junit.internal.InexactComparisonCriteria
 import org.junit.internal.ExactComparisonCriteria
 import org.hamcrest.Matcher
@@ -38,7 +40,7 @@ object Assert {
 
   @noinline
   def assertEquals(message: String, expected: Any, actual: Any): Unit = {
-    if (!equalsRegardingNull(expected, actual)) {
+    if (!Objects.equals(expected, actual)) {
       (expected, actual) match {
         case (expectedString: String, actualString: String) =>
           val cleanMsg: String = if (message == null) "" else message
@@ -50,22 +52,13 @@ object Assert {
     }
   }
 
-  @inline
-  private def equalsRegardingNull(expected: Any, actual: Any): Boolean =
-    if (expected == null) actual == null
-    else isEquals(expected, actual)
-
-  @inline
-  private def isEquals(expected: Any, actual: Any): Boolean =
-    expected.equals(actual)
-
   @noinline
   def assertEquals(expected: Any, actual: Any): Unit =
     assertEquals(null, expected, actual)
 
   @noinline
   def assertNotEquals(message: String, unexpected: Any, actual: Any): Unit = {
-    if (equalsRegardingNull(unexpected, actual))
+    if (Objects.equals(unexpected, actual))
       failEquals(message, actual)
   }
 

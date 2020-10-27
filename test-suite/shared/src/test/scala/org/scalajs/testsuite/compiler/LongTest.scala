@@ -69,12 +69,15 @@ class LongTest {
   }
 
   @Test def equals_Any(): Unit = {
+    @inline def inlineCallEquals(lhs: Long, rhs: Any): Boolean =
+      lhs.asInstanceOf[AnyRef].equals(rhs.asInstanceOf[AnyRef])
+
     @inline def test(expected: Boolean, lhs: Long, rhs: Any): Unit = {
-      assertEquals(expected, lhs.equals(rhs))
-      assertEquals(expected, hideFromOptimizer(lhs).equals(rhs))
-      assertEquals(expected, lhs.equals(hideAnyFromOptimizer(rhs)))
+      assertEquals(expected, inlineCallEquals(lhs, rhs))
+      assertEquals(expected, inlineCallEquals(hideFromOptimizer(lhs), rhs))
+      assertEquals(expected, inlineCallEquals(lhs, hideAnyFromOptimizer(rhs)))
       assertEquals(expected,
-          hideFromOptimizer(lhs).equals(hideAnyFromOptimizer(rhs)))
+          inlineCallEquals(hideFromOptimizer(lhs), hideAnyFromOptimizer(rhs)))
     }
 
     test(false, lg(0, 0), 0)
