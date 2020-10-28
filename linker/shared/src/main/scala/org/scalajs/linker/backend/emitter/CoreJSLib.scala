@@ -791,28 +791,19 @@ private[emitter] object CoreJSLib {
           })
         })
 
-        val lo = varRef("lo")
-        val rawHi = varRef("rawHi")
-        val hi = varRef("hi")
-        defineFunction("doubleToLong", paramList(x), {
-          /* BigInt(x) refuses to work if x is not a "safe integer", i.e., a
-           * number with an integral x, whose absolute x is < 2^53. Therefore,
-           * we basically use the same algorithm as in RuntimeLong.fromDouble.
-           */
+        defineFunction("doubleToLong", paramList(x), Return {
           If(x < double(-9223372036854775808.0), { // -2^63
-            Return(BigIntLiteral(-9223372036854775808L))
+            BigIntLiteral(-9223372036854775808L)
           }, {
             If (x >= double(9223372036854775808.0), { // 2^63
-              Return(BigIntLiteral(9223372036854775807L))
+              BigIntLiteral(9223372036854775807L)
             }, {
-              Block(
-                  const(lo, x | 0),
-                  const(rawHi, (x / double(4294967296.0)) | 0), // 2^32
-                  const(hi, If((x < 0) && (lo !== 0), (rawHi - 1) | 0, rawHi)),
-                  Return(
-                      Apply(BigIntRef, hi :: Nil) << BigIntLiteral(32) |
-                      Apply(BigIntRef, (lo >>> 0) :: Nil))
-              )
+              If (x !== x, { // NaN
+                BigIntLiteral(0L)
+              }, {
+                Apply(BigIntRef,
+                    Apply(genIdentBracketSelect(MathRef, "trunc"), x :: Nil) :: Nil)
+              })
             })
           })
         })
