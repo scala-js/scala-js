@@ -13,7 +13,8 @@ final class NodeJSEnvForcePolyfills(config: NodeJSEnv.Config) extends JSEnv {
 
   val name: String = "Node.js forcing polyfills"
 
-  private val nodeJSEnv = new NodeJSEnv(config)
+  // Always deactivate source maps because source-map-support requires `Map`
+  private val nodeJSEnv = new NodeJSEnv(config.withSourceMap(false))
 
   def start(input: Seq[Input], runConfig: RunConfig): JSRun =
     nodeJSEnv.start(forcePolyfills +: input, runConfig)
@@ -44,7 +45,9 @@ final class NodeJSEnvForcePolyfills(config: NodeJSEnv.Config) extends JSEnv {
           |delete Math.cosh;
           |delete Math.tanh;
           |
+          |delete global.Map;
           |delete global.Promise;
+          |delete global.Set;
           |delete global.Symbol;
           |
           |delete global.Int8Array;

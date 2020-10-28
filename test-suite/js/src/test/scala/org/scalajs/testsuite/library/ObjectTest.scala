@@ -97,6 +97,8 @@ class ObjectTest {
   }
 
   @Test def fromEntries_js_Map(): Unit = {
+    assumeTrue("requires js.Map", Platform.jsMaps)
+
     val map = js.Map("a" -> 42, "b" -> "foo")
     val obj = js.Object.fromEntries(map)
     assertEquals(42, obj("a"))
