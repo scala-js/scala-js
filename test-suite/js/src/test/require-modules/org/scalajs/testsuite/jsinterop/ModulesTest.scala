@@ -114,6 +114,12 @@ class ModulesTest {
     new ExistentSubClass
     ExistentSubObject
   }
+
+  // #4267
+  @Test def testImportSuperClassUsedOnlyInExtendsOfNonNativeJSClass(): Unit = {
+    val instance = new ChildOfNativeClass("Bob")
+    assertEquals("Hello Bob", instance.x)
+  }
 }
 
 package object modulestestpackageobject {
@@ -197,4 +203,18 @@ object ModulesTest {
   @js.native
   @JSImport("querystring", JSImport.Namespace)
   object ExistentSubObject extends NonExistentSuperClass
+
+  /* #4268 Test that a super-class only used in an extends from a non-native JS
+   * class *is* imported.
+   */
+  @js.native
+  @JSImport(
+      "../test-classes/ModulesTestSuperClassUsedOnlyInExtendsOfNonNativeJSClass.js",
+      "ModuleTestNativeParentClass")
+  class NativeParentClass(x0: String) extends js.Object {
+    val x: String = js.native
+  }
+
+  class ChildOfNativeClass(name: String)
+      extends NativeParentClass("Hello " + name)
 }
