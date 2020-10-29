@@ -3,9 +3,10 @@
 The Scala.js project has a strict policy regarding coding style.
 This is one of the cornerstones that has allowed Scala.js to maintain a clean, consistent and maintainable codebase.
 
-This document tries to document the style in use as much as possible to make it easier for everyone to contribute.
+Most coding style rules can be applied automatically by scalafmt. It is recommended that you configure your editor to reformat on save; see the [scalafmt instructions](https://scalameta.org/scalafmt/docs/installation.html) for how to configure this.
 
-A *few* of these rules are checked automatically using Scalastyle, but most of them are too complex to teach to an automated tool.
+While most rules are checked automatically by scalafmt and Scalastyle, but there are also a few rules that are too complex to teach to an automated tool.
+This document tries to document the manually enforced rules as much as possible to make it easier for everyone to contribute.
 
 The Scala.js core team has decided to designate a single developer to drive and "maintain" the project's coding style.
 This allows us to maintain a consistent, yet flexible style.
@@ -31,10 +32,6 @@ In some cases, if breaking a line makes it significantly less readable, it can g
 
 Rationale: when reviewing on GitHub, only 120 characters are visible; when reviewing on a mobile phone, only 80 characters are visible.
 And we do review on mobile phone quite a lot.
-
-#### Where to break a line
-
-A line can be broken after either a `,` or a `(`, or possibly after a binary operator in a long expression.
 
 ### Indentation
 
@@ -113,26 +110,6 @@ def abs(x: Int): Int =
     -x
 ```
 
-#### Long expressions with binary operators
-
-Very long expressions consisting of binary operators at their "top-level" can be broken *without indentation* if they are alone in their brace-delimited block or their actual parameter.
-This happens mostly for long chains of `&&`s, `||`s, or string concatenations.
-Here is an example:
-
-```scala
-val isValidIdent = {
-  ident != "" &&
-  ident.charAt(0).isUnicodeIdentifierStart &&
-  ident.tail.forall(_.isUnicodeIdentifierPart)
-}
-
-if (!isValidIdent) {
-  reportError(
-      "This string is very long and will " +
-      "span several lines.")
-}
-```
-
 #### Braces in lambdas
 
 In lambdas (anonymous functions), the opening brace must be placed before the formal arguments, and not after the `=>`:
@@ -159,21 +136,6 @@ val f = (x: Int) => body
 
 val ys = xs.map(x => x + 1)
 ```
-
-### Spaces
-
-There must not be any space before the following tokens: `:` `,` `;` `)`
-
-There must be exactly one space after the following tokens: `:` `,` `;` `if` `for` `while`
-
-There must be exactly one space before the tokens `=` and `=>`, and either exactly one space or a new line after them.
-Exception: `=>` may be vertically aligned instead in some scenarios: see [the "Pattern matching" section](#pattern-matching).
-
-There must be exactly one space before and after `{` and `}`.
-With the exception of partial import, where there is no space on either side.
-
-Binary operators must have a single space on both sides.
-Unary operators must not be followed by a space.
 
 ### Method call style
 
@@ -214,8 +176,6 @@ Procedure syntax must not be used.
 Side-effect-free methods without formal parameters should be declared without `()`, unless either a) it overrides a method defined with `()` (such as `toString()`) or b) it implements a Java method in the Java libraries.
 
 The signature of a method is technically a single line, and hence, if it has to be broken due to line length reasons, subsequent lines should be indented 4 spaces.
-As a reminder, the line can be broken right after a `,` or a `(` (and not, for example, after `implicit` or `:`).
-You should avoid breaking the line between the last parameter and the result type; going over the 80 characters limit is preferred in that case.
 
 ### `for` comprehensions
 

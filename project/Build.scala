@@ -27,6 +27,8 @@ import org.scalajs.jsenv.nodejs.NodeJSEnv
 
 import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
 import org.scalastyle.sbt.ScalastylePlugin.autoImport.scalastyle
+import org.scalafmt.sbt.ScalafmtPlugin.autoImport._
+import org.scalafmt.sbt.ConcurrentRestrictionTags
 import ExternalCompile.scalaJSExternalCompileSettings
 import Loggers._
 
@@ -592,7 +594,9 @@ object Build {
 
         val keys = Seq[TaskKey[_]](
             clean, headerCreate in Compile, headerCreate in Test,
-            headerCheck in Compile, headerCheck in Test, scalastyleCheck
+            headerCheck in Compile, headerCheck in Test, scalastyleCheck,
+            scalafmt in Compile, scalafmt in Test, scalafmtCheck in Compile, scalafmtCheck in Test,
+            scalafmtAll, scalafmtCheckAll
         )
 
         for (key <- keys) yield {
@@ -605,6 +609,8 @@ object Build {
           }
         }
       },
+
+      concurrentRestrictions += Tags.limit(org.scalafmt.sbt.ConcurrentRestrictionTags.Scalafmt, 1),
 
       headerCreate := (headerCreate in Test).dependsOn(headerCreate in Compile).value,
       headerCheck := (headerCheck in Test).dependsOn(headerCheck in Compile).value,
@@ -1146,8 +1152,14 @@ object Build {
       delambdafySetting,
       noClassFilesSettings,
 
-      // Ignore scalastyle for this project
+      // Ignore scalastyle and scalafmt for this project
       scalastyleCheck := {},
+      scalafmt in Compile := {},
+      scalafmt in Test := {},
+      scalafmtCheck in Compile := false,
+      scalafmtCheck in Test := false,
+      scalafmtAll := {},
+      scalafmtCheckAll := {},
 
       // The Scala lib is full of warnings we don't want to see
       scalacOptions ~= (_.filterNot(

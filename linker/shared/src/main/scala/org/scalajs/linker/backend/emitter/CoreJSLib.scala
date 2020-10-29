@@ -148,6 +148,7 @@ private[emitter] object CoreJSLib {
       buf += extractWithGlobals(globalVarDef("linkingInfo", CoreVar, linkingInfo))
     }
 
+    // format: off
     private def defineJSBuiltinsSnapshotsAndPolyfills(): Unit = {
       def genPolyfillFor(builtinName: String): Tree = builtinName match {
         case "is" =>
@@ -368,6 +369,7 @@ private[emitter] object CoreJSLib {
                 SymbolRef, genPolyfillFor("privateJSFieldSymbol"))))
       }
     }
+    // format: on
 
     private def declareCachedL0(): Unit = {
       if (!allowBigIntsForLongs)
