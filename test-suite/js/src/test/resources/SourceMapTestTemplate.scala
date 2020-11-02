@@ -486,7 +486,7 @@ class Json extends Writer2{
         linePos = chLinePos
         charPos = chCharPos
         val kind: Int = chKind
-        kind match {
+        (kind: @unchecked) match {
           case Letter =>
             val first = chMark
             while (chKind == Letter || chKind == Digit) {
@@ -628,7 +628,7 @@ class Json extends Writer2{
     }
     def getJson(): JsValue = {
       val kind: Int = tokenKind
-      val result: JsValue = kind match {
+      val result: JsValue = (kind: @unchecked) match {
         case ID =>
           val result: JsValue = tokenValue match {
             case "true" => JsTrue

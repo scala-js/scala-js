@@ -39,8 +39,10 @@ class RegressionTest {
     object PatternMatchGuards {
       def go(f: Int => Int): Int = f(1)
       def main(): Unit = {
-        go {
-          case x if false => x
+        go { y =>
+          (y: @unchecked) match {
+            case x if false => x
+          }
         }
       }
     }
@@ -814,7 +816,7 @@ class RegressionTest {
     import Bug3281._
 
     val l: Any = 0 :: Nil
-    val r = overloaded(l match {
+    val r = overloaded((l: @unchecked) match {
       case x :: xs => 5
     })
     assertEquals(5L, r)

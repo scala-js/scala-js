@@ -571,7 +571,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         methodFun0
       }
 
-      val field = namespace match {
+      val field = (namespace: @unchecked) match {
         case MemberNamespace.Private           => "p"
         case MemberNamespace.PublicStatic      => "s"
         case MemberNamespace.PrivateStatic     => "ps"
@@ -1220,7 +1220,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   private def genConstValueExportDef(exportName: String,
       exportedValue: js.Tree)(
       implicit pos: Position): WithGlobals[js.Tree] = {
-    moduleKind match {
+    (moduleKind: @unchecked) match {
       case ModuleKind.NoModule =>
         genAssignToNoModuleExportVar(exportName, exportedValue)
 
@@ -1261,7 +1261,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     val varScope = (className, field.name)
 
-    moduleKind match {
+    (moduleKind: @unchecked) match {
       case ModuleKind.NoModule =>
         /* Initial value of the export. Updates are taken care of explicitly
          * when we assign to the static field.

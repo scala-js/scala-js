@@ -1235,7 +1235,7 @@ object Trees {
 
     def isConstructor: Boolean = (ordinal & ConstructorFlag) != 0
 
-    def prefixString: String = this match {
+    def prefixString: String = (this: @unchecked) match {
       case Public            => ""
       case Private           => "private "
       case PublicStatic      => "static "

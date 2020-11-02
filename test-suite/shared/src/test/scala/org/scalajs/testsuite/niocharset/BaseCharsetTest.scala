@@ -135,7 +135,7 @@ class BaseCharsetTest(val charset: Charset) {
             finally buf.reset()
             expectedChars ++= bufArray
           case Malformed(len) =>
-            malformedAction match {
+            (malformedAction: @unchecked) match {
               case CodingErrorAction.IGNORE  =>
               case CodingErrorAction.REPLACE =>
                 expectedChars ++= decoder.replacement()
@@ -143,7 +143,7 @@ class BaseCharsetTest(val charset: Charset) {
                 throw new MalformedInputException(len)
             }
           case Unmappable(len) =>
-            unmappableAction match {
+            (unmappableAction: @unchecked) match {
               case CodingErrorAction.IGNORE  =>
               case CodingErrorAction.REPLACE =>
                 expectedChars ++= decoder.replacement()
@@ -218,7 +218,7 @@ class BaseCharsetTest(val charset: Charset) {
             finally buf.reset()
             expectedBytes ++= bufArray
           case Malformed(len) =>
-            malformedAction match {
+            (malformedAction: @unchecked) match {
               case CodingErrorAction.IGNORE  =>
               case CodingErrorAction.REPLACE =>
                 expectedBytes ++= encoder.replacement()
@@ -226,7 +226,7 @@ class BaseCharsetTest(val charset: Charset) {
                 throw new MalformedInputException(len)
             }
           case Unmappable(len) =>
-            unmappableAction match {
+            (unmappableAction: @unchecked) match {
               case CodingErrorAction.IGNORE  =>
               case CodingErrorAction.REPLACE =>
                 expectedBytes ++= encoder.replacement()
@@ -302,6 +302,8 @@ object BaseCharsetTest {
           case bytes: Array[Byte] => buf ++= bytes
           case bytes: Seq[_]      =>
             buf ++= bytes.map(_.asInstanceOf[Number].byteValue())
+          case x =>
+            throw new IllegalArgumentException(s"""illegal value in bb"...": $x""")
         }
         appendStr(strings.next())
       }

@@ -309,9 +309,11 @@ class ArrayOpsTest {
     import js.Any.jsArrayOps
 
     val array = js.Array[Any](1, "one", 2, "two", 3, "three")
-    val resultInferType = array.partitionMap {
-      case x: Int    => Left(x)
-      case x: String => Right(x)
+    val resultInferType = array.partitionMap { x =>
+      (x: @unchecked) match {
+        case x: Int    => Left(x)
+        case x: String => Right(x)
+      }
     }
     val result: (js.Array[Int], js.Array[String]) = resultInferType
     assertJSArrayPairEquals((js.Array(1, 2, 3), js.Array("one", "two", "three")), result)

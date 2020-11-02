@@ -110,7 +110,7 @@ object Report {
     }
 
     private def writeModuleKind(kind: ModuleKind): Unit = {
-      val i = kind match {
+      val i = (kind: @unchecked) match {
         case ModuleKind.NoModule       => 0
         case ModuleKind.ESModule       => 1
         case ModuleKind.CommonJSModule => 2

@@ -169,7 +169,7 @@ class JSSymbolTest {
   @Test def native_with_overloaded_runtime_dispatch_methods(): Unit = {
     val obj = mkObject(
         sym1 -> { (x: Any) =>
-          x match {
+          (x: @unchecked) match {
             case x: Int    => x + 3
             case x: String => "Hello " + x
           }

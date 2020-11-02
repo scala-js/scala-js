@@ -273,9 +273,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       try {
         def collectClassDefs(tree: Tree): List[ClassDef] = {
           tree match {
-            case EmptyTree => Nil
-            case PackageDef(_, stats) => stats flatMap collectClassDefs
-            case cd: ClassDef => cd :: Nil
+            case EmptyTree            => Nil
+            case PackageDef(_, stats) => stats.flatMap(collectClassDefs)
+            case cd: ClassDef         => cd :: Nil
+            case _                    => abort(s"Unexpected top-level tree at ${tree.pos}:\n$tree")
           }
         }
         val allClassDefs = collectClassDefs(cunit.body)
@@ -1652,6 +1653,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             (Nil, applyCtor)
           case js.Block(prepStats :+ (applyCtor: js.ApplyStatic)) =>
             (prepStats, applyCtor)
+          case _ =>
+            abort(s"Unexpected body for JS constructor dispatch resolution at ${body.pos}:\n$body")
         }
         val js.ApplyStatic(_, _, js.MethodIdent(ctorName), js.This() :: ctorArgs) =
           applyCtor
@@ -1731,6 +1734,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                 if method.name.isConstructor =>
               method.name
           }.get
+
+        case _ =>
+          abort(s"Unexpected secondary constructor body at ${tree.pos}:\n$tree")
       }
 
       val (primaryCtor :: Nil, secondaryCtors) = ctors.partition {
@@ -2759,6 +2765,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             true
           case pat @ Bind(_, _) =>
             isMaybeJavaScriptException(pat.symbol.tpe)
+          case pat =>
+            abort(s"Unexpected pattern at ${pat.pos}: $pat")
         }
       }
 
@@ -2791,6 +2799,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             val ident = encodeLocalSym(pat.symbol)
             val origName = originalNameOfLocal(pat.symbol)
             (pat.symbol.tpe, Some((ident, origName)))
+          case _ =>
+            abort(s"Unexpected pattern at ${pat.pos}: $pat")
         })
 
         // Generate the body that must be executed if the exception matches
@@ -5200,7 +5210,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           } else if (jsInterop.isJSBracketAccess(sym)) {
             assert(argc == 1 || argc == 2,
                 s"@JSBracketAccess methods should have 1 or 2 non-varargs arguments")
-            argsNoSpread match {
+            (argsNoSpread: @unchecked) match {
               case List(keyArg) =>
                 genSelectGet(keyArg)
               case List(keyArg, valueArg) =>
@@ -6418,7 +6428,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       import jsPrimitives._
       if (isPrimitive(sym)) {
         getPrimitive(sym) match {
-          case UNITVAL => js.Undefined()
+          case UNITVAL =>
+            js.Undefined()
+          case _ =>
+            abort(s"Unexpected primitive in genStaticField at $pos: ${sym.fullName}")
         }
       } else {
         val className = encodeClassName(sym.owner)

@@ -116,7 +116,7 @@ abstract class CharsetDecoder protected (cs: Charset,
           if (result2.isUnmappable()) unmappableCharacterAction()
           else malformedInputAction()
 
-        action match {
+        (action: @unchecked) match {
           case CodingErrorAction.REPLACE =>
             if (out.remaining() < replacement().length) {
               CoderResult.OVERFLOW

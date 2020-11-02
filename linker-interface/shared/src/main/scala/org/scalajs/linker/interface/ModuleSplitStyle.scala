@@ -31,7 +31,7 @@ object ModuleSplitStyle {
       extends Fingerprint[ModuleSplitStyle] {
 
     override def fingerprint(moduleSplitStyle: ModuleSplitStyle): String = {
-      moduleSplitStyle match {
+      (moduleSplitStyle: @unchecked) match {
         case FewestModules   => "FewestModules"
         case SmallestModules => "SmallestModules"
       }

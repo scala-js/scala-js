@@ -222,7 +222,7 @@ object BigDecimal {
     val absFraction = Math.abs(fraction)
     val sigFraction = java.lang.Integer.signum(fraction)
     // the carry after rounding
-    roundingMode match {
+    (roundingMode: @unchecked) match {
       case UP          => sigFraction
       case DOWN        => 0
       case CEILING     => Math.max(sigFraction, 0)

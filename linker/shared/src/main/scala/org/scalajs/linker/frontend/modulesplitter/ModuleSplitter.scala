@@ -155,7 +155,7 @@ final class ModuleSplitter private (analyzer: ModuleAnalyzer) {
       add(tle.tree.moduleID, tle.staticDependencies)
 
     for (mi <- unit.moduleInitializers) {
-      val dep = mi.initializer match {
+      val dep = (mi.initializer: @unchecked) match {
         case ModuleInitializerImpl.VoidMainMethod(className, _) =>
           className
         case ModuleInitializerImpl.MainMethodWithArgs(className, _, _) =>

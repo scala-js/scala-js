@@ -581,8 +581,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
 
         case Assign(select @ ArraySelect(array, index), rhs) =>
-          unnest(List(array, index, rhs)) {
-            case (List(newArray, newIndex, newRhs), env0) =>
+          unnest(array, index, rhs) { (newArray, newIndex, newRhs, env0) =>
               implicit val env = env0
               val genArray = transformExprNoChar(newArray)
               val genIndex = transformExprNoChar(newIndex)
@@ -615,8 +614,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
 
         case Assign(select @ JSSelect(qualifier, item), rhs) =>
-          unnest(List(qualifier, item, rhs)) {
-            case (List(newQualifier, newItem, newRhs), env0) =>
+          unnest(qualifier, item, rhs) {
+            (newQualifier, newItem, newRhs, env0) =>
               implicit val env = env0
               js.Assign(
                   genBracketSelect(transformExprNoChar(newQualifier),
@@ -625,8 +624,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
 
         case Assign(select @ JSSuperSelect(superClass, qualifier, item), rhs) =>
-          unnest(List(superClass, qualifier, item, rhs)) {
-            case (List(newSuperClass, newQualifier, newItem, newRhs), env0) =>
+          unnest(superClass, qualifier, item, rhs) {
+            (newSuperClass, newQualifier, newItem, newRhs, env0) =>
               implicit val env = env0
               genCallHelper("superSet", transformExprNoChar(newSuperClass),
                   transformExprNoChar(newQualifier), transformExprNoChar(item),
@@ -1069,17 +1068,39 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     /** Same as above, for a single argument */
     def unnest(arg: Tree)(makeStat: (Tree, Env) => js.Tree)(
         implicit env: Env): js.Tree = {
-      unnest(List(arg)) {
-        case (List(newArg), env) => makeStat(newArg, env)
+      unnest(List(arg)) { (newArgs, env) =>
+        val newArg :: Nil = newArgs
+        makeStat(newArg, env)
       }
     }
 
     /** Same as above, for two arguments */
-    def unnest(lhs: Tree, rhs: Tree)(
+    def unnest(arg1: Tree, arg2: Tree)(
         makeStat: (Tree, Tree, Env) => js.Tree)(
         implicit env: Env): js.Tree = {
-      unnest(List(lhs, rhs)) {
-        case (List(newLhs, newRhs), env) => makeStat(newLhs, newRhs, env)
+      unnest(List(arg1, arg2)) { (newArgs, env) =>
+        val newArg1 :: newArg2 :: Nil = newArgs
+        makeStat(newArg1, newArg2, env)
+      }
+    }
+
+    /** Same as above, for 3 arguments */
+    def unnest(arg1: Tree, arg2: Tree, arg3: Tree)(
+        makeStat: (Tree, Tree, Tree, Env) => js.Tree)(
+        implicit env: Env): js.Tree = {
+      unnest(List(arg1, arg2, arg3)) { (newArgs, env) =>
+        val newArg1 :: newArg2 :: newArg3 :: Nil = newArgs
+        makeStat(newArg1, newArg2, newArg3, env)
+      }
+    }
+
+    /** Same as above, for 4 arguments */
+    def unnest(arg1: Tree, arg2: Tree, arg3: Tree, arg4: Tree)(
+        makeStat: (Tree, Tree, Tree, Tree, Env) => js.Tree)(
+        implicit env: Env): js.Tree = {
+      unnest(List(arg1, arg2, arg3, arg4)) { (newArgs, env) =>
+        val newArg1 :: newArg2 :: newArg3 :: newArg4 :: Nil = newArgs
+        makeStat(newArg1, newArg2, newArg3, newArg4, env)
       }
     }
 
@@ -1702,8 +1723,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
 
         case JSSuperSelect(superClass, qualifier, item) =>
-          unnest(List(superClass, qualifier, item)) {
-            case (List(newSuperClass, newQualifier, newItem), env) =>
+          unnest(superClass, qualifier, item) {
+            (newSuperClass, newQualifier, newItem, env) =>
               redo(JSSuperSelect(newSuperClass, newQualifier, newItem))(env)
           }
 

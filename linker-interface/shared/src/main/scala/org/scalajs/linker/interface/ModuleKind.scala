@@ -53,7 +53,7 @@ object ModuleKind {
       extends Fingerprint[ModuleKind] {
 
     override def fingerprint(moduleKind: ModuleKind): String = {
-      moduleKind match {
+      (moduleKind: @unchecked) match {
         case NoModule       => "NoModule"
         case ESModule       => "ESModule"
         case CommonJSModule => "CommonJSModule"

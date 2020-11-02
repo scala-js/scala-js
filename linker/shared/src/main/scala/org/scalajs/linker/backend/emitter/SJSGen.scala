@@ -188,6 +188,10 @@ private[emitter] final class SJSGen(
       case BoxedFloatClass     => genIsFloat(expr)
       case BoxedDoubleClass    => typeof(expr) === "number"
       case BoxedStringClass    => typeof(expr) === "string"
+
+      case _ =>
+        throw new IllegalArgumentException(
+            s"hijacked class required but got ${className.nameString}")
     }
   }
 
@@ -351,7 +355,7 @@ private[emitter] final class SJSGen(
         }
 
       case irt.JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, globalSpec) =>
-        moduleKind match {
+        (moduleKind: @unchecked) match {
           case ModuleKind.NoModule =>
             genLoadJSFromSpec(globalSpec, keepOnlyDangerousVarNames)
           case ModuleKind.ESModule | ModuleKind.CommonJSModule =>

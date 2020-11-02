@@ -72,7 +72,7 @@ class InstanceTestsHijackedBoxedClassesTest {
     assertTrue((1.2: Any).isInstanceOf[Float])
 
     // from the bug report
-    def test(x: Any): String = x match {
+    def test(x: Any): String = (x: @unchecked) match {
       case f: Float => "ok"
     }
     assertEquals("ok", test(0.2))

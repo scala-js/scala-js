@@ -1486,7 +1486,7 @@ object IRChecker {
       extends AnyVal {
 
     override def toString(): String = {
-      val (pos, name) = nodeOrLinkedClass match {
+      val (pos, name) = (nodeOrLinkedClass: @unchecked) match {
         case tree: IRNode             => (tree.pos, tree.getClass.getSimpleName)
         case linkedClass: LinkedClass => (linkedClass.pos, "ClassDef")
       }

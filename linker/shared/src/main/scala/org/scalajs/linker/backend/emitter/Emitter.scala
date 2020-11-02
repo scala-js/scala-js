@@ -78,7 +78,7 @@ final class Emitter(config: Emitter.Config) {
   def emit(moduleSet: ModuleSet, logger: Logger): Result = {
     val WithGlobals(body, globalRefs) = emitInternal(moduleSet, logger)
 
-    moduleKind match {
+    (moduleKind: @unchecked) match {
       case ModuleKind.NoModule =>
         assert(moduleSet.modules.size <= 1)
         val topLevelVars = moduleSet.modules
@@ -294,7 +294,7 @@ final class Emitter(config: Emitter.Config) {
         )
     ).toList.sortBy(_._1.name)
 
-    moduleKind match {
+    (moduleKind: @unchecked) match {
       case ModuleKind.NoModule =>
         WithGlobals(Nil)
 

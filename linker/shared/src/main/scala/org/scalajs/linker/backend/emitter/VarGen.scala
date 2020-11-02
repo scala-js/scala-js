@@ -207,7 +207,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     if (moduleContext.public) {
       WithGlobals(tree)
     } else {
-      val export = config.moduleKind match {
+      val export = (config.moduleKind: @unchecked) match {
         case ModuleKind.NoModule =>
           throw new AssertionError("non-public module in NoModule mode")
 
