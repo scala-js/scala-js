@@ -4606,28 +4606,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         params.size == 1 && params.head.tpe.typeSymbol == ObjectClass
       }
 
-      /** check if the method we are invoking conforms to a method on
-       *  scala.Array. If this is the case, we check that case specially at
-       *  runtime to avoid having reflective call proxies on scala.Array.
-       *  (Also, note that the element type of Array#update is not erased and
-       *  therefore the method name mangling would turn out wrong)
-       *
-       *  Note that we cannot check if the expected return type is correct,
-       *  since this type information is already erased.
-       */
-      def isArrayLikeOp = name match {
-        case nme.update =>
-          params.size == 2 && params.head.tpe.typeSymbol == IntClass
-        case nme.apply =>
-          params.size == 1 && params.head.tpe.typeSymbol == IntClass
-        case nme.length =>
-          params.size == 0
-        case nme.clone_ =>
-          params.size == 0
-        case _ =>
-          false
-      }
-
       /**
        * Tests whether one of our reflective "boxes" for primitive types
        * implements the particular method. If this is the case
@@ -4670,6 +4648,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       var callStatement: js.Tree = js.Apply(js.ApplyFlags.empty, callTrg,
           encodeMethodSym(sym, reflProxy = true), arguments)(jstpe.AnyType)
 
+      def addCodePath(condition: js.Tree)(ifTrue: js.Tree): Unit =
+        callStatement = js.If(condition, ifTrue, callStatement)(jstpe.AnyType)
+
       if (!isAnyRefPrimitive) {
         def boxIfNeeded(call: js.Tree, returnType: Type): js.Tree = {
           if (isPrimitiveValueType(returnType))
@@ -4678,30 +4659,44 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             call
         }
 
-        if (isArrayLikeOp) {
-          def genRTCall(method: Symbol, args: js.Tree*) =
-            genApplyMethod(genLoadModule(ScalaRunTimeModule),
-                method, args.toList)
-          val isArrayTree =
-            genRTCall(ScalaRunTime_isArray, callTrg, js.IntLiteral(1))
-          callStatement = js.If(isArrayTree, {
-            name match {
-              case nme.update =>
-                js.Block(
-                    genRTCall(currentRun.runDefinitions.arrayUpdateMethod,
-                        callTrg, arguments(0), arguments(1)),
-                    js.Undefined()) // Boxed Unit
-              case nme.apply =>
-                genRTCall(currentRun.runDefinitions.arrayApplyMethod, callTrg,
-                    arguments(0))
-              case nme.length =>
-                genRTCall(currentRun.runDefinitions.arrayLengthMethod, callTrg)
-              case nme.clone_ =>
-                genApplyMethod(callTrg, Object_clone, arguments)
+        /* Handle the primitive methods available on scala.Array's.
+         *
+         * If the method we are invoking conforms to a method of scala.Array,
+         * we test at run-time whether the receiver is an array and then
+         * delegate to a method of ScalaRunTime. This is necessary because they
+         * are primitives without any equivalent IR definitions, hence without
+         * reflective proxies.
+         *
+         *  Note that we cannot check if the returned value matches the
+         * expected type, since this type information was already erased.
+         */
+        def genRTCall(method: Symbol, args: js.Tree*): js.Tree =
+          genApplyMethod(genLoadModule(ScalaRunTimeModule), method, args.toList)
+        def addCodePathForArray(ifArray: js.Tree): Unit =
+          addCodePath(genRTCall(ScalaRunTime_isArray, callTrg, js.IntLiteral(1)))(ifArray)
+        name match {
+          case nme.update if params.size == 2 && params.head.tpe.typeSymbol == IntClass =>
+            addCodePathForArray {
+              js.Block(
+                  genRTCall(currentRun.runDefinitions.arrayUpdateMethod,
+                      callTrg, arguments(0), arguments(1)),
+                  js.Undefined()) // Boxed Unit
             }
-          }, {
-            callStatement
-          })(jstpe.AnyType)
+          case nme.apply if params.size == 1 && params.head.tpe.typeSymbol == IntClass =>
+            addCodePathForArray {
+              genRTCall(currentRun.runDefinitions.arrayApplyMethod, callTrg,
+                  arguments(0))
+            }
+          case nme.length if params.isEmpty =>
+            addCodePathForArray {
+              genRTCall(currentRun.runDefinitions.arrayLengthMethod, callTrg)
+            }
+          case nme.clone_ if params.isEmpty =>
+            addCodePathForArray {
+              genApplyMethod(callTrg, Object_clone, arguments)
+            }
+          case _ =>
+            ()
         }
 
         /* Add an explicit type test for a hijacked class with a call to a
@@ -4717,14 +4712,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             hijackedMethod != NoSymbol && hijackedMethod.isPublic
           if (isApplicable) {
             val hijackedClassTpe = hijackedClass.tpe
-            callStatement = js.If(genIsInstanceOf(callTrg, hijackedClassTpe), {
+            addCodePath(genIsInstanceOf(callTrg, hijackedClassTpe)) {
               boxIfNeeded(
                   genApplyMethod(genAsInstanceOf(callTrg, hijackedClassTpe),
                       hijackedMethod, arguments),
                   hijackedMethod.tpe.resultType)
-            }, { // else
-              callStatement
-            })(jstpe.AnyType)
+            }
           }
           isApplicable
         }
@@ -4763,15 +4756,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                 false
               } else {
                 val boxedTpe = boxedClass.tpe
-                callStatement = js.If(genIsInstanceOf(callTrg, boxedTpe), {
+                addCodePath(genIsInstanceOf(callTrg, boxedTpe)) {
                   val castCallTrg =
                     makePrimitiveUnbox(callTrg, primitiveClass.tpe)
                   val call = genPrimitiveOpForReflectiveCall(methodInPrimClass,
                       castCallTrg, arguments)
                   boxIfNeeded(call, methodInPrimClass.tpe.resultType)
-                }, { // else
-                  callStatement
-                })(jstpe.AnyType)
+                }
                 true
               }
             } else {
