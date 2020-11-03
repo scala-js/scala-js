@@ -93,3 +93,14 @@ in a single line, the commit message should be "Fix #xxx: Title of the ticket.".
 If the commit is a small fix, the first line can be enough.
 Otherwise, following the single line description should be a blank line
 followed by details of the commit, in the form of free text, or bulleted list.
+
+## Git blame
+
+In `git blame`s, to ignore the commit that formatted all source files with
+scalafmt, run the following:
+
+```
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+```
+
+Note that this requires having Git 2.23+.
