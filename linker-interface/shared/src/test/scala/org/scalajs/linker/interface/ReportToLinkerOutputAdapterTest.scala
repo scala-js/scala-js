@@ -40,6 +40,8 @@ class ReportToLinkerOutputAdapterTest {
       )
   ))
 
+  private val emptyReport = new ReportImpl(Nil)
+
   @Test
   def testReplaceLinks(): AsyncResult = await {
     val writeOut = new WriteOnlyOutputDirectory()
@@ -177,6 +179,56 @@ class ReportToLinkerOutputAdapterTest {
           |  "other key": 1
           |}""".stripMargin,
           writeOut.content("sm"))
+    }
+  }
+
+  @Test // #4271
+  def testNoPublicModulesWithSourceMap(): AsyncResult = await {
+    val writeOut = new WriteOnlyOutputDirectory()
+
+    val legacyOutput = LinkerOutput(new OutputFileImpl("js", writeOut))
+      .withSourceMap(new OutputFileImpl("sm", writeOut))
+      .withSourceMapURI(new URI("http://example.org/my-source-map-uri"))
+      .withJSFileURI(new URI("http://example.org/my-js-file-uri"))
+
+    val readOut = new ReadOnlyOutputDirectory()
+
+    for {
+      _ <- ReportToLinkerOutputAdapter.convert(emptyReport, readOut, legacyOutput)
+    } yield {
+      assertEquals(writeOut.content.size, 2)
+
+      assertEquals(
+          raw"""//# sourceMappingURL=http://example.org/my-source-map-uri
+          |""".stripMargin,
+          writeOut.content("js"))
+      assertEquals(raw"""{
+          |"version": 3,
+          |"mappings": "",
+          |"sources": [],
+          |"names": [],
+          |"lineCount": 1,
+          |"file": "http://example.org/my-js-file-uri"
+          |}""".stripMargin,
+          writeOut.content("sm"))
+    }
+  }
+
+  @Test // #4271
+  def testNoPublicModulesNoSourceMap(): AsyncResult = await {
+    val writeOut = new WriteOnlyOutputDirectory()
+
+    val legacyOutput = LinkerOutput(new OutputFileImpl("js", writeOut))
+      .withSourceMapURI(new URI("http://example.org/my-source-map-uri"))
+      .withJSFileURI(new URI("http://example.org/my-js-file-uri"))
+
+    val readOut = new ReadOnlyOutputDirectory()
+
+    for {
+      _ <- ReportToLinkerOutputAdapter.convert(emptyReport, readOut, legacyOutput)
+    } yield {
+      assertEquals(writeOut.content.size, 1)
+      assertEquals("", writeOut.content("js"))
     }
   }
 }

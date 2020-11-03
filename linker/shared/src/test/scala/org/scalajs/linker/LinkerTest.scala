@@ -118,7 +118,7 @@ class LinkerTest {
 
   @Test
   @deprecated("Mark deprecated to silence warnings", "never/always")
-  def testLegacyAPI(): AsyncResult = await {
+  def testLegacyAPISingleModule(): AsyncResult = await {
     val linker = StandardImpl.linker(StandardConfig())
     val classDefsFiles = helloWorldClassDefs.map(MemClassDefIRFile(_))
 
@@ -146,6 +146,25 @@ class LinkerTest {
       // Check we replaced the js file reference.
       assertTrue(smContent.contains(""""file": "http://example.org/my-js-file-uri""""))
       assertFalse(smContent.contains("main.js"))
+    }
+  }
+
+  @Test // #4271
+  @deprecated("Mark deprecated to silence warnings", "never/always")
+  def testLegacyAPIEmpty(): AsyncResult = await {
+    val linker = StandardImpl.linker(StandardConfig())
+
+    val jsOutput = MemOutputFile()
+    val smOutput = MemOutputFile()
+
+    val output = LinkerOutput(jsOutput)
+      .withSourceMap(smOutput)
+      .withSourceMapURI(new URI("http://example.org/my-source-map-uri"))
+      .withJSFileURI(new URI("http://example.org/my-js-file-uri"))
+
+    // Check it doesn't fail. Content is tested in ReportToLinkerOutputAdapterTest.
+    TestIRRepo.minilib.flatMap { minilib =>
+      linker.link(minilib, Nil, output, new ScalaConsoleLogger(Level.Error))
     }
   }
 }
