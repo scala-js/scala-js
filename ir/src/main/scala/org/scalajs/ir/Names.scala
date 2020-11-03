@@ -214,6 +214,7 @@ object Names {
   }
 
   object SimpleMethodName {
+
     /** The unique `SimpleMethodName` with encoded name `<init>`. */
     private val Constructor: SimpleMethodName =
       new SimpleMethodName(ConstructorSimpleEncodedName)
@@ -249,8 +250,7 @@ object Names {
         }
       } else {
         // Normal method name
-        new SimpleMethodName(
-            validateSimpleEncodedName(name, 0, len, openAngleBracketOK = false))
+        new SimpleMethodName(validateSimpleEncodedName(name, 0, len, openAngleBracketOK = false))
       }
     }
 
@@ -289,10 +289,10 @@ object Names {
       (this eq that.asInstanceOf[AnyRef]) || (that match {
         case that: MethodName =>
           this._hashCode == that._hashCode && // fail fast on different hash codes
-          this.simpleName == that.simpleName &&
-          this.paramTypeRefs == that.paramTypeRefs &&
-          this.resultTypeRef == that.resultTypeRef &&
-          this.isReflectiveProxy == that.isReflectiveProxy
+            this.simpleName == that.simpleName &&
+            this.paramTypeRefs == that.paramTypeRefs &&
+            this.resultTypeRef == that.resultTypeRef &&
+            this.isReflectiveProxy == that.isReflectiveProxy
         case _ =>
           false
       })
@@ -349,8 +349,8 @@ object Names {
 
     def displayName: String = {
       simpleName.nameString + "(" +
-      paramTypeRefs.map(_.displayName).mkString(",") + ")" +
-      (if (isReflectiveProxy) "R" else resultTypeRef.displayName)
+        paramTypeRefs.map(_.displayName).mkString(",") + ")" +
+        (if (isReflectiveProxy) "R" else resultTypeRef.displayName)
     }
 
     /** Returns `true` iff this is the name of an instance constructor. */
@@ -367,20 +367,19 @@ object Names {
     private val ReflectiveProxyResultTypeRef = ClassRef(ObjectClass)
     private final val ReflectiveProxyResultTypeName = "java.lang.Object"
 
-    def apply(simpleName: SimpleMethodName, paramTypeRefs: List[TypeRef],
-        resultTypeRef: TypeRef, isReflectiveProxy: Boolean): MethodName = {
+    def apply(simpleName: SimpleMethodName, paramTypeRefs: List[TypeRef], resultTypeRef: TypeRef,
+        isReflectiveProxy: Boolean): MethodName = {
       if ((simpleName.isConstructor || simpleName.isStaticInitializer ||
-          simpleName.isClassInitializer) && resultTypeRef != VoidRef) {
+            simpleName.isClassInitializer) && resultTypeRef != VoidRef) {
         throw new IllegalArgumentException(
             "A constructor or static initializer must have a void result type")
       }
       if (isReflectiveProxy && resultTypeRef != ReflectiveProxyResultTypeRef) {
         throw new IllegalArgumentException(
             "A reflective proxy must have a result type of " +
-            ReflectiveProxyResultTypeName)
+              ReflectiveProxyResultTypeName)
       }
-      new MethodName(simpleName, paramTypeRefs, resultTypeRef,
-          isReflectiveProxy)
+      new MethodName(simpleName, paramTypeRefs, resultTypeRef, isReflectiveProxy)
     }
 
     // Convenience constructors
@@ -396,18 +395,14 @@ object Names {
     }
 
     def constructor(paramTypeRefs: List[TypeRef]): MethodName = {
-      new MethodName(ConstructorSimpleName, paramTypeRefs, VoidRef,
-          isReflectiveProxy = false)
+      new MethodName(ConstructorSimpleName, paramTypeRefs, VoidRef, isReflectiveProxy = false)
     }
 
-    def reflectiveProxy(simpleName: SimpleMethodName,
-        paramTypeRefs: List[TypeRef]): MethodName = {
-      apply(simpleName, paramTypeRefs, ReflectiveProxyResultTypeRef,
-          isReflectiveProxy = true)
+    def reflectiveProxy(simpleName: SimpleMethodName, paramTypeRefs: List[TypeRef]): MethodName = {
+      apply(simpleName, paramTypeRefs, ReflectiveProxyResultTypeRef, isReflectiveProxy = true)
     }
 
-    def reflectiveProxy(simpleName: String,
-        paramTypeRefs: List[TypeRef]): MethodName = {
+    def reflectiveProxy(simpleName: String, paramTypeRefs: List[TypeRef]): MethodName = {
       reflectiveProxy(SimpleMethodName(simpleName), paramTypeRefs)
     }
   }
@@ -495,8 +490,7 @@ object Names {
     /* This would logically be defined in Types, but that introduces a cyclic
      * dependency between the initialization of Names and Types.
      */
-    Set(Names.ObjectClass, ClassName("java.io.Serializable"),
-        ClassName("java.lang.Cloneable"))
+    Set(Names.ObjectClass, ClassName("java.io.Serializable"), ClassName("java.lang.Cloneable"))
   }
 
   /** Name of a constructor without argument.
@@ -531,8 +525,8 @@ object Names {
   private def validateSimpleEncodedName(encoded: UTF8String): UTF8String =
     validateSimpleEncodedName(encoded, 0, encoded.length, openAngleBracketOK = true)
 
-  private def validateSimpleEncodedName(encoded: UTF8String, start: Int,
-      end: Int, openAngleBracketOK: Boolean): UTF8String = {
+  private def validateSimpleEncodedName(encoded: UTF8String, start: Int, end: Int,
+      openAngleBracketOK: Boolean): UTF8String = {
 
     if (start == end)
       throwInvalidEncodedName(encoded)
@@ -545,11 +539,11 @@ object Names {
           if (!openAngleBracketOK)
             throwInvalidEncodedName(encoded)
         case _ =>
-          /* This case is hit for other ASCII characters, but also for the
-           * leading and continuation bytes of multibyte code points. They are
-           * all valid, since an `EncodedName` is already guaranteed to be a
-           * valid UTF-8 sequence.
-           */
+        /* This case is hit for other ASCII characters, but also for the
+         * leading and continuation bytes of multibyte code points. They are
+         * all valid, since an `EncodedName` is already guaranteed to be a
+         * valid UTF-8 sequence.
+         */
       }
       i += 1
     }

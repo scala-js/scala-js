@@ -12,11 +12,9 @@
 
 package java.nio
 
-private[nio] final class HeapByteBufferDoubleView private (
-    _capacity: Int,
+private[nio] final class HeapByteBufferDoubleView private (_capacity: Int,
     override private[nio] val _byteArray: Array[Byte],
-    override private[nio] val _byteArrayOffset: Int,
-    _initialPosition: Int, _initialLimit: Int,
+    override private[nio] val _byteArrayOffset: Int, _initialPosition: Int, _initialLimit: Int,
     _readOnly: Boolean, override private[nio] val isBigEndian: Boolean)
     extends DoubleBuffer(_capacity, null, -1) {
 
@@ -90,11 +88,10 @@ private[nio] object HeapByteBufferDoubleView {
       extends GenHeapBufferView.NewHeapBufferView[DoubleBuffer] {
     def bytesPerElem: Int = 8
 
-    def apply(capacity: Int, byteArray: Array[Byte], byteArrayOffset: Int,
-        initialPosition: Int, initialLimit: Int, readOnly: Boolean,
-        isBigEndian: Boolean): DoubleBuffer = {
-      new HeapByteBufferDoubleView(capacity, byteArray, byteArrayOffset,
-          initialPosition, initialLimit, readOnly, isBigEndian)
+    def apply(capacity: Int, byteArray: Array[Byte], byteArrayOffset: Int, initialPosition: Int,
+        initialLimit: Int, readOnly: Boolean, isBigEndian: Boolean): DoubleBuffer = {
+      new HeapByteBufferDoubleView(capacity, byteArray, byteArrayOffset, initialPosition,
+          initialLimit, readOnly, isBigEndian)
     }
   }
 

@@ -233,8 +233,7 @@ object JSOptionalTest212 {
     z = js.undefined
   }
 
-  class ClassImplementsTraitWithOptionalOverrideWithConcrete
-      extends TraitWithOptional {
+  class ClassImplementsTraitWithOptionalOverrideWithConcrete extends TraitWithOptional {
     override val x = 42
     override val y = "hello"
     override def y2 = "world" // scalastyle:ignore

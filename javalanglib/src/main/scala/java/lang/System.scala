@@ -74,15 +74,15 @@ object System {
       import Utils.DynamicImplicits.truthValue
 
       if (js.typeOf(global.performance) != "undefined") {
-        if (global.performance.now) {
-          () => global.performance.now().asInstanceOf[scala.Double]
-        } else if (global.performance.webkitNow) {
-          () => global.performance.webkitNow().asInstanceOf[scala.Double]
-        } else {
-          () => new js.Date().getTime()
+        if (global.performance.now) { () =>
+          global.performance.now().asInstanceOf[scala.Double]
+        } else if (global.performance.webkitNow) { () =>
+          global.performance.webkitNow().asInstanceOf[scala.Double]
+        } else { () =>
+          new js.Date().getTime()
         }
-      } else {
-        () => new js.Date().getTime()
+      } else { () =>
+        new js.Date().getTime()
       }
     }
   }
@@ -94,8 +94,8 @@ object System {
   // arraycopy ----------------------------------------------------------------
 
   // Intrinsic
-  def arraycopy(src: Object, srcPos: scala.Int, dest: Object,
-      destPos: scala.Int, length: scala.Int): Unit = {
+  def arraycopy(src: Object, srcPos: scala.Int, dest: Object, destPos: scala.Int,
+      length: scala.Int): Unit = {
 
     import scala.{Boolean, Char, Byte, Short, Int, Long, Float, Double}
 
@@ -130,55 +130,65 @@ object System {
 
     if (src == null || dest == null) {
       throw new NullPointerException()
-    } else (src match {
-      case src: Array[AnyRef] =>
-        dest match {
-          case dest: Array[AnyRef] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
-          case _                   => mismatch()
-        }
-      case src: Array[Boolean] =>
-        dest match {
-          case dest: Array[Boolean] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
-          case _                    => mismatch()
-        }
-      case src: Array[Char] =>
-        dest match {
-          case dest: Array[Char] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
-          case _                 => mismatch()
-        }
-      case src: Array[Byte] =>
-        dest match {
-          case dest: Array[Byte] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
-          case _                 => mismatch()
-        }
-      case src: Array[Short] =>
-        dest match {
-          case dest: Array[Short] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
-          case _                  => mismatch()
-        }
-      case src: Array[Int] =>
-        dest match {
-          case dest: Array[Int] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
-          case _                => mismatch()
-        }
-      case src: Array[Long] =>
-        dest match {
-          case dest: Array[Long] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
-          case _                 => mismatch()
-        }
-      case src: Array[Float] =>
-        dest match {
-          case dest: Array[Float] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
-          case _                  => mismatch()
-        }
-      case src: Array[Double] =>
-        dest match {
-          case dest: Array[Double] => impl(src.length, dest.length, (i, j) => dest(i) = src(j))
-          case _                   => mismatch()
-        }
-      case _ =>
-        mismatch()
-    })
+    } else
+      (src match {
+        case src: Array[AnyRef] =>
+          dest match {
+            case dest: Array[AnyRef] =>
+              impl(src.length, dest.length, (i, j) => dest(i) = src(j))
+            case _ => mismatch()
+          }
+        case src: Array[Boolean] =>
+          dest match {
+            case dest: Array[Boolean] =>
+              impl(src.length, dest.length, (i, j) => dest(i) = src(j))
+            case _ => mismatch()
+          }
+        case src: Array[Char] =>
+          dest match {
+            case dest: Array[Char] =>
+              impl(src.length, dest.length, (i, j) => dest(i) = src(j))
+            case _ => mismatch()
+          }
+        case src: Array[Byte] =>
+          dest match {
+            case dest: Array[Byte] =>
+              impl(src.length, dest.length, (i, j) => dest(i) = src(j))
+            case _ => mismatch()
+          }
+        case src: Array[Short] =>
+          dest match {
+            case dest: Array[Short] =>
+              impl(src.length, dest.length, (i, j) => dest(i) = src(j))
+            case _ => mismatch()
+          }
+        case src: Array[Int] =>
+          dest match {
+            case dest: Array[Int] =>
+              impl(src.length, dest.length, (i, j) => dest(i) = src(j))
+            case _ => mismatch()
+          }
+        case src: Array[Long] =>
+          dest match {
+            case dest: Array[Long] =>
+              impl(src.length, dest.length, (i, j) => dest(i) = src(j))
+            case _ => mismatch()
+          }
+        case src: Array[Float] =>
+          dest match {
+            case dest: Array[Float] =>
+              impl(src.length, dest.length, (i, j) => dest(i) = src(j))
+            case _ => mismatch()
+          }
+        case src: Array[Double] =>
+          dest match {
+            case dest: Array[Double] =>
+              impl(src.length, dest.length, (i, j) => dest(i) = src(j))
+            case _ => mismatch()
+          }
+        case _ =>
+          mismatch()
+      })
   }
 
   @inline
@@ -335,15 +345,15 @@ private final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
     }
   }
 
-  override def print(b: scala.Boolean): Unit     = printString(String.valueOf(b))
-  override def print(c: scala.Char): Unit        = printString(String.valueOf(c))
-  override def print(i: scala.Int): Unit         = printString(String.valueOf(i))
-  override def print(l: scala.Long): Unit        = printString(String.valueOf(l))
-  override def print(f: scala.Float): Unit       = printString(String.valueOf(f))
-  override def print(d: scala.Double): Unit      = printString(String.valueOf(d))
+  override def print(b: scala.Boolean): Unit = printString(String.valueOf(b))
+  override def print(c: scala.Char): Unit = printString(String.valueOf(c))
+  override def print(i: scala.Int): Unit = printString(String.valueOf(i))
+  override def print(l: scala.Long): Unit = printString(String.valueOf(l))
+  override def print(f: scala.Float): Unit = printString(String.valueOf(f))
+  override def print(d: scala.Double): Unit = printString(String.valueOf(d))
   override def print(s: Array[scala.Char]): Unit = printString(String.valueOf(s))
-  override def print(s: String): Unit            = printString(if (s == null) "null" else s)
-  override def print(obj: AnyRef): Unit          = printString(String.valueOf(obj))
+  override def print(s: String): Unit = printString(if (s == null) "null" else s)
+  override def print(obj: AnyRef): Unit = printString(String.valueOf(obj))
 
   override def println(): Unit = printString("\n")
 
@@ -363,15 +373,14 @@ private final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
         doWriteLine(buffer + rest.substring(0, nlPos))
         buffer = ""
         flushed = true
-        rest = rest.substring(nlPos+1)
+        rest = rest.substring(nlPos + 1)
       }
     }
   }
 
-  /**
-   * Since we cannot write a partial line in JavaScript, we write a whole
-   * line with continuation symbol at the end and schedule a line continuation
-   * symbol for the new line if the buffer is flushed.
+  /** Since we cannot write a partial line in JavaScript, we write a whole
+   *  line with continuation symbol at the end and schedule a line continuation
+   *  symbol for the new line if the buffer is flushed.
    */
   override def flush(): Unit = if (!flushed) {
     doWriteLine(buffer + LineContEnd)
@@ -399,7 +408,6 @@ private[lang] object JSConsoleBasedPrintStream {
 
   class DummyOutputStream extends OutputStream {
     def write(c: Int): Unit =
-      throw new AssertionError(
-          "Should not get in JSConsoleBasedPrintStream.DummyOutputStream")
+      throw new AssertionError("Should not get in JSConsoleBasedPrintStream.DummyOutputStream")
   }
 }

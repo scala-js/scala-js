@@ -134,8 +134,8 @@ abstract class ExplicitInnerJS[G <: Global with Singleton](val global: G)
   private def isApplicableOwner(sym: Symbol): Boolean = {
     !sym.isStaticOwner || (
         sym.isModuleClass &&
-        sym.hasAnnotation(JSTypeAnnot) &&
-        !sym.hasAnnotation(JSNativeAnnotation)
+          sym.hasAnnotation(JSTypeAnnot) &&
+          !sym.hasAnnotation(JSNativeAnnotation)
     )
   }
 
@@ -169,12 +169,14 @@ abstract class ExplicitInnerJS[G <: Global with Singleton](val global: G)
         tp
       } else {
         def addAnnots(sym: Symbol, symForName: Symbol): Unit = {
-          symForName.getAnnotation(JSNameAnnotation).fold {
-            sym.addAnnotation(JSNameAnnotation,
-                Literal(Constant(jsInterop.defaultJSNameOf(symForName))))
-          } { annot =>
-            sym.addAnnotation(annot)
-          }
+          symForName
+            .getAnnotation(JSNameAnnotation)
+            .fold {
+              sym.addAnnotation(JSNameAnnotation,
+                  Literal(Constant(jsInterop.defaultJSNameOf(symForName))))
+            } { annot =>
+              sym.addAnnotation(annot)
+            }
           sym.addAnnotation(ExposedJSMemberAnnot)
         }
 
@@ -234,8 +236,7 @@ abstract class ExplicitInnerJS[G <: Global with Singleton](val global: G)
       tp
   }
 
-  class ExplicitInnerJSTransformer(unit: CompilationUnit)
-      extends TypingTransformer(unit) {
+  class ExplicitInnerJSTransformer(unit: CompilationUnit) extends TypingTransformer(unit) {
 
     /** Execute the whole transformation in the future, exiting this phase. */
     override def transformUnit(unit: CompilationUnit): Unit = {
@@ -268,10 +269,8 @@ abstract class ExplicitInnerJS[G <: Global with Singleton](val global: G)
                   } else {
                     val parentTpe =
                       extractSuperTpeFromImpl(decl.asInstanceOf[ClassDef].impl)
-                    val superClassCtor = gen.mkNullaryCall(
-                        JSPackage_constructorOf, List(parentTpe))
-                    gen.mkMethodCall(Runtime_createInnerJSClass,
-                        List(clazzValue, superClassCtor))
+                    val superClassCtor = gen.mkNullaryCall(JSPackage_constructorOf, List(parentTpe))
+                    gen.mkMethodCall(Runtime_createInnerJSClass, List(clazzValue, superClassCtor))
                   }
                 }
 

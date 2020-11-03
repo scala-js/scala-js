@@ -14,6 +14,7 @@ package org.scalajs.testsuite.utils
 
 /** This is a copy of the implementation in the testSuite */
 object AssertThrows {
+
   /** Backport implementation of Assert.assertThrows to be used until JUnit 4.13 is
    *  released. See org.junit.Assert.scala in jUnitRuntime.
    */
@@ -38,7 +39,7 @@ object AssertThrows {
           } else {
             val mismatchMessage = {
               "unexpected exception type thrown;" +
-              expectedThrowable.getSimpleName + " " + actualThrown.getClass.getSimpleName
+                expectedThrowable.getSimpleName + " " + actualThrown.getClass.getSimpleName
             }
 
             val assertionError = new AssertionError(mismatchMessage)
@@ -48,8 +49,9 @@ object AssertThrows {
       }
     }
     if (result == null) {
-      throw new AssertionError("expected " + expectedThrowable.getSimpleName +
-          " to be thrown, but nothing was thrown")
+      throw new AssertionError(
+          "expected " + expectedThrowable.getSimpleName +
+            " to be thrown, but nothing was thrown")
     } else {
       result
     }
@@ -69,13 +71,15 @@ object AssertThrows {
   }
 
   def assertThrows[T <: Throwable, U](expectedThrowable: Class[T], code: => U): Unit = {
-    assertThrowsBackport(expectedThrowable, throwingRunnable {
+    assertThrowsBackport(expectedThrowable,
+        throwingRunnable {
       code
     })
   }
 
   def expectThrows[T <: Throwable, U](expectedThrowable: Class[T], code: => U): T = {
-    expectThrowsBackport(expectedThrowable, throwingRunnable {
+    expectThrowsBackport(expectedThrowable,
+        throwingRunnable {
       code
     })
   }

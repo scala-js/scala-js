@@ -32,8 +32,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
         Value(4)
       }
     }
-    """ hasWarns
-    """
+    """.hasWarns("""
       |newSource1.scala:5: warning: Couldn't transform call to Enumeration.Value.
       |The resulting program is unlikely to function properly as this
       |operation requires reflection.
@@ -44,7 +43,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       |operation requires reflection.
       |        Value(4)
       |             ^
-    """
+    """)
 
   }
 
@@ -56,8 +55,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       val a = new Val
       val b = new Val(10)
     }
-    """ hasWarns
-    """
+    """.hasWarns("""
       |newSource1.scala:3: warning: Calls to the non-string constructors of Enumeration.Val
       |require reflection at runtime. The resulting
       |program is unlikely to function properly.
@@ -68,7 +66,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       |program is unlikely to function properly.
       |      val b = new Val(10)
       |              ^
-    """
+    """)
 
   }
 
@@ -80,8 +78,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       val a = Value(null)
       val b = Value(10, null)
     }
-    """ hasWarns
-    """
+    """.hasWarns("""
       |newSource1.scala:3: warning: Passing null as name to Enumeration.Value
       |requires reflection at runtime. The resulting
       |program is unlikely to function properly.
@@ -92,7 +89,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       |program is unlikely to function properly.
       |      val b = Value(10, null)
       |                   ^
-    """
+    """)
 
   }
 
@@ -104,8 +101,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       val a = new Val(null)
       val b = new Val(10, null)
     }
-    """ hasWarns
-    """
+    """.hasWarns("""
       |newSource1.scala:3: warning: Passing null as name to a constructor of Enumeration.Val
       |requires reflection at runtime. The resulting
       |program is unlikely to function properly.
@@ -116,7 +112,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       |program is unlikely to function properly.
       |      val b = new Val(10, null)
       |              ^
-    """
+    """)
 
   }
 
@@ -128,8 +124,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       protected class Val1 extends Val
       protected class Val2 extends Val(1)
     }
-    """ hasWarns
-    """
+    """.hasWarns("""
       |newSource1.scala:3: warning: Calls to the non-string constructors of Enumeration.Val
       |require reflection at runtime. The resulting
       |program is unlikely to function properly.
@@ -140,7 +135,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       |program is unlikely to function properly.
       |      protected class Val2 extends Val(1)
       |                                   ^
-    """
+    """)
 
   }
 
@@ -152,8 +147,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       protected class Val1 extends Val(null)
       protected class Val2 extends Val(1,null)
     }
-    """ hasWarns
-    """
+    """.hasWarns("""
       |newSource1.scala:3: warning: Passing null as name to a constructor of Enumeration.Val
       |requires reflection at runtime. The resulting
       |program is unlikely to function properly.
@@ -164,7 +158,7 @@ class EnumerationInteropTest extends DirectTest with TestHelpers {
       |program is unlikely to function properly.
       |      protected class Val2 extends Val(1,null)
       |                                   ^
-    """
+    """)
 
   }
 

@@ -24,8 +24,7 @@ import org.scalajs.testsuite.utils.Platform._
 
 import scala.reflect.ClassTag
 
-trait CollectionsCheckedListTest
-    extends CollectionsOnListTest {
+trait CollectionsCheckedListTest extends CollectionsOnListTest {
 
   def originalFactory: ListFactory
 
@@ -35,8 +34,7 @@ trait CollectionsCheckedListTest
         s"checkedList(${originalFactory.implementationName})"
 
       override def empty[E](implicit ct: ClassTag[E]): ju.List[E] = {
-        ju.Collections.checkedList(originalFactory.empty[E],
-            ct.runtimeClass.asInstanceOf[Class[E]])
+        ju.Collections.checkedList(originalFactory.empty[E], ct.runtimeClass.asInstanceOf[Class[E]])
       }
 
       override def allowsMutationThroughIterator: Boolean =
@@ -47,10 +45,10 @@ trait CollectionsCheckedListTest
   @Test def testCheckedList(): Unit = {
     superList().add(0, new C)
     assertTrue(superList().addAll(0, TrivialImmutableCollection(new C)))
-    testOnFirstPositionOfIterator[ju.ListIterator[A]](superList().listIterator _,
-        _.add(new C), None)
-    testOnFirstPositionOfIterator[ju.ListIterator[A]](superList().listIterator _,
-        _.set(new C), None)
+    testOnFirstPositionOfIterator[
+        ju.ListIterator[A]](superList().listIterator _, _.add(new C), None)
+    testOnFirstPositionOfIterator[
+        ju.ListIterator[A]](superList().listIterator _, _.set(new C), None)
   }
 
   @Test def testCheckedListBadInputs(): Unit = {
@@ -59,20 +57,17 @@ trait CollectionsCheckedListTest
     expectThrows(classOf[ClassCastException], superList().add(0, new A))
     expectThrows(classOf[ClassCastException],
         superList().addAll(0, TrivialImmutableCollection(new A)))
-    testOnFirstPositionOfIterator[ju.ListIterator[A]](
-        superList().listIterator _,
-        _.add(new A), Some(classOf[ClassCastException]))
-    testOnFirstPositionOfIterator[ju.ListIterator[A]](
-        superList().listIterator _,
-        _.set(new A), Some(classOf[ClassCastException]))
+    testOnFirstPositionOfIterator[ju.ListIterator[A]](superList().listIterator _, _.add(new A),
+        Some(classOf[ClassCastException]))
+    testOnFirstPositionOfIterator[ju.ListIterator[A]](superList().listIterator _, _.set(new A),
+        Some(classOf[ClassCastException]))
   }
 
   private def superList(): ju.List[A] =
     factory.empty[B].asInstanceOf[ju.List[A]]
 }
 
-class CollectionsOnCheckedListAbstractListTest
-    extends CollectionsCheckedCollectionTest {
+class CollectionsOnCheckedListAbstractListTest extends CollectionsCheckedCollectionTest {
   def originalFactory: ListFactory = new AbstractListFactory
 }
 
@@ -80,12 +75,10 @@ class CollectionsOnCheckedListArrayListTest extends CollectionsCheckedListTest {
   def originalFactory: ListFactory = new ArrayListFactory
 }
 
-class CollectionsOnCheckedListLinkedListTest
-    extends CollectionsCheckedListTest {
+class CollectionsOnCheckedListLinkedListTest extends CollectionsCheckedListTest {
   def originalFactory: ListFactory = new LinkedListFactory
 }
 
-class CollectionsOnCheckedListCopyOnWriteArrayListTest
-    extends CollectionsCheckedListTest {
+class CollectionsOnCheckedListCopyOnWriteArrayListTest extends CollectionsCheckedListTest {
   def originalFactory: ListFactory = new CopyOnWriteArrayListFactory
 }

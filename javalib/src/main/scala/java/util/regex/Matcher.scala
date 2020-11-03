@@ -18,8 +18,7 @@ import scala.annotation.switch
 
 import scala.scalajs.js
 
-final class Matcher private[regex] (
-    private var pattern0: Pattern, private var input0: CharSequence,
+final class Matcher private[regex] (private var pattern0: Pattern, private var input0: CharSequence,
     private var regionStart0: Int, private var regionEnd0: Int)
     extends AnyRef with MatchResult {
 
@@ -48,7 +47,8 @@ final class Matcher private[regex] (
     // Further, it might be wrong to just use ^$ delimiters for two reasons:
     // - They might already be there
     // - They might not behave as expected when newline characters are present
-    if ((lastMatch ne null) && (ensureLastMatch.index != 0 || group().length() != inputstr.length()))
+    if ((lastMatch ne null) && (ensureLastMatch.index != 0 || group().length() != inputstr
+          .length()))
       reset()
     lastMatch ne null
   }
@@ -258,16 +258,15 @@ object Matcher {
     while (i < s.length) {
       val c = s.charAt(i)
       result += ((c: @switch) match {
-        case '\\' | '$' => "\\"+c
-        case _ => c
+        case '\\' | '$' => "\\" + c
+        case _          => c
       })
       i += 1
     }
     result
   }
 
-  private def getGroupCount(lastMatch: js.RegExp.ExecResult,
-      pattern: Pattern): Int = {
+  private def getGroupCount(lastMatch: js.RegExp.ExecResult, pattern: Pattern): Int = {
     /* `pattern.groupCount` has the answer, but it can require some
      * computation to get it, so try and use lastMatch's group count if we can.
      */
@@ -275,9 +274,8 @@ object Matcher {
     else pattern.groupCount
   }
 
-  private final class SealedResult(inputstr: String,
-      lastMatch: js.RegExp.ExecResult, pattern: Pattern,
-      regionStart: Int, private var startOfGroupCache: js.Array[Int])
+  private final class SealedResult(inputstr: String, lastMatch: js.RegExp.ExecResult,
+      pattern: Pattern, regionStart: Int, private var startOfGroupCache: js.Array[Int])
       extends MatchResult {
 
     def groupCount(): Int = getGroupCount(lastMatch, pattern)

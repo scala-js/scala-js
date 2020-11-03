@@ -15,8 +15,7 @@ package java.util
 import java.{util => ju}
 import java.util.function.BiConsumer
 
-class LinkedHashMap[K, V](initialCapacity: Int, loadFactor: Float,
-    accessOrder: Boolean)
+class LinkedHashMap[K, V](initialCapacity: Int, loadFactor: Float, accessOrder: Boolean)
     extends HashMap[K, V](initialCapacity, loadFactor) {
   self =>
 
@@ -45,8 +44,7 @@ class LinkedHashMap[K, V](initialCapacity: Int, loadFactor: Float,
   private def asMyNode(node: HashMap.Node[K, V]): Node[K, V] =
     node.asInstanceOf[Node[K, V]]
 
-  private[util] override def newNode(key: K, hash: Int, value: V,
-      previous: HashMap.Node[K, V],
+  private[util] override def newNode(key: K, hash: Int, value: V, previous: HashMap.Node[K, V],
       next: HashMap.Node[K, V]): HashMap.Node[K, V] = {
     new Node(key, hash, value, previous, next, null, null)
   }
@@ -124,8 +122,7 @@ class LinkedHashMap[K, V](initialCapacity: Int, loadFactor: Float,
   private[util] override def valueIterator(): ju.Iterator[V] =
     new ValueIterator
 
-  private final class NodeIterator
-      extends AbstractLinkedHashMapIterator[HashMap.Node[K, V]] {
+  private final class NodeIterator extends AbstractLinkedHashMapIterator[HashMap.Node[K, V]] {
     protected[this] def extract(node: Node[K, V]): Node[K, V] = node
   }
 
@@ -173,9 +170,8 @@ class LinkedHashMap[K, V](initialCapacity: Int, loadFactor: Float,
 
 object LinkedHashMap {
 
-  private final class Node[K, V](key: K, hash: Int, value: V,
-      previous: HashMap.Node[K, V], next: HashMap.Node[K, V],
-      var older: Node[K, V], var younger: Node[K, V])
+  private final class Node[K, V](key: K, hash: Int, value: V, previous: HashMap.Node[K, V],
+      next: HashMap.Node[K, V], var older: Node[K, V], var younger: Node[K, V])
       extends HashMap.Node[K, V](key, hash, value, previous, next)
 
 }

@@ -36,7 +36,7 @@ import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 
-import Properties.{ versionString, copyrightString }
+import Properties.{versionString, copyrightString}
 import GenericRunnerCommand._
 
 class MainGenericRunner {
@@ -45,7 +45,7 @@ class MainGenericRunner {
     false
   }
   def errorFn(str: String): Boolean = {
-    scala.Console.err println str
+    scala.Console.err.println(str)
     false
   }
 
@@ -72,7 +72,8 @@ class MainGenericRunner {
     val command = new GenericRunnerCommand(args.toList, (x: String) => errorFn(x))
 
     if (!command.ok) return errorFn("\n" + command.shortUsageMsg)
-    else if (command.settings.version) return errorFn("Scala code runner %s -- %s".format(versionString, copyrightString))
+    else if (command.settings.version)
+      return errorFn("Scala code runner %s -- %s".format(versionString, copyrightString))
     else if (command.shouldStopWithInfo) return errorFn("shouldStopWithInfo")
 
     if (command.howToRun != AsObject)
@@ -82,8 +83,8 @@ class MainGenericRunner {
     val semantics0 = readSemantics()
     val semantics = if (optMode == FullOpt) semantics0.optimized else semantics0
 
-    val moduleInitializers = Seq(ModuleInitializer.mainMethodWithArgs(
-        command.thingToRun, "main", command.arguments))
+    val moduleInitializers =
+      Seq(ModuleInitializer.mainMethodWithArgs(command.thingToRun, "main", command.arguments))
 
     val linkerConfig = StandardConfig()
       .withCheckIR(true)

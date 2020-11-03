@@ -12,11 +12,8 @@
 
 package org.scalajs.testing.common
 
-private[testing] final class RunnerArgs(
-    val runID: RunMux.RunID,
-    val frameworkImpl: String,
-    val args: List[String],
-    val remoteArgs: List[String])
+private[testing] final class RunnerArgs(val runID: RunMux.RunID, val frameworkImpl: String,
+    val args: List[String], val remoteArgs: List[String])
 
 private[testing] object RunnerArgs {
   implicit object RunnerArgsSerializer extends Serializer[RunnerArgs] {
@@ -28,8 +25,8 @@ private[testing] object RunnerArgs {
     }
 
     def deserialize(in: Serializer.DeserializeState): RunnerArgs = {
-      new RunnerArgs(in.read[Int](), in.read[String](),
-          in.read[List[String]](), in.read[List[String]]())
+      new RunnerArgs(in.read[Int](), in.read[String](), in.read[List[String]](),
+          in.read[List[String]]())
     }
   }
 }

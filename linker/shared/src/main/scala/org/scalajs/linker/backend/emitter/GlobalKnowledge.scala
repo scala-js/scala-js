@@ -20,6 +20,7 @@ import org.scalajs.linker.standard.Versioned
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 private[emitter] trait GlobalKnowledge {
+
   /** Tests whether the `java.lang.Class` class is instantiated. */
   def isClassClassInstantiated: Boolean
 
@@ -34,8 +35,7 @@ private[emitter] trait GlobalKnowledge {
    *  It is invalid to call this method with anything but a `Class` or
    *  `ModuleClass`.
    */
-  def getAllScalaClassFieldDefs(
-      className: ClassName): List[(ClassName, List[AnyFieldDef])]
+  def getAllScalaClassFieldDefs(className: ClassName): List[(ClassName, List[AnyFieldDef])]
 
   /** Tests whether the specified class uses an inlineable init.
    *
@@ -69,8 +69,7 @@ private[emitter] trait GlobalKnowledge {
   def getJSNativeLoadSpec(className: ClassName): Option[JSNativeLoadSpec]
 
   /** The JS native load spec of a native JS member. */
-  def getJSNativeLoadSpec(className: ClassName,
-      member: MethodName): JSNativeLoadSpec
+  def getJSNativeLoadSpec(className: ClassName, member: MethodName): JSNativeLoadSpec
 
   /** The `className` of the superclass of a (non-native) JS class.
    *
@@ -99,8 +98,7 @@ private[emitter] trait GlobalKnowledge {
    *
    *  @returns false if the class or the method does not exist.
    */
-  def representativeClassHasPublicMethod(className: ClassName,
-      methodName: MethodName): Boolean
+  def representativeClassHasPublicMethod(className: ClassName, methodName: MethodName): Boolean
 
   /** The public (non-static) methods of java.lang.Object. */
   def methodsInObject(): List[Versioned[MethodDef]]

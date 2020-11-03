@@ -64,8 +64,7 @@ class MathContextTest {
         new MathContext("precision=24 roundingMode=HALF"))
     expectThrows(classOf[IllegalArgumentException],
         new MathContext("precision=23 roundingMode=UPSIDEDOWN"))
-    expectThrows(classOf[IllegalArgumentException],
-        new MathContext("precision=22roundingMode=UP"))
+    expectThrows(classOf[IllegalArgumentException], new MathContext("precision=22roundingMode=UP"))
     expectThrows(classOf[IllegalArgumentException], new MathContext(""))
     expectThrows(classOf[NullPointerException], new MathContext(null))
   }

@@ -49,8 +49,7 @@ final class Class[A] private (data0: Object) extends Object {
   private def getData(): ScalaJSClassData[A] = data
 
   override def toString(): String = {
-    (if (isInterface()) "interface " else
-        if (isPrimitive()) "" else "class ")+getName()
+    (if (isInterface()) "interface " else if (isPrimitive()) "" else "class ") + getName()
   }
 
   def isInstance(obj: Object): scala.Boolean =
@@ -78,9 +77,9 @@ final class Class[A] private (data0: Object) extends Object {
       idx -= 1
     }
     while (idx >= 0 && {
-      val currChar = name.charAt(idx)
-      currChar != '.' && currChar != '$'
-    }) {
+          val currChar = name.charAt(idx)
+          currChar != '.' && currChar != '$'
+        }) {
       idx -= 1
     }
     name.substring(idx + 1)

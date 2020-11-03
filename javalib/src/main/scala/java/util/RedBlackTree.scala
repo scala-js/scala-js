@@ -105,11 +105,8 @@ private[util] object RedBlackTree {
   }
 
   final class Node[A, B](
-      val key: A,
-      private[RedBlackTree] var value: B,
-      private[RedBlackTree] var red: Boolean,
-      private[RedBlackTree] var left: Node[A, B],
-      private[RedBlackTree] var right: Node[A, B],
+      val key: A, private[RedBlackTree] var value: B, private[RedBlackTree] var red: Boolean,
+      private[RedBlackTree] var left: Node[A, B], private[RedBlackTree] var right: Node[A, B],
       private[RedBlackTree] var parent: Node[A, B]
   ) extends Map.Entry[A, B] {
     def getKey(): A = key
@@ -125,7 +122,7 @@ private[util] object RedBlackTree {
     override def equals(that: Any): Boolean = that match {
       case that: Map.Entry[_, _] =>
         Objects.equals(getKey(), that.getKey()) &&
-        Objects.equals(getValue(), that.getValue())
+          Objects.equals(getValue(), that.getValue())
       case _ =>
         false
     }
@@ -148,8 +145,8 @@ private[util] object RedBlackTree {
 
   object Node {
     @inline
-    def apply[A, B](key: A, value: B, red: Boolean, left: Node[A, B],
-        right: Node[A, B], parent: Node[A, B]): Node[A, B] = {
+    def apply[A, B](key: A, value: B, red: Boolean, left: Node[A, B], right: Node[A, B],
+        parent: Node[A, B]): Node[A, B] = {
       new Node(key, value, red, left, right, parent)
     }
 
@@ -161,8 +158,7 @@ private[util] object RedBlackTree {
   // ---- comparator helper ----
 
   @inline
-  private[this] def compare[A](key1: Any, key2: A)(
-      implicit comp: Comparator[_ >: A]): Int = {
+  private[this] def compare[A](key1: Any, key2: A)(implicit comp: Comparator[_ >: A]): Int = {
     /* The implementation of `compare` and/or its generic bridge may perform
      * monomorphic casts that can fail. This is according to spec for TreeSet
      * and TreeMap.
@@ -184,9 +180,8 @@ private[util] object RedBlackTree {
 
   def size(tree: Tree[_, _]): Int = tree.size
 
-  def projectionSize[A, B](tree: Tree[A, B], lowerBound: A,
-      lowerKind: BoundKind, upperBound: A, upperKind: BoundKind)(
-      implicit comp: Comparator[_ >: A]): Int = {
+  def projectionSize[A, B](tree: Tree[A, B], lowerBound: A, lowerKind: BoundKind, upperBound: A,
+      upperKind: BoundKind)(implicit comp: Comparator[_ >: A]): Int = {
     if (lowerKind == NoBound && upperKind == NoBound) {
       size(tree)
     } else {
@@ -203,9 +198,8 @@ private[util] object RedBlackTree {
 
   def isEmpty(tree: Tree[_, _]): Boolean = tree.root eq null
 
-  def projectionIsEmpty[A](tree: Tree[A, _], lowerBound: A,
-      lowerKind: BoundKind, upperBound: A, upperKind: BoundKind)(
-      implicit comp: Comparator[_ >: A]): Boolean = {
+  def projectionIsEmpty[A](tree: Tree[A, _], lowerBound: A, lowerKind: BoundKind, upperBound: A,
+      upperKind: BoundKind)(implicit comp: Comparator[_ >: A]): Boolean = {
     if (lowerKind == NoBound && upperKind == NoBound) {
       isEmpty(tree)
     } else {
@@ -221,8 +215,7 @@ private[util] object RedBlackTree {
 
   // ---- search ----
 
-  def get[A, B](tree: Tree[A, B], key: Any)(
-      implicit comp: Comparator[_ >: A]): B = {
+  def get[A, B](tree: Tree[A, B], key: Any)(implicit comp: Comparator[_ >: A]): B = {
     nullableNodeFlatMap(getNode(tree.root, key))(_.value)
   }
 
@@ -239,8 +232,7 @@ private[util] object RedBlackTree {
     }
   }
 
-  def contains[A](tree: Tree[A, _], key: Any)(
-      implicit comp: Comparator[_ >: A]): Boolean = {
+  def contains[A](tree: Tree[A, _], key: Any)(implicit comp: Comparator[_ >: A]): Boolean = {
     getNode(tree.root, key) ne null
   }
 
@@ -372,8 +364,7 @@ private[util] object RedBlackTree {
 
   // ---- insertion ----
 
-  def insert[A, B](tree: Tree[A, B], key: A, value: B)(
-      implicit comp: Comparator[_ >: A]): B = {
+  def insert[A, B](tree: Tree[A, B], key: A, value: B)(implicit comp: Comparator[_ >: A]): B = {
     /* The target node is the node with `key` if it exists, or the node under
      * which we need to insert the new `key`.
      * We use a loop here instead of a tailrec def because we need 2 results
@@ -416,8 +407,7 @@ private[util] object RedBlackTree {
   }
 
   @tailrec
-  private[this] def fixAfterInsert[A, B](tree: Tree[A, B],
-      node: Node[A, B]): Unit = {
+  private[this] def fixAfterInsert[A, B](tree: Tree[A, B], node: Node[A, B]): Unit = {
     val parent = node.parent
     if (parent eq null) {
       // The inserted node is the root; mark it black and we're done
@@ -470,8 +460,7 @@ private[util] object RedBlackTree {
 
   // ---- deletion ----
 
-  def delete[A, B](tree: Tree[A, B], key: Any)(
-      implicit comp: Comparator[_ >: A]): B = {
+  def delete[A, B](tree: Tree[A, B], key: Any)(implicit comp: Comparator[_ >: A]): B = {
     nullableNodeFlatMap(getNode(tree.root, key)) { node =>
       deleteNode(tree, node)
       node.value
@@ -704,8 +693,7 @@ private[util] object RedBlackTree {
    *  setting `from`'s parent to the `to`'s previous parent. The children of
    *  `from` are left unchanged.
    */
-  private[this] def transplant[A, B](tree: Tree[A, B], to: Node[A, B],
-      from: Node[A, B]): Unit = {
+  private[this] def transplant[A, B](tree: Tree[A, B], to: Node[A, B], from: Node[A, B]): Unit = {
     if (to.isRoot)
       tree.root = from
     else if (to.isLeftChild)
@@ -784,31 +772,26 @@ private[util] object RedBlackTree {
 
   // ---- projection iterators ----
 
-  def projectionIterator[A, B](tree: Tree[A, B],
-      start: A, startKind: BoundKind, end: A, endKind: BoundKind)(
-      implicit comp: Comparator[_ >: A]): Iterator[Map.Entry[A, B]] = {
+  def projectionIterator[A, B](tree: Tree[A, B], start: A, startKind: BoundKind, end: A,
+      endKind: BoundKind)(implicit comp: Comparator[_ >: A]): Iterator[Map.Entry[A, B]] = {
     new ProjectionEntriesIterator(tree, start, startKind, end, endKind)
   }
 
-  def projectionKeysIterator[A, B](tree: Tree[A, B],
-      start: A, startKind: BoundKind, end: A, endKind: BoundKind)(
-      implicit comp: Comparator[_ >: A]): Iterator[A] = {
+  def projectionKeysIterator[A, B](tree: Tree[A, B], start: A, startKind: BoundKind, end: A,
+      endKind: BoundKind)(implicit comp: Comparator[_ >: A]): Iterator[A] = {
     new ProjectionKeysIterator(tree, start, startKind, end, endKind)
   }
 
-  def projectionValuesIterator[A, B](tree: Tree[A, B],
-      start: A, startKind: BoundKind, end: A, endKind: BoundKind)(
-      implicit comp: Comparator[_ >: A]): Iterator[B] = {
+  def projectionValuesIterator[A, B](tree: Tree[A, B], start: A, startKind: BoundKind, end: A,
+      endKind: BoundKind)(implicit comp: Comparator[_ >: A]): Iterator[B] = {
     new ProjectionValuesIterator(tree, start, startKind, end, endKind)
   }
 
-  private[this] abstract class ProjectionIterator[A, B, R](tree: Tree[A, B],
-      start: A, startKind: BoundKind, end: A, endKind: BoundKind)(
-      implicit comp: Comparator[_ >: A])
-      extends AbstractTreeIterator[A, B, R](
-          tree,
-          ProjectionIterator.nullIfAfterEnd(
-              minNodeAfter(tree.root, start, startKind), end, endKind)) {
+  private[this] abstract class ProjectionIterator[A, B, R](tree: Tree[A, B], start: A,
+      startKind: BoundKind, end: A, endKind: BoundKind)(implicit comp: Comparator[_ >: A])
+      extends AbstractTreeIterator[A, B, R](tree,
+          ProjectionIterator.nullIfAfterEnd(minNodeAfter(tree.root, start, startKind), end,
+              endKind)) {
 
     protected final def advance(node: Node[A, B]): Node[A, B] =
       ProjectionIterator.nullIfAfterEnd(successor(node), end, endKind)
@@ -816,8 +799,8 @@ private[util] object RedBlackTree {
 
   private[this] object ProjectionIterator {
     @inline
-    private def nullIfAfterEnd[A, B](node: Node[A, B], end: A,
-        endKind: BoundKind)(implicit comp: Comparator[_ >: A]): Node[A, B] = {
+    private def nullIfAfterEnd[A, B](node: Node[A, B], end: A, endKind: BoundKind)(
+        implicit comp: Comparator[_ >: A]): Node[A, B] = {
       if (endKind != NoBound && (node ne null) &&
           !isWithinUpperBound(node.key, end, endKind)) {
         null
@@ -827,25 +810,22 @@ private[util] object RedBlackTree {
     }
   }
 
-  private[this] final class ProjectionEntriesIterator[A, B](tree: Tree[A, B],
-      start: A, startKind: BoundKind, end: A, endKind: BoundKind)(
-      implicit comp: Comparator[_ >: A])
+  private[this] final class ProjectionEntriesIterator[A, B](tree: Tree[A, B], start: A,
+      startKind: BoundKind, end: A, endKind: BoundKind)(implicit comp: Comparator[_ >: A])
       extends ProjectionIterator[A, B, Map.Entry[A, B]](tree, start, startKind, end, endKind) {
 
     def nextResult(node: Node[A, B]): Map.Entry[A, B] = node
   }
 
-  private[this] final class ProjectionKeysIterator[A, B](tree: Tree[A, B],
-      start: A, startKind: BoundKind, end: A, endKind: BoundKind)(
-      implicit comp: Comparator[_ >: A])
+  private[this] final class ProjectionKeysIterator[A, B](tree: Tree[A, B], start: A,
+      startKind: BoundKind, end: A, endKind: BoundKind)(implicit comp: Comparator[_ >: A])
       extends ProjectionIterator[A, B, A](tree, start, startKind, end, endKind) {
 
     def nextResult(node: Node[A, B]): A = node.key
   }
 
-  private[this] final class ProjectionValuesIterator[A, B](tree: Tree[A, B],
-      start: A, startKind: BoundKind, end: A, endKind: BoundKind)(
-      implicit comp: Comparator[_ >: A])
+  private[this] final class ProjectionValuesIterator[A, B](tree: Tree[A, B], start: A,
+      startKind: BoundKind, end: A, endKind: BoundKind)(implicit comp: Comparator[_ >: A])
       extends ProjectionIterator[A, B, B](tree, start, startKind, end, endKind) {
 
     def nextResult(node: Node[A, B]): B = node.value
@@ -863,47 +843,40 @@ private[util] object RedBlackTree {
    */
 
   def descendingIterator[A, B](tree: Tree[A, B]): Iterator[Map.Entry[A, B]] = {
-    descendingIterator(tree, null.asInstanceOf[A], NoBound,
-        null.asInstanceOf[A], NoBound)(null)
+    descendingIterator(tree, null.asInstanceOf[A], NoBound, null.asInstanceOf[A], NoBound)(null)
   }
 
   def descendingKeysIterator[A, B](tree: Tree[A, B]): Iterator[A] = {
-    descendingKeysIterator(tree, null.asInstanceOf[A], NoBound,
-        null.asInstanceOf[A], NoBound)(null)
+    descendingKeysIterator(tree, null.asInstanceOf[A], NoBound, null.asInstanceOf[A], NoBound)(null)
   }
 
   def descendingValuesIterator[A, B](tree: Tree[A, B]): Iterator[B] = {
-    descendingValuesIterator(tree, null.asInstanceOf[A], NoBound,
-        null.asInstanceOf[A], NoBound)(null)
+    descendingValuesIterator(tree, null.asInstanceOf[A], NoBound, null.asInstanceOf[A], NoBound)(
+        null)
   }
 
   // ---- descending projection iterators ----
 
-  def descendingIterator[A, B](tree: Tree[A, B],
-      start: A, startKind: BoundKind, end: A, endKind: BoundKind)(
-      implicit comp: Comparator[_ >: A]): Iterator[Map.Entry[A, B]] = {
+  def descendingIterator[A, B](tree: Tree[A, B], start: A, startKind: BoundKind, end: A,
+      endKind: BoundKind)(implicit comp: Comparator[_ >: A]): Iterator[Map.Entry[A, B]] = {
     new DescendingEntriesIterator(tree, start, startKind, end, endKind)
   }
 
-  def descendingKeysIterator[A, B](tree: Tree[A, B],
-      start: A, startKind: BoundKind, end: A, endKind: BoundKind)(
-      implicit comp: Comparator[_ >: A]): Iterator[A] = {
+  def descendingKeysIterator[A, B](tree: Tree[A, B], start: A, startKind: BoundKind, end: A,
+      endKind: BoundKind)(implicit comp: Comparator[_ >: A]): Iterator[A] = {
     new DescendingKeysIterator(tree, start, startKind, end, endKind)
   }
 
-  def descendingValuesIterator[A, B](tree: Tree[A, B],
-      start: A, startKind: BoundKind, end: A, endKind: BoundKind)(
-      implicit comp: Comparator[_ >: A]): Iterator[B] = {
+  def descendingValuesIterator[A, B](tree: Tree[A, B], start: A, startKind: BoundKind, end: A,
+      endKind: BoundKind)(implicit comp: Comparator[_ >: A]): Iterator[B] = {
     new DescendingValuesIterator(tree, start, startKind, end, endKind)
   }
 
-  private[this] abstract class DescendingTreeIterator[A, B, R](tree: Tree[A, B],
-      start: A, startKind: BoundKind, end: A, endKind: BoundKind)(
-      implicit comp: Comparator[_ >: A])
-      extends AbstractTreeIterator[A, B, R](
-          tree,
-          DescendingTreeIterator.nullIfBeforeEnd(
-              maxNodeBefore(tree.root, start, startKind), end, endKind)) {
+  private[this] abstract class DescendingTreeIterator[A, B, R](tree: Tree[A, B], start: A,
+      startKind: BoundKind, end: A, endKind: BoundKind)(implicit comp: Comparator[_ >: A])
+      extends AbstractTreeIterator[A, B, R](tree,
+          DescendingTreeIterator.nullIfBeforeEnd(maxNodeBefore(tree.root, start, startKind), end,
+              endKind)) {
 
     protected final def advance(node: Node[A, B]): Node[A, B] =
       DescendingTreeIterator.nullIfBeforeEnd(predecessor(node), end, endKind)
@@ -911,8 +884,8 @@ private[util] object RedBlackTree {
 
   private[this] object DescendingTreeIterator {
     @inline
-    private def nullIfBeforeEnd[A, B](node: Node[A, B], end: A,
-        endKind: BoundKind)(implicit comp: Comparator[_ >: A]): Node[A, B] = {
+    private def nullIfBeforeEnd[A, B](node: Node[A, B], end: A, endKind: BoundKind)(
+        implicit comp: Comparator[_ >: A]): Node[A, B] = {
       if (endKind != NoBound && (node ne null) &&
           !isWithinLowerBound(node.key, end, endKind)) {
         null
@@ -922,25 +895,22 @@ private[util] object RedBlackTree {
     }
   }
 
-  private[this] final class DescendingEntriesIterator[A, B](tree: Tree[A, B],
-      start: A, startKind: BoundKind, end: A, endKind: BoundKind)(
-      implicit comp: Comparator[_ >: A])
+  private[this] final class DescendingEntriesIterator[A, B](tree: Tree[A, B], start: A,
+      startKind: BoundKind, end: A, endKind: BoundKind)(implicit comp: Comparator[_ >: A])
       extends DescendingTreeIterator[A, B, Map.Entry[A, B]](tree, start, startKind, end, endKind) {
 
     def nextResult(node: Node[A, B]): Map.Entry[A, B] = node
   }
 
-  private[this] final class DescendingKeysIterator[A, B](tree: Tree[A, B],
-      start: A, startKind: BoundKind, end: A, endKind: BoundKind)(
-      implicit comp: Comparator[_ >: A])
+  private[this] final class DescendingKeysIterator[A, B](tree: Tree[A, B], start: A,
+      startKind: BoundKind, end: A, endKind: BoundKind)(implicit comp: Comparator[_ >: A])
       extends DescendingTreeIterator[A, B, A](tree, start, startKind, end, endKind) {
 
     def nextResult(node: Node[A, B]): A = node.key
   }
 
-  private[this] final class DescendingValuesIterator[A, B](tree: Tree[A, B],
-      start: A, startKind: BoundKind, end: A, endKind: BoundKind)(
-      implicit comp: Comparator[_ >: A])
+  private[this] final class DescendingValuesIterator[A, B](tree: Tree[A, B], start: A,
+      startKind: BoundKind, end: A, endKind: BoundKind)(implicit comp: Comparator[_ >: A])
       extends DescendingTreeIterator[A, B, B](tree, start, startKind, end, endKind) {
 
     def nextResult(node: Node[A, B]): B = node.value
@@ -950,8 +920,8 @@ private[util] object RedBlackTree {
 
   /** Common implementation of `fromOrderedKeys` and `fromOrderedEntries`. */
   @noinline
-  def fromOrdered[A, B, C](xs: Iterator[A], size: Int,
-      keyOf: js.Function1[A, B], valueOf: js.Function1[A, C]): Tree[B, C] = {
+  def fromOrdered[A, B, C](xs: Iterator[A], size: Int, keyOf: js.Function1[A, B],
+      valueOf: js.Function1[A, C]): Tree[B, C] = {
     // maximum depth of non-leaf nodes == floor(log2(size))
     val maxUsedDepth = 32 - Integer.numberOfLeadingZeros(size)
 

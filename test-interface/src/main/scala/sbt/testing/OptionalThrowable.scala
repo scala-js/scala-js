@@ -13,15 +13,14 @@
 package sbt.testing
 
 /** An optional <code>Throwable</code>. */
-final class OptionalThrowable(
-    private val exception: Throwable) extends Serializable {
+final class OptionalThrowable(private val exception: Throwable) extends Serializable {
 
   def this() = this(null)
 
   /** Indicates whether this <code>OptionalThrowable</code> is "defined,"
    *  <em>i.e.</em>, contains a <code>Throwable</code>.
    *
-   * @return true if this <code>OptionalThrowable</code> contains a
+   *  @return true if this <code>OptionalThrowable</code> contains a
    *         <code>Throwable</code>
    */
   def isDefined(): Boolean = exception != null
@@ -42,9 +41,9 @@ final class OptionalThrowable(
    *  <code>isDefined</code> returns <code>true</code> before calling this
    *  method.
    *
-   * @return the contained <code>Throwable</code>, if this
+   *  @return the contained <code>Throwable</code>, if this
    *         <code>OptionalThrowable</code> is defined
-   * @throws java.lang.IllegalStateException if this
+   *  @throws java.lang.IllegalStateException if this
    *     <code>OptionalThrowable</code> is not defined.
    */
   def get(): Throwable = {

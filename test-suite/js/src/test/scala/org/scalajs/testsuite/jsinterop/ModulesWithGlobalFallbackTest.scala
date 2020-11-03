@@ -90,8 +90,8 @@ class ModulesWithGlobalFallbackTest {
   }
 
   @Test def testImportIntegrated(): Unit = {
-    val b = Buffer.from(js.Array[Short](0xe3, 0x81, 0x93, 0xe3, 0x82, 0x93,
-        0xe3, 0x81, 0xab, 0xe3, 0x81, 0xa1, 0xe3, 0x81, 0xaf))
+    val b = Buffer.from(js.Array[Short](0xe3, 0x81, 0x93, 0xe3, 0x82, 0x93, 0xe3, 0x81, 0xab, 0xe3,
+            0x81, 0xa1, 0xe3, 0x81, 0xaf))
     val decoder = new StringDecoder()
     assertTrue(Buffer.isBuffer(b))
     assertFalse(Buffer.isBuffer(decoder))
@@ -103,8 +103,7 @@ class ModulesWithGlobalFallbackTest {
 
 object ModulesWithGlobalFallbackTest {
   private object QueryStringFallbackImpl extends js.Object {
-    def stringify(obj: js.Dictionary[String], sep: String = "&",
-        eq: String = "="): String = {
+    def stringify(obj: js.Dictionary[String], sep: String = "&", eq: String = "="): String = {
       var result = ""
       for ((key, value) <- obj) {
         if (result != "")
@@ -119,21 +118,19 @@ object ModulesWithGlobalFallbackTest {
     val EOL: String = "\n"
   }
 
-  private class StringDecoderFallbackImpl(charsetName: String = "utf8")
-      extends js.Object {
+  private class StringDecoderFallbackImpl(charsetName: String = "utf8") extends js.Object {
     import java.nio.charset._
 
     private val charset = Charset.forName(charsetName)
     private val decoder = charset.newDecoder()
 
-    private def writeInternal(buffer: Uint8Array,
-        endOfInput: Boolean): String = {
-      val in = TypedArrayBuffer.wrap(buffer.buffer, buffer.byteOffset,
-          buffer.byteLength)
+    private def writeInternal(buffer: Uint8Array, endOfInput: Boolean): String = {
+      val in = TypedArrayBuffer.wrap(buffer.buffer, buffer.byteOffset, buffer.byteLength)
 
       // +2 so that a pending incomplete character has some space
       val out = CharBuffer.allocate(
-          Math.ceil(decoder.maxCharsPerByte().toDouble * in.remaining()).toInt + 2)
+          Math.ceil(decoder.maxCharsPerByte().toDouble * in.remaining()).toInt + 2
+      )
 
       val result = decoder.decode(in, out, endOfInput)
       if (!result.isUnderflow())
@@ -172,30 +169,32 @@ object ModulesWithGlobalFallbackTest {
 
     if (isNoModule) {
       val global = org.scalajs.testsuite.utils.JSUtils.globalObject
-      global.ModulesWithGlobalFallbackTest_QueryString =
-        QueryStringFallbackImpl
-      global.ModulesWithGlobalFallbackTest_OS =
-        OSFallbackImpl
+      global.ModulesWithGlobalFallbackTest_QueryString = QueryStringFallbackImpl
+      global.ModulesWithGlobalFallbackTest_OS = OSFallbackImpl
       global.ModulesWithGlobalFallbackTest_StringDecoder =
         js.constructorOf[StringDecoderFallbackImpl]
-      global.ModulesWithGlobalFallbackTest_Buffer =
-        js.constructorOf[Uint8Array]
-      global.ModulesWithGlobalFallbackTest_BufferStatic =
-        BufferStaticFallbackImpl
+      global.ModulesWithGlobalFallbackTest_Buffer = js.constructorOf[Uint8Array]
+      global.ModulesWithGlobalFallbackTest_BufferStatic = BufferStaticFallbackImpl
     }
   }
 
   @js.native
-  @JSImport("querystring", JSImport.Namespace,
-      globalFallback = "ModulesWithGlobalFallbackTest_QueryString")
+  @JSImport(
+      "querystring",
+      JSImport.Namespace,
+      globalFallback = "ModulesWithGlobalFallbackTest_QueryString"
+  )
   object QueryString extends js.Object {
     def stringify(obj: js.Dictionary[String], sep: String = "&",
         eq: String = "="): String = js.native
   }
 
   @js.native
-  @JSImport("querystring", JSImport.Default,
-      globalFallback = "ModulesWithGlobalFallbackTest_QueryString")
+  @JSImport(
+      "querystring",
+      JSImport.Default,
+      globalFallback = "ModulesWithGlobalFallbackTest_QueryString"
+  )
   object QueryStringAsDefault extends js.Object {
     def stringify(obj: js.Dictionary[String], sep: String = "&",
         eq: String = "="): String = js.native
@@ -203,27 +202,31 @@ object ModulesWithGlobalFallbackTest {
 
   object QueryStringWithNativeDef {
     @js.native
-    @JSImport("querystring", "stringify",
-        globalFallback = "ModulesWithGlobalFallbackTest_QueryString.stringify")
+    @JSImport(
+        "querystring",
+        "stringify",
+        globalFallback = "ModulesWithGlobalFallbackTest_QueryString.stringify"
+    )
     def stringify(obj: js.Dictionary[String], sep: String = "&",
         eq: String = "="): String = js.native
   }
 
   object OSWithNativeVal {
     @js.native
-    @JSImport("os", "EOL",
-        globalFallback = "ModulesWithGlobalFallbackTest_OS.EOL")
+    @JSImport("os", "EOL", globalFallback = "ModulesWithGlobalFallbackTest_OS.EOL")
     val EOL: String = js.native
 
     @js.native
-    @JSImport("os", "EOL",
-        globalFallback = "ModulesWithGlobalFallbackTest_OS.EOL")
+    @JSImport("os", "EOL", globalFallback = "ModulesWithGlobalFallbackTest_OS.EOL")
     def EOLAsDef: String = js.native
   }
 
   @js.native
-  @JSImport("string_decoder", "StringDecoder",
-      globalFallback = "ModulesWithGlobalFallbackTest_StringDecoder")
+  @JSImport(
+      "string_decoder",
+      "StringDecoder",
+      globalFallback = "ModulesWithGlobalFallbackTest_StringDecoder"
+  )
   class StringDecoder(encoding: String = "utf8") extends js.Object {
     def write(buffer: Buffer): String = js.native
     def end(buffer: Buffer): String = js.native
@@ -231,14 +234,12 @@ object ModulesWithGlobalFallbackTest {
   }
 
   @js.native
-  @JSImport("buffer", "Buffer",
-      globalFallback = "ModulesWithGlobalFallbackTest_Buffer")
+  @JSImport("buffer", "Buffer", globalFallback = "ModulesWithGlobalFallbackTest_Buffer")
   class Buffer private[this] () extends js.typedarray.Uint8Array(0)
 
   // This API requires Node.js >= v5.10.0
   @js.native
-  @JSImport("buffer", "Buffer",
-      globalFallback = "ModulesWithGlobalFallbackTest_BufferStatic")
+  @JSImport("buffer", "Buffer", globalFallback = "ModulesWithGlobalFallbackTest_BufferStatic")
   object Buffer extends js.Object {
     def alloc(size: Int): Buffer = js.native
     def from(array: js.Array[Short]): Buffer = js.native

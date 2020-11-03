@@ -42,10 +42,8 @@ import org.scalajs.linker.interface.unstable.OutputFileImpl
  */
 @deprecated("Part of old Linker interface", "1.3.0")
 final class LinkerOutput private (
-    val jsFile: LinkerOutput.File,
-    val sourceMap: Option[LinkerOutput.File],
-    val sourceMapURI: Option[URI],
-    val jsFileURI: Option[URI]
+    val jsFile: LinkerOutput.File, val sourceMap: Option[LinkerOutput.File],
+    val sourceMapURI: Option[URI], val jsFileURI: Option[URI]
 ) {
   private def this(jsFile: LinkerOutput.File) =
     this(jsFile, None, None, None)
@@ -59,10 +57,8 @@ final class LinkerOutput private (
   def withJSFileURI(jsFileURI: URI): LinkerOutput =
     copy(jsFileURI = Some(jsFileURI))
 
-  private def copy(
-      jsFile: LinkerOutput.File = jsFile,
-      sourceMap: Option[LinkerOutput.File] = sourceMap,
-      sourceMapURI: Option[URI] = sourceMapURI,
+  private def copy(jsFile: LinkerOutput.File = jsFile,
+      sourceMap: Option[LinkerOutput.File] = sourceMap, sourceMapURI: Option[URI] = sourceMapURI,
       jsFileURI: Option[URI] = jsFileURI): LinkerOutput = {
     new LinkerOutput(jsFile, sourceMap, sourceMapURI, jsFileURI)
   }

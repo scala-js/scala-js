@@ -37,13 +37,9 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
 import Analysis._
 import Infos.{NamespacedMethodName, ReachabilityInfo}
 
-private final class Analyzer(config: CommonPhaseConfig,
-    moduleInitializers: Seq[ModuleInitializer],
-    symbolRequirements: SymbolRequirement,
-    allowAddingSyntheticMethods: Boolean,
-    checkAbstractReachability: Boolean,
-    inputProvider: Analyzer.InputProvider,
-    ec: ExecutionContext)
+private final class Analyzer(config: CommonPhaseConfig, moduleInitializers: Seq[ModuleInitializer],
+    symbolRequirements: SymbolRequirement, allowAddingSyntheticMethods: Boolean,
+    checkAbstractReachability: Boolean, inputProvider: Analyzer.InputProvider, ec: ExecutionContext)
     extends Analysis {
 
   import Analyzer._
@@ -89,11 +85,10 @@ private final class Analyzer(config: CommonPhaseConfig,
       case Some(future) =>
         workQueue.enqueue(future) { data =>
           if (data.kind != ClassKind.Class || data.superClass.isDefined ||
-            data.interfaces.nonEmpty) {
+              data.interfaces.nonEmpty) {
             _errors += InvalidJavaLangObjectClass(fromAnalyzer)
           } else {
-            objectClassInfo = new ClassInfo(data,
-                unvalidatedSuperClass = None,
+            objectClassInfo = new ClassInfo(data, unvalidatedSuperClass = None,
                 unvalidatedInterfaces = Nil, nonExistent = false)
 
             objectClassInfo.link()
@@ -160,13 +155,11 @@ private final class Analyzer(config: CommonPhaseConfig,
      * symbol requirements.
      */
 
-    def withClass(className: ClassName)(onSuccess: ClassInfo => Unit)(
-        implicit from: From): Unit = {
+    def withClass(className: ClassName)(onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
       lookupClass(className, ignoreMissing = optional)(onSuccess)
     }
 
-    def withMethod(className: ClassName, methodName: MethodName)(
-        onSuccess: ClassInfo => Unit)(
+    def withMethod(className: ClassName, methodName: MethodName)(onSuccess: ClassInfo => Unit)(
         implicit from: From): Unit = {
       withClass(className) { clazz =>
         val doReach = !optional || clazz.tryLookupMethod(methodName).isDefined
@@ -195,7 +188,7 @@ private final class Analyzer(config: CommonPhaseConfig,
 
       case InstanceTests(origin, className) =>
         implicit val from = FromCore(origin)
-        withClass(className){ clazz =>
+        withClass(className) { clazz =>
           objectClassInfo.staticDependencies += clazz.className
           clazz.useInstanceTests()
         }
@@ -236,8 +229,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
-  private def reachInitializers(
-      moduleInitializers: Seq[ModuleInitializer]): Unit = {
+  private def reachInitializers(moduleInitializers: Seq[ModuleInitializer]): Unit = {
     implicit val from = FromCore("module initializers")
 
     for (moduleInitializer <- moduleInitializers) {
@@ -271,7 +263,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         // Check there is only a single module.
         val publicModuleIDs = (
             infos.map(_.moduleID) ++
-            moduleInitializers.map(i => ModuleID(i.moduleID))
+              moduleInitializers.map(i => ModuleID(i.moduleID))
         ).distinct
 
         if (publicModuleIDs.size > 1)
@@ -324,8 +316,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
-  private def lookupClass(className: ClassName,
-      ignoreMissing: Boolean = false)(
+  private def lookupClass(className: ClassName, ignoreMissing: Boolean = false)(
       onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
     lookupClassForLinking(className, Set.empty) {
       case info: ClassInfo =>
@@ -340,8 +331,7 @@ private final class Analyzer(config: CommonPhaseConfig,
   }
 
   private def lookupClassForLinking(className: ClassName,
-      knownDescendants: Set[LoadingClass] = Set.empty)(
-      onSuccess: LoadingResult => Unit): Unit = {
+      knownDescendants: Set[LoadingClass] = Set.empty)(onSuccess: LoadingResult => Unit): Unit = {
 
     _classInfos.get(className) match {
       case None =>
@@ -356,17 +346,14 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
-
   private sealed trait LoadingResult
   private sealed trait ClassLoadingState
 
   // sealed instead of final because of spurious unchecked warnings
-  private sealed case class CycleInfo(cycle: List[ClassName],
-      root: LoadingClass)
+  private sealed case class CycleInfo(cycle: List[ClassName], root: LoadingClass)
       extends LoadingResult
 
-  private final class LoadingClass(className: ClassName)
-      extends ClassLoadingState {
+  private final class LoadingClass(className: ClassName) extends ClassLoadingState {
 
     private val promise = Promise[LoadingResult]()
     private var knownDescendants = Set[LoadingClass](this)
@@ -418,8 +405,8 @@ private final class Analyzer(config: CommonPhaseConfig,
       }
     }
 
-    private def lookupAncestors(classNames: List[ClassName])(
-        loaded: List[ClassInfo] => Unit)(cycle: CycleInfo => Unit): Unit = {
+    private def lookupAncestors(classNames: List[ClassName])(loaded: List[ClassInfo] => Unit)(
+        cycle: CycleInfo => Unit): Unit = {
       classNames match {
         case first :: rest =>
           lookupClassForLinking(first, knownDescendants) {
@@ -434,11 +421,8 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
-  private class ClassInfo(
-      val data: Infos.ClassInfo,
-      unvalidatedSuperClass: Option[ClassInfo],
-      unvalidatedInterfaces: List[ClassInfo],
-      val nonExistent: Boolean)
+  private class ClassInfo(val data: Infos.ClassInfo, unvalidatedSuperClass: Option[ClassInfo],
+      unvalidatedInterfaces: List[ClassInfo], val nonExistent: Boolean)
       extends Analysis.ClassInfo with ClassLoadingState with LoadingResult {
 
     var linkedFrom: List[From] = Nil
@@ -566,12 +550,11 @@ private final class Analyzer(config: CommonPhaseConfig,
       def from = FromClass(this)
 
       val validSuperIntfKind = kind match {
-        case ClassKind.Class | ClassKind.ModuleClass |
-            ClassKind.HijackedClass | ClassKind.Interface =>
+        case ClassKind.Class | ClassKind.ModuleClass | ClassKind.HijackedClass |
+            ClassKind.Interface =>
           ClassKind.Interface
-        case ClassKind.JSClass | ClassKind.JSModuleClass |
-            ClassKind.NativeJSClass | ClassKind.NativeJSModuleClass |
-            ClassKind.AbstractJSType =>
+        case ClassKind.JSClass | ClassKind.JSModuleClass | ClassKind.NativeJSClass |
+            ClassKind.NativeJSModuleClass | ClassKind.AbstractJSType =>
           ClassKind.AbstractJSType
       }
 
@@ -629,8 +612,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       nsMethodInfos
     }
 
-    def methodInfos(
-        namespace: MemberNamespace): mutable.Map[MethodName, MethodInfo] = {
+    def methodInfos(namespace: MemberNamespace): mutable.Map[MethodName, MethodInfo] = {
       nsMethodInfos(namespace.ordinal)
     }
 
@@ -728,8 +710,8 @@ private final class Analyzer(config: CommonPhaseConfig,
         if !m.isAbstract && !m.isDefaultBridge
       } yield m
 
-      val notShadowed = candidates filterNot { m =>
-        candidates exists { n =>
+      val notShadowed = candidates.filterNot { m =>
+        candidates.exists { n =>
           (n ne m) && n.owner.ancestors.contains(m.owner)
         }
       }
@@ -756,30 +738,30 @@ private final class Analyzer(config: CommonPhaseConfig,
       val methodName = target.methodName
       val targetOwner = target.owner
 
-      val syntheticInfo = makeSyntheticMethodInfo(
-          methodName = methodName,
+      val syntheticInfo = makeSyntheticMethodInfo(methodName = methodName,
           methodsCalledStatically = List(
               targetOwner.className -> NamespacedMethodName(MemberNamespace.Public, methodName)))
       val m = new MethodInfo(this, syntheticInfo)
-      m.syntheticKind = MethodSyntheticKind.DefaultBridge(
-          targetOwner.className)
+      m.syntheticKind = MethodSyntheticKind.DefaultBridge(targetOwner.className)
       publicMethodInfos += methodName -> m
       m
     }
 
-    def tryLookupReflProxyMethod(proxyName: MethodName)(
-        onSuccess: MethodInfo => Unit)(implicit from: From): Unit = {
+    def tryLookupReflProxyMethod(proxyName: MethodName)(onSuccess: MethodInfo => Unit)(
+        implicit from: From): Unit = {
       if (!allowAddingSyntheticMethods) {
         tryLookupMethod(proxyName).foreach(onSuccess)
       } else {
-        publicMethodInfos.get(proxyName).fold {
-          workQueue.enqueue(findReflectiveTarget(proxyName)) { maybeTarget =>
-            maybeTarget.foreach { reflectiveTarget =>
-              val proxy = createReflProxy(proxyName, reflectiveTarget.methodName)
-              onSuccess(proxy)
+        publicMethodInfos
+          .get(proxyName)
+          .fold {
+            workQueue.enqueue(findReflectiveTarget(proxyName)) { maybeTarget =>
+              maybeTarget.foreach { reflectiveTarget =>
+                val proxy = createReflProxy(proxyName, reflectiveTarget.methodName)
+                onSuccess(proxy)
+              }
             }
-          }
-        } (onSuccess)
+          }(onSuccess)
       }
     }
 
@@ -841,8 +823,9 @@ private final class Analyzer(config: CommonPhaseConfig,
       locally {
         implicit val iec = ec
 
-        val hasMoreSpecific = Future.traverse(specificityChecks)(
-            checks => Future.sequence(checks).map(_.contains(true)))
+        val hasMoreSpecific = Future.traverse(specificityChecks)(checks =>
+          Future.sequence(checks).map(_.contains(true))
+        )
 
         hasMoreSpecific.map { hms =>
           val targets = candidates.zip(hms).filterNot(_._2).map(_._1)
@@ -856,8 +839,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       }
     }
 
-    private def reflProxyMatches(methodName: MethodName,
-        proxyName: MethodName): Boolean = {
+    private def reflProxyMatches(methodName: MethodName, proxyName: MethodName): Boolean = {
       methodName.simpleName == proxyName.simpleName &&
       methodName.paramTypeRefs == proxyName.paramTypeRefs
     }
@@ -885,8 +867,8 @@ private final class Analyzer(config: CommonPhaseConfig,
       (left, right) match {
         case (ClassRef(leftCls), ClassRef(rightCls)) =>
           classIsMoreSpecific(leftCls, rightCls)
-        case (ArrayTypeRef(ClassRef(leftBaseCls), leftDepth),
-            ArrayTypeRef(ClassRef(rightBaseCls), rightDepth)) =>
+        case (ArrayTypeRef(ClassRef(leftBaseCls), leftDepth), ArrayTypeRef(ClassRef(rightBaseCls),
+                    rightDepth)) =>
           if (leftDepth != rightDepth) Future.successful(false)
           else classIsMoreSpecific(leftBaseCls, rightBaseCls)
         case (ArrayTypeRef(_, _), ClassRef(ObjectClass)) =>
@@ -896,13 +878,10 @@ private final class Analyzer(config: CommonPhaseConfig,
       }
     }
 
-    private def createReflProxy(proxyName: MethodName,
-        targetName: MethodName): MethodInfo = {
-      assert(this.isScalaClass,
-          s"Cannot create reflective proxy in non-Scala class $this")
+    private def createReflProxy(proxyName: MethodName, targetName: MethodName): MethodInfo = {
+      assert(this.isScalaClass, s"Cannot create reflective proxy in non-Scala class $this")
 
-      val syntheticInfo = makeSyntheticMethodInfo(
-          methodName = proxyName,
+      val syntheticInfo = makeSyntheticMethodInfo(methodName = proxyName,
           methodsCalled = List(this.className -> targetName))
       val m = new MethodInfo(this, syntheticInfo)
       m.syntheticKind = MethodSyntheticKind.ReflectiveProxy(targetName)
@@ -910,8 +889,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       m
     }
 
-    def lookupStaticLikeMethod(namespace: MemberNamespace,
-        methodName: MethodName): MethodInfo = {
+    def lookupStaticLikeMethod(namespace: MemberNamespace, methodName: MethodName): MethodInfo = {
       tryLookupStaticLikeMethod(namespace, methodName).getOrElse {
         val syntheticData = makeSyntheticMethodInfo(methodName, namespace)
         val m = new MethodInfo(this, syntheticData)
@@ -931,8 +909,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     def reachStaticInitializer(): Unit = {
       implicit val from = FromExports
 
-      tryLookupStaticLikeMethod(MemberNamespace.StaticConstructor,
-          StaticInitializerName).foreach {
+      tryLookupStaticLikeMethod(MemberNamespace.StaticConstructor, StaticInitializerName).foreach {
         _.reachStatic()(fromAnalyzer)
       }
     }
@@ -996,10 +973,10 @@ private final class Analyzer(config: CommonPhaseConfig,
 
           if (isJSClass) {
             superClass.foreach(_.instantiated())
-            tryLookupStaticLikeMethod(MemberNamespace.StaticConstructor,
-                ClassInitializerName).foreach {
-              staticInit => staticInit.reachStatic()
-            }
+            tryLookupStaticLikeMethod(MemberNamespace.StaticConstructor, ClassInitializerName)
+              .foreach { staticInit =>
+                staticInit.reachStatic()
+              }
           } else {
             data.jsNativeLoadSpec match {
               case None =>
@@ -1010,8 +987,8 @@ private final class Analyzer(config: CommonPhaseConfig,
           }
 
           for (reachabilityInfo <- data.exportedMembers)
-            followReachabilityInfo(reachabilityInfo, staticDependencies,
-                externalDependencies)(FromExports)
+            followReachabilityInfo(reachabilityInfo, staticDependencies, externalDependencies)(
+                FromExports)
         }
       }
     }
@@ -1035,8 +1012,8 @@ private final class Analyzer(config: CommonPhaseConfig,
         // Reach exported members
         if (!isJSClass) {
           for (reachabilityInfo <- data.exportedMembers)
-            followReachabilityInfo(reachabilityInfo, staticDependencies,
-                externalDependencies)(FromExports)
+            followReachabilityInfo(reachabilityInfo, staticDependencies, externalDependencies)(
+                FromExports)
         }
       }
     }
@@ -1074,8 +1051,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       }
     }
 
-    private def callMethodResolved(methodName: MethodName)(
-        implicit from: From): Unit = {
+    private def callMethodResolved(methodName: MethodName)(implicit from: From): Unit = {
       if (methodName.isReflectiveProxy) {
         tryLookupReflProxyMethod(methodName)(_.reach(this))
       } else {
@@ -1085,12 +1061,10 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     def callMethodStatically(namespacedMethodName: NamespacedMethodName)(
         implicit from: From): Unit = {
-      callMethodStatically(namespacedMethodName.namespace,
-          namespacedMethodName.methodName)
+      callMethodStatically(namespacedMethodName.namespace, namespacedMethodName.methodName)
     }
 
-    def callMethodStatically(namespace: MemberNamespace,
-        methodName: MethodName)(
+    def callMethodStatically(namespace: MemberNamespace, methodName: MethodName)(
         implicit from: From): Unit = {
       assert(!methodName.isReflectiveProxy,
           s"Trying to call statically refl proxy $this.$methodName")
@@ -1100,8 +1074,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         lookupMethod(methodName).reachStatic()
     }
 
-    def useJSNativeMember(name: MethodName)(
-        implicit from: From): Option[JSNativeLoadSpec] = {
+    def useJSNativeMember(name: MethodName)(implicit from: From): Option[JSNativeLoadSpec] = {
       val maybeJSNativeLoadSpec = data.jsNativeMembers.get(name)
       if (jsNativeMembersUsed.add(name)) {
         maybeJSNativeLoadSpec match {
@@ -1126,8 +1099,8 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
-  private class MethodInfo(val owner: ClassInfo,
-      data: Infos.MethodInfo) extends Analysis.MethodInfo {
+  private class MethodInfo(val owner: ClassInfo, data: Infos.MethodInfo)
+      extends Analysis.MethodInfo {
 
     val methodName = data.methodName
     val namespace = data.namespace
@@ -1158,8 +1131,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       s"$owner.${methodName.simpleName.nameString}"
 
     def reachStatic()(implicit from: From): Unit = {
-      assert(!isAbstract,
-          s"Trying to reach statically the abstract method $this")
+      assert(!isAbstract, s"Trying to reach statically the abstract method $this")
 
       checkExistent()
 
@@ -1182,14 +1154,10 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
 
     def reach(inClass: ClassInfo)(implicit from: From): Unit = {
-      assert(!namespace.isStatic,
-          s"Trying to dynamically reach the static method $this")
-      assert(!isAbstract,
-          s"Trying to dynamically reach the abstract method $this")
-      assert(owner.isAnyClass,
-          s"Trying to dynamically reach the non-class method $this")
-      assert(!namespace.isConstructor,
-          s"Trying to dynamically reach the constructor $this")
+      assert(!namespace.isStatic, s"Trying to dynamically reach the static method $this")
+      assert(!isAbstract, s"Trying to dynamically reach the abstract method $this")
+      assert(owner.isAnyClass, s"Trying to dynamically reach the non-class method $this")
+      assert(!namespace.isConstructor, s"Trying to dynamically reach the constructor $this")
 
       checkExistent()
 
@@ -1214,7 +1182,8 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
-  private class TopLevelExportInfo(data: Infos.TopLevelExportInfo) extends Analysis.TopLevelExportInfo {
+  private class TopLevelExportInfo(data: Infos.TopLevelExportInfo)
+      extends Analysis.TopLevelExportInfo {
     val owningClass: ClassName = data.owningClass
     val moduleID: ModuleID = data.moduleID
     val exportName: String = data.exportName
@@ -1227,14 +1196,13 @@ private final class Analyzer(config: CommonPhaseConfig,
     val externalDependencies: mutable.Set[String] = mutable.Set.empty
 
     def reach(): Unit = {
-      followReachabilityInfo(data.reachability, staticDependencies,
-          externalDependencies)(FromExports)
+      followReachabilityInfo(data.reachability, staticDependencies, externalDependencies)(
+          FromExports)
     }
   }
 
   private def followReachabilityInfo(data: ReachabilityInfo,
-      staticDependencies: mutable.Set[ClassName],
-      externalDependencies: mutable.Set[String])(
+      staticDependencies: mutable.Set[ClassName], externalDependencies: mutable.Set[String])(
       implicit from: From): Unit = {
 
     def addInstanceDependency(info: ClassInfo) = {
@@ -1330,7 +1298,8 @@ private final class Analyzer(config: CommonPhaseConfig,
       val (className, members) = jsNativeMembersUsedIterator.next()
       lookupClass(className) { classInfo =>
         for (member <- members)
-          classInfo.useJSNativeMember(member)
+          classInfo
+            .useJSNativeMember(member)
             .foreach(addLoadSpec(externalDependencies, _))
       }
     }
@@ -1352,15 +1321,14 @@ private final class Analyzer(config: CommonPhaseConfig,
   }
 
   private def createMissingClassInfo(className: ClassName): Infos.ClassInfo = {
-    new Infos.ClassInfoBuilder(className, ClassKind.Class,
-        superClass = Some(ObjectClass), interfaces = Nil, jsNativeLoadSpec = None)
+    new Infos.ClassInfoBuilder(className, ClassKind.Class, superClass = Some(ObjectClass),
+        interfaces = Nil, jsNativeLoadSpec = None)
       .addMethod(makeSyntheticMethodInfo(NoArgConstructorName))
       .result()
   }
 
   private def makeSyntheticMethodInfo(
-      methodName: MethodName,
-      namespace: MemberNamespace = MemberNamespace.Public,
+      methodName: MethodName, namespace: MemberNamespace = MemberNamespace.Public,
       methodsCalled: List[(ClassName, MethodName)] = Nil,
       methodsCalledStatically: List[(ClassName, NamespacedMethodName)] = Nil,
       instantiatedClasses: List[ClassName] = Nil
@@ -1370,8 +1338,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       reachabilityInfoBuilder.addMethodCalled(className, methodName)
     for ((className, methodName) <- methodsCalledStatically)
       reachabilityInfoBuilder.addMethodCalledStatically(className, methodName)
-    Infos.MethodInfo(methodName, namespace, isAbstract = false,
-        reachabilityInfoBuilder.result())
+    Infos.MethodInfo(methodName, namespace, isAbstract = false, reachabilityInfoBuilder.result())
   }
 
 }
@@ -1380,12 +1347,10 @@ object Analyzer {
   private val getSuperclassMethodName =
     MethodName("getSuperclass", Nil, ClassRef(ClassClass))
 
-  def computeReachability(config: CommonPhaseConfig,
-      moduleInitializers: Seq[ModuleInitializer],
-      symbolRequirements: SymbolRequirement,
-      allowAddingSyntheticMethods: Boolean,
-      checkAbstractReachability: Boolean,
-      inputProvider: InputProvider)(implicit ec: ExecutionContext): Future[Analysis] = {
+  def computeReachability(config: CommonPhaseConfig, moduleInitializers: Seq[ModuleInitializer],
+      symbolRequirements: SymbolRequirement, allowAddingSyntheticMethods: Boolean,
+      checkAbstractReachability: Boolean, inputProvider: InputProvider)(
+      implicit ec: ExecutionContext): Future[Analysis] = {
     val analyzer = new Analyzer(config, moduleInitializers, symbolRequirements,
         allowAddingSyntheticMethods, checkAbstractReachability, inputProvider, ec)
     analyzer.computeReachability().map(_ => analyzer)
@@ -1418,7 +1383,7 @@ object Analyzer {
 
         case Failure(t) =>
           promise.tryFailure(t)
-      } (ec)
+      }(ec)
     }
 
     def join(): Future[Unit] = {

@@ -10,10 +10,9 @@
  * additional information regarding copyright ownership.
  */
 
-/**
- * All doc-comments marked as "MDN" are by Mozilla Contributors,
- * distributed under the Creative Commons Attribution-ShareAlike license from
- * https://developer.mozilla.org/en-US/docs/Web/Reference/API
+/** All doc-comments marked as "MDN" are by Mozilla Contributors,
+ *  distributed under the Creative Commons Attribution-ShareAlike license from
+ *  https://developer.mozilla.org/en-US/docs/Web/Reference/API
  */
 package scala.scalajs.js
 
@@ -30,6 +29,7 @@ import scala.scalajs.js.annotation._
  */
 @js.native
 sealed trait Dynamic extends js.Any with scala.Dynamic {
+
   /** Calls a method of this object. */
   @JSBracketCall
   def applyDynamic(name: String)(args: js.Any*): js.Dynamic = js.native
@@ -74,10 +74,12 @@ sealed trait Dynamic extends js.Any with scala.Dynamic {
 
 /** Factory for dynamically typed JavaScript values. */
 object Dynamic {
+
   /** Dynamic view of the global scope. */
   @js.native
   @JSGlobalScope
   object global extends js.Any with scala.Dynamic {
+
     /** Calls a top-level method (in the global scope). */
     @JSBracketCall
     def applyDynamic(name: String)(args: js.Any*): js.Dynamic = js.native
@@ -121,6 +123,7 @@ object Dynamic {
    *  }}}
    */
   object literal extends scala.Dynamic {
+
     /** Literal creation with named arguments.
      *
      *  Example:
@@ -128,8 +131,7 @@ object Dynamic {
      *  js.Dynamic.literal(name1 = "value", name2 = "value")
      *  }}}
      */
-    def applyDynamicNamed(name: String)(
-        fields: (String, js.Any)*): js.Object with js.Dynamic = {
+    def applyDynamicNamed(name: String)(fields: (String, js.Any)*): js.Object with js.Dynamic = {
       js.special.objectLiteral(fields: _*).asInstanceOf[js.Object with js.Dynamic]
     }
 
@@ -146,8 +148,7 @@ object Dynamic {
      *  js.Dynamic.literal("name1" -> "value", "name2" -> "value")
      *  }}}
      */
-    def applyDynamic(name: String)(
-        fields: (String, js.Any)*): js.Object with js.Dynamic = {
+    def applyDynamic(name: String)(fields: (String, js.Any)*): js.Object with js.Dynamic = {
       js.special.objectLiteral(fields: _*).asInstanceOf[js.Object with js.Dynamic]
     }
   }

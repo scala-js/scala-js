@@ -22,8 +22,7 @@ private[bridge] object TaskInfoBuilder {
       if (t == task.taskDef()) ""
       else Serializer.serialize(t)
 
-    new TaskInfo(runner.serializeTask(task, optSerializer),
-        task.taskDef(), task.tags().toList)
+    new TaskInfo(runner.serializeTask(task, optSerializer), task.taskDef(), task.tags().toList)
   }
 
   def attachTask(info: TaskInfo, runner: Runner): Task = {

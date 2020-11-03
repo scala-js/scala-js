@@ -48,12 +48,11 @@ class StaticForwardersWarningsTopLevelOnlyTest extends DirectTest with TestHelpe
     object a {
       def foo(x: Int): Int = x + 1
     }
-    """ hasWarns
-    s"""
+    """.hasWarns(s"""
       |newSource1.scala:4: warning: Not generating the static forwarders of a because its name differs only in case from the name of another class or trait in this compilation unit.
       |    object a {
       |           ^$jvmBackendMessage
-    """
+    """)
   }
 
   @Test

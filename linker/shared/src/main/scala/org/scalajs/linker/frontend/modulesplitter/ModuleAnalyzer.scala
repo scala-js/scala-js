@@ -25,6 +25,7 @@ private[modulesplitter] abstract class ModuleAnalyzer {
 
 private[modulesplitter] object ModuleAnalyzer {
   trait Analysis {
+
     /** Module this class is in.
      *
      *  If this returns None, the class is an abstract class.

@@ -31,8 +31,7 @@ import org.scalajs.linker.frontend.modulesplitter._
  *  Attention: [[LinkerFrontendImpl]] does not cache the IR input. It is
  *  advisable to do so, unless all IR is already in memory.
  */
-final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
-    extends LinkerFrontend {
+final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config) extends LinkerFrontend {
 
   /** Core specification that this linker frontend implements. */
   val coreSpec = config.commonConfig.coreSpec
@@ -53,18 +52,16 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
   /** Link and optionally optimize the given IR to a
    *  [[standard.ModuleSet ModuleSet]].
    */
-  def link(irFiles: Seq[IRFile],
-      moduleInitializers: Seq[ModuleInitializer],
+  def link(irFiles: Seq[IRFile], moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger)(
       implicit ec: ExecutionContext): Future[ModuleSet] = {
 
-    val preOptimizerRequirements = optOptimizer.fold(symbolRequirements) {
-      optimizer => symbolRequirements ++ optimizer.symbolRequirements
+    val preOptimizerRequirements = optOptimizer.fold(symbolRequirements) { optimizer =>
+      symbolRequirements ++ optimizer.symbolRequirements
     }
 
     val linkResult = logger.timeFuture("Linker") {
-      linker.link(irFiles, moduleInitializers, logger,
-          preOptimizerRequirements, config.checkIR)
+      linker.link(irFiles, moduleInitializers, logger, preOptimizerRequirements, config.checkIR)
     }
 
     val optimizedResult = optOptimizer.fold(linkResult) { optimizer =>
@@ -99,19 +96,18 @@ object LinkerFrontendImpl {
   final class Config private (
       /** Common phase config. */
       val commonConfig: CommonPhaseConfig,
-      /** How to split modules (if at all). */
+      /** How to split modules (if at all).
+       */
       val moduleSplitStyle: ModuleSplitStyle,
       /** If true, performs expensive checks of the IR for the used parts. */
       val checkIR: Boolean,
-      /** Whether to use the Scala.js optimizer. */
+      /** Whether to use the Scala.js optimizer.
+       */
       val optimizer: Boolean
   ) {
     private def this() = {
-      this(
-          commonConfig = CommonPhaseConfig(),
-          moduleSplitStyle = ModuleSplitStyle.FewestModules,
-          checkIR = false,
-          optimizer = true)
+      this(commonConfig = CommonPhaseConfig(), moduleSplitStyle = ModuleSplitStyle.FewestModules,
+          checkIR = false, optimizer = true)
     }
 
     def withCommonConfig(commonConfig: CommonPhaseConfig): Config =
@@ -126,10 +122,8 @@ object LinkerFrontendImpl {
     def withOptimizer(optimizer: Boolean): Config =
       copy(optimizer = optimizer)
 
-    private def copy(
-        commonConfig: CommonPhaseConfig = commonConfig,
-        moduleSplitStyle: ModuleSplitStyle = moduleSplitStyle,
-        checkIR: Boolean = checkIR,
+    private def copy(commonConfig: CommonPhaseConfig = commonConfig,
+        moduleSplitStyle: ModuleSplitStyle = moduleSplitStyle, checkIR: Boolean = checkIR,
         optimizer: Boolean = optimizer): Config = {
       new Config(commonConfig, moduleSplitStyle, checkIR, optimizer)
     }

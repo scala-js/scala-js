@@ -68,7 +68,7 @@ class WrappedDictionaryTest {
 
     val dict = js.Dictionary[Int]("one" -> 1, "two" -> 2, "three" -> 3)
 
-    val mapChr = dict.map { case (k, v) => k(0)          -> v * 2 }
+    val mapChr = dict.map { case (k, v) => k(0) -> v * 2 }
     val mapStr = dict.map { case (k, v) => k(0).toString -> v * 2 }
 
     assertNotSame(classOf[js.WrappedDictionary[_]], ct(mapChr).runtimeClass)
@@ -83,11 +83,11 @@ class WrappedDictionaryTest {
 
     val dict = js.Dictionary[Int]("one" -> 1, "two" -> 2, "three" -> 3)
 
-    val flatMapChr = dict.flatMap {
-      case (k, v) => List(k(0) -> v * 2, k(1) -> v * 3)
+    val flatMapChr = dict.flatMap { case (k, v) =>
+      List(k(0) -> v * 2, k(1) -> v * 3)
     }
-    val flatMapStr = dict.flatMap {
-      case (k, v) => List(k(0).toString -> v * 2, k(1).toString -> v * 3)
+    val flatMapStr = dict.flatMap { case (k, v) =>
+      List(k(0).toString -> v * 2, k(1).toString -> v * 3)
     }
 
     assertNotSame(classOf[js.WrappedDictionary[_]], ct(flatMapChr).runtimeClass)

@@ -99,8 +99,7 @@ class CharArrayWriterTest {
 
   @Test def write_should_throw_IndexOutOfBoundsException(): Unit = {
     withClose(new CharArrayWriter) { obj =>
-      assertThrows(classOf[IndexOutOfBoundsException],
-          obj.write(Array[Char]('0'), 0, -1))
+      assertThrows(classOf[IndexOutOfBoundsException], obj.write(Array[Char]('0'), 0, -1))
     }
   }
 

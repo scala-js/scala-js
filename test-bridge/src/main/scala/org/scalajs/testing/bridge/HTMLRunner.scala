@@ -57,13 +57,12 @@ protected[bridge] object HTMLRunner {
      * of a test. While this is reasonable in most cases, there could be a test
      * that is run by multiple test frameworks.
      */
-    val (testFilter, optExcludedHash): (TaskDef => Boolean, Option[Int])  = {
+    val (testFilter, optExcludedHash): (TaskDef => Boolean, Option[Int]) = {
       val search = dom.document.location.search.stripPrefix("?")
       search.split("&").map(decodeURIComponent).toList match {
         case "i" :: excludedHash :: included =>
           val includeSet = included.toSet
-          (t => includeSet.contains(t.fullyQualifiedName()),
-              Some(excludedHash.toInt))
+          (t => includeSet.contains(t.fullyQualifiedName()), Some(excludedHash.toInt))
 
         case "e" :: excluded =>
           val excludeSet = excluded.toSet
@@ -98,8 +97,7 @@ protected[bridge] object HTMLRunner {
     Future.sequence(oks).map(and).onComplete(ui.done)
   }
 
-  private def runTests(framework: Framework,
-      taskDefs: Seq[TaskDef], ui: UI): Future[Boolean] = {
+  private def runTests(framework: Framework, taskDefs: Seq[TaskDef], ui: UI): Future[Boolean] = {
     def runAllTasks(tasks: collection.Seq[Task]): Future[Boolean] = {
       val oks = tasks.map { task =>
         for {
@@ -128,8 +126,8 @@ protected[bridge] object HTMLRunner {
 
     // Schedule test via timeout so we yield to the UI event thread.
     val newTasks = Promise[Array[Task]]()
-    val invocation = Future(task.execute(handler, Array(uiBox.logger),
-        newTasks.success))(QueueExecutionContext.timeouts())
+    val invocation = Future(task.execute(handler, Array(uiBox.logger), newTasks.success))(
+        QueueExecutionContext.timeouts())
 
     val result = for {
       _ <- invocation
@@ -140,8 +138,8 @@ protected[bridge] object HTMLRunner {
 
     result.map(_._1).onComplete(uiBox.done)
 
-    result.recover {
-      case _ => (false, Array[Task]())
+    result.recover { case _ =>
+      (false, Array[Task]())
     }
   }
 
@@ -194,14 +192,14 @@ protected[bridge] object HTMLRunner {
 
       // Note: The following is not entirely true. The warning will also appear
       // if tests have been removed.
-      line.newTextNode("There are new excluded tests in your project. You " +
-        "may wish to ")
+      line.newTextNode(
+          "There are new excluded tests in your project. You " +
+            "may wish to ")
       line.newLink("?", "Run all")
       line.newTextNode(" to rediscover all available tests.")
     }
 
-    def reportFrameworkResult(ok: Boolean,
-        framework: String, result: String): Unit = {
+    def reportFrameworkResult(ok: Boolean, framework: String, result: String): Unit = {
       rootBox.log(s"$framework reported $result", statusClass(ok))
     }
 
@@ -213,7 +211,7 @@ protected[bridge] object HTMLRunner {
         val total = counts.values.sum
         val countStrs = {
           s"Total: $total" +:
-          Status.values().map(status => s"$status: ${counts(status)}")
+            Status.values().map(status => s"$status: ${counts(status)}")
         }
         countStrs.mkString(", ")
       }
@@ -319,8 +317,7 @@ protected[bridge] object HTMLRunner {
       }
     }
 
-    private class RootBox(excludedTestCount: Int,
-        totalTestCount: Int) extends MoveTarget {
+    private class RootBox(excludedTestCount: Int, totalTestCount: Int) extends MoveTarget {
       private val box = {
         val caption = {
           if (excludedTestCount == 0) {
@@ -488,11 +485,9 @@ protected[bridge] object HTMLRunner {
       var search: String = js.native
     }
 
-    implicit class RichElement private[dom] (private val element: Element)
-        extends AnyVal {
+    implicit class RichElement private[dom] (private val element: Element) extends AnyVal {
 
-      def newElement(clss: String = "", text: String = "",
-          tpe: String = "div"): dom.Element = {
+      def newElement(clss: String = "", text: String = "", tpe: String = "div"): dom.Element = {
         val el = document.createElement(tpe)
         if (clss.nonEmpty)
           el.className = clss

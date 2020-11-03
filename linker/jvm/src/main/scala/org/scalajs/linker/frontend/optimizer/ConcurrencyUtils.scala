@@ -21,7 +21,8 @@ import java.util.concurrent.atomic._
 private[optimizer] object ConcurrencyUtils {
 
   /** An atomic accumulator supports adding single elements and retrieving and
-   *  deleting all contained elements */
+   *  deleting all contained elements
+   */
   type AtomicAcc[T] = AtomicReference[List[T]]
 
   object AtomicAcc {
@@ -31,8 +32,7 @@ private[optimizer] object ConcurrencyUtils {
       new AtomicReference(l)
   }
 
-  implicit class AtomicAccOps[T] private[ConcurrencyUtils] (
-      private val self: AtomicAcc[T])
+  implicit class AtomicAccOps[T] private[ConcurrencyUtils] (private val self: AtomicAcc[T])
       extends AnyVal {
 
     @inline final def size: Int = self.get.size
@@ -60,8 +60,7 @@ private[optimizer] object ConcurrencyUtils {
 
   type TrieSet[T] = TrieMap[T, Null]
 
-  implicit class TrieSetOps[T] private[ConcurrencyUtils] (
-      private val self: TrieSet[T])
+  implicit class TrieSetOps[T] private[ConcurrencyUtils] (private val self: TrieSet[T])
       extends AnyVal {
 
     @inline final def +=(x: T): Unit = self.put(x, null)
@@ -71,8 +70,7 @@ private[optimizer] object ConcurrencyUtils {
     @inline final def empty[T]: TrieSet[T] = TrieMap.empty
   }
 
-  implicit class TrieMapOps[K, V] private[ConcurrencyUtils] (
-      private val self: TrieMap[K, V])
+  implicit class TrieMapOps[K, V] private[ConcurrencyUtils] (private val self: TrieMap[K, V])
       extends AnyVal {
 
     @inline final def getOrPut(k: K, default: => V): V = {

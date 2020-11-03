@@ -12,8 +12,8 @@
 
 package org.scalajs.testing.common
 
-private[testing] final class ExecuteRequest(
-    val taskInfo: TaskInfo, val loggerColorSupport: List[Boolean])
+private[testing] final class ExecuteRequest(val taskInfo: TaskInfo,
+    val loggerColorSupport: List[Boolean])
 
 private[testing] object ExecuteRequest {
   implicit object ExecuteRequestSerializer extends Serializer[ExecuteRequest] {

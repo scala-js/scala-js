@@ -82,10 +82,12 @@ class OptionalTest {
 
   @Test def testFilter(): Unit = {
     assertEquals(Optional.empty[String](),
-        Optional.empty[String]().filter(new Predicate[String] {
-          def test(t: String): Boolean =
-            throw new AssertionError("Optional.empty().filter() should not call its argument")
-        }))
+        Optional
+          .empty[String]()
+          .filter(new Predicate[String] {
+        def test(t: String): Boolean =
+          throw new AssertionError("Optional.empty().filter() should not call its argument")
+      }))
 
     val predicate = new Predicate[String] {
       def test(t: String): Boolean = t.length() < 10
@@ -93,38 +95,41 @@ class OptionalTest {
 
     assertEquals(Optional.empty[String](),
         Optional.of[String]("this string is too long").filter(predicate))
-    assertEquals(Optional.of("short"),
-        Optional.of("short").filter(predicate))
+    assertEquals(Optional.of("short"), Optional.of("short").filter(predicate))
   }
 
   @Test def testMap(): Unit = {
     assertEquals(Optional.empty[String](),
-        Optional.empty[String]().map[Int](new Function[String, Int] {
-          def apply(t: String): Int =
-            throw new AssertionError("Optional.empty().map() should not call its argument")
-        }))
+        Optional
+          .empty[String]()
+          .map[Int](new Function[String, Int] {
+        def apply(t: String): Int =
+          throw new AssertionError("Optional.empty().map() should not call its argument")
+      }))
 
     val mapper = new Function[String, Int] {
       def apply(t: String): Int = t.length()
     }
 
-    assertEquals(Optional.of(8),
-        Optional.of("a string").map[Int](mapper))
-    assertEquals(Optional.of(14),
-        Optional.of("another string").map[Int](mapper))
+    assertEquals(Optional.of(8), Optional.of("a string").map[Int](mapper))
+    assertEquals(Optional.of(14), Optional.of("another string").map[Int](mapper))
 
     assertEquals(Optional.empty[String](),
-        Optional.of("a string").map[String](new Function[String, String] {
-          def apply(t: String): String = null
-        }))
+        Optional
+          .of("a string")
+          .map[String](new Function[String, String] {
+        def apply(t: String): String = null
+      }))
   }
 
   @Test def testFlatMap(): Unit = {
     assertEquals(Optional.empty[String](),
-        Optional.empty[String]().flatMap[Int](new Function[String, Optional[Int]] {
-          def apply(t: String): Optional[Int] =
-            throw new AssertionError("Optional.empty().flatMap() should not call its argument")
-        }))
+        Optional
+          .empty[String]()
+          .flatMap[Int](new Function[String, Optional[Int]] {
+        def apply(t: String): Optional[Int] =
+          throw new AssertionError("Optional.empty().flatMap() should not call its argument")
+      }))
 
     val mapper = new Function[String, Optional[Int]] {
       def apply(t: String): Optional[Int] =
@@ -132,12 +137,9 @@ class OptionalTest {
         else Optional.of(t.length())
     }
 
-    assertEquals(Optional.of(8),
-        Optional.of("a string").flatMap[Int](mapper))
-    assertEquals(Optional.of(14),
-        Optional.of("another string").flatMap[Int](mapper))
-    assertEquals(Optional.empty(),
-        Optional.of("").flatMap[Int](mapper))
+    assertEquals(Optional.of(8), Optional.of("a string").flatMap[Int](mapper))
+    assertEquals(Optional.of(14), Optional.of("another string").flatMap[Int](mapper))
+    assertEquals(Optional.empty(), Optional.of("").flatMap[Int](mapper))
   }
 
   @Test def testOrElse(): Unit = {
@@ -149,34 +151,44 @@ class OptionalTest {
 
   @Test def testOrElseGet(): Unit = {
     assertEquals("a string",
-        Optional.of("a string").orElseGet(new Supplier[String] {
-          def get(): String =
-            throw new AssertionError("Optional.of().orElseGet() should not call its argument")
-        }))
+        Optional
+          .of("a string")
+          .orElseGet(new Supplier[String] {
+        def get(): String =
+          throw new AssertionError("Optional.of().orElseGet() should not call its argument")
+      }))
 
     assertEquals("fallback",
-        Optional.empty[String]().orElseGet(new Supplier[String] {
-          def get(): String = "fallback"
-        }))
+        Optional
+          .empty[String]()
+          .orElseGet(new Supplier[String] {
+        def get(): String = "fallback"
+      }))
 
     assertNull(
-        Optional.empty[String]().orElseGet(new Supplier[String] {
-          def get(): String = null
-        }))
+        Optional
+          .empty[String]()
+          .orElseGet(new Supplier[String] {
+            def get(): String = null
+          }))
   }
 
   @Test def testOrThrowCustomException(): Unit = {
     assertEquals("a string",
-        Optional.of("a string").orElseThrow(new Supplier[IllegalArgumentException] {
-          def get(): IllegalArgumentException =
-            throw new AssertionError("Optional.of().orElseThrow() should not call its argument")
-        }))
+        Optional
+          .of("a string")
+          .orElseThrow(new Supplier[IllegalArgumentException] {
+        def get(): IllegalArgumentException =
+          throw new AssertionError("Optional.of().orElseThrow() should not call its argument")
+      }))
 
     val ex = expectThrows(classOf[IllegalArgumentException],
-        Optional.empty[String]().orElseThrow(new Supplier[IllegalArgumentException] {
-          def get(): IllegalArgumentException =
-            new IllegalArgumentException("fallback")
-        }))
+        Optional
+          .empty[String]()
+          .orElseThrow(new Supplier[IllegalArgumentException] {
+        def get(): IllegalArgumentException =
+          new IllegalArgumentException("fallback")
+      }))
     assertEquals("fallback", ex.getMessage())
   }
 

@@ -55,7 +55,7 @@ final class ESFeatures private (
   override def equals(that: Any): Boolean = that match {
     case that: ESFeatures =>
       this.useECMAScript2015 == that.useECMAScript2015 &&
-      this.allowBigIntsForLongs == that.allowBigIntsForLongs
+        this.allowBigIntsForLongs == that.allowBigIntsForLongs
     case _ =>
       false
   }
@@ -97,8 +97,7 @@ object ESFeatures {
    */
   val Defaults: ESFeatures = new ESFeatures()
 
-  private[interface] implicit object ESFeaturesFingerprint
-      extends Fingerprint[ESFeatures] {
+  private[interface] implicit object ESFeaturesFingerprint extends Fingerprint[ESFeatures] {
 
     override def fingerprint(esFeatures: ESFeatures): String = {
       new FingerprintBuilder("ESFeatures")

@@ -18,7 +18,9 @@ import scala.tools.nsc._
 
 import org.scalajs.ir
 import org.scalajs.ir.{Trees => js, Types => jstpe}
-import org.scalajs.ir.Names.{LocalName, LabelName, FieldName, SimpleMethodName, MethodName, ClassName}
+import org.scalajs.ir.Names.{
+  LocalName, LabelName, FieldName, SimpleMethodName, MethodName, ClassName
+}
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.UTF8String
@@ -75,7 +77,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   def reserveLocalName(name: LocalName): Unit = {
     require(usedLocalNames.isEmpty,
         s"Trying to reserve the name '$name' but names have already been " +
-        "allocated")
+          "allocated")
     usedLocalNames += name
   }
 
@@ -94,8 +96,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     }
   }
 
-  private def freshNameGeneric[N <: ir.Names.Name](base: N,
-      usedNamesSet: mutable.Set[N])(
+  private def freshNameGeneric[N <: ir.Names.Name](base: N, usedNamesSet: mutable.Set[N])(
       withSuffix: (N, String) => N): N = {
 
     var suffix = 1
@@ -180,8 +181,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     js.FieldIdent(FieldName(name.toString()))
   }
 
-  def encodeFieldSymAsStringLiteral(sym: Symbol)(
-      implicit pos: Position): js.StringLiteral = {
+  def encodeFieldSymAsStringLiteral(sym: Symbol)(implicit pos: Position): js.StringLiteral = {
 
     requireSymIsField(sym)
     js.StringLiteral(sym.name.dropLocal.toString())
@@ -195,8 +195,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   def encodeMethodSym(sym: Symbol, reflProxy: Boolean = false)(
       implicit pos: Position): js.MethodIdent = {
 
-    require(sym.isMethod,
-        "encodeMethodSym called with non-method symbol: " + sym)
+    require(sym.isMethod, "encodeMethodSym called with non-method symbol: " + sym)
 
     val tpe = sym.tpe
 
@@ -222,11 +221,9 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     js.MethodIdent(methodName)
   }
 
-  def encodeStaticFieldGetterSym(sym: Symbol)(
-      implicit pos: Position): js.MethodIdent = {
+  def encodeStaticFieldGetterSym(sym: Symbol)(implicit pos: Position): js.MethodIdent = {
 
-    require(sym.isStaticMember,
-        "encodeStaticFieldGetterSym called with non-static symbol: " + sym)
+    require(sym.isStaticMember, "encodeStaticFieldGetterSym called with non-static symbol: " + sym)
 
     val name = sym.name
     val resultTypeRef = paramOrResultTypeRef(sym.tpe)
@@ -250,8 +247,9 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
      * Go figure ...
      * See #1440
      */
-    require(sym.isValueParameter ||
-        (!sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule),
+    require(
+        sym.isValueParameter ||
+          (!sym.owner.isClass && sym.isTerm && !sym.isMethod && !sym.isModule),
         "encodeLocalSym called with non-local symbol: " + sym)
     js.LocalIdent(localSymbolName(sym))
   }
@@ -260,8 +258,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     if (sym == definitions.ObjectClass) jstpe.AnyType
     else if (isJSType(sym)) jstpe.AnyType
     else {
-      assert(sym != definitions.ArrayClass,
-          "encodeClassType() cannot be called with ArrayClass")
+      assert(sym != definitions.ArrayClass, "encodeClassType() cannot be called with ArrayClass")
       jstpe.ClassType(encodeClassName(sym))
     }
   }
@@ -272,8 +269,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   private val BoxedStringModuleClassName = ClassName("java.lang.String$")
 
   def encodeClassName(sym: Symbol): ClassName = {
-    assert(!sym.isPrimitiveValueClass,
-        s"Illegal encodeClassName(${sym.fullName}")
+    assert(!sym.isPrimitiveValueClass, s"Illegal encodeClassName(${sym.fullName}")
     if (sym == jsDefinitions.HackedStringClass) {
       ir.Names.BoxedStringClass
     } else if (sym == jsDefinitions.HackedStringModClass) {

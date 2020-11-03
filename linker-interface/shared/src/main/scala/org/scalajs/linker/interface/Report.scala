@@ -22,6 +22,7 @@ import org.scalajs.linker.interface.unstable.ReportImpl
 
 /** Information about a linker run. */
 abstract class Report private[interface] () {
+
   /** Public modules resulting from linking.
    *
    *  An incremental linker must return all public modules here, even if some
@@ -39,8 +40,10 @@ abstract class Report private[interface] () {
 }
 
 object Report {
+
   /** Information about a module produced by the linker. */
   abstract class Module private[interface] () {
+
     /** The module ID of this module. */
     def moduleID: String
 
@@ -133,7 +136,7 @@ object Report {
     }
 
     private def readModule(): Module = {
-      new ReportImpl.ModuleImpl (
+      new ReportImpl.ModuleImpl(
           moduleID = readUTF(),
           jsFileName = readUTF(),
           sourceMapName = readOptString(),

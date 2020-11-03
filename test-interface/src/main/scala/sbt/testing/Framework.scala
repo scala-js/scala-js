@@ -43,13 +43,12 @@ trait Framework {
    *      initiate a run because it is already performing a previously initiated
    *      run that has not yet completed.
    */
-  def runner(args: Array[String], remoteArgs: Array[String],
-      testClassLoader: ClassLoader): Runner
+  def runner(args: Array[String], remoteArgs: Array[String], testClassLoader: ClassLoader): Runner
 
   /** Scala.js specific: Creates a slave runner for a given run.
    *
    *  The slave may send a message to the master runner by calling `send`.
    */
-  def slaveRunner(args: Array[String], remoteArgs: Array[String],
-      testClassLoader: ClassLoader, send: String => Unit): Runner
+  def slaveRunner(args: Array[String], remoteArgs: Array[String], testClassLoader: ClassLoader,
+      send: String => Unit): Runner
 }

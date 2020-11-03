@@ -51,7 +51,8 @@ class RangesTest {
       assertEquals("Range(1, 3, 5, 7, 9)", (1 to 10 by 2).toString)
       assertEquals("Range()", (1 until 1 by 2).toString)
       assertTrue(
-          (BigDecimal(0.0) to BigDecimal(1.0)).toString.startsWith("scala.collection.immutable.Range$Partial"))
+          (BigDecimal(0.0) to BigDecimal(1.0)).toString.startsWith(
+              "scala.collection.immutable.Range$Partial"))
       assertEquals("Range(0, 1)", (0 to 1).toString)
     } else {
       assertEquals("inexact Range 1 to 10 by 2", (1 to 10 by 2).toString)
@@ -63,22 +64,17 @@ class RangesTest {
 
   @Test def NumericRange_toString_issue_2412(): Unit = {
     if (scalaVersion.startsWith("2.11.")) {
-      assertEquals("NumericRange(0, 2, 4, 6, 8, 10)",
-          NumericRange.inclusive(0, 10, 2).toString())
-      assertEquals("NumericRange(0, 2, 4, 6, 8)",
-          NumericRange(0, 10, 2).toString)
+      assertEquals("NumericRange(0, 2, 4, 6, 8, 10)", NumericRange.inclusive(0, 10, 2).toString())
+      assertEquals("NumericRange(0, 2, 4, 6, 8)", NumericRange(0, 10, 2).toString)
     } else {
-      assertEquals("NumericRange 0 to 10 by 2",
-          NumericRange.inclusive(0, 10, 2).toString())
-      assertEquals("NumericRange 0 until 10 by 2",
-          NumericRange(0, 10, 2).toString)
+      assertEquals("NumericRange 0 to 10 by 2", NumericRange.inclusive(0, 10, 2).toString())
+      assertEquals("NumericRange 0 until 10 by 2", NumericRange(0, 10, 2).toString)
     }
   }
 
   @Test def NumericRange_with_arbitrary_integral(): Unit = {
     // This is broken in Scala JVM up to (including) 2.11.8, 2.12.1 (SI-10086).
-    assumeFalse("Assumed not on JVM for 2.12.1",
-        executingInJVM && scalaVersion == "2.12.1")
+    assumeFalse("Assumed not on JVM for 2.12.1", executingInJVM && scalaVersion == "2.12.1")
 
     // Our custom integral type.
     case class A(v: Int)

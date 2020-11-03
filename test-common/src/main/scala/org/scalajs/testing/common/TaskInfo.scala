@@ -14,9 +14,7 @@ package org.scalajs.testing.common
 
 import sbt.testing._
 
-private[testing] final class TaskInfo(
-    val serializedTask: String,
-    val taskDef: TaskDef,
+private[testing] final class TaskInfo(val serializedTask: String, val taskDef: TaskDef,
     val tags: List[String])
 
 private[testing] object TaskInfo {

@@ -252,8 +252,7 @@ class NestedJSClassTest {
 
   @Test def innerJSObjectExtendsInnerJSClass(): Unit = {
     val parentsContainer = new ScalaClassContainer("hello")
-    val container1 = new ScalaClassContainerWithSubObjects("hi",
-        parentsContainer)
+    val container1 = new ScalaClassContainerWithSubObjects("hi", parentsContainer)
     val inner1 = container1.InnerJSObject
     assertSame(inner1, container1.InnerJSObject)
     assertEquals("object", js.typeOf(inner1))
@@ -264,8 +263,7 @@ class NestedJSClassTest {
     assertTrue(inner1.isInstanceOf[container1.InnerJSObject.type])
     assertTrue(inner1.isInstanceOf[parentsContainer.InnerJSClass])
 
-    val container2 = new ScalaClassContainerWithSubObjects("hi2",
-        parentsContainer)
+    val container2 = new ScalaClassContainerWithSubObjects("hi2", parentsContainer)
     val inner2 = container2.InnerJSObject
     assertNotSame(inner1, inner2)
     assertNotSame(inner1.asInstanceOf[js.Dynamic].constructor,
@@ -283,8 +281,7 @@ class NestedJSClassTest {
 
   @Test def localJSObjectExtendsInnerJSClass(): Unit = {
     val parentsContainer = new ScalaClassContainer("hello")
-    val container1 = new ScalaClassContainerWithSubObjects("hi",
-        parentsContainer)
+    val container1 = new ScalaClassContainerWithSubObjects("hi", parentsContainer)
 
     val inner1 = container1.makeLocalJSObject("world1")
     assertEquals("helloworld1", inner1.zzz)
@@ -309,14 +306,12 @@ class NestedJSClassTest {
 
   @Test def convolutedGenericTypeParametersInSuperClass(): Unit = {
     val parentsContainer = new GenericJSSuperClassContainer
-    val container1 = new ScalaClassContainerWithTypeParameters[Int](5,
-        parentsContainer)
+    val container1 = new ScalaClassContainerWithTypeParameters[Int](5, parentsContainer)
 
     type MyB = List[List[Int]]
 
     val innerJSClass = js.constructorOf[container1.GenericJSInnerClass[MyB]]
-    assertSame(innerJSClass,
-        js.constructorOf[container1.GenericJSInnerClass[MyB]])
+    assertSame(innerJSClass, js.constructorOf[container1.GenericJSInnerClass[MyB]])
     assertEquals("function", js.typeOf(innerJSClass))
     val inner: Any = new container1.GenericJSInnerClass[MyB](Nil)
     assertTrue(inner.isInstanceOf[parentsContainer.GenericJSSuperClass[_, _]])
@@ -405,7 +400,8 @@ class NestedJSClassTest {
 
     assertEquals("object", js.typeOf(container.InnerScalaObject))
     assertEquals("the InnerScalaObject of issue 4086", container.InnerScalaObject.toString())
-    assertSame(NestedJSClassTest_TopLevelJSObject_Issue4086.InnerScalaObject, container.InnerScalaObject)
+    assertSame(NestedJSClassTest_TopLevelJSObject_Issue4086.InnerScalaObject,
+        container.InnerScalaObject)
 
     assertEquals("object", js.typeOf(container.InnerJSObject))
     assertEquals("the InnerJSObject of issue 4086", container.InnerJSObject.toString())
@@ -581,8 +577,7 @@ object NestedJSClassTest {
     }
   }
 
-  class ScalaClassContainerWithSubclasses(val abc: String,
-      val parents: ScalaClassContainer) {
+  class ScalaClassContainerWithSubclasses(val abc: String, val parents: ScalaClassContainer) {
 
     class InnerJSSubclass(yyy: String) extends parents.InnerJSClass(yyy) {
       def foobar(): String = abc + yyy + zzz
@@ -599,8 +594,7 @@ object NestedJSClassTest {
     }
   }
 
-  class ScalaClassContainerWithSubObjects(val abc: String,
-      val parents: ScalaClassContainer) {
+  class ScalaClassContainerWithSubObjects(val abc: String, val parents: ScalaClassContainer) {
 
     object InnerJSObject extends parents.InnerJSClass(abc) {
       def foobar(): String = abc + zzz
@@ -615,8 +609,7 @@ object NestedJSClassTest {
   }
 
   class GenericJSSuperClassContainer {
-    class GenericJSSuperClass[A, B <: List[Seq[A]]](val a: A, val b: B)
-        extends js.Object
+    class GenericJSSuperClass[A, B <: List[Seq[A]]](val a: A, val b: B) extends js.Object
   }
 
   class ScalaClassContainerWithTypeParameters[A](val a: A,
@@ -631,12 +624,10 @@ object NestedJSClassTest {
       js.constructorOf[GenericJSLocalClass[_]]
     }
 
-    object GenericJSInnerObject
-        extends parents.GenericJSSuperClass[A, List[List[A]]](a, Nil)
+    object GenericJSInnerObject extends parents.GenericJSSuperClass[A, List[List[A]]](a, Nil)
 
     def makeGenericJSInnerObject[B <: List[Seq[A]]](b: B): js.Dynamic = {
-      object GenericJSInnerObject
-          extends parents.GenericJSSuperClass[A, B](a, b)
+      object GenericJSInnerObject extends parents.GenericJSSuperClass[A, B](a, b)
 
       GenericJSInnerObject.asInstanceOf[js.Dynamic]
     }

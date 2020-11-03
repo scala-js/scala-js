@@ -139,7 +139,7 @@ private[math] object Multiplication {
       val t = unsignedMultAddAdd(a(i), a(i), res(index), carry)
       res(index) = t.toInt
       index += 1
-      val t2 = (t >>> 32) + (res(index) & 0xFFFFFFFFL)
+      val t2 = (t >>> 32) + (res(index) & 0xffffffffL)
       res(index) = t2.toInt
       carry = (t2 >>> 32).toInt
       i += 1
@@ -157,7 +157,7 @@ private[math] object Multiplication {
    *  @return value of expression
    */
   @inline def unsignedMultAddAdd(a: Int, b: Int, c: Int, d: Int): Long =
-    (a & 0xFFFFFFFFL) * (b & 0xFFFFFFFFL) + (c & 0xFFFFFFFFL) + (d & 0xFFFFFFFFL)
+    (a & 0xffffffffL) * (b & 0xffffffffL) + (c & 0xffffffffL) + (d & 0xffffffffL)
 
   /** Performs the multiplication with the Karatsuba's algorithm.
    *
@@ -188,7 +188,7 @@ private[math] object Multiplication {
        * Karatsuba: u = u1*B + u0 v = v1*B + v0 u*v = (u1*v1)*B^2 +
        * ((u1-u0)*(v0-v1) + u1*v1 + u0*v0)*B + u0*v0
        */
-      val ndiv2 = (op1.numberLength & 0xFFFFFFFE) << 4
+      val ndiv2 = (op1.numberLength & 0xfffffffe) << 4
       val upperOp1 = op1.shiftRight(ndiv2)
       val upperOp2 = op2.shiftRight(ndiv2)
       val lowerOp1 = op1.subtract(upperOp1.shiftLeft(ndiv2))
@@ -204,8 +204,8 @@ private[math] object Multiplication {
     }
   }
 
-  def multArraysPAP(aDigits: Array[Int], aLen: Int, bDigits: Array[Int],
-      bLen: Int, resDigits: Array[Int]): Unit = {
+  def multArraysPAP(aDigits: Array[Int], aLen: Int, bDigits: Array[Int], bLen: Int,
+      resDigits: Array[Int]): Unit = {
     if (!(aLen == 0 || bLen == 0)) {
       if (aLen == 1)
         resDigits(bLen) = multiplyByInt(resDigits, bDigits, bLen, aDigits(0))
@@ -226,7 +226,6 @@ private[math] object Multiplication {
    *  <tt>
    *          <table border="0">
    *  <tbody>
-   *
    *
    *  <tr>
    *  <td align="center">A=</td>
@@ -300,7 +299,7 @@ private[math] object Multiplication {
    *  </tbody>
    *  </table>
    *
-   * </tt>
+   *  </tt>
    *
    *  @param op1 first factor of the multiplication {@code op1 >= 0}
    *  @param op2 second factor of the multiplication {@code op2 >= 0}
@@ -420,8 +419,7 @@ private[math] object Multiplication {
     }
   }
 
-  private def multiplyByInt(res: Array[Int], a: Array[Int], aSize: Int,
-      factor: Int): Int = {
+  private def multiplyByInt(res: Array[Int], a: Array[Int], aSize: Int, factor: Int): Int = {
     var carry = 0
     for (i <- 0 until aSize) {
       val t = unsignedMultAddAdd(a(i), factor, carry, 0)
@@ -431,8 +429,7 @@ private[math] object Multiplication {
     carry
   }
 
-  private def multPAP(a: Array[Int], b: Array[Int], t: Array[Int],
-      aLen: Int, bLen: Int): Unit = {
+  private def multPAP(a: Array[Int], b: Array[Int], t: Array[Int], aLen: Int, bLen: Int): Unit = {
     if (a == b && aLen == bLen) {
       square(a, aLen, t)
     } else {

@@ -64,8 +64,8 @@ object PathOutputDirectory {
       implicit ec: ExecutionContext): Future[Unit] = {
     import StandardOpenOption._
 
-    val tmpFileFuture = Future(blocking(
-        Files.createTempFile(path.getParent(), ".tmp-" + path.getFileName(), ".tmp")))
+    val tmpFileFuture =
+      Future(blocking(Files.createTempFile(path.getParent(), ".tmp-" + path.getFileName(), ".tmp")))
 
     tmpFileFuture.flatMap { tmpFile =>
       val writeFuture = withChannel(tmpFile, WRITE, CREATE, TRUNCATE_EXISTING) { chan =>
@@ -135,8 +135,7 @@ object PathOutputDirectory {
   }
 
   private def withChannel[T](f: Path, openOptions: OpenOption*)(
-      body: AsynchronousFileChannel => Future[T])(
-      implicit ec: ExecutionContext): Future[T] = {
+      body: AsynchronousFileChannel => Future[T])(implicit ec: ExecutionContext): Future[T] = {
     val chanFuture =
       Future(blocking(AsynchronousFileChannel.open(f, openOptions: _*)))
 

@@ -99,8 +99,8 @@ object Arrays {
   }
 
   @inline
-  private def sortRangeImpl[@specialized T: ClassTag](
-      a: Array[T], fromIndex: Int, toIndex: Int)(implicit ord: Ordering[T]): Unit = {
+  private def sortRangeImpl[@specialized T: ClassTag](a: Array[T], fromIndex: Int, toIndex: Int)(
+      implicit ord: Ordering[T]): Unit = {
     checkRangeIndices(a, fromIndex, toIndex)
     stableMergeSort[T](a, fromIndex, toIndex)
   }
@@ -126,8 +126,8 @@ object Arrays {
    *  using the Ordering on its elements.
    */
   @inline
-  private def stableMergeSort[@specialized K: ClassTag](a: Array[K],
-      start: Int, end: Int)(implicit ord: Ordering[K]): Unit = {
+  private def stableMergeSort[@specialized K: ClassTag](a: Array[K], start: Int, end: Int)(
+      implicit ord: Ordering[K]): Unit = {
     if (end - start > inPlaceSortThreshold)
       stableSplitMerge(a, new Array[K](a.length), start, end)
     else
@@ -135,8 +135,8 @@ object Arrays {
   }
 
   @noinline
-  private def stableSplitMerge[@specialized K](a: Array[K], temp: Array[K],
-      start: Int, end: Int)(implicit ord: Ordering[K]): Unit = {
+  private def stableSplitMerge[@specialized K](a: Array[K], temp: Array[K], start: Int, end: Int)(
+      implicit ord: Ordering[K]): Unit = {
     val length = end - start
     if (length > inPlaceSortThreshold) {
       val middle = start + (length / 2)
@@ -150,8 +150,8 @@ object Arrays {
   }
 
   @inline
-  private def stableMerge[@specialized K](a: Array[K], temp: Array[K],
-      start: Int, middle: Int, end: Int)(implicit ord: Ordering[K]): Unit = {
+  private def stableMerge[@specialized K](a: Array[K], temp: Array[K], start: Int, middle: Int,
+      end: Int)(implicit ord: Ordering[K]): Unit = {
     var outIndex = start
     var leftInIndex = start
     var rightInIndex = middle
@@ -172,8 +172,8 @@ object Arrays {
   // search variant of insertion sort
   // Caller must pass end >= start or math will fail.  Also, start >= 0.
   @noinline
-  private final def insertionSort[@specialized T](a: Array[T], start: Int,
-      end: Int)(implicit ord: Ordering[T]): Unit = {
+  private final def insertionSort[@specialized T](a: Array[T], start: Int, end: Int)(
+      implicit ord: Ordering[T]): Unit = {
     val n = end - start
     if (n >= 2) {
       if (ord.compare(a(start), a(start + 1)) > 0) {
@@ -221,8 +221,8 @@ object Arrays {
   }
 
   @noinline
-  private def stableSplitMergeAnyRef(a: Array[AnyRef], temp: Array[AnyRef],
-      start: Int, end: Int)(implicit ord: Ordering[AnyRef]): Unit = {
+  private def stableSplitMergeAnyRef(a: Array[AnyRef], temp: Array[AnyRef], start: Int, end: Int)(
+      implicit ord: Ordering[AnyRef]): Unit = {
     val length = end - start
     if (length > inPlaceSortThreshold) {
       val middle = start + (length / 2)
@@ -236,8 +236,8 @@ object Arrays {
   }
 
   @inline
-  private def stableMergeAnyRef(a: Array[AnyRef], temp: Array[AnyRef],
-      start: Int, middle: Int, end: Int)(implicit ord: Ordering[AnyRef]): Unit = {
+  private def stableMergeAnyRef(a: Array[AnyRef], temp: Array[AnyRef], start: Int, middle: Int,
+      end: Int)(implicit ord: Ordering[AnyRef]): Unit = {
     var outIndex = start
     var leftInIndex = start
     var rightInIndex = middle
@@ -366,8 +366,8 @@ object Arrays {
 
   @inline
   @tailrec
-  private def binarySearchImpl[T](a: Array[T],
-      startIndex: Int, endIndex: Int, key: T, lt: (T, T) => Boolean): Int = {
+  private def binarySearchImpl[T](a: Array[T], startIndex: Int, endIndex: Int, key: T,
+      lt: (T, T) => Boolean): Int = {
     if (startIndex == endIndex) {
       // Not found
       -startIndex - 1
@@ -388,8 +388,7 @@ object Arrays {
 
   @inline
   @tailrec
-  def binarySearchImplRef(a: Array[AnyRef],
-      startIndex: Int, endIndex: Int, key: AnyRef): Int = {
+  def binarySearchImplRef(a: Array[AnyRef], startIndex: Int, endIndex: Int, key: AnyRef): Int = {
     if (startIndex == endIndex) {
       // Not found
       -startIndex - 1
@@ -510,8 +509,8 @@ object Arrays {
     fillImpl(a, fromIndex, toIndex, value)
 
   @inline
-  private def fillImpl[T](a: Array[T], fromIndex: Int, toIndex: Int,
-      value: T, checkIndices: Boolean = true): Unit = {
+  private def fillImpl[T](a: Array[T], fromIndex: Int, toIndex: Int, value: T,
+      checkIndices: Boolean = true): Unit = {
     if (checkIndices)
       checkRangeIndices(a, fromIndex, toIndex)
     var i = fromIndex
@@ -566,13 +565,15 @@ object Arrays {
   }
 
   @noinline def copyOfRange[T <: AnyRef](original: Array[T], from: Int, to: Int): Array[T] = {
-    copyOfRangeImpl[T](original, from, to)(ClassTag(original.getClass.getComponentType)).asInstanceOf[Array[T]]
+    copyOfRangeImpl[T](original, from, to)(ClassTag(original.getClass.getComponentType))
+      .asInstanceOf[Array[T]]
   }
 
   @noinline def copyOfRange[T <: AnyRef, U <: AnyRef](original: Array[U], from: Int, to: Int,
       newType: Class[_ <: Array[T]]): Array[T] = {
-    copyOfRangeImpl[AnyRef](original.asInstanceOf[Array[AnyRef]], from, to)(
-        ClassTag(newType.getComponentType)).asInstanceOf[Array[T]]
+    copyOfRangeImpl[AnyRef](
+        original.asInstanceOf[
+            Array[AnyRef]], from, to)(ClassTag(newType.getComponentType)).asInstanceOf[Array[T]]
   }
 
   @noinline def copyOfRange(original: Array[Byte], start: Int, end: Int): Array[Byte] =
@@ -600,8 +601,7 @@ object Arrays {
     copyOfRangeImpl(original, start, end)
 
   @inline
-  private def copyOfRangeImpl[T: ClassTag](original: Array[T],
-      start: Int, end: Int): Array[T] = {
+  private def copyOfRangeImpl[T: ClassTag](original: Array[T], start: Int, end: Int): Array[T] = {
     if (start > end)
       throw new IllegalArgumentException("" + start + " > " + end)
 
@@ -779,7 +779,7 @@ object Arrays {
         if (i != 0)
           result += ", "
         a(i) match {
-          case e: Array[AnyRef]  =>
+          case e: Array[AnyRef] =>
             if ((e eq a) || wasSeen(e)) {
               result += "[...]"
             } else {
@@ -808,8 +808,7 @@ object Arrays {
   }
 
   @inline
-  private def checkRangeIndices[@specialized T](
-      a: Array[T], start: Int, end: Int): Unit = {
+  private def checkRangeIndices[@specialized T](a: Array[T], start: Int, end: Int): Unit = {
     if (start > end)
       throw new IllegalArgumentException("fromIndex(" + start + ") > toIndex(" + end + ")")
 

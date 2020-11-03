@@ -100,8 +100,7 @@ final class WrappedDictionary[A](private val dict: js.Dictionary[A])
     b.result()
   }
 
-  def flatMap[B](
-      f: ((String, A)) => IterableOnce[(String, B)]): js.WrappedDictionary[B] = {
+  def flatMap[B](f: ((String, A)) => IterableOnce[(String, B)]): js.WrappedDictionary[B] = {
     val b = new js.WrappedDictionary.WrappedDictionaryBuilder[B]
     val it = this.iterator
     while (it.hasNext) {
@@ -110,8 +109,7 @@ final class WrappedDictionary[A](private val dict: js.Dictionary[A])
     b.result()
   }
 
-  def collect[B](
-      pf: PartialFunction[(String, A), (String, B)]): js.WrappedDictionary[B] = {
+  def collect[B](pf: PartialFunction[(String, A), (String, B)]): js.WrappedDictionary[B] = {
     flatMap { a =>
       if (pf.isDefinedAt(a)) new View.Single(pf(a))
       else View.Empty
@@ -138,6 +136,7 @@ object WrappedDictionary {
 
   @js.native
   private trait DictionaryRawApply[A] extends js.Object {
+
     /** Reads a field of this object by its name.
      *
      *  This must not be called if the dictionary does not contain the key.

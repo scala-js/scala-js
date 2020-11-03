@@ -17,7 +17,7 @@ import org.junit.Assert._
 
 class UnitJSTest {
   @Test def `should_have_toString()`(): Unit = {
-    assertEquals(().toString(),  "undefined")
-    assertEquals(((): Any).toString(),  "undefined")
+    assertEquals(().toString(), "undefined")
+    assertEquals(((): Any).toString(), "undefined")
   }
 }

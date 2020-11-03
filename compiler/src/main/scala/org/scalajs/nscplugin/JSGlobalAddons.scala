@@ -22,8 +22,7 @@ import org.scalajs.ir.Trees.JSNativeLoadSpec
  *
  *  @author Sébastien Doeraene
  */
-trait JSGlobalAddons extends JSDefinitions
-                        with CompatComponent {
+trait JSGlobalAddons extends JSDefinitions with CompatComponent {
   val global: Global
 
   import global._
@@ -110,10 +109,9 @@ trait JSGlobalAddons extends JSDefinitions
     /* Not final because it causes the follwing compile warning:
      * "The outer reference in this type test cannot be checked at run time."
      */
-    case class TopLevelExportInfo(moduleID: String, jsName: String)(
-        val pos: Position) extends ExportInfo
-    case class StaticExportInfo(jsName: String)(val pos: Position)
+    case class TopLevelExportInfo(moduleID: String, jsName: String)(val pos: Position)
         extends ExportInfo
+    case class StaticExportInfo(jsName: String)(val pos: Position) extends ExportInfo
 
     sealed abstract class JSName {
       def displayName: String
@@ -168,7 +166,7 @@ trait JSGlobalAddons extends JSDefinitions
      *  is a property
      */
     def jsExportInfo(name: Name): (String, Boolean) = {
-      def dropPrefix(prefix: String) ={
+      def dropPrefix(prefix: String) = {
         if (name.startsWith(prefix)) {
           // We can't decode right away due to $ separators
           val enc = name.toString.substring(prefix.length)
@@ -176,12 +174,14 @@ trait JSGlobalAddons extends JSDefinitions
         } else None
       }
 
-      dropPrefix(methodExportPrefix).map((_,false)).orElse {
-        dropPrefix(propExportPrefix).map((_,true))
-      }.getOrElse {
-        throw new IllegalArgumentException(
-            "non-exported name passed to jsExportInfo")
-      }
+      dropPrefix(methodExportPrefix)
+        .map((_, false))
+        .orElse {
+          dropPrefix(propExportPrefix).map((_, true))
+        }
+        .getOrElse {
+          throw new IllegalArgumentException("non-exported name passed to jsExportInfo")
+        }
     }
 
     def jsclassAccessorFor(clazz: Symbol): Symbol =
@@ -231,14 +231,16 @@ trait JSGlobalAddons extends JSDefinitions
      *  JS name is inferred from the Scala name.
      */
     def jsNameOf(sym: Symbol): JSName = {
-      sym.getAnnotation(JSNameAnnotation).fold[JSName] {
-        JSName.Literal(defaultJSNameOf(sym))
-      } { annotation =>
-        annotation.args.head match {
-          case Literal(Constant(name: String)) => JSName.Literal(name)
-          case tree                            => JSName.Computed(tree.symbol)
+      sym
+        .getAnnotation(JSNameAnnotation)
+        .fold[JSName] {
+          JSName.Literal(defaultJSNameOf(sym))
+        } { annotation =>
+          annotation.args.head match {
+            case Literal(Constant(name: String)) => JSName.Literal(name)
+            case tree                            => JSName.Computed(tree.symbol)
+          }
         }
-      }
     }
 
     def defaultJSNameOf(sym: Symbol): String = {

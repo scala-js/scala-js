@@ -14,8 +14,7 @@ package scala.scalajs.js
 
 import scala.concurrent.duration.FiniteDuration
 
-/**
- *  <span class="badge badge-non-std" style="float: right;">Non-Standard</span>
+/** <span class="badge badge-non-std" style="float: right;">Non-Standard</span>
  *  Non-standard, but in general well supported methods to schedule asynchronous
  *  execution.
  *

@@ -84,8 +84,7 @@ object ThrowAndCatchTest {
     new js.Function("e", "throw e;").asInstanceOf[js.Function1[Any, Nothing]]
 
   private val jsCatch: js.Function1[js.Function0[_], Any] = {
-    new js.Function("f",
-        """
+    new js.Function("f", """
           |try {
           |  f();
           |} catch (e) {

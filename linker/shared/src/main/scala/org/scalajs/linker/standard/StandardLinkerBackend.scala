@@ -17,7 +17,8 @@ import org.scalajs.linker.backend.LinkerBackendImpl
 
 object StandardLinkerBackend {
   def apply(config: StandardConfig): LinkerBackend = {
-    val backendConfig = LinkerBackendImpl.Config()
+    val backendConfig = LinkerBackendImpl
+      .Config()
       .withCommonConfig(CommonPhaseConfig.fromStandardConfig(config))
       .withSourceMap(config.sourceMap)
       .withOutputPatterns(config.outputPatterns)

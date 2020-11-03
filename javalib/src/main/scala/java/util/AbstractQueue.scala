@@ -12,8 +12,7 @@
 
 package java.util
 
-abstract class AbstractQueue[E] protected ()
-    extends AbstractCollection[E] with Queue[E] {
+abstract class AbstractQueue[E] protected () extends AbstractCollection[E] with Queue[E] {
 
   override def add(e: E): Boolean =
     if (offer(e)) true

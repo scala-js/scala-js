@@ -42,6 +42,7 @@ final class IRFileCacheConfig private (
 }
 
 object IRFileCacheConfig {
+
   /** Returns the default [[IRFileCacheConfig]].
    *
    *  The defaults are:

@@ -25,10 +25,8 @@ import scala.reflect.{ClassTag, classTag}
 
 object ArrayOpsTest {
   @noinline
-  def assertJSArrayEquals[A: ClassTag](expected: js.Array[_],
-      actual: A): Unit = {
-    assertEquals("wrong inferred type", classOf[js.Array[_]],
-        classTag[A].runtimeClass)
+  def assertJSArrayEquals[A: ClassTag](expected: js.Array[_], actual: A): Unit = {
+    assertEquals("wrong inferred type", classOf[js.Array[_]], classTag[A].runtimeClass)
     val actual1 = actual.asInstanceOf[js.Array[_]]
     assertEquals("lengths differ", expected.length, actual1.length)
     for (i <- 0 until expected.length)
@@ -36,15 +34,15 @@ object ArrayOpsTest {
   }
 
   @noinline
-  def assertJSArrayEqualsNotSame[A: ClassTag](unexpected: js.Array[_],
-      expected: js.Array[_], actual: A): Unit = {
+  def assertJSArrayEqualsNotSame[A: ClassTag](unexpected: js.Array[_], expected: js.Array[_],
+      actual: A): Unit = {
     assertNotSame(unexpected, actual)
     assertJSArrayEquals(expected, actual)
   }
 
   @noinline
-  def assertJSArrayEqualsSame[A: ClassTag](original: js.Array[_],
-      expected: js.Array[_], actual: A): Unit = {
+  def assertJSArrayEqualsSame[A: ClassTag](original: js.Array[_], expected: js.Array[_],
+      actual: A): Unit = {
     assertSame(original, actual)
     assertJSArrayEquals(expected, actual)
   }
@@ -115,7 +113,7 @@ class ArrayOpsTest {
   @Test def sizeCompare(): Unit = {
     assumeFalse("sizeCompare was added in 2.13",
         scalaVersion.startsWith("2.11.") ||
-        scalaVersion.startsWith("2.12."))
+          scalaVersion.startsWith("2.12."))
 
     import FallbackImplicits._
     import js.Any.jsArrayOps
@@ -136,7 +134,7 @@ class ArrayOpsTest {
   @Test def sizeIs(): Unit = {
     assumeFalse("sizeIs was added in 2.13",
         scalaVersion.startsWith("2.11.") ||
-        scalaVersion.startsWith("2.12."))
+          scalaVersion.startsWith("2.12."))
 
     import FallbackImplicits._
     import js.Any.jsArrayOps
@@ -150,7 +148,7 @@ class ArrayOpsTest {
   @Test def lengthIs(): Unit = {
     assumeFalse("lengthIs was added in 2.13",
         scalaVersion.startsWith("2.11.") ||
-        scalaVersion.startsWith("2.12."))
+          scalaVersion.startsWith("2.12."))
 
     import FallbackImplicits._
     import js.Any.jsArrayOps
@@ -296,14 +294,19 @@ class ArrayOpsTest {
   @Test def partition(): Unit = {
     val array = js.Array(1, 5, 7, 2, 54, 2, 78, 0, 3)
     assertJSArrayPairEquals((js.Array(), array), array.partition(_ < 0))
-    assertJSArrayPairEquals((js.Array(1, 5, 7, 2, 2, 0, 3), js.Array(54, 78)), array.partition(_ < 10))
+    assertJSArrayPairEquals(
+        (js.Array(1, 5, 7, 2, 2, 0, 3), js.Array(54, 78)),
+        array.partition(_ < 10)
+    )
     assertJSArrayPairEquals((array, js.Array()), array.partition(_ < 100))
   }
 
   @Test def partitionMap(): Unit = {
-    assumeFalse("partitionMap was added in 2.13",
+    assumeFalse(
+        "partitionMap was added in 2.13",
         scalaVersion.startsWith("2.11.") ||
-        scalaVersion.startsWith("2.12."))
+          scalaVersion.startsWith("2.12.")
+    )
 
     import FallbackImplicits._
     import js.Any.jsArrayOps
@@ -358,12 +361,32 @@ class ArrayOpsTest {
   }
 
   @Test def sortBy(): Unit = {
-    val array = js.Array(1 -> "1", 5 -> "5", 7 -> "7", 2 -> "2", 54 -> "54",
-        2 -> "2 2nd", 78 -> "78", 0 -> "0", 3 -> "3")
-    assertJSArrayEqualsNotSame(array,
-        js.Array(0 -> "0", 1 -> "1", 2 -> "2", 2 -> "2 2nd", 3 -> "3",
-            5 -> "5", 7 -> "7", 54 -> "54", 78 -> "78"),
-        array.sortBy(_._1))
+    val array = js.Array(
+        1 -> "1",
+        5 -> "5",
+        7 -> "7",
+        2 -> "2",
+        54 -> "54",
+        2 -> "2 2nd",
+        78 -> "78",
+        0 -> "0",
+        3 -> "3"
+    )
+    assertJSArrayEqualsNotSame(
+        array,
+        js.Array(
+            0 -> "0",
+            1 -> "1",
+            2 -> "2",
+            2 -> "2 2nd",
+            3 -> "3",
+            5 -> "5",
+            7 -> "7",
+            54 -> "54",
+            78 -> "78"
+        ),
+        array.sortBy(_._1)
+    )
   }
 
   @Test def indexOf(): Unit = {
@@ -444,7 +467,11 @@ class ArrayOpsTest {
 
   @Test def scanRight(): Unit = {
     val array = js.Array(6, 2, 56, -1)
-    assertJSArrayEqualsNotSame(array, js.Array(161, -155, 157, -101, 100), array.scanRight(100)(_ - _))
+    assertJSArrayEqualsNotSame(
+        array,
+        js.Array(161, -155, 157, -101, 100),
+        array.scanRight(100)(_ - _)
+    )
   }
 
   @Test def foldRight(): Unit = {
@@ -464,26 +491,38 @@ class ArrayOpsTest {
 
   @Test def flatMap(): Unit = {
     val array = js.Array(6, 2, 56, -1)
-    assertJSArrayEqualsNotSame(array,
+    assertJSArrayEqualsNotSame(
+        array,
         js.Array(6, 7, 8, 2, 3, 4, 56, 57, 58, -1, 0, 1),
-        array.flatMap(x => js.Array(x, x + 1, x + 2)))
+        array.flatMap(x => js.Array(x, x + 1, x + 2))
+    )
   }
 
   @Test def collect(): Unit = {
     val array = js.Array(1, 5, 7, 2, 54, 2, 78, 0, 3)
-    assertJSArrayEqualsNotSame(array, js.Array(2, 10, 14, 4, 4, 0, 6), array.collect {
-      case x if x < 10 => x * 2
-    })
+    assertJSArrayEqualsNotSame(
+        array,
+        js.Array(2, 10, 14, 4, 4, 0, 6),
+        array.collect {
+          case x if x < 10 => x * 2
+        }
+    )
   }
 
   @Test def collectFirst(): Unit = {
     val array = js.Array(1, 5, 7, 2, 54, 2, 78, 0, 3)
-    assertEquals(Some(108), array.collectFirst {
-      case x if x > 10 => x * 2
-    })
-    assertEquals(None, array.collectFirst {
-      case x if x < 0 => x * 2
-    })
+    assertEquals(
+        Some(108),
+        array.collectFirst {
+          case x if x > 10 => x * 2
+        }
+    )
+    assertEquals(
+        None,
+        array.collectFirst {
+          case x if x < 0 => x * 2
+        }
+    )
   }
 
   @Test def zip(): Unit = {
@@ -496,10 +535,14 @@ class ArrayOpsTest {
   @Test def zipAll(): Unit = {
     val array1 = js.Array(1, 5, 7, 2)
     val array2 = js.Array("foo", "bar", "baz")
-    assertJSArrayEquals(js.Array(1 -> "foo", 5 -> "bar", 7 -> "baz", 2 -> "foobar"),
-        array1.zipAll(array2, 10, "foobar"))
-    assertJSArrayEquals(js.Array("foo" -> 1, "bar" -> 5, "baz" -> 7, "foobar" -> 2),
-        array2.zipAll(array1, "foobar", 10))
+    assertJSArrayEquals(
+        js.Array(1 -> "foo", 5 -> "bar", 7 -> "baz", 2 -> "foobar"),
+        array1.zipAll(array2, 10, "foobar")
+    )
+    assertJSArrayEquals(
+        js.Array("foo" -> 1, "bar" -> 5, "baz" -> 7, "foobar" -> 2),
+        array2.zipAll(array1, "foobar", 10)
+    )
   }
 
   @Test def zipWithIndex(): Unit = {
@@ -539,24 +582,32 @@ class ArrayOpsTest {
 
   @Test def patch(): Unit = {
     val array = js.Array(1, 5, 7, 2, 54, 2, 78, 0, 3)
-    assertJSArrayEqualsNotSame(array,
-        js.Array(1, 5, 7, 0, 3),
-        array.patch(3, Nil, 4))
-    assertJSArrayEqualsNotSame(array,
+    assertJSArrayEqualsNotSame(array, js.Array(1, 5, 7, 0, 3), array.patch(3, Nil, 4))
+    assertJSArrayEqualsNotSame(
+        array,
         js.Array(1, 5, 7, 42, 34, 0, 3),
-        array.patch(3, js.Array(42, 34), 4))
-    assertJSArrayEqualsNotSame(array,
+        array.patch(3, js.Array(42, 34), 4)
+    )
+    assertJSArrayEqualsNotSame(
+        array,
         js.Array(42, 34, 54, 2, 78, 0, 3),
-        array.patch(-3, js.Array(42, 34), 4))
-    assertJSArrayEqualsNotSame(array,
+        array.patch(-3, js.Array(42, 34), 4)
+    )
+    assertJSArrayEqualsNotSame(
+        array,
         js.Array(1, 5, 7, 2, 54, 2, 78, 42),
-        array.patch(7, js.Array(42), 6))
-    assertJSArrayEqualsNotSame(array,
+        array.patch(7, js.Array(42), 6)
+    )
+    assertJSArrayEqualsNotSame(
+        array,
         js.Array(1, 5, 7, 2, 54, 2, 78, 0, 3, 42, 34),
-        array.patch(17, js.Array(42, 34), 6))
-    assertJSArrayEqualsNotSame(array,
+        array.patch(17, js.Array(42, 34), 6)
+    )
+    assertJSArrayEqualsNotSame(
+        array,
         js.Array(1, 5, 7, 2, 42, 34, 54, 2, 78, 0, 3),
-        array.patch(4, js.Array(42, 34), -6))
+        array.patch(4, js.Array(42, 34), -6)
+    )
   }
 
   @Test def foreach(): Unit = {
@@ -594,8 +645,8 @@ class ArrayOpsTest {
   }
 
   @Test def groupBy(): Unit = {
-    val array = js.Array("foo" -> 1, "bar" -> 5, "baz" -> 1, "foobar" -> 3,
-        "hello" -> 7, "bonjour" -> 3)
+    val array =
+      js.Array("foo" -> 1, "bar" -> 5, "baz" -> 1, "foobar" -> 3, "hello" -> 7, "bonjour" -> 3)
     val groups = array.groupBy(_._2)
     assertEquals(Set(1, 3, 5, 7), groups.keySet)
     assertJSArrayEquals(js.Array("foo" -> 1, "baz" -> 1), groups(1))
@@ -914,9 +965,11 @@ class ArrayOpsTest {
     val array = js.Array(33, 11, 2, 3, 42, 53, 5, 54, 23, 44, 78)
     array.trimStart(4)
 
-    assumeFalse("the safe behavior was introduced in 2.13",
+    assumeFalse(
+        "the safe behavior was introduced in 2.13",
         scalaVersion.startsWith("2.11.") ||
-        scalaVersion.startsWith("2.12."))
+          scalaVersion.startsWith("2.12.")
+    )
     assertJSArrayEquals(js.Array(42, 53, 5, 54, 23, 44, 78), array)
     array.trimStart(-3)
     assertJSArrayEquals(js.Array(42, 53, 5, 54, 23, 44, 78), array)
@@ -928,9 +981,11 @@ class ArrayOpsTest {
     val array = js.Array(33, 11, 2, 3, 42, 53, 5, 54, 23, 44, 78)
     array.trimEnd(4)
 
-    assumeFalse("the safe behavior was introduced in 2.13",
+    assumeFalse(
+        "the safe behavior was introduced in 2.13",
         scalaVersion.startsWith("2.11.") ||
-        scalaVersion.startsWith("2.12."))
+          scalaVersion.startsWith("2.12.")
+    )
     assertJSArrayEquals(js.Array(33, 11, 2, 3, 42, 53, 5), array)
     array.trimEnd(-3)
     assertJSArrayEquals(js.Array(33, 11, 2, 3, 42, 53, 5), array)
@@ -941,19 +996,17 @@ class ArrayOpsTest {
   @Test def reduceLeft(): Unit = {
     val array = js.Array(100, 6, 2, 56, -1)
     assertEquals(37, array.reduceLeft(_ - _))
-    assertThrows(classOf[UnsupportedOperationException],
-        js.Array[Int]().reduceLeft(_ + _))
+    assertThrows(classOf[UnsupportedOperationException], js.Array[Int]().reduceLeft(_ + _))
   }
 
   @Test def reduceRight(): Unit = {
     val array = js.Array("hello", "world")
     assertEquals("hello, world", array.reduceRight(_ + ", " + _))
-    assertThrows(classOf[UnsupportedOperationException],
-        js.Array[Int]().reduceRight(_ + _))
+    assertThrows(classOf[UnsupportedOperationException], js.Array[Int]().reduceRight(_ + _))
   }
 
   @Test def toList_issue_843(): Unit = {
-    val array = js.Array(1,2,1,3,1,10,9)
+    val array = js.Array(1, 2, 1, 3, 1, 10, 9)
     val list = array.toList
     assertArrayEquals(array.toArray, list.toArray)
   }

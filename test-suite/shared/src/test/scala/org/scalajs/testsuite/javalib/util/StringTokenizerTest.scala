@@ -84,8 +84,8 @@ class StringTokenizerTest {
   }
 
   @Test def consecutive_returnDelims_true(): Unit = {
-    assertTokenizerResult(":", ":", "This", ":", ":", "is",
-        ":", ":", "a", ":", ":", "test", ":", ":", "String", ":", ":") {
+    assertTokenizerResult(":", ":", "This", ":", ":", "is", ":", ":", "a", ":", ":", "test", ":",
+        ":", "String", ":", ":") {
       new StringTokenizer("::This::is::a::test::String::", ":", true)
     }
   }
@@ -98,15 +98,18 @@ object StringTokenizerTest {
   }
 
   private[this] def assertElementResult(expected: String*)(tokenizer: StringTokenizer): Unit = {
-    assertTokenizerResultImpl(_.countTokens(), _.hasMoreElements(), _.nextElement())(expected: _*)(tokenizer)
+    assertTokenizerResultImpl(_.countTokens(), _.hasMoreElements(), _.nextElement())(expected: _*)(
+        tokenizer)
   }
 
   private[this] def assertTokenResult(expected: String*)(tokenizer: StringTokenizer): Unit = {
-    assertTokenizerResultImpl(_.countTokens(), _.hasMoreTokens(), _.nextToken())(expected: _*)(tokenizer)
+    assertTokenizerResultImpl(_.countTokens(), _.hasMoreTokens(), _.nextToken())(expected: _*)(
+        tokenizer)
   }
 
-  private[this] def assertTokenizerResultImpl[T](getCount: StringTokenizer => Int, hasMore: StringTokenizer => Boolean,
-      getNext: StringTokenizer => T)(expected: T*)(tokenizer: StringTokenizer): Unit = {
+  private[this] def assertTokenizerResultImpl[T](getCount: StringTokenizer => Int,
+      hasMore: StringTokenizer => Boolean, getNext: StringTokenizer => T)(expected: T*)(
+      tokenizer: StringTokenizer): Unit = {
 
     assertEquals(expected.size, getCount(tokenizer))
 

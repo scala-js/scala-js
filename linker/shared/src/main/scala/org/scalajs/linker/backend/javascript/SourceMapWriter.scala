@@ -18,7 +18,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.{util => ju}
 
-import scala.collection.mutable.{ ListBuffer, HashMap, Stack, StringBuilder }
+import scala.collection.mutable.{ListBuffer, HashMap, Stack, StringBuilder}
 
 import org.scalajs.ir
 import org.scalajs.ir.OriginalName
@@ -27,7 +27,7 @@ import org.scalajs.ir.Position._
 
 private object SourceMapWriter {
   private val Base64Map =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
       "abcdefghijklmnopqrstuvwxyz" +
       "0123456789+/"
 
@@ -75,8 +75,7 @@ private object SourceMapWriter {
   }
 }
 
-final class SourceMapWriter(out: Writer, jsFileName: String,
-    relativizeBaseURI: Option[URI]) {
+final class SourceMapWriter(out: Writer, jsFileName: String, relativizeBaseURI: Option[URI]) {
 
   import SourceMapWriter._
 
@@ -152,8 +151,7 @@ final class SourceMapWriter(out: Writer, jsFileName: String,
     startSegment(column, originalPos, isIdent = false, null)
   }
 
-  def startIdentNode(column: Int, originalPos: Position,
-      optOriginalName: OriginalName): Unit = {
+  def startIdentNode(column: Int, originalPos: Position, optOriginalName: OriginalName): Unit = {
     // TODO The then branch allocates a String; we should avoid that at some point
     val originalName =
       if (optOriginalName.isDefined) optOriginalName.get.toString()
@@ -164,12 +162,11 @@ final class SourceMapWriter(out: Writer, jsFileName: String,
 
   def endNode(column: Int): Unit = {
     nodePosStack.pop()
-    startSegment(column, nodePosStack.topPos, isIdent = false,
-        nodePosStack.topName)
+    startSegment(column, nodePosStack.topPos, isIdent = false, nodePosStack.topName)
   }
 
-  private def startSegment(startColumn: Int, originalPos: Position,
-      isIdent: Boolean, originalName: String): Unit = {
+  private def startSegment(startColumn: Int, originalPos: Position, isIdent: Boolean,
+      originalName: String): Unit = {
     // scalastyle:off return
 
     // There is no point in outputting a segment with the same information
@@ -202,7 +199,7 @@ final class SourceMapWriter(out: Writer, jsFileName: String,
     else out.write(',')
 
     // Generated column field
-    writeBase64VLQ(pendingColumnInGenerated-lastColumnInGenerated)
+    writeBase64VLQ(pendingColumnInGenerated - lastColumnInGenerated)
     lastColumnInGenerated = pendingColumnInGenerated
 
     // If the position is NoPosition, stop here
@@ -220,7 +217,7 @@ final class SourceMapWriter(out: Writer, jsFileName: String,
       writeBase64VLQ0()
     } else {
       val sourceIndex = sourceToIndex(source)
-      writeBase64VLQ(sourceIndex-lastSourceIndex)
+      writeBase64VLQ(sourceIndex - lastSourceIndex)
       lastSource = source
       lastSourceIndex = sourceIndex
     }
@@ -236,7 +233,7 @@ final class SourceMapWriter(out: Writer, jsFileName: String,
     // Name field
     if (pendingName != null) {
       val nameIndex = nameToIndex(pendingName)
-      writeBase64VLQ(nameIndex-lastNameIndex)
+      writeBase64VLQ(nameIndex - lastNameIndex)
       lastNameIndex = nameIndex
     }
 

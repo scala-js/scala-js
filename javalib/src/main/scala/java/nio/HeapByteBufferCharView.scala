@@ -12,11 +12,9 @@
 
 package java.nio
 
-private[nio] final class HeapByteBufferCharView private (
-    _capacity: Int,
+private[nio] final class HeapByteBufferCharView private (_capacity: Int,
     override private[nio] val _byteArray: Array[Byte],
-    override private[nio] val _byteArrayOffset: Int,
-    _initialPosition: Int, _initialLimit: Int,
+    override private[nio] val _byteArrayOffset: Int, _initialPosition: Int, _initialLimit: Int,
     _readOnly: Boolean, override private[nio] val isBigEndian: Boolean)
     extends CharBuffer(_capacity, null, -1) {
 
@@ -45,8 +43,8 @@ private[nio] final class HeapByteBufferCharView private (
   def subSequence(start: Int, end: Int): CharBuffer = {
     if (start < 0 || end < start || end > remaining())
       throw new IndexOutOfBoundsException
-    new HeapByteBufferCharView(capacity(), _byteArray, _byteArrayOffset,
-        position() + start, position() + end, isReadOnly(), isBigEndian)
+    new HeapByteBufferCharView(capacity(), _byteArray, _byteArrayOffset, position() + start,
+        position() + end, isReadOnly(), isBigEndian)
   }
 
   @noinline
@@ -97,11 +95,10 @@ private[nio] object HeapByteBufferCharView {
       extends GenHeapBufferView.NewHeapBufferView[CharBuffer] {
     def bytesPerElem: Int = 2
 
-    def apply(capacity: Int, byteArray: Array[Byte], byteArrayOffset: Int,
-        initialPosition: Int, initialLimit: Int, readOnly: Boolean,
-        isBigEndian: Boolean): CharBuffer = {
-      new HeapByteBufferCharView(capacity, byteArray, byteArrayOffset,
-          initialPosition, initialLimit, readOnly, isBigEndian)
+    def apply(capacity: Int, byteArray: Array[Byte], byteArrayOffset: Int, initialPosition: Int,
+        initialLimit: Int, readOnly: Boolean, isBigEndian: Boolean): CharBuffer = {
+      new HeapByteBufferCharView(capacity, byteArray, byteArrayOffset, initialPosition,
+          initialLimit, readOnly, isBigEndian)
     }
   }
 

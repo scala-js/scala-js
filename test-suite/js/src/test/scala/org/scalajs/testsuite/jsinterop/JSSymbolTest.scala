@@ -102,10 +102,8 @@ class JSSymbolTest {
     assertEquals("object", js.typeOf(obj1.innerObject.asInstanceOf[js.Any]))
     assertEquals("SJSDefinedInnerObject.innerObject", obj1.innerObject.toString())
 
-    assertEquals("object",
-        js.typeOf(selectSymbol(obj1, sym1).asInstanceOf[js.Any]))
-    assertEquals("SJSDefinedInnerObject.innerObject",
-        selectSymbol(obj1, sym1).toString())
+    assertEquals("object", js.typeOf(selectSymbol(obj1, sym1).asInstanceOf[js.Any]))
+    assertEquals("SJSDefinedInnerObject.innerObject", selectSymbol(obj1, sym1).toString())
   }
 
   @Test def native_with_methods(): Unit = {
@@ -176,15 +174,11 @@ class JSSymbolTest {
         }
     )
 
-    assertEquals(5,
-        obj.asInstanceOf[OverloadedRuntimeDispatchMethodClass].foo(2))
-    assertEquals("Hello World",
-        obj.asInstanceOf[OverloadedRuntimeDispatchMethodClass].foo("World"))
+    assertEquals(5, obj.asInstanceOf[OverloadedRuntimeDispatchMethodClass].foo(2))
+    assertEquals("Hello World", obj.asInstanceOf[OverloadedRuntimeDispatchMethodClass].foo("World"))
 
-    assertEquals(6,
-        obj.asInstanceOf[OverloadedRuntimeDispatchMethodTrait].foo(3))
-    assertEquals("Hello Moon",
-        obj.asInstanceOf[OverloadedRuntimeDispatchMethodTrait].foo("Moon"))
+    assertEquals(6, obj.asInstanceOf[OverloadedRuntimeDispatchMethodTrait].foo(3))
+    assertEquals("Hello Moon", obj.asInstanceOf[OverloadedRuntimeDispatchMethodTrait].foo("Moon"))
 
     assertEquals(6, callSymbol(obj, sym1)(3))
     assertEquals("Hello Moon", callSymbol(obj, sym1)("Moon"))
@@ -208,10 +202,8 @@ class JSSymbolTest {
         sym3 -> ((x: Int) => x + 2)
     )
 
-    assertEquals(65,
-        obj.asInstanceOf[ClassWithSymsInSJSDefinedObject].symInSJSDefinedObject(63))
-    assertEquals(65,
-        obj.asInstanceOf[TraitWithSymsInSJSDefinedObject].symInSJSDefinedObject(63))
+    assertEquals(65, obj.asInstanceOf[ClassWithSymsInSJSDefinedObject].symInSJSDefinedObject(63))
+    assertEquals(65, obj.asInstanceOf[TraitWithSymsInSJSDefinedObject].symInSJSDefinedObject(63))
 
     assertEquals(65, callSymbol(obj, sym3)(63))
   }
@@ -231,10 +223,8 @@ class JSSymbolTest {
         js.Symbol.iterator -> (() => singletonIterator(653))
     )
 
-    assertArrayEquals(Array(653),
-        iterableToArray(obj.asInstanceOf[ClassJSIterable[Int]]).toArray)
-    assertArrayEquals(Array(653),
-        iterableToArray(obj.asInstanceOf[JSIterable[Int]]).toArray)
+    assertArrayEquals(Array(653), iterableToArray(obj.asInstanceOf[ClassJSIterable[Int]]).toArray)
+    assertArrayEquals(Array(653), iterableToArray(obj.asInstanceOf[JSIterable[Int]]).toArray)
 
     val content = Array.newBuilder[Int]
     iterateIterable(obj.asInstanceOf[JSIterable[Int]])(content += _)
@@ -310,8 +300,7 @@ object JSSymbolTest {
         next = { () =>
           if (first) {
             first = false
-            js.Dynamic.literal(value = singleton.asInstanceOf[js.Any],
-                done = false)
+            js.Dynamic.literal(value = singleton.asInstanceOf[js.Any], done = false)
           } else {
             js.Dynamic.literal(value = (), done = true)
           }
@@ -490,8 +479,7 @@ object JSSymbolTest {
     def symInSJSDefinedObject(x: Int): Int = js.native
   }
 
-  class SJSDefinedWithSymsInSJSDefinedObject
-      extends TraitWithSymsInSJSDefinedObject {
+  class SJSDefinedWithSymsInSJSDefinedObject extends TraitWithSymsInSJSDefinedObject {
     @JSName(sym3)
     def symInSJSDefinedObject(x: Int): Int = x + 2
   }

@@ -79,7 +79,7 @@ class ExportsTest {
       @JSExport
       def bar(): Int = 42
       @JSExport
-      def double(x: Int): Int = x*2
+      def double(x: Int): Int = x * 2
     }
 
     val foo = (new Foo).asInstanceOf[js.Dynamic]
@@ -93,7 +93,7 @@ class ExportsTest {
       @JSExport("theAnswer")
       def bar(): Int = 42
       @JSExport("doubleTheParam")
-      def double(x: Int): Int = x*2
+      def double(x: Int): Int = x * 2
     }
 
     val foo = (new Foo).asInstanceOf[js.Dynamic]
@@ -162,7 +162,7 @@ class ExportsTest {
       @JSExport
       var x: Int = 3
       @JSExport
-      def doubleX: Int = x*2
+      def doubleX: Int = x * 2
       @JSExport
       def y: String = myY + " get"
       @JSExport
@@ -190,7 +190,7 @@ class ExportsTest {
       @JSExport("x")
       var xScala: Int = 3
       @JSExport("doubleX")
-      def doubleXScala: Int = xScala*2
+      def doubleXScala: Int = xScala * 2
       @JSExport("y")
       def yGetter: String = myY + " get"
       @JSExport("y")
@@ -321,7 +321,7 @@ class ExportsTest {
       @JSExport("foobar")
       def foo(): Int = 42
       @JSExport("foobar")
-      def bar(x: Int): Int = x*2
+      def bar(x: Int): Int = x * 2
     }
 
     val foo = (new Foo).asInstanceOf[js.Dynamic]
@@ -409,10 +409,10 @@ class ExportsTest {
   @Test def overloading_with_inherited_exports(): Unit = {
     class A {
       @JSExport
-      def foo(x: Int): Int = 2*x
+      def foo(x: Int): Int = 2 * x
     }
 
-    class B extends A{
+    class B extends A {
       @JSExport("foo")
       def bar(x: String): String = s"Hello $x"
     }
@@ -445,7 +445,7 @@ class ExportsTest {
     val foo = (new Foo).asInstanceOf[js.Dynamic]
     assertEquals("function", js.typeOf(foo.lambda))
 
-    val lambda = foo.lambda(5).asInstanceOf[Function1[Int,Int]]
+    val lambda = foo.lambda(5).asInstanceOf[Function1[Int, Int]]
 
     assertEquals(9, lambda(4))
   }
@@ -458,7 +458,7 @@ class ExportsTest {
 
     val foo = (new Foo).asInstanceOf[js.Dynamic]
     assertEquals("function", js.typeOf(foo.multiParam))
-    assertEquals(11, foo.multiParam(5,6))
+    assertEquals(11, foo.multiParam(5, 6))
   }
 
   @Test def exports_for_default_arguments(): Unit = {
@@ -639,16 +639,16 @@ class ExportsTest {
     assertEquals(9, jsa.foo(2))
     assertEquals(5, a.oneCount)
 
-    assertEquals(11, jsa.foo(2,4))
+    assertEquals(11, jsa.foo(2, 4))
     assertEquals(6, a.oneCount)
 
-    assertEquals(16, jsa.foo(2,4,10))
+    assertEquals(16, jsa.foo(2, 4, 10))
     assertEquals(6, a.oneCount)
 
-    assertEquals(15, jsa.foo((),4,10))
+    assertEquals(15, jsa.foo((), 4, 10))
     assertEquals(7, a.oneCount)
 
-    assertEquals(10, jsa.foo((),4))
+    assertEquals(10, jsa.foo((), 4))
     assertEquals(9, a.oneCount)
   }
 
@@ -705,7 +705,7 @@ class ExportsTest {
     assertEquals(3, a.foo(1, 2))
     assertEquals("", a.foo())
     assertEquals("foo", a.foo("foo"))
-    assertEquals("foo|bar", a.foo("foo","bar"))
+    assertEquals("foo|bar", a.foo("foo", "bar"))
 
   }
 
@@ -851,7 +851,8 @@ class ExportsTest {
     val subclass = subclassFun(constr)
     assertEquals("function", js.typeOf(subclass))
 
-    val obj = js.Dynamic.newInstance(subclass)(5)
+    val obj = js.Dynamic
+      .newInstance(subclass)(5)
       .asInstanceOf[TopLevelExportedAbstractJSClass]
 
     assertEquals(5, obj.x)
@@ -914,9 +915,9 @@ class ExportsTest {
     val constr =
       if (isNoModule) global.ExportedDefaultArgClass
       else exportsNamespace.ExportedDefaultArgClass
-    assertEquals(6, js.Dynamic.newInstance(constr)(1,2,3).result)
+    assertEquals(6, js.Dynamic.newInstance(constr)(1, 2, 3).result)
     assertEquals(106, js.Dynamic.newInstance(constr)(1).result)
-    assertEquals(103, js.Dynamic.newInstance(constr)(1,2).result)
+    assertEquals(103, js.Dynamic.newInstance(constr)(1, 2).result)
   }
 
   @Test def disambiguate_overloads_involving_longs(): Unit = {
@@ -973,9 +974,9 @@ class ExportsTest {
   @Test def should_be_able_to_disambiguate_an_Int_from_a_Char(): Unit = {
     class Foo {
       @JSExport
-      def bar(x: Char): String = "char: "+x
+      def bar(x: Char): String = "char: " + x
       @JSExport
-      def bar(x: Int): String = "int: "+x
+      def bar(x: Int): String = "int: " + x
     }
     val foo = (new Foo).asInstanceOf[js.Dynamic]
 

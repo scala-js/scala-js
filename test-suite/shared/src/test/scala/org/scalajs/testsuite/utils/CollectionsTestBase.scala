@@ -68,8 +68,7 @@ trait CollectionsTestBase {
     testSubsets(set.subSet(elem, elem))
   }
 
-  def testListUnmodifiability[E](list: ju.List[E], elem: E,
-      recursive: Boolean = false): Unit = {
+  def testListUnmodifiability[E](list: ju.List[E], elem: E, recursive: Boolean = false): Unit = {
     testCollectionUnmodifiability(list, elem)
     expectThrows(classOf[UnsupportedOperationException], list.add(0, elem))
     expectThrows(classOf[UnsupportedOperationException],
@@ -85,15 +84,14 @@ trait CollectionsTestBase {
     testListIteratorsUnmodifiability(() => list.listIterator(0), elem)
   }
 
-  def testOnFirstPositionOfIterator[Iter <: ju.Iterator[_]](
-      newIter: () => Iter, action: Iter => Unit,
-      expectedException: Option[Class[_ <: Throwable]]): Unit = {
+  def testOnFirstPositionOfIterator[Iter <: ju.Iterator[_]](newIter: () => Iter,
+      action: Iter => Unit, expectedException: Option[Class[_ <: Throwable]]): Unit = {
     val it = newIter()
     if (it.hasNext) {
       it.next()
       expectedException match {
         case Some(exClass) => expectThrows(exClass, action(it))
-        case None => action(it)
+        case None          => action(it)
       }
     }
   }
@@ -101,10 +99,8 @@ trait CollectionsTestBase {
   def testMapUnmodifiability[K, V](map: ju.Map[K, V], key: K, value: V): Unit = {
     expectThrows(classOf[UnsupportedOperationException], map.clear())
     expectThrows(classOf[UnsupportedOperationException], map.put(key, value))
-    expectThrows(classOf[UnsupportedOperationException],
-        map.putAll(TrivialImmutableMap[K, V]()))
-    testSetUnmodifiability(map.entrySet(),
-        new ju.AbstractMap.SimpleImmutableEntry(key, value))
+    expectThrows(classOf[UnsupportedOperationException], map.putAll(TrivialImmutableMap[K, V]()))
+    testSetUnmodifiability(map.entrySet(), new ju.AbstractMap.SimpleImmutableEntry(key, value))
     testSetUnmodifiability(map.keySet(), key)
     testCollectionUnmodifiability(map.values(), value)
   }
@@ -122,16 +118,15 @@ trait CollectionsTestBase {
   }
 
   def testIteratorsUnmodifiability[E](newIter: () => ju.Iterator[E]): Unit = {
-    testOnFirstPositionOfIterator[ju.Iterator[E]](newIter, _.remove(),
-        Some(classOf[UnsupportedOperationException]))
+    testOnFirstPositionOfIterator[
+        ju.Iterator[E]](newIter, _.remove(), Some(classOf[UnsupportedOperationException]))
   }
 
-  def testListIteratorsUnmodifiability[E](newIter: () => ju.ListIterator[E],
-      elem: E): Unit = {
+  def testListIteratorsUnmodifiability[E](newIter: () => ju.ListIterator[E], elem: E): Unit = {
     testIteratorsUnmodifiability(newIter)
-    testOnFirstPositionOfIterator[ju.ListIterator[E]](newIter, _.add(elem),
-        Some(classOf[UnsupportedOperationException]))
-    testOnFirstPositionOfIterator[ju.ListIterator[E]](newIter, _.set(elem),
-        Some(classOf[UnsupportedOperationException]))
+    testOnFirstPositionOfIterator[
+        ju.ListIterator[E]](newIter, _.add(elem), Some(classOf[UnsupportedOperationException]))
+    testOnFirstPositionOfIterator[
+        ju.ListIterator[E]](newIter, _.set(elem), Some(classOf[UnsupportedOperationException]))
   }
 }

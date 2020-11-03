@@ -22,31 +22,39 @@ import Fingerprint.FingerprintBuilder
 final class StandardConfig private (
     /** Scala.js semantics. */
     val semantics: Semantics,
-    /** Module kind. */
+    /** Module kind.
+     */
     val moduleKind: ModuleKind,
-    /** How to split modules (if at all). */
+    /** How to split modules (if at all).
+     */
     val moduleSplitStyle: ModuleSplitStyle,
-    /** ECMAScript features to use. */
+    /** ECMAScript features to use.
+     */
     val esFeatures: ESFeatures,
     /** If true, performs expensive checks of the IR for the used parts. */
     val checkIR: Boolean,
-    /** Whether to use the Scala.js optimizer. */
+    /** Whether to use the Scala.js optimizer.
+     */
     val optimizer: Boolean,
     /** Whether things that can be parallelized should be parallelized.
      *  On the JavaScript platform, this does not have any effect.
      */
     val parallel: Boolean,
-    /** Whether to emit a source map. */
+    /** Whether to emit a source map.
+     */
     val sourceMap: Boolean,
-    /** Base path to relativize paths in the source map. */
+    /** Base path to relativize paths in the source map.
+     */
     val relativizeSourceMapBase: Option[URI],
-    /** Name patterns for output. */
+    /** Name patterns for output.
+     */
     val outputPatterns: OutputPatterns,
     /** Whether to use the Google Closure Compiler pass, if it is available.
      *  On the JavaScript platform, this does not have any effect.
      */
     val closureCompilerIfAvailable: Boolean,
-    /** Pretty-print the output. */
+    /** Pretty-print the output.
+     */
     val prettyPrint: Boolean,
     /** Whether the linker should run in batch mode.
      *
@@ -60,7 +68,8 @@ final class StandardConfig private (
      *  `batchMode = true`.
      */
     val batchMode: Boolean,
-    /** The maximum number of (file) writes executed concurrently. */
+    /** The maximum number of (file) writes executed concurrently.
+     */
     val maxConcurrentWrites: Int
 ) {
   private def this() = {
@@ -153,19 +162,13 @@ final class StandardConfig private (
   }
 
   private def copy(
-      semantics: Semantics = semantics,
-      moduleKind: ModuleKind = moduleKind,
-      moduleSplitStyle: ModuleSplitStyle = moduleSplitStyle,
-      esFeatures: ESFeatures = esFeatures,
-      checkIR: Boolean = checkIR,
-      optimizer: Boolean = optimizer,
-      parallel: Boolean = parallel,
-      sourceMap: Boolean = sourceMap,
-      outputPatterns: OutputPatterns = outputPatterns,
+      semantics: Semantics = semantics, moduleKind: ModuleKind = moduleKind,
+      moduleSplitStyle: ModuleSplitStyle = moduleSplitStyle, esFeatures: ESFeatures = esFeatures,
+      checkIR: Boolean = checkIR, optimizer: Boolean = optimizer, parallel: Boolean = parallel,
+      sourceMap: Boolean = sourceMap, outputPatterns: OutputPatterns = outputPatterns,
       relativizeSourceMapBase: Option[URI] = relativizeSourceMapBase,
       closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
-      prettyPrint: Boolean = prettyPrint,
-      batchMode: Boolean = batchMode,
+      prettyPrint: Boolean = prettyPrint, batchMode: Boolean = batchMode,
       maxConcurrentWrites: Int = maxConcurrentWrites
   ): StandardConfig = {
     new StandardConfig(
@@ -190,8 +193,7 @@ final class StandardConfig private (
 object StandardConfig {
   import StandardConfigPlatformExtensions.ConfigExt
 
-  private implicit object StandardConfigFingerprint
-      extends Fingerprint[StandardConfig] {
+  private implicit object StandardConfigFingerprint extends Fingerprint[StandardConfig] {
 
     override def fingerprint(config: StandardConfig): String = {
       new FingerprintBuilder("StandardConfig")
@@ -203,11 +205,9 @@ object StandardConfig {
         .addField("optimizer", config.optimizer)
         .addField("parallel", config.parallel)
         .addField("sourceMap", config.sourceMap)
-        .addField("relativizeSourceMapBase",
-            config.relativizeSourceMapBase.map(_.toASCIIString()))
+        .addField("relativizeSourceMapBase", config.relativizeSourceMapBase.map(_.toASCIIString()))
         .addField("outputPatterns", config.outputPatterns)
-        .addField("closureCompilerIfAvailable",
-            config.closureCompilerIfAvailable)
+        .addField("closureCompilerIfAvailable", config.closureCompilerIfAvailable)
         .addField("prettyPrint", config.prettyPrint)
         .addField("batchMode", config.batchMode)
         .addField("maxConcurrentWrites", config.maxConcurrentWrites)

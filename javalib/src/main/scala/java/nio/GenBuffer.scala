@@ -21,8 +21,7 @@ private[nio] object GenBuffer {
  * `self.ElementType` and `self.BufferType` appear in signatures.
  * It's tolerable because the class is `private[nio]` anyway.
  */
-private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
-    extends AnyVal {
+private[nio] final class GenBuffer[B <: Buffer] private (val self: B) extends AnyVal {
 
   import self._
 
@@ -49,8 +48,7 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
   }
 
   @inline
-  def generic_get(dst: Array[ElementType],
-      offset: Int, length: Int): BufferType = {
+  def generic_get(dst: Array[ElementType], offset: Int, length: Int): BufferType = {
     validateArrayIndexRange(dst, offset, length)
     load(getPosAndAdvanceRead(length), dst, offset, length)
     self
@@ -82,8 +80,7 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
   }
 
   @inline
-  def generic_put(src: Array[ElementType],
-      offset: Int, length: Int): BufferType = {
+  def generic_put(src: Array[ElementType], offset: Int, length: Int): BufferType = {
     ensureNotReadOnly()
     validateArrayIndexRange(src, offset, length)
     store(getPosAndAdvanceWrite(length), src, offset, length)
@@ -125,12 +122,11 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
       h = mix(h, load(i).##)
       i += 1
     }
-    finalizeHash(h, end-start)
+    finalizeHash(h, end - start)
   }
 
   @inline
-  def generic_compareTo(that: BufferType)(
-      compare: (ElementType, ElementType) => Int): Int = {
+  def generic_compareTo(that: BufferType)(compare: (ElementType, ElementType) => Int): Int = {
     // scalastyle:off return
     if (self eq that) {
       0
@@ -155,8 +151,7 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
   }
 
   @inline
-  def generic_load(startIndex: Int,
-      dst: Array[ElementType], offset: Int, length: Int): Unit = {
+  def generic_load(startIndex: Int, dst: Array[ElementType], offset: Int, length: Int): Unit = {
     var selfPos = startIndex
     val endPos = selfPos + length
     var arrayIndex = offset
@@ -168,8 +163,7 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
   }
 
   @inline
-  def generic_store(startIndex: Int,
-      src: Array[ElementType], offset: Int, length: Int): Unit = {
+  def generic_store(startIndex: Int, src: Array[ElementType], offset: Int, length: Int): Unit = {
     var selfPos = startIndex
     val endPos = selfPos + length
     var arrayIndex = offset

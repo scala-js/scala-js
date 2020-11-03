@@ -21,7 +21,7 @@ import org.junit.Test
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.Platform._
 
-import java.util.{ Arrays, Comparator }
+import java.util.{Arrays, Comparator}
 
 import scala.reflect.ClassTag
 
@@ -109,8 +109,7 @@ class ArraysTest {
       val sxs = scala.Array.tabulate(size)(i => N(i))
       Arrays.sort(sxs, cmp)
 
-      assertTrue(s"Arrays.sort wasn't stable on array of size $size.'",
-          isStable(sxs))
+      assertTrue(s"Arrays.sort wasn't stable on array of size $size.'", isStable(sxs))
     }
   }
 
@@ -128,38 +127,33 @@ class ArraysTest {
       def compare(a1: A, a2: A): Int = a1.n.compareTo(a2.n)
     }
     val scalajs: Array[A] = Array(A(1), A(2), A(2), A(3), A(1), A(2), A(3))
-    val sorted = Array[A](scalajs(0), scalajs(4), scalajs(1), scalajs(2),
-        scalajs(5), scalajs(3), scalajs(6))
+    val sorted =
+      Array[A](scalajs(0), scalajs(4), scalajs(1), scalajs(2), scalajs(5), scalajs(3), scalajs(6))
 
     Arrays.sort(scalajs, cmp)
     assertArrayEquals(sorted, scalajs)
-    scalajs.zip(sorted).forall(pair => pair ._1 eq pair._2)
+    scalajs.zip(sorted).forall(pair => pair._1 eq pair._2)
   }
 
   @Test def sortIllegalArgumentException(): Unit = {
     val array = Array(0, 1, 3, 4)
 
-    val e1 = expectThrows(classOf[IllegalArgumentException],
-        Arrays.sort(array, 3, 2))
+    val e1 = expectThrows(classOf[IllegalArgumentException], Arrays.sort(array, 3, 2))
     assertEquals("fromIndex(3) > toIndex(2)", e1.getMessage)
 
     // start/end comparison is made before index ranges checks
-    val e2 = expectThrows(classOf[IllegalArgumentException],
-        Arrays.sort(array, 7, 5))
+    val e2 = expectThrows(classOf[IllegalArgumentException], Arrays.sort(array, 7, 5))
     assertEquals("fromIndex(7) > toIndex(5)", e2.getMessage)
   }
 
   @Test def sortArrayIndexOutOfBoundsException(): Unit = {
-    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
-        hasCompliantArrayIndexOutOfBounds)
+    assumeTrue("Assuming compliant ArrayIndexOutOfBounds", hasCompliantArrayIndexOutOfBounds)
 
     val array = Array(0, 1, 3, 4)
 
-    assertThrows(classOf[ArrayIndexOutOfBoundsException],
-        Arrays.sort(array, -1, 4))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], Arrays.sort(array, -1, 4))
 
-    assertThrows(classOf[ArrayIndexOutOfBoundsException],
-        Arrays.sort(array, 0, 5))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], Arrays.sort(array, 0, 5))
   }
 
   @Test def fill_Boolean(): Unit = {
@@ -285,7 +279,7 @@ class ArraysTest {
     assertArrayEquals(Array(0.0, 42.0, -1.0, -1.0, -1.0, 0.0), doubles)
   }
 
-    @Test def fill_AnyRef(): Unit = {
+  @Test def fill_AnyRef(): Unit = {
     val array = new Array[AnyRef](6)
     Arrays.fill(array, "a")
     assertArrayEquals(Array[AnyRef]("a", "a", "a", "a", "a", "a"), array)
@@ -516,27 +510,22 @@ class ArraysTest {
   @Test def binarySearchIllegalArgumentException(): Unit = {
     val array = Array(0, 1, 3, 4)
 
-    val e1 = expectThrows(classOf[IllegalArgumentException],
-        Arrays.binarySearch(array, 3, 2, 2))
+    val e1 = expectThrows(classOf[IllegalArgumentException], Arrays.binarySearch(array, 3, 2, 2))
     assertEquals("fromIndex(3) > toIndex(2)", e1.getMessage)
 
     // start/end comparison is made before index ranges checks
-    val e2 = expectThrows(classOf[IllegalArgumentException],
-        Arrays.binarySearch(array, 7, 5, 2))
+    val e2 = expectThrows(classOf[IllegalArgumentException], Arrays.binarySearch(array, 7, 5, 2))
     assertEquals("fromIndex(7) > toIndex(5)", e2.getMessage)
   }
 
   @Test def binarySearchArrayIndexOutOfBoundsException(): Unit = {
-    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
-        hasCompliantArrayIndexOutOfBounds)
+    assumeTrue("Assuming compliant ArrayIndexOutOfBounds", hasCompliantArrayIndexOutOfBounds)
 
     val array = Array(0, 1, 3, 4)
 
-    assertThrows(classOf[ArrayIndexOutOfBoundsException],
-        Arrays.binarySearch(array, -1, 4, 2))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], Arrays.binarySearch(array, -1, 4, 2))
 
-    assertThrows(classOf[ArrayIndexOutOfBoundsException],
-        Arrays.binarySearch(array, 0, 5, 2))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], Arrays.binarySearch(array, 0, 5, 2))
   }
 
   @Test def copyOf_Int(): Unit = {
@@ -631,14 +620,11 @@ class ArraysTest {
   }
 
   @Test def copyOfRange_AnyRef_ArrayIndexOutOfBoundsException(): Unit = {
-    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
-        hasCompliantArrayIndexOutOfBounds)
+    assumeTrue("Assuming compliant ArrayIndexOutOfBounds", hasCompliantArrayIndexOutOfBounds)
 
     val anyrefs: Array[AnyRef] = Array("a", "b", "c", "d", "e")
-    assertThrows(classOf[ArrayIndexOutOfBoundsException],
-        Arrays.copyOfRange(anyrefs, -1, 4))
-    assertThrows(classOf[ArrayIndexOutOfBoundsException],
-        Arrays.copyOfRange(anyrefs, 6, 8))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], Arrays.copyOfRange(anyrefs, -1, 4))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], Arrays.copyOfRange(anyrefs, 6, 8))
   }
 
   @Test def asList(): Unit = {
@@ -699,7 +685,10 @@ class ArraysTest {
     assertEquals(1302, Arrays.hashCode(Array[Long](7L, -125L)))
     assertEquals(37208, Arrays.hashCode(Array[Long](3L, 0L, 4534L)))
     assertEquals(-1215441431, Arrays.hashCode(Array[Long](0L, 45L, 100L, 1L, 1L, Int.MaxValue)))
-    assertEquals(-1952288964, Arrays.hashCode(Array[Long](0L, 34573566354545L, 100L, 1L, 1L, Int.MaxValue)))
+    assertEquals(
+        -1952288964,
+        Arrays.hashCode(Array[Long](0L, 34573566354545L, 100L, 1L, 1L, Int.MaxValue))
+    )
   }
 
   @Test def hashCode_Floats(): Unit = {
@@ -721,7 +710,10 @@ class ArraysTest {
       assertEquals(-2075734168, Arrays.hashCode(Array[Double](7.3, -125.23)))
       assertEquals(-557562564, Arrays.hashCode(Array[Double](3.9, 0.2, 4534.9)))
       assertEquals(-1750344582, Arrays.hashCode(Array[Double](0.1, 45.1, -100.0, 1.1, 1.7)))
-      assertEquals(-1764602991, Arrays.hashCode(Array[Double](0.0, 34573566354545.9, 100.2, 1.1, 1.2, Int.MaxValue)))
+      assertEquals(
+          -1764602991,
+          Arrays.hashCode(Array[Double](0.0, 34573566354545.9, 100.2, 1.1, 1.2, Int.MaxValue))
+      )
     }
   }
 
@@ -745,7 +737,10 @@ class ArraysTest {
     assertEquals(63, Arrays.deepHashCode(Array[AnyRef](Array[AnyRef](Array[Int]()))))
     assertEquals(63, Arrays.deepHashCode(Array[AnyRef](Array[AnyRef](Array[Double]()))))
     assertEquals(94, Arrays.deepHashCode(Array[AnyRef](Array[AnyRef](Array[Int](1)))))
-    assertEquals(94, Arrays.deepHashCode(Array[AnyRef](Array[AnyRef](Array[AnyRef](1.asInstanceOf[AnyRef])))))
+    assertEquals(
+        94,
+        Arrays.deepHashCode(Array[AnyRef](Array[AnyRef](Array[AnyRef](1.asInstanceOf[AnyRef]))))
+    )
   }
 
   @Test def equals_Booleans(): Unit = {
@@ -871,7 +866,7 @@ class ArraysTest {
     class A(private val x: Int) {
       override def equals(that: Any): Boolean = that match {
         case that: A => this.x == that.x
-        case _ => false
+        case _       => false
       }
     }
     // scalastyle:on equals.hash.code
@@ -893,82 +888,112 @@ class ArraysTest {
   }
 
   @Test def deepEquals(): Unit = {
-    assertTrue(Arrays.deepEquals(
-        null: Array[AnyRef],
-        null: Array[AnyRef]))
-    assertTrue(Arrays.deepEquals(
-        Array[AnyRef](),
-        Array[AnyRef]()))
-    assertTrue(Arrays.deepEquals(
-        Array[AnyRef](null, null),
-        Array[AnyRef](null, null)))
-    assertTrue(Arrays.deepEquals(
-        Array[AnyRef]("a", "b", null),
-        Array[AnyRef]("a", "b", null)))
-    assertTrue(Arrays.deepEquals(
-        Array[AnyRef](null, "a", "b", null, "fooooo"),
-        Array[AnyRef](null, "a", "b", null, "fooooo")))
-    assertTrue(Arrays.deepEquals(
-        Array[AnyRef](null, Array[AnyRef]()),
-        Array[AnyRef](null, Array[AnyRef]())))
-    assertTrue(Arrays.deepEquals(
-        Array[AnyRef](Array[AnyRef](), Array[AnyRef]()),
-        Array[AnyRef](Array[AnyRef](), Array[AnyRef]())))
-    assertTrue(Arrays.deepEquals(
-        Array[AnyRef](Array[AnyRef](Array[AnyRef]())),
-        Array[AnyRef](Array[AnyRef](Array[AnyRef]()))))
-    assertTrue(Arrays.deepEquals(
-        Array[AnyRef](Array[AnyRef](Array[Int]())),
-        Array[AnyRef](Array[AnyRef](Array[Int]()))))
-    assertTrue(Arrays.deepEquals(
-        Array[AnyRef](Array[AnyRef](Array[Double]())),
-        Array[AnyRef](Array[AnyRef](Array[Double]()))))
-    assertTrue(Arrays.deepEquals(
-        Array[AnyRef](Array[AnyRef](Array[Int](1))),
-        Array[AnyRef](Array[AnyRef](Array[Int](1)))))
-    assertTrue(Arrays.deepEquals(
-        Array[AnyRef](Array[AnyRef](Array[AnyRef](1.asInstanceOf[AnyRef]))),
-        Array[AnyRef](Array[AnyRef](Array[AnyRef](1.asInstanceOf[AnyRef])))))
+    assertTrue(Arrays.deepEquals(null: Array[AnyRef], null: Array[AnyRef]))
+    assertTrue(Arrays.deepEquals(Array[AnyRef](), Array[AnyRef]()))
+    assertTrue(Arrays.deepEquals(Array[AnyRef](null, null), Array[AnyRef](null, null)))
+    assertTrue(Arrays.deepEquals(Array[AnyRef]("a", "b", null), Array[AnyRef]("a", "b", null)))
+    assertTrue(
+        Arrays.deepEquals(
+            Array[AnyRef](null, "a", "b", null, "fooooo"),
+            Array[AnyRef](null, "a", "b", null, "fooooo")
+        )
+    )
+    assertTrue(
+        Arrays.deepEquals(
+            Array[AnyRef](null, Array[AnyRef]()),
+            Array[AnyRef](null, Array[AnyRef]())
+        )
+    )
+    assertTrue(
+        Arrays.deepEquals(
+            Array[AnyRef](Array[AnyRef](), Array[AnyRef]()),
+            Array[AnyRef](Array[AnyRef](), Array[AnyRef]())
+        )
+    )
+    assertTrue(
+        Arrays.deepEquals(
+            Array[AnyRef](Array[AnyRef](Array[AnyRef]())),
+            Array[AnyRef](Array[AnyRef](Array[AnyRef]()))
+        )
+    )
+    assertTrue(
+        Arrays.deepEquals(
+            Array[AnyRef](Array[AnyRef](Array[Int]())),
+            Array[AnyRef](Array[AnyRef](Array[Int]()))
+        )
+    )
+    assertTrue(
+        Arrays.deepEquals(
+            Array[AnyRef](Array[AnyRef](Array[Double]())),
+            Array[AnyRef](Array[AnyRef](Array[Double]()))
+        )
+    )
+    assertTrue(
+        Arrays.deepEquals(
+            Array[AnyRef](Array[AnyRef](Array[Int](1))),
+            Array[AnyRef](Array[AnyRef](Array[Int](1)))
+        )
+    )
+    assertTrue(
+        Arrays.deepEquals(
+            Array[AnyRef](Array[AnyRef](Array[AnyRef](1.asInstanceOf[AnyRef]))),
+            Array[AnyRef](Array[AnyRef](Array[AnyRef](1.asInstanceOf[AnyRef])))
+        )
+    )
 
-    assertFalse(Arrays.deepEquals(
-        null: Array[AnyRef],
-        Array[AnyRef]()))
-    assertFalse(Arrays.deepEquals(
-        Array[AnyRef](),
-        null: Array[AnyRef]))
-    assertFalse(Arrays.deepEquals(
-        Array[AnyRef](Array[AnyRef](), null),
-        Array[AnyRef](null, null)))
-    assertFalse(Arrays.deepEquals(
-        Array[AnyRef](null, Array[AnyRef]()),
-        Array[AnyRef](null, null)))
-    assertFalse(Arrays.deepEquals(
-        Array[AnyRef]("a", "b", null),
-        Array[AnyRef]("a", "c", null)))
-    assertFalse(Arrays.deepEquals(
-        Array[AnyRef](null, "a", "b", null, "fooooo"),
-        Array[AnyRef](null, "a", "b", "c", "fooooo")))
-    assertFalse(Arrays.deepEquals(
-        Array[AnyRef](null, Array[AnyRef]()),
-        Array[AnyRef](null, Array[AnyRef](null))))
-    assertFalse(Arrays.deepEquals(
-        Array[AnyRef](Array[AnyRef](), Array[AnyRef]()),
-        Array[AnyRef](Array[AnyRef](), Array[AnyRef](null))))
-    assertFalse(Arrays.deepEquals(
-        Array[AnyRef](Array[AnyRef](Array[AnyRef]())),
-        Array[AnyRef](Array[AnyRef](Array[AnyRef](null)))))
-    assertFalse(Arrays.deepEquals(
-        Array[AnyRef](Array[AnyRef](Array[Int]())),
-        Array[AnyRef](Array[AnyRef](Array[Int](1)))))
-    assertFalse(Arrays.deepEquals(
-        Array[AnyRef](Array[AnyRef](Array[Double]())),
-        Array[AnyRef](Array[AnyRef](Array[Double](1.0)))))
-    assertFalse(Arrays.deepEquals(
-        Array[AnyRef](Array[AnyRef](Array[Int](1))),
-        Array[AnyRef](Array[AnyRef](Array[Int](2)))))
-    assertFalse(Arrays.deepEquals(
-        Array[AnyRef](Array[AnyRef](Array[AnyRef](1.asInstanceOf[AnyRef]))),
-        Array[AnyRef](Array[AnyRef](Array[AnyRef](2.asInstanceOf[AnyRef])))))
+    assertFalse(Arrays.deepEquals(null: Array[AnyRef], Array[AnyRef]()))
+    assertFalse(Arrays.deepEquals(Array[AnyRef](), null: Array[AnyRef]))
+    assertFalse(Arrays.deepEquals(Array[AnyRef](Array[AnyRef](), null), Array[AnyRef](null, null)))
+    assertFalse(Arrays.deepEquals(Array[AnyRef](null, Array[AnyRef]()), Array[AnyRef](null, null)))
+    assertFalse(Arrays.deepEquals(Array[AnyRef]("a", "b", null), Array[AnyRef]("a", "c", null)))
+    assertFalse(
+        Arrays.deepEquals(
+            Array[AnyRef](null, "a", "b", null, "fooooo"),
+            Array[AnyRef](null, "a", "b", "c", "fooooo")
+        )
+    )
+    assertFalse(
+        Arrays.deepEquals(
+            Array[AnyRef](null, Array[AnyRef]()),
+            Array[AnyRef](null, Array[AnyRef](null))
+        )
+    )
+    assertFalse(
+        Arrays.deepEquals(
+            Array[AnyRef](Array[AnyRef](), Array[AnyRef]()),
+            Array[AnyRef](Array[AnyRef](), Array[AnyRef](null))
+        )
+    )
+    assertFalse(
+        Arrays.deepEquals(
+            Array[AnyRef](Array[AnyRef](Array[AnyRef]())),
+            Array[AnyRef](Array[AnyRef](Array[AnyRef](null)))
+        )
+    )
+    assertFalse(
+        Arrays.deepEquals(
+            Array[AnyRef](Array[AnyRef](Array[Int]())),
+            Array[AnyRef](Array[AnyRef](Array[Int](1)))
+        )
+    )
+    assertFalse(
+        Arrays.deepEquals(
+            Array[AnyRef](Array[AnyRef](Array[Double]())),
+            Array[AnyRef](Array[AnyRef](Array[Double](1.0)))
+        )
+    )
+    assertFalse(
+        Arrays.deepEquals(
+            Array[AnyRef](Array[AnyRef](Array[Int](1))),
+            Array[AnyRef](Array[AnyRef](Array[Int](2)))
+        )
+    )
+    assertFalse(
+        Arrays.deepEquals(
+            Array[AnyRef](Array[AnyRef](Array[AnyRef](1.asInstanceOf[AnyRef]))),
+            Array[AnyRef](Array[AnyRef](Array[AnyRef](2.asInstanceOf[AnyRef])))
+        )
+    )
   }
 
   @Test def toString_Long(): Unit = {
@@ -978,7 +1003,10 @@ class ArraysTest {
     assertEquals("[1]", Arrays.toString(Array[Long](1L)))
     assertEquals("[2, 3]", Arrays.toString(Array[Long](2L, 3)))
     assertEquals("[1, 2, 3, 4, 5]", Arrays.toString(Array[Long](1L, 2L, 3L, 4L, 5L)))
-    assertEquals("[1, -2, 3, 9223372036854775807]", Arrays.toString(Array[Long](1L, -2L, 3L, Long.MaxValue)))
+    assertEquals(
+        "[1, -2, 3, 9223372036854775807]",
+        Arrays.toString(Array[Long](1L, -2L, 3L, Long.MaxValue))
+    )
   }
 
   @Test def toString_Int(): Unit = {
@@ -1017,7 +1045,10 @@ class ArraysTest {
     assertEquals("[true]", Arrays.toString(Array[Boolean](true)))
     assertEquals("[false]", Arrays.toString(Array[Boolean](false)))
     assertEquals("[true, false]", Arrays.toString(Array[Boolean](true, false)))
-    assertEquals("[true, true, false, false]", Arrays.toString(Array[Boolean](true, true, false, false)))
+    assertEquals(
+        "[true, true, false, false]",
+        Arrays.toString(Array[Boolean](true, true, false, false))
+    )
   }
 
   @Test def toString_Float(): Unit = {
@@ -1028,7 +1059,10 @@ class ArraysTest {
     assertEquals("[1.100000023841858]", Arrays.toString(Array[Float](1.1f)))
     assertEquals("[2.200000047683716, 3]", Arrays.toString(Array[Float](2.2f, 3f)))
     assertEquals("[1, 2, 3, 4, 5]", Arrays.toString(Array[Float](1f, 2f, 3f, 4f, 5f)))
-    assertEquals("[1, -2, 3, 3.4028234663852886e+38]", Arrays.toString(Array[Float](1f, -2f, 3f, Float.MaxValue)))
+    assertEquals(
+        "[1, -2, 3, 3.4028234663852886e+38]",
+        Arrays.toString(Array[Float](1f, -2f, 3f, Float.MaxValue))
+    )
   }
 
   @Test def toString_Double(): Unit = {
@@ -1039,8 +1073,10 @@ class ArraysTest {
     assertEquals("[1.1]", Arrays.toString(Array[Double](1.1d)))
     assertEquals("[2.2, 3]", Arrays.toString(Array[Double](2.2d, 3d)))
     assertEquals("[1, 2, 3, 4, 5]", Arrays.toString(Array[Double](1d, 2d, 3d, 4d, 5d)))
-    assertEquals("[1, -2, 3, 1.7976931348623157e+308]",
-        Arrays.toString(Array[Double](1d, -2d, 3d, Double.MaxValue)))
+    assertEquals(
+        "[1, -2, 3, 1.7976931348623157e+308]",
+        Arrays.toString(Array[Double](1d, -2d, 3d, Double.MaxValue))
+    )
   }
 
   @Test def toString_AnyRef(): Unit = {
@@ -1052,7 +1088,10 @@ class ArraysTest {
     assertEquals("[abc]", Arrays.toString(Array[AnyRef]("abc")))
     assertEquals("[a, b, c]", Arrays.toString(Array[AnyRef]("a", "b", "c")))
     assertEquals("[C(1)]", Arrays.toString(Array[AnyRef](new C(1))))
-    assertEquals("[C(1), abc, 1, null]", Arrays.toString(Array[AnyRef](new C(1), "abc", Int.box(1), null)))
+    assertEquals(
+        "[C(1), abc, 1, null]",
+        Arrays.toString(Array[AnyRef](new C(1), "abc", Int.box(1), null))
+    )
   }
 
   @Test def deepToString(): Unit = {
@@ -1060,12 +1099,18 @@ class ArraysTest {
     assertEquals("[abc]", Arrays.deepToString(Array[AnyRef]("abc")))
     assertEquals("[a, b, c]", Arrays.deepToString(Array[AnyRef]("a", "b", "c")))
     assertEquals("[[1, 2, 3]]", Arrays.deepToString(Array[AnyRef](Array[Int](1, 2, 3))))
-    assertEquals("[[1, 2, 3], [4, 5, 6]]",
-        Arrays.deepToString(Array[AnyRef](Array[Int](1, 2, 3), Array[Int](4, 5, 6))))
+    assertEquals(
+        "[[1, 2, 3], [4, 5, 6]]",
+        Arrays.deepToString(Array[AnyRef](Array[Int](1, 2, 3), Array[Int](4, 5, 6)))
+    )
     assertEquals("[[]]", Arrays.deepToString(Array[AnyRef](Array[AnyRef]())))
     assertEquals("[[[]]]", Arrays.deepToString(Array[AnyRef](Array[AnyRef](Array[AnyRef]()))))
-    assertEquals("[[[[1, 2, 3]]], [4, 5, 6]]", Arrays.deepToString(
-        Array[AnyRef](Array[AnyRef](Array[AnyRef](Array[Int](1, 2, 3))), Array[Int](4, 5, 6))))
+    assertEquals(
+        "[[[[1, 2, 3]]], [4, 5, 6]]",
+        Arrays.deepToString(
+            Array[AnyRef](Array[AnyRef](Array[AnyRef](Array[Int](1, 2, 3))), Array[Int](4, 5, 6))
+        )
+    )
 
     val recArr = Array[AnyRef](null, null)
     recArr(0) = recArr

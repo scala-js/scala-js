@@ -15,6 +15,7 @@ package scala.scalajs.js
 import scala.scalajs.js
 
 object defined {
+
   /** Explicitly upcasts an `A` to a `js.UndefOr[A]`.
    *
    *  This method is useful in some cases to drive Scala's type inference.

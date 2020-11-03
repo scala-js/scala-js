@@ -17,13 +17,12 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 /** Provides information about the module a piece of code is generated in. */
 private[emitter] final class ModuleContext private (
-    val moduleID: ModuleID,
-    val public: Boolean
+    val moduleID: ModuleID, val public: Boolean
 ) {
   override def equals(that: Any): Boolean = that match {
     case that: ModuleContext =>
       this.moduleID == that.moduleID &&
-      this.public == that.public
+        this.public == that.public
     case _ =>
       false
   }

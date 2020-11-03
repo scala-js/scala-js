@@ -240,8 +240,7 @@ class PropertiesTest {
 
     assertEquals("value1", prop.getProperty("key1"))
     assertNull(prop.getProperty("commented.key"))
-    assertEquals("default_value",
-        prop.getProperty("commented.key", "default_value"))
+    assertEquals("default_value", prop.getProperty("commented.key", "default_value"))
   }
 
   @Test def loadInputStreamForEmptyKeys(): Unit = {
@@ -302,8 +301,7 @@ class PropertiesTest {
 
     assertEquals("value1", prop.getProperty("key1"))
     assertNull(prop.getProperty("commented.key"))
-    assertEquals("default_value",
-        prop.getProperty("commented.key", "default_value"))
+    assertEquals("default_value", prop.getProperty("commented.key", "default_value"))
   }
 
   @Test def loadReaderHandleSpecialChars(): Unit = {
@@ -378,8 +376,7 @@ class PropertiesTest {
   }
 
   @Test def checkUnicodeParsing(): Unit = {
-    val is = new ByteArrayInputStream(
-      Array('h', '\\', 'u', '0', '0', '2', '0', 'h'))
+    val is = new ByteArrayInputStream(Array('h', '\\', 'u', '0', '0', '2', '0', 'h'))
     val prop = new Properties()
     prop.load(is)
     assertEquals("", prop.get("h h"))
@@ -387,15 +384,13 @@ class PropertiesTest {
 
   // helper functions
 
-  def storeStream(props: Properties,
-      header: String = ""): ByteArrayOutputStream = {
+  def storeStream(props: Properties, header: String = ""): ByteArrayOutputStream = {
     val out = new ByteArrayOutputStream()
     props.store(out, header)
     out
   }
 
-  def storeWriter(props: Properties,
-      header: String = ""): ByteArrayOutputStream = {
+  def storeWriter(props: Properties, header: String = ""): ByteArrayOutputStream = {
     val out = new ByteArrayOutputStream()
     props.store(new OutputStreamWriter(out), header)
     out.close()
@@ -418,15 +413,13 @@ class PropertiesTest {
 
   def loadStream(in: String): Properties = {
     val prop = new java.util.Properties()
-    prop.load(new ByteArrayInputStream(
-        in.getBytes(StandardCharsets.ISO_8859_1)))
+    prop.load(new ByteArrayInputStream(in.getBytes(StandardCharsets.ISO_8859_1)))
     prop
   }
 
   def loadReader(in: String): Properties = {
     val prop = new java.util.Properties()
-    prop.load(new InputStreamReader(new ByteArrayInputStream(
-        in.getBytes(StandardCharsets.UTF_8))))
+    prop.load(new InputStreamReader(new ByteArrayInputStream(in.getBytes(StandardCharsets.UTF_8))))
     prop
   }
 

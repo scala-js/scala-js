@@ -114,39 +114,34 @@ class SystemTest {
   }
 
   @Test def arraycopyIndexOutOfBounds(): Unit = {
-    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
-        hasCompliantArrayIndexOutOfBounds)
+    assumeTrue("Assuming compliant ArrayIndexOutOfBounds", hasCompliantArrayIndexOutOfBounds)
 
     val src = Array(0, 1, 2, 3, 4, 5, 6, 0, 0, 0)
     val dest = Array(11, 12, 13, 15, 15, 16)
     val original = Array(11, 12, 13, 15, 15, 16)
 
-    assertThrows(classOf[ArrayIndexOutOfBoundsException],
-        System.arraycopy(src, -1, dest, 3, 4))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], System.arraycopy(src, -1, dest, 3, 4))
     assertArrayEquals(original, dest)
 
-    assertThrows(classOf[ArrayIndexOutOfBoundsException],
-        System.arraycopy(src, 8, dest, 3, 4))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], System.arraycopy(src, 8, dest, 3, 4))
     assertArrayEquals(original, dest)
 
-    assertThrows(classOf[ArrayIndexOutOfBoundsException],
-        System.arraycopy(src, 1, dest, -1, 4))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], System.arraycopy(src, 1, dest, -1, 4))
     assertArrayEquals(original, dest)
 
-    assertThrows(classOf[ArrayIndexOutOfBoundsException],
-        System.arraycopy(src, 1, dest, 4, 4))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], System.arraycopy(src, 1, dest, 4, 4))
     assertArrayEquals(original, dest)
 
-    assertThrows(classOf[ArrayIndexOutOfBoundsException],
-        System.arraycopy(src, 11, dest, 3, 4))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], System.arraycopy(src, 11, dest, 3, 4))
     assertArrayEquals(original, dest)
 
-    assertThrows(classOf[ArrayIndexOutOfBoundsException],
-        System.arraycopy(src, 1, dest, 13, 4))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], System.arraycopy(src, 1, dest, 13, 4))
     assertArrayEquals(original, dest)
 
-    assertThrows(classOf[ArrayIndexOutOfBoundsException],
-        System.arraycopy(src, 1, dest, 3, Int.MaxValue))
+    assertThrows(
+        classOf[ArrayIndexOutOfBoundsException],
+        System.arraycopy(src, 1, dest, 3, Int.MaxValue)
+    )
     assertArrayEquals(original, dest)
   }
 

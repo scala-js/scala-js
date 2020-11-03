@@ -27,7 +27,7 @@ import org.junit.Assert._
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.Platform.executingInJVM
 
-class  BigDecimalArithmeticTest {
+class BigDecimalArithmeticTest {
 
   @Test def testAddDiffScaleNegPos(): Unit = {
     val a = "1231212478987482988429808779810457634781384756794987"
@@ -959,7 +959,8 @@ class  BigDecimalArithmeticTest {
   }
 
   @Test def testDivideToIntegralValueMathContextDOWN(): Unit = {
-    val a = "3736186567876876578956958769675785435673453453653543654354365435675671119238118911893939591735"
+    val a =
+      "3736186567876876578956958769675785435673453453653543654354365435675671119238118911893939591735"
     val aScale = 45
     val b = "134432345432345748766876876723342238476237823787879183470"
     val bScale = 70
@@ -999,7 +1000,8 @@ class  BigDecimalArithmeticTest {
     assertTrue(BigDecimal.ZERO == quotient)
     expectThrows(classOf[ArithmeticException], BigDecimal.ZERO.divide(BigDecimal.ZERO))
     expectThrows(classOf[ArithmeticException], BigDecimal.ONE.divide(BigDecimal.ZERO))
-    expectThrows(classOf[ArithmeticException], BigDecimal.ONE.divideToIntegralValue(BigDecimal.ZERO))
+    expectThrows(classOf[ArithmeticException],
+        BigDecimal.ONE.divideToIntegralValue(BigDecimal.ZERO))
   }
 
   @Test def testDivideToIntegralValue_on_floating_points__issue_1979(): Unit = {
@@ -1028,7 +1030,8 @@ class  BigDecimalArithmeticTest {
     val aScale = -15
     val b = "747233429293018787918347987234564568"
     val bScale = 10
-    val c = "9.20003122862175749786430095741145455670101391569026662845893091880727173060570190220616E+91"
+    val c =
+      "9.20003122862175749786430095741145455670101391569026662845893091880727173060570190220616E+91"
     val cScale = -5
     val aNumber = new BigDecimal(new BigInteger(a), aScale)
     val bNumber = new BigDecimal(new BigInteger(b), bScale)
@@ -1042,7 +1045,8 @@ class  BigDecimalArithmeticTest {
     val aScale = 10
     val b = "747233429293018787918347987234564568"
     val bScale = -10
-    val c = "920003122862175749786430095741145455670101391569026662845893091880727173060570190220616"
+    val c =
+      "920003122862175749786430095741145455670101391569026662845893091880727173060570190220616"
     val cScale = 0
     val aNumber = new BigDecimal(new BigInteger(a), aScale)
     val bNumber = new BigDecimal(new BigInteger(b), bScale)
@@ -1056,7 +1060,8 @@ class  BigDecimalArithmeticTest {
     val aScale = -15
     val b = "747233429293018787918347987234564568"
     val bScale = -10
-    val c = "9.20003122862175749786430095741145455670101391569026662845893091880727173060570190220616E+111"
+    val c =
+      "9.20003122862175749786430095741145455670101391569026662845893091880727173060570190220616E+111"
     val cScale = -25
     val aNumber = new BigDecimal(new BigInteger(a), aScale)
     val bNumber = new BigDecimal(new BigInteger(b), bScale)
@@ -1115,7 +1120,8 @@ class  BigDecimalArithmeticTest {
     val aScale = 15
     val b = "747233429293018787918347987234564568"
     val bScale = 10
-    val c = "92000312286217574978643009574114545567010139156902666284589309.1880727173060570190220616"
+    val c =
+      "92000312286217574978643009574114545567010139156902666284589309.1880727173060570190220616"
     val cScale = 25
     val aNumber = new BigDecimal(new BigInteger(a), aScale)
     val bNumber = new BigDecimal(new BigInteger(b), bScale)
@@ -1241,13 +1247,16 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), 0)
     assertEquals(result.precision(), 1)
     `val` = BigDecimal.valueOf(5.43445663479765)
-    `val` = `val`.setScale(`val`.scale() + 1, RoundingMode.CEILING)
+    `val` = `val`
+      .setScale(`val`.scale() + 1, RoundingMode.CEILING)
       .round(new MathContext(1, RoundingMode.CEILING))
     `val` = BigDecimal.valueOf(5.4344566347976)
-    `val` = `val`.setScale(`val`.scale() + 2, RoundingMode.CEILING)
+    `val` = `val`
+      .setScale(`val`.scale() + 2, RoundingMode.CEILING)
       .round(new MathContext(1, RoundingMode.CEILING))
     var test = BigDecimal.valueOf(12.4344566347976)
-    test = test.setScale(test.scale() + 1, RoundingMode.CEILING)
+    test = test
+      .setScale(test.scale() + 1, RoundingMode.CEILING)
       .round(new MathContext(1, RoundingMode.CEILING))
   }
 

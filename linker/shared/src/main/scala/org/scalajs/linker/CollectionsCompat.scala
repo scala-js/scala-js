@@ -15,8 +15,7 @@ package org.scalajs.linker
 import scala.collection.mutable
 
 private[linker] object CollectionsCompat {
-  implicit class MutableMapCompatOps[K, V](private val self: mutable.Map[K, V])
-      extends AnyVal {
+  implicit class MutableMapCompatOps[K, V](private val self: mutable.Map[K, V]) extends AnyVal {
 
     // filterInPlace replaces retain
     def filterInPlace(p: (K, V) => Boolean): Unit = {

@@ -65,13 +65,17 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       val thisClassStaticFieldMirrors =
         staticFieldMirrors.getOrElse(className, Map.empty)
 
-      classes.get(className).fold[Unit] {
-        // new class
-        classes.put(className,
-            new Class(linkedClass, thisClassHasInlineableInit, thisClassStaticFieldMirrors, module))
-      } { existingCls =>
-        existingCls.update(linkedClass, thisClassHasInlineableInit, thisClassStaticFieldMirrors, module)
-      }
+      classes
+        .get(className)
+        .fold[Unit] {
+          // new class
+          classes.put(className,
+              new Class(linkedClass, thisClassHasInlineableInit, thisClassStaticFieldMirrors,
+                  module))
+        } { existingCls =>
+          existingCls.update(linkedClass, thisClassHasInlineableInit, thisClassStaticFieldMirrors,
+              module)
+        }
 
       linkedClass.className match {
         case ClassClass =>
@@ -126,8 +130,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
        * By construction, this is always true for module classes.
        */
       !classesWithInstantiatedSubclasses(classDef.className) && {
-        classDef.methods.count(
-            x => x.value.flags.namespace == MemberNamespace.Constructor) == 1
+        classDef.methods.count(x => x.value.flags.namespace == MemberNamespace.Constructor) == 1
       }
     }
 
@@ -219,10 +222,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       specialInfo.askMethodsInObject(this)
   }
 
-  private class Class(initClass: LinkedClass,
-      initHasInlineableInit: Boolean,
-      initStaticFieldMirrors: Map[FieldName, List[String]],
-      initModule: Option[ModuleID])
+  private class Class(initClass: LinkedClass, initHasInlineableInit: Boolean,
+      initStaticFieldMirrors: Map[FieldName, List[String]], initModule: Option[ModuleID])
       extends Unregisterable {
 
     private val className = initClass.className
@@ -254,8 +255,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private val moduleAskers = mutable.Set.empty[Invalidatable]
 
     def update(linkedClass: LinkedClass, newHasInlineableInit: Boolean,
-        newStaticFieldMirrors: Map[FieldName, List[String]],
-        newModule: Option[ModuleID]): Unit = {
+        newStaticFieldMirrors: Map[FieldName, List[String]], newModule: Option[ModuleID]): Unit = {
       isAlive = true
 
       val newIsInterface = computeIsInterface(linkedClass)
@@ -423,8 +423,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       fieldDefs
     }
 
-    def askStaticFieldMirrors(invalidatable: Invalidatable,
-        field: FieldName): List[String] = {
+    def askStaticFieldMirrors(invalidatable: Invalidatable, field: FieldName): List[String] = {
       invalidatable.registeredTo(this)
       staticFieldMirrorsAskers += invalidatable
       staticFieldMirrors.getOrElse(field, Nil)
@@ -434,8 +433,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       invalidatable.registeredTo(this)
       moduleAskers += invalidatable
       module.getOrElse {
-        throw new AssertionError(
-            "trying to get module of abstract class " + className.nameString)
+        throw new AssertionError("trying to get module of abstract class " + className.nameString)
       }
     }
 
@@ -470,8 +468,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
   }
 
   private class SpecialInfo(initObjectClass: Option[LinkedClass],
-      initClassClass: Option[LinkedClass],
-      initHijackedClasses: Iterable[LinkedClass]) extends Unregisterable {
+      initClassClass: Option[LinkedClass], initHijackedClasses: Iterable[LinkedClass])
+      extends Unregisterable {
 
     private var isClassClassInstantiated =
       computeIsClassClassInstantiated(initClassClass)
@@ -498,7 +496,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       }
 
       val newMethodsInRepresentativeClasses =
-          computeMethodsInRepresentativeClasses(objectClass, hijackedClasses)
+        computeMethodsInRepresentativeClasses(objectClass, hijackedClasses)
       if (newMethodsInRepresentativeClasses != methodsInRepresentativeClasses) {
         methodsInRepresentativeClasses = newMethodsInRepresentativeClasses
         invalidateAskers(methodsInRepresentativeClassesAskers)
@@ -548,7 +546,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       pairs.toSet
     }
 
-    private def computeMethodsInObject(objectClass: Option[LinkedClass]): List[Versioned[MethodDef]] = {
+    private def computeMethodsInObject(
+        objectClass: Option[LinkedClass]): List[Versioned[MethodDef]] = {
       objectClass.toList.flatMap(
           _.methods.filter(_.value.flags.namespace == MemberNamespace.Public))
     }
@@ -562,8 +561,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     def askIsParentDataAccessed(invalidatable: Invalidatable): Boolean =
       isParentDataAccessed
 
-    def askRepresentativeClassHasPublicMethod(invalidatable: Invalidatable,
-        className: ClassName, methodName: MethodName): Boolean = {
+    def askRepresentativeClassHasPublicMethod(invalidatable: Invalidatable, className: ClassName,
+        methodName: MethodName): Boolean = {
       invalidatable.registeredTo(this)
       methodsInRepresentativeClassesAskers += invalidatable
       methodsInRepresentativeClasses.contains((className, methodName))
@@ -608,8 +607,7 @@ private[emitter] object KnowledgeGuardian {
   trait Invalidatable {
     private val _registeredTo = mutable.Set.empty[Unregisterable]
 
-    private[KnowledgeGuardian] def registeredTo(
-        unregisterable: Unregisterable): Unit = {
+    private[KnowledgeGuardian] def registeredTo(unregisterable: Unregisterable): Unit = {
       _registeredTo += unregisterable
     }
 

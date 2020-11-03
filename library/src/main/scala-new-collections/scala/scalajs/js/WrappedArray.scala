@@ -23,13 +23,10 @@ import scala.scalajs.js
 @inline
 final class WrappedArray[A](private val array: js.Array[A])
     extends mutable.AbstractBuffer[A]
-    with StrictOptimizedSeqOps[A, js.WrappedArray, js.WrappedArray[A]]
-    with mutable.IndexedSeq[A]
-    with mutable.IndexedSeqOps[A, js.WrappedArray, js.WrappedArray[A]]
-    with mutable.IndexedBuffer[A]
+    with StrictOptimizedSeqOps[A, js.WrappedArray, js.WrappedArray[A]] with mutable.IndexedSeq[A]
+    with mutable.IndexedSeqOps[A, js.WrappedArray, js.WrappedArray[A]] with mutable.IndexedBuffer[A]
     with mutable.Builder[A, js.WrappedArray[A]]
-    with scala.collection.IterableFactoryDefaults[A, js.WrappedArray]
-    with Serializable {
+    with scala.collection.IterableFactoryDefaults[A, js.WrappedArray] with Serializable {
 
   /** Creates a new empty [[WrappedArray]]. */
   def this() = this(js.Array())

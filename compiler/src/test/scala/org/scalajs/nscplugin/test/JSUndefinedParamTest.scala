@@ -89,12 +89,11 @@ class JSUndefinedParamTest extends DirectTest with TestHelpers {
        */
       val b = JSUndefinedParamTest.extractArg(myTrait.foo())
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:10: error: Found a dangling UndefinedParam at Position(virtualfile:newSource1.scala,15,54). This is likely due to a bad interaction between a macro or a compiler plugin and the Scala.js compiler plugin. If you hit this, please let us know.
       |    object A {
       |           ^
-    """
+    """)
 
   }
 

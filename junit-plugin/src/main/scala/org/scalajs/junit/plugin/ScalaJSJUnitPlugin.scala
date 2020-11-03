@@ -15,9 +15,7 @@ package org.scalajs.junit.plugin
 import scala.annotation.tailrec
 
 import scala.tools.nsc._
-import scala.tools.nsc.plugins.{
-  Plugin => NscPlugin, PluginComponent => NscPluginComponent
-}
+import scala.tools.nsc.plugins.{Plugin => NscPlugin, PluginComponent => NscPluginComponent}
 
 /** The Scala.js JUnit plugin replaces reflection based test lookup.
  *
@@ -37,8 +35,7 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
 
   val description: String = "Makes JUnit test classes invokable in Scala.js"
 
-  object ScalaJSJUnitPluginComponent
-      extends plugins.PluginComponent with transform.Transform {
+  object ScalaJSJUnitPluginComponent extends plugins.PluginComponent with transform.Transform {
 
     val global: Global = ScalaJSJUnitPlugin.this.global
     import global._
@@ -121,8 +118,7 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
       def genBootstrapper(testClass: ClassSymbol): ClassDef = {
         // Create the module and its module class, and enter them in their owner's scope
         val (moduleSym, bootSym) = testClass.owner.newModuleAndClassSymbol(
-            newTypeName(testClass.name.toString + "$scalajs$junit$bootstrapper"),
-            testClass.pos, 0L)
+            newTypeName(testClass.name.toString + "$scalajs$junit$bootstrapper"), testClass.pos, 0L)
         val bootInfo =
           ClassInfoType(List(ObjectTpe, BootstrapperClass.toType), newScope, bootSym)
         bootSym.setInfo(bootInfo)
@@ -133,8 +129,10 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
 
         val defs = List(
             genConstructor(bootSym),
-            genCallOnModule(bootSym, Names.beforeClass, testClass.companionModule, JUnitAnnots.BeforeClass),
-            genCallOnModule(bootSym, Names.afterClass, testClass.companionModule, JUnitAnnots.AfterClass),
+            genCallOnModule(bootSym, Names.beforeClass, testClass.companionModule,
+                JUnitAnnots.BeforeClass),
+            genCallOnModule(bootSym, Names.afterClass, testClass.companionModule,
+                JUnitAnnots.AfterClass),
             genCallOnParam(bootSym, Names.before, testClass, JUnitAnnots.Before),
             genCallOnParam(bootSym, Names.after, testClass, JUnitAnnots.After),
             genTests(bootSym, testMethods),
@@ -149,15 +147,16 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
         /* The constructor body must be a Block in order not to freak out the
          * JVM back-end.
          */
-        val rhs = Block(gen.mkMethodCall(
-            Super(owner, tpnme.EMPTY), ObjectClass.primaryConstructor, Nil, Nil))
+        val rhs = Block(gen.mkMethodCall(Super(owner, tpnme.EMPTY), ObjectClass.primaryConstructor,
+                Nil, Nil))
 
         val sym = owner.newClassConstructor(NoPosition)
         sym.setInfoAndEnter(MethodType(Nil, owner.tpe))
         typer.typedDefDef(newDefDef(sym, rhs)())
       }
 
-      private def genCallOnModule(owner: ClassSymbol, name: TermName, module: Symbol, annot: Symbol): DefDef = {
+      private def genCallOnModule(owner: ClassSymbol, name: TermName, module: Symbol,
+          annot: Symbol): DefDef = {
         val sym = owner.newMethodSymbol(name)
         sym.setInfoAndEnter(MethodType(Nil, definitions.UnitTpe))
 
@@ -168,7 +167,8 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
         typer.typedDefDef(newDefDef(sym, Block(calls: _*))())
       }
 
-      private def genCallOnParam(owner: ClassSymbol, name: TermName, testClass: Symbol, annot: Symbol): DefDef = {
+      private def genCallOnParam(owner: ClassSymbol, name: TermName, testClass: Symbol,
+          annot: Symbol): DefDef = {
         val sym = owner.newMethodSymbol(name)
 
         val instanceParam = sym.newValueParameter(Names.instance).setInfo(ObjectTpe)
@@ -186,11 +186,11 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
       private def genTests(owner: ClassSymbol, tests: Scope): DefDef = {
         val sym = owner.newMethodSymbol(Names.tests)
         sym.setInfoAndEnter(MethodType(Nil,
-            typeRef(NoType, ArrayClass, List(TestMetadataClass.tpe))))
+                typeRef(NoType, ArrayClass, List(TestMetadataClass.tpe))))
 
         val metadata = for (test <- tests) yield {
-          val reifiedAnnot = New(
-              JUnitAnnots.Test, test.getAnnotation(JUnitAnnots.Test).get.args: _*)
+          val reifiedAnnot =
+            New(JUnitAnnots.Test, test.getAnnotation(JUnitAnnots.Test).get.args: _*)
 
           val name = Literal(Constant(test.name.toString))
           val ignored = Literal(Constant(test.hasAnnotation(JUnitAnnots.Ignore)))

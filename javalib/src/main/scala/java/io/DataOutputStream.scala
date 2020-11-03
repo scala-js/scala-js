@@ -14,8 +14,7 @@ package java.io
 
 import java.util.ScalaOps._
 
-class DataOutputStream(out: OutputStream)
-    extends FilterOutputStream(out) with DataOutput {
+class DataOutputStream(out: OutputStream) extends FilterOutputStream(out) with DataOutput {
 
   protected var written: Int = 0
 
@@ -78,7 +77,7 @@ class DataOutputStream(out: OutputStream)
   }
 
   final def writeUTF(s: String): Unit = {
-    val buffer = new Array[Byte](2 + 3*s.length)
+    val buffer = new Array[Byte](2 + 3 * s.length)
 
     var idx = 2
     for (i <- 0 until s.length()) {

@@ -19,6 +19,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.ExecutionContext.Implicits.global
 
 private[sbtplugin] object Run {
+
   /** Starts and waits for a run on the given [[JSEnv]] interruptibly.
    *
    *  Interruption can be triggered by typing anything into stdin.

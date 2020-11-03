@@ -19,9 +19,8 @@ import org.scalajs.testsuite.utils.Platform.scalaVersion
 
 class SymbolTestScala2 {
 
-  /**
-   * This is a Scala 2.x only test because:
-   * Dotty no longer supports symbol literal.
+  /** This is a Scala 2.x only test because:
+   *  Dotty no longer supports symbol literal.
    */
   @Test def should_support_symbol_literal(): Unit = {
     val scalajs = 'ScalaJS
@@ -33,9 +32,8 @@ class SymbolTestScala2 {
     assertEquals(Symbol("*"), '*)
   }
 
-  /**
-   * This test is similar to the one found in SymbolTest with the same name.
-   * But it uses symbol literals that are not supported on Dotty.
+  /** This test is similar to the one found in SymbolTest with the same name.
+   *  But it uses symbol literals that are not supported on Dotty.
    */
   @Test def should_ensure_unique_identity(): Unit = {
     def expectEqual(sym1: Symbol, sym2: Symbol): Unit = {

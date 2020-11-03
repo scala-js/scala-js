@@ -40,8 +40,8 @@ object Hashers {
 
       val hash = hasher.finalizeHash()
 
-      MethodDef(flags, name, originalName, args, resultType, body)(
-          methodDef.optimizerHints, Some(hash))(methodDef.pos)
+      MethodDef(flags, name, originalName, args, resultType, body)(methodDef.optimizerHints,
+          Some(hash))(methodDef.pos)
     }
   }
 
@@ -60,8 +60,7 @@ object Hashers {
 
       val hash = hasher.finalizeHash()
 
-      JSMethodDef(flags, name, args, body)(
-          methodDef.optimizerHints, Some(hash))(methodDef.pos)
+      JSMethodDef(flags, name, args, body)(methodDef.optimizerHints, Some(hash))(methodDef.pos)
     }
   }
 
@@ -76,9 +75,8 @@ object Hashers {
   def hashClassDef(classDef: ClassDef): ClassDef = {
     import classDef._
     val newMemberDefs = hashMemberDefs(memberDefs)
-    ClassDef(name, originalName, kind, jsClassCaptures, superClass, interfaces,
-        jsSuperClass, jsNativeLoadSpec, newMemberDefs, topLevelExportDefs)(
-        optimizerHints)
+    ClassDef(name, originalName, kind, jsClassCaptures, superClass, interfaces, jsSuperClass,
+        jsNativeLoadSpec, newMemberDefs, topLevelExportDefs)(optimizerHints)
   }
 
   def hashesEqual(x: TreeHash, y: TreeHash): Boolean =
@@ -92,7 +90,7 @@ object Hashers {
     def hexDigit(digit: Int): Char = Character.forDigit(digit, 16)
 
     for (b <- hash.hash)
-      builder.append(hexDigit(b >> 4)).append(hexDigit(b & 0xF))
+      builder.append(hexDigit(b >> 4)).append(hexDigit(b & 0xf))
 
     builder.toString
   }
@@ -204,7 +202,7 @@ object Hashers {
         case Match(selector, cases, default) =>
           mixTag(TagMatch)
           mixTree(selector)
-          cases foreach { case (patterns, body) =>
+          cases.foreach { case (patterns, body) =>
             mixTrees(patterns)
             mixTree(body)
           }
@@ -497,7 +495,7 @@ object Hashers {
         case Transient(value) =>
           throw new InvalidIRException(tree,
               "Cannot hash a transient IR node (its value is of class " +
-              s"${value.getClass})")
+                s"${value.getClass})")
       }
     }
 

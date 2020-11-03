@@ -17,8 +17,6 @@ import org.scalajs.linker.interface.ModuleInitializer
 import org.scalajs.linker.standard._
 
 final class LinkingUnit private[frontend] (
-    val coreSpec: CoreSpec,
-    val classDefs: List[LinkedClass],
-    val topLevelExports: List[LinkedTopLevelExport],
-    val moduleInitializers: List[ModuleInitializer]
+    val coreSpec: CoreSpec, val classDefs: List[LinkedClass],
+    val topLevelExports: List[LinkedTopLevelExport], val moduleInitializers: List[ModuleInitializer]
 )

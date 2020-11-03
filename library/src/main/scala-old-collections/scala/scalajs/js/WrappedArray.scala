@@ -25,11 +25,9 @@ import scala.collection.generic.{CanBuildFrom, GenericCompanion, SeqFactory}
 @inline
 final class WrappedArray[A](private val array: js.Array[A])
     extends mutable.AbstractBuffer[A]
-       with scala.collection.generic.GenericTraversableTemplate[A, js.WrappedArray]
-       with mutable.IndexedSeq[A]
-       with mutable.BufferLike[A, js.WrappedArray[A]]
-       with mutable.ArrayLike[A, js.WrappedArray[A]]
-       with Builder[A, js.WrappedArray[A]] {
+    with scala.collection.generic.GenericTraversableTemplate[A, js.WrappedArray]
+    with mutable.IndexedSeq[A] with mutable.BufferLike[A, js.WrappedArray[A]]
+    with mutable.ArrayLike[A, js.WrappedArray[A]] with Builder[A, js.WrappedArray[A]] {
 
   /** Creates a new empty [[js.WrappedArray]]. */
   def this() = this(js.Array())
@@ -66,8 +64,7 @@ final class WrappedArray[A](private val array: js.Array[A])
     this
   }
 
-  def insertAll(n: Int,
-      elems: scala.collection.Traversable[A]): Unit = {
+  def insertAll(n: Int, elems: scala.collection.Traversable[A]): Unit = {
     if (n < 0 || n > array.length)
       throw new IndexOutOfBoundsException
     array.splice(n, 0, elems.toSeq: _*)
@@ -96,6 +93,7 @@ final class WrappedArray[A](private val array: js.Array[A])
  *  conversions.
  */
 object WrappedArray extends SeqFactory[js.WrappedArray] {
+
   /** Standard CBF for [[WrappedArray]] */
   implicit def canBuildFrom[A]: CanBuildFrom[Coll, A, js.WrappedArray[A]] =
     ReusableCBF.asInstanceOf[GenericCanBuildFrom[A]]

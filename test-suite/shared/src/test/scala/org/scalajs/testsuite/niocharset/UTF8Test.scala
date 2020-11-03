@@ -77,7 +77,8 @@ class UTF8Test extends BaseCharsetTest(Charset.forName("UTF-8")) {
   @Test def decodeOversizedCodepoint(): Unit = {
     // Code point too big
     testDecode(bb"f4 90 80 80")(Malformed(1), Malformed(1), Malformed(1), Malformed(1))
-    testDecode(bb"41 f4 90 80 80 42")(cb"A", Malformed(1), Malformed(1), Malformed(1), Malformed(1), cb"B")
+    testDecode(bb"41 f4 90 80 80 42")(cb"A", Malformed(1), Malformed(1), Malformed(1), Malformed(1),
+        cb"B")
   }
 
   @Test def decodeUnexpectedContinuationBytes(): Unit = {
@@ -87,7 +88,8 @@ class UTF8Test extends BaseCharsetTest(Charset.forName("UTF-8")) {
     testDecode(bb"80 80")(Malformed(1), Malformed(1))
     testDecode(bb"80 80 80")(Malformed(1), Malformed(1), Malformed(1))
     testDecode(bb"80 80 80 80")(Malformed(1), Malformed(1), Malformed(1), Malformed(1))
-    testDecode(bb"80 80 80 80 80")(Malformed(1), Malformed(1), Malformed(1), Malformed(1), Malformed(1))
+    testDecode(bb"80 80 80 80 80")(Malformed(1), Malformed(1), Malformed(1), Malformed(1),
+        Malformed(1))
     testDecode(bb"41 80 80 42 80 43")(cb"A", Malformed(1), Malformed(1), cb"B", Malformed(1), cb"C")
   }
 
@@ -116,11 +118,11 @@ class UTF8Test extends BaseCharsetTest(Charset.forName("UTF-8")) {
 
   @Test def decodeMalformedCombined(): Unit = {
     // and all of them concatenated
-    testDecode(bb"c2 e0 e0 a0 f0 f0 90 f0 90 80")(
-        Seq(1, 1, 2, 1, 2, 3).map(Malformed(_)): _*)
+    testDecode(bb"c2 e0 e0 a0 f0 f0 90 f0 90 80")(Seq(1, 1, 2, 1, 2, 3).map(Malformed(_)): _*)
     // and with normal sequences interspersed
     testDecode(bb"c2 41 e0 41 e0 a0 41 f0 41 f0 90 41 f0 90 80 41")(
-        Seq(1, 1, 2, 1, 2, 3).flatMap(l => Seq[OutPart[CharBuffer]](Malformed(l), cb"A")): _*)
+        Seq(1, 1, 2, 1, 2, 3).flatMap(l => Seq[OutPart[CharBuffer]](Malformed(l), cb"A")): _*
+    )
   }
 
   @Test def decodeImpossibleBytes(): Unit = {
@@ -131,9 +133,20 @@ class UTF8Test extends BaseCharsetTest(Charset.forName("UTF-8")) {
 
     // Old 5-byte and 6-byte starts
     testDecode(bb"f8 80 80 80 af")(
-        Malformed(1), Malformed(1), Malformed(1), Malformed(1), Malformed(1))
+        Malformed(1),
+        Malformed(1),
+        Malformed(1),
+        Malformed(1),
+        Malformed(1)
+    )
     testDecode(bb"fc 80 80 80 80 af")(
-        Malformed(1), Malformed(1), Malformed(1), Malformed(1), Malformed(1), Malformed(1))
+        Malformed(1),
+        Malformed(1),
+        Malformed(1),
+        Malformed(1),
+        Malformed(1),
+        Malformed(1)
+    )
   }
 
   @Test def decodeOverlong(): Unit = {
@@ -194,7 +207,8 @@ class UTF8Test extends BaseCharsetTest(Charset.forName("UTF-8")) {
 
     // 4-byte characters
     testEncode(cb"\ud835\udcd7\ud835\udcee\ud835\udcf5\ud835\udcf5\ud835\udcf8")(
-        bb"f0 9d 93 97 f0 9d 93 ae f0 9d 93 b5 f0 9d 93 b5 f0 9d 93 b8")
+        bb"f0 9d 93 97 f0 9d 93 ae f0 9d 93 b5 f0 9d 93 b5 f0 9d 93 b8"
+    )
 
     testEncode(cb"")(bb"")
 
@@ -248,15 +262,15 @@ class UTF8Test extends BaseCharsetTest(Charset.forName("UTF-8")) {
     assertTrue(encoder.isLegalReplacement(Array(0xc2.toByte, 0x80.toByte)))
     assertTrue(encoder.isLegalReplacement(Array(0xdf.toByte, 0xbf.toByte)))
 
-    assertTrue(encoder.isLegalReplacement(
-        Array(0xe0.toByte, 0xa0.toByte, 0x80.toByte)))
-    assertTrue(encoder.isLegalReplacement(
-        Array(0xef.toByte, 0xbf.toByte, 0xbf.toByte)))
+    assertTrue(encoder.isLegalReplacement(Array(0xe0.toByte, 0xa0.toByte, 0x80.toByte)))
+    assertTrue(encoder.isLegalReplacement(Array(0xef.toByte, 0xbf.toByte, 0xbf.toByte)))
 
-    assertTrue(encoder.isLegalReplacement(
-        Array(0xf0.toByte, 0x90.toByte, 0x80.toByte, 0x80.toByte)))
-    assertTrue(encoder.isLegalReplacement(
-        Array(0xf4.toByte, 0x8f.toByte, 0xbf.toByte, 0xbf.toByte)))
+    assertTrue(
+        encoder.isLegalReplacement(Array(0xf0.toByte, 0x90.toByte, 0x80.toByte, 0x80.toByte))
+    )
+    assertTrue(
+        encoder.isLegalReplacement(Array(0xf4.toByte, 0x8f.toByte, 0xbf.toByte, 0xbf.toByte))
+    )
 
     // The bad ones
 

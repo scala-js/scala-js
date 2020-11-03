@@ -30,13 +30,13 @@ import Tags._
 import Utils.JumpBackByteArrayOutputStream
 
 object Serializers {
+
   /** Scala.js IR File Magic Number
    *
    *    CA FE : first part of magic number of Java class files
    *    4A 53 : "JS" in ASCII
-   *
    */
-  final val IRMagicNumber = 0xCAFE4A53
+  final val IRMagicNumber = 0xcafe4a53
 
   def serialize(stream: OutputStream, classDef: ClassDef): Unit = {
     new Serializer().serialize(stream, classDef)
@@ -126,8 +126,7 @@ object Serializers {
     private[this] val encodedNameIndexMap = mutable.Map.empty[EncodedNameKey, Int]
     private def encodedNameToIndex(encoded: UTF8String): Int = {
       val byteString = new EncodedNameKey(encoded)
-      encodedNameIndexMap.getOrElseUpdate(byteString,
-          (encodedNames += encoded).size - 1)
+      encodedNameIndexMap.getOrElseUpdate(byteString, (encodedNames += encoded).size - 1)
     }
 
     private[this] val methodNames = mutable.ListBuffer.empty[MethodName]
@@ -138,7 +137,7 @@ object Serializers {
 
         def reserveTypeRef(typeRef: TypeRef): Unit = typeRef match {
           case _: PrimRef =>
-            // nothing to do
+          // nothing to do
           case ClassRef(className) =>
             encodedNameToIndex(className.encoded)
           case ArrayTypeRef(base, _) =>
@@ -216,8 +215,7 @@ object Serializers {
       // Emit the method names
       s.writeInt(methodNames.size)
       methodNames.foreach { methodName =>
-        s.writeInt(encodedNameIndexMap(
-            new EncodedNameKey(methodName.simpleName.encoded)))
+        s.writeInt(encodedNameIndexMap(new EncodedNameKey(methodName.simpleName.encoded)))
         s.writeInt(methodName.paramTypeRefs.size)
         methodName.paramTypeRefs.foreach(writeTypeRef(_))
         writeTypeRef(methodName.resultTypeRef)
@@ -304,7 +302,7 @@ object Serializers {
           writeTagAndPos(TagMatch)
           writeTree(selector)
           writeInt(cases.size)
-          cases foreach { caze =>
+          cases.foreach { caze =>
             writeTrees(caze._1); writeTree(caze._2)
           }
           writeTree(default)
@@ -346,7 +344,8 @@ object Serializers {
 
         case ApplyStatically(flags, receiver, className, method, args) =>
           writeTagAndPos(TagApplyStatically)
-          writeApplyFlags(flags); writeTree(receiver); writeName(className); writeMethodIdent(method); writeTrees(args)
+          writeApplyFlags(flags); writeTree(receiver); writeName(className);
+          writeMethodIdent(method); writeTrees(args)
           writeType(tree.tpe)
 
         case ApplyStatic(flags, className, method, args) =>
@@ -554,7 +553,7 @@ object Serializers {
         case Transient(value) =>
           throw new InvalidIRException(tree,
               "Cannot serialize a transient IR node (its value is of class " +
-              s"${value.getClass})")
+                s"${value.getClass})")
       }
     }
 
@@ -670,7 +669,7 @@ object Serializers {
           writeTree(name)
           writeOptTree(getter)
           writeBoolean(setterArgAndBody.isDefined)
-          setterArgAndBody foreach { case (arg, body) =>
+          setterArgAndBody.foreach { case (arg, body) =>
             writeParamDef(arg); writeTree(body)
           }
 
@@ -709,8 +708,7 @@ object Serializers {
       }
     }
 
-    def writeTopLevelExportDefs(
-        topLevelExportDefs: List[TopLevelExportDef]): Unit = {
+    def writeTopLevelExportDefs(topLevelExportDefs: List[TopLevelExportDef]): Unit = {
       buffer.writeInt(topLevelExportDefs.size)
       topLevelExportDefs.foreach(writeTopLevelExportDef)
     }
@@ -1033,7 +1031,8 @@ object Serializers {
         case TagEmptyTree =>
           throw new IOException("Found invalid TagEmptyTree")
 
-        case TagVarDef  => VarDef(readLocalIdent(), readOriginalName(), readType(), readBoolean(), readTree())
+        case TagVarDef =>
+          VarDef(readLocalIdent(), readOriginalName(), readType(), readBoolean(), readTree())
         case TagSkip    => Skip()
         case TagBlock   => Block(readTrees())
         case TagLabeled => Labeled(readLabelIdent(), readType(), readTree())
@@ -1050,29 +1049,28 @@ object Serializers {
         case TagTryFinally =>
           TryFinally(readTree(), readTree())
 
-        case TagThrow    => Throw(readTree())
-        case TagMatch    =>
-          Match(readTree(), List.fill(readInt()) {
+        case TagThrow => Throw(readTree())
+        case TagMatch =>
+          Match(readTree(),
+              List.fill(readInt()) {
             (readTrees().map(_.asInstanceOf[IntLiteral]), readTree())
           }, readTree())(readType())
         case TagDebugger => Debugger()
 
-        case TagNew          => New(readClassName(), readMethodIdent(), readTrees())
-        case TagLoadModule   => LoadModule(readClassName())
-        case TagStoreModule  => StoreModule(readClassName(), readTree())
-        case TagSelect       => Select(readTree(), readClassName(), readFieldIdent())(readType())
-        case TagSelectStatic => SelectStatic(readClassName(), readFieldIdent())(readType())
+        case TagNew                  => New(readClassName(), readMethodIdent(), readTrees())
+        case TagLoadModule           => LoadModule(readClassName())
+        case TagStoreModule          => StoreModule(readClassName(), readTree())
+        case TagSelect               => Select(readTree(), readClassName(), readFieldIdent())(readType())
+        case TagSelectStatic         => SelectStatic(readClassName(), readFieldIdent())(readType())
         case TagSelectJSNativeMember => SelectJSNativeMember(readClassName(), readMethodIdent())
 
         case TagApply =>
-          Apply(readApplyFlags(), readTree(), readMethodIdent(), readTrees())(
-              readType())
+          Apply(readApplyFlags(), readTree(), readMethodIdent(), readTrees())(readType())
         case TagApplyStatically =>
-          ApplyStatically(readApplyFlags(), readTree(), readClassName(),
-              readMethodIdent(), readTrees())(readType())
-        case TagApplyStatic =>
-          ApplyStatic(readApplyFlags(), readClassName(), readMethodIdent(),
+          ApplyStatically(readApplyFlags(), readTree(), readClassName(), readMethodIdent(),
               readTrees())(readType())
+        case TagApplyStatic =>
+          ApplyStatic(readApplyFlags(), readClassName(), readMethodIdent(), readTrees())(readType())
 
         case TagUnaryOp          => UnaryOp(readByte(), readTree())
         case TagBinaryOp         => BinaryOp(readByte(), readTree(), readTree())
@@ -1086,27 +1084,27 @@ object Serializers {
         case TagGetClass         => GetClass(readTree())
         case TagIdentityHashCode => IdentityHashCode(readTree())
 
-        case TagJSNew                => JSNew(readTree(), readTreeOrJSSpreads())
-        case TagJSPrivateSelect      => JSPrivateSelect(readTree(), readClassName(), readFieldIdent())
-        case TagJSSelect             => JSSelect(readTree(), readTree())
-        case TagJSFunctionApply      => JSFunctionApply(readTree(), readTreeOrJSSpreads())
-        case TagJSMethodApply        => JSMethodApply(readTree(), readTree(), readTreeOrJSSpreads())
-        case TagJSSuperSelect        => JSSuperSelect(readTree(), readTree(), readTree())
-        case TagJSSuperMethodCall    =>
+        case TagJSNew           => JSNew(readTree(), readTreeOrJSSpreads())
+        case TagJSPrivateSelect => JSPrivateSelect(readTree(), readClassName(), readFieldIdent())
+        case TagJSSelect        => JSSelect(readTree(), readTree())
+        case TagJSFunctionApply => JSFunctionApply(readTree(), readTreeOrJSSpreads())
+        case TagJSMethodApply   => JSMethodApply(readTree(), readTree(), readTreeOrJSSpreads())
+        case TagJSSuperSelect   => JSSuperSelect(readTree(), readTree(), readTree())
+        case TagJSSuperMethodCall =>
           JSSuperMethodCall(readTree(), readTree(), readTree(), readTreeOrJSSpreads())
         case TagJSSuperConstructorCall => JSSuperConstructorCall(readTreeOrJSSpreads())
-        case TagJSImportCall         => JSImportCall(readTree())
-        case TagLoadJSConstructor    => LoadJSConstructor(readClassName())
-        case TagLoadJSModule         => LoadJSModule(readClassName())
-        case TagJSDelete             => JSDelete(readTree(), readTree())
-        case TagJSUnaryOp            => JSUnaryOp(readInt(), readTree())
-        case TagJSBinaryOp           => JSBinaryOp(readInt(), readTree(), readTree())
-        case TagJSArrayConstr        => JSArrayConstr(readTreeOrJSSpreads())
-        case TagJSObjectConstr       =>
+        case TagJSImportCall           => JSImportCall(readTree())
+        case TagLoadJSConstructor      => LoadJSConstructor(readClassName())
+        case TagLoadJSModule           => LoadJSModule(readClassName())
+        case TagJSDelete               => JSDelete(readTree(), readTree())
+        case TagJSUnaryOp              => JSUnaryOp(readInt(), readTree())
+        case TagJSBinaryOp             => JSBinaryOp(readInt(), readTree(), readTree())
+        case TagJSArrayConstr          => JSArrayConstr(readTreeOrJSSpreads())
+        case TagJSObjectConstr =>
           JSObjectConstr(List.fill(readInt())((readTree(), readTree())))
-        case TagJSGlobalRef          => JSGlobalRef(readString())
-        case TagJSTypeOfGlobalRef    => JSTypeOfGlobalRef(readTree().asInstanceOf[JSGlobalRef])
-        case TagJSLinkingInfo        => JSLinkingInfo()
+        case TagJSGlobalRef       => JSGlobalRef(readString())
+        case TagJSTypeOfGlobalRef => JSTypeOfGlobalRef(readTree().asInstanceOf[JSGlobalRef])
+        case TagJSLinkingInfo     => JSLinkingInfo()
 
         case TagUndefined      => Undefined()
         case TagNull           => Null()
@@ -1126,8 +1124,7 @@ object Serializers {
         case TagThis =>
           This()(readType())
         case TagClosure =>
-          Closure(readBoolean(), readParamDefs(), readParamDefs(), readTree(),
-              readTrees())
+          Closure(readBoolean(), readParamDefs(), readParamDefs(), readTree(), readTrees())
         case TagCreateJSClass =>
           CreateJSClass(readClassName(), readTrees())
       }
@@ -1152,9 +1149,8 @@ object Serializers {
       val memberDefs = readMemberDefs(name.name, kind)
       val topLevelExportDefs = readTopLevelExportDefs(name.name, kind)
       val optimizerHints = OptimizerHints.fromBits(readInt())
-      ClassDef(name, originalName, kind, jsClassCaptures, superClass, parents,
-          jsSuperClass, jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
-          optimizerHints)
+      ClassDef(name, originalName, kind, jsClassCaptures, superClass, parents, jsSuperClass,
+          jsNativeLoadSpec, memberDefs, topLevelExportDefs)(optimizerHints)
     }
 
     def readMemberDef(owner: ClassName, ownerKind: ClassKind): MemberDef = {
@@ -1163,8 +1159,8 @@ object Serializers {
 
       (tag: @switch) match {
         case TagFieldDef =>
-          FieldDef(MemberFlags.fromBits(readInt()), readFieldIdent(),
-              readOriginalName(), readType())
+          FieldDef(MemberFlags.fromBits(readInt()), readFieldIdent(), readOriginalName(),
+              readType())
 
         case TagJSFieldDef =>
           JSFieldDef(MemberFlags.fromBits(readInt()), readTree(), readType())
@@ -1214,21 +1210,17 @@ object Serializers {
             val body = Some(IdentityHashCode(args(0).ref))
             val optimizerHints = OptimizerHints.empty.withInline(true)
 
-            MethodDef(flags, name, originalName, args, resultType, body)(
-                optimizerHints, optHash)
+            MethodDef(flags, name, originalName, args, resultType, body)(optimizerHints, optHash)
           } else {
-            MethodDef(flags, name, originalName, args, resultType, body)(
-                optimizerHints, optHash)
+            MethodDef(flags, name, originalName, args, resultType, body)(optimizerHints, optHash)
           }
-
 
         case TagJSMethodDef =>
           val optHash = readOptHash()
           // read and discard the length
           val len = readInt()
           assert(len >= 0)
-          JSMethodDef(MemberFlags.fromBits(readInt()), readTree(),
-              readParamDefs(), readTree())(
+          JSMethodDef(MemberFlags.fromBits(readInt()), readTree(), readParamDefs(), readTree())(
               OptimizerHints.fromBits(readInt()), optHash)
 
         case TagJSPropertyDef =>
@@ -1254,8 +1246,7 @@ object Serializers {
     def readMemberDefs(owner: ClassName, ownerKind: ClassKind): List[MemberDef] =
       List.fill(readInt())(readMemberDef(owner, ownerKind))
 
-    def readTopLevelExportDef(owner: ClassName,
-        ownerKind: ClassKind): TopLevelExportDef = {
+    def readTopLevelExportDef(owner: ClassName, ownerKind: ClassKind): TopLevelExportDef = {
       implicit val pos = readPosition()
       val tag = readByte()
 
@@ -1269,13 +1260,14 @@ object Serializers {
       (tag: @switch) match {
         case TagTopLevelJSClassExportDef => TopLevelJSClassExportDef(readModuleID(), readString())
         case TagTopLevelModuleExportDef  => TopLevelModuleExportDef(readModuleID(), readString())
-        case TagTopLevelMethodExportDef  => TopLevelMethodExportDef(readModuleID(), readJSMethodDef())
-        case TagTopLevelFieldExportDef   => TopLevelFieldExportDef(readModuleID(), readString(), readFieldIdent())
+        case TagTopLevelMethodExportDef =>
+          TopLevelMethodExportDef(readModuleID(), readJSMethodDef())
+        case TagTopLevelFieldExportDef =>
+          TopLevelFieldExportDef(readModuleID(), readString(), readFieldIdent())
       }
     }
 
-    def readTopLevelExportDefs(owner: ClassName,
-        ownerKind: ClassKind): List[TopLevelExportDef] = {
+    def readTopLevelExportDefs(owner: ClassName, ownerKind: ClassKind): List[TopLevelExportDef] = {
       List.fill(readInt())(readTopLevelExportDef(owner, ownerKind))
     }
 
@@ -1314,8 +1306,7 @@ object Serializers {
 
     def readParamDef(): ParamDef = {
       implicit val pos = readPosition()
-      ParamDef(readLocalIdent(), readOriginalName(), readType(), readBoolean(),
-          readBoolean())
+      ParamDef(readLocalIdent(), readOriginalName(), readType(), readBoolean(), readBoolean())
     }
 
     def readParamDefs(): List[ParamDef] =
@@ -1391,24 +1382,20 @@ object Serializers {
           val column = readInt()
           Position(file, line, column)
         } else {
-          assert(lastPosition != NoPosition,
-              "Position format error: first position must be full")
+          assert(lastPosition != NoPosition, "Position format error: first position must be full")
           if ((first & Format1Mask) == Format1MaskValue) {
             val columnDiff = first >> Format1Shift
-            Position(lastPosition.source, lastPosition.line,
-                lastPosition.column + columnDiff)
+            Position(lastPosition.source, lastPosition.line, lastPosition.column + columnDiff)
           } else if ((first & Format2Mask) == Format2MaskValue) {
             val lineDiff = first >> Format2Shift
             val column = readByte() & 0xff // unsigned
-            Position(lastPosition.source,
-                lastPosition.line + lineDiff, column)
+            Position(lastPosition.source, lastPosition.line + lineDiff, column)
           } else {
             assert((first & Format3Mask) == Format3MaskValue,
                 s"Position format error: first byte $first does not match any format")
             val lineDiff = readShort()
             val column = readByte() & 0xff // unsigned
-            Position(lastPosition.source,
-                lastPosition.line + lineDiff, column)
+            Position(lastPosition.source, lastPosition.line + lineDiff, column)
           }
         }
         lastPosition = result
@@ -1431,8 +1418,7 @@ object Serializers {
         case TagJSNativeLoadSpecImport =>
           Some(readImportSpec())
         case TagJSNativeLoadSpecImportWithGlobalFallback =>
-          Some(JSNativeLoadSpec.ImportWithGlobalFallback(
-              readImportSpec(), readGlobalSpec()))
+          Some(JSNativeLoadSpec.ImportWithGlobalFallback(readImportSpec(), readGlobalSpec()))
       }
     }
 
@@ -1546,26 +1532,26 @@ object Serializers {
         val char = {
           if ((a & 0x80) == 0x00) { // 0xxxxxxx
             a.toChar
-          } else if ((a & 0xE0) == 0xC0 && i < length) { // 110xxxxx
+          } else if ((a & 0xe0) == 0xc0 && i < length) { // 110xxxxx
             val b = buf.get()
             i += 1
 
-            if ((b & 0xC0) != 0x80) // 10xxxxxx
+            if ((b & 0xc0) != 0x80) // 10xxxxxx
               badFormat("Expected 2 bytes, found: %#02x (init: %#02x)".format(b, a))
 
-            (((a & 0x1F) << 6) | (b & 0x3F)).toChar
-          } else if ((a & 0xF0) == 0xE0 && i < length - 1) { // 1110xxxx
+            (((a & 0x1f) << 6) | (b & 0x3f)).toChar
+          } else if ((a & 0xf0) == 0xe0 && i < length - 1) { // 1110xxxx
             val b = buf.get()
             val c = buf.get()
             i += 2
 
-            if ((b & 0xC0) != 0x80)   // 10xxxxxx
+            if ((b & 0xc0) != 0x80) // 10xxxxxx
               badFormat("Expected 3 bytes, found: %#02x (init: %#02x)".format(b, a))
 
-            if ((c & 0xC0) != 0x80)   // 10xxxxxx
+            if ((c & 0xc0) != 0x80) // 10xxxxxx
               badFormat("Expected 3 bytes, found: %#02x, %#02x (init: %#02x)".format(b, c, a))
 
-            (((a & 0x0F) << 12) | ((b & 0x3F) << 6) | (c & 0x3F)).toChar
+            (((a & 0x0f) << 12) | ((b & 0x3f) << 6) | (c & 0x3f)).toChar
           } else {
             val rem = length - i
             badFormat("Unexpected start of char: %#02x (%d bytes to go)".format(a, rem))

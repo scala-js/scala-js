@@ -28,8 +28,7 @@ import java.nio.charset.StandardCharsets.UTF_8
  *    companion object instead. This is unavoidable because we cannot override
  *    `equals` nor `hashCode` in an `AnyVal`.
  */
-final class UTF8String private (private[ir] val bytes: Array[Byte])
-    extends AnyVal {
+final class UTF8String private (private[ir] val bytes: Array[Byte]) extends AnyVal {
 
   import UTF8String._
 
@@ -51,6 +50,7 @@ final class UTF8String private (private[ir] val bytes: Array[Byte])
 }
 
 object UTF8String {
+
   /** Unsafely creates a `UTF8String` from a byte array.
    *
    *  This method does not validate the input array nor copies its contents. It
@@ -121,16 +121,16 @@ object UTF8String {
     bytes
   }
 
-  private def validateMultibyteCodePointAndGetByteLen(bytes: Array[Byte],
-      end: Int, i: Int, b1: Int): Int = {
+  private def validateMultibyteCodePointAndGetByteLen(bytes: Array[Byte], end: Int, i: Int,
+      b1: Int): Int = {
 
     @inline def isInvalidNextByte(b: Int): Boolean =
       (b & 0xc0) != 0x80
 
     def throwInvalid(): Nothing = {
-      throw new IllegalArgumentException(
-          "Invalid UTF-8 byte sequence " + bytes.mkString("[", ",", "]") +
-          s" (error at index $i)")
+      throw new IllegalArgumentException("Invalid UTF-8 byte sequence " + bytes.mkString("[", ",",
+              "]") +
+            s" (error at index $i)")
     }
 
     if ((b1 & 0xe0) == 0xc0) { // 110xxxxx
@@ -175,7 +175,7 @@ object UTF8String {
           throwInvalid()
         } else {
           val cp = (((b1 & 0x7) << 18) | ((b2 & 0x3f) << 12) |
-              ((b3 & 0x3f) << 6) | (b4 & 0x3f))
+            ((b3 & 0x3f) << 6) | (b4 & 0x3f))
           if (cp >= 0x10000 && cp <= Character.MAX_CODE_POINT)
             4
           else

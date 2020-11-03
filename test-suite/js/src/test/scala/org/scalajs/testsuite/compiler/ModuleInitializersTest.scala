@@ -26,8 +26,7 @@ class ModuleInitializersTest {
             WithArgs + "(foo, bar)",
             NestedNoLinkedClass,
             NestedWithLinkedClass
-        ),
-        moduleInitializersEffects.toArray[AnyRef])
+        ), moduleInitializersEffects.toArray[AnyRef])
   }
 }
 

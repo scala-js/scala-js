@@ -52,8 +52,7 @@ class InternalAnnotationsTest extends DirectTest with TestHelpers {
          @$annotation class X
          @$annotation trait Y
        }
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
        |newSource1.scala:2: error: $annotFullName is for compiler internal use only. Do not use it yourself.
        |       @$annotation trait A
        |        ^
@@ -78,6 +77,6 @@ class InternalAnnotationsTest extends DirectTest with TestHelpers {
        |newSource1.scala:9: error: $annotFullName is for compiler internal use only. Do not use it yourself.
        |         @$annotation trait Y
        |          ^
-    """
+    """)
   }
 }

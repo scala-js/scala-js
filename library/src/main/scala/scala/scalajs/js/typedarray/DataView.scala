@@ -21,8 +21,8 @@ import scala.scalajs.js.annotation._
  */
 @js.native
 @JSGlobal
-class DataView(buffer: ArrayBuffer, byteOffset: Int = 0,
-    byteLength: Int = ???) extends ArrayBufferView {
+class DataView(buffer: ArrayBuffer, byteOffset: Int = 0, byteLength: Int = ???)
+    extends ArrayBufferView {
 
   def getInt8(byteOffset: Int): Byte = js.native
   def getUint8(byteOffset: Int): Short = js.native

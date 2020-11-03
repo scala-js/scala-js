@@ -119,8 +119,7 @@ final class Formatter private (private[this] var dest: Appendable,
   def format(l: Locale, format: String, args: Array[AnyRef]): Formatter =
     this.format(new LocaleLocaleInfo(l), format, args)
 
-  private def format(localeInfo: LocaleInfo, format: String,
-      args: Array[AnyRef]): Formatter = {
+  private def format(localeInfo: LocaleInfo, format: String, args: Array[AnyRef]): Formatter = {
     // scalastyle:off return
 
     checkNotClosed()
@@ -245,8 +244,7 @@ final class Formatter private (private[this] var dest: Appendable,
     new Flags(bits)
   }
 
-  private def parsePositiveIntSilent(capture: js.UndefOr[String],
-      default: Int): Int = {
+  private def parsePositiveIntSilent(capture: js.UndefOr[String], default: Int): Int = {
     capture.fold {
       default
     } { s =>
@@ -258,8 +256,8 @@ final class Formatter private (private[this] var dest: Appendable,
     }
   }
 
-  private def formatArg(localeInfo: LocaleInfo, arg: Any, conversion: Char,
-      flags: Flags, width: Int, precision: Int): Unit = {
+  private def formatArg(localeInfo: LocaleInfo, arg: Any, conversion: Char, flags: Flags,
+      width: Int, precision: Int): Unit = {
 
     @inline def rejectPrecision(): Unit = {
       if (precision >= 0)
@@ -297,16 +295,14 @@ final class Formatter private (private[this] var dest: Appendable,
 
     (conversion: @switch) match {
       case 'b' | 'B' =>
-        validateFlags(flags, conversion,
-            invalidFlags = NumericOnlyFlags | AltFormat)
+        validateFlags(flags, conversion, invalidFlags = NumericOnlyFlags | AltFormat)
         val str =
           if ((arg.asInstanceOf[AnyRef] eq false.asInstanceOf[AnyRef]) || arg == null) "false"
           else "true"
         formatNonNumericString(RootLocaleInfo, flags, width, precision, str)
 
       case 'h' | 'H' =>
-        validateFlags(flags, conversion,
-            invalidFlags = NumericOnlyFlags | AltFormat)
+        validateFlags(flags, conversion, invalidFlags = NumericOnlyFlags | AltFormat)
         val str =
           if (arg == null) "null"
           else Integer.toHexString(arg.hashCode)
@@ -318,21 +314,19 @@ final class Formatter private (private[this] var dest: Appendable,
             validateFlags(flags, conversion, invalidFlags = NumericOnlyFlags)
             val formattableFlags = {
               (if (flags.leftAlign) FormattableFlags.LEFT_JUSTIFY else 0) |
-              (if (flags.altFormat) FormattableFlags.ALTERNATE else 0) |
-              (if (flags.upperCase) FormattableFlags.UPPERCASE else 0)
+                (if (flags.altFormat) FormattableFlags.ALTERNATE else 0) |
+                (if (flags.upperCase) FormattableFlags.UPPERCASE else 0)
             }
             formattable.formatTo(this, formattableFlags, width, precision)
 
           case _ =>
-            validateFlags(flags, conversion,
-                invalidFlags = NumericOnlyFlags | AltFormat)
+            validateFlags(flags, conversion, invalidFlags = NumericOnlyFlags | AltFormat)
             val str = String.valueOf(arg)
             formatNonNumericString(localeInfo, flags, width, precision, str)
         }
 
       case 'c' | 'C' =>
-        validateFlags(flags, conversion,
-            invalidFlags = NumericOnlyFlags | AltFormat)
+        validateFlags(flags, conversion, invalidFlags = NumericOnlyFlags | AltFormat)
         rejectPrecision()
         arg match {
           case arg: Char =>
@@ -343,12 +337,10 @@ final class Formatter private (private[this] var dest: Appendable,
             val str = if (arg < Character.MIN_SUPPLEMENTARY_CODE_POINT) {
               js.Dynamic.global.String.fromCharCode(arg)
             } else {
-              js.Dynamic.global.String.fromCharCode(
-                  0xd800 | ((arg >> 10) - (0x10000 >> 10)),
+              js.Dynamic.global.String.fromCharCode(0xd800 | ((arg >> 10) - (0x10000 >> 10)),
                   0xdc00 | (arg & 0x3ff))
             }
-            formatNonNumericString(localeInfo, flags, width, -1,
-                str.asInstanceOf[String])
+            formatNonNumericString(localeInfo, flags, width, -1, str.asInstanceOf[String])
           case _ =>
             formatNullOrThrowIllegalFormatConversion()
         }
@@ -369,8 +361,7 @@ final class Formatter private (private[this] var dest: Appendable,
 
       case 'o' =>
         // Octal formatting is not localized
-        validateFlags(flags, conversion,
-            invalidFlags = InvalidFlagsForOctalAndHex)
+        validateFlags(flags, conversion, invalidFlags = InvalidFlagsForOctalAndHex)
         rejectPrecision()
         val prefix =
           if (flags.altFormat) "0"
@@ -383,16 +374,14 @@ final class Formatter private (private[this] var dest: Appendable,
             padAndSendToDest(RootLocaleInfo, flags, width, prefix,
                 java.lang.Long.toOctalString(arg))
           case arg: BigInteger =>
-            formatNumericString(RootLocaleInfo, flags, width,
-                arg.toString(8), prefix)
+            formatNumericString(RootLocaleInfo, flags, width, arg.toString(8), prefix)
           case _ =>
             formatNullOrThrowIllegalFormatConversion()
         }
 
       case 'x' | 'X' =>
         // Hex formatting is not localized
-        validateFlags(flags, conversion,
-            invalidFlags = InvalidFlagsForOctalAndHex)
+        validateFlags(flags, conversion, invalidFlags = InvalidFlagsForOctalAndHex)
         rejectPrecision()
         val prefix = {
           if (!flags.altFormat) ""
@@ -407,8 +396,7 @@ final class Formatter private (private[this] var dest: Appendable,
             padAndSendToDest(RootLocaleInfo, flags, width, prefix,
                 applyNumberUpperCase(flags, java.lang.Long.toHexString(arg)))
           case arg: BigInteger =>
-            formatNumericString(RootLocaleInfo, flags, width,
-                arg.toString(16), prefix)
+            formatNumericString(RootLocaleInfo, flags, width, arg.toString(16), prefix)
           case _ =>
             formatNullOrThrowIllegalFormatConversion()
         }
@@ -434,8 +422,7 @@ final class Formatter private (private[this] var dest: Appendable,
         padAndSendToDestNoZeroPad(flags, width, "%")
 
       case 'n' =>
-        validateFlagsForPercentAndNewline(flags, conversion,
-            invalidFlags = AllWrittenFlags)
+        validateFlagsForPercentAndNewline(flags, conversion, invalidFlags = AllWrittenFlags)
         rejectPrecision()
         if (width >= 0)
           throw new IllegalFormatWidthException(width)
@@ -446,8 +433,7 @@ final class Formatter private (private[this] var dest: Appendable,
     }
   }
 
-  @inline private def validateFlags(flags: Flags, conversion: Char,
-      invalidFlags: Int): Unit = {
+  @inline private def validateFlags(flags: Flags, conversion: Char, invalidFlags: Int): Unit = {
 
     @noinline def flagsConversionMismatch(): Nothing = {
       throw new FormatFlagsConversionMismatchException(
@@ -473,8 +459,8 @@ final class Formatter private (private[this] var dest: Appendable,
     }
   }
 
-  @inline private def validateFlagsForPercentAndNewline(flags: Flags,
-      conversion: Char, invalidFlags: Int): Unit = {
+  @inline private def validateFlagsForPercentAndNewline(flags: Flags, conversion: Char,
+      invalidFlags: Int): Unit = {
 
     @noinline def illegalFlags(): Nothing =
       throw new IllegalFormatFlagsException(flagsToString(flags))
@@ -488,13 +474,13 @@ final class Formatter private (private[this] var dest: Appendable,
    */
   private def flagsToString(flags: Flags): String = {
     (if (flags.leftAlign) "-" else "") +
-    (if (flags.altFormat) "#" else "") +
-    (if (flags.positivePlus) "+" else "") +
-    (if (flags.positiveSpace) " " else "") +
-    (if (flags.zeroPad) "0" else "") +
-    (if (flags.useGroupingSeps) "," else "") +
-    (if (flags.negativeParen) "(" else "") +
-    (if (flags.useLastIndex) "<" else "")
+      (if (flags.altFormat) "#" else "") +
+      (if (flags.positivePlus) "+" else "") +
+      (if (flags.positiveSpace) " " else "") +
+      (if (flags.zeroPad) "0" else "") +
+      (if (flags.useGroupingSeps) "," else "") +
+      (if (flags.negativeParen) "(" else "") +
+      (if (flags.useLastIndex) "<" else "")
   }
 
   private def computerizedScientificNotation(x: Double, precision: Int,
@@ -550,8 +536,7 @@ final class Formatter private (private[this] var dest: Appendable,
     }
   }
 
-  private def decimalNotation(x: Double, precision: Int,
-      forceDecimalSep: Boolean): String = {
+  private def decimalNotation(x: Double, precision: Int, forceDecimalSep: Boolean): String = {
 
     import js.JSNumberOps._
 
@@ -570,14 +555,13 @@ final class Formatter private (private[this] var dest: Appendable,
       s2
   }
 
-  private def formatNonNumericString(localeInfo: LocaleInfo, flags: Flags,
-      width: Int, precision: Int, str: String): Unit = {
+  private def formatNonNumericString(localeInfo: LocaleInfo, flags: Flags, width: Int,
+      precision: Int, str: String): Unit = {
 
     val truncatedStr =
       if (precision < 0) str
       else str.substring(0, precision)
-    padAndSendToDestNoZeroPad(flags, width,
-        applyUpperCase(localeInfo, flags, truncatedStr))
+    padAndSendToDestNoZeroPad(flags, width, applyUpperCase(localeInfo, flags, truncatedStr))
   }
 
   private def formatNaNOrInfinite(flags: Flags, width: Int, x: Double): Unit = {
@@ -597,8 +581,8 @@ final class Formatter private (private[this] var dest: Appendable,
     padAndSendToDestNoZeroPad(flags, width, applyNumberUpperCase(flags, str))
   }
 
-  private def formatNumericString(localeInfo: LocaleInfo, flags: Flags,
-      width: Int, str: String, basePrefix: String = ""): Unit = {
+  private def formatNumericString(localeInfo: LocaleInfo, flags: Flags, width: Int, str: String,
+      basePrefix: String = ""): Unit = {
     /* Flags for which a numeric string needs to be decomposed and transformed,
      * not just padded and/or uppercased. We can write fast-paths in this
      * method if none of them are present.
@@ -683,8 +667,7 @@ final class Formatter private (private[this] var dest: Appendable,
     else str
 
   /** This method ignores `flags.zeroPad` and `flags.upperCase`. */
-  private def padAndSendToDestNoZeroPad(flags: Flags, width: Int,
-      str: String): Unit = {
+  private def padAndSendToDestNoZeroPad(flags: Flags, width: Int, str: String): Unit = {
 
     val len = str.length
 
@@ -697,8 +680,8 @@ final class Formatter private (private[this] var dest: Appendable,
   }
 
   /** This method ignores `flags.upperCase`. */
-  private def padAndSendToDest(localeInfo: LocaleInfo, flags: Flags,
-      width: Int, prefix: String, str: String): Unit = {
+  private def padAndSendToDest(localeInfo: LocaleInfo, flags: Flags, width: Int, prefix: String,
+      str: String): Unit = {
 
     val len = prefix.length + str.length
 
@@ -755,8 +738,8 @@ final class Formatter private (private[this] var dest: Appendable,
 
 object Formatter {
 
-  private val FormatSpecifier = new js.RegExp(
-      """(?:(\d+)\$)?([-#+ 0,\(<]*)(\d+)?(?:\.(\d+))?[%A-Za-z]""", "g")
+  private val FormatSpecifier =
+    new js.RegExp("""(?:(\d+)\$)?([-#+ 0,\(<]*)(\d+)?(?:\.(\d+))?[%A-Za-z]""", "g")
 
   /* This class is never used in a place where it would box, so it will
    * completely disappear at link-time. Make sure to keep it that way.

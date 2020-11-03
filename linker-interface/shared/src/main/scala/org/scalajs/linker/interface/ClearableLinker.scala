@@ -27,6 +27,7 @@ package org.scalajs.linker.interface
  *  Unless otherwise specified, instances of this trait are not thread-safe.
  */
 trait ClearableLinker extends Linker {
+
   /** Completely resets the state of this `ClearableLinker`.
    *
    *  After calling this method, this `ClearableLinker`, it can be used again

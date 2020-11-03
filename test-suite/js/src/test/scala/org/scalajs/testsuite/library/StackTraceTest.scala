@@ -24,8 +24,7 @@ import org.scalajs.testsuite.utils.Platform._
 class StackTraceTest {
   import StackTraceTest._
 
-  private def verifyClassMethodNames(
-      places: (String, String)*)(body: => Any): Unit = {
+  private def verifyClassMethodNames(places: (String, String)*)(body: => Any): Unit = {
     try {
       body
       throw new AssertionError("body should have thrown an exception")
@@ -41,10 +40,11 @@ class StackTraceTest {
              */
             val prefix = "org.scalajs.testsuite.library.StackTraceTest$"
             (elem.getClassName.startsWith(prefix + className) &&
-                elem.getMethodName == methodName)
+            elem.getMethodName == methodName)
           }
 
-          assertTrue(s"expected class: $className method: $methodName in:\n${trace.mkString("\n")}", found)
+          assertTrue(s"expected class: $className method: $methodName in:\n${trace.mkString("\n")}",
+              found)
         }
     }
   }
@@ -70,20 +70,19 @@ class StackTraceTest {
         new Foo().h(78)
       }
 
-      verifyClassMethodNames("Foo" -> "f", "FooTrait" -> "h",
-          "Baz" -> "<init>") {
+      verifyClassMethodNames("Foo" -> "f", "FooTrait" -> "h", "Baz" -> "<init>") {
         new Baz()
       }
 
-      verifyClassMethodNames("Foo" -> "f", "Bar" -> "g",
-          "Foobar$" -> "<clinit>", "Foobar$" -> "<init>") {
+      verifyClassMethodNames("Foo" -> "f", "Bar" -> "g", "Foobar$" -> "<clinit>",
+          "Foobar$" -> "<init>") {
         Foobar.z
       }
 
       verifyClassMethodNames(
           "Foo" -> "f",
           "SJS" -> "m", // Scala method actually implementing m()
-          "SJS" -> "n"  // Exported JS method forwarding to m()
+          "SJS" -> "n" // Exported JS method forwarding to m()
       ) {
         new SJS().m()
       }

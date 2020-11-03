@@ -53,8 +53,7 @@ class StringBuffer private (builder: StringBuilder)
   def offsetByCodePoints(index: Int, codePointOffset: Int): Int =
     builder.offsetByCodePoints(index, codePointOffset)
 
-  def getChars(srcBegin: Int, srcEnd: Int, dst: Array[Char],
-      dstBegin: Int): Unit = {
+  def getChars(srcBegin: Int, srcEnd: Int, dst: Array[Char], dstBegin: Int): Unit = {
     builder.getChars(srcBegin, srcEnd, dst, dstBegin)
   }
 
@@ -135,8 +134,7 @@ class StringBuffer private (builder: StringBuilder)
   def insert(dstOffset: Int, s: CharSequence): StringBuffer =
     withThisResult(builder.insert(dstOffset, s))
 
-  def insert(dstOffset: Int, s: CharSequence, start: Int,
-      end: Int): StringBuffer = {
+  def insert(dstOffset: Int, s: CharSequence, start: Int, end: Int): StringBuffer = {
     withThisResult(builder.insert(dstOffset, s, start, end))
   }
 

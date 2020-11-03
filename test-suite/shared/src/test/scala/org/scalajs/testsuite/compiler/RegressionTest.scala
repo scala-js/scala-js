@@ -61,8 +61,8 @@ class RegressionTest {
     val str = {
       // The space at the end is intended. It is 0x20.
       "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\u0008\u0009\u000a" +
-      "\u000b\u000c\u000d\u000e\u000f\u0010\u0011\u0012\u0013\u0014\u0015" +
-      "\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f "
+        "\u000b\u000c\u000d\u000e\u000f\u0010\u0011\u0012\u0013\u0014\u0015" +
+        "\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f "
     }
 
     for (i <- 0 until str.length)
@@ -78,8 +78,8 @@ class RegressionTest {
   }
 
   @Test def should_correctly_call_subSequence_on_non_string_CharSequences_issue_55(): Unit = {
-    val arr: CharSequence = Array('a','b','c','d')
-    val ss = arr.subSequence(2,3)
+    val arr: CharSequence = Array('a', 'b', 'c', 'd')
+    val ss = arr.subSequence(2, 3)
     assertEquals(1, ss.length())
     assertEquals('c', ss.charAt(0))
   }
@@ -105,11 +105,11 @@ class RegressionTest {
 
     assumeFalse("Affected by https://github.com/scala/bug/issues/10551",
         Platform.executingInJVM && {
-          scalaVersion.startsWith("2.11.") ||
-          scalaVersion == "2.12.0" || scalaVersion == "2.12.1" ||
-          scalaVersion == "2.12.2" || scalaVersion == "2.12.3" ||
-          scalaVersion == "2.12.4"
-        })
+      scalaVersion.startsWith("2.11.") ||
+      scalaVersion == "2.12.0" || scalaVersion == "2.12.1" ||
+      scalaVersion == "2.12.2" || scalaVersion == "2.12.3" ||
+      scalaVersion == "2.12.4"
+    })
 
     assertEquals("org.scalajs.testsuite.compiler.RegressionTest$Bug218Foo",
         scala.reflect.classTag[Bug218Foo[_]].toString)
@@ -391,12 +391,12 @@ class RegressionTest {
   }
 
   @Test def switch_match_with_2_guards_for_the_same_value_issue_1589(): Unit = {
-    @noinline def genB(): Int = 0xE1
+    @noinline def genB(): Int = 0xe1
     val b = genB()
     val x = b >> 4 match {
-      case 0xE if b == 0xE0 =>
+      case 0xe if b == 0xe0 =>
         4
-      case 0xE if b == 0xE1 =>
+      case 0xe if b == 0xe1 =>
         5
     }
     assertEquals(5, x)
@@ -712,10 +712,9 @@ class RegressionTest {
   }
 
   @Test def super_mixin_call_in_2_12_issue_3013(): Unit = {
-    assumeTrue(
-        "Super mixin calls are broken in Scala/JVM 2.12.{0-2}",
+    assumeTrue("Super mixin calls are broken in Scala/JVM 2.12.{0-2}",
         !Platform.executingInJVM ||
-        !Set("2.12.1", "2.12.2").contains(Platform.scalaVersion))
+          !Set("2.12.1", "2.12.2").contains(Platform.scalaVersion))
 
     import Bug3013._
 
@@ -873,7 +872,7 @@ object RegressionTest {
 
     def bug(x: Int, e: Boolean): Unit = {
       x match {
-        case 1 => doSomething(123, 456, ())
+        case 1      => doSomething(123, 456, ())
         case 2 if e =>
       }
 

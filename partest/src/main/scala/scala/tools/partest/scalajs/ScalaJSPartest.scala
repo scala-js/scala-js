@@ -16,8 +16,8 @@ package scalajs
 import nest._
 import Path._
 
-import scala.tools.nsc.{ Global, Settings }
-import scala.tools.nsc.reporters.{ Reporter }
+import scala.tools.nsc.{Global, Settings}
+import scala.tools.nsc.reporters.{Reporter}
 import scala.tools.nsc.plugins.Plugin
 
 import scala.tools.partest.sbt.SBTRunner
@@ -35,15 +35,15 @@ trait ScalaJSDirectCompiler extends DirectCompiler {
     new PartestGlobal(settings, reporter) {
       override protected def loadRoughPluginsList(): List[Plugin] = {
         (super.loadRoughPluginsList() :+
-            Plugin.instantiate(classOf[ScalaJSPlugin], this))
+          Plugin.instantiate(classOf[ScalaJSPlugin], this))
       }
     }
   }
 }
 
-class ScalaJSRunner(testFile: File, suiteRunner: SuiteRunner,
-    scalaJSOverridePath: String,
-    options: ScalaJSPartestOptions) extends nest.Runner(testFile, suiteRunner,
+class ScalaJSRunner(testFile: File, suiteRunner: SuiteRunner, scalaJSOverridePath: String,
+    options: ScalaJSPartestOptions)
+    extends nest.Runner(testFile, suiteRunner,
         new nest.NestUI(diffOnFail = options.showDiff, colorEnabled = true)) {
   private val compliantSems: List[String] = {
     scalaJSConfigFile("sem").fold(List.empty[String]) { file =>
@@ -57,7 +57,7 @@ class ScalaJSRunner(testFile: File, suiteRunner: SuiteRunner,
   }
 
   override val checkFile: File = {
-    scalaJSConfigFile("check") getOrElse {
+    scalaJSConfigFile("check").getOrElse {
       // this is super.checkFile, but apparently we can't do that
       new FileOps(testFile).changeExtension("check")
     }
@@ -90,7 +90,7 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
   // Stuff we provide
 
   override def banner: String = {
-    import org.scalajs.ir.ScalaJSVersions.{ current => currentVersion }
+    import org.scalajs.ir.ScalaJSVersions.{current => currentVersion}
 
     super.banner.trim + s"""
     |Scala.js version is: $currentVersion
@@ -122,8 +122,7 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
     onFinishTest(testFile, state)
   }
 
-  override def runTestsForFiles(kindFiles: Array[File],
-      kind: String): Array[TestState] = {
+  override def runTestsForFiles(kindFiles: Array[File], kind: String): Array[TestState] = {
     super.runTestsForFiles(kindFiles.filter(shouldUseTest), kind)
   }
 
@@ -181,21 +180,22 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
  * via reflection from the sbt partest interface of Scala.js
  */
 class ScalaJSSBTRunner(
-    partestFingerprint: Fingerprint,
-    eventHandler: EventHandler,
-    loggers: Array[Logger],
-    testRoot: File,
-    testClassLoader: URLClassLoader,
-    javaCmd: File,
-    javacCmd: File,
-    scalacArgs: Array[String],
-    args: Array[String],
-    val options: ScalaJSPartestOptions,
+    partestFingerprint: Fingerprint, eventHandler: EventHandler, loggers: Array[Logger],
+    testRoot: File, testClassLoader: URLClassLoader, javaCmd: File, javacCmd: File,
+    scalacArgs: Array[String], args: Array[String], val options: ScalaJSPartestOptions,
     val scalaVersion: String
 ) extends SBTRunner(
-    RunnerSpec.forArgs(args), partestFingerprint, eventHandler, loggers,
-    "test/files", testClassLoader, javaCmd, javacCmd, scalacArgs, args
-) {
+        RunnerSpec.forArgs(args),
+        partestFingerprint,
+        eventHandler,
+        loggers,
+        "test/files",
+        testClassLoader,
+        javaCmd,
+        javacCmd,
+        scalacArgs,
+        args
+    ) {
 
   // The test root for partest is read out through the system properties,
   // not passed as an argument
@@ -205,15 +205,14 @@ class ScalaJSSBTRunner(
   System.setProperty("partest.timeout", "10 hours")
 
   override val suiteRunner = new SuiteRunner(
-      testSourcePath = config.optSourcePath orElse Option("test/files") getOrElse PartestDefaults.sourcePath,
+      testSourcePath = config.optSourcePath
+        .orElse(Option("test/files"))
+        .getOrElse(PartestDefaults.sourcePath),
       fileManager = new FileManager(testClassLoader = testClassLoader),
-      updateCheck = config.optUpdateCheck,
-      failed = config.optFailed,
-      nestUI = nestUI,
-      javaCmdPath = Option(javaCmd).map(_.getAbsolutePath) getOrElse PartestDefaults.javaCmd,
-      javacCmdPath = Option(javacCmd).map(_.getAbsolutePath) getOrElse PartestDefaults.javacCmd,
-      scalacExtraArgs = scalacArgs,
-      javaOpts = javaOpts) with ScalaJSSuiteRunner {
+      updateCheck = config.optUpdateCheck, failed = config.optFailed, nestUI = nestUI,
+      javaCmdPath = Option(javaCmd).map(_.getAbsolutePath).getOrElse(PartestDefaults.javaCmd),
+      javacCmdPath = Option(javacCmd).map(_.getAbsolutePath).getOrElse(PartestDefaults.javacCmd),
+      scalacExtraArgs = scalacArgs, javaOpts = javaOpts) with ScalaJSSuiteRunner {
 
     val options: ScalaJSPartestOptions = ScalaJSSBTRunner.this.options
     val scalaVersion: String = ScalaJSSBTRunner.this.scalaVersion

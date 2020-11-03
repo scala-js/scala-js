@@ -91,7 +91,7 @@ abstract class LinkedHashMapTest extends HashMapTest {
     val expectedKeys = {
       if (factory.accessOrder) {
         val keys = (2 until 42) ++ (43 until 52) ++ (53 until 98) ++
-            List(99, 0, 100, 101, 52, 1, 42, 98)
+          List(99, 0, 100, 101, 52, 1, 42, 98)
         keys.takeRight(withSizeLimit.getOrElse(keys.length))
       } else {
         if (withSizeLimit.isDefined) (56 until 100) ++ List(0, 100, 42, 101, 52, 1)
@@ -167,8 +167,10 @@ abstract class LinkedHashMapTest extends HashMapTest {
      */
 
     assumeTrue("relevant for access-order only", factory.accessOrder)
-    assumeFalse("assuming that entries are not going to be automatically removed",
-        factory.withSizeLimit.isDefined)
+    assumeFalse(
+        "assuming that entries are not going to be automatically removed",
+        factory.withSizeLimit.isDefined
+    )
 
     val initialElems = (0 until 100).map(key => key.toString() -> s"elem $key").toList
     val lhm = factory.fromKeyValuePairs[String, String](initialElems: _*)
@@ -256,8 +258,7 @@ abstract class LinkedHashMapTest extends HashMapTest {
     assertSameEntriesOrdered(allElems: _*)(lhm)
   }
 
-  private def assertSameEntriesOrdered[A, B](expected: (A, B)*)(
-      map: ju.Map[A, B]): Unit = {
+  private def assertSameEntriesOrdered[A, B](expected: (A, B)*)(map: ju.Map[A, B]): Unit = {
 
     val expectedSize = expected.size
 
@@ -308,8 +309,7 @@ abstract class LinkedHashMapTest extends HashMapTest {
 
 }
 
-class LinkedHashMapFactory(val accessOrder: Boolean,
-    override val withSizeLimit: Option[Int])
+class LinkedHashMapFactory(val accessOrder: Boolean, override val withSizeLimit: Option[Int])
     extends HashMapFactory {
   def orderName: String =
     if (accessOrder) "access-order"

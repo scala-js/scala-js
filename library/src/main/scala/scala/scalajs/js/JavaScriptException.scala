@@ -16,8 +16,7 @@ import scala.language.reflectiveCalls
 
 import scala.scalajs.js
 
-final case class JavaScriptException(exception: scala.Any)
-    extends RuntimeException {
+final case class JavaScriptException(exception: scala.Any) extends RuntimeException {
 
   override def getMessage(): String = exception.toString()
 

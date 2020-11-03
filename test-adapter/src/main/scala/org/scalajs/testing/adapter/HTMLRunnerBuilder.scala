@@ -29,14 +29,14 @@ import org.scalajs.testing.common._
 object HTMLRunnerBuilder {
   @deprecated("Use write instead", "1.2.0")
   def writeToFile(output: File, title: String, input: Seq[Input],
-      frameworkImplClassNames: List[List[String]],
-      taskDefs: List[TaskDef]): Unit = {
+      frameworkImplClassNames: List[List[String]], taskDefs: List[TaskDef]): Unit = {
     val outputPath = output.toPath()
     val artifactsDir =
       Files.createTempDirectory(outputPath.getParent(), ".html-artifacts")
 
     sys.addShutdownHook {
-      Files.walkFileTree(artifactsDir, new SimpleFileVisitor[Path] {
+      Files.walkFileTree(artifactsDir,
+          new SimpleFileVisitor[Path] {
         override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
           Files.delete(file)
           FileVisitResult.CONTINUE
@@ -53,8 +53,7 @@ object HTMLRunnerBuilder {
   }
 
   def write(output: Path, artifactsDir: Path, title: String, input: Seq[Input],
-      frameworkImplClassNames: List[List[String]],
-      taskDefs: List[TaskDef]): Unit = {
+      frameworkImplClassNames: List[List[String]], taskDefs: List[TaskDef]): Unit = {
 
     def artifactPath(name: String): (String, Path) = {
       val path = artifactsDir.resolve(name)

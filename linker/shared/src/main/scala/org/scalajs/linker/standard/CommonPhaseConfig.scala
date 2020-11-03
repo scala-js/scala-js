@@ -35,10 +35,7 @@ final class CommonPhaseConfig private (
     val batchMode: Boolean
 ) {
   private def this() = {
-    this(
-        coreSpec = CoreSpec.Defaults,
-        parallel = true,
-        batchMode = false)
+    this(coreSpec = CoreSpec.Defaults, parallel = true, batchMode = false)
   }
 }
 

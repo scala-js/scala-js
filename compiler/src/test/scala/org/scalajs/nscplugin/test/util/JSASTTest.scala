@@ -67,8 +67,7 @@ abstract class JSASTTest extends DirectTest {
         super.traverseMemberDef(memberDef)
       }
 
-      override def traverseTopLevelExportDef(
-          exportDef: js.TopLevelExportDef): Unit = {
+      override def traverseTopLevelExportDef(exportDef: js.TopLevelExportDef): Unit = {
         handle(exportDef)
         super.traverseTopLevelExportDef(exportDef)
       }

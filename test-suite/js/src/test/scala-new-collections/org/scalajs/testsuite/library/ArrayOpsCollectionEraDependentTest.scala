@@ -26,7 +26,11 @@ class ArrayOpsCollectionEraDependentTest {
 
   @Test def mapInPlace(): Unit = {
     val array = js.Array(1, 5, 7, 2, 54, 2, 78, 0, 3)
-    assertJSArrayEqualsSame(array, js.Array(3, 15, 21, 6, 162, 6, 234, 0, 9), array.mapInPlace(_ * 3))
+    assertJSArrayEqualsSame(
+        array,
+        js.Array(3, 15, 21, 6, 162, 6, 234, 0, 9),
+        array.mapInPlace(_ * 3)
+    )
   }
 
   @Test def flatten(): Unit = {
@@ -46,8 +50,16 @@ class ArrayOpsCollectionEraDependentTest {
 
   @Test def prependedAll(): Unit = {
     val array = js.Array(1, 5, 7, 2)
-    assertJSArrayEqualsNotSame(array, js.Array(10, 11, 1, 5, 7, 2), array.prependedAll(js.Array(10, 11)))
-    assertJSArrayEqualsNotSame(array, js.Array(10, 11, 1, 5, 7, 2), array.prependedAll(List(10, 11)))
+    assertJSArrayEqualsNotSame(
+        array,
+        js.Array(10, 11, 1, 5, 7, 2),
+        array.prependedAll(js.Array(10, 11))
+    )
+    assertJSArrayEqualsNotSame(
+        array,
+        js.Array(10, 11, 1, 5, 7, 2),
+        array.prependedAll(List(10, 11))
+    )
   }
 
   @Test def :++(): Unit = {
@@ -58,7 +70,11 @@ class ArrayOpsCollectionEraDependentTest {
 
   @Test def appendedAll(): Unit = {
     val array = js.Array(1, 5, 7, 2)
-    assertJSArrayEqualsNotSame(array, js.Array(1, 5, 7, 2, 10, 11), array.appendedAll(js.Array(10, 11)))
+    assertJSArrayEqualsNotSame(
+        array,
+        js.Array(1, 5, 7, 2, 10, 11),
+        array.appendedAll(js.Array(10, 11))
+    )
     assertJSArrayEqualsNotSame(array, js.Array(1, 5, 7, 2, 10, 11), array.appendedAll(List(10, 11)))
   }
 
@@ -79,10 +95,7 @@ class ArrayOpsCollectionEraDependentTest {
   }
 
   @Test def transpose(): Unit = {
-    val array = js.Array(
-        js.Array(1, 2, 3, 4),
-        js.Array(5, 6, 7, 8),
-        js.Array(9, 10, 11, 12))
+    val array = js.Array(js.Array(1, 2, 3, 4), js.Array(5, 6, 7, 8), js.Array(9, 10, 11, 12))
     val transposed = array.transpose // do not influence type inference
     assertNotSame(array, transposed)
     val typed: js.Array[js.Array[Int]] = transposed
@@ -103,8 +116,8 @@ class ArrayOpsCollectionEraDependentTest {
   }
 
   @Test def groupMap(): Unit = {
-    val array = js.Array("foo" -> 1, "bar" -> 5, "baz" -> 1, "foobar" -> 3,
-        "hello" -> 7, "bonjour" -> 3)
+    val array =
+      js.Array("foo" -> 1, "bar" -> 5, "baz" -> 1, "foobar" -> 3, "hello" -> 7, "bonjour" -> 3)
     val groups = array.groupMap(_._2)(_._1)
     assertEquals(Set(1, 3, 5, 7), groups.keySet)
     assertJSArrayEquals(js.Array("foo", "baz"), groups(1))
@@ -150,25 +163,31 @@ class ArrayOpsCollectionEraDependentTest {
   @Test def patchInPlace(): Unit = {
     val arrayBase = js.Array(1, 5, 7, 2, 54, 2, 78, 0, 3)
     var array = arrayBase.jsSlice()
-    assertJSArrayEqualsSame(array,
-        js.Array(1, 5, 7, 0, 3),
-        array.patchInPlace(3, Nil, 4))
+    assertJSArrayEqualsSame(array, js.Array(1, 5, 7, 0, 3), array.patchInPlace(3, Nil, 4))
     array = arrayBase.jsSlice()
-    assertJSArrayEqualsSame(array,
+    assertJSArrayEqualsSame(
+        array,
         js.Array(1, 5, 7, 42, 34, 0, 3),
-        array.patchInPlace(3, js.Array(42, 34), 4))
+        array.patchInPlace(3, js.Array(42, 34), 4)
+    )
     array = arrayBase.jsSlice()
-    assertJSArrayEqualsSame(array,
+    assertJSArrayEqualsSame(
+        array,
         js.Array(42, 34, 54, 2, 78, 0, 3),
-        array.patchInPlace(-3, js.Array(42, 34), 4))
+        array.patchInPlace(-3, js.Array(42, 34), 4)
+    )
     array = arrayBase.jsSlice()
-    assertJSArrayEqualsSame(array,
+    assertJSArrayEqualsSame(
+        array,
         js.Array(1, 5, 7, 2, 54, 2, 78, 0, 3, 42, 34),
-        array.patchInPlace(17, js.Array(42, 34), 6))
+        array.patchInPlace(17, js.Array(42, 34), 6)
+    )
     array = arrayBase.jsSlice()
-    assertJSArrayEqualsSame(array,
+    assertJSArrayEqualsSame(
+        array,
         js.Array(1, 5, 7, 2, 42, 34, 54, 2, 78, 0, 3),
-        array.patchInPlace(4, js.Array(42, 34), -6))
+        array.patchInPlace(4, js.Array(42, 34), -6)
+    )
 
     /* Unclear what the semantics of the following one should be.
      * See https://github.com/scala/bug/issues/11114
@@ -205,7 +224,11 @@ class ArrayOpsCollectionEraDependentTest {
 
   @Test def dropRightInPlace(): Unit = {
     val array = js.Array(1, 5, 7, 2, 42, 34, 54, 2, 78, 0, 3)
-    assertJSArrayEqualsSame(array, js.Array(1, 5, 7, 2, 42, 34, 54, 2, 78, 0), array.dropRightInPlace(1))
+    assertJSArrayEqualsSame(
+        array,
+        js.Array(1, 5, 7, 2, 42, 34, 54, 2, 78, 0),
+        array.dropRightInPlace(1)
+    )
     assertJSArrayEqualsSame(array, js.Array(1, 5, 7, 2, 42, 34), array.dropRightInPlace(4))
     assertJSArrayEqualsSame(array, js.Array(1, 5, 7, 2, 42, 34), array.dropRightInPlace(-3))
     assertJSArrayEqualsSame(array, js.Array(), array.dropRightInPlace(10))
@@ -221,7 +244,11 @@ class ArrayOpsCollectionEraDependentTest {
 
   @Test def dropWhileInPlace(): Unit = {
     val array = js.Array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
-    assertJSArrayEqualsSame(array, js.Array(4, 5, 6, 7, 8, 9, 10, 11, 12), array.dropWhileInPlace(_ < 4))
+    assertJSArrayEqualsSame(
+        array,
+        js.Array(4, 5, 6, 7, 8, 9, 10, 11, 12),
+        array.dropWhileInPlace(_ < 4)
+    )
     assertJSArrayEqualsSame(array, js.Array(8, 9, 10, 11, 12), array.dropWhileInPlace(_ < 8))
     assertJSArrayEqualsSame(array, js.Array(8, 9, 10, 11, 12), array.dropWhileInPlace(_ < 5))
     assertJSArrayEqualsSame(array, js.Array(), array.dropWhileInPlace(_ < 20))
@@ -229,7 +256,11 @@ class ArrayOpsCollectionEraDependentTest {
 
   @Test def takeWhileInPlace(): Unit = {
     val array = js.Array(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)
-    assertJSArrayEqualsSame(array, js.Array(1, 2, 3, 4, 5, 6, 7, 8, 9), array.takeWhileInPlace(_ < 10))
+    assertJSArrayEqualsSame(
+        array,
+        js.Array(1, 2, 3, 4, 5, 6, 7, 8, 9),
+        array.takeWhileInPlace(_ < 10)
+    )
     assertJSArrayEqualsSame(array, js.Array(1, 2, 3, 4), array.takeWhileInPlace(_ < 5))
     assertJSArrayEqualsSame(array, js.Array(1, 2, 3, 4), array.takeWhileInPlace(_ < 8))
     assertJSArrayEqualsSame(array, js.Array(), array.takeWhileInPlace(_ < 0))
@@ -244,19 +275,22 @@ class ArrayOpsCollectionEraDependentTest {
 
   @Test def flatMapInPlace(): Unit = {
     val array = js.Array(6, 2, 56, -1)
-    assertJSArrayEqualsSame(array,
+    assertJSArrayEqualsSame(
+        array,
         js.Array(6, 7, 8, 2, 3, 4, 56, 57, 58, -1, 0, 1),
-        array.flatMapInPlace(x => js.Array(x, x + 1, x + 2)))
+        array.flatMapInPlace(x => js.Array(x, x + 1, x + 2))
+    )
   }
 
   @Test def filterInPlace(): Unit = {
     val array = js.Array(1, 5, 7, 2, 54, 2, 78, 0, 3)
-    assertJSArrayEqualsSame(array,
-        js.Array(1, 5, 7, 2, 54, 2, 78, 0, 3), array.filterInPlace(_ < 100))
-    assertJSArrayEqualsSame(array,
-        js.Array(1, 5, 7, 2, 2, 0, 3), array.filterInPlace(_ < 10))
-    assertJSArrayEqualsSame(array,
-        js.Array(), array.filterInPlace(_ < 0))
+    assertJSArrayEqualsSame(
+        array,
+        js.Array(1, 5, 7, 2, 54, 2, 78, 0, 3),
+        array.filterInPlace(_ < 100)
+    )
+    assertJSArrayEqualsSame(array, js.Array(1, 5, 7, 2, 2, 0, 3), array.filterInPlace(_ < 10))
+    assertJSArrayEqualsSame(array, js.Array(), array.filterInPlace(_ < 0))
   }
 
   @Test def to_T_issue_843(): Unit = {

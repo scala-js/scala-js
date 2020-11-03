@@ -68,8 +68,7 @@ import nsc._
  *  @author Nicolas Stucki
  */
 abstract class PreTyperComponent(val global: Global)
-    extends plugins.PluginComponent
-    with transform.Transform with CompatComponent {
+    extends plugins.PluginComponent with transform.Transform with CompatComponent {
 
   import global._
 
@@ -85,12 +84,12 @@ abstract class PreTyperComponent(val global: Global)
       case tree: ClassDef if needsAnnotations(tree) =>
         val newBody = tree.impl.body.map {
           case vdef: ValDef if needsAnnotations(vdef) =>
-            treeCopy.ValDef(vdef, withWasPublic(vdef.mods), vdef.name,
-                vdef.tpt, transform(vdef.rhs))
+            treeCopy.ValDef(vdef, withWasPublic(vdef.mods), vdef.name, vdef.tpt,
+                transform(vdef.rhs))
 
           case ddef: DefDef if needsAnnotations(ddef) =>
-            treeCopy.DefDef(ddef, withWasPublic(ddef.mods), ddef.name,
-                ddef.tparams, ddef.vparamss, ddef.tpt, transform(ddef.rhs))
+            treeCopy.DefDef(ddef, withWasPublic(ddef.mods), ddef.name, ddef.tparams, ddef.vparamss,
+                ddef.tpt, transform(ddef.rhs))
 
           case member => transform(member)
         }
@@ -116,7 +115,7 @@ abstract class PreTyperComponent(val global: Global)
     classDef.impl.body.exists {
       case vdef: ValDef => needsAnnotations(vdef)
       case ddef: DefDef => needsAnnotations(ddef)
-      case _ => false
+      case _            => false
     }
   }
 
@@ -135,9 +134,9 @@ abstract class PreTyperComponent(val global: Global)
   private val wasPublicBeforeTyper = newTypeName("WasPublicBeforeTyper")
 
   private def anonymousClassMethodWasPublicAnnotation: Tree = {
-    val cls = Select(Select(Select(Select(Select(Select(Ident(nme.ROOTPKG),
-        nme.scala_), scalajs), js), nme.annotation), internal_),
-        wasPublicBeforeTyper)
+    val cls =
+      Select(Select(Select(Select(Select(Select(Ident(nme.ROOTPKG), nme.scala_), scalajs), js),
+                  nme.annotation), internal_), wasPublicBeforeTyper)
     Apply(Select(New(cls), nme.CONSTRUCTOR), Nil)
   }
 }

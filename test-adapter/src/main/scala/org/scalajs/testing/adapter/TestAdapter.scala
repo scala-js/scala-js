@@ -31,7 +31,7 @@ final class TestAdapter(jsEnv: JSEnv, input: Seq[Input], config: TestAdapter.Con
 
   require(input.nonEmpty,
       "Attempted to create a TestAdapter with empty input. " +
-      "This will not work, since the TestAdapter expects replies from the JS end.")
+        "This will not work, since the TestAdapter expects replies from the JS end.")
 
   /** Map of ThreadId -> ManagedRunner */
   private[this] val runners = TrieMap.empty[Long, ManagedRunner]
@@ -158,8 +158,6 @@ object TestAdapter {
   }
 
   private[adapter] final class ManagedRunner(
-      val id: Long,
-      val com: RPCCore,
-      val mux: RunMuxRPC
+      val id: Long, val com: RPCCore, val mux: RunMuxRPC
   )
 }

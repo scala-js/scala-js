@@ -128,14 +128,16 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
 
   def remove(o: scala.Any): Boolean = {
     val index = indexOf(o)
-    if (index == -1) false else {
+    if (index == -1) false
+    else {
       remove(index)
       true
     }
   }
 
   def addIfAbsent(e: E): Boolean = {
-    if (contains(e)) false else {
+    if (contains(e)) false
+    else {
       copyIfNeeded()
       innerPush(e)
       true
@@ -242,15 +244,17 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
       obj match {
         case obj: List[_] =>
           val oIter = obj.listIterator()
-          this.scalaOps.forall(elem => oIter.hasNext() && Objects.equals(elem, oIter.next())) && !oIter.hasNext()
+          this.scalaOps.forall(elem =>
+            oIter.hasNext() && Objects.equals(elem, oIter.next())
+          ) && !oIter.hasNext()
         case _ => false
       }
     }
   }
 
   override def hashCode(): Int = {
-    iterator().scalaOps.foldLeft(1) {
-      (prev, elem) => 31 * prev + Objects.hashCode(elem)
+    iterator().scalaOps.foldLeft(1) { (prev, elem) =>
+      31 * prev + Objects.hashCode(elem)
     }
   }
 
@@ -322,8 +326,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
 
     override def listIterator(index: Int): ListIterator[E] = {
       checkIndexOnBounds(index)
-      new CopyOnWriteArrayListIterator[E](innerSnapshot(), fromIndex + index,
-          fromIndex, toIndex) {
+      new CopyOnWriteArrayListIterator[E](innerSnapshot(), fromIndex + index, fromIndex, toIndex) {
         override protected def onSizeChanged(delta: Int): Unit = changeSize(delta)
       }
     }
@@ -332,8 +335,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
       if (fromIndex < 0 || fromIndex > toIndex || toIndex > size())
         throw new IndexOutOfBoundsException
 
-      new CopyOnWriteArrayListView(viewSelf.fromIndex + fromIndex,
-          viewSelf.fromIndex + toIndex) {
+      new CopyOnWriteArrayListView(viewSelf.fromIndex + fromIndex, viewSelf.fromIndex + toIndex) {
         override protected def changeSize(delta: Int): Unit = {
           super.changeSize(delta)
           viewSelf.changeSize(delta)
@@ -360,8 +362,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
       self.innerInsert(fromIndex + index, elem)
     }
 
-    override protected def innerInsertMany(index: Int,
-        items: Collection[_ <: E]): Unit = {
+    override protected def innerInsertMany(index: Int, items: Collection[_ <: E]): Unit = {
       changeSize(items.size())
       self.innerInsertMany(fromIndex + index, items)
     }
@@ -397,7 +398,8 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
   }
 }
 
-private class CopyOnWriteArrayListIterator[E](arraySnapshot: js.Array[E], i: Int, start: Int, end: Int)
+private class CopyOnWriteArrayListIterator[E](arraySnapshot: js.Array[E], i: Int, start: Int,
+    end: Int)
     extends AbstractRandomAccessListIterator[E](i, start, end) {
   override def remove(): Unit =
     throw new UnsupportedOperationException

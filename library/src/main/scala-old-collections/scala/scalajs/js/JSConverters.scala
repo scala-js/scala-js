@@ -34,9 +34,7 @@ sealed abstract class JSConvertersLowPrioImplicits {
  */
 object JSConverters extends js.JSConvertersLowPrioImplicits {
 
-  implicit class JSRichOption[T] private[JSConverters] (
-      private val opt: Option[T])
-      extends AnyVal {
+  implicit class JSRichOption[T] private[JSConverters] (private val opt: Option[T]) extends AnyVal {
 
     @inline final def orUndefined: js.UndefOr[T] =
       opt.fold[js.UndefOr[T]](undefined)(v => v)
@@ -76,8 +74,7 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
     }
   }
 
-  implicit class JSRichGenIterable[T] private[JSConverters] (
-      private val self: GenIterable[T])
+  implicit class JSRichGenIterable[T] private[JSConverters] (private val self: GenIterable[T])
       extends AnyVal {
 
     @inline final def toJSIterable: js.Iterable[T] = new IterableAdapter(self)
@@ -95,8 +92,7 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
     final def jsIterator(): js.Iterator[T] = col.iterator.toJSIterator
   }
 
-  private class IteratorAdapter[+T](
-      it: scala.collection.Iterator[T]) extends js.Iterator[T] {
+  private class IteratorAdapter[+T](it: scala.collection.Iterator[T]) extends js.Iterator[T] {
     final def next(): js.Iterator.Entry[T] = {
       if (it.hasNext) {
         new js.Iterator.Entry[T] {
@@ -114,8 +110,7 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
     }
   }
 
-  implicit class JSRichGenMap[T] private[JSConverters] (
-      private val map: GenMap[String, T])
+  implicit class JSRichGenMap[T] private[JSConverters] (private val map: GenMap[String, T])
       extends AnyVal {
 
     @inline final def toJSDictionary: js.Dictionary[T] = {
@@ -125,8 +120,7 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
     }
   }
 
-  implicit final class JSRichMapKV[K, V](
-      private val self: GenMap[K, V]) extends AnyVal {
+  implicit final class JSRichMapKV[K, V](private val self: GenMap[K, V]) extends AnyVal {
 
     @inline final def toJSMap: js.Map[K, V] = {
       val result = js.Map.empty[K, V].asInstanceOf[js.Map.Raw[K, V]]
@@ -135,8 +129,7 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
     }
   }
 
-  implicit final class JSRichSet[T](
-     private val self: GenSet[T]) extends AnyVal {
+  implicit final class JSRichSet[T](private val self: GenSet[T]) extends AnyVal {
 
     @inline final def toJSSet: js.Set[T] = {
       val result = js.Set.empty[T]
@@ -156,13 +149,11 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
 
   // For access in JSConvertersLowPrioImplicits
   @inline
-  protected[this] def newJSRichFuture[A](
-      f: Future[A | js.Thenable[A]]): JSRichFuture[A] = {
+  protected[this] def newJSRichFuture[A](f: Future[A | js.Thenable[A]]): JSRichFuture[A] = {
     new JSRichFuture[A](f)
   }
 
-  final class JSRichFuture[A] private[JSConverters] (
-      private val self: Future[A | js.Thenable[A]])
+  final class JSRichFuture[A] private[JSConverters] (private val self: Future[A | js.Thenable[A]])
       extends AnyVal {
 
     /** Converts the Future to a JavaScript [[Promise]].
@@ -177,7 +168,7 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
     def toJSPromise(implicit ec: ExecutionContext): js.Promise[A] = {
       new js.Promise[A]({
         (resolve: js.Function1[A | js.Thenable[A], _], reject: js.Function1[scala.Any, _]) =>
-          self onComplete {
+          self.onComplete {
             case scala.util.Success(value) =>
               resolve(value)
 

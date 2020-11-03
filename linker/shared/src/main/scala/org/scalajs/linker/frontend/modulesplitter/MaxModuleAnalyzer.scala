@@ -40,14 +40,12 @@ private[modulesplitter] final class MaxModuleAnalyzer extends ModuleAnalyzer {
 
 private object MaxModuleAnalyzer {
 
-  private final class SingleModuleAnalysis(moduleID: ModuleID)
-      extends ModuleAnalyzer.Analysis {
+  private final class SingleModuleAnalysis(moduleID: ModuleID) extends ModuleAnalyzer.Analysis {
     def moduleForClass(className: ClassName): Option[ModuleID] =
       Some(moduleID)
   }
 
-  private final class FullAnalysis(map: Map[ClassName, ModuleID])
-      extends ModuleAnalyzer.Analysis {
+  private final class FullAnalysis(map: Map[ClassName, ModuleID]) extends ModuleAnalyzer.Analysis {
     def moduleForClass(className: ClassName): Option[ModuleID] =
       map.get(className)
   }
@@ -61,8 +59,8 @@ private object MaxModuleAnalyzer {
 
       val moduleIDs = buildModuleIDs()
 
-      val moduleMap = allTags.map {
-        case (className, tags) => className -> moduleIDs(tags)
+      val moduleMap = allTags.map { case (className, tags) =>
+        className -> moduleIDs(tags)
       }.toMap
 
       new FullAnalysis(moduleMap)

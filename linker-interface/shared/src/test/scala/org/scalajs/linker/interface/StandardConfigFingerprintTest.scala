@@ -21,8 +21,7 @@ import Semantics.RuntimeClassNameMapper._
 
 class StandardConfigFingerprintTest {
   def assertFingerprintsNotEquals(sc1: StandardConfig, sc2: StandardConfig): Unit = {
-    assertNotEquals(StandardConfig.fingerprint(sc1),
-        StandardConfig.fingerprint(sc2))
+    assertNotEquals(StandardConfig.fingerprint(sc1), StandardConfig.fingerprint(sc2))
   }
 
   @Test
@@ -48,10 +47,10 @@ class StandardConfigFingerprintTest {
 
   @Test
   def noFingerprintCollisionRuntimeClassNameMapper(): Unit = {
-    val sc1 = StandardConfig().withSemantics(_.withRuntimeClassNameMapper(
-        keepAll() andThen discardAll()))
-    val sc2 = StandardConfig().withSemantics(_.withRuntimeClassNameMapper(
-        regexReplace("""\d+""".r, "0")))
+    val sc1 =
+      StandardConfig().withSemantics(_.withRuntimeClassNameMapper(keepAll().andThen(discardAll())))
+    val sc2 =
+      StandardConfig().withSemantics(_.withRuntimeClassNameMapper(regexReplace("""\d+""".r, "0")))
     assertFingerprintsNotEquals(sc1, sc2)
   }
 }

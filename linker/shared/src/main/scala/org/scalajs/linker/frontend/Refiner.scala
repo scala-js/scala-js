@@ -33,8 +33,8 @@ final class Refiner(config: CommonPhaseConfig) {
 
   private val inputProvider = new InputProvider
 
-  def refine(unit: LinkingUnit, symbolRequirements: SymbolRequirement,
-      logger: Logger)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
+  def refine(unit: LinkingUnit, symbolRequirements: SymbolRequirement, logger: Logger)(
+      implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
     val linkedClassesByName =
       Map(unit.classDefs.map(c => c.className -> c): _*)
@@ -68,9 +68,8 @@ final class Refiner(config: CommonPhaseConfig) {
       symbolRequirements: SymbolRequirement, logger: Logger)(
       implicit ec: ExecutionContext): Future[Analysis] = {
     for {
-      analysis <- Analyzer.computeReachability(config, moduleInitializers,
-          symbolRequirements, allowAddingSyntheticMethods = false,
-          checkAbstractReachability = false, inputProvider)
+      analysis <- Analyzer.computeReachability(config, moduleInitializers, symbolRequirements,
+          allowAddingSyntheticMethods = false, checkAbstractReachability = false, inputProvider)
     } yield {
       /* There must not be linking errors at this point. If there are, it is a
        * bug in the optimizer.
@@ -81,16 +80,15 @@ final class Refiner(config: CommonPhaseConfig) {
         analysis.errors.foreach(Analysis.logError(_, logger, Level.Error))
         throw new AssertionError(
             "There were linking errors after the optimizer has run. " +
-            "This is a bug, please report it. " +
-            "You can work around the bug by disabling the optimizer. " +
-            "In the sbt plugin, this can be done with " +
-            "`scalaJSLinkerConfig ~= { _.withOptimizer(false) }`.")
+              "This is a bug, please report it. " +
+              "You can work around the bug by disabling the optimizer. " +
+              "In the sbt plugin, this can be done with " +
+              "`scalaJSLinkerConfig ~= { _.withOptimizer(false) }`.")
       }
     }
   }
 
-  private def refineClassDef(classDef: LinkedClass,
-      info: Analysis.ClassInfo): LinkedClass = {
+  private def refineClassDef(classDef: LinkedClass, info: Analysis.ClassInfo): LinkedClass = {
 
     val fields = classDef.fields.filter { f =>
       BaseLinker.isFieldDefNeeded(info, f)
@@ -98,8 +96,7 @@ final class Refiner(config: CommonPhaseConfig) {
 
     val methods = classDef.methods.filter { m =>
       val methodDef = m.value
-      info.methodInfos(methodDef.flags.namespace)(methodDef.methodName)
-        .isReachable
+      info.methodInfos(methodDef.flags.namespace)(methodDef.methodName).isReachable
     }
 
     val jsNativeMembers = classDef.jsNativeMembers.filter { m =>
@@ -151,7 +148,8 @@ private object Refiner {
       Infos.generateTopLevelExportInfos(topLevelExports)
     }
 
-    def loadInfo(className: ClassName)(implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] =
+    def loadInfo(className: ClassName)(
+        implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] =
       getCache(className).map(_.loadInfo(linkedClassesByName(className)))
 
     private def getCache(className: ClassName): Option[LinkedClassInfoCache] = {
@@ -178,18 +176,19 @@ private object Refiner {
     private val exportedMembersInfoCaches = LinkedJSMethodPropDefsInfosCache()
     private var info: Infos.ClassInfo = _
 
-    def loadInfo(linkedClass: LinkedClass)(implicit ec: ExecutionContext): Future[Infos.ClassInfo] = Future {
-      update(linkedClass)
-      info
-    }
+    def loadInfo(linkedClass: LinkedClass)(implicit ec: ExecutionContext): Future[Infos.ClassInfo] =
+      Future {
+        update(linkedClass)
+        info
+      }
 
     private def update(linkedClass: LinkedClass): Unit = synchronized {
       if (!cacheUsed) {
         cacheUsed = true
 
-        val builder = new Infos.ClassInfoBuilder(linkedClass.className,
-            linkedClass.kind, linkedClass.superClass.map(_.name),
-            linkedClass.interfaces.map(_.name), linkedClass.jsNativeLoadSpec)
+        val builder = new Infos.ClassInfoBuilder(linkedClass.className, linkedClass.kind,
+            linkedClass.superClass.map(_.name), linkedClass.interfaces.map(_.name),
+            linkedClass.jsNativeLoadSpec)
 
         for (field <- linkedClass.fields)
           builder.maybeAddReferencedFieldClass(field.ftpe)
@@ -235,8 +234,7 @@ private object Refiner {
 
   private object LinkedMethodDefsInfosCache {
     def apply(): LinkedMethodDefsInfosCache = {
-      new LinkedMethodDefsInfosCache(
-          Array.fill(MemberNamespace.Count)(mutable.Map.empty))
+      new LinkedMethodDefsInfosCache(Array.fill(MemberNamespace.Count)(mutable.Map.empty))
     }
   }
 
@@ -311,14 +309,14 @@ private object Refiner {
   private final class LinkedMethodDefInfoCache
       extends AbstractLinkedMemberInfoCache[MethodDef, Infos.MethodInfo] {
 
-    protected  def computeInfo(member: MethodDef): Infos.MethodInfo =
+    protected def computeInfo(member: MethodDef): Infos.MethodInfo =
       Infos.generateMethodInfo(member)
   }
 
   private final class LinkedJSMethodPropDefInfoCache
       extends AbstractLinkedMemberInfoCache[JSMethodPropDef, Infos.ReachabilityInfo] {
 
-    protected  def computeInfo(member: JSMethodPropDef): Infos.ReachabilityInfo = {
+    protected def computeInfo(member: JSMethodPropDef): Infos.ReachabilityInfo = {
       member match {
         case methodDef: JSMethodDef =>
           Infos.generateJSMethodInfo(methodDef)

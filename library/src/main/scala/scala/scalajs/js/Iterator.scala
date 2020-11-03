@@ -23,8 +23,10 @@ trait Iterator[+A] extends js.Object {
 }
 
 object Iterator {
+
   /** Return value of [[Iterator.next]]. */
   trait Entry[+A] extends js.Object {
+
     /** Whether the iterator has completed. */
     def done: Boolean
 
@@ -48,8 +50,7 @@ object Iterator {
     }
   }
 
-  final implicit class IteratorOps[A] private[Iterator] (
-      private val self: js.Iterator[A])
+  final implicit class IteratorOps[A] private[Iterator] (private val self: js.Iterator[A])
       extends AnyVal {
 
     @inline

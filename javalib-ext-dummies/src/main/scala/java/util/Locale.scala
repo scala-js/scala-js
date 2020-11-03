@@ -12,8 +12,8 @@
 
 package java.util
 
-final class Locale private (languageRaw: String, countryRaw: String,
-    variant: String, private val extensions: Map[Char, String])
+final class Locale private (languageRaw: String, countryRaw: String, variant: String,
+    private val extensions: Map[Char, String])
     extends AnyRef with java.lang.Cloneable with java.io.Serializable {
 
   def this(languageRaw: String, countryRaw: String, variantRaw: String) =
@@ -69,9 +69,9 @@ final class Locale private (languageRaw: String, countryRaw: String,
   override def equals(that: Any): Boolean = that match {
     case that: Locale =>
       this.getLanguage() == that.getLanguage() &&
-      this.getCountry() == that.getCountry() &&
-      this.getVariant() == that.getVariant() &&
-      this.extensions == that.extensions
+        this.getCountry() == that.getCountry() &&
+        this.getVariant() == that.getVariant() &&
+        this.extensions == that.extensions
     case _ =>
       false
   }
@@ -110,8 +110,7 @@ object Locale {
     }
 
     def build(): Locale = {
-      new Locale(language, country, variant,
-          extensions.clone().asInstanceOf[Map[Char, String]])
+      new Locale(language, country, variant, extensions.clone().asInstanceOf[Map[Char, String]])
     }
   }
 }

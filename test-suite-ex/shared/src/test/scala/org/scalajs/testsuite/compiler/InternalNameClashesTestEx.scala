@@ -27,9 +27,11 @@ class InternalNameClashesTestEx {
      */
     @noinline def someValue(): Int = 42
 
-    val $c_Lorg_scalajs_testsuite_compiler_InternalNameClashesTestEx$LocalVariableClashWithCodegenVar = someValue()
+    val $c_Lorg_scalajs_testsuite_compiler_InternalNameClashesTestEx$LocalVariableClashWithCodegenVar =
+      someValue()
     val foo = new LocalVariableClashWithCodegenVar(5)
-    assertEquals(42, $c_Lorg_scalajs_testsuite_compiler_InternalNameClashesTestEx$LocalVariableClashWithCodegenVar)
+    assertEquals(42,
+        $c_Lorg_scalajs_testsuite_compiler_InternalNameClashesTestEx$LocalVariableClashWithCodegenVar)
     assertEquals(5, foo.x)
   }
 

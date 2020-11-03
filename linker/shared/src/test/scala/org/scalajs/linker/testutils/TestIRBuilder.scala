@@ -40,20 +40,14 @@ object TestIRBuilder {
   def m(name: String, paramTypeRefs: List[TypeRef], resultTypeRef: TypeRef): MethodName =
     MethodName(name, paramTypeRefs, resultTypeRef)
 
-  def classDef(
-      className: ClassName,
-      kind: ClassKind = ClassKind.Class,
-      jsClassCaptures: Option[List[ParamDef]] = None,
-      superClass: Option[ClassName] = None,
-      interfaces: List[ClassName] = Nil,
-      jsSuperClass: Option[Tree] = None,
-      jsNativeLoadSpec: Option[JSNativeLoadSpec] = None,
-      memberDefs: List[MemberDef] = Nil,
+  def classDef(className: ClassName, kind: ClassKind = ClassKind.Class,
+      jsClassCaptures: Option[List[ParamDef]] = None, superClass: Option[ClassName] = None,
+      interfaces: List[ClassName] = Nil, jsSuperClass: Option[Tree] = None,
+      jsNativeLoadSpec: Option[JSNativeLoadSpec] = None, memberDefs: List[MemberDef] = Nil,
       topLevelExportDefs: List[TopLevelExportDef] = Nil): ClassDef = {
-    ClassDef(ClassIdent(className), NON, kind, jsClassCaptures,
-        superClass.map(ClassIdent(_)), interfaces.map(ClassIdent(_)),
-        jsSuperClass, jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
-        EOH)
+    ClassDef(ClassIdent(className), NON, kind, jsClassCaptures, superClass.map(ClassIdent(_)),
+        interfaces.map(ClassIdent(_)), jsSuperClass, jsNativeLoadSpec, memberDefs,
+        topLevelExportDefs)(EOH)
   }
 
   final val MainTestClassName = ClassName("Test")
@@ -75,11 +69,8 @@ object TestIRBuilder {
   def trivialCtor(enclosingClassName: ClassName): MethodDef = {
     val flags = MemberFlags.empty.withNamespace(MemberNamespace.Constructor)
     MethodDef(flags, MethodIdent(NoArgConstructorName), NON, Nil, NoType,
-        Some(ApplyStatically(EAF.withConstructor(true),
-            This()(ClassType(enclosingClassName)),
-            ObjectClass, MethodIdent(NoArgConstructorName),
-            Nil)(NoType)))(
-        EOH, None)
+        Some(ApplyStatically(EAF.withConstructor(true), This()(ClassType(enclosingClassName)),
+                ObjectClass, MethodIdent(NoArgConstructorName), Nil)(NoType)))(EOH, None)
   }
 
   def mainMethodDef(body: Tree): MethodDef = {
@@ -87,8 +78,8 @@ object TestIRBuilder {
     val stringArrayType = ArrayType(stringArrayTypeRef)
     val argsParamDef = paramDef("args", stringArrayType)
     MethodDef(MemberFlags.empty.withNamespace(MemberNamespace.PublicStatic),
-        m("main", List(stringArrayTypeRef), VoidRef), NON,
-        List(argsParamDef), NoType, Some(body))(EOH, None)
+        m("main", List(stringArrayTypeRef), VoidRef), NON, List(argsParamDef), NoType, Some(body))(
+        EOH, None)
   }
 
   def consoleLog(expr: Tree): Tree =
@@ -98,8 +89,7 @@ object TestIRBuilder {
     val PredefModuleClass = ClassName("scala.Predef$")
     val printlnMethodName = m("println", List(O), VoidRef)
 
-    Apply(EAF, LoadModule(PredefModuleClass), printlnMethodName, List(expr))(
-        NoType)
+    Apply(EAF, LoadModule(PredefModuleClass), printlnMethodName, List(expr))(NoType)
   }
 
   def paramDef(name: LocalName, ptpe: Type): ParamDef =

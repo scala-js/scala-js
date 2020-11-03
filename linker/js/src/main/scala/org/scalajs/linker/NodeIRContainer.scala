@@ -32,25 +32,27 @@ object NodeIRContainer {
 
   def fromClasspath(classpath: Seq[String])(
       implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[String])] = {
-    Future.traverse(classpath) { entry =>
-      cbFuture[Stats](stat(entry, _)).transformWith {
-        case Success(stat) if stat.isDirectory() =>
-          fromDirectory(entry)
+    Future
+      .traverse(classpath) { entry =>
+        cbFuture[Stats](stat(entry, _)).transformWith {
+          case Success(stat) if stat.isDirectory() =>
+            fromDirectory(entry)
 
-        case Success(stat) if entry.endsWith(".jar") =>
-          val c = new NodeJarIRContainer(entry, stat.mtime.toOption)
-          Future.successful(Seq((c, entry)))
+          case Success(stat) if entry.endsWith(".jar") =>
+            val c = new NodeJarIRContainer(entry, stat.mtime.toOption)
+            Future.successful(Seq((c, entry)))
 
-        case Success(_) =>
-          throw new IllegalArgumentException("Illegal classpath entry: " + entry)
+          case Success(_) =>
+            throw new IllegalArgumentException("Illegal classpath entry: " + entry)
 
-        case Failure(js.JavaScriptException(e: js.Error)) if isNotFound(e) =>
-          Future.successful(Nil)
+          case Failure(js.JavaScriptException(e: js.Error)) if isNotFound(e) =>
+            Future.successful(Nil)
 
-        case Failure(t) =>
-          throw t
+          case Failure(t) =>
+            throw t
+        }
       }
-    }.map(_.flatten.unzip)
+      .map(_.flatten.unzip)
   }
 
   private def fromDirectory(dir: String)(

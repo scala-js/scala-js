@@ -22,7 +22,7 @@ object AbstractMap {
     other match {
       case other: Map.Entry[_, _] =>
         Objects.equals(entry.getKey(), other.getKey()) &&
-        Objects.equals(entry.getValue(), other.getValue())
+          Objects.equals(entry.getValue(), other.getValue())
       case _ => false
     }
   }
@@ -56,8 +56,7 @@ object AbstractMap {
       "" + getKey() + "=" + getValue()
   }
 
-  class SimpleImmutableEntry[K, V](key: K, value: V)
-      extends Map.Entry[K, V] with Serializable {
+  class SimpleImmutableEntry[K, V](key: K, value: V) extends Map.Entry[K, V] with Serializable {
 
     def this(entry: Map.Entry[_ <: K, _ <: V]) =
       this(entry.getKey(), entry.getValue())
@@ -94,11 +93,13 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] {
     entrySet().scalaOps.exists(entry => Objects.equals(key, entry.getKey()))
 
   def get(key: Any): V = {
-    entrySet().scalaOps.find(entry => Objects.equals(key, entry.getKey())).fold[V] {
-      null.asInstanceOf[V]
-    } { entry =>
-      entry.getValue()
-    }
+    entrySet().scalaOps
+      .find(entry => Objects.equals(key, entry.getKey()))
+      .fold[V] {
+        null.asInstanceOf[V]
+      } { entry =>
+        entry.getValue()
+      }
   }
 
   def put(key: K, value: V): V =
@@ -170,7 +171,9 @@ abstract class AbstractMap[K, V] protected () extends java.util.Map[K, V] {
       o match {
         case m: Map[_, _] =>
           self.size() == m.size() &&
-          entrySet().scalaOps.forall(item => Objects.equals(m.get(item.getKey()), item.getValue()))
+            entrySet().scalaOps.forall(item =>
+              Objects.equals(m.get(item.getKey()), item.getValue())
+            )
         case _ => false
       }
     }

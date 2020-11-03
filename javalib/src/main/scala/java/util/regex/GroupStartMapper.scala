@@ -41,8 +41,7 @@ import scala.scalajs.js
  *  @author Mikaël Mayer
  */
 private[regex] class GroupStartMapper private (pattern: String, flags: String,
-    node: GroupStartMapper.Node, groupCount: Int,
-    allMatchingRegex: js.RegExp) {
+    node: GroupStartMapper.Node, groupCount: Int, allMatchingRegex: js.RegExp) {
 
   import GroupStartMapper._
 
@@ -52,8 +51,8 @@ private[regex] class GroupStartMapper private (pattern: String, flags: String,
     if (allMatchResult == null) {
       throw new AssertionError(
           s"[Internal error] Executed '$allMatchingRegex' on " +
-          s"'$string' at position $start, got an error.\n" +
-          s"Original pattern '$pattern' with flags '$flags' did match however.")
+            s"'$string' at position $start, got an error.\n" +
+            s"Original pattern '$pattern' with flags '$flags' did match however.")
     }
 
     // Prepare a `groupStartMap` array with the correct length filled with -1
@@ -78,8 +77,7 @@ private[regex] object GroupStartMapper {
     node.setNewGroup(1)
     val allMatchingRegex =
       new js.RegExp(node.buildRegex(parser.groupNodeMap), flags)
-    new GroupStartMapper(pattern, flags, node, parser.parsedGroupCount,
-        allMatchingRegex)
+    new GroupStartMapper(pattern, flags, node, parser.parsedGroupCount, allMatchingRegex)
   }
 
   /** Node of the regex tree. */
@@ -147,16 +145,16 @@ private[regex] object GroupStartMapper {
      *  According to the big comment above, `RepeatedNode`s propagate the
      *  `end`, while other nodes propagate the `start`.
      */
-    def propagate(matchResult: js.RegExp.ExecResult,
-        groupStartMap: js.Array[Int], start: Int, end: Int): Unit
+    def propagate(matchResult: js.RegExp.ExecResult, groupStartMap: js.Array[Int], start: Int,
+        end: Int): Unit
 
     /** Propagates the appropriate positions to the descendants of this node
      *  from its end position.
      *
      *  @return the start position of this node
      */
-    final def propagateFromEnd(matchResult: js.RegExp.ExecResult,
-        groupStartMap: js.Array[Int], end: Int): Int = {
+    final def propagateFromEnd(matchResult: js.RegExp.ExecResult, groupStartMap: js.Array[Int],
+        end: Int): Int = {
 
       val start = matchResult(newGroup).fold(-1)(matched => end - matched.length)
       propagate(matchResult, groupStartMap, start, end)
@@ -168,8 +166,8 @@ private[regex] object GroupStartMapper {
      *
      *  @return the end position of this node
      */
-    final def propagateFromStart(matchResult: js.RegExp.ExecResult,
-        groupStartMap: js.Array[Int], start: Int): Int = {
+    final def propagateFromStart(matchResult: js.RegExp.ExecResult, groupStartMap: js.Array[Int],
+        start: Int): Int = {
 
       val end = matchResult(newGroup).fold(-1)(matched => start + matched.length)
       propagate(matchResult, groupStartMap, start, end)
@@ -185,8 +183,8 @@ private[regex] object GroupStartMapper {
     def buildRegex(groupNodeMap: js.Array[Node]): String =
       "(" + inner.buildRegex(groupNodeMap) + ")"
 
-    def propagate(matchResult: js.RegExp.ExecResult,
-        groupStartMap: js.Array[Int], start: Int, end: Int): Unit = {
+    def propagate(matchResult: js.RegExp.ExecResult, groupStartMap: js.Array[Int], start: Int,
+        end: Int): Unit = {
       /* #3901: A GroupNode within a negative look-ahead node may receive
        * `start != -1` from above, yet not match anything itself. We must
        * always keep the default `-1` if this group node does not match
@@ -199,8 +197,7 @@ private[regex] object GroupStartMapper {
   }
 
   /** A zero-length test of the form `(?= )` or `(?! )`. */
-  private final class ZeroLengthTestNode(val indicator: String, val inner: Node)
-      extends Node {
+  private final class ZeroLengthTestNode(val indicator: String, val inner: Node) extends Node {
 
     override def setNewGroup(newGroupIndex: Int): Int =
       inner.setNewGroup(super.setNewGroup(newGroupIndex))
@@ -208,15 +205,14 @@ private[regex] object GroupStartMapper {
     def buildRegex(groupNodeMap: js.Array[Node]): String =
       "((" + indicator + inner.buildRegex(groupNodeMap) + "))"
 
-    def propagate(matchResult: js.RegExp.ExecResult,
-        groupStartMap: js.Array[Int], start: Int, end: Int): Unit = {
+    def propagate(matchResult: js.RegExp.ExecResult, groupStartMap: js.Array[Int], start: Int,
+        end: Int): Unit = {
       inner.propagateFromStart(matchResult, groupStartMap, start)
     }
   }
 
   /** A repeated node. */
-  private final class RepeatedNode(val inner: Node, val repeater: String)
-      extends Node {
+  private final class RepeatedNode(val inner: Node, val repeater: String) extends Node {
 
     override def setNewGroup(newGroupIndex: Int): Int =
       inner.setNewGroup(super.setNewGroup(newGroupIndex))
@@ -224,8 +220,8 @@ private[regex] object GroupStartMapper {
     def buildRegex(groupNodeMap: js.Array[Node]): String =
       "(" + inner.buildRegex(groupNodeMap) + repeater + ")"
 
-    def propagate(matchResult: js.RegExp.ExecResult,
-        groupStartMap: js.Array[Int], start: Int, end: Int): Unit = {
+    def propagate(matchResult: js.RegExp.ExecResult, groupStartMap: js.Array[Int], start: Int,
+        end: Int): Unit = {
       inner.propagateFromEnd(matchResult, groupStartMap, end)
     }
   }
@@ -235,8 +231,8 @@ private[regex] object GroupStartMapper {
     def buildRegex(groupNodeMap: js.Array[Node]): String =
       "(" + regex + ")"
 
-    def propagate(matchResult: js.RegExp.ExecResult,
-        groupStartMap: js.Array[Int], start: Int, end: Int): Unit = {
+    def propagate(matchResult: js.RegExp.ExecResult, groupStartMap: js.Array[Int], start: Int,
+        end: Int): Unit = {
       // nothing to do
     }
   }
@@ -250,8 +246,8 @@ private[regex] object GroupStartMapper {
       "(\\" + newGroupNumber + ")"
     }
 
-    def propagate(matchResult: js.RegExp.ExecResult,
-        groupStartMap: js.Array[Int], start: Int, end: Int): Unit = {
+    def propagate(matchResult: js.RegExp.ExecResult, groupStartMap: js.Array[Int], start: Int,
+        end: Int): Unit = {
       // nothing to do
     }
   }
@@ -280,22 +276,20 @@ private[regex] object GroupStartMapper {
       result + ")"
     }
 
-    def propagate(matchResult: js.RegExp.ExecResult,
-        groupStartMap: js.Array[Int], start: Int, end: Int): Unit = {
+    def propagate(matchResult: js.RegExp.ExecResult, groupStartMap: js.Array[Int], start: Int,
+        end: Int): Unit = {
       val len = sequence.length
       var i = 0
       var nextStart = start
       while (i != len) {
-        nextStart =
-          sequence(i).propagateFromStart(matchResult, groupStartMap, nextStart)
+        nextStart = sequence(i).propagateFromStart(matchResult, groupStartMap, nextStart)
         i += 1
       }
     }
   }
 
   /** An alternatives node such as `ab|cd`. */
-  private final class AlternativesNode(val alternatives: js.Array[Node])
-      extends Node {
+  private final class AlternativesNode(val alternatives: js.Array[Node]) extends Node {
 
     override def setNewGroup(newGroupIndex: Int): Int = {
       var nextIndex = super.setNewGroup(newGroupIndex)
@@ -321,8 +315,8 @@ private[regex] object GroupStartMapper {
       result + ")"
     }
 
-    def propagate(matchResult: js.RegExp.ExecResult,
-        groupStartMap: js.Array[Int], start: Int, end: Int): Unit = {
+    def propagate(matchResult: js.RegExp.ExecResult, groupStartMap: js.Array[Int], start: Int,
+        end: Int): Unit = {
       val len = alternatives.length
       var i = 0
       while (i != len) {
@@ -350,7 +344,7 @@ private[regex] object GroupStartMapper {
     private def parseInsideParensAndClosingParen(): Node = {
       // scalastyle:off return
       val alternatives = js.Array[Node]() // completed alternatives
-      var sequence = js.Array[Node]()     // current sequence
+      var sequence = js.Array[Node]() // current sequence
 
       // Explicitly take the sequence, otherwise we capture a `var`
       def completeSequence(sequence: js.Array[Node]): Node = {
@@ -414,8 +408,7 @@ private[regex] object GroupStartMapper {
               pIndex += 2
               while (isDigit(pattern.charAt(pIndex)))
                 pIndex += 1
-              new BackReferenceNode(
-                  Integer.parseInt(pattern.substring(startIndex + 1, pIndex)))
+              new BackReferenceNode(Integer.parseInt(pattern.substring(startIndex + 1, pIndex)))
             } else {
               // it is a character escape
               val e = pattern.substring(pIndex, pIndex + 2)
@@ -471,7 +464,7 @@ private[regex] object GroupStartMapper {
                   sequence(sequenceLen - 1).isInstanceOf[LeafRegexNode]) {
                 val fused = new LeafRegexNode(
                     sequence(sequenceLen - 1).asInstanceOf[LeafRegexNode].regex +
-                    baseNode.asInstanceOf[LeafRegexNode].regex)
+                      baseNode.asInstanceOf[LeafRegexNode].regex)
                 sequence(sequenceLen - 1) = fused
               } else {
                 sequence.push(baseNode)

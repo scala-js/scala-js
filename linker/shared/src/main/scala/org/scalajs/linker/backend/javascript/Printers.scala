@@ -38,7 +38,7 @@ object Printers {
     def printTopLevelTree(tree: Tree): Unit = {
       tree match {
         case Skip() =>
-          // do not print anything
+        // do not print anything
         case tree: Block =>
           var rest = tree.stats
           while (rest.nonEmpty) {
@@ -54,8 +54,8 @@ object Printers {
     }
 
     protected def shouldPrintSepAfterTree(tree: Tree): Boolean = tree match {
-      case _:DocComment | _:FunctionDef | _:ClassDef => false
-      case _                                         => true
+      case _: DocComment | _: FunctionDef | _: ClassDef => false
+      case _                                            => true
     }
 
     protected def printRow(ts: List[Tree], start: Char, end: Char): Unit = {
@@ -135,7 +135,7 @@ object Printers {
         case VarDef(ident, optRhs) =>
           print("var ")
           print(ident)
-          optRhs foreach { rhs =>
+          optRhs.foreach { rhs =>
             print(" = ")
             print(rhs)
           }
@@ -143,7 +143,7 @@ object Printers {
         case Let(ident, mutable, optRhs) =>
           print(if (mutable) "let " else "const ")
           print(ident)
-          optRhs foreach { rhs =>
+          optRhs.foreach { rhs =>
             print(" = ")
             print(rhs)
           }
@@ -341,7 +341,7 @@ object Printers {
 
         case DotSelect(qualifier, item) =>
           qualifier match {
-            case _:IntLiteral | _:DoubleLiteral =>
+            case _: IntLiteral | _: DoubleLiteral =>
               print("(")
               print(qualifier)
               print(")")
@@ -381,10 +381,10 @@ object Printers {
             print("typeof ")
           } else {
             (op: @switch) match {
-              case + => print('+')
-              case - => print('-')
-              case ~ => print('~')
-              case ! => print('!')
+              case +        => print('+')
+              case -        => print('-')
+              case ~        => print('~')
+              case !        => print('!')
               case `typeof` => print("typeof ")
             }
           }
@@ -706,8 +706,8 @@ object Printers {
       out.write(c)
   }
 
-  class JSTreePrinterWithSourceMap(_out: Writer,
-      sourceMap: SourceMapWriter) extends JSTreePrinter(_out) {
+  class JSTreePrinterWithSourceMap(_out: Writer, sourceMap: SourceMapWriter)
+      extends JSTreePrinter(_out) {
 
     private var column = 0
 

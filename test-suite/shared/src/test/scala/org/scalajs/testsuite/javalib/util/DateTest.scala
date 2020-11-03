@@ -21,9 +21,8 @@ import org.junit.Test
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.Platform.executingInJVM
 
-/**
-  * tests the implementation of the java standard library Date
-  */
+/** tests the implementation of the java standard library Date
+ */
 class DateTest {
 
   @Test def compareTo(): Unit = {

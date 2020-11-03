@@ -19,21 +19,19 @@ import org.junit.Assert._
 
 class ClassTagTestScala2 {
 
-  /**
-   * This is a Scala 2.x only test because:
-   * Dotty does not have [[ClassTag]] instances for [[Nothing]] or for [[Null]].
-   * @see [[https://github.com/lampepfl/dotty/issues/1730]]
+  /** This is a Scala 2.x only test because:
+   *  Dotty does not have [[ClassTag]] instances for [[Nothing]] or for [[Null]].
+   *  @see [[https://github.com/lampepfl/dotty/issues/1730]]
    */
   @Test def apply_should_get_the_existing_instances_for_predefined_ClassTags(): Unit = {
     assertSame(ClassTag.Nothing, classTag[Nothing])
     assertSame(ClassTag.Null, classTag[Null])
   }
 
-  /**
-   * This is a Scala 2.x only test because:
-   * Dotty does not have [[ClassTag]] instances for [[Nothing]] or for [[Null]].
-   * The [[Array]] needs the [[ClassTag]] for the parameterized type.
-   * @see [[https://github.com/lampepfl/dotty/issues/1730]]
+  /** This is a Scala 2.x only test because:
+   *  Dotty does not have [[ClassTag]] instances for [[Nothing]] or for [[Null]].
+   *  The [[Array]] needs the [[ClassTag]] for the parameterized type.
+   *  @see [[https://github.com/lampepfl/dotty/issues/1730]]
    */
   @Test def runtimeClass(): Unit = {
     assertSame(classOf[Array[_]], classTag[Array[_]].runtimeClass)
@@ -46,10 +44,9 @@ class ClassTagTestScala2 {
     assertSame(classOf[Array[scala.runtime.Null$]], classTag[Array[Null]].runtimeClass)
   }
 
-  /**
-   * This is a Scala 2.x only test because:
-   * Dotty does not have [[ClassTag]] instances for [[Nothing]] or for [[Null]].
-   * @see [[https://github.com/lampepfl/dotty/issues/1730]]
+  /** This is a Scala 2.x only test because:
+   *  Dotty does not have [[ClassTag]] instances for [[Nothing]] or for [[Null]].
+   *  @see [[https://github.com/lampepfl/dotty/issues/1730]]
    */
   @Test def scala_Null_classTag_of_scala_Null_should_contain_proper_Class_issue_297(): Unit = {
     val tag = classTag[Null]

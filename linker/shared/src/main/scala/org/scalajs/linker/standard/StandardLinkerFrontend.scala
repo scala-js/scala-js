@@ -17,7 +17,8 @@ import org.scalajs.linker.frontend.LinkerFrontendImpl
 
 object StandardLinkerFrontend {
   def apply(config: StandardConfig): LinkerFrontend = {
-    val frontendConfig = LinkerFrontendImpl.Config()
+    val frontendConfig = LinkerFrontendImpl
+      .Config()
       .withCommonConfig(CommonPhaseConfig.fromStandardConfig(config))
       .withModuleSplitStyle(config.moduleSplitStyle)
       .withCheckIR(config.checkIR)

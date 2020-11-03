@@ -28,8 +28,7 @@ class JUnitSubClassExtended2Test extends JUnitSubClassTest {
 class JUnitSubClassTestCheck {
 
   @Test def testSubClass0(): Unit = {
-    val boot = JUnitUtil.loadBootstrapper(
-        "org.scalajs.testsuite.junit.JUnitSubClassTest")
+    val boot = JUnitUtil.loadBootstrapper("org.scalajs.testsuite.junit.JUnitSubClassTest")
     try {
       boot.invokeTest(boot.newInstance(), "test1")
     } catch {
@@ -39,8 +38,7 @@ class JUnitSubClassTestCheck {
   }
 
   @Test def testSubClass1(): Unit = {
-    val boot = JUnitUtil.loadBootstrapper(
-        "org.scalajs.testsuite.junit.JUnitSubClassExtended1Test")
+    val boot = JUnitUtil.loadBootstrapper("org.scalajs.testsuite.junit.JUnitSubClassExtended1Test")
     try {
       boot.invokeTest(boot.newInstance(), "test1")
     } catch {
@@ -50,8 +48,7 @@ class JUnitSubClassTestCheck {
   }
 
   @Test def testSubClass2(): Unit = {
-    val boot = JUnitUtil.loadBootstrapper(
-        "org.scalajs.testsuite.junit.JUnitSubClassExtended2Test")
+    val boot = JUnitUtil.loadBootstrapper("org.scalajs.testsuite.junit.JUnitSubClassExtended2Test")
     try {
       boot.invokeTest(boot.newInstance(), "test1")
       boot.invokeTest(boot.newInstance(), "test2")

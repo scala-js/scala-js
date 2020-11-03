@@ -23,8 +23,7 @@ class ArrayTest {
 
   @Test
   def getArrayIndexOutOfBounds(): Unit = {
-    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
-        hasCompliantArrayIndexOutOfBounds)
+    assumeTrue("Assuming compliant ArrayIndexOutOfBounds", hasCompliantArrayIndexOutOfBounds)
 
     val a = new Array[Int](5)
     assertThrows(classOf[ArrayIndexOutOfBoundsException], a(-1))
@@ -35,8 +34,7 @@ class ArrayTest {
 
   @Test
   def setArrayIndexOutOfBounds(): Unit = {
-    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
-        hasCompliantArrayIndexOutOfBounds)
+    assumeTrue("Assuming compliant ArrayIndexOutOfBounds", hasCompliantArrayIndexOutOfBounds)
 
     val a = new Array[Int](5)
     assertThrows(classOf[ArrayIndexOutOfBoundsException], a(-1) = 1)
@@ -47,8 +45,7 @@ class ArrayTest {
 
   @Test
   def arraySelectSideEffecting_issue_3848(): Unit = {
-    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
-        hasCompliantArrayIndexOutOfBounds)
+    assumeTrue("Assuming compliant ArrayIndexOutOfBounds", hasCompliantArrayIndexOutOfBounds)
 
     // Force unit return type so the Emitter tries to get rid of the expression.
     @noinline

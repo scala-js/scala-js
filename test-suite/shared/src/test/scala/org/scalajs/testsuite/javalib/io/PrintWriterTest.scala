@@ -23,8 +23,7 @@ import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 class PrintWriterTest {
 
-  private def newPrintWriter(
-      autoFlush: Boolean = false): (MockPrintWriter, MockStringWriter) = {
+  private def newPrintWriter(autoFlush: Boolean = false): (MockPrintWriter, MockStringWriter) = {
     val sw = new MockStringWriter
     val pw = new MockPrintWriter(sw, autoFlush)
     (pw, sw)
@@ -145,7 +144,7 @@ class PrintWriterTest {
     val (pw, sw) = newPrintWriter(autoFlush = autoFlush)
     body(pw)
     if (autoFlush) assertTrue(sw.flushed)
-    else           assertFalse(sw.flushed)
+    else assertFalse(sw.flushed)
     assertFalse(pw.checkError())
     assertEquals(expected, sw.toString())
   }
@@ -165,7 +164,7 @@ class PrintWriterTest {
     val (pw, sw) = newPrintWriter(autoFlush = autoFlush)
     body(pw)
     if (autoFlush) assertTrue(sw.flushed)
-    else           assertFalse(sw.flushed)
+    else assertFalse(sw.flushed)
     assertFalse(pw.checkError())
     assertEquals(expected, sw.toString())
   }
@@ -240,8 +239,8 @@ class PrintWriterTest {
   }
 
   /** A PrintWriter that exposes various hooks for testing purposes. */
-  private class MockPrintWriter(out: Writer,
-      autoFlush: Boolean) extends PrintWriter(out, autoFlush) {
+  private class MockPrintWriter(out: Writer, autoFlush: Boolean)
+      extends PrintWriter(out, autoFlush) {
     def this(out: Writer) = this(out, false)
 
     override def clearError(): Unit = super.clearError()

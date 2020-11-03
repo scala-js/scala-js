@@ -14,10 +14,9 @@ package org.scalajs.junit
 
 import sbt.testing._
 
-private[junit] final class JUnitRunner(
-    val args: Array[String],
-    val remoteArgs: Array[String],
-    runSettings: RunSettings) extends Runner {
+private[junit] final class JUnitRunner(val args: Array[String], val remoteArgs: Array[String],
+    runSettings: RunSettings)
+    extends Runner {
 
   def tasks(taskDefs: Array[TaskDef]): Array[Task] =
     taskDefs.map(new JUnitTask(_, runSettings))

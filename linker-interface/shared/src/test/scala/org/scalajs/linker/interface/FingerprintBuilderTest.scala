@@ -40,8 +40,6 @@ class FingerprintBuilderTest {
       .addField("test3", List.empty[Int])
       .addField("test4", List(1, 2, 3))
       .build()
-    assertEquals(
-        "Test2(test1=Some(1),test2=None,test3=List(),test4=List(1,2,3))",
-        fingerprint)
+    assertEquals("Test2(test1=Some(1),test2=None,test3=List(),test4=List(1,2,3))", fingerprint)
   }
 }

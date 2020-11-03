@@ -57,9 +57,8 @@ object Long {
 
   private final val SignBit = scala.Long.MinValue
 
-  private final class StringRadixInfo(val chunkLength: Int,
-      val radixPowLength: scala.Long, val paddingZeros: String,
-      val overflowBarrier: scala.Long)
+  private final class StringRadixInfo(val chunkLength: Int, val radixPowLength: scala.Long,
+      val paddingZeros: String, val overflowBarrier: scala.Long)
 
   /** Precomputed table for toUnsignedStringInternalLarge and
    *  parseUnsignedLongInternal.
@@ -94,8 +93,7 @@ object Long {
       }
       val radixPowLengthLong = radixPowLength.toLong
       val overflowBarrier = Long.divideUnsigned(-1L, radixPowLengthLong)
-      r.push(new StringRadixInfo(chunkLength, radixPowLengthLong,
-          paddingZeros, overflowBarrier))
+      r.push(new StringRadixInfo(chunkLength, radixPowLengthLong, paddingZeros, overflowBarrier))
       radix += 1
     }
 
@@ -116,7 +114,7 @@ object Long {
       case 2  => toBinaryString(i)
       case 8  => toOctalString(i)
       case 16 => toHexString(i)
-      case _  =>
+      case _ =>
         val radix1 =
           if (radix < Character.MIN_RADIX || radix > Character.MAX_RADIX) 10
           else radix
@@ -347,8 +345,7 @@ object Long {
   def remainderUnsigned(dividend: scala.Long, divisor: scala.Long): scala.Long =
     divModUnsigned(dividend, divisor, isDivide = false)
 
-  private def divModUnsigned(a: scala.Long, b: scala.Long,
-      isDivide: scala.Boolean): scala.Long = {
+  private def divModUnsigned(a: scala.Long, b: scala.Long, isDivide: scala.Boolean): scala.Long = {
     /* This is a much simplified (and slow) version of
      * RuntimeLong.unsignedDivModHelper.
      */
@@ -385,18 +382,14 @@ object Long {
   def highestOneBit(i: scala.Long): scala.Long = {
     val lo = i.toInt
     val hi = (i >>> 32).toInt
-    makeLongFromLoHi(
-        if (hi != 0) 0 else Integer.highestOneBit(lo),
-        Integer.highestOneBit(hi))
+    makeLongFromLoHi(if (hi != 0) 0 else Integer.highestOneBit(lo), Integer.highestOneBit(hi))
   }
 
   @inline
   def lowestOneBit(i: scala.Long): scala.Long = {
     val lo = i.toInt
     val hi = (i >> 32).toInt
-    makeLongFromLoHi(
-        Integer.lowestOneBit(lo),
-        if (lo != 0) 0 else Integer.lowestOneBit(hi))
+    makeLongFromLoHi(Integer.lowestOneBit(lo), if (lo != 0) 0 else Integer.lowestOneBit(hi))
   }
 
   @inline
@@ -408,16 +401,12 @@ object Long {
 
   @inline
   def reverseBytes(i: scala.Long): scala.Long = {
-    makeLongFromLoHi(
-        Integer.reverseBytes((i >>> 32).toInt),
-        Integer.reverseBytes(i.toInt))
+    makeLongFromLoHi(Integer.reverseBytes((i >>> 32).toInt), Integer.reverseBytes(i.toInt))
   }
 
   @inline
   def reverse(i: scala.Long): scala.Long = {
-    makeLongFromLoHi(
-        Integer.reverse((i >>> 32).toInt),
-        Integer.reverse(i.toInt))
+    makeLongFromLoHi(Integer.reverse((i >>> 32).toInt), Integer.reverse(i.toInt))
   }
 
   /** Make a `Long` value from its lo and hi 32-bit parts.
@@ -447,14 +436,14 @@ object Long {
   def numberOfLeadingZeros(l: scala.Long): Int = {
     val hi = (l >>> 32).toInt
     if (hi != 0) Integer.numberOfLeadingZeros(hi)
-    else         Integer.numberOfLeadingZeros(l.toInt) + 32
+    else Integer.numberOfLeadingZeros(l.toInt) + 32
   }
 
   @inline
   def numberOfTrailingZeros(l: scala.Long): Int = {
     val lo = l.toInt
     if (lo != 0) Integer.numberOfTrailingZeros(lo)
-    else         Integer.numberOfTrailingZeros((l >>> 32).toInt) + 32
+    else Integer.numberOfTrailingZeros((l >>> 32).toInt) + 32
   }
 
   @inline def toBinaryString(l: scala.Long): String =

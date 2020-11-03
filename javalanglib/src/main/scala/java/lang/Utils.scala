@@ -57,6 +57,7 @@ private[lang] object Utils {
 
   @js.native
   private trait DictionaryRawApply[A] extends js.Object {
+
     /** Reads a field of this object by its name.
      *
      *  This must not be called if the dictionary does not contain the key.
@@ -69,16 +70,14 @@ private[lang] object Utils {
     def rawUpdate(key: String, value: A): Unit = js.native
   }
 
-  def dictGetOrElse[A](dict: js.Dictionary[_ <: A], key: String,
-      default: A): A = {
+  def dictGetOrElse[A](dict: js.Dictionary[_ <: A], key: String, default: A): A = {
     if (dictContains(dict, key))
       dictRawApply(dict, key)
     else
       default
   }
 
-  def dictGetOrElseAndRemove[A](dict: js.Dictionary[_ <: A], key: String,
-      default: A): A = {
+  def dictGetOrElseAndRemove[A](dict: js.Dictionary[_ <: A], key: String, default: A): A = {
     if (dictContains(dict, key)) {
       val result = dictRawApply(dict, key)
       js.special.delete(dict, key)

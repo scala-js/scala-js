@@ -52,8 +52,10 @@ final class IRLoader extends Analyzer.InputProvider with MethodSynthesizer.Input
 
   def classesWithEntryPoints(): Iterable[ClassName] = entryPoints
 
-  def loadTopLevelExportInfos()(implicit ec: ExecutionContext): Future[List[Infos.TopLevelExportInfo]] = {
-    Future.traverse(entryPoints)(get(_, _.topLevelExportInfos))
+  def loadTopLevelExportInfos()(
+      implicit ec: ExecutionContext): Future[List[Infos.TopLevelExportInfo]] = {
+    Future
+      .traverse(entryPoints)(get(_, _.topLevelExportInfos))
       .map(_.flatten.toList)
   }
 
@@ -67,8 +69,7 @@ final class IRLoader extends Analyzer.InputProvider with MethodSynthesizer.Input
     get(className, u => (u.classDef, u.version))
   }
 
-  def loadClassDef(className: ClassName)(
-      implicit ec: ExecutionContext): Future[ClassDef] = {
+  def loadClassDef(className: ClassName)(implicit ec: ExecutionContext): Future[ClassDef] = {
     get(className, _.classDef)
   }
 
@@ -94,11 +95,8 @@ final class IRLoader extends Analyzer.InputProvider with MethodSynthesizer.Input
 }
 
 private object ClassDefAndInfoCache {
-  final class Update(
-      val classDef: ClassDef,
-      val classInfo: Infos.ClassInfo,
-      val topLevelExportInfos: List[Infos.TopLevelExportInfo],
-      val version: Option[String])
+  final class Update(val classDef: ClassDef, val classInfo: Infos.ClassInfo,
+      val topLevelExportInfos: List[Infos.TopLevelExportInfo], val version: Option[String])
 }
 
 private final class ClassDefAndInfoCache {
@@ -108,8 +106,7 @@ private final class ClassDefAndInfoCache {
   private var version: Option[String] = None
   private var cacheUpdate: Future[Update] = _
 
-  def update(irFile: IRFileImpl)(
-      implicit ec: ExecutionContext): Future[Update] = synchronized {
+  def update(irFile: IRFileImpl)(implicit ec: ExecutionContext): Future[Update] = synchronized {
     /* If the cache was already used in this run, the classDef and info are
      * already correct, no matter what the versions say.
      */
@@ -121,8 +118,8 @@ private final class ClassDefAndInfoCache {
           version.get != newVersion.get) {
         version = newVersion
         cacheUpdate = irFile.tree.map { tree =>
-          new Update(tree, Infos.generateClassInfo(tree),
-              Infos.generateTopLevelExportInfos(tree), version)
+          new Update(tree, Infos.generateClassInfo(tree), Infos.generateTopLevelExportInfos(tree),
+              version)
         }
       }
     }

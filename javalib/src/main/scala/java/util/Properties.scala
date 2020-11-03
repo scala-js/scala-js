@@ -24,8 +24,7 @@ import scala.scalajs.js
 
 import ScalaOps._
 
-class Properties(protected val defaults: Properties)
-    extends ju.Hashtable[AnyRef, AnyRef] {
+class Properties(protected val defaults: Properties) extends ju.Hashtable[AnyRef, AnyRef] {
 
   def this() = this(null)
 
@@ -51,8 +50,7 @@ class Properties(protected val defaults: Properties)
     storeImpl(writer, comments, toHex = true)
   }
 
-  private def storeImpl(writer: Writer, comments: String,
-      toHex: Boolean): Unit = {
+  private def storeImpl(writer: Writer, comments: String, toHex: Boolean): Unit = {
     if (comments != null) {
       writeComments(writer, comments, toHex)
     }
@@ -62,11 +60,9 @@ class Properties(protected val defaults: Properties)
     writer.write(System.lineSeparator)
 
     entrySet().scalaOps.foreach { entry =>
-      writer.write(encodeString(entry.getKey().asInstanceOf[String],
-          isKey = true, toHex))
+      writer.write(encodeString(entry.getKey().asInstanceOf[String], isKey = true, toHex))
       writer.write('=')
-      writer.write(encodeString(entry.getValue().asInstanceOf[String],
-          isKey = false, toHex))
+      writer.write(encodeString(entry.getValue().asInstanceOf[String], isKey = false, toHex))
       writer.write(System.lineSeparator)
     }
     writer.flush()
@@ -284,8 +280,7 @@ class Properties(protected val defaults: Properties)
     }
   }
 
-  private def writeComments(writer: Writer, comments: String,
-      toHex: Boolean): Unit = {
+  private def writeComments(writer: Writer, comments: String, toHex: Boolean): Unit = {
     writer.write('#')
     val chars = comments.toCharArray
     var index = 0
@@ -324,8 +319,7 @@ class Properties(protected val defaults: Properties)
     writer.write(System.lineSeparator)
   }
 
-  private def encodeString(string: String, isKey: Boolean,
-      toHex: Boolean): String = {
+  private def encodeString(string: String, isKey: Boolean, toHex: Boolean): String = {
     val buffer = new jl.StringBuilder(200)
     var index = 0
     val length = string.length

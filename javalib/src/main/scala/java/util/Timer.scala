@@ -69,8 +69,7 @@ class Timer() {
     scheduleOnce(task, delay)
   }
 
-  private def schedulePeriodically(
-      task: TimerTask, delay: Long, period: Long): Unit = {
+  private def schedulePeriodically(task: TimerTask, delay: Long, period: Long): Unit = {
     acquire(task)
     task.timeout(delay.millis) {
       def loop(): Unit = {
@@ -99,8 +98,7 @@ class Timer() {
     schedulePeriodically(task, delay, period)
   }
 
-  private def scheduleFixed(
-      task: TimerTask, delay: Long, period: Long): Unit = {
+  private def scheduleFixed(task: TimerTask, delay: Long, period: Long): Unit = {
     acquire(task)
     task.timeout(delay.millis) {
       def loop(scheduledTime: Long): Unit = {

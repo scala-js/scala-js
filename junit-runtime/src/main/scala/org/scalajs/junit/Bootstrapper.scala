@@ -45,7 +45,5 @@ trait Bootstrapper {
  *  Relying on this class directly is unspecified behavior.
  */
 final class TestMetadata(
-    val name: String,
-    val ignored: Boolean,
-    val annotation: org.junit.Test
+    val name: String, val ignored: Boolean, val annotation: org.junit.Test
 )

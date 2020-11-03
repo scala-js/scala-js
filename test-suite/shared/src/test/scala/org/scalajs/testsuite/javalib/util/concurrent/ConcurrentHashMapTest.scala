@@ -188,8 +188,7 @@ class ConcurrentHashMapTest extends MapTest {
 
         val value = valueIter.next()
         encounteredValues.add(value)
-        assertTrue(s"unexpected value '$value'",
-            allPossibleValues.contains(value))
+        assertTrue(s"unexpected value '$value'", allPossibleValues.contains(value))
       }
 
       for (value <- mandatoryValues)

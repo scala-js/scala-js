@@ -87,7 +87,7 @@ class JUnitAssumptionsTest {
     testIfAssumePass(assumeNoException(null))
 
     testIfAssumePass(assumeNoException("assumeNoException(new Throwable) should succeed",
-        new Throwable), ShallNotPass)
+            new Throwable), ShallNotPass)
     testIfAssumePass(assumeNoException(new Throwable), ShallNotPass)
   }
 }

@@ -24,9 +24,11 @@ import org.scalajs.testsuite.utils.AssertThrows._
 class FunctionTest {
 
   @Test def should_support_call_with_expanded_arguments(): Unit = {
-    val f = js.eval("""
+    val f = js
+      .eval("""
         var f = function() { return arguments; }; f;
-    """).asInstanceOf[js.Function]
+    """)
+      .asInstanceOf[js.Function]
 
     val res = f.call(null, 42, true).asInstanceOf[js.Dictionary[Any]]
     assertEquals(42, res("0"))
@@ -35,9 +37,11 @@ class FunctionTest {
   }
 
   @Test def `should_support_call_with_the_:_*_notation_to_expand_a_Seq`(): Unit = {
-    val f = js.eval("""
+    val f = js
+      .eval("""
         var f = function() { return arguments; }; f;
-    """).asInstanceOf[js.Function]
+    """)
+      .asInstanceOf[js.Function]
 
     val args = Seq[js.Any](42, true)
     val res = f.call(null, args: _*).asInstanceOf[js.Dictionary[Any]]
@@ -54,8 +58,7 @@ class FunctionTest {
 
     assertEquals(js.undefined, ctorDyn.prototype)
 
-    assertThrows(classOf[js.JavaScriptException],
-        js.Dynamic.newInstance(ctorDyn)("foo"))
+    assertThrows(classOf[js.JavaScriptException], js.Dynamic.newInstance(ctorDyn)("foo"))
   }
 
   @Test def functionWithSAMIsAnArrowFunction(): Unit = {
@@ -66,8 +69,7 @@ class FunctionTest {
 
     assertEquals(js.undefined, ctorDyn.prototype)
 
-    assertThrows(classOf[js.JavaScriptException],
-        js.Dynamic.newInstance(ctorDyn)("foo"))
+    assertThrows(classOf[js.JavaScriptException], js.Dynamic.newInstance(ctorDyn)("foo"))
   }
 
 }

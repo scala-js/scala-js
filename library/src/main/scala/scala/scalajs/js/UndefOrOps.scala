@@ -20,8 +20,7 @@ import scala.scalajs.js.|.Evidence
 /** @define option [[js.UndefOr]]
  *  @define none [[js.undefined]]
  */
-final class UndefOrOps[A] private[js] (private val self: js.UndefOr[A])
-    extends AnyVal {
+final class UndefOrOps[A] private[js] (private val self: js.UndefOr[A]) extends AnyVal {
 
   import UndefOrOps._
 
@@ -61,7 +60,7 @@ final class UndefOrOps[A] private[js] (private val self: js.UndefOr[A])
    *  }}}
    */
   @inline final def orNull[A1 >: A](implicit ev: Null <:< A1): A1 =
-    this getOrElse ev(null)
+    this.getOrElse(ev(null))
 
   /** Returns the result of applying `f` to this $option's
    *  value if this $option is nonempty.
@@ -239,9 +238,9 @@ object UndefOrOps {
    *  collection with max size 1.
    */
   final class WithFilter[A](self: js.UndefOr[A], p: A => Boolean) {
-    def map[B](f: A => B): js.UndefOr[B] = self filter p map f
-    def flatMap[B](f: A => js.UndefOr[B]): js.UndefOr[B] = self filter p flatMap f
-    def foreach[U](f: A => U): Unit = self filter p foreach f
+    def map[B](f: A => B): js.UndefOr[B] = self.filter(p).map(f)
+    def flatMap[B](f: A => js.UndefOr[B]): js.UndefOr[B] = self.filter(p).flatMap(f)
+    def foreach[U](f: A => U): Unit = self.filter(p).foreach(f)
     def withFilter(q: A => Boolean): WithFilter[A] =
       new WithFilter[A](self, x => p(x) && q(x))
   }

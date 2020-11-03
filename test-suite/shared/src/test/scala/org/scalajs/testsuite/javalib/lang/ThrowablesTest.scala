@@ -160,8 +160,7 @@ class ThrowablesTest {
   }
 
   @Test def noWritableStackTrace(): Unit = {
-    class NoStackTraceException(msg: String)
-        extends Throwable(msg, null, true, false) {
+    class NoStackTraceException(msg: String) extends Throwable(msg, null, true, false) {
 
       override def fillInStackTrace(): Throwable = {
         fail("NoStackTraceException.fillInStackTrace() must not be called")
@@ -193,8 +192,7 @@ class ThrowablesTest {
   }
 
   @Test def noSuppression(): Unit = {
-    class NoSuppressionException(msg: String)
-        extends Throwable(msg, null, false, true)
+    class NoSuppressionException(msg: String) extends Throwable(msg, null, false, true)
 
     val e = new NoSuppressionException("error")
     assertEquals(0, e.getSuppressed().length)

@@ -50,12 +50,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
     s"""
     package object jspackage extends js.Object
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:5: error: Package objects may not extend js.Any.
       |    package object jspackage extends js.Object
       |                   ^
-    """
+    """)
 
   }
 
@@ -75,15 +74,14 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
       @JSName(Sym.sym)
       $obj B extends js.Object
-      """ hasErrors
-      """
+      """.hasErrors("""
         |newSource1.scala:5: error: @JSName can only be used on members of JS types.
         |      @JSName("foo")
         |       ^
         |newSource1.scala:12: error: @JSName can only be used on members of JS types.
         |      @JSName(Sym.sym)
         |       ^
-      """
+      """)
     }
 
     for {
@@ -99,15 +97,14 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
       @JSName(Sym.sym)
       $obj B
-      """ hasErrors
-      """
+      """.hasErrors("""
         |newSource1.scala:5: error: @JSName can only be used on members of JS types.
         |      @JSName("foo")
         |       ^
         |newSource1.scala:12: error: @JSName can only be used on members of JS types.
         |      @JSName(Sym.sym)
         |       ^
-      """
+      """)
     }
 
     """
@@ -127,8 +124,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName("foo")
       def e(x: Int): Int = x + 1
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:6: error: @JSName can only be used on members of JS types.
       |      @JSName("foo")
       |       ^
@@ -144,7 +140,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:18: error: @JSName can only be used on members of JS types.
       |      @JSName("foo")
       |       ^
-    """
+    """)
 
   }
 
@@ -169,15 +165,14 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName("bar")
       private object tata extends js.Object
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:6: error: @JSName cannot be used on private members.
       |      @JSName("foo")
       |       ^
       |newSource1.scala:9: error: @JSName cannot be used on private members.
       |      @JSName("bar")
       |       ^
-    """
+    """)
 
   }
 
@@ -193,15 +188,14 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
       @JSGlobal("Foo")
       $obj B extends js.Object
-      """ hasErrors
-      """
+      """.hasErrors("""
         |newSource1.scala:5: error: @JSGlobal can only be used on native JS definitions (with @js.native).
         |      @JSGlobal
         |       ^
         |newSource1.scala:8: error: @JSGlobal can only be used on native JS definitions (with @js.native).
         |      @JSGlobal("Foo")
         |       ^
-      """
+      """)
     }
 
     for {
@@ -213,15 +207,14 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
       @JSGlobal("Foo")
       $obj B
-      """ hasErrors
-      """
+      """.hasErrors("""
         |newSource1.scala:5: error: @JSGlobal can only be used on native JS definitions (with @js.native).
         |      @JSGlobal
         |       ^
         |newSource1.scala:8: error: @JSGlobal can only be used on native JS definitions (with @js.native).
         |      @JSGlobal("Foo")
         |       ^
-      """
+      """)
     }
 
     """
@@ -241,8 +234,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSGlobal
       def e(x: Int): Int = x + 1
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:6: error: @JSGlobal can only be used on native JS definitions (with @js.native).
       |      @JSGlobal
       |       ^
@@ -258,7 +250,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:18: error: @JSGlobal can only be used on native JS definitions (with @js.native).
       |      @JSGlobal
       |       ^
-    """
+    """)
 
   }
 
@@ -271,12 +263,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       s"""
       @JSImport("foo", JSImport.Namespace)
       $obj A extends js.Object
-      """ hasErrors
-      """
+      """.hasErrors("""
         |newSource1.scala:5: error: @JSImport can only be used on native JS definitions (with @js.native).
         |      @JSImport("foo", JSImport.Namespace)
         |       ^
-      """
+      """)
     }
 
     for {
@@ -285,12 +276,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       s"""
       @JSImport("foo", JSImport.Namespace)
       $obj A
-      """ hasErrors
-      """
+      """.hasErrors("""
         |newSource1.scala:5: error: @JSImport can only be used on native JS definitions (with @js.native).
         |      @JSImport("foo", JSImport.Namespace)
         |       ^
-      """
+      """)
     }
 
     """
@@ -310,8 +300,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSImport("foo", "bar")
       def e(x: Int): Int = x + 1
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:6: error: @JSImport can only be used on native JS definitions (with @js.native).
       |      @JSImport("foo", "bar")
       |       ^
@@ -327,7 +316,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:18: error: @JSImport can only be used on native JS definitions (with @js.native).
       |      @JSImport("foo", "bar")
       |       ^
-    """
+    """)
 
     for {
       obj <- Seq("class", "trait", "object")
@@ -335,12 +324,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       s"""
       @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
       $obj A extends js.Object
-      """ hasErrors
-      """
+      """.hasErrors("""
         |newSource1.scala:5: error: @JSImport can only be used on native JS definitions (with @js.native).
         |      @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
         |       ^
-      """
+      """)
     }
 
     for {
@@ -349,12 +337,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       s"""
       @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
       $obj A
-      """ hasErrors
-      """
+      """.hasErrors("""
         |newSource1.scala:5: error: @JSImport can only be used on native JS definitions (with @js.native).
         |      @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
         |       ^
-      """
+      """)
     }
 
     """
@@ -374,8 +361,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSImport("foo", "bar", globalFallback = "Foo")
       def e(x: Int): Int = x + 1
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:6: error: @JSImport can only be used on native JS definitions (with @js.native).
       |      @JSImport("foo", "bar", globalFallback = "Foo")
       |       ^
@@ -391,7 +377,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:18: error: @JSImport can only be used on native JS definitions (with @js.native).
       |      @JSImport("foo", "bar", globalFallback = "Foo")
       |       ^
-    """
+    """)
 
   }
 
@@ -401,22 +387,20 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
     @JSGlobalScope
     object A extends js.Object
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:5: error: @JSGlobalScope can only be used on native JS objects (with @js.native).
       |    @JSGlobalScope
       |     ^
-    """
+    """)
 
     """
     @JSGlobalScope
     object A
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:5: error: @JSGlobalScope can only be used on native JS objects (with @js.native).
       |    @JSGlobalScope
       |     ^
-    """
+    """)
 
   }
   @Test
@@ -429,8 +413,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @js.native
     @JSName("Foo")
     abstract class B extends js.Object
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:6: error: @JSName can only be used on members of JS types.
       |    @JSName("Foo")
       |     ^
@@ -443,7 +426,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:11: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |    abstract class B extends js.Object
       |                   ^
-    """
+    """)
   }
 
   @Test
@@ -452,15 +435,14 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @js.native
     @JSName("Foo")
     object A extends js.Object
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:6: error: @JSName can only be used on members of JS types.
       |    @JSName("Foo")
       |     ^
       |newSource1.scala:7: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
       |    object A extends js.Object
       |           ^
-    """
+    """)
   }
 
   @Test
@@ -481,15 +463,14 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName(Sym.sym)
       trait B extends js.Object
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:12: error: @JSName cannot be used on traits.
       |      @JSName("foo")
       |       ^
       |newSource1.scala:16: error: @JSName cannot be used on traits.
       |      @JSName(Sym.sym)
       |       ^
-    """
+    """)
 
   }
 
@@ -526,8 +507,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName(Sym.sym)
       def f(x: Int): Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:11: error: @JSName can only be used on members of JS types.
       |      @JSName("foo")
       |       ^
@@ -564,7 +544,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:32: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |      def f(x: Int): Int = js.native
       |          ^
-    """
+    """)
 
   }
 
@@ -575,23 +555,21 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @js.native
     @JSGlobal
     trait A extends js.Object
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:6: error: Traits may not have an @JSGlobal annotation.
       |    @JSGlobal
       |     ^
-    """
+    """)
 
     s"""
     @js.native
     @JSGlobal("Foo")
     trait A extends js.Object
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:6: error: Traits may not have an @JSGlobal annotation.
       |    @JSGlobal("Foo")
       |     ^
-    """
+    """)
 
   }
 
@@ -602,23 +580,21 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @js.native
     @JSImport("foo", JSImport.Namespace)
     trait A extends js.Object
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:6: error: Traits may not have an @JSImport annotation.
       |    @JSImport("foo", JSImport.Namespace)
       |     ^
-    """
+    """)
 
     s"""
     @js.native
     @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
     trait A extends js.Object
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:6: error: Traits may not have an @JSImport annotation.
       |    @JSImport("foo", JSImport.Namespace, globalFallback = "Foo")
       |     ^
-    """
+    """)
 
   }
 
@@ -646,8 +622,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.native @JSGlobalScope
       def c(x: Int): Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:5: error: @JSGlobalScope can only be used on native JS objects (with @js.native).
       |    @js.native @JSGlobalScope
       |                ^
@@ -672,7 +647,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:24: error: @JSGlobalScope can only be used on native JS objects (with @js.native).
       |      @js.native @JSGlobalScope
       |                  ^
-    """
+    """)
   }
 
   @Test def noTwoJSNativeLoadSpecAnnots: Unit = {
@@ -686,11 +661,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
           |$firstAnnot
           |$secondAnnot
           |object A extends js.Object
-        """.stripMargin hasErrors s"""
+        """.stripMargin.hasErrors(s"""
           |newSource1.scala:7: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
           |$secondAnnot
           | ^
-        """
+        """)
       } else {
         s"""
           |@js.native
@@ -702,14 +677,14 @@ class JSInteropTest extends DirectTest with TestHelpers {
           |$firstAnnot
           |$secondAnnot
           |class A extends js.Object
-        """.stripMargin hasErrors s"""
+        """.stripMargin.hasErrors(s"""
           |newSource1.scala:7: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
           |$secondAnnot
           | ^
           |newSource1.scala:12: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
           |$secondAnnot
           | ^
-        """
+        """)
 
         if (firstAnnot != "@JSGlobal" && secondAnnot != "@JSGlobal") {
           s"""
@@ -729,7 +704,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
             |  $secondAnnot
             |  def c(x: Int): Int = js.native
             |}
-          """.stripMargin hasErrors s"""
+          """.stripMargin.hasErrors(s"""
           |newSource1.scala:8: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
           |  $secondAnnot
           |   ^
@@ -739,7 +714,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
           |newSource1.scala:18: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
           |  $secondAnnot
           |   ^
-          """
+          """)
         }
       }
     }
@@ -764,8 +739,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
     @js.native @JSGlobal
     object E extends Enumeration
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:6: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
       |    class A
       |          ^
@@ -781,7 +755,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:18: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
       |    object E extends Enumeration
       |           ^
-    """
+    """)
 
     // With an incorrect amount of native load spec annotations
     """
@@ -799,8 +773,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
     @js.native
     object E extends Enumeration
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:6: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
       |    class A
       |          ^
@@ -816,7 +789,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:18: error: Classes, traits and objects not extending js.Any may not have an @js.native annotation
       |    object E extends Enumeration
       |           ^
-    """
+    """)
 
   }
 
@@ -835,12 +808,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       $outer A extends js.Object {
         $inner A
       }
-      """ hasErrors
-      s"""
+      """.hasErrors(s"""
         |newSource1.scala:7: error: Native JS traits, classes and objects cannot contain inner Scala traits, classes or objects (i.e., not extending js.Any)
         |        $inner A
         |        ${" " * inner.length} ^
-      """
+      """)
     }
 
   }
@@ -860,12 +832,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       $outer A extends js.Object {
         $inner A extends js.Object
       }
-      """ hasErrors
-      s"""
+      """.hasErrors(s"""
         |newSource1.scala:7: error: Native JS classes and traits cannot contain non-native JS classes, traits or objects
         |        $inner A extends js.Object
         |        ${" " * inner.length} ^
-      """
+      """)
     }
 
   }
@@ -882,12 +853,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       object A extends js.Object {
         $inner A
       }
-      """ hasErrors
-      s"""
+      """.hasErrors(s"""
         |newSource1.scala:8: error: Native JS traits, classes and objects cannot contain inner Scala traits, classes or objects (i.e., not extending js.Any)
         |        $inner A
         |        ${" " * inner.length} ^
-      """
+      """)
     }
 
   }
@@ -903,12 +873,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.native class B(x: Int = ???) extends js.Object
       object B
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: Native JS traits, classes and objects cannot contain inner Scala traits, classes or objects (i.e., not extending js.Any)
       |      object B
       |             ^
-    """
+    """)
 
     """
     @js.native @JSGlobal object A extends js.Object {
@@ -930,12 +899,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       object A extends js.Object {
         $inner A extends js.Object
       }
-      """ hasErrors
-      s"""
+      """.hasErrors(s"""
         |newSource1.scala:8: error: Native JS objects cannot contain inner non-native JS classes or objects
         |        $inner A extends js.Object
         |        ${" " * inner.length} ^
-      """
+      """)
     }
 
   }
@@ -953,8 +921,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.native @JSGlobal("c")
       def c(x: Int): Int = x + 1
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: @js.native members may only call js.native.
       |      val a: Int = 1
       |                   ^
@@ -964,7 +931,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:13: error: @js.native members may only call js.native.
       |      def c(x: Int): Int = x + 1
       |                             ^
-    """
+    """)
   }
 
   @Test
@@ -983,8 +950,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSBracketAccess
       def c(x: Int): Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:8: error: @JSBracketAccess is not allowed on @js.native vals and defs
       |      val a: Int = js.native
       |          ^
@@ -994,7 +960,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:16: error: @JSBracketAccess is not allowed on @js.native vals and defs
       |      def c(x: Int): Int = js.native
       |          ^
-    """
+    """)
   }
 
   @Test
@@ -1013,8 +979,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSBracketCall
       def c(x: Int): Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:8: error: @JSBracketCall is not allowed on @js.native vals and defs
       |      val a: Int = js.native
       |          ^
@@ -1024,7 +989,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:16: error: @JSBracketCall is not allowed on @js.native vals and defs
       |      def c(x: Int): Int = js.native
       |          ^
-    """
+    """)
   }
 
   @Test
@@ -1104,8 +1069,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.native @JSName(A.sym)
       def g(x: Int): Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:11: error: @js.native vals and defs can only appear in static Scala objects
       |      val a: Int = js.native
       |          ^
@@ -1169,7 +1133,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:77: error: @js.native vals and defs can only appear in static Scala objects
       |      def g(x: Int): Int = js.native
       |          ^
-    """
+    """)
   }
 
   @Test
@@ -1185,8 +1149,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.native @JSGlobal("hoo")
       def hoo_=(x: Int = 1): Unit = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: @js.native is not allowed on vars, lazy vals and setter defs
       |      def foo_=(x: Int): Int = js.native
       |          ^
@@ -1199,7 +1162,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:13: error: @js.native is not allowed on vars, lazy vals and setter defs
       |      def hoo_=(x: Int = 1): Unit = js.native
       |          ^
-    """
+    """)
   }
 
   @Test
@@ -1209,12 +1172,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.native @JSGlobal("foo")
       var foo: Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: @js.native is not allowed on vars, lazy vals and setter defs
       |      var foo: Int = js.native
       |          ^
-    """
+    """)
   }
 
   @Test
@@ -1224,12 +1186,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.native @JSGlobal("foo")
       lazy val foo: Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: @js.native is not allowed on vars, lazy vals and setter defs
       |      lazy val foo: Int = js.native
       |               ^
-    """
+    """)
   }
 
   @Test
@@ -1251,8 +1212,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.native @JSGlobal("c")
       def c(x: Int): Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:13: error: An @js.native member cannot implement the inherited member Parent.a
       |      val a: Int = js.native
       |          ^
@@ -1262,7 +1222,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:19: error: An @js.native member cannot implement the inherited member Parent.c
       |      def c(x: Int): Int = js.native
       |          ^
-    """
+    """)
   }
 
   @Test
@@ -1284,8 +1244,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.native @JSGlobal("c")
       override def c(x: Int): Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:13: error: An @js.native member cannot override the inherited member Parent.a
       |      override val a: Int = js.native
       |                   ^
@@ -1295,7 +1254,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:19: error: An @js.native member cannot override the inherited member Parent.c
       |      override def c(x: Int): Int = js.native
       |                   ^
-    """
+    """)
   }
 
   @Test
@@ -1310,8 +1269,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def goo_=(x: Int*): Unit = js.native
       def hoo_=(x: Int = 1): Unit = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:8: error: JS setters must return Unit
       |      def foo_=(x: Int): Int = js.native
       |          ^
@@ -1324,7 +1282,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:11: error: JS setters may not have default params
       |      def hoo_=(x: Int = 1): Unit = js.native
       |          ^
-    """
+    """)
 
   }
 
@@ -1341,15 +1299,14 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.annotation.JSBracketAccess
       def bar(x: Int, y: Int, z: Int): Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:9: error: @JSBracketAccess methods must have one or two parameters
       |      def foo(): Int = js.native
       |          ^
       |newSource1.scala:12: error: @JSBracketAccess methods must have one or two parameters
       |      def bar(x: Int, y: Int, z: Int): Int = js.native
       |          ^
-    """
+    """)
 
     """
     @js.native
@@ -1358,12 +1315,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.annotation.JSBracketAccess
       def foo(x: Int, y: Int): Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:9: error: @JSBracketAccess methods with two parameters must return Unit
       |      def foo(x: Int, y: Int): Int = js.native
       |          ^
-    """
+    """)
 
     """
     @js.native
@@ -1372,12 +1328,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.annotation.JSBracketAccess
       def bar(x: Int*): Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:9: error: @JSBracketAccess methods may not have repeated parameters
       |      def bar(x: Int*): Int = js.native
       |              ^
-    """
+    """)
 
     """
     @js.native
@@ -1386,12 +1341,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.annotation.JSBracketAccess
       def bar(x: Int = 1): Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:9: error: @JSBracketAccess methods may not have default parameters
       |      def bar(x: Int = 1): Int = js.native
       |              ^
-    """
+    """)
 
   }
 
@@ -1405,12 +1359,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.annotation.JSBracketCall
       def foo(): Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:9: error: @JSBracketCall methods must have at least one non-repeated parameter
       |      def foo(): Int = js.native
       |          ^
-    """
+    """)
 
   }
 
@@ -1423,23 +1376,21 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @js.native
     @JSGlobal
     class B extends js.Object with A
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:9: error: B extends A which does not extend js.Any.
       |    class B extends js.Object with A
       |          ^
-    """
+    """)
 
     """
     @js.native
     @JSGlobal
     class B extends js.Object with java.io.Serializable
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: B extends java.io.Serializable which does not extend js.Any.
       |    class B extends js.Object with java.io.Serializable
       |          ^
-    """
+    """)
 
   }
 
@@ -1450,41 +1401,37 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @js.native
     @JSGlobal
     case class A(x: Int) extends js.Object
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: Classes and objects extending js.Any may not have a case modifier
       |    case class A(x: Int) extends js.Object
       |               ^
-    """
+    """)
 
     """
     @js.native
     @JSGlobal
     case object B extends js.Object
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: Classes and objects extending js.Any may not have a case modifier
       |    case object B extends js.Object
       |                ^
-    """
+    """)
 
     """
     case class A(x: Int) extends js.Object
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:5: error: Classes and objects extending js.Any may not have a case modifier
       |    case class A(x: Int) extends js.Object
       |               ^
-    """
+    """)
 
     """
     case object B extends js.Object
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:5: error: Classes and objects extending js.Any may not have a case modifier
       |    case object B extends js.Object
       |                ^
-    """
+    """)
 
   }
 
@@ -1509,12 +1456,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
         @js.native $jsGlobalAnnot
         $inner Inner extends js.Object
       }
-      """ hasErrors
-      s"""
+      """.hasErrors(s"""
         |newSource1.scala:7: error: Scala traits and classes may not have native JS members
         |        $inner Inner extends js.Object
         |         ${" " * inner.length}^
-      """
+      """)
     }
 
   }
@@ -1540,12 +1486,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
         @js.native $jsGlobalAnnot
         $inner Inner extends js.Object
       }
-      """ hasErrors
-      s"""
+      """.hasErrors(s"""
         |newSource1.scala:7: error: non-native JS classes, traits and objects may not have native JS members
         |        $inner Inner extends js.Object
         |         ${" " * inner.length}^
-      """
+      """)
     }
 
   }
@@ -1580,8 +1525,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
         lazy val h: Int = js.native
       }
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:8: error: @js.native is not allowed on local definitions
       |        class B extends js.Object
       |              ^
@@ -1606,7 +1550,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:29: error: @js.native is not allowed on local definitions
       |        lazy val h: Int = js.native
       |                 ^
-    """
+    """)
   }
 
   @Test
@@ -1619,12 +1563,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @native
       def value: Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:9: error: Methods in a js.Any may not be @native
       |      def value: Int = js.native
       |          ^
-    """
+    """)
 
   }
 
@@ -1638,15 +1581,14 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def value: Int = ???
       val x: Int = ???
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:8: error: Concrete members of JS native types may only call js.native.
       |      def value: Int = ???
       |                       ^
       |newSource1.scala:9: error: Concrete members of JS native types may only call js.native.
       |      val x: Int = ???
       |                   ^
-    """
+    """)
 
   }
 
@@ -1682,12 +1624,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def this(x: Int) = this(x, 5)
       def this() = this(7)
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:9: error: A secondary constructor of a class extending js.Any may only call the primary constructor
       |      def this() = this(7)
       |          ^
-    """
+    """)
 
   }
 
@@ -1710,8 +1651,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       private def h(): Int = js.native
       private[A] def i(): Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:8: error: Native JS classes may not have private members. Use a public member in a private facade instead.
       |      private[this] val a: Int = js.native
       |                        ^
@@ -1739,7 +1679,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:18: error: Native JS classes may not have private members. Use a public member in a private facade instead.
       |      private[A] def i(): Int = js.native
       |                     ^
-    """
+    """)
 
   }
 
@@ -1750,23 +1690,21 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @js.native
     @JSGlobal
     class A private () extends js.Object
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: Native JS classes may not have private constructors. Use `private[this]` to declare an internal constructor.
       |    class A private () extends js.Object
       |            ^
-    """
+    """)
 
     """
     @js.native
     @JSGlobal
     class A private[A] () extends js.Object
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: Native JS classes may not have private constructors. Use `private[this]` to declare an internal constructor.
       |    class A private[A] () extends js.Object
       |            ^
-    """
+    """)
 
     """
     @js.native
@@ -1783,12 +1721,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class A {
       def foo = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:6: error: js.native may only be used as stub implementation in facade types
       |      def foo = js.native
       |                   ^
-    """
+    """)
 
   }
 
@@ -1802,15 +1739,14 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def foo = js.native
       val bar = js.native
     }
-    """ hasWarns
-    """
+    """.hasWarns("""
       |newSource1.scala:8: warning: The type of foo got inferred as Nothing. To suppress this warning, explicitly ascribe the type.
       |      def foo = js.native
       |          ^
       |newSource1.scala:9: warning: The type of bar got inferred as Nothing. To suppress this warning, explicitly ascribe the type.
       |      val bar = js.native
       |          ^
-    """
+    """)
 
   }
 
@@ -1822,15 +1758,14 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
     @js.native
     abstract class B extends js.Object
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:6: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |    class A extends js.Object
       |          ^
       |newSource1.scala:9: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |    abstract class B extends js.Object
       |                   ^
-    """
+    """)
   }
 
   @Test
@@ -1838,12 +1773,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
     @js.native
     object A extends js.Object
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:6: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
       |    object A extends js.Object
       |           ^
-    """
+    """)
   }
 
   @Test
@@ -1854,24 +1788,22 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.native
       class B extends js.Object
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |      class B extends js.Object
       |            ^
-    """
+    """)
 
     """
     object A {
       @js.native
       object B extends js.Object
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
       |      object B extends js.Object
       |             ^
-    """
+    """)
 
     """
     object A {
@@ -1879,12 +1811,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSGlobal
       class B extends js.Object
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: Native JS members inside non-native objects must have an explicit name in @JSGlobal
       |      @JSGlobal
       |       ^
-    """
+    """)
 
     """
     object A {
@@ -1892,12 +1823,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSGlobal
       object B extends js.Object
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: Native JS members inside non-native objects must have an explicit name in @JSGlobal
       |      @JSGlobal
       |       ^
-    """
+    """)
 
     // From issue #2401
     """
@@ -1909,12 +1839,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSGlobal
       object C extends js.Object
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
       |      object B extends js.Object
       |             ^
-    """
+    """)
 
     """
     package object A {
@@ -1925,12 +1854,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSGlobal
       class C extends js.Object
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |      class B extends js.Object
       |            ^
-    """
+    """)
 
     """
     object A {
@@ -1946,8 +1874,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.native
       object D extends js.Object
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:6: error: @JSName can only be used on members of JS types.
       |      @JSName("InnerB")
       |       ^
@@ -1966,7 +1893,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:16: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
       |      object D extends js.Object
       |             ^
-    """
+    """)
 
     """
     object A {
@@ -2047,12 +1974,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName(A.b)
       def bar: Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:15: error: A string argument to JSName must be a literal string
       |      @JSName(A.a)
       |                ^
-    """
+    """)
 
   }
 
@@ -2081,8 +2007,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName(new A().a)
       def bar: Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:14: error: A js.Symbol argument to JSName must be a static, stable identifier
       |      @JSName(js.Symbol())
       |                       ^
@@ -2095,7 +2020,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:23: error: A js.Symbol argument to JSName must be a static, stable identifier
       |      @JSName(new A().a)
       |                      ^
-    """
+    """)
 
   }
 
@@ -2109,12 +2034,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName(a)
       def foo: Int = 1
     }
-    """ hasWarns
-    """
+    """.hasWarns("""
       |newSource1.scala:8: warning: This symbol is defined in the same object as the annotation's target. This will cause a stackoverflow at runtime
       |      @JSName(a)
       |              ^
-    """
+    """)
 
     // Native objects are OK, since we do not control definition order.
     """
@@ -2160,8 +2084,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
         @JSGlobal
         object InnerImplied extends js.Object
       }
-      """ hasErrors
-      """
+      """.hasErrors("""
         |newSource1.scala:7: error: @JSGlobal can only be used on native JS definitions (with @js.native).
         |        @JSGlobal("bar1")
         |         ^
@@ -2183,7 +2106,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
         |newSource1.scala:27: error: Nested JS classes and objects cannot have an @JSGlobal annotation.
         |        @JSGlobal
         |         ^
-      """
+      """)
     }
 
   }
@@ -2217,8 +2140,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSGlobal
       object InnerImplied extends js.Object
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: @JSGlobal can only be used on native JS definitions (with @js.native).
       |      @JSGlobal("bar1")
       |       ^
@@ -2240,7 +2162,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:27: error: Nested JS classes and objects cannot have an @JSGlobal annotation.
       |      @JSGlobal
       |       ^
-    """
+    """)
 
   }
 
@@ -2269,8 +2191,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
         @JSImport("Inner", JSImport.Namespace$fallbackStr)
         object Inner extends js.Object
       }
-      """ hasErrors
-      s"""
+      """.hasErrors(s"""
         |newSource1.scala:7: error: @JSImport can only be used on native JS definitions (with @js.native).
         |        @JSImport("bar1", JSImport.Namespace$fallbackStr)
         |         ^
@@ -2286,7 +2207,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
         |newSource1.scala:19: error: Nested JS classes and objects cannot have an @JSImport annotation.
         |        @JSImport("Inner", JSImport.Namespace$fallbackStr)
         |         ^
-      """
+      """)
     }
 
   }
@@ -2315,8 +2236,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
         @JSImport("Inner", JSImport.Namespace$fallbackStr)
         object Inner extends js.Object
       }
-      """ hasErrors
-      s"""
+      """.hasErrors(s"""
         |newSource1.scala:7: error: @JSImport can only be used on native JS definitions (with @js.native).
         |        @JSImport("bar1", JSImport.Namespace$fallbackStr)
         |         ^
@@ -2332,7 +2252,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
         |newSource1.scala:19: error: Nested JS classes and objects cannot have an @JSImport annotation.
         |        @JSImport("Inner", JSImport.Namespace$fallbackStr)
         |         ^
-      """
+      """)
     }
 
   }
@@ -2352,15 +2272,14 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @JSGlobal(A.a)
     @js.native
     class C extends js.Object
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:9: error: The argument to @JSGlobal must be a literal string.
       |    @JSGlobal(A.a)
       |                ^
       |newSource1.scala:13: error: The argument to @JSGlobal must be a literal string.
       |    @JSGlobal(A.a)
       |                ^
-    """
+    """)
 
   }
 
@@ -2391,8 +2310,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @js.native
     @JSGlobal(".tricky")
     object E extends js.Object
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: The name of a JS global variable must be a valid JS identifier (got 'not-a-valid-JS-identifier')
       |    class `not-a-valid-JS-identifier` extends js.Object
       |          ^
@@ -2408,7 +2326,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:27: error: The name of a JS global variable must be a valid JS identifier (got '')
       |    object E extends js.Object
       |           ^
-    """
+    """)
 
     """
     @js.native
@@ -2430,8 +2348,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @js.native
     @JSImport("foo.js", "foo", globalFallback = ".tricky")
     object E extends js.Object
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: The name of a JS global variable must be a valid JS identifier (got 'not-a-valid-JS-identifier')
       |    object A extends js.Object
       |           ^
@@ -2444,7 +2361,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:23: error: The name of a JS global variable must be a valid JS identifier (got '')
       |    object E extends js.Object
       |           ^
-    """
+    """)
 
   }
 
@@ -2485,8 +2402,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @JSImport(A.a, A.a)
     @js.native
     object D extends js.Object
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:9: error: The first argument to @JSImport must be a literal string.
       |    @JSImport(A.a, JSImport.Namespace)
       |                ^
@@ -2511,7 +2427,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:33: error: The second argument to @JSImport must be literal string or the JSImport.Namespace object.
       |    @JSImport(A.a, A.a)
       |                     ^
-    """
+    """)
 
     // With constant (valid) global fallback
 
@@ -2547,8 +2463,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @JSImport(A.a, A.a, globalFallback = "GlobD")
     @js.native
     object D extends js.Object
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:9: error: The first argument to @JSImport must be a literal string.
       |    @JSImport(A.a, JSImport.Namespace, globalFallback = "GlobB1")
       |                ^
@@ -2573,7 +2488,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:33: error: The second argument to @JSImport must be literal string or the JSImport.Namespace object.
       |    @JSImport(A.a, A.a, globalFallback = "GlobD")
       |                     ^
-    """
+    """)
 
     // With variable (invalid) global fallback
 
@@ -2609,8 +2524,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @JSImport(A.a, A.a, globalFallback = A.a)
     @js.native
     object D extends js.Object
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:9: error: The first argument to @JSImport must be a literal string.
       |    @JSImport(A.a, JSImport.Namespace, globalFallback = A.a)
       |                ^
@@ -2656,7 +2570,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:33: error: The third argument to @JSImport, when present, must be a literal string.
       |    @JSImport(A.a, A.a, globalFallback = A.a)
       |                                           ^
-    """
+    """)
 
   }
 
@@ -2670,12 +2584,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     trait A extends js.Object {
       def apply: Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
       |      def apply: Int = js.native
       |          ^
-    """
+    """)
 
     """
     import js.annotation.JSName
@@ -2694,12 +2607,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     trait A extends js.Object {
       val apply: Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
       |      val apply: Int = js.native
       |          ^
-    """
+    """)
 
     """
     import js.annotation.JSName
@@ -2718,12 +2630,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     trait A extends js.Object {
       var apply: Int = js.native
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: A member named apply represents function application in JavaScript. A parameterless member should be exported as a property. You must add @JSName("apply")
       |      var apply: Int = js.native
       |          ^
-    """
+    """)
 
     """
     import js.annotation.JSName
@@ -2745,12 +2656,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
         abstract class AbstractLocalJSClass extends js.Object
       }
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:7: error: Implementation restriction: local JS classes cannot be abstract
       |        abstract class AbstractLocalJSClass extends js.Object
       |                       ^
-    """
+    """)
   }
 
   @Test
@@ -2764,12 +2674,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def method(): Any =
         js.constructorOf[Enclosing#InnerJSClass]
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:11: error: stable reference to a JS class required but Enclosing#InnerJSClass found
       |        js.constructorOf[Enclosing#InnerJSClass]
       |                        ^
-    """
+    """)
 
     // version-dependent error message due to https://github.com/scala/bug/issues/10619
     """
@@ -2794,12 +2703,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def method(a: Any): Boolean =
         a.isInstanceOf[Enclosing#InnerJSClass]
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:11: error: stable reference to a JS class required but Enclosing#InnerJSClass found
       |        a.isInstanceOf[Enclosing#InnerJSClass]
       |                      ^
-    """
+    """)
 
     // version-dependent error message due to https://github.com/scala/bug/issues/10619
     """
@@ -2833,12 +2741,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
         @js.native
         $kind A extends js.Object
       }
-      """ hasErrors
-      s"""
+      """.hasErrors(s"""
         |newSource1.scala:12: error: Implementation restriction: @JSName with a js.Symbol is not supported on nested native classes and objects
         |        @JSName(Sym.sym)
         |         ^
-      """
+      """)
     }
   }
 
@@ -2859,12 +2766,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
         @JSName("foo")
         def a: Int = js.native
       }
-      """ hasErrors
-      """
+      """.hasErrors("""
         |newSource1.scala:13: error: A member can only have a single @JSName annotation.
         |        @JSName("foo")
         |         ^
-      """
+      """)
     }
   }
 
@@ -2910,8 +2816,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName("baz")
       override def bar() = 1
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:11: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): Int in class B with JSName 'baz'
@@ -2920,7 +2825,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def bar() = 1
       |                   ^
-    """
+    """)
 
     """
     abstract class A extends js.Object {
@@ -2930,8 +2835,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class B extends A {
       override def bar() = 1
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): Int in class B with JSName 'bar'
@@ -2940,7 +2844,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def bar() = 1
       |                   ^
-    """
+    """)
 
     """
     abstract class A extends js.Object {
@@ -2953,8 +2857,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends B {
       override def bar() = "1"
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): String in class B with JSName 'bar'
@@ -2971,7 +2874,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def bar() = "1"
       |                   ^
-    """
+    """)
 
     """
     abstract class A extends js.Object {
@@ -2984,8 +2887,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends B {
       override def bar() = "1"
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): String in class B with JSName 'foo'
@@ -3002,7 +2904,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def bar() = "1"
       |                   ^
-    """
+    """)
 
     """
     class A extends js.Object {
@@ -3013,8 +2915,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def foo: Int
     }
     class C extends B
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in class A with JSName 'foo'
@@ -3033,7 +2934,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
         |    class C extends B
         |          ^
       """)}
-    """
+    """)
 
     """
     class A extends js.Object {
@@ -3044,8 +2945,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def foo: Int
     }
     class C extends B
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in class A with JSName 'bar'
@@ -3064,7 +2964,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
         |    class C extends B
         |          ^
       """)}
-    """
+    """)
 
     """
     class A[T] extends js.Object {
@@ -3074,8 +2974,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class B extends A[Int] {
       override def foo(x: Int): Int = x
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def foo(x: Int): Int in class B with JSName 'foo'
@@ -3084,7 +2983,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def foo(x: Int): Int = x
       |                   ^
-    """
+    """)
 
     """
     trait A[T] extends js.Object {
@@ -3094,8 +2993,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class B extends A[Int] {
       override def foo(x: Int): Int = x
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def foo(x: Int): Int in class B with JSName 'foo'
@@ -3104,7 +3002,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def foo(x: Int): Int = x
       |                   ^
-    """
+    """)
 
     """
     class A[T] extends js.Object {
@@ -3117,8 +3015,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends B {
       override def foo(x: Int): Int = x
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo(x: Int): Int in class A with JSName 'bar'
@@ -3135,7 +3032,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def foo(x: Int): Int = x
       |                   ^
-    """
+    """)
 
     """
     class A[T] extends js.Object {
@@ -3148,8 +3045,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends B {
       override def foo(x: Int): Int = x
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo(x: Int): Int in class A with JSName 'foo'
@@ -3166,7 +3062,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def foo(x: Int): Int = x
       |                   ^
-    """
+    """)
 
     """
     trait A extends js.Object {
@@ -3177,8 +3073,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def foo: Int
     }
     trait C extends A with B
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:12: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in trait B with JSName 'bar'
@@ -3187,7 +3082,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |    trait C extends A with B
       |          ^
-    """
+    """)
 
     """
     trait A extends js.Object {
@@ -3198,8 +3093,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def foo: Int
     }
     abstract class C extends A with B
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:12: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in trait B with JSName 'bar'
@@ -3208,7 +3102,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |    abstract class C extends A with B
       |                   ^
-    """
+    """)
   }
 
   @Test
@@ -3257,8 +3151,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName(Syms.sym2)
       override def bar() = 1
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:16: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): Int in class B with JSName 'Syms.sym2'
@@ -3267,7 +3160,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def bar() = 1
       |                   ^
-    """
+    """)
 
     """
     object Syms {
@@ -3282,8 +3175,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName("baz")
       override def bar() = 1
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:15: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): Int in class B with JSName 'baz'
@@ -3292,7 +3184,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def bar() = 1
       |                   ^
-    """
+    """)
 
     """
     object Syms {
@@ -3307,8 +3199,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName(Syms.sym1)
       override def bar() = 1
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:15: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): Int in class B with JSName 'Syms.sym1'
@@ -3317,7 +3208,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def bar() = 1
       |                   ^
-    """
+    """)
 
     """
     object Syms {
@@ -3331,8 +3222,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class B extends A {
       override def bar() = 1
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): Int in class B with JSName 'bar'
@@ -3341,7 +3231,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def bar() = 1
       |                   ^
-    """
+    """)
 
     """
     object Syms {
@@ -3358,8 +3248,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends B {
       override def bar() = "1"
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): String in class B with JSName 'bar'
@@ -3376,7 +3265,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def bar() = "1"
       |                   ^
-    """
+    """)
 
     """
     object Syms {
@@ -3393,8 +3282,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends B {
       override def bar() = "1"
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def bar(): String in class B with JSName 'Syms.sym1'
@@ -3411,7 +3299,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def bar() = "1"
       |                   ^
-    """
+    """)
 
     """
     object Syms {
@@ -3426,8 +3314,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def foo: Int
     }
     class C extends B
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in class A with JSName 'foo'
@@ -3446,7 +3333,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
         |    class C extends B
         |          ^
       """)}
-    """
+    """)
 
     """
     object Syms {
@@ -3461,8 +3348,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def foo: Int
     }
     class C extends B
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in class A with JSName 'Syms.sym1'
@@ -3481,7 +3367,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
         |    class C extends B
         |          ^
       """)}
-    """
+    """)
 
     """
     object Syms {
@@ -3495,8 +3381,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class B extends A[Int] {
       override def foo(x: Int): Int = x
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def foo(x: Int): Int in class B with JSName 'foo'
@@ -3505,7 +3390,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def foo(x: Int): Int = x
       |                   ^
-    """
+    """)
 
     """
     object Syms {
@@ -3519,8 +3404,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class B extends A[Int] {
       override def foo(x: Int): Int = x
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
       |
       |override def foo(x: Int): Int in class B with JSName 'foo'
@@ -3529,7 +3413,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def foo(x: Int): Int = x
       |                   ^
-    """
+    """)
 
     """
     object Syms {
@@ -3546,8 +3430,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends B {
       override def foo(x: Int): Int = x
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo(x: Int): Int in class A with JSName 'Syms.sym1'
@@ -3564,7 +3447,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def foo(x: Int): Int = x
       |                   ^
-    """
+    """)
 
     """
     object Syms {
@@ -3581,8 +3464,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends B {
       override def foo(x: Int): Int = x
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo(x: Int): Int in class A with JSName 'foo'
@@ -3599,7 +3481,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |      override def foo(x: Int): Int = x
       |                   ^
-    """
+    """)
 
     """
     object Syms {
@@ -3614,8 +3496,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def foo: Int
     }
     trait C extends A with B
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:16: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in trait B with JSName 'Syms.sym1'
@@ -3624,7 +3505,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |    trait C extends A with B
       |          ^
-    """
+    """)
 
     """
     object Syms {
@@ -3639,8 +3520,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def foo: Int
     }
     abstract class C extends A with B
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:16: error: A member of a JS class is overriding another member with a different JS name.
       |
       |def foo: Int in trait B with JSName 'Syms.sym1'
@@ -3649,7 +3529,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |
       |    abstract class C extends A with B
       |                   ^
-    """
+    """)
   }
 
   @Test
@@ -3660,12 +3540,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @js.native
     @JSGlobal
     object A extends js.Object
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:5: error: Implementation restriction: constructors of non-native JS classes cannot have default parameters if their companion module is JS native.
       |    class A(x: Int = 1) extends js.Object
       |          ^
-    """
+    """)
 
     """
     class A(x: Int = 1)
@@ -3673,12 +3552,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @js.native
     @JSGlobal
     object A extends js.Object
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:5: error: Implementation restriction: constructors of Scala classes cannot have default parameters if their companion module is JS native.
       |    class A(x: Int = 1)
       |          ^
-    """
+    """)
   }
 
   @Test // #2547
@@ -3692,12 +3570,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class Derived extends NativeBase {
       override def add(option: js.Any): js.Any = super.add(option)
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:11: error: When overriding a native method with default arguments, the overriding method must explicitly repeat the default arguments.
       |      override def add(option: js.Any): js.Any = super.add(option)
       |                       ^
-    """
+    """)
 
     """
     @js.native
@@ -3712,12 +3589,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class Derived extends NativeBase {
       override def add(option: js.Any): js.Any = super.add(option)
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:15: error: When overriding a native method with default arguments, the overriding method must explicitly repeat the default arguments.
       |      override def add(option: js.Any): js.Any = super.add(option)
       |                       ^
-    """
+    """)
   }
 
   @Test // # 3969
@@ -3742,15 +3618,14 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
         // other methods in jl.Object are final.
       }
-      """ hasWarns
-      """
+      """.hasWarns("""
          |newSource1.scala:6: warning: Overriding hashCode in a JS class does not change its hash code. To silence this warning, change the name of the method and optionally add @JSName("hashCode").
          |        override def hashCode(): Int = 1
          |                     ^
          |newSource1.scala:7: warning: Overriding equals in a JS class does not change how it is compared. To silence this warning, change the name of the method and optionally add @JSName("equals").
          |        override def equals(obj: Any): Boolean = false
          |                     ^
-      """
+      """)
     }
 
     for {
@@ -3763,15 +3638,14 @@ class JSInteropTest extends DirectTest with TestHelpers {
         override def hashCode(): Int = js.native
         override def equals(obj: Any): Boolean = js.native
       }
-      """ hasWarns
-      """
+      """.hasWarns("""
          |newSource1.scala:8: warning: Overriding hashCode in a JS class does not change its hash code. To silence this warning, change the name of the method and optionally add @JSName("hashCode").
          |        override def hashCode(): Int = js.native
          |                     ^
          |newSource1.scala:9: warning: Overriding equals in a JS class does not change how it is compared. To silence this warning, change the name of the method and optionally add @JSName("equals").
          |        override def equals(obj: Any): Boolean = js.native
          |                     ^
-      """
+      """)
     }
 
     """
@@ -3780,30 +3654,28 @@ class JSInteropTest extends DirectTest with TestHelpers {
       override def hashCode(): Int = js.native
       override def equals(obj: Any): Boolean = js.native
     }
-    """ hasWarns
-    """
+    """.hasWarns("""
        |newSource1.scala:7: warning: Overriding hashCode in a JS class does not change its hash code. To silence this warning, change the name of the method and optionally add @JSName("hashCode").
        |      override def hashCode(): Int = js.native
        |                   ^
        |newSource1.scala:8: warning: Overriding equals in a JS class does not change how it is compared. To silence this warning, change the name of the method and optionally add @JSName("equals").
        |      override def equals(obj: Any): Boolean = js.native
        |                   ^
-    """
+    """)
 
     """
     trait A extends js.Any {
       override def hashCode(): Int
       override def equals(obj: Any): Boolean
     }
-    """ hasWarns
-    """
+    """.hasWarns("""
        |newSource1.scala:6: warning: Overriding hashCode in a JS class does not change its hash code. To silence this warning, change the name of the method and optionally add @JSName("hashCode").
        |      override def hashCode(): Int
        |                   ^
        |newSource1.scala:7: warning: Overriding equals in a JS class does not change how it is compared. To silence this warning, change the name of the method and optionally add @JSName("equals").
        |      override def equals(obj: Any): Boolean
        |                   ^
-    """
+    """)
   }
 
 }

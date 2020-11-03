@@ -24,8 +24,7 @@ import java.nio._
  *  elements in the buffer.
  */
 final class TypedArrayBufferOps[ // scalastyle:ignore
-    TypedArrayType <: TypedArray[_, TypedArrayType]] private (
-    private val buffer: Buffer)
+    TypedArrayType <: TypedArray[_, TypedArrayType]] private (private val buffer: Buffer)
     extends AnyVal {
 
   /** Tests whether this buffer has a valid associated [[ArrayBuffer]].

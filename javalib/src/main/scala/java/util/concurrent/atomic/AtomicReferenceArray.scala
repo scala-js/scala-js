@@ -12,8 +12,7 @@
 
 package java.util.concurrent.atomic
 
-class AtomicReferenceArray[E <: AnyRef](
-    length: Int) extends Serializable {
+class AtomicReferenceArray[E <: AnyRef](length: Int) extends Serializable {
 
   def this(array: Array[E]) = {
     this(array.length)
@@ -41,7 +40,8 @@ class AtomicReferenceArray[E <: AnyRef](
   }
 
   final def compareAndSet(i: Int, expect: E, update: E): Boolean = {
-    if (get(i) ne expect) false else {
+    if (get(i) ne expect) false
+    else {
       set(i, update)
       true
     }

@@ -25,8 +25,7 @@ import org.scalajs.testsuite.utils.AssertThrows._
  */
 class DateTestEx {
   @Test def testToInstant(): Unit = {
-    def test(expectedEpochSecond: Long, expectedNano: Int,
-        epochMilli: Long): Unit = {
+    def test(expectedEpochSecond: Long, expectedNano: Int, epochMilli: Long): Unit = {
       assertEquals(Instant.ofEpochSecond(expectedEpochSecond, expectedNano),
           new Date(epochMilli).toInstant())
     }
@@ -40,8 +39,7 @@ class DateTestEx {
 
   @Test def testFromInstant(): Unit = {
     def test(expectedTime: Long, epochSecond: Long, nano: Int): Unit = {
-      assertEquals(new Date(expectedTime),
-          Date.from(Instant.ofEpochSecond(epochSecond, nano)))
+      assertEquals(new Date(expectedTime), Date.from(Instant.ofEpochSecond(epochSecond, nano)))
     }
 
     test(123456L, 123L, 456000000)

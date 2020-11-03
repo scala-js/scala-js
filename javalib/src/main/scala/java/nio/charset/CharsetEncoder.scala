@@ -16,14 +16,12 @@ import scala.annotation.{switch, tailrec}
 
 import java.nio._
 
-abstract class CharsetEncoder protected (cs: Charset,
-    _averageBytesPerChar: Float, _maxBytesPerChar: Float,
-    private[this] var _replacement: Array[Byte]) {
+abstract class CharsetEncoder protected (cs: Charset, _averageBytesPerChar: Float,
+    _maxBytesPerChar: Float, private[this] var _replacement: Array[Byte]) {
 
   import CharsetEncoder._
 
-  protected def this(cs: Charset, _averageBytesPerChar: Float,
-      _maxBytesPerChar: Float) = {
+  protected def this(cs: Charset, _averageBytesPerChar: Float, _maxBytesPerChar: Float) = {
     this(cs, _averageBytesPerChar, _maxBytesPerChar, Array('?'.toByte))
   }
 
@@ -102,8 +100,7 @@ abstract class CharsetEncoder protected (cs: Charset,
   final def averageBytesPerChar(): Float = _averageBytesPerChar
   final def maxBytesPerChar(): Float = _maxBytesPerChar
 
-  final def encode(in: CharBuffer, out: ByteBuffer,
-      endOfInput: Boolean): CoderResult = {
+  final def encode(in: CharBuffer, out: ByteBuffer, endOfInput: Boolean): CoderResult = {
 
     if (status == FLUSHED || (!endOfInput && status == END))
       throw new IllegalStateException
@@ -113,14 +110,15 @@ abstract class CharsetEncoder protected (cs: Charset,
     @inline
     @tailrec
     def loop(): CoderResult = {
-      val result1 = try {
-        encodeLoop(in, out)
-      } catch {
-        case ex: BufferOverflowException =>
-          throw new CoderMalfunctionError(ex)
-        case ex: BufferUnderflowException =>
-          throw new CoderMalfunctionError(ex)
-      }
+      val result1 =
+        try {
+          encodeLoop(in, out)
+        } catch {
+          case ex: BufferOverflowException =>
+            throw new CoderMalfunctionError(ex)
+          case ex: BufferUnderflowException =>
+            throw new CoderMalfunctionError(ex)
+        }
 
       val result2 = if (result1.isUnderflow()) {
         val remaining = in.remaining()

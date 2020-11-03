@@ -81,8 +81,7 @@ final class Emitter(config: Emitter.Config) {
     moduleKind match {
       case ModuleKind.NoModule =>
         assert(moduleSet.modules.size <= 1)
-        val topLevelVars = moduleSet.modules
-          .headOption.toList
+        val topLevelVars = moduleSet.modules.headOption.toList
           .flatMap(_.topLevelExports)
           .map(_.exportName)
 
@@ -128,11 +127,11 @@ final class Emitter(config: Emitter.Config) {
     } finally {
       // Report caching stats.
       logger.debug(
-          s"Emitter: Class tree cache stats: reused: $statsClassesReused -- "+
-          s"invalidated: $statsClassesInvalidated")
+          s"Emitter: Class tree cache stats: reused: $statsClassesReused -- " +
+            s"invalidated: $statsClassesInvalidated")
       logger.debug(
-          s"Emitter: Method tree cache stats: reused: $statsMethodsReused -- "+
-          s"invalidated: $statsMethodsInvalidated")
+          s"Emitter: Method tree cache stats: reused: $statsMethodsReused -- " +
+            s"invalidated: $statsMethodsInvalidated")
 
       // Inform caches about run completion.
       classCaches.filterInPlace((_, c) => c.cleanAfterRun())
@@ -146,8 +145,8 @@ final class Emitter(config: Emitter.Config) {
    *  succeed, ...
    */
   @tailrec
-  private def emitAvoidGlobalClash(moduleSet: ModuleSet,
-      logger: Logger, secondAttempt: Boolean): WithGlobals[Map[ModuleID, js.Tree]] = {
+  private def emitAvoidGlobalClash(moduleSet: ModuleSet, logger: Logger,
+      secondAttempt: Boolean): WithGlobals[Map[ModuleID, js.Tree]] = {
     val result = emitOnce(moduleSet, logger)
 
     val mentionedDangerousGlobalRefs =
@@ -159,11 +158,11 @@ final class Emitter(config: Emitter.Config) {
     } else {
       assert(!secondAttempt,
           "Uh oh! The second attempt gave a different set of dangerous " +
-          "global refs than the first one.")
+            "global refs than the first one.")
 
       logger.debug(
           "Emitter: The set of dangerous global refs has changed. " +
-          "Going to re-generate the world.")
+            "Going to re-generate the world.")
 
       state = new State(mentionedDangerousGlobalRefs)
       emitAvoidGlobalClash(moduleSet, logger, secondAttempt = true)
@@ -195,8 +194,7 @@ final class Emitter(config: Emitter.Config) {
 
         val topLevelExports = extractWithGlobals {
           // We do not cache top level exports since typically there are few.
-          classEmitter.genTopLevelExports(module.topLevelExports)(
-              moduleContext, uncachedKnowledge)
+          classEmitter.genTopLevelExports(module.topLevelExports)(moduleContext, uncachedKnowledge)
         }
 
         val (coreDefinitions, coreInitialization) = {
@@ -224,41 +222,41 @@ final class Emitter(config: Emitter.Config) {
              */
             coreDefinitions ++
 
-            /* All class definitions, which depend on nothing but their
-             * superclasses.
-             */
-            classIter.flatMap(_.main) ++
+              /* All class definitions, which depend on nothing but their
+               * superclasses.
+               */
+              classIter.flatMap(_.main) ++
 
-            /* The initialization of the CoreJSLib, which depends on the
-             * definition of classes (n.b. the RuntimeLong class).
-             */
-            coreInitialization ++
+              /* The initialization of the CoreJSLib, which depends on the
+               * definition of classes (n.b. the RuntimeLong class).
+               */
+              coreInitialization ++
 
-            /* All static field definitions, which depend on nothing, except
-             * those of type Long which need $L0.
-             */
-            classIter.flatMap(_.staticFields) ++
+              /* All static field definitions, which depend on nothing, except
+               * those of type Long which need $L0.
+               */
+              classIter.flatMap(_.staticFields) ++
 
-            /* All static initializers, which in the worst case can observe some
-             * "zero" state of other static field definitions, but must not
-             * observe a *non-initialized* (undefined) state.
-             */
-            classIter.flatMap(_.staticInitialization) ++
+              /* All static initializers, which in the worst case can observe some
+               * "zero" state of other static field definitions, but must not
+               * observe a *non-initialized* (undefined) state.
+               */
+              classIter.flatMap(_.staticInitialization) ++
 
-            /* All the exports, during which some JS class creation can happen,
-             * causing JS static initializers to run. Those also must not observe
-             * a non-initialized state of other static fields.
-             */
-            topLevelExports ++
+              /* All the exports, during which some JS class creation can happen,
+               * causing JS static initializers to run. Those also must not observe
+               * a non-initialized state of other static fields.
+               */
+              topLevelExports ++
 
-            /* Module initializers, which by spec run at the end. */
-            module.initializers.iterator.map(classEmitter.genModuleInitializer(_)(
-                moduleContext, uncachedKnowledge))
+              /* Module initializers, which by spec run at the end. */
+              module.initializers.iterator.map(classEmitter.genModuleInitializer(_)(moduleContext,
+                      uncachedKnowledge))
         )(Position.NoPosition)
 
         assert(!defTrees.isInstanceOf[js.Skip], {
-            val classNames = module.classDefs.map(_.fullName).mkString(", ")
-            s"Module ${module.id} is empty. Classes in this module: $classNames"
+          val classNames = module.classDefs.map(_.fullName).mkString(", ")
+          s"Module ${module.id} is empty. Classes in this module: $classNames"
         })
 
         val allTrees = js.Block(
@@ -323,12 +321,11 @@ final class Emitter(config: Emitter.Config) {
     else lhs.className.compareTo(rhs.className) < 0
   }
 
-  private def genClass(linkedClass: LinkedClass,
-      moduleContext: ModuleContext): GeneratedClass = {
+  private def genClass(linkedClass: LinkedClass, moduleContext: ModuleContext): GeneratedClass = {
     val className = linkedClass.className
 
-    val classCache = classCaches.getOrElseUpdate(
-        new ClassID(linkedClass.ancestors, moduleContext), new ClassCache)
+    val classCache =
+      classCaches.getOrElseUpdate(new ClassID(linkedClass.ancestors, moduleContext), new ClassCache)
 
     val classTreeCache =
       classCache.getCache(linkedClass.version)
@@ -357,8 +354,7 @@ final class Emitter(config: Emitter.Config) {
     // Symbols for private JS fields
     if (kind.isJSClass) {
       val fieldDefs = classTreeCache.privateJSFields.getOrElseUpdate {
-        classEmitter.genCreatePrivateJSFieldDefsOfJSClass(linkedClass)(
-            moduleContext, classCache)
+        classEmitter.genCreatePrivateJSFieldDefsOfJSClass(linkedClass)(moduleContext, classCache)
       }
       main ++= extractWithGlobals(fieldDefs)
     }
@@ -373,7 +369,7 @@ final class Emitter(config: Emitter.Config) {
           classCache.getStaticLikeMethodCache(namespace, methodDef.methodName)
 
         addToMain(methodCache.getOrElseUpdate(m.version,
-            classEmitter.genStaticLikeMethod(className, m.value)(moduleContext, methodCache)))
+                classEmitter.genStaticLikeMethod(className, m.value)(moduleContext, methodCache)))
       }
     }
 
@@ -417,14 +413,10 @@ final class Emitter(config: Emitter.Config) {
           implicit val pos = methodDef.pos
 
           val methodName = methodDef.name
-          val newBody = ApplyStatically(ApplyFlags.empty,
-              This()(ClassType(className)), ObjectClass, methodName,
-              methodDef.args.map(_.ref))(
-              methodDef.resultType)
-          val newMethodDef = MethodDef(MemberFlags.empty, methodName,
-              methodDef.originalName, methodDef.args, methodDef.resultType,
-              Some(newBody))(
-              OptimizerHints.empty, None)
+          val newBody = ApplyStatically(ApplyFlags.empty, This()(ClassType(className)), ObjectClass,
+              methodName, methodDef.args.map(_.ref))(methodDef.resultType)
+          val newMethodDef = MethodDef(MemberFlags.empty, methodName, methodDef.originalName,
+              methodDef.args, methodDef.resultType, Some(newBody))(OptimizerHints.empty, None)
           new Versioned(newMethodDef, m.version)
         }
 
@@ -453,7 +445,8 @@ final class Emitter(config: Emitter.Config) {
         ctor <- ctorWithGlobals
         memberMethods <- WithGlobals.list(memberMethodsWithGlobals)
         exportedMembers <- exportedMembersWithGlobals
-        clazz <- classEmitter.buildClass(linkedClass, ctor, memberMethods, exportedMembers)(moduleContext, classCache)
+        clazz <- classEmitter.buildClass(linkedClass, ctor, memberMethods, exportedMembers)(
+            moduleContext, classCache)
       } yield {
         clazz
       }
@@ -468,7 +461,7 @@ final class Emitter(config: Emitter.Config) {
         val methodCache =
           classCache.getStaticLikeMethodCache(MemberNamespace.Public, m.value.methodName)
         addToMain(methodCache.getOrElseUpdate(m.version,
-            classEmitter.genDefaultMethod(className, m.value)(moduleContext, methodCache)))
+                classEmitter.genDefaultMethod(className, m.value)(moduleContext, methodCache)))
       }
     } else if (kind == ClassKind.HijackedClass) {
       // Hijacked methods
@@ -479,18 +472,20 @@ final class Emitter(config: Emitter.Config) {
         val methodCache =
           classCache.getStaticLikeMethodCache(MemberNamespace.Public, m.value.methodName)
         addToMain(methodCache.getOrElseUpdate(m.version,
-            classEmitter.genHijackedMethod(className, m.value)(moduleContext, methodCache)))
+                classEmitter.genHijackedMethod(className, m.value)(moduleContext, methodCache)))
       }
     }
 
     if (classEmitter.needInstanceTests(linkedClass)) {
-      addToMain(classTreeCache.instanceTests.getOrElseUpdate(
-          classEmitter.genInstanceTests(linkedClass)(moduleContext, classCache)))
+      addToMain(
+          classTreeCache.instanceTests.getOrElseUpdate(
+              classEmitter.genInstanceTests(linkedClass)(moduleContext, classCache)))
     }
 
     if (linkedClass.hasRuntimeTypeInfo) {
-      addToMain(classTreeCache.typeData.getOrElseUpdate(
-          classEmitter.genTypeData(linkedClass)(moduleContext, classCache)))
+      addToMain(
+          classTreeCache.typeData.getOrElseUpdate(
+              classEmitter.genTypeData(linkedClass)(moduleContext, classCache)))
     }
 
     if (linkedClass.hasInstances && kind.isClass && linkedClass.hasRuntimeTypeInfo)
@@ -498,16 +493,19 @@ final class Emitter(config: Emitter.Config) {
           classEmitter.genSetTypeData(linkedClass)(moduleContext, classCache))
 
     if (linkedClass.kind.hasModuleAccessor)
-      addToMain(classTreeCache.moduleAccessor.getOrElseUpdate(
-          classEmitter.genModuleAccessor(linkedClass)(moduleContext, classCache)))
+      addToMain(
+          classTreeCache.moduleAccessor.getOrElseUpdate(
+              classEmitter.genModuleAccessor(linkedClass)(moduleContext, classCache)))
 
     // Static fields
 
     val staticFields = if (linkedClass.kind.isJSType) {
       Nil
     } else {
-      extractWithGlobals(classTreeCache.staticFields.getOrElseUpdate(
-          classEmitter.genCreateStaticFieldsOfScalaClass(linkedClass)(moduleContext, classCache)))
+      extractWithGlobals(
+          classTreeCache.staticFields.getOrElseUpdate(
+              classEmitter.genCreateStaticFieldsOfScalaClass(linkedClass)(moduleContext,
+                  classCache)))
     }
 
     // Static initialization
@@ -527,8 +525,7 @@ final class Emitter(config: Emitter.Config) {
 
   // Helpers
 
-  private def mergeVersions(v1: Option[String],
-      v2: Option[String]): Option[String] = {
+  private def mergeVersions(v1: Option[String], v2: Option[String]): Option[String] = {
     v1.flatMap(s1 => v2.map(s2 => "" + s1.length + "-" + s1 + s2))
   }
 
@@ -575,8 +572,7 @@ final class Emitter(config: Emitter.Config) {
       _cache
     }
 
-    def getMemberMethodCache(
-        methodName: MethodName): MethodCache[js.MethodDef] = {
+    def getMemberMethodCache(methodName: MethodName): MethodCache[js.MethodDef] = {
       _memberMethodCache.getOrElseUpdate(methodName, new MethodCache)
     }
 
@@ -621,8 +617,7 @@ final class Emitter(config: Emitter.Config) {
 
     def startRun(): Unit = _cacheUsed = false
 
-    def getOrElseUpdate(version: Option[String],
-        v: => WithGlobals[T]): WithGlobals[T] = {
+    def getOrElseUpdate(version: Option[String], v: => WithGlobals[T]): WithGlobals[T] = {
       if (_tree == null || _lastVersion.isEmpty || _lastVersion != version) {
         invalidate()
         statsMethodsInvalidated += 1
@@ -663,35 +658,22 @@ final class Emitter(config: Emitter.Config) {
 }
 
 object Emitter {
+
   /** Result of an emitter run. */
-  final class Result private[Emitter](
-      val header: String,
-      val body: Map[ModuleID, js.Tree],
-      val footer: String,
-      val topLevelVarDecls: List[String],
-      val globalRefs: Set[String]
+  final class Result private[Emitter] (
+      val header: String, val body: Map[ModuleID, js.Tree], val footer: String,
+      val topLevelVarDecls: List[String], val globalRefs: Set[String]
   )
 
   /** Configuration for the Emitter. */
   final class Config private (
-      val semantics: Semantics,
-      val moduleKind: ModuleKind,
-      val esFeatures: ESFeatures,
-      val internalModulePattern: ModuleID => String,
-      val optimizeBracketSelects: Boolean,
+      val semantics: Semantics, val moduleKind: ModuleKind, val esFeatures: ESFeatures,
+      val internalModulePattern: ModuleID => String, val optimizeBracketSelects: Boolean,
       val trackAllGlobalRefs: Boolean
   ) {
-    private def this(
-        semantics: Semantics,
-        moduleKind: ModuleKind,
-        esFeatures: ESFeatures) = {
-      this(
-          semantics,
-          moduleKind,
-          esFeatures,
-          internalModulePattern = "./" + _.id,
-          optimizeBracketSelects = true,
-          trackAllGlobalRefs = false)
+    private def this(semantics: Semantics, moduleKind: ModuleKind, esFeatures: ESFeatures) = {
+      this(semantics, moduleKind, esFeatures, internalModulePattern = "./" + _.id,
+          optimizeBracketSelects = true, trackAllGlobalRefs = false)
     }
 
     def withSemantics(f: Semantics => Semantics): Config =
@@ -712,15 +694,13 @@ object Emitter {
     def withTrackAllGlobalRefs(trackAllGlobalRefs: Boolean): Config =
       copy(trackAllGlobalRefs = trackAllGlobalRefs)
 
-    private def copy(
-        semantics: Semantics = semantics,
-        moduleKind: ModuleKind = moduleKind,
+    private def copy(semantics: Semantics = semantics, moduleKind: ModuleKind = moduleKind,
         esFeatures: ESFeatures = esFeatures,
         internalModulePattern: ModuleID => String = internalModulePattern,
         optimizeBracketSelects: Boolean = optimizeBracketSelects,
         trackAllGlobalRefs: Boolean = trackAllGlobalRefs): Config = {
-      new Config(semantics, moduleKind, esFeatures, internalModulePattern,
-          optimizeBracketSelects, trackAllGlobalRefs)
+      new Config(semantics, moduleKind, esFeatures, internalModulePattern, optimizeBracketSelects,
+          trackAllGlobalRefs)
     }
   }
 
@@ -740,10 +720,8 @@ object Emitter {
   }
 
   private final class GeneratedClass(
-      val main: List[js.Tree],
-      val staticFields: List[js.Tree],
-      val staticInitialization: List[js.Tree],
-      val trackedGlobalRefs: Set[String]
+      val main: List[js.Tree], val staticFields: List[js.Tree],
+      val staticInitialization: List[js.Tree], val trackedGlobalRefs: Set[String]
   )
 
   private final class OneTimeCache[A >: Null] {
@@ -755,8 +733,7 @@ object Emitter {
     }
   }
 
-  private case class ClassID(
-      ancestors: List[ClassName], moduleContext: ModuleContext)
+  private case class ClassID(ancestors: List[ClassName], moduleContext: ModuleContext)
 
   private def symbolRequirements(config: Config): SymbolRequirement = {
     import config.semantics._
@@ -772,22 +749,15 @@ object Emitter {
         cond(asInstanceOfs != Unchecked) {
           instantiateClass(ClassCastExceptionClass, StringArgConstructorName)
         },
-
         cond(arrayIndexOutOfBounds != Unchecked) {
-          instantiateClass(ArrayIndexOutOfBoundsExceptionClass,
-              StringArgConstructorName)
+          instantiateClass(ArrayIndexOutOfBoundsExceptionClass, StringArgConstructorName)
         },
-
         cond(asInstanceOfs == Fatal || arrayIndexOutOfBounds == Fatal) {
-          instantiateClass(UndefinedBehaviorErrorClass,
-              ThrowableArgConsructorName)
+          instantiateClass(UndefinedBehaviorErrorClass, ThrowableArgConsructorName)
         },
-
         cond(moduleInit == Fatal) {
-          instantiateClass(UndefinedBehaviorErrorClass,
-              StringArgConstructorName)
+          instantiateClass(UndefinedBehaviorErrorClass, StringArgConstructorName)
         },
-
         cond(!config.esFeatures.allowBigIntsForLongs) {
           multiple(
               instanceTests(LongImpl.RuntimeLongClass),
@@ -798,6 +768,5 @@ object Emitter {
         }
     )
   }
-
 
 }

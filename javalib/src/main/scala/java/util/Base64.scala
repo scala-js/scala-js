@@ -121,7 +121,7 @@ object Base64 {
 
     def decode(src: Array[Byte], dst: Array[Byte]): Int = {
       if (dst.length < dstMaxLength(src.length) && // dst is possibly too small
-          dst.length < dstRequiredLength(src)) {   // dst is actually too small
+          dst.length < dstRequiredLength(src)) { // dst is actually too small
         throw new IllegalArgumentException(
             "Output byte array is too small for decoding all input bytes")
       }
@@ -165,8 +165,7 @@ object Base64 {
         }
 
         if (shift == 12) {
-          throw new IllegalArgumentException(
-              "Last unit does not have enough valid bits")
+          throw new IllegalArgumentException("Last unit does not have enough valid bits")
         }
 
         if (shift <= 6)
@@ -213,8 +212,7 @@ object Base64 {
         val int = src.get() & 0xff
         val value = table(int)
         if (value != -2 && (!ignoreInvalid || value > 0)) {
-          throw new IllegalArgumentException(
-              s"Input byte array has incorrect ending byte at $int")
+          throw new IllegalArgumentException(s"Input byte array has incorrect ending byte at $int")
         }
       }
 
@@ -245,8 +243,7 @@ object Base64 {
         }
 
         if (src.length >= 1 && validBytes == 0) {
-          throw new IllegalArgumentException(
-              "Input byte array has wrong 4-byte ending unit")
+          throw new IllegalArgumentException("Input byte array has wrong 4-byte ending unit")
         }
       }
 
@@ -268,8 +265,7 @@ object Base64 {
     private final val DecodeState16 = 3
   }
 
-  private class DecodingInputStream(in: InputStream, table: Array[Int],
-      ignoreInvalid: Boolean)
+  private class DecodingInputStream(in: InputStream, table: Array[Int], ignoreInvalid: Boolean)
       extends FilterInputStream(in) {
 
     import DecodingInputStream._
@@ -299,8 +295,7 @@ object Base64 {
           table(i) match {
             case -1 =>
               if (!ignoreInvalid) {
-                throw new IOException(
-                    "Illegal base64 character " + Integer.toHexString(i))
+                throw new IOException("Illegal base64 character " + Integer.toHexString(i))
               }
               0
 
@@ -343,8 +338,7 @@ object Base64 {
           case DecodeState18 =>
             0 // nothing
           case DecodeState12 =>
-            throw new IOException(
-                "Base64 stream has one un-decoded dangling byte.")
+            throw new IOException("Base64 stream has one un-decoded dangling byte.")
           case _ =>
             writeValue(Int.MaxValue)
         }
@@ -356,7 +350,7 @@ object Base64 {
         val s = shift
         if (s == DecodeState18 || s == DecodeState12 ||
             (s == DecodeState14 && in.read() != '=' && !ignoreInvalid)) {
-          throw new IOException ("Illegal base64 ending sequence")
+          throw new IOException("Illegal base64 ending sequence")
         }
         writeValue(Int.MaxValue)
       }
@@ -441,8 +435,7 @@ object Base64 {
     // PRIVATE
     // ------------------------------------------------------------------------
 
-    private def doEncode(src: Array[Byte], dst: Array[Byte],
-        dstLength: Int): Int = {
+    private def doEncode(src: Array[Byte], dst: Array[Byte], dstLength: Int): Int = {
       doEncode(new Wrapper(src), new Wrapper(dst, 0, dstLength))
     }
 
@@ -506,8 +499,8 @@ object Base64 {
 
   // --------------------------------------------------------------------------
 
-  private class EncodingOutputStream(out: OutputStream, table: Array[Byte],
-      lineLength: Int, lineSeparator: Array[Byte], withPadding: Boolean)
+  private class EncodingOutputStream(out: OutputStream, table: Array[Byte], lineLength: Int,
+      lineSeparator: Array[Byte], withPadding: Boolean)
       extends FilterOutputStream(out) {
 
     private val inputBuf = new Wrapper(new Array[Byte](3))
@@ -531,8 +524,8 @@ object Base64 {
       inputBuf.clear()
       val bits = {
         ((inputBuf.get() & 0xff) << 16) |
-        ((inputBuf.get() & 0xff) << 8) |
-        (inputBuf.get() & 0xff)
+          ((inputBuf.get() & 0xff) << 8) |
+          (inputBuf.get() & 0xff)
       }
       var shift = 18
       for (_ <- 0 until count) {
@@ -606,7 +599,7 @@ object Base64 {
 
     def get(): Byte = {
       position += 1
-      array(position-1)
+      array(position - 1)
     }
 
     def clear(): Unit = {

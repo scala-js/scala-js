@@ -33,8 +33,8 @@ final class JUnitFramework extends Framework {
     new JUnitRunner(args, remoteArgs, parseRunSettings(args))
   }
 
-  def slaveRunner(args: Array[String], remoteArgs: Array[String],
-      testClassLoader: ClassLoader, send: String => Unit): Runner = {
+  def slaveRunner(args: Array[String], remoteArgs: Array[String], testClassLoader: ClassLoader,
+      send: String => Unit): Runner = {
     new JUnitRunner(args, remoteArgs, parseRunSettings(args))
   }
 
@@ -65,16 +65,16 @@ final class JUnitFramework extends Framework {
           throw new UnsupportedOperationException("--run-listener")
 
         case s if s.startsWith("--include-categories=") =>
-            throw new UnsupportedOperationException("--include-categories")
+          throw new UnsupportedOperationException("--include-categories")
 
         case s if s.startsWith("--exclude-categories=") =>
-            throw new UnsupportedOperationException("--exclude-categories")
+          throw new UnsupportedOperationException("--exclude-categories")
 
         case s if s.startsWith("-D") && s.contains("=") =>
-            throw new UnsupportedOperationException("-Dkey=value")
+          throw new UnsupportedOperationException("-Dkey=value")
 
         case s if !s.startsWith("-") && !s.startsWith("+") =>
-            throw new UnsupportedOperationException(s)
+          throw new UnsupportedOperationException(s)
 
         case _ =>
       }

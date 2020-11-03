@@ -12,9 +12,8 @@
 
 package java.nio
 
-private[nio] final class HeapDoubleBuffer private (
-    _capacity: Int, _array0: Array[Double], _arrayOffset0: Int,
-    _initialPosition: Int, _initialLimit: Int, _readOnly: Boolean)
+private[nio] final class HeapDoubleBuffer private (_capacity: Int, _array0: Array[Double],
+    _arrayOffset0: Int, _initialPosition: Int, _initialLimit: Int, _readOnly: Boolean)
     extends DoubleBuffer(_capacity, _array0, _arrayOffset0) {
 
   position(_initialPosition)
@@ -79,33 +78,29 @@ private[nio] final class HeapDoubleBuffer private (
     GenHeapBuffer(this).generic_store(index, elem)
 
   @inline
-  override private[nio] def load(startIndex: Int,
-      dst: Array[Double], offset: Int, length: Int): Unit =
+  override private[nio] def load(startIndex: Int, dst: Array[Double], offset: Int,
+      length: Int): Unit =
     GenHeapBuffer(this).generic_load(startIndex, dst, offset, length)
 
   @inline
-  override private[nio] def store(startIndex: Int,
-      src: Array[Double], offset: Int, length: Int): Unit =
+  override private[nio] def store(startIndex: Int, src: Array[Double], offset: Int,
+      length: Int): Unit =
     GenHeapBuffer(this).generic_store(startIndex, src, offset, length)
 }
 
 private[nio] object HeapDoubleBuffer {
   private[nio] implicit object NewHeapDoubleBuffer
       extends GenHeapBuffer.NewHeapBuffer[DoubleBuffer, Double] {
-    def apply(capacity: Int, array: Array[Double], arrayOffset: Int,
-        initialPosition: Int, initialLimit: Int,
-        readOnly: Boolean): DoubleBuffer = {
-      new HeapDoubleBuffer(capacity, array, arrayOffset,
-          initialPosition, initialLimit, readOnly)
+    def apply(capacity: Int, array: Array[Double], arrayOffset: Int, initialPosition: Int,
+        initialLimit: Int, readOnly: Boolean): DoubleBuffer = {
+      new HeapDoubleBuffer(capacity, array, arrayOffset, initialPosition, initialLimit, readOnly)
     }
   }
 
   @noinline
-  private[nio] def wrap(array: Array[Double], arrayOffset: Int, capacity: Int,
-      initialPosition: Int, initialLength: Int,
-      isReadOnly: Boolean): DoubleBuffer = {
-    GenHeapBuffer.generic_wrap(
-        array, arrayOffset, capacity,
-        initialPosition, initialLength, isReadOnly)
+  private[nio] def wrap(array: Array[Double], arrayOffset: Int, capacity: Int, initialPosition: Int,
+      initialLength: Int, isReadOnly: Boolean): DoubleBuffer = {
+    GenHeapBuffer.generic_wrap(array, arrayOffset, capacity, initialPosition, initialLength,
+        isReadOnly)
   }
 }

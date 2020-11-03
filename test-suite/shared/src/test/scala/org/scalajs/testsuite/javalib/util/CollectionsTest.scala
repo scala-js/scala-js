@@ -26,8 +26,7 @@ import Utils._
 
 class CollectionsTest extends CollectionsTestBase {
 
-  private def checkImmutablilityOfCollectionApi[E](coll: ju.Collection[E],
-      elem: E): Unit = {
+  private def checkImmutablilityOfCollectionApi[E](coll: ju.Collection[E], elem: E): Unit = {
     expectThrows(classOf[UnsupportedOperationException], coll.add(elem))
     expectThrows(classOf[UnsupportedOperationException],
         coll.addAll(TrivialImmutableCollection(elem)))
@@ -66,11 +65,9 @@ class CollectionsTest extends CollectionsTestBase {
     expectThrows(classOf[UnsupportedOperationException], list.remove(0))
   }
 
-  private def checkImmutablilityOfMapApi[K, V](map: ju.Map[K, V], k: K,
-      v: V): Unit = {
+  private def checkImmutablilityOfMapApi[K, V](map: ju.Map[K, V], k: K, v: V): Unit = {
     expectThrows(classOf[UnsupportedOperationException], map.put(k, v))
-    expectThrows(classOf[UnsupportedOperationException],
-        map.putAll(TrivialImmutableMap(k -> v)))
+    expectThrows(classOf[UnsupportedOperationException], map.putAll(TrivialImmutableMap(k -> v)))
     map.putAll(TrivialImmutableMap[K, V]()) // Should not throw
 
     if (map.containsKey(k))
@@ -101,8 +98,7 @@ class CollectionsTest extends CollectionsTestBase {
       expectThrows(classOf[NoSuchElementException], freshIter.next())
       expectThrows(classOf[NoSuchElementException], freshIter.previous())
       expectThrows(classOf[IllegalStateException], freshIter.remove())
-      expectThrows(classOf[UnsupportedOperationException],
-          freshIter.add(toElem(0)))
+      expectThrows(classOf[UnsupportedOperationException], freshIter.add(toElem(0)))
       expectThrows(classOf[IllegalStateException], freshIter.set(toElem(0)))
     }
 
@@ -228,8 +224,7 @@ class CollectionsTest extends CollectionsTestBase {
       checkImmutablilityOfListApi(zeroCopies, toElem(0))
 
       for (n <- Seq(-1, -4, -543)) {
-        expectThrows(classOf[IllegalArgumentException],
-          ju.Collections.nCopies(n, toElem(0)))
+        expectThrows(classOf[IllegalArgumentException], ju.Collections.nCopies(n, toElem(0)))
       }
     }
 

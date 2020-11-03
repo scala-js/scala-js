@@ -27,8 +27,7 @@ object CollectionsOnListTest extends CollectionsTestBase {
 
   // Test: sort[T<:Comparable[T]](List[T])
   def sort_on_comparables(factory: ListFactory): Unit = {
-    test_sort_on_comparables[CustomComparable](factory,
-        new CustomComparable(_), false)
+    test_sort_on_comparables[CustomComparable](factory, new CustomComparable(_), false)
     test_sort_on_comparables[jl.Integer](factory, jl.Integer.valueOf)
     test_sort_on_comparables[jl.Long](factory, _.toLong)
     test_sort_on_comparables[jl.Double](factory, _.toDouble)
@@ -36,18 +35,15 @@ object CollectionsOnListTest extends CollectionsTestBase {
 
   // Test: sort[T](List[T], Comparator[T])
   def sort_with_comparator(factory: ListFactory): Unit = {
-    test_sort_with_comparator[CustomComparable](factory,
-        new CustomComparable(_), (x, y) => x.compareTo(y), false)
+    test_sort_with_comparator[CustomComparable](factory, new CustomComparable(_),
+        (x, y) => x.compareTo(y), false)
     test_sort_with_comparator[jl.Integer](factory, _.toInt, (x, y) => x.compareTo(y))
-    test_sort_with_comparator[jl.Long](factory, _.toLong,
-        (x, y) => x.compareTo(y))
-    test_sort_with_comparator[jl.Double](factory, _.toDouble,
-        (x, y) => x.compareTo(y))
+    test_sort_with_comparator[jl.Long](factory, _.toLong, (x, y) => x.compareTo(y))
+    test_sort_with_comparator[jl.Double](factory, _.toDouble, (x, y) => x.compareTo(y))
   }
 
   private def test_sort_on_comparables[T <: AnyRef with Comparable[T]: ClassTag](
-      factory: ListFactory, toElem: Int => T,
-      absoluteOrder: Boolean = true): Unit = {
+      factory: ListFactory, toElem: Int => T, absoluteOrder: Boolean = true): Unit = {
 
     val list = factory.empty[T]
 
@@ -72,8 +68,7 @@ object CollectionsOnListTest extends CollectionsTestBase {
     for (seed <- List(0, 1, 42, -5432, 2341242)) {
       val rnd = new scala.util.Random(seed)
       list.clear()
-      list.addAll(
-          TrivialImmutableCollection(range.map(_ => toElem(rnd.nextInt())): _*))
+      list.addAll(TrivialImmutableCollection(range.map(_ => toElem(rnd.nextInt())): _*))
       ju.Collections.sort(list)
       testIfSorted(false)
     }
@@ -109,8 +104,7 @@ object CollectionsOnListTest extends CollectionsTestBase {
     for (seed <- List(0, 1, 42, -5432, 2341242)) {
       val rnd = new scala.util.Random(seed)
       list.clear()
-      list.addAll(
-          TrivialImmutableCollection(range.map(_ => toElem(rnd.nextInt())): _*))
+      list.addAll(TrivialImmutableCollection(range.map(_ => toElem(rnd.nextInt())): _*))
       ju.Collections.sort(list, cmp)
       testIfSorted(false)
     }
@@ -132,21 +126,18 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
     def test[T <: AnyRef with Comparable[T]: ClassTag](toElem: Int => T): Unit = {
       val list = factory.fromElements[T](range.map(toElem).sorted: _*)
 
-      for (i <- Seq(range.head, range.last, range(range.size/3),
-        range(range.size/2), range(3*range.size/5))) {
+      for (i <- Seq(range.head, range.last, range(range.size / 3), range(range.size / 2),
+              range(3 * range.size / 5))) {
         assertEquals(i, ju.Collections.binarySearch(list, toElem(i)))
       }
 
       // If not found it should return: -(insertion point) - 1
       assertEquals(-1, ju.Collections.binarySearch(list, toElem(-1)))
       assertEquals(-1, ju.Collections.binarySearch(list, toElem(-42)))
-      assertEquals(-range.size - 1,
-        ju.Collections.binarySearch(list, toElem(range.last + 1)))
-      assertEquals(-range.size - 1,
-        ju.Collections.binarySearch(list, toElem(range.last + 42)))
+      assertEquals(-range.size - 1, ju.Collections.binarySearch(list, toElem(range.last + 1)))
+      assertEquals(-range.size - 1, ju.Collections.binarySearch(list, toElem(range.last + 42)))
       list.remove(range.last / 2)
-      assertEquals(-(range.last / 2) - 1,
-        ju.Collections.binarySearch(list, toElem(range.last / 2)))
+      assertEquals(-(range.last / 2) - 1, ju.Collections.binarySearch(list, toElem(range.last / 2)))
     }
 
     test[jl.Integer](jl.Integer.valueOf)
@@ -161,21 +152,18 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
         override def compare(o1: T, o2: T): Int = cmpFun(o1, o2)
       }
 
-      val list = factory.fromElements[T](
-          range.map(toElem).sortWith(cmpFun(_, _) < 0): _*)
+      val list = factory.fromElements[T](range.map(toElem).sortWith(cmpFun(_, _) < 0): _*)
 
-      for (i <- Seq(range.head, range.last, range(range.size/3),
-        range(range.size/2), range(3*range.size/5))) {
+      for (i <- Seq(range.head, range.last, range(range.size / 3), range(range.size / 2),
+              range(3 * range.size / 5))) {
         assertEquals(i, ju.Collections.binarySearch(list, toElem(i), cmp))
       }
 
       // If not found it should return: -(insertion point) - 1
       assertEquals(-1, ju.Collections.binarySearch(list, toElem(-1), cmp))
       assertEquals(-1, ju.Collections.binarySearch(list, toElem(-42), cmp))
-      assertEquals(-range.size - 1,
-          ju.Collections.binarySearch(list, toElem(range.last + 1), cmp))
-      assertEquals(-range.size - 1,
-          ju.Collections.binarySearch(list, toElem(range.last + 42), cmp))
+      assertEquals(-range.size - 1, ju.Collections.binarySearch(list, toElem(range.last + 1), cmp))
+      assertEquals(-range.size - 1, ju.Collections.binarySearch(list, toElem(range.last + 42), cmp))
       list.remove(range.last / 2)
       assertEquals(-(range.last / 2) - 1,
           ju.Collections.binarySearch(list, toElem(range.last / 2), cmp))

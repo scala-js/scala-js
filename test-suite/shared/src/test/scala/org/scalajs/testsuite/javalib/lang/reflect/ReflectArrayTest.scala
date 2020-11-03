@@ -38,8 +38,7 @@ class ReflectArrayTest {
   }
 
   @inline
-  def testNewInstance(clazz: Class[_], expectedClazz: Class[_],
-      sampleElem: Any): Unit = {
+  def testNewInstance(clazz: Class[_], expectedClazz: Class[_], sampleElem: Any): Unit = {
     testNewInstanceNoInline(clazz, length = 2, expectedClazz, sampleElem)
     testBase(clazz, length = 2, expectedClazz, sampleElem)
 

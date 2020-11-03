@@ -18,13 +18,13 @@ object Description {
 
     override def appendValue(value: AnyRef): Description = this
 
-    override def appendValueList[T](start: String, separator: String,
-        end: String, values: T*): Description = {
+    override def appendValueList[T](start: String, separator: String, end: String,
+        values: T*): Description = {
       this
     }
 
-    override def appendValueList[T](start: String, separator: String,
-        end: String, values: java.lang.Iterable[T]): Description = {
+    override def appendValueList[T](start: String, separator: String, end: String,
+        values: java.lang.Iterable[T]): Description = {
       this
     }
 
@@ -39,8 +39,7 @@ trait Description {
 
   def appendValue(value: AnyRef): Description
 
-  def appendValueList[T](start: String, separator: String, end: String,
-      values: T*): Description
+  def appendValueList[T](start: String, separator: String, end: String, values: T*): Description
 
   def appendValueList[T](start: String, separator: String, end: String,
       values: java.lang.Iterable[T]): Description

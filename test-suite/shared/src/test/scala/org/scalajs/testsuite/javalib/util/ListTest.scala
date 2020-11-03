@@ -455,16 +455,15 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
   }
 
   @Test def sortWithNaturalOrdering(): Unit = {
-    testSortWithNaturalOrdering[CustomComparable](new CustomComparable(_),
-        absoluteOrder = false)
+    testSortWithNaturalOrdering[CustomComparable](new CustomComparable(_), absoluteOrder = false)
     testSortWithNaturalOrdering[jl.Integer](jl.Integer.valueOf)
     testSortWithNaturalOrdering[jl.Long](_.toLong)
     testSortWithNaturalOrdering[jl.Double](_.toDouble)
   }
 
   @Test def sortWithComparator(): Unit = {
-    testSortWithComparator[CustomComparable](new CustomComparable(_),
-        (x, y) => x.compareTo(y), absoluteOrder = false)
+    testSortWithComparator[CustomComparable](new CustomComparable(_), (x, y) => x.compareTo(y),
+        absoluteOrder = false)
     testSortWithComparator[jl.Integer](_.toInt, (x, y) => x.compareTo(y))
     testSortWithComparator[jl.Long](_.toLong, (x, y) => x.compareTo(y))
     testSortWithComparator[jl.Double](_.toDouble, (x, y) => x.compareTo(y))
@@ -496,15 +495,14 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     for (seed <- List(0, 1, 42, -5432, 2341242)) {
       val rnd = new scala.util.Random(seed)
       list.clear()
-      list.addAll(
-          TrivialImmutableCollection(range.map(_ => toElem(rnd.nextInt())): _*))
+      list.addAll(TrivialImmutableCollection(range.map(_ => toElem(rnd.nextInt())): _*))
       list.sort(null)
       testIfSorted(false)
     }
   }
 
-  private def testSortWithComparator[T: ClassTag](toElem: Int => T,
-      cmpFun: (T, T) => Int, absoluteOrder: Boolean = true): Unit = {
+  private def testSortWithComparator[T: ClassTag](toElem: Int => T, cmpFun: (T, T) => Int,
+      absoluteOrder: Boolean = true): Unit = {
 
     val list = factory.empty[T]
 
@@ -533,8 +531,7 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     for (seed <- List(0, 1, 42, -5432, 2341242)) {
       val rnd = new scala.util.Random(seed)
       list.clear()
-      list.addAll(
-          TrivialImmutableCollection(range.map(_ => toElem(rnd.nextInt())): _*))
+      list.addAll(TrivialImmutableCollection(range.map(_ => toElem(rnd.nextInt())): _*))
       list.sort(cmp)
       testIfSorted(false)
     }

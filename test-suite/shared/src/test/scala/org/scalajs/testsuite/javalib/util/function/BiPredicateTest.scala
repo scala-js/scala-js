@@ -31,8 +31,10 @@ class BiPredicateTest {
     assertFalse("First false, Second true", evenAndInRange.test(6, 6))
     assertFalse("First false, Second false", evenAndInRange.test(21, 42))
 
-    assertFalse("Short-circuit: First false", largerThan10LessThan30.and(dontCallPredicate).test(5, 5))
-    assertThrows(classOf[ThrowingPredicateException], throwingPredicate.and(dontCallPredicate).test(5, 5))
+    assertFalse("Short-circuit: First false",
+        largerThan10LessThan30.and(dontCallPredicate).test(5, 5))
+    assertThrows(classOf[ThrowingPredicateException],
+        throwingPredicate.and(dontCallPredicate).test(5, 5))
   }
 
   @Test def negate(): Unit = {
@@ -56,17 +58,23 @@ class BiPredicateTest {
     assertTrue("First false, Second true", evenOrLargerThan10.test(6, 42))
     assertFalse("First false, Second false", evenOrLargerThan10.test(5, 21))
 
-    assertTrue("Short-circuit: First false", largerThan10LessThan30.or(dontCallPredicate).test(42, 22))
-    assertThrows(classOf[ThrowingPredicateException], throwingPredicate.or(dontCallPredicate).test(42, 22))
+    assertTrue("Short-circuit: First false",
+        largerThan10LessThan30.or(dontCallPredicate).test(42, 22))
+    assertThrows(classOf[ThrowingPredicateException],
+        throwingPredicate.or(dontCallPredicate).test(42, 22))
   }
 }
 
 object BiPredicateTest {
   final class ThrowingPredicateException(x: Any)
-    extends Exception(s"throwing predicate called with $x")
+      extends Exception(s"throwing predicate called with $x")
 
-  private val largerThan10LessThan30: BiPredicate[Int, Int] = makeBiPredicate { (t, u) => t > 10 && u < 30 }
-  private val even: BiPredicate[Int, Int] = makeBiPredicate { (t, u) => isEven(t) && isEven(u) }
+  private val largerThan10LessThan30: BiPredicate[Int, Int] = makeBiPredicate { (t, u) =>
+    t > 10 && u < 30
+  }
+  private val even: BiPredicate[Int, Int] = makeBiPredicate { (t, u) =>
+    isEven(t) && isEven(u)
+  }
 
   private val throwingPredicate: BiPredicate[Int, Int] = makeBiPredicate { (t, _) =>
     throw new ThrowingPredicateException(t)

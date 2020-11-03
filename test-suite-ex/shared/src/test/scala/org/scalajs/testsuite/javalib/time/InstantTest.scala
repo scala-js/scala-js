@@ -42,8 +42,7 @@ class InstantTest {
     test(31556889864403199L, 999999999) // biggest allowed value
 
     def testException(epochSecond: Long, nano: Int): Unit = {
-      assertThrows(classOf[DateTimeException],
-          Instant.ofEpochSecond(epochSecond, nano))
+      assertThrows(classOf[DateTimeException], Instant.ofEpochSecond(epochSecond, nano))
     }
 
     testException(-31557014167219201L, 999999999) // 1ns before the smallest allowed value
@@ -64,8 +63,7 @@ class InstantTest {
      */
 
     def test(expected: Long, epochSecond: Long, nano: Int): Unit = {
-      assertEquals(expected,
-          Instant.ofEpochSecond(epochSecond, nano).toEpochMilli())
+      assertEquals(expected, Instant.ofEpochSecond(epochSecond, nano).toEpochMilli())
     }
 
     test(123456L, 123L, 456000000)

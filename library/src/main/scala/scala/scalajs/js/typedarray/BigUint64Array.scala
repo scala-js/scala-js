@@ -21,8 +21,7 @@ import scala.scalajs.js.annotation._
  */
 @js.native
 @JSGlobal
-class BigUint64Array private[this] ()
-    extends TypedArray[js.BigInt, BigUint64Array] {
+class BigUint64Array private[this] () extends TypedArray[js.BigInt, BigUint64Array] {
 
   /** Constructs a BigUint64Array with the given length. Initialized to all 0 */
   def this(length: Int) = this()
@@ -43,7 +42,6 @@ class BigUint64Array private[this] ()
   def this(buffer: ArrayBuffer, byteOffset: Int = 0, length: Int = js.native) = this()
 
 }
-
 
 /** <span class="badge badge-ecma2019" style="float: right;">ECMAScript 2019</span>
  *  [[BigUint64Array]] companion

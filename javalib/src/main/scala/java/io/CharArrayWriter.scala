@@ -12,7 +12,7 @@
 
 package java.io
 
-class CharArrayWriter(initialSize: Int)  extends Writer {
+class CharArrayWriter(initialSize: Int) extends Writer {
   if (initialSize < 0)
     throw new IllegalArgumentException("size must be >= 0")
 

@@ -22,6 +22,7 @@ import java.nio._
  *  the native byte order of the platform.
  */
 object TypedArrayBuffer {
+
   /** Wraps an [[ArrayBuffer]] in a direct [[java.nio.ByteBuffer ByteBuffer]]. */
   def wrap(array: ArrayBuffer): ByteBuffer =
     TypedArrayBufferBridge.wrap(array)

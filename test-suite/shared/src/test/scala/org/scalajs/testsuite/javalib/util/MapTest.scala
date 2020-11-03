@@ -485,17 +485,14 @@ trait MapTest {
 
     assertTrue(values.contains(testObj(33)))
 
-    val coll1 = TrivialImmutableCollection(testObj(11), testObj(22),
-        testObj(33))
+    val coll1 = TrivialImmutableCollection(testObj(11), testObj(22), testObj(33))
     assertTrue(values.containsAll(coll1))
 
-    val coll2 = TrivialImmutableCollection(testObj(11), testObj(22),
-        testObj(33), testObj(44))
+    val coll2 = TrivialImmutableCollection(testObj(11), testObj(22), testObj(33), testObj(44))
     assertFalse(values.containsAll(coll2))
 
     if (factory.allowsNullValuesQueries) {
-      val coll3 = TrivialImmutableCollection(testObj(11), testObj(22),
-          testObj(33), null)
+      val coll3 = TrivialImmutableCollection(testObj(11), testObj(22), testObj(33), null)
       assertFalse(values.containsAll(coll3))
     }
   }
@@ -814,8 +811,7 @@ trait MapTest {
     assertTrue(mp.containsKey(testObj(2)))
     assertTrue(mp.containsKey(testObj(3)))
 
-    keySet.removeAll(TrivialImmutableCollection(testObj(1), testObj(2),
-        testObj(5)))
+    keySet.removeAll(TrivialImmutableCollection(testObj(1), testObj(2), testObj(5)))
 
     assertFalse(mp.containsKey(testObj(1)))
     assertFalse(mp.containsKey(testObj(2)))
@@ -829,8 +825,7 @@ trait MapTest {
     assertTrue(mp.containsKey(testObj(2)))
     assertTrue(mp.containsKey(testObj(3)))
 
-    keySet.retainAll(TrivialImmutableCollection(testObj(1), testObj(2),
-        testObj(5)))
+    keySet.retainAll(TrivialImmutableCollection(testObj(1), testObj(2), testObj(5)))
 
     assertTrue(mp.containsKey(testObj(1)))
     assertTrue(mp.containsKey(testObj(2)))
@@ -895,20 +890,20 @@ trait MapTest {
 
     assertTrue(entrySet.contains(SIE("THREE", "three")))
 
-    val coll1 = TrivialImmutableCollection(SIE("ONE", "one"),
-        SIE("TWO", "two"), SIE("THREE", "three"))
+    val coll1 =
+      TrivialImmutableCollection(SIE("ONE", "one"), SIE("TWO", "two"), SIE("THREE", "three"))
     assertTrue(entrySet.containsAll(coll1))
 
-    val coll2 = TrivialImmutableCollection(SIE("ONE", "one"),
-        SIE("TWO", "two"), SIE("THREE", "three"), SIE("FOUR", "four"))
+    val coll2 = TrivialImmutableCollection(SIE("ONE", "one"), SIE("TWO", "two"),
+        SIE("THREE", "three"), SIE("FOUR", "four"))
     assertFalse(entrySet.containsAll(coll2))
 
-    val coll3 = TrivialImmutableCollection(SIE("ONE", "one"),
-        SIE("TWO", "four"), SIE("THREE", "three"))
+    val coll3 =
+      TrivialImmutableCollection(SIE("ONE", "one"), SIE("TWO", "four"), SIE("THREE", "three"))
     assertFalse(entrySet.containsAll(coll3))
 
-    val coll4 = TrivialImmutableCollection(SIE("ONE", "one"),
-        SIE("four", "two"), SIE("THREE", "three"))
+    val coll4 =
+      TrivialImmutableCollection(SIE("ONE", "one"), SIE("four", "two"), SIE("THREE", "three"))
     assertFalse(entrySet.containsAll(coll4))
   }
 
@@ -946,8 +941,7 @@ trait MapTest {
     assertTrue(entrySet.containsAll(coll1))
 
     val coll2 = TrivialImmutableCollection(SIE(testObj(1), testObj(11)),
-        SIE(testObj(2), testObj(22)), SIE(testObj(3), testObj(33)),
-        SIE(testObj(4), testObj(44)))
+        SIE(testObj(2), testObj(22)), SIE(testObj(3), testObj(33)), SIE(testObj(4), testObj(44)))
     assertFalse(entrySet.containsAll(coll2))
 
     val coll3 = TrivialImmutableCollection(SIE(testObj(1), testObj(11)),
@@ -999,8 +993,8 @@ trait MapTest {
     assertTrue(mp.containsKey("TWO"))
     assertTrue(mp.containsKey("THREE"))
 
-    entrySet.removeAll(TrivialImmutableCollection(SIE("ONE", "one"),
-        SIE("TWO", "two"), SIE("THREE", "four"), "THREE", 42))
+    entrySet.removeAll(TrivialImmutableCollection(SIE("ONE", "one"), SIE("TWO", "two"),
+            SIE("THREE", "four"), "THREE", 42))
 
     assertFalse(mp.containsKey("ONE"))
     assertFalse(mp.containsKey("TWO"))
@@ -1014,8 +1008,8 @@ trait MapTest {
     assertTrue(mp.containsKey("TWO"))
     assertTrue(mp.containsKey("THREE"))
 
-    entrySet.retainAll(TrivialImmutableCollection(SIE("ONE", "one"),
-        SIE("TWO", "two"), SIE("THREE", "four"), "THREE", 42))
+    entrySet.retainAll(TrivialImmutableCollection(SIE("ONE", "one"), SIE("TWO", "two"),
+            SIE("THREE", "four"), "THREE", 42))
 
     assertTrue(mp.containsKey("ONE"))
     assertTrue(mp.containsKey("TWO"))
@@ -1063,8 +1057,7 @@ trait MapTest {
     assertTrue(mp.containsKey(testObj(3)))
 
     entrySet.removeAll(TrivialImmutableCollection(SIE(testObj(1), testObj(11)),
-        SIE(testObj(2), testObj(22)), SIE(testObj(3), testObj(44)),
-        testObj(3), 42))
+            SIE(testObj(2), testObj(22)), SIE(testObj(3), testObj(44)), testObj(3), 42))
 
     assertFalse(mp.containsKey(testObj(1)))
     assertFalse(mp.containsKey(testObj(2)))
@@ -1079,8 +1072,7 @@ trait MapTest {
     assertTrue(mp.containsKey(testObj(3)))
 
     entrySet.retainAll(TrivialImmutableCollection(SIE(testObj(1), testObj(11)),
-        SIE(testObj(2), testObj(22)), SIE(testObj(3), testObj(44)),
-        testObj(3), 42))
+            SIE(testObj(2), testObj(22)), SIE(testObj(3), testObj(44)), testObj(3), 42))
 
     assertTrue(mp.containsKey(testObj(1)))
     assertTrue(mp.containsKey(testObj(2)))
@@ -1179,7 +1171,8 @@ trait MapTest {
       assertNull(mp.get("ONE"))
       assertEquals("it was null", mp.get("nullable"))
     } else {
-      assertThrows(classOf[NullPointerException], mp.replaceAll(new BiFunction[String, String, String] {
+      assertThrows(classOf[NullPointerException],
+          mp.replaceAll(new BiFunction[String, String, String] {
         def apply(key: String, value: String): String = null
       }))
     }

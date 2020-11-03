@@ -386,8 +386,7 @@ class IntTest {
     !Platform.scalaVersion.startsWith("2.11.")
 
   @Test def intShiftLeftLongConstantFolded(): Unit = {
-    assumeTrue("scalac must correctly handle int shift long",
-        scalacCorrectlyHandlesIntShiftLong)
+    assumeTrue("scalac must correctly handle int shift long", scalacCorrectlyHandlesIntShiftLong)
 
     assert(0x01030507 << 36L == 271601776)
     val r = 0x01030507 << 36L
@@ -406,8 +405,7 @@ class IntTest {
   }
 
   @Test def intShiftLogicalRightLongConstantFolded(): Unit = {
-    assumeTrue("scalac must correctly handle int shift long",
-        scalacCorrectlyHandlesIntShiftLong)
+    assumeTrue("scalac must correctly handle int shift long", scalacCorrectlyHandlesIntShiftLong)
 
     assert(0x90503010 >>> 36L == 151323393)
     val r = 0x90503010 >>> 36L
@@ -426,8 +424,7 @@ class IntTest {
   }
 
   @Test def intShiftArithmeticRightLongConstantFolded(): Unit = {
-    assumeTrue("scalac must correctly handle int shift long",
-        scalacCorrectlyHandlesIntShiftLong)
+    assumeTrue("scalac must correctly handle int shift long", scalacCorrectlyHandlesIntShiftLong)
 
     assert(0x90503010 >> 36L == -117112063)
     val r = 0x90503010 >> 36L

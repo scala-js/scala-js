@@ -40,7 +40,7 @@ object MathContext {
     checkNotNull(s, "null string")
     val precisionLength = "precision=".length
     val roundingModeLength = "roundingMode=".length
-    val spaceIndex= s.indexOf(' ', precisionLength)
+    val spaceIndex = s.indexOf(' ', precisionLength)
 
     if (!s.startsWith("precision=") || spaceIndex == -1)
       invalidMathContext("Missing precision", s)
@@ -100,7 +100,7 @@ class MathContext(setPrecision: Int, setRoundingMode: RoundingMode) {
   override def equals(x: Any): Boolean = x match {
     case that: MathContext =>
       this.precision == that.precision &&
-      this.roundingMode == that.roundingMode
+        this.roundingMode == that.roundingMode
     case _ =>
       false
   }

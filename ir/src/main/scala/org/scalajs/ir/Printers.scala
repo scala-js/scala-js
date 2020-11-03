@@ -50,8 +50,8 @@ object Printers {
   }
 
   class IRTreePrinter(protected val out: Writer) extends IndentationManager {
-    protected final def printColumn(ts: List[IRNode], start: String,
-        sep: String, end: String): Unit = {
+    protected final def printColumn(ts: List[IRNode], start: String, sep: String,
+        end: String): Unit = {
       print(start); indent()
       var rest = ts
       while (rest.nonEmpty) {
@@ -384,8 +384,8 @@ object Printers {
           print(rhs)
           print(')')
 
-        case BinaryOp(BinaryOp.Double_-,
-            IntLiteral(0) | FloatLiteral(0.0f) | DoubleLiteral(0.0), rhs) =>
+        case BinaryOp(BinaryOp.Double_-, IntLiteral(0) | FloatLiteral(0.0f) | DoubleLiteral(0.0),
+                rhs) =>
           print("(-")
           print(rhs)
           print(')')
@@ -497,7 +497,7 @@ object Printers {
         case RecordValue(tpe, elems) =>
           print('(')
           var first = true
-          for ((field, value) <- tpe.fields zip elems) {
+          for ((field, value) <- tpe.fields.zip(elems)) {
             if (first) first = false
             else print(", ")
             print(field.name)
@@ -567,7 +567,7 @@ object Printers {
 
         case JSFunctionApply(fun, args) =>
           fun match {
-            case _:JSPrivateSelect | _:JSSelect | _:Select =>
+            case _: JSPrivateSelect | _: JSSelect | _: Select =>
               print("(0, ")
               print(fun)
               print(')')
@@ -948,7 +948,7 @@ object Printers {
           printBlock(body)
 
         case JSPropertyDef(flags, name, getterBody, setterArgAndBody) =>
-          getterBody foreach { body =>
+          getterBody.foreach { body =>
             print(flags.namespace.prefixString)
             print("get ")
             printJSMemberName(name)
@@ -960,7 +960,7 @@ object Printers {
             println()
           }
 
-          setterArgAndBody foreach { case (arg, body) =>
+          setterArgAndBody.foreach { case (arg, body) =>
             print(flags.namespace.prefixString)
             print("set ")
             printJSMemberName(name)
@@ -1125,8 +1125,7 @@ object Printers {
     def print(c: Int): Unit =
       out.write(c)
 
-    def print(optimizerHints: OptimizerHints)(
-        implicit dummy: DummyImplicit): Unit = {
+    def print(optimizerHints: OptimizerHints)(implicit dummy: DummyImplicit): Unit = {
       if (optimizerHints != OptimizerHints.empty) {
         print("@hints(")
         print(OptimizerHints.toBits(optimizerHints).toString)
@@ -1134,8 +1133,7 @@ object Printers {
       }
     }
 
-    def print(flags: ApplyFlags)(
-        implicit dummy1: DummyImplicit, dummy2: DummyImplicit): Unit = {
+    def print(flags: ApplyFlags)(implicit dummy1: DummyImplicit, dummy2: DummyImplicit): Unit = {
       if (flags.isPrivate)
         print("private::")
     }

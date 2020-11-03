@@ -16,8 +16,7 @@ import scala.annotation.tailrec
 
 import ScalaOps._
 
-abstract class AbstractList[E] protected () extends AbstractCollection[E]
-    with List[E] {
+abstract class AbstractList[E] protected () extends AbstractCollection[E] with List[E] {
   self =>
 
   override def add(element: E): Boolean = {
@@ -99,8 +98,8 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
           override def listIterator(index: Int): ListIterator[E] = {
             checkIndexOnBounds(index)
             // Iterator that accesses the original list using it's iterator
-            new BackedUpListIterator(list.listIterator(fromIndex + index),
-                fromIndex, selfView.toIndex - fromIndex) {
+            new BackedUpListIterator(list.listIterator(fromIndex + index), fromIndex,
+                selfView.toIndex - fromIndex) {
               override protected def onSizeChanged(delta: Int): Unit = changeViewSize(delta)
             }
           }
@@ -115,15 +114,16 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
       o match {
         case o: List[_] =>
           val oIter = o.listIterator()
-          this.scalaOps.forall(oIter.hasNext() && Objects.equals(_, oIter.next())) && !oIter.hasNext()
+          this.scalaOps.forall(oIter.hasNext() && Objects.equals(_, oIter.next())) && !oIter
+            .hasNext()
         case _ => false
       }
     }
   }
 
   override def hashCode(): Int = {
-    this.scalaOps.foldLeft(1) {
-      (prev, elem) => 31 * prev + Objects.hashCode(elem)
+    this.scalaOps.foldLeft(1) { (prev, elem) =>
+      31 * prev + Objects.hashCode(elem)
     }
   }
 
@@ -146,8 +146,9 @@ abstract class AbstractList[E] protected () extends AbstractCollection[E]
   }
 }
 
-private abstract class AbstractListView[E](protected val list: List[E],
-    fromIndex: Int, protected var toIndex: Int) extends AbstractList[E] {
+private abstract class AbstractListView[E](protected val list: List[E], fromIndex: Int,
+    protected var toIndex: Int)
+    extends AbstractList[E] {
 
   override def add(index: Int, e: E): Unit = {
     checkIndexOnBounds(index)
@@ -197,7 +198,8 @@ private abstract class AbstractListView[E](protected val list: List[E],
  * elements by index.
  */
 private class BackedUpListIterator[E](innerIterator: ListIterator[E], fromIndex: Int,
-    override protected var end: Int) extends ListIterator[E] with SizeChangeEvent {
+    override protected var end: Int)
+    extends ListIterator[E] with SizeChangeEvent {
 
   def hasNext(): Boolean =
     i < end

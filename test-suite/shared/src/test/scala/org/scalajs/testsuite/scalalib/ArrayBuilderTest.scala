@@ -276,7 +276,7 @@ class ArrayBuilderTest {
   @Test def addAll(): Unit = {
     assumeFalse("Needs at least Scala 2.13",
         scalaVersion.startsWith("2.11.") ||
-        scalaVersion.startsWith("2.12."))
+          scalaVersion.startsWith("2.12."))
 
     val b = ArrayBuilder.make[Int]
     val arr = Array[Int](1, 2, 3, 4, 5)

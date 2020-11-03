@@ -30,7 +30,9 @@ class ThrowableJSTest {
     assumeTrue("Requires ECMAScript 2015", assumingES6)
 
     val t: Any = new Throwable("foo")
-    val str = js.constructorOf[js.Object].prototype
+    val str = js
+      .constructorOf[js.Object]
+      .prototype
       .selectDynamic("toString")
       .call(t.asInstanceOf[js.Any])
     assertEquals("[object Error]", str)

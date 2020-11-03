@@ -141,8 +141,8 @@ class CharacterTest {
   }
 
   @Test def isSurrogatePair(): Unit = {
-    val chars = List[Char](0, 1234, 0xd7ff, 0xd800, 0xd954, 0xdbff, 0xdc00,
-        0xdd45, 0xdfff, 0xe000, 0xea65, 0xffff)
+    val chars = List[Char](0, 1234, 0xd7ff, 0xd800, 0xd954, 0xdbff, 0xdc00, 0xdd45, 0xdfff, 0xe000,
+        0xea65, 0xffff)
 
     for {
       high <- chars
@@ -202,13 +202,13 @@ class CharacterTest {
 
   @Test def isISOControl(): Unit = {
     val isoControlChars = (('\u0000' to '\u001F') ++
-        ('\u007F' to '\u009F')).map(_.toInt).toSet
-    isoControlChars foreach { c =>
+      ('\u007F' to '\u009F')).map(_.toInt).toSet
+    isoControlChars.foreach { c =>
       assertEquals(true, Character.isISOControl(c))
     }
 
     val randomInts = List.fill(100)(scala.util.Random.nextInt)
-    ((-1000 to 1000) ++ randomInts).filterNot(isoControlChars) foreach { c =>
+    ((-1000 to 1000) ++ randomInts).filterNot(isoControlChars).foreach { c =>
       assertEquals(false, Character.isISOControl(c))
     }
   }
@@ -222,8 +222,7 @@ class CharacterTest {
         assertEquals(expected, Character.digit(codePoint.toChar, MAX_RADIX))
 
       if (expected != -1) {
-        assertEquals(expected,
-            Character.digit(codePoint, Math.max(expected + 1, MIN_RADIX)))
+        assertEquals(expected, Character.digit(codePoint, Math.max(expected + 1, MIN_RADIX)))
 
         if (expected >= MIN_RADIX)
           assertEquals(-1, Character.digit(codePoint, expected))
@@ -263,11 +262,10 @@ class CharacterTest {
 
     // Every single valid digit
 
-    val All0s = Array[Int]('0', 0x660, 0x6f0, 0x7c0, 0x966, 0x9e6, 0xa66,
-        0xae6, 0xb66, 0xbe6, 0xc66, 0xce6, 0xd66, 0xe50, 0xed0, 0xf20, 0x1040,
-        0x1090, 0x17e0, 0x1810, 0x1946, 0x19d0, 0x1a80, 0x1a90, 0x1b50, 0x1bb0,
-        0x1c40, 0x1c50, 0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xaa50, 0xabf0, 0xff10,
-        0x104a0, 0x11066, 0x110f0, 0x11136, 0x111d0, 0x116c0, 0x1d7ce, 0x1d7d8,
+    val All0s = Array[Int]('0', 0x660, 0x6f0, 0x7c0, 0x966, 0x9e6, 0xa66, 0xae6, 0xb66, 0xbe6,
+        0xc66, 0xce6, 0xd66, 0xe50, 0xed0, 0xf20, 0x1040, 0x1090, 0x17e0, 0x1810, 0x1946, 0x19d0,
+        0x1a80, 0x1a90, 0x1b50, 0x1bb0, 0x1c40, 0x1c50, 0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xaa50,
+        0xabf0, 0xff10, 0x104a0, 0x11066, 0x110f0, 0x11136, 0x111d0, 0x116c0, 0x1d7ce, 0x1d7d8,
         0x1d7e2, 0x1d7ec, 0x1d7f6)
 
     for {
@@ -298,11 +296,11 @@ class CharacterTest {
   }
 
   @Test def toChars(): Unit = {
-    assertTrue(Character.toChars(0x61) sameElements Array('a'))
-    assertTrue(Character.toChars(0x10000) sameElements Array('\uD800', '\uDC00'))
-    assertTrue(Character.toChars(0x10001) sameElements Array('\uD800', '\uDC01'))
-    assertTrue(Character.toChars(0x10401) sameElements Array('\uD801', '\uDC01'))
-    assertTrue(Character.toChars(0x10FFFF) sameElements Array('\uDBFF', '\uDFFF'))
+    assertTrue(Character.toChars(0x61).sameElements(Array('a')))
+    assertTrue(Character.toChars(0x10000).sameElements(Array('\uD800', '\uDC00')))
+    assertTrue(Character.toChars(0x10001).sameElements(Array('\uD800', '\uDC01')))
+    assertTrue(Character.toChars(0x10401).sameElements(Array('\uD801', '\uDC01')))
+    assertTrue(Character.toChars(0x10ffff).sameElements(Array('\uDBFF', '\uDFFF')))
 
     expectThrows(classOf[IllegalArgumentException], Character.toChars(Integer.MAX_VALUE))
   }
@@ -311,35 +309,38 @@ class CharacterTest {
     locally {
       val dst = new Array[Char](2)
       assertEquals(1, Character.toChars(0x61, dst, 0))
-      assertTrue(dst sameElements Array('a', 0.toChar))
+      assertTrue(dst.sameElements(Array('a', 0.toChar)))
     }
     locally {
       val dst = new Array[Char](2)
       assertEquals(1, Character.toChars(0x61, dst, 1))
-      assertTrue(dst sameElements Array(0.toChar, 'a'))
+      assertTrue(dst.sameElements(Array(0.toChar, 'a')))
     }
     locally {
       val dst = new Array[Char](2)
       assertEquals(2, Character.toChars(0x10000, dst, 0))
-      assertTrue(dst sameElements Array('\uD800', '\uDC00'))
+      assertTrue(dst.sameElements(Array('\uD800', '\uDC00')))
     }
     locally {
       val dst = new Array[Char](3)
       assertEquals(2, Character.toChars(0x10001, dst, 0))
-      assertTrue(dst sameElements Array('\uD800', '\uDC01', 0.toChar))
+      assertTrue(dst.sameElements(Array('\uD800', '\uDC01', 0.toChar)))
     }
     locally {
       val dst = new Array[Char](3)
       assertEquals(2, Character.toChars(0x10401, dst, 1))
-      assertTrue(dst sameElements Array(0.toChar, '\uD801', '\uDC01'))
+      assertTrue(dst.sameElements(Array(0.toChar, '\uD801', '\uDC01')))
     }
     locally {
       val dst = new Array[Char](4)
-      assertEquals(2, Character.toChars(0x10FFFF, dst, 2))
-      assertTrue(dst sameElements Array(0.toChar, 0.toChar, '\uDBFF', '\uDFFF'))
+      assertEquals(2, Character.toChars(0x10ffff, dst, 2))
+      assertTrue(dst.sameElements(Array(0.toChar, 0.toChar, '\uDBFF', '\uDFFF')))
     }
 
-    expectThrows(classOf[IllegalArgumentException], Character.toChars(Integer.MAX_VALUE, new Array(2), 0))
+    expectThrows(
+        classOf[IllegalArgumentException],
+        Character.toChars(Integer.MAX_VALUE, new Array(2), 0)
+    )
   }
 
   @Test def isDigit(): Unit = {
@@ -612,7 +613,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
   if (cpStr.toLowerCase() != lowerCPStr)
     println(s"    assertEquals(${format(lowerCP)}, Character.toLowerCase(${format(cp)})) // $cpStr => $lowerCPStr")
 }
-  */
+   */
   @Test def toLowerCase_CodePoint_StringLowerCase_diff_CharacterLowerCase(): Unit = {
     assertEquals(0x0069, Character.toLowerCase(0x0130)) // İ => i
   }
@@ -632,8 +633,8 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertEquals(0x0041, Character.toUpperCase(0x0061)) // a => A
     assertEquals(0x0046, Character.toUpperCase(0x0066)) // f => F
     assertEquals(0x005a, Character.toUpperCase(0x007a)) // z => Z
-    assertEquals(0x0392, Character.toUpperCase(0x03D0)) // β => Β
-    assertEquals(0x039C, Character.toUpperCase(0x00B5)) // μ => Μ
+    assertEquals(0x0392, Character.toUpperCase(0x03d0)) // β => Β
+    assertEquals(0x039c, Character.toUpperCase(0x00b5)) // μ => Μ
 
     // ASCII, letters, no change
     assertEquals(0x0041, Character.toUpperCase(0x0041)) // A => A
@@ -727,7 +728,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
   if (cpStr.toUpperCase() != upperCPStr)
     println(s"    assertEquals(${format(upperCP)}, Character.toUpperCase(${format(cp)})) // $cpStr => $upperCPStr")
 }
-  */
+   */
   @Test def toUpperCase_CodePoint_StringUpperCase_diff_CharacterUpperCase(): Unit = {
     assertEquals(0x00df, Character.toUpperCase(0x00df)) // ß => ß
     assertEquals(0x0149, Character.toUpperCase(0x0149)) // ŉ => ŉ
@@ -893,7 +894,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertEquals(0x1faf, Character.toTitleCase(0x1faf))
   }
 
-/*
+  /*
 def format(codePoint: Int): String = "0x%04x".format(codePoint)
 
 for (cp <- 0 to Character.MAX_CODE_POINT) {
@@ -904,7 +905,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
   if (cpStr.toUpperCase() != titleCPStr)
     println(s"    assertEquals(${format(titleCP)}, Character.toTitleCase(${format(cp)})) // $cpStr => $titleCPStr")
 }
-*/
+   */
   @Test def toTitleCase_CodePoint_StringUpperCase_diff_CharacterTitleCase(): Unit = {
     assertEquals(0x00df, Character.toTitleCase(0x00df)) // ß => ß
     assertEquals(0x0149, Character.toTitleCase(0x0149)) // ŉ => ŉ

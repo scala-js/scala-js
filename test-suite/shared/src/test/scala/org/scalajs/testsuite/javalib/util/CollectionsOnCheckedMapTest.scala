@@ -34,8 +34,7 @@ trait CollectionsOnCheckedMapTest extends CollectionsOnMapsTest {
 
       def empty[K, V](implicit kct: ClassTag[K], vct: ClassTag[V]): ju.Map[K, V] = {
         ju.Collections.checkedMap(originalFactory.empty[K, V],
-            kct.runtimeClass.asInstanceOf[Class[K]],
-            vct.runtimeClass.asInstanceOf[Class[V]])
+            kct.runtimeClass.asInstanceOf[Class[K]], vct.runtimeClass.asInstanceOf[Class[V]])
       }
 
       override def allowsNullKeys: Boolean =
@@ -81,8 +80,7 @@ trait CollectionsOnCheckedSortedMapTest extends CollectionsOnSortedMapsTest {
 
       def empty[K, V](implicit kct: ClassTag[K], vct: ClassTag[V]): ju.SortedMap[K, V] = {
         ju.Collections.checkedSortedMap(originalFactory.empty[K, V],
-            kct.runtimeClass.asInstanceOf[Class[K]],
-            vct.runtimeClass.asInstanceOf[Class[V]])
+            kct.runtimeClass.asInstanceOf[Class[K]], vct.runtimeClass.asInstanceOf[Class[V]])
       }
 
       override def allowsNullKeys: Boolean =
@@ -117,13 +115,11 @@ trait CollectionsOnCheckedSortedMapTest extends CollectionsOnSortedMapsTest {
     factory.empty[B, B].asInstanceOf[ju.Map[A, A]]
 }
 
-class CollectionsOnCheckedMapOnHashMapTest
-    extends CollectionsOnCheckedMapTest {
+class CollectionsOnCheckedMapOnHashMapTest extends CollectionsOnCheckedMapTest {
   def originalFactory: MapFactory = new HashMapFactory
 }
 
-class CollectionsOnCheckedMapOnLinkedHashMapInsertionOrderTest
-    extends CollectionsOnCheckedMapTest {
+class CollectionsOnCheckedMapOnLinkedHashMapInsertionOrderTest extends CollectionsOnCheckedMapTest {
   def originalFactory: MapFactory = new LinkedHashMapFactory(false, None)
 }
 
@@ -132,8 +128,7 @@ class CollectionsOnCheckedMapOnLinkedHashMapInsertionOrderWithLimitTest
   def originalFactory: MapFactory = new LinkedHashMapFactory(false, Some(50))
 }
 
-class CollectionsOnCheckedMapOnLinkedHashMapAccessOrderTest
-    extends CollectionsOnCheckedMapTest {
+class CollectionsOnCheckedMapOnLinkedHashMapAccessOrderTest extends CollectionsOnCheckedMapTest {
   def originalFactory: MapFactory = new LinkedHashMapFactory(true, None)
 }
 

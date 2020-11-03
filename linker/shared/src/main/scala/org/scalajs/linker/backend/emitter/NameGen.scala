@@ -66,8 +66,7 @@ private[emitter] final class NameGen {
     cache
   }
 
-  private def genNameGeneric[N <: Name](name: N,
-      cache: mutable.Map[N, String]): String = {
+  private def genNameGeneric[N <: Name](name: N, cache: mutable.Map[N, String]): String = {
 
     cache.getOrElseUpdate(name, {
       val encoded = name.encoded
@@ -205,8 +204,7 @@ private[emitter] final class NameGen {
     })
   }
 
-  def genOriginalName(name: Name, originalName: OriginalName,
-      jsName: String): OriginalName = {
+  def genOriginalName(name: Name, originalName: OriginalName, jsName: String): OriginalName = {
     genOriginalName(name.encoded, originalName, jsName)
   }
 
@@ -362,13 +360,54 @@ private object NameGen {
    *    cliffs we can trigger with that.
    */
   private final val ReservedJSIdentifierNames: Set[String] = Set(
-      "arguments", "break", "case", "catch", "class", "const", "continue",
-      "debugger", "default", "delete", "do", "else", "enum", "eval", "export",
-      "extends", "false", "finally", "for", "function", "if", "implements",
-      "import", "in", "instanceof", "interface", "let", "new", "null",
-      "package", "private", "protected", "public", "return", "static", "super",
-      "switch", "this", "throw", "true", "try", "typeof", "undefined", "var",
-      "void", "while", "with", "yield"
+      "arguments",
+      "break",
+      "case",
+      "catch",
+      "class",
+      "const",
+      "continue",
+      "debugger",
+      "default",
+      "delete",
+      "do",
+      "else",
+      "enum",
+      "eval",
+      "export",
+      "extends",
+      "false",
+      "finally",
+      "for",
+      "function",
+      "if",
+      "implements",
+      "import",
+      "in",
+      "instanceof",
+      "interface",
+      "let",
+      "new",
+      "null",
+      "package",
+      "private",
+      "protected",
+      "public",
+      "return",
+      "static",
+      "super",
+      "switch",
+      "this",
+      "throw",
+      "true",
+      "try",
+      "typeof",
+      "undefined",
+      "var",
+      "void",
+      "while",
+      "with",
+      "yield"
   )
 
   private val compressedPrefixes: List[(UTF8String, String)] = {

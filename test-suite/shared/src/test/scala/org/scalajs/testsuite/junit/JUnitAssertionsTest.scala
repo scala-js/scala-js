@@ -218,10 +218,13 @@ class JUnitAssertionsTest {
 
   @Test
   def testAssertEqualsDouble(): Unit = {
-    def testDoubleAssertion(expected: Double, actual: Double, delta: Double, equals: Boolean = true): Unit = {
-      testIfAsserts(assertEquals(s"Asserting $expected == $actual", expected, actual, delta), equals)
+    def testDoubleAssertion(expected: Double, actual: Double, delta: Double,
+        equals: Boolean = true): Unit = {
+      testIfAsserts(assertEquals(s"Asserting $expected == $actual", expected, actual, delta),
+          equals)
       testIfAsserts(assertEquals(expected, actual, delta), equals)
-      testIfAsserts(assertNotEquals(s"Asserting $expected != $actual", expected, actual, delta), !equals)
+      testIfAsserts(assertNotEquals(s"Asserting $expected != $actual", expected, actual, delta),
+          !equals)
       testIfAsserts(assertNotEquals(expected, actual, delta), !equals)
     }
 
@@ -238,9 +241,11 @@ class JUnitAssertionsTest {
   def testAssertEqualsFloat(): Unit = {
     def testFloatAssertion(expected: Float, actual: Float, delta: Float,
         equals: Boolean = true): Unit = {
-      testIfAsserts(assertEquals(s"Asserting $expected == $actual", expected, actual, delta), equals)
+      testIfAsserts(assertEquals(s"Asserting $expected == $actual", expected, actual, delta),
+          equals)
       testIfAsserts(assertEquals(expected, actual, delta), equals)
-      testIfAsserts(assertNotEquals(s"Asserting $expected != $actual", expected, actual, delta), !equals)
+      testIfAsserts(assertNotEquals(s"Asserting $expected != $actual", expected, actual, delta),
+          !equals)
       testIfAsserts(assertNotEquals(expected, actual, delta), !equals)
     }
 
@@ -261,49 +266,46 @@ class JUnitAssertionsTest {
     val message = "Should be different up to != operator"
 
     def testAnyRefAssertion(expected: Array[AnyRef], actual: Array[AnyRef],
-                            equals: Boolean = true): Unit = {
+        equals: Boolean = true): Unit = {
       testIfAsserts(assertArrayEquals(message, expected, actual), equals)
       testIfAsserts(assertArrayEquals(expected, actual), equals)
     }
-    def testIntAssertion(expected: Array[Int], actual: Array[Int],
-                         equals: Boolean = true): Unit = {
+    def testIntAssertion(expected: Array[Int], actual: Array[Int], equals: Boolean = true): Unit = {
       testIfAsserts(assertArrayEquals(message, expected, actual), equals)
       testIfAsserts(assertArrayEquals(expected, actual), equals)
     }
     def testLongAssertion(expected: Array[Long], actual: Array[Long],
-                          equals: Boolean = true): Unit = {
+        equals: Boolean = true): Unit = {
       testIfAsserts(assertArrayEquals(message, expected, actual), equals)
       testIfAsserts(assertArrayEquals(expected, actual), equals)
     }
-
 
     // Array tests
     testAnyRefAssertion(arr1, arr1)
     testAnyRefAssertion(Array(obj1), Array(obj1))
     testAnyRefAssertion(Array(obj1, obj2, obj2), Array(obj1, obj2, obj2))
     testAnyRefAssertion(Array(obj1), Array("0"))
-    testAnyRefAssertion(Array(Array(1), Array(2, Array(3))),
-        Array(Array(1), Array(2, Array(3))))
+    testAnyRefAssertion(Array(Array(1), Array(2, Array(3))), Array(Array(1), Array(2, Array(3))))
     testIntAssertion(Array(1, 2, 3), Array(1, 2, 3))
     testLongAssertion(Array(1L, 2L, 3L), Array(1L, 2L, 3L))
 
     testAnyRefAssertion(Array(obj1), Array(obj2), NotEquals)
     testAnyRefAssertion(Array(obj1, obj2, obj2), Array(obj1, obj2, obj1), NotEquals)
     testAnyRefAssertion(Array(obj1), Array("4"), NotEquals)
-    testAnyRefAssertion(Array(Array(2), Array(2, Array(3))), Array(Array(1),
-        Array(2, Array(3))), NotEquals)
-    testAnyRefAssertion(Array(Array(1, 2), Array(2, Array(3))),
-        Array(Array(1), Array(2, Array(3))), NotEquals)
-    testAnyRefAssertion(Array(Array(1), Array(2, Array(3))),
-        Array(Array(1, 4), Array(2, Array(3))), NotEquals)
+    testAnyRefAssertion(Array(Array(2), Array(2, Array(3))), Array(Array(1), Array(2, Array(3))),
+        NotEquals)
+    testAnyRefAssertion(Array(Array(1, 2), Array(2, Array(3))), Array(Array(1), Array(2, Array(3))),
+        NotEquals)
+    testAnyRefAssertion(Array(Array(1), Array(2, Array(3))), Array(Array(1, 4), Array(2, Array(3))),
+        NotEquals)
     testIntAssertion(Array(1, 2, 3), Array(1, 3, 3), NotEquals)
     testLongAssertion(Array(1L, 2L, 3L), Array(1L, 1L, 3L), NotEquals)
   }
 
   @Test
   def testAssertArrayEqualsDouble(): Unit = {
-    def testDoubleAssertion(expected: Array[Double], actual: Array[Double],
-        delta: Double, equals: Boolean = true): Unit = {
+    def testDoubleAssertion(expected: Array[Double], actual: Array[Double], delta: Double,
+        equals: Boolean = true): Unit = {
       val message = "Should be different up to != operator"
       testIfAsserts(assertArrayEquals(message, expected, actual, delta), equals)
       testIfAsserts(assertArrayEquals(expected, actual, delta), equals)
@@ -317,8 +319,8 @@ class JUnitAssertionsTest {
 
   @Test
   def testAssertArrayEqualsFloats(): Unit = {
-    def testFloatAssertion(expected: Array[Float], actual: Array[Float],
-        delta: Float, equals: Boolean = true): Unit = {
+    def testFloatAssertion(expected: Array[Float], actual: Array[Float], delta: Float,
+        equals: Boolean = true): Unit = {
       val message = "Should be different up to != operator"
       testIfAsserts(assertArrayEquals(message, expected, actual, delta), equals)
       testIfAsserts(assertArrayEquals(expected, actual, delta), equals)
@@ -347,29 +349,27 @@ class JUnitAssertionsTest {
   def testExpectThrows(): Unit = {
     testIfAsserts(expectThrows(classOf[Exception], throw new Exception))
     testIfAsserts(expectThrows(classOf[IndexOutOfBoundsException],
-        throw new IndexOutOfBoundsException))
+            throw new IndexOutOfBoundsException))
 
     testIfAsserts {
       val ex = expectThrows(classOf[Exception], throw new Exception("abc"))
       assertEquals(ex.getMessage, "abc")
     }
 
-    testIfAsserts(expectThrows(classOf[IndexOutOfBoundsException],
-        throw new Exception), ShallNotPass)
-    testIfAsserts(expectThrows(classOf[IndexOutOfBoundsException],()),
+    testIfAsserts(expectThrows(classOf[IndexOutOfBoundsException], throw new Exception),
         ShallNotPass)
+    testIfAsserts(expectThrows(classOf[IndexOutOfBoundsException], ()), ShallNotPass)
   }
 
   @Test
   def testAssertThrows(): Unit = {
     testIfAsserts(assertThrows(classOf[Exception], throw new Exception))
     testIfAsserts(assertThrows(classOf[IndexOutOfBoundsException],
-        throw new IndexOutOfBoundsException))
+            throw new IndexOutOfBoundsException))
 
-    testIfAsserts(assertThrows(classOf[IndexOutOfBoundsException],
-        throw new Exception), ShallNotPass)
-    testIfAsserts(assertThrows(classOf[IndexOutOfBoundsException], ()),
+    testIfAsserts(assertThrows(classOf[IndexOutOfBoundsException], throw new Exception),
         ShallNotPass)
+    testIfAsserts(assertThrows(classOf[IndexOutOfBoundsException], ()), ShallNotPass)
   }
 
   @Test def testIfAssertsTest_issue_2252(): Unit = {
@@ -385,9 +385,8 @@ class JUnitAssertionsTest {
       case Success(_) =>
         fail("testIfAsserts should have failed")
 
-      case Failure(ex: AssertionError)
-          if ex.getMessage == "Assertion should have failed." =>
-        // As expected
+      case Failure(ex: AssertionError) if ex.getMessage == "Assertion should have failed." =>
+      // As expected
 
       case Failure(ex) =>
         throw ex
@@ -397,19 +396,17 @@ class JUnitAssertionsTest {
       case Success(_) =>
         fail("testIfAsserts should not succeed with <throw new AssertionError>")
 
-      case Failure(ex: AssertionError)
-          if ex.getMessage == "Assertion should not have failed." =>
-        // As expected
+      case Failure(ex: AssertionError) if ex.getMessage == "Assertion should not have failed." =>
+      // As expected
 
       case Failure(ex) => throw ex
     }
 
     Try(testIfAsserts(throw new AssertionError, ShallNotPass)) match {
       case Success(_) =>
-        // As expected
+      // As expected
 
-      case Failure(ex: AssertionError)
-          if ex.getMessage == "Assertion should have failed." =>
+      case Failure(ex: AssertionError) if ex.getMessage == "Assertion should have failed." =>
         fail("testIfAsserts should have succeed with <throw new AssertionError>")
 
       case Failure(ex) => throw ex

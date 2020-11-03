@@ -12,8 +12,7 @@
 
 package java.lang
 
-class StringBuilder
-    extends AnyRef with CharSequence with Appendable with java.io.Serializable {
+class StringBuilder extends AnyRef with CharSequence with Appendable with java.io.Serializable {
 
   private[this] var content: String = ""
 
@@ -94,8 +93,7 @@ class StringBuilder
     this
   }
 
-  def insert(index: Int, str: Array[scala.Char], offset: Int,
-      len: Int): StringBuilder = {
+  def insert(index: Int, str: Array[scala.Char], offset: Int, len: Int): StringBuilder = {
     insert(index, String.valueOf(str, offset, len))
   }
 
@@ -106,8 +104,7 @@ class StringBuilder
     val oldContent = content
     if (offset < 0 || offset > oldContent.length)
       throw new StringIndexOutOfBoundsException(offset)
-    content =
-      oldContent.substring(0, offset) + str + oldContent.substring(offset)
+    content = oldContent.substring(0, offset) + str + oldContent.substring(offset)
     this
   }
 
@@ -117,8 +114,7 @@ class StringBuilder
   def insert(dstOffset: Int, s: CharSequence): StringBuilder =
     insert(dstOffset, s: AnyRef)
 
-  def insert(dstOffset: Int, s: CharSequence, start: Int,
-      end: Int): StringBuilder = {
+  def insert(dstOffset: Int, s: CharSequence, start: Int, end: Int): StringBuilder = {
     insert(dstOffset, (if (s == null) "null" else s).subSequence(start, end))
   }
 
@@ -215,8 +211,7 @@ class StringBuilder
   def offsetByCodePoints(index: Int, codePointOffset: Int): Int =
     content.offsetByCodePoints(index, codePointOffset)
 
-  def getChars(srcBegin: Int, srcEnd: Int, dst: Array[scala.Char],
-      dstBegin: Int): Unit = {
+  def getChars(srcBegin: Int, srcEnd: Int, dst: Array[scala.Char], dstBegin: Int): Unit = {
     content.getChars(srcBegin, srcEnd, dst, dstBegin)
   }
 
@@ -224,8 +219,7 @@ class StringBuilder
     val oldContent = content
     if (index < 0 || index >= oldContent.length)
       throw new StringIndexOutOfBoundsException(index)
-    content =
-      oldContent.substring(0, index) + ch + oldContent.substring(index + 1)
+    content = oldContent.substring(0, index) + ch + oldContent.substring(index + 1)
   }
 
   def substring(start: Int): String = content.substring(start)

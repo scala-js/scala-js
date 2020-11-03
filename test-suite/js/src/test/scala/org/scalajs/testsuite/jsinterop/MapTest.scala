@@ -95,4 +95,3 @@ class MapTest {
     assertEquals("babar", obj.get(2).get)
   }
 }
-

@@ -33,7 +33,7 @@ class WrappedSetTest {
   @Test def testGet(): Unit = {
     val jsSet: mutable.Set[Any] = js.Set("a", 1, js.undefined)
     assertTrue(jsSet("a"))
-    assertTrue(jsSet(1) )
+    assertTrue(jsSet(1))
     assertTrue(jsSet(()))
     assertTrue(!jsSet("f"))
   }
@@ -77,7 +77,7 @@ class WrappedSetTest {
 
   @Test def testWithFilter(): Unit = {
     val set = js.Set[Int]()
-    val flt = set.withFilter { case v => v > 5  }
+    val flt = set.withFilter { case v => v > 5 }
     def size: Int = flt.map(x => x).size
 
     assertEquals(0, size)

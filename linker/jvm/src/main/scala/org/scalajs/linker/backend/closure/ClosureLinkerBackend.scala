@@ -17,10 +17,7 @@ import scala.concurrent._
 import java.io.Writer
 
 import com.google.javascript.jscomp.{
-  SourceFile => ClosureSource,
-  Compiler => ClosureCompiler,
-  CompilerOptions => ClosureOptions,
-  _
+  SourceFile => ClosureSource, Compiler => ClosureCompiler, CompilerOptions => ClosureOptions, _
 }
 
 import org.scalajs.logging.Logger
@@ -45,13 +42,14 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
 
   require(!esFeatures.allowBigIntsForLongs,
       s"Cannot use features $esFeatures with the Closure Compiler " +
-      "because they allow to use BigInts")
+        "because they allow to use BigInts")
 
   require(moduleKind != ModuleKind.ESModule,
       s"Cannot use module kind $moduleKind with the Closure Compiler")
 
   private[this] val emitter = {
-    val emitterConfig = Emitter.Config(config.commonConfig.coreSpec)
+    val emitterConfig = Emitter
+      .Config(config.commonConfig.coreSpec)
       .withOptimizeBracketSelects(false)
       .withTrackAllGlobalRefs(true)
       .withInternalModulePattern(m => OutputPatternsImpl.moduleName(config.outputPatterns, m.id))
@@ -76,8 +74,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
       implicit ec: ExecutionContext): Future[Report] = {
     verifyModuleSet(moduleSet)
 
-    require(moduleSet.modules.size <= 1,
-        "Cannot use multiple modules with the Closure Compiler")
+    require(moduleSet.modules.size <= 1, "Cannot use multiple modules with the Closure Compiler")
 
     // Run Emitter even with 0 modules, to keep its internal state consistent.
     val emitterResult = logger.time("Emitter") {
@@ -94,8 +91,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
       logger.time("Closure: Compiler pass") {
         val options = closureOptions(sjsModule.id)
 
-        val externs = java.util.Arrays.asList(
-            ClosureSource.fromCode("ScalaJSExterns.js",
+        val externs = java.util.Arrays.asList(ClosureSource.fromCode("ScalaJSExterns.js",
                 ClosureLinkerBackend.ScalaJSExterns),
             ClosureSource.fromCode("ScalaJSGlobalRefs.js",
                 makeExternsForGlobalRefs(emitterResult.globalRefs)),
@@ -112,8 +108,8 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
   }
 
   private def buildModule(tree: js.Tree): JSModule = {
-    val root = ClosureAstTransformer.transformScript(tree,
-        languageMode.toFeatureSet(), config.relativizeSourceMapBase)
+    val root = ClosureAstTransformer.transformScript(tree, languageMode.toFeatureSet(),
+        config.relativizeSourceMapBase)
 
     val module = new JSModule("Scala.js")
     module.add(new CompilerInput(new SyntheticAst(root)))
@@ -125,15 +121,13 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     import com.google.common.collect.ImmutableSet
 
     val compiler = new ClosureCompiler
-    compiler.setErrorManager(new SortingErrorManager(ImmutableSet.of(
-        new LoggerErrorReportGenerator(logger))))
+    compiler.setErrorManager(
+        new SortingErrorManager(ImmutableSet.of(new LoggerErrorReportGenerator(logger))))
 
-    val result = compiler.compileModules(externs,
-        java.util.Arrays.asList(module), options)
+    val result = compiler.compileModules(externs, java.util.Arrays.asList(module), options)
 
     if (!result.success) {
-      throw new LinkingException(
-          "There were errors when applying the Google Closure Compiler")
+      throw new LinkingException("There were errors when applying the Google Closure Compiler")
     }
 
     (compiler.toSource + "\n", compiler.getSourceMap())
@@ -239,6 +233,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
 }
 
 private object ClosureLinkerBackend {
+
   /** Minimal set of externs to compile Scala.js-emitted code with Closure.
    *
    *  These must be externs in all cases because they are generated outside of

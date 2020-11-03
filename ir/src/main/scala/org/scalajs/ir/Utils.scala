@@ -75,8 +75,7 @@ private[ir] object Utils {
    *  - [[jumpBack]]
    *  - [[continue]]
    */
-  private[ir] class JumpBackByteArrayOutputStream
-      extends java.io.ByteArrayOutputStream {
+  private[ir] class JumpBackByteArrayOutputStream extends java.io.ByteArrayOutputStream {
     protected var jumpBackPos: Int = -1
     protected var headPos: Int = -1
 

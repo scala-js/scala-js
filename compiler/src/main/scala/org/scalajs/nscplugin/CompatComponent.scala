@@ -40,8 +40,7 @@ trait CompatComponent {
     def isTraitOrInterface: Boolean = self.isTrait || self.isInterface
   }
 
-  implicit final class GlobalCompat(
-      self: CompatComponent.this.global.type) {
+  implicit final class GlobalCompat(self: CompatComponent.this.global.type) {
 
     object originalOwner {
       def getOrElse(sym: Symbol, orElse: => Symbol): Symbol = infiniteLoop()
@@ -79,8 +78,7 @@ trait CompatComponent {
   // SAMFunction was introduced in 2.12 for LMF-capable SAM types
 
   object SAMFunctionAttachCompatDef {
-    case class SAMFunction(samTp: Type, sam: Symbol, synthCls: Symbol)
-        extends PlainAttachment
+    case class SAMFunction(samTp: Type, sam: Symbol, synthCls: Symbol) extends PlainAttachment
   }
 
   object SAMFunctionAttachCompat {

@@ -29,7 +29,8 @@ class InputStreamTest extends CommonStreamsTests {
 
     override def read(b: Array[Byte], off: Int, len: Int): Int = super.read(b, off, len)
 
-    def read(): Int = if (i < seq.length) { val e = seq(i); i += 1; e & 0xFF } else -1
+    def read(): Int = if (i < seq.length) { val e = seq(i); i += 1; e & 0xff }
+    else -1
     override def available(): Int = seq.length - i
 
     override def mark(readlimit: Int): Unit = m = i
@@ -58,32 +59,27 @@ class InputStreamTest extends CommonStreamsTests {
     expectThrows(classOf[IndexOutOfBoundsException], stream.read(buf, 10, 100))
 
     // Buffer should be unmodified
-    assertArrayEquals(
-        ((1 to 10) ++ (51 to 70) ++ (31 to 50)).toArray.map(_.toByte), buf)
+    assertArrayEquals(((1 to 10) ++ (51 to 70) ++ (31 to 50)).toArray.map(_.toByte), buf)
 
     // Should read nothing (next: 71)
     assertEquals(0, stream.read(buf, 10, 0))
-    assertArrayEquals(
-        ((1 to 10) ++ (51 to 70) ++ (31 to 50)).toArray.map(_.toByte), buf)
+    assertArrayEquals(((1 to 10) ++ (51 to 70) ++ (31 to 50)).toArray.map(_.toByte), buf)
 
     // Skip 40 bytes (next: 111)
     assertEquals(40L, stream.skip(40))
 
     // Read 50 bytes, should wrap (next: 161)
     assertEquals(50, stream.read(buf))
-    assertArrayEquals(
-        ((111 to 127) ++ (-128 to -96)).toArray.map(_.toByte), buf)
+    assertArrayEquals(((111 to 127) ++ (-128 to -96)).toArray.map(_.toByte), buf)
 
     // Read 45 bytes, should read 40 (next: EOF)
     assertEquals(40, stream.read(buf, 5, 45))
-    assertArrayEquals(
-        ((111 to 115) ++ (-95 to -56) ++ (-100 to -96)).toArray.map(_.toByte), buf)
+    assertArrayEquals(((111 to 115) ++ (-95 to -56) ++ (-100 to -96)).toArray.map(_.toByte), buf)
 
     // Read 50 bytes, should read nothing
     assertEquals(-1, stream.read(buf))
     assertEquals(0, stream.read(buf, 0, 0))
-    assertArrayEquals(
-        ((111 to 115) ++ (-95 to -56) ++ (-100 to -96)).toArray.map(_.toByte), buf)
+    assertArrayEquals(((111 to 115) ++ (-95 to -56) ++ (-100 to -96)).toArray.map(_.toByte), buf)
   }
 
   @Test def should_provide_a_default_implementation_of_skip(): Unit = {

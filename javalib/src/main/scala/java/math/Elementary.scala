@@ -309,7 +309,7 @@ private[math] object Elementary {
     // scalastyle:on return
   }
 
-  /**  Adds the value represented by {@code b} to the value represented by {@code a}.
+  /** Adds the value represented by {@code b} to the value represented by {@code a}.
    *
    *  It is assumed the magnitude of a is not less than the magnitude of b.
    *
@@ -322,8 +322,7 @@ private[math] object Elementary {
   }
 
   /** Performs {@code res = a + b}. */
-  private def add(res: Array[Int], a: Array[Int], aSize: Int,
-      b: Array[Int], bSize: Int): Unit = {
+  private def add(res: Array[Int], a: Array[Int], aSize: Int, b: Array[Int], bSize: Int): Unit = {
     var i: Int = 1
     val firstSum: Long = (a(0) & UINT_MAX) + (b(0) & UINT_MAX)
     res(0) = firstSum.toInt
@@ -360,8 +359,8 @@ private[math] object Elementary {
   }
 
   /** Performs {@code res = b - a}. */
-  private def inverseSubtract(res: Array[Int], a: Array[Int], aSize: Int,
-      b: Array[Int], bSize: Int): Unit = {
+  private def inverseSubtract(res: Array[Int], a: Array[Int], aSize: Int, b: Array[Int],
+      bSize: Int): Unit = {
     var i: Int = 0
     var borrow: Int = 0 // signed
     if (aSize < bSize) {
@@ -409,8 +408,8 @@ private[math] object Elementary {
    *
    *  It is assumed the magnitude of a is not less than the magnitude of b.
    */
-  private def subtract(res: Array[Int], a: Array[Int], aSize: Int,
-      b: Array[Int], bSize: Int): Unit = {
+  private def subtract(res: Array[Int], a: Array[Int], aSize: Int, b: Array[Int],
+      bSize: Int): Unit = {
     var i: Int = 0
     var borrow: Int = 0 // signed
     while (i < bSize) {
@@ -432,8 +431,7 @@ private[math] object Elementary {
    *  Compares two arrays, representing unsigned integer in little-endian order.
    *  Returns +1,0,-1 if a is - respective - greater, equal or lesser then b
    */
-  private def unsignedArraysCompare(a: Array[Int], b: Array[Int], aSize: Int,
-      bSize: Int): Int = {
+  private def unsignedArraysCompare(a: Array[Int], b: Array[Int], aSize: Int, bSize: Int): Int = {
     if (aSize > bSize) {
       1
     } else if (aSize < bSize) {

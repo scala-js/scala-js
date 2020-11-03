@@ -47,7 +47,8 @@ class BigIntTest {
     assertEquals(bi.toString(), "42123456789123456789")
 
     val result = bi
-      .toLocaleString("de-DE", new js.BigInt.ToLocaleStringOptions {
+      .toLocaleString("de-DE",
+          new js.BigInt.ToLocaleStringOptions {
         style = "currency"
         currency = "EUR"
       })

@@ -75,8 +75,7 @@ trait TypedArrayStatic[T, Repr] extends js.Object {
   def from(iterable: js.Iterable[T]): Repr = js.native
 
   /** Creates an array from an `iterable` object. */
-  def from[E](iterable: js.Iterable[E],
-      mapFn: js.Function1[E, T]): Repr = js.native
+  def from[E](iterable: js.Iterable[E], mapFn: js.Function1[E, T]): Repr = js.native
 
   /** Creates an array from an `iterable` object. */
   def from[D, E](iterable: js.Iterable[E], mapFn: js.ThisFunction1[D, E, T],

@@ -25,9 +25,8 @@ import scala.collection.generic.CanBuildFrom
 /** Wrapper to use a js.Dictionary as a scala.mutable.Map */
 @inline
 final class WrappedDictionary[A](private val dict: js.Dictionary[A])
-    extends mutable.AbstractMap[String, A]
-       with mutable.Map[String, A]
-       with mutable.MapLike[String, A, js.WrappedDictionary[A]] {
+    extends mutable.AbstractMap[String, A] with mutable.Map[String, A]
+    with mutable.MapLike[String, A, js.WrappedDictionary[A]] {
 
   import WrappedDictionary._
 
@@ -98,6 +97,7 @@ object WrappedDictionary {
 
   @js.native
   private trait DictionaryRawApply[A] extends js.Object {
+
     /** Reads a field of this object by its name.
      *
      *  This must not be called if the dictionary does not contain the key.
@@ -110,8 +110,8 @@ object WrappedDictionary {
     def rawUpdate(key: String, value: A): Unit = js.native
   }
 
-  private final class DictionaryIterator[+A](
-      dict: js.Dictionary[A]) extends scala.collection.Iterator[(String, A)] {
+  private final class DictionaryIterator[+A](dict: js.Dictionary[A])
+      extends scala.collection.Iterator[(String, A)] {
 
     private[this] val keys = js.Object.keys(dict.asInstanceOf[js.Object])
     private[this] var index: Int = 0
@@ -128,7 +128,8 @@ object WrappedDictionary {
   def empty[A]: js.WrappedDictionary[A] =
     new js.WrappedDictionary(js.Dictionary.empty)
 
-  implicit def canBuildFrom[A]: CanBuildFrom[js.WrappedDictionary[_], (String, A), js.WrappedDictionary[A]] = {
+  implicit def canBuildFrom[
+      A]: CanBuildFrom[js.WrappedDictionary[_], (String, A), js.WrappedDictionary[A]] = {
     new CanBuildFrom[js.WrappedDictionary[_], (String, A), js.WrappedDictionary[A]] {
       def apply(from: js.WrappedDictionary[_]): Builder[(String, A), js.WrappedDictionary[A]] =
         new WrappedDictionaryBuilder[A]

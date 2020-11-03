@@ -21,16 +21,17 @@ import ScalaOps._
 /* The additional `internal` parameter works around
  * https://github.com/scala/bug/issues/11755
  */
-class IdentityHashMap[K, V] private (
-    inner: HashMap[IdentityHashMap.IdentityBox[K], V], internal: Boolean)
+class IdentityHashMap[K, V] private (inner: HashMap[IdentityHashMap.IdentityBox[K], V],
+    internal: Boolean)
     extends AbstractMap[K, V] with Map[K, V] with Serializable with Cloneable {
   self =>
 
   import IdentityHashMap._
 
   def this(expectedMaxSize: Int) = {
-    this(new HashMap[IdentityHashMap.IdentityBox[K], V](
-        expectedMaxSize, HashMap.DEFAULT_LOAD_FACTOR), internal = true)
+    this(
+        new HashMap[IdentityHashMap.IdentityBox[K], V](expectedMaxSize,
+            HashMap.DEFAULT_LOAD_FACTOR), internal = true)
   }
 
   def this() =
@@ -44,8 +45,7 @@ class IdentityHashMap[K, V] private (
   override def clear(): Unit = inner.clear()
 
   override def clone(): AnyRef = {
-    new IdentityHashMap(
-        inner.clone().asInstanceOf[HashMap[IdentityBox[K], V]], internal = true)
+    new IdentityHashMap(inner.clone().asInstanceOf[HashMap[IdentityBox[K], V]], internal = true)
   }
 
   override def containsKey(key: Any): Boolean =
@@ -268,14 +268,13 @@ object IdentityHashMap {
     // scalastyle:on return
   }
 
-  private final class MapEntry[K, V](entry: Map.Entry[IdentityBox[K], V])
-      extends Map.Entry[K, V] {
+  private final class MapEntry[K, V](entry: Map.Entry[IdentityBox[K], V]) extends Map.Entry[K, V] {
 
     override def equals(other: Any): Boolean =
       other match {
         case other: Map.Entry[_, _] =>
           same(this.getKey(), other.getKey()) &&
-          same(this.getValue(), other.getValue())
+            same(this.getValue(), other.getValue())
         case _ =>
           false
       }

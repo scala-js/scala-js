@@ -25,8 +25,9 @@ import sbt.testing._
 
 import TestAdapter.ManagedRunner
 
-private final class RunnerAdapter private (runnerArgs: RunnerArgs,
-    master: ManagedRunner, testAdapter: TestAdapter) extends Runner {
+private final class RunnerAdapter private (runnerArgs: RunnerArgs, master: ManagedRunner,
+    testAdapter: TestAdapter)
+    extends Runner {
 
   private val runID = runnerArgs.runID
   private val rpcGetter = () => getRunnerRPC()
@@ -74,8 +75,7 @@ private final class RunnerAdapter private (runnerArgs: RunnerArgs,
 
       // Attach message endpoint.
       mRunner.mux.attach(JVMEndpoints.msgSlave, runID) { msg =>
-        master.mux.send(JSEndpoints.msgMaster, runID)(
-            new FrameworkMessage(mRunner.id, msg))
+        master.mux.send(JSEndpoints.msgMaster, runID)(new FrameworkMessage(mRunner.id, msg))
       }
 
       // Start slave.
@@ -87,13 +87,12 @@ private final class RunnerAdapter private (runnerArgs: RunnerArgs,
 }
 
 private[adapter] object RunnerAdapter {
-  def apply(testAdapter: TestAdapter, frameworkImplName: String,
-      args: Array[String], remoteArgs: Array[String]): Runner = {
+  def apply(testAdapter: TestAdapter, frameworkImplName: String, args: Array[String],
+      remoteArgs: Array[String]): Runner = {
     val runID = testAdapter.runStarting()
 
     try {
-      val runnerArgs = new RunnerArgs(runID, frameworkImplName,
-          args.toList, remoteArgs.toList)
+      val runnerArgs = new RunnerArgs(runID, frameworkImplName, args.toList, remoteArgs.toList)
       val mRunner = testAdapter.getRunnerForThread()
       mRunner.com.call(JSEndpoints.createMasterRunner)(runnerArgs).await()
 

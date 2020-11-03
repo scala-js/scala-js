@@ -12,9 +12,8 @@
 
 package java.nio
 
-private[nio] final class HeapIntBuffer private (
-    _capacity: Int, _array0: Array[Int], _arrayOffset0: Int,
-    _initialPosition: Int, _initialLimit: Int, _readOnly: Boolean)
+private[nio] final class HeapIntBuffer private (_capacity: Int, _array0: Array[Int],
+    _arrayOffset0: Int, _initialPosition: Int, _initialLimit: Int, _readOnly: Boolean)
     extends IntBuffer(_capacity, _array0, _arrayOffset0) {
 
   position(_initialPosition)
@@ -79,33 +78,28 @@ private[nio] final class HeapIntBuffer private (
     GenHeapBuffer(this).generic_store(index, elem)
 
   @inline
-  override private[nio] def load(startIndex: Int,
-      dst: Array[Int], offset: Int, length: Int): Unit =
+  override private[nio] def load(startIndex: Int, dst: Array[Int], offset: Int, length: Int): Unit =
     GenHeapBuffer(this).generic_load(startIndex, dst, offset, length)
 
   @inline
-  override private[nio] def store(startIndex: Int,
-      src: Array[Int], offset: Int, length: Int): Unit =
+  override private[nio] def store(startIndex: Int, src: Array[Int], offset: Int,
+      length: Int): Unit =
     GenHeapBuffer(this).generic_store(startIndex, src, offset, length)
 }
 
 private[nio] object HeapIntBuffer {
   private[nio] implicit object NewHeapIntBuffer
       extends GenHeapBuffer.NewHeapBuffer[IntBuffer, Int] {
-    def apply(capacity: Int, array: Array[Int], arrayOffset: Int,
-        initialPosition: Int, initialLimit: Int,
-        readOnly: Boolean): IntBuffer = {
-      new HeapIntBuffer(capacity, array, arrayOffset,
-          initialPosition, initialLimit, readOnly)
+    def apply(capacity: Int, array: Array[Int], arrayOffset: Int, initialPosition: Int,
+        initialLimit: Int, readOnly: Boolean): IntBuffer = {
+      new HeapIntBuffer(capacity, array, arrayOffset, initialPosition, initialLimit, readOnly)
     }
   }
 
   @noinline
-  private[nio] def wrap(array: Array[Int], arrayOffset: Int, capacity: Int,
-      initialPosition: Int, initialLength: Int,
-      isReadOnly: Boolean): IntBuffer = {
-    GenHeapBuffer.generic_wrap(
-        array, arrayOffset, capacity,
-        initialPosition, initialLength, isReadOnly)
+  private[nio] def wrap(array: Array[Int], arrayOffset: Int, capacity: Int, initialPosition: Int,
+      initialLength: Int, isReadOnly: Boolean): IntBuffer = {
+    GenHeapBuffer.generic_wrap(array, arrayOffset, capacity, initialPosition, initialLength,
+        isReadOnly)
   }
 }

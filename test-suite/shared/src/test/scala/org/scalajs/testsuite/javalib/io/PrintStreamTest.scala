@@ -79,16 +79,14 @@ class PrintStreamTest {
     test(_.write('a'), Array('a'))
     test(_.write('\n'), Array('\n'), testFlushed = true)
     test(_.write(Array[Byte]('A', '\n')), Array('A', '\n'), testFlushed = true)
-    test(_.write(Array[Byte]('A', 'B', '\n', 'C'), 1, 2),
-        Array('B', '\n'), testFlushed = true)
+    test(_.write(Array[Byte]('A', 'B', '\n', 'C'), 1, 2), Array('B', '\n'), testFlushed = true)
 
     test(_.write('é'.toByte), Array('é'))
     test(_.write(Array[Byte]('é'.toByte, 'à'.toByte)), Array('é', 'à'))
   }
 
   @Test def print(): Unit = {
-    def test(body: PrintStream => Unit, expected: String,
-        testFlushed: Boolean = false): Unit = {
+    def test(body: PrintStream => Unit, expected: String, testFlushed: Boolean = false): Unit = {
       val (ps, bos) = newPrintStream(autoFlush = true)
       body(ps)
       if (testFlushed)
@@ -120,18 +118,23 @@ class PrintStreamTest {
     }
 
     test(_.print('é'), Array(0xc3, 0xa9))
-    test(_.print("こんにちは"), Array(
-        0xe3, 0x81, 0x93, 0xe3, 0x82, 0x93, 0xe3, 0x81, 0xab, 0xe3, 0x81, 0xa1, 0xe3, 0x81, 0xaf))
+    test(_.print("こんにちは"),
+        Array(0xe3, 0x81, 0x93, 0xe3, 0x82, 0x93, 0xe3, 0x81, 0xab, 0xe3, 0x81, 0xa1, 0xe3, 0x81,
+            0xaf))
     test(_.print("ημέρ"), Array(0xce, 0xb7, 0xce, 0xbc, 0xce, 0xad, 0xcf, 0x81))
 
     test(_.print("\ud83d\udca9"), Array(0xf0, 0x9f, 0x92, 0xa9))
     test(_.print("b\ud83d\udca9c"), Array('b', 0xf0, 0x9f, 0x92, 0xa9, 'c'))
 
-    test({ osw => osw.print("ab\ud83d"); osw.print('\udca9') },
-        Array('a', 'b', 0xf0, 0x9f, 0x92, 0xa9))
+    test(
+        { osw => osw.print("ab\ud83d"); osw.print('\udca9') },
+        Array('a', 'b', 0xf0, 0x9f, 0x92, 0xa9)
+    )
 
-    test({ osw => osw.print("ab\ud83d"); osw.print("\udca9cd") },
-        Array('a', 'b', 0xf0, 0x9f, 0x92, 0xa9, 'c', 'd'))
+    test(
+        { osw => osw.print("ab\ud83d"); osw.print("\udca9cd") },
+        Array('a', 'b', 0xf0, 0x9f, 0x92, 0xa9, 'c', 'd')
+    )
 
     // Start of malformed sequences
 
@@ -140,11 +143,9 @@ class PrintStreamTest {
 
     test({ osw => osw.print('\ud83d'); osw.print('a') }, Array('?', 'a'))
 
-    test({ osw => osw.print("ab\ud83d"); osw.print("\ud83d") },
-        Array('a', 'b', '?'))
+    test({ osw => osw.print("ab\ud83d"); osw.print("\ud83d") }, Array('a', 'b', '?'))
 
-    test({ osw => osw.print("ab\ud83d"); osw.print("\ud83dc") },
-        Array('a', 'b', '?', '?', 'c'))
+    test({ osw => osw.print("ab\ud83d"); osw.print("\ud83dc") }, Array('a', 'b', '?', '?', 'c'))
 
     test({ osw => osw.print('\ud83d'); osw.close() }, Array('?'))
 
@@ -183,11 +184,12 @@ class PrintStreamTest {
     testPrintlnForwards(_.println(null: AnyRef), "null\n", autoFlush = false)
   }
 
-  private def testPrintlnForwards(body: PrintStream => Unit, expected: String, autoFlush: Boolean): Unit = {
+  private def testPrintlnForwards(body: PrintStream => Unit, expected: String,
+      autoFlush: Boolean): Unit = {
     val (ps, bos) = newPrintStream(autoFlush = autoFlush)
     body(ps)
     if (autoFlush) assertTrue(bos.flushed)
-    else           assertFalse(bos.flushed)
+    else assertFalse(bos.flushed)
     assertFalse(ps.checkError())
     assertEquals(expected, bos.toString())
   }
@@ -206,14 +208,13 @@ class PrintStreamTest {
     val (ps, bos) = newPrintStream(autoFlush = autoFlush)
     body(ps)
     if (autoFlush) assertTrue(bos.flushed)
-    else           assertFalse(bos.flushed)
+    else assertFalse(bos.flushed)
     assertFalse(ps.checkError())
     assertEquals(expected, bos.toString())
   }
 
   @Test def append(): Unit = {
-    def test(body: PrintStream => Unit, expected: String,
-        testFlushed: Boolean = false): Unit = {
+    def test(body: PrintStream => Unit, expected: String, testFlushed: Boolean = false): Unit = {
       val (ps, bos) = newPrintStream(autoFlush = true)
       body(ps)
       if (testFlushed)
@@ -295,8 +296,8 @@ class PrintStreamTest {
   }
 
   /** A PrintStream that exposes various hooks for testing purposes. */
-  private class MockPrintStream(out: OutputStream,
-      autoFlush: Boolean) extends PrintStream(out, autoFlush) {
+  private class MockPrintStream(out: OutputStream, autoFlush: Boolean)
+      extends PrintStream(out, autoFlush) {
     def this(out: OutputStream) = this(out, false)
 
     override def clearError(): Unit = super.clearError()

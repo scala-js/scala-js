@@ -26,26 +26,26 @@ object ScalaJSJUnitPlugin extends AutoPlugin {
   val ScalaJSTestPlugin = config("scala-js-test-plugin").hide
 
   override def projectSettings: Seq[Setting[_]] = Seq(
-    /* The `scala-js-test-plugin` configuration adds a plugin only to the `test`
-     * configuration. It is a refinement of the `plugin` configuration which adds
-     * it to both `compile` and `test`.
-     */
-    ivyConfigurations += ScalaJSTestPlugin,
-    libraryDependencies ++= Seq(
-        "org.scala-js" % "scalajs-junit-test-plugin" % scalaJSVersion %
-        "scala-js-test-plugin" cross CrossVersion.full,
-        "org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion  % "test"),
-    scalacOptions in Test ++= {
-      val report = update.value
-      val jars = report.select(configurationFilter("scala-js-test-plugin"))
-      for {
-        jar <- jars
-        jarPath = jar.getPath
-        // This is a hack to filter out the dependencies of the plugins
-        if jarPath.contains("plugin")
-      } yield {
-        s"-Xplugin:$jarPath"
+      /* The `scala-js-test-plugin` configuration adds a plugin only to the `test`
+       * configuration. It is a refinement of the `plugin` configuration which adds
+       * it to both `compile` and `test`.
+       */
+      ivyConfigurations += ScalaJSTestPlugin,
+      libraryDependencies ++= Seq(
+          ("org.scala-js" % "scalajs-junit-test-plugin" % scalaJSVersion %
+            "scala-js-test-plugin").cross(CrossVersion.full),
+          "org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion % "test"),
+      scalacOptions in Test ++= {
+        val report = update.value
+        val jars = report.select(configurationFilter("scala-js-test-plugin"))
+        for {
+          jar <- jars
+          jarPath = jar.getPath
+          // This is a hack to filter out the dependencies of the plugins
+          if jarPath.contains("plugin")
+        } yield {
+          s"-Xplugin:$jarPath"
+        }
       }
-    }
   )
 }

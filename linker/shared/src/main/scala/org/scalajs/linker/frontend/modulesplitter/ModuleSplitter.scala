@@ -56,8 +56,7 @@ final class ModuleSplitter private (analyzer: ModuleAnalyzer) {
     }
   }
 
-  private def assembleModules(unit: LinkingUnit,
-      analysis: ModuleAnalyzer.Analysis,
+  private def assembleModules(unit: LinkingUnit, analysis: ModuleAnalyzer.Analysis,
       publicModuleDependencies: Map[ModuleID, Set[ClassName]]): ModuleSet = {
 
     // LinkedHashMap for stability of module order.
@@ -120,8 +119,7 @@ final class ModuleSplitter private (analyzer: ModuleAnalyzer) {
     new ModuleSet(unit.coreSpec, modules, abstractClasses.result())
   }
 
-  private def publicModuleDependencies(
-      unit: LinkingUnit): Map[ModuleID, Set[ClassName]] = {
+  private def publicModuleDependencies(unit: LinkingUnit): Map[ModuleID, Set[ClassName]] = {
     /* All static initializers must be reached by all leaf modules.
      *
      * This is because we have lost the semantic information of *why* the things
@@ -181,14 +179,15 @@ object ModuleSplitter {
     val externalDependencies: Builder[String, Set[String]] = Set.newBuilder
     val classDefs: Builder[LinkedClass, List[LinkedClass]] = List.newBuilder
     val topLevelExports: Builder[LinkedTopLevelExport, List[LinkedTopLevelExport]] = List.newBuilder
-    val initializers: Builder[ModuleInitializer.Initializer, List[ModuleInitializer.Initializer]] = List.newBuilder
+    val initializers: Builder[ModuleInitializer.Initializer, List[ModuleInitializer.Initializer]] =
+      List.newBuilder
 
     def result(): ModuleSet.Module = {
       val tles = topLevelExports.result()
       val inits = initializers.result()
       val public = tles.nonEmpty || inits.nonEmpty
-      new ModuleSet.Module(id, internalDependencies.result(),
-          externalDependencies.result(), public, classDefs.result(), tles, inits)
+      new ModuleSet.Module(id, internalDependencies.result(), externalDependencies.result(), public,
+          classDefs.result(), tles, inits)
     }
   }
 }

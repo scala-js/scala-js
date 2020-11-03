@@ -48,8 +48,7 @@ class PrintersTest {
   private def assertPrintEquals(expected: String, typeRef: TypeRef): Unit =
     assertPrintEqualsImpl(expected, _.print(typeRef))
 
-  private def assertPrintEqualsImpl(expected: String,
-      print: IRTreePrinter => Unit): Unit = {
+  private def assertPrintEqualsImpl(expected: String, print: IRTreePrinter => Unit): Unit = {
     val sw = new java.io.StringWriter
     val printer = new IRTreePrinter(sw)
     print(printer)
@@ -123,9 +122,8 @@ class PrintersTest {
     assertPrintEquals("int[][]", arrayType(IntRef, 2))
 
     assertPrintEquals("(x: int, var y: any)",
-        RecordType(List(
-            RecordType.Field("x", NON, IntType, mutable = false),
-            RecordType.Field("y", NON, AnyType, mutable = true))))
+        RecordType(List(RecordType.Field("x", NON, IntType, mutable = false),
+                RecordType.Field("y", NON, AnyType, mutable = true))))
   }
 
   @Test def printTypeRef(): Unit = {
@@ -136,23 +134,17 @@ class PrintersTest {
   }
 
   @Test def printVarDef(): Unit = {
-    assertPrintEquals("val x: int = 5",
-        VarDef("x", NON, IntType, mutable = false, i(5)))
-    assertPrintEquals("var x: int = 5",
-        VarDef("x", NON, IntType, mutable = true, i(5)))
+    assertPrintEquals("val x: int = 5", VarDef("x", NON, IntType, mutable = false, i(5)))
+    assertPrintEquals("var x: int = 5", VarDef("x", NON, IntType, mutable = true, i(5)))
     assertPrintEquals("val x{orig name}: int = 5",
         VarDef("x", TestON, IntType, mutable = false, i(5)))
   }
 
   @Test def printParamDef(): Unit = {
-    assertPrintEquals("x: int",
-        ParamDef("x", NON, IntType, mutable = false, rest = false))
-    assertPrintEquals("var x: int",
-        ParamDef("x", NON, IntType, mutable = true, rest = false))
-    assertPrintEquals("...x: any",
-        ParamDef("x", NON, AnyType, mutable = false, rest = true))
-    assertPrintEquals("var ...x: any",
-        ParamDef("x", NON, AnyType, mutable = true, rest = true))
+    assertPrintEquals("x: int", ParamDef("x", NON, IntType, mutable = false, rest = false))
+    assertPrintEquals("var x: int", ParamDef("x", NON, IntType, mutable = true, rest = false))
+    assertPrintEquals("...x: any", ParamDef("x", NON, AnyType, mutable = false, rest = true))
+    assertPrintEquals("var ...x: any", ParamDef("x", NON, AnyType, mutable = true, rest = true))
     assertPrintEquals("x{orig name}: int",
         ParamDef("x", TestON, IntType, mutable = false, rest = false))
   }
@@ -162,46 +154,37 @@ class PrintersTest {
   }
 
   @Test def printBlock(): Unit = {
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |{
           |  5;
           |  6
           |}
-        """,
-        Block(i(5), i(6)))
+        """, Block(i(5), i(6)))
   }
 
   @Test def printLabeled(): Unit = {
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |lab: {
           |  6
           |}
-        """,
-        Labeled("lab", NoType, i(6)))
+        """, Labeled("lab", NoType, i(6)))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |lab[int]: {
           |  6
           |}
-        """,
-        Labeled("lab", IntType, i(6)))
+        """, Labeled("lab", IntType, i(6)))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |lab: {
           |  5;
           |  6
           |}
-        """,
-        Labeled("lab", NoType, Block(i(5), i(6))))
+        """, Labeled("lab", NoType, Block(i(5), i(6))))
   }
 
   @Test def printAssign(): Unit = {
-    assertPrintEquals("x = 5",
-        Assign(VarRef("x")(IntType), i(5)))
+    assertPrintEquals("x = 5", Assign(VarRef("x")(IntType), i(5)))
   }
 
   @Test def printReturn(): Unit = {
@@ -209,26 +192,21 @@ class PrintersTest {
   }
 
   @Test def printIf(): Unit = {
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |if (true) {
           |  5
           |} else {
           |  6
           |}
-        """,
-        If(b(true), i(5), i(6))(IntType))
+        """, If(b(true), i(5), i(6))(IntType))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |if (true) {
           |  5
           |}
-        """,
-        If(b(true), i(5), Skip())(NoType))
+        """, If(b(true), i(5), Skip())(NoType))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |if (true) {
           |  5
           |} else if (false) {
@@ -236,8 +214,7 @@ class PrintersTest {
           |} else {
           |  7
           |}
-        """,
-        If(b(true), i(5), If(b(false), i(6), i(7))(IntType))(IntType))
+        """, If(b(true), i(5), If(b(false), i(6), i(7))(IntType))(IntType))
 
     assertPrintEquals("x || y",
         If(ref("x", BooleanType), b(true), ref("y", BooleanType))(BooleanType))
@@ -247,76 +224,61 @@ class PrintersTest {
   }
 
   @Test def printWhile(): Unit = {
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |while (true) {
           |  5
           |}
-        """,
-        While(b(true), i(5)))
+        """, While(b(true), i(5)))
   }
 
   @Test def printDoWhile(): Unit = {
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |do {
           |  5
           |} while (true)
-        """,
-        DoWhile(i(5), b(true)))
+        """, DoWhile(i(5), b(true)))
   }
 
   @Test def printForIn(): Unit = {
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |for (val x in o) {
           |  5
           |}
-        """,
-        ForIn(ref("o", AnyType), "x", NON, i(5)))
+        """, ForIn(ref("o", AnyType), "x", NON, i(5)))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |for (val x{orig name} in o) {
           |  5
           |}
-        """,
-        ForIn(ref("o", AnyType), "x", TestON, i(5)))
+        """, ForIn(ref("o", AnyType), "x", TestON, i(5)))
   }
 
   @Test def printTry(): Unit = {
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |try {
           |  5
           |} catch (e) {
           |  6
           |}
-        """,
-        TryCatch(i(5), "e", NON, i(6))(IntType))
+        """, TryCatch(i(5), "e", NON, i(6))(IntType))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |try {
           |  5
           |} catch (e{orig name}) {
           |  6
           |}
-        """,
-        TryCatch(i(5), "e", TestON, i(6))(IntType))
+        """, TryCatch(i(5), "e", TestON, i(6))(IntType))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |try {
           |  5
           |} finally {
           |  6
           |}
-        """,
-        TryFinally(i(5), i(6)))
+        """, TryFinally(i(5), i(6)))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |try {
           |  5
           |} catch (e) {
@@ -324,8 +286,7 @@ class PrintersTest {
           |} finally {
           |  7
           |}
-        """,
-        TryFinally(TryCatch(i(5), "e", NON, i(6))(IntType), i(7)))
+        """, TryFinally(TryCatch(i(5), "e", NON, i(6))(IntType), i(7)))
   }
 
   @Test def printThrow(): Unit = {
@@ -333,8 +294,7 @@ class PrintersTest {
   }
 
   @Test def printMatch(): Unit = {
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |match (x) {
           |  case 5:
           |    6;
@@ -347,9 +307,7 @@ class PrintersTest {
           |    11;
           |}
         """,
-        Match(ref("x", IntType), List(
-            List(i(5)) -> i(6),
-            List(i(7), i(8)) -> Block(i(9), i(10))),
+        Match(ref("x", IntType), List(List(i(5)) -> i(6), List(i(7), i(8)) -> Block(i(9), i(10))),
             i(11))(IntType))
   }
 
@@ -374,55 +332,49 @@ class PrintersTest {
   }
 
   @Test def printSelect(): Unit = {
-    assertPrintEquals("x.test.Test::f",
-        Select(ref("x", "test.Test"), "test.Test", "f")(IntType))
+    assertPrintEquals("x.test.Test::f", Select(ref("x", "test.Test"), "test.Test", "f")(IntType))
   }
 
   @Test def printSelectStatic(): Unit = {
-    assertPrintEquals("test.Test::f",
-        SelectStatic("test.Test", "f")(IntType))
+    assertPrintEquals("test.Test::f", SelectStatic("test.Test", "f")(IntType))
   }
 
   @Test def printApply(): Unit = {
     assertPrintEquals("x.m;V()",
         Apply(EAF, ref("x", "test.Test"), MethodName("m", Nil, V), Nil)(NoType))
     assertPrintEquals("x.m;I;I(5)",
-        Apply(EAF, ref("x", "test.Test"), MethodName("m", List(I), I),
-            List(i(5)))(IntType))
+        Apply(EAF, ref("x", "test.Test"), MethodName("m", List(I), I), List(i(5)))(IntType))
     assertPrintEquals("x.m;I;I;I(5, 6)",
-        Apply(EAF, ref("x", "test.Test"), MethodName("m", List(I, I), I),
-            List(i(5), i(6)))(IntType))
+        Apply(EAF, ref("x", "test.Test"), MethodName("m", List(I, I), I), List(i(5), i(6)))(
+            IntType))
   }
 
   @Test def printApplyStatically(): Unit = {
     assertPrintEquals("x.test.Test::m;V()",
-        ApplyStatically(EAF, ref("x", "test.Test"), "test.Test",
-            MethodName("m", Nil, V), Nil)(NoType))
+        ApplyStatically(EAF, ref("x", "test.Test"), "test.Test", MethodName("m", Nil, V), Nil)(
+            NoType))
     assertPrintEquals("x.test.Test::m;I;I(5)",
-        ApplyStatically(EAF, ref("x", "test.Test"), "test.Test",
-            MethodName("m", List(I), I), List(i(5)))(IntType))
+        ApplyStatically(EAF, ref("x", "test.Test"), "test.Test", MethodName("m", List(I), I),
+            List(i(5)))(IntType))
     assertPrintEquals("x.test.Test::m;I;I;I(5, 6)",
-        ApplyStatically(EAF, ref("x", "test.Test"), "test.Test",
-            MethodName("m", List(I, I), I), List(i(5), i(6)))(IntType))
+        ApplyStatically(EAF, ref("x", "test.Test"), "test.Test", MethodName("m", List(I, I), I),
+            List(i(5), i(6)))(IntType))
 
     assertPrintEquals("x.test.Test::private::m;V()",
-        ApplyStatically(EAF.withPrivate(true), ref("x", "test.Test"),
-            "test.Test", MethodName("m", Nil, V), Nil)(NoType))
+        ApplyStatically(EAF.withPrivate(true), ref("x", "test.Test"), "test.Test",
+            MethodName("m", Nil, V), Nil)(NoType))
   }
 
   @Test def printApplyStatic(): Unit = {
     assertPrintEquals("test.Test::m;V()",
         ApplyStatic(EAF, "test.Test", MethodName("m", Nil, V), Nil)(NoType))
     assertPrintEquals("test.Test::m;I;I(5)",
-        ApplyStatic(EAF, "test.Test", MethodName("m", List(I), I),
-            List(i(5)))(IntType))
+        ApplyStatic(EAF, "test.Test", MethodName("m", List(I), I), List(i(5)))(IntType))
     assertPrintEquals("test.Test::m;I;I;I(5, 6)",
-        ApplyStatic(EAF, "test.Test", MethodName("m", List(I, I), I),
-            List(i(5), i(6)))(IntType))
+        ApplyStatic(EAF, "test.Test", MethodName("m", List(I, I), I), List(i(5), i(6)))(IntType))
 
     assertPrintEquals("test.Test::private::m;V()",
-        ApplyStatic(EAF.withPrivate(true), "test.Test", MethodName("m", Nil, V),
-            Nil)(NoType))
+        ApplyStatic(EAF.withPrivate(true), "test.Test", MethodName("m", Nil, V), Nil)(NoType))
   }
 
   @Test def printUnaryOp(): Unit = {
@@ -463,13 +415,10 @@ class PrintersTest {
   @Test def printBinaryOp(): Unit = {
     import BinaryOp._
 
-    assertPrintEquals("(x === y)",
-        BinaryOp(===, ref("x", AnyType), ref("y", AnyType)))
-    assertPrintEquals("(x !== y)",
-        BinaryOp(!==, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x === y)", BinaryOp(===, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x !== y)", BinaryOp(!==, ref("x", AnyType), ref("y", AnyType)))
 
-    assertPrintEquals("(x +[string] y)",
-        BinaryOp(String_+, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x +[string] y)", BinaryOp(String_+, ref("x", AnyType), ref("y", AnyType)))
 
     assertPrintEquals("(x ==[bool] y)",
         BinaryOp(Boolean_==, ref("x", BooleanType), ref("y", BooleanType)))
@@ -480,90 +429,51 @@ class PrintersTest {
     assertPrintEquals("(x &[bool] y)",
         BinaryOp(Boolean_&, ref("x", BooleanType), ref("y", BooleanType)))
 
-    assertPrintEquals("(x +[int] y)",
-        BinaryOp(Int_+, ref("x", IntType), ref("y", IntType)))
-    assertPrintEquals("(x -[int] y)",
-        BinaryOp(Int_-, ref("x", IntType), ref("y", IntType)))
-    assertPrintEquals("(x *[int] y)",
-        BinaryOp(Int_*, ref("x", IntType), ref("y", IntType)))
-    assertPrintEquals("(x /[int] y)",
-        BinaryOp(Int_/, ref("x", IntType), ref("y", IntType)))
-    assertPrintEquals("(x %[int] y)",
-        BinaryOp(Int_%, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x +[int] y)", BinaryOp(Int_+, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x -[int] y)", BinaryOp(Int_-, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x *[int] y)", BinaryOp(Int_*, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x /[int] y)", BinaryOp(Int_/, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x %[int] y)", BinaryOp(Int_%, ref("x", IntType), ref("y", IntType)))
 
-    assertPrintEquals("(x |[int] y)",
-        BinaryOp(Int_|, ref("x", IntType), ref("y", IntType)))
-    assertPrintEquals("(x &[int] y)",
-        BinaryOp(Int_&, ref("x", IntType), ref("y", IntType)))
-    assertPrintEquals("(x ^[int] y)",
-        BinaryOp(Int_^, ref("x", IntType), ref("y", IntType)))
-    assertPrintEquals("(x <<[int] y)",
-        BinaryOp(Int_<<, ref("x", IntType), ref("y", IntType)))
-    assertPrintEquals("(x >>>[int] y)",
-        BinaryOp(Int_>>>, ref("x", IntType), ref("y", IntType)))
-    assertPrintEquals("(x >>[int] y)",
-        BinaryOp(Int_>>, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x |[int] y)", BinaryOp(Int_|, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x &[int] y)", BinaryOp(Int_&, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x ^[int] y)", BinaryOp(Int_^, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x <<[int] y)", BinaryOp(Int_<<, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x >>>[int] y)", BinaryOp(Int_>>>, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x >>[int] y)", BinaryOp(Int_>>, ref("x", IntType), ref("y", IntType)))
 
-    assertPrintEquals("(x ==[int] y)",
-        BinaryOp(Int_==, ref("x", IntType), ref("y", IntType)))
-    assertPrintEquals("(x !=[int] y)",
-        BinaryOp(Int_!=, ref("x", IntType), ref("y", IntType)))
-    assertPrintEquals("(x <[int] y)",
-        BinaryOp(Int_<, ref("x", IntType), ref("y", IntType)))
-    assertPrintEquals("(x <=[int] y)",
-        BinaryOp(Int_<=, ref("x", IntType), ref("y", IntType)))
-    assertPrintEquals("(x >[int] y)",
-        BinaryOp(Int_>, ref("x", IntType), ref("y", IntType)))
-    assertPrintEquals("(x >=[int] y)",
-        BinaryOp(Int_>=, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x ==[int] y)", BinaryOp(Int_==, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x !=[int] y)", BinaryOp(Int_!=, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x <[int] y)", BinaryOp(Int_<, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x <=[int] y)", BinaryOp(Int_<=, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x >[int] y)", BinaryOp(Int_>, ref("x", IntType), ref("y", IntType)))
+    assertPrintEquals("(x >=[int] y)", BinaryOp(Int_>=, ref("x", IntType), ref("y", IntType)))
 
-    assertPrintEquals("(x +[long] y)",
-        BinaryOp(Long_+, ref("x", LongType), ref("y", LongType)))
-    assertPrintEquals("(x -[long] y)",
-        BinaryOp(Long_-, ref("x", LongType), ref("y", LongType)))
-    assertPrintEquals("(x *[long] y)",
-        BinaryOp(Long_*, ref("x", LongType), ref("y", LongType)))
-    assertPrintEquals("(x /[long] y)",
-        BinaryOp(Long_/, ref("x", LongType), ref("y", LongType)))
-    assertPrintEquals("(x %[long] y)",
-        BinaryOp(Long_%, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x +[long] y)", BinaryOp(Long_+, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x -[long] y)", BinaryOp(Long_-, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x *[long] y)", BinaryOp(Long_*, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x /[long] y)", BinaryOp(Long_/, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x %[long] y)", BinaryOp(Long_%, ref("x", LongType), ref("y", LongType)))
 
-    assertPrintEquals("(x |[long] y)",
-        BinaryOp(Long_|, ref("x", LongType), ref("y", LongType)))
-    assertPrintEquals("(x &[long] y)",
-        BinaryOp(Long_&, ref("x", LongType), ref("y", LongType)))
-    assertPrintEquals("(x ^[long] y)",
-        BinaryOp(Long_^, ref("x", LongType), ref("y", LongType)))
-    assertPrintEquals("(x <<[long] y)",
-        BinaryOp(Long_<<, ref("x", LongType), ref("y", IntType)))
-    assertPrintEquals("(x >>>[long] y)",
-        BinaryOp(Long_>>>, ref("x", LongType), ref("y", IntType)))
-    assertPrintEquals("(x >>[long] y)",
-        BinaryOp(Long_>>, ref("x", LongType), ref("y", IntType)))
+    assertPrintEquals("(x |[long] y)", BinaryOp(Long_|, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x &[long] y)", BinaryOp(Long_&, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x ^[long] y)", BinaryOp(Long_^, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x <<[long] y)", BinaryOp(Long_<<, ref("x", LongType), ref("y", IntType)))
+    assertPrintEquals("(x >>>[long] y)", BinaryOp(Long_>>>, ref("x", LongType), ref("y", IntType)))
+    assertPrintEquals("(x >>[long] y)", BinaryOp(Long_>>, ref("x", LongType), ref("y", IntType)))
 
-    assertPrintEquals("(x ==[long] y)",
-        BinaryOp(Long_==, ref("x", LongType), ref("y", LongType)))
-    assertPrintEquals("(x !=[long] y)",
-        BinaryOp(Long_!=, ref("x", LongType), ref("y", LongType)))
-    assertPrintEquals("(x <[long] y)",
-        BinaryOp(Long_<, ref("x", LongType), ref("y", LongType)))
-    assertPrintEquals("(x <=[long] y)",
-        BinaryOp(Long_<=, ref("x", LongType), ref("y", LongType)))
-    assertPrintEquals("(x >[long] y)",
-        BinaryOp(Long_>, ref("x", LongType), ref("y", LongType)))
-    assertPrintEquals("(x >=[long] y)",
-        BinaryOp(Long_>=, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x ==[long] y)", BinaryOp(Long_==, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x !=[long] y)", BinaryOp(Long_!=, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x <[long] y)", BinaryOp(Long_<, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x <=[long] y)", BinaryOp(Long_<=, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x >[long] y)", BinaryOp(Long_>, ref("x", LongType), ref("y", LongType)))
+    assertPrintEquals("(x >=[long] y)", BinaryOp(Long_>=, ref("x", LongType), ref("y", LongType)))
 
-    assertPrintEquals("(x +[float] y)",
-        BinaryOp(Float_+, ref("x", FloatType), ref("y", FloatType)))
-    assertPrintEquals("(x -[float] y)",
-        BinaryOp(Float_-, ref("x", FloatType), ref("y", FloatType)))
-    assertPrintEquals("(x *[float] y)",
-        BinaryOp(Float_*, ref("x", FloatType), ref("y", FloatType)))
-    assertPrintEquals("(x /[float] y)",
-        BinaryOp(Float_/, ref("x", FloatType), ref("y", FloatType)))
-    assertPrintEquals("(x %[float] y)",
-        BinaryOp(Float_%, ref("x", FloatType), ref("y", FloatType)))
+    assertPrintEquals("(x +[float] y)", BinaryOp(Float_+, ref("x", FloatType), ref("y", FloatType)))
+    assertPrintEquals("(x -[float] y)", BinaryOp(Float_-, ref("x", FloatType), ref("y", FloatType)))
+    assertPrintEquals("(x *[float] y)", BinaryOp(Float_*, ref("x", FloatType), ref("y", FloatType)))
+    assertPrintEquals("(x /[float] y)", BinaryOp(Float_/, ref("x", FloatType), ref("y", FloatType)))
+    assertPrintEquals("(x %[float] y)", BinaryOp(Float_%, ref("x", FloatType), ref("y", FloatType)))
 
     assertPrintEquals("(x +[double] y)",
         BinaryOp(Double_+, ref("x", DoubleType), ref("y", DoubleType)))
@@ -598,13 +508,10 @@ class PrintersTest {
   }
 
   @Test def printArrayValue(): Unit = {
-    assertPrintEquals("int[]()",
-        ArrayValue(ArrayTypeRef(IntRef, 1), List()))
-    assertPrintEquals("int[](5, 6)",
-        ArrayValue(ArrayTypeRef(IntRef, 1), List(i(5), i(6))))
+    assertPrintEquals("int[]()", ArrayValue(ArrayTypeRef(IntRef, 1), List()))
+    assertPrintEquals("int[](5, 6)", ArrayValue(ArrayTypeRef(IntRef, 1), List(i(5), i(6))))
 
-    assertPrintEquals("int[][](null)",
-        ArrayValue(ArrayTypeRef(IntRef, 2), List(Null())))
+    assertPrintEquals("int[][](null)", ArrayValue(ArrayTypeRef(IntRef, 2), List(Null())))
   }
 
   @Test def printArrayLength(): Unit = {
@@ -612,17 +519,13 @@ class PrintersTest {
   }
 
   @Test def printArraySelect(): Unit = {
-    assertPrintEquals("x[3]",
-        ArraySelect(ref("x", arrayType(IntRef, 1)), i(3))(IntType))
+    assertPrintEquals("x[3]", ArraySelect(ref("x", arrayType(IntRef, 1)), i(3))(IntType))
   }
 
   @Test def printRecordValue(): Unit = {
     assertPrintEquals("(x = 3, y = 4)",
-        RecordValue(
-            RecordType(List(
-                RecordType.Field("x", NON, IntType, mutable = false),
-                RecordType.Field("y", NON, IntType, mutable = true))),
-            List(i(3), i(4))))
+        RecordValue(RecordType(List(RecordType.Field("x", NON, IntType, mutable = false),
+                    RecordType.Field("y", NON, IntType, mutable = true))), List(i(3), i(4))))
   }
 
   @Test def printIsInstanceOf(): Unit = {
@@ -633,8 +536,7 @@ class PrintersTest {
   @Test def printAsInstanceOf(): Unit = {
     assertPrintEquals("x.asInstanceOf[java.lang.String]",
         AsInstanceOf(ref("x", AnyType), ClassType(BoxedStringClass)))
-    assertPrintEquals("x.asInstanceOf[int]",
-        AsInstanceOf(ref("x", AnyType), IntType))
+    assertPrintEquals("x.asInstanceOf[int]", AsInstanceOf(ref("x", AnyType), IntType))
   }
 
   @Test def printGetClass(): Unit = {
@@ -653,41 +555,33 @@ class PrintersTest {
     assertPrintEquals("new (f())()", JSNew(fApplied, Nil))
     assertPrintEquals("new (f().test.Test::C)(4, 5)",
         JSNew(JSPrivateSelect(fApplied, "test.Test", "C"), List(i(4), i(5))))
-    assertPrintEquals("""new (f()["C"])()""",
-        JSNew(JSSelect(fApplied, StringLiteral("C")), Nil))
+    assertPrintEquals("""new (f()["C"])()""", JSNew(JSSelect(fApplied, StringLiteral("C")), Nil))
   }
 
   @Test def printJSPrivateSelect(): Unit = {
-    assertPrintEquals("x.test.Test::f",
-        JSPrivateSelect(ref("x", AnyType), "test.Test", "f"))
+    assertPrintEquals("x.test.Test::f", JSPrivateSelect(ref("x", AnyType), "test.Test", "f"))
   }
 
   @Test def printJSSelect(): Unit = {
-    assertPrintEquals("""x["f"]""",
-        JSSelect(ref("x", AnyType), StringLiteral("f")))
+    assertPrintEquals("""x["f"]""", JSSelect(ref("x", AnyType), StringLiteral("f")))
   }
 
   @Test def printJSFunctionApply(): Unit = {
     assertPrintEquals("f()", JSFunctionApply(ref("f", AnyType), Nil))
-    assertPrintEquals("f(3, 4)",
-        JSFunctionApply(ref("f", AnyType), List(i(3), i(4))))
+    assertPrintEquals("f(3, 4)", JSFunctionApply(ref("f", AnyType), List(i(3), i(4))))
 
     assertPrintEquals("(0, x.test.Test::f)()",
         JSFunctionApply(JSPrivateSelect(ref("x", AnyType), "test.Test", "f"), Nil))
     assertPrintEquals("""(0, x["f"])()""",
-        JSFunctionApply(JSSelect(ref("x", AnyType), StringLiteral("f")),
-            Nil))
+        JSFunctionApply(JSSelect(ref("x", AnyType), StringLiteral("f")), Nil))
     assertPrintEquals("(0, x.test.Test::f)()",
-        JSFunctionApply(Select(ref("x", "test.Test"), "test.Test", "f")(AnyType),
-            Nil))
+        JSFunctionApply(Select(ref("x", "test.Test"), "test.Test", "f")(AnyType), Nil))
   }
 
   @Test def printJSMethodApply(): Unit = {
-    assertPrintEquals("""x["m"]()""",
-        JSMethodApply(ref("x", AnyType), StringLiteral("m"), Nil))
+    assertPrintEquals("""x["m"]()""", JSMethodApply(ref("x", AnyType), StringLiteral("m"), Nil))
     assertPrintEquals("""x["m"](4, 5)""",
-        JSMethodApply(ref("x", AnyType), StringLiteral("m"),
-            List(i(4), i(5))))
+        JSMethodApply(ref("x", AnyType), StringLiteral("m"), List(i(4), i(5))))
   }
 
   @Test def printJSSuperSelect(): Unit = {
@@ -722,8 +616,7 @@ class PrintersTest {
   }
 
   @Test def printJSDelete(): Unit = {
-    assertPrintEquals("""delete x["f"]""",
-        JSDelete(ref("x", AnyType), StringLiteral("f")))
+    assertPrintEquals("""delete x["f"]""", JSDelete(ref("x", AnyType), StringLiteral("f")))
   }
 
   @Test def printJSUnaryOp(): Unit = {
@@ -731,56 +624,35 @@ class PrintersTest {
     assertPrintEquals("(-x)", JSUnaryOp(JSUnaryOp.-, ref("x", AnyType)))
     assertPrintEquals("(~x)", JSUnaryOp(JSUnaryOp.~, ref("x", AnyType)))
     assertPrintEquals("(!x)", JSUnaryOp(JSUnaryOp.!, ref("x", AnyType)))
-    assertPrintEquals("(typeof x)",
-        JSUnaryOp(JSUnaryOp.typeof, ref("x", AnyType)))
+    assertPrintEquals("(typeof x)", JSUnaryOp(JSUnaryOp.typeof, ref("x", AnyType)))
   }
 
   @Test def printJSBinaryOp(): Unit = {
-    assertPrintEquals("(x === y)",
-        JSBinaryOp(JSBinaryOp.===, ref("x", AnyType), ref("y", AnyType)))
-    assertPrintEquals("(x !== y)",
-        JSBinaryOp(JSBinaryOp.!==, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x === y)", JSBinaryOp(JSBinaryOp.===, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x !== y)", JSBinaryOp(JSBinaryOp.!==, ref("x", AnyType), ref("y", AnyType)))
 
-    assertPrintEquals("(x + y)",
-        JSBinaryOp(JSBinaryOp.+, ref("x", AnyType), ref("y", AnyType)))
-    assertPrintEquals("(x - y)",
-        JSBinaryOp(JSBinaryOp.-, ref("x", AnyType), ref("y", AnyType)))
-    assertPrintEquals("(x * y)",
-        JSBinaryOp(JSBinaryOp.*, ref("x", AnyType), ref("y", AnyType)))
-    assertPrintEquals("(x / y)",
-        JSBinaryOp(JSBinaryOp./, ref("x", AnyType), ref("y", AnyType)))
-    assertPrintEquals("(x % y)",
-        JSBinaryOp(JSBinaryOp.%, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x + y)", JSBinaryOp(JSBinaryOp.+, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x - y)", JSBinaryOp(JSBinaryOp.-, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x * y)", JSBinaryOp(JSBinaryOp.*, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x / y)", JSBinaryOp(JSBinaryOp./, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x % y)", JSBinaryOp(JSBinaryOp.%, ref("x", AnyType), ref("y", AnyType)))
 
-    assertPrintEquals("(x | y)",
-        JSBinaryOp(JSBinaryOp.|, ref("x", AnyType), ref("y", AnyType)))
-    assertPrintEquals("(x & y)",
-        JSBinaryOp(JSBinaryOp.&, ref("x", AnyType), ref("y", AnyType)))
-    assertPrintEquals("(x ^ y)",
-        JSBinaryOp(JSBinaryOp.^, ref("x", AnyType), ref("y", AnyType)))
-    assertPrintEquals("(x << y)",
-        JSBinaryOp(JSBinaryOp.<<, ref("x", AnyType), ref("y", AnyType)))
-    assertPrintEquals("(x >>> y)",
-        JSBinaryOp(JSBinaryOp.>>>, ref("x", AnyType), ref("y", AnyType)))
-    assertPrintEquals("(x >> y)",
-        JSBinaryOp(JSBinaryOp.>>, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x | y)", JSBinaryOp(JSBinaryOp.|, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x & y)", JSBinaryOp(JSBinaryOp.&, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x ^ y)", JSBinaryOp(JSBinaryOp.^, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x << y)", JSBinaryOp(JSBinaryOp.<<, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x >>> y)", JSBinaryOp(JSBinaryOp.>>>, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x >> y)", JSBinaryOp(JSBinaryOp.>>, ref("x", AnyType), ref("y", AnyType)))
 
-    assertPrintEquals("(x < y)",
-        JSBinaryOp(JSBinaryOp.<, ref("x", AnyType), ref("y", AnyType)))
-    assertPrintEquals("(x <= y)",
-        JSBinaryOp(JSBinaryOp.<=, ref("x", AnyType), ref("y", AnyType)))
-    assertPrintEquals("(x > y)",
-        JSBinaryOp(JSBinaryOp.>, ref("x", AnyType), ref("y", AnyType)))
-    assertPrintEquals("(x >= y)",
-        JSBinaryOp(JSBinaryOp.>=, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x < y)", JSBinaryOp(JSBinaryOp.<, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x <= y)", JSBinaryOp(JSBinaryOp.<=, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x > y)", JSBinaryOp(JSBinaryOp.>, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x >= y)", JSBinaryOp(JSBinaryOp.>=, ref("x", AnyType), ref("y", AnyType)))
 
-    assertPrintEquals("(x && y)",
-        JSBinaryOp(JSBinaryOp.&&, ref("x", AnyType), ref("y", AnyType)))
-    assertPrintEquals("(x || y)",
-        JSBinaryOp(JSBinaryOp.||, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x && y)", JSBinaryOp(JSBinaryOp.&&, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x || y)", JSBinaryOp(JSBinaryOp.||, ref("x", AnyType), ref("y", AnyType)))
 
-    assertPrintEquals("(x in y)",
-        JSBinaryOp(JSBinaryOp.in, ref("x", AnyType), ref("y", AnyType)))
+    assertPrintEquals("(x in y)", JSBinaryOp(JSBinaryOp.in, ref("x", AnyType), ref("y", AnyType)))
     assertPrintEquals("(x instanceof y)",
         JSBinaryOp(JSBinaryOp.instanceof, ref("x", AnyType), ref("y", AnyType)))
   }
@@ -793,14 +665,12 @@ class PrintersTest {
   @Test def printJSObjectConstr(): Unit = {
     assertPrintEquals("{}", JSObjectConstr(Nil))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |{
           |  [x]: 5,
           |  "g": 6
           |}
-        """,
-        JSObjectConstr(List(ref("x", AnyType) -> i(5), StringLiteral("g") -> i(6))))
+        """, JSObjectConstr(List(ref("x", AnyType) -> i(5), StringLiteral("g") -> i(6))))
   }
 
   @Test def printGlobalRef(): Unit = {
@@ -898,36 +768,28 @@ class PrintersTest {
   }
 
   @Test def printClosure(): Unit = {
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |(lambda<>() = {
           |  5
           |})
-        """,
-        Closure(false, Nil, Nil, i(5), Nil))
+        """, Closure(false, Nil, Nil, i(5), Nil))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |(arrow-lambda<x: any = a, y{orig name}: int = 6>(z: any) = {
           |  z
           |})
         """,
-        Closure(
-            true,
-            List(
-                ParamDef("x", NON, AnyType, mutable = false, rest = false),
+        Closure(true,
+            List(ParamDef("x", NON, AnyType, mutable = false, rest = false),
                 ParamDef("y", TestON, IntType, mutable = false, rest = false)),
-            List(ParamDef("z", NON, AnyType, mutable = false, rest = false)),
-            ref("z", AnyType),
+            List(ParamDef("z", NON, AnyType, mutable = false, rest = false)), ref("z", AnyType),
             List(ref("a", IntType), i(6))))
   }
 
   @Test def printCreateJSClass(): Unit = {
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |createjsclass[Foo](x, y)
-        """,
-        CreateJSClass("Foo", List(ref("x", IntType), ref("y", AnyType))))
+        """, CreateJSClass("Foo", List(ref("x", IntType), ref("y", AnyType))))
   }
 
   @Test def printTransient(): Unit = {
@@ -939,232 +801,180 @@ class PrintersTest {
       }
     }
 
-    assertPrintEquals("mytransient(5)",
-        Transient(new MyTransient(i(5)))(AnyType))
+    assertPrintEquals("mytransient(5)", Transient(new MyTransient(i(5)))(AnyType))
   }
 
   @Test def printClassDefKinds(): Unit = {
     import ClassKind._
 
     def makeForKind(kind: ClassKind): ClassDef = {
-      ClassDef("Test", NON, kind, None, Some(ObjectClass), Nil, None, None, Nil,
-          Nil)(
-          NoOptHints)
+      ClassDef("Test", NON, kind, None, Some(ObjectClass), Nil, None, None, Nil, Nil)(NoOptHints)
     }
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |class Test extends java.lang.Object {
           |}
-        """,
-        makeForKind(Class))
+        """, makeForKind(Class))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |module class Test extends java.lang.Object {
           |}
-        """,
-        makeForKind(ModuleClass))
+        """, makeForKind(ModuleClass))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |interface Test extends java.lang.Object {
           |}
-        """,
-        makeForKind(Interface))
+        """, makeForKind(Interface))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |abstract js type Test extends java.lang.Object {
           |}
-        """,
-        makeForKind(AbstractJSType))
+        """, makeForKind(AbstractJSType))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |hijacked class Test extends java.lang.Object {
           |}
-        """,
-        makeForKind(HijackedClass))
+        """, makeForKind(HijackedClass))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |js class Test extends java.lang.Object {
           |}
-        """,
-        makeForKind(JSClass))
+        """, makeForKind(JSClass))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |js module class Test extends java.lang.Object {
           |}
-        """,
-        makeForKind(JSModuleClass))
+        """, makeForKind(JSModuleClass))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |native js class Test extends java.lang.Object {
           |}
-        """,
-        makeForKind(NativeJSClass))
+        """, makeForKind(NativeJSClass))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |native js module class Test extends java.lang.Object {
           |}
-        """,
-        makeForKind(NativeJSModuleClass))
+        """, makeForKind(NativeJSModuleClass))
   }
 
   @Test def printClassDefParents(): Unit = {
-    def makeForParents(superClass: Option[ClassIdent],
-        interfaces: List[ClassIdent]): ClassDef = {
-      ClassDef("Test", NON, ClassKind.Class, None, superClass, interfaces, None,
-          None, Nil, Nil)(
+    def makeForParents(superClass: Option[ClassIdent], interfaces: List[ClassIdent]): ClassDef = {
+      ClassDef("Test", NON, ClassKind.Class, None, superClass, interfaces, None, None, Nil, Nil)(
           NoOptHints)
     }
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |class Test {
           |}
-        """,
-        makeForParents(None, Nil))
+        """, makeForParents(None, Nil))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |class Test extends java.lang.Object implements Intf {
           |}
-        """,
-        makeForParents(Some(ObjectClass), List("Intf")))
+        """, makeForParents(Some(ObjectClass), List("Intf")))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |class Test extends sr_AbstractFunction0 implements Intf1, Intf2 {
           |}
-        """,
-        makeForParents(Some("sr_AbstractFunction0"), List("Intf1", "Intf2")))
+        """, makeForParents(Some("sr_AbstractFunction0"), List("Intf1", "Intf2")))
   }
 
   @Test def printClassDefJSNativeLoadSpec(): Unit = {
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |native js class Test extends java.lang.Object loadfrom global:Foo["Bar"] {
           |}
         """,
-        ClassDef("Test", NON, ClassKind.NativeJSClass, None, Some(ObjectClass), Nil,
-            None, Some(JSNativeLoadSpec.Global("Foo", List("Bar"))), Nil, Nil)(
-            NoOptHints))
+        ClassDef("Test", NON, ClassKind.NativeJSClass, None, Some(ObjectClass), Nil, None,
+            Some(JSNativeLoadSpec.Global("Foo", List("Bar"))), Nil, Nil)(NoOptHints))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |native js class Test extends java.lang.Object loadfrom import(foo)["Bar"] {
           |}
         """,
-        ClassDef("Test", NON, ClassKind.NativeJSClass, None, Some(ObjectClass), Nil,
-            None, Some(JSNativeLoadSpec.Import("foo", List("Bar"))), Nil, Nil)(
-            NoOptHints))
+        ClassDef("Test", NON, ClassKind.NativeJSClass, None, Some(ObjectClass), Nil, None,
+            Some(JSNativeLoadSpec.Import("foo", List("Bar"))), Nil, Nil)(NoOptHints))
 
     assertPrintEquals(
         """
           |native js class Test extends java.lang.Object loadfrom import(foo)["Bar"] fallback global:Baz["Foobar"] {
           |}
         """,
-        ClassDef("Test", NON, ClassKind.NativeJSClass, None, Some(ObjectClass), Nil,
-            None,
-            Some(JSNativeLoadSpec.ImportWithGlobalFallback(
-                JSNativeLoadSpec.Import("foo", List("Bar")),
-                JSNativeLoadSpec.Global("Baz", List("Foobar")))), Nil, Nil)(
+        ClassDef("Test", NON, ClassKind.NativeJSClass, None, Some(ObjectClass), Nil, None,
+            Some(JSNativeLoadSpec.ImportWithGlobalFallback(JSNativeLoadSpec.Import("foo",
+                        List("Bar")), JSNativeLoadSpec.Global("Baz", List("Foobar")))), Nil, Nil)(
             NoOptHints))
   }
 
   @Test def printClassDefJSClassCaptures(): Unit = {
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |captures: none
           |js class Test extends java.lang.Object {
           |}
         """,
-        ClassDef("Test", NON, ClassKind.JSClass, Some(Nil), Some(ObjectClass), Nil,
-            None, None, Nil, Nil)(
-            NoOptHints))
+        ClassDef("Test", NON, ClassKind.JSClass, Some(Nil), Some(ObjectClass), Nil, None, None, Nil,
+            Nil)(NoOptHints))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |captures: x: int, y{orig name}: string
           |js class Test extends java.lang.Object {
           |}
         """,
         ClassDef("Test", NON, ClassKind.JSClass,
-            Some(List(
-                ParamDef("x", NON, IntType, mutable = false, rest = false),
-                ParamDef("y", TestON, StringType, mutable = false, rest = false)
-            )),
-            Some(ObjectClass), Nil, None, None, Nil, Nil)(
-            NoOptHints))
+            Some(
+                List(
+                    ParamDef("x", NON, IntType, mutable = false, rest = false),
+                    ParamDef("y", TestON, StringType, mutable = false, rest = false)
+                )), Some(ObjectClass), Nil, None, None, Nil, Nil)(NoOptHints))
   }
 
   @Test def printClassDefJSSuperClass(): Unit = {
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |captures: sup: any
           |js class Test extends Bar (via sup) {
           |}
         """,
         ClassDef("Test", NON, ClassKind.JSClass,
-            Some(List(ParamDef("sup", NON, AnyType, mutable = false, rest = false))),
-            Some("Bar"), Nil, Some(ref("sup", AnyType)), None, Nil, Nil)(
-            NoOptHints))
+            Some(List(ParamDef("sup", NON, AnyType, mutable = false, rest = false))), Some("Bar"),
+            Nil, Some(ref("sup", AnyType)), None, Nil, Nil)(NoOptHints))
   }
 
   @Test def printClassDefOptimizerHints(): Unit = {
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |@hints(1) class Test extends java.lang.Object {
           |}
         """,
-        ClassDef("Test", NON, ClassKind.Class, None, Some(ObjectClass), Nil,
-            None, None, Nil, Nil)(
+        ClassDef("Test", NON, ClassKind.Class, None, Some(ObjectClass), Nil, None, None, Nil, Nil)(
             NoOptHints.withInline(true)))
   }
 
   @Test def printClassDefOriginalName(): Unit = {
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |module class Test{orig name} extends java.lang.Object {
           |}
         """,
-        ClassDef("Test", TestON, ClassKind.ModuleClass, None, Some(ObjectClass),
-            Nil, None, None, Nil, Nil)(
-            NoOptHints))
+        ClassDef("Test", TestON, ClassKind.ModuleClass, None, Some(ObjectClass), Nil, None, None,
+            Nil, Nil)(NoOptHints))
   }
 
   @Test def printClassDefDefs(): Unit = {
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |module class Test extends java.lang.Object {
           |  val x: int
           |  var y: int
           |  export top[moduleID="main"] module "Foo"
           |}
         """,
-        ClassDef("Test", NON, ClassKind.ModuleClass, None, Some(ObjectClass),
-            Nil, None, None,
-            List(
-                FieldDef(MemberFlags.empty, "x", NON, IntType),
+        ClassDef("Test", NON, ClassKind.ModuleClass, None, Some(ObjectClass), Nil, None, None,
+            List(FieldDef(MemberFlags.empty, "x", NON, IntType),
                 FieldDef(MemberFlags.empty.withMutable(true), "y", NON, IntType)),
-            List(
-                TopLevelModuleExportDef("main", "Foo")))(
-            NoOptHints))
+            List(TopLevelModuleExportDef("main", "Foo")))(NoOptHints))
   }
 
   @Test def printFieldDef(): Unit = {
-    assertPrintEquals("val x: int",
-        FieldDef(MemberFlags.empty, "x", NON, IntType))
+    assertPrintEquals("val x: int", FieldDef(MemberFlags.empty, "x", NON, IntType))
     assertPrintEquals("var y: any",
         FieldDef(MemberFlags.empty.withMutable(true), "y", NON, AnyType))
-    assertPrintEquals("val x{orig name}: int",
-        FieldDef(MemberFlags.empty, "x", TestON, IntType))
+    assertPrintEquals("val x{orig name}: int", FieldDef(MemberFlags.empty, "x", TestON, IntType))
   }
 
   @Test def printJSFieldDef(): Unit = {
@@ -1176,130 +986,119 @@ class PrintersTest {
     assertPrintEquals("""static val "x": int""",
         JSFieldDef(MemberFlags.empty.withNamespace(Static), StringLiteral("x"), IntType))
     assertPrintEquals("""static var "y": any""",
-        JSFieldDef(MemberFlags.empty.withNamespace(Static).withMutable(true), StringLiteral("y"), AnyType))
+        JSFieldDef(MemberFlags.empty.withNamespace(Static).withMutable(true), StringLiteral("y"),
+            AnyType))
   }
 
   @Test def printMethodDef(): Unit = {
     val mIIMethodName = MethodName("m", List(I), I)
     val mIVMethodName = MethodName("m", List(I), V)
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |def m;I;I(x: int): int = <abstract>
         """,
         MethodDef(MemberFlags.empty, mIIMethodName, NON,
-            List(ParamDef("x", NON, IntType, mutable = false, rest = false)),
-            IntType, None)(NoOptHints, None))
+            List(ParamDef("x", NON, IntType, mutable = false, rest = false)), IntType, None)(
+            NoOptHints, None))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |def m;I;I(x: int): int = {
           |  5
           |}
         """,
         MethodDef(MemberFlags.empty, mIIMethodName, NON,
-            List(ParamDef("x", NON, IntType, mutable = false, rest = false)),
-            IntType, Some(i(5)))(NoOptHints, None))
+            List(ParamDef("x", NON, IntType, mutable = false, rest = false)), IntType, Some(i(5)))(
+            NoOptHints, None))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |@hints(1) def m;I;I(x: int): int = {
           |  5
           |}
         """,
         MethodDef(MemberFlags.empty, mIIMethodName, NON,
-            List(ParamDef("x", NON, IntType, mutable = false, rest = false)),
-            IntType, Some(i(5)))(NoOptHints.withInline(true), None))
+            List(ParamDef("x", NON, IntType, mutable = false, rest = false)), IntType, Some(i(5)))(
+            NoOptHints.withInline(true), None))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |def m;I;V(x: int) {
           |  5
           |}
         """,
         MethodDef(MemberFlags.empty, mIVMethodName, NON,
-            List(ParamDef("x", NON, IntType, mutable = false, rest = false)),
-            NoType, Some(i(5)))(NoOptHints, None))
+            List(ParamDef("x", NON, IntType, mutable = false, rest = false)), NoType, Some(i(5)))(
+            NoOptHints, None))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |static def m;I;I(x: int): int = {
           |  5
           |}
         """,
         MethodDef(MemberFlags.empty.withNamespace(Static), mIIMethodName, NON,
-            List(ParamDef("x", NON, IntType, mutable = false, rest = false)),
-            IntType, Some(i(5)))(NoOptHints, None))
+            List(ParamDef("x", NON, IntType, mutable = false, rest = false)), IntType, Some(i(5)))(
+            NoOptHints, None))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |private def m;I;I(x: int): int = {
           |  5
           |}
         """,
         MethodDef(MemberFlags.empty.withNamespace(Private), mIIMethodName, NON,
-            List(ParamDef("x", NON, IntType, mutable = false, rest = false)),
-            IntType, Some(i(5)))(NoOptHints, None))
+            List(ParamDef("x", NON, IntType, mutable = false, rest = false)), IntType, Some(i(5)))(
+            NoOptHints, None))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |private static def m;I;I(x: int): int = {
           |  5
           |}
         """,
         MethodDef(MemberFlags.empty.withNamespace(PrivateStatic), mIIMethodName, NON,
-            List(ParamDef("x", NON, IntType, mutable = false, rest = false)),
-            IntType, Some(i(5)))(NoOptHints, None))
+            List(ParamDef("x", NON, IntType, mutable = false, rest = false)), IntType, Some(i(5)))(
+            NoOptHints, None))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |def m;I;I{orig name}(x{orig name}: int): int = <abstract>
         """,
         MethodDef(MemberFlags.empty, mIIMethodName, TestON,
-            List(ParamDef("x", TestON, IntType, mutable = false, rest = false)),
-            IntType, None)(NoOptHints, None))
+            List(ParamDef("x", TestON, IntType, mutable = false, rest = false)), IntType, None)(
+            NoOptHints, None))
   }
 
   @Test def printJSMethodDef(): Unit = {
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |def "m"(x: any): any = {
           |  5
           |}
         """,
         JSMethodDef(MemberFlags.empty, StringLiteral("m"),
-            List(ParamDef("x", NON, AnyType, mutable = false, rest = false)),
-            i(5))(NoOptHints, None))
+            List(ParamDef("x", NON, AnyType, mutable = false, rest = false)), i(5))(NoOptHints,
+            None))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |def "m"(...x: any): any = {
           |  5
           |}
         """,
         JSMethodDef(MemberFlags.empty, StringLiteral("m"),
-            List(ParamDef("x", NON, AnyType, mutable = false, rest = true)),
-            i(5))(NoOptHints, None))
+            List(ParamDef("x", NON, AnyType, mutable = false, rest = true)), i(5))(NoOptHints,
+            None))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |static def "m"(x: any): any = {
           |  5
           |}
         """,
         JSMethodDef(MemberFlags.empty.withNamespace(Static), StringLiteral("m"),
-            List(ParamDef("x", NON, AnyType, mutable = false, rest = false)),
-            i(5))(NoOptHints, None))
+            List(ParamDef("x", NON, AnyType, mutable = false, rest = false)), i(5))(NoOptHints,
+            None))
 
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |def "m"(x{orig name}: any): any = {
           |  5
           |}
         """,
         JSMethodDef(MemberFlags.empty, StringLiteral("m"),
-            List(ParamDef("x", TestON, AnyType, mutable = false, rest = false)),
-            i(5))(NoOptHints, None))
+            List(ParamDef("x", TestON, AnyType, mutable = false, rest = false)), i(5))(NoOptHints,
+            None))
   }
 
   @Test def printJSPropertyDef(): Unit = {
@@ -1311,36 +1110,29 @@ class PrintersTest {
         if (static) MemberFlags.empty.withNamespace(Static)
         else MemberFlags.empty
 
-      assertPrintEquals(
-          s"""
+      assertPrintEquals(s"""
             |${staticStr}get "prop"(): any = {
             |  5
             |}
-          """,
-          JSPropertyDef(flags, StringLiteral("prop"), Some(i(5)), None))
+          """, JSPropertyDef(flags, StringLiteral("prop"), Some(i(5)), None))
 
-      assertPrintEquals(
-          s"""
+      assertPrintEquals(s"""
             |${staticStr}set "prop"(x: any) {
             |  7
             |}
           """,
-          JSPropertyDef(flags, StringLiteral("prop"),
-              None,
+          JSPropertyDef(flags, StringLiteral("prop"), None,
               Some((ParamDef("x", NON, AnyType, mutable = false, rest = false), i(7)))))
 
-      assertPrintEquals(
-          s"""
+      assertPrintEquals(s"""
             |${staticStr}set "prop"(x{orig name}: any) {
             |  7
             |}
           """,
-          JSPropertyDef(flags, StringLiteral("prop"),
-              None,
+          JSPropertyDef(flags, StringLiteral("prop"), None,
               Some((ParamDef("x", TestON, AnyType, mutable = false, rest = false), i(7)))))
 
-      assertPrintEquals(
-          s"""
+      assertPrintEquals(s"""
             |${staticStr}get "prop"(): any = {
             |  5
             |}
@@ -1348,42 +1140,35 @@ class PrintersTest {
             |  7
             |}
           """,
-          JSPropertyDef(flags, StringLiteral("prop"),
-              Some(i(5)),
-              Some((ParamDef("x", NON, AnyType, mutable = false, rest = false),
-                  i(7)))))
+          JSPropertyDef(flags, StringLiteral("prop"), Some(i(5)),
+              Some((ParamDef("x", NON, AnyType, mutable = false, rest = false), i(7)))))
     }
   }
 
   @Test def printJSClassExportDef(): Unit = {
-    assertPrintEquals(
-        """export top[moduleID="my-mod"] class "Foo"""",
+    assertPrintEquals("""export top[moduleID="my-mod"] class "Foo"""",
         TopLevelJSClassExportDef("my-mod", "Foo"))
   }
 
   @Test def printTopLevelModuleExportDef(): Unit = {
-    assertPrintEquals(
-        """export top[moduleID="bar"] module "Foo"""",
+    assertPrintEquals("""export top[moduleID="bar"] module "Foo"""",
         TopLevelModuleExportDef("bar", "Foo"))
   }
 
   @Test def printTopLevelMethodExportDef(): Unit = {
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |export top[moduleID="main"] static def "foo"(x: any): any = {
           |  5
           |}""",
-        TopLevelMethodExportDef("main", JSMethodDef(
-            MemberFlags.empty.withNamespace(Static), StringLiteral("foo"),
-            List(ParamDef("x", NON, AnyType, mutable = false, rest = false)),
-            i(5))(NoOptHints, None)))
+        TopLevelMethodExportDef("main",
+            JSMethodDef(MemberFlags.empty.withNamespace(Static), StringLiteral("foo"),
+                List(ParamDef("x", NON, AnyType, mutable = false, rest = false)), i(5))(NoOptHints,
+                None)))
   }
 
   @Test def printTopLevelFieldExportDef(): Unit = {
-    assertPrintEquals(
-        """
+    assertPrintEquals("""
           |export top[moduleID="main"] static field x$1 as "x"
-        """,
-        TopLevelFieldExportDef("main", "x", "x$1"))
+        """, TopLevelFieldExportDef("main", "x", "x$1"))
   }
 }

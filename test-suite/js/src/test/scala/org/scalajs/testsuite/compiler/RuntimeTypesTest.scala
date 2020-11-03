@@ -25,7 +25,7 @@ import org.junit.Assume._
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.Platform._
 
-import scala.util.{ Try, Failure }
+import scala.util.{Try, Failure}
 
 class RuntimeTypesTest {
   import RuntimeTypesTest._
@@ -63,7 +63,7 @@ class RuntimeTypesTest {
         identity(result) // discard `result` without warning
       } catch {
         case th: ClassCastException =>
-          // ok
+        // ok
       }
     }
     test("a")

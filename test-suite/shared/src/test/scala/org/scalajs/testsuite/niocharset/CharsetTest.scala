@@ -79,22 +79,19 @@ class CharsetTest {
   }
 
   @Test def aliases(): Unit = {
-    assertEquals(Charset.forName("UTF-8").aliases(),
-        javaSet("UTF8", "unicode-1-1-utf-8"))
+    assertEquals(Charset.forName("UTF-8").aliases(), javaSet("UTF8", "unicode-1-1-utf-8"))
     assertEquals(Charset.forName("UTF-16").aliases(),
         javaSet("UTF_16", "unicode", "utf16", "UnicodeBig"))
     assertEquals(Charset.forName("UTF-16BE").aliases(),
-        javaSet("X-UTF-16BE", "UTF_16BE", "ISO-10646-UCS-2",
-            "UnicodeBigUnmarked"))
+        javaSet("X-UTF-16BE", "UTF_16BE", "ISO-10646-UCS-2", "UnicodeBigUnmarked"))
     assertEquals(Charset.forName("UTF-16LE").aliases(),
         javaSet("UnicodeLittleUnmarked", "UTF_16LE", "X-UTF-16LE"))
     assertEquals(Charset.forName("US-ASCII").aliases(),
-        javaSet("ANSI_X3.4-1968", "cp367", "csASCII", "iso-ir-6", "ASCII",
-            "iso_646.irv:1983", "ANSI_X3.4-1986", "ascii7", "default",
-            "ISO_646.irv:1991", "ISO646-US", "IBM367", "646", "us"))
+        javaSet("ANSI_X3.4-1968", "cp367", "csASCII", "iso-ir-6", "ASCII", "iso_646.irv:1983",
+            "ANSI_X3.4-1986", "ascii7", "default", "ISO_646.irv:1991", "ISO646-US", "IBM367", "646",
+            "us"))
     assertEquals(Charset.forName("ISO-8859-1").aliases(),
-        javaSet("819", "ISO8859-1", "l1", "ISO_8859-1:1987", "ISO_8859-1", "8859_1",
-            "iso-ir-100", "latin1", "cp819", "ISO8859_1", "IBM819", "ISO_8859_1",
-            "IBM-819", "csISOLatin1"))
+        javaSet("819", "ISO8859-1", "l1", "ISO_8859-1:1987", "ISO_8859-1", "8859_1", "iso-ir-100",
+            "latin1", "cp819", "ISO8859_1", "IBM819", "ISO_8859_1", "IBM-819", "csISOLatin1"))
   }
 }

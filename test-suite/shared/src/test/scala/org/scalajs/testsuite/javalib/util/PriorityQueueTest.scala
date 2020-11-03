@@ -69,14 +69,14 @@ class PriorityQueueTest extends CollectionTest {
     case class Rect(x: Int, y: Int)
 
     val areaComp = new Comparator[Rect] {
-      def compare(a: Rect, b: Rect): Int = (a.x*a.y) - (b.x*b.y)
+      def compare(a: Rect, b: Rect): Int = (a.x * a.y) - (b.x * b.y)
     }
 
     val pq = new PriorityQueue[Rect](11, areaComp)
 
-    assertTrue(pq.add(Rect(1,2)))
-    assertTrue(pq.add(Rect(2,3)))
-    assertTrue(pq.add(Rect(1,3)))
+    assertTrue(pq.add(Rect(1, 2)))
+    assertTrue(pq.add(Rect(2, 3)))
+    assertTrue(pq.add(Rect(1, 3)))
 
     val first = pq.poll()
     assertEquals(1, first.x)
@@ -377,10 +377,8 @@ class PriorityQueueTest extends CollectionTest {
     assertEquals(0.0: Any, iter.next())
 
     iter.remove()
-    assertEquals("+0.0 must have been removed, not -0.0",
-        "[-1, 0, NaN, 3.5]", pq.toString())
-    assertTrue("+0.0 must have been removed, not -0.0",
-        pq.contains(-0.0) && !pq.contains(0.0))
+    assertEquals("+0.0 must have been removed, not -0.0", "[-1, 0, NaN, 3.5]", pq.toString())
+    assertTrue("+0.0 must have been removed, not -0.0", pq.contains(-0.0) && !pq.contains(0.0))
 
     assertEquals(3.5: Any, iter.next())
     assertEquals(Double.NaN: Any, iter.next())
@@ -418,9 +416,7 @@ class PriorityQueueTest extends CollectionTest {
     for (x <- List(first, second, third, fourth, fifth))
       pq.add(x)
 
-    assertEquals(
-        "[TestObj@10, TestObj@20, TestObj@21, TestObj@30, TestObj@40]",
-        pq.toString())
+    assertEquals("[TestObj@10, TestObj@20, TestObj@21, TestObj@30, TestObj@40]", pq.toString())
 
     val iter = pq.iterator()
     assertSame(first, iter.next())
@@ -428,8 +424,11 @@ class PriorityQueueTest extends CollectionTest {
     assertSame(third, iter.next())
 
     iter.remove()
-    assertEquals("third must have been removed, not second",
-        "[TestObj@10, TestObj@20, TestObj@40, TestObj@30]", pq.toString())
+    assertEquals(
+        "third must have been removed, not second",
+        "[TestObj@10, TestObj@20, TestObj@40, TestObj@30]",
+        pq.toString()
+    )
 
     assertSame(fourth, iter.next())
     assertSame(fifth, iter.next())
@@ -444,12 +443,11 @@ class PriorityQueueTest extends CollectionTest {
 
   /** Built with `scala.util.Random.shuffle((0 until 100).toList)`. */
   private val listOfShuffled0Until100 = List(
-      89, 26, 23, 9, 96, 81, 34, 79, 37, 90, 45, 66, 16, 49, 70, 77, 5, 19, 39,
-      98, 44, 15, 1, 6, 43, 27, 40, 3, 68, 91, 76, 20, 54, 87, 85, 12, 86, 31,
-      67, 24, 95, 0, 38, 22, 97, 28, 59, 2, 94, 7, 51, 30, 72, 56, 18, 13, 14,
-      75, 53, 64, 47, 46, 58, 93, 74, 32, 57, 83, 60, 73, 11, 88, 69, 65, 33,
-      52, 29, 80, 50, 63, 10, 62, 48, 55, 41, 35, 21, 42, 61, 36, 99, 78, 82,
-      8, 4, 71, 25, 84, 92, 17
+      89, 26, 23, 9, 96, 81, 34, 79, 37, 90, 45, 66, 16, 49, 70, 77, 5, 19, 39, 98, 44, 15, 1, 6,
+      43, 27, 40, 3, 68, 91, 76, 20, 54, 87, 85, 12, 86, 31, 67, 24, 95, 0, 38, 22, 97, 28, 59, 2,
+      94, 7, 51, 30, 72, 56, 18, 13, 14, 75, 53, 64, 47, 46, 58, 93, 74, 32, 57, 83, 60, 73, 11, 88,
+      69, 65, 33, 52, 29, 80, 50, 63, 10, 62, 48, 55, 41, 35, 21, 42, 61, 36, 99, 78, 82, 8, 4, 71,
+      25, 84, 92, 17
   )
 
   /** Creates a new priority queue in which the integers 0 until 100 have been

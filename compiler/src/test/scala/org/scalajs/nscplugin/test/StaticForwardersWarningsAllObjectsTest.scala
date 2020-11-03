@@ -35,12 +35,11 @@ class StaticForwardersWarningsAllObjectsTest extends DirectTest with TestHelpers
         def foo(x: Int): Int = x + 1
       }
     }
-    """ hasWarns
-    """
+    """.hasWarns("""
       |newSource1.scala:5: warning: Not generating the static forwarders of Enclosing$a because its name differs only in case from the name of another class or trait in this compilation unit.
       |      object a {
       |             ^
-    """
+    """)
   }
 
   @Test

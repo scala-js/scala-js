@@ -42,8 +42,7 @@ class SystemPropertiesTest {
     assertEquals("\n", System.getProperty(LineSeparatorPropName))
     assertEquals("\n", System.getProperty(LineSeparatorPropName, "some default"))
     assertEquals(null, System.getProperty("this.property.does.not.exist"))
-    assertEquals("some default",
-        System.getProperty("this.property.does.not.exist", "some default"))
+    assertEquals("some default", System.getProperty("this.property.does.not.exist", "some default"))
 
     assertEquals(null, System.getProperty(TestPropName))
     assertEquals(null, System.setProperty(TestPropName, "test value"))
@@ -72,8 +71,7 @@ class SystemPropertiesTest {
     assertEquals("\n", props.getProperty(LineSeparatorPropName))
     assertEquals("\n", props.getProperty(LineSeparatorPropName, "some default"))
     assertEquals(null, props.getProperty("this.property.does.not.exist"))
-    assertEquals("some default",
-        props.getProperty("this.property.does.not.exist", "some default"))
+    assertEquals("some default", props.getProperty("this.property.does.not.exist", "some default"))
 
     // Existing props prior to calling getProperties() are visible
     assertEquals("existing value", props.getProperty(ExistingPropName))

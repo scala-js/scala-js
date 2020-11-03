@@ -134,8 +134,7 @@ class RegexPatternTest {
     splitWithLimit("abc", "(?=a)", 2, Array("abc"))
     splitWithLimit("ab", "a", 1, Array("ab"))
 
-    def splitWithLimit(input: String, regex: String, limit: Int,
-        expected: Array[String]): Unit = {
+    def splitWithLimit(input: String, regex: String, limit: Int, expected: Array[String]): Unit = {
       val result = Pattern.compile(regex).split(input, limit)
       assertArrayEquals(expected, result)
     }

@@ -34,11 +34,12 @@ object PathIRFile {
       extends IRFileImpl(path.toString, Some(lastModified.toString)) {
     def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] = {
       def loop(chan: AsynchronousFileChannel, buf: ByteBuffer): Future[ir.EntryPointsInfo] = {
-        readAsync(chan, buf).map { _ =>
-          buf.flip()
-          ir.Serializers.deserializeEntryPointsInfo(buf)
-        }.recoverWith {
-          case _: BufferUnderflowException =>
+        readAsync(chan, buf)
+          .map { _ =>
+            buf.flip()
+            ir.Serializers.deserializeEntryPointsInfo(buf)
+          }
+          .recoverWith { case _: BufferUnderflowException =>
             // Reset to write again.
             buf.position(buf.limit())
             buf.limit(buf.capacity())
@@ -53,7 +54,7 @@ object PathIRFile {
             }
 
             loop(chan, newBuf)
-        }
+          }
       }
 
       withChannel(loop(_, ByteBuffer.allocate(1024)))

@@ -46,21 +46,23 @@ class Promise[+A](
     executor: js.Function2[js.Function1[A | js.Thenable[A], _], js.Function1[scala.Any, _], _])
     extends js.Object with js.Thenable[A] {
 
-  def `then`[B](
-      onFulfilled: js.Function1[A, B | js.Thenable[B]],
-      onRejected: js.UndefOr[js.Function1[scala.Any, B | js.Thenable[B]]] = js.undefined): js.Promise[B] = js.native
+  def `then`[B](onFulfilled: js.Function1[A, B | js.Thenable[B]],
+      onRejected: js.UndefOr[js.Function1[scala.Any, B | js.Thenable[B]]] =
+        js.undefined): js.Promise[B] = js.native
 
-  def `then`[B >: A](
-      onFulfilled: Unit,
-      onRejected: js.UndefOr[js.Function1[scala.Any, B | js.Thenable[B]]]): js.Promise[B] = js.native
+  def `then`[B >: A](onFulfilled: Unit,
+      onRejected: js.UndefOr[
+          js.Function1[scala.Any, B | js.Thenable[B]]]): js.Promise[B] = js.native
 
   def `catch`[B >: A](
-      onRejected: js.UndefOr[js.Function1[scala.Any, B | js.Thenable[B]]] = js.undefined): js.Promise[B] = js.native
+      onRejected: js.UndefOr[js.Function1[scala.Any, B | js.Thenable[B]]] =
+        js.undefined): js.Promise[B] = js.native
 }
 
 @js.native
 @JSGlobal
 object Promise extends js.Object {
+
   /** Returns a new [[Promise]] completed with the specified `value`. */
   def resolve[A](value: A | js.Thenable[A]): js.Promise[A] = js.native
 

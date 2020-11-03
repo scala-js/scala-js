@@ -22,8 +22,7 @@ import sbt.testing.TaskDef
  *  for execution.
  */
 private[testing] final class IsolatedTestSet(
-    val testFrameworkNames: List[List[String]],
-    val definedTests: List[TaskDef]
+    val testFrameworkNames: List[List[String]], val definedTests: List[TaskDef]
 )
 
 private[testing] object IsolatedTestSet {

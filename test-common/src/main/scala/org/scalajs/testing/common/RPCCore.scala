@@ -96,11 +96,11 @@ private[testing] abstract class RPCCore()(implicit ec: ExecutionContext) {
               val detail = opCode match {
                 case JSEndpoints.msgSlave.opCode =>
                   "; " +
-                  "The test adapter could not send a message to a slave, " +
-                  "which probably happens because the slave terminated early, " +
-                  "without waiting for the reply to a call to send(). " +
-                  "This is probably a bug in the testing framework you are " +
-                  "using. See also #3201."
+                    "The test adapter could not send a message to a slave, " +
+                    "which probably happens because the slave terminated early, " +
+                    "without waiting for the reply to a call to send(). " +
+                    "This is probably a bug in the testing framework you are " +
+                    "using. See also #3201."
 
                 case _ =>
                   ""
@@ -120,7 +120,8 @@ private[testing] abstract class RPCCore()(implicit ec: ExecutionContext) {
               val ep: bep.endpoint.type = bep.endpoint
               import ep._
 
-              Future.fromTry(Try(deserialize[Req](in)))
+              Future
+                .fromTry(Try(deserialize[Req](in)))
                 .flatMap(bep.exec)
                 .onComplete(repl => send(makeReply(callID, repl)))
           }
@@ -240,8 +241,7 @@ private[testing] abstract class RPCCore()(implicit ec: ExecutionContext) {
     }
   }
 
-  private def makeRPCMsg[T: Serializer](opCode: OpCode, id: Long,
-      payload: T): String = {
+  private def makeRPCMsg[T: Serializer](opCode: OpCode, id: Long, payload: T): String = {
     Serializer.withOutputStream { out =>
       out.writeByte(opCode)
       out.writeLong(id)

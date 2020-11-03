@@ -32,12 +32,12 @@ final class ConstructorTag[T <: js.Any] private[scalajs] (
    *  `scala.Any`s as parameters.
    */
   def newInstance(args: scala.Any*): T = {
-    js.Dynamic.newInstance(constructor)(
-        args.asInstanceOf[Seq[js.Any]]: _*).asInstanceOf[T]
+    js.Dynamic.newInstance(constructor)(args.asInstanceOf[Seq[js.Any]]: _*).asInstanceOf[T]
   }
 }
 
 object ConstructorTag {
+
   /** Implicitly materializes a [[js.ConstructorTag]].
    *
    *  This method has the same preconditions as [[js.constructorOf]].

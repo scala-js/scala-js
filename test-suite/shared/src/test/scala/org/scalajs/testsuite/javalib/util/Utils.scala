@@ -52,21 +52,18 @@ object Utils {
     result
   }
 
-  def assertEnumSameElementsAsSet[A](expected: A*)(
-      enumeration: ju.Enumeration[_ <: A]): Unit = {
+  def assertEnumSameElementsAsSet[A](expected: A*)(enumeration: ju.Enumeration[_ <: A]): Unit = {
     assertIteratorSameElementsAsSet(expected: _*)(new ju.Iterator[A] {
       def hasNext(): Boolean = enumeration.hasMoreElements()
       def next(): A = enumeration.nextElement()
     })
   }
 
-  def assertCollSameElementsAsSet[A](expected: A*)(
-      coll: ju.Collection[A]): Unit = {
+  def assertCollSameElementsAsSet[A](expected: A*)(coll: ju.Collection[A]): Unit = {
     assertIteratorSameElementsAsSet(expected: _*)(coll.iterator())
   }
 
-  def assertIteratorSameElementsAsSet[A](expected: A*)(
-      iter: ju.Iterator[A]): Unit = {
+  def assertIteratorSameElementsAsSet[A](expected: A*)(iter: ju.Iterator[A]): Unit = {
     val expectedSet = expected.toSet
     var size = 0
     while (iter.hasNext()) {
@@ -77,17 +74,14 @@ object Utils {
     assertEquals(expectedSet.size, size)
   }
 
-  def assertIteratorSameElementsAsSetDupesAllowed[A](expected: A*)(
-      iter: ju.Iterator[A]): Unit = {
+  def assertIteratorSameElementsAsSetDupesAllowed[A](expected: A*)(iter: ju.Iterator[A]): Unit = {
     val expectedSet = expected.toSet
     val notSeen = scala.collection.mutable.HashSet[A](expected: _*)
     while (iter.hasNext()) {
       val value = iter.next()
-      assertTrue(s"iterator yieled unexpected value $value",
-          expectedSet.contains(value))
+      assertTrue(s"iterator yieled unexpected value $value", expectedSet.contains(value))
       notSeen -= value
     }
-    assertTrue(s"iterator did not yield expected values $notSeen",
-        notSeen.isEmpty)
+    assertTrue(s"iterator did not yield expected values $notSeen", notSeen.isEmpty)
   }
 }

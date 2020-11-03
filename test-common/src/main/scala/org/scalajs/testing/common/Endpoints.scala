@@ -23,6 +23,7 @@ private[testing] sealed trait MsgEndpoint extends Endpoint {
 }
 
 private[testing] object MsgEndpoint {
+
   /** Helper type for readability */
   type EP[M] = MsgEndpoint { type Msg = M }
 
@@ -46,6 +47,7 @@ private[testing] sealed trait RPCEndpoint extends Endpoint {
 }
 
 private[testing] object RPCEndpoint {
+
   /** Helper type for readability */
   type EP[Rq, Rp] = RPCEndpoint { type Req = Rq; type Resp = Rp }
 

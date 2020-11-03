@@ -214,49 +214,39 @@ class UnionTypeTest {
    */
 
   @Test def neither_left_nor_right(): Unit = {
-    typeError(
-        "3: Boolean | String")
+    typeError("3: Boolean | String")
   }
 
   @Test def none_of_three_types(): Unit = {
-    typeError(
-        "3: Boolean | String | List[Int]")
+    typeError("3: Boolean | String | List[Int]")
   }
 
   @Test def wrong_type_parameter_on_left_or_right(): Unit = {
-    typeError(
-        "List(1, 2): List[String] | String")
-    typeError(
-        "List(1, 2): String | List[String]")
+    typeError("List(1, 2): List[String] | String")
+    typeError("List(1, 2): String | List[String]")
   }
 
   @Test def left_of_OR_type_is_not_a_subtype_of_rhs(): Unit = {
-    typeError(
-        "(1: Int | List[String]): String | List[String]")
+    typeError("(1: Int | List[String]): String | List[String]")
   }
 
   @Test def right_of_OR_type_is_not_a_subtype_of_rhs(): Unit = {
-    typeError(
-        "(1: Int | List[String]): String | Int")
+    typeError("(1: Int | List[String]): String | Int")
   }
 
   @Test def merge_with_an_incorrect_subtype(): Unit = {
-    typeError(
-        "(List(1, 2): List[Int] | Set[Int]).merge: Seq[Int]")
+    typeError("(List(1, 2): List[Int] | Set[Int]).merge: Seq[Int]")
   }
 
   @Test def invariant_type_constructor(): Unit = {
-    typeError(
-        "(Array[Int]()): Array[Int | String]")
+    typeError("(Array[Int]()): Array[Int | String]")
   }
 
   @Test def covariant_type_constructor_in_contravariant_pos(): Unit = {
-    typeError(
-        "(Nil: List[Int | String]): List[Int]")
+    typeError("(Nil: List[Int | String]): List[Int]")
   }
 
   @Test def contravariant_type_constructor_in_covariant_pos(): Unit = {
-    typeError(
-        "(new Consumer[Int]): Consumer[Int | String]")
+    typeError("(new Consumer[Int]): Consumer[Int | String]")
   }
 }

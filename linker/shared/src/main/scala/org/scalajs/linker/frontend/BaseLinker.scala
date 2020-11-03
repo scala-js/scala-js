@@ -39,8 +39,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
   private val irLoader = new IRLoader
   private val methodSynthesizer = new MethodSynthesizer(irLoader)
 
-  def link(irInput: Seq[IRFile],
-      moduleInitializers: Seq[ModuleInitializer], logger: Logger,
+  def link(irInput: Seq[IRFile], moduleInitializers: Seq[ModuleInitializer], logger: Logger,
       symbolRequirements: SymbolRequirement, checkIR: Boolean)(
       implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
@@ -57,8 +56,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
         logger.time("Linker: Check IR") {
           val errorCount = IRChecker.check(linkResult, logger)
           if (errorCount != 0) {
-            throw new LinkingException(
-                s"There were $errorCount IR checking errors.")
+            throw new LinkingException(s"There were $errorCount IR checking errors.")
           }
         }
       }
@@ -92,9 +90,8 @@ final class BaseLinker(config: CommonPhaseConfig) {
     }
 
     for {
-      analysis <- Analyzer.computeReachability(config, moduleInitializers,
-          symbolRequirements, allowAddingSyntheticMethods = true,
-          checkAbstractReachability = true, irLoader)
+      analysis <- Analyzer.computeReachability(config, moduleInitializers, symbolRequirements,
+          allowAddingSyntheticMethods = true, checkAbstractReachability = true, irLoader)
     } yield {
       if (analysis.errors.nonEmpty) {
         reportErrors(analysis.errors)
@@ -104,8 +101,8 @@ final class BaseLinker(config: CommonPhaseConfig) {
     }
   }
 
-  private def assemble(moduleInitializers: Seq[ModuleInitializer],
-      analysis: Analysis)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
+  private def assemble(moduleInitializers: Seq[ModuleInitializer], analysis: Analysis)(
+      implicit ec: ExecutionContext): Future[LinkingUnit] = {
     def assembleClass(info: ClassInfo) = {
       val className = info.className
       val classAndVersion = irLoader.loadClassDefAndVersion(className)
@@ -119,10 +116,10 @@ final class BaseLinker(config: CommonPhaseConfig) {
         val linkedTopLevelExports = for {
           topLevelExport <- classDef.topLevelExportDefs
         } yield {
-          val infos = analysis.topLevelExportInfos(
-              (ModuleID(topLevelExport.moduleID), topLevelExport.topLevelExportName))
-          new LinkedTopLevelExport(className, topLevelExport,
-              infos.staticDependencies.toSet, infos.externalDependencies.toSet)
+          val infos = analysis.topLevelExportInfos((ModuleID(topLevelExport.moduleID),
+                  topLevelExport.topLevelExportName))
+          new LinkedTopLevelExport(className, topLevelExport, infos.staticDependencies.toSet,
+              infos.externalDependencies.toSet)
         }
 
         (linkedClass, linkedTopLevelExports)
@@ -134,8 +131,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
     } yield {
       val (linkedClassDefs, linkedTopLevelExports) = assembled.unzip
 
-      new LinkingUnit(config.coreSpec, linkedClassDefs.toList,
-          linkedTopLevelExports.flatten.toList,
+      new LinkingUnit(config.coreSpec, linkedClassDefs.toList, linkedTopLevelExports.flatten.toList,
           moduleInitializers.toList)
     }
   }
@@ -143,8 +139,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
   /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass.
    */
   private def linkedClassDef(classDef: ClassDef, version: Option[String],
-      syntheticMethodDefs: Iterator[MethodDef],
-      analyzerInfo: ClassInfo): LinkedClass = {
+      syntheticMethodDefs: Iterator[MethodDef], analyzerInfo: ClassInfo): LinkedClass = {
     import ir.Trees._
 
     val fields = List.newBuilder[AnyFieldDef]
@@ -169,7 +164,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
         if (methodInfo.isReachable) {
           assert(m.body.isDefined,
               s"The abstract method ${classDef.name.name}.${m.methodName} " +
-              "is reachable.")
+                "is reachable.")
           methods += linkedMethod(m)
         }
 
@@ -196,27 +191,15 @@ final class BaseLinker(config: CommonPhaseConfig) {
 
     val ancestors = analyzerInfo.ancestors.map(_.className)
 
-    new LinkedClass(
-        classDef.name,
-        kind,
-        classDef.jsClassCaptures,
-        classDef.superClass,
-        classDef.interfaces,
-        classDef.jsSuperClass,
-        classDef.jsNativeLoadSpec,
-        fields.result(),
-        methods.result(),
-        exportedMembers.result(),
-        jsNativeMembers.result(),
-        classDef.optimizerHints,
-        classDef.pos,
-        ancestors.toList,
+    new LinkedClass(classDef.name, kind, classDef.jsClassCaptures, classDef.superClass,
+        classDef.interfaces, classDef.jsSuperClass, classDef.jsNativeLoadSpec, fields.result(),
+        methods.result(), exportedMembers.result(), jsNativeMembers.result(),
+        classDef.optimizerHints, classDef.pos, ancestors.toList,
         hasInstances = analyzerInfo.isAnySubclassInstantiated,
         hasInstanceTests = analyzerInfo.areInstanceTestsUsed,
         hasRuntimeTypeInfo = analyzerInfo.isDataAccessed,
         staticDependencies = analyzerInfo.staticDependencies.toSet,
-        externalDependencies = analyzerInfo.externalDependencies.toSet,
-        version)
+        externalDependencies = analyzerInfo.externalDependencies.toSet, version)
   }
 }
 

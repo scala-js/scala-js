@@ -231,7 +231,7 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
   private[this] def iterateUntilEmpty(
       f: js.Array[A] => js.Array[A]): scala.collection.Iterator[js.Array[A]] = {
     scala.collection.Iterator.iterate(xs)(f).takeWhile(_.nonEmpty) ++
-    scala.collection.Iterator.single(js.Array[A]())
+      scala.collection.Iterator.single(js.Array[A]())
   }
 
   /** An array containing the first `n` elements of this array. */
@@ -701,7 +701,6 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  {{{
    *  js.Array(4, 3, 2, 1).scanRight(0)(_ + _) == js.Array(10, 6, 3, 1, 0)
    *  }}}
-   *
    */
   def scanRight[B](z: B)(op: (A, B) => B): js.Array[B] = {
     val len = xs.length
@@ -841,8 +840,7 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *  @return
    *    An array obtained by concatenating rows of this array.
    */
-  def flatten[B](
-      implicit asIterable: A => scala.collection.Iterable[B]): js.Array[B] = {
+  def flatten[B](implicit asIterable: A => scala.collection.Iterable[B]): js.Array[B] = {
     flatMap(identity)
   }
 
@@ -1072,8 +1070,7 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *    The number of values in the original array that are replaced by the
    *    patch.
    */
-  def patch[B >: A](from: Int, other: IterableOnce[B],
-      replaced: Int): js.Array[B] = {
+  def patch[B >: A](from: Int, other: IterableOnce[B], replaced: Int): js.Array[B] = {
     val len = xs.length
     val cut = if (from > 0) min(from, len) else 0
     val b = xs.jsSlice(0, cut).asInstanceOf[js.Array[B]]
@@ -1100,8 +1097,7 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *    a pair of Arrays, containing, respectively, the first and second half
    *    of each element pair of this array.
    */
-  def unzip[A1, A2](
-      implicit asPair: A => (A1, A2)): (js.Array[A1], js.Array[A2]) = {
+  def unzip[A1, A2](implicit asPair: A => (A1, A2)): (js.Array[A1], js.Array[A2]) = {
 
     val len = xs.length
     val a1 = new js.Array[A1](len)
@@ -1161,8 +1157,7 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *     An array obtained by replacing elements of this arrays with rows the
    *     represent.
    */
-  def transpose[B](
-      implicit asArray: A => js.Array[B]): js.Array[js.Array[B]] = {
+  def transpose[B](implicit asArray: A => js.Array[B]): js.Array[js.Array[B]] = {
 
     val xsLen = xs.length
     if (xsLen > 0) {
@@ -1349,7 +1344,6 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    */
   def copyToArray[B >: A](xs: scala.Array[B], start: Int): Int =
     copyToArray(xs, start, Int.MaxValue)
-
 
   /** Copy elements of this array to a Scala array.
    *
@@ -2014,8 +2008,7 @@ object ArrayOps {
       new WithFilter[A](a => p(a) && q(a), xs)
   }
 
-  private class ArrayIterator[A](private[this] val xs: js.Array[A])
-      extends AbstractIterator[A] {
+  private class ArrayIterator[A](private[this] val xs: js.Array[A]) extends AbstractIterator[A] {
 
     private[this] var pos = 0
 
@@ -2036,8 +2029,7 @@ object ArrayOps {
     }
   }
 
-  private class ReverseIterator[A](private[this] val xs: js.Array[A])
-      extends AbstractIterator[A] {
+  private class ReverseIterator[A](private[this] val xs: js.Array[A]) extends AbstractIterator[A] {
 
     private[this] var pos = xs.length - 1
 

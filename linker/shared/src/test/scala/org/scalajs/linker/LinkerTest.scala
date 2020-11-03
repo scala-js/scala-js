@@ -66,10 +66,10 @@ class LinkerTest {
 
     for {
       // Simulate a stale output in the output directory.
-      _ <- OutputDirectoryImpl.fromOutputDirectory(outputDirectory)
+      _ <- OutputDirectoryImpl
+        .fromOutputDirectory(outputDirectory)
         .writeFull(staleFileName, ByteBuffer.wrap(Array()))
-      report <- testLink(helloWorldClassDefs, MainTestModuleInitializers,
-          output = outputDirectory)
+      report <- testLink(helloWorldClassDefs, MainTestModuleInitializers, output = outputDirectory)
     } yield {
       assertFalse(outputDirectory.content(staleFileName).isDefined)
       assertTrue(outputDirectory.content(report.publicModules.head.jsFileName).isDefined)
@@ -132,13 +132,14 @@ class LinkerTest {
 
     for {
       minilib <- TestIRRepo.minilib
-      _ <- linker.link(minilib ++ classDefsFiles, MainTestModuleInitializers,
-          output, new ScalaConsoleLogger(Level.Error))
+      _ <- linker.link(minilib ++ classDefsFiles, MainTestModuleInitializers, output,
+          new ScalaConsoleLogger(Level.Error))
     } yield {
       val jsContent = new String(jsOutput.content, StandardCharsets.UTF_8)
 
       // Check we replaced the source map reference.
-      assertTrue(jsContent.contains("\n//# sourceMappingURL=http://example.org/my-source-map-uri\n"))
+      assertTrue(
+          jsContent.contains("\n//# sourceMappingURL=http://example.org/my-source-map-uri\n"))
       assertFalse(jsContent.contains("//# sourceMappingURL=main.js.map"))
 
       val smContent = new String(smOutput.content, StandardCharsets.UTF_8)

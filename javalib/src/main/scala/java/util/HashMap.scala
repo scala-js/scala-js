@@ -62,8 +62,8 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
    * LinkedHashMap to implement its insertion- or access-order.
    */
 
-  private[util] def newNode(key: K, hash: Int, value: V,
-      previous: Node[K, V], next: Node[K, V]): Node[K, V] = {
+  private[util] def newNode(key: K, hash: Int, value: V, previous: Node[K, V],
+      next: Node[K, V]): Node[K, V] = {
     new Node(key, hash, value, previous, next)
   }
 
@@ -192,7 +192,8 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
     }
   }
 
-  override def computeIfPresent(key: K, remappingFunction: BiFunction[_ >: K, _ >: V, _ <: V]): V = {
+  override def computeIfPresent(key: K,
+      remappingFunction: BiFunction[_ >: K, _ >: V, _ <: V]): V = {
     val (node, hash, idx, oldValue) = getNode0(key)
     if (oldValue == null) {
       oldValue
@@ -281,8 +282,7 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
     (node, hash, idx, value)
   }
 
-  private def putOrRemove0(key: K, hash: Int, idx: Int, node: Node[K, V],
-      newValue: V): V = {
+  private def putOrRemove0(key: K, hash: Int, idx: Int, node: Node[K, V], newValue: V): V = {
     if (newValue != null)
       put0(key, newValue, hash, node)
     else if (node ne null)
@@ -672,8 +672,8 @@ object HashMap {
     if (k == null) 0
     else improveHash(k.hashCode())
 
-  private[util] class Node[K, V](val key: K, val hash: Int, var value: V,
-      var previous: Node[K, V], var next: Node[K, V])
+  private[util] class Node[K, V](val key: K, val hash: Int, var value: V, var previous: Node[K, V],
+      var next: Node[K, V])
       extends Map.Entry[K, V] {
 
     def getKey(): K = key
@@ -689,7 +689,7 @@ object HashMap {
     override def equals(that: Any): Boolean = that match {
       case that: Map.Entry[_, _] =>
         Objects.equals(getKey(), that.getKey()) &&
-        Objects.equals(getValue(), that.getValue())
+          Objects.equals(getValue(), that.getValue())
       case _ =>
         false
     }

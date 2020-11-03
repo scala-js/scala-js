@@ -39,8 +39,7 @@ private object MinModuleAnalyzer {
     var moduleIndex: Int = -1
   }
 
-  private class Run(info: ModuleAnalyzer.DependencyInfo)
-      extends ModuleAnalyzer.Analysis {
+  private class Run(info: ModuleAnalyzer.DependencyInfo) extends ModuleAnalyzer.Analysis {
 
     private[this] var nextIndex = 0
     private[this] val nodes = mutable.Map.empty[ClassName, Node]
@@ -51,9 +50,7 @@ private object MinModuleAnalyzer {
       nodes.get(className).map(n => moduleIndexToID(n.moduleIndex))
 
     def analyze(): Unit = {
-      info.publicModuleDependencies
-        .valuesIterator
-        .flatten
+      info.publicModuleDependencies.valuesIterator.flatten
         .filter(!nodes.contains(_))
         .foreach(strongconnect(_))
     }
@@ -85,17 +82,19 @@ private object MinModuleAnalyzer {
       stack += node
 
       for (depName <- info.classDependencies(className)) {
-        nodes.get(depName).fold {
-          // We have not visited this dependency. It is part of our spanning tree.
-          val depNode = strongconnect(depName)
-          node.lowlink = math.min(node.lowlink, depNode.lowlink)
-        } { depNode =>
-          // We have already visited this node.
-          if (depNode.moduleIndex == -1) {
-            // This is a back link.
-            node.lowlink = math.min(node.lowlink, depNode.index)
+        nodes
+          .get(depName)
+          .fold {
+            // We have not visited this dependency. It is part of our spanning tree.
+            val depNode = strongconnect(depName)
+            node.lowlink = math.min(node.lowlink, depNode.lowlink)
+          } { depNode =>
+            // We have already visited this node.
+            if (depNode.moduleIndex == -1) {
+              // This is a back link.
+              node.lowlink = math.min(node.lowlink, depNode.index)
+            }
           }
-        }
       }
 
       if (node.lowlink == node.index) {

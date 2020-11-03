@@ -25,8 +25,7 @@ import org.scalajs.ir.Types._
 
 import Analysis._
 
-private[frontend] final class MethodSynthesizer(
-    inputProvider: MethodSynthesizer.InputProvider) {
+private[frontend] final class MethodSynthesizer(inputProvider: MethodSynthesizer.InputProvider) {
 
   def synthesizeMembers(classInfo: ClassInfo, analysis: Analysis)(
       implicit ec: ExecutionContext): Future[Iterator[MethodDef]] = {
@@ -47,8 +46,7 @@ private[frontend] final class MethodSynthesizer(
     Future.sequence(futures)
   }
 
-  private def synthesizeReflectiveProxy(
-      classInfo: ClassInfo, methodInfo: MethodInfo,
+  private def synthesizeReflectiveProxy(classInfo: ClassInfo, methodInfo: MethodInfo,
       targetName: MethodName, analysis: Analysis)(
       implicit ec: ExecutionContext): Future[MethodDef] = {
     val methodName = methodInfo.methodName
@@ -63,8 +61,8 @@ private[frontend] final class MethodSynthesizer(
       val params = targetMDef.args.map(_.copy()) // for the new pos
       val currentClassType = ClassType(classInfo.className)
 
-      val call = Apply(ApplyFlags.empty, This()(currentClassType),
-          targetIdent, params.map(_.ref))(targetMDef.resultType)
+      val call = Apply(ApplyFlags.empty, This()(currentClassType), targetIdent, params.map(_.ref))(
+          targetMDef.resultType)
 
       val body = if (targetName.resultTypeRef == VoidRef) {
         // Materialize an `undefined` result for void methods
@@ -73,14 +71,12 @@ private[frontend] final class MethodSynthesizer(
         call
       }
 
-      MethodDef(MemberFlags.empty, proxyIdent, targetMDef.originalName, params,
-          AnyType, Some(body))(
-          OptimizerHints.empty, targetMDef.hash)
+      MethodDef(MemberFlags.empty, proxyIdent, targetMDef.originalName, params, AnyType,
+          Some(body))(OptimizerHints.empty, targetMDef.hash)
     }
   }
 
-  private def synthesizeDefaultBridge(
-      classInfo: ClassInfo, methodInfo: MethodInfo,
+  private def synthesizeDefaultBridge(classInfo: ClassInfo, methodInfo: MethodInfo,
       targetInterface: ClassName, analysis: Analysis)(
       implicit ec: ExecutionContext): Future[MethodDef] = {
     val methodName = methodInfo.methodName
@@ -97,19 +93,16 @@ private[frontend] final class MethodSynthesizer(
       val params = targetMDef.args.map(_.copy()) // for the new pos
       val currentClassType = ClassType(classInfo.className)
 
-      val body = ApplyStatically(
-          ApplyFlags.empty, This()(currentClassType), targetInterface,
+      val body = ApplyStatically(ApplyFlags.empty, This()(currentClassType), targetInterface,
           targetIdent, params.map(_.ref))(targetMDef.resultType)
 
-      MethodDef(MemberFlags.empty, bridgeIdent, targetMDef.originalName,
-          params, targetMDef.resultType, Some(body))(
-          OptimizerHints.empty, targetMDef.hash)
+      MethodDef(MemberFlags.empty, bridgeIdent, targetMDef.originalName, params,
+          targetMDef.resultType, Some(body))(OptimizerHints.empty, targetMDef.hash)
     }
   }
 
-  private def findInheritedMethodDef(analysis: Analysis,
-      classInfo: ClassInfo, methodName: MethodName,
-      p: MethodInfo => Boolean = _ => true)(
+  private def findInheritedMethodDef(analysis: Analysis, classInfo: ClassInfo,
+      methodName: MethodName, p: MethodInfo => Boolean = _ => true)(
       implicit ec: ExecutionContext): Future[MethodDef] = {
     @tailrec
     def loop(ancestorInfo: ClassInfo): Future[MethodDef] = {
@@ -128,7 +121,7 @@ private[frontend] final class MethodSynthesizer(
             case MethodSyntheticKind.ReflectiveProxy(_) =>
               throw new AssertionError(
                   s"Cannot recursively follow $ancestorInfo.$methodName of " +
-                  s"kind ${m.syntheticKind}")
+                    s"kind ${m.syntheticKind}")
           }
 
         case None =>
@@ -146,22 +139,23 @@ private[frontend] final class MethodSynthesizer(
     for {
       classDef <- inputProvider.loadClassDef(classInfo.className)
     } yield {
-      classDef.memberDefs.collectFirst {
-        case mDef: MethodDef
-            if mDef.flags.namespace == MemberNamespace.Public &&
+      classDef.memberDefs
+        .collectFirst {
+          case mDef: MethodDef
+              if mDef.flags.namespace == MemberNamespace.Public &&
                 mDef.methodName == methodName =>
-          mDef
-      }.getOrElse {
-        throw new AssertionError(
-            s"Cannot find ${methodName.nameString} in ${classInfo.className.nameString}")
-      }
+            mDef
+        }
+        .getOrElse {
+          throw new AssertionError(
+              s"Cannot find ${methodName.nameString} in ${classInfo.className.nameString}")
+        }
     }
   }
 }
 
 private[frontend] object MethodSynthesizer {
   trait InputProvider {
-    def loadClassDef(className: ClassName)(
-        implicit ec: ExecutionContext): Future[ClassDef]
+    def loadClassDef(className: ClassName)(implicit ec: ExecutionContext): Future[ClassDef]
   }
 }

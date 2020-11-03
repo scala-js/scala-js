@@ -12,7 +12,9 @@
 
 package org.scalajs.testsuite.niobuffer
 
-import java.nio.{ReadOnlyBufferException, BufferUnderflowException, InvalidMarkException, BufferOverflowException}
+import java.nio.{
+  ReadOnlyBufferException, BufferUnderflowException, InvalidMarkException, BufferOverflowException
+}
 
 import org.junit.Test
 import org.junit.Assert._
@@ -303,7 +305,7 @@ abstract class BaseBufferTest {
         expectThrows(classOf[RuntimeException], buf.put(Array[ElementType](6, 7, 12)))
       assertTrue(
           exception.isInstanceOf[ReadOnlyBufferException] ||
-          exception.isInstanceOf[BufferOverflowException])
+            exception.isInstanceOf[BufferOverflowException])
       assertEquals(8, buf.position())
       assertEquals(elemFromInt(0), buf.get(8))
     }
@@ -312,7 +314,7 @@ abstract class BaseBufferTest {
   @Test def compact(): Unit = {
     assumeFalse("Affected by a bug in the JDK.",
         executingInJVMOnJDK8OrLower &&
-        factory.isInstanceOf[BufferFactory.ByteBufferViewFactory])
+          factory.isInstanceOf[BufferFactory.ByteBufferViewFactory])
 
     if (!createsReadOnly) {
       val buf = withContent(10, elemRange(0, 10): _*)

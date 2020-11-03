@@ -28,8 +28,7 @@ class JavaScriptExceptionTest {
   @Test def toStringTest(): Unit = {
     val error = new js.TypeError("custom message")
     val jsException = js.JavaScriptException(error)
-    assertEquals(
-        "scala.scalajs.js.JavaScriptException: TypeError: custom message",
+    assertEquals("scala.scalajs.js.JavaScriptException: TypeError: custom message",
         jsException.toString())
   }
 

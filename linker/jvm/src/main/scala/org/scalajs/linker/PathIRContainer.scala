@@ -35,8 +35,8 @@ object PathIRContainer {
 
         if (attrs.isDirectory()) {
           walkIR(entry) { (path, attrs) =>
-            containers += IRContainer.fromIRFile(
-                new PathIRFile.PathIRFileImpl(path, attrs.lastModifiedTime()))
+            containers += IRContainer.fromIRFile(new PathIRFile.PathIRFileImpl(path,
+                    attrs.lastModifiedTime()))
             paths += path
           }
         } else if (entry.getFileName().toString().endsWith(".jar")) {
@@ -68,8 +68,7 @@ object PathIRContainer {
               // We copy the contents of the file, otherwise we'd have to keep
               // the zip file system open (and it's unclear if it would be
               // faster).
-              files += new MemIRFileImpl(
-                  s"${path.toString}:${entry.toString}", version,
+              files += new MemIRFileImpl(s"${path.toString}:${entry.toString}", version,
                   Files.readAllBytes(entry))
             }
           }

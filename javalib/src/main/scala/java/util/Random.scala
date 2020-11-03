@@ -30,7 +30,7 @@ class Random(seed_in: Long) extends AnyRef with java.io.Serializable {
   def this() = this(Random.randomSeed())
 
   def setSeed(seed_in: Long): Unit = {
-    val seed = ((seed_in ^ 0x5DEECE66DL) & ((1L << 48) - 1)) // as documented
+    val seed = ((seed_in ^ 0x5deece66dL) & ((1L << 48) - 1)) // as documented
     seedHi = (seed >>> 24).toInt
     seedLo = seed.toInt & ((1 << 24) - 1)
     haveNextNextGaussian = false
@@ -61,11 +61,11 @@ class Random(seed_in: Long) extends AnyRef with java.io.Serializable {
     val oldSeedHi = seedHi
     val oldSeedLo = seedLo
 
-    val mul = 0x5DEECE66DL
+    val mul = 0x5deece66dL
     val mulHi = (mul >>> 24).toInt
     val mulLo = mul.toInt & ((1 << 24) - 1)
 
-    val loProd = oldSeedLo.toDouble * mulLo.toDouble + 0xB
+    val loProd = oldSeedLo.toDouble * mulLo.toDouble + 0xb
     val hiProd = oldSeedLo.toDouble * mulHi.toDouble + oldSeedHi.toDouble * mulLo.toDouble
     val newSeedHi =
       (_24msbOf(loProd) + _24lsbOf(hiProd)) & ((1 << 24) - 1)
@@ -112,7 +112,7 @@ class Random(seed_in: Long) extends AnyRef with java.io.Serializable {
       def loop(): Int = {
         val bits = next(31)
         val value = bits % n
-        if (bits - value + (n-1) < 0) loop()
+        if (bits - value + (n - 1) < 0) loop()
         else value
       }
 
@@ -161,19 +161,19 @@ class Random(seed_in: Long) extends AnyRef with java.io.Serializable {
        * Rejection sampling throws away about 20% of the pairs.
        */
       do {
-        x = nextDouble()*2-1
-        y = nextDouble()*2-1
-        rds = x*x + y*y
+        x = nextDouble() * 2 - 1
+        y = nextDouble() * 2 - 1
+        rds = x * x + y * y
       } while (rds == 0 || rds > 1)
 
       val c = Math.sqrt(-2 * Math.log(rds) / rds)
 
       // Save y*c for next time
-      nextNextGaussian = y*c
+      nextNextGaussian = y * c
       haveNextNextGaussian = true
 
       // And return x*c
-      x*c
+      x * c
     }
   }
 }

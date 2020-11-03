@@ -84,7 +84,8 @@ class RPCCoreTest {
       c <- 0 to 1
     } yield (c, i)
 
-    assertArrayEquals(expected.toArray.asInstanceOf[Array[Object]],
+    assertArrayEquals(
+        expected.toArray.asInstanceOf[Array[Object]],
         calls.reverse.toArray.asInstanceOf[Array[Object]])
   }
 
@@ -133,17 +134,15 @@ class RPCCoreTest {
   def remoteException: AsyncResult = await {
     val msg0 = "My message for the outer exception"
     val msg1 = "My message for the inner exception"
-    x.attach(eps.simple)(
-        (_: Unit) => throw new Exception(msg0, new Exception(msg1)))
+    x.attach(eps.simple)((_: Unit) => throw new Exception(msg0, new Exception(msg1)))
 
     y.call(eps.simple)(())
       .map(_ => fail("Expected exception"))
-      .recover {
-        case e: RPCCore.RPCException =>
-          assertNotNull(e.getCause())
-          assertEquals(msg0, e.getCause().getMessage())
-          assertNotNull(e.getCause().getCause())
-          assertEquals(msg1, e.getCause().getCause().getMessage())
+      .recover { case e: RPCCore.RPCException =>
+        assertNotNull(e.getCause())
+        assertEquals(msg0, e.getCause().getMessage())
+        assertNotNull(e.getCause().getCause())
+        assertEquals(msg1, e.getCause().getCause().getMessage())
       }
   }
 
@@ -159,9 +158,8 @@ class RPCCoreTest {
 
     future
       .map(_ => fail("Expected exception"))
-      .recover {
-        case e: RPCCore.ClosedException =>
-          assertSame(cause, e.getCause())
+      .recover { case e: RPCCore.ClosedException =>
+        assertSame(cause, e.getCause())
       }
   }
 }

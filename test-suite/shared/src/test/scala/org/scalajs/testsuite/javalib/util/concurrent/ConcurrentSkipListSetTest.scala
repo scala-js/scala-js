@@ -77,14 +77,14 @@ class ConcurrentSkipListSetTest {
     case class Rect(x: Int, y: Int)
 
     val areaComp = new ju.Comparator[Rect] {
-      def compare(a: Rect, b: Rect): Int = (a.x*a.y) - (b.x*b.y)
+      def compare(a: Rect, b: Rect): Int = (a.x * a.y) - (b.x * b.y)
     }
 
     val csls = new ConcurrentSkipListSet[Rect](areaComp)
 
-    assertTrue(csls.add(Rect(1,2)))
-    assertTrue(csls.add(Rect(2,3)))
-    assertTrue(csls.add(Rect(1,3)))
+    assertTrue(csls.add(Rect(1, 2)))
+    assertTrue(csls.add(Rect(2, 3)))
+    assertTrue(csls.add(Rect(1, 3)))
 
     val first = csls.first()
     assertEquals(1, first.x)

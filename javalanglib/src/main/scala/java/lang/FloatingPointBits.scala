@@ -70,7 +70,7 @@ private[lang] object FloatingPointBits {
   }
 
   private val highOffset = if (areTypedArraysBigEndian) 0 else 1
-  private val lowOffset  = if (areTypedArraysBigEndian) 1 else 0
+  private val lowOffset = if (areTypedArraysBigEndian) 1 else 0
 
   /** Hash code of a number (excluding Longs).
    *
@@ -87,7 +87,7 @@ private[lang] object FloatingPointBits {
    */
   def numberHashCode(value: scala.Double): Int = {
     val iv = rawToInt(value)
-    if (iv == value && 1.0/value != scala.Double.NegativeInfinity) iv
+    if (iv == value && 1.0 / value != scala.Double.NegativeInfinity) iv
     else doubleToLongBits(value).hashCode()
   }
 
@@ -123,7 +123,7 @@ private[lang] object FloatingPointBits {
     if (areTypedArraysSupported) {
       float64Array(0) = value
       ((int32Array(highOffset).toLong << 32) |
-          (int32Array(lowOffset).toLong & 0xffffffffL))
+        (int32Array(lowOffset).toLong & 0xffffffffL))
     } else {
       doubleToLongBitsPolyfill(value)
     }
@@ -160,7 +160,7 @@ private[lang] object FloatingPointBits {
   private def longBitsToDoublePolyfill(bits: scala.Long): scala.Double = {
     val ebits = 11
     val fbits = 52
-    val hifbits = fbits-32
+    val hifbits = fbits - 32
     val hi = (bits >>> 32).toInt
     val lo = Utils.toUint(bits.toInt)
     val s = hi < 0
@@ -172,7 +172,7 @@ private[lang] object FloatingPointBits {
   private def doubleToLongBitsPolyfill(value: scala.Double): scala.Long = {
     val ebits = 11
     val fbits = 52
-    val hifbits = fbits-32
+    val hifbits = fbits - 32
     val sef = encodeIEEE754(ebits, fbits, value)
     val hif = rawToInt(sef.f / 0x100000000L.toDouble)
     val hi = (if (sef.s) 0x80000000 else 0) | (sef.e << hifbits) | hif
@@ -180,12 +180,12 @@ private[lang] object FloatingPointBits {
     (hi.toLong << 32) | (lo.toLong & 0xffffffffL)
   }
 
-  @inline private def decodeIEEE754(ebits: Int, fbits: Int,
-      s: scala.Boolean, e: Int, f: scala.Double): scala.Double = {
+  @inline private def decodeIEEE754(ebits: Int, fbits: Int, s: scala.Boolean, e: Int,
+      f: scala.Double): scala.Double = {
 
     import Math.pow
 
-    val bias = (1 << (ebits-1)) - 1 // constant
+    val bias = (1 << (ebits - 1)) - 1 // constant
 
     if (e == (1 << ebits) - 1) {
       // Special
@@ -194,11 +194,11 @@ private[lang] object FloatingPointBits {
       else scala.Double.PositiveInfinity
     } else if (e > 0) {
       // Normalized
-      val x = pow(2, e-bias) * (1 + f / pow(2, fbits))
+      val x = pow(2, e - bias) * (1 + f / pow(2, fbits))
       if (s) -x else x
     } else if (f != 0.0) {
       // Subnormal
-      val x = pow(2, -(bias-1)) * (f / pow(2, fbits))
+      val x = pow(2, -(bias - 1)) * (f / pow(2, fbits))
       if (s) -x else x
     } else {
       // Zero
@@ -211,11 +211,11 @@ private[lang] object FloatingPointBits {
 
     import js.Math.{floor, log, pow}
 
-    val bias = (1 << (ebits-1)) - 1 // constant
+    val bias = (1 << (ebits - 1)) - 1 // constant
 
     if (Double.isNaN(v)) {
       // http://dev.w3.org/2006/webapi/WebIDL/#es-type-mapping
-      new EncodeIEEE754Result(false, (1 << ebits) - 1, pow(2, fbits-1))
+      new EncodeIEEE754Result(false, (1 << ebits) - 1, pow(2, fbits - 1))
     } else if (Double.isInfinite(v)) {
       new EncodeIEEE754Result(v < 0, (1 << ebits) - 1, 0.0)
     } else if (v == 0.0) {
@@ -226,7 +226,7 @@ private[lang] object FloatingPointBits {
       val s = v < 0
       val av = if (s) -v else v
 
-      if (av >= pow(2, 1-bias)) {
+      if (av >= pow(2, 1 - bias)) {
         val twoPowFbits = pow(2, fbits)
 
         var e = rawToInt(floor(log(av) / LN2))
@@ -262,7 +262,7 @@ private[lang] object FloatingPointBits {
         new EncodeIEEE754Result(s, e, f)
       } else {
         // Subnormal
-        new EncodeIEEE754Result(s, 0, roundToEven(av / pow(2, 1-bias-fbits)))
+        new EncodeIEEE754Result(s, 0, roundToEven(av / pow(2, 1 - bias - fbits)))
       }
     }
   }
@@ -281,7 +281,6 @@ private[lang] object FloatingPointBits {
 
   // Cannot use tuples in the javalanglib
   @inline
-  private final class EncodeIEEE754Result(val s: scala.Boolean, val e: Int,
-      val f: scala.Double)
+  private final class EncodeIEEE754Result(val s: scala.Boolean, val e: Int, val f: scala.Double)
 
 }

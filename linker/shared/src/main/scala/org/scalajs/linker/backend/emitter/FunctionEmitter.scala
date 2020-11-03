@@ -252,24 +252,20 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
   /** Desugars parameters and body to a JS function.
    */
-  def desugarToFunction(enclosingClassName: ClassName, params: List[ParamDef],
-      body: Tree, resultType: Type)(
-      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+  def desugarToFunction(enclosingClassName: ClassName, params: List[ParamDef], body: Tree,
+      resultType: Type)(implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[js.Function] = {
-    new JSDesugar().desugarToFunction(params, body,
-        isStat = resultType == NoType,
+    new JSDesugar().desugarToFunction(params, body, isStat = resultType == NoType,
         Env.empty(resultType).withEnclosingClassName(Some(enclosingClassName)))
   }
 
   /** Desugars parameters and body to a JS function where `this` is given as
    *  an explicit normal parameter.
    */
-  def desugarToFunctionWithExplicitThis(enclosingClassName: ClassName,
-      params: List[ParamDef], body: Tree, resultType: Type)(
-      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[js.Function] = {
-    new JSDesugar().desugarToFunctionWithExplicitThis(params, body,
-        isStat = resultType == NoType,
+  def desugarToFunctionWithExplicitThis(enclosingClassName: ClassName, params: List[ParamDef],
+      body: Tree, resultType: Type)(implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge, pos: Position): WithGlobals[js.Function] = {
+    new JSDesugar().desugarToFunctionWithExplicitThis(params, body, isStat = resultType == NoType,
         Env.empty(resultType).withEnclosingClassName(Some(enclosingClassName)))
   }
 
@@ -278,13 +274,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
   def desugarToFunction(params: List[ParamDef], body: Tree, resultType: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[js.Function] = {
-    new JSDesugar().desugarToFunction(params, body,
-        isStat = resultType == NoType, Env.empty(resultType))
+    new JSDesugar().desugarToFunction(params, body, isStat = resultType == NoType,
+        Env.empty(resultType))
   }
 
   /** Desugars a class-level expression. */
-  def desugarExpr(expr: Tree, resultType: Type)(
-      implicit moduleContext: ModuleContext,
+  def desugarExpr(expr: Tree, resultType: Type)(implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     implicit val pos = expr.pos
 
@@ -299,8 +294,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     }
   }
 
-  private class JSDesugar()(
-      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge) {
+  private class JSDesugar()(implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge) {
 
     // Name management
 
@@ -375,8 +370,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     @inline
     @tailrec
-    private def performOptimisticThenPessimisticRuns[A](
-        body: => A): WithGlobals[A] = {
+    private def performOptimisticThenPessimisticRuns[A](body: => A): WithGlobals[A] = {
       val result = body
       if (!isOptimisticNamingRun || !globalVarNames.exists(localVarNames)) {
         /* At this point, filter out the global refs that do not need to be
@@ -411,8 +405,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     // Record names
 
-    def makeRecordFieldIdentForVarRef(tree: RecordSelect)(
-        implicit pos: Position): js.Ident = {
+    def makeRecordFieldIdentForVarRef(tree: RecordSelect)(implicit pos: Position): js.Ident = {
 
       val recIdent = (tree.record: @unchecked) match {
         case VarRef(ident)                 => transformLocalVarIdent(ident)
@@ -424,8 +417,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       makeRecordFieldIdent(recIdent, tree.field.name, NoOriginalName)
     }
 
-    def makeRecordFieldIdent(recIdent: js.Ident,
-        fieldName: FieldName, fieldOrigName: OriginalName)(
+    def makeRecordFieldIdent(recIdent: js.Ident, fieldName: FieldName, fieldOrigName: OriginalName)(
         implicit pos: Position): js.Ident = {
 
       /* "__" is a safe separator for generated names because JSGen avoids it
@@ -434,7 +426,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       val name = recIdent.name + "__" + genName(fieldName)
       val originalName = OriginalName(
           recIdent.originalName.getOrElse(recIdent.name) ++ UTF8Period ++
-          fieldOrigName.getOrElse(fieldName))
+            fieldOrigName.getOrElse(fieldName))
       js.Ident(name, originalName)
     }
 
@@ -447,24 +439,21 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     /** Desugars parameters and body to a JS function where `this` is given as
      *  a normal parameter.
      */
-    def desugarToFunctionWithExplicitThis(
-        params: List[ParamDef], body: Tree, isStat: Boolean, env0: Env)(
-        implicit pos: Position): WithGlobals[js.Function] = {
+    def desugarToFunctionWithExplicitThis(params: List[ParamDef], body: Tree, isStat: Boolean,
+        env0: Env)(implicit pos: Position): WithGlobals[js.Function] = {
 
       performOptimisticThenPessimisticRuns {
         val thisIdent = fileLevelVarIdent("thiz", thisOriginalName)
         val env = env0.withThisIdent(Some(thisIdent))
         val js.Function(jsArrow, jsParams, jsBody) =
           desugarToFunctionInternal(arrow = false, params, body, isStat, env)
-        js.Function(jsArrow, js.ParamDef(thisIdent, rest = false) :: jsParams,
-            jsBody)
+        js.Function(jsArrow, js.ParamDef(thisIdent, rest = false) :: jsParams, jsBody)
       }
     }
 
     /** Desugars parameters and body to a JS function.
      */
-    def desugarToFunction(
-        params: List[ParamDef], body: Tree, isStat: Boolean, env0: Env)(
+    def desugarToFunction(params: List[ParamDef], body: Tree, isStat: Boolean, env0: Env)(
         implicit pos: Position): WithGlobals[js.Function] = {
       performOptimisticThenPessimisticRuns {
         desugarToFunctionInternal(arrow = false, params, body, isStat, env0)
@@ -473,9 +462,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     /** Desugars parameters and body to a JS function.
      */
-    private def desugarToFunctionInternal(arrow: Boolean,
-        params: List[ParamDef], body: Tree, isStat: Boolean, env0: Env)(
-        implicit pos: Position): js.Function = {
+    private def desugarToFunctionInternal(arrow: Boolean, params: List[ParamDef], body: Tree,
+        isStat: Boolean, env0: Env)(implicit pos: Position): js.Function = {
 
       val env = env0.withParams(params)
 
@@ -494,8 +482,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         body match {
           // Necessary to optimize away top-level _return: {} blocks
           case Labeled(label, _, body) =>
-            transformStat(body, Set.empty)(
-                env.withLabeledExprLHS(label, Lhs.ReturnFromFunction))
+            transformStat(body, Set.empty)(env.withLabeledExprLHS(label, Lhs.ReturnFromFunction))
           case _ =>
             transformStat(body, Set.empty)(env)
         }
@@ -508,12 +495,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case other                                        => other
       }
 
-      js.Function(arrow && useArrowFunctions, newParams,
-          js.Block(extractRestParam, cleanedNewBody))
+      js.Function(arrow && useArrowFunctions, newParams, js.Block(extractRestParam, cleanedNewBody))
     }
 
-    private def makeExtractRestParam(params: List[ParamDef])(
-        implicit pos: Position): js.Tree = {
+    private def makeExtractRestParam(params: List[ParamDef])(implicit pos: Position): js.Tree = {
       val offset = params.size - 1
       val restParamDef = params.last
 
@@ -523,8 +508,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       val counterIdent = newSyntheticVar()
       val counter = js.VarRef(counterIdent)
 
-      val restParamIdent = transformLocalVarIdent(restParamDef.name,
-          restParamDef.originalName)
+      val restParamIdent = transformLocalVarIdent(restParamDef.name, restParamDef.originalName)
       val restParam = js.VarRef(restParamIdent)
 
       val arguments = js.VarRef(js.Ident("arguments"))
@@ -533,29 +517,26 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         js.BinaryOp(JSBinaryOp.|, tree, js.IntLiteral(0)(tree.pos))(tree.pos)
 
       js.Block(
-        // const len = arguments.length | 0
-        genLet(lenIdent, mutable = false,
-            or0(genIdentBracketSelect(arguments, "length"))),
-        // let i = <offset>
-        genLet(counterIdent, mutable = true, js.IntLiteral(offset)),
-        // const restParam = []
-        genLet(restParamIdent, mutable = false, js.ArrayConstr(Nil)),
-        // while (i < len)
-        js.While(js.BinaryOp(JSBinaryOp.<, counter, len), js.Block(
-          // restParam.push(arguments[i]);
-          js.Apply(
-              genIdentBracketSelect(restParam, "push"), List(
-              js.BracketSelect(arguments, counter))),
-          // i = (i + 1) | 0
-          js.Assign(counter, or0(js.BinaryOp(JSBinaryOp.+,
-              counter, js.IntLiteral(1))))
-        ))
+          // const len = arguments.length | 0
+          genLet(lenIdent, mutable = false, or0(genIdentBracketSelect(arguments, "length"))),
+          // let i = <offset>
+          genLet(counterIdent, mutable = true, js.IntLiteral(offset)),
+          // const restParam = []
+          genLet(restParamIdent, mutable = false, js.ArrayConstr(Nil)),
+          // while (i < len)
+          js.While(js.BinaryOp(JSBinaryOp.<, counter, len),
+              js.Block(
+                  // restParam.push(arguments[i]);
+                  js.Apply(genIdentBracketSelect(restParam, "push"),
+                      List(js.BracketSelect(arguments, counter))),
+                  // i = (i + 1) | 0
+                  js.Assign(counter, or0(js.BinaryOp(JSBinaryOp.+, counter, js.IntLiteral(1))))
+              ))
       )
     }
 
     /** Desugar a statement of the IR into ES5 JS */
-    def transformStat(tree: Tree, tailPosLabels: Set[LabelName])(
-        implicit env: Env): js.Tree = {
+    def transformStat(tree: Tree, tailPosLabels: Set[LabelName])(implicit env: Env): js.Tree = {
       import TreeDSL._
 
       implicit val pos = tree.pos
@@ -575,53 +556,42 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Assign(select @ Select(qualifier, className, field), rhs) =>
           unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
             implicit val env = env0
-            js.Assign(
-                genSelect(transformExprNoChar(newQualifier), className, field)(select.pos),
+            js.Assign(genSelect(transformExprNoChar(newQualifier), className, field)(select.pos),
                 transformExpr(newRhs, select.tpe))
           }
 
         case Assign(select @ ArraySelect(array, index), rhs) =>
-          unnest(List(array, index, rhs)) {
-            case (List(newArray, newIndex, newRhs), env0) =>
-              implicit val env = env0
-              val genArray = transformExprNoChar(newArray)
-              val genIndex = transformExprNoChar(newIndex)
-              val genRhs = transformExpr(newRhs, select.tpe)
-              semantics.arrayIndexOutOfBounds match {
-                case CheckedBehavior.Compliant | CheckedBehavior.Fatal =>
-                  js.Apply(js.DotSelect(genArray, js.Ident("set")),
-                      List(genIndex, genRhs))
-                case CheckedBehavior.Unchecked =>
-                  js.Assign(
-                      js.BracketSelect(
-                          js.DotSelect(genArray, js.Ident("u"))(select.pos),
-                          genIndex)(select.pos),
-                      genRhs)
-              }
+          unnest(List(array, index, rhs)) { case (List(newArray, newIndex, newRhs), env0) =>
+            implicit val env = env0
+            val genArray = transformExprNoChar(newArray)
+            val genIndex = transformExprNoChar(newIndex)
+            val genRhs = transformExpr(newRhs, select.tpe)
+            semantics.arrayIndexOutOfBounds match {
+              case CheckedBehavior.Compliant | CheckedBehavior.Fatal =>
+                js.Apply(js.DotSelect(genArray, js.Ident("set")), List(genIndex, genRhs))
+              case CheckedBehavior.Unchecked =>
+                js.Assign(js.BracketSelect(js.DotSelect(genArray, js.Ident("u"))(select.pos),
+                        genIndex)(select.pos), genRhs)
+            }
           }
 
         case Assign(lhs: RecordSelect, rhs) =>
-          val newLhs = Transient(JSVarRef(makeRecordFieldIdentForVarRef(lhs),
-              mutable = true))(lhs.tpe)
+          val newLhs =
+            Transient(JSVarRef(makeRecordFieldIdentForVarRef(lhs), mutable = true))(lhs.tpe)
           pushLhsInto(Lhs.Assign(newLhs), rhs, tailPosLabels)
 
         case Assign(select @ JSPrivateSelect(qualifier, className, field), rhs) =>
           unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
             implicit val env = env0
-            js.Assign(
-                genJSPrivateSelect(transformExprNoChar(newQualifier),
-                    className, field)(moduleContext, globalKnowledge, select.pos),
-                transformExprNoChar(newRhs))
+            js.Assign(genJSPrivateSelect(transformExprNoChar(newQualifier), className, field)(
+                    moduleContext, globalKnowledge, select.pos), transformExprNoChar(newRhs))
           }
 
         case Assign(select @ JSSelect(qualifier, item), rhs) =>
-          unnest(List(qualifier, item, rhs)) {
-            case (List(newQualifier, newItem, newRhs), env0) =>
-              implicit val env = env0
-              js.Assign(
-                  genBracketSelect(transformExprNoChar(newQualifier),
-                      transformExprNoChar(newItem))(select.pos),
-                  transformExprNoChar(newRhs))
+          unnest(List(qualifier, item, rhs)) { case (List(newQualifier, newItem, newRhs), env0) =>
+            implicit val env = env0
+            js.Assign(genBracketSelect(transformExprNoChar(newQualifier),
+                    transformExprNoChar(newItem))(select.pos), transformExprNoChar(newRhs))
           }
 
         case Assign(select @ JSSuperSelect(superClass, qualifier, item), rhs) =>
@@ -649,12 +619,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             pushLhsInto(Lhs.Assign(select), rhs, tailPosLabels)
           }
 
-        case Assign(lhs @ (_:VarRef | Transient(JSVarRef(_, _)) | _:JSGlobalRef), rhs) =>
+        case Assign(lhs @ (_: VarRef | Transient(JSVarRef(_, _)) | _: JSGlobalRef), rhs) =>
           pushLhsInto(Lhs.Assign(lhs), rhs, tailPosLabels)
 
         case Assign(_, _) =>
-          throw new IllegalArgumentException(
-              s"Illegal Assign in transformStat: $tree")
+          throw new IllegalArgumentException(s"Illegal Assign in transformStat: $tree")
 
         case StoreModule(className, value) =>
           unnest(value) { (newValue, env0) =>
@@ -677,10 +646,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   .withDefaultContinueTargets(Set(label.name))
                 val newBody =
                   pushLhsInto(Lhs.Discard, innerBody, Set(label.name))(innerBodyEnv)
-                val optLabel = if (usedLabels.contains(label.name))
-                  Some(transformLabelIdent(label))
-                else
-                  None
+                val optLabel =
+                  if (usedLabels.contains(label.name))
+                    Some(transformLabelIdent(label))
+                  else
+                    None
                 (optLabel, newBody)
 
               case _ =>
@@ -726,12 +696,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
              * block into using `continue` statements.
              */
             js.While(js.BooleanLiteral(true), {
-              js.Block(
-                  newBody,
+              js.Block(newBody,
                   unnest(cond) { (newCond, env0) =>
-                    implicit val env = env0
-                    js.If(transformExprNoChar(newCond), js.Skip(), js.Break())
-                  })
+                implicit val env = env0
+                js.If(transformExprNoChar(newCond), js.Skip(), js.Break())
+              })
             })
           }
 
@@ -739,11 +708,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           unnest(obj) { (newObj, env0) =>
             implicit val env = env0
 
-            val lhs = genEmptyImmutableLet(
-                transformLocalVarIdent(keyVar, keyVarOriginalName))
+            val lhs = genEmptyImmutableLet(transformLocalVarIdent(keyVar, keyVarOriginalName))
             js.ForIn(lhs, transformExprNoChar(newObj), {
-              transformStat(body, Set.empty)(
-                  env.withDef(keyVar, mutable = false))
+              transformStat(body, Set.empty)(env.withDef(keyVar, mutable = false))
             })
           }
 
@@ -755,8 +722,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             implicit val env = env0
 
             val enclosingClassName = env.enclosingClassName.getOrElse {
-              throw new AssertionError(
-                  "Need enclosing class for super constructor call.")
+              throw new AssertionError("Need enclosing class for super constructor call.")
             }
 
             val superCtorCall = if (useClasses) {
@@ -774,12 +740,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
               if (containsAnySpread(newArgs)) {
                 val argArray = spreadToArgArray(newArgs)
-                js.Apply(
-                    genIdentBracketSelect(superCtor, "apply"),
+                js.Apply(genIdentBracketSelect(superCtor, "apply"),
                     List(js.This(), transformExprNoChar(argArray)))
               } else {
-                js.Apply(
-                    genIdentBracketSelect(superCtor, "call"),
+                js.Apply(genIdentBracketSelect(superCtor, "call"),
                     js.This() :: newArgs.map(transformJSArg))
               }
             }
@@ -822,9 +786,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
               field match {
                 case FieldDef(_, name, _, _) =>
-                  js.Assign(
-                      genJSPrivateSelect(js.This(), enclosingClassName, name),
-                      zero)
+                  js.Assign(genJSPrivateSelect(js.This(), enclosingClassName, name), zero)
 
                 case JSFieldDef(_, name, _) =>
                   unnest(name) { (newName, env0) =>
@@ -837,8 +799,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                         "value" -> zero
                     )
 
-                    extractWithGlobals(
-                        genDefineProperty(js.This(), transformExprNoChar(newName), descriptor))
+                    extractWithGlobals(genDefineProperty(js.This(), transformExprNoChar(newName),
+                            descriptor))
                   }
               }
             }
@@ -849,8 +811,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case JSDelete(qualifier, item) =>
           unnest(qualifier, item) { (newQual, newItem, env0) =>
             implicit val env = env0
-            js.Delete(genBracketSelect(
-                transformExprNoChar(newQual), transformExprNoChar(newItem)))
+            js.Delete(genBracketSelect(transformExprNoChar(newQual), transformExprNoChar(newItem)))
           }
 
         // Treat 'return' as an LHS
@@ -871,25 +832,23 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       }
     }
 
-    def transformBlockStats(trees: List[Tree])(
-        implicit env: Env): (List[js.Tree], Env) = {
+    def transformBlockStats(trees: List[Tree])(implicit env: Env): (List[js.Tree], Env) = {
 
       @tailrec
-      def transformLoop(trees: List[Tree], env: Env,
-          acc: List[js.Tree]): (List[js.Tree], Env) = trees match {
-        case VarDef(ident, originalName, tpe, mutable, rhs) :: ts =>
-          val newEnv = env.withDef(ident, mutable)
-          val lhs = Lhs.VarDef(transformLocalVarIdent(ident, originalName),
-              tpe, mutable)
-          val newTree = pushLhsInto(lhs, rhs, Set.empty)(env)
-          transformLoop(ts, newEnv, newTree :: acc)
+      def transformLoop(trees: List[Tree], env: Env, acc: List[js.Tree]): (List[js.Tree], Env) =
+        trees match {
+          case VarDef(ident, originalName, tpe, mutable, rhs) :: ts =>
+            val newEnv = env.withDef(ident, mutable)
+            val lhs = Lhs.VarDef(transformLocalVarIdent(ident, originalName), tpe, mutable)
+            val newTree = pushLhsInto(lhs, rhs, Set.empty)(env)
+            transformLoop(ts, newEnv, newTree :: acc)
 
-        case tree :: ts =>
-          transformLoop(ts, env, transformStat(tree, Set.empty)(env) :: acc)
+          case tree :: ts =>
+            transformLoop(ts, env, transformStat(tree, Set.empty)(env) :: acc)
 
-        case Nil =>
-          (acc.reverse, env)
-      }
+          case Nil =>
+            (acc.reverse, env)
+        }
 
       transformLoop(trees, env, Nil)
     }
@@ -898,8 +857,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
      *  top-level.
      */
     def unnestOrSpread(args: List[TreeOrJSSpread])(
-        makeStat: (List[TreeOrJSSpread], Env) => js.Tree)(
-        implicit env: Env): js.Tree = {
+        makeStat: (List[TreeOrJSSpread], Env) => js.Tree)(implicit env: Env): js.Tree = {
       val (argsNoSpread, argsWereSpread) = args.map {
         case JSSpread(items) => (items, true)
         case arg: Tree       => (arg, false)
@@ -933,7 +891,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
      */
     def unnest(args: List[Tree])(makeStat: (List[Tree], Env) => js.Tree)(
         implicit env: Env): js.Tree = {
-      if (args forall isExpression) makeStat(args, env)
+      if (args.forall(isExpression)) makeStat(args, env)
       else {
         val extractedStatements = new scala.collection.mutable.ListBuffer[js.Tree]
         var innerEnv = env
@@ -998,8 +956,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               case JSArrayConstr(items) if !containsAnySpread(items) =>
                 JSArrayConstr(recs(castNoSpread(items)))
 
-              case arg @ JSObjectConstr(items)
-                  if !doesObjectConstrRequireDesugaring(arg) =>
+              case arg @ JSObjectConstr(items) if !doesObjectConstrRequireDesugaring(arg) =>
                 // We need to properly interleave keys and values here
                 val newItems = items.foldRight[List[(Tree, Tree)]](Nil) {
                   case ((key, value), acc) =>
@@ -1040,9 +997,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
               case _ =>
                 val temp = newSyntheticVar()
-                val computeTemp = pushLhsInto(
-                    Lhs.VarDef(temp, arg.tpe, mutable = false), arg,
-                    Set.empty)
+                val computeTemp =
+                  pushLhsInto(Lhs.VarDef(temp, arg.tpe, mutable = false), arg, Set.empty)
                 computeTemp +=: extractedStatements
                 Transient(JSVarRef(temp, mutable = false))(arg.tpe)
             }
@@ -1058,8 +1014,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         val newArgs = recs(args)
 
-        assert(extractedStatements.nonEmpty,
-            "Reached computeTemps with no temp to compute")
+        assert(extractedStatements.nonEmpty, "Reached computeTemps with no temp to compute")
 
         val newStatement = makeStat(newArgs, innerEnv)
         js.Block(extractedStatements.result() ::: List(newStatement))(newStatement.pos)
@@ -1067,25 +1022,22 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     }
 
     /** Same as above, for a single argument */
-    def unnest(arg: Tree)(makeStat: (Tree, Env) => js.Tree)(
-        implicit env: Env): js.Tree = {
-      unnest(List(arg)) {
-        case (List(newArg), env) => makeStat(newArg, env)
+    def unnest(arg: Tree)(makeStat: (Tree, Env) => js.Tree)(implicit env: Env): js.Tree = {
+      unnest(List(arg)) { case (List(newArg), env) =>
+        makeStat(newArg, env)
       }
     }
 
     /** Same as above, for two arguments */
-    def unnest(lhs: Tree, rhs: Tree)(
-        makeStat: (Tree, Tree, Env) => js.Tree)(
+    def unnest(lhs: Tree, rhs: Tree)(makeStat: (Tree, Tree, Env) => js.Tree)(
         implicit env: Env): js.Tree = {
-      unnest(List(lhs, rhs)) {
-        case (List(newLhs, newRhs), env) => makeStat(newLhs, newRhs, env)
+      unnest(List(lhs, rhs)) { case (List(newLhs, newRhs), env) =>
+        makeStat(newLhs, newRhs, env)
       }
     }
 
     /** Same as above, for one head argument and a list of arguments */
-    def unnest(arg0: Tree, args: List[Tree])(
-        makeStat: (Tree, List[Tree], Env) => js.Tree)(
+    def unnest(arg0: Tree, args: List[Tree])(makeStat: (Tree, List[Tree], Env) => js.Tree)(
         implicit env: Env): js.Tree = {
       unnest(arg0 :: args) { (newArgs, env) =>
         makeStat(newArgs.head, newArgs.tail, env)
@@ -1094,8 +1046,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     /** Unnest for the fields of a `JSObjectConstr`. */
     def unnestJSObjectConstrFields(fields: List[(Tree, Tree)])(
-        makeStat: (List[(Tree, Tree)], Env) => js.Tree)(
-        implicit env: Env): js.Tree = {
+        makeStat: (List[(Tree, Tree)], Env) => js.Tree)(implicit env: Env): js.Tree = {
 
       // Collect all the trees that need unnesting, in evaluation order
       val trees = fields.flatMap { field =>
@@ -1118,8 +1069,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
      *  will always produce the same result and never have side-effects.
      *  A side-effect free expression can be elided if its result is not used.
      */
-    private def isExpressionInternal(tree: Tree, allowUnpure: Boolean,
-        allowSideEffects: Boolean)(implicit env: Env): Boolean = {
+    private def isExpressionInternal(tree: Tree, allowUnpure: Boolean, allowSideEffects: Boolean)(
+        implicit env: Env): Boolean = {
 
       require(!allowSideEffects || allowUnpure)
 
@@ -1161,7 +1112,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
 
         // Expressions preserving pureness
-        case Block(trees)            => trees forall test
+        case Block(trees)            => trees.forall(test)
         case If(cond, thenp, elsep)  => test(cond) && test(thenp) && test(elsep)
         case BinaryOp(_, lhs, rhs)   => test(lhs) && test(rhs)
         case UnaryOp(_, lhs)         => test(lhs)
@@ -1174,40 +1125,40 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         // Expressions preserving side-effect freedom
         case NewArray(tpe, lengths) =>
-          allowUnpure && (lengths forall test)
+          allowUnpure && (lengths.forall(test))
         case ArrayValue(tpe, elems) =>
-          allowUnpure && (elems forall test)
+          allowUnpure && (elems.forall(test))
         case JSArrayConstr(items) =>
           allowUnpure && (items.forall(testJSArg))
         case tree @ JSObjectConstr(items) =>
           allowUnpure &&
-          !doesObjectConstrRequireDesugaring(tree) &&
-          items.forall { item =>
-            test(item._1) && test(item._2)
-          }
+            !doesObjectConstrRequireDesugaring(tree) &&
+            items.forall { item =>
+              test(item._1) && test(item._2)
+            }
         case Closure(arrow, captureParams, params, body, captureValues) =>
-          allowUnpure && (captureValues forall test)
+          allowUnpure && (captureValues.forall(test))
 
         // Scala expressions that can always have side-effects
         case New(className, constr, args) =>
-          allowSideEffects && (args forall test)
+          allowSideEffects && (args.forall(test))
         case LoadModule(className) => // unfortunately
           allowSideEffects
         case Apply(_, receiver, method, args) =>
-          allowSideEffects && test(receiver) && (args forall test)
+          allowSideEffects && test(receiver) && (args.forall(test))
         case ApplyStatically(_, receiver, className, method, args) =>
-          allowSideEffects && test(receiver) && (args forall test)
+          allowSideEffects && test(receiver) && (args.forall(test))
         case ApplyStatic(_, className, method, args) =>
-          allowSideEffects && (args forall test)
+          allowSideEffects && (args.forall(test))
         case GetClass(arg) =>
           allowSideEffects && test(arg)
         case Transient(CallHelper(helper, args)) =>
-          allowSideEffects && (args forall test)
+          allowSideEffects && (args.forall(test))
 
         // Array access can throw ArrayIndexOutOfBounds exception
         case ArraySelect(array, index) =>
           (allowSideEffects || semantics.arrayIndexOutOfBounds == Unchecked && allowUnpure) &&
-          test(array) && test(index)
+            test(array) && test(index)
 
         // Casts
         case AsInstanceOf(expr, _) =>
@@ -1275,11 +1226,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case RecordType(fields) =>
           val elems = extractRecordElems(rhs)
           js.Block(for {
-            (RecordType.Field(fName, fOrigName, fTpe, fMutable),
-                fRhs) <- fields zip elems
+            (RecordType.Field(fName, fOrigName, fTpe, fMutable), fRhs) <- fields.zip(elems)
           } yield {
-            doVarDef(makeRecordFieldIdent(ident, fName, fOrigName), fTpe,
-                mutable || fMutable, fRhs)
+            doVarDef(makeRecordFieldIdent(ident, fName, fOrigName), fTpe, mutable || fMutable, fRhs)
           })
 
         case _ =>
@@ -1287,8 +1236,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       }
     }
 
-    def doEmptyVarDef(ident: js.Ident, tpe: Type)(
-        implicit pos: Position, env: Env): js.Tree = {
+    def doEmptyVarDef(ident: js.Ident, tpe: Type)(implicit pos: Position, env: Env): js.Tree = {
       tpe match {
         case RecordType(fields) =>
           js.Block(for {
@@ -1312,21 +1260,16 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
           val elems = extractRecordElems(rhs)
           js.Block(for {
-            (RecordType.Field(fName, fOrigName, fTpe, fMutable),
-                fRhs) <- fields zip elems
+            (RecordType.Field(fName, fOrigName, fTpe, fMutable), fRhs) <- fields.zip(elems)
           } yield {
-            doAssign(
-                Transient(JSVarRef(makeRecordFieldIdent(ident, fName, fOrigName),
-                    mutable = true))(fTpe),
-                fRhs)
+            doAssign(Transient(JSVarRef(makeRecordFieldIdent(ident, fName, fOrigName),
+                        mutable = true))(fTpe), fRhs)
           })
 
         case _ =>
-          val base = js.Assign(transformExpr(lhs, preserveChar = true),
-              transformExpr(rhs, lhs.tpe))
+          val base = js.Assign(transformExpr(lhs, preserveChar = true), transformExpr(rhs, lhs.tpe))
           lhs match {
-            case SelectStatic(className, FieldIdent(field))
-                if moduleKind == ModuleKind.NoModule =>
+            case SelectStatic(className, FieldIdent(field)) if moduleKind == ModuleKind.NoModule =>
               val mirrors =
                 globalKnowledge.getStaticFieldMirrors(className, field)
               mirrors.foldLeft(base) { (prev, mirror) =>
@@ -1338,8 +1281,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       }
     }
 
-    private def extractRecordElems(recordTree: Tree)(
-        implicit pos: Position, env: Env): List[Tree] = {
+    private def extractRecordElems(recordTree: Tree)(implicit pos: Position,
+        env: Env): List[Tree] = {
 
       val recordType = recordTree.tpe.asInstanceOf[RecordType]
 
@@ -1351,7 +1294,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           val jsIdent = transformLocalVarIdent(ident)
           val mutable = env.isLocalMutable(ident)
           for (RecordType.Field(fName, fOrigName, fTpe, _) <- recordType.fields)
-            yield Transient(JSVarRef(makeRecordFieldIdent(jsIdent, fName, fOrigName), mutable))(fTpe)
+            yield Transient(JSVarRef(makeRecordFieldIdent(jsIdent, fName, fOrigName), mutable))(
+                fTpe)
 
         case Transient(JSVarRef(ident, mutable)) =>
           for (RecordType.Field(fName, fOrigName, fTpe, _) <- recordType.fields)
@@ -1372,13 +1316,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
        *  its scope.
        *  This only matters in ECMAScript 6, because we emit Lets.
        */
-      def extractLet(inner: Lhs => js.Tree)(
-          implicit env: Env): js.Tree = {
+      def extractLet(inner: Lhs => js.Tree)(implicit env: Env): js.Tree = {
         if (esFeatures.useECMAScript2015) {
           lhs match {
             case Lhs.VarDef(name, tpe, mutable) =>
-              js.Block(
-                  doEmptyVarDef(name, tpe),
+              js.Block(doEmptyVarDef(name, tpe),
                   inner(Lhs.Assign(Transient(JSVarRef(name, mutable))(tpe))))
             case _ =>
               inner(lhs)
@@ -1429,414 +1371,400 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           case _ =>
             transformedRhs
         }
-      } else (rhs match {
-        // Handle the Block before testing whether it is an expression
+      } else
+        (rhs match {
+          // Handle the Block before testing whether it is an expression
 
-        case Block(stats0 :+ expr0) =>
-          val (stats1, env0) = transformBlockStats(stats0)
-          val expr1 = redo(expr0)(env0)
-          js.Block(stats1 :+ expr1)
+          case Block(stats0 :+ expr0) =>
+            val (stats1, env0) = transformBlockStats(stats0)
+            val expr1 = redo(expr0)(env0)
+            js.Block(stats1 :+ expr1)
 
-        // Base case, rhs is already a regular JS expression
+          // Base case, rhs is already a regular JS expression
 
-        case _ if isExpression(rhs) =>
-          lhs match {
-            case Lhs.Discard =>
-              if (isSideEffectFreeExpression(rhs)) js.Skip()
-              else transformExpr(rhs, preserveChar = true)
-            case Lhs.VarDef(name, tpe, mutable) =>
-              doVarDef(name, tpe, mutable, rhs)
-            case Lhs.Assign(lhs) =>
-              doAssign(lhs, rhs)
-            case Lhs.ReturnFromFunction =>
-              js.Return(transformExpr(rhs, env.expectedReturnType))
-            case Lhs.Return(l) =>
-              doReturnToLabel(l)
-          }
-
-        // Almost base case with RecordValue
-
-        case RecordValue(recTpe, elems) =>
-          lhs match {
-            case Lhs.Discard =>
-              val (newStat, _) = transformBlockStats(elems)
-              js.Block(newStat)
-
-            case Lhs.VarDef(name, tpe, mutable) =>
-              unnest(elems) { (newElems, env) =>
-                doVarDef(name, tpe, mutable, RecordValue(recTpe, newElems))(env)
-              }
-
-            case Lhs.Assign(lhs) =>
-              unnest(elems) { (newElems, env0) =>
-                implicit val env = env0
-                val temp = newSyntheticVar()
-                val varDef = doVarDef(temp, recTpe, mutable = false,
-                    RecordValue(recTpe, newElems))
-                val assign = doAssign(lhs,
-                    Transient(JSVarRef(temp, mutable = false))(recTpe))
-                js.Block(varDef, assign)
-              }
-
-            case Lhs.ReturnFromFunction =>
-              throw new AssertionError("Cannot return a record value.")
-
-            case Lhs.Return(l) =>
-              doReturnToLabel(l)
-          }
-
-        // Control flow constructs
-
-        case Labeled(label, tpe, body) =>
-          extractLet { newLhs =>
-            val bodyEnv = env.withLabeledExprLHS(label, newLhs)
-            val newBody =
-              pushLhsInto(newLhs, body, tailPosLabels + label.name)(bodyEnv)
-            if (usedLabels.contains(label.name))
-              js.Labeled(transformLabelIdent(label), newBody)
-            else
-              newBody
-          }
-
-        case Return(expr, label) =>
-          pushLhsInto(Lhs.Return(label), expr, tailPosLabels)
-
-        case If(cond, thenp, elsep) =>
-          unnest(cond) { (newCond, env0) =>
-            implicit val env = env0
-            extractLet { newLhs =>
-              js.If(transformExprNoChar(newCond),
-                  pushLhsInto(newLhs, thenp, tailPosLabels),
-                  pushLhsInto(newLhs, elsep, tailPosLabels))
+          case _ if isExpression(rhs) =>
+            lhs match {
+              case Lhs.Discard =>
+                if (isSideEffectFreeExpression(rhs)) js.Skip()
+                else transformExpr(rhs, preserveChar = true)
+              case Lhs.VarDef(name, tpe, mutable) =>
+                doVarDef(name, tpe, mutable, rhs)
+              case Lhs.Assign(lhs) =>
+                doAssign(lhs, rhs)
+              case Lhs.ReturnFromFunction =>
+                js.Return(transformExpr(rhs, env.expectedReturnType))
+              case Lhs.Return(l) =>
+                doReturnToLabel(l)
             }
-          }
 
-        case TryCatch(block, errVar, errVarOriginalName, handler) =>
-          extractLet { newLhs =>
-            val newBlock = pushLhsInto(newLhs, block, tailPosLabels)(env)
-            val newHandler = pushLhsInto(newLhs, handler, tailPosLabels)(
-                env.withDef(errVar, mutable = false))
-            js.TryCatch(newBlock,
-                transformLocalVarIdent(errVar, errVarOriginalName), newHandler)
-          }
+          // Almost base case with RecordValue
 
-        case TryFinally(block, finalizer) =>
-          extractLet { newLhs =>
-            val newBlock = pushLhsInto(newLhs, block, tailPosLabels)
-            val newFinalizer = transformStat(finalizer, Set.empty)
-            js.TryFinally(newBlock, newFinalizer)
-          }
+          case RecordValue(recTpe, elems) =>
+            lhs match {
+              case Lhs.Discard =>
+                val (newStat, _) = transformBlockStats(elems)
+                js.Block(newStat)
 
-        // TODO Treat throw as an LHS?
-        case Throw(expr) =>
-          unnest(expr) { (newExpr, env) =>
-            js.Throw(transformExprNoChar(newExpr)(env))
-          }
-
-        /** Matches are desugared into switches
-         *
-         *  A match is different from a switch in two respects, both linked
-         *  to match being designed to be used in expression position in
-         *  Extended-JS.
-         *
-         *  * There is no fall-through from one case to the next one, hence,
-         *    no break statement.
-         *  * Match supports _alternatives_ explicitly (with a switch, one
-         *    would use the fall-through behavior to implement alternatives).
-         */
-        case Match(selector, cases, default) =>
-          unnest(selector) { (newSelector, env0) =>
-            implicit val env = env0.withDefaultBreakTargets(tailPosLabels)
-            extractLet { newLhs =>
-              val newCases = {
-                for {
-                  (values, body) <- cases
-                  newValues = values.map(v => js.IntLiteral(v.value)(v.pos))
-                  // add the break statement
-                  newBody = js.Block(
-                      pushLhsInto(newLhs, body, tailPosLabels),
-                      js.Break())
-                  // desugar alternatives into several cases falling through
-                  caze <- (newValues.init map (v => (v, js.Skip()))) :+ (newValues.last, newBody)
-                } yield {
-                  caze
+              case Lhs.VarDef(name, tpe, mutable) =>
+                unnest(elems) { (newElems, env) =>
+                  doVarDef(name, tpe, mutable, RecordValue(recTpe, newElems))(env)
                 }
+
+              case Lhs.Assign(lhs) =>
+                unnest(elems) { (newElems, env0) =>
+                  implicit val env = env0
+                  val temp = newSyntheticVar()
+                  val varDef =
+                    doVarDef(temp, recTpe, mutable = false, RecordValue(recTpe, newElems))
+                  val assign = doAssign(lhs, Transient(JSVarRef(temp, mutable = false))(recTpe))
+                  js.Block(varDef, assign)
+                }
+
+              case Lhs.ReturnFromFunction =>
+                throw new AssertionError("Cannot return a record value.")
+
+              case Lhs.Return(l) =>
+                doReturnToLabel(l)
+            }
+
+          // Control flow constructs
+
+          case Labeled(label, tpe, body) =>
+            extractLet { newLhs =>
+              val bodyEnv = env.withLabeledExprLHS(label, newLhs)
+              val newBody =
+                pushLhsInto(newLhs, body, tailPosLabels + label.name)(bodyEnv)
+              if (usedLabels.contains(label.name))
+                js.Labeled(transformLabelIdent(label), newBody)
+              else
+                newBody
+            }
+
+          case Return(expr, label) =>
+            pushLhsInto(Lhs.Return(label), expr, tailPosLabels)
+
+          case If(cond, thenp, elsep) =>
+            unnest(cond) { (newCond, env0) =>
+              implicit val env = env0
+              extractLet { newLhs =>
+                js.If(transformExprNoChar(newCond), pushLhsInto(newLhs, thenp, tailPosLabels),
+                    pushLhsInto(newLhs, elsep, tailPosLabels))
               }
-              val newDefault = pushLhsInto(newLhs, default, tailPosLabels)
-              js.Switch(transformExpr(newSelector, preserveChar = true),
-                  newCases, newDefault)
             }
-          }
 
-        // Scala expressions (if we reach here their arguments are not expressions)
-
-        case New(className, ctor, args) =>
-          unnest(args) { (newArgs, env) =>
-            redo(New(className, ctor, newArgs))(env)
-          }
-
-        case Select(qualifier, className, item) =>
-          unnest(qualifier) { (newQualifier, env) =>
-            redo(Select(newQualifier, className, item)(rhs.tpe))(env)
-          }
-
-        case Apply(flags, receiver, method, args) =>
-          unnest(receiver, args) { (newReceiver, newArgs, env) =>
-            redo(Apply(flags, newReceiver, method, newArgs)(rhs.tpe))(env)
-          }
-
-        case ApplyStatically(flags, receiver, className, method, args) =>
-          unnest(receiver, args) { (newReceiver, newArgs, env) =>
-            redo(ApplyStatically(flags, newReceiver, className, method,
-                newArgs)(rhs.tpe))(env)
-          }
-
-        case ApplyStatic(flags, className, method, args) =>
-          unnest(args) { (newArgs, env) =>
-            redo(ApplyStatic(flags, className, method, newArgs)(rhs.tpe))(env)
-          }
-
-        case UnaryOp(op, lhs) =>
-          unnest(lhs) { (newLhs, env) =>
-            redo(UnaryOp(op, newLhs))(env)
-          }
-
-        case BinaryOp(op, lhs, rhs) =>
-          unnest(lhs, rhs) { (newLhs, newRhs, env) =>
-            redo(BinaryOp(op, newLhs, newRhs))(env)
-          }
-
-        case NewArray(tpe, lengths) =>
-          unnest(lengths) { (newLengths, env) =>
-            redo(NewArray(tpe, newLengths))(env)
-          }
-
-        case ArrayValue(tpe, elems) =>
-          unnest(elems) { (newElems, env) =>
-            redo(ArrayValue(tpe, newElems))(env)
-          }
-
-        case ArrayLength(array) =>
-          unnest(array) { (newArray, env) =>
-            redo(ArrayLength(newArray))(env)
-          }
-
-        case ArraySelect(array, index) =>
-          unnest(array, index) { (newArray, newIndex, env) =>
-            redo(ArraySelect(newArray, newIndex)(rhs.tpe))(env)
-          }
-
-        case RecordSelect(record, field) =>
-          unnest(record) { (newRecord, env) =>
-            redo(RecordSelect(newRecord, field)(rhs.tpe))(env)
-          }
-
-        case IsInstanceOf(expr, testType) =>
-          unnest(expr) { (newExpr, env) =>
-            redo(IsInstanceOf(newExpr, testType))(env)
-          }
-
-        case AsInstanceOf(expr, tpe) =>
-          unnest(expr) { (newExpr, env) =>
-            redo(AsInstanceOf(newExpr, tpe))(env)
-          }
-
-        case GetClass(expr) =>
-          unnest(expr) { (newExpr, env) =>
-            redo(GetClass(newExpr))(env)
-          }
-
-        case IdentityHashCode(expr) =>
-          unnest(expr) { (newExpr, env) =>
-            redo(IdentityHashCode(newExpr))(env)
-          }
-
-        case Transient(CallHelper(helper, args)) =>
-          unnest(args) { (newArgs, env) =>
-            redo(Transient(CallHelper(helper, newArgs))(rhs.tpe))(env)
-          }
-
-        // JavaScript expressions (if we reach here their arguments are not expressions)
-
-        case JSNew(ctor, args) =>
-          if (containsAnySpread(args)) {
-            redo {
-              Transient(CallHelper("newJSObjectWithVarargs",
-                  List(ctor, spreadToArgArray(args))))(AnyType)
+          case TryCatch(block, errVar, errVarOriginalName, handler) =>
+            extractLet { newLhs =>
+              val newBlock = pushLhsInto(newLhs, block, tailPosLabels)(env)
+              val newHandler =
+                pushLhsInto(newLhs, handler, tailPosLabels)(env.withDef(errVar, mutable = false))
+              js.TryCatch(newBlock, transformLocalVarIdent(errVar, errVarOriginalName), newHandler)
             }
-          } else {
-            unnest(ctor :: castNoSpread(args)) { (newCtorAndArgs, env) =>
-              val newCtor :: newArgs = newCtorAndArgs
-              redo(JSNew(newCtor, newArgs))(env)
-            }
-          }
 
-        case JSFunctionApply(fun, args) =>
-          if (containsAnySpread(args)) {
-            redo {
-              JSMethodApply(fun, StringLiteral("apply"),
-                  List(Undefined(), spreadToArgArray(args)))
+          case TryFinally(block, finalizer) =>
+            extractLet { newLhs =>
+              val newBlock = pushLhsInto(newLhs, block, tailPosLabels)
+              val newFinalizer = transformStat(finalizer, Set.empty)
+              js.TryFinally(newBlock, newFinalizer)
             }
-          } else {
-            unnest(fun :: castNoSpread(args)) { (newFunAndArgs, env) =>
-              val newFun :: newArgs = newFunAndArgs
-              redo(JSFunctionApply(newFun, newArgs))(env)
-            }
-          }
 
-        case JSMethodApply(receiver, method, args) =>
-          if (containsAnySpread(args)) {
-            withTempVar(receiver) { newReceiver =>
+          // TODO Treat throw as an LHS?
+          case Throw(expr) =>
+            unnest(expr) { (newExpr, env) =>
+              js.Throw(transformExprNoChar(newExpr)(env))
+            }
+
+          /** Matches are desugared into switches
+           *
+           *  A match is different from a switch in two respects, both linked
+           *  to match being designed to be used in expression position in
+           *  Extended-JS.
+           *
+           *  * There is no fall-through from one case to the next one, hence,
+           *    no break statement.
+           *  * Match supports _alternatives_ explicitly (with a switch, one
+           *    would use the fall-through behavior to implement alternatives).
+           */
+          case Match(selector, cases, default) =>
+            unnest(selector) { (newSelector, env0) =>
+              implicit val env = env0.withDefaultBreakTargets(tailPosLabels)
+              extractLet { newLhs =>
+                val newCases = {
+                  for {
+                    (values, body) <- cases
+                    newValues = values.map(v => js.IntLiteral(v.value)(v.pos))
+                    // add the break statement
+                    newBody = js.Block(pushLhsInto(newLhs, body, tailPosLabels), js.Break())
+                    // desugar alternatives into several cases falling through
+                    caze <- (newValues.init.map(v => (v, js.Skip()))) :+ (newValues.last, newBody)
+                  } yield {
+                    caze
+                  }
+                }
+                val newDefault = pushLhsInto(newLhs, default, tailPosLabels)
+                js.Switch(transformExpr(newSelector, preserveChar = true), newCases, newDefault)
+              }
+            }
+
+          // Scala expressions (if we reach here their arguments are not expressions)
+
+          case New(className, ctor, args) =>
+            unnest(args) { (newArgs, env) =>
+              redo(New(className, ctor, newArgs))(env)
+            }
+
+          case Select(qualifier, className, item) =>
+            unnest(qualifier) { (newQualifier, env) =>
+              redo(Select(newQualifier, className, item)(rhs.tpe))(env)
+            }
+
+          case Apply(flags, receiver, method, args) =>
+            unnest(receiver, args) { (newReceiver, newArgs, env) =>
+              redo(Apply(flags, newReceiver, method, newArgs)(rhs.tpe))(env)
+            }
+
+          case ApplyStatically(flags, receiver, className, method, args) =>
+            unnest(receiver, args) { (newReceiver, newArgs, env) =>
+              redo(ApplyStatically(flags, newReceiver, className, method, newArgs)(rhs.tpe))(env)
+            }
+
+          case ApplyStatic(flags, className, method, args) =>
+            unnest(args) { (newArgs, env) =>
+              redo(ApplyStatic(flags, className, method, newArgs)(rhs.tpe))(env)
+            }
+
+          case UnaryOp(op, lhs) =>
+            unnest(lhs) { (newLhs, env) =>
+              redo(UnaryOp(op, newLhs))(env)
+            }
+
+          case BinaryOp(op, lhs, rhs) =>
+            unnest(lhs, rhs) { (newLhs, newRhs, env) =>
+              redo(BinaryOp(op, newLhs, newRhs))(env)
+            }
+
+          case NewArray(tpe, lengths) =>
+            unnest(lengths) { (newLengths, env) =>
+              redo(NewArray(tpe, newLengths))(env)
+            }
+
+          case ArrayValue(tpe, elems) =>
+            unnest(elems) { (newElems, env) =>
+              redo(ArrayValue(tpe, newElems))(env)
+            }
+
+          case ArrayLength(array) =>
+            unnest(array) { (newArray, env) =>
+              redo(ArrayLength(newArray))(env)
+            }
+
+          case ArraySelect(array, index) =>
+            unnest(array, index) { (newArray, newIndex, env) =>
+              redo(ArraySelect(newArray, newIndex)(rhs.tpe))(env)
+            }
+
+          case RecordSelect(record, field) =>
+            unnest(record) { (newRecord, env) =>
+              redo(RecordSelect(newRecord, field)(rhs.tpe))(env)
+            }
+
+          case IsInstanceOf(expr, testType) =>
+            unnest(expr) { (newExpr, env) =>
+              redo(IsInstanceOf(newExpr, testType))(env)
+            }
+
+          case AsInstanceOf(expr, tpe) =>
+            unnest(expr) { (newExpr, env) =>
+              redo(AsInstanceOf(newExpr, tpe))(env)
+            }
+
+          case GetClass(expr) =>
+            unnest(expr) { (newExpr, env) =>
+              redo(GetClass(newExpr))(env)
+            }
+
+          case IdentityHashCode(expr) =>
+            unnest(expr) { (newExpr, env) =>
+              redo(IdentityHashCode(newExpr))(env)
+            }
+
+          case Transient(CallHelper(helper, args)) =>
+            unnest(args) { (newArgs, env) =>
+              redo(Transient(CallHelper(helper, newArgs))(rhs.tpe))(env)
+            }
+
+          // JavaScript expressions (if we reach here their arguments are not expressions)
+
+          case JSNew(ctor, args) =>
+            if (containsAnySpread(args)) {
               redo {
-                JSMethodApply(
-                    JSSelect(newReceiver, method),
-                    StringLiteral("apply"),
-                    List(newReceiver, spreadToArgArray(args)))
+                Transient(CallHelper("newJSObjectWithVarargs", List(ctor, spreadToArgArray(args))))(
+                    AnyType)
+              }
+            } else {
+              unnest(ctor :: castNoSpread(args)) { (newCtorAndArgs, env) =>
+                val newCtor :: newArgs = newCtorAndArgs
+                redo(JSNew(newCtor, newArgs))(env)
               }
             }
-          } else {
-            unnest(receiver :: method :: castNoSpread(args)) { (newReceiverAndArgs, env) =>
-              val newReceiver :: newMethod :: newArgs = newReceiverAndArgs
-              redo(JSMethodApply(newReceiver, newMethod, newArgs))(env)
-            }
-          }
 
-        case JSSuperSelect(superClass, qualifier, item) =>
-          unnest(List(superClass, qualifier, item)) {
-            case (List(newSuperClass, newQualifier, newItem), env) =>
-              redo(JSSuperSelect(newSuperClass, newQualifier, newItem))(env)
-          }
-
-        case JSSuperMethodCall(superClass, receiver, method, args) =>
-          redo {
-            JSMethodApply(
-                JSSelect(
-                    JSSelect(superClass, StringLiteral("prototype")),
-                    method),
-                StringLiteral("call"),
-                receiver :: args)
-          }
-
-        case JSImportCall(arg) =>
-          unnest(arg) { (newArg, env) =>
-            redo(JSImportCall(newArg))(env)
-          }
-
-        case JSPrivateSelect(qualifier, className, field) =>
-          unnest(qualifier) { (newQualifier, env) =>
-            redo(JSPrivateSelect(newQualifier, className, field))(env)
-          }
-
-        case JSSelect(qualifier, item) =>
-          unnest(qualifier, item) { (newQualifier, newItem, env) =>
-            redo(JSSelect(newQualifier, newItem))(env)
-          }
-
-        case JSUnaryOp(op, lhs) =>
-          unnest(lhs) { (newLhs, env) =>
-            redo(JSUnaryOp(op, newLhs))(env)
-          }
-
-        case JSBinaryOp(JSBinaryOp.&&, lhs, rhs) =>
-          if (lhs.tpe == BooleanType) {
-            redo(If(lhs, rhs, BooleanLiteral(false))(AnyType))
-          } else {
-            unnest(lhs) { (newLhs, env) =>
-              redo(If(newLhs, rhs, newLhs)(AnyType))(env)
-            }
-          }
-
-        case JSBinaryOp(JSBinaryOp.||, lhs, rhs) =>
-          if (lhs.tpe == BooleanType) {
-            redo(If(lhs, BooleanLiteral(true), rhs)(AnyType))
-          } else {
-            unnest(lhs) { (newLhs, env) =>
-              redo(If(newLhs, newLhs, rhs)(AnyType))(env)
-            }
-          }
-
-        case JSBinaryOp(op, lhs, rhs) =>
-          unnest(lhs, rhs) { (newLhs, newRhs, env) =>
-            redo(JSBinaryOp(op, newLhs, newRhs))(env)
-          }
-
-        case JSArrayConstr(items) =>
-          if (containsAnySpread(items)) {
-            redo {
-              spreadToArgArray(items)
-            }
-          } else {
-            unnest(castNoSpread(items)) { (newItems, env) =>
-              redo(JSArrayConstr(newItems))(env)
-            }
-          }
-
-        case rhs @ JSObjectConstr(fields) =>
-          if (doesObjectConstrRequireDesugaring(rhs)) {
-            val objVarIdent = newSyntheticVar()
-
-            def objVarRef(implicit pos: Position): Tree =
-              Transient(JSVarRef(objVarIdent, mutable = false))(AnyType)
-
-            val objVarDef =
-              genLet(objVarIdent, mutable = false, js.ObjectConstr(Nil))
-
-            val assignFields = for {
-              (key, value) <- fields
-            } yield {
-              implicit val pos = value.pos
-              Assign(JSSelect(objVarRef, key), value)
+          case JSFunctionApply(fun, args) =>
+            if (containsAnySpread(args)) {
+              redo {
+                JSMethodApply(fun, StringLiteral("apply"),
+                    List(Undefined(), spreadToArgArray(args)))
+              }
+            } else {
+              unnest(fun :: castNoSpread(args)) { (newFunAndArgs, env) =>
+                val newFun :: newArgs = newFunAndArgs
+                redo(JSFunctionApply(newFun, newArgs))(env)
+              }
             }
 
-            js.Block(
-                objVarDef,
+          case JSMethodApply(receiver, method, args) =>
+            if (containsAnySpread(args)) {
+              withTempVar(receiver) { newReceiver =>
                 redo {
-                  Block(assignFields ::: objVarRef :: Nil)
+                  JSMethodApply(JSSelect(newReceiver, method), StringLiteral("apply"),
+                      List(newReceiver, spreadToArgArray(args)))
                 }
-            )
-          } else {
-            unnestJSObjectConstrFields(fields) { (newFields, env) =>
-              redo(JSObjectConstr(newFields))(env)
+              }
+            } else {
+              unnest(receiver :: method :: castNoSpread(args)) { (newReceiverAndArgs, env) =>
+                val newReceiver :: newMethod :: newArgs = newReceiverAndArgs
+                redo(JSMethodApply(newReceiver, newMethod, newArgs))(env)
+              }
             }
-          }
 
-        // Closures
+          case JSSuperSelect(superClass, qualifier, item) =>
+            unnest(List(superClass, qualifier, item)) {
+              case (List(newSuperClass, newQualifier, newItem), env) =>
+                redo(JSSuperSelect(newSuperClass, newQualifier, newItem))(env)
+            }
 
-        case Closure(arrow, captureParams, params, body, captureValues) =>
-          unnest(captureValues) { (newCaptureValues, env) =>
-            redo(Closure(arrow, captureParams, params, body, newCaptureValues))(
-                env)
-          }
+          case JSSuperMethodCall(superClass, receiver, method, args) =>
+            redo {
+              JSMethodApply(JSSelect(JSSelect(superClass, StringLiteral("prototype")), method),
+                  StringLiteral("call"), receiver :: args)
+            }
 
-        case CreateJSClass(className, captureValues) =>
-          unnest(captureValues) { (newCaptureValues, env) =>
-            redo(CreateJSClass(className, newCaptureValues))(env)
-          }
+          case JSImportCall(arg) =>
+            unnest(arg) { (newArg, env) =>
+              redo(JSImportCall(newArg))(env)
+            }
 
-        case _ =>
-          if (lhs == Lhs.Discard) {
-            /* Go "back" to transformStat() after having dived into
-             * expression statements. Remember that Lhs.Discard is a trick that
-             * we use to "add" all the code of pushLhsInto() to transformStat().
-             */
-            rhs match {
-              case _:Skip | _:VarDef | _:Assign | _:While | _:DoWhile |
-                  _:Debugger | _:JSSuperConstructorCall | _:JSDelete |
-                  _:StoreModule =>
-                transformStat(rhs, tailPosLabels)
-              case _ =>
-                throw new IllegalArgumentException(
-                    "Illegal tree in JSDesugar.pushLhsInto():\n" +
+          case JSPrivateSelect(qualifier, className, field) =>
+            unnest(qualifier) { (newQualifier, env) =>
+              redo(JSPrivateSelect(newQualifier, className, field))(env)
+            }
+
+          case JSSelect(qualifier, item) =>
+            unnest(qualifier, item) { (newQualifier, newItem, env) =>
+              redo(JSSelect(newQualifier, newItem))(env)
+            }
+
+          case JSUnaryOp(op, lhs) =>
+            unnest(lhs) { (newLhs, env) =>
+              redo(JSUnaryOp(op, newLhs))(env)
+            }
+
+          case JSBinaryOp(JSBinaryOp.&&, lhs, rhs) =>
+            if (lhs.tpe == BooleanType) {
+              redo(If(lhs, rhs, BooleanLiteral(false))(AnyType))
+            } else {
+              unnest(lhs) { (newLhs, env) =>
+                redo(If(newLhs, rhs, newLhs)(AnyType))(env)
+              }
+            }
+
+          case JSBinaryOp(JSBinaryOp.||, lhs, rhs) =>
+            if (lhs.tpe == BooleanType) {
+              redo(If(lhs, BooleanLiteral(true), rhs)(AnyType))
+            } else {
+              unnest(lhs) { (newLhs, env) =>
+                redo(If(newLhs, newLhs, rhs)(AnyType))(env)
+              }
+            }
+
+          case JSBinaryOp(op, lhs, rhs) =>
+            unnest(lhs, rhs) { (newLhs, newRhs, env) =>
+              redo(JSBinaryOp(op, newLhs, newRhs))(env)
+            }
+
+          case JSArrayConstr(items) =>
+            if (containsAnySpread(items)) {
+              redo {
+                spreadToArgArray(items)
+              }
+            } else {
+              unnest(castNoSpread(items)) { (newItems, env) =>
+                redo(JSArrayConstr(newItems))(env)
+              }
+            }
+
+          case rhs @ JSObjectConstr(fields) =>
+            if (doesObjectConstrRequireDesugaring(rhs)) {
+              val objVarIdent = newSyntheticVar()
+
+              def objVarRef(implicit pos: Position): Tree =
+                Transient(JSVarRef(objVarIdent, mutable = false))(AnyType)
+
+              val objVarDef =
+                genLet(objVarIdent, mutable = false, js.ObjectConstr(Nil))
+
+              val assignFields = for {
+                (key, value) <- fields
+              } yield {
+                implicit val pos = value.pos
+                Assign(JSSelect(objVarRef, key), value)
+              }
+
+              js.Block(
+                  objVarDef,
+                  redo {
+                    Block(assignFields ::: objVarRef :: Nil)
+                  }
+              )
+            } else {
+              unnestJSObjectConstrFields(fields) { (newFields, env) =>
+                redo(JSObjectConstr(newFields))(env)
+              }
+            }
+
+          // Closures
+
+          case Closure(arrow, captureParams, params, body, captureValues) =>
+            unnest(captureValues) { (newCaptureValues, env) =>
+              redo(Closure(arrow, captureParams, params, body, newCaptureValues))(env)
+            }
+
+          case CreateJSClass(className, captureValues) =>
+            unnest(captureValues) { (newCaptureValues, env) =>
+              redo(CreateJSClass(className, newCaptureValues))(env)
+            }
+
+          case _ =>
+            if (lhs == Lhs.Discard) {
+              /* Go "back" to transformStat() after having dived into
+               * expression statements. Remember that Lhs.Discard is a trick that
+               * we use to "add" all the code of pushLhsInto() to transformStat().
+               */
+              rhs match {
+                case _: Skip | _: VarDef | _: Assign | _: While | _: DoWhile | _: Debugger |
+                    _: JSSuperConstructorCall | _: JSDelete | _: StoreModule =>
+                  transformStat(rhs, tailPosLabels)
+                case _ =>
+                  throw new IllegalArgumentException(
+                      "Illegal tree in JSDesugar.pushLhsInto():\n" +
+                        "lhs = " + lhs + "\n" +
+                        "rhs = " + rhs + " of class " + rhs.getClass)
+              }
+            } else {
+              throw new IllegalArgumentException(
+                  "Illegal tree in JSDesugar.pushLhsInto():\n" +
                     "lhs = " + lhs + "\n" +
                     "rhs = " + rhs + " of class " + rhs.getClass)
             }
-          } else {
-            throw new IllegalArgumentException(
-                "Illegal tree in JSDesugar.pushLhsInto():\n" +
-                "lhs = " + lhs + "\n" +
-                "rhs = " + rhs + " of class " + rhs.getClass)
-          }
-      })
+        })
     }
 
     private def containsAnySpread(args: List[TreeOrJSSpread]): Boolean =
@@ -1846,8 +1774,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     private def castNoSpread(args: List[TreeOrJSSpread]): List[Tree] =
       args.asInstanceOf[List[Tree]]
 
-    private def spreadToArgArray(args: List[TreeOrJSSpread])(
-        implicit env: Env, pos: Position): Tree = {
+    private def spreadToArgArray(args: List[TreeOrJSSpread])(implicit env: Env,
+        pos: Position): Tree = {
       var reversedParts: List[Tree] = Nil
       var reversedPartUnderConstruction: List[Tree] = Nil
 
@@ -1873,15 +1801,14 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       reversedParts match {
         case Nil        => JSArrayConstr(Nil)
         case List(part) => part
-        case _          =>
+        case _ =>
           val partHead :: partTail = reversedParts.reverse
           JSMethodApply(partHead, StringLiteral("concat"), partTail)
       }
     }
 
     /** Tests whether a [[JSObjectConstr]] must be desugared. */
-    private def doesObjectConstrRequireDesugaring(
-        tree: JSObjectConstr): Boolean = {
+    private def doesObjectConstrRequireDesugaring(tree: JSObjectConstr): Boolean = {
       def computedNamesAllowed: Boolean =
         esFeatures.useECMAScript2015
 
@@ -1889,8 +1816,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         tree.fields.exists(!_._1.isInstanceOf[StringLiteral])
 
       def hasDuplicateNonComputedProp: Boolean = {
-        val names = tree.fields.collect {
-          case (StringLiteral(name), _) => name
+        val names = tree.fields.collect { case (StringLiteral(name), _) =>
+          name
         }
         names.toSet.size != names.size
       }
@@ -1901,8 +1828,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     /** Evaluates `expr` and stores the result in a temp, then evaluates the
      *  result of `makeTree(temp)`.
      */
-    private def withTempVar(expr: Tree)(makeTree: Tree => js.Tree)(
-        implicit env: Env): js.Tree = {
+    private def withTempVar(expr: Tree)(makeTree: Tree => js.Tree)(implicit env: Env): js.Tree = {
       expr match {
         case VarRef(ident) if !env.isLocalMutable(ident) =>
           makeTree(expr)
@@ -1911,10 +1837,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case _ =>
           implicit val pos = expr.pos
           val temp = newSyntheticVar()
-          val computeTemp = pushLhsInto(
-              Lhs.VarDef(temp, expr.tpe, mutable = false), expr, Set.empty)
-          js.Block(computeTemp,
-              makeTree(Transient(JSVarRef(temp, mutable = false))(expr.tpe)))
+          val computeTemp =
+            pushLhsInto(Lhs.VarDef(temp, expr.tpe, mutable = false), expr, Set.empty)
+          js.Block(computeTemp, makeTree(Transient(JSVarRef(temp, mutable = false))(expr.tpe)))
       }
     }
 
@@ -1931,8 +1856,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     def transformExprNoChar(tree: Tree)(implicit env: Env): js.Tree =
       transformExpr(tree, preserveChar = false)
 
-    def transformExpr(tree: Tree, expectedType: Type)(
-        implicit env: Env): js.Tree = {
+    def transformExpr(tree: Tree, expectedType: Type)(implicit env: Env): js.Tree = {
       transformExpr(tree, preserveChar = expectedType == CharType)
     }
 
@@ -1950,8 +1874,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     }
 
     /** Desugar an expression of the IR into JavaScript. */
-    def transformExpr(tree: Tree, preserveChar: Boolean)(
-        implicit env: Env): js.Tree = {
+    def transformExpr(tree: Tree, preserveChar: Boolean)(implicit env: Env): js.Tree = {
 
       import TreeDSL._
 
@@ -1979,11 +1902,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         // Note that these work even if thenp/elsep is not a BooleanType
         case If(cond, BooleanLiteral(true), elsep) =>
-          js.BinaryOp(JSBinaryOp.||, transformExprNoChar(cond),
-              transformExpr(elsep, tree.tpe))
+          js.BinaryOp(JSBinaryOp.||, transformExprNoChar(cond), transformExpr(elsep, tree.tpe))
         case If(cond, thenp, BooleanLiteral(false)) =>
-          js.BinaryOp(JSBinaryOp.&&, transformExprNoChar(cond),
-              transformExpr(thenp, tree.tpe))
+          js.BinaryOp(JSBinaryOp.&&, transformExprNoChar(cond), transformExpr(thenp, tree.tpe))
 
         case If(cond, thenp, elsep) =>
           js.If(transformExprNoChar(cond), transformExpr(thenp, tree.tpe),
@@ -2007,8 +1928,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case SelectJSNativeMember(className, member) =>
           val jsNativeLoadSpec =
             globalKnowledge.getJSNativeLoadSpec(className, member.name)
-          extractWithGlobals(genLoadJSFromSpec(
-              jsNativeLoadSpec, keepOnlyDangerousVarNames = false))
+          extractWithGlobals(genLoadJSFromSpec(jsNativeLoadSpec, keepOnlyDangerousVarNames = false))
 
         case Apply(_, receiver, method, args) =>
           val methodName = method.name
@@ -2016,7 +1936,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           val newArgs = transformTypedArgs(method.name, args)
 
           def genNormalApply(): js.Tree =
-            js.Apply(newReceiver DOT transformMethodIdent(method), newArgs)
+            js.Apply(newReceiver.DOT(transformMethodIdent(method)), newArgs)
 
           def genDispatchApply(): js.Tree =
             genCallHelper("dp_" + genName(methodName), newReceiver :: newArgs: _*)
@@ -2101,15 +2021,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             genApplyStaticLike("f", className, method, transformedArgs)
           } else {
             val fun =
-              globalVar("c", className).prototype DOT transformMethodIdent(method)
-            js.Apply(fun DOT "call", transformedArgs)
+              globalVar("c", className).prototype.DOT(transformMethodIdent(method))
+            js.Apply(fun.DOT("call"), transformedArgs)
           }
 
         case ApplyStatic(flags, className, method, args) =>
-          genApplyStaticLike(
-              if (flags.isPrivate) "ps" else "s",
-              className,
-              method,
+          genApplyStaticLike(if (flags.isPrivate) "ps" else "s", className, method,
               transformTypedArgs(method.name, args))
 
         case UnaryOp(op, lhs) =>
@@ -2119,8 +2036,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             case Boolean_! => js.UnaryOp(JSUnaryOp.!, newLhs)
 
             // Widening conversions
-            case CharToInt | ByteToInt | ShortToInt | IntToDouble |
-                FloatToDouble =>
+            case CharToInt | ByteToInt | ShortToInt | IntToDouble | FloatToDouble =>
               newLhs
             case IntToLong =>
               if (useBigIntForLongs)
@@ -2132,12 +2048,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             case IntToChar =>
               js.BinaryOp(JSBinaryOp.&, js.IntLiteral(0xffff), newLhs)
             case IntToByte =>
-              js.BinaryOp(JSBinaryOp.>>,
-                  js.BinaryOp(JSBinaryOp.<<, newLhs, js.IntLiteral(24)),
+              js.BinaryOp(JSBinaryOp.>>, js.BinaryOp(JSBinaryOp.<<, newLhs, js.IntLiteral(24)),
                   js.IntLiteral(24))
             case IntToShort =>
-              js.BinaryOp(JSBinaryOp.>>,
-                  js.BinaryOp(JSBinaryOp.<<, newLhs, js.IntLiteral(16)),
+              js.BinaryOp(JSBinaryOp.>>, js.BinaryOp(JSBinaryOp.<<, newLhs, js.IntLiteral(16)),
                   js.IntLiteral(16))
             case LongToInt =>
               if (useBigIntForLongs)
@@ -2176,7 +2090,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                *  instead.
                */
               def receivesExemption(tree: js.Tree): Boolean = tree match {
-                case _:js.Undefined | _:js.Null =>
+                case _: js.Undefined | _: js.Null =>
                   /* An `undefined` operand happens a lot for default
                    * parameters in exported methods. Because exported methods
                    * are not optimized, they survive until here.
@@ -2185,7 +2099,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                    * JS classes, which are not optimized either.
                    */
                   true
-                case _:js.This =>
+                case _: js.This =>
                   /* Due to how hijacked classes are encoded in JS, we know
                    * that in `java.lang.Object` itself, `this` can never be a
                    * primitive. It will always be a proper Scala.js object.
@@ -2203,8 +2117,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   false
               }
               if (receivesExemption(newLhs) || receivesExemption(newRhs)) {
-                js.BinaryOp(if (op == ===) JSBinaryOp.=== else JSBinaryOp.!==,
-                    newLhs, newRhs)
+                js.BinaryOp(if (op == ===) JSBinaryOp.=== else JSBinaryOp.!==, newLhs, newRhs)
               } else {
                 val objectIs =
                   if (!esFeatures.useECMAScript2015) globalVar("is", CoreVar)
@@ -2223,8 +2136,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               if (lhs.tpe == StringType || rhs.tpe == StringType) {
                 js.BinaryOp(JSBinaryOp.+, newLhs, newRhs)
               } else {
-                js.BinaryOp(JSBinaryOp.+, js.BinaryOp(JSBinaryOp.+,
-                    js.StringLiteral(""), newLhs), newRhs)
+                js.BinaryOp(JSBinaryOp.+, js.BinaryOp(JSBinaryOp.+, js.StringLiteral(""), newLhs),
+                    newRhs)
               }
 
             case Int_+ => or0(js.BinaryOp(JSBinaryOp.+, newLhs, newRhs))
@@ -2249,9 +2162,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   genCallHelper("intMod", newLhs, newRhs)
               }
 
-            case Int_|   => js.BinaryOp(JSBinaryOp.|, newLhs, newRhs)
-            case Int_&   => js.BinaryOp(JSBinaryOp.&, newLhs, newRhs)
-            case Int_^   =>
+            case Int_| => js.BinaryOp(JSBinaryOp.|, newLhs, newRhs)
+            case Int_& => js.BinaryOp(JSBinaryOp.&, newLhs, newRhs)
+            case Int_^ =>
               lhs match {
                 case IntLiteral(-1) => js.UnaryOp(JSUnaryOp.~, newRhs)
                 case _              => js.BinaryOp(JSBinaryOp.^, newLhs, newRhs)
@@ -2341,7 +2254,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 genLongMethodApply(newLhs, LongImpl.<<, newRhs)
             case Long_>>> =>
               if (useBigIntForLongs)
-                wrapBigInt64(js.BinaryOp(JSBinaryOp.>>, wrapBigIntU64(newLhs), bigIntShiftRhs(newRhs)))
+                wrapBigInt64(js.BinaryOp(JSBinaryOp.>>, wrapBigIntU64(newLhs),
+                        bigIntShiftRhs(newRhs)))
               else
                 genLongMethodApply(newLhs, LongImpl.>>>, newRhs)
             case Long_>> =>
@@ -2411,8 +2325,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
 
         case NewArray(typeRef, lengths) =>
-          genCallHelper("newArrayObject",
-              genClassDataOf(typeRef),
+          genCallHelper("newArrayObject", genClassDataOf(typeRef),
               js.ArrayConstr(lengths.map(transformExprNoChar)))
 
         case ArrayValue(typeRef, elems) =>
@@ -2423,8 +2336,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           genArrayValue(typeRef, elems.map(transformExpr(_, preserveChar)))
 
         case ArrayLength(array) =>
-          genIdentBracketSelect(js.DotSelect(transformExprNoChar(array),
-              js.Ident("u")), "length")
+          genIdentBracketSelect(js.DotSelect(transformExprNoChar(array), js.Ident("u")), "length")
 
         case ArraySelect(array, index) =>
           val newArray = transformExprNoChar(array)
@@ -2461,15 +2373,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   js.DotSelect(transformExprNoChar(jlClass), js.Ident("jl_Class__f_data"))
               }
             case "arrayDataOf" =>
-              js.Apply(js.DotSelect(transformExprNoChar(args.head),
-                  js.Ident("getArrayOf")), Nil)
+              js.Apply(js.DotSelect(transformExprNoChar(args.head), js.Ident("getArrayOf")), Nil)
             case "zeroOf" =>
-              js.DotSelect(
-                  js.DotSelect(transformExprNoChar(args.head), js.Ident("jl_Class__f_data")),
-                  js.Ident("zero"))
+              js.DotSelect(js.DotSelect(transformExprNoChar(args.head),
+                      js.Ident("jl_Class__f_data")), js.Ident("zero"))
             case _ =>
-              genCallHelper(helper,
-                  args.map(transformExpr(_, preserveChar = false)): _*)
+              genCallHelper(helper, args.map(transformExpr(_, preserveChar = false)): _*)
           }
 
         // JavaScript expressions
@@ -2481,8 +2390,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           genJSPrivateSelect(transformExprNoChar(qualifier), className, field)
 
         case JSSelect(qualifier, item) =>
-          genBracketSelect(transformExprNoChar(qualifier),
-              transformExprNoChar(item))
+          genBracketSelect(transformExprNoChar(qualifier), transformExprNoChar(item))
 
         case JSFunctionApply(fun, args) =>
           /* Protect the fun so that if it is, e.g.,
@@ -2501,8 +2409,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
            */
           val transformedFun = transformExprNoChar(fun)
           val protectedFun = transformedFun match {
-            case _:js.DotSelect | _:js.BracketSelect |
-                js.VarRef(js.Ident("eval", _)) =>
+            case _: js.DotSelect | _: js.BracketSelect | js.VarRef(js.Ident("eval", _)) =>
               js.Block(js.IntLiteral(0), transformedFun)
             case _ =>
               transformedFun
@@ -2510,12 +2417,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           js.Apply(protectedFun, args.map(transformJSArg))
 
         case JSMethodApply(receiver, method, args) =>
-          js.Apply(genBracketSelect(transformExprNoChar(receiver),
-              transformExprNoChar(method)), args.map(transformJSArg))
+          js.Apply(genBracketSelect(transformExprNoChar(receiver), transformExprNoChar(method)),
+              args.map(transformJSArg))
 
         case JSSuperSelect(superClass, qualifier, item) =>
-          genCallHelper("superGet", transformExprNoChar(superClass),
-              transformExprNoChar(qualifier), transformExprNoChar(item))
+          genCallHelper("superGet", transformExprNoChar(superClass), transformExprNoChar(qualifier),
+              transformExprNoChar(item))
 
         case JSImportCall(arg) =>
           js.ImportCall(transformExprNoChar(arg))
@@ -2530,8 +2437,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               genLoadModule(className)
 
             case Some(spec) =>
-              extractWithGlobals(
-                  genLoadJSFromSpec(spec, keepOnlyDangerousVarNames = false))
+              extractWithGlobals(genLoadJSFromSpec(spec, keepOnlyDangerousVarNames = false))
           }
 
         case JSUnaryOp(op, lhs) =>
@@ -2574,16 +2480,16 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         // Literals
 
-        case Undefined()            => js.Undefined()
-        case Null()                 => js.Null()
-        case BooleanLiteral(value)  => js.BooleanLiteral(value)
-        case CharLiteral(value)     => js.IntLiteral(value.toInt)
-        case ByteLiteral(value)     => js.IntLiteral(value.toInt)
-        case ShortLiteral(value)    => js.IntLiteral(value.toInt)
-        case IntLiteral(value)      => js.IntLiteral(value)
-        case FloatLiteral(value)    => js.DoubleLiteral(value.toDouble)
-        case DoubleLiteral(value)   => js.DoubleLiteral(value)
-        case StringLiteral(value)   => js.StringLiteral(value)
+        case Undefined()           => js.Undefined()
+        case Null()                => js.Null()
+        case BooleanLiteral(value) => js.BooleanLiteral(value)
+        case CharLiteral(value)    => js.IntLiteral(value.toInt)
+        case ByteLiteral(value)    => js.IntLiteral(value.toInt)
+        case ShortLiteral(value)   => js.IntLiteral(value.toInt)
+        case IntLiteral(value)     => js.IntLiteral(value)
+        case FloatLiteral(value)   => js.DoubleLiteral(value.toDouble)
+        case DoubleLiteral(value)  => js.DoubleLiteral(value)
+        case StringLiteral(value)  => js.StringLiteral(value)
 
         case LongLiteral(0L) =>
           genLongZero()
@@ -2592,9 +2498,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             js.BigIntLiteral(value)
           } else {
             val (lo, hi) = LongImpl.extractParts(value)
-            genScalaClassNew(
-                LongImpl.RuntimeLongClass, LongImpl.initFromParts,
-                js.IntLiteral(lo), js.IntLiteral(hi))
+            genScalaClassNew(LongImpl.RuntimeLongClass, LongImpl.initFromParts, js.IntLiteral(lo),
+                js.IntLiteral(hi))
           }
 
         case ClassOf(typeRef) =>
@@ -2627,13 +2532,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           if (captureParams.isEmpty) {
             innerFunction
           } else {
-            js.Apply(
-                genArrowFunction(captureParams.map(transformParamDef), {
-                  js.Return(innerFunction)
-                }),
-                captureValues.zip(captureParams).map {
-                  case (value, param) => transformExpr(value, param.ptpe)
-                })
+            js.Apply(genArrowFunction(captureParams.map(transformParamDef), {
+              js.Return(innerFunction)
+            }),
+                captureValues.zip(captureParams).map { case (value, param) =>
+              transformExpr(value, param.ptpe)
+            })
           }
 
         case CreateJSClass(className, captureValues) =>
@@ -2653,7 +2557,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case _ =>
           throw new IllegalArgumentException(
               "Invalid tree in JSDesugar.transformExpr() of class " +
-              tree.getClass)
+                tree.getClass)
       }
 
       if (preserveChar || tree.tpe != CharType)
@@ -2665,8 +2569,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     def isMaybeHijackedClass(tpe: Type): Boolean = tpe match {
       case ClassType(className) =>
         MaybeHijackedClasses.contains(className)
-      case AnyType | UndefType | BooleanType | CharType | ByteType | ShortType |
-          IntType | LongType | FloatType | DoubleType | StringType =>
+      case AnyType | UndefType | BooleanType | CharType | ByteType | ShortType | IntType |
+          LongType | FloatType | DoubleType | StringType =>
         true
       case _ =>
         false
@@ -2693,8 +2597,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
      * additional global knowledge for no practical reason.
      */
     val hijackedMethodsInheritedFromObject: Set[MethodName] = Set(
-        getClassMethodName, cloneMethodName, finalizeMethodName,
-        notifyMethodName, notifyAllMethodName
+        getClassMethodName,
+        cloneMethodName,
+        finalizeMethodName,
+        notifyMethodName,
+        notifyAllMethodName
     )
 
     val hijackedMethodsOfStringWithDispatcher: Set[MethodName] = Set(
@@ -2713,8 +2620,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     )
 
     private def transformParamDef(paramDef: ParamDef): js.ParamDef = {
-      js.ParamDef(transformLocalVarIdent(paramDef.name, paramDef.originalName),
-          paramDef.rest)(
+      js.ParamDef(transformLocalVarIdent(paramDef.name, paramDef.originalName), paramDef.rest)(
           paramDef.pos)
     }
 
@@ -2727,21 +2633,17 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     private def transformLocalVarIdent(ident: LocalIdent): js.Ident =
       js.Ident(transformLocalName(ident.name))(ident.pos)
 
-    private def transformLocalVarIdent(ident: LocalIdent,
-        originalName: OriginalName): js.Ident = {
+    private def transformLocalVarIdent(ident: LocalIdent, originalName: OriginalName): js.Ident = {
       val jsName = transformLocalName(ident.name)
-      js.Ident(jsName, genOriginalName(ident.name, originalName, jsName))(
-          ident.pos)
+      js.Ident(jsName, genOriginalName(ident.name, originalName, jsName))(ident.pos)
     }
 
-    private def transformGlobalVarIdent(name: String)(
-        implicit pos: Position): js.Ident = {
+    private def transformGlobalVarIdent(name: String)(implicit pos: Position): js.Ident = {
       referenceGlobalName(name)
       js.Ident(name)
     }
 
-    private def genGlobalVarRef(name: String)(
-        implicit pos: Position): js.VarRef = {
+    private def genGlobalVarRef(name: String)(implicit pos: Position): js.VarRef = {
       js.VarRef(transformGlobalVarIdent(name))
     }
 
@@ -2750,13 +2652,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
      */
     private def genJSClassConstructor(className: ClassName)(
         implicit pos: Position): WithGlobals[js.Tree] = {
-      sjsGen.genJSClassConstructor(className,
-          keepOnlyDangerousVarNames = false)
+      sjsGen.genJSClassConstructor(className, keepOnlyDangerousVarNames = false)
     }
 
-    private def genApplyStaticLike(field: String, className: ClassName,
-        method: MethodIdent, args: List[js.Tree])(
-        implicit pos: Position): js.Tree = {
+    private def genApplyStaticLike(field: String, className: ClassName, method: MethodIdent,
+        args: List[js.Tree])(implicit pos: Position): js.Tree = {
       js.Apply(globalVar(field, (className, method.name)), args)
     }
 
@@ -2770,8 +2670,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     private def wrapBigInt64(tree: js.Tree)(implicit pos: Position): js.Tree =
       wrapBigIntN(64, tree)
 
-    private def wrapBigIntN(n: Int, tree: js.Tree)(
-        implicit pos: Position): js.Tree = {
+    private def wrapBigIntN(n: Int, tree: js.Tree)(implicit pos: Position): js.Tree = {
       js.Apply(genIdentBracketSelect(genGlobalVarRef("BigInt"), "asIntN"),
           List(js.IntLiteral(n), tree))
     }
@@ -2779,16 +2678,15 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     private def wrapBigIntU64(tree: js.Tree)(implicit pos: Position): js.Tree =
       wrapBigIntUN(64, tree)
 
-    private def wrapBigIntUN(n: Int, tree: js.Tree)(
-        implicit pos: Position): js.Tree = {
+    private def wrapBigIntUN(n: Int, tree: js.Tree)(implicit pos: Position): js.Tree = {
       js.Apply(genIdentBracketSelect(genGlobalVarRef("BigInt"), "asUintN"),
           List(js.IntLiteral(n), tree))
     }
 
-    private def genLongMethodApply(receiver: js.Tree, methodName: MethodName,
-        args: js.Tree*)(implicit pos: Position): js.Tree = {
+    private def genLongMethodApply(receiver: js.Tree, methodName: MethodName, args: js.Tree*)(
+        implicit pos: Position): js.Tree = {
       import TreeDSL._
-      js.Apply(receiver DOT genName(methodName), args.toList)
+      js.Apply(receiver.DOT(genName(methodName)), args.toList)
     }
   }
 }
@@ -2801,8 +2699,7 @@ private object FunctionEmitter {
   private val MaybeHijackedClasses =
     (HijackedClasses ++ EmitterNames.AncestorsOfHijackedClasses) - ObjectClass
 
-  private final case class JSVarRef(ident: js.Ident, mutable: Boolean)
-      extends Transient.Value {
+  private final case class JSVarRef(ident: js.Ident, mutable: Boolean) extends Transient.Value {
 
     def printIR(out: org.scalajs.ir.Printers.IRTreePrinter): Unit =
       out.print(ident.name)
@@ -2832,14 +2729,10 @@ private object FunctionEmitter {
   // Environment
 
   final class Env private (
-      val thisIdent: Option[js.Ident],
-      val expectedReturnType: Type,
-      val enclosingClassName: Option[ClassName],
-      vars: Map[LocalName, Boolean],
-      labeledExprLHSes: Map[LabelName, Lhs],
-      labelsTurnedIntoContinue: Set[LabelName],
-      defaultBreakTargets: Set[LabelName],
-      defaultContinueTargets: Set[LabelName]
+      val thisIdent: Option[js.Ident], val expectedReturnType: Type,
+      val enclosingClassName: Option[ClassName], vars: Map[LocalName, Boolean],
+      labeledExprLHSes: Map[LabelName, Lhs], labelsTurnedIntoContinue: Set[LabelName],
+      defaultBreakTargets: Set[LabelName], defaultContinueTargets: Set[LabelName]
   ) {
     def isLocalVar(ident: LocalIdent): Boolean = vars.contains(ident.name)
 
@@ -2868,9 +2761,8 @@ private object FunctionEmitter {
       copy(thisIdent = thisIdent)
 
     def withParams(params: List[ParamDef]): Env = {
-      params.foldLeft(this) {
-        case (env, ParamDef(name, _, _, mutable, _)) =>
-          env.withDef(name, mutable)
+      params.foldLeft(this) { case (env, ParamDef(name, _, _, mutable, _)) =>
+        env.withDef(name, mutable)
       }
     }
 
@@ -2889,8 +2781,7 @@ private object FunctionEmitter {
     def withDefaultContinueTargets(targets: Set[LabelName]): Env =
       copy(defaultContinueTargets = targets)
 
-    private def copy(
-        thisIdent: Option[js.Ident] = this.thisIdent,
+    private def copy(thisIdent: Option[js.Ident] = this.thisIdent,
         expectedReturnType: Type = this.expectedReturnType,
         enclosingClassName: Option[ClassName] = this.enclosingClassName,
         vars: Map[LocalName, Boolean] = this.vars,
@@ -2898,16 +2789,14 @@ private object FunctionEmitter {
         labelsTurnedIntoContinue: Set[LabelName] = this.labelsTurnedIntoContinue,
         defaultBreakTargets: Set[LabelName] = this.defaultBreakTargets,
         defaultContinueTargets: Set[LabelName] = this.defaultContinueTargets): Env = {
-      new Env(thisIdent, expectedReturnType, enclosingClassName, vars,
-          labeledExprLHSes, labelsTurnedIntoContinue, defaultBreakTargets,
-          defaultContinueTargets)
+      new Env(thisIdent, expectedReturnType, enclosingClassName, vars, labeledExprLHSes,
+          labelsTurnedIntoContinue, defaultBreakTargets, defaultContinueTargets)
     }
   }
 
   object Env {
     def empty(expectedReturnType: Type): Env = {
-      new Env(None, expectedReturnType, None, Map.empty, Map.empty, Set.empty,
-          Set.empty, Set.empty)
+      new Env(None, expectedReturnType, None, Map.empty, Map.empty, Set.empty, Set.empty, Set.empty)
     }
   }
 }

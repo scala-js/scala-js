@@ -14,11 +14,8 @@ package org.scalajs.junit
 
 import scala.util.Try
 
-private[junit] final class RunSettings (
-    val color: Boolean,
-    decodeScalaNames: Boolean,
-    val verbose: Boolean,
-    val logAssert: Boolean,
+private[junit] final class RunSettings(
+    val color: Boolean, decodeScalaNames: Boolean, val verbose: Boolean, val logAssert: Boolean,
     val notLogExceptionClass: Boolean
 ) {
   def decodeName(name: String): String = {

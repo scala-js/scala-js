@@ -40,8 +40,7 @@ class OptimizationTest extends JSASTTest {
       val f = Array('a')
       val g = Array(5.toByte)
     }
-    """.
-    hasNot("any LoadModule of the scala.Array companion") {
+    """.hasNot("any LoadModule of the scala.Array companion") {
       case js.LoadModule(ArrayModuleClass) =>
     }
 
@@ -60,8 +59,7 @@ class OptimizationTest extends JSASTTest {
       val c = Array[Int](5)
       val d = Array[Byte](5)
     }
-    """.
-    hasExactly(4, "calls to Array.apply methods") {
+    """.hasExactly(4, "calls to Array.apply methods") {
       case js.Apply(_, js.LoadModule(ArrayModuleClass), js.MethodIdent(methodName), _)
           if methodName.simpleName == applySimpleMethodName =>
     }
@@ -84,9 +82,7 @@ class OptimizationTest extends JSASTTest {
       val d = js.Array(Nil)
       val e = js.Array(new VC(151189))
     }
-    """.
-    hasNot("any of the wrapArray methods") {
-      case WrapArrayCall() =>
+    """.hasNot("any of the wrapArray methods") { case WrapArrayCall() =>
     }
   }
 
@@ -107,9 +103,7 @@ class OptimizationTest extends JSASTTest {
       val d = List(Nil)
       val e = List(new VC(151189))
     }
-    """.
-    hasNot("any of the wrapArray methods") {
-      case WrapArrayCall() =>
+    """.hasNot("any of the wrapArray methods") { case WrapArrayCall() =>
     }
 
     /* #2265 and #2741:
@@ -135,9 +129,7 @@ class OptimizationTest extends JSASTTest {
       def single(x: Int, ys: Int*): Int = x + ys.size
       def multiple(x: Int)(ys: Int*): Int = x + ys.size
     }
-    """.
-    hasNot("any of the wrapArray methods") {
-      case WrapArrayCall() =>
+    """.hasNot("any of the wrapArray methods") { case WrapArrayCall() =>
     }
 
     /* Make sure our wrapper matcher has the right name.
@@ -159,8 +151,7 @@ class OptimizationTest extends JSASTTest {
       }
       """
     }
-    sanityCheckCode.has("one of the wrapArray methods") {
-      case WrapArrayCall() =>
+    sanityCheckCode.has("one of the wrapArray methods") { case WrapArrayCall() =>
     }
   }
 
@@ -174,9 +165,7 @@ class OptimizationTest extends JSASTTest {
       val o = new js.Object
       val a = new js.Array
     }
-    """.
-    hasNot("any reference to the global scope") {
-      case js.JSLinkingInfo() =>
+    """.hasNot("any reference to the global scope") { case js.JSLinkingInfo() =>
     }
   }
 
@@ -362,8 +351,7 @@ class OptimizationTest extends JSASTTest {
         }
       }
     }
-    """.hasNot("Labeled block") {
-      case js.Labeled(_, _, _) =>
+    """.hasNot("Labeled block") { case js.Labeled(_, _, _) =>
     }
   }
 
@@ -380,11 +368,11 @@ class OptimizationTest extends JSASTTest {
         }
       }
     }
-    """.hasNot("Labeled block") {
-      case js.Labeled(_, _, _) =>
-    }.has("Match node") {
-      case js.Match(_, _, _) =>
-    }
+    """
+      .hasNot("Labeled block") { case js.Labeled(_, _, _) =>
+      }
+      .has("Match node") { case js.Match(_, _, _) =>
+      }
   }
 
   @Test
@@ -404,11 +392,11 @@ class OptimizationTest extends JSASTTest {
         }
       }
     }
-    """.hasExactly(1, "default case (\"None of those\")") {
-      case js.StringLiteral("None of those") =>
-    }.has("Match node") {
-      case js.Match(_, _, _) =>
-    }
+    """
+      .hasExactly(1, "default case (\"None of those\")") { case js.StringLiteral("None of those") =>
+      }
+      .has("Match node") { case js.Match(_, _, _) =>
+      }
 
     // Expression position
     """
@@ -426,11 +414,11 @@ class OptimizationTest extends JSASTTest {
         println(message)
       }
     }
-    """.hasExactly(1, "default case (\"None of those\")") {
-      case js.StringLiteral("None of those") =>
-    }.has("Match node") {
-      case js.Match(_, _, _) =>
-    }
+    """
+      .hasExactly(1, "default case (\"None of those\")") { case js.StringLiteral("None of those") =>
+      }
+      .has("Match node") { case js.Match(_, _, _) =>
+      }
   }
 
   @Test
@@ -452,11 +440,11 @@ class OptimizationTest extends JSASTTest {
         }
       }
     }
-    """.hasNot("`new Object`") {
-      case js.JSNew(_, _) =>
-    }.has("object literal") {
-      case js.JSObjectConstr(Nil) =>
-    }
+    """
+      .hasNot("`new Object`") { case js.JSNew(_, _) =>
+      }
+      .has("object literal") { case js.JSObjectConstr(Nil) =>
+      }
 
     """
     import scala.scalajs.js
@@ -475,11 +463,11 @@ class OptimizationTest extends JSASTTest {
         }
       }
     }
-    """.hasNot("`new Object`") {
-      case js.JSNew(_, _) =>
-    }.has("object literal") {
-      case js.JSObjectConstr(Nil) =>
-    }
+    """
+      .hasNot("`new Object`") { case js.JSNew(_, _) =>
+      }
+      .has("object literal") { case js.JSObjectConstr(Nil) =>
+      }
   }
 
 }

@@ -144,8 +144,7 @@ class IdentityHashMapTest extends MapTest {
     //removeAll and retainAll include non Entry values
 
     entrySet.removeAll(TrivialImmutableCollection(SIE(testObj(1), TestObj(11)),
-        SIE(testObj(2), testObj(22)), SIE(testObj(3), testObj(44)),
-        TestObj(3), 33))
+            SIE(testObj(2), testObj(22)), SIE(testObj(3), testObj(44)), TestObj(3), 33))
 
     assertTrue(mp.containsKey(testObj(1)))
     assertFalse(mp.containsKey(testObj(2)))
@@ -158,8 +157,7 @@ class IdentityHashMapTest extends MapTest {
     assertTrue(mp.containsKey(testObj(3)))
 
     entrySet.retainAll(TrivialImmutableCollection(SIE(testObj(1), testObj(11)),
-        SIE(testObj(2), testObj(22)), SIE(testObj(3), TestObj(33)),
-        testObj(3), 42))
+            SIE(testObj(2), testObj(22)), SIE(testObj(3), TestObj(33)), testObj(3), 42))
 
     assertTrue(mp.containsKey(testObj(1)))
     assertTrue(mp.containsKey(testObj(2)))
@@ -235,8 +233,7 @@ class IdentityHashMapTest extends MapTest {
     assertTrue(mp.containsKey(testObj(3)))
     assertFalse(mp.containsKey(TestObj(3)))
 
-    val coll1 = TrivialImmutableCollection(
-        testObj(1), TestObj(2), testObj(3), testObj(5))
+    val coll1 = TrivialImmutableCollection(testObj(1), TestObj(2), testObj(3), testObj(5))
     keySet.removeAll(coll1)
 
     assertFalse(mp.containsKey(testObj(1)))
@@ -313,8 +310,7 @@ class IdentityHashMapTest extends MapTest {
     val coll1 = TrivialImmutableCollection(testObj(11), TestObj(22), testObj(33))
     assertFalse(values.containsAll(coll1))
 
-    val coll2 = TrivialImmutableCollection(
-        testObj(11), testObj(22), testObj(33), testObj(44))
+    val coll2 = TrivialImmutableCollection(testObj(11), testObj(22), testObj(33), testObj(44))
     assertFalse(values.containsAll(coll2))
   }
 
@@ -357,8 +353,7 @@ class IdentityHashMapTest extends MapTest {
     assertTrue(mp.containsKey(testObj(2)))
     assertTrue(mp.containsKey(testObj(3)))
 
-    values.retainAll(TrivialImmutableCollection(
-        testObj(11), testObj(22), TestObj(33)))
+    values.retainAll(TrivialImmutableCollection(testObj(11), testObj(22), TestObj(33)))
 
     assertTrue(mp.containsKey(testObj(1)))
     assertTrue(mp.containsKey(testObj(2)))

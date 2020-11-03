@@ -32,15 +32,12 @@ private[java] object ScalaOps {
     }
   }
 
-  implicit class ToJavaIterableOps[A] private[ScalaOps] (
-      val __self: java.lang.Iterable[A])
+  implicit class ToJavaIterableOps[A] private[ScalaOps] (val __self: java.lang.Iterable[A])
       extends AnyVal {
     def scalaOps: JavaIterableOps[A] = new JavaIterableOps[A](__self)
   }
 
-  class JavaIterableOps[A] private[ScalaOps] (
-      val __self: java.lang.Iterable[A])
-      extends AnyVal {
+  class JavaIterableOps[A] private[ScalaOps] (val __self: java.lang.Iterable[A]) extends AnyVal {
 
     @inline def foreach[U](f: A => U): Unit =
       __self.iterator().scalaOps.foreach(f)
@@ -70,14 +67,11 @@ private[java] object ScalaOps {
       __self.iterator().scalaOps.mkString(start, sep, end)
   }
 
-  implicit class ToJavaIteratorOps[A] private[ScalaOps] (
-      val __self: Iterator[A])
-      extends AnyVal {
+  implicit class ToJavaIteratorOps[A] private[ScalaOps] (val __self: Iterator[A]) extends AnyVal {
     def scalaOps: JavaIteratorOps[A] = new JavaIteratorOps[A](__self)
   }
 
-  class JavaIteratorOps[A] private[ScalaOps] (val __self: Iterator[A])
-      extends AnyVal {
+  class JavaIteratorOps[A] private[ScalaOps] (val __self: Iterator[A]) extends AnyVal {
 
     @inline def foreach[U](f: A => U): Unit = {
       while (__self.hasNext())
@@ -150,14 +144,12 @@ private[java] object ScalaOps {
     }
   }
 
-  implicit class ToJavaEnumerationOps[A] private[ScalaOps] (
-      val __self: Enumeration[A])
+  implicit class ToJavaEnumerationOps[A] private[ScalaOps] (val __self: Enumeration[A])
       extends AnyVal {
     def scalaOps: JavaEnumerationOps[A] = new JavaEnumerationOps[A](__self)
   }
 
-  class JavaEnumerationOps[A] private[ScalaOps] (val __self: Enumeration[A])
-      extends AnyVal {
+  class JavaEnumerationOps[A] private[ScalaOps] (val __self: Enumeration[A]) extends AnyVal {
 
     @inline def foreach[U](f: A => U): Unit = {
       while (__self.hasMoreElements())

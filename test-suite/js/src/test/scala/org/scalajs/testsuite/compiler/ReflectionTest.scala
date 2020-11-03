@@ -35,7 +35,7 @@ class ReflectionTest {
 
   def implicitClassTagTest[A: ClassTag](x: Any): Boolean = x match {
     case x: A => true
-    case _ => false
+    case _    => false
   }
 
   @Test def java_lang_Class_getName_under_normal_circumstances(): Unit = {
@@ -54,7 +54,7 @@ class ReflectionTest {
 
   @Test def should_append_$_to_class_name_of_objects(): Unit = {
     assertEquals("org.scalajs.testsuite.compiler.ReflectionTest$TestObject$",
-      TestObject.getClass.getName)
+        TestObject.getClass.getName)
   }
 
   @Test def java_lang_Class_getName_renamed_through_semantics(): Unit = {
@@ -69,12 +69,9 @@ class ReflectionTest {
     }
 
     test("renamed.test.Class", classOf[RenamedTestClass])
-    test("renamed.test.byprefix.RenamedTestClass1",
-        classOf[PrefixRenamedTestClass1])
-    test("renamed.test.byprefix.RenamedTestClass2",
-        classOf[PrefixRenamedTestClass2])
-    test("renamed.test.byotherprefix.RenamedTestClass",
-        classOf[OtherPrefixRenamedTestClass])
+    test("renamed.test.byprefix.RenamedTestClass1", classOf[PrefixRenamedTestClass1])
+    test("renamed.test.byprefix.RenamedTestClass2", classOf[PrefixRenamedTestClass2])
+    test("renamed.test.byotherprefix.RenamedTestClass", classOf[OtherPrefixRenamedTestClass])
   }
 
   @Test def java_lang_Object_getClass_getName_renamed_through_semantics(): Unit = {
@@ -97,12 +94,9 @@ class ReflectionTest {
     }
 
     test("renamed.test.Class", new RenamedTestClass)
-    test("renamed.test.byprefix.RenamedTestClass1",
-        new PrefixRenamedTestClass1)
-    test("renamed.test.byprefix.RenamedTestClass2",
-        new PrefixRenamedTestClass2)
-    test("renamed.test.byotherprefix.RenamedTestClass",
-        new OtherPrefixRenamedTestClass)
+    test("renamed.test.byprefix.RenamedTestClass1", new PrefixRenamedTestClass1)
+    test("renamed.test.byprefix.RenamedTestClass2", new PrefixRenamedTestClass2)
+    test("renamed.test.byotherprefix.RenamedTestClass", new OtherPrefixRenamedTestClass)
   }
 
   @Test def should_support_isInstance(): Unit = {
@@ -183,8 +177,9 @@ class ReflectionTest {
     assertEquals(classOf[AnyRef], classOf[String].getSuperclass)
     assertEquals(classOf[Number], classOf[Integer].getSuperclass)
 
-    assertEquals("org.scalajs.testsuite.compiler.ReflectionTest$ParentClassWhoseDataIsNotAccessedDirectly",
-      classOf[ChildClassWhoseDataIsAccessedDirectly].getSuperclass.getName)
+    assertEquals(
+        "org.scalajs.testsuite.compiler.ReflectionTest$ParentClassWhoseDataIsNotAccessedDirectly",
+        classOf[ChildClassWhoseDataIsAccessedDirectly].getSuperclass.getName)
   }
 
   @Test def cast_positive(): Unit = {

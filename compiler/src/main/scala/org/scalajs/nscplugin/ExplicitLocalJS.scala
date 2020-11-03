@@ -118,8 +118,7 @@ import scala.collection.mutable
  *  its own JS class.
  */
 abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
-    extends plugins.PluginComponent with Transform with TypingTransformers
-    with CompatComponent {
+    extends plugins.PluginComponent with Transform with TypingTransformers with CompatComponent {
 
   val jsAddons: JSGlobalAddons {
     val global: ExplicitLocalJS.this.global.type
@@ -179,8 +178,7 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
     !isJSLambda
   }
 
-  class ExplicitLocalJSTransformer(unit: CompilationUnit)
-      extends TypingTransformer(unit) {
+  class ExplicitLocalJSTransformer(unit: CompilationUnit) extends TypingTransformer(unit) {
 
     private val nestedObject2superClassTpe = mutable.Map.empty[Symbol, Type]
     private val localClass2jsclassVal = mutable.Map.empty[Symbol, TermSymbol]
@@ -209,8 +207,7 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
             decl match {
               case ClassDef(_, _, _, impl)
                   if decl.symbol.isModuleClass && isInnerJSClassOrObject(decl.symbol) =>
-                nestedObject2superClassTpe(decl.symbol) =
-                  extractSuperTpeFromImpl(impl)
+                nestedObject2superClassTpe(decl.symbol) = extractSuperTpeFromImpl(impl)
               case _ =>
             }
           }
@@ -242,9 +239,8 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
                       val argss = ctor.tpe.paramss.map { params =>
                         List.fill(params.size)(gen.mkAttributedRef(Predef_???))
                       }
-                      argss.tail.foldLeft(
-                          global.NewFromConstructor(ctor, argss.head: _*))(
-                          Apply(_, _))
+                      argss.tail
+                        .foldLeft(global.NewFromConstructor(ctor, argss.head: _*))(Apply(_, _))
                     }
                     typer.typed(ArrayValue(TypeTree(AnyRefTpe), elems))
                   }
@@ -271,10 +267,8 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
                   }
                 }
 
-              case ClassDef(_, _, _, impl)
-                  if isLocalJSClassOrObject(stat.symbol) =>
-                nestedObject2superClassTpe(stat.symbol) =
-                  extractSuperTpeFromImpl(impl)
+              case ClassDef(_, _, _, impl) if isLocalJSClassOrObject(stat.symbol) =>
+                nestedObject2superClassTpe(stat.symbol) = extractSuperTpeFromImpl(impl)
                 newStats += transform(stat)
 
               case _ =>
@@ -312,7 +306,7 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
          */
         case Apply(fun @ Select(sup: Super, _), _)
             if !fun.symbol.isConstructor &&
-                isInnerOrLocalJSClass(sup.symbol.superClass) =>
+              isInnerOrLocalJSClass(sup.symbol.superClass) =>
           wrapWithContextualJSClassValue(sup.symbol.superClass.tpe_*) {
             super.transform(tree)
           }
@@ -320,7 +314,7 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
         // Same for a super call with type parameters
         case Apply(TypeApply(fun @ Select(sup: Super, _), _), _)
             if !fun.symbol.isConstructor &&
-                isInnerOrLocalJSClass(sup.symbol.superClass) =>
+              isInnerOrLocalJSClass(sup.symbol.superClass) =>
           wrapWithContextualJSClassValue(sup.symbol.superClass.tpe_*) {
             super.transform(tree)
           }
@@ -329,13 +323,12 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
         case Apply(TypeApply(ctorOfTree, List(tpeArg)), Nil)
             if ctorOfTree.symbol == JSPackage_constructorOf =>
           val newTpeArg = transform(tpeArg)
-          gen.mkAttributedCast(genJSConstructorOf(tree, newTpeArg.tpe),
-              JSDynamicClass.tpe)
+          gen.mkAttributedCast(genJSConstructorOf(tree, newTpeArg.tpe), JSDynamicClass.tpe)
 
         // Translate x.isInstanceOf[T] for inner and local JS classes
         case Apply(TypeApply(fun @ Select(obj, _), List(tpeArg)), Nil)
             if fun.symbol == Any_isInstanceOf &&
-                isInnerOrLocalJSClass(tpeArg.tpe.typeSymbol) =>
+              isInnerOrLocalJSClass(tpeArg.tpe.typeSymbol) =>
           val newObj = transform(obj)
           val newTpeArg = transform(tpeArg)
           val jsCtorOf = genJSConstructorOf(tree, newTpeArg.tpe)
@@ -358,7 +351,7 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
       // This should not have passed the checks in PrepJSInterop
       assert(!clazz.isTrait && !clazz.isModuleClass,
           s"non-trait class type required but $tpe found for " +
-          s"genJSConstructorOf at ${tree.pos}")
+            s"genJSConstructorOf at ${tree.pos}")
 
       localTyper.typed {
         atPos(tree.pos) {
@@ -372,8 +365,7 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
               val qual = gen.mkAttributedQualifier(prefix)
               gen.mkAttributedSelect(qual, jsclassAccessorFor(clazz))
             } else {
-              reporter.error(tree.pos,
-                  s"stable reference to a JS class required but $tpe found")
+              reporter.error(tree.pos, s"stable reference to a JS class required but $tpe found")
               gen.mkAttributedRef(Predef_???)
             }
           } else if (isLocalJSClass(clazz)) {
@@ -390,20 +382,16 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
       }
     }
 
-    private def wrapWithContextualJSClassValue(jsClassType: Type)(
-        tree: Tree): Tree = {
+    private def wrapWithContextualJSClassValue(jsClassType: Type)(tree: Tree): Tree = {
       wrapWithContextualJSClassValue(genJSConstructorOf(tree, jsClassType)) {
         tree
       }
     }
 
-    private def wrapWithContextualJSClassValue(jsClassValue: Tree)(
-        tree: Tree): Tree = {
+    private def wrapWithContextualJSClassValue(jsClassValue: Tree)(tree: Tree): Tree = {
       atPos(tree.pos) {
         localTyper.typed {
-          gen.mkMethodCall(
-              Runtime_withContextualJSClassValue,
-              List(tree.tpe),
+          gen.mkMethodCall(Runtime_withContextualJSClassValue, List(tree.tpe),
               List(jsClassValue, tree))
         }
       }

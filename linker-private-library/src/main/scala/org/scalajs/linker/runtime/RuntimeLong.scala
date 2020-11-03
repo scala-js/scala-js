@@ -236,17 +236,15 @@ final class RuntimeLong(val lo: Int, val hi: Int)
      *
      * Finally we have:
      */
-    new RuntimeLong(
-        if ((n & 32) == 0) lo << n else 0,
-        if ((n & 32) == 0) (lo >>> 1 >>> (31-n)) | (hi << n) else lo << n)
+    new RuntimeLong(if ((n & 32) == 0) lo << n else 0,
+        if ((n & 32) == 0) (lo >>> 1 >>> (31 - n)) | (hi << n) else lo << n)
   }
 
   /** Logical shift right */
   @inline
   def >>>(n: Int): RuntimeLong = {
     // This derives in a similar way as in <<
-    new RuntimeLong(
-        if ((n & 32) == 0) (lo >>> n) | (hi << 1 << (31-n)) else hi >>> n,
+    new RuntimeLong(if ((n & 32) == 0) (lo >>> n) | (hi << 1 << (31 - n)) else hi >>> n,
         if ((n & 32) == 0) hi >>> n else 0)
   }
 
@@ -254,8 +252,7 @@ final class RuntimeLong(val lo: Int, val hi: Int)
   @inline
   def >>(n: Int): RuntimeLong = {
     // This derives in a similar way as in <<
-    new RuntimeLong(
-        if ((n & 32) == 0) (lo >>> n) | (hi << 1 << (31-n)) else hi >> n,
+    new RuntimeLong(if ((n & 32) == 0) (lo >>> n) | (hi << 1 << (31 - n)) else hi >> n,
         if ((n & 32) == 0) hi >> n else hi >> 31)
   }
 
@@ -274,8 +271,7 @@ final class RuntimeLong(val lo: Int, val hi: Int)
     val ahi = a.hi
     val bhi = b.hi
     val lo = alo + b.lo
-    new RuntimeLong(lo,
-        if (inlineUnsignedInt_<(lo, alo)) ahi + bhi + 1 else ahi + bhi)
+    new RuntimeLong(lo, if (inlineUnsignedInt_<(lo, alo)) ahi + bhi + 1 else ahi + bhi)
   }
 
   @inline
@@ -284,8 +280,7 @@ final class RuntimeLong(val lo: Int, val hi: Int)
     val ahi = a.hi
     val bhi = b.hi
     val lo = alo - b.lo
-    new RuntimeLong(lo,
-        if (inlineUnsignedInt_>(lo, alo)) ahi - bhi - 1 else ahi - bhi)
+    new RuntimeLong(lo, if (inlineUnsignedInt_>(lo, alo)) ahi - bhi - 1 else ahi - bhi)
   }
 
   @inline
@@ -508,8 +503,8 @@ final class RuntimeLong(val lo: Int, val hi: Int)
     // hi = a.lo*b.hi + a.hi*b.lo + carry_from_lo_*
     val c1part = (a0b0 >>> 16) + a0b1
     val hi = {
-      alo*b.hi + a.hi*blo + a1 * b1 + (c1part >>> 16) +
-      (((c1part & 0xffff) + a1b0) >>> 16) // collapses to 0 when a1b0 = 0
+      alo * b.hi + a.hi * blo + a1 * b1 + (c1part >>> 16) +
+        (((c1part & 0xffff) + a1b0) >>> 16) // collapses to 0 when a1b0 = 0
     }
 
     new RuntimeLong(lo, hi)
@@ -583,8 +578,7 @@ object RuntimeLong {
        * to micro-benchmarks, this optimization makes toString 25% faster in
        * this branch.
        */
-      unsignedDivModHelper(lo, hi, 1000000000, 0,
-          AskToString).asInstanceOf[String]
+      unsignedDivModHelper(lo, hi, 1000000000, 0, AskToString).asInstanceOf[String]
     }
   }
 
@@ -592,7 +586,7 @@ object RuntimeLong {
     if (hi < 0) {
       // We do asUint() on the hi part specifically for MinValue
       -(asUint(inline_hi_unary_-(lo, hi)) * TwoPow32 +
-          asUint(inline_lo_unary_-(lo)))
+        asUint(inline_lo_unary_-(lo)))
     } else {
       hi * TwoPow32 + asUint(lo)
     }
@@ -758,7 +752,7 @@ object RuntimeLong {
       if (bhi == 0 && isPowerOfTwo_IKnowItsNot0(blo)) {
         val pow = log2OfPowerOfTwo(blo)
         hiReturn = ahi >>> pow
-        (alo >>> pow) | (ahi << 1 << (31-pow))
+        (alo >>> pow) | (ahi << 1 << (31 - pow))
       } else if (blo == 0 && isPowerOfTwo_IKnowItsNot0(bhi)) {
         val pow = log2OfPowerOfTwo(bhi)
         hiReturn = 0
@@ -870,8 +864,7 @@ object RuntimeLong {
    *  - `AskToString`: returns the conversion of `(alo, ahi)` to string.
    *    In this case, `blo` must be 10^9 and `bhi` must be 0.
    */
-  private def unsignedDivModHelper(alo: Int, ahi: Int, blo: Int, bhi: Int,
-      ask: Int): Any = {
+  private def unsignedDivModHelper(alo: Int, ahi: Int, blo: Int, bhi: Int, ask: Int): Any = {
 
     var shift =
       inlineNumberOfLeadingZeros(blo, bhi) - inlineNumberOfLeadingZeros(alo, ahi)

@@ -35,8 +35,7 @@ import Fingerprint.FingerprintBuilder
  *  adjusted using [[withModuleID]].
  */
 final class ModuleInitializer private (
-    val initializer: ModuleInitializer.Initializer,
-    val moduleID: String
+    val initializer: ModuleInitializer.Initializer, val moduleID: String
 ) {
   private def this(initializer: ModuleInitializer.Initializer) =
     this(initializer, DefaultModuleID)
@@ -64,10 +63,9 @@ object ModuleInitializer {
    *  @param mainMethodName
    *    The name of the main method to invoke, e.g., `"main"`.
    */
-  def mainMethod(className: String,
-      mainMethodName: String): ModuleInitializer = {
+  def mainMethod(className: String, mainMethodName: String): ModuleInitializer = {
     new ModuleInitializer(VoidMainMethod(ClassName(className),
-        MethodName(mainMethodName, Nil, VoidRef)))
+            MethodName(mainMethodName, Nil, VoidRef)))
   }
 
   /** Makes a [[ModuleInitializer]] that calls a static method of a top-level
@@ -80,8 +78,7 @@ object ModuleInitializer {
    *  @param mainMethodName
    *    The name of the main method to invoke, e.g., `"main"`.
    */
-  def mainMethodWithArgs(className: String,
-      mainMethodName: String): ModuleInitializer = {
+  def mainMethodWithArgs(className: String, mainMethodName: String): ModuleInitializer = {
     mainMethodWithArgs(className, mainMethodName, Nil)
   }
 
@@ -100,12 +97,10 @@ object ModuleInitializer {
   def mainMethodWithArgs(className: String, mainMethodName: String,
       args: List[String]): ModuleInitializer = {
     new ModuleInitializer(MainMethodWithArgs(ClassName(className),
-        MethodName(mainMethodName, ArrayOfStringTypeRef :: Nil, VoidRef),
-        args))
+            MethodName(mainMethodName, ArrayOfStringTypeRef :: Nil, VoidRef), args))
   }
 
-  private implicit object MethodNameFingerprint
-      extends Fingerprint[MethodName] {
+  private implicit object MethodNameFingerprint extends Fingerprint[MethodName] {
 
     override def fingerprint(methodName: MethodName): String =
       methodName.nameString
@@ -116,8 +111,7 @@ object ModuleInitializer {
       className.nameString
   }
 
-  private implicit object InitializerFingerprint
-      extends Fingerprint[Initializer] {
+  private implicit object InitializerFingerprint extends Fingerprint[Initializer] {
 
     override def fingerprint(initializer: Initializer): String =
       initializer.impl match {
@@ -136,8 +130,7 @@ object ModuleInitializer {
       }
   }
 
-  private implicit object ModuleInitializerFingerprint
-      extends Fingerprint[ModuleInitializer] {
+  private implicit object ModuleInitializerFingerprint extends Fingerprint[ModuleInitializer] {
     override def fingerprint(moduleInitializer: ModuleInitializer): String = {
       new FingerprintBuilder("ModuleInitializer")
         .addField("initializer", moduleInitializer.initializer)

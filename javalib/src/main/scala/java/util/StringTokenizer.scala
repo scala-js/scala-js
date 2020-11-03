@@ -13,9 +13,7 @@
 package java.util
 
 class StringTokenizer(
-    str: String,
-    private var delim: String,
-    returnDelims: Boolean
+    str: String, private var delim: String, returnDelims: Boolean
 ) extends java.util.Enumeration[Object] {
 
   def this(str: String) = this(str, " \t\n\r\f", false)
@@ -108,4 +106,3 @@ class StringTokenizer(
     restAreDelims
   }
 }
-

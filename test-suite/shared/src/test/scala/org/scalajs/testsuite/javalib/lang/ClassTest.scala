@@ -147,8 +147,7 @@ class ClassTest {
 
     // All Classes are assignable from themselves
     for (cls <- SelectedClassOfs) {
-      assertTrue(s"$cls should be assignable from itself",
-          cls.isAssignableFrom(cls))
+      assertTrue(s"$cls should be assignable from itself", cls.isAssignableFrom(cls))
     }
 
     // Otherwise, if one side is a primitive, the result must be false
@@ -157,9 +156,7 @@ class ClassTest {
       right <- SelectedClassOfs
       if (left ne right) && (left.isPrimitive || right.isPrimitive)
     } {
-      assertFalse(
-          s"$left.isAssignableFrom($right) should be false",
-          left.isAssignableFrom(right))
+      assertFalse(s"$left.isAssignableFrom($right) should be false", left.isAssignableFrom(right))
     }
 
     /* Positive tests with the special classes Object and String, as well as
@@ -191,8 +188,7 @@ class ClassTest {
       cls <- BoxedClassOfs
       if cls != classOf[java.lang.Void]
     } {
-      assertTrue(
-          s"classOf[Comparable[_]].isAssignableFrom($cls) should be true",
+      assertTrue(s"classOf[Comparable[_]].isAssignableFrom($cls) should be true",
           classOf[Comparable[_]].isAssignableFrom(cls))
     }
   }

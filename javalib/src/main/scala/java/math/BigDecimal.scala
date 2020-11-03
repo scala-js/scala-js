@@ -92,7 +92,7 @@ object BigDecimal {
    */
   private val CharZeros: String = {
     "00000000000000000000000000000000000000000000000000" +
-    "00000000000000000000000000000000000000000000000000"
+      "00000000000000000000000000000000000000000000000000"
   }
 
   /** `CharZeros.length`. */
@@ -137,8 +137,8 @@ object BigDecimal {
     }
   }
 
-  private def divideBigIntegers(scaledDividend: BigInteger, scaledDivisor: BigInteger,
-      scale: Int, roundingMode: RoundingMode): BigDecimal = {
+  private def divideBigIntegers(scaledDividend: BigInteger, scaledDivisor: BigInteger, scale: Int,
+      roundingMode: RoundingMode): BigDecimal = {
     val qr = scaledDividend.divideAndRemainderImpl(scaledDivisor)
     // If after division there is a remainder...
 
@@ -177,8 +177,8 @@ object BigDecimal {
     }
   }
 
-  private def dividePrimitiveLongs(scaledDividend: Long, scaledDivisor: Long,
-      scale: Int, roundingMode: RoundingMode): BigDecimal = {
+  private def dividePrimitiveLongs(scaledDividend: Long, scaledDivisor: Long, scale: Int,
+      roundingMode: RoundingMode): BigDecimal = {
     import java.lang.{Long => JLong}
 
     val remainder = scaledDividend % scaledDivisor
@@ -215,21 +215,20 @@ object BigDecimal {
    *  @param roundingMode the type of rounding
    *  @return the carry propagated after rounding.
    */
-  private def roundingBehavior(parityBit: Int, fraction: Int,
-      roundingMode: RoundingMode): Int = {
+  private def roundingBehavior(parityBit: Int, fraction: Int, roundingMode: RoundingMode): Int = {
     import RoundingMode._
 
     val absFraction = Math.abs(fraction)
     val sigFraction = java.lang.Integer.signum(fraction)
     // the carry after rounding
     roundingMode match {
-      case UP          => sigFraction
-      case DOWN        => 0
-      case CEILING     => Math.max(sigFraction, 0)
-      case FLOOR       => Math.min(sigFraction, 0)
-      case HALF_UP     => if (absFraction >= 5) sigFraction else 0
-      case HALF_DOWN   => if (absFraction > 5) sigFraction else 0
-      case HALF_EVEN   => if (absFraction + parityBit > 5) sigFraction else 0
+      case UP        => sigFraction
+      case DOWN      => 0
+      case CEILING   => Math.max(sigFraction, 0)
+      case FLOOR     => Math.min(sigFraction, 0)
+      case HALF_UP   => if (absFraction >= 5) sigFraction else 0
+      case HALF_DOWN => if (absFraction > 5) sigFraction else 0
+      case HALF_EVEN => if (absFraction + parityBit > 5) sigFraction else 0
       case UNNECESSARY =>
         if (fraction == 0) 0
         else throw new ArithmeticException("Rounding necessary")
@@ -287,8 +286,7 @@ object BigDecimal {
     s.substring(0, pos) + s2 + s.substring(pos)
 
   @inline
-  private def insertString(s: String, pos: Int, s2: String, s2Start: Int,
-      s2Len: Int): String = {
+  private def insertString(s: String, pos: Int, s2: String, s2Start: Int, s2Len: Int): String = {
     insertString(s, pos, s2.substring(s2Start, s2Start + s2Len))
   }
 
@@ -384,7 +382,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
         throw new NumberFormatException("For input string: " + in.toString)
     }
 
-    val begin = index   // first index to be copied
+    val begin = index // first index to be copied
     var counter = 0
     var wasNonZero = false
     // Accumulating all digits until a possible decimal point
@@ -477,8 +475,8 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     _scale = 1075 - ((bits >> 52) & 2047).toInt
     // Extracting the 52 bits of the mantissa.
     val mantissa =
-      if (_scale == 1075) (bits & 0xFFFFFFFFFFFFFL) << 1
-      else (bits & 0xFFFFFFFFFFFFFL) | 0x10000000000000L
+      if (_scale == 1075) (bits & 0xfffffffffffffL) << 1
+      else (bits & 0xfffffffffffffL) | 0x10000000000000L
 
     if (mantissa == 0) {
       _scale = 0
@@ -577,9 +575,9 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
       else
         new BigDecimal(this.getUnscaledValue.add(augend.getUnscaledValue), this._scale)
     } else if (diffScale > 0) {
-        addAndMult10(this, augend, diffScale)
+      addAndMult10(this, augend, diffScale)
     } else {
-        addAndMult10(augend, this, -diffScale)
+      addAndMult10(augend, this, -diffScale)
     }
   }
 
@@ -596,7 +594,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
         else return add(augend).round(mc) // No optimization is done
 
       if (mc.precision >= larger.approxPrecision())
-        return add(augend).round(mc)// No optimization is done
+        return add(augend).round(mc) // No optimization is done
 
       // Cases where it's unnecessary to add two numbers with very different scales
       val largerSignum = larger.signum()
@@ -659,7 +657,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
   def subtract(subtrahend: BigDecimal, mc: MathContext): BigDecimal = {
     val diffScale = subtrahend._scale - this._scale.toLong
     val precLessDiff = subtrahend.approxPrecision() < diffScale - 1
-     // Some operand is zero or the precision is infinity
+    // Some operand is zero or the precision is infinity
     if (subtrahend.isZero || this.isZero || mc.precision == 0) {
       subtract(subtrahend).round(mc)
     } else if (precLessDiff && (mc.precision < this.approxPrecision())) {
@@ -721,8 +719,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
 
       // Check whether the diffScale will fit into an Int
       if (diffScale.toLong != diffScaleLong) {
-        throw new ArithmeticException(
-            s"Unable to scale as difference is too big ($diffScaleLong)")
+        throw new ArithmeticException(s"Unable to scale as difference is too big ($diffScaleLong)")
       }
 
       diffScale
@@ -842,7 +839,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     val (quot, newScale0) = {
       if (trailingZeros > 0) {
         // To append trailing zeros at end of dividend
-        val q  = getUnscaledValue.multiply(powerOf10(trailingZeros))
+        val q = getUnscaledValue.multiply(powerOf10(trailingZeros))
         (q, diffScale + trailingZeros)
       } else {
         (getUnscaledValue, diffScale)
@@ -1264,9 +1261,8 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
 
   override def equals(x: Any): Boolean = x match {
     case that: BigDecimal =>
-      that._scale == this._scale && (
-          if (_bitLength < 64) that._smallValue == this._smallValue
-          else this._intVal == that._intVal)
+      that._scale == this._scale && (if (_bitLength < 64) that._smallValue == this._smallValue
+                                     else this._intVal == that._intVal)
     case _ => false
   }
 
@@ -1311,8 +1307,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
             if (exponent >= 0) {
               intString.insert(end - _scale, ".")
             } else {
-              intString.insert(begin - 1, "0.").insert(
-                  begin + 1, CharZeros, 0, -exponent.toInt - 1)
+              intString.insert(begin - 1, "0.").insert(begin + 1, CharZeros, 0, -exponent.toInt - 1)
             }
           } else {
             val r0 =
@@ -1342,8 +1337,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
           if (exponent0 >= 0) {
             intString.insert(end - _scale, ".")
           } else {
-            intString.insert(begin - 1, "0.").insert(begin + 1,
-                CharZeros, 0, -exponent0.toInt - 1)
+            intString.insert(begin - 1, "0.").insert(begin + 1, CharZeros, 0, -exponent0.toInt - 1)
           }
         } else {
           val delta = end - begin
@@ -1507,7 +1501,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
       sign * Double.PositiveInfinity
     } else {
       val mantissa0 = getUnscaledValue.abs()
-      var exponent = 1076  // bias + 53
+      var exponent = 1076 // bias + 53
 
       val mantissa = {
         if (_scale <= 0) {
@@ -1583,8 +1577,8 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
         // Construct the 64 double bits: [sign(1), exponent(11), mantissa(52)]
         val resultBits =
           (sign & 0x8000000000000000L) |
-          (exponent.toLong << 52)      |
-          (bits & 0xFFFFFFFFFFFFFL)
+            (exponent.toLong << 52) |
+            (bits & 0xfffffffffffffL)
         java.lang.Double.longBitsToDouble(resultBits)
       }
     }

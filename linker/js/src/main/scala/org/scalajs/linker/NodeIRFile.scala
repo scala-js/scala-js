@@ -30,8 +30,7 @@ object NodeIRFile {
   import NodeFS._
 
   def apply(path: String)(implicit ec: ExecutionContext): Future[IRFile] = {
-    cbFuture[Stats](stat(path, _)).map(stats =>
-        new NodeIRFileImpl(path, stats.mtime.toOption))
+    cbFuture[Stats](stat(path, _)).map(stats => new NodeIRFileImpl(path, stats.mtime.toOption))
   }
 
   private final class NodeIRFileImpl(path: String, version: Option[js.Date])
@@ -42,15 +41,16 @@ object NodeIRFile {
         val len = buf.remaining()
         val off = buf.position()
 
-        cbFuture[Int](read(fd, buf.typedArray(), off, len, off, _)).map { bytesRead =>
-          if (bytesRead <= 0)
-            throw new EOFException
+        cbFuture[Int](read(fd, buf.typedArray(), off, len, off, _))
+          .map { bytesRead =>
+            if (bytesRead <= 0)
+              throw new EOFException
 
-          buf.position(buf.position() + bytesRead)
-          buf.flip()
-          ir.Serializers.deserializeEntryPointsInfo(buf)
-        }.recoverWith {
-          case _: BufferUnderflowException =>
+            buf.position(buf.position() + bytesRead)
+            buf.flip()
+            ir.Serializers.deserializeEntryPointsInfo(buf)
+          }
+          .recoverWith { case _: BufferUnderflowException =>
             // Reset to write again.
             buf.position(buf.limit())
             buf.limit(buf.capacity())
@@ -65,7 +65,7 @@ object NodeIRFile {
             }
 
             loop(fd, newBuf)
-        }
+          }
       }
 
       val result = cbFuture[Int](open(path, "r", _)).flatMap { fd =>

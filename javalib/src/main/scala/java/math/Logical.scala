@@ -188,7 +188,7 @@ private[math] object Logical {
 
         @inline
         @tailrec
-        def loop(bi1: BigInteger,bi2: BigInteger): Unit = {
+        def loop(bi1: BigInteger, bi2: BigInteger): Unit = {
           if (i < bi1.numberLength) {
             digit = ~(bi2.digits(i) | bi1.digits(i))
             if (digit == 0) {
@@ -340,7 +340,7 @@ private[math] object Logical {
           def loop(): Unit = {
             if (i < limit) {
               digit = ~(negative.digits(i) | positive.digits(i))
-              if(digit == 0) {
+              if (digit == 0) {
                 i += 1
                 loop()
               }
@@ -421,7 +421,7 @@ private[math] object Logical {
         } else {
           resDigits(i) = ~bi.digits(i) & (that.digits(i) - 1)
         }
-      } else  {
+      } else {
         resDigits(i) =
           if (iThat < iVal) -bi.digits(i) & that.digits(i)
           else -bi.digits(i) & (that.digits(i) - 1)
@@ -750,7 +750,7 @@ private[math] object Logical {
       if (digit == 0) {
         val limit = Math.min(positive.numberLength, negative.numberLength)
         i += 1
-        while (i < limit && {digit = positive.digits(i) ^ ~negative.digits(i);digit} == 0) {
+        while (i < limit && { digit = positive.digits(i) ^ ~negative.digits(i); digit } == 0) {
           i += 1
         }
         if (digit == 0) {

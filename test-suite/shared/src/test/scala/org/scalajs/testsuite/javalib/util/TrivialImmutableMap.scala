@@ -18,17 +18,17 @@ import java.util.Map.Entry
 final class TrivialImmutableMap[K, V] private (contents: List[Entry[K, V]])
     extends ju.AbstractMap[K, V] {
 
-  def entrySet(): ju.Set[Entry[K,V]] = {
+  def entrySet(): ju.Set[Entry[K, V]] = {
     new ju.AbstractSet[Entry[K, V]] {
       def size(): Int = contents.size
 
-      def iterator(): ju.Iterator[Entry[K,V]] = {
+      def iterator(): ju.Iterator[Entry[K, V]] = {
         new ju.Iterator[Entry[K, V]] {
           private var remaining: List[Entry[K, V]] = contents
 
           def hasNext(): Boolean = remaining.nonEmpty
 
-          def next(): Entry[K,V] = {
+          def next(): Entry[K, V] = {
             val head = remaining.head
             remaining = remaining.tail
             head

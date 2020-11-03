@@ -22,8 +22,7 @@ import scala.scalajs.js.annotation._
 /** Wrapper to use a js.Map as a scala.mutable.Map */
 @inline
 final class WrappedMap[K, V](private val underlying: js.Map[K, V])
-    extends mutable.AbstractMap[K, V]
-    with mutable.MapOps[K, V, mutable.Map, js.WrappedMap[K, V]] {
+    extends mutable.AbstractMap[K, V] with mutable.MapOps[K, V, mutable.Map, js.WrappedMap[K, V]] {
 
   import WrappedMap._
 
@@ -85,8 +84,7 @@ final class WrappedMap[K, V](private val underlying: js.Map[K, V])
 object WrappedMap {
   def empty[K, V]: js.WrappedMap[K, V] = new js.WrappedMap(js.Map.empty)
 
-  private final class WrappedMapBuilder[K, V]
-      extends Builder[(K, V), js.WrappedMap[K, V]] {
+  private final class WrappedMapBuilder[K, V] extends Builder[(K, V), js.WrappedMap[K, V]] {
 
     private[this] var map: js.Map[K, V] = js.Map.empty
 

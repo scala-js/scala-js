@@ -21,8 +21,7 @@ import org.scalajs.ir.Trees.MemberNamespace
 import org.scalajs.linker.standard._
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
-final class IncOptimizer(config: CommonPhaseConfig)
-    extends GenIncOptimizer(config) {
+final class IncOptimizer(config: CommonPhaseConfig) extends GenIncOptimizer(config) {
 
   private[optimizer] object CollOps extends GenIncOptimizer.AbsCollOps {
     type Map[K, V] = mutable.Map[K, V]
@@ -56,9 +55,8 @@ final class IncOptimizer(config: CommonPhaseConfig)
     def getAcc[K, V](map: AccMap[K, V], k: K): ParIterable[V] =
       map.getOrElse(k, emptyParIterable)
 
-    def parFlatMapKeys[A, B](map: AccMap[A, _])(
-        f: A => Option[B]): ParIterable[B] =
-        emptyParIterable[B] ++= map.keys.flatMap(f(_))
+    def parFlatMapKeys[A, B](map: AccMap[A, _])(f: A => Option[B]): ParIterable[B] =
+      emptyParIterable[B] ++= map.keys.flatMap(f(_))
 
     // Operations on ParIterable
     def prepAdd[V](it: ParIterable[V]): Addable[V] = it
@@ -90,8 +88,7 @@ final class IncOptimizer(config: CommonPhaseConfig)
     methodsToProcess.clear()
   }
 
-  private class SeqInterfaceType(className: ClassName)
-      extends InterfaceType(className) {
+  private class SeqInterfaceType(className: ClassName) extends InterfaceType(className) {
 
     private val ancestorsAskers = mutable.Set.empty[MethodImpl]
     private val dynamicCallers = mutable.Map.empty[MethodName, mutable.Set[MethodImpl]]
@@ -142,8 +139,7 @@ final class IncOptimizer(config: CommonPhaseConfig)
     def tagDynamicCallersOf(methodName: MethodName): Unit =
       dynamicCallers.remove(methodName).foreach(_.foreach(_.tag()))
 
-    def tagStaticCallersOf(namespace: MemberNamespace,
-        methodName: MethodName): Unit = {
+    def tagStaticCallersOf(namespace: MemberNamespace, methodName: MethodName): Unit = {
       staticCallers(namespace.ordinal)
         .remove(methodName)
         .foreach(_.foreach(_.tag()))

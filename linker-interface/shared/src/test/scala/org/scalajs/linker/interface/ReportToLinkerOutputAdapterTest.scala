@@ -31,14 +31,15 @@ class ReportToLinkerOutputAdapterTest {
   import ReportToLinkerOutputAdapterTest._
   import scala.concurrent.ExecutionContext.Implicits.global
 
-  private val dummyReport = new ReportImpl(List(
-      new ReportImpl.ModuleImpl(
-          moduleID = "dummy",
-          jsFileName = "main.js",
-          sourceMapName = Some("main.js.map"),
-          moduleKind = ModuleKind.NoModule
-      )
-  ))
+  private val dummyReport = new ReportImpl(
+      List(
+          new ReportImpl.ModuleImpl(
+              moduleID = "dummy",
+              jsFileName = "main.js",
+              sourceMapName = Some("main.js.map"),
+              moduleKind = ModuleKind.NoModule
+          )
+      ))
 
   @Test
   def testReplaceLinks(): AsyncResult = await {
@@ -49,13 +50,11 @@ class ReportToLinkerOutputAdapterTest {
       .withSourceMapURI(new URI("http://example.org/my-source-map-uri"))
       .withJSFileURI(new URI("http://example.org/my-js-file-uri"))
 
-    val readOut = new ReadOnlyOutputDirectory(
-        "main.js" -> raw"""
+    val readOut = new ReadOnlyOutputDirectory("main.js" -> raw"""
           |console.log("hello");
           |//# sourceMappingURL=main.js.map
           |// some other comment
-          |""".stripMargin,
-        "main.js.map" -> raw"""{
+          |""".stripMargin, "main.js.map" -> raw"""{
           |  "file": "main.js",
           |  "other key": 1
           |}""".stripMargin)
@@ -69,12 +68,10 @@ class ReportToLinkerOutputAdapterTest {
           |console.log("hello");
           |//# sourceMappingURL=http://example.org/my-source-map-uri
           |// some other comment
-          |""".stripMargin,
-          writeOut.content("js"))
+          |""".stripMargin, writeOut.content("js"))
       assertEquals(raw"""{"file": "http://example.org/my-js-file-uri",
           |  "other key": 1
-          |}""".stripMargin,
-          writeOut.content("sm"))
+          |}""".stripMargin, writeOut.content("sm"))
     }
   }
 
@@ -87,11 +84,9 @@ class ReportToLinkerOutputAdapterTest {
       .withSourceMapURI(new URI("http://example.org/my-source-map-uri"))
       .withJSFileURI(new URI("http://example.org/my-js-file-uri"))
 
-    val readOut = new ReadOnlyOutputDirectory(
-        "main.js" -> raw"""
+    val readOut = new ReadOnlyOutputDirectory("main.js" -> raw"""
           |console.log("hello");
-          |""".stripMargin,
-        "main.js.map" -> raw"""{
+          |""".stripMargin, "main.js.map" -> raw"""{
           |  "other key": 1
           |}""".stripMargin)
 
@@ -104,12 +99,10 @@ class ReportToLinkerOutputAdapterTest {
           |console.log("hello");
           |
           |//# sourceMappingURL=http://example.org/my-source-map-uri
-          |""".stripMargin,
-          writeOut.content("js"))
+          |""".stripMargin, writeOut.content("js"))
       assertEquals(raw"""{"file": "http://example.org/my-js-file-uri",
           |  "other key": 1
-          |}""".stripMargin,
-          writeOut.content("sm"))
+          |}""".stripMargin, writeOut.content("sm"))
     }
   }
 
@@ -120,13 +113,11 @@ class ReportToLinkerOutputAdapterTest {
     val legacyOutput = LinkerOutput(new OutputFileImpl("js", writeOut))
       .withSourceMap(new OutputFileImpl("sm", writeOut))
 
-    val readOut = new ReadOnlyOutputDirectory(
-        "main.js" -> raw"""
+    val readOut = new ReadOnlyOutputDirectory("main.js" -> raw"""
           |console.log("hello");
           |//# sourceMappingURL=main.js.map
           |// some other comment
-          |""".stripMargin,
-        "main.js.map" -> raw"""{
+          |""".stripMargin, "main.js.map" -> raw"""{
           |  "file": "main.js",
           |  "other key": 1
           |}""".stripMargin)
@@ -140,12 +131,10 @@ class ReportToLinkerOutputAdapterTest {
           |console.log("hello");
           |
           |// some other comment
-          |""".stripMargin,
-          writeOut.content("js"))
+          |""".stripMargin, writeOut.content("js"))
       assertEquals(raw"""{
           |  "other key": 1
-          |}""".stripMargin,
-          writeOut.content("sm"))
+          |}""".stripMargin, writeOut.content("sm"))
     }
   }
 
@@ -156,11 +145,9 @@ class ReportToLinkerOutputAdapterTest {
     val legacyOutput = LinkerOutput(new OutputFileImpl("js", writeOut))
       .withSourceMap(new OutputFileImpl("sm", writeOut))
 
-    val readOut = new ReadOnlyOutputDirectory(
-        "main.js" -> raw"""
+    val readOut = new ReadOnlyOutputDirectory("main.js" -> raw"""
           |console.log("hello");
-          |""".stripMargin,
-        "main.js.map" -> raw"""{
+          |""".stripMargin, "main.js.map" -> raw"""{
           |  "other key": 1
           |}""".stripMargin)
 
@@ -171,12 +158,10 @@ class ReportToLinkerOutputAdapterTest {
 
       assertEquals(raw"""
           |console.log("hello");
-          |""".stripMargin,
-          writeOut.content("js"))
+          |""".stripMargin, writeOut.content("js"))
       assertEquals(raw"""{
           |  "other key": 1
-          |}""".stripMargin,
-          writeOut.content("sm"))
+          |}""".stripMargin, writeOut.content("sm"))
     }
   }
 }
@@ -186,13 +171,11 @@ object ReportToLinkerOutputAdapterTest {
       extends OutputDirectoryImpl {
     def this(fileContents: (String, String)*) = this(fileContents.toMap)
 
-    def writeFull(name: String, buf: ByteBuffer)(
-        implicit ec: ExecutionContext): Future[Unit] = {
+    def writeFull(name: String, buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = {
       throw new AssertionError("should not be called")
     }
 
-    def readFull(name: String)(
-        implicit ec: ExecutionContext): Future[ByteBuffer] = {
+    def readFull(name: String)(implicit ec: ExecutionContext): Future[ByteBuffer] = {
       Future.successful(ByteBuffer.wrap(fileContents(name).getBytes(UTF_8)))
     }
 
@@ -206,14 +189,12 @@ object ReportToLinkerOutputAdapterTest {
   private class WriteOnlyOutputDirectory extends OutputDirectoryImpl {
     val content: mutable.Map[String, String] = mutable.Map.empty
 
-    def writeFull(name: String, buf: ByteBuffer)(
-        implicit ec: ExecutionContext): Future[Unit] = {
+    def writeFull(name: String, buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = {
       content(name) = UTF_8.decode(buf).toString()
       Future.successful(())
     }
 
-    def readFull(name: String)(
-        implicit ec: ExecutionContext): Future[ByteBuffer] = {
+    def readFull(name: String)(implicit ec: ExecutionContext): Future[ByteBuffer] = {
       throw new AssertionError("should not be called")
     }
 

@@ -64,8 +64,7 @@ object PromiseMock {
     @JSExportStatic
     def resolve[A](value: A | js.Thenable[A]): MockPromise[A] = {
       new MockPromise[A]({
-        (resolve: js.Function1[A | js.Thenable[A], _],
-            reject: js.Function1[Any, _]) =>
+        (resolve: js.Function1[A | js.Thenable[A], _], reject: js.Function1[Any, _]) =>
           resolve(value)
       })
     }
@@ -73,8 +72,7 @@ object PromiseMock {
     @JSExportStatic
     def reject(reason: Any): MockPromise[Nothing] = {
       new MockPromise[Nothing]({
-        (resolve: js.Function1[Nothing | js.Thenable[Nothing], _],
-            reject: js.Function1[Any, _]) =>
+        (resolve: js.Function1[Nothing | js.Thenable[Nothing], _], reject: js.Function1[Any, _]) =>
           reject(reason)
       })
     }
@@ -94,8 +92,8 @@ object PromiseMock {
     private case class Rejected(reason: Any) extends State[Nothing]
 
     private def isNotAnObject(x: Any): Boolean = x match {
-      case null | () | _:Double | _:Boolean | _:String => true
-      case _                                           => false
+      case null | () | _: Double | _: Boolean | _: String => true
+      case _                                              => false
     }
 
     private def isCallable(x: Any): Boolean =
@@ -150,8 +148,7 @@ object PromiseMock {
       clearAndTriggerReactions(fulfillReactions, value)
     }
 
-    private[this] def clearAndTriggerReactions[A](
-        reactions: js.Array[js.Function1[A, Any]],
+    private[this] def clearAndTriggerReactions[A](reactions: js.Array[js.Function1[A, Any]],
         argument: A): Unit = {
 
       assert(state != Pending)
@@ -202,51 +199,49 @@ object PromiseMock {
     }
 
     // 25.4.5.3 Promise.prototype.then
-    def `then`[B](
-        onFulfilled: js.Function1[A, B | Thenable[B]],
+    def `then`[B](onFulfilled: js.Function1[A, B | Thenable[B]],
         onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]]): MockPromise[B] = {
 
       new MockPromise[B](
-        { (innerResolve: js.Function1[B | Thenable[B], _],
-            innerReject: js.Function1[scala.Any, _]) =>
-
-          def doFulfilled(value: A): Unit = {
-            tryCatchAny[Unit] {
-              innerResolve(onFulfilled(value))
-            } { e =>
-              innerReject(e)
-            }
-          }
-
-          def doRejected(reason: Any): Unit = {
-            tryCatchAny[Unit] {
-              onRejected.fold[Unit] {
-                innerReject(reason)
-              } { onRejectedFun =>
-                innerResolve(onRejectedFun(reason))
+          {
+            (innerResolve: js.Function1[B | Thenable[B], _],
+                innerReject: js.Function1[scala.Any, _]) =>
+              def doFulfilled(value: A): Unit = {
+                tryCatchAny[Unit] {
+                  innerResolve(onFulfilled(value))
+                } { e =>
+                  innerReject(e)
+                }
               }
-            } { e =>
-              innerReject(e)
-            }
+
+              def doRejected(reason: Any): Unit = {
+                tryCatchAny[Unit] {
+                  onRejected.fold[Unit] {
+                    innerReject(reason)
+                  } { onRejectedFun =>
+                    innerResolve(onRejectedFun(reason))
+                  }
+                } { e =>
+                  innerReject(e)
+                }
+              }
+
+              state match {
+                case Pending =>
+                  fulfillReactions += doFulfilled _
+                  rejectReactions += doRejected _
+
+                case Fulfilled(value) =>
+                  enqueue(() => doFulfilled(value))
+
+                case Rejected(reason) =>
+                  enqueue(() => doRejected(reason))
+              }
           }
-
-          state match {
-            case Pending =>
-              fulfillReactions += doFulfilled _
-              rejectReactions += doRejected _
-
-            case Fulfilled(value) =>
-              enqueue(() => doFulfilled(value))
-
-            case Rejected(reason) =>
-              enqueue(() => doRejected(reason))
-          }
-        }
       )
     }
 
-    def `then`[B >: A](
-        onFulfilled: Unit,
+    def `then`[B >: A](onFulfilled: Unit,
         onRejected: js.UndefOr[js.Function1[scala.Any, B | Thenable[B]]]): MockPromise[B] = {
       `then`((x: A) => (x: B | Thenable[B]), onRejected)
     }

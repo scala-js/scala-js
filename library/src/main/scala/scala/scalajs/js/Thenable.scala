@@ -31,19 +31,15 @@ import scala.concurrent.Future
  *  values of `B` do not have a `then` method.
  */
 trait Thenable[+A] extends js.Object {
-  def `then`[B](
-      onFulfilled: js.Function1[A, B | js.Thenable[B]],
+  def `then`[B](onFulfilled: js.Function1[A, B | js.Thenable[B]],
       onRejected: js.UndefOr[js.Function1[scala.Any, B | js.Thenable[B]]]): js.Thenable[B]
 
-  def `then`[B >: A](
-      onFulfilled: Unit,
+  def `then`[B >: A](onFulfilled: Unit,
       onRejected: js.UndefOr[js.Function1[scala.Any, B | js.Thenable[B]]]): js.Thenable[B]
 }
 
 object Thenable {
-  implicit class ThenableOps[+A] private[Thenable] (
-      private val p: js.Thenable[A])
-      extends AnyVal {
+  implicit class ThenableOps[+A] private[Thenable] (private val p: js.Thenable[A]) extends AnyVal {
 
     /** Converts the [[Thenable]] into a Scala [[scala.concurrent.Future Future]].
      *

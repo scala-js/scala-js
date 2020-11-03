@@ -56,8 +56,7 @@ class ConsumerTest {
     assertThrows(classOf[ThrowingConsumerException],
         throwingConsumer.andThen(dontCallConsumer).accept(0))
 
-    assertThrows(classOf[ThrowingConsumerException],
-        add.andThen(throwingConsumer).accept(1))
+    assertThrows(classOf[ThrowingConsumerException], add.andThen(throwingConsumer).accept(1))
     assertTrue(current == 22)
   }
 }

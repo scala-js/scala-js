@@ -148,8 +148,7 @@ object Types {
   }
 
   object RecordType {
-    final case class Field(name: FieldName, originalName: OriginalName,
-        tpe: Type, mutable: Boolean)
+    final case class Field(name: FieldName, originalName: OriginalName, tpe: Type, mutable: Boolean)
   }
 
   /** No type. */
@@ -184,8 +183,7 @@ object Types {
   sealed abstract class NonArrayTypeRef extends TypeRef
 
   /** Primitive type reference. */
-  final case class PrimRef private[ir] (tpe: PrimTypeWithRef)
-      extends NonArrayTypeRef {
+  final case class PrimRef private[ir] (tpe: PrimTypeWithRef) extends NonArrayTypeRef {
 
     /** The display name of this primitive type.
      *
@@ -253,8 +251,7 @@ object Types {
   }
 
   /** Array type. */
-  final case class ArrayTypeRef(base: NonArrayTypeRef, dimensions: Int)
-      extends TypeRef {
+  final case class ArrayTypeRef(base: NonArrayTypeRef, dimensions: Int) extends TypeRef {
 
     def displayName: String = "[" * dimensions + base.displayName
   }
@@ -287,8 +284,7 @@ object Types {
    *  @param isSubclass A function testing whether a class/interface is a
    *                    subclass of another class/interface.
    */
-  def isSubtype(lhs: Type, rhs: Type)(
-      isSubclass: (ClassName, ClassName) => Boolean): Boolean = {
+  def isSubtype(lhs: Type, rhs: Type)(isSubclass: (ClassName, ClassName) => Boolean): Boolean = {
 
     (lhs != NoType && rhs != NoType) && {
       (lhs == rhs) ||
@@ -323,8 +319,8 @@ object Types {
         case (StringType, ClassType(className)) =>
           isSubclass(BoxedStringClass, className)
 
-        case (ArrayType(ArrayTypeRef(lhsBase, lhsDims)),
-            ArrayType(ArrayTypeRef(rhsBase, rhsDims))) =>
+        case (ArrayType(ArrayTypeRef(lhsBase, lhsDims)), ArrayType(ArrayTypeRef(rhsBase,
+                        rhsDims))) =>
           if (lhsDims < rhsDims) {
             false // because Array[A] </: Array[Array[A]]
           } else if (lhsDims > rhsDims) {

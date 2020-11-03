@@ -55,6 +55,7 @@ object Analysis {
     def interfaces: scala.collection.Seq[ClassInfo]
     def ancestors: scala.collection.Seq[ClassInfo]
     def nonExistent: Boolean
+
     /** For a Scala class, it is instantiated with a `New`; for a JS class,
      *  its constructor is accessed with a `JSLoadConstructor` or because it
      *  is needed for a subclass.
@@ -73,8 +74,7 @@ object Analysis {
 
     def linkedFrom: scala.collection.Seq[From]
     def instantiatedFrom: scala.collection.Seq[From]
-    def methodInfos(
-        namespace: MemberNamespace): scala.collection.Map[MethodName, MethodInfo]
+    def methodInfos(namespace: MemberNamespace): scala.collection.Map[MethodName, MethodInfo]
 
     def displayName: String = className.nameString
   }
@@ -105,6 +105,7 @@ object Analysis {
   sealed trait MethodSyntheticKind
 
   object MethodSyntheticKind {
+
     /** Not a synthetic method. */
     final case object None extends MethodSyntheticKind
 
@@ -126,8 +127,7 @@ object Analysis {
      *  }
      *  }}}
      */
-    final case class ReflectiveProxy(target: MethodName)
-        extends MethodSyntheticKind
+    final case class ReflectiveProxy(target: MethodName) extends MethodSyntheticKind
 
     /** Bridge to a default method.
      *
@@ -143,8 +143,7 @@ object Analysis {
      *  }
      *  }}}
      */
-    final case class DefaultBridge(targetInterface: ClassName)
-        extends MethodSyntheticKind
+    final case class DefaultBridge(targetInterface: ClassName) extends MethodSyntheticKind
   }
 
   trait TopLevelExportInfo {
@@ -161,25 +160,25 @@ object Analysis {
 
   final case class MissingJavaLangObjectClass(from: From) extends Error
   final case class InvalidJavaLangObjectClass(from: From) extends Error
-  final case class CycleInInheritanceChain(encodedClassNames: List[ClassName], from: From) extends Error
+  final case class CycleInInheritanceChain(encodedClassNames: List[ClassName], from: From)
+      extends Error
   final case class MissingClass(info: ClassInfo, from: From) extends Error
 
-  final case class MissingSuperClass(subClassInfo: ClassInfo, from: From)
+  final case class MissingSuperClass(subClassInfo: ClassInfo, from: From) extends Error
+
+  final case class InvalidSuperClass(superClassInfo: ClassInfo, subClassInfo: ClassInfo, from: From)
       extends Error
 
-  final case class InvalidSuperClass(superClassInfo: ClassInfo,
-      subClassInfo: ClassInfo, from: From)
-      extends Error
-
-  final case class InvalidImplementedInterface(superIntfInfo: ClassInfo,
-      subClassInfo: ClassInfo, from: From)
+  final case class InvalidImplementedInterface(superIntfInfo: ClassInfo, subClassInfo: ClassInfo,
+      from: From)
       extends Error
 
   final case class MissingJSNativeLoadSpec(info: ClassInfo, from: From) extends Error
 
   final case class NotAModule(info: ClassInfo, from: From) extends Error
   final case class MissingMethod(info: MethodInfo, from: From) extends Error
-  final case class MissingJSNativeMember(info: ClassInfo, name: MethodName, from: From) extends Error
+  final case class MissingJSNativeMember(info: ClassInfo, name: MethodName, from: From)
+      extends Error
   final case class ConflictingDefaultMethods(infos: List[MethodInfo], from: From) extends Error
 
   final case class InvalidTopLevelExportInScript(info: TopLevelExportInfo) extends Error {
@@ -187,15 +186,17 @@ object Analysis {
   }
 
   final case class ConflictingTopLevelExport(moduleID: ModuleID, exportName: String,
-      infos: List[TopLevelExportInfo]) extends Error {
+      infos: List[TopLevelExportInfo])
+      extends Error {
     def from: From = FromExports
   }
 
   final case class ImportWithoutModuleSupport(module: String, info: ClassInfo,
-      jsNativeMember: Option[MethodName], from: From) extends Error
+      jsNativeMember: Option[MethodName], from: From)
+      extends Error
 
-  final case class MultiplePublicModulesWithoutModuleSupport(
-      moduleIDs: List[ModuleID]) extends Error {
+  final case class MultiplePublicModulesWithoutModuleSupport(moduleIDs: List[ModuleID])
+      extends Error {
     def from: From = FromExports
   }
 
@@ -211,23 +212,23 @@ object Analysis {
         "Fatal error: java.lang.Object is missing"
       case InvalidJavaLangObjectClass(_) =>
         "Fatal error: java.lang.Object is invalid (it must be a Scala class " +
-        "without superclass nor any implemented interface)"
+          "without superclass nor any implemented interface)"
       case CycleInInheritanceChain(encodedClassNames, _) =>
         ("Fatal error: cycle in inheritance chain involving " +
-            encodedClassNames.map(_.nameString).mkString(", "))
+          encodedClassNames.map(_.nameString).mkString(", "))
       case MissingClass(info, _) =>
         s"Referring to non-existent class ${info.displayName}"
       case MissingSuperClass(subClassInfo, _) =>
         s"${subClassInfo.displayName} (of kind ${subClassInfo.kind}) is " +
-        "missing a super class"
+          "missing a super class"
       case InvalidSuperClass(superClassInfo, subClassInfo, _) =>
         s"${superClassInfo.displayName} (of kind ${superClassInfo.kind}) is " +
-        s"not a valid super class of ${subClassInfo.displayName} (of kind " +
-        s"${subClassInfo.kind})"
+          s"not a valid super class of ${subClassInfo.displayName} (of kind " +
+          s"${subClassInfo.kind})"
       case InvalidImplementedInterface(superIntfInfo, subClassInfo, _) =>
         s"${superIntfInfo.displayName} (of kind ${superIntfInfo.kind}) is " +
-        s"not a valid interface implemented by ${subClassInfo.displayName} " +
-        s"(of kind ${subClassInfo.kind})"
+          s"not a valid interface implemented by ${subClassInfo.displayName} " +
+          s"(of kind ${subClassInfo.kind})"
       case MissingJSNativeLoadSpec(info, _) =>
         s"${info.displayName} is a native class but does not have a JSNativeLoadSpec"
       case NotAModule(info, _) =>
@@ -240,22 +241,22 @@ object Analysis {
         s"Conflicting default methods: ${infos.map(_.fullDisplayName).mkString(" ")}"
       case InvalidTopLevelExportInScript(info) =>
         s"Invalid top level export for name '${info.exportName}' in class " +
-        s"${info.owningClass.nameString} when emitting a Script (NoModule) because it " +
-        "is not a valid JavaScript identifier " +
-        "(did you want to emit a module instead?)"
+          s"${info.owningClass.nameString} when emitting a Script (NoModule) because it " +
+          "is not a valid JavaScript identifier " +
+          "(did you want to emit a module instead?)"
       case ConflictingTopLevelExport(moduleID, exportName, infos) =>
         s"Conflicting top level exports for module $moduleID, name $exportName "
         "involving " + infos.map(_.owningClass.nameString).mkString(", ")
       case ImportWithoutModuleSupport(module, info, None, _) =>
         s"${info.displayName} needs to be imported from module " +
-        s"'$module' but module support is disabled"
+          s"'$module' but module support is disabled"
       case ImportWithoutModuleSupport(module, info, Some(jsNativeMember), _) =>
         s"${info.displayName}.${jsNativeMember.displayName} " +
-        s"needs to be imported from module '$module' but " +
-        "module support is disabled"
+          s"needs to be imported from module '$module' but " +
+          "module support is disabled"
       case MultiplePublicModulesWithoutModuleSupport(moduleIDs) =>
         "Found multiple public modules but module support is disabled: " +
-        moduleIDs.map(_.id).mkString("[", ", ", "]")
+          moduleIDs.map(_.id).mkString("[", ", ", "]")
     }
 
     logger.log(level, headMsg)
@@ -273,7 +274,7 @@ object Analysis {
     }
 
     private def log(level: Level, msg: String) =
-      logger.log(level, indentation+msg)
+      logger.log(level, indentation + msg)
 
     private def indented[A](body: => A): A = {
       indentation += "  "
@@ -330,8 +331,8 @@ object Analysis {
 
             // recurse with Debug log level not to overwhelm the user
             if (onlyOnce(Level.Debug, classInfo)) {
-              logCallStackImpl(Level.Debug,
-                  classInfo.instantiatedFrom.lastOption, verb = "instantiated")
+              logCallStackImpl(Level.Debug, classInfo.instantiatedFrom.lastOption,
+                  verb = "instantiated")
             }
           }
         }

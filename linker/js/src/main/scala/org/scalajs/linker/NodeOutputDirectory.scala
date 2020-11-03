@@ -45,8 +45,7 @@ object NodeOutputDirectory {
       cbFuture[Unit](NodeFS.writeFile(path, data, _))
     }
 
-    def readFull(name: String)(
-        implicit ec: ExecutionContext): Future[ByteBuffer] = {
+    def readFull(name: String)(implicit ec: ExecutionContext): Future[ByteBuffer] = {
       cbFuture[Uint8Array](NodeFS.readFile(name, _)).map { ta =>
         TypedArrayBuffer.wrap(ta.buffer, ta.byteOffset, ta.byteLength)
       }

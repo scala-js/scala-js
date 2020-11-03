@@ -25,7 +25,8 @@ object TestIRRepo {
 
   private def load(stdlibPath: String) = {
     val globalIRCache = StandardImpl.irFileCache()
-    Platform.loadJar(stdlibPath)
+    Platform
+      .loadJar(stdlibPath)
       .flatMap(globalIRCache.newCache.cached _)
   }
 }

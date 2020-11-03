@@ -68,15 +68,14 @@ class JSSAMTest extends DirectTest with TestHelpers {
       val foo: Foo = x => x + 1
       val Bar: Bar = x => x + 1
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:15: error: Using an anonymous function as a SAM for the JavaScript type Foo is not allowed. Use an anonymous class instead.
       |      val foo: Foo = x => x + 1
       |                       ^
       |newSource1.scala:16: error: Using an anonymous function as a SAM for the JavaScript type Bar is not allowed. Use an anonymous class instead.
       |      val Bar: Bar = x => x + 1
       |                       ^
-    """
+    """)
 
   }
 

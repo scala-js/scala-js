@@ -92,8 +92,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
         val g2 = SomeGlobalScope
       }
     }
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:41: error: Loading the global scope as a value (anywhere but as the left-hand-side of a `.`-selection) is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val g1 = js.Dynamic.global
@@ -102,7 +101,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val g2 = SomeGlobalScope
       |                 ^
-    """
+    """)
   }
 
   @Test
@@ -123,8 +122,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
         val f = SomeGlobalScope.bracketCall("not-a-valid-identifier-def")(4)
       }
     }
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:41: error: Selecting a field of the global scope whose name is not a valid JavaScript identifier is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val a = js.Dynamic.global.`not-a-valid-identifier-var`
@@ -161,7 +159,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val f = SomeGlobalScope.bracketCall("not-a-valid-identifier-def")(4)
       |                                                                         ^
-    """
+    """)
   }
 
   @Test
@@ -185,8 +183,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
       @JSName("")
       object C extends js.Object
     }
-    """ hasErrors
-    """
+    """.hasErrors("""
       |newSource1.scala:43: error: The name of a JS global variable must be a valid JS identifier (got 'not-a-valid-JS-identifier')
       |      class `not-a-valid-JS-identifier` extends js.Object
       |            ^
@@ -199,7 +196,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
       |newSource1.scala:55: error: The name of a JS global variable must be a valid JS identifier (got '')
       |      object C extends js.Object
       |             ^
-    """
+    """)
   }
 
   @Test
@@ -210,14 +207,13 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
         val a = js.Dynamic.global + 3.asInstanceOf[js.Dynamic]
       }
     }
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:41: error: type mismatch;
       | found   : scala.scalajs.js.Dynamic
       | required: String
       |        val a = js.Dynamic.global + 3.asInstanceOf[js.Dynamic]
       |                                                  ^
-    """
+    """)
 
     """
     object Main {
@@ -225,13 +221,12 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
         val a = SomeGlobalScope + 3
       }
     }
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:41: error: Loading the global scope as a value (anywhere but as the left-hand-side of a `.`-selection) is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val a = SomeGlobalScope + 3
       |                ^
-    """
+    """)
   }
 
   @Test
@@ -242,13 +237,12 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
         val a = js.Dynamic.global(3)
       }
     }
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:41: error: Loading the global scope as a value (anywhere but as the left-hand-side of a `.`-selection) is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val a = js.Dynamic.global(3)
       |                           ^
-    """
+    """)
 
     """
     object Main {
@@ -256,13 +250,12 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
         val a = SomeGlobalScope(3)
       }
     }
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:41: error: Loading the global scope as a value (anywhere but as the left-hand-side of a `.`-selection) is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val a = SomeGlobalScope(3)
       |                ^
-    """
+    """)
   }
 
   @Test
@@ -285,8 +278,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
         val k = SomeGlobalScope.symbolDef()
       }
     }
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:43: error: Selecting a field of the global scope with a dynamic name is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val a = js.Dynamic.global.selectDynamic(dynName)
@@ -323,19 +315,17 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val k = SomeGlobalScope.symbolDef()
       |                                         ^
-    """
+    """)
   }
 
   @Test
   def rejectAllReservedIdentifiers: Unit = {
-    val reservedIdentifiers = List(
-        "arguments", "break", "case", "catch", "class", "const", "continue",
-        "debugger", "default", "delete", "do", "else", "enum", "export",
-        "extends", "false", "finally", "for", "function", "if", "implements",
-        "import", "in", "instanceof", "interface", "let", "new", "null",
-        "package", "private", "protected", "public", "return", "static",
-        "super", "switch", "this", "throw", "true", "try", "typeof", "var",
-        "void", "while", "with", "yield")
+    val reservedIdentifiers = List("arguments", "break", "case", "catch", "class", "const",
+        "continue", "debugger", "default", "delete", "do", "else", "enum", "export", "extends",
+        "false", "finally", "for", "function", "if", "implements", "import", "in", "instanceof",
+        "interface", "let", "new", "null", "package", "private", "protected", "public", "return",
+        "static", "super", "switch", "this", "throw", "true", "try", "typeof", "var", "void",
+        "while", "with", "yield")
 
     for (reservedIdentifier <- reservedIdentifiers) {
       val spaces = " " * reservedIdentifier.length()
@@ -360,8 +350,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
           val d = CustomGlobalScope.`${reservedIdentifier}2`(5)
         }
       }
-      """ hasErrors
-      s"""
+      """.hasErrors(s"""
         |newSource1.scala:49: error: Invalid selection in the global scope of the reserved identifier name `$reservedIdentifier`.
         |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
         |          val a = js.Dynamic.global.`$reservedIdentifier`
@@ -386,7 +375,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
         |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
         |          val d = CustomGlobalScope.`${reservedIdentifier}2`(5)
         |                                       $spaces^
-      """
+      """)
     }
   }
 

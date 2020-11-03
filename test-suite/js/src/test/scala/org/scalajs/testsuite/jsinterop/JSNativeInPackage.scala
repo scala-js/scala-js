@@ -57,8 +57,7 @@ class JSNativeInPackage {
 
   @Test def testClassDefaultJSGlobal(): Unit = {
     assertNotEquals("undefined", js.typeOf(global.JSNativeClassInPackageFoo))
-    assertEquals(js.constructorOf[JSNativeClassInPackageFoo],
-        global.JSNativeClassInPackageFoo)
+    assertEquals(js.constructorOf[JSNativeClassInPackageFoo], global.JSNativeClassInPackageFoo)
 
     val gJSNativeClassInPackageFoo =
       js.Dynamic.newInstance(global.JSNativeClassInPackageFoo)()
@@ -68,8 +67,7 @@ class JSNativeInPackage {
 
   @Test def testClassJSGlobal(): Unit = {
     assertNotEquals("undefined", js.typeOf(global.JSNativeClassInPackageBar))
-    assertSame(js.constructorOf[JSNativeClassInPackageBaz],
-        global.JSNativeClassInPackageBar)
+    assertSame(js.constructorOf[JSNativeClassInPackageBaz], global.JSNativeClassInPackageBar)
     assertEquals("undefined", js.typeOf(global.JSNativeClassInPackageBaz))
 
     val gJSNativeClassInPackageBar =

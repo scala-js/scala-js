@@ -16,8 +16,8 @@ import scala.annotation.{switch, tailrec}
 
 import java.nio._
 
-abstract class CharsetDecoder protected (cs: Charset,
-    _averageCharsPerByte: Float, _maxCharsPerByte: Float) {
+abstract class CharsetDecoder protected (cs: Charset, _averageCharsPerByte: Float,
+    _maxCharsPerByte: Float) {
 
   import CharsetDecoder._
 
@@ -41,10 +41,9 @@ abstract class CharsetDecoder protected (cs: Charset,
 
   final def replaceWith(newReplacement: String): CharsetDecoder = {
     if (newReplacement == null || newReplacement == "")
-      throw new IllegalArgumentException("Invalid replacement: "+newReplacement)
+      throw new IllegalArgumentException("Invalid replacement: " + newReplacement)
     if (newReplacement.length() > maxCharsPerByte())
-      throw new IllegalArgumentException(
-          "Replacement string cannot be longer than maxCharsPerByte")
+      throw new IllegalArgumentException("Replacement string cannot be longer than maxCharsPerByte")
     _replacement = newReplacement
     implReplaceWith(newReplacement)
     this
@@ -79,8 +78,7 @@ abstract class CharsetDecoder protected (cs: Charset,
   final def averageCharsPerByte(): Float = _averageCharsPerByte
   final def maxCharsPerByte(): Float = _maxCharsPerByte
 
-  final def decode(in: ByteBuffer, out: CharBuffer,
-      endOfInput: Boolean): CoderResult = {
+  final def decode(in: ByteBuffer, out: CharBuffer, endOfInput: Boolean): CoderResult = {
 
     if (status == FLUSHED || (!endOfInput && status == END))
       throw new IllegalStateException
@@ -90,14 +88,15 @@ abstract class CharsetDecoder protected (cs: Charset,
     @inline
     @tailrec
     def loop(): CoderResult = {
-      val result1 = try {
-        decodeLoop(in, out)
-      } catch {
-        case ex: BufferOverflowException =>
-          throw new CoderMalfunctionError(ex)
-        case ex: BufferUnderflowException =>
-          throw new CoderMalfunctionError(ex)
-      }
+      val result1 =
+        try {
+          decodeLoop(in, out)
+        } catch {
+          case ex: BufferOverflowException =>
+            throw new CoderMalfunctionError(ex)
+          case ex: BufferUnderflowException =>
+            throw new CoderMalfunctionError(ex)
+        }
 
       val result2 = if (result1.isUnderflow()) {
         val remaining = in.remaining()

@@ -18,7 +18,7 @@ import org.junit.Test
 import org.scalajs.testsuite.utils.Platform
 
 import scala.scalajs.js
-import scala.scalajs.js.annotation.{ JSBracketAccess, JSName }
+import scala.scalajs.js.annotation.{JSBracketAccess, JSName}
 
 class ObjectTest {
   import ObjectTest._
@@ -27,8 +27,7 @@ class ObjectTest {
   private lazy val symB = js.Symbol.forKey("b")
 
   @Test def getOwnPropertySymbols(): Unit = {
-    assumeTrue(
-        "Symbol is not defined (should only happen with NodeJSEnvForcePolyfills)",
+    assumeTrue("Symbol is not defined (should only happen with NodeJSEnvForcePolyfills)",
         js.typeOf(js.Dynamic.global.Symbol) != "undefined")
 
     val obj = (new js.Object()).asInstanceOf[ObjectCreator]
@@ -39,8 +38,7 @@ class ObjectTest {
   }
 
   @Test def is(): Unit = {
-    assumeTrue(
-        "Object.is is not defined (should only happen with NodeJSEnvForcePolyfills)",
+    assumeTrue("Object.is is not defined (should only happen with NodeJSEnvForcePolyfills)",
         js.typeOf(js.Dynamic.global.Object.is) != "undefined")
 
     val a = new js.Object()

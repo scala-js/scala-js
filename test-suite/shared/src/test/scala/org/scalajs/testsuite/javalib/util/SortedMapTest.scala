@@ -25,29 +25,17 @@ trait SortedMapTest extends MapTest {
 
   // TODO: implement tests (when we port the first SortedMap)
 
-  @Test def should_always_be_sorted(): Unit = {
+  @Test def should_always_be_sorted(): Unit = {}
 
-  }
+  @Test def should_return_the_firstKey(): Unit = {}
 
-  @Test def should_return_the_firstKey(): Unit = {
+  @Test def should_return_the_lastKey(): Unit = {}
 
-  }
+  @Test def should_return_a_proper_headMap(): Unit = {}
 
-  @Test def should_return_the_lastKey(): Unit = {
+  @Test def should_return_a_proper_tailMap(): Unit = {}
 
-  }
-
-  @Test def should_return_a_proper_headMap(): Unit = {
-
-  }
-
-  @Test def should_return_a_proper_tailMap(): Unit = {
-
-  }
-
-  @Test def should_return_a_proper_subMap(): Unit = {
-
-  }
+  @Test def should_return_a_proper_subMap(): Unit = {}
 }
 
 trait SortedMapFactory extends MapFactory {

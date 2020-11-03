@@ -72,7 +72,8 @@ abstract class JUnitTest {
           val want = lines.map(Output.deserialize)
 
           if (want != out) {
-            fail(s"Bad output (args: $args)\n\nWant:\n${want.mkString("\n")}\n\nGot:\n${out.mkString("\n")}\n\n")
+            fail(
+                s"Bad output (args: $args)\n\nWant:\n${want.mkString("\n")}\n\nGot:\n${out.mkString("\n")}\n\n")
           }
         }
       }
@@ -85,8 +86,8 @@ abstract class JUnitTest {
     val recorder = new JUnitTestRecorder
     val framework = new com.novocode.junit.JUnitFramework()
     val runner = framework.runner(args.toArray, Array.empty, classLoader)
-    val tasks = runner.tasks(Array(new TaskDef(suiteUnderTestName,
-        framework.fingerprints.head, true, Array.empty)))
+    val tasks = runner
+      .tasks(Array(new TaskDef(suiteUnderTestName, framework.fingerprints.head, true, Array.empty)))
 
     // run all tasks and the tasks they generate, needs platform extension
     for {
@@ -104,8 +105,8 @@ abstract class JUnitTest {
   }
 
   private def isStackTrace(out: Output): Boolean = out match {
-    case Log(_, msg)  => msg.startsWith("    at ") || msg.startsWith("    ...")
-    case _            => false
+    case Log(_, msg) => msg.startsWith("    at ") || msg.startsWith("    ...")
+    case _           => false
   }
 
   /** Orders test output by test (method) name.
@@ -248,9 +249,8 @@ object JUnitTest {
 
     def serialize(o: Output): String = o match {
       case Log(level, msg) => "l" + level + msg
-      case Event(s, n)   => "e" + s.ordinal + n
-      case Done(msg)     => "d" + msg
+      case Event(s, n)     => "e" + s.ordinal + n
+      case Done(msg)       => "d" + msg
     }
   }
 }
-

@@ -16,8 +16,7 @@ import Names.ClassName
 import Trees._
 
 final class EntryPointsInfo(
-    val className: ClassName,
-    val hasEntryPoint: Boolean
+    val className: ClassName, val hasEntryPoint: Boolean
 )
 
 object EntryPointsInfo {
@@ -27,7 +26,7 @@ object EntryPointsInfo {
       classDef.memberDefs.exists {
         case m: MethodDef =>
           m.flags.namespace == MemberNamespace.StaticConstructor &&
-          m.methodName.isStaticInitializer
+            m.methodName.isStaticInitializer
         case _ =>
           false
       }

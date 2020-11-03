@@ -67,8 +67,7 @@ object IRAssertions {
     }
   }
 
-  class ClassDefAssertions(classDef: ClassDef)
-      extends AbstractIRNodeAssertions(classDef) {
+  class ClassDefAssertions(classDef: ClassDef) extends AbstractIRNodeAssertions(classDef) {
 
     protected def newTraverser(f: IRNode => Unit): TestTraverser[ClassDef] = {
       new TestTraverser[ClassDef](f) {
@@ -115,8 +114,7 @@ object IRAssertions {
       super.traverseMemberDef(memberDef)
     }
 
-    override def traverseTopLevelExportDef(
-        exportDef: TopLevelExportDef): Unit = {
+    override def traverseTopLevelExportDef(exportDef: TopLevelExportDef): Unit = {
       f(exportDef)
       super.traverseTopLevelExportDef(exportDef)
     }

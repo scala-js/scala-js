@@ -36,8 +36,7 @@ class StandardIRFileCacheTest {
   val maxConcurrentReads = 5
 
   /** simulates a cache call and aggressive read of all files. */
-  private def readAll(containers: List[IRContainer])(
-      implicit ec: ExecutionContext): Future[_] = {
+  private def readAll(containers: List[IRContainer])(implicit ec: ExecutionContext): Future[_] = {
     val config = IRFileCacheConfig()
       .withMaxConcurrentReads(maxConcurrentReads)
 
@@ -59,19 +58,21 @@ class StandardIRFileCacheTest {
     val ops = containers.flatMap(_.ops)
 
     def loop(): Future[Unit] = {
-      testEc.runAll().flatMap { _ =>
-        if (result.isCompleted) {
-          Future.successful(())
-        } else {
-          val reading = ops.filter(_.running)
-          assert(reading.nonEmpty, "caching is not completed but nothing is reading")
-          assert(reading.size <= maxConcurrentReads, "reading too many files at the same time")
+      testEc
+        .runAll()
+        .flatMap { _ =>
+          if (result.isCompleted) {
+            Future.successful(())
+          } else {
+            val reading = ops.filter(_.running)
+            assert(reading.nonEmpty, "caching is not completed but nothing is reading")
+            assert(reading.size <= maxConcurrentReads, "reading too many files at the same time")
 
-          reading.head.complete()
+            reading.head.complete()
 
-          loop()
-        }
-      } (globalEc)
+            loop()
+          }
+        }(globalEc)
     }
 
     loop()
@@ -79,8 +80,7 @@ class StandardIRFileCacheTest {
 }
 
 object StandardIRFileCacheTest {
-  final class MockIRContainer(path: String)
-      extends IRContainerImpl(path, version = None) {
+  final class MockIRContainer(path: String) extends IRContainerImpl(path, version = None) {
     private val files = List.tabulate(10)(i => new MockIRFile(f"$path.F$i"))
 
     private val _sjsirFiles = new MockOperation(files)
@@ -131,8 +131,7 @@ object StandardIRFileCacheTest {
   }
 
   /** An ExecutionContext that only executes tasks when [[runAll]] is called. */
-  final class TestExecutionContext(underlying: ExecutionContext)
-      extends ExecutionContext {
+  final class TestExecutionContext(underlying: ExecutionContext) extends ExecutionContext {
     private var tasks: List[Runnable] = Nil
     private var failureCause: Throwable = _
 
@@ -157,7 +156,8 @@ object StandardIRFileCacheTest {
         if (taskSnapshot.isEmpty) {
           Future.successful(())
         } else {
-          Future.traverse(taskSnapshot)(task => Future(task.run()))
+          Future
+            .traverse(taskSnapshot)(task => Future(task.run()))
             .flatMap(_ => runAll())
         }
       }

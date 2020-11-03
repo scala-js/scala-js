@@ -76,11 +76,10 @@ class RunMuxRPCTest {
 
     y.call(eps.call, 1)(())
       .map(_ => fail("Expected exception"))
-      .recover {
-        case e: RPCCore.RPCException =>
-          val cause = e.getCause()
-          assertNotNull(s"Did not get cause: $e", cause)
-          assertEquals("Unknown run 1", cause.getMessage())
+      .recover { case e: RPCCore.RPCException =>
+        val cause = e.getCause()
+        assertNotNull(s"Did not get cause: $e", cause)
+        assertEquals("Unknown run 1", cause.getMessage())
       }
   }
 

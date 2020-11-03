@@ -18,9 +18,11 @@ import org.scalajs.linker.interface._
 final class CoreSpec private (
     /** Scala.js semantics. */
     val semantics: Semantics,
-    /** Module kind. */
+    /** Module kind.
+     */
     val moduleKind: ModuleKind,
-    /** ECMAScript features to use. */
+    /** ECMAScript features to use.
+     */
     val esFeatures: ESFeatures
 ) {
   import CoreSpec._
@@ -28,8 +30,8 @@ final class CoreSpec private (
   override def equals(that: Any): Boolean = that match {
     case that: CoreSpec =>
       this.semantics == that.semantics &&
-      this.moduleKind == that.moduleKind &&
-      this.esFeatures == that.esFeatures
+        this.moduleKind == that.moduleKind &&
+        this.esFeatures == that.esFeatures
     case _ =>
       false
   }
@@ -57,15 +59,11 @@ private[linker] object CoreSpec {
     scala.util.hashing.MurmurHash3.stringHash(classOf[CoreSpec].getName)
 
   private[linker] val Defaults: CoreSpec = {
-    new CoreSpec(
-        semantics = Semantics.Defaults,
-        moduleKind = ModuleKind.NoModule,
+    new CoreSpec(semantics = Semantics.Defaults, moduleKind = ModuleKind.NoModule,
         esFeatures = ESFeatures.Defaults)
   }
 
-  private[linker] def apply(
-      semantics: Semantics,
-      moduleKind: ModuleKind,
+  private[linker] def apply(semantics: Semantics, moduleKind: ModuleKind,
       esFeatures: ESFeatures): CoreSpec = {
     new CoreSpec(semantics, moduleKind, esFeatures)
   }

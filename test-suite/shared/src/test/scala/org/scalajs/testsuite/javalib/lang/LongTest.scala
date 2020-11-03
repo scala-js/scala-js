@@ -147,8 +147,7 @@ class LongTest {
     test("4000000000", 4000000000L)
     test("-18014398509482040", -18014398509482040L)
 
-    test("\u19d9\u0f24\u0c6f\u1c47\ua623\u19d9\u0f24\u0c6f\u1c47\ua623",
-        9497394973L)
+    test("\u19d9\u0f24\u0c6f\u1c47\ua623\u19d9\u0f24\u0c6f\u1c47\ua623", 9497394973L)
     test("\u19d0" * 50 + "\u19d9\u0f24\u0c6f\u1c47\ua623\u19d9\u0f24\u0c6f\u1c47\ua623",
         9497394973L)
   }
@@ -255,7 +254,7 @@ class LongTest {
     assertEquals("2147483647", Int.MaxValue.toLong.toString)
     assertEquals("-50", (-50L).toString)
     assertEquals("-1000000000", (-1000000000L).toString)
-    assertEquals("2147483648", (Int.MaxValue.toLong+1L).toString)
+    assertEquals("2147483648", (Int.MaxValue.toLong + 1L).toString)
     assertEquals("-2147483648", Int.MinValue.toLong.toString)
 
     /* Ported from
@@ -312,19 +311,31 @@ class LongTest {
 
   @Test def toBinaryString(): Unit = {
     assertEquals("0", JLong.toBinaryString(0L))
-    assertEquals("1111111111111111111111111111111111111111111111111111111111111111",
-        JLong.toBinaryString(-1L))
+    assertEquals(
+        "1111111111111111111111111111111111111111111111111111111111111111",
+        JLong.toBinaryString(-1L)
+    )
     assertEquals("11011001100101111010101100110", JLong.toBinaryString(456324454L))
-    assertEquals("1111111111111111111111111111111111100100110011010000101010011010",
-        JLong.toBinaryString(-456324454L))
-    assertEquals("10110011101001110011110011111111111101001111101",
-        JLong.toBinaryString(98765432158845L))
-    assertEquals("1111111111111111110100101110100101011001100101101001000111001100",
-        JLong.toBinaryString(-49575304457780L))
-    assertEquals("1000000000000000000000000000000000000000000000000000000000000000",
-        JLong.toBinaryString(Long.MinValue))
-    assertEquals("111111111111111111111111111111111111111111111111111111111111111",
-        JLong.toBinaryString(Long.MaxValue))
+    assertEquals(
+        "1111111111111111111111111111111111100100110011010000101010011010",
+        JLong.toBinaryString(-456324454L)
+    )
+    assertEquals(
+        "10110011101001110011110011111111111101001111101",
+        JLong.toBinaryString(98765432158845L)
+    )
+    assertEquals(
+        "1111111111111111110100101110100101011001100101101001000111001100",
+        JLong.toBinaryString(-49575304457780L)
+    )
+    assertEquals(
+        "1000000000000000000000000000000000000000000000000000000000000000",
+        JLong.toBinaryString(Long.MinValue)
+    )
+    assertEquals(
+        "111111111111111111111111111111111111111111111111111111111111111",
+        JLong.toBinaryString(Long.MaxValue)
+    )
   }
 
   @Test def toHexString(): Unit = {

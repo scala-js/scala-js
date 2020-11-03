@@ -25,7 +25,7 @@ import org.scalajs.testsuite.utils.AssertThrows._
 
 import scala.util.matching.Regex
 
-class RegexMatcherTest  {
+class RegexMatcherTest {
 
   @Test def find(): Unit = {
     val matcher = Pattern.compile("a").matcher("Scala.js")
@@ -41,68 +41,42 @@ class RegexMatcherTest  {
     val matcher = Pattern
       .compile("\\s(([A-Za-z]{5}(hum)?).js)\\s")
       .matcher("Write Scala.js everyday!")
-    checkGroups(matcher,
-        (5, 15, " Scala.js "),
-        (6, 14, "Scala.js"),
-        (6, 11, "Scala"),
-        (-1, -1, null)
-    )
+    checkGroups(matcher, (5, 15, " Scala.js "), (6, 14, "Scala.js"), (6, 11, "Scala"),
+        (-1, -1, null))
   }
 
   @Test def start_end_group_tricky_and_toMatchResult(): Unit = {
     val matcher = Pattern
       .compile("(Scala\\.js).*(Scala)$")
       .matcher("Scala.js is a Scalable javascript compiler based on Scala")
-    checkGroups(matcher,
-        (0, 57, "Scala.js is a Scalable javascript compiler based on Scala"),
-        (0, 8, "Scala.js"),
-        (52, 57, "Scala")
-    )
+    checkGroups(matcher, (0, 57, "Scala.js is a Scalable javascript compiler based on Scala"),
+        (0, 8, "Scala.js"), (52, 57, "Scala"))
   }
 
   @Test def start_end_group_matchnot_and_toMatchResult(): Unit = {
     val matcher = Pattern
       .compile("(?!Scala\\.js)(Scala)")
       .matcher("There is a difference between Scala.js and Scala, but both are Scalable")
-    checkGroups(matcher,
-        (43, 48, "Scala"),
-        (43, 48, "Scala")
-    )
-    checkGroups(matcher,
-        (63, 68, "Scala"),
-        (63, 68, "Scala")
-    )
+    checkGroups(matcher, (43, 48, "Scala"), (43, 48, "Scala"))
+    checkGroups(matcher, (63, 68, "Scala"), (63, 68, "Scala"))
   }
 
   @Test def start_end_group_multiple_and_toMatchResult(): Unit = {
     val matcher = Pattern
       .compile("(?=Scala\\.js is (nice|awesome))(Scala)\\.js")
       .matcher("Scala.js is nice, Scala.js is awesome")
-    checkGroups(matcher,
-        (0,  8,  "Scala.js"),
-        (12, 16, "nice"),
-        (0,  5,  "Scala")
-    )
-    checkGroups(matcher,
-        (18, 26, "Scala.js"),
-        (30, 37, "awesome"),
-        (18, 23, "Scala")
-    )
+    checkGroups(matcher, (0, 8, "Scala.js"), (12, 16, "nice"), (0, 5, "Scala"))
+    checkGroups(matcher, (18, 26, "Scala.js"), (30, 37, "awesome"), (18, 23, "Scala"))
   }
 
   @Test def start_end_group_and_toMatchResult_with_inline_flags_issue3406(): Unit = {
     val matcher = Pattern
       .compile("(?i)(a).*(aa)")
       .matcher("bBaccAaD")
-    checkGroups(matcher,
-        (2, 7, "accAa"),
-        (2, 3, "a"),
-        (5, 7, "Aa")
-    )
+    checkGroups(matcher, (2, 7, "accAa"), (2, 3, "a"), (5, 7, "Aa"))
 
     // Test case from the bug report
-    assertEquals(List("a", "A"),
-        "(?i)(a)".r.findAllMatchIn("aA").map(_.matched).toList)
+    assertEquals(List("a", "A"), "(?i)(a)".r.findAllMatchIn("aA").map(_.matched).toList)
   }
 
   @Test def start_end_group_with_region_issue4204(): Unit = {
@@ -110,10 +84,7 @@ class RegexMatcherTest  {
       .compile("([a-z]+) ([a-z]+)(frobber)?")
       .matcher("This is only a test")
       .region(5, 18)
-    checkGroups(matcher,
-        (5, 12, "is only"),
-        (5, 7, "is"),
-        (8, 12, "only"),
+    checkGroups(matcher, (5, 12, "is only"), (5, 7, "is"), (8, 12, "only"),
         (-1, -1, null) // make sure we don't add regionStart0 to -1
     )
   }
@@ -138,7 +109,7 @@ class RegexMatcherTest  {
     parseExpect("A(?:A)", "AA", 0 -> 2)
     parseExpect("A(?:(\\d))", "A1", 0 -> 2, 1 -> 2)
     parseExpect("A((?:A))", "AA", 0 -> 2, 1 -> 2)
-    parseExpect("ab((ab))", "abab", 0 -> 4, 2 -> 4,  2 -> 4)
+    parseExpect("ab((ab))", "abab", 0 -> 4, 2 -> 4, 2 -> 4)
     parseExpect("hum(hum)?", "humhum", 0 -> 6, 3 -> 6)
     parseExpect("hum(hum)?", "hum", 0 -> 3, -1 -> -1)
     parseExpect("hum(?=hum)", "humhum", 0 -> 3)
@@ -148,7 +119,7 @@ class RegexMatcherTest  {
     parseExpect("abab(ab){1,2}(abc){1,2}", "abababababcabc", 0 -> 14, 6 -> 8, 11 -> 14)
     parseExpect("ab(ab)?ab(?=aba)(ab)*", "abababababa", 0 -> 10, 2 -> 4, 8 -> 10)
     parseExpect("ab(?=aba)ab(aba)?(ab)*", "abababababa", 0 -> 7, 4 -> 7, -1 -> -1)
-    parseExpect("ab(?=aba)ab(aba)??(ab)*","abababababa", 0 -> 10, -1 -> -1, 8 -> 10)
+    parseExpect("ab(?=aba)ab(aba)??(ab)*", "abababababa", 0 -> 10, -1 -> -1, 8 -> 10)
     parseExpect("abab(ab){1,2}?", "abababab", 0 -> 6, 4 -> 6)
     parseExpect("ab(?:ab)*", "abababab", 0 -> 8)
     if (!executingInJVM) {
@@ -171,11 +142,9 @@ class RegexMatcherTest  {
     parseExpect("a(b)|b(c)", "ab", 0 -> 2, 1 -> 2, -1 -> -1)
     parseExpect("a(b)|b(c)", "bc", 0 -> 2, -1 -> -1, 1 -> 2)
     if (!executingInJVM) {
-      parseExpect("az(a(.)|b(.))+aw", "aza1b2b3aw",
-          0 -> 10, 6 -> 8, -1 -> -1, 7 -> 8)
+      parseExpect("az(a(.)|b(.))+aw", "aza1b2b3aw", 0 -> 10, 6 -> 8, -1 -> -1, 7 -> 8)
     } else {
-      parseExpect("az(a(.)|b(.))+aw", "aza1b2b3aw",
-          0 -> 10, 6 -> 8, 3 -> 4, 7 -> 8)
+      parseExpect("az(a(.)|b(.))+aw", "aza1b2b3aw", 0 -> 10, 6 -> 8, 3 -> 4, 7 -> 8)
     }
   }
 
@@ -380,12 +349,13 @@ class RegexMatcherTest  {
 
   @Test def should_throw_exception_if_match_accessors_are_called_before_find(): Unit = {
     def checkInvalidAccess(block: => Unit): Unit = {
-      val exception: Throwable = try {
-        block
-        throw new Error("No exception thrown")
-      } catch {
-        case e: Throwable => e
-      }
+      val exception: Throwable =
+        try {
+          block
+          throw new Error("No exception thrown")
+        } catch {
+          case e: Throwable => e
+        }
 
       assertEquals("java.lang.IllegalStateException", exception.getClass.getName)
       if (!executingInJVM) // On JVM the message is "No match found"
@@ -448,19 +418,19 @@ class RegexMatcherTest  {
 
   @Test def should_link_and_fail_on_group_of_String_issue_2381(): Unit = {
     val r = new Regex("a(b*)c", "Bee")
-    val ms = r findAllIn "stuff abbbc more abc and so on"
+    val ms = r.findAllIn("stuff abbbc more abc and so on")
     if (!executingInJVM)
-      assertThrows(classOf[Exception], ms group "Ape")
+      assertThrows(classOf[Exception], ms.group("Ape"))
     assertTrue(ms.hasNext)
     assertEquals("abbbc", ms.next())
-    assertEquals("bbb", ms group "Bee")
+    assertEquals("bbb", ms.group("Bee"))
     if (!executingInJVM)
-      assertThrows(classOf[Exception], ms group "Ape")
+      assertThrows(classOf[Exception], ms.group("Ape"))
     assertTrue(ms.hasNext)
     assertEquals("abc", ms.next())
-    assertEquals("b", ms group "Bee")
+    assertEquals("b", ms.group("Bee"))
     if (!executingInJVM)
-      assertThrows(classOf[Exception], ms group "Ape")
+      assertThrows(classOf[Exception], ms.group("Ape"))
     assertFalse(ms.hasNext)
   }
 }

@@ -131,8 +131,7 @@ class TimerTest {
       val zeroPeriodTask = new TimerTask {
         def run(): Unit = {}
       }
-      assertThrows(classOf[IllegalArgumentException],
-          timer.schedule(zeroPeriodTask, 1000, 0))
+      assertThrows(classOf[IllegalArgumentException], timer.schedule(zeroPeriodTask, 1000, 0))
 
       val secondTask = new TimerTask {
         var count = 6
@@ -151,8 +150,7 @@ class TimerTest {
       val afterCancelTask = new TimerTask {
         def run(): Unit = {}
       }
-      assertThrows(classOf[IllegalStateException],
-          timer.schedule(afterCancelTask, 1000, 100))
+      assertThrows(classOf[IllegalStateException], timer.schedule(afterCancelTask, 1000, 100))
     }
   }
 

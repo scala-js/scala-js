@@ -425,8 +425,7 @@ class NonNativeJSTypeTest {
     }
 
     assertEquals(1, obj.asInstanceOf[js.Dynamic].x)
-    assertSame(js.Object.getPrototypeOf(obj),
-        js.constructorOf[js.Object].prototype)
+    assertSame(js.Object.getPrototypeOf(obj), js.constructorOf[js.Object].prototype)
   }
 
   @Test def local_class_has_own_prototype(): Unit = {
@@ -553,7 +552,8 @@ class NonNativeJSTypeTest {
 
     assertEquals(
         """{"id":"some-some-value","paint":{"options":"{some-value}"}}""",
-        js.JSON.stringify(r0))
+        js.JSON.stringify(r0)
+    )
   }
 
   @Test def local_object_is_lazy(): Unit = {
@@ -655,7 +655,7 @@ class NonNativeJSTypeTest {
       @JSName("theAnswer")
       def bar(): Int = 42
       @JSName("doubleTheParam")
-      def double(x: Int): Int = x*2
+      def double(x: Int): Int = x * 2
     }
 
     val foo = new MethodsWithExplicitName
@@ -707,18 +707,22 @@ class NonNativeJSTypeTest {
     }
 
     val x: js.Dynamic = (new Foo()).asInstanceOf[js.Dynamic]
-    assertThrows(classOf[js.JavaScriptException], {
-      x.bar = 2
-    })
+    assertThrows(
+        classOf[js.JavaScriptException], {
+          x.bar = 2
+        }
+    )
 
     // Anonymous classes
     val y = new js.Object {
       def bar: Int = 1
     }.asInstanceOf[js.Dynamic]
 
-    assertThrows(classOf[js.JavaScriptException], {
-      y.bar = 2
-    })
+    assertThrows(
+        classOf[js.JavaScriptException], {
+          y.bar = 2
+        }
+    )
   }
 
   @Test def properties_are_not_enumerable(): Unit = {
@@ -771,7 +775,7 @@ class NonNativeJSTypeTest {
       @JSName("x")
       var xScala: Int = 3
       @JSName("doubleX")
-      def doubleXScala: Int = xScala*2
+      def doubleXScala: Int = xScala * 2
       @JSName("y")
       def yGetter: String = myY + " get"
       @JSName("y")
@@ -820,7 +824,7 @@ class NonNativeJSTypeTest {
   @Test def simple_overloaded_methods(): Unit = {
     class SimpleOverloadedMethods extends js.Object {
       def foo(): Int = 42
-      def foo(x: Int): Int = x*2
+      def foo(x: Int): Int = x * 2
     }
 
     val foo = new SimpleOverloadedMethods
@@ -857,7 +861,7 @@ class NonNativeJSTypeTest {
       @JSName("foobar")
       def foo(): Int = 42
       @JSName("foobar")
-      def bar(x: Int): Int = x*2
+      def bar(x: Int): Int = x * 2
     }
 
     val foo = new RenamedOverloadedMethods
@@ -944,8 +948,7 @@ class NonNativeJSTypeTest {
     class OverloadedConstructorSup(val x: Int) extends js.Object {
       def this(y: String) = this(y.length)
     }
-    class OverloadedConstructorSub(x: Int)
-        extends OverloadedConstructorSup(3 * x) {
+    class OverloadedConstructorSub(x: Int) extends OverloadedConstructorSup(3 * x) {
       def this(y: String) = this(2 * y.length)
     }
     assertEquals(1, new OverloadedConstructorSup(1).x)
@@ -956,8 +959,7 @@ class NonNativeJSTypeTest {
   }
 
   @Test def overloaded_constructors_with_repeated_parameters(): Unit = {
-    class OverloadedConstructorWithRepeatedParameters(xs: Int*)
-        extends js.Object {
+    class OverloadedConstructorWithRepeatedParameters(xs: Int*) extends js.Object {
       def this(y: String, ys: String*) = this(y.length +: ys.map(_.length): _*)
       def sum: Int = xs.sum
     }
@@ -1081,8 +1083,7 @@ class NonNativeJSTypeTest {
       def foobar(x: Int): Int = bar(x)
     }
 
-    class OverrideDefaultParametersChild
-        extends OverrideDefaultParametersParent {
+    class OverrideDefaultParametersChild extends OverrideDefaultParametersParent {
       override def bar(x: Int, y: Int = 10): Int = super.bar(x, y)
       override def dependent(x: Int)(y: Int = x * 2): Int = x + y
     }
@@ -1218,14 +1219,12 @@ class NonNativeJSTypeTest {
   }
 
   @Test def constructors_with_default_parameters_in_multi_param_lists_and_overloading(): Unit = {
-    val foo1 = new ConstructorDefaultParamMultiParamListWithOverloading(5)(
-        "foobar")
+    val foo1 = new ConstructorDefaultParamMultiParamListWithOverloading(5)("foobar")
     assertEquals(5, foo1.default)
     assertEquals("foobar", foo1.title)
     assertEquals("5", foo1.description)
 
-    val foo2 = new ConstructorDefaultParamMultiParamListWithOverloading(56)(
-        "babar", "desc")
+    val foo2 = new ConstructorDefaultParamMultiParamListWithOverloading(56)("babar", "desc")
     assertEquals(56, foo2.default)
     assertEquals("babar", foo2.title)
     assertEquals("desc", foo2.description)
@@ -1707,8 +1706,7 @@ class NonNativeJSTypeTest {
       def foobar(x: Int): Int
     }
 
-    class ImplExtendsJSClassAndTrait
-        extends NativeParentClass(5) with TraitExtendsJSClass {
+    class ImplExtendsJSClassAndTrait extends NativeParentClass(5) with TraitExtendsJSClass {
       def foobar(x: Int): Int = x * 3
     }
 
@@ -1717,8 +1715,7 @@ class NonNativeJSTypeTest {
   }
 
   @Test def implement_abstract_members_coming_from_a_native_JS_class(): Unit = {
-    class ImplDeferredMembersFromJSParent
-        extends NativeParentClassWithDeferred {
+    class ImplDeferredMembersFromJSParent extends NativeParentClassWithDeferred {
       val x: Int = 43
 
       def bar(y: Int): Int = y * 2
@@ -1843,8 +1840,7 @@ object NonNativeJSTypeTest {
   // Defined in test-suite/src/test/resources/NonNativeJSTypeTestNatives.js
   @JSGlobal("NonNativeJSTypeTestNativeParentClassWithVarargs")
   @js.native
-  class NativeParentClassWithVarargs(
-      _x: Int, _args: Int*) extends js.Object {
+  class NativeParentClassWithVarargs(_x: Int, _args: Int*) extends js.Object {
     val x: Int = js.native
     val args: js.Array[Int] = js.native
   }
@@ -1939,12 +1935,12 @@ object NonNativeJSTypeTest {
   // sanity check
   class ConstructorDefaultParamScalaNone(val foo: Int = -1)
 
-  class ConstructorDefaultParamMultiParamList(val default: Int)(
-      val title: String, val description: js.UndefOr[String] = default.toString)
+  class ConstructorDefaultParamMultiParamList(val default: Int)(val title: String,
+      val description: js.UndefOr[String] = default.toString)
       extends js.Object
 
-  class ConstructorDefaultParamMultiParamListWithOverloading(val default: Int)(
-      val title: String, val description: js.UndefOr[String] = default.toString)
+  class ConstructorDefaultParamMultiParamListWithOverloading(val default: Int)(val title: String,
+      val description: js.UndefOr[String] = default.toString)
       extends js.Object {
     def this(c: Char) = this(c.toInt)("char", "a char")
 
@@ -1987,8 +1983,8 @@ object NonNativeJSTypeTest {
     def sum(): Int = x + y
   }
 
-  class ConstructorWithParamNameClashes(arg: Int, arg$1: Int, arg$2: Int,
-      prep: Int, prep$1: Int, prep$2: Int)
+  class ConstructorWithParamNameClashes(arg: Int, arg$1: Int, arg$2: Int, prep: Int, prep$1: Int,
+      prep$2: Int)
       extends js.Object {
     val allArgs = List(arg, arg$1, arg$2, prep, prep$1, prep$2)
   }
@@ -2026,8 +2022,7 @@ object NonNativeJSTypeTest {
     lazy val str: String = initStr
   }
 
-  class SimpleInheritedFromNative(
-      x: Int, val y: Int) extends NativeParentClass(x)
+  class SimpleInheritedFromNative(x: Int, val y: Int) extends NativeParentClass(x)
 
   object JSNameHolder {
     final val MethodName = "myMethod"

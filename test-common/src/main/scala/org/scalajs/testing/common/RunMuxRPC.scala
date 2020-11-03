@@ -51,13 +51,11 @@ private[testing] final class RunMuxRPC(rpc: RPCCore) {
   def attach[Req](ep: MuxRPCEndpoint[Req], runId: RunID)(ex: Req => ep.Resp): Unit =
     attachAsync(ep, runId)(x => Future.fromTry(Try(ex(x))))
 
-  def attachAsync[Req](ep: MuxRPCEndpoint[Req], runId: RunID)(
-      ex: Req => Future[ep.Resp]): Unit = {
+  def attachAsync[Req](ep: MuxRPCEndpoint[Req], runId: RunID)(ex: Req => Future[ep.Resp]): Unit = {
     attachMux(ep.opCode, runId, ex)(rpc.attachAsync(ep))
   }
 
-  private def attachMux[Req, Resp](
-      opCode: RPCCore.OpCode, runId: RunID, ex: Req => Resp)(
+  private def attachMux[Req, Resp](opCode: RPCCore.OpCode, runId: RunID, ex: Req => Resp)(
       attach: (RunMux[Req] => Resp) => Unit): Unit = synchronized {
     type DispatchMap = ConcurrentHashMap[RunID, Req => Resp]
 
@@ -83,8 +81,8 @@ private[testing] final class RunMuxRPC(rpc: RPCCore) {
   def detach(ep: Endpoint, runId: RunID): Unit = synchronized {
     val opCode = ep.opCode
 
-    val dispatch = mux.getOrElse(opCode, throw new IllegalArgumentException(
-        s"No endpoint attached for opCode $opCode"))
+    val dispatch = mux.getOrElse(opCode,
+        throw new IllegalArgumentException(s"No endpoint attached for opCode $opCode"))
 
     val old = dispatch.remove(runId)
     require(old != null, s"No endpoint attached for opCode $opCode run $runId")

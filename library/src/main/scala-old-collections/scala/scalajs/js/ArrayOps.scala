@@ -22,8 +22,7 @@ import mutable.Builder
 /** Equivalent of `scm.ArrayOps` for [[js.Array]]. */
 @inline
 final class ArrayOps[A](private[this] val array: js.Array[A])
-    extends mutable.ArrayLike[A, js.Array[A]]
-       with Builder[A, js.Array[A]] {
+    extends mutable.ArrayLike[A, js.Array[A]] with Builder[A, js.Array[A]] {
 
   /** Creates a new empty [[js.ArrayOps]]. */
   def this() = this(js.Array())
@@ -41,8 +40,7 @@ final class ArrayOps[A](private[this] val array: js.Array[A])
   override protected[this] def thisCollection: mutable.IndexedSeq[A] =
     toCollection(array)
 
-  override protected[this] def toCollection(
-      repr: js.Array[A]): mutable.IndexedSeq[A] = {
+  override protected[this] def toCollection(repr: js.Array[A]): mutable.IndexedSeq[A] = {
     new js.WrappedArray(repr)
   }
 

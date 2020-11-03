@@ -19,8 +19,7 @@ import scala.tools.nsc.Global
 import org.scalajs.ir.Names.DefaultModuleID
 import org.scalajs.ir.Trees.TopLevelExportDef.isValidTopLevelExportName
 
-/**
- *  Prepare export generation
+/** Prepare export generation
  *
  *  Helpers for transformation of @JSExport annotations
  */
@@ -36,6 +35,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
   private sealed abstract class ExportDestination
 
   private object ExportDestination {
+
     /** Export in the "normal" way: as an instance member, or at the top-level
      *  for naturally top-level things (classes and modules).
      */
@@ -51,8 +51,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
   /* Not final because it causes the follwing compile warning:
    * "The outer reference in this type test cannot be checked at run time."
    */
-  private case class ExportInfo(jsName: String,
-      destination: ExportDestination)(val pos: Position)
+  private case class ExportInfo(jsName: String, destination: ExportDestination)(val pos: Position)
 
   /** Generate the exporter for the given DefDef
    *  or ValDef (abstract val in class, val in trait or lazy val;
@@ -92,11 +91,13 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
         err("You may not export a local definition")
       }
     } else if (hasIllegalRepeatedParam(baseSym)) {
-      err(s"In an exported $memType, a *-parameter must come last " +
-        "(through all parameter lists)")
+      err(
+          s"In an exported $memType, a *-parameter must come last " +
+            "(through all parameter lists)")
     } else if (hasIllegalDefaultParam(baseSym)) {
-      err(s"In an exported $memType, all parameters with defaults " +
-        "must be at the end")
+      err(
+          s"In an exported $memType, all parameters with defaults " +
+            "must be at the end")
     } else if (baseSym.isConstructor) {
       // we can generate constructors entirely in the backend, since they
       // do not need inheritance and such. But we want to check their sanity
@@ -106,8 +107,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
 
       Nil
     } else {
-      assert(!baseSym.isBridge,
-          s"genExportMember called for bridge symbol $baseSym")
+      assert(!baseSym.isBridge, s"genExportMember called for bridge symbol $baseSym")
 
       // Reset interface flag: Any trait will contain non-empty methods
       clsSym.resetFlag(Flags.INTERFACE)
@@ -140,8 +140,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
     }
   }
 
-  private def registerStaticAndTopLevelExports(sym: Symbol,
-      exports: List[ExportInfo]): Unit = {
+  private def registerStaticAndTopLevelExports(sym: Symbol, exports: List[ExportInfo]): Unit = {
     val topLevel = exports.collect {
       case info @ ExportInfo(jsName, ExportDestination.TopLevel(moduleID)) =>
         jsInterop.TopLevelExportInfo(moduleID, jsName)(info.pos)
@@ -150,9 +149,8 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
     if (topLevel.nonEmpty)
       jsInterop.registerTopLevelExports(sym, topLevel)
 
-    val static = exports.collect {
-      case info @ ExportInfo(jsName, ExportDestination.Static) =>
-        jsInterop.StaticExportInfo(jsName)(info.pos)
+    val static = exports.collect { case info @ ExportInfo(jsName, ExportDestination.Static) =>
+      jsInterop.StaticExportInfo(jsName)(info.pos)
     }
 
     if (static.nonEmpty)
@@ -183,14 +181,17 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
     } else if (isJSNative) {
       err("You may not export a native JS " + (if (isMod) "object" else "class"))
     } else if (!hasLegalExportVisibility(sym)) {
-      err("You may only export public and protected " +
-          (if (isMod) "objects" else "classes"))
+      err(
+          "You may only export public and protected " +
+            (if (isMod) "objects" else "classes"))
     } else if (sym.isLocalToBlock) {
-      err("You may not export a local " +
-          (if (isMod) "object" else "class"))
+      err(
+          "You may not export a local " +
+            (if (isMod) "object" else "class"))
     } else if (!sym.isStatic) {
-      err("You may not export a nested " +
-          (if (isMod) "object" else s"class. $createFactoryInOuterClassHint"))
+      err(
+          "You may not export a nested " +
+            (if (isMod) "object" else s"class. $createFactoryInOuterClassHint"))
     } else if (sym.isAbstractClass && !isJSAny(sym)) {
       err("You may not export an abstract class")
     } else if (!isMod && !hasAnyNonPrivateCtor) {
@@ -206,7 +207,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
 
   private def createFactoryInOuterClassHint = {
     "Create an exported factory method in the outer class to work " +
-    "around this limitation."
+      "around this limitation."
   }
 
   /** retrieves the names a sym should be exported to from its annotations
@@ -224,8 +225,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
     }
 
     // Annotations that are directly on the member
-    val directAnnots = trgSym.annotations.filter(
-        annot => isDirectMemberAnnot(annot.symbol))
+    val directAnnots = trgSym.annotations.filter(annot => isDirectMemberAnnot(annot.symbol))
 
     // Is this a member export (i.e. not a class or module export)?
     val isMember = !sym.isClass && !sym.isConstructor
@@ -271,8 +271,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
             DefaultModuleID
           } else {
             annot.stringArg(1).getOrElse {
-              reporter.error(annot.args(1).pos,
-                  "moduleID must be a literal string")
+              reporter.error(annot.args(1).pos, "moduleID must be a literal string")
               DefaultModuleID
             }
           }
@@ -294,8 +293,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
         // Get position for error message
         val pos = if (hasExplicitName) annot.args.head.pos else trgSym.pos
 
-        reporter.error(pos,
-            "An exported name may not contain a double underscore (`__`)")
+        reporter.error(pos, "An exported name may not contain a double underscore (`__`)")
       }
 
       /* Illegal function application exports, i.e., method named 'apply'
@@ -317,21 +315,22 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
               // Get position for error message
               val pos = if (isExportAll) trgSym.pos else annot.pos
 
-              reporter.error(pos, "A member cannot be exported to function " +
-                  "application. Add @JSExport(\"apply\") to export under the " +
-                  "name apply.")
+              reporter.error(pos,
+                  "A member cannot be exported to function " +
+                    "application. Add @JSExport(\"apply\") to export under the " +
+                    "name apply.")
             }
 
           case _: ExportDestination.TopLevel =>
             throw new AssertionError(
                 "Found a top-level export without an explicit name at " +
-                annot.pos)
+                  annot.pos)
 
           case ExportDestination.Static =>
             reporter.error(annot.pos,
                 "A member cannot be exported to function application as " +
-                "static. Use @JSExportStatic(\"apply\") to export it under " +
-                "the name 'apply'.")
+                  "static. Use @JSExportStatic(\"apply\") to export it under " +
+                  "the name 'apply'.")
         }
       }
 
@@ -348,24 +347,23 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
             sym.tpe.params.isEmpty && !jsInterop.isJSGetter(sym)
           }
           if (isIllegalToString) {
-            reporter.error(annot.pos, "You may not export a zero-argument " +
-                "method named other than 'toString' under the name 'toString'")
+            reporter.error(annot.pos,
+                "You may not export a zero-argument " +
+                  "method named other than 'toString' under the name 'toString'")
           }
 
           // Disallow @JSExport on non-members.
           if (!isMember && !sym.isTrait) {
             reporter.error(annot.pos,
                 "@JSExport is forbidden on objects and classes. " +
-                "Use @JSExportTopLevel instead.")
+                  "Use @JSExportTopLevel instead.")
           }
 
         case _: ExportDestination.TopLevel =>
           if (sym.isLazy) {
-            reporter.error(annot.pos,
-                "You may not export a lazy val to the top level")
+            reporter.error(annot.pos, "You may not export a lazy val to the top level")
           } else if (!sym.isAccessor && jsInterop.isJSProperty(sym)) {
-            reporter.error(annot.pos,
-                "You may not export a getter or a setter to the top level")
+            reporter.error(annot.pos, "You may not export a getter or a setter to the top level")
           }
 
           /* Disallow non-static methods.
@@ -381,7 +379,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
           if (!isValidTopLevelExportName(name)) {
             reporter.error(annot.pos,
                 "The top-level export name must be a valid JavaScript " +
-                "identifier name")
+                  "identifier name")
           }
 
         case ExportDestination.Static =>
@@ -397,22 +395,20 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
               !companionIsNonNativeJSClass) {
             reporter.error(annot.pos,
                 "Only a static object whose companion class is a " +
-                "non-native JS class may export its members as static.")
+                  "non-native JS class may export its members as static.")
           }
 
           if (isMember) {
             if (sym.isLazy) {
-              reporter.error(annot.pos,
-                  "You may not export a lazy val as static")
+              reporter.error(annot.pos, "You may not export a lazy val as static")
             }
           } else {
             if (sym.isTrait) {
-              reporter.error(annot.pos,
-                  "You may not export a trait as static.")
+              reporter.error(annot.pos, "You may not export a trait as static.")
             } else {
               reporter.error(annot.pos,
                   "Implementation restriction: cannot export a class or " +
-                  "object as static")
+                    "object as static")
             }
           }
       }
@@ -420,7 +416,8 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
       ExportInfo(name, destination)(annot.pos)
     }
 
-    allExportInfos.filter(_.destination == ExportDestination.Normal)
+    allExportInfos
+      .filter(_.destination == ExportDestination.Normal)
       .groupBy(_.jsName)
       .filter { case (jsName, group) =>
         if (jsName == "apply" && group.size == 2)
@@ -451,24 +448,26 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
         allExportInfos.partition(_.destination != ExportDestination.Normal)
 
       if (sym.isGetter) {
-        topLevelAndStaticExportInfos.find {
-          _.destination == ExportDestination.Static
-        }.foreach { firstStatic =>
-          for {
-            duplicate <- topLevelAndStaticExportInfos
-            if duplicate ne firstStatic
-          } {
-            if (duplicate.destination == ExportDestination.Static) {
-              reporter.error(duplicate.pos,
-                  "Fields (val or var) cannot be exported as static more " +
-                  "than once")
-            } else {
-              reporter.error(duplicate.pos,
-                  "Fields (val or var) cannot be exported both as static " +
-                  "and at the top-level")
+        topLevelAndStaticExportInfos
+          .find {
+            _.destination == ExportDestination.Static
+          }
+          .foreach { firstStatic =>
+            for {
+              duplicate <- topLevelAndStaticExportInfos
+              if duplicate ne firstStatic
+            } {
+              if (duplicate.destination == ExportDestination.Static) {
+                reporter.error(duplicate.pos,
+                    "Fields (val or var) cannot be exported as static more " +
+                      "than once")
+              } else {
+                reporter.error(duplicate.pos,
+                    "Fields (val or var) cannot be exported both as static " +
+                      "and at the top-level")
+              }
             }
           }
-        }
 
         registerStaticAndTopLevelExports(sym.accessed, topLevelAndStaticExportInfos)
       }
@@ -514,11 +513,11 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
     // Update flags
     expSym.setFlag(Flags.SYNTHETIC)
     expSym.resetFlag(
-        Flags.DEFERRED     | // We always have a body
-        Flags.ACCESSOR     | // We are never a "direct" accessor
-        Flags.CASEACCESSOR | // And a fortiori not a case accessor
-        Flags.LAZY         | // We are not a lazy val (even if we export one)
-        Flags.OVERRIDE       // Synthetic methods need not bother with this
+        Flags.DEFERRED | // We always have a body
+          Flags.ACCESSOR | // We are never a "direct" accessor
+          Flags.CASEACCESSOR | // And a fortiori not a case accessor
+          Flags.LAZY | // We are not a lazy val (even if we export one)
+          Flags.OVERRIDE // Synthetic methods need not bother with this
     )
 
     // Remove export annotations
@@ -539,15 +538,14 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
     exporter :: defaultGetters
   }
 
-  private def genExportDefaultGetter(clsSym: Symbol, trgMethod: Symbol,
-      exporter: Symbol, paramPos: Int, pos: Position) = {
+  private def genExportDefaultGetter(clsSym: Symbol, trgMethod: Symbol, exporter: Symbol,
+      paramPos: Int, pos: Position) = {
 
     // Get default getter method we'll copy
     val trgGetter =
       clsSym.tpe.member(nme.defaultGetterName(trgMethod.name, paramPos))
 
-    assert(trgGetter.exists,
-        s"Cannot find default getter for param $paramPos of $trgMethod")
+    assert(trgGetter.exists, s"Cannot find default getter for param $paramPos of $trgMethod")
 
     // Although the following must be true in a correct program, we cannot
     // assert, since a graceful failure message is only generated later
@@ -555,7 +553,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
       val expGetter = trgGetter.cloneSymbol
 
       expGetter.name = nme.defaultGetterName(exporter.name, paramPos)
-      expGetter.pos  = pos
+      expGetter.pos = pos
 
       clsSym.info.decls.enter(expGetter)
 
@@ -565,25 +563,25 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
   }
 
   /** generate a DefDef tree (from [[proxySym]]) that calls [[trgSym]] */
-  private def genProxyDefDef(clsSym: Symbol, trgSym: Symbol,
-      proxySym: Symbol, pos: Position) = atPos(pos) {
+  private def genProxyDefDef(clsSym: Symbol, trgSym: Symbol, proxySym: Symbol, pos: Position) =
+    atPos(pos) {
 
-    // Helper to ascribe repeated argument lists when calling
-    def spliceParam(sym: Symbol) = {
-      if (isRepeated(sym))
-        Typed(Ident(sym), Ident(tpnme.WILDCARD_STAR))
-      else
-        Ident(sym)
+      // Helper to ascribe repeated argument lists when calling
+      def spliceParam(sym: Symbol) = {
+        if (isRepeated(sym))
+          Typed(Ident(sym), Ident(tpnme.WILDCARD_STAR))
+        else
+          Ident(sym)
+      }
+
+      // Construct proxied function call
+      val sel = Select(This(clsSym), trgSym)
+      val rhs = proxySym.paramss.foldLeft[Tree](sel) { (fun, params) =>
+        Apply(fun, params.map(spliceParam))
+      }
+
+      typer.typedDefDef(DefDef(proxySym, rhs))
     }
-
-    // Construct proxied function call
-    val sel = Select(This(clsSym), trgSym)
-    val rhs = proxySym.paramss.foldLeft[Tree](sel) {
-      (fun,params) => Apply(fun, params map spliceParam)
-    }
-
-    typer.typedDefDef(DefDef(proxySym, rhs))
-  }
 
   /** changes the return type of the method type tpe to Any. returns new type */
   private def retToAny(tpe: Type): Type = tpe match {
@@ -598,16 +596,16 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
     sym.isPublic || sym.isProtected && !sym.isProtectedLocal
 
   /** checks whether this type has a repeated parameter elsewhere than at the end
-    * of all the params
-    */
+   *  of all the params
+   */
   private def hasIllegalRepeatedParam(sym: Symbol): Boolean = {
     val params = sym.paramss.flatten
     params.nonEmpty && params.init.exists(isRepeated _)
   }
 
   /** checks whether there are default parameters not at the end of
-    * the flattened parameter list
-    */
+   *  the flattened parameter list
+   */
   private def hasIllegalDefaultParam(sym: Symbol): Boolean = {
     val isDefParam = (_: Symbol).hasFlag(Flags.DEFAULTPARAM)
     sym.paramss.flatten.reverse.dropWhile(isDefParam).exists(isDefParam)

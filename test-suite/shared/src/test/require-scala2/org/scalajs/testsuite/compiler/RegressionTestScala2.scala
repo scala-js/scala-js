@@ -17,10 +17,9 @@ import org.junit.Assert.assertEquals
 
 class RegressionTestTestScala2 {
 
-  /**
-   * This is a Scala 2.x only test because:
-   * The extension method any2stringadd (the `+` in `x + "check"`)
-   * was deprecated in 2.13.0 and Dotty no longer has the method.
+  /** This is a Scala 2.x only test because:
+   *  The extension method any2stringadd (the `+` in `x + "check"`)
+   *  was deprecated in 2.13.0 and Dotty no longer has the method.
    */
   @Test def String_concatenation_with_null_issue_26(): Unit = {
     val x: Object = null

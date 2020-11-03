@@ -44,7 +44,8 @@ private[lang] object StackTrace {
   @inline def captureState(throwable: Throwable): Unit = {
     val throwableAsJSAny = throwable.asInstanceOf[js.Any]
     val identifyingString: Any = {
-      js.constructorOf[js.Object].prototype
+      js.constructorOf[js.Object]
+        .prototype
         .selectDynamic("toString")
         .call(throwableAsJSAny)
     }
@@ -109,8 +110,7 @@ private[lang] object StackTrace {
    * In the rest of the function, we convert the non-empty lines into
    * StackTraceElements.
    */
-  private def normalizedLinesToStackTrace(
-      lines: js.Array[String]): Array[StackTraceElement] = {
+  private def normalizedLinesToStackTrace(lines: js.Array[String]): Array[StackTraceElement] = {
 
     val NormalizedFrameLine = """^([^\@]*)\@(.*):([0-9]+)$""".re
     val NormalizedFrameLineWithColumn = """^([^\@]*)\@(.*):([0-9]+):([0-9]+)$""".re
@@ -127,9 +127,8 @@ private[lang] object StackTrace {
         if (mtch1 ne null) {
           val classAndMethodName =
             extractClassMethod(undefOrForceGet(mtch1(1)))
-          val elem = new StackTraceElement(classAndMethodName(0),
-              classAndMethodName(1), undefOrForceGet(mtch1(2)),
-              parseInt(undefOrForceGet(mtch1(3))))
+          val elem = new StackTraceElement(classAndMethodName(0), classAndMethodName(1),
+              undefOrForceGet(mtch1(2)), parseInt(undefOrForceGet(mtch1(3))))
           elem.setColumnNumber(parseInt(undefOrForceGet(mtch1(4))))
           trace.push(elem)
         } else {
@@ -137,9 +136,8 @@ private[lang] object StackTrace {
           if (mtch2 ne null) {
             val classAndMethodName =
               extractClassMethod(undefOrForceGet(mtch2(1)))
-            trace.push(new StackTraceElement(classAndMethodName(0),
-                classAndMethodName(1), undefOrForceGet(mtch2(2)),
-                parseInt(undefOrForceGet(mtch2(3)))))
+            trace.push(new StackTraceElement(classAndMethodName(0), classAndMethodName(1),
+                    undefOrForceGet(mtch2(2)), parseInt(undefOrForceGet(mtch2(3)))))
           } else {
             // just in case
             trace.push(new StackTraceElement("<jscode>", line, null, -1))
@@ -190,9 +188,12 @@ private[lang] object StackTrace {
    *    javalanglib.
    */
   private def extractClassMethod(functionName: String): js.Array[String] = {
-    val PatBC = """^(?:Object\.|\[object Object\]\.|Module\.)?\$[bc]_([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
-    val PatS = """^(?:Object\.|\[object Object\]\.|Module\.)?\$(?:ps?|s|f)_((?:_[^_]|[^_])+)__([^\.]+)$""".re
-    val PatCT = """^(?:Object\.|\[object Object\]\.|Module\.)?\$ct_((?:_[^_]|[^_])+)__([^\.]*)$""".re
+    val PatBC =
+      """^(?:Object\.|\[object Object\]\.|Module\.)?\$[bc]_([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
+    val PatS =
+      """^(?:Object\.|\[object Object\]\.|Module\.)?\$(?:ps?|s|f)_((?:_[^_]|[^_])+)__([^\.]+)$""".re
+    val PatCT =
+      """^(?:Object\.|\[object Object\]\.|Module\.)?\$ct_((?:_[^_]|[^_])+)__([^\.]*)$""".re
     val PatN = """^new (?:Object\.|\[object Object\]\.|Module\.)?\$c_([^\.]+)$""".re
     val PatM = """^(?:Object\.|\[object Object\]\.|Module\.)?\$m_([^\.]+)$""".re
 
@@ -230,7 +231,7 @@ private[lang] object StackTrace {
           if (encodedName.startsWith(prefix))
             dictRawApply(decompressedPrefixes, prefix) + encodedName.substring(prefix.length)
           else
-            loop(i+1)
+            loop(i + 1)
         } else {
           // no prefix matches
           if (encodedName.startsWith("L")) encodedName.substring(1)
@@ -279,7 +280,7 @@ private[lang] object StackTrace {
   // end of decodeClassName ----------------------------------------------------
 
   private def decodeMethodName(encodedName: String): String = {
-    if (encodedName startsWith "init___") {
+    if (encodedName.startsWith("init___")) {
       "<init>"
     } else {
       val methodNameLen = encodedName.indexOf("__")
@@ -368,14 +369,18 @@ private[lang] object StackTrace {
   }
 
   private def extractFirefox(e: js.Dynamic): js.Array[String] = {
-    (e.stack.asInstanceOf[String])
+    (
+        e.stack
+          .asInstanceOf[String])
       .jsReplace("""(?:\n@:0)?\s+$""".re("m"), "")
       .jsReplace("""^(?:\((\S*)\))?@""".re("gm"), "{anonymous}($1)@")
       .jsSplit("\n")
   }
 
   private def extractIE(e: js.Dynamic): js.Array[String] = {
-    (e.stack.asInstanceOf[String])
+    (
+        e.stack
+          .asInstanceOf[String])
       .jsReplace("""^\s*at\s+(.*)$""".re("gm"), "$1")
       .jsReplace("""^Anonymous function\s+""".re("gm"), "{anonymous}() ")
       .jsReplace("""^([^\(]+|\{anonymous\}\(\))\s+\((.+)\)$""".re("gm"), "$1@$2")
@@ -384,7 +389,9 @@ private[lang] object StackTrace {
   }
 
   private def extractSafari(e: js.Dynamic): js.Array[String] = {
-    (e.stack.asInstanceOf[String])
+    (
+        e.stack
+          .asInstanceOf[String])
       .jsReplace("""\[native code\]\n""".re("m"), "")
       .jsReplace("""^(?=\w+Error\:).*$\n""".re("m"), "")
       .jsReplace("""^@""".re("gm"), "{anonymous}()@")
@@ -405,8 +412,8 @@ private[lang] object StackTrace {
       if (mtch ne null) {
         result.push(
             "{anonymous}()@" + undefOrForceGet(mtch(2)) + ":" +
-            undefOrForceGet(mtch(1))
-            /* + " -- " + lines(i+1).replace("""^\s+""".re, "") */)
+              undefOrForceGet(mtch(1))
+            /* + " -- " + lines(i+1).replace("""^\s+""".re, "") */ )
       }
       i += 2
     }
@@ -429,8 +436,8 @@ private[lang] object StackTrace {
         val fnName = undefOrGetOrElse(mtch(3), "{anonymous}")
         result.push(
             fnName + "()@" + undefOrForceGet(mtch(2)) + ":" +
-            undefOrForceGet(mtch(1))
-            /* + " -- " + lines(i+1).replace("""^\s+""".re, "")*/)
+              undefOrForceGet(mtch(1))
+            /* + " -- " + lines(i+1).replace("""^\s+""".re, "")*/ )
       }
       i += 2
     }
@@ -470,13 +477,15 @@ private[lang] object StackTrace {
     while (i < len) {
       val mtch = lineRE.exec(lines(i))
       if (mtch ne null) {
-        val location = undefOrForceGet(mtch(4)) + ":" + undefOrForceGet(mtch(1)) + ":" + undefOrForceGet(mtch(2))
+        val location =
+          undefOrForceGet(mtch(4)) + ":" + undefOrForceGet(mtch(1)) + ":" + undefOrForceGet(mtch(2))
         val fnName0 = undefOrGetOrElse(mtch(2), "global code")
         val fnName = fnName0
           .jsReplace("""<anonymous function: (\S+)>""".re, "$1")
           .jsReplace("""<anonymous function>""".re, "{anonymous}")
-        result.push(fnName + "@" + location
-            /* + " -- " + lines(i+1).replace("""^\s+""".re, "")*/)
+        result.push(
+            fnName + "@" + location
+            /* + " -- " + lines(i+1).replace("""^\s+""".re, "")*/ )
       }
       i += 2
     }

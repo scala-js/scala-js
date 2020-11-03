@@ -35,8 +35,7 @@ import Utils.Implicits.enableJSStringOps
  * when emitting the IR.
  */
 final class _String private () // scalastyle:ignore
-    extends AnyRef with java.io.Serializable with Comparable[String]
-    with CharSequence {
+    extends AnyRef with java.io.Serializable with Comparable[String] with CharSequence {
 
   import _String._
 
@@ -46,7 +45,8 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def charAt(index: Int): Char = {
-    this.asInstanceOf[js.Dynamic]
+    this
+      .asInstanceOf[js.Dynamic]
       .charCodeAt(index.asInstanceOf[js.Dynamic])
       .asInstanceOf[Int]
       .toChar
@@ -54,8 +54,8 @@ final class _String private () // scalastyle:ignore
 
   def codePointAt(index: Int): Int = {
     val high = charAt(index)
-    if (index+1 < length()) {
-      val low = charAt(index+1)
+    if (index + 1 < length()) {
+      val low = charAt(index + 1)
       if (Character.isSurrogatePair(high, low))
         Character.toCodePoint(high, low)
       else
@@ -222,8 +222,7 @@ final class _String private () // scalastyle:ignore
     res
   }
 
-  def getChars(srcBegin: Int, srcEnd: Int, dst: Array[Char],
-      dstBegin: Int): Unit = {
+  def getChars(srcBegin: Int, srcEnd: Int, dst: Array[Char], dstBegin: Int): Unit = {
     if (srcEnd > length() || srcBegin < 0 || srcEnd < 0 || srcBegin > srcEnd)
       throw new StringIndexOutOfBoundsException("Index out of Bound")
 
@@ -286,8 +285,8 @@ final class _String private () // scalastyle:ignore
   /* Both regionMatches ported from
    * https://github.com/gwtproject/gwt/blob/master/user/super/com/google/gwt/emul/java/lang/String.java
    */
-  def regionMatches(ignoreCase: scala.Boolean, toffset: Int, other: String,
-      ooffset: Int, len: Int): scala.Boolean = {
+  def regionMatches(ignoreCase: scala.Boolean, toffset: Int, other: String, ooffset: Int,
+      len: Int): scala.Boolean = {
     if (other == null) {
       throw new NullPointerException()
     } else if (toffset < 0 || ooffset < 0 || toffset + len > this.length() ||
@@ -303,8 +302,7 @@ final class _String private () // scalastyle:ignore
   }
 
   @inline
-  def regionMatches(toffset: Int, other: String, ooffset: Int,
-      len: Int): scala.Boolean = {
+  def regionMatches(toffset: Int, other: String, ooffset: Int, len: Int): scala.Boolean = {
     regionMatches(false, toffset, other, ooffset, len)
   }
 
@@ -356,7 +354,7 @@ final class _String private () // scalastyle:ignore
   @inline
   def startsWith(prefix: String, toffset: Int): scala.Boolean = {
     (toffset <= length() && toffset >= 0 &&
-        thisString.jsSubstring(toffset, toffset + prefix.length()) == prefix)
+    thisString.jsSubstring(toffset, toffset + prefix.length()) == prefix)
   }
 
   @inline
@@ -369,7 +367,8 @@ final class _String private () // scalastyle:ignore
 
   @inline
   def substring(beginIndex: Int, endIndex: Int): String = {
-    this.asInstanceOf[js.Dynamic]
+    this
+      .asInstanceOf[js.Dynamic]
       .substring(beginIndex.asInstanceOf[js.Dynamic], endIndex.asInstanceOf[js.Dynamic])
       .asInstanceOf[String]
   }
@@ -653,8 +652,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
    *    the character at the given index is not special.
    */
   @inline
-  private def replaceCharsAtIndex(
-      replacementAtIndex: js.Function1[Int, String]): String = {
+  private def replaceCharsAtIndex(replacementAtIndex: js.Function1[Int, String]): String = {
 
     var prep = ""
     val len = this.length()
@@ -770,12 +768,10 @@ object _String { // scalastyle:ignore
   def `new`(bytes: Array[scala.Byte], offset: Int, length: Int): String =
     `new`(bytes, offset, length, Charset.defaultCharset)
 
-  def `new`(bytes: Array[scala.Byte], offset: Int, length: Int,
-      charsetName: String): String =
+  def `new`(bytes: Array[scala.Byte], offset: Int, length: Int, charsetName: String): String =
     `new`(bytes, offset, length, Charset.forName(charsetName))
 
-  def `new`(bytes: Array[scala.Byte], offset: Int, length: Int,
-      charset: Charset): String =
+  def `new`(bytes: Array[scala.Byte], offset: Int, length: Int, charset: Charset): String =
     charset.decode(ByteBuffer.wrap(bytes, offset, length)).toString()
 
   def `new`(codePoints: Array[Int], offset: Int, count: Int): String = {

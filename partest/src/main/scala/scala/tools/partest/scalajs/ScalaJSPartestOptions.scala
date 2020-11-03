@@ -13,9 +13,8 @@
 package scala.tools.partest.scalajs
 
 class ScalaJSPartestOptions private (
-  val testFilter: ScalaJSPartestOptions.TestFilter,
-  val optMode: ScalaJSPartestOptions.OptMode,
-  val showDiff: Boolean
+    val testFilter: ScalaJSPartestOptions.TestFilter, val optMode: ScalaJSPartestOptions.OptMode,
+    val showDiff: Boolean
 )
 
 object ScalaJSPartestOptions {
@@ -66,8 +65,7 @@ object ScalaJSPartestOptions {
     def id: String = "full"
   }
 
-  def apply(args: Array[String],
-      errorReporter: String => Unit): Option[ScalaJSPartestOptions] = {
+  def apply(args: Array[String], errorReporter: String => Unit): Option[ScalaJSPartestOptions] = {
 
     var failed = false
 
@@ -85,7 +83,8 @@ object ScalaJSPartestOptions {
         // Merge test names
         filter = Some(SomeTests(oldNames ++ newNames))
       case (Some(fil), newFilter) =>
-        error(s"You cannot specify twice what tests to use (already specified: $fil, new: $newFilter)")
+        error(
+            s"You cannot specify twice what tests to use (already specified: $fil, new: $newFilter)")
       case (None, newFilter) =>
         filter = Some(newFilter)
     }
@@ -112,10 +111,10 @@ object ScalaJSPartestOptions {
     }
 
     if (failed) None
-    else Some {
-      new ScalaJSPartestOptions(
-        filter.getOrElse(WhitelistedTests), optMode, showDiff)
-    }
+    else
+      Some {
+        new ScalaJSPartestOptions(filter.getOrElse(WhitelistedTests), optMode, showDiff)
+      }
   }
 
 }

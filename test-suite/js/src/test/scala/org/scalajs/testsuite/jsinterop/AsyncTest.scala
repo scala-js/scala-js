@@ -45,41 +45,30 @@ class AsyncTest {
 
     steps += "prep-map"
 
-    val f2 = f1 map { x =>
+    val f2 = f1.map { x =>
       steps += "map"
       x * 2
     }
 
     steps += "prep-foreach"
 
-    f2 foreach { _ => steps += "foreach" }
+    f2.foreach { _ => steps += "foreach" }
 
     steps += "done"
 
     steps
   }
 
-  def queueExecOrderTests(processQueue: () => Unit)(
-      implicit ec: ExecutionContext): Unit = {
+  def queueExecOrderTests(processQueue: () => Unit)(implicit ec: ExecutionContext): Unit = {
 
     val res = asyncTest
 
-    assertArrayEquals(Array(
-      "prep-future",
-      "prep-map",
-      "prep-foreach",
-      "done"), res.toArray)
+    assertArrayEquals(Array("prep-future", "prep-map", "prep-foreach", "done"), res.toArray)
 
     processQueue()
 
-    assertArrayEquals(Array(
-      "prep-future",
-      "prep-map",
-      "prep-foreach",
-      "done",
-      "future",
-      "map",
-      "foreach"), res.toArray)
+    assertArrayEquals(Array("prep-future", "prep-map", "prep-foreach", "done", "future", "map",
+            "foreach"), res.toArray)
   }
 
   @Test def scala_scalajs_concurrent_JSExecutionContext_queue(): Unit = {
@@ -135,10 +124,10 @@ class AsyncTest {
   }
 
   @Test def scala_concurrent_future_should_support_map(): Unit = {
-      implicit val ec = RunNowExecutionContext
-      val f = Future(3).map(x => x*2)
-      assertEquals(6, f.value.get.get)
-    }
+    implicit val ec = RunNowExecutionContext
+    val f = Future(3).map(x => x * 2)
+    assertEquals(6, f.value.get.get)
+  }
 
   @Test def scala_concurrent_future_should_support_flatMap(): Unit = {
     implicit val ec = RunNowExecutionContext
@@ -228,6 +217,7 @@ class AsyncTest {
 }
 
 object AsyncTest {
+
   /** A super hacky `ExecutionContext` that is synchronous.
    *
    *  This should not be used in normal code. It should not even be used in
@@ -235,8 +225,7 @@ object AsyncTest {
    *  because we are stuck with JUnit, which obviously does not support
    *  asynchronous test suites.
    */
-  private object RunNowExecutionContext
-      extends scala.concurrent.ExecutionContextExecutor {
+  private object RunNowExecutionContext extends scala.concurrent.ExecutionContextExecutor {
 
     def execute(runnable: Runnable): Unit = {
       try {

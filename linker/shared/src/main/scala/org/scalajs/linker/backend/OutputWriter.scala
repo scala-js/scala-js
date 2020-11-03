@@ -32,8 +32,7 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
 
   protected def writeModule(moduleID: ModuleID, jsFileWriter: Writer): Unit
 
-  protected def writeModule(moduleID: ModuleID, jsFileWriter: Writer,
-      sourceMapWriter: Writer): Unit
+  protected def writeModule(moduleID: ModuleID, jsFileWriter: Writer, sourceMapWriter: Writer): Unit
 
   def write(moduleSet: ModuleSet)(implicit ec: ExecutionContext): Future[Report] = {
     val ioThrottler = new IOThrottler(config.maxConcurrentWrites)

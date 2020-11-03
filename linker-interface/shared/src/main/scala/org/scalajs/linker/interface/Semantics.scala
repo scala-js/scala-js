@@ -15,12 +15,9 @@ package org.scalajs.linker.interface
 import CheckedBehavior._
 import Fingerprint.FingerprintBuilder
 
-final class Semantics private (
-    val asInstanceOfs: CheckedBehavior,
-    val arrayIndexOutOfBounds: CheckedBehavior,
-    val moduleInit: CheckedBehavior,
-    val strictFloats: Boolean,
-    val productionMode: Boolean,
+final class Semantics private (val asInstanceOfs: CheckedBehavior,
+    val arrayIndexOutOfBounds: CheckedBehavior, val moduleInit: CheckedBehavior,
+    val strictFloats: Boolean, val productionMode: Boolean,
     val runtimeClassNameMapper: Semantics.RuntimeClassNameMapper) {
 
   import Semantics._
@@ -40,26 +37,24 @@ final class Semantics private (
   def withProductionMode(productionMode: Boolean): Semantics =
     copy(productionMode = productionMode)
 
-  def withRuntimeClassNameMapper(
-      runtimeClassNameMapper: RuntimeClassNameMapper): Semantics = {
+  def withRuntimeClassNameMapper(runtimeClassNameMapper: RuntimeClassNameMapper): Semantics = {
     copy(runtimeClassNameMapper = runtimeClassNameMapper)
   }
 
   def optimized: Semantics = {
     copy(asInstanceOfs = this.asInstanceOfs.optimized,
         arrayIndexOutOfBounds = this.arrayIndexOutOfBounds.optimized,
-        moduleInit = this.moduleInit.optimized,
-        productionMode = true)
+        moduleInit = this.moduleInit.optimized, productionMode = true)
   }
 
   override def equals(that: Any): Boolean = that match {
     case that: Semantics =>
       this.asInstanceOfs == that.asInstanceOfs &&
-      this.arrayIndexOutOfBounds == that.arrayIndexOutOfBounds &&
-      this.moduleInit == that.moduleInit &&
-      this.strictFloats == that.strictFloats &&
-      this.productionMode == that.productionMode &&
-      this.runtimeClassNameMapper == that.runtimeClassNameMapper
+        this.arrayIndexOutOfBounds == that.arrayIndexOutOfBounds &&
+        this.moduleInit == that.moduleInit &&
+        this.strictFloats == that.strictFloats &&
+        this.productionMode == that.productionMode &&
+        this.runtimeClassNameMapper == that.runtimeClassNameMapper
     case _ =>
       false
   }
@@ -86,20 +81,13 @@ final class Semantics private (
        |)""".stripMargin
   }
 
-  private def copy(
-      asInstanceOfs: CheckedBehavior = this.asInstanceOfs,
+  private def copy(asInstanceOfs: CheckedBehavior = this.asInstanceOfs,
       arrayIndexOutOfBounds: CheckedBehavior = this.arrayIndexOutOfBounds,
-      moduleInit: CheckedBehavior = this.moduleInit,
-      strictFloats: Boolean = this.strictFloats,
+      moduleInit: CheckedBehavior = this.moduleInit, strictFloats: Boolean = this.strictFloats,
       productionMode: Boolean = this.productionMode,
-      runtimeClassNameMapper: RuntimeClassNameMapper =
-        this.runtimeClassNameMapper): Semantics = {
-    new Semantics(
-        asInstanceOfs = asInstanceOfs,
-        arrayIndexOutOfBounds = arrayIndexOutOfBounds,
-        moduleInit = moduleInit,
-        strictFloats = strictFloats,
-        productionMode = productionMode,
+      runtimeClassNameMapper: RuntimeClassNameMapper = this.runtimeClassNameMapper): Semantics = {
+    new Semantics(asInstanceOfs = asInstanceOfs, arrayIndexOutOfBounds = arrayIndexOutOfBounds,
+        moduleInit = moduleInit, strictFloats = strictFloats, productionMode = productionMode,
         runtimeClassNameMapper = runtimeClassNameMapper)
   }
 }
@@ -141,13 +129,11 @@ object Semantics {
      * `j.u.regex.Pattern`, because the latter does not have meaningful
      * equality.
      */
-    private final case class RegexReplace(pattern: String, flags: Int,
-        replacement: String)(
+    private final case class RegexReplace(pattern: String, flags: Int, replacement: String)(
         val compiledPattern: java.util.regex.Pattern)
         extends RuntimeClassNameMapper
 
-    private final case class AndThen(first: RuntimeClassNameMapper,
-        second: RuntimeClassNameMapper)
+    private final case class AndThen(first: RuntimeClassNameMapper, second: RuntimeClassNameMapper)
         extends RuntimeClassNameMapper
 
     def keepAll(): RuntimeClassNameMapper = KeepAll
@@ -205,8 +191,7 @@ object Semantics {
     }
   }
 
-  private[interface] implicit object SemanticsFingerprint
-      extends Fingerprint[Semantics] {
+  private[interface] implicit object SemanticsFingerprint extends Fingerprint[Semantics] {
 
     override def fingerprint(semantics: Semantics): String = {
       new FingerprintBuilder("Semantics")
@@ -220,11 +205,7 @@ object Semantics {
     }
   }
 
-  val Defaults: Semantics = new Semantics(
-      asInstanceOfs = Fatal,
-      arrayIndexOutOfBounds = Fatal,
-      moduleInit = Unchecked,
-      strictFloats = false,
-      productionMode = false,
+  val Defaults: Semantics = new Semantics(asInstanceOfs = Fatal, arrayIndexOutOfBounds = Fatal,
+      moduleInit = Unchecked, strictFloats = false, productionMode = false,
       runtimeClassNameMapper = RuntimeClassNameMapper.keepAll())
 }

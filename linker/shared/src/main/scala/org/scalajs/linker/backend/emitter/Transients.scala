@@ -17,8 +17,7 @@ import org.scalajs.ir.Printers._
 
 object Transients {
 
-  final case class CallHelper(helper: String, args: List[Tree])
-      extends Transient.Value {
+  final case class CallHelper(helper: String, args: List[Tree]) extends Transient.Value {
 
     def printIR(out: IRTreePrinter): Unit = {
       out.print("$callHelper(")

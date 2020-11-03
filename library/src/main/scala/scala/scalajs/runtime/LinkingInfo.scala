@@ -16,6 +16,7 @@ import scala.scalajs.js
 
 /** Information about link-time configuration of Scala.js. */
 sealed trait LinkingInfo extends js.Object {
+
   /** Whether we are assuming ECMAScript 6 support or not. */
   val assumingES6: Boolean
 

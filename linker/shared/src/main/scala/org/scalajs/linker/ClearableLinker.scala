@@ -19,6 +19,7 @@ import org.scalajs.linker.interface.unstable.LinkerImpl
 import org.scalajs.logging.Logger
 
 object ClearableLinker {
+
   /** Creates a [[interface.ClearableLinker]] from a function creating a [[interface.Linker]].
    *
    *  Every time `clear()` is called, a new [[interface.Linker]] is obtained from
@@ -32,16 +33,13 @@ object ClearableLinker {
   def apply(newLinker: () => Linker, batchMode: Boolean): ClearableLinker =
     new ClearableLinkerImpl(newLinker, batchMode)
 
-  private final class ClearableLinkerImpl(
-      newLinker: () => Linker, batchMode: Boolean)
+  private final class ClearableLinkerImpl(newLinker: () => Linker, batchMode: Boolean)
       extends LinkerImpl with ClearableLinker {
 
     private[this] var _linker: Linker = _
 
-    def link(irFiles: Seq[IRFile],
-        moduleInitializers: Seq[ModuleInitializer],
-        output: OutputDirectory, logger: Logger)(
-        implicit ec: ExecutionContext): Future[Report] = {
+    def link(irFiles: Seq[IRFile], moduleInitializers: Seq[ModuleInitializer],
+        output: OutputDirectory, logger: Logger)(implicit ec: ExecutionContext): Future[Report] = {
       linkerOp(_.link(irFiles, moduleInitializers, output, logger))
     }
 

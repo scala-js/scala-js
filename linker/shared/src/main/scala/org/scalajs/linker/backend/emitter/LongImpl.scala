@@ -50,66 +50,61 @@ private[linker] object LongImpl {
   final val & = binaryOp("$amp")
   final val ^ = binaryOp("$up")
 
-  final val <<  = shiftOp("$less$less")
+  final val << = shiftOp("$less$less")
   final val >>> = shiftOp("$greater$greater$greater")
-  final val >>  = shiftOp("$greater$greater")
+  final val >> = shiftOp("$greater$greater")
 
   final val === = compareOp("equals")
   final val !== = compareOp("notEquals")
-  final val <   = compareOp("$less")
-  final val <=  = compareOp("$less$eq")
-  final val >   = compareOp("$greater")
-  final val >=  = compareOp("$greater$eq")
+  final val < = compareOp("$less")
+  final val <= = compareOp("$less$eq")
+  final val > = compareOp("$greater")
+  final val >= = compareOp("$greater$eq")
 
-  final val toInt    = MethodName("toInt", Nil, IntRef)
+  final val toInt = MethodName("toInt", Nil, IntRef)
   final val toDouble = MethodName("toDouble", Nil, DoubleRef)
 
-  final val byteValue   = MethodName("byteValue", Nil, ByteRef)
-  final val shortValue  = MethodName("shortValue", Nil, ShortRef)
-  final val intValue    = MethodName("intValue", Nil, IntRef)
-  final val longValue   = MethodName("longValue", Nil, LongRef)
-  final val floatValue  = MethodName("floatValue", Nil, FloatRef)
+  final val byteValue = MethodName("byteValue", Nil, ByteRef)
+  final val shortValue = MethodName("shortValue", Nil, ShortRef)
+  final val intValue = MethodName("intValue", Nil, IntRef)
+  final val longValue = MethodName("longValue", Nil, LongRef)
+  final val floatValue = MethodName("floatValue", Nil, FloatRef)
   final val doubleValue = MethodName("doubleValue", Nil, DoubleRef)
 
-  final val toString_  = MethodName("toString", Nil, ClassRef(BoxedStringClass))
-  final val equals_    = MethodName("equals", List(ClassRef(ObjectClass)), BooleanRef)
-  final val hashCode_  = MethodName("hashCode", Nil, IntRef)
-  final val compareTo  = MethodName("compareTo", List(ClassRef(BoxedLongClass)), IntRef)
+  final val toString_ = MethodName("toString", Nil, ClassRef(BoxedStringClass))
+  final val equals_ = MethodName("equals", List(ClassRef(ObjectClass)), BooleanRef)
+  final val hashCode_ = MethodName("hashCode", Nil, IntRef)
+  final val compareTo = MethodName("compareTo", List(ClassRef(BoxedLongClass)), IntRef)
   final val compareToO = MethodName("compareTo", List(ClassRef(ObjectClass)), IntRef)
 
-  private val OperatorMethods = Set(
-      UNARY_-, UNARY_~, this.+, this.-, *, /, %, |, &, ^, <<, >>>, >>,
+  private val OperatorMethods = Set(UNARY_-, UNARY_~, this.+, this.-, *, /, %, |, &, ^, <<, >>>, >>,
       ===, !==, <, <=, >, >=, toInt, toDouble)
 
-  private val BoxedLongMethods = Set(
-      byteValue, shortValue, intValue, longValue, floatValue, doubleValue,
-      equals_, hashCode_, compareTo, compareToO)
+  private val BoxedLongMethods = Set(byteValue, shortValue, intValue, longValue, floatValue,
+      doubleValue, equals_, hashCode_, compareTo, compareToO)
 
   val AllMethods = OperatorMethods ++ BoxedLongMethods
 
   // Methods used for intrinsics
 
-  final val compareToRTLong   = MethodName("compareTo", List(RTLongRef), IntRef)
-  final val divideUnsigned    = binaryOp("divideUnsigned")
+  final val compareToRTLong = MethodName("compareTo", List(RTLongRef), IntRef)
+  final val divideUnsigned = binaryOp("divideUnsigned")
   final val remainderUnsigned = binaryOp("remainderUnsigned")
 
-  val AllIntrinsicMethods = Set(
-      compareToRTLong, divideUnsigned, remainderUnsigned)
+  val AllIntrinsicMethods = Set(compareToRTLong, divideUnsigned, remainderUnsigned)
 
   // Constructors
 
   final val initFromParts = MethodName.constructor(List(IntRef, IntRef))
 
-  val AllConstructors = Set(
-      initFromParts)
+  val AllConstructors = Set(initFromParts)
 
   // Methods on the companion
 
-  final val fromInt    = MethodName("fromInt", List(IntRef), RTLongRef)
+  final val fromInt = MethodName("fromInt", List(IntRef), RTLongRef)
   final val fromDouble = MethodName("fromDouble", List(DoubleRef), RTLongRef)
 
-  val AllModuleMethods = Set(
-      fromInt, fromDouble)
+  val AllModuleMethods = Set(fromInt, fromDouble)
 
   // Extract the parts to give to the initFromParts constructor
 

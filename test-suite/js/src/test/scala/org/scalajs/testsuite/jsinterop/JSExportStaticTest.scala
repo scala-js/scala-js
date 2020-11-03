@@ -207,8 +207,7 @@ class JSExportStaticTest {
 
     // Scala modifies var
     JSExportStaticTest.StaticExportFields.basicVar = "modified once more"
-    assertEquals("modified once more",
-        JSExportStaticTest.StaticExportFields.basicVar)
+    assertEquals("modified once more", JSExportStaticTest.StaticExportFields.basicVar)
     assertEquals("modified once more", statics.basicVar)
 
     // Reset var
@@ -240,13 +239,11 @@ class JSExportStaticTest {
     // JS modifies var
     statics.renamedVar = "hello world"
     assertEquals("hello world", statics.renamedVar)
-    assertEquals("hello world",
-        JSExportStaticTest.StaticExportFields.renamedBasicVar)
+    assertEquals("hello world", JSExportStaticTest.StaticExportFields.renamedBasicVar)
 
     // Scala modifies var
     JSExportStaticTest.StaticExportFields.renamedBasicVar = "modified once more"
-    assertEquals("modified once more",
-        JSExportStaticTest.StaticExportFields.renamedBasicVar)
+    assertEquals("modified once more", JSExportStaticTest.StaticExportFields.renamedBasicVar)
     assertEquals("modified once more", statics.renamedVar)
 
     // Reset var
@@ -259,12 +256,10 @@ class JSExportStaticTest {
     assertEquals(0, JSExportStaticTest.StaticExportFields.uninitializedVarInt)
     assertEquals(0, statics.uninitializedVarInt)
 
-    assertEquals(null,
-        JSExportStaticTest.StaticExportFields.uninitializedVarString)
+    assertEquals(null, JSExportStaticTest.StaticExportFields.uninitializedVarString)
     assertEquals(null, statics.uninitializedVarString)
 
-    assertEquals('\u0000',
-        JSExportStaticTest.StaticExportFields.uninitializedVarChar)
+    assertEquals('\u0000', JSExportStaticTest.StaticExportFields.uninitializedVarChar)
     assertEquals('\u0000', statics.uninitializedVarChar)
   }
 

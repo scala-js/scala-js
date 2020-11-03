@@ -26,8 +26,7 @@ import org.scalajs.linker.standard._
 
 import ConcurrencyUtils._
 
-final class ParIncOptimizer(config: CommonPhaseConfig)
-    extends GenIncOptimizer(config) {
+final class ParIncOptimizer(config: CommonPhaseConfig) extends GenIncOptimizer(config) {
 
   private[optimizer] object CollOps extends GenIncOptimizer.AbsCollOps {
     type Map[K, V] = TrieMap[K, V]
@@ -38,7 +37,7 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
 
     def emptyAccMap[K, V]: AccMap[K, V] = TrieMap.empty
     def emptyMap[K, V]: Map[K, V] = TrieMap.empty
-    def emptyParMap[K, V]: ParMap[K, V] =  ParTrieMap.empty
+    def emptyParMap[K, V]: ParMap[K, V] = ParTrieMap.empty
     def emptyParIterable[V]: ParIterable[V] = ParArray.empty
 
     // Operations on ParMap
@@ -65,8 +64,7 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
     def getAcc[K, V](map: AccMap[K, V], k: K): ParIterable[V] =
       map.get(k).fold[Iterable[V]](Nil)(_.removeAll()).toParArray
 
-    def parFlatMapKeys[A, B](map: AccMap[A, _])(
-        f: A => Option[B]): ParIterable[B] =
+    def parFlatMapKeys[A, B](map: AccMap[A, _])(f: A => Option[B]): ParIterable[B] =
       map.keys.flatMap(f(_)).toParArray
 
     // Operations on ParIterable
@@ -106,8 +104,7 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
       method.process()
   }
 
-  private class ParInterfaceType(className: ClassName)
-      extends InterfaceType(className) {
+  private class ParInterfaceType(className: ClassName) extends InterfaceType(className) {
 
     private val ancestorsAskers = TrieSet.empty[MethodImpl]
     private val dynamicCallers = TrieMap.empty[MethodName, TrieSet[MethodImpl]]
@@ -176,8 +173,7 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
       dynamicCallers.remove(methodName).foreach(_.keysIterator.foreach(_.tag()))
 
     /** UPDATE PASS ONLY. */
-    def tagStaticCallersOf(namespace: MemberNamespace,
-        methodName: MethodName): Unit = {
+    def tagStaticCallersOf(namespace: MemberNamespace, methodName: MethodName): Unit = {
       staticCallers(namespace.ordinal)
         .remove(methodName)
         .foreach(_.keysIterator.foreach(_.tag()))

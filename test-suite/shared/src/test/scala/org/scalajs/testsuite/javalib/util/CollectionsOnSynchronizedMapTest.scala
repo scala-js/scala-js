@@ -58,8 +58,7 @@ trait CollectionsOnSynchronizedSortedMapTest extends CollectionsOnSortedMapsTest
   }
 }
 
-class CollectionsOnSynchronizedMapOnHashMapTest
-    extends CollectionsOnSynchronizedMapTest {
+class CollectionsOnSynchronizedMapOnHashMapTest extends CollectionsOnSynchronizedMapTest {
   def originalFactory: MapFactory = new HashMapFactory
 }
 

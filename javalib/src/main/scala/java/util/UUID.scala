@@ -16,10 +16,8 @@ import java.lang.{Long => JLong}
 
 import scala.scalajs.js
 
-final class UUID private (
-    private val i1: Int, private val i2: Int,
-    private val i3: Int, private val i4: Int,
-    private[this] var l1: JLong, private[this] var l2: JLong)
+final class UUID private (private val i1: Int, private val i2: Int, private val i3: Int,
+    private val i4: Int, private[this] var l1: JLong, private[this] var l2: JLong)
     extends AnyRef with java.io.Serializable with Comparable[UUID] {
 
   import UUID._
@@ -39,9 +37,8 @@ final class UUID private (
    */
 
   def this(mostSigBits: Long, leastSigBits: Long) = {
-    this((mostSigBits >>> 32).toInt, mostSigBits.toInt,
-        (leastSigBits >>> 32).toInt, leastSigBits.toInt,
-        JLong.valueOf(mostSigBits), JLong.valueOf(leastSigBits))
+    this((mostSigBits >>> 32).toInt, mostSigBits.toInt, (leastSigBits >>> 32).toInt,
+        leastSigBits.toInt, JLong.valueOf(mostSigBits), JLong.valueOf(leastSigBits))
   }
 
   def getLeastSignificantBits(): Long = {
@@ -102,7 +99,7 @@ final class UUID private (
     }
 
     paddedHex8(i1) + "-" + paddedHex4(i2 >>> 16) + "-" + paddedHex4(i2 & 0xffff) + "-" +
-    paddedHex4(i3 >>> 16) + "-" + paddedHex4(i3 & 0xffff) + paddedHex8(i4)
+      paddedHex4(i3 >>> 16) + "-" + paddedHex4(i3 & 0xffff) + paddedHex8(i4)
   }
 
   override def hashCode(): Int =
@@ -153,7 +150,7 @@ object UUID {
     import Integer.parseInt
 
     def fail(): Nothing =
-      throw new IllegalArgumentException("Invalid UUID string: "+name)
+      throw new IllegalArgumentException("Invalid UUID string: " + name)
 
     @inline def parseHex8(his: String, los: String): Int =
       (parseInt(his, 16) << 16) | parseInt(los, 16)

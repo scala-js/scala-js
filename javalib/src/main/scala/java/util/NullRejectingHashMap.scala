@@ -18,8 +18,7 @@ package java.util
  *  structures that require non-`null` keys and values to correctly implement
  *  their specifications.
  */
-private[util] class NullRejectingHashMap[K, V](
-    initialCapacity: Int, loadFactor: Float)
+private[util] class NullRejectingHashMap[K, V](initialCapacity: Int, loadFactor: Float)
     extends HashMap[K, V](initialCapacity, loadFactor) {
 
   def this() =
@@ -34,8 +33,8 @@ private[util] class NullRejectingHashMap[K, V](
   }
 
   // Use Nodes that will reject `null`s in `setValue()`
-  override private[util] def newNode(key: K, hash: Int, value: V,
-      previous: HashMap.Node[K, V], next: HashMap.Node[K, V]): HashMap.Node[K, V] = {
+  override private[util] def newNode(key: K, hash: Int, value: V, previous: HashMap.Node[K, V],
+      next: HashMap.Node[K, V]): HashMap.Node[K, V] = {
     new NullRejectingHashMap.Node(key, hash, value, previous, next)
   }
 
@@ -91,8 +90,8 @@ private[util] class NullRejectingHashMap[K, V](
 }
 
 private object NullRejectingHashMap {
-  private final class Node[K, V](key: K, hash: Int, value: V,
-      previous: HashMap.Node[K, V], next: HashMap.Node[K, V])
+  private final class Node[K, V](key: K, hash: Int, value: V, previous: HashMap.Node[K, V],
+      next: HashMap.Node[K, V])
       extends HashMap.Node[K, V](key, hash, value, previous, next) {
 
     override def setValue(v: V): V = {

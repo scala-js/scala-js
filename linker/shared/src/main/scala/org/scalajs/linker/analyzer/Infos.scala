@@ -31,46 +31,35 @@ object Infos {
 
   private val cloneMethodName = MethodName("clone", Nil, ClassRef(ObjectClass))
 
-  final case class NamespacedMethodName(
-      namespace: MemberNamespace, methodName: MethodName)
+  final case class NamespacedMethodName(namespace: MemberNamespace, methodName: MethodName)
 
   final class ClassInfo private[Infos] (
-      val className: ClassName,
-      val kind: ClassKind,
+      val className: ClassName, val kind: ClassKind,
       val superClass: Option[ClassName], // always None for interfaces
       val interfaces: List[ClassName], // direct parent interfaces only
-      val jsNativeLoadSpec: Option[JSNativeLoadSpec],
-      val referencedFieldClasses: List[ClassName],
-      val methods: List[MethodInfo],
-      val jsNativeMembers: Map[MethodName, JSNativeLoadSpec],
+      val jsNativeLoadSpec: Option[JSNativeLoadSpec], val referencedFieldClasses: List[ClassName],
+      val methods: List[MethodInfo], val jsNativeMembers: Map[MethodName, JSNativeLoadSpec],
       val exportedMembers: List[ReachabilityInfo]
   ) {
     override def toString(): String = className.nameString
   }
 
   final class MethodInfo private (
-      val methodName: MethodName,
-      val namespace: MemberNamespace,
-      val isAbstract: Boolean,
+      val methodName: MethodName, val namespace: MemberNamespace, val isAbstract: Boolean,
       val reachabilityInfo: ReachabilityInfo
   ) {
     override def toString(): String = methodName.nameString
   }
 
   object MethodInfo {
-    def apply(
-        methodName: MethodName,
-        namespace: MemberNamespace,
-        isAbstract: Boolean,
+    def apply(methodName: MethodName, namespace: MemberNamespace, isAbstract: Boolean,
         reachabilityInfo: ReachabilityInfo): MethodInfo = {
       new MethodInfo(methodName, namespace, isAbstract, reachabilityInfo)
     }
   }
 
   final class TopLevelExportInfo private[Infos] (
-      val owningClass: ClassName,
-      val reachability: ReachabilityInfo,
-      val moduleID: ModuleID,
+      val owningClass: ClassName, val reachability: ReachabilityInfo, val moduleID: ModuleID,
       val exportName: String
   )
 
@@ -84,25 +73,21 @@ object Infos {
       /** For a Scala class, it is instantiated with a `New`; for a JS class,
        *  its constructor is accessed with a `JSLoadConstructor`.
        */
-      val instantiatedClasses: List[ClassName],
-      val accessedModules: List[ClassName],
-      val usedInstanceTests: List[ClassName],
-      val accessedClassData: List[ClassName],
+      val instantiatedClasses: List[ClassName], val accessedModules: List[ClassName],
+      val usedInstanceTests: List[ClassName], val accessedClassData: List[ClassName],
       val referencedClasses: List[ClassName]
   )
 
   object ReachabilityInfo {
     val Empty: ReachabilityInfo = {
-      new ReachabilityInfo(Map.empty, Map.empty, Map.empty, Map.empty,
-          Map.empty, Map.empty, Nil, Nil, Nil, Nil, Nil)
+      new ReachabilityInfo(Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Nil,
+          Nil, Nil, Nil, Nil)
     }
   }
 
   final class ClassInfoBuilder(
-      private val className: ClassName,
-      private val kind: ClassKind,
-      private val superClass: Option[ClassName],
-      private val interfaces: List[ClassName],
+      private val className: ClassName, private val kind: ClassKind,
+      private val superClass: Option[ClassName], private val interfaces: List[ClassName],
       private val jsNativeLoadSpec: Option[JSNativeLoadSpec]
   ) {
     private val referencedFieldClasses = mutable.Set.empty[ClassName]
@@ -138,9 +123,9 @@ object Infos {
     }
 
     def result(): ClassInfo = {
-      new ClassInfo(className, kind, superClass,
-          interfaces, jsNativeLoadSpec, referencedFieldClasses.toList,
-          methods.toList, jsNativeMembers.toMap, exportedMembers.toList)
+      new ClassInfo(className, kind, superClass, interfaces, jsNativeLoadSpec,
+          referencedFieldClasses.toList, methods.toList, jsNativeMembers.toMap,
+          exportedMembers.toList)
     }
   }
 
@@ -149,7 +134,8 @@ object Infos {
     private val staticFieldsRead = mutable.Map.empty[ClassName, mutable.Set[FieldName]]
     private val staticFieldsWritten = mutable.Map.empty[ClassName, mutable.Set[FieldName]]
     private val methodsCalled = mutable.Map.empty[ClassName, mutable.Set[MethodName]]
-    private val methodsCalledStatically = mutable.Map.empty[ClassName, mutable.Set[NamespacedMethodName]]
+    private val methodsCalledStatically =
+      mutable.Map.empty[ClassName, mutable.Set[NamespacedMethodName]]
     private val jsNativeMembersUsed = mutable.Map.empty[ClassName, mutable.Set[MethodName]]
     private val instantiatedClasses = mutable.Set.empty[ClassName]
     private val accessedModules = mutable.Set.empty[ClassName]
@@ -203,11 +189,10 @@ object Infos {
           }
 
         case NullType | NothingType =>
-          // Nothing to do
+        // Nothing to do
 
         case NoType | RecordType(_) =>
-          throw new IllegalArgumentException(
-              s"Illegal receiver type: $receiverTpe")
+          throw new IllegalArgumentException(s"Illegal receiver type: $receiverTpe")
       }
 
       this
@@ -218,8 +203,7 @@ object Infos {
       this
     }
 
-    def addMethodCalledStatically(cls: ClassName,
-        method: NamespacedMethodName): this.type = {
+    def addMethodCalledStatically(cls: ClassName, method: NamespacedMethodName): this.type = {
       methodsCalledStatically.getOrElseUpdate(cls, mutable.Set.empty) += method
       this
     }
@@ -328,10 +312,9 @@ object Infos {
    */
   def generateClassInfo(classDef: ClassDef): ClassInfo = {
     val builder = new ClassInfoBuilder(classDef.name.name, classDef.kind,
-        classDef.superClass.map(_.name), classDef.interfaces.map(_.name),
-        classDef.jsNativeLoadSpec)
+        classDef.superClass.map(_.name), classDef.interfaces.map(_.name), classDef.jsNativeLoadSpec)
 
-    classDef.memberDefs foreach {
+    classDef.memberDefs.foreach {
       case fieldDef: AnyFieldDef =>
         builder.maybeAddReferencedFieldClass(fieldDef.ftpe)
 
@@ -387,10 +370,8 @@ object Infos {
   /** Generates the [[MethodInfo]] for the top-level exports. */
   def generateTopLevelExportInfo(enclosingClass: ClassName,
       topLevelExportDef: TopLevelExportDef): TopLevelExportInfo = {
-    val info = new GenInfoTraverser().generateTopLevelExportInfo(enclosingClass,
-        topLevelExportDef)
-    new TopLevelExportInfo(enclosingClass, info,
-        ModuleID(topLevelExportDef.moduleID),
+    val info = new GenInfoTraverser().generateTopLevelExportInfo(enclosingClass, topLevelExportDef)
+    new TopLevelExportInfo(enclosingClass, info, ModuleID(topLevelExportDef.moduleID),
         topLevelExportDef.topLevelExportName)
   }
 
@@ -424,7 +405,7 @@ object Infos {
     def generateJSPropertyInfo(propertyDef: JSPropertyDef): ReachabilityInfo = {
       traverse(propertyDef.name)
       propertyDef.getterBody.foreach(traverse)
-      propertyDef.setterArgAndBody foreach { case (_, body) =>
+      propertyDef.setterArgAndBody.foreach { case (_, body) =>
         traverse(body)
       }
 
@@ -434,10 +415,10 @@ object Infos {
     def generateTopLevelExportInfo(enclosingClass: ClassName,
         topLevelExportDef: TopLevelExportDef): ReachabilityInfo = {
       topLevelExportDef match {
-        case _:TopLevelJSClassExportDef =>
+        case _: TopLevelJSClassExportDef =>
           builder.addInstantiatedClass(enclosingClass)
 
-        case _:TopLevelModuleExportDef =>
+        case _: TopLevelModuleExportDef =>
           builder.addAccessedModule(enclosingClass)
 
         case topLevelMethodExport: TopLevelMethodExportDef =>
@@ -509,8 +490,7 @@ object Infos {
               import BinaryOp._
 
               def addArithmeticException(): Unit = {
-                builder.addInstantiatedClass(ArithmeticExceptionClass,
-                    StringArgConstructorName)
+                builder.addInstantiatedClass(ArithmeticExceptionClass, StringArgConstructorName)
               }
 
               op match {
@@ -525,7 +505,7 @@ object Infos {
                     case _                         => addArithmeticException()
                   }
                 case _ =>
-                  // do nothing
+                // do nothing
               }
 
             case NewArray(typeRef, _) =>
@@ -535,13 +515,13 @@ object Infos {
               builder.maybeAddAccessedClassData(typeRef)
 
             case ArraySelect(_, _) =>
-              /* In theory, we'd need to reach ArrayIndexOutOfBoundsException
-               * here (conditional on the semantics) by IR spec.
-               * However, since the exact *constructor* is not specified, this
-               * makes little sense.
-               * Instead, the Emitter simply requests the exception in its
-               * symbol requirements.
-               */
+            /* In theory, we'd need to reach ArrayIndexOutOfBoundsException
+             * here (conditional on the semantics) by IR spec.
+             * However, since the exact *constructor* is not specified, this
+             * makes little sense.
+             * Instead, the Emitter simply requests the exception in its
+             * symbol requirements.
+             */
 
             case ClassOf(cls) =>
               builder.maybeAddAccessedClassData(cls)

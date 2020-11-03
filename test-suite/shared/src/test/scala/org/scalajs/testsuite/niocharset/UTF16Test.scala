@@ -119,14 +119,12 @@ class UTF16BETest extends BaseUTF16Test(Charset.forName("UTF-16BE")) {
 class UTF16LETest extends BaseUTF16Test(Charset.forName("UTF-16LE")) {
   import UTF16LETest._
 
-  override protected def testDecode(in: ByteBuffer)(
-      outParts: OutPart[CharBuffer]*): Unit = {
+  override protected def testDecode(in: ByteBuffer)(outParts: OutPart[CharBuffer]*): Unit = {
     flipByteBuffer(in)
     super.testDecode(in)(outParts: _*)
   }
 
-  override protected def testEncode(in: CharBuffer)(
-      outParts: OutPart[ByteBuffer]*): Unit = {
+  override protected def testEncode(in: CharBuffer)(outParts: OutPart[ByteBuffer]*): Unit = {
     for (BufferPart(buf) <- outParts)
       flipByteBuffer(buf)
     super.testEncode(in)(outParts: _*)
@@ -141,6 +139,7 @@ class UTF16LETest extends BaseUTF16Test(Charset.forName("UTF-16LE")) {
 }
 
 object UTF16LETest {
+
   /** Flips all pairs of bytes in a byte buffer, except a potential lonely
    *  last byte.
    */
@@ -161,13 +160,12 @@ class UTF16Test extends BaseUTF16Test(Charset.forName("UTF-16")) {
   def BigEndianBOM: ByteBuffer =
     ByteBuffer.wrap(Array(0xfe.toByte, 0xff.toByte))
 
-  override protected def testDecode(in: ByteBuffer)(
-      outParts: OutPart[CharBuffer]*): Unit = {
+  override protected def testDecode(in: ByteBuffer)(outParts: OutPart[CharBuffer]*): Unit = {
     // Without BOM, big endian is assumed
     super.testDecode(in)(outParts: _*)
 
     // With BOM, big endian
-    val inWithBOM = ByteBuffer.allocate(2+in.remaining)
+    val inWithBOM = ByteBuffer.allocate(2 + in.remaining)
     inWithBOM.put(BigEndianBOM).put(in).flip()
     super.testDecode(inWithBOM)(outParts: _*)
 
@@ -176,8 +174,7 @@ class UTF16Test extends BaseUTF16Test(Charset.forName("UTF-16")) {
     super.testDecode(inWithBOM)(outParts: _*)
   }
 
-  override protected def testEncode(in: CharBuffer)(
-      outParts: OutPart[ByteBuffer]*): Unit = {
+  override protected def testEncode(in: CharBuffer)(outParts: OutPart[ByteBuffer]*): Unit = {
     if (in.remaining == 0) super.testEncode(in)(outParts: _*)
     else super.testEncode(in)(BufferPart(BigEndianBOM) +: outParts: _*)
   }

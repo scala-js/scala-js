@@ -36,7 +36,7 @@ class BiConsumerTest {
     assertEquals(1, left)
     assertEquals(2, right)
 
-    add.accept(2,3)
+    add.accept(2, 3)
     assertEquals(3, left)
     assertEquals(5, right)
   }
@@ -67,17 +67,19 @@ class BiConsumerTest {
     assertEquals(132, right) // (16+6) * 6
 
     // Consume, then throw
-    assertThrows(classOf[ThrowingConsumerException], add.andThen(throwingConsumer).accept(1,2))
+    assertThrows(classOf[ThrowingConsumerException], add.andThen(throwingConsumer).accept(1, 2))
     assertEquals(22, left)
     assertEquals(134, right)
 
-    assertThrows(classOf[ThrowingConsumerException], throwingConsumer.andThen(dontCallConsumer).accept(0, 0))
+    assertThrows(classOf[ThrowingConsumerException],
+        throwingConsumer.andThen(dontCallConsumer).accept(0, 0))
 
   }
 }
 
 object BiConsumerTest {
-  final class ThrowingConsumerException(x: Any, y: Any) extends Exception(s"throwing consumer called with ($x, $y)")
+  final class ThrowingConsumerException(x: Any, y: Any)
+      extends Exception(s"throwing consumer called with ($x, $y)")
 
   private val throwingConsumer: BiConsumer[Int, Int] = makeBiConsumer { (t, u) =>
     throw new ThrowingConsumerException(t, u)

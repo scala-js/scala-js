@@ -29,8 +29,7 @@ import org.scalajs.linker.standard._
  *  You probably want to use an instance of [[interface.Linker]], rather than
  *  this low-level class.
  */
-abstract class LinkerBackendImpl(
-    protected val config: LinkerBackendImpl.Config)
+abstract class LinkerBackendImpl(protected val config: LinkerBackendImpl.Config)
     extends LinkerBackend {
 
   /** Core specification that this linker backend implements. */
@@ -45,30 +44,30 @@ object LinkerBackendImpl {
   final class Config private (
       /** Common phase config. */
       val commonConfig: CommonPhaseConfig,
-      /** Whether to emit a source map. */
+      /** Whether to emit a source map.
+       */
       val sourceMap: Boolean,
-      /** Name patterns for output. */
+      /** Name patterns for output.
+       */
       val outputPatterns: OutputPatterns,
-      /** Base path to relativize paths in the source map. */
+      /** Base path to relativize paths in the source map.
+       */
       val relativizeSourceMapBase: Option[URI],
       /** Whether to use the Google Closure Compiler pass, if it is available.
        *  On the JavaScript platform, this does not have any effect.
        */
       val closureCompilerIfAvailable: Boolean,
-      /** Pretty-print the output. */
+      /** Pretty-print the output.
+       */
       val prettyPrint: Boolean,
-      /** The maximum number of (file) writes executed concurrently. */
+      /** The maximum number of (file) writes executed concurrently.
+       */
       val maxConcurrentWrites: Int
   ) {
     private def this() = {
-      this(
-          commonConfig = CommonPhaseConfig(),
-          sourceMap = true,
-          outputPatterns = OutputPatterns.Defaults,
-          relativizeSourceMapBase = None,
-          closureCompilerIfAvailable = false,
-          prettyPrint = false,
-          maxConcurrentWrites = 50)
+      this(commonConfig = CommonPhaseConfig(), sourceMap = true,
+          outputPatterns = OutputPatterns.Defaults, relativizeSourceMapBase = None,
+          closureCompilerIfAvailable = false, prettyPrint = false, maxConcurrentWrites = 50)
     }
 
     def withCommonConfig(commonConfig: CommonPhaseConfig): Config =
@@ -92,17 +91,14 @@ object LinkerBackendImpl {
     def withMaxConcurrentWrites(maxConcurrentWrites: Int): Config =
       copy(maxConcurrentWrites = maxConcurrentWrites)
 
-    private def copy(
-        commonConfig: CommonPhaseConfig = commonConfig,
-        sourceMap: Boolean = sourceMap,
+    private def copy(commonConfig: CommonPhaseConfig = commonConfig, sourceMap: Boolean = sourceMap,
         outputPatterns: OutputPatterns = outputPatterns,
         relativizeSourceMapBase: Option[URI] = relativizeSourceMapBase,
         closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
         prettyPrint: Boolean = prettyPrint,
         maxConcurrentWrites: Int = maxConcurrentWrites): Config = {
-      new Config(commonConfig, sourceMap, outputPatterns,
-          relativizeSourceMapBase, closureCompilerIfAvailable, prettyPrint,
-          maxConcurrentWrites)
+      new Config(commonConfig, sourceMap, outputPatterns, relativizeSourceMapBase,
+          closureCompilerIfAvailable, prettyPrint, maxConcurrentWrites)
     }
   }
 

@@ -28,12 +28,11 @@ import Fingerprint.FingerprintBuilder
  *  pattern taking the module ID as sole string (`%s`) argument.
  */
 final class OutputPatterns private (
-    private[interface] val jsFile: String,
-    private[interface] val sourceMapFile: String,
-    private[interface] val moduleName: String,
-    private[interface] val jsFileURI: String,
+    private[interface] val jsFile: String, private[interface] val sourceMapFile: String,
+    private[interface] val moduleName: String, private[interface] val jsFileURI: String,
     private[interface] val sourceMapURI: String
 ) {
+
   /** Pattern for the JS file name (the file containing the module's code). */
   def withJSFile(jsFile: String): OutputPatterns =
     copy(jsFile = jsFile)
@@ -64,17 +63,15 @@ final class OutputPatterns private (
        |)""".stripMargin
   }
 
-  private def copy(
-      jsFile: String = jsFile,
-      sourceMapFile: String = sourceMapFile,
-      moduleName: String = moduleName,
-      jsFileURI: String = jsFileURI,
+  private def copy(jsFile: String = jsFile, sourceMapFile: String = sourceMapFile,
+      moduleName: String = moduleName, jsFileURI: String = jsFileURI,
       sourceMapURI: String = sourceMapURI): OutputPatterns = {
     new OutputPatterns(jsFile, sourceMapFile, moduleName, jsFileURI, sourceMapURI)
   }
 }
 
 object OutputPatterns {
+
   /** Default [[OutputPatterns]]; equivalent to `fromJSFile("%s.js")`. */
   val Defaults: OutputPatterns = fromJSFile("%s.js")
 
@@ -96,8 +93,7 @@ object OutputPatterns {
     )
   }
 
-  private[interface] implicit object OutputPatternsFingerprint
-      extends Fingerprint[OutputPatterns] {
+  private[interface] implicit object OutputPatternsFingerprint extends Fingerprint[OutputPatterns] {
 
     override def fingerprint(outputPatterns: OutputPatterns): String = {
       new FingerprintBuilder("OutputPatterns")

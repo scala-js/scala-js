@@ -6,13 +6,13 @@ package org.junit
 import org.hamcrest.Matcher
 
 // @SuppressWarnings("deprecation")
-class AssumptionViolatedException protected (fAssumption: String,
-    fValueMatcher: Boolean, fMatcher: Matcher[_], fValue: AnyRef)
-    extends org.junit.internal.AssumptionViolatedException(fAssumption,
-        fValueMatcher, fMatcher, fValue) {
+class AssumptionViolatedException protected (fAssumption: String, fValueMatcher: Boolean,
+    fMatcher: Matcher[_], fValue: AnyRef)
+    extends org.junit.internal.AssumptionViolatedException(fAssumption, fValueMatcher, fMatcher,
+        fValue) {
 
   @Deprecated
-  def this(actual: Any,  matcher: Matcher[_]) =
+  def this(actual: Any, matcher: Matcher[_]) =
     this(null, true, fMatcher = matcher, fValue = actual.asInstanceOf[AnyRef])
 
   @Deprecated

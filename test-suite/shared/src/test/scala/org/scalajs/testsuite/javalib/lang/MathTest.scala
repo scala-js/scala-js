@@ -93,8 +93,8 @@ class MathTest {
     assertEquals(3.0, Math.cbrt(27.0), 0.0)
     assertEquals(100.0, Math.cbrt(1000000.0), 0.0)
     assertEquals(1000.0, Math.cbrt(1000000000.0), 0.0)
-    assertEquals(-100000000.0, Math.cbrt(-1.0E24), 0.0)
-    assertEquals(-4039.0E8, Math.cbrt(-65890311319.0E24), 0.0)
+    assertEquals(-100000000.0, Math.cbrt(-1.0e24), 0.0)
+    assertEquals(-4039.0e8, Math.cbrt(-65890311319.0e24), 0.0)
     assertTrue(Math.cbrt(Double.NaN).isNaN)
     assertSameDouble(Double.PositiveInfinity, Math.cbrt(Double.PositiveInfinity))
     assertSameDouble(Double.NegativeInfinity, Math.cbrt(Double.NegativeInfinity))
@@ -237,16 +237,12 @@ class MathTest {
     assertSameFloat(Float.NegativeInfinity,
         Math.nextAfter(Float.NegativeInfinity, Double.NegativeInfinity))
 
-    assertSameFloat(Float.NegativeInfinity,
-        Math.nextAfter(Float.MinValue, Double.NegativeInfinity))
+    assertSameFloat(Float.NegativeInfinity, Math.nextAfter(Float.MinValue, Double.NegativeInfinity))
     assertSameFloat(Float.PositiveInfinity,
         Math.nextAfter(-Float.MinValue, Double.PositiveInfinity))
-    assertSameFloat(Float.MaxValue,
-        Math.nextAfter(Float.PositiveInfinity, Double.NegativeInfinity))
-    assertSameFloat(Float.MinValue,
-        Math.nextAfter(Float.NegativeInfinity, Double.PositiveInfinity))
-    assertSameFloat(Float.PositiveInfinity,
-        Math.nextAfter(Float.MaxValue, Double.PositiveInfinity))
+    assertSameFloat(Float.MaxValue, Math.nextAfter(Float.PositiveInfinity, Double.NegativeInfinity))
+    assertSameFloat(Float.MinValue, Math.nextAfter(Float.NegativeInfinity, Double.PositiveInfinity))
+    assertSameFloat(Float.PositiveInfinity, Math.nextAfter(Float.MaxValue, Double.PositiveInfinity))
     assertSameFloat(Float.NegativeInfinity,
         Math.nextAfter(-Float.MaxValue, Double.NegativeInfinity))
 
@@ -256,8 +252,8 @@ class MathTest {
   }
 
   @Test def ulp_for_Double(): Unit = {
-    assertEquals(4.440892098500626E-16, Math.ulp(3.4), 0.0)
-    assertEquals(4.1718496795330275E93, Math.ulp(3.423E109), 0.0)
+    assertEquals(4.440892098500626e-16, Math.ulp(3.4), 0.0)
+    assertEquals(4.1718496795330275e93, Math.ulp(3.423e109), 0.0)
     assertEquals(Double.MinPositiveValue, Math.ulp(0.0), 0.0)
   }
 
@@ -282,10 +278,10 @@ class MathTest {
     assertSameDouble(0.0, Math.expm1(0.0))
     assertEquals(19.085536923187668, Math.expm1(3.0), 0.01)
     assertEquals(3269016.3724721107, Math.expm1(15.0), 0.01)
-    assertEquals(Double.PositiveInfinity, Math.expm1(1.8E10), 0.0)
+    assertEquals(Double.PositiveInfinity, Math.expm1(1.8e10), 0.0)
     assertEquals(Double.PositiveInfinity, Math.expm1(Double.PositiveInfinity), 0.0)
     assertEquals(-1.0, Math.expm1(Double.NegativeInfinity), 0.01)
-    assertEquals(4.9E-324, Math.expm1(4.9E-324), 0.01)
+    assertEquals(4.9e-324, Math.expm1(4.9e-324), 0.01)
     assertTrue(Math.expm1(Double.NaN).isNaN)
   }
 
@@ -420,7 +416,8 @@ class MathTest {
     expectThrows(classOf[ArithmeticException], Math.addExact(Long.MaxValue, 1))
     expectThrows(classOf[ArithmeticException], Math.addExact(1, Long.MaxValue))
     expectThrows(classOf[ArithmeticException], Math.addExact(Long.MaxValue, Long.MaxValue))
-    expectThrows(classOf[ArithmeticException], Math.addExact(4611686018427387904L, 4611686018427387904L))
+    expectThrows(classOf[ArithmeticException],
+        Math.addExact(4611686018427387904L, 4611686018427387904L))
   }
 
   @Test def subtractExact(): Unit = {
@@ -472,7 +469,8 @@ class MathTest {
     expectThrows(classOf[ArithmeticException], Math.subtractExact(-2, Long.MaxValue))
     expectThrows(classOf[ArithmeticException], Math.subtractExact(Long.MaxValue, -1))
     expectThrows(classOf[ArithmeticException], Math.subtractExact(Long.MaxValue, Long.MinValue))
-    expectThrows(classOf[ArithmeticException], Math.subtractExact(4611686018427387904L, -4611686018427387904L))
+    expectThrows(classOf[ArithmeticException],
+        Math.subtractExact(4611686018427387904L, -4611686018427387904L))
   }
 
   @Test def multiplyExact(): Unit = {

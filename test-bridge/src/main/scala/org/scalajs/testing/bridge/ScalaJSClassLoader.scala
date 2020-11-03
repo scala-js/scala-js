@@ -28,9 +28,9 @@ private[bridge] final class ScalaJSClassLoader extends ClassLoader(null) {
   private def nimp: Nothing = {
     throw new NotImplementedError(
         "A ScalaJSClassLoader is a dummy. " +
-        "Use scala.scalajs.reflect.Reflect (JS-only) or " +
-        "https://github.com/portable-scala/portable-scala-reflect (portable) " +
-        "to instantiate things.")
+          "Use scala.scalajs.reflect.Reflect (JS-only) or " +
+          "https://github.com/portable-scala/portable-scala-reflect (portable) " +
+          "to instantiate things.")
   }
 
   override def clearAssertionStatus(): Unit = nimp

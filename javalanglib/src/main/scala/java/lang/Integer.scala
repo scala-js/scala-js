@@ -73,8 +73,7 @@ object Integer {
     parseIntImpl(s, radix, signed = false)
 
   @inline
-  private def parseIntImpl(s: String, radix: scala.Int,
-      signed: scala.Boolean): scala.Int = {
+  private def parseIntImpl(s: String, radix: scala.Int, signed: scala.Boolean): scala.Int = {
 
     def fail(): Nothing =
       throw new NumberFormatException("For input string: \"" + s + "\"")
@@ -122,8 +121,7 @@ object Integer {
   @noinline def decode(nm: String): Integer =
     decodeGeneric(nm, valueOf(_, _))
 
-  @inline private[lang] def decodeGeneric[A](nm: String,
-      parse: js.Function2[String, Int, A]): A = {
+  @inline private[lang] def decodeGeneric[A](nm: String, parse: js.Function2[String, Int, A]): A = {
 
     val len = nm.length()
     var i = 0
@@ -207,7 +205,7 @@ object Integer {
      */
     val t1 = i - ((i >> 1) & 0x55555555)
     val t2 = (t1 & 0x33333333) + ((t1 >> 2) & 0x33333333)
-    (((t2 + (t2 >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24
+    (((t2 + (t2 >> 4)) & 0xf0f0f0f) * 0x1010101) >> 24
   }
 
   @inline def divideUnsigned(dividend: Int, divisor: Int): Int =
@@ -241,8 +239,8 @@ object Integer {
 
   def reverseBytes(i: scala.Int): scala.Int = {
     val byte3 = i >>> 24
-    val byte2 = (i >>> 8) & 0xFF00
-    val byte1 = (i << 8) & 0xFF0000
+    val byte2 = (i >>> 8) & 0xff00
+    val byte1 = (i << 8) & 0xff0000
     val byte0 = i << 24
     byte0 | byte1 | byte2 | byte3
   }
@@ -251,7 +249,7 @@ object Integer {
     // From Hacker's Delight, 7-1, Figure 7-1
     val j = (i & 0x55555555) << 1 | (i >> 1) & 0x55555555
     val k = (j & 0x33333333) << 2 | (j >> 2) & 0x33333333
-    reverseBytes((k & 0x0F0F0F0F) << 4 | (k >> 4) & 0x0F0F0F0F)
+    reverseBytes((k & 0x0f0f0f0f) << 4 | (k >> 4) & 0x0f0f0f0f)
   }
 
   @inline def rotateLeft(i: scala.Int, distance: scala.Int): scala.Int =
@@ -306,7 +304,8 @@ object Integer {
   @inline def min(a: Int, b: Int): Int = Math.min(a, b)
 
   @inline private[this] def toStringBase(i: scala.Int, base: scala.Int): String = {
-    asUint(i).asInstanceOf[js.Dynamic]
+    asUint(i)
+      .asInstanceOf[js.Dynamic]
       .applyDynamic("toString")(base.asInstanceOf[js.Dynamic])
       .asInstanceOf[String]
   }

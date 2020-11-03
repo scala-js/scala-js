@@ -133,8 +133,7 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
   }
 
   @Test def should_remove_occurrences_of_provided_elements(): Unit = {
-    val ad = factory.from[String](
-        TrivialImmutableCollection("one", "two", "three", "two", "one"))
+    val ad = factory.from[String](TrivialImmutableCollection("one", "two", "three", "two", "one"))
 
     assertTrue(ad.removeFirstOccurrence("one"))
     assertTrue(ad.removeLastOccurrence("two"))

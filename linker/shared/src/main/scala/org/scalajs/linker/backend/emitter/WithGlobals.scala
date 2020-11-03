@@ -72,8 +72,7 @@ import GlobalRefUtils.unionPreserveEmpty
  *  ... =?= WithGlobals(g(f(v).value).value, w ∪ (f(v).globalVarNames ∪ g(f(v).value).globalVarNames))
  *  }}}
  */
-private[emitter] final case class WithGlobals[+A](
-    value: A, globalVarNames: Set[String]) {
+private[emitter] final case class WithGlobals[+A](value: A, globalVarNames: Set[String]) {
 
   import WithGlobals._
 
@@ -87,6 +86,7 @@ private[emitter] final case class WithGlobals[+A](
 }
 
 private[emitter] object WithGlobals {
+
   /** Constructs a `WithGlobals` with an empty set `globalVarNames`. */
   def apply[A](value: A): WithGlobals[A] =
     new WithGlobals(value, Set.empty)

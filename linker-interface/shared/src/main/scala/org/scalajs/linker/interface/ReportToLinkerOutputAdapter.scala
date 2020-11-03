@@ -39,14 +39,14 @@ import org.scalajs.linker.interface.unstable.{OutputDirectoryImpl, OutputFileImp
  *    provided by the caller. This is necessary as a post-processing step,
  *    because of the reduced flexibility of the 1.3.0 API: we cannot express
  *    all legacy requests in the new API.
-  */
+ */
 @deprecated("Part of legacy API.", "1.3.0")
 object ReportToLinkerOutputAdapter {
   final class UnsupportedLinkerOutputException private[ReportToLinkerOutputAdapter] (
-      message: String) extends IllegalArgumentException(message)
+      message: String)
+      extends IllegalArgumentException(message)
 
-  def convert(report: Report, outputDirectory: OutputDirectory,
-      legacyOutput: LinkerOutput)(
+  def convert(report: Report, outputDirectory: OutputDirectory, legacyOutput: LinkerOutput)(
       implicit ec: ExecutionContext): Future[Unit] = {
     retrieveOutputFiles(report, outputDirectory).flatMap {
       case (jsFileContent, optSourceMapContent) =>
@@ -55,10 +55,11 @@ object ReportToLinkerOutputAdapter {
 
         val jsFileWrite = {
           val content = UTF_8.decode(jsFileContent).toString()
-          val patched = patchJSFileContent(content,
-              legacyOutput.sourceMapURI.filter(_ => hasSourceMap))
+          val patched =
+            patchJSFileContent(content, legacyOutput.sourceMapURI.filter(_ => hasSourceMap))
 
-          OutputFileImpl.fromOutputFile(legacyOutput.jsFile)
+          OutputFileImpl
+            .fromOutputFile(legacyOutput.jsFile)
             .writeFull(ByteBuffer.wrap(patched.getBytes(UTF_8)))
         }
 
@@ -69,7 +70,8 @@ object ReportToLinkerOutputAdapter {
           val content = UTF_8.decode(sourceMapContent).toString()
           val patched = patchSourceMapContent(content, legacyOutput.jsFileURI)
 
-          OutputFileImpl.fromOutputFile(sourceMapFile)
+          OutputFileImpl
+            .fromOutputFile(sourceMapFile)
             .writeFull(ByteBuffer.wrap(patched.getBytes(UTF_8)))
         }
 
@@ -78,8 +80,7 @@ object ReportToLinkerOutputAdapter {
   }
 
   /** Retrieve the linker JS file and an optional source map */
-  private def retrieveOutputFiles(report: Report,
-      outputDirectory: OutputDirectory)(
+  private def retrieveOutputFiles(report: Report, outputDirectory: OutputDirectory)(
       implicit ec: ExecutionContext): Future[(ByteBuffer, Option[ByteBuffer])] = {
     val outDirImpl = OutputDirectoryImpl.fromOutputDirectory(outputDirectory)
 
@@ -87,7 +88,7 @@ object ReportToLinkerOutputAdapter {
       if (report.publicModules.size != 1) {
         throw new UnsupportedLinkerOutputException(
             "Linking did not return exactly one public module. Full report:\n" +
-            report)
+              report)
       }
 
       report.publicModules.head
@@ -103,12 +104,12 @@ object ReportToLinkerOutputAdapter {
         if (expectedFiles.subsetOf(foundFiles)) {
           throw new UnsupportedLinkerOutputException(
               "Linking produced more than a single JS file (and source map). " +
-              s"Expected files:\n$expectedFiles\nProduced files:\n$foundFiles")
+                s"Expected files:\n$expectedFiles\nProduced files:\n$foundFiles")
         } else {
           throw new AssertionError(
               "Linking did not produce the files mentioned in the report. " +
-              "This is a bug in the linker. " +
-              s"Expected files:\n$expectedFiles\nProduced files:\n$foundFiles")
+                "This is a bug in the linker. " +
+                s"Expected files:\n$expectedFiles\nProduced files:\n$foundFiles")
         }
       }
     }
@@ -130,28 +131,29 @@ object ReportToLinkerOutputAdapter {
    *  URL with the provided `sourceMapURI`. In case `sourceMapURI` is None, the
    *  line is replaced with an empty line.
    */
-  private def patchJSFileContent(content: String,
-      sourceMapURI: Option[URI]): String = {
+  private def patchJSFileContent(content: String, sourceMapURI: Option[URI]): String = {
 
     val newLine =
       sourceMapURI.map(u => s"//# sourceMappingURL=${u.toASCIIString}")
 
-    sourceMapRe.findFirstMatchIn(content).fold {
-      content + newLine.fold("")("\n" + _ + "\n")
-    } { reMatch =>
-      val res = new StringBuilder
+    sourceMapRe
+      .findFirstMatchIn(content)
+      .fold {
+        content + newLine.fold("")("\n" + _ + "\n")
+      } { reMatch =>
+        val res = new StringBuilder
 
-      res.append(reMatch.before)
+        res.append(reMatch.before)
 
-      /* If there is no source map link, keep an empty line to not break a
-       * potential (unlinked) source map
-       */
-      newLine.foreach(res.append(_))
+        /* If there is no source map link, keep an empty line to not break a
+         * potential (unlinked) source map
+         */
+        newLine.foreach(res.append(_))
 
-      res.append(reMatch.after)
+        res.append(reMatch.after)
 
-      res.toString()
-    }
+        res.toString()
+      }
   }
 
   /* It is somewhat acceptable to parse the JSON field "file" with a Regex
@@ -172,44 +174,45 @@ object ReportToLinkerOutputAdapter {
    *  replaces it's value with `jsFileURI`. In case `jsFileURI` is None, it
    *  removes the key from the object.
    */
-  private def patchSourceMapContent(content: String,
-      jsFileURI: Option[URI]): String = {
+  private def patchSourceMapContent(content: String, jsFileURI: Option[URI]): String = {
 
     // No need for quoting: toASCIIString never returns '"'
     val newField =
       jsFileURI.map(u => s""""file": "${u.toASCIIString}"""")
 
-    fileFieldRe.findFirstMatchIn(content).fold {
-      newField.fold(content) { field =>
-        content.split("\\{", 2) match {
-          case Array(pre, post) =>
-            pre + "{" + field + "," + post
+    fileFieldRe
+      .findFirstMatchIn(content)
+      .fold {
+        newField.fold(content) { field =>
+          content.split("\\{", 2) match {
+            case Array(pre, post) =>
+              pre + "{" + field + "," + post
 
-          case _ =>
-            throw new IllegalArgumentException(
-                s"source map file does not seem to contain a JSON object: $content")
+            case _ =>
+              throw new IllegalArgumentException(
+                  s"source map file does not seem to contain a JSON object: $content")
+          }
         }
+      } { reMatch =>
+        val res = new StringBuilder
+
+        res.append(reMatch.before)
+
+        newField match {
+          case None =>
+            if (reMatch.group(1) == "{")
+              res.append('{')
+            if (reMatch.group(2) == "}")
+              res.append('}')
+          case Some(field) =>
+            res.append(reMatch.group(1))
+            res.append(field)
+            res.append(reMatch.group(2))
+        }
+
+        res.append(reMatch.after)
+
+        res.toString()
       }
-    } { reMatch =>
-      val res = new StringBuilder
-
-      res.append(reMatch.before)
-
-      newField match {
-        case None =>
-          if (reMatch.group(1) == "{")
-            res.append('{')
-          if (reMatch.group(2) == "}")
-            res.append('}')
-        case Some(field) =>
-          res.append(reMatch.group(1))
-          res.append(field)
-          res.append(reMatch.group(2))
-      }
-
-      res.append(reMatch.after)
-
-      res.toString()
-    }
   }
 }

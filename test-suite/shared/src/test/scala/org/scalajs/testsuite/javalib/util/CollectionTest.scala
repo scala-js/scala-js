@@ -208,8 +208,7 @@ trait CollectionTest extends IterableTest {
     coll.add("three")
     coll.add("three")
 
-    assertIteratorSameElementsAsSetDupesAllowed("one", "two", "three")(
-        coll.iterator())
+    assertIteratorSameElementsAsSetDupesAllowed("one", "two", "three")(coll.iterator())
   }
 
   @Test def removeIf(): Unit = {
@@ -254,8 +253,7 @@ trait CollectionTest extends IterableTest {
     // order here. Specific collections should test the order they specify.
     val expected = elements.permutations.map(_.mkString("[", ", ", "]")).toSet
 
-    assertTrue(s"result '${result}' not in expected set '${expected}'",
-        expected.contains(result))
+    assertTrue(s"result '${result}' not in expected set '${expected}'", expected.contains(result))
   }
 
   @Test def toStringShouldHandleNullElements(): Unit = {
@@ -267,8 +265,7 @@ trait CollectionTest extends IterableTest {
       val result = coll.toString()
 
       val expected = elements.permutations.map(_.mkString("[", ", ", "]")).toSet
-      assertTrue(s"result '${result}' not in expected set '${expected}'",
-          expected.contains(result))
+      assertTrue(s"result '${result}' not in expected set '${expected}'", expected.contains(result))
     }
   }
 
@@ -283,8 +280,7 @@ trait CollectionTest extends IterableTest {
 
     val result = coll.toString()
     val expected = elements.permutations.map(_.mkString("[", ", ", "]")).toSet
-    assertTrue(s"result '${result}' not in expected set '${expected}'",
-        expected.contains(result))
+    assertTrue(s"result '${result}' not in expected set '${expected}'", expected.contains(result))
   }
 
 }

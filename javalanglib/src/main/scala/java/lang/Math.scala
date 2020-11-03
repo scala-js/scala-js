@@ -14,12 +14,12 @@ package java
 package lang
 
 import scala.scalajs.js
-import js.Dynamic.{ global => g }
+import js.Dynamic.{global => g}
 
 import scala.scalajs.runtime.linkingInfo
 
 object Math {
-  final val E  = 2.718281828459045
+  final val E = 2.718281828459045
   final val PI = 3.141592653589793
 
   @inline private def assumingES6: scala.Boolean =
@@ -119,7 +119,7 @@ object Math {
         var xi = pow(value, 0.3333333333333333)
 
         //Halley's Method (http://metamerist.com/cbrt/cbrt.htm)
-        while (abs(x - xi) >= 1E-16) {
+        while (abs(x - xi) >= 1e-16) {
           x = xi
           val x3 = js.Math.pow(x, 3)
           val x3Plusa = x3 + value
@@ -241,7 +241,7 @@ object Math {
         a
       // Power Series http://en.wikipedia.org/wiki/Power_series
       // for small values of a, exp(a) = 1 + a + (a*a)/2
-      else if (abs(a) < 1E-5)
+      else if (abs(a) < 1e-5)
         a + 0.5 * a * a
       else
         exp(a) - 1.0

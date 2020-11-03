@@ -15,8 +15,8 @@ package java.lang
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSExport
 
-class Throwable protected (s: String, private var e: Throwable,
-    enableSuppression: scala.Boolean, writableStackTrace: scala.Boolean)
+class Throwable protected (s: String, private var e: Throwable, enableSuppression: scala.Boolean,
+    writableStackTrace: scala.Boolean)
     extends Object with java.io.Serializable {
 
   def this(message: String, cause: Throwable) = this(message, cause, true, true)
@@ -102,7 +102,7 @@ class Throwable protected (s: String, private var e: Throwable,
     if (stackTrace.length != 0) {
       var i = 0
       while (i < stackTrace.length) {
-        sprintln("  at "+stackTrace(i))
+        sprintln("  at " + stackTrace(i))
         i += 1
       }
     } else {
@@ -127,7 +127,8 @@ class Throwable protected (s: String, private var e: Throwable,
          */
         var sameFrameCount: Int = 0
         while (sameFrameCount < thisLength && sameFrameCount < parentLength &&
-            thisTrace(thisLength-sameFrameCount-1) == parentTrace(parentLength-sameFrameCount-1)) {
+            thisTrace(thisLength - sameFrameCount - 1) == parentTrace(
+                parentLength - sameFrameCount - 1)) {
           sameFrameCount += 1
         }
 
@@ -141,7 +142,7 @@ class Throwable protected (s: String, private var e: Throwable,
         val lengthToPrint = thisLength - sameFrameCount
         var i = 0
         while (i < lengthToPrint) {
-          sprintln("  at "+thisTrace(i))
+          sprintln("  at " + thisTrace(i))
           i += 1
         }
 
@@ -210,15 +211,13 @@ class Throwable protected (s: String, private var e: Throwable,
 
 class ThreadDeath() extends Error()
 
-
 /* java.lang.*Error.java */
 
 class AbstractMethodError(s: String) extends IncompatibleClassChangeError(s) {
   def this() = this(null)
 }
 
-class AssertionError(message: String, cause: Throwable)
-    extends Error(message, cause) {
+class AssertionError(message: String, cause: Throwable) extends Error(message, cause) {
 
   def this() = this(null, null)
 
@@ -254,8 +253,8 @@ class ClassFormatError(s: String) extends LinkageError(s) {
   def this() = this(null)
 }
 
-class Error protected (s: String, e: Throwable,
-    enableSuppression: scala.Boolean, writableStackTrace: scala.Boolean)
+class Error protected (s: String, e: Throwable, enableSuppression: scala.Boolean,
+    writableStackTrace: scala.Boolean)
     extends Throwable(s, e, enableSuppression, writableStackTrace) {
   def this(message: String, cause: Throwable) = this(message, cause, true, true)
   def this() = this(null, null)
@@ -263,7 +262,8 @@ class Error protected (s: String, e: Throwable,
   def this(e: Throwable) = this(if (e == null) null else e.toString, e)
 }
 
-class ExceptionInInitializerError private (s: String, private val e: Throwable) extends LinkageError(s) {
+class ExceptionInInitializerError private (s: String, private val e: Throwable)
+    extends LinkageError(s) {
   def this(thrown: Throwable) = this(null, thrown)
   def this(s: String) = this(s, null)
   def this() = this(null, null)
@@ -338,7 +338,6 @@ abstract class VirtualMachineError(message: String, cause: Throwable)
     this(if (cause == null) null else cause.toString, cause)
 }
 
-
 /* java.lang.*Exception.java */
 
 class ArithmeticException(s: String) extends RuntimeException(s) {
@@ -358,7 +357,7 @@ class ClassCastException(s: String) extends RuntimeException(s) {
   def this() = this(null)
 }
 
-class ClassNotFoundException(s: String,  e: Throwable) extends ReflectiveOperationException(s) {
+class ClassNotFoundException(s: String, e: Throwable) extends ReflectiveOperationException(s) {
   def this(s: String) = this(s, null)
   def this() = this(null, null)
   def getException(): Throwable = e
@@ -375,8 +374,8 @@ class EnumConstantNotPresentException(e: Class[_ <: Enum[_]], c: String)
   def constantName(): String = c
 }
 
-class Exception protected (s: String, e: Throwable,
-    enableSuppression: scala.Boolean, writableStackTrace: scala.Boolean)
+class Exception protected (s: String, e: Throwable, enableSuppression: scala.Boolean,
+    writableStackTrace: scala.Boolean)
     extends Throwable(s, e, enableSuppression, writableStackTrace) {
   def this(message: String, cause: Throwable) = this(message, cause, true, true)
   def this(e: Throwable) = this(if (e == null) null else e.toString, e)
@@ -452,8 +451,8 @@ class RejectedExecutionException(s: String, e: Throwable) extends RuntimeExcepti
   def this() = this(null, null)
 }
 
-class RuntimeException protected (s: String, e: Throwable,
-    enableSuppression: scala.Boolean, writableStackTrace: scala.Boolean)
+class RuntimeException protected (s: String, e: Throwable, enableSuppression: scala.Boolean,
+    writableStackTrace: scala.Boolean)
     extends Exception(s, e, enableSuppression, writableStackTrace) {
   def this(message: String, cause: Throwable) = this(message, cause, true, true)
   def this(e: Throwable) = this(if (e == null) null else e.toString, e)
@@ -473,7 +472,7 @@ class StringIndexOutOfBoundsException(s: String) extends IndexOutOfBoundsExcepti
 }
 
 class TypeNotPresentException(t: String, e: Throwable)
-  extends RuntimeException("Type " + t + " not present", e) {
+    extends RuntimeException("Type " + t + " not present", e) {
   def typeName(): String = t
 }
 

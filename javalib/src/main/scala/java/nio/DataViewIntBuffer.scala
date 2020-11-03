@@ -14,8 +14,7 @@ package java.nio
 
 import scala.scalajs.js.typedarray._
 
-private[nio] final class DataViewIntBuffer private (
-    override private[nio] val _dataView: DataView,
+private[nio] final class DataViewIntBuffer private (override private[nio] val _dataView: DataView,
     _initialPosition: Int, _initialLimit: Int, _readOnly: Boolean,
     override private[nio] val isBigEndian: Boolean)
     extends IntBuffer(_dataView.byteLength / 4, null, -1) {
@@ -92,13 +91,12 @@ private[nio] final class DataViewIntBuffer private (
     _dataView.setInt32(4 * index, elem, !isBigEndian)
 
   @inline
-  override private[nio] def load(startIndex: Int,
-      dst: Array[Int], offset: Int, length: Int): Unit =
+  override private[nio] def load(startIndex: Int, dst: Array[Int], offset: Int, length: Int): Unit =
     GenBuffer(this).generic_load(startIndex, dst, offset, length)
 
   @inline
-  override private[nio] def store(startIndex: Int,
-      src: Array[Int], offset: Int, length: Int): Unit =
+  override private[nio] def store(startIndex: Int, src: Array[Int], offset: Int,
+      length: Int): Unit =
     GenBuffer(this).generic_store(startIndex, src, offset, length)
 }
 
@@ -107,11 +105,9 @@ private[nio] object DataViewIntBuffer {
       extends GenDataViewBuffer.NewDataViewBuffer[IntBuffer] {
     def bytesPerElem: Int = 4
 
-    def apply(dataView: DataView,
-        initialPosition: Int, initialLimit: Int,
-        readOnly: Boolean, isBigEndian: Boolean): IntBuffer = {
-      new DataViewIntBuffer(dataView,
-          initialPosition, initialLimit, readOnly, isBigEndian)
+    def apply(dataView: DataView, initialPosition: Int, initialLimit: Int, readOnly: Boolean,
+        isBigEndian: Boolean): IntBuffer = {
+      new DataViewIntBuffer(dataView, initialPosition, initialLimit, readOnly, isBigEndian)
     }
   }
 

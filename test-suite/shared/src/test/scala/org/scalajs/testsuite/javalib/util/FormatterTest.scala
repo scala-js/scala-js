@@ -80,8 +80,7 @@ class FormatterTest {
    * handle the width, the `-` flag and the precision as if the conversion were
    * `%s`. Notably, the precision truncates the string.
    */
-  def testWithNull(conversion: Char, flags: String,
-      acceptPrecision: Boolean = true,
+  def testWithNull(conversion: Char, flags: String, acceptPrecision: Boolean = true,
       acceptUpperCase: Boolean = true): Unit = {
 
     assertF("null", "%" + conversion, null)
@@ -105,54 +104,45 @@ class FormatterTest {
     }
   }
 
-  def expectFormatterThrows[T <: Throwable](exeption: Class[T], format: String,
-      args: Any*): T = {
+  def expectFormatterThrows[T <: Throwable](exeption: Class[T], format: String, args: Any*): T = {
     val fmt = new Formatter()
-    expectThrows(exeption,
-        fmt.format(format, args.asInstanceOf[Seq[AnyRef]]: _*))
+    expectThrows(exeption, fmt.format(format, args.asInstanceOf[Seq[AnyRef]]: _*))
   }
 
-  def expectFormatFlagsConversionMismatch(conversion: Char,
-      invalidFlags: String, arg: Any): Unit = {
+  def expectFormatFlagsConversionMismatch(conversion: Char, invalidFlags: String,
+      arg: Any): Unit = {
 
     for (flag <- invalidFlags) {
-      val e = expectFormatterThrows(
-          classOf[FormatFlagsConversionMismatchException],
+      val e = expectFormatterThrows(classOf[FormatFlagsConversionMismatchException],
           "%" + flag + conversion, arg)
       assertEquals(flag.toString, e.getFlags)
       assertEquals(conversion, e.getConversion)
     }
   }
 
-  def expectIllegalFormatFlags(format: String, flags: String,
-      arg: Any): Unit = {
-    val e = expectFormatterThrows(classOf[IllegalFormatFlagsException],
-        format, arg)
+  def expectIllegalFormatFlags(format: String, flags: String, arg: Any): Unit = {
+    val e = expectFormatterThrows(classOf[IllegalFormatFlagsException], format, arg)
     assertEquals(flags, e.getFlags)
   }
 
   def expectIllegalFormatPrecision(conversion: Char, arg: Any): Unit = {
-    val e = expectFormatterThrows(classOf[IllegalFormatPrecisionException],
-        "%.5" + conversion, arg)
+    val e = expectFormatterThrows(classOf[IllegalFormatPrecisionException], "%.5" + conversion, arg)
     assertEquals(5, e.getPrecision)
   }
 
   def expectIllegalFormatWidth(conversion: Char, arg: Any): Unit = {
-    val e = expectFormatterThrows(classOf[IllegalFormatWidthException],
-        "%5" + conversion, arg)
+    val e = expectFormatterThrows(classOf[IllegalFormatWidthException], "%5" + conversion, arg)
     assertEquals(5, e.getWidth)
   }
 
   def expectIllegalFormatConversion(conversion: Char, arg: Any): Unit = {
-    val e = expectFormatterThrows(classOf[IllegalFormatConversionException],
-        "%" + conversion, arg)
+    val e = expectFormatterThrows(classOf[IllegalFormatConversionException], "%" + conversion, arg)
     assertEquals(conversion, e.getConversion)
     assertEquals(arg.getClass, e.getArgumentClass)
   }
 
   def expectUnknownFormatConversion(format: String, conversion: Char): Unit = {
-    val e = expectFormatterThrows(classOf[UnknownFormatConversionException],
-        format, 1, 2, 3)
+    val e = expectFormatterThrows(classOf[UnknownFormatConversionException], format, 1, 2, 3)
     assertEquals(conversion.toString, e.getConversion)
   }
 
@@ -206,8 +196,8 @@ class FormatterTest {
 
     testWithNull('s', "")
 
-    expectFormatFlagsConversionMismatch('s',
-        if (executingInJVMOnJDK6) "+ 0,(" else "#+ 0,(", "hello")
+    expectFormatFlagsConversionMismatch('s', if (executingInJVMOnJDK6) "+ 0,(" else "#+ 0,(",
+        "hello")
   }
 
   @Test def sConversionWithFormattable(): Unit = {
@@ -268,8 +258,7 @@ class FormatterTest {
     expectFormatFlagsConversionMismatch('c', "#+ 0,(", 'A')
     expectIllegalFormatPrecision('c', 'A')
 
-    val e = expectFormatterThrows(classOf[IllegalFormatCodePointException],
-        "%c", 0x123456)
+    val e = expectFormatterThrows(classOf[IllegalFormatCodePointException], "%c", 0x123456)
     assertEquals(0x123456, e.getCodePoint)
   }
 
@@ -278,7 +267,6 @@ class FormatterTest {
     assertF("-5", "%d", -5)
     assertF("5", "%d", new BigInteger("5"))
     assertF("-5", "%d", new BigInteger("-5"))
-
 
     assertF("00005", "%05d", 5)
     assertF("  -10", "%5d", -10)
@@ -679,8 +667,7 @@ class FormatterTest {
   }
 
   @Test def indexTooLargeIsLikeUseLastIndex(): Unit = {
-    expectFormatterThrows(classOf[MissingFormatArgumentException],
-        "%9876543210$d", 56, 78)
+    expectFormatterThrows(classOf[MissingFormatArgumentException], "%9876543210$d", 56, 78)
 
     assertF("56 56", "%d %9876543210$d", 56, 78)
   }
@@ -706,8 +693,7 @@ class FormatterTest {
 
   @Test def should_fail_with_not_enough_arguments(): Unit = {
     expectFormatterThrows(classOf[MissingFormatArgumentException], "%f")
-    expectFormatterThrows(classOf[MissingFormatArgumentException], "%d%d%d",
-        1, 1)
+    expectFormatterThrows(classOf[MissingFormatArgumentException], "%d%d%d", 1, 1)
     expectFormatterThrows(classOf[MissingFormatArgumentException], "%10$d", 1)
   }
 }

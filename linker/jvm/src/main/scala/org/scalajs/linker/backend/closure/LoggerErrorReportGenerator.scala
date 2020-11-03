@@ -42,8 +42,8 @@ private[closure] final class LoggerErrorReportGenerator(logger: Logger)
       logger.info(msg)
   }
 
-  private def immutableListForeach[A](
-      list: com.google.common.collect.ImmutableList[A])(f: A => Unit): Unit = {
+  private def immutableListForeach[A](list: com.google.common.collect.ImmutableList[A])(
+      f: A => Unit): Unit = {
     list.forEach(new java.util.function.Consumer[A] {
       def accept(x: A): Unit = f(x)
     })

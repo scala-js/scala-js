@@ -30,11 +30,11 @@ import org.scalajs.linker.backend.javascript.{Printers, SourceMapWriter}
  *
  *  Simply emits the JavaScript without applying any further optimizations.
  */
-final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
-    extends LinkerBackendImpl(config) {
+final class BasicLinkerBackend(config: LinkerBackendImpl.Config) extends LinkerBackendImpl(config) {
 
   private[this] val emitter = {
-    val emitterConfig = Emitter.Config(config.commonConfig.coreSpec)
+    val emitterConfig = Emitter
+      .Config(config.commonConfig.coreSpec)
       .withInternalModulePattern(m => OutputPatternsImpl.moduleName(config.outputPatterns, m.id))
 
     new Emitter(emitterConfig)
@@ -71,8 +71,8 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
         val jsFileURI = OutputPatternsImpl.jsFileURI(config.outputPatterns, moduleID.id)
         val sourceMapURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)
 
-        val smWriter = new SourceMapWriter(sourceMapWriter, jsFileURI,
-            config.relativizeSourceMapBase)
+        val smWriter =
+          new SourceMapWriter(sourceMapWriter, jsFileURI, config.relativizeSourceMapBase)
 
         val printer = new Printers.JSTreePrinterWithSourceMap(jsFileWriter, smWriter)
 

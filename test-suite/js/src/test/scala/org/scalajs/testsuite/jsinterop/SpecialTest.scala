@@ -61,9 +61,8 @@ class SpecialTest {
     assertTrue(instanceof(date, ObjectCtor))
     assertTrue(instanceof(date, DateCtor))
 
-    val functionCtor: js.ThisFunction0[js.Dynamic, Unit] = {
-      (thiz: js.Dynamic) =>
-        thiz.foo = 5
+    val functionCtor: js.ThisFunction0[js.Dynamic, Unit] = { (thiz: js.Dynamic) =>
+      thiz.foo = 5
     }
     assertFalse(instanceof(obj, functionCtor))
     val bar = js.Dynamic.newInstance(functionCtor.asInstanceOf[js.Dynamic])()

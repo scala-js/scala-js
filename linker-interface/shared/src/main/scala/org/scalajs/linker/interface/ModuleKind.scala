@@ -22,10 +22,7 @@ object ModuleKind {
    *  They are listed in decreasing order of "importance", as judged by
    *  whoever maintains the back-ends.
    */
-  val All: List[ModuleKind] = List(
-      NoModule,
-      ESModule,
-      CommonJSModule)
+  val All: List[ModuleKind] = List(NoModule, ESModule, CommonJSModule)
 
   /** No module structure.
    *
@@ -49,8 +46,7 @@ object ModuleKind {
    */
   case object CommonJSModule extends ModuleKind
 
-  private[interface] implicit object ModuleKindFingerprint
-      extends Fingerprint[ModuleKind] {
+  private[interface] implicit object ModuleKindFingerprint extends Fingerprint[ModuleKind] {
 
     override def fingerprint(moduleKind: ModuleKind): String = {
       moduleKind match {

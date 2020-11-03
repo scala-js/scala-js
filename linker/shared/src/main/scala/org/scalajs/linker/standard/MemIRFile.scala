@@ -23,9 +23,7 @@ import org.scalajs.linker.interface.unstable.IRFileImpl
 
 /** A simple in-memory virtual serialized Scala.js IR file. */
 final class MemIRFileImpl(
-    path: String,
-    version: Option[String],
-    content: Array[Byte]
+    path: String, version: Option[String], content: Array[Byte]
 ) extends IRFileImpl(path, version) {
   def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] =
     withBuffer(ir.Serializers.deserializeEntryPointsInfo)
@@ -34,8 +32,7 @@ final class MemIRFileImpl(
     withBuffer(ir.Serializers.deserialize)
 
   @inline
-  private def withBuffer[A](f: ByteBuffer => A)(
-      implicit ec: ExecutionContext): Future[A] = {
+  private def withBuffer[A](f: ByteBuffer => A)(implicit ec: ExecutionContext): Future[A] = {
     val result = Future(f(ByteBuffer.wrap(content)))
     IRFileImpl.withPathExceptionContext(path, result)
   }

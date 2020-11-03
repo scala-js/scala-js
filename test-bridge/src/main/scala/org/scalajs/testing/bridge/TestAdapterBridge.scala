@@ -125,8 +125,8 @@ private[bridge] object TestAdapterBridge {
     def handle(event: Event): Unit = mux.send(JVMEndpoints.event, runID)(event)
   }
 
-  private class RemoteLogger(runID: RunMux.RunID, index: Int,
-      val ansiCodesSupported: Boolean) extends Logger {
+  private class RemoteLogger(runID: RunMux.RunID, index: Int, val ansiCodesSupported: Boolean)
+      extends Logger {
 
     import JVMEndpoints._
 

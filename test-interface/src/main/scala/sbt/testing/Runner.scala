@@ -111,11 +111,10 @@ trait Runner {
    */
   def done(): String
 
-  /**
-   * Remote args that will be passed to <code>Runner</code> in a sub-process as
-   * <em>remoteArgs</em>.
+  /** Remote args that will be passed to <code>Runner</code> in a sub-process as
+   *  <em>remoteArgs</em>.
    *
-   * @return an array of strings that will be passed to <code>Runner</code> in
+   *  @return an array of strings that will be passed to <code>Runner</code> in
    *         a sub-process as <code>remoteArgs</code>.
    */
   def remoteArgs(): Array[String]

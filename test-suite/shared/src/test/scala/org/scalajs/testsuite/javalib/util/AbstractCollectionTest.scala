@@ -53,8 +53,7 @@ object AbstractCollectionFactory {
     def iterator(): ju.Iterator[E] =
       new AbstractCollectionImplIterator(inner)
 
-    private final class AbstractCollectionImplIterator[E](
-        private var iterInner: Array[AnyRef])
+    private final class AbstractCollectionImplIterator[E](private var iterInner: Array[AnyRef])
         extends ju.Iterator[E] {
 
       private[this] var nextIndex: Int = 0

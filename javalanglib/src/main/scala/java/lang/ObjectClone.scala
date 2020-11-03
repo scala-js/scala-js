@@ -56,7 +56,8 @@ private[lang] object ObjectClone {
 
           // Polyfill for Reflect.ownKeys
           { (o: js.Object) =>
-            getOwnPropertyNames(o).asInstanceOf[js.Dynamic]
+            getOwnPropertyNames(o)
+              .asInstanceOf[js.Dynamic]
               .concat(getOwnPropertySymbols(o))
               .asInstanceOf[js.Array[js.Any]]
           }
@@ -76,7 +77,8 @@ private[lang] object ObjectClone {
            * except that `defineProperty` will by-pass any existing setter for
            * the property `key` on `descriptors` or in its prototype chain.
            */
-          global.Object.defineProperty(descriptors, key, new js.Object {
+          global.Object.defineProperty(descriptors, key,
+              new js.Object {
             val configurable = true
             val enumerable = true
             val writable = true

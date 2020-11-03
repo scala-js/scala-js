@@ -71,8 +71,7 @@ private[linker] object NodeFS {
 
   @JSImport("fs", "readdir")
   @js.native
-  def readdir(path: String, opts: ReadDirOpt.type,
-      cb: CB[js.Array[Dirent]]): Unit = js.native
+  def readdir(path: String, opts: ReadDirOpt.type, cb: CB[js.Array[Dirent]]): Unit = js.native
 
   @JSImport("fs", "readdir")
   @js.native

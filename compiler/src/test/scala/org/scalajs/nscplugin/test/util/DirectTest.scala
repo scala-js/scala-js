@@ -38,12 +38,9 @@ abstract class DirectTest {
   }
 
   def newScalaJSCompiler(args: String*): Global = {
-    val settings = newSettings(
-        List(
-            "-d", testOutputPath,
-            "-bootclasspath", scalaLibPath,
+    val settings = newSettings(List("-d", testOutputPath, "-bootclasspath", scalaLibPath,
             "-classpath", classpath.mkString(File.pathSeparator)) ++
-        extraArgs ++ args.toList)
+          extraArgs ++ args.toList)
 
     lazy val global: Global = new Global(settings, newReporter(settings)) {
       private implicit class PluginCompat(val plugin: Plugin) {
@@ -60,8 +57,7 @@ abstract class DirectTest {
 
       override lazy val plugins = {
         val scalaJSPlugin = newScalaJSPlugin(global)
-        scalaJSPlugin.init(scalaJSPlugin.options,
-            msg => throw new IllegalArgumentException(msg))
+        scalaJSPlugin.init(scalaJSPlugin.options, msg => throw new IllegalArgumentException(msg))
         scalaJSPlugin :: Nil
       }
     }
@@ -75,8 +71,8 @@ abstract class DirectTest {
   def newReporter(settings: Settings): ConsoleReporter =
     new ConsoleReporter(settings)
 
-  private def newSources(codes: String*) = codes.toList.zipWithIndex map {
-    case (src, idx) => new BatchSourceFile(s"newSource${idx + 1}.scala", src)
+  private def newSources(codes: String*) = codes.toList.zipWithIndex.map { case (src, idx) =>
+    new BatchSourceFile(s"newSource${idx + 1}.scala", src)
   }
 
   def withRun[T](global: Global)(f: global.Run => T): T = {
@@ -85,7 +81,7 @@ abstract class DirectTest {
   }
 
   def compileSources(global: Global)(sources: SourceFile*): Boolean = {
-    withRun(global)(_ compileSources sources.toList)
+    withRun(global)(_.compileSources(sources.toList))
     !global.reporter.hasErrors
   }
 

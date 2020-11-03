@@ -102,7 +102,7 @@ class BufferedReader(in: Reader, sz: Int) extends Reader {
       // Check whether we have a \r\n. This may overrun the buffer
       // and then push a value back which may unnecessarily invalidate
       // the mark. This mimics java behavior
-      if (buf(pos-1) == '\r' && prepareRead() && buf(pos) == '\n')
+      if (buf(pos - 1) == '\r' && prepareRead() && buf(pos) == '\n')
         pos += 1 // consume '\n'
 
       res

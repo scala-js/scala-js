@@ -35,8 +35,8 @@ class Base64Test {
   @Test def encodeToString(): Unit = {
     val results =
       for ((name, in, enc) <- encoders) yield (name -> enc.encodeToString(in))
-    assertEquals("calculated count doesn't match computed count",
-        encodedResults.length, results.size)
+    assertEquals("calculated count doesn't match computed count", encodedResults.length,
+        results.size)
     for (((name, enc), exp) <- results.zip(encodedResults))
       assertEquals(s"encodeToString doesn't match for: $name", exp, enc)
   }
@@ -44,11 +44,10 @@ class Base64Test {
   @Test def encodeOneArray(): Unit = {
     val results =
       for ((name, in, enc) <- encoders) yield (name -> enc.encode(in))
-    assertEquals("calculated count doesn't match computed count",
-        encodedResults.length, results.size)
+    assertEquals("calculated count doesn't match computed count", encodedResults.length,
+        results.size)
     for (((name, enc), exp) <- results.zip(encodedResults)) {
-      assertEquals(s"encode array doesn't match for: $name",
-          exp, new String(enc, ISO_8859_1))
+      assertEquals(s"encode array doesn't match for: $name", exp, new String(enc, ISO_8859_1))
     }
   }
 
@@ -56,12 +55,10 @@ class Base64Test {
     for (((name, in, enc), exp) <- encoders.zip(encodedResults)) {
       val dst = new Array[Byte](exp.length + 10) // array too big on purpose
       val written = enc.encode(in, dst)
-      assertEquals(s"number of written bytes doesn't match for: $name",
-          exp.length, written)
+      assertEquals(s"number of written bytes doesn't match for: $name", exp.length, written)
       val content = dst.slice(0, written)
       val rlt = new String(content, ISO_8859_1)
-      assertEquals(s"encode array into array doesn't match for: $name",
-          exp, rlt)
+      assertEquals(s"encode array into array doesn't match for: $name", exp, rlt)
     }
   }
 
@@ -76,8 +73,8 @@ class Base64Test {
   @Test def encodeByteBuffer(): Unit = {
     for (((name, in, enc), exp) <- encoders.zip(encodedResults)) {
       val result1 = enc.encode(ByteBuffer.wrap(in))
-      assertEquals(s"byte buffers don't match for: $name",
-          exp, new String(result1.array(), ISO_8859_1))
+      assertEquals(s"byte buffers don't match for: $name", exp,
+          new String(result1.array(), ISO_8859_1))
 
       val bb = ByteBuffer.allocate(in.length + 2)
       bb.position(2)
@@ -85,8 +82,8 @@ class Base64Test {
       bb.put(in)
       bb.reset()
       val result2 = enc.encode(bb)
-      assertEquals(s"byte buffers don't match for: $name",
-          exp, new String(result2.array(), ISO_8859_1))
+      assertEquals(s"byte buffers don't match for: $name", exp,
+          new String(result2.array(), ISO_8859_1))
     }
   }
 
@@ -98,8 +95,7 @@ class Base64Test {
       out.write(in, 1, in.length - 1)
       out.close()
       val result = new String(baos.toByteArray, ISO_8859_1)
-      assertEquals(s"output stream result doesn't match for: $name",
-          exp, result)
+      assertEquals(s"output stream result doesn't match for: $name", exp, result)
     }
   }
 
@@ -115,8 +111,7 @@ class Base64Test {
     out.write(input.getBytes)
     out.close()
     val result = new String(ba.toByteArray)
-    assertEquals("outputstream should be initialized correctly",
-        expected, result)
+    assertEquals("outputstream should be initialized correctly", expected, result)
   }
 
   @Test def encodeOutputStreamTooMuch(): Unit = {
@@ -138,11 +133,11 @@ class Base64Test {
   // --------------------------------------------------------------------------
 
   @Test def decodeFromString(): Unit = {
-    assertEquals("encoded data count doesn't match input count",
-        encoders.length, decodersAndInputs.length)
+    assertEquals("encoded data count doesn't match input count", encoders.length,
+        decodersAndInputs.length)
     for ((encoded, (decoder, in)) <- encodedResults.zip(decodersAndInputs)) {
-      assertArrayEquals(s"decoded doesn't match expected $encoded",
-          in.getBytes(ISO_8859_1), decoder.decode(encoded))
+      assertArrayEquals(s"decoded doesn't match expected $encoded", in.getBytes(ISO_8859_1),
+          decoder.decode(encoded))
     }
   }
 
@@ -150,8 +145,8 @@ class Base64Test {
     for ((encoded, (decoder, in)) <- encodedResults.zip(decodersAndInputs)) {
       val encodedBytes = encoded.getBytes(ISO_8859_1)
       val result = decoder.decode(encodedBytes)
-      assertEquals(s"decoded doesn't match expected for encoded $encoded",
-          in, new String(result, ISO_8859_1))
+      assertEquals(s"decoded doesn't match expected for encoded $encoded", in,
+          new String(result, ISO_8859_1))
     }
   }
 
@@ -161,8 +156,7 @@ class Base64Test {
       val encInBytes = encoded.getBytes(ISO_8859_1)
       val dec = decoder.decode(encInBytes, dst)
       assertEquals("decoded count doesn't match expected", in.length, dec)
-      assertArrayEquals("decoded array doesn't match expected",
-          in.getBytes(ISO_8859_1), dst)
+      assertArrayEquals("decoded array doesn't match expected", in.getBytes(ISO_8859_1), dst)
     }
   }
 
@@ -172,8 +166,8 @@ class Base64Test {
       val decoded = decoder.decode(bb)
       val array = new Array[Byte](decoded.limit)
       decoded.get(array)
-      assertArrayEquals("decoded byte buffer doesn't match expected",
-          in.getBytes(ISO_8859_1), array)
+      assertArrayEquals("decoded byte buffer doesn't match expected", in.getBytes(ISO_8859_1),
+          array)
     }
   }
 
@@ -194,8 +188,8 @@ class Base64Test {
       Base64.getUrlDecoder.decode(encoded)
     })
 
-    assertEquals("MIME encoder should allow illegals",
-        "Ma", new String(Base64.getMimeDecoder.decode(encoded), ISO_8859_1))
+    assertEquals("MIME encoder should allow illegals", "Ma",
+        new String(Base64.getMimeDecoder.decode(encoded), ISO_8859_1))
   }
 
   @Test def decodeIllegalLength(): Unit = {
@@ -222,8 +216,8 @@ class Base64Test {
       Base64.getUrlDecoder.decode(encoded)
     })
 
-    assertEquals("MIME encoder should allow illegal paddings",
-        "M", new String(Base64.getMimeDecoder.decode(encoded), ISO_8859_1))
+    assertEquals("MIME encoder should allow illegal paddings", "M",
+        new String(Base64.getMimeDecoder.decode(encoded), ISO_8859_1))
   }
 
   @Test def decodeInputStream(): Unit = {
@@ -234,8 +228,7 @@ class Base64Test {
       instream.read(read)
       while (instream.read() != -1) {} // read padding
       instream.close()
-      assertEquals("inputstream read value not as expected",
-          expected, new String(read, ISO_8859_1))
+      assertEquals("inputstream read value not as expected", expected, new String(read, ISO_8859_1))
     }
   }
 
@@ -259,8 +252,8 @@ class Base64Test {
     assumeFalse("JDK bug JDK-8176043", Platform.executingInJVM)
 
     val encoded = "TQ=*"
-    assertEquals("mime encoder should allow illegal paddings",
-        "M", decodeInputStream(mime, encoded))
+    assertEquals("mime encoder should allow illegal paddings", "M",
+        decodeInputStream(mime, encoded))
   }
 
   @Test def decodeBufferWithJustPaddingNonMime(): Unit = {
@@ -301,8 +294,8 @@ object Base64Test {
   private val input: Array[Byte] = {
     val text = {
       "Base64 is a group of similar binary-to-text encoding schemes that " +
-      "represent binary data in an ASCII string format by translating it " +
-      "into a radix-64 representation"
+        "represent binary data in an ASCII string format by translating it " +
+        "into a radix-64 representation"
     }
     text.getBytes(ISO_8859_1)
   }
@@ -334,7 +327,7 @@ object Base64Test {
   private val customEncPadding = {
     for ((delim, ll) <- lineDelimitersWithLineLengths) yield {
       (s"mime, padding, line length: $ll delimiters: $delim" ->
-          Base64.getMimeEncoder(ll, delim.getBytes))
+        Base64.getMimeEncoder(ll, delim.getBytes))
     }
   }
 

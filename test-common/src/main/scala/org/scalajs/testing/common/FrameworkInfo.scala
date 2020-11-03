@@ -14,9 +14,7 @@ package org.scalajs.testing.common
 
 import sbt.testing._
 
-private[testing] final class FrameworkInfo(
-    val implName: String,
-    val displayName: String,
+private[testing] final class FrameworkInfo(val implName: String, val displayName: String,
     val fingerprints: List[Fingerprint])
 
 private[testing] object FrameworkInfo {
@@ -28,8 +26,7 @@ private[testing] object FrameworkInfo {
     }
 
     def deserialize(in: Serializer.DeserializeState): FrameworkInfo = {
-      new FrameworkInfo(in.read[String](),
-          in.read[String](), in.read[List[Fingerprint]]())
+      new FrameworkInfo(in.read[String](), in.read[String](), in.read[List[Fingerprint]]())
     }
   }
 }

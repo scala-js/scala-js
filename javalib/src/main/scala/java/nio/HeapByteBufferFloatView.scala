@@ -12,11 +12,9 @@
 
 package java.nio
 
-private[nio] final class HeapByteBufferFloatView private (
-    _capacity: Int,
+private[nio] final class HeapByteBufferFloatView private (_capacity: Int,
     override private[nio] val _byteArray: Array[Byte],
-    override private[nio] val _byteArrayOffset: Int,
-    _initialPosition: Int, _initialLimit: Int,
+    override private[nio] val _byteArrayOffset: Int, _initialPosition: Int, _initialLimit: Int,
     _readOnly: Boolean, override private[nio] val isBigEndian: Boolean)
     extends FloatBuffer(_capacity, null, -1) {
 
@@ -90,11 +88,10 @@ private[nio] object HeapByteBufferFloatView {
       extends GenHeapBufferView.NewHeapBufferView[FloatBuffer] {
     def bytesPerElem: Int = 4
 
-    def apply(capacity: Int, byteArray: Array[Byte], byteArrayOffset: Int,
-        initialPosition: Int, initialLimit: Int, readOnly: Boolean,
-        isBigEndian: Boolean): FloatBuffer = {
-      new HeapByteBufferFloatView(capacity, byteArray, byteArrayOffset,
-          initialPosition, initialLimit, readOnly, isBigEndian)
+    def apply(capacity: Int, byteArray: Array[Byte], byteArrayOffset: Int, initialPosition: Int,
+        initialLimit: Int, readOnly: Boolean, isBigEndian: Boolean): FloatBuffer = {
+      new HeapByteBufferFloatView(capacity, byteArray, byteArrayOffset, initialPosition,
+          initialLimit, readOnly, isBigEndian)
     }
   }
 

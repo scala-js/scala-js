@@ -27,8 +27,9 @@ object JUnitTestPlatformImpl {
     if (tasks.isEmpty) {
       Future.successful(())
     } else {
-      Future.traverse(tasks.toList)(executeTask(_, recorder)).flatMap(
-          newTasks => executeLoop(newTasks.flatten.toArray, recorder))
+      Future
+        .traverse(tasks.toList)(executeTask(_, recorder))
+        .flatMap(newTasks => executeLoop(newTasks.flatten.toArray, recorder))
     }
   }
 

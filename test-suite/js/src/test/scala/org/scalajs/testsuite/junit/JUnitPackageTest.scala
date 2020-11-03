@@ -29,12 +29,10 @@ package Outer {
 
 class JUnitPackageTest {
   @Test def testOuterTransformation(): Unit = {
-    JUnitUtil.loadBootstrapper(
-      "org.scalajs.testsuite.junit.Outer.JUnitPackageTestOuter")
+    JUnitUtil.loadBootstrapper("org.scalajs.testsuite.junit.Outer.JUnitPackageTestOuter")
   }
 
   @Test def testInnerTransformation(): Unit = {
-    JUnitUtil.loadBootstrapper(
-      "org.scalajs.testsuite.junit.Outer.Inner.JUnitPackageTestInner")
+    JUnitUtil.loadBootstrapper("org.scalajs.testsuite.junit.Outer.Inner.JUnitPackageTestInner")
   }
 }

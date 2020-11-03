@@ -21,7 +21,7 @@ import java.{util => ju}
  * given that NPEs are undefined behavior in Scala.js.
  */
 class Hashtable[K, V] private (inner: ju.HashMap[K, V])
-    extends ju.Dictionary[K,V] with ju.Map[K, V] with Cloneable with Serializable {
+    extends ju.Dictionary[K, V] with ju.Map[K, V] with Cloneable with Serializable {
 
   def this() =
     this(new ju.HashMap[K, V]())

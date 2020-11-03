@@ -18,8 +18,7 @@ import java.util.ScalaOps._
 
 import scala.scalajs.js
 
-abstract class Charset protected (canonicalName: String,
-    private val _aliases: Array[String])
+abstract class Charset protected (canonicalName: String, private val _aliases: Array[String])
     extends AnyRef with Comparable[Charset] {
 
   private lazy val aliasesSet =
@@ -49,15 +48,17 @@ abstract class Charset protected (canonicalName: String,
   def canEncode(): Boolean = true
 
   private lazy val cachedDecoder = {
-    this.newDecoder()
-        .onMalformedInput(CodingErrorAction.REPLACE)
-        .onUnmappableCharacter(CodingErrorAction.REPLACE)
+    this
+      .newDecoder()
+      .onMalformedInput(CodingErrorAction.REPLACE)
+      .onUnmappableCharacter(CodingErrorAction.REPLACE)
   }
 
   private lazy val cachedEncoder = {
-    this.newEncoder()
-        .onMalformedInput(CodingErrorAction.REPLACE)
-        .onUnmappableCharacter(CodingErrorAction.REPLACE)
+    this
+      .newEncoder()
+      .onMalformedInput(CodingErrorAction.REPLACE)
+      .onUnmappableCharacter(CodingErrorAction.REPLACE)
   }
 
   final def decode(bb: ByteBuffer): CharBuffer =

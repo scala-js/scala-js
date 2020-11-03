@@ -23,8 +23,7 @@ class JUnitMixinTest extends JUnitMixinTestTrait
 
 class JUnitMixinTestCheck {
   @Test def jUnitMixinTest(): Unit = {
-    val boot = JUnitUtil.loadBootstrapper(
-        "org.scalajs.testsuite.junit.JUnitMixinTest")
+    val boot = JUnitUtil.loadBootstrapper("org.scalajs.testsuite.junit.JUnitMixinTest")
     try {
       boot.invokeTest(boot.newInstance(), "mixinTest")
     } catch {

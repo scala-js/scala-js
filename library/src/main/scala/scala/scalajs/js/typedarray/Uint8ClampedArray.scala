@@ -21,8 +21,7 @@ import scala.scalajs.js.annotation._
  */
 @js.native
 @JSGlobal
-class Uint8ClampedArray private[this] ()
-    extends TypedArray[Int, Uint8ClampedArray] {
+class Uint8ClampedArray private[this] () extends TypedArray[Int, Uint8ClampedArray] {
 
   /** Constructs a Uint8ClampedArray with the given length. Initialized to all 0 */
   def this(length: Int) = this()

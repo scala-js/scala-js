@@ -31,7 +31,7 @@ object Traversers {
       // Control flow constructs
 
       case Block(stats) =>
-        stats foreach traverse
+        stats.foreach(traverse)
 
       case Labeled(label, tpe, body) =>
         traverse(body)
@@ -73,13 +73,13 @@ object Traversers {
 
       case Match(selector, cases, default) =>
         traverse(selector)
-        cases foreach (c => (c._1 map traverse, traverse(c._2)))
+        cases.foreach(c => (c._1.map(traverse), traverse(c._2)))
         traverse(default)
 
       // Scala expressions
 
       case New(_, _, args) =>
-        args foreach traverse
+        args.foreach(traverse)
 
       case StoreModule(_, value) =>
         traverse(value)
@@ -89,14 +89,14 @@ object Traversers {
 
       case Apply(_, receiver, _, args) =>
         traverse(receiver)
-        args foreach traverse
+        args.foreach(traverse)
 
       case ApplyStatically(_, receiver, _, _, args) =>
         traverse(receiver)
-        args foreach traverse
+        args.foreach(traverse)
 
       case ApplyStatic(_, _, _, args) =>
-        args foreach traverse
+        args.foreach(traverse)
 
       case UnaryOp(op, lhs) =>
         traverse(lhs)
@@ -106,10 +106,10 @@ object Traversers {
         traverse(rhs)
 
       case NewArray(tpe, lengths) =>
-        lengths foreach traverse
+        lengths.foreach(traverse)
 
       case ArrayValue(tpe, elems) =>
-        elems foreach traverse
+        elems.foreach(traverse)
 
       case ArrayLength(array) =>
         traverse(array)
@@ -119,7 +119,7 @@ object Traversers {
         traverse(index)
 
       case RecordValue(tpe, elems) =>
-        elems foreach traverse
+        elems.foreach(traverse)
 
       case RecordSelect(record, field) =>
         traverse(record)
@@ -209,9 +209,9 @@ object Traversers {
 
       // Trees that need not be traversed
 
-      case _:Skip | _:Debugger | _:LoadModule | _:SelectStatic | _:SelectJSNativeMember |
-          _:LoadJSConstructor | _:LoadJSModule | _:JSLinkingInfo | _:Literal |
-          _:VarRef | _:This | _:JSGlobalRef | _:Transient =>
+      case _: Skip | _: Debugger | _: LoadModule | _: SelectStatic | _: SelectJSNativeMember |
+          _: LoadJSConstructor | _: LoadJSModule | _: JSLinkingInfo | _: Literal | _: VarRef |
+          _: This | _: JSGlobalRef | _: Transient =>
     }
 
     def traverseClassDef(tree: ClassDef): Unit = {
@@ -222,7 +222,7 @@ object Traversers {
 
     def traverseMemberDef(memberDef: MemberDef): Unit = {
       memberDef match {
-        case _:AnyFieldDef | _:JSNativeMemberDef =>
+        case _: AnyFieldDef | _: JSNativeMemberDef =>
 
         case MethodDef(_, _, _, _, _, body) =>
           body.foreach(traverse)
@@ -238,8 +238,7 @@ object Traversers {
 
     def traverseTopLevelExportDef(exportDef: TopLevelExportDef): Unit = {
       exportDef match {
-        case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef |
-            _:TopLevelFieldExportDef =>
+        case _: TopLevelJSClassExportDef | _: TopLevelModuleExportDef | _: TopLevelFieldExportDef =>
 
         case TopLevelMethodExportDef(_, methodDef) =>
           traverseMemberDef(methodDef)

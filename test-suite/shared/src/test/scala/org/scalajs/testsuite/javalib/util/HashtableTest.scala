@@ -209,11 +209,9 @@ class HashtableTest {
     ht.put(1, 4)
     assertCollSameElementsAsSet[ju.Map.Entry[Int, Int]](SIE(1, 4))(entrySet)
     ht.put(2, 5)
-    assertCollSameElementsAsSet[ju.Map.Entry[Int, Int]](SIE(1, 4), SIE(2, 5))(
-        entrySet)
+    assertCollSameElementsAsSet[ju.Map.Entry[Int, Int]](SIE(1, 4), SIE(2, 5))(entrySet)
     ht.put(3, 6)
-    assertCollSameElementsAsSet[ju.Map.Entry[Int, Int]](SIE(1, 4), SIE(2, 5),
-        SIE(3, 6))(entrySet)
+    assertCollSameElementsAsSet[ju.Map.Entry[Int, Int]](SIE(1, 4), SIE(2, 5), SIE(3, 6))(entrySet)
 
     // Directly test the iterator, including its mutation capabilities
 

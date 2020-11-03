@@ -46,8 +46,7 @@ class OptimizerTest {
    *  Check that `clone()` is never inlined when the result can be an array,
    *  in several scenarios.
    */
-  private def testCloneOnArrayNotInlinedGeneric(
-      customMemberDefs: List[MemberDef]): Future[Unit] = {
+  private def testCloneOnArrayNotInlinedGeneric(customMemberDefs: List[MemberDef]): Future[Unit] = {
 
     val thisFoo = This()(ClassType("Foo"))
     val intArrayTypeRef = ArrayTypeRef(IntRef, 1)
@@ -64,70 +63,75 @@ class OptimizerTest {
 
     val fooMemberDefs = List(
         trivialCtor("Foo"),
-
         // @noinline def witness(): AnyRef = throw null
-        MethodDef(EMF, witnessMethodName, NON, Nil, AnyType, Some {
+        MethodDef(EMF, witnessMethodName, NON, Nil, AnyType,
+            Some {
           Throw(Null())
         })(EOH.withNoinline(true), None),
-
         // @noinline def reachClone(): Object = clone()
-        MethodDef(EMF, reachCloneMethodName, NON, Nil, AnyType, Some {
+        MethodDef(EMF, reachCloneMethodName, NON, Nil, AnyType,
+            Some {
           Apply(EAF, thisFoo, cloneMethodName, Nil)(AnyType)
         })(EOH.withNoinline(true), None),
-
         // @noinline def anArray(): Array[Int] = Array(1)
-        MethodDef(EMF, anArrayMethodName, NON, Nil, intArrayType, Some {
+        MethodDef(EMF, anArrayMethodName, NON, Nil, intArrayType,
+            Some {
           anArrayOfInts
         })(EOH.withNoinline(true), None),
-
         // @noinline def anObject(): AnyRef = Array(1)
-        MethodDef(EMF, anObjectMethodName, NON, Nil, AnyType, Some {
+        MethodDef(EMF, anObjectMethodName, NON, Nil, AnyType,
+            Some {
           anArrayOfInts
         })(EOH.withNoinline(true), None)
     ) ::: customMemberDefs
 
     val classDefs = Seq(
-        classDef("Foo",
-            superClass = Some(ObjectClass),
-            interfaces = List("java.lang.Cloneable"),
-            memberDefs = fooMemberDefs
-        ),
-        mainTestClassDef(Block(
-            // new Foo().reachClone() -- make Foo.clone() reachable for sure
-            Apply(EAF, newFoo, reachCloneMethodName, Nil)(AnyType),
-            // Array(1).clone() -- test with an exact static type of I[]
-            callCloneOn(anArrayOfInts),
-            // new Foo().anArray().clone() -- test with a static type of I[]
-            callCloneOn(Apply(EAF, newFoo, anArrayMethodName, Nil)(intArrayType)),
-            // new Foo().anObject().clone() -- test with a static type of Object
-            callCloneOn(Apply(EAF, newFoo, anObjectMethodName, Nil)(AnyType))
-        ))
+        classDef("Foo", superClass = Some(ObjectClass), interfaces = List("java.lang.Cloneable"),
+            memberDefs = fooMemberDefs),
+        mainTestClassDef(
+            Block(
+                // new Foo().reachClone() -- make Foo.clone() reachable for sure
+                Apply(EAF, newFoo, reachCloneMethodName, Nil)(AnyType),
+                // Array(1).clone() -- test with an exact static type of I[]
+                callCloneOn(anArrayOfInts),
+                // new Foo().anArray().clone() -- test with a static type of I[]
+                callCloneOn(Apply(EAF, newFoo, anArrayMethodName, Nil)(intArrayType)),
+                // new Foo().anObject().clone() -- test with a static type of Object
+                callCloneOn(Apply(EAF, newFoo, anObjectMethodName, Nil)(AnyType))
+            ))
     )
 
     for (moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers)) yield {
-      val linkedClass = moduleSet.modules.flatMap(_.classDefs)
-        .find(_.className == MainTestClassName).get
+      val linkedClass = moduleSet.modules
+        .flatMap(_.classDefs)
+        .find(_.className == MainTestClassName)
+        .get
       val ObjectCloneClass = ClassName("java.lang.ObjectClone$")
-      linkedClass.hasNot("any call to Foo.witness()") {
-        case Apply(_, receiver, MethodIdent(`witnessMethodName`), _) =>
-          receiver.tpe == ClassType("Foo")
-      }.hasNot("any reference to ObjectClone") {
-        case LoadModule(ObjectCloneClass) => true
-      }.hasExactly(3, "calls to clone()") {
-        case Apply(_, _, MethodIdent(`cloneMethodName`), _) => true
-      }
+      linkedClass
+        .hasNot("any call to Foo.witness()") {
+          case Apply(_, receiver, MethodIdent(`witnessMethodName`), _) =>
+            receiver.tpe == ClassType("Foo")
+        }
+        .hasNot("any reference to ObjectClone") { case LoadModule(ObjectCloneClass) =>
+          true
+        }
+        .hasExactly(3, "calls to clone()") { case Apply(_, _, MethodIdent(`cloneMethodName`), _) =>
+          true
+        }
     }
   }
 
   /** Never inline the `clone()` method of arrays. */
   @Test
   def testCloneOnArrayNotInlined_issue3778(): AsyncResult = await {
-    testCloneOnArrayNotInlinedGeneric(List(
-        // @inline override def clone(): AnyRef = witness()
-        MethodDef(EMF, cloneMethodName, NON, Nil, AnyType, Some {
-          Apply(EAF, This()(ClassType("Foo")), witnessMethodName, Nil)(AnyType)
-        })(EOH.withInline(true), None)
-    ))
+    testCloneOnArrayNotInlinedGeneric(
+        List(
+            // @inline override def clone(): AnyRef = witness()
+            MethodDef(EMF, cloneMethodName, NON, Nil, AnyType,
+                Some {
+              Apply(EAF, This()(ClassType("Foo")), witnessMethodName, Nil)(AnyType)
+            })(EOH.withInline(true), None)
+        ))
   }
 
   /** Never inline the `clone()` method of arrays, even when the only
@@ -143,16 +147,18 @@ class OptimizerTest {
    */
   @Test
   def testCloneOnArrayNotInlined_issue3778_ObjectCloneAndAnotherClone(): AsyncResult = await {
-    testCloneOnArrayNotInlinedGeneric(List(
-        // @inline override def clone(): AnyRef = witness()
-        MethodDef(EMF, cloneMethodName, NON, Nil, AnyType, Some {
-          Block(
-              Apply(EAF, This()(ClassType("Foo")), witnessMethodName, Nil)(AnyType),
-              ApplyStatically(EAF, This()(ClassType("Foo")),
-                  ObjectClass, cloneMethodName, Nil)(AnyType)
-          )
-        })(EOH.withInline(true), None)
-    ))
+    testCloneOnArrayNotInlinedGeneric(
+        List(
+            // @inline override def clone(): AnyRef = witness()
+            MethodDef(EMF, cloneMethodName, NON, Nil, AnyType,
+                Some {
+              Block(
+                  Apply(EAF, This()(ClassType("Foo")), witnessMethodName, Nil)(AnyType),
+                  ApplyStatically(EAF, This()(ClassType("Foo")), ObjectClass, cloneMethodName, Nil)(
+                      AnyType)
+              )
+            })(EOH.withInline(true), None)
+        ))
   }
 
   /** Makes sure that a hello world does not need java.lang.Class after
@@ -166,9 +172,10 @@ class OptimizerTest {
         })
     )
 
-    for (moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers, TestIRRepo.fulllib)) yield {
-      assertFalse(moduleSet.modules.flatMap(_.classDefs).exists(_.className == ClassClass))
-    }
+    for (moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers, TestIRRepo.fulllib))
+      yield {
+        assertFalse(moduleSet.modules.flatMap(_.classDefs).exists(_.className == ClassClass))
+      }
   }
 
   @Test
@@ -183,13 +190,13 @@ class OptimizerTest {
             memberDefs = List(
                 trivialCtor(MainTestClassName),
                 // static var foo: java.lang.String
-                FieldDef(EMF.withNamespace(PublicStatic).withMutable(true),
-                    "foo", NON, StringType),
+                FieldDef(EMF.withNamespace(PublicStatic).withMutable(true), "foo", NON, StringType),
                 // static def foo(): java.lang.String = Test::foo
-                MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
-                    fooGetter, NON, Nil, StringType, Some({
-                      SelectStatic(MainTestClassName, "foo")(StringType)
-                    }))(EOH, None),
+                MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic), fooGetter, NON, Nil,
+                    StringType,
+                    Some({
+                  SelectStatic(MainTestClassName, "foo")(StringType)
+                }))(EOH, None),
                 // static def main(args: String[]) { println(Test::foo()) }
                 mainMethodDef({
                   consoleLog(ApplyStatic(EAF, MainTestClassName, fooGetter, Nil)(StringType))
@@ -199,8 +206,10 @@ class OptimizerTest {
     )
 
     for (moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers)) yield {
-      val mainClassDef = moduleSet.modules.flatMap(_.classDefs)
-        .find(_.className == MainTestClassName).get
+      val mainClassDef = moduleSet.modules
+        .flatMap(_.classDefs)
+        .find(_.className == MainTestClassName)
+        .get
       assertTrue(mainClassDef.fields.exists {
         case FieldDef(_, FieldIdent(name), _, _) => name == FieldName("foo")
         case _                                   => false
@@ -209,68 +218,75 @@ class OptimizerTest {
   }
 
   @Test
-  def testOptimizerDoesNotEliminateRequiredLabeledBlockEmittedByDotty_issue4171(): AsyncResult = await {
-    /* For the following source code:
-     *
-     * (null: Any) match {
-     *   case (_: Int) | (_: String) =>
-     * }
-     *
-     * the dotty compiler generates the following IR:
-     *
-     * matchResult1: {
-     *   val x1: any = null;
-     *   matchAlts1: {
-     *     matchAlts2: {
-     *       if (x1.isInstanceOf[java.lang.Integer]) {
-     *         return@matchAlts2 (void 0)
-     *       };
-     *       if (x1.isInstanceOf[java.lang.String]) {
-     *         return@matchAlts2 (void 0)
-     *       };
-     *       return@matchAlts1 (void 0)
-     *     };
-     *     return@matchResult1 (void 0)
-     *   };
-     *   throw new scala.MatchError().<init>;Ljava.lang.Object;V(x1)
-     * }
-     *
-     * The optimizer used to erroneously get rid of the `matchAlts1` labeled
-     * block, although it could not remove the `return@matchAlts1`. This led to
-     * a crash in the Emitter.
-     *
-     * This test reproduces that exact IR by hand, and verifies that the
-     * optimized code can be linked all the way to the Emitter.
-     */
+  def testOptimizerDoesNotEliminateRequiredLabeledBlockEmittedByDotty_issue4171(): AsyncResult =
+    await {
+      /* For the following source code:
+       *
+       * (null: Any) match {
+       *   case (_: Int) | (_: String) =>
+       * }
+       *
+       * the dotty compiler generates the following IR:
+       *
+       * matchResult1: {
+       *   val x1: any = null;
+       *   matchAlts1: {
+       *     matchAlts2: {
+       *       if (x1.isInstanceOf[java.lang.Integer]) {
+       *         return@matchAlts2 (void 0)
+       *       };
+       *       if (x1.isInstanceOf[java.lang.String]) {
+       *         return@matchAlts2 (void 0)
+       *       };
+       *       return@matchAlts1 (void 0)
+       *     };
+       *     return@matchResult1 (void 0)
+       *   };
+       *   throw new scala.MatchError().<init>;Ljava.lang.Object;V(x1)
+       * }
+       *
+       * The optimizer used to erroneously get rid of the `matchAlts1` labeled
+       * block, although it could not remove the `return@matchAlts1`. This led to
+       * a crash in the Emitter.
+       *
+       * This test reproduces that exact IR by hand, and verifies that the
+       * optimized code can be linked all the way to the Emitter.
+       */
 
-    val matchResult1 = LabelIdent("matchResult1")
-    val x1 = LocalIdent("x1")
-    val matchAlts1 = LabelIdent("matchAlts1")
-    val matchAlts2 = LabelIdent("matchAlts2")
+      val matchResult1 = LabelIdent("matchResult1")
+      val x1 = LocalIdent("x1")
+      val matchAlts1 = LabelIdent("matchAlts1")
+      val matchAlts2 = LabelIdent("matchAlts2")
 
-    val classDefs = Seq(
-        mainTestClassDef(Block(
-            Labeled(matchResult1, NoType, Block(
-                VarDef(x1, NON, AnyType, mutable = false, Null()),
-                Labeled(matchAlts1, NoType, Block(
-                    Labeled(matchAlts2, NoType, Block(
-                        If(IsInstanceOf(VarRef(x1)(AnyType), ClassType(BoxedIntegerClass)), {
-                          Return(Undefined(), matchAlts2)
-                        }, Skip())(NoType),
-                        If(IsInstanceOf(VarRef(x1)(AnyType), ClassType(BoxedStringClass)), {
-                          Return(Undefined(), matchAlts2)
-                        }, Skip())(NoType),
-                        Return(Undefined(), matchAlts1)
-                    )),
-                    Return(Undefined(), matchResult1)
-                )),
-                Throw(New("java.lang.Exception", NoArgConstructorName, Nil))
-            ))
-        ))
-    )
+      val classDefs = Seq(
+          mainTestClassDef(
+              Block(
+                  Labeled(matchResult1, NoType,
+                      Block(
+                          VarDef(x1, NON, AnyType, mutable = false, Null()),
+                          Labeled(matchAlts1, NoType,
+                              Block(
+                                  Labeled(matchAlts2, NoType,
+                                      Block(
+                                          If(IsInstanceOf(VarRef(x1)(AnyType),
+                                                  ClassType(BoxedIntegerClass)), {
+                                Return(Undefined(), matchAlts2)
+                              }, Skip())(NoType),
+                                          If(IsInstanceOf(VarRef(x1)(AnyType),
+                                                  ClassType(BoxedStringClass)), {
+                                Return(Undefined(), matchAlts2)
+                              }, Skip())(NoType),
+                                          Return(Undefined(), matchAlts1)
+                                      )),
+                                  Return(Undefined(), matchResult1)
+                              )),
+                          Throw(New("java.lang.Exception", NoArgConstructorName, Nil))
+                      ))
+              ))
+      )
 
-    testLink(classDefs, MainTestModuleInitializers)
-  }
+      testLink(classDefs, MainTestModuleInitializers)
+    }
 
 }
 
@@ -278,8 +294,7 @@ object OptimizerTest {
   private val cloneMethodName = m("clone", Nil, O)
   private val witnessMethodName = m("witness", Nil, O)
 
-  private final class StoreModuleSetLinkerBackend(
-      originalBackend: LinkerBackend)
+  private final class StoreModuleSetLinkerBackend(originalBackend: LinkerBackend)
       extends LinkerBackend {
 
     @volatile
@@ -304,16 +319,14 @@ object OptimizerTest {
     }
   }
 
-  def linkToModuleSet(classDefs: Seq[ClassDef],
-      moduleInitializers: List[ModuleInitializer])(
+  def linkToModuleSet(classDefs: Seq[ClassDef], moduleInitializers: List[ModuleInitializer])(
       implicit ec: ExecutionContext): Future[ModuleSet] = {
 
     linkToModuleSet(classDefs, moduleInitializers, TestIRRepo.minilib)
   }
 
-  def linkToModuleSet(classDefs: Seq[ClassDef],
-      moduleInitializers: List[ModuleInitializer], stdlib: Future[Seq[IRFile]])(
-      implicit ec: ExecutionContext): Future[ModuleSet] = {
+  def linkToModuleSet(classDefs: Seq[ClassDef], moduleInitializers: List[ModuleInitializer],
+      stdlib: Future[Seq[IRFile]])(implicit ec: ExecutionContext): Future[ModuleSet] = {
 
     val config = StandardConfig()
     val frontend = StandardLinkerFrontend(config)
@@ -323,11 +336,13 @@ object OptimizerTest {
     val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
     val output = MemOutputDirectory()
 
-    stdlib.flatMap { stdLibFiles =>
-      linker.link(stdLibFiles ++ classDefsFiles, moduleInitializers,
-          output, new ScalaConsoleLogger(Level.Error))
-    }.map { _ =>
-      backend.moduleSet
-    }
+    stdlib
+      .flatMap { stdLibFiles =>
+        linker.link(stdLibFiles ++ classDefsFiles, moduleInitializers, output,
+            new ScalaConsoleLogger(Level.Error))
+      }
+      .map { _ =>
+        backend.moduleSet
+      }
   }
 }

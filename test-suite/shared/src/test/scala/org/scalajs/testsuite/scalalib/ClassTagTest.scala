@@ -97,8 +97,7 @@ class ClassTagTest {
   }
 
   @Test def classTagBasedPatternMatchingOfPrimitives(): Unit = {
-    assumeFalse(
-        "ClassTag.unapply only deals correctly with primitives since 2.11.2",
+    assumeFalse("ClassTag.unapply only deals correctly with primitives since 2.11.2",
         scalaVersion == "2.11.0" || scalaVersion == "2.11.1")
 
     def test[A: ClassTag](x: Any): Boolean = x match {

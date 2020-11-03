@@ -18,8 +18,7 @@ import org.junit.Assert._
 import org.scalajs.junit.utils._
 
 class ExceptionInConstructorTest {
-  throw new UnsupportedOperationException(
-      "Exception while constructing the test class")
+  throw new UnsupportedOperationException("Exception while constructing the test class")
 
   @Before def before(): Unit =
     throw new IllegalStateException("before() must not be called")

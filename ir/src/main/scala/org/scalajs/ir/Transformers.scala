@@ -57,8 +57,7 @@ object Transformers {
           Return(transformExpr(expr), label)
 
         case If(cond, thenp, elsep) =>
-          If(transformExpr(cond), transform(thenp, isStat),
-              transform(elsep, isStat))(tree.tpe)
+          If(transformExpr(cond), transform(thenp, isStat), transform(elsep, isStat))(tree.tpe)
 
         case While(cond, body) =>
           While(transformExpr(cond), transformStat(body))
@@ -67,8 +66,7 @@ object Transformers {
           DoWhile(transformStat(body), transformExpr(cond))
 
         case ForIn(obj, keyVar, keyVarOriginalName, body) =>
-          ForIn(transformExpr(obj), keyVar, keyVarOriginalName,
-              transformStat(body))
+          ForIn(transformExpr(obj), keyVar, keyVarOriginalName, transformStat(body))
 
         case TryCatch(block, errVar, errVarOriginalName, handler) =>
           TryCatch(transform(block, isStat), errVar, errVarOriginalName,
@@ -81,14 +79,13 @@ object Transformers {
           Throw(transformExpr(expr))
 
         case Match(selector, cases, default) =>
-          Match(transformExpr(selector),
-              cases map (c => (c._1, transform(c._2, isStat))),
+          Match(transformExpr(selector), cases.map(c => (c._1, transform(c._2, isStat))),
               transform(default, isStat))(tree.tpe)
 
         // Scala expressions
 
         case New(className, ctor, args) =>
-          New(className, ctor, args map transformExpr)
+          New(className, ctor, args.map(transformExpr))
 
         case StoreModule(className, value) =>
           StoreModule(className, transformExpr(value))
@@ -97,15 +94,14 @@ object Transformers {
           Select(transformExpr(qualifier), className, field)(tree.tpe)
 
         case Apply(flags, receiver, method, args) =>
-          Apply(flags, transformExpr(receiver), method,
-              args map transformExpr)(tree.tpe)
+          Apply(flags, transformExpr(receiver), method, args.map(transformExpr))(tree.tpe)
 
         case ApplyStatically(flags, receiver, className, method, args) =>
           ApplyStatically(flags, transformExpr(receiver), className, method,
-              args map transformExpr)(tree.tpe)
+              args.map(transformExpr))(tree.tpe)
 
         case ApplyStatic(flags, className, method, args) =>
-          ApplyStatic(flags, className, method, args map transformExpr)(tree.tpe)
+          ApplyStatic(flags, className, method, args.map(transformExpr))(tree.tpe)
 
         case UnaryOp(op, lhs) =>
           UnaryOp(op, transformExpr(lhs))
@@ -114,10 +110,10 @@ object Transformers {
           BinaryOp(op, transformExpr(lhs), transformExpr(rhs))
 
         case NewArray(tpe, lengths) =>
-          NewArray(tpe, lengths map transformExpr)
+          NewArray(tpe, lengths.map(transformExpr))
 
         case ArrayValue(tpe, elems) =>
-          ArrayValue(tpe, elems map transformExpr)
+          ArrayValue(tpe, elems.map(transformExpr))
 
         case ArrayLength(array) =>
           ArrayLength(transformExpr(array))
@@ -126,7 +122,7 @@ object Transformers {
           ArraySelect(transformExpr(array), transformExpr(index))(tree.tpe)
 
         case RecordValue(tpe, elems) =>
-          RecordValue(tpe, elems map transformExpr)
+          RecordValue(tpe, elems.map(transformExpr))
 
         case RecordSelect(record, field) =>
           RecordSelect(transformExpr(record), field)(tree.tpe)
@@ -162,12 +158,11 @@ object Transformers {
               args.map(transformExprOrJSSpread))
 
         case JSSuperSelect(superClass, qualifier, item) =>
-          JSSuperSelect(superClass, transformExpr(qualifier),
-              transformExpr(item))
+          JSSuperSelect(superClass, transformExpr(qualifier), transformExpr(item))
 
         case JSSuperMethodCall(superClass, receiver, method, args) =>
-          JSSuperMethodCall(superClass, transformExpr(receiver),
-              transformExpr(method), args.map(transformExprOrJSSpread))
+          JSSuperMethodCall(superClass, transformExpr(receiver), transformExpr(method),
+              args.map(transformExprOrJSSpread))
 
         case JSSuperConstructorCall(args) =>
           JSSuperConstructorCall(args.map(transformExprOrJSSpread))
@@ -206,9 +201,9 @@ object Transformers {
 
         // Trees that need not be transformed
 
-        case _:Skip | _:Debugger | _:LoadModule | _:SelectStatic | _:SelectJSNativeMember |
-            _:LoadJSConstructor | _:LoadJSModule  | _:JSLinkingInfo |
-            _:Literal | _:VarRef | _:This | _:JSGlobalRef | _:Transient  =>
+        case _: Skip | _: Debugger | _: LoadModule | _: SelectStatic | _: SelectJSNativeMember |
+            _: LoadJSConstructor | _: LoadJSModule | _: JSLinkingInfo | _: Literal | _: VarRef |
+            _: This | _: JSGlobalRef | _: Transient =>
           tree
       }
     }
@@ -217,55 +212,46 @@ object Transformers {
   abstract class ClassTransformer extends Transformer {
     def transformClassDef(tree: ClassDef): ClassDef = {
       import tree._
-      ClassDef(name, originalName, kind, jsClassCaptures, superClass,
-          interfaces, jsSuperClass.map(transformExpr), jsNativeLoadSpec,
-          memberDefs.map(transformMemberDef),
-          topLevelExportDefs.map(transformTopLevelExportDef))(
-          tree.optimizerHints)(tree.pos)
+      ClassDef(name, originalName, kind, jsClassCaptures, superClass, interfaces,
+          jsSuperClass.map(transformExpr), jsNativeLoadSpec, memberDefs.map(transformMemberDef),
+          topLevelExportDefs.map(transformTopLevelExportDef))(tree.optimizerHints)(tree.pos)
     }
 
     def transformMemberDef(memberDef: MemberDef): MemberDef = {
       implicit val pos = memberDef.pos
 
       memberDef match {
-        case _:AnyFieldDef | _:JSNativeMemberDef =>
+        case _: AnyFieldDef | _: JSNativeMemberDef =>
           memberDef
 
         case memberDef: MethodDef =>
           val MethodDef(flags, name, originalName, args, resultType, body) = memberDef
           val newBody = body.map(transform(_, isStat = resultType == NoType))
-          MethodDef(flags, name, originalName, args, resultType, newBody)(
-              memberDef.optimizerHints, None)
+          MethodDef(flags, name, originalName, args, resultType, newBody)(memberDef.optimizerHints,
+              None)
 
         case memberDef: JSMethodDef =>
           val JSMethodDef(flags, name, args, body) = memberDef
-          JSMethodDef(flags, name, args, transformExpr(body))(
-              memberDef.optimizerHints, None)
+          JSMethodDef(flags, name, args, transformExpr(body))(memberDef.optimizerHints, None)
 
         case JSPropertyDef(flags, name, getterBody, setterArgAndBody) =>
-          JSPropertyDef(
-              flags,
-              name,
-              getterBody.map(transformStat),
-              setterArgAndBody map { case (arg, body) =>
-                (arg, transformStat(body))
-              })
+          JSPropertyDef(flags, name, getterBody.map(transformStat),
+              setterArgAndBody.map { case (arg, body) =>
+            (arg, transformStat(body))
+          })
       }
     }
 
-    def transformTopLevelExportDef(
-        exportDef: TopLevelExportDef): TopLevelExportDef = {
+    def transformTopLevelExportDef(exportDef: TopLevelExportDef): TopLevelExportDef = {
 
       implicit val pos = exportDef.pos
 
       exportDef match {
-        case _:TopLevelJSClassExportDef | _:TopLevelModuleExportDef |
-            _:TopLevelFieldExportDef =>
+        case _: TopLevelJSClassExportDef | _: TopLevelModuleExportDef | _: TopLevelFieldExportDef =>
           exportDef
 
         case TopLevelMethodExportDef(moduleID, methodDef) =>
-          TopLevelMethodExportDef(moduleID,
-              transformMemberDef(methodDef).asInstanceOf[JSMethodDef])
+          TopLevelMethodExportDef(moduleID, transformMemberDef(methodDef).asInstanceOf[JSMethodDef])
       }
     }
   }

@@ -13,12 +13,10 @@
 package org.scalajs.nscplugin
 
 import scala.tools.nsc._
-import scala.tools.nsc.plugins.{
-  Plugin => NscPlugin, PluginComponent => NscPluginComponent
-}
-import scala.collection.{ mutable, immutable }
+import scala.tools.nsc.plugins.{Plugin => NscPlugin, PluginComponent => NscPluginComponent}
+import scala.collection.{mutable, immutable}
 
-import java.net.{ URI, URISyntaxException }
+import java.net.{URI, URISyntaxException}
 
 import org.scalajs.ir.Trees
 
@@ -136,7 +134,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
               error(s"${e.getInput} is not a valid URI")
           }
         }
-      // The following options are deprecated (how do we show this to the user?)
+        // The following options are deprecated (how do we show this to the user?)
       } else if (option.startsWith("relSourceMap:")) {
         val uriStr = option.stripPrefix("relSourceMap:")
         try { relSourceMap = Some(new URI(uriStr)) }
@@ -156,11 +154,13 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
 
     // Verify constraints
     if (_sourceURIMaps.nonEmpty && relSourceMap.isDefined)
-      error("You may not use mapSourceURI and relSourceMap together. " +
-          "Use another mapSourceURI option without second URI.")
+      error(
+          "You may not use mapSourceURI and relSourceMap together. " +
+            "Use another mapSourceURI option without second URI.")
     else if (_sourceURIMaps.nonEmpty && absSourceMap.isDefined)
-      error("You may not use mapSourceURI and absSourceMap together. " +
-          "Use another mapSourceURI option.")
+      error(
+          "You may not use mapSourceURI and absSourceMap together. " +
+            "Use another mapSourceURI option.")
     else if (absSourceMap.isDefined && relSourceMap.isEmpty)
       error("absSourceMap requires the use of relSourceMap")
 

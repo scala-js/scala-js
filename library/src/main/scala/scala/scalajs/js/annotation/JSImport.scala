@@ -71,11 +71,11 @@ class JSImport private () extends scala.annotation.StaticAnnotation {
    *  When linking without module support, this is equivalent to
    *  `@JSGlobal(globalFallback)`.
    */
-  def this(module: String, name: JSImport.Namespace.type,
-      globalFallback: String) = this()
+  def this(module: String, name: JSImport.Namespace.type, globalFallback: String) = this()
 }
 
 object JSImport {
+
   /** Use as the `name` of a `JSImport` to use the default import.
    *
    *  The actual value of this constant, the string `"default"`, is not

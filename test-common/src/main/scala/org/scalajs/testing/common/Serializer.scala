@@ -27,13 +27,11 @@ private[testing] object Serializer {
    * In the future we might want to deduplicate things like package prefixes,
    * since a lot of data seems to be redundant.
    */
-  final class SerializeState private[Serializer](val out: DataOutputStream)
-      extends AnyVal {
+  final class SerializeState private[Serializer] (val out: DataOutputStream) extends AnyVal {
     def write[T](t: T)(implicit s: Serializer[T]): Unit = s.serialize(t, this)
   }
 
-  final class DeserializeState private[Serializer](val in: DataInputStream)
-      extends AnyVal {
+  final class DeserializeState private[Serializer] (val in: DataInputStream) extends AnyVal {
     def read[T]()(implicit s: Serializer[T]): T = s.deserialize(this)
   }
 
@@ -69,7 +67,7 @@ private[testing] object Serializer {
     try body(dataOut)
     finally dataOut.close()
 
-    new String(byteOut.toByteArray.map(b => (b & 0xFF).toChar))
+    new String(byteOut.toByteArray.map(b => (b & 0xff).toChar))
   }
 
   implicit object BooleanSerializer extends Serializer[Boolean] {
@@ -137,8 +135,8 @@ private[testing] object Serializer {
     }
 
     def deserialize(in: DeserializeState): StackTraceElement = {
-      new StackTraceElement(in.read[String](), in.read[String](),
-          in.read[Option[String]]().orNull, in.read[Int]())
+      new StackTraceElement(in.read[String](), in.read[String](), in.read[Option[String]]().orNull,
+          in.read[Int]())
     }
   }
 
@@ -182,8 +180,7 @@ private[testing] object Serializer {
         out.write(fp.superclassName())
         out.write(fp.requireNoArgConstructor())
       case _ =>
-        throw new IllegalArgumentException(
-            s"Unknown Fingerprint type: ${fp.getClass()}")
+        throw new IllegalArgumentException(s"Unknown Fingerprint type: ${fp.getClass()}")
     }
 
     def deserialize(in: DeserializeState): Fingerprint = in.read[Byte]() match {
@@ -234,8 +231,7 @@ private[testing] object Serializer {
         out.write(sel.testWildcard())
 
       case _ =>
-        throw new IllegalArgumentException(
-            s"Unknown Selector type: ${sel.getClass()}")
+        throw new IllegalArgumentException(s"Unknown Selector type: ${sel.getClass()}")
     }
 
     def deserialize(in: DeserializeState): Selector = in.read[Byte]() match {

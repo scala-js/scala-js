@@ -5,8 +5,7 @@ package org.junit
 
 import java.lang.annotation._
 
-class Test(val expected: Class[_ <: Throwable],
-    val timeout: Long)
+class Test(val expected: Class[_ <: Throwable], val timeout: Long)
     extends scala.annotation.StaticAnnotation with Annotation {
 
   def this(expected: Class[_ <: Throwable]) = this(expected, 0L)

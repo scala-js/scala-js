@@ -61,36 +61,35 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
   private final class CacheImpl extends IRFileCacheImpl.Cache {
     private[this] var localCache: Seq[PersistedFiles] = _
 
-    def cached(files: Seq[IRContainer])(
-        implicit ec: ExecutionContext): Future[Seq[IRFile]] = {
+    def cached(files: Seq[IRContainer])(implicit ec: ExecutionContext): Future[Seq[IRFile]] = {
       update(files)
       Future.traverse(localCache)(_.files).map(_.flatten)
     }
 
-    private def update(files: Seq[IRContainer])(
-        implicit ec: ExecutionContext): Unit = clearOnThrow {
-      val result = Seq.newBuilder[PersistedFiles]
+    private def update(files: Seq[IRContainer])(implicit ec: ExecutionContext): Unit =
+      clearOnThrow {
+        val result = Seq.newBuilder[PersistedFiles]
 
-      for (stableFile <- files) {
-        val file = IRContainerImpl.fromIRContainer(stableFile)
+        for (stableFile <- files) {
+          val file = IRContainerImpl.fromIRContainer(stableFile)
 
-        @tailrec
-        def putContents(): PersistedFiles = {
-          val contents =
-            globalCache.computeIfAbsent(file.path, new PersistedFiles(_))
+          @tailrec
+          def putContents(): PersistedFiles = {
+            val contents =
+              globalCache.computeIfAbsent(file.path, new PersistedFiles(_))
 
-          if (contents.reference()) contents
-          else putContents()
+            if (contents.reference()) contents
+            else putContents()
+          }
+
+          val contents = putContents()
+          contents.update(file)
+          result += contents
         }
 
-        val contents = putContents()
-        contents.update(file)
-        result += contents
+        free()
+        localCache = result.result()
       }
-
-      free()
-      localCache = result.result()
-    }
 
     def free(): Unit = {
       if (localCache != null) {
@@ -215,7 +214,8 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
   }
 
   private final class PersistentIRFile(private[this] var _irFile: IRFileImpl)(
-      implicit ec: ExecutionContext) extends IRFileImpl(_irFile.path, _irFile.version) {
+      implicit ec: ExecutionContext)
+      extends IRFileImpl(_irFile.path, _irFile.version) {
 
     @volatile
     private[this] var _tree: Future[ClassDef] = null
@@ -257,8 +257,8 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
    */
   @inline
   private def performIO[T](v: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
-    clearOnThrow(ioThrottler.throttle(v)).andThen {
-      case Failure(_) => globalCache.clear()
+    clearOnThrow(ioThrottler.throttle(v)).andThen { case Failure(_) =>
+      globalCache.clear()
     }
   }
 
@@ -276,14 +276,12 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
 
 object StandardIRFileCache {
   final class Stats private[StandardIRFileCache] (
-      val reused: Int,
-      val invalidated: Int,
-      val treesRead: Int
+      val reused: Int, val invalidated: Int, val treesRead: Int
   ) extends IRFileCacheImpl.Stats {
     def logLine: String = {
       s"reused: $reused -- " +
-      s"invalidated: $invalidated -- " +
-      s"trees read: $treesRead"
+        s"invalidated: $invalidated -- " +
+        s"trees read: $treesRead"
     }
   }
 }

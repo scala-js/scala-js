@@ -104,8 +104,7 @@ package object js {
   def constructorOf[T <: js.Any]: js.Dynamic = throw new java.lang.Error("stub")
 
   /** Makes explicit an implicitly available [[js.ConstructorTag]]. */
-  def constructorTag[T <: js.Any](
-      implicit tag: js.ConstructorTag[T]): js.ConstructorTag[T] = {
+  def constructorTag[T <: js.Any](implicit tag: js.ConstructorTag[T]): js.ConstructorTag[T] = {
     tag
   }
 
@@ -136,9 +135,9 @@ package object js {
   def native: Nothing = {
     throw new java.lang.Error(
         "A method defined in a native JavaScript type of a Scala.js library " +
-        "has been called. This is most likely because you tried to run " +
-        "Scala.js binaries on the JVM. Make sure you are using the JVM " +
-        "version of the libraries.")
+          "has been called. This is most likely because you tried to run " +
+          "Scala.js binaries on the JVM. Make sure you are using the JVM " +
+          "version of the libraries.")
   }
 
 }

@@ -56,7 +56,7 @@ class StringReaderTest {
     val buf = new Array[Char](10)
 
     assertEquals(4, r.read(buf, 2, 8))
-    assertArrayEquals(buf.map(_.toInt), Array[Int](0,0,'a','s','d','f',0,0,0,0))
+    assertArrayEquals(buf.map(_.toInt), Array[Int](0, 0, 'a', 's', 'd', 'f', 0, 0, 0, 0))
     assertEquals(-1, r.read(buf, 2, 8)) // #1560
   }
 
@@ -71,8 +71,10 @@ class StringReaderTest {
     assertEquals(4, r.read(buf))
     assertEquals(8, buf.position())
     buf.flip()
-    assertArrayEquals(buf.toString().map(_.toInt).toArray,
-        Array[Int](0, 0, 0, 0, 'a', 's', 'd', 'f'))
+    assertArrayEquals(
+        buf.toString().map(_.toInt).toArray,
+        Array[Int](0, 0, 0, 0, 'a', 's', 'd', 'f')
+    )
   }
 
   @Test def should_provide_ready(): Unit = {
@@ -216,7 +218,7 @@ class BufferedReaderTest {
       assertTrue(len > 0)
 
       for (i <- 0 until len)
-        assertEquals(str.charAt(i+read), buf(i))
+        assertEquals(str.charAt(i + read), buf(i))
 
       read += len
     }
@@ -234,7 +236,7 @@ class BufferedReaderTest {
       assertTrue(len < 11)
 
       for (i <- 0 until len)
-        assertEquals(str.charAt(i+read), buf(i+1))
+        assertEquals(str.charAt(i + read), buf(i + 1))
 
       read += len
     }
@@ -248,7 +250,7 @@ class BufferedReaderTest {
     r.mark(10)
 
     for (i <- 0 until 10) {
-      assertEquals(str.charAt(i+1): Int, r.read())
+      assertEquals(str.charAt(i + 1): Int, r.read())
     }
 
     r.reset()
@@ -306,11 +308,10 @@ class InputStreamReaderTest {
 
   @Test def should_read_UTF8(): Unit = {
 
-    val buf = Array[Byte](72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100,
-        46, -29, -127, -109, -29, -126, -109, -29, -127, -85, -29, -127, -95,
-        -29, -127, -81, -26, -105, -91, -26, -100, -84, -24, -86, -98, -29,
-        -126, -110, -24, -86, -83, -29, -126, -127, -29, -127, -66, -29, -127,
-        -103, -29, -127, -117, -29, -128, -126)
+    val buf = Array[Byte](72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100, 46, -29, -127, -109,
+        -29, -126, -109, -29, -127, -85, -29, -127, -95, -29, -127, -81, -26, -105, -91, -26, -100,
+        -84, -24, -86, -98, -29, -126, -110, -24, -86, -83, -29, -126, -127, -29, -127, -66, -29,
+        -127, -103, -29, -127, -117, -29, -128, -126)
 
     val r = new InputStreamReader(new ByteArrayInputStream(buf))
 

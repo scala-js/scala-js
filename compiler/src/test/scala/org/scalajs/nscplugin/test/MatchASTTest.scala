@@ -30,8 +30,7 @@ class MatchASTTest extends JSASTTest {
         case "b" => false
       }
     }
-    """.hasExactly(1, "local variable") {
-      case js.VarDef(_, _, _, _, _) =>
+    """.hasExactly(1, "local variable") { case js.VarDef(_, _, _, _, _) =>
     }
   }
 
@@ -44,8 +43,7 @@ class MatchASTTest extends JSASTTest {
         case "b" =>
       }
     }
-    """.hasExactly(1, "local variable") {
-      case js.VarDef(_, _, _, _, _) =>
+    """.hasExactly(1, "local variable") { case js.VarDef(_, _, _, _, _) =>
     }
   }
 
@@ -59,8 +57,7 @@ class MatchASTTest extends JSASTTest {
         case n           => -n
       }
     }
-    """.hasNot("any match") {
-      case js.Match(_, _, _) =>
+    """.hasNot("any match") { case js.Match(_, _, _) =>
     }
   }
 
@@ -73,8 +70,7 @@ class MatchASTTest extends JSASTTest {
         case n  => n
       }
     }
-    """.hasNot("any match") {
-      case js.Match(_, _, _) =>
+    """.hasNot("any match") { case js.Match(_, _, _) =>
     }
   }
 

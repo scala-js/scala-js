@@ -20,8 +20,7 @@ import org.scalajs.ir.Position
 import org.scalajs.linker.backend.javascript.Trees._
 
 private[emitter] object TreeDSL {
-  implicit class TreeOps private[TreeDSL] (private val self: Tree)
-      extends AnyVal {
+  implicit class TreeOps private[TreeDSL] (private val self: Tree) extends AnyVal {
 
     /** Select a member */
     def DOT(field: Ident)(implicit pos: Position): DotSelect =
@@ -106,7 +105,7 @@ private[emitter] object TreeDSL {
     def :=(that: Tree)(implicit pos: Position): Tree =
       Assign(self, that)
 
-    def prototype(implicit pos: Position): Tree = self DOT "prototype"
+    def prototype(implicit pos: Position): Tree = self.DOT("prototype")
   }
 
   def typeof(expr: Tree)(implicit pos: Position): Tree =

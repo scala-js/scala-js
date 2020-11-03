@@ -20,8 +20,7 @@ import scala.scalajs.js
 /** Wrapper to use a js.Map as a scala.mutable.Map */
 @inline
 final class WrappedMap[K, V](private val underlying: js.Map[K, V])
-    extends mutable.AbstractMap[K, V]
-    with mutable.Map[K, V]
+    extends mutable.AbstractMap[K, V] with mutable.Map[K, V]
     with mutable.MapLike[K, V, js.WrappedMap[K, V]] {
 
   import WrappedMap._
@@ -75,7 +74,8 @@ object WrappedMap {
   def empty[K, A]: js.WrappedMap[K, A] =
     new js.WrappedMap[K, A](js.Map.empty)
 
-  implicit def canBuildFrom[K, A]: CanBuildFrom[js.WrappedMap[K, A], (K, A), js.WrappedMap[K, A]] = {
+  implicit def canBuildFrom[
+      K, A]: CanBuildFrom[js.WrappedMap[K, A], (K, A), js.WrappedMap[K, A]] = {
     new CanBuildFrom[js.WrappedMap[K, A], (K, A), js.WrappedMap[K, A]] {
       def apply(from: js.WrappedMap[K, A]): Builder[(K, A), js.WrappedMap[K, A]] =
         new WrappedMapBuilder[K, A]
@@ -84,8 +84,7 @@ object WrappedMap {
     }
   }
 
-  private final class WrappedMapBuilder[K, A]
-      extends Builder[(K, A), js.WrappedMap[K, A]] {
+  private final class WrappedMapBuilder[K, A] extends Builder[(K, A), js.WrappedMap[K, A]] {
 
     private[this] var map: js.Map[K, A] = js.Map.empty
 

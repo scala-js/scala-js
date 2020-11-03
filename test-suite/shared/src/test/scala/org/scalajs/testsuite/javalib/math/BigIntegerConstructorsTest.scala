@@ -533,8 +533,8 @@ class BigIntegerConstructorsTest {
   @Test def testConstructorStringRadix36(): Unit = {
     val value = "skdjgocvhdjfkl20jndjkf347ejg457"
     val radix = 36
-    val rBytes = Array(0, -12, -116, 112, -105, 12, -36, 66, 108, 66, -20,
-        -37, -15, 108, -7, 52, -99, -109, -8, -45, -5)
+    val rBytes = Array(0, -12, -116, 112, -105, 12, -36, 66, 108, 66, -20, -37, -15, 108, -7, 52,
+        -99, -109, -8, -45, -5)
     val aNumber = new BigInteger(value, radix)
     var resBytes = Array.ofDim[Byte](rBytes.length)
     resBytes = aNumber.toByteArray()

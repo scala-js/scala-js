@@ -52,38 +52,28 @@ class IRCheckerTest {
     val classDefs = Seq(
         // LFoo will be dropped by base linking
         classDef("Foo", superClass = Some(ObjectClass)),
-
-        classDef("Bar",
-            superClass = Some(ObjectClass),
+        classDef("Bar", superClass = Some(ObjectClass),
             memberDefs = List(
                 trivialCtor("Bar"),
-
                 /* This method is called, but unreachable because there are no
                  * instances of `Bar`. It will therefore not make `Foo` reachable.
                  */
-                MethodDef(EMF, methMethodName, NON,
-                    List(paramDef("foo", ClassType("Foo"))), NoType,
-                    Some(Skip()))(
-                    EOH, None)
-            )
-        ),
-
-        classDef(MainTestClassName,
-            superClass = Some(ObjectClass),
+                MethodDef(EMF, methMethodName, NON, List(paramDef("foo", ClassType("Foo"))), NoType,
+                    Some(Skip()))(EOH, None)
+            )),
+        classDef(MainTestClassName, superClass = Some(ObjectClass),
             memberDefs = List(
                 trivialCtor(MainTestClassName),
-                MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
-                    nullBarMethodName, NON, Nil, ClassType("Bar"),
-                    Some(Null()))(
-                    EOH, None),
-                mainMethodDef(Block(
-                    callMethOn(ApplyStatic(EAF, MainTestClassName,
-                        nullBarMethodName, Nil)(ClassType("Bar"))),
-                    callMethOn(Null()),
-                    callMethOn(Throw(Null()))
-                ))
-            )
-        )
+                MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic), nullBarMethodName, NON,
+                    Nil, ClassType("Bar"), Some(Null()))(EOH, None),
+                mainMethodDef(
+                    Block(
+                        callMethOn(ApplyStatic(EAF, MainTestClassName, nullBarMethodName, Nil)(
+                                ClassType("Bar"))),
+                        callMethOn(Null()),
+                        callMethOn(Throw(Null()))
+                    ))
+            ))
     )
 
     testLinkNoIRError(classDefs, mainModuleInitializers("Test"))
@@ -99,73 +89,56 @@ class IRCheckerTest {
     val babarMethodName = MethodName("babar", List(IntRef), IntRef)
 
     val callPrimaryCtorBody: Tree = {
-      ApplyStatically(EAF.withConstructor(true), This()(FooType),
-          FooClass, NoArgConstructorName, Nil)(NoType)
+      ApplyStatically(EAF.withConstructor(true), This()(FooType), FooClass, NoArgConstructorName,
+          Nil)(NoType)
     }
 
     def babarMethodBody(paramName: String): Tree = {
-      BinaryOp(BinaryOp.Int_+,
-          Select(This()(FooType), FooClass, "foobar")(IntType),
+      BinaryOp(BinaryOp.Int_+, Select(This()(FooType), FooClass, "foobar")(IntType),
           VarRef(paramName)(IntType))
     }
 
     val classDefs = Seq(
-        classDef("Foo",
-            superClass = Some(ObjectClass),
+        classDef("Foo", superClass = Some(ObjectClass),
             memberDefs = List(
                 trivialCtor("Foo"),
-
                 // Duplicate fields
-
                 FieldDef(EMF, "foobar", NON, IntType),
                 FieldDef(EMF, "foobar", NON, BoxedStringType),
-
                 // Duplicate constructors
-
-                MethodDef(EMF.withNamespace(MemberNamespace.Constructor),
-                    stringCtorName, NON, List(paramDef("x", BoxedStringType)),
-                    NoType, Some(callPrimaryCtorBody))(
-                    EOH, None),
-
-                MethodDef(EMF.withNamespace(MemberNamespace.Constructor),
-                    stringCtorName, NON, List(paramDef("y", BoxedStringType)),
-                    NoType, Some(callPrimaryCtorBody))(
-                    EOH, None),
-
+                MethodDef(EMF.withNamespace(MemberNamespace.Constructor), stringCtorName, NON,
+                    List(paramDef("x", BoxedStringType)), NoType, Some(callPrimaryCtorBody))(EOH,
+                    None),
+                MethodDef(EMF.withNamespace(MemberNamespace.Constructor), stringCtorName, NON,
+                    List(paramDef("y", BoxedStringType)), NoType, Some(callPrimaryCtorBody))(EOH,
+                    None),
                 // Duplicate methods
-
-                MethodDef(EMF, babarMethodName, NON, List(paramDef("x", IntType)),
-                    IntType, Some(babarMethodBody("x")))(
-                    EOH, None),
-
-                MethodDef(EMF, babarMethodName, NON, List(paramDef("y", IntType)),
-                    IntType, Some(babarMethodBody("y")))(
-                    EOH, None)
-            )
-        ),
-
-        mainTestClassDef(Block(
-            VarDef("foo", NON, FooType, mutable = false,
-                New(FooClass, stringCtorName, List(StringLiteral("hello")))),
-            Apply(EAF, VarRef("foo")(FooType), babarMethodName, List(int(5)))(IntType)
-        ))
+                MethodDef(EMF, babarMethodName, NON, List(paramDef("x", IntType)), IntType,
+                    Some(babarMethodBody("x")))(EOH, None),
+                MethodDef(EMF, babarMethodName, NON, List(paramDef("y", IntType)), IntType,
+                    Some(babarMethodBody("y")))(EOH, None)
+            )),
+        mainTestClassDef(
+            Block(
+                VarDef("foo", NON, FooType, mutable = false,
+                    New(FooClass, stringCtorName, List(StringLiteral("hello")))),
+                Apply(EAF, VarRef("foo")(FooType), babarMethodName, List(int(5)))(IntType)
+            ))
     )
 
     for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
+      assertContainsLogLine("Duplicate definition of field 'foobar' in class 'Foo'", log)
       assertContainsLogLine(
-          "Duplicate definition of field 'foobar' in class 'Foo'", log)
-      assertContainsLogLine(
-          "Duplicate definition of constructor method '<init>(java.lang.String)void' in class 'Foo'", log)
-      assertContainsLogLine(
-          "Duplicate definition of method 'babar(int)int' in class 'Foo'", log)
+          "Duplicate definition of constructor method '<init>(java.lang.String)void' in class 'Foo'",
+          log)
+      assertContainsLogLine("Duplicate definition of method 'babar(int)int' in class 'Foo'", log)
     }
   }
 
 }
 
 object IRCheckerTest {
-  def testLinkNoIRError(classDefs: Seq[ClassDef],
-      moduleInitializers: List[ModuleInitializer])(
+  def testLinkNoIRError(classDefs: Seq[ClassDef], moduleInitializers: List[ModuleInitializer])(
       implicit ec: ExecutionContext): Future[Unit] = {
     link(classDefs, moduleInitializers, new ScalaConsoleLogger(Level.Error))
   }
@@ -173,15 +146,13 @@ object IRCheckerTest {
   def assertContainsLogLine(expected: String, log: List[String]): Unit = {
     assertTrue(
         s"expected a log line containing '$expected', but got " +
-        log.mkString("\n  ", "\n  ", ""),
-        containsLogLine(expected, log))
+          log.mkString("\n  ", "\n  ", ""), containsLogLine(expected, log))
   }
 
   def containsLogLine(expected: String, log: List[String]): Boolean =
     log.exists(_.contains(expected))
 
-  def testLinkIRErrors(classDefs: Seq[ClassDef],
-      moduleInitializers: List[ModuleInitializer])(
+  def testLinkIRErrors(classDefs: Seq[ClassDef], moduleInitializers: List[ModuleInitializer])(
       implicit ec: ExecutionContext): Future[List[String]] = {
 
     val logBuilder = List.newBuilder[String]
@@ -197,16 +168,16 @@ object IRCheckerTest {
     }
 
     // We cannot use `transform` because of 2.11.
-    link(classDefs, moduleInitializers, ErrorLogger).failed.recoverWith {
-      case _: NoSuchElementException =>
+    link(classDefs, moduleInitializers, ErrorLogger).failed
+      .recoverWith { case _: NoSuchElementException =>
         Future.failed(new AssertionError("IR checking did not fail"))
-    }.map { _ =>
-      logBuilder.result()
-    }
+      }
+      .map { _ =>
+        logBuilder.result()
+      }
   }
 
-  private def link(classDefs: Seq[ClassDef],
-      moduleInitializers: List[ModuleInitializer],
+  private def link(classDefs: Seq[ClassDef], moduleInitializers: List[ModuleInitializer],
       logger: Logger)(implicit ec: ExecutionContext): Future[Unit] = {
     val config = StandardConfig()
       .withCheckIR(true)
@@ -217,13 +188,15 @@ object IRCheckerTest {
       .factory("IRCheckerTest")
       .none()
 
-    TestIRRepo.minilib.flatMap { stdLibFiles =>
-      val irFiles = (
-          stdLibFiles ++
-          classDefs.map(MemClassDefIRFile(_))
-      )
+    TestIRRepo.minilib
+      .flatMap { stdLibFiles =>
+        val irFiles = (
+            stdLibFiles ++
+              classDefs.map(MemClassDefIRFile(_))
+        )
 
-      linkerFrontend.link(irFiles, moduleInitializers, noSymbolRequirements, logger)
-    }.map(_ => ())
+        linkerFrontend.link(irFiles, moduleInitializers, noSymbolRequirements, logger)
+      }
+      .map(_ => ())
   }
 }

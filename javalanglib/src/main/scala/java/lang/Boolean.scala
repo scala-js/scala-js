@@ -17,8 +17,7 @@ import scala.scalajs.js
 /* This is a hijacked class. Its instances are primitive booleans.
  * Constructors are not emitted.
  */
-final class Boolean private ()
-    extends AnyRef with java.io.Serializable with Comparable[Boolean] {
+final class Boolean private () extends AnyRef with java.io.Serializable with Comparable[Boolean] {
 
   def this(value: scala.Boolean) = this()
   def this(v: String) = this()

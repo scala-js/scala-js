@@ -41,8 +41,7 @@ class JSOptionalTest extends DirectTest with TestHelpers {
       var c1: js.UndefOr[Int] = 5
       var c2: Int = 5
     }
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:6: error: Members of non-native JS traits must either be abstract, or their right-hand-side must be `js.undefined`.
       |      val a1: js.UndefOr[Int] = 5
       |                                ^
@@ -61,7 +60,7 @@ class JSOptionalTest extends DirectTest with TestHelpers {
       |newSource1.scala:13: error: Members of non-native JS traits must either be abstract, or their right-hand-side must be `js.undefined`.
       |      var c2: Int = 5
       |                    ^
-    """
+    """)
   }
 
   @Test
@@ -70,12 +69,11 @@ class JSOptionalTest extends DirectTest with TestHelpers {
     trait A extends js.Object {
       lazy val a1: js.UndefOr[Int] = js.undefined
     }
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:6: error: A non-native JS trait cannot contain lazy vals
       |      lazy val a1: js.UndefOr[Int] = js.undefined
       |               ^
-    """
+    """)
   }
 
   @Test
@@ -96,15 +94,14 @@ class JSOptionalTest extends DirectTest with TestHelpers {
       override def b1: js.UndefOr[Int] = js.undefined
       override def b2: js.UndefOr[Int] = js.undefined
     }
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:14: error: Cannot override concrete val a1: scala.scalajs.js.UndefOr[Int] from A in a non-native JS trait.
       |      override val a1: js.UndefOr[Int] = js.undefined
       |                   ^
       |newSource1.scala:17: error: Cannot override concrete def b1: scala.scalajs.js.UndefOr[Int] from A in a non-native JS trait.
       |      override def b1: js.UndefOr[Int] = js.undefined
       |                   ^
-    """
+    """)
 
     s"""
     @js.native
@@ -118,15 +115,14 @@ class JSOptionalTest extends DirectTest with TestHelpers {
       override val a: js.UndefOr[Int] = js.undefined
       override def b: js.UndefOr[Int] = js.undefined
     }
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:13: error: Cannot override concrete val a: scala.scalajs.js.UndefOr[Int] from A in a non-native JS trait.
       |      override val a: js.UndefOr[Int] = js.undefined
       |                   ^
       |newSource1.scala:14: error: Cannot override concrete def b: scala.scalajs.js.UndefOr[Int] from A in a non-native JS trait.
       |      override def b: js.UndefOr[Int] = js.undefined
       |                   ^
-    """
+    """)
 
     s"""
     @js.native
@@ -143,15 +139,14 @@ class JSOptionalTest extends DirectTest with TestHelpers {
       override val a: js.UndefOr[Int] = js.undefined
       override def b: js.UndefOr[Int] = js.undefined
     }
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:16: error: Cannot override concrete val a: scala.scalajs.js.UndefOr[Int] from A in a non-native JS trait.
       |      override val a: js.UndefOr[Int] = js.undefined
       |                   ^
       |newSource1.scala:17: error: Cannot override concrete def b: scala.scalajs.js.UndefOr[Int] from A in a non-native JS trait.
       |      override def b: js.UndefOr[Int] = js.undefined
       |                   ^
-    """
+    """)
   }
 
   @Test
@@ -162,8 +157,7 @@ class JSOptionalTest extends DirectTest with TestHelpers {
       def b(x: Int): js.UndefOr[Int] = js.undefined
       def c_=(v: Int): js.UndefOr[Int] = js.undefined
     }
-    """ hasErrors
-    s"""
+    """.hasErrors(s"""
       |newSource1.scala:6: error: In non-native JS traits, defs with parentheses must be abstract.
       |      def a(): js.UndefOr[Int] = js.undefined
       |                                    ^
@@ -176,7 +170,7 @@ class JSOptionalTest extends DirectTest with TestHelpers {
       |newSource1.scala:8: error: In non-native JS traits, defs with parentheses must be abstract.
       |      def c_=(v: Int): js.UndefOr[Int] = js.undefined
       |                                            ^
-    """
+    """)
   }
 
 }

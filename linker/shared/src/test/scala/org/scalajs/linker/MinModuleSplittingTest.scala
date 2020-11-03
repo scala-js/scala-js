@@ -37,24 +37,20 @@ class MinModuleSplittingTest {
 
     val greeterMemberDefs = List(
         trivialCtor("lib.Greeter"),
-
         // @noinline def greet(): String = "Hello world!"
-        MethodDef(EMF, greetMethodName, NON, Nil, StringType, Some {
+        MethodDef(EMF, greetMethodName, NON, Nil, StringType,
+            Some {
           StringLiteral("Hello world!")
         })(EOH.withNoinline(true), None)
     )
 
     val classDefs = Seq(
-        classDef("lib.Greeter",
-            superClass = Some(ObjectClass),
-            memberDefs = greeterMemberDefs
-        ),
-
+        classDef("lib.Greeter", superClass = Some(ObjectClass), memberDefs = greeterMemberDefs),
         mainTestClassDef({
-            // console.log(new lib.Greeter().greet())
-            val newGreeter = New("lib.Greeter", NoArgConstructorName, Nil)
-            val callGreet = Apply(EAF, newGreeter, greetMethodName, Nil)(StringType)
-            consoleLog(callGreet)
+          // console.log(new lib.Greeter().greet())
+          val newGreeter = New("lib.Greeter", NoArgConstructorName, Nil)
+          val callGreet = Apply(EAF, newGreeter, greetMethodName, Nil)(StringType)
+          consoleLog(callGreet)
         })
     )
 
@@ -72,8 +68,8 @@ class MinModuleSplittingTest {
     val outputDirectory = MemOutputDirectory()
 
     for {
-      _ <- testLink(classDefs, MainTestModuleInitializers,
-          config = linkerConfig, output = outputDirectory)
+      _ <- testLink(classDefs, MainTestModuleInitializers, config = linkerConfig,
+          output = outputDirectory)
     } yield {
       for (expectedFile <- expectedFiles) {
         assertTrue(s"expected file '$expectedFile' not present",

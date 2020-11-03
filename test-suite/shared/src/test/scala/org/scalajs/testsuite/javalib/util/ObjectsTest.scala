@@ -103,13 +103,12 @@ class ObjectsTest {
 
     val failureSupplier = new ju.function.Supplier[String] {
       def get(): String = {
-        throw new AssertionError(
-            "Objects.requireNonNull() should not have called Supplier")
+        throw new AssertionError("Objects.requireNonNull() should not have called Supplier")
       }
     }
 
-    val e = expectThrows(classOf[NullPointerException],
-        ju.Objects.requireNonNull(null, successSupplier))
+    val e =
+      expectThrows(classOf[NullPointerException], ju.Objects.requireNonNull(null, successSupplier))
     assertEquals(message, e.getMessage())
 
     assertEquals("abc", ju.Objects.requireNonNull("abc", failureSupplier))

@@ -32,8 +32,7 @@ abstract class LongBufferTest extends BaseBufferTest {
       LongBuffer.wrap(array, offset, length)
   }
 
-  class ByteBufferLongViewFactory(
-      byteBufferFactory: BufferFactory.ByteBufferFactory,
+  class ByteBufferLongViewFactory(byteBufferFactory: BufferFactory.ByteBufferFactory,
       order: ByteOrder)
       extends Factory with BufferFactory.ByteBufferViewFactory {
     require(!byteBufferFactory.createsReadOnly)
@@ -64,8 +63,8 @@ class AllocLongSlicedBufferTest extends LongBufferTest {
 
 // Long views of byte buffers
 
-abstract class LongViewOfByteBufferTest(
-    byteBufferFactory: BufferFactory.ByteBufferFactory, order: ByteOrder)
+abstract class LongViewOfByteBufferTest(byteBufferFactory: BufferFactory.ByteBufferFactory,
+    order: ByteOrder)
     extends LongBufferTest {
 
   val factory: BufferFactory.LongBufferFactory =
@@ -92,13 +91,12 @@ class LongViewOfSlicedAllocByteBufferLittleEndianTest
 
 // Read only Long views of byte buffers
 
-abstract class ReadOnlyLongViewOfByteBufferTest(
-    byteBufferFactory: BufferFactory.ByteBufferFactory, order: ByteOrder)
+abstract class ReadOnlyLongViewOfByteBufferTest(byteBufferFactory: BufferFactory.ByteBufferFactory,
+    order: ByteOrder)
     extends LongBufferTest {
 
   val factory: BufferFactory.LongBufferFactory = {
-    new ByteBufferLongViewFactory(byteBufferFactory, order)
-        with BufferFactory.ReadOnlyBufferFactory
+    new ByteBufferLongViewFactory(byteBufferFactory, order) with BufferFactory.ReadOnlyBufferFactory
   }
 }
 
@@ -118,4 +116,5 @@ class ReadOnlyLongViewOfWrappedByteBufferLittleEndianTest
     extends ReadOnlyLongViewOfByteBufferTest(new WrappedByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
 
 class ReadOnlyLongViewOfSlicedAllocByteBufferLittleEndianTest
-    extends ReadOnlyLongViewOfByteBufferTest(new SlicedAllocByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
+    extends ReadOnlyLongViewOfByteBufferTest(new SlicedAllocByteBufferFactory,
+        ByteOrder.LITTLE_ENDIAN)

@@ -93,8 +93,7 @@ final class SplittableRandom private (private var seed: Long, gamma: Long) {
     this({
       val s = SplittableRandom.nextDefaultGen()
 
-      (SplittableRandom.mix64(s),
-          SplittableRandom.mixGamma(s + SplittableRandom.GoldenGamma))
+      (SplittableRandom.mix64(s), SplittableRandom.mixGamma(s + SplittableRandom.GoldenGamma))
     })
   }
 

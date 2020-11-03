@@ -16,8 +16,7 @@ import scala.annotation.tailrec
 
 import scala.scalajs.js
 
-class PriorityQueue[E] private (
-    private val comp: Comparator[_ >: E], internal: Boolean)
+class PriorityQueue[E] private (private val comp: Comparator[_ >: E], internal: Boolean)
     extends AbstractQueue[E] with Serializable {
 
   def this() =
@@ -57,8 +56,8 @@ class PriorityQueue[E] private (
   }
 
   def this(sortedSet: SortedSet[_ <: E]) = {
-    this(NaturalComparator.select(
-        sortedSet.comparator().asInstanceOf[Comparator[_ >: E]]),
+    this(
+        NaturalComparator.select(sortedSet.comparator().asInstanceOf[Comparator[_ >: E]]),
         internal = true)
     addAll(sortedSet)
   }

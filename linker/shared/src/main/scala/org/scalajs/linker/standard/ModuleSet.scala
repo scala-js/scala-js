@@ -34,9 +34,7 @@ import org.scalajs.linker.interface.ModuleInitializer
  *  are no public modules.
  */
 final class ModuleSet private[linker] (
-    val coreSpec: CoreSpec,
-    val modules: List[ModuleSet.Module],
-
+    val coreSpec: CoreSpec, val modules: List[ModuleSet.Module],
     /** Abstract classes may not have any definitions, but are still required
      *  for proper code generation.
      *
@@ -44,8 +42,7 @@ final class ModuleSet private[linker] (
      */
     val abstractClasses: List[LinkedClass]
 ) {
-  require(modules.isEmpty || modules.count(_.isRoot) == 1,
-      "Must have exactly one root module")
+  require(modules.isEmpty || modules.count(_.isRoot) == 1, "Must have exactly one root module")
 }
 
 object ModuleSet {
@@ -68,19 +65,14 @@ object ModuleSet {
   }
 
   final class Module(
-      val id: ModuleID,
-      val internalDependencies: Set[ModuleID],
-      val externalDependencies: Set[String],
-      val public: Boolean,
-      val classDefs: List[LinkedClass],
+      val id: ModuleID, val internalDependencies: Set[ModuleID],
+      val externalDependencies: Set[String], val public: Boolean, val classDefs: List[LinkedClass],
       val topLevelExports: List[LinkedTopLevelExport],
       val initializers: Seq[ModuleInitializer.Initializer]
   ) {
-    require(public || topLevelExports.isEmpty,
-        "Only public modules may have top-level exports")
+    require(public || topLevelExports.isEmpty, "Only public modules may have top-level exports")
 
-    require(!internalDependencies.contains(id),
-        "A module may not depend on itself")
+    require(!internalDependencies.contains(id), "A module may not depend on itself")
 
     def isRoot: Boolean = internalDependencies.isEmpty
   }

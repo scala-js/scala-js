@@ -16,16 +16,18 @@ import java.util.concurrent.ConcurrentHashMap
 
 import scala.util.matching.Regex
 
-object ScalaJSVersions extends VersionChecks(
-    current = "1.3.1-SNAPSHOT",
-    binaryEmitted = "1.3"
-)
+object ScalaJSVersions
+    extends VersionChecks(
+        current = "1.3.1-SNAPSHOT",
+        binaryEmitted = "1.3"
+    )
 
 /** Helper class to allow for testing of logic. */
 class VersionChecks private[ir] (
     /** Scala.js version. */
     final val current: String,
-    /** Version of binary IR emitted by this version of Scala.js. */
+    /** Version of binary IR emitted by this version of Scala.js.
+     */
     final val binaryEmitted: String
 ) {
   import VersionChecks._
@@ -64,9 +66,9 @@ class VersionChecks private[ir] (
       val supported = (
           // the exact pre-release version is supported via knownSupportedBinary
           preRelease.isEmpty &&
-          major == binaryMajor &&
-          minor <= binaryMinor &&
-          (binaryPreRelease.isEmpty || minor < binaryMinor)
+            major == binaryMajor &&
+            minor <= binaryMinor &&
+            (binaryPreRelease.isEmpty || minor < binaryMinor)
       )
 
       if (supported) {
@@ -74,7 +76,7 @@ class VersionChecks private[ir] (
       } else {
         throw new IRVersionNotSupportedException(version, binaryEmitted,
             s"This version ($version) of Scala.js IR is not supported. " +
-            s"Supported versions are up to $binaryEmitted")
+              s"Supported versions are up to $binaryEmitted")
       }
     }
   }
@@ -95,8 +97,7 @@ private object VersionChecks {
   }
 
   private def mustMatch(re: Regex, v: String): Regex.Match = {
-    re.findFirstMatchIn(v).getOrElse(
-        throw new IllegalArgumentException("malformed version: " + v))
+    re.findFirstMatchIn(v).getOrElse(throw new IllegalArgumentException("malformed version: " + v))
   }
 
   private def preRelease(v: String): Option[String] =
@@ -112,16 +113,15 @@ private object VersionChecks {
 
     require(
         currentPreRelease.isEmpty ||
-        currentMinor > binaryMinor ||
-        currentPatch > 0 ||
-        binaryPreRelease == currentPreRelease,
+          currentMinor > binaryMinor ||
+          currentPatch > 0 ||
+          binaryPreRelease == currentPreRelease,
         "current is older than binaryEmitted through pre-release")
 
     require(
-        binaryPreRelease.isEmpty || (
-            currentMinor == binaryMinor &&
-            currentPatch == 0 &&
-            binaryPreRelease == currentPreRelease),
+        binaryPreRelease.isEmpty || (currentMinor == binaryMinor &&
+          currentPatch == 0 &&
+          binaryPreRelease == currentPreRelease),
         "binaryEmitted is in pre-release but does not match current")
   }
 }

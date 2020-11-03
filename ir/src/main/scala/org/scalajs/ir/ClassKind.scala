@@ -28,8 +28,7 @@ sealed abstract class ClassKind {
   }
 
   def isJSType: Boolean = this match {
-    case AbstractJSType | JSClass | JSModuleClass | NativeJSClass |
-        NativeJSModuleClass =>
+    case AbstractJSType | JSClass | JSModuleClass | NativeJSClass | NativeJSModuleClass =>
       true
     case _ =>
       false

@@ -16,14 +16,11 @@ import scala.collection.immutable
 
 import org.scalajs.linker.interface._
 
-final class ReportImpl(
-    val publicModules: immutable.Iterable[Report.Module]) extends Report
+final class ReportImpl(val publicModules: immutable.Iterable[Report.Module]) extends Report
 
 object ReportImpl {
   final class ModuleImpl(
-      val moduleID: String,
-      val jsFileName: String,
-      val sourceMapName: Option[String],
+      val moduleID: String, val jsFileName: String, val sourceMapName: Option[String],
       val moduleKind: ModuleKind
   ) extends Report.Module
 }

@@ -32,8 +32,7 @@ abstract class FloatBufferTest extends BaseBufferTest {
       FloatBuffer.wrap(array, offset, length)
   }
 
-  class ByteBufferFloatViewFactory(
-      byteBufferFactory: BufferFactory.ByteBufferFactory,
+  class ByteBufferFloatViewFactory(byteBufferFactory: BufferFactory.ByteBufferFactory,
       order: ByteOrder)
       extends Factory with BufferFactory.ByteBufferViewFactory {
     require(!byteBufferFactory.createsReadOnly)
@@ -64,8 +63,8 @@ class AllocFloatSlicedBufferTest extends FloatBufferTest {
 
 // Float views of byte buffers
 
-abstract class FloatViewOfByteBufferTest(
-    byteBufferFactory: BufferFactory.ByteBufferFactory, order: ByteOrder)
+abstract class FloatViewOfByteBufferTest(byteBufferFactory: BufferFactory.ByteBufferFactory,
+    order: ByteOrder)
     extends FloatBufferTest {
 
   val factory: BufferFactory.FloatBufferFactory =
@@ -92,13 +91,13 @@ class FloatViewOfSlicedAllocByteBufferLittleEndianTest
 
 // Read only Float views of byte buffers
 
-abstract class ReadOnlyFloatViewOfByteBufferTest(
-    byteBufferFactory: BufferFactory.ByteBufferFactory, order: ByteOrder)
+abstract class ReadOnlyFloatViewOfByteBufferTest(byteBufferFactory: BufferFactory.ByteBufferFactory,
+    order: ByteOrder)
     extends FloatBufferTest {
 
   val factory: BufferFactory.FloatBufferFactory = {
     new ByteBufferFloatViewFactory(byteBufferFactory, order)
-        with BufferFactory.ReadOnlyBufferFactory
+      with BufferFactory.ReadOnlyBufferFactory
   }
 }
 
@@ -109,7 +108,8 @@ class ReadOnlyFloatViewOfWrappedByteBufferBigEndianTest
     extends ReadOnlyFloatViewOfByteBufferTest(new WrappedByteBufferFactory, ByteOrder.BIG_ENDIAN)
 
 class ReadOnlyFloatViewOfSlicedAllocByteBufferBigEndianTest
-    extends ReadOnlyFloatViewOfByteBufferTest(new SlicedAllocByteBufferFactory, ByteOrder.BIG_ENDIAN)
+    extends ReadOnlyFloatViewOfByteBufferTest(new SlicedAllocByteBufferFactory,
+        ByteOrder.BIG_ENDIAN)
 
 class ReadOnlyFloatViewOfAllocByteBufferLittleEndianTest
     extends ReadOnlyFloatViewOfByteBufferTest(new AllocByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
@@ -118,4 +118,5 @@ class ReadOnlyFloatViewOfWrappedByteBufferLittleEndianTest
     extends ReadOnlyFloatViewOfByteBufferTest(new WrappedByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
 
 class ReadOnlyFloatViewOfSlicedAllocByteBufferLittleEndianTest
-    extends ReadOnlyFloatViewOfByteBufferTest(new SlicedAllocByteBufferFactory, ByteOrder.LITTLE_ENDIAN)
+    extends ReadOnlyFloatViewOfByteBufferTest(new SlicedAllocByteBufferFactory,
+        ByteOrder.LITTLE_ENDIAN)

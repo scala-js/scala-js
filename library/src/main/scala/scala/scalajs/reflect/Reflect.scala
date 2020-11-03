@@ -17,17 +17,17 @@ import scala.collection.mutable
 import scala.scalajs.js
 
 final class LoadableModuleClass private[reflect] (
-    val runtimeClass: Class[_],
-    loadModuleFun: js.Function0[Any]
+    val runtimeClass: Class[_], loadModuleFun: js.Function0[Any]
 ) {
+
   /** Loads the module instance and returns it. */
   def loadModule(): Any = loadModuleFun()
 }
 
 final class InstantiatableClass private[reflect] (
-    val runtimeClass: Class[_],
-    val declaredConstructors: List[InvokableConstructor]
+    val runtimeClass: Class[_], val declaredConstructors: List[InvokableConstructor]
 ) {
+
   /** Instantiates a new instance of this class using the zero-argument
    *  constructor.
    *
@@ -53,17 +53,15 @@ final class InstantiatableClass private[reflect] (
     declaredConstructors.find(_.parameterTypes.sameElements(parameterTypes))
 }
 
-final class InvokableConstructor private[reflect]  (
-    val parameterTypes: List[Class[_]],
-    newInstanceFun: js.Function
+final class InvokableConstructor private[reflect] (
+    val parameterTypes: List[Class[_]], newInstanceFun: js.Function
 ) {
   def newInstance(args: Any*): Any = {
     /* Check the number of actual arguments. We let the casts and unbox
      * operations inside `newInstanceFun` take care of the rest.
      */
     require(args.size == parameterTypes.size)
-    newInstanceFun.asInstanceOf[js.Dynamic].apply(
-        args.asInstanceOf[Seq[js.Any]]: _*)
+    newInstanceFun.asInstanceOf[js.Dynamic].apply(args.asInstanceOf[Seq[js.Any]]: _*)
   }
 }
 
@@ -75,21 +73,18 @@ object Reflect {
     js.Dictionary.empty[InstantiatableClass]
 
   // `protected[reflect]` makes it public in the IR
-  protected[reflect] def registerLoadableModuleClass[T](
-      fqcn: String, runtimeClass: Class[T],
+  protected[reflect] def registerLoadableModuleClass[T](fqcn: String, runtimeClass: Class[T],
       loadModuleFun: js.Function0[T]): Unit = {
-    loadableModuleClasses(fqcn) =
-      new LoadableModuleClass(runtimeClass, loadModuleFun)
+    loadableModuleClasses(fqcn) = new LoadableModuleClass(runtimeClass, loadModuleFun)
   }
 
-  protected[reflect] def registerInstantiatableClass[T](
-      fqcn: String, runtimeClass: Class[T],
+  protected[reflect] def registerInstantiatableClass[T](fqcn: String, runtimeClass: Class[T],
       constructors: js.Array[js.Tuple2[js.Array[Class[_]], js.Function]]): Unit = {
     val invokableConstructors = constructors.map { c =>
       new InvokableConstructor(c._1.toList, c._2)
     }
-    instantiatableClasses(fqcn) =
-      new InstantiatableClass(runtimeClass, invokableConstructors.toList)
+    instantiatableClasses(fqcn) = new InstantiatableClass(runtimeClass,
+        invokableConstructors.toList)
   }
 
   /** Reflectively looks up a loadable module class.

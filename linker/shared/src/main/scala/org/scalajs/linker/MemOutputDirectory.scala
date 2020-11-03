@@ -23,6 +23,7 @@ import org.scalajs.linker.interface.unstable.OutputDirectoryImpl
 
 /** OutputDirectory that simply writes to memory. */
 sealed trait MemOutputDirectory extends OutputDirectory {
+
   /** Content of the file with `name` or `None` if the file was not written. */
   def content(name: String): Option[Array[Byte]]
 }
@@ -30,29 +31,29 @@ sealed trait MemOutputDirectory extends OutputDirectory {
 object MemOutputDirectory {
   def apply(): MemOutputDirectory = new Impl()
 
-  private final class Impl
-      extends OutputDirectoryImpl with MemOutputDirectory {
+  private final class Impl extends OutputDirectoryImpl with MemOutputDirectory {
     private val _content: mutable.Map[String, Array[Byte]] = mutable.Map.empty
 
     def content(name: String): Option[Array[Byte]] = synchronized {
       _content.get(name)
     }
 
-    def writeFull(name: String, buf: ByteBuffer)(
-        implicit ec: ExecutionContext): Future[Unit] = synchronized {
-      val c = new Array[Byte](buf.remaining())
-      buf.get(c)
-      _content(name) = c
-      Future.successful(())
-    }
-
-    def readFull(name: String)(
-        implicit ec: ExecutionContext): Future[ByteBuffer] = {
-      _content.get(name).fold[Future[ByteBuffer]] {
-        fileNotFound(name)
-      } { c =>
-        Future.successful(ByteBuffer.wrap(c).asReadOnlyBuffer())
+    def writeFull(name: String, buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] =
+      synchronized {
+        val c = new Array[Byte](buf.remaining())
+        buf.get(c)
+        _content(name) = c
+        Future.successful(())
       }
+
+    def readFull(name: String)(implicit ec: ExecutionContext): Future[ByteBuffer] = {
+      _content
+        .get(name)
+        .fold[Future[ByteBuffer]] {
+          fileNotFound(name)
+        } { c =>
+          Future.successful(ByteBuffer.wrap(c).asReadOnlyBuffer())
+        }
     }
 
     def listFiles()(implicit ec: ExecutionContext): Future[List[String]] = synchronized {

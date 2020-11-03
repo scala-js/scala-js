@@ -18,11 +18,11 @@ private[interface] trait Fingerprint[T] {
 
   /** Generate a fingerprint of an object.
    *
-   * A fingerprint is an injective one-way serialization representing the
-   * object.
+   *  A fingerprint is an injective one-way serialization representing the
+   *  object.
    *
-   * @param obj Object to fingerprint
-   * @return A fingerprint of the object
+   *  @param obj Object to fingerprint
+   *  @return A fingerprint of the object
    */
   def fingerprint(obj: T): String
 }
@@ -57,8 +57,9 @@ private[interface] object Fingerprint {
   implicit def optionFingerprint[T: Fingerprint]: Fingerprint[Option[T]] = {
     new Fingerprint[Option[T]] {
       override def fingerprint(opt: Option[T]): String = opt match {
-        case Some(x) => s"Some(${implicitly[Fingerprint[T]].fingerprint(x)})"
-        case None    => "None"
+        case Some(x) =>
+          s"Some(${implicitly[Fingerprint[T]].fingerprint(x)})"
+        case None => "None"
       }
     }
   }

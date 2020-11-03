@@ -20,7 +20,8 @@ import org.scalajs.testing.common._
 import sbt.testing._
 
 private[adapter] final class TaskAdapter(taskInfo: TaskInfo, runID: RunMux.RunID,
-    runnerGetter: () => RunMuxRPC) extends Task {
+    runnerGetter: () => RunMuxRPC)
+    extends Task {
 
   def taskDef: TaskDef = taskInfo.taskDef
   def tags: Array[String] = taskInfo.tags.toArray
@@ -42,7 +43,8 @@ private[adapter] final class TaskAdapter(taskInfo: TaskInfo, runID: RunMux.RunID
       val colorSupport = loggers.map(_.ansiCodesSupported).toList
       val req = new ExecuteRequest(taskInfo, colorSupport)
 
-      runner.call(JSEndpoints.execute, runID)(req)
+      runner
+        .call(JSEndpoints.execute, runID)(req)
         .await()
         .map(new TaskAdapter(_, runID, runnerGetter))
         .toArray
