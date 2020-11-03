@@ -42,22 +42,22 @@ final class Matcher private[regex] (
   // Lookup methods
 
   def matches(): Boolean = {
-    reset()
+    resetMatch()
     find()
     // TODO this check is wrong with non-greedy patterns
     // Further, it might be wrong to just use ^$ delimiters for two reasons:
     // - They might already be there
     // - They might not behave as expected when newline characters are present
     if ((lastMatch ne null) && (ensureLastMatch.index != 0 || group().length() != inputstr.length()))
-      reset()
+      resetMatch()
     lastMatch ne null
   }
 
   def lookingAt(): Boolean = {
-    reset()
+    resetMatch()
     find()
     if ((lastMatch ne null) && (ensureLastMatch.index != 0))
-      reset()
+      resetMatch()
     lastMatch ne null
   }
 
@@ -148,7 +148,7 @@ final class Matcher private[regex] (
 
   // Reset methods
 
-  def reset(): Matcher = {
+  private def resetMatch(): Matcher = {
     regexp.lastIndex = 0
     lastMatch = null
     lastMatchIsValid = false
@@ -158,11 +158,11 @@ final class Matcher private[regex] (
     this
   }
 
+  def reset(): Matcher =
+    region(0, input0.length())
+
   def reset(input: CharSequence): Matcher = {
-    regionStart0 = 0
-    regionEnd0 = input.length()
     input0 = input
-    inputstr = input0.toString
     reset()
   }
 
@@ -230,8 +230,7 @@ final class Matcher private[regex] (
     regionStart0 = start
     regionEnd0 = end
     inputstr = input0.subSequence(regionStart0, regionEnd0).toString
-    reset()
-    this
+    resetMatch()
   }
 
   def hasTransparentBounds(): Boolean = false
