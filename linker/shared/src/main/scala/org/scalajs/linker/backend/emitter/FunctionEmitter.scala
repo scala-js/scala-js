@@ -56,6 +56,7 @@ import Transients._
  *     * Assign, i.e., `x =`
  *     * VarDef, i.e., `val x =` or `var x =`
  *     * Return, i.e., `return`
+ *     * Throw, i.e., `throw`
  *     * Discard, i.e. just evaluate and discard
  *     In fact, think that, in this context, LHS means: what to do with the
  *     result of evaluating the RHS.
@@ -1452,6 +1453,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               js.Return(transformExpr(rhs, env.expectedReturnType))
             case Lhs.Return(l) =>
               doReturnToLabel(l)
+            case Lhs.Throw =>
+              js.Throw(transformExprNoChar(rhs))
           }
 
         // Almost base case with RecordValue
@@ -1478,11 +1481,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 js.Block(varDef, assign)
               }
 
-            case Lhs.ReturnFromFunction =>
-              throw new AssertionError("Cannot return a record value.")
-
             case Lhs.Return(l) =>
               doReturnToLabel(l)
+
+            case Lhs.ReturnFromFunction | Lhs.Throw =>
+              throw new AssertionError("Cannot return or throw a record value.")
           }
 
         // Control flow constructs
@@ -1527,11 +1530,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             js.TryFinally(newBlock, newFinalizer)
           }
 
-        // TODO Treat throw as an LHS?
         case Throw(expr) =>
-          unnest(expr) { (newExpr, env) =>
-            js.Throw(transformExprNoChar(newExpr)(env))
-          }
+          pushLhsInto(Lhs.Throw, expr, tailPosLabels)
 
         /** Matches are desugared into switches
          *
@@ -2822,6 +2822,10 @@ private object FunctionEmitter {
     }
 
     final case class Return(label: LabelIdent) extends Lhs {
+      override def hasNothingType: Boolean = true
+    }
+
+    case object Throw extends Lhs {
       override def hasNothingType: Boolean = true
     }
 
