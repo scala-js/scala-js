@@ -48,50 +48,79 @@ object ReportToLinkerOutputAdapter {
   def convert(report: Report, outputDirectory: OutputDirectory,
       legacyOutput: LinkerOutput)(
       implicit ec: ExecutionContext): Future[Unit] = {
-    retrieveOutputFiles(report, outputDirectory).flatMap {
-      case (jsFileContent, optSourceMapContent) =>
-        val hasSourceMap =
-          optSourceMapContent.isDefined && legacyOutput.sourceMap.isDefined
+    report.publicModules.toList match {
+      case Nil =>
+        writeEmptyOutput(legacyOutput)
 
-        val jsFileWrite = {
-          val content = UTF_8.decode(jsFileContent).toString()
-          val patched = patchJSFileContent(content,
-              legacyOutput.sourceMapURI.filter(_ => hasSourceMap))
+      case List(module) =>
+        retrieveOutputFiles(module, outputDirectory)
+          .flatMap(writePatchedOutput(_, legacyOutput))
 
-          OutputFileImpl.fromOutputFile(legacyOutput.jsFile)
-            .writeFull(ByteBuffer.wrap(patched.getBytes(UTF_8)))
-        }
+      case _ =>
+        throw new UnsupportedLinkerOutputException(
+            "Linking returned more than one public module. Full report:\n" +
+            report)
+      }
+  }
 
-        val sourceMapWrite = for {
-          sourceMapContent <- optSourceMapContent
-          sourceMapFile <- legacyOutput.sourceMap
-        } yield {
-          val content = UTF_8.decode(sourceMapContent).toString()
-          val patched = patchSourceMapContent(content, legacyOutput.jsFileURI)
+  private def writeEmptyOutput(legacyOutput: LinkerOutput)(
+      implicit ec: ExecutionContext): Future[Unit] = {
+    legacyOutput.sourceMap.fold {
+      writeString(legacyOutput.jsFile, "")
+    } { sourceMapFile =>
+      val smFields = List(
+          "version" -> "3",
+          "mappings" -> "\"\"",
+          "sources" -> "[]",
+          "names" -> "[]",
+          "lineCount" -> "1"
+      ) ++ legacyOutput.jsFileURI.map(uri =>
+          "file" -> s""""${uri.toASCIIString}"""")
 
-          OutputFileImpl.fromOutputFile(sourceMapFile)
-            .writeFull(ByteBuffer.wrap(patched.getBytes(UTF_8)))
-        }
+      val jsContent = legacyOutput.sourceMapURI.fold("")(uri =>
+          s"//# sourceMappingURL=${uri.toASCIIString}\n")
 
-        Future.sequence(List(jsFileWrite) ++ sourceMapWrite).map(_ => ())
+      val smContent = smFields
+        .map { case (n, v) => s""""$n": $v""" }
+        .mkString("{\n", ",\n", "\n}")
+
+      writeString(legacyOutput.jsFile, jsContent)
+        .flatMap(_ => writeString(sourceMapFile, smContent))
     }
   }
 
+  private def writePatchedOutput(output: (ByteBuffer, Option[ByteBuffer]),
+      legacyOutput: LinkerOutput)(implicit ec: ExecutionContext): Future[Unit] = {
+    val (jsFileContent, optSourceMapContent) = output
+
+    val hasSourceMap =
+      optSourceMapContent.isDefined && legacyOutput.sourceMap.isDefined
+
+    val jsFileWrite = {
+      val content = UTF_8.decode(jsFileContent).toString()
+      val patched = patchJSFileContent(content,
+          legacyOutput.sourceMapURI.filter(_ => hasSourceMap))
+      writeString(legacyOutput.jsFile, patched)
+    }
+
+    val sourceMapWrite = for {
+      sourceMapContent <- optSourceMapContent
+      sourceMapFile <- legacyOutput.sourceMap
+    } yield {
+      val content = UTF_8.decode(sourceMapContent).toString()
+      val patched = patchSourceMapContent(content, legacyOutput.jsFileURI)
+      writeString(sourceMapFile, patched)
+    }
+
+    Future.sequence(List(jsFileWrite) ++ sourceMapWrite).map(_ => ())
+  }
+
+
   /** Retrieve the linker JS file and an optional source map */
-  private def retrieveOutputFiles(report: Report,
+  private def retrieveOutputFiles(module: Report.Module,
       outputDirectory: OutputDirectory)(
       implicit ec: ExecutionContext): Future[(ByteBuffer, Option[ByteBuffer])] = {
     val outDirImpl = OutputDirectoryImpl.fromOutputDirectory(outputDirectory)
-
-    val module = {
-      if (report.publicModules.size != 1) {
-        throw new UnsupportedLinkerOutputException(
-            "Linking did not return exactly one public module. Full report:\n" +
-            report)
-      }
-
-      report.publicModules.head
-    }
 
     val checkFiles = for {
       foundFilesList <- outDirImpl.listFiles()
@@ -211,5 +240,11 @@ object ReportToLinkerOutputAdapter {
 
       res.toString()
     }
+  }
+
+  private def writeString(outputFile: LinkerOutput.File, content: String)(
+      implicit ec: ExecutionContext): Future[Unit] = {
+    OutputFileImpl.fromOutputFile(outputFile)
+      .writeFull(ByteBuffer.wrap(content.getBytes(UTF_8)))
   }
 }
