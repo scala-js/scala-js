@@ -33,6 +33,10 @@ class RegexMatcherTest  {
     assertTrue(matcher.find())
     assertTrue(matcher.find())
     assertFalse(matcher.find())
+
+    // Find with argument should discard region.
+    matcher.region(0, 2)
+
     assertTrue(matcher.find(4))
     assertFalse(matcher.find())
   }
@@ -233,6 +237,10 @@ class RegexMatcherTest  {
     assertFalse(matcher.find())
     matcher.reset()
     assertTrue(matcher.find())
+    matcher.region(1, 3)
+    assertFalse(matcher.find())
+    matcher.reset() // test we reset region
+    assertTrue(matcher.find())
   }
 
   @Test def reset_string(): Unit = {
@@ -283,74 +291,65 @@ class RegexMatcherTest  {
     val matcher0 = Pattern.compile("S[a-z]+").matcher("A Scalable Solution")
 
     assertSame(matcher0, matcher0.region(0, 3))
+    assertFalse(matcher0.lookingAt())
+    assertFalse(matcher0.matches())
+    assertFalse(matcher0.find())
     assertEquals(0, matcher0.regionStart)
     assertEquals(3, matcher0.regionEnd)
-    assertFalse(matcher0.lookingAt())
-    matcher0.region(0, 3)
-    assertFalse(matcher0.matches())
-    matcher0.region(0, 3)
-    assertFalse(matcher0.find())
 
     matcher0.region(0, 15)
-    assertEquals(0, matcher0.regionStart)
-    assertEquals(15, matcher0.regionEnd)
     assertFalse(matcher0.lookingAt())
-    matcher0.region(0, 15)
     assertFalse(matcher0.matches())
-    matcher0.region(0, 15)
     assertTrue(matcher0.find())
     assertEquals("Scalable", matcher0.group)
+    assertEquals(0, matcher0.regionStart)
+    assertEquals(15, matcher0.regionEnd)
 
     matcher0.region(2, 7)
     assertEquals(2, matcher0.regionStart)
     assertEquals(7, matcher0.regionEnd)
     assertTrue(matcher0.lookingAt())
-    matcher0.region(2, 7)
     assertTrue(matcher0.matches())
     matcher0.region(2, 7)
     assertTrue(matcher0.find())
     assertEquals("Scala", matcher0.group)
+    assertEquals(2, matcher0.regionStart)
+    assertEquals(7, matcher0.regionEnd)
 
     matcher0.region(2, 12)
-    assertEquals(2, matcher0.regionStart)
-    assertEquals(12, matcher0.regionEnd)
     assertTrue(matcher0.lookingAt())
-    matcher0.region(2, 12)
     assertFalse(matcher0.matches())
     matcher0.region(2, 12)
     assertTrue(matcher0.find())
     assertEquals("Scalable", matcher0.group)
+    assertEquals(2, matcher0.regionStart)
+    assertEquals(12, matcher0.regionEnd)
+    assertFalse(matcher0.find())
 
     matcher0.region(5, 19)
-    assertEquals(5, matcher0.regionStart)
-    assertEquals(19, matcher0.regionEnd)
     assertFalse(matcher0.lookingAt())
-    matcher0.region(5, 19)
     assertFalse(matcher0.matches())
-    matcher0.region(5, 19)
     assertTrue(matcher0.find())
     assertEquals("Solution", matcher0.group)
+    assertEquals(5, matcher0.regionStart)
+    assertEquals(19, matcher0.regionEnd)
 
     val matcher1 = Pattern.compile("0[xX][A-Fa-f0-9]{3}$").matcher("In CSS, 0xc4fe is not a color")
 
     matcher1.region(5, 13)
-    assertEquals(5, matcher1.regionStart)
-    assertEquals(13, matcher1.regionEnd)
     assertFalse(matcher1.lookingAt())
-    matcher1.region(5, 13)
     assertFalse(matcher1.matches())
-    matcher1.region(5, 13)
     assertTrue(matcher1.find())
     assertEquals("0xc4f", matcher1.group)
+    assertEquals(5, matcher1.regionStart)
+    assertEquals(13, matcher1.regionEnd)
 
     matcher1.region(5, 20)
+    assertFalse(matcher1.lookingAt())
+    assertFalse(matcher1.matches())
+    assertFalse(matcher1.find())
     assertEquals(5, matcher1.regionStart)
     assertEquals(20, matcher1.regionEnd)
-    assertFalse(matcher1.lookingAt())
-    matcher1.region(5, 20)
-    assertFalse(matcher1.matches())
-    matcher1.region(5, 20)
-    assertFalse(matcher1.find())
   }
 
   @Test def appendReplacement_and_appendTail(): Unit = {
@@ -368,13 +367,19 @@ class RegexMatcherTest  {
 
   @Test def replaceAll(): Unit = {
     // From the JavaDoc
-    val matcher = Pattern.compile("a*b").matcher("aabfooaabfooabfoob")
+    val matcher = Pattern
+      .compile("a*b")
+      .matcher("aabfooaabfooabfoob")
+      .region(0, 3) // should be discarded
     assertEquals("-foo-foo-foo-", matcher.replaceAll("-"))
   }
 
   @Test def replaceFirst(): Unit = {
     // From the JavaDoc
-    val matcher = Pattern.compile("dog").matcher("zzzdogzzzdogzzz")
+    val matcher = Pattern
+      .compile("dog")
+      .matcher("zzzdogzzzdogzzz")
+      .region(0, 3) // should be discarded
     assertEquals("zzzcatzzzdogzzz", matcher.replaceFirst("cat"))
   }
 
