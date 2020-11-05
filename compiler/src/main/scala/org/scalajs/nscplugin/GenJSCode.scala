@@ -1652,6 +1652,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             (Nil, applyCtor)
           case js.Block(prepStats :+ (applyCtor: js.ApplyStatic)) =>
             (prepStats, applyCtor)
+          case _ =>
+            abort(s"Unexpected body for JS constructor dispatch resolution at ${body.pos}:\n$body")
         }
         val js.ApplyStatic(_, _, js.MethodIdent(ctorName), js.This() :: ctorArgs) =
           applyCtor
@@ -1731,6 +1733,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                 if method.name.isConstructor =>
               method.name
           }.get
+
+        case _ =>
+          abort(s"Unexpected secondary constructor body at ${tree.pos}:\n$tree")
       }
 
       val (primaryCtor :: Nil, secondaryCtors) = ctors.partition {
@@ -5207,13 +5212,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                 s"wrong number of arguments for call to JS setter $sym at $pos")
             genSelectSet(jsFunName, argsNoSpread.head)
           } else if (jsInterop.isJSBracketAccess(sym)) {
-            assert(argc == 1 || argc == 2,
-                s"@JSBracketAccess methods should have 1 or 2 non-varargs arguments")
             argsNoSpread match {
-              case List(keyArg) =>
+              case keyArg :: Nil =>
                 genSelectGet(keyArg)
-              case List(keyArg, valueArg) =>
+              case keyArg :: valueArg :: Nil =>
                 genSelectSet(keyArg, valueArg)
+              case _ =>
+                throw new AssertionError(
+                    s"@JSBracketAccess methods should have 1 or 2 non-varargs arguments at $pos")
             }
           } else if (jsInterop.isJSBracketCall(sym)) {
             val (methodName, actualArgs) = extractFirstArg(args)
