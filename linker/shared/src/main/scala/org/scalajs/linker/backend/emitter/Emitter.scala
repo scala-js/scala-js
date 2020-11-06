@@ -379,6 +379,31 @@ final class Emitter(config: Emitter.Config) {
 
     // Class definition
     if (linkedClass.hasInstances && kind.isAnyNonNativeClass) {
+      /* Is this class compiled as an ECMAScript `class`?
+       *
+       * See JSGen.useClassesForRegularClasses for the rationale here.
+       * Accessing `ancestors` without cache invalidation is fine because it
+       * is part of the identity of a class for its cache in the first place.
+       *
+       * Note that `useClassesForRegularClasses` implies
+       * `useClassesForJSClassesAndThrowables`, so the short-cut is valid.
+       *
+       * Compared to `ClassEmitter.shouldExtendJSError`, which is used below,
+       * we do not check here that `Throwable` directly extends `Object`. If
+       * that is not the case (for some obscure reason), then we are going to
+       * uselessly emit `class`es for Throwables, but that will not make any
+       * observable change; whereas rewiring Throwable to extend `Error` when
+       * it does not actually directly extend `Object` would break everything,
+       * so we need to be more careful there.
+       */
+      val useESClass = if (jsGen.useClassesForRegularClasses) {
+        assert(jsGen.useClassesForJSClassesAndThrowables)
+        true
+      } else {
+        jsGen.useClassesForJSClassesAndThrowables &&
+        (kind.isJSClass || linkedClass.ancestors.contains(ThrowableClass))
+      }
+
       // JS constructor
       val ctorWithGlobals = {
         /* The constructor depends both on the class version, and the version
@@ -392,7 +417,7 @@ final class Emitter(config: Emitter.Config) {
         }
         val initToInline = linkedInlineableInit.map(_.value)
         ctorCache.getOrElseUpdate(ctorVersion,
-            classEmitter.genConstructor(linkedClass, initToInline)(moduleContext, ctorCache))
+            classEmitter.genConstructor(linkedClass, useESClass, initToInline)(moduleContext, ctorCache))
       }
 
       /* Bridges from Throwable to methods of Object, which are necessary
@@ -447,13 +472,14 @@ final class Emitter(config: Emitter.Config) {
 
       // Exported Members
       val exportedMembersWithGlobals = classTreeCache.exportedMembers.getOrElseUpdate(
-          classEmitter.genExportedMembers(linkedClass)(moduleContext, classCache))
+          classEmitter.genExportedMembers(linkedClass, useESClass)(moduleContext, classCache))
 
       val fullClass = for {
         ctor <- ctorWithGlobals
         memberMethods <- WithGlobals.list(memberMethodsWithGlobals)
         exportedMembers <- exportedMembersWithGlobals
-        clazz <- classEmitter.buildClass(linkedClass, ctor, memberMethods, exportedMembers)(moduleContext, classCache)
+        clazz <- classEmitter.buildClass(linkedClass, useESClass, ctor,
+            memberMethods, exportedMembers)(moduleContext, classCache)
       } yield {
         clazz
       }

@@ -37,6 +37,7 @@ final class ESFeatures private (
      */
     _useECMAScript2015: Boolean,
     _allowBigIntsForLongs: Boolean,
+    _avoidClasses: Boolean,
     _avoidLetsAndsConsts: Boolean
 ) {
   import ESFeatures._
@@ -45,6 +46,7 @@ final class ESFeatures private (
     this(
         _useECMAScript2015 = true,
         _allowBigIntsForLongs = false,
+        _avoidClasses = true,
         _avoidLetsAndsConsts = true
     )
   }
@@ -73,6 +75,35 @@ final class ESFeatures private (
    *  Future versions of Scala.js may decide to ignore this setting.
    */
   val allowBigIntsForLongs = _allowBigIntsForLongs
+
+  /** Avoid `class`'es when using `function`s and `prototype`s has the same
+   *  observable semantics.
+   *
+   *  Default: `true`
+   *
+   *  SpiderMonkey is known to exhibit terrible performance with JavaScript
+   *  `class`'es, with up to an order of magnitude of performance degradation.
+   *
+   *  Setting this option to `true` provides a hint to the Scala.js linker to
+   *  avoid using `class`'es when using other JavaScript features (typically
+   *  `function`s and `prototype`s) has the same observable semantics, in order
+   *  to improve expected performance. Setting it to `false` provides a hint
+   *  not to avoid `class`'es. Either way, the linker is free to ignore this
+   *  option.
+   *
+   *  Avoiding `class`'es has a negative impact on code size. If the code is
+   *  only targeted at engines that are known to have good performance with
+   *  `class`'es, it is desirable to set this option to `false`. If the code
+   *  is targeted at browsers (among others), it is recommended to set it to
+   *  `true`.
+   *
+   *  This option never affects the code emitted for JavaScript classes
+   *  (classes extending `js.Any`), since that would have an impact on
+   *  observable semantics.
+   *
+   *  This option is always ignored when `useECMAScript2015` is `false`.
+   */
+  val avoidClasses = _avoidClasses
 
   /** Avoid `let`s and `const`s when using `var`s has the same observable
    *  semantics.
@@ -105,6 +136,9 @@ final class ESFeatures private (
   def withAllowBigIntsForLongs(allowBigIntsForLongs: Boolean): ESFeatures =
     copy(allowBigIntsForLongs = allowBigIntsForLongs)
 
+  def withAvoidClasses(avoidClasses: Boolean): ESFeatures =
+    copy(avoidClasses = avoidClasses)
+
   def withAvoidLetsAndConsts(avoidLetsAndConsts: Boolean): ESFeatures =
     copy(avoidLetsAndConsts = avoidLetsAndConsts)
 
@@ -112,6 +146,7 @@ final class ESFeatures private (
     case that: ESFeatures =>
       this.useECMAScript2015 == that.useECMAScript2015 &&
       this.allowBigIntsForLongs == that.allowBigIntsForLongs &&
+      this.avoidClasses == that.avoidClasses &&
       this.avoidLetsAndConsts == that.avoidLetsAndConsts
     case _ =>
       false
@@ -122,14 +157,16 @@ final class ESFeatures private (
     var acc = HashSeed
     acc = mix(acc, useECMAScript2015.##)
     acc = mix(acc, allowBigIntsForLongs.##)
+    acc = mix(acc, avoidClasses.##)
     acc = mixLast(acc, avoidLetsAndConsts.##)
-    finalizeHash(acc, 3)
+    finalizeHash(acc, 4)
   }
 
   override def toString(): String = {
     s"""ESFeatures(
        |  useECMAScript2015 = $useECMAScript2015,
        |  allowBigIntsForLongs = $allowBigIntsForLongs,
+       |  avoidClasses = $avoidClasses,
        |  avoidLetsAndConsts = $avoidLetsAndConsts
        |)""".stripMargin
   }
@@ -137,11 +174,13 @@ final class ESFeatures private (
   private def copy(
       useECMAScript2015: Boolean = this.useECMAScript2015,
       allowBigIntsForLongs: Boolean = this.allowBigIntsForLongs,
+      avoidClasses: Boolean = this.avoidClasses,
       avoidLetsAndConsts: Boolean = this.avoidLetsAndConsts
   ): ESFeatures = {
     new ESFeatures(
         _useECMAScript2015 = useECMAScript2015,
         _allowBigIntsForLongs = allowBigIntsForLongs,
+        _avoidClasses = avoidClasses,
         _avoidLetsAndsConsts = avoidLetsAndConsts
     )
   }
@@ -155,6 +194,7 @@ object ESFeatures {
    *
    *  - `useECMAScript2015`: true
    *  - `allowBigIntsForLongs`: false
+   *  - `avoidClasses`: true
    *  - `avoidLetsAndConsts`: true
    */
   val Defaults: ESFeatures = new ESFeatures()
@@ -166,6 +206,7 @@ object ESFeatures {
       new FingerprintBuilder("ESFeatures")
         .addField("useECMAScript2015", esFeatures.useECMAScript2015)
         .addField("allowBigIntsForLongs", esFeatures.allowBigIntsForLongs)
+        .addField("avoidClasses", esFeatures.avoidClasses)
         .addField("avoidLetsAndConsts", esFeatures.avoidLetsAndConsts)
         .build()
     }

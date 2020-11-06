@@ -276,6 +276,37 @@ class JSExportStaticTest {
     assertEquals(5, obj.alsoExistsAsMember)
   }
 
+  // Inherited members
+
+  @Test def testInheritedMembersInECMAScript2015(): Unit = {
+    assumeTrue("Requires ECMAScript 2015", assumeES2015)
+
+    val parent = js.constructorOf[JSExportStaticTest.StaticExportsParent]
+    val child = js.constructorOf[JSExportStaticTest.StaticExportsChild]
+
+    assertEquals(5, child.inheritedVal)
+
+    assertEquals("hello", child.inheritedVar)
+    parent.inheritedVar = "world"
+    assertEquals("world", child.inheritedVar)
+    child.inheritedVar = "overwritten"
+    assertEquals("overwritten", child.inheritedVar)
+    assertEquals("world", parent.inheritedVar)
+    parent.inheritedVar = "another"
+    assertEquals("overwritten", child.inheritedVar)
+
+    assertEquals(42, child.inheritedProperty)
+    parent.inheritedProperty = 53
+    assertEquals(53, child.inheritedProperty)
+    child.inheritedProperty = 23
+    assertEquals(23, child.inheritedProperty)
+    assertEquals(23, parent.inheritedProperty)
+    parent.inheritedProperty = 123
+    assertEquals(123, child.inheritedProperty)
+
+    assertEquals(6, child.inheritedMethod(5))
+  }
+
 }
 
 class TopLevelStaticExportMethods extends js.Object {
@@ -423,4 +454,27 @@ object JSExportStaticTest {
     @JSExportStatic
     val alsoExistsAsMember: String = "hello"
   }
+
+  class StaticExportsParent extends js.Object
+
+  object StaticExportsParent {
+    @JSExportStatic
+    val inheritedVal: Int = 5
+
+    @JSExportStatic
+    var inheritedVar: String = "hello"
+
+    private var propVar: Int = 42
+
+    @JSExportStatic
+    def inheritedProperty: Int = propVar
+
+    @JSExportStatic
+    def inheritedProperty_=(v: Int): Unit = propVar = v
+
+    @JSExportStatic
+    def inheritedMethod(x: Int): Int = x + 1
+  }
+
+  class StaticExportsChild extends StaticExportsParent
 }

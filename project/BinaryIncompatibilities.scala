@@ -8,6 +8,9 @@ object BinaryIncompatibilities {
   )
 
   val Linker = Seq(
+      // No guarantee of binary compatibility
+      ProblemFilters.exclude[Problem](
+          "org.scalajs.linker.backend.*"),
   )
 
   val LinkerInterface = Seq(
