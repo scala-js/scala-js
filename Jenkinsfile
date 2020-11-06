@@ -201,6 +201,14 @@ def Tasks = [
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withAllowBigIntsForLongs(true)).withOptimizer(false))' \
         ++$scala $testSuite$v/test \
         $testSuite$v/clean &&
+    sbtretry \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withAvoidLetsAndConsts(false)))' \
+        ++$scala $testSuite$v/test &&
+    sbtretry \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withAvoidLetsAndConsts(false)))' \
+        'set scalaJSStage in Global := FullOptStage' \
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean &&
     sbtretry 'set scalacOptions in $testSuite.v$v += "-Xexperimental"' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalacOptions in $testSuite.v$v += "-Xexperimental"' \

@@ -29,7 +29,15 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
 
   val useArrowFunctions = esFeatures.useECMAScript2015
 
-  val useLets = esFeatures.useECMAScript2015
+  /** Should we emit `let`s and `const`s for all internal variables?
+   *
+   *  See [[org.scalajs.linker.interface.ESFeatures.avoidLetsAndConsts ESFeatures.avoidLetsAndConsts]]
+   *  for a rationale.
+   *
+   *  Note: top-level exports in Script (`NoModule`) mode are always
+   *  emitted as `let`s under ECMAScript 2015, for semantics.
+   */
+  val useLets = esFeatures.useECMAScript2015 && !esFeatures.avoidLetsAndConsts
 
   def genConst(name: Ident, rhs: Tree)(implicit pos: Position): LocalDef =
     genLet(name, mutable = false, rhs)
