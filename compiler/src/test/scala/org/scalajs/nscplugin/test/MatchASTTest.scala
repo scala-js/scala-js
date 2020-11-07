@@ -25,7 +25,8 @@ class MatchASTTest extends JSASTTest {
   def stripIdentityMatchEndNonUnitResult: Unit = {
     """
     object A {
-      def foo = "a" match {
+      def aString: String = "a"
+      def foo = aString match {
         case "a" => true
         case "b" => false
       }
@@ -39,7 +40,8 @@ class MatchASTTest extends JSASTTest {
   def stripIdentityMatchEndUnitResult: Unit = {
     """
     object A {
-      def foo = "a" match {
+      def aString: String = "a"
+      def foo = aString match {
         case "a" =>
         case "b" =>
       }

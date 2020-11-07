@@ -78,8 +78,8 @@ class RegressionTest {
   }
 
   @Test def should_correctly_call_subSequence_on_non_string_CharSequences_issue_55(): Unit = {
-    val arr: CharSequence = Array('a','b','c','d')
-    val ss = arr.subSequence(2,3)
+    val arr: CharSequence = java.nio.CharBuffer.wrap(Array('a', 'b', 'c', 'd'))
+    val ss = arr.subSequence(2, 3)
     assertEquals(1, ss.length())
     assertEquals('c', ss.charAt(0))
   }

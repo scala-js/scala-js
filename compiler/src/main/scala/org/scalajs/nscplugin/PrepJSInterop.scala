@@ -166,7 +166,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 
       checkJSNameAnnots(sym)
 
-      val transformedTree: Tree = tree match {
+      // @unchecked needed because MemberDef is not marked `sealed`
+      val transformedTree: Tree = (tree: @unchecked) match {
         case tree: ImplDef =>
           if (shouldPrepareExports)
             registerClassOrModuleExports(sym)
@@ -827,6 +828,9 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
                   parseGlobalPath(globalPathName))
             }
             Some(loadSpec)
+
+          case Some(annot) =>
+            abort(s"checkAndGetJSNativeLoadingSpecAnnotOf returned unexpected annotation $annot")
 
           case None =>
             /* We already emitted an error. Invent something not to cause
