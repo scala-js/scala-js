@@ -18,6 +18,7 @@ import scala.scalajs.js.Dynamic.global
 
 import org.scalajs.testsuite.utils.AssertThrows._
 import org.scalajs.testsuite.utils.JSAssert._
+import org.scalajs.testsuite.utils.JSUtils
 import org.scalajs.testsuite.utils.Platform._
 
 import scala.annotation.meta
@@ -25,9 +26,6 @@ import scala.annotation.meta
 import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.Test
-
-import org.scalajs.testsuite.utils.Platform
-import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 object ExportsTest {
   /* When using ES modules, there is no way to get hold of our own exports
@@ -58,7 +56,7 @@ object ExportsTest {
    */
   def exportsNameSpace(moduleID: String): js.Dynamic = {
     explicitlySetExportsNamespaces.fold[js.Dynamic] {
-      assert(Platform.isNoModule,
+      assert(isNoModule,
           "The exportsNamespace should have been explicitly set for a module")
       null // need to use `global` instead
     } { dict =>
@@ -1461,6 +1459,25 @@ class ExportsTest {
 
     // Reset var
     TopLevelFieldExports.inlineVar = "hello"
+  }
+
+  // @JSExportTopLevel in Script's are `let`s in ES 2015, `var`s in ES 5.1
+
+  @Test def topLevelExportsNoModuleAreOfCorrectKind(): Unit = {
+    assumeTrue("relevant only for NoModule", isNoModule)
+
+    val g = JSUtils.globalObject
+
+    // Do we expect to get undefined when looking up the exports in the global object?
+    val undefinedExpected = assumeES2015
+
+    assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExportedObject))
+    assertEquals(undefinedExpected, js.isUndefined(g.SJSDefinedTopLevelExportedObject))
+    assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExportedClass))
+    assertEquals(undefinedExpected, js.isUndefined(g.SJSDefinedTopLevelExportedClass))
+    assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExport_basic))
+    assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExport_basicVal))
+    assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExport_basicVar))
   }
 }
 

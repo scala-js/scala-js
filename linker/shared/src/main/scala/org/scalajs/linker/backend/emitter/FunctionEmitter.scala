@@ -759,7 +759,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   "Need enclosing class for super constructor call.")
             }
 
-            val superCtorCall = if (useClasses) {
+            val superCtorCall = if (useClassesForJSClassesAndThrowables) {
               js.Apply(js.Super(), newArgs.map(transformJSArg))
             } else {
               val superCtor = {

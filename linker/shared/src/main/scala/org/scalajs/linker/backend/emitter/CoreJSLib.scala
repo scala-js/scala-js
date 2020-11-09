@@ -415,7 +415,7 @@ private[emitter] object CoreJSLib {
         })
       }
 
-      if (useECMAScript2015) {
+      if (useClassesForRegularClasses) {
         buf += extractWithGlobals(globalClassDef("Char", CoreVar, None, ctor :: toStr :: Nil))
       } else {
         defineFunction("Char", ctor.args, ctor.body)
@@ -1268,7 +1268,7 @@ private[emitter] object CoreJSLib {
                   paramList(arg), {
                 Block(
                     {
-                      if (useECMAScript2015) Apply(Super(), Nil)
+                      if (useClassesForRegularClasses) Apply(Super(), Nil)
                       else Skip()
                     },
                     If(typeof(arg) === str("number"), {
@@ -1325,7 +1325,7 @@ private[emitter] object CoreJSLib {
               } :: Nil))
             })
 
-            if (useECMAScript2015) {
+            if (useClassesForRegularClasses) {
               ClassDef(Some(ArrayClass.ident), Some(globalVar("c", ObjectClass)),
                   ctor :: getAndSet ::: clone :: Nil)
             } else {
@@ -1511,7 +1511,7 @@ private[emitter] object CoreJSLib {
           }
       )
 
-      if (useECMAScript2015) {
+      if (useClassesForRegularClasses) {
         buf += extractWithGlobals(globalClassDef("TypeData", CoreVar, None, ctor :: members))
       } else {
         defineFunction("TypeData", ctor.args, ctor.body)

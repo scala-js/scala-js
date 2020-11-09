@@ -25,11 +25,46 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
 
   import config._
 
-  val useClasses = esFeatures.useECMAScript2015
+  /** Should we use ECMAScript classes for JavaScript classes and Throwable
+   *  classes?
+   *
+   *  This is true iff `useECMAScript2015` is true, independently of
+   *  [[org.scalajs.linker.interface.ESFeatures.avoidClasses ESFeatures.avoidClasses]].
+   *
+   *  We must emit classes for JavaScript classes for semantics reasons:
+   *  inheritance of static properties and ability to extend native JavaScript
+   *  ES classes.
+   *
+   *  We must emit classes Throwable classes so that they are recognized as
+   *  proper JavaScript error classes, which gives them better support in
+   *  debuggers.
+   */
+  val useClassesForJSClassesAndThrowables = esFeatures.useECMAScript2015
+
+  /** Should we use ECMAScript classes for non-Throwable Scala classes?
+   *
+   *  If [[org.scalajs.linker.interface.ESFeatures.avoidClasses ESFeatures.avoidClasses]]
+   *  is true, we do not use classes for non-Throwable classes. We can do that
+   *  because whether regular classes are compiled as classes or functions and
+   *  prototypes has no impact on observable semantics.
+   *
+   *  `useClassesForRegularClasses` is always false when
+   *  `useClassesForJSClassesAndThrowables` is false.
+   */
+  val useClassesForRegularClasses =
+    useClassesForJSClassesAndThrowables && !esFeatures.avoidClasses
 
   val useArrowFunctions = esFeatures.useECMAScript2015
 
-  val useLets = esFeatures.useECMAScript2015
+  /** Should we emit `let`s and `const`s for all internal variables?
+   *
+   *  See [[org.scalajs.linker.interface.ESFeatures.avoidLetsAndConsts ESFeatures.avoidLetsAndConsts]]
+   *  for a rationale.
+   *
+   *  Note: top-level exports in Script (`NoModule`) mode are always
+   *  emitted as `let`s under ECMAScript 2015, for semantics.
+   */
+  val useLets = esFeatures.useECMAScript2015 && !esFeatures.avoidLetsAndConsts
 
   def genConst(name: Ident, rhs: Tree)(implicit pos: Position): LocalDef =
     genLet(name, mutable = false, rhs)

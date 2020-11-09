@@ -29,11 +29,16 @@ class ThrowableJSTest {
   @Test def throwablesAreTrueErrors(): Unit = {
     assumeTrue("Requires ECMAScript 2015", assumingES6)
 
-    val t: Any = new Throwable("foo")
-    val str = js.constructorOf[js.Object].prototype
-      .selectDynamic("toString")
-      .call(t.asInstanceOf[js.Any])
-    assertEquals("[object Error]", str)
+    def coreToString(x: Any): String = {
+      js.constructorOf[js.Object].prototype
+        .selectDynamic("toString")
+        .call(x.asInstanceOf[js.Any])
+        .asInstanceOf[String]
+    }
+
+    assertEquals("[object Error]", coreToString(new Throwable("foo")))
+    assertEquals("[object Error]",
+        coreToString(new IllegalArgumentException("foo")))
   }
 
 }
