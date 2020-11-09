@@ -298,7 +298,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
          */
         val (lazyAnons, fullClassDefs0) = allClassDefs.partition { cd =>
           val sym = cd.symbol
-          (sym.isAnonymousClass && isJSType(sym)) || sym.isAnonymousFunction
+          isAnonymousJSClass(sym) || isJSFunctionDef(sym) || sym.isAnonymousFunction
         }
 
         lazilyGeneratedAnonClasses ++= lazyAnons.map(cd => cd.symbol -> cd)
@@ -743,7 +743,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     def genAnonJSClassNew(sym: Symbol, jsSuperClassValue: js.Tree,
         args: List[js.Tree])(
         implicit pos: Position): js.Tree = {
-      assert(sym.isAnonymousClass && !isJSFunctionDef(sym),
+      assert(isAnonymousJSClass(sym),
           "Generating AnonJSClassNew of non anonymous JS class")
 
       // Find the ClassDef for this anonymous class
@@ -5277,7 +5277,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           js.JSObjectConstr(Nil)
         else if (cls == JSArrayClass && args0.isEmpty)
           js.JSArrayConstr(Nil)
-        else if (cls.isAnonymousClass)
+        else if (isAnonymousJSClass(cls))
           genAnonJSClassNew(cls, jsClassValue.get, args0.map(genExpr))(fun.pos)
         else if (!nestedJSClass)
           js.JSNew(genPrimitiveJSClass(cls), args)
@@ -5384,7 +5384,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
        */
 
       val isAnonJSClassConstructor =
-        sym.isClassConstructor && sym.owner.isAnonymousClass
+        sym.isClassConstructor && isAnonymousJSClass(sym.owner)
 
       val wereRepeated = enteringPhase(currentRun.uncurryPhase) {
         for {
@@ -6342,7 +6342,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       if (isNonNativeJSClass(sym.owner)) {
         val f = if (isExposed(sym)) {
           js.JSSelect(qual, genExpr(jsNameOf(sym)))
-        } else if (sym.owner.isAnonymousClass) {
+        } else if (isAnonymousJSClass(sym.owner)) {
           js.JSSelect(
               js.JSSelect(qual, genPrivateFieldsSymbol()),
               encodeFieldSymAsStringLiteral(sym))
@@ -6449,8 +6449,23 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
   }
 
   /** Test whether `sym` is the symbol of a JS function definition */
-  private def isJSFunctionDef(sym: Symbol): Boolean =
-    sym.isAnonymousClass && AllJSFunctionClasses.exists(sym isSubClass _)
+  private def isJSFunctionDef(sym: Symbol): Boolean = {
+    /* A JS function may only reach the backend if it originally was a lambda.
+     * This is difficult to check in the backend, so we use the fact that a
+     * non-lambda, concrete, non-native JS type, cannot implement a method named
+     * `apply`.
+     *
+     * All JS function classes have an abstract member named `apply`. Therefore,
+     * a class is a JS lambda iff it is concrete, a non-native JS type and
+     * inherits from a JS function class.
+     *
+     * To avoid having to an isSubClass check on all concrete non-native JS
+     * classes, we short-circuit check that the class is an anonymous class
+     * (a necessary, but not sufficient condition for a JS lambda).
+     */
+    !isJSNativeClass(sym) && !sym.isAbstract && sym.isAnonymousClass &&
+    AllJSFunctionClasses.exists(sym.isSubClass(_))
+  }
 
   private def isJSCtorDefaultParam(sym: Symbol) = {
     isCtorDefaultParam(sym) &&
@@ -6556,6 +6571,25 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
   def isStaticModule(sym: Symbol): Boolean =
     sym.isModuleClass && !isImplClass(sym) && !sym.isLifted
+
+  def isAnonymousJSClass(sym: Symbol): Boolean = {
+    /* sym.isAnonymousClass simply checks if
+     * `name containsName tpnme.ANON_CLASS_NAME`
+     * so after flatten (which we are) it identifies classes nested inside
+     * anonymous classes as anonymous (notably local classes, see #4278).
+     *
+     * Instead we recognize names generated for anonymous classes:
+     * tpnme.ANON_CLASS_NAME followed by $<n> where `n` is an integer.
+     */
+    isJSType(sym) && {
+      val name = sym.name
+      val i = name.lastIndexOf('$')
+
+      i > 0 &&
+      name.endsWith(tpnme.ANON_CLASS_NAME, i) &&
+      (i + 1 until name.length).forall(j => name.charAt(j).isDigit)
+    }
+  }
 
   sealed abstract class MaybeGlobalScope
 
