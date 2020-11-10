@@ -981,16 +981,19 @@ object Build {
             publishLocal in testInterface.v2_11,
             publishLocal in testBridge.v2_11,
             publishLocal in jUnitRuntime.v2_11,
+            publishLocal in irProjectJS.v2_11,
 
             publishLocal in library.v2_12,
             publishLocal in testInterface.v2_12,
             publishLocal in testBridge.v2_12,
             publishLocal in jUnitRuntime.v2_12,
+            publishLocal in irProjectJS.v2_12,
 
             publishLocal in library.v2_13,
             publishLocal in testInterface.v2_13,
             publishLocal in testBridge.v2_13,
             publishLocal in jUnitRuntime.v2_13,
+            publishLocal in irProjectJS.v2_13,
 
             // JVM libs
             publishLocal in irProject.v2_12,

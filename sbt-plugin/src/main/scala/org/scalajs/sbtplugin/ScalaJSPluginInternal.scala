@@ -655,26 +655,60 @@ private[sbtplugin] object ScalaJSPluginInternal {
       }
   )
 
+  private def isScala3(scalaV: String): Boolean =
+    scalaV.startsWith("3.")
+
   private val scalaJSProjectBaseSettings = Seq(
       platformDepsCrossVersion := ScalaJSCrossVersion.binary,
+      crossVersion := ScalaJSCrossVersion.binary,
 
       scalaJSModuleInitializers := Seq(),
       scalaJSUseMainModuleInitializer := false,
       jsEnvInput := Nil,
 
-      // you will need the Scala.js compiler plugin
-      addCompilerPlugin(
-          "org.scala-js" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.full),
+      /* Add core library dependencies (and compiler plugin), depending on the
+       * Scala version (2.x versus 3.x).
+       */
+      libraryDependencies := {
+        val prev = libraryDependencies.value
+        val scalaOrg = scalaOrganization.value
+        val scalaV = scalaVersion.value
 
-      libraryDependencies ++= Seq(
-          // and of course the Scala.js library
-          "org.scala-js" %% "scalajs-library" % scalaJSVersion,
-          // as well as the test-bridge in the Test configuration
-          "org.scala-js" %% "scalajs-test-bridge" % scalaJSVersion % "test"
-      ),
+        if (isScala3(scalaV)) {
+          /* Remove scala3-library (non _sjs1) in case sbt-dotty was applied
+           * before sbt-scalajs.
+           */
+          val filteredPrev = prev.filterNot { dep =>
+            dep.organization == scalaOrg && dep.name == "scala3-library"
+          }
+          filteredPrev ++ Seq(
+              scalaOrg %% "scala3-library_sjs1" % scalaV,
+              /* scala3-library_sjs1 depends on some version of scalajs-library_2.13,
+               * but we bump it to be at least scalaJSVersion.
+               */
+              "org.scala-js" % "scalajs-library_2.13" % scalaJSVersion,
+              "org.scala-js" % "scalajs-test-bridge_2.13" % scalaJSVersion % "test"
+          )
+        } else {
+          prev ++ Seq(
+              compilerPlugin("org.scala-js" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.full),
+              "org.scala-js" %% "scalajs-library" % scalaJSVersion,
+              "org.scala-js" %% "scalajs-test-bridge" % scalaJSVersion % "test"
+          )
+        }
+      },
 
-      // and you will want to be cross-compiled on the Scala.js binary version
-      crossVersion := ScalaJSCrossVersion.binary
+      /* Add the `-scalajs` compiler flag if this is Scala 3, and it is not
+       * already present (that could happen if sbt-dotty is used and is applied
+       * before sbt-scalajs).
+       */
+      scalacOptions := {
+        val prev = scalacOptions.value
+        if (isScala3(scalaVersion.value) && !prev.contains("-scalajs"))
+          prev :+ "-scalajs"
+        else
+          prev
+      }
   )
 
   val scalaJSProjectSettings: Seq[Setting[_]] = (

@@ -33,8 +33,8 @@ object ScalaJSPlugin extends AutoPlugin {
     /** The current version of the Scala.js sbt plugin and tool chain. */
     val scalaJSVersion = ScalaJSVersions.current
 
-    /** Declares [[sbt.Tags.Tag Tag]]s which may be used to limit the
-     *  concurrency of build tasks.
+    /** Declares `Tag`s which may be used to limit the concurrency of build
+     *  tasks.
      *
      *  For example, the following snippet can be used to limit the
      *  number of linking tasks which are able to run at once:
