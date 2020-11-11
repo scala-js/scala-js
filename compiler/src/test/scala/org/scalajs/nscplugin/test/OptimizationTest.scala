@@ -482,6 +482,18 @@ class OptimizationTest extends JSASTTest {
     }
   }
 
+  @Test
+  def optimizeScalaLambda: Unit = {
+    val allowedNames = Set(ClassName("A$"), ClassName("A"))
+
+    """
+    object A {
+      val x: Int => String = _.toString
+    }
+    """.hasNot("auxiliary/anonymous class") {
+      case cl: js.ClassDef if !allowedNames.contains(cl.name.name) =>
+    }
+  }
 }
 
 object OptimizationTest {
