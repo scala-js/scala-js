@@ -95,6 +95,40 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
     """
   }
 
+  @Test // #4281
+  def noExtendJSFunctionAnon: Unit = {
+    """
+    @js.native
+    @JSGlobal("bad")
+    abstract class BadFunction extends js.Function1[Int, String]
+
+    object Test {
+      new BadFunction {
+        def apply(x: Int): String = "f"
+      }
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:11: error: A non-native JS class cannot declare a method named `apply` without `@JSName`
+      |        def apply(x: Int): String = "f"
+      |            ^
+    """
+
+    """
+    class $anonfun extends js.Function1[Int, String] {
+      def apply(x: Int): String = "f"
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:5: error: Non-native JS types cannot directly extend native JS traits.
+      |    class $anonfun extends js.Function1[Int, String] {
+      |          ^
+      |newSource1.scala:6: error: A non-native JS class cannot declare a method named `apply` without `@JSName`
+      |      def apply(x: Int): String = "f"
+      |          ^
+    """
+  }
+
   @Test
   def noBracketAccess: Unit = {
     """
