@@ -594,6 +594,15 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
         }
       }
 
+      // Disallow bracket access / bracket call
+      if (jsInterop.isJSBracketAccess(sym)) {
+        reporter.error(implDef.pos,
+            "@JSBracketAccess is not allowed on JS classes and objects")
+      } else if (jsInterop.isJSBracketCall(sym)) {
+        reporter.error(implDef.pos,
+            "@JSBracketCall is not allowed on JS classes and objects")
+      }
+
       // Checks for non-native JS stuff
       if (!isJSNative) {
         // It cannot be in a native JS class or trait
