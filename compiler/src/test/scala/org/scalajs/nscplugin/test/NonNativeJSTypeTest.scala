@@ -95,6 +95,62 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
     """
   }
 
+  @Test
+  def noUnaryOp: Unit = {
+    """
+    class A extends js.Object {
+      def unary_+ : Int = 1
+      def unary_-() : Int = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: A non-native JS class cannot declare a method named like a unary operation without `@JSName`
+      |      def unary_+ : Int = 1
+      |          ^
+      |newSource1.scala:7: error: A non-native JS class cannot declare a method named like a unary operation without `@JSName`
+      |      def unary_-() : Int = 1
+      |          ^
+    """
+
+    """
+    class A extends js.Object {
+      def unary_+(x: Int): Int = 2
+
+      @JSName("unary_-")
+      def unary_-() : Int = 1
+    }
+    """.succeeds()
+  }
+
+  @Test
+  def noBinaryOp: Unit = {
+    """
+    class A extends js.Object {
+      def +(x: Int): Int = x
+      def &&(x: String): String = x
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: A non-native JS class cannot declare a method named like a binary operation without `@JSName`
+      |      def +(x: Int): Int = x
+      |          ^
+      |newSource1.scala:7: error: A non-native JS class cannot declare a method named like a binary operation without `@JSName`
+      |      def &&(x: String): String = x
+      |          ^
+    """
+
+    """
+    class A extends js.Object {
+      def + : Int = 2
+
+      def -(x: Int, y: Int): Int = 7
+
+      @JSName("&&")
+      def &&(x: String): String = x
+    }
+    """.succeeds()
+  }
+
   @Test // #4281
   def noExtendJSFunctionAnon: Unit = {
     """
