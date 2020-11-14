@@ -499,8 +499,16 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 
       sym.addAnnotation(JSTypeAnnot)
 
-      val isJSLambda =
-        sym.isAnonymousClass && AllJSFunctionClasses.exists(sym.isSubClass(_))
+      val isJSLambda = {
+        /* Under 2.11, sym.isAnonymousFunction does not properly recognize
+         * anonymous functions here (because they seem to not be marked as
+         * synthetic).
+         */
+        sym.name == tpnme.ANON_FUN_NAME &&
+        sym.info.member(nme.apply).isSynthetic &&
+        AllJSFunctionClasses.exists(sym.isSubClass(_))
+      }
+
       if (isJSLambda)
         transformJSLambdaImplDef(implDef)
       else
