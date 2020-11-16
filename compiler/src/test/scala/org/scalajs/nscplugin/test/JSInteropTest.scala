@@ -1414,6 +1414,60 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
   }
 
+  @Test // #4284
+  def noBracketAccessAndJSName: Unit = {
+    """
+    @js.native
+    @JSGlobal
+    class A extends js.Object {
+      @JSBracketAccess
+      @JSName("bar")
+      def bar(x: Int): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:9: error: A member can have at most one annotation among @JSName, @JSBracketAccess and @JSBracketCall.
+      |      @JSName("bar")
+      |       ^
+    """
+  }
+
+  @Test // #4284
+  def noBracketCallAndJSName: Unit = {
+    """
+    @js.native
+    @JSGlobal
+    class A extends js.Object {
+      @JSBracketCall
+      @JSName("bar")
+      def bar(x: Int): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:9: error: A member can have at most one annotation among @JSName, @JSBracketAccess and @JSBracketCall.
+      |      @JSName("bar")
+      |       ^
+    """
+  }
+
+  @Test // #4284
+  def noBracketAccessAndBracketCall: Unit = {
+    """
+    @js.native
+    @JSGlobal
+    class A extends js.Object {
+      @JSBracketAccess
+      @JSBracketCall
+      def bar(x: Int): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:9: error: A member can have at most one annotation among @JSName, @JSBracketAccess and @JSBracketCall.
+      |      @JSBracketCall
+      |       ^
+    """
+  }
+
   @Test
   def onlyJSTraits: Unit = {
 
@@ -2861,7 +2915,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       }
       """ hasErrors
       """
-        |newSource1.scala:13: error: A member can only have a single @JSName annotation.
+        |newSource1.scala:13: error: A member can have at most one annotation among @JSName, @JSBracketAccess and @JSBracketCall.
         |        @JSName("foo")
         |         ^
       """

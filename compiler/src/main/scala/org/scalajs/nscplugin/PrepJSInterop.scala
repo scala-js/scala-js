@@ -165,6 +165,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
         checkJSNativeSpecificAnnotsOnNonJSNative(tree)
 
       checkJSNameAnnots(sym)
+      checkDuplicateJSMemberAnnots(sym)
 
       // @unchecked needed because MemberDef is not marked `sealed`
       val transformedTree: Tree = (tree: @unchecked) match {
@@ -1149,15 +1150,21 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
           if (shouldCheckLiterals)
             checkJSNameArgument(sym, annot)
         }
-
-        // Check that there is at most one @JSName annotation.
-        val allJSNameAnnots = sym.annotations.filter(_.symbol == JSNameAnnotation)
-        for (duplicate <- allJSNameAnnots.tail) {
-          reporter.error(duplicate.pos,
-              "A member can only have a single @JSName annotation.")
-        }
       }
     }
+
+    private def checkDuplicateJSMemberAnnots(sym: Symbol): Unit = {
+      sym.annotations
+        .filter(annot => JSMemberAnnots.contains(annot.symbol))
+        .drop(1)
+        .foreach { annot =>
+          reporter.error(annot.pos, "A member can have at most one " +
+              "annotation among @JSName, @JSBracketAccess and @JSBracketCall.")
+        }
+    }
+
+    private lazy val JSMemberAnnots: Set[Symbol] =
+      Set(JSNameAnnotation, JSBracketAccessAnnotation, JSBracketCallAnnotation)
 
     /** Checks that argument to @JSName on [[member]] is a literal.
      *  Reports an error on each annotation where this is not the case.
