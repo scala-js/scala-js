@@ -816,6 +816,20 @@ object Build {
 
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.Linker,
+
+      mimaBinaryIssueFilters ++= {
+        // Always exclude packages where we give no compatibility guarantee.
+        import com.typesafe.tools.mima.core.Problem
+        import com.typesafe.tools.mima.core.ProblemFilters.exclude
+
+        Seq(
+            exclude[Problem]("org.scalajs.linker.analyzer.*"),
+            exclude[Problem]("org.scalajs.linker.backend.*"),
+            exclude[Problem]("org.scalajs.linker.checker.*"),
+            exclude[Problem]("org.scalajs.linker.frontend.*")
+        )
+      },
+
       exportJars := true, // required so ScalaDoc linking works
 
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a")
