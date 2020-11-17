@@ -30,4 +30,7 @@ object BinaryIncompatibilities {
 
   val TestInterface = Seq(
   )
+
+  val JUnitRuntime = Seq(
+  )
 }

@@ -1604,6 +1604,8 @@ object Build {
       crossVersion := CrossVersion.binary, // no _sjs suffix
       fatalWarningsSettings,
       name := "Scala.js JUnit test runtime",
+      previousArtifactSetting,
+      mimaBinaryIssueFilters ++= BinaryIncompatibilities.JUnitRuntime,
 
       headerSources in Compile ~= { srcs =>
         srcs.filter { src =>
