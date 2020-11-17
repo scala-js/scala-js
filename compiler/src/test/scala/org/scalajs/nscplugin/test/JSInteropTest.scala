@@ -2897,6 +2897,89 @@ class JSInteropTest extends DirectTest with TestHelpers {
   }
 
   @Test
+  def noBracketCallOrBracketAccessOnJSClasses: Unit = {
+    // native
+    """
+    @js.native
+    @JSGlobal
+    @JSBracketCall
+    class A extends js.Object
+
+    @js.native
+    @JSGlobal
+    @JSBracketAccess
+    object B extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: @JSBracketCall is not allowed on JS classes and objects
+      |    class A extends js.Object
+      |          ^
+      |newSource1.scala:13: error: @JSBracketAccess is not allowed on JS classes and objects
+      |    object B extends js.Object
+      |           ^
+    """
+
+    // Non-native
+    """
+    @JSBracketCall
+    class A extends js.Object
+
+    @JSBracketAccess
+    object B extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: @JSBracketCall is not allowed on JS classes and objects
+      |    class A extends js.Object
+      |          ^
+      |newSource1.scala:9: error: @JSBracketAccess is not allowed on JS classes and objects
+      |    object B extends js.Object
+      |           ^
+    """
+
+    // Nested native
+    """
+    @js.native
+    @JSGlobal
+    object Enclosing extends js.Object {
+      @JSBracketCall
+      @js.native
+      class A extends js.Object
+
+      @JSBracketAccess
+      @js.native
+      object B extends js.Object
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:10: error: @JSBracketCall is not allowed on JS classes and objects
+      |      class A extends js.Object
+      |            ^
+      |newSource1.scala:14: error: @JSBracketAccess is not allowed on JS classes and objects
+      |      object B extends js.Object
+      |             ^
+    """
+
+    // Nested non-native
+    """
+    object Enclosing extends js.Object {
+      @JSBracketCall
+      object A extends js.Object
+
+      @JSBracketAccess
+      class B extends js.Object
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: @JSBracketCall is not allowed on JS classes and objects
+      |      object A extends js.Object
+      |             ^
+      |newSource1.scala:10: error: @JSBracketAccess is not allowed on JS classes and objects
+      |      class B extends js.Object
+      |            ^
+    """
+  }
+
+  @Test
   def noDuplicateJSNameAnnotOnMember: Unit = {
     for {
       kind <- Seq("class", "object", "trait")
