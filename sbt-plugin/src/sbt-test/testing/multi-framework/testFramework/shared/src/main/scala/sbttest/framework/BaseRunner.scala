@@ -17,8 +17,8 @@ abstract class BaseRunner(
   private[framework] def taskDone(): Unit
 
   /** Tasks need to wait for this future to complete if they get called with a
-   *  continuation. This is used to ensure that the master/slave message channel
-   *  eventually delivers messages.
+   *  continuation. This is used to ensure that the controller/worker message
+   *  channel eventually delivers messages.
    */
   private[framework] val taskBlock: Future[Unit]
 

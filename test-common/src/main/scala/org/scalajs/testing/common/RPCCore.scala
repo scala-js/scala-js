@@ -94,10 +94,10 @@ private[testing] abstract class RPCCore()(implicit ec: ExecutionContext) {
                * future, we can improve this.
                */
               val detail = opCode match {
-                case JSEndpoints.msgSlave.opCode =>
+                case JSEndpoints.msgWorker.opCode =>
                   "; " +
-                  "The test adapter could not send a message to a slave, " +
-                  "which probably happens because the slave terminated early, " +
+                  "The test adapter could not send a message to a worker, " +
+                  "which probably happens because the worker terminated early, " +
                   "without waiting for the reply to a call to send(). " +
                   "This is probably a bug in the testing framework you are " +
                   "using. See also #3201."

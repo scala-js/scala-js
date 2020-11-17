@@ -15,11 +15,12 @@ final class DummyFramework extends Framework {
   def fingerprints: Array[Fingerprint] = Array(DummyFingerprint)
 
   def runner(args: Array[String], remoteArgs: Array[String],
-      testClassLoader: ClassLoader): MasterRunner =
-    new MasterRunner(args, remoteArgs, testClassLoader)
+      testClassLoader: ClassLoader): ControllerRunner =
+    new ControllerRunner(args, remoteArgs, testClassLoader)
 
+  // Aka `workerRunner`; see the Scaladoc of `sbt.testing.Framework` about the name.
   def slaveRunner(args: Array[String], remoteArgs: Array[String],
-      testClassLoader: ClassLoader, send: String => Unit): SlaveRunner =
-    new SlaveRunner(args, remoteArgs, testClassLoader, send)
+      testClassLoader: ClassLoader, send: String => Unit): WorkerRunner =
+    new WorkerRunner(args, remoteArgs, testClassLoader, send)
 
 }

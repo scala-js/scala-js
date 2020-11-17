@@ -15,9 +15,9 @@ package org.scalajs.testing.common
 import sbt.testing.Event
 
 private[testing] object JVMEndpoints {
-  val msgSlave: MsgEndpoint.EP[RunMux[String]] = MsgEndpoint[RunMux[String]](2)
+  val msgWorker: MsgEndpoint.EP[RunMux[String]] = MsgEndpoint[RunMux[String]](2)
 
-  val msgMaster: MsgEndpoint.EP[RunMux[FrameworkMessage]] =
+  val msgController: MsgEndpoint.EP[RunMux[FrameworkMessage]] =
     MsgEndpoint[RunMux[FrameworkMessage]](3)
 
   val event: MsgEndpoint.EP[RunMux[Event]] = MsgEndpoint[RunMux[Event]](4)
