@@ -293,9 +293,18 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
         (Converter: Converter).convert()
 
+        /* We always need to supply a module kind, but if we do not have an
+         * output module, we do not know the module kind.
+         * Therefore, we do what we used to do in the older implementation: We
+         * take it from the config itself.
+         */
+        val linkerConfig = (scalaJSLinkerConfig in legacyKey).value
+        val moduleKind = report.publicModules.headOption
+          .fold(linkerConfig.moduleKind)(_.moduleKind)
+
         Attributed.blank(outputJSFile)
           .put(scalaJSSourceMap, outputSourceMapFile)
-          .put(scalaJSModuleKind, report.publicModules.head.moduleKind)
+          .put(scalaJSModuleKind, moduleKind)
       }
   )
 
