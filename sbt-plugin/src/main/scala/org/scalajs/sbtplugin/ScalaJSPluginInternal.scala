@@ -166,6 +166,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
       moduleName in key := (moduleName in legacyKey).value,
 
+      scalaJSLinkerConfig in key := (scalaJSLinkerConfig in legacyKey).value,
+
       key := Def.taskDyn {
         /* It is very important that we evaluate all of those `.value`s from
          * here, and not from within the `Def.task { ... }`, otherwise the
@@ -291,9 +293,18 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
         (Converter: Converter).convert()
 
+        /* We always need to supply a module kind, but if we do not have an
+         * output module, we do not know the module kind.
+         * Therefore, we do what we used to do in the older implementation: We
+         * take it from the config itself.
+         */
+        val linkerConfig = (scalaJSLinkerConfig in legacyKey).value
+        val moduleKind = report.publicModules.headOption
+          .fold(linkerConfig.moduleKind)(_.moduleKind)
+
         Attributed.blank(outputJSFile)
           .put(scalaJSSourceMap, outputSourceMapFile)
-          .put(scalaJSModuleKind, report.publicModules.head.moduleKind)
+          .put(scalaJSModuleKind, moduleKind)
       }
   )
 
@@ -411,9 +422,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
           .withClosureCompiler(useClosure)
           .withCheckIR(true)  // for safety, fullOpt is slow anyways.
       },
-
-      scalaJSLinkerConfig in fastLinkJS := (scalaJSLinkerConfig in fastOptJS).value,
-      scalaJSLinkerConfig in fullLinkJS := (scalaJSLinkerConfig in fullOptJS).value,
 
       scalaJSLinkerResult := Def.settingDyn {
         scalaJSStage.value match {
