@@ -166,6 +166,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
       moduleName in key := (moduleName in legacyKey).value,
 
+      scalaJSLinkerConfig in key := (scalaJSLinkerConfig in legacyKey).value,
+
       key := Def.taskDyn {
         /* It is very important that we evaluate all of those `.value`s from
          * here, and not from within the `Def.task { ... }`, otherwise the
@@ -411,9 +413,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
           .withClosureCompiler(useClosure)
           .withCheckIR(true)  // for safety, fullOpt is slow anyways.
       },
-
-      scalaJSLinkerConfig in fastLinkJS := (scalaJSLinkerConfig in fastOptJS).value,
-      scalaJSLinkerConfig in fullLinkJS := (scalaJSLinkerConfig in fullOptJS).value,
 
       scalaJSLinkerResult := Def.settingDyn {
         scalaJSStage.value match {
