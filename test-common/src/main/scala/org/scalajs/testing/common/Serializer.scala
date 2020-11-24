@@ -93,8 +93,56 @@ private[testing] object Serializer {
   }
 
   implicit object StringSerializer extends Serializer[String] {
-    def serialize(x: String, out: SerializeState): Unit = out.out.writeUTF(x)
-    def deserialize(in: DeserializeState): String = in.in.readUTF()
+    def serialize(x: String, out: SerializeState): Unit = {
+      // Modified version of writeUTF to support strings longer than Short.MaxValue (#3667)
+      out.out.writeInt(x.length)
+
+      import out.out.write
+
+      for (i <- 0 until x.length()) {
+        val c = x.charAt(i)
+        if (c <= 0x7f && c >= 0x01) {
+          write(c)
+        } else if (c < 0x0800) {
+          write((c >> 6) | 0xc0)
+          write((c & 0x3f) | 0x80)
+        } else {
+          write((c >> 12) | 0xe0)
+          write(((c >> 6) & 0x3f) | 0x80)
+          write((c & 0x3f) | 0x80)
+        }
+      }
+    }
+
+    def deserialize(in: DeserializeState): String = {
+      import in.in.readByte
+
+      val chars = Array.fill(in.in.readInt()) {
+        val a = readByte()
+
+        if ((a & 0x80) == 0x00) { // 0xxxxxxx
+          a.toChar
+        } else if ((a & 0xE0) == 0xC0) { // 110xxxxx
+          val b = readByte()
+
+          require((b & 0xC0) == 0x80) // 10xxxxxx
+
+          (((a & 0x1F) << 6) | (b & 0x3F)).toChar
+        } else if ((a & 0xF0) == 0xE0) { // 1110xxxx
+          val b = readByte()
+          val c = readByte()
+
+          require((b & 0xC0) == 0x80) // 10xxxxxx
+          require((c & 0xC0) == 0x80) // 10xxxxxx
+
+          (((a & 0x0F) << 12) | ((b & 0x3F) << 6) | (c & 0x3F)).toChar
+        } else {
+          throw new IllegalArgumentException(s"bad byte: $a")
+        }
+      }
+
+      new String(chars)
+    }
   }
 
   implicit object UnitSerializer extends Serializer[Unit] {

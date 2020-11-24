@@ -37,4 +37,12 @@ class SerializerTest {
     assertNull(deserialized.getFileName)
     assertEquals("MyClass.myMethod(Unknown Source)", deserialized.toString)
   }
+
+  // #3667
+  @Test
+  def serializeLargeString: Unit = {
+    val x = new String(Array.tabulate(Short.MaxValue + 1)(_.toChar))
+    val y = roundTrip(x)
+    assertEquals(x, y)
+  }
 }
