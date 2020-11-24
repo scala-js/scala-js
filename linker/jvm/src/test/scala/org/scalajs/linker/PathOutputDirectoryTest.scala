@@ -18,12 +18,14 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 
+import java.util.EnumSet
+
 import org.junit.Test
 import org.junit.Assert._
 
 import org.scalajs.junit.async._
 
-import com.google.common.jimfs.Jimfs
+import com.google.common.jimfs.{Jimfs, Configuration}
 
 import org.scalajs.linker.interface.unstable.OutputDirectoryImpl
 
@@ -71,6 +73,33 @@ class PathOutputDirectoryTest {
 
     readOp.map { buf =>
       assertEquals(ByteBuffer.wrap(dummyContent), buf)
+    }
+  }
+
+  @Test // #4212
+  def allowGroupOthersReadPosixFileSystem(): AsyncResult = await {
+    val config = Configuration.unix().toBuilder()
+      .setAttributeViews("basic", "posix")
+      .build()
+
+    val dir = Jimfs.newFileSystem(config).getPath("/tmp")
+    Files.createDirectory(dir)
+
+    val fileName = "file.js"
+    val filePath = dir.resolve(fileName)
+
+    val writeOp = OutputDirectoryImpl
+      .fromOutputDirectory(PathOutputDirectory(dir))
+      .writeFull(fileName, ByteBuffer.wrap(dummyContent))
+
+    writeOp.map { _ =>
+      import java.nio.file.attribute.PosixFilePermission._
+
+      val gotPerms = Files.getPosixFilePermissions(filePath)
+      val wantPerms =
+        EnumSet.of(OWNER_READ, OWNER_WRITE, GROUP_READ, OTHERS_READ)
+
+      assertEquals(wantPerms, gotPerms)
     }
   }
 }
