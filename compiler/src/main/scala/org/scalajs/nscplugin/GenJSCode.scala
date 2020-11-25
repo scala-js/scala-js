@@ -55,7 +55,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
   import rootMirror._
   import definitions._
   import jsDefinitions._
-  import jsInterop.{jsNameOf, jsNativeLoadSpecOfOption, JSName}
+  import jsInterop.{jsNameOf, jsNativeLoadSpecOfOption, JSName, JSCallingConvention}
 
   import treeInfo.{hasSynthCaseSymbol, StripCast}
 
@@ -5151,82 +5151,80 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }
       }
 
-      def hasExplicitJSEncoding =
-        sym.hasAnnotation(JSNameAnnotation) ||
-        sym.hasAnnotation(JSBracketAccessAnnotation) ||
-        sym.hasAnnotation(JSBracketCallAnnotation)
+      def genSuperReference(propName: js.Tree): js.Tree = {
+        jsSuperClassValue.fold[js.Tree] {
+          genJSBracketSelectOrGlobalRef(receiver, propName)
+        } { superClassValue =>
+          js.JSSuperSelect(superClassValue,
+              ruleOutGlobalScope(receiver), propName)
+        }
+      }
 
-      val boxedResult = sym.name match {
-        case JSUnaryOpMethodName(code) if argc == 0 =>
+      def genSelectGet(propName: js.Tree): js.Tree =
+        genSuperReference(propName)
+
+      def genSelectSet(propName: js.Tree, value: js.Tree): js.Tree =
+        js.Assign(genSuperReference(propName), value)
+
+      def genCall(methodName: js.Tree,
+          args: List[js.TreeOrJSSpread]): js.Tree = {
+        jsSuperClassValue.fold[js.Tree] {
+          genJSBracketMethodApplyOrGlobalRefApply(
+              receiver, methodName, args)
+        } { superClassValue =>
+          js.JSSuperMethodCall(superClassValue,
+              ruleOutGlobalScope(receiver), methodName, args)
+        }
+      }
+
+      val boxedResult = JSCallingConvention.of(sym) match {
+        case JSCallingConvention.UnaryOp(code) =>
           requireNotSuper()
+          assert(argc == 0, s"bad argument count ($argc) for unary op at $pos")
           js.JSUnaryOp(code, ruleOutGlobalScope(receiver))
 
-        case JSBinaryOpMethodName(code) if argc == 1 =>
+        case JSCallingConvention.BinaryOp(code) =>
           requireNotSuper()
+          assert(argc == 1, s"bad argument count ($argc) for binary op at $pos")
           js.JSBinaryOp(code, ruleOutGlobalScope(receiver), argsNoSpread.head)
 
-        case nme.apply if sym.owner.isSubClass(JSThisFunctionClass) =>
+        case JSCallingConvention.Call =>
           requireNotSuper()
-          genJSBracketMethodApplyOrGlobalRefApply(receiver,
-              js.StringLiteral("call"), args)
 
-        case nme.apply if !hasExplicitJSEncoding =>
-          requireNotSuper()
-          js.JSFunctionApply(ruleOutGlobalScope(receiver), args)
-
-        case _ =>
-          def jsFunName: js.Tree = genExpr(jsNameOf(sym))
-
-          def genSuperReference(propName: js.Tree): js.Tree = {
-            jsSuperClassValue.fold[js.Tree] {
-              genJSBracketSelectOrGlobalRef(receiver, propName)
-            } { superClassValue =>
-              js.JSSuperSelect(superClassValue,
-                  ruleOutGlobalScope(receiver), propName)
-            }
-          }
-
-          def genSelectGet(propName: js.Tree): js.Tree =
-            genSuperReference(propName)
-
-          def genSelectSet(propName: js.Tree, value: js.Tree): js.Tree =
-            js.Assign(genSuperReference(propName), value)
-
-          def genCall(methodName: js.Tree,
-              args: List[js.TreeOrJSSpread]): js.Tree = {
-            jsSuperClassValue.fold[js.Tree] {
-              genJSBracketMethodApplyOrGlobalRefApply(
-                  receiver, methodName, args)
-            } { superClassValue =>
-              js.JSSuperMethodCall(superClassValue,
-                  ruleOutGlobalScope(receiver), methodName, args)
-            }
-          }
-
-          if (jsInterop.isJSGetter(sym)) {
-            assert(argc == 0,
-                s"wrong number of arguments for call to JS getter $sym at $pos")
-            genSelectGet(jsFunName)
-          } else if (jsInterop.isJSSetter(sym)) {
-            assert(argc == 1,
-                s"wrong number of arguments for call to JS setter $sym at $pos")
-            genSelectSet(jsFunName, argsNoSpread.head)
-          } else if (jsInterop.isJSBracketAccess(sym)) {
-            argsNoSpread match {
-              case keyArg :: Nil =>
-                genSelectGet(keyArg)
-              case keyArg :: valueArg :: Nil =>
-                genSelectSet(keyArg, valueArg)
-              case _ =>
-                throw new AssertionError(
-                    s"@JSBracketAccess methods should have 1 or 2 non-varargs arguments at $pos")
-            }
-          } else if (jsInterop.isJSBracketCall(sym)) {
-            val (methodName, actualArgs) = extractFirstArg(args)
-            genCall(methodName, actualArgs)
+          if (sym.owner.isSubClass(JSThisFunctionClass)) {
+            genJSBracketMethodApplyOrGlobalRefApply(receiver,
+                js.StringLiteral("call"), args)
           } else {
-            genCall(jsFunName, args)
+            js.JSFunctionApply(ruleOutGlobalScope(receiver), args)
           }
+
+        case JSCallingConvention.Property(jsName) =>
+          argsNoSpread match {
+            case Nil          => genSelectGet(genExpr(jsName))
+            case value :: Nil => genSelectSet(genExpr(jsName), value)
+
+            case _ =>
+              throw new AssertionError(
+                  s"property methods should have 0 or 1 non-varargs arguments at $pos")
+          }
+
+        case JSCallingConvention.BracketAccess =>
+          argsNoSpread match {
+            case keyArg :: Nil =>
+              genSelectGet(keyArg)
+            case keyArg :: valueArg :: Nil =>
+              genSelectSet(keyArg, valueArg)
+            case _ =>
+              throw new AssertionError(
+                  s"@JSBracketAccess methods should have 1 or 2 non-varargs arguments at $pos")
+          }
+
+        case JSCallingConvention.BracketCall =>
+          val (methodName, actualArgs) = extractFirstArg(args)
+          genCall(methodName, actualArgs)
+
+        case JSCallingConvention.Method(jsName) =>
+          genCall(genExpr(jsName), args)
       }
 
       boxedResult match {
@@ -5238,52 +5236,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           fromAny(boxedResult,
               enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
       }
-    }
-
-    private object JSUnaryOpMethodName {
-      private val map = Map[Name, js.JSUnaryOp.Code](
-        nme.UNARY_+ -> js.JSUnaryOp.+,
-        nme.UNARY_- -> js.JSUnaryOp.-,
-        nme.UNARY_~ -> js.JSUnaryOp.~,
-        nme.UNARY_! -> js.JSUnaryOp.!
-      )
-
-      /* We use Name instead of TermName to work around
-       * https://github.com/scala/bug/issues/11534
-       */
-      def unapply(name: Name): Option[js.JSUnaryOp.Code] =
-        map.get(name)
-    }
-
-    private object JSBinaryOpMethodName {
-      private val map = Map[Name, js.JSBinaryOp.Code](
-        nme.ADD -> js.JSBinaryOp.+,
-        nme.SUB -> js.JSBinaryOp.-,
-        nme.MUL -> js.JSBinaryOp.*,
-        nme.DIV -> js.JSBinaryOp./,
-        nme.MOD -> js.JSBinaryOp.%,
-
-        nme.LSL -> js.JSBinaryOp.<<,
-        nme.ASR -> js.JSBinaryOp.>>,
-        nme.LSR -> js.JSBinaryOp.>>>,
-        nme.OR  -> js.JSBinaryOp.|,
-        nme.AND -> js.JSBinaryOp.&,
-        nme.XOR -> js.JSBinaryOp.^,
-
-        nme.LT -> js.JSBinaryOp.<,
-        nme.LE -> js.JSBinaryOp.<=,
-        nme.GT -> js.JSBinaryOp.>,
-        nme.GE -> js.JSBinaryOp.>=,
-
-        nme.ZAND -> js.JSBinaryOp.&&,
-        nme.ZOR  -> js.JSBinaryOp.||
-      )
-
-      /* We use Name instead of TermName to work around
-       * https://github.com/scala/bug/issues/11534
-       */
-      def unapply(name: Name): Option[js.JSBinaryOp.Code] =
-        map.get(name)
     }
 
     /** Extract the first argument to a primitive JS call.

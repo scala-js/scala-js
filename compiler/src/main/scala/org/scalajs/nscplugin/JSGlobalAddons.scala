@@ -17,6 +17,7 @@ import scala.tools.nsc._
 import scala.collection.mutable
 
 import org.scalajs.ir.Trees.JSNativeLoadSpec
+import org.scalajs.ir.{Trees => js}
 
 /** Additions to Global meaningful for the JavaScript backend
  *
@@ -131,6 +132,121 @@ trait JSGlobalAddons extends JSDefinitions
       }
     }
 
+    sealed abstract class JSCallingConvention {
+      def displayName: String
+    }
+
+    object JSCallingConvention {
+      case object Call extends JSCallingConvention {
+        def displayName: String = "function application"
+      }
+
+      case object BracketAccess extends JSCallingConvention {
+        def displayName: String = "bracket access"
+      }
+
+      case object BracketCall extends JSCallingConvention {
+        def displayName: String = "bracket call"
+      }
+
+      case class Method(name: JSName) extends JSCallingConvention {
+        def displayName: String = "method '" + name.displayName + "'"
+      }
+
+      case class Property(name: JSName) extends JSCallingConvention {
+        def displayName: String = "property '" + name.displayName + "'"
+      }
+
+      case class UnaryOp(code: js.JSUnaryOp.Code) extends JSCallingConvention {
+        def displayName: String = "unary operator"
+      }
+
+      case class BinaryOp(code: js.JSBinaryOp.Code) extends JSCallingConvention {
+        def displayName: String = "binary operator"
+      }
+
+      def of(sym: Symbol): JSCallingConvention = {
+        assert(sym.isTerm, s"got non-term symbol: $sym")
+
+        if (isJSBracketAccess(sym)) {
+          BracketAccess
+        } else if (isJSBracketCall(sym)) {
+          BracketCall
+        } else {
+          def default = {
+            val jsName = jsNameOf(sym)
+            if (isJSProperty(sym)) Property(jsName)
+            else Method(jsName)
+          }
+
+          if (!sym.hasAnnotation(JSNameAnnotation)) {
+            lazy val pc = sym.paramss.map(_.size).sum
+
+            sym.name match {
+              case nme.apply => Call
+
+              case JSUnaryOpMethodName(code) if pc == 0 =>
+                UnaryOp(code)
+
+              case JSBinaryOpMethodName(code) if pc == 1 =>
+                BinaryOp(code)
+
+              case _ =>
+                default
+            }
+          } else {
+            default
+          }
+        }
+      }
+    }
+
+    private object JSUnaryOpMethodName {
+      private val map = Map[Name, js.JSUnaryOp.Code](
+        nme.UNARY_+ -> js.JSUnaryOp.+,
+        nme.UNARY_- -> js.JSUnaryOp.-,
+        nme.UNARY_~ -> js.JSUnaryOp.~,
+        nme.UNARY_! -> js.JSUnaryOp.!
+      )
+
+      /* We use Name instead of TermName to work around
+       * https://github.com/scala/bug/issues/11534
+       */
+      def unapply(name: Name): Option[js.JSUnaryOp.Code] =
+        map.get(name)
+    }
+
+    private object JSBinaryOpMethodName {
+      private val map = Map[Name, js.JSBinaryOp.Code](
+        nme.ADD -> js.JSBinaryOp.+,
+        nme.SUB -> js.JSBinaryOp.-,
+        nme.MUL -> js.JSBinaryOp.*,
+        nme.DIV -> js.JSBinaryOp./,
+        nme.MOD -> js.JSBinaryOp.%,
+
+        nme.LSL -> js.JSBinaryOp.<<,
+        nme.ASR -> js.JSBinaryOp.>>,
+        nme.LSR -> js.JSBinaryOp.>>>,
+        nme.OR  -> js.JSBinaryOp.|,
+        nme.AND -> js.JSBinaryOp.&,
+        nme.XOR -> js.JSBinaryOp.^,
+
+        nme.LT -> js.JSBinaryOp.<,
+        nme.LE -> js.JSBinaryOp.<=,
+        nme.GT -> js.JSBinaryOp.>,
+        nme.GE -> js.JSBinaryOp.>=,
+
+        nme.ZAND -> js.JSBinaryOp.&&,
+        nme.ZOR  -> js.JSBinaryOp.||
+      )
+
+      /* We use Name instead of TermName to work around
+       * https://github.com/scala/bug/issues/11534
+       */
+      def unapply(name: Name): Option[js.JSBinaryOp.Code] =
+        map.get(name)
+    }
+
     def clearGlobalState(): Unit = {
       topLevelExports.clear()
       staticExports.clear()
@@ -200,11 +316,11 @@ trait JSGlobalAddons extends JSDefinitions
 
     /** has this symbol to be translated into a JS getter (both directions)? */
     def isJSGetter(sym: Symbol): Boolean = {
-      /* `sym.isMethod && sym.isModule` implies that `sym` is the module's
-       * accessor. In 2.12, module accessors are synthesized
+      /* `sym.isModule` implies that `sym` is the module's accessor. In 2.12,
+       * module accessors are synthesized
        * after uncurry, thus their first info is a MethodType at phase fields.
        */
-      (sym.isMethod && sym.isModule) || (sym.tpe.params.isEmpty && enteringUncurryIfAtPhaseAfter {
+      sym.isModule || (sym.tpe.params.isEmpty && enteringUncurryIfAtPhaseAfter {
         sym.tpe match {
           case _: NullaryMethodType              => true
           case PolyType(_, _: NullaryMethodType) => true

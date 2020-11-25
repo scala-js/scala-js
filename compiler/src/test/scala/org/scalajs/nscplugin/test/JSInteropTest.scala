@@ -35,8 +35,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
       "JSGlobalScope" -> "@JSGlobalScope"
   )
 
+  private def version = scala.util.Properties.versionNumberString
+
   private def ifHasNewRefChecks(msg: String): String = {
-    val version = scala.util.Properties.versionNumberString
     if (version.startsWith("2.11.") ||
         version.startsWith("2.12.")) {
       ""
@@ -1465,6 +1466,22 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:9: error: A member can have at most one annotation among @JSName, @JSBracketAccess and @JSBracketCall.
       |      @JSBracketCall
       |       ^
+    """
+  }
+
+  @Test
+  def noBadBinaryOp: Unit = {
+    """
+    @js.native
+    @JSGlobal
+    class A extends js.Object {
+      def +(x: Int*): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: methods representing binary operations may not have repeated parameters
+      |      def +(x: Int*): Int = js.native
+      |            ^
     """
   }
 
@@ -3049,11 +3066,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:11: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:11: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def bar(): Int in class B with JSName 'baz'
+      |override def bar(): Int in class B called from JS as method 'baz'
       |    is conflicting with
-      |def bar(): Int in class A with JSName 'foo'
+      |def bar(): Int in class A called from JS as method 'foo'
       |
       |      override def bar() = 1
       |                   ^
@@ -3069,11 +3086,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def bar(): Int in class B with JSName 'bar'
+      |override def bar(): Int in class B called from JS as method 'bar'
       |    is conflicting with
-      |def bar(): Int in class A with JSName 'foo'
+      |def bar(): Int in class A called from JS as method 'foo'
       |
       |      override def bar() = 1
       |                   ^
@@ -3092,19 +3109,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def bar(): String in class B with JSName 'bar'
+      |override def bar(): String in class B called from JS as method 'bar'
       |    is conflicting with
-      |def bar(): Object in class A with JSName 'foo'
+      |def bar(): Object in class A called from JS as method 'foo'
       |
       |      override def bar(): String
       |                   ^
-      |newSource1.scala:13: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:13: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def bar(): String in class C with JSName 'bar'
+      |override def bar(): String in class C called from JS as method 'bar'
       |    is conflicting with
-      |def bar(): Object in class A with JSName 'foo'
+      |def bar(): Object in class A called from JS as method 'foo'
       |
       |      override def bar() = "1"
       |                   ^
@@ -3123,19 +3140,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def bar(): String in class B with JSName 'foo'
+      |override def bar(): String in class B called from JS as method 'foo'
       |    is conflicting with
-      |def bar(): Object in class A with JSName 'bar'
+      |def bar(): Object in class A called from JS as method 'bar'
       |
       |      override def bar(): String
       |                   ^
-      |newSource1.scala:13: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:13: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def bar(): String in class C with JSName 'bar'
+      |override def bar(): String in class C called from JS as method 'bar'
       |    is conflicting with
-      |override def bar(): String in class B with JSName 'foo'
+      |override def bar(): String in class B called from JS as method 'foo'
       |
       |      override def bar() = "1"
       |                   ^
@@ -3152,20 +3169,20 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends B
     """ hasErrors
     s"""
-      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |def foo: Int in class A with JSName 'foo'
+      |def foo: Int in class A called from JS as property 'foo'
       |    is conflicting with
-      |def foo: Int in trait B with JSName 'bar'
+      |def foo: Int in trait B called from JS as property 'bar'
       |
       |      def foo: Int
       |          ^
       |${ifHasNewRefChecks("""
-        |newSource1.scala:12: error: A member of a JS class is overriding another member with a different JS name.
+        |newSource1.scala:12: error: A member of a JS class is overriding another member with a different JS calling convention.
         |
-        |def foo: Int in class A with JSName 'foo'
+        |def foo: Int in class A called from JS as property 'foo'
         |    is conflicting with
-        |def foo: Int in trait B with JSName 'bar'
+        |def foo: Int in trait B called from JS as property 'bar'
         |
         |    class C extends B
         |          ^
@@ -3183,20 +3200,20 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends B
     """ hasErrors
     s"""
-      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |def foo: Int in class A with JSName 'bar'
+      |def foo: Int in class A called from JS as property 'bar'
       |    is conflicting with
-      |def foo: Int in trait B with JSName 'foo'
+      |def foo: Int in trait B called from JS as property 'foo'
       |
       |      def foo: Int
       |          ^
       |${ifHasNewRefChecks("""
-        |newSource1.scala:12: error: A member of a JS class is overriding another member with a different JS name.
+        |newSource1.scala:12: error: A member of a JS class is overriding another member with a different JS calling convention.
         |
-        |def foo: Int in class A with JSName 'bar'
+        |def foo: Int in class A called from JS as property 'bar'
         |    is conflicting with
-        |def foo: Int in trait B with JSName 'foo'
+        |def foo: Int in trait B called from JS as property 'foo'
         |
         |    class C extends B
         |          ^
@@ -3213,11 +3230,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def foo(x: Int): Int in class B with JSName 'foo'
+      |override def foo(x: Int): Int in class B called from JS as method 'foo'
       |    is conflicting with
-      |def foo(x: Int): Int in class A with JSName 'bar'
+      |def foo(x: Int): Int in class A called from JS as method 'bar'
       |
       |      override def foo(x: Int): Int = x
       |                   ^
@@ -3233,11 +3250,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def foo(x: Int): Int in class B with JSName 'foo'
+      |override def foo(x: Int): Int in class B called from JS as method 'foo'
       |    is conflicting with
-      |def foo(x: Int): Int in trait A with JSName 'bar'
+      |def foo(x: Int): Int in trait A called from JS as method 'bar'
       |
       |      override def foo(x: Int): Int = x
       |                   ^
@@ -3256,19 +3273,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |def foo(x: Int): Int in class A with JSName 'bar'
+      |def foo(x: Int): Int in class A called from JS as method 'bar'
       |    is conflicting with
-      |def foo(x: Int): Int in trait B with JSName 'foo'
+      |def foo(x: Int): Int in trait B called from JS as method 'foo'
       |
       |      def foo(x: Int): Int
       |          ^
-      |newSource1.scala:13: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:13: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def foo(x: Int): Int in class C with JSName 'foo'
+      |override def foo(x: Int): Int in class C called from JS as method 'foo'
       |    is conflicting with
-      |def foo(x: Int): Int in class A with JSName 'bar'
+      |def foo(x: Int): Int in class A called from JS as method 'bar'
       |
       |      override def foo(x: Int): Int = x
       |                   ^
@@ -3287,19 +3304,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |def foo(x: Int): Int in class A with JSName 'foo'
+      |def foo(x: Int): Int in class A called from JS as method 'foo'
       |    is conflicting with
-      |def foo(x: Int): Int in trait B with JSName 'bar'
+      |def foo(x: Int): Int in trait B called from JS as method 'bar'
       |
       |      def foo(x: Int): Int
       |          ^
-      |newSource1.scala:13: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:13: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def foo(x: Int): Int in class C with JSName 'foo'
+      |override def foo(x: Int): Int in class C called from JS as method 'foo'
       |    is conflicting with
-      |def foo(x: Int): Int in trait B with JSName 'bar'
+      |def foo(x: Int): Int in trait B called from JS as method 'bar'
       |
       |      override def foo(x: Int): Int = x
       |                   ^
@@ -3316,11 +3333,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     trait C extends A with B
     """ hasErrors
     """
-      |newSource1.scala:12: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:12: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |def foo: Int in trait B with JSName 'bar'
+      |def foo: Int in trait B called from JS as property 'bar'
       |    is conflicting with
-      |def foo: Int in trait A with JSName 'foo'
+      |def foo: Int in trait A called from JS as property 'foo'
       |
       |    trait C extends A with B
       |          ^
@@ -3337,11 +3354,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     abstract class C extends A with B
     """ hasErrors
     """
-      |newSource1.scala:12: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:12: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |def foo: Int in trait B with JSName 'bar'
+      |def foo: Int in trait B called from JS as property 'bar'
       |    is conflicting with
-      |def foo: Int in trait A with JSName 'foo'
+      |def foo: Int in trait A called from JS as property 'foo'
       |
       |    abstract class C extends A with B
       |                   ^
@@ -3396,11 +3413,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:16: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:16: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def bar(): Int in class B with JSName 'Syms.sym2'
+      |override def bar(): Int in class B called from JS as method 'Syms.sym2'
       |    is conflicting with
-      |def bar(): Int in class A with JSName 'Syms.sym1'
+      |def bar(): Int in class A called from JS as method 'Syms.sym1'
       |
       |      override def bar() = 1
       |                   ^
@@ -3421,11 +3438,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:15: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:15: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def bar(): Int in class B with JSName 'baz'
+      |override def bar(): Int in class B called from JS as method 'baz'
       |    is conflicting with
-      |def bar(): Int in class A with JSName 'Syms.sym1'
+      |def bar(): Int in class A called from JS as method 'Syms.sym1'
       |
       |      override def bar() = 1
       |                   ^
@@ -3446,11 +3463,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:15: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:15: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def bar(): Int in class B with JSName 'Syms.sym1'
+      |override def bar(): Int in class B called from JS as method 'Syms.sym1'
       |    is conflicting with
-      |def bar(): Int in class A with JSName 'foo'
+      |def bar(): Int in class A called from JS as method 'foo'
       |
       |      override def bar() = 1
       |                   ^
@@ -3470,11 +3487,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def bar(): Int in class B with JSName 'bar'
+      |override def bar(): Int in class B called from JS as method 'bar'
       |    is conflicting with
-      |def bar(): Int in class A with JSName 'Syms.sym1'
+      |def bar(): Int in class A called from JS as method 'Syms.sym1'
       |
       |      override def bar() = 1
       |                   ^
@@ -3497,19 +3514,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def bar(): String in class B with JSName 'bar'
+      |override def bar(): String in class B called from JS as method 'bar'
       |    is conflicting with
-      |def bar(): Object in class A with JSName 'Syms.sym1'
+      |def bar(): Object in class A called from JS as method 'Syms.sym1'
       |
       |      override def bar(): String
       |                   ^
-      |newSource1.scala:17: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:17: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def bar(): String in class C with JSName 'bar'
+      |override def bar(): String in class C called from JS as method 'bar'
       |    is conflicting with
-      |def bar(): Object in class A with JSName 'Syms.sym1'
+      |def bar(): Object in class A called from JS as method 'Syms.sym1'
       |
       |      override def bar() = "1"
       |                   ^
@@ -3532,19 +3549,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def bar(): String in class B with JSName 'Syms.sym1'
+      |override def bar(): String in class B called from JS as method 'Syms.sym1'
       |    is conflicting with
-      |def bar(): Object in class A with JSName 'bar'
+      |def bar(): Object in class A called from JS as method 'bar'
       |
       |      override def bar(): String
       |                   ^
-      |newSource1.scala:17: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:17: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def bar(): String in class C with JSName 'bar'
+      |override def bar(): String in class C called from JS as method 'bar'
       |    is conflicting with
-      |override def bar(): String in class B with JSName 'Syms.sym1'
+      |override def bar(): String in class B called from JS as method 'Syms.sym1'
       |
       |      override def bar() = "1"
       |                   ^
@@ -3565,20 +3582,20 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends B
     """ hasErrors
     s"""
-      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |def foo: Int in class A with JSName 'foo'
+      |def foo: Int in class A called from JS as property 'foo'
       |    is conflicting with
-      |def foo: Int in trait B with JSName 'Syms.sym1'
+      |def foo: Int in trait B called from JS as property 'Syms.sym1'
       |
       |      def foo: Int
       |          ^
       |${ifHasNewRefChecks("""
-        |newSource1.scala:16: error: A member of a JS class is overriding another member with a different JS name.
+        |newSource1.scala:16: error: A member of a JS class is overriding another member with a different JS calling convention.
         |
-        |def foo: Int in class A with JSName 'foo'
+        |def foo: Int in class A called from JS as property 'foo'
         |    is conflicting with
-        |def foo: Int in trait B with JSName 'Syms.sym1'
+        |def foo: Int in trait B called from JS as property 'Syms.sym1'
         |
         |    class C extends B
         |          ^
@@ -3600,20 +3617,20 @@ class JSInteropTest extends DirectTest with TestHelpers {
     class C extends B
     """ hasErrors
     s"""
-      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |def foo: Int in class A with JSName 'Syms.sym1'
+      |def foo: Int in class A called from JS as property 'Syms.sym1'
       |    is conflicting with
-      |def foo: Int in trait B with JSName 'foo'
+      |def foo: Int in trait B called from JS as property 'foo'
       |
       |      def foo: Int
       |          ^
       |${ifHasNewRefChecks("""
-        |newSource1.scala:16: error: A member of a JS class is overriding another member with a different JS name.
+        |newSource1.scala:16: error: A member of a JS class is overriding another member with a different JS calling convention.
         |
-        |def foo: Int in class A with JSName 'Syms.sym1'
+        |def foo: Int in class A called from JS as property 'Syms.sym1'
         |    is conflicting with
-        |def foo: Int in trait B with JSName 'foo'
+        |def foo: Int in trait B called from JS as property 'foo'
         |
         |    class C extends B
         |          ^
@@ -3634,11 +3651,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def foo(x: Int): Int in class B with JSName 'foo'
+      |override def foo(x: Int): Int in class B called from JS as method 'foo'
       |    is conflicting with
-      |def foo(x: Int): Int in class A with JSName 'Syms.sym1'
+      |def foo(x: Int): Int in class A called from JS as method 'Syms.sym1'
       |
       |      override def foo(x: Int): Int = x
       |                   ^
@@ -3658,11 +3675,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def foo(x: Int): Int in class B with JSName 'foo'
+      |override def foo(x: Int): Int in class B called from JS as method 'foo'
       |    is conflicting with
-      |def foo(x: Int): Int in trait A with JSName 'Syms.sym1'
+      |def foo(x: Int): Int in trait A called from JS as method 'Syms.sym1'
       |
       |      override def foo(x: Int): Int = x
       |                   ^
@@ -3685,19 +3702,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |def foo(x: Int): Int in class A with JSName 'Syms.sym1'
+      |def foo(x: Int): Int in class A called from JS as method 'Syms.sym1'
       |    is conflicting with
-      |def foo(x: Int): Int in trait B with JSName 'foo'
+      |def foo(x: Int): Int in trait B called from JS as method 'foo'
       |
       |      def foo(x: Int): Int
       |          ^
-      |newSource1.scala:17: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:17: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def foo(x: Int): Int in class C with JSName 'foo'
+      |override def foo(x: Int): Int in class C called from JS as method 'foo'
       |    is conflicting with
-      |def foo(x: Int): Int in class A with JSName 'Syms.sym1'
+      |def foo(x: Int): Int in class A called from JS as method 'Syms.sym1'
       |
       |      override def foo(x: Int): Int = x
       |                   ^
@@ -3720,19 +3737,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |def foo(x: Int): Int in class A with JSName 'foo'
+      |def foo(x: Int): Int in class A called from JS as method 'foo'
       |    is conflicting with
-      |def foo(x: Int): Int in trait B with JSName 'Syms.sym1'
+      |def foo(x: Int): Int in trait B called from JS as method 'Syms.sym1'
       |
       |      def foo(x: Int): Int
       |          ^
-      |newSource1.scala:17: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:17: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |override def foo(x: Int): Int in class C with JSName 'foo'
+      |override def foo(x: Int): Int in class C called from JS as method 'foo'
       |    is conflicting with
-      |def foo(x: Int): Int in trait B with JSName 'Syms.sym1'
+      |def foo(x: Int): Int in trait B called from JS as method 'Syms.sym1'
       |
       |      override def foo(x: Int): Int = x
       |                   ^
@@ -3753,11 +3770,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
     trait C extends A with B
     """ hasErrors
     """
-      |newSource1.scala:16: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:16: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |def foo: Int in trait B with JSName 'Syms.sym1'
+      |def foo: Int in trait B called from JS as property 'Syms.sym1'
       |    is conflicting with
-      |def foo: Int in trait A with JSName 'foo'
+      |def foo: Int in trait A called from JS as property 'foo'
       |
       |    trait C extends A with B
       |          ^
@@ -3778,15 +3795,139 @@ class JSInteropTest extends DirectTest with TestHelpers {
     abstract class C extends A with B
     """ hasErrors
     """
-      |newSource1.scala:16: error: A member of a JS class is overriding another member with a different JS name.
+      |newSource1.scala:16: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
-      |def foo: Int in trait B with JSName 'Syms.sym1'
+      |def foo: Int in trait B called from JS as property 'Syms.sym1'
       |    is conflicting with
-      |def foo: Int in trait A with JSName 'foo'
+      |def foo: Int in trait A called from JS as property 'foo'
       |
       |    abstract class C extends A with B
       |                   ^
     """
+  }
+
+  @Test // #4282
+  def jsTypesSpecialCallingConventionOverrideErrors: Unit = {
+    // name "apply" vs function application
+    """
+    @js.native
+    @JSGlobal
+    class A extends js.Object {
+      def apply(): Int
+    }
+
+    class B extends A {
+      @JSName("apply")
+      def apply(): Int
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:13: error: A member of a JS class is overriding another member with a different JS calling convention.
+      |
+      |def apply(): Int in class B called from JS as method 'apply'
+      |    is conflicting with
+      |def apply(): Int in class A called from JS as function application
+      |
+      |      def apply(): Int
+      |          ^
+    """
+
+    // property vs method
+    """
+    class A extends js.Object {
+      def a: Int
+    }
+
+    class B extends A {
+      def a(): Int
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:10: error: A member of a JS class is overriding another member with a different JS calling convention.
+      |
+      |def a(): Int in class B called from JS as method 'a'
+      |    is conflicting with
+      |def a: Int in class A called from JS as property 'a'
+      |
+      |      def a(): Int
+      |          ^
+    """
+
+    val postUnarySpace =
+      if (version.startsWith("2.11")) ""
+      else " "
+
+    // unary op vs thing named like it
+    """
+    @js.native
+    @JSGlobal
+    class A extends js.Object {
+      def unary_+ : Int
+    }
+
+    class B extends A {
+      @JSName("unary_+")
+      def unary_+ : Int
+    }
+    """ hasErrors
+    s"""
+      |newSource1.scala:13: error: A member of a JS class is overriding another member with a different JS calling convention.
+      |
+      |def unary_+$postUnarySpace: Int in class B called from JS as property 'unary_+'
+      |    is conflicting with
+      |def unary_+$postUnarySpace: Int in class A called from JS as unary operator
+      |
+      |      def unary_+ : Int
+      |          ^
+    """
+
+    // non-zero arg is OK
+    """
+    class A extends js.Object {
+      def unary_+(x: String): Int = 1
+    }
+
+    class B extends A {
+      @JSName("unary_+")
+      override def unary_+(x: String): Int = 2
+    }
+    """.succeeds()
+
+    // binary op vs thing named like it
+    """
+    @js.native
+    @JSGlobal
+    class A extends js.Object {
+      def ||(x: Int): Int
+    }
+
+    class B extends A {
+      @JSName("||")
+      def ||(x: Int): Int
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:13: error: A member of a JS class is overriding another member with a different JS calling convention.
+      |
+      |def ||(x: Int): Int in class B called from JS as method '||'
+      |    is conflicting with
+      |def ||(x: Int): Int in class A called from JS as binary operator
+      |
+      |      def ||(x: Int): Int
+      |          ^
+    """
+
+    // non-single arg is OK
+    """
+    class A extends js.Object {
+      def ||(): Int = 1
+    }
+
+    class B extends A {
+      @JSName("||")
+      override def ||(): Int = 2
+    }
+    """.succeeds()
   }
 
   @Test

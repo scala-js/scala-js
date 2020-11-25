@@ -51,7 +51,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
   import definitions._
   import rootMirror._
   import jsDefinitions._
-  import jsInterop.JSName
+  import jsInterop.{JSCallingConvention, JSName}
 
   val phaseName: String = "jsinterop"
   override def description: String = "prepare ASTs for JavaScript interop"
@@ -641,17 +641,17 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
           membSym.defStringSeenAs(sym.thisType.memberType(membSym))
 
         // Check for overrides with different JS names - issue #1983
-        if (jsInterop.jsNameOf(low) != jsInterop.jsNameOf(high)) {
+        if (jsInterop.JSCallingConvention.of(low) != jsInterop.JSCallingConvention.of(high)) {
           val msg = {
-            def memberDefStringWithJSName(membSym: Symbol) = {
+            def memberDefStringWithCallingConvention(membSym: Symbol) = {
               memberDefString(membSym) +
-              membSym.locationString + " with JSName '" +
-              jsInterop.jsNameOf(membSym).displayName + '\''
+              membSym.locationString + " called from JS as " +
+              JSCallingConvention.of(membSym).displayName
             }
-            "A member of a JS class is overriding another member with a different JS name.\n\n" +
-            memberDefStringWithJSName(low) + "\n" +
+            "A member of a JS class is overriding another member with a different JS calling convention.\n\n" +
+            memberDefStringWithCallingConvention(low) + "\n" +
             "    is conflicting with\n" +
-            memberDefStringWithJSName(high) + "\n"
+            memberDefStringWithCallingConvention(high) + "\n"
           }
 
           reporter.error(errorPos, msg)
@@ -896,16 +896,10 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       assert(!sym.isLocalToBlock, s"$tree at ${tree.pos}")
 
       sym.name match {
-        case nme.apply if !sym.hasAnnotation(JSNameAnnotation) =>
-          if (jsInterop.isJSGetter(sym)) {
-            reporter.error(sym.pos, s"A member named apply represents function " +
-                "application in JavaScript. A parameterless member should be " +
-                "exported as a property. You must add @JSName(\"apply\")")
-          } else if (enclosingOwner is OwnerKind.JSNonNative) {
-            reporter.error(sym.pos,
-                "A non-native JS class cannot declare a method " +
-                "named `apply` without `@JSName`")
-          }
+        case nme.apply if !sym.hasAnnotation(JSNameAnnotation) && jsInterop.isJSGetter(sym) =>
+          reporter.error(sym.pos, "A member named apply represents function " +
+              "application in JavaScript. A parameterless member should be " +
+              "exported as a property. You must add @JSName(\"apply\")")
 
         case nme.equals_ if sym.tpe.matches(Any_equals.tpe) =>
           reporter.warning(sym.pos, "Overriding equals in a JS class does " +
@@ -923,46 +917,76 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       if (jsInterop.isJSSetter(sym))
         checkSetterSignature(sym, tree.pos, exported = false)
 
-      if (jsInterop.isJSBracketAccess(sym)) {
-        if (enclosingOwner is OwnerKind.JSNonNative) {
-          reporter.error(tree.pos,
-              "@JSBracketAccess is not allowed in non-native JS classes")
-        } else {
-          val paramCount = sym.paramss.map(_.size).sum
-          if (paramCount != 1 && paramCount != 2) {
-            reporter.error(tree.pos,
-                "@JSBracketAccess methods must have one or two parameters")
-          } else if (paramCount == 2 &&
-              sym.tpe.finalResultType.typeSymbol != UnitClass) {
-            reporter.error(tree.pos,
-                "@JSBracketAccess methods with two parameters must return Unit")
-          }
+      if (enclosingOwner is OwnerKind.JSNonNative) {
+        JSCallingConvention.of(sym) match {
+          case JSCallingConvention.Property(_) => // checked above
+          case JSCallingConvention.Method(_)   => // no checks needed
 
+          case JSCallingConvention.Call =>
+            reporter.error(sym.pos,
+                "A non-native JS class cannot declare a method " +
+                "named `apply` without `@JSName`")
+
+          case JSCallingConvention.BracketAccess =>
+            reporter.error(tree.pos,
+                "@JSBracketAccess is not allowed in non-native JS classes")
+
+          case JSCallingConvention.BracketCall =>
+            reporter.error(tree.pos,
+                "@JSBracketCall is not allowed in non-native JS classes")
+
+          case JSCallingConvention.UnaryOp(_) =>
+            reporter.error(sym.pos,
+                "A non-native JS class cannot declare a method " +
+                "named like a unary operation without `@JSName`")
+
+          case JSCallingConvention.BinaryOp(_) =>
+            reporter.error(sym.pos,
+                "A non-native JS class cannot declare a method " +
+                "named like a binary operation without `@JSName`")
+        }
+      } else {
+        def checkNoDefaultOrRepeated(subject: String) = {
           for (param <- sym.paramss.flatten) {
             if (isScalaRepeatedParamType(param.tpe)) {
-              reporter.error(param.pos,
-                  "@JSBracketAccess methods may not have repeated parameters")
+              reporter.error(param.pos, s"$subject may not have repeated parameters")
             } else if (param.isParamWithDefault) {
-              reporter.error(param.pos,
-                  "@JSBracketAccess methods may not have default parameters")
+              reporter.error(param.pos, s"$subject may not have default parameters")
             }
           }
         }
-      }
 
-      if (jsInterop.isJSBracketCall(sym)) {
-        if (enclosingOwner is OwnerKind.JSNonNative) {
-          reporter.error(tree.pos,
-              "@JSBracketCall is not allowed in non-native JS classes")
-        } else {
-          // JS bracket calls must have at least one non-repeated parameter
-          sym.tpe.paramss match {
-            case (param :: _) :: _ if !isScalaRepeatedParamType(param.tpe) =>
-              // ok
-            case _ =>
-              reporter.error(tree.pos, "@JSBracketCall methods must have at " +
-                  "least one non-repeated parameter")
-          }
+        JSCallingConvention.of(sym) match {
+          case JSCallingConvention.Property(_) => // checked above
+          case JSCallingConvention.Method(_)   => // no checks needed
+          case JSCallingConvention.Call        => // no checks needed
+          case JSCallingConvention.UnaryOp(_)  => // no checks needed
+
+          case JSCallingConvention.BinaryOp(_) =>
+            checkNoDefaultOrRepeated("methods representing binary operations")
+
+          case JSCallingConvention.BracketAccess =>
+            val paramCount = sym.paramss.map(_.size).sum
+            if (paramCount != 1 && paramCount != 2) {
+              reporter.error(tree.pos,
+                  "@JSBracketAccess methods must have one or two parameters")
+            } else if (paramCount == 2 &&
+                sym.tpe.finalResultType.typeSymbol != UnitClass) {
+              reporter.error(tree.pos,
+                  "@JSBracketAccess methods with two parameters must return Unit")
+            }
+
+            checkNoDefaultOrRepeated("@JSBracketAccess methods")
+
+          case JSCallingConvention.BracketCall =>
+            // JS bracket calls must have at least one non-repeated parameter
+            sym.tpe.paramss match {
+              case (param :: _) :: _ if !isScalaRepeatedParamType(param.tpe) =>
+                // ok
+              case _ =>
+                reporter.error(tree.pos, "@JSBracketCall methods must have at " +
+                    "least one non-repeated parameter")
+            }
         }
       }
 
