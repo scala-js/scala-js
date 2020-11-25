@@ -15,6 +15,8 @@ package org.scalajs.testsuite.jsinterop
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
+import java.util.function.Supplier
+
 import org.junit.Assert._
 import org.junit.Test
 
@@ -508,6 +510,80 @@ class NestedJSClassTest {
     assertNull(list.tail.tail.tail)
   }
 
+  @Test
+  def jsClassInsideAnonymousClass(): Unit = {
+    val supplier = new Supplier[js.Dynamic] {
+      class InsideAnonymousClass extends js.Object {
+        def x: Int = 1
+      }
+
+      def get(): js.Dynamic =
+        new InsideAnonymousClass().asInstanceOf[js.Dynamic]
+    }
+
+    val obj = supplier.get()
+
+    assertEquals(1, obj.x)
+    assertFalse(obj.asInstanceOf[js.Object].hasOwnProperty("x"))
+    assertSame(obj.constructor, supplier.get().constructor)
+    assertNotSame(obj.constructor, js.constructorOf[js.Object])
+  }
+
+  @Test
+  def localJSClassInsideAnonymousClass(): Unit = {
+    val supplier = new Supplier[js.Dynamic] {
+      def get(): js.Dynamic = {
+        class LocalInsideAnonymousClass extends js.Object {
+          def x: Int = 1
+        }
+
+        new LocalInsideAnonymousClass().asInstanceOf[js.Dynamic]
+      }
+    }
+
+    val obj = supplier.get()
+
+    assertEquals(1, obj.x)
+    assertFalse(obj.asInstanceOf[js.Object].hasOwnProperty("x"))
+    assertNotSame(obj.constructor, supplier.get().constructor)
+    assertNotSame(obj.constructor, js.constructorOf[js.Object])
+  }
+
+  @Test
+  def localJSClassInsideAnonymousScalaFunction(): Unit = {
+    val fun = { () =>
+      class LocalInsideAnonFun extends js.Object {
+        def x: Int = 1
+      }
+
+      new LocalInsideAnonFun().asInstanceOf[js.Dynamic]
+    }
+
+    val obj = fun()
+
+    assertEquals(1, obj.x)
+    assertFalse(obj.asInstanceOf[js.Object].hasOwnProperty("x"))
+    assertNotSame(obj.constructor, fun().constructor)
+    assertNotSame(obj.constructor, js.constructorOf[js.Object])
+  }
+
+  @Test
+  def localJSClassInsideAnonymousJSFunction(): Unit = {
+    val fun: js.Function0[js.Dynamic] = { () =>
+      class LocalInsideAnonFun extends js.Object {
+        def x: Int = 1
+      }
+
+      new LocalInsideAnonFun().asInstanceOf[js.Dynamic]
+    }
+
+    val obj = fun()
+
+    assertEquals(1, obj.x)
+    assertFalse(obj.asInstanceOf[js.Object].hasOwnProperty("x"))
+    assertNotSame(obj.constructor, fun().constructor)
+    assertNotSame(obj.constructor, js.constructorOf[js.Object])
+  }
 }
 
 object NestedJSClassTest {
