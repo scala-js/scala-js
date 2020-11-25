@@ -36,7 +36,7 @@ class PathOutputDirectoryTest {
 
   @Test
   def avoidUnnecessaryWrite(): AsyncResult = await {
-    val dir = Jimfs.newFileSystem().getPath("/tmp")
+    val dir = Jimfs.newFileSystem().getPath("tmp").toAbsolutePath()
     Files.createDirectory(dir)
 
     val fileName = "file.js"
@@ -59,7 +59,7 @@ class PathOutputDirectoryTest {
 
   @Test
   def readFull(): AsyncResult = await {
-    val dir = Jimfs.newFileSystem().getPath("/tmp")
+    val dir = Jimfs.newFileSystem().getPath("tmp").toAbsolutePath()
     Files.createDirectory(dir)
 
     val fileName = "file.js"
@@ -82,7 +82,7 @@ class PathOutputDirectoryTest {
       .setAttributeViews("basic", "posix")
       .build()
 
-    val dir = Jimfs.newFileSystem(config).getPath("/tmp")
+    val dir = Jimfs.newFileSystem(config).getPath("/tmp") // we forced Unix, so /tmp is fine
     Files.createDirectory(dir)
 
     val fileName = "file.js"

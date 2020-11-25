@@ -4,7 +4,7 @@ environment:
   global:
     NODEJS_VERSION: "12"
     JAVA_HOME: C:\Program Files\Java\jdk1.8.0
-    SCALA_VERSION: 2.12.11
+    SCALA_VERSION: 2.12.12
 install:
   - ps: Install-Product node $env:NODEJS_VERSION
   - npm install
@@ -14,7 +14,8 @@ install:
 build: off
 test_script:
   # Very far from testing everything, but at least it is a good sanity check
-  - cmd: sbt ";clean;++%SCALA_VERSION%;testSuite2_12/test"
+  # For slow things (partest and scripted), we execute only one test
+  - cmd: sbt ";clean;++%SCALA_VERSION%;testSuite2_12/test;linker2_12/test;partestSuite2_12/testOnly -- --fastOpt run/option-fold.scala;sbtPlugin/scripted settings/module-init"
 cache:
   - C:\sbt
   - C:\Users\appveyor\.ivy2\cache
