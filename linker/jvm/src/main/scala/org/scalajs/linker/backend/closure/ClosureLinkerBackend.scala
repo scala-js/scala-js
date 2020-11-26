@@ -15,6 +15,7 @@ package org.scalajs.linker.backend.closure
 import scala.concurrent._
 
 import java.io.Writer
+import java.util.{Arrays, HashSet}
 
 import com.google.javascript.jscomp.{
   SourceFile => ClosureSource,
@@ -94,7 +95,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
       logger.time("Closure: Compiler pass") {
         val options = closureOptions(sjsModule.id)
 
-        val externs = java.util.Arrays.asList(
+        val externs = Arrays.asList(
             ClosureSource.fromCode("ScalaJSExterns.js",
                 ClosureLinkerBackend.ScalaJSExterns),
             ClosureSource.fromCode("ScalaJSGlobalRefs.js",
@@ -122,14 +123,12 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
 
   private def compile(externs: java.util.List[ClosureSource], module: JSModule,
       options: ClosureOptions, logger: Logger) = {
-    import com.google.common.collect.ImmutableSet
-
     val compiler = new ClosureCompiler
-    compiler.setErrorManager(new SortingErrorManager(ImmutableSet.of(
-        new LoggerErrorReportGenerator(logger))))
+    compiler.setErrorManager(new SortingErrorManager(new HashSet(Arrays.asList(
+        new LoggerErrorReportGenerator(logger)))))
 
-    val result = compiler.compileModules(externs,
-        java.util.Arrays.asList(module), options)
+    val result =
+      compiler.compileModules(externs, Arrays.asList(module), options)
 
     if (!result.success) {
       throw new LinkingException(

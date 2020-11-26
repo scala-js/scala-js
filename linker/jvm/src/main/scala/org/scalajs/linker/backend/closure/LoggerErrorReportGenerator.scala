@@ -23,10 +23,10 @@ private[closure] final class LoggerErrorReportGenerator(logger: Logger)
     /* We should use `manager.getSortedDiagnostics()` rather than using
      * separately getWarnings() and getErrors(), but it is package-private.
      */
-    immutableListForeach(manager.getWarnings) { warning =>
+    manager.getWarnings().forEach { warning =>
       logger.warn(warning.toString())
     }
-    immutableListForeach(manager.getErrors) { error =>
+    manager.getErrors().forEach { error =>
       logger.error(error.toString())
     }
 
@@ -41,12 +41,4 @@ private[closure] final class LoggerErrorReportGenerator(logger: Logger)
     else
       logger.info(msg)
   }
-
-  private def immutableListForeach[A](
-      list: com.google.common.collect.ImmutableList[A])(f: A => Unit): Unit = {
-    list.forEach(new java.util.function.Consumer[A] {
-      def accept(x: A): Unit = f(x)
-    })
-  }
-
 }
