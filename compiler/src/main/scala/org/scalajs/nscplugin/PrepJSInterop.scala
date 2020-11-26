@@ -1205,7 +1205,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
     private def checkJSNameArgument(memberSym: Symbol, annot: AnnotationInfo): Unit = {
       val argTree = annot.args.head
       if (argTree.tpe.typeSymbol == StringClass) {
-        if (!argTree.isInstanceOf[Literal]) {
+        if (annot.stringArg(0).isEmpty) {
           reporter.error(argTree.pos,
               "A string argument to JSName must be a literal string")
         }
