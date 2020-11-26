@@ -350,9 +350,10 @@ trait JSGlobalAddons extends JSDefinitions
       sym.getAnnotation(JSNameAnnotation).fold[JSName] {
         JSName.Literal(defaultJSNameOf(sym))
       } { annotation =>
-        annotation.args.head match {
-          case Literal(Constant(name: String)) => JSName.Literal(name)
-          case tree                            => JSName.Computed(tree.symbol)
+        annotation.constantAtIndex(0).collect {
+          case Constant(name: String) => JSName.Literal(name)
+        }.getOrElse {
+          JSName.Computed(annotation.args.head.symbol)
         }
       }
     }
