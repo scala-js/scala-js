@@ -39,7 +39,7 @@ object PathOutputDirectory {
         if (!needsWrite)
           Future.successful(())
         else
-          writeAtomic(file, buf)
+          writeAtomic(name, buf)
       }
     }
 
@@ -60,49 +60,47 @@ object PathOutputDirectory {
       Future(blocking(Files.delete(getPath(name))))
 
     private def getPath(name: String) = directory.resolve(name)
-  }
 
-  private def writeAtomic(path: Path, buf: ByteBuffer)(
-      implicit ec: ExecutionContext): Future[Unit] = {
-    import StandardOpenOption._
-    import PosixFilePermission._
+    private def writeAtomic(name: String, buf: ByteBuffer)(
+        implicit ec: ExecutionContext): Future[Unit] = {
+      import StandardOpenOption._
+      import PosixFilePermission._
 
+      val tmpFileFuture = Future {
+        blocking {
+          val tmpFile = Files.createTempFile(directory, ".tmp-" + name, ".tmp")
 
-    val tmpFileFuture = Future {
-      blocking {
-        val tmpFile = Files.createTempFile(
-            path.getParent(), ".tmp-" + path.getFileName(), ".tmp")
+          /* Set file permissions for temporary file as in Linux it is created
+           * with permissions 0600 which deviates from the standard 0644 used
+           * in *.class and *.jar files.
+           *
+           * Uses setPosixFilePermissions instead of passing the permissions to
+           * createTempFile to cover systems (if any exist) that uses POSIX
+           * permissions, but can't set them atomically while creating a
+           * temporary file.
+           */
+          val permissions =
+            EnumSet.of(OWNER_READ, OWNER_WRITE, GROUP_READ, OTHERS_READ)
 
-        /* Set file permissions for temporary file as in Linux it is created
-         * with permissions 0600 which deviates from the standard 0644 used
-         * in *.class and *.jar files.
-         *
-         * Uses setPosixFilePermissions instead of passing the permissions to
-         * createTempFile to cover systems (if any exist) that uses POSIX
-         * permissions, but can't set them atomically while creating a
-         * temporary file.
-         */
-        val permissions =
-          EnumSet.of(OWNER_READ, OWNER_WRITE, GROUP_READ, OTHERS_READ)
+          try {
+            Files.setPosixFilePermissions(tmpFile, permissions)
+          } catch {
+            case _: UnsupportedOperationException =>
+          }
 
-        try {
-          Files.setPosixFilePermissions(tmpFile, permissions)
-        } catch {
-          case _: UnsupportedOperationException =>
+          tmpFile
+        }
+      }
+
+      tmpFileFuture.flatMap { tmpFile =>
+        val writeFuture = withChannel(tmpFile, WRITE, CREATE, TRUNCATE_EXISTING) { chan =>
+          writeToChannel(chan, buf)
         }
 
-        tmpFile
+        writeFuture
+          .flatMap(_ => Future(blocking(move(tmpFile, getPath(name)))))
+          .finallyWith(Future(blocking(Files.deleteIfExists(tmpFile))))
       }
-    }
-
-    tmpFileFuture.flatMap { tmpFile =>
-      val writeFuture = withChannel(tmpFile, WRITE, CREATE, TRUNCATE_EXISTING) { chan =>
-        writeToChannel(chan, buf)
-      }
-
-      writeFuture
-        .flatMap(_ => Future(blocking(move(tmpFile, path))))
-        .finallyWith(Future(blocking(Files.deleteIfExists(tmpFile))))
     }
   }
 
