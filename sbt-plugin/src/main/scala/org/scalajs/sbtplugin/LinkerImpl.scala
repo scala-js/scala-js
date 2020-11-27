@@ -41,8 +41,10 @@ trait LinkerImpl {
   def outputDirectory(path: Path): OutputDirectory
 
   @deprecated("Use outputDirectory instead", "1.3.0")
-  final def outputFile(path: Path): LinkerOutput.File =
-    new OutputFileImpl(path.getFileName().toString(), outputDirectory(path.getParent()))
+  final def outputFile(path: Path): LinkerOutput.File = {
+    val np = path.toAbsolutePath().normalize()
+    new OutputFileImpl(np.getFileName().toString(), outputDirectory(np.getParent()))
+  }
 }
 
 /** Factory methods and concrete implementations of `LinkerImpl`.
