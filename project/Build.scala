@@ -936,6 +936,7 @@ object Build {
           "org.scala-sbt" % "test-interface" % "1.0",
           "org.scala-js" %% "scalajs-js-envs" % "1.1.1",
           "com.novocode" % "junit-interface" % "0.11" % "test",
+          "com.google.jimfs" % "jimfs" % "1.1" % "test",
       ),
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestAdapter,
