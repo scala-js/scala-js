@@ -15,18 +15,15 @@ package org.scalajs.linker.standard
 import scala.annotation.tailrec
 import scala.concurrent._
 
-import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.{ConcurrentLinkedQueue, Semaphore}
 
 private[linker] final class IOThrottler(totalSlots: Int) {
-  /* This is basically a java.util.concurrent.Semaphore, but it is not
-   * implemented in the javalib.
-   */
-  private val slots = new AtomicInteger(totalSlots)
+
+  private val slots = new Semaphore(totalSlots)
   private val queue = new ConcurrentLinkedQueue[() => Unit]()
 
   def throttle[T](future: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
-    if (tryGetSlot()) {
+    if (slots.tryAcquire()) {
       // Fast path.
       val result = future
       result.onComplete(onComplete)
@@ -48,33 +45,19 @@ private[linker] final class IOThrottler(totalSlots: Int) {
   }
 
   private val onComplete: Any => Unit = { _ =>
-    slots.incrementAndGet()
+    slots.release()
     process()
   }
 
   private def process(): Unit = {
-    while (!queue.isEmpty() && tryGetSlot()) {
+    while (!queue.isEmpty() && slots.tryAcquire()) {
       val work = queue.poll()
       if (work == null) {
         // We raced. Release the slot and try again.
-        slots.incrementAndGet()
+        slots.release()
       } else {
         work()
       }
-    }
-  }
-
-  @tailrec
-  private def tryGetSlot(): Boolean = {
-    val s = slots.get()
-    if (s > 0) {
-      if (slots.compareAndSet(s, s - 1)) {
-        true
-      } else {
-        tryGetSlot()
-      }
-    } else {
-      false
     }
   }
 }
