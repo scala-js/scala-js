@@ -55,10 +55,12 @@ object HTMLRunnerBuilder {
   def write(output: Path, artifactsDir: Path, title: String, input: Seq[Input],
       frameworkImplClassNames: List[List[String]],
       taskDefs: List[TaskDef]): Unit = {
+    val absoluteArtifacts = artifactsDir.toAbsolutePath()
+    val outputDir = output.toAbsolutePath().normalize().getParent()
 
     def artifactPath(name: String): (String, Path) = {
-      val path = artifactsDir.resolve(name)
-      val relPath = output.getParent().relativize(path)
+      val path = absoluteArtifacts.resolve(name)
+      val relPath = outputDir.relativize(path)
       (joinRelPath(relPath), path)
     }
 

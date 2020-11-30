@@ -96,7 +96,7 @@ class MainGenericRunner {
     val linker = StandardImpl.linker(linkerConfig)
 
     val sjsCode = {
-      val dir = Jimfs.newFileSystem().getPath("tmp").toAbsolutePath()
+      val dir = Jimfs.newFileSystem().getPath("tmp")
       Files.createDirectory(dir)
 
       val cache = StandardImpl.irFileCache().newCache

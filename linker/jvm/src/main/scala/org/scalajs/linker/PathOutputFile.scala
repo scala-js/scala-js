@@ -20,8 +20,9 @@ import org.scalajs.linker.interface.unstable.OutputFileImpl
 @deprecated("Part of old Linker interface. Use PathOutputDirectory instead.", "1.3.0")
 object PathOutputFile {
   def apply(path: Path): LinkerOutput.File = {
-    val dir = PathOutputDirectory(path.getParent())
-    new OutputFileImpl(path.getFileName().toString(), dir)
+    val np = path.toAbsolutePath().normalize()
+    val dir = PathOutputDirectory(np.getParent())
+    new OutputFileImpl(np.getFileName().toString(), dir)
   }
 
   def atomic(path: Path): LinkerOutput.File =
