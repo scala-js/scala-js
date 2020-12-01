@@ -3853,9 +3853,25 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |          ^
     """
 
-    val postUnarySpace =
-      if (version.startsWith("2.11")) ""
+    val postUnarySpace = {
+      val hasNoSpace = {
+        version.startsWith("2.11.") ||
+        version == "2.12.1" ||
+        version == "2.12.2" ||
+        version == "2.12.3" ||
+        version == "2.12.4" ||
+        version == "2.12.5" ||
+        version == "2.12.6" ||
+        version == "2.12.7" ||
+        version == "2.12.8" ||
+        version == "2.12.9" ||
+        version == "2.12.10" ||
+        version == "2.13.0" ||
+        version == "2.13.1"
+      }
+      if (hasNoSpace) ""
       else " "
+    }
 
     // unary op vs thing named like it
     """
