@@ -15,7 +15,7 @@ build: off
 test_script:
   # Very far from testing everything, but at least it is a good sanity check
   # For slow things (partest and scripted), we execute only one test
-  - cmd: sbt ";clean;++%SCALA_VERSION%;testSuite2_12/test;linker2_12/test;partestSuite2_12/testOnly -- --fastOpt run/option-fold.scala;sbtPlugin/scripted settings/module-init"
+  - cmd: sbt ";clean;++%SCALA_VERSION%;testSuite2_12/test;linker2_12/test;partestSuite2_12/testOnly -- --fastOpt run/option-fold.scala"
 cache:
   - C:\sbt
   - C:\Users\appveyor\.ivy2\cache
