@@ -13,7 +13,6 @@
 package org.scalajs.testing.adapter
 
 import java.io.{File, IOException}
-import java.nio.CharBuffer
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
@@ -58,6 +57,14 @@ object HTMLRunnerBuilder {
     val absoluteArtifacts = artifactsDir.toAbsolutePath()
     val outputDir = output.toAbsolutePath().normalize().getParent()
 
+    try {
+      outputDir.relativize(absoluteArtifacts)
+    } catch {
+      case e: IllegalArgumentException =>
+        throw new IllegalArgumentException(
+            "cannot relativize `artifactsDir` with respect to `output`", e)
+    }
+
     def artifactPath(name: String): (String, Path) = {
       val path = absoluteArtifacts.resolve(name)
       val relPath = outputDir.relativize(path)
@@ -65,8 +72,18 @@ object HTMLRunnerBuilder {
     }
 
     def scriptTag(index: Int, tpe: String, content: Path) = {
-      val (src, target) = artifactPath(f"input$index-${content.getFileName()}")
-      Files.copy(content, target, StandardCopyOption.REPLACE_EXISTING)
+      val src = {
+        try {
+          joinRelPath(outputDir.relativize(content))
+        } catch {
+          case _: IllegalArgumentException =>
+            // Cannot relativize this content.
+            val (src, target) = artifactPath(f"input$index-${content.getFileName()}")
+            Files.copy(content, target, StandardCopyOption.REPLACE_EXISTING)
+            src
+        }
+      }
+
       s"""<script defer type="$tpe" src="${htmlEscaped(src)}"></script>"""
     }
 
@@ -121,7 +138,10 @@ object HTMLRunnerBuilder {
     case c   => c.toString()
   }
 
-  // <parts>.map(_.toString()).mkString("/")
+  /* Necessary on Windows to not have backslashes in URIs.
+   *
+   * <parts>.map(_.toString()).mkString("/")
+   */
   private def joinRelPath(p: Path): String = {
     require(p.getRoot() == null)
 

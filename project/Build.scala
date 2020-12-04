@@ -126,9 +126,16 @@ object MyScalaJSPlugin extends AutoPlugin {
       },
 
       testHtmlJSDom in Test := {
-        val runner = (testHtml in Test).value.data.getAbsolutePath()
+        val target = crossTarget.value.toPath().toAbsolutePath()
 
-        val code = new ProcessBuilder("node", "scripts/test-html.js", runner)
+        // When serving `target` over HTTP, the path of the runner file.
+        val runnerPath = {
+          val runner = (testHtml in Test).value.data.toPath().toAbsolutePath()
+          target.relativize(runner).toString()
+        }
+
+        val code = new ProcessBuilder(
+            "node", "scripts/test-html.js", target.toString(), runnerPath)
           .inheritIO()
           .start()
           .waitFor()
