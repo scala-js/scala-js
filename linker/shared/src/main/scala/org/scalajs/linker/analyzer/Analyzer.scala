@@ -609,6 +609,8 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     val externalDependencies: mutable.Set[String] = mutable.Set.empty
 
+    val dynamicDependencies: mutable.Set[ClassName] = mutable.Set.empty
+
     var instantiatedFrom: List[From] = Nil
 
     /** List of all instantiated (Scala) subclasses of this Scala class/trait.
@@ -1011,7 +1013,7 @@ private final class Analyzer(config: CommonPhaseConfig,
 
           for (reachabilityInfo <- data.exportedMembers)
             followReachabilityInfo(reachabilityInfo, staticDependencies,
-                externalDependencies)(FromExports)
+                externalDependencies, dynamicDependencies)(FromExports)
         }
       }
     }
@@ -1036,7 +1038,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         if (!isJSClass) {
           for (reachabilityInfo <- data.exportedMembers)
             followReachabilityInfo(reachabilityInfo, staticDependencies,
-                externalDependencies)(FromExports)
+                externalDependencies, dynamicDependencies)(FromExports)
         }
       }
     }
@@ -1210,7 +1212,7 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     private[this] def doReach(): Unit = {
       followReachabilityInfo(data.reachabilityInfo, owner.staticDependencies,
-          owner.externalDependencies)(FromMethod(this))
+          owner.externalDependencies, owner.dynamicDependencies)(FromMethod(this))
     }
   }
 
@@ -1227,14 +1229,16 @@ private final class Analyzer(config: CommonPhaseConfig,
     val externalDependencies: mutable.Set[String] = mutable.Set.empty
 
     def reach(): Unit = {
+      val dynamicDependencies = mutable.Set.empty[ClassName]
       followReachabilityInfo(data.reachability, staticDependencies,
-          externalDependencies)(FromExports)
+          externalDependencies, dynamicDependencies)(FromExports)
     }
   }
 
   private def followReachabilityInfo(data: ReachabilityInfo,
       staticDependencies: mutable.Set[ClassName],
-      externalDependencies: mutable.Set[String])(
+      externalDependencies: mutable.Set[String],
+      dynamicDependencies: mutable.Set[ClassName])(
       implicit from: From): Unit = {
 
     def addInstanceDependency(info: ClassInfo) = {
@@ -1322,6 +1326,22 @@ private final class Analyzer(config: CommonPhaseConfig,
       lookupClass(className) { classInfo =>
         for (methodName <- methods)
           classInfo.callMethodStatically(methodName)
+      }
+    }
+
+    if (isNoModule) {
+      if (data.methodsCalledDynamicImport.nonEmpty)
+        _errors += DynamicImportWithoutModuleSupport(from)
+    } else {
+      val methodsCalledDynamicImportIterator = data.methodsCalledDynamicImport.iterator
+      while (methodsCalledDynamicImportIterator.hasNext) {
+        val (className, methods) = methodsCalledDynamicImportIterator.next()
+        dynamicDependencies += className
+        lookupClass(className) { classInfo =>
+          // In terms of reachability, a dynamic import call is just a static call.
+          for (methodName <- methods)
+            classInfo.callMethodStatically(methodName)
+        }
       }
     }
 

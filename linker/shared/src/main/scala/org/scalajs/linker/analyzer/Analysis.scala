@@ -70,6 +70,7 @@ object Analysis {
 
     def staticDependencies: scala.collection.Set[ClassName]
     def externalDependencies: scala.collection.Set[String]
+    def dynamicDependencies: scala.collection.Set[ClassName]
 
     def linkedFrom: scala.collection.Seq[From]
     def instantiatedFrom: scala.collection.Seq[From]
@@ -199,6 +200,8 @@ object Analysis {
     def from: From = FromExports
   }
 
+  final case class DynamicImportWithoutModuleSupport(from: From) extends Error
+
   sealed trait From
   final case class FromMethod(methodInfo: MethodInfo) extends From
   final case class FromClass(classInfo: ClassInfo) extends From
@@ -256,6 +259,8 @@ object Analysis {
       case MultiplePublicModulesWithoutModuleSupport(moduleIDs) =>
         "Found multiple public modules but module support is disabled: " +
         moduleIDs.map(_.id).mkString("[", ", ", "]")
+      case DynamicImportWithoutModuleSupport(_) =>
+        "Uses dynamic import but module support is disabled"
     }
 
     logger.log(level, headMsg)

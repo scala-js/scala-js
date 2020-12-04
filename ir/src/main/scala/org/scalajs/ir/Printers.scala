@@ -335,6 +335,14 @@ object Printers {
           print(method)
           printArgs(args)
 
+        case ApplyDynamicImport(flags, className, method, args) =>
+          print("dynamicImport ")
+          print(className)
+          print("::")
+          print(flags)
+          print(method)
+          printArgs(args)
+
         case UnaryOp(op, lhs) =>
           import UnaryOp._
           print('(')

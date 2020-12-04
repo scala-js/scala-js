@@ -497,6 +497,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
               finishTransform(isStat))
         }
 
+      case ApplyDynamicImport(flags, className, method, args) =>
+        ApplyDynamicImport(flags, className, method, args.map(transformExpr(_)))
+
       case tree: UnaryOp =>
         trampoline {
           pretransformUnaryOp(tree)(finishTransform(isStat))

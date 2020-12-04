@@ -44,7 +44,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
     val ident = globalVarIdent(field, scope, origName)
-    foldSameModule(scope) {
+    foldSameModule[T, Tree](scope) {
       VarRef(ident)
     } { moduleID =>
       DotSelect(VarRef(internalModuleFieldIdent(moduleID)), ident)
@@ -123,12 +123,66 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     assert(config.moduleKind == ModuleKind.ESModule)
 
     val ident = globalVarIdent(field, scope, origName)
-    foldSameModule(scope) {
+    foldSameModule[T, Tree](scope) {
       Export((ident -> exportName) :: Nil)
     } { moduleID =>
       val importName = ExportName(ident.name)
       val moduleName = config.internalModulePattern(moduleID)
       ExportImport((importName -> exportName) :: Nil, StringLiteral(moduleName))
+    }
+  }
+
+  /** Apply the provided body to a dynamically loaded global var */
+  def withDynamicGlobalVar[T: Scope](field: String, scope: T)(body: Tree => Tree)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): WithGlobals[Tree] = {
+    val ident = globalVarIdent(field, scope)
+
+    val module = fileLevelVarIdent("$module")
+
+    def unitPromise = {
+      globalRef("Promise").map { promise =>
+        Apply(genIdentBracketSelect(promise, "resolve"), List(Undefined()))
+      }
+    }
+
+    def genThen(receiver: Tree, expr: Tree) = {
+      Apply(genIdentBracketSelect(receiver, "then"), List(
+          genArrowFunction(List(ParamDef(module, rest = false)), Return(expr))))
+    }
+
+    foldSameModule(scope) {
+      unitPromise.map { promise =>
+        genThen(promise, body(VarRef(ident)))
+      }
+    } { moduleID =>
+      val moduleName = config.internalModulePattern(moduleID)
+
+      val moduleTree = config.moduleKind match {
+        case ModuleKind.NoModule =>
+          /* If we get here, it means that what we are trying to import is in a
+           * different module than the module we're currently generating
+           * (otherwise we'd take the other branch of `foldSameModule`). But
+           * that in turn means we have more than one module, which is not
+           * allowed in NoModule (and should have been caught by the analyzer).
+           */
+          throw new AssertionError("multiple modules in NoModule mode")
+
+        case ModuleKind.ESModule =>
+          WithGlobals(ImportCall(StringLiteral(moduleName)))
+
+        case ModuleKind.CommonJSModule =>
+          for {
+            promise <- unitPromise
+            require <- globalRef("require")
+          } yield {
+            genThen(promise, Apply(require, List(StringLiteral(moduleName))))
+          }
+      }
+
+      moduleTree.map { mod =>
+        genThen(mod, body(DotSelect(VarRef(module), ident)))
+      }
     }
   }
 
@@ -138,9 +192,9 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     genericIdent(field, scopeType.subField(scope), origName)
   }
 
-  private def foldSameModule[T](scope: T)(same: => Tree)(other: ModuleID => Tree)(
+  private def foldSameModule[T, S](scope: T)(same: => S)(other: ModuleID => S)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      scopeType: Scope[T]): Tree = {
+      scopeType: Scope[T]): S = {
     val reprClass = scopeType.reprClass(scope)
     val targetModule = globalKnowledge.getModule(reprClass)
     if (targetModule == moduleContext.moduleID) same

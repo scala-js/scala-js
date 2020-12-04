@@ -104,4 +104,6 @@ package object runtime {
   /** Identity hash code of an object. */
   def identityHashCode(x: Object): Int = throw new Error("stub")
 
+  def dynamicImport[A](thunk: DynamicImportThunk): js.Promise[A] =
+    throw new Error("stub")
 }

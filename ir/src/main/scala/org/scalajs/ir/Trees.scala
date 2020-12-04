@@ -270,6 +270,16 @@ object Trees {
       method: MethodIdent, args: List[Tree])(
       val tpe: Type)(implicit val pos: Position) extends Tree
 
+  /** Apply a static method via dynamic import. */
+  sealed case class ApplyDynamicImport(flags: ApplyFlags, className: ClassName,
+      method: MethodIdent, args: List[Tree])(
+      implicit val pos: Position) extends Tree {
+    val tpe = AnyType
+
+    require(!flags.isPrivate, "invalid flag Private for ApplyDynamicImport")
+    require(!flags.isConstructor, "invalid flag Constructor for ApplyDynamicImport")
+  }
+
   /** Unary operation (always preserves pureness). */
   sealed case class UnaryOp(op: UnaryOp.Code, lhs: Tree)(
       implicit val pos: Position) extends Tree {

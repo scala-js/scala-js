@@ -54,6 +54,8 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   private val ScalaRuntimeNullClass = ClassName("scala.runtime.Null$")
   private val ScalaRuntimeNothingClass = ClassName("scala.runtime.Nothing$")
 
+  private val dynamicImportForwarderSimpleName = SimpleMethodName("dynamicImport$")
+
   // Fresh local name generator ----------------------------------------------
 
   private val usedLocalNames = new ScopedVar[mutable.Set[LocalName]]
@@ -231,6 +233,16 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
     val name = sym.name
     val resultTypeRef = paramOrResultTypeRef(sym.tpe)
     val methodName = MethodName(name.toString(), Nil, resultTypeRef)
+    js.MethodIdent(methodName)
+  }
+
+  def encodeDynamicImportForwarderIdent(params: List[Symbol])(
+      implicit pos: Position): js.MethodIdent = {
+    val paramTypeRefs = params.map(sym => paramOrResultTypeRef(sym.tpe))
+    val resultTypeRef = jstpe.ClassRef(ir.Names.ObjectClass)
+    val methodName =
+      MethodName(dynamicImportForwarderSimpleName, paramTypeRefs, resultTypeRef)
+
     js.MethodIdent(methodName)
   }
 

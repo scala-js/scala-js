@@ -44,6 +44,7 @@ trait JSDefinitions {
       lazy val JSPackage_constructorOf = getMemberMethod(ScalaJSJSPackageModule, newTermName("constructorOf"))
       lazy val JSPackage_native        = getMemberMethod(ScalaJSJSPackageModule, newTermName("native"))
       lazy val JSPackage_undefined     = getMemberMethod(ScalaJSJSPackageModule, newTermName("undefined"))
+      lazy val JSPackage_dynamicImport = getMemberMethod(ScalaJSJSPackageModule, newTermName("dynamicImport"))
 
     lazy val JSNativeAnnotation = getRequiredClass("scala.scalajs.js.native")
 
@@ -119,6 +120,10 @@ trait JSDefinitions {
       lazy val Runtime_privateFieldsSymbol        = getMemberMethod(RuntimePackageModule, newTermName("privateFieldsSymbol"))
       lazy val Runtime_linkingInfo                = getMemberMethod(RuntimePackageModule, newTermName("linkingInfo"))
       lazy val Runtime_identityHashCode           = getMemberMethod(RuntimePackageModule, newTermName("identityHashCode"))
+      lazy val Runtime_dynamicImport              = getMemberMethod(RuntimePackageModule, newTermName("dynamicImport"))
+
+    lazy val DynamicImportThunkClass = getRequiredClass("scala.scalajs.runtime.DynamicImportThunk")
+      lazy val DynamicImportThunkClass_apply = getMemberMethod(DynamicImportThunkClass, nme.apply)
 
     lazy val Tuple2_apply = getMemberMethod(TupleClass(2).companionModule, nme.apply)
 

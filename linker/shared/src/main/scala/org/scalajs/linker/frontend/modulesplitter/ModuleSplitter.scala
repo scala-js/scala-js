@@ -28,12 +28,13 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
 /** Splits Scala.js code into multiple modules. */
 final class ModuleSplitter private (analyzer: ModuleAnalyzer) {
   import ModuleSplitter._
-  import ModuleAnalyzer.DependencyInfo
+  import ModuleAnalyzer.{DependencyInfo, ClassInfo}
 
   def split(unit: LinkingUnit, logger: Logger): ModuleSet = {
     val dependencyInfo = logger.time("Module Splitter: Calculate Dependency Info") {
-      val classDeps =
-        unit.classDefs.map(c => c.className -> c.staticDependencies).toMap
+      val classDeps = unit.classDefs.map { c =>
+        c.className -> new ClassInfo(c.staticDependencies, c.dynamicDependencies)
+      }.toMap
 
       new DependencyInfo(classDeps, publicModuleDependencies(unit))
     }

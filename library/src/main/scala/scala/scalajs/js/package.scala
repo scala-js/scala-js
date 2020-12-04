@@ -141,4 +141,21 @@ package object js {
         "version of the libraries.")
   }
 
+  /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
+   *  Dynamic import boundary for progressive module loading.
+   *
+   *  {{{
+   *  val promise = js.dynamicImport {
+   *    calculationNeedingLotsOfCode()
+   *  }
+   *
+   *  promise.foreach(println(_))
+   *  }}}
+   *
+   *  In the example above, the code required for
+   *  `calculationNeedingLotsOfCode()` is only loaded if the statement is
+   *  actually executed.
+   */
+  def dynamicImport[A](body: => A): js.Promise[A] =
+    throw new java.lang.Error("stub")
 }

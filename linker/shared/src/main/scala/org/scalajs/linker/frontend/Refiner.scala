@@ -119,7 +119,8 @@ final class Refiner(config: CommonPhaseConfig) {
         hasInstanceTests = info.areInstanceTestsUsed,
         hasRuntimeTypeInfo = info.isDataAccessed,
         staticDependencies = info.staticDependencies.toSet,
-        externalDependencies = info.externalDependencies.toSet
+        externalDependencies = info.externalDependencies.toSet,
+        dynamicDependencies = info.dynamicDependencies.toSet
     )
   }
 
