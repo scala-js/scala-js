@@ -1319,7 +1319,7 @@ private[emitter] object ClassEmitter {
     OriginalName("<clinit>")
 
   private val ClassesWhoseDataReferToTheirInstanceTests =
-    AncestorsOfHijackedClasses + BoxedStringClass
+    AncestorsOfHijackedClasses
 
   def shouldExtendJSError(linkedClass: LinkedClass): Boolean = {
     linkedClass.name.name == ThrowableClass &&
