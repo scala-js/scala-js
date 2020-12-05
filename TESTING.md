@@ -7,6 +7,20 @@ The following HTML-runners must be manually tested:
     examples/helloworld/helloworld-{2.11|2.12}{|-fastopt}.html
     examples/reversi/reversi-{2.11|2.12}{|-fastopt}.html
 
+## HTML-Test Runner with Modules
+
+Still manual, because jsdom does not support modules yet
+[jsdom/jsdom#2475](https://github.com/jsdom/jsdom/issues/2475).
+
+```
+$ sbt
+> set scalaJSLinkerConfig in testingExample.v2_12 ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")).withModuleSplitStyle(ModuleSplitStyle.SmallestModules).withModuleKind(ModuleKind.ESModule))
+> testingExample2_12/testHtml
+> exit
+$ python3 -m http.server -d examples/testing/.2.12/target/scala-2.12
+// Open http://localhost:8000/testing-fastopt-test-html/index.html
+```
+
 ## Sourcemaps
 
 To test source maps, do the following on:

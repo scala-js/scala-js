@@ -1,15 +1,15 @@
 const process = require("process");
 const { JSDOM } = require("jsdom");
-const path = require("path");
 const http = require("http");
 const static = require('node-static');
 
-const { dir, base: filename } = path.parse(process.argv[2]);
+const servingDirectory = process.argv[2];
+const requestPath = process.argv[3];
 
-console.log(`serving: ${dir}`);
+console.log(`serving: ${servingDirectory}`);
 
-serveDirectory(dir).then(server => {
-  const url = makeURL(server.address(), filename);
+serveDirectory(servingDirectory).then(server => {
+  const url = makeURL(server.address(), requestPath);
 
   console.log(`loading ${url}`);
 
@@ -69,14 +69,14 @@ function serveDirectory(dir) {
   });
 }
 
-function makeURL(serverAddress, filename) {
+function makeURL(serverAddress, path) {
   const { port, address, family } = serverAddress;
 
   if (family === "IPv4")
-    return `http://${address}:${port}/${filename}`
+    return `http://${address}:${port}/${path}`
 
   if (family === "IPv6")
-    return `http://[${address}]:${port}/${filename}`
+    return `http://[${address}]:${port}/${path}`
 
   throw new Error(`do not know how to construct URL for address family ${family}`);
 }
