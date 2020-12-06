@@ -27,30 +27,8 @@ private[emitter] object EmitterNames {
   val CharSequenceClass = ClassName("java.lang.CharSequence")
   val CloneableClass = ClassName("java.lang.Cloneable")
   val SerializableClass = ClassName("java.io.Serializable")
-  val ComparableClass = ClassName("java.lang.Comparable")
-  val NumberClass = ClassName("java.lang.Number")
 
   val ThrowableClass = ClassName("java.lang.Throwable")
-
-  val NonObjectAncestorsOfStringClass =
-    Set(CharSequenceClass, ComparableClass, SerializableClass)
-  val NonObjectAncestorsOfBoxedCharacterClass =
-    Set(ComparableClass, SerializableClass)
-  val NonObjectAncestorsOfHijackedNumberClasses =
-    Set(NumberClass, ComparableClass, SerializableClass)
-  val NonObjectAncestorsOfBoxedBooleanClass =
-    Set(ComparableClass, SerializableClass)
-
-  val AncestorsOfHijackedClasses = Set(
-      ObjectClass,
-      CharSequenceClass,
-      SerializableClass,
-      ComparableClass,
-      NumberClass
-  )
-
-  val HijackedClassesAndTheirSuperClasses =
-    HijackedClasses ++ Set(ObjectClass, NumberClass)
 
   // Method names
 

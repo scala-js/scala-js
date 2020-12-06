@@ -509,7 +509,7 @@ final class Emitter(config: Emitter.Config) {
       }
     }
 
-    if (classEmitter.needInstanceTests(linkedClass)) {
+    if (classEmitter.needInstanceTests(linkedClass)(classCache)) {
       addToMain(classTreeCache.instanceTests.getOrElseUpdate(
           classEmitter.genInstanceTests(linkedClass)(moduleContext, classCache)))
     }

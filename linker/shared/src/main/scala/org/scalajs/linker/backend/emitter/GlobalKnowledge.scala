@@ -104,4 +104,10 @@ private[emitter] trait GlobalKnowledge {
 
   /** The public (non-static) methods of java.lang.Object. */
   def methodsInObject(): List[Versioned[MethodDef]]
+
+  /** Hijacked classes that are strict descendants of `className`. */
+  def hijackedDescendants(className: ClassName): Set[ClassName]
+
+  /** Equivalent to `hijackedDescendants(className).nonEmpty` but more efficient. */
+  def isAncestorOfHijackedClass(className: ClassName): Boolean
 }

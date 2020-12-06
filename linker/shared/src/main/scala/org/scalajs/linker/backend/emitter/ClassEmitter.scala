@@ -752,11 +752,10 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         ident.pos)
   }
 
-  def needInstanceTests(tree: LinkedClass): Boolean = {
-    tree.hasInstanceTests || {
-      tree.hasRuntimeTypeInfo &&
-      ClassesWhoseDataReferToTheirInstanceTests.contains(tree.className)
-    }
+  def needInstanceTests(tree: LinkedClass)(
+      implicit globalKnowledge: GlobalKnowledge): Boolean = {
+    tree.hasInstanceTests || (tree.hasRuntimeTypeInfo &&
+        globalKnowledge.isAncestorOfHijackedClass(tree.className))
   }
 
   def genInstanceTests(tree: LinkedClass)(
@@ -784,15 +783,6 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       val className = tree.name.name
       val displayName = className.nameString
 
-      val isAncestorOfString =
-        NonObjectAncestorsOfStringClass.contains(className)
-      val isAncestorOfHijackedNumberClass =
-        NonObjectAncestorsOfHijackedNumberClasses.contains(className)
-      val isAncestorOfBoxedBooleanClass =
-        NonObjectAncestorsOfBoxedBooleanClass.contains(className)
-      val isAncestorOfBoxedCharacterClass =
-        NonObjectAncestorsOfBoxedCharacterClass.contains(className)
-
       val objParam = js.ParamDef(js.Ident("obj"), rest = false)
       val obj = objParam.ref
 
@@ -805,7 +795,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
             genIsInstanceOfHijackedClass(obj, className)
 
           case _ =>
-            var test = if (tree.kind.isClass) {
+            val baseTest = if (tree.kind.isClass) {
               genIsInstanceOfClass(obj, className)
             } else {
               !(!(
@@ -815,22 +805,30 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
               ))
             }
 
-            def typeOfTest(typeString: String): js.Tree =
-              js.UnaryOp(JSUnaryOp.typeof, obj) === js.StringLiteral(typeString)
+            val hijacked0 = globalKnowledge.hijackedDescendants(className)
+            if (hijacked0.nonEmpty) {
+              /* If we test for Double, we need not test for other number types
+               * as they are all implemented as a primitive JS number, just with
+               * range restrictions.
+               */
+              val hijacked1 =
+                if (hijacked0.contains(BoxedDoubleClass)) hijacked0 -- RuntimeSubclassesOfDouble
+                else hijacked0
 
-            if (isAncestorOfString)
-              test = test || typeOfTest("string")
-            if (isAncestorOfHijackedNumberClass) {
-              test = test || typeOfTest("number")
-              if (useBigIntForLongs)
-                test = test || genCallHelper("isLong", obj)
+              /* If we use RuntimeLong, we don't need a special test, since it
+               * is a normal class.
+               */
+              val hijacked2 =
+                if (!useBigIntForLongs) hijacked1 - BoxedLongClass
+                else hijacked1
+
+              hijacked2.toList.sorted.foldLeft(baseTest) {
+                case (test, hijackedClass) =>
+                  test || genIsInstanceOfHijackedClass(obj, hijackedClass)
+              }
+            } else {
+              baseTest
             }
-            if (isAncestorOfBoxedBooleanClass)
-              test = test || typeOfTest("boolean")
-            if (isAncestorOfBoxedCharacterClass)
-              test = test || (obj instanceof globalVar("Char", CoreVar))
-
-            test
         }
       }
 
@@ -987,10 +985,6 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     val isObjectClass =
       className == ObjectClass
-    val isHijackedClass =
-      HijackedClasses.contains(className)
-    val isAncestorOfHijackedClass =
-      isObjectClass || AncestorsOfHijackedClasses.contains(className)
     val isJSType =
       kind.isJSType
 
@@ -1013,12 +1007,12 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         tree.ancestors.map(ancestor => (js.Ident(genName(ancestor)), js.IntLiteral(1))))
 
     val isInstanceFunWithGlobals: WithGlobals[js.Tree] = {
-      if (isAncestorOfHijackedClass) {
+      if (globalKnowledge.isAncestorOfHijackedClass(className)) {
         /* Ancestors of hijacked classes, including java.lang.Object, have a
          * normal $is_pack_Class test but with a non-standard behavior.
          */
         WithGlobals(globalVar("is", className))
-      } else if (isHijackedClass) {
+      } else if (HijackedClasses.contains(className)) {
         /* Hijacked classes have a special isInstanceOf test. */
         val xParam = js.ParamDef(js.Ident("x"), rest = false)
         WithGlobals(genArrowFunction(List(xParam), js.Return {
@@ -1318,8 +1312,8 @@ private[emitter] object ClassEmitter {
   private val ClassInitializerOriginalName: OriginalName =
     OriginalName("<clinit>")
 
-  private val ClassesWhoseDataReferToTheirInstanceTests =
-    AncestorsOfHijackedClasses + BoxedStringClass
+  private val RuntimeSubclassesOfDouble: Set[ClassName] =
+    Set(BoxedByteClass, BoxedShortClass, BoxedIntegerClass, BoxedFloatClass)
 
   def shouldExtendJSError(linkedClass: LinkedClass): Boolean = {
     linkedClass.name.name == ThrowableClass &&

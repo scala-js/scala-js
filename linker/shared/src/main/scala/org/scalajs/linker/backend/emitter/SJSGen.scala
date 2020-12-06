@@ -129,7 +129,7 @@ private[emitter] final class SJSGen(
           genIsInstanceOfHijackedClass(expr, className)
         } else if (className == ObjectClass) {
           expr === Null()
-        } else if (className != NumberClass && // the only non-object superclass of hijacked classes
+        } else if (!globalKnowledge.isAncestorOfHijackedClass(className) &&
             !globalKnowledge.isInterface(className)) {
           genIsInstanceOfClass(expr, className)
         } else {
