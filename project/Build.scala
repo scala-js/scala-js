@@ -1818,6 +1818,16 @@ object Build {
             moduleKind == ModuleKind.ESModule) // this is an approximation that works for now
       },
 
+      unmanagedResourceDirectories in Test ++= {
+        val testDir = (sourceDirectory in Test).value
+
+        scalaJSLinkerConfig.value.moduleKind match {
+          case ModuleKind.NoModule       => Nil
+          case ModuleKind.CommonJSModule => Seq(testDir / "resources-commonjs")
+          case ModuleKind.ESModule       => Seq(testDir / "resources-esmodule")
+        }
+      },
+
       addScalaJSCompilerOptionInConfig(Test, "genStaticForwardersForNonTopLevelObjects"),
 
       scalaJSLinkerConfig ~= { _.withSemantics(TestSuiteLinkerOptions.semantics _) },
