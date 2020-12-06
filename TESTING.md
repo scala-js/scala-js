@@ -14,7 +14,7 @@ Still manual, because jsdom does not support modules yet
 
 ```
 $ sbt
-> set scalaJSLinkerConfig in testingExample.v2_12 ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")).withModuleSplitStyle(ModuleSplitStyle.SmallestModules).withModuleKind(ModuleKind.ESModule))
+> set scalaJSLinkerConfig in testingExample.v2_12 ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules).withModuleKind(ModuleKind.ESModule))
 > testingExample2_12/testHtml
 > exit
 $ python3 -m http.server -d examples/testing/.2.12/target/scala-2.12

@@ -50,8 +50,6 @@ object ExposedValues extends AutoPlugin {
 
     val CheckedBehavior = org.scalajs.linker.interface.CheckedBehavior
 
-    val OutputPatterns = org.scalajs.linker.interface.OutputPatterns
-
     val ModuleSplitStyle = org.scalajs.linker.interface.ModuleSplitStyle
 
     type NodeJSEnvForcePolyfills = build.NodeJSEnvForcePolyfills
@@ -69,6 +67,9 @@ object MyScalaJSPlugin extends AutoPlugin {
   val wantSourceMaps = settingKey[Boolean]("Whether source maps should be used")
 
   val testHtmlJSDom = taskKey[Unit]("Run testHtml through JSDom")
+
+  val writePackageJSON = taskKey[Unit](
+      "Write package.json to configure module type for Node.js")
 
   def addScalaJSCompilerOption(option: String): Setting[_] =
     addScalaJSCompilerOption(Def.setting(option))
@@ -112,6 +113,24 @@ object MyScalaJSPlugin extends AutoPlugin {
 
       jsEnv := new NodeJSEnv(
           NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)),
+
+      jsEnvInput in Compile :=
+        (jsEnvInput in Compile).dependsOn(writePackageJSON).value,
+
+      jsEnvInput in Test :=
+        (jsEnvInput in Test).dependsOn(writePackageJSON).value,
+
+      writePackageJSON := {
+        val packageType = scalaJSLinkerConfig.value.moduleKind match {
+          case ModuleKind.NoModule       => "commonjs"
+          case ModuleKind.CommonJSModule => "commonjs"
+          case ModuleKind.ESModule       => "module"
+        }
+
+        val path = target.value / "package.json"
+
+        IO.write(path, s"""{"type": "$packageType"}\n""")
+      },
 
       // Link source maps to GitHub sources
       if (scalaJSVersion.endsWith("-SNAPSHOT")) {

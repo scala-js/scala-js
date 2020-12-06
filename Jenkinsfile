@@ -123,23 +123,19 @@ def Tasks = [
         helloworld$v/run \
         helloworld$v/clean &&
     sbtretry ++$scala \
-        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         helloworld$v/run &&
     sbtretry ++$scala \
-        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         helloworld$v/run &&
     sbtretry ++$scala \
-        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         'set scalaJSStage in Global := FullOptStage' \
         helloworld$v/run \
         helloworld$v/clean &&
     sbtretry ++$scala testingExample$v/testHtmlJSDom &&
     sbtretry ++$scala \
-        'set scalaJSLinkerConfig in testingExample.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
         'set scalaJSLinkerConfig in testingExample.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
         'set scalaJSLinkerConfig in testingExample.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         testingExample$v/testHtml \
@@ -224,15 +220,14 @@ def Tasks = [
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite$v/test \
         $testSuite$v/clean &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
+    sbtretry \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         ++$scala $testSuite$v/test &&
     sbtretry \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         ++$scala $testSuite$v/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
+    sbtretry \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite$v/test
@@ -322,17 +317,14 @@ def Tasks = [
         ++$scala $testSuite$v/test \
         $testSuite$v/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         ++$scala $testSuite$v/test &&
     sbtretry \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withUseECMAScript2015(false)))' \
-        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOutputPatterns(OutputPatterns.fromJSFile("%s.mjs")))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite$v/test
