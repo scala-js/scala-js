@@ -64,22 +64,25 @@ class JSOptionalTest extends DirectTest with TestHelpers {
     """
   }
 
-  @Test // #4319
-  def optionalDefaultParamRequiresUndefinedRHS: Unit = {
+  @Test // #4319, #4322
+  def noDefaultParamsInNonNativeJSTrait: Unit = {
     s"""
     trait A extends js.Object {
       def a(x: js.UndefOr[Int] = 1): Int
       def b(x: String = "foo"): Unit
-      def c(x: js.UndefOr[Int] = js.undefined): Int // ok
+      def c(x: js.UndefOr[Int] = js.undefined): Int
     }
     """ hasErrors
     """
-      |newSource1.scala:6: error: Members of non-native JS traits may not have default parameters unless their default is `js.undefined`.
+      |newSource1.scala:6: error: Members of non-native JS traits may not have default parameters.
       |      def a(x: js.UndefOr[Int] = 1): Int
       |                                 ^
-      |newSource1.scala:7: error: Members of non-native JS traits may not have default parameters unless their default is `js.undefined`.
+      |newSource1.scala:7: error: Members of non-native JS traits may not have default parameters.
       |      def b(x: String = "foo"): Unit
       |                        ^
+      |newSource1.scala:8: error: Members of non-native JS traits may not have default parameters.
+      |      def c(x: js.UndefOr[Int] = js.undefined): Int
+      |                                    ^
     """
   }
 

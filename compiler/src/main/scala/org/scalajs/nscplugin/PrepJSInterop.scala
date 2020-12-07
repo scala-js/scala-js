@@ -1091,6 +1091,38 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
           } else if (sym.isLazy) {
             reporter.error(tree.pos,
                 "A non-native JS trait cannot contain lazy vals")
+          } else if (!sym.isDeferred && sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM)) {
+            /* Default parameters in non-native JS traits are not allowed. We
+             * cannot implement them without binary compatibility issues:
+             *
+             *   trait A extends js.Object {
+             *     def foo(x: js.UndefOr[Int] = js.undefined): Int
+             *   }
+             *
+             *   abstract class B extends A {
+             *     def foo(x: js.UndefOr[Int]): Int
+             *   }
+             *
+             *   object Impl extends B {
+             *     def foo(x: js.UndefOr[Int]): Int = x.getOrElse(5)
+             *   }
+             *
+             * `Impl.foo` needs to delegate the value of x to the default
+             * parameter accessor of `B`. That should be implemented by `A`
+             * (but isn't because it is a JS trait). So `Impl.foo` needs to
+             * *omit* delegating to the default parameter accessor. However,
+             * this in turn breaks the scenario when `B` changes the default
+             * (and `B` is in a different compilation unit):
+             *
+             *   abstract class B extends A {
+             *     def foo(x: js.UndefOr[Int] = 7): Int
+             *   }
+             *
+             * Therefore, we disallow default parameters in non-native JS
+             * traits.
+             */
+            reporter.error(tree.rhs.pos,
+                "Members of non-native JS traits may not have default parameters.")
           } else if (!sym.isDeferred) {
             /* Tell the back-end not emit this thing. In fact, this only
              * matters for mixed-in members created from this member.
@@ -1126,16 +1158,10 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
                 case sel: Select if sel.symbol == JSPackage_undefined =>
                   // ok
                 case _ =>
-                  if (sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM)) {
-                    reporter.error(tree.rhs.pos,
-                        "Members of non-native JS traits may not have default " +
-                        "parameters unless their default is `js.undefined`.")
-                  } else {
-                    reporter.error(tree.rhs.pos,
-                        "Members of non-native JS traits must either be " +
-                        "abstract, or their right-hand-side must be " +
-                        "`js.undefined`.")
-                  }
+                  reporter.error(tree.rhs.pos,
+                      "Members of non-native JS traits must either be " +
+                      "abstract, or their right-hand-side must be " +
+                      "`js.undefined`.")
               }
             }
           }
