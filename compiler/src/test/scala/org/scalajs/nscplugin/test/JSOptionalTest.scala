@@ -64,6 +64,25 @@ class JSOptionalTest extends DirectTest with TestHelpers {
     """
   }
 
+  @Test // #4319
+  def optionalDefaultParamRequiresUndefinedRHS: Unit = {
+    s"""
+    trait A extends js.Object {
+      def a(x: js.UndefOr[Int] = 1): Int
+      def b(x: String = "foo"): Unit
+      def c(x: js.UndefOr[Int] = js.undefined): Int // ok
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: Members of non-native JS traits may not have default parameters unless their default is `js.undefined`.
+      |      def a(x: js.UndefOr[Int] = 1): Int
+      |                                 ^
+      |newSource1.scala:7: error: Members of non-native JS traits may not have default parameters unless their default is `js.undefined`.
+      |      def b(x: String = "foo"): Unit
+      |                        ^
+    """
+  }
+
   @Test
   def noOptionalLazyVal: Unit = {
     s"""
