@@ -14,6 +14,8 @@ package org.scalajs.linker.backend.emitter
 
 import scala.language.implicitConversions
 
+import scala.collection.mutable
+
 import org.scalajs.ir.ScalaJSVersions
 import org.scalajs.ir.Position
 import org.scalajs.ir.Names._
@@ -36,16 +38,22 @@ private[emitter] object CoreJSLib {
 
   /** A fully built CoreJSLib
    *
-   *  @param definitions The bulk of the CoreJSLib.
+   *  @param preObjectDefinitions The bulk of the CoreJSLib.
    *      Definitions that do not depend on any other Scala.js emitted code
-   *      (notably RuntimeLong). These must be available to all Scala.js emitted
-   *      code.
+   *      (notably Object and RuntimeLong). These must be available to all
+   *      Scala.js emitted code.
+   *
+   *  @param postObjectDefinitions Definitions coming after `j.l.Object`.
+   *      Definitions that need the `$c_O` class to be defined, but nothing
+   *      else. This notably includes the Array classes and everything that
+   *      depends on them, such as the `$TypeData` class.
    *
    *  @param initialization Things that depend on Scala.js generated classes.
    *      These must have class definitions (but not static fields) available.
    */
   final class Lib private[CoreJSLib] (
-      val definitions: Tree,
+      val preObjectDefinitions: Tree,
+      val postObjectDefinitions: Tree,
       val initialization: Tree)
 
   private class CoreJSLibBuilder(sjsGen: SJSGen)(
@@ -62,7 +70,7 @@ private[emitter] object CoreJSLib {
 
     implicit private val noPosition: Position = Position.NoPosition
 
-    private val buf = List.newBuilder[Tree]
+    private val buf = new mutable.ListBuffer[Tree]
     private var trackedGlobalRefs = Set.empty[String]
 
     private def globalRef(name: String): VarRef = {
@@ -102,12 +110,18 @@ private[emitter] object CoreJSLib {
 
     private val orderedPrimRefs = VoidRef :: orderedPrimRefsWithoutVoid
 
+    private val specializedArrayTypeRefs: List[NonArrayTypeRef] =
+      ClassRef(ObjectClass) :: orderedPrimRefsWithoutVoid
+
     def build(): WithGlobals[Lib] = {
-      val lib = new Lib(buildDefinitions(), buildInitializations())
+      val lib = new Lib(buildPreObjectDefinitions(),
+          buildPostObjectDefinitions(), buildInitializations())
       WithGlobals(lib, trackedGlobalRefs)
     }
 
-    private def buildDefinitions(): Tree = {
+    private def buildPreObjectDefinitions(): Tree = {
+      buf.clear()
+
       defineLinkingInfo()
       defineJSBuiltinsSnapshotsAndPolyfills()
       declareCachedL0()
@@ -121,13 +135,21 @@ private[emitter] object CoreJSLib {
       defineIntrinsics()
       defineIsPrimitiveFunctions()
       defineBoxFunctions()
+
+      Block(buf.toList)
+    }
+
+    private def buildPostObjectDefinitions(): Tree = {
+      buf.clear()
+
+      defineSpecializedArrayClasses()
       defineTypedArrayConversions()
       defineTypeDataClass()
-      defineIsArrayOfPrimitiveFunctions()
-      defineAsArrayOfPrimitiveFunctions()
-      definePrimitiveTypeDatas()
+      defineSpecializedIsArrayOfFunctions()
+      defineSpecializedAsArrayOfFunctions()
+      defineSpecializedTypeDatas()
 
-      Block(buf.result())
+      Block(buf.toList)
     }
 
     private def buildInitializations(): Tree = {
@@ -378,8 +400,11 @@ private[emitter] object CoreJSLib {
 
     private def assignCachedL0(): Tree = {
       if (!allowBigIntsForLongs) {
-        globalVar("L0", CoreVar) := genScalaClassNew(
-            LongImpl.RuntimeLongClass, LongImpl.initFromParts, 0, 0)
+        Block(
+            globalVar("L0", CoreVar) := genScalaClassNew(
+                LongImpl.RuntimeLongClass, LongImpl.initFromParts, 0, 0),
+            genClassDataOf(LongRef) DOT "zero" := globalVar("L0", CoreVar)
+        )
       } else {
         Skip()
       }
@@ -485,14 +510,8 @@ private[emitter] object CoreJSLib {
 
       locally {
         val arrayClassData = varRef("arrayClassData")
-        val nativeArray = varRef("nativeArray")
         val lengths = varRef("lengths")
         val lengthIndex = varRef("lengthIndex")
-
-        // makeNativeArrayWrapper
-        defineFunction("makeNativeArrayWrapper", paramList(arrayClassData, nativeArray), {
-          Return(New(arrayClassData DOT "constr", nativeArray :: Nil))
-        })
 
         // newArrayObject
         defineFunction("newArrayObject", paramList(arrayClassData, lengths), {
@@ -510,12 +529,12 @@ private[emitter] object CoreJSLib {
           Block(
               const(result, New(arrayClassData DOT "constr",
                   BracketSelect(lengths, lengthIndex) :: Nil)),
-              If(lengthIndex < ((lengths DOT "length") - 1), {
+              If(lengthIndex < (lengths.length - 1), {
                 Block(
                     const(subArrayClassData, arrayClassData DOT "componentData"),
                     const(subLengthIndex, lengthIndex + 1),
-                    const(underlying, result DOT "u"),
-                    For(let(i, 0), i < (underlying DOT "length"), i.++, {
+                    const(underlying, result.u),
+                    For(let(i, 0), i < underlying.length, i.++, {
                       BracketSelect(underlying, i) :=
                         genCallHelper("newArrayObjectInternal", subArrayClassData, lengths, subLengthIndex)
                     })
@@ -939,12 +958,12 @@ private[emitter] object CoreJSLib {
         val i = varRef("i")
         defineFunction("systemArraycopy", paramList(src, srcPos, dest, destPos, length), {
           Block(
-              const(srcu, src DOT "u"),
-              const(destu, dest DOT "u"),
+              const(srcu, src.u),
+              const(destu, dest.u),
               if (arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
                 If((srcPos < 0) || (destPos < 0) || (length < 0) ||
-                    (srcPos > (((srcu DOT "length") - length) | 0)) ||
-                    (destPos > (((destu DOT "length") - length) | 0)), {
+                    (srcPos > ((srcu.length - length) | 0)) ||
+                    (destPos > ((destu.length - length) | 0)), {
                   genCallHelper("throwArrayIndexOutOfBoundsException", Null())
                 }, {
                   Skip()
@@ -1125,6 +1144,97 @@ private[emitter] object CoreJSLib {
       }
     }
 
+    /** Define the array classes for primitive types and for `Object`.
+     *
+     *  Other array classes are created dynamically from their TypeData's
+     *  `initArray` initializer, and extend the array class for `Object`.
+     */
+    private def defineSpecializedArrayClasses(): Unit = {
+      for (componentTypeRef <- specializedArrayTypeRefs) yield {
+        val ArrayClass = globalVar("ac", componentTypeRef)
+
+        val ctor = {
+          val arg = varRef("arg")
+          MethodDef(static = false, Ident("constructor"), paramList(arg), {
+            Block(
+                if (useClassesForRegularClasses) Apply(Super(), Nil) else Skip(),
+                genArrayClassConstructorBody(arg, componentTypeRef)
+            )
+          })
+        }
+
+        val getAndSet = if (arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
+          val i = varRef("i")
+          val v = varRef("v")
+
+          val boundsCheck = {
+            If((i < 0) || (i >= This().u.length),
+                genCallHelper("throwArrayIndexOutOfBoundsException", i))
+          }
+
+          List(
+              MethodDef(static = false, Ident("get"), paramList(i), {
+                Block(
+                    boundsCheck,
+                    Return(BracketSelect(This().u, i))
+                )
+              }),
+              MethodDef(static = false, Ident("set"), paramList(i, v), {
+                Block(
+                    boundsCheck,
+                    BracketSelect(This().u, i) := v
+                )
+              })
+          )
+        } else {
+          Nil
+        }
+
+        val clone = MethodDef(static = false, Ident(genName(cloneMethodName)), Nil, {
+          Return(New(ArrayClass,
+              Apply(genIdentBracketSelect(This().u, "slice"), Nil) :: Nil))
+        })
+
+        val members = getAndSet ::: clone :: Nil
+
+        val classDef = if (useClassesForRegularClasses) {
+          buf += extractWithGlobals(globalClassDef("ac", componentTypeRef,
+              Some(globalVar("c", ObjectClass)), ctor :: members))
+        } else {
+          buf += extractWithGlobals(globalFunctionDef("ac", componentTypeRef,
+              ctor.args, ctor.body))
+          buf += (ArrayClass.prototype := New(globalVar("h", ObjectClass), Nil))
+          buf += (ArrayClass.prototype DOT "constructor" := ArrayClass)
+          buf += assignES5ClassMembers(ArrayClass, members)
+
+          componentTypeRef match {
+            case _: ClassRef =>
+              buf += extractWithGlobals(globalFunctionDef("ah", ObjectClass, Nil, Skip()))
+              buf += (globalVar("ah", ObjectClass).prototype := ArrayClass.prototype)
+            case _: PrimRef =>
+              ()
+          }
+        }
+      }
+    }
+
+    private def genArrayClassConstructorBody(arg: VarRef,
+        componentTypeRef: NonArrayTypeRef): Tree = {
+      val i = varRef("i")
+
+      If(typeof(arg) === str("number"), {
+        Block(
+            This().u := New(ArrayRef, arg :: Nil),
+            For(let(i, 0), i < arg, i.++, {
+              BracketSelect(This().u, i) := genZeroOf(componentTypeRef)
+            })
+        )
+      }, {
+        // arg is a native array that we wrap
+        This().u := arg
+      })
+    }
+
     private def defineTypedArrayConversions(): Unit = {
       val list = List(
           (ByteRef, "byte", "Int8Array"),
@@ -1142,7 +1252,7 @@ private[emitter] object CoreJSLib {
         val shortNameUpperCase = "" + shortName.head.toUpper + shortName.tail
 
         defineFunction(shortName + "Array2TypedArray", paramList(value), {
-          Return(New(typedArrayClass, (value DOT "u") :: Nil))
+          Return(New(typedArrayClass, value.u :: Nil))
         })
         defineFunction("typedArray2" + shortNameUpperCase + "Array", paramList(value), {
           val arrayValue = if (esFeatures.useECMAScript2015) {
@@ -1168,7 +1278,7 @@ private[emitter] object CoreJSLib {
                 genIdentBracketSelect(ArrayRef.prototype, "slice"), "call"),
                 value :: Nil)
           }
-          Return(New(genClassDataOf(ArrayTypeRef(primRef, 1)) DOT "constr",
+          Return(New(genArrayConstrOf(ArrayTypeRef(primRef, 1)),
               arrayValue :: Nil))
         })
       }
@@ -1218,12 +1328,13 @@ private[emitter] object CoreJSLib {
         val zero = varRef("zero")
         val arrayEncodedName = varRef("arrayEncodedName")
         val displayName = varRef("displayName")
+        val arrayClass = varRef("arrayClass")
         val self = varRef("self")
         val that = varRef("that")
         val depth = varRef("depth")
         val obj = varRef("obj")
         MethodDef(static = false, Ident("initPrim"),
-            paramList(zero, arrayEncodedName, displayName), {
+            paramList(zero, arrayEncodedName, displayName, arrayClass), {
           Block(
               privateFieldSet("ancestors", ObjectConstr(Nil)),
               privateFieldSet("zero", zero),
@@ -1238,6 +1349,11 @@ private[emitter] object CoreJSLib {
               publicFieldSet("isPrimitive", bool(true)),
               publicFieldSet("isInstance",
                   Function(arrow = false, paramList(obj), Return(bool(false)))),
+              If(arrayClass !== Undefined(), { // it is undefined for void
+                privateFieldSet("_arrayOf",
+                    Apply(New(globalVar("TypeData", CoreVar), Nil) DOT "initSpecializedArray",
+                        List(This(), arrayClass)))
+              }),
               Return(This())
           )
         })
@@ -1285,11 +1401,60 @@ private[emitter] object CoreJSLib {
         })
       }
 
+      def initArrayCommonBody(arrayClass: VarRef, componentData: VarRef,
+          arrayBase: VarRef, arrayDepth: Tree): Tree = {
+        val name = varRef("name")
+
+        Block(
+            arrayClass.prototype DOT classData := This(),
+            const(name, str("[") + (componentData DOT "arrayEncodedName")),
+            privateFieldSet("constr", arrayClass),
+            if (globalKnowledge.isParentDataAccessed)
+              privateFieldSet("parentData", genClassDataOf(ObjectClass))
+            else
+              Skip(),
+            privateFieldSet("ancestors", ObjectConstr(List(
+                Ident(genName(ObjectClass)) -> 1,
+                Ident(genName(CloneableClass)) -> 1,
+                Ident(genName(SerializableClass)) -> 1
+            ))),
+            privateFieldSet("componentData", componentData),
+            privateFieldSet("arrayBase", arrayBase),
+            privateFieldSet("arrayDepth", arrayDepth),
+            privateFieldSet("arrayEncodedName", name),
+            publicFieldSet("name", name),
+            publicFieldSet("isArrayClass", bool(true))
+        )
+      }
+
+      val initSpecializedArray = {
+        val componentData = varRef("componentData")
+        val arrayClass = varRef("arrayClass")
+        val isAssignableFromFun = varRef("isAssignableFromFun")
+        val that = varRef("that")
+        val obj = varRef("obj")
+        MethodDef(static = false, Ident("initSpecializedArray"),
+            paramList(componentData, arrayClass, isAssignableFromFun), {
+          Block(
+              initArrayCommonBody(arrayClass, componentData, componentData, 1),
+              privateFieldSet("isAssignableFromFun", isAssignableFromFun || {
+                Function(arrow = false, paramList(that), {
+                  Return(This() === that)
+                })
+              }),
+              publicFieldSet("isInstance", {
+                Function(arrow = false, paramList(obj), {
+                  Return(obj instanceof arrayClass)
+                })
+              }),
+              Return(This())
+          )
+        })
+      }
+
       val initArray = {
         val componentData = varRef("componentData")
-        val componentZero = varRef("componentZero")
         val ArrayClass = varRef("ArrayClass")
-        val name = varRef("name")
         val arrayBase = varRef("arrayBase")
         val arrayDepth = varRef("arrayDepth")
         val isAssignableFromFun = varRef("isAssignableFromFun")
@@ -1302,101 +1467,37 @@ private[emitter] object CoreJSLib {
             val ctor = {
               val arg = varRef("arg")
               val i = varRef("i")
-              MethodDef(static = false, Ident("constructor"),
-                  paramList(arg), {
-                Block(
-                    {
-                      if (useClassesForRegularClasses) Apply(Super(), Nil)
-                      else Skip()
-                    },
-                    If(typeof(arg) === str("number"), {
-                      // arg is the length of the array
-                      Block(
-                          privateFieldSet("u", New(ArrayRef, arg :: Nil)),
-                          For(let(i, 0), i < arg, i.++, {
-                            BracketSelect(This() DOT "u", i) := componentZero
-                          })
-                      )
-                    }, {
-                      // arg is a native array that we wrap
-                      privateFieldSet("u", arg)
-                    })
-                )
+              MethodDef(static = false, Ident("constructor"), paramList(arg), {
+                if (useClassesForRegularClasses)
+                  Apply(Super(), arg :: Nil)
+                else
+                  genArrayClassConstructorBody(arg, ClassRef(ObjectClass))
               })
-            }
-
-            val getAndSet = if (arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
-              val i = varRef("i")
-              val v = varRef("v")
-
-              val boundsCheck = {
-                If((i < 0) || (i >= (This() DOT "u" DOT "length")),
-                    genCallHelper("throwArrayIndexOutOfBoundsException", i),
-                    Skip())
-              }
-
-              List(
-                  MethodDef(static = false, Ident("get"), paramList(i), {
-                    Block(
-                        boundsCheck,
-                        Return(BracketSelect(This() DOT "u", i))
-                    )
-                  }),
-                  MethodDef(static = false, Ident("set"), paramList(i, v), {
-                    Block(
-                        boundsCheck,
-                        BracketSelect(This() DOT "u", i) := v
-                    )
-                  })
-              )
-            } else {
-              Nil
             }
 
             val clone = MethodDef(static = false, Ident(genName(cloneMethodName)), Nil, {
               Return(New(ArrayClass,
-                  Apply(genIdentBracketSelect(This() DOT "u", "slice"), Nil) :: Nil))
+                  Apply(genIdentBracketSelect(This().u, "slice"), Nil) :: Nil))
             })
 
             if (useClassesForRegularClasses) {
-              ClassDef(Some(ArrayClass.ident), Some(globalVar("c", ObjectClass)),
-                  ctor :: getAndSet ::: clone :: Nil)
+              ClassDef(Some(ArrayClass.ident), Some(globalVar("ac", ObjectClass)),
+                  ctor :: clone :: Nil)
             } else {
               Block(
                   FunctionDef(ArrayClass.ident, ctor.args, ctor.body),
-                  ArrayClass.prototype := New(globalVar("h", ObjectClass), Nil),
+                  ArrayClass.prototype := New(globalVar("ah", ObjectClass), Nil),
                   ArrayClass.prototype DOT "constructor" := ArrayClass,
-                  assignES5ClassMembers(ArrayClass, getAndSet ::: clone :: Nil)
+                  assignES5ClassMembers(ArrayClass, clone :: Nil)
               )
             }
           }
 
           Block(
-              const(componentZero, if (allowBigIntsForLongs) {
-                (componentData DOT "zero")
-              } else {
-                If((componentData DOT "zero") === str("longZero"),
-                    genLongZero(), componentData DOT "zero")
-              }),
               ArrayClassDef,
-              ArrayClass.prototype DOT classData := This(),
-              const(name, str("[") + (componentData DOT "arrayEncodedName")),
               const(arrayBase, (componentData DOT "arrayBase") || componentData),
               const(arrayDepth, (componentData DOT "arrayDepth") + 1),
-              privateFieldSet("constr", ArrayClass),
-              if (globalKnowledge.isParentDataAccessed)
-                privateFieldSet("parentData", genClassDataOf(ObjectClass))
-              else
-                Skip(),
-              privateFieldSet("ancestors", ObjectConstr(List(
-                  Ident(genName(ObjectClass)) -> 1,
-                  Ident(genName(CloneableClass)) -> 1,
-                  Ident(genName(SerializableClass)) -> 1
-              ))),
-              privateFieldSet("componentData", componentData),
-              privateFieldSet("arrayBase", arrayBase),
-              privateFieldSet("arrayDepth", arrayDepth),
-              privateFieldSet("arrayEncodedName", name),
+              initArrayCommonBody(ArrayClass, componentData, arrayBase, arrayDepth),
               const(isAssignableFromFun, {
                 Function(arrow = false, paramList(that), {
                   val thatDepth = varRef("thatDepth")
@@ -1411,8 +1512,6 @@ private[emitter] object CoreJSLib {
                 })
               }),
               privateFieldSet("isAssignableFromFun", isAssignableFromFun),
-              publicFieldSet("name", name),
-              publicFieldSet("isArrayClass", bool(true)),
               const(self, This()), // don't rely on the lambda being called with `this` as receiver
               publicFieldSet("isInstance", Function(arrow = false, paramList(obj), {
                 val data = varRef("data")
@@ -1509,7 +1608,7 @@ private[emitter] object CoreJSLib {
             paramList(lengths), {
           Block(
               let(arrayClassData, This()),
-              For(let(i, 0), i < (lengths DOT "length"), i.++, {
+              For(let(i, 0), i < lengths.length, i.++, {
                 arrayClassData := Apply(arrayClassData DOT "getArrayOf", Nil)
               }),
               Return(genCallHelper("newArrayObject", arrayClassData, lengths))
@@ -1520,6 +1619,7 @@ private[emitter] object CoreJSLib {
       val members = List(
           initPrim,
           initClass,
+          initSpecializedArray,
           initArray,
           getArrayOf
       ) ::: (
@@ -1545,7 +1645,31 @@ private[emitter] object CoreJSLib {
       }
     }
 
-    private def defineIsArrayOfPrimitiveFunctions(): Unit = {
+    private def defineSpecializedIsArrayOfFunctions(): Unit = {
+      // isArrayOf_O
+      val obj = varRef("obj")
+      val depth = varRef("depth")
+      val data = varRef("data")
+      val arrayDepth = varRef("arrayDepth")
+
+      buf += extractWithGlobals(globalFunctionDef("isArrayOf", ObjectClass, paramList(obj, depth), {
+        Block(
+            const(data, obj && (obj DOT "$classData")),
+            If(!data, {
+              Return(BooleanLiteral(false))
+            }, {
+              Block(
+                  const(arrayDepth, data DOT "arrayDepth"),
+                  Return(If(arrayDepth === depth, {
+                    !genIdentBracketSelect(data DOT "arrayBase", "isPrimitive")
+                  }, {
+                    arrayDepth > depth
+                  }))
+              )
+            })
+        )
+      }))
+
       for (primRef <- orderedPrimRefsWithoutVoid) {
         val obj = varRef("obj")
         val depth = varRef("depth")
@@ -1557,41 +1681,106 @@ private[emitter] object CoreJSLib {
       }
     }
 
-    private def defineAsArrayOfPrimitiveFunctions(): Unit = {
+    private def defineSpecializedAsArrayOfFunctions(): Unit = {
       if (asInstanceOfs != CheckedBehavior.Unchecked) {
-        for (primRef <- orderedPrimRefsWithoutVoid) {
+        for (typeRef <- specializedArrayTypeRefs) {
+          val encodedName = typeRef match {
+            case typeRef: PrimRef => typeRef.charCode.toString()
+            case _                => "L" + ObjectClass.nameString + ";"
+          }
+
           val obj = varRef("obj")
           val depth = varRef("depth")
-          buf += extractWithGlobals(globalFunctionDef("asArrayOf", primRef, paramList(obj, depth), {
-            If(Apply(typeRefVar("isArrayOf", primRef), obj :: depth :: Nil) || (obj === Null()), {
+          buf += extractWithGlobals(globalFunctionDef("asArrayOf", typeRef, paramList(obj, depth), {
+            If(Apply(globalVar("isArrayOf", typeRef), obj :: depth :: Nil) || (obj === Null()), {
               Return(obj)
             }, {
-              genCallHelper("throwArrayCastException", obj,
-                  str(primRef.charCode.toString()), depth)
+              genCallHelper("throwArrayCastException", obj, str(encodedName), depth)
             })
           }))
         }
       }
     }
 
-    private def definePrimitiveTypeDatas(): Unit = {
-      for {
-        (primRef, zero) <- List(
-            (VoidRef, Undefined()),
-            (BooleanRef, bool(false)),
-            (CharRef, int(0)),
-            (ByteRef, int(0)),
-            (ShortRef, int(0)),
-            (IntRef, int(0)),
-            (LongRef, if (allowBigIntsForLongs) genLongZero() else str("longZero")),
-            (FloatRef, double(0)),
-            (DoubleRef, double(0))
-        )
-      } {
+    private def defineSpecializedTypeDatas(): Unit = {
+      /* d_O must be first to correctly populate the parentData of array
+       * classes. Unlike all other type datas, we assign the first of d_O
+       * directly in the generated code, rather than through an `initXyz`
+       * method. That's because its initialization code does not follow the
+       * pattern of other type datas, and therefore the appropriate `initXyz`
+       * would be called only from here anyway.
+       */
+      locally {
+        val fullName = RuntimeClassNameMapperImpl.map(
+            semantics.runtimeClassNameMapper, ObjectClass.nameString)
+
+        val that = varRef("that")
+        val obj = varRef("obj")
+
+        val typeDataVar = globalVar("d", ObjectClass)
+
+        def privateFieldSet(fieldName: String, value: Tree): Tree =
+          typeDataVar DOT fieldName := value
+
+        def publicFieldSet(fieldName: String, value: Tree): Tree =
+          genIdentBracketSelect(typeDataVar, fieldName) := value
+
+        buf += extractWithGlobals(
+            globalVarDef("d", ObjectClass, New(globalVar("TypeData", CoreVar), Nil)))
+        buf += privateFieldSet("ancestors", ObjectConstr(List((Ident(genName(ObjectClass)) -> 1))))
+        buf += privateFieldSet("arrayEncodedName", str("L" + fullName + ";"))
+        buf += privateFieldSet("isAssignableFromFun", {
+          Function(arrow = false, paramList(that), {
+            Return(!genIdentBracketSelect(that, "isPrimitive"))
+          })
+        })
+        buf += publicFieldSet("name", str(fullName))
+        buf += publicFieldSet("isInstance", {
+          Function(arrow = false, paramList(obj), Return(obj !== Null()))
+        })
+        buf += privateFieldSet("_arrayOf", {
+          Apply(New(globalVar("TypeData", CoreVar), Nil) DOT "initSpecializedArray", List(
+              typeDataVar,
+              globalVar("ac", ObjectClass),
+              Function(arrow = false, paramList(that), {
+                val thatDepth = varRef("thatDepth")
+                Block(
+                    const(thatDepth, that DOT "arrayDepth"),
+                    Return(If(thatDepth === 1, {
+                      !genIdentBracketSelect(that DOT "arrayBase", "isPrimitive")
+                    }, {
+                      (thatDepth > 1)
+                    }))
+                )
+              })
+          ))
+        })
+
+        buf += {
+          globalVar("c", ObjectClass).prototype DOT "$classData" := typeDataVar
+        }
+      }
+
+      for (primRef <- orderedPrimRefs) {
+        /* Zero value, for use by the intrinsified code of
+         * `scala.collection.mutable.ArrayBuilder.genericArrayBuilderResult`.
+         * This code is Scala-specific, and "unboxes" `null` as the zero of
+         * primitive types. For `void`, it is even more special, as it produces
+         * a boxed Unit value, which is `undefined` (although `VoidRef`/`NoType`
+         * doesn't have a zero value per se).
+         */
+        val zero = primRef match {
+          case VoidRef                          => Undefined()
+          case LongRef if !allowBigIntsForLongs => Null() // set later when $L0 is initialized
+          case _                                => genZeroOf(primRef)
+        }
+
         buf += extractWithGlobals(globalVarDef("d", primRef, {
           Apply(New(globalVar("TypeData", CoreVar), Nil) DOT "initPrim",
               List(zero, str(primRef.charCode.toString()),
-                  str(primRef.displayName)))
+                  str(primRef.displayName),
+                  if (primRef == VoidRef) Undefined()
+                  else genArrayConstrOf(ArrayTypeRef(primRef, 1))))
         }))
       }
     }

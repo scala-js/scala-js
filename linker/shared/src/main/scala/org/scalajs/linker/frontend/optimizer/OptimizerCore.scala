@@ -2079,10 +2079,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           case ClassOf(elemTypeRef) => (ArrayType(ArrayTypeRef.of(elemTypeRef)), true)
           case _                    => (AnyType, false)
         }
-        cont(PreTransTree(callHelper("makeNativeArrayWrapper",
-            callHelper("arrayDataOf",
-                callHelper("classDataOf", runtimeClass)(AnyType))(AnyType),
-            array)(resultType),
+        cont(PreTransTree(
+            callHelper("makeNativeArrayWrapper", runtimeClass, array)(resultType),
             RefinedType(resultType, isExact = isExact, isNullable = false)))
 
       case ArrayBuilderZeroOf =>

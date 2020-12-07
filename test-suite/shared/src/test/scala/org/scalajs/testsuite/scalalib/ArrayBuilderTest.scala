@@ -135,8 +135,6 @@ class ArrayBuilderTest {
   }
 
   @Test def longZerosInline(): Unit = {
-    assumeTrue("bug filed as #4332", executingInJVM)
-
     val a = zerosInline[Long](3)
     assertSame(classOf[Array[Long]], a.getClass)
     assertEquals(3, a.length)
@@ -145,8 +143,6 @@ class ArrayBuilderTest {
   }
 
   @Test def longZerosNoinline(): Unit = {
-    assumeTrue("bug filed as #4332", executingInJVM)
-
     val a = zerosNoInline[Long](3)
     assertSame(classOf[Array[Long]], a.getClass)
     assertEquals(3, a.length)

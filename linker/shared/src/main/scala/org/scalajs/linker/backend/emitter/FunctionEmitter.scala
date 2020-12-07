@@ -2461,9 +2461,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
 
         case NewArray(typeRef, lengths) =>
-          genCallHelper("newArrayObject",
-              genClassDataOf(typeRef),
-              js.ArrayConstr(lengths.map(transformExprNoChar)))
+          genNewArray(typeRef, lengths.map(transformExprNoChar))
 
         case ArrayValue(typeRef, elems) =>
           val preserveChar = typeRef match {
@@ -2503,20 +2501,26 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case Transient(CallHelper(helper, args)) =>
           helper match {
-            case "classDataOf" =>
-              args.head match {
-                case ClassOf(tpe) =>
-                  genClassDataOf(tpe)
-                case jlClass =>
-                  js.DotSelect(transformExprNoChar(jlClass), js.Ident("jl_Class__f_data"))
-              }
-            case "arrayDataOf" =>
-              js.Apply(js.DotSelect(transformExprNoChar(args.head),
-                  js.Ident("getArrayOf")), Nil)
             case "zeroOf" =>
               js.DotSelect(
                   js.DotSelect(transformExprNoChar(args.head), js.Ident("jl_Class__f_data")),
                   js.Ident("zero"))
+
+            case "makeNativeArrayWrapper" =>
+              val elemClass :: nativeArray :: Nil = args
+              val arrayConstr = elemClass match {
+                case ClassOf(elemTypeRef) =>
+                  genArrayConstrOf(ArrayTypeRef.of(elemTypeRef))
+                case _ =>
+                  val elemClassData = js.DotSelect(
+                      transformExprNoChar(elemClass),
+                      js.Ident("jl_Class__f_data"))
+                  val arrayClassData = js.Apply(
+                      js.DotSelect(elemClassData, js.Ident("getArrayOf")), Nil)
+                  arrayClassData DOT "constr"
+              }
+              js.New(arrayConstr, transformExprNoChar(nativeArray) :: Nil)
+
             case _ =>
               genCallHelper(helper,
                   args.map(transformExpr(_, preserveChar = false)): _*)
