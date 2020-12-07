@@ -15,9 +15,11 @@ package org.scalajs.testsuite.jsinterop
 import scala.scalajs.js
 
 import org.junit.Assert._
+import org.junit.Assume._
 import org.junit.Test
 
 import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.Platform
 
 class SpecialTest {
   import SpecialTest._
@@ -106,16 +108,8 @@ class SpecialTest {
   // js.special.fileLevelThis
 
   @Test def fileLevelThis_can_be_used_to_detect_the_global_object(): Unit = {
-    val globalObject = {
-      import js.Dynamic.{global => g}
-      if (js.typeOf(g.global) != "undefined" && (g.global.Object eq g.Object)) {
-        // Node.js environment detected
-        g.global
-      } else {
-        // In all other well-known environment, we can use the global `this`
-        js.special.fileLevelThis.asInstanceOf[js.Dynamic]
-      }
-    }
+    assumeTrue(Platform.isNoModule)
+    val globalObject = js.special.fileLevelThis.asInstanceOf[js.Dynamic]
 
     assertSame(js.Math, globalObject.Math)
   }
