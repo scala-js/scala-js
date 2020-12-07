@@ -95,10 +95,12 @@ private[emitter] object CoreJSLib {
 
     private val classData = Ident("$classData")
 
-    private val orderedPrimRefs = {
-      List(VoidRef, BooleanRef, CharRef, ByteRef, ShortRef, IntRef, LongRef,
+    private val orderedPrimRefsWithoutVoid = {
+      List(BooleanRef, CharRef, ByteRef, ShortRef, IntRef, LongRef,
           FloatRef, DoubleRef)
     }
+
+    private val orderedPrimRefs = VoidRef :: orderedPrimRefsWithoutVoid
 
     def build(): WithGlobals[Lib] = {
       val lib = new Lib(buildDefinitions(), buildInitializations())
@@ -1544,7 +1546,7 @@ private[emitter] object CoreJSLib {
     }
 
     private def defineIsArrayOfPrimitiveFunctions(): Unit = {
-      for (primRef <- orderedPrimRefs) {
+      for (primRef <- orderedPrimRefsWithoutVoid) {
         val obj = varRef("obj")
         val depth = varRef("depth")
         buf += extractWithGlobals(globalFunctionDef("isArrayOf", primRef, paramList(obj, depth), {
@@ -1557,7 +1559,7 @@ private[emitter] object CoreJSLib {
 
     private def defineAsArrayOfPrimitiveFunctions(): Unit = {
       if (asInstanceOfs != CheckedBehavior.Unchecked) {
-        for (primRef <- orderedPrimRefs) {
+        for (primRef <- orderedPrimRefsWithoutVoid) {
           val obj = varRef("obj")
           val depth = varRef("depth")
           buf += extractWithGlobals(globalFunctionDef("asArrayOf", primRef, paramList(obj, depth), {
