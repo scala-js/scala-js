@@ -1143,8 +1143,31 @@ private[emitter] object CoreJSLib {
           Return(New(typedArrayClass, (value DOT "u") :: Nil))
         })
         defineFunction("typedArray2" + shortNameUpperCase + "Array", paramList(value), {
+          val arrayValue = if (esFeatures.useECMAScript2015) {
+            Apply(genIdentBracketSelect(ArrayRef, "from"), value :: Nil)
+          } else {
+            /* Array.prototype.slice.call(value)
+             *
+             * This works because:
+             * - If the `this` value of `slice` is not a proper `Array`, the
+             *   result will be created through `ArrayCreate` without explicit
+             *   prototype, which creates a new proper `Array`.
+             * - To know what elements to copy, `slice` does not check that its
+             *   `this` value is a proper `Array`. Instead, it simply assumes
+             *   that it is an "Array-like", and reads the `"length"` property
+             *   as well as indexed properties. Both of those work on a typed
+             *   array.
+             *
+             * Reference:
+             * http://www.ecma-international.org/ecma-262/6.0/#sec-array.prototype.slice
+             * (also follow the link for `ArraySpeciesCreate`)
+             */
+            Apply(genIdentBracketSelect(
+                genIdentBracketSelect(ArrayRef.prototype, "slice"), "call"),
+                value :: Nil)
+          }
           Return(New(genClassDataOf(ArrayTypeRef(primRef, 1)) DOT "constr",
-              New(typedArrayClass, value :: Nil) :: Nil))
+              arrayValue :: Nil))
         })
       }
     }
@@ -1329,13 +1352,8 @@ private[emitter] object CoreJSLib {
             }
 
             val clone = MethodDef(static = false, Ident(genName(cloneMethodName)), Nil, {
-              Return(New(ArrayClass, {
-                If((This() DOT "u") instanceof ArrayRef, {
-                  Apply(genIdentBracketSelect(This() DOT "u", "slice"), 0 :: Nil)
-                }, {
-                  New(This() DOT "u" DOT "constructor", (This() DOT "u") :: Nil)
-                })
-              } :: Nil))
+              Return(New(ArrayClass,
+                  Apply(genIdentBracketSelect(This() DOT "u", "slice"), Nil) :: Nil))
             })
 
             if (useClassesForRegularClasses) {
