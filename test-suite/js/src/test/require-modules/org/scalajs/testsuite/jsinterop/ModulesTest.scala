@@ -18,95 +18,79 @@ import scala.scalajs.js.annotation._
 import org.junit.Assert._
 import org.junit.Test
 
-/* This is currently hard-coded for Node.js modules in particular.
- * We are importing built-in Node.js modules, because we do not have any
- * infrastructure to load non-built-in modules. In the future, we should use
- * our own user-defined ES6 modules written in JavaScript.
- *
- * !!! This is mostly copy-pasted in `ModulesWithGlobalFallbackTest.scala` in
+/* !!! This is mostly copy-pasted in `ModulesWithGlobalFallbackTest.scala` in
  * `src/test/scala/`, with a version with global fallbacks.
  */
 class ModulesTest {
   import ModulesTest._
 
   @Test def testImportModuleItself(): Unit = {
-    val qs = QueryString
-    assertEquals("object", js.typeOf(qs))
+    val m = NamespaceImport
+    assertEquals("object", js.typeOf(m))
 
-    val dict = js.Dictionary("foo" -> "bar", "baz" -> "qux")
-
-    assertEquals("foo=bar&baz=qux", qs.stringify(dict))
-    assertEquals("foo:bar;baz:qux", qs.stringify(dict, ";", ":"))
+    assertEquals(5, m.ssum(2))
+    assertEquals(13, m.ssum(2, 3))
+    assertEquals("value", m.strConstant)
+    assertEquals("value", m.strConstantAsDef)
 
     /* Potentially, this could be "optimized" by importing `stringify` as a
      * global symbol if we are emitting ES2015 modules.
      */
-    assertEquals("foo=bar&baz=qux", QueryString.stringify(dict))
-    assertEquals("foo:bar;baz:qux", QueryString.stringify(dict, ";", ":"))
+    assertEquals(5, NamespaceImport.ssum(2))
+    assertEquals(13, NamespaceImport.ssum(2, 3))
+    assertEquals("value", NamespaceImport.strConstant)
+    assertEquals("value", NamespaceImport.strConstantAsDef)
   }
 
   @Test def testImportLegacyModuleItselfAsDefault(): Unit = {
-    val qs = QueryStringAsDefault
-    assertEquals("object", js.typeOf(qs))
+    val m = DefaultAsSelf
+    assertEquals("object", js.typeOf(m))
 
-    val dict = js.Dictionary("foo" -> "bar", "baz" -> "qux")
-
-    assertEquals("foo=bar&baz=qux", qs.stringify(dict))
-    assertEquals("foo:bar;baz:qux", qs.stringify(dict, ";", ":"))
+    assertEquals(1, m.x)
+    assertEquals("foo", m.y)
 
     /* Potentially, this could be "optimized" by importing `stringify` as a
      * global symbol if we are emitting ES2015 modules.
      */
-    assertEquals("foo=bar&baz=qux", QueryStringAsDefault.stringify(dict))
-    assertEquals("foo:bar;baz:qux", QueryStringAsDefault.stringify(dict, ";", ":"))
+    assertEquals(1, DefaultAsSelf.x)
+    assertEquals("foo", DefaultAsSelf.y)
+  }
+
+  @Test def testImportDefaultFunction(): Unit = {
+    assertEquals(5, defaultFunction())
   }
 
   @Test def testImportFunctionInModule(): Unit = {
-    val dict = js.Dictionary("foo" -> "bar", "baz" -> "qux")
-
-    assertEquals("foo=bar&baz=qux", QueryStringWithNativeDef.stringify(dict))
-    assertEquals("foo:bar;baz:qux", QueryStringWithNativeDef.stringify(dict, ";", ":"))
+    assertEquals(5, NativeMembers.ssum(2))
+    assertEquals(13, NativeMembers.ssum(2, 3))
   }
 
   @Test def testImportFieldInModule(): Unit = {
-    assertEquals("string", js.typeOf(OSWithNativeVal.EOL))
-    assertEquals("string", js.typeOf(OSWithNativeVal.EOLAsDef))
+    assertEquals("string", js.typeOf(NativeMembers.strConstant))
+    assertEquals("string", js.typeOf(NativeMembers.strConstantAsDef))
   }
 
   @Test def testImportFunctionInModulePackageObject(): Unit = {
-    val dict = js.Dictionary("foo" -> "bar", "baz" -> "qux")
-
-    assertEquals("foo=bar&baz=qux", modulestestpackageobject.stringify(dict))
-    assertEquals("foo:bar;baz:qux", modulestestpackageobject.stringify(dict, ";", ":"))
+    assertEquals(5, modulestestpackageobject.ssum(2))
+    assertEquals(13, modulestestpackageobject.ssum(2, 3))
   }
 
   @Test def testImportFieldInModulePackageObject(): Unit = {
-    assertEquals("string", js.typeOf(modulestestpackageobject.EOL))
-    assertEquals("string", js.typeOf(modulestestpackageobject.EOLAsDef))
+    assertEquals("string", js.typeOf(modulestestpackageobject.strConstant))
+    assertEquals("string", js.typeOf(modulestestpackageobject.strConstantAsDef))
   }
 
   @Test def testImportObjectInModule(): Unit = {
-    assertTrue((Buffer: Any).isInstanceOf[js.Object])
-    assertFalse(Buffer.isBuffer(5))
+    assertTrue((MyBox: Any).isInstanceOf[js.Object])
+    assertTrue(MyBox.make(5).isInstanceOf[MyBox[_]])
   }
 
   @Test def testImportClassInModule(): Unit = {
-    val b = Buffer.alloc(5)
-    for (i <- 0 until 5)
-      b(i) = (i * i).toShort
+    val b = new MyBox(1L)
 
-    for (i <- 0 until 5)
-      assertEquals(i * i, b(i).toInt)
-  }
-
-  @Test def testImportIntegrated(): Unit = {
-    val b = Buffer.from(js.Array[Short](0xe3, 0x81, 0x93, 0xe3, 0x82, 0x93,
-        0xe3, 0x81, 0xab, 0xe3, 0x81, 0xa1, 0xe3, 0x81, 0xaf))
-    val decoder = new StringDecoder()
-    assertTrue(Buffer.isBuffer(b))
-    assertFalse(Buffer.isBuffer(decoder))
-    assertEquals("こんにちは", decoder.write(b))
-    assertEquals("", decoder.end())
+    assertEquals(1L, b.get())
+    b.set(5L)
+    assertEquals(5L, b.get())
   }
 
   // #4001
@@ -124,84 +108,80 @@ class ModulesTest {
 
 package object modulestestpackageobject {
   @js.native
-  @JSImport("querystring", "stringify")
-  def stringify(obj: js.Dictionary[String], sep: String = "&",
-      eq: String = "="): String = js.native
+  @JSImport(ModulesTest.modulePath, "ssum")
+  def ssum(x: Int, y: Int = 1): Int = js.native
 
   @js.native
-  @JSImport("os", "EOL")
-  val EOL: String = js.native
+  @JSImport(ModulesTest.modulePath, "strConstant")
+  val strConstant: String = js.native
 
   @js.native
-  @JSImport("os", "EOL")
-  def EOLAsDef: String = js.native
+  @JSImport(ModulesTest.modulePath, "strConstant")
+  def strConstantAsDef: String = js.native
 }
 
 object ModulesTest {
+  final val modulePath = "../test-classes/modules-test.js"
+
   @js.native
-  @JSImport("querystring", JSImport.Namespace)
-  object QueryString extends js.Object {
-    def stringify(obj: js.Dictionary[String], sep: String = "&",
-        eq: String = "="): String = js.native
+  @JSImport(modulePath, JSImport.Namespace)
+  object NamespaceImport extends js.Object {
+    def ssum(x: Int, y: Int = 1): Int = js.native
+    val strConstant: String = js.native
+
+    @JSName("strConstant")
+    def strConstantAsDef: String = js.native
   }
 
   @js.native
-  @JSImport("querystring", JSImport.Default)
-  object QueryStringAsDefault extends js.Object {
-    def stringify(obj: js.Dictionary[String], sep: String = "&",
-        eq: String = "="): String = js.native
+  @JSImport("../test-classes/modules-test-default-as-self.js", JSImport.Default)
+  object DefaultAsSelf extends js.Object {
+    val x: Int = js.native
+    val y: String = js.native
   }
 
-  object QueryStringWithNativeDef {
+  @js.native
+  @JSImport(modulePath, JSImport.Default)
+  def defaultFunction(): Int = js.native
+
+  object NativeMembers {
     @js.native
-    @JSImport("querystring", "stringify")
-    def stringify(obj: js.Dictionary[String], sep: String = "&",
-        eq: String = "="): String = js.native
-  }
-
-  object OSWithNativeVal {
-    @js.native
-    @JSImport("os", "EOL")
-    val EOL: String = js.native
+    @JSImport(modulePath, "ssum")
+    def ssum(x: Int, y: Int = 1): Int = js.native
 
     @js.native
-    @JSImport("os", "EOL")
-    def EOLAsDef: String = js.native
+    @JSImport(modulePath, "strConstant")
+    val strConstant: String = js.native
+
+    @js.native
+    @JSImport(modulePath, "strConstant")
+    def strConstantAsDef: String = js.native
   }
 
   @js.native
-  @JSImport("string_decoder", "StringDecoder")
-  class StringDecoder(encoding: String = "utf8") extends js.Object {
-    def write(buffer: Buffer): String = js.native
-    def end(buffer: Buffer): String = js.native
-    def end(): String = js.native
+  @JSImport(modulePath, "MyBox")
+  class MyBox[T](x: T) extends js.Object {
+    def get(): T = js.native
+    def set(x: T): Unit = js.native
   }
 
   @js.native
-  @JSImport("buffer", "Buffer")
-  class Buffer private[this] () extends js.typedarray.Uint8Array(0)
-
-  // This API requires Node.js >= v5.10.0
-  @js.native
-  @JSImport("buffer", "Buffer")
-  object Buffer extends js.Object {
-    def alloc(size: Int): Buffer = js.native
-    def from(array: js.Array[Short]): Buffer = js.native
-
-    def isBuffer(x: Any): Boolean = js.native
+  @JSImport(modulePath, "MyBox")
+  object MyBox extends js.Object {
+    def make[T](x: T): MyBox[T] = js.native
   }
 
   // #4001 - Test that unused super-classes are not imported.
   @js.native
-  @JSImport("non-existent", "Foo")
+  @JSImport("non-existent.js", "Foo")
   class NonExistentSuperClass extends js.Object
 
   @js.native
-  @JSImport("string_decoder", "StringDecoder")
+  @JSImport(modulePath, "MyBox")
   class ExistentSubClass extends NonExistentSuperClass
 
   @js.native
-  @JSImport("querystring", JSImport.Namespace)
+  @JSImport(modulePath, JSImport.Namespace)
   object ExistentSubObject extends NonExistentSuperClass
 
   /* #4268 Test that a super-class only used in an extends from a non-native JS

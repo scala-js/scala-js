@@ -23,22 +23,14 @@ import org.junit.Test
 
 import org.scalajs.junit.async._
 
-/* This is currently hard-coded for Node.js modules in particular.
- * We are importing built-in Node.js modules, because we do not have any
- * infrastructure to load non-built-in modules. In the future, we should use
- * our own user-defined ES6 modules written in JavaScript.
- */
 class DynamicImportTest {
   import DynamicImportTest._
 
   @Test def testSuccessfulImport(): AsyncResult = await {
-    js.`import`[QueryStringAPI]("querystring").toFuture.map { qs =>
-      assertEquals("object", js.typeOf(qs))
-
-      val dict = js.Dictionary("foo" -> "bar", "baz" -> "qux")
-
-      assertEquals("foo=bar&baz=qux", qs.stringify(dict))
-      assertEquals("foo:bar;baz:qux", qs.stringify(dict, ";", ":"))
+    js.`import`[ModulesTestModuleAPI]("../test-classes/modules-test.js").toFuture.map { m =>
+      assertEquals("object", js.typeOf(m))
+      assertEquals(5, m.ssum(2))
+      assertEquals(13, m.ssum(2, 3))
     }
   }
 
@@ -49,8 +41,8 @@ class DynamicImportTest {
 }
 
 object DynamicImportTest {
-  trait QueryStringAPI extends js.Any {
-    def stringify(obj: js.Dictionary[String]): String
-    def stringify(obj: js.Dictionary[String], sep: String, eq: String): String
+  trait ModulesTestModuleAPI extends js.Any {
+    def ssum(x: Int): Int
+    def ssum(x: Int, y: Int): Int
   }
 }
