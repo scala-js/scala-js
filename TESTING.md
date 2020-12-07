@@ -16,9 +16,13 @@ Still manual, because jsdom does not support modules yet
 $ sbt
 > set scalaJSLinkerConfig in testingExample.v2_12 ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules).withModuleKind(ModuleKind.ESModule))
 > testingExample2_12/testHtml
+> set scalaJSLinkerConfig in testSuite.v2_12 ~= (_.withModuleKind(ModuleKind.ESModule))
+> testSuite2_12/testHtml
 > exit
-$ python3 -m http.server -d examples/testing/.2.12/target/scala-2.12
-// Open http://localhost:8000/testing-fastopt-test-html/index.html
+$ python3 -m http.server
+
+// Open http://localhost:8000/examples/testing/.2.12/target/scala-2.12/testing-fastopt-test-html/index.html
+// Open http://localhost:8000/test-suite/js/.2.12/target/scala-2.12/scalajs-test-suite-fastopt-test-html/index.html
 ```
 
 ## Sourcemaps

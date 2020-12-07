@@ -21,11 +21,17 @@ object JSUtils {
   /** The detected global object. */
   val globalObject: js.Dynamic = {
     import js.Dynamic.{global => g}
-    if (js.typeOf(g.global) != "undefined" && (g.global.Object eq g.Object)) {
+
+    def check(o: js.Dynamic) = o.Object eq g.Object
+
+    if (js.typeOf(g.global) != "undefined" && check(g.global)) {
       // Node.js environment detected
       g.global
+    } else if (js.typeOf(g.window) != "undefined" && check(g.window)) {
+      // DOM environment detected
+      g.window
     } else {
-      // In all other well-known environment, we can use the global `this`
+      assert(Platform.isNoModule, "Failed to detect global object in module")
       js.special.fileLevelThis.asInstanceOf[js.Dynamic]
     }
   }
