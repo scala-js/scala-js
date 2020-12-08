@@ -1126,10 +1126,16 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
                 case sel: Select if sel.symbol == JSPackage_undefined =>
                   // ok
                 case _ =>
-                  reporter.error(tree.rhs.pos,
-                      "Members of non-native JS traits must either be " +
-                      "abstract, or their right-hand-side must be " +
-                      "`js.undefined`.")
+                  if (sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM)) {
+                    reporter.error(tree.rhs.pos,
+                        "Members of non-native JS traits may not have default " +
+                        "parameters unless their default is `js.undefined`.")
+                  } else {
+                    reporter.error(tree.rhs.pos,
+                        "Members of non-native JS traits must either be " +
+                        "abstract, or their right-hand-side must be " +
+                        "`js.undefined`.")
+                  }
               }
             }
           }
