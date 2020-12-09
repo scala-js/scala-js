@@ -105,6 +105,7 @@ def Tasks = [
     npm install &&
     sbtretry ++$scala helloworld$v/run &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
+        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withPrettyPrint(true))' \
         ++$scala helloworld$v/run \
         helloworld$v/clean &&
     sbtretry 'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withOptimizer(false))' \

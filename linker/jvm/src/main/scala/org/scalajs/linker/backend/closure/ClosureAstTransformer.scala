@@ -22,8 +22,6 @@ import org.scalajs.linker.backend.javascript.Trees._
 import org.scalajs.linker.backend.javascript.SourceFileUtil
 
 import com.google.javascript.rhino._
-import com.google.javascript.rhino.StaticSourceFile.SourceKind
-import com.google.javascript.jscomp.SourceFile
 import com.google.javascript.jscomp.parsing.parser.FeatureSet
 
 import scala.annotation.tailrec
@@ -531,7 +529,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
 
   private def attachSourceFile(node: Node, source: URI): node.type = {
     val str = SourceFileUtil.webURI(relativizeBaseURI, source)
-    val file = new SourceFile(str, SourceKind.STRONG)
+    val file = new SimpleSourceFile(str, StaticSourceFile.SourceKind.STRONG)
 
     /* A lot of Closure code makes the assumption that the InputId is the
      * filename. We follow this assumption so we can use more of the already
