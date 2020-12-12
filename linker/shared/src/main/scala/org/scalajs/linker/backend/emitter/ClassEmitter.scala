@@ -1044,16 +1044,6 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       }
     }
 
-    val isArrayOfFun = {
-      if (isObjectClass) {
-        // Object is the only class that has a special $isArrayOf_O.
-        globalVar("isArrayOf", className)
-      } else {
-        // For other classes, the isArrayOf function can be inferred.
-        js.Undefined()
-      }
-    }
-
     isInstanceFunWithGlobals.flatMap { isInstanceFun =>
       val allParams = List(
           js.ObjectConstr(List(js.Ident(genName(className)) -> js.IntLiteral(0))),
@@ -1063,8 +1053,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           ancestorsRecord,
           isJSTypeParam,
           parentData,
-          isInstanceFun,
-          isArrayOfFun
+          isInstanceFun
       )
 
       val prunedParams =
