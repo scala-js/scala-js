@@ -1254,8 +1254,8 @@ private[emitter] object CoreJSLib {
         val componentData = varRef("componentData")
         val componentZero = varRef("componentZero")
         val ArrayClass = varRef("ArrayClass")
-        val encodedName = varRef("encodedName")
-        val componentBase = varRef("componentBase")
+        val name = varRef("name")
+        val arrayBase = varRef("arrayBase")
         val arrayDepth = varRef("arrayDepth")
         val obj = varRef("obj")
         MethodDef(static = false, Ident("initArray"),
@@ -1347,8 +1347,8 @@ private[emitter] object CoreJSLib {
               }),
               ArrayClassDef,
               ArrayClass.prototype DOT classData := This(),
-              const(encodedName, str("[") + (componentData DOT "arrayEncodedName")),
-              const(componentBase, (componentData DOT "arrayBase") || componentData),
+              const(name, str("[") + (componentData DOT "arrayEncodedName")),
+              const(arrayBase, (componentData DOT "arrayBase") || componentData),
               const(arrayDepth, (componentData DOT "arrayDepth") + 1),
               privateFieldSet("constr", ArrayClass),
               if (globalKnowledge.isParentDataAccessed)
@@ -1361,13 +1361,13 @@ private[emitter] object CoreJSLib {
                   Ident(genName(SerializableClass)) -> 1
               ))),
               privateFieldSet("componentData", componentData),
-              privateFieldSet("arrayBase", componentBase),
+              privateFieldSet("arrayBase", arrayBase),
               privateFieldSet("arrayDepth", arrayDepth),
-              privateFieldSet("arrayEncodedName", encodedName),
-              publicFieldSet("name", encodedName),
+              privateFieldSet("arrayEncodedName", name),
+              publicFieldSet("name", name),
               publicFieldSet("isArrayClass", bool(true)),
               publicFieldSet("isInstance", Function(arrow = false, paramList(obj), {
-                Return(Apply(componentBase DOT "isArrayOf", obj :: arrayDepth :: Nil))
+                Return(Apply(arrayBase DOT "isArrayOf", obj :: arrayDepth :: Nil))
               })),
               Return(This())
           )
