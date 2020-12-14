@@ -56,6 +56,9 @@ object ExposedValues extends AutoPlugin {
   }
 }
 
+final case class ExpectedSizes(fastLink: Int, fullLink: Int,
+    fastLinkGz: Int, fullLinkGz: Int)
+
 object MyScalaJSPlugin extends AutoPlugin {
   override def requires: Plugins = ScalaJSPlugin
 
@@ -70,6 +73,10 @@ object MyScalaJSPlugin extends AutoPlugin {
 
   val writePackageJSON = taskKey[Unit](
       "Write package.json to configure module type for Node.js")
+
+  val checksizes = taskKey[Unit]("Check expected output sizes")
+
+  val expectedSizes = settingKey[Option[ExpectedSizes]]("Expected sizes for checksizes")
 
   def addScalaJSCompilerOption(option: String): Setting[_] =
     addScalaJSCompilerOption(Def.setting(option))
@@ -130,6 +137,53 @@ object MyScalaJSPlugin extends AutoPlugin {
         val path = target.value / "package.json"
 
         IO.write(path, s"""{"type": "$packageType"}\n""")
+      },
+
+      expectedSizes := None,
+
+      checksizes := {
+        val logger = streams.value.log
+
+        val maybeExpected = expectedSizes.value
+
+        /* The deprecated tasks do exactly what we want in terms of module /
+         * file resolution. So we use them instead of building it again.
+         */
+        val fast = (fastOptJS in Compile).value.data
+        val full = (fullOptJS in Compile).value.data
+
+        val desc = s"${thisProject.value.id} Scala ${scalaVersion.value}"
+
+        maybeExpected.fold {
+          logger.info(s"Ignoring checksizes for " + desc)
+        } { expected =>
+          val fastGz = new File(fast.getPath() + ".gz")
+          val fullGz = new File(full.getPath() + ".gz")
+
+          IO.gzip(fast, fastGz)
+          IO.gzip(full, fullGz)
+
+          val fastSize = fast.length()
+          val fullSize = full.length()
+          val fastGzSize = fastGz.length()
+          val fullGzSize = fullGz.length()
+
+          logger.info(s"Checksizes: $desc")
+          logger.info(s"fastLink size = $fastSize (expected ${expected.fastLink})")
+          logger.info(s"fullLink size = $fullSize (expected ${expected.fullLink})")
+          logger.info(s"fastLink gzip size = $fastGzSize (expected ${expected.fastLinkGz})")
+          logger.info(s"fullLink gzip size = $fullGzSize (expected ${expected.fullLinkGz})")
+
+          val ok = (
+              fastSize <= expected.fastLink &&
+              fullSize <= expected.fullLink &&
+              fastGzSize <= expected.fastLinkGz &&
+              fullGzSize <= expected.fullLinkGz
+          )
+
+          if (!ok)
+            throw new MessageOnlyException("checksizes failed")
+        }
       },
 
       // Link source maps to GitHub sources
@@ -1603,7 +1657,38 @@ object Build {
   ).settings(
       exampleSettings,
       name := "Reversi - Scala.js example",
-      moduleName := "reversi"
+      moduleName := "reversi",
+
+      MyScalaJSPlugin.expectedSizes := {
+        scalaVersion.value match {
+          case "2.11.12" =>
+            Some(ExpectedSizes(
+                fastLink = 517000,
+                fullLink = 107000,
+                fastLinkGz = 67000,
+                fullLinkGz = 29000,
+            ))
+
+          case "2.12.12" =>
+            Some(ExpectedSizes(
+                fastLink = 780000,
+                fullLink = 148000,
+                fastLinkGz = 92000,
+                fullLinkGz = 37000,
+            ))
+
+          case "2.13.3"  =>
+            Some(ExpectedSizes(
+                fastLink = 773000,
+                fullLink = 167000,
+                fastLinkGz = 98000,
+                fullLinkGz = 43000,
+            ))
+
+          case _ =>
+            None
+        }
+      }
   ).withScalaJSCompiler.dependsOn(library)
 
   lazy val testingExample: MultiScalaProject = MultiScalaProject(
