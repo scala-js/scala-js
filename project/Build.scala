@@ -13,6 +13,7 @@ import ScriptedPlugin.autoImport._
 
 import java.util.Arrays
 
+import scala.collection.immutable.Range
 import scala.collection.mutable
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -56,8 +57,8 @@ object ExposedValues extends AutoPlugin {
   }
 }
 
-final case class ExpectedSizes(fastLink: Int, fullLink: Int,
-    fastLinkGz: Int, fullLinkGz: Int)
+final case class ExpectedSizes(fastLink: Range, fullLink: Range,
+    fastLinkGz: Range, fullLinkGz: Range)
 
 object MyScalaJSPlugin extends AutoPlugin {
   override def requires: Plugins = ScalaJSPlugin
@@ -175,10 +176,10 @@ object MyScalaJSPlugin extends AutoPlugin {
           logger.info(s"fullLink gzip size = $fullGzSize (expected ${expected.fullLinkGz})")
 
           val ok = (
-              fastSize <= expected.fastLink &&
-              fullSize <= expected.fullLink &&
-              fastGzSize <= expected.fastLinkGz &&
-              fullGzSize <= expected.fullLinkGz
+              expected.fastLink.contains(fastSize) &&
+              expected.fullLink.contains(fullSize) &&
+              expected.fastLinkGz.contains(fastGzSize) &&
+              expected.fullLinkGz.contains(fullGzSize)
           )
 
           if (!ok)
@@ -1663,26 +1664,26 @@ object Build {
         scalaVersion.value match {
           case "2.11.12" =>
             Some(ExpectedSizes(
-                fastLink = 517000,
-                fullLink = 107000,
-                fastLinkGz = 67000,
-                fullLinkGz = 29000,
+                fastLink = 516000 to 517000,
+                fullLink = 106000 to 107000,
+                fastLinkGz = 66000 to 67000,
+                fullLinkGz = 28000 to 29000,
             ))
 
           case "2.12.12" =>
             Some(ExpectedSizes(
-                fastLink = 780000,
-                fullLink = 148000,
-                fastLinkGz = 92000,
-                fullLinkGz = 37000,
+                fastLink = 770000 to 780000,
+                fullLink = 146000 to 147000,
+                fastLinkGz = 91000 to 92000,
+                fullLinkGz = 36000 to 37000,
             ))
 
           case "2.13.3"  =>
             Some(ExpectedSizes(
-                fastLink = 773000,
-                fullLink = 167000,
-                fastLinkGz = 98000,
-                fullLinkGz = 43000,
+                fastLink = 771000 to 772000,
+                fullLink = 165000 to 166000,
+                fastLinkGz = 97000 to 98000,
+                fullLinkGz = 42000 to 43000,
             ))
 
           case _ =>
