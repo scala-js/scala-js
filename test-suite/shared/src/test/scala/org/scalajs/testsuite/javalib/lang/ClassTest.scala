@@ -142,8 +142,13 @@ class ClassTest {
   }
 
   @Test def isAssignableFrom(): Unit = {
-    val SelectedClassOfs =
-      PrimitiveClassOfs ++ BoxedClassOfs ++ Seq(classOf[Object], classOf[String])
+    val SelectedClassOfs = {
+      PrimitiveClassOfs ++ BoxedClassOfs ++ Seq(
+          classOf[Object], classOf[String], classOf[Array[Object]],
+          classOf[Array[Int]], classOf[Array[List[_]]], classOf[Array[Seq[_]]],
+          classOf[Array[Array[Object]]], classOf[Array[Array[Int]]],
+          classOf[Array[Array[String]]])
+    }
 
     // All Classes are assignable from themselves
     for (cls <- SelectedClassOfs) {
@@ -162,6 +167,17 @@ class ClassTest {
           left.isAssignableFrom(right))
     }
 
+    // Boxed classes should not be assignable between each other
+    for {
+      left <- BoxedClassOfs
+      right <- BoxedClassOfs
+      if left ne right
+    } {
+      assertFalse(
+          s"$left.isAssignableFrom($right) should be false",
+          left.isAssignableFrom(right))
+    }
+
     /* Positive tests with the special classes Object and String, as well as
      * with normal traits and classes.
      */
@@ -172,6 +188,12 @@ class ClassTest {
     assertTrue(classOf[Seq[_]].isAssignableFrom(classOf[::[_]]))
     assertTrue(classOf[Object].isAssignableFrom(classOf[Array[String]]))
     assertTrue(classOf[Array[Seq[_]]].isAssignableFrom(classOf[Array[List[_]]]))
+    assertTrue(classOf[Array[Object]].isAssignableFrom(classOf[Array[List[_]]]))
+    assertTrue(classOf[Array[Object]].isAssignableFrom(classOf[Array[Seq[_]]]))
+    assertTrue(classOf[Array[Object]].isAssignableFrom(classOf[Array[Array[Object]]]))
+    assertTrue(classOf[Array[Object]].isAssignableFrom(classOf[Array[Array[List[_]]]]))
+    assertTrue(classOf[Array[Object]].isAssignableFrom(classOf[Array[Array[Int]]]))
+    assertTrue(classOf[Array[Array[Object]]].isAssignableFrom(classOf[Array[Array[List[_]]]]))
 
     // Negative tests
 
@@ -181,6 +203,10 @@ class ClassTest {
     assertFalse(classOf[Set[_]].isAssignableFrom(classOf[::[_]]))
     assertFalse(classOf[Array[String]].isAssignableFrom(classOf[Object]))
     assertFalse(classOf[Array[List[_]]].isAssignableFrom(classOf[Array[Seq[_]]]))
+    assertFalse(classOf[Array[List[_]]].isAssignableFrom(classOf[Array[Object]]))
+    assertFalse(classOf[Array[Object]].isAssignableFrom(classOf[Array[Int]]))
+    assertFalse(classOf[Array[Array[Object]]].isAssignableFrom(classOf[Array[Object]]))
+    assertFalse(classOf[Array[Array[Object]]].isAssignableFrom(classOf[Array[Array[Int]]]))
 
     /* All the boxed classes except Void extend Comparable, and since they are
      * hijacked, the code paths to test that they are assignable to Comparable

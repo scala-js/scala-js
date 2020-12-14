@@ -1172,7 +1172,13 @@ private[emitter] object CoreJSLib {
               privateFieldSet("arrayEncodedName", str("")),
               privateFieldSet("_classOf", Undefined()),
               privateFieldSet("_arrayOf", Undefined()),
-              privateFieldSet("isArrayOf", Undefined()),
+
+              /* A lambda for the logic of the public `isAssignableFrom`,
+               * without its fast-path. See the comment on the definition of
+               * `isAssignableFrom` for the rationale of this decomposition.
+               */
+              privateFieldSet("isAssignableFromFun", Undefined()),
+
               publicFieldSet("name", str("")),
               publicFieldSet("isPrimitive", bool(false)),
               publicFieldSet("isInterface", bool(false)),
@@ -1187,16 +1193,22 @@ private[emitter] object CoreJSLib {
         val zero = varRef("zero")
         val arrayEncodedName = varRef("arrayEncodedName")
         val displayName = varRef("displayName")
-        val isArrayOf = varRef("isArrayOf")
-        val obj = varRef("obj")
+        val self = varRef("self")
+        val that = varRef("that")
         val depth = varRef("depth")
+        val obj = varRef("obj")
         MethodDef(static = false, Ident("initPrim"),
-            paramList(zero, arrayEncodedName, displayName, isArrayOf), {
+            paramList(zero, arrayEncodedName, displayName), {
           Block(
               privateFieldSet("ancestors", ObjectConstr(Nil)),
               privateFieldSet("zero", zero),
               privateFieldSet("arrayEncodedName", arrayEncodedName),
-              privateFieldSet("isArrayOf", isArrayOf),
+              const(self, This()), // don't rely on the lambda being called with `this` as receiver
+              privateFieldSet("isAssignableFromFun", {
+                Function(arrow = false, paramList(that), {
+                  Return(that === self)
+                })
+              }),
               publicFieldSet("name", displayName),
               publicFieldSet("isPrimitive", bool(true)),
               publicFieldSet("isInstance",
@@ -1214,13 +1226,13 @@ private[emitter] object CoreJSLib {
         val isJSType = varRef("isJSType")
         val parentData = varRef("parentData")
         val isInstance = varRef("isInstance")
-        val isArrayOf = varRef("isArrayOf")
         val internalName = varRef("internalName")
-        val obj = varRef("obj")
+        val that = varRef("that")
         val depth = varRef("depth")
+        val obj = varRef("obj")
         MethodDef(static = false, Ident("initClass"),
             paramList(internalNameObj, isInterface, fullName, ancestors,
-                isJSType, parentData, isInstance, isArrayOf), {
+                isJSType, parentData, isInstance), {
           Block(
               const(internalName, genCallHelper("propertyName", internalNameObj)),
               if (globalKnowledge.isParentDataAccessed)
@@ -1229,11 +1241,9 @@ private[emitter] object CoreJSLib {
                 Skip(),
               privateFieldSet("ancestors", ancestors),
               privateFieldSet("arrayEncodedName", str("L") + fullName + str(";")),
-              privateFieldSet("isArrayOf", isArrayOf || {
-                Function(arrow = false, paramList(obj, depth), {
-                  Return(!(!(obj && (obj DOT classData) &&
-                      ((obj DOT classData DOT "arrayDepth") === depth) &&
-                      BracketSelect(obj DOT classData DOT "arrayBase" DOT "ancestors", internalName))))
+              privateFieldSet("isAssignableFromFun", {
+                Function(arrow = false, paramList(that), {
+                  Return(!(!(BracketSelect(that DOT "ancestors", internalName))))
                 })
               }),
               privateFieldSet("isJSType", !(!isJSType)),
@@ -1254,9 +1264,12 @@ private[emitter] object CoreJSLib {
         val componentData = varRef("componentData")
         val componentZero = varRef("componentZero")
         val ArrayClass = varRef("ArrayClass")
-        val encodedName = varRef("encodedName")
-        val componentBase = varRef("componentBase")
+        val name = varRef("name")
+        val arrayBase = varRef("arrayBase")
         val arrayDepth = varRef("arrayDepth")
+        val isAssignableFromFun = varRef("isAssignableFromFun")
+        val that = varRef("that")
+        val self = varRef("self")
         val obj = varRef("obj")
         MethodDef(static = false, Ident("initArray"),
             paramList(componentData), {
@@ -1347,8 +1360,8 @@ private[emitter] object CoreJSLib {
               }),
               ArrayClassDef,
               ArrayClass.prototype DOT classData := This(),
-              const(encodedName, str("[") + (componentData DOT "arrayEncodedName")),
-              const(componentBase, (componentData DOT "arrayBase") || componentData),
+              const(name, str("[") + (componentData DOT "arrayEncodedName")),
+              const(arrayBase, (componentData DOT "arrayBase") || componentData),
               const(arrayDepth, (componentData DOT "arrayDepth") + 1),
               privateFieldSet("constr", ArrayClass),
               if (globalKnowledge.isParentDataAccessed)
@@ -1361,13 +1374,35 @@ private[emitter] object CoreJSLib {
                   Ident(genName(SerializableClass)) -> 1
               ))),
               privateFieldSet("componentData", componentData),
-              privateFieldSet("arrayBase", componentBase),
+              privateFieldSet("arrayBase", arrayBase),
               privateFieldSet("arrayDepth", arrayDepth),
-              privateFieldSet("arrayEncodedName", encodedName),
-              publicFieldSet("name", encodedName),
+              privateFieldSet("arrayEncodedName", name),
+              const(isAssignableFromFun, {
+                Function(arrow = false, paramList(that), {
+                  val thatDepth = varRef("thatDepth")
+                  Block(
+                      const(thatDepth, that DOT "arrayDepth"),
+                      Return(If(thatDepth === arrayDepth, {
+                        Apply(arrayBase DOT "isAssignableFromFun", (that DOT "arrayBase") :: Nil)
+                      }, {
+                        (thatDepth > arrayDepth) && (arrayBase === genClassDataOf(ObjectClass))
+                      }))
+                  )
+                })
+              }),
+              privateFieldSet("isAssignableFromFun", isAssignableFromFun),
+              publicFieldSet("name", name),
               publicFieldSet("isArrayClass", bool(true)),
+              const(self, This()), // don't rely on the lambda being called with `this` as receiver
               publicFieldSet("isInstance", Function(arrow = false, paramList(obj), {
-                Return(Apply(componentBase DOT "isArrayOf", obj :: arrayDepth :: Nil))
+                val data = varRef("data")
+                Block(
+                    const(data, obj && (obj DOT classData)),
+                    Return(!(!data) && {
+                      (data === self) || // fast path
+                      Apply(isAssignableFromFun, data :: Nil)
+                    })
+                )
               })),
               Return(This())
           )
@@ -1398,50 +1433,21 @@ private[emitter] object CoreJSLib {
       }
 
       def isAssignableFrom = {
+        /* This is the public method called by j.l.Class.isAssignableFrom. It
+         * first performs a fast-path with `this === that`, and otherwise calls
+         * the internal `isAssignableFromFun` function.
+         * The reason for this decomposition (as opposed to performing the
+         * fast-path in each `isAssignableFromFun`) is to keep the fast-path
+         * monomorphic: on the happy path, the VM performs a monomorphic
+         * dispatch to this method, which performs the fast-path and returns.
+         * We only need a polymorphic dispatch in the slow path.
+         */
         val that = varRef("that")
-        val thatFakeInstance = varRef("thatFakeInstance")
         MethodDef(static = false, StringLiteral("isAssignableFrom"),
             paramList(that), {
-          If(genIdentBracketSelect(This(), "isPrimitive") ||
-              genIdentBracketSelect(that, "isPrimitive"), {
-            Return(This() === that)
-          }, {
-            Block(
-                genEmptyMutableLet(thatFakeInstance.ident),
-                If(that === genClassDataOf(BoxedStringClass), {
-                  thatFakeInstance := str("")
-                }, {
-                  If(that === genClassDataOf(BoxedBooleanClass), {
-                    thatFakeInstance := bool(false)
-                  }, {
-                    If({
-                      List(BoxedByteClass, BoxedShortClass, BoxedIntegerClass,
-                          BoxedFloatClass, BoxedDoubleClass).map { cls =>
-                        that === genClassDataOf(cls)
-                      }.reduceLeft(_ || _)
-                    }, {
-                      thatFakeInstance := int(0)
-                    }, {
-                      If(that === genClassDataOf(BoxedLongClass), {
-                        thatFakeInstance := genLongZero()
-                      }, {
-                        If(that === genClassDataOf(BoxedCharacterClass), {
-                          thatFakeInstance := genBoxedCharZero()
-                        }, {
-                          If(that === genClassDataOf(BoxedUnitClass), {
-                            thatFakeInstance := Undefined()
-                          }, {
-                            thatFakeInstance := ObjectConstr(List(classData -> that))
-                          })
-                        })
-                      })
-                    })
-                  })
-                }),
-                Return(Apply(genIdentBracketSelect(This(), "isInstance"),
-                    thatFakeInstance :: Nil))
-            )
-          })
+          Return(
+              (This() === that) || // fast path
+              Apply(This() DOT "isAssignableFromFun", that :: Nil))
         })
       }
 
@@ -1565,7 +1571,7 @@ private[emitter] object CoreJSLib {
         buf += extractWithGlobals(globalVarDef("d", primRef, {
           Apply(New(globalVar("TypeData", CoreVar), Nil) DOT "initPrim",
               List(zero, str(primRef.charCode.toString()),
-                  str(primRef.displayName), typeRefVar("isArrayOf", primRef)))
+                  str(primRef.displayName)))
         }))
       }
     }
