@@ -111,6 +111,31 @@ private[emitter] final class SJSGen(
         args.toList)
   }
 
+  def usesUnderlyingTypedArray(elemTypeRef: NonArrayTypeRef): Boolean =
+    getArrayUnderlyingTypedArrayClassRef(elemTypeRef)(Position.NoPosition).nonEmpty
+
+  def getArrayUnderlyingTypedArrayClassRef(elemTypeRef: NonArrayTypeRef)(
+      implicit pos: Position): Option[WithGlobals[VarRef]] = {
+
+    def some(name: String): Some[WithGlobals[VarRef]] =
+      Some(WithGlobals(VarRef(Ident(name)), Set(name)))
+
+    elemTypeRef match {
+      case _ if !esFeatures.useECMAScript2015 => None
+
+      case CharRef   => some("Uint16Array")
+      case ByteRef   => some("Int8Array")
+      case ShortRef  => some("Int16Array")
+      case IntRef    => some("Int32Array")
+      case FloatRef  => some("Float32Array")
+      case DoubleRef => some("Float64Array")
+
+      case LongRef if useBigIntForLongs => some("BigInt64Array")
+
+      case _ => None
+    }
+  }
+
   def genSelect(receiver: Tree, className: ClassName, field: irt.FieldIdent)(
       implicit pos: Position): Tree = {
     DotSelect(receiver, Ident(genFieldJSName(className, field))(field.pos))
@@ -405,8 +430,28 @@ private[emitter] final class SJSGen(
 
   def genArrayValue(arrayTypeRef: ArrayTypeRef, elems: List[Tree])(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): Tree = {
-    New(genArrayConstrOf(arrayTypeRef), ArrayConstr(elems) :: Nil)
+      pos: Position): WithGlobals[Tree] = {
+    genNativeArrayWrapper(arrayTypeRef, ArrayConstr(elems))
+  }
+
+  def genNativeArrayWrapper(arrayTypeRef: ArrayTypeRef, nativeArray: Tree)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): WithGlobals[Tree] = {
+    val argWithGlobals = arrayTypeRef match {
+      case ArrayTypeRef(elemTypeRef, 1) =>
+        getArrayUnderlyingTypedArrayClassRef(elemTypeRef) match {
+          case Some(typedArrayWithGlobals) =>
+            for (typedArray <- typedArrayWithGlobals) yield
+              New(typedArray, nativeArray :: Nil)
+          case _ =>
+            WithGlobals(nativeArray)
+        }
+      case _ =>
+        WithGlobals(nativeArray)
+    }
+
+    for (arg <- argWithGlobals) yield
+      New(genArrayConstrOf(arrayTypeRef), arg :: Nil)
   }
 
   def genArrayConstrOf(arrayTypeRef: ArrayTypeRef)(

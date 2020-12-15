@@ -1242,19 +1242,22 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   /** Gen JS code for an [[ModuleInitializer]]. */
   def genModuleInitializer(initializer: ModuleInitializer.Initializer)(
       implicit moduleContext: ModuleContext,
-      globalKnowledge: GlobalKnowledge): js.Tree = {
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import ModuleInitializerImpl._
 
     implicit val pos = Position.NoPosition
 
     ModuleInitializerImpl.fromInitializer(initializer) match {
       case VoidMainMethod(className, mainMethodName) =>
-        js.Apply(globalVar("s", (className, mainMethodName)), Nil)
+        WithGlobals(js.Apply(globalVar("s", (className, mainMethodName)), Nil))
 
       case MainMethodWithArgs(className, mainMethodName, args) =>
         val stringArrayTypeRef = ArrayTypeRef(ClassRef(BoxedStringClass), 1)
-        js.Apply(globalVar("s", (className, mainMethodName)),
-            genArrayValue(stringArrayTypeRef, args.map(js.StringLiteral(_))) :: Nil)
+        val argsArrayWithGlobals =
+          genArrayValue(stringArrayTypeRef, args.map(js.StringLiteral(_)))
+        for (argsArray <- argsArrayWithGlobals) yield {
+          js.Apply(globalVar("s", (className, mainMethodName)), argsArray :: Nil)
+        }
     }
   }
 

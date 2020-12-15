@@ -262,8 +262,10 @@ final class Emitter(config: Emitter.Config) {
             topLevelExports ++
 
             /* Module initializers, which by spec run at the end. */
-            module.initializers.iterator.map(classEmitter.genModuleInitializer(_)(
-                moduleContext, uncachedKnowledge))
+            module.initializers.iterator.map { initializer =>
+              extractWithGlobals(classEmitter.genModuleInitializer(initializer)(
+                  moduleContext, uncachedKnowledge))
+            }
         )(Position.NoPosition)
 
         assert(!defTrees.isInstanceOf[js.Skip], {

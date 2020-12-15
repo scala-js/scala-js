@@ -946,41 +946,60 @@ private[emitter] object CoreJSLib {
     }
 
     private def defineIntrinsics(): Unit = {
-      // systemArraycopy
+      // arraycopyCheckBounds
+      if (arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
+        val srcLen = varRef("srcLen")
+        val srcPos = varRef("srcPos")
+        val destLen = varRef("destLen")
+        val destPos = varRef("destPos")
+        val length = varRef("length")
+        defineFunction("arraycopyCheckBounds", paramList(srcLen, srcPos, destLen, destPos, length), {
+          If((srcPos < 0) || (destPos < 0) || (length < 0) ||
+              (srcPos > ((srcLen - length) | 0)) ||
+              (destPos > ((destLen - length) | 0)), {
+            genCallHelper("throwArrayIndexOutOfBoundsException", Null())
+          })
+        })
+      }
+
+      // arraycopyGeneric
       locally {
+        val srcArray = varRef("srcArray")
+        val srcPos = varRef("srcPos")
+        val destArray = varRef("destArray")
+        val destPos = varRef("destPos")
+        val length = varRef("length")
+        val i = varRef("i")
+        defineFunction("arraycopyGeneric", paramList(srcArray, srcPos, destArray, destPos, length), {
+          Block(
+              if (arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
+                genCallHelper("arraycopyCheckBounds", srcArray.length,
+                    srcPos, destArray.length, destPos, length)
+              } else {
+                Skip()
+              },
+              If((srcArray !== destArray) || (destPos < srcPos) || (((srcPos + length) | 0) < destPos), {
+                For(let(i, 0), i < length, i := ((i + 1) | 0), {
+                  BracketSelect(destArray, (destPos + i) | 0) := BracketSelect(srcArray, (srcPos + i) | 0)
+                })
+              }, {
+                For(let(i, (length - 1) | 0), i >= 0, i := ((i - 1) | 0), {
+                  BracketSelect(destArray, (destPos + i) | 0) := BracketSelect(srcArray, (srcPos + i) | 0)
+                })
+              })
+          )
+        })
+      }
+
+      // systemArraycopy
+      if (!useECMAScript2015) {
         val src = varRef("src")
         val srcPos = varRef("srcPos")
         val dest = varRef("dest")
         val destPos = varRef("destPos")
         val length = varRef("length")
-        val srcu = varRef("srcu")
-        val destu = varRef("destu")
-        val i = varRef("i")
         defineFunction("systemArraycopy", paramList(src, srcPos, dest, destPos, length), {
-          Block(
-              const(srcu, src.u),
-              const(destu, dest.u),
-              if (arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
-                If((srcPos < 0) || (destPos < 0) || (length < 0) ||
-                    (srcPos > ((srcu.length - length) | 0)) ||
-                    (destPos > ((destu.length - length) | 0)), {
-                  genCallHelper("throwArrayIndexOutOfBoundsException", Null())
-                }, {
-                  Skip()
-                })
-              } else {
-                Skip()
-              },
-              If((srcu !== destu) || (destPos < srcPos) || (((srcPos + length) | 0) < destPos), {
-                For(let(i, 0), i < length, i := ((i + 1) | 0), {
-                  BracketSelect(destu, (destPos + i) | 0) := BracketSelect(srcu, (srcPos + i) | 0)
-                })
-              }, {
-                For(let(i, (length - 1) | 0), i >= 0, i := ((i - 1) | 0), {
-                  BracketSelect(destu, (destPos + i) | 0) := BracketSelect(srcu, (srcPos + i) | 0)
-                })
-              })
-          )
+          genCallHelper("arraycopyGeneric", src.u, srcPos, dest.u, destPos, length)
         })
       }
 
@@ -1153,6 +1172,8 @@ private[emitter] object CoreJSLib {
       for (componentTypeRef <- specializedArrayTypeRefs) yield {
         val ArrayClass = globalVar("ac", componentTypeRef)
 
+        val isTypedArray = usesUnderlyingTypedArray(componentTypeRef)
+
         val ctor = {
           val arg = varRef("arg")
           MethodDef(static = false, Ident("constructor"), paramList(arg), {
@@ -1190,12 +1211,42 @@ private[emitter] object CoreJSLib {
           Nil
         }
 
+        val copyTo = if (useECMAScript2015) {
+          val srcPos = varRef("srcPos")
+          val dest = varRef("dest")
+          val destPos = varRef("destPos")
+          val length = varRef("length")
+          val methodDef = MethodDef(static = false, Ident("copyTo"),
+              paramList(srcPos, dest, destPos, length), {
+            if (isTypedArray) {
+              Block(
+                  if (semantics.arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
+                    genCallHelper("arraycopyCheckBounds", This().u.length,
+                        srcPos, dest.u.length, destPos, length)
+                  } else {
+                    Skip()
+                  },
+                  Apply(genIdentBracketSelect(dest.u, "set"),
+                      Apply(genIdentBracketSelect(This().u, "subarray"), srcPos :: ((srcPos + length) | 0) :: Nil) ::
+                      destPos ::
+                      Nil)
+              )
+            } else {
+              genCallHelper("arraycopyGeneric", This().u, srcPos,
+                  dest.u, destPos, length)
+            }
+          })
+          methodDef :: Nil
+        } else {
+          Nil
+        }
+
         val clone = MethodDef(static = false, Ident(genName(cloneMethodName)), Nil, {
           Return(New(ArrayClass,
               Apply(genIdentBracketSelect(This().u, "slice"), Nil) :: Nil))
         })
 
-        val members = getAndSet ::: clone :: Nil
+        val members = getAndSet ::: copyTo ::: clone :: Nil
 
         val classDef = if (useClassesForRegularClasses) {
           buf += extractWithGlobals(globalClassDef("ac", componentTypeRef,
@@ -1223,12 +1274,17 @@ private[emitter] object CoreJSLib {
       val i = varRef("i")
 
       If(typeof(arg) === str("number"), {
-        Block(
-            This().u := New(ArrayRef, arg :: Nil),
-            For(let(i, 0), i < arg, i.++, {
-              BracketSelect(This().u, i) := genZeroOf(componentTypeRef)
-            })
-        )
+        getArrayUnderlyingTypedArrayClassRef(componentTypeRef) match {
+          case Some(typeArrayClassWithGlobalRefs) =>
+            This().u := New(extractWithGlobals(typeArrayClassWithGlobalRefs), arg :: Nil)
+          case None =>
+            Block(
+                This().u := New(ArrayRef, arg :: Nil),
+                For(let(i, 0), i < arg, i.++, {
+                  BracketSelect(This().u, i) := genZeroOf(componentTypeRef)
+                })
+            )
+        }
       }, {
         // arg is a native array that we wrap
         This().u := arg
@@ -1252,11 +1308,14 @@ private[emitter] object CoreJSLib {
         val shortNameUpperCase = "" + shortName.head.toUpper + shortName.tail
 
         defineFunction(shortName + "Array2TypedArray", paramList(value), {
-          Return(New(typedArrayClass, value.u :: Nil))
+          if (useECMAScript2015)
+            Return(Apply(genIdentBracketSelect(value.u, "slice"), Nil))
+          else
+            Return(New(typedArrayClass, value.u :: Nil))
         })
         defineFunction("typedArray2" + shortNameUpperCase + "Array", paramList(value), {
           val arrayValue = if (esFeatures.useECMAScript2015) {
-            Apply(genIdentBracketSelect(ArrayRef, "from"), value :: Nil)
+            Apply(genIdentBracketSelect(value, "slice"), Nil)
           } else {
             /* Array.prototype.slice.call(value)
              *
@@ -1314,6 +1373,8 @@ private[emitter] object CoreJSLib {
                */
               privateFieldSet("isAssignableFromFun", Undefined()),
 
+              privateFieldSet("wrapArray", Undefined()),
+
               publicFieldSet("name", str("")),
               publicFieldSet("isPrimitive", bool(false)),
               publicFieldSet("isInterface", bool(false)),
@@ -1329,12 +1390,13 @@ private[emitter] object CoreJSLib {
         val arrayEncodedName = varRef("arrayEncodedName")
         val displayName = varRef("displayName")
         val arrayClass = varRef("arrayClass")
+        val typedArrayClass = varRef("typedArrayClass")
         val self = varRef("self")
         val that = varRef("that")
         val depth = varRef("depth")
         val obj = varRef("obj")
         MethodDef(static = false, Ident("initPrim"),
-            paramList(zero, arrayEncodedName, displayName, arrayClass), {
+            paramList(zero, arrayEncodedName, displayName, arrayClass, typedArrayClass), {
           Block(
               privateFieldSet("ancestors", ObjectConstr(Nil)),
               privateFieldSet("zero", zero),
@@ -1352,7 +1414,7 @@ private[emitter] object CoreJSLib {
               If(arrayClass !== Undefined(), { // it is undefined for void
                 privateFieldSet("_arrayOf",
                     Apply(New(globalVar("TypeData", CoreVar), Nil) DOT "initSpecializedArray",
-                        List(This(), arrayClass)))
+                        List(This(), arrayClass, typedArrayClass)))
               }),
               Return(This())
           )
@@ -1430,16 +1492,29 @@ private[emitter] object CoreJSLib {
       val initSpecializedArray = {
         val componentData = varRef("componentData")
         val arrayClass = varRef("arrayClass")
+        val typedArrayClass = varRef("typedArrayClass")
         val isAssignableFromFun = varRef("isAssignableFromFun")
         val that = varRef("that")
         val obj = varRef("obj")
+        val array = varRef("array")
         MethodDef(static = false, Ident("initSpecializedArray"),
-            paramList(componentData, arrayClass, isAssignableFromFun), {
+            paramList(componentData, arrayClass, typedArrayClass, isAssignableFromFun), {
           Block(
               initArrayCommonBody(arrayClass, componentData, componentData, 1),
               privateFieldSet("isAssignableFromFun", isAssignableFromFun || {
                 Function(arrow = false, paramList(that), {
                   Return(This() === that)
+                })
+              }),
+              privateFieldSet("wrapArray", {
+                If(typedArrayClass, {
+                  Function(arrow = false, paramList(array), {
+                    Return(New(arrayClass, New(typedArrayClass, array :: Nil) :: Nil))
+                  })
+                }, {
+                  Function(arrow = false, paramList(array), {
+                    Return(New(arrayClass, array :: Nil))
+                  })
                 })
               }),
               publicFieldSet("isInstance", {
@@ -1461,6 +1536,7 @@ private[emitter] object CoreJSLib {
         val that = varRef("that")
         val self = varRef("self")
         val obj = varRef("obj")
+        val array = varRef("array")
         MethodDef(static = false, Ident("initArray"),
             paramList(componentData), {
           val ArrayClassDef = {
@@ -1475,20 +1551,37 @@ private[emitter] object CoreJSLib {
               })
             }
 
+            val copyTo = if (useECMAScript2015) {
+              val srcPos = varRef("srcPos")
+              val dest = varRef("dest")
+              val destPos = varRef("destPos")
+              val length = varRef("length")
+              val methodDef = MethodDef(static = false, Ident("copyTo"),
+                  paramList(srcPos, dest, destPos, length), {
+                genCallHelper("arraycopyGeneric", This().u, srcPos,
+                    dest.u, destPos, length)
+              })
+              methodDef :: Nil
+            } else {
+              Nil
+            }
+
             val clone = MethodDef(static = false, Ident(genName(cloneMethodName)), Nil, {
               Return(New(ArrayClass,
                   Apply(genIdentBracketSelect(This().u, "slice"), Nil) :: Nil))
             })
 
+            val members = copyTo ::: clone :: Nil
+
             if (useClassesForRegularClasses) {
               ClassDef(Some(ArrayClass.ident), Some(globalVar("ac", ObjectClass)),
-                  ctor :: clone :: Nil)
+                  ctor :: members)
             } else {
               Block(
                   FunctionDef(ArrayClass.ident, ctor.args, ctor.body),
                   ArrayClass.prototype := New(globalVar("ah", ObjectClass), Nil),
                   ArrayClass.prototype DOT "constructor" := ArrayClass,
-                  assignES5ClassMembers(ArrayClass, clone :: Nil)
+                  assignES5ClassMembers(ArrayClass, members)
               )
             }
           }
@@ -1512,6 +1605,9 @@ private[emitter] object CoreJSLib {
                 })
               }),
               privateFieldSet("isAssignableFromFun", isAssignableFromFun),
+              privateFieldSet("wrapArray", Function(arrow = false, paramList(array), {
+                Return(New(ArrayClass, array :: Nil))
+              })),
               const(self, This()), // don't rely on the lambda being called with `this` as receiver
               publicFieldSet("isInstance", Function(arrow = false, paramList(obj), {
                 val data = varRef("data")
@@ -1742,6 +1838,7 @@ private[emitter] object CoreJSLib {
           Apply(New(globalVar("TypeData", CoreVar), Nil) DOT "initSpecializedArray", List(
               typeDataVar,
               globalVar("ac", ObjectClass),
+              Undefined(), // typedArray
               Function(arrow = false, paramList(that), {
                 val thatDepth = varRef("thatDepth")
                 Block(
@@ -1775,12 +1872,20 @@ private[emitter] object CoreJSLib {
           case _                                => genZeroOf(primRef)
         }
 
+        val typedArrayClass = getArrayUnderlyingTypedArrayClassRef(primRef) match {
+          case Some(typedArrayClassWithGlobals) =>
+            extractWithGlobals(typedArrayClassWithGlobals)
+          case None =>
+            Undefined()
+        }
+
         buf += extractWithGlobals(globalVarDef("d", primRef, {
           Apply(New(globalVar("TypeData", CoreVar), Nil) DOT "initPrim",
               List(zero, str(primRef.charCode.toString()),
                   str(primRef.displayName),
                   if (primRef == VoidRef) Undefined()
-                  else genArrayConstrOf(ArrayTypeRef(primRef, 1))))
+                  else genArrayConstrOf(ArrayTypeRef(primRef, 1)),
+                  typedArrayClass))
         }))
       }
     }
