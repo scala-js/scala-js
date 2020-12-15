@@ -156,13 +156,15 @@ def Tasks = [
         reversi$v/fastLinkJS \
         reversi$v/fullLinkJS \
         reversi$v/clean &&
-    sbtretry ++$scala reversi$v/fastLinkJS reversi$v/fullLinkJS &&
+    sbtretry ++$scala \
+        reversi$v/fastLinkJS \
+        reversi$v/fullLinkJS \
+        reversi$v/checksizes &&
     sbtretry ++$scala compiler$v/compile:doc library$v/compile:doc \
         testInterface$v/compile:doc testBridge$v/compile:doc &&
     sbtretry ++$scala headerCheck &&
     sbtretry ++$scala partest$v/fetchScalaSource &&
     sbtretry ++$scala library$v/mimaReportBinaryIssues testInterface$v/mimaReportBinaryIssues &&
-    sh ci/checksizes.sh $scala &&
     sh ci/check-partest-coverage.sh $scala
   ''',
 

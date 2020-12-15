@@ -13,6 +13,7 @@ import ScriptedPlugin.autoImport._
 
 import java.util.Arrays
 
+import scala.collection.immutable.Range
 import scala.collection.mutable
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -56,6 +57,9 @@ object ExposedValues extends AutoPlugin {
   }
 }
 
+final case class ExpectedSizes(fastLink: Range, fullLink: Range,
+    fastLinkGz: Range, fullLinkGz: Range)
+
 object MyScalaJSPlugin extends AutoPlugin {
   override def requires: Plugins = ScalaJSPlugin
 
@@ -70,6 +74,10 @@ object MyScalaJSPlugin extends AutoPlugin {
 
   val writePackageJSON = taskKey[Unit](
       "Write package.json to configure module type for Node.js")
+
+  val checksizes = taskKey[Unit]("Check expected output sizes")
+
+  val expectedSizes = settingKey[Option[ExpectedSizes]]("Expected sizes for checksizes")
 
   def addScalaJSCompilerOption(option: String): Setting[_] =
     addScalaJSCompilerOption(Def.setting(option))
@@ -130,6 +138,53 @@ object MyScalaJSPlugin extends AutoPlugin {
         val path = target.value / "package.json"
 
         IO.write(path, s"""{"type": "$packageType"}\n""")
+      },
+
+      expectedSizes := None,
+
+      checksizes := {
+        val logger = streams.value.log
+
+        val maybeExpected = expectedSizes.value
+
+        /* The deprecated tasks do exactly what we want in terms of module /
+         * file resolution. So we use them instead of building it again.
+         */
+        val fast = (fastOptJS in Compile).value.data
+        val full = (fullOptJS in Compile).value.data
+
+        val desc = s"${thisProject.value.id} Scala ${scalaVersion.value}"
+
+        maybeExpected.fold {
+          logger.info(s"Ignoring checksizes for " + desc)
+        } { expected =>
+          val fastGz = new File(fast.getPath() + ".gz")
+          val fullGz = new File(full.getPath() + ".gz")
+
+          IO.gzip(fast, fastGz)
+          IO.gzip(full, fullGz)
+
+          val fastSize = fast.length()
+          val fullSize = full.length()
+          val fastGzSize = fastGz.length()
+          val fullGzSize = fullGz.length()
+
+          logger.info(s"Checksizes: $desc")
+          logger.info(s"fastLink size = $fastSize (expected ${expected.fastLink})")
+          logger.info(s"fullLink size = $fullSize (expected ${expected.fullLink})")
+          logger.info(s"fastLink gzip size = $fastGzSize (expected ${expected.fastLinkGz})")
+          logger.info(s"fullLink gzip size = $fullGzSize (expected ${expected.fullLinkGz})")
+
+          val ok = (
+              expected.fastLink.contains(fastSize) &&
+              expected.fullLink.contains(fullSize) &&
+              expected.fastLinkGz.contains(fastGzSize) &&
+              expected.fullLinkGz.contains(fullGzSize)
+          )
+
+          if (!ok)
+            throw new MessageOnlyException("checksizes failed")
+        }
       },
 
       // Link source maps to GitHub sources
@@ -1603,7 +1658,38 @@ object Build {
   ).settings(
       exampleSettings,
       name := "Reversi - Scala.js example",
-      moduleName := "reversi"
+      moduleName := "reversi",
+
+      MyScalaJSPlugin.expectedSizes := {
+        scalaVersion.value match {
+          case "2.11.12" =>
+            Some(ExpectedSizes(
+                fastLink = 516000 to 517000,
+                fullLink = 106000 to 107000,
+                fastLinkGz = 66000 to 67000,
+                fullLinkGz = 28000 to 29000,
+            ))
+
+          case "2.12.12" =>
+            Some(ExpectedSizes(
+                fastLink = 770000 to 780000,
+                fullLink = 146000 to 147000,
+                fastLinkGz = 91000 to 92000,
+                fullLinkGz = 36000 to 37000,
+            ))
+
+          case "2.13.3"  =>
+            Some(ExpectedSizes(
+                fastLink = 771000 to 772000,
+                fullLink = 165000 to 166000,
+                fastLinkGz = 97000 to 98000,
+                fullLinkGz = 42000 to 43000,
+            ))
+
+          case _ =>
+            None
+        }
+      }
   ).withScalaJSCompiler.dependsOn(library)
 
   lazy val testingExample: MultiScalaProject = MultiScalaProject(
