@@ -14,11 +14,6 @@ package org.scalajs.testsuite.compiler
 
 import scala.language.implicitConversions
 
-import java.lang.Cloneable
-import java.io.Serializable
-
-import scala.reflect.{classTag, ClassTag}
-
 import scala.scalajs.js
 import js.annotation.JSGlobal
 
@@ -26,17 +21,9 @@ import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
-import org.scalajs.testsuite.utils.AssertThrows._
-import org.scalajs.testsuite.utils.Platform._
-
 /** Tests the little reflection we support */
 class ReflectionTest {
   import ReflectionTest._
-
-  def implicitClassTagTest[A: ClassTag](x: Any): Boolean = x match {
-    case x: A => true
-    case _ => false
-  }
 
   @Test def javaLangClassGetNameUnderNormalCircumstances(): Unit = {
     @noinline
@@ -105,55 +92,6 @@ class ReflectionTest {
         new OtherPrefixRenamedTestClass)
   }
 
-  @Test def isInstance(): Unit = {
-    class A
-    class B extends A
-    val b = new B
-    assertTrue(classOf[A].isInstance(b))
-    assertFalse(classOf[A].isInstance("hello"))
-
-    assertTrue(classOf[Array[Seq[_]]].isInstance(Array(List(3))))
-
-    assertTrue(classOf[Serializable].isInstance(1))
-    assertTrue(classOf[Serializable].isInstance(1.4))
-    assertTrue(classOf[Serializable].isInstance(true))
-    assertTrue(classOf[Serializable].isInstance('Z'))
-    assertTrue(classOf[Serializable].isInstance("hello"))
-
-    assertTrue(classOf[Serializable].isInstance(new Array[Int](1)))
-    assertTrue(classOf[Cloneable].isInstance(new Array[Int](1)))
-    assertTrue(classOf[Serializable].isInstance(new Array[String](1)))
-    assertTrue(classOf[Cloneable].isInstance(new Array[String](1)))
-  }
-
-  @Test def isInstanceForJSClass(): Unit = {
-    js.eval("""var ReflectionTestJSClass = (function() {})""")
-
-    val obj = new ReflectionTestJSClass
-    assertTrue(obj.isInstanceOf[ReflectionTestJSClass])
-    assertTrue(classOf[ReflectionTestJSClass].isInstance(obj))
-
-    val other = (5, 6): Any
-    assertFalse(other.isInstanceOf[ReflectionTestJSClass])
-    assertFalse(classOf[ReflectionTestJSClass].isInstance(other))
-
-    val ct = classTag[ReflectionTestJSClass]
-    assertTrue(ct.unapply(obj).isDefined)
-    assertFalse(ct.unapply(other).isDefined)
-
-    assertTrue(implicitClassTagTest[ReflectionTestJSClass](obj))
-    assertFalse(implicitClassTagTest[ReflectionTestJSClass](other))
-  }
-
-  @Test def isInstanceForJSTraitsThrows(): Unit = {
-    assertThrows(classOf[Exception], classOf[ReflectionTestJSTrait].isInstance(5))
-
-    val ct = classTag[ReflectionTestJSTrait]
-    assertThrows(classOf[Exception], ct.unapply(new AnyRef))
-
-    assertThrows(classOf[Exception], implicitClassTagTest[ReflectionTestJSTrait](new AnyRef))
-  }
-
   @Test def getClassForNormalTypes(): Unit = {
     class Foo {
       def bar(): Class[_] = super.getClass()
@@ -176,21 +114,6 @@ class ReflectionTest {
     assertEquals(classOf[java.lang.Float], (1.5: Any).getClass)
     assertEquals(classOf[scala.runtime.BoxedUnit], ((): Any).getClass)
   }
-
-  @Test def castPositive(): Unit = {
-    assertNull(classOf[String].cast(null))
-    assertEquals("hello", classOf[String].cast("hello"))
-    assertEquals(List(1, 2), classOf[Seq[_]].cast(List(1, 2)))
-    classOf[Serializable].cast(Array(3)) // should not throw
-    classOf[Cloneable].cast(Array(3)) // should not throw
-    classOf[Object].cast(js.Array(3, 4)) // should not throw
-  }
-
-  @Test def castNegative(): Unit = {
-    assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
-    assertThrows(classOf[Exception], classOf[String].cast(5))
-    assertThrows(classOf[Exception], classOf[Seq[_]].cast(Some("foo")))
-  }
 }
 
 object ReflectionTest {
@@ -202,12 +125,5 @@ object ReflectionTest {
   class PrefixRenamedTestClass2
 
   class OtherPrefixRenamedTestClass
-
-  @JSGlobal("ReflectionTestJSClass")
-  @js.native
-  class ReflectionTestJSClass extends js.Object
-
-  @js.native
-  trait ReflectionTestJSTrait extends js.Object
 
 }
