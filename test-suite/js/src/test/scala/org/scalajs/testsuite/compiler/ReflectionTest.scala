@@ -177,16 +177,6 @@ class ReflectionTest {
     assertEquals(classOf[scala.runtime.BoxedUnit], ((): Any).getClass)
   }
 
-  @Test def getSuperclass_Issue1489(): Unit = {
-    assertEquals(classOf[SomeParentClass], classOf[SomeChildClass].getSuperclass)
-    assertNull(classOf[AnyRef].getSuperclass)
-    assertEquals(classOf[AnyRef], classOf[String].getSuperclass)
-    assertEquals(classOf[Number], classOf[Integer].getSuperclass)
-
-    assertEquals("org.scalajs.testsuite.compiler.ReflectionTest$ParentClassWhoseDataIsNotAccessedDirectly",
-      classOf[ChildClassWhoseDataIsAccessedDirectly].getSuperclass.getName)
-  }
-
   @Test def castPositive(): Unit = {
     assertNull(classOf[String].cast(null))
     assertEquals("hello", classOf[String].cast("hello"))
@@ -219,11 +209,5 @@ object ReflectionTest {
 
   @js.native
   trait ReflectionTestJSTrait extends js.Object
-
-  class SomeParentClass
-  class SomeChildClass extends SomeParentClass
-
-  class ParentClassWhoseDataIsNotAccessedDirectly
-  class ChildClassWhoseDataIsAccessedDirectly extends ParentClassWhoseDataIsNotAccessedDirectly
 
 }
