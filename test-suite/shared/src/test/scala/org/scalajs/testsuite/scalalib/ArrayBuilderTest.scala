@@ -61,6 +61,7 @@ class ArrayBuilderTest {
     zerosInline[T](length)
 
   @noinline def someInt: Int = 53
+  @noinline def someLong: Long = 65
   @noinline def someChar: Char = 'S'
   @noinline def someBoolean: Boolean = false
   @noinline def someString: String = "world"
@@ -105,6 +106,52 @@ class ArrayBuilderTest {
     assertEquals(3, a.length)
     assertTrue(erase(a(0)).isInstanceOf[Int])
     assertEquals(0, erase(a(0)))
+  }
+
+  @Test def longNormalCaseInline(): Unit = {
+    val b = ArrayBuilder.make[Long]
+    b += 42L
+    b += someLong
+    val a = b.result()
+
+    assertSame(classOf[Array[Long]], a.getClass)
+    assertEquals(2, a.length)
+    assertTrue(erase(a(0)).isInstanceOf[Long])
+    assertEquals(42L, erase(a(0)))
+    assertEquals(65L, erase(a(1)))
+  }
+
+  @Test def longNormalCaseNoinline(): Unit = {
+    val b = makeNoInline[Long]
+    b += 42L
+    b += someLong
+    val a = b.result()
+
+    assertSame(classOf[Array[Long]], a.getClass)
+    assertEquals(2, a.length)
+    assertTrue(erase(a(0)).isInstanceOf[Long])
+    assertEquals(42L, erase(a(0)))
+    assertEquals(65L, erase(a(1)))
+  }
+
+  @Test def longZerosInline(): Unit = {
+    assumeTrue("bug filed as #4332", executingInJVM)
+
+    val a = zerosInline[Long](3)
+    assertSame(classOf[Array[Long]], a.getClass)
+    assertEquals(3, a.length)
+    assertTrue(erase(a(0)).isInstanceOf[Long])
+    assertEquals(0L, erase(a(0)))
+  }
+
+  @Test def longZerosNoinline(): Unit = {
+    assumeTrue("bug filed as #4332", executingInJVM)
+
+    val a = zerosNoInline[Long](3)
+    assertSame(classOf[Array[Long]], a.getClass)
+    assertEquals(3, a.length)
+    assertTrue(erase(a(0)).isInstanceOf[Long])
+    assertEquals(0L, erase(a(0)))
   }
 
   @Test def charNormalCaseInline(): Unit = {
