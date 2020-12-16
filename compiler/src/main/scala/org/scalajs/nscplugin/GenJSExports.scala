@@ -767,7 +767,10 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
       if (isJSType(trgSym)) {
         if (isNonNativeJSClass(defaultGetter.owner)) {
-          genApplyJSClassMethod(trgTree, defaultGetter, defaultGetterArgs)
+          if (defaultGetter.hasAnnotation(JSOptionalAnnotation))
+            js.Undefined()
+          else
+            genApplyJSClassMethod(trgTree, defaultGetter, defaultGetterArgs)
         } else {
           reporter.error(paramPos, "When overriding a native method " +
               "with default arguments, the overriding method must " +

@@ -239,6 +239,23 @@ class JSOptionalTest {
     assertEquals("function", js.typeOf(obj.f))
     assertEquals(6, obj.f.get(5))
   }
+
+  @Test def traitWithOptionalDefaultParameter(): Unit = {
+    object InheritDefault extends TraitWithOptionalDefaultParameter {
+      def foo(x: js.UndefOr[Int]): Int = x.getOrElse(5)
+    }
+
+    assertEquals(5, InheritDefault.foo())
+    assertEquals(10, InheritDefault.foo(10))
+
+    object NewDefault extends TraitWithOptionalDefaultParameter {
+      def foo(x: js.UndefOr[Int] = 6): Int =
+        x.getOrElse(throw new AssertionError("x was js.undefined"))
+    }
+
+    assertEquals(6, NewDefault.foo())
+    assertEquals(10, NewDefault.foo(10))
+  }
 }
 
 object JSOptionalTest {
@@ -302,5 +319,9 @@ object JSOptionalTest {
 
   trait TraitWithOptionalFunction extends js.Object {
     val f: js.UndefOr[js.Function1[Int, Int]] = js.undefined
+  }
+
+  trait TraitWithOptionalDefaultParameter extends js.Object {
+    def foo(x: js.UndefOr[Int] = js.undefined): Int
   }
 }
