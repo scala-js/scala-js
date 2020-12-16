@@ -63,7 +63,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def canAccessLegitMembers: Unit = {
+  def canAccessLegitMembers(): Unit = {
     s"""
     object Main {
       def main(): Unit = {
@@ -84,7 +84,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noLoadGlobalValue: Unit = {
+  def noLoadGlobalValue(): Unit = {
     s"""
     object Main {
       def main(): Unit = {
@@ -106,7 +106,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def rejectInvalidJSIdentifiers: Unit = {
+  def rejectInvalidJSIdentifiers(): Unit = {
     s"""
     object Main {
       def main(): Unit = {
@@ -165,7 +165,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def rejectInvalidJSIdentifiersInNestedObjectClass: Unit = {
+  def rejectInvalidJSIdentifiersInNestedObjectClass(): Unit = {
     """
     @js.native
     @JSGlobalScope
@@ -203,7 +203,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def rejectJSOperators: Unit = {
+  def rejectJSOperators(): Unit = {
     """
     object Main {
       def main(): Unit = {
@@ -235,7 +235,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def rejectApply: Unit = {
+  def rejectApply(): Unit = {
     """
     object Main {
       def main(): Unit = {
@@ -266,7 +266,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def rejectDynamicNames: Unit = {
+  def rejectDynamicNames(): Unit = {
     s"""
     object Main {
       def dynName: String = "foo"
@@ -327,7 +327,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def rejectAllReservedIdentifiers: Unit = {
+  def rejectAllReservedIdentifiers(): Unit = {
     val reservedIdentifiers = List(
         "arguments", "break", "case", "catch", "class", "const", "continue",
         "debugger", "default", "delete", "do", "else", "enum", "export",

@@ -22,7 +22,7 @@ class RegressionTestTestScala2 {
    * The extension method any2stringadd (the `+` in `x + "check"`)
    * was deprecated in 2.13.0 and Dotty no longer has the method.
    */
-  @Test def String_concatenation_with_null_issue_26(): Unit = {
+  @Test def stringConcatenationWithNull_Issue26(): Unit = {
     val x: Object = null
     assertEquals("nullcheck", x + "check")
   }

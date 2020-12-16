@@ -16,7 +16,7 @@ import org.junit.Test
 import org.junit.Assert._
 
 class ShortTest {
-  @Test def `should_always_be_in_their_range`(): Unit = {
+  @Test def toShort(): Unit = {
     def test(x: Int, y: Short): Unit =
       assertEquals(y, x.toShort)
 

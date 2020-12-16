@@ -16,8 +16,7 @@ import org.junit.Test
 import org.junit.Assert._
 
 class BooleanTest {
-  @Test
-  def `primitive_operations_on_booleans_should_return_correct_results`(): Unit = {
+  @Test def bitwiseAndOrXorOperators(): Unit = {
     assertFalse(false & false)
     assertFalse(false & true)
     assertFalse(true & false)

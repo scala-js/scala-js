@@ -21,7 +21,7 @@ import org.junit.Assert._
 class RegressionJSTest {
   import RegressionJSTest._
 
-  @Test def should_not_swallow_Unit_expressions_when_converting_to_js_Any_issue_83(): Unit = {
+  @Test def preserveUnitExpressionsWhenConvertingToJSAny_Issue83(): Unit = {
     var effectHappened = false
     def doEffect(): Unit = effectHappened = true
     def f(): js.Any = doEffect()
@@ -29,7 +29,7 @@ class RegressionJSTest {
     assertTrue(effectHappened)
   }
 
-  @Test def should_resolve_overloads_on_scala_Function_apply_when_converting_to_js_Function_issue_125(): Unit = {
+  @Test def resolveOverloadsOnScalaFunctionApplyWhenConvertingToJSFunction_Issue125(): Unit = {
     class Fct extends Function1[Int, Any] {
       def apply(n: Int): Int = n
     }
@@ -39,7 +39,7 @@ class RegressionJSTest {
     val thisFunction: js.ThisFunction = scalaFunction
   }
 
-  @Test def should_not_put_bad_flags_on_caseaccessor_export_forwarders_issue_1191(): Unit = {
+  @Test def badFlagsOnCaseaccessorExportForwarders_Issue1191(): Unit = {
     // This test used to choke patmat
 
     @JSExportAll
@@ -51,14 +51,14 @@ class RegressionJSTest {
     assertEquals(2, b)
   }
 
-  @Test def should_transform_js_dynamic_x_receiver_issue_2804(): Unit = {
+  @Test def transformJSDynamicXReceiver_Issue2804(): Unit = {
     class Foo extends js.Object
 
     assertTrue(js.isUndefined(js.constructorOf[Foo].x))
     assertTrue(js.isUndefined(js.constructorOf[Foo].y))
   }
 
-  @Test def super_mixin_call_in_2_12_issue_3013_ScalaOuter_JSInner(): Unit = {
+  @Test def superMixinCallIn212ScalaOuterJSInner_Issue3013(): Unit = {
     import Bug3013_ScalaOuter_JSInner._
 
     val b = new B
@@ -68,7 +68,7 @@ class RegressionJSTest {
     assertEquals("B", c.t3())
   }
 
-  @Test def emit_anon_JS_function_class_data_with_2_11_Xexperimental_issue_3222(): Unit = {
+  @Test def emitAnonJSFunctionClassDataWith211Xexperimental_Issue3222(): Unit = {
     val initSourceMapper: Option[js.Function1[Int, Int]] = None
     val sourceMapper: js.Function1[Int, Int] = {
       initSourceMapper.getOrElse {
@@ -78,7 +78,7 @@ class RegressionJSTest {
     assertEquals(4, sourceMapper(4))
   }
 
-  @Test def lambda_returning_object_literal_issue_3926(): Unit = {
+  @Test def lambdaReturningObjectLiteral_Issue3926(): Unit = {
     @noinline
     def f(): () => js.Dynamic =
       () => js.Dynamic.literal(foo = 5)

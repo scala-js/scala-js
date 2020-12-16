@@ -17,7 +17,7 @@ import org.junit.Assert._
 
 class ThrowablesTest {
 
-  @Test def should_define_all_java_lang_Errors_and_Exceptions(): Unit = {
+  @Test def allJavaLangErrorsAndExceptions(): Unit = {
     new ArithmeticException()
     new ArrayIndexOutOfBoundsException()
     new ArrayStoreException()
@@ -69,7 +69,7 @@ class ThrowablesTest {
     new VirtualMachineError() {}
   }
 
-  @Test def throwable_message_issue_2559(): Unit = {
+  @Test def throwableMessage_Issue2559(): Unit = {
     val t0 = new Throwable
     val t1 = new Throwable("foo")
 

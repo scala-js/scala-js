@@ -25,7 +25,7 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
 
   override def factory: ArrayDequeFactory = new ArrayDequeFactory
 
-  @Test def should_add_and_remove_head_and_last(): Unit = {
+  @Test def addRemovePeekFirstAndLastInt(): Unit = {
     val ad = factory.empty[Int]
 
     ad.addLast(1)
@@ -41,7 +41,7 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
     assertEquals(ad.peekLast(), 2)
   }
 
-  @Test def could_be_instantiated_with_a_prepopulated_Collection(): Unit = {
+  @Test def fromCollectionInt(): Unit = {
     val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val ad = factory.from[Int](l)
 
@@ -53,7 +53,7 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
     assertTrue(ad.isEmpty)
   }
 
-  @Test def should_add_multiple_element_in_one_operation(): Unit = {
+  @Test def addAllCollectionAndAddInt(): Unit = {
     val ad = factory.empty[Int]
 
     assertEquals(ad.size(), 0)
@@ -63,7 +63,7 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
     assertEquals(ad.size(), 6)
   }
 
-  @Test def should_retrieve_last_element(): Unit = {
+  @Test def addAndPollLastString(): Unit = {
     val adInt = factory.empty[Int]
 
     assertTrue(adInt.add(1000))
@@ -83,7 +83,7 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
     assertEquals(adDouble.pollLast(), -0.987, 0.0)
   }
 
-  @Test def should_perform_as_a_stack_with_push_and_pop(): Unit = {
+  @Test def pushAndPopString(): Unit = {
     val adInt = factory.empty[Int]
 
     adInt.push(1000)
@@ -109,7 +109,7 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
     assertTrue(adString.isEmpty())
   }
 
-  @Test def should_poll_and_peek_elements(): Unit = {
+  @Test def peekAndPollFirstAndLastString(): Unit = {
     val pq = factory.empty[String]
 
     assertTrue(pq.add("one"))
@@ -132,7 +132,7 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
     assertNull(pq.pollLast)
   }
 
-  @Test def should_remove_occurrences_of_provided_elements(): Unit = {
+  @Test def removeFirstAndLastOccurrenceString(): Unit = {
     val ad = factory.from[String](
         TrivialImmutableCollection("one", "two", "three", "two", "one"))
 
@@ -145,7 +145,7 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
     assertTrue(ad.isEmpty)
   }
 
-  @Test def should_iterate_over_elements_in_both_directions(): Unit = {
+  @Test def iteratorDescendingIterator(): Unit = {
     val l = TrivialImmutableCollection("one", "two", "three")
     val ad = factory.from[String](l)
 

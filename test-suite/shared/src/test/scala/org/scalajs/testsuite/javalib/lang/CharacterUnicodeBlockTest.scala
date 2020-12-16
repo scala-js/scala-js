@@ -19,7 +19,7 @@ import org.scalajs.testsuite.utils.AssertThrows._
 
 class CharacterUnicodeBlockTest {
 
-  @Test def forName_Normalizations(): Unit = {
+  @Test def forNameNormalizations(): Unit = {
     assertThrows(classOf[IllegalArgumentException], UnicodeBlock.forName("Surrogates-Area"))
     assertThrows(classOf[IllegalArgumentException], UnicodeBlock.forName("Surrogates Area"))
     assertThrows(classOf[IllegalArgumentException], UnicodeBlock.forName("SurrogatesArea"))
@@ -53,7 +53,7 @@ class CharacterUnicodeBlockTest {
         UnicodeBlock.forName("CJK Unified Ideographs Extension-A"))
   }
 
-  @Test def  forName_Historical(): Unit = {
+  @Test def  forNameHistorical(): Unit = {
     // scalastyle:off line.size.limit
     assertThrows(classOf[IllegalArgumentException], UnicodeBlock.forName("GREEK_AND_COPTIC"))
     assertEquals(UnicodeBlock.GREEK, UnicodeBlock.forName("Greek and Coptic"))
@@ -77,15 +77,15 @@ class CharacterUnicodeBlockTest {
     // scalastyle:on line.size.limit
   }
 
-  @Test def of_should_throw_IllegalArgumentException(): Unit = {
+  @Test def ofIntOutOfRangeThrowsIllegalArgumentException(): Unit = {
     assertThrows(classOf[IllegalArgumentException], UnicodeBlock.of(Character.MAX_CODE_POINT + 1))
   }
 
-  @Test def forName_should_throw_IllegalArgumentException(): Unit = {
+  @Test def forNameNotFoundThrowsIllegalArgumentException(): Unit = {
     assertThrows(classOf[IllegalArgumentException], UnicodeBlock.forName("INVALID_NAME"))
   }
 
-  @Test def of_Char(): Unit = {
+  @Test def ofChar(): Unit = {
     assertEquals(UnicodeBlock.BASIC_LATIN, UnicodeBlock.of(0x0000.toChar))
     assertEquals(UnicodeBlock.BASIC_LATIN, UnicodeBlock.of(0x007f.toChar))
     assertEquals(UnicodeBlock.MEETEI_MAYEK_EXTENSIONS, UnicodeBlock.of(0xaae0.toChar))
@@ -94,7 +94,7 @@ class CharacterUnicodeBlockTest {
     assertEquals(UnicodeBlock.SPECIALS, UnicodeBlock.of(0xffff.toChar))
   }
 
-  @Test def of_CodePoint(): Unit = {
+  @Test def ofCodePoint(): Unit = {
     assertEquals(UnicodeBlock.BASIC_LATIN, UnicodeBlock.of(0x0000))
     assertEquals(UnicodeBlock.BASIC_LATIN, UnicodeBlock.of(0x007f))
     assertEquals(UnicodeBlock.MEETEI_MAYEK_EXTENSIONS, UnicodeBlock.of(0xaae0))
@@ -111,7 +111,7 @@ class CharacterUnicodeBlockTest {
   }
 
 
-  @Test def forName_String(): Unit = {
+  @Test def forNameString(): Unit = {
     // scalastyle:off line.size.limit
     assertEquals(UnicodeBlock.BASIC_LATIN, UnicodeBlock.forName("BASIC_LATIN"))
     assertEquals(UnicodeBlock.BASIC_LATIN, UnicodeBlock.forName("Basic Latin"))

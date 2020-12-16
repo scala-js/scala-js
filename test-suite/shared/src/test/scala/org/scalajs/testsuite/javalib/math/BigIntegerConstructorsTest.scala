@@ -493,7 +493,7 @@ class BigIntegerConstructorsTest {
     assertEquals(0, aNumber.signum())
   }
 
-  @Test def testConstructorStringRadix10Issue2228(): Unit = {
+  @Test def testConstructorStringRadix10_Issue2228(): Unit = {
     assumeFalse("Assumed not executing on JDK6", Platform.executingInJVMOnJDK6)
 
     val value = "+100000000"

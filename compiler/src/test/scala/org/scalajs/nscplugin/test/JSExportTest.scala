@@ -30,7 +30,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     """
 
   @Test
-  def warnOnDuplicateExport: Unit = {
+  def warnOnDuplicateExport(): Unit = {
     """
     class A {
       @JSExport
@@ -101,7 +101,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noWarnOnUniqueExplicitName: Unit = {
+  def noWarnOnUniqueExplicitName(): Unit = {
     """
     class A {
       @JSExport("a")
@@ -112,7 +112,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noJSExportClass: Unit = {
+  def noJSExportClass(): Unit = {
     """
     @JSExport
     class A
@@ -131,7 +131,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noJSExportObject: Unit = {
+  def noJSExportObject(): Unit = {
     """
     @JSExport
     object A
@@ -150,7 +150,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noDoubleUnderscoreExport: Unit = {
+  def noDoubleUnderscoreExport(): Unit = {
     """
     class A {
       @JSExport(name = "__")
@@ -171,7 +171,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def doubleUnderscoreOKInTopLevelExport: Unit = {
+  def doubleUnderscoreOKInTopLevelExport(): Unit = {
     """
     @JSExportTopLevel("__A")
     class A
@@ -190,7 +190,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noConflictingExport: Unit = {
+  def noConflictingExport(): Unit = {
     """
     class Confl {
       @JSExport("value")
@@ -314,7 +314,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportLocal: Unit = {
+  def noExportLocal(): Unit = {
     // Local class
     """
     class A {
@@ -405,7 +405,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noMiddleVarArg: Unit = {
+  def noMiddleVarArg(): Unit = {
 
     """
     class A {
@@ -422,7 +422,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noMiddleDefaultParam: Unit = {
+  def noMiddleDefaultParam(): Unit = {
 
     """
     class A {
@@ -439,7 +439,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportAbstractClass: Unit = {
+  def noExportAbstractClass(): Unit = {
 
     """
     @JSExportTopLevel("A")
@@ -462,7 +462,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noJSExportOnTrait: Unit = {
+  def noJSExportOnTrait(): Unit = {
 
     """
     @JSExport
@@ -490,7 +490,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportNonPublicClassOrObject: Unit = {
+  def noExportNonPublicClassOrObject(): Unit = {
 
     """
     @JSExportTopLevel("A")
@@ -551,7 +551,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportNonPublicMember: Unit = {
+  def noExportNonPublicMember(): Unit = {
 
     """
     class A {
@@ -574,7 +574,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportNestedClass: Unit = {
+  def noExportNestedClass(): Unit = {
 
     """
     class A {
@@ -633,7 +633,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noNestedExportObject: Unit = {
+  def noNestedExportObject(): Unit = {
 
     """
     object A {
@@ -656,7 +656,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportTopLevelNestedObject: Unit = {
+  def noExportTopLevelNestedObject(): Unit = {
 
     """
     class A {
@@ -679,7 +679,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportJSNative: Unit = {
+  def noExportJSNative(): Unit = {
 
     """
     import scala.scalajs.js
@@ -731,7 +731,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportJSMember: Unit = {
+  def noExportJSMember(): Unit = {
 
     """
     import scala.scalajs.js
@@ -766,7 +766,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noBadSetterType: Unit = {
+  def noBadSetterType(): Unit = {
 
     // Bad param list
     """
@@ -823,7 +823,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noBadToStringExport: Unit = {
+  def noBadToStringExport(): Unit = {
 
     """
     class A {
@@ -840,7 +840,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noBadNameExportAll: Unit = {
+  def noBadNameExportAll(): Unit = {
 
     """
     @JSExportAll
@@ -861,7 +861,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noConflictingMethodAndProperty: Unit = {
+  def noConflictingMethodAndProperty(): Unit = {
 
     // Basic case
     """
@@ -906,7 +906,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def gracefulDoubleDefaultFail: Unit = {
+  def gracefulDoubleDefaultFail(): Unit = {
     // This used to blow up (i.e. not just fail), because PrepJSExports asked
     // for the symbol of the default parameter getter of [[y]], and asserted its
     // not overloaded. Since the Scala compiler only fails later on this, the
@@ -926,7 +926,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noNonLiteralExportNames: Unit = {
+  def noNonLiteralExportNames(): Unit = {
 
     """
     object A {
@@ -950,7 +950,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noNonLiteralModuleID: Unit = {
+  def noNonLiteralModuleID(): Unit = {
 
     """
     object A {
@@ -974,7 +974,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportImplicitApply: Unit = {
+  def noExportImplicitApply(): Unit = {
 
     """
     class A {
@@ -1024,7 +1024,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def exportObjectAsToString: Unit = {
+  def exportObjectAsToString(): Unit = {
 
     """
     @JSExportTopLevel("toString")
@@ -1040,7 +1040,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportTopLevelTrait: Unit = {
+  def noExportTopLevelTrait(): Unit = {
     """
     @JSExportTopLevel("foo")
     trait A
@@ -1077,7 +1077,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportTopLevelLazyVal: Unit = {
+  def noExportTopLevelLazyVal(): Unit = {
     """
     object A {
       @JSExportTopLevel("foo")
@@ -1092,7 +1092,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportTopLevelInvalidJSIdentifier: Unit = {
+  def noExportTopLevelInvalidJSIdentifier(): Unit = {
     """
     @JSExportTopLevel("not-a-valid-JS-identifier-1")
     object A
@@ -1137,7 +1137,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportTopLevelNamespaced: Unit = {
+  def noExportTopLevelNamespaced(): Unit = {
     """
     @JSExportTopLevel("namespaced.export1")
     object A
@@ -1172,7 +1172,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportTopLevelGetter: Unit = {
+  def noExportTopLevelGetter(): Unit = {
     """
     object A {
       @JSExportTopLevel("foo")
@@ -1187,7 +1187,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportTopLevelSetter: Unit = {
+  def noExportTopLevelSetter(): Unit = {
     """
     object A {
       @JSExportTopLevel("foo")
@@ -1202,7 +1202,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportTopLevelFieldsWithSameName: Unit = {
+  def noExportTopLevelFieldsWithSameName(): Unit = {
     """
     object A {
       @JSExportTopLevel("foo")
@@ -1220,7 +1220,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportTopLevelFieldsAndMethodsWithSameName: Unit = {
+  def noExportTopLevelFieldsAndMethodsWithSameName(): Unit = {
     """
     object A {
       @JSExportTopLevel("foo")
@@ -1253,7 +1253,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportTopLevelNonStatic: Unit = {
+  def noExportTopLevelNonStatic(): Unit = {
     """
     class A {
       @JSExportTopLevel("foo")
@@ -1330,7 +1330,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportTopLevelLocal: Unit = {
+  def noExportTopLevelLocal(): Unit = {
     // Local class
     """
     class A {
@@ -1375,7 +1375,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportTopLevelJSModule: Unit = {
+  def noExportTopLevelJSModule(): Unit = {
     """
     object A extends js.Object {
       @JSExportTopLevel("foo")
@@ -1390,7 +1390,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportStaticModule: Unit = {
+  def noExportStaticModule(): Unit = {
     """
     class StaticContainer extends js.Object
 
@@ -1407,7 +1407,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportStaticTrait: Unit = {
+  def noExportStaticTrait(): Unit = {
     """
     class StaticContainer extends js.Object
 
@@ -1424,7 +1424,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportStaticClass: Unit = {
+  def noExportStaticClass(): Unit = {
     """
     class StaticContainer extends js.Object
 
@@ -1457,7 +1457,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportStaticValTwice: Unit = {
+  def noExportStaticValTwice(): Unit = {
     """
     class StaticContainer extends js.Object
 
@@ -1475,7 +1475,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportStaticVarTwice: Unit = {
+  def noExportStaticVarTwice(): Unit = {
     """
     class StaticContainer extends js.Object
 
@@ -1493,7 +1493,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportStaticLazyVal: Unit = {
+  def noExportStaticLazyVal(): Unit = {
     """
     class StaticContainer extends js.Object
 
@@ -1510,7 +1510,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportValAsStaticAndTopLevel: Unit = {
+  def noExportValAsStaticAndTopLevel(): Unit = {
     """
     class StaticContainer extends js.Object
 
@@ -1528,7 +1528,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportVarAsStaticAndTopLevel: Unit = {
+  def noExportVarAsStaticAndTopLevel(): Unit = {
     """
     class StaticContainer extends js.Object
 
@@ -1546,7 +1546,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportSetterWithBadSetterType: Unit = {
+  def noExportSetterWithBadSetterType(): Unit = {
     """
     class StaticContainer extends js.Object
 
@@ -1563,7 +1563,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportStaticCollapsingMethods: Unit = {
+  def noExportStaticCollapsingMethods(): Unit = {
     """
     class StaticContainer extends js.Object
 
@@ -1585,7 +1585,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportStaticCollapsingGetters: Unit = {
+  def noExportStaticCollapsingGetters(): Unit = {
     """
     class StaticContainer extends js.Object
 
@@ -1605,7 +1605,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportStaticCollapsingSetters: Unit = {
+  def noExportStaticCollapsingSetters(): Unit = {
     """
     class StaticContainer extends js.Object
 
@@ -1627,7 +1627,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportStaticFieldsWithSameName: Unit = {
+  def noExportStaticFieldsWithSameName(): Unit = {
     """
     class StaticContainer extends js.Object
 
@@ -1647,7 +1647,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportStaticFieldsAndMethodsWithSameName: Unit = {
+  def noExportStaticFieldsAndMethodsWithSameName(): Unit = {
     """
     class StaticContainer extends js.Object
 
@@ -1684,7 +1684,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportStaticFieldsAndPropertiesWithSameName: Unit = {
+  def noExportStaticFieldsAndPropertiesWithSameName(): Unit = {
     """
     class StaticContainer extends js.Object
 
@@ -1721,7 +1721,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportStaticPropertiesAndMethodsWithSameName: Unit = {
+  def noExportStaticPropertiesAndMethodsWithSameName(): Unit = {
     """
     class StaticContainer extends js.Object
 
@@ -1758,7 +1758,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportStaticNonStatic: Unit = {
+  def noExportStaticNonStatic(): Unit = {
     """
     class A {
       class StaticContainer extends js.Object
@@ -1777,7 +1777,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportStaticInJSModule: Unit = {
+  def noExportStaticInJSModule(): Unit = {
     """
     class StaticContainer extends js.Object
 
@@ -1810,7 +1810,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportStaticIfWrongCompanionType: Unit = {
+  def noExportStaticIfWrongCompanionType(): Unit = {
     """
     class StaticContainer
 
@@ -1857,7 +1857,7 @@ class JSExportTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noExportStaticFieldAfterStatOrNonStaticField: Unit = {
+  def noExportStaticFieldAfterStatOrNonStaticField(): Unit = {
     for {
       offendingDecl <- Seq(
           "val a: Int = 1",

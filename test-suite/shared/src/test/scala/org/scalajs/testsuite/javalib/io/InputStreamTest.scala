@@ -39,7 +39,7 @@ class InputStreamTest extends CommonStreamsTests {
     override def markSupported(): Boolean = true
   }
 
-  @Test def should_provide_a_default_implementation_of_read_to_an_array(): Unit = {
+  @Test def readArrayByte(): Unit = {
     val stream = mkStream(1 to 200)
 
     val buf = new Array[Byte](50)
@@ -86,7 +86,7 @@ class InputStreamTest extends CommonStreamsTests {
         ((111 to 115) ++ (-95 to -56) ++ (-100 to -96)).toArray.map(_.toByte), buf)
   }
 
-  @Test def should_provide_a_default_implementation_of_skip(): Unit = {
+  @Test def skip(): Unit = {
     val stream = mkStream(1 to 10)
 
     assertEquals(5L, stream.skip(5))

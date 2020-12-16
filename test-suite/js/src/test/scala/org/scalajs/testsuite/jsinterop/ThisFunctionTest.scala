@@ -19,7 +19,7 @@ import org.junit.Test
 
 class ThisFunctionTest {
 
-  @Test def should_provide_an_implicit_conversion_from_Scala_function_to_js_ThisFunction(): Unit = {
+  @Test def implicitConversionFromScalaFunctionToJSThisFunction(): Unit = {
     val g = js.eval("""
         var g = function(f, x) { return f.call(x, 42, x.foo); }; g;
     """).asInstanceOf[js.Function2[js.ThisFunction2[ // scalastyle:ignore
@@ -38,7 +38,7 @@ class ThisFunctionTest {
     assertEquals("foo42", g(f, obj))
   }
 
-  @Test def should_accept_a_lambda_where_a_js_ThisFunction_is_expected(): Unit = {
+  @Test def lambdaWhereJSThisFunctionIsExpected(): Unit = {
     val g = js.eval("""
         var g = function(f, x) { return f.call(x, 42, x.foo); }; g;
     """).asInstanceOf[js.Function2[js.ThisFunction2[ // scalastyle:ignore
@@ -57,7 +57,7 @@ class ThisFunctionTest {
     assertEquals("foo42", res)
   }
 
-  @Test def should_bind_the_first_argument_to_this_when_applying_js_ThisFunctionN(): Unit = {
+  @Test def bindTheFirstArgumentToThisWhenApplyingJSThisFunctionN(): Unit = {
     val g = js.eval("""
         var g = function(x) { return this.foo + ":" + x; }; g;
     """).asInstanceOf[js.ThisFunction1[js.Dynamic, Int, String]]
@@ -66,7 +66,7 @@ class ThisFunctionTest {
     assertEquals("foo:42", g(obj, 42))
   }
 
-  @Test def should_provide_an_implicit_conversion_from_js_ThisFunction_to_Scala_function(): Unit = {
+  @Test def implicitConversionFromJSThisFunctionToScalaFunction(): Unit = {
     val g = js.eval("""
         var g = function(x) { return this.foo + ":" + x; }; g;
     """).asInstanceOf[js.ThisFunction1[js.Dynamic, Int, String]]
@@ -76,7 +76,7 @@ class ThisFunctionTest {
     assertEquals("foo:42", f(obj, 42))
   }
 
-  @Test def thisFunction_in_trait_issue2643(): Unit = {
+  @Test def thisFunctionInTrait_Issue2643(): Unit = {
     trait TraitWithThisFunction {
       def create = {
         val f = { (passedThis: js.Dynamic) =>

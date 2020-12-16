@@ -121,7 +121,7 @@ class MathTest {
     assertTrue(Math.log10(Double.NegativeInfinity).isNaN)
   }
 
-  @Test def signum_for_Double(): Unit = {
+  @Test def signumForDouble(): Unit = {
     assertEquals(1.0, Math.signum(234394.2198273), 0.0)
     assertEquals(-1.0, Math.signum(-124937498.58), 0.0)
 
@@ -134,7 +134,7 @@ class MathTest {
     assertTrue(Math.signum(Double.NaN).isNaN)
   }
 
-  @Test def signum_for_Float(): Unit = {
+  @Test def signumForFloat(): Unit = {
     assertEquals(1.0f, Math.signum(234394.2198273f), 0.0f)
     assertEquals(-1.0f, Math.signum(-124937498.58f), 0.0f)
 
@@ -144,7 +144,7 @@ class MathTest {
     assertTrue(Math.signum(Float.NaN).isNaN)
   }
 
-  @Test def nextUp_for_Double(): Unit = {
+  @Test def nextUpForDouble(): Unit = {
     // Specials
     assertSameDouble(Double.MinPositiveValue, Math.nextUp(0.0))
     assertSameDouble(Double.MinPositiveValue, Math.nextUp(-0.0))
@@ -167,7 +167,7 @@ class MathTest {
     assertSameDouble(1.0000000000000002, Math.nextUp(1.0))
   }
 
-  @Test def nextUp_for_Float(): Unit = {
+  @Test def nextUpForFloat(): Unit = {
     // Specials
     assertSameFloat(Float.MinPositiveValue, Math.nextUp(0.0f))
     assertSameFloat(Float.MinPositiveValue, Math.nextUp(-0.0f))
@@ -189,7 +189,7 @@ class MathTest {
     assertSameFloat(1.0000001f, Math.nextUp(1.0f))
   }
 
-  @Test def nextAfter_for_Double(): Unit = {
+  @Test def nextAfterForDouble(): Unit = {
     assertSameDouble(Double.NaN, Math.nextAfter(Double.NaN, Double.NaN))
     assertSameDouble(Double.NaN, Math.nextAfter(1.0, Double.NaN))
     assertSameDouble(Double.NaN, Math.nextAfter(Double.NaN, 1.0))
@@ -222,7 +222,7 @@ class MathTest {
     assertSameDouble(0.9999999999999999, Math.nextAfter(1.0, 0.5))
   }
 
-  @Test def nextAfter_for_Float(): Unit = {
+  @Test def nextAfterForFloat(): Unit = {
     assertSameFloat(Float.NaN, Math.nextAfter(Float.NaN, Double.NaN))
     assertSameFloat(Float.NaN, Math.nextAfter(1.0f, Double.NaN))
     assertSameFloat(Float.NaN, Math.nextAfter(Float.NaN, 1.0))
@@ -255,7 +255,7 @@ class MathTest {
     assertSameFloat(0.99999994f, Math.nextAfter(1.0f, 0.5))
   }
 
-  @Test def ulp_for_Double(): Unit = {
+  @Test def ulpForDouble(): Unit = {
     assertEquals(4.440892098500626E-16, Math.ulp(3.4), 0.0)
     assertEquals(4.1718496795330275E93, Math.ulp(3.423E109), 0.0)
     assertEquals(Double.MinPositiveValue, Math.ulp(0.0), 0.0)
@@ -320,7 +320,7 @@ class MathTest {
     assertTrue(Math.tanh(Double.NaN).isNaN)
   }
 
-  @Test def rint_for_Double(): Unit = {
+  @Test def rintForDouble(): Unit = {
     import Math.rint
 
     def isPosZero(x: Double): Boolean =
@@ -641,7 +641,7 @@ class MathTest {
     assertThrows(classOf[ArithmeticException], Math.floorMod(5L, 0L))
   }
 
-  @Test def nextDown_for_Double(): Unit = {
+  @Test def nextDownForDouble(): Unit = {
     // Specials
     assertSameDouble(-Double.MinPositiveValue, Math.nextDown(0.0))
     assertSameDouble(-Double.MinPositiveValue, Math.nextDown(-0.0))
@@ -664,7 +664,7 @@ class MathTest {
     assertSameDouble(0.9999999999999999, Math.nextDown(1.0))
   }
 
-  @Test def nextDown_for_Float(): Unit = {
+  @Test def nextDownForFloat(): Unit = {
     // Specials
     assertSameFloat(-Float.MinPositiveValue, Math.nextDown(0.0f))
     assertSameFloat(-Float.MinPositiveValue, Math.nextDown(-0.0f))

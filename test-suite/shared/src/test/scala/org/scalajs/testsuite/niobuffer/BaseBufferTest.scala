@@ -99,7 +99,7 @@ abstract class BaseBufferTest {
     assertEquals(4, buf.position())
   }
 
-  @Test def mark_and_reset(): Unit = {
+  @Test def markAndReset(): Unit = {
     val buf = allocBuffer(10)
 
     // Initially, the mark should not be set
@@ -158,7 +158,7 @@ abstract class BaseBufferTest {
     expectThrows(classOf[InvalidMarkException], buf.reset())
   }
 
-  @Test def remaining_and_hasRemaining(): Unit = {
+  @Test def remainingAndHasRemaining(): Unit = {
     val buf = allocBuffer(3, 7, 10)
     assertEquals(7 - 3, buf.remaining())
 
@@ -181,7 +181,7 @@ abstract class BaseBufferTest {
     assertTrue(buf.hasRemaining())
   }
 
-  @Test def absolute_get(): Unit = {
+  @Test def absoluteGet(): Unit = {
     val buf = withContent(10, elemRange(0, 10): _*)
     assertEquals(elemFromInt(0), buf.get(0))
     assertEquals(0, buf.position())
@@ -195,7 +195,7 @@ abstract class BaseBufferTest {
     expectThrows(classOf[IndexOutOfBoundsException], buf.get(5))
   }
 
-  @Test def absolute_put(): Unit = {
+  @Test def absolutePut(): Unit = {
     val buf = allocBuffer(10)
     if (!createsReadOnly) {
       buf.put(5, 42)
@@ -220,7 +220,7 @@ abstract class BaseBufferTest {
     }
   }
 
-  @Test def relative_get(): Unit = {
+  @Test def relativeGet(): Unit = {
     val buf = withContent(10, elemRange(0, 10): _*)
     assertEquals(elemFromInt(0), buf.get())
     assertEquals(1, buf.position())
@@ -232,7 +232,7 @@ abstract class BaseBufferTest {
     expectThrows(classOf[BufferUnderflowException], buf.get())
   }
 
-  @Test def relative_put(): Unit = {
+  @Test def relativePut(): Unit = {
     val buf = allocBuffer(10)
     if (!createsReadOnly) {
       buf.put(5)
@@ -256,7 +256,7 @@ abstract class BaseBufferTest {
     }
   }
 
-  @Test def relative_bulk_get(): Unit = {
+  @Test def relativeBulkGet(): Unit = {
     val buf = withContent(10, elemRange(0, 10): _*)
     val a = new Array[ElementType](4)
     buf.get(a)
@@ -273,7 +273,7 @@ abstract class BaseBufferTest {
     assertArrayEquals(boxedElemsFromInt(0, 6, 7, 3), boxed(a))
   }
 
-  @Test def relative_bulk_put(): Unit = {
+  @Test def relativeBulkPut(): Unit = {
     val buf = allocBuffer(10)
     if (!createsReadOnly) {
       buf.put(Array[ElementType](6, 7, 12))

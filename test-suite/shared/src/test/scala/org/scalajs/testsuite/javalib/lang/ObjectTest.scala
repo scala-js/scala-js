@@ -64,7 +64,7 @@ class ObjectTest {
     assertTrue(l.exists(_ == xy12)) // the workaround
   }
 
-  @Test def everything_but_null_should_be_an_Object(): Unit = {
+  @Test def isInstanceOfObjectExceptNull(): Unit = {
     assertTrue((()             : Any).isInstanceOf[Object])
     assertTrue((true           : Any).isInstanceOf[Object])
     assertTrue(('a'            : Any).isInstanceOf[Object])
@@ -81,11 +81,11 @@ class ObjectTest {
     assertTrue((Array(Nil)     : Any).isInstanceOf[Object])
   }
 
-  @Test def null_should_not_be_an_Object(): Unit = {
+  @Test def isInstanceOfObjectNull(): Unit = {
     assertFalse((null: Any).isInstanceOf[Object])
   }
 
-  @Test def everything_should_cast_to_Object_successfully_including_null(): Unit = {
+  @Test def asInstanceOfObjectAll(): Unit = {
     (()             : Any).asInstanceOf[Object]
     (true           : Any).asInstanceOf[Object]
     ('a'            : Any).asInstanceOf[Object]
@@ -103,7 +103,7 @@ class ObjectTest {
     (null           : Any).asInstanceOf[Object]
   }
 
-  @Test def cloneCtorSideEffects_issue_3192(): Unit = {
+  @Test def cloneCtorSideEffects_Issue3192(): Unit = {
     var ctorInvokeCount = 0
 
     // This class has an inlineable init

@@ -19,7 +19,7 @@ import org.junit.Test
 
 class WrappedArrayToTest {
 
-  @Test def to_T(): Unit = {
+  @Test def toT(): Unit = {
     val seq: collection.Seq[Int] = js.Array(1, 2, 1, 3, 1, 10, 9)
     val list = seq.to[List]
     assertEquals(List(1, 2, 1, 3, 1, 10, 9), list)

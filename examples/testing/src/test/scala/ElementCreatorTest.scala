@@ -6,8 +6,7 @@ import org.junit.Assert._
 
 class ElementCreatorTest {
 
-  @Test
-  def element_creator_create_an_element_in_body(): Unit = {
+  @Test def elementCreatorCreateAnElementInBody(): Unit = {
     // Create the element
     ElementCreator.create()
 

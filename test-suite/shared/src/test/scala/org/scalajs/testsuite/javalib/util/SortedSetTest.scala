@@ -23,7 +23,7 @@ trait SortedSetTest extends SetTest {
 
   def factory: SortedSetFactory
 
-  @Test def shouldRetrieveTheFirstElement(): Unit = {
+  @Test def first(): Unit = {
     val ssInt = factory.empty[Int]
 
     assertTrue(ssInt.add(1000))
@@ -43,7 +43,7 @@ trait SortedSetTest extends SetTest {
     assertEquals(-0.987, ssDouble.first, 0.0)
   }
 
-  @Test def shouldRetrieveTheLastElement(): Unit = {
+  @Test def last(): Unit = {
     val ssInt = factory.empty[Int]
 
     assertTrue(ssInt.add(1000))
@@ -65,7 +65,7 @@ trait SortedSetTest extends SetTest {
 
   val l = TrivialImmutableCollection(1, 5, 2, 3, 4)
 
-  @Test def shouldReturnAProperHeadSet(): Unit = {
+  @Test def headSet(): Unit = {
     val ss = factory.empty[Int]
 
     ss.addAll(l)
@@ -89,7 +89,7 @@ trait SortedSetTest extends SetTest {
     assertTrue(ss.containsAll(TrivialImmutableCollection(4, 5)))
   }
 
-  @Test def shouldReturnAProperTailSet(): Unit = {
+  @Test def tailSet(): Unit = {
     val ss = factory.empty[Int]
 
     ss.addAll(l)
@@ -113,7 +113,7 @@ trait SortedSetTest extends SetTest {
     assertTrue(ss.containsAll(TrivialImmutableCollection(1, 2, 3)))
   }
 
-  @Test def shouldReturnAProperSubSet(): Unit = {
+  @Test def subSet(): Unit = {
     val ss = factory.empty[Int]
 
     ss.addAll(l)

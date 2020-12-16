@@ -57,7 +57,7 @@ class LongTest {
 
   // Tests
 
-  @Test def sanity_of_equality_tests(): Unit = {
+  @Test def sanityOfEqualityTests(): Unit = {
     assertEquals(1958505087099L, lg(123, 456))
     assertEquals(528280977864L, lg(456, 123))
 
@@ -68,7 +68,7 @@ class LongTest {
     assertNotEquals(123L, lg(123, 456))
   }
 
-  @Test def equals_Any(): Unit = {
+  @Test def equalsAny(): Unit = {
     @inline def inlineCallEquals(lhs: Long, rhs: Any): Boolean =
       lhs.asInstanceOf[AnyRef].equals(rhs.asInstanceOf[AnyRef])
 
@@ -94,14 +94,14 @@ class LongTest {
     test(false, lg(-123, -456), lg(-123, 456))
   }
 
-  @Test def `should_correctly_handle_literals`(): Unit = {
+  @Test def literals(): Unit = {
     assertEquals(105L, 5L + 100L)
     assertEquals(2147483651L, 2147483649L + 2L)
     assertEquals(-8589934592L, -2147483648L * 4)
     assertEquals(-18014398509482040L, 4503599627370510L * (-4))
   }
 
-  @Test def `should_correctly_dispatch_unary_ops_on_Longs`(): Unit = {
+  @Test def unaryOps(): Unit = {
     val x = 10L
     assertEquals(-10L, -x)
     val y = 5L
@@ -110,13 +110,13 @@ class LongTest {
     assertEquals(-6L, ~y)
   }
 
-  @Test def `should_correctly_dispatch_binary_ops_on_Longs`(): Unit = {
+  @Test def binaryOps(): Unit = {
     assertEquals(25F, 5L * 5F, 0F)
     assertEquals(1F, 5L % 4F, 0F)
     assertEquals(20F, 5F * 4L, 0F)
   }
 
-  @Test def `should_support_shifts_with_Longs_#622`(): Unit = {
+  @Test def shifts_Issue622(): Unit = {
     def l(x: Long): Long = x
     def i(x: Int): Int = x
 
@@ -137,7 +137,7 @@ class LongTest {
     assertEquals(-5, i(-65) >> 4)
   }
 
-  @Test def `primitives_should_convert_to_Long`(): Unit = {
+  @Test def toLongConversions(): Unit = {
     // Byte
     assertEquals(112L, 112.toByte.toLong)
     // Short
@@ -154,7 +154,7 @@ class LongTest {
     assertEquals(100000L, 100000.6.toLong)
   }
 
-  @Test def `should_support_hashCode`(): Unit = {
+  @Test def testHashCodeLiterals(): Unit = {
     assertEquals(0, 0L.hashCode())
     assertEquals(55, 55L.hashCode())
     assertEquals(11, (-12L).hashCode())
@@ -167,7 +167,7 @@ class LongTest {
     assertEquals(-1689438124, 7632147899696541255L.hashCode())
   }
 
-  @Test def `should_support_hash_hash`(): Unit = {
+  @Test def hashHash(): Unit = {
     assertEquals(0, 0L.##)
     assertEquals(55, 55L.##)
     assertEquals(-12, (-12L).##)
@@ -181,7 +181,7 @@ class LongTest {
     assertEquals(-1689438124, 7632147899696541255L.##)
   }
 
-  @Test def `should_have_correct_hash_in_case_classes`(): Unit = {
+  @Test def hashHashInCaseClasses(): Unit = {
     if (scalaVersion.startsWith("2.11.") ||
         scalaVersion.startsWith("2.12.")) {
       assertEquals(-1669410282, HashTestBox(0L).##)
@@ -210,17 +210,17 @@ class LongTest {
     }
   }
 
-  @Test def `should_correctly_concat_to_string`(): Unit = {
+  @Test def concatWithString(): Unit = {
     val x = 20L
     assertEquals("asdf520hello", "asdf" + 5L + x + "hello")
     assertEquals("20hello", x + "hello")
   }
 
-  @Test def `string_should_convert_to_Long`(): Unit = {
+  @Test def stringToLong(): Unit = {
     assertEquals(45678901234567890L, "45678901234567890".toLong)
   }
 
-  @Test def `should_correctly_implement_is/asInstanceOf_Longs`(): Unit = {
+  @Test def asInstanceOf(): Unit = {
     val dyn:  Any  = 5L
     val stat: Long = 5L
 
@@ -237,14 +237,14 @@ class LongTest {
     assertFalse(dyn.isInstanceOf[Int])
   }
 
-  @Test def `should_correctly_compare_to_other_numeric_types`(): Unit = {
+  @Test def compareOtherNumericTypes(): Unit = {
     assertTrue(5L == 5)
     assertTrue(5 == 5L)
     assertTrue(4 != 5L)
     assertTrue('A' == 65L)
   }
 
-  @Test def hashCodeTest(): Unit = {
+  @Test def testHashCode(): Unit = {
     @inline def test(expected: Int, x: Long): Unit = {
       assertEquals(expected, x.hashCode())
       assertEquals(expected, hideFromOptimizer(x).hashCode())
@@ -609,7 +609,7 @@ class LongTest {
     test(8801656334077465992L, lg(2076251528, 2049295309))
   }
 
-  @Test def toFloat_strict(): Unit = {
+  @Test def toFloatStrict(): Unit = {
     assumeTrue("Assumed strict floats", hasStrictFloats)
 
     @inline def test(expected: Float, x: Long, epsilon: Float = 0.0f): Unit = {
@@ -863,7 +863,7 @@ class LongTest {
     test(lg(1839280888, -168388422), lg(-1645740821, -1967920957), 1)
   }
 
-  @Test def bitwise_not_~(): Unit = {
+  @Test def bitwiseNot(): Unit = {
     @inline def test(expected: Long, x: Long): Unit = {
       assertEquals(expected, ~x)
       assertEquals(expected, ~hideFromOptimizer(x))
@@ -921,7 +921,7 @@ class LongTest {
     test(lg(1382443514, -56307753), lg(-1382443515, 56307752))
   }
 
-  @Test def bitwise_or_|(): Unit = {
+  @Test def bitwiseOr(): Unit = {
     @inline def test(expected: Long, x: Long, y: Long): Unit = {
       assertEquals(expected, x | y)
       assertEquals(expected, hideFromOptimizer(x) | y)
@@ -981,7 +981,7 @@ class LongTest {
     test(lg(-17107060, -35914117), lg(-402624124, -505696678), lg(-688199800, 2110291577))
   }
 
-  @Test def bitwise_and_&(): Unit = {
+  @Test def bitwiseAnd(): Unit = {
     @inline def test(expected: Long, x: Long, y: Long): Unit = {
       assertEquals(expected, x & y)
       assertEquals(expected, hideFromOptimizer(x) & y)
@@ -1041,7 +1041,7 @@ class LongTest {
     test(lg(839516176, 671232089), lg(844761371, 1022505085), lg(1930384912, 688275291))
   }
 
-  @Test def bitwise_xor_^(): Unit = {
+  @Test def bitwiseXor(): Unit = {
     @inline def test(expected: Long, x: Long, y: Long): Unit = {
       assertEquals(expected, x ^ y)
       assertEquals(expected, hideFromOptimizer(x) ^ y)
@@ -1101,7 +1101,7 @@ class LongTest {
     test(lg(857398449, 1711937081), lg(-1493347776, 1187436882), lg(-1779986703, 550293355))
   }
 
-  @Test def shift_left_<<(): Unit = {
+  @Test def shiftLeft(): Unit = {
     @inline def test(expected: Long, x: Long, y: Int): Unit = {
       assertEquals(expected, x << y)
       assertEquals(expected, hideFromOptimizer(x) << y)
@@ -1161,7 +1161,7 @@ class LongTest {
     test(lg(-1749421258, 1809275319), lg(-874710629, -1242845989), 484063041)
   }
 
-  @Test def shift_logical_right_>>>(): Unit = {
+  @Test def shiftLogicalRight(): Unit = {
     @inline def test(expected: Long, x: Long, y: Int): Unit = {
       assertEquals(expected, x >>> y)
       assertEquals(expected, hideFromOptimizer(x) >>> y)
@@ -1221,7 +1221,7 @@ class LongTest {
     test(lg(-5828381, 10), lg(-954198224, 369053217), 768150041)
   }
 
-  @Test def shift_arithmetic_right_>>(): Unit = {
+  @Test def shiftArithmeticRight(): Unit = {
     @inline def test(expected: Long, x: Long, y: Int): Unit = {
       assertEquals(expected, x >> y)
       assertEquals(expected, hideFromOptimizer(x) >> y)
@@ -1281,7 +1281,7 @@ class LongTest {
     test(lg(-104838948, -3), lg(-904956287, -543423347), -617227620)
   }
 
-  @Test def negate_-(): Unit = {
+  @Test def negate(): Unit = {
     @inline def test(expected: Long, x: Long): Unit = {
       assertEquals(expected, -x)
       assertEquals(expected, -hideFromOptimizer(x))
@@ -1346,7 +1346,7 @@ class LongTest {
     test(lg(2066446588, 688546120), lg(-2066446588, -688546121))
   }
 
-  @Test def plus_+(): Unit = {
+  @Test def plus(): Unit = {
     @inline def test(expected: Long, x: Long, y: Long): Unit = {
       assertEquals(expected, x + y)
       assertEquals(expected, hideFromOptimizer(x) + y)
@@ -1406,7 +1406,7 @@ class LongTest {
     test(lg(-1393001322, 1362535802), lg(88305723, 1362535803), lg(-1481307045, -1))
   }
 
-  @Test def minus_-(): Unit = {
+  @Test def minus(): Unit = {
     @inline def test(expected: Long, x: Long, y: Long): Unit = {
       assertEquals(expected, x - y)
       assertEquals(expected, hideFromOptimizer(x) - y)
@@ -1469,7 +1469,7 @@ class LongTest {
     test(lg(408960051, 967789979), lg(883147297, 967789979), lg(474187246, 0))
   }
 
-  @Test def times_*(): Unit = {
+  @Test def times(): Unit = {
     @inline def test(expected: Long, x: Long, y: Long): Unit = {
       assertEquals(expected, x * y)
       assertEquals(expected, hideFromOptimizer(x) * y)
@@ -1682,7 +1682,7 @@ class LongTest {
     test(-3013501831155286016L, 4294967296L, -120218862620908531L)
   }
 
-  @Test def divide_/(): Unit = {
+  @Test def divide(): Unit = {
     @inline def test(expected: Long, x: Long, y: Long): Unit = {
       assertEquals(expected, x / y)
       assertEquals(expected, hideFromOptimizer(x) / y)
@@ -2068,7 +2068,7 @@ class LongTest {
     assertThrows(classOf[ArithmeticException], 5L / 0L)
   }
 
-  @Test def modulo_%(): Unit = {
+  @Test def modulo(): Unit = {
     @inline def test(expected: Long, x: Long, y: Long): Unit = {
       assertEquals(expected, x % y)
       assertEquals(expected, hideFromOptimizer(x) % y)

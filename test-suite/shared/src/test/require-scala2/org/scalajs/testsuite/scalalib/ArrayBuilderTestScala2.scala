@@ -40,7 +40,7 @@ class ArrayBuilderTestScala2 {
    * Dotty does not have [[ClassTag]] instances for [[Nothing]] or for [[Null]].
    * @see [[https://github.com/lampepfl/dotty/issues/1730]]
    */
-  @Test def Nothing_and_Null(): Unit = {
+  @Test def nothingAndNull(): Unit = {
     assertSame(classOf[Array[Nothing]], ArrayBuilder.make[Nothing].result().getClass)
     assertSame(classOf[Array[Null]], ArrayBuilder.make[Null].result().getClass)
 

@@ -30,21 +30,21 @@ import scala.util.{ Try, Failure }
 class RuntimeTypesTest {
   import RuntimeTypesTest._
 
-  @Test def scala_Arrays_are_instances_of_Serializable_and_Cloneable_issue_2094(): Unit = {
+  @Test def scalaArraysAreInstancesOfSerializableAndCloneable_Issue2094(): Unit = {
     assertTrue((Array(3): Any).isInstanceOf[Serializable])
     assertTrue((Array(3): Any).isInstanceOf[Cloneable])
     assertTrue((Array("hello"): Any).isInstanceOf[Serializable])
     assertTrue((Array("hello"): Any).isInstanceOf[Cloneable])
   }
 
-  @Test def scala_Arrays_cast_to_Serializable_and_Cloneable_issue_2094(): Unit = {
+  @Test def scalaArraysCastToSerializableAndCloneable_Issue2094(): Unit = {
     (Array(3): Any).asInstanceOf[Serializable] // should not throw
     (Array(3): Any).asInstanceOf[Cloneable] // should not throw
     (Array("hello"): Any).asInstanceOf[Serializable] // should not throw
     (Array("hello"): Any).asInstanceOf[Cloneable] // should not throw
   }
 
-  @Test def scala_Nothing_casts_to_scala_Nothing_should_fail(): Unit = {
+  @Test def scalaNothingCastsToScalaNothingThrows(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
 
     def test(x: Any): Unit =
@@ -54,7 +54,7 @@ class RuntimeTypesTest {
     test(null)
   }
 
-  @Test def scala_Nothing_reflected_casts_to_scala_Nothing_should_fail(): Unit = {
+  @Test def scalaNothingReflectedCastsToScalaNothingThrows(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
     def test(x: Any): Unit = {
       try {
@@ -70,16 +70,16 @@ class RuntimeTypesTest {
     test(null)
   }
 
-  @Test def scala_Null_casts_to_scala_Null_should_fail_for_everything_else_but_null(): Unit = {
+  @Test def scalaNullCastsToScalaNullThrowsForEverythingButNull(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
     assertThrows(classOf[ClassCastException], "a".asInstanceOf[Null])
   }
 
-  @Test def scala_Null_casts_to_scala_Null_should_succeed_on_null(): Unit = {
+  @Test def scalaNullCastsToScalaNullWorksOnNull(): Unit = {
     null.asInstanceOf[Null]
   }
 
-  @Test def scala_Arrays_of_JS_types(): Unit = {
+  @Test def scalaArraysOfJSTypes(): Unit = {
     val arrayOfParentJSType = new Array[ParentJSType](0)
     val arrayOfJSInterface = new Array[SomeJSInterface](0)
     val arrayOfJSClass = new Array[SomeJSClass](0)

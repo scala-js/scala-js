@@ -19,7 +19,7 @@ import org.scalajs.testsuite.utils.Platform.scalaVersion
 
 class SymbolTest {
 
-  @Test def should_ensure_unique_identity(): Unit = {
+  @Test def testIdentity(): Unit = {
     def expectEqual(sym1: Symbol, sym2: Symbol): Unit = {
       assertTrue(sym1 eq sym2)
       assertEquals(sym2, sym1)
@@ -41,7 +41,7 @@ class SymbolTest {
     assertEquals(42, map(`42`))
   }
 
-  @Test def should_support_name(): Unit = {
+  @Test def name(): Unit = {
     val scalajs = Symbol("ScalaJS")
 
     assertEquals("ScalaJS", scalajs.name)
@@ -53,7 +53,7 @@ class SymbolTest {
     assertEquals("\"", Symbol("\"").name)
   }
 
-  @Test def should_support_toString(): Unit = {
+  @Test def testToString(): Unit = {
     val scalajs = Symbol("ScalaJS")
 
     val toStringUsesQuoteSyntax = {

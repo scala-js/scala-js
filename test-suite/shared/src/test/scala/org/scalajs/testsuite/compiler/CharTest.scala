@@ -16,8 +16,7 @@ import org.junit.Test
 import org.junit.Assert._
 
 class CharTest {
-  @Test
-  def `should_always_be_positive_when_coerced`(): Unit = {
+  @Test def toIntNegativeToPositive(): Unit = {
     assertEquals(-3.toByte.toChar.toInt, 65533)
     assertEquals(-100.toShort.toChar.toInt, 65436)
     assertEquals(-66000.toChar.toInt, 65072)
@@ -26,14 +25,12 @@ class CharTest {
     assertEquals(-7.9.toChar.toInt, 65529)
   }
 
-  @Test
-  def `should_overflow_when_coerced`(): Unit = {
+  @Test def toIntOverflow(): Unit = {
     assertEquals(347876543.toChar.toInt, 11455)
     assertEquals(34234567876543L.toChar.toInt, 57279)
   }
 
-  @Test
-  def `should_overflow_with_times`(): Unit = {
+  @Test def multiplyOverflow(): Unit = {
     def test(a: Char, b: Char, expected: Int): Unit =
       assertEquals(a * b, expected)
 
@@ -41,8 +38,7 @@ class CharTest {
     test(Char.MaxValue, Char.MaxValue, Char.MaxValue * Char.MaxValue)
   }
 
-  @Test
-  def do_not_box_several_times_in_a_block(): Unit = {
+  @Test def doNotBoxSeveralTimesInBlock(): Unit = {
     @noinline def test(x: Any): Unit =
       assertEquals('A', x)
 
@@ -52,8 +48,7 @@ class CharTest {
     }: Char)
   }
 
-  @Test
-  def do_not_box_several_times_in_an_if(): Unit = {
+  @Test def doNotBoxSeveralTimesInIf(): Unit = {
     @noinline def test(x: Any): Unit =
       assertEquals('A', x)
 

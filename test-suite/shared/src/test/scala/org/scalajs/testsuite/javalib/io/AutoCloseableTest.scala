@@ -31,7 +31,7 @@ class AutoCloseableTest {
   }
 
   @Test
-  def byteArrayOutputStreamIsAnAutoCloseable_issue_3107(): Unit = {
+  def byteArrayOutputStreamIsAnAutoCloseable_Issue3107(): Unit = {
     val x = new java.io.ByteArrayOutputStream
     close(x)
   }

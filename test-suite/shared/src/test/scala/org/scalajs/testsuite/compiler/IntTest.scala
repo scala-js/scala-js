@@ -30,7 +30,7 @@ import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 class IntTest {
   import IntTest._
 
-  @Test def `should_support_unary_minus`(): Unit = {
+  @Test def unaryMinus(): Unit = {
     def test(a: Int, expected: Int): Unit =
       assertEquals(expected, -a)
 
@@ -45,7 +45,7 @@ class IntTest {
     test(AlmostMaxVal, -AlmostMaxVal)
   }
 
-  @Test def `should_support_plus`(): Unit = {
+  @Test def plus(): Unit = {
     def test(a: Int, b: Int, expected: Int): Unit =
       assertEquals(expected, a + b)
 
@@ -60,7 +60,7 @@ class IntTest {
     test(AlmostMaxVal, 123, AlmostMaxVal + 123)
   }
 
-  @Test def `should_support_minus`(): Unit = {
+  @Test def minus(): Unit = {
     def test(a: Int, b: Int, expected: Int): Unit =
       assertEquals(expected, a - b)
 
@@ -75,7 +75,7 @@ class IntTest {
     test(AlmostMaxVal, -123, AlmostMaxVal + 123)
   }
 
-  @Test def `should_support_times`(): Unit = {
+  @Test def times(): Unit = {
     @inline def test(a: Int, b: Int, expected: Int): Unit = {
       @noinline def hideFromOptimizer(x: Int): Int = x
 
@@ -262,7 +262,7 @@ class IntTest {
     test(536870912, 20668, -2147483648)
   }
 
-  @Test def `should_support_division`(): Unit = {
+  @Test def division(): Unit = {
     def test(a: Int, b: Int, expected: Int): Unit =
       assertEquals(expected, a / b)
 
@@ -329,12 +329,12 @@ class IntTest {
     assertThrows(classOf[ArithmeticException], 5 % 0)
   }
 
-  @Test def `percent_should_never_produce_a_negative_0_#1984`(): Unit = {
+  @Test def remainderNegative0_Issue1984(): Unit = {
     @noinline def value: Int = -8
     assertEquals(0, value % 8)
   }
 
-  @Test def `should_support_shift_left`(): Unit = {
+  @Test def shiftLeft(): Unit = {
     def test(a: Int, b: Int, expected: Int): Unit =
       assertEquals(expected, a << b)
 
@@ -350,7 +350,7 @@ class IntTest {
     test(MaxVal, 1, MaxVal << 1)
   }
 
-  @Test def `should_support_shift_right`(): Unit = {
+  @Test def shiftRight(): Unit = {
     def test(a: Int, b: Int, expected: Int): Unit =
       assertEquals(expected, a >> b)
 
@@ -366,7 +366,7 @@ class IntTest {
     test(MaxVal, 1, MaxVal >> 1)
   }
 
-  @Test def `should_support_shift_right_sign_extend`(): Unit = {
+  @Test def shiftRightSignExtend(): Unit = {
     def test(a: Int, b: Int, expected: Int): Unit =
       assertEquals(expected, a >>> b)
 

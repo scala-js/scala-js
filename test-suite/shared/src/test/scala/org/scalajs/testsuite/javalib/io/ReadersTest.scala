@@ -31,7 +31,7 @@ class ReaderTest {
     def close(): Unit = ()
   }
 
-  @Test def skip_should_always_skip_n_if_possible(): Unit = {
+  @Test def skipIntIfPossible(): Unit = {
     assertEquals(42, MyReader.skip(42))
     assertEquals(10000, MyReader.skip(10000)) // more than the 8192 batch size
   }
@@ -41,7 +41,7 @@ class StringReaderTest {
   val str = "asdf"
   def newReader: StringReader = new StringReader(str)
 
-  @Test def should_provide_read()(): Unit = {
+  @Test def read()(): Unit = {
     val r = newReader
 
     for (c <- str) {
@@ -51,7 +51,7 @@ class StringReaderTest {
     assertEquals(-1, r.read())
   }
 
-  @Test def should_provide_read_from_buffer_with_offset_and_length(): Unit = {
+  @Test def readArrayCharIntInt(): Unit = {
     val r = newReader
     val buf = new Array[Char](10)
 
@@ -60,7 +60,7 @@ class StringReaderTest {
     assertEquals(-1, r.read(buf, 2, 8)) // #1560
   }
 
-  @Test def should_provide_read_from_CharBuffer(): Unit = {
+  @Test def readCharBuffer(): Unit = {
     val r = newReader
     val buf0 = java.nio.CharBuffer.allocate(25)
     buf0.position(3)
@@ -75,7 +75,7 @@ class StringReaderTest {
         Array[Int](0, 0, 0, 0, 'a', 's', 'd', 'f'))
   }
 
-  @Test def should_provide_ready(): Unit = {
+  @Test def ready(): Unit = {
     val r = newReader
 
     for (c <- str) {
@@ -90,7 +90,7 @@ class StringReaderTest {
     expectThrows(classOf[IOException], r.ready())
   }
 
-  @Test def should_provide_mark_reset(): Unit = {
+  @Test def markReset(): Unit = {
     val r = newReader
     r.mark(str.length)
 
@@ -107,7 +107,7 @@ class StringReaderTest {
     assertEquals(-1, r.read())
   }
 
-  @Test def should_provide_skip(): Unit = {
+  @Test def skip(): Unit = {
     val r = newReader
 
     assertEquals('a': Int, r.read())
@@ -117,22 +117,22 @@ class StringReaderTest {
     assertEquals(-1, r.read())
   }
 
-  @Test def should_provide_close(): Unit = {
+  @Test def close(): Unit = {
     val r = newReader
 
     r.close()
     expectThrows(classOf[IOException], r.read())
   }
 
-  @Test def should_support_marking(): Unit = {
+  @Test def mark(): Unit = {
     assertTrue(newReader.markSupported)
   }
 
-  @Test def mark_should_throw_with_negative_lookahead(): Unit = {
+  @Test def markThrowsWithNegativeLookahead(): Unit = {
     expectThrows(classOf[IllegalArgumentException], newReader.mark(-10))
   }
 
-  @Test def skip_should_accept_negative_lookahead_as_lookback(): Unit = {
+  @Test def skipAcceptsNegativeLookaheadAsLookback(): Unit = {
     // StringReader.skip accepts negative lookahead
     val r = newReader
     assertEquals("already head", 0, r.skip(-1))
@@ -145,7 +145,7 @@ class StringReaderTest {
     assertEquals('s', r.read())
   }
 
-  @Test def skip_should_always_return_0_after_reaching_end(): Unit = {
+  @Test def skipReturns0AfterReachingEnd(): Unit = {
     val r = newReader
     assertEquals(4, r.skip(100))
     assertEquals(-1, r.read())
@@ -196,7 +196,7 @@ class BufferedReaderTest {
     assertEquals(1, underlying.closeCount)
   }
 
-  @Test def should_provide_read(): Unit = {
+  @Test def read(): Unit = {
     val r = newReader
 
     for (c <- str) {
@@ -205,7 +205,7 @@ class BufferedReaderTest {
     assertEquals(-1, r.read())
   }
 
-  @Test def should_provide_read_from_buffer(): Unit = {
+  @Test def readArrayChar(): Unit = {
     var read = 0
     val r = newReader
     val buf = new Array[Char](15)
@@ -222,7 +222,7 @@ class BufferedReaderTest {
     }
   }
 
-  @Test def should_provide_read_frombuffer_with_offset(): Unit = {
+  @Test def readArrayCharIntInt(): Unit = {
     var read = 0
     val r = newReader
     val buf = new Array[Char](15)
@@ -240,7 +240,7 @@ class BufferedReaderTest {
     }
   }
 
-  @Test def should_provide_mark_and_reset(): Unit = {
+  @Test def markAndReset(): Unit = {
     val r = newReader
     assertEquals('l': Int, r.read())
 
@@ -258,7 +258,7 @@ class BufferedReaderTest {
     }
   }
 
-  @Test def should_provide_readLine(): Unit = {
+  @Test def readLine(): Unit = {
     val r = newReader
 
     assertEquals("line1", r.readLine())
@@ -269,13 +269,13 @@ class BufferedReaderTest {
     assertEquals(null, r.readLine())
   }
 
-  @Test def should_readLine_on_an_empty_stream(): Unit = {
+  @Test def readLineEmptyStream(): Unit = {
     val r = new BufferedReader(new StringReader(""))
 
     assertEquals(null, r.readLine())
   }
 
-  @Test def should_readline_with_empty_lines_only(): Unit = {
+  @Test def readLineEmptyLinesOnly(): Unit = {
     val r = new BufferedReader(new StringReader("\n\r\n\r\r\n"), 1)
 
     for (_ <- 1 to 4)
@@ -284,7 +284,7 @@ class BufferedReaderTest {
     assertEquals(null, r.readLine())
   }
 
-  @Test def skip_should_always_return_0_after_reaching_end(): Unit = {
+  @Test def skipReturns0AfterReachingEnd(): Unit = {
     val r = newReader
     assertEquals(25, r.skip(100))
     assertEquals(-1, r.read())
@@ -293,18 +293,18 @@ class BufferedReaderTest {
     assertEquals(-1, r.read())
   }
 
-  @Test def should_support_marking(): Unit = {
+  @Test def markSupported(): Unit = {
     assertTrue(newReader.markSupported)
   }
 
-  @Test def mark_should_throw_with_negative_lookahead(): Unit = {
+  @Test def markThrowsWithNegativeLookahead(): Unit = {
     expectThrows(classOf[IllegalArgumentException], newReader.mark(-10))
   }
 }
 
 class InputStreamReaderTest {
 
-  @Test def should_read_UTF8(): Unit = {
+  @Test def readUTF8(): Unit = {
 
     val buf = Array[Byte](72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100,
         46, -29, -127, -109, -29, -126, -109, -29, -127, -85, -29, -127, -95,
@@ -335,7 +335,7 @@ class InputStreamReaderTest {
     assertEquals(-1, r.read())
   }
 
-  @Test def should_comply_with_read_after_eof_behaviour(): Unit = {
+  @Test def readEOFThrows(): Unit = {
     val data = "Lorem ipsum".getBytes()
     val streamReader = new InputStreamReader(new ByteArrayInputStream(data))
     val bytes = new Array[Char](11)
@@ -348,7 +348,7 @@ class InputStreamReaderTest {
     assertEquals(0, streamReader.read(new Array[Char](0)))
   }
 
-  @Test def skip_should_always_return_0_after_reaching_end(): Unit = {
+  @Test def skipReturns0AfterReachingEnd(): Unit = {
     val data = "Lorem ipsum".getBytes()
     val r = new InputStreamReader(new ByteArrayInputStream(data))
     assertTrue(r.skip(100) > 0)
@@ -358,7 +358,7 @@ class InputStreamReaderTest {
     assertEquals(-1, r.read())
   }
 
-  @Test def should_throw_IOException_since_mark_is_not_supported(): Unit = {
+  @Test def markThrowsNotSupported(): Unit = {
     val data = "Lorem ipsum".getBytes()
     val r = new InputStreamReader(new ByteArrayInputStream(data))
     expectThrows(classOf[IOException], r.mark(0))

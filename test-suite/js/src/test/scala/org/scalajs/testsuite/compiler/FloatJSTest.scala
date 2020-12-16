@@ -24,7 +24,7 @@ class FloatJSTest {
   @noinline def froundNotInlined(x: Double): Float =
     x.toFloat
 
-  @Test def fround_for_special_values(): Unit = {
+  @Test def froundForSpecialValues(): Unit = {
     assertTrue(froundNotInlined(Double.NaN).isNaN)
     assertEquals(Double.PositiveInfinity, 1 / froundNotInlined(0.0).toDouble, 0.0)
     assertEquals(Double.NegativeInfinity, 1 / froundNotInlined(-0.0).toDouble, 0.0)
@@ -32,17 +32,17 @@ class FloatJSTest {
     assertEquals(Float.NegativeInfinity, froundNotInlined(Double.NegativeInfinity), 0.0)
   }
 
-  @Test def fround_overflows(): Unit = {
+  @Test def froundOverflows(): Unit = {
     assertEquals(Double.PositiveInfinity, froundNotInlined(1e200), 0.0)
     assertEquals(Double.NegativeInfinity, froundNotInlined(-1e200), 0.0)
   }
 
-  @Test def fround_underflows(): Unit = {
+  @Test def froundUnderflows(): Unit = {
     assertEquals(Double.PositiveInfinity, 1 / froundNotInlined(1e-300).toDouble, 0.0)
     assertEquals(Double.NegativeInfinity, 1 / froundNotInlined(-1e-300).toDouble, 0.0)
   }
 
-  @Test def fround_normal_cases(): Unit = {
+  @Test def froundNormalCases(): Unit = {
     def test(input: Double, expected: Double): Unit =
       assertEquals(expected, input.toFloat.toDouble, 0.0)
 
@@ -74,7 +74,7 @@ class FloatJSTest {
     test(1.973497969450596E-21, 1.973498047135062E-21)
   }
 
-  @Test def Int_should_be_cast_to_Float_when_comparing_to_Float_issue_1878(): Unit = {
+  @Test def intWidenedToFloatWhenComparingToFloat_Issue1878(): Unit = {
     val intMax: Int = Int.MaxValue
     val float: Float = (Int.MaxValue - 1).toFloat
 

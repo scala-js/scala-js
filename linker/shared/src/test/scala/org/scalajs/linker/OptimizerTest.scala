@@ -121,7 +121,7 @@ class OptimizerTest {
 
   /** Never inline the `clone()` method of arrays. */
   @Test
-  def testCloneOnArrayNotInlined_issue3778(): AsyncResult = await {
+  def testCloneOnArrayNotInlined_Issue3778(): AsyncResult = await {
     testCloneOnArrayNotInlinedGeneric(List(
         // @inline override def clone(): AnyRef = witness()
         MethodDef(EMF, cloneMethodName, NON, Nil, AnyType, Some {
@@ -134,7 +134,7 @@ class OptimizerTest {
    *  reachable `clone()` method is `Object.clone()`.
    */
   @Test
-  def testCloneOnArrayNotInlined_issue3778_onlyObjectClone(): AsyncResult = await {
+  def testCloneOnArrayNotInlinedObjectCloneOnly_Issue3778(): AsyncResult = await {
     testCloneOnArrayNotInlinedGeneric(Nil)
   }
 
@@ -142,7 +142,7 @@ class OptimizerTest {
    *  and another `clone()` method are reachable.
    */
   @Test
-  def testCloneOnArrayNotInlined_issue3778_ObjectCloneAndAnotherClone(): AsyncResult = await {
+  def testCloneOnArrayNotInlinedObjectCloneAndAnotherClone_Issue3778(): AsyncResult = await {
     testCloneOnArrayNotInlinedGeneric(List(
         // @inline override def clone(): AnyRef = witness()
         MethodDef(EMF, cloneMethodName, NON, Nil, AnyType, Some {
@@ -172,7 +172,7 @@ class OptimizerTest {
   }
 
   @Test
-  def testOptimizerDoesNotEliminateRequiredStaticField_issue4021(): AsyncResult = await {
+  def testOptimizerDoesNotEliminateRequiredStaticField_Issue4021(): AsyncResult = await {
     val StringType = ClassType(BoxedStringClass)
     val fooGetter = m("foo", Nil, T)
     val classDefs = Seq(
@@ -209,7 +209,7 @@ class OptimizerTest {
   }
 
   @Test
-  def testOptimizerDoesNotEliminateRequiredLabeledBlockEmittedByDotty_issue4171(): AsyncResult = await {
+  def testOptimizerDoesNotEliminateRequiredLabeledBlockEmittedByDotty_Issue4171(): AsyncResult = await {
     /* For the following source code:
      *
      * (null: Any) match {

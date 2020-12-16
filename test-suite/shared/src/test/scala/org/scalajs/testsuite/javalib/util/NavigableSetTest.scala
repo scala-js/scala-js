@@ -25,7 +25,7 @@ trait NavigableSetTest extends SetTest {
 
   def factory: NavigableSetFactory
 
-  @Test def `should_retrieve_ceiling(ordered)_elements`(): Unit = {
+  @Test def ceiling(): Unit = {
     val lInt = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val nsInt = factory.empty[Int]
 
@@ -48,7 +48,7 @@ trait NavigableSetTest extends SetTest {
     assertNull(nsString.ceiling("z"))
   }
 
-  @Test def `should_retrieve_floor(ordered)_elements`(): Unit = {
+  @Test def floor(): Unit = {
     val lInt = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val nsInt = factory.empty[Int]
 
@@ -71,7 +71,7 @@ trait NavigableSetTest extends SetTest {
     assertNull(nsString.floor("0"))
   }
 
-  @Test def `should_retrieve_higher(ordered)_elements`(): Unit = {
+  @Test def higher(): Unit = {
     val lInt = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val nsInt = factory.empty[Int]
 
@@ -94,7 +94,7 @@ trait NavigableSetTest extends SetTest {
     assertEquals("a", nsString.higher("0"))
   }
 
-  @Test def `should_retrieve_lower(ordered)_elements`(): Unit = {
+  @Test def lower(): Unit = {
     val lInt = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val nsInt = factory.empty[Int]
 
@@ -117,7 +117,7 @@ trait NavigableSetTest extends SetTest {
     assertNull(nsString.lower("0"))
   }
 
-  @Test def should_poll_first_and_last_elements(): Unit = {
+  @Test def pollFirstAndLast(): Unit = {
     val lInt = TrivialImmutableCollection(1, 5, 2, 3, 4)
     val ns = factory.empty[Int]
 

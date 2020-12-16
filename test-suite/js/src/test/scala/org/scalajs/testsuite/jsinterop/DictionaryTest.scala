@@ -26,12 +26,12 @@ class DictionaryTest {
 
   // scala.scalajs.js.Dictionary
 
-  @Test def apply_should_throw_when_not_found(): Unit = {
+  @Test def applyThrowsWhenNotFound(): Unit = {
     val obj = js.Dictionary("foo" -> "bar")
     assertThrows(classOf[NoSuchElementException], obj("bar"))
   }
 
-  @Test def should_provide_get(): Unit = {
+  @Test def get(): Unit = {
     val obj = js.Dictionary.empty[Int]
     obj("hello") = 1
 
@@ -39,12 +39,12 @@ class DictionaryTest {
     assertFalse(obj.get("world").isDefined)
   }
 
-  @Test def `-=_should_ignore_deleting_a_non_existent_key`(): Unit = {
+  @Test def minusEqualsIgnoresNonExistentKey(): Unit = {
     val obj = js.Dictionary("a" -> "A")
     obj -= "b"
   }
 
-  @Test def should_provide_keys(): Unit = {
+  @Test def keys(): Unit = {
     val obj = js.Dictionary("a" -> "A", "b" -> "B")
     val keys = obj.keys.toList
     assertEquals(2, keys.size)
@@ -52,7 +52,7 @@ class DictionaryTest {
     assertTrue(keys.contains("b"))
   }
 
-  @Test def should_survive_the_key_hasOwnProperty_issue_1414(): Unit = {
+  @Test def keyHasOwnProperty_Issue1414(): Unit = {
     val obj = js.Dictionary.empty[Int]
     assertFalse(obj.contains("hasOwnProperty"))
     obj("hasOwnProperty") = 5
@@ -61,7 +61,7 @@ class DictionaryTest {
     assertFalse(obj.contains("hasOwnProperty"))
   }
 
-  @Test def should_provide_an_iterator(): Unit = {
+  @Test def iterator(): Unit = {
     val obj = js.Dictionary("foo" -> 5, "bar" -> 42, "babar" -> 0)
     var elems: List[(String, Int)] = Nil
     for ((prop, value) <- obj) {
@@ -75,7 +75,7 @@ class DictionaryTest {
 
   // scala.scalajs.js.JSConverters.JSRichGenMap
 
-  @Test def should_provide_toJSDictionary(): Unit = {
+  @Test def toJSDictionary(): Unit = {
     import js.JSConverters._
     val dict1 = Map("a" -> 1, "b" -> 2).toJSDictionary
     assertEquals(1, dict1("a"))
@@ -86,7 +86,7 @@ class DictionaryTest {
     assertEquals("bar", dict2("b"))
   }
 
-  @Test def should_provide_underlying_JSDictionary(): Unit = {
+  @Test def underlyingJSDictionary(): Unit = {
     val original = js.Dictionary("a" -> 1, "b" -> 2, "c" -> 3)
     val dict: js.Dictionary[Int] = original.filter(_._1 != "b")
 

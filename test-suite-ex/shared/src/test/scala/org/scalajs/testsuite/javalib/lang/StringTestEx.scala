@@ -53,7 +53,7 @@ class StringTestEx {
         "IÍÌĨİ".toLowerCase(Lithuanian))
   }
 
-  @Test def testToLowerCaseWithLocale_CornerCasesFor_Lithuanian(): Unit = {
+  @Test def testToLowerCaseWithLocaleCornerCasesForLithuanian(): Unit = {
     // All the characters with an unconditional special translation
     assertEquals("i\u0307\u0300 i\u0307\u0300a\u033D",
         "\u00CC \u00CCA\u033D".toLowerCase(Lithuanian))
@@ -83,7 +83,7 @@ class StringTestEx {
         "I\uD804\uDC00\u033D".toLowerCase(Lithuanian)) // 11000
   }
 
-  @Test def testToLowerCaseWithLocale_CornerCasesFor_TurkishAndAzeri(): Unit = {
+  @Test def testToLowerCaseWithLocaleCornerCasesForTurkishAndAzeri(): Unit = {
     // Can put another combining mark between I and 0307, as long as its class is not Above
     assertEquals("i\u0315",
         "I\u0315\u0307".toLowerCase(Turkish))
@@ -122,7 +122,7 @@ class StringTestEx {
         "iíìĩı i\u0307\u0301i\u0307\u0300i\u0307\u0303i\u0307".toUpperCase(Lithuanian))
   }
 
-  @Test def testToUpperCaseWithLocale_CornerCasesFor_Lithuanian(): Unit = {
+  @Test def testToUpperCaseWithLocaleCornerCasesForLithuanian(): Unit = {
     // More characters with the Soft_Dotted property
     assertEquals("J\u0301J\u0300J\u0303J",
         "j\u0307\u0301j\u0307\u0300j\u0307\u0303j\u0307".toUpperCase(Lithuanian))

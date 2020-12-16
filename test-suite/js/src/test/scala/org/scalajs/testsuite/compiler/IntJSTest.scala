@@ -33,7 +33,7 @@ class IntJSTest {
   final val AlmostMinVal = Int.MinValue + 43
   final val AlmostMaxVal = Int.MaxValue - 36
 
-  @Test def `should_support_%`(): Unit = {
+  @Test def remainder(): Unit = {
     def test(a: Int, b: Int, expected: Int): Unit =
       assertEquals(expected, a % b)
 

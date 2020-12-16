@@ -637,7 +637,7 @@ class StringBuilderTest {
     }
   }
 
-  @Test def should_allow_string_interpolation_to_survive_null_and_undefined(): Unit = {
+  @Test def stringInterpolationToSurviveNullAndUndefined(): Unit = {
     assertEquals("anullb", s"a${null}b")
 
     if (executingInJVM)

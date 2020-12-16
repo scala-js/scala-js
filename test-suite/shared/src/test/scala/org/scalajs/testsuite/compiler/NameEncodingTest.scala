@@ -17,7 +17,7 @@ import org.junit.Assert._
 
 class NameEncodingTest {
 
-  @Test def namesThatAreJSReservedWords_issue_153(): Unit = {
+  @Test def namesThatAreJSReservedWords_Issue153(): Unit = {
     // scalastyle:off class.name
 
     // Class name
@@ -44,7 +44,7 @@ class NameEncodingTest {
     // scalastyle:on class.name
   }
 
-  @Test def namesStartingWithDigit_issue_153(): Unit = {
+  @Test def namesStartingWithDigit_Issue153(): Unit = {
     // scalastyle:off class.name
 
     // Class name
@@ -102,7 +102,7 @@ class NameEncodingTest {
     assertEquals(5, obj.value)
   }
 
-  @Test def localEvalOrArguments_issue_743(): Unit = {
+  @Test def localEvalOrArguments_Issue743(): Unit = {
     val eval = 5
     assertEquals(5, eval)
     val arguments = "hello"

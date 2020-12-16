@@ -259,7 +259,7 @@ class ArrayOpsCollectionEraDependentTest {
         js.Array(), array.filterInPlace(_ < 0))
   }
 
-  @Test def to_T_issue_843(): Unit = {
+  @Test def toT_Issue843(): Unit = {
     val array = js.Array(1, 2, 1, 3, 1, 10, 9)
     val list = array.to(List)
     assertArrayEquals(array.toArray, list.toArray)

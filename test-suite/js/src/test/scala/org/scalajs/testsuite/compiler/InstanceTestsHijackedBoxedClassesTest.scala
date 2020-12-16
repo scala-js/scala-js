@@ -21,7 +21,7 @@ import org.scalajs.testsuite.utils.Platform._
 
 class InstanceTestsHijackedBoxedClassesTest {
 
-  @Test def should_support_isInstanceOf_positive(): Unit = {
+  @Test def isInstanceOfPositive(): Unit = {
     assertTrue(((): Any).isInstanceOf[Unit])
     assertTrue((false: Any).isInstanceOf[Boolean])
     assertTrue(('a': Any).isInstanceOf[Char])
@@ -48,7 +48,7 @@ class InstanceTestsHijackedBoxedClassesTest {
     assertTrue((-0.0: Any).isInstanceOf[Float])
   }
 
-  @Test def should_support_isInstanceOf_negative(): Unit = {
+  @Test def isInstanceOfNegative(): Unit = {
     assertFalse((12345: Any).isInstanceOf[Unit])
     assertFalse((12345: Any).isInstanceOf[Boolean])
     assertFalse((12345: Any).isInstanceOf[Char])
@@ -62,12 +62,12 @@ class InstanceTestsHijackedBoxedClassesTest {
     assertFalse((-0.0: Any).isInstanceOf[Int])
   }
 
-  @Test def isInstanceOf_Float_with_strict_floats(): Unit = {
+  @Test def isInstanceOfFloatWithStrictFloats(): Unit = {
     assumeTrue("Assumed strict floats", hasStrictFloats)
     assertFalse((1.2: Any).isInstanceOf[Float])
   }
 
-  @Test def isInstanceOf_Float_with_non_strict_floats(): Unit = {
+  @Test def isInstanceOfFloatWithNonStrictFloats(): Unit = {
     assumeFalse("Assumed strict floats", hasStrictFloats)
     assertTrue((1.2: Any).isInstanceOf[Float])
 
@@ -112,7 +112,7 @@ class InstanceTestsHijackedBoxedClassesTest {
     test(true, new CustomNumber)
   }
 
-  @Test def should_support_asInstanceOf_positive(): Unit = {
+  @Test def asInstanceOfPositive(): Unit = {
     def swallow(x: Any): Unit = ()
     swallow(((): Any).asInstanceOf[Unit])
     swallow((false: Any).asInstanceOf[Boolean])
@@ -127,7 +127,7 @@ class InstanceTestsHijackedBoxedClassesTest {
       (12345: Any).asInstanceOf[Unit]
   }
 
-  @Test def should_support_asInstanceOf_negative(): Unit = {
+  @Test def asInstanceOfNegative(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
     if (scalaVersion.startsWith("2.11."))
       assertThrows(classOf[Exception], (12345: Any).asInstanceOf[Unit])
@@ -143,18 +143,18 @@ class InstanceTestsHijackedBoxedClassesTest {
     assertThrows(classOf[Exception], (-0.0: Any).asInstanceOf[Int])
   }
 
-  @Test def asInstanceOf_Float_with_strict_floats(): Unit = {
+  @Test def asInstanceOfFloatWithStrictFloats(): Unit = {
     assumeTrue("Assumed strict floats", hasStrictFloats)
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
     assertThrows(classOf[Exception], (1.2: Any).asInstanceOf[Float])
   }
 
-  @Test def asInstanceOf_Float_with_non_strict_floats(): Unit = {
+  @Test def asInstanceOfFloatWithNonStrictFloats(): Unit = {
     assumeFalse("Assumed strict floats", hasStrictFloats)
     assertEquals(1.2, (1.2: Any).asInstanceOf[Float], 0.0)
   }
 
-  @Test def should_support_isInstanceOf_via_java_lang_Class_positive(): Unit = {
+  @Test def isInstanceOfViaJavaLangClassPositive(): Unit = {
     def test(x: Any, clazz: Class[_]): Unit =
       assertTrue(clazz.isInstance(x))
 
@@ -173,7 +173,7 @@ class InstanceTestsHijackedBoxedClassesTest {
     test(-0.0, classOf[java.lang.Double])
   }
 
-  @Test def should_support_isInstanceOf_via_java_lang_Class_negative(): Unit = {
+  @Test def isInstanceOfViaJavaLangClassNegative(): Unit = {
     def test(x: Any, clazz: Class[_]): Unit =
       assertFalse(clazz.isInstance(x))
 
@@ -190,12 +190,12 @@ class InstanceTestsHijackedBoxedClassesTest {
     test(-0.0, classOf[java.lang.Integer])
   }
 
-  @Test def classOf_Float_isInstance_with_strict_floats(): Unit = {
+  @Test def classOfFloatIsInstanceWithStrictFloats(): Unit = {
     assumeTrue("Assumed strict floats", hasStrictFloats)
     assertFalse(classOf[java.lang.Float].isInstance(1.2))
   }
 
-  @Test def classOf_Float_isInstance_with_non_strict_floats(): Unit = {
+  @Test def classOfFloatIsInstanceWithNonStrictFloats(): Unit = {
     assumeFalse("Assumed strict floats", hasStrictFloats)
     assertTrue(classOf[java.lang.Float].isInstance(1.2))
   }

@@ -106,7 +106,7 @@ class BigIntTest {
     assertEquals(bitNot, js.BigInt("-43"))
   }
 
-  @Test def compare_with_bigint(): Unit = {
+  @Test def compareWithBigint(): Unit = {
     val n = js.BigInt("42")
     assertTrue(n == js.BigInt("42"))
     assertTrue(n != js.BigInt("43"))

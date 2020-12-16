@@ -18,8 +18,7 @@ import org.junit.Assert._
 import scala.scalajs.js
 
 class BooleanJSTest {
-  @Test
-  def `primitive_operations_on_booleans_should_return_boolean`(): Unit = {
+  @Test def primitiveOperationsOnBooleansReturnBoolean(): Unit = {
     // FIXME: these tests are completely useless:
     // they're constant-folded by scalac. We're not at all testing those
     // operations are the IR level, nor, a fortiori, at the JS level

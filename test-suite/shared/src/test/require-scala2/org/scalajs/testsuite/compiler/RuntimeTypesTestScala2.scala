@@ -22,24 +22,24 @@ class RuntimeTypesTestScala2 {
    * but they might break at any point in the future.
    */
 
-  @Test def scala_Nothing_Array_Nothing_should_be_allowed_to_exists_and_be_castable(): Unit = {
+  @Test def scalaNothingArrayNothingCanExistAndIsCastable(): Unit = {
     val arr = Array[Nothing]()
     arr.asInstanceOf[Array[Nothing]]
   }
 
-  @Test def scala_Nothing_Array_Array_Nothing_too(): Unit = {
+  @Test def scalaNothingArrayArrayNothingToo(): Unit = {
     val arr = Array[Array[Nothing]]()
     arr.asInstanceOf[Array[Array[Nothing]]]
     // This apparently works too... Dunno why
     arr.asInstanceOf[Array[Nothing]]
   }
 
-  @Test def scala_Null_Array_Null_should_be_allowed_to_exist_and_be_castable(): Unit = {
+  @Test def scalaNullArrayNullCanExistAndIsCastable(): Unit = {
     val arr = Array.fill[Null](5)(null)
     arr.asInstanceOf[Array[Null]]
   }
 
-  @Test def scala_Null_Array_Array_Null_too(): Unit = {
+  @Test def scalaNullArrayArrayNullToo(): Unit = {
     // Was `val arr = Array.fill[Null](5, 5)(null)` but that crashes on the JVM
     val arr = new Array[Array[Null]](5)
     arr.asInstanceOf[Array[Array[Null]]]

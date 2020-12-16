@@ -24,7 +24,7 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
     """
 
   @Test
-  def noIsInstanceOnJS: Unit = {
+  def noIsInstanceOnJS(): Unit = {
 
     """
     @js.native
@@ -44,7 +44,7 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
   }
 
   @Test
-  def jsConstructorOfErrors: Unit = {
+  def jsConstructorOfErrors(): Unit = {
 
     """
     class ScalaClass
@@ -131,7 +131,7 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
   }
 
   @Test
-  def jsConstructorTagErrors: Unit = {
+  def jsConstructorTagErrors(): Unit = {
 
     """
     class ScalaClass
@@ -218,7 +218,7 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
   }
 
   @Test
-  def runtimeConstructorOfErrors: Unit = {
+  def runtimeConstructorOfErrors(): Unit = {
 
     """
     import scala.scalajs.runtime

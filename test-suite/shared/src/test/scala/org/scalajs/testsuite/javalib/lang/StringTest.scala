@@ -24,7 +24,7 @@ import org.scalajs.testsuite.utils.Platform._
 
 class StringTest {
 
-  @Test def length_test(): Unit = {
+  @Test def lengthTest(): Unit = {
     assertEquals(8, "Scala.js".length)
     assertEquals(0, "".length)
   }
@@ -106,14 +106,14 @@ class StringTest {
     assertTrue("banana".endsWith("na"))
   }
 
-  @Test def indexOf_String(): Unit = {
+  @Test def indexOfString(): Unit = {
     assertEquals(6, "Scala.js".indexOf("js"))
     assertEquals(0, "Scala.js".indexOf("Scala.js"))
     assertEquals(1, "ananas".indexOf("na"))
     assertEquals(-1, "Scala.js".indexOf("Java"))
   }
 
-  @Test def indexOf_int(): Unit = {
+  @Test def indexOfInt(): Unit = {
     assertEquals(0, "abc\uD834\uDF06def\uD834\uDF06def".indexOf(0x61))
     assertEquals(3, "abc\uD834\uDF06def\uD834\uDF06def".indexOf(0x1D306))
     assertEquals(3, "abc\uD834\uDF06def\uD834\uDF06def".indexOf(0xD834))
@@ -121,14 +121,14 @@ class StringTest {
     assertEquals(5, "abc\uD834\uDF06def\uD834\uDF06def".indexOf(0x64))
   }
 
-  @Test def lastIndexOf_String(): Unit = {
+  @Test def lastIndexOfString(): Unit = {
     assertEquals(0, "Scala.js".lastIndexOf("Scala.js"))
     assertEquals(3, "ananas".lastIndexOf("na"))
     assertEquals(-1, "Scala.js".lastIndexOf("Java"))
     assertEquals(-1, "Negative index".lastIndexOf("N", -5))
   }
 
-  @Test def lastIndexOf_int(): Unit = {
+  @Test def lastIndexOfInt(): Unit = {
     assertEquals(0, "abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0x61))
     assertEquals(8, "abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0x1D306))
     assertEquals(8, "abc\uD834\uDF06def\uD834\uDF06def".lastIndexOf(0xD834))
@@ -283,7 +283,7 @@ class StringTest {
     }
   }
 
-  @Test def split_with_char_as_argument(): Unit = {
+  @Test def splitWithCharAsArgument(): Unit = {
     assertArrayEquals(Array[AnyRef]("Scala","js"), erased("Scala.js".split('.')))
     for (i <- 0 to 32) {
       val c = i.toChar
@@ -292,7 +292,7 @@ class StringTest {
     }
   }
 
-  @Test def `startsWith(prefix, toffset) - #1603`(): Unit = {
+  @Test def startsWithPrefixToffset_Issue1603(): Unit = {
     assertTrue("Scala.js".startsWith("ala", 2))
     assertTrue("Scala.js".startsWith("Scal", 0))
 
@@ -442,7 +442,7 @@ class StringTest {
     assertEquals("foo bar", "foo bar".trim())
   }
 
-  @Test def createFromLargeCharArray_issue2553(): Unit = {
+  @Test def createFromLargeCharArray_Issue2553(): Unit = {
     val largeCharArray =
       (1 to 100000).toArray.flatMap(_ => Array('a', 'b', 'c', 'd', 'e', 'f'))
     val str = new String(largeCharArray)
@@ -453,7 +453,7 @@ class StringTest {
       assertEquals(('a' + i % 6).toChar, str.charAt(i))
   }
 
-  @Test def createFromLargeCodePointArray_issue2553(): Unit = {
+  @Test def createFromLargeCodePointArray_Issue2553(): Unit = {
     val largeCodePointArray =
       (1 to 100000).toArray.flatMap(_ => Array[Int]('a', 'b', 'c', 'd', 'e', 'f'))
     val str = new String(largeCodePointArray, 0, largeCodePointArray.length)
@@ -464,7 +464,7 @@ class StringTest {
       assertEquals(('a' + i % 6).toChar, str.charAt(i))
   }
 
-  @Test def String_CASE_INSENSITIVE_ORDERING(): Unit = {
+  @Test def stringCaseInsensitiveOrdering(): Unit = {
     def compare(s1: String, s2: String): Int =
       String.CASE_INSENSITIVE_ORDER.compare(s1, s2)
 

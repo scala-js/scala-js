@@ -24,7 +24,7 @@ object DataViewTest extends Requires.TypedArray
 
 class DataViewTest {
 
-  @Test def arrayBuffer_only_constructor(): Unit = {
+  @Test def arrayBufferOnlyConstructor(): Unit = {
     val buf = new ArrayBuffer(10)
     val view = new DataView(buf)
     assertTrue(view.isInstanceOf[DataView])
@@ -33,7 +33,7 @@ class DataViewTest {
     assertEquals(0, view.getInt8(0))
   }
 
-  @Test def arrayBuffer_and_offset_constructor(): Unit = {
+  @Test def arrayBufferAndOffsetConstructor(): Unit = {
     val buf = new ArrayBuffer(10)
     val view = new DataView(buf, 2)
     assertTrue(view.isInstanceOf[DataView])
@@ -42,7 +42,7 @@ class DataViewTest {
     assertEquals(0, view.getInt8(0))
   }
 
-  @Test def arrayBuffer_offset_and_length_constructor(): Unit = {
+  @Test def arrayBufferOffsetAndLengthConstructor(): Unit = {
     val buf = new ArrayBuffer(10)
     val view = new DataView(buf, 3, 2)
     assertTrue(view.isInstanceOf[DataView])
@@ -118,7 +118,7 @@ class DataViewTest {
     assertEquals(0x1A30B3FF, view.getInt32(1, true))
   }
 
-  @Test def getInt64_through_DataViewExt(): Unit = {
+  @Test def getInt64ThroughDataViewExt(): Unit = {
     val view = new DataView(new ArrayBuffer(9))
 
     view.setUint8(0, 0x01)
@@ -265,7 +265,7 @@ class DataViewTest {
     assertEquals(0x00, view.getUint8(7))
   }
 
-  @Test def setInt64_through_DataViewExt(): Unit = {
+  @Test def setInt64ThroughDataViewExt(): Unit = {
     val view = new DataView(new ArrayBuffer(16))
 
     view.setInt64(0, 0x01FFB3301A745CBDL, true)

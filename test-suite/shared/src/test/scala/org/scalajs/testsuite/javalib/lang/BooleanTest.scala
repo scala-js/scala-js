@@ -39,7 +39,7 @@ class BooleanTest {
     assertEquals(0, compare(true, true))
   }
 
-  @Test def should_be_a_Comparable(): Unit = {
+  @Test def compareToAnyAny(): Unit = {
     def compare(x: Any, y: Any): Int =
       x.asInstanceOf[Comparable[Any]].compareTo(y)
 
@@ -49,7 +49,7 @@ class BooleanTest {
     assertEquals(0, compare(true, true))
   }
 
-  @Test def should_parse_strings(): Unit = {
+  @Test def parseStringMethods(): Unit = {
     def test(s: String, v: Boolean): Unit = {
       assertEquals(v, JBoolean.parseBoolean(s))
       assertEquals(v, JBoolean.valueOf(s).booleanValue())

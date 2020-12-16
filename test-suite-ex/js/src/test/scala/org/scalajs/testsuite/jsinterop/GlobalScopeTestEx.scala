@@ -30,7 +30,7 @@ import org.scalajs.testsuite.utils.Platform._
 class GlobalScopeTestEx {
   import GlobalScopeTestEx._
 
-  @Test def access_dangerous_global_ref(): Unit = {
+  @Test def accessDangerousGlobalRef(): Unit = {
     assumeTrue("Assuming execution in Node.js", executingInNodeJS)
 
     nodejs_runInThisContext("""
@@ -49,14 +49,14 @@ class GlobalScopeTestEx {
     assertEquals("yet a bit more evil", GlobalScope.`$h_O`)
   }
 
-  @Test def can_still_create_an_array(): Unit = {
+  @Test def canStillCreateAnArray(): Unit = {
     val a = new Array[Int](3)
     a(1) = 42
     assertEquals(42, a(1))
     assertSame(classOf[Array[Int]], a.getClass)
   }
 
-  @Test def access_global_ref_that_serves_as_this_in_default_methods_issue2972(): Unit = {
+  @Test def accessGlobalRefThatServesAsThisInDefaultMethods_Issue2972(): Unit = {
     js.eval("""var $thiz = "evil thiz";""");
 
     trait Foo {

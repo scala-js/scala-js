@@ -41,6 +41,6 @@ class StringBuilderJSTest {
   @Test def insert(): Unit =
     assertEquals("undefined", newBuilder.insert(0, js.undefined).toString)
 
-  @Test def should_allow_string_interpolation_to_survive_null_and_undefined(): Unit =
+  @Test def stringInterpolationSupportsNullAndUndefined(): Unit =
     assertEquals("undefined", s"${js.undefined}")
 }

@@ -25,7 +25,7 @@ import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 class DoubleTest {
 
-  @Test def proper_equals(): Unit = {
+  @Test def properEquals(): Unit = {
     assertTrue(0.0.equals(0.0))
     assertTrue((-0.0).equals(-0.0))
     assertFalse(0.0.equals(-0.0))
@@ -61,7 +61,7 @@ class DoubleTest {
     }
   }
 
-  @Test def toString_with_integer_values_when_an_integer(): Unit = {
+  @Test def toStringWithIntegerValuesWhenAnInteger(): Unit = {
     if (executingInJVM) {
       assertEquals("0.0", 0.0.toString)
       assertEquals("-0.0", (-0.0).toString)
@@ -104,7 +104,7 @@ class DoubleTest {
     assertEquals("0x0.0000000000001p-1022", toHexString(Double.MinPositiveValue))
   }
 
-  @Test def should_parse_strings(): Unit = {
+  @Test def parseStringMethods(): Unit = {
     // scalastyle:off line.size.limit
 
     /* First, a selection of large categories for which test the combination of
@@ -321,7 +321,7 @@ class DoubleTest {
     // scalastyle:on line.size.limit
   }
 
-  @Test def should_reject_invalid_strings_when_parsing(): Unit = {
+  @Test def parseDoubleInvalidThrows(): Unit = {
     for (padding <- List("", "  ", (0 to 0x20).map(x => x.toChar).mkString)) {
       def pad(s: String): String = padding + s + padding
 
@@ -340,7 +340,7 @@ class DoubleTest {
     }
   }
 
-  @Test def compareTo(): Unit = {
+  @Test def compareToJavaDouble(): Unit = {
     def compare(x: Double, y: Double): Int =
       new JDouble(x).compareTo(new JDouble(y))
 
@@ -357,7 +357,7 @@ class DoubleTest {
     assertTrue(compare(0.0, -0.0) > 0)
   }
 
-  @Test def compareToConvertedFromInt_issue_3085(): Unit = {
+  @Test def compareToConvertedFromInt_Issue3085(): Unit = {
     @noinline
     def foo(x: Int): Unit =
       bar(x.toDouble)
@@ -375,7 +375,7 @@ class DoubleTest {
     foo(5)
   }
 
-  @Test def should_be_a_Comparable(): Unit = {
+  @Test def compareTo(): Unit = {
     def compare(x: Any, y: Any): Int =
       x.asInstanceOf[Comparable[Any]].compareTo(y)
 
@@ -392,7 +392,7 @@ class DoubleTest {
     assertTrue(compare(0.0, -0.0) > 0)
   }
 
-  @Test def `isInfinite_- #515`(): Unit = {
+  @Test def isInfinite_Issue515(): Unit = {
     assertTrue(Double.PositiveInfinity.isInfinite)
     assertTrue(Double.NegativeInfinity.isInfinite)
     assertTrue((1.0/0).isInfinite)

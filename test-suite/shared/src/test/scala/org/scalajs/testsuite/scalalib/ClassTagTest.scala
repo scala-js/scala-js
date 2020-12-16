@@ -24,7 +24,7 @@ import org.scalajs.testsuite.utils.Platform._
 
 class ClassTagTest {
 
-  @Test def apply_should_get_the_existing_instances_for_predefined_ClassTags(): Unit = {
+  @Test def applyReturnsExistingInstancesForPredefinedClassTags(): Unit = {
     assertSame(ClassTag.Byte, ClassTag(classOf[Byte]))
     assertSame(ClassTag.Short, ClassTag(classOf[Short]))
     assertSame(ClassTag.Char, ClassTag(classOf[Char]))

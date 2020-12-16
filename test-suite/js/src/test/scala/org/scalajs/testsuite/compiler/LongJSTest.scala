@@ -23,12 +23,12 @@ import org.scalajs.testsuite.utils.Platform._
 
 /** Tests the re-patching of native longs */
 class LongJSTest {
-  @Test def `should_convert_to_js.Any`(): Unit = {
+  @Test def longToJSAny(): Unit = {
     val x = 5: js.Any
     assertEquals(x, 5L: js.Any)
   }
 
-  @Test def should_correctly_implement_asInstanceOf_Longs_negative(): Unit = {
+  @Test def asInstanceOfIntWithLongAnyThrows(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
 
     val dyn: Any = 5L

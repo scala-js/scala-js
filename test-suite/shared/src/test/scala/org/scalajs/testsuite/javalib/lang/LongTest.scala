@@ -108,7 +108,7 @@ class LongTest {
     assertEquals(32, JLong.bitCount(-350003829229342837L))
   }
 
-  @Test def compareTo(): Unit = {
+  @Test def compareToJavaLong(): Unit = {
     def compare(x: Long, y: Long): Int =
       new JLong(x).compareTo(new JLong(y))
 
@@ -118,7 +118,7 @@ class LongTest {
     assertEquals(0, compare(3L, 3L))
   }
 
-  @Test def should_be_a_Comparable(): Unit = {
+  @Test def compareTo(): Unit = {
     def compare(x: Any, y: Any): Int =
       x.asInstanceOf[Comparable[Any]].compareTo(y)
 
@@ -128,7 +128,7 @@ class LongTest {
     assertEquals(0, compare(3L, 3L))
   }
 
-  @Test def should_parse_strings(): Unit = {
+  @Test def parseString(): Unit = {
     def test(s: String, v: Long): Unit = {
       assertEquals(v, JLong.parseLong(s))
       assertEquals(v, JLong.valueOf(s).longValue())
@@ -153,7 +153,7 @@ class LongTest {
         9497394973L)
   }
 
-  @Test def should_reject_invalid_strings_when_parsing(): Unit = {
+  @Test def parseStringInvalidThrows(): Unit = {
     def test(s: String): Unit =
       expectThrows(classOf[NumberFormatException], JLong.parseLong(s))
 
@@ -162,7 +162,7 @@ class LongTest {
     test("")
   }
 
-  @Test def should_parse_strings_in_base_16(): Unit = {
+  @Test def parseStringBase16(): Unit = {
     def test(s: String, v: Long): Unit = {
       assertEquals(v, JLong.parseLong(s, 16))
       assertEquals(v, JLong.valueOf(s, 16).longValue())
@@ -184,7 +184,7 @@ class LongTest {
     test("\uff42\uff46\uff43\u19d9\u0f24\u0c6f\u1c47\ua6233", 51482236723L)
   }
 
-  @Test def should_parse_strings_in_bases_2_to_36(): Unit = {
+  @Test def parseStringBase2To36(): Unit = {
     def test(radix: Int, s: String, v: Long): Unit = {
       assertEquals(v, JLong.parseLong(s, radix))
       assertEquals(v, JLong.valueOf(s, radix).longValue())
@@ -205,7 +205,7 @@ class LongTest {
     }
   }
 
-  @Test def should_reject_parsing_strings_when_base_less_than_2_or_base_larger_than_36(): Unit = {
+  @Test def parseStringsBaseLessThanTwoOrBaseLargerThan36Throws(): Unit = {
     def test(s: String, radix: Int): Unit = {
       expectThrows(classOf[NumberFormatException], JLong.parseLong(s, radix))
       expectThrows(classOf[NumberFormatException], JLong.valueOf(s, radix).longValue())
@@ -224,7 +224,7 @@ class LongTest {
     test("-012", -10L)
   }
 
-  @Test def testDecodeInvalid(): Unit = {
+  @Test def decodeStringInvalidThrows(): Unit = {
     def test(s: String): Unit =
       assertThrows(classOf[NumberFormatException], JLong.decode(s))
 
@@ -251,7 +251,7 @@ class LongTest {
     test("-01000000000000000000001")
   }
 
-  @Test def toString_without_radix(): Unit = {
+  @Test def testToString(): Unit = {
     assertEquals("2147483647", Int.MaxValue.toLong.toString)
     assertEquals("-50", (-50L).toString)
     assertEquals("-1000000000", (-1000000000L).toString)
@@ -274,7 +274,7 @@ class LongTest {
     assertEquals("9223372036854775807", JLong.toString(JLong.MAX_VALUE))
   }
 
-  @Test def toString_with_radix(): Unit = {
+  @Test def toStringRadix(): Unit = {
     /* Ported from
      * https://github.com/gwtproject/gwt/blob/master/user/test/com/google/gwt/emultest/java/lang/JLongTest.java
      */
@@ -600,7 +600,7 @@ class LongTest {
     test("3w5e0eru6osu5", -1746501839363L, 36)
   }
 
-  @Test def parseUnsignedLong_failure_cases(): Unit = {
+  @Test def parseUnsignedLongFailureCases(): Unit = {
     def test(s: String, radix: Int = 10): Unit =
       expectThrows(classOf[NumberFormatException], JLong.parseUnsignedLong(s, radix))
 
@@ -627,7 +627,7 @@ class LongTest {
     test("3w5e11264sgsgvmqoijs34qsdf1ssfmlkjesl", 36)
   }
 
-  @Test def hashCode_test(): Unit = {
+  @Test def hashCodeTest(): Unit = {
     assertEquals(0, JLong.hashCode(0L))
     assertEquals(1, JLong.hashCode(1L))
     assertEquals(0, JLong.hashCode(-1L))

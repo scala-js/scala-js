@@ -74,7 +74,7 @@ class SpecialTest {
 
   // scala.scalajs.js.special.delete
 
-  @Test def should_provide_an_equivalent_of_the_JS_delete_keyword_issue_255(): Unit = {
+  @Test def equivalentOfTheJSDeleteKeyword_Issue255(): Unit = {
     val obj = js.Dynamic.literal(foo = 42, bar = "foobar")
 
     assertEquals(42, obj.foo)
@@ -84,7 +84,7 @@ class SpecialTest {
     assertEquals("foobar", obj.bar)
   }
 
-  @Test def should_behave_as_specified_when_deleting_a_non_configurable_property_issue_461_issue_679(): Unit = {
+  @Test def allowDeletingNonConfigurableProperty_Issue461_Issue679(): Unit = {
     val obj = js.Dynamic.literal()
     js.Object.defineProperty(obj, "nonconfig",
         js.Dynamic.literal(value = 4, writable = false).asInstanceOf[js.PropertyDescriptor])
@@ -93,12 +93,12 @@ class SpecialTest {
     assertEquals(4, obj.nonconfig)
   }
 
-  @Test def should_treat_delete_as_a_statement_issue_907(): Unit = {
+  @Test def deleteAsStatement_Issue907(): Unit = {
     val obj = js.Dynamic.literal(a = "A")
     js.special.delete(obj, "a")
   }
 
-  @Test def should_desugar_arguments_to_delete_statements_issue_908(): Unit = {
+  @Test def desugarArgumentsToDeleteStatements_Issue908(): Unit = {
     val kh = js.Dynamic.literal(key = "a").asInstanceOf[KeyHolder]
     val obj = js.Dynamic.literal(a = "A")
     def a[T](foo: String): T = obj.asInstanceOf[T]
@@ -107,7 +107,7 @@ class SpecialTest {
 
   // js.special.fileLevelThis
 
-  @Test def fileLevelThis_can_be_used_to_detect_the_global_object(): Unit = {
+  @Test def fileLevelThisCanBeUsedToDetectTheGlobalObject(): Unit = {
     assumeTrue(Platform.isNoModule)
     val globalObject = js.special.fileLevelThis.asInstanceOf[js.Dynamic]
 
@@ -116,7 +116,7 @@ class SpecialTest {
 
   // js.special.debugger
 
-  @Test def should_support_debugger_statements_through_the_whole_pipeline_issue_1402(): Unit = {
+  @Test def debuggerStatementsThroughTheWholePipeline_Issue1402(): Unit = {
     /* A function that hopefully persuades the optimizer not to optimize
      * we need a debugger statement that is unreachable, but not eliminated.
      */

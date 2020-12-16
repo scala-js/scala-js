@@ -23,7 +23,7 @@ class LinkedHashSetTest extends HashSetTest {
 
   override def factory: LinkedHashSetFactory = new LinkedHashSetFactory
 
-  @Test def should_iterate_over_elements_in_an_ordered_manner(): Unit = {
+  @Test def iterateInOrder(): Unit = {
     val hs = factory.empty[String]
 
     val l1 = TrivialImmutableCollection("ONE", "TWO", null)

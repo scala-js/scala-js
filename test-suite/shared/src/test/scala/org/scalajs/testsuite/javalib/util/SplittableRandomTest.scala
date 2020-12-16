@@ -21,7 +21,7 @@ import org.scalajs.testsuite.utils.AssertThrows._
 
 class SplittableRandomTest {
 
-  @Test def should_correctly_implement_nextLong(): Unit = {
+  @Test def nextLong(): Unit = {
     val sr1 = new SplittableRandom(205620432625028L)
     assertEquals(-546649510716590878L, sr1.nextLong())
     assertEquals(5574037117696891406L, sr1.nextLong())
@@ -47,7 +47,7 @@ class SplittableRandomTest {
     assertEquals(-110482401893286265L, sr2.nextLong())
   }
 
-  @Test def should_correctly_implement_nextInt(): Unit = {
+  @Test def nextInt(): Unit = {
     val sr1 = new SplittableRandom(-84638)
     assertEquals(962946964, sr1.nextInt())
     assertEquals(1723227640, sr1.nextInt())
@@ -73,7 +73,7 @@ class SplittableRandomTest {
     assertEquals(-42114979, sr2.nextInt())
   }
 
-  @Test def should_correctly_implement_nextDouble(): Unit = {
+  @Test def nextDouble(): Unit = {
     val sr1 = new SplittableRandom(-45)
     assertEquals(0.8229662358649753, sr1.nextDouble(), 0.0)
     assertEquals(0.43324117570991283, sr1.nextDouble(), 0.0)
@@ -99,7 +99,7 @@ class SplittableRandomTest {
     assertEquals(0.6454709437764473, sr2.nextDouble(), 0.0)
   }
 
-  @Test def should_correctly_implement_nextBoolean(): Unit = {
+  @Test def nextBoolean(): Unit = {
     val sr1 = new SplittableRandom(4782934)
     assertFalse(sr1.nextBoolean())
     assertFalse(sr1.nextBoolean())
@@ -125,7 +125,7 @@ class SplittableRandomTest {
     assertTrue(sr2.nextBoolean())
   }
 
-  @Test def should_correctly_implement_split(): Unit = {
+  @Test def split(): Unit = {
     val sr1 = new SplittableRandom(205620432625028L).split()
     assertEquals(-2051870635339219700L, sr1.nextLong())
     assertEquals(-4512002368431042276L, sr1.nextLong())

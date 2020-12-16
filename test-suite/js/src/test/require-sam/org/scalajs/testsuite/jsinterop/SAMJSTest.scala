@@ -19,7 +19,7 @@ class SAMJSTest {
 
   import SAMJSTest._
 
-  @Test def samNestedInAnonJSClass_issue3264(): Unit = {
+  @Test def samNestedInAnonJSClass_Issue3264(): Unit = {
     val outer = new SAMInAnonJSClass_ParentJSClass {
       def foo(x: Int): Int = {
         val innerSAM: SAMInAnonJSClass_MySAM = _ * 2
