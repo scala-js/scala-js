@@ -550,8 +550,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     val namespace = method.flags.namespace
 
     val methodFun0WithGlobals = {
-      if (namespace != MemberNamespace.Constructor &&
-          namespace != MemberNamespace.Private) {
+      if (namespace.isStatic) {
         desugarToFunction(className, method.args, methodBody, method.resultType)
       } else {
         desugarToFunctionWithExplicitThis(className, method.args, methodBody,
@@ -573,14 +572,12 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       }
 
       val field = namespace match {
+        case MemberNamespace.Public            => "f"
         case MemberNamespace.Private           => "p"
         case MemberNamespace.PublicStatic      => "s"
         case MemberNamespace.PrivateStatic     => "ps"
         case MemberNamespace.Constructor       => "ct"
         case MemberNamespace.StaticConstructor => "sct"
-
-        case MemberNamespace.Public =>
-          throw new AssertionError("not a static-like method")
       }
 
       val methodName = method.name.name
@@ -611,30 +608,6 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         js.Assign(genPropSelect(targetObject, propName), methodFun)
       }
     }
-  }
-
-  /** Generates a default method. */
-  def genDefaultMethod(className: ClassName, method: MethodDef)(
-      implicit moduleContext: ModuleContext,
-      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
-    implicit val pos = method.pos
-
-    val methodFunWithGlobals = desugarToFunctionWithExplicitThis(
-        className, method.args, method.body.get, method.resultType)
-
-    methodFunWithGlobals.flatMap { methodFun =>
-      val methodName = method.name.name
-      globalFunctionDef("f", (className, methodName), methodFun.args, methodFun.body,
-          method.originalName.orElse(methodName))
-    }
-  }
-
-  /** Generates an instance method of a hijacked class. */
-  def genHijackedMethod(className: ClassName, method: MethodDef)(
-      implicit moduleContext: ModuleContext,
-      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
-    // We abuse `genDefaultMethod` as it does everything the way we want
-    genDefaultMethod(className, method)
   }
 
   /** Generates a property. */
