@@ -95,6 +95,10 @@ private[emitter] trait GlobalKnowledge {
    */
   def getModule(className: ClassName): ModuleID
 
+  /** Whether the given public non-static method is always called as resolved. */
+  def isPublicMethodAlwaysResolved(className: ClassName,
+      methodName: MethodName): Boolean
+
   /** Whether the given public non-static method exists on the given representative class.
    *
    *  @returns false if the class or the method does not exist.

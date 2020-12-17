@@ -210,6 +210,11 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     def getModule(className: ClassName): ModuleID =
       classes(className).askModule(this)
 
+    def isPublicMethodAlwaysResolved(className: ClassName,
+        methodName: MethodName): Boolean = {
+      classes(className).askIsPublicMethodAlwaysResolved(this, methodName)
+    }
+
     def representativeClassHasPublicMethod(className: ClassName,
         methodName: MethodName): Boolean = {
       specialInfo.askRepresentativeClassHasPublicMethod(this, className, methodName)
@@ -245,6 +250,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private var superClass = computeSuperClass(initClass)
     private var fieldDefs = computeFieldDefs(initClass)
     private var staticFieldMirrors = initStaticFieldMirrors
+    private var alwaysResolvedPublicMethods = initClass.alwaysResolvedPublicMethods
     private var module = initModule
 
     private val isInterfaceAskers = mutable.Set.empty[Invalidatable]
@@ -257,6 +263,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private val superClassAskers = mutable.Set.empty[Invalidatable]
     private val fieldDefsAskers = mutable.Set.empty[Invalidatable]
     private val staticFieldMirrorsAskers = mutable.Set.empty[Invalidatable]
+    private val alwaysResolvedPublicMethodsAskers = mutable.Set.empty[Invalidatable]
     private val moduleAskers = mutable.Set.empty[Invalidatable]
 
     def update(linkedClass: LinkedClass, newHasInlineableInit: Boolean,
@@ -325,6 +332,12 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       if (newModule != module) {
         module = newModule
         invalidateAskers(moduleAskers)
+      }
+
+      val newAlwaysResolvedPublicMethods = linkedClass.alwaysResolvedPublicMethods
+      if (newAlwaysResolvedPublicMethods != alwaysResolvedPublicMethods) {
+        alwaysResolvedPublicMethods = newAlwaysResolvedPublicMethods
+        invalidateAskers(alwaysResolvedPublicMethodsAskers)
       }
     }
 
@@ -445,6 +458,13 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       }
     }
 
+    def askIsPublicMethodAlwaysResolved(invalidatable: Invalidatable,
+        methodName: MethodName): Boolean = {
+      invalidatable.registeredTo(this)
+      alwaysResolvedPublicMethodsAskers += invalidatable
+      alwaysResolvedPublicMethods.contains(methodName)
+    }
+
     def unregister(invalidatable: Invalidatable): Unit = {
       isInterfaceAskers -= invalidatable
       hasInlineableInitAskers -= invalidatable
@@ -457,6 +477,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       fieldDefsAskers -= invalidatable
       staticFieldMirrorsAskers -= invalidatable
       moduleAskers -= invalidatable
+      alwaysResolvedPublicMethodsAskers -= invalidatable
     }
 
     /** Call this when we invalidate all caches. */
@@ -472,6 +493,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       fieldDefsAskers.clear()
       staticFieldMirrorsAskers.clear()
       moduleAskers.clear()
+      alwaysResolvedPublicMethodsAskers.clear()
     }
   }
 

@@ -2162,10 +2162,18 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
 
         case ResolvedApply.AsTree(canBeApply, tree) =>
-          // TODO Exploit the information here
-          if (canBeApply) {
-            val apply = Apply(tree.flags, tree.receiver, tree.method,
-                tree.args)(tree.tpe)(tree.pos)
+          val ApplyStatically(flags, receiver, className, method, args) = tree
+
+          if (flags.isConstructor || flags.isPrivate) {
+            transformExpr(tree, preserveChar = true)
+          } else if (HijackedClasses.contains(className) ||
+              globalKnowledge.isInterface(className) ||
+              globalKnowledge.isPublicMethodAlwaysResolved(className, method.name)) {
+            val newReceiver = transformExpr(receiver, preserveChar = false)
+            val newArgs = transformTypedArgs(method.name, args)
+            genApplyStaticLike("f", className, method, newReceiver :: newArgs)
+          } else if (canBeApply) {
+            val apply = Apply(flags, receiver, method, args)(tree.tpe)(tree.pos)
             transformExpr(apply, preserveChar = true)
           } else {
             transformExpr(tree, preserveChar = true)

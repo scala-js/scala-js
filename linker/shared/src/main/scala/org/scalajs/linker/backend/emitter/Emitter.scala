@@ -383,7 +383,8 @@ final class Emitter(config: Emitter.Config) {
       val emitAsStaticLike = {
         namespace != MemberNamespace.Public ||
         kind == ClassKind.Interface ||
-        kind == ClassKind.HijackedClass
+        kind == ClassKind.HijackedClass ||
+        linkedClass.alwaysResolvedPublicMethods.contains(methodDef.methodName)
       }
 
       if (emitAsStaticLike) {
@@ -479,7 +480,8 @@ final class Emitter(config: Emitter.Config) {
       // Normal methods
       val memberMethodsWithGlobals = for {
         m <- linkedMethodsAndBridges
-        if m.value.flags.namespace == MemberNamespace.Public
+        if m.value.flags.namespace == MemberNamespace.Public &&
+            !linkedClass.alwaysResolvedPublicMethods.contains(m.value.methodName)
       } yield {
         val methodCache =
           classCache.getMemberMethodCache(m.value.methodName)
