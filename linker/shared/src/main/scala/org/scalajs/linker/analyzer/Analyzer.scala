@@ -639,6 +639,12 @@ private final class Analyzer(config: CommonPhaseConfig,
     val publicMethodInfos: mutable.Map[MethodName, MethodInfo] =
       methodInfos(MemberNamespace.Public)
 
+    def alwaysResolvedPublicMethods: scala.collection.Set[MethodName] = {
+      publicMethodInfos.valuesIterator.filter { m =>
+        m.isReachable && !m.isReachableNonResolved
+      }.map(_.methodName).toSet
+    }
+
     def lookupAbstractMethod(methodName: MethodName): MethodInfo = {
       val candidatesIterator = for {
         ancestor <- ancestors.iterator
@@ -989,7 +995,7 @@ private final class Analyzer(config: CommonPhaseConfig,
           } {
             val methodName = logEntry._1
             implicit val from = logEntry._2
-            callMethodResolved(methodName)
+            callMethodForInstantiated(methodName)
           }
         } else {
           assert(isJSClass || isNativeJSClass)
@@ -1063,7 +1069,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       methodsCalledLog ::= ((methodName, from))
       val subclasses = instantiatedSubclasses
       for (subclass <- subclasses)
-        subclass.callMethodResolved(methodName)
+        subclass.callMethodForInstantiated(methodName)
 
       if (checkAbstractReachability) {
         /* Also lookup the method as abstract from this class, to make sure it
@@ -1076,7 +1082,7 @@ private final class Analyzer(config: CommonPhaseConfig,
       }
     }
 
-    private def callMethodResolved(methodName: MethodName)(
+    private def callMethodForInstantiated(methodName: MethodName)(
         implicit from: From): Unit = {
       if (methodName.isReflectiveProxy) {
         tryLookupReflProxyMethod(methodName)(_.reach(this))
@@ -1100,6 +1106,13 @@ private final class Analyzer(config: CommonPhaseConfig,
         lookupStaticLikeMethod(namespace, methodName).reachStatic()
       else
         lookupMethod(methodName).reachStatic()
+    }
+
+    def callMethodResolved(methodName: MethodName)(
+        implicit from: From): Unit = {
+      assert(!methodName.isReflectiveProxy,
+          s"Trying to call resolved the refl proxy $this.$methodName")
+      lookupStaticLikeMethod(MemberNamespace.Public, methodName).reachResolved()
     }
 
     def useJSNativeMember(name: MethodName)(
@@ -1137,6 +1150,7 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     var isAbstractReachable: Boolean = false
     var isReachable: Boolean = false
+    var isReachableNonResolved: Boolean = false // for non-public methods, this is meaningless and arbitrary
 
     var calledFrom: List[From] = Nil
     var instantiatedSubclasses: List[ClassInfo] = Nil
@@ -1160,6 +1174,11 @@ private final class Analyzer(config: CommonPhaseConfig,
       s"$owner.${methodName.simpleName.nameString}"
 
     def reachStatic()(implicit from: From): Unit = {
+      reachResolved()
+      isReachableNonResolved = true
+    }
+
+    def reachResolved()(implicit from: From): Unit = {
       assert(!isAbstract,
           s"Trying to reach statically the abstract method $this")
 
@@ -1203,6 +1222,7 @@ private final class Analyzer(config: CommonPhaseConfig,
         isReachable = true
         doReach()
       }
+      isReachableNonResolved = true
     }
 
     private def checkExistent()(implicit from: From) = {
@@ -1326,6 +1346,16 @@ private final class Analyzer(config: CommonPhaseConfig,
       lookupClass(className) { classInfo =>
         for (methodName <- methods)
           classInfo.callMethodStatically(methodName)
+      }
+    }
+
+    val methodsCalledResolvedIterator = data.methodsCalledResolved.iterator
+    while (methodsCalledResolvedIterator.hasNext) {
+      val (className, methods) = methodsCalledResolvedIterator.next()
+      staticDependencies += className
+      lookupClass(className) { classInfo =>
+        for (methodName <- methods)
+          classInfo.callMethodResolved(methodName)
       }
     }
 

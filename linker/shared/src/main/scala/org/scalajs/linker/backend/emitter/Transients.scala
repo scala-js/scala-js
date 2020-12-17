@@ -32,6 +32,9 @@ object Transients {
    *  This is useful because, ironically, in JavaScript a monomorphic "virtual"
    *  method call `x.m()` is faster than its "statified" variant
    *  `Class.prototype.m.call(x)`).
+   *
+   *  This wrapper is meant for calls to methods in the `Public` namespace.
+   *  Although it is not an error to use it for other methods, it is pointless.
    */
   final case class ResolvedApply(canBeApply: Boolean, tree: ApplyStatically)
       extends Transient.Value {

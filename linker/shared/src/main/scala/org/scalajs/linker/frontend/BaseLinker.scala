@@ -214,6 +214,7 @@ final class BaseLinker(config: CommonPhaseConfig) {
         hasInstances = analyzerInfo.isAnySubclassInstantiated,
         hasInstanceTests = analyzerInfo.areInstanceTestsUsed,
         hasRuntimeTypeInfo = analyzerInfo.isDataAccessed,
+        alwaysResolvedPublicMethods = Set.empty,
         staticDependencies = analyzerInfo.staticDependencies.toSet,
         externalDependencies = analyzerInfo.externalDependencies.toSet,
         dynamicDependencies = analyzerInfo.dynamicDependencies.toSet,

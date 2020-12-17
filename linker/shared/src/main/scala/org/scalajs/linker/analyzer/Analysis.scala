@@ -68,6 +68,8 @@ object Analysis {
     def isAnyPrivateJSFieldUsed: Boolean
     def jsNativeMembersUsed: scala.collection.Set[MethodName]
 
+    def alwaysResolvedPublicMethods: scala.collection.Set[MethodName]
+
     def staticDependencies: scala.collection.Set[ClassName]
     def externalDependencies: scala.collection.Set[String]
     def dynamicDependencies: scala.collection.Set[ClassName]

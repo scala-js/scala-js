@@ -80,6 +80,7 @@ object Infos {
       val staticFieldsWritten: Map[ClassName, List[FieldName]],
       val methodsCalled: Map[ClassName, List[MethodName]],
       val methodsCalledStatically: Map[ClassName, List[NamespacedMethodName]],
+      val methodsCalledResolved: Map[ClassName, List[MethodName]],
       val methodsCalledDynamicImport: Map[ClassName, List[NamespacedMethodName]],
       val jsNativeMembersUsed: Map[ClassName, List[MethodName]],
       /** For a Scala class, it is instantiated with a `New`; for a JS class,
@@ -95,7 +96,7 @@ object Infos {
   object ReachabilityInfo {
     val Empty: ReachabilityInfo = {
       new ReachabilityInfo(Map.empty, Map.empty, Map.empty, Map.empty,
-          Map.empty, Map.empty, Map.empty, Nil, Nil, Nil, Nil, Nil)
+          Map.empty, Map.empty, Map.empty, Map.empty, Nil, Nil, Nil, Nil, Nil)
     }
   }
 
@@ -151,6 +152,7 @@ object Infos {
     private val staticFieldsWritten = mutable.Map.empty[ClassName, mutable.Set[FieldName]]
     private val methodsCalled = mutable.Map.empty[ClassName, mutable.Set[MethodName]]
     private val methodsCalledStatically = mutable.Map.empty[ClassName, mutable.Set[NamespacedMethodName]]
+    private val methodsCalledResolved = mutable.Map.empty[ClassName, mutable.Set[MethodName]]
     private val methodsCalledDynamicImport = mutable.Map.empty[ClassName, mutable.Set[NamespacedMethodName]]
     private val jsNativeMembersUsed = mutable.Map.empty[ClassName, mutable.Set[MethodName]]
     private val instantiatedClasses = mutable.Set.empty[ClassName]
@@ -223,6 +225,11 @@ object Infos {
     def addMethodCalledStatically(cls: ClassName,
         method: NamespacedMethodName): this.type = {
       methodsCalledStatically.getOrElseUpdate(cls, mutable.Set.empty) += method
+      this
+    }
+
+    def addMethodCalledResolved(cls: ClassName, method: MethodName): this.type = {
+      methodsCalledResolved.getOrElseUpdate(cls, mutable.Set.empty) += method
       this
     }
 
@@ -321,6 +328,7 @@ object Infos {
           staticFieldsWritten = toMapOfLists(staticFieldsWritten),
           methodsCalled = toMapOfLists(methodsCalled),
           methodsCalledStatically = toMapOfLists(methodsCalledStatically),
+          methodsCalledResolved = toMapOfLists(methodsCalledResolved),
           methodsCalledDynamicImport = toMapOfLists(methodsCalledDynamicImport),
           jsNativeMembersUsed = toMapOfLists(jsNativeMembersUsed),
           instantiatedClasses = instantiatedClasses.toList,
@@ -585,10 +593,13 @@ object Infos {
             case Transient(ResolvedApply(_, innerTree)) =>
               // This should only happen when called from the Refiner
               val ApplyStatically(flags, _, className, method, _) = innerTree
-              val namespace = MemberNamespace.forNonStaticCall(flags)
-              builder.addMethodCalledStatically(className,
-                  NamespacedMethodName(namespace, method.name))
-              super.traverse(innerTree)
+              if (flags.isConstructor || flags.isPrivate) {
+                // We don't care about the resolved info for non-Public methods
+                traverse(innerTree)
+              } else {
+                builder.addMethodCalledResolved(className, method.name)
+                super.traverse(innerTree)
+              }
 
             case VarDef(_, _, vtpe, _, _) =>
               builder.maybeAddReferencedClass(vtpe)

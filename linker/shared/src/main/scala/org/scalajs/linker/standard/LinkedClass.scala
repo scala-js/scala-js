@@ -14,7 +14,7 @@ package org.scalajs.linker.standard
 
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.{ClassKind, Position}
-import org.scalajs.ir.Names.ClassName
+import org.scalajs.ir.Names.{ClassName, MethodName}
 
 /** A ClassDef after linking.
  *
@@ -51,6 +51,7 @@ final class LinkedClass(
     val hasInstances: Boolean,
     val hasInstanceTests: Boolean,
     val hasRuntimeTypeInfo: Boolean,
+    val alwaysResolvedPublicMethods: Set[MethodName],
 
     val staticDependencies: Set[ClassName],
     val externalDependencies: Set[String],
@@ -86,6 +87,7 @@ final class LinkedClass(
       hasInstances: Boolean,
       hasInstanceTests: Boolean,
       hasRuntimeTypeInfo: Boolean,
+      alwaysResolvedPublicMethods: Set[MethodName],
       staticDependencies: Set[ClassName],
       externalDependencies: Set[String],
       dynamicDependencies: Set[ClassName]
@@ -98,6 +100,7 @@ final class LinkedClass(
         hasInstances = hasInstances,
         hasInstanceTests = hasInstanceTests,
         hasRuntimeTypeInfo = hasRuntimeTypeInfo,
+        alwaysResolvedPublicMethods = alwaysResolvedPublicMethods,
         staticDependencies = staticDependencies,
         externalDependencies = externalDependencies,
         dynamicDependencies = dynamicDependencies
@@ -128,6 +131,7 @@ final class LinkedClass(
       hasInstances: Boolean = this.hasInstances,
       hasInstanceTests: Boolean = this.hasInstanceTests,
       hasRuntimeTypeInfo: Boolean = this.hasRuntimeTypeInfo,
+      alwaysResolvedPublicMethods: Set[MethodName] = this.alwaysResolvedPublicMethods,
       staticDependencies: Set[ClassName] = this.staticDependencies,
       externalDependencies: Set[String] = this.externalDependencies,
       dynamicDependencies: Set[ClassName] = this.dynamicDependencies,
@@ -150,6 +154,7 @@ final class LinkedClass(
         hasInstances,
         hasInstanceTests,
         hasRuntimeTypeInfo,
+        alwaysResolvedPublicMethods,
         staticDependencies,
         externalDependencies,
         dynamicDependencies,
