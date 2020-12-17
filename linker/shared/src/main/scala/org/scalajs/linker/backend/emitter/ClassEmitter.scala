@@ -803,13 +803,10 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         }
       }
 
-      val needIsFunction = !isHijackedClass && (isExpression match {
-        case js.BinaryOp(JSBinaryOp.instanceof, _, _) =>
-          // This is a simple `instanceof`. It will always be inlined at call site.
-          false
-        case _ =>
-          true
-      })
+      val needIsFunction = !isHijackedClass && {
+        !tree.kind.isClass ||
+        globalKnowledge.isAncestorOfHijackedClass(className)
+      }
 
       val createIsStatWithGlobals = if (needIsFunction) {
         globalFunctionDef("is", className, List(objParam), js.Return(isExpression))
