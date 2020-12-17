@@ -585,8 +585,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
       val methodName = method.name.name
 
-      globalVarDef(field, (className, methodName), methodFun,
-          method.originalName.orElse(methodName))
+      globalFunctionDef(field, (className, methodName), methodFun.args,
+          methodFun.body, method.originalName.orElse(methodName))
     }
   }
 
