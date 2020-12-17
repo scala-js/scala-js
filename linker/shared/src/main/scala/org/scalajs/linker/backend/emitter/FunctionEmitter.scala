@@ -1027,6 +1027,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               case ApplyStatically(flags, receiver, className, method, args) if noExtractYet =>
                 val newArgs = recs(args, allowUnpure)
                 ApplyStatically(flags, rec(receiver, allowUnpure), className, method, newArgs)(arg.tpe)
+              case ResolvedApply.AsTree(canBeApply,
+                  ApplyStatically(flags, receiver, className, method, args)) if noExtractYet =>
+                val newArgs = recs(args, allowUnpure)
+                ResolvedApply.AsTree(canBeApply,
+                    ApplyStatically(flags, rec(receiver, allowUnpure), className, method, newArgs)(arg.tpe))
               case ApplyStatic(flags, className, method, args) if noExtractYet =>
                 ApplyStatic(flags, className, method, recs(args, allowUnpure))(arg.tpe)
               case ApplyDynamicImport(flags, className, method, args) if noExtractYet =>
@@ -1239,6 +1244,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           allowSideEffects && test(arg)
         case Transient(CallHelper(helper, args)) =>
           allowSideEffects && (args forall test)
+
+        // Informational wrapper for Scala expressions
+        case ResolvedApply.AsTree(_, tree) =>
+          test(tree)
 
         // Array access can throw ArrayIndexOutOfBounds exception
         case ArraySelect(array, index) =>
@@ -1624,6 +1633,13 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           unnest(receiver, args) { (newReceiver, newArgs, env) =>
             redo(ApplyStatically(flags, newReceiver, className, method,
                 newArgs)(rhs.tpe))(env)
+          }
+
+        case ResolvedApply.AsTree(canBeApply,
+            ApplyStatically(flags, receiver, className, method, args)) =>
+          unnest(receiver, args) { (newReceiver, newArgs, env) =>
+            redo(ResolvedApply.AsTree(canBeApply,
+                ApplyStatically(flags, newReceiver, className, method, newArgs)(rhs.tpe)))(env)
           }
 
         case ApplyStatic(flags, className, method, args) =>
@@ -2143,6 +2159,16 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             val fun =
               globalVar("c", className).prototype DOT transformMethodIdent(method)
             js.Apply(fun DOT "call", transformedArgs)
+          }
+
+        case ResolvedApply.AsTree(canBeApply, tree) =>
+          // TODO Exploit the information here
+          if (canBeApply) {
+            val apply = Apply(tree.flags, tree.receiver, tree.method,
+                tree.args)(tree.tpe)(tree.pos)
+            transformExpr(apply, preserveChar = true)
+          } else {
+            transformExpr(tree, preserveChar = true)
           }
 
         case ApplyStatic(flags, className, method, args) =>

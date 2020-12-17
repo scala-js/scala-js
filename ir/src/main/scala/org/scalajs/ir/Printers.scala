@@ -100,7 +100,7 @@ object Printers {
       }
     }
 
-    protected def printArgs(args: List[TreeOrJSSpread]): Unit = {
+    def printArgs(args: List[TreeOrJSSpread]): Unit = {
       printRow(args, "(", ", ", ")")
     }
 

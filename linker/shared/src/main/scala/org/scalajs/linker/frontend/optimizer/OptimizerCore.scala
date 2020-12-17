@@ -32,7 +32,7 @@ import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable.RuntimeClassNameMapperImpl
 import org.scalajs.linker.standard._
 import org.scalajs.linker.backend.emitter.LongImpl
-import org.scalajs.linker.backend.emitter.Transients.CallHelper
+import org.scalajs.linker.backend.emitter.Transients._
 
 /** Optimizer core.
  *  Designed to be "mixed in" [[IncOptimizer#MethodImpl#Optimizer]].
@@ -1437,9 +1437,20 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
     val methodName = methodIdent.name
 
-    def treeNotInlined = {
-      cont(PreTransTree(Apply(flags, finishTransformExpr(treceiver), methodIdent,
-          targs.map(finishTransformExpr))(resultType), RefinedType(resultType)))
+    def treeNotResolved = {
+      cont(PreTransTree(
+          Apply(flags, finishTransformExpr(treceiver), methodIdent,
+              targs.map(finishTransformExpr))(resultType),
+          RefinedType(resultType)))
+    }
+
+    def treeNotInlined(resolvedClassName: ClassName) = {
+      val innerTree = ApplyStatically(flags, finishTransformExpr(treceiver),
+          resolvedClassName, methodIdent, targs.map(finishTransformExpr))(
+          resultType)
+      cont(PreTransTree(
+          ResolvedApply.AsTree(canBeApply = true, innerTree),
+          RefinedType(resultType)))
     }
 
     def canBeArray(treceiver: PreTransform): Boolean = {
@@ -1461,11 +1472,11 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
                 MethodIdent(NoArgConstructorName), Nil))).toPreTransform)
       case _ =>
         if (methodName.isReflectiveProxy) {
-          // Never inline reflective proxies
-          treeNotInlined
+          // Reflective proxies cannot be resolved
+          treeNotResolved
         } else if (methodName == ObjectCloneName && canBeArray(treceiver)) {
-          // #3778 Never inline the `clone()j.l.Object` method if the receiver can be an array
-          treeNotInlined
+          // #3778 The `clone()j.l.Object` method cannot be resolved if the receiver can be an array
+          treeNotResolved
         } else {
           val className = boxedClassForType(treceiver.tpe.base)
           val namespace = MemberNamespace.forNonStaticCall(flags)
@@ -1474,31 +1485,43 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             else dynamicCall(className, methodName)
           val allocationSites =
             (treceiver :: targs).map(_.tpe.allocationSite)
-          if (impls.isEmpty || impls.exists(impl =>
-              scope.implsBeingInlined((allocationSites, impl)))) {
-            // isEmpty could happen, have to leave it as is for the TypeError
-            treeNotInlined
-          } else if (impls.size == 1) {
-            val target = impls.head
-            val intrinsicCode = intrinsics(flags, target)
-            if (intrinsicCode >= 0) {
-              callIntrinsic(intrinsicCode, flags, Some(treceiver), methodName,
-                  targs, isStat, usePreTransform)(cont)
-            } else if (target.inlineable && (
-                target.shouldInline ||
-                shouldInlineBecauseOfArgs(target, treceiver :: targs))) {
-              inline(allocationSites, Some(treceiver), targs, target,
-                  isStat, usePreTransform)(cont)
-            } else {
-              treeNotInlined
-            }
-          } else {
-            if (canMultiInline(impls)) {
-              inline(allocationSites, Some(treceiver), targs, impls.head,
-                  isStat, usePreTransform)(cont)
-            } else {
-              treeNotInlined
-            }
+
+          def implBeingInlined(impl: MethodID): Boolean =
+            scope.implsBeingInlined((allocationSites, impl))
+
+          impls match {
+            case Nil =>
+              /* This typically happens when calling a method on a
+               * never-instantiated type. In that case, the receiver would
+               * effectively always be `null`. We have to leave the call in
+               * place for the TypeError.
+               */
+              treeNotResolved
+
+            case target :: Nil =>
+              if (implBeingInlined(target)) {
+                treeNotInlined(target.enclosingClassName)
+              } else {
+                val intrinsicCode = intrinsics(flags, target)
+                if (intrinsicCode >= 0) {
+                  callIntrinsic(intrinsicCode, flags, Some(treceiver),
+                      methodName, targs, isStat, usePreTransform)(cont)
+                } else if (target.inlineable &&
+                    (target.shouldInline || shouldInlineBecauseOfArgs(target, treceiver :: targs))) {
+                  inline(allocationSites, Some(treceiver), targs, target,
+                      isStat, usePreTransform)(cont)
+                } else {
+                  treeNotInlined(target.enclosingClassName)
+                }
+              }
+
+            case _ =>
+              if (!impls.exists(implBeingInlined(_)) && canMultiInline(impls)) {
+                inline(allocationSites, Some(treceiver), targs, impls.head,
+                    isStat, usePreTransform)(cont)
+              } else {
+                treeNotResolved
+              }
           }
         }
     }
@@ -1574,22 +1597,21 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         methodIdent @ MethodIdent(methodName), args) = tree
     implicit val pos = tree.pos
 
-    def treeNotInlined0(transformedReceiver: Tree, transformedArgs: List[Tree]) =
-      cont(PreTransTree(ApplyStatically(flags, transformedReceiver, className,
-          methodIdent, transformedArgs)(tree.tpe), RefinedType(tree.tpe)))
-
-    def treeNotInlined =
-      treeNotInlined0(transformExpr(receiver), args.map(transformExpr))
+    def treeNotResolved = {
+      cont(PreTransTree(ApplyStatically(flags, transformExpr(receiver),
+          className, methodIdent, args.map(transformExpr))(tree.tpe),
+          RefinedType(tree.tpe)))
+    }
 
     if (methodName.isReflectiveProxy) {
       // Never inline reflective proxies
-      treeNotInlined
+      treeNotResolved
     } else {
       val optTarget = staticCall(className, MemberNamespace.forNonStaticCall(flags),
           methodName)
       if (optTarget.isEmpty) {
         // just in case
-        treeNotInlined
+        treeNotResolved
       } else {
         val target = optTarget.get
         pretransformExprs(receiver, args) { (treceiver, targs) =>
@@ -1610,8 +1632,19 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
               inline(allocationSites, Some(treceiver), targs, target,
                   isStat, usePreTransform)(cont)
             } else {
-              treeNotInlined0(finishTransformExpr(treceiver),
-                  targs.map(finishTransformExpr))
+              val newApplyStatically = ApplyStatically(flags,
+                  finishTransformExpr(treceiver), target.enclosingClassName,
+                  methodIdent, targs.map(finishTransformExpr))(
+                  tree.tpe)
+
+              /* If the call is in the Public namespace, record that the call
+               * is resolved. Otherwise, there is no point in doing so.
+               */
+              val newTree =
+                if (flags.isConstructor || flags.isPrivate) newApplyStatically
+                else ResolvedApply.AsTree(canBeApply = false, newApplyStatically)
+
+              cont(PreTransTree(newTree, RefinedType(newTree.tpe)))
             }
           }
         }

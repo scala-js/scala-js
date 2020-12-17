@@ -582,6 +582,14 @@ object Infos {
               // This should only happen when called from the Refiner
               args.foreach(traverse)
 
+            case Transient(ResolvedApply(_, innerTree)) =>
+              // This should only happen when called from the Refiner
+              val ApplyStatically(flags, _, className, method, _) = innerTree
+              val namespace = MemberNamespace.forNonStaticCall(flags)
+              builder.addMethodCalledStatically(className,
+                  NamespacedMethodName(namespace, method.name))
+              super.traverse(innerTree)
+
             case VarDef(_, _, vtpe, _, _) =>
               builder.maybeAddReferencedClass(vtpe)
 
