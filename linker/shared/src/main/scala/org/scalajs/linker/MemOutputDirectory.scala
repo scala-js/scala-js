@@ -25,6 +25,9 @@ import org.scalajs.linker.interface.unstable.OutputDirectoryImpl
 sealed trait MemOutputDirectory extends OutputDirectory {
   /** Content of the file with `name` or `None` if the file was not written. */
   def content(name: String): Option[Array[Byte]]
+
+  /** Names of files that are present (in no particular order). */
+  def fileNames(): List[String]
 }
 
 object MemOutputDirectory {
@@ -36,6 +39,10 @@ object MemOutputDirectory {
 
     def content(name: String): Option[Array[Byte]] = synchronized {
       _content.get(name)
+    }
+
+    def fileNames(): List[String] = synchronized {
+      _content.keys.toList
     }
 
     def writeFull(name: String, buf: ByteBuffer)(
@@ -56,7 +63,7 @@ object MemOutputDirectory {
     }
 
     def listFiles()(implicit ec: ExecutionContext): Future[List[String]] = synchronized {
-      Future.successful(_content.keys.toList)
+      Future.successful(fileNames())
     }
 
     def delete(name: String)(implicit ec: ExecutionContext): Future[Unit] = synchronized {

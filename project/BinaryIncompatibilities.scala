@@ -10,6 +10,10 @@ object BinaryIncompatibilities {
   val Linker = Seq(
       // Breaking in stable API. OK in Minor version.
       exclude[Problem]("org.scalajs.linker.standard.*"),
+
+      // New method in sealed trait, not an issue.
+      exclude[ReversedMissingMethodProblem](
+          "org.scalajs.linker.MemOutputDirectory.fileNames"),
   )
 
   val LinkerInterface = Seq(

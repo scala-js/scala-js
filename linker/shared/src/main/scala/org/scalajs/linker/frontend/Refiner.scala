@@ -269,8 +269,10 @@ private object Refiner {
       }
     }
 
-    // Just for consistency of API wrt. LinkedMethodDefsInfosCache
-    def cleanAfterRun(): Unit = ()
+    def cleanAfterRun(): Unit = {
+      if (caches != null)
+        caches.foreach(_.cleanAfterRun())
+    }
   }
 
   private object LinkedJSMethodPropDefsInfosCache {
