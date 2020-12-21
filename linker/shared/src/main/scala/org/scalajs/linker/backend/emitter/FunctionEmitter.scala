@@ -2010,7 +2010,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         }
       }
 
-      val baseResult = tree match {
+      val baseResult: js.Tree = tree match {
         // Control flow constructs
 
         case Block(stats :+ expr) =>
@@ -2461,16 +2461,15 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
 
         case NewArray(typeRef, lengths) =>
-          genCallHelper("newArrayObject",
-              genClassDataOf(typeRef),
-              js.ArrayConstr(lengths.map(transformExprNoChar)))
+          genNewArray(typeRef, lengths.map(transformExprNoChar))
 
         case ArrayValue(typeRef, elems) =>
           val preserveChar = typeRef match {
             case ArrayTypeRef(CharRef, 1) => true
             case _                        => false
           }
-          genArrayValue(typeRef, elems.map(transformExpr(_, preserveChar)))
+          extractWithGlobals(
+              genArrayValue(typeRef, elems.map(transformExpr(_, preserveChar))))
 
         case ArrayLength(array) =>
           genIdentBracketSelect(js.DotSelect(transformExprNoChar(array),
@@ -2503,20 +2502,33 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case Transient(CallHelper(helper, args)) =>
           helper match {
-            case "classDataOf" =>
-              args.head match {
-                case ClassOf(tpe) =>
-                  genClassDataOf(tpe)
-                case jlClass =>
-                  js.DotSelect(transformExprNoChar(jlClass), js.Ident("jl_Class__f_data"))
-              }
-            case "arrayDataOf" =>
-              js.Apply(js.DotSelect(transformExprNoChar(args.head),
-                  js.Ident("getArrayOf")), Nil)
+            case "systemArraycopy" if esFeatures.useECMAScript2015 =>
+              val transformedArgs = args.map(transformExpr(_, preserveChar = false))
+              js.Apply(js.DotSelect(transformedArgs.head, js.Ident("copyTo")),
+                  transformedArgs.tail)
+
             case "zeroOf" =>
               js.DotSelect(
                   js.DotSelect(transformExprNoChar(args.head), js.Ident("jl_Class__f_data")),
                   js.Ident("zero"))
+
+            case "makeNativeArrayWrapper" =>
+              val elemClass :: nativeArray :: Nil = args
+              val newNativeArray = transformExprNoChar(nativeArray)
+              elemClass match {
+                case ClassOf(elemTypeRef) =>
+                  val arrayTypeRef = ArrayTypeRef.of(elemTypeRef)
+                  extractWithGlobals(
+                      genNativeArrayWrapper(arrayTypeRef, newNativeArray))
+                case _ =>
+                  val elemClassData = js.DotSelect(
+                      transformExprNoChar(elemClass),
+                      js.Ident("jl_Class__f_data"))
+                  val arrayClassData = js.Apply(
+                      js.DotSelect(elemClassData, js.Ident("getArrayOf")), Nil)
+                  js.Apply(arrayClassData DOT "wrapArray", newNativeArray :: Nil)
+              }
+
             case _ =>
               genCallHelper(helper,
                   args.map(transformExpr(_, preserveChar = false)): _*)

@@ -178,6 +178,11 @@ object Trees {
       implicit val pos: Position)
       extends Tree
 
+  object If {
+    def apply(cond: Tree, thenp: Tree)(implicit pos: Position): If =
+      If(cond, thenp, Skip())
+  }
+
   sealed case class While(cond: Tree, body: Tree, label: Option[Ident] = None)(
       implicit val pos: Position)
       extends Tree

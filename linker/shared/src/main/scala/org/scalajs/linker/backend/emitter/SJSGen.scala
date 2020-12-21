@@ -45,6 +45,24 @@ private[emitter] final class SJSGen(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
     tpe match {
+      case tpe: PrimType => genZeroOfPrim(tpe)
+      case _             => Null()
+    }
+  }
+
+  def genZeroOf(typeRef: TypeRef)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
+    typeRef match {
+      case PrimRef(tpe) => genZeroOfPrim(tpe)
+      case _            => Null()
+    }
+  }
+
+  private def genZeroOfPrim(tpe: PrimType)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
+    tpe match {
       case BooleanType => BooleanLiteral(false)
       case CharType    => IntLiteral(0)
       case ByteType    => IntLiteral(0)
@@ -55,7 +73,10 @@ private[emitter] final class SJSGen(
       case DoubleType  => DoubleLiteral(0.0)
       case StringType  => StringLiteral("")
       case UndefType   => Undefined()
-      case _           => Null()
+      case NullType    => Null()
+
+      case NoType | NothingType =>
+        throw new IllegalArgumentException(s"cannot generate a zero for $tpe")
     }
   }
 
@@ -88,6 +109,31 @@ private[emitter] final class SJSGen(
     Apply(
         genLoadModule(LongImpl.RuntimeLongModuleClass) DOT genName(methodName),
         args.toList)
+  }
+
+  def usesUnderlyingTypedArray(elemTypeRef: NonArrayTypeRef): Boolean =
+    getArrayUnderlyingTypedArrayClassRef(elemTypeRef)(Position.NoPosition).nonEmpty
+
+  def getArrayUnderlyingTypedArrayClassRef(elemTypeRef: NonArrayTypeRef)(
+      implicit pos: Position): Option[WithGlobals[VarRef]] = {
+
+    def some(name: String): Some[WithGlobals[VarRef]] =
+      Some(WithGlobals(VarRef(Ident(name)), Set(name)))
+
+    elemTypeRef match {
+      case _ if !esFeatures.useECMAScript2015 => None
+
+      case CharRef   => some("Uint16Array")
+      case ByteRef   => some("Int8Array")
+      case ShortRef  => some("Int16Array")
+      case IntRef    => some("Int32Array")
+      case FloatRef  => some("Float32Array")
+      case DoubleRef => some("Float64Array")
+
+      case LongRef if useBigIntForLongs => some("BigInt64Array")
+
+      case _ => None
+    }
   }
 
   def genSelect(receiver: Tree, className: ClassName, field: irt.FieldIdent)(
@@ -136,8 +182,13 @@ private[emitter] final class SJSGen(
           Apply(globalVar("is", className), List(expr))
         }
 
-      case ArrayType(ArrayTypeRef(base, depth)) =>
-        Apply(typeRefVar("isArrayOf", base), List(expr, IntLiteral(depth)))
+      case ArrayType(arrayTypeRef) =>
+        arrayTypeRef match {
+          case ArrayTypeRef(_:PrimRef | ClassRef(ObjectClass), 1) =>
+            expr instanceof genArrayConstrOf(arrayTypeRef)
+          case ArrayTypeRef(base, depth) =>
+            Apply(typeRefVar("isArrayOf", base), List(expr, IntLiteral(depth)))
+        }
 
       case UndefType   => expr === Undefined()
       case BooleanType => typeof(expr) === "boolean"
@@ -236,6 +287,8 @@ private[emitter] final class SJSGen(
       }
     } else {
       tpe match {
+        case ClassType(ObjectClass) =>
+          expr
         case ClassType(className) =>
           Apply(globalVar("as", className), List(expr))
 
@@ -360,11 +413,60 @@ private[emitter] final class SJSGen(
     }
   }
 
-  def genArrayValue(arrayTypeRef: ArrayTypeRef, elems: List[Tree])(
+  def genNewArray(arrayTypeRef: ArrayTypeRef, lengths: List[Tree])(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
-    genCallHelper("makeNativeArrayWrapper", genClassDataOf(arrayTypeRef),
-        ArrayConstr(elems))
+    lengths match {
+      case Nil =>
+        throw new IllegalArgumentException(
+            "Cannot create a new array with 0 dimensions")
+      case length :: Nil =>
+        New(genArrayConstrOf(arrayTypeRef), length :: Nil)
+      case _ =>
+        genCallHelper("newArrayObject", genClassDataOf(arrayTypeRef),
+            ArrayConstr(lengths))
+    }
+  }
+
+  def genArrayValue(arrayTypeRef: ArrayTypeRef, elems: List[Tree])(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): WithGlobals[Tree] = {
+    genNativeArrayWrapper(arrayTypeRef, ArrayConstr(elems))
+  }
+
+  def genNativeArrayWrapper(arrayTypeRef: ArrayTypeRef, nativeArray: Tree)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): WithGlobals[Tree] = {
+    val argWithGlobals = arrayTypeRef match {
+      case ArrayTypeRef(elemTypeRef, 1) =>
+        getArrayUnderlyingTypedArrayClassRef(elemTypeRef) match {
+          case Some(typedArrayWithGlobals) =>
+            for (typedArray <- typedArrayWithGlobals) yield
+              New(typedArray, nativeArray :: Nil)
+          case _ =>
+            WithGlobals(nativeArray)
+        }
+      case _ =>
+        WithGlobals(nativeArray)
+    }
+
+    for (arg <- argWithGlobals) yield
+      New(genArrayConstrOf(arrayTypeRef), arg :: Nil)
+  }
+
+  def genArrayConstrOf(arrayTypeRef: ArrayTypeRef)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
+    import TreeDSL._
+
+    arrayTypeRef match {
+      case ArrayTypeRef(primRef: PrimRef, 1) =>
+        globalVar("ac", primRef)
+      case ArrayTypeRef(ClassRef(ObjectClass), 1) =>
+        globalVar("ac", ObjectClass)
+      case _ =>
+        genClassDataOf(arrayTypeRef) DOT "constr"
+    }
   }
 
   def genClassOf(typeRef: TypeRef)(

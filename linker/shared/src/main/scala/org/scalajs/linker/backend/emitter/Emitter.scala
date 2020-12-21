@@ -199,17 +199,15 @@ final class Emitter(config: Emitter.Config) {
               moduleContext, uncachedKnowledge)
         }
 
-        val (coreDefinitions, coreInitialization) = {
-          if (module.isRoot) {
-            val coreJSLib =
-              extractWithGlobals(state.coreJSLibCache.build(moduleContext))
-            (Iterator.single(coreJSLib.definitions), Iterator.single(coreJSLib.initialization))
-          } else {
-            (Iterator.empty, Iterator.empty)
-          }
-        }
+        val coreJSLib =
+          if (module.isRoot) Some(extractWithGlobals(state.coreJSLibCache.build(moduleContext)))
+          else None
 
         def classIter = moduleClasses.iterator
+
+        def objectClass =
+          if (!module.isRoot) Iterator.empty
+          else classIter.filter(_.className == ObjectClass)
 
         /* Emit everything but module imports in the appropriate order.
          *
@@ -219,20 +217,32 @@ final class Emitter(config: Emitter.Config) {
          * it is crucial that we verify it.
          */
         val defTrees = js.Block(
-            /* The definitions of the CoreJSLib, which depend on nothing.
-             * All classes potentially depend on it.
+            /* The definitions of the CoreJSLib that come before the definition
+             * of `j.l.Object`. They depend on nothing else.
              */
-            coreDefinitions ++
+            coreJSLib.map(_.preObjectDefinitions).iterator ++
 
-            /* All class definitions, which depend on nothing but their
-             * superclasses.
+            /* The definition of `j.l.Object` class. Unlike other classes, this
+             * does not include its instance tests nor metadata.
              */
-            classIter.flatMap(_.main) ++
+            objectClass.flatMap(_.main) ++
+
+            /* The definitions of the CoreJSLib that come after the definition
+             * of `j.l.Object` because they depend on it. This includes the
+             * definitions of the array classes, as well as type data for
+             * primitive types and for `j.l.Object`.
+             */
+            coreJSLib.map(_.postObjectDefinitions).iterator ++
+
+            /* All class definitions, except `j.l.Object`, which depend on
+             * nothing but their superclasses.
+             */
+            classIter.filterNot(_.className == ObjectClass).flatMap(_.main) ++
 
             /* The initialization of the CoreJSLib, which depends on the
              * definition of classes (n.b. the RuntimeLong class).
              */
-            coreInitialization ++
+            coreJSLib.map(_.initialization).iterator ++
 
             /* All static field definitions, which depend on nothing, except
              * those of type Long which need $L0.
@@ -252,8 +262,10 @@ final class Emitter(config: Emitter.Config) {
             topLevelExports ++
 
             /* Module initializers, which by spec run at the end. */
-            module.initializers.iterator.map(classEmitter.genModuleInitializer(_)(
-                moduleContext, uncachedKnowledge))
+            module.initializers.iterator.map { initializer =>
+              extractWithGlobals(classEmitter.genModuleInitializer(initializer)(
+                  moduleContext, uncachedKnowledge))
+            }
         )(Position.NoPosition)
 
         assert(!defTrees.isInstanceOf[js.Skip], {
@@ -509,19 +521,35 @@ final class Emitter(config: Emitter.Config) {
       }
     }
 
-    if (classEmitter.needInstanceTests(linkedClass)(classCache)) {
-      addToMain(classTreeCache.instanceTests.getOrElseUpdate(
-          classEmitter.genInstanceTests(linkedClass)(moduleContext, classCache)))
-    }
+    if (className != ObjectClass) {
+      /* Instance tests and type data are hardcoded in the CoreJSLib for
+       * j.l.Object. This is important because their definitions depend on the
+       * `$TypeData` definition, which only comes in the `postObjectDefinitions`
+       * of the CoreJSLib. If we wanted to define them here as part of the
+       * normal logic of `ClassEmitter`, we would have to further divide `main`
+       * into two parts. Since the code paths are in fact completely different
+       * for `j.l.Object` anyway, we do not do this, and instead hard-code them
+       * in the CoreJSLib. This explains why we exclude `j.l.Object` as this
+       * level, rather than inside `ClassEmitter.needInstanceTests` and
+       * similar: it is a concern that goes beyond the organization of the
+       * class `j.l.Object`.
+       */
 
-    if (linkedClass.hasRuntimeTypeInfo) {
-      addToMain(classTreeCache.typeData.getOrElseUpdate(
-          classEmitter.genTypeData(linkedClass)(moduleContext, classCache)))
-    }
+      if (classEmitter.needInstanceTests(linkedClass)(classCache)) {
+        addToMain(classTreeCache.instanceTests.getOrElseUpdate(
+            classEmitter.genInstanceTests(linkedClass)(moduleContext, classCache)))
+      }
 
-    if (linkedClass.hasInstances && kind.isClass && linkedClass.hasRuntimeTypeInfo)
-      main += classTreeCache.setTypeData.getOrElseUpdate(
-          classEmitter.genSetTypeData(linkedClass)(moduleContext, classCache))
+      if (linkedClass.hasRuntimeTypeInfo) {
+        addToMain(classTreeCache.typeData.getOrElseUpdate(
+            classEmitter.genTypeData(linkedClass)(moduleContext, classCache)))
+      }
+
+      if (linkedClass.hasInstances && kind.isClass && linkedClass.hasRuntimeTypeInfo) {
+        main += classTreeCache.setTypeData.getOrElseUpdate(
+            classEmitter.genSetTypeData(linkedClass)(moduleContext, classCache))
+      }
+    }
 
     if (linkedClass.kind.hasModuleAccessor)
       addToMain(classTreeCache.moduleAccessor.getOrElseUpdate(
@@ -544,6 +572,7 @@ final class Emitter(config: Emitter.Config) {
     // Build the result
 
     new GeneratedClass(
+        className,
         main.result(),
         staticFields,
         staticInitialization,
@@ -766,6 +795,7 @@ object Emitter {
   }
 
   private final class GeneratedClass(
+      val className: ClassName,
       val main: List[js.Tree],
       val staticFields: List[js.Tree],
       val staticInitialization: List[js.Tree],

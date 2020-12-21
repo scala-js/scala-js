@@ -372,6 +372,18 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
 
       def reprClass(x: PrimRef): ClassName = ObjectClass
     }
+
+    implicit object NonArrayTypeRefScope extends Scope[NonArrayTypeRef] {
+      def subField(x: NonArrayTypeRef): String = x match {
+        case ClassRef(className) => ClassScope.subField(className)
+        case x: PrimRef          => PrimRefScope.subField(x)
+      }
+
+      def reprClass(x: Types.NonArrayTypeRef): Names.ClassName = x match {
+        case ClassRef(className) => ClassScope.reprClass(className)
+        case x: PrimRef          => PrimRefScope.reprClass(x)
+      }
+    }
   }
 
   private def genExportIdent(ident: Ident): (Ident, ExportName) = {
