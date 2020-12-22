@@ -1171,9 +1171,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Transient(JSVarRef(_, mutable)) =>
           allowUnpure || !mutable
 
-        // Fields may throw if qualifier is null
+        // Fields may throw if qualifier is null but that is UB.
         case Select(qualifier, _, _) =>
-          allowSideEffects && test(qualifier)
+          allowUnpure && test(qualifier)
 
         // Static fields are side-effect free
         case SelectStatic(_, _) =>
@@ -1202,6 +1202,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case RecordSelect(record, _) => test(record)
         case IsInstanceOf(expr, _)   => test(expr)
         case IdentityHashCode(expr)  => test(expr)
+        case GetClass(arg)           => test(arg) // may NPE but that is UB.
 
         // Expressions preserving side-effect freedom
         case NewArray(tpe, lengths) =>
@@ -1235,8 +1236,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
            * avoid evaluating them only *after* the module has been loaded.
            */
           allowSideEffects && args.forall(isPureExpression)
-        case GetClass(arg) =>
-          allowSideEffects && test(arg)
         case Transient(CallHelper(helper, args)) =>
           allowSideEffects && (args forall test)
 
