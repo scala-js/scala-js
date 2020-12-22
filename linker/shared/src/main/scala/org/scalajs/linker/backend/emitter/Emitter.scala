@@ -380,7 +380,13 @@ final class Emitter(config: Emitter.Config) {
       val methodDef = m.value
       val namespace = methodDef.flags.namespace
 
-      if (namespace != MemberNamespace.Public) {
+      val emitAsStaticLike = {
+        namespace != MemberNamespace.Public ||
+        kind == ClassKind.Interface ||
+        kind == ClassKind.HijackedClass
+      }
+
+      if (emitAsStaticLike) {
         val methodCache =
           classCache.getStaticLikeMethodCache(namespace, methodDef.methodName)
 
@@ -497,28 +503,6 @@ final class Emitter(config: Emitter.Config) {
       }
 
       addToMain(fullClass)
-    } else if (kind == ClassKind.Interface) {
-      // Default methods
-      for {
-        m <- linkedMethods
-        if m.value.flags.namespace == MemberNamespace.Public
-      } yield {
-        val methodCache =
-          classCache.getStaticLikeMethodCache(MemberNamespace.Public, m.value.methodName)
-        addToMain(methodCache.getOrElseUpdate(m.version,
-            classEmitter.genDefaultMethod(className, m.value)(moduleContext, methodCache)))
-      }
-    } else if (kind == ClassKind.HijackedClass) {
-      // Hijacked methods
-      for {
-        m <- linkedMethods
-        if m.value.flags.namespace == MemberNamespace.Public
-      } yield {
-        val methodCache =
-          classCache.getStaticLikeMethodCache(MemberNamespace.Public, m.value.methodName)
-        addToMain(methodCache.getOrElseUpdate(m.version,
-            classEmitter.genHijackedMethod(className, m.value)(moduleContext, methodCache)))
-      }
     }
 
     if (className != ObjectClass) {

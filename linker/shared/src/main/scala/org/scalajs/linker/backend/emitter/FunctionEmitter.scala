@@ -2062,7 +2062,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             genCallHelper("dp_" + genName(methodName), newReceiver :: newArgs: _*)
 
           def genHijackedMethodApply(className: ClassName): js.Tree =
-            js.Apply(globalVar("f", (className, methodName)), newReceiver :: newArgs)
+            genApplyStaticLike("f", className, method, newReceiver :: newArgs)
 
           if (isMaybeHijackedClass(receiver.tpe) &&
               !methodName.isReflectiveProxy) {
