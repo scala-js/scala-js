@@ -21,6 +21,7 @@ import org.scalajs.ir.Names._
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Position._
 import org.scalajs.ir.Transformers._
+import org.scalajs.ir.Traversers._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
@@ -602,7 +603,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case Assign(lhs: RecordSelect, rhs) =>
           val newLhs = Transient(JSVarRef(makeRecordFieldIdentForVarRef(lhs),
-              mutable = true))(lhs.tpe)
+              mutable = true)(lhs.tpe))
           pushLhsInto(Lhs.Assign(newLhs), rhs, tailPosLabels)
 
         case Assign(select @ JSPrivateSelect(qualifier, className, field), rhs) =>
@@ -1039,7 +1040,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               case RecordSelect(record, field) if noExtractYet =>
                 RecordSelect(rec(record, allowUnpure), field)(arg.tpe)
               case Transient(CallHelper(helper, args)) if noExtractYet =>
-                Transient(CallHelper(helper, recs(args, allowUnpure)))(arg.tpe)
+                Transient(CallHelper(helper, recs(args, allowUnpure))(arg.tpe))
 
               case If(cond, thenp, elsep) if noExtractYet && (
                   if (allowUnpure) isExpression(thenp) && isExpression(elsep)
@@ -1052,7 +1053,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                     Lhs.VarDef(temp, arg.tpe, mutable = false), arg,
                     Set.empty)
                 computeTemp +=: extractedStatements
-                Transient(JSVarRef(temp, mutable = false))(arg.tpe)
+                Transient(JSVarRef(temp, mutable = false)(arg.tpe))
             }
           }
         }
@@ -1352,7 +1353,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           } yield {
             doAssign(
                 Transient(JSVarRef(makeRecordFieldIdent(ident, fName, fOrigName),
-                    mutable = true))(fTpe),
+                    mutable = true)(fTpe)),
                 fRhs)
           })
 
@@ -1386,11 +1387,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           val jsIdent = transformLocalVarIdent(ident)
           val mutable = env.isLocalMutable(ident)
           for (RecordType.Field(fName, fOrigName, fTpe, _) <- recordType.fields)
-            yield Transient(JSVarRef(makeRecordFieldIdent(jsIdent, fName, fOrigName), mutable))(fTpe)
+            yield Transient(JSVarRef(makeRecordFieldIdent(jsIdent, fName, fOrigName), mutable)(fTpe))
 
         case Transient(JSVarRef(ident, mutable)) =>
           for (RecordType.Field(fName, fOrigName, fTpe, _) <- recordType.fields)
-            yield Transient(JSVarRef(makeRecordFieldIdent(ident, fName, fOrigName), mutable))(fTpe)
+            yield Transient(JSVarRef(makeRecordFieldIdent(ident, fName, fOrigName), mutable)(fTpe))
       }
     }
 
@@ -1414,7 +1415,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             case Lhs.VarDef(name, tpe, mutable) =>
               js.Block(
                   doEmptyVarDef(name, tpe),
-                  inner(Lhs.Assign(Transient(JSVarRef(name, mutable))(tpe))))
+                  inner(Lhs.Assign(Transient(JSVarRef(name, mutable)(tpe)))))
             case _ =>
               inner(lhs)
           }
@@ -1511,7 +1512,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 val varDef = doVarDef(temp, recTpe, mutable = false,
                     RecordValue(recTpe, newElems))
                 val assign = doAssign(lhs,
-                    Transient(JSVarRef(temp, mutable = false))(recTpe))
+                    Transient(JSVarRef(temp, mutable = false)(recTpe)))
                 js.Block(varDef, assign)
               }
 
@@ -1692,7 +1693,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case Transient(CallHelper(helper, args)) =>
           unnest(args) { (newArgs, env) =>
-            redo(Transient(CallHelper(helper, newArgs))(rhs.tpe))(env)
+            redo(Transient(CallHelper(helper, newArgs)(rhs.tpe)))(env)
           }
 
         // JavaScript expressions (if we reach here their arguments are not expressions)
@@ -1701,7 +1702,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           if (containsAnySpread(args)) {
             redo {
               Transient(CallHelper("newJSObjectWithVarargs",
-                  List(ctor, spreadToArgArray(args))))(AnyType)
+                  List(ctor, spreadToArgArray(args)))(AnyType))
             }
           } else {
             unnest(ctor :: castNoSpread(args)) { (newCtorAndArgs, env) =>
@@ -1815,7 +1816,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             val objVarIdent = newSyntheticVar()
 
             def objVarRef(implicit pos: Position): Tree =
-              Transient(JSVarRef(objVarIdent, mutable = false))(AnyType)
+              Transient(JSVarRef(objVarIdent, mutable = false)(AnyType))
 
             val objVarDef =
               genLet(objVarIdent, mutable = false, js.ObjectConstr(Nil))
@@ -1953,7 +1954,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           val computeTemp = pushLhsInto(
               Lhs.VarDef(temp, expr.tpe, mutable = false), expr, Set.empty)
           js.Block(computeTemp,
-              makeTree(Transient(JSVarRef(temp, mutable = false))(expr.tpe)))
+              makeTree(Transient(JSVarRef(temp, mutable = false)(expr.tpe))))
       }
     }
 
@@ -2861,8 +2862,15 @@ private object FunctionEmitter {
 
   private val thisOriginalName: OriginalName = OriginalName("this")
 
-  private final case class JSVarRef(ident: js.Ident, mutable: Boolean)
+  private final case class JSVarRef(ident: js.Ident, mutable: Boolean)(val tpe: Type)
       extends Transient.Value {
+
+    def traverse(traverser: Traverser): Unit = ()
+
+    def transform(transformer: Transformer, isStat: Boolean)(
+        implicit pos: Position): Tree = {
+      Transient(this)
+    }
 
     def printIR(out: org.scalajs.ir.Printers.IRTreePrinter): Unit =
       out.print(ident.name)

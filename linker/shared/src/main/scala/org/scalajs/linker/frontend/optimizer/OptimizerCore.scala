@@ -2246,7 +2246,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
   private def callHelper(helper: String, args: List[Tree])(tpe: Type)(
       implicit pos: Position): Tree = {
-    Transient(CallHelper(helper, args))(tpe)
+    Transient(CallHelper(helper, args)(tpe))
   }
 
   private def callHelper(helper: String, args: Tree*)(tpe: Type)(

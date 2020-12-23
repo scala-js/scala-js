@@ -207,6 +207,10 @@ object Transformers {
         case CreateJSClass(className, captureValues) =>
           CreateJSClass(className, captureValues.map(transformExpr))
 
+        // Transients
+        case Transient(value) =>
+          value.transform(this, isStat)
+
         // Trees that need not be transformed
 
         case _:Skip | _:Debugger | _:LoadModule | _:SelectStatic | _:SelectJSNativeMember |

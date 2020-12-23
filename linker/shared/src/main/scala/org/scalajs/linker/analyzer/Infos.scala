@@ -578,10 +578,6 @@ object Infos {
             case CreateJSClass(className, _) =>
               builder.addInstantiatedClass(className)
 
-            case Transient(CallHelper(_, args)) =>
-              // This should only happen when called from the Refiner
-              args.foreach(traverse)
-
             case VarDef(_, _, vtpe, _, _) =>
               builder.maybeAddReferencedClass(vtpe)
 

@@ -5,6 +5,8 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 
 object BinaryIncompatibilities {
   val IR = Seq(
+      // Breaking in stable API. OK in Minor version.
+      exclude[Problem]("org.scalajs.ir.*"),
   )
 
   val Linker = Seq(
