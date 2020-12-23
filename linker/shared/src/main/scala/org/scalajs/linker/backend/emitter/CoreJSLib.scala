@@ -177,7 +177,7 @@ private[emitter] object CoreJSLib {
         case "is" =>
           val x = varRef("x")
           val y = varRef("y")
-          Function(arrow = false, paramList(x, y), Return {
+          genArrowFunction(paramList(x, y), Return {
             If(x === y, {
               // +0.0 must be different from -0.0
               (x !== 0) || ((int(1) / x) === (int(1) / y))
@@ -194,7 +194,7 @@ private[emitter] object CoreJSLib {
           val al = varRef("al")
           val bh = varRef("bh")
           val bl = varRef("bl")
-          Function(arrow = false, paramList(a, b), Block(
+          genArrowFunction(paramList(a, b), Block(
               const(ah, a >>> 16),
               const(al, a & 0xffff),
               const(bh, b >>> 16),
@@ -205,12 +205,12 @@ private[emitter] object CoreJSLib {
         case "fround" =>
           val v = varRef("v")
           if (!strictFloats) {
-            Function(arrow = false, paramList(v), Return(+v))
+            genArrowFunction(paramList(v), Return(+v))
           } else {
             val Float32ArrayRef = globalRef("Float32Array")
 
             val array = varRef("array")
-            val typedArrayPolyfill = Function(arrow = false, paramList(v), {
+            val typedArrayPolyfill = genArrowFunction(paramList(v), {
               Block(
                   const(array, New(Float32ArrayRef, 1 :: Nil)),
                   BracketSelect(array, 0) := v,
@@ -264,7 +264,7 @@ private[emitter] object CoreJSLib {
             val twoPowMantissaBits = int(8388608)
             val FloatMinPosValue = double(Float.MinPositiveValue)
 
-            val noTypedArrayPolyfill = Function(arrow = false, paramList(v), {
+            val noTypedArrayPolyfill = genArrowFunction(paramList(v), {
               Block(
                   If((v !== v) || (v === 0) || (v === Inf) || (v === NegInf), {
                     Return(v)
@@ -316,7 +316,7 @@ private[emitter] object CoreJSLib {
         case "clz32" =>
           val i = varRef("i")
           val r = varRef("r")
-          Function(arrow = false, paramList(i), Block(
+          genArrowFunction(paramList(i), Block(
               // See Hacker's Delight, Section 5-3
               If(i === 0, Return(32), Skip()),
               let(r, 1),
@@ -346,7 +346,7 @@ private[emitter] object CoreJSLib {
             if (semantics.productionMode) Nil
             else paramList(description)
 
-          Function(arrow = false, theParamList, Block(
+          genArrowFunction(theParamList, Block(
               FunctionDef(rand32.ident, Nil, Block(
                   genLet(s.ident, mutable = false, {
                       val randomDouble =
@@ -1019,7 +1019,7 @@ private[emitter] object CoreJSLib {
         val hash = varRef("hash")
 
         def functionSkeleton(defaultImpl: Tree): Function = {
-          Function(arrow = false, paramList(obj), {
+          genArrowFunction(paramList(obj), {
             Switch(typeof(obj),
                 List("string", "number", "bigint", "boolean").map(str(_) -> Skip()) :+
                 str("undefined") -> Return(genCallHelper("dp_" + genName(hashCodeMethodName), obj)),
@@ -1401,16 +1401,13 @@ private[emitter] object CoreJSLib {
               privateFieldSet("ancestors", ObjectConstr(Nil)),
               privateFieldSet("zero", zero),
               privateFieldSet("arrayEncodedName", arrayEncodedName),
-              const(self, This()), // don't rely on the lambda being called with `this` as receiver
-              privateFieldSet("isAssignableFromFun", {
-                Function(arrow = false, paramList(that), {
-                  Return(that === self)
-                })
-              }),
+              const(self, This()), // capture `this` for use in arrow fun
+              privateFieldSet("isAssignableFromFun",
+                  genArrowFunction(paramList(that), Return(that === self))),
               publicFieldSet("name", displayName),
               publicFieldSet("isPrimitive", bool(true)),
               publicFieldSet("isInstance",
-                  Function(arrow = false, paramList(obj), Return(bool(false)))),
+                  genArrowFunction(paramList(obj), Return(bool(false)))),
               If(arrayClass !== Undefined(), { // it is undefined for void
                 privateFieldSet("_arrayOf",
                     Apply(New(globalVar("TypeData", CoreVar), Nil) DOT "initSpecializedArray",
@@ -1445,7 +1442,7 @@ private[emitter] object CoreJSLib {
               privateFieldSet("ancestors", ancestors),
               privateFieldSet("arrayEncodedName", str("L") + fullName + str(";")),
               privateFieldSet("isAssignableFromFun", {
-                Function(arrow = false, paramList(that), {
+                genArrowFunction(paramList(that), {
                   Return(!(!(BracketSelect(that DOT "ancestors", internalName))))
                 })
               }),
@@ -1453,7 +1450,7 @@ private[emitter] object CoreJSLib {
               publicFieldSet("name", fullName),
               publicFieldSet("isInterface", isInterface),
               publicFieldSet("isInstance", isInstance || {
-                Function(arrow = false, paramList(obj), {
+                genArrowFunction(paramList(obj), {
                   Return(!(!(obj && (obj DOT classData) &&
                       BracketSelect(obj DOT classData DOT "ancestors", internalName))))
                 })
@@ -1494,6 +1491,7 @@ private[emitter] object CoreJSLib {
         val arrayClass = varRef("arrayClass")
         val typedArrayClass = varRef("typedArrayClass")
         val isAssignableFromFun = varRef("isAssignableFromFun")
+        val self = varRef("self")
         val that = varRef("that")
         val obj = varRef("obj")
         val array = varRef("array")
@@ -1501,27 +1499,23 @@ private[emitter] object CoreJSLib {
             paramList(componentData, arrayClass, typedArrayClass, isAssignableFromFun), {
           Block(
               initArrayCommonBody(arrayClass, componentData, componentData, 1),
+              const(self, This()), // capture `this` for use in arrow fun
               privateFieldSet("isAssignableFromFun", isAssignableFromFun || {
-                Function(arrow = false, paramList(that), {
-                  Return(This() === that)
-                })
+                genArrowFunction(paramList(that), Return(self === that))
               }),
               privateFieldSet("wrapArray", {
                 If(typedArrayClass, {
-                  Function(arrow = false, paramList(array), {
+                  genArrowFunction(paramList(array), {
                     Return(New(arrayClass, New(typedArrayClass, array :: Nil) :: Nil))
                   })
                 }, {
-                  Function(arrow = false, paramList(array), {
+                  genArrowFunction(paramList(array), {
                     Return(New(arrayClass, array :: Nil))
                   })
                 })
               }),
-              publicFieldSet("isInstance", {
-                Function(arrow = false, paramList(obj), {
-                  Return(obj instanceof arrayClass)
-                })
-              }),
+              publicFieldSet("isInstance",
+                  genArrowFunction(paramList(obj), Return(obj instanceof arrayClass))),
               Return(This())
           )
         })
@@ -1592,7 +1586,7 @@ private[emitter] object CoreJSLib {
               const(arrayDepth, (componentData DOT "arrayDepth") + 1),
               initArrayCommonBody(ArrayClass, componentData, arrayBase, arrayDepth),
               const(isAssignableFromFun, {
-                Function(arrow = false, paramList(that), {
+                genArrowFunction(paramList(that), {
                   val thatDepth = varRef("thatDepth")
                   Block(
                       const(thatDepth, that DOT "arrayDepth"),
@@ -1605,11 +1599,11 @@ private[emitter] object CoreJSLib {
                 })
               }),
               privateFieldSet("isAssignableFromFun", isAssignableFromFun),
-              privateFieldSet("wrapArray", Function(arrow = false, paramList(array), {
+              privateFieldSet("wrapArray", genArrowFunction(paramList(array), {
                 Return(New(ArrayClass, array :: Nil))
               })),
               const(self, This()), // don't rely on the lambda being called with `this` as receiver
-              publicFieldSet("isInstance", Function(arrow = false, paramList(obj), {
+              publicFieldSet("isInstance", genArrowFunction(paramList(obj), {
                 val data = varRef("data")
                 Block(
                     const(data, obj && (obj DOT classData)),
@@ -1826,20 +1820,19 @@ private[emitter] object CoreJSLib {
         buf += privateFieldSet("ancestors", ObjectConstr(List((Ident(genName(ObjectClass)) -> 1))))
         buf += privateFieldSet("arrayEncodedName", str("L" + fullName + ";"))
         buf += privateFieldSet("isAssignableFromFun", {
-          Function(arrow = false, paramList(that), {
+          genArrowFunction(paramList(that), {
             Return(!genIdentBracketSelect(that, "isPrimitive"))
           })
         })
         buf += publicFieldSet("name", str(fullName))
-        buf += publicFieldSet("isInstance", {
-          Function(arrow = false, paramList(obj), Return(obj !== Null()))
-        })
+        buf += publicFieldSet("isInstance",
+            genArrowFunction(paramList(obj), Return(obj !== Null())))
         buf += privateFieldSet("_arrayOf", {
           Apply(New(globalVar("TypeData", CoreVar), Nil) DOT "initSpecializedArray", List(
               typeDataVar,
               globalVar("ac", ObjectClass),
               Undefined(), // typedArray
-              Function(arrow = false, paramList(that), {
+              genArrowFunction(paramList(that), {
                 val thatDepth = varRef("thatDepth")
                 Block(
                     const(thatDepth, that DOT "arrayDepth"),
