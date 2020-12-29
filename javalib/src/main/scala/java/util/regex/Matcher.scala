@@ -97,7 +97,9 @@ final class Matcher private[regex] (
           while (i < len && isDigit(replacement.charAt(i)))
             i += 1
           val group = Integer.parseInt(replacement.substring(j, i))
-          sb.append(this.group(group))
+          val replaced = this.group(group)
+          if (replaced != null)
+            sb.append(replaced)
 
         case '\\' =>
           i += 1
