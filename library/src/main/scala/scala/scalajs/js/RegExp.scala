@@ -117,5 +117,9 @@ object RegExp extends js.Object {
   trait ExecResult extends js.Array[js.UndefOr[String]] {
     var index: Int
     var input: String
+
+    /** <span class="badge badge-ecma2018" style="float: right;">ECMAScript 2018</span>
+     */
+    var groups: js.UndefOr[js.Dictionary[js.UndefOr[String]]]
   }
 }
