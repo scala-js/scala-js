@@ -12,8 +12,7 @@
 
 package org.scalajs.ir
 
-import java.security.{MessageDigest, DigestOutputStream}
-import java.io.{OutputStream, DataOutputStream}
+import java.io.{DataOutputStream, OutputStream}
 import java.util.Arrays
 
 import Names._
@@ -98,20 +97,23 @@ object Hashers {
   }
 
   private final class TreeHasher {
-    private def newDigest = MessageDigest.getInstance("SHA-1")
-    private def newDigestStream(digest: MessageDigest) = {
-      val out = new OutputStream {
-        def write(b: Int): Unit = ()
-      }
-      val digOut = new DigestOutputStream(out, digest)
-      new DataOutputStream(digOut)
+    private[this] val digestBuilder = new SHA1.DigestBuilder
+
+    private[this] val digestStream = {
+      new DataOutputStream(new OutputStream {
+        def write(b: Int): Unit =
+          digestBuilder.update(b.toByte)
+
+        override def write(b: Array[Byte]): Unit =
+          digestBuilder.update(b)
+
+        override def write(b: Array[Byte], off: Int, len: Int): Unit =
+          digestBuilder.update(b, off, len)
+      })
     }
 
-    private[this] val digest = newDigest
-    private[this] val digestStream = newDigestStream(digest)
-
     def finalizeHash(): TreeHash =
-      new TreeHash(digest.digest())
+      new TreeHash(digestBuilder.finalizeDigest())
 
     def mixParamDef(paramDef: ParamDef): Unit = {
       mixPos(paramDef.pos)
