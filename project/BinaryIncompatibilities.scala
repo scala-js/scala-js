@@ -29,6 +29,8 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+      // New concrete method in native JS trait, not an issue.
+      exclude[ReversedMissingMethodProblem]("scala.scalajs.js.typedarray.TypedArray.fill"),
   )
 
   val TestInterface = Seq(

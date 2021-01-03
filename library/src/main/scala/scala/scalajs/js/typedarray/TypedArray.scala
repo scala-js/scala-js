@@ -59,6 +59,15 @@ trait TypedArray[T, Repr] extends ArrayBufferView with js.Iterable[T] {
   /** Create a new TypedArray view of this TypedArray at given location */
   def subarray(begin: Int, end: Int = ???): Repr = js.native
 
+  /** Fills a subrange of this TypedArray with a given value. */
+  def fill(value: T, start: Int, end: Int): Unit = js.native
+
+  /** Fills a subrange of this TypedArray with a given value, until then end of the array. */
+  def fill(value: T, start: Int): Unit = js.native
+
+  /** Fills this entire TypedArray with a given value. */
+  def fill(value: T): Unit = js.native
+
 }
 
 /** <span class="badge badge-ecma6" style="float: right;">ECMAScript 6</span>
