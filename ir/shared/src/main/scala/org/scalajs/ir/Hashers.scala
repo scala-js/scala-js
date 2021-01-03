@@ -92,7 +92,7 @@ object Hashers {
     def hexDigit(digit: Int): Char = Character.forDigit(digit, 16)
 
     for (b <- hash.hash)
-      builder.append(hexDigit(b >> 4)).append(hexDigit(b & 0xF))
+      builder.append(hexDigit((b >> 4) & 0x0f)).append(hexDigit(b & 0x0f))
 
     builder.toString
   }
