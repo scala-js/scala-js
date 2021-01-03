@@ -23,18 +23,10 @@ import Printers._
 import Trees._
 import Types._
 
-import OptimizerHints.{empty => NoOptHints}
+import TestIRBuilder._
 
 class PrintersTest {
   import MemberNamespace.{Private, PublicStatic => Static, PrivateStatic}
-
-  private implicit val dummyPos = Position.NoPosition
-
-  /** Empty ApplyFlags, for short. */
-  private val EAF = ApplyFlags.empty
-
-  /** No original name, for short. */
-  private val NON = NoOriginalName
 
   /** An original name. */
   private val TestON = OriginalName("orig name")
@@ -55,51 +47,6 @@ class PrintersTest {
     print(printer)
     assertEquals(expected.stripMargin.trim, sw.toString())
   }
-
-  // String -> Name conversions
-  private implicit def string2fieldName(name: String): FieldName =
-    FieldName(name)
-  private implicit def string2className(name: String): ClassName =
-    ClassName(name)
-
-  // String -> Ident conversions
-  private implicit def string2localIdent(name: String): LocalIdent =
-    LocalIdent(LocalName(name))
-  private implicit def string2labelIdent(name: String): LabelIdent =
-    LabelIdent(LabelName(name))
-  private implicit def string2fieldIdent(name: String): FieldIdent =
-    FieldIdent(FieldName(name))
-  private implicit def string2classIdent(name: String): ClassIdent =
-    ClassIdent(ClassName(name))
-
-  // String -> Type and TypeRef conversions
-  private implicit def string2classType(className: String): ClassType =
-    ClassType(ClassName(className))
-  private implicit def string2classRef(className: String): ClassRef =
-    ClassRef(ClassName(className))
-
-  // Name -> Ident conversions
-  private implicit def methodName2methodIdent(name: MethodName): MethodIdent =
-    MethodIdent(name)
-  private implicit def className2classRef(className: ClassName): ClassRef =
-    ClassRef(className)
-  private implicit def className2classIdent(name: ClassName): ClassIdent =
-    ClassIdent(name)
-
-  private val V = VoidRef
-  private val I = IntRef
-  private val O = ClassRef(ObjectClass)
-
-  private def b(value: Boolean): BooleanLiteral = BooleanLiteral(value)
-  private def i(value: Int): IntLiteral = IntLiteral(value)
-  private def l(value: Long): LongLiteral = LongLiteral(value)
-  private def f(value: Float): FloatLiteral = FloatLiteral(value)
-  private def d(value: Double): DoubleLiteral = DoubleLiteral(value)
-
-  private def ref(ident: LocalIdent, tpe: Type): VarRef = VarRef(ident)(tpe)
-
-  private def arrayType(base: NonArrayTypeRef, dimensions: Int): ArrayType =
-    ArrayType(ArrayTypeRef(base, dimensions))
 
   @Test def printType(): Unit = {
     assertPrintEquals("any", AnyType)
