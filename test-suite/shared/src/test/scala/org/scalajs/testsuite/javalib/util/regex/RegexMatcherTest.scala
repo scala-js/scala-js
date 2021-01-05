@@ -374,6 +374,13 @@ class RegexMatcherTest  {
     assertEquals("-foo-foo-foo-", matcher.replaceAll("-"))
   }
 
+  @Test def replaceAllIn(): Unit = {
+    val matcher = Pattern
+      .compile("(?:(ab)|(a))c(d)|(e)")
+      .matcher("abcd")
+    assertEquals("1=ab,2=,3=d,4=", matcher.replaceAll("1=$1,2=$2,3=$3,4=$4"))
+  }
+
   @Test def replaceFirst(): Unit = {
     // From the JavaDoc
     val matcher = Pattern
