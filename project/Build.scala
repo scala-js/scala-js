@@ -2380,23 +2380,13 @@ object Build {
       },
   ).zippedSettings(partest)(partest =>
       unmanagedSources in Test ++= {
-        def loadList(listName: String): Set[String] = {
-          val listsDir = (resourceDirectory in Test).value / scalaVersion.value
-          val buff = scala.io.Source.fromFile(listsDir / listName)
-          val lines = buff.getLines().collect {
-            case line if !line.startsWith("#") && line.nonEmpty => line
-          }.toSeq
-          val linesSet = lines.toSet
-          if (linesSet.size != lines.size) {
-            val msg = listName + " contains contains duplicates: " +
-                lines.diff(linesSet.toSeq).toSet
-            throw new AssertionError(msg.toString)
-          }
-          linesSet
+        val blacklist: Set[String] = {
+          val file = (resourceDirectory in Test).value / scalaVersion.value / "BlacklistedTests.txt"
+          scala.io.Source.fromFile(file)
+            .getLines()
+            .filter(l => l.nonEmpty && !l.startsWith("#"))
+            .toSet
         }
-
-        val whitelist: Set[String] = loadList("WhitelistedTests.txt")
-        val blacklist: Set[String] = loadList("BlacklistedTests.txt")
 
         val jUnitTestsPath =
           (fetchScalaSource in partest).value / "test" / "junit"
@@ -2412,35 +2402,14 @@ object Build {
 
         // Check the coherence of the lists against the files found.
         val allClasses = scalaScalaJUnitSources.map(_._1).toSet
-        val inBothLists = blacklist.intersect(whitelist)
-        val allListed = blacklist.union(whitelist)
-        val inNoList = allClasses.diff(allListed)
         val nonexistentBlacklisted = blacklist.diff(allClasses)
-        val nonexistentWhitelisted = whitelist.diff(allClasses)
-        if (inBothLists.nonEmpty || inNoList.nonEmpty ||
-            nonexistentBlacklisted.nonEmpty || nonexistentWhitelisted.nonEmpty) {
-          val msg = new StringBuffer("Errors in black or white lists.\n")
-          if (inBothLists.nonEmpty) {
-            msg.append("Sources listed both in black and white list: ")
-            msg.append(inBothLists).append('\n')
-          }
-          if (inNoList.nonEmpty) {
-            msg.append("Sources not listed in back or white list: ")
-            msg.append(inNoList).append('\n')
-          }
-          if (nonexistentBlacklisted.nonEmpty) {
-            msg.append("Sources not found for blacklisted tests: ")
-            msg.append(nonexistentBlacklisted).append('\n')
-          }
-          if (nonexistentWhitelisted.nonEmpty) {
-            msg.append("Sources not found for whitelisted tests: ")
-            msg.append(nonexistentWhitelisted).append('\n')
-          }
-          throw new AssertionError(msg.toString)
+        if (nonexistentBlacklisted.nonEmpty) {
+          throw new AssertionError(
+              s"Sources not found for blacklisted tests:\n$nonexistentBlacklisted")
         }
 
         scalaScalaJUnitSources.collect {
-          case fTup if whitelist(fTup._1) => fTup._2
+          case (rel, file) if !blacklist.contains(rel) => file
         }
       }
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(jUnitRuntime, testBridge % "test")

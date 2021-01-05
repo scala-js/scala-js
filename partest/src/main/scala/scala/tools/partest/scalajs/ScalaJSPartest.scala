@@ -124,56 +124,40 @@ trait ScalaJSSuiteRunner extends SuiteRunner {
 
   override def runTestsForFiles(kindFiles: Array[File],
       kind: String): Array[TestState] = {
-    super.runTestsForFiles(kindFiles.filter(shouldUseTest), kind)
+    super.runTestsForFiles(kindFiles.filter(testFilter), kind)
   }
 
   private lazy val listDir =
     s"/scala/tools/partest/scalajs/$scalaVersion"
 
-  private lazy val buglistedTestFileNames =
-    readTestList(s"$listDir/BuglistedTests.txt")
+  private lazy val blacklistedTests = {
+    val source = scala.io.Source.fromURL(getClass.getResource(
+        s"$listDir/BlacklistedTests.txt"))
 
-  private lazy val blacklistedTestFileNames =
-    readTestList(s"$listDir/BlacklistedTests.txt")
-
-  private lazy val whitelistedTestFileNames =
-    readTestList(s"$listDir/WhitelistedTests.txt")
-
-  private def readTestList(resourceName: String): Set[String] = {
-    val source = scala.io.Source.fromURL(getClass.getResource(resourceName))
-
-    val fileNames = for {
+    val files = for {
       line <- source.getLines
       trimmed = line.trim
       if trimmed != "" && !trimmed.startsWith("#")
-    } yield extendShortTestName(trimmed)
+    } yield {
+      extendShortTestName(trimmed)
+    }
 
-    fileNames.toSet
+    files.toSet
   }
 
-  private def extendShortTestName(testName: String) = {
-    val srcDir = PathSettings.srcDir
-    (srcDir / testName).toCanonical.getAbsolutePath
+  private def extendShortTestName(testName: String): File = {
+    val f = PathSettings.srcDir / testName
+    require(f.exists(), s"$testName does not exist")
+    f
   }
 
-  private lazy val testFilter: String => Boolean = {
+  private lazy val testFilter: File => Boolean = {
     import ScalaJSPartestOptions._
     options.testFilter match {
-      case UnknownTests => { absPath =>
-        !blacklistedTestFileNames.contains(absPath) &&
-        !whitelistedTestFileNames.contains(absPath) &&
-        !buglistedTestFileNames.contains(absPath)
-      }
-      case BlacklistedTests => blacklistedTestFileNames
-      case BuglistedTests   => buglistedTestFileNames
-      case WhitelistedTests => whitelistedTestFileNames
+      case BlacklistedTests => blacklistedTests
+      case WhitelistedTests => n => !blacklistedTests.contains(n)
       case SomeTests(names) => names.map(extendShortTestName _).toSet
     }
-  }
-
-  private def shouldUseTest(testFile: File): Boolean = {
-    val absPath = testFile.toCanonical.getAbsolutePath
-    testFilter(absPath)
   }
 }
 
