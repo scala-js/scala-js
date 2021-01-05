@@ -404,11 +404,16 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 
           typer.typed {
             atPos(tree.pos) {
+              val superCtorCall = gen.mkMethodCall(
+                  Super(clsSym, tpnme.EMPTY),
+                  ObjectClass.primaryConstructor, Nil, Nil)
+
               // class $anon extends DynamicImportThunk
               val clsDef = ClassDef(clsSym, List(
-                  // def <init>() = super.<init>()
-                  DefDef(ctorSym, Block(gen.mkMethodCall(
-                      Super(clsSym, tpnme.EMPTY), ObjectClass.primaryConstructor, Nil, Nil))),
+                  // def <init>() = { super.<init>(); () }
+                  DefDef(ctorSym,
+                      // `gen.mkUnitBlock(gen.mkSuperInitCall)` would be better but that fails on 2.11.
+                      Block(superCtorCall, Literal(Constant(())))),
                   // def apply(): Any = body
                   DefDef(applySym, newBody)))
 

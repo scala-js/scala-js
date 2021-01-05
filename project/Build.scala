@@ -239,7 +239,7 @@ object Build {
   val previousBinaryCrossVersion = CrossVersion.binaryWith("sjs1_", "")
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.11.12", "2.12.12", "2.13.3")
+    Set("2.11.12", "2.12.12", "2.13.4")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
 
@@ -1680,11 +1680,11 @@ object Build {
                 fullLinkGz = 36000 to 37000,
             ))
 
-          case "2.13.3"  =>
+          case "2.13.4" =>
             Some(ExpectedSizes(
-                fastLink = 774000 to 775000,
-                fullLink = 168000 to 169000,
-                fastLinkGz = 97000 to 98000,
+                fastLink = 781000 to 782000,
+                fullLink = 169000 to 170000,
+                fastLinkGz = 98000 to 99000,
                 fullLinkGz = 43000 to 44000,
             ))
 
