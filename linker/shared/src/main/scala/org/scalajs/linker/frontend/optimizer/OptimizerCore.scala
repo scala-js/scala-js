@@ -5189,17 +5189,21 @@ private[optimizer] object OptimizerCore {
     def originalDef: MethodDef
     def thisType: Type
 
-    var inlineable: Boolean = false
-    var shouldInline: Boolean = false
-    var isForwarder: Boolean = false
+    protected type Attributes = MethodImpl.Attributes
 
-    protected def updateInlineable(): Unit = {
+    protected def attributes: Attributes
+
+    final def inlineable: Boolean = attributes.inlineable
+    final def shouldInline: Boolean = attributes.shouldInline
+    final def isForwarder: Boolean = attributes.isForwarder
+
+    protected def computeNewAttributes(): Attributes = {
       val MethodDef(_, MethodIdent(methodName), _, params, _, optBody) = originalDef
       val body = optBody getOrElse {
         throw new AssertionError("Methods in optimizer must be concrete")
       }
 
-      isForwarder = body match {
+      val isForwarder = body match {
         // Shape of forwarders to trait impls
         case ApplyStatic(_, impl, method, args) =>
           ((args.size == params.size + 1) &&
@@ -5232,8 +5236,9 @@ private[optimizer] object OptimizerCore {
         case _ => false
       }
 
-      inlineable = !optimizerHints.noinline
-      shouldInline = inlineable && {
+      val inlineable = !optimizerHints.noinline
+
+      val shouldInline = inlineable && {
         optimizerHints.inline || isForwarder || {
           body match {
             case _:Skip | _:This | _:Literal =>
@@ -5260,7 +5265,17 @@ private[optimizer] object OptimizerCore {
           }
         }
       }
+
+      MethodImpl.Attributes(inlineable, shouldInline, isForwarder)
     }
+  }
+
+  object MethodImpl {
+    final case class Attributes(
+        inlineable: Boolean,
+        shouldInline: Boolean,
+        isForwarder: Boolean
+    )
   }
 
   private object MaybeUnbox {

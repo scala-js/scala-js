@@ -16,7 +16,8 @@ libraryDependencies += "org.scala-js" %% "scalajs-env-nodejs" % "1.1.1"
 unmanagedSourceDirectories in Compile ++= {
   val root = baseDirectory.value.getParentFile
   Seq(
-    root / "ir/src/main/scala",
+    root / "ir/shared/src/main/scala",
+    root / "ir/jvm/src/main/scala",
     root / "linker-interface/shared/src/main/scala",
     root / "linker-interface/jvm/src/main/scala",
     root / "test-adapter/src/main/scala",

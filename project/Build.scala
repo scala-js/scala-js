@@ -705,12 +705,14 @@ object Build {
 
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
 
-      sourceDirectory :=
-        baseDirectory.value.getParentFile.getParentFile / "src"
+      unmanagedSourceDirectories in Compile +=
+        baseDirectory.value.getParentFile.getParentFile / "shared/src/main/scala",
+      unmanagedSourceDirectories in Test +=
+        baseDirectory.value.getParentFile.getParentFile / "shared/src/test/scala",
   )
 
   lazy val irProject: MultiScalaProject = MultiScalaProject(
-      id = "ir", base = file("ir/.jvm")
+      id = "ir", base = file("ir/jvm")
   ).settings(
       commonIrProjectSettings,
       libraryDependencies +=
@@ -718,7 +720,7 @@ object Build {
   )
 
   lazy val irProjectJS: MultiScalaProject = MultiScalaProject(
-      id = "irJS", base = file("ir/.js")
+      id = "irJS", base = file("ir/js")
   ).enablePlugins(
       MyScalaJSPlugin
   ).settings(

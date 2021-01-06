@@ -71,6 +71,125 @@ class IncrementalTest {
     testIncremental(classDefs(_), _ => MainTestModuleInitializers)
   }
 
+  @Test
+  def testChangeMethodAttributeInlineableForOptimizer(): AsyncResult = await {
+    val FooClass = ClassName("Foo")
+
+    val foo = m("foo", List(IntRef), IntRef)
+
+    val x = LocalName("x")
+
+    def classDefs(pre: Boolean): Seq[ClassDef] = Seq(
+        mainTestClassDef({
+          consoleLog(Apply(EAF, New(FooClass, NoArgConstructorName, Nil), foo, List(int(5)))(IntType))
+        }),
+        classDef(
+            FooClass,
+            superClass = Some(ObjectClass),
+            memberDefs = List(
+                trivialCtor(FooClass),
+                MethodDef(EMF, foo, NON, List(paramDef(x, IntType)), IntType,
+                    Some(VarRef(x)(IntType)))(
+                    EOH.withNoinline(pre), None)
+            )
+        )
+    )
+
+    testIncremental(classDefs(_), _ => MainTestModuleInitializers)
+  }
+
+  @Test
+  def testChangeMethodAttributeShouldInlineForOptimizer(): AsyncResult = await {
+    val FooClass = ClassName("Foo")
+
+    val foo = m("foo", List(IntRef), IntRef)
+
+    val x = LocalName("x")
+
+    def classDefs(pre: Boolean): Seq[ClassDef] = Seq(
+        mainTestClassDef({
+          consoleLog(Apply(EAF, New(FooClass, NoArgConstructorName, Nil), foo, List(int(5)))(IntType))
+        }),
+        classDef(
+            FooClass,
+            superClass = Some(ObjectClass),
+            memberDefs = List(
+                trivialCtor(FooClass),
+                MethodDef(EMF, foo, NON, List(paramDef(x, IntType)), IntType,
+                    Some(Block(
+                        consoleLog(VarRef(x)(IntType)),
+                        VarRef(x)(IntType)
+                    )))(
+                    EOH.withInline(pre), None)
+            )
+        )
+    )
+
+    testIncremental(classDefs(_), _ => MainTestModuleInitializers)
+  }
+
+  @Test
+  def testChangeMethodAttributeIsForwarderForOptimizer(): AsyncResult = await {
+    val BarInterface = ClassName("Bar")
+    val Foo1Class = ClassName("Foo1")
+    val Foo2Class = ClassName("Foo2")
+
+    val BarType = ClassType(BarInterface)
+    val Foo1Type = ClassType(Foo1Class)
+    val Foo2Type = ClassType(Foo2Class)
+
+    val meth = m("meth", List(ClassRef(Foo1Class), I), I)
+
+    val foo1 = LocalName("foo1")
+    val bar = LocalName("bar")
+    val x = LocalName("x")
+
+    val foo1Ref = VarRef(foo1)(Foo1Type)
+    val barRef = VarRef(bar)(BarType)
+    val xRef = VarRef(x)(IntType)
+
+    val methParamDefs = List(paramDef(foo1, Foo1Type), paramDef(x, IntType))
+
+    def classDefs(pre: Boolean): List[ClassDef] = List(
+        // Main
+        mainTestClassDef(Block(
+            VarDef(foo1, NON, Foo1Type, mutable = false, New(Foo1Class, NoArgConstructorName, Nil)),
+            VarDef(bar, NON, BarType, mutable = false,
+                If(AsInstanceOf(JSGlobalRef("randomBool"), BooleanType),
+                    New(Foo1Class, NoArgConstructorName, Nil),
+                    New(Foo2Class, NoArgConstructorName, Nil))(
+                    BarType)),
+            consoleLog(Apply(EAF, barRef, meth, List(foo1Ref, int(5)))(IntType))
+        )),
+
+        // Bar
+        classDef(BarInterface, kind = ClassKind.Interface, memberDefs = List(
+            MethodDef(EMF, meth, NON, methParamDefs, IntType, Some({
+              BinaryOp(BinaryOp.Int_+, int(5), BinaryOp(BinaryOp.Int_*, xRef, int(2)))
+            }))(EOH, None)
+        )),
+
+        // Foo1
+        classDef(Foo1Class, superClass = Some(ObjectClass), interfaces = List(BarInterface), memberDefs = List(
+            trivialCtor(Foo1Class),
+            MethodDef(EMF, meth, NON, methParamDefs, IntType, Some({
+              ApplyStatically(EAF, if (pre) This()(Foo1Type) else foo1Ref,
+                  BarInterface, meth, List(foo1Ref, xRef))(IntType)
+            }))(EOH, None)
+        )),
+
+        // Foo2
+        classDef(Foo2Class, superClass = Some(ObjectClass), interfaces = List(BarInterface), memberDefs = List(
+            trivialCtor(Foo2Class),
+            MethodDef(EMF, meth, NON, methParamDefs, IntType, Some({
+              ApplyStatically(EAF, This()(Foo2Type), BarInterface, meth, List(foo1Ref, xRef))(IntType)
+            }))(EOH, None)
+        ))
+    )
+
+    testIncremental(classDefs(_), _ => MainTestModuleInitializers)
+  }
+
 }
 
 object IncrementalTest {

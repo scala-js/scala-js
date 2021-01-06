@@ -16,6 +16,7 @@ import scala.language.implicitConversions
 
 import org.scalajs.ir
 import org.scalajs.ir.ClassKind
+import org.scalajs.ir.Hashers
 import org.scalajs.ir.Names._
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.OriginalName.NoOriginalName
@@ -50,10 +51,11 @@ object TestIRBuilder {
       jsNativeLoadSpec: Option[JSNativeLoadSpec] = None,
       memberDefs: List[MemberDef] = Nil,
       topLevelExportDefs: List[TopLevelExportDef] = Nil): ClassDef = {
-    ClassDef(ClassIdent(className), NON, kind, jsClassCaptures,
+    val notHashed = ClassDef(ClassIdent(className), NON, kind, jsClassCaptures,
         superClass.map(ClassIdent(_)), interfaces.map(ClassIdent(_)),
         jsSuperClass, jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
         EOH)
+    Hashers.hashClassDef(notHashed)
   }
 
   final val MainTestClassName = ClassName("Test")
@@ -126,6 +128,8 @@ object TestIRBuilder {
   implicit def string2ClassIdent(name: String): ClassIdent =
     ClassIdent(ClassName(name))
 
+  implicit def localName2LocalIdent(name: LocalName): LocalIdent =
+    LocalIdent(name)
   implicit def methodName2MethodIdent(name: MethodName): MethodIdent =
     MethodIdent(name)
 

@@ -797,6 +797,8 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     var originalDef: MethodDef = _
     var optimizedMethodDef: Versioned[MethodDef] = _
 
+    var attributes: Attributes = _
+
     def enclosingClassName: ClassName = owner.className
 
     def thisType: Type = owner.thisType
@@ -883,16 +885,15 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
         if (changed) {
           tagBodyAskers()
 
-          val oldAttributes = (inlineable, isForwarder)
+          val oldAttributes = attributes
 
           optimizerHints = methodDef.optimizerHints
           originalDef = methodDef
           optimizedMethodDef = null
-          updateInlineable()
+          attributes = computeNewAttributes()
           tag()
 
-          val newAttributes = (inlineable, isForwarder)
-          newAttributes != oldAttributes
+          attributes != oldAttributes
         } else {
           false
         }
