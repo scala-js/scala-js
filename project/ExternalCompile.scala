@@ -78,7 +78,7 @@ object ExternalCompile {
             def log(level: Level.Value, message: => String) = {
               val msg = message
               if (level != Level.Info ||
-                  !msg.startsWith("Running (fork) scala.tools.nsc.Main"))
+                  !msg.startsWith("running (fork) scala.tools.nsc.Main"))
                 logger.log(level, msg)
             }
             def success(message: => String) = logger.success(message)

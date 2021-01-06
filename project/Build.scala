@@ -638,6 +638,9 @@ object Build {
   }
 
   val thisBuildSettings = Def.settings(
+      // Disable sbt 1.3.x+'s supershell, because it's terribly annoying
+      useSuperShell := false,
+
       // JDK version we are running with
       javaVersion in Global := {
         val fullVersion = System.getProperty("java.version")
