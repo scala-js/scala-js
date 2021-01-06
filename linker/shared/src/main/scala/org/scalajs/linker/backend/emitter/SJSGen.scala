@@ -116,13 +116,18 @@ private[emitter] final class SJSGen(
 
   def getArrayUnderlyingTypedArrayClassRef(elemTypeRef: NonArrayTypeRef)(
       implicit pos: Position): Option[WithGlobals[VarRef]] = {
-
-    def some(name: String): Some[WithGlobals[VarRef]] =
-      Some(WithGlobals(VarRef(Ident(name)), Set(name)))
-
     elemTypeRef match {
       case _ if !esFeatures.useECMAScript2015 => None
+      case primRef: PrimRef                   => typedArrayRef(primRef)
+      case _                                  => None
+    }
+  }
 
+  def typedArrayRef(primRef: PrimRef)(
+      implicit pos: Position): Option[WithGlobals[VarRef]] = {
+    def some(name: String) = Some(globalRef(name))
+
+    primRef match {
       case CharRef   => some("Uint16Array")
       case ByteRef   => some("Int8Array")
       case ShortRef  => some("Int16Array")

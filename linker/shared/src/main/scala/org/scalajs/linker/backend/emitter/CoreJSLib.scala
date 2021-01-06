@@ -143,7 +143,6 @@ private[emitter] object CoreJSLib {
       buf.clear()
 
       defineSpecializedArrayClasses()
-      defineTypedArrayConversions()
       defineTypeDataClass()
       defineSpecializedIsArrayOfFunctions()
       defineSpecializedAsArrayOfFunctions()
@@ -1289,58 +1288,6 @@ private[emitter] object CoreJSLib {
         // arg is a native array that we wrap
         This().u := arg
       })
-    }
-
-    private def defineTypedArrayConversions(): Unit = {
-      val list = List(
-          (ByteRef, "byte", "Int8Array"),
-          (ShortRef, "short", "Int16Array"),
-          (CharRef, "char", "Uint16Array"),
-          (IntRef, "int", "Int32Array"),
-          (FloatRef, "float", "Float32Array"),
-          (DoubleRef, "double", "Float64Array")
-      )
-
-      val value = varRef("value")
-
-      for ((primRef, shortName, typedArrayName) <- list) {
-        val typedArrayClass = globalRef(typedArrayName)
-        val shortNameUpperCase = "" + shortName.head.toUpper + shortName.tail
-
-        defineFunction(shortName + "Array2TypedArray", paramList(value), {
-          if (useECMAScript2015)
-            Return(Apply(genIdentBracketSelect(value.u, "slice"), Nil))
-          else
-            Return(New(typedArrayClass, value.u :: Nil))
-        })
-        defineFunction("typedArray2" + shortNameUpperCase + "Array", paramList(value), {
-          val arrayValue = if (esFeatures.useECMAScript2015) {
-            Apply(genIdentBracketSelect(value, "slice"), Nil)
-          } else {
-            /* Array.prototype.slice.call(value)
-             *
-             * This works because:
-             * - If the `this` value of `slice` is not a proper `Array`, the
-             *   result will be created through `ArrayCreate` without explicit
-             *   prototype, which creates a new proper `Array`.
-             * - To know what elements to copy, `slice` does not check that its
-             *   `this` value is a proper `Array`. Instead, it simply assumes
-             *   that it is an "Array-like", and reads the `"length"` property
-             *   as well as indexed properties. Both of those work on a typed
-             *   array.
-             *
-             * Reference:
-             * http://www.ecma-international.org/ecma-262/6.0/#sec-array.prototype.slice
-             * (also follow the link for `ArraySpeciesCreate`)
-             */
-            Apply(genIdentBracketSelect(
-                genIdentBracketSelect(ArrayRef.prototype, "slice"), "call"),
-                value :: Nil)
-          }
-          Return(New(genArrayConstrOf(ArrayTypeRef(primRef, 1)),
-              arrayValue :: Nil))
-        })
-      }
     }
 
     private def defineTypeDataClass(): Unit = {

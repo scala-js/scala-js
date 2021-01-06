@@ -2603,36 +2603,42 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           genCallHelper("objectClassName", transformExprNoChar(obj))
 
         case Transient(ArrayToTypedArray(expr, primRef)) =>
-          val helper = primRef match {
-            case ByteRef   => "byteArray2TypedArray"
-            case ShortRef  => "shortArray2TypedArray"
-            case CharRef   => "charArray2TypedArray"
-            case IntRef    => "intArray2TypedArray"
-            case FloatRef  => "floatArray2TypedArray"
-            case DoubleRef => "doubleArray2TypedArray"
+          val value = transformExprNoChar(expr)
 
-            case _ =>
-              throw new IllegalArgumentException(
-                  s"unexpected primRef for ArrayToTypedArray: $primRef")
+          if (esFeatures.useECMAScript2015) {
+            js.Apply(genIdentBracketSelect(value.u, "slice"), Nil)
+          } else {
+            val typedArrayClass = extractWithGlobals(typedArrayRef(primRef).get)
+            js.New(typedArrayClass, value.u :: Nil)
           }
-
-          genCallHelper(helper, transformExprNoChar(expr))
 
         case Transient(TypedArrayToArray(expr, primRef)) =>
-          val helper = primRef match {
-            case ByteRef   => "typedArray2ByteArray"
-            case ShortRef  => "typedArray2ShortArray"
-            case CharRef   => "typedArray2CharArray"
-            case IntRef    => "typedArray2IntArray"
-            case FloatRef  => "typedArray2FloatArray"
-            case DoubleRef => "typedArray2DoubleArray"
+          val value = transformExprNoChar(expr)
 
-            case _ =>
-              throw new IllegalArgumentException(
-                  s"unexpected primRef for ArrayToTypedArray: $primRef")
+          val arrayValue = if (esFeatures.useECMAScript2015) {
+            js.Apply(genIdentBracketSelect(value, "slice"), Nil)
+          } else {
+            /* Array.prototype.slice.call(value)
+             *
+             * This works because:
+             * - If the `this` value of `slice` is not a proper `Array`, the
+             *   result will be created through `ArrayCreate` without explicit
+             *   prototype, which creates a new proper `Array`.
+             * - To know what elements to copy, `slice` does not check that its
+             *   `this` value is a proper `Array`. Instead, it simply assumes
+             *   that it is an "Array-like", and reads the `"length"` property
+             *   as well as indexed properties. Both of those work on a typed
+             *   array.
+             *
+             * Reference:
+             * http://www.ecma-international.org/ecma-262/6.0/#sec-array.prototype.slice
+             * (also follow the link for `ArraySpeciesCreate`)
+             */
+            js.Apply(genIdentBracketSelect(
+                genIdentBracketSelect(genGlobalVarRef("Array").prototype, "slice"), "call"),
+                value :: Nil)
           }
-
-          genCallHelper(helper, transformExprNoChar(expr))
+          js.New(genArrayConstrOf(ArrayTypeRef(primRef, 1)), arrayValue :: Nil)
 
         // JavaScript expressions
 
