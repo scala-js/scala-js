@@ -12,15 +12,10 @@
 
 package org.scalajs.testsuite.javalib.lang
 
-import java.nio.charset.Charset
-
-import scala.language.implicitConversions
-
 import org.junit.Test
 import org.junit.Assert._
 
 import org.scalajs.testsuite.utils.AssertThrows._
-import org.scalajs.testsuite.utils.Platform._
 
 class StringTestOnJDK11 {
   @Test def repeat(): Unit = {

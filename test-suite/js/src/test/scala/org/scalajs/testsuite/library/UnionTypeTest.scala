@@ -12,8 +12,6 @@
 
 package org.scalajs.testsuite.library
 
-import scala.language.implicitConversions
-
 import scala.collection.mutable
 
 import scala.scalajs.js

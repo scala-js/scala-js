@@ -14,8 +14,6 @@ package org.scalajs.testsuite.javalib.io
 
 import java.io._
 
-import scala.language.implicitConversions
-
 import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
@@ -29,8 +27,8 @@ trait CommonStreamsTests {
   private val length = 50
   private def newStream: InputStream = mkStream(1 to length)
 
-  private implicit def seqToArray(seq: Seq[Int]): Array[Byte] =
-    seq.toArray.map(_.toByte)
+  private def assertArrayEqualsSeq(expected: Seq[Int], actual: Array[Byte]): Unit =
+    assertArrayEquals(expected.toArray.map(_.toByte), actual)
 
   @Test def read(): Unit = {
     val stream = newStream
@@ -47,12 +45,12 @@ trait CommonStreamsTests {
     val buf = new Array[Byte](10)
 
     assertEquals(10, stream.read(buf))
-    assertArrayEquals(1 to 10, buf)
+    assertArrayEqualsSeq(1 to 10, buf)
 
     assertEquals(35L, stream.skip(35))
 
     assertEquals(5, stream.read(buf))
-    assertArrayEquals((46 to 50) ++ (6 to 10), buf)
+    assertArrayEqualsSeq((46 to 50) ++ (6 to 10), buf)
 
     assertEquals(-1, stream.read(buf))
     assertEquals(-1, stream.read())
@@ -63,27 +61,27 @@ trait CommonStreamsTests {
     val buf = new Array[Byte](20)
 
     assertEquals(5, stream.read(buf, 10, 5))
-    assertArrayEquals(Seq.fill(10)(0) ++ (1 to 5) ++ Seq.fill(5)(0), buf)
+    assertArrayEqualsSeq(Seq.fill(10)(0) ++ (1 to 5) ++ Seq.fill(5)(0), buf)
 
     assertEquals(20, stream.read(buf, 0, 20))
-    assertArrayEquals(6 to 25, buf)
+    assertArrayEqualsSeq(6 to 25, buf)
 
     assertEquals(0, stream.read(buf, 10, 0))
-    assertArrayEquals(6 to 25, buf)
+    assertArrayEqualsSeq(6 to 25, buf)
 
     expectThrows(classOf[IndexOutOfBoundsException], stream.read(buf, -1, 0))
     expectThrows(classOf[IndexOutOfBoundsException], stream.read(buf, 0, -1))
     expectThrows(classOf[IndexOutOfBoundsException], stream.read(buf, 100, 0))
     expectThrows(classOf[IndexOutOfBoundsException], stream.read(buf, 10, 100))
-    assertArrayEquals(6 to 25, buf)
+    assertArrayEqualsSeq(6 to 25, buf)
 
     assertEquals(20L, stream.skip(20))
 
     assertEquals(5, stream.read(buf, 0, 10))
-    assertArrayEquals((46 to 50) ++ (11 to 25), buf)
+    assertArrayEqualsSeq((46 to 50) ++ (11 to 25), buf)
 
     assertEquals(-1, stream.read(buf, 0, 10))
-    assertArrayEquals((46 to 50) ++ (11 to 25), buf)
+    assertArrayEqualsSeq((46 to 50) ++ (11 to 25), buf)
 
   }
 

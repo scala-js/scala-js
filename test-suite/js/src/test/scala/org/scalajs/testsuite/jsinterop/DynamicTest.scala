@@ -12,8 +12,6 @@
 
 package org.scalajs.testsuite.jsinterop
 
-import scala.language.implicitConversions
-
 import scala.scalajs.js
 import js.JSConverters._
 
@@ -23,15 +21,6 @@ import org.junit.Test
 import org.scalajs.testsuite.utils.JSAssert._
 
 class DynamicTest {
-
-  implicit def dyn2Bool(dyn: js.Dynamic): Boolean =
-    dyn.asInstanceOf[Boolean]
-
-  implicit def dyn2Int(dyn: js.Dynamic): Int =
-    dyn.asInstanceOf[Int]
-
-  implicit def dyn2AnyRef(dyn: js.Dynamic): AnyRef =
-    dyn.asInstanceOf[AnyRef]
 
   // scala.scalajs.js.Dynamic
 
@@ -71,7 +60,7 @@ class DynamicTest {
     val obj2_elem1 = obj2.elem1
     assertEquals(42, obj2_elem1)
     val obj2_elem2 = obj2.elem2
-    assertTrue(obj2_elem2)
+    assertEquals(true, obj2_elem2)
 
     def obj3Args: Seq[js.Any] = Seq("Scala.js", 42, true)
     val obj3 = js.Dynamic.newInstance(DynamicTestClassVarArgs)(obj3Args: _*)
@@ -82,7 +71,7 @@ class DynamicTest {
     val obj3_elem1 = obj3.elem1
     assertEquals(42, obj3_elem1)
     val obj3_elem2 = obj3.elem2
-    assertTrue(obj3_elem2)
+    assertEquals(true, obj3_elem2)
   }
 
   @Test def objectLiteralConstruction(): Unit = {

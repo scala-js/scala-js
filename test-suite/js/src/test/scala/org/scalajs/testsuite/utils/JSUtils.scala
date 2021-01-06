@@ -12,8 +12,6 @@
 
 package org.scalajs.testsuite.utils
 
-import scala.language.implicitConversions
-
 import scala.scalajs.js
 import js.annotation.JSExport
 

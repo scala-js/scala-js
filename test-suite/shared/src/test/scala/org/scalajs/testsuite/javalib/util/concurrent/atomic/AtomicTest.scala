@@ -12,8 +12,6 @@
 
 package org.scalajs.testsuite.javalib.util.concurrent.atomic
 
-import scala.language.implicitConversions
-
 import org.junit.Test
 import org.junit.Assert._
 

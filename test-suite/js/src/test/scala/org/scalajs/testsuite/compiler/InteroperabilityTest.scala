@@ -12,8 +12,6 @@
 
 package org.scalajs.testsuite.compiler
 
-import scala.language.implicitConversions
-
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
@@ -22,6 +20,7 @@ import org.junit.Assert._
 import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.JSAssert._
 import org.scalajs.testsuite.utils.Platform._
 
 /*
@@ -31,14 +30,8 @@ import org.scalajs.testsuite.utils.Platform._
 class InteroperabilityTest {
   import InteroperabilityTest._
 
-  implicit def jsArray2Array[T](a: js.Array[T]): Array[AnyRef] =
-    a.map(_.asInstanceOf[AnyRef]).toArray
-
-  implicit def array2Array[T](a: Array[T]): Array[AnyRef] =
-    a.map(_.asInstanceOf[AnyRef])
-
-  def assertArrayDynEquals[T](expected: Array[T], actual: js.Dynamic): Unit = {
-    assertArrayEquals(expected, jsArray2Array(actual.asInstanceOf[js.Array[Any]]))
+  def assertArrayDynEquals(expected: js.Array[Any], actual: js.Dynamic): Unit = {
+    assertJSArrayEquals(expected, actual.asInstanceOf[js.Array[Any]])
   }
 
   @Test def backquotesToEscapeScalaFields(): Unit = {
@@ -289,16 +282,16 @@ class InteroperabilityTest {
     val elems = Seq[js.Any]("plop", 42, 51)
 
     val dyn = obj.asInstanceOf[js.Dynamic]
-    assertArrayDynEquals(Array[String](), dyn.foo())
-    assertArrayDynEquals(Array(3, 6), dyn.foo(3, 6))
-    assertArrayDynEquals(Array("hello", false), dyn.foo("hello", false))
-    assertArrayDynEquals(Array("plop", 42, 51), dyn.applyDynamic("foo")(elems: _*))
+    assertArrayDynEquals(js.Array(), dyn.foo())
+    assertArrayDynEquals(js.Array(3, 6), dyn.foo(3, 6))
+    assertArrayDynEquals(js.Array("hello", false), dyn.foo("hello", false))
+    assertArrayDynEquals(js.Array("plop", 42, 51), dyn.applyDynamic("foo")(elems: _*))
 
     val stat = obj.asInstanceOf[InteroperabilityTestVariadicMethod]
-    assertArrayEquals(Array[String](), stat.foo())
-    assertArrayEquals(Array(3, 6), stat.foo(3, 6))
-    assertArrayEquals(Array("hello", false), stat.foo("hello", false))
-    assertArrayEquals(Array("plop", 42, 51), stat.foo(elems: _*))
+    assertJSArrayEquals(js.Array[Any](), stat.foo())
+    assertJSArrayEquals(js.Array[Any](3, 6), stat.foo(3, 6))
+    assertJSArrayEquals(js.Array("hello", false), stat.foo("hello", false))
+    assertJSArrayEquals(js.Array("plop", 42, 51), stat.foo(elems: _*))
   }
 
   @Test def callPolytypeNullaryMethod_Issue2445(): Unit = {
@@ -346,19 +339,19 @@ class InteroperabilityTest {
     val ctor = js.Dynamic.global.InteroperabilityTestVariadicCtor
 
     val args0 = jsnew(ctor)().args
-    assertArrayDynEquals(Array[String](), args0)
+    assertArrayDynEquals(js.Array(), args0)
     val args1 = jsnew(ctor)(3, 6).args
-    assertArrayDynEquals(Array(3, 6), args1)
+    assertArrayDynEquals(js.Array(3, 6), args1)
     val args2 = jsnew(ctor)("hello", false).args
-    assertArrayDynEquals(Array("hello", false), args2)
+    assertArrayDynEquals(js.Array("hello", false), args2)
     val args3 = jsnew(ctor)(elems: _*).args
-    assertArrayDynEquals(Array("plop", 42, 51), args3)
+    assertArrayDynEquals(js.Array("plop", 42, 51), args3)
 
     import org.scalajs.testsuite.compiler.{InteroperabilityTestVariadicCtor => C}
-    assertArrayEquals(Array[String](), new C().args)
-    assertArrayEquals(Array(3, 6), new C(3, 6).args)
-    assertArrayEquals(Array("hello", false), new C("hello", false).args)
-    assertArrayEquals(Array("plop", 42, 51), new C(elems: _*).args)
+    assertJSArrayEquals(js.Array[Any](), new C().args)
+    assertJSArrayEquals(js.Array[Any](3, 6), new C(3, 6).args)
+    assertJSArrayEquals(js.Array("hello", false), new C("hello", false).args)
+    assertJSArrayEquals(js.Array("plop", 42, 51), new C(elems: _*).args)
   }
 
   @Test def accessTopLevelJSObjectsViaScalaObjectWithAnnotJSGlobalScope(): Unit = {
@@ -516,10 +509,10 @@ class InteroperabilityTest {
       }
     """);
 
-    assertArrayEquals(Array(6, 8), new InteroperabilityTestCtor().values)
-    assertArrayEquals(Array(6, 7), new InteroperabilityTestCtor(y = 7).values)
-    assertArrayEquals(Array(3, 8), new InteroperabilityTestCtor(3).values)
-    assertArrayEquals(Array(10, 2), new InteroperabilityTestCtor(10, 2).values)
+    assertJSArrayEquals(js.Array(6, 8), new InteroperabilityTestCtor().values)
+    assertJSArrayEquals(js.Array(6, 7), new InteroperabilityTestCtor(y = 7).values)
+    assertJSArrayEquals(js.Array(3, 8), new InteroperabilityTestCtor(3).values)
+    assertJSArrayEquals(js.Array(10, 2), new InteroperabilityTestCtor(10, 2).values)
   }
 
   @Test def constructorParamsThatAreValsVarsInFacades_Issue1277(): Unit = {

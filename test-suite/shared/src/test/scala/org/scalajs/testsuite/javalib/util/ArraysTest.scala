@@ -12,8 +12,6 @@
 
 package org.scalajs.testsuite.javalib.util
 
-import language.implicitConversions
-
 import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.Test
@@ -33,8 +31,16 @@ object ArraysTest extends ArraysTest
 class ArraysTest {
 
   // To invoke org.junit.Assert.assertArrayEquals on Array[T]
-  implicit def array2erasedArray[T](arr: Array[T]): Array[AnyRef] =
-    arr.map(_.asInstanceOf[AnyRef])
+  def assertArrayEquals[T](expected: Array[T], actual: Array[T]): Unit = {
+    (expected, actual) match {
+      case (expected: Array[AnyRef], actual: Array[AnyRef]) =>
+        org.junit.Assert.assertArrayEquals(expected, actual)
+      case _ =>
+        org.junit.Assert.assertArrayEquals(
+            expected.map(_.asInstanceOf[AnyRef]),
+            actual.map(_.asInstanceOf[AnyRef]))
+    }
+  }
 
   /** Overridden by typedarray tests */
   def Array[T: ClassTag](v: T*): scala.Array[T] = scala.Array(v: _*)
