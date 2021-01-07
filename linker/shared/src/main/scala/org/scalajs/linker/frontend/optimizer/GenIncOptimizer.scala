@@ -59,8 +59,6 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
   private[optimizer] val CollOps: AbsCollOps
 
-  private var logger: Logger = _
-
   /** Are we in batch mode? I.e., are we running from scratch?
    *  Various parts of the algorithm can be skipped entirely when running in
    *  batch mode.
@@ -80,59 +78,50 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
   private def getInterface(className: ClassName): InterfaceType =
     interfaces.getOrElseUpdate(className, new InterfaceType(className))
 
-  private def withLogger[A](logger: Logger)(body: => A): A = {
-    assert(this.logger == null)
-    this.logger = logger
-    try body
-    finally this.logger = null
-  }
-
   /** Update the incremental analyzer with a new run. */
   def update(unit: LinkingUnit, logger: Logger): LinkingUnit = {
-    withLogger(logger) {
-      batchMode = objectClass == null
-      logger.debug(s"Optimizer: Batch mode: $batchMode")
+    batchMode = objectClass == null
+    logger.debug(s"Optimizer: Batch mode: $batchMode")
 
-      logger.time("Optimizer: Incremental part") {
-        /* UPDATE PASS */
-        updateAndTagEverything(unit.classDefs)
-      }
-
-      logger.time("Optimizer: Optimizer part") {
-        /* PROCESS PASS */
-        processAllTaggedMethods()
-      }
-
-      val newLinkedClasses = for (linkedClass <- unit.classDefs) yield {
-        val className = linkedClass.className
-        val staticLikeContainers = CollOps.forceGet(staticLikes, className)
-
-        val publicContainer = classes.get(className).getOrElse {
-          /* For interfaces, we need to look at default methods.
-           * For other kinds of classes, the public namespace is necessarily
-           * empty.
-           */
-          val container = staticLikeContainers(MemberNamespace.Public.ordinal)
-          assert(
-              linkedClass.kind == ClassKind.Interface || container.methods.isEmpty,
-              linkedClass.className -> linkedClass.kind)
-          container
-        }
-
-        val newMethods = for (m <- linkedClass.methods) yield {
-          val namespace = m.value.flags.namespace
-          val container =
-            if (namespace == MemberNamespace.Public) publicContainer
-            else staticLikeContainers(namespace.ordinal)
-          container.methods(m.value.methodName).optimizedMethodDef
-        }
-
-        linkedClass.optimized(methods = newMethods)
-      }
-
-      new LinkingUnit(unit.coreSpec, newLinkedClasses, unit.topLevelExports,
-          unit.moduleInitializers)
+    logger.time("Optimizer: Incremental part") {
+      /* UPDATE PASS */
+      updateAndTagEverything(unit.classDefs)
     }
+
+    logger.time("Optimizer: Optimizer part") {
+      /* PROCESS PASS */
+      processAllTaggedMethods(logger)
+    }
+
+    val newLinkedClasses = for (linkedClass <- unit.classDefs) yield {
+      val className = linkedClass.className
+      val staticLikeContainers = CollOps.forceGet(staticLikes, className)
+
+      val publicContainer = classes.get(className).getOrElse {
+        /* For interfaces, we need to look at default methods.
+         * For other kinds of classes, the public namespace is necessarily
+         * empty.
+         */
+        val container = staticLikeContainers(MemberNamespace.Public.ordinal)
+        assert(
+            linkedClass.kind == ClassKind.Interface || container.methods.isEmpty,
+            linkedClass.className -> linkedClass.kind)
+        container
+      }
+
+      val newMethods = for (m <- linkedClass.methods) yield {
+        val namespace = m.value.flags.namespace
+        val container =
+          if (namespace == MemberNamespace.Public) publicContainer
+          else staticLikeContainers(namespace.ordinal)
+        container.methods(m.value.methodName).optimizedMethodDef
+      }
+
+      linkedClass.optimized(methods = newMethods)
+    }
+
+    new LinkingUnit(unit.coreSpec, newLinkedClasses, unit.topLevelExports,
+        unit.moduleInitializers)
   }
 
   /** Incremental part: update state and detect what needs to be re-optimized.
@@ -258,7 +247,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
   /** Optimizer part: process all methods that need reoptimizing.
    *  PROCESS PASS ONLY. (This IS the process pass).
    */
-  private def processAllTaggedMethods(): Unit = {
+  private def processAllTaggedMethods(logger: Logger): Unit = {
     val methods = CollOps.finishAdd(methodsToProcess)
     methodsToProcess = CollOps.emptyAddable
 
