@@ -70,18 +70,9 @@ final class IncOptimizer(config: CommonPhaseConfig)
       it.filter(f)
   }
 
-  private val _interfaces = mutable.Map.empty[ClassName, InterfaceType]
-  private[optimizer] def getInterface(className: ClassName): InterfaceType =
-    _interfaces.getOrElseUpdate(className, new SeqInterfaceType(className))
-
   private val methodsToProcess = mutable.ListBuffer.empty[MethodImpl]
   private[optimizer] def scheduleMethod(method: MethodImpl): Unit =
     methodsToProcess += method
-
-  private[optimizer] def newMethodImpl(owner: MethodContainer,
-      methodName: MethodName): MethodImpl = {
-    new SeqMethodImpl(owner, methodName)
-  }
 
   private[optimizer] def processAllTaggedMethods(): Unit = {
     logProcessingMethods(methodsToProcess.count(!_.deleted))
@@ -89,92 +80,4 @@ final class IncOptimizer(config: CommonPhaseConfig)
       method.process()
     methodsToProcess.clear()
   }
-
-  private class SeqInterfaceType(className: ClassName)
-      extends InterfaceType(className) {
-
-    private val ancestorsAskers = mutable.Set.empty[MethodImpl]
-    private val dynamicCallers = mutable.Map.empty[MethodName, mutable.Set[MethodImpl]]
-
-    private val staticCallers =
-      Array.fill(MemberNamespace.Count)(mutable.Map.empty[MethodName, mutable.Set[MethodImpl]])
-
-    private var _ancestors: List[ClassName] = className :: Nil
-
-    private var _instantiatedSubclasses: Set[Class] = Set.empty
-
-    def instantiatedSubclasses: Iterable[Class] = _instantiatedSubclasses
-
-    def addInstantiatedSubclass(x: Class): Unit =
-      _instantiatedSubclasses += x
-
-    def removeInstantiatedSubclass(x: Class): Unit =
-      _instantiatedSubclasses -= x
-
-    def ancestors: List[ClassName] = _ancestors
-
-    def ancestors_=(v: List[ClassName]): Unit = {
-      if (v != _ancestors) {
-        _ancestors = v
-        ancestorsAskers.foreach(_.tag())
-        ancestorsAskers.clear()
-      }
-    }
-
-    def registerAskAncestors(asker: MethodImpl): Unit =
-      ancestorsAskers += asker
-
-    def registerDynamicCaller(methodName: MethodName, caller: MethodImpl): Unit =
-      dynamicCallers.getOrElseUpdate(methodName, mutable.Set.empty) += caller
-
-    def registerStaticCaller(namespace: MemberNamespace, methodName: MethodName,
-        caller: MethodImpl): Unit = {
-      staticCallers(namespace.ordinal)
-        .getOrElseUpdate(methodName, mutable.Set.empty) += caller
-    }
-
-    def unregisterDependee(dependee: MethodImpl): Unit = {
-      ancestorsAskers -= dependee
-      dynamicCallers.values.foreach(_ -= dependee)
-      staticCallers.foreach(_.values.foreach(_ -= dependee))
-    }
-
-    def tagDynamicCallersOf(methodName: MethodName): Unit =
-      dynamicCallers.remove(methodName).foreach(_.foreach(_.tag()))
-
-    def tagStaticCallersOf(namespace: MemberNamespace,
-        methodName: MethodName): Unit = {
-      staticCallers(namespace.ordinal)
-        .remove(methodName)
-        .foreach(_.foreach(_.tag()))
-    }
-  }
-
-  private class SeqMethodImpl(owner: MethodContainer, methodName: MethodName)
-      extends MethodImpl(owner, methodName) {
-
-    private val bodyAskers = mutable.Set.empty[MethodImpl]
-
-    def registerBodyAsker(asker: MethodImpl): Unit =
-      bodyAskers += asker
-
-    def unregisterDependee(dependee: MethodImpl): Unit =
-      bodyAskers -= dependee
-
-    def tagBodyAskers(): Unit = {
-      bodyAskers.foreach(_.tag())
-      bodyAskers.clear()
-    }
-
-    private var _registeredTo: List[Unregisterable] = Nil
-
-    protected def registeredTo(intf: Unregisterable): Unit =
-      _registeredTo ::= intf
-
-    protected def unregisterFromEverywhere(): Unit = {
-      _registeredTo.foreach(_.unregisterDependee(this))
-      _registeredTo = Nil
-    }
-  }
-
 }

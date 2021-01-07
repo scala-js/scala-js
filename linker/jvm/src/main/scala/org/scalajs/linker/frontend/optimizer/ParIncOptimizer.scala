@@ -86,18 +86,9 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
       it.filter(f)
   }
 
-  private val _interfaces = TrieMap.empty[ClassName, InterfaceType]
-  private[optimizer] def getInterface(className: ClassName): InterfaceType =
-    _interfaces.getOrPut(className, new ParInterfaceType(className))
-
   private val methodsToProcess: AtomicAcc[MethodImpl] = AtomicAcc.empty
   private[optimizer] def scheduleMethod(method: MethodImpl): Unit =
     methodsToProcess += method
-
-  private[optimizer] def newMethodImpl(owner: MethodContainer,
-      methodName: MethodName): MethodImpl = {
-    new ParMethodImpl(owner, methodName)
-  }
 
   private[optimizer] def processAllTaggedMethods(): Unit = {
     val methods = methodsToProcess.removeAll().toParArray
@@ -105,112 +96,4 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
     for (method <- methods)
       method.process()
   }
-
-  private class ParInterfaceType(className: ClassName)
-      extends InterfaceType(className) {
-
-    private val ancestorsAskers = TrieSet.empty[MethodImpl]
-    private val dynamicCallers = TrieMap.empty[MethodName, TrieSet[MethodImpl]]
-
-    private val staticCallers =
-      Array.fill(MemberNamespace.Count)(TrieMap.empty[MethodName, TrieSet[MethodImpl]])
-
-    private var _ancestors: List[ClassName] = className :: Nil
-
-    private val _instantiatedSubclasses: TrieSet[Class] = TrieSet.empty
-
-    /** PROCESS PASS ONLY. Concurrency safe except with
-     *  [[addInstantiatedSubclass]] and [[removeInstantiatedSubclass]]
-     */
-    def instantiatedSubclasses: Iterable[Class] =
-      _instantiatedSubclasses.keys
-
-    /** UPDATE PASS ONLY. Concurrency safe except with
-     *  [[instantiatedSubclasses]]
-     */
-    def addInstantiatedSubclass(x: Class): Unit =
-      _instantiatedSubclasses += x
-
-    /** UPDATE PASS ONLY. Concurrency safe except with
-     *  [[instantiatedSubclasses]]
-     */
-    def removeInstantiatedSubclass(x: Class): Unit =
-      _instantiatedSubclasses -= x
-
-    /** PROCESS PASS ONLY. Concurrency safe except with [[ancestors_=]] */
-    def ancestors: List[ClassName] = _ancestors
-
-    /** UPDATE PASS ONLY. Not concurrency safe. */
-    def ancestors_=(v: List[ClassName]): Unit = {
-      if (v != _ancestors) {
-        _ancestors = v
-        ancestorsAskers.keysIterator.foreach(_.tag())
-        ancestorsAskers.clear()
-      }
-    }
-
-    /** PROCESS PASS ONLY. Concurrency safe except with [[ancestors_=]]. */
-    def registerAskAncestors(asker: MethodImpl): Unit =
-      ancestorsAskers += asker
-
-    /** PROCESS PASS ONLY. */
-    def registerDynamicCaller(methodName: MethodName, caller: MethodImpl): Unit =
-      dynamicCallers.getOrPut(methodName, TrieSet.empty) += caller
-
-    /** PROCESS PASS ONLY. */
-    def registerStaticCaller(namespace: MemberNamespace, methodName: MethodName,
-        caller: MethodImpl): Unit = {
-      staticCallers(namespace.ordinal)
-        .getOrPut(methodName, TrieSet.empty) += caller
-    }
-
-    /** UPDATE PASS ONLY. */
-    def unregisterDependee(dependee: MethodImpl): Unit = {
-      ancestorsAskers -= dependee
-      dynamicCallers.valuesIterator.foreach(_ -= dependee)
-      staticCallers.foreach(_.valuesIterator.foreach(_ -= dependee))
-    }
-
-    /** UPDATE PASS ONLY. */
-    def tagDynamicCallersOf(methodName: MethodName): Unit =
-      dynamicCallers.remove(methodName).foreach(_.keysIterator.foreach(_.tag()))
-
-    /** UPDATE PASS ONLY. */
-    def tagStaticCallersOf(namespace: MemberNamespace,
-        methodName: MethodName): Unit = {
-      staticCallers(namespace.ordinal)
-        .remove(methodName)
-        .foreach(_.keysIterator.foreach(_.tag()))
-    }
-  }
-
-  private class ParMethodImpl(owner: MethodContainer, methodName: MethodName)
-      extends MethodImpl(owner, methodName) {
-
-    private val bodyAskers = TrieSet.empty[MethodImpl]
-
-    /** PROCESS PASS ONLY. */
-    def registerBodyAsker(asker: MethodImpl): Unit =
-      bodyAskers += asker
-
-    /** UPDATE PASS ONLY. */
-    def unregisterDependee(dependee: MethodImpl): Unit =
-      bodyAskers -= dependee
-
-    /** UPDATE PASS ONLY. */
-    def tagBodyAskers(): Unit = {
-      bodyAskers.keysIterator.foreach(_.tag())
-      bodyAskers.clear()
-    }
-
-    private val _registeredTo = AtomicAcc.empty[Unregisterable]
-
-    protected def registeredTo(intf: Unregisterable): Unit =
-      _registeredTo += intf
-
-    protected def unregisterFromEverywhere(): Unit = {
-      _registeredTo.removeAll().foreach(_.unregisterDependee(this))
-    }
-  }
-
 }

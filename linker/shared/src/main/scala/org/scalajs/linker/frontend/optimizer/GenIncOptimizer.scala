@@ -73,13 +73,13 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
   private val staticLikes =
     CollOps.emptyParMap[ClassName, Array[StaticLikeNamespace]]
 
-  private[optimizer] def getInterface(className: ClassName): InterfaceType
+  private val interfaces = CollOps.emptyMap[ClassName, InterfaceType]
+
+  private def getInterface(className: ClassName): InterfaceType =
+    interfaces.getOrElseUpdate(className, new InterfaceType(className))
 
   /** Schedule a method for processing in the PROCESS PASS */
   private[optimizer] def scheduleMethod(method: MethodImpl): Unit
-
-  private[optimizer] def newMethodImpl(owner: MethodContainer,
-      methodName: MethodName): MethodImpl
 
   private def withLogger[A](logger: Logger)(body: => A): A = {
     assert(this.logger == null)
@@ -267,7 +267,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
   /** Base class for [[GenIncOptimizer.Class]] and
    *  [[GenIncOptimizer.StaticLikeNamespace]].
    */
-  private[optimizer] abstract class MethodContainer(val className: ClassName,
+  private abstract class MethodContainer(val className: ClassName,
       val namespace: MemberNamespace) {
 
     def thisType: Type =
@@ -338,7 +338,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
         methods.get(methodName).fold {
           addedMethods += methodName
-          val method = newMethodImpl(this, methodName)
+          val method = new MethodImpl(this, methodName)
           method.updateWith(linkedMethodDef)
           methods(methodName) = method
           method
@@ -364,7 +364,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
    *  maintains a list of its direct subclasses, so that the instances of
    *  [[Class]] form a tree of the class hierarchy.
    */
-  private[optimizer] class Class(val superClass: Option[Class],
+  private final class Class(val superClass: Option[Class],
       _className: ClassName)
       extends MethodContainer(_className, MemberNamespace.Public) {
 
@@ -703,7 +703,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
   }
 
   /** Namespace for static members of a class. */
-  private[optimizer] class StaticLikeNamespace(className: ClassName,
+  private final class StaticLikeNamespace(className: ClassName,
       namespace: MemberNamespace)
       extends MethodContainer(className, namespace) {
 
@@ -724,8 +724,21 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
    *
    *  Fully concurrency safe unless otherwise noted.
    */
-  private[optimizer] abstract class InterfaceType(
+  private final class InterfaceType(
       val className: ClassName) extends Unregisterable {
+
+    private type MethodCallers = CollOps.Map[MethodName, CollOps.Map[MethodImpl, Unit]]
+
+    private val ancestorsAskers = CollOps.emptyMap[MethodImpl, Unit]
+    private val dynamicCallers: MethodCallers = CollOps.emptyMap
+
+    // ArrayBuffer to avoid need for ClassTag[CollOps.Map[_, _]]
+    private val staticCallers =
+      mutable.ArrayBuffer.fill[MethodCallers](MemberNamespace.Count)(CollOps.emptyMap)
+
+    private var _ancestors: List[ClassName] = className :: Nil
+
+    private val _instantiatedSubclasses = CollOps.emptyMap[Class, Unit]
 
     override def toString(): String =
       s"intf $className"
@@ -733,48 +746,79 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     /** PROCESS PASS ONLY. Concurrency safe except with
      *  [[addInstantiatedSubclass]] and [[removeInstantiatedSubclass]]
      */
-    def instantiatedSubclasses: Iterable[Class]
+    def instantiatedSubclasses: Iterable[Class] = _instantiatedSubclasses.keys
 
     /** UPDATE PASS ONLY. Concurrency safe except with
      *  [[instantiatedSubclasses]]
      */
-    def addInstantiatedSubclass(x: Class): Unit
+    def addInstantiatedSubclass(x: Class): Unit =
+      _instantiatedSubclasses.put(x, ())
 
     /** UPDATE PASS ONLY. Concurrency safe except with
      *  [[instantiatedSubclasses]]
      */
-    def removeInstantiatedSubclass(x: Class): Unit
+    def removeInstantiatedSubclass(x: Class): Unit =
+      _instantiatedSubclasses -= x
 
     /** PROCESS PASS ONLY. Concurrency safe except with [[ancestors_=]] */
-    def ancestors: List[ClassName]
+    def ancestors: List[ClassName] =
+      _ancestors
 
     /** UPDATE PASS ONLY. Not concurrency safe. */
-    def ancestors_=(v: List[ClassName]): Unit
+    def ancestors_=(v: List[ClassName]): Unit = {
+      if (v != _ancestors) {
+        _ancestors = v
+        ancestorsAskers.keysIterator.foreach(_.tag())
+        ancestorsAskers.clear()
+      }
+    }
 
     /** PROCESS PASS ONLY. Concurrency safe except with [[ancestors_=]]. */
-    def registerAskAncestors(asker: MethodImpl): Unit
+    def registerAskAncestors(asker: MethodImpl): Unit =
+      ancestorsAskers.put(asker, ())
 
     /** Register a dynamic-caller of an instance method.
      *  PROCESS PASS ONLY.
      */
-    def registerDynamicCaller(methodName: MethodName, caller: MethodImpl): Unit
+    def registerDynamicCaller(methodName: MethodName, caller: MethodImpl): Unit = {
+      dynamicCallers
+        .getOrElseUpdate(methodName, CollOps.emptyMap)
+        .put(caller, ())
+    }
 
     /** Register a static-caller of an instance method.
      *  PROCESS PASS ONLY.
      */
     def registerStaticCaller(namespace: MemberNamespace, methodName: MethodName,
-        caller: MethodImpl): Unit
+        caller: MethodImpl): Unit = {
+      staticCallers(namespace.ordinal)
+        .getOrElseUpdate(methodName, CollOps.emptyMap)
+        .put(caller, ())
+    }
 
     /** Tag the dynamic-callers of an instance method.
      *  UPDATE PASS ONLY.
      */
-    def tagDynamicCallersOf(methodName: MethodName): Unit
+    def tagDynamicCallersOf(methodName: MethodName): Unit = {
+      dynamicCallers.remove(methodName)
+        .foreach(_.keysIterator.foreach(_.tag()))
+    }
 
     /** Tag the static-callers of an instance method.
      *  UPDATE PASS ONLY.
      */
     def tagStaticCallersOf(namespace: MemberNamespace,
-        methodName: MethodName): Unit
+        methodName: MethodName): Unit = {
+      staticCallers(namespace.ordinal).remove(methodName)
+        .foreach(_.keysIterator.foreach(_.tag()))
+    }
+
+    /** UPDATE PASS ONLY. */
+    def unregisterDependee(dependee: MethodImpl): Unit = {
+      ancestorsAskers.remove(dependee)
+      dynamicCallers.valuesIterator.foreach(_.remove(dependee))
+      staticCallers.foreach(_.valuesIterator.foreach(_.remove(dependee)))
+    }
   }
 
   /** A method implementation.
@@ -785,13 +829,15 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
    *  a method comment). However, the global state modifications are
    *  concurrency safe.
    */
-  private[optimizer] abstract class MethodImpl(val owner: MethodContainer,
+  private[optimizer] final class MethodImpl(owner: MethodContainer,
       val methodName: MethodName)
       extends OptimizerCore.MethodImpl with OptimizerCore.AbstractMethodID
       with Unregisterable {
 
     private[this] var _deleted: Boolean = false
 
+    private val bodyAskers = CollOps.emptyMap[MethodImpl, Unit]
+    private val registeredTo = CollOps.emptyMap[Unregisterable, Unit]
     private val tagged = new AtomicBoolean(false)
 
     var lastInVersion: Option[String] = None
@@ -812,15 +858,23 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       s"$owner.$methodName"
 
     /** PROCESS PASS ONLY. */
-    def registerBodyAsker(asker: MethodImpl): Unit
+    def registerBodyAsker(asker: MethodImpl): Unit =
+      bodyAskers.put(asker, ())
 
     /** UPDATE PASS ONLY. */
-    def tagBodyAskers(): Unit
+    def tagBodyAskers(): Unit = {
+      bodyAskers.keysIterator.foreach(_.tag())
+      bodyAskers.clear()
+    }
+
+    /** UPDATE PASS ONLY. */
+    def unregisterDependee(dependee: MethodImpl): Unit =
+      bodyAskers.remove(dependee)
 
     /** PROCESS PASS ONLY. */
     private def registerAskAncestors(intf: InterfaceType): Unit = {
       intf.registerAskAncestors(this)
-      registeredTo(intf)
+      registeredTo.put(intf, ())
     }
 
     /** Register that this method is a dynamic-caller of an instance method.
@@ -829,7 +883,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     private def registerDynamicCall(intf: InterfaceType,
         methodName: MethodName): Unit = {
       intf.registerDynamicCaller(methodName, this)
-      registeredTo(intf)
+      registeredTo.put(intf, ())
     }
 
     /** Register that this method is a static-caller of an instance method.
@@ -838,20 +892,20 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     private def registerStaticCall(intf: InterfaceType,
         namespace: MemberNamespace, methodName: MethodName): Unit = {
       intf.registerStaticCaller(namespace, methodName, this)
-      registeredTo(intf)
+      registeredTo.put(intf, ())
     }
 
     /** PROCESS PASS ONLY. */
     def registerAskBody(target: MethodImpl): Unit = {
       target.registerBodyAsker(this)
-      registeredTo(target)
+      registeredTo.put(target, ())
     }
 
-    /** PROCESS PASS ONLY. */
-    protected def registeredTo(intf: Unregisterable): Unit
-
     /** UPDATE PASS ONLY. */
-    protected def unregisterFromEverywhere(): Unit
+    private def unregisterFromEverywhere(): Unit = {
+      registeredTo.keysIterator.foreach(_.unregisterDependee(this))
+      registeredTo.clear()
+    }
 
     /** Tag this method and return true iff it wasn't tagged before.
      *  UPDATE PASS ONLY.
@@ -957,7 +1011,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
         val container =
           if (namespace != MemberNamespace.Public) inStaticsLike
-          else classes.get(className).getOrElse(inStaticsLike)
+          else classes.getOrElse(className, inStaticsLike)
 
         MethodImpl.this.registerStaticCall(container.myInterface, namespace,
             methodName)

@@ -58,19 +58,6 @@ private[optimizer] object ConcurrencyUtils {
       acc.getAndSet(Nil)
   }
 
-  type TrieSet[T] = TrieMap[T, Null]
-
-  implicit class TrieSetOps[T] private[ConcurrencyUtils] (
-      private val self: TrieSet[T])
-      extends AnyVal {
-
-    @inline final def +=(x: T): Unit = self.put(x, null)
-  }
-
-  object TrieSet {
-    @inline final def empty[T]: TrieSet[T] = TrieMap.empty
-  }
-
   implicit class TrieMapOps[K, V] private[ConcurrencyUtils] (
       private val self: TrieMap[K, V])
       extends AnyVal {
