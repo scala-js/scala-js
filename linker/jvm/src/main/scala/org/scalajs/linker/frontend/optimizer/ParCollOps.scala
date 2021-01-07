@@ -12,26 +12,26 @@
 
 package org.scalajs.linker.frontend.optimizer
 
+import scala.annotation.tailrec
+
 import scala.collection.concurrent.TrieMap
 import scala.collection.parallel.mutable.{ParTrieMap, ParArray}
 import scala.collection.parallel._
 
 import java.util.concurrent.atomic._
 
-import ConcurrencyUtils._
-
 private[optimizer] object ParCollOps extends AbsCollOps {
   type Map[K, V] = TrieMap[K, V]
   type ParMap[K, V] = ParTrieMap[K, V]
-  type AccMap[K, V] = TrieMap[K, AtomicAcc[V]]
+  type AccMap[K, V] = TrieMap[K, Addable[V]]
   type ParIterable[V] = ParArray[V]
-  type Addable[V] = AtomicAcc[V]
+  type Addable[V] = AtomicReference[List[V]]
 
   def emptyAccMap[K, V]: AccMap[K, V] = TrieMap.empty
   def emptyMap[K, V]: Map[K, V] = TrieMap.empty
   def emptyParMap[K, V]: ParMap[K, V] =  ParTrieMap.empty
   def emptyParIterable[V]: ParIterable[V] = ParArray.empty
-  def emptyAddable[V]: Addable[V] = AtomicAcc.empty
+  def emptyAddable[V]: Addable[V] = new AtomicReference[List[V]](Nil)
 
   // Operations on ParMap
   def isEmpty[K, V](map: ParMap[K, V]): Boolean = map.isEmpty
@@ -52,23 +52,28 @@ private[optimizer] object ParCollOps extends AbsCollOps {
 
   // Operations on AccMap
   def acc[K, V](map: AccMap[K, V], k: K, v: V): Unit =
-    map.getOrPut(k, AtomicAcc.empty) += v
+    add(map.getOrElseUpdate(k, emptyAddable), v)
 
   def getAcc[K, V](map: AccMap[K, V], k: K): ParIterable[V] =
-    map.get(k).fold[Iterable[V]](Nil)(_.removeAll()).toParArray
+    map.get(k).fold(emptyParIterable[V])(finishAdd(_))
 
   def parFlatMapKeys[A, B](map: AccMap[A, _])(f: A => Option[B]): ParIterable[B] =
     map.keys.flatMap(f(_)).toParArray
 
   // Operations on ParIterable
   def prepAdd[V](it: ParIterable[V]): Addable[V] =
-    AtomicAcc(it.toList)
+    new AtomicReference(it.toList)
 
-  def add[V](addable: Addable[V], v: V): Unit =
-    addable += v
+  @tailrec
+  def add[V](addable: Addable[V], v: V): Unit = {
+    val oldV = addable.get
+    val newV = v :: oldV
+    if (!addable.compareAndSet(oldV, newV))
+      add(addable, v)
+  }
 
   def finishAdd[V](addable: Addable[V]): ParIterable[V] =
-    addable.removeAll().toParArray
+    addable.getAndSet(Nil).toParArray
 
   def count[V](it: ParIterable[V])(f: V => Boolean): Int =
     it.count(f)
