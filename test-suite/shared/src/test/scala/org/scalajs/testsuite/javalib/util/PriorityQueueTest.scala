@@ -12,8 +12,6 @@
 
 package org.scalajs.testsuite.javalib.util
 
-import scala.language.implicitConversions
-
 import scala.reflect.ClassTag
 
 import org.junit.Test

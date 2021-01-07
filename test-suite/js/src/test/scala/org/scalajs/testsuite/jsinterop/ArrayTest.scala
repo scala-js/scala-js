@@ -12,8 +12,6 @@
 
 package org.scalajs.testsuite.jsinterop
 
-import scala.language.implicitConversions
-
 import scala.scalajs.js
 
 import org.junit.Assert._

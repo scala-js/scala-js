@@ -12,8 +12,6 @@
 
 package org.scalajs.testsuite.compiler
 
-import scala.language.implicitConversions
-
 import scala.scalajs.js
 import js.annotation.JSGlobal
 
@@ -102,8 +100,6 @@ class ReflectionTest {
   }
 
   @Test def getClassForAntiBoxedPrimitiveTypes(): Unit = {
-    implicit def classAsAny(c: java.lang.Class[_]): js.Any =
-      c.asInstanceOf[js.Any]
     assertEquals(classOf[java.lang.Boolean], (false: Any).getClass)
     assertEquals(classOf[java.lang.Character], ('a': Any).getClass)
     assertEquals(classOf[java.lang.Byte], (1.toByte: Any).getClass)

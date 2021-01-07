@@ -14,8 +14,6 @@ package org.scalajs.testsuite.javalib.lang
 
 import org.scalajs.testsuite.utils.Platform
 
-import language.implicitConversions
-
 import scala.scalajs.js
 import scala.scalajs.LinkingInfo.assumingES6
 import scala.scalajs.runtime.linkingInfo

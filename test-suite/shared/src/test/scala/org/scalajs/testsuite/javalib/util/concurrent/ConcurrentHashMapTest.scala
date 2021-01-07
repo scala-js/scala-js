@@ -12,8 +12,6 @@
 
 package org.scalajs.testsuite.javalib.util.concurrent
 
-import scala.language.implicitConversions
-
 import scala.collection.mutable
 import scala.reflect.ClassTag
 

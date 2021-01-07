@@ -12,8 +12,6 @@
 
 package org.scalajs.testsuite.jsinterop
 
-import scala.language.implicitConversions
-
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters._
 import scala.scalajs.js.|
@@ -30,9 +28,6 @@ import org.junit.Test
 import org.scalajs.junit.async._
 
 class AsyncTest {
-  implicit def eraseArray[T](a: Array[T]): Array[AnyRef] =
-    a.map(_.asInstanceOf[AnyRef])
-
   def asyncTest(implicit ec: ExecutionContext): ArrayBuffer[String] = {
     val steps = new ArrayBuffer[String]
 
@@ -64,22 +59,22 @@ class AsyncTest {
 
     val res = asyncTest
 
-    assertArrayEquals(Array(
+    assertArrayEquals(Array[AnyRef](
       "prep-future",
       "prep-map",
       "prep-foreach",
-      "done"), res.toArray)
+      "done"), res.toArray[AnyRef])
 
     processQueue()
 
-    assertArrayEquals(Array(
+    assertArrayEquals(Array[AnyRef](
       "prep-future",
       "prep-map",
       "prep-foreach",
       "done",
       "future",
       "map",
-      "foreach"), res.toArray)
+      "foreach"), res.toArray[AnyRef])
   }
 
   @Test def scalaScalajsConcurrentJSExecutionContextQueue(): Unit = {

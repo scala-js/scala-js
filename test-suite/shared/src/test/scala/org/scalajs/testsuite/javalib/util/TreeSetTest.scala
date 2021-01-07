@@ -14,8 +14,6 @@ package org.scalajs.testsuite.javalib.util
 
 import org.junit.Assert._
 
-import scala.language.implicitConversions
-
 import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._

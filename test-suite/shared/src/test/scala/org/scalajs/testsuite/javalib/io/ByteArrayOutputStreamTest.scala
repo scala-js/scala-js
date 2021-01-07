@@ -14,8 +14,6 @@ package org.scalajs.testsuite.javalib.io
 
 import java.io._
 
-import scala.language.implicitConversions
-
 import org.junit.Test
 import org.junit.Assert._
 

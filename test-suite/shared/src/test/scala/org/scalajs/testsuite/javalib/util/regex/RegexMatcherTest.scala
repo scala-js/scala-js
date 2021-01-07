@@ -12,8 +12,6 @@
 
 package org.scalajs.testsuite.javalib.util.regex
 
-import scala.language.implicitConversions
-
 import java.util.regex._
 
 import org.junit.Test

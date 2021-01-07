@@ -12,8 +12,6 @@
 
 package org.scalajs.testsuite.javalib.util.regex
 
-import scala.language.implicitConversions
-
 import java.util.regex.Pattern
 
 import org.junit.Test
@@ -24,8 +22,11 @@ import org.scalajs.testsuite.utils.Platform._
 
 class RegexPatternTest {
 
-  implicit def toAnyRefArray(arr: Array[String]): Array[AnyRef] =
-    arr.map(_.asInstanceOf[AnyRef])
+  private def assertArrayStringEquals(expected: Array[String],
+      actual: Array[String]): Unit = {
+    assertArrayEquals(expected.asInstanceOf[Array[AnyRef]],
+        actual.asInstanceOf[Array[AnyRef]])
+  }
 
   @Test def matches(): Unit = {
     assertTrue(Pattern.matches("[Scal]*\\.js", "Scala.js"))
@@ -49,7 +50,7 @@ class RegexPatternTest {
     val result = Pattern.compile("[aj]").split("Scala.js")
     val expected = Array("Sc", "l", ".", "s")
     assertEquals(4, result.length)
-    assertArrayEquals(expected, result)
+    assertArrayStringEquals(expected, result)
 
     // Tests from JavaDoc
     split("boo:and:foo", ":", Array("boo", "and", "foo"))
@@ -95,7 +96,7 @@ class RegexPatternTest {
 
     def split(input: String, regex: String, expected: Array[String]): Unit = {
       val result = Pattern.compile(regex).split(input)
-      assertArrayEquals(expected, result)
+      assertArrayStringEquals(expected, result)
     }
   }
 
@@ -137,7 +138,7 @@ class RegexPatternTest {
     def splitWithLimit(input: String, regex: String, limit: Int,
         expected: Array[String]): Unit = {
       val result = Pattern.compile(regex).split(input, limit)
-      assertArrayEquals(expected, result)
+      assertArrayStringEquals(expected, result)
     }
   }
 

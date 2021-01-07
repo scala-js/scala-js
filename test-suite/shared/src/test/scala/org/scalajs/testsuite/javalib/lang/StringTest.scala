@@ -14,8 +14,6 @@ package org.scalajs.testsuite.javalib.lang
 
 import java.nio.charset.Charset
 
-import scala.language.implicitConversions
-
 import org.junit.Test
 import org.junit.Assert._
 
