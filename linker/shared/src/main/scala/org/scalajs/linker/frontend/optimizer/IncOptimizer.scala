@@ -167,7 +167,6 @@ final class IncOptimizer(config: CommonPhaseConfig)
     }
 
     private var _registeredTo: List[Unregisterable] = Nil
-    private var tagged = false
 
     protected def registeredTo(intf: Unregisterable): Unit =
       _registeredTo ::= intf
@@ -176,14 +175,6 @@ final class IncOptimizer(config: CommonPhaseConfig)
       _registeredTo.foreach(_.unregisterDependee(this))
       _registeredTo = Nil
     }
-
-    protected def protectTag(): Boolean = {
-      val res = !tagged
-      tagged = true
-      res
-    }
-    protected def resetTag(): Unit = tagged = false
-
   }
 
 }

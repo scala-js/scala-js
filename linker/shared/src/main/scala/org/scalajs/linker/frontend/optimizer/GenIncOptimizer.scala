@@ -18,6 +18,8 @@ import scala.annotation.{switch, tailrec}
 
 import scala.collection.mutable
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 import org.scalajs.ir._
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
@@ -790,6 +792,8 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
     private[this] var _deleted: Boolean = false
 
+    private val tagged = new AtomicBoolean(false)
+
     var lastInVersion: Option[String] = None
     var lastOutVersion: Int = 0
 
@@ -849,14 +853,10 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
     /** UPDATE PASS ONLY. */
     protected def unregisterFromEverywhere(): Unit
 
-    /** Return true iff this is the first time this method is called since the
-     *  last reset (via [[resetTag]]).
+    /** Tag this method and return true iff it wasn't tagged before.
      *  UPDATE PASS ONLY.
      */
-    protected def protectTag(): Boolean
-
-    /** PROCESS PASS ONLY. */
-    protected def resetTag(): Unit
+    private def protectTag(): Boolean = !tagged.getAndSet(true)
 
     /** Returns true if the method's attributes changed.
      *  Attributes are whether it is inlineable, and whether it is a trait
@@ -926,7 +926,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
       lastOutVersion += 1
       optimizedMethodDef =
         new Versioned(optimizedDef, Some(lastOutVersion.toString))
-      resetTag()
+      tagged.set(false)
     }
 
     /** All methods are PROCESS PASS ONLY */

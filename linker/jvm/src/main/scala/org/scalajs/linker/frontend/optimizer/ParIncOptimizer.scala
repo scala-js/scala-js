@@ -204,7 +204,6 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
     }
 
     private val _registeredTo = AtomicAcc.empty[Unregisterable]
-    private val tagged = new AtomicBoolean(false)
 
     protected def registeredTo(intf: Unregisterable): Unit =
       _registeredTo += intf
@@ -212,10 +211,6 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
     protected def unregisterFromEverywhere(): Unit = {
       _registeredTo.removeAll().foreach(_.unregisterDependee(this))
     }
-
-    protected def protectTag(): Boolean = !tagged.getAndSet(true)
-    protected def resetTag(): Unit = tagged.set(false)
-
   }
 
 }
