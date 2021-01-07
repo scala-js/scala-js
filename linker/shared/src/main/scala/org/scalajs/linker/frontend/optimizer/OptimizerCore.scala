@@ -32,7 +32,7 @@ import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable.RuntimeClassNameMapperImpl
 import org.scalajs.linker.standard._
 import org.scalajs.linker.backend.emitter.LongImpl
-import org.scalajs.linker.backend.emitter.Transients.CallHelper
+import org.scalajs.linker.backend.emitter.Transients._
 
 /** Optimizer core.
  *  Designed to be "mixed in" [[IncOptimizer#MethodImpl#Optimizer]].
@@ -2002,7 +2002,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
       case ArrayCopy =>
         assert(isStat, "System.arraycopy must be used in statement position")
-        contTree(callHelper("systemArraycopy", newArgs)(NoType))
+        val List(src, srcPos, dest, destPos, length) = newArgs
+        contTree(Transient(SystemArrayCopy(src, srcPos, dest, destPos, length)))
 
       // scala.runtime.ScalaRunTime object
 
@@ -2045,7 +2046,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case IntegerNLZ =>
         contTree(newArgs.head match {
           case IntLiteral(value) => IntLiteral(Integer.numberOfLeadingZeros(value))
-          case newArg            => callHelper("clz32", newArg)(IntType)
+          case newArg            => Transient(NumberOfLeadingZeroes(newArg))
         })
 
       // java.lang.Long
@@ -2080,7 +2081,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           case _                    => (AnyType, false)
         }
         cont(PreTransTree(
-            callHelper("makeNativeArrayWrapper", runtimeClass, array)(resultType),
+            Transient(NativeArrayWrapper(runtimeClass, array)(resultType)),
             RefinedType(resultType, isExact = isExact, isNullable = false)))
 
       case ArrayBuilderZeroOf =>
@@ -2101,7 +2102,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           case ClassOf(_) =>
             Null()
           case runtimeClass =>
-            callHelper("zeroOf", runtimeClass)(AnyType)
+            Transient(ZeroOf(runtimeClass))
         })
 
       // java.lang.Class
@@ -2142,7 +2143,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
           case BlockOrAlone(stats, GetClass(expr)) =>
             contTree(Block(stats,
-                callHelper("objectClassName", expr)(StringClassType)))
+                Transient(ObjectClassName(expr))))
 
           case _ =>
             defaultApply(StringClassType)
@@ -2217,41 +2218,31 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       // TypedArray conversions
 
       case ByteArrayToInt8Array =>
-        contTree(callHelper("byteArray2TypedArray", newArgs)(AnyType))
+        contTree(Transient(ArrayToTypedArray(newArgs.head, ByteRef)))
       case ShortArrayToInt16Array =>
-        contTree(callHelper("shortArray2TypedArray", newArgs)(AnyType))
+        contTree(Transient(ArrayToTypedArray(newArgs.head, ShortRef)))
       case CharArrayToUint16Array =>
-        contTree(callHelper("charArray2TypedArray", newArgs)(AnyType))
+        contTree(Transient(ArrayToTypedArray(newArgs.head, CharRef)))
       case IntArrayToInt32Array =>
-        contTree(callHelper("intArray2TypedArray", newArgs)(AnyType))
+        contTree(Transient(ArrayToTypedArray(newArgs.head, IntRef)))
       case FloatArrayToFloat32Array =>
-        contTree(callHelper("floatArray2TypedArray", newArgs)(AnyType))
+        contTree(Transient(ArrayToTypedArray(newArgs.head, FloatRef)))
       case DoubleArrayToFloat64Array =>
-        contTree(callHelper("doubleArray2TypedArray", newArgs)(AnyType))
+        contTree(Transient(ArrayToTypedArray(newArgs.head, DoubleRef)))
 
       case Int8ArrayToByteArray =>
-        contTree(callHelper("typedArray2ByteArray", newArgs)(AnyType))
+        contTree(Transient(TypedArrayToArray(newArgs.head, ByteRef)))
       case Int16ArrayToShortArray =>
-        contTree(callHelper("typedArray2ShortArray", newArgs)(AnyType))
+        contTree(Transient(TypedArrayToArray(newArgs.head, ShortRef)))
       case Uint16ArrayToCharArray =>
-        contTree(callHelper("typedArray2CharArray", newArgs)(AnyType))
+        contTree(Transient(TypedArrayToArray(newArgs.head, CharRef)))
       case Int32ArrayToIntArray =>
-        contTree(callHelper("typedArray2IntArray", newArgs)(AnyType))
+        contTree(Transient(TypedArrayToArray(newArgs.head, IntRef)))
       case Float32ArrayToFloatArray =>
-        contTree(callHelper("typedArray2FloatArray", newArgs)(AnyType))
+        contTree(Transient(TypedArrayToArray(newArgs.head, FloatRef)))
       case Float64ArrayToDoubleArray =>
-        contTree(callHelper("typedArray2DoubleArray", newArgs)(AnyType))
+        contTree(Transient(TypedArrayToArray(newArgs.head, DoubleRef)))
     }
-  }
-
-  private def callHelper(helper: String, args: List[Tree])(tpe: Type)(
-      implicit pos: Position): Tree = {
-    Transient(CallHelper(helper, args))(tpe)
-  }
-
-  private def callHelper(helper: String, args: Tree*)(tpe: Type)(
-      implicit pos: Position): Tree = {
-    callHelper(helper, args.toList)(tpe)
   }
 
   private def inlineClassConstructor(allocationSite: AllocationSite,

@@ -210,11 +210,16 @@ object Traversers {
       case CreateJSClass(_, captureValues) =>
         captureValues.foreach(traverse)
 
+      // Transients
+
+      case Transient(value) =>
+        value.traverse(this)
+
       // Trees that need not be traversed
 
       case _:Skip | _:Debugger | _:LoadModule | _:SelectStatic | _:SelectJSNativeMember |
           _:LoadJSConstructor | _:LoadJSModule | _:JSLinkingInfo | _:Literal |
-          _:VarRef | _:This | _:JSGlobalRef | _:Transient =>
+          _:VarRef | _:This | _:JSGlobalRef =>
     }
 
     def traverseClassDef(tree: ClassDef): Unit = {

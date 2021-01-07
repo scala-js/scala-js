@@ -20,7 +20,9 @@ import org.scalajs.ir._
 import org.scalajs.ir.Names._
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Position._
+import org.scalajs.ir.Printers.IRTreePrinter
 import org.scalajs.ir.Transformers._
+import org.scalajs.ir.Traversers._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
@@ -602,7 +604,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case Assign(lhs: RecordSelect, rhs) =>
           val newLhs = Transient(JSVarRef(makeRecordFieldIdentForVarRef(lhs),
-              mutable = true))(lhs.tpe)
+              mutable = true)(lhs.tpe))
           pushLhsInto(Lhs.Assign(newLhs), rhs, tailPosLabels)
 
         case Assign(select @ JSPrivateSelect(qualifier, className, field), rhs) =>
@@ -858,6 +860,17 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Return(expr, label) =>
           pushLhsInto(Lhs.Return(label), expr, tailPosLabels)
 
+        case Transient(SystemArrayCopy(src, srcPos, dest, destPos, length)) =>
+          unnest(List(src, srcPos, dest, destPos, length)) { (newArgs, env0) =>
+            implicit val env = env0
+            val jsArgs = newArgs.map(transformExprNoChar(_))
+
+            if (esFeatures.useECMAScript2015)
+              js.Apply(js.DotSelect(jsArgs.head, js.Ident("copyTo")), jsArgs.tail)
+            else
+              genCallHelper("systemArraycopy", jsArgs: _*)
+          }
+
         /* Anything else is an expression => pushLhsInto(Lhs.Discard, _)
          * In order not to duplicate all the code of pushLhsInto() here, we
          * use a trick: Lhs.Discard is a dummy LHS that says "do nothing
@@ -1038,8 +1051,22 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 ArraySelect(rec(array, allowUnpure), newIndex)(arg.tpe)
               case RecordSelect(record, field) if noExtractYet =>
                 RecordSelect(rec(record, allowUnpure), field)(arg.tpe)
-              case Transient(CallHelper(helper, args)) if noExtractYet =>
-                Transient(CallHelper(helper, recs(args, allowUnpure)))(arg.tpe)
+
+              case Transient(ZeroOf(runtimeClass)) =>
+                Transient(ZeroOf(rec(runtimeClass, allowUnpure)))
+              case Transient(NumberOfLeadingZeroes(num)) =>
+                Transient(NumberOfLeadingZeroes(rec(num, allowUnpure)))
+              case Transient(ObjectClassName(obj)) =>
+                Transient(ObjectClassName(rec(obj, allowUnpure)))
+
+              case Transient(NativeArrayWrapper(elemClass, nativeArray)) if noExtractYet =>
+                val newNativeArray = rec(nativeArray, allowUnpure)
+                val newElemClass = rec(elemClass, allowUnpure)
+                Transient(NativeArrayWrapper(newElemClass, newNativeArray)(arg.tpe))
+              case Transient(ArrayToTypedArray(expr, primRef)) if noExtractYet =>
+                Transient(ArrayToTypedArray(rec(expr, allowUnpure), primRef))
+              case Transient(TypedArrayToArray(expr, primRef)) if noExtractYet =>
+                Transient(TypedArrayToArray(rec(expr, allowUnpure), primRef))
 
               case If(cond, thenp, elsep) if noExtractYet && (
                   if (allowUnpure) isExpression(thenp) && isExpression(elsep)
@@ -1052,7 +1079,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                     Lhs.VarDef(temp, arg.tpe, mutable = false), arg,
                     Set.empty)
                 computeTemp +=: extractedStatements
-                Transient(JSVarRef(temp, mutable = false))(arg.tpe)
+                Transient(JSVarRef(temp, mutable = false)(arg.tpe))
             }
           }
         }
@@ -1204,6 +1231,14 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case IdentityHashCode(expr)  => test(expr)
         case GetClass(arg)           => test(arg) // may NPE but that is UB.
 
+        // Transients preserving pureness
+        case Transient(ZeroOf(runtimeClass)) =>
+          test(runtimeClass) // may NPE but that is UB.
+        case Transient(NumberOfLeadingZeroes(num)) =>
+          test(num)
+        case Transient(ObjectClassName(obj)) =>
+          test(obj) // may NPE but that is UB.
+
         // Expressions preserving side-effect freedom
         case NewArray(tpe, lengths) =>
           allowUnpure && (lengths forall test)
@@ -1219,6 +1254,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
         case Closure(arrow, captureParams, params, body, captureValues) =>
           allowUnpure && (captureValues forall test)
+
+        // Transients preserving side-effect freedom
+        case Transient(NativeArrayWrapper(elemClass, nativeArray)) =>
+          allowUnpure && test(elemClass) && test(nativeArray) // may NPE but that is UB.
+        case Transient(ArrayToTypedArray(expr, primRef)) =>
+          allowUnpure && test(expr) // may NPE but that is UB.
 
         // Scala expressions that can always have side-effects
         case New(className, constr, args) =>
@@ -1236,8 +1277,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
            * avoid evaluating them only *after* the module has been loaded.
            */
           allowSideEffects && args.forall(isPureExpression)
-        case Transient(CallHelper(helper, args)) =>
-          allowSideEffects && (args forall test)
+
+        // Transients with side effects.
+        case Transient(TypedArrayToArray(expr, primRef)) =>
+          allowSideEffects && test(expr) // may TypeError
 
         // Array access can throw ArrayIndexOutOfBounds exception
         case ArraySelect(array, index) =>
@@ -1253,6 +1296,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           allowSideEffects
         case JSNew(fun, args) =>
           allowSideEffects && test(fun) && (args.forall(testJSArg))
+        case Transient(JSNewVararg(ctor, argArray)) =>
+          allowSideEffects && test(ctor) && test(argArray)
         case JSPrivateSelect(qualifier, _, _) =>
           allowSideEffects && test(qualifier)
         case JSSelect(qualifier, item) =>
@@ -1352,7 +1397,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           } yield {
             doAssign(
                 Transient(JSVarRef(makeRecordFieldIdent(ident, fName, fOrigName),
-                    mutable = true))(fTpe),
+                    mutable = true)(fTpe)),
                 fRhs)
           })
 
@@ -1386,11 +1431,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           val jsIdent = transformLocalVarIdent(ident)
           val mutable = env.isLocalMutable(ident)
           for (RecordType.Field(fName, fOrigName, fTpe, _) <- recordType.fields)
-            yield Transient(JSVarRef(makeRecordFieldIdent(jsIdent, fName, fOrigName), mutable))(fTpe)
+            yield Transient(JSVarRef(makeRecordFieldIdent(jsIdent, fName, fOrigName), mutable)(fTpe))
 
         case Transient(JSVarRef(ident, mutable)) =>
           for (RecordType.Field(fName, fOrigName, fTpe, _) <- recordType.fields)
-            yield Transient(JSVarRef(makeRecordFieldIdent(ident, fName, fOrigName), mutable))(fTpe)
+            yield Transient(JSVarRef(makeRecordFieldIdent(ident, fName, fOrigName), mutable)(fTpe))
       }
     }
 
@@ -1414,7 +1459,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             case Lhs.VarDef(name, tpe, mutable) =>
               js.Block(
                   doEmptyVarDef(name, tpe),
-                  inner(Lhs.Assign(Transient(JSVarRef(name, mutable))(tpe))))
+                  inner(Lhs.Assign(Transient(JSVarRef(name, mutable)(tpe)))))
             case _ =>
               inner(lhs)
           }
@@ -1511,7 +1556,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 val varDef = doVarDef(temp, recTpe, mutable = false,
                     RecordValue(recTpe, newElems))
                 val assign = doAssign(lhs,
-                    Transient(JSVarRef(temp, mutable = false))(recTpe))
+                    Transient(JSVarRef(temp, mutable = false)(recTpe)))
                 js.Block(varDef, assign)
               }
 
@@ -1690,9 +1735,34 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             redo(IdentityHashCode(newExpr))(env)
           }
 
-        case Transient(CallHelper(helper, args)) =>
-          unnest(args) { (newArgs, env) =>
-            redo(Transient(CallHelper(helper, newArgs))(rhs.tpe))(env)
+        case Transient(ZeroOf(runtimeClass)) =>
+          unnest(runtimeClass) { (newRuntimeClass, env) =>
+            redo(Transient(ZeroOf(newRuntimeClass)))(env)
+          }
+
+        case Transient(NativeArrayWrapper(elemClass, nativeArray)) =>
+          unnest(elemClass, nativeArray) { (newElemClass, newNativeArray, env) =>
+            redo(Transient(NativeArrayWrapper(newElemClass, newNativeArray)(rhs.tpe)))(env)
+          }
+
+        case Transient(NumberOfLeadingZeroes(num)) =>
+          unnest(num) { (newNum, env) =>
+            redo(Transient(NumberOfLeadingZeroes(newNum)))(env)
+          }
+
+        case Transient(ObjectClassName(obj)) =>
+          unnest(obj) { (newObj, env) =>
+            redo(Transient(ObjectClassName(newObj)))(env)
+          }
+
+        case Transient(ArrayToTypedArray(expr, primRef)) =>
+          unnest(expr) { (newExpr, env) =>
+            redo(Transient(ArrayToTypedArray(newExpr, primRef)))(env)
+          }
+
+        case Transient(TypedArrayToArray(expr, primRef)) =>
+          unnest(expr) { (newExpr, env) =>
+            redo(Transient(TypedArrayToArray(newExpr, primRef)))(env)
           }
 
         // JavaScript expressions (if we reach here their arguments are not expressions)
@@ -1700,14 +1770,18 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case JSNew(ctor, args) =>
           if (containsAnySpread(args)) {
             redo {
-              Transient(CallHelper("newJSObjectWithVarargs",
-                  List(ctor, spreadToArgArray(args))))(AnyType)
+              Transient(JSNewVararg(ctor, spreadToArgArray(args)))
             }
           } else {
             unnest(ctor :: castNoSpread(args)) { (newCtorAndArgs, env) =>
               val newCtor :: newArgs = newCtorAndArgs
               redo(JSNew(newCtor, newArgs))(env)
             }
+          }
+
+        case Transient(JSNewVararg(ctor, argArray)) =>
+          unnest(ctor, argArray) { (newCtor, newArgArray, env) =>
+            redo(Transient(JSNewVararg(newCtor, newArgArray)))(env)
           }
 
         case JSFunctionApply(fun, args) =>
@@ -1815,7 +1889,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             val objVarIdent = newSyntheticVar()
 
             def objVarRef(implicit pos: Position): Tree =
-              Transient(JSVarRef(objVarIdent, mutable = false))(AnyType)
+              Transient(JSVarRef(objVarIdent, mutable = false)(AnyType))
 
             val objVarDef =
               genLet(objVarIdent, mutable = false, js.ObjectConstr(Nil))
@@ -1861,7 +1935,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             rhs match {
               case _:Skip | _:VarDef | _:Assign | _:While | _:DoWhile |
                   _:Debugger | _:JSSuperConstructorCall | _:JSDelete |
-                  _:StoreModule =>
+                  _:StoreModule | Transient(_:SystemArrayCopy) =>
                 transformStat(rhs, tailPosLabels)
               case _ =>
                 throw new IllegalArgumentException(
@@ -1953,7 +2027,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           val computeTemp = pushLhsInto(
               Lhs.VarDef(temp, expr.tpe, mutable = false), expr, Set.empty)
           js.Block(computeTemp,
-              makeTree(Transient(JSVarRef(temp, mutable = false))(expr.tpe)))
+              makeTree(Transient(JSVarRef(temp, mutable = false)(expr.tpe))))
       }
     }
 
@@ -2499,44 +2573,81 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case IdentityHashCode(expr) =>
           genCallHelper("systemIdentityHashCode", transformExprNoChar(expr))
 
-        case Transient(CallHelper(helper, args)) =>
-          helper match {
-            case "systemArraycopy" if esFeatures.useECMAScript2015 =>
-              val transformedArgs = args.map(transformExpr(_, preserveChar = false))
-              js.Apply(js.DotSelect(transformedArgs.head, js.Ident("copyTo")),
-                  transformedArgs.tail)
+        // Transients
 
-            case "zeroOf" =>
-              js.DotSelect(
-                  js.DotSelect(transformExprNoChar(args.head), js.Ident("jl_Class__f_data")),
-                  js.Ident("zero"))
+        case Transient(ZeroOf(runtimeClass)) =>
+          js.DotSelect(
+              js.DotSelect(transformExprNoChar(runtimeClass), js.Ident("jl_Class__f_data")),
+              js.Ident("zero"))
 
-            case "makeNativeArrayWrapper" =>
-              val elemClass :: nativeArray :: Nil = args
-              val newNativeArray = transformExprNoChar(nativeArray)
-              elemClass match {
-                case ClassOf(elemTypeRef) =>
-                  val arrayTypeRef = ArrayTypeRef.of(elemTypeRef)
-                  extractWithGlobals(
-                      genNativeArrayWrapper(arrayTypeRef, newNativeArray))
-                case _ =>
-                  val elemClassData = js.DotSelect(
-                      transformExprNoChar(elemClass),
-                      js.Ident("jl_Class__f_data"))
-                  val arrayClassData = js.Apply(
-                      js.DotSelect(elemClassData, js.Ident("getArrayOf")), Nil)
-                  js.Apply(arrayClassData DOT "wrapArray", newNativeArray :: Nil)
-              }
-
+        case Transient(NativeArrayWrapper(elemClass, nativeArray)) =>
+          val newNativeArray = transformExprNoChar(nativeArray)
+          elemClass match {
+            case ClassOf(elemTypeRef) =>
+              val arrayTypeRef = ArrayTypeRef.of(elemTypeRef)
+              extractWithGlobals(
+                  genNativeArrayWrapper(arrayTypeRef, newNativeArray))
             case _ =>
-              genCallHelper(helper,
-                  args.map(transformExpr(_, preserveChar = false)): _*)
+              val elemClassData = js.DotSelect(
+                  transformExprNoChar(elemClass),
+                  js.Ident("jl_Class__f_data"))
+              val arrayClassData = js.Apply(
+                  js.DotSelect(elemClassData, js.Ident("getArrayOf")), Nil)
+              js.Apply(arrayClassData DOT "wrapArray", newNativeArray :: Nil)
           }
+
+        case Transient(NumberOfLeadingZeroes(num)) =>
+          genCallHelper("clz32", transformExprNoChar(num))
+
+        case Transient(ObjectClassName(obj)) =>
+          genCallHelper("objectClassName", transformExprNoChar(obj))
+
+        case Transient(ArrayToTypedArray(expr, primRef)) =>
+          val value = transformExprNoChar(expr)
+
+          if (esFeatures.useECMAScript2015) {
+            js.Apply(genIdentBracketSelect(value.u, "slice"), Nil)
+          } else {
+            val typedArrayClass = extractWithGlobals(typedArrayRef(primRef).get)
+            js.New(typedArrayClass, value.u :: Nil)
+          }
+
+        case Transient(TypedArrayToArray(expr, primRef)) =>
+          val value = transformExprNoChar(expr)
+
+          val arrayValue = if (esFeatures.useECMAScript2015) {
+            js.Apply(genIdentBracketSelect(value, "slice"), Nil)
+          } else {
+            /* Array.prototype.slice.call(value)
+             *
+             * This works because:
+             * - If the `this` value of `slice` is not a proper `Array`, the
+             *   result will be created through `ArrayCreate` without explicit
+             *   prototype, which creates a new proper `Array`.
+             * - To know what elements to copy, `slice` does not check that its
+             *   `this` value is a proper `Array`. Instead, it simply assumes
+             *   that it is an "Array-like", and reads the `"length"` property
+             *   as well as indexed properties. Both of those work on a typed
+             *   array.
+             *
+             * Reference:
+             * http://www.ecma-international.org/ecma-262/6.0/#sec-array.prototype.slice
+             * (also follow the link for `ArraySpeciesCreate`)
+             */
+            js.Apply(genIdentBracketSelect(
+                genIdentBracketSelect(genGlobalVarRef("Array").prototype, "slice"), "call"),
+                value :: Nil)
+          }
+          js.New(genArrayConstrOf(ArrayTypeRef(primRef, 1)), arrayValue :: Nil)
 
         // JavaScript expressions
 
         case JSNew(constr, args) =>
           js.New(transformExprNoChar(constr), args.map(transformJSArg))
+
+        case Transient(JSNewVararg(constr, argsArray)) =>
+          genCallHelper("newJSObjectWithVarargs",
+              transformExprNoChar(constr), transformExprNoChar(argsArray))
 
         case JSPrivateSelect(qualifier, className, field) =>
           genJSPrivateSelect(transformExprNoChar(qualifier), className, field)
@@ -2861,11 +2972,42 @@ private object FunctionEmitter {
 
   private val thisOriginalName: OriginalName = OriginalName("this")
 
-  private final case class JSVarRef(ident: js.Ident, mutable: Boolean)
+  private final case class JSVarRef(ident: js.Ident, mutable: Boolean)(val tpe: Type)
       extends Transient.Value {
+
+    def traverse(traverser: Traverser): Unit = ()
+
+    def transform(transformer: Transformer, isStat: Boolean)(
+        implicit pos: Position): Tree = {
+      Transient(this)
+    }
 
     def printIR(out: org.scalajs.ir.Printers.IRTreePrinter): Unit =
       out.print(ident.name)
+  }
+
+  private final case class JSNewVararg(ctor: Tree, argArray: Tree)
+      extends Transient.Value {
+    val tpe: Type = AnyType
+
+    def traverse(traverser: Traverser): Unit = {
+      traverser.traverse(ctor)
+      traverser.traverse(argArray)
+    }
+
+    def transform(transformer: Transformer, isStat: Boolean)(
+        implicit pos: Position): Tree = {
+      Transient(JSNewVararg(transformer.transformExpr(ctor),
+          transformer.transformExpr(argArray)))
+    }
+
+    def printIR(out: IRTreePrinter): Unit = {
+      out.print("new (")
+      out.print(ctor)
+      out.print(")(...")
+      out.print(argArray)
+      out.print(')')
+    }
   }
 
   /** A left hand side that can be pushed into a right hand side tree. */

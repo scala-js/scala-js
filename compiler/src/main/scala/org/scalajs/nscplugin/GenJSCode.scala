@@ -2397,7 +2397,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             } else if (undefinedDefaultParams contains sym) {
               // This is a default parameter whose assignment was moved to
               // a local variable. Put a literal undefined param again
-              js.Transient(UndefinedParam)(toIRType(sym.tpe))
+              js.Transient(UndefinedParam)
             } else {
               js.VarRef(encodeLocalSym(sym))(toIRType(sym.tpe))
             }
@@ -2872,7 +2872,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           genApplyTypeApply(tree, isStat)
 
         case _ if isJSDefaultParam =>
-          js.Transient(UndefinedParam)(toIRType(sym.tpe.resultType))
+          js.Transient(UndefinedParam)
 
         case Select(Super(_, _), _) =>
           genSuperCall(tree, isStat)
@@ -6681,6 +6681,15 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
    *  To be used inside a `js.Transient` node.
    */
   case object UndefinedParam extends js.Transient.Value {
+    val tpe: jstpe.Type = jstpe.UndefType
+
+    def traverse(traverser: ir.Traversers.Traverser): Unit = ()
+
+    def transform(transformer: ir.Transformers.Transformer, isStat: Boolean)(
+        implicit pos: ir.Position): js.Tree = {
+      js.Transient(this)
+    }
+
     def printIR(out: ir.Printers.IRTreePrinter): Unit =
       out.print("<undefined-param>")
   }

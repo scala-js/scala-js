@@ -958,15 +958,32 @@ object Trees {
    *  @param value
    *    The payload of the transient node, without any specified meaning.
    */
-  sealed case class Transient(value: Transient.Value)(val tpe: Type)(
-      implicit val pos: Position)
-      extends Tree
+  sealed case class Transient(value: Transient.Value)(
+      implicit val pos: Position) extends Tree {
+    val tpe = value.tpe
+  }
 
   object Transient {
     /** Common interface for the values that can be stored in [[Transient]]
      *  nodes.
      */
     trait Value {
+      /** Type of this transient value. */
+      val tpe: Type
+
+      /** Traverses this transient value.
+       *
+       *  Implementations should delegate traversal to contained trees.
+       */
+      def traverse(traverser: Traversers.Traverser): Unit
+
+      /** Transforms this transient value.
+       *
+       *  Implementations should transform contained trees and potentially adjust the result.
+       */
+      def transform(transformer: Transformers.Transformer, isStat: Boolean)(
+          implicit pos: Position): Tree
+
       /** Prints the IR representation of this transient node.
        *  This method is called by the IR printers when encountering a
        *  [[org.scalajs.ir.Trees.Transient Transient]] node.

@@ -130,7 +130,7 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
     }
   }
 
-  def globalRef(name: String)(implicit pos: Position): WithGlobals[Tree] =
+  def globalRef(name: String)(implicit pos: Position): WithGlobals[VarRef] =
     WithGlobals(VarRef(Ident(name)), Set(name))
 
   def genPropSelect(qual: Tree, item: PropertyName)(

@@ -884,6 +884,13 @@ class PrintersTest {
 
   @Test def printTransient(): Unit = {
     class MyTransient(expr: Tree) extends Transient.Value {
+      val tpe: Type = AnyType
+
+      def traverse(traverser: Traversers.Traverser): Unit = ???
+
+      def transform(transformer: Transformers.Transformer, isStat: Boolean)(
+          implicit pos: Position): Tree = ???
+
       def printIR(out: Printers.IRTreePrinter): Unit = {
         out.print("mytransient(")
         out.print(expr)
@@ -892,7 +899,7 @@ class PrintersTest {
     }
 
     assertPrintEquals("mytransient(5)",
-        Transient(new MyTransient(i(5)))(AnyType))
+        Transient(new MyTransient(i(5))))
   }
 
   @Test def printClassDefKinds(): Unit = {
