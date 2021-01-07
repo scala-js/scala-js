@@ -832,22 +832,24 @@ private[emitter] object CoreJSLib {
 
     private def defineES2015LikeHelpers(): Unit = {
       // newJSObjectWithVarargs
-      locally {
-        val ctor = varRef("ctor")
-        val args = varRef("args")
-        val instance = varRef("instance")
-        val result = varRef("result")
-        defineFunction("newJSObjectWithVarargs", paramList(ctor, args), {
-          // This basically emulates the ECMAScript specification for 'new'.
-          Block(
-              const(instance, Apply(genIdentBracketSelect(ObjectRef, "create"), ctor.prototype :: Nil)),
-              const(result, Apply(genIdentBracketSelect(ctor, "apply"), instance :: args :: Nil)),
-              Switch(typeof(result),
-                  List("string", "number", "boolean", "undefined").map(str(_) -> Skip()) :+
-                  str("symbol") -> Return(instance),
-                  Return(If(result === Null(), instance, result)))
-          )
-        })
+      if (!useECMAScript2015) {
+        locally {
+          val ctor = varRef("ctor")
+          val args = varRef("args")
+          val instance = varRef("instance")
+          val result = varRef("result")
+          defineFunction("newJSObjectWithVarargs", paramList(ctor, args), {
+            // This basically emulates the ECMAScript specification for 'new'.
+            Block(
+                const(instance, Apply(genIdentBracketSelect(ObjectRef, "create"), ctor.prototype :: Nil)),
+                const(result, Apply(genIdentBracketSelect(ctor, "apply"), instance :: args :: Nil)),
+                Switch(typeof(result),
+                    List("string", "number", "boolean", "undefined").map(str(_) -> Skip()) :+
+                    str("symbol") -> Return(instance),
+                    Return(If(result === Null(), instance, result)))
+            )
+          })
+        }
       }
 
       // resolveSuperRef
