@@ -40,6 +40,7 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
     def emptyMap[K, V]: Map[K, V] = TrieMap.empty
     def emptyParMap[K, V]: ParMap[K, V] =  ParTrieMap.empty
     def emptyParIterable[V]: ParIterable[V] = ParArray.empty
+    def emptyAddable[V]: Addable[V] = AtomicAcc.empty
 
     // Operations on ParMap
     def isEmpty[K, V](map: ParMap[K, V]): Boolean = map.isEmpty
@@ -79,21 +80,13 @@ final class ParIncOptimizer(config: CommonPhaseConfig)
     def finishAdd[V](addable: Addable[V]): ParIterable[V] =
       addable.removeAll().toParArray
 
+    def count[V](it: ParIterable[V])(f: V => Boolean): Int =
+      it.count(f)
+
     def foreach[V, U](it: ParIterable[V])(f: V => U): Unit =
       it.foreach(f)
 
     def filter[V](it: ParIterable[V])(f: V => Boolean): ParIterable[V] =
       it.filter(f)
-  }
-
-  private val methodsToProcess: AtomicAcc[MethodImpl] = AtomicAcc.empty
-  private[optimizer] def scheduleMethod(method: MethodImpl): Unit =
-    methodsToProcess += method
-
-  private[optimizer] def processAllTaggedMethods(): Unit = {
-    val methods = methodsToProcess.removeAll().toParArray
-    logProcessingMethods(methods.count(!_.deleted))
-    for (method <- methods)
-      method.process()
   }
 }

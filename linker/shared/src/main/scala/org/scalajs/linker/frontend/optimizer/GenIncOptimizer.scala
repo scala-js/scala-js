@@ -75,11 +75,10 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
 
   private val interfaces = CollOps.emptyMap[ClassName, InterfaceType]
 
+  private var methodsToProcess = CollOps.emptyAddable[MethodImpl]
+
   private def getInterface(className: ClassName): InterfaceType =
     interfaces.getOrElseUpdate(className, new InterfaceType(className))
-
-  /** Schedule a method for processing in the PROCESS PASS */
-  private[optimizer] def scheduleMethod(method: MethodImpl): Unit
 
   private def withLogger[A](logger: Logger)(body: => A): A = {
     assert(this.logger == null)
@@ -259,10 +258,14 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
   /** Optimizer part: process all methods that need reoptimizing.
    *  PROCESS PASS ONLY. (This IS the process pass).
    */
-  private[optimizer] def processAllTaggedMethods(): Unit
+  private def processAllTaggedMethods(): Unit = {
+    val methods = CollOps.finishAdd(methodsToProcess)
+    methodsToProcess = CollOps.emptyAddable
 
-  private[optimizer] def logProcessingMethods(count: Int): Unit =
+    val count = CollOps.count(methods)(!_.deleted)
     logger.debug(s"Optimizer: Optimizing $count methods.")
+    CollOps.foreach(methods)(_.process())
+  }
 
   /** Base class for [[GenIncOptimizer.Class]] and
    *  [[GenIncOptimizer.StaticLikeNamespace]].
@@ -713,7 +716,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
   }
 
   /** Thing from which a [[MethodImpl]] can unregister itself from. */
-  private[optimizer] trait Unregisterable {
+  private trait Unregisterable {
     /** UPDATE PASS ONLY. */
     def unregisterDependee(dependee: MethodImpl): Unit
   }
@@ -829,7 +832,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
    *  a method comment). However, the global state modifications are
    *  concurrency safe.
    */
-  private[optimizer] final class MethodImpl(owner: MethodContainer,
+  private final class MethodImpl(owner: MethodContainer,
       val methodName: MethodName)
       extends OptimizerCore.MethodImpl with OptimizerCore.AbstractMethodID
       with Unregisterable {
@@ -970,7 +973,7 @@ abstract class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig) {
      *  UPDATE PASS ONLY.
      */
     def tag(): Unit = if (protectTag()) {
-      scheduleMethod(this)
+      CollOps.add(methodsToProcess, this)
       unregisterFromEverywhere()
     }
 
@@ -1052,6 +1055,7 @@ object GenIncOptimizer {
     def emptyMap[K, V]: Map[K, V]
     def emptyParMap[K, V]: ParMap[K, V]
     def emptyParIterable[V]: ParIterable[V]
+    def emptyAddable[V]: Addable[V]
 
     // Operations on ParMap
     def isEmpty[K, V](map: ParMap[K, V]): Boolean
@@ -1072,6 +1076,7 @@ object GenIncOptimizer {
     def prepAdd[V](it: ParIterable[V]): Addable[V]
     def add[V](addable: Addable[V], v: V): Unit
     def finishAdd[V](addable: Addable[V]): ParIterable[V]
+    def count[V](it: ParIterable[V])(f: V => Boolean): Int
     def foreach[V, U](it: ParIterable[V])(f: V => U): Unit
     def filter[V](it: ParIterable[V])(f: V => Boolean): ParIterable[V]
 

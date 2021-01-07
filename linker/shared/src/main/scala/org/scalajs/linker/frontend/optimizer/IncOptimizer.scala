@@ -35,6 +35,7 @@ final class IncOptimizer(config: CommonPhaseConfig)
     def emptyMap[K, V]: Map[K, V] = mutable.Map.empty
     def emptyParMap[K, V]: ParMap[K, V] = mutable.Map.empty
     def emptyParIterable[V]: ParIterable[V] = mutable.ListBuffer.empty
+    def emptyAddable[V]: Addable[V] = mutable.ListBuffer.empty
 
     // Operations on ParMap
     def isEmpty[K, V](map: ParMap[K, V]): Boolean = map.isEmpty
@@ -64,20 +65,10 @@ final class IncOptimizer(config: CommonPhaseConfig)
     def prepAdd[V](it: ParIterable[V]): Addable[V] = it
     def add[V](addable: Addable[V], v: V): Unit = addable += v
     def finishAdd[V](addable: Addable[V]): ParIterable[V] = addable
+    def count[V](it: ParIterable[V])(f: V => Boolean): Int = it.count(f)
     def foreach[V, U](it: ParIterable[V])(f: V => U): Unit = it.foreach(f)
 
     def filter[V](it: ParIterable[V])(f: V => Boolean): ParIterable[V] =
       it.filter(f)
-  }
-
-  private val methodsToProcess = mutable.ListBuffer.empty[MethodImpl]
-  private[optimizer] def scheduleMethod(method: MethodImpl): Unit =
-    methodsToProcess += method
-
-  private[optimizer] def processAllTaggedMethods(): Unit = {
-    logProcessingMethods(methodsToProcess.count(!_.deleted))
-    for (method <- methodsToProcess)
-      method.process()
-    methodsToProcess.clear()
   }
 }
