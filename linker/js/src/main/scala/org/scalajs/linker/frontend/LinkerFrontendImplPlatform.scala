@@ -21,6 +21,6 @@ private[frontend] object LinkerFrontendImplPlatform {
     if (!config.optimizer)
       None
     else
-      Some(new IncOptimizer(config.commonConfig))
+      Some(GenIncOptimizer(config.commonConfig))
   }
 }

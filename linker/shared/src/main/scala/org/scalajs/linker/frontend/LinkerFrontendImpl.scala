@@ -18,7 +18,7 @@ import org.scalajs.logging.Logger
 
 import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
-import org.scalajs.linker.frontend.optimizer.{GenIncOptimizer, IncOptimizer}
+import org.scalajs.linker.frontend.optimizer.GenIncOptimizer
 import org.scalajs.linker.frontend.modulesplitter._
 
 /** The frontend of the Scala.js linker.

@@ -23,8 +23,8 @@ private[frontend] object LinkerFrontendImplPlatform {
     if (!config.optimizer)
       None
     else if (commonConfig.parallel)
-      Some(new ParIncOptimizer(commonConfig))
+      Some(ParIncOptimizer(commonConfig))
     else
-      Some(new IncOptimizer(commonConfig))
+      Some(GenIncOptimizer(commonConfig))
   }
 }
