@@ -15,6 +15,6 @@ package org.scalajs.linker.frontend.optimizer
 import org.scalajs.linker.standard.CommonPhaseConfig
 
 object ParIncOptimizer {
-  def apply(config: CommonPhaseConfig): GenIncOptimizer =
-    new GenIncOptimizer(config, ParCollOps)
+  def apply(config: CommonPhaseConfig): IncOptimizer =
+    new IncOptimizer(config, ParCollOps)
 }

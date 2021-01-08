@@ -17,7 +17,7 @@ import org.scalajs.linker.frontend.optimizer._
 private[frontend] object LinkerFrontendImplPlatform {
   import LinkerFrontendImpl.Config
 
-  def createOptimizer(config: Config): Option[GenIncOptimizer] = {
+  def createOptimizer(config: Config): Option[IncOptimizer] = {
     import config.commonConfig
 
     if (!config.optimizer)
@@ -25,6 +25,6 @@ private[frontend] object LinkerFrontendImplPlatform {
     else if (commonConfig.parallel)
       Some(ParIncOptimizer(commonConfig))
     else
-      Some(GenIncOptimizer(commonConfig))
+      Some(IncOptimizer(commonConfig))
   }
 }

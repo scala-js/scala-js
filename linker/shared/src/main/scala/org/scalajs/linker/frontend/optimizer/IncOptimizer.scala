@@ -43,9 +43,9 @@ import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
  *  @param semantics Required Scala.js Semantics
  *  @param esLevel ECMAScript level
  */
-final class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps: AbsCollOps) {
+final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps: AbsCollOps) {
 
-  import GenIncOptimizer._
+  import IncOptimizer._
 
   val symbolRequirements: SymbolRequirement = {
     val factory = SymbolRequirement.factory("optimizer")
@@ -252,8 +252,8 @@ final class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig, collO
     collOps.foreach(methods)(_.process())
   }
 
-  /** Base class for [[GenIncOptimizer.Class]] and
-   *  [[GenIncOptimizer.StaticLikeNamespace]].
+  /** Base class for [[IncOptimizer.Class]] and
+   *  [[IncOptimizer.StaticLikeNamespace]].
    */
   private abstract class MethodContainer(val className: ClassName,
       val namespace: MemberNamespace) {
@@ -810,8 +810,8 @@ final class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig, collO
   }
 
   /** A method implementation.
-   *  It must be concrete, and belong either to a [[GenIncOptimizer.Class]] or a
-   *  [[GenIncOptimizer.StaticsNamespace]].
+   *  It must be concrete, and belong either to a [[IncOptimizer.Class]] or a
+   *  [[IncOptimizer.StaticsNamespace]].
    *
    *  A single instance is **not** concurrency safe (unless otherwise noted in
    *  a method comment). However, the global state modifications are
@@ -1024,9 +1024,9 @@ final class GenIncOptimizer private[optimizer] (config: CommonPhaseConfig, collO
 
 }
 
-object GenIncOptimizer {
-  def apply(config: CommonPhaseConfig): GenIncOptimizer =
-    new GenIncOptimizer(config, SeqCollOps)
+object IncOptimizer {
+  def apply(config: CommonPhaseConfig): IncOptimizer =
+    new IncOptimizer(config, SeqCollOps)
 
   private val isAdHocElidableModuleAccessor: Set[ClassName] =
     Set(ClassName("scala.Predef$"))

@@ -18,7 +18,7 @@ import org.scalajs.logging.Logger
 
 import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
-import org.scalajs.linker.frontend.optimizer.GenIncOptimizer
+import org.scalajs.linker.frontend.optimizer.IncOptimizer
 import org.scalajs.linker.frontend.modulesplitter._
 
 /** The frontend of the Scala.js linker.
@@ -40,7 +40,7 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
   private[this] val linker: BaseLinker =
     new BaseLinker(config.commonConfig)
 
-  private[this] val optOptimizer: Option[GenIncOptimizer] =
+  private[this] val optOptimizer: Option[IncOptimizer] =
     LinkerFrontendImplPlatform.createOptimizer(config)
 
   private[this] val refiner: Refiner = new Refiner(config.commonConfig)
@@ -79,7 +79,7 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
   }
 
   private def optimize(unit: LinkingUnit, symbolRequirements: SymbolRequirement,
-      optimizer: GenIncOptimizer, logger: Logger)(
+      optimizer: IncOptimizer, logger: Logger)(
       implicit ec: ExecutionContext): Future[LinkingUnit] = {
     val optimized = logger.time("Optimizer") {
       optimizer.update(unit, logger)
