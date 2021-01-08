@@ -17,10 +17,10 @@ import org.scalajs.linker.frontend.optimizer._
 private[frontend] object LinkerFrontendImplPlatform {
   import LinkerFrontendImpl.Config
 
-  def createOptimizer(config: Config): Option[GenIncOptimizer] = {
+  def createOptimizer(config: Config): Option[IncOptimizer] = {
     if (!config.optimizer)
       None
     else
-      Some(new IncOptimizer(config.commonConfig))
+      Some(IncOptimizer(config.commonConfig))
   }
 }
