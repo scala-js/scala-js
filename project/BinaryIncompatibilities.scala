@@ -33,6 +33,10 @@ object BinaryIncompatibilities {
   val Library = Seq(
       // New concrete method in native JS trait, not an issue.
       exclude[ReversedMissingMethodProblem]("scala.scalajs.js.typedarray.TypedArray.fill"),
+
+      // New optional member in JS trait, not an issue.
+      exclude[ReversedMissingMethodProblem]("scala.scalajs.js.RegExp#ExecResult.groups"),
+      exclude[ReversedMissingMethodProblem]("scala.scalajs.js.RegExp#ExecResult.groups_="),
   )
 
   val TestInterface = Seq(
