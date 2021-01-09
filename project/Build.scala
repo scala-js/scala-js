@@ -924,7 +924,7 @@ object Build {
     commonLinkerSettings _
   ).settings(
       libraryDependencies ++= Seq(
-          "com.google.javascript" % "closure-compiler" % "v20201102",
+          "com.google.javascript" % "closure-compiler" % "v20210106",
           "com.novocode" % "junit-interface" % "0.9" % "test",
           "com.google.jimfs" % "jimfs" % "1.1" % "test"
       ) ++ (
