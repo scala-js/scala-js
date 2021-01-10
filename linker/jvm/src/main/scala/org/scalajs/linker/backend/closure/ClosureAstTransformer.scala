@@ -472,8 +472,8 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
   def transformBlockStats(stats: List[Tree])(
       implicit parentPos: Position): List[Node] = {
 
-    @inline def ctorDoc() = {
-      val b = new JSDocInfoBuilder(false)
+    @inline def ctorDoc(): JSDocInfo = {
+      val b = JSDocInfo.builder()
       b.recordConstructor()
       b.build()
     }

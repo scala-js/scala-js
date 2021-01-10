@@ -354,6 +354,15 @@ class InteroperabilityTest {
     assertJSArrayEquals(js.Array("plop", 42, 51), new C(elems: _*).args)
   }
 
+  @Test def callJSConstructorsWithVarArgsWhenConstructIsRequired_Issue4362(): Unit = {
+    assumeTrue("requires the spread operator", assumeES2015)
+
+    @noinline def args(): Seq[Any] = Seq(1234)
+
+    val dateObj = new InteroperabilityTestJSDateWithVarArgsConstructor(args(): _*)
+    assertEquals(1234.0, dateObj.getTime(), 0.0)
+  }
+
   @Test def accessTopLevelJSObjectsViaScalaObjectWithAnnotJSGlobalScope(): Unit = {
     js.eval("""
       var interoperabilityTestGlobalScopeValue = "7357";
@@ -924,6 +933,12 @@ trait InteroperabilityTestPolyClassPolyNullaryMethod[+T] extends js.Object {
 @JSGlobal
 class InteroperabilityTestVariadicCtor(inargs: Any*) extends js.Object {
   val args: js.Array[Any] = js.native
+}
+
+@js.native
+@JSGlobal("Date")
+class InteroperabilityTestJSDateWithVarArgsConstructor(args: Any*) extends js.Object {
+  def getTime(): Double = js.native
 }
 
 @js.native

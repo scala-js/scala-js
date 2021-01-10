@@ -16,15 +16,17 @@ import scala.scalajs.js
 import js.JSConverters._
 
 import org.junit.Assert._
+import org.junit.Assume._
 import org.junit.Test
 
 import org.scalajs.testsuite.utils.JSAssert._
+import org.scalajs.testsuite.utils.Platform._
 
 class DynamicTest {
 
   // scala.scalajs.js.Dynamic
 
-  @Test def evalJSClassesDynamically_Issue10(): Unit = {
+  @Test def newInstance_Issue10(): Unit = {
     val DynamicTestClass = js.eval("""
         var DynamicTestClass = function(x) {
           this.x = x;
@@ -33,9 +35,12 @@ class DynamicTest {
         """).asInstanceOf[js.Dynamic]
     val obj = js.Dynamic.newInstance(DynamicTestClass)("Scala.js")
     assertEquals("Scala.js", obj.x)
+
+    val dateObj = js.Dynamic.newInstance(js.constructorOf[js.Date])(1234)
+    assertEquals(1234, dateObj.getTime())
   }
 
-  @Test def evalJSClassesDynamicallyWithVarargs_Issue708(): Unit = {
+  @Test def newInstanceWithVarargs_Issue708(): Unit = {
     val DynamicTestClassVarArgs = js.eval("""
         var DynamicTestClassVarArgs = function() {
           this.count = arguments.length;
@@ -72,6 +77,15 @@ class DynamicTest {
     assertEquals(42, obj3_elem1)
     val obj3_elem2 = obj3.elem2
     assertEquals(true, obj3_elem2)
+  }
+
+  @Test def newInstanceOfWithVarargsWhenConstructIsRequired_Issue4362(): Unit = {
+    assumeTrue("requires the spread operator", assumeES2015)
+
+    @noinline def args(): Seq[js.Any] = Seq(1234)
+
+    val dateObj = js.Dynamic.newInstance(js.constructorOf[js.Date])(args(): _*)
+    assertEquals(1234, dateObj.getTime())
   }
 
   @Test def objectLiteralConstruction(): Unit = {

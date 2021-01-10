@@ -774,7 +774,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 }
               }
 
-              if (containsAnySpread(newArgs)) {
+              if (needsToTranslateAnySpread(newArgs)) {
                 val argArray = spreadToArgArray(newArgs)
                 js.Apply(
                     genIdentBracketSelect(superCtor, "apply"),
@@ -913,17 +913,31 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     def unnestOrSpread(args: List[TreeOrJSSpread])(
         makeStat: (List[TreeOrJSSpread], Env) => js.Tree)(
         implicit env: Env): js.Tree = {
+      unnestOrSpread(Nil, args) { (newNil, newArgs, env) =>
+        assert(newNil.isEmpty)
+        makeStat(newArgs, env)
+      }
+    }
+
+    /** Same as `unnest`, but allows (and preserves) [[JSSpread]]s at the
+     *  top-level.
+     */
+    def unnestOrSpread(nonSpreadArgs: List[Tree], args: List[TreeOrJSSpread])(
+        makeStat: (List[Tree], List[TreeOrJSSpread], Env) => js.Tree)(
+        implicit env: Env): js.Tree = {
       val (argsNoSpread, argsWereSpread) = args.map {
         case JSSpread(items) => (items, true)
         case arg: Tree       => (arg, false)
       }.unzip
 
-      unnest(argsNoSpread) { (newArgsNoSpread, env) =>
+      unnest(nonSpreadArgs ::: argsNoSpread) { (newAllArgs, env) =>
+        val (newNonSpreadArgs, newArgsNoSpread) =
+          newAllArgs.splitAt(nonSpreadArgs.size)
         val newArgs = newArgsNoSpread.zip(argsWereSpread).map {
           case (newItems, true) => JSSpread(newItems)(newItems.pos)
           case (newArg, false)  => newArg
         }
-        makeStat(newArgs, env)
+        makeStat(newNonSpreadArgs, newArgs, env)
       }
     }
 
@@ -1013,8 +1027,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 NewArray(tpe, recs(lengths, allowUnpure))
               case ArrayValue(tpe, elems) =>
                 ArrayValue(tpe, recs(elems, allowUnpure))
-              case JSArrayConstr(items) if !containsAnySpread(items) =>
-                JSArrayConstr(recs(castNoSpread(items), allowUnpure))
+              case JSArrayConstr(items) if !needsToTranslateAnySpread(items) =>
+                JSArrayConstr(recsOrSpread(items, allowUnpure))
 
               case arg @ JSObjectConstr(items)
                   if !doesObjectConstrRequireDesugaring(arg) =>
@@ -1089,6 +1103,17 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           // This is a right-to-left map
           args.foldRight[List[Tree]](Nil) { (arg, acc) =>
             rec(arg, allowUnpure) :: acc
+          }
+        }
+
+        def recsOrSpread(args: List[TreeOrJSSpread], allowUnpure: Boolean)(
+            implicit env: Env): List[TreeOrJSSpread] = {
+          args.foldRight[List[TreeOrJSSpread]](Nil) { (arg, acc) =>
+            val newArg = arg match {
+              case JSSpread(items) => JSSpread(rec(items, allowUnpure))(arg.pos)
+              case arg: Tree       => rec(arg, allowUnpure)
+            }
+            newArg :: acc
           }
         }
 
@@ -1182,8 +1207,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       require(!allowSideEffects || allowUnpure)
 
       def testJSArg(tree: TreeOrJSSpread): Boolean = tree match {
-        case JSSpread(_) => false
-        case tree: Tree  => test(tree)
+        case JSSpread(items) => esFeatures.useECMAScript2015 && test(items)
+        case tree: Tree      => test(tree)
       }
 
       def test(tree: Tree): Boolean = tree match {
@@ -1768,13 +1793,13 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         // JavaScript expressions (if we reach here their arguments are not expressions)
 
         case JSNew(ctor, args) =>
-          if (containsAnySpread(args)) {
+          if (needsToTranslateAnySpread(args)) {
             redo {
               Transient(JSNewVararg(ctor, spreadToArgArray(args)))
             }
           } else {
-            unnest(ctor :: castNoSpread(args)) { (newCtorAndArgs, env) =>
-              val newCtor :: newArgs = newCtorAndArgs
+            unnestOrSpread(ctor :: Nil, args) { (newCtor0, newArgs, env) =>
+              val newCtor :: Nil = newCtor0
               redo(JSNew(newCtor, newArgs))(env)
             }
           }
@@ -1785,20 +1810,20 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
 
         case JSFunctionApply(fun, args) =>
-          if (containsAnySpread(args)) {
+          if (needsToTranslateAnySpread(args)) {
             redo {
               JSMethodApply(fun, StringLiteral("apply"),
                   List(Undefined(), spreadToArgArray(args)))
             }
           } else {
-            unnest(fun :: castNoSpread(args)) { (newFunAndArgs, env) =>
-              val newFun :: newArgs = newFunAndArgs
+            unnestOrSpread(fun :: Nil, args) { (newFun0, newArgs, env) =>
+              val newFun :: Nil = newFun0
               redo(JSFunctionApply(newFun, newArgs))(env)
             }
           }
 
         case JSMethodApply(receiver, method, args) =>
-          if (containsAnySpread(args)) {
+          if (needsToTranslateAnySpread(args)) {
             withTempVar(receiver) { newReceiver =>
               redo {
                 JSMethodApply(
@@ -1808,9 +1833,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               }
             }
           } else {
-            unnest(receiver :: method :: castNoSpread(args)) { (newReceiverAndArgs, env) =>
-              val newReceiver :: newMethod :: newArgs = newReceiverAndArgs
-              redo(JSMethodApply(newReceiver, newMethod, newArgs))(env)
+            unnestOrSpread(receiver :: method :: Nil, args) {
+              (newReceiverAndMethod, newArgs, env) =>
+                val newReceiver :: newMethod :: Nil = newReceiverAndMethod
+                redo(JSMethodApply(newReceiver, newMethod, newArgs))(env)
             }
           }
 
@@ -1874,12 +1900,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
 
         case JSArrayConstr(items) =>
-          if (containsAnySpread(items)) {
+          if (needsToTranslateAnySpread(items)) {
             redo {
               spreadToArgArray(items)
             }
           } else {
-            unnest(castNoSpread(items)) { (newItems, env) =>
+            unnestOrSpread(items) { (newItems, env) =>
               redo(JSArrayConstr(newItems))(env)
             }
           }
@@ -1952,12 +1978,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       })
     }
 
-    private def containsAnySpread(args: List[TreeOrJSSpread]): Boolean =
-      args.exists(_.isInstanceOf[JSSpread])
-
-    /** Precondition: `!containsAnySpread(args)`. */
-    private def castNoSpread(args: List[TreeOrJSSpread]): List[Tree] =
-      args.asInstanceOf[List[Tree]]
+    private def needsToTranslateAnySpread(args: List[TreeOrJSSpread]): Boolean =
+      !esFeatures.useECMAScript2015 && args.exists(_.isInstanceOf[JSSpread])
 
     private def spreadToArgArray(args: List[TreeOrJSSpread])(
         implicit env: Env, pos: Position): Tree = {
@@ -2646,6 +2668,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           js.New(transformExprNoChar(constr), args.map(transformJSArg))
 
         case Transient(JSNewVararg(constr, argsArray)) =>
+          assert(!esFeatures.useECMAScript2015,
+              s"generated a JSNewVargs in ES 2015 mode at ${tree.pos}")
           genCallHelper("newJSObjectWithVarargs",
               transformExprNoChar(constr), transformExprNoChar(argsArray))
 
