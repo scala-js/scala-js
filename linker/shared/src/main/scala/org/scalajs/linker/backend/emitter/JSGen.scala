@@ -155,4 +155,10 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
 
     Block(stats)
   }
+
+  def genIIFE(captures: List[(ParamDef, Tree)], body: Tree)(
+      implicit pos: Position): Tree = {
+    val (params, args) = captures.unzip
+    Apply(genArrowFunction(params, body), args)
+  }
 }
