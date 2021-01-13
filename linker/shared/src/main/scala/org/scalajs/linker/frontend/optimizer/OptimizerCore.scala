@@ -884,7 +884,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
                 RefinedType(AnyType, isExact = false, isNullable = false)))
           }
 
-          if (!arrow && params.exists(_.rest)) {
+          if (!arrow || params.exists(_.rest)) {
             /* TentativeClosureReplacement assumes there are no rest
              * parameters, because that would not be inlineable anyway.
              * Likewise, it assumes that there is no binding for `this`, which
