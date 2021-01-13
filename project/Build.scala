@@ -239,7 +239,7 @@ object Build {
   val previousBinaryCrossVersion = CrossVersion.binaryWith("sjs1_", "")
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.11.12", "2.12.12", "2.13.4")
+    Set("2.11.12", "2.12.13", "2.13.4")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
 
@@ -862,7 +862,7 @@ object Build {
       MyScalaJSPlugin
   ).settings(
       commonSettings,
-      scalaVersion := "2.12.12",
+      scalaVersion := "2.12.13",
       fatalWarningsSettings,
       name := "Scala.js linker private library",
       publishArtifact in Compile := false,
@@ -1038,7 +1038,7 @@ object Build {
       normalizedName := "sbt-scalajs",
       bintrayProjectName := "sbt-scalajs-plugin", // "sbt-scalajs" was taken
       sbtPlugin := true,
-      crossScalaVersions := Seq("2.12.12"),
+      crossScalaVersions := Seq("2.12.13"),
       scalaVersion := crossScalaVersions.value.head,
       sbtVersion := "1.0.0",
       scalaBinaryVersion :=
@@ -1672,7 +1672,7 @@ object Build {
                 fullLinkGz = 28000 to 29000,
             ))
 
-          case "2.12.12" =>
+          case "2.12.13" =>
             Some(ExpectedSizes(
                 fastLink = 781000 to 782000,
                 fullLink = 148000 to 149000,
