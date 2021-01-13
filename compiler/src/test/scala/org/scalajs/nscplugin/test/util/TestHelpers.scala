@@ -46,6 +46,12 @@ trait TestHelpers extends DirectTest {
       assertEquals("should have right errors", expected.stripMargin.trim, output)
     }
 
+    def containsErrors(expected: String): Unit = {
+      assertFalse("snippet shouldn't compile", success)
+      assertTrue("should have right errors",
+          output.contains(expected.stripMargin.trim))
+    }
+
     def hasWarns(expected: String): Unit = {
       assertTrue("snippet should compile\n" + output, success)
       assertEquals("should have right warnings", expected.stripMargin.trim, output)

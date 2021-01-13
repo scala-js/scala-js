@@ -127,7 +127,7 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
 
   import global._
   import jsAddons._
-  import jsInterop.jsclassAccessorFor
+  import jsInterop.{jsclassAccessorFor, JSCallingConvention}
   import definitions._
   import rootMirror._
   import jsDefinitions._
@@ -171,8 +171,12 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
 
   /** Is the given clazz a local JS class or object? */
   private def isLocalJSClassOrObject(clazz: Symbol): Boolean = {
-    def isJSLambda =
-      clazz.isAnonymousClass && AllJSFunctionClasses.exists(clazz.isSubClass(_))
+    def isJSLambda: Boolean = {
+      // See GenJSCode.isJSFunctionDef
+      clazz.isAnonymousClass &&
+      clazz.superClass == JSFunctionClass &&
+      clazz.info.decl(nme.apply).filter(JSCallingConvention.isCall(_)).exists
+    }
 
     clazz.isLocalToBlock &&
     !clazz.isTrait && clazz.hasAnnotation(JSTypeAnnot) &&

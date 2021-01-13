@@ -81,6 +81,18 @@ class JSOptionalTest extends DirectTest with TestHelpers {
       |      def b(x: String = "foo"): Unit
       |                        ^
     """
+
+    // Also for custom JS function types (2.11 has more errors than expected here)
+    s"""
+    trait A extends js.Function {
+      def apply(x: js.UndefOr[Int] = 1): Int
+    }
+    """ containsErrors
+    """
+      |newSource1.scala:6: error: Members of non-native JS traits may not have default parameters unless their default is `js.undefined`.
+      |      def apply(x: js.UndefOr[Int] = 1): Int
+      |                                     ^
+    """
   }
 
   @Test

@@ -82,16 +82,91 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noApplyMethod: Unit = {
+  def noConcreteApplyMethod: Unit = {
     """
     class A extends js.Object {
       def apply(arg: Int): Int = arg
     }
     """ hasErrors
     """
-      |newSource1.scala:6: error: A non-native JS class cannot declare a method named `apply` without `@JSName`
+      |newSource1.scala:6: error: A non-native JS class cannot declare a concrete method named `apply` without `@JSName`
       |      def apply(arg: Int): Int = arg
       |          ^
+    """
+
+    """
+    trait B extends js.Object {
+      def apply(arg: Int): Int
+    }
+
+    class A extends B {
+      def apply(arg: Int): Int = arg
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: A non-native JS type can only declare an abstract method named `apply` without `@JSName` if it is the SAM of a trait that extends js.Function
+      |      def apply(arg: Int): Int
+      |          ^
+      |newSource1.scala:10: error: A non-native JS class cannot declare a concrete method named `apply` without `@JSName`
+      |      def apply(arg: Int): Int = arg
+      |          ^
+    """
+
+    """
+    abstract class B extends js.Object {
+      def apply(arg: Int): Int
+    }
+
+    class A extends B {
+      def apply(arg: Int): Int = arg
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: A non-native JS type can only declare an abstract method named `apply` without `@JSName` if it is the SAM of a trait that extends js.Function
+      |      def apply(arg: Int): Int
+      |          ^
+      |newSource1.scala:10: error: A non-native JS class cannot declare a concrete method named `apply` without `@JSName`
+      |      def apply(arg: Int): Int = arg
+      |          ^
+    """
+
+    """
+    object Enclosing {
+      val f = new js.Object {
+        def apply(arg: Int): Int = arg
+      }
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: A non-native JS class cannot declare a concrete method named `apply` without `@JSName`
+      |        def apply(arg: Int): Int = arg
+      |            ^
+    """
+
+    """
+    object Enclosing {
+      val f = new js.Function {
+        def apply(arg: Int): Int = arg
+      }
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: A non-native JS class cannot declare a concrete method named `apply` without `@JSName`
+      |        def apply(arg: Int): Int = arg
+      |            ^
+    """
+
+    """
+    object Enclosing {
+      val f = new js.Function1[Int, Int] {
+        def apply(arg: Int): Int = arg
+      }
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: A non-native JS class cannot declare a concrete method named `apply` without `@JSName`
+      |        def apply(arg: Int): Int = arg
+      |            ^
     """
   }
 
@@ -165,7 +240,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:11: error: A non-native JS class cannot declare a method named `apply` without `@JSName`
+      |newSource1.scala:11: error: A non-native JS class cannot declare a concrete method named `apply` without `@JSName`
       |        def apply(x: Int): String = "f"
       |            ^
     """
@@ -176,10 +251,7 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: Non-native JS types cannot directly extend native JS traits.
-      |    class $anonfun extends js.Function1[Int, String] {
-      |          ^
-      |newSource1.scala:6: error: A non-native JS class cannot declare a method named `apply` without `@JSName`
+      |newSource1.scala:6: error: A non-native JS class cannot declare a concrete method named `apply` without `@JSName`
       |      def apply(x: Int): String = "f"
       |          ^
     """

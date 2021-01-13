@@ -5796,6 +5796,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               if (name == "apply" || (ddsym.isSpecialized && name.startsWith("apply$"))) {
                 if ((applyDef eq null) || ddsym.isSpecialized)
                   applyDef = dd
+              } else if (ddsym.hasAnnotation(JSOptionalAnnotation)) {
+                // Ignore (this is useful for default parameters in custom JS function types)
               } else {
                 // Found a method we cannot encode in the rewriting
                 fail(s"Found a non-apply method $ddsym in $cd")
@@ -5847,15 +5849,31 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
         // Fourth step: patch the body to unbox parameters and box result
 
+        val hasRepeatedParam = {
+          sym.superClass == JSFunctionClass && // Scala functions are known not to have repeated params
+          enteringUncurry {
+            applyDef.symbol.paramss.flatten.lastOption.exists(isRepeated(_))
+          }
+        }
+
         val js.MethodDef(_, _, _, params, _, body) = applyMethod
-        val (patchedParams, patchedBody) =
-          patchFunBodyWithBoxes(applyDef.symbol, params, body.get)
+        val (patchedParams, patchedBody) = {
+          patchFunBodyWithBoxes(applyDef.symbol, params, body.get,
+              useParamsBeforeLambdaLift = false,
+              hasRepeatedParam = hasRepeatedParam)
+        }
 
         // Fifth step: build the js.Closure
 
-        val isThisFunction = JSThisFunctionClasses.exists(sym isSubClass _)
-        assert(!isThisFunction || patchedParams.nonEmpty,
-            s"Empty param list in ThisFunction: $cd")
+        val isThisFunction = sym.isSubClass(JSThisFunctionClass) && {
+          val ok = patchedParams.headOption.exists(!_.rest)
+          if (!ok) {
+            reporter.error(pos,
+                "The SAM or apply method for a js.ThisFunction must have a " +
+                "leading non-varargs parameter")
+          }
+          ok
+        }
 
         val capturedArgs =
           if (hasUnusedOuterCtorParam) initialCapturedArgs.tail
@@ -5973,7 +5991,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       val (patchedFormalArgs, patchedBody) = {
         patchFunBodyWithBoxes(target, formalArgs, body,
-            useParamsBeforeLambdaLift = true)
+            useParamsBeforeLambdaLift = true, hasRepeatedParam = false)
       }
 
       val closure = js.Closure(
@@ -6121,7 +6139,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     private def patchFunBodyWithBoxes(methodSym: Symbol,
         params: List[js.ParamDef], body: js.Tree,
-        useParamsBeforeLambdaLift: Boolean = false)(
+        useParamsBeforeLambdaLift: Boolean, hasRepeatedParam: Boolean)(
         implicit pos: Position): (List[js.ParamDef], js.Tree) = {
       val methodType = enteringPhase(currentRun.posterasurePhase)(methodSym.tpe)
 
@@ -6147,18 +6165,26 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           methodSym.tpe.params
       }
 
+      val theRepeatedParamOrNull =
+        if (!hasRepeatedParam) null
+        else params.last
+
       val (patchedParams, paramsLocal) = (for {
         (param, paramSym) <- params zip paramSyms
       } yield {
-        val paramTpe = paramTpes.getOrElse(paramSym.name, paramSym.tpe)
+        val isRepeated = param eq theRepeatedParamOrNull
+        def paramTpe = paramTpes.getOrElse(paramSym.name, paramSym.tpe)
         val paramNameIdent = param.name
         val origName = param.originalName
         val newNameIdent = freshLocalIdent(paramNameIdent.name)(paramNameIdent.pos)
         val newOrigName = origName.orElse(paramNameIdent.name)
         val patchedParam = js.ParamDef(newNameIdent, newOrigName, jstpe.AnyType,
-            mutable = false, rest = param.rest)(param.pos)
+            mutable = false, rest = isRepeated)(param.pos)
+        val paramLocalRhs =
+          if (isRepeated) genJSArrayToVarArgs(patchedParam.ref)
+          else fromAny(patchedParam.ref, paramTpe)
         val paramLocal = js.VarDef(paramNameIdent, origName, param.ptpe,
-            mutable = false, fromAny(patchedParam.ref, paramTpe))
+            mutable = false, paramLocalRhs)
         (patchedParam, paramLocal)
       }).unzip
 
@@ -6532,16 +6558,16 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      * non-lambda, concrete, non-native JS type, cannot implement a method named
      * `apply`.
      *
-     * All JS function classes have an abstract member named `apply`. Therefore,
-     * a class is a JS lambda iff it is concrete, a non-native JS type and
-     * inherits from a JS function class.
+     * Therefore, a class is a JS lambda iff it is anonymous, its direct
+     * super class is `js.Function`, and it contains an implementation of an
+     * `apply` method.
      *
-     * To avoid having to an isSubClass check on all concrete non-native JS
-     * classes, we short-circuit check that the class is an anonymous class
-     * (a necessary, but not sufficient condition for a JS lambda).
+     * Note that being anonymous implies being concrete and non-native, so we
+     * do not have to test that.
      */
-    !isJSNativeClass(sym) && !sym.isAbstract && sym.isAnonymousClass &&
-    AllJSFunctionClasses.exists(sym.isSubClass(_))
+    sym.isAnonymousClass &&
+    sym.superClass == JSFunctionClass &&
+    sym.info.decl(nme.apply).filter(JSCallingConvention.isCall(_)).exists
   }
 
   private def isJSCtorDefaultParam(sym: Symbol) = {
