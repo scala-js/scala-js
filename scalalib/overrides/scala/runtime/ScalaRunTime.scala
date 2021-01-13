@@ -60,7 +60,6 @@ object ScalaRunTime {
       case x: Array[Byte]    => x(idx).asInstanceOf[Any]
       case x: Array[Short]   => x(idx).asInstanceOf[Any]
       case x: Array[Boolean] => x(idx).asInstanceOf[Any]
-      case x: Array[Unit]    => x(idx).asInstanceOf[Any]
       case null => throw new NullPointerException
     }
   }
@@ -77,7 +76,6 @@ object ScalaRunTime {
       case x: Array[Byte]    => x(idx) = value.asInstanceOf[Byte]
       case x: Array[Short]   => x(idx) = value.asInstanceOf[Short]
       case x: Array[Boolean] => x(idx) = value.asInstanceOf[Boolean]
-      case x: Array[Unit]    => x(idx) = value.asInstanceOf[Unit]
       case null => throw new NullPointerException
     }
   }
@@ -93,7 +91,6 @@ object ScalaRunTime {
     case x: Array[Byte]    => x.length
     case x: Array[Short]   => x.length
     case x: Array[Boolean] => x.length
-    case x: Array[Unit]    => x.length
     case null => throw new NullPointerException
   }
 
@@ -107,7 +104,6 @@ object ScalaRunTime {
     case x: Array[Byte]    => x.clone()
     case x: Array[Short]   => x.clone()
     case x: Array[Boolean] => x.clone()
-    case x: Array[Unit]    => x
     case null => throw new NullPointerException
   }
 
