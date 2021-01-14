@@ -1749,9 +1749,14 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           case PreTransLocalDef(LocalDef(_, false,
               closure @ TentativeClosureReplacement(
                   captureParams, params, body, captureLocalDefs,
-                  alreadyUsed, cancelFun))) if !alreadyUsed.value =>
+                  alreadyUsed, cancelFun)))
+              if !alreadyUsed.value && argsNoSpread.size <= params.size =>
             alreadyUsed.value = true
-            pretransformExprs(argsNoSpread) { targs =>
+            val missingArgCount = params.size - argsNoSpread.size
+            val expandedArgs =
+              if (missingArgCount == 0) argsNoSpread
+              else argsNoSpread ::: List.fill(missingArgCount)(Undefined())
+            pretransformExprs(expandedArgs) { targs =>
               inlineBody(
                   Some(PreTransLit(Undefined())), // `this` is `undefined`
                   captureParams ++ params, AnyType, body,
@@ -1952,6 +1957,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     val optReceiverBinding = optReceiver map { receiver =>
       Binding(Binding.This, receiver.tpe.base, false, receiver)
     }
+
+    assert(formals.size == args.size,
+        "argument count mismatch: " +
+        s"inlineBody was called with formals $formals but args $args")
 
     val argsBindings = for {
       (ParamDef(nameIdent, originalName, tpe, mutable, rest), arg) <- formals zip args
