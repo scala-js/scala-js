@@ -2991,6 +2991,25 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """.hasNoWarns()
 
+    // #4375
+    """
+    abstract class Parent extends js.Object {
+      type TypeMember <: CharSequence
+      type JSTypeMember <: js.Object
+
+      type Foo = Int
+      @JSName("Babar") def Bar: Int = 5
+    }
+
+    class Child extends Parent {
+      type TypeMember = String
+      override type JSTypeMember = js.Date // the override keyword makes no difference
+
+      @JSName("Foobar") def Foo: Int = 5
+      type Bar = Int
+    }
+    """.hasNoWarns()
+
     """
     abstract class A extends js.Object {
       @JSName("foo")

@@ -681,46 +681,56 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
         val low = overridingPair.low
         val high = overridingPair.high
 
-        def errorPos = {
-          if (sym == low.owner) low.pos
-          else if (sym == high.owner) high.pos
-          else sym.pos
-        }
+        if (low.isType || high.isType) {
+          /* #4375 Do nothing if either is a type, and let refchecks take care
+           * of it.
+           * The case where one is a type and the other is not should never
+           * happen, because they would live in different namespaces and
+           * therefore not override each other. However, if that should still
+           * happen for some reason, rechecks should take care of it as well.
+           */
+        } else {
+          def errorPos = {
+            if (sym == low.owner) low.pos
+            else if (sym == high.owner) high.pos
+            else sym.pos
+          }
 
-        def memberDefString(membSym: Symbol): String =
-          membSym.defStringSeenAs(sym.thisType.memberType(membSym))
+          def memberDefString(membSym: Symbol): String =
+            membSym.defStringSeenAs(sym.thisType.memberType(membSym))
 
-        // Check for overrides with different JS names - issue #1983
-        if (jsInterop.JSCallingConvention.of(low) != jsInterop.JSCallingConvention.of(high)) {
-          val msg = {
-            def memberDefStringWithCallingConvention(membSym: Symbol) = {
-              memberDefString(membSym) +
-              membSym.locationString + " called from JS as " +
-              JSCallingConvention.of(membSym).displayName
+          // Check for overrides with different JS names - issue #1983
+          if (jsInterop.JSCallingConvention.of(low) != jsInterop.JSCallingConvention.of(high)) {
+            val msg = {
+              def memberDefStringWithCallingConvention(membSym: Symbol) = {
+                memberDefString(membSym) +
+                membSym.locationString + " called from JS as " +
+                JSCallingConvention.of(membSym).displayName
+              }
+              "A member of a JS class is overriding another member with a different JS calling convention.\n\n" +
+              memberDefStringWithCallingConvention(low) + "\n" +
+              "    is conflicting with\n" +
+              memberDefStringWithCallingConvention(high) + "\n"
             }
-            "A member of a JS class is overriding another member with a different JS calling convention.\n\n" +
-            memberDefStringWithCallingConvention(low) + "\n" +
-            "    is conflicting with\n" +
-            memberDefStringWithCallingConvention(high) + "\n"
+
+            reporter.error(errorPos, msg)
           }
 
-          reporter.error(errorPos, msg)
-        }
+          /* Cannot override a non-@JSOptional with an @JSOptional. Unfortunately
+           * at this point the symbols do not have @JSOptional yet, so we need
+           * to detect whether it would be applied.
+           */
+          if (!isJSNative) {
+            def isJSOptional(sym: Symbol): Boolean = {
+              sym.owner.isTrait && !sym.isDeferred && !sym.isConstructor &&
+              !sym.owner.hasAnnotation(JSNativeAnnotation)
+            }
 
-        /* Cannot override a non-@JSOptional with an @JSOptional. Unfortunately
-         * at this point the symbols do not have @JSOptional yet, so we need
-         * to detect whether it would be applied.
-         */
-        if (!isJSNative) {
-          def isJSOptional(sym: Symbol): Boolean = {
-            sym.owner.isTrait && !sym.isDeferred && !sym.isConstructor &&
-            !sym.owner.hasAnnotation(JSNativeAnnotation)
-          }
-
-          if (isJSOptional(low) && !(high.isDeferred || isJSOptional(high))) {
-            reporter.error(errorPos,
-                s"Cannot override concrete ${memberDefString(high)} from " +
-                s"${high.owner.fullName} in a non-native JS trait.")
+            if (isJSOptional(low) && !(high.isDeferred || isJSOptional(high))) {
+              reporter.error(errorPos,
+                  s"Cannot override concrete ${memberDefString(high)} from " +
+                  s"${high.owner.fullName} in a non-native JS trait.")
+            }
           }
         }
       }
