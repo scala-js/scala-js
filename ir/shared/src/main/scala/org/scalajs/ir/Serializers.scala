@@ -1044,7 +1044,7 @@ object Serializers {
 
         case TagAssign =>
           val lhs0 = readTree()
-          val lhs = if (lhs0.tpe == NothingType) { // temp: test backward compat
+          val lhs = if (hacks.use14 && lhs0.tpe == NothingType) {
             /* Note [Nothing FieldDef rewrite]
              * (throw qual.field[null]) = rhs  -->  qual.field[null] = rhs
              */
@@ -1089,7 +1089,7 @@ object Serializers {
           val field = readFieldIdent()
           val tpe = readType()
 
-          if (tpe == NothingType) { // temp: test backward compat
+          if (hacks.use14 && tpe == NothingType) {
             /* Note [Nothing FieldDef rewrite]
              * qual.field[nothing]  -->  throw qual.field[null]
              */
@@ -1208,7 +1208,7 @@ object Serializers {
           val originalName = readOriginalName()
 
           val ftpe0 = readType()
-          val ftpe = if (ftpe0 == NothingType) { // temp: test backward compat
+          val ftpe = if (hacks.use14 && ftpe0 == NothingType) {
             /* Note [Nothing FieldDef rewrite]
              * val field: nothing  -->  val field: null
              */
@@ -1639,6 +1639,10 @@ object Serializers {
     val use11: Boolean = use10 || sourceVersion == "1.1"
 
     val use12: Boolean = use11 || sourceVersion == "1.2"
+
+    private val use13: Boolean = use12 || sourceVersion == "1.3"
+
+    val use14: Boolean = use13 || sourceVersion == "1.4"
   }
 
   /** Names needed for hacks. */
