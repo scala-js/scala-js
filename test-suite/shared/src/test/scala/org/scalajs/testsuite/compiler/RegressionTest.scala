@@ -852,6 +852,24 @@ class RegressionTest {
     assertEquals(4, staticForwardersAvoidanceObjectAfterClass.checkValue)
   }
 
+  @Test def fieldsWithNothingType_Issue4370(): Unit = {
+    class EagerFieldsWithNothingType {
+      val a: Nothing = throw new IllegalStateException("always")
+      var b: Nothing = throw new IllegalStateException("never")
+    }
+
+    val ex1 = expectThrows(classOf[IllegalStateException], new EagerFieldsWithNothingType)
+    assertEquals("always", ex1.getMessage())
+
+    class LazyFieldsWithNothingType {
+      lazy val a: Nothing = throw new IllegalStateException("lazily always")
+    }
+
+    val obj = new LazyFieldsWithNothingType
+    val ex2 = expectThrows(classOf[IllegalStateException], obj.a)
+    assertEquals("lazily always", ex2.getMessage())
+  }
+
 }
 
 object RegressionTest {

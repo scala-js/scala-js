@@ -338,8 +338,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         typecheckExpect(name, Env.empty, AnyType)
     }
 
-    if (fieldDef.ftpe == NoType)
-      reportError(i"FieldDef cannot have type NoType")
+    if (fieldDef.ftpe == NoType || fieldDef.ftpe == NothingType)
+      reportError(i"FieldDef cannot have type ${fieldDef.ftpe}")
   }
 
   private def checkMethodDef(methodDef: MethodDef,
