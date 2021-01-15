@@ -164,8 +164,7 @@ def Tasks = [
         testInterface$v/compile:doc testBridge$v/compile:doc &&
     sbtretry ++$scala headerCheck &&
     sbtretry ++$scala partest$v/fetchScalaSource &&
-    sbtretry ++$scala library$v/mimaReportBinaryIssues testInterface$v/mimaReportBinaryIssues &&
-    sh ci/check-partest-coverage.sh $scala
+    sbtretry ++$scala library$v/mimaReportBinaryIssues testInterface$v/mimaReportBinaryIssues
   ''',
 
   "test-suite-ecma-script2015": '''
