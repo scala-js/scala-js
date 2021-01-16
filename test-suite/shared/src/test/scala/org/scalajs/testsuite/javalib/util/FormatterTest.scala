@@ -467,6 +467,13 @@ class FormatterTest {
   }
 
   @Test def formatE(): Unit = {
+    assertF("0.000000e+00", "%e", 0.0)
+    assertF("-0.000000e+00", "%e", -0.0)
+    assertF("0e+00", "%.0e", 0.0)
+    assertF("-0e+00", "%.0e", -0.0)
+    assertF("0.000e+00", "%.3e", 0.0)
+    assertF("-0.000e+00", "%.3e", -0.0)
+
     assertF("1.000000e+03", "%e", 1000.0)
     assertF("1e+100", "%.0e", 1.2e100)
     assertF("0.000e+00", "%.3e", 0.0)
@@ -513,6 +520,13 @@ class FormatterTest {
   }
 
   @Test def formatG(): Unit = {
+    assertF("0.00000", "%g", 0.0)
+    assertF("-0.00000", "%g", -0.0)
+    assertF("0", "%.0g", 0.0)
+    assertF("-0", "%.0g", -0.0)
+    assertF("0.00", "%.3g", 0.0)
+    assertF("-0.00", "%.3g", -0.0)
+
     assertF("5.00000e-05", "%g", 0.5e-4)
     assertF("-5.00000e-05", "%g", -0.5e-4)
     assertF("0.000300000", "%g", 3e-4)
@@ -573,6 +587,13 @@ class FormatterTest {
   }
 
   @Test def formatF(): Unit = {
+    assertF("0.000000", "%f", 0.0)
+    assertF("-0.000000", "%f", -0.0)
+    assertF("0", "%.0f", 0.0)
+    assertF("-0", "%.0f", -0.0)
+    assertF("0.000", "%.3f", 0.0)
+    assertF("-0.000", "%.3f", -0.0)
+
     assertF("3.300000", "%f", 3.3)
     assertF("(04.6000)", "%0(9.4f", -4.6)
 

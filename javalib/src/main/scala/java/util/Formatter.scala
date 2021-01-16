@@ -526,8 +526,12 @@ final class Formatter private (private[this] var dest: Appendable,
       if (precision == 0) 1
       else precision
 
-    // between 1e-4 and 10e(p): display as fixed
-    if (m >= 1e-4 && m < Math.pow(10, p)) {
+    if (m == 0.0) {
+      // #4353 Always display 0.0 as fixed, as if its `sig` were 1
+      decimalNotation(x, p - 1, forceDecimalSep)
+    } else if ((m >= 1e-4 && m < Math.pow(10, p))) {
+      // Between 1e-4 and 10e(p): display as fixed
+
       /* First approximation of the smallest power of 10 that is >= m.
        * Due to rounding errors in the event of an imprecise `log10`
        * function, sig0 could actually be the smallest power of 10
