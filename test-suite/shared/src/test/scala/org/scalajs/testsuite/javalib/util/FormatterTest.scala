@@ -374,6 +374,12 @@ class FormatterTest {
 
     assertF("04536610567107334372261", "%#o", new BigInteger("43212345678987654321"))
 
+    // #4351 Unlike Ints and Longs, BigIntegers support "+ ("
+    assertF("+664", "%+(o", new BigInteger("436"))
+    assertF("(664)", "%+(o", new BigInteger("-436"))
+    assertF(" 664", "% (o", new BigInteger("436"))
+    assertF("(664)", "% (o", new BigInteger("-436"))
+
     /* Negative Bytes and Shorts are formatted as if they were Ints.
      * This is a consequence of the non-boxing behavior of numbers in Scala.js.
      */
@@ -382,9 +388,11 @@ class FormatterTest {
     assertF("37777777766", "%5o", asIntOnJVM(-10.toShort))
     assertF("000037777777766", "%015o", asIntOnJVM(-10.toShort))
 
-    testWithNull('o', "#0", acceptPrecision = false, acceptUpperCase = false)
+    testWithNull('o', "#+ 0(", acceptPrecision = false, acceptUpperCase = false)
 
     expectFormatFlagsConversionMismatch('o', "+ ,(", 5)
+    expectFormatFlagsConversionMismatch('o', "+ ,(", 5L)
+    expectFormatFlagsConversionMismatch('o', ",", new BigInteger("5"))
     expectIllegalFormatPrecision('o', 5)
   }
 
@@ -444,9 +452,17 @@ class FormatterTest {
 
     assertF("0x257b117723b71f4b1", "%#x", new BigInteger("43212345678987654321"))
 
-    testWithNull('x', "#0", acceptPrecision = false)
+    // #4351 Unlike Ints and Longs, BigIntegers support "+ ("
+    assertF("+1b4", "%+(x", new BigInteger("436"))
+    assertF("(1b4)", "%+(x", new BigInteger("-436"))
+    assertF(" 1b4", "% (x", new BigInteger("436"))
+    assertF("(1b4)", "% (x", new BigInteger("-436"))
+
+    testWithNull('x', "#+ 0(", acceptPrecision = false)
 
     expectFormatFlagsConversionMismatch('x', "+ ,(", 5)
+    expectFormatFlagsConversionMismatch('x', "+ ,(", 5L)
+    expectFormatFlagsConversionMismatch('x', ",", new BigInteger("5"))
     expectIllegalFormatPrecision('x', 5)
   }
 

@@ -277,6 +277,32 @@ final class Formatter private (private[this] var dest: Appendable,
       if (precision >= 0) precision
       else 6
 
+    @inline def oxCommon(prefix: String, radix: Int): Unit = {
+      // Octal/hex formatting is not localized
+      rejectPrecision()
+      arg match {
+        case arg: Int =>
+          validateFlags(flags, conversion,
+              invalidFlags = InvalidFlagsForOctalAndHexIntLong)
+          padAndSendToDest(RootLocaleInfo, flags, width, prefix,
+              applyNumberUpperCase(flags, java.lang.Integer.toUnsignedString(arg, radix)))
+        case arg: Long =>
+          validateFlags(flags, conversion,
+              invalidFlags = InvalidFlagsForOctalAndHexIntLong)
+          padAndSendToDest(RootLocaleInfo, flags, width, prefix,
+              applyNumberUpperCase(flags, java.lang.Long.toUnsignedString(arg, radix)))
+        case arg: BigInteger =>
+          validateFlags(flags, conversion,
+              invalidFlags = InvalidFlagsForOctalAndHexBigInteger)
+          formatNumericString(RootLocaleInfo, flags, width,
+              arg.toString(radix), prefix)
+        case _ =>
+          validateFlags(flags, conversion,
+              invalidFlags = InvalidFlagsForOctalAndHexBigInteger)
+          formatNullOrThrowIllegalFormatConversion()
+      }
+    }
+
     @inline def efgCommon(notation: (Double, Int, Boolean) => String): Unit = {
       arg match {
         case arg: Double =>
@@ -368,50 +394,18 @@ final class Formatter private (private[this] var dest: Appendable,
         }
 
       case 'o' =>
-        // Octal formatting is not localized
-        validateFlags(flags, conversion,
-            invalidFlags = InvalidFlagsForOctalAndHex)
-        rejectPrecision()
         val prefix =
           if (flags.altFormat) "0"
           else ""
-        arg match {
-          case arg: Int =>
-            padAndSendToDest(RootLocaleInfo, flags, width, prefix,
-                java.lang.Integer.toOctalString(arg))
-          case arg: Long =>
-            padAndSendToDest(RootLocaleInfo, flags, width, prefix,
-                java.lang.Long.toOctalString(arg))
-          case arg: BigInteger =>
-            formatNumericString(RootLocaleInfo, flags, width,
-                arg.toString(8), prefix)
-          case _ =>
-            formatNullOrThrowIllegalFormatConversion()
-        }
+        oxCommon(prefix, radix = 8)
 
       case 'x' | 'X' =>
-        // Hex formatting is not localized
-        validateFlags(flags, conversion,
-            invalidFlags = InvalidFlagsForOctalAndHex)
-        rejectPrecision()
         val prefix = {
           if (!flags.altFormat) ""
           else if (flags.upperCase) "0X"
           else "0x"
         }
-        arg match {
-          case arg: Int =>
-            padAndSendToDest(RootLocaleInfo, flags, width, prefix,
-                applyNumberUpperCase(flags, java.lang.Integer.toHexString(arg)))
-          case arg: Long =>
-            padAndSendToDest(RootLocaleInfo, flags, width, prefix,
-                applyNumberUpperCase(flags, java.lang.Long.toHexString(arg)))
-          case arg: BigInteger =>
-            formatNumericString(RootLocaleInfo, flags, width,
-                arg.toString(16), prefix)
-          case _ =>
-            formatNullOrThrowIllegalFormatConversion()
-        }
+        oxCommon(prefix, radix = 16)
 
       case 'e' | 'E' =>
         validateFlags(flags, conversion, invalidFlags = UseGroupingSeps)
@@ -796,8 +790,11 @@ object Formatter {
     final val UseLastIndex = 0x080
     final val UpperCase = 0x100
 
-    final val InvalidFlagsForOctalAndHex =
+    final val InvalidFlagsForOctalAndHexIntLong =
       PositivePlus | PositiveSpace | UseGroupingSeps | NegativeParen
+
+    final val InvalidFlagsForOctalAndHexBigInteger =
+      UseGroupingSeps
 
     final val NumericOnlyFlags =
       PositivePlus | PositiveSpace | ZeroPad | UseGroupingSeps | NegativeParen
