@@ -173,7 +173,7 @@ final class Formatter private (private[this] var dest: Appendable,
          */
         null
       } else {
-        if (flags.leftAlign && width < 0)
+        if (flags.hasAnyOf(LeftAlign | ZeroPad) && width < 0)
           throw new MissingFormatWidthException("%" + execResult(0))
 
         val argIndex = if (flags.useLastIndex) {

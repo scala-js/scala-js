@@ -116,9 +116,12 @@ class FormatterTest {
       invalidFlags: String, arg: Any): Unit = {
 
     for (flag <- invalidFlags) {
+      val flags =
+        if (flag == '-' || flag == '0') flag.toString() + "5"
+        else flag.toString()
       val e = expectFormatterThrows(
           classOf[FormatFlagsConversionMismatchException],
-          "%" + flag + conversion, arg)
+          "%" + flags + conversion, arg)
       assertEquals(flag.toString, e.getFlags)
       assertEquals(conversion, e.getConversion)
     }
@@ -702,16 +705,24 @@ class FormatterTest {
     expectUnknownFormatConversion("abc%", '%')
   }
 
-  @Test def leftAlignWithoutWidthThrows(): Unit = {
-    for (conversion <- "bBhHsHcCdoxXeEgGf%") {
-      val fmt = "ab%-" + conversion + "cd"
+  // Among others, this tests #4343
+  @Test def leftAlignOrZeroAlignWithoutWidthThrows(): Unit = {
+    def validAlignFlagsFor(conversion: Char): Seq[String] =
+      if ("doxXeEgGf".contains(conversion)) Seq("-", "0")
+      else Seq("-")
+
+    for {
+      conversion <- "bBhHsScCdoxXeEgGf%"
+      alignFlag <- validAlignFlagsFor(conversion)
+    } {
+      val fmt = "ab%" + alignFlag + conversion + "cd"
       val arg: Any = conversion match {
         case 'e' | 'E' | 'g' | 'G' | 'f' => 5.5
         case _                           => 5
       }
       val e =
         expectFormatterThrows(classOf[MissingFormatWidthException], fmt, arg)
-      assertEquals(fmt, "%-" + conversion, e.getFormatSpecifier)
+      assertEquals(fmt, "%" + alignFlag + conversion, e.getFormatSpecifier)
     }
   }
 
