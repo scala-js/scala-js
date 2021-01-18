@@ -116,9 +116,12 @@ class FormatterTest {
       invalidFlags: String, arg: Any): Unit = {
 
     for (flag <- invalidFlags) {
+      val flags =
+        if (flag == '-' || flag == '0') flag.toString() + "5"
+        else flag.toString()
       val e = expectFormatterThrows(
           classOf[FormatFlagsConversionMismatchException],
-          "%" + flag + conversion, arg)
+          "%" + flags + conversion, arg)
       assertEquals(flag.toString, e.getFlags)
       assertEquals(conversion, e.getConversion)
     }
@@ -374,6 +377,12 @@ class FormatterTest {
 
     assertF("04536610567107334372261", "%#o", new BigInteger("43212345678987654321"))
 
+    // #4351 Unlike Ints and Longs, BigIntegers support "+ ("
+    assertF("+664", "%+(o", new BigInteger("436"))
+    assertF("(664)", "%+(o", new BigInteger("-436"))
+    assertF(" 664", "% (o", new BigInteger("436"))
+    assertF("(664)", "% (o", new BigInteger("-436"))
+
     /* Negative Bytes and Shorts are formatted as if they were Ints.
      * This is a consequence of the non-boxing behavior of numbers in Scala.js.
      */
@@ -382,9 +391,11 @@ class FormatterTest {
     assertF("37777777766", "%5o", asIntOnJVM(-10.toShort))
     assertF("000037777777766", "%015o", asIntOnJVM(-10.toShort))
 
-    testWithNull('o', "#0", acceptPrecision = false, acceptUpperCase = false)
+    testWithNull('o', "#+ 0(", acceptPrecision = false, acceptUpperCase = false)
 
     expectFormatFlagsConversionMismatch('o', "+ ,(", 5)
+    expectFormatFlagsConversionMismatch('o', "+ ,(", 5L)
+    expectFormatFlagsConversionMismatch('o', ",", new BigInteger("5"))
     expectIllegalFormatPrecision('o', 5)
   }
 
@@ -444,13 +455,28 @@ class FormatterTest {
 
     assertF("0x257b117723b71f4b1", "%#x", new BigInteger("43212345678987654321"))
 
-    testWithNull('x', "#0", acceptPrecision = false)
+    // #4351 Unlike Ints and Longs, BigIntegers support "+ ("
+    assertF("+1b4", "%+(x", new BigInteger("436"))
+    assertF("(1b4)", "%+(x", new BigInteger("-436"))
+    assertF(" 1b4", "% (x", new BigInteger("436"))
+    assertF("(1b4)", "% (x", new BigInteger("-436"))
+
+    testWithNull('x', "#+ 0(", acceptPrecision = false)
 
     expectFormatFlagsConversionMismatch('x', "+ ,(", 5)
+    expectFormatFlagsConversionMismatch('x', "+ ,(", 5L)
+    expectFormatFlagsConversionMismatch('x', ",", new BigInteger("5"))
     expectIllegalFormatPrecision('x', 5)
   }
 
   @Test def formatE(): Unit = {
+    assertF("0.000000e+00", "%e", 0.0)
+    assertF("-0.000000e+00", "%e", -0.0)
+    assertF("0e+00", "%.0e", 0.0)
+    assertF("-0e+00", "%.0e", -0.0)
+    assertF("0.000e+00", "%.3e", 0.0)
+    assertF("-0.000e+00", "%.3e", -0.0)
+
     assertF("1.000000e+03", "%e", 1000.0)
     assertF("1e+100", "%.0e", 1.2e100)
     assertF("0.000e+00", "%.3e", 0.0)
@@ -497,6 +523,13 @@ class FormatterTest {
   }
 
   @Test def formatG(): Unit = {
+    assertF("0.00000", "%g", 0.0)
+    assertF("-0.00000", "%g", -0.0)
+    assertF("0", "%.0g", 0.0)
+    assertF("-0", "%.0g", -0.0)
+    assertF("0.00", "%.3g", 0.0)
+    assertF("-0.00", "%.3g", -0.0)
+
     assertF("5.00000e-05", "%g", 0.5e-4)
     assertF("-5.00000e-05", "%g", -0.5e-4)
     assertF("0.000300000", "%g", 3e-4)
@@ -557,6 +590,13 @@ class FormatterTest {
   }
 
   @Test def formatF(): Unit = {
+    assertF("0.000000", "%f", 0.0)
+    assertF("-0.000000", "%f", -0.0)
+    assertF("0", "%.0f", 0.0)
+    assertF("-0", "%.0f", -0.0)
+    assertF("0.000", "%.3f", 0.0)
+    assertF("-0.000", "%.3f", -0.0)
+
     assertF("3.300000", "%f", 3.3)
     assertF("(04.6000)", "%0(9.4f", -4.6)
 
@@ -665,16 +705,24 @@ class FormatterTest {
     expectUnknownFormatConversion("abc%", '%')
   }
 
-  @Test def leftAlignWithoutWidthThrows(): Unit = {
-    for (conversion <- "bBhHsHcCdoxXeEgGf%") {
-      val fmt = "ab%-" + conversion + "cd"
+  // Among others, this tests #4343
+  @Test def leftAlignOrZeroAlignWithoutWidthThrows(): Unit = {
+    def validAlignFlagsFor(conversion: Char): Seq[String] =
+      if ("doxXeEgGf".contains(conversion)) Seq("-", "0")
+      else Seq("-")
+
+    for {
+      conversion <- "bBhHsScCdoxXeEgGf%"
+      alignFlag <- validAlignFlagsFor(conversion)
+    } {
+      val fmt = "ab%" + alignFlag + conversion + "cd"
       val arg: Any = conversion match {
         case 'e' | 'E' | 'g' | 'G' | 'f' => 5.5
         case _                           => 5
       }
       val e =
         expectFormatterThrows(classOf[MissingFormatWidthException], fmt, arg)
-      assertEquals(fmt, "%-" + conversion, e.getFormatSpecifier)
+      assertEquals(fmt, "%" + alignFlag + conversion, e.getFormatSpecifier)
     }
   }
 
