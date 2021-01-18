@@ -958,7 +958,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
      *  an identifier (except those after the last non-expression argument).
      *  Hence the predicate `isPureExpressionWithoutIdent`.
      */
-    def unnest(args: List[Tree], allowUnpure: Boolean = true)(
+    def unnest(args: List[Tree])(
         makeStat: (List[Tree], Env) => js.Tree)(
         implicit env: Env): js.Tree = {
       if (args forall isExpression) makeStat(args, env)
@@ -979,11 +979,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
          * single method.
          */
 
-        def rec(arg: Tree, allowUnpure: Boolean)(implicit env: Env): Tree = {
+        def rec(arg: Tree)(implicit env: Env): Tree = {
           def noExtractYet = extractedStatements.isEmpty
 
           val keepAsIs =
-            if (allowUnpure && noExtractYet) isExpression(arg)
+            if (noExtractYet) isExpression(arg)
             else isPureExpression(arg)
 
           if (keepAsIs) {
@@ -993,7 +993,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             arg match {
               case Block(stats :+ expr) =>
                 val (jsStats, newEnv) = transformBlockStats(stats)
-                val result = rec(expr, allowUnpure)(newEnv)
+                val result = rec(expr)(newEnv)
                 // Put the stats in a Block because ++=: is not smart
                 js.Block(jsStats) +=: extractedStatements
                 innerEnv = stats.foldLeft(innerEnv) { (prev, stat) =>
@@ -1007,85 +1007,84 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 result
 
               case UnaryOp(op, lhs) =>
-                UnaryOp(op, rec(lhs, allowUnpure))
+                UnaryOp(op, rec(lhs))
               case BinaryOp(op, lhs, rhs) =>
-                val newRhs = rec(rhs, allowUnpure)
-                BinaryOp(op, rec(lhs, allowUnpure), newRhs)
+                val newRhs = rec(rhs)
+                BinaryOp(op, rec(lhs), newRhs)
               case JSBinaryOp(op, lhs, rhs) =>
-                val newRhs = rec(rhs, allowUnpure)
-                JSBinaryOp(op, rec(lhs, allowUnpure), newRhs)
+                val newRhs = rec(rhs)
+                JSBinaryOp(op, rec(lhs), newRhs)
               case JSUnaryOp(op, lhs) =>
-                JSUnaryOp(op, rec(lhs, allowUnpure))
+                JSUnaryOp(op, rec(lhs))
               case IsInstanceOf(expr, testType) =>
-                IsInstanceOf(rec(expr, allowUnpure), testType)
+                IsInstanceOf(rec(expr), testType)
 
               case AsInstanceOf(expr, tpe)
                   if noExtractYet || semantics.asInstanceOfs == Unchecked =>
-                AsInstanceOf(rec(expr, allowUnpure), tpe)
+                AsInstanceOf(rec(expr), tpe)
 
               case NewArray(tpe, lengths) =>
-                NewArray(tpe, recs(lengths, allowUnpure))
+                NewArray(tpe, recs(lengths))
               case ArrayValue(tpe, elems) =>
-                ArrayValue(tpe, recs(elems, allowUnpure))
+                ArrayValue(tpe, recs(elems))
               case JSArrayConstr(items) if !needsToTranslateAnySpread(items) =>
-                JSArrayConstr(recsOrSpread(items, allowUnpure))
+                JSArrayConstr(recsOrSpread(items))
 
               case arg @ JSObjectConstr(items)
                   if !doesObjectConstrRequireDesugaring(arg) =>
                 // We need to properly interleave keys and values here
                 val newItems = items.foldRight[List[(Tree, Tree)]](Nil) {
                   case ((key, value), acc) =>
-                    val newValue = rec(value, allowUnpure) // value first!
-                    val newKey = rec(key, allowUnpure)
+                    val newValue = rec(value) // value first!
+                    val newKey = rec(key)
                     (newKey, newValue) :: acc
                 }
                 JSObjectConstr(newItems)
 
               case Closure(arrow, captureParams, params, body, captureValues) =>
-                Closure(arrow, captureParams, params, body, recs(captureValues, allowUnpure))
+                Closure(arrow, captureParams, params, body, recs(captureValues))
 
               case New(className, constr, args) if noExtractYet =>
-                New(className, constr, recs(args, allowUnpure))
+                New(className, constr, recs(args))
               case Select(qualifier, className, item) if noExtractYet =>
-                Select(rec(qualifier, allowUnpure), className, item)(arg.tpe)
+                Select(rec(qualifier), className, item)(arg.tpe)
               case Apply(flags, receiver, method, args) if noExtractYet =>
-                val newArgs = recs(args, allowUnpure)
-                Apply(flags, rec(receiver, allowUnpure), method, newArgs)(arg.tpe)
+                val newArgs = recs(args)
+                Apply(flags, rec(receiver), method, newArgs)(arg.tpe)
               case ApplyStatically(flags, receiver, className, method, args) if noExtractYet =>
-                val newArgs = recs(args, allowUnpure)
-                ApplyStatically(flags, rec(receiver, allowUnpure), className, method, newArgs)(arg.tpe)
+                val newArgs = recs(args)
+                ApplyStatically(flags, rec(receiver), className, method, newArgs)(arg.tpe)
               case ApplyStatic(flags, className, method, args) if noExtractYet =>
-                ApplyStatic(flags, className, method, recs(args, allowUnpure))(arg.tpe)
+                ApplyStatic(flags, className, method, recs(args))(arg.tpe)
               case ApplyDynamicImport(flags, className, method, args) if noExtractYet =>
-                ApplyDynamicImport(flags, className, method, recs(args, allowUnpure = false))
+                ApplyDynamicImport(flags, className, method, recs(args))
               case ArrayLength(array) if noExtractYet =>
-                ArrayLength(rec(array, allowUnpure))
+                ArrayLength(rec(array))
               case ArraySelect(array, index) if noExtractYet =>
-                val newIndex = rec(index, allowUnpure)
-                ArraySelect(rec(array, allowUnpure), newIndex)(arg.tpe)
+                val newIndex = rec(index)
+                ArraySelect(rec(array), newIndex)(arg.tpe)
               case RecordSelect(record, field) if noExtractYet =>
-                RecordSelect(rec(record, allowUnpure), field)(arg.tpe)
+                RecordSelect(rec(record), field)(arg.tpe)
 
               case Transient(ZeroOf(runtimeClass)) =>
-                Transient(ZeroOf(rec(runtimeClass, allowUnpure)))
+                Transient(ZeroOf(rec(runtimeClass)))
               case Transient(NumberOfLeadingZeroes(num)) =>
-                Transient(NumberOfLeadingZeroes(rec(num, allowUnpure)))
+                Transient(NumberOfLeadingZeroes(rec(num)))
               case Transient(ObjectClassName(obj)) =>
-                Transient(ObjectClassName(rec(obj, allowUnpure)))
+                Transient(ObjectClassName(rec(obj)))
 
               case Transient(NativeArrayWrapper(elemClass, nativeArray)) if noExtractYet =>
-                val newNativeArray = rec(nativeArray, allowUnpure)
-                val newElemClass = rec(elemClass, allowUnpure)
+                val newNativeArray = rec(nativeArray)
+                val newElemClass = rec(elemClass)
                 Transient(NativeArrayWrapper(newElemClass, newNativeArray)(arg.tpe))
               case Transient(ArrayToTypedArray(expr, primRef)) if noExtractYet =>
-                Transient(ArrayToTypedArray(rec(expr, allowUnpure), primRef))
+                Transient(ArrayToTypedArray(rec(expr), primRef))
               case Transient(TypedArrayToArray(expr, primRef)) if noExtractYet =>
-                Transient(TypedArrayToArray(rec(expr, allowUnpure), primRef))
+                Transient(TypedArrayToArray(rec(expr), primRef))
 
-              case If(cond, thenp, elsep) if noExtractYet && (
-                  if (allowUnpure) isExpression(thenp) && isExpression(elsep)
-                  else isPureExpression(thenp) && isPureExpression(elsep)) =>
-                If(rec(cond, allowUnpure), thenp, elsep)(arg.tpe)
+              case If(cond, thenp, elsep)
+                  if noExtractYet && isExpression(thenp) && isExpression(elsep) =>
+                If(rec(cond), thenp, elsep)(arg.tpe)
 
               case _ =>
                 val temp = newSyntheticVar()
@@ -1098,26 +1097,25 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
         }
 
-        def recs(args: List[Tree], allowUnpure: Boolean)(
-            implicit env: Env): List[Tree] = {
+        def recs(args: List[Tree])(implicit env: Env): List[Tree] = {
           // This is a right-to-left map
           args.foldRight[List[Tree]](Nil) { (arg, acc) =>
-            rec(arg, allowUnpure) :: acc
+            rec(arg) :: acc
           }
         }
 
-        def recsOrSpread(args: List[TreeOrJSSpread], allowUnpure: Boolean)(
+        def recsOrSpread(args: List[TreeOrJSSpread])(
             implicit env: Env): List[TreeOrJSSpread] = {
           args.foldRight[List[TreeOrJSSpread]](Nil) { (arg, acc) =>
             val newArg = arg match {
-              case JSSpread(items) => JSSpread(rec(items, allowUnpure))(arg.pos)
-              case arg: Tree       => rec(arg, allowUnpure)
+              case JSSpread(items) => JSSpread(rec(items))(arg.pos)
+              case arg: Tree       => rec(arg)
             }
             newArg :: acc
           }
         }
 
-        val newArgs = recs(args, allowUnpure)
+        val newArgs = recs(args)
 
         assert(extractedStatements.nonEmpty,
             "Reached computeTemps with no temp to compute")
@@ -1298,10 +1296,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case ApplyStatic(_, className, method, args) =>
           allowSideEffects && (args forall test)
         case ApplyDynamicImport(_, _, _, args) =>
-          /* Arguments need to be pure, otherwise we need to unnest them to
-           * avoid evaluating them only *after* the module has been loaded.
-           */
-          allowSideEffects && args.forall(isPureExpression)
+          allowSideEffects && args.forall(test)
 
         // Transients with side effects.
         case Transient(TypedArrayToArray(expr, primRef)) =>
@@ -1701,7 +1696,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
 
         case ApplyDynamicImport(flags, className, method, args) =>
-          unnest(args, allowUnpure = false) { (newArgs, env) =>
+          unnest(args) { (newArgs, env) =>
             redo(ApplyDynamicImport(flags, className, method, newArgs))(env)
           }
 
@@ -2248,14 +2243,35 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               transformTypedArgs(method.name, args))
 
         case ApplyDynamicImport(flags, className, method, args) =>
-          val call = withDynamicGlobalVar("s", (className, method.name)) { v =>
-            /* It is safe to lift the args past the module loading step because
-             * the unnest mechanism ensures that they are pure.
-             */
-            js.Apply(v, transformTypedArgs(method.name, args))
+          val targs = transformTypedArgs(method.name, args)
+
+          val capturesBuilder = List.newBuilder[(js.ParamDef, js.Tree)]
+
+          val newArgs = for {
+            (arg, targ) <- args.zip(targs)
+          } yield {
+            if (isPureExpression(arg)) {
+              targ
+            } else {
+              val v = newSyntheticVar()
+              capturesBuilder += js.ParamDef(v, rest = false) -> targ
+              js.VarRef(v)
+            }
           }
 
-          extractWithGlobals(call)
+          val innerCall = extractWithGlobals {
+            withDynamicGlobalVar("s", (className, method.name)) { v =>
+              js.Apply(v, newArgs)
+            }
+          }
+
+          val captures = capturesBuilder.result()
+
+          if (captures.isEmpty) {
+            innerCall
+          } else {
+            genIIFE(captures, js.Return(innerCall))
+          }
 
         case UnaryOp(op, lhs) =>
           import UnaryOp._
@@ -2820,16 +2836,16 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 Env.empty(AnyType).withParams(captureParams ++ params))
           }
 
-          if (captureParams.isEmpty) {
+          val captures = for {
+            (param, value) <- captureParams.zip(captureValues)
+          } yield {
+            (transformParamDef(param), transformExpr(value, param.ptpe))
+          }
+
+          if (captures.isEmpty) {
             innerFunction
           } else {
-            js.Apply(
-                genArrowFunction(captureParams.map(transformParamDef), {
-                  js.Return(innerFunction)
-                }),
-                captureValues.zip(captureParams).map {
-                  case (value, param) => transformExpr(value, param.ptpe)
-                })
+            genIIFE(captures, js.Return(innerFunction))
           }
 
         case CreateJSClass(className, captureValues) =>
