@@ -13,6 +13,7 @@
 package org.scalajs.nscplugin.test
 
 import org.scalajs.nscplugin.test.util._
+import org.scalajs.nscplugin.test.util.VersionDependentUtils.scalaVersion
 
 import org.junit.Assume._
 import org.junit.Test
@@ -21,6 +22,13 @@ import org.junit.Test
 
 class JSSAMTest extends DirectTest with TestHelpers {
 
+  override def extraArgs: List[String] = {
+    if (scalaVersion.startsWith("2.11."))
+      super.extraArgs :+ "-Xexperimental"
+    else
+      super.extraArgs
+  }
+
   override def preamble: String =
     """
     import scala.scalajs.js
@@ -28,7 +36,8 @@ class JSSAMTest extends DirectTest with TestHelpers {
     """
 
   @Test
-  def noSAMAsJSTypeGeneric: Unit = {
+  def noSAMAsJSType211: Unit = {
+    assumeTrue(scalaVersion.startsWith("2.11."))
 
     """
     @js.native
@@ -44,15 +53,20 @@ class JSSAMTest extends DirectTest with TestHelpers {
       val foo: Foo = x => x + 1
       val Bar: Bar = x => x + 1
     }
-    """.fails()
-
+    """ hasErrors
+    """
+      |newSource1.scala:15: error: Non-native JS types cannot directly extend native JS traits.
+      |      val foo: Foo = x => x + 1
+      |                       ^
+      |newSource1.scala:16: error: $anonfun extends scala.Serializable which does not extend js.Any.
+      |      val Bar: Bar = x => x + 1
+      |                       ^
+    """
   }
 
   @Test
-  def noSAMAsJSType212: Unit = {
-
-    val version = scala.util.Properties.versionNumberString
-    assumeTrue(!version.startsWith("2.11."))
+  def noSAMAsJSType212Plus: Unit = {
+    assumeTrue(!scalaVersion.startsWith("2.11."))
 
     """
     @js.native
@@ -77,7 +91,6 @@ class JSSAMTest extends DirectTest with TestHelpers {
       |      val Bar: Bar = x => x + 1
       |                       ^
     """
-
   }
 
 }
