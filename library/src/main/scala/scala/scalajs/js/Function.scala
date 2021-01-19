@@ -111,17 +111,14 @@ object Function extends js.Object {
   def apply(args: String*): js.Function = js.native
 }
 
-@js.native
 trait Function0[+R] extends js.Function {
   def apply(): R
 }
 
-@js.native
 trait Function1[-T1, +R] extends js.Function {
   def apply(arg1: T1): R
 }
 
-@js.native
 trait Function2[-T1, -T2, +R] extends js.Function {
   def apply(arg1: T1, arg2: T2): R
 }

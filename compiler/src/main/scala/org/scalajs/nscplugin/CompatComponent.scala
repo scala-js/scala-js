@@ -64,6 +64,8 @@ trait CompatComponent {
   def isImplClass(sym: Symbol): Boolean =
     scalaUsesImplClasses && sym.hasFlag(Flags.IMPLCLASS)
 
+  lazy val isScala211: Boolean = scalaUsesImplClasses
+
   implicit final class StdTermNamesCompat(self: global.nme.type) {
     def IMPL_CLASS_SUFFIX: String = noImplClasses()
 

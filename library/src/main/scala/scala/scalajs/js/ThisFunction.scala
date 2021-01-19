@@ -78,17 +78,14 @@ object ThisFunction {
   // scalastyle:on line.size.limit
 }
 
-@js.native
 trait ThisFunction0[-T0, +R] extends js.ThisFunction {
   def apply(thisArg: T0): R
 }
 
-@js.native
 trait ThisFunction1[-T0, -T1, +R] extends js.ThisFunction {
   def apply(thisArg: T0, arg1: T1): R
 }
 
-@js.native
 trait ThisFunction2[-T0, -T1, -T2, +R] extends js.ThisFunction {
   def apply(thisArg: T0, arg1: T1, arg2: T2): R
 }

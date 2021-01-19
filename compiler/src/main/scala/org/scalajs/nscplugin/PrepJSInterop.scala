@@ -313,16 +313,32 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
     private def transformStatOrExpr(tree: Tree): Tree = {
       tree match {
         /* Anonymous function, need to check that it is not used as a SAM for a
-         * JS type, unless it is js.FunctionN or js.ThisFunctionN.
+         * JS type, unless it is a JS function type.
          * See #2921.
          */
         case tree: Function =>
+          // tpeSym is the type of the target SAM type (not the to-be-generated anonymous class)
           val tpeSym = tree.tpe.typeSymbol
-          if (isJSAny(tpeSym) && !AllJSFunctionClasses.contains(tpeSym)) {
-            reporter.error(tree.pos,
-                "Using an anonymous function as a SAM for the JavaScript " +
-                "type " + tpeSym.fullNameString + " is not allowed. " +
-                "Use an anonymous class instead.")
+          if (isJSAny(tpeSym)) {
+            def reportError(reasonAndExplanation: String): Unit = {
+              reporter.error(tree.pos,
+                  "Using an anonymous function as a SAM for the JavaScript " +
+                  s"type ${tpeSym.fullNameString} is not allowed because " +
+                  reasonAndExplanation)
+            }
+            if (!tpeSym.isTrait || tpeSym.superClass != JSFunctionClass) {
+              reportError(
+                  "it is not a trait extending js.Function. " +
+                  "Use an anonymous class instead.")
+            } else if (tpeSym.hasAnnotation(JSNativeAnnotation)) {
+              reportError(
+                  "it is a native JS type. " +
+                  "It is not possible to directly implement it.")
+            } else if (!JSCallingConvention.isCall(samOf(tree.tpe))) {
+              reportError(
+                  "its single abstract method is not named `apply`. " +
+                  "Use an anonymous class instead.")
+            }
           }
           super.transform(tree)
 
@@ -550,47 +566,10 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 
       sym.addAnnotation(JSTypeAnnot)
 
-      val isJSLambda = {
-        /* Under 2.11, sym.isAnonymousFunction does not properly recognize
-         * anonymous functions here (because they seem to not be marked as
-         * synthetic).
-         */
-        sym.name == tpnme.ANON_FUN_NAME &&
-        sym.info.member(nme.apply).isSynthetic &&
-        AllJSFunctionClasses.exists(sym.isSubClass(_))
-      }
-
-      if (isJSLambda)
-        transformJSLambdaImplDef(implDef)
-      else
-        transformNonLambdaJSImplDef(implDef)
-    }
-
-    /** Performs checks and rewrites specific to JS lambdas, i.e., anonymous
-     *  classes extending one of the JS function types.
-     *
-     *  JS lambdas are special because they are completely hijacked by the
-     *  back-end, so although at this phase they look like normal anonymous
-     *  classes, they do not behave like ones.
-     */
-    private def transformJSLambdaImplDef(implDef: ImplDef): Tree = {
-      /* For the purposes of checking inner members, a JS lambda acts as a JS
-       * native class owner.
-       *
-       * TODO This is probably not right, but historically it has always been
-       * that way. It should be revisited.
-       */
-      enterOwner(OwnerKind.JSNativeClass) {
-        super.transform(implDef)
-      }
-    }
-
-    /** Performs checks and rewrites for all JS classes, traits and objects
-     *  except JS lambdas.
-     */
-    private def transformNonLambdaJSImplDef(implDef: ImplDef): Tree = {
-      val sym = moduleToModuleClass(implDef.symbol)
       val isJSNative = sym.hasAnnotation(JSNativeAnnotation)
+
+      val isJSFunctionSAMInScala211 =
+        isScala211 && sym.name == tpnme.ANON_FUN_NAME && sym.superClass == JSFunctionClass
 
       // Forbid @EnableReflectiveInstantiation on JS types
       sym.getAnnotation(EnableReflectiveInstantiationAnnotation).foreach {
@@ -634,6 +613,12 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
              * and similar constructs.
              * This causes the unsoundness filed as #1385.
              */
+            ()
+          case SerializableClass if isJSFunctionSAMInScala211 =>
+            /* Ignore the scala.Serializable trait that Scala 2.11 adds on all
+             * SAM classes when on a JS function SAM.
+             */
+            ()
           case parentSym =>
             /* This is a Scala class or trait other than AnyRef and Dynamic,
              * which is never valid.
@@ -641,6 +626,23 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
             reporter.error(implDef.pos,
                 s"${sym.nameString} extends ${parentSym.fullName} " +
                 "which does not extend js.Any.")
+        }
+      }
+
+      // Require that the SAM of a JS function def be `apply` (2.11-only here)
+      if (isJSFunctionSAMInScala211) {
+        if (!sym.info.decl(nme.apply).filter(JSCallingConvention.isCall(_)).exists) {
+          val samType = sym.parentSymbols.find(_ != JSFunctionClass).getOrElse {
+            /* This shouldn't happen, but fall back on this symbol (which has a
+             * compiler-generated name) not to crash.
+             */
+            sym
+          }
+          reporter.error(implDef.pos,
+              "Using an anonymous function as a SAM for the JavaScript type " +
+              s"${samType.fullNameString} is not allowed because its single " +
+              "abstract method is not named `apply`. " +
+              "Use an anonymous class instead.")
         }
       }
 
@@ -982,10 +984,43 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
           case JSCallingConvention.Property(_) => // checked above
           case JSCallingConvention.Method(_)   => // no checks needed
 
-          case JSCallingConvention.Call =>
-            reporter.error(sym.pos,
-                "A non-native JS class cannot declare a method " +
-                "named `apply` without `@JSName`")
+          case JSCallingConvention.Call if !sym.isDeferred =>
+            /* Concrete `def apply` methods are normally rejected because we
+             * cannot implement them in JavaScript. However, we do allow a
+             * synthetic `apply` method if it is in a SAM for a JS function
+             * type.
+             */
+            val isJSFunctionSAM = {
+              /* Under 2.11, sym.owner.isAnonymousFunction does not properly
+               * recognize anonymous functions here (because they seem to not
+               * be marked as synthetic).
+               */
+              sym.isSynthetic &&
+              sym.owner.name == tpnme.ANON_FUN_NAME &&
+              sym.owner.superClass == JSFunctionClass
+            }
+            if (!isJSFunctionSAM) {
+              reporter.error(sym.pos,
+                  "A non-native JS class cannot declare a concrete method " +
+                  "named `apply` without `@JSName`")
+            }
+
+          case JSCallingConvention.Call => // if sym.isDeferred
+            /* Allow an abstract `def apply` only if the owner is a plausible
+             * JS function SAM trait.
+             */
+            val owner = sym.owner
+            val isPlausibleJSFunctionType = {
+              owner.isTrait &&
+              owner.superClass == JSFunctionClass &&
+              samOf(owner.toTypeConstructor) == sym
+            }
+            if (!isPlausibleJSFunctionType) {
+              reporter.error(sym.pos,
+                  "A non-native JS type can only declare an abstract " +
+                  "method named `apply` without `@JSName` if it is the " +
+                  "SAM of a trait that extends js.Function")
+            }
 
           case JSCallingConvention.BracketAccess =>
             reporter.error(tree.pos,
@@ -1160,14 +1195,11 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       if (sym.isPrimaryConstructor || sym.isValueParameter ||
           sym.isParamWithDefault || sym.isAccessor ||
           sym.isParamAccessor || sym.isDeferred || sym.isSynthetic ||
-          AllJSFunctionClasses.contains(sym.owner) ||
           (enclosingOwner is OwnerKind.JSNonNative)) {
         /* Ignore (i.e. allow) primary ctor, parameters, default parameter
          * getters, accessors, param accessors, abstract members, synthetic
          * methods (to avoid double errors with case classes, e.g. generated
-         * copy method), js.Functions and js.ThisFunctions (they need abstract
-         * methods for SAM treatment), and any member of a non-native JS
-         * class/trait.
+         * copy method), and any member of a non-native JS class/trait.
          */
       } else if (jsPrimitives.isJavaScriptPrimitive(sym)) {
         // No check for primitives. We trust our own standard library.

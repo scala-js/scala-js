@@ -51,15 +51,12 @@ trait JSDefinitions {
     lazy val JSAnyClass       = getRequiredClass("scala.scalajs.js.Any")
     lazy val JSDynamicClass   = getRequiredClass("scala.scalajs.js.Dynamic")
     lazy val JSObjectClass    = getRequiredClass("scala.scalajs.js.Object")
+    lazy val JSFunctionClass = getRequiredClass("scala.scalajs.js.Function")
     lazy val JSThisFunctionClass = getRequiredClass("scala.scalajs.js.ThisFunction")
 
     lazy val UnionClass = getRequiredClass("scala.scalajs.js.$bar")
 
     lazy val JSArrayClass = getRequiredClass("scala.scalajs.js.Array")
-
-    lazy val JSFunctionClasses     = (0 to 22) map (n => getRequiredClass("scala.scalajs.js.Function"+n))
-    lazy val JSThisFunctionClasses = (0 to 21) map (n => getRequiredClass("scala.scalajs.js.ThisFunction"+n))
-    lazy val AllJSFunctionClasses  = JSFunctionClasses ++ JSThisFunctionClasses
 
     lazy val JavaScriptExceptionClass = getClassIfDefined("scala.scalajs.js.JavaScriptException")
 

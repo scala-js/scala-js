@@ -199,6 +199,13 @@ trait JSGlobalAddons extends JSDefinitions
           }
         }
       }
+
+      /** Tests whether the calling convention of the specified symbol is `Call`.
+       *
+       *  This helper is provided because we use this test in a few places.
+       */
+      def isCall(sym: Symbol): Boolean =
+        of(sym) == Call
     }
 
     private object JSUnaryOpMethodName {
