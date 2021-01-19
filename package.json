@@ -1,7 +1,7 @@
 {
   "private": true,
   "devDependencies": {
-    "source-map-support": "0.5.7",
+    "source-map-support": "0.5.19",
     "jszip": "3.1.4",
     "jsdom": "16.3.0",
     "node-static": "0.7.11"
