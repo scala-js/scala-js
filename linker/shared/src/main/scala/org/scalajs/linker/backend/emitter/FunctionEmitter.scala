@@ -2243,33 +2243,22 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               transformTypedArgs(method.name, args))
 
         case ApplyDynamicImport(flags, className, method, args) =>
-          val targs = transformTypedArgs(method.name, args)
-
-          val capturesBuilder = List.newBuilder[(js.ParamDef, js.Tree)]
-
-          val newArgs = for {
-            (arg, targ) <- args.zip(targs)
-          } yield {
-            if (isPureExpression(arg)) {
-              targ
-            } else {
-              val v = newSyntheticVar()
-              capturesBuilder += js.ParamDef(v, rest = false) -> targ
-              js.VarRef(v)
-            }
-          }
+          // Protect the args by an IIFE to avoid bad loop captures (see #4385).
+          val captureParams =
+            args.map(_ => js.ParamDef(newSyntheticVar(), rest = false))
 
           val innerCall = extractWithGlobals {
             withDynamicGlobalVar("s", (className, method.name)) { v =>
-              js.Apply(v, newArgs)
+              js.Apply(v, captureParams.map(_.ref))
             }
           }
 
-          val captures = capturesBuilder.result()
-
-          if (captures.isEmpty) {
+          if (captureParams.isEmpty) {
             innerCall
           } else {
+            val captures =
+              captureParams.zip(transformTypedArgs(method.name, args))
+
             genIIFE(captures, js.Return(innerCall))
           }
 
