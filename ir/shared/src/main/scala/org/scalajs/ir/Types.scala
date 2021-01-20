@@ -267,7 +267,7 @@ object Types {
   }
 
   /** Generates a literal zero of the given type. */
-  def zeroOf(tpe: Type)(implicit pos: Position): Literal = tpe match {
+  def zeroOf(tpe: Type)(implicit pos: Position): Tree = tpe match {
     case BooleanType => BooleanLiteral(false)
     case CharType    => CharLiteral('\u0000')
     case ByteType    => ByteLiteral(0)
@@ -278,7 +278,14 @@ object Types {
     case DoubleType  => DoubleLiteral(0.0)
     case StringType  => StringLiteral("")
     case UndefType   => Undefined()
-    case _           => Null()
+
+    case NullType | AnyType | _:ClassType | _:ArrayType => Null()
+
+    case tpe: RecordType =>
+      RecordValue(tpe, tpe.fields.map(f => zeroOf(f.tpe)))
+
+    case NothingType | NoType =>
+      throw new IllegalArgumentException(s"cannot generate a zero for $tpe")
   }
 
   /** Tests whether a type `lhs` is a subtype of `rhs` (or equal).

@@ -2295,7 +2295,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       RecordType.Field(name, originalName, tpe, mutable) <- structure.recordType.fields
     } yield {
       Binding(Binding.Local(name.toLocalName, originalName), tpe, mutable,
-          PreTransLit(zeroOf(tpe)))
+          PreTransTree(zeroOf(tpe)))
     }
 
     withNewLocalDefs(initialFieldBindings) { (initialFieldLocalDefList, cont1) =>
