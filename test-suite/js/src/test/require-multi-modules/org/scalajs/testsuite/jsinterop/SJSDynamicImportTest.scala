@@ -158,6 +158,26 @@ class SJSDynamicImportTest {
     }
   }
 
+
+  @Test // #4385
+  def capturesInLoop(): AsyncResult = await {
+    val futures = List.newBuilder[Future[Any]]
+    val effects = List.newBuilder[Int]
+
+    var i = 0
+    while (i != 5) {
+      val s = i
+      futures += js.dynamicImport(effects += s).toFuture
+      i += 1
+    }
+
+    for {
+      _ <- Future.sequence(futures.result())
+    } yield {
+      assertEquals(List(0, 1, 2, 3, 4), effects.result().sorted)
+    }
+  }
+
   private def assertDynamicLoad[T](promise: js.Promise[T]): Future[Unit] = {
     promise.toFuture
       .map(_ => fail("expected failure"))
