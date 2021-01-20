@@ -15,7 +15,7 @@ package org.scalajs.testsuite.jsinterop
 import scala.concurrent.Future
 
 import scala.scalajs.js
-import scala.scalajs.js.annotation.JSImport
+import scala.scalajs.js.annotation._
 import scala.scalajs.LinkingInfo
 
 import org.junit.Assert._
@@ -178,6 +178,50 @@ class SJSDynamicImportTest {
     }
   }
 
+  @Test // #4386
+  def sharedDependencyWithPublicModule(): AsyncResult = await {
+    /* This test is trying to trigger a condition where the MaxModuleAnalyzer is
+     * introducing a dependency of a dynamically loaded internal module to the
+     * public module that loads it. This happens if the public module and the
+     * internal module share a dependency (in this case `SharedDependency`).
+     *
+     * Take the following class graph:
+     *
+     * A -- dyn --> B
+     * |            |
+     * |            |
+     * +---> C <----+
+     *
+     * where `dyn` denotes a dynamic import.
+     *
+     * The optimal grouping here is different if `A` is an entry point or not.
+     *
+     * If `A` is not a direct entry point, `A` and `C` should be grouped
+     * together into an internal module. `B` should depend on this module. This
+     * avoids an additional module for `C` which would only be loaded iff `A` is
+     * loaded (because `B` can only be loaded via `A`).
+     *
+     * However, if `A` is a direct entry point (and hence in a public module),
+     * `C` must be put into a separate internal module so it can be imported by
+     * `B` (recall that public modules cannot be imported by Scala.js generated
+     * modules).
+     *
+     * To trigger this scenario in the large test suite, we must create a
+     * dedicated entry point for this test. Because tests are loaded
+     * reflectively all tests are reachable by all modules (due to their static
+     * initializers). So if we were to try to use the test itself as an entry
+     * point, it would be put in an internal module and not trigger the above
+     * condition. By using the indirection via an export, we can avoid this and
+     * trigger the relevant condition.
+     */
+    ExportsTest
+      .exportsNameSpace("shared_dep_mod")
+      .useSharedDependencyInPublicModule()
+      .asInstanceOf[js.Promise[Int]]
+      .toFuture
+      .map(assertEquals(2, _))
+  }
+
   private def assertDynamicLoad[T](promise: js.Promise[T]): Future[Unit] = {
     promise.toFuture
       .map(_ => fail("expected failure"))
@@ -199,3 +243,19 @@ private object FailureOnLoad extends js.Object
 @JSImport("../test-classes/fail-load.js", JSImport.Default)
 @js.native
 private class FailureOnLoad extends js.Object
+
+private object UseSharedDependencyInPublicModule {
+  @JSExportTopLevel("useSharedDependencyInPublicModule", "shared_dep_mod")
+  def useSharedDependency(): js.Promise[Int] = {
+    val x = SharedDependency.calculate()
+
+    js.dynamicImport {
+      SharedDependency.calculate() + x
+    }
+  }
+}
+
+private object SharedDependency {
+  @noinline
+  def calculate(): Int = 1
+}
