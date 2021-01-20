@@ -1041,7 +1041,25 @@ object Serializers {
         case TagSkip    => Skip()
         case TagBlock   => Block(readTrees())
         case TagLabeled => Labeled(readLabelIdent(), readType(), readTree())
-        case TagAssign  => Assign(readTree(), readTree())
+
+        case TagAssign =>
+          val lhs0 = readTree()
+          val lhs = if (hacks.use14 && lhs0.tpe == NothingType) {
+            /* Note [Nothing FieldDef rewrite]
+             * (throw qual.field[null]) = rhs  -->  qual.field[null] = rhs
+             */
+            lhs0 match {
+              case Throw(sel: Select) if sel.tpe == NullType => sel
+              case _                                         => lhs0
+            }
+          } else {
+            lhs0
+          }
+
+          val rhs = readTree()
+
+          Assign(lhs, rhs)
+
         case TagReturn  => Return(readTree(), readLabelIdent())
         case TagIf      => If(readTree(), readTree(), readTree())(readType())
         case TagWhile   => While(readTree(), readTree())
@@ -1064,7 +1082,22 @@ object Serializers {
         case TagNew          => New(readClassName(), readMethodIdent(), readTrees())
         case TagLoadModule   => LoadModule(readClassName())
         case TagStoreModule  => StoreModule(readClassName(), readTree())
-        case TagSelect       => Select(readTree(), readClassName(), readFieldIdent())(readType())
+
+        case TagSelect =>
+          val qualifier = readTree()
+          val className = readClassName()
+          val field = readFieldIdent()
+          val tpe = readType()
+
+          if (hacks.use14 && tpe == NothingType) {
+            /* Note [Nothing FieldDef rewrite]
+             * qual.field[nothing]  -->  throw qual.field[null]
+             */
+            Throw(Select(qualifier, className, field)(NullType))
+          } else {
+            Select(qualifier, className, field)(tpe)
+          }
+
         case TagSelectStatic => SelectStatic(readClassName(), readFieldIdent())(readType())
         case TagSelectJSNativeMember => SelectJSNativeMember(readClassName(), readMethodIdent())
 
@@ -1170,8 +1203,21 @@ object Serializers {
 
       (tag: @switch) match {
         case TagFieldDef =>
-          FieldDef(MemberFlags.fromBits(readInt()), readFieldIdent(),
-              readOriginalName(), readType())
+          val flags = MemberFlags.fromBits(readInt())
+          val name = readFieldIdent()
+          val originalName = readOriginalName()
+
+          val ftpe0 = readType()
+          val ftpe = if (hacks.use14 && ftpe0 == NothingType) {
+            /* Note [Nothing FieldDef rewrite]
+             * val field: nothing  -->  val field: null
+             */
+            NullType
+          } else {
+            ftpe0
+          }
+
+          FieldDef(flags, name, originalName, ftpe)
 
         case TagJSFieldDef =>
           JSFieldDef(MemberFlags.fromBits(readInt()), readTree(), readType())
@@ -1593,6 +1639,10 @@ object Serializers {
     val use11: Boolean = use10 || sourceVersion == "1.1"
 
     val use12: Boolean = use11 || sourceVersion == "1.2"
+
+    private val use13: Boolean = use12 || sourceVersion == "1.3"
+
+    val use14: Boolean = use13 || sourceVersion == "1.4"
   }
 
   /** Names needed for hacks. */
@@ -1601,4 +1651,30 @@ object Serializers {
     val identityHashCodeName: MethodName =
       MethodName("identityHashCode", List(ClassRef(ObjectClass)), IntRef)
   }
+
+  /* Note [Nothing FieldDef rewrite]
+   *
+   * Prior to Scala.js 1.5.0, the compiler back-end emitted `FieldDef`s with
+   * type `nothing` (`NothingType`). Until Scala.js 1.3.1, such fields happened
+   * to link by chance. Scala.js 1.4.0 changed the Emitter in a way that they
+   * did not link anymore (#4370), which broke some existing code.
+   *
+   * In Scala.js 1.5.0, we declared that such definitions are invalid IR, since
+   * fields need a zero value to initialize them, and `nothing` doesn't have
+   * one.
+   *
+   * To preserve backward binary compatibility of IR produced by earlier
+   * versions, we use the following rewrites as a deserialization hack:
+   *
+   * - `FieldDef`s with type `nothing` are rewritten with type `null`:
+   *   val field: nothing  -->  val field: null
+   * - `Select`s with type `nothing` are rewritten with type `null`, but are
+   *   then wrapped in a `throw` to preserve the well-typedness of the
+   *   surrounding IR:
+   *   qual.field[nothing]  -->  throw qual.field[null]
+   * - In an `Assign`, the inserted `throw` would be invalid. Therefore we have
+   *   to unwrap the `throw`. The rhs being of type `nothing` (in IR that was
+   *   originally well typed), it can be assigned to a field of type `null`.
+   *   (throw qual.field[null]) = rhs  -->  qual.field[null] = rhs
+   */
 }

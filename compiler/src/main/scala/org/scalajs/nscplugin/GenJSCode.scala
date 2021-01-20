@@ -1225,11 +1225,16 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         val flags =
           js.MemberFlags.empty.withNamespace(namespace).withMutable(mutable)
 
-        val irTpe = {
+        val irTpe0 = {
           if (isJSClass) genExposedFieldIRType(f)
           else if (static) jstpe.AnyType
           else toIRType(f.tpe)
         }
+
+        // #4370 Fields cannot have type NothingType
+        val irTpe =
+          if (irTpe0 == jstpe.NothingType) encodeClassType(RuntimeNothingClass)
+          else irTpe0
 
         if (isJSClass && isExposed(f))
           js.JSFieldDef(flags, genExpr(jsNameOf(f)), irTpe)
@@ -6468,10 +6473,23 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
         (f, true)
       } else {
-        val f = js.Select(qual, encodeClassName(sym.owner),
-            encodeFieldSym(sym))(toIRType(sym.tpe))
+        val className = encodeClassName(sym.owner)
+        val fieldIdent = encodeFieldSym(sym)
 
-        (f, false)
+        /* #4370 Fields cannot have type NothingType, so we box them as
+         * scala.runtime.Nothing$ instead. They will be initialized with
+         * `null`, and any attempt to access them will throw a
+         * `ClassCastException` (generated in the unboxing code).
+         */
+        toIRType(sym.tpe) match {
+          case jstpe.NothingType =>
+            val f = js.Select(qual, className, fieldIdent)(
+                encodeClassType(RuntimeNothingClass))
+            (f, true)
+          case ftpe =>
+            val f = js.Select(qual, className, fieldIdent)(ftpe)
+            (f, false)
+        }
       }
     }
 
