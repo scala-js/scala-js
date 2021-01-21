@@ -43,6 +43,34 @@ A continuation line is a line appearing because we broke something that should h
 Typically, this means inside parentheses (formal or actual parameters of methods and constructors), and a long `extends` clause.
 
 Note that breaking a line right after the `=` sign of an initialization or assignment is *not* considered a continuation line, because it's not really breaking the line: instead, we just choose to put the rhs on its dedicated line, indented 2 spaces (similarly to the branches of an `if`).
+For example:
+
+```scala
+val x =
+  aLongFunctionCall()
+```
+
+Further, parenthesized lists that have a single element per line are not considered continuation lines.
+For example, the following two are allowed:
+
+```scala
+// "Binpacked style"
+f(arg1, arg2,
+    arg3, arg4)
+
+// "List style"
+f(
+  arg1,
+  arg2,
+  arg3,
+  arg4
+)
+```
+
+Notes about the list style:
+* The parentheses must be on individual lines.
+* A trailing comma will become mandatory if/once we drop 2.11.
+* This style is relatively new, so a lot of code does not comply to it; apply the boy scout rule where this does not cause unnecessary diffs.
 
 ### Blank lines
 
@@ -368,13 +396,13 @@ class Foo(val x: Int, val y: Int,
   // declarations start here
 ```
 
-As an exception, if the constructor parameters are a (long) list of "configuration" parameters, the following format should be used instead:
+If the constructor parameters are a (long) list of "configuration" parameters, the list style (as opposed to binpacking) should be used:
 
 ```scala
 class Foo(
-    val width: Int = 1,
-    val height: Int = 1,
-    val depthOfField: Int = 3
+  val width: Int = 1,
+  val height: Int = 1,
+  val depthOfField: Int = 3
 ) extends Bar with Foobar {
 ```
 
@@ -384,10 +412,12 @@ For example:
 
 ```scala
 class Foo[A](
-    val width: Int = 1,
-    val height: Int = 1,
-    val depthOfField: Int = 3
-)(implicit ct: ClassTag[A]) extends Bar with Foobar {
+  val width: Int = 1,
+  val height: Int = 1,
+  val depthOfField: Int = 3
+)(implicit ct: ClassTag[A])
+    extends Bar with Foobar with AnotherTrait with YetAnotherTrait
+    with HowManyTraitsAreThere with TooManyTraits {
 ```
 
 
