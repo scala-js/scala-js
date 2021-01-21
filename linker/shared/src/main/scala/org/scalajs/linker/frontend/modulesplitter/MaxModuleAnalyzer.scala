@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.frontend.modulesplitter
 
+import scala.annotation.tailrec
+
 import scala.collection.immutable
 import scala.collection.mutable
 
@@ -140,17 +142,16 @@ private object MaxModuleAnalyzer {
    *  caller.
    */
   private final class Tagger(infos: ModuleAnalyzer.DependencyInfo) {
-    private[this] val allPaths =
-      mutable.Map.empty[ClassName, Paths[ModuleID, ClassName]]
+    private[this] val allPaths = mutable.Map.empty[ClassName, Paths]
 
     def tagAll(): scala.collection.Map[ClassName, (Set[ModuleID], Set[ClassName])] = {
       tagEntryPoints()
-      allPaths.map { case (className, paths) => className -> paths.ends }
+      allPaths.map { case (className, paths) => className -> paths.tags() }
     }
 
     private def tag(className: ClassName, pathRoot: ModuleID, pathSteps: List[ClassName]): Unit = {
       val updated = allPaths
-        .getOrElseUpdate(className, Paths.empty)
+        .getOrElseUpdate(className, new Paths)
         .put(pathRoot, pathSteps)
 
       if (updated) {
@@ -175,51 +176,73 @@ private object MaxModuleAnalyzer {
     }
   }
 
-  /** Set of shortest, mutually prefix-free paths. */
-  private final class Paths[H, T] private (
-      private val content: mutable.Map[H, Paths[T, T]]) {
+  /** "Interesting" paths that can lead to a given class.
+   *
+   *  "Interesting" in this context means:
+   *  - All direct paths from a public dependency.
+   *  - All non-empty, mutually prefix-free paths of dynamic import hops.
+   */
+  private final class Paths {
+    private val direct = mutable.Set.empty[ModuleID]
+    private val dynamic = mutable.Map.empty[ModuleID, DynamicPaths]
 
-    /* cannot make this tailrec, because the type parameters change over the
-     * recursion. 2.11 does not support this.
-     */
-    def put(h: H, t: List[T]): Boolean = {
-      if (content.get(h).exists(_.isEmpty)) {
+    def put(pathRoot: ModuleID, pathSteps: List[ClassName]): Boolean = {
+      if (pathSteps.isEmpty) {
+        direct.add(pathRoot)
+      } else {
+        dynamic
+          .getOrElseUpdate(pathRoot, new DynamicPaths)
+          .put(pathSteps)
+      }
+    }
+
+    def tags(): (Set[ModuleID], Set[ClassName]) = {
+      /* Remove dynamic paths to class that are also reached by a public module.
+       * However, only do this if there are other tags as well. Otherwise, this
+       * class will end up in a public module, but the dynamically loaded module
+       * will try to import it (but importing public modules is forbidden).
+       */
+      if (direct.size > 1 || direct != dynamic.keySet) {
+        direct.foreach(dynamic.remove(_))
+      }
+
+      val endsBuilder = Set.newBuilder[ClassName]
+      dynamic.values.foreach(_.ends(endsBuilder))
+      (direct.toSet, endsBuilder.result())
+    }
+  }
+
+  /** Set of shortest, mutually prefix-free paths of dynamic import hops */
+  private final class DynamicPaths {
+    private val content = mutable.Map.empty[ClassName, DynamicPaths]
+
+    @tailrec
+    def put(path: List[ClassName]): Boolean = {
+      val h :: t = path
+
+      if (content.get(h).exists(_.content.isEmpty)) {
         // shorter or equal path already exists.
         false
       } else if (t.isEmpty) {
         // the path we put stops here, prune longer paths (if any).
-        content.put(h, Paths.empty)
+        content.put(h, new DynamicPaths)
         true
       } else {
         // there are other paths, recurse.
         content
-          .getOrElseUpdate(h, Paths.empty)
-          .put(t.head, t.tail)
+          .getOrElseUpdate(h, new DynamicPaths)
+          .put(t)
       }
     }
 
-    /** Returns the ends of all paths. */
-    def ends: (Set[H], Set[T]) = {
-      val hBuilder = Set.newBuilder[H]
-      val tBuilder = Set.newBuilder[T]
-
-      content.foreach {
-        case (h, t) if t.isEmpty =>
-          hBuilder += h
-
-        case (_, t) =>
-          val (ts0, ts1) = t.ends
-          tBuilder ++= ts0
-          tBuilder ++= ts1
+    /** Populates `builder` with the ends of all paths. */
+    def ends(builder: mutable.Builder[ClassName, Set[ClassName]]): Unit = {
+      for ((h, t) <- content) {
+        if (t.content.isEmpty)
+          builder += h
+        else
+          t.ends(builder)
       }
-
-      (hBuilder.result(), tBuilder.result())
     }
-
-    private def isEmpty: Boolean = content.isEmpty
-  }
-
-  private final object Paths {
-    def empty[H, T]: Paths[H, T] = new Paths(mutable.Map.empty)
   }
 }

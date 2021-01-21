@@ -58,7 +58,7 @@ class MinModuleSplittingTest {
         })
     )
 
-    val expectedFiles = Seq(
+    val expectedFiles = Set(
         "java.lang.Object.js",
         "Test.js",
         "lib.Greeter.js",
@@ -68,6 +68,7 @@ class MinModuleSplittingTest {
     val linkerConfig = StandardConfig()
       .withModuleKind(ModuleKind.ESModule)
       .withModuleSplitStyle(ModuleSplitStyle.SmallestModules)
+      .withSourceMap(false)
 
     val outputDirectory = MemOutputDirectory()
 
@@ -75,10 +76,7 @@ class MinModuleSplittingTest {
       _ <- testLink(classDefs, MainTestModuleInitializers,
           config = linkerConfig, output = outputDirectory)
     } yield {
-      for (expectedFile <- expectedFiles) {
-        assertTrue(s"expected file '$expectedFile' not present",
-            outputDirectory.content(expectedFile).isDefined)
-      }
+      assertEquals(expectedFiles, outputDirectory.fileNames().toSet)
     }
   }
 }

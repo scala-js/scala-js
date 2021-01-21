@@ -81,8 +81,11 @@ final class ModuleSplitter private (analyzer: ModuleAnalyzer) {
 
           for (dep <- classDef.staticDependencies) {
             val dependencyModuleID = analysis.moduleForClass(dep).get
-            if (dependencyModuleID != moduleID)
+            if (dependencyModuleID != moduleID) {
+              assert(!publicModuleDependencies.contains(dependencyModuleID),
+                  s"${classDef.fullName} depends on public module $dependencyModuleID")
               builder.internalDependencies += dependencyModuleID
+            }
           }
 
           classDef.externalDependencies.foreach(builder.externalDependencies += _)
@@ -111,8 +114,11 @@ final class ModuleSplitter private (analyzer: ModuleAnalyzer) {
       val builder = builders(moduleID)
       for (dep <- deps) {
         val dependencyModuleID = analysis.moduleForClass(dep).get
-        if (dependencyModuleID != moduleID)
+        if (dependencyModuleID != moduleID) {
+          assert(!publicModuleDependencies.contains(dependencyModuleID),
+              s"public module $moduleID depends on public module $dependencyModuleID")
           builder.internalDependencies += dependencyModuleID
+        }
       }
     }
 
