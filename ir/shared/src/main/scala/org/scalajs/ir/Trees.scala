@@ -478,6 +478,11 @@ object Trees {
     val tpe = ClassType(ClassClass)
   }
 
+  sealed case class Clone(expr: Tree)(implicit val pos: Position)
+      extends Tree {
+    val tpe: Type = expr.tpe // this is OK because our type system does not have singleton types
+  }
+
   sealed case class IdentityHashCode(expr: Tree)(implicit val pos: Position)
       extends Tree {
     val tpe = IntType

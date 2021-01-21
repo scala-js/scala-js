@@ -32,6 +32,7 @@ final class NodeJSEnvForcePolyfills(config: NodeJSEnv.Config) extends JSEnv {
         Jimfs.newFileSystem().getPath("scalaJSEnvInfo.js"),
         """
           |delete Object.is;
+          |delete Object.getOwnPropertyDescriptors;
           |
           |delete Math.fround;
           |delete Math.imul;

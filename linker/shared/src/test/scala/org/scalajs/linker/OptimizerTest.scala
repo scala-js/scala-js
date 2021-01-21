@@ -43,10 +43,18 @@ class OptimizerTest {
 
   /** Generic code for the three methods below.
    *
-   *  Check that `clone()` is never inlined when the result can be an array,
-   *  in several scenarios.
+   *  Check that `clone()` is correctly inlined (or correctly *not* inlined)
+   *  when the receiver can be an array, in several scenarios.
+   *
+   *  Correct outcomes are:
+   *  - The call is not inlined at all, or
+   *  - It inlines `java.lang.Object.clone()`, which results in a `Clone` node.
+   *
+   *  A potential incorrect outcome, which has happened in the past (#3778), is
+   *  to inline a method `clone()` from *another* class (for example, because
+   *  `j.l.Object.clone()` is not otherwise reachable).
    */
-  private def testCloneOnArrayNotInlinedGeneric(
+  private def testCloneOnArrayInliningGeneric(inlinedWhenOnObject: Boolean,
       customMemberDefs: List[MemberDef]): Future[Unit] = {
 
     val thisFoo = This()(ClassType("Foo"))
@@ -95,11 +103,11 @@ class OptimizerTest {
         mainTestClassDef(Block(
             // new Foo().reachClone() -- make Foo.clone() reachable for sure
             Apply(EAF, newFoo, reachCloneMethodName, Nil)(AnyType),
-            // Array(1).clone() -- test with an exact static type of I[]
+            // Array(1).clone() -- test with an exact static type of I[] -> inline
             callCloneOn(anArrayOfInts),
-            // new Foo().anArray().clone() -- test with a static type of I[]
+            // new Foo().anArray().clone() -- test with a static type of I[] -> inline
             callCloneOn(Apply(EAF, newFoo, anArrayMethodName, Nil)(intArrayType)),
-            // new Foo().anObject().clone() -- test with a static type of Object
+            // new Foo().anObject().clone() -- test with a static type of Object -> inlinedWhenOnObject
             callCloneOn(Apply(EAF, newFoo, anObjectMethodName, Nil)(AnyType))
         ))
     )
@@ -113,16 +121,24 @@ class OptimizerTest {
           receiver.tpe == ClassType("Foo")
       }.hasNot("any reference to ObjectClone") {
         case LoadModule(ObjectCloneClass) => true
-      }.hasExactly(3, "calls to clone()") {
+      }.hasExactly(if (inlinedWhenOnObject) 1 else 0, "IsInstanceOf node") {
+        case IsInstanceOf(_, _) => true
+      }.hasExactly(if (inlinedWhenOnObject) 1 else 0, "Throw node") {
+        case Throw(_) => true
+      }.hasExactly(if (inlinedWhenOnObject) 3 else 2, "built-in <clone>() operations") {
+        case Clone(_) => true
+      }.hasExactly(if (inlinedWhenOnObject) 0 else 1, "call to clone() (not inlined)") {
         case Apply(_, _, MethodIdent(`cloneMethodName`), _) => true
       }
     }
   }
 
-  /** Never inline the `clone()` method of arrays. */
+  /** Test array `clone()` inlining when `j.l.Object.clone()` is not otherwise
+   *  reachable.
+   */
   @Test
-  def testCloneOnArrayNotInlined_Issue3778(): AsyncResult = await {
-    testCloneOnArrayNotInlinedGeneric(List(
+  def testCloneOnArrayInliningNonObjectCloneOnly_Issue3778(): AsyncResult = await {
+    testCloneOnArrayInliningGeneric(inlinedWhenOnObject = false, List(
         // @inline override def clone(): AnyRef = witness()
         MethodDef(EMF, cloneMethodName, NON, Nil, AnyType, Some {
           Apply(EAF, This()(ClassType("Foo")), witnessMethodName, Nil)(AnyType)
@@ -130,20 +146,23 @@ class OptimizerTest {
     ))
   }
 
-  /** Never inline the `clone()` method of arrays, even when the only
-   *  reachable `clone()` method is `Object.clone()`.
+  /** Test array `clone()` inlining when `j.l.Object.clone()` is the only
+   *  reachable `clone()` method.
+   *
+   *  In that case, it will be inlined even when called on a receiver whose
+   *  static type is no more precise than `Object`.
    */
   @Test
-  def testCloneOnArrayNotInlinedObjectCloneOnly_Issue3778(): AsyncResult = await {
-    testCloneOnArrayNotInlinedGeneric(Nil)
+  def testCloneOnArrayInliningObjectCloneOnly_Issue3778(): AsyncResult = await {
+    testCloneOnArrayInliningGeneric(inlinedWhenOnObject = true, Nil)
   }
 
-  /** Never inline the `clone()` method of arrays, even when `Object.clone()`
-   *  and another `clone()` method are reachable.
+  /** Test array `clone()` inlining when `j.l.Object.clone()` and another
+   *  `clone()` method are reachable.
    */
   @Test
-  def testCloneOnArrayNotInlinedObjectCloneAndAnotherClone_Issue3778(): AsyncResult = await {
-    testCloneOnArrayNotInlinedGeneric(List(
+  def testCloneOnArrayInliningObjectCloneAndAnotherClone_Issue3778(): AsyncResult = await {
+    testCloneOnArrayInliningGeneric(inlinedWhenOnObject = false, List(
         // @inline override def clone(): AnyRef = witness()
         MethodDef(EMF, cloneMethodName, NON, Nil, AnyType, Some {
           Block(

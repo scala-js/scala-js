@@ -593,6 +593,14 @@ class PrintersTest {
     assertPrintEquals("x.getClass()", GetClass(ref("x", AnyType)))
   }
 
+  @Test def printClone(): Unit = {
+    assertPrintEquals("<clone>(x)", Clone(ref("x", arrayType(ObjectClass, 1))))
+  }
+
+  @Test def printIdentityHashCode(): Unit = {
+    assertPrintEquals("<identityHashCode>(x)", IdentityHashCode(ref("x", AnyType)))
+  }
+
   @Test def printJSNew(): Unit = {
     assertPrintEquals("new C()", JSNew(ref("C", AnyType), Nil))
     assertPrintEquals("new C(4, 5)", JSNew(ref("C", AnyType), List(i(4), i(5))))

@@ -25,8 +25,6 @@ private[emitter] object EmitterNames {
    */
 
   val CharSequenceClass = ClassName("java.lang.CharSequence")
-  val CloneableClass = ClassName("java.lang.Cloneable")
-  val SerializableClass = ClassName("java.io.Serializable")
 
   val ThrowableClass = ClassName("java.lang.Throwable")
 

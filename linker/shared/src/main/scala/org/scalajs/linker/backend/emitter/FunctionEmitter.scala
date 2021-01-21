@@ -1267,6 +1267,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           allowUnpure && (lengths forall test)
         case ArrayValue(tpe, elems) =>
           allowUnpure && (elems forall test)
+        case Clone(arg) =>
+          allowUnpure && test(arg) // may NPE but that is UB.
         case JSArrayConstr(items) =>
           allowUnpure && (items.forall(testJSArg))
         case tree @ JSObjectConstr(items) =>
@@ -1748,6 +1750,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case GetClass(expr) =>
           unnest(expr) { (newExpr, env) =>
             redo(GetClass(newExpr))(env)
+          }
+
+        case Clone(expr) =>
+          unnest(expr) { (newExpr, env) =>
+            redo(Clone(newExpr))(env)
           }
 
         case IdentityHashCode(expr) =>
@@ -2596,6 +2603,39 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case GetClass(expr) =>
           genCallHelper("objectGetClass", transformExprNoChar(expr))
+
+        case Clone(expr) =>
+          val newExpr = transformExprNoChar(expr)
+          expr.tpe match {
+            /* If the argument is known to be an array, directly call its
+             * `clone__O` method.
+             * This happens all the time when calling `clone()` on an array,
+             * since the optimizer will inline `java.lang.Object.clone()` in
+             * those cases, leaving a `Clone()` node an array.
+             */
+            case _: ArrayType =>
+              js.Apply(newExpr DOT genName(cloneMethodName), Nil)
+
+            /* Otherwise, if it might be an array, use the full dispatcher.
+             * In theory, only the `CloneableClass` case is required, since
+             * `Clone` only accepts values of type `Cloneable`. However, since
+             * the inliner does not always refine the type of receivers, we
+             * also account for other supertypes of array types. There is a
+             * similar issue for CharSequenceClass in `Apply` nodes.
+             *
+             * In practice, this only happens in the (non-inlined) definition
+             * of `java.lang.Object.clone()` itself, since everywhere else it
+             * is inlined in contexts where the receiver has a more precise
+             * type.
+             */
+            case ClassType(CloneableClass) | ClassType(SerializableClass) |
+                ClassType(ObjectClass) | AnyType =>
+              genCallHelper("objectOrArrayClone", newExpr)
+
+            // Otherwise, it is known not to be an array.
+            case _ =>
+              genCallHelper("objectClone", newExpr)
+          }
 
         case IdentityHashCode(expr) =>
           genCallHelper("systemIdentityHashCode", transformExprNoChar(expr))

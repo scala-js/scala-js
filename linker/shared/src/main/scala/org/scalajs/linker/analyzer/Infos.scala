@@ -191,18 +191,13 @@ object Infos {
 
         case ArrayType(_) =>
           /* The pseudo Array class is not reified in our analyzer/analysis,
-           * so we need to cheat here.
-           * In the Array[T] class family, only clone()Object is defined and
-           * overrides j.l.Object.clone()Object. Since this method is
-           * implemented in CoreJSLib and always kept, we can ignore it.
-           * All other methods resolve to their definition in Object, so we
-           * can model their reachability by calling them statically in the
+           * so we need to cheat here. Since the Array[T] classes do not define
+           * any method themselves--they are all inherited from j.l.Object--,
+           * we can model their reachability by calling them statically in the
            * Object class.
            */
-          if (method != cloneMethodName) {
-            addMethodCalledStatically(ObjectClass,
-                NamespacedMethodName(MemberNamespace.Public, method))
-          }
+          addMethodCalledStatically(ObjectClass,
+              NamespacedMethodName(MemberNamespace.Public, method))
 
         case NullType | NothingType =>
           // Nothing to do

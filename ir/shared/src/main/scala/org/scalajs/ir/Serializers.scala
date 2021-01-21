@@ -404,6 +404,10 @@ object Serializers {
           writeTagAndPos(TagGetClass)
           writeTree(expr)
 
+        case Clone(expr) =>
+          writeTagAndPos(TagClone)
+          writeTree(expr)
+
         case IdentityHashCode(expr) =>
           writeTagAndPos(TagIdentityHashCode)
           writeTree(expr)
@@ -1124,6 +1128,7 @@ object Serializers {
         case TagIsInstanceOf     => IsInstanceOf(readTree(), readType())
         case TagAsInstanceOf     => AsInstanceOf(readTree(), readType())
         case TagGetClass         => GetClass(readTree())
+        case TagClone            => Clone(readTree())
         case TagIdentityHashCode => IdentityHashCode(readTree())
 
         case TagJSNew                => JSNew(readTree(), readTreeOrJSSpreads())
@@ -1262,13 +1267,43 @@ object Serializers {
             /* #3976: 1.0 javalib relied on wrong linker dispatch.
              * We simply replace it with a correct implementation.
              */
-            assert(args.length == 1)
+            assert(args.size == 1)
 
-            val body = Some(IdentityHashCode(args(0).ref))
-            val optimizerHints = OptimizerHints.empty.withInline(true)
+            val patchedBody = Some(IdentityHashCode(args(0).ref))
+            val patchedOptimizerHints = OptimizerHints.empty.withInline(true)
 
-            MethodDef(flags, name, originalName, args, resultType, body)(
-                optimizerHints, optHash)
+            MethodDef(flags, name, originalName, args, resultType, patchedBody)(
+                patchedOptimizerHints, optHash)
+          } else if ( // temp: test backward compat
+              flags.namespace == MemberNamespace.Public &&
+              owner == ObjectClass &&
+              name.name == HackNames.cloneName) {
+            /* #4391: In version 1.5, we introduced a dedicated IR node for the
+             * primitive operation behind `Object.clone()`. This allowed to
+             * simplify the linker by removing several special-cases that
+             * treated it specially (for example, preventing it from being
+             * inlined if the receiver could be an array). The simplifications
+             * mean that the old implementation is not valid anymore, and so we
+             * must force using the new implementation if we read IR from an
+             * older version.
+             */
+            assert(args.isEmpty)
+
+            val thisValue = This()(ClassType(ObjectClass))
+            val cloneableClassType = ClassType(CloneableClass)
+
+            val patchedBody = Some {
+              If(IsInstanceOf(thisValue, cloneableClassType),
+                  Clone(AsInstanceOf(thisValue, cloneableClassType)),
+                  Throw(New(
+                      HackNames.CloneNotSupportedExceptionClass,
+                      MethodIdent(NoArgConstructorName),
+                      Nil)))(cloneableClassType)
+            }
+            val patchedOptimizerHints = OptimizerHints.empty.withInline(true)
+
+            MethodDef(flags, name, originalName, args, resultType, patchedBody)(
+                patchedOptimizerHints, optHash)
           } else {
             MethodDef(flags, name, originalName, args, resultType, body)(
                 optimizerHints, optHash)
@@ -1647,7 +1682,13 @@ object Serializers {
 
   /** Names needed for hacks. */
   private object HackNames {
-    val SystemModule: ClassName = ClassName("java.lang.System$")
+    val CloneNotSupportedExceptionClass =
+      ClassName("java.lang.CloneNotSupportedException")
+    val SystemModule: ClassName =
+      ClassName("java.lang.System$")
+
+    val cloneName: MethodName =
+      MethodName("clone", Nil, ClassRef(ObjectClass))
     val identityHashCodeName: MethodName =
       MethodName("identityHashCode", List(ClassRef(ObjectClass)), IntRef)
   }

@@ -478,6 +478,14 @@ object Names {
   /** The class of things returned by `ClassOf` and `GetClass`. */
   val ClassClass: ClassName = ClassName("java.lang.Class")
 
+  /** `java.lang.Cloneable`, which is an ancestor of array classes and is used
+   *  by `Clone`.
+   */
+  val CloneableClass: ClassName = ClassName("java.lang.Cloneable")
+
+  /** `java.io.Serializable`, which is an ancestor of array classes. */
+  val SerializableClass: ClassName = ClassName("java.io.Serializable")
+
   /** The exception thrown by a division by 0. */
   val ArithmeticExceptionClass: ClassName =
     ClassName("java.lang.ArithmeticException")
@@ -495,8 +503,7 @@ object Names {
     /* This would logically be defined in Types, but that introduces a cyclic
      * dependency between the initialization of Names and Types.
      */
-    Set(Names.ObjectClass, ClassName("java.io.Serializable"),
-        ClassName("java.lang.Cloneable"))
+    Set(ObjectClass, CloneableClass, SerializableClass)
   }
 
   /** Name of a constructor without argument.

@@ -136,6 +136,9 @@ object Traversers {
       case GetClass(expr) =>
         traverse(expr)
 
+      case Clone(expr) =>
+        traverse(expr)
+
       case IdentityHashCode(expr) =>
         traverse(expr)
 

@@ -1032,6 +1032,9 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       case GetClass(expr) =>
         typecheckExpr(expr, env)
 
+      case Clone(expr) =>
+        typecheckExpect(expr, env, ClassType(CloneableClass))
+
       case IdentityHashCode(expr) =>
         typecheckExpr(expr, env)
 
