@@ -47,6 +47,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
   val myself: MethodID
 
+  // Uncomment and adapt to print debug messages only during one method
+  //lazy val debugThisMethod: Boolean =
+  //  myself.toString() == "java.lang.FloatingPointBits$.numberHashCode;D;I"
+
   /** Returns the body of a method. */
   protected def getMethodBody(method: MethodID): MethodDef
 
