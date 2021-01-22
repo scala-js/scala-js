@@ -342,7 +342,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     def lookupMethod(methodName: MethodName): Option[MethodImpl]
 
     override def toString(): String =
-      namespace.prefixString + className
+      namespace.prefixString + className.nameString
   }
 
   /** Class in the class hierarchy (not an interface).
@@ -728,7 +728,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     private val _instantiatedSubclasses = collOps.emptyMap[Class, Unit]
 
     override def toString(): String =
-      s"intf $className"
+      s"intf ${className.nameString}"
 
     /** PROCESS PASS ONLY. Concurrency safe except with
      *  [[addInstantiatedSubclass]] and [[removeInstantiatedSubclass]]
@@ -842,7 +842,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     def deleted: Boolean = _deleted
 
     override def toString(): String =
-      s"$owner.$methodName"
+      s"$owner.${methodName.nameString}"
 
     /** PROCESS PASS ONLY. */
     def registerBodyAsker(asker: MethodImpl): Unit =

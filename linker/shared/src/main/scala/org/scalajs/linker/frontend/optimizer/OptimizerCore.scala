@@ -4410,6 +4410,12 @@ private[optimizer] object OptimizerCore {
     }
 
     override def hashCode(): Int = allFields.##
+
+    override def toString(): String = {
+      allFields
+        .map(f => s"${f._1.nameString}::${f._2.name.name.nameString}: ${f._2.ftpe}")
+        .mkString("InlineableClassStructure(", ", ", ")")
+    }
   }
 
   private final val MaxRollbacksPerMethod = 256
