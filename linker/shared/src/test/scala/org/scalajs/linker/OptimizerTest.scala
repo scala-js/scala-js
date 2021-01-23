@@ -115,12 +115,9 @@ class OptimizerTest {
     for (moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers)) yield {
       val linkedClass = moduleSet.modules.flatMap(_.classDefs)
         .find(_.className == MainTestClassName).get
-      val ObjectCloneClass = ClassName("java.lang.ObjectClone$")
       linkedClass.hasNot("any call to Foo.witness()") {
         case Apply(_, receiver, MethodIdent(`witnessMethodName`), _) =>
           receiver.tpe == ClassType("Foo")
-      }.hasNot("any reference to ObjectClone") {
-        case LoadModule(ObjectCloneClass) => true
       }.hasExactly(if (inlinedWhenOnObject) 1 else 0, "IsInstanceOf node") {
         case IsInstanceOf(_, _) => true
       }.hasExactly(if (inlinedWhenOnObject) 1 else 0, "Throw node") {

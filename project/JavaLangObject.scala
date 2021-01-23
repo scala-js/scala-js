@@ -93,7 +93,7 @@ object JavaLangObject {
           })(OptimizerHints.empty.withInline(true), None),
 
         /* protected def clone(): Object =
-         *   if (this.isInstanceOf[Cloneable]) <clone>(this)
+         *   if (this.isInstanceOf[Cloneable]) <clone>(this.asInstanceOf[Cloneable])
          *   else throw new CloneNotSupportedException()
          */
         MethodDef(
@@ -103,10 +103,8 @@ object JavaLangObject {
           Nil,
           AnyType,
           Some {
-            If(IsInstanceOf(This()(ThisType), ClassType(ClassName("java.lang.Cloneable"))), {
-              Apply(EAF, LoadModule(ClassName("java.lang.ObjectClone$")),
-                  MethodIdent(MethodName("clone", List(ObjectClassRef), ObjectClassRef)),
-                  List(This()(ThisType)))(AnyType)
+            If(IsInstanceOf(This()(ThisType), ClassType(CloneableClass)), {
+              Clone(AsInstanceOf(This()(ThisType), ClassType(CloneableClass)))
             }, {
               Throw(New(ClassName("java.lang.CloneNotSupportedException"),
                 MethodIdent(NoArgConstructorName), Nil))

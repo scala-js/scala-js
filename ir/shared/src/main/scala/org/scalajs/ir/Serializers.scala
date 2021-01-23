@@ -1274,7 +1274,7 @@ object Serializers {
 
             MethodDef(flags, name, originalName, args, resultType, patchedBody)(
                 patchedOptimizerHints, optHash)
-          } else if ( // temp: test backward compat
+          } else if (hacks.use14 &&
               flags.namespace == MemberNamespace.Public &&
               owner == ObjectClass &&
               name.name == HackNames.cloneName) {
