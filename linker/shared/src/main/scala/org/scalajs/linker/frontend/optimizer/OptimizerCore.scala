@@ -1455,10 +1455,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case NothingType =>
         cont(treceiver)
       case NullType =>
-        cont(Block(
-            finishTransformStat(treceiver),
-            Throw(New(NullPointerExceptionClass,
-                MethodIdent(NoArgConstructorName), Nil))).toPreTransform)
+        // Apply on null is UB, just create a well-typed tree.
+        cont(Block(finishTransformStat(treceiver), Throw(Null())).toPreTransform)
       case _ =>
         if (methodName.isReflectiveProxy) {
           // Never inline reflective proxies
@@ -4364,7 +4362,6 @@ private[optimizer] object OptimizerCore {
 
   private val thisOriginalName: OriginalName = OriginalName("this")
 
-  val NullPointerExceptionClass = ClassName("java.lang.NullPointerException")
   private val Tuple2Class = ClassName("scala.Tuple2")
   private val NilClass = ClassName("scala.collection.immutable.Nil$")
   private val JSWrappedArrayClass = ClassName("scala.scalajs.js.WrappedArray")
