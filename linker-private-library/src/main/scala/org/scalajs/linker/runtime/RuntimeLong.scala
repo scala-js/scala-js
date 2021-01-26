@@ -236,6 +236,7 @@ final class RuntimeLong(val lo: Int, val hi: Int)
      *
      * Finally we have:
      */
+    val lo = this.lo
     new RuntimeLong(
         if ((n & 32) == 0) lo << n else 0,
         if ((n & 32) == 0) (lo >>> 1 >>> (31-n)) | (hi << n) else lo << n)
@@ -245,6 +246,7 @@ final class RuntimeLong(val lo: Int, val hi: Int)
   @inline
   def >>>(n: Int): RuntimeLong = {
     // This derives in a similar way as in <<
+    val hi = this.hi
     new RuntimeLong(
         if ((n & 32) == 0) (lo >>> n) | (hi << 1 << (31-n)) else hi >>> n,
         if ((n & 32) == 0) hi >>> n else 0)
@@ -254,6 +256,7 @@ final class RuntimeLong(val lo: Int, val hi: Int)
   @inline
   def >>(n: Int): RuntimeLong = {
     // This derives in a similar way as in <<
+    val hi = this.hi
     new RuntimeLong(
         if ((n & 32) == 0) (lo >>> n) | (hi << 1 << (31-n)) else hi >> n,
         if ((n & 32) == 0) hi >> n else hi >> 31)

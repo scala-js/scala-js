@@ -47,6 +47,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
   val myself: MethodID
 
+  // Uncomment and adapt to print debug messages only during one method
+  //lazy val debugThisMethod: Boolean =
+  //  myself.toString() == "java.lang.FloatingPointBits$.numberHashCode;D;I"
+
   /** Returns the body of a method. */
   protected def getMethodBody(method: MethodID): MethodDef
 
@@ -1485,15 +1489,27 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             } else if (target.inlineable && (
                 target.shouldInline ||
                 shouldInlineBecauseOfArgs(target, treceiver :: targs))) {
-              inline(allocationSites, Some(treceiver), targs, target,
-                  isStat, usePreTransform)(cont)
+              /* When inlining a single method, the declared type of the `this`
+               * value is its enclosing class.
+               */
+              val receiverType = ClassType(target.enclosingClassName)
+              inline(allocationSites, Some((receiverType, treceiver)), targs,
+                  target, isStat, usePreTransform)(cont)
             } else {
               treeNotInlined
             }
           } else {
             if (canMultiInline(impls)) {
-              inline(allocationSites, Some(treceiver), targs, impls.head,
-                  isStat, usePreTransform)(cont)
+              /* When multi-inlining, we cannot use the enclosing class of the
+               * target method as the declared type of the receiver, since we
+               * have no guarantee that the receiver is in fact of that
+               * particular class. It could be of any of the classes that the
+               * targets belong to. Therefore, we have to keep the receiver's
+               * static type as a declared type, which is our only safe choice.
+               */
+              val receiverType = treceiver.tpe.base
+              inline(allocationSites, Some((receiverType, treceiver)), targs,
+                  impls.head, isStat, usePreTransform)(cont)
             } else {
               treeNotInlined
             }
@@ -1605,8 +1621,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
               scope.implsBeingInlined((allocationSites, target))
 
             if (shouldInline && !beingInlined) {
-              inline(allocationSites, Some(treceiver), targs, target,
-                  isStat, usePreTransform)(cont)
+              val receiverType = ClassType(target.enclosingClassName)
+              inline(allocationSites, Some((receiverType, treceiver)), targs,
+                  target, isStat, usePreTransform)(cont)
             } else {
               treeNotInlined0(finishTransformExpr(treceiver),
                   targs.map(finishTransformExpr))
@@ -1755,8 +1772,13 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
               if (missingArgCount == 0) argsNoSpread
               else argsNoSpread ::: List.fill(missingArgCount)(Undefined())
             pretransformExprs(expandedArgs) { targs =>
+              /* In a JS function, the *declared* type of the `this` value is
+               * always `AnyType`, like all the other parameters. In a
+               * `JSFunctionApply`, its *actual* value is always `undefined`,
+               * by spec of what `JSFunctionApply` does.
+               */
               inlineBody(
-                  Some(PreTransLit(Undefined())), // `this` is `undefined`
+                  Some((AnyType, PreTransLit(Undefined()))),
                   captureParams ++ params, AnyType, body,
                   captureLocalDefs.map(_.toPreTransform) ++ targs, isStat,
                   usePreTransform)(cont)
@@ -1884,7 +1906,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   }
 
   private def inline(allocationSites: List[AllocationSite],
-      optReceiver: Option[PreTransform],
+      optReceiver: Option[(Type, PreTransform)],
       args: List[PreTransform], target: MethodID, isStat: Boolean,
       usePreTransform: Boolean)(
       cont: PreTransCont)(
@@ -1901,27 +1923,34 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       throw new AssertionError("A method to inline must be conrete")
     }
 
+    def finishTransformArgsAsStat(): Tree = {
+      val newOptReceiver =
+        optReceiver.fold[Tree](Skip())(r => finishTransformStat(r._2))
+      val newArgs = args.map(finishTransformStat(_))
+      Block(newOptReceiver :: newArgs)
+    }
+
     body match {
       case Skip() =>
         assert(isStat, "Found Skip() in expression position")
         cont(PreTransTree(
-            Block((optReceiver ++: args).map(finishTransformStat)),
+            finishTransformArgsAsStat(),
             RefinedType.NoRefinedType))
 
       case _: Literal =>
         cont(PreTransTree(
-            Block((optReceiver ++: args).map(finishTransformStat), body),
+            Block(finishTransformArgsAsStat(), body),
             RefinedType(body.tpe)))
 
       case This() if args.isEmpty =>
         assert(optReceiver.isDefined,
             "There was a This(), there should be a receiver")
-        cont(optReceiver.get)
+        cont(optReceiver.get._2)
 
       case Select(This(), className, field) if formals.isEmpty =>
         assert(optReceiver.isDefined,
             "There was a This(), there should be a receiver")
-        pretransformSelectCommon(body.tpe, optReceiver.get, className, field,
+        pretransformSelectCommon(body.tpe, optReceiver.get._2, className, field,
             isLhsOfAssign = false)(cont)
 
       case Assign(lhs @ Select(This(), className, field), VarRef(LocalIdent(rhsName)))
@@ -1929,7 +1958,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         assert(isStat, "Found Assign in expression position")
         assert(optReceiver.isDefined,
             "There was a This(), there should be a receiver")
-        pretransformSelectCommon(lhs.tpe, optReceiver.get, className, field,
+        pretransformSelectCommon(lhs.tpe, optReceiver.get._2, className, field,
             isLhsOfAssign = true) { preTransLhs =>
           // TODO Support assignment of record
           cont(PreTransTree(
@@ -1945,7 +1974,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     }
   }
 
-  private def inlineBody(optReceiver: Option[PreTransform],
+  private def inlineBody(optReceiver: Option[(Type, PreTransform)],
       formals: List[ParamDef], resultType: Type, body: Tree,
       args: List[PreTransform], isStat: Boolean,
       usePreTransform: Boolean)(
@@ -1953,7 +1982,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       implicit scope: Scope, pos: Position): TailRec[Tree] = tailcall {
 
     val optReceiverBinding = optReceiver map { receiver =>
-      Binding(Binding.This, receiver.tpe.base, false, receiver)
+      Binding(Binding.This, receiver._1, false, receiver._2)
     }
 
     assert(formals.size == args.size,
@@ -4206,7 +4235,48 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     } else if (mutable) {
       withDedicatedVar(RefinedType(declaredType))
     } else {
-      val refinedType = value.tpe
+      def computeRefinedType(): RefinedType = bindingName match {
+        case _ if value.tpe.isExact || declaredType == AnyType =>
+          /* If the value's type is exact, or if the declared type is `AnyType`,
+           * the declared type cannot have any new information to give us, so
+           * we directly return `value.tpe`. This avoids a useless `isSubtype`
+           * call, which creates dependencies for incremental optimization.
+           *
+           * In addition, for the case `declaredType == AnyType` there is a
+           * stronger reason: we don't actually know that `this` is non-null in
+           * that case, since it could be the `this` value of a JavaScript
+           * function, which can accept `null`. (As of this writing, this is
+           * theoretical, because the only place where we use a declared type
+           * of `AnyType` is in `JSFunctionApply`, where the actual value for
+           * `this` is always `undefined`.)
+           */
+          value.tpe
+
+        case _: Binding.Local =>
+          /* When binding a something else than `this`, we do not receive the
+           * non-null information. Moreover, there is no situation where the
+           * declared type would bring any new information, since that would
+           * not be valid IR in the first place. Therefore, to avoid a useless
+           * call to `isSubtype`, we directly return `value.tpe`.
+           */
+          value.tpe
+
+        case Binding.This =>
+          /* When binding to `this`, if the declared type is not `AnyType`,
+           * we are in a situation where
+           * a) we know the value must be non-null, and
+           * b) the declaredType may bring more precise information than
+           *    value.tpe.base (typically when inlining a polymorphic method
+           *    that ends up having only one target in a subclass).
+           * We can refine the type here based on that knowledge.
+           */
+          val improvedBaseType =
+            if (isSubtype(value.tpe.base, declaredType)) value.tpe.base
+            else declaredType
+          val isExact = false // We catch the case value.tpe.isExact earlier
+          RefinedType(improvedBaseType, isExact, isNullable = false)
+      }
+
       value match {
         case PreTransBlock(bindingsAndStats, result) =>
           withNewLocalDef(binding.copy(value = result))(buildInner) { tresult =>
@@ -4214,19 +4284,40 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           }
 
         case PreTransLocalDef(localDef) if !localDef.mutable =>
-          buildInner(localDef, cont)
+          val refinedType = computeRefinedType()
+          val newLocalDef = if (refinedType == value.tpe) {
+            localDef
+          } else {
+            /* Only adjust if the replacement if ReplaceWithThis or
+             * ReplaceWithVarRef, because other types have nothing to gain
+             * (e.g., ReplaceWithConstant) or we want to keep them unwrapped
+             * because they are examined in optimizations (notably all the
+             * types with virtualized objects).
+             */
+            localDef.replacement match {
+              case _:ReplaceWithThis | _:ReplaceWithVarRef =>
+                LocalDef(refinedType, mutable = false,
+                    ReplaceWithOtherLocalDef(localDef))
+              case _ =>
+                localDef
+            }
+          }
+          buildInner(newLocalDef, cont)
 
         case PreTransTree(literal: Literal, _) =>
-          buildInner(LocalDef(refinedType, false,
+          /* A `Literal` always has the most precise type it could ever have.
+           * There is no point using `computeRefinedType()`.
+           */
+          buildInner(LocalDef(value.tpe, false,
               ReplaceWithConstant(literal)), cont)
 
         case PreTransTree(VarRef(LocalIdent(refName)), _)
             if !localIsMutable(refName) =>
-          buildInner(LocalDef(refinedType, false,
+          buildInner(LocalDef(computeRefinedType(), false,
               ReplaceWithVarRef(refName, newSimpleState(true), None)), cont)
 
         case _ =>
-          withDedicatedVar(refinedType)
+          withDedicatedVar(computeRefinedType())
       }
     }
   }
@@ -4410,6 +4501,12 @@ private[optimizer] object OptimizerCore {
     }
 
     override def hashCode(): Int = allFields.##
+
+    override def toString(): String = {
+      allFields
+        .map(f => s"${f._1.nameString}::${f._2.name.name.nameString}: ${f._2.ftpe}")
+        .mkString("InlineableClassStructure(", ", ", ")")
+    }
   }
 
   private final val MaxRollbacksPerMethod = 256
@@ -4502,7 +4599,13 @@ private[optimizer] object OptimizerCore {
       }
     }
 
-    def newReplacement(implicit pos: Position): Tree = replacement match {
+    def newReplacement(implicit pos: Position): Tree =
+      newReplacementInternal(replacement)
+
+    @tailrec
+    private def newReplacementInternal(replacement: LocalDefReplacement)(
+        implicit pos: Position): Tree = replacement match {
+
       case ReplaceWithVarRef(name, used, _) =>
         used.value = true
         VarRef(LocalIdent(name))(tpe.base)
@@ -4521,6 +4624,9 @@ private[optimizer] object OptimizerCore {
 
       case ReplaceWithThis() =>
         This()(tpe.base)
+
+      case ReplaceWithOtherLocalDef(localDef) =>
+        newReplacementInternal(localDef.replacement)
 
       case ReplaceWithConstant(value) =>
         value
@@ -4551,13 +4657,19 @@ private[optimizer] object OptimizerCore {
 
     def contains(that: LocalDef): Boolean = {
       (this eq that) || (replacement match {
+        case ReplaceWithOtherLocalDef(localDef) =>
+          localDef.contains(that)
         case TentativeClosureReplacement(_, _, _, captureLocalDefs, _, _) =>
           captureLocalDefs.exists(_.contains(that))
+        case InlineClassBeingConstructedReplacement(_, fieldLocalDefs, _) =>
+          fieldLocalDefs.valuesIterator.exists(_.contains(that))
         case InlineClassInstanceReplacement(_, fieldLocalDefs, _) =>
           fieldLocalDefs.valuesIterator.exists(_.contains(that))
         case InlineJSArrayReplacement(elemLocalDefs, _) =>
           elemLocalDefs.exists(_.contains(that))
-        case _ =>
+
+        case _:ReplaceWithVarRef | _:ReplaceWithRecordVarRef |
+             _:ReplaceWithThis | _:ReplaceWithConstant =>
           false
       })
     }
@@ -4575,6 +4687,15 @@ private[optimizer] object OptimizerCore {
       cancelFun: CancelFun) extends LocalDefReplacement
 
   private final case class ReplaceWithThis() extends LocalDefReplacement
+
+  /** An alias to another `LocalDef`, used only to refine the type of that
+   *  `LocalDef` in a specific scope.
+   *
+   *  This happens when refining the type of a `this` binding in an inlined
+   *  method body.
+   */
+  private final case class ReplaceWithOtherLocalDef(localDef: LocalDef)
+      extends LocalDefReplacement
 
   private final case class ReplaceWithConstant(
       value: Tree) extends LocalDefReplacement
