@@ -51,8 +51,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     val factory = SymbolRequirement.factory("optimizer")
     import factory._
 
-    callMethods(LongImpl.RuntimeLongClass, LongImpl.AllIntrinsicMethods.toList) ++
-    instantiateClass(OptimizerCore.NullPointerExceptionClass, NoArgConstructorName)
+    callMethods(LongImpl.RuntimeLongClass, LongImpl.AllIntrinsicMethods.toList)
   }
 
   /** Are we in batch mode? I.e., are we running from scratch?
