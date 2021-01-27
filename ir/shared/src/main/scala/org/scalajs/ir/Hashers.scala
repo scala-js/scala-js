@@ -337,6 +337,10 @@ object Hashers {
           mixTag(TagGetClass)
           mixTree(expr)
 
+        case Clone(expr) =>
+          mixTag(TagClone)
+          mixTree(expr)
+
         case IdentityHashCode(expr) =>
           mixTag(TagIdentityHashCode)
           mixTree(expr)

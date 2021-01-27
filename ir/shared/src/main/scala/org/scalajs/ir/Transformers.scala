@@ -143,6 +143,9 @@ object Transformers {
         case GetClass(expr) =>
           GetClass(transformExpr(expr))
 
+        case Clone(expr) =>
+          Clone(transformExpr(expr))
+
         case IdentityHashCode(expr) =>
           IdentityHashCode(transformExpr(expr))
 

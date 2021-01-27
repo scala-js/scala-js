@@ -535,6 +535,11 @@ object Printers {
           print(expr)
           print(".getClass()")
 
+        case Clone(expr) =>
+          print("<clone>(")
+          print(expr)
+          print(')')
+
         case IdentityHashCode(expr) =>
           print("<identityHashCode>(")
           print(expr)

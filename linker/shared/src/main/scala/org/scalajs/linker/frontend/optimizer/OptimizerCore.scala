@@ -575,6 +575,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           }
         }
 
+      case Clone(expr) =>
+        Clone(transformExpr(expr))
+
       case IdentityHashCode(expr) =>
         IdentityHashCode(transformExpr(expr))
 
@@ -1446,15 +1449,6 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           targs.map(finishTransformExpr))(resultType), RefinedType(resultType)))
     }
 
-    def canBeArray(treceiver: PreTransform): Boolean = {
-      treceiver.tpe.base.isInstanceOf[ArrayType] || {
-        !treceiver.tpe.isExact && (treceiver.tpe.base match {
-          case AnyType | ClassType(ObjectClass) => true
-          case _                                => false
-        })
-      }
-    }
-
     treceiver.tpe.base match {
       case NothingType =>
         cont(treceiver)
@@ -1465,14 +1459,24 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         if (methodName.isReflectiveProxy) {
           // Never inline reflective proxies
           treeNotInlined
-        } else if (methodName == ObjectCloneName && canBeArray(treceiver)) {
-          // #3778 Never inline the `clone()j.l.Object` method if the receiver can be an array
-          treeNotInlined
         } else {
           val className = boxedClassForType(treceiver.tpe.base)
           val namespace = MemberNamespace.forNonStaticCall(flags)
+
+          /* When the receiver has an exact type, we can use static resolution
+           * even for a dynamic call.
+           * Otherwise, if the receiver has an ArrayType, we should perform
+           * dynamic resolution in the Array[T] class. However, we don't model
+           * the Array[T] class family, so we cannot do that. We emulate the
+           * result by using static resolution in the representative class
+           * (which is j.l.Object) instead. (addMethodCalled in Infos.scala
+           * does the same thing.)
+           */
+          val useStaticResolution =
+            treceiver.tpe.isExact || treceiver.tpe.base.isInstanceOf[ArrayType]
+
           val impls =
-            if (treceiver.tpe.isExact) staticCall(className, namespace, methodName).toList
+            if (useStaticResolution) staticCall(className, namespace, methodName).toList
             else dynamicCall(className, methodName)
           val allocationSites =
             (treceiver :: targs).map(_.tpe.allocationSite)

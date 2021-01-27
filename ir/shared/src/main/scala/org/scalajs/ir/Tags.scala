@@ -110,6 +110,10 @@ private[ir] object Tags {
 
   final val TagApplyDynamicImport = TagSelectJSNativeMember + 1
 
+  // New in 1.5
+
+  final val TagClone = TagApplyDynamicImport + 1
+
   // Tags for member defs
 
   final val TagFieldDef = 1

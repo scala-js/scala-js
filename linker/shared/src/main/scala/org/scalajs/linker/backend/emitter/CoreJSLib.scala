@@ -98,6 +98,7 @@ private[emitter] object CoreJSLib {
     private val SymbolRef = globalRef("Symbol")
 
     // Conditional global references that we often use
+    private def ReflectRef = globalRef("Reflect")
     private def BigIntRef = globalRef("BigInt")
 
     private val classData = Ident("$classData")
@@ -362,6 +363,103 @@ private[emitter] object CoreJSLib {
                 Return(result)
               }
           ))
+
+        case "getOwnPropertyDescriptors" =>
+          /* getOwnPropertyDescriptors = (() => {
+           *   // Fetch or polyfill Reflect.ownKeys
+           *   var ownKeysFun;
+           *   if (typeof Reflect != "undefined" && Reflect.ownKeys) {
+           *     ownKeysFun = Reflect.ownKeys;
+           *   } else {
+           *     /* Fetch or polyfill Object.getOwnPropertySymbols.
+           *      * We assume that if that function does not exist, then
+           *      * symbols do not exist at all. Therefore, the result is
+           *      * always an empty array.
+           *      */
+           *     var getOwnPropertySymbols = Object.getOwnPropertySymbols || (o => []);
+           *
+           *     // Polyfill for Reflect.ownKeys
+           *     ownKeysFun = o => Object.getOwnPropertyNames(o).concat(getOwnPropertySymbols(o));
+           *   }
+           *
+           *   // Polyfill for Object.getOwnPropertyDescriptors
+           *   return (o => {
+           *     var ownKeys = ownKeysFun(o);
+           *     var descriptors = {};
+           *     var len = ownKeys.length | 0;
+           *     var i = 0;
+           *     while (i !== len) {
+           *       var key = ownKeys[i];
+           *       /* Almost equivalent to
+           *        *   descriptors[key] = Object.getOwnPropertyDescriptor(descriptors, key);
+           *        * except that `defineProperty` will bypass any existing setter for
+           *        * the property `key` on `descriptors` or in its prototype chain.
+           *        */
+           *       Object.defineProperty(descriptors, key, {
+           *         configurable: true,
+           *         enumerable: true,
+           *         writable: true,
+           *         value: Object.getOwnPropertyDescriptor(o, key)
+           *       });
+           *       i = (i + 1) | 0;
+           *     }
+           *     return descriptors;
+           *   });
+           * })();
+           */
+          val o = varRef("o")
+          val ownKeysFun = varRef("ownKeysFun")
+          val getOwnPropertySymbols = varRef("getOwnPropertySymbols")
+          val ownKeys = varRef("ownKeys")
+          val descriptors = varRef("descriptors")
+          val len = varRef("len")
+          val i = varRef("i")
+          val key = varRef("key")
+
+          val funGenerator = genArrowFunction(Nil, Block(
+            VarDef(ownKeysFun.ident, None),
+            If((typeof(ReflectRef) !== str("undefined")) && genIdentBracketSelect(ReflectRef, "ownKeys"), {
+              ownKeysFun := genIdentBracketSelect(ReflectRef, "ownKeys")
+            }, Block(
+              const(getOwnPropertySymbols,
+                  genIdentBracketSelect(ObjectRef, "getOwnPropertySymbols") ||
+                  genArrowFunction(paramList(o), Return(ArrayConstr(Nil)))),
+              ownKeysFun := genArrowFunction(paramList(o), Return {
+                Apply(
+                    genIdentBracketSelect(
+                        Apply(genIdentBracketSelect(ObjectRef, "getOwnPropertyNames"), o :: Nil),
+                        "concat"),
+                    Apply(getOwnPropertySymbols, o :: Nil) :: Nil)
+              })
+            )),
+            Return(genArrowFunction(paramList(o), Block(
+              const(ownKeys, Apply(ownKeysFun, o :: Nil)),
+              const(descriptors, ObjectConstr(Nil)),
+              const(len, ownKeys.length | 0),
+              let(i, 0),
+              While(i !== len, Block(
+                const(key, BracketSelect(ownKeys, i)),
+                Apply(genIdentBracketSelect(ObjectRef, "defineProperty"), List(
+                  descriptors,
+                  key,
+                  ObjectConstr(List(
+                    str("configurable") -> bool(true),
+                    str("enumerable") -> bool(true),
+                    str("writable") -> bool(true),
+                    str("value") -> {
+                      Apply(
+                          genIdentBracketSelect(ObjectRef, "getOwnPropertyDescriptor"),
+                          o :: key :: Nil)
+                    }
+                  ))
+                )),
+                i := (i + 1) | 0
+              )),
+              Return(descriptors)
+            )))
+          ))
+
+          Apply(funGenerator, Nil)
       }
 
       val mathBuiltins = Block(
@@ -382,7 +480,13 @@ private[emitter] object CoreJSLib {
                 SymbolRef, genPolyfillFor("privateJSFieldSymbol"))))
       ))
 
-      Block(mathBuiltins, es5Compat)
+      val es2017Compat = Block( // condTree(!useECMAScript2017)
+        extractWithGlobals(globalVarDef("getOwnPropertyDescriptors", CoreVar,
+            genIdentBracketSelect(ObjectRef, "getOwnPropertyDescriptors") ||
+                genPolyfillFor("getOwnPropertyDescriptors")))
+      )
+
+      Block(mathBuiltins, es5Compat, es2017Compat)
     }
 
     private def declareCachedL0(): Tree = {
@@ -508,6 +612,20 @@ private[emitter] object CoreJSLib {
           )),
           Return(result)
         )
+      },
+
+      defineFunction1("objectClone") { instance =>
+        // return Object.create(Object.getPrototypeOf(instance), $getOwnPropertyDescriptors(instance));
+        Return(Apply(genIdentBracketSelect(ObjectRef, "create"), List(
+            Apply(genIdentBracketSelect(ObjectRef, "getPrototypeOf"), instance :: Nil),
+            genCallHelper("getOwnPropertyDescriptors", instance))))
+      },
+
+      defineFunction1("objectOrArrayClone") { instance =>
+        // return instance.$classData.isArrayClass ? instance.clone__O() : $objectClone(instance);
+        Return(If(genIdentBracketSelect(instance DOT classData, "isArrayClass"),
+            Apply(instance DOT genName(cloneMethodName), Nil),
+            genCallHelper("objectClone", instance)))
       }
     )
 
