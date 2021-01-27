@@ -6,7 +6,6 @@ object MiniLib {
         "Object",
         "Class",
         "System",
-        "System$IDHashCode",
 
         "CharSequence",
         "Cloneable",
