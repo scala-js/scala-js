@@ -994,16 +994,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               case Block(stats :+ expr) =>
                 val (jsStats, newEnv) = transformBlockStats(stats)
                 val result = rec(expr)(newEnv)
+                innerEnv = newEnv
                 // Put the stats in a Block because ++=: is not smart
                 js.Block(jsStats) +=: extractedStatements
-                innerEnv = stats.foldLeft(innerEnv) { (prev, stat) =>
-                  stat match {
-                    case VarDef(name, _, _, mutable, _) =>
-                      prev.withDef(name, mutable)
-                    case _ =>
-                      prev
-                  }
-                }
                 result
 
               case UnaryOp(op, lhs) =>
