@@ -264,27 +264,6 @@ class AnalyzerTest {
   }
 
   @Test
-  def missingJSNativeLoadSpec(): AsyncResult = await {
-    val kinds = Seq(
-        ClassKind.NativeJSClass,
-        ClassKind.NativeJSModuleClass
-    )
-
-    Future.traverse(kinds) { kind =>
-      val classDefs = Seq(
-          classDef("A", kind = kind, superClass = Some(ObjectClass))
-      )
-
-      val analysis = computeAnalysis(classDefs,
-          reqsFactory.instantiateClass("A", NoArgConstructorName))
-
-      assertContainsError("MissingJSNativeLoadSpec(A)", analysis) {
-        case MissingJSNativeLoadSpec(ClsInfo("A"), `fromUnitTest`) => true
-      }
-    }
-  }
-
-  @Test
   def notAModule(): AsyncResult = await {
     val classDefs = Seq(
         classDef("A", superClass = Some(ObjectClass),

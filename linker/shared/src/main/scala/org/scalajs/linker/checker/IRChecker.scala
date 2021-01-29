@@ -170,6 +170,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         val superClass = lookupClass(classDef.superClass.get.name)
         if (superClass.jsClassCaptures.isDefined)
           reportError(i"super class ${superClass.name} may not have jsClassCaptures")
+        else if (superClass.kind == ClassKind.NativeJSClass && superClass.jsNativeLoadSpec.isEmpty)
+          reportError(i"Native super class ${superClass.name} must have a native load spec")
       } { tree =>
         val env = Env.fromSignature(NoType, classDef.jsClassCaptures, Nil)
         typecheckExpect(tree, env, AnyType)
@@ -185,10 +187,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
     classDef.kind match {
       case ClassKind.NativeJSClass | ClassKind.NativeJSModuleClass =>
-        if (classDef.jsNativeLoadSpec.isEmpty) {
-          reportError(
-              i"Native JS type ${classDef.name} must have a jsNativeLoadSpec")
-        }
+        () // may or may not have a native load spec
       case _ =>
         if (classDef.jsNativeLoadSpec.isDefined) {
           reportError(
@@ -1100,6 +1099,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           reportError(i"JS class type expected but $className found")
         else if (clazz.jsClassCaptures.nonEmpty)
           reportError(i"Cannot load JS constructor of non-top-level class $className")
+        else if (clazz.kind == ClassKind.NativeJSClass && clazz.jsNativeLoadSpec.isEmpty)
+          reportError(i"Cannot load JS constructor of native JS class $className without native load spec")
 
       case LoadJSModule(className) =>
         val clazz = lookupClass(className)
@@ -1110,6 +1111,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         }
         if (!valid)
           reportError(i"JS module class type expected but $className found")
+        else if (clazz.kind == ClassKind.NativeJSModuleClass && clazz.jsNativeLoadSpec.isEmpty)
+          reportError(i"Cannot load JS module of native JS module class $className without native load spec")
 
       case JSUnaryOp(op, lhs) =>
         typecheckExpr(lhs, env)
