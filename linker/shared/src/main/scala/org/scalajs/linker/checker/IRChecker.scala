@@ -27,15 +27,14 @@ import org.scalajs.ir.Types._
 import org.scalajs.logging._
 
 import org.scalajs.linker.frontend.LinkingUnit
-import org.scalajs.linker.standard._
-import org.scalajs.linker.analyzer.{Analyzer, Infos}
+import org.scalajs.linker.standard.LinkedClass
+import org.scalajs.linker.checker.ErrorReporter._
 
 /** Checker for the validity of the IR. */
-private final class IRChecker(unit: LinkingUnit, logger: Logger) {
+private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
 
   import IRChecker._
-
-  private var errorCount: Int = 0
+  import reporter.reportError
 
   /* Per-method state (setup with withPerMethodState).
    * This state is reset per-Closure as well.
@@ -65,7 +64,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     mutable.Map(tups: _*)
   }
 
-  def check(): Int = {
+  def check(): Unit = {
     for (classDef <- unit.classDefs) {
       implicit val ctx = ErrorContext(classDef)
 
@@ -110,8 +109,6 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           checkTopLevelFieldExportDef(tree, owningClass)
       }
     }
-
-    errorCount
   }
 
   private def checkJSClassCaptures(classDef: LinkedClass): Unit = {
@@ -1285,11 +1282,6 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       ArrayType(ArrayTypeRef(base, dimensions - 1))
   }
 
-  private def reportError(msg: String)(implicit ctx: ErrorContext): Unit = {
-    logger.error(s"$ctx: $msg")
-    errorCount += 1
-  }
-
   private def lookupClass(className: ClassName)(
       implicit ctx: ErrorContext): CheckedClass = {
     classes.getOrElseUpdate(className, {
@@ -1418,63 +1410,9 @@ object IRChecker {
    *  @return Count of IR checking errors (0 in case of success)
    */
   def check(unit: LinkingUnit, logger: Logger): Int = {
-    new IRChecker(unit, logger).check()
-  }
-
-  /** A string interpolator that displays IR concepts in a nice way. */
-  private implicit final class InfoStringContext(
-      private val self: StringContext)
-      extends AnyVal {
-
-    def i(args: Any*): String =
-      self.s(args.map(format(_)): _*)
-
-    private def format(arg: Any): String = {
-      arg match {
-        case arg: Name       => arg.nameString
-        case arg: MethodName => arg.displayName
-        case arg: IRNode     => arg.show
-        case arg: TypeRef    => arg.displayName
-        case arg: Type       => arg.show()
-        case _               => arg.toString()
-      }
-    }
-  }
-
-  /** The context in which to report IR check errors.
-   *
-   *  The way this class is written is optimized for the happy path, where no
-   *  error occurs. In that case, `toString()` is never called, and we avoid
-   *  any kind of allocation.
-   *
-   *  The parameter is an `Any` for that reason. It should be an
-   *  `Either[IRNode, LinkedClass]`, but that would also require an allocation
-   *  of the `Left` or `Right` (in fact, we'd love to type it as
-   *  `IRNode | LinkedClass`). `ErrorContext` is also made an `AnyVal` for the
-   *  same reasons, again.
-   *
-   *  If `toString()` is called, we're in a bad situation anyway, because the
-   *  IR is invalid, so all bets are off and we can be slow and allocate stuff;
-   *  we don't care.
-   */
-  private final class ErrorContext private (private val nodeOrLinkedClass: Any)
-      extends AnyVal {
-
-    override def toString(): String = {
-      val (pos, name) = nodeOrLinkedClass match {
-        case tree: IRNode             => (tree.pos, tree.getClass.getSimpleName)
-        case linkedClass: LinkedClass => (linkedClass.pos, "ClassDef")
-      }
-      s"${pos.source}(${pos.line+1}:${pos.column+1}:$name)"
-    }
-  }
-
-  private object ErrorContext {
-    def apply(node: IRNode): ErrorContext =
-      new ErrorContext(node)
-
-    def apply(linkedClass: LinkedClass): ErrorContext =
-      new ErrorContext(linkedClass)
+    val reporter = new LoggerErrorReporter(logger)
+    new IRChecker(unit, reporter).check()
+    reporter.errorCount
   }
 
   private final case class LocalDef(name: LocalName, tpe: Type, mutable: Boolean)
