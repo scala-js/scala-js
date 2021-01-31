@@ -831,7 +831,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
       case New(className, ctor, args) =>
         val clazz = lookupClass(className)
-        if (!clazz.kind.isClass)
+        if (clazz.kind != ClassKind.Class)
           reportError(i"new $className which is not a class")
         checkApplyGeneric(ctor.name, i"$className.$ctor", args, NoType,
             isStatic = false)
@@ -1093,7 +1093,6 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         val clazz = lookupClass(className)
         val valid = clazz.kind match {
           case ClassKind.JSClass       => true
-          case ClassKind.JSModuleClass => true
           case ClassKind.NativeJSClass => true
           case _                       => false
         }
