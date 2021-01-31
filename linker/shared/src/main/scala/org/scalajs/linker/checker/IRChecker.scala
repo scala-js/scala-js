@@ -15,8 +15,6 @@ package org.scalajs.linker.checker
 // In the IR checker, we allow early returns for improved readability
 // scalastyle:off return
 
-import scala.language.implicitConversions
-
 import scala.annotation.switch
 
 import scala.collection.mutable
@@ -1472,9 +1470,6 @@ object IRChecker {
   }
 
   private object ErrorContext {
-    implicit def node2errorContext(node: IRNode): ErrorContext =
-      ErrorContext(node)
-
     def apply(node: IRNode): ErrorContext =
       new ErrorContext(node)
 
