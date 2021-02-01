@@ -466,7 +466,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
             if predef.symbol == PredefModule =>
           if (scalaJSOpts.fixClassOf) {
             // Replace call by literal constant containing type
-            if (typer.checkClassType(tpeArg)) {
+            if (typer.checkClassOrModuleType(tpeArg)) {
               typer.typed { Literal(Constant(tpeArg.tpe.dealias.widen)) }
             } else {
               reporter.error(tpeArg.pos, s"Type ${tpeArg} is not a class type")
