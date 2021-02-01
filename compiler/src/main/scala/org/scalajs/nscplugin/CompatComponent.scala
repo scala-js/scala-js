@@ -54,6 +54,15 @@ trait CompatComponent {
     }
   }
 
+  implicit final class TyperCompat(self: analyzer.Typer) {
+    // Added in Scala 2.13.5 to make it clearer what is allowed since 2.13.4
+    def checkClassOrModuleType(tpt: Tree): Boolean =
+      self.checkClassType(tpt)
+
+    def checkClassType(tpt: Tree): Boolean =
+      infiniteLoop()
+  }
+
   private implicit final class FlagsCompat(self: Flags.type) {
     def IMPLCLASS: Long = infiniteLoop()
   }
