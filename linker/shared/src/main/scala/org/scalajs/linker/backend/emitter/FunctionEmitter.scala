@@ -575,88 +575,84 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Skip() =>
           js.Skip()
 
-        case Assign(select @ Select(qualifier, className, field), rhs) =>
-          unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
-            implicit val env = env0
-            js.Assign(
-                genSelect(transformExprNoChar(newQualifier), className, field)(select.pos),
-                transformExpr(newRhs, select.tpe))
-          }
-
-        case Assign(select @ ArraySelect(array, index), rhs) =>
-          unnest(array, index, rhs) { (newArray, newIndex, newRhs, env0) =>
-              implicit val env = env0
-              val genArray = transformExprNoChar(newArray)
-              val genIndex = transformExprNoChar(newIndex)
-              val genRhs = transformExpr(newRhs, select.tpe)
-              semantics.arrayIndexOutOfBounds match {
-                case CheckedBehavior.Compliant | CheckedBehavior.Fatal =>
-                  js.Apply(js.DotSelect(genArray, js.Ident("set")),
-                      List(genIndex, genRhs))
-                case CheckedBehavior.Unchecked =>
-                  js.Assign(
-                      js.BracketSelect(
-                          js.DotSelect(genArray, js.Ident("u"))(select.pos),
-                          genIndex)(select.pos),
-                      genRhs)
+        case Assign(lhs, rhs) =>
+          lhs match {
+            case Select(qualifier, className, field) =>
+              unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
+                implicit val env = env0
+                js.Assign(
+                    genSelect(transformExprNoChar(newQualifier), className, field)(lhs.pos),
+                    transformExpr(newRhs, lhs.tpe))
               }
+
+            case ArraySelect(array, index) =>
+              unnest(array, index, rhs) { (newArray, newIndex, newRhs, env0) =>
+                implicit val env = env0
+                val genArray = transformExprNoChar(newArray)
+                val genIndex = transformExprNoChar(newIndex)
+                val genRhs = transformExpr(newRhs, lhs.tpe)
+                semantics.arrayIndexOutOfBounds match {
+                  case CheckedBehavior.Compliant | CheckedBehavior.Fatal =>
+                    js.Apply(js.DotSelect(genArray, js.Ident("set")),
+                        List(genIndex, genRhs))
+                  case CheckedBehavior.Unchecked =>
+                    js.Assign(
+                        js.BracketSelect(
+                            js.DotSelect(genArray, js.Ident("u"))(lhs.pos),
+                            genIndex)(lhs.pos),
+                        genRhs)
+                }
+              }
+
+            case lhs: RecordSelect =>
+              val newLhs = Transient(JSVarRef(makeRecordFieldIdentForVarRef(lhs),
+                  mutable = true)(lhs.tpe))
+              pushLhsInto(Lhs.Assign(newLhs), rhs, tailPosLabels)
+
+            case JSPrivateSelect(qualifier, className, field) =>
+              unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
+                implicit val env = env0
+                js.Assign(
+                    genJSPrivateSelect(transformExprNoChar(newQualifier),
+                        className, field)(moduleContext, globalKnowledge, lhs.pos),
+                    transformExprNoChar(newRhs))
+              }
+
+            case JSSelect(qualifier, item) =>
+              unnest(qualifier, item, rhs) {
+                (newQualifier, newItem, newRhs, env0) =>
+                  implicit val env = env0
+                  js.Assign(
+                      genBracketSelect(transformExprNoChar(newQualifier),
+                          transformExprNoChar(newItem))(lhs.pos),
+                      transformExprNoChar(newRhs))
+              }
+
+            case JSSuperSelect(superClass, qualifier, item) =>
+              unnest(superClass, qualifier, item, rhs) {
+                (newSuperClass, newQualifier, newItem, newRhs, env0) =>
+                  implicit val env = env0
+                  genCallHelper("superSet", transformExprNoChar(newSuperClass),
+                      transformExprNoChar(newQualifier), transformExprNoChar(item),
+                      transformExprNoChar(rhs))
+              }
+
+            case SelectStatic(className, item) =>
+              val scope = (className, item.name)
+
+              if (needToUseGloballyMutableVarSetter(scope)) {
+                unnest(rhs) { (rhs, env0) =>
+                  implicit val env = env0
+                  js.Apply(globalVar("u", scope), transformExpr(rhs, lhs.tpe) :: Nil)
+                }
+              } else {
+                // Assign normally.
+                pushLhsInto(Lhs.Assign(lhs), rhs, tailPosLabels)
+              }
+
+            case _:VarRef | _:JSGlobalRef =>
+              pushLhsInto(Lhs.Assign(lhs), rhs, tailPosLabels)
           }
-
-        case Assign(lhs: RecordSelect, rhs) =>
-          val newLhs = Transient(JSVarRef(makeRecordFieldIdentForVarRef(lhs),
-              mutable = true)(lhs.tpe))
-          pushLhsInto(Lhs.Assign(newLhs), rhs, tailPosLabels)
-
-        case Assign(select @ JSPrivateSelect(qualifier, className, field), rhs) =>
-          unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
-            implicit val env = env0
-            js.Assign(
-                genJSPrivateSelect(transformExprNoChar(newQualifier),
-                    className, field)(moduleContext, globalKnowledge, select.pos),
-                transformExprNoChar(newRhs))
-          }
-
-        case Assign(select @ JSSelect(qualifier, item), rhs) =>
-          unnest(qualifier, item, rhs) {
-            (newQualifier, newItem, newRhs, env0) =>
-              implicit val env = env0
-              js.Assign(
-                  genBracketSelect(transformExprNoChar(newQualifier),
-                      transformExprNoChar(newItem))(select.pos),
-                  transformExprNoChar(newRhs))
-          }
-
-        case Assign(select @ JSSuperSelect(superClass, qualifier, item), rhs) =>
-          unnest(superClass, qualifier, item, rhs) {
-            (newSuperClass, newQualifier, newItem, newRhs, env0) =>
-              implicit val env = env0
-              genCallHelper("superSet", transformExprNoChar(newSuperClass),
-                  transformExprNoChar(newQualifier), transformExprNoChar(item),
-                  transformExprNoChar(rhs))
-          }
-
-        case Assign(select: SelectStatic, rhs) =>
-          // Destructure separately, otherwise 2.11 crashes.
-          val SelectStatic(className, item) = select
-
-          val scope = (className, item.name)
-
-          if (needToUseGloballyMutableVarSetter(scope)) {
-            unnest(rhs) { (rhs, env0) =>
-              implicit val env = env0
-              js.Apply(globalVar("u", scope), transformExpr(rhs, select.tpe) :: Nil)
-            }
-          } else {
-            // Assign normally.
-            pushLhsInto(Lhs.Assign(select), rhs, tailPosLabels)
-          }
-
-        case Assign(lhs @ (_:VarRef | Transient(JSVarRef(_, _)) | _:JSGlobalRef), rhs) =>
-          pushLhsInto(Lhs.Assign(lhs), rhs, tailPosLabels)
-
-        case Assign(_, _) =>
-          throw new IllegalArgumentException(
-              s"Illegal Assign in transformStat: $tree")
 
         case StoreModule(className, value) =>
           unnest(value) { (newValue, env0) =>

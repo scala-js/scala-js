@@ -1062,7 +1062,7 @@ object Serializers {
 
           val rhs = readTree()
 
-          Assign(lhs, rhs)
+          Assign(lhs.asInstanceOf[AssignLhs], rhs)
 
         case TagReturn  => Return(readTree(), readLabelIdent())
         case TagIf      => If(readTree(), readTree(), readTree())(readType())

@@ -150,17 +150,10 @@ object Trees {
   sealed case class Labeled(label: LabelIdent, tpe: Type, body: Tree)(
       implicit val pos: Position) extends Tree
 
-  sealed case class Assign(lhs: Tree, rhs: Tree)(
-      implicit val pos: Position) extends Tree {
-    require(lhs match {
-      case _:VarRef | _:Select | _:SelectStatic | _:ArraySelect |
-          _:RecordSelect | _:JSPrivateSelect | _:JSSelect | _:JSSuperSelect |
-          _:JSGlobalRef =>
-        true
-      case _ =>
-        false
-    }, s"Invalid lhs for Assign: $lhs")
+  sealed trait AssignLhs extends Tree
 
+  sealed case class Assign(lhs: AssignLhs, rhs: Tree)(
+      implicit val pos: Position) extends Tree {
     val tpe = NoType // cannot be in expression position
   }
 
@@ -240,11 +233,11 @@ object Trees {
   sealed case class Select(qualifier: Tree, className: ClassName,
       field: FieldIdent)(
       val tpe: Type)(
-      implicit val pos: Position) extends Tree
+      implicit val pos: Position) extends AssignLhs
 
   sealed case class SelectStatic(className: ClassName, field: FieldIdent)(
       val tpe: Type)(
-      implicit val pos: Position) extends Tree
+      implicit val pos: Position) extends AssignLhs
 
   sealed case class SelectJSNativeMember(className: ClassName, member: MethodIdent)(
       implicit val pos: Position)
@@ -453,7 +446,7 @@ object Trees {
   }
 
   sealed case class ArraySelect(array: Tree, index: Tree)(val tpe: Type)(
-      implicit val pos: Position) extends Tree
+      implicit val pos: Position) extends AssignLhs
 
   sealed case class RecordValue(tpe: RecordType, elems: List[Tree])(
       implicit val pos: Position) extends Tree
@@ -461,7 +454,7 @@ object Trees {
   sealed case class RecordSelect(record: Tree, field: FieldIdent)(
       val tpe: Type)(
       implicit val pos: Position)
-      extends Tree
+      extends AssignLhs
 
   sealed case class IsInstanceOf(expr: Tree, testType: Type)(
       implicit val pos: Position)
@@ -497,12 +490,12 @@ object Trees {
 
   sealed case class JSPrivateSelect(qualifier: Tree, className: ClassName,
       field: FieldIdent)(
-      implicit val pos: Position) extends Tree {
+      implicit val pos: Position) extends AssignLhs {
     val tpe = AnyType
   }
 
   sealed case class JSSelect(qualifier: Tree, item: Tree)(
-      implicit val pos: Position) extends Tree {
+      implicit val pos: Position) extends AssignLhs {
     val tpe = AnyType
   }
 
@@ -547,7 +540,7 @@ object Trees {
    *  `this` value.
    */
   sealed case class JSSuperSelect(superClass: Tree, receiver: Tree, item: Tree)(
-      implicit val pos: Position) extends Tree {
+      implicit val pos: Position) extends AssignLhs {
     val tpe = AnyType
   }
 
@@ -801,7 +794,7 @@ object Trees {
   }
 
   sealed case class JSGlobalRef(name: String)(
-      implicit val pos: Position) extends Tree {
+      implicit val pos: Position) extends AssignLhs {
     import JSGlobalRef._
 
     val tpe = AnyType
@@ -918,7 +911,7 @@ object Trees {
   // Atomic expressions
 
   sealed case class VarRef(ident: LocalIdent)(val tpe: Type)(
-      implicit val pos: Position) extends Tree
+      implicit val pos: Position) extends AssignLhs
 
   sealed case class This()(val tpe: Type)(implicit val pos: Position)
       extends Tree

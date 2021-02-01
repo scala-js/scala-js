@@ -629,7 +629,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       case Skip() =>
         env
 
-      case Assign(select, rhs) =>
+      case Assign(lhs, rhs) =>
         def checkNonStaticField(receiver: Tree, className: ClassName, name: FieldName): Unit = {
           receiver match {
             case This() if env.inConstructorOf == Some(className) =>
@@ -640,7 +640,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           }
         }
 
-        select match {
+        lhs match {
           case Select(receiver, className, FieldIdent(name)) =>
             checkNonStaticField(receiver, className, name)
           case JSPrivateSelect(receiver, className, FieldIdent(name)) =>
@@ -653,11 +653,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             } {
               reportError(i"Assignment to immutable static field $name.")
             }
-          case VarRef(LocalIdent(name)) if !env.locals(name).mutable =>
-            reportError(i"Assignment to immutable variable $name.")
-          case _ =>
+          case VarRef(LocalIdent(name)) =>
+            if (!env.locals(name).mutable)
+              reportError(i"Assignment to immutable variable $name.")
+
+          case _:ArraySelect | _:RecordSelect | _:JSSelect | _:JSSuperSelect | _:JSGlobalRef =>
         }
-        val lhsTpe = typecheckExpr(select, env)
+        val lhsTpe = typecheckExpr(lhs, env)
         typecheckExpect(rhs, env, lhsTpe)
         env
 

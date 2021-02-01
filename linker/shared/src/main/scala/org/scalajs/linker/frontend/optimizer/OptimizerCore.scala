@@ -331,7 +331,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
                   case PreTransRecordTree(rhsTree, rhsOrigType, rhsCancelFun) =>
                     if (rhsTree.tpe != recordType || rhsOrigType != lhsOrigType)
                       lhsCancelFun()
-                    TailCalls.done(Assign(lhsTree, rhsTree))
+                    TailCalls.done(Assign(lhsTree.asInstanceOf[AssignLhs], rhsTree))
                   case _ =>
                     lhsCancelFun()
                 }
@@ -356,7 +356,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
               }
 
             case PreTransTree(lhsTree, _) =>
-              TailCalls.done(Assign(lhsTree, transformExpr(rhs)))
+              TailCalls.done(Assign(lhsTree.asInstanceOf[AssignLhs], transformExpr(rhs)))
           }
         }
         trampoline {
@@ -1966,7 +1966,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             isLhsOfAssign = true) { preTransLhs =>
           // TODO Support assignment of record
           cont(PreTransTree(
-              Assign(finishTransformExpr(preTransLhs),
+              Assign(finishTransformExpr(preTransLhs).asInstanceOf[AssignLhs],
                   finishTransformExpr(args.head)),
               RefinedType.NoRefinedType))
         }

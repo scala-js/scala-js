@@ -5202,8 +5202,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }
       }
 
-      def genSuperReference(propName: js.Tree): js.Tree = {
-        jsSuperClassValue.fold[js.Tree] {
+      def genSuperReference(propName: js.Tree): js.AssignLhs = {
+        jsSuperClassValue.fold[js.AssignLhs] {
           genJSBracketSelectOrGlobalRef(receiver, propName)
         } { superClassValue =>
           js.JSSuperSelect(superClassValue,
@@ -6362,7 +6362,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  Otherwise, report a compile error.
      */
     private def genJSBracketSelectOrGlobalRef(qual: MaybeGlobalScope,
-        item: js.Tree)(implicit pos: Position): js.Tree = {
+        item: js.Tree)(implicit pos: Position): js.AssignLhs = {
       qual match {
         case MaybeGlobalScope.NotGlobalScope(qualTree) =>
           js.JSSelect(qualTree, item)
@@ -6444,7 +6444,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     }
 
     private def genAssignableField(sym: Symbol, qualifier: Tree)(
-        implicit pos: Position): (js.Tree, Boolean) = {
+        implicit pos: Position): (js.AssignLhs, Boolean) = {
       def qual = genExpr(qualifier)
 
       if (isNonNativeJSClass(sym.owner)) {
