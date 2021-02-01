@@ -389,7 +389,12 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     val thisType =
       if (static) NoType
       else ClassType(classDef.name.name)
-    val bodyEnv = Env.fromSignature(thisType, None, params, isConstructor)
+    val bodyEnv = {
+      val inConstructorOf =
+        if (isConstructor) Some(classDef.name.name)
+        else None
+      Env.fromSignature(thisType, None, params, inConstructorOf)
+    }
 
     body.fold {
       // Abstract
@@ -473,7 +478,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
 
     val initialEnv = Env.fromSignature(NoType, clazz.jsClassCaptures,
-        params, isConstructor = true)
+        params, inConstructorOf = Some(clazz.name))
 
     val preparedEnv = prepStats.foldLeft(initialEnv) { (prevEnv, stat) =>
       typecheckStat(stat, prevEnv)
@@ -625,18 +630,21 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         env
 
       case Assign(select, rhs) =>
+        def checkNonStaticField(receiver: Tree, className: ClassName, name: FieldName): Unit = {
+          receiver match {
+            case This() if env.inConstructorOf == Some(className) =>
+              // ok
+            case _ =>
+              if (lookupClass(className).lookupField(name).exists(!_.flags.isMutable))
+                reportError(i"Assignment to immutable field $name.")
+          }
+        }
+
         select match {
-          case Select(This(), className, FieldIdent(_))
-              if env.inConstructor && env.thisTpe == ClassType(className) =>
-            // ok
           case Select(receiver, className, FieldIdent(name)) =>
-            val c = lookupClass(className)
-            for {
-              f <- c.lookupField(name)
-              if !f.flags.isMutable
-            } {
-              reportError(i"Assignment to immutable field $name.")
-            }
+            checkNonStaticField(receiver, className, name)
+          case JSPrivateSelect(receiver, className, FieldIdent(name)) =>
+            checkNonStaticField(receiver, className, name)
           case SelectStatic(className, FieldIdent(name)) =>
             val c = lookupClass(className)
             for {
@@ -1370,36 +1378,33 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       /** Return types by label. */
       val returnTypes: Map[LabelName, Type],
       /** Whether we're in a constructor of the class */
-      val inConstructor: Boolean
+      val inConstructorOf: Option[ClassName]
   ) {
     import Env._
 
     def withThis(thisTpe: Type): Env =
-      new Env(thisTpe, this.locals, this.returnTypes, this.inConstructor)
+      new Env(thisTpe, this.locals, this.returnTypes, this.inConstructorOf)
 
     def withLocal(localDef: LocalDef)(implicit ctx: ErrorContext): Env = {
       new Env(thisTpe, locals + (localDef.name -> localDef), returnTypes,
-          this.inConstructor)
+          this.inConstructorOf)
     }
 
     def withLabeledReturnType(label: LabelName, returnType: Type): Env =
       new Env(this.thisTpe, this.locals,
-          returnTypes + (label -> returnType), this.inConstructor)
-
-    def withInConstructor(inConstructor: Boolean): Env =
-      new Env(this.thisTpe, this.locals, this.returnTypes, inConstructor)
+          returnTypes + (label -> returnType), this.inConstructorOf)
   }
 
   private object Env {
-    val empty: Env = new Env(NoType, Map.empty, Map.empty, false)
+    val empty: Env = new Env(NoType, Map.empty, Map.empty, None)
 
     def fromSignature(thisType: Type, jsClassCaptures: Option[List[ParamDef]],
-        params: List[ParamDef], isConstructor: Boolean = false): Env = {
+        params: List[ParamDef], inConstructorOf: Option[ClassName] = None): Env = {
       val allParams = jsClassCaptures.getOrElse(Nil) ::: params
       val paramLocalDefs =
         for (p @ ParamDef(ident, _, tpe, mutable, _) <- allParams)
           yield ident.name -> LocalDef(ident.name, tpe, mutable)(p.pos)
-      new Env(thisType, paramLocalDefs.toMap, Map.empty, isConstructor)
+      new Env(thisType, paramLocalDefs.toMap, Map.empty, inConstructorOf)
     }
   }
 
