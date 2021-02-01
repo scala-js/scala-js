@@ -1003,12 +1003,8 @@ private final class Analyzer(config: CommonPhaseConfig,
               staticInit => staticInit.reachStatic()
             }
           } else {
-            data.jsNativeLoadSpec match {
-              case None =>
-                _errors += MissingJSNativeLoadSpec(this, from)
-              case Some(jsNativeLoadSpec) =>
-                validateLoadSpec(jsNativeLoadSpec, jsNativeMember = None)
-            }
+            for (jsNativeLoadSpec <- data.jsNativeLoadSpec)
+              validateLoadSpec(jsNativeLoadSpec, jsNativeMember = None)
           }
 
           for (reachabilityInfo <- data.exportedMembers)
@@ -1025,12 +1021,10 @@ private final class Analyzer(config: CommonPhaseConfig,
 
         if (!isNativeJSClass) {
           for (clazz <- superClass) {
-            clazz.jsNativeLoadSpec match {
-              case None =>
-                staticDependencies += clazz.className
-              case Some(loadSpec) =>
-                addLoadSpec(externalDependencies, loadSpec)
-            }
+            if (clazz.isNativeJSClass)
+              clazz.jsNativeLoadSpec.foreach(addLoadSpec(externalDependencies, _))
+            else
+              staticDependencies += clazz.className
           }
         }
 

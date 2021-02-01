@@ -161,6 +161,32 @@ class IRCheckerTest {
     }
   }
 
+  @Test
+  def missingJSNativeLoadSpec(): AsyncResult = await {
+    val classDefs = Seq(
+      classDef("A", kind = ClassKind.NativeJSClass, superClass = Some(ObjectClass)),
+      classDef("B", kind = ClassKind.NativeJSClass, superClass = Some(ObjectClass)),
+      classDef("C", kind = ClassKind.NativeJSModuleClass, superClass = Some(ObjectClass)),
+
+      classDef("D", kind = ClassKind.JSClass, superClass = Some("A")),
+
+      mainTestClassDef(Block(
+        LoadJSConstructor("B"),
+        LoadJSModule("C"),
+        LoadJSConstructor("D")
+      ))
+    )
+
+    for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
+      assertContainsLogLine(
+          "Cannot load JS constructor of native JS class B without native load spec", log)
+      assertContainsLogLine(
+          "Cannot load JS module of native JS module class C without native load spec", log)
+      assertContainsLogLine(
+          "Native super class A must have a native load spec", log)
+    }
+  }
+
 }
 
 object IRCheckerTest {

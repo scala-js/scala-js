@@ -584,6 +584,34 @@ class NestedJSClassTest {
     assertNotSame(obj.constructor, fun().constructor)
     assertNotSame(obj.constructor, js.constructorOf[js.Object])
   }
+
+  @Test
+  def extendInnerJSClassInClass_Issue4402(): Unit = {
+    val msg = "hello world"
+
+    val outer = js.Dynamic.literal(
+      InnerClass = js.constructorOf[DynamicInnerClass_Issue4402]
+    ).asInstanceOf[OuterNativeClass_Issue4402]
+
+    class Subclass(arg: String) extends outer.InnerClass(arg)
+
+    val obj = new Subclass(msg)
+    assertEquals(msg, obj.message)
+  }
+
+  @Test
+  def extendInnerJSClassInTrait_Issue4402(): Unit = {
+    val msg = "hello world"
+
+    val outer = js.Dynamic.literal(
+      InnerClass = js.constructorOf[DynamicInnerClass_Issue4402]
+    ).asInstanceOf[OuterNativeTrait_Issue4402]
+
+    class Subclass(arg: String) extends outer.InnerClass(arg)
+
+    val obj = new Subclass(msg)
+    assertEquals(msg, obj.message)
+  }
 }
 
 object NestedJSClassTest {
@@ -754,6 +782,27 @@ object NestedJSClassTest {
 
   class TriplyNestedClass_Issue4114 extends TriplyNestedObject_Issue4114.middle.InnerClass {
     def foo(x: String): String = x
+  }
+
+  class DynamicInnerClass_Issue4402(arg: String) extends js.Object {
+    val message: String = arg
+  }
+
+  @js.native
+  @JSGlobal("OuterNativeClass_Issue4402") // this does not actually exist; we just cast to this class
+  class OuterNativeClass_Issue4402 extends js.Object {
+    @js.native
+    class InnerClass(arg: String) extends js.Object {
+      def message: String = js.native
+    }
+  }
+
+  @js.native
+  trait OuterNativeTrait_Issue4402 extends js.Object {
+    @js.native
+    class InnerClass(arg: String) extends js.Object {
+      def message: String = js.native
+    }
   }
 }
 

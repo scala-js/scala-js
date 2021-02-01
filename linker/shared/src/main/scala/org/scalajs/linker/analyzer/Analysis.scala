@@ -176,8 +176,6 @@ object Analysis {
       subClassInfo: ClassInfo, from: From)
       extends Error
 
-  final case class MissingJSNativeLoadSpec(info: ClassInfo, from: From) extends Error
-
   final case class NotAModule(info: ClassInfo, from: From) extends Error
   final case class MissingMethod(info: MethodInfo, from: From) extends Error
   final case class MissingJSNativeMember(info: ClassInfo, name: MethodName, from: From) extends Error
@@ -231,8 +229,6 @@ object Analysis {
         s"${superIntfInfo.displayName} (of kind ${superIntfInfo.kind}) is " +
         s"not a valid interface implemented by ${subClassInfo.displayName} " +
         s"(of kind ${subClassInfo.kind})"
-      case MissingJSNativeLoadSpec(info, _) =>
-        s"${info.displayName} is a native class but does not have a JSNativeLoadSpec"
       case NotAModule(info, _) =>
         s"Cannot access module for non-module ${info.displayName}"
       case MissingMethod(info, _) =>
