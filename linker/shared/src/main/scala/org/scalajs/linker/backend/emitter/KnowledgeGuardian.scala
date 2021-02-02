@@ -210,10 +210,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     def getModule(className: ClassName): ModuleID =
       classes(className).askModule(this)
 
-    def representativeClassHasPublicMethod(className: ClassName,
-        methodName: MethodName): Boolean = {
-      specialInfo.askRepresentativeClassHasPublicMethod(this, className, methodName)
-    }
+    def methodsInRepresentativeClasses(): List[(MethodName, Set[ClassName])] =
+      specialInfo.askMethodsInRepresentativeClasses(this)
 
     def methodsInObject(): List[Versioned[MethodDef]] =
       specialInfo.askMethodsInObject(this)
@@ -552,19 +550,22 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     }
 
     private def computeMethodsInRepresentativeClasses(objectClass: Option[LinkedClass],
-        hijackedClasses: Iterable[LinkedClass]): Set[(ClassName, MethodName)] = {
+        hijackedClasses: Iterable[LinkedClass]): List[(MethodName, Set[ClassName])] = {
       val representativeClasses =
         objectClass.iterator ++ hijackedClasses.iterator
 
-      val pairs = for {
+      val result = mutable.HashMap.empty[MethodName, mutable.Set[ClassName]]
+
+      for {
         representativeClass <- representativeClasses
         method <- representativeClass.methods
         if method.value.flags.namespace == MemberNamespace.Public
-      } yield {
-        (representativeClass.className, method.value.methodName)
+      } {
+        result.getOrElseUpdate(method.value.methodName, mutable.Set.empty) +=
+          representativeClass.className
       }
 
-      pairs.toSet
+      result.toList.sortBy(_._1.nameString).map(kv => (kv._1, kv._2.toSet))
     }
 
     private def computeMethodsInObject(objectClass: Option[LinkedClass]): List[Versioned[MethodDef]] = {
@@ -598,11 +599,11 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     def askIsParentDataAccessed(invalidatable: Invalidatable): Boolean =
       isParentDataAccessed
 
-    def askRepresentativeClassHasPublicMethod(invalidatable: Invalidatable,
-        className: ClassName, methodName: MethodName): Boolean = {
+    def askMethodsInRepresentativeClasses(
+        invalidatable: Invalidatable): List[(MethodName, Set[ClassName])] = {
       invalidatable.registeredTo(this)
       methodsInRepresentativeClassesAskers += invalidatable
-      methodsInRepresentativeClasses.contains((className, methodName))
+      methodsInRepresentativeClasses
     }
 
     def askMethodsInObject(invalidatable: Invalidatable): List[Versioned[MethodDef]] = {

@@ -95,12 +95,14 @@ private[emitter] trait GlobalKnowledge {
    */
   def getModule(className: ClassName): ModuleID
 
-  /** Whether the given public non-static method exists on the given representative class.
+  /** The list of all the concrete non-static methods in representative classes.
    *
-   *  @returns false if the class or the method does not exist.
+   *  The list of method names is ordered for stability.
+   *
+   *  Each method name is associated with a set of representative classes that
+   *  have an implementation for that method. That set is not ordered.
    */
-  def representativeClassHasPublicMethod(className: ClassName,
-      methodName: MethodName): Boolean
+  def methodsInRepresentativeClasses(): List[(MethodName, Set[ClassName])]
 
   /** The public (non-static) methods of java.lang.Object. */
   def methodsInObject(): List[Versioned[MethodDef]]

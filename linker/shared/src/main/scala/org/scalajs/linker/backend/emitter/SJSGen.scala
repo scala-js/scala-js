@@ -318,6 +318,56 @@ private[emitter] final class SJSGen(
     }
   }
 
+  /** Orders a subset of hijacked classes by priority for a series of type
+   *  tests.
+   *
+   *  If `j.l.Double` is in the list, then run-time subclasses of `Double` are
+   *  excluded (i.e., `Byte`, `Short`, `Integer` and `Float`).
+   *
+   *  If we do not use bigints to implement Longs, `j.l.Long` is excluded.
+   *
+   *  The result is ordered in an "efficient" way, putting `typeof`-based tests
+   *  first when possible, and otherwise ordering by a gut-feeling of
+   *  "likelihood".
+   */
+  def subsetOfHijackedClassesOrderedForTypeTests(
+      hijackedClasses: Set[ClassName]): List[ClassName] = {
+    val baseList = {
+      if (hijackedClasses.contains(BoxedDoubleClass))
+        nonSmallNumberHijackedClassesOrderedForTypeTests
+      else
+        allHijackedClassesOrderedForTypeTests
+    }
+
+    baseList.filter(hijackedClasses)
+  }
+
+  /** List of hijacked classes ordered by priority for a series of type tests,
+   *  excluding run-time subclasses of Double.
+   *
+   *  Those with `typeof`-based tests come first because they are cheaper.
+   */
+  private val nonSmallNumberHijackedClassesOrderedForTypeTests = List(
+    BoxedStringClass,
+    BoxedDoubleClass,
+    BoxedBooleanClass,
+    BoxedUnitClass
+  ) ::: (
+    if (useBigIntForLongs) List(BoxedLongClass) else Nil
+  ) ::: List(
+    BoxedCharacterClass
+  )
+
+  /** List of all the hijacked classes ordered by priority for a series of type
+   *  tests.
+   */
+  private val allHijackedClassesOrderedForTypeTests = List(
+    BoxedByteClass,
+    BoxedShortClass,
+    BoxedIntegerClass,
+    BoxedFloatClass
+  ) ::: nonSmallNumberHijackedClassesOrderedForTypeTests
+
   def genCallHelper(helperName: String, args: Tree*)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
