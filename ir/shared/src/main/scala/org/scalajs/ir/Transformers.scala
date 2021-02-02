@@ -51,7 +51,7 @@ object Transformers {
           Labeled(label, tpe, transform(body, isStat))
 
         case Assign(lhs, rhs) =>
-          Assign(transformExpr(lhs), transformExpr(rhs))
+          Assign(transformExpr(lhs).asInstanceOf[AssignLhs], transformExpr(rhs))
 
         case Return(expr, label) =>
           Return(transformExpr(expr), label)
