@@ -546,11 +546,11 @@ object Serializers {
           writeTagAndPos(TagThis)
           writeType(tree.tpe)
 
-        case Closure(arrow, captureParams, params, body, captureValues) =>
+        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
           writeTagAndPos(TagClosure)
           writeBoolean(arrow)
           writeParamDefs(captureParams)
-          writeParamDefs(params)
+          writeParamDefs(params, restParam)
           writeTree(body)
           writeTrees(captureValues)
 
@@ -653,7 +653,7 @@ object Serializers {
           bufferUnderlying.continue()
 
         case methodDef: JSMethodDef =>
-          val JSMethodDef(flags, name, args, body) = methodDef
+          val JSMethodDef(flags, name, args, restParam, body) = methodDef
 
           writeByte(TagJSMethodDef)
           writeOptHash(methodDef.hash)
@@ -664,7 +664,7 @@ object Serializers {
 
           // Write out method def
           writeInt(MemberFlags.toBits(flags)); writeTree(name)
-          writeParamDefs(args); writeTree(body)
+          writeParamDefs(args, restParam); writeTree(body)
           writeInt(OptimizerHints.toBits(methodDef.optimizerHints))
 
           // Jump back and write true length
@@ -770,18 +770,26 @@ object Serializers {
         buffer.writeInt(encodedNameToIndex(originalName.get))
     }
 
-    def writeParamDef(paramDef: ParamDef): Unit = {
+    def writeParamDef(paramDef: ParamDef, rest: Boolean = false): Unit = {
+      // rest is tmp for backwards compat testing.
       writePosition(paramDef.pos)
       writeLocalIdent(paramDef.name)
       writeOriginalName(paramDef.originalName)
       writeType(paramDef.ptpe)
       buffer.writeBoolean(paramDef.mutable)
-      buffer.writeBoolean(paramDef.rest)
+      buffer.writeBoolean(rest)
     }
 
-    def writeParamDefs(paramDefs: List[ParamDef]): Unit = {
-      buffer.writeInt(paramDefs.size)
-      paramDefs.foreach(writeParamDef)
+    def writeParamDefs(paramDefs: List[ParamDef],
+        restParamDef: Option[ParamDef] = None): Unit = {
+      // restParamDef is tmp for backwards compat testing.
+      val totalSize =
+        if (restParamDef.isEmpty) paramDefs.size
+        else paramDefs.size + 1
+
+      buffer.writeInt(totalSize)
+      paramDefs.foreach(writeParamDef(_))
+      restParamDef.foreach(writeParamDef(_, rest = true))
     }
 
     def writeType(tpe: Type): Unit = {
@@ -1171,8 +1179,10 @@ object Serializers {
         case TagThis =>
           This()(readType())
         case TagClosure =>
-          Closure(readBoolean(), readParamDefs(), readParamDefs(), readTree(),
-              readTrees())
+          val arrow = readBoolean()
+          val captureParams = readParamDefs()
+          val (params, restParam) = readParamDefsWithRest()
+          Closure(arrow, captureParams, params, restParam, readTree(), readTrees())
         case TagCreateJSClass =>
           CreateJSClass(readClassName(), readTrees())
       }
@@ -1315,8 +1325,11 @@ object Serializers {
           // read and discard the length
           val len = readInt()
           assert(len >= 0)
-          JSMethodDef(MemberFlags.fromBits(readInt()), readTree(),
-              readParamDefs(), readTree())(
+
+          val flags = MemberFlags.fromBits(readInt())
+          val name = readTree()
+          val (params, restParam) = readParamDefsWithRest()
+          JSMethodDef(flags, name, params, restParam, readTree())(
               OptimizerHints.fromBits(readInt()), optHash)
 
         case TagJSPropertyDef =>
@@ -1402,12 +1415,45 @@ object Serializers {
 
     def readParamDef(): ParamDef = {
       implicit val pos = readPosition()
-      ParamDef(readLocalIdent(), readOriginalName(), readType(), readBoolean(),
-          readBoolean())
+      val name = readLocalIdent()
+      val originalName = readOriginalName()
+      val ptpe = readType()
+      val mutable = readBoolean()
+
+      if (true) { // tmp: test backwards compat
+        val rest = readBoolean()
+        assert(!rest, "Illegal rest parameter")
+      }
+
+      ParamDef(name, originalName, ptpe, mutable)
     }
 
     def readParamDefs(): List[ParamDef] =
       List.fill(readInt())(readParamDef())
+
+    def readParamDefsWithRest(): (List[ParamDef], Option[ParamDef]) = {
+      if (true) { // tmp: test backwards compat
+        val (params, isRest) = List.fill(readInt()) {
+          implicit val pos = readPosition()
+          (ParamDef(readLocalIdent(), readOriginalName(), readType(), readBoolean()), readBoolean())
+        }.unzip
+
+        if (isRest.forall(!_)) {
+          (params, None)
+        } else {
+          assert(isRest.init.forall(!_), "illegal non-last rest parameter")
+          (params.init, Some(params.last))
+        }
+      } else {
+        val params = readParamDefs()
+
+        val restParam =
+          if (readBoolean()) Some(readParamDef())
+          else None
+
+        (params, restParam)
+      }
+    }
 
     def readType(): Type = {
       val tag = readByte()

@@ -206,7 +206,7 @@ object Traversers {
 
       // Atomic expressions
 
-      case Closure(arrow, captureParams, params, body, captureValues) =>
+      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
         traverse(body)
         captureValues.foreach(traverse)
 
@@ -238,7 +238,7 @@ object Traversers {
         case MethodDef(_, _, _, _, _, body) =>
           body.foreach(traverse)
 
-        case JSMethodDef(_, _, _, body) =>
+        case JSMethodDef(_, _, _, _, body) =>
           traverse(body)
 
         case JSPropertyDef(_, _, getterBody, setterArgAndBody) =>

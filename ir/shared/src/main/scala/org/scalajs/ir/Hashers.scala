@@ -48,18 +48,19 @@ object Hashers {
     if (methodDef.hash.isDefined) methodDef
     else {
       val hasher = new TreeHasher()
-      val JSMethodDef(flags, name, args, body) = methodDef
+      val JSMethodDef(flags, name, params, restParam, body) = methodDef
 
       hasher.mixPos(methodDef.pos)
       hasher.mixInt(MemberFlags.toBits(flags))
       hasher.mixTree(name)
-      hasher.mixParamDefs(args)
+      hasher.mixParamDefs(params)
+      restParam.foreach(hasher.mixParamDef(_))
       hasher.mixTree(body)
       hasher.mixInt(OptimizerHints.toBits(methodDef.optimizerHints))
 
       val hash = hasher.finalizeHash()
 
-      JSMethodDef(flags, name, args, body)(
+      JSMethodDef(flags, name, params, restParam, body)(
           methodDef.optimizerHints, Some(hash))(methodDef.pos)
     }
   }
@@ -121,7 +122,6 @@ object Hashers {
       mixOriginalName(paramDef.originalName)
       mixType(paramDef.ptpe)
       mixBoolean(paramDef.mutable)
-      mixBoolean(paramDef.rest)
     }
 
     def mixParamDefs(paramDefs: List[ParamDef]): Unit =
@@ -494,11 +494,12 @@ object Hashers {
           mixTag(TagThis)
           mixType(tree.tpe)
 
-        case Closure(arrow, captureParams, params, body, captureValues) =>
+        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
           mixTag(TagClosure)
           mixBoolean(arrow)
           mixParamDefs(captureParams)
           mixParamDefs(params)
+          restParam.foreach(mixParamDef(_))
           mixTree(body)
           mixTrees(captureValues)
 

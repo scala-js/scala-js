@@ -58,7 +58,7 @@ class IncrementalTest {
             memberDefs = List(
                 trivialCtor(FooClass),
                 JSMethodDef(
-                    EMF, jsMethodName, Nil,
+                    EMF, jsMethodName, Nil, None,
                     if (pre) int(5)
                     else ApplyStatic(EAF, FooClass, staticMethodName, Nil)(IntType))(
                     EOH, None),

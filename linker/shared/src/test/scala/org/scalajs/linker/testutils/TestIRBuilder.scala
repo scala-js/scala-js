@@ -105,7 +105,7 @@ object TestIRBuilder {
   }
 
   def paramDef(name: LocalName, ptpe: Type): ParamDef =
-    ParamDef(LocalIdent(name), NON, ptpe, mutable = false, rest = false)
+    ParamDef(LocalIdent(name), NON, ptpe, mutable = false)
 
   def mainModuleInitializers(moduleClassName: String): List[ModuleInitializer] =
     ModuleInitializer.mainMethodWithArgs(moduleClassName, "main") :: Nil

@@ -93,15 +93,11 @@ class PrintersTest {
 
   @Test def printParamDef(): Unit = {
     assertPrintEquals("x: int",
-        ParamDef("x", NON, IntType, mutable = false, rest = false))
+        ParamDef("x", NON, IntType, mutable = false))
     assertPrintEquals("var x: int",
-        ParamDef("x", NON, IntType, mutable = true, rest = false))
-    assertPrintEquals("...x: any",
-        ParamDef("x", NON, AnyType, mutable = false, rest = true))
-    assertPrintEquals("var ...x: any",
-        ParamDef("x", NON, AnyType, mutable = true, rest = true))
+        ParamDef("x", NON, IntType, mutable = true))
     assertPrintEquals("x{orig name}: int",
-        ParamDef("x", TestON, IntType, mutable = false, rest = false))
+        ParamDef("x", TestON, IntType, mutable = false))
   }
 
   @Test def printSkip(): Unit = {
@@ -860,26 +856,37 @@ class PrintersTest {
   @Test def printClosure(): Unit = {
     assertPrintEquals(
         """
-          |(lambda<>() = {
+          |(lambda<>(): any = {
           |  5
           |})
         """,
-        Closure(false, Nil, Nil, i(5), Nil))
+        Closure(false, Nil, Nil, None, i(5), Nil))
 
     assertPrintEquals(
         """
-          |(arrow-lambda<x: any = a, y{orig name}: int = 6>(z: any) = {
+          |(arrow-lambda<x: any = a, y{orig name}: int = 6>(z: any): any = {
           |  z
           |})
         """,
         Closure(
             true,
             List(
-                ParamDef("x", NON, AnyType, mutable = false, rest = false),
-                ParamDef("y", TestON, IntType, mutable = false, rest = false)),
-            List(ParamDef("z", NON, AnyType, mutable = false, rest = false)),
+                ParamDef("x", NON, AnyType, mutable = false),
+                ParamDef("y", TestON, IntType, mutable = false)),
+            List(ParamDef("z", NON, AnyType, mutable = false)),
+            None,
             ref("z", AnyType),
             List(ref("a", IntType), i(6))))
+
+    assertPrintEquals(
+        """
+          |(lambda<>(...z: any): any = {
+          |  z
+          |})
+        """,
+        Closure(false, Nil, Nil,
+            Some(ParamDef("z", NON, AnyType, mutable = false)),
+            ref("z", AnyType), Nil))
   }
 
   @Test def printCreateJSClass(): Unit = {
@@ -1064,8 +1071,8 @@ class PrintersTest {
         """,
         ClassDef("Test", NON, ClassKind.JSClass,
             Some(List(
-                ParamDef("x", NON, IntType, mutable = false, rest = false),
-                ParamDef("y", TestON, StringType, mutable = false, rest = false)
+                ParamDef("x", NON, IntType, mutable = false),
+                ParamDef("y", TestON, StringType, mutable = false)
             )),
             Some(ObjectClass), Nil, None, None, Nil, Nil)(
             NoOptHints))
@@ -1079,7 +1086,7 @@ class PrintersTest {
           |}
         """,
         ClassDef("Test", NON, ClassKind.JSClass,
-            Some(List(ParamDef("sup", NON, AnyType, mutable = false, rest = false))),
+            Some(List(ParamDef("sup", NON, AnyType, mutable = false))),
             Some("Bar"), Nil, Some(ref("sup", AnyType)), None, Nil, Nil)(
             NoOptHints))
   }
@@ -1155,7 +1162,7 @@ class PrintersTest {
           |def m;I;I(x: int): int = <abstract>
         """,
         MethodDef(MemberFlags.empty, mIIMethodName, NON,
-            List(ParamDef("x", NON, IntType, mutable = false, rest = false)),
+            List(ParamDef("x", NON, IntType, mutable = false)),
             IntType, None)(NoOptHints, None))
 
     assertPrintEquals(
@@ -1165,7 +1172,7 @@ class PrintersTest {
           |}
         """,
         MethodDef(MemberFlags.empty, mIIMethodName, NON,
-            List(ParamDef("x", NON, IntType, mutable = false, rest = false)),
+            List(ParamDef("x", NON, IntType, mutable = false)),
             IntType, Some(i(5)))(NoOptHints, None))
 
     assertPrintEquals(
@@ -1175,7 +1182,7 @@ class PrintersTest {
           |}
         """,
         MethodDef(MemberFlags.empty, mIIMethodName, NON,
-            List(ParamDef("x", NON, IntType, mutable = false, rest = false)),
+            List(ParamDef("x", NON, IntType, mutable = false)),
             IntType, Some(i(5)))(NoOptHints.withInline(true), None))
 
     assertPrintEquals(
@@ -1185,7 +1192,7 @@ class PrintersTest {
           |}
         """,
         MethodDef(MemberFlags.empty, mIVMethodName, NON,
-            List(ParamDef("x", NON, IntType, mutable = false, rest = false)),
+            List(ParamDef("x", NON, IntType, mutable = false)),
             NoType, Some(i(5)))(NoOptHints, None))
 
     assertPrintEquals(
@@ -1195,7 +1202,7 @@ class PrintersTest {
           |}
         """,
         MethodDef(MemberFlags.empty.withNamespace(Static), mIIMethodName, NON,
-            List(ParamDef("x", NON, IntType, mutable = false, rest = false)),
+            List(ParamDef("x", NON, IntType, mutable = false)),
             IntType, Some(i(5)))(NoOptHints, None))
 
     assertPrintEquals(
@@ -1205,7 +1212,7 @@ class PrintersTest {
           |}
         """,
         MethodDef(MemberFlags.empty.withNamespace(Private), mIIMethodName, NON,
-            List(ParamDef("x", NON, IntType, mutable = false, rest = false)),
+            List(ParamDef("x", NON, IntType, mutable = false)),
             IntType, Some(i(5)))(NoOptHints, None))
 
     assertPrintEquals(
@@ -1215,7 +1222,7 @@ class PrintersTest {
           |}
         """,
         MethodDef(MemberFlags.empty.withNamespace(PrivateStatic), mIIMethodName, NON,
-            List(ParamDef("x", NON, IntType, mutable = false, rest = false)),
+            List(ParamDef("x", NON, IntType, mutable = false)),
             IntType, Some(i(5)))(NoOptHints, None))
 
     assertPrintEquals(
@@ -1223,7 +1230,7 @@ class PrintersTest {
           |def m;I;I{orig name}(x{orig name}: int): int = <abstract>
         """,
         MethodDef(MemberFlags.empty, mIIMethodName, TestON,
-            List(ParamDef("x", TestON, IntType, mutable = false, rest = false)),
+            List(ParamDef("x", TestON, IntType, mutable = false)),
             IntType, None)(NoOptHints, None))
   }
 
@@ -1235,17 +1242,18 @@ class PrintersTest {
           |}
         """,
         JSMethodDef(MemberFlags.empty, StringLiteral("m"),
-            List(ParamDef("x", NON, AnyType, mutable = false, rest = false)),
+            List(ParamDef("x", NON, AnyType, mutable = false)), None,
             i(5))(NoOptHints, None))
 
     assertPrintEquals(
         """
-          |def "m"(...x: any): any = {
+          |def "m"(x: any, ...y: any): any = {
           |  5
           |}
         """,
         JSMethodDef(MemberFlags.empty, StringLiteral("m"),
-            List(ParamDef("x", NON, AnyType, mutable = false, rest = true)),
+            List(ParamDef("x", NON, AnyType, mutable = false)),
+            Some(ParamDef("y", NON, AnyType, mutable = false)),
             i(5))(NoOptHints, None))
 
     assertPrintEquals(
@@ -1255,7 +1263,7 @@ class PrintersTest {
           |}
         """,
         JSMethodDef(MemberFlags.empty.withNamespace(Static), StringLiteral("m"),
-            List(ParamDef("x", NON, AnyType, mutable = false, rest = false)),
+            List(ParamDef("x", NON, AnyType, mutable = false)), None,
             i(5))(NoOptHints, None))
 
     assertPrintEquals(
@@ -1265,7 +1273,7 @@ class PrintersTest {
           |}
         """,
         JSMethodDef(MemberFlags.empty, StringLiteral("m"),
-            List(ParamDef("x", TestON, AnyType, mutable = false, rest = false)),
+            List(ParamDef("x", TestON, AnyType, mutable = false)), None,
             i(5))(NoOptHints, None))
   }
 
@@ -1294,7 +1302,7 @@ class PrintersTest {
           """,
           JSPropertyDef(flags, StringLiteral("prop"),
               None,
-              Some((ParamDef("x", NON, AnyType, mutable = false, rest = false), i(7)))))
+              Some((ParamDef("x", NON, AnyType, mutable = false), i(7)))))
 
       assertPrintEquals(
           s"""
@@ -1304,7 +1312,7 @@ class PrintersTest {
           """,
           JSPropertyDef(flags, StringLiteral("prop"),
               None,
-              Some((ParamDef("x", TestON, AnyType, mutable = false, rest = false), i(7)))))
+              Some((ParamDef("x", TestON, AnyType, mutable = false), i(7)))))
 
       assertPrintEquals(
           s"""
@@ -1317,7 +1325,7 @@ class PrintersTest {
           """,
           JSPropertyDef(flags, StringLiteral("prop"),
               Some(i(5)),
-              Some((ParamDef("x", NON, AnyType, mutable = false, rest = false),
+              Some((ParamDef("x", NON, AnyType, mutable = false),
                   i(7)))))
     }
   }
@@ -1342,7 +1350,7 @@ class PrintersTest {
           |}""",
         TopLevelMethodExportDef("main", JSMethodDef(
             MemberFlags.empty.withNamespace(Static), StringLiteral("foo"),
-            List(ParamDef("x", NON, AnyType, mutable = false, rest = false)),
+            List(ParamDef("x", NON, AnyType, mutable = false)), None,
             i(5))(NoOptHints, None)))
   }
 

@@ -383,9 +383,9 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     require(tree.kind.isJSClass)
 
     tree.exportedMembers.map(_.value) collectFirst {
-      case JSMethodDef(flags, StringLiteral("constructor"), params, body)
+      case JSMethodDef(flags, StringLiteral("constructor"), params, restParam, body)
           if flags.namespace == MemberNamespace.Public =>
-        desugarToFunction(tree.className, params, body, resultType = AnyType)
+        desugarToFunction(tree.className, params, restParam, body, resultType = AnyType)
     } getOrElse {
       throw new IllegalArgumentException(
           s"${tree.className} does not have an exported constructor")
@@ -598,7 +598,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     assert(!namespace.isPrivate && !namespace.isConstructor)
 
     for {
-      methodFun <- desugarToFunction(tree.className, method.args, method.body, AnyType)
+      methodFun <- desugarToFunction(tree.className, method.args, method.restParam, method.body, AnyType)
       propName <- genMemberNameTree(method.name)
     } yield {
       if (useESClass) {
@@ -1068,7 +1068,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     val exportsWithGlobals = tree.exportedMembers map { member =>
       member.value match {
-        case JSMethodDef(flags, StringLiteral("constructor"), _, _)
+        case JSMethodDef(flags, StringLiteral("constructor"), _, _, _)
             if flags.namespace == MemberNamespace.Public && tree.kind.isJSClass =>
           WithGlobals(js.Skip()(member.value.pos))
         case m: JSMethodDef =>
@@ -1111,14 +1111,14 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import TreeDSL._
 
-    val JSMethodDef(flags, StringLiteral(exportName), args, body) =
+    val JSMethodDef(flags, StringLiteral(exportName), args, restParam, body) =
       tree.methodDef
 
     assert(flags.namespace == MemberNamespace.PublicStatic, exportName)
 
     implicit val pos = tree.pos
 
-    val methodDefWithGlobals = desugarToFunction(args, body, AnyType)
+    val methodDefWithGlobals = desugarToFunction(args, restParam, body, AnyType)
 
     methodDefWithGlobals.flatMap { methodDef =>
       genConstValueExportDef(exportName, methodDef)

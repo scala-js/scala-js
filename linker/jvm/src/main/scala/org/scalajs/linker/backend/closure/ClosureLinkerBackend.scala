@@ -154,7 +154,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     import org.scalajs.linker.backend.javascript.Trees.Ident.isValidJSIdentifierName
 
     def exportName(memberDef: MemberDef): Option[String] = memberDef match {
-      case JSMethodDef(_, StringLiteral(name), _, _)   => Some(name)
+      case JSMethodDef(_, StringLiteral(name), _, _, _)   => Some(name)
       case JSPropertyDef(_, StringLiteral(name), _, _) => Some(name)
       case _                                           => None
     }

@@ -89,8 +89,24 @@ object Printers {
       }
     }
 
-    protected def printSig(args: List[ParamDef], resultType: Type): Unit = {
-      printRow(args, "(", ", ", ")")
+    protected def printSig(args: List[ParamDef], restParam: Option[ParamDef],
+        resultType: Type): Unit = {
+      print("(")
+      var rem = args
+      while (rem.nonEmpty) {
+        printAnyNode(rem.head)
+        rem = rem.tail
+        if (rem.nonEmpty || restParam.nonEmpty)
+          print(", ")
+      }
+
+      restParam.foreach { p =>
+        print("...")
+        printAnyNode(p)
+      }
+
+      print(")")
+
       if (resultType != NoType) {
         print(": ")
         print(resultType)
@@ -121,12 +137,9 @@ object Printers {
     }
 
     def print(paramDef: ParamDef): Unit = {
-      val ParamDef(ident, originalName, ptpe, mutable, rest) = paramDef
-
+      val ParamDef(ident, originalName, ptpe, mutable) = paramDef
       if (mutable)
         print("var ")
-      if (rest)
-        print("...")
       print(ident)
       print(originalName)
       print(": ")
@@ -828,7 +841,7 @@ object Printers {
         case This() =>
           print("this")
 
-        case Closure(arrow, captureParams, params, body, captureValues) =>
+        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
           if (arrow)
             print("(arrow-lambda<")
           else
@@ -843,7 +856,8 @@ object Printers {
             print(" = ")
             print(value)
           }
-          printRow(params, ">(", ", ", ") = ")
+          print(">")
+          printSig(params, restParam, AnyType)
           printBlock(body)
           print(')')
 
@@ -944,7 +958,7 @@ object Printers {
           print("def ")
           print(name)
           print(originalName)
-          printSig(args, resultType)
+          printSig(args, restParam = None, resultType)
           body.fold {
             print("<abstract>")
           } { body =>
@@ -952,12 +966,12 @@ object Printers {
           }
 
         case tree: JSMethodDef =>
-          val JSMethodDef(flags, name, args, body) = tree
+          val JSMethodDef(flags, name, args, restParam, body) = tree
           print(tree.optimizerHints)
           print(flags.namespace.prefixString)
           print("def ")
           printJSMemberName(name)
-          printSig(args, AnyType)
+          printSig(args, restParam, AnyType)
           printBlock(body)
 
         case JSPropertyDef(flags, name, getterBody, setterArgAndBody) =>
@@ -965,7 +979,7 @@ object Printers {
             print(flags.namespace.prefixString)
             print("get ")
             printJSMemberName(name)
-            printSig(Nil, AnyType)
+            printSig(Nil, None, AnyType)
             printBlock(body)
           }
 
@@ -977,7 +991,7 @@ object Printers {
             print(flags.namespace.prefixString)
             print("set ")
             printJSMemberName(name)
-            printSig(arg :: Nil, NoType)
+            printSig(arg :: Nil, None, NoType)
             printBlock(body)
           }
 

@@ -84,7 +84,7 @@ object JavaLangObject {
           MethodIdent(MethodName("equals", List(ObjectClassRef), BooleanRef)),
           NoOriginalName,
           List(ParamDef(LocalIdent(LocalName("that")), NoOriginalName, AnyType,
-            mutable = false, rest = false)),
+            mutable = false)),
           BooleanType,
           Some {
             BinaryOp(BinaryOp.===,
@@ -176,7 +176,7 @@ object JavaLangObject {
         JSMethodDef(
           MemberFlags.empty,
           StringLiteral("toString"),
-          Nil,
+          Nil, None,
           {
             Apply(EAF, This()(ThisType),
                 MethodIdent(MethodName("toString", Nil, StringClassRef)),
