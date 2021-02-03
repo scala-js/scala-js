@@ -777,24 +777,10 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           ))
         }
 
-        val hijacked0 = globalKnowledge.hijackedDescendants(className)
-        if (hijacked0.nonEmpty) {
-          /* If we test for Double, we need not test for other number types
-           * as they are all implemented as a primitive JS number, just with
-           * range restrictions.
-           */
-          val hijacked1 =
-            if (hijacked0.contains(BoxedDoubleClass)) hijacked0 -- RuntimeSubclassesOfDouble
-            else hijacked0
-
-          /* If we use RuntimeLong, we don't need a special test, since it
-           * is a normal class.
-           */
-          val hijacked2 =
-            if (!useBigIntForLongs) hijacked1 - BoxedLongClass
-            else hijacked1
-
-          hijacked2.toList.sorted.foldLeft(baseTest) {
+        val hijacked = globalKnowledge.hijackedDescendants(className)
+        if (hijacked.nonEmpty) {
+          val orderedSubset = subsetOfHijackedClassesOrderedForTypeTests(hijacked)
+          orderedSubset.foldLeft(baseTest) {
             case (test, hijackedClass) =>
               test || genIsInstanceOfHijackedClass(obj, hijackedClass)
           }
@@ -1239,9 +1225,6 @@ private[emitter] object ClassEmitter {
 
   private val ClassInitializerOriginalName: OriginalName =
     OriginalName("<clinit>")
-
-  private val RuntimeSubclassesOfDouble: Set[ClassName] =
-    Set(BoxedByteClass, BoxedShortClass, BoxedIntegerClass, BoxedFloatClass)
 
   def shouldExtendJSError(linkedClass: LinkedClass): Boolean = {
     linkedClass.name.name == ThrowableClass &&

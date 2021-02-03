@@ -828,6 +828,15 @@ object Emitter {
               StringArgConstructorName)
         },
 
+        // See systemIdentityHashCode in CoreJSLib
+        callMethod(BoxedBooleanClass, hashCodeMethodName),
+        callMethod(BoxedDoubleClass, hashCodeMethodName),
+        callMethod(BoxedStringClass, hashCodeMethodName),
+        callMethod(BoxedUnitClass, hashCodeMethodName),
+        cond(config.esFeatures.allowBigIntsForLongs) {
+          callMethod(BoxedLongClass, hashCodeMethodName)
+        },
+
         cond(!config.esFeatures.allowBigIntsForLongs) {
           multiple(
               instanceTests(LongImpl.RuntimeLongClass),

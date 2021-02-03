@@ -739,13 +739,14 @@ private[emitter] object CoreJSLib {
        * - The implementation in java.lang.Object (if this is a JS object).
        */
       def defineStandardDispatcher(methodName: MethodName,
-          targetHijackedClasses: List[ClassName]): Tree = {
+          implementingClasses: Set[ClassName]): Tree = {
 
         val args =
           methodName.paramTypeRefs.indices.map(i => varRef("x" + i)).toList
 
-        val implementingHijackedClasses = targetHijackedClasses
-          .filter(globalKnowledge.representativeClassHasPublicMethod(_, methodName))
+        val targetHijackedClasses =
+          subsetOfHijackedClassesOrderedForTypeTests(implementingClasses)
+        val implementedInObject = implementingClasses.contains(ObjectClass)
 
         def hijackedClassNameToTypeof(className: ClassName): Option[String] = className match {
           case BoxedStringClass  => Some("string")
@@ -760,8 +761,6 @@ private[emitter] object CoreJSLib {
 
         def genBodyNoSwitch(hijackedClasses: List[ClassName]): Tree = {
           val normalCall = Return(Apply(instance DOT genName(methodName), args))
-          val implementedInObject =
-            globalKnowledge.representativeClassHasPublicMethod(ObjectClass, methodName)
 
           def hijackedDispatch(default: Tree) = {
             hijackedClasses.foldRight(default) { (className, next) =>
@@ -786,12 +785,8 @@ private[emitter] object CoreJSLib {
         }
 
         defineDispatcher(methodName, args, {
-          val maybeWithoutLong =
-            if (allowBigIntsForLongs) implementingHijackedClasses
-            else implementingHijackedClasses.filter(_ != BoxedLongClass)
-
           val (classesWithTypeof, otherClasses) =
-            maybeWithoutLong.partition(hijackedClassNameToTypeof(_).isDefined)
+            targetHijackedClasses.span(hijackedClassNameToTypeof(_).isDefined)
 
           if (classesWithTypeof.lengthCompare(1) > 0) {
             // First switch on the typeof
@@ -803,55 +798,28 @@ private[emitter] object CoreJSLib {
               genBodyNoSwitch(otherClasses)
             })
           } else {
-            genBodyNoSwitch(maybeWithoutLong)
+            genBodyNoSwitch(targetHijackedClasses)
           }
         })
       }
 
-      val dispatchers = (
-        for {
-          methodName <- List(getClassMethodName, cloneMethodName,
-              notifyMethodName, notifyAllMethodName, finalizeMethodName)
-        } yield {
-          defineStandardDispatcher(methodName, Nil)
+      val methodsInRepresentativeClasses =
+        globalKnowledge.methodsInRepresentativeClasses()
+
+      val dispatchers = for {
+        (methodName, implementingClasses) <- methodsInRepresentativeClasses
+      } yield {
+        if (methodName == toStringMethodName) {
+          // toString()java.lang.String is special as per IR spec.
+          defineDispatcher(toStringMethodName, Nil, {
+            Return(If(instance === Undefined(),
+                str("undefined"),
+                Apply(instance DOT "toString", Nil)))
+          })
+        } else {
+          defineStandardDispatcher(methodName, implementingClasses)
         }
-      ) ++ List(
-        // toString()java.lang.String is special as per IR spec.
-        defineDispatcher(toStringMethodName, Nil, {
-          Return(If(instance === Undefined(),
-              str("undefined"),
-              Apply(instance DOT "toString", Nil)))
-        }),
-
-        defineStandardDispatcher(equalsMethodName,
-            List(BoxedDoubleClass, BoxedLongClass, BoxedCharacterClass)),
-
-        defineStandardDispatcher(hashCodeMethodName,
-            List(BoxedStringClass, BoxedDoubleClass, BoxedBooleanClass,
-                BoxedUnitClass, BoxedLongClass, BoxedCharacterClass)),
-
-        defineStandardDispatcher(compareToMethodName,
-            List(BoxedStringClass, BoxedDoubleClass, BoxedBooleanClass,
-                BoxedLongClass, BoxedCharacterClass)),
-
-        defineStandardDispatcher(lengthMethodName,
-            List(BoxedStringClass)),
-
-        defineStandardDispatcher(charAtMethodName,
-            List(BoxedStringClass)),
-
-        defineStandardDispatcher(subSequenceMethodName,
-            List(BoxedStringClass))
-      ) ++ (
-        for {
-          methodName <- List(byteValueMethodName, shortValueMethodName,
-              intValueMethodName, longValueMethodName, floatValueMethodName,
-              doubleValueMethodName)
-        } yield {
-          defineStandardDispatcher(methodName,
-              List(BoxedDoubleClass, BoxedLongClass))
-        }
-      )
+      }
 
       Block(dispatchers)
     }
