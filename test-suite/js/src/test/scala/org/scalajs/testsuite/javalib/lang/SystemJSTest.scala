@@ -67,8 +67,6 @@ class SystemJSTest {
   @Test def systemProperties(): Unit = {
     def get(key: String): String = java.lang.System.getProperty(key)
 
-    def trueCount(xs: Boolean*): Int = xs.count(identity)
-
     // Defined in System.scala
 
     assertEquals("1.8", get("java.version"))
