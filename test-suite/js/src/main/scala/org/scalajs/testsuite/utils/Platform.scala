@@ -44,6 +44,9 @@ object Platform {
   def jsMaps: Boolean =
     assumeES2015 || js.typeOf(js.Dynamic.global.Map) != "undefined"
 
+  def jsBigInts: Boolean =
+    js.typeOf(js.Dynamic.global.BigInt) != "undefined"
+
   def sourceMaps: Boolean = BuildInfo.hasSourceMaps && executingInNodeJS
 
   def assumeES2015: Boolean = BuildInfo.es2015
