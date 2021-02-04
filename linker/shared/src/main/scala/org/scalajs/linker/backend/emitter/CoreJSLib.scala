@@ -94,12 +94,13 @@ private[emitter] object CoreJSLib {
     private val ArrayRef = globalRef("Array")
     private val StringRef = globalRef("String")
     private val MathRef = globalRef("Math")
+    private val NumberRef = globalRef("Number")
     private val TypeErrorRef = globalRef("TypeError")
+    private def BigIntRef = globalRef("BigInt")
     private val SymbolRef = globalRef("Symbol")
 
     // Conditional global references that we often use
     private def ReflectRef = globalRef("Reflect")
-    private def BigIntRef = globalRef("BigInt")
 
     private val classData = Ident("$classData")
 
@@ -1009,14 +1010,78 @@ private[emitter] object CoreJSLib {
         val idHashCodeMap = fileLevelVar("idHashCodeMap")
 
         val obj = varRef("obj")
+        val biHash = varRef("biHash")
+        val description = varRef("description")
         val hash = varRef("hash")
 
         def functionSkeleton(defaultImpl: Tree): Function = {
+          def genHijackedMethodApply(className: ClassName, arg: Tree): Tree =
+            Apply(globalVar("f", (className, hashCodeMethodName)), arg :: Nil)
+
+          def genReturnHijackedMethodApply(className: ClassName): Tree =
+            Return(genHijackedMethodApply(className, obj))
+
+          def genReturnBigIntHashCode(): Tree = {
+            /* Xor together all the chunks of 32 bits. For negative numbers,
+             * take their bitwise not first (otherwise we would go into an
+             * infinite loop).
+             *
+             * This is compatible with the specified hash code of j.l.Long,
+             * which is desirable: it means that the hashCode() of bigints does
+             * not depend on whether we implement Longs as BigInts or not.
+             * (By spec, x.hashCode() delegates to systemIdentityHashCode(x)
+             * for bigints unless they fit in a Long and we implement Longs as
+             * bigints.)
+             *
+             * let biHash = 0;
+             * if (obj < 0n)
+             *   obj = ~obj;
+             * while (obj !== 0n) {
+             *   biHash ^= Number(BigInt.asIntN(32, obj));
+             *   obj >>= 32n;
+             * }
+             * return biHash;
+             */
+
+            def biLit(x: Int): Tree =
+              if (esFeatures.allowBigIntsForLongs) BigIntLiteral(x)
+              else Apply(BigIntRef, x :: Nil)
+
+            def asInt32(arg: Tree): Tree =
+              Apply(genIdentBracketSelect(BigIntRef, "asIntN"), 32 :: arg :: Nil)
+
+            Block(
+              let(biHash, 0),
+              If(obj < biLit(0), obj := ~obj),
+              While(obj !== biLit(0), Block(
+                biHash := biHash ^ Apply(NumberRef, asInt32(obj) :: Nil),
+                obj := (obj >> biLit(32))
+              )),
+              Return(biHash)
+            )
+          }
+
+          def genReturnSymbolHashCode(): Tree = {
+            /* Hash the `description` field of the symbol, which is either
+             * `undefined` or a string.
+             */
+
+            Block(
+              const(description, genIdentBracketSelect(obj, "description")),
+              Return(If(description === Undefined(), 0,
+                  genHijackedMethodApply(BoxedStringClass, description)))
+            )
+          }
+
           genArrowFunction(paramList(obj), {
-            Switch(typeof(obj),
-                List("string", "number", "bigint", "boolean").map(str(_) -> Skip()) :+
-                str("undefined") -> Return(genCallHelper("dp_" + genName(hashCodeMethodName), obj)),
-                defaultImpl)
+            Switch(typeof(obj), List(
+              str("string") -> genReturnHijackedMethodApply(BoxedStringClass),
+              str("number") -> genReturnHijackedMethodApply(BoxedDoubleClass),
+              str("bigint") -> genReturnBigIntHashCode(),
+              str("boolean") -> Return(If(obj, 1231, 1237)),
+              str("undefined") -> Return(0),
+              str("symbol") -> genReturnSymbolHashCode()
+            ), defaultImpl)
           })
         }
 

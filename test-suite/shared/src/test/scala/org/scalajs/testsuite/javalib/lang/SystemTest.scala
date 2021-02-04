@@ -168,26 +168,12 @@ class SystemTest {
     val list2 = List(1, 3, 5)
     assertEquals(list2, list1)
     assertEquals(list2.hashCode(), list1.hashCode())
-    assertNotEquals(System.identityHashCode(list1), System.identityHashCode(list2))
+    if (!executingInJVM)
+      assertNotEquals(System.identityHashCode(list1), System.identityHashCode(list2))
   }
 
   @Test def identityHashCodeOfNull(): Unit = {
     assertEquals(0, System.identityHashCode(null))
-  }
-
-  @Test def identityHashCodeOfValuesImplementedAsJSPrimitives(): Unit = {
-    if (!executingInJVM) {
-      assertEquals("foo".hashCode(), System.identityHashCode("foo"))
-      assertEquals("".hashCode(), System.identityHashCode(""))
-
-      assertEquals(false.hashCode(), System.identityHashCode(false))
-      assertEquals(true.hashCode(), System.identityHashCode(true))
-
-      assertEquals(5.hashCode(), System.identityHashCode(5))
-      assertEquals(789456.hashCode(), System.identityHashCode(789456))
-
-      assertEquals(().hashCode(), System.identityHashCode(()))
-    }
   }
 
   @Test def lineSeparator(): Unit = {
