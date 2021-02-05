@@ -599,6 +599,7 @@ final class Emitter(config: Emitter.Config) {
     def startRun(): Unit = {
       _cacheUsed = false
       _methodCaches.foreach(_.valuesIterator.foreach(_.startRun()))
+      _memberMethodCache.valuesIterator.foreach(_.startRun())
       _constructorCache.foreach(_.startRun())
     }
 
