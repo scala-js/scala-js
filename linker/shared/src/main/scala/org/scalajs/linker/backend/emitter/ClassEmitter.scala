@@ -70,7 +70,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       if (useESClass) {
         val parentVarWithGlobals = for (parentIdent <- tree.superClass) yield {
           implicit val pos = parentIdent.pos
-          if (shouldExtendJSError(tree)) globalRef("Error")
+          if (shouldExtendJSError(tree)) untrackedGlobalRef("Error")
           else WithGlobals(globalVar("c", parentIdent.name))
         }
 
@@ -215,7 +215,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           WithGlobals(js.Skip())
 
         case Some(_) if shouldExtendJSError(tree) =>
-          globalRef("Error").map(chainPrototypeWithLocalCtor(ctorVar, _))
+          untrackedGlobalRef("Error").map(chainPrototypeWithLocalCtor(ctorVar, _))
 
         case Some(parentIdent) =>
           WithGlobals(ctorVar.prototype := js.New(globalVar("h", parentIdent.name), Nil))
