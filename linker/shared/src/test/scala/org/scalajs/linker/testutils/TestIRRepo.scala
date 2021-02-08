@@ -22,6 +22,8 @@ object TestIRRepo {
   val minilib: Future[Seq[IRFile]] = load(StdlibHolder.minilib)
   val fulllib: Future[Seq[IRFile]] = load(StdlibHolder.fulllib)
   val empty: Future[Seq[IRFile]] = Future.successful(Nil)
+  val previousLibs: Map[String, Future[Seq[IRFile]]] =
+    StdlibHolder.previousLibs.map(x => x._1 -> load(x._2))
 
   private def load(stdlibPath: String) = {
     val globalIRCache = StandardImpl.irFileCache()

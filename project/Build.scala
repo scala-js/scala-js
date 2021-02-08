@@ -235,7 +235,10 @@ object Build {
 
   val packageMinilib = taskKey[File]("Produces the minilib jar.")
 
-  val previousVersion = "1.4.0"
+  val previousVersions = List("1.0.0", "1.0.1", "1.1.0", "1.1.1",
+      "1.2.0", "1.3.0", "1.3.1", "1.4.0")
+  val previousVersion = previousVersions.last
+
   val previousBinaryCrossVersion = CrossVersion.binaryWith("sjs1_", "")
 
   val scalaVersionsUsedForPublishing: Set[String] =
@@ -889,11 +892,28 @@ object Build {
           baseDirectory.value.getParentFile.getParentFile / "shared/src/test/scala-ide-stubs"
       } else {
         sourceGenerators in Test += Def.task {
+          val s = streams.value
+          val log = s.log
+          val lm = dependencyResolution.value
+          val binVer = scalaBinaryVersion.value
+
+          val retrieveDir = s.cacheDirectory / "previous-stdlibs"
+
+          val previousStdLibs = previousVersions.map { version =>
+            val jars = lm.retrieve("org.scala-js" % s"scalajs-library_$binVer" % version intransitive(),
+                scalaModuleInfo = None, retrieveDir, log)
+              .fold(w => throw w.resolveException, _.distinct)
+            assert(jars.size == 1, jars.toString())
+            version -> jars.head
+          }.toMap
+
           ConstantHolderGenerator.generate(
               (sourceManaged in Test).value,
               "org.scalajs.linker.testutils.StdlibHolder",
               "minilib" -> (packageMinilib in (library, Compile)).value,
-              "fulllib" -> (packageBin in (library, Compile)).value)
+              "fulllib" -> (packageBin in (library, Compile)).value,
+              "previousLibs" -> previousStdLibs,
+          )
         }.taskValue
       },
 
