@@ -133,6 +133,13 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
   def globalRef(name: String)(implicit pos: Position): WithGlobals[VarRef] =
     WithGlobals(VarRef(Ident(name)), Set(name))
 
+  def untrackedGlobalRef(name: String)(implicit pos: Position): WithGlobals[VarRef] = {
+    assert(!GlobalRefUtils.isDangerousGlobalRef(name))
+
+    if (trackAllGlobalRefs) globalRef(name)
+    else WithGlobals(VarRef(Ident(name)))
+  }
+
   def genPropSelect(qual: Tree, item: PropertyName)(
       implicit pos: Position): Tree = {
     item match {

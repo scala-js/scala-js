@@ -32,6 +32,7 @@ import org.scalajs.linker.standard._
 
 import org.scalajs.linker.testutils._
 import org.scalajs.linker.testutils.TestIRBuilder._
+import org.scalajs.linker.testutils.CapturingLogger.LogLines
 
 class IRCheckerTest {
   import scala.concurrent.ExecutionContext.Implicits.global
@@ -146,18 +147,18 @@ class IRCheckerTest {
 
         mainTestClassDef(Block(
             VarDef("foo", NON, FooType, mutable = false,
-                New(FooClass, stringCtorName, List(StringLiteral("hello")))),
+                New(FooClass, stringCtorName, List(str("hello")))),
             Apply(EAF, VarRef("foo")(FooType), babarMethodName, List(int(5)))(IntType)
         ))
     )
 
     for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
-      assertContainsLogLine(
-          "Duplicate definition of field 'foobar' in class 'Foo'", log)
-      assertContainsLogLine(
-          "Duplicate definition of constructor method '<init>(java.lang.String)void' in class 'Foo'", log)
-      assertContainsLogLine(
-          "Duplicate definition of method 'babar(int)int' in class 'Foo'", log)
+      log.assertContainsError(
+          "Duplicate definition of field 'foobar' in class 'Foo'")
+      log.assertContainsError(
+          "Duplicate definition of constructor method '<init>(java.lang.String)void' in class 'Foo'")
+      log.assertContainsError(
+          "Duplicate definition of method 'babar(int)int' in class 'Foo'")
     }
   }
 
@@ -178,12 +179,12 @@ class IRCheckerTest {
     )
 
     for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
-      assertContainsLogLine(
-          "Cannot load JS constructor of native JS class B without native load spec", log)
-      assertContainsLogLine(
-          "Cannot load JS module of native JS module class C without native load spec", log)
-      assertContainsLogLine(
-          "Native super class A must have a native load spec", log)
+      log.assertContainsError(
+          "Cannot load JS constructor of native JS class B without native load spec")
+      log.assertContainsError(
+          "Cannot load JS module of native JS module class C without native load spec")
+      log.assertContainsError(
+          "Native super class A must have a native load spec")
     }
   }
 
@@ -196,38 +197,18 @@ object IRCheckerTest {
     link(classDefs, moduleInitializers, new ScalaConsoleLogger(Level.Error))
   }
 
-  def assertContainsLogLine(expected: String, log: List[String]): Unit = {
-    assertTrue(
-        s"expected a log line containing '$expected', but got " +
-        log.mkString("\n  ", "\n  ", ""),
-        containsLogLine(expected, log))
-  }
-
-  def containsLogLine(expected: String, log: List[String]): Boolean =
-    log.exists(_.contains(expected))
-
   def testLinkIRErrors(classDefs: Seq[ClassDef],
       moduleInitializers: List[ModuleInitializer])(
-      implicit ec: ExecutionContext): Future[List[String]] = {
+      implicit ec: ExecutionContext): Future[LogLines] = {
 
-    val logBuilder = List.newBuilder[String]
-
-    object ErrorLogger extends org.scalajs.logging.Logger {
-      def log(level: Level, message: => String): Unit = {
-        if (level == Level.Error)
-          logBuilder += message
-      }
-
-      def trace(t: => Throwable): Unit =
-        logBuilder += t.toString()
-    }
+    val logger = new CapturingLogger
 
     // We cannot use `transform` because of 2.11.
-    link(classDefs, moduleInitializers, ErrorLogger).failed.recoverWith {
+    link(classDefs, moduleInitializers, logger).failed.recoverWith {
       case _: NoSuchElementException =>
         Future.failed(new AssertionError("IR checking did not fail"))
     }.map { _ =>
-      logBuilder.result()
+      logger.allLogLines
     }
   }
 

@@ -161,6 +161,7 @@ final class Emitter(config: Emitter.Config) {
           "Uh oh! The second attempt gave a different set of dangerous " +
           "global refs than the first one.")
 
+      // !!! This log message is tested in EmitterTest
       logger.debug(
           "Emitter: The set of dangerous global refs has changed. " +
           "Going to re-generate the world.")

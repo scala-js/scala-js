@@ -378,7 +378,7 @@ class AnalyzerTest {
             topLevelExportDefs = List(
                 TopLevelMethodExportDef("main", JSMethodDef(
                     EMF.withNamespace(MemberNamespace.PublicStatic),
-                    StringLiteral("default"), Nil, Undefined())(
+                    str("default"), Nil, Undefined())(
                     EOH, None))
             )
         )
@@ -545,7 +545,7 @@ class AnalyzerTest {
             memberDefs = List(
                 MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
                     dynName, NON, Nil, AnyType,
-                    Some(consoleLog(StringLiteral("hello world"))))(EOH, None)))
+                    Some(consoleLog(str("hello world"))))(EOH, None)))
     )
 
     val moduleInitializer = ModuleInitializer.mainMethodWithArgs("A", "main")
@@ -563,7 +563,7 @@ class AnalyzerTest {
   @Test
   def juPropertiesNotReachableWhenUsingGetSetClearProperty(): AsyncResult = await {
     val systemMod = LoadModule("java.lang.System$")
-    val emptyStr = StringLiteral("")
+    val emptyStr = str("")
     val StringType = ClassType(BoxedStringClass)
 
     val classDefs = Seq(

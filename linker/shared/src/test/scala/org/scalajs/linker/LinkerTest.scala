@@ -38,7 +38,7 @@ class LinkerTest {
 
   val helloWorldClassDefs = Seq(
       mainTestClassDef({
-        consoleLog(StringLiteral("Hello world!"))
+        consoleLog(str("Hello world!"))
       })
   )
 

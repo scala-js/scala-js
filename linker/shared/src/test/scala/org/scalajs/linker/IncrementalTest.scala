@@ -44,7 +44,7 @@ class IncrementalTest {
 
     val FooClass = ClassName("Foo")
 
-    val jsMethodName = StringLiteral("foo")
+    val jsMethodName = str("foo")
     val staticMethodName = m("value", Nil, IntRef)
 
     def classDefs(pre: Boolean) = Seq(

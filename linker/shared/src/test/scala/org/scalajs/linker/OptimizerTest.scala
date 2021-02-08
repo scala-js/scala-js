@@ -178,7 +178,7 @@ class OptimizerTest {
   def testHelloWorldDoesNotNeedClassClass(): AsyncResult = await {
     val classDefs = Seq(
         mainTestClassDef({
-          predefPrintln(StringLiteral("Hello world!"))
+          predefPrintln(str("Hello world!"))
         })
     )
 

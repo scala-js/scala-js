@@ -94,7 +94,7 @@ object TestIRBuilder {
   }
 
   def consoleLog(expr: Tree): Tree =
-    JSMethodApply(JSGlobalRef("console"), StringLiteral("log"), List(expr))
+    JSMethodApply(JSGlobalRef("console"), str("log"), List(expr))
 
   def predefPrintln(expr: Tree): Tree = {
     val PredefModuleClass = ClassName("scala.Predef$")
@@ -134,4 +134,5 @@ object TestIRBuilder {
     MethodIdent(name)
 
   def int(x: Int): IntLiteral = IntLiteral(x)
+  def str(x: String): StringLiteral = StringLiteral(x)
 }
