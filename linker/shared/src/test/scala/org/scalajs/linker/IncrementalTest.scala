@@ -68,7 +68,7 @@ class IncrementalTest {
         )
     )
 
-    testIncremental(classDefs(_), _ => MainTestModuleInitializers)
+    testIncrementalBidirectional(classDefs(_), _ => MainTestModuleInitializers)
   }
 
   @Test
@@ -95,7 +95,7 @@ class IncrementalTest {
         )
     )
 
-    testIncremental(classDefs(_), _ => MainTestModuleInitializers)
+    testIncrementalBidirectional(classDefs(_), _ => MainTestModuleInitializers)
   }
 
   @Test
@@ -125,7 +125,7 @@ class IncrementalTest {
         )
     )
 
-    testIncremental(classDefs(_), _ => MainTestModuleInitializers)
+    testIncrementalBidirectional(classDefs(_), _ => MainTestModuleInitializers)
   }
 
   @Test
@@ -187,79 +187,208 @@ class IncrementalTest {
         ))
     )
 
-    testIncremental(classDefs(_), _ => MainTestModuleInitializers)
+    testIncrementalBidirectional(classDefs(_), _ => MainTestModuleInitializers)
+  }
+
+  @Test
+  def testStaleMethodBodyAfterItReappears_Issue4416(): AsyncResult = await {
+    val FooClass = ClassName("Foo$")
+
+    val meth1 = m("meth1", Nil, VoidRef)
+    val meth2 = m("meth2", Nil, VoidRef)
+
+    def methDef(name: MethodName, body: Tree): MethodDef =
+      MethodDef(EMF, name, NON, Nil, NoType, Some(body))(EOH.withNoinline(true), None)
+
+    def callMeth(targetMeth: MethodName): Tree =
+      Apply(EAF, LoadModule(FooClass), targetMeth, Nil)(NoType)
+
+    def classDefs(step: Int): List[ClassDef] = {
+      val stepDependentMembers = step match {
+        case 0 =>
+          List(
+            methDef(meth1, consoleLog(str("a1"))),
+            methDef(meth2, consoleLog(str("a2")))
+          )
+        case 1 =>
+          List(
+            methDef(meth1, consoleLog(str("b1")))
+          )
+        case 2 =>
+          List(
+            methDef(meth1, consoleLog(str("c1"))),
+            methDef(meth2, consoleLog(str("c2")))
+          )
+      }
+
+      val stepDependentMainStats = step match {
+        case 0 => List(callMeth(meth1), callMeth(meth2))
+        case 1 => List(callMeth(meth1))
+        case 2 => List(callMeth(meth1), callMeth(meth2))
+      }
+
+      List(
+        classDef(FooClass, kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
+            memberDefs = trivialCtor(FooClass) :: stepDependentMembers),
+
+        mainTestClassDef(Block(stepDependentMainStats))
+      )
+    }
+
+    testIncrementalSteps("issue 4416", steps = 3, classDefs(_),
+        _ => MainTestModuleInitializers)
+  }
+
+  /** A variant of #4416 with static methods.
+   *
+   *  This variant was not affected by the bug, which in fact highlighted that
+   *  they follow different code paths, which is why we have a dedicated test
+   *  for it.
+   */
+  @Test
+  def testStaleStaticMethodBodyAfterItReappears(): AsyncResult = await {
+    val FooClass = ClassName("Foo")
+
+    val meth1 = m("meth1", Nil, VoidRef)
+    val meth2 = m("meth2", Nil, VoidRef)
+
+    def methDef(name: MethodName, body: Tree): MethodDef = {
+      MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic), name, NON, Nil,
+          NoType, Some(body))(
+          EOH.withNoinline(true), None)
+    }
+
+    def callMeth(targetMeth: MethodName): Tree =
+      ApplyStatic(EAF, FooClass, targetMeth, Nil)(NoType)
+
+    def classDefs(step: Int): List[ClassDef] = {
+      val stepDependentMembers = step match {
+        case 0 =>
+          List(
+            methDef(meth1, consoleLog(str("a1"))),
+            methDef(meth2, consoleLog(str("a2")))
+          )
+        case 1 =>
+          List(
+            methDef(meth1, consoleLog(str("b1")))
+          )
+        case 2 =>
+          List(
+            methDef(meth1, consoleLog(str("c1"))),
+            methDef(meth2, consoleLog(str("c2")))
+          )
+      }
+
+      val stepDependentMainStats = step match {
+        case 0 => List(callMeth(meth1), callMeth(meth2))
+        case 1 => List(callMeth(meth1))
+        case 2 => List(callMeth(meth1), callMeth(meth2))
+      }
+
+      List(
+        classDef(FooClass, superClass = Some(ObjectClass),
+            memberDefs = trivialCtor(FooClass) :: stepDependentMembers),
+
+        mainTestClassDef(Block(stepDependentMainStats))
+      )
+    }
+
+    testIncrementalSteps("issue 4416 static variant", steps = 3, classDefs(_),
+        _ => MainTestModuleInitializers)
   }
 
 }
 
 object IncrementalTest {
 
-  def testIncremental(
+  def testIncrementalBidirectional(
       classDefs: Boolean => Seq[ClassDef],
       moduleInitializers: Boolean => List[ModuleInitializer],
       config: StandardConfig = StandardConfig())(
       implicit ec: ExecutionContext): Future[Unit] = {
+
+    def testOneDirection(contextMessage: String, forward: Boolean): Future[Unit] = {
+      def pre(step: Int): Boolean =
+        if (forward) step == 0
+        else step == 1
+      testIncrementalSteps(contextMessage, steps = 2,
+          step => classDefs(pre(step)), step => moduleInitializers(pre(step)),
+          config)
+    }
+
     for {
-      _ <- testIncrementalStep(backward = false, classDefs, moduleInitializers, config)
-      _ <- testIncrementalStep(backward = true, classDefs, moduleInitializers, config)
+      _ <- testOneDirection("forward", forward = true)
+      _ <- testOneDirection("backward", forward = false)
     } yield ()
   }
 
-  private def testIncrementalStep(
-      backward: Boolean,
-      classDefs: Boolean => Seq[ClassDef],
-      moduleInitializers: Boolean => List[ModuleInitializer],
+  def testIncrementalSteps(
+      contextMessage: String,
+      steps: Int,
+      stepToClassDefs: Int => Seq[ClassDef],
+      stepToModuleInitializers: Int => List[ModuleInitializer],
       config: StandardConfig = StandardConfig())(
       implicit ec: ExecutionContext): Future[Unit] = {
 
-    val outputInc = MemOutputDirectory()
-    val outputBatch = MemOutputDirectory()
+    require(steps >= 2, s"require at least 2 steps but got $steps")
 
+    val outputInc = MemOutputDirectory()
     val linkerInc = StandardImpl.linker(config)
-    val linkerBatch = StandardImpl.linker(config)
 
     val logger = new ScalaConsoleLogger(Level.Error)
 
-    for {
-      minilib <- TestIRRepo.minilib
-      classDefs0 = minilib ++ classDefs(!backward).map(MemClassDefIRFile(_))
-      classDefs1 = minilib ++ classDefs(backward).map(MemClassDefIRFile(_))
-      inits0 = moduleInitializers(backward)
-      inits1 = moduleInitializers(!backward)
-      _ <- linkerInc.link(classDefs0, inits0, outputInc, logger)
-      reportInc <- linkerInc.link(classDefs1, inits1, outputInc, logger)
-      reportBatch <- linkerBatch.link(classDefs1, inits1, outputBatch, logger)
-    } yield {
-      assertModulesEqual(s"Public modules in report equal (backward = $backward)",
-          reportInc.publicModules, reportBatch.publicModules)
+    TestIRRepo.minilib.flatMap { minilib =>
+      def loop(step: Int): Future[Unit] = {
+        if (step == steps) {
+          Future.successful(())
+        } else {
+          val outputBatch = MemOutputDirectory()
+          val linkerBatch = StandardImpl.linker(config)
 
-      assertOutputEquals(s"Outputs equal (backward = $backward)",
-          outputInc, outputBatch)
+          val irFiles = minilib ++ stepToClassDefs(step).map(MemClassDefIRFile(_))
+          val moduleInitializers = stepToModuleInitializers(step)
+
+          val thisStepResult = for {
+            reportInc <- linkerInc.link(irFiles, moduleInitializers, outputInc, logger)
+            reportBatch <- linkerBatch.link(irFiles, moduleInitializers, outputBatch, logger)
+          } yield {
+            assertModulesEqual(s"Public modules in report equal ($contextMessage, step $step)",
+                reportBatch.publicModules, reportInc.publicModules)
+
+            assertOutputEquals(s"Outputs equal ($contextMessage, step $step)",
+                outputBatch, outputInc)
+          }
+
+          thisStepResult.flatMap(_ => loop(step + 1))
+        }
+      }
+
+      loop(step = 0)
     }
   }
 
-  private def assertModulesEqual(msg: String, inc: Iterable[Report.Module],
-      batch: Iterable[Report.Module]): Unit = {
+  private def assertModulesEqual(msg: String, expected: Iterable[Report.Module],
+      actual: Iterable[Report.Module]): Unit = {
     // Poor man's equality based on toString()
 
     def strs(ms: Iterable[Report.Module]) =
       ms.map(m => m.moduleID -> m.toString()).toMap
 
-    assertEquals(msg, strs(inc), strs(batch))
+    assertEquals(msg, strs(expected), strs(actual))
   }
 
-  private def assertOutputEquals(msg: String, inc: MemOutputDirectory,
-      batch: MemOutputDirectory): Unit = {
-    val filesInc = inc.fileNames()
-    val filesBatch = batch.fileNames()
+  private def assertOutputEquals(msg: String, expected: MemOutputDirectory,
+      actual: MemOutputDirectory): Unit = {
+    val filesExpected = expected.fileNames()
+    val filesActual = actual.fileNames()
 
-    assertEquals(s"$msg: set of files", filesInc.toSet, filesBatch.toSet)
+    assertEquals(s"$msg: set of files", filesExpected.toSet, filesActual.toSet)
 
-    for (f <- filesInc.sorted) {
+    for (f <- filesExpected.sorted) {
       assertEquals(
           s"$msg: content of $f",
-          new String(inc.content(f).get, UTF_8),
-          new String(batch.content(f).get, UTF_8)
+          new String(expected.content(f).get, UTF_8),
+          new String(actual.content(f).get, UTF_8)
       )
     }
   }
