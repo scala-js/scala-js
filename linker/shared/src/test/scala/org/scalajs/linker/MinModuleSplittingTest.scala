@@ -40,7 +40,7 @@ class MinModuleSplittingTest {
 
         // @noinline def greet(): String = "Hello world!"
         MethodDef(EMF, greetMethodName, NON, Nil, StringType, Some {
-          StringLiteral("Hello world!")
+          str("Hello world!")
         })(EOH.withNoinline(true), None)
     )
 

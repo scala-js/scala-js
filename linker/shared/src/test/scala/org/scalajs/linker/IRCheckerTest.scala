@@ -146,7 +146,7 @@ class IRCheckerTest {
 
         mainTestClassDef(Block(
             VarDef("foo", NON, FooType, mutable = false,
-                New(FooClass, stringCtorName, List(StringLiteral("hello")))),
+                New(FooClass, stringCtorName, List(str("hello")))),
             Apply(EAF, VarRef("foo")(FooType), babarMethodName, List(int(5)))(IntType)
         ))
     )
