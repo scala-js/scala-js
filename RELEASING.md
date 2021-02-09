@@ -14,7 +14,7 @@
 1. If all tests pass, tag the commit with the release version.
 1. Perform [manual testing][3] that needs the tagging (source maps).
 1. Publish:
-    - Sonatype, bintray (`./script/publish.sh`)
+    - Sonatype (`./script/publish.sh`)
     - Docs to website: Use
       `~/fetchapis.sh <full sjs version> <binary sjs version>` on the webserver
       once artifacts are on maven central.

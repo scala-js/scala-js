@@ -223,9 +223,6 @@ object MyScalaJSPlugin extends AutoPlugin {
 object Build {
   import MyScalaJSPlugin.{addScalaJSCompilerOption, addScalaJSCompilerOptionInConfig, isGeneratingForIDE}
 
-  val bintrayProjectName = settingKey[String](
-      "Project name on Bintray")
-
   val scalastyleCheck = taskKey[Unit]("Run scalastyle")
 
   val fetchScalaSource = taskKey[File](
@@ -542,26 +539,6 @@ object Build {
 
         Seq(outputDir)
       }
-  )
-
-  private def publishToBintraySettings = Def.settings(
-      publishTo := {
-        val proj = bintrayProjectName.value
-        val ver = version.value
-        if (isSnapshot.value) {
-          None // Bintray does not support snapshots
-        } else {
-          val url = new java.net.URL(
-              s"https://api.bintray.com/content/scala-js/scala-js-releases/$proj/$ver")
-          val patterns = Resolver.ivyStylePatterns
-          Some(Resolver.url("bintray", url)(patterns))
-        }
-      }
-  )
-
-  val publishIvySettings = Def.settings(
-      publishToBintraySettings,
-      publishMavenStyle := false
   )
 
   private def parallelCollectionsDependencies(
@@ -1032,11 +1009,10 @@ object Build {
   lazy val plugin: Project = Project(id = "sbtPlugin", base = file("sbt-plugin"))
       .enablePlugins(ScriptedPlugin).settings(
       commonSettings,
-      publishIvySettings,
+      publishSettings,
       fatalWarningsSettings,
       name := "Scala.js sbt plugin",
       normalizedName := "sbt-scalajs",
-      bintrayProjectName := "sbt-scalajs-plugin", // "sbt-scalajs" was taken
       sbtPlugin := true,
       crossScalaVersions := Seq("2.12.12"),
       scalaVersion := crossScalaVersions.value.head,
