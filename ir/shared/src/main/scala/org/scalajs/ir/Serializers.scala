@@ -550,7 +550,8 @@ object Serializers {
           writeTagAndPos(TagClosure)
           writeBoolean(arrow)
           writeParamDefs(captureParams)
-          writeParamDefs(params, restParam)
+          writeParamDefs(params)
+          writeOptParamDef(restParam)
           writeTree(body)
           writeTrees(captureValues)
 
@@ -664,7 +665,7 @@ object Serializers {
 
           // Write out method def
           writeInt(MemberFlags.toBits(flags)); writeTree(name)
-          writeParamDefs(args, restParam); writeTree(body)
+          writeParamDefs(args); writeOptParamDef(restParam); writeTree(body)
           writeInt(OptimizerHints.toBits(methodDef.optimizerHints))
 
           // Jump back and write true length
@@ -770,26 +771,22 @@ object Serializers {
         buffer.writeInt(encodedNameToIndex(originalName.get))
     }
 
-    def writeParamDef(paramDef: ParamDef, rest: Boolean = false): Unit = {
-      // rest is tmp for backwards compat testing.
+    def writeParamDef(paramDef: ParamDef): Unit = {
       writePosition(paramDef.pos)
       writeLocalIdent(paramDef.name)
       writeOriginalName(paramDef.originalName)
       writeType(paramDef.ptpe)
       buffer.writeBoolean(paramDef.mutable)
-      buffer.writeBoolean(rest)
     }
 
-    def writeParamDefs(paramDefs: List[ParamDef],
-        restParamDef: Option[ParamDef] = None): Unit = {
-      // restParamDef is tmp for backwards compat testing.
-      val totalSize =
-        if (restParamDef.isEmpty) paramDefs.size
-        else paramDefs.size + 1
-
-      buffer.writeInt(totalSize)
+    def writeParamDefs(paramDefs: List[ParamDef]): Unit = {
+      buffer.writeInt(paramDefs.size)
       paramDefs.foreach(writeParamDef(_))
-      restParamDef.foreach(writeParamDef(_, rest = true))
+    }
+
+    def writeOptParamDef(paramDef: Option[ParamDef]): Unit = {
+      buffer.writeBoolean(paramDef.isDefined)
+      paramDef.foreach(writeParamDef(_))
     }
 
     def writeType(tpe: Type): Unit = {
@@ -1420,7 +1417,7 @@ object Serializers {
       val ptpe = readType()
       val mutable = readBoolean()
 
-      if (true) { // tmp: test backwards compat
+      if (hacks.use14) {
         val rest = readBoolean()
         assert(!rest, "Illegal rest parameter")
       }
@@ -1432,7 +1429,7 @@ object Serializers {
       List.fill(readInt())(readParamDef())
 
     def readParamDefsWithRest(): (List[ParamDef], Option[ParamDef]) = {
-      if (true) { // tmp: test backwards compat
+      if (hacks.use14) {
         val (params, isRest) = List.fill(readInt()) {
           implicit val pos = readPosition()
           (ParamDef(readLocalIdent(), readOriginalName(), readType(), readBoolean()), readBoolean())
