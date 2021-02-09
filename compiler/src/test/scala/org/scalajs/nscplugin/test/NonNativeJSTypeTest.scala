@@ -806,6 +806,14 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
     trait A extends js.Object {
       def foo(x: Int): Int = x + 1
       def bar[A](x: A): A = x
+
+      object InnerScalaObject
+      object InnerJSObject extends js.Object
+      @js.native object InnerNativeJSObject extends js.Object
+
+      class InnerScalaClass
+      class InnerJSClass extends js.Object
+      @js.native class InnerNativeJSClass extends js.Object
     }
     """ hasErrors
     """
@@ -815,6 +823,24 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       |newSource1.scala:7: error: In non-native JS traits, defs with parentheses must be abstract.
       |      def bar[A](x: A): A = x
       |                            ^
+      |newSource1.scala:9: error: Non-native JS traits cannot contain inner classes or objects
+      |      object InnerScalaObject
+      |             ^
+      |newSource1.scala:10: error: Non-native JS traits cannot contain inner classes or objects
+      |      object InnerJSObject extends js.Object
+      |             ^
+      |newSource1.scala:11: error: non-native JS classes, traits and objects may not have native JS members
+      |      @js.native object InnerNativeJSObject extends js.Object
+      |                        ^
+      |newSource1.scala:13: error: Non-native JS traits cannot contain inner classes or objects
+      |      class InnerScalaClass
+      |            ^
+      |newSource1.scala:14: error: Non-native JS traits cannot contain inner classes or objects
+      |      class InnerJSClass extends js.Object
+      |            ^
+      |newSource1.scala:15: error: non-native JS classes, traits and objects may not have native JS members
+      |      @js.native class InnerNativeJSClass extends js.Object
+      |                       ^
     """
   }
 

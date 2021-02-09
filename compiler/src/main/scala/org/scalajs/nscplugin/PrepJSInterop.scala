@@ -173,6 +173,11 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
           if (shouldPrepareExports)
             registerClassOrModuleExports(sym)
 
+          if ((enclosingOwner is OwnerKind.JSNonNative) && sym.owner.isTrait && !sym.isTrait) {
+            reporter.error(tree.pos,
+                "Non-native JS traits cannot contain inner classes or objects")
+          }
+
           if (isJSAny(sym))
             transformJSImplDef(tree)
           else
