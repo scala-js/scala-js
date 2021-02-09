@@ -1,10 +1,10 @@
 package build
 
-import scala.annotation.tailrec
-
 import sbt._
 
 import org.scalajs.ir.ScalaJSVersions
+
+import org.scalajs.jsenv.JSUtils.escapeJS
 
 object ConstantHolderGenerator {
   /** Generate a *.scala file that contains the given values as literals. */
@@ -33,11 +33,14 @@ object ConstantHolderGenerator {
     Seq(out)
   }
 
-  @tailrec
   private final def literal(v: Any): String = v match {
-    case s: String  => "raw\"\"\"" + s + "\"\"\""
+    case s: String  => "\"" + escapeJS(s) + "\"" // abuse escapeJS to escape Scala
     case b: Boolean => b.toString
     case f: File    => literal(f.getAbsolutePath)
+
+    case m: Map[_, _] =>
+      m.map(x => literal(x._1) + " -> " + literal(x._2))
+        .mkString("Map(", ", ", ")")
 
     case _ =>
       throw new IllegalArgumentException(
