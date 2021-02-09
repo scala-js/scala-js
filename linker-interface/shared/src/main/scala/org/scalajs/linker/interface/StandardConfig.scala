@@ -226,7 +226,7 @@ object StandardConfig {
    *  - `moduleKind`: [[ModuleKind.NoModule]]
    *  - `moduleSplitStyle`: [[ModuleSplitStyle.FewestModules]]
    *  - `esFeatures`: [[ESFeatures.Defaults]]
-   *  - `checkIR`: `true`
+   *  - `checkIR`: `false`
    *  - `optimizer`: `true`
    *  - `parallel`: `true`
    *  - `sourceMap`: `true`
