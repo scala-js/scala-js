@@ -60,11 +60,11 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
   }
 
   def globalFunctionDef[T: Scope](field: String, scope: T,
-      args: List[ParamDef], body: Tree,
+      args: List[ParamDef], restParam: Option[ParamDef], body: Tree,
       origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext, pos: Position): WithGlobals[Tree] = {
     val ident = globalVarIdent(field, scope, origName)
-    maybeExport(ident, FunctionDef(ident, args, body), mutable = false)
+    maybeExport(ident, FunctionDef(ident, args, restParam, body), mutable = false)
   }
 
   def globalVarDef[T: Scope](field: String, scope: T, value: Tree,
@@ -95,7 +95,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     if (config.moduleKind == ModuleKind.ESModule && !moduleContext.public) {
       val setterIdent = globalVarIdent(setterField, scope)
       val x = Ident("x")
-      val setter = FunctionDef(setterIdent, List(ParamDef(x, rest = false)), {
+      val setter = FunctionDef(setterIdent, List(ParamDef(x)), None, {
         Assign(VarRef(ident), VarRef(x))
       })
 
@@ -148,7 +148,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
 
     def genThen(receiver: Tree, expr: Tree) = {
       Apply(genIdentBracketSelect(receiver, "then"), List(
-          genArrowFunction(List(ParamDef(module, rest = false)), Return(expr))))
+          genArrowFunction(List(ParamDef(module)), None, Return(expr))))
     }
 
     foldSameModule(scope) {
@@ -275,8 +275,8 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
             if (mutable) {
               val x = Ident("x")
               genDefineProperty(exportsVarRef, name, List(
-                  "get" -> Function(arrow = false, Nil, Return(VarRef(ident))),
-                  "set" -> Function(arrow = false, List(ParamDef(x, rest = false)), {
+                  "get" -> Function(arrow = false, Nil, None, Return(VarRef(ident))),
+                  "set" -> Function(arrow = false, List(ParamDef(x)), None, {
                       Assign(VarRef(ident), VarRef(x))
                   }),
                   "configurable" -> BooleanLiteral(true)

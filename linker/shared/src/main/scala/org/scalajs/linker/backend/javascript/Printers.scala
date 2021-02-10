@@ -92,9 +92,22 @@ object Printers {
       undent(); println(); print('}')
     }
 
-    protected def printSig(args: List[ParamDef]): Unit = {
-      printRow(args, '(', ')')
-      print(' ')
+    protected def printSig(args: List[ParamDef], restParam: Option[ParamDef]): Unit = {
+      print("(")
+      var rem = args
+      while (rem.nonEmpty) {
+        print(rem.head)
+        rem = rem.tail
+        if (rem.nonEmpty || restParam.nonEmpty)
+          print(", ")
+      }
+
+      restParam.foreach { p =>
+        print("...")
+        print(p)
+      }
+
+      print(") ")
     }
 
     protected def printArgs(args: List[Tree]): Unit =
@@ -148,9 +161,7 @@ object Printers {
             print(rhs)
           }
 
-        case ParamDef(ident, rest) =>
-          if (rest)
-            print("...")
+        case ParamDef(ident) =>
           print(ident)
 
         // Control flow constructs
@@ -525,10 +536,10 @@ object Printers {
         case This() =>
           print("this")
 
-        case Function(arrow, args, body) =>
+        case Function(arrow, args, restParam, body) =>
           if (arrow) {
             print('(')
-            printSig(args)
+            printSig(args, restParam)
             print("=> ")
             body match {
               case Return(expr: ObjectConstr) =>
@@ -546,19 +557,19 @@ object Printers {
             print(')')
           } else {
             print("(function")
-            printSig(args)
+            printSig(args, restParam)
             printBlock(body)
             print(')')
           }
 
         // Named function definition
 
-        case FunctionDef(name, args, body) =>
+        case FunctionDef(name, args, restParam, body) =>
           if (!isStat)
             print('(')
           print("function ")
           print(name)
-          printSig(args)
+          printSig(args, restParam)
           printBlock(body)
           if (!isStat)
             print(')')
@@ -585,11 +596,11 @@ object Printers {
           }
           undent(); println(); print('}')
 
-        case MethodDef(static, name, params, body) =>
+        case MethodDef(static, name, params, restParam, body) =>
           if (static)
             print("static ")
           print(name)
-          printSig(params)
+          printSig(params, restParam)
           printBlock(body)
 
         case GetterDef(static, name, body) =>
@@ -597,7 +608,7 @@ object Printers {
             print("static ")
           print("get ")
           print(name)
-          printSig(Nil)
+          print("() ")
           printBlock(body)
 
         case SetterDef(static, name, param, body) =>

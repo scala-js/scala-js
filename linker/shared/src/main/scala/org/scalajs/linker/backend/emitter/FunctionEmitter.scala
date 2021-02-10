@@ -304,7 +304,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     for (fun <- desugarToFunction(Nil, None, expr, resultType)) yield {
       fun match {
-        case js.Function(_, Nil, js.Return(newExpr)) =>
+        case js.Function(_, Nil, None, js.Return(newExpr)) =>
           // no need for an IIFE, we can just use `newExpr` directly
           newExpr
         case _ =>
@@ -468,10 +468,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       performOptimisticThenPessimisticRuns {
         val thisIdent = fileLevelVarIdent("thiz", thisOriginalName)
         val env = env0.withThisIdent(Some(thisIdent))
-        val js.Function(jsArrow, jsParams, jsBody) =
+        val js.Function(jsArrow, jsParams, restParam, jsBody) =
           desugarToFunctionInternal(arrow = false, params, None, body, isStat, env)
-        js.Function(jsArrow, js.ParamDef(thisIdent, rest = false) :: jsParams,
-            jsBody)
+        js.Function(jsArrow, js.ParamDef(thisIdent) :: jsParams, restParam, jsBody)
       }
     }
 
@@ -513,24 +512,19 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       }
 
       val actualArrowFun = arrow && useArrowFunctions
-      val normalParams = params.map(transformParamDef(_, rest = false))
+      val jsParams = params.map(transformParamDef(_))
 
-      restParam match {
-        case None =>
-          js.Function(actualArrowFun, normalParams, cleanedNewBody)
+      if (esFeatures.useECMAScript2015) {
+        val jsRestParam = restParam.map(transformParamDef(_))
+        js.Function(actualArrowFun, jsParams, jsRestParam, cleanedNewBody)
+      } else {
+        val patchedBody = restParam.fold {
+          cleanedNewBody
+        } { restParam =>
+          js.Block(makeExtractRestParam(restParam, jsParams.size), cleanedNewBody)
+        }
 
-        case Some(restParam) if esFeatures.useECMAScript2015 =>
-          val params =
-            normalParams :+ transformParamDef(restParam, rest = true)
-
-          js.Function(actualArrowFun, params, cleanedNewBody)
-
-        case Some(restParam) =>
-          val extractRestParam =
-            makeExtractRestParam(restParam, normalParams.size)
-
-          js.Function(actualArrowFun, normalParams,
-              js.Block(extractRestParam, cleanedNewBody))
+        js.Function(actualArrowFun, jsParams, None, patchedBody)
       }
     }
 
@@ -2241,8 +2235,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case ApplyDynamicImport(flags, className, method, args) =>
           // Protect the args by an IIFE to avoid bad loop captures (see #4385).
-          val captureParams =
-            args.map(_ => js.ParamDef(newSyntheticVar(), rest = false))
+          val captureParams = args.map(_ => js.ParamDef(newSyntheticVar()))
 
           val innerCall = extractWithGlobals {
             withDynamicGlobalVar("s", (className, method.name)) { v =>
@@ -2858,7 +2851,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           val captures = for {
             (param, value) <- captureParams.zip(captureValues)
           } yield {
-            (transformParamDef(param, rest = false), transformExpr(value, param.ptpe))
+            (transformParamDef(param), transformExpr(value, param.ptpe))
           }
 
           if (captures.isEmpty) {
@@ -2933,8 +2926,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         MethodName("notifyAll", Nil, VoidRef)
     )
 
-    private def transformParamDef(paramDef: ParamDef, rest: Boolean): js.ParamDef =
-      js.ParamDef(transformLocalVarIdent(paramDef.name, paramDef.originalName), rest)(paramDef.pos)
+    private def transformParamDef(paramDef: ParamDef): js.ParamDef =
+      js.ParamDef(transformLocalVarIdent(paramDef.name, paramDef.originalName))(paramDef.pos)
 
     private def transformLabelIdent(ident: LabelIdent): js.Ident =
       js.Ident(genName(ident.name))(ident.pos)

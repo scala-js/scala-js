@@ -114,9 +114,9 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
       BracketSelect(qual, StringLiteral(item))
   }
 
-  def genArrowFunction(args: List[ParamDef], body: Tree)(
+  def genArrowFunction(args: List[ParamDef], restParam: Option[ParamDef], body: Tree)(
       implicit pos: Position): Function = {
-    Function(useArrowFunctions, args, body)
+    Function(useArrowFunctions, args, restParam, body)
   }
 
   def genDefineProperty(obj: Tree, prop: Tree, descriptor: List[(String, Tree)])(
@@ -154,10 +154,10 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
     import TreeDSL._
 
     val stats = for {
-      MethodDef(static, name, args, body) <- members
+      MethodDef(static, name, args, restParam, body) <- members
     } yield {
       val target = if (static) classRef else classRef.prototype
-      genPropSelect(target, name) := Function(arrow = false, args, body)
+      genPropSelect(target, name) := Function(arrow = false, args, restParam, body)
     }
 
     Block(stats)
@@ -166,6 +166,6 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
   def genIIFE(captures: List[(ParamDef, Tree)], body: Tree)(
       implicit pos: Position): Tree = {
     val (params, args) = captures.unzip
-    Apply(genArrowFunction(params, body), args)
+    Apply(genArrowFunction(params, None, body), args)
   }
 }
