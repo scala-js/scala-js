@@ -1354,7 +1354,7 @@ object Serializers {
 
       // #4409: Filter out abstract methods in non-native JS classes for version < 1.5
       if (ownerKind.isJSClass) {
-        if (true) { // temp: test backward compat
+        if (hacks.use14) {
           memberDefs.filter { m =>
             m match {
               case MethodDef(_, _, _, _, _, None) => false
