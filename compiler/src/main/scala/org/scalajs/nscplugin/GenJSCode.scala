@@ -1820,11 +1820,16 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         val methodName = encodeMethodSym(sym)
         val originalName = originalNameOfMethod(sym)
 
+        val isAbstract = isAbstractMethod(dd)
+
         def jsParams = params.map(genParamDef(_))
 
         if (scalaPrimitives.isPrimitive(sym)) {
           None
-        } else if (isAbstractMethod(dd)) {
+        } else if (isAbstract && isNonNativeJSClass(currentClassSym)) {
+          // #4409: Do not emit abstract methods in non-native JS classes
+          None
+        } else if (isAbstract) {
           val body = if (scalaUsesImplClasses &&
               sym.hasAnnotation(JavaDefaultMethodAnnotation)) {
             /* For an interface method with @JavaDefaultMethod, make it a
