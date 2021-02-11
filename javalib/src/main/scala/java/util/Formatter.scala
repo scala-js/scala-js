@@ -337,55 +337,6 @@ final class Formatter private (private[this] var dest: Appendable,
     @inline def illegalFormatConversion(): Nothing =
       throwIllegalFormatConversionException(conversionLower, arg)
 
-    @inline def precisionWithDefault =
-      if (precision >= 0) precision
-      else 6
-
-    @inline def oxCommon(prefix: String, radix: Int): Unit = {
-      // Octal/hex formatting is not localized
-
-      arg match {
-        case arg: BigInteger =>
-          formatNumericString(RootLocaleInfo, flags, width,
-              arg.toString(radix), prefix)
-
-        case _ =>
-          val str = arg match {
-            case arg: Int  => java.lang.Integer.toUnsignedString(arg, radix)
-            case arg: Long => java.lang.Long.toUnsignedString(arg, radix)
-            case _         => illegalFormatConversion()
-          }
-
-          /* The Int and Long conversions have extra illegal flags, which are
-           * not in the `ConversionsIllegalFlags` table because they are
-           * legal for BigIntegers. We must check them now.
-           */
-          checkFlagsConversionMismatch(conversionLower, flags,
-              PositivePlus | PositiveSpace | NegativeParen)
-
-          padAndSendToDest(RootLocaleInfo, flags, width, prefix,
-              applyNumberUpperCase(flags, str))
-      }
-    }
-
-    @inline def efgCommon(notation: (Double, Int, Boolean) => String): Unit = {
-      arg match {
-        case arg: Double =>
-          if (JDouble.isNaN(arg) || JDouble.isInfinite(arg)) {
-            formatNaNOrInfinite(flags, width, arg)
-          } else {
-            /* The alternative format # of 'e', 'f' and 'g' is to force a
-             * decimal separator.
-             */
-            val forceDecimalSep = flags.altFormat
-            formatNumericString(localeInfo, flags, width,
-                notation(arg, precisionWithDefault, forceDecimalSep))
-          }
-        case _ =>
-          illegalFormatConversion()
-      }
-    }
-
     (conversionLower: @switch) match {
       case 'b' =>
         val str =
@@ -450,28 +401,69 @@ final class Formatter private (private[this] var dest: Appendable,
             illegalFormatConversion()
         }
 
-      case 'o' =>
-        val prefix =
-          if (flags.altFormat) "0"
-          else ""
-        oxCommon(prefix, radix = 8)
+      case 'o' | 'x' =>
+        // Octal/hex formatting is not localized
 
-      case 'x' =>
+        val isOctal = conversionLower == 'o'
         val prefix = {
           if (!flags.altFormat) ""
+          else if (isOctal) "0"
           else if (flags.upperCase) "0X"
           else "0x"
         }
-        oxCommon(prefix, radix = 16)
 
-      case 'e' =>
-        efgCommon(computerizedScientificNotation _)
+        arg match {
+          case arg: BigInteger =>
+            val radix = if (isOctal) 8 else 16
+            formatNumericString(RootLocaleInfo, flags, width,
+                arg.toString(radix), prefix)
 
-      case 'g' =>
-        efgCommon(generalScientificNotation _)
+          case _ =>
+            val str = arg match {
+              case arg: Int =>
+                if (isOctal) java.lang.Integer.toOctalString(arg)
+                else java.lang.Integer.toHexString(arg)
+              case arg: Long =>
+                if (isOctal) java.lang.Long.toOctalString(arg)
+                else java.lang.Long.toHexString(arg)
+              case _ =>
+                illegalFormatConversion()
+            }
 
-      case 'f' =>
-        efgCommon(decimalNotation _)
+            /* The Int and Long conversions have extra illegal flags, which are
+             * not in the `ConversionsIllegalFlags` table because they are
+             * legal for BigIntegers. We must check them now.
+             */
+            checkFlagsConversionMismatch(conversionLower, flags,
+                PositivePlus | PositiveSpace | NegativeParen)
+
+            padAndSendToDest(RootLocaleInfo, flags, width, prefix,
+                applyNumberUpperCase(flags, str))
+        }
+
+      case 'e' | 'f' | 'g' =>
+        arg match {
+          case arg: Double =>
+            if (JDouble.isNaN(arg) || JDouble.isInfinite(arg)) {
+              formatNaNOrInfinite(flags, width, arg)
+            } else {
+              /* The alternative format # of 'e', 'f' and 'g' is to force a
+               * decimal separator.
+               */
+              val forceDecimalSep = flags.altFormat
+              val actualPrecision =
+                if (precision >= 0) precision
+                else 6
+              val notation = conversionLower match {
+                case 'e' => computerizedScientificNotation(arg, actualPrecision, forceDecimalSep)
+                case 'f' => decimalNotation(arg, actualPrecision, forceDecimalSep)
+                case _   => generalScientificNotation(arg, actualPrecision, forceDecimalSep)
+              }
+              formatNumericString(localeInfo, flags, width, notation)
+            }
+          case _ =>
+            illegalFormatConversion()
+        }
 
       case _ =>
         throw new AssertionError(
