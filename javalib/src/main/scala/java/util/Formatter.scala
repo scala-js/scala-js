@@ -273,9 +273,12 @@ final class Formatter private (private[this] var dest: Appendable,
         lastArgIndex = argIndex
         val arg = args(argIndex - 1)
 
-        // Format the arg
+        // Format the arg. We handle `null` in a generic way, except for 'b'
 
-        formatArg(localeInfo, arg, conversionLower, flags, width, precision)
+        if (arg == null && conversionLower != 'b')
+          formatNonNumericString(RootLocaleInfo, flags, width, precision, "null")
+        else
+          formatArg(localeInfo, arg, conversionLower, flags, width, precision)
       }
     }
 
@@ -331,12 +334,8 @@ final class Formatter private (private[this] var dest: Appendable,
   private def formatArg(localeInfo: LocaleInfo, arg: Any, conversionLower: Char,
       flags: Flags, width: Int, precision: Int): Unit = {
 
-    def formatNullOrThrowIllegalFormatConversion(): Unit = {
-      if (arg == null)
-        formatNonNumericString(localeInfo, flags, width, precision, "null")
-      else
-        throwIllegalFormatConversionException(conversionLower, arg)
-    }
+    @inline def illegalFormatConversion(): Nothing =
+      throwIllegalFormatConversionException(conversionLower, arg)
 
     @inline def precisionWithDefault =
       if (precision >= 0) precision
@@ -350,14 +349,11 @@ final class Formatter private (private[this] var dest: Appendable,
           formatNumericString(RootLocaleInfo, flags, width,
               arg.toString(radix), prefix)
 
-        case null =>
-          formatNullOrThrowIllegalFormatConversion()
-
         case _ =>
           val str = arg match {
             case arg: Int  => java.lang.Integer.toUnsignedString(arg, radix)
             case arg: Long => java.lang.Long.toUnsignedString(arg, radix)
-            case _         => throwIllegalFormatConversionException(conversionLower, arg)
+            case _         => illegalFormatConversion()
           }
 
           /* The Int and Long conversions have extra illegal flags, which are
@@ -386,7 +382,7 @@ final class Formatter private (private[this] var dest: Appendable,
                 notation(arg, precisionWithDefault, forceDecimalSep))
           }
         case _ =>
-          formatNullOrThrowIllegalFormatConversion()
+          illegalFormatConversion()
       }
     }
 
@@ -398,9 +394,7 @@ final class Formatter private (private[this] var dest: Appendable,
         formatNonNumericString(RootLocaleInfo, flags, width, precision, str)
 
       case 'h' =>
-        val str =
-          if (arg == null) "null"
-          else Integer.toHexString(arg.hashCode)
+        val str = Integer.toHexString(arg.hashCode)
         formatNonNumericString(RootLocaleInfo, flags, width, precision, str)
 
       case 's' =>
@@ -441,7 +435,7 @@ final class Formatter private (private[this] var dest: Appendable,
             formatNonNumericString(localeInfo, flags, width, -1,
                 str.asInstanceOf[String])
           case _ =>
-            formatNullOrThrowIllegalFormatConversion()
+            illegalFormatConversion()
         }
 
       case 'd' =>
@@ -453,7 +447,7 @@ final class Formatter private (private[this] var dest: Appendable,
           case arg: BigInteger =>
             formatNumericString(localeInfo, flags, width, arg.toString())
           case _ =>
-            formatNullOrThrowIllegalFormatConversion()
+            illegalFormatConversion()
         }
 
       case 'o' =>
