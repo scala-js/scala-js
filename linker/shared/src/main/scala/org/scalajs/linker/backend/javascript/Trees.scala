@@ -109,8 +109,7 @@ object Trees {
       implicit val pos: Position)
       extends LocalDef
 
-  sealed case class ParamDef(name: Ident, rest: Boolean)(
-      implicit val pos: Position)
+  sealed case class ParamDef(name: Ident)(implicit val pos: Position)
       extends LocalDef {
     def mutable: Boolean = true
   }
@@ -337,12 +336,14 @@ object Trees {
 
   sealed case class This()(implicit val pos: Position) extends Tree
 
-  sealed case class Function(arrow: Boolean, args: List[ParamDef], body: Tree)(
+  sealed case class Function(arrow: Boolean, args: List[ParamDef],
+      restParam: Option[ParamDef], body: Tree)(
       implicit val pos: Position) extends Tree
 
   // Named function definition
 
-  sealed case class FunctionDef(name: Ident, args: List[ParamDef], body: Tree)(
+  sealed case class FunctionDef(name: Ident, args: List[ParamDef],
+      restParam: Option[ParamDef], body: Tree)(
       implicit val pos: Position) extends Tree
 
   // ECMAScript 6 classes
@@ -353,7 +354,7 @@ object Trees {
       extends Tree
 
   sealed case class MethodDef(static: Boolean, name: PropertyName,
-      args: List[ParamDef], body: Tree)(
+      args: List[ParamDef], restParam: Option[ParamDef], body: Tree)(
       implicit val pos: Position)
       extends Tree
 

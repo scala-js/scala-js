@@ -346,7 +346,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           None
         } else {
           val formalArgsRegistry = new FormalArgsRegistry(1, false)
-          val List(arg) = formalArgsRegistry.genFormalArgs()
+          val (List(arg), None) = formalArgsRegistry.genFormalArgs()
           val body = genExportSameArgc(jsName, formalArgsRegistry,
               alts = setters.map(ExportedSymbol),
               paramIndex = 0, static = static)
@@ -430,7 +430,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       val formalArgsRegistry = new FormalArgsRegistry(minArgc, needsRestParam)
 
       // List of formal parameters
-      val formalArgs = formalArgsRegistry.genFormalArgs()
+      val (formalArgs, restParam) = formalArgsRegistry.genFormalArgs()
 
       // Create tuples: (methods, argCounts). This will be the cases we generate
       val caseDefinitions =
@@ -483,7 +483,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         }
       }
 
-      js.JSMethodDef(flags, genExpr(jsName), formalArgs, body)(
+      js.JSMethodDef(flags, genExpr(jsName), formalArgs, restParam, body)(
           OptimizerHints.empty, None)
     }
 
@@ -796,21 +796,16 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           js.This()(encodeClassType(sym.owner))
       }
 
-      def boxIfNeeded(call: js.Tree): js.Tree = {
-        ensureBoxed(call,
-            enteringPhase(currentRun.posterasurePhase)(sym.tpe.resultType))
-      }
-
       if (isNonNativeJSClass(currentClassSym)) {
         assert(sym.owner == currentClassSym.get, sym.fullName)
-        boxIfNeeded(genApplyJSClassMethod(receiver, sym, args))
+        ensureResultBoxed(genApplyJSClassMethod(receiver, sym, args), sym)
       } else {
         if (sym.isClassConstructor)
           genNew(currentClassSym, sym, args)
         else if (sym.isPrivate)
-          boxIfNeeded(genApplyMethodStatically(receiver, sym, args))
+          ensureResultBoxed(genApplyMethodStatically(receiver, sym, args), sym)
         else
-          boxIfNeeded(genApplyMethod(receiver, sym, args))
+          ensureResultBoxed(genApplyMethod(receiver, sym, args), sym)
       }
     }
 
@@ -1061,22 +1056,22 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       if (needsRestParam) freshLocalIdent("rest")(NoPosition).name
       else null
 
-    def genFormalArgs()(implicit pos: Position): List[js.ParamDef] = {
+    def genFormalArgs()(implicit pos: Position): (List[js.ParamDef], Option[js.ParamDef]) = {
       val fixedParamDefs = fixedParamNames.toList.map { paramName =>
         js.ParamDef(js.LocalIdent(paramName), NoOriginalName, jstpe.AnyType,
-            mutable = false, rest = false)
+            mutable = false)
       }
 
-      if (needsRestParam) {
-        val restParamDef = {
-          js.ParamDef(js.LocalIdent(restParamName),
-              NoOriginalName, jstpe.AnyType,
-              mutable = false, rest = true)
+      val restParam = {
+        if (needsRestParam) {
+          Some(js.ParamDef(js.LocalIdent(restParamName),
+              NoOriginalName, jstpe.AnyType, mutable = false))
+        } else {
+          None
         }
-        fixedParamDefs :+ restParamDef
-      } else {
-        fixedParamDefs
       }
+
+      (fixedParamDefs, restParam)
     }
 
     def genArgRef(index: Int)(implicit pos: Position): js.Tree = {

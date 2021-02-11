@@ -179,9 +179,9 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
       case Debugger() =>
         new Node(Token.DEBUGGER)
 
-      case FunctionDef(name, args, body) =>
+      case FunctionDef(name, args, restParam, body) =>
         val node = transformName(name)
-        val rhs = genFunction(name.name, args, body)
+        val rhs = genFunction(name.name, args, restParam, body)
         node.addChildToFront(rhs)
         new Node(Token.VAR, node)
 
@@ -233,8 +233,8 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
     }
 
     wrapTransform(member) {
-      case MethodDef(static, name, args, body) =>
-        val function = genFunction("", args, body)
+      case MethodDef(static, name, args, restParam, body) =>
+        val function = genFunction("", args, restParam, body)
         name match {
           case ComputedName(nameExpr) =>
             val node = newComputedPropNode(static, nameExpr, function)
@@ -264,7 +264,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
         }
 
       case GetterDef(static, name, body) =>
-        val function = genFunction("", Nil, body)
+        val function = genFunction("", Nil, None, body)
         name match {
           case ComputedName(nameExpr) =>
             val node = newComputedPropNode(static, nameExpr, function)
@@ -280,7 +280,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
         }
 
       case SetterDef(static, name, param, body) =>
-        val function = genFunction("", param :: Nil, body)
+        val function = genFunction("", param :: Nil, None, body)
         name match {
           case ComputedName(nameExpr) =>
             val node = newComputedPropNode(static, nameExpr, function)
@@ -382,12 +382,12 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
       case Super() =>
         new Node(Token.SUPER)
 
-      case Function(arrow, args, body) =>
-        val node = genFunction("", args, body)
+      case Function(arrow, args, restParam, body) =>
+        val node = genFunction("", args, restParam, body)
         node.setIsArrowFunction(arrow)
         node
-      case FunctionDef(name, args, body) =>
-        genFunction(name.name, args, body)
+      case FunctionDef(name, args, restParam, body) =>
+        genFunction(name.name, args, restParam, body)
 
       case classDef: ClassDef =>
         transformClassDef(classDef)
@@ -400,23 +400,22 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
     }
   }
 
-  private def genFunction(name: String, args: List[ParamDef], body: Tree)(
+  private def genFunction(name: String, params: List[ParamDef], restParam: Option[ParamDef], body: Tree)(
       implicit pos: Position): Node = {
     val paramList = new Node(Token.PARAM_LIST)
-    args.foreach(arg => paramList.addChildToBack(transformParam(arg)))
+    for (param <- params) {
+      paramList.addChildToBack(transformName(param.name)(param.pos.orElse(pos)))
+    }
+
+    for (param <- restParam) {
+      val pos1 = param.pos.orElse(pos)
+      val node = new Node(Token.ITER_REST, transformName(param.name)(pos1))
+      paramList.addChildToBack(setNodePosition(node, pos1))
+    }
 
     val nameNode = setNodePosition(Node.newString(Token.NAME, name), pos)
 
     new Node(Token.FUNCTION, nameNode, paramList, transformBlock(body))
-  }
-
-  def transformParam(param: ParamDef)(implicit parentPos: Position): Node = {
-    val pos = if (param.pos.isDefined) param.pos else parentPos
-    val node = transformName(param.name)(pos)
-    if (param.rest)
-      setNodePosition(new Node(Token.ITER_REST, node), pos)
-    else
-      node
   }
 
   def transformName(ident: Ident)(implicit parentPos: Position): Node =

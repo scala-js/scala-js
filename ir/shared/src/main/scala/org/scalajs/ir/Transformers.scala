@@ -203,8 +203,8 @@ object Transformers {
 
         // Atomic expressions
 
-        case Closure(arrow, captureParams, params, body, captureValues) =>
-          Closure(arrow, captureParams, params, transformExpr(body),
+        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+          Closure(arrow, captureParams, params, restParam, transformExpr(body),
               captureValues.map(transformExpr))
 
         case CreateJSClass(className, captureValues) =>
@@ -248,8 +248,8 @@ object Transformers {
               memberDef.optimizerHints, None)
 
         case memberDef: JSMethodDef =>
-          val JSMethodDef(flags, name, args, body) = memberDef
-          JSMethodDef(flags, name, args, transformExpr(body))(
+          val JSMethodDef(flags, name, args, restParam, body) = memberDef
+          JSMethodDef(flags, name, args, restParam, transformExpr(body))(
               memberDef.optimizerHints, None)
 
         case JSPropertyDef(flags, name, getterBody, setterArgAndBody) =>

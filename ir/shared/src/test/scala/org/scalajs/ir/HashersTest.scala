@@ -81,17 +81,17 @@ class HashersTest {
     val mIIMethodName = MethodName("m", List(I), I)
 
     test(
-        "7da97841c609c48c668003895af8afe26c2b006f",
+        "64940df7c6aae58962eb56f4aa6c6b085ca06c25",
         MethodDef(MemberFlags.empty, mIIMethodName, NON,
-            List(ParamDef("x", NON, IntType, mutable = false, rest = false)),
+            List(ParamDef("x", NON, IntType, mutable = false)),
             IntType, None)(
             NoOptHints, None)
     )
 
     test(
-        "50af8a6d5ee2ae3fa53beeb20692a67a749ec864",
+        "309805e5680ffa1804811ff5c9ebc77e91846957",
         MethodDef(MemberFlags.empty, mIIMethodName, NON,
-            List(ParamDef("x", NON, IntType, mutable = false, rest = false)),
+            List(ParamDef("x", NON, IntType, mutable = false)),
             IntType, Some(bodyWithInterestingStuff))(
             NoOptHints, None)
     )
@@ -104,9 +104,9 @@ class HashersTest {
     }
 
     test(
-        "c2e625c9d70272163025b30c29523c331dc9032e",
+        "c0f1ef1b22fd1cfdc9bba78bf3e0f433e9f82fc1",
         JSMethodDef(MemberFlags.empty, s("m"),
-            List(ParamDef("x", NON, AnyType, mutable = false, rest = false)),
+            List(ParamDef("x", NON, AnyType, mutable = false)), None,
             bodyWithInterestingStuff)(
             NoOptHints, None)
     )

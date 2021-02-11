@@ -259,7 +259,17 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       body: Tree, resultType: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[js.Function] = {
-    new JSDesugar().desugarToFunction(params, body,
+    desugarToFunction(enclosingClassName, params, restParam = None, body,
+        resultType)
+  }
+
+  /** Desugars parameters and body to a JS function.
+   */
+  def desugarToFunction(enclosingClassName: ClassName, params: List[ParamDef],
+      restParam: Option[ParamDef], body: Tree, resultType: Type)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): WithGlobals[js.Function] = {
+    new JSDesugar().desugarToFunction(params, restParam, body,
         isStat = resultType == NoType,
         Env.empty(resultType).withEnclosingClassName(Some(enclosingClassName)))
   }
@@ -278,10 +288,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
   /** Desugars parameters and body to a JS function.
    */
-  def desugarToFunction(params: List[ParamDef], body: Tree, resultType: Type)(
+  def desugarToFunction(params: List[ParamDef], restParam: Option[ParamDef],
+      body: Tree, resultType: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[js.Function] = {
-    new JSDesugar().desugarToFunction(params, body,
+    new JSDesugar().desugarToFunction(params, restParam, body,
         isStat = resultType == NoType, Env.empty(resultType))
   }
 
@@ -291,9 +302,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     implicit val pos = expr.pos
 
-    for (fun <- desugarToFunction(Nil, expr, resultType)) yield {
+    for (fun <- desugarToFunction(Nil, None, expr, resultType)) yield {
       fun match {
-        case js.Function(_, Nil, js.Return(newExpr)) =>
+        case js.Function(_, Nil, None, js.Return(newExpr)) =>
           // no need for an IIFE, we can just use `newExpr` directly
           newExpr
         case _ =>
@@ -457,41 +468,30 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       performOptimisticThenPessimisticRuns {
         val thisIdent = fileLevelVarIdent("thiz", thisOriginalName)
         val env = env0.withThisIdent(Some(thisIdent))
-        val js.Function(jsArrow, jsParams, jsBody) =
-          desugarToFunctionInternal(arrow = false, params, body, isStat, env)
-        js.Function(jsArrow, js.ParamDef(thisIdent, rest = false) :: jsParams,
-            jsBody)
+        val js.Function(jsArrow, jsParams, restParam, jsBody) =
+          desugarToFunctionInternal(arrow = false, params, None, body, isStat, env)
+        js.Function(jsArrow, js.ParamDef(thisIdent) :: jsParams, restParam, jsBody)
       }
     }
 
     /** Desugars parameters and body to a JS function.
      */
-    def desugarToFunction(
-        params: List[ParamDef], body: Tree, isStat: Boolean, env0: Env)(
+    def desugarToFunction(params: List[ParamDef], restParam: Option[ParamDef],
+        body: Tree, isStat: Boolean, env0: Env)(
         implicit pos: Position): WithGlobals[js.Function] = {
       performOptimisticThenPessimisticRuns {
-        desugarToFunctionInternal(arrow = false, params, body, isStat, env0)
+        desugarToFunctionInternal(arrow = false, params, restParam, body, isStat, env0)
       }
     }
 
     /** Desugars parameters and body to a JS function.
      */
     private def desugarToFunctionInternal(arrow: Boolean,
-        params: List[ParamDef], body: Tree, isStat: Boolean, env0: Env)(
+        params: List[ParamDef], restParam: Option[ParamDef], body: Tree,
+        isStat: Boolean, env0: Env)(
         implicit pos: Position): js.Function = {
 
-      val env = env0.withParams(params)
-
-      val translateRestParam =
-        if (esFeatures.useECMAScript2015) false
-        else params.nonEmpty && params.last.rest
-
-      val extractRestParam =
-        if (translateRestParam) makeExtractRestParam(params)
-        else js.Skip()
-
-      val newParams =
-        (if (translateRestParam) params.init else params).map(transformParamDef)
+      val env = env0.withParams(params ++ restParam)
 
       val newBody = if (isStat) {
         body match {
@@ -511,15 +511,25 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case other                                        => other
       }
 
-      js.Function(arrow && useArrowFunctions, newParams,
-          js.Block(extractRestParam, cleanedNewBody))
+      val actualArrowFun = arrow && useArrowFunctions
+      val jsParams = params.map(transformParamDef(_))
+
+      if (esFeatures.useECMAScript2015) {
+        val jsRestParam = restParam.map(transformParamDef(_))
+        js.Function(actualArrowFun, jsParams, jsRestParam, cleanedNewBody)
+      } else {
+        val patchedBody = restParam.fold {
+          cleanedNewBody
+        } { restParam =>
+          js.Block(makeExtractRestParam(restParam, jsParams.size), cleanedNewBody)
+        }
+
+        js.Function(actualArrowFun, jsParams, None, patchedBody)
+      }
     }
 
-    private def makeExtractRestParam(params: List[ParamDef])(
+    private def makeExtractRestParam(restParamDef: ParamDef, offset: Int)(
         implicit pos: Position): js.Tree = {
-      val offset = params.size - 1
-      val restParamDef = params.last
-
       val lenIdent = newSyntheticVar()
       val len = js.VarRef(lenIdent)
 
@@ -1037,8 +1047,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 }
                 JSObjectConstr(newItems)
 
-              case Closure(arrow, captureParams, params, body, captureValues) =>
-                Closure(arrow, captureParams, params, body, recs(captureValues))
+              case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+                Closure(arrow, captureParams, params, restParam, body, recs(captureValues))
 
               case New(className, constr, args) if noExtractYet =>
                 New(className, constr, recs(args))
@@ -1273,7 +1283,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           items.forall { item =>
             test(item._1) && test(item._2)
           }
-        case Closure(arrow, captureParams, params, body, captureValues) =>
+        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
           allowUnpure && (captureValues forall test)
 
         // Transients preserving side-effect freedom
@@ -1939,9 +1949,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         // Closures
 
-        case Closure(arrow, captureParams, params, body, captureValues) =>
+        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
           unnest(captureValues) { (newCaptureValues, env) =>
-            redo(Closure(arrow, captureParams, params, body, newCaptureValues))(
+            redo(Closure(arrow, captureParams, params, restParam, body, newCaptureValues))(
                 env)
           }
 
@@ -2225,8 +2235,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case ApplyDynamicImport(flags, className, method, args) =>
           // Protect the args by an IIFE to avoid bad loop captures (see #4385).
-          val captureParams =
-            args.map(_ => js.ParamDef(newSyntheticVar(), rest = false))
+          val captureParams = args.map(_ => js.ParamDef(newSyntheticVar()))
 
           val innerCall = extractWithGlobals {
             withDynamicGlobalVar("s", (className, method.name)) { v =>
@@ -2833,10 +2842,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             js.VarRef(ident)
           }
 
-        case Closure(arrow, captureParams, params, body, captureValues) =>
+        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
           val innerFunction = {
-            desugarToFunctionInternal(arrow, params, body, isStat = false,
-                Env.empty(AnyType).withParams(captureParams ++ params))
+            desugarToFunctionInternal(arrow, params, restParam, body, isStat = false,
+                Env.empty(AnyType).withParams(captureParams ++ params ++ restParam))
           }
 
           val captures = for {
@@ -2917,11 +2926,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         MethodName("notifyAll", Nil, VoidRef)
     )
 
-    private def transformParamDef(paramDef: ParamDef): js.ParamDef = {
-      js.ParamDef(transformLocalVarIdent(paramDef.name, paramDef.originalName),
-          paramDef.rest)(
-          paramDef.pos)
-    }
+    private def transformParamDef(paramDef: ParamDef): js.ParamDef =
+      js.ParamDef(transformLocalVarIdent(paramDef.name, paramDef.originalName))(paramDef.pos)
 
     private def transformLabelIdent(ident: LabelIdent): js.Ident =
       js.Ident(genName(ident.name))(ident.pos)
@@ -3106,7 +3112,7 @@ private object FunctionEmitter {
 
     def withParams(params: List[ParamDef]): Env = {
       params.foldLeft(this) {
-        case (env, ParamDef(name, _, _, mutable, _)) =>
+        case (env, ParamDef(name, _, _, mutable)) =>
           env.withDef(name, mutable)
       }
     }

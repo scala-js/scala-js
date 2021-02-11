@@ -105,7 +105,7 @@ object Trees {
   }
 
   sealed case class ParamDef(name: LocalIdent, originalName: OriginalName,
-      ptpe: Type, mutable: Boolean, rest: Boolean)(
+      ptpe: Type, mutable: Boolean)(
       implicit val pos: Position) extends IRNode {
     def ref(implicit pos: Position): VarRef = VarRef(name)(ptpe)
   }
@@ -924,7 +924,8 @@ object Trees {
    *    If `false`, it is a regular Function (`function`).
    */
   sealed case class Closure(arrow: Boolean, captureParams: List[ParamDef],
-      params: List[ParamDef], body: Tree, captureValues: List[Tree])(
+      params: List[ParamDef], restParam: Option[ParamDef], body: Tree,
+      captureValues: List[Tree])(
       implicit val pos: Position) extends Tree {
     val tpe = AnyType
   }
@@ -1106,7 +1107,7 @@ object Trees {
   sealed abstract class JSMethodPropDef extends MemberDef
 
   sealed case class JSMethodDef(flags: MemberFlags, name: Tree,
-      args: List[ParamDef], body: Tree)(
+      args: List[ParamDef], restParam: Option[ParamDef], body: Tree)(
       val optimizerHints: OptimizerHints, val hash: Option[TreeHash])(
       implicit val pos: Position)
       extends JSMethodPropDef {
@@ -1143,7 +1144,7 @@ object Trees {
       case TopLevelModuleExportDef(_, name)  => name
       case TopLevelJSClassExportDef(_, name) => name
 
-      case TopLevelMethodExportDef(_, JSMethodDef(_, propName, _, _)) =>
+      case TopLevelMethodExportDef(_, JSMethodDef(_, propName, _, _, _)) =>
         val StringLiteral(name) = propName
         name
 

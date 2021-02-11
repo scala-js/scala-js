@@ -127,7 +127,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       }
 
       classCaptures.foldLeft(Set.empty[LocalName]) {
-        case (alreadyDeclared, p @ ParamDef(ident, _, tpe, mutable, rest)) =>
+        case (alreadyDeclared, p @ ParamDef(ident, _, tpe, mutable)) =>
           implicit val ctx = ErrorContext(p)
           val name = ident.name
           if (alreadyDeclared(name))
@@ -136,8 +136,6 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             reportError(i"The JS class capture $name cannot have type NoType")
           if (mutable)
             reportError(i"The JS class capture $name cannot be mutable")
-          if (rest)
-            reportError(i"The JS class capture $name cannot be a rest param")
           alreadyDeclared + name
       }
     }
@@ -360,12 +358,10 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       return // things would go too badly otherwise
     }
 
-    for (ParamDef(name, _, tpe, _, rest) <- params) {
+    for (ParamDef(name, _, tpe, _) <- params) {
       checkDeclareLocalVar(name)
       if (tpe == NoType)
         reportError(i"Parameter $name has type NoType")
-      if (rest)
-        reportError(i"Rest parameter $name is illegal in a Scala method")
     }
 
     if (isConstructor && classDef.kind == ClassKind.Interface)
@@ -412,7 +408,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
   private def checkExportedMethodDef(methodDef: JSMethodDef,
       clazz: CheckedClass): Unit = withPerMethodState {
-    val JSMethodDef(flags, pName, params,  body) = methodDef
+    val JSMethodDef(flags, pName, params, restParam, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
     val static = flags.namespace.isStatic
@@ -431,7 +427,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       reportError("Exported method def in non-JS class cannot be static")
 
     checkExportedPropertyName(pName, clazz)
-    checkJSParamDefs(params)
+    checkJSParamDefs(params, restParam)
 
     def isJSConstructor = {
       !static && (pName match {
@@ -449,14 +445,14 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         else ClassType(clazz.name)
       }
 
-      val bodyEnv = Env.fromSignature(thisType, clazz.jsClassCaptures, params)
+      val bodyEnv = Env.fromSignature(thisType, clazz.jsClassCaptures, params ++ restParam)
       typecheckExpect(body, bodyEnv, AnyType)
     }
   }
 
   private def checkJSClassConstructor(methodDef: JSMethodDef,
       clazz: CheckedClass): Unit = {
-    val JSMethodDef(static, _, params, body) = methodDef
+    val JSMethodDef(static, _, params, restParam, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
 
     val bodyStats = body match {
@@ -478,7 +474,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
 
     val initialEnv = Env.fromSignature(NoType, clazz.jsClassCaptures,
-        params, inConstructorOf = Some(clazz.name))
+        params ++ restParam, inConstructorOf = Some(clazz.name))
 
     val preparedEnv = prepStats.foldLeft(initialEnv) { (prevEnv, stat) =>
       typecheckStat(stat, prevEnv)
@@ -525,8 +521,6 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       if (setterArg.ptpe != AnyType)
         reportError("Setter argument of exported property def has type "+
             i"${setterArg.ptpe}, but must be Any")
-      if (setterArg.rest)
-        reportError(i"Rest parameter ${setterArg.name} is illegal in setter")
 
       val setterBodyEnv = Env.fromSignature(thisType, clazz.jsClassCaptures,
           List(setterArg))
@@ -574,7 +568,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   private def checkTopLevelMethodExportDef(
       topLevelMethodExportDef: TopLevelMethodExportDef): Unit = withPerMethodState {
 
-    val JSMethodDef(flags, pName, params,  body) = topLevelMethodExportDef.methodDef
+    val JSMethodDef(flags, pName, params, restParam, body) = topLevelMethodExportDef.methodDef
     implicit val ctx = ErrorContext(topLevelMethodExportDef.methodDef)
 
     if (flags.isMutable)
@@ -589,9 +583,9 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         reportError("Top level exports may not have computed names")
     }
 
-    checkJSParamDefs(params)
+    checkJSParamDefs(params, restParam)
 
-    val bodyEnv = Env.fromSignature(NoType, None, params)
+    val bodyEnv = Env.fromSignature(NoType, None, params ++ restParam)
     typecheckExpect(body, bodyEnv, AnyType)
   }
 
@@ -1176,7 +1170,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         if (!isSubtype(env.thisTpe, tree.tpe))
           reportError(i"this of type ${env.thisTpe} typed as ${tree.tpe}")
 
-      case Closure(arrow, captureParams, params, body, captureValues) =>
+      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
         /* Check compliance of captureValues wrt. captureParams in the current
          * method state, i.e., outside `withPerMethodState`.
          */
@@ -1184,26 +1178,24 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           reportError("Mismatched size for captures: "+
               i"${captureParams.size} params vs ${captureValues.size} values")
 
-        for ((ParamDef(_, _, ctpe, _, _), value) <- captureParams zip captureValues) {
+        for ((ParamDef(_, _, ctpe, _), value) <- captureParams zip captureValues) {
           typecheckExpect(value, env, ctpe)
         }
 
         // Then check the closure params and body in its own per-method state
         withPerMethodState {
-          for (ParamDef(name, _, ctpe, mutable, rest) <- captureParams) {
+          for (ParamDef(name, _, ctpe, mutable) <- captureParams) {
             checkDeclareLocalVar(name)
             if (mutable)
               reportError(i"Capture parameter $name cannot be mutable")
-            if (rest)
-              reportError(i"Capture parameter $name cannot be a rest parameter")
             if (ctpe == NoType)
               reportError(i"Parameter $name has type NoType")
           }
 
-          checkJSParamDefs(params)
+          checkJSParamDefs(params, restParam)
 
           val thisType = if (arrow) NoType else AnyType
-          val bodyEnv = Env.fromSignature(thisType, None, captureParams ++ params)
+          val bodyEnv = Env.fromSignature(thisType, None, captureParams ++ params ++ restParam)
           typecheckExpect(body, bodyEnv, AnyType)
         }
 
@@ -1217,7 +1209,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
                 i"${captureParams.size} params vs ${captureValues.size} values")
           }
 
-          for ((ParamDef(_, _, ctpe, _, _), value) <- captureParams.zip(captureValues))
+          for ((ParamDef(_, _, ctpe, _), value) <- captureParams.zip(captureValues))
             typecheckExpect(value, env, ctpe)
         }
 
@@ -1229,21 +1221,14 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   }
 
   /** Check the parameters for a method with JS calling conventions. */
-  private def checkJSParamDefs(params: List[ParamDef])(
+  private def checkJSParamDefs(params: List[ParamDef], restParam: Option[ParamDef])(
       implicit ctx: ErrorContext): Unit = {
-    for (ParamDef(name, _, ptpe, _, _) <- params) {
+    for (ParamDef(name, _, ptpe, _) <- params ++ restParam) {
       checkDeclareLocalVar(name)
       if (ptpe == NoType)
         reportError(i"Parameter $name has type NoType")
       else if (ptpe != AnyType)
         reportError(i"Parameter $name has type $ptpe but must be any")
-    }
-
-    if (params.nonEmpty) {
-      for (ParamDef(name, _, _, _, rest) <- params.init) {
-        if (rest)
-          reportError(i"Non-last rest parameter $name is illegal")
-      }
     }
   }
 
@@ -1404,7 +1389,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         params: List[ParamDef], inConstructorOf: Option[ClassName] = None): Env = {
       val allParams = jsClassCaptures.getOrElse(Nil) ::: params
       val paramLocalDefs =
-        for (p @ ParamDef(ident, _, tpe, mutable, _) <- allParams)
+        for (p @ ParamDef(ident, _, tpe, mutable) <- allParams)
           yield ident.name -> LocalDef(ident.name, tpe, mutable)(p.pos)
       new Env(thisType, paramLocalDefs.toMap, Map.empty, inConstructorOf)
     }

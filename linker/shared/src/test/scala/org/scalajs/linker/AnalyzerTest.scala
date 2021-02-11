@@ -378,7 +378,7 @@ class AnalyzerTest {
             topLevelExportDefs = List(
                 TopLevelMethodExportDef("main", JSMethodDef(
                     EMF.withNamespace(MemberNamespace.PublicStatic),
-                    str("default"), Nil, Undefined())(
+                    str("default"), Nil, None, Undefined())(
                     EOH, None))
             )
         )

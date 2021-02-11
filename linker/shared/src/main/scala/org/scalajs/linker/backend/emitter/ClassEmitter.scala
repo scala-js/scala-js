@@ -124,7 +124,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
               }),
               js.Return(classValueVar)
           )
-          createAccessor <- globalFunctionDef("a", className, Nil, body)
+          createAccessor <- globalFunctionDef("a", className, Nil, None, body)
         } yield {
           js.Block(createClassValueVar, createAccessor)
         }
@@ -133,7 +133,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           implicit val pos = param.pos
           val ident = fileLevelVarIdent("cc", genName(param.name.name),
               param.originalName.orElse(param.name.name))
-          js.ParamDef(ident, rest = false)
+          js.ParamDef(ident)
         }
 
         assert(!hasClassInitializer(tree),
@@ -147,7 +147,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
               Nil
           )
 
-          globalFunctionDef("a", className, captureParamDefs, body)
+          globalFunctionDef("a", className, captureParamDefs, None, body)
         }
       }
     }
@@ -201,7 +201,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
       js.Block(
           js.DocComment("@constructor"),
-          genConst(dummyCtor.ident, js.Function(false, Nil, js.Skip())),
+          genConst(dummyCtor.ident, js.Function(false, Nil, None, js.Skip())),
           dummyCtor.prototype := superCtor.prototype,
           ctorVar.prototype := js.New(dummyCtor, Nil)
       )
@@ -224,9 +224,9 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       for {
         ctorFun <- genJSConstructorFun(tree, initToInline, forESClass = false)
         realCtorDef <-
-            globalFunctionDef("c", className, ctorFun.args, ctorFun.body)
+            globalFunctionDef("c", className, ctorFun.args, ctorFun.restParam, ctorFun.body)
         inheritableCtorDef <-
-            globalFunctionDef("h", className, Nil, js.Skip())
+            globalFunctionDef("h", className, Nil, None, js.Skip())
         chainProto <- chainProtoWithGlobals
       } yield {
         js.Block(
@@ -268,15 +268,15 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     if (tree.kind.isJSClass) {
       for (fun <- genConstructorFunForJSClass(tree)) yield {
-        js.MethodDef(static = false, js.Ident("constructor"), fun.args,
-            fun.body)
+        js.MethodDef(static = false, js.Ident("constructor"),
+            fun.args, fun.restParam, fun.body)
       }
     } else {
       val jsConstructorFunWithGlobals =
         genJSConstructorFun(tree, initToInline, forESClass = true)
 
       for (jsConstructorFun <- jsConstructorFunWithGlobals) yield {
-        val js.Function(_, args, body) = jsConstructorFun
+        val js.Function(_, args, restParam, body) = jsConstructorFun
 
         def isTrivialCtorBody: Boolean = body match {
           case js.Skip()                 => true
@@ -287,7 +287,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         if (args.isEmpty && isTrivialCtorBody)
           js.Skip()
         else
-          js.MethodDef(static = false, js.Ident("constructor"), args, body)
+          js.MethodDef(static = false, js.Ident("constructor"), args, restParam, body)
       }
     }
   }
@@ -354,7 +354,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     initToInline.fold {
       WithGlobals(
-          js.Function(arrow = false, Nil, js.Block(superCtorCallAndFieldDefs)))
+          js.Function(arrow = false, Nil, None, js.Block(superCtorCallAndFieldDefs)))
     } { initMethodDef =>
       val generatedInitMethodFunWithGlobals = {
         implicit val pos = initMethodDef.pos
@@ -368,8 +368,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       }
 
       for (generatedInitMethodFun <- generatedInitMethodFunWithGlobals) yield {
-        val js.Function(arrow, args, initMethodFunBody) = generatedInitMethodFun
-        js.Function(arrow, args,
+        val js.Function(arrow, args, restParam, initMethodFunBody) = generatedInitMethodFun
+        js.Function(arrow, args, restParam,
             js.Block(superCtorCallAndFieldDefs ::: initMethodFunBody :: Nil))
       }
     }
@@ -383,9 +383,9 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     require(tree.kind.isJSClass)
 
     tree.exportedMembers.map(_.value) collectFirst {
-      case JSMethodDef(flags, StringLiteral("constructor"), params, body)
+      case JSMethodDef(flags, StringLiteral("constructor"), params, restParam, body)
           if flags.namespace == MemberNamespace.Public =>
-        desugarToFunction(tree.className, params, body, resultType = AnyType)
+        desugarToFunction(tree.className, params, restParam, body, resultType = AnyType)
     } getOrElse {
       throw new IllegalArgumentException(
           s"${tree.className} does not have an exported constructor")
@@ -535,7 +535,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       methodFun <- desugarToFunction(className, method.args, method.body.get, method.resultType)
     } yield {
       val jsMethodName = genMemberMethodIdent(method.name, method.originalName)
-      js.MethodDef(static = false, jsMethodName, methodFun.args, methodFun.body)
+      js.MethodDef(static = false, jsMethodName, methodFun.args, methodFun.restParam, methodFun.body)
     }
   }
 
@@ -561,7 +561,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     methodFun0WithGlobals.flatMap { methodFun0 =>
       val methodFun = if (namespace == MemberNamespace.Constructor) {
         // init methods have to return `this` so that we can chain them to `new`
-        js.Function(arrow = false, methodFun0.args, {
+        js.Function(arrow = false, methodFun0.args, methodFun0.restParam, {
           implicit val pos = methodFun0.body.pos
           js.Block(
               methodFun0.body,
@@ -583,7 +583,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       val methodName = method.name.name
 
       globalFunctionDef(field, (className, methodName), methodFun.args,
-          methodFun.body, method.originalName.orElse(methodName))
+          methodFun.restParam, methodFun.body, method.originalName.orElse(methodName))
     }
   }
 
@@ -598,11 +598,11 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     assert(!namespace.isPrivate && !namespace.isConstructor)
 
     for {
-      methodFun <- desugarToFunction(tree.className, method.args, method.body, AnyType)
+      methodFun <- desugarToFunction(tree.className, method.args, method.restParam, method.body, AnyType)
       propName <- genMemberNameTree(method.name)
     } yield {
       if (useESClass) {
-        js.MethodDef(static = namespace.isStatic, propName, methodFun.args, methodFun.body)
+        js.MethodDef(static = namespace.isStatic, propName, methodFun.args, methodFun.restParam, methodFun.body)
       } else {
         val targetObject = exportTargetES5(tree, namespace)
         js.Assign(genPropSelect(targetObject, propName), methodFun)
@@ -761,7 +761,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     if (tree.kind.isClass || tree.kind == ClassKind.Interface || isHijackedClass) {
       val displayName = className.nameString
 
-      val objParam = js.ParamDef(js.Ident("obj"), rest = false)
+      val objParam = js.ParamDef(js.Ident("obj"))
       val obj = objParam.ref
 
       val isExpression = if (isHijackedClass) {
@@ -795,7 +795,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       }
 
       val createIsStatWithGlobals = if (needIsFunction) {
-        globalFunctionDef("is", className, List(objParam), js.Return(isExpression))
+        globalFunctionDef("is", className, List(objParam), None, js.Return(isExpression))
       } else {
         WithGlobals(js.Skip())
       }
@@ -803,7 +803,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       val createAsStatWithGlobals = if (semantics.asInstanceOfs == Unchecked) {
         WithGlobals(js.Skip())
       } else {
-        globalFunctionDef("as", className, List(objParam), js.Return {
+        globalFunctionDef("as", className, List(objParam), None, js.Return {
           val isCond =
             if (needIsFunction) js.Apply(globalVar("is", className), List(obj))
             else isExpression
@@ -842,14 +842,14 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     assert(className != ObjectClass,
         "cannot call genArrayInstanceTests for java.lang.Object")
 
-    val objParam = js.ParamDef(js.Ident("obj"), rest = false)
+    val objParam = js.ParamDef(js.Ident("obj"))
     val obj = objParam.ref
 
-    val depthParam = js.ParamDef(js.Ident("depth"), rest = false)
+    val depthParam = js.ParamDef(js.Ident("depth"))
     val depth = depthParam.ref
 
     val createIsArrayOfStatWithGlobals = {
-      globalFunctionDef("isArrayOf", className, List(objParam, depthParam), {
+      globalFunctionDef("isArrayOf", className, List(objParam, depthParam), None, {
         js.Return(!(!({
           genIsScalaJSObject(obj) &&
           ((obj DOT "$classData" DOT "arrayDepth") === depth) &&
@@ -862,7 +862,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     val createAsArrayOfStatWithGlobals = if (semantics.asInstanceOfs == Unchecked) {
       WithGlobals(js.Skip())
     } else {
-      globalFunctionDef("asArrayOf", className, List(objParam, depthParam), {
+      globalFunctionDef("asArrayOf", className, List(objParam, depthParam), None, {
         js.Return {
           js.If(js.Apply(globalVar("isArrayOf", className), List(obj, depth)) ||
               (obj === js.Null()), {
@@ -936,8 +936,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         WithGlobals(globalVar("is", className))
       } else if (HijackedClasses.contains(className)) {
         /* Hijacked classes have a special isInstanceOf test. */
-        val xParam = js.ParamDef(js.Ident("x"), rest = false)
-        WithGlobals(genArrowFunction(List(xParam), js.Return {
+        val xParam = js.ParamDef(js.Ident("x"))
+        WithGlobals(genArrowFunction(List(xParam), None, js.Return {
           genIsInstanceOfHijackedClass(xParam.ref, className)
         }))
       } else if (isJSType) {
@@ -955,7 +955,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
             jsCtor <- genJSClassConstructor(className, tree.jsNativeLoadSpec,
                 keepOnlyDangerousVarNames = true)
           } yield {
-            genArrowFunction(List(js.ParamDef(js.Ident("x"), rest = false)), js.Return {
+            genArrowFunction(List(js.ParamDef(js.Ident("x"))), None, js.Return {
               js.VarRef(js.Ident("x")) instanceof jsCtor
             })
           }
@@ -1057,7 +1057,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
       val body = js.Block(initBlock, js.Return(moduleInstanceVar))
 
-      globalFunctionDef("m", className, Nil, body)
+      globalFunctionDef("m", className, Nil, None, body)
     }
 
     createAccessor.map(js.Block(createModuleInstanceField, _))
@@ -1068,7 +1068,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     val exportsWithGlobals = tree.exportedMembers map { member =>
       member.value match {
-        case JSMethodDef(flags, StringLiteral("constructor"), _, _)
+        case JSMethodDef(flags, StringLiteral("constructor"), _, _, _)
             if flags.namespace == MemberNamespace.Public && tree.kind.isJSClass =>
           WithGlobals(js.Skip()(member.value.pos))
         case m: JSMethodDef =>
@@ -1111,14 +1111,14 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     import TreeDSL._
 
-    val JSMethodDef(flags, StringLiteral(exportName), args, body) =
+    val JSMethodDef(flags, StringLiteral(exportName), args, restParam, body) =
       tree.methodDef
 
     assert(flags.namespace == MemberNamespace.PublicStatic, exportName)
 
     implicit val pos = tree.pos
 
-    val methodDefWithGlobals = desugarToFunction(args, body, AnyType)
+    val methodDefWithGlobals = desugarToFunction(args, restParam, body, AnyType)
 
     methodDefWithGlobals.flatMap { methodDef =>
       genConstValueExportDef(exportName, methodDef)
@@ -1185,7 +1185,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
               exportsVarRef,
               js.StringLiteral(exportName),
               List(
-                  "get" -> js.Function(arrow = false, Nil, {
+                  "get" -> js.Function(arrow = false, Nil, None, {
                     js.Return(globalVar("t", varScope))
                   }),
                   "configurable" -> js.BooleanLiteral(true)

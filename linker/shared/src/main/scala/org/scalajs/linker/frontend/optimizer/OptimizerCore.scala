@@ -643,8 +643,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           pretransformExpr(tree)(finishTransform(isStat))
         }
 
-      case Closure(arrow, captureParams, params, body, captureValues) =>
-        transformClosureCommon(arrow, captureParams, params, body,
+      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+        transformClosureCommon(arrow, captureParams, params, restParam, body,
             captureValues.map(transformExpr))
 
       case CreateJSClass(className, captureValues) =>
@@ -667,17 +667,21 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   }
 
   private def transformClosureCommon(arrow: Boolean,
-      captureParams: List[ParamDef], params: List[ParamDef], body: Tree,
+      captureParams: List[ParamDef], params: List[ParamDef],
+      restParam: Option[ParamDef], body: Tree,
       newCaptureValues: List[Tree])(
       implicit scope: Scope, pos: Position): Closure = {
 
     val thisType = if (arrow) NoType else AnyType
     val (allNewParams, newBody) = transformIsolatedBody(None, thisType,
-        captureParams ++ params, AnyType, body, scope.implsBeingInlined)
-    val (newCaptureParams, newParams) =
-      allNewParams.splitAt(captureParams.size)
+        captureParams ++ params ++ restParam, AnyType, body, scope.implsBeingInlined)
+    val (newCaptureParams, newParams, newRestParam) = {
+      val (c, t) = allNewParams.splitAt(captureParams.size)
+      if (restParam.isDefined) (c, t.init, Some(t.last))
+      else (c, t, None)
+    }
 
-    Closure(arrow, newCaptureParams, newParams, newBody, newCaptureValues)
+    Closure(arrow, newCaptureParams, newParams, newRestParam, newBody, newCaptureValues)
   }
 
   private def transformBlock(tree: Block, isStat: Boolean)(
@@ -881,17 +885,17 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           foldAsInstanceOf(texpr, tpe)(cont)
         }
 
-      case Closure(arrow, captureParams, params, body, captureValues) =>
+      case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
         pretransformExprs(captureValues) { tcaptureValues =>
           def default(): TailRec[Tree] = {
             val newClosure = transformClosureCommon(arrow, captureParams,
-                params, body, tcaptureValues.map(finishTransformExpr))
+                params, restParam, body, tcaptureValues.map(finishTransformExpr))
             cont(PreTransTree(
                 newClosure,
                 RefinedType(AnyType, isExact = false, isNullable = false)))
           }
 
-          if (!arrow || params.exists(_.rest)) {
+          if (!arrow || restParam.isDefined) {
             /* TentativeClosureReplacement assumes there are no rest
              * parameters, because that would not be inlineable anyway.
              * Likewise, it assumes that there is no binding for `this`, which
@@ -903,10 +907,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           } else {
             tryOrRollback { cancelFun =>
               val captureBindings = for {
-                (ParamDef(nameIdent, originalName, tpe, mutable, rest), value) <-
+                (ParamDef(nameIdent, originalName, tpe, mutable), value) <-
                   captureParams zip tcaptureValues
               } yield {
-                assert(!rest, s"Found a rest capture parameter at $pos")
                 Binding(nameIdent, originalName, tpe, mutable, value)
               }
               withNewLocalDefs(captureBindings) { (captureLocalDefs, cont1) =>
@@ -1404,7 +1407,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       Block(lengths.map(keepOnlySideEffects))(stat.pos)
     case Select(qualifier, _, _) =>
       keepOnlySideEffects(qualifier)
-    case Closure(_, _, _, _, captureValues) =>
+    case Closure(_, _, _, _, _, captureValues) =>
       Block(captureValues.map(keepOnlySideEffects))(stat.pos)
     case UnaryOp(_, arg) =>
       keepOnlySideEffects(arg)
@@ -1994,9 +1997,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         s"inlineBody was called with formals $formals but args $args")
 
     val argsBindings = for {
-      (ParamDef(nameIdent, originalName, tpe, mutable, rest), arg) <- formals zip args
+      (ParamDef(nameIdent, originalName, tpe, mutable), arg) <- formals zip args
     } yield {
-      assert(!rest, s"Trying to inline a body with a rest parameter at $pos")
       Binding(nameIdent, originalName, tpe, mutable, arg)
     }
 
@@ -2337,7 +2339,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     }
 
     val argsBindings = for {
-      (ParamDef(nameIdent, originalName, tpe, mutable, _), arg) <- formals zip args
+      (ParamDef(nameIdent, originalName, tpe, mutable), arg) <- formals zip args
     } yield {
       Binding(nameIdent, originalName, tpe, mutable, arg)
     }
@@ -3954,13 +3956,13 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       body: Tree,
       alreadyInlining: Set[Scope.InliningID]): (List[ParamDef], Tree) = {
     val (paramLocalDefs, newParamDefs) = (for {
-      p @ ParamDef(ident @ LocalIdent(name), originalName, ptpe, mutable, rest) <- params
+      p @ ParamDef(ident @ LocalIdent(name), originalName, ptpe, mutable) <- params
     } yield {
       val (newName, newOriginalName) = freshLocalName(name, originalName, mutable)
       val localDef = LocalDef(RefinedType(ptpe), mutable,
           ReplaceWithVarRef(newName, newSimpleState(true), None))
       val newParamDef = ParamDef(LocalIdent(newName)(ident.pos),
-          newOriginalName, ptpe, mutable, rest)(p.pos)
+          newOriginalName, ptpe, mutable)(p.pos)
       ((name -> localDef), newParamDef)
     }).unzip
 
@@ -5332,7 +5334,7 @@ private[optimizer] object OptimizerCore {
               (args.head.isInstanceOf[This]) &&
               (args.tail.zip(params).forall {
                 case (VarRef(LocalIdent(aname)),
-                    ParamDef(LocalIdent(pname), _, _, _, _)) => aname == pname
+                    ParamDef(LocalIdent(pname), _, _, _)) => aname == pname
                 case _ => false
               }))
 
@@ -5340,7 +5342,7 @@ private[optimizer] object OptimizerCore {
         case ApplyStatically(_, This(), className, method, args) =>
           args.size == params.size &&
           args.zip(params).forall {
-            case (VarRef(LocalIdent(aname)), ParamDef(LocalIdent(pname), _, _, _, _)) =>
+            case (VarRef(LocalIdent(aname)), ParamDef(LocalIdent(pname), _, _, _)) =>
               aname == pname
             case _ =>
               false
@@ -5351,7 +5353,7 @@ private[optimizer] object OptimizerCore {
           (args.size == params.size) &&
           args.zip(params).forall {
             case (MaybeUnbox(VarRef(LocalIdent(aname)), _),
-                ParamDef(LocalIdent(pname), _, _, _, _)) => aname == pname
+                ParamDef(LocalIdent(pname), _, _, _)) => aname == pname
             case _ => false
           }
 
