@@ -12,5 +12,5 @@
 
 package org.scalajs.ir
 
-class InvalidIRException(val tree: Trees.Tree, message: String)
+class InvalidIRException(val tree: Trees.IRNode, message: String)
     extends Exception(message)
