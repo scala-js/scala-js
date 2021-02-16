@@ -703,6 +703,9 @@ class FormatterTest {
 
     // Weird case: for a trailing '%', the reported unknown conversion is '%'
     expectUnknownFormatConversion("abc%", '%')
+
+    // Missing precision after '.' parses as if the conversion were '.'
+    expectUnknownFormatConversion("abc%.f", '.')
   }
 
   // Among others, this tests #4343
@@ -757,6 +760,203 @@ class FormatterTest {
     expectFormatterThrows(classOf[MissingFormatArgumentException], "%d%d%d",
         1, 1)
     expectFormatterThrows(classOf[MissingFormatArgumentException], "%10$d", 1)
+  }
+
+  /** Tests scenarios where there are multiple errors at the same time, one of
+   *  them being that the conversion is unknown, to make sure that the right
+   *  one takes precedence.
+   */
+  @Test def formatExceptionPrecedenceForUnknownConversionTest_Issue4352(): Unit = {
+    /* In decreasing order of precedence:
+     *
+     * 1. DuplicateFormatFlagsException
+     * 2. UnknownFormatConversionException
+     * 3. Everything else (never happens for an unknown conversion)
+     *
+     * In this test, we also test `null` arguments, to make sure that any
+     * special code path for `null` does not short-circuit the
+     * `UnknownFormatConversionException` (which is imaginable, given that
+     * `null` gets formatted in the same regardless of the conversion, if it's
+     * not 'b' or 'B').
+     */
+
+    // 1-2 DuplicateFormatFlagsException > UnknownFormatConversionException
+    expectFormatterThrows(classOf[DuplicateFormatFlagsException], "%,,j", 5)
+    expectFormatterThrows(classOf[DuplicateFormatFlagsException], "%,,j", null)
+    expectFormatterThrows(classOf[UnknownFormatConversionException], "%,j", 5)
+    expectFormatterThrows(classOf[UnknownFormatConversionException], "%,j", null)
+
+    // 2-3 UnknownFormatConversionException > everything else
+
+    // MissingFormatWidthException
+    expectFormatterThrows(classOf[UnknownFormatConversionException], "%-j", 5)
+    expectFormatterThrows(classOf[UnknownFormatConversionException], "%-j", null)
+    expectFormatterThrows(classOf[MissingFormatWidthException], "%-d", 5)
+    expectFormatterThrows(classOf[MissingFormatWidthException], "%-d", null)
+
+    // IllegalFormatWidthException
+    expectFormatterThrows(classOf[UnknownFormatConversionException], "%5j", 5)
+    expectFormatterThrows(classOf[UnknownFormatConversionException], "%5j", null)
+    expectFormatterThrows(classOf[IllegalFormatWidthException], "%5n", 5)
+    expectFormatterThrows(classOf[IllegalFormatWidthException], "%5n", null)
+
+    // IllegalFormatFlagsException
+    expectFormatterThrows(classOf[UnknownFormatConversionException], "%+ j", 5)
+    expectFormatterThrows(classOf[UnknownFormatConversionException], "%+ j", null)
+    expectFormatterThrows(classOf[IllegalFormatFlagsException], "%+ d", 5)
+    expectFormatterThrows(classOf[IllegalFormatFlagsException], "%+ d", null)
+
+    // IllegalFormatPrecisionException
+    expectFormatterThrows(classOf[UnknownFormatConversionException], "%.3j", 5)
+    expectFormatterThrows(classOf[UnknownFormatConversionException], "%.3j", null)
+    expectFormatterThrows(classOf[IllegalFormatPrecisionException], "%.3d", 5)
+    expectFormatterThrows(classOf[IllegalFormatPrecisionException], "%.3d", null)
+
+    // FormatFlagsConversionMismatchException
+    expectFormatterThrows(classOf[UnknownFormatConversionException], "%#j", 5)
+    expectFormatterThrows(classOf[UnknownFormatConversionException], "%#j", null)
+    expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%#d", 5)
+    expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%#d", null)
+
+    // MissingFormatArgumentException
+    expectFormatterThrows(classOf[UnknownFormatConversionException], "%j")
+    expectFormatterThrows(classOf[MissingFormatArgumentException], "%d")
+
+    // IllegalFormatConversionException (assuming that a Some would never be a valid argument)
+    expectFormatterThrows(classOf[UnknownFormatConversionException], "%j", Some(5))
+    expectFormatterThrows(classOf[IllegalFormatConversionException], "%d", Some(5))
+  }
+
+  /** Tests scenarios where there are multiple errors at the same time, to
+   *  make sure that the right one takes precedence.
+   */
+  @Test def formatExceptionPrecedenceForRegularConversionsTest_Issue4352(): Unit = {
+    /* In decreasing order of precedence:
+     *
+     * 1. DuplicateFormatFlagsException
+     * (2. UnknownFormatConversionException) tested above
+     * 3. MissingFormatWidthException
+     * 4. IllegalFormatFlagsException
+     * 5. IllegalFormatPrecisionException
+     * 6. FormatFlagsConversionMismatchException
+     * 7. MissingFormatArgumentException | IllegalFormatConversionException | IllegalFormatCodePointException
+     * 8. FormatFlagsConversionMismatchException for flags that are valid for BigInteger in 'o', 'x' and 'X'
+     */
+
+    // 1-3 DuplicateFormatFlagsException > MissingFormatWidthException
+    expectFormatterThrows(classOf[DuplicateFormatFlagsException], "%,,0e", 5.5)
+    expectFormatterThrows(classOf[MissingFormatWidthException], "%0e", 5.5)
+
+    // 3-4 MissingFormatWidthException > IllegalFormatFlagsException
+    expectFormatterThrows(classOf[MissingFormatWidthException], "%+ 0e", 5.5)
+    expectFormatterThrows(classOf[IllegalFormatFlagsException], "%+ 05e", 5.5)
+
+    // 4-5 IllegalFormatFlagsException > IllegalFormatPrecisionException
+    expectFormatterThrows(classOf[IllegalFormatFlagsException], "%+ .5x", new BigInteger("5"))
+    expectFormatterThrows(classOf[IllegalFormatPrecisionException], "%+.5x", new BigInteger("5"))
+
+    // 5-6 IllegalFormatPrecisionException > FormatFlagsConversionMismatchException
+    expectFormatterThrows(classOf[IllegalFormatPrecisionException], "%,.5x", new BigInteger("5"))
+    expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%,x", new BigInteger("5"))
+
+    // 6-7a FormatFlagsConversionMismatchException > MissingFormatArgumentException
+    expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%,e")
+    expectFormatterThrows(classOf[MissingFormatArgumentException], "%e")
+
+    /* 6-7a FormatFlagsConversionMismatchException > MissingFormatArgumentException
+     * for flags that are valid for all arguments in 'o', 'x' and 'X'
+     */
+    expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%,x")
+    expectFormatterThrows(classOf[MissingFormatArgumentException], "%x")
+
+    // 6-7b FormatFlagsConversionMismatchException > IllegalFormatConversionException
+    expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%,e", 5L)
+    expectFormatterThrows(classOf[IllegalFormatConversionException], "%e", 5L)
+
+    // 6-7c FormatFlagsConversionMismatchException > IllegalFormatCodePointException
+    expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%,-5c", Character.MAX_CODE_POINT + 10)
+    expectFormatterThrows(classOf[IllegalFormatCodePointException], "%-5c", Character.MAX_CODE_POINT + 10)
+
+    /* 7a-8 MissingFormatArgumentException > FormatFlagsConversionMismatchException
+     * for flags that are valid for BigInteger in 'o', 'x' and 'X'
+     */
+    expectFormatterThrows(classOf[MissingFormatArgumentException], "%+x")
+    expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%+x", 5)
+
+    /* 7b-8 IllegalFormatConversionException > FormatFlagsConversionMismatchException
+     * for flags that are valid for BigInteger in 'o', 'x' and 'X'
+     */
+    expectFormatterThrows(classOf[IllegalFormatConversionException], "%+x", 'A')
+    expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%+x", 5)
+  }
+
+  /** Tests scenarios where there are multiple errors at the same time with the
+   *  `%` conversion, to make sure that the right one takes precedence.
+   */
+  @Test def formatExceptionPrecedenceForPercentTest_Issue4352(): Unit = {
+    /* In decreasing order of precedence, for `%`:
+     *
+     * 1. DuplicateFormatFlagsException
+     * 2. IllegalFormatPrecisionException
+     * 3. IllegalFormatFlagsException
+     * 4. MissingFormatWidthException
+     * 5. FormatFlagsConversionMismatchException
+     */
+
+    // 1-2 DuplicateFormatFlagsException > IllegalFormatPrecisionException
+    expectFormatterThrows(classOf[DuplicateFormatFlagsException], "%,,.3%")
+    expectFormatterThrows(classOf[IllegalFormatPrecisionException], "%.3%")
+
+    // 2-3 IllegalFormatPrecisionException > IllegalFormatFlagsException
+    expectFormatterThrows(classOf[IllegalFormatPrecisionException], "%+ .3%")
+    expectFormatterThrows(classOf[IllegalFormatFlagsException], "%+ %")
+
+    // 3-4 IllegalFormatFlagsException > MissingFormatWidthException
+    expectFormatterThrows(classOf[IllegalFormatFlagsException], "%+ -%")
+    expectFormatterThrows(classOf[MissingFormatWidthException], "%-%")
+
+    if (!executingInJVM) {
+      /* https://bugs.java.com/bugdatabase/view_bug.do?bug_id=JDK-8260221
+       * OpenJDK never throws FormatFlagsConversionMismatchException, although
+       * it should. We chose to put it last in the precedence chain, although
+       * we don't know where OpenJDK would put it, should they eventually fix
+       * the bug.
+       */
+
+      // 4-5 MissingFormatWidthException > FormatFlagsConversionMismatchException
+      expectFormatterThrows(classOf[MissingFormatWidthException], "%#-%")
+      expectFormatterThrows(classOf[FormatFlagsConversionMismatchException], "%#%")
+    }
+  }
+
+  /** Tests scenarios where there are multiple errors at the same time with the
+   *  `n` conversion, to make sure that the right one takes precedence.
+   */
+  @Test def formatExceptionPrecedenceForNTest_Issue4352(): Unit = {
+    /* In decreasing order of precedence, for `n`:
+     *
+     * 1. DuplicateFormatFlagsException
+     * 2. IllegalFormatPrecisionException
+     * 3. IllegalFormatWidthException
+     * 4. IllegalFormatFlagsException
+     * 5. MissingFormatWidthException (never happens for 'n')
+     */
+
+    // 1-2 DuplicateFormatFlagsException > IllegalFormatPrecisionException
+    expectFormatterThrows(classOf[DuplicateFormatFlagsException], "%,,.3n")
+    expectFormatterThrows(classOf[IllegalFormatPrecisionException], "%.3n")
+
+    // 2-3 IllegalFormatPrecisionException > IllegalFormatWidthException
+    expectFormatterThrows(classOf[IllegalFormatPrecisionException], "%5.3n")
+    expectFormatterThrows(classOf[IllegalFormatWidthException], "%5n")
+
+    // 3-4 IllegalFormatWidthException > IllegalFormatFlagsException
+    expectFormatterThrows(classOf[IllegalFormatWidthException], "%#5n")
+    expectFormatterThrows(classOf[IllegalFormatFlagsException], "%#n")
+
+    // 4-5 IllegalFormatFlagsException > MissingFormatWidthException
+    expectFormatterThrows(classOf[IllegalFormatFlagsException], "%0n")
+    expectFormatterThrows(classOf[MissingFormatWidthException], "%0d", 5)
   }
 }
 

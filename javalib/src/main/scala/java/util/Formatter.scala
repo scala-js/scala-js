@@ -141,7 +141,7 @@ final class Formatter private (private[this] var dest: Appendable,
       }
       sendToDest(format.substring(fmtIndex, nextPercentIndex))
 
-      // Process one '%'
+      // Parse the format specifier
 
       val formatSpecifierIndex = nextPercentIndex + 1
       val re = FormatSpecifier
@@ -155,26 +155,99 @@ final class Formatter private (private[this] var dest: Appendable,
          * JVM.
          */
         val conversion =
-          if (formatSpecifierIndex == fmtLength) "%"
-          else format.substring(formatSpecifierIndex, formatSpecifierIndex + 1)
-        throw new UnknownFormatConversionException(conversion)
+          if (formatSpecifierIndex == fmtLength) '%'
+          else format.charAt(formatSpecifierIndex)
+        throwUnknownFormatConversionException(conversion)
       }
 
       fmtIndex = re.lastIndex // position at the end of the match
+
+      // For error reporting
+      def fullFormatSpecifier: String = "%" + execResult(0)
+
+      /* Extract values from the match result
+       *
+       * 1. DuplicateFormatFlagsException (in parseFlags)
+       */
 
       val conversion = format.charAt(fmtIndex - 1)
       val flags = parseFlags(execResult(2).asInstanceOf[String], conversion)
       val width = parsePositiveIntSilent(execResult(3), default = -1)
       val precision = parsePositiveIntSilent(execResult(4), default = -1)
 
-      val arg = if (conversion == '%' || conversion == 'n') {
-        /* No argument. Make sure not to bump `lastImplicitArgIndex` nor to
-         * affect `lastArgIndex`.
-         */
-        null
+      /* At this point, we need to branch off for 'n', because it has a
+       * completely different error reporting spec. In particular, it must
+       * throw an IllegalFormatFlagsException if any flag is specified,
+       * although the regular mechanism would throw a
+       * FormatFlagsConversionMismatchException.
+       *
+       * It is also the only conversion that throws
+       * IllegalFormatWidthException, so we use this forced special path to
+       * also take care of that one.
+       *
+       * We also treat '%' specially. Although its spec suggests that its
+       * validation could be done in the generic way, experimentation suggests
+       * that it behaves differently. Anyway, once 'n' has its special path,
+       * '%' becomes the only one that does not take an argument, and so it
+       * would need a special path later. So we handle it here and get it out
+       * of the way. This further allows the generic path to only deal with
+       * ASCII letters, which is convenient.
+       */
+
+      if (conversion == 'n') {
+        if (precision != -1)
+          throwIllegalFormatPrecisionException(precision)
+        if (width != -1)
+          throwIllegalFormatWidthException(width)
+        if (flags.bits != 0)
+          throwIllegalFormatFlagsException(flags)
+
+        sendToDest("\n")
+      } else if (conversion == '%') {
+        if (precision != -1)
+          throwIllegalFormatPrecisionException(precision)
+        checkIllegalFormatFlags(flags)
+        if (flags.leftAlign && width == -1)
+          throwMissingFormatWidthException(fullFormatSpecifier)
+        checkFlagsConversionMismatch('%', flags, ~LeftAlign)
+
+        padAndSendToDestNoZeroPad(flags, width, "%")
       } else {
-        if (flags.hasAnyOf(LeftAlign | ZeroPad) && width < 0)
-          throw new MissingFormatWidthException("%" + execResult(0))
+        // 2. UnknownFormatConversionException
+
+        // Because of the RegExp that we use, we know that `conversion` is an ASCII letter
+        val conversionLower =
+          if (flags.upperCase) (conversion + ('a' - 'A')).toChar
+          else conversion
+        val illegalFlags = ConversionsIllegalFlags(conversionLower - 'a')
+        if (illegalFlags == -1 || (flags.bits & UpperCase & illegalFlags) != 0)
+          throwUnknownFormatConversionException(conversion)
+
+        // 3. MissingFormatWidthException
+
+        if (flags.hasAnyOf(LeftAlign | ZeroPad) && width == -1)
+          throwMissingFormatWidthException(fullFormatSpecifier)
+
+        // 4. IllegalFormatFlagsException
+
+        checkIllegalFormatFlags(flags)
+
+        // 5. IllegalFormatPrecisionException
+
+        if (precision != -1 && (illegalFlags & Precision) != 0)
+          throwIllegalFormatPrecisionException(precision)
+
+        // 6. FormatFlagsConversionMismatchException
+
+        checkFlagsConversionMismatch(conversionLower, flags, illegalFlags)
+
+        /* Finally, get the argument and format it.
+         *
+         * 7. MissingFormatArgumentException | IllegalFormatConversionException | IllegalFormatCodePointException
+         *
+         * The first one is handled here, while we extract the argument.
+         * The other two are handled in formatArg().
+         */
 
         val argIndex = if (flags.useLastIndex) {
           // Explicitly use the last index
@@ -194,19 +267,19 @@ final class Formatter private (private[this] var dest: Appendable,
           }
         }
 
-        if (argIndex <= 0 || argIndex > args.length) {
-          val conversionStr = conversion.toString
-          if ("bBhHsHcCdoxXeEgGfn%".indexOf(conversionStr) < 0)
-            throw new UnknownFormatConversionException(conversionStr)
-          else
-            throw new MissingFormatArgumentException("%" + execResult(0))
-        }
+        if (argIndex <= 0 || argIndex > args.length)
+          throwMissingFormatArgumentException(fullFormatSpecifier)
 
         lastArgIndex = argIndex
-        args(argIndex - 1)
-      }
+        val arg = args(argIndex - 1)
 
-      formatArg(localeInfo, arg, conversion, flags, width, precision)
+        // Format the arg. We handle `null` in a generic way, except for 'b'
+
+        if (arg == null && conversionLower != 'b')
+          formatNonNumericString(RootLocaleInfo, flags, width, precision, "null")
+        else
+          formatArg(localeInfo, arg, conversionLower, flags, width, precision)
+      }
     }
 
     this
@@ -218,7 +291,7 @@ final class Formatter private (private[this] var dest: Appendable,
    * object about why we keep it here.
    */
   private def parseFlags(flags: String, conversion: Char): Flags = {
-    var bits = if (conversion <= 'Z') UpperCase else 0
+    var bits = if (conversion >= 'A' && conversion <= 'Z') UpperCase else 0
 
     val len = flags.length
     var i = 0
@@ -236,7 +309,7 @@ final class Formatter private (private[this] var dest: Appendable,
       }
 
       if ((bits & bit) != 0)
-        throw new DuplicateFormatFlagsException(f.toString)
+        throwDuplicateFormatFlagsException(f)
 
       bits |= bit
       i += 1
@@ -258,90 +331,26 @@ final class Formatter private (private[this] var dest: Appendable,
     }
   }
 
-  private def formatArg(localeInfo: LocaleInfo, arg: Any, conversion: Char,
+  private def formatArg(localeInfo: LocaleInfo, arg: Any, conversionLower: Char,
       flags: Flags, width: Int, precision: Int): Unit = {
 
-    @inline def rejectPrecision(): Unit = {
-      if (precision >= 0)
-        throw new IllegalFormatPrecisionException(precision)
-    }
+    @inline def illegalFormatConversion(): Nothing =
+      throwIllegalFormatConversionException(conversionLower, arg)
 
-    def formatNullOrThrowIllegalFormatConversion(): Unit = {
-      if (arg == null)
-        formatNonNumericString(localeInfo, flags, width, precision, "null")
-      else
-        throw new IllegalFormatConversionException(conversion, arg.getClass)
-    }
-
-    @inline def precisionWithDefault =
-      if (precision >= 0) precision
-      else 6
-
-    @inline def oxCommon(prefix: String, radix: Int): Unit = {
-      // Octal/hex formatting is not localized
-      rejectPrecision()
-      arg match {
-        case arg: Int =>
-          validateFlags(flags, conversion,
-              invalidFlags = InvalidFlagsForOctalAndHexIntLong)
-          padAndSendToDest(RootLocaleInfo, flags, width, prefix,
-              applyNumberUpperCase(flags, java.lang.Integer.toUnsignedString(arg, radix)))
-        case arg: Long =>
-          validateFlags(flags, conversion,
-              invalidFlags = InvalidFlagsForOctalAndHexIntLong)
-          padAndSendToDest(RootLocaleInfo, flags, width, prefix,
-              applyNumberUpperCase(flags, java.lang.Long.toUnsignedString(arg, radix)))
-        case arg: BigInteger =>
-          validateFlags(flags, conversion,
-              invalidFlags = InvalidFlagsForOctalAndHexBigInteger)
-          formatNumericString(RootLocaleInfo, flags, width,
-              arg.toString(radix), prefix)
-        case _ =>
-          validateFlags(flags, conversion,
-              invalidFlags = InvalidFlagsForOctalAndHexBigInteger)
-          formatNullOrThrowIllegalFormatConversion()
-      }
-    }
-
-    @inline def efgCommon(notation: (Double, Int, Boolean) => String): Unit = {
-      arg match {
-        case arg: Double =>
-          if (JDouble.isNaN(arg) || JDouble.isInfinite(arg)) {
-            formatNaNOrInfinite(flags, width, arg)
-          } else {
-            /* The alternative format # of 'e', 'f' and 'g' is to force a
-             * decimal separator.
-             */
-            val forceDecimalSep = flags.altFormat
-            formatNumericString(localeInfo, flags, width,
-                notation(arg, precisionWithDefault, forceDecimalSep))
-          }
-        case _ =>
-          formatNullOrThrowIllegalFormatConversion()
-      }
-    }
-
-    (conversion: @switch) match {
-      case 'b' | 'B' =>
-        validateFlags(flags, conversion,
-            invalidFlags = NumericOnlyFlags | AltFormat)
+    (conversionLower: @switch) match {
+      case 'b' =>
         val str =
           if ((arg.asInstanceOf[AnyRef] eq false.asInstanceOf[AnyRef]) || arg == null) "false"
           else "true"
         formatNonNumericString(RootLocaleInfo, flags, width, precision, str)
 
-      case 'h' | 'H' =>
-        validateFlags(flags, conversion,
-            invalidFlags = NumericOnlyFlags | AltFormat)
-        val str =
-          if (arg == null) "null"
-          else Integer.toHexString(arg.hashCode)
+      case 'h' =>
+        val str = Integer.toHexString(arg.hashCode)
         formatNonNumericString(RootLocaleInfo, flags, width, precision, str)
 
-      case 's' | 'S' =>
+      case 's' =>
         arg match {
           case formattable: Formattable =>
-            validateFlags(flags, conversion, invalidFlags = NumericOnlyFlags)
             val formattableFlags = {
               (if (flags.leftAlign) FormattableFlags.LEFT_JUSTIFY else 0) |
               (if (flags.altFormat) FormattableFlags.ALTERNATE else 0) |
@@ -350,22 +359,23 @@ final class Formatter private (private[this] var dest: Appendable,
             formattable.formatTo(this, formattableFlags, width, precision)
 
           case _ =>
-            validateFlags(flags, conversion,
-                invalidFlags = NumericOnlyFlags | AltFormat)
+            /* The Formattable case accepts AltFormat, therefore it is not
+             * present in the generic `ConversionsIllegalFlags` table. However,
+             * it is illegal for any other value, so we must check it now.
+             */
+            checkFlagsConversionMismatch(conversionLower, flags, AltFormat)
+
             val str = String.valueOf(arg)
             formatNonNumericString(localeInfo, flags, width, precision, str)
         }
 
-      case 'c' | 'C' =>
-        validateFlags(flags, conversion,
-            invalidFlags = NumericOnlyFlags | AltFormat)
-        rejectPrecision()
+      case 'c' =>
         arg match {
           case arg: Char =>
             formatNonNumericString(localeInfo, flags, width, -1, arg.toString)
           case arg: Int =>
             if (!Character.isValidCodePoint(arg))
-              throw new IllegalFormatCodePointException(arg)
+              throwIllegalFormatCodePointException(arg)
             val str = if (arg < Character.MIN_SUPPLEMENTARY_CODE_POINT) {
               js.Dynamic.global.String.fromCharCode(arg)
             } else {
@@ -376,12 +386,10 @@ final class Formatter private (private[this] var dest: Appendable,
             formatNonNumericString(localeInfo, flags, width, -1,
                 str.asInstanceOf[String])
           case _ =>
-            formatNullOrThrowIllegalFormatConversion()
+            illegalFormatConversion()
         }
 
       case 'd' =>
-        validateFlags(flags, conversion, invalidFlags = AltFormat)
-        rejectPrecision()
         arg match {
           case arg: Int =>
             formatNumericString(localeInfo, flags, width, arg.toString())
@@ -390,91 +398,89 @@ final class Formatter private (private[this] var dest: Appendable,
           case arg: BigInteger =>
             formatNumericString(localeInfo, flags, width, arg.toString())
           case _ =>
-            formatNullOrThrowIllegalFormatConversion()
+            illegalFormatConversion()
         }
 
-      case 'o' =>
-        val prefix =
-          if (flags.altFormat) "0"
-          else ""
-        oxCommon(prefix, radix = 8)
+      case 'o' | 'x' =>
+        // Octal/hex formatting is not localized
 
-      case 'x' | 'X' =>
+        val isOctal = conversionLower == 'o'
         val prefix = {
           if (!flags.altFormat) ""
+          else if (isOctal) "0"
           else if (flags.upperCase) "0X"
           else "0x"
         }
-        oxCommon(prefix, radix = 16)
 
-      case 'e' | 'E' =>
-        validateFlags(flags, conversion, invalidFlags = UseGroupingSeps)
-        efgCommon(computerizedScientificNotation _)
+        arg match {
+          case arg: BigInteger =>
+            val radix = if (isOctal) 8 else 16
+            formatNumericString(RootLocaleInfo, flags, width,
+                arg.toString(radix), prefix)
 
-      case 'g' | 'G' =>
-        validateFlags(flags, conversion, invalidFlags = AltFormat)
-        efgCommon(generalScientificNotation _)
+          case _ =>
+            val str = arg match {
+              case arg: Int =>
+                if (isOctal) java.lang.Integer.toOctalString(arg)
+                else java.lang.Integer.toHexString(arg)
+              case arg: Long =>
+                if (isOctal) java.lang.Long.toOctalString(arg)
+                else java.lang.Long.toHexString(arg)
+              case _ =>
+                illegalFormatConversion()
+            }
 
-      case 'f' =>
-        validateFlags(flags, conversion, invalidFlags = 0)
-        efgCommon(decimalNotation _)
+            /* The Int and Long conversions have extra illegal flags, which are
+             * not in the `ConversionsIllegalFlags` table because they are
+             * legal for BigIntegers. We must check them now.
+             */
+            checkFlagsConversionMismatch(conversionLower, flags,
+                PositivePlus | PositiveSpace | NegativeParen)
 
-      case '%' =>
-        validateFlagsForPercentAndNewline(flags, conversion,
-            invalidFlags = AllWrittenFlags & ~LeftAlign)
-        rejectPrecision()
-        if (flags.leftAlign && width < 0)
-          throw new MissingFormatWidthException("%-%")
-        padAndSendToDestNoZeroPad(flags, width, "%")
+            padAndSendToDest(RootLocaleInfo, flags, width, prefix,
+                applyNumberUpperCase(flags, str))
+        }
 
-      case 'n' =>
-        validateFlagsForPercentAndNewline(flags, conversion,
-            invalidFlags = AllWrittenFlags)
-        rejectPrecision()
-        if (width >= 0)
-          throw new IllegalFormatWidthException(width)
-        sendToDest("\n")
+      case 'e' | 'f' | 'g' =>
+        arg match {
+          case arg: Double =>
+            if (JDouble.isNaN(arg) || JDouble.isInfinite(arg)) {
+              formatNaNOrInfinite(flags, width, arg)
+            } else {
+              /* The alternative format # of 'e', 'f' and 'g' is to force a
+               * decimal separator.
+               */
+              val forceDecimalSep = flags.altFormat
+              val actualPrecision =
+                if (precision >= 0) precision
+                else 6
+              val notation = conversionLower match {
+                case 'e' => computerizedScientificNotation(arg, actualPrecision, forceDecimalSep)
+                case 'f' => decimalNotation(arg, actualPrecision, forceDecimalSep)
+                case _   => generalScientificNotation(arg, actualPrecision, forceDecimalSep)
+              }
+              formatNumericString(localeInfo, flags, width, notation)
+            }
+          case _ =>
+            illegalFormatConversion()
+        }
 
       case _ =>
-        throw new UnknownFormatConversionException(conversion.toString)
+        throw new AssertionError(
+            "Unknown conversion '" + conversionLower + "' was not rejected earlier")
     }
   }
 
-  @inline private def validateFlags(flags: Flags, conversion: Char,
-      invalidFlags: Int): Unit = {
-
-    @noinline def flagsConversionMismatch(): Nothing = {
-      throw new FormatFlagsConversionMismatchException(
-          flagsToString(new Flags(flags.bits & invalidFlags)), conversion)
-    }
-
-    if ((flags.bits & invalidFlags) != 0)
-      flagsConversionMismatch()
-
-    @noinline def illegalFlags(): Nothing =
-      throw new IllegalFormatFlagsException(flagsToString(flags))
-
-    /* The test `(invalidFlags & BadCombo) == 0` is redundant, but is
-     * constant-folded away at called site, and if false it allows to dce the
-     * test after the `&&`. If both tests are eliminated, the entire `if`
-     * disappears.
-     */
-    val BadCombo1 = LeftAlign | ZeroPad
-    val BadCombo2 = PositivePlus | PositiveSpace
-    if (((invalidFlags & BadCombo1) == 0 && (flags.bits & BadCombo1) == BadCombo1) ||
-        ((invalidFlags & BadCombo2) == 0 && (flags.bits & BadCombo2) == BadCombo2)) {
-      illegalFlags()
-    }
+  @inline private def checkIllegalFormatFlags(flags: Flags): Unit = {
+    if (flags.hasAllOf(LeftAlign | ZeroPad) || flags.hasAllOf(PositivePlus | PositiveSpace))
+      throwIllegalFormatFlagsException(flags)
   }
 
-  @inline private def validateFlagsForPercentAndNewline(flags: Flags,
-      conversion: Char, invalidFlags: Int): Unit = {
+  @inline private def checkFlagsConversionMismatch(conversionLower: Char,
+      flags: Flags, illegalFlags: Int): Unit = {
 
-    @noinline def illegalFlags(): Nothing =
-      throw new IllegalFormatFlagsException(flagsToString(flags))
-
-    if ((flags.bits & invalidFlags) != 0)
-      illegalFlags()
+    if (flags.hasAnyOf(illegalFlags))
+      throwFormatFlagsConversionMismatchException(conversionLower, flags, illegalFlags)
   }
 
   /* Should in theory be a method of `Flags`. See the comment on that class
@@ -749,6 +755,45 @@ final class Formatter private (private[this] var dest: Appendable,
       throw new FormatterClosedException()
   }
 
+  /* Helpers to throw exceptions with all the right arguments.
+   *
+   * Some are direct forwarders, like `IllegalFormatPrecisionException`; they
+   * are here for consistency.
+   */
+
+  private def throwDuplicateFormatFlagsException(flag: Char): Nothing =
+    throw new DuplicateFormatFlagsException(flag.toString())
+
+  private def throwUnknownFormatConversionException(conversion: Char): Nothing =
+    throw new UnknownFormatConversionException(conversion.toString())
+
+  private def throwIllegalFormatPrecisionException(precision: Int): Nothing =
+    throw new IllegalFormatPrecisionException(precision)
+
+  private def throwIllegalFormatWidthException(width: Int): Nothing =
+    throw new IllegalFormatWidthException(width)
+
+  private def throwIllegalFormatFlagsException(flags: Flags): Nothing =
+    throw new IllegalFormatFlagsException(flagsToString(flags))
+
+  private def throwMissingFormatWidthException(fullFormatSpecifier: String): Nothing =
+    throw new MissingFormatWidthException(fullFormatSpecifier)
+
+  private def throwFormatFlagsConversionMismatchException(conversionLower: Char,
+      flags: Flags, illegalFlags: Int): Nothing = {
+    throw new FormatFlagsConversionMismatchException(
+        flagsToString(new Flags(flags.bits & illegalFlags)), conversionLower)
+  }
+
+  private def throwMissingFormatArgumentException(fullFormatSpecifier: String): Nothing =
+    throw new MissingFormatArgumentException(fullFormatSpecifier)
+
+  private def throwIllegalFormatConversionException(conversionLower: Char, arg: Any): Nothing =
+    throw new IllegalFormatConversionException(conversionLower, arg.getClass)
+
+  private def throwIllegalFormatCodePointException(arg: Int): Nothing =
+    throw new IllegalFormatCodePointException(arg)
+
 }
 
 object Formatter {
@@ -777,6 +822,8 @@ object Formatter {
     @inline def upperCase: Boolean = (bits & UpperCase) != 0
 
     @inline def hasAnyOf(testBits: Int): Boolean = (bits & testBits) != 0
+
+    @inline def hasAllOf(testBits: Int): Boolean = (bits & testBits) == testBits
   }
 
   /* This object only contains `final val`s and (synthetic) `@inline`
@@ -793,18 +840,34 @@ object Formatter {
     final val NegativeParen = 0x040
     final val UseLastIndex = 0x080
     final val UpperCase = 0x100
+    final val Precision = 0x200 // used in ConversionsIllegalFlags
+  }
 
-    final val InvalidFlagsForOctalAndHexIntLong =
-      PositivePlus | PositiveSpace | UseGroupingSeps | NegativeParen
+  private val ConversionsIllegalFlags: Array[Int] = {
+    import Flags._
 
-    final val InvalidFlagsForOctalAndHexBigInteger =
-      UseGroupingSeps
-
-    final val NumericOnlyFlags =
+    val NumericOnlyFlags =
       PositivePlus | PositiveSpace | ZeroPad | UseGroupingSeps | NegativeParen
 
-    final val AllWrittenFlags =
-      LeftAlign | AltFormat | NumericOnlyFlags | UseLastIndex
+    // 'n' and '%' are not here because they have special paths in `format`
+
+    Array(
+        -1,                                       // a
+        NumericOnlyFlags | AltFormat,             // b
+        NumericOnlyFlags | AltFormat | Precision, // c
+        AltFormat | UpperCase | Precision,        // d
+        UseGroupingSeps,                          // e
+        UpperCase,                                // f
+        AltFormat,                                // g
+        NumericOnlyFlags | AltFormat,             // h
+        -1, -1, -1, -1, -1, -1,                   // i -> n
+        UseGroupingSeps | UpperCase | Precision,  // o
+        -1, -1, -1,                               // p -> r
+        NumericOnlyFlags,                         // s
+        -1, -1, -1, -1,                           // t -> w
+        UseGroupingSeps | Precision,              // x
+        -1, -1                                    // y -> z
+    )
   }
 
   /** A proxy for a `java.util.Locale` or for the root locale that provides
