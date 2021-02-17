@@ -41,6 +41,12 @@ class MathTest {
   private def assertSameFloat(expected: Float, actual: Float): Unit =
     assertTrue(s"expected: $expected but was: $actual", expected.equals(actual))
 
+  /** Like `assertEquals` with `delta = 0.0f`, but positive and negative zeros
+   *  compare not equal.
+   */
+  private def assertSameFloat(msg: String, expected: Float, actual: Float): Unit =
+    assertTrue(s"$msg; expected: $expected but was: $actual", expected.equals(actual))
+
   @Test def abs(): Unit = {
     assertSameDouble(0, Math.abs(0))
     assertSameDouble(0.0, Math.abs(-0.0))
@@ -302,6 +308,49 @@ class MathTest {
     test(Double.MinPositiveValue, -3.4e-317)
     test(Double.MinPositiveValue, 3.423e-319)
     test(Double.MinPositiveValue, -3.423e-319)
+  }
+
+  @Test def ulpForFloat(): Unit = {
+    @noinline
+    def test(expected: Float, value: Float): Unit =
+      assertSameFloat(s"for value $value", expected, Math.ulp(value))
+
+    // Specials
+
+    test(Float.MinPositiveValue, 0.0f)
+    test(Float.MinPositiveValue, -0.0f)
+    test(Float.NaN, Float.NaN)
+    test(Float.PositiveInfinity, Float.PositiveInfinity)
+    test(Float.PositiveInfinity, Float.NegativeInfinity)
+
+    // Other corner cases
+
+    test(Float.MinPositiveValue, Float.MinPositiveValue)
+    test(Float.MinPositiveValue, -Float.MinPositiveValue)
+    test(Float.MinPositiveValue, 1.1754942e-38f) // max subnormal value
+    test(Float.MinPositiveValue, -1.1754942e-38f)
+    test(Float.MinPositiveValue, 1.17549435e-38f) // min normal value
+    test(Float.MinPositiveValue, -1.17549435e-38f)
+    test(Float.MinPositiveValue, 2.3509886e-38f) // max value with MinPosValue result
+    test(Float.MinPositiveValue, -2.3509886e-38f)
+    test(2.8e-45f, 2.3509887e-38f) // min value with non-MinPosValue result
+    test(2.8e-45f, -2.3509887e-38f)
+    test(2.028241e31f, Float.MaxValue)
+    test(2.028241e31f, -Float.MaxValue)
+
+    // Some normal values
+
+    test(2.3841858e-7f, 3.4f)
+    test(2.3841858e-7f, -3.4f)
+    test(3.1691265e29f, 3.423e36f)
+    test(3.1691265e29f, -3.423e36f)
+
+    // Some subnormal values
+
+    test(Float.MinPositiveValue, 3.4e-40f)
+    test(Float.MinPositiveValue, -3.4e-40f)
+    test(Float.MinPositiveValue, 3.42e-43f)
+    test(Float.MinPositiveValue, -3.42e-43f)
   }
 
   @Test def hypot(): Unit = {
