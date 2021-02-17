@@ -140,24 +140,40 @@ object Double {
           return 0.0
       }
 
-      /* If there are more than 15 characters left, we cut them out. They will
-       * never influence the result because of the limited precision of
-       * doubles. Note that the 15th character itself gets lost too, but can
-       * influence the *rounding* applied to the 14th character.
+      /* If there are more than 15 characters left, we compress the tail as a
+       * single character. If we don't, there can be corner cases where the
+       * `mantissaStr` would parse as `Infinity` because it is too large on its
+       * own, but where the binary exponent can "fix it" by being sufficiently
+       * under 0.
        *
-       * We need to cut them out for corner cases where the full `mantissaStr`
-       * would parse as Infinity because it is too large, but where the binary
-       * exponent can "fix it" by being sufficiently under 0.
+       * Only 14 characters can directly participate in the precision of the
+       * final result. The 15th character can determine whether to round up or
+       * down. If it is exactly '8' ('1000' in binary), then even a character
+       * very far away in the tail can make the difference between rounding up
+       * or down (see #4431). However the only possible difference is between
+       * "all-zeros" or "at least one non-zero" after the 15th character. We
+       * can therefore compress the entire tail as single "0" or "1".
        *
        * Of course, we remember that we need to apply a correction to the
        * exponent of the final result.
        */
-      val needsCorrection2 = mantissaStr.length > 15
-      val truncatedMantissaStr =
-        if (needsCorrection2) mantissaStr.substring(0, 15)
-        else mantissaStr
+      val mantissaStrLen = mantissaStr.length()
+      val needsCorrection2 = mantissaStrLen > 15
+      val truncatedMantissaStr = if (needsCorrection2) {
+        var hasNonZeroChar = false
+        var j = 15
+        while (!hasNonZeroChar && j != mantissaStrLen) {
+          if (mantissaStr.charAt(j) != '0')
+            hasNonZeroChar = true
+          j += 1
+        }
+        val compressedTail = if (hasNonZeroChar) "1" else "0"
+        mantissaStr.substring(0, 15) + compressedTail
+      } else {
+        mantissaStr
+      }
       val correction2 =
-        if (needsCorrection2) (mantissaStr.length - 15) * 4 // one hex == 4 bits
+        if (needsCorrection2) (mantissaStr.length - 16) * 4 // one hex == 4 bits
         else 0
 
       val fullCorrection = correction1 + correction2
@@ -166,7 +182,7 @@ object Double {
        * manipulating binary exponents and corrections, because the corrections
        * are directly related to the length of the input string, so they cannot
        * be *that* big (or we have bigger problems), and the final result needs
-       * to fit in the [-1074, 1023] range, which can only happen if the
+       * to fit in the [-1024, 1023] range, which can only happen if the
        * `binaryExp` (see below) did not stray too far from that range itself.
        */
 

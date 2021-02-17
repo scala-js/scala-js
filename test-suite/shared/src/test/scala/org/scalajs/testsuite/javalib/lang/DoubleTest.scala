@@ -318,6 +318,28 @@ class DoubleTest {
     test("0x0p-10000", 0.0)
     test("-0x0p-10000", -0.0)
 
+    // #4431 When a character very far in the string can make a difference
+
+    // even is upward -> far character cannot make a difference
+    test("0x1.11111111111117fffffffffffffffffffffffp52", 4.803839602528529e15)
+    test("0x1.1111111111111800000000000000000000000p52", 4.80383960252853e15)
+    test("0x1.1111111111111800000000000000000000001p52", 4.80383960252853e15)
+
+    // even is downward -> far character *can* make a difference
+    test("0x1.11111111111127fffffffffffffffffffffffp52", 4.80383960252853e15)
+    test("0x1.1111111111112800000000000000000000000p52", 4.80383960252853e15)
+    test("0x1.1111111111112800000000000000000000001p52", 4.803839602528531e15)
+
+    // even is "upward" (towards -Infinity) -> far character cannot make a difference
+    test("-0x1.11111111111117fffffffffffffffffffffffp52", -4.803839602528529e15)
+    test("-0x1.1111111111111800000000000000000000000p52", -4.80383960252853e15)
+    test("-0x1.1111111111111800000000000000000000001p52", -4.80383960252853e15)
+
+    // even is "downward" (towards 0) -> far character *can* make a difference
+    test("-0x1.11111111111127fffffffffffffffffffffffp52", -4.80383960252853e15)
+    test("-0x1.1111111111112800000000000000000000000p52", -4.80383960252853e15)
+    test("-0x1.1111111111112800000000000000000000001p52", -4.803839602528531e15)
+
     // scalastyle:on line.size.limit
   }
 
