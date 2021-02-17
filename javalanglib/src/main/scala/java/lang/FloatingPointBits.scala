@@ -132,7 +132,7 @@ private[lang] object FloatingPointBits {
   /* --- Polyfills for floating point bit manipulations ---
    *
    * Originally inspired by
-   * https://github.com/inexorabletash/polyfill/blob/a682f42c1092280bb01907c245979fb07219513d/typedarray.js#L150-L255
+   * https://github.com/inexorabletash/polyfill/blob/3447582628b6e3ea81959c4d5987aa332c22d1ca/typedarray.js#L150-L264
    *
    * Note that if typed arrays are not supported, it is almost certain that
    * fround is not supported natively, so Float operations are extremely slow.
@@ -232,23 +232,27 @@ private[lang] object FloatingPointBits {
         var e = rawToInt(floor(log(av) / LN2))
         if (e > 1023)
           e = 1023
-        var twoPowE = pow(2, e)
+        var significand = av / pow(2, e)
 
-        /* #2911: When av is very close under a power of 2 (e.g.,
+        /* #2911 then #4433: When av is very close to a power of 2 (e.g.,
          * 9007199254740991.0 == 2^53 - 1), `log(av) / LN2` will already round
-         * *up* to an `e` which is 1 too much. The `floor()` afterwards comes
-         * too late to fix that.
-         * We now decrement `e` if it ends up being too big.
+         * *up* to an `e` which is 1 too high, or *down* to an `e` which is 1
+         * too low. The `floor()` afterwards comes too late to fix that.
+         * We now adjust `e` and `significand` to make sure that `significand`
+         * is in the range [1.0, 2.0)
          */
-        if (twoPowE > av) {
+        if (significand < 1.0) {
           e -= 1
-          twoPowE /= 2
+          significand *= 2
+        } else if (significand >= 2.0) {
+          e += 1
+          significand /= 2
         }
 
-        var f = roundToEven(av / twoPowE * twoPowFbits)
+        var f = roundToEven(significand * twoPowFbits)
         if (f / twoPowFbits >= 2) {
           e = e + 1
-          f = 1
+          f = twoPowFbits
         }
         if (e > bias) {
           // Overflow

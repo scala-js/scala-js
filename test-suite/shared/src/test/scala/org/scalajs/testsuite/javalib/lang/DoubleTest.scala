@@ -501,6 +501,11 @@ class DoubleTest {
     // #2911 Normal form very close under a power of 2
     assertEquals(4845873199050653695L, f(9007199254740991.0))
 
+    // #4433 Other corner cases
+    assertEquals(9214364837600034815L, f(8.988465674311579e+307))
+    assertEquals(549439154539200514L, f(5.915260930833876e-272))
+    assertEquals(9007199254740992L, f(4.450147717014403e-308))
+
     // Subnormal forms
     assertEquals(0x0000000000000001L, f(Double.MinPositiveValue))  // smallest pos subnormal form
     assertEquals(0x000fffffffffffffL, f(2.225073858507201e-308))   // largest pos subnormal form
