@@ -147,13 +147,13 @@ private[lang] object FloatingPointBits {
     val s = bits < 0
     val e = (bits >> fbits) & ((1 << ebits) - 1)
     val f = bits & ((1 << fbits) - 1)
-    decodeIEEE754(ebits, fbits, s, e, f)
+    decodeIEEE754(ebits, fbits, scala.Float.MinPositiveValue, s, e, f)
   }
 
   private def floatToIntBitsPolyfill(value: scala.Double): Int = {
     val ebits = 8
     val fbits = 23
-    val sef = encodeIEEE754(ebits, fbits, value)
+    val sef = encodeIEEE754(ebits, fbits, Float.MIN_NORMAL, scala.Float.MinPositiveValue, value)
     (if (sef.s) 0x80000000 else 0) | (sef.e << fbits) | rawToInt(sef.f)
   }
 
@@ -166,14 +166,14 @@ private[lang] object FloatingPointBits {
     val s = hi < 0
     val e = (hi >> hifbits) & ((1 << ebits) - 1)
     val f = (hi & ((1 << hifbits) - 1)).toDouble * 0x100000000L.toDouble + lo
-    decodeIEEE754(ebits, fbits, s, e, f)
+    decodeIEEE754(ebits, fbits, scala.Double.MinPositiveValue, s, e, f)
   }
 
   private def doubleToLongBitsPolyfill(value: scala.Double): scala.Long = {
     val ebits = 11
     val fbits = 52
     val hifbits = fbits-32
-    val sef = encodeIEEE754(ebits, fbits, value)
+    val sef = encodeIEEE754(ebits, fbits, Double.MIN_NORMAL, scala.Double.MinPositiveValue, value)
     val hif = rawToInt(sef.f / 0x100000000L.toDouble)
     val hi = (if (sef.s) 0x80000000 else 0) | (sef.e << hifbits) | hif
     val lo = rawToInt(sef.f)
@@ -181,53 +181,59 @@ private[lang] object FloatingPointBits {
   }
 
   @inline private def decodeIEEE754(ebits: Int, fbits: Int,
-      s: scala.Boolean, e: Int, f: scala.Double): scala.Double = {
+      minPositiveValue: scala.Double, s: scala.Boolean, e: Int,
+      f: scala.Double): scala.Double = {
 
     import Math.pow
 
-    val bias = (1 << (ebits-1)) - 1 // constant
+    // Some constants
+    val bias = (1 << (ebits - 1)) - 1
+    val specialExponent = (1 << ebits) - 1
+    val twoPowFbits = (1L << fbits).toDouble
 
-    if (e == (1 << ebits) - 1) {
+    val absResult = if (e == specialExponent) {
       // Special
-      if (f != 0.0) scala.Double.NaN
-      else if (s) scala.Double.NegativeInfinity
-      else scala.Double.PositiveInfinity
+      if (f == 0.0)
+        scala.Double.PositiveInfinity
+      else
+        scala.Double.NaN
     } else if (e > 0) {
       // Normalized
-      val x = pow(2, e-bias) * (1 + f / pow(2, fbits))
-      if (s) -x else x
-    } else if (f != 0.0) {
-      // Subnormal
-      val x = pow(2, -(bias-1)) * (f / pow(2, fbits))
-      if (s) -x else x
+      pow(2, e - bias) * (1 + f / twoPowFbits)
     } else {
-      // Zero
-      if (s) -0.0 else 0.0
+      // Subnormal
+      f * minPositiveValue
     }
+
+    if (s) -absResult else absResult
   }
 
   @inline private def encodeIEEE754(ebits: Int, fbits: Int,
+      minNormal: scala.Double, minPositiveValue: scala.Double,
       v: scala.Double): EncodeIEEE754Result = {
 
     import js.Math.{floor, log, pow}
 
-    val bias = (1 << (ebits-1)) - 1 // constant
+    // Some constants
+    val bias = (1 << (ebits - 1)) - 1
+    val specialExponent = (1 << ebits) - 1
+    val twoPowFbits = (1L << fbits).toDouble
+    val highestOneBitOfFbits = (1L << (fbits - 1)).toDouble
+    val LN2 = 0.6931471805599453
 
     if (Double.isNaN(v)) {
       // http://dev.w3.org/2006/webapi/WebIDL/#es-type-mapping
-      new EncodeIEEE754Result(false, (1 << ebits) - 1, pow(2, fbits-1))
+      new EncodeIEEE754Result(false, specialExponent, highestOneBitOfFbits)
     } else if (Double.isInfinite(v)) {
-      new EncodeIEEE754Result(v < 0, (1 << ebits) - 1, 0.0)
+      new EncodeIEEE754Result(v < 0, specialExponent, 0.0)
     } else if (v == 0.0) {
       new EncodeIEEE754Result(1 / v == scala.Double.NegativeInfinity, 0, 0.0)
     } else {
-      val LN2 = 0.6931471805599453
-
       val s = v < 0
       val av = if (s) -v else v
 
-      if (av >= pow(2, 1-bias)) {
-        val twoPowFbits = pow(2, fbits)
+      if (av >= minNormal) {
+        // Normalized
 
         var e = rawToInt(floor(log(av) / LN2))
         if (e > 1023)
@@ -249,24 +255,26 @@ private[lang] object FloatingPointBits {
           significand /= 2
         }
 
-        var f = roundToEven(significand * twoPowFbits)
-        if (f / twoPowFbits >= 2) {
-          e = e + 1
-          f = twoPowFbits
-        }
-        if (e > bias) {
-          // Overflow
-          e = (1 << ebits) - 1
+        // Compute the stored bits of the mantissa (without the implicit leading '1')
+        var f = roundToEven((significand - 1.0) * twoPowFbits)
+        if (f == twoPowFbits) { // can happen because of the round-to-even
+          e += 1
           f = 0
-        } else {
-          // Normalized
-          e = e + bias
-          f = f - twoPowFbits
         }
+
+        // Introduce the bias into `e`
+        e += bias
+
+        if (e > 2 * bias) {
+          // Overflow
+          e = specialExponent
+          f = 0
+        }
+
         new EncodeIEEE754Result(s, e, f)
       } else {
         // Subnormal
-        new EncodeIEEE754Result(s, 0, roundToEven(av / pow(2, 1-bias-fbits)))
+        new EncodeIEEE754Result(s, 0, roundToEven(av / minPositiveValue))
       }
     }
   }
@@ -274,14 +282,8 @@ private[lang] object FloatingPointBits {
   @inline private def rawToInt(x: scala.Double): Int =
     (x.asInstanceOf[js.Dynamic] | 0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]
 
-  @inline private def roundToEven(n: scala.Double): scala.Double = {
-    val w = js.Math.floor(n)
-    val f = n - w
-    if (f < 0.5) w
-    else if (f > 0.5) w + 1
-    else if (w % 2 != 0) w + 1
-    else w
-  }
+  @inline private def roundToEven(n: scala.Double): scala.Double =
+    (n * scala.Double.MinPositiveValue) / scala.Double.MinPositiveValue
 
   // Cannot use tuples in the javalanglib
   @inline
