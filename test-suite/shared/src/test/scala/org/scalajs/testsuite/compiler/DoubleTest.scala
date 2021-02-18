@@ -14,10 +14,16 @@ package org.scalajs.testsuite.compiler
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
+
+import org.scalajs.testsuite.utils.Platform.hasAccurateFloats
 
 class DoubleTest {
   final def assertExactEquals(expected: Double, actual: Double): Unit =
     assertTrue(s"expected: $expected; actual: $actual", expected.equals(actual))
+
+  final def assertExactEquals(msg: String, expected: Float, actual: Float): Unit =
+    assertTrue(s"$msg; expected: $expected; actual: $actual", expected.equals(actual))
 
   @Test
   def `toInt`(): Unit = {
@@ -50,6 +56,151 @@ class DoubleTest {
     test(-2147483647.9999, -2147483647)
     test(-2147483565.123, -2147483565)
     test(-65.67, -65)
+  }
+
+  @Test
+  def toFloat(): Unit = {
+    // This is the closest we get to directly testing our `Math.fround` polyfill
+
+    assumeTrue("requires accurate floats", hasAccurateFloats)
+
+    @noinline
+    def test(expected: Float, value: Double): Unit =
+      assertExactEquals(s"for value $value", expected, value.toFloat)
+
+    // Values based on the limits of Doubles
+
+    // Normal forms
+    test(0.0f, 2.2250738585072014e-308)  // smallest pos normal form
+    test(Float.PositiveInfinity, 1.7976931348623157e308)   // largest pos normal form
+    test(1.8790767e23f, 1.8790766677624812e23)    // an arbitrary pos normal form
+    test(-0.0f, -2.2250738585072014e-308) // smallest neg normal form
+    test(Float.NegativeInfinity, -1.7976931348623157e308)  // largest neg normal form
+    test(-1.8790767e23f, -1.8790766677624812e23)   // an arbitrary neg normal form
+
+    // Some corner cases of doubleToLongBits
+    test(9.0071993e15f, 9007199254740991.0)
+    test(8.9884656e30f, 8.988465674311579e+30)
+    test(5.9152608e-27f, 5.915260930833876e-27)
+    test(4.4501478e-30f, 4.450147717014403e-30)
+
+    // Subnormal forms (they all underflow)
+    test(0.0f, Double.MinPositiveValue)   // smallest pos subnormal form
+    test(0.0f, 2.225073858507201e-308)    // largest pos subnormal form
+    test(0.0f, 1.719471609939382e-308)    // an arbitrary pos subnormal form
+    test(-0.0f, -Double.MinPositiveValue) // smallest neg subnormal form
+    test(-0.0f, -2.225073858507201e-308)  // largest neg subnormal form
+    test(-0.0f, -1.719471609939382e-308)  // an arbitrary neg subnormal form
+
+    // Values based on the limits of Floats
+
+    // Around Float.MinPositiveValue.toDouble / 2.0
+    test(0.0f, 7.006492321624084e-46) // just below
+    test(0.0f, 7.006492321624085e-46) // Float.MinPositiveValue.toDouble / 2.0
+    test(Float.MinPositiveValue, 7.006492321624087e-46) // just above
+
+    // Around Float.MinPositiveValue
+    test(Float.MinPositiveValue, 1.40129e-45)
+    test(Float.MinPositiveValue, 1.401298464324812e-45)
+    test(Float.MinPositiveValue, 1.401298464324832e-45)
+    test(Float.MinPositiveValue, 1.40131e-45)
+
+    // Around 3.4e-40f, which is a subnormal value
+    test(3.4e-40f, 3.39999848996058e-40)
+    test(3.4e-40f, 3.39999848996059e-40)
+    test(3.4e-40f, 3.3999984899606e-40)
+
+    // Around 3.4000054964529118e-40, which is the midpoint between 3.4e-40f and 3.40001e-40f
+    test(3.4e-40f, 3.4000054964529114e-40)
+    test(3.4e-40f, 3.4000054964529118e-40) // even is downwards
+    test(3.40001e-40f, 3.400005496452912e-40)
+
+    // Around 3.400019509437555e-40, which is the midpoint between 3.40001e-40f and 3.40003e-40f
+    test(3.40001e-40f, 3.4000195094375546e-40)
+    test(3.40003e-40f, 3.400019509437555e-40) // even is upwards
+    test(3.40003e-40f, 3.4000195094375554e-40)
+
+    // Around 1.1754942807573643e-38, which is the midpoint between max-subnormal and min-normal
+    test(1.1754942e-38f, 1.1754942807573642e-38)
+    test(1.17549435e-38f, 1.1754942807573643e-38) // even is upwards (it's min-normal)
+    test(1.17549435e-38f, 1.1754942807573644e-38)
+
+    // Around 2.3509886e-38f, which is the max value with ulp == MinPosValue
+    test(2.3509886e-38f, 2.3509885615147283e-38)
+    test(2.3509886e-38f, 2.3509885615147286e-38)
+    test(2.3509886e-38f, 2.3509885615147283e-38)
+
+    // Around 2.3509887e-38f, which is the min value with ulp != MinPosValue
+    test(2.3509887e-38f, 2.3509887016445748e-38)
+    test(2.3509887e-38f, 2.350988701644575e-38)
+    test(2.3509887e-38f, 2.3509887016445755e-38)
+
+    // Around 3.400000214576721, which is the midpoint between 3.4f and 3.4000003f (normals)
+    test(3.4f, 3.4000002145767207)
+    test(3.4f, 3.400000214576721) // even is downwards
+    test(3.4000003f, 3.4000002145767216)
+
+    // Around 3.4000004529953003, which is the midpoint between 3.4000003f and 3.4000006f (normals)
+    test(3.4000003f, 3.4000004529953)
+    test(3.4000006f, 3.4000004529953003) // even is upwards
+    test(3.4000006f, 3.4000004529953007)
+
+    // Around 3.4028235677973366e38, which is the midpoint between Float.MaxValue and Infinity
+    test(Float.MaxValue, 3.4028235677973362e38)
+    test(Float.PositiveInfinity, 3.4028235677973366e38)
+    test(Float.PositiveInfinity, 3.402823567797337e38)
+  }
+
+  @Test
+  def toFloatNoLoss(): Unit = {
+    // This is the closest we get to directly testing our `Math.fround` polyfill
+
+    /* Whether we have accurate floats or not, `toFloat` must be exact when the
+     * input is already a float.
+     */
+
+    @noinline
+    def toFloatNoInline(value: Double): Float = value.toFloat
+
+    @noinline
+    def test(value: Float): Unit =
+      assertExactEquals(s"for value $value", value, toFloatNoInline(value.toDouble))
+
+    // Specials
+    test(+0.0f)
+    test(-0.0f)
+    test(Float.PositiveInfinity)
+    test(Float.NegativeInfinity)
+    test(Float.NaN)
+
+    // Other corner cases
+
+    test(Float.MinPositiveValue)
+    test(-Float.MinPositiveValue)
+    test(1.1754942e-38f) // max subnormal value
+    test(-1.1754942e-38f)
+    test(1.17549435e-38f) // min normal value
+    test(-1.17549435e-38f)
+    test(2.3509886e-38f) // max value with ulp == MinPosValue
+    test(-2.3509886e-38f)
+    test(2.3509887e-38f) // min value with ulp != MinPosValue
+    test(-2.3509887e-38f)
+    test(Float.MaxValue)
+    test(-Float.MaxValue)
+
+    // Some normal values
+
+    test(3.4f)
+    test(-3.4f)
+    test(3.423e36f)
+    test(-3.423e36f)
+
+    // Some subnormal values
+
+    test(3.4e-40f)
+    test(-3.4e-40f)
+    test(3.42e-43f)
+    test(-3.42e-43f)
   }
 
   @Test
