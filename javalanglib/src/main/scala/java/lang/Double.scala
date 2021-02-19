@@ -97,144 +97,170 @@ object Double {
       "$")
 
   def parseDouble(s: String): scala.Double = {
+    val groups = doubleStrPat.exec(s)
+    if (groups != null)
+      js.Dynamic.global.parseFloat(groups(1).asInstanceOf[js.Any]).asInstanceOf[scala.Double]
+    else
+      parseDoubleSlowPath(s)
+  }
+
+  // Slow path of `parseDouble` for hexadecimal notation and failure
+  private def parseDoubleSlowPath(s: String): scala.Double = {
     def fail(): Nothing =
       throw new NumberFormatException("For input string: \"" + s + "\"")
 
-    // (Very) slow path for hexadecimal notation
-    def parseHexDoubleImpl(match2: js.RegExp.ExecResult): scala.Double = {
-      // scalastyle:off return
+    val groups = doubleStrHexPat.exec(s)
+    if (groups == null)
+      fail()
 
-      val signStr = match2(1).asInstanceOf[String]
-      val integralPartStr = match2(2).asInstanceOf[String]
-      val fractionalPartStr = match2(3).asInstanceOf[String]
-      val binaryExpStr = match2(4).asInstanceOf[String]
+    val signStr = groups(1).asInstanceOf[String]
+    val integralPartStr = groups(2).asInstanceOf[String]
+    val fractionalPartStr = groups(3).asInstanceOf[String]
+    val binaryExpStr = groups(4).asInstanceOf[String]
 
-      if (integralPartStr == "" && fractionalPartStr == "")
-        fail()
+    if (integralPartStr == "" && fractionalPartStr == "")
+      fail()
 
-      /* We concatenate the integral part and fractional part together, then
-       * we parse the result as an integer. This means that we need to remember
-       * a correction to be applied to the final result, as a diff to the
-       * binary exponent
-       */
-      val mantissaStr0 = integralPartStr + fractionalPartStr
-      val correction1 = -(fractionalPartStr.length * 4) // 1 hex == 4 bits
+    val absResult = parseHexDoubleImpl(integralPartStr, fractionalPartStr,
+        binaryExpStr, maxPrecisionChars = 15)
 
-      /* Remove leading 0's in `mantissaStr`, because our algorithm assumes
-       * that there is none.
-       */
-      var i = 0
-      while (i != mantissaStr0.length && mantissaStr0.charAt(i) == '0')
-        i += 1
-      val mantissaStr = mantissaStr0.substring(i)
+    if (signStr == "-")
+      -absResult
+    else
+      absResult
+  }
 
-      /* If the mantissa is empty, it means there were only 0's, and we
-       * short-cut to directly returning 0.0 or -0.0. This is important because
-       * the final step of the algorithm (multiplying by `correctingPow`)
-       * assumes that `mantissa` is non-zero in the case of overflow.
-       */
-      if (mantissaStr == "") {
-        if (signStr == "-")
-          return -0.0
-        else
-          return 0.0
+  /** Parses a non-negative Double expressed in hexadecimal notation.
+   *
+   *  This returns the result of parsing
+   *  {{{
+   *  "0x" + integralPartStr + "." + fractionalPartStr + "p" + binaryExpStr
+   *  }}}
+   *  but truncating the total number of characters in `integralPartStr` and
+   *  `fractionalPartStr` participating in the resulting precision to
+   *  `maxPrecisionChars`.
+   *
+   *  `maxPrecisionChars` must be 15 to parse Double values, and 7 to parse
+   *  Float values.
+   */
+  private[lang] def parseHexDoubleImpl(integralPartStr: String,
+      fractionalPartStr: String, binaryExpStr: String,
+      maxPrecisionChars: Int): scala.Double = {
+    // scalastyle:off return
+
+    /* We concatenate the integral part and fractional part together, then
+     * we parse the result as an integer. This means that we need to remember
+     * a correction to be applied to the final result, as a diff to the
+     * binary exponent
+     */
+    val mantissaStr0 = integralPartStr + fractionalPartStr
+    val correction1 = -(fractionalPartStr.length * 4) // 1 hex == 4 bits
+
+    /* Remove leading 0's in `mantissaStr`, because our algorithm assumes
+     * that there is none.
+     */
+    var i = 0
+    while (i != mantissaStr0.length && mantissaStr0.charAt(i) == '0')
+      i += 1
+    val mantissaStr = mantissaStr0.substring(i)
+
+    /* If the mantissa is empty, it means there were only 0's, and we
+     * short-cut to directly returning 0.0 or -0.0. This is important because
+     * the final step of the algorithm (multiplying by `correctingPow`)
+     * assumes that `mantissa` is non-zero in the case of overflow.
+     */
+    if (mantissaStr == "")
+      return 0.0
+
+    /* If there are more than `maxPrecisionChars` characters left, we compress
+     * the tail as a single character. This has two purposes:
+     *
+     * - First, if we don't, there can be corner cases where the `mantissaStr`
+     *   would parse as `Infinity` because it is too large on its own, but
+     *   where the binary exponent can "fix it" by being sufficiently under or
+     *   above 0. (see #4431)
+     * - Second, when parsing Floats, this ensures that values very close above
+     *   or below a Float midpoint are parsed as a Double that is actually
+     *   above or below the midpoint. If we don't, the parsed value can be
+     *   rounded to exactly the midpoint, which will cause incorrect rounding
+     *   when later converting it to a Float value. (see #4035)
+     *
+     * Only `maxPrecisionChars` characters can directly participate in the
+     * precision of the final result. The last one may already loose precision,
+     * but will determine whether to round up or down. If its low-order bits
+     * that are lost are exactly a '1' followed by '0's, then even a character
+     * very far away in the tail can make the difference between rounding up
+     * or down (see #4431). However the only possible difference is between
+     * "all-zeros" or "at least one non-zero" after the `maxPrecisionChars`th
+     * character. We can therefore compress the entire tail as single "0" or
+     * "1".
+     *
+     * Of course, we remember that we need to apply a correction to the
+     * exponent of the final result.
+     */
+    val mantissaStrLen = mantissaStr.length()
+    val needsCorrection2 = mantissaStrLen > maxPrecisionChars
+    val truncatedMantissaStr = if (needsCorrection2) {
+      var hasNonZeroChar = false
+      var j = maxPrecisionChars
+      while (!hasNonZeroChar && j != mantissaStrLen) {
+        if (mantissaStr.charAt(j) != '0')
+          hasNonZeroChar = true
+        j += 1
       }
-
-      /* If there are more than 15 characters left, we compress the tail as a
-       * single character. If we don't, there can be corner cases where the
-       * `mantissaStr` would parse as `Infinity` because it is too large on its
-       * own, but where the binary exponent can "fix it" by being sufficiently
-       * under 0.
-       *
-       * Only 14 characters can directly participate in the precision of the
-       * final result. The 15th character can determine whether to round up or
-       * down. If it is exactly '8' ('1000' in binary), then even a character
-       * very far away in the tail can make the difference between rounding up
-       * or down (see #4431). However the only possible difference is between
-       * "all-zeros" or "at least one non-zero" after the 15th character. We
-       * can therefore compress the entire tail as single "0" or "1".
-       *
-       * Of course, we remember that we need to apply a correction to the
-       * exponent of the final result.
-       */
-      val mantissaStrLen = mantissaStr.length()
-      val needsCorrection2 = mantissaStrLen > 15
-      val truncatedMantissaStr = if (needsCorrection2) {
-        var hasNonZeroChar = false
-        var j = 15
-        while (!hasNonZeroChar && j != mantissaStrLen) {
-          if (mantissaStr.charAt(j) != '0')
-            hasNonZeroChar = true
-          j += 1
-        }
-        val compressedTail = if (hasNonZeroChar) "1" else "0"
-        mantissaStr.substring(0, 15) + compressedTail
-      } else {
-        mantissaStr
-      }
-      val correction2 =
-        if (needsCorrection2) (mantissaStr.length - 16) * 4 // one hex == 4 bits
-        else 0
-
-      val fullCorrection = correction1 + correction2
-
-      /* Note that we do not care too much about overflows and underflows when
-       * manipulating binary exponents and corrections, because the corrections
-       * are directly related to the length of the input string, so they cannot
-       * be *that* big (or we have bigger problems), and the final result needs
-       * to fit in the [-1024, 1023] range, which can only happen if the
-       * `binaryExp` (see below) did not stray too far from that range itself.
-       */
-
-      @inline def nativeParseInt(s: String, radix: Int): scala.Double = {
-        js.Dynamic.global
-          .parseInt(s.asInstanceOf[js.Any], radix.asInstanceOf[js.Any])
-          .asInstanceOf[scala.Double]
-      }
-
-      val mantissa = nativeParseInt(truncatedMantissaStr, 16)
-      // Assert: mantissa != 0.0 && mantissa != scala.Double.PositiveInfinity
-
-      val binaryExpDouble = nativeParseInt(binaryExpStr, 10)
-      val binaryExp = binaryExpDouble.toInt // caps to [MinValue, MaxValue]
-
-      val binExpAndCorrection = binaryExp + fullCorrection
-
-      /* If `baseExponent` is the IEEE exponent of `mantissa`, then
-       * `binExpAndCorrection + baseExponent` must be in the valid range of
-       * IEEE exponents, which is [-1074, 1023]. Therefore, if
-       * `binExpAndCorrection` is out of twice that range, we will end up with
-       * an overflow or an underflow anyway.
-       *
-       * If it is inside twice that range, then we need to multiply `mantissa`
-       * by `Math.pow(2, binExpAndCorrection)`. However that `pow` could
-       * overflow or underflow itself, so we cut it in 3 parts. If that does
-       * not suffice for it not to overflow or underflow, it's because it
-       * wasn't in the safe range to begin with.
-       */
-      val binExpAndCorrection_div_3 = binExpAndCorrection / 3
-      val correctingPow = Math.pow(2, binExpAndCorrection_div_3)
-      val correctingPow3 =
-        Math.pow(2, binExpAndCorrection - 2*binExpAndCorrection_div_3)
-
-      val r = ((mantissa * correctingPow) * correctingPow) * correctingPow3
-
-      if (signStr == "-") -r
-      else r
-
-      // scalastyle:on return
-    }
-
-    val match1 = doubleStrPat.exec(s)
-    if (match1 != null) {
-      js.Dynamic.global.parseFloat(match1(1).asInstanceOf[js.Any]).asInstanceOf[scala.Double]
+      val compressedTail = if (hasNonZeroChar) "1" else "0"
+      mantissaStr.substring(0, maxPrecisionChars) + compressedTail
     } else {
-      val match2 = doubleStrHexPat.exec(s)
-      if (match2 != null)
-        parseHexDoubleImpl(match2)
-      else
-        fail()
+      mantissaStr
     }
+    val correction2 =
+      if (needsCorrection2) (mantissaStr.length - (maxPrecisionChars + 1)) * 4 // one hex == 4 bits
+      else 0
+
+    val fullCorrection = correction1 + correction2
+
+    /* Note that we do not care too much about overflows and underflows when
+     * manipulating binary exponents and corrections, because the corrections
+     * are directly related to the length of the input string, so they cannot
+     * be *that* big (or we have bigger problems), and the final result needs
+     * to fit in the [-1024, 1023] range, which can only happen if the
+     * `binaryExp` (see below) did not stray too far from that range itself.
+     */
+
+    @inline def nativeParseInt(s: String, radix: Int): scala.Double = {
+      js.Dynamic.global
+        .parseInt(s.asInstanceOf[js.Any], radix.asInstanceOf[js.Any])
+        .asInstanceOf[scala.Double]
+    }
+
+    val mantissa = nativeParseInt(truncatedMantissaStr, 16)
+    // Assert: mantissa != 0.0 && mantissa != scala.Double.PositiveInfinity
+
+    val binaryExpDouble = nativeParseInt(binaryExpStr, 10)
+    val binaryExp = binaryExpDouble.toInt // caps to [MinValue, MaxValue]
+
+    val binExpAndCorrection = binaryExp + fullCorrection
+
+    /* If `baseExponent` is the IEEE exponent of `mantissa`, then
+     * `binExpAndCorrection + baseExponent` must be in the valid range of
+     * IEEE exponents, which is [-1074, 1023]. Therefore, if
+     * `binExpAndCorrection` is out of twice that range, we will end up with
+     * an overflow or an underflow anyway.
+     *
+     * If it is inside twice that range, then we need to multiply `mantissa`
+     * by `Math.pow(2, binExpAndCorrection)`. However that `pow` could
+     * overflow or underflow itself, so we cut it in 3 parts. If that does
+     * not suffice for it not to overflow or underflow, it's because it
+     * wasn't in the safe range to begin with.
+     */
+    val binExpAndCorrection_div_3 = binExpAndCorrection / 3
+    val correctingPow = Math.pow(2, binExpAndCorrection_div_3)
+    val correctingPow3 =
+      Math.pow(2, binExpAndCorrection - 2*binExpAndCorrection_div_3)
+
+    ((mantissa * correctingPow) * correctingPow) * correctingPow3
+
+    // scalastyle:on return
   }
 
   @inline def toString(d: scala.Double): String =
