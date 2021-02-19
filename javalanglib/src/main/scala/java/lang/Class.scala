@@ -74,6 +74,9 @@ final class Class[A] private (data0: Object) extends Object {
   def getSimpleName(): String = {
     val name = data.name
     var idx = name.length - 1
+    while (idx >= 0 && name.charAt(idx) != '$') {
+      idx -= 1
+    }
     while (idx >= 0 && name.charAt(idx) == '$') {
       idx -= 1
     }
