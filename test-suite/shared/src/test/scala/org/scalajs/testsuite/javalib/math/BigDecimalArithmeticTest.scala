@@ -992,6 +992,14 @@ class  BigDecimalArithmeticTest {
     assertEquals(result.scale(), resScale)
   }
 
+  @Test def testDivideToIntegralValueMathContext_Issue3706(): Unit = {
+    val diff = new BigDecimal("1e-30")
+    val step = new BigDecimal("1e-38")
+    val quotient = diff.divideToIntegralValue(step, MathContext.DECIMAL128)
+    val limit = new BigDecimal(Int.MaxValue)
+    assertTrue(quotient.compareTo(limit) < 0)
+  }
+
   @Test def testDivideZero(): Unit = {
     var quotient = BigDecimal.ZERO.divide(BigDecimal.ONE)
     assertTrue(BigDecimal.ZERO == quotient)

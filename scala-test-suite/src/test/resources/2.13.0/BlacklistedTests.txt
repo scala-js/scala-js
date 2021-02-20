@@ -172,9 +172,6 @@ scala/util/matching/RegexTest.scala
 # Require strict-floats
 scala/math/BigDecimalTest.scala
 
-# Fails for a BigDecimal range with augmented precision (might be an actual bug)
-scala/collection/immutable/NumericRangeTest.scala
-
 # Tests passed but are too slow (timeouts)
 scala/collection/immutable/ListSetTest.scala
 scala/util/SortingTest.scala

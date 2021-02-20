@@ -1015,9 +1015,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     if (resultPrecision > mcPrecision)
       throw new ArithmeticException("Division impossible")
 
-    integralValue._scale = safeLongToInt(finalScale)
-    integralValue.setUnscaledValue(strippedBI)
-    integralValue
+    new BigDecimal(strippedBI, safeLongToInt(finalScale))
     // scalastyle:on return
   }
 
