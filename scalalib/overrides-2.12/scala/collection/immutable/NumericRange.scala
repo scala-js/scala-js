@@ -1,10 +1,14 @@
-/*                     __                                               *\
-**     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2013, LAMP/EPFL             **
-**  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
-** /____/\___/_/ |_/____/_/ | |                                         **
-**                          |/                                          **
-\*                                                                      */
+/*
+ * Scala (https://www.scala-lang.org)
+ *
+ * Copyright EPFL and Lightbend, Inc.
+ *
+ * Licensed under Apache License 2.0
+ * (http://www.apache.org/licenses/LICENSE-2.0).
+ *
+ * See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+ */
 
 package scala
 package collection
@@ -30,7 +34,6 @@ package immutable
  *  }}}
  *
  *  @author  Paul Phillips
- *  @version 2.8
  *  @define Coll `NumericRange`
  *  @define coll numeric range
  *  @define mayNotTerminateInf
@@ -119,7 +122,7 @@ extends AbstractSeq[T] with IndexedSeq[T] with Serializable {
     //   (Integral <: Ordering). This can happen for custom Integral types.
     // - The Ordering is the default Ordering of a well-known Integral type.
     if ((ord eq num) || defaultOrdering.get(num).exists(ord eq _)) {
-      if (num.signum(step) > 0) start
+      if (num.signum(step) > 0) head
       else last
     } else super.min(ord)
 
@@ -127,7 +130,7 @@ extends AbstractSeq[T] with IndexedSeq[T] with Serializable {
     // See comment for fast path in min().
     if ((ord eq num) || defaultOrdering.get(num).exists(ord eq _)) {
       if (num.signum(step) > 0) last
-      else start
+      else head
     } else super.max(ord)
 
   // Motivated by the desire for Double ranges with BigDecimal precision,
