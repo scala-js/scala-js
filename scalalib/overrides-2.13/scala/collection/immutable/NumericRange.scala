@@ -72,10 +72,14 @@ sealed class NumericRange[T](
   import num._
 
   // See comment in Range for why this must be lazy.
-  override lazy val length: Int = NumericRange.count(start, end, step, isInclusive)
-  override def isEmpty = length == 0
+  override lazy val length: Int     = NumericRange.count(start, end, step, isInclusive)
+  override lazy val isEmpty: Boolean = (
+    (num.gt(start, end) && num.gt(step, num.zero))
+      || (num.lt(start, end) && num.lt(step, num.zero))
+      || (num.equiv(start, end) && !isInclusive)
+    )
   override def last: T =
-    if (length == 0) Nil.head
+    if (isEmpty) Nil.head
     else locationAfterN(length - 1)
   override def init: NumericRange[T] =
     if (isEmpty) Nil.init
@@ -135,13 +139,13 @@ sealed class NumericRange[T](
   private def newEmptyRange(value: T) = NumericRange(value, value, step)
 
   override def take(n: Int): NumericRange[T] = {
-    if (n <= 0 || length == 0) newEmptyRange(start)
+    if (n <= 0 || isEmpty) newEmptyRange(start)
     else if (n >= length) this
     else new NumericRange.Inclusive(start, locationAfterN(n - 1), step)
   }
 
   override def drop(n: Int): NumericRange[T] = {
-    if (n <= 0 || length == 0) this
+    if (n <= 0 || isEmpty) this
     else if (n >= length) newEmptyRange(end)
     else copy(locationAfterN(n), end, step)
   }
@@ -231,7 +235,7 @@ sealed class NumericRange[T](
   override def equals(other: Any): Boolean = other match {
     case x: NumericRange[_] =>
       (x canEqual this) && (length == x.length) && (
-        (length == 0) ||                      // all empty sequences are equal
+        (isEmpty) ||                            // all empty sequences are equal
           (start == x.start && last == x.last)  // same length and same endpoints implies equality
         )
     case _ =>
@@ -328,10 +332,18 @@ object NumericRange {
           // Jump in three pieces:
           //   * start to -1 or 1, whichever is closer (waypointA)
           //   * one step, which will take us at least to 0 (ends at waypointB)
+          //   * (except with really small numbers)
           //   * there to the end
           val negone = num.fromInt(-1)
           val startlim  = if (posStep) negone else one
-          val startdiff = num.minus(startlim, start)
+          //Use start value if the start value is closer to zero than startlim
+          //   * e.g. .5 is closer to zero than 1 and -.5 is closer to zero than -1
+          val startdiff = {
+            if ((posStep && num.lt(startlim, start)) || (!posStep && num.gt(startlim, start)))
+              start
+            else
+              num.minus(startlim, start)
+          }
           val startq    = check(num.quot(startdiff, step))
           val waypointA = if (startq == zero) start else num.plus(start, num.times(startq, step))
           val waypointB = num.plus(waypointA, step)
