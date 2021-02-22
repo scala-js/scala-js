@@ -219,88 +219,81 @@ private[emitter] object CoreJSLib {
              * 1) we do not need to produce the actual bit string that serves
              *    as storage of the floats, and
              * 2) we are only interested in the float32 case.
+             *
+             * The direct tests for this polyfill are the tests for `toFloat`
+             * in org.scalajs.testsuite.compiler.DoubleTest.
              */
             // scalastyle:on line.size.limit
             val isNegative = varRef("isNegative")
             val av = varRef("av")
             val absResult = varRef("absResult")
-            val e0 = varRef("e0")
-            val twoPowE0 = varRef("twoPowE0")
-            val n1 = varRef("n1")
-            val w1 = varRef("w1")
-            val d1 = varRef("d1")
-            val f0 = varRef("f0")
-            val n2 = varRef("n2")
-            val w2 = varRef("w2")
-            val d2 = varRef("d2")
+            val e = varRef("e")
+            val twoPowE = varRef("twoPowE")
+            val significand = varRef("significand")
 
             def callMathFun(fun: String, args: Tree*): Tree =
               Apply(genIdentBracketSelect(MathRef, fun), args.toList)
 
-            def roundAndThen(n: VarRef, w: VarRef, d: VarRef)(
-                rest: Tree => Tree): Tree = {
-              Block(
-                  const(w, callMathFun("floor", n)),
-                  const(d, n - w),
-                  rest {
-                    If(d < double(0.5), w,
-                        If(d > double(0.5), w + 1,
-                            If((w % 2) !== 0, w + 1, w)))
-                  }
-              )
+            /* Rounds `value` to the nearest multiple of `unit`, breaking ties
+             * to an even multiple. The `unit` must be a (negative) power of 2.
+             *
+             * We do this by leveraging the inherent loss of precision near the
+             * minimum positive double value: conceptually, we divide the value
+             * by
+             *   unit / Double.MinPositiveValue
+             * which will drop the excess precision, applying exactly the
+             * rounding strategy that we want. Then we multiply the value back
+             * by the same constant.
+             *
+             * However, `unit / Double.MinPositiveValue` is not representable
+             * as a finite Double for all the values of `unit` that we are
+             * interested in (namely, `1 / 2^23`). Therefore, we instead use
+             * the *inverse* constant
+             *   Double.MinPositiveValue / unit
+             * and we first multiply by that constant, then divide by it.
+             */
+            def roundToNearestBreakTiesToEven(value: Tree, unit: Double): Tree = {
+              val roundingFactor = double(Double.MinPositiveValue / unit)
+              (value * roundingFactor) / roundingFactor
             }
 
             val Inf = double(Double.PositiveInfinity)
-            val NegInf = double(Double.NegativeInfinity)
-            val subnormalThreshold = double(1.1754943508222875e-38)
+            val overflowThreshold = double(3.4028235677973366e38)
+            val normalThreshold = double(1.1754943508222875e-38)
             val ln2 = double(0.6931471805599453)
-            val twoPowMantissaBits = int(8388608)
-            val FloatMinPosValue = double(Float.MinPositiveValue)
 
-            val noTypedArrayPolyfill = genArrowFunction(paramList(v), {
-              Block(
-                  If((v !== v) || (v === 0) || (v === Inf) || (v === NegInf), {
-                    Return(v)
-                  }, Skip()),
-                  const(isNegative, v < 0),
-                  const(av, If(isNegative, -v, v)),
-                  genEmptyMutableLet(absResult.ident),
-                  If(av >= subnormalThreshold, {
-                    Block(
-                        const(e0, callMathFun("floor", callMathFun("log", av) / ln2)),
-                        If(e0 > 127, { // bias
-                          absResult := Inf
-                        }, {
-                          Block(
-                              const(twoPowE0, callMathFun("pow", 2, e0)),
-                              const(n1, twoPowMantissaBits * (av / twoPowE0)),
-                              roundAndThen(n1, w1, d1) { rounded =>
-                                const(f0, rounded)
-                              },
-                              If((f0 / twoPowMantissaBits) < 2, {
-                                absResult := twoPowE0 * (int(1) + ((f0-twoPowMantissaBits) / twoPowMantissaBits))
-                              }, {
-                                If(e0 > 126, {
-                                  absResult := Inf
-                                }, {
-                                  // 1.1920928955078125e-7 is (1 + ((1-twoPowMantissaBits) / twoPowMantissaBits))
-                                  absResult := (int(2) * twoPowE0) * double(1.1920928955078125e-7)
-                                })
-                              })
-                          )
-                        })
-                    )
-                  }, {
-                    Block(
-                        const(n2, av / FloatMinPosValue),
-                        roundAndThen(n2, w2, d2) { rounded =>
-                          absResult := FloatMinPosValue * rounded
-                        }
-                    )
-                  }),
-                  Return(If(isNegative, -absResult, absResult))
-              )
-            })
+            val noTypedArrayPolyfill = genArrowFunction(paramList(v), Block(
+              If((v !== v) || (v === 0), {
+                Return(v)
+              }),
+              const(isNegative, v < 0),
+              const(av, If(isNegative, -v, v)),
+              genEmptyMutableLet(absResult.ident),
+              If(av >= overflowThreshold, { // also handles the case av === Infinity
+                absResult := Inf
+              }, If(av >= normalThreshold, Block(
+                const(e, callMathFun("floor", callMathFun("log", av) / ln2)),
+                let(twoPowE, callMathFun("pow", 2, e)),
+                let(significand, av / twoPowE),
+                /* Because of loss of precision in its computation, e might be 1 up or down,
+                 * which causes twoPowE and significant to be a factor 2 up or down.
+                 * We now adjust that so that significant is really in the range [1.0, 2.0).
+                 */
+                If(significand < 1, Block(
+                  twoPowE := twoPowE / 2,
+                  significand := significand * 2
+                ), If(significand >= 2, Block(
+                  twoPowE := twoPowE * 2,
+                  significand := significand / 2
+                ))),
+                // Round the significant to 23 bits of fractional part, and multiply back by twoPowE
+                absResult := roundToNearestBreakTiesToEven(significand, 1.0 / (1 << 23).toDouble) * twoPowE
+              ), {
+                // Round the value to a multiple of the smallest Float ULP, which is Float.MinPositiveValue
+                absResult := roundToNearestBreakTiesToEven(av, Float.MinPositiveValue.toDouble)
+              })),
+              Return(If(isNegative, -absResult, absResult))
+            ))
 
             If(typeof(Float32ArrayRef) !== str("undefined"),
                 typedArrayPolyfill, noTypedArrayPolyfill)

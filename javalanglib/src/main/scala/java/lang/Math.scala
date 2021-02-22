@@ -201,12 +201,23 @@ object Math {
   }
 
   def ulp(a: scala.Double): scala.Double = {
-    if (abs(a) == scala.Double.PositiveInfinity)
+    val absa = abs(a)
+    if (absa == scala.Double.PositiveInfinity)
       scala.Double.PositiveInfinity
-    else if (abs(a) == scala.Double.MaxValue)
-      pow(2, 971)
+    else if (absa == scala.Double.MaxValue)
+      1.9958403095347198e292
     else
-      nextAfter(abs(a), scala.Double.MaxValue) - a
+      nextUp(absa) - absa // this case handles NaN as well
+  }
+
+  def ulp(a: scala.Float): scala.Float = {
+    val absa = abs(a)
+    if (absa == scala.Float.PositiveInfinity)
+      scala.Float.PositiveInfinity
+    else if (absa == scala.Float.MaxValue)
+      2.028241e31f
+    else
+      nextUp(absa) - absa // this case handles NaN as well
   }
 
   def hypot(a: scala.Double, b: scala.Double): scala.Double = {
@@ -420,7 +431,6 @@ object Math {
   // TODO
 
   // def IEEEremainder(f1: scala.Double, f2: scala.Double): Double
-  // def ulp(a: scala.Float): scala.Float
   // def copySign(magnitude: scala.Double, sign: scala.Double): scala.Double
   // def copySign(magnitude: scala.Float, sign: scala.Float): scala.Float
   // def getExponent(a: scala.Float): scala.Int

@@ -40,4 +40,5 @@ object Platform {
   def hasCompliantArrayIndexOutOfBounds: Boolean = true
   def hasCompliantModule: Boolean = true
   def hasStrictFloats: Boolean = true
+  def hasAccurateFloats: Boolean = true
 }
