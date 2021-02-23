@@ -87,9 +87,30 @@ private[lang] object FloatingPointBits {
    */
   def numberHashCode(value: scala.Double): Int = {
     val iv = rawToInt(value)
-    if (iv == value && 1.0/value != scala.Double.NegativeInfinity) iv
-    else doubleToLongBits(value).hashCode()
+    if (iv == value && 1.0/value != scala.Double.NegativeInfinity) {
+      iv
+    } else {
+      /* Basically an inlined version of `Long.hashCode(doubleToLongBits(value))`,
+       * so that we never allocate a RuntimeLong instance (or anything, for
+       * that matter).
+       *
+       * In addition, in the happy path where typed arrays are supported, since
+       * we xor together the two Ints, it doesn't matter which one comes first
+       * or second, and hence we can use constants 0 and 1 instead of having an
+       * indirection through `highOffset` and `lowOffset`.
+       */
+      if (areTypedArraysSupported) {
+        float64Array(0) = value
+        int32Array(0) ^ int32Array(1)
+      } else {
+        doubleHashCodePolyfill(value)
+      }
+    }
   }
+
+  @noinline
+  private def doubleHashCodePolyfill(value: scala.Double): Int =
+    Long.hashCode(doubleToLongBitsPolyfillInline(value))
 
   def intBitsToFloat(bits: Int): scala.Float = {
     if (areTypedArraysSupported) {
@@ -169,7 +190,12 @@ private[lang] object FloatingPointBits {
     decodeIEEE754(ebits, fbits, scala.Double.MinPositiveValue, s, e, f)
   }
 
-  private def doubleToLongBitsPolyfill(value: scala.Double): scala.Long = {
+  @noinline
+  private def doubleToLongBitsPolyfill(value: scala.Double): scala.Long =
+    doubleToLongBitsPolyfillInline(value)
+
+  @inline
+  private def doubleToLongBitsPolyfillInline(value: scala.Double): scala.Long = {
     val ebits = 11
     val fbits = 52
     val hifbits = fbits-32
