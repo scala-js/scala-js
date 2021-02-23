@@ -618,7 +618,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       case VarDef(ident, _, vtpe, mutable, rhs) =>
         checkDeclareLocalVar(ident)
         typecheckExpect(rhs, env, vtpe)
-        env.withLocal(LocalDef(ident.name, vtpe, mutable)(tree.pos))
+        env.withLocal(LocalDef(ident.name, vtpe, mutable))
 
       case Skip() =>
         env
@@ -696,15 +696,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
       case ForIn(obj, keyVar, _, body) =>
         typecheckExpr(obj, env)
-        val bodyEnv =
-          env.withLocal(LocalDef(keyVar.name, AnyType, false)(keyVar.pos))
+        val bodyEnv = env.withLocal(LocalDef(keyVar.name, AnyType, false))
         typecheckStat(body, bodyEnv)
         env
 
       case TryCatch(block, errVar, _, handler) =>
         typecheckStat(block, env)
-        val handlerEnv =
-          env.withLocal(LocalDef(errVar.name, AnyType, false)(errVar.pos))
+        val handlerEnv = env.withLocal(LocalDef(errVar.name, AnyType, false))
         typecheckStat(handler, handlerEnv)
         env
 
@@ -811,7 +809,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         val tpe = tree.tpe
         typecheckExpect(block, env, tpe)
         val handlerEnv =
-          env.withLocal(LocalDef(errVar.name, AnyType, false)(errVar.pos))
+          env.withLocal(LocalDef(errVar.name, AnyType, false))
         typecheckExpect(handler, handlerEnv, tpe)
 
       case TryFinally(block, finalizer) =>
@@ -1390,7 +1388,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       val allParams = jsClassCaptures.getOrElse(Nil) ::: params
       val paramLocalDefs =
         for (p @ ParamDef(ident, _, tpe, mutable) <- allParams)
-          yield ident.name -> LocalDef(ident.name, tpe, mutable)(p.pos)
+          yield ident.name -> LocalDef(ident.name, tpe, mutable)
       new Env(thisType, paramLocalDefs.toMap, Map.empty, inConstructorOf)
     }
   }
@@ -1514,7 +1512,5 @@ object IRChecker {
       new ErrorContext(linkedClass)
   }
 
-  private final case class LocalDef(name: LocalName, tpe: Type,
-      mutable: Boolean)(
-      val pos: Position)
+  private final case class LocalDef(name: LocalName, tpe: Type, mutable: Boolean)
 }
