@@ -1199,7 +1199,13 @@ object Serializers {
         else Some(readParamDefs())
       val superClass = readOptClassIdent()
       val parents = readClassIdents()
+
+      /* jsSuperClass is not hacked like in readMemberDef.bodyHack15. The
+       * compilers before 1.6 always use a simple VarRef() as jsSuperClass,
+       * when there is one, so no hack is required.
+       */
       val jsSuperClass = readOptTree()
+
       val jsNativeLoadSpec = readJSNativeLoadSpec()
       val memberDefs = readMemberDefs(name.name, kind)
       val topLevelExportDefs = readTopLevelExportDefs(name.name, kind)
@@ -1212,6 +1218,35 @@ object Serializers {
     def readMemberDef(owner: ClassName, ownerKind: ClassKind): MemberDef = {
       implicit val pos = readPosition()
       val tag = readByte()
+
+      def bodyHack15(body: Tree, isStat: Boolean): Tree = {
+        if (!hacks.use15) {
+          body
+        } else {
+          // #4442 Patch If and TryCatch nodes in statement position to have type NoType
+          new Transformers.Transformer {
+            override def transform(tree: Tree, isStat: Boolean): Tree = {
+              val newTree = super.transform(tree, isStat)
+              if (isStat && newTree.tpe != NoType) {
+                newTree match {
+                  case If(cond, thenp, elsep) =>
+                    If(cond, thenp, elsep)(NoType)(newTree.pos)
+                  case Match(selector, cases, default) =>
+                    Match(selector, cases, default)(NoType)(newTree.pos)
+                  case TryCatch(block, errVar, errVarOriginalName, handler) =>
+                    TryCatch(block, errVar, errVarOriginalName, handler)(NoType)(newTree.pos)
+                  case _ =>
+                    newTree
+                }
+              } else {
+                newTree
+              }
+            }
+          }.transform(body, isStat)
+        }
+      }
+
+      def bodyHack15Expr(body: Tree): Tree = bodyHack15(body, isStat = false)
 
       (tag: @switch) match {
         case TagFieldDef =>
@@ -1312,7 +1347,8 @@ object Serializers {
             MethodDef(flags, name, originalName, args, resultType, patchedBody)(
                 patchedOptimizerHints, optHash)
           } else {
-            MethodDef(flags, name, originalName, args, resultType, body)(
+            val patchedBody = body.map(bodyHack15(_, isStat = resultType == NoType))
+            MethodDef(flags, name, originalName, args, resultType, patchedBody)(
                 optimizerHints, optHash)
           }
 
@@ -1324,18 +1360,19 @@ object Serializers {
           assert(len >= 0)
 
           val flags = MemberFlags.fromBits(readInt())
-          val name = readTree()
+          val name = bodyHack15Expr(readTree())
           val (params, restParam) = readParamDefsWithRest()
-          JSMethodDef(flags, name, params, restParam, readTree())(
+          val body = bodyHack15Expr(readTree())
+          JSMethodDef(flags, name, params, restParam, body)(
               OptimizerHints.fromBits(readInt()), optHash)
 
         case TagJSPropertyDef =>
           val flags = MemberFlags.fromBits(readInt())
-          val name = readTree()
-          val getterBody = readOptTree()
+          val name = bodyHack15Expr(readTree())
+          val getterBody = readOptTree().map(bodyHack15Expr(_))
           val setterArgAndBody = {
             if (readBoolean())
-              Some((readParamDef(), readTree()))
+              Some((readParamDef(), bodyHack15Expr(readTree())))
             else
               None
           }
@@ -1752,6 +1789,8 @@ object Serializers {
     private val use13: Boolean = use12 || sourceVersion == "1.3"
 
     val use14: Boolean = use13 || sourceVersion == "1.4"
+
+    val use15: Boolean = true // use14 || sourceVersion == "1.5"
   }
 
   /** Names needed for hacks. */

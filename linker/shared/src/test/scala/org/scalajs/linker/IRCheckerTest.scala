@@ -212,8 +212,6 @@ class IRCheckerTest {
     for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
       log.assertContainsError(
           "Expression tree has type NoType")
-      log.assertContainsError(
-          "Invalid expression tree")
     }
   }
 
@@ -242,8 +240,6 @@ class IRCheckerTest {
     for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
       log.assertContainsError(
           "Expression tree has type NoType")
-      log.assertContainsError(
-          "Invalid expression tree")
     }
   }
 
