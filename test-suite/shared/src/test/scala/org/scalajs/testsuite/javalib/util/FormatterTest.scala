@@ -25,6 +25,7 @@ import java.util._
 class FormatterTest {
   import FormatterTest._
 
+  @noinline
   def assertF(expected: String, format: String, args: Any*): Unit = {
     val fmt = new Formatter()
     val res = fmt.format(format, args.asInstanceOf[Seq[AnyRef]]: _*).toString()
@@ -32,6 +33,7 @@ class FormatterTest {
     assertEquals(expected, res)
   }
 
+  @noinline
   def testWithInfinityAndNaN(conversion: Char, acceptSharp: Boolean = true,
       acceptComma: Boolean = true, acceptUpperCase: Boolean = true): Unit = {
 
@@ -80,6 +82,7 @@ class FormatterTest {
    * handle the width, the `-` flag and the precision as if the conversion were
    * `%s`. Notably, the precision truncates the string.
    */
+  @noinline
   def testWithNull(conversion: Char, flags: String,
       acceptPrecision: Boolean = true,
       acceptUpperCase: Boolean = true): Unit = {
@@ -105,6 +108,7 @@ class FormatterTest {
     }
   }
 
+  @noinline
   def expectFormatterThrows[T <: Throwable](exeption: Class[T], format: String,
       args: Any*): T = {
     val fmt = new Formatter()
@@ -112,6 +116,7 @@ class FormatterTest {
         fmt.format(format, args.asInstanceOf[Seq[AnyRef]]: _*))
   }
 
+  @noinline
   def expectFormatFlagsConversionMismatch(conversion: Char,
       invalidFlags: String, arg: Any): Unit = {
 
@@ -127,6 +132,7 @@ class FormatterTest {
     }
   }
 
+  @noinline
   def expectIllegalFormatFlags(format: String, flags: String,
       arg: Any): Unit = {
     val e = expectFormatterThrows(classOf[IllegalFormatFlagsException],
@@ -134,18 +140,21 @@ class FormatterTest {
     assertEquals(flags, e.getFlags)
   }
 
+  @noinline
   def expectIllegalFormatPrecision(conversion: Char, arg: Any): Unit = {
     val e = expectFormatterThrows(classOf[IllegalFormatPrecisionException],
         "%.5" + conversion, arg)
     assertEquals(5, e.getPrecision)
   }
 
+  @noinline
   def expectIllegalFormatWidth(conversion: Char, arg: Any): Unit = {
     val e = expectFormatterThrows(classOf[IllegalFormatWidthException],
         "%5" + conversion, arg)
     assertEquals(5, e.getWidth)
   }
 
+  @noinline
   def expectIllegalFormatConversion(conversion: Char, arg: Any): Unit = {
     val e = expectFormatterThrows(classOf[IllegalFormatConversionException],
         "%" + conversion, arg)
@@ -153,6 +162,7 @@ class FormatterTest {
     assertEquals(arg.getClass, e.getArgumentClass)
   }
 
+  @noinline
   def expectUnknownFormatConversion(format: String, conversion: Char): Unit = {
     val e = expectFormatterThrows(classOf[UnknownFormatConversionException],
         format, 1, 2, 3)
