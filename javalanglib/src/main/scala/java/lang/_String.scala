@@ -188,7 +188,7 @@ final class _String private () // scalastyle:ignore
     // scalastyle:on return
   }
 
-  /** Perfoms case folding of a single character for use by `equalsIgnoreCase`
+  /** Performs case folding of a single character for use by `equalsIgnoreCase`
    *  and `compareToIgnoreCase`.
    *
    *  This implementation respects the specification of those two methods,

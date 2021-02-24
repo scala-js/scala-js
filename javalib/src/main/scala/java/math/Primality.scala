@@ -257,7 +257,7 @@ private[math] object Primality {
         x = BiPrimes(i)
       } else {
         /*
-         * It generates random witness only if it's necesssary. Note that all
+         * It generates random witness only if it's necessary. Note that all
          * methods would call Miller-Rabin with t <= 50 so this part is only to
          * do more robust the algorithm
          */

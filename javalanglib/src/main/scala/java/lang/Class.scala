@@ -35,7 +35,7 @@ final class Class[A] private (data0: Object) extends Object {
   private[this] val data: ScalaJSClassData[A] =
     data0.asInstanceOf[ScalaJSClassData[A]]
 
-  /** Acces to `data` for other instances or `@inline` methods.
+  /** Access to `data` for other instances or `@inline` methods.
    *
    *  Directly accessing the `data` field from `@inline` methods will cause
    *  scalac to make the field public and mangle its name. Since the Emitter
