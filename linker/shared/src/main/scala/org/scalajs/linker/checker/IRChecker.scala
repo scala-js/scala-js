@@ -609,7 +609,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       implicit ctx: ErrorContext): Unit = {
     typecheck(tree, env)
 
-    if (expectedType != NoType && !isSubtype(tree.tpe, expectedType)) {
+    if (!isSubtype(tree.tpe, expectedType)) {
       reportError(i"$expectedType expected but ${tree.tpe} found "+
           i"for tree of type ${tree.getClass.getName}")
     }
