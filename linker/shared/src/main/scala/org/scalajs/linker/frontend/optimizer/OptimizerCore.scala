@@ -2134,7 +2134,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
              * than boxed '\0'. We need to do this because the result() method
              * (see intrinsic right above) will directly feed that JS array to
              * `makeNativeArrayWrapper`, which expects an array of numbers when
-             * builing an `Array[Char]`.
+             * building an `Array[Char]`.
              */
             tpe match {
               case CharType => IntLiteral(0)
@@ -4551,7 +4551,7 @@ private[optimizer] object OptimizerCore {
           RecordType(_) =>
         /* At run-time, a byte will answer true to `x.isInstanceOf[Int]`,
          * therefore `byte`s must be non-exact. The same reasoning applies to
-         * other primitive numberic types.
+         * other primitive numeric types.
          */
         RefinedType(tpe, isExact = false, isNullable = false)
     }

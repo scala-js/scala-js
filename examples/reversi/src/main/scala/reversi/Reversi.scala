@@ -86,7 +86,7 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
     val PawnRadiusPx = HalfSquareSizePx-4
     val BoardSizePx = BoardSize*SquareSizePx + 3
 
-    // Creat the board canvas
+    // Create the board canvas
     val boardCanvas = jQuery(
         "<canvas width='"+BoardSizePx+"' height='"+BoardSizePx+"'></canvas>")
     val domCanvas = boardCanvas.get(0).asInstanceOf[HTMLCanvasElement]

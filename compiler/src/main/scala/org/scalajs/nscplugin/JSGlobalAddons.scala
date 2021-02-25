@@ -108,7 +108,7 @@ trait JSGlobalAddons extends JSDefinitions
       val pos: Position
     }
 
-    /* Not final because it causes the follwing compile warning:
+    /* Not final because it causes the following compile warning:
      * "The outer reference in this type test cannot be checked at run time."
      */
     case class TopLevelExportInfo(moduleID: String, jsName: String)(

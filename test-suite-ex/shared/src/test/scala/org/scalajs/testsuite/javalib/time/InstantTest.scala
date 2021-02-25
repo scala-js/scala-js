@@ -19,7 +19,7 @@ import org.junit.Assert._
 
 import org.scalajs.testsuite.utils.AssertThrows._
 
-/** Sanity tests for the dummy implemenation of `java.time.Instant`.
+/** Sanity tests for the dummy implementation of `java.time.Instant`.
  *
  *  These tests ensure that our dummy implementation of `java.time.Instant`
  *  behave in an appropriate way. We only test specific behaviors that can

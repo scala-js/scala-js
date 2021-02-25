@@ -48,7 +48,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
     case object Static extends ExportDestination
   }
 
-  /* Not final because it causes the follwing compile warning:
+  /* Not final because it causes the following compile warning:
    * "The outer reference in this type test cannot be checked at run time."
    */
   private case class ExportInfo(jsName: String,

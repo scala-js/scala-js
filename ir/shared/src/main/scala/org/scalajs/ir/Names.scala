@@ -494,7 +494,7 @@ object Names {
   val ArrayIndexOutOfBoundsExceptionClass: ClassName =
     ClassName("java.lang.ArrayIndexOutOfBoundsException")
 
-  /** The excpetion thrown by an `AsInstanceOf` that fails. */
+  /** The exception thrown by an `AsInstanceOf` that fails. */
   val ClassCastExceptionClass: ClassName =
     ClassName("java.lang.ClassCastException")
 

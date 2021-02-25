@@ -1449,7 +1449,7 @@ class ExportsTest {
 
   @Test def topLevelExportFieldIsWritableAccrossModules(): Unit = {
     /* We write to basicVar exported above from a different object to test writing
-     * of static fields accross module boundaries (when module splitting is
+     * of static fields across module boundaries (when module splitting is
      * enabled).
      */
 
