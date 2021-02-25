@@ -615,14 +615,13 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  private def typecheckExpr(tree: Tree, env: Env): Unit = {
-    implicit val ctx = ErrorContext(tree)
-    if (tree.tpe == NoType)
-      reportError(i"Expression tree has type NoType")
-    typecheck(tree, env)
+  private def typecheckExpr(tree: Tree, env: Env)(
+      implicit ctx: ErrorContext): Unit = {
+    typecheckExpect(tree, env, AnyType)
   }
 
-  private def typecheckExprOrSpread(tree: TreeOrJSSpread, env: Env): Unit = {
+  private def typecheckExprOrSpread(tree: TreeOrJSSpread, env: Env)(
+      implicit ctx: ErrorContext): Unit = {
     tree match {
       case JSSpread(items) =>
         typecheckExpr(items, env)
