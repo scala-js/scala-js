@@ -1151,7 +1151,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             typecheckExpect(value, env, ctpe)
         }
 
-      case _ =>
+      case _:JSSuperConstructorCall | _:RecordSelect | _:RecordValue | _:Transient =>
         reportError("invalid tree")
     }
   }
