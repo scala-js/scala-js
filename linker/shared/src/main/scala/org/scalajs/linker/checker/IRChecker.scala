@@ -1370,7 +1370,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     def withThis(thisTpe: Type): Env =
       new Env(thisTpe, this.locals, this.returnTypes, this.inConstructorOf)
 
-    def withLocal(localDef: LocalDef)(implicit ctx: ErrorContext): Env = {
+    def withLocal(localDef: LocalDef): Env = {
       new Env(thisTpe, locals + (localDef.name -> localDef), returnTypes,
           this.inConstructorOf)
     }
