@@ -454,10 +454,11 @@ final class Formatter private (private[this] var dest: Appendable,
               val actualPrecision =
                 if (precision >= 0) precision
                 else 6
+              val x = numberToDecimal(arg)
               val notation = conversionLower match {
-                case 'e' => computerizedScientificNotation(arg, actualPrecision, forceDecimalSep)
-                case 'f' => decimalNotation(arg, actualPrecision, forceDecimalSep)
-                case _   => generalScientificNotation(arg, actualPrecision, forceDecimalSep)
+                case 'e' => computerizedScientificNotation(x, digitsAfterDot = actualPrecision, forceDecimalSep)
+                case 'f' => decimalNotation(x, scale = actualPrecision, forceDecimalSep)
+                case _   => generalScientificNotation(x, precision = actualPrecision, forceDecimalSep)
               }
               formatNumericString(localeInfo, flags, width, notation)
             }
@@ -506,81 +507,90 @@ final class Formatter private (private[this] var dest: Appendable,
     (if (flags.useLastIndex) "<" else "")
   }
 
-  private def computerizedScientificNotation(x: Double, precision: Int,
+  private def computerizedScientificNotation(x: Decimal, digitsAfterDot: Int,
       forceDecimalSep: Boolean): String = {
-    import js.JSNumberOps._
 
-    // First use JavaScript's native toExponential conversion
-    val s1 = x.toExponential(precision)
+    val rounded = x.round(precision = 1 + digitsAfterDot)
 
-    // -0.0 should have a leading '-'
-    val s2 =
-      if (x == 0.0 && 1 / x < 0) "-" + s1
-      else s1
+    val signStr = if (rounded.negative) "-" else ""
 
-    // Then make sure the exponent has at least 2 digits for the JDK spec
-    val len = s2.length
-    val s3 =
-      if ('e' != s2.charAt(len - 3)) s2
-      else s2.substring(0, len - 1) + "0" + s2.substring(len - 1)
+    val intStr = rounded.unscaledValue
+    val dotPos = 1
+    val fractionalDigitCount = intStr.length() - dotPos
+    val missingZeros = digitsAfterDot - fractionalDigitCount
 
-    // Finally, force the decimal separator, if requested
-    if (!forceDecimalSep || s3.indexOf(".") >= 0) {
-      s3
-    } else {
-      val pos = s3.indexOf("e")
-      s3.substring(0, pos) + "." + s3.substring(pos)
+    val significandStr = {
+      val integerPart = intStr.substring(0, dotPos)
+      val fractionalPart = intStr.substring(dotPos) + strOfZeros(missingZeros)
+      if (fractionalPart == "" && !forceDecimalSep)
+        integerPart
+      else
+        integerPart + "." + fractionalPart
     }
+
+    val exponent = fractionalDigitCount - rounded.scale
+    val exponentSign = if (exponent < 0) "-" else "+"
+    val exponentAbsStr0 = Math.abs(exponent).toString()
+    val exponentAbsStr =
+      if (exponentAbsStr0.length() == 1) "0" + exponentAbsStr0
+      else exponentAbsStr0
+
+    signStr + significandStr + "e" + exponentSign + exponentAbsStr
   }
 
-  private def generalScientificNotation(x: Double, precision: Int,
+  private def decimalNotation(x: Decimal, scale: Int,
       forceDecimalSep: Boolean): String = {
-    val m = Math.abs(x)
+
+    val rounded = x.setScale(scale)
+
+    val signStr = if (rounded.negative) "-" else ""
+
+    val intStr = rounded.unscaledValue
+    val intStrLen = intStr.length()
+
+    val minDigits = 1 + scale // 1 before the '.' plus `scale` after it
+    val expandedIntStr =
+      if (intStrLen >= minDigits) intStr
+      else strOfZeros(minDigits - intStrLen) + intStr
+    val dotPos = expandedIntStr.length() - scale
+
+    val integerPart = signStr + expandedIntStr.substring(0, dotPos)
+    if (scale == 0 && !forceDecimalSep)
+      integerPart
+    else
+      integerPart + "." + expandedIntStr.substring(dotPos)
+  }
+
+  private def generalScientificNotation(x: Decimal, precision: Int,
+      forceDecimalSep: Boolean): String = {
 
     val p =
       if (precision == 0) 1
       else precision
 
-    if (m == 0.0) {
-      // #4353 Always display 0.0 as fixed, as if its `sig` were 1
-      decimalNotation(x, p - 1, forceDecimalSep)
-    } else if ((m >= 1e-4 && m < Math.pow(10, p))) {
-      // Between 1e-4 and 10e(p): display as fixed
-
-      /* First approximation of the smallest power of 10 that is >= m.
-       * Due to rounding errors in the event of an imprecise `log10`
-       * function, sig0 could actually be the smallest power of 10
-       * that is > m.
-       */
-      val sig0 = Math.ceil(Math.log10(m)).toInt
-      /* Increment sig0 so that it is always the first power of 10
-       * that is > m.
-       */
-      val sig = if (Math.pow(10, sig0) <= m) sig0 + 1 else sig0
-      decimalNotation(x, Math.max(p - sig, 0), forceDecimalSep)
-    } else {
-      computerizedScientificNotation(x, p - 1, forceDecimalSep)
-    }
-  }
-
-  private def decimalNotation(x: Double, precision: Int,
-      forceDecimalSep: Boolean): String = {
-
-    import js.JSNumberOps._
-
-    // First use JavaScript's native toFixed conversion
-    val s1 = x.toFixed(precision)
-
-    // -0.0 should have a leading '-'
-    val s2 =
-      if (x == 0.0 && 1 / x < 0) "-" + s1
-      else s1
-
-    // Finally, force the decimal separator, if requested
-    if (forceDecimalSep && s2.indexOf(".") < 0)
-      s2 + "."
+    /* The JavaDoc says:
+     *
+     * > After rounding for the precision, the formatting of the resulting
+     * > magnitude m depends on its value.
+     *
+     * so we first round to `p` significant digits before deciding which
+     * notation to use, based on the order of magnitude of the result. The
+     * order of magnitude is an integer `n` such that
+     *
+     *   10^n <= abs(x) < 10^(n+1)
+     *
+     * (except if x is a zero value, in which case it is 0).
+     *
+     * We also pass `rounded` to the dedicated notation function. Both
+     * functions perform rounding of their own, but the rounding methods will
+     * detect that no further rounding is necessary, so it is worth it.
+     */
+    val rounded = x.round(p)
+    val orderOfMagnitude = (rounded.precision - 1) - rounded.scale
+    if (orderOfMagnitude >= -4 && orderOfMagnitude < p)
+      decimalNotation(rounded, scale = Math.max(0, p - orderOfMagnitude - 1), forceDecimalSep)
     else
-      s2
+      computerizedScientificNotation(rounded, digitsAfterDot = p - 1, forceDecimalSep)
   }
 
   /** Format an argument for the 'a' conversion.
@@ -692,9 +702,8 @@ final class Formatter private (private[this] var dest: Appendable,
         val baseStr = java.lang.Long.toHexString(roundedMantissa)
         val padded = "0000000000000".substring(baseStr.length()) + baseStr // 13 zeros
 
-        // Assert: padded.length == 13 == mbits / 4
-        if (!(padded.length() == 13 && (13 * 4 == mbits)))
-          throw new AssertionError("padded mantissa does not have the right number of bits")
+        assert(padded.length() == 13 && (13 * 4 == mbits),
+            "padded mantissa does not have the right number of bits")
 
         // ~ padded.dropRightWhile(_ == '0') but keep at least minLength chars
         val minLength = Math.max(1, actualPrecision)
@@ -945,6 +954,27 @@ object Formatter {
   private val FormatSpecifier = new js.RegExp(
       """(?:(\d+)\$)?([-#+ 0,\(<]*)(\d+)?(?:\.(\d+))?[%A-Za-z]""", "g")
 
+  private def strOfZeros(count: Int): String = {
+    val twentyZeros = "00000000000000000000"
+    if (count <= 20) {
+      twentyZeros.substring(0, count)
+    } else {
+      var result = ""
+      var remaining = count
+      while (remaining > 20) {
+        result += twentyZeros
+        remaining -= 20
+      }
+      result + twentyZeros.substring(0, remaining)
+    }
+  }
+
+  @inline
+  private def assert(condition: Boolean, msg: => String): Unit = {
+    if (!condition)
+      throw new AssertionError(msg)
+  }
+
   /* This class is never used in a place where it would box, so it will
    * completely disappear at link-time. Make sure to keep it that way.
    *
@@ -1012,6 +1042,183 @@ object Formatter {
         UseGroupingSeps | Precision,              // x
         -1, -1                                    // y -> z
     )
+  }
+
+  /** Converts a `Double` into a `Decimal` that has as few digits as possible
+   *  while still uniquely identifying `x`.
+   *
+   *  We do this by converting the absolute value of the number into a string
+   *  using its built-in `toString()` conversion. By ECMAScript's spec, this
+   *  yields a decimal representation with as few significant digits as
+   *  possible, although it can be in fixed notation or in computerized
+   *  scientific notation.
+   *
+   *  We then parse that string to recover the integer part, the factional part
+   *  and the exponent; the latter two being optional.
+   *
+   *  From the parts, we construct a `Decimal`, making sure to create one that
+   *  does not have leading 0's (as it is forbidden by `Decimal`'s invariants).
+   */
+  private def numberToDecimal(x: Double): Decimal = {
+    if (x == 0.0) {
+      val negative = 1.0 / x < 0.0
+      Decimal.zero(negative)
+    } else {
+      val negative = x < 0.0
+      val s = JDouble.toString(if (negative) -x else x)
+
+      val ePos = s.indexOf('e')
+      val e =
+        if (ePos < 0) 0
+        else js.Dynamic.global.parseInt(s.substring(ePos + 1)).asInstanceOf[Int]
+      val significandEnd = if (ePos < 0) s.length() else ePos
+
+      val dotPos = s.indexOf('.')
+      if (dotPos < 0) {
+        // No '.'; there cannot be leading 0's (x == 0.0 was handled before)
+        val unscaledValue = s.substring(0, significandEnd)
+        val scale = -e
+        new Decimal(negative, unscaledValue, scale)
+      } else {
+        // There is a '.'; there can be leading 0's, which we must remove
+        val digits = s.substring(0, dotPos) + s.substring(dotPos + 1, significandEnd)
+        val digitsLen = digits.length()
+        var i = 0
+        while (i < digitsLen && digits.charAt(i) == '0')
+          i += 1
+        val unscaledValue = digits.substring(i)
+        val scale = -e + (significandEnd - (dotPos + 1))
+        new Decimal(negative, unscaledValue, scale)
+      }
+    }
+  }
+
+  /** A decimal representation of a number.
+   *
+   *  An instance of this class represents the number whose absolute value is
+   *  `unscaledValue × 10^(-scale)`, and that is negative iff `negative` is
+   *  true.
+   *
+   *  The `unscaledValue` is stored as a String of decimal digits, i.e.,
+   *  characters in the range ['0', '9'], expressed in base 10. Leading 0's are
+   *  *not* valid.
+   *
+   *  As an exception, a zero value is represented by an `unscaledValue` of
+   *  `"0"`. The scale of zero value is always 0.
+   *
+   *  `Decimal` is similar to `BigDecimal`, with some differences:
+   *
+   *  - `Decimal` distinguishes +0 from -0.
+   *  - The unscaled value of `Decimal` is stored in base 10.
+   *
+   *  The methods it exposes have the same meaning as for BigDecimal, with the
+   *  only rounding mode being HALF_UP.
+   */
+  private final class Decimal(val negative: Boolean, val unscaledValue: String,
+      val scale: Int) {
+
+    def isZero: Boolean = unscaledValue == "0"
+
+    /** The number of digits in the unscaled value.
+     *
+     *  The precision of a zero value is 1.
+     */
+    def precision: Int = unscaledValue.length()
+
+    /** Rounds the number so that it has at most the given precision, i.e., at
+     *  most the given number of digits in its `unscaledValue`.
+     *
+     *  The given `precision` must be greater than 0.
+     */
+    def round(precision: Int): Decimal = {
+      assert(precision > 0, "Decimal.round() called with non-positive precision")
+
+      roundAtPos(roundingPos = precision)
+    }
+
+    /** Returns a new Decimal instance with the same value, possibly rounded,
+     *  with the given scale.
+     *
+     *  If this is a zero value, the same value is returned (a zero value must
+     *  always have a 0 scale). Rounding may also cause the result to be a zero
+     *  value, in which case its scale must be 0 as well. Otherwise, the result
+     *  is non-zero and is guaranteed to have exactly the given new scale.
+     */
+    def setScale(newScale: Int): Decimal = {
+      val roundingPos = unscaledValue.length() + newScale - scale
+      val rounded = roundAtPos(roundingPos)
+      assert(rounded.isZero || rounded.scale <= newScale,
+          "roundAtPos returned a non-zero value with a scale too large")
+
+      if (rounded.isZero || rounded.scale == newScale)
+        rounded
+      else
+        new Decimal(negative, rounded.unscaledValue + strOfZeros(newScale - rounded.scale), newScale)
+    }
+
+    /** Rounds the number at the given position in its `unscaledValue`.
+     *
+     *  The `roundingPos` may be any integer value.
+     *
+     *  - If it is < 0, the result is always a zero value.
+     *  - If it is >= `unscaledValue.lenght()`, the result is always the same
+     *    value.
+     *  - Otherwise, the `unscaledValue` will be truncated at `roundingPos`,
+     *    and rounded up iff `unscaledValue.charAt(roundingPos) >= '5'`.
+     *
+     *  The value of `negative` is always preserved.
+     *
+     *  Unless the result is a zero value, the following guarantees apply:
+     *
+     *  - its scale is guaranteed to be at most
+     *    `scale - (unscaledValue.length() - roundingPos)`.
+     *  - its precision is guaranteed to be at most
+     *    `max(1, roundingPos)`.
+     */
+    private def roundAtPos(roundingPos: Int): Decimal = {
+      val digits = this.unscaledValue // local copy
+      val digitsLen = digits.length()
+
+      if (roundingPos < 0) {
+        Decimal.zero(negative)
+      } else if (roundingPos >= digitsLen) {
+        this // no rounding necessary
+      } else {
+        @inline def scaleAtPos(pos: Int): Int = scale - (digitsLen - pos)
+
+        if (digits.charAt(roundingPos) < '5') {
+          // Truncate at roundingPos
+          if (roundingPos == 0)
+            Decimal.zero(negative)
+          else
+            new Decimal(negative, digits.substring(0, roundingPos), scaleAtPos(roundingPos))
+        } else {
+          // Truncate and increment at roundingPos
+
+          // Find the position of the last non-9 digit in the truncated digits (can be -1)
+          var lastNonNinePos = roundingPos - 1
+          while (lastNonNinePos >= 0 && digits.charAt(lastNonNinePos) == '9')
+            lastNonNinePos -= 1
+
+          val newUnscaledValue =
+            if (lastNonNinePos < 0) "1"
+            else digits.substring(0, lastNonNinePos) + (digits.charAt(lastNonNinePos) + 1).toChar
+
+          val newScale = scaleAtPos(lastNonNinePos + 1)
+
+          new Decimal(negative, newUnscaledValue, newScale)
+        }
+      }
+    }
+
+    // for debugging only
+    override def toString(): String =
+      s"Decimal($negative, $unscaledValue, $scale)"
+  }
+
+  private object Decimal {
+    @inline def zero(negative: Boolean): Decimal =
+      new Decimal(negative, "0", 0)
   }
 
   /** A proxy for a `java.util.Locale` or for the root locale that provides
