@@ -17,7 +17,7 @@ import scala.scalajs.js
 
 import java.lang.{Double => JDouble}
 import java.io._
-import java.math.BigInteger
+import java.math.{BigDecimal, BigInteger}
 
 final class Formatter private (private[this] var dest: Appendable,
     formatterLocaleInfo: Formatter.LocaleInfo)
@@ -442,18 +442,19 @@ final class Formatter private (private[this] var dest: Appendable,
         }
 
       case 'e' | 'f' | 'g' =>
+        /* The alternative format # of 'e', 'f' and 'g' is to force a decimal
+         * separator.
+         */
+        val forceDecimalSep = flags.altFormat
+        val actualPrecision =
+          if (precision >= 0) precision
+          else 6
+
         arg match {
           case arg: Double =>
             if (JDouble.isNaN(arg) || JDouble.isInfinite(arg)) {
               formatNaNOrInfinite(flags, width, arg)
             } else {
-              /* The alternative format # of 'e', 'f' and 'g' is to force a
-               * decimal separator.
-               */
-              val forceDecimalSep = flags.altFormat
-              val actualPrecision =
-                if (precision >= 0) precision
-                else 6
               val notation = conversionLower match {
                 case 'e' => computerizedScientificNotation(arg, actualPrecision, forceDecimalSep)
                 case 'f' => decimalNotation(arg, actualPrecision, forceDecimalSep)
@@ -461,6 +462,20 @@ final class Formatter private (private[this] var dest: Appendable,
               }
               formatNumericString(localeInfo, flags, width, notation)
             }
+
+          case arg: BigDecimal =>
+            /* The notation methods are implemented as instance methods of
+             * BigDecimal so that, if BigDecimal is not instantiated elsewhere,
+             * they can be DCE-ed, and Formatter will not cause BigDecimal to
+             * be instantiated.
+             */
+            val notation = conversionLower match {
+              case 'e' => arg.computerizedScientificNotation(actualPrecision, forceDecimalSep)
+              case 'f' => arg.decimalNotation(actualPrecision, forceDecimalSep)
+              case _   => arg.generalScientificNotation(actualPrecision, forceDecimalSep)
+            }
+            formatNumericString(localeInfo, flags, width, notation)
+
           case _ =>
             illegalFormatConversion()
         }

@@ -98,6 +98,16 @@ object BigDecimal {
   /** `CharZeros.length`. */
   final val CharZerosLength = 100
 
+  private def strOfZeros(length: Int): String = {
+    var result = ""
+    var remainingLen = length
+    while (remainingLen > CharZerosLength) {
+      result += CharZeros
+      remainingLen -= CharZerosLength
+    }
+    result + CharZeros.substring(0, remainingLen)
+  }
+
   def valueOf(unscaledVal: Long, scale: Int): BigDecimal = {
     if (scale == 0)
       valueOf(unscaledVal)
@@ -1418,6 +1428,104 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
         result += CharZeros.substring(0, -delta)
       }
       result
+    }
+  }
+
+  /* For use by java.util.Formatter. Defined and implemented in BigDecimal so
+   * that it can be DCE'ed when Formatter is reachable but BigDecimal isn't.
+   * (And, more importantly, so that reaching Formatter does not automatically
+   * causes BigDecimal to be instantiated.)
+   */
+  private[java] def computerizedScientificNotation(precision: Int, forceDecimalSep: Boolean): String = {
+    if (isZero) {
+      if (precision == 0 && !forceDecimalSep)
+        "0e+00"
+      else
+        "0." + strOfZeros(precision) + "e+00"
+    } else {
+      val rounded = this.round(new MathContext(1 + precision, RoundingMode.HALF_UP))
+
+      val intStr = rounded.getUnscaledValue.toString()
+      val dotPos = if (intStr.charAt(0) == '-') 2 else 1
+      val fractionalDigitCount = intStr.length() - dotPos
+      val missingZeros = precision - fractionalDigitCount
+
+      val significandStr = {
+        val integerPart = intStr.substring(0, dotPos)
+        val fractionalPart = intStr.substring(dotPos) + strOfZeros(missingZeros)
+        if (fractionalPart == "" && !forceDecimalSep)
+          integerPart
+        else
+          integerPart + "." + fractionalPart
+      }
+
+      val exponent = fractionalDigitCount - rounded.scale()
+      val exponentSign = if (exponent < 0) "-" else "+"
+      val exponentAbsStr0 = Math.abs(exponent).toString()
+      val exponentAbsStr =
+        if (exponentAbsStr0.length() == 1) "0" + exponentAbsStr0
+        else exponentAbsStr0
+
+      significandStr + "e" + exponentSign + exponentAbsStr
+    }
+  }
+
+  // For use by java.util.Formatter. See computerizedScientificNotation.
+  private[java] def decimalNotation(precision: Int, forceDecimalSep: Boolean): String = {
+    if (_scale == 0 || isZero) {
+      val intStr = getUnscaledValue.toString()
+
+      if (precision == 0 && !forceDecimalSep)
+        intStr
+      else
+        intStr + "." + strOfZeros(precision)
+    } else {
+      val absRounded = this.abs().setScale(precision, RoundingMode.HALF_UP)
+
+      val intStr = absRounded.getUnscaledValue.toString()
+      val intStrLen = intStr.length()
+
+      val expandedIntStr =
+        if (intStrLen >= 1 + precision) intStr
+        else strOfZeros((1 + precision) - intStrLen) + intStr
+      val dotPos = expandedIntStr.length() - precision
+
+      val signStr = if (signum() < 0) "-" else ""
+
+      val integerPart = signStr + expandedIntStr.substring(0, dotPos)
+      if (precision == 0 && !forceDecimalSep)
+        integerPart
+      else
+        integerPart + "." + expandedIntStr.substring(dotPos)
+    }
+  }
+
+  // For use by java.util.Formatter. See computerizedScientificNotation.
+  private[java] def generalScientificNotation(precision: Int, forceDecimalSep: Boolean): String = {
+    // JavaDoc: "If the precision is 0, then it is taken to be 1."
+    val p = if (precision == 0) 1 else precision
+
+    if (isZero) {
+      decimalNotation(p - 1, forceDecimalSep)
+    } else {
+      /* The JavaDoc says:
+       *
+       * > After rounding for the precision, the formatting of the resulting
+       * > magnitude m depends on its value.
+       *
+       * which suggests that we should first round to a precision of `p` before
+       * deciding whether to format in fixed or scientific notation. However,
+       * the JVM does not behave that way; instead it dispatches based on the
+       * non-rounded value.
+       *
+       * Since it is easier, we follow the JVM behavior.
+       */
+
+      val orderOfMagnitude = (this.precision() - 1) - this.scale()
+      if (orderOfMagnitude >= -4 && orderOfMagnitude < p)
+        decimalNotation(Math.max(0, p - orderOfMagnitude - 1), forceDecimalSep)
+      else
+        computerizedScientificNotation(p - 1, forceDecimalSep)
     }
   }
 

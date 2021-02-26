@@ -12,7 +12,7 @@
 
 package org.scalajs.testsuite.javalib.util
 
-import java.math.BigInteger
+import java.math.{BigDecimal, BigInteger}
 
 import org.junit.Assert._
 import org.junit.Test
@@ -522,6 +522,108 @@ class FormatterTest {
     expectIllegalFormatFlags("% +e", "+ ", 5.5)
   }
 
+  @Test def formatEWithBigDecimal(): Unit = {
+    // Lots of configuration options with some simple values
+
+    assertF("0.000000e+00", "%e", BigDecimal.ZERO)
+    assertF("0e+00", "%.0e", BigDecimal.ZERO)
+    assertF("0.e+00", "%#.0e", BigDecimal.ZERO)
+    assertF(" 0.00000000e+00", "%# 9.8e", BigDecimal.ZERO)
+    assertF("+0.0000e+00", "%#+0(8.4e", BigDecimal.ZERO)
+    assertF("+0.000000e+00    ", "%-+17.6e", BigDecimal.ZERO)
+    assertF(" 00000000.000000e+00", "% 0(20e", BigDecimal.ZERO)
+    assertF("1.000000e+00", "%e", BigDecimal.ONE)
+    assertF("1.e+00", "%#.0e", BigDecimal.ONE)
+    assertF(" 1.00000000e+00", "%# 9.8e", BigDecimal.ONE)
+    assertF("+1.0000e+00", "%#+0(8.4e", BigDecimal.ONE)
+    assertF("+1.000000e+00    ", "%-+17.6e", BigDecimal.ONE)
+    assertF(" 00000001.000000e+00", "% 0(20e", BigDecimal.ONE)
+    assertF("1.000000e+01", "%e", BigDecimal.TEN)
+    assertF("1.e+01", "%#.0e", BigDecimal.TEN)
+    assertF(" 1.00000000e+01", "%# 9.8e", BigDecimal.TEN)
+    assertF("+1.0000e+01", "%#+0(8.4e", BigDecimal.TEN)
+    assertF("+1.000000e+01    ", "%-+17.6e", BigDecimal.TEN)
+    assertF(" 00000001.000000e+01", "% 0(20e", BigDecimal.TEN)
+    assertF("-1.000000e+00", "%e", new BigDecimal(-1))
+    assertF("-1.e+00", "%#.0e", new BigDecimal(-1))
+    assertF("-1.00000000e+00", "%# 9.8e", new BigDecimal(-1))
+    assertF("(1.0000e+00)", "%#+0(8.4e", new BigDecimal(-1))
+    assertF("-1.000000e+00    ", "%-+17.6e", new BigDecimal(-1))
+    assertF("(0000001.000000e+00)", "% 0(20e", new BigDecimal(-1))
+    assertF("-1.000000e-06", "%e", new BigDecimal(-0.000001))
+    assertF("-1.00000e-06", "%.5e", new BigDecimal(-0.000001))
+    assertF("(1.00000000e-06)", "%- (9.8e", new BigDecimal(-0.000001))
+    assertF("(1.0000e-06)", "%+0(8.4e", new BigDecimal(-0.000001))
+    assertF("-1.000000e-06", "%-+10.6e", new BigDecimal(-0.000001))
+    assertF("(000001e-06)", "% 0(12.0e", new BigDecimal(-0.000001))
+    assertF("5.000000e+999", "%e", new BigDecimal("5.000E999"))
+    assertF("5.e+999", "%#.0e", new BigDecimal("5.000E999"))
+    assertF(" 5.00000000e+999", "%# 9.8e", new BigDecimal("5.000E999"))
+    assertF("+5.0000e+999", "%#+0(8.4e", new BigDecimal("5.000E999"))
+    assertF("+5.000000e+999   ", "%-+17.6e", new BigDecimal("5.000E999"))
+    assertF(" 0000005.000000e+999", "% 0(20e", new BigDecimal("5.000E999"))
+    assertF("-5.000000e+999", "%e", new BigDecimal("-5.000E999"))
+    assertF("-5.e+999", "%#.0e", new BigDecimal("-5.000E999"))
+    assertF("-5.00000000e+999", "%# 9.8e", new BigDecimal("-5.000E999"))
+    assertF("(5.0000e+999)", "%#+0(8.4e", new BigDecimal("-5.000E999"))
+    assertF("-5.000000e+999   ", "%-+17.6e", new BigDecimal("-5.000E999"))
+    assertF("(000005.000000e+999)", "% 0(20e", new BigDecimal("-5.000E999"))
+
+    // Tests for different aspects of rounding to the precision
+
+    // Round to nearest, downwards
+    assertF("1.234578e+02", "%e", new BigDecimal("123.457823456789"))
+    assertF("1.234578e+02", "%e", new BigDecimal("123457823456789e-12"))
+    assertF("1.234578e+02", "%e", new BigDecimal("0.000000000000000000000123457823456789e24"))
+    assertF("-1.234578e+02", "%e", new BigDecimal("-123.457823456789"))
+    assertF("-1.234578e+02", "%e", new BigDecimal("-123457823456789e-12"))
+    assertF("-1.234578e+02", "%e", new BigDecimal("-0.000000000000000000000123457823456789e24"))
+
+    // Round to nearest, upwards
+    assertF("1.234579e+02", "%e", new BigDecimal("123.457893656789"))
+    assertF("1.234579e+02", "%e", new BigDecimal("123457893656789e-12"))
+    assertF("1.234579e+02", "%e", new BigDecimal("0.000000000000000000000123457893656789e24"))
+    assertF("-1.234579e+02", "%e", new BigDecimal("-123.457893656789"))
+    assertF("-1.234579e+02", "%e", new BigDecimal("-123457893656789e-12"))
+    assertF("-1.234579e+02", "%e", new BigDecimal("-0.000000000000000000000123457893656789e24"))
+
+    // Round to nearest, break ties upwards (even is also upwards)
+    assertF("1.234578e+02", "%e", new BigDecimal("123.45775"))
+    assertF("1.234578e+02", "%e", new BigDecimal("12345775e-5"))
+    assertF("1.234578e+02", "%e", new BigDecimal("0.00000000000000000000012345775e24"))
+    assertF("-1.234578e+02", "%e", new BigDecimal("-123.45775"))
+    assertF("-1.234578e+02", "%e", new BigDecimal("-12345775e-5"))
+    assertF("-1.234578e+02", "%e", new BigDecimal("-0.00000000000000000000012345775e24"))
+
+    // Round to nearest, break ties upwards (even is downwards)
+    assertF("1.234579e+02", "%e", new BigDecimal("123.45785"))
+    assertF("1.234579e+02", "%e", new BigDecimal("12345785e-5"))
+    assertF("1.234579e+02", "%e", new BigDecimal("0.00000000000000000000012345785e24"))
+    assertF("-1.234579e+02", "%e", new BigDecimal("-123.45785"))
+    assertF("-1.234579e+02", "%e", new BigDecimal("-12345785e-5"))
+    assertF("-1.234579e+02", "%e", new BigDecimal("-0.00000000000000000000012345785e24"))
+
+    // Rounding can carry to the integer part
+    assertF("5.000000e+02", "%e", new BigDecimal("499.9999996"))
+    assertF("-5.000000e+02", "%e", new BigDecimal("-499.9999996"))
+    assertF("5e+02", "%.0e", new BigDecimal("499.5"))
+    assertF("-5e+02", "%.0e", new BigDecimal("-499.5"))
+
+    // Rounding can carry all the way to adding one unit in the integer part
+    assertF("1.000000e+03", "%e", new BigDecimal("999.9999996"))
+    assertF("-1.000000e+03", "%e", new BigDecimal("-999.9999996"))
+    assertF("1e+03", "%.0e", new BigDecimal("999.5"))
+    assertF("-1e+03", "%.0e", new BigDecimal("-999.5"))
+    assertF("1.000e+00", "%.3e", new BigDecimal("0.99996"))
+    assertF("-1.000e+00", "%.3e", new BigDecimal("-0.99996"))
+
+    // Can never round to 0
+    assertF("-2.000000e-08", "%e", new BigDecimal("-0.00000002"))
+    assertF("-2.000000e-08", "%e", new BigDecimal("-2e-8"))
+    assertF("-2e-01", "%.0e", new BigDecimal("-0.2"))
+    assertF("-2e-02", "%.0e", new BigDecimal("-2e-2"))
+  }
+
   @Test def formatG(): Unit = {
     assertF("0.00000", "%g", 0.0)
     assertF("-0.00000", "%g", -0.0)
@@ -587,6 +689,110 @@ class FormatterTest {
     expectFormatFlagsConversionMismatch('g', "#", 5.5)
     expectIllegalFormatFlags("%-05g", "-0", 5.5)
     expectIllegalFormatFlags("% +g", "+ ", 5.5)
+  }
+
+  @Test def formatGWithBigDecimal(): Unit = {
+    // Lots of configuration options with some simple values
+
+    assertF("0.00000", "%g", BigDecimal.ZERO)
+    assertF("0", "%.0g", BigDecimal.ZERO)
+    assertF("0.0000", "%.5g", BigDecimal.ZERO)
+    assertF(" 0.0000000", "%- (,9.8g", BigDecimal.ZERO)
+    assertF("+000.000", "%+0(,8.4g", BigDecimal.ZERO)
+    assertF("+0.00000  ", "%-+10.6g", BigDecimal.ZERO)
+    assertF(" 00000000000", "% 0(,12.0g", BigDecimal.ZERO)
+    assertF("1.00000", "%g", BigDecimal.ONE)
+    assertF("1.0000", "%.5g", BigDecimal.ONE)
+    assertF(" 1.0000000", "%- (,9.8g", BigDecimal.ONE)
+    assertF("+001.000", "%+0(,8.4g", BigDecimal.ONE)
+    assertF("+1.00000  ", "%-+10.6g", BigDecimal.ONE)
+    assertF(" 00000000001", "% 0(,12.0g", BigDecimal.ONE)
+    assertF("-1.00000", "%g", new BigDecimal(-1))
+    assertF("-1.0000", "%.5g", new BigDecimal(-1))
+    assertF("(1.0000000)", "%- (,9.8g", new BigDecimal(-1))
+    assertF("(01.000)", "%+0(,8.4g", new BigDecimal(-1))
+    assertF("-1.00000  ", "%-+10.6g", new BigDecimal(-1))
+    assertF("(0000000001)", "% 0(,12.0g", new BigDecimal(-1))
+    assertF("-1.00000e-06", "%g", new BigDecimal(-0.000001))
+    assertF("-1.0000e-06", "%.5g", new BigDecimal(-0.000001))
+    assertF("(1.0000000e-06)", "%- (,9.8g", new BigDecimal(-0.000001))
+    assertF("(1.000e-06)", "%+0(,8.4g", new BigDecimal(-0.000001))
+    assertF("-1.00000e-06", "%-+10.6g", new BigDecimal(-0.000001))
+    assertF("(000001e-06)", "% 0(,12.0g", new BigDecimal(-0.000001))
+    assertF("0.000200000", "%g", new BigDecimal(0.0002))
+    assertF("0.00020000", "%.5g", new BigDecimal(0.0002))
+    assertF(" 0.00020000000", "%- (,9.8g", new BigDecimal(0.0002))
+    assertF("+0.0002000", "%+0(,8.4g", new BigDecimal(0.0002))
+    assertF("+0.000200000", "%-+10.6g", new BigDecimal(0.0002))
+    assertF(" 000000.0002", "% 0(,12.0g", new BigDecimal(0.0002))
+    assertF("-0.00300000", "%g", new BigDecimal(-0.003))
+    assertF("-0.0030000", "%.5g", new BigDecimal(-0.003))
+    assertF("(0.0030000000)", "%- (,9.8g", new BigDecimal(-0.003))
+    assertF("(0.003000)", "%+0(,8.4g", new BigDecimal(-0.003))
+    assertF("-0.00300000", "%-+10.6g", new BigDecimal(-0.003))
+    assertF("(000000.003)", "% 0(,12.0g", new BigDecimal(-0.003))
+    assertF("5.00000e+999", "%g", new BigDecimal("5.000E999"))
+    assertF("5.0000e+999", "%.5g", new BigDecimal("5.000E999"))
+    assertF(" 5.0000000e+999", "%- (,9.8g", new BigDecimal("5.000E999"))
+    assertF("+5.000e+999", "%+0(,8.4g", new BigDecimal("5.000E999"))
+    assertF("+5.00000e+999", "%-+10.6g", new BigDecimal("5.000E999"))
+    assertF(" 000005e+999", "% 0(,12.0g", new BigDecimal("5.000E999"))
+    assertF("-5.00000e+999", "%g", new BigDecimal("-5.000E999"))
+    assertF("-5.0000e+999", "%.5g", new BigDecimal("-5.000E999"))
+    assertF("(5.0000000e+999)", "%- (,9.8g", new BigDecimal("-5.000E999"))
+    assertF("(5.000e+999)", "%+0(,8.4g", new BigDecimal("-5.000E999"))
+    assertF("-5.00000e+999", "%-+10.6g", new BigDecimal("-5.000E999"))
+    assertF("(00005e+999)", "% 0(,12.0g", new BigDecimal("-5.000E999"))
+
+    // Tests for different aspects of dispatching between fixed and scientific
+
+    // 0.0 is always displayed as fixed
+    assertF("0.00000", "%g", BigDecimal.ZERO)
+
+    // Value that would round to 0 if fixed is still displayed as scientific
+    assertF("2.34567e-20", "%g", new BigDecimal("2.3456713246845154684e-20"))
+
+    // Limit between scientific and fixed
+    assertF("9.99999e-05", "%g", new BigDecimal("0.0000999999468434354354"))
+    assertF("0.000100000", "%g", new BigDecimal("0.0001"))
+    assertF("0.000100000", "%g", new BigDecimal("0.0001000000000000000023"))
+
+    /* When rounding upwards can reach 1e-4
+     *
+     * The JavaDoc says:
+     *
+     * > After rounding for the precision, the formatting of the resulting
+     * > magnitude m depends on its value.
+     *
+     * which suggests that this should switch to the fix precision. However,
+     * experimentally the JVM keeps the scientific notation in that case
+     * (resulting in an e-04 exponent, which cannot otherwise happen).
+     */
+    assertF("1.00000e-04", "%g", new BigDecimal("0.00009999999999999999995"))
+
+    // Limit between fixed and scientific again (default precision)
+    assertF("999999", "%g", new BigDecimal("999.999432168754e+3"))
+    assertF("1.00000e+06", "%g", new BigDecimal("1000e+3"))
+    assertF("1.00000e+06", "%g", new BigDecimal("1000.000001354698615e+3"))
+
+    // Limit between fixed and scientific again (custom precision)
+    assertF("999999999", "%.9g", new BigDecimal("999999.999432168754e+3"))
+    assertF("1.00000000e+09", "%.9g", new BigDecimal("1000000e+3"))
+    assertF("1.00000000e+09", "%.9g", new BigDecimal("1000000.000001354698615e+3"))
+
+    /* When rounding upwards can reach 10^p
+     *
+     * The JavaDoc says:
+     *
+     * > After rounding for the precision, the formatting of the resulting
+     * > magnitude m depends on its value.
+     *
+     * which suggests that this should switch to the scientific precision.
+     * However, experimentally the JVM keeps the fixed notation in that case
+     * (resulting in a fixed integer representation with more digits than the
+     * precision, which cannot otherwise happen).
+     */
+    assertF("1000000000", "%.9g", new BigDecimal("999999.999999432168754e+3"))
   }
 
   @Test def formatF(): Unit = {
@@ -659,6 +865,125 @@ class FormatterTest {
 
     expectIllegalFormatFlags("%-05f", "-0", 5.5)
     expectIllegalFormatFlags("% +f", "+ ", 5.5)
+  }
+
+  @Test def formatFWithBigDecimal(): Unit = {
+    // Lots of configuration options with some simple values
+
+    assertF("0.000000", "%f", BigDecimal.ZERO)
+    assertF("0", "%.0f", BigDecimal.ZERO)
+    assertF("0.", "%#.0f", BigDecimal.ZERO)
+    assertF("0.000", "%#.3f", BigDecimal.ZERO)
+    assertF("0.000000", "%#,5f", BigDecimal.ZERO)
+    assertF(" 0.         ", "%- #(12.0f", BigDecimal.ZERO)
+    assertF("+0.000000", "%#+0(1.6f", BigDecimal.ZERO)
+    assertF("+0.0000 ", "%-+(8.4f", BigDecimal.ZERO)
+    assertF(" 0.00000000", "% 0#(9.8f", BigDecimal.ZERO)
+    assertF("1.000000", "%f", BigDecimal.ONE)
+    assertF("1.000", "%#.3f", BigDecimal.ONE)
+    assertF("1.000000", "%#,5f", BigDecimal.ONE)
+    assertF(" 1.         ", "%- #(12.0f", BigDecimal.ONE)
+    assertF("+1.000000", "%#+0(1.6f", BigDecimal.ONE)
+    assertF("+1.0000 ", "%-+(8.4f", BigDecimal.ONE)
+    assertF(" 1.00000000", "% 0#(9.8f", BigDecimal.ONE)
+    assertF("10.000000", "%f", BigDecimal.TEN)
+    assertF("10.000", "%#.3f", BigDecimal.TEN)
+    assertF("10.000000", "%#,5f", BigDecimal.TEN)
+    assertF(" 10.        ", "%- #(12.0f", BigDecimal.TEN)
+    assertF("+10.000000", "%#+0(1.6f", BigDecimal.TEN)
+    assertF("+10.0000", "%-+(8.4f", BigDecimal.TEN)
+    assertF(" 10.00000000", "% 0#(9.8f", BigDecimal.TEN)
+    assertF("-1.000000", "%f", new BigDecimal(-1))
+    assertF("-1.000", "%#.3f", new BigDecimal(-1))
+    assertF("-1.000000", "%#,5f", new BigDecimal(-1))
+    assertF("(1.)        ", "%- #(12.0f", new BigDecimal(-1))
+    assertF("(1.000000)", "%#+0(1.6f", new BigDecimal(-1))
+    assertF("(1.0000)", "%-+(8.4f", new BigDecimal(-1))
+    assertF("(1.00000000)", "% 0#(9.8f", new BigDecimal(-1))
+    assertF("0.000200", "%f", new BigDecimal(0.0002))
+    assertF("0.00020", "%.5f", new BigDecimal(0.0002))
+    assertF(" 0.00020000", "%- (,9.8f", new BigDecimal(0.0002))
+    assertF("+00.0002", "%+0(,8.4f", new BigDecimal(0.0002))
+    assertF("+0.000200 ", "%-+10.6f", new BigDecimal(0.0002))
+    assertF(" 00000000000", "% 0(,12.0f", new BigDecimal(0.0002))
+    assertF("-0.003000", "%f", new BigDecimal(-0.003))
+    assertF("-0.00300", "%.5f", new BigDecimal(-0.003))
+    assertF("(0.00300000)", "%- (,9.8f", new BigDecimal(-0.003))
+    assertF("(0.0030)", "%+0(,8.4f", new BigDecimal(-0.003))
+    assertF("-0.003000 ", "%-+10.6f", new BigDecimal(-0.003))
+    assertF("(0000000000)", "% 0(,12.0f", new BigDecimal(-0.003))
+
+    val manyNines = new BigDecimal("9999999999999999999999999999999999999999999")
+    assertF("9999999999999999999999999999999999999999999.000000", "%f", manyNines)
+    assertF("9999999999999999999999999999999999999999999.000", "%#.3f", manyNines)
+    assertF("9,999,999,999,999,999,999,999,999,999,999,999,999,999,999.000000", "%#,5f", manyNines)
+    assertF(" 9999999999999999999999999999999999999999999.", "%- #(12.0f", manyNines)
+    assertF("+9999999999999999999999999999999999999999999.000000", "%#+0(1.6f", manyNines)
+    assertF("+9999999999999999999999999999999999999999999.0000", "%-+(8.4f", manyNines)
+    assertF(" 9999999999999999999999999999999999999999999.00000000", "% 0#(9.8f", manyNines)
+
+    val negManyNines = new BigDecimal("-9999999999999999999999999999999999999999999")
+    assertF("-9999999999999999999999999999999999999999999.000000", "%f", negManyNines)
+    assertF("-9999999999999999999999999999999999999999999.000", "%#.3f", negManyNines)
+    assertF("-9,999,999,999,999,999,999,999,999,999,999,999,999,999,999.000000", "%#,5f", negManyNines)
+    assertF("(9999999999999999999999999999999999999999999.)", "%- #(12.0f", negManyNines)
+    assertF("(9999999999999999999999999999999999999999999.000000)", "%#+0(1.6f", negManyNines)
+    assertF("(9999999999999999999999999999999999999999999.0000)", "%-+(8.4f", negManyNines)
+    assertF("(9999999999999999999999999999999999999999999.00000000)", "% 0#(9.8f", negManyNines)
+
+    // Tests for different aspects of rounding to the precision
+
+    // Round to nearest, downwards
+    assertF("123.457893", "%f", new BigDecimal("123.457893456789"))
+    assertF("123.457893", "%f", new BigDecimal("123457893456789e-12"))
+    assertF("123.457893", "%f", new BigDecimal("0.000000000000000000000123457893456789e24"))
+    assertF("-123.457893", "%f", new BigDecimal("-123.457893456789"))
+    assertF("-123.457893", "%f", new BigDecimal("-123457893456789e-12"))
+    assertF("-123.457893", "%f", new BigDecimal("-0.000000000000000000000123457893456789e24"))
+
+    // Round to nearest, upwards
+    assertF("123.457894", "%f", new BigDecimal("123.457893656789"))
+    assertF("123.457894", "%f", new BigDecimal("123457893656789e-12"))
+    assertF("123.457894", "%f", new BigDecimal("0.000000000000000000000123457893656789e24"))
+    assertF("-123.457894", "%f", new BigDecimal("-123.457893656789"))
+    assertF("-123.457894", "%f", new BigDecimal("-123457893656789e-12"))
+    assertF("-123.457894", "%f", new BigDecimal("-0.000000000000000000000123457893656789e24"))
+
+    // Round to nearest, break ties upwards (even is also upwards)
+    assertF("123.457894", "%f", new BigDecimal("123.4578935"))
+    assertF("123.457894", "%f", new BigDecimal("1234578935e-7"))
+    assertF("123.457894", "%f", new BigDecimal("0.0000000000000000000001234578935e24"))
+    assertF("-123.457894", "%f", new BigDecimal("-123.4578935"))
+    assertF("-123.457894", "%f", new BigDecimal("-1234578935e-7"))
+    assertF("-123.457894", "%f", new BigDecimal("-0.0000000000000000000001234578935e24"))
+
+    // Round to nearest, break ties upwards (even is downwards)
+    assertF("123.457895", "%f", new BigDecimal("123.4578945"))
+    assertF("123.457895", "%f", new BigDecimal("1234578945e-7"))
+    assertF("123.457895", "%f", new BigDecimal("0.0000000000000000000001234578945e24"))
+    assertF("-123.457895", "%f", new BigDecimal("-123.4578945"))
+    assertF("-123.457895", "%f", new BigDecimal("-1234578945e-7"))
+    assertF("-123.457895", "%f", new BigDecimal("-0.0000000000000000000001234578945e24"))
+
+    // Rounding can carry to the integer part
+    assertF("124.000000", "%f", new BigDecimal("123.9999996"))
+    assertF("-124.000000", "%f", new BigDecimal("-123.9999996"))
+    assertF("124", "%.0f", new BigDecimal("123.5"))
+    assertF("-124", "%.0f", new BigDecimal("-123.5"))
+
+    // Rounding can carry all the way to adding one unit in the integer part
+    assertF("1000.000000", "%f", new BigDecimal("999.9999996"))
+    assertF("-1000.000000", "%f", new BigDecimal("-999.9999996"))
+    assertF("1000", "%.0f", new BigDecimal("999.5"))
+    assertF("-1000", "%.0f", new BigDecimal("-999.5"))
+    assertF("1.000", "%.3f", new BigDecimal("0.9996"))
+    assertF("-1.000", "%.3f", new BigDecimal("-0.9996"))
+
+    // Keep the negative sign when rounding to 0
+    assertF("-0.000000", "%f", new BigDecimal("-0.00000002"))
+    assertF("-0.000000", "%f", new BigDecimal("-2e-8"))
+    assertF("-0", "%.0f", new BigDecimal("-0.2"))
+    assertF("-0", "%.0f", new BigDecimal("-2e-2"))
   }
 
   @Test def formatPercentPercent(): Unit = {
