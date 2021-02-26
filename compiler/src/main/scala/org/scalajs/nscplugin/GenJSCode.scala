@@ -2225,8 +2225,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           }
 
         case If(cond, thenp, elsep) =>
+          val tpe =
+            if (isStat) jstpe.NoType
+            else toIRType(tree.tpe)
+
           js.If(genExpr(cond), genStatOrExpr(thenp, isStat),
-              genStatOrExpr(elsep, isStat))(toIRType(tree.tpe))
+              genStatOrExpr(elsep, isStat))(tpe)
 
         case Return(expr) =>
           js.Return(toIRType(expr.tpe) match {
@@ -2690,7 +2694,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val Try(block, catches, finalizer) = tree
 
       val blockAST = genStatOrExpr(block, isStat)
-      val resultType = toIRType(tree.tpe)
+
+      val resultType =
+        if (isStat) jstpe.NoType
+        else toIRType(tree.tpe)
 
       val handled =
         if (catches.isEmpty) blockAST

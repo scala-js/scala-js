@@ -1790,7 +1790,7 @@ object Serializers {
 
     val use14: Boolean = use13 || sourceVersion == "1.4"
 
-    val use15: Boolean = true // use14 || sourceVersion == "1.5"
+    val use15: Boolean = use14 || sourceVersion == "1.5"
   }
 
   /** Names needed for hacks. */
