@@ -17,7 +17,7 @@ import scala.scalajs.js
 
 import java.lang.{Double => JDouble}
 import java.io._
-import java.math.BigInteger
+import java.math.{BigDecimal, BigInteger}
 
 final class Formatter private (private[this] var dest: Appendable,
     formatterLocaleInfo: Formatter.LocaleInfo)
@@ -442,26 +442,31 @@ final class Formatter private (private[this] var dest: Appendable,
         }
 
       case 'e' | 'f' | 'g' =>
+        def formatDecimal(x: Decimal): Unit = {
+          /* The alternative format # of 'e', 'f' and 'g' is to force a
+           * decimal separator.
+           */
+          val forceDecimalSep = flags.altFormat
+          val actualPrecision =
+            if (precision >= 0) precision
+            else 6
+
+          val notation = conversionLower match {
+            case 'e' => computerizedScientificNotation(x, digitsAfterDot = actualPrecision, forceDecimalSep)
+            case 'f' => decimalNotation(x, scale = actualPrecision, forceDecimalSep)
+            case _   => generalScientificNotation(x, precision = actualPrecision, forceDecimalSep)
+          }
+          formatNumericString(localeInfo, flags, width, notation)
+        }
+
         arg match {
           case arg: Double =>
-            if (JDouble.isNaN(arg) || JDouble.isInfinite(arg)) {
+            if (JDouble.isNaN(arg) || JDouble.isInfinite(arg))
               formatNaNOrInfinite(flags, width, arg)
-            } else {
-              /* The alternative format # of 'e', 'f' and 'g' is to force a
-               * decimal separator.
-               */
-              val forceDecimalSep = flags.altFormat
-              val actualPrecision =
-                if (precision >= 0) precision
-                else 6
-              val x = numberToDecimal(arg)
-              val notation = conversionLower match {
-                case 'e' => computerizedScientificNotation(x, digitsAfterDot = actualPrecision, forceDecimalSep)
-                case 'f' => decimalNotation(x, scale = actualPrecision, forceDecimalSep)
-                case _   => generalScientificNotation(x, precision = actualPrecision, forceDecimalSep)
-              }
-              formatNumericString(localeInfo, flags, width, notation)
-            }
+            else
+              formatDecimal(numberToDecimal(arg))
+          case arg: BigDecimal =>
+            formatDecimal(bigDecimalToDecimal(arg))
           case _ =>
             illegalFormatConversion()
         }
@@ -1090,6 +1095,27 @@ object Formatter {
         val scale = -e + (significandEnd - (dotPos + 1))
         new Decimal(negative, unscaledValue, scale)
       }
+    }
+  }
+
+  /** Converts a `BigDecimal` into a `Decimal`.
+   *
+   *  Zero values are considered positive for the conversion.
+   *
+   *  All other values keep their sign, unscaled value and scale.
+   */
+  private def bigDecimalToDecimal(x: BigDecimal): Decimal = {
+    val unscaledValueWithSign = x.unscaledValue().toString()
+
+    if (unscaledValueWithSign == "0") {
+      Decimal.zero(negative = false)
+    } else {
+      val negative = unscaledValueWithSign.charAt(0) == '-'
+      val unscaledValue =
+        if (negative) unscaledValueWithSign.substring(1)
+        else unscaledValueWithSign
+      val scale = x.scale()
+      new Decimal(negative, unscaledValue, scale)
     }
   }
 
