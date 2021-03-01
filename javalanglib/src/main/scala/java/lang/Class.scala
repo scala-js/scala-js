@@ -100,34 +100,38 @@ final class Class[A] private (data0: Object) extends Object {
   private def computeCachedSimpleNameBestEffort(): String = {
     @inline def isDigit(c: Char): scala.Boolean = c >= '0' && c <= '9'
 
-    val name = data.name
-    var idx = name.length - 1
+    if (isArray()) {
+      getComponentType().getSimpleName() + "[]"
+    } else {
+      val name = data.name
+      var idx = name.length - 1
 
-    // Include trailing '$'s for module class names
-    while (idx >= 0 && name.charAt(idx) == '$') {
-      idx -= 1
-    }
-
-    // Include '$'s followed by '0-9's for local class names
-    if (idx >= 0 && isDigit(name.charAt(idx))) {
-      idx -= 1
-      while (idx >= 0 && isDigit(name.charAt(idx))) {
-        idx -= 1
-      }
+      // Include trailing '$'s for module class names
       while (idx >= 0 && name.charAt(idx) == '$') {
         idx -= 1
       }
-    }
 
-    // Include until the next '$' (inner class) or '.' (top-level class)
-    while (idx >= 0 && {
-      val currChar = name.charAt(idx)
-      currChar != '.' && currChar != '$'
-    }) {
-      idx -= 1
-    }
+      // Include '$'s followed by '0-9's for local class names
+      if (idx >= 0 && isDigit(name.charAt(idx))) {
+        idx -= 1
+        while (idx >= 0 && isDigit(name.charAt(idx))) {
+          idx -= 1
+        }
+        while (idx >= 0 && name.charAt(idx) == '$') {
+          idx -= 1
+        }
+      }
 
-    name.substring(idx + 1)
+      // Include until the next '$' (inner class) or '.' (top-level class)
+      while (idx >= 0 && {
+        val currChar = name.charAt(idx)
+        currChar != '.' && currChar != '$'
+      }) {
+        idx -= 1
+      }
+
+      name.substring(idx + 1)
+    }
   }
 
   def getSuperclass(): Class[_ >: A] =

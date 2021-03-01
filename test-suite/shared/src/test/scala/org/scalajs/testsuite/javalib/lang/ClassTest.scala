@@ -151,6 +151,18 @@ class ClassTest {
         classOf[LocalClassForGetSimpleName].getSimpleName())
     assertMatch("^LocalObjectForGetSimpleName\\$[0-9]+\\$$",
         LocalObjectForGetSimpleName.getClass.getSimpleName())
+
+    assertEquals("int", classOf[Int].getSimpleName())
+
+    assertEquals("int[]", classOf[Array[Int]].getSimpleName())
+    assertEquals("String[]", classOf[Array[String]].getSimpleName())
+    assertEquals("String[][]", classOf[Array[Array[String]]].getSimpleName())
+    assertEquals("InnerClass[]", classOf[Array[ClassTestClass#InnerClass]].getSimpleName())
+    assertEquals("TestObject$[]", Array(TestObject).getClass.getSimpleName())
+    assertMatch("^LocalClassForGetSimpleName\\$[0-9]+\\[\\]$",
+        classOf[Array[LocalClassForGetSimpleName]].getSimpleName())
+    assertMatch("^LocalObjectForGetSimpleName\\$[0-9]+\\$\\[\\]$",
+        Array(LocalObjectForGetSimpleName).getClass.getSimpleName())
   }
 
   @Test def isAssignableFrom(): Unit = {
