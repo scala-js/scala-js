@@ -134,11 +134,23 @@ class ClassTest {
   object TestObject
 
   @Test def getSimpleName(): Unit = {
+    class LocalClassForGetSimpleName
+    object LocalObjectForGetSimpleName
+
+    def assertMatch(expectedPattern: String, actual: String): Unit = {
+      if (!actual.matches(expectedPattern))
+        fail(s"expected string matching $expectedPattern; got $actual")
+    }
+
     assertEquals("Integer", classOf[java.lang.Integer].getSimpleName())
     assertEquals("Class", classOf[java.lang.Class[_]].getSimpleName())
     assertEquals("Map", classOf[scala.collection.Map[_, _]].getSimpleName())
     assertEquals("InnerClass", classOf[ClassTestClass#InnerClass].getSimpleName())
     assertEquals("TestObject$", TestObject.getClass.getSimpleName())
+    assertMatch("^LocalClassForGetSimpleName\\$[0-9]+$",
+        classOf[LocalClassForGetSimpleName].getSimpleName())
+    assertMatch("^LocalObjectForGetSimpleName\\$[0-9]+\\$$",
+        LocalObjectForGetSimpleName.getClass.getSimpleName())
   }
 
   @Test def isAssignableFrom(): Unit = {

@@ -35,6 +35,8 @@ final class Class[A] private (data0: Object) extends Object {
   private[this] val data: ScalaJSClassData[A] =
     data0.asInstanceOf[ScalaJSClassData[A]]
 
+  private[this] var cachedSimpleName: String = _
+
   /** Access to `data` for other instances or `@inline` methods.
    *
    *  Directly accessing the `data` field from `@inline` methods will cause
@@ -72,17 +74,59 @@ final class Class[A] private (data0: Object) extends Object {
     data.name
 
   def getSimpleName(): String = {
+    if (cachedSimpleName == null)
+      cachedSimpleName = computeCachedSimpleNameBestEffort()
+    cachedSimpleName
+  }
+
+  /** Computes a best-effort guess of what `getSimpleName()` should return.
+   *
+   *  The JavaDoc says:
+   *
+   *  > Returns the simple name of the underlying class as given in the source
+   *  > code. Returns an empty string if the underlying class is anonymous.
+   *  >
+   *  > The simple name of an array is the simple name of the component type
+   *  > with "[]" appended. In particular the simple name of an array whose
+   *  > component type is anonymous is "[]".
+   *
+   *  Note the "as given in the source code" part. Clearly, this is not always
+   *  the case, since Scala local classes receive a numeric suffix, for
+   *  example.
+   *
+   *  In the absence of precise algorithm, we make a best-effort to make
+   *  reasonable use cases mimic the JVM.
+   */
+  private def computeCachedSimpleNameBestEffort(): String = {
+    @inline def isDigit(c: Char): scala.Boolean = c >= '0' && c <= '9'
+
     val name = data.name
     var idx = name.length - 1
+
+    // Include trailing '$'s for module class names
     while (idx >= 0 && name.charAt(idx) == '$') {
       idx -= 1
     }
+
+    // Include '$'s followed by '0-9's for local class names
+    if (idx >= 0 && isDigit(name.charAt(idx))) {
+      idx -= 1
+      while (idx >= 0 && isDigit(name.charAt(idx))) {
+        idx -= 1
+      }
+      while (idx >= 0 && name.charAt(idx) == '$') {
+        idx -= 1
+      }
+    }
+
+    // Include until the next '$' (inner class) or '.' (top-level class)
     while (idx >= 0 && {
       val currChar = name.charAt(idx)
       currChar != '.' && currChar != '$'
     }) {
       idx -= 1
     }
+
     name.substring(idx + 1)
   }
 
