@@ -465,6 +465,15 @@ final class Formatter private (private[this] var dest: Appendable,
             illegalFormatConversion()
         }
 
+      case 'a' =>
+        // Floating point hex formatting is not localized
+        arg match {
+          case arg: Double =>
+            formatHexFloatingPoint(flags, width, precision, arg)
+          case _ =>
+            illegalFormatConversion()
+        }
+
       case _ =>
         throw new AssertionError(
             "Unknown conversion '" + conversionLower + "' was not rejected earlier")
@@ -572,6 +581,141 @@ final class Formatter private (private[this] var dest: Appendable,
       s2 + "."
     else
       s2
+  }
+
+  /** Format an argument for the 'a' conversion.
+   *
+   *  This conversion requires quite some code, compared to the others, and is
+   *  therefore extracted into separate functions.
+   *
+   *  There is some logic that is duplicated from
+   *  `java.lang.Double.toHexString()`. It cannot be factored out because:
+   *
+   *  - the javalanglib and javalib do not see each other's custom method
+   *    (could be solved if we merged them),
+   *  - this method deals with subnormals in a very weird way when the
+   *    precision is set and is <= 12, and
+   *  - the handling of padding is fairly specific to `Formatter`, and would
+   *    not lend itself well to be factored with the more straightforward code
+   *    in `Double.toHexString()`.
+   */
+  private def formatHexFloatingPoint(flags: Flags, width: Int, precision: Int,
+      arg: Double): Unit = {
+
+    if (JDouble.isNaN(arg) || JDouble.isInfinite(arg)) {
+      formatNaNOrInfinite(flags, width, arg)
+    } else {
+      // Extract the raw bits from the argument
+
+      val ebits = 11 // exponent size
+      val mbits = 52 // mantissa size
+      val mbitsMask = ((1L << mbits) - 1L)
+      val bias = (1 << (ebits - 1)) - 1
+
+      val bits = JDouble.doubleToLongBits(arg)
+      val negative = bits < 0
+      val explicitMBits = bits & mbitsMask
+      val biasedExponent = (bits >>> mbits).toInt & ((1 << ebits) - 1)
+
+      // Compute the actual precision
+
+      val actualPrecision = {
+        if (precision == 0) 1 // apparently, this is how it behaves on the JVM
+        else if (precision > 12) -1 // important for subnormals
+        else precision
+      }
+
+      // Sign string
+
+      val signStr = {
+        if (negative) "-"
+        else if (flags.positivePlus) "+"
+        else if (flags.positiveSpace) " "
+        else ""
+      }
+
+      /* Extract the implicit bit, the mantissa, and the exponent.
+       * Also apply the artificial normalization of subnormals when the
+       * actualPrecision is in the interval [1, 12].
+       */
+
+      val (implicitBitStr, mantissa, exponent) = if (biasedExponent == 0) {
+        if (explicitMBits == 0L) {
+          // Zero
+          ("0", 0L, 0)
+        } else {
+          // Subnormal
+          if (actualPrecision == -1) {
+            ("0", explicitMBits, -1022)
+          } else {
+            // Artificial normalization, required by the 'a' conversion spec
+            val leadingZeros = java.lang.Long.numberOfLeadingZeros(explicitMBits)
+            val shift = (leadingZeros + 1) - (64 - mbits)
+            val normalizedMantissa = (explicitMBits << shift) & mbitsMask
+            val normalizedExponent = -1022 - shift
+            ("1", normalizedMantissa, normalizedExponent)
+          }
+        }
+      } else {
+        // Normalized
+        ("1", explicitMBits, biasedExponent - bias)
+      }
+
+      // Apply the rounding mandated by the precision
+
+      val roundedMantissa = if (actualPrecision == -1) {
+        mantissa
+      } else {
+        val roundingUnit = 1L << (mbits - (actualPrecision * 4)) // 4 bits per hex character
+        val droppedPartMask = roundingUnit - 1
+        val halfRoundingUnit = roundingUnit >> 1
+
+        val truncated = mantissa & ~droppedPartMask
+        val droppedPart = mantissa & droppedPartMask
+
+        /* The JavaDoc is not clear about what flavor of rounding should be
+         * used. We use round-half-to-even to mimic the behavior of the JVM.
+         */
+        if (droppedPart < halfRoundingUnit)
+          truncated
+        else if (droppedPart > halfRoundingUnit)
+          truncated + roundingUnit
+        else if ((truncated & roundingUnit) == 0L) // truncated is even
+          truncated
+        else
+          truncated + roundingUnit
+      }
+
+      // Mantissa string
+
+      val mantissaStr = {
+        val baseStr = java.lang.Long.toHexString(roundedMantissa)
+        val padded = "0000000000000".substring(baseStr.length()) + baseStr // 13 zeros
+
+        // Assert: padded.length == 13 == mbits / 4
+        if (!(padded.length() == 13 && (13 * 4 == mbits)))
+          throw new AssertionError("padded mantissa does not have the right number of bits")
+
+        // ~ padded.dropRightWhile(_ == '0') but keep at least minLength chars
+        val minLength = Math.max(1, actualPrecision)
+        var len = padded.length
+        while (len > minLength && padded.charAt(len - 1) == '0')
+          len -= 1
+        padded.substring(0, len)
+      }
+
+      // Exponent string
+
+      val exponentStr = Integer.toString(exponent)
+
+      // Assemble, pad and send to dest
+
+      val prefix = signStr + (if (flags.upperCase) "0X" else "0x")
+      val rest = implicitBitStr + "." + mantissaStr + "p" + exponentStr
+
+      padAndSendToDest(RootLocaleInfo, flags, width, prefix,
+          applyNumberUpperCase(flags, rest))
+    }
   }
 
   private def formatNonNumericString(localeInfo: LocaleInfo, flags: Flags,
@@ -852,7 +996,7 @@ object Formatter {
     // 'n' and '%' are not here because they have special paths in `format`
 
     Array(
-        -1,                                       // a
+        UseGroupingSeps | NegativeParen,          // a
         NumericOnlyFlags | AltFormat,             // b
         NumericOnlyFlags | AltFormat | Precision, // c
         AltFormat | UpperCase | Precision,        // d

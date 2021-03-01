@@ -25,6 +25,7 @@ import java.util._
 class FormatterTest {
   import FormatterTest._
 
+  @noinline
   def assertF(expected: String, format: String, args: Any*): Unit = {
     val fmt = new Formatter()
     val res = fmt.format(format, args.asInstanceOf[Seq[AnyRef]]: _*).toString()
@@ -32,8 +33,10 @@ class FormatterTest {
     assertEquals(expected, res)
   }
 
+  @noinline
   def testWithInfinityAndNaN(conversion: Char, acceptSharp: Boolean = true,
-      acceptComma: Boolean = true, acceptUpperCase: Boolean = true): Unit = {
+      acceptComma: Boolean = true, acceptParen: Boolean = true,
+      acceptUpperCase: Boolean = true): Unit = {
 
     import Double.{NaN, PositiveInfinity => PosInf, NegativeInfinity => NegInf}
 
@@ -42,9 +45,6 @@ class FormatterTest {
     assertF("  Infinity", "%010" + conversion, PosInf)
     assertF(" -Infinity", "%010" + conversion, NegInf)
     assertF("Infinity  ", "%-10" + conversion, PosInf)
-    assertF("(Infinity)", "%(" + conversion, NegInf)
-    assertF("     (Infinity)", "%(15" + conversion, NegInf)
-    assertF("     (Infinity)", "%(015" + conversion, NegInf)
     assertF("       NaN", "%10" + conversion, NaN)
     assertF("       NaN", "%010" + conversion, NaN)
 
@@ -55,10 +55,15 @@ class FormatterTest {
     assertF("NaN", "%+" + conversion, NaN)
     assertF("NaN", "% " + conversion, NaN)
 
-    assertF("+Infinity", "%+(" + conversion, PosInf)
-    assertF(" Infinity", "% (" + conversion, PosInf)
-    assertF("(Infinity)", "%+(" + conversion, NegInf)
-    assertF("(Infinity)", "% (" + conversion, NegInf)
+    if (acceptParen) {
+      assertF("(Infinity)", "%(" + conversion, NegInf)
+      assertF("     (Infinity)", "%(15" + conversion, NegInf)
+      assertF("     (Infinity)", "%(015" + conversion, NegInf)
+      assertF("+Infinity", "%+(" + conversion, PosInf)
+      assertF(" Infinity", "% (" + conversion, PosInf)
+      assertF("(Infinity)", "%+(" + conversion, NegInf)
+      assertF("(Infinity)", "% (" + conversion, NegInf)
+    }
 
     if (acceptSharp)
       assertF("Infinity", "%#" + conversion, PosInf)
@@ -80,6 +85,7 @@ class FormatterTest {
    * handle the width, the `-` flag and the precision as if the conversion were
    * `%s`. Notably, the precision truncates the string.
    */
+  @noinline
   def testWithNull(conversion: Char, flags: String,
       acceptPrecision: Boolean = true,
       acceptUpperCase: Boolean = true): Unit = {
@@ -105,6 +111,7 @@ class FormatterTest {
     }
   }
 
+  @noinline
   def expectFormatterThrows[T <: Throwable](exeption: Class[T], format: String,
       args: Any*): T = {
     val fmt = new Formatter()
@@ -112,6 +119,7 @@ class FormatterTest {
         fmt.format(format, args.asInstanceOf[Seq[AnyRef]]: _*))
   }
 
+  @noinline
   def expectFormatFlagsConversionMismatch(conversion: Char,
       invalidFlags: String, arg: Any): Unit = {
 
@@ -127,6 +135,7 @@ class FormatterTest {
     }
   }
 
+  @noinline
   def expectIllegalFormatFlags(format: String, flags: String,
       arg: Any): Unit = {
     val e = expectFormatterThrows(classOf[IllegalFormatFlagsException],
@@ -134,18 +143,21 @@ class FormatterTest {
     assertEquals(flags, e.getFlags)
   }
 
+  @noinline
   def expectIllegalFormatPrecision(conversion: Char, arg: Any): Unit = {
     val e = expectFormatterThrows(classOf[IllegalFormatPrecisionException],
         "%.5" + conversion, arg)
     assertEquals(5, e.getPrecision)
   }
 
+  @noinline
   def expectIllegalFormatWidth(conversion: Char, arg: Any): Unit = {
     val e = expectFormatterThrows(classOf[IllegalFormatWidthException],
         "%5" + conversion, arg)
     assertEquals(5, e.getWidth)
   }
 
+  @noinline
   def expectIllegalFormatConversion(conversion: Char, arg: Any): Unit = {
     val e = expectFormatterThrows(classOf[IllegalFormatConversionException],
         "%" + conversion, arg)
@@ -153,6 +165,7 @@ class FormatterTest {
     assertEquals(arg.getClass, e.getArgumentClass)
   }
 
+  @noinline
   def expectUnknownFormatConversion(format: String, conversion: Char): Unit = {
     val e = expectFormatterThrows(classOf[UnknownFormatConversionException],
         format, 1, 2, 3)
@@ -659,6 +672,240 @@ class FormatterTest {
 
     expectIllegalFormatFlags("%-05f", "-0", 5.5)
     expectIllegalFormatFlags("% +f", "+ ", 5.5)
+  }
+
+  @Test def formatA(): Unit = {
+    // https://bugs.java.com/bugdatabase/view_bug.do?bug_id=JDK-8262351
+    val hasZeroPadBug = executingInJVM
+
+    // Double values
+
+    assertF("0x0.0p0", "%a", 0.0)
+    assertF("0X0.000P0", "%#.3A", 0.0)
+    assertF("0x0.0p0", "%5a", 0.0)
+    assertF(" 0x0.0p0    ", "%- 12.0a", 0.0)
+    assertF("0x000000.0p0", "%012.0a", 0.0)
+    if (!hasZeroPadBug) {
+      assertF(" 0x00000.0p0", "% 012.0a", 0.0)
+      assertF("+0x00000.0p0", "%+012.0a", 0.0)
+    }
+    assertF("+0X0.000000P0", "%#+01.6A", 0.0)
+    assertF("+0x0.0000p0", "%-+8.4a", 0.0)
+
+    assertF("-0x0.0p0", "%a", -0.0)
+    assertF("-0X0.000P0", "%#.3A", -0.0)
+    assertF("-0x0.0p0", "%5a", -0.0)
+    assertF("-0x0.0p0    ", "%- 12.0a", -0.0)
+    if (!hasZeroPadBug) {
+      assertF("-0x00000.0p0", "%012.0a", -0.0)
+      assertF("-0x00000.0p0", "% 012.0a", -0.0)
+      assertF("-0x00000.0p0", "%+012.0a", -0.0)
+    }
+    assertF("-0X0.000000P0", "%#+01.6A", -0.0)
+    assertF("-0x0.0000p0", "%-+8.4a", -0.0)
+
+    assertF("0x1.0p0", "%a", 1.0)
+    assertF("0X1.000P0", "%#.3A", 1.0)
+    assertF("0x1.0p0", "%5a", 1.0)
+    assertF(" 0x1.0p0    ", "%- 12.0a", 1.0)
+    assertF("+0X1.000000P0", "%#+01.6A", 1.0)
+    assertF("+0x1.0000p0", "%-+8.4a", 1.0)
+
+    assertF("-0x1.0p0", "%a", -1.0)
+    assertF("-0X1.000P0", "%#.3A", -1.0)
+    assertF("-0x1.0p0", "%5a", -1.0)
+    assertF("-0x1.0p0    ", "%- 12.0a", -1.0)
+    assertF("-0X1.000000P0", "%#+01.6A", -1.0)
+    assertF("-0x1.0000p0", "%-+8.4a", -1.0)
+
+    assertF("0x1.5798ee2308c3ap-27", "%a", 0.00000001)
+    assertF("0x1.5798ee2308c3ap-27", "%5a", 0.00000001)
+    assertF(" 0x1.5p-27  ", "%- 12.0a", 0.00000001)
+    assertF("0x0001.5p-27", "%012.0a", 0.00000001)
+    assertF("+0x1.5798eep-27", "%#+01.6a", 0.00000001)
+    assertF("0X1.F40CCCCCCCCCDP9", "%A", 1000.10)
+    assertF("0x1.f40cccccccccdp9", "%5a", 1000.10)
+    assertF(" 0x1.fp9    ", "%- 12.0a", 1000.10)
+    assertF("0x000001.fp9", "%012.0a", 1000.10)
+    assertF("0X1.999999999999AP-4", "%A", 0.1)
+    assertF("0x1.999999999999ap-4", "%5a", 0.1)
+    assertF("-0x1.0p1", "%a", -2.0)
+    assertF("-0x1.000p1", "%#.3a", -2.0)
+    assertF("-0x1.0p1", "%5a", -2.0)
+    assertF("-0x1.0p1    ", "%- 12.0a", -2.0)
+    assertF(" 0x1.0p1    ", "%- 12.0a", 2.0)
+    if (!hasZeroPadBug) {
+      assertF("-0x00001.0p1", "%012.0a", -2.0)
+      assertF(" 0x00001.0p1", "% 012.0a", 2.0)
+      assertF("+0x00001.0p1", "%+012.0a", 2.0)
+    }
+    assertF("0x000001.0p1", "%012.0a", 2.0)
+    assertF("-0x1.000000p1", "%#+01.6a", -2.0)
+    assertF("-0x1.0000p1", "%-+8.4a", -2.0)
+
+    assertF("-0x1.797cc39ffd60fp-14", "%a", -0.00009)
+    assertF("-0x1.797cc39ffd60fp-14", "%5a", -0.00009)
+    assertF("-0x1.26580b480ca46p30", "%a", -1234567890.012345678)
+    assertF("-0x1.26580b480ca46p30", "%5a", -1234567890.012345678)
+    assertF("-0x1.2p30   ", "%- 12.0a", -1234567890.012345678)
+    assertF(" 0x1.2p30   ", "%- 12.0a", 1234567890.012345678)
+    if (!hasZeroPadBug) {
+      assertF("-0x0001.2p30", "%012.0a", -1234567890.012345678)
+      assertF(" 0x0001.2p30", "% 012.0a", 1234567890.012345678)
+      assertF("+0x0001.2p30", "%+012.0a", 1234567890.012345678)
+    }
+    assertF("0x00001.2p30", "%012.0a", 1234567890.012345678)
+    assertF("-0x1.26580bp30", "%#+01.6a", -1234567890.012345678)
+    assertF("-0x1.2658p30", "%-+8.4a", -1234567890.012345678)
+
+    assertF("0x1.fffffffffffffp1023", "%a", Double.MaxValue)
+    assertF("0x1.fffffffffffffp1023", "%5a", Double.MaxValue)
+    assertF("0x0.0000000000001p-1022", "%a", Double.MinPositiveValue)
+    assertF("0x0.0000000000001p-1022", "%5a", Double.MinPositiveValue)
+
+    // Rounding, normalized
+    assertF("0x1.591f9acffa7ebp8", "%a", 345.123456)
+    assertF("0x1.592p8", "%.3a", 345.123456) // round up
+    assertF("0x1.59p8", "%.2a", 345.123456)
+    assertF("0x1.6p8", "%.1a", 345.123456)
+    assertF("0x1.6p8", "%.0a", 345.123456) // behaves like .1, apparently
+    assertF("0x1.59179acffa7ebp8", "%a", 345.092206)
+    assertF("0x1.591p8", "%.3a", 345.092206) // round down
+    assertF("0x1.59189acffa7ebp8", "%a", 345.09611225)
+    assertF("0x1.592p8", "%.3a", 345.09611225) // round up
+    assertF("0x1.5918p8", "%a", 345.09375)
+    assertF("0x1.592p8", "%.3a", 345.09375) // round to even, upwards
+    assertF("0x1.5928p8", "%a", 345.15625)
+    assertF("0x1.592p8", "%.3a", 345.15625) // round to even, downwards
+    assertF("0x1.5938p8", "%a", 345.21875)
+    assertF("0x1.594p8", "%.3a", 345.21875) // round to even, upwards
+
+    // Rounding, subnormal
+    assertF("0x0.000000ee4d8a7p-1022", "%a", 1.23456478651e-315)
+    assertF("0x1.ep-1047", "%.0a", 1.23456478651e-315) // behaves like .1, apparently
+    assertF("0x1.ep-1047", "%.1a", 1.23456478651e-315)
+    assertF("0x1.ddp-1047", "%.2a", 1.23456478651e-315)
+    assertF("0x1.dc9bp-1047", "%.4a", 1.23456478651e-315)
+    assertF("0x1.dc9b1p-1047", "%.5a", 1.23456478651e-315)
+    assertF("0x1.dc9b14e000p-1047", "%.10a", 1.23456478651e-315)
+    assertF("0x1.dc9b14e00000p-1047", "%.12a", 1.23456478651e-315)
+    assertF("0x0.000000ee4d8a7p-1022", "%.13a", 1.23456478651e-315) // back to 0x0.
+
+    // Float values
+
+    assertF("0x0.0p0", "%a", 0.0f)
+    assertF("0X0.000P0", "%#.3A", 0.0f)
+    assertF("0x0.0p0", "%5a", 0.0f)
+    assertF(" 0x0.0p0    ", "%- 12.0a", 0.0f)
+    assertF("0x000000.0p0", "%012.0a", 0.0f)
+    if (!hasZeroPadBug) {
+      assertF(" 0x00000.0p0", "% 012.0a", 0.0f)
+      assertF("+0x00000.0p0", "%+012.0a", 0.0f)
+    }
+    assertF("+0X0.000000P0", "%#+01.6A", 0.0f)
+    assertF("+0x0.0000p0", "%-+8.4a", 0.0f)
+
+    assertF("-0x0.0p0", "%a", -0.0f)
+    assertF("-0X0.000P0", "%#.3A", -0.0f)
+    assertF("-0x0.0p0", "%5a", -0.0f)
+    assertF("-0x0.0p0    ", "%- 12.0a", -0.0f)
+    if (!hasZeroPadBug) {
+      assertF("-0x00000.0p0", "%012.0a", -0.0f)
+      assertF("-0x00000.0p0", "% 012.0a", -0.0f)
+      assertF("-0x00000.0p0", "%+012.0a", -0.0f)
+    }
+    assertF("-0X0.000000P0", "%#+01.6A", -0.0f)
+    assertF("-0x0.0000p0", "%-+8.4a", -0.0f)
+
+    assertF("0x1.0p0", "%a", 1.0f)
+    assertF("0X1.000P0", "%#.3A", 1.0f)
+    assertF("0x1.0p0", "%5a", 1.0f)
+    assertF(" 0x1.0p0    ", "%- 12.0a", 1.0f)
+    assertF("+0X1.000000P0", "%#+01.6A", 1.0f)
+    assertF("+0x1.0000p0", "%-+8.4a", 1.0f)
+
+    assertF("-0x1.0p0", "%a", -1.0f)
+    assertF("-0X1.000P0", "%#.3A", -1.0f)
+    assertF("-0x1.0p0", "%5a", -1.0f)
+    assertF("-0x1.0p0    ", "%- 12.0a", -1.0f)
+    assertF("-0X1.000000P0", "%#+01.6A", -1.0f)
+    assertF("-0x1.0000p0", "%-+8.4a", -1.0f)
+
+    assertF("0x1.5798eep-27", "%a", 0.00000001f)
+    assertF("0x1.5798eep-27", "%5a", 0.00000001f)
+    assertF(" 0x1.5p-27  ", "%- 12.0a", 0.00000001f)
+    assertF("0x0001.5p-27", "%012.0a", 0.00000001f)
+    assertF("+0x1.57ap-27", "%#+01.3a", 0.00000001f)
+    assertF("0X1.F40CCCP9", "%A", 1000.10f)
+    assertF("0x1.f40cccp9", "%5a", 1000.10f)
+    assertF(" 0x1.fp9    ", "%- 12.0a", 1000.10f)
+    assertF("0x000001.fp9", "%012.0a", 1000.10f)
+    assertF("0X1.99999AP-4", "%A", 0.1f)
+    assertF("0x1.99999ap-4", "%5a", 0.1f)
+    assertF("-0x1.0p1", "%a", -2.0f)
+    assertF("-0x1.000p1", "%#.3a", -2.0f)
+    assertF("-0x1.0p1", "%5a", -2.0f)
+    assertF("-0x1.0p1    ", "%- 12.0a", -2.0f)
+    assertF(" 0x1.0p1    ", "%- 12.0a", 2.0f)
+    if (!hasZeroPadBug) {
+      assertF("-0x00001.0p1", "%012.0a", -2.0f)
+      assertF(" 0x00001.0p1", "% 012.0a", 2.0f)
+      assertF("+0x00001.0p1", "%+012.0a", 2.0f)
+    }
+    assertF("0x000001.0p1", "%012.0a", 2.0f)
+    assertF("-0x1.000p1", "%#+01.3a", -2.0f)
+    assertF("-0x1.0000p1", "%-+8.4a", -2.0f)
+
+    assertF("-0x1.797cc4p-14", "%a", -0.00009f)
+    assertF("-0x1.797cc4p-14", "%5a", -0.00009f)
+    assertF("-0x1.e24074p16", "%a", -123456.45f)
+    assertF("-0x1.e24074p16", "%5a", -123456.45f)
+    assertF("-0x1.ep16   ", "%- 12.0a", -123456.45f)
+    assertF(" 0x1.ep16   ", "%- 12.0a", 123456.45f)
+    if (!hasZeroPadBug) {
+      assertF("-0x0001.ep16", "%012.0a", -123456.45f)
+      assertF(" 0x0001.ep16", "% 012.0a", 123456.45f)
+      assertF("+0x0001.ep16", "%+012.0a", 123456.45f)
+    }
+    assertF("0x00001.ep16", "%012.0a", 123456.45f)
+    assertF("-0x1.e24p16", "%#+01.3a", -123456.45f)
+    assertF("-0x1.e240p16", "%-+8.4a", -123456.45f)
+
+    assertF("0x1.fffffep127", "%a", Float.MaxValue)
+    assertF("0x1.fffffep127", "%5a", Float.MaxValue)
+    assertF("0x1.0p-149", "%a", Float.MinPositiveValue)
+    assertF("0x1.0p-149", "%5a", Float.MinPositiveValue)
+
+    // Rounding, normalized
+    assertF("0x1.591f9ap8", "%a", 345.12344f)
+    assertF("0x1.592p8", "%.3a", 345.12344f) // round up
+    assertF("0x1.59p8", "%.2a", 345.12344f)
+    assertF("0x1.6p8", "%.1a", 345.12344f)
+    assertF("0x1.6p8", "%.0a", 345.12344f) // behaves like .1, apparently
+    assertF("0x1.59179ap8", "%a", 345.0922f)
+    assertF("0x1.591p8", "%.3a", 345.0922f) // round down
+    assertF("0x1.59189ap8", "%a", 345.0961f)
+    assertF("0x1.592p8", "%.3a", 345.0961f) // round up
+    assertF("0x1.5918p8", "%a", 345.09375f)
+    assertF("0x1.592p8", "%.3a", 345.09375f) // round to even, upwards
+    assertF("0x1.5928p8", "%a", 345.15625f)
+    assertF("0x1.592p8", "%.3a", 345.15625f) // round to even, downwards
+    assertF("0x1.5938p8", "%a", 345.21875f)
+    assertF("0x1.594p8", "%.3a", 345.21875f) // round to even, upwards
+
+    /* Rounding, subnormal -- non-existent for Floats, since the smallest Float
+     * is already is a normal Double (see test case with
+     * Float.MinPositiveValue).
+     */
+
+    // Special cases
+
+    testWithInfinityAndNaN('a', acceptComma = false, acceptParen = false)
+    testWithNull('a', "+ 0#")
+
+    expectFormatFlagsConversionMismatch('a', "(,", 5.5)
+    expectIllegalFormatFlags("%-05a", "-0", 5.5)
+    expectIllegalFormatFlags("% +a", "+ ", 5.5)
   }
 
   @Test def formatPercentPercent(): Unit = {
