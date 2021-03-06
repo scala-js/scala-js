@@ -785,6 +785,13 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
             js.Undefined()
           else
             genApplyJSClassMethod(trgTree, defaultGetter, defaultGetterArgs)
+        } else if (defaultGetter.owner == trgSym) {
+          /* We get here if a non-native constructor has a native companion.
+           * This is reported on a per-class level.
+           */
+          assert(sym.isClassConstructor,
+              s"got non-constructor method $sym with default method in JS native companion")
+          js.Undefined()
         } else {
           reporter.error(paramPos, "When overriding a native method " +
               "with default arguments, the overriding method must " +

@@ -624,6 +624,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           s"non-native JS classes: $sym")
       assert(sym.superClass != NoSymbol, sym)
 
+      if (hasDefaultCtorArgsAndJSModule(sym)) {
+        reporter.error(pos,
+            "Implementation restriction: constructors of " +
+            "non-native JS classes cannot have default parameters " +
+            "if their companion module is JS native.")
+      }
+
       val classIdent = encodeClassNameIdent(sym)
 
       // Generate members (constructor + methods)
@@ -1377,40 +1384,29 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         constructorTrees: List[DefDef]): (Option[List[js.ParamDef]], js.JSMethodDef) = {
       implicit val pos = classSym.pos
 
-      if (hasDefaultCtorArgsAndJSModule(classSym)) {
-        reporter.error(pos,
-            "Implementation restriction: constructors of " +
-            "non-native JS classes cannot have default parameters " +
-            "if their companion module is JS native.")
-        val ctorDef = js.JSMethodDef(js.MemberFlags.empty,
-            js.StringLiteral("constructor"), Nil, None, js.Skip())(
-            OptimizerHints.empty, None)
-        (None, ctorDef)
-      } else {
-        withNewLocalNameScope {
-          reserveLocalName(JSSuperClassParamName)
+      withNewLocalNameScope {
+        reserveLocalName(JSSuperClassParamName)
 
-          val ctors: List[js.MethodDef] = constructorTrees.flatMap { tree =>
-            genMethodWithCurrentLocalNameScope(tree)
-          }
-
-          val (captureParams, dispatch) =
-            genJSConstructorExport(constructorTrees.map(_.symbol))
-
-          /* Ensure that the first JS class capture is a reference to the JS
-           * super class value. genNonNativeJSClass relies on this.
-           */
-          val captureParamsWithJSSuperClass = captureParams.map { params =>
-            val jsSuperClassParam = js.ParamDef(
-                js.LocalIdent(JSSuperClassParamName), NoOriginalName,
-                jstpe.AnyType, mutable = false)
-            jsSuperClassParam :: params
-          }
-
-          val ctorDef = buildJSConstructorDef(dispatch, ctors)
-
-          (captureParamsWithJSSuperClass, ctorDef)
+        val ctors: List[js.MethodDef] = constructorTrees.flatMap { tree =>
+          genMethodWithCurrentLocalNameScope(tree)
         }
+
+        val (captureParams, dispatch) =
+          genJSConstructorExport(constructorTrees.map(_.symbol))
+
+        /* Ensure that the first JS class capture is a reference to the JS
+         * super class value. genNonNativeJSClass relies on this.
+         */
+        val captureParamsWithJSSuperClass = captureParams.map { params =>
+          val jsSuperClassParam = js.ParamDef(
+              js.LocalIdent(JSSuperClassParamName), NoOriginalName,
+              jstpe.AnyType, mutable = false)
+          jsSuperClassParam :: params
+        }
+
+        val ctorDef = buildJSConstructorDef(dispatch, ctors)
+
+        (captureParamsWithJSSuperClass, ctorDef)
       }
     }
 
