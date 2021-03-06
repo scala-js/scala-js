@@ -852,8 +852,8 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:5: error: Implementation restriction: in a JS class, a secondary constructor calling another constructor with default parameters must provide the values of all parameters.
-      |    class A(x: Int, y: String = "default") extends js.Object {
+      |newSource1.scala:6: error: Implementation restriction: in a JS class, a secondary constructor calling another constructor with default parameters must provide the values of all parameters.
+      |      def this() = this(12)
       |          ^
     """
   }
