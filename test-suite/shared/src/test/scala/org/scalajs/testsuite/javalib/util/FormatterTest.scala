@@ -483,6 +483,8 @@ class FormatterTest {
   }
 
   @Test def formatE(): Unit = {
+    // Double values
+
     assertF("0.000000e+00", "%e", 0.0)
     assertF("-0.000000e+00", "%e", -0.0)
     assertF("0e+00", "%.0e", 0.0)
@@ -495,30 +497,23 @@ class FormatterTest {
     assertF("0.000e+00", "%.3e", 0.0)
     assertF("-0.000e+00", "%.3e", -0.0)
 
-    /* We use 1.51e100 in this test, since we seem to have a floating point
-     * imprecision at exactly 1.5e100 that yields to a rounding error towards
-     * 1e+100 instead of 2e+100.
-     */
     assertF("2e+100", "%.0e", 1.51e100)
+    assertF("2e+100", "%.0e", 1.5e100)
+
+    assertF("5.000000e-05", "%e", 0.5e-4)
+    assertF("-5.000000e-05", "%e", -0.5e-4)
 
     assertF(" 1.20e+100", "%10.2e", 1.2e100)
 
-    // #3202 Corner case of round-half-up (currently non-compliant)
-    if (executingInJVM) {
-      assertF("7.6543215e-20    ", "%-17.7e", 7.65432145e-20)
-      assertF("-7.6543215e-20   ", "%-17.7e", -7.65432145e-20)
-      assertF("7.6543216e-20    ", "%-17.7e", 7.65432155e-20)
-      assertF("-7.6543216e-20   ", "%-17.7e", -7.65432155e-20)
-    } else {
-      assertF("7.6543214e-20    ", "%-17.7e", 7.65432145e-20)
-      assertF("-7.6543214e-20   ", "%-17.7e", -7.65432145e-20)
-      assertF("7.6543215e-20    ", "%-17.7e", 7.65432155e-20)
-      assertF("-7.6543215e-20   ", "%-17.7e", -7.65432155e-20)
-    }
+    // #3202 Corner case of round-half-up
+    assertF("7.6543215e-20    ", "%-17.7e", 7.65432145e-20)
+    assertF("-7.6543215e-20   ", "%-17.7e", -7.65432145e-20)
+    assertF("7.6543216e-20    ", "%-17.7e", 7.65432155e-20)
+    assertF("-7.6543216e-20   ", "%-17.7e", -7.65432155e-20)
 
-    assertF("001.2000e-21", "%012.4e", 1.2e-21f)
-    assertF("001.2000E-21", "%012.4E", 1.2e-21f)
-    assertF("(0001.2000e-21)", "%(015.4e", -1.2e-21f)
+    assertF("001.2000e-21", "%012.4e", 1.2e-21)
+    assertF("001.2000E-21", "%012.4E", 1.2e-21)
+    assertF("(0001.2000e-21)", "%(015.4e", -1.2e-21)
 
     assertF("1.e+100", "%#.0e", 1.2e100)
 
@@ -526,6 +521,59 @@ class FormatterTest {
     assertF("-1.234560e+30", "%+e", -1.23456e30)
     assertF(" 1.234560e+30", "% e", 1.23456e30)
     assertF("-1.234560e+30", "% e", -1.23456e30)
+
+    // Lots of 0's
+    assertF("1.23456" + "0" * 1229 + "e+00", "%.1234e", 1.23456)
+
+    // Float values
+
+    assertF("0.000000e+00", "%e", 0.0f)
+    assertF("-0.000000e+00", "%e", -0.0f)
+    assertF("0e+00", "%.0e", 0.0f)
+    assertF("-0e+00", "%.0e", -0.0f)
+    assertF("0.000e+00", "%.3e", 0.0f)
+    assertF("-0.000e+00", "%.3e", -0.0f)
+
+    assertF("1.000000e+03", "%e", 1000.0f)
+    assertF("1e+35", "%.0e", 1.2e35f)
+    assertF("0.000e+00", "%.3e", 0.0f)
+    assertF("-0.000e+00", "%.3e", -0.0f)
+
+    assertF("2e+35", "%.0e", 1.51e35f)
+    assertF("1e+35", "%.0e", 1.5e35f)
+
+    assertF("5.000000e-05", "%e", 0.5e-4f)
+    assertF("-5.000000e-05", "%e", -0.5e-4f)
+
+    assertF("  1.20e+35", "%10.2e", 1.2e35f)
+
+    // #3202 Corner case of round-half-up
+    assertF("7.654335e-20     ", "%-17.6e", 7.6543345e-20f)
+    assertF("-7.654335e-20    ", "%-17.6e", -7.6543345e-20f)
+    assertF("7.654346e-20     ", "%-17.6e", 7.6543455e-20f)
+    assertF("-7.654346e-20    ", "%-17.6e", -7.6543455e-20f)
+
+    assertF("001.2000e-21", "%012.4e", 1.2e-21f)
+    assertF("001.2000E-21", "%012.4E", 1.2e-21f)
+    assertF("(0001.2000e-21)", "%(015.4e", -1.2e-21f)
+
+    assertF("1.e+35", "%#.0e", 1.2e35f)
+
+    assertF("+1.234560e+30", "%+e", 1.23456e30f)
+    assertF("-1.234560e+30", "%+e", -1.23456e30f)
+    assertF(" 1.234560e+30", "% e", 1.23456e30f)
+    assertF("-1.234560e+30", "% e", -1.23456e30f)
+
+    // Lots of 0's
+    assertF("1.5" + "0" * 1233 + "e+00", "%.1234e", 1.5f)
+
+    // Requesting more than a Float's precision displays as if using .toDouble
+    assertF("1.23456003380946520000e+30", "%.20e", 1.23456e30f)
+    assertF("1.23456003380946520000e+30", "%.20e", 1.23456e30f.toDouble)
+    assertF("-1.23456003380946520000e+30", "%.20e", -1.23456e30f)
+    assertF("-1.23456003380946520000e+30", "%.20e", -1.23456e30f.toDouble)
+
+    // Special cases
 
     testWithInfinityAndNaN('e', acceptComma = false)
     testWithNull('e', "#+ 0(")
@@ -536,6 +584,8 @@ class FormatterTest {
   }
 
   @Test def formatG(): Unit = {
+    // Double values
+
     assertF("0.00000", "%g", 0.0)
     assertF("-0.00000", "%g", -0.0)
     assertF("0", "%.0g", 0.0)
@@ -594,6 +644,156 @@ class FormatterTest {
     assertF("300,000", "%,g", 3e5)
     assertF("00000300,000", "%0,12g", 3e5)
 
+    // Tests for different aspects of dispatching between fixed and scientific
+
+    // 0.0 is always displayed as fixed
+    assertF("0.00000", "%g", 0.0)
+
+    // Value that would round to 0 if fixed is still displayed as scientific
+    assertF("2.34567e-20", "%g", 2.3456713246845155e-20)
+
+    // Limit between scientific and fixed
+    assertF("9.99999e-05", "%g", 9.999994684343543e-5)
+    assertF("0.000100000", "%g", 0.0001)
+    assertF("0.000100000", "%g", 0.0001000000000000023)
+
+    /* When rounding upwards can reach 1e-4
+     *
+     * The JavaDoc says:
+     *
+     * > After rounding for the precision, the formatting of the resulting
+     * > magnitude m depends on its value.
+     */
+    assertF("0.000100000", "%g", 0.00009999999999999995)
+
+    // Limit between fixed and scientific again (default precision)
+    assertF("999999", "%g", 999.999432168754e+3)
+    assertF("1.00000e+06", "%g", 1000e+3)
+    assertF("1.00000e+06", "%g", 1000.000001354698e+3)
+
+    // Limit between fixed and scientific again (custom precision)
+    assertF("999999999", "%.9g", 999999.999432168e+3)
+    assertF("1.00000000e+09", "%.9g", 1000000e+3)
+    assertF("1.00000000e+09", "%.9g", 1000000.0000013547e+3)
+
+    /* When rounding upwards can reach 10^p
+     *
+     * The JavaDoc says:
+     *
+     * > After rounding for the precision, the formatting of the resulting
+     * > magnitude m depends on its value.
+     */
+    assertF("1.00000000e+14", "%.9g", 999999.9999994322e+8)
+
+    // Float values
+
+    assertF("0.00000", "%g", 0.0f)
+    assertF("-0.00000", "%g", -0.0f)
+    assertF("0", "%.0g", 0.0f)
+    assertF("-0", "%.0g", -0.0f)
+    assertF("0.00", "%.3g", 0.0f)
+    assertF("-0.00", "%.3g", -0.0f)
+
+    assertF("5.00000e-05", "%g", 0.5e-4f)
+    assertF("-5.00000e-05", "%g", -0.5e-4f)
+    assertF("0.000300000", "%g", 3e-4f)
+    assertF("0.000300", "%.3g", 3e-4f)
+    assertF("10.0000", "%g", 10.0f)
+    assertF("10.00", "%.4g", 10.0f)
+    assertF("0.0010", "%.2g", 1e-3f)
+    assertF("300000", "%g", 3e5f)
+    assertF("3.00e+05", "%.3g", 3e5f)
+
+    assertF("005.00000e-05", "%013g", 0.5e-4f)
+    assertF("-05.00000e-05", "%013g", -0.5e-4f)
+    assertF("0000000300000", "%013g", 3e5f)
+    assertF("-000000300000", "%013g", -3e5f)
+
+    assertF("00003.00e+05", "%012.3g", 3e5f)
+    assertF("-0003.00e+05", "%012.3g", -3e5f)
+
+    assertF("5.00000e-05", "%(g", 0.5e-4f)
+    assertF("(5.00000e-05)", "%(g", -0.5e-4f)
+    assertF("300000", "%(g", 3e5f)
+    assertF("(300000)", "%(g", -3e5f)
+
+    assertF("+5.00000e-05", "%(+g", 0.5e-4f)
+    assertF("(5.00000e-05)", "%(+g", -0.5e-4f)
+    assertF("+300000", "%(+g", 3e5f)
+    assertF("(300000)", "%(+g", -3e5f)
+
+    assertF(" 5.00000e-05", "% g", 0.5e-4f)
+    assertF("-5.00000e-05", "% g", -0.5e-4f)
+    assertF(" 300000", "% g", 3e5f)
+    assertF("-300000", "% g", -3e5f)
+
+    assertF("    5.00000e-05", "%15g", 0.5e-4f)
+    assertF("   -5.00000e-05", "%15g", -0.5e-4f)
+    assertF("         300000", "%15g", 3e5f)
+    assertF("        -300000", "%15g", -3e5f)
+
+    assertF("    5.00000e-05", "%(15g", 0.5e-4f)
+    assertF("  (5.00000e-05)", "%(15g", -0.5e-4f)
+    assertF("         300000", "%(15g", 3e5f)
+    assertF("       (300000)", "%(15g", -3e5f)
+
+    assertF("5.00000e-05    ", "%-15g", 0.5e-4f)
+    assertF("-5.00000e-05   ", "%-15g", -0.5e-4f)
+    assertF("300000         ", "%-15g", 3e5f)
+    assertF("-300000        ", "%-15g", -3e5f)
+
+    assertF("300,000", "%,g", 3e5f)
+    assertF("00000300,000", "%0,12g", 3e5f)
+
+    // Tests for different aspects of dispatching between fixed and scientific
+
+    // 0.0 is always displayed as fixed
+    assertF("0.00000", "%g", 0.0f)
+
+    // Value that would round to 0 if fixed is still displayed as scientific
+    assertF("2.34567e-20", "%g", 2.3456713e-20f)
+
+    // Limit between scientific and fixed
+    assertF("9.99999e-05", "%g", 9.999994e-5f)
+    assertF("0.000100000", "%g", 0.0001f)
+    assertF("0.000100000", "%g", 0.00010000023f)
+
+    /* When rounding upwards can reach 1e-4
+     *
+     * The JavaDoc says:
+     *
+     * > After rounding for the precision, the formatting of the resulting
+     * > magnitude m depends on its value.
+     */
+    assertF("0.000100000", "%g", 0.00009999999f)
+
+    // Limit between fixed and scientific again (default precision)
+    assertF("999999", "%g", 999.99944e+3f)
+    assertF("1.00000e+06", "%g", 1000e+3f)
+    assertF("1.00000e+06", "%g", 1000.00006e+3f)
+
+    // Limit between fixed and scientific again (custom precision)
+    assertF("9999", "%.4g", 999.941e1f)
+    assertF("1.000e+04", "%.4g", 1000.0e1f)
+    assertF("1.000e+04", "%.4g", 1000.00006e1f)
+
+    /* When rounding upwards can reach 10^p
+     *
+     * The JavaDoc says:
+     *
+     * > After rounding for the precision, the formatting of the resulting
+     * > magnitude m depends on its value.
+     */
+    assertF("1.000e+04", "%.4g", 999.961e1f)
+
+    // Requesting more than a Float's precision displays as if using .toDouble
+    assertF("1.2345600338094652000e+30", "%.20g", 1.23456e30f)
+    assertF("1.2345600338094652000e+30", "%.20g", 1.23456e30f.toDouble)
+    assertF("-1.2345600338094652000e+30", "%.20g", -1.23456e30f)
+    assertF("-1.2345600338094652000e+30", "%.20g", -1.23456e30f.toDouble)
+
+    // Special cases
+
     testWithInfinityAndNaN('g', acceptSharp = false)
     testWithNull('g', "+ 0,(")
 
@@ -603,17 +803,19 @@ class FormatterTest {
   }
 
   @Test def formatF(): Unit = {
+    // Double values
+
     assertF("0.000000", "%f", 0.0)
     assertF("-0.000000", "%f", -0.0)
     assertF("0", "%.0f", 0.0)
     assertF("-0", "%.0f", -0.0)
+    assertF("0.", "%#.0f", 0.0)
+    assertF("-0.", "%#.0f", -0.0)
     assertF("0.000", "%.3f", 0.0)
     assertF("-0.000", "%.3f", -0.0)
 
     assertF("3.300000", "%f", 3.3)
     assertF("(04.6000)", "%0(9.4f", -4.6)
-
-    assertF("30000001024.000000", "%f", 3e10f)
 
     assertF("30000000000.000000", "%f", 3e10)
 
@@ -660,12 +862,173 @@ class FormatterTest {
     assertF("300,000.000000", "%,f", 3e5)
     assertF("00000300,000.000000", "%0,19f", 3e5)
 
-    // #3202
-    if (executingInJVM) {
-      assertF("66380.78812500000", "%.11f", 66380.788125)
-    } else {
-      assertF("66380.78812500001", "%.11f", 66380.788125)
-    }
+    // #3202 Extend with 0's, even if the mathematical value is closer to ...0001
+    assertF("66380.78812500000", "%.11f", 66380.788125)
+
+    // Tests for different aspects of rounding to the precision
+
+    // Round to nearest, downwards
+    assertF("123.457893", "%f", 123.457893456789)
+    assertF("-123.457893", "%f", -123.457893456789)
+
+    // Round to nearest, upwards
+    assertF("123.457894", "%f", 123.457893656789)
+    assertF("-123.457894", "%f", -123.457893656789)
+
+    // Round to nearest, break ties upwards (even is also upwards)
+    assertF("123.457894", "%f", 123.4578935)
+    assertF("-123.457894", "%f", -123.4578935)
+
+    // Round to nearest, break ties upwards (even is downwards)
+    assertF("123.457895", "%f", 123.4578945)
+    assertF("-123.457895", "%f", -123.4578945)
+
+    // Rounding can carry to the integer part
+    assertF("124.000000", "%f", 123.9999996)
+    assertF("-124.000000", "%f", -123.9999996)
+    assertF("124", "%.0f", 123.5)
+    assertF("-124", "%.0f", -123.5)
+
+    // Rounding can carry all the way to adding one unit in the integer part
+    assertF("1000.000000", "%f", 999.9999996)
+    assertF("-1000.000000", "%f", -999.9999996)
+    assertF("1000", "%.0f", 999.5)
+    assertF("-1000", "%.0f", -999.5)
+    assertF("1.000", "%.3f", 0.9996)
+    assertF("-1.000", "%.3f", -0.9996)
+
+    // Rounding exactly before the first significant digit (round to 0 or 1)
+    assertF("0.000", "%.3f", 0.0003)
+    assertF("0.001", "%.3f", 0.0007)
+    assertF("0", "%.0f", 0.3)
+    assertF("1", "%.0f", 0.7)
+
+    // Keep the negative sign when rounding to 0
+    assertF("-0.000000", "%f", -0.00000002)
+    assertF("-0", "%.0f", -0.2)
+    assertF("-0", "%.0f", -2e-2)
+
+    // Lots of 0's
+    assertF("123" + "0" * 302 + ".000000", "%f", 123e302)
+    assertF("0." + "0" * 297 + "12300000", "%.305f", 123e-300)
+    assertF("1." + "0" * 1234, "%.1234f", 1.0)
+
+    // Float values
+
+    assertF("0.000000", "%f", 0.0f)
+    assertF("-0.000000", "%f", -0.0f)
+    assertF("0", "%.0f", 0.0f)
+    assertF("-0", "%.0f", -0.0f)
+    assertF("0.", "%#.0f", 0.0f)
+    assertF("-0.", "%#.0f", -0.0f)
+    assertF("0.000", "%.3f", 0.0f)
+    assertF("-0.000", "%.3f", -0.0f)
+
+    assertF("3.300000", "%f", 3.3f)
+    assertF("(04.6000)", "%0(9.4f", -4.6f)
+
+    assertF("30000001024.000000", "%f", 3e10f)
+
+    assertF("30,000,001,024.000000", "%,f", 3e10f)
+
+    assertF("00000000.000050", "%015f", 0.5e-4f)
+    assertF("-0000000.000050", "%015f", -0.5e-4f)
+    assertF("00300000.000000", "%015f", 3e5f)
+    assertF("-0300000.000000", "%015f", -3e5f)
+
+    assertF("00300000.000", "%012.3f", 3e5f)
+    assertF("-0300000.000", "%012.3f", -3e5f)
+
+    assertF("0.000050", "%(f", 0.5e-4f)
+    assertF("(0.000050)", "%(f", -0.5e-4f)
+    assertF("300000.000000", "%(f", 3e5f)
+    assertF("(300000.000000)", "%(f", -3e5f)
+
+    assertF("+0.000050", "%(+f", 0.5e-4f)
+    assertF("(0.000050)", "%(+f", -0.5e-4f)
+    assertF("+300000.000000", "%(+f", 3e5f)
+    assertF("(300000.000000)", "%(+f", -3e5f)
+
+    assertF(" 0.000050", "% f", 0.5e-4f)
+    assertF("-0.000050", "% f", -0.5e-4f)
+    assertF(" 300000.000000", "% f", 3e5f)
+    assertF("-300000.000000", "% f", -3e5f)
+
+    assertF("       0.000050", "%15f", 0.5e-4f)
+    assertF("      -0.000050", "%15f", -0.5e-4f)
+    assertF("  300000.000000", "%15f", 3e5f)
+    assertF(" -300000.000000", "%15f", -3e5f)
+
+    assertF("       0.000050", "%(15f", 0.5e-4f)
+    assertF("     (0.000050)", "%(15f", -0.5e-4f)
+    assertF("  300000.000000", "%(15f", 3e5f)
+    assertF("(300000.000000)", "%(15f", -3e5f)
+
+    assertF("0.000050       ", "%-15f", 0.5e-4f)
+    assertF("-0.000050      ", "%-15f", -0.5e-4f)
+    assertF("300000.000000  ", "%-15f", 3e5f)
+    assertF("-300000.000000 ", "%-15f", -3e5f)
+
+    assertF("300,000.000000", "%,f", 3e5f)
+    assertF("00000300,000.000000", "%0,19f", 3e5f)
+
+    // Tests for different aspects of rounding to the precision
+
+    // Round to nearest, downwards
+    assertF("0.457893", "%f", 0.45789345f)
+    assertF("-0.457893", "%f", -0.45789346f)
+
+    // Round to nearest, upwards
+    assertF("0.457894", "%f", 0.45789367f)
+    assertF("-0.457894", "%f", -0.45789367f)
+
+    // Round to nearest, break ties upwards (even is also upwards)
+    assertF("2", "%.0f", 1.5f)
+    assertF("-2", "%.0f", -1.5f)
+
+    // Round to nearest, break ties upwards (even is downwards)
+    assertF("3", "%.0f", 2.5f)
+    assertF("-3", "%.0f", -2.5f)
+
+    // Rounding can carry to the integer part
+    assertF("124.0000", "%.4f", 123.99996f)
+    assertF("-124.0000", "%.4f", -123.99996f)
+    assertF("124", "%.0f", 123.5f)
+    assertF("-124", "%.0f", -123.5f)
+
+    // Rounding can carry all the way to adding one unit in the integer part
+    assertF("1000.000", "%.3f", 999.9997f)
+    assertF("-1000.000", "%.3f", -999.9997f)
+    assertF("1000", "%.0f", 999.5f)
+    assertF("-1000", "%.0f", -999.5f)
+    assertF("1.000", "%.3f", 0.9996f)
+    assertF("-1.000", "%.3f", -0.9996f)
+
+    // Rounding exactly before the first significant digit (round to 0 or 1)
+    assertF("0.000", "%.3f", 0.0003f)
+    assertF("0.001", "%.3f", 0.0007f)
+    assertF("0", "%.0f", 0.3f)
+    assertF("1", "%.0f", 0.7f)
+
+    // Keep the negative sign when rounding to 0
+    assertF("-0.000000", "%f", -0.00000002f)
+    assertF("-0", "%.0f", -0.2f)
+    assertF("-0", "%.0f", -2e-2f)
+
+    // Lots of 0's
+    assertF("12299999703402453" + "0" * 11 + ".000000", "%f", 123e25f)
+    assertF("0." + "0" * 22 + "12300000", "%.30f", 123e-25f)
+    assertF("1." + "0" * 1234, "%.1234f", 1.0f)
+
+    // Requesting more than a Float's precision displays as if using .toDouble
+    assertF("1.23456001281738280000", "%.20f", 1.23456f)
+    assertF("1.23456001281738280000", "%.20f", 1.23456f.toDouble)
+    assertF("-1.23456001281738280000", "%.20f", -1.23456f)
+    assertF("-1.23456001281738280000", "%.20f", -1.23456f.toDouble)
+    assertF("30000001024.000000", "%f", 3e10f)
+    assertF("30000001024.000000", "%f", 3e10f.toDouble)
+
+    // Special cases
 
     testWithInfinityAndNaN('f', acceptUpperCase = false)
     testWithNull('f', "#+ 0,(", acceptUpperCase = false)
