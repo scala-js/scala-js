@@ -593,6 +593,40 @@ class AnalyzerTest {
     }
   }
 
+  @Test
+  def jmBigNumbersNotInstantiatedWhenUsingStringFormat(): AsyncResult = await {
+    val StringType = ClassType(BoxedStringClass)
+    val formatMethod = m("format", List(T, ArrayTypeRef(O, 1)), T)
+
+    val classDefs = Seq(
+      classDef("A", superClass = Some(ObjectClass), memberDefs = List(
+        trivialCtor("A"),
+        MethodDef(EMF, m("test", Nil, V), NON, Nil, NoType, Some(Block(
+          ApplyStatic(EAF, BoxedStringClass, formatMethod, List(str("hello %d"), int(42)))(StringType)
+        )))(EOH, None)
+      ))
+    )
+
+    for {
+      analysis <- computeAnalysis(classDefs,
+          reqsFactory.instantiateClass("A", NoArgConstructorName) ++
+          reqsFactory.callMethod("A", m("test", Nil, V)),
+          stdlib = TestIRRepo.fulllib)
+    } yield {
+      assertNoError(analysis)
+
+      val jmBigIntegerClass = analysis.classInfos("java.math.BigInteger")
+      assertFalse(jmBigIntegerClass.isAnySubclassInstantiated)
+      assertFalse(jmBigIntegerClass.isDataAccessed)
+      assertTrue(jmBigIntegerClass.areInstanceTestsUsed)
+
+      val jmBigDecimalClass = analysis.classInfos("java.math.BigDecimal")
+      assertFalse(jmBigDecimalClass.isAnySubclassInstantiated)
+      assertFalse(jmBigDecimalClass.isDataAccessed)
+      assertTrue(jmBigDecimalClass.areInstanceTestsUsed)
+    }
+  }
+
   @Test  // #3571
   def specificReflectiveProxy(): AsyncResult = await {
     val fooAMethodName = m("foo", Nil, ClassRef("A"))
