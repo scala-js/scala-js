@@ -370,36 +370,32 @@ final class Formatter private (private[this] var dest: Appendable,
         }
 
       case 'c' =>
-        arg match {
+        val str = arg match {
           case arg: Char =>
-            formatNonNumericString(localeInfo, flags, width, -1, arg.toString)
+            arg.toString()
           case arg: Int =>
             if (!Character.isValidCodePoint(arg))
               throwIllegalFormatCodePointException(arg)
-            val str = if (arg < Character.MIN_SUPPLEMENTARY_CODE_POINT) {
-              js.Dynamic.global.String.fromCharCode(arg)
+            if (arg < Character.MIN_SUPPLEMENTARY_CODE_POINT) {
+              js.Dynamic.global.String.fromCharCode(arg).asInstanceOf[String]
             } else {
-              js.Dynamic.global.String.fromCharCode(
-                  0xd800 | ((arg >> 10) - (0x10000 >> 10)),
-                  0xdc00 | (arg & 0x3ff))
+              js.Dynamic.global.String
+                .fromCharCode(0xd800 | ((arg >> 10) - (0x10000 >> 10)), 0xdc00 | (arg & 0x3ff))
+                .asInstanceOf[String]
             }
-            formatNonNumericString(localeInfo, flags, width, -1,
-                str.asInstanceOf[String])
           case _ =>
             illegalFormatConversion()
         }
+        formatNonNumericString(localeInfo, flags, width, -1, str)
 
       case 'd' =>
-        arg match {
-          case arg: Int =>
-            formatNumericString(localeInfo, flags, width, arg.toString())
-          case arg: Long =>
-            formatNumericString(localeInfo, flags, width, arg.toString())
-          case arg: BigInteger =>
-            formatNumericString(localeInfo, flags, width, arg.toString())
-          case _ =>
-            illegalFormatConversion()
+        val str = arg match {
+          case arg: Int        => arg.toString()
+          case arg: Long       => arg.toString()
+          case arg: BigInteger => arg.toString()
+          case _               => illegalFormatConversion()
         }
+        formatNumericString(localeInfo, flags, width, str)
 
       case 'o' | 'x' =>
         // Octal/hex formatting is not localized
