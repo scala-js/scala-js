@@ -23,10 +23,6 @@ object Platform {
    */
   final val executingInJVM = false
 
-  final val executingInJVMOnJDK6 = false
-
-  final val executingInJVMOnJDK7OrLower = false
-
   final val executingInJVMOnJDK8OrLower = false
 
   def executingInNodeJS: Boolean = {

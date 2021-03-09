@@ -343,8 +343,7 @@ abstract class BaseBufferTest {
     assertEquals(4, buf2.capacity())
     expectThrows(classOf[InvalidMarkException], buf2.reset())
 
-    if (!executingInJVMOnJDK6)
-      assertEquals(elemFromInt(4), buf2.get(1))
+    assertEquals(elemFromInt(4), buf2.get(1))
 
     buf2.position(2)
     assertEquals(3, buf1.position())

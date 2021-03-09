@@ -22,10 +22,6 @@ object Platform {
    */
   final val executingInJVM = true
 
-  def executingInJVMOnJDK6: Boolean = jdkVersion == 6
-
-  def executingInJVMOnJDK7OrLower: Boolean = jdkVersion <= 7
-
   def executingInJVMOnJDK8OrLower: Boolean = jdkVersion <= 8
 
   private lazy val jdkVersion = {
