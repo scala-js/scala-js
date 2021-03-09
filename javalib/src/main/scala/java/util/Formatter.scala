@@ -273,9 +273,13 @@ final class Formatter private (private[this] var dest: Appendable,
         lastArgIndex = argIndex
         val arg = args(argIndex - 1)
 
-        // Format the arg. We handle `null` in a generic way, except for 'b'
+        /* Format the arg. We handle `null` in a generic way, except for 'b'
+         * and 's'. 'b' because it actually gives specific semantics to it.
+         * 's' because it needs to reject the '#' flag for `null`, and '#' is
+         * accepted for Formattable instances.
+         */
 
-        if (arg == null && conversionLower != 'b')
+        if (arg == null && conversionLower != 'b' && conversionLower != 's')
           formatNonNumericString(RootLocaleInfo, flags, width, precision, "null")
         else
           formatArg(localeInfo, arg, conversionLower, flags, width, precision)

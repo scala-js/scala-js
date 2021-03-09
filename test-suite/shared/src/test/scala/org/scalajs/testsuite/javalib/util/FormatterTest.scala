@@ -191,6 +191,7 @@ class FormatterTest {
     assertF("     fal", "%8.3b", null)
 
     expectFormatFlagsConversionMismatch('b', "#+ 0,(", true)
+    expectFormatFlagsConversionMismatch('b', "#+ 0,(", null)
   }
 
   @Test def formatH(): Unit = {
@@ -205,6 +206,7 @@ class FormatterTest {
     testWithNull('h', "")
 
     expectFormatFlagsConversionMismatch('h', "#+ 0,(", x)
+    expectFormatFlagsConversionMismatch('h', "#+ 0,(", null)
   }
 
   @Test def formatSWithNonFormattable(): Unit = {
@@ -223,6 +225,7 @@ class FormatterTest {
     testWithNull('s', "")
 
     expectFormatFlagsConversionMismatch('s', "#+ 0,(", "hello")
+    expectFormatFlagsConversionMismatch('s', "#+ 0,(", null)
   }
 
   @Test def formatSWithFormattable(): Unit = {
@@ -281,7 +284,9 @@ class FormatterTest {
     testWithNull('c', "", acceptPrecision = false)
 
     expectFormatFlagsConversionMismatch('c', "#+ 0,(", 'A')
+    expectFormatFlagsConversionMismatch('c', "#+ 0,(", null)
     expectIllegalFormatPrecision('c', 'A')
+    expectIllegalFormatPrecision('c', null)
 
     val e = expectFormatterThrows(classOf[IllegalFormatCodePointException],
         "%c", 0x123456)
@@ -345,7 +350,9 @@ class FormatterTest {
 
     expectIllegalFormatFlags("%+- (5d", "-+ (", 56)
     expectIllegalFormatFlags("%+-0(5d", "-+0(", 56)
+    expectIllegalFormatFlags("%+-0(5d", "-+0(", null)
     expectIllegalFormatPrecision('d', 5)
+    expectIllegalFormatPrecision('d', null)
   }
 
   @Test def formatO(): Unit = {
@@ -408,7 +415,9 @@ class FormatterTest {
     expectFormatFlagsConversionMismatch('o', "+ ,(", 5)
     expectFormatFlagsConversionMismatch('o', "+ ,(", 5L)
     expectFormatFlagsConversionMismatch('o', ",", new BigInteger("5"))
+    expectFormatFlagsConversionMismatch('o', ",", null)
     expectIllegalFormatPrecision('o', 5)
+    expectIllegalFormatPrecision('o', null)
   }
 
   @Test def formatX(): Unit = {
@@ -478,7 +487,9 @@ class FormatterTest {
     expectFormatFlagsConversionMismatch('x', "+ ,(", 5)
     expectFormatFlagsConversionMismatch('x', "+ ,(", 5L)
     expectFormatFlagsConversionMismatch('x', ",", new BigInteger("5"))
+    expectFormatFlagsConversionMismatch('x', ",", null)
     expectIllegalFormatPrecision('x', 5)
+    expectIllegalFormatPrecision('x', null)
   }
 
   @Test def formatE(): Unit = {
@@ -578,8 +589,11 @@ class FormatterTest {
     testWithNull('e', "#+ 0(")
 
     expectFormatFlagsConversionMismatch('e', ",", 5.5)
+    expectFormatFlagsConversionMismatch('e', ",", null)
     expectIllegalFormatFlags("%-05e", "-0", 5.5)
+    expectIllegalFormatFlags("%-05e", "-0", null)
     expectIllegalFormatFlags("% +e", "+ ", 5.5)
+    expectIllegalFormatFlags("% +e", "+ ", null)
   }
 
   @Test def formatEWithBigDecimal(): Unit = {
@@ -899,8 +913,11 @@ class FormatterTest {
     testWithNull('g', "+ 0,(")
 
     expectFormatFlagsConversionMismatch('g', "#", 5.5)
+    expectFormatFlagsConversionMismatch('g', "#", null)
     expectIllegalFormatFlags("%-05g", "-0", 5.5)
+    expectIllegalFormatFlags("%-05g", "-0", null)
     expectIllegalFormatFlags("% +g", "+ ", 5.5)
+    expectIllegalFormatFlags("% +g", "+ ", null)
   }
 
   @Test def formatGWithBigDecimal(): Unit = {
@@ -1238,7 +1255,9 @@ class FormatterTest {
     testWithNull('f', "#+ 0,(", acceptUpperCase = false)
 
     expectIllegalFormatFlags("%-05f", "-0", 5.5)
+    expectIllegalFormatFlags("%-05f", "-0", null)
     expectIllegalFormatFlags("% +f", "+ ", 5.5)
+    expectIllegalFormatFlags("% +f", "+ ", null)
   }
 
   @Test def formatFWithBigDecimal(): Unit = {
@@ -1590,8 +1609,11 @@ class FormatterTest {
     testWithNull('a', "+ 0#")
 
     expectFormatFlagsConversionMismatch('a', "(,", 5.5)
+    expectFormatFlagsConversionMismatch('a', "(,", null)
     expectIllegalFormatFlags("%-05a", "-0", 5.5)
+    expectIllegalFormatFlags("%-05a", "-0", null)
     expectIllegalFormatFlags("% +a", "+ ", 5.5)
+    expectIllegalFormatFlags("% +a", "+ ", null)
   }
 
   @Test def formatPercentPercent(): Unit = {
