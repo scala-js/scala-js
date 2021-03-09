@@ -33,13 +33,8 @@ class ThreadLocalRandomTest {
     val least = min(b1, b2)
     val bound = max(b1, b2)
 
-    // In JDK7 nextInt does not support negative arguments.
-    val executeTest = !executingInJVMOnJDK7OrLower || (least >= 0 && least < bound)
-
-    if (executeTest) {
-      val next = tlr.nextInt(least, bound)
-      assertTrue((next >= least) && (next < bound))
-    }
+    val next = tlr.nextInt(least, bound)
+    assertTrue((next >= least) && (next < bound))
   }
 
   @Test def nextIntIntInt(): Unit = {
@@ -271,13 +266,8 @@ class ThreadLocalRandomTest {
     val least = min(b1, b2)
     val bound = max(b1, b2)
 
-    // In JDK7 nextLong does not support negative arguments.
-    val executeTest = !executingInJVMOnJDK7OrLower || (least >= 0 && least < bound)
-
-    if (executeTest) {
-      val next = tlr.nextLong(least, bound)
-      assertTrue((next >= least) && (next < bound))
-    }
+    val next = tlr.nextLong(least, bound)
+    assertTrue((next >= least) && (next < bound))
   }
 
   @Test def nextLongLongLong(): Unit = {
@@ -511,13 +501,8 @@ class ThreadLocalRandomTest {
     val least = min(b1, b2)
     val bound = max(b1, b2)
 
-    // In JDK7 nextDouble does not support negative arguments.
-    val executeTest = !executingInJVMOnJDK7OrLower || (least >= 0 && least < bound)
-
-    if (executeTest) {
-      val next = tlr.nextDouble(least, bound)
-      assertTrue((next >= least) && (next < bound))
-    }
+    val next = tlr.nextDouble(least, bound)
+    assertTrue((next >= least) && (next < bound))
   }
 
   @Test def nextDoubleDoubleDouble(): Unit = {

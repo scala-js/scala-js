@@ -274,7 +274,6 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
 
   @Test def addNonComparableObjectThrows(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
-    assumeTrue("Assumed JDK8 implementation", !executingInJVMOnJDK6)
 
     class TestObj(num: Int)
 

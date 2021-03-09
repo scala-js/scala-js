@@ -222,8 +222,7 @@ class FormatterTest {
 
     testWithNull('s', "")
 
-    expectFormatFlagsConversionMismatch('s',
-        if (executingInJVMOnJDK6) "+ 0,(" else "#+ 0,(", "hello")
+    expectFormatFlagsConversionMismatch('s', "#+ 0,(", "hello")
   }
 
   @Test def formatSWithFormattable(): Unit = {

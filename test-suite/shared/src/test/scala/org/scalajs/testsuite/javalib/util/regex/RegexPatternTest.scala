@@ -75,22 +75,17 @@ class RegexPatternTest {
      */
     split("abc", "(?=a)", Array("abc"))
     split("abc", "(?=b)", Array("a", "bc"))
-    if (!executingInJVMOnJDK7OrLower) {
-      split("abc", "(?=a)|b", Array("a", "c"))
-      split("abc", "", Array("a", "b", "c"))
-      split("abc", "(?=a)|(?=b)", Array("a", "bc"))
-      split("abc", "(?=a)|(?=a)", Array("abc"))
-      split("abc", "(?=a|b)", Array("a", "bc"))
-    }
+    split("abc", "(?=a)|b", Array("a", "c"))
+    split("abc", "", Array("a", "b", "c"))
+    split("abc", "(?=a)|(?=b)", Array("a", "bc"))
+    split("abc", "(?=a)|(?=a)", Array("abc"))
+    split("abc", "(?=a|b)", Array("a", "bc"))
     split("abc", "(?=a|d)", Array("abc"))
     split("abc", "^d*", Array("abc"))
-    if (!executingInJVMOnJDK7OrLower) {
-      split("abc", "d*", Array("a", "b", "c"))
-      split("a", "", Array("a"))
-    }
+    split("abc", "d*", Array("a", "b", "c"))
+    split("a", "", Array("a"))
     split("a", "^d*", Array("a"))
-    if (!executingInJVMOnJDK7OrLower)
-      split("a", "d*", Array("a"))
+    split("a", "d*", Array("a"))
     split("a", "(?=a)", Array("a"))
     split("ab", "a", Array("", "b"))
 
@@ -128,10 +123,8 @@ class RegexPatternTest {
      * The behavior changed in JDK 8 (at which point it became properly
      * documented).
      */
-    if (!executingInJVMOnJDK7OrLower) {
-      splitWithLimit("abc", "", 2, Array("a", "bc"))
-      splitWithLimit("abc", "", -1, Array("a", "b", "c", ""))
-    }
+    splitWithLimit("abc", "", 2, Array("a", "bc"))
+    splitWithLimit("abc", "", -1, Array("a", "b", "c", ""))
     splitWithLimit("abc", "(?=a)", 2, Array("abc"))
     splitWithLimit("ab", "a", 1, Array("ab"))
 

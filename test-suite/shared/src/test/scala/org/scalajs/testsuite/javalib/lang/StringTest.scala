@@ -275,10 +275,8 @@ class StringTest {
 
   @Test def split(): Unit = {
     assertArrayEquals(Array[AnyRef]("Sc", "l", ".js"), erased("Scala.js".split("a")))
-    if (!executingInJVMOnJDK7OrLower) {
-      assertArrayEquals(Array[AnyRef]("a", "s", "d", "f"), erased("asdf".split("")))
-      assertArrayEquals(Array[AnyRef]("a", "s", "d", "f", ""), erased("asdf".split("", -1)))
-    }
+    assertArrayEquals(Array[AnyRef]("a", "s", "d", "f"), erased("asdf".split("")))
+    assertArrayEquals(Array[AnyRef]("a", "s", "d", "f", ""), erased("asdf".split("", -1)))
   }
 
   @Test def splitWithCharAsArgument(): Unit = {
