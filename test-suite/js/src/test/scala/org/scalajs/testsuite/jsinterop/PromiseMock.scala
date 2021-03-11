@@ -166,7 +166,7 @@ object PromiseMock {
     // 25.4.1.3.2 Promise Resolve Functions
     private[this] def resolve(resolution: A | Thenable[A]): Unit = {
       if (state == Pending) {
-        if ((resolution: AnyRef) eq (this: AnyRef)) {
+        if (resolution.asInstanceOf[AnyRef] eq this) {
           reject(new js.TypeError("Self resolution"))
         } else if (isNotAnObject(resolution)) {
           fulfill(resolution.asInstanceOf[A])

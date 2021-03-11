@@ -199,14 +199,12 @@ class JSOptionalTest212 {
     assertEquals(Some(3), obj.z)
   }
 
-  @Test def traitWithOptionalFunction(): Unit = {
-    val obj = new TraitWithOptionalFunction {
-      override val f = js.defined(x => x + 1)
-    }
-
-    assertEquals("function", js.typeOf(obj.f))
-    assertEquals(6, obj.f.get(5))
-  }
+  /* @Test def traitWithOptionalFunction(): Unit
+   * Moved to JSOptionalTest212FunParamInference.scala because Scala 3 cannot
+   * infer the parameter type yet when using true union types.
+   *
+   * See https://github.com/lampepfl/dotty/issues/11694
+   */
 }
 
 object JSOptionalTest212 {
@@ -246,9 +244,5 @@ object JSOptionalTest212 {
     def y: js.UndefOr[String]
     def y2: js.UndefOr[String]
     var z: js.UndefOr[Option[Int]]
-  }
-
-  trait TraitWithOptionalFunction extends js.Object {
-    val f: js.UndefOr[js.Function1[Int, Int]] = js.undefined
   }
 }
