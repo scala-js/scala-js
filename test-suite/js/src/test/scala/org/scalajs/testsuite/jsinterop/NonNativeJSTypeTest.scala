@@ -1348,6 +1348,30 @@ class NonNativeJSTypeTest {
     assertEquals("bar3hello", dyn.foo("hello"))
   }
 
+  @Test def overloadSuperMethod_Issue4452(): Unit = {
+    class Base extends js.Object {
+      def f(x: Int, y: Int*): String = "Base " + y.length
+      def g(x: Int, y: String): Unit = ()
+    }
+
+    class Sub extends Base {
+      def f(x: String, y: Int*): String = "Sub " + y.length
+      def g(x: Int): Unit = ()
+    }
+
+    val base = new Base
+    val sub = new Sub
+
+    assertEquals("Base 3", base.f(0, 1, 2, 3))
+    assertEquals("Base 3", sub.f(0, 1, 2, 3))
+    assertEquals("Sub 3", sub.f("0", 1, 2, 3))
+
+    // Just check they don't throw.
+    base.g(1, "0")
+    sub.g(1, "0")
+    sub.g(1)
+  }
+
   @Test def superMethodCallInAnonJSClass_Issue3055(): Unit = {
     class Foo extends js.Object {
       def bar(msg: String): String = "super: " + msg
