@@ -52,14 +52,14 @@ class VersionChecks private[ir] (
   }
 
   private val knownSupportedBinary = {
-    val m = new ConcurrentHashMap[String, Unit]()
-    m.put(binaryEmitted, ())
+    val m = ConcurrentHashMap.newKeySet[String]()
+    m.add(binaryEmitted)
     m
   }
 
   /** Check we can support this binary version (used by deserializer) */
   final def checkSupported(version: String): Unit = {
-    if (!knownSupportedBinary.containsKey(version)) {
+    if (!knownSupportedBinary.contains(version)) {
       val (major, minor, preRelease) = parseBinary(version)
       val supported = (
           // the exact pre-release version is supported via knownSupportedBinary
@@ -70,7 +70,7 @@ class VersionChecks private[ir] (
       )
 
       if (supported) {
-        knownSupportedBinary.put(version, ())
+        knownSupportedBinary.add(version)
       } else {
         throw new IRVersionNotSupportedException(version, binaryEmitted,
             s"This version ($version) of Scala.js IR is not supported. " +

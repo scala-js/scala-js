@@ -57,6 +57,15 @@ private[util] class NullRejectingHashMap[K, V](
     super.put(key, value)
   }
 
+  override def putIfAbsent(key: K, value: V): V = {
+    if (value == null)
+      throw new NullPointerException()
+    val old = get(key) // throws if `key` is null
+    if (old == null)
+      super.put(key, value)
+    old
+  }
+
   @noinline
   override def putAll(m: Map[_ <: K, _ <: V]): Unit = {
     /* The only purpose of `impl` is to capture the wildcards as named types,
@@ -78,6 +87,37 @@ private[util] class NullRejectingHashMap[K, V](
     if (key == null)
       throw new NullPointerException()
     super.remove(key)
+  }
+
+  override def remove(key: Any, value: Any): Boolean = {
+    val old = get(key) // throws if `key` is null
+    if (old != null && old.equals(value)) { // false if `value` is null
+      super.remove(key)
+      true
+    } else {
+      false
+    }
+  }
+
+  override def replace(key: K, oldValue: V, newValue: V): Boolean = {
+    if (oldValue == null || newValue == null)
+      throw new NullPointerException()
+    val old = get(key) // throws if `key` is null
+    if (oldValue.equals(old)) { // false if `old` is null
+      super.put(key, newValue)
+      true
+    } else {
+      false
+    }
+  }
+
+  override def replace(key: K, value: V): V = {
+    if (value == null)
+      throw new NullPointerException()
+    val old = get(key) // throws if `key` is null
+    if (old != null)
+      super.put(key, value)
+    old
   }
 
   override def containsValue(value: Any): Boolean = {
