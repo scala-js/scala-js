@@ -215,6 +215,18 @@ class ConcurrentHashMapTest extends MapTest {
     assertFalse(keySet.add("ONE"))
     assertEquals("Adding an existing key does not alter the value", 42, map.get("ONE"))
   }
+
+  @Test def toStringOnKeySetView(): Unit = {
+    val map = factory.empty[String, Int]
+    val keySet = map.keySet(0)
+
+    map.put("a", 0)
+    assertEquals("[a]", keySet.toString)
+
+    map.put("b", 1)
+    val str = keySet.toString
+    assertTrue(s"toString should print keys, but actual: $str", str == "[a, b]" || str == "[b, a]")
+  }
 }
 
 class ConcurrentHashMapFactory extends ConcurrentMapFactory {

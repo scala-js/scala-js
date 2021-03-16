@@ -232,6 +232,8 @@ object ConcurrentHashMap {
       innerMap.putIfAbsent(e, defaultValue) == null
     }
 
+    override def toString(): String = innerMap.keySet().toString
+
     def containsAll(c: Collection[_]): Boolean = innerMap.keySet().containsAll(c)
 
     def addAll(c: Collection[_ <: K]): Boolean = {
