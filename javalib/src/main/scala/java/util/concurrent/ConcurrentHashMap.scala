@@ -87,45 +87,17 @@ class ConcurrentHashMap[K, V] private (initialCapacity: Int, loadFactor: Float)
   override def equals(o: Any): Boolean =
     inner.equals(o)
 
-  override def putIfAbsent(key: K, value: V): V = {
-    if (value == null)
-      throw new NullPointerException()
-    val old = inner.get(key) // throws if `key` is null
-    if (old == null)
-      inner.put(key, value)
-    old
-  }
+  override def putIfAbsent(key: K, value: V): V =
+    inner.putIfAbsent(key, value)
 
-  override def remove(key: Any, value: Any): Boolean = {
-    val old = inner.get(key) // throws if `key` is null
-    if (old != null && old.equals(value)) { // false if `value` is null
-      inner.remove(key)
-      true
-    } else {
-      false
-    }
-  }
+  override def remove(key: Any, value: Any): Boolean =
+    inner.remove(key, value)
 
-  override def replace(key: K, oldValue: V, newValue: V): Boolean = {
-    if (oldValue == null || newValue == null)
-      throw new NullPointerException()
-    val old = inner.get(key) // throws if `key` is null
-    if (oldValue.equals(old)) { // false if `old` is null
-      inner.put(key, newValue)
-      true
-    } else {
-      false
-    }
-  }
+  override def replace(key: K, oldValue: V, newValue: V): Boolean =
+    inner.replace(key, oldValue, newValue)
 
-  override def replace(key: K, value: V): V = {
-    if (value == null)
-      throw new NullPointerException()
-    val old = inner.get(key) // throws if `key` is null
-    if (old != null)
-      inner.put(key, value)
-    old
-  }
+  override def replace(key: K, value: V): V =
+    inner.replace(key, value)
 
   def contains(value: Any): Boolean =
     containsValue(value)

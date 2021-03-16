@@ -58,6 +58,8 @@ trait MapTest {
     assertEquals(null, mp.get(testObj(42)))
     if (factory.allowsNullKeysQueries)
       assertEquals(null, mp.get(null))
+    else
+      assertThrows(classOf[NullPointerException], mp.get(null))
   }
 
   @Test def testSizeGetPutWithStringsLargeMap(): Unit = {
@@ -199,6 +201,8 @@ trait MapTest {
     assertNull(mp.remove(testObj(42)))
     if (factory.allowsNullKeys)
       assertNull(mp.remove(null))
+    else
+      assertThrows(classOf[NullPointerException], mp.remove(null))
   }
 
   @Test def testRemoveWithInts(): Unit = {
@@ -1200,6 +1204,13 @@ trait MapTest {
       mp.put("nullable", null)
       assertNull(mp.putIfAbsent("nullable", "non null"))
       assertEquals("non null", mp.get("nullable"))
+    } else {
+      assertThrows(classOf[NullPointerException], mp.putIfAbsent("abc", null))
+      assertThrows(classOf[NullPointerException], mp.putIfAbsent("new key", null))
+    }
+
+    if (!factory.allowsNullKeys) {
+      assertThrows(classOf[NullPointerException], mp.putIfAbsent(null, "def"))
     }
   }
 
@@ -1217,12 +1228,44 @@ trait MapTest {
     assertTrue(mp.remove("ONE", "one"))
     assertFalse(mp.containsKey("ONE"))
 
+    if (factory.allowsNullKeys) {
+      mp.put(null, "one")
+      assertFalse(mp.remove(null, "not exist"))
+      assertTrue(mp.containsKey(null))
+      assertTrue(mp.remove(null, "one"))
+      assertFalse(mp.containsKey(null))
+    } else {
+      assertThrows(classOf[NullPointerException], mp.remove(null, "old value"))
+    }
+
     if (factory.allowsNullValues) {
       mp.put("nullable", null)
       assertFalse(mp.remove("nullable", "value"))
       assertTrue(mp.containsKey("nullable"))
       assertTrue(mp.remove("nullable", null))
       assertFalse(mp.containsKey("nullable"))
+    } else {
+      // mp#(key, null) should not remove. https://bugs.java.com/bugdatabase/view_bug.do?bug_id=6272521
+      assertFalse(mp.remove("THREE", null))
+    }
+  }
+
+  @Test def testUnconditionalRemove(): Unit = {
+    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+
+    assertEquals(null, mp.remove("non existing"))
+    assertFalse(mp.containsKey("non existing"))
+
+    assertEquals("two", mp.remove("TWO"))
+    assertEquals(null, mp.get("TWO"))
+
+    if (factory.allowsNullKeys) {
+      mp.put(null, "one")
+      assertTrue(mp.containsKey(null))
+      assertEquals("one", mp.remove(null))
+      assertFalse(mp.containsKey(null))
+    } else {
+      assertThrows(classOf[NullPointerException], mp.remove(null))
     }
   }
 
@@ -1251,6 +1294,17 @@ trait MapTest {
     } else {
       assertThrows(classOf[NullPointerException], mp.replace("ONE", null, "one"))
       assertThrows(classOf[NullPointerException], mp.replace("ONE", "four", null))
+    }
+
+    if (factory.allowsNullKeys) {
+      assertFalse(null, mp.replace(null, "value", "new value"))
+      assertFalse(mp.containsKey(null))
+
+      mp.put(null, "null value")
+      assertTrue(mp.replace(null, "null value", "new value"))
+      assertEquals("new value", mp.get(null))
+    } else {
+      assertThrows(classOf[NullPointerException], mp.replace(null, "one", "two"))
     }
   }
 
@@ -1418,6 +1472,15 @@ trait MapTest {
       assertEquals("def", mp.merge("nullable", "def", notCalled))
       assertEquals("def", mp.get("nullable"))
     }
+  }
+
+  @Test def additionToKeySet(): Unit = {
+    val set = factory.empty[String, String].keySet()
+
+    expectThrows(classOf[UnsupportedOperationException], set.add("ONE"))
+    expectThrows(classOf[UnsupportedOperationException], set.addAll(ju.Arrays.asList("ONE")))
+    expectThrows(classOf[UnsupportedOperationException], set.addAll(ju.Arrays.asList(null)))
+    expectThrows(classOf[UnsupportedOperationException], set.add(null))
   }
 }
 
