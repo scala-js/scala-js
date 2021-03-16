@@ -61,8 +61,16 @@ class ConcurrentHashMap[K, V] private (initialCapacity: Int, loadFactor: Float)
   override def clear(): Unit =
     inner.clear()
 
-  override def keySet(): ConcurrentHashMap.KeySetView[K, V] =
-    new ConcurrentHashMap.KeySetView[K, V](inner.keySet())
+  override def keySet(): ConcurrentHashMap.KeySetView[K, V] = {
+    // Allow null as sentinel
+    new ConcurrentHashMap.KeySetView[K, V](this.inner, null.asInstanceOf[V])
+  }
+
+  def keySet(mappedValue: V): ConcurrentHashMap.KeySetView[K, V] = {
+    if (mappedValue == null)
+      throw new NullPointerException()
+    new ConcurrentHashMap.KeySetView[K, V](this.inner, mappedValue)
+  }
 
   override def values(): Collection[V] =
     inner.values()
@@ -198,39 +206,56 @@ object ConcurrentHashMap {
     }
   }
 
-  /* `KeySetView` is a public class in the JDK API. The result of
-   * `ConcurrentHashMap.keySet()` must be statically typed as a `KeySetView`,
-   * hence the existence of this class, although it forwards all its operations
-   * to the inner key set.
-   */
-  class KeySetView[K, V] private[ConcurrentHashMap] (inner: Set[K])
+  class KeySetView[K, V] private[ConcurrentHashMap] (innerMap: InnerHashMap[K, V], defaultValue: V)
       extends Set[K] with Serializable {
 
-    def contains(o: Any): Boolean = inner.contains(o)
+    def getMappedValue(): V = defaultValue
 
-    def remove(o: Any): Boolean = inner.remove(o)
+    def contains(o: Any): Boolean = innerMap.containsKey(o)
 
-    def iterator(): Iterator[K] = inner.iterator()
+    def remove(o: Any): Boolean = innerMap.remove(o) != null
 
-    def size(): Int = inner.size()
+    def iterator(): Iterator[K] = innerMap.keySet().iterator()
 
-    def isEmpty(): Boolean = inner.isEmpty()
+    def size(): Int = innerMap.size()
 
-    def toArray(): Array[AnyRef] = inner.toArray()
+    def isEmpty(): Boolean = innerMap.isEmpty()
 
-    def toArray[T <: AnyRef](a: Array[T]): Array[T] = inner.toArray[T](a)
+    def toArray(): Array[AnyRef] = innerMap.keySet().toArray()
 
-    def add(e: K): Boolean = inner.add(e)
+    def toArray[T <: AnyRef](a: Array[T]): Array[T] = innerMap.keySet().toArray(a)
 
-    def containsAll(c: Collection[_]): Boolean = inner.containsAll(c)
+    def add(e: K): Boolean = {
+      if (defaultValue == null) {
+        throw new UnsupportedOperationException()
+      }
+      innerMap.putIfAbsent(e, defaultValue) == null
+    }
 
-    def addAll(c: Collection[_ <: K]): Boolean = inner.addAll(c)
+    def containsAll(c: Collection[_]): Boolean = innerMap.keySet().containsAll(c)
 
-    def removeAll(c: Collection[_]): Boolean = inner.removeAll(c)
+    def addAll(c: Collection[_ <: K]): Boolean = {
+      if (defaultValue == null) {
+        throw new UnsupportedOperationException()
+      }
+      val iter = c.iterator()
+      var changed = false
+      while (iter.hasNext())
+        changed = innerMap.putIfAbsent(iter.next(), defaultValue) == null || changed
+      changed
+    }
 
-    def retainAll(c: Collection[_]): Boolean = inner.retainAll(c)
+    def removeAll(c: Collection[_]): Boolean = innerMap.keySet().removeAll(c)
 
-    def clear(): Unit = inner.clear()
+    def retainAll(c: Collection[_]): Boolean = innerMap.keySet().retainAll(c)
+
+    def clear(): Unit = innerMap.clear()
   }
 
+  def newKeySet[K](): KeySetView[K, Boolean] = newKeySet[K](HashMap.DEFAULT_INITIAL_CAPACITY)
+
+  def newKeySet[K](initialCapacity: Int): KeySetView[K, Boolean] = {
+    val inner = new InnerHashMap[K, Boolean](initialCapacity, HashMap.DEFAULT_LOAD_FACTOR)
+    new KeySetView[K, Boolean](inner, true)
+  }
 }

@@ -194,6 +194,27 @@ class ConcurrentHashMapTest extends MapTest {
         assertTrue(s"missing value '$value'", encounteredValues.contains(value))
     }
   }
+
+  @Test def keySetWithNullMappedValue(): Unit = {
+    val map = factory.empty[String, String]
+    assertThrows(classOf[NullPointerException], map.keySet(null))
+  }
+
+  @Test def addOnKeySetView(): Unit = {
+    val map = factory.empty[String, Int]
+    val keySet = map.keySet(0)
+    assertNull(map.get("ONE"))
+    assertTrue(keySet.add("ONE"))
+    assertEquals("Adding a new key adds the default value.", 0, map.get("ONE"))
+
+    assertFalse(keySet.add("ONE"))
+
+    assertEquals(0, map.put("ONE", 42))
+    assertEquals("Putting alters the value", 42, map.get("ONE"))
+
+    assertFalse(keySet.add("ONE"))
+    assertEquals("Adding an existing key does not alter the value", 42, map.get("ONE"))
+  }
 }
 
 class ConcurrentHashMapFactory extends ConcurrentMapFactory {
