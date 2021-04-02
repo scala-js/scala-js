@@ -109,6 +109,26 @@ class AtomicTest {
     assertSame(thing2, atomic.get())
   }
 
+  @Test def atomicReferenceCompareAndExchangeTest(): Unit = {
+    val atomic = new java.util.concurrent.atomic.AtomicReference(1)
+
+    // doesn't replace if the expected value is incorrect, returns actual value
+    assertSame(atomic.compareAndExchange(2,10), 1)
+    assertSame(atomic.get(), 1)
+
+    // replaces if the expected value is correct, returns the expected value
+    assertSame(atomic.compareAndExchange(1,10), 1)
+    assertSame(atomic.get(), 10)
+  }
+
+  @Test def atomicReferenceUpdateTest(): Unit = {
+    val atomic = new java.util.concurrent.atomic.AtomicReference(1)
+
+    assertSame(atomic.updateAndGet(_ + 1), 2)
+    assertSame(atomic.getAndUpdate(_ + 1), 2)
+    assertSame(atomic.get(), 3)
+  }
+
   @Test def atomicReferenceArrayTest(): Unit = {
     val thing1 = Foo(5)
     val thing1bis = Foo(5) // equals(), but not the same reference

@@ -12,6 +12,9 @@
 
 package java.util.concurrent.atomic
 
+import java.util.function.UnaryOperator
+
+
 class AtomicReference[T <: AnyRef](
     private[this] var value: T) extends Serializable {
 
@@ -39,6 +42,25 @@ class AtomicReference[T <: AnyRef](
     val old = value
     value = newValue
     old
+  }
+
+  final def getAndUpdate(f: UnaryOperator[T]): T = {
+    val old = value
+    value = f(value)
+    old
+  }
+
+  final def updateAndGet(f: UnaryOperator[T]): T = {
+    value = f(value)
+    value
+  }
+
+  final def compareAndExchange(expect: T, update: T): T = {
+    if (expect ne value) value
+    else {
+      value = update
+      expect
+    }
   }
 
   override def toString(): String =
