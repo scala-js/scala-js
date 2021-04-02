@@ -170,6 +170,42 @@ class AtomicTest {
     initArray(0) = c
     assertEquals(a, atomic2.get(0))
   }
+
+  @Test def atomicIntegerArrayTest(): Unit = {
+    val a = 7
+    val b = 17
+    val c = 177
+
+    val atomic = new java.util.concurrent.atomic.AtomicIntegerArray(2)
+    assertEquals(2, atomic.length)
+    assertEquals(0, atomic.get(0))
+    atomic.set(0, a)
+    assertEquals(a, atomic.get(0))
+    atomic.set(1, b)
+    assertEquals(b, atomic.get(1))
+    assertFalse(atomic.compareAndSet(0, b, a))
+    assertEquals(a, atomic.get(0))
+    assertTrue(atomic.compareAndSet(1, b, a))
+    assertEquals(a, atomic.get(1))
+    assertFalse(atomic.compareAndSet(1, c, b))
+    assertEquals(a, atomic.getAndSet(1, b))
+    assertEquals(b, atomic.get(1))
+    assertEquals(b, atomic.getAndIncrement(1))
+    assertEquals(b + 1, atomic.get(1))
+    assertEquals(b + 2, atomic.incrementAndGet(1))
+    assertEquals(b + 2, atomic.getAndDecrement(1))
+    assertEquals(b, atomic.decrementAndGet(1))
+    assertEquals(a, atomic.getAndAdd(0, 2))
+    assertEquals(a + 2, atomic.get(0))
+    assertEquals(a, atomic.addAndGet(0, -2))
+
+    val initArray = Array(a, b)
+    val atomic2 = new java.util.concurrent.atomic.AtomicIntegerArray(initArray)
+    assertEquals(a, atomic2.get(0))
+    assertEquals(b, atomic2.get(1))
+    initArray(0) = c
+    assertEquals(a, atomic2.get(0))
+  }
 }
 
 case class Foo(i: Int)
