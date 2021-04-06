@@ -15,7 +15,7 @@ package scala.scalajs.js
 import scala.scalajs.js
 import scala.scalajs.js.annotation.JSGlobal
 
-/** <span class="badge badge-ecma2019" style="float: right;">ECMAScript 2019</span>
+/** <span class="badge badge-ecma2020" style="float: right;">ECMAScript 2020</span>
  *
  *  A built-in object that provides a way to represent whole numbers larger than
  *  2 ^ 53 - 1, which is the largest number JavaScript can reliably represent
@@ -73,7 +73,7 @@ final class BigInt private[this] () extends js.Object {
 }
 
 
-/** <span class="badge badge-ecma2019" style="float: right;">ECMAScript 2019</span>
+/** <span class="badge badge-ecma2020" style="float: right;">ECMAScript 2020</span>
  *
  *  A companion object of BigInt class.
  *

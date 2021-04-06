@@ -14,7 +14,7 @@ package scala.scalajs.js
 
 import scala.scalajs.js
 
-/** <span class="badge badge-ecma2019" style="float: right;">ECMAScript 2019</span>
+/** <span class="badge badge-ecma2020" style="float: right;">ECMAScript 2020</span>
  *  Dynamic `import(specifier)`.
  *
  *  This is an object rather than a simple `def` to reserve the possibility to
@@ -22,7 +22,7 @@ import scala.scalajs.js
  *  meta-property of ECMAScript (still being specified).
  */
 object `import` { // scalastyle:ignore
-  /** <span class="badge badge-ecma2019" style="float: right;">ECMAScript 2019</span>
+  /** <span class="badge badge-ecma2020" style="float: right;">ECMAScript 2020</span>
    *  Dynamic `import(specifier)`.
    */
   def apply[A <: js.Any](specifier: String): js.Promise[A] =
