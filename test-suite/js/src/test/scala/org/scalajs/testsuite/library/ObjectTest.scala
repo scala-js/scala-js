@@ -15,10 +15,12 @@ package org.scalajs.testsuite.library
 import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.Test
-import org.scalajs.testsuite.utils.Platform
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.{ JSBracketAccess, JSName }
+import scala.scalajs.LinkingInfo.ESVersion
+
+import org.scalajs.testsuite.utils.Platform._
 
 class ObjectTest {
   import ObjectTest._
@@ -27,9 +29,7 @@ class ObjectTest {
   private lazy val symB = js.Symbol.forKey("b")
 
   @Test def getOwnPropertySymbols(): Unit = {
-    assumeTrue(
-        "Symbol is not defined (should only happen with NodeJSEnvForcePolyfills)",
-        js.typeOf(js.Dynamic.global.Symbol) != "undefined")
+    assumeTrue("requires Symbols", jsSymbols)
 
     val obj = (new js.Object()).asInstanceOf[ObjectCreator]
     obj(symA) = "localSymbol"
@@ -39,8 +39,8 @@ class ObjectTest {
   }
 
   @Test def is(): Unit = {
-    assumeTrue(
-        "Object.is is not defined (should only happen with NodeJSEnvForcePolyfills)",
+    assumeTrue("requires Object.is",
+        assumedESVersion >= ESVersion.ES2015 ||
         js.typeOf(js.Dynamic.global.Object.is) != "undefined")
 
     val a = new js.Object()
@@ -56,6 +56,10 @@ class ObjectTest {
   }
 
   @Test def entriesFromObject(): Unit = {
+    assumeTrue("requires Object.entries",
+        assumedESVersion >= ESVersion.ES2017 ||
+        js.typeOf(js.Dynamic.global.Object.entries) != "undefined")
+
     val obj = new js.Object {
       val a = 42
       val b = "foo"
@@ -73,6 +77,10 @@ class ObjectTest {
   }
 
   @Test def entriesFromDictionary(): Unit = {
+    assumeTrue("requires Object.entries",
+        assumedESVersion >= ESVersion.ES2017 ||
+        js.typeOf(js.Dynamic.global.Object.entries) != "undefined")
+
     val dict = js.Dictionary[Int]("a" -> 42, "b" -> 0)
     val entries = js.Object.entries(dict)
     assertEquals(2, entries.length)
@@ -89,6 +97,10 @@ class ObjectTest {
   }
 
   @Test def fromEntriesArray(): Unit = {
+    assumeTrue("requires Object.fromEntries",
+        assumedESVersion >= ESVersion.ES2020 ||
+        js.typeOf(js.Dynamic.global.Object.fromEntries) != "undefined")
+
     // from Array
     val array = js.Array(js.Tuple2("a", 42), js.Tuple2("b", "foo"))
     val obj1 = js.Object.fromEntries(array)
@@ -97,7 +109,11 @@ class ObjectTest {
   }
 
   @Test def fromEntriesJSMap(): Unit = {
-    assumeTrue("requires js.Map", Platform.jsMaps)
+    assumeTrue("requires Object.fromEntries",
+        assumedESVersion >= ESVersion.ES2020 ||
+        js.typeOf(js.Dynamic.global.Object.fromEntries) != "undefined")
+
+    assumeTrue("requires js.Map", jsMaps)
 
     val map = js.Map("a" -> 42, "b" -> "foo")
     val obj = js.Object.fromEntries(map)

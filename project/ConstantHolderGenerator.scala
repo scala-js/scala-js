@@ -36,6 +36,7 @@ object ConstantHolderGenerator {
   private final def literal(v: Any): String = v match {
     case s: String  => "\"" + escapeJS(s) + "\"" // abuse escapeJS to escape Scala
     case b: Boolean => b.toString
+    case i: Int     => i.toString
     case f: File    => literal(f.getAbsolutePath)
 
     case m: Map[_, _] =>

@@ -64,9 +64,22 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
 
   override def injectedIRFiles: Seq[IRFile] = emitter.injectedIRFiles
 
-  private val languageMode =
-    if (esFeatures.useECMAScript2015) ClosureOptions.LanguageMode.ECMASCRIPT_2015
-    else ClosureOptions.LanguageMode.ECMASCRIPT5_STRICT
+  private val languageMode: ClosureOptions.LanguageMode = {
+    import ClosureOptions.LanguageMode._
+
+    esFeatures.esVersion match {
+      case ESVersion.ES5_1  => ECMASCRIPT5_STRICT
+      case ESVersion.ES2015 => ECMASCRIPT_2015
+      case ESVersion.ES2016 => ECMASCRIPT_2016
+      case ESVersion.ES2017 => ECMASCRIPT_2017
+      case ESVersion.ES2018 => ECMASCRIPT_2018
+      case ESVersion.ES2019 => ECMASCRIPT_2019
+      case ESVersion.ES2020 => ECMASCRIPT_2020
+
+      case _ =>
+        throw new AssertionError(s"Unknown ES version ${esFeatures.esVersion}")
+    }
+  }
 
   /** Emit the given [[standard.ModuleSet ModuleSet]] to the target output.
    *

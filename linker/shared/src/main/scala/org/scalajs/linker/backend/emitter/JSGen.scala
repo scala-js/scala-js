@@ -15,6 +15,7 @@ package org.scalajs.linker.backend.emitter
 import org.scalajs.ir.Position
 
 import org.scalajs.linker.backend.javascript.Trees._
+import org.scalajs.linker.interface.ESVersion
 
 /** Collection of tree generators that are used across the board.
  *  This class is fully stateless.
@@ -28,7 +29,7 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
   /** Should we use ECMAScript classes for JavaScript classes and Throwable
    *  classes?
    *
-   *  This is true iff `useECMAScript2015` is true, independently of
+   *  This is true iff `useECMAScript2015Semantics` is true, independently of
    *  [[org.scalajs.linker.interface.ESFeatures.avoidClasses ESFeatures.avoidClasses]].
    *
    *  We must emit classes for JavaScript classes for semantics reasons:
@@ -39,7 +40,7 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
    *  proper JavaScript error classes, which gives them better support in
    *  debuggers.
    */
-  val useClassesForJSClassesAndThrowables = esFeatures.useECMAScript2015
+  val useClassesForJSClassesAndThrowables = esFeatures.useECMAScript2015Semantics
 
   /** Should we use ECMAScript classes for non-Throwable Scala classes?
    *
@@ -54,17 +55,16 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
   val useClassesForRegularClasses =
     useClassesForJSClassesAndThrowables && !esFeatures.avoidClasses
 
-  val useArrowFunctions = esFeatures.useECMAScript2015
-
   /** Should we emit `let`s and `const`s for all internal variables?
    *
    *  See [[org.scalajs.linker.interface.ESFeatures.avoidLetsAndConsts ESFeatures.avoidLetsAndConsts]]
    *  for a rationale.
    *
    *  Note: top-level exports in Script (`NoModule`) mode are always
-   *  emitted as `let`s under ECMAScript 2015, for semantics.
+   *  emitted as `let`s under ECMAScript 2015 semantics, irrespective of this
+   *  value.
    */
-  val useLets = esFeatures.useECMAScript2015 && !esFeatures.avoidLetsAndConsts
+  val useLets = esFeatures.esVersion >= ESVersion.ES2015 && !esFeatures.avoidLetsAndConsts
 
   def genConst(name: Ident, rhs: Tree)(implicit pos: Position): LocalDef =
     genLet(name, mutable = false, rhs)
@@ -114,9 +114,16 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
       BracketSelect(qual, StringLiteral(item))
   }
 
+  /** Generates an arrow function if supported by the ES version.
+   *
+   *  This is independent of the ECMAScript 2015 *semantics*. This method must
+   *  not be used for closures that are *specified* to be arrow functions in
+   *  ES 2015 but `function`s in ES 5.1 semantics. In other words, it must not
+   *  be used to compile `ir.Trees.Closure`s.
+   */
   def genArrowFunction(args: List[ParamDef], restParam: Option[ParamDef], body: Tree)(
       implicit pos: Position): Function = {
-    Function(useArrowFunctions, args, restParam, body)
+    Function(esFeatures.esVersion >= ESVersion.ES2015, args, restParam, body)
   }
 
   def genDefineProperty(obj: Tree, prop: Tree, descriptor: List[(String, Tree)])(

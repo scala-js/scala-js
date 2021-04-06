@@ -51,6 +51,8 @@ object ExposedValues extends AutoPlugin {
 
     val CheckedBehavior = org.scalajs.linker.interface.CheckedBehavior
 
+    val ESVersion = org.scalajs.linker.interface.ESVersion
+
     val ModuleSplitStyle = org.scalajs.linker.interface.ModuleSplitStyle
 
     type NodeJSEnvForcePolyfills = build.NodeJSEnvForcePolyfills
@@ -2006,7 +2008,8 @@ object Build {
               "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
               "strictFloats" -> sems.strictFloats,
               "productionMode" -> sems.productionMode,
-              "es2015" -> linkerConfig.esFeatures.useECMAScript2015
+              "esVersion" -> linkerConfig.esFeatures.esVersion.edition,
+              "useECMAScript2015Semantics" -> linkerConfig.esFeatures.useECMAScript2015Semantics,
           )
         }.taskValue
       },

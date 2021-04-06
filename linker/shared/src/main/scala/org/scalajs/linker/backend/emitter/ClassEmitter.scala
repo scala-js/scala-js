@@ -448,7 +448,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           if (semantics.productionMode) Nil
           else js.StringLiteral(description) :: Nil
 
-        if (esFeatures.useECMAScript2015)
+        if (esFeatures.esVersion >= ESVersion.ES2015)
           js.Apply(js.VarRef(js.Ident("Symbol")), args)
         else
           genCallHelper("privateJSFieldSymbol", args: _*)

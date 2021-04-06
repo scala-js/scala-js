@@ -13,8 +13,9 @@
 package java.lang
 
 import scala.scalajs.js
-import js.Dynamic.global
-import js.typedarray
+import scala.scalajs.js.Dynamic.global
+import scala.scalajs.js.typedarray
+import scala.scalajs.LinkingInfo.ESVersion
 
 /** Manipulating the bits of floating point numbers. */
 private[lang] object FloatingPointBits {
@@ -22,8 +23,8 @@ private[lang] object FloatingPointBits {
   import scala.scalajs.runtime.linkingInfo
 
   private[this] val _areTypedArraysSupported = {
-    // Here we use `assumingES6` to dce the 4 subsequent tests
-    linkingInfo.assumingES6 || {
+    // Here we use the `esVersion` test to dce the 4 subsequent tests
+    linkingInfo.esVersion >= ESVersion.ES2015 || {
       js.typeOf(global.ArrayBuffer) != "undefined" &&
       js.typeOf(global.Int32Array) != "undefined" &&
       js.typeOf(global.Float32Array) != "undefined" &&
@@ -35,13 +36,13 @@ private[lang] object FloatingPointBits {
   private def areTypedArraysSupported: scala.Boolean = {
     /* We have a forwarder to the internal `val _areTypedArraysSupported` to
      * be able to inline it. This achieves the following:
-     * * If we emit ES6, dce `|| _areTypedArraysSupported` and replace
+     * * If we emit ES2015+, dce `|| _areTypedArraysSupported` and replace
      *   `areTypedArraysSupported` by `true` in the calling code, allowing
      *   polyfills in the calling code to be dce'ed in turn.
      * * If we emit ES5, replace `areTypedArraysSupported` by
      *   `_areTypedArraysSupported` so we do not calculate it multiple times.
      */
-    linkingInfo.assumingES6 || _areTypedArraysSupported
+    linkingInfo.esVersion >= ESVersion.ES2015 || _areTypedArraysSupported
   }
 
   private val arrayBuffer =

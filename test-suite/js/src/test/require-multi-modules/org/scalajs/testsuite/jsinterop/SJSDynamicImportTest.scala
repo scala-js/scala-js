@@ -16,7 +16,6 @@ import scala.concurrent.Future
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
-import scala.scalajs.LinkingInfo
 
 import org.junit.Assert._
 import org.junit.Assume._
@@ -24,10 +23,13 @@ import org.junit.{BeforeClass, Test}
 
 import org.scalajs.junit.async._
 
+import org.scalajs.testsuite.utils.Platform._
+
 object SJSDynamicImportTest {
   @BeforeClass
   def assumeRuntimeSupportsPromise(): Unit = {
-    assumeTrue("Assume ES6", LinkingInfo.assumingES6)
+    assumeTrue("Requires Promises",
+        assumeES2015 || js.typeOf(js.Dynamic.global.Promise) != "undefined")
   }
 }
 

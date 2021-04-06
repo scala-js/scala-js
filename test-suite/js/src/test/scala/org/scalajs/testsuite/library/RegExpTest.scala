@@ -13,9 +13,12 @@
 package org.scalajs.testsuite.library
 
 import org.junit.Assert._
+import org.junit.Assume._
 import org.junit.Test
 
 import scala.scalajs.js
+
+import org.scalajs.testsuite.utils.Platform.jsRegExps2018
 
 class RegExpTest {
   @Test def execNoGroup(): Unit = {
@@ -32,6 +35,8 @@ class RegExpTest {
   }
 
   @Test def execWithGroupNoMatch(): Unit = {
+    assumeTrue("requires named capture groups in js.RegExp", jsRegExps2018)
+
     val result = js.RegExp("(?<year>[0-9]{4})-(?<month>[0-9]{2})-(?<day>[0-9]{2})")
       .exec("abc")
 
@@ -39,6 +44,8 @@ class RegExpTest {
   }
 
   @Test def execWithGroupMatch(): Unit = {
+    assumeTrue("requires named capture groups in js.RegExp", jsRegExps2018)
+
     val result = js.RegExp("(?<year>[0-9]{4})-(?<month>[0-9]{2})-(?<day>[0-9]{2})")
       .exec("1992-12-31")
 
@@ -57,6 +64,8 @@ class RegExpTest {
   }
 
   @Test def execWithOptGroupMatch(): Unit = {
+    assumeTrue("requires named capture groups in js.RegExp", jsRegExps2018)
+
     val result = js.RegExp("foo(?<prop>bar)?baz")
       .exec("foobaz")
 

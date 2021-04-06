@@ -88,7 +88,7 @@ final class Emitter(config: Emitter.Config) {
 
         val header = {
           val maybeTopLevelVarDecls = if (topLevelVars.nonEmpty) {
-            val kw = if (esFeatures.useECMAScript2015) "let " else "var "
+            val kw = if (esFeatures.useECMAScript2015Semantics) "let " else "var "
             topLevelVars.mkString(kw, ",", ";\n")
           } else {
             ""

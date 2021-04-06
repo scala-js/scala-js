@@ -41,8 +41,8 @@ class StandardConfigFingerprintTest {
 
   @Test
   def noFingerprintCollisionESFeatures(): Unit = {
-    val sc1 = StandardConfig().withESFeatures(_.withUseECMAScript2015(true))
-    val sc2 = StandardConfig().withESFeatures(_.withUseECMAScript2015(false))
+    val sc1 = StandardConfig().withESFeatures(_.withESVersion(ESVersion.ES2015))
+    val sc2 = StandardConfig().withESFeatures(_.withESVersion(ESVersion.ES5_1))
     assertFingerprintsNotEquals(sc1, sc2)
   }
 
