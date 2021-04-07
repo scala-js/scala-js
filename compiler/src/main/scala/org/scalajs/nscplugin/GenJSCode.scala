@@ -5437,9 +5437,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
        * This is pretty fragile, but fortunately we have a huge test suite to
        * back us up should scalac alter its behavior.
        *
-       * Anonymous JS classes are excluded for this treatment, since they are
-       * instantiated in a completely different way.
-       *
        * In addition, for actual parameters that we keep, we have to look back
        * in time to see whether they were repeated and what was their type.
        *
@@ -5448,9 +5445,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
        *     class constructors. Indeed, such methods would have started their
        *     life as local defs, which are not exposed.
        */
-
-      val isAnonJSClassConstructor =
-        sym.isClassConstructor && isAnonymousJSClass(sym.owner)
 
       val wereRepeated = enteringPhase(currentRun.uncurryPhase) {
         for {
@@ -5469,11 +5463,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       var reversedArgs: List[js.TreeOrJSSpread] = Nil
 
       for ((arg, paramSym) <- args zip sym.tpe.params) {
-        val wasRepeated =
-          if (isAnonJSClassConstructor) Some(false)
-          else wereRepeated.get(paramSym.name)
-
-        wasRepeated match {
+        wereRepeated.get(paramSym.name) match {
           case Some(true) =>
             reversedArgs =
               genPrimitiveJSRepeatedParam(arg) reverse_::: reversedArgs
