@@ -1478,11 +1478,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
       /** Extract a definition of the lhs if it is a VarDef, to avoid changing
        *  its scope.
-       *  This only matters in ECMAScript 6, because we emit Lets.
+       *  This only matters when we emit lets and consts.
        */
       def extractLet(inner: Lhs => js.Tree)(
           implicit env: Env): js.Tree = {
-        if (esFeatures.useECMAScript2015) {
+        if (useLets) {
           lhs match {
             case Lhs.VarDef(name, tpe, mutable) =>
               js.Block(
