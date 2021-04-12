@@ -425,6 +425,50 @@ class NestedJSClassTest {
     assertEquals("InnerJSClass(5) of issue 4086", obj.toString())
   }
 
+  @Test def defaultCtorParamsInnerJSClassScalaContainer_Issue4465(): Unit = {
+    val container = new ScalaClassContainer("container")
+
+    val inner = new container.InnerJSClassDefaultParams_Issue4465()()
+    assertEquals("container inner inner foo", inner.foo())
+
+    assertEquals(1, container.moduleSideEffect)
+
+    // Check that we do not create two companion modules.
+    new container.InnerJSClassDefaultParams_Issue4465()()
+    assertEquals(1, container.moduleSideEffect)
+  }
+
+  @Test def defaultCtorParamsInnerJSClassTraitContainer_Issue4465(): Unit = {
+    val container = new ScalaTraitContainerSubclass("container")
+
+    val inner = new container.InnerJSClassDefaultParams_Issue4465()()
+    assertEquals("container inner inner foo", inner.foo())
+
+    assertEquals(1, container.moduleSideEffect)
+
+    // Check that we do not create two companion modules.
+    new container.InnerJSClassDefaultParams_Issue4465()()
+    assertEquals(1, container.moduleSideEffect)
+  }
+
+  @Test def defaultCtorParamsInnerJSClassJSContainer_Issue4465(): Unit = {
+    val container = new JSClassContainer("container")
+
+    // Typed
+    val inner = new container.InnerJSClassDefaultParams_Issue4465()()
+    assertEquals("container inner inner foo", inner.foo())
+
+    assertEquals(1, container.moduleSideEffect)
+
+    // Dynamic
+    val dynContainer = container.asInstanceOf[js.Dynamic]
+    val dynInner = js.Dynamic.newInstance(dynContainer.InnerJSClassDefaultParams_Issue4465)()
+    assertEquals("container inner inner foo", dynInner.foo())
+
+    // Check that we do not create two companion modules.
+    assertEquals(1, container.moduleSideEffect)
+  }
+
   @Test def doublyNestedInnerObject_Issue4114(): Unit = {
     val outer1 = new DoublyNestedInnerObject_Issue4114().asInstanceOf[js.Dynamic]
     val outer2 = new DoublyNestedInnerObject_Issue4114().asInstanceOf[js.Dynamic]
@@ -640,6 +684,18 @@ object NestedJSClassTest {
 
       js.constructorOf[LocalJSClass]
     }
+
+    var moduleSideEffect = 0
+
+    class InnerJSClassDefaultParams_Issue4465(withDefault: String = "inner")(
+        dependentDefault: String = withDefault) extends js.Object {
+      def foo(methodDefault: String = "foo"): String =
+        s"$xxx $withDefault $dependentDefault $methodDefault"
+    }
+
+    object InnerJSClassDefaultParams_Issue4465 {
+      moduleSideEffect += 1
+    }
   }
 
   trait ScalaTraitContainer {
@@ -662,6 +718,18 @@ object NestedJSClassTest {
       }
 
       js.constructorOf[LocalJSClass]
+    }
+
+    var moduleSideEffect = 0
+
+    class InnerJSClassDefaultParams_Issue4465(withDefault: String = "inner")(
+        dependentDefault: String = withDefault) extends js.Object {
+      def foo(methodDefault: String = "foo"): String =
+        s"$xxx $withDefault $dependentDefault $methodDefault"
+    }
+
+    object InnerJSClassDefaultParams_Issue4465 {
+      moduleSideEffect += 1
     }
   }
 
@@ -758,6 +826,19 @@ object NestedJSClassTest {
 
     // Not visible from JS, but can be instantiated from Scala.js code
     class InnerScalaClass(val zzz: Int)
+
+    var moduleSideEffect = 0
+
+    class InnerJSClassDefaultParams_Issue4465(withDefault: String = "inner")(
+        dependentDefault: String = withDefault) extends js.Object {
+      def foo(methodDefault: String = "foo"): String =
+        s"$xxx $withDefault $dependentDefault $methodDefault"
+    }
+
+    @JSName("InnerJSClassDefaultParamsOtherName_Issue4465")
+    object InnerJSClassDefaultParams_Issue4465 {
+      moduleSideEffect += 1
+    }
   }
 
   class DoublyNestedInnerObject_Issue4114 extends js.Object {
