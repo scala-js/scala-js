@@ -15,7 +15,6 @@ package org.scalajs.testsuite.javalib.lang
 import org.scalajs.testsuite.utils.Platform
 
 import scala.scalajs.js
-import scala.scalajs.LinkingInfo.assumingES6
 import scala.scalajs.runtime.linkingInfo
 
 import org.junit.Test
@@ -44,7 +43,7 @@ class SystemJSTest {
   }
 
   @Test def identityHashCodeForJSObjects(): Unit = {
-    if (assumingES6 || js.typeOf(js.Dynamic.global.WeakMap) != "undefined") {
+    if (Platform.assumeES2015 || js.typeOf(js.Dynamic.global.WeakMap) != "undefined") {
       /* This test is more restrictive than the spec, but we know our
        * implementation will always pass the test.
        */

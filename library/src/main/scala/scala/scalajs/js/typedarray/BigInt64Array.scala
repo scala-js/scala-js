@@ -15,7 +15,7 @@ package scala.scalajs.js.typedarray
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
-/** <span class="badge badge-ecma2019" style="float: right;">ECMAScript 2019</span>
+/** <span class="badge badge-ecma2020" style="float: right;">ECMAScript 2020</span>
  *
  *  A [[TypedArray]] of signed 64-bit integers represented as [[js.BigInt]].
  */
@@ -43,7 +43,7 @@ class BigInt64Array private[this] () extends TypedArray[js.BigInt, BigInt64Array
 
 }
 
-/** <span class="badge badge-ecma2019" style="float: right;">ECMAScript 2019</span>
+/** <span class="badge badge-ecma2020" style="float: right;">ECMAScript 2020</span>
  *  [[BigInt64Array]] companion
  */
 @js.native

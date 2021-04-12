@@ -13,11 +13,12 @@
 package org.scalajs.testsuite.javalib.lang
 
 import scala.scalajs.js
-import scala.scalajs.LinkingInfo.assumingES6
 
 import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
+
+import org.scalajs.testsuite.utils.Platform._
 
 class ThrowableJSTest {
 
@@ -27,7 +28,7 @@ class ThrowableJSTest {
   }
 
   @Test def throwablesAreTrueErrors(): Unit = {
-    assumeTrue("Requires ECMAScript 2015", assumingES6)
+    assumeTrue("Requires ECMAScript 2015 semantics", useECMAScript2015Semantics)
 
     def coreToString(x: Any): String = {
       js.constructorOf[js.Object].prototype

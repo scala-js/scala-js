@@ -23,7 +23,7 @@ import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees.{JSUnaryOp, JSBinaryOp}
 import org.scalajs.ir.Types._
 
-import org.scalajs.linker.interface.{CheckedBehavior, ModuleKind}
+import org.scalajs.linker.interface.{CheckedBehavior, ESVersion, ModuleKind}
 import org.scalajs.linker.interface.unstable.RuntimeClassNameMapperImpl
 import org.scalajs.linker.backend.javascript.Trees._
 
@@ -156,7 +156,8 @@ private[emitter] object CoreJSLib {
         Apply(genIdentBracketSelect(ObjectRef, "freeze"), tree :: Nil)
 
       val linkingInfo = objectFreeze(ObjectConstr(List(
-          str("assumingES6") -> bool(useECMAScript2015),
+          str("esVersion") -> int(esVersion.edition),
+          str("assumingES6") -> bool(useECMAScript2015Semantics), // different name for historical reasons
           str("productionMode") -> bool(productionMode),
           str("linkerVersion") -> str(ScalaJSVersions.current),
           str("fileLevelThis") -> This()
@@ -460,13 +461,13 @@ private[emitter] object CoreJSLib {
         List("imul", "fround", "clz32").map { builtinName =>
           val rhs0 = genIdentBracketSelect(MathRef, builtinName)
           val rhs =
-            if (useECMAScript2015) rhs0
+            if (esVersion >= ESVersion.ES2015) rhs0
             else rhs0 || genPolyfillFor(builtinName)
           extractWithGlobals(globalVarDef(builtinName, CoreVar, rhs))
         }
       )
 
-      val es5Compat = condTree(!useECMAScript2015)(Block(
+      val es5Compat = condTree(esVersion < ESVersion.ES2015)(Block(
         extractWithGlobals(globalVarDef("is", CoreVar,
             genIdentBracketSelect(ObjectRef, "is") || genPolyfillFor("is"))),
         extractWithGlobals(globalVarDef("privateJSFieldSymbol", CoreVar,
@@ -474,11 +475,11 @@ private[emitter] object CoreJSLib {
                 SymbolRef, genPolyfillFor("privateJSFieldSymbol"))))
       ))
 
-      val es2017Compat = Block( // condTree(!useECMAScript2017)
+      val es2017Compat = condTree(esVersion < ESVersion.ES2017)(Block(
         extractWithGlobals(globalVarDef("getOwnPropertyDescriptors", CoreVar,
             genIdentBracketSelect(ObjectRef, "getOwnPropertyDescriptors") ||
                 genPolyfillFor("getOwnPropertyDescriptors")))
-      )
+      ))
 
       Block(mathBuiltins, es5Compat, es2017Compat)
     }
@@ -610,9 +611,15 @@ private[emitter] object CoreJSLib {
 
       defineFunction1("objectClone") { instance =>
         // return Object.create(Object.getPrototypeOf(instance), $getOwnPropertyDescriptors(instance));
+        val callGetOwnPropertyDescriptors = {
+          if (esVersion >= ESVersion.ES2017)
+            Apply(genIdentBracketSelect(ObjectRef, "getOwnPropertyDescriptors"), instance :: Nil)
+          else
+            genCallHelper("getOwnPropertyDescriptors", instance)
+        }
         Return(Apply(genIdentBracketSelect(ObjectRef, "create"), List(
             Apply(genIdentBracketSelect(ObjectRef, "getPrototypeOf"), instance :: Nil),
-            genCallHelper("getOwnPropertyDescriptors", instance))))
+            callGetOwnPropertyDescriptors)))
       },
 
       defineFunction1("objectOrArrayClone") { instance =>
@@ -877,7 +884,7 @@ private[emitter] object CoreJSLib {
     }
 
     private def defineES2015LikeHelpers(): Tree = Block(
-      condTree(!useECMAScript2015)(
+      condTree(esVersion < ESVersion.ES2015)(
         defineFunction2("newJSObjectWithVarargs") { (ctor, args) =>
           val instance = varRef("instance")
           val result = varRef("result")
@@ -989,7 +996,7 @@ private[emitter] object CoreJSLib {
         )
       },
 
-      condTree(!useECMAScript2015)(
+      condTree(esVersion < ESVersion.ES2015)(
         defineFunction5("systemArraycopy") { (src, srcPos, dest, destPos, length) =>
           genCallHelper("arraycopyGeneric", src.u, srcPos, dest.u, destPos, length)
         }
@@ -1129,9 +1136,9 @@ private[emitter] object CoreJSLib {
         Block(
           let(lastIDHash, 0),
           const(idHashCodeMap,
-              if (useECMAScript2015) New(WeakMapRef, Nil)
+              if (esVersion >= ESVersion.ES2015) New(WeakMapRef, Nil)
               else If(typeof(WeakMapRef) !== str("undefined"), New(WeakMapRef, Nil), Null())),
-          if (useECMAScript2015) {
+          if (esVersion >= ESVersion.ES2015) {
             val f = weakMapBasedFunction
             defineFunction("systemIdentityHashCode", f.args, f.body)
           } else {
@@ -1265,7 +1272,7 @@ private[emitter] object CoreJSLib {
           Nil
         }
 
-        val copyTo = if (useECMAScript2015) {
+        val copyTo = if (esVersion >= ESVersion.ES2015) {
           val srcPos = varRef("srcPos")
           val dest = varRef("dest")
           val destPos = varRef("destPos")
@@ -1552,7 +1559,7 @@ private[emitter] object CoreJSLib {
               })
             }
 
-            val copyTo = if (useECMAScript2015) {
+            val copyTo = if (esVersion >= ESVersion.ES2015) {
               val srcPos = varRef("srcPos")
               val dest = varRef("dest")
               val destPos = varRef("destPos")

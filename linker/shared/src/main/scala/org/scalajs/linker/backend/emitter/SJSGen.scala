@@ -117,9 +117,9 @@ private[emitter] final class SJSGen(
   def getArrayUnderlyingTypedArrayClassRef(elemTypeRef: NonArrayTypeRef)(
       implicit pos: Position): Option[WithGlobals[VarRef]] = {
     elemTypeRef match {
-      case _ if !esFeatures.useECMAScript2015 => None
-      case primRef: PrimRef                   => typedArrayRef(primRef)
-      case _                                  => None
+      case _ if esFeatures.esVersion < ESVersion.ES2015 => None
+      case primRef: PrimRef                             => typedArrayRef(primRef)
+      case _                                            => None
     }
   }
 

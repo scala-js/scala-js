@@ -316,6 +316,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
   private class JSDesugar()(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge) {
 
+    // For convenience
+    private val es2015 = esFeatures.esVersion >= ESVersion.ES2015
+
     // Name management
 
     /** Whether we are running in the "optimistic naming" run.
@@ -511,10 +514,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case other                                        => other
       }
 
-      val actualArrowFun = arrow && useArrowFunctions
+      val actualArrowFun = arrow && esFeatures.useECMAScript2015Semantics
       val jsParams = params.map(transformParamDef(_))
 
-      if (esFeatures.useECMAScript2015) {
+      if (es2015) {
         val jsRestParam = restParam.map(transformParamDef(_))
         js.Function(actualArrowFun, jsParams, jsRestParam, cleanedNewBody)
       } else {
@@ -871,7 +874,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             implicit val env = env0
             val jsArgs = newArgs.map(transformExprNoChar(_))
 
-            if (esFeatures.useECMAScript2015)
+            if (es2015)
               js.Apply(js.DotSelect(jsArgs.head, js.Ident("copyTo")), jsArgs.tail)
             else
               genCallHelper("systemArraycopy", jsArgs: _*)
@@ -1211,7 +1214,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       require(!allowSideEffects || allowUnpure)
 
       def testJSArg(tree: TreeOrJSSpread): Boolean = tree match {
-        case JSSpread(items) => esFeatures.useECMAScript2015 && test(items)
+        case JSSpread(items) => es2015 && test(items)
         case tree: Tree      => test(tree)
       }
 
@@ -1478,11 +1481,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
       /** Extract a definition of the lhs if it is a VarDef, to avoid changing
        *  its scope.
-       *  This only matters in ECMAScript 6, because we emit Lets.
+       *  This only matters when we emit lets and consts.
        */
       def extractLet(inner: Lhs => js.Tree)(
           implicit env: Env): js.Tree = {
-        if (esFeatures.useECMAScript2015) {
+        if (useLets) {
           lhs match {
             case Lhs.VarDef(name, tpe, mutable) =>
               js.Block(
@@ -1987,7 +1990,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     }
 
     private def needsToTranslateAnySpread(args: List[TreeOrJSSpread]): Boolean =
-      !esFeatures.useECMAScript2015 && args.exists(_.isInstanceOf[JSSpread])
+      !es2015 && args.exists(_.isInstanceOf[JSSpread])
 
     private def spreadToArgArray(args: List[TreeOrJSSpread])(
         implicit env: Env, pos: Position): Tree = {
@@ -2026,7 +2029,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     private def doesObjectConstrRequireDesugaring(
         tree: JSObjectConstr): Boolean = {
       def computedNamesAllowed: Boolean =
-        esFeatures.useECMAScript2015
+        es2015
 
       def hasComputedName: Boolean =
         tree.fields.exists(!_._1.isInstanceOf[StringLiteral])
@@ -2064,7 +2067,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     def transformJSArg(tree: TreeOrJSSpread)(implicit env: Env): js.Tree = {
       tree match {
         case JSSpread(items) =>
-          assert(esFeatures.useECMAScript2015)
+          assert(es2015)
           js.Spread(transformExprNoChar(items))(tree.pos)
         case tree: Tree =>
           transformExprNoChar(tree)
@@ -2347,7 +2350,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                     newLhs, newRhs)
               } else {
                 val objectIs =
-                  if (!esFeatures.useECMAScript2015) globalVar("is", CoreVar)
+                  if (!es2015) globalVar("is", CoreVar)
                   else genIdentBracketSelect(genGlobalVarRef("Object"), "is")
                 val objectIsCall = js.Apply(objectIs, newLhs :: newRhs :: Nil)
                 if (op == ===) objectIsCall
@@ -2655,7 +2658,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Transient(ArrayToTypedArray(expr, primRef)) =>
           val value = transformExprNoChar(expr)
 
-          if (esFeatures.useECMAScript2015) {
+          if (es2015) {
             js.Apply(genIdentBracketSelect(value.u, "slice"), Nil)
           } else {
             val typedArrayClass = extractWithGlobals(typedArrayRef(primRef).get)
@@ -2665,7 +2668,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Transient(TypedArrayToArray(expr, primRef)) =>
           val value = transformExprNoChar(expr)
 
-          val arrayValue = if (esFeatures.useECMAScript2015) {
+          val arrayValue = if (es2015) {
             js.Apply(genIdentBracketSelect(value, "slice"), Nil)
           } else {
             /* Array.prototype.slice.call(value)
@@ -2696,8 +2699,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           js.New(transformExprNoChar(constr), args.map(transformJSArg))
 
         case Transient(JSNewVararg(constr, argsArray)) =>
-          assert(!esFeatures.useECMAScript2015,
-              s"generated a JSNewVargs in ES 2015 mode at ${tree.pos}")
+          assert(!es2015, s"generated a JSNewVargs with ES 2015+ at ${tree.pos}")
           genCallHelper("newJSObjectWithVarargs",
               transformExprNoChar(constr), transformExprNoChar(argsArray))
 

@@ -15,14 +15,16 @@ package org.scalajs.testsuite.jsinterop
 import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.{BeforeClass, Test}
-import org.scalajs.testsuite.utils.AssertThrows._
 
-import scala.scalajs.{LinkingInfo, js}
+import scala.scalajs.js
+
+import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.Platform._
 
 object MapTest {
   @BeforeClass
   def assumeRuntimeSupportsMap(): Unit = {
-    assumeTrue("Assume ES6", LinkingInfo.assumingES6)
+    assumeTrue("Requires js.Map support", jsMaps)
   }
 }
 
@@ -95,4 +97,3 @@ class MapTest {
     assertEquals("babar", obj.get(2).get)
   }
 }
-

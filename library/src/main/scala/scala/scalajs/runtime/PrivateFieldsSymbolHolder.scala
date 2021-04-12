@@ -13,10 +13,12 @@
 package scala.scalajs.runtime
 
 import scala.scalajs.js
+import scala.scalajs.LinkingInfo.ESVersion
 
 private[runtime] object PrivateFieldsSymbolHolder {
   val privateFieldsSymbol: Any = {
-    if (scala.scalajs.LinkingInfo.assumingES6 ||
+    // Cannot import scala.scalajs.LinkingInfo because it is shadowed by runtime.LinkingInfo
+    if (scala.scalajs.LinkingInfo.esVersion >= ESVersion.ES2015 ||
         js.typeOf(js.Symbol) != "undefined") {
       js.Symbol("privateFields")
     } else {

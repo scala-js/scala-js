@@ -28,5 +28,6 @@ private[utils] object BuildInfo {
   final val compliantModuleInit = false
   final val strictFloats = false
   final val productionMode = false
-  final val es2015 = false
+  final val esVersion = 0
+  final val useECMAScript2015Semantics = false
 }

@@ -13,6 +13,7 @@
 package org.scalajs.testsuite.utils
 
 import scala.scalajs.js
+import scala.scalajs.LinkingInfo.ESVersion
 
 object Platform {
 
@@ -31,6 +32,15 @@ object Platform {
     (js.Dynamic.global.process.release.name: Any) == "node"
   }
 
+  /** The assumed ECMAScript version. */
+  def assumedESVersion: Int = BuildInfo.esVersion
+
+  /** Convenience for `assumedESVersion >= ESVersion.ES2015`. */
+  def assumeES2015: Boolean = assumedESVersion >= ESVersion.ES2015
+
+  /** Whether Scala.js language features use ECMAScript 2015 semantics. */
+  def useECMAScript2015Semantics: Boolean = BuildInfo.useECMAScript2015Semantics
+
   def jsSymbols: Boolean =
     assumeES2015 || js.typeOf(js.Dynamic.global.Symbol) != "undefined"
 
@@ -41,11 +51,12 @@ object Platform {
     assumeES2015 || js.typeOf(js.Dynamic.global.Map) != "undefined"
 
   def jsBigInts: Boolean =
-    js.typeOf(js.Dynamic.global.BigInt) != "undefined"
+    assumedESVersion >= ESVersion.ES2020 || js.typeOf(js.Dynamic.global.BigInt) != "undefined"
+
+  lazy val jsRegExps2018: Boolean =
+    assumedESVersion >= ESVersion.ES2018 || regexFeatureTest("(?<=a)(?<!b)\\p{L}\\P{L}", "us")
 
   def sourceMaps: Boolean = BuildInfo.hasSourceMaps && executingInNodeJS
-
-  def assumeES2015: Boolean = BuildInfo.es2015
 
   def isInFullOpt: Boolean = BuildInfo.isFullOpt
   def isInProductionMode: Boolean = BuildInfo.productionMode
@@ -107,5 +118,14 @@ object Platform {
     val vm = js.Dynamic.global.require("vm")
     val script = js.Dynamic.newInstance(vm.Script)(code)
     script.runInThisContext()
+  }
+
+  private def regexFeatureTest(pattern: String, flags: String): Boolean = {
+    try {
+      new js.RegExp(pattern, flags)
+      true
+    } catch {
+      case _: js.JavaScriptException => false
+    }
   }
 }

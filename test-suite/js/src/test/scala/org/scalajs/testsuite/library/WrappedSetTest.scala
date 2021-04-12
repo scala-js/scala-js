@@ -17,12 +17,16 @@ import org.junit.Assume.assumeTrue
 import org.junit.{BeforeClass, Test}
 
 import scala.collection.mutable
-import scala.scalajs.{LinkingInfo, js}
+
+import scala.scalajs.js
+
+import org.scalajs.testsuite.utils.Platform._
 
 object WrappedSetTest {
   @BeforeClass
   def assumeRuntimeSupportsSet(): Unit = {
-    assumeTrue("Assume ES6", LinkingInfo.assumingES6)
+    assumeTrue("Requires js.Set support",
+        assumeES2015 || js.typeOf(js.Dynamic.global.Set) != "undefined")
   }
 }
 

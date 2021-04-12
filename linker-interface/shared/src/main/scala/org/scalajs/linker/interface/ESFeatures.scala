@@ -30,12 +30,20 @@ import Fingerprint.FingerprintBuilder
  *    the corresponding features *when it does not affect observable
  *    semantics*. They are related to optimizations (for performance or code
  *    size). The linker is free to ignore those options.
+ *  - The `esVersion` setting does not follow any of the schemes above. It is
+ *    both a hint not to include support for old versions of ECMAScript, and a
+ *    command to enable library or language features that rely on recent
+ *    versions of ECMAScript.
+ *
+ *  As of Scala.js 1.6.0, the setting `useECMAScriptSemantics2015` is derived
+ *  from `esVersion`. In the future, it might become independently
+ *  configurable.
  */
 final class ESFeatures private (
     /* We define `val`s separately below so that we can attach Scaladoc to them
      * (putting Scaladoc comments on constructor param `val`s has no effect).
      */
-    _useECMAScript2015: Boolean,
+    _esVersion: ESVersion,
     _allowBigIntsForLongs: Boolean,
     _avoidClasses: Boolean,
     _avoidLetsAndsConsts: Boolean
@@ -44,28 +52,72 @@ final class ESFeatures private (
 
   private def this() = {
     this(
-        _useECMAScript2015 = true,
+        _esVersion = ESVersion.ES2015,
         _allowBigIntsForLongs = false,
         _avoidClasses = true,
         _avoidLetsAndsConsts = true
     )
   }
 
-  /** Use ECMAScript 2015 features, such as classes and arrow functions.
+  /** The ECMAScript version that is assumed to be supported by the runtime.
+   *
+   *  Default: `ESVersion.ES2015`
+   *
+   *  The linker and the libraries may use this value to:
+   *
+   *  - provide more features that rely on recent ECMAScript language features, and/or
+   *  - dead-code-eliminate away polyfills.
+   *
+   *  Prefer reading this value over `useECMAScript2015Semantics` to perform
+   *  feature tests.
+   */
+  val esVersion: ESVersion = _esVersion
+
+  /** Use the ECMAScript 2015 semantics of Scala.js language features.
    *
    *  Default: `true`
+   *
+   *  As of Scala.js 1.6.0, this is `true` if and only if
+   *  `esVersion >= ESVersion.ES2015`. In the future, it might become
+   *  independently configurable.
    *
    *  When `true`, the following behaviors are guaranteed:
    *
    *  - JavaScript classes are true `class`'es, therefore a) they can extend
    *    native JavaScript `class`'es and b) they inherit static members from
    *    their parent class.
+   *  - Lambdas for `js.Function`s that are not also `js.ThisFunction`s are
+   *    JavaScript arrow functions (`=>`). Lambdas for `js.ThisFunction`s are
+   *    `function` functions.
    *  - Throwable classes are proper JavaScript error classes, recognized as
    *    such by debuggers.
-   *  - In Script (`NoModule`) mode, top-level exports are defined as `let`s
-   *    rather than `var`s, and behave as such.
+   *  - In Script (`NoModule`) mode, top-level exports are defined as `let`s.
+   *
+   *  When `false`, the following behaviors apply instead:
+   *
+   *  - All classes defined in Scala.js are `function`s instead of `class`'es.
+   *    Non-native JS classes cannot extend native JS `class`'es and they do
+   *    not inherit static members from their parent class.
+   *  - All lambdas for `js.Function`s are `function`s.
+   *  - Throwable classes have JavaScript's `Error.prototype` in their
+   *    prototype chain, but they are not considered proper error classes.
+   *  - In Script (`NoModule`) mode, top-level exports are defined as `var`s.
+   *
+   *  Prefer reading this value instead of `esVersion` to determine which
+   *  semantics apply. Doing so will be future-proof if and when this setting
+   *  becomes configurable independently from `esVersion`.
    */
-  val useECMAScript2015 = _useECMAScript2015
+  val useECMAScript2015Semantics = esVersion >= ESVersion.ES2015
+
+  /** Use ECMAScript 2015 features.
+   *
+   *  Prefer reading `esVersion` or `useECMAScript2015Semantics` instead,
+   *  depending on the use case.
+   *
+   *  This is always equal to `useECMAScript2015Semantics`.
+   */
+  @deprecated("use esVersion or useECMAScript2015Semantics instead", "1.6.0")
+  val useECMAScript2015 = useECMAScript2015Semantics
 
   /** EXPERIMENTAL: Primitive `Long`s *may* be compiled as primitive JavaScript
    *  `bigint`s.
@@ -101,7 +153,7 @@ final class ESFeatures private (
    *  (classes extending `js.Any`), since that would have an impact on
    *  observable semantics.
    *
-   *  This option is always ignored when `useECMAScript2015` is `false`.
+   *  This option is always ignored when `esVersion < ESVersion.ES2015`.
    */
   val avoidClasses = _avoidClasses
 
@@ -126,12 +178,27 @@ final class ESFeatures private (
    *  help readability and debugging, but there is little to no benefit in
    *  using them when the code is compiler-generated.
    *
-   *  This option is always ignored when `useECMAScript2015` is `false`.
+   *  This option is always ignored when `esVersion < ESVersion.ES2015`.
    */
   val avoidLetsAndConsts = _avoidLetsAndsConsts
 
-  def withUseECMAScript2015(useECMAScript2015: Boolean): ESFeatures =
-    copy(useECMAScript2015 = useECMAScript2015)
+  def withESVersion(esVersion: ESVersion): ESFeatures =
+    copy(esVersion = esVersion)
+
+  /** Specifies whether the linker should use ECMAScript 2015 features.
+   *
+   *  If `false`, this method sets the `esVersion` to `ESVersion.ES5_1`.
+   *  Otherwise, if `esVersion` was below `ES2015`, it sets it to `ES2015`.
+   *  Otherwise, it returns the same configuration of `ESFeatures`.
+   */
+  @deprecated(
+      "use withESVersion(ESVersion.ES5_1) or withESVersion(ESVersion.ES2015) instead",
+      "1.6.0")
+  def withUseECMAScript2015(useECMAScript2015: Boolean): ESFeatures = {
+    if (!useECMAScript2015) withESVersion(ESVersion.ES5_1)
+    else if (esVersion == ESVersion.ES5_1) withESVersion(ESVersion.ES2015)
+    else this
+  }
 
   def withAllowBigIntsForLongs(allowBigIntsForLongs: Boolean): ESFeatures =
     copy(allowBigIntsForLongs = allowBigIntsForLongs)
@@ -144,7 +211,7 @@ final class ESFeatures private (
 
   override def equals(that: Any): Boolean = that match {
     case that: ESFeatures =>
-      this.useECMAScript2015 == that.useECMAScript2015 &&
+      this.esVersion == that.esVersion &&
       this.allowBigIntsForLongs == that.allowBigIntsForLongs &&
       this.avoidClasses == that.avoidClasses &&
       this.avoidLetsAndConsts == that.avoidLetsAndConsts
@@ -155,7 +222,7 @@ final class ESFeatures private (
   override def hashCode(): Int = {
     import scala.util.hashing.MurmurHash3._
     var acc = HashSeed
-    acc = mix(acc, useECMAScript2015.##)
+    acc = mix(acc, esVersion.##)
     acc = mix(acc, allowBigIntsForLongs.##)
     acc = mix(acc, avoidClasses.##)
     acc = mixLast(acc, avoidLetsAndConsts.##)
@@ -164,7 +231,8 @@ final class ESFeatures private (
 
   override def toString(): String = {
     s"""ESFeatures(
-       |  useECMAScript2015 = $useECMAScript2015,
+       |  esVersion = $esVersion,
+       |  useECMAScript2015Semantics = $useECMAScript2015Semantics,
        |  allowBigIntsForLongs = $allowBigIntsForLongs,
        |  avoidClasses = $avoidClasses,
        |  avoidLetsAndConsts = $avoidLetsAndConsts
@@ -172,13 +240,13 @@ final class ESFeatures private (
   }
 
   private def copy(
-      useECMAScript2015: Boolean = this.useECMAScript2015,
+      esVersion: ESVersion = this.esVersion,
       allowBigIntsForLongs: Boolean = this.allowBigIntsForLongs,
       avoidClasses: Boolean = this.avoidClasses,
       avoidLetsAndConsts: Boolean = this.avoidLetsAndConsts
   ): ESFeatures = {
     new ESFeatures(
-        _useECMAScript2015 = useECMAScript2015,
+        _esVersion = esVersion,
         _allowBigIntsForLongs = allowBigIntsForLongs,
         _avoidClasses = avoidClasses,
         _avoidLetsAndsConsts = avoidLetsAndConsts
@@ -192,7 +260,8 @@ object ESFeatures {
 
   /** Default configuration of ECMAScript features.
    *
-   *  - `useECMAScript2015`: true
+   *  - `esVersion`: `ESVersion.ES2015`
+   *  - `useECMAScript2015Semantics`: true
    *  - `allowBigIntsForLongs`: false
    *  - `avoidClasses`: true
    *  - `avoidLetsAndConsts`: true
@@ -204,7 +273,7 @@ object ESFeatures {
 
     override def fingerprint(esFeatures: ESFeatures): String = {
       new FingerprintBuilder("ESFeatures")
-        .addField("useECMAScript2015", esFeatures.useECMAScript2015)
+        .addField("esVersion", esFeatures.esVersion)
         .addField("allowBigIntsForLongs", esFeatures.allowBigIntsForLongs)
         .addField("avoidClasses", esFeatures.avoidClasses)
         .addField("avoidLetsAndConsts", esFeatures.avoidLetsAndConsts)

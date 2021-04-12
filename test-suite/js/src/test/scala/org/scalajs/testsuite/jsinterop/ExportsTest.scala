@@ -819,7 +819,7 @@ class ExportsTest {
 
     assertEquals("function", js.typeOf(constr))
 
-    val body = if (assumeES2015) {
+    val body = if (useECMAScript2015Semantics) {
       """
       class SubClass extends constr {
         constructor(x) {
@@ -1469,7 +1469,7 @@ class ExportsTest {
     val g = JSUtils.globalObject
 
     // Do we expect to get undefined when looking up the exports in the global object?
-    val undefinedExpected = assumeES2015
+    val undefinedExpected = useECMAScript2015Semantics
 
     assertEquals(undefinedExpected, js.isUndefined(g.TopLevelExportedObject))
     assertEquals(undefinedExpected, js.isUndefined(g.SJSDefinedTopLevelExportedObject))

@@ -23,6 +23,9 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+    // New method in a sealed trait (even a JS trait), not an issue
+    ProblemFilters.exclude[ReversedMissingMethodProblem](
+        "scala.scalajs.runtime.LinkingInfo.esVersion"),
   )
 
   val TestInterface = Seq(

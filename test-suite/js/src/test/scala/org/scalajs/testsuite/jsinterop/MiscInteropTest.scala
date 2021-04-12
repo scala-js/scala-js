@@ -102,31 +102,15 @@ class MiscInteropTest {
     test[ConcreteJSClass](concreteCtor)
     test[AbstractJSClass](abstractCtor)
 
-    /* TODO When targeting ES6, we cannot yet use indirect calls (with
-     * actual varargs) to `js.Dynamic.newInstance` because of
-     *   TypeError: Class constructors cannot be invoked without 'new'
-     * This will be fixed when we can use ...spread calls with `new`, which
-     * we can't yet do because the latest io.js does not support them yet.
-     */
-    import scala.scalajs.LinkingInfo.assumingES6
-
     val concreteInstance = {
       val tag = js.constructorTag[ConcreteJSClass]
-      if (assumingES6)
-        js.Dynamic.newInstance(tag.constructor)().asInstanceOf[ConcreteJSClass]
-      else
-        tag.newInstance()
+      tag.newInstance()
     }
     assertTrue((concreteInstance: Any).isInstanceOf[ConcreteJSClass])
 
     val instance = {
       val tag = js.constructorTag[OtherwiseUnreferencedJSClassForTag]
-      if (assumingES6) {
-        js.Dynamic.newInstance(tag.constructor)(35)
-            .asInstanceOf[OtherwiseUnreferencedJSClassForTag]
-      } else {
-        tag.newInstance(35)
-      }
+      tag.newInstance(35)
     }
     assertEquals(35, instance.x)
   }

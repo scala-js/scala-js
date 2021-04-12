@@ -3940,8 +3940,11 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case (JSLinkingInfo(), StringLiteral("productionMode")) =>
         BooleanLiteral(semantics.productionMode)
 
+      case (JSLinkingInfo(), StringLiteral("esVersion")) =>
+        IntLiteral(esFeatures.esVersion.edition)
+
       case (JSLinkingInfo(), StringLiteral("assumingES6")) =>
-        BooleanLiteral(esFeatures.useECMAScript2015)
+        BooleanLiteral(esFeatures.useECMAScript2015Semantics)
 
       case (JSLinkingInfo(), StringLiteral("version")) =>
         StringLiteral(ScalaJSVersions.current)
