@@ -15,6 +15,8 @@ package org.scalajs.testsuite.javalib.util.concurrent.atomic
 import org.junit.Test
 import org.junit.Assert._
 
+import java.util.function.UnaryOperator
+
 class AtomicTest {
 
   @Test def atomicLongTest(): Unit = {
@@ -112,8 +114,10 @@ class AtomicTest {
   @Test def atomicReferenceUpdateTest(): Unit = {
     val atomic = new java.util.concurrent.atomic.AtomicReference(1)
 
-    assertSame(atomic.updateAndGet(_ + 1), 2)
-    assertSame(atomic.getAndUpdate(_ + 1), 2)
+    val addOne: UnaryOperator[Int] = _ + 1
+
+    assertSame(atomic.updateAndGet(addOne), 2)
+    assertSame(atomic.getAndUpdate(addOne), 2)
     assertSame(atomic.get(), 3)
   }
 
