@@ -394,6 +394,8 @@ class PrintersTest {
 
     assertPrintEquals("((double)x)", UnaryOp(LongToDouble, ref("x", LongType)))
     assertPrintEquals("((long)x)", UnaryOp(DoubleToLong, ref("x", DoubleType)))
+
+    assertPrintEquals("((float)x)", UnaryOp(LongToFloat, ref("x", LongType)))
   }
 
   @Test def printPseudoUnaryOp(): Unit = {

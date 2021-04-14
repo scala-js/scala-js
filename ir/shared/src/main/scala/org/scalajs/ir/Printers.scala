@@ -372,7 +372,7 @@ object Printers {
               "(int)"
             case IntToLong | DoubleToLong =>
               "(long)"
-            case DoubleToFloat =>
+            case DoubleToFloat | LongToFloat =>
               "(float)"
             case IntToDouble | LongToDouble | FloatToDouble =>
               "(double)"

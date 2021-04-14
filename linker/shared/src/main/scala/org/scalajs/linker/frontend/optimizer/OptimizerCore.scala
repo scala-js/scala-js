@@ -2656,6 +2656,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           case DoubleToLong =>
             expandLongModuleOp(LongImpl.fromDouble, arg)
 
+          case LongToFloat =>
+            expandUnaryOp(LongImpl.toFloat, arg, FloatType)
+
           case _ =>
             cont(pretrans)
         }
@@ -2887,6 +2890,18 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             PreTransLit(LongLiteral(v.toLong))
           case PreTransUnaryOp(IntToDouble, x) =>
             foldUnaryOp(IntToLong, x)
+          case _ =>
+            default
+        }
+
+      // Long -> Float
+
+      case LongToFloat =>
+        arg match {
+          case PreTransLit(LongLiteral(v)) =>
+            PreTransLit(FloatLiteral(v.toFloat))
+          case PreTransUnaryOp(IntToLong, x) =>
+            foldUnaryOp(DoubleToFloat, foldUnaryOp(IntToDouble, x))
           case _ =>
             default
         }

@@ -67,7 +67,7 @@ final class RuntimeLong(val lo: Int, val hi: Int)
   @inline def toChar: Char = lo.toChar
   @inline def toInt: Int = lo
   @inline def toLong: Long = this.asInstanceOf[Long]
-  @inline def toFloat: Float = toDouble.toFloat
+  @inline def toFloat: Float = RuntimeLong.toFloat(lo, hi)
   @inline def toDouble: Double = RuntimeLong.toDouble(lo, hi)
 
   // java.lang.Number
@@ -599,6 +599,61 @@ object RuntimeLong {
     } else {
       hi * TwoPow32 + asUint(lo)
     }
+  }
+
+  private def toFloat(lo: Int, hi: Int): Float = {
+    /* This implementation is based on the property that, *if* the conversion
+     * `x.toDouble` is lossless, then the result of `x.toFloat` is equivalent
+     * to `x.toDouble.toFloat`.
+     *
+     * However, as illustrated in #4466, it is not equivalent when the Long
+     * value is very close though not equal to a Float midpoint. Indeed, in
+     * that case the conversion to Double can be rounded to the Float midpoint,
+     * destroying the information of whether the Long value was above or below
+     * the midpoint. When converting the Double into Float, this causes
+     * rounding to "even" where a round up or down would have been necessary.
+     *
+     * To avoid that, we first "compress" the input Long `x` into another Long
+     * `y` such that:
+     * - `y.toDouble` is lossless, and
+     * - `y.toFloat == x.toFloat`.
+     *
+     * The algorithm works as follows:
+     *
+     * First, we take the absolute value of the input. We will negate the
+     * result at the end if the input was negative.
+     *
+     * Second, if the abs input is an unsigned safe Double, then the conversion
+     * to double is lossless, so we don't have to do anything special
+     * (`y == x` in terms of the above explanation).
+     *
+     * Otherwise, we know that the input's highest 1 bit is in the 11
+     * highest-order bits. That means that rounding to float, which only has 24
+     * bits in the significand, can only take into account the
+     * `11 + 23 + 1 = 35` highest-order bits (the `+ 1` is for the rounding
+     * bit). The remaining bits can only affect the result by two states:
+     * either they are all 0's, or there is at least one 1. We use that
+     * property to "compress" the 16 low-order bits into a single 0 or 1 bit
+     * representing those two states. The compressed Long value
+     * `y = (compressedAbsLo, abs.hi)` has at most `32 + 17 = 49` significant
+     * bits. Therefore its conversion to Double is lossless.
+     *
+     * Now that we always have a lossless compression to Double, we can perform
+     * it, followed by a conversion from Double to Float, which will apply the
+     * appropriate rounding.
+     *
+     * (A similar strategy is used in `parseFloat` for the hexadecimal format.)
+     */
+
+    val abs = inline_abs(lo, hi)
+    val compressedAbsLo =
+      if (isUnsignedSafeDouble(abs.hi) || (abs.lo & 0xffff) == 0) abs.lo
+      else (abs.lo & ~0xffff) | 0x8000
+
+    // We do asUint() on the hi part specifically for MinValue
+    val absRes = (asUint(abs.hi) * TwoPow32 + asUint(compressedAbsLo))
+
+    (if (hi < 0) -absRes else absRes).toFloat
   }
 
   @inline

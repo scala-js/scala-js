@@ -853,32 +853,50 @@ private[emitter] object CoreJSLib {
 
         condTree(allowBigIntsForLongs)(Block(
           defineFunction2("longDiv") { (x, y) =>
-            If(y === BigIntLiteral(0), throwDivByZero, {
+            If(y === bigInt(0), throwDivByZero, {
               Return(wrapBigInt64(x / y))
             })
           },
           defineFunction2("longMod") { (x, y) =>
-            If(y === BigIntLiteral(0), throwDivByZero, {
+            If(y === bigInt(0), throwDivByZero, {
               Return(wrapBigInt64(x % y))
             })
           },
 
           defineFunction1("doubleToLong")(x => Return {
             If(x < double(-9223372036854775808.0), { // -2^63
-              BigIntLiteral(-9223372036854775808L)
+              bigInt(-9223372036854775808L)
             }, {
               If (x >= double(9223372036854775808.0), { // 2^63
-                BigIntLiteral(9223372036854775807L)
+                bigInt(9223372036854775807L)
               }, {
                 If (x !== x, { // NaN
-                  BigIntLiteral(0L)
+                  bigInt(0L)
                 }, {
                   Apply(BigIntRef,
                       Apply(genIdentBracketSelect(MathRef, "trunc"), x :: Nil) :: Nil)
                 })
               })
             })
-          })
+          }),
+
+          defineFunction1("longToFloat") { x =>
+            val abs = varRef("abs")
+            val y = varRef("y")
+            val absR = varRef("absR")
+
+            // See RuntimeLong.toFloat for the strategy
+            Block(
+              const(abs, If(x < bigInt(0L), -x, x)),
+              const(y, If(abs <= bigInt(1L << 53) || (abs & bigInt(0xffffL)) === bigInt(0L), {
+                abs
+              }, {
+                (abs & bigInt(~0xffffL)) | bigInt(0x8000L)
+              })),
+              const(absR, Apply(NumberRef, y :: Nil)),
+              Return(genCallHelper("fround", If(x < bigInt(0L), -absR, absR)))
+            )
+          }
         ))
       )
     }
@@ -1044,7 +1062,7 @@ private[emitter] object CoreJSLib {
              */
 
             def biLit(x: Int): Tree =
-              if (esFeatures.allowBigIntsForLongs) BigIntLiteral(x)
+              if (esFeatures.allowBigIntsForLongs) bigInt(x)
               else Apply(BigIntRef, x :: Nil)
 
             def asInt32(arg: Tree): Tree =
@@ -1975,5 +1993,7 @@ private[emitter] object CoreJSLib {
     private implicit def int(i: Int): IntLiteral = IntLiteral(i)
 
     private def double(d: Double): DoubleLiteral = DoubleLiteral(d)
+
+    private def bigInt(i: Long): BigIntLiteral = BigIntLiteral(i)
   }
 }

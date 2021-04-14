@@ -3344,7 +3344,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                 js.UnaryOp(IntToLong, intValue)
             }
           case jstpe.FloatType =>
-            js.UnaryOp(js.UnaryOp.DoubleToFloat, doubleValue)
+            if (from == jstpe.LongType)
+              js.UnaryOp(js.UnaryOp.LongToFloat, value)
+            else
+              js.UnaryOp(js.UnaryOp.DoubleToFloat, doubleValue)
           case jstpe.DoubleType =>
             doubleValue
         }

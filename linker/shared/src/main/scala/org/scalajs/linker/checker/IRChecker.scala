@@ -960,7 +960,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             ShortType
           case IntToLong | IntToDouble | IntToChar | IntToByte | IntToShort =>
             IntType
-          case LongToInt | LongToDouble =>
+          case LongToInt | LongToDouble | LongToFloat =>
             LongType
           case FloatToDouble =>
             FloatType
