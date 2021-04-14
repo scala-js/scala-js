@@ -114,7 +114,9 @@ class AtomicTest {
   @Test def atomicReferenceUpdateTest(): Unit = {
     val atomic = new java.util.concurrent.atomic.AtomicReference(1)
 
-    val addOne: UnaryOperator[Int] = _ + 1
+    val addOne = new UnaryOperator[Int] {
+      def apply(x: Int): Int = x + 1
+    }
 
     assertSame(atomic.updateAndGet(addOne), 2)
     assertSame(atomic.getAndUpdate(addOne), 2)

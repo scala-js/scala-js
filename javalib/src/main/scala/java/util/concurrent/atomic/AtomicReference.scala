@@ -14,7 +14,6 @@ package java.util.concurrent.atomic
 
 import java.util.function.UnaryOperator
 
-
 class AtomicReference[T <: AnyRef](
     private[this] var value: T) extends Serializable {
 
@@ -56,8 +55,9 @@ class AtomicReference[T <: AnyRef](
   }
 
   final def compareAndExchange(expect: T, update: T): T = {
-    if (expect ne value) value
-    else {
+    if (expect ne value) {
+      value
+    } else {
       value = update
       expect
     }
