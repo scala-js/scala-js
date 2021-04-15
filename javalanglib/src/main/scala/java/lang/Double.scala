@@ -197,6 +197,8 @@ object Double {
      *
      * Of course, we remember that we need to apply a correction to the
      * exponent of the final result.
+     *
+     * (A similar strategy is used in the primitive Long-to-Float conversion.)
      */
     val mantissaStrLen = mantissaStr.length()
     val needsCorrection2 = mantissaStrLen > maxPrecisionChars

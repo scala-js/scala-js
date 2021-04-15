@@ -609,8 +609,8 @@ class LongTest {
     test(8801656334077465992L, lg(2076251528, 2049295309))
   }
 
-  @Test def toFloatStrict(): Unit = {
-    assumeTrue("Assumed strict floats", hasStrictFloats)
+  @Test def toFloat(): Unit = {
+    assumeTrue("Assumed accurate floats", hasAccurateFloats)
 
     @inline def test(expected: Float, x: Long, epsilon: Float = 0.0f): Unit = {
       assertEquals(expected, x.toFloat, epsilon)
@@ -645,6 +645,24 @@ class LongTest {
     test(4.00884963E18f, lg(787691795, 933383012))
     test(-1.43511611E18f, lg(1189057493, -334139018))
     test(3.81415059E18f, lg(-618946450, 888051141))
+
+    // #4466 Long values that are close to Float midpoints
+
+    test(3.7930952e16f, 0x86c2007fffffffL)
+    test(3.7930952e16f, 0x86c20080000000L) // midpoint, even is downwards
+    test(3.7930956e16f, 0x86c20080000001L) // this is the value from #4466
+
+    test(3.7930965e16f, 0x86c2037fffffffL)
+    test(3.7930969e16f, 0x86c20380000000L) // midpoint, even is upwards
+    test(3.7930969e16f, 0x86c20380000001L)
+
+    test(-3.7930952e16f, -0x86c2007fffffffL)
+    test(-3.7930952e16f, -0x86c20080000000L) // midpoint, even is downwards
+    test(-3.7930956e16f, -0x86c20080000001L)
+
+    test(-3.7930965e16f, -0x86c2037fffffffL)
+    test(-3.7930969e16f, -0x86c20380000000L) // midpoint, even is upwards
+    test(-3.7930969e16f, -0x86c20380000001L)
   }
 
   @Test def toDouble(): Unit = {

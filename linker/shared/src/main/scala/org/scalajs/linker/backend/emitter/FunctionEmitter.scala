@@ -2303,6 +2303,13 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 genCallHelper("doubleToLong", newLhs)
               else
                 genLongModuleApply(LongImpl.fromDouble, newLhs)
+
+            // Long -> Float (neither widening nor narrowing)
+            case LongToFloat =>
+              if (useBigIntForLongs)
+                genCallHelper("longToFloat", newLhs)
+              else
+                genLongMethodApply(newLhs, LongImpl.toFloat)
           }
 
         case BinaryOp(op, lhs, rhs) =>

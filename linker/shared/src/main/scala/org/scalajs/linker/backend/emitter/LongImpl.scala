@@ -62,6 +62,7 @@ private[linker] object LongImpl {
   final val >=  = compareOp("$greater$eq")
 
   final val toInt    = MethodName("toInt", Nil, IntRef)
+  final val toFloat  = MethodName("toFloat", Nil, FloatRef)
   final val toDouble = MethodName("toDouble", Nil, DoubleRef)
 
   final val byteValue   = MethodName("byteValue", Nil, ByteRef)
@@ -79,7 +80,7 @@ private[linker] object LongImpl {
 
   private val OperatorMethods = Set(
       UNARY_-, UNARY_~, this.+, this.-, *, /, %, |, &, ^, <<, >>>, >>,
-      ===, !==, <, <=, >, >=, toInt, toDouble)
+      ===, !==, <, <=, >, >=, toInt, toFloat, toDouble)
 
   private val BoxedLongMethods = Set(
       byteValue, shortValue, intValue, longValue, floatValue, doubleValue,
