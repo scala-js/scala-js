@@ -2,7 +2,7 @@ version: '{build}'
 image: Visual Studio 2015
 environment:
   global:
-    NODEJS_VERSION: "12"
+    NODEJS_VERSION: "14"
     JAVA_HOME: C:\Program Files\Java\jdk1.8.0
     SCALA_VERSION: 2.12.12
 install:
