@@ -60,8 +60,8 @@ final class Pattern private[regex] (
   private[this] val jsRegExpForMatches: js.RegExp =
     new js.RegExp(wrapJSPatternForMatches(jsPattern), jsFlags)
 
-  private[regex] lazy val groupStartMapper: GroupStartMapper =
-    GroupStartMapper(jsPattern, jsFlags)
+  private lazy val indicesBuilder: IndicesBuilder =
+    IndicesBuilder(jsPattern, jsFlags)
 
   private[regex] def execMatches(input: String): js.RegExp.ExecResult =
     jsRegExpForMatches.exec(input)
@@ -132,6 +132,13 @@ final class Pattern private[regex] (
     }))
   }
 
+  private[regex] def getIndices(lastMatch: js.RegExp.ExecResult, forMatches: Boolean): IndicesArray = {
+    val lastMatchDyn = lastMatch.asInstanceOf[js.Dynamic]
+    if (js.isUndefined(lastMatchDyn.indices))
+      lastMatchDyn.indices = indicesBuilder(forMatches, lastMatch.input, lastMatch.index)
+    lastMatchDyn.indices.asInstanceOf[IndicesArray]
+  }
+
   // Public API ---------------------------------------------------------------
 
   def pattern(): String = _pattern
@@ -198,6 +205,8 @@ final class Pattern private[regex] (
 }
 
 object Pattern {
+  private[regex] type IndicesArray = js.Array[js.UndefOr[js.Tuple2[Int, Int]]]
+
   final val UNIX_LINES = 0x01
   final val CASE_INSENSITIVE = 0x02
   final val COMMENTS = 0x04
