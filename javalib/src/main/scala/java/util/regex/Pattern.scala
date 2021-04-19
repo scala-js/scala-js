@@ -34,6 +34,9 @@ final class Pattern private[regex] (
   @inline private def jsFlagsForFind: String =
     jsFlags + (if (sticky && supportsSticky) "gy" else "g")
 
+  /** Whether we already added the 'd' flag to the native RegExp's. */
+  private var enabledNativeIndices: Boolean = false
+
   /** The RegExp that is used for `Matcher.find()`.
    *
    *  It receives the 'g' flag so that `lastIndex` is taken into acount.
@@ -45,7 +48,7 @@ final class Pattern private[regex] (
    *  Since that RegExp is only used locally within `execFind()`, we can
    *  always reuse the same instance.
    */
-  private[this] val jsRegExpForFind =
+  private[this] var jsRegExpForFind =
     new js.RegExp(jsPattern, jsFlagsForFind)
 
   /** Another version of the RegExp that is used by `Matcher.matches()`.
@@ -57,7 +60,7 @@ final class Pattern private[regex] (
    *  Since that RegExp is only used locally within `execMatches()`, we can
    *  always reuse the same instance.
    */
-  private[this] val jsRegExpForMatches: js.RegExp =
+  private[this] var jsRegExpForMatches: js.RegExp =
     new js.RegExp(wrapJSPatternForMatches(jsPattern), jsFlags)
 
   private lazy val indicesBuilder: IndicesBuilder =
@@ -134,8 +137,20 @@ final class Pattern private[regex] (
 
   private[regex] def getIndices(lastMatch: js.RegExp.ExecResult, forMatches: Boolean): IndicesArray = {
     val lastMatchDyn = lastMatch.asInstanceOf[js.Dynamic]
-    if (js.isUndefined(lastMatchDyn.indices))
-      lastMatchDyn.indices = indicesBuilder(forMatches, lastMatch.input, lastMatch.index)
+    if (js.isUndefined(lastMatchDyn.indices)) {
+      if (supportsIndices) {
+        if (!enabledNativeIndices) {
+          jsRegExpForFind = new js.RegExp(jsPattern, jsFlagsForFind + "d")
+          jsRegExpForMatches = new js.RegExp(wrapJSPatternForMatches(jsPattern), jsFlags + "d")
+          enabledNativeIndices = true
+        }
+        val regexp = if (forMatches) jsRegExpForMatches else jsRegExpForFind
+        regexp.lastIndex = lastMatch.index
+        lastMatchDyn.indices = regexp.exec(lastMatch.input).asInstanceOf[js.Dynamic].indices
+      } else {
+        lastMatchDyn.indices = indicesBuilder(forMatches, lastMatch.input, lastMatch.index)
+      }
+    }
     lastMatchDyn.indices.asInstanceOf[IndicesArray]
   }
 

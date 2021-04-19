@@ -85,7 +85,7 @@ final class NodeJSEnvForcePolyfills(esVersion: ESVersion, config: NodeJSEnv.Conf
       """.stripMargin
     }
 
-    if (esVersion < ES2018) {
+    if (true) { // esVersion < ES2022 ('d' flag)
       script += s"""
         |global.RegExp = (function(OrigRegExp) {
         |  return function RegExp(pattern, flags) {
@@ -96,10 +96,15 @@ final class NodeJSEnvForcePolyfills(esVersion: ESVersion, config: NodeJSEnv.Conf
         |      if (flags.indexOf('y') >= 0)
         |        throw new SyntaxError("unsupported flag 'y'");
         |""".stripMargin)}
+        |${cond(ES2018, """
         |      if (flags.indexOf('s') >= 0)
         |        throw new SyntaxError("unsupported flag 's'");
+        |""".stripMargin)}
+        |      if (flags.indexOf('d') >= 0)
+        |        throw new SyntaxError("unsupported flag 'd'");
         |    }
         |
+        |${cond(ES2018, """
         |    if (typeof pattern === 'string') {
         |      if (pattern.indexOf('(?<=') >= 0 || pattern.indexOf('(?<!') >= 0)
         |        throw new SyntaxError("unsupported look-behinds");
@@ -108,6 +113,7 @@ final class NodeJSEnvForcePolyfills(esVersion: ESVersion, config: NodeJSEnv.Conf
         |      if (pattern.indexOf('\\\\p{') >= 0 || pattern.indexOf('\\\\P{') >= 0)
         |        throw new SyntaxError("unsupported Unicode character classes");
         |    }
+        |""".stripMargin)}
         |
         |    return new OrigRegExp(pattern, flags);
         |  }

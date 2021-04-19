@@ -90,6 +90,10 @@ private[regex] object PatternCompiler {
   private val _supportsDotAll =
     (esVersion >= ESVersion.ES2018) || featureTest("us")
 
+  /** Cache for `Support.supportsIndices`. */
+  private val _supportsIndices =
+    featureTest("d")
+
   /** Feature-test methods.
    *
    *  They are located in a separate object so that the methods can be fully
@@ -111,6 +115,11 @@ private[regex] object PatternCompiler {
     @inline
     def supportsDotAll: Boolean =
       (esVersion >= ESVersion.ES2018) || _supportsDotAll
+
+    /** Tests whether the underlying JS RegExp supports the 'd' flag. */
+    @inline
+    def supportsIndices: Boolean =
+      _supportsIndices
 
     /** Tests whether features requiring support for the 'u' flag are enabled.
      *
