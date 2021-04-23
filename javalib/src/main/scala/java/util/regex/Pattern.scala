@@ -139,15 +139,19 @@ final class Pattern private[regex] (
 
   override def toString(): String = pattern()
 
+  @inline // `input` is almost certainly a String at call site
   def matcher(input: CharSequence): Matcher =
-    new Matcher(this, input)
+    new Matcher(this, input.toString())
 
+  @inline // `input` is almost certainly a String at call site
   def split(input: CharSequence): Array[String] =
     split(input, 0)
 
-  def split(input: CharSequence, limit: Int): Array[String] = {
-    val inputStr = input.toString
+  @inline // `input` is almost certainly a String at call site
+  def split(input: CharSequence, limit: Int): Array[String] =
+    split(input.toString(), limit)
 
+  private def split(inputStr: String, limit: Int): Array[String] = {
     // If the input string is empty, always return Array("") - #987, #2592
     if (inputStr == "") {
       Array("")
@@ -210,7 +214,11 @@ object Pattern {
   def compile(regex: String): Pattern =
     compile(regex, 0)
 
+  @inline // `input` is almost certainly a String at call site
   def matches(regex: String, input: CharSequence): Boolean =
+    matches(regex, input.toString())
+
+  private def matches(regex: String, input: String): Boolean =
     compile(regex).matcher(input).matches()
 
   def quote(s: String): String = {
