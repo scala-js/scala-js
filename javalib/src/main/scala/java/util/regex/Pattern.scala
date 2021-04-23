@@ -34,14 +34,18 @@ final class Pattern private[regex] (
   @inline private def jsFlagsForFind: String =
     jsFlags + (if (sticky && supportsSticky) "gy" else "g")
 
-  /** Compile the native RegExp once.
+  /** The RegExp that is used for `Matcher.find()`.
    *
-   *  In `newJSRegExp()`, we clone that native RegExp using
-   *  `new js.RegExp(jsRegExpBlueprint)`, which the JS engine hopefully
-   *  optimizes by reusing the compiled internal representation of the RegExp.
-   *  Otherwise, well, there's not much we can do about it.
+   *  It receives the 'g' flag so that `lastIndex` is taken into acount.
+   *
+   *  It also receives the 'y' flag if this pattern is sticky and it is
+   *  supported. If it is not supported, its behavior is polyfilled in
+   *  `execFind()`.
+   *
+   *  Since that RegExp is only used locally within `execFind()`, we can
+   *  always reuse the same instance.
    */
-  private[this] val jsRegExpBlueprint =
+  private[this] val jsRegExpForFind =
     new js.RegExp(jsPattern, jsFlagsForFind)
 
   /** Another version of the RegExp that is used by `Matcher.matches()`.
@@ -59,33 +63,28 @@ final class Pattern private[regex] (
   private[regex] lazy val groupStartMapper: GroupStartMapper =
     GroupStartMapper(jsPattern, jsFlags)
 
-  private[regex] def newJSRegExp(): js.RegExp = {
-    val r = new js.RegExp(jsRegExpBlueprint)
-    if (r ne jsRegExpBlueprint) {
-      r
-    } else {
-      /* Workaround for the PhantomJS 1.x bug
-       * https://github.com/ariya/phantomjs/issues/11494
-       * which causes new js.RegExp(jsRegExpBlueprint) to return the same
-       * object, rather than a new one.
-       * In that case, we reconstruct a new js.RegExp from scratch.
-       */
-      new js.RegExp(jsPattern, jsFlagsForFind)
-    }
-  }
-
   private[regex] def execMatches(input: String): js.RegExp.ExecResult =
     jsRegExpForMatches.exec(input)
 
-  private[regex] def execFind(regexp: js.RegExp, input: String): js.RegExp.ExecResult = {
+  @inline // to stack-allocate the tuple
+  private[regex] def execFind(input: String, start: Int): (js.RegExp.ExecResult, Int) = {
+    val mtch = execFindInternal(input, start)
+    val end = jsRegExpForFind.lastIndex
+    (mtch, end)
+  }
+
+  private def execFindInternal(input: String, start: Int): js.RegExp.ExecResult = {
+    val regexp = jsRegExpForFind
+
     if (!supportsSticky && sticky) {
-      val start = regexp.lastIndex
+      regexp.lastIndex = start
       val mtch = regexp.exec(input)
       if (mtch == null || mtch.index > start)
         null
       else
         mtch
     } else if (supportsUnicode) {
+      regexp.lastIndex = start
       regexp.exec(input)
     } else {
       /* When the native RegExp does not support the 'u' flag (introduced in
@@ -101,8 +100,8 @@ final class Pattern private[regex] (
        * matches that start in the middle of a surrogate pair.
        */
       @tailrec
-      def loop(): js.RegExp.ExecResult = {
-        val start = regexp.lastIndex
+      def loop(start: Int): js.RegExp.ExecResult = {
+        regexp.lastIndex = start
         val mtch = regexp.exec(input)
         if (mtch == null) {
           null
@@ -111,14 +110,13 @@ final class Pattern private[regex] (
           if (index > start && index < input.length() &&
               Character.isLowSurrogate(input.charAt(index)) &&
               Character.isHighSurrogate(input.charAt(index - 1))) {
-            regexp.lastIndex = index + 1
-            loop()
+            loop(index + 1)
           } else {
             mtch
           }
         }
       }
-      loop()
+      loop(start)
     }
   }
 

@@ -28,13 +28,12 @@ final class Matcher private[regex] (
   def pattern(): Pattern = pattern0
 
   // Configuration (updated manually)
-  private var regexp = pattern0.newJSRegExp()
   private var inputstr = input0.subSequence(regionStart0, regionEnd0).toString
 
   // Match result (updated by successful matches)
+  private var position: Int = 0 // within `inputstr`, not `input0`
   private var lastMatch: js.RegExp.ExecResult = null
   private var lastMatchIsForMatches = false
-  private var canStillFind = true
 
   // Append state (updated by replacement methods)
   private var appendPos: Int = 0
@@ -57,22 +56,20 @@ final class Matcher private[regex] (
     lastMatch ne null
   }
 
-  def find(): Boolean = if (canStillFind) {
-    lastMatch = pattern().execFind(regexp, inputstr)
-    if (lastMatch ne null) {
-      if (lastMatch(0).get.isEmpty)
-        regexp.lastIndex += 1
-    } else {
-      canStillFind = false
-    }
+  def find(): Boolean = {
+    val (mtch, end) = pattern().execFind(inputstr, position)
+    position =
+      if (mtch ne null) (if (end == mtch.index) end + 1 else end)
+      else inputstr.length() + 1 // cannot find anymore
+    lastMatch = mtch
     lastMatchIsForMatches = false
     startOfGroupCache = null
-    lastMatch ne null
-  } else false
+    mtch ne null
+  }
 
   def find(start: Int): Boolean = {
     reset()
-    regexp.lastIndex = start
+    position = start
     find()
   }
 
@@ -147,9 +144,8 @@ final class Matcher private[regex] (
   // Reset methods
 
   private def resetMatch(): Matcher = {
-    regexp.lastIndex = 0
+    position = 0
     lastMatch = null
-    canStillFind = true
     appendPos = 0
     startOfGroupCache = null
     this
@@ -164,10 +160,8 @@ final class Matcher private[regex] (
   }
 
   def usePattern(pattern: Pattern): Matcher = {
-    val prevLastIndex = regexp.lastIndex
+    // note that `position` and `appendPos` are left unchanged
     pattern0 = pattern
-    regexp = pattern.newJSRegExp()
-    regexp.lastIndex = prevLastIndex
     lastMatch = null
     startOfGroupCache = null
     this
