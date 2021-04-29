@@ -322,7 +322,9 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
         args.foreach(arg => node.addChildToBack(transformExpr(arg)))
         node
       case DotSelect(qualifier, item) =>
-        new Node(Token.GETPROP, transformExpr(qualifier), transformString(item))
+        val node = Node.newString(Token.GETPROP, item.name)
+        node.addChildToBack(transformExpr(qualifier))
+        setNodePosition(node, item.pos.orElse(pos))
       case BracketSelect(qualifier, item) =>
         new Node(Token.GETELEM, transformExpr(qualifier), transformExpr(item))
 
@@ -426,9 +428,6 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
     setNodePosition(Node.newString(Token.LABEL_NAME, ident.name),
         ident.pos orElse parentPos)
 
-  def transformString(ident: Ident)(implicit parentPos: Position): Node =
-    setNodePosition(Node.newString(ident.name), ident.pos orElse parentPos)
-
   def transformObjectLitField(name: PropertyName, value: Tree)(
       implicit parentPos: Position): Node = {
 
@@ -516,12 +515,13 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
   }
 
   private def setNodePosition(node: Node, pos: ir.Position): node.type = {
-    if (pos != ir.Position.NoPosition) {
-      attachSourceFile(node, pos.source)
-      node.setLineno(pos.line+1)
-      node.setCharno(pos.column)
-    } else {
-      attachSourceFile(node, dummySourceName)
+    if (node.getLineno() == -1) { // Do not overwrite a position that was already set
+      if (pos != ir.Position.NoPosition) {
+        attachSourceFile(node, pos.source)
+        node.setLinenoCharno(pos.line + 1, pos.column)
+      } else {
+        attachSourceFile(node, dummySourceName)
+      }
     }
     node
   }
