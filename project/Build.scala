@@ -241,7 +241,7 @@ object Build {
   val previousBinaryCrossVersion = CrossVersion.binaryWith("sjs1_", "")
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.11.12", "2.12.12", "2.13.4")
+    Set("2.11.12", "2.12.13", "2.13.4")
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
 
@@ -844,7 +844,7 @@ object Build {
       MyScalaJSPlugin
   ).settings(
       commonSettings,
-      scalaVersion := "2.12.12",
+      scalaVersion := "2.12.13",
       fatalWarningsSettings,
       name := "Scala.js linker private library",
       publishArtifact in Compile := false,
@@ -1036,7 +1036,7 @@ object Build {
       name := "Scala.js sbt plugin",
       normalizedName := "sbt-scalajs",
       sbtPlugin := true,
-      crossScalaVersions := Seq("2.12.12"),
+      crossScalaVersions := Seq("2.12.13"),
       scalaVersion := crossScalaVersions.value.head,
       sbtVersion := "1.0.0",
       scalaBinaryVersion :=
@@ -1670,10 +1670,10 @@ object Build {
                 fullLinkGz = 28000 to 29000,
             ))
 
-          case "2.12.12" =>
+          case "2.12.13" =>
             Some(ExpectedSizes(
-                fastLink = 781000 to 782000,
-                fullLink = 148000 to 149000,
+                fastLink = 780000 to 781000,
+                fullLink = 149000 to 150000,
                 fastLinkGz = 91000 to 92000,
                 fullLinkGz = 36000 to 37000,
             ))
@@ -2241,6 +2241,11 @@ object Build {
       },
   )
 
+  private def useOldPartest(scalaV: String): Boolean = {
+    scalaV.startsWith("2.11.") ||
+    (scalaV.startsWith("2.12.") && scalaV.substring(5).takeWhile(_.isDigit).toInt < 13)
+  }
+
   lazy val partest: MultiScalaProject = MultiScalaProject(
       id = "partest", base = file("partest")
   ).settings(
@@ -2290,16 +2295,28 @@ object Build {
           Seq(
               "org.scala-sbt" % "test-interface" % "1.0",
               {
-                val v = scalaVersion.value
-                if (v.startsWith("2.11."))
-                  "org.scala-lang.modules" %% "scala-partest" % "1.0.16"
-                else
-                  "org.scala-lang.modules" %% "scala-partest" % "1.1.4"
+                val scalaV = scalaVersion.value
+                if (useOldPartest(scalaV)) {
+                  if (scalaV.startsWith("2.11."))
+                    "org.scala-lang.modules" %% "scala-partest" % "1.0.16"
+                  else
+                    "org.scala-lang.modules" %% "scala-partest" % "1.1.4"
+                } else {
+                  "org.scala-lang" % "scala-partest" % scalaV
+                }
               }
           )
         } else {
           Seq()
         }
+      },
+
+      unmanagedSourceDirectories in Compile += {
+        val srcDir = (sourceDirectory in Compile).value
+        if (useOldPartest(scalaVersion.value))
+          srcDir / "scala-old-partest"
+        else
+          srcDir / "scala-new-partest"
       },
 
       // Ignore scalastyle for this project
