@@ -16,7 +16,18 @@ class ScalaJSPartestOptions private (
   val testFilter: ScalaJSPartestOptions.TestFilter,
   val optMode: ScalaJSPartestOptions.OptMode,
   val showDiff: Boolean
-)
+) {
+  def banner: String = {
+    import org.scalajs.ir.ScalaJSVersions.{ current => currentVersion }
+
+    s"""
+    |Scala.js version is: $currentVersion
+    |Scala.js options are:
+    |optimizer:           ${optMode.shortStr}
+    |testFilter:          ${testFilter.descr}
+    """.stripMargin
+  }
+}
 
 object ScalaJSPartestOptions {
 

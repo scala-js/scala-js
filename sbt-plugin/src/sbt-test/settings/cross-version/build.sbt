@@ -3,7 +3,7 @@ import org.scalajs.sbtplugin.ScalaJSCrossVersion
 val check = taskKey[Unit]("Run checks of this test")
 
 version := scalaJSVersion
-scalaVersion := "2.12.12"
+scalaVersion := "2.12.13"
 
 lazy val js = project.enablePlugins(ScalaJSPlugin).settings(
     check := {

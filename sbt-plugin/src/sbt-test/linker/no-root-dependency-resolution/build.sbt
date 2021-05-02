@@ -1,7 +1,7 @@
 name := "Scala.js sbt test"
 
 version in ThisBuild := scalaJSVersion
-scalaVersion in ThisBuild := "2.12.12"
+scalaVersion in ThisBuild := "2.12.13"
 
 // Disable the IvyPlugin on the root project
 disablePlugins(sbt.plugins.IvyPlugin)

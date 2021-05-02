@@ -117,8 +117,14 @@ case class PartestTask(taskDef: TaskDef, args: Array[String]) extends Task {
   // use reflection to instantiate scala.tools.partest.scalajs.ScalaJSSBTRunner,
   // casting to the structural type SBTRunner above so that method calls on the result will be invoked reflectively as well
   private def SBTRunner(partestFingerprint: Fingerprint, eventHandler: EventHandler, loggers: Array[Logger], testRoot: File, testClassLoader: URLClassLoader, javaCmd: File, javacCmd: File, scalacArgs: Array[String], args: Array[String], options: ScalaJSPartestOptions, scalaVersion: String): SBTRunner = {
+    // The test root for partest is read out through the system properties, not passed as an argument
+    System.setProperty("partest.root", testRoot.getAbsolutePath)
+
+    // Partests take at least 5h. We double, just to be sure. (default is 4 hours)
+    System.setProperty("partest.timeout", "10 hours")
+
     val runnerClass = Class.forName("scala.tools.partest.scalajs.ScalaJSSBTRunner")
-    runnerClass.getConstructors()(0).newInstance(partestFingerprint, eventHandler, loggers, testRoot, testClassLoader, javaCmd, javacCmd, scalacArgs, args, options, scalaVersion).asInstanceOf[SBTRunner]
+    runnerClass.getConstructors()(0).newInstance(partestFingerprint, eventHandler, loggers, testClassLoader, javaCmd, javacCmd, scalacArgs, args, options, scalaVersion).asInstanceOf[SBTRunner]
   }
 
   /** A possibly zero-length array of string tags associated with this task. */
