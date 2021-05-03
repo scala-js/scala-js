@@ -19,8 +19,7 @@ import org.junit.Assert._
 
 import org.scalajs.testsuite.javalib.lang.IterableFactory
 import org.scalajs.testsuite.javalib.lang.IterableTest
-import org.scalajs.testsuite.utils.AssertThrows._
-
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import scala.reflect.ClassTag
 
 import Utils._

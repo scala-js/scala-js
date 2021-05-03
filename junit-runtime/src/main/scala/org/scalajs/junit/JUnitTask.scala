@@ -84,16 +84,7 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
     for {
       (errors, timeInSeconds) <- result
     } yield {
-      errors match {
-        case e :: Nil if isAssumptionViolation(e) =>
-          reporter.reportIgnored(None)
-          ignored += 1
-
-        case es =>
-          failed += es.size
-          reporter.reportErrors("Test ", None, timeInSeconds, es)
-      }
-
+      failed += reportExecutionErrors(reporter, None, timeInSeconds, errors)
       reporter.reportRunFinished(failed, ignored, total, timeInSeconds)
     }
   }
@@ -120,16 +111,7 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
     for {
       (errors, timeInSeconds) <- result
     } yield {
-      val failed = errors match {
-        case e :: Nil if isAssumptionViolation(e) =>
-          reporter.reportAssumptionViolation(test.name, timeInSeconds, e)
-          0
-
-        case es =>
-          reporter.reportErrors("Test ", Some(test.name), timeInSeconds, es)
-          es.size
-      }
-
+      val failed = reportExecutionErrors(reporter, Some(test.name), timeInSeconds, errors)
       reporter.reportTestFinished(test.name, errors.isEmpty, timeInSeconds)
 
       // Scala.js-specific: timeouts are warnings only, after the fact
@@ -140,6 +122,33 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
       }
 
       failed
+    }
+  }
+
+  private def reportExecutionErrors(reporter: Reporter, method: Option[String],
+      timeInSeconds: Double, errors: List[Throwable]): Int = {
+    import org.junit.internal.AssumptionViolatedException
+    import org.junit.TestCouldNotBeSkippedException
+
+    errors match {
+      case Nil =>
+        // fast path
+        0
+
+      case (e: AssumptionViolatedException) :: Nil =>
+        reporter.reportAssumptionViolation(method, timeInSeconds, e)
+        0
+
+      case _ =>
+        val errorsPatchedForAssumptionViolations = errors.map {
+          case error: AssumptionViolatedException =>
+            new TestCouldNotBeSkippedException(error)
+          case error =>
+            error
+        }
+        reporter.reportErrors("Test ", method, timeInSeconds,
+            errorsPatchedForAssumptionViolations)
+        errorsPatchedForAssumptionViolations.size
     }
   }
 
@@ -214,11 +223,6 @@ private[junit] final class JUnitTask(val taskDef: TaskDef,
       val timeInSeconds = (System.nanoTime - startTime).toDouble / 1000000000
       (es, timeInSeconds)
     }
-  }
-
-  private def isAssumptionViolation(ex: Throwable): Boolean = {
-    ex.isInstanceOf[org.junit.AssumptionViolatedException] ||
-    ex.isInstanceOf[org.junit.internal.AssumptionViolatedException]
   }
 
   private def catchAll[T](body: => T): Try[T] = {

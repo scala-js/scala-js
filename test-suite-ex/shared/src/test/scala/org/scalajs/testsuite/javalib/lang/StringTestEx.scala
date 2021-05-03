@@ -17,8 +17,6 @@ import java.util.Locale
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
-
 /** Additional tests for java.lang.String that require `java.util.Locale`. */
 class StringTestEx {
   val English = new Locale("en")

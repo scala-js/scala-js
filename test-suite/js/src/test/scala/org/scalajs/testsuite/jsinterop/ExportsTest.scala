@@ -16,7 +16,7 @@ import scala.scalajs.js
 import scala.scalajs.js.annotation._
 import scala.scalajs.js.Dynamic.global
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.JSAssert._
 import org.scalajs.testsuite.utils.JSUtils
 import org.scalajs.testsuite.utils.Platform._

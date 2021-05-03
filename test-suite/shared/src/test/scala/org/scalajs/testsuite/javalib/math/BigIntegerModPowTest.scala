@@ -25,7 +25,7 @@ import java.util.Arrays
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class BigIntegerModPowTest {
 

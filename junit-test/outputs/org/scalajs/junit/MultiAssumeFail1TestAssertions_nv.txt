@@ -1,6 +1,6 @@
 liTest run started
 liTest org.scalajs.junit.MultiAssumeFail1Test.multiTest1 started
-lwTest assumption in test org.scalajs.junit.MultiAssumeFail1Test.multiTest1 failed: org.junit.internal.AssumptionViolatedException: This assume should not pass, took <TIME>
+lwTest assumption in test org.scalajs.junit.MultiAssumeFail1Test.multiTest1 failed: org.junit.AssumptionViolatedException: This assume should not pass, took <TIME>
 e3org.scalajs.junit.MultiAssumeFail1Test.multiTest1
 ldTest org.scalajs.junit.MultiAssumeFail1Test.multiTest1 finished, took <TIME>
 liTest org.scalajs.junit.MultiAssumeFail1Test.multiTest2 started

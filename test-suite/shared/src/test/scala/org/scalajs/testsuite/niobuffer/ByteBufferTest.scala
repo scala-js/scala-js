@@ -18,7 +18,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.scalajs.testsuite.niobuffer.BufferFactory.ByteBufferFactory
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 abstract class ByteBufferTest extends BaseBufferTest {
   type Factory = BufferFactory.ByteBufferFactory

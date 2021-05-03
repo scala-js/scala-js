@@ -19,7 +19,7 @@ import java.io._
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 /** Tests for our implementation of java.io._ reader classes */
 class ReaderTest {

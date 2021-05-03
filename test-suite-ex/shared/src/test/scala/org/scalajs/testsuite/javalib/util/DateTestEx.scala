@@ -18,7 +18,7 @@ import java.time.Instant
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 /** Additional tests for `java.util.Date` that require javalib extension
  *  dummies.

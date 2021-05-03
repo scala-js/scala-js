@@ -17,8 +17,6 @@ import scala.scalajs.js
 import org.junit.Assert._
 import org.junit.Test
 
-import org.scalajs.testsuite.utils.AssertThrows._
-
 class ThrowAndCatchTest {
   import ThrowAndCatchTest._
 

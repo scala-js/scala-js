@@ -20,7 +20,7 @@ import java.lang.{Float => JFloat}
 
 import scala.util.Try
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform.{executingInJVM, hasAccurateFloats}
 
 class FloatTest {

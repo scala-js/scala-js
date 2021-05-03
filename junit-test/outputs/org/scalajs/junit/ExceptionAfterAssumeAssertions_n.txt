@@ -1,6 +1,7 @@
 ldTest run started
 ldTest org.scalajs.junit.ExceptionAfterAssume.assumeFail started
-leTest org.scalajs.junit.ExceptionAfterAssume.assumeFail failed: org.junit.internal.AssumptionViolatedException: This assume should not pass, took <TIME>
+leTest org.scalajs.junit.ExceptionAfterAssume.assumeFail failed: org.junit.TestCouldNotBeSkippedException: Test could not be skipped due to other failures, took <TIME>
+leCaused by: org.junit.AssumptionViolatedException: This assume should not pass
 e2org.scalajs.junit.ExceptionAfterAssume.assumeFail
 leTest org.scalajs.junit.ExceptionAfterAssume.assumeFail failed: java.lang.IllegalArgumentException: after() must be called, took <TIME>
 ldTest org.scalajs.junit.ExceptionAfterAssume.assumeFail finished, took <TIME>

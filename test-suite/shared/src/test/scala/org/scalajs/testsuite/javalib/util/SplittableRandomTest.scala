@@ -17,8 +17,6 @@ import org.junit.Test
 
 import java.util.SplittableRandom
 
-import org.scalajs.testsuite.utils.AssertThrows._
-
 class SplittableRandomTest {
 
   @Test def nextLong(): Unit = {

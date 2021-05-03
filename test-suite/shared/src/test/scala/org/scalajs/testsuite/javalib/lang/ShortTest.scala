@@ -17,7 +17,7 @@ import java.lang.{Short => JShort}
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 /** Tests the implementation of the java standard library Short
  */

@@ -1,6 +1,6 @@
 ld[34mTest run started[0m
 ldTest org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[36mmultiTest1[0m started
-lwTest assumption in test org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[31mmultiTest1[0m failed: org.junit.internal.[31mAssumptionViolatedException[0m: This assume should not pass, took <TIME>
+lwTest assumption in test org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[31mmultiTest1[0m failed: org.junit.[31mAssumptionViolatedException[0m: This assume should not pass, took <TIME>
 e3org.scalajs.junit.MultiAssumeFail2Test.multiTest1
 ldTest org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[36mmultiTest1[0m finished, took <TIME>
 ldTest org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[36mmultiTest2[0m started
@@ -10,7 +10,7 @@ ldTest org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[36mmultiTest3[0m start
 ldTest org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[36mmultiTest3[0m finished, took <TIME>
 e0org.scalajs.junit.MultiAssumeFail2Test.multiTest3
 ldTest org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[36mmultiTest4[0m started
-lwTest assumption in test org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[31mmultiTest4[0m failed: org.junit.internal.[31mAssumptionViolatedException[0m: This assume should not pass, took <TIME>
+lwTest assumption in test org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[31mmultiTest4[0m failed: org.junit.[31mAssumptionViolatedException[0m: This assume should not pass, took <TIME>
 e3org.scalajs.junit.MultiAssumeFail2Test.multiTest4
 ldTest org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[36mmultiTest4[0m finished, took <TIME>
 ldTest org.scalajs.junit.[33mMultiAssumeFail2Test[0m.[36mmultiTest5[0m started

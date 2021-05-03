@@ -16,7 +16,7 @@ import org.junit.Assert._
 import org.junit.Test
 
 import org.scalajs.testsuite.jsinterop.TimeoutMock
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 import java.util.Timer
 import java.util.TimerTask

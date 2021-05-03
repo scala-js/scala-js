@@ -17,7 +17,7 @@ import java.{util => ju}
 import org.junit.Assert._
 import org.junit.Test
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.CollectionsTestBase
 
 import scala.reflect.ClassTag

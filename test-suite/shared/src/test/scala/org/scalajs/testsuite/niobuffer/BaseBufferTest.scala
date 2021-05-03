@@ -20,7 +20,7 @@ import org.junit.Assume._
 
 import org.scalajs.testsuite.niobuffer.ByteBufferFactories.SlicedAllocByteBufferFactory
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 abstract class BaseBufferTest {

@@ -18,7 +18,7 @@ import org.junit.{BeforeClass, Test}
 
 import scala.scalajs.js
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 object MapTest {

@@ -17,7 +17,7 @@ import org.junit.Test
 
 import java.util.UUID
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class UUIDTest {
 

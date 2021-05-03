@@ -260,6 +260,11 @@ object Build {
     if (hasNewCollections(scalaV)) sourceDir / "scala-new-collections"
     else sourceDir / "scala-old-collections"
 
+  val JUnitDeps = Seq(
+    "com.novocode" % "junit-interface" % "0.11" % "test",
+    "junit" % "junit" % "4.13.2" % "test",
+  )
+
   val javaVersion = settingKey[Int](
     "The major Java SDK version that should be assumed for compatibility. " +
     "Defaults to what sbt is running with.")
@@ -697,8 +702,7 @@ object Build {
       id = "ir", base = file("ir/jvm")
   ).settings(
       commonIrProjectSettings,
-      libraryDependencies +=
-        "com.novocode" % "junit-interface" % "0.9" % "test"
+      libraryDependencies ++= JUnitDeps,
   )
 
   lazy val irProjectJS: MultiScalaProject = MultiScalaProject(
@@ -722,8 +726,8 @@ object Build {
       libraryDependencies ++= Seq(
           "org.scala-lang" % "scala-compiler" % scalaVersion.value,
           "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-          "com.novocode" % "junit-interface" % "0.9" % "test"
       ),
+      libraryDependencies ++= JUnitDeps,
       exportJars := true,
 
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a"),
@@ -790,8 +794,8 @@ object Build {
       commonLinkerInterfaceSettings,
       libraryDependencies ++= Seq(
           "org.scala-js" %% "scalajs-logging" % "1.1.1",
-          "com.novocode" % "junit-interface" % "0.11" % "test",
       ),
+      libraryDependencies ++= JUnitDeps,
   ).dependsOn(irProject, jUnitAsyncJVM % "test")
 
   lazy val linkerInterfaceJS: MultiScalaProject = MultiScalaProject(
@@ -924,11 +928,11 @@ object Build {
   ).settings(
       libraryDependencies ++= Seq(
           "com.google.javascript" % "closure-compiler" % "v20210406",
-          "com.novocode" % "junit-interface" % "0.9" % "test",
           "com.google.jimfs" % "jimfs" % "1.1" % "test"
       ) ++ (
           parallelCollectionsDependencies(scalaVersion.value)
       ),
+      libraryDependencies ++= JUnitDeps,
 
       resourceGenerators in Compile += Def.task {
         val s = streams.value
@@ -1017,9 +1021,9 @@ object Build {
       libraryDependencies ++= Seq(
           "org.scala-sbt" % "test-interface" % "1.0",
           "org.scala-js" %% "scalajs-js-envs" % "1.1.1",
-          "com.novocode" % "junit-interface" % "0.11" % "test",
           "com.google.jimfs" % "jimfs" % "1.1" % "test",
       ),
+      libraryDependencies ++= JUnitDeps,
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.TestAdapter,
       unmanagedSourceDirectories in Compile +=
@@ -1597,8 +1601,8 @@ object Build {
       name := "Tests for Scala.js JUnit output in JVM.",
       libraryDependencies ++= Seq(
           "org.scala-sbt" % "test-interface" % "1.0" % "test",
-          "com.novocode" % "junit-interface" % "0.11" % "test"
-      )
+      ),
+      libraryDependencies ++= JUnitDeps,
   ).dependsOn(
        jUnitAsyncJVM % "test"
   )
@@ -2115,8 +2119,7 @@ object Build {
           "-Dline.separator=\n"
       ),
 
-      libraryDependencies +=
-        "com.novocode" % "junit-interface" % "0.11" % "test"
+      libraryDependencies ++= JUnitDeps,
   )
 
   /* Dummies for javalib extensions that can be implemented outside the core.
@@ -2211,8 +2214,7 @@ object Build {
           "-Dline.separator=\n"
       ),
 
-      libraryDependencies +=
-        "com.novocode" % "junit-interface" % "0.11" % "test",
+      libraryDependencies ++= JUnitDeps,
   ).dependsOn(
       testSuiteJVM
   )

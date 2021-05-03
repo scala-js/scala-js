@@ -15,7 +15,7 @@ package org.scalajs.testsuite.javalib.io
 import java.io._
 import org.junit.Assert._
 import org.junit.Test
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class CharArrayReaderTest {
   private val hw: Array[Char] = Array('H', 'e', 'l', 'l', 'o', 'W', 'o', 'r', 'l', 'd')

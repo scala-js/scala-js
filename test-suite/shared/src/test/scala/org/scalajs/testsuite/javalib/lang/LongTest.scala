@@ -17,7 +17,7 @@ import java.lang.{Long => JLong}
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 /** Tests the implementation of the java standard library Long
  *  requires jsinterop/LongTest to work to make sense

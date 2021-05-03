@@ -49,6 +49,7 @@ scala/tools/nsc/transform/delambdafy/DelambdafyTest.scala
 scala/tools/nsc/transform/patmat/SolvingTest.scala
 scala/tools/nsc/util/ClassPathImplComparator.scala
 scala/tools/nsc/util/StackTraceTest.scala
+scala/util/SpecVersionTest.scala
 
 ## Do not link
 scala/StringContextTest.scala

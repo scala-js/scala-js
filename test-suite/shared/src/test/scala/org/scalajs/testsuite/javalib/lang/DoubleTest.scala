@@ -20,7 +20,7 @@ import java.lang.{Double => JDouble}
 
 import scala.util.Try
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 class DoubleTest {

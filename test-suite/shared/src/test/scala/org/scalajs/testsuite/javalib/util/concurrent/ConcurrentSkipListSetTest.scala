@@ -22,7 +22,7 @@ import org.junit.Test
 import org.scalajs.testsuite.javalib.util.NavigableSetFactory
 import org.scalajs.testsuite.javalib.util.TrivialImmutableCollection
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 import scala.reflect.ClassTag

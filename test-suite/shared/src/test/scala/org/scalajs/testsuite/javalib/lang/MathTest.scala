@@ -18,7 +18,7 @@ import org.junit.Assume._
 
 import java.lang.Math
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 class MathTest {

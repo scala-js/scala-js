@@ -6,6 +6,7 @@ scala/StringTest.scala
 scala/collection/FactoriesTest.scala
 scala/collection/LazyZipOpsTest.scala
 scala/collection/immutable/IndexedSeqTest.scala
+scala/collection/immutable/RangeTest.scala
 scala/lang/annotations/BytecodeTest.scala
 scala/lang/annotations/RunTest.scala
 scala/lang/traits/BytecodeTest.scala
