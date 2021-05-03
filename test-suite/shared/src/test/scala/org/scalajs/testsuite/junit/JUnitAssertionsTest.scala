@@ -345,18 +345,18 @@ class JUnitAssertionsTest {
 
   @Test
   def testExpectThrows(): Unit = {
-    testIfAsserts(expectThrows(classOf[Exception], throw new Exception))
-    testIfAsserts(expectThrows(classOf[IndexOutOfBoundsException],
+    testIfAsserts(assertThrows(classOf[Exception], throw new Exception))
+    testIfAsserts(assertThrows(classOf[IndexOutOfBoundsException],
         throw new IndexOutOfBoundsException))
 
     testIfAsserts {
-      val ex = expectThrows(classOf[Exception], throw new Exception("abc"))
+      val ex = assertThrows(classOf[Exception], throw new Exception("abc"))
       assertEquals(ex.getMessage, "abc")
     }
 
-    testIfAsserts(expectThrows(classOf[IndexOutOfBoundsException],
+    testIfAsserts(assertThrows(classOf[IndexOutOfBoundsException],
         throw new Exception), ShallNotPass)
-    testIfAsserts(expectThrows(classOf[IndexOutOfBoundsException],()),
+    testIfAsserts(assertThrows(classOf[IndexOutOfBoundsException],()),
         ShallNotPass)
   }
 

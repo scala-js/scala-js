@@ -155,7 +155,7 @@ class LongTest {
 
   @Test def parseStringInvalidThrows(): Unit = {
     def test(s: String): Unit =
-      expectThrows(classOf[NumberFormatException], JLong.parseLong(s))
+      assertThrows(classOf[NumberFormatException], JLong.parseLong(s))
 
     test("abc")
     test("asdf")
@@ -207,8 +207,8 @@ class LongTest {
 
   @Test def parseStringsBaseLessThanTwoOrBaseLargerThan36Throws(): Unit = {
     def test(s: String, radix: Int): Unit = {
-      expectThrows(classOf[NumberFormatException], JLong.parseLong(s, radix))
-      expectThrows(classOf[NumberFormatException], JLong.valueOf(s, radix).longValue())
+      assertThrows(classOf[NumberFormatException], JLong.parseLong(s, radix))
+      assertThrows(classOf[NumberFormatException], JLong.valueOf(s, radix).longValue())
     }
 
     List[Int](-10, -5, 0, 1, 37, 38, 50, 100).foreach(test("5", _))
@@ -602,7 +602,7 @@ class LongTest {
 
   @Test def parseUnsignedLongFailureCases(): Unit = {
     def test(s: String, radix: Int = 10): Unit =
-      expectThrows(classOf[NumberFormatException], JLong.parseUnsignedLong(s, radix))
+      assertThrows(classOf[NumberFormatException], JLong.parseUnsignedLong(s, radix))
 
     // Bad radix
     test("0", MinRadix - 1)

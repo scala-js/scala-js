@@ -51,9 +51,9 @@ class InputStreamTest extends CommonStreamsTests {
     assertArrayEquals(((1 to 10) ++ (51 to 70) ++ (31 to 50)).toArray.map(_.toByte), buf)
 
     // Test some Exception conditions
-    expectThrows(classOf[IndexOutOfBoundsException], stream.read(buf, -1, 10))
-    expectThrows(classOf[IndexOutOfBoundsException], stream.read(buf, 0, -1))
-    expectThrows(classOf[IndexOutOfBoundsException], stream.read(buf, 10, 100))
+    assertThrows(classOf[IndexOutOfBoundsException], stream.read(buf, -1, 10))
+    assertThrows(classOf[IndexOutOfBoundsException], stream.read(buf, 0, -1))
+    assertThrows(classOf[IndexOutOfBoundsException], stream.read(buf, 10, 100))
 
     // Buffer should be unmodified
     assertArrayEquals(

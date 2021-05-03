@@ -50,7 +50,7 @@ class ConcurrentSkipListSetTest {
     assertEquals(0, csls.size())
     assertTrue(csls.isEmpty)
     assertFalse(csls.remove(333))
-    expectThrows(classOf[NoSuchElementException], csls.first)
+    assertThrows(classOf[NoSuchElementException], csls.first)
   }
 
   @Test def adddRemoveString(): Unit = {
@@ -404,7 +404,7 @@ class ConcurrentSkipListSetTest {
     val csls = new ConcurrentSkipListSet[TestObj]()
 
     assertEquals(0, csls.size())
-    expectThrows(classOf[ClassCastException], {
+    assertThrows(classOf[ClassCastException], {
       // Throw either when the first or second element is added
       csls.add(new TestObj(111))
       csls.add(new TestObj(222))

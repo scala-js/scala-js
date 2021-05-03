@@ -236,7 +236,7 @@ class BigIntegerMultiplyTest {
     val aSign = 1
     val exp = -5
     val aNumber = new BigInteger(aSign, aBytes)
-    expectThrows(classOf[ArithmeticException], aNumber.pow(exp))
+    assertThrows(classOf[ArithmeticException], aNumber.pow(exp))
   }
 
   @Test def testPowNegativeNumToEvenExp(): Unit = {

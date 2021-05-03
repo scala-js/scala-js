@@ -33,7 +33,7 @@ class BigIntegerConstructorsTest {
 
   @Test def testConstructorBytesException(): Unit = {
     val aBytes = Array[Byte]()
-    expectThrows(classOf[NumberFormatException], new BigInteger(aBytes))
+    assertThrows(classOf[NumberFormatException], new BigInteger(aBytes))
   }
 
   @Test def testConstructorBytesNegative1(): Unit = {
@@ -170,13 +170,13 @@ class BigIntegerConstructorsTest {
   @Test def testConstructorSignBytesException1(): Unit = {
     val aBytes = Array[Byte](123, 45, -3, -76)
     val aSign = 3
-    expectThrows(classOf[NumberFormatException], new BigInteger(aSign, aBytes))
+    assertThrows(classOf[NumberFormatException], new BigInteger(aSign, aBytes))
   }
 
   @Test def testConstructorSignBytesException2(): Unit = {
     val aBytes = Array[Byte](123, 45, -3, -76)
     val aSign = 0
-    expectThrows(classOf[NumberFormatException], new BigInteger(aSign, aBytes))
+    assertThrows(classOf[NumberFormatException], new BigInteger(aSign, aBytes))
   }
 
   @Test def testConstructorSignBytesNegative1(): Unit = {
@@ -441,7 +441,7 @@ class BigIntegerConstructorsTest {
 
   @Test def testConstructorStringException(): Unit = {
     def test(s: String, radix: Int): Unit =
-      expectThrows(classOf[NumberFormatException], new BigInteger(s, radix))
+      assertThrows(classOf[NumberFormatException], new BigInteger(s, radix))
 
     test("9234853876401", 45)
     test("   9234853876401", 10)

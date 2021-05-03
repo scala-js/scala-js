@@ -378,7 +378,7 @@ class FloatTest {
 
   @Test def parseFloatInvalidThrows(): Unit = {
     def test(s: String): Unit =
-      expectThrows(classOf[NumberFormatException], JFloat.parseFloat(s))
+      assertThrows(classOf[NumberFormatException], JFloat.parseFloat(s))
 
     test("4.3.5")
     test("4e3.5")

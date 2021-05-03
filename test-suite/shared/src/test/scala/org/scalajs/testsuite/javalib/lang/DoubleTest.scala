@@ -348,7 +348,7 @@ class DoubleTest {
       def pad(s: String): String = padding + s + padding
 
       def test(s: String): Unit =
-        expectThrows(classOf[NumberFormatException], JDouble.parseDouble(pad(s)))
+        assertThrows(classOf[NumberFormatException], JDouble.parseDouble(pad(s)))
 
       test("asdf")
       test("4.3.5")

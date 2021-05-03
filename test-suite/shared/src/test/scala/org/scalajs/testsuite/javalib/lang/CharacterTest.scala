@@ -304,7 +304,7 @@ class CharacterTest {
     assertTrue(Character.toChars(0x10401) sameElements Array('\uD801', '\uDC01'))
     assertTrue(Character.toChars(0x10FFFF) sameElements Array('\uDBFF', '\uDFFF'))
 
-    expectThrows(classOf[IllegalArgumentException], Character.toChars(Integer.MAX_VALUE))
+    assertThrows(classOf[IllegalArgumentException], Character.toChars(Integer.MAX_VALUE))
   }
 
   @Test def toCharsInPlace(): Unit = {
@@ -339,7 +339,7 @@ class CharacterTest {
       assertTrue(dst sameElements Array(0.toChar, 0.toChar, '\uDBFF', '\uDFFF'))
     }
 
-    expectThrows(classOf[IllegalArgumentException], Character.toChars(Integer.MAX_VALUE, new Array(2), 0))
+    assertThrows(classOf[IllegalArgumentException], Character.toChars(Integer.MAX_VALUE, new Array(2), 0))
   }
 
   @Test def isDigit(): Unit = {
@@ -1034,9 +1034,9 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertEquals(0, Character.codePointCount(s, s.length - 1, s.length - 1))
     assertEquals(0, Character.codePointCount(s, s.length, s.length))
 
-    expectThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(s, -3, 4))
-    expectThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(s, 6, 2))
-    expectThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(s, 10, 30))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(s, -3, 4))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(s, 6, 2))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(s, 10, 30))
   }
 
   @Test def codePointCountCharSequence(): Unit = {
@@ -1059,9 +1059,9 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertEquals(0, Character.codePointCount(cs, cs.length - 1, cs.length - 1))
     assertEquals(0, Character.codePointCount(cs, cs.length, cs.length))
 
-    expectThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(cs, -3, 4))
-    expectThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(cs, 6, 2))
-    expectThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(cs, 10, 30))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(cs, -3, 4))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(cs, 6, 2))
+    assertThrows(classOf[IndexOutOfBoundsException], Character.codePointCount(cs, 10, 30))
   }
 
   @Test def compare(): Unit = {

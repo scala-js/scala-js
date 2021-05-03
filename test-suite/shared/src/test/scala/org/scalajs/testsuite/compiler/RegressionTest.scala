@@ -858,7 +858,7 @@ class RegressionTest {
       var b: Nothing = throw new IllegalStateException("never")
     }
 
-    val ex1 = expectThrows(classOf[IllegalStateException], new EagerFieldsWithNothingType)
+    val ex1 = assertThrows(classOf[IllegalStateException], new EagerFieldsWithNothingType)
     assertEquals("always", ex1.getMessage())
 
     class LazyFieldsWithNothingType {
@@ -866,7 +866,7 @@ class RegressionTest {
     }
 
     val obj = new LazyFieldsWithNothingType
-    val ex2 = expectThrows(classOf[IllegalStateException], obj.a)
+    val ex2 = assertThrows(classOf[IllegalStateException], obj.a)
     assertEquals("lazily always", ex2.getMessage())
   }
 

@@ -188,7 +188,7 @@ class SystemTest {
   @Test def getenvReturnsUnmodifiableMap(): Unit = {
     assertTrue(System.getenv().isInstanceOf[java.util.Map[String, String]])
 
-    expectThrows(classOf[Exception], System.getenv.put("", ""))
+    assertThrows(classOf[Exception], System.getenv.put("", ""))
   }
 
   @Test def getenvLinksAndDoesNotThrow(): Unit = {

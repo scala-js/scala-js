@@ -50,8 +50,8 @@ trait CollectionsCheckedCollectionTest
   @Test def testCheckedCollectionBadInputs(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
 
-    expectThrows(classOf[ClassCastException], superColl().add(new A))
-    expectThrows(classOf[ClassCastException],
+    assertThrows(classOf[ClassCastException], superColl().add(new A))
+    assertThrows(classOf[ClassCastException],
         superColl().addAll(TrivialImmutableCollection(new A)))
   }
 

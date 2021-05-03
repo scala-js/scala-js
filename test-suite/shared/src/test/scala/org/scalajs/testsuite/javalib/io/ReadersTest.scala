@@ -87,7 +87,7 @@ class StringReaderTest {
     assertEquals(-1, r.read())
 
     r.close()
-    expectThrows(classOf[IOException], r.ready())
+    assertThrows(classOf[IOException], r.ready())
   }
 
   @Test def markReset(): Unit = {
@@ -121,7 +121,7 @@ class StringReaderTest {
     val r = newReader
 
     r.close()
-    expectThrows(classOf[IOException], r.read())
+    assertThrows(classOf[IOException], r.read())
   }
 
   @Test def mark(): Unit = {
@@ -129,7 +129,7 @@ class StringReaderTest {
   }
 
   @Test def markThrowsWithNegativeLookahead(): Unit = {
-    expectThrows(classOf[IllegalArgumentException], newReader.mark(-10))
+    assertThrows(classOf[IllegalArgumentException], newReader.mark(-10))
   }
 
   @Test def skipAcceptsNegativeLookaheadAsLookback(): Unit = {
@@ -298,7 +298,7 @@ class BufferedReaderTest {
   }
 
   @Test def markThrowsWithNegativeLookahead(): Unit = {
-    expectThrows(classOf[IllegalArgumentException], newReader.mark(-10))
+    assertThrows(classOf[IllegalArgumentException], newReader.mark(-10))
   }
 }
 
@@ -344,7 +344,7 @@ class InputStreamReaderTest {
     // Do it twice to check for a regression where this used to throw
     assertEquals(-1, streamReader.read(bytes))
     assertEquals(-1, streamReader.read(bytes))
-    expectThrows(classOf[IndexOutOfBoundsException], streamReader.read(bytes, 10, 3))
+    assertThrows(classOf[IndexOutOfBoundsException], streamReader.read(bytes, 10, 3))
     assertEquals(0, streamReader.read(new Array[Char](0)))
   }
 
@@ -361,6 +361,6 @@ class InputStreamReaderTest {
   @Test def markThrowsNotSupported(): Unit = {
     val data = "Lorem ipsum".getBytes()
     val r = new InputStreamReader(new ByteArrayInputStream(data))
-    expectThrows(classOf[IOException], r.mark(0))
+    assertThrows(classOf[IOException], r.mark(0))
   }
 }

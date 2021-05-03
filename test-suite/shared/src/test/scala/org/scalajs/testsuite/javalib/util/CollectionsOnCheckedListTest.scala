@@ -56,8 +56,8 @@ trait CollectionsCheckedListTest
   @Test def testCheckedListBadInputs(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
 
-    expectThrows(classOf[ClassCastException], superList().add(0, new A))
-    expectThrows(classOf[ClassCastException],
+    assertThrows(classOf[ClassCastException], superList().add(0, new A))
+    assertThrows(classOf[ClassCastException],
         superList().addAll(0, TrivialImmutableCollection(new A)))
     testOnFirstPositionOfIterator[ju.ListIterator[A]](
         superList().listIterator _,

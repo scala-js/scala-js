@@ -52,9 +52,9 @@ class MiscInteropTest {
 
     assertEquals("undefined",
         js.typeOf(js.Dynamic.global.thisGlobalVarDoesNotExist))
-    expectThrows(classOf[js.JavaScriptException],
+    assertThrows(classOf[js.JavaScriptException],
         js.typeOf(nonExistentGlobalVarNoInline()))
-    expectThrows(classOf[js.JavaScriptException],
+    assertThrows(classOf[js.JavaScriptException],
         js.typeOf(nonExistentGlobalVarInline()))
   }
 

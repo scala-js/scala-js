@@ -369,7 +369,7 @@ class ReflectiveCallTest {
       else "scala.scalajs.js.JavaScriptException"
 
     def testWith(body: => Unit): Unit = {
-      val exception = expectThrows(classOf[Throwable], body)
+      val exception = assertThrows(classOf[Throwable], body)
       assertEquals(expectedClassName, exception.getClass.getName)
     }
 

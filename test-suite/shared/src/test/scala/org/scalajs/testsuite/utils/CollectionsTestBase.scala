@@ -44,12 +44,12 @@ trait CollectionsTestBase {
 
   def testCollectionUnmodifiability[E](coll: ju.Collection[E], elem: E): Unit = {
     val empty = TrivialImmutableCollection[E]()
-    expectThrows(classOf[UnsupportedOperationException], coll.add(elem))
-    expectThrows(classOf[UnsupportedOperationException], coll.addAll(empty))
-    expectThrows(classOf[UnsupportedOperationException], coll.clear())
-    expectThrows(classOf[UnsupportedOperationException], coll.remove(elem))
-    expectThrows(classOf[UnsupportedOperationException], coll.removeAll(empty))
-    expectThrows(classOf[UnsupportedOperationException], coll.retainAll(empty))
+    assertThrows(classOf[UnsupportedOperationException], coll.add(elem))
+    assertThrows(classOf[UnsupportedOperationException], coll.addAll(empty))
+    assertThrows(classOf[UnsupportedOperationException], coll.clear())
+    assertThrows(classOf[UnsupportedOperationException], coll.remove(elem))
+    assertThrows(classOf[UnsupportedOperationException], coll.removeAll(empty))
+    assertThrows(classOf[UnsupportedOperationException], coll.retainAll(empty))
     testIteratorsUnmodifiability(() => coll.iterator())
   }
 
@@ -71,11 +71,11 @@ trait CollectionsTestBase {
   def testListUnmodifiability[E](list: ju.List[E], elem: E,
       recursive: Boolean = false): Unit = {
     testCollectionUnmodifiability(list, elem)
-    expectThrows(classOf[UnsupportedOperationException], list.add(0, elem))
-    expectThrows(classOf[UnsupportedOperationException],
+    assertThrows(classOf[UnsupportedOperationException], list.add(0, elem))
+    assertThrows(classOf[UnsupportedOperationException],
         list.addAll(0, TrivialImmutableCollection[E]()))
-    expectThrows(classOf[UnsupportedOperationException], list.remove(0))
-    expectThrows(classOf[UnsupportedOperationException], list.set(0, elem))
+    assertThrows(classOf[UnsupportedOperationException], list.remove(0))
+    assertThrows(classOf[UnsupportedOperationException], list.set(0, elem))
     def testSublist(sl: ju.List[E]): Unit = {
       if (recursive) testCollectionUnmodifiability(sl, elem)
       else testListUnmodifiability(sl, elem, true)
@@ -92,16 +92,16 @@ trait CollectionsTestBase {
     if (it.hasNext) {
       it.next()
       expectedException match {
-        case Some(exClass) => expectThrows(exClass, action(it))
+        case Some(exClass) => assertThrows(exClass, action(it))
         case None => action(it)
       }
     }
   }
 
   def testMapUnmodifiability[K, V](map: ju.Map[K, V], key: K, value: V): Unit = {
-    expectThrows(classOf[UnsupportedOperationException], map.clear())
-    expectThrows(classOf[UnsupportedOperationException], map.put(key, value))
-    expectThrows(classOf[UnsupportedOperationException],
+    assertThrows(classOf[UnsupportedOperationException], map.clear())
+    assertThrows(classOf[UnsupportedOperationException], map.put(key, value))
+    assertThrows(classOf[UnsupportedOperationException],
         map.putAll(TrivialImmutableMap[K, V]()))
     testSetUnmodifiability(map.entrySet(),
         new ju.AbstractMap.SimpleImmutableEntry(key, value))

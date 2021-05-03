@@ -321,7 +321,7 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
       dest.clear()
       range.foreach(i => source.add(toElem(i)))
       range.take(range.size / 2).foreach(i => dest.add(toElem(-i)))
-      expectThrows(classOf[IndexOutOfBoundsException], ju.Collections.copy(dest, source))
+      assertThrows(classOf[IndexOutOfBoundsException], ju.Collections.copy(dest, source))
     }
 
     test[jl.Integer](_.toInt)

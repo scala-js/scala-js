@@ -145,12 +145,12 @@ class ArraysTest {
   @Test def sortIllegalArgumentException(): Unit = {
     val array = Array(0, 1, 3, 4)
 
-    val e1 = expectThrows(classOf[IllegalArgumentException],
+    val e1 = assertThrows(classOf[IllegalArgumentException],
         Arrays.sort(array, 3, 2))
     assertEquals("fromIndex(3) > toIndex(2)", e1.getMessage)
 
     // start/end comparison is made before index ranges checks
-    val e2 = expectThrows(classOf[IllegalArgumentException],
+    val e2 = assertThrows(classOf[IllegalArgumentException],
         Arrays.sort(array, 7, 5))
     assertEquals("fromIndex(7) > toIndex(5)", e2.getMessage)
   }
@@ -522,12 +522,12 @@ class ArraysTest {
   @Test def binarySearchIllegalArgumentException(): Unit = {
     val array = Array(0, 1, 3, 4)
 
-    val e1 = expectThrows(classOf[IllegalArgumentException],
+    val e1 = assertThrows(classOf[IllegalArgumentException],
         Arrays.binarySearch(array, 3, 2, 2))
     assertEquals("fromIndex(3) > toIndex(2)", e1.getMessage)
 
     // start/end comparison is made before index ranges checks
-    val e2 = expectThrows(classOf[IllegalArgumentException],
+    val e2 = assertThrows(classOf[IllegalArgumentException],
         Arrays.binarySearch(array, 7, 5, 2))
     assertEquals("fromIndex(7) > toIndex(5)", e2.getMessage)
   }

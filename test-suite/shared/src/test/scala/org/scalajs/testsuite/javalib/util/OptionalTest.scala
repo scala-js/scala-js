@@ -172,7 +172,7 @@ class OptionalTest {
             throw new AssertionError("Optional.of().orElseThrow() should not call its argument")
         }))
 
-    val ex = expectThrows(classOf[IllegalArgumentException],
+    val ex = assertThrows(classOf[IllegalArgumentException],
         Optional.empty[String]().orElseThrow(new Supplier[IllegalArgumentException] {
           def get(): IllegalArgumentException =
             new IllegalArgumentException("fallback")

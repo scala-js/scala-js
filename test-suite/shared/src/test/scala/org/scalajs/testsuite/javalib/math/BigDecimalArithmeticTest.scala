@@ -522,7 +522,7 @@ class  BigDecimalArithmeticTest {
     val aScale = 15
     val aNumber = new BigDecimal(new BigInteger(a), aScale)
     val bNumber = BigDecimal.valueOf(0L)
-    expectThrows(classOf[ArithmeticException], aNumber.divide(bNumber))
+    assertThrows(classOf[ArithmeticException], aNumber.divide(bNumber))
   }
 
   @Test def testDivideExceptionInvalidRM(): Unit = {
@@ -532,7 +532,7 @@ class  BigDecimalArithmeticTest {
     val bScale = 10
     val aNumber = new BigDecimal(new BigInteger(a), aScale)
     val bNumber = new BigDecimal(new BigInteger(b), bScale)
-    expectThrows(classOf[IllegalArgumentException], aNumber.divide(bNumber, 100))
+    assertThrows(classOf[IllegalArgumentException], aNumber.divide(bNumber, 100))
   }
 
   @Test def testDivideExceptionRM(): Unit = {
@@ -542,7 +542,7 @@ class  BigDecimalArithmeticTest {
     val bScale = 10
     val aNumber = new BigDecimal(new BigInteger(a), aScale)
     val bNumber = new BigDecimal(new BigInteger(b), bScale)
-    expectThrows(classOf[ArithmeticException],
+    assertThrows(classOf[ArithmeticException],
         aNumber.divide(bNumber, BigDecimal.ROUND_UNNECESSARY))
   }
 
@@ -591,7 +591,7 @@ class  BigDecimalArithmeticTest {
   @Test def testDivideLargeScale(): Unit = {
     val arg1 = new BigDecimal("320.0E+2147483647")
     val arg2 = new BigDecimal("6E-2147483647")
-    expectThrows(classOf[ArithmeticException],
+    assertThrows(classOf[ArithmeticException],
         arg1.divide(arg2, Int.MaxValue, RoundingMode.CEILING))
   }
 
@@ -1005,9 +1005,9 @@ class  BigDecimalArithmeticTest {
     assertTrue(BigDecimal.ZERO == quotient)
     quotient = BigDecimal.ZERO.negate().divide(BigDecimal.ONE)
     assertTrue(BigDecimal.ZERO == quotient)
-    expectThrows(classOf[ArithmeticException], BigDecimal.ZERO.divide(BigDecimal.ZERO))
-    expectThrows(classOf[ArithmeticException], BigDecimal.ONE.divide(BigDecimal.ZERO))
-    expectThrows(classOf[ArithmeticException], BigDecimal.ONE.divideToIntegralValue(BigDecimal.ZERO))
+    assertThrows(classOf[ArithmeticException], BigDecimal.ZERO.divide(BigDecimal.ZERO))
+    assertThrows(classOf[ArithmeticException], BigDecimal.ONE.divide(BigDecimal.ZERO))
+    assertThrows(classOf[ArithmeticException], BigDecimal.ONE.divideToIntegralValue(BigDecimal.ZERO))
   }
 
   @Test def testDivideToIntegralValueOnFloatingPoints_Issue1979(): Unit = {

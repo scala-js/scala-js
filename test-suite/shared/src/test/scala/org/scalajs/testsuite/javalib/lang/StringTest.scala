@@ -167,9 +167,9 @@ class StringTest {
     assertEquals(0xD834, "abc\uD834".codePointAt(3))
 
     if (executingInJVM) {
-      expectThrows(classOf[IndexOutOfBoundsException],
+      assertThrows(classOf[IndexOutOfBoundsException],
           "abc\ud834\udf06def".codePointAt(-1))
-      expectThrows(classOf[IndexOutOfBoundsException],
+      assertThrows(classOf[IndexOutOfBoundsException],
           "abc\ud834\udf06def".codePointAt(15))
     }
   }
@@ -185,9 +185,9 @@ class StringTest {
     assertEquals(0xdf06, "\udf06abc".codePointBefore(1))
 
     if (executingInJVM) {
-      expectThrows(classOf[IndexOutOfBoundsException],
+      assertThrows(classOf[IndexOutOfBoundsException],
           "abc\ud834\udf06def".codePointBefore(0))
-      expectThrows(classOf[IndexOutOfBoundsException],
+      assertThrows(classOf[IndexOutOfBoundsException],
           "abc\ud834\udf06def".codePointBefore(15))
     }
   }
@@ -208,9 +208,9 @@ class StringTest {
     assertEquals(0, s.codePointCount(s.length - 1, s.length - 1))
     assertEquals(0, s.codePointCount(s.length, s.length))
 
-    expectThrows(classOf[IndexOutOfBoundsException], s.codePointCount(-3, 4))
-    expectThrows(classOf[IndexOutOfBoundsException], s.codePointCount(6, 2))
-    expectThrows(classOf[IndexOutOfBoundsException], s.codePointCount(10, 30))
+    assertThrows(classOf[IndexOutOfBoundsException], s.codePointCount(-3, 4))
+    assertThrows(classOf[IndexOutOfBoundsException], s.codePointCount(6, 2))
+    assertThrows(classOf[IndexOutOfBoundsException], s.codePointCount(10, 30))
   }
 
   @Test def offsetByCodePoints(): Unit = {
@@ -229,9 +229,9 @@ class StringTest {
     assertEquals(s.length - 1, s.offsetByCodePoints(s.length - 1, 0))
     assertEquals(s.length, s.offsetByCodePoints(s.length, 0))
 
-    expectThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(-3, 4))
-    expectThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(6, 18))
-    expectThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(30, 2))
+    assertThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(-3, 4))
+    assertThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(6, 18))
+    assertThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(30, 2))
   }
 
   @Test def offsetByCodePointsBackwards(): Unit = {
@@ -250,9 +250,9 @@ class StringTest {
     assertEquals(s.length - 1, s.offsetByCodePoints(s.length - 1, -0))
     assertEquals(s.length, s.offsetByCodePoints(s.length, -0))
 
-    expectThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(-3, 4))
-    expectThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(6, 18))
-    expectThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(30, 2))
+    assertThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(-3, 4))
+    assertThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(6, 18))
+    assertThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(30, 2))
   }
 
   @Test def subSequence(): Unit = {

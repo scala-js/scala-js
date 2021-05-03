@@ -60,8 +60,8 @@ class ShortTest {
 
   @Test def parseStringInvalidThrows(): Unit = {
     def test(s: String): Unit = {
-      expectThrows(classOf[NumberFormatException], JShort.parseShort(s))
-      expectThrows(classOf[NumberFormatException], JShort.decode(s))
+      assertThrows(classOf[NumberFormatException], JShort.parseShort(s))
+      assertThrows(classOf[NumberFormatException], JShort.decode(s))
     }
 
     test("abc")

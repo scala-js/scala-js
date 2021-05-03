@@ -453,8 +453,8 @@ class URITest {
   }
 
   @Test def badEscapeSequenceThrows(): Unit = {
-    expectThrows(classOf[URISyntaxException], new URI("http://booh/%E"))
-    expectThrows(classOf[URISyntaxException], new URI("http://booh/%Ep"))
+    assertThrows(classOf[URISyntaxException], new URI("http://booh/%E"))
+    assertThrows(classOf[URISyntaxException], new URI("http://booh/%Ep"))
   }
 
   @Test def validIPv4(): Unit = {
@@ -462,8 +462,8 @@ class URITest {
   }
 
   @Test def invalidIPv4Throws(): Unit = {
-    expectThrows(classOf[URISyntaxException], new URI("http","256.1.1.1", "", ""))
-    expectThrows(classOf[URISyntaxException], new URI("http","123.45.67.890", "", ""))
+    assertThrows(classOf[URISyntaxException], new URI("http","256.1.1.1", "", ""))
+    assertThrows(classOf[URISyntaxException], new URI("http","123.45.67.890", "", ""))
   }
 
   @Test def opaqueUrlEqualityHandlesCase(): Unit = {

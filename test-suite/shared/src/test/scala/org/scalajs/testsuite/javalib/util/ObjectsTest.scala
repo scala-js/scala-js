@@ -108,7 +108,7 @@ class ObjectsTest {
       }
     }
 
-    val e = expectThrows(classOf[NullPointerException],
+    val e = assertThrows(classOf[NullPointerException],
         ju.Objects.requireNonNull(null, successSupplier))
     assertEquals(message, e.getMessage())
 

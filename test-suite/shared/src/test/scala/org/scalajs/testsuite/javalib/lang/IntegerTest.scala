@@ -519,9 +519,9 @@ class IntegerTest {
 
   @Test def parseStringInvalidThrows(): Unit = {
     def test(s: String, radix: Int = 10): Unit = {
-      expectThrows(classOf[NumberFormatException], Integer.parseInt(s, radix))
+      assertThrows(classOf[NumberFormatException], Integer.parseInt(s, radix))
       if (radix == 10 && s != null)
-        expectThrows(classOf[NumberFormatException], Integer.decode(s))
+        assertThrows(classOf[NumberFormatException], Integer.decode(s))
     }
 
     test("abc")
@@ -566,7 +566,7 @@ class IntegerTest {
 
   @Test def parseUnsignedIntInvalidThrows(): Unit = {
     def test(s: String, radix: Int = 10): Unit = {
-      expectThrows(classOf[NumberFormatException],
+      assertThrows(classOf[NumberFormatException],
           Integer.parseUnsignedInt(s, radix))
     }
 
@@ -720,7 +720,7 @@ class IntegerTest {
 
   @Test def parseUnsignedIntRadixInvalidThrows(): Unit = {
     def test(s: String, radix: Int = 10): Unit =
-      expectThrows(classOf[NumberFormatException], Integer.parseUnsignedInt(s, radix))
+      assertThrows(classOf[NumberFormatException], Integer.parseUnsignedInt(s, radix))
 
     test("abc")
     test("5a")

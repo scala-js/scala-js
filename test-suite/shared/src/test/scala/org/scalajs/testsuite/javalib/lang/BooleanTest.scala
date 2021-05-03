@@ -26,7 +26,7 @@ class BooleanTest {
   @Test def booleanValue(): Unit = {
     assertEquals(true, JBoolean.TRUE.booleanValue())
     assertEquals(false, JBoolean.FALSE.booleanValue())
-    expectThrows(classOf[Exception], (null: JBoolean).booleanValue())
+    assertThrows(classOf[Exception], (null: JBoolean).booleanValue())
   }
 
   @Test def compareTo(): Unit = {
