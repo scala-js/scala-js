@@ -74,6 +74,18 @@ object Assert {
     fail(s"$checkedMessage. Actual: $actual")
   }
 
+  // Not part of the JVM API: make sure to keep Ints instead of Longs
+  @noinline
+  def assertNotEquals(message: String, unexpected: Int, actual: Int): Unit = {
+    if (unexpected == actual)
+      failEquals(message, actual)
+  }
+
+  // Not part of the JVM API: make sure to keep Ints instead of Longs
+  @noinline
+  def assertNotEquals(unexpected: Int, actual: Int): Unit =
+    assertNotEquals(null, unexpected, actual)
+
   @noinline
   def assertNotEquals(message: String, unexpected: Long, actual: Long): Unit = {
     if (unexpected == actual)
@@ -114,6 +126,16 @@ object Assert {
     fail("Use assertEquals(expected, actual, delta) to compare " +
         "floating-point numbers")
   }
+
+  // Not part of the JVM API: make sure to keep Ints instead of Longs
+  @noinline
+  def assertEquals(expected: Int, actual: Int): Unit =
+    assertEquals(null, expected, actual)
+
+  // Not part of the JVM API: make sure to keep Ints instead of Longs
+  @noinline
+  def assertEquals(message: String, expected: Int, actual: Int): Unit =
+    assertEquals(message, expected: Any, actual: Any)
 
   @noinline
   def assertEquals(expected: Long, actual: Long): Unit =
