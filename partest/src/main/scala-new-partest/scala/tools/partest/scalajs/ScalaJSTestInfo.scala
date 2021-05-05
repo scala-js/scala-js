@@ -31,7 +31,7 @@ class ScalaJSTestInfo(testFile: File, scalaJSOverridePath: String)
     scalaJSConfigFile("sem").fold(List.empty[String]) { file =>
       val source = scala.io.Source.fromFile(file)
       try {
-        source.getLines.toList
+        source.getLines().toList
       } finally {
         source.close()
       }
