@@ -15,7 +15,7 @@ package org.scalajs.testsuite.javalib.util
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.CollectionsTestBase
 
 import java.{lang => jl}
@@ -40,8 +40,8 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     assertEquals("one", lst.get(0))
     assertEquals("two", lst.get(1))
 
-    expectThrows(classOf[IndexOutOfBoundsException], lst.get(-1))
-    expectThrows(classOf[IndexOutOfBoundsException], lst.get(lst.size))
+    assertThrows(classOf[IndexOutOfBoundsException], lst.get(-1))
+    assertThrows(classOf[IndexOutOfBoundsException], lst.get(lst.size))
   }
 
   @Test def addIntGetIndex(): Unit = {
@@ -55,8 +55,8 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     assertEquals(1, lst.get(0))
     assertEquals(2, lst.get(1))
 
-    expectThrows(classOf[IndexOutOfBoundsException], lst.get(-1))
-    expectThrows(classOf[IndexOutOfBoundsException], lst.get(lst.size))
+    assertThrows(classOf[IndexOutOfBoundsException], lst.get(-1))
+    assertThrows(classOf[IndexOutOfBoundsException], lst.get(lst.size))
   }
 
   @Test def addDoubleGetIndex(): Unit = {
@@ -79,8 +79,8 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     assertTrue(lst.get(3).equals(+0.0))
     assertTrue(lst.get(4).equals(-0.0))
 
-    expectThrows(classOf[IndexOutOfBoundsException], lst.get(-1))
-    expectThrows(classOf[IndexOutOfBoundsException], lst.get(lst.size))
+    assertThrows(classOf[IndexOutOfBoundsException], lst.get(-1))
+    assertThrows(classOf[IndexOutOfBoundsException], lst.get(lst.size))
   }
 
   @Test def addCustomObjectsGetIndex(): Unit = {
@@ -92,8 +92,8 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     assertEquals(1, lst.size())
     assertEquals(TestObj(100), lst.get(0))
 
-    expectThrows(classOf[IndexOutOfBoundsException], lst.get(-1))
-    expectThrows(classOf[IndexOutOfBoundsException], lst.get(lst.size))
+    assertThrows(classOf[IndexOutOfBoundsException], lst.get(-1))
+    assertThrows(classOf[IndexOutOfBoundsException], lst.get(lst.size))
   }
 
   @Test def removeStringRemoveIndex(): Unit = {
@@ -111,8 +111,8 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     assertEquals(1, lst.size())
     assertEquals("three", lst.get(0))
 
-    expectThrows(classOf[IndexOutOfBoundsException], lst.remove(-1))
-    expectThrows(classOf[IndexOutOfBoundsException], lst.remove(lst.size))
+    assertThrows(classOf[IndexOutOfBoundsException], lst.remove(-1))
+    assertThrows(classOf[IndexOutOfBoundsException], lst.remove(lst.size))
   }
 
   @Test def removeDoubleOnCornerCases(): Unit = {
@@ -187,8 +187,8 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     assertEquals("four", al.get(1))
     assertEquals("three", al.get(2))
 
-    expectThrows(classOf[IndexOutOfBoundsException], al.set(-1, ""))
-    expectThrows(classOf[IndexOutOfBoundsException], al.set(al.size, ""))
+    assertThrows(classOf[IndexOutOfBoundsException], al.set(-1, ""))
+    assertThrows(classOf[IndexOutOfBoundsException], al.set(al.size, ""))
   }
 
   @Test def iterator(): Unit = {
@@ -240,8 +240,8 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     assertEquals("three", al.get(1))
     assertEquals("one", al.get(2))
 
-    expectThrows(classOf[IndexOutOfBoundsException], al.add(-1, ""))
-    expectThrows(classOf[IndexOutOfBoundsException], al.add(al.size + 1, ""))
+    assertThrows(classOf[IndexOutOfBoundsException], al.add(-1, ""))
+    assertThrows(classOf[IndexOutOfBoundsException], al.add(al.size + 1, ""))
   }
 
   @Test def indexOf(): Unit = {

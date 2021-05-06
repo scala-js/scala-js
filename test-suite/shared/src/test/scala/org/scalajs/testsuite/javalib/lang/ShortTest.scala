@@ -17,7 +17,7 @@ import java.lang.{Short => JShort}
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 /** Tests the implementation of the java standard library Short
  */
@@ -60,8 +60,8 @@ class ShortTest {
 
   @Test def parseStringInvalidThrows(): Unit = {
     def test(s: String): Unit = {
-      expectThrows(classOf[NumberFormatException], JShort.parseShort(s))
-      expectThrows(classOf[NumberFormatException], JShort.decode(s))
+      assertThrows(classOf[NumberFormatException], JShort.parseShort(s))
+      assertThrows(classOf[NumberFormatException], JShort.decode(s))
     }
 
     test("abc")

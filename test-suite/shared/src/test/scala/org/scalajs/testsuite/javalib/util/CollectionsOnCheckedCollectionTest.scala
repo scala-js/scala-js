@@ -20,7 +20,7 @@ import org.junit.Test
 
 import org.scalajs.testsuite.javalib.util.concurrent.CopyOnWriteArrayListFactory
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 import scala.reflect.ClassTag
@@ -50,8 +50,8 @@ trait CollectionsCheckedCollectionTest
   @Test def testCheckedCollectionBadInputs(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
 
-    expectThrows(classOf[ClassCastException], superColl().add(new A))
-    expectThrows(classOf[ClassCastException],
+    assertThrows(classOf[ClassCastException], superColl().add(new A))
+    assertThrows(classOf[ClassCastException],
         superColl().addAll(TrivialImmutableCollection(new A)))
   }
 

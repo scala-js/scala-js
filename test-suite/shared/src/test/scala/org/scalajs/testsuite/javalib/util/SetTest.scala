@@ -15,7 +15,7 @@ package org.scalajs.testsuite.javalib.util
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 import java.{util => ju, lang => jl}
 
@@ -164,7 +164,7 @@ trait SetTest extends CollectionTest {
       assertTrue(hs.add(null))
       assertTrue(hs.contains(null))
     } else {
-      expectThrows(classOf[Exception], hs.add(null))
+      assertThrows(classOf[Exception], hs.add(null))
     }
   }
 
@@ -180,7 +180,7 @@ trait SetTest extends CollectionTest {
       assertTrue(hs.contains("TWO"))
       assertTrue(hs.contains(null))
     } else {
-      expectThrows(classOf[Exception], hs.addAll(l))
+      assertThrows(classOf[Exception], hs.addAll(l))
     }
   }
 

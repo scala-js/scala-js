@@ -18,7 +18,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 import java.{util => ju}
@@ -75,7 +75,7 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
     assertEquals(0, ts.size())
     assertTrue(ts.isEmpty)
     assertFalse(ts.remove(333))
-    expectThrows(classOf[NoSuchElementException], ts.first)
+    assertThrows(classOf[NoSuchElementException], ts.first)
 
     if (factory.allowsNullElement) {
       assertTrue(ts.asInstanceOf[TreeSet[Any]].add(null))
@@ -254,7 +254,7 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
       assertTrue(hs.add(null))
       assertTrue(hs.contains(null))
     } else {
-      expectThrows(classOf[Exception], hs.add(null))
+      assertThrows(classOf[Exception], hs.add(null))
     }
   }
 
@@ -268,7 +268,7 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
       assertTrue(ts1.contains("ONE"))
       assertFalse(ts1.contains("THREE"))
     } else {
-      expectThrows(classOf[Exception], ts1.addAll(l))
+      assertThrows(classOf[Exception], ts1.addAll(l))
     }
   }
 
@@ -279,7 +279,7 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
 
     val ts1 = factory.empty[TestObj]
     assertEquals(0, ts1.size())
-    expectThrows(classOf[ClassCastException], ts1.add(new TestObj(111)))
+    assertThrows(classOf[ClassCastException], ts1.add(new TestObj(111)))
   }
 
   @Test def headSetTailSetSubSetThrowsOnAddElementOutOfBounds(): Unit = {
@@ -292,14 +292,14 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
     val hs1 = ts.headSet(5, true)
     assertTrue(hs1.add(4))
     assertTrue(hs1.add(5))
-    expectThrows(classOf[IllegalArgumentException], hs1.add(6))
+    assertThrows(classOf[IllegalArgumentException], hs1.add(6))
 
     ts.clear()
     ts.addAll(l)
 
     val hs2 = ts.headSet(5, false)
     assertTrue(hs2.add(4))
-    expectThrows(classOf[IllegalArgumentException], hs2.add(5))
+    assertThrows(classOf[IllegalArgumentException], hs2.add(5))
 
     ts.clear()
     ts.addAll(l)
@@ -307,14 +307,14 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
     val ts1 = ts.tailSet(1, true)
     assertTrue(ts1.add(7))
     assertTrue(ts1.add(1))
-    expectThrows(classOf[IllegalArgumentException], ts1.add(0))
+    assertThrows(classOf[IllegalArgumentException], ts1.add(0))
 
     ts.clear()
     ts.addAll(l)
 
     val ts2 = ts.tailSet(1, false)
     assertTrue(ts2.add(7))
-    expectThrows(classOf[IllegalArgumentException], ts2.add(1))
+    assertThrows(classOf[IllegalArgumentException], ts2.add(1))
 
     ts.clear()
     ts.addAll(l)
@@ -322,17 +322,17 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
     val ss1 = ts.subSet(1, true, 5, true)
     assertTrue(ss1.add(4))
     assertTrue(ss1.add(1))
-    expectThrows(classOf[IllegalArgumentException], ss1.add(0))
+    assertThrows(classOf[IllegalArgumentException], ss1.add(0))
     assertTrue(ss1.add(5))
-    expectThrows(classOf[IllegalArgumentException], ss1.add(6))
+    assertThrows(classOf[IllegalArgumentException], ss1.add(6))
 
     ts.clear()
     ts.addAll(l)
 
     val ss2 = ts.subSet(1, false, 5, false)
     assertTrue(ss2.add(4))
-    expectThrows(classOf[IllegalArgumentException], ss2.add(1))
-    expectThrows(classOf[IllegalArgumentException], ss2.add(5))
+    assertThrows(classOf[IllegalArgumentException], ss2.add(1))
+    assertThrows(classOf[IllegalArgumentException], ss2.add(5))
   }
 }
 

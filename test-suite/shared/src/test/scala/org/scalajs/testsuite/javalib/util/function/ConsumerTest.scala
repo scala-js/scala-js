@@ -17,7 +17,7 @@ import java.util.function.Consumer
 import org.junit.Assert._
 import org.junit.Test
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class ConsumerTest {
   import ConsumerTest._

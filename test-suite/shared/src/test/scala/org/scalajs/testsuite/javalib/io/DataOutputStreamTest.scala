@@ -17,7 +17,7 @@ import java.io._
 import org.junit._
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 object DataOutputStreamTest {
   class DataOutputStreamWrittenAccess(out: OutputStream)

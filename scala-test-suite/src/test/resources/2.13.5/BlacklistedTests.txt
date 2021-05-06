@@ -146,10 +146,6 @@ scala/tools/nsc/util/StackTraceTest.scala
 scala/tools/testkit/ReflectUtilTest.scala
 scala/util/ChainingOpsTest.scala
 
-# Do not compile because they need JUnit 4.13.1's `assertThrows`
-scala/collection/immutable/RangeTest.scala
-scala/collection/mutable/BitSetTest.scala
-
 ## Do not link
 scala/CollectTest.scala
 scala/MatchErrorSerializationTest.scala

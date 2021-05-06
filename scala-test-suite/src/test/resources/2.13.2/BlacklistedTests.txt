@@ -7,6 +7,8 @@ scala/collection/FactoriesTest.scala
 scala/collection/LazyZipOpsTest.scala
 scala/collection/immutable/IndexedSeqTest.scala
 scala/collection/immutable/MapHashcodeTest.scala
+scala/collection/immutable/RangeTest.scala
+scala/collection/mutable/BitSetTest.scala
 scala/lang/annotations/BytecodeTest.scala
 scala/lang/annotations/RunTest.scala
 scala/lang/traits/BytecodeTest.scala
@@ -116,6 +118,7 @@ scala/tools/nsc/typechecker/ParamAliasTest.scala
 scala/tools/nsc/typechecker/TypedTreeTest.scala
 scala/tools/nsc/util/StackTraceTest.scala
 scala/util/ChainingOpsTest.scala
+scala/util/TryTest.scala
 
 ## Do not link
 scala/CollectTest.scala

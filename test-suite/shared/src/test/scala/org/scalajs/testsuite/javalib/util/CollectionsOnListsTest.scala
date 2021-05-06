@@ -18,7 +18,7 @@ import org.junit.Assert._
 import org.junit.Test
 
 import org.scalajs.testsuite.javalib.util.concurrent.CopyOnWriteArrayListFactory
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.CollectionsTestBase
 
 import scala.reflect.ClassTag
@@ -321,7 +321,7 @@ trait CollectionsOnListTest extends CollectionsOnCollectionsTest {
       dest.clear()
       range.foreach(i => source.add(toElem(i)))
       range.take(range.size / 2).foreach(i => dest.add(toElem(-i)))
-      expectThrows(classOf[IndexOutOfBoundsException], ju.Collections.copy(dest, source))
+      assertThrows(classOf[IndexOutOfBoundsException], ju.Collections.copy(dest, source))
     }
 
     test[jl.Integer](_.toInt)

@@ -17,7 +17,7 @@ import java.lang.{Boolean => JBoolean}
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 /** Tests the implementation of the java standard library Boolean
  */
@@ -26,7 +26,7 @@ class BooleanTest {
   @Test def booleanValue(): Unit = {
     assertEquals(true, JBoolean.TRUE.booleanValue())
     assertEquals(false, JBoolean.FALSE.booleanValue())
-    expectThrows(classOf[Exception], (null: JBoolean).booleanValue())
+    assertThrows(classOf[Exception], (null: JBoolean).booleanValue())
   }
 
   @Test def compareTo(): Unit = {

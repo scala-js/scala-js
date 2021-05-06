@@ -24,7 +24,7 @@ import java.math.BigInteger
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class BigIntegerOperateBitsTest {
 
@@ -95,7 +95,7 @@ class BigIntegerOperateBitsTest {
     val aSign = 1
     val number = -7
     val aNumber = new BigInteger(aSign, aBytes)
-    expectThrows(classOf[ArithmeticException], aNumber.clearBit(number))
+    assertThrows(classOf[ArithmeticException], aNumber.clearBit(number))
   }
 
   @Test def testClearBitNegativeInside1(): Unit = {
@@ -340,7 +340,7 @@ class BigIntegerOperateBitsTest {
     val aSign = 1
     val number = -7
     val aNumber = new BigInteger(aSign, aBytes)
-    expectThrows(classOf[ArithmeticException], aNumber.flipBit(number))
+    assertThrows(classOf[ArithmeticException], aNumber.flipBit(number))
   }
 
   @Test def testFlipBitLeftmostNegative(): Unit = {
@@ -579,7 +579,7 @@ class BigIntegerOperateBitsTest {
     val aSign = 1
     val number = -7
     var aNumber = new BigInteger(aSign, aBytes)
-    expectThrows(classOf[ArithmeticException], aNumber.setBit(number))
+    assertThrows(classOf[ArithmeticException], aNumber.setBit(number))
   }
 
   @Test def testSetBitLeftmostNegative(): Unit = {
@@ -1034,7 +1034,7 @@ class BigIntegerOperateBitsTest {
     val aSign = 1
     val number = -7
     val aNumber = new BigInteger(aSign, aBytes)
-    expectThrows(classOf[ArithmeticException],  aNumber.testBit(number))
+    assertThrows(classOf[ArithmeticException],  aNumber.testBit(number))
   }
 
   @Test def testTestBitNegative1(): Unit = {

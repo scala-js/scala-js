@@ -20,7 +20,7 @@ import org.junit.Assert._
 import org.junit.Assume._
 
 import org.scalajs.testsuite.javalib.util.concurrent.ConcurrentMapFactory
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 import scala.reflect.ClassTag
@@ -291,7 +291,7 @@ trait MapTest {
       assertNull(mp.get(null))
       assertNull(mp.remove(null))
     } else {
-      expectThrows(classOf[NullPointerException], mp.put(null, "one"))
+      assertThrows(classOf[NullPointerException], mp.put(null, "one"))
     }
   }
 
@@ -308,7 +308,7 @@ trait MapTest {
       assertEquals(30, mp.size())
       assertNull(mp.get("one"))
     } else {
-      expectThrows(classOf[NullPointerException], mp.put("one", null))
+      assertThrows(classOf[NullPointerException], mp.put("one", null))
     }
   }
 
@@ -348,7 +348,7 @@ trait MapTest {
     if (factory.allowsNullKeysQueries)
       assertFalse(mp.containsKey(null))
     else
-      expectThrows(classOf[NullPointerException], mp.containsKey(null))
+      assertThrows(classOf[NullPointerException], mp.containsKey(null))
   }
 
   @Test def testContainsValue(): Unit = {
@@ -360,7 +360,7 @@ trait MapTest {
     if (factory.allowsNullValuesQueries)
       assertFalse(mp.containsValue(null))
     else
-      expectThrows(classOf[NullPointerException], mp.containsValue(null))
+      assertThrows(classOf[NullPointerException], mp.containsValue(null))
   }
 
   @Test def testPutAll(): Unit = {
@@ -382,7 +382,7 @@ trait MapTest {
       assertEquals("one", mp.get("ONE"))
       assertEquals("b", mp.get("A"))
     } else {
-      expectThrows(classOf[NullPointerException], mp.putAll(nullMap))
+      assertThrows(classOf[NullPointerException], mp.putAll(nullMap))
     }
   }
 
@@ -453,7 +453,7 @@ trait MapTest {
     if (factory.allowsNullValuesQueries)
       assertFalse(values.contains(null))
     else
-      expectThrows(classOf[NullPointerException], values.contains(null))
+      assertThrows(classOf[NullPointerException], values.contains(null))
 
     mp.put("THREE", "three")
 
@@ -483,7 +483,7 @@ trait MapTest {
     if (factory.allowsNullValuesQueries)
       assertFalse(values.contains(null))
     else
-      expectThrows(classOf[NullPointerException], values.contains(null))
+      assertThrows(classOf[NullPointerException], values.contains(null))
 
     mp.put(testObj(3), testObj(33))
 
@@ -653,7 +653,7 @@ trait MapTest {
     if (factory.allowsNullKeysQueries)
       assertFalse(keySet.contains(null))
     else
-      expectThrows(classOf[NullPointerException], keySet.contains(null))
+      assertThrows(classOf[NullPointerException], keySet.contains(null))
 
     mp.put("THREE", "three")
 
@@ -683,7 +683,7 @@ trait MapTest {
     if (factory.allowsNullKeysQueries)
       assertFalse(keySet.contains(null))
     else
-      expectThrows(classOf[NullPointerException], keySet.contains(null))
+      assertThrows(classOf[NullPointerException], keySet.contains(null))
 
     mp.put(testObj(3), TestObj(33))
 
@@ -1477,10 +1477,10 @@ trait MapTest {
   @Test def additionToKeySet(): Unit = {
     val set = factory.empty[String, String].keySet()
 
-    expectThrows(classOf[UnsupportedOperationException], set.add("ONE"))
-    expectThrows(classOf[UnsupportedOperationException], set.addAll(ju.Arrays.asList("ONE")))
-    expectThrows(classOf[UnsupportedOperationException], set.addAll(ju.Arrays.asList(null)))
-    expectThrows(classOf[UnsupportedOperationException], set.add(null))
+    assertThrows(classOf[UnsupportedOperationException], set.add("ONE"))
+    assertThrows(classOf[UnsupportedOperationException], set.addAll(ju.Arrays.asList("ONE")))
+    assertThrows(classOf[UnsupportedOperationException], set.addAll(ju.Arrays.asList(null)))
+    assertThrows(classOf[UnsupportedOperationException], set.add(null))
   }
 }
 

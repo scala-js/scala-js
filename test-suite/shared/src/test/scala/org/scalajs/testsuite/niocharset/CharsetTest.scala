@@ -19,7 +19,7 @@ import org.junit.Test
 import org.junit.Assert._
 
 import org.scalajs.testsuite.javalib.util.TrivialImmutableCollection
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 class CharsetTest {
@@ -59,9 +59,9 @@ class CharsetTest {
     assertSame(UTF_16, Charset.forName("UnicodeBig"))
 
     // Issue #2040
-    expectThrows(classOf[UnsupportedCharsetException], Charset.forName("UTF_8"))
+    assertThrows(classOf[UnsupportedCharsetException], Charset.forName("UTF_8"))
 
-    expectThrows(classOf[UnsupportedCharsetException],
+    assertThrows(classOf[UnsupportedCharsetException],
         Charset.forName("this-charset-does-not-exist"))
   }
 

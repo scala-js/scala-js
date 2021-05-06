@@ -19,7 +19,7 @@ import org.junit.Assert._
 import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.Platform
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 import java.lang.{Float => JFloat, Double => JDouble}
 
@@ -369,7 +369,7 @@ class ReflectiveCallTest {
       else "scala.scalajs.js.JavaScriptException"
 
     def testWith(body: => Unit): Unit = {
-      val exception = expectThrows(classOf[Throwable], body)
+      val exception = assertThrows(classOf[Throwable], body)
       assertEquals(expectedClassName, exception.getClass.getName)
     }
 

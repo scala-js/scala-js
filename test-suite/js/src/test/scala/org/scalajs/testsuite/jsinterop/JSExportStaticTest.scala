@@ -15,7 +15,7 @@ package org.scalajs.testsuite.jsinterop
 import scala.scalajs.js
 import js.annotation._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 import org.junit.Assert._

@@ -19,7 +19,7 @@ import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.Test
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 class MiscInteropTest {
@@ -52,9 +52,9 @@ class MiscInteropTest {
 
     assertEquals("undefined",
         js.typeOf(js.Dynamic.global.thisGlobalVarDoesNotExist))
-    expectThrows(classOf[js.JavaScriptException],
+    assertThrows(classOf[js.JavaScriptException],
         js.typeOf(nonExistentGlobalVarNoInline()))
-    expectThrows(classOf[js.JavaScriptException],
+    assertThrows(classOf[js.JavaScriptException],
         js.typeOf(nonExistentGlobalVarInline()))
   }
 

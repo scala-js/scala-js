@@ -1,5 +1,5 @@
 liTest run started
-liTest org.scalajs.junit.MultiBeforeAssumeFailTest ignored
+lwTest assumption in test org.scalajs.junit.MultiBeforeAssumeFailTest failed: This assume should not pass, took <TIME>
 e3org.scalajs.junit.MultiBeforeAssumeFailTest
-liTest run finished: 0 failed, 1 ignored, 0 total, <TIME>
+liTest run finished: 0 failed, 0 ignored, 0 total, <TIME>
 d

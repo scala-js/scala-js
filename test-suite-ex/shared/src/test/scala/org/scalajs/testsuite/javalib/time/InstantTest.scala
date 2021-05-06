@@ -17,7 +17,7 @@ import java.time.{DateTimeException, Instant}
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 /** Sanity tests for the dummy implementation of `java.time.Instant`.
  *

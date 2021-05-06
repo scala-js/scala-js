@@ -5,6 +5,7 @@ package org.junit
 
 import java.util.Objects
 
+import org.junit.function.ThrowingRunnable
 import org.junit.internal.InexactComparisonCriteria
 import org.junit.internal.ExactComparisonCriteria
 import org.hamcrest.Matcher
@@ -363,6 +364,9 @@ object Assert {
     }
   }
 
+  private def formatClass(value: Class[_]): String =
+    value.getName()
+
   private def formatClassAndValue(value: Any, valueString: String): String = {
     val className = if (value == null) "null" else value.getClass.getName
     s"$className<$valueString>"
@@ -376,41 +380,36 @@ object Assert {
   def assertThat[T](reason: String, actual: T, matcher: Matcher[T]): Unit =
     MatcherAssert.assertThat(reason, actual, matcher)
 
-  // The following methods will be available on JUnit 4.13, a backport implementation
-  // is being tested in JUnitAssertionTest until 4.13 is released.
-
-  /*
   @noinline
-  def assertThrows(expectedThrowable: Class[_ <: Throwable],
-      runnable: ThrowingRunnable): Unit = {
-    expectThrows(expectedThrowable, runnable)
-  }
+  def assertThrows[T <: Throwable](expectedThrowable: Class[T], runnable: ThrowingRunnable): T =
+    assertThrows(null, expectedThrowable, runnable)
 
   @noinline
-  def expectThrows[T <: Throwable](expectedThrowable: Class[T], runnable: ThrowingRunnable): T = {
+  def assertThrows[T <: Throwable](message: String, expectedThrowable: Class[T],
+      runnable: ThrowingRunnable): T = {
+    // scalastyle:off return
+
+    def buildPrefix: String =
+      if (message != null && !message.isEmpty()) message + ": " else ""
+
     try {
       runnable.run()
-      val message =
-        s"expected ${expectedThrowable.getSimpleName} to be thrown," +
-        " but nothing was thrown"
-      throw new AssertionError(message)
     } catch {
+      case actualThrown: Throwable if expectedThrowable.isInstance(actualThrown) =>
+        return actualThrown.asInstanceOf[T]
+
       case actualThrown: Throwable =>
-        if (expectedThrowable.isInstance(actualThrown)) {
-          actualThrown.asInstanceOf[T]
-        } else {
-          val mismatchMessage = format("unexpected exception type thrown;",
-            expectedThrowable.getSimpleName, actualThrown.getClass.getSimpleName)
-
-          val assertionError = new AssertionError(mismatchMessage)
-          assertionError.initCause(actualThrown)
-          throw assertionError
-        }
+        val expected = formatClass(expectedThrowable)
+        val actual = formatClass(actualThrown.getClass())
+        throw new AssertionError(
+            buildPrefix + format("unexpected exception type thrown;", expected, actual),
+            actualThrown)
     }
-  }
 
-  trait ThrowingRunnable {
-    def run(): Unit
+    throw new AssertionError(
+        buildPrefix +
+        String.format("expected %s to be thrown, but nothing was thrown", formatClass(expectedThrowable)))
+
+    // scalastyle:on return
   }
-  */
 }

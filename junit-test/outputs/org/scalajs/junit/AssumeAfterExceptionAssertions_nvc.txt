@@ -2,7 +2,8 @@ liTest run started
 liTest org.scalajs.junit.AssumeAfterException.test started
 leTest org.scalajs.junit.AssumeAfterException.test failed: test throws, took <TIME>
 e2org.scalajs.junit.AssumeAfterException.test
-leTest org.scalajs.junit.AssumeAfterException.test failed: This assume should not pass, took <TIME>
+leTest org.scalajs.junit.AssumeAfterException.test failed: Test could not be skipped due to other failures, took <TIME>
+leCaused by: org.junit.AssumptionViolatedException: This assume should not pass
 ldTest org.scalajs.junit.AssumeAfterException.test finished, took <TIME>
 liTest run finished: 2 failed, 0 ignored, 1 total, <TIME>
 d

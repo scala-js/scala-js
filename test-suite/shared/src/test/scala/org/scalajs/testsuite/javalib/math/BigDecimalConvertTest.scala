@@ -24,7 +24,7 @@ import java.math._
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class BigDecimalConvertTest {
 
@@ -32,7 +32,7 @@ class BigDecimalConvertTest {
     assertEquals(1.toByte, BigDecimal.ONE.byteValue())
     assertEquals(BigDecimal.valueOf(255).byteValue(), -1.toByte)
     assertEquals(BigDecimal.ONE.byteValueExact(), 1.toByte)
-    expectThrows(classOf[ArithmeticException], BigDecimal.valueOf(255).byteValueExact())
+    assertThrows(classOf[ArithmeticException], BigDecimal.valueOf(255).byteValueExact())
   }
 
   @Test def testDoubleValueNeg(): Unit = {
@@ -96,7 +96,7 @@ class BigDecimalConvertTest {
     val aNumber = new BigDecimal(a)
     val result = 218520473
     assertEquals(aNumber.intValue(), result)
-    expectThrows(classOf[ArithmeticException], aNumber.intValueExact())
+    assertThrows(classOf[ArithmeticException], aNumber.intValueExact())
   }
 
   @Test def testIntValuePos(): Unit = {
@@ -104,7 +104,7 @@ class BigDecimalConvertTest {
     val aNumber = new BigDecimal(a)
     val result = -218520473
     assertEquals(aNumber.intValue(), result)
-    expectThrows(classOf[ArithmeticException], aNumber.intValueExact())
+    assertThrows(classOf[ArithmeticException], aNumber.intValueExact())
   }
 
   @Test def testLongValueNeg(): Unit = {
@@ -112,7 +112,7 @@ class BigDecimalConvertTest {
     val aNumber = new BigDecimal(a)
     val result = -1246043477766677607L
     assertTrue(aNumber.longValue() == result)
-    expectThrows(classOf[ArithmeticException], aNumber.longValueExact())
+    assertThrows(classOf[ArithmeticException], aNumber.longValueExact())
   }
 
   @Test def testLongValuePos(): Unit = {
@@ -120,7 +120,7 @@ class BigDecimalConvertTest {
     val aNumber = new BigDecimal(a)
     val result = 1246043477766677607L
     assertTrue(aNumber.longValue() == result)
-    expectThrows(classOf[ArithmeticException], aNumber.longValueExact())
+    assertThrows(classOf[ArithmeticException], aNumber.longValueExact())
   }
 
   @Test def testLongValueMinMaxValues(): Unit = {
@@ -201,7 +201,7 @@ class BigDecimalConvertTest {
   @Test def testShortValue(): Unit = {
     val value = BigDecimal.valueOf(0x13fff)
     assertEquals(value.shortValue(), 0x3fff)
-    expectThrows(classOf[ArithmeticException], value.shortValueExact())
+    assertThrows(classOf[ArithmeticException], value.shortValueExact())
   }
 
   @Test def testToBigIntegerExact1(): Unit = {
@@ -215,7 +215,7 @@ class BigDecimalConvertTest {
   @Test def testToBigIntegerExactException(): Unit = {
     val a = "-123809648392384754573567356745735.63567890295784902768787678287E-10"
     val aNumber = new BigDecimal(a)
-    expectThrows(classOf[ArithmeticException],  aNumber.toBigIntegerExact())
+    assertThrows(classOf[ArithmeticException],  aNumber.toBigIntegerExact())
   }
 
   @Test def testToBigIntegerNeg1(): Unit = {
@@ -361,7 +361,7 @@ class BigDecimalConvertTest {
 
   @Test def testValueOfDoubleNaN(): Unit = {
     val a = Double.NaN
-    expectThrows(classOf[NumberFormatException],  BigDecimal.valueOf(a))
+    assertThrows(classOf[NumberFormatException],  BigDecimal.valueOf(a))
   }
 
   @Test def testValueOfDoubleNeg(): Unit = {

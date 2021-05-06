@@ -17,7 +17,7 @@ import java.math.{BigDecimal, BigInteger}
 import org.junit.Assert._
 import org.junit.Test
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 import java.util._
@@ -115,7 +115,7 @@ class FormatterTest {
   def expectFormatterThrows[T <: Throwable](exeption: Class[T], format: String,
       args: Any*): T = {
     val fmt = new Formatter()
-    expectThrows(exeption,
+    assertThrows(exeption,
         fmt.format(format, args.asInstanceOf[Seq[AnyRef]]: _*))
   }
 

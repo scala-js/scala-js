@@ -13,12 +13,14 @@ scala/collection/immutable/IntMapTest.scala
 scala/collection/immutable/ListMapTest.scala
 scala/collection/immutable/LongMapTest.scala
 scala/collection/immutable/MapHashcodeTest.scala
+scala/collection/immutable/RangeTest.scala
 scala/collection/immutable/SeqTest.scala
 scala/collection/immutable/SmallMapTest.scala
 scala/collection/immutable/SortedMapTest.scala
 scala/collection/immutable/SortedSetTest.scala
 scala/collection/immutable/TreeMapTest.scala
 scala/collection/immutable/TreeSetTest.scala
+scala/collection/mutable/BitSetTest.scala
 scala/lang/annotations/BytecodeTest.scala
 scala/lang/annotations/RunTest.scala
 scala/lang/traits/BytecodeTest.scala

@@ -16,7 +16,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 class SystemTest {
@@ -188,7 +188,7 @@ class SystemTest {
   @Test def getenvReturnsUnmodifiableMap(): Unit = {
     assertTrue(System.getenv().isInstanceOf[java.util.Map[String, String]])
 
-    expectThrows(classOf[Exception], System.getenv.put("", ""))
+    assertThrows(classOf[Exception], System.getenv.put("", ""))
   }
 
   @Test def getenvLinksAndDoesNotThrow(): Unit = {

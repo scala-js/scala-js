@@ -18,7 +18,7 @@ import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.Test
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 import scala.reflect.ClassTag
@@ -53,9 +53,9 @@ trait CollectionsOnCheckedMapTest extends CollectionsOnMapsTest {
   @Test def testCheckedMapBadInputs(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
 
-    expectThrows(classOf[ClassCastException], superMap().put(new A, new C))
-    expectThrows(classOf[ClassCastException], superMap().put(new C, new A))
-    expectThrows(classOf[ClassCastException], superMap().put(new A, new A))
+    assertThrows(classOf[ClassCastException], superMap().put(new A, new C))
+    assertThrows(classOf[ClassCastException], superMap().put(new C, new A))
+    assertThrows(classOf[ClassCastException], superMap().put(new A, new A))
 
     def singletonMap(): ju.Map[A, A] = {
       val m = factory.empty[B, B]
@@ -63,7 +63,7 @@ trait CollectionsOnCheckedMapTest extends CollectionsOnMapsTest {
       m.asInstanceOf[ju.Map[A, A]]
     }
     val firstEntry = singletonMap().entrySet().iterator().next()
-    expectThrows(classOf[ClassCastException], firstEntry.setValue(new A))
+    assertThrows(classOf[ClassCastException], firstEntry.setValue(new A))
   }
 
   private def superMap(): ju.Map[A, A] =
@@ -100,9 +100,9 @@ trait CollectionsOnCheckedSortedMapTest extends CollectionsOnSortedMapsTest {
   @Test def testCheckedMapBadInputs(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
 
-    expectThrows(classOf[ClassCastException], superMap().put(new A, new C))
-    expectThrows(classOf[ClassCastException], superMap().put(new C, new A))
-    expectThrows(classOf[ClassCastException], superMap().put(new A, new A))
+    assertThrows(classOf[ClassCastException], superMap().put(new A, new C))
+    assertThrows(classOf[ClassCastException], superMap().put(new C, new A))
+    assertThrows(classOf[ClassCastException], superMap().put(new A, new A))
 
     def singletonMap(): ju.Map[A, A] = {
       val m = factory.empty[B, B]
@@ -110,7 +110,7 @@ trait CollectionsOnCheckedSortedMapTest extends CollectionsOnSortedMapsTest {
       m.asInstanceOf[ju.Map[A, A]]
     }
     val firstEntry = singletonMap().entrySet().iterator().next()
-    expectThrows(classOf[ClassCastException], firstEntry.setValue(new A))
+    assertThrows(classOf[ClassCastException], firstEntry.setValue(new A))
   }
 
   private def superMap(): ju.Map[A, A] =

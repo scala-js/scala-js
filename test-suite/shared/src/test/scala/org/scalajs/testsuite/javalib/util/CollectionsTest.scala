@@ -17,7 +17,7 @@ import java.{util => ju}
 import org.junit.Assert._
 import org.junit.Test
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.CollectionsTestBase
 
 import scala.reflect.ClassTag
@@ -28,19 +28,19 @@ class CollectionsTest extends CollectionsTestBase {
 
   private def checkImmutablilityOfCollectionApi[E](coll: ju.Collection[E],
       elem: E): Unit = {
-    expectThrows(classOf[UnsupportedOperationException], coll.add(elem))
-    expectThrows(classOf[UnsupportedOperationException],
+    assertThrows(classOf[UnsupportedOperationException], coll.add(elem))
+    assertThrows(classOf[UnsupportedOperationException],
         coll.addAll(TrivialImmutableCollection(elem)))
     assertFalse(coll.addAll(TrivialImmutableCollection[E]()))
 
     if (ju.Collections.frequency(coll, elem) != coll.size)
-      expectThrows(classOf[Exception], coll.retainAll(TrivialImmutableCollection(elem)))
+      assertThrows(classOf[Exception], coll.retainAll(TrivialImmutableCollection(elem)))
     else
       assertFalse(coll.retainAll(TrivialImmutableCollection(elem)))
 
     if (coll.contains(elem)) {
-      expectThrows(classOf[Exception], coll.remove(elem))
-      expectThrows(classOf[Exception], coll.removeAll(TrivialImmutableCollection(elem)))
+      assertThrows(classOf[Exception], coll.remove(elem))
+      assertThrows(classOf[Exception], coll.removeAll(TrivialImmutableCollection(elem)))
     } else {
       assertFalse(coll.remove(elem))
       assertFalse(coll.removeAll(TrivialImmutableCollection(elem)))
@@ -48,7 +48,7 @@ class CollectionsTest extends CollectionsTestBase {
     assertFalse(coll.removeAll(TrivialImmutableCollection[E]()))
 
     if (!coll.isEmpty()) {
-      expectThrows(classOf[Throwable], coll.clear())
+      assertThrows(classOf[Throwable], coll.clear())
     } else {
       coll.clear() // Should not throw
     }
@@ -59,27 +59,27 @@ class CollectionsTest extends CollectionsTestBase {
 
   private def checkImmutablilityOfListApi[E](list: ju.List[E], elem: E): Unit = {
     checkImmutablilityOfCollectionApi(list, elem)
-    expectThrows(classOf[UnsupportedOperationException], list.add(0, elem))
+    assertThrows(classOf[UnsupportedOperationException], list.add(0, elem))
     assertFalse(list.addAll(0, TrivialImmutableCollection[E]()))
-    expectThrows(classOf[UnsupportedOperationException],
+    assertThrows(classOf[UnsupportedOperationException],
         list.addAll(0, TrivialImmutableCollection(elem)))
-    expectThrows(classOf[UnsupportedOperationException], list.remove(0))
+    assertThrows(classOf[UnsupportedOperationException], list.remove(0))
   }
 
   private def checkImmutablilityOfMapApi[K, V](map: ju.Map[K, V], k: K,
       v: V): Unit = {
-    expectThrows(classOf[UnsupportedOperationException], map.put(k, v))
-    expectThrows(classOf[UnsupportedOperationException],
+    assertThrows(classOf[UnsupportedOperationException], map.put(k, v))
+    assertThrows(classOf[UnsupportedOperationException],
         map.putAll(TrivialImmutableMap(k -> v)))
     map.putAll(TrivialImmutableMap[K, V]()) // Should not throw
 
     if (map.containsKey(k))
-      expectThrows(classOf[Throwable], map.remove(k))
+      assertThrows(classOf[Throwable], map.remove(k))
     else
       assertNull(map.remove(k).asInstanceOf[AnyRef])
 
     if (!map.isEmpty())
-      expectThrows(classOf[Throwable], map.clear())
+      assertThrows(classOf[Throwable], map.clear())
     else
       map.clear() // Should not throw
   }
@@ -88,8 +88,8 @@ class CollectionsTest extends CollectionsTestBase {
     def freshIter: ju.Iterator[Int] = ju.Collections.emptyIterator[Int]
 
     assertFalse(freshIter.hasNext)
-    expectThrows(classOf[NoSuchElementException], freshIter.next())
-    expectThrows(classOf[IllegalStateException], freshIter.remove())
+    assertThrows(classOf[NoSuchElementException], freshIter.next())
+    assertThrows(classOf[IllegalStateException], freshIter.remove())
   }
 
   @Test def emptyListIterator(): Unit = {
@@ -98,12 +98,12 @@ class CollectionsTest extends CollectionsTestBase {
 
       assertFalse(freshIter.hasNext)
       assertFalse(freshIter.hasPrevious)
-      expectThrows(classOf[NoSuchElementException], freshIter.next())
-      expectThrows(classOf[NoSuchElementException], freshIter.previous())
-      expectThrows(classOf[IllegalStateException], freshIter.remove())
-      expectThrows(classOf[UnsupportedOperationException],
+      assertThrows(classOf[NoSuchElementException], freshIter.next())
+      assertThrows(classOf[NoSuchElementException], freshIter.previous())
+      assertThrows(classOf[IllegalStateException], freshIter.remove())
+      assertThrows(classOf[UnsupportedOperationException],
           freshIter.add(toElem(0)))
-      expectThrows(classOf[IllegalStateException], freshIter.set(toElem(0)))
+      assertThrows(classOf[IllegalStateException], freshIter.set(toElem(0)))
     }
 
     test[Int](_.toInt)
@@ -115,7 +115,7 @@ class CollectionsTest extends CollectionsTestBase {
     def freshEnum: ju.Enumeration[Int] = ju.Collections.emptyEnumeration[Int]
 
     assertFalse(freshEnum.hasMoreElements)
-    expectThrows(classOf[NoSuchElementException], freshEnum.nextElement())
+    assertThrows(classOf[NoSuchElementException], freshEnum.nextElement())
   }
 
   @Test def emptySet(): Unit = {
@@ -228,7 +228,7 @@ class CollectionsTest extends CollectionsTestBase {
       checkImmutablilityOfListApi(zeroCopies, toElem(0))
 
       for (n <- Seq(-1, -4, -543)) {
-        expectThrows(classOf[IllegalArgumentException],
+        assertThrows(classOf[IllegalArgumentException],
           ju.Collections.nCopies(n, toElem(0)))
       }
     }

@@ -2,7 +2,7 @@ liTest run started
 liTest org.scalajs.junit.AssumeAfterClassTest.test started
 ldTest org.scalajs.junit.AssumeAfterClassTest.test finished, took <TIME>
 e0org.scalajs.junit.AssumeAfterClassTest.test
-liTest org.scalajs.junit.AssumeAfterClassTest ignored
+lwTest assumption in test org.scalajs.junit.AssumeAfterClassTest failed: org.junit.AssumptionViolatedException: This assume should not pass, took <TIME>
 e3org.scalajs.junit.AssumeAfterClassTest
-liTest run finished: 0 failed, 1 ignored, 1 total, <TIME>
+liTest run finished: 0 failed, 0 ignored, 1 total, <TIME>
 d

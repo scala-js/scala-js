@@ -18,7 +18,7 @@ import org.junit.Test
 import java.util.Optional
 import java.util.function._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class OptionalTestOnJDK11 {
 

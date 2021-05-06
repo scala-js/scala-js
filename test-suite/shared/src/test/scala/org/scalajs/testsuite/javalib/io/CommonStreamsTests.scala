@@ -18,7 +18,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 trait CommonStreamsTests {
 
@@ -69,10 +69,10 @@ trait CommonStreamsTests {
     assertEquals(0, stream.read(buf, 10, 0))
     assertArrayEqualsSeq(6 to 25, buf)
 
-    expectThrows(classOf[IndexOutOfBoundsException], stream.read(buf, -1, 0))
-    expectThrows(classOf[IndexOutOfBoundsException], stream.read(buf, 0, -1))
-    expectThrows(classOf[IndexOutOfBoundsException], stream.read(buf, 100, 0))
-    expectThrows(classOf[IndexOutOfBoundsException], stream.read(buf, 10, 100))
+    assertThrows(classOf[IndexOutOfBoundsException], stream.read(buf, -1, 0))
+    assertThrows(classOf[IndexOutOfBoundsException], stream.read(buf, 0, -1))
+    assertThrows(classOf[IndexOutOfBoundsException], stream.read(buf, 100, 0))
+    assertThrows(classOf[IndexOutOfBoundsException], stream.read(buf, 10, 100))
     assertArrayEqualsSeq(6 to 25, buf)
 
     assertEquals(20L, stream.skip(20))

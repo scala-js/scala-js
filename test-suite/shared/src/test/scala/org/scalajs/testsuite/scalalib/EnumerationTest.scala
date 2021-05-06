@@ -15,7 +15,7 @@ package org.scalajs.testsuite.scalalib
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 class EnumerationTest {
@@ -68,7 +68,7 @@ class EnumerationTest {
 
     if (!executingInJVM) {
       // In the JVM the exception thrown is a ClassCastException
-      val ex = expectThrows(classOf[NoSuchElementException], Test.withName("A"))
+      val ex = assertThrows(classOf[NoSuchElementException], Test.withName("A"))
       val subMsg = "Couldn't find enum field with name A.\n" +
           "However, there were the following unnamed fields:"
       assertTrue(ex.getMessage.contains(subMsg))

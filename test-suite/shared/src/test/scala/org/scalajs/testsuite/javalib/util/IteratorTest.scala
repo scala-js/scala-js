@@ -18,7 +18,7 @@ import org.junit.Assert._
 import java.{util => ju}
 import java.util.function.Consumer
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class IteratorTest {
   @Test def testRemove(): Unit = {

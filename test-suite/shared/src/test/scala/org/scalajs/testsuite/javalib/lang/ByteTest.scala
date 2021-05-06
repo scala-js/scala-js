@@ -17,7 +17,7 @@ import java.lang.{Byte => JByte}
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 /** Tests the implementation of the java standard library Byte
  */
@@ -59,8 +59,8 @@ class ByteTest {
 
   @Test def parseStringInvalidThrows(): Unit = {
     def test(s: String): Unit = {
-      expectThrows(classOf[NumberFormatException], JByte.parseByte(s))
-      expectThrows(classOf[NumberFormatException], JByte.decode(s))
+      assertThrows(classOf[NumberFormatException], JByte.parseByte(s))
+      assertThrows(classOf[NumberFormatException], JByte.decode(s))
     }
 
     test("abc")

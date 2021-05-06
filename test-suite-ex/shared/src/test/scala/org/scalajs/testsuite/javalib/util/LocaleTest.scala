@@ -17,8 +17,6 @@ import java.util.Locale
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
-
 /** Sanity tests for the dummy implementation of `java.util.Locale`.
  *
  *  These tests ensure that our dummy implementation of `java.util.Locale`

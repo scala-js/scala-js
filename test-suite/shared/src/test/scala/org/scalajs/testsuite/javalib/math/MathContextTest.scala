@@ -24,7 +24,7 @@ import java.math.{MathContext, RoundingMode}
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class MathContextTest {
 
@@ -54,20 +54,20 @@ class MathContextTest {
     assertTrue(mc8.getPrecision == 23)
     assertTrue(mc8.getRoundingMode == RoundingMode.UP)
 
-    expectThrows(classOf[IllegalArgumentException],
+    assertThrows(classOf[IllegalArgumentException],
         new MathContext("prcision=27 roundingMode=CEILING"))
-    expectThrows(classOf[IllegalArgumentException],
+    assertThrows(classOf[IllegalArgumentException],
         new MathContext("precision=26 roundingMoe=CEILING"))
-    expectThrows(classOf[IllegalArgumentException],
+    assertThrows(classOf[IllegalArgumentException],
         new MathContext("precision=25 roundingMode=CEILINGFAN"))
-    expectThrows(classOf[IllegalArgumentException],
+    assertThrows(classOf[IllegalArgumentException],
         new MathContext("precision=24 roundingMode=HALF"))
-    expectThrows(classOf[IllegalArgumentException],
+    assertThrows(classOf[IllegalArgumentException],
         new MathContext("precision=23 roundingMode=UPSIDEDOWN"))
-    expectThrows(classOf[IllegalArgumentException],
+    assertThrows(classOf[IllegalArgumentException],
         new MathContext("precision=22roundingMode=UP"))
-    expectThrows(classOf[IllegalArgumentException], new MathContext(""))
-    expectThrows(classOf[NullPointerException], new MathContext(null))
+    assertThrows(classOf[IllegalArgumentException], new MathContext(""))
+    assertThrows(classOf[NullPointerException], new MathContext(null))
   }
 
   @Test def testMathContextConstructorEquality(): Unit = {

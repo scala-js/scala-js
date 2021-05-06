@@ -19,7 +19,7 @@ import org.junit.Assume._
 import org.junit.Test
 
 import org.scalajs.testsuite.javalib.util.concurrent.CopyOnWriteArrayListFactory
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 import scala.reflect.ClassTag
@@ -56,8 +56,8 @@ trait CollectionsCheckedListTest
   @Test def testCheckedListBadInputs(): Unit = {
     assumeTrue("Assumed compliant asInstanceOf", hasCompliantAsInstanceOfs)
 
-    expectThrows(classOf[ClassCastException], superList().add(0, new A))
-    expectThrows(classOf[ClassCastException],
+    assertThrows(classOf[ClassCastException], superList().add(0, new A))
+    assertThrows(classOf[ClassCastException],
         superList().addAll(0, TrivialImmutableCollection(new A)))
     testOnFirstPositionOfIterator[ju.ListIterator[A]](
         superList().listIterator _,

@@ -17,7 +17,7 @@ import java.io._
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class OutputStreamWriterTest {
   private def newOSWriter(): (OutputStreamWriter, MockByteArrayOutputStream) = {
@@ -51,11 +51,11 @@ class OutputStreamWriterTest {
     osw.close()
 
     // when closed, other operations cause error
-    expectThrows(classOf[IOException], osw.write('A'))
-    expectThrows(classOf[IOException], osw.write("never printed"))
-    expectThrows(classOf[IOException], osw.write(Array('a', 'b')))
-    expectThrows(classOf[IOException], osw.append("hello", 1, 3))
-    expectThrows(classOf[IOException], osw.flush())
+    assertThrows(classOf[IOException], osw.write('A'))
+    assertThrows(classOf[IOException], osw.write("never printed"))
+    assertThrows(classOf[IOException], osw.write(Array('a', 'b')))
+    assertThrows(classOf[IOException], osw.append("hello", 1, 3))
+    assertThrows(classOf[IOException], osw.flush())
 
     // at the end of it all, bos is still what it was when it was closed
     assertArrayEquals(Array[Byte](1, 65, 66, 67), bos.toByteArray())
@@ -136,7 +136,7 @@ class OutputStreamWriterTest {
   }
 
   @Test def constructorThrowUnsupportedEncodingExceptionIfUnsupportedCharsetNameGiven(): Unit = {
-    val ex = expectThrows(classOf[UnsupportedEncodingException],
+    val ex = assertThrows(classOf[UnsupportedEncodingException],
       new OutputStreamWriter(new ByteArrayOutputStream(), "UNSUPPORTED-CHARSET"))
     assertTrue("Cause should be null since constructor does not accept cause",
       ex.getCause == null)

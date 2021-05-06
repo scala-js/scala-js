@@ -25,7 +25,7 @@ import java.util.Arrays
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class BigIntegerModPowTest {
 
@@ -149,7 +149,7 @@ class BigIntegerModPowTest {
     val mSign = -1
     val aNumber = new BigInteger(aSign, aBytes)
     val modulus = new BigInteger(mSign, mBytes)
-    expectThrows(classOf[ArithmeticException], aNumber.modInverse(modulus))
+    assertThrows(classOf[ArithmeticException], aNumber.modInverse(modulus))
   }
 
   @Test def testmodInverseNeg1(): Unit = {
@@ -191,7 +191,7 @@ class BigIntegerModPowTest {
     val mSign = 1
     val aNumber = new BigInteger(aSign, aBytes)
     val modulus = new BigInteger(mSign, mBytes)
-    expectThrows(classOf[ArithmeticException], aNumber.modInverse(modulus))
+    assertThrows(classOf[ArithmeticException], aNumber.modInverse(modulus))
   }
 
   @Test def testmodInversePos1(): Unit = {
@@ -249,7 +249,7 @@ class BigIntegerModPowTest {
     assertTrue(Arrays.equals(aBytes, aNumber.toByteArray))
     val exp = new BigInteger(eSign, eBytes)
     val modulus = new BigInteger(mSign, mBytes)
-    expectThrows(classOf[ArithmeticException], aNumber.modPow(exp, modulus))
+    assertThrows(classOf[ArithmeticException], aNumber.modPow(exp, modulus))
   }
 
   @Test def testModPowNegExp(): Unit = {

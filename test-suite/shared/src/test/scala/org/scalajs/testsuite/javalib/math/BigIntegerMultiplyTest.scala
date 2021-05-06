@@ -24,7 +24,7 @@ import java.math.BigInteger
 import org.junit.Test
 import org.junit.Assert._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class BigIntegerMultiplyTest {
 
@@ -236,7 +236,7 @@ class BigIntegerMultiplyTest {
     val aSign = 1
     val exp = -5
     val aNumber = new BigInteger(aSign, aBytes)
-    expectThrows(classOf[ArithmeticException], aNumber.pow(exp))
+    assertThrows(classOf[ArithmeticException], aNumber.pow(exp))
   }
 
   @Test def testPowNegativeNumToEvenExp(): Unit = {

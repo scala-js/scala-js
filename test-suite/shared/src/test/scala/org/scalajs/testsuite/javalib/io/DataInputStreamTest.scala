@@ -14,7 +14,7 @@ package org.scalajs.testsuite.javalib.io
 
 import java.io._
 
-import org.scalajs.testsuite.utils.AssertThrows._
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform.executingInJVM
 
 import org.junit._
