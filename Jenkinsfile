@@ -384,12 +384,6 @@ def Tasks = [
     sbt sbtPlugin/scripted
   ''',
 
-  "partestc": '''
-    setJavaVersion $java
-    npm install &&
-    sbt ++$scala partest$v/compile
-  ''',
-
   "partest-noopt": '''
     setJavaVersion $java
     npm install &&
@@ -468,7 +462,6 @@ allJavaVersions.each { javaVersion ->
   quickMatrix.add([task: "tools", scala: "2.11.12", java: javaVersion])
   quickMatrix.add([task: "tools", scala: "2.13.5", java: javaVersion])
 }
-quickMatrix.add([task: "partestc", scala: "2.12.1", java: mainJavaVersion])
 
 // The 'full' matrix
 def fullMatrix = quickMatrix.clone()
@@ -481,9 +474,6 @@ mainScalaVersions.each { scalaVersion ->
   }
   fullMatrix.add([task: "partest-noopt", scala: scalaVersion, java: mainJavaVersion])
   fullMatrix.add([task: "partest-fullopt", scala: scalaVersion, java: mainJavaVersion])
-}
-otherScalaVersions.each { scalaVersion ->
-  fullMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion])
 }
 
 def Matrices = [
