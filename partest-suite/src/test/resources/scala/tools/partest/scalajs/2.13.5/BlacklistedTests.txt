@@ -1119,8 +1119,3 @@ run/t10594.scala
 # Badly uses constract of Console.print (no flush)
 run/t429.scala
 run/t6102.scala
-
-### Buglisted tests ###
-
-# scala-js#4478
-run/t11882-class-cast.scala

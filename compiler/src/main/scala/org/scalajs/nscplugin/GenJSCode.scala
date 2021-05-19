@@ -2347,9 +2347,32 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
          *
          * This is normally done by `cleanup` but it comes later than this phase.
          */
-        case Apply(appMeth, Apply(wrapRefArrayMeth, StripCast(arg @ ArrayValue(_, _)) :: Nil) :: _ :: Nil)
-            if wrapRefArrayMeth.symbol == WrapArray.wrapRefArrayMethod && appMeth.symbol == ArrayModule_genericApply =>
-          genArrayValue(arg)
+        case Apply(appMeth,
+            Apply(wrapRefArrayMeth, StripCast(arg @ ArrayValue(elemtpt, elems)) :: Nil) :: classTagEvidence :: Nil)
+            if WrapArray.isClassTagBasedWrapArrayMethod(wrapRefArrayMeth.symbol) &&
+                appMeth.symbol == ArrayModule_genericApply &&
+                !elemtpt.tpe.typeSymbol.isBottomClass &&
+                !elemtpt.tpe.typeSymbol.isPrimitiveValueClass /* can happen via specialization.*/ =>
+          classTagEvidence.attachments.get[analyzer.MacroExpansionAttachment] match {
+            case Some(att)
+                if att.expandee.symbol.name == nme.materializeClassTag && tree.isInstanceOf[ApplyToImplicitArgs] =>
+              genArrayValue(arg)
+            case _ =>
+              val arrValue = genApplyMethod(
+                  genExpr(classTagEvidence),
+                  ClassTagClass.info.decl(nme.newArray),
+                  js.IntLiteral(elems.size) :: Nil)
+              val arrVarDef = js.VarDef(freshLocalIdent("arr"), NoOriginalName,
+                  arrValue.tpe, mutable = false, arrValue)
+              val stats = List.newBuilder[js.Tree]
+              foreachWithIndex(elems) { (elem, i) =>
+                stats += genApplyMethod(
+                    genLoadModule(ScalaRunTimeModule),
+                    currentRun.runDefinitions.arrayUpdateMethod,
+                    arrVarDef.ref :: js.IntLiteral(i) :: genExpr(elem) :: Nil)
+              }
+              js.Block(arrVarDef :: stats.result(), arrVarDef.ref)
+          }
         case Apply(appMeth, elem0 :: WrapArray(rest @ ArrayValue(elemtpt, _)) :: Nil)
             if appMeth.symbol == ArrayModule_apply(elemtpt.tpe) =>
           genArrayValue(rest, elem0 :: rest.elems)
@@ -5582,6 +5605,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       val wrapRefArrayMethod: Symbol =
         getMemberMethod(wrapArrayModule, nme.wrapRefArray)
+
+      val genericWrapArrayMethod: Symbol =
+        getMemberMethod(wrapArrayModule, nme.genericWrapArray)
+
+      def isClassTagBasedWrapArrayMethod(sym: Symbol): Boolean =
+        sym == wrapRefArrayMethod || sym == genericWrapArrayMethod
 
       private val isWrapArray: Set[Symbol] = {
         Seq(
