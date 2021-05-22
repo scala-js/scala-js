@@ -19,16 +19,17 @@ import scala.annotation.switch
 import scala.scalajs.js
 
 final class Matcher private[regex] (
-    private var pattern0: Pattern, private var input0: CharSequence,
-    private var regionStart0: Int, private var regionEnd0: Int)
+    private var pattern0: Pattern, private var input0: CharSequence)
     extends AnyRef with MatchResult {
 
   import Matcher._
 
   def pattern(): Pattern = pattern0
 
-  // Configuration (updated manually)
-  private var inputstr = input0.subSequence(regionStart0, regionEnd0).toString
+  // Region configuration (updated by reset() and region())
+  private var regionStart0 = 0
+  private var regionEnd0 = input0.length()
+  private var inputstr = input0.toString()
 
   // Match result (updated by successful matches)
   private var position: Int = 0 // within `inputstr`, not `input0`
@@ -151,8 +152,12 @@ final class Matcher private[regex] (
     this
   }
 
-  def reset(): Matcher =
-    region(0, input0.length())
+  def reset(): Matcher = {
+    regionStart0 = 0
+    regionEnd0 = input0.length()
+    inputstr = input0.toString()
+    resetMatch()
+  }
 
   def reset(input: CharSequence): Matcher = {
     input0 = input
@@ -229,7 +234,7 @@ final class Matcher private[regex] (
   // Similar difficulties as with hitEnd()
   //def requireEnd(): Boolean
 
-  // Stub methods for region management
+  // Region management
 
   def regionStart(): Int = regionStart0
   def regionEnd(): Int = regionEnd0

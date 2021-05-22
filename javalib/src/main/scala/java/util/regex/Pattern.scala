@@ -140,7 +140,7 @@ final class Pattern private[regex] (
   override def toString(): String = pattern()
 
   def matcher(input: CharSequence): Matcher =
-    new Matcher(this, input, 0, input.length)
+    new Matcher(this, input)
 
   def split(input: CharSequence): Array[String] =
     split(input, 0)
