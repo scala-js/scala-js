@@ -60,5 +60,5 @@ class FinalizationRegistry[-A, -B, -C](finalizer: js.Function1[B, scala.Any]) ex
    *
    *  @param unregistrationToken The token used with the register method when registering the target object.
    */
-  def unregister(unregistrationToken: C): Unit = js.native
+  def unregister(unregistrationToken: C): Boolean = js.native
 }

@@ -12,6 +12,7 @@
 
 package org.scalajs.testsuite.library
 
+import org.junit.Assert._
 import org.junit.Test
 
 import scala.scalajs.js
@@ -30,7 +31,15 @@ class FinalizationRegistryTest {
     val unregisterToken = new js.Object()
     registry.register(obj3, "bar", unregisterToken)
 
-    registry.unregister(obj1)
-    registry.unregister(unregisterToken)
+    val nonExistingUnregisterToken = new js.Object()
+    assertFalse(registry.unregister(nonExistingUnregisterToken))
+
+    assertFalse(registry.unregister(obj1))
+
+    assertTrue(registry.unregister(obj2))
+    assertFalse(registry.unregister(obj2))
+
+    assertTrue(registry.unregister(unregisterToken))
+    assertFalse(registry.unregister(unregisterToken))
   }
 }
