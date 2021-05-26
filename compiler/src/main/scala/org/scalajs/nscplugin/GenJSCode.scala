@@ -158,10 +158,23 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     private val enclosingLabelDefInfos = new ScopedVar[Map[Symbol, EnclosingLabelDefInfo]]
     private val isModuleInitialized = new ScopedVar[VarBox[Boolean]]
     private val undefinedDefaultParams = new ScopedVar[mutable.Set[Symbol]]
-
-    // For some method bodies
     private val mutableLocalVars = new ScopedVar[mutable.Set[Symbol]]
     private val mutatedLocalVars = new ScopedVar[mutable.Set[Symbol]]
+
+    private def withPerMethodBodyState[A](methodSym: Symbol)(body: => A): A = {
+      withScopedVars(
+          currentMethodSym := methodSym,
+          thisLocalVarIdent := None,
+          fakeTailJumpParamRepl := (NoSymbol, NoSymbol),
+          enclosingLabelDefInfos := Map.empty,
+          isModuleInitialized := new VarBox(false),
+          undefinedDefaultParams := mutable.Set.empty,
+          mutableLocalVars := mutable.Set.empty,
+          mutatedLocalVars := mutable.Set.empty
+      ) {
+        body
+      }
+    }
 
     // For anonymous methods
     // These have a default, since we always read them.
@@ -1801,14 +1814,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val DefDef(mods, name, _, vparamss, _, rhs) = dd
       val sym = dd.symbol
 
-      withScopedVars(
-          currentMethodSym := sym,
-          thisLocalVarIdent := None,
-          fakeTailJumpParamRepl := (NoSymbol, NoSymbol),
-          enclosingLabelDefInfos := Map.empty,
-          isModuleInitialized := new VarBox(false),
-          undefinedDefaultParams := mutable.Set.empty
-      ) {
+      withPerMethodBodyState(sym) {
         assert(vparamss.isEmpty || vparamss.tail.isEmpty,
             "Malformed parameter list: " + vparamss)
         val params = if (vparamss.isEmpty) Nil else vparamss.head map (_.symbol)
@@ -1858,84 +1864,79 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           // Do not emit trait impl forwarders with @JavaDefaultMethod
           None
         } else {
-          withScopedVars(
-              mutableLocalVars := mutable.Set.empty,
-              mutatedLocalVars := mutable.Set.empty
-          ) {
-            def isTraitImplForwarder = dd.rhs match {
-              case app: Apply => isImplClass(app.symbol.owner)
-              case _          => false
-            }
-
-            val shouldMarkInline = {
-              sym.hasAnnotation(InlineAnnotationClass) ||
-              sym.name.startsWith(nme.ANON_FUN_NAME) ||
-              adHocInlineMethods.contains(sym.fullName)
-            }
-
-            val shouldMarkNoinline = {
-              sym.hasAnnotation(NoinlineAnnotationClass) &&
-              !isTraitImplForwarder &&
-              !ignoreNoinlineAnnotation(sym)
-            }
-
-            val optimizerHints =
-              OptimizerHints.empty.
-                withInline(shouldMarkInline).
-                withNoinline(shouldMarkNoinline)
-
-            val methodDef = {
-              if (sym.isClassConstructor) {
-                val body0 = genStat(rhs)
-                val body1 = {
-                  val needsMove =
-                    isNonNativeJSClass(currentClassSym) && sym.isPrimaryConstructor
-
-                  if (needsMove) moveAllStatementsAfterSuperConstructorCall(body0)
-                  else body0
-                }
-
-                val namespace = js.MemberNamespace.Constructor
-                js.MethodDef(
-                    js.MemberFlags.empty.withNamespace(namespace), methodName,
-                    originalName, jsParams, jstpe.NoType, Some(body1))(
-                    optimizerHints, None)
-              } else {
-                val resultIRType = toIRType(sym.tpe.resultType)
-                val namespace = {
-                  if (sym.isStaticMember) {
-                    if (sym.isPrivate) js.MemberNamespace.PrivateStatic
-                    else js.MemberNamespace.PublicStatic
-                  } else {
-                    if (sym.isPrivate) js.MemberNamespace.Private
-                    else js.MemberNamespace.Public
-                  }
-                }
-                genMethodDef(namespace, methodName, originalName, params,
-                    resultIRType, rhs, optimizerHints)
-              }
-            }
-
-            val methodDefWithoutUselessVars = {
-              val unmutatedMutableLocalVars =
-                (mutableLocalVars.diff(mutatedLocalVars)).toList
-              val mutatedImmutableLocalVals =
-                (mutatedLocalVars.diff(mutableLocalVars)).toList
-              if (unmutatedMutableLocalVars.isEmpty &&
-                  mutatedImmutableLocalVals.isEmpty) {
-                // OK, we're good (common case)
-                methodDef
-              } else {
-                val patches = (
-                    unmutatedMutableLocalVars.map(encodeLocalSym(_).name -> false) :::
-                    mutatedImmutableLocalVals.map(encodeLocalSym(_).name -> true)
-                ).toMap
-                patchMutableFlagOfLocals(methodDef, patches)
-              }
-            }
-
-            Some(methodDefWithoutUselessVars)
+          def isTraitImplForwarder = dd.rhs match {
+            case app: Apply => isImplClass(app.symbol.owner)
+            case _          => false
           }
+
+          val shouldMarkInline = {
+            sym.hasAnnotation(InlineAnnotationClass) ||
+            sym.name.startsWith(nme.ANON_FUN_NAME) ||
+            adHocInlineMethods.contains(sym.fullName)
+          }
+
+          val shouldMarkNoinline = {
+            sym.hasAnnotation(NoinlineAnnotationClass) &&
+            !isTraitImplForwarder &&
+            !ignoreNoinlineAnnotation(sym)
+          }
+
+          val optimizerHints =
+            OptimizerHints.empty.
+              withInline(shouldMarkInline).
+              withNoinline(shouldMarkNoinline)
+
+          val methodDef = {
+            if (sym.isClassConstructor) {
+              val body0 = genStat(rhs)
+              val body1 = {
+                val needsMove =
+                  isNonNativeJSClass(currentClassSym) && sym.isPrimaryConstructor
+
+                if (needsMove) moveAllStatementsAfterSuperConstructorCall(body0)
+                else body0
+              }
+
+              val namespace = js.MemberNamespace.Constructor
+              js.MethodDef(
+                  js.MemberFlags.empty.withNamespace(namespace), methodName,
+                  originalName, jsParams, jstpe.NoType, Some(body1))(
+                  optimizerHints, None)
+            } else {
+              val resultIRType = toIRType(sym.tpe.resultType)
+              val namespace = {
+                if (sym.isStaticMember) {
+                  if (sym.isPrivate) js.MemberNamespace.PrivateStatic
+                  else js.MemberNamespace.PublicStatic
+                } else {
+                  if (sym.isPrivate) js.MemberNamespace.Private
+                  else js.MemberNamespace.Public
+                }
+              }
+              genMethodDef(namespace, methodName, originalName, params,
+                  resultIRType, rhs, optimizerHints)
+            }
+          }
+
+          val methodDefWithoutUselessVars = {
+            val unmutatedMutableLocalVars =
+              (mutableLocalVars.diff(mutatedLocalVars)).toList
+            val mutatedImmutableLocalVals =
+              (mutatedLocalVars.diff(mutableLocalVars)).toList
+            if (unmutatedMutableLocalVars.isEmpty &&
+                mutatedImmutableLocalVals.isEmpty) {
+              // OK, we're good (common case)
+              methodDef
+            } else {
+              val patches = (
+                  unmutatedMutableLocalVars.map(encodeLocalSym(_).name -> false) :::
+                  mutatedImmutableLocalVals.map(encodeLocalSym(_).name -> true)
+              ).toMap
+              patchMutableFlagOfLocals(methodDef, patches)
+            }
+          }
+
+          Some(methodDefWithoutUselessVars)
         }
       }
     }
