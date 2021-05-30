@@ -110,6 +110,17 @@ object TestIRBuilder {
   def mainModuleInitializers(moduleClassName: String): List[ModuleInitializer] =
     ModuleInitializer.mainMethodWithArgs(moduleClassName, "main") :: Nil
 
+  val JSObjectLikeClass = ClassName("JSObject")
+
+  val JSObjectLikeClassDef: ClassDef = {
+    classDef(
+      JSObjectLikeClass,
+      kind = ClassKind.NativeJSClass,
+      superClass = Some(ObjectClass),
+      jsNativeLoadSpec = Some(JSNativeLoadSpec.Global("Object", Nil))
+    )
+  }
+
   implicit def string2LocalName(name: String): LocalName =
     LocalName(name)
   implicit def string2LabelName(name: String): LabelName =
