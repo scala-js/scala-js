@@ -150,10 +150,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
             js.TopLevelJSClassExportDef(info.moduleID, info.jsName)
 
           case Constructor | Method =>
-            val exported = tups.map(t => ExportedSymbol(t._2))
-
             val methodDef = withNewLocalNameScope {
-              genExportMethod(exported, JSName.Literal(info.jsName), static = true)
+              genExportMethod(tups.map(_._2), JSName.Literal(info.jsName), static = true)
             }
 
             js.TopLevelMethodExportDef(info.moduleID, methodDef)
@@ -278,33 +276,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         if (isProp)
           genExportProperty(alts, jsName, static)
         else
-          genExportMethod(alts.map(ExportedSymbol), jsName, static)
+          genExportMethod(alts, jsName, static)
       }
-    }
-
-    def genJSConstructorExport(
-        alts: List[Symbol]): (Option[List[js.ParamDef]], js.JSMethodDef) = {
-      val exporteds = alts.map(ExportedSymbol)
-
-      val isLiftedJSCtor = exporteds.head.isLiftedJSConstructor
-      assert(exporteds.tail.forall(_.isLiftedJSConstructor == isLiftedJSCtor),
-          s"Alternative constructors $alts do not agree on whether they are " +
-          "lifted JS constructors or not")
-      val captureParams = if (!isLiftedJSCtor) {
-        None
-      } else {
-        Some(for {
-          exported <- exporteds
-          param <- exported.captureParamsFront ::: exported.captureParamsBack
-        } yield {
-          genParamDef(param.sym)
-        })
-      }
-
-      val ctorDef = genExportMethod(exporteds, JSName.Literal("constructor"),
-          static = false)
-
-      (captureParams, ctorDef)
     }
 
     private def genExportProperty(alts: List[Symbol], jsName: JSName,
@@ -337,8 +310,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       }
 
       val getterBody = getter.headOption.map { getterSym =>
-        genApplyForSym(new FormalArgsRegistry(0, false),
-            ExportedSymbol(getterSym), static)
+        genApplyForSym(new FormalArgsRegistry(0, false), getterSym, static)
       }
 
       val setterArgAndBody = {
@@ -347,9 +319,9 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         } else {
           val formalArgsRegistry = new FormalArgsRegistry(1, false)
           val (List(arg), None) = formalArgsRegistry.genFormalArgs()
-          val body = genExportSameArgc(jsName, formalArgsRegistry,
-              alts = setters.map(ExportedSymbol),
-              paramIndex = 0, static = static)
+          val body = genOverloadDispatchSameArgc(jsName, formalArgsRegistry,
+              alts = setters.map(new ExportedSymbol(_, static)), jstpe.AnyType,
+              paramIndex = 0)
           Some((arg, body))
         }
       }
@@ -359,7 +331,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
     /** generates the exporter function (i.e. exporter for non-properties) for
      *  a given name */
-    private def genExportMethod(alts0: List[Exported], jsName: JSName,
+    private def genExportMethod(alts0: List[Symbol], jsName: JSName,
         static: Boolean): js.JSMethodDef = {
       assert(alts0.nonEmpty,
           "need at least one alternative to generate exporter method")
@@ -375,14 +347,25 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         // toString() is always exported. We might need to add it here
         // to get correct overloading.
         val needsToString =
-          jsName == JSName.Literal("toString") && alts0.forall(_.params.nonEmpty)
+          jsName == JSName.Literal("toString") && alts0.forall(_.tpe.params.nonEmpty)
 
         if (needsToString)
-          ExportedSymbol(Object_toString) :: alts0
+          Object_toString :: alts0
         else
           alts0
       }
 
+      val overloads = alts.map(new ExportedSymbol(_, static))
+
+      val (formalArgs, restParam, body) =
+        genOverloadDispatch(jsName, overloads, jstpe.AnyType)
+
+      js.JSMethodDef(flags, genExpr(jsName), formalArgs, restParam, body)(
+          OptimizerHints.empty, None)
+    }
+
+    def genOverloadDispatch(jsName: JSName, alts: List[Exported], tpe: jstpe.Type)(
+        implicit pos: Position): (List[js.ParamDef], Option[js.ParamDef], js.Tree) = {
       // Factor out methods with variable argument lists. Note that they can
       // only be at the end of the lists as enforced by PrepJSExports
       val (varArgMeths, normalMeths) = alts.partition(_.hasRepeatedParam)
@@ -452,8 +435,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         if methods != varArgMeths.toSet
 
         // body of case to disambiguates methods with current count
-        caseBody = genExportSameArgc(jsName, formalArgsRegistry,
-            methods.toList, paramIndex = 0, static, Some(argcs.min))
+        caseBody = genOverloadDispatchSameArgc(jsName, formalArgsRegistry,
+            methods.toList, tpe, paramIndex = 0, Some(argcs.min))
 
         // argc in reverse order
         argcList = argcs.toList.sortBy(- _)
@@ -463,8 +446,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         if (!hasVarArg) {
           genThrowTypeError()
         } else {
-          genExportSameArgc(jsName, formalArgsRegistry, varArgMeths,
-              paramIndex = 0, static = static)
+          genOverloadDispatchSameArgc(jsName, formalArgsRegistry, varArgMeths,
+              tpe, paramIndex = 0)
         }
       }
 
@@ -479,12 +462,11 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           val restArgRef = formalArgsRegistry.genRestArgRef()
           js.Match(
               js.AsInstanceOf(js.JSSelect(restArgRef, js.StringLiteral("length")), jstpe.IntType),
-              cases.toList, defaultCase)(jstpe.AnyType)
+              cases.toList, defaultCase)(tpe)
         }
       }
 
-      js.JSMethodDef(flags, genExpr(jsName), formalArgs, restParam, body)(
-          OptimizerHints.empty, None)
+      (formalArgs, restParam, body)
     }
 
     /**
@@ -495,15 +477,14 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
      * @param paramIndex Index where to start disambiguation
      * @param maxArgc only use that many arguments
      */
-    private def genExportSameArgc(jsName: JSName,
+    private def genOverloadDispatchSameArgc(jsName: JSName,
         formalArgsRegistry: FormalArgsRegistry, alts: List[Exported],
-        paramIndex: Int, static: Boolean,
-        maxArgc: Option[Int] = None): js.Tree = {
+        tpe: jstpe.Type, paramIndex: Int, maxArgc: Option[Int] = None): js.Tree = {
 
-      implicit val pos = alts.head.pos
+      implicit val pos = alts.head.sym.pos
 
       if (alts.size == 1) {
-        alts.head.genBody(formalArgsRegistry, static)
+        alts.head.genBody(formalArgsRegistry)
       } else if (maxArgc.exists(_ <= paramIndex) ||
         !alts.exists(_.params.size > paramIndex)) {
         // We reach here in three cases:
@@ -520,8 +501,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
         if (altsByTypeTest.size == 1) {
           // Testing this parameter is not doing any us good
-          genExportSameArgc(jsName, formalArgsRegistry, alts, paramIndex + 1,
-              static, maxArgc)
+          genOverloadDispatchSameArgc(jsName, formalArgsRegistry, alts, tpe,
+              paramIndex + 1, maxArgc)
         } else {
           // Sort them so that, e.g., isInstanceOf[String]
           // comes before isInstanceOf[Object]
@@ -546,11 +527,11 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
           sortedAltsByTypeTest.foldRight[js.Tree](defaultCase) { (elem, elsep) =>
             val (typeTest, subAlts) = elem
-            implicit val pos = subAlts.head.pos
+            implicit val pos = subAlts.head.sym.pos
 
             val paramRef = formalArgsRegistry.genArgRef(paramIndex)
-            val genSubAlts = genExportSameArgc(jsName, formalArgsRegistry,
-                subAlts, paramIndex + 1, static, maxArgc)
+            val genSubAlts = genOverloadDispatchSameArgc(jsName, formalArgsRegistry,
+                subAlts, tpe, paramIndex + 1, maxArgc)
 
             def hasDefaultParam = subAlts.exists { exported =>
               val params = exported.params
@@ -577,7 +558,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
                     js.BinaryOp(js.BinaryOp.===, paramRef, js.Undefined()))(
                     jstpe.BooleanType)
               }
-              js.If(condOrUndef, genSubAlts, elsep)(jstpe.AnyType)
+              js.If(condOrUndef, genSubAlts, elsep)(tpe)
             }
           }
         }
@@ -605,7 +586,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         else "exported method"
 
       val displayName = jsName.displayName
-      val altsTypesInfo = alts.map(_.typeInfo).sorted.mkString("\n  ")
+      val altsTypesInfo = alts.map(_.sym.tpe.toString).sorted.mkString("\n  ")
 
       reporter.error(pos,
           s"Cannot disambiguate overloads for $kind $displayName with types\n" +
@@ -618,22 +599,20 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
      * required.
      */
     private def genApplyForSym(formalArgsRegistry: FormalArgsRegistry,
-        exported: Exported, static: Boolean): js.Tree = {
+        sym: Symbol, static: Boolean): js.Tree = {
       if (isNonNativeJSClass(currentClassSym) &&
-          exported.sym.owner != currentClassSym.get) {
-        assert(!static,
-            s"nonsensical JS super call in static export of ${exported.sym}")
-        genApplyForSymJSSuperCall(formalArgsRegistry, exported)
+          sym.owner != currentClassSym.get) {
+        assert(!static, s"nonsensical JS super call in static export of $sym")
+        genApplyForSymJSSuperCall(formalArgsRegistry, sym)
       } else {
-        genApplyForSymNonJSSuperCall(formalArgsRegistry, exported, static)
+        genApplyForSymNonJSSuperCall(formalArgsRegistry, sym, static)
       }
     }
 
     private def genApplyForSymJSSuperCall(
-        formalArgsRegistry: FormalArgsRegistry, exported: Exported): js.Tree = {
-      implicit val pos = exported.pos
+        formalArgsRegistry: FormalArgsRegistry, sym: Symbol): js.Tree = {
+      implicit val pos = sym.pos
 
-      val sym = exported.sym
       assert(!sym.isClassConstructor,
           "Trying to genApplyForSymJSSuperCall for the constructor " +
           sym.fullName)
@@ -667,81 +646,53 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
     }
 
     private def genApplyForSymNonJSSuperCall(
-        formalArgsRegistry: FormalArgsRegistry, exported: Exported,
+        formalArgsRegistry: FormalArgsRegistry, sym: Symbol,
         static: Boolean): js.Tree = {
-      implicit val pos = exported.pos
+      implicit val pos = sym.pos
 
-      // the (single) type of the repeated parameter if any
-      val repeatedTpe =
-        exported.params.lastOption.withFilter(_.isRepeated).map(_.tpe)
+      val varDefs = new mutable.ListBuffer[js.VarDef]
 
-      val normalArgc = exported.params.size -
-        (if (repeatedTpe.isDefined) 1 else 0)
+      for ((param, i) <- jsParamInfos(sym).zipWithIndex) {
+        val rhs = genScalaArg(sym, i, formalArgsRegistry, param, static)(
+            prevArgsCount => varDefs.take(prevArgsCount).toList.map(_.ref))
 
-      // optional repeated parameter list
-      val jsVarArgPrep = repeatedTpe map { tpe =>
-        val rhs = genJSArrayToVarArgs(formalArgsRegistry.genVarargRef(normalArgc))
-        val ident = freshLocalIdent("prep" + normalArgc)
-        js.VarDef(ident, NoOriginalName, rhs.tpe, mutable = false, rhs)
+        varDefs += js.VarDef(freshLocalIdent("prep" + i), NoOriginalName,
+            rhs.tpe, mutable = false, rhs)
       }
 
-      // normal arguments
-      val jsArgRefs =
-        (0 until normalArgc).toList.map(formalArgsRegistry.genArgRef(_))
+      val builtVarDefs = varDefs.result()
 
-      // Generate JS code to prepare arguments (default getters and unboxes)
-      val jsArgPrep = genPrepareArgs(jsArgRefs, exported, static) ++ jsVarArgPrep
-      val jsArgPrepRefs = jsArgPrep.map(_.ref)
+      val jsResult = genResult(sym, builtVarDefs.map(_.ref), static)
 
-      // Combine prep'ed formal arguments with captures
-      def varRefForCaptureParam(param: ParamSpec): js.Tree =
-        js.VarRef(encodeLocalSym(param.sym))(toIRType(param.sym.tpe))
-      val allJSArgs = {
-        exported.captureParamsFront.map(varRefForCaptureParam) :::
-        jsArgPrepRefs :::
-        exported.captureParamsBack.map(varRefForCaptureParam)
-      }
-
-      val jsResult = genResult(exported, allJSArgs, static)
-
-      js.Block(jsArgPrep :+ jsResult)
+      js.Block(builtVarDefs :+ jsResult)
     }
 
-    /** Generate the necessary JavaScript code to prepare the arguments of an
-     *  exported method (unboxing and default parameter handling)
+    /** Generates a Scala argument from dispatched JavaScript arguments
+     *  (unboxing and default parameter handling).
      */
-    private def genPrepareArgs(jsArgs: List[js.Tree], exported: Exported,
-        static: Boolean)(
-        implicit pos: Position): List[js.VarDef] = {
+    def genScalaArg(methodSym: Symbol, paramIndex: Int,
+        formalArgsRegistry: FormalArgsRegistry, param: JSParamInfo,
+        static: Boolean)(previousArgsValues: Int => List[js.Tree])(
+        implicit pos: Position): js.Tree = {
 
-      val result = new mutable.ListBuffer[js.VarDef]
-
-      for {
-        (jsArg, (param, i)) <- jsArgs.zip(exported.params.zipWithIndex)
-      } yield {
+      if (param.repeated) {
+        genJSArrayToVarArgs(formalArgsRegistry.genVarargRef(paramIndex))
+      } else {
+        val jsArg = formalArgsRegistry.genArgRef(paramIndex)
         // Unboxed argument (if it is defined)
         val unboxedArg = fromAny(jsArg, param.tpe)
 
-        // If argument is undefined and there is a default getter, call it
-        val verifiedOrDefault = if (param.hasDefault) {
-          js.If(js.BinaryOp(js.BinaryOp.===, jsArg, js.Undefined()), {
-            genCallDefaultGetter(exported.sym, i, param.sym.pos, static) {
-              prevArgsCount => result.take(prevArgsCount).toList.map(_.ref)
-            }
-          }, {
-            // Otherwise, unbox the argument
-            unboxedArg
-          })(unboxedArg.tpe)
+        if (param.hasDefault) {
+          // If argument is undefined and there is a default getter, call it
+          val default = genCallDefaultGetter(methodSym, paramIndex,
+              param.sym.pos, static)(previousArgsValues)
+          js.If(js.BinaryOp(js.BinaryOp.===, jsArg, js.Undefined()),
+              default, unboxedArg)(unboxedArg.tpe)
         } else {
           // Otherwise, it is always the unboxed argument
           unboxedArg
         }
-
-        result += js.VarDef(freshLocalIdent("prep" + i), NoOriginalName,
-            verifiedOrDefault.tpe, mutable = false, verifiedOrDefault)
       }
-
-      result.toList
     }
 
     private def genCallDefaultGetter(sym: Symbol, paramIndex: Int,
@@ -785,6 +736,13 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
             js.Undefined()
           else
             genApplyJSClassMethod(trgTree, defaultGetter, defaultGetterArgs)
+        } else if (defaultGetter.owner == trgSym) {
+          /* We get here if a non-native constructor has a native companion.
+           * This is reported on a per-class level.
+           */
+          assert(sym.isClassConstructor,
+              s"got non-constructor method $sym with default method in JS native companion")
+          js.Undefined()
         } else {
           reporter.error(paramPos, "When overriding a native method " +
               "with default arguments, the overriding method must " +
@@ -797,10 +755,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
     }
 
     /** Generate the final forwarding call to the exported method. */
-    private def genResult(exported: Exported, args: List[js.Tree],
+    private def genResult(sym: Symbol, args: List[js.Tree],
         static: Boolean)(implicit pos: Position): js.Tree = {
-      val sym = exported.sym
-
       def receiver = {
         if (static)
           genLoadModule(sym.owner)
@@ -823,109 +779,13 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       }
     }
 
-    private final class ParamSpec(val sym: Symbol, val tpe: Type,
-        val isRepeated: Boolean, val hasDefault: Boolean) {
-      override def toString(): String =
-        s"ParamSpec(${sym.name}, $tpe, $isRepeated, $hasDefault)"
-    }
+    abstract class Exported(val sym: Symbol,
+      // Parameters participating in overload resolution.
+      val params: immutable.IndexedSeq[JSParamInfo]) {
 
-    private object ParamSpec extends (Symbol => ParamSpec) {
-      def apply(sym: Symbol): ParamSpec = {
-        val hasDefault = sym.hasFlag(Flags.DEFAULTPARAM)
-        val repeated = isRepeated(sym)
-        val tpe = if (repeated) repeatedToSingle(sym.tpe) else sym.tpe
-        new ParamSpec(sym, tpe, repeated, hasDefault)
-      }
-    }
+      assert(!params.exists(_.capture), "illegal capture params in Exported")
 
-    private sealed abstract class Exported {
-      def sym: Symbol
-      def pos: Position
-      def isLiftedJSConstructor: Boolean
-      def params: immutable.IndexedSeq[ParamSpec]
-      def captureParamsFront: List[ParamSpec]
-      def captureParamsBack: List[ParamSpec]
-      def exportArgTypeAt(paramIndex: Int): Type
-      def genBody(formalArgsRegistry: FormalArgsRegistry, static: Boolean): js.Tree
-      def typeInfo: String
-      def hasRepeatedParam: Boolean
-    }
-
-    private case class ExportedSymbol(sym: Symbol) extends Exported {
-      val isLiftedJSConstructor =
-        sym.isClassConstructor && isNestedJSClass(sym.owner)
-
-      val (params, captureParamsFront, captureParamsBack) = {
-        val allParamsUncurry =
-          enteringPhase(currentRun.uncurryPhase)(sym.paramss.flatten.map(ParamSpec))
-        val allParamsPosterasure =
-          enteringPhase(currentRun.posterasurePhase)(sym.paramss.flatten.map(ParamSpec))
-        val allParamsNow = sym.paramss.flatten.map(ParamSpec)
-
-        def mergeUncurryPosterasure(paramsUncurry: List[ParamSpec],
-            paramsPosterasure: List[ParamSpec]): List[ParamSpec] = {
-          for {
-            (paramUncurry, paramPosterasure) <- paramsUncurry.zip(paramsPosterasure)
-          } yield {
-            if (paramUncurry.isRepeated) paramUncurry
-            else paramPosterasure
-          }
-        }
-
-        if (!isLiftedJSConstructor) {
-          /* Easy case: all params are formal params, and we only need to
-           * travel back before uncurry to handle repeated params, or before
-           * posterasure for other params.
-           */
-          assert(allParamsUncurry.size == allParamsPosterasure.size,
-              s"Found ${allParamsUncurry.size} params entering uncurry but " +
-              s"${allParamsPosterasure.size} params entering posterasure for " +
-              s"non-lifted symbol ${sym.fullName}")
-          val formalParams =
-            mergeUncurryPosterasure(allParamsUncurry, allParamsPosterasure)
-          (formalParams.toIndexedSeq, Nil, Nil)
-        } else {
-          /* The `arg$outer` param is added by explicitouter (between uncurry
-           * and posterasure) while the other capture params are added by
-           * lambdalift (between posterasure and now).
-           *
-           * Note that lambdalift creates new symbols even for parameters that
-           * are not the result of lambda lifting, but it preserves their
-           * `name`s.
-           */
-
-          val hasOuterParam = {
-            allParamsPosterasure.size == allParamsUncurry.size + 1 &&
-            allParamsPosterasure.head.sym.name == jsnme.arg_outer
-          }
-          assert(
-              hasOuterParam ||
-              allParamsPosterasure.size == allParamsUncurry.size,
-              s"Found ${allParamsUncurry.size} params entering uncurry but " +
-              s"${allParamsPosterasure.size} params entering posterasure for " +
-              s"lifted constructor symbol ${sym.fullName}")
-
-          val nonOuterParamsPosterasure =
-            if (hasOuterParam) allParamsPosterasure.tail
-            else allParamsPosterasure
-          val formalParams =
-            mergeUncurryPosterasure(allParamsUncurry, nonOuterParamsPosterasure)
-
-          val startOfRealParams =
-            allParamsNow.map(_.sym.name).indexOfSlice(allParamsUncurry.map(_.sym.name))
-          val (captureParamsFront, restOfParamsNow) =
-            allParamsNow.splitAt(startOfRealParams)
-          val captureParamsBack = restOfParamsNow.drop(formalParams.size)
-
-          (formalParams.toIndexedSeq, captureParamsFront, captureParamsBack)
-        }
-      }
-
-      val hasRepeatedParam = params.nonEmpty && params.last.isRepeated
-
-      def pos: Position = sym.pos
-
-      def exportArgTypeAt(paramIndex: Int): Type = {
+      final def exportArgTypeAt(paramIndex: Int): Type = {
         if (paramIndex < params.length) {
           params(paramIndex).tpe
         } else {
@@ -935,10 +795,15 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         }
       }
 
-      def genBody(formalArgsRegistry: FormalArgsRegistry, static: Boolean): js.Tree =
-        genApplyForSym(formalArgsRegistry, this, static)
+      def genBody(formalArgsRegistry: FormalArgsRegistry): js.Tree
 
-      def typeInfo: String = sym.tpe.toString
+      lazy val hasRepeatedParam = params.lastOption.exists(_.repeated)
+    }
+
+    private class ExportedSymbol(sym: Symbol, static: Boolean)
+        extends Exported(sym, jsParamInfos(sym).toIndexedSeq) {
+      def genBody(formalArgsRegistry: FormalArgsRegistry): js.Tree =
+        genApplyForSym(formalArgsRegistry, sym, static)
     }
   }
 
@@ -1031,7 +896,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
     js.Throw(js.StringLiteral(msg))
   }
 
-  private class FormalArgsRegistry(minArgc: Int, needsRestParam: Boolean) {
+  class FormalArgsRegistry(minArgc: Int, needsRestParam: Boolean) {
     private val fixedParamNames: scala.collection.immutable.IndexedSeq[LocalName] =
       (0 until minArgc).toIndexedSeq.map(_ => freshLocalIdent("arg")(NoPosition).name)
 
@@ -1095,11 +960,4 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       }
     }
   }
-
-  private def hasRepeatedParam(sym: Symbol) = {
-    enteringPhase(currentRun.uncurryPhase) {
-      sym.paramss.flatten.lastOption.exists(isRepeated _)
-    }
-  }
-
 }
