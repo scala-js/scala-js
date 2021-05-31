@@ -188,6 +188,65 @@ class IRCheckerTest {
     }
   }
 
+  @Test
+  def jsClassConstructorBodyMustBeExpr1_Issue4491(): AsyncResult = await {
+    val classDefs = Seq(
+      JSObjectLikeClassDef,
+
+      classDef(
+        "Foo",
+        kind = ClassKind.JSClass,
+        superClass = Some(JSObjectLikeClass),
+        memberDefs = List(
+          JSMethodDef(EMF, str("constructor"), Nil, None, Block(
+            JSSuperConstructorCall(Nil)
+          ))(EOH, None)
+        )
+      ),
+
+      mainTestClassDef(Block(
+        LoadJSConstructor("Foo")
+      ))
+    )
+
+    for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
+      log.assertContainsError(
+          "Expression tree has type NoType")
+      log.assertContainsError(
+          "Invalid expression tree")
+    }
+  }
+
+  @Test
+  def jsClassConstructorBodyMustBeExpr2_Issue4491(): AsyncResult = await {
+    val classDefs = Seq(
+      JSObjectLikeClassDef,
+
+      classDef(
+        "Foo",
+        kind = ClassKind.JSClass,
+        superClass = Some(JSObjectLikeClass),
+        memberDefs = List(
+          JSMethodDef(EMF, str("constructor"), Nil, None, Block(
+            JSSuperConstructorCall(Nil),
+            VarDef("x", NON, IntType, mutable = false, int(5))
+          ))(EOH, None)
+        )
+      ),
+
+      mainTestClassDef(Block(
+        LoadJSConstructor("Foo")
+      ))
+    )
+
+    for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
+      log.assertContainsError(
+          "Expression tree has type NoType")
+      log.assertContainsError(
+          "Invalid expression tree")
+    }
+  }
+
 }
 
 object IRCheckerTest {

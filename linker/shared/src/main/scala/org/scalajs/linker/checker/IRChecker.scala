@@ -484,7 +484,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       typecheckExprOrSpread(arg, preparedEnv)
 
     val restEnv = preparedEnv.withThis(AnyType)
-    typecheckStat(Block(restStats)(methodDef.pos), restEnv)
+    typecheckExpr(Block(restStats)(methodDef.pos), restEnv)
   }
 
   private def checkExportedPropertyDef(propDef: JSPropertyDef,
