@@ -1341,6 +1341,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           allowSideEffects && test(superClass) && test(qualifier) && test(item)
         case JSImportCall(arg) =>
           allowSideEffects && test(arg)
+        case JSImportMeta() =>
+          allowSideEffects
         case LoadJSModule(_) =>
           allowSideEffects
         case JSGlobalRef(_) =>
@@ -2752,6 +2754,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case JSImportCall(arg) =>
           js.ImportCall(transformExprNoChar(arg))
+
+        case JSImportMeta() =>
+          js.ImportMeta()
 
         case LoadJSConstructor(className) =>
           extractWithGlobals(genJSClassConstructor(className))

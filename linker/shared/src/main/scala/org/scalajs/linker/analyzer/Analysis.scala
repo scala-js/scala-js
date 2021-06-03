@@ -200,6 +200,8 @@ object Analysis {
 
   final case class DynamicImportWithoutModuleSupport(from: From) extends Error
 
+  final case class ImportMetaWithoutESModule(from: From) extends Error
+
   sealed trait From
   final case class FromMethod(methodInfo: MethodInfo) extends From
   final case class FromClass(classInfo: ClassInfo) extends From
@@ -257,6 +259,8 @@ object Analysis {
         moduleIDs.map(_.id).mkString("[", ", ", "]")
       case DynamicImportWithoutModuleSupport(_) =>
         "Uses dynamic import but module support is disabled"
+      case ImportMetaWithoutESModule(_) =>
+        "Uses import.meta with a module kind other than ESModule"
     }
 
     logger.log(level, headMsg)

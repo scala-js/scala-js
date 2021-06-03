@@ -377,6 +377,9 @@ object Printers {
           print(arg)
           print(')')
 
+        case ImportMeta()  =>
+          print("import.meta")
+
         case Spread(items) =>
           print("...")
           print(items)

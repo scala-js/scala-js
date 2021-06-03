@@ -561,6 +561,33 @@ class AnalyzerTest {
   }
 
   @Test
+  def importMetaWithoutESModule(): AsyncResult = await {
+    val classDefs = Seq(
+      classDef("A",
+        kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
+        memberDefs = List(
+          trivialCtor("A"),
+          mainMethodDef(JSImportMeta())
+        )
+      )
+    )
+
+    val moduleInitializer = ModuleInitializer.mainMethodWithArgs("A", "main")
+
+    testForEachModuleKind(classDefs, moduleInitializers = List(moduleInitializer)) {
+      (kind, analysis) =>
+        if (kind == ModuleKind.ESModule) {
+          assertNoError(analysis)
+        } else {
+          assertContainsError("ImportMetaWithoutESModule", analysis) {
+            case ImportMetaWithoutESModule(_) =>
+              true
+          }
+        }
+    }
+  }
+
+  @Test
   def juPropertiesNotReachableWhenUsingGetSetClearProperty(): AsyncResult = await {
     val systemMod = LoadModule("java.lang.System$")
     val emptyStr = str("")
@@ -767,23 +794,27 @@ object AnalyzerTest {
       moduleTest: Analysis => Unit)(
       implicit ec: ExecutionContext): Future[Unit] = {
 
-    val scriptAnalysis = computeAnalysis(classDefs,
-        moduleInitializers = moduleInitializers,
-        config = StandardConfig().withModuleKind(ModuleKind.NoModule))
+    testForEachModuleKind(classDefs, moduleInitializers) { (kind, analysis) =>
+      if (kind == ModuleKind.NoModule)
+        scriptTest(analysis)
+      else
+        moduleTest(analysis)
+    }
+  }
 
-    val scriptResult = scriptAnalysis.map(scriptTest(_))
+  private def testForEachModuleKind(classDefs: Seq[ClassDef],
+      moduleInitializers: Seq[ModuleInitializer] = Nil)(
+      test: (ModuleKind, Analysis) => Unit)(
+      implicit ec: ExecutionContext): Future[Unit] = {
 
-    val modulesResults = for {
-      kind <- ModuleKind.All
-      if kind != ModuleKind.NoModule
-    } yield {
+    val results = for (kind <- ModuleKind.All) yield {
       val analysis = computeAnalysis(classDefs,
           moduleInitializers = moduleInitializers,
           config = StandardConfig().withModuleKind(kind))
-      analysis.map(moduleTest(_))
+      analysis.map(test(kind, _))
     }
 
-    Future.sequence(scriptResult :: modulesResults).map(_ => ())
+    Future.sequence(results).map(_ => ())
   }
 
   private def assertNoError(analysis: Future[Analysis])(

@@ -655,6 +655,19 @@ object Trees {
     val tpe = AnyType // it is a JavaScript Promise
   }
 
+  /** JavaScript meta-property `import.meta`.
+   *
+   *  This form is its own node, rather than using something like
+   *  {{{
+   *  JSSelect(JSImport(), StringLiteral("meta"))
+   *  }}}
+   *  because `import` is not a first-class term in JavaScript. `import.meta`
+   *  is a dedicated syntactic form that cannot be dissociated.
+   */
+  sealed case class JSImportMeta()(implicit val pos: Position) extends Tree {
+    val tpe = AnyType
+  }
+
   /** Loads the constructor of a JS class (native or not).
    *
    *  `className` must represent a non-trait JS class (native or not).

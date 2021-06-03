@@ -114,6 +114,10 @@ private[ir] object Tags {
 
   final val TagClone = TagApplyDynamicImport + 1
 
+  // New in 1.6
+
+  final val TagJSImportMeta = TagClone + 1
+
   // Tags for member defs
 
   final val TagFieldDef = 1

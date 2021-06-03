@@ -4967,6 +4967,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           val arg = genArgs1
           js.JSImportCall(arg)
 
+        case JS_IMPORT_META =>
+          // js.import.meta
+          js.JSImportMeta()
+
         case DYNAMIC_IMPORT =>
           assert(args.size == 1,
               s"Expected exactly 1 argument for JS primitive $code but got " +

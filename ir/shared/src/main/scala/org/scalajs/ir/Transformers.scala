@@ -217,8 +217,8 @@ object Transformers {
         // Trees that need not be transformed
 
         case _:Skip | _:Debugger | _:LoadModule | _:SelectStatic | _:SelectJSNativeMember |
-            _:LoadJSConstructor | _:LoadJSModule  | _:JSLinkingInfo |
-            _:Literal | _:VarRef | _:This | _:JSGlobalRef | _:Transient  =>
+            _:LoadJSConstructor | _:LoadJSModule | _:JSImportMeta  | _:JSLinkingInfo |
+            _:Literal | _:VarRef | _:This | _:JSGlobalRef  =>
           tree
       }
     }

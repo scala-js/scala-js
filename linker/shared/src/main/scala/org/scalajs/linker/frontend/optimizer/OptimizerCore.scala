@@ -653,7 +653,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       // Trees that need not be transformed
 
       case _:Skip | _:Debugger | _:LoadModule | _:SelectStatic |
-          _:SelectJSNativeMember | _:LoadJSConstructor | _:LoadJSModule |
+          _:SelectJSNativeMember | _:JSImportMeta | _:LoadJSConstructor | _:LoadJSModule |
           _:JSLinkingInfo | _:JSGlobalRef | _:JSTypeOfGlobalRef | _:Literal =>
         tree
 

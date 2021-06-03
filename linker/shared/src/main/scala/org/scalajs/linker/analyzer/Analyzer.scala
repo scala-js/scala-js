@@ -1348,6 +1348,10 @@ private final class Analyzer(config: CommonPhaseConfig,
             .foreach(addLoadSpec(externalDependencies, _))
       }
     }
+
+    if (data.accessedImportMeta && config.coreSpec.moduleKind != ModuleKind.ESModule) {
+      _errors += ImportMetaWithoutESModule(from)
+    }
   }
 
   @tailrec

@@ -95,6 +95,7 @@ trait JSDefinitions {
     lazy val JSImportModule = getRequiredModule("scala.scalajs.js.import")
     lazy val JSImportModuleClass = JSImportModule.moduleClass
       lazy val JSImport_apply = getMemberMethod(JSImportModuleClass, nme.apply)
+      lazy val JSImport_meta = getMemberMethod(JSImportModuleClass, newTermName("meta"))
 
     lazy val SpecialPackageModule = getPackageObject("scala.scalajs.js.special")
       lazy val Special_strictEquals = getMemberMethod(SpecialPackageModule, newTermName("strictEquals"))
