@@ -57,31 +57,36 @@ private[modulesplitter] final class MaxModuleAnalyzer extends ModuleAnalyzer {
      *
      * We sort the ModuleIDs to not depend on map iteration order (or the
      * order of the input files).
-     *
-     * All of this is to avoid module ID collisions, for example with the
-     * following set of public modules: {`a`, `b`, `a-b`}.
      */
     val publicIDs = sortedSet(publicIDsUnordered)(Ordering.by[ModuleID, String](_.id))
     val dynamicIDs = sortedSet(dynamicIDsUnordered)
 
-    val seenIDs = mutable.Set.empty[ModuleID]
+    /* Internal ModuleIDs are simply generated with consecutive numbers.
+     * (earlier versions concatenated all the tags; which lead to too
+     * long names, see #4499).
+     */
+    val internalIDs = Iterator.from(0)
+      .map(i => ModuleID(s"internal-$i"))
+      .filterNot(publicIDs.contains(_)) // avoid module ID collisions.
 
     val tups = for {
       dynamicModules <- dynamicIDs.subsets()
       publicModules <- publicIDs.subsets()
       if publicModules.nonEmpty || dynamicModules.nonEmpty
     } yield {
-      var candidate = ModuleID((
-          publicModules.toList.map(_.id) ++
-          dynamicModules.toList.map(_.nameString)
-      ).mkString("-"))
+      val moduleID = {
+        if (dynamicModules.isEmpty && publicModules.size == 1) {
+          /* Classes tagged with exactly a single public module, get assigned to
+           * that public module.
+           */
+          publicModules.head
+        } else {
+          // for all other tag combinations, we generate a new internal module
+          internalIDs.next()
+        }
+      }
 
-      while (seenIDs.contains(candidate))
-        candidate = ModuleID(candidate.id + "$")
-
-      seenIDs.add(candidate)
-
-      (publicModules, dynamicModules) -> candidate
+      (publicModules, dynamicModules) -> moduleID
     }
 
     tups.toMap
