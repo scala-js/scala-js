@@ -778,6 +778,7 @@ object AnalyzerTest {
       if kind != ModuleKind.NoModule
     } yield {
       val analysis = computeAnalysis(classDefs,
+          moduleInitializers = moduleInitializers,
           config = StandardConfig().withModuleKind(kind))
       analysis.map(moduleTest(_))
     }
