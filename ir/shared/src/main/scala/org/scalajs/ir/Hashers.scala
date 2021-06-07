@@ -393,6 +393,9 @@ object Hashers {
           mixTag(TagJSImportCall)
           mixTree(arg)
 
+        case JSImportMeta() =>
+          mixTag(TagJSImportMeta)
+
         case LoadJSConstructor(className) =>
           mixTag(TagLoadJSConstructor)
           mixName(className)

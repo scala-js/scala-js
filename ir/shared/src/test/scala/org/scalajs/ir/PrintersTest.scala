@@ -667,6 +667,10 @@ class PrintersTest {
     assertPrintEquals("""import("foo.js")""", JSImportCall(StringLiteral("foo.js")))
   }
 
+  @Test def printJSImportMeta(): Unit = {
+    assertPrintEquals("import.meta", JSImportMeta())
+  }
+
   @Test def printLoadJSConstructor(): Unit = {
     assertPrintEquals("constructorOf[Test]", LoadJSConstructor("Test"))
   }

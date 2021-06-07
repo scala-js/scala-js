@@ -638,6 +638,9 @@ object Printers {
           print(arg)
           print(')')
 
+        case JSImportMeta() =>
+          print("import.meta")
+
         case LoadJSConstructor(className) =>
           print("constructorOf[")
           print(className)

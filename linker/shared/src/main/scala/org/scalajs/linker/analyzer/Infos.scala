@@ -89,13 +89,14 @@ object Infos {
       val accessedModules: List[ClassName],
       val usedInstanceTests: List[ClassName],
       val accessedClassData: List[ClassName],
-      val referencedClasses: List[ClassName]
+      val referencedClasses: List[ClassName],
+      val accessedImportMeta: Boolean
   )
 
   object ReachabilityInfo {
     val Empty: ReachabilityInfo = {
       new ReachabilityInfo(Map.empty, Map.empty, Map.empty, Map.empty,
-          Map.empty, Map.empty, Map.empty, Nil, Nil, Nil, Nil, Nil)
+          Map.empty, Map.empty, Map.empty, Nil, Nil, Nil, Nil, Nil, false)
     }
   }
 
@@ -158,6 +159,7 @@ object Infos {
     private val usedInstanceTests = mutable.Set.empty[ClassName]
     private val accessedClassData = mutable.Set.empty[ClassName]
     private val referencedClasses = mutable.Set.empty[ClassName]
+    private var accessedImportMeta = false
 
     def addPrivateJSFieldUsed(cls: ClassName, field: FieldName): this.type = {
       privateJSFieldsUsed.getOrElseUpdate(cls, mutable.Set.empty) += field
@@ -306,6 +308,11 @@ object Infos {
       this
     }
 
+    def addAccessImportMeta(): this.type = {
+      accessedImportMeta = true
+      this
+    }
+
     def result(): ReachabilityInfo = {
       def toMapOfLists[A, B](m: mutable.Map[A, mutable.Set[B]]): Map[A, List[B]] =
         m.map(kv => kv._1 -> kv._2.toList).toMap
@@ -322,7 +329,8 @@ object Infos {
           accessedModules = accessedModules.toList,
           usedInstanceTests = usedInstanceTests.toList,
           accessedClassData = accessedClassData.toList,
-          referencedClasses = referencedClasses.toList
+          referencedClasses = referencedClasses.toList,
+          accessedImportMeta = accessedImportMeta
       )
     }
   }
@@ -563,6 +571,9 @@ object Infos {
 
             case JSPrivateSelect(qualifier, className, field) =>
               builder.addPrivateJSFieldUsed(className, field.name)
+
+            case JSImportMeta() =>
+              builder.addAccessImportMeta()
 
             case LoadJSConstructor(className) =>
               builder.addInstantiatedClass(className)

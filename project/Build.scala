@@ -1905,7 +1905,9 @@ object Build {
         includeIf(testDir / "require-multi-modules",
             hasModules && !linkerConfig.closureCompiler) :::
         includeIf(testDir / "require-dynamic-import",
-            moduleKind == ModuleKind.ESModule) // this is an approximation that works for now
+            moduleKind == ModuleKind.ESModule) ::: // this is an approximation that works for now
+        includeIf(testDir / "require-esmodule",
+            moduleKind == ModuleKind.ESModule)
       },
 
       unmanagedResourceDirectories in Test ++= {

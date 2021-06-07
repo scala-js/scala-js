@@ -1025,6 +1025,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       case JSImportCall(arg) =>
         typecheckExpr(arg, env)
 
+      case JSImportMeta() =>
+
       case LoadJSConstructor(className) =>
         val clazz = lookupClass(className)
         val valid = clazz.kind match {
