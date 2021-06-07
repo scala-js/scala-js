@@ -398,11 +398,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           i"The abstract method ${classDef.name.name}.$name survived the " +
           "Analyzer (this is a bug)")
     } { body =>
-      // Concrete
-      if (resultType == NoType)
-        typecheckStat(body, bodyEnv)
-      else
-        typecheckExpect(body, bodyEnv, resultType)
+      typecheckExpect(body, bodyEnv, resultType)
     }
   }
 
@@ -476,9 +472,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     val initialEnv = Env.fromSignature(NoType, clazz.jsClassCaptures,
         params ++ restParam, inConstructorOf = Some(clazz.name))
 
-    val preparedEnv = prepStats.foldLeft(initialEnv) { (prevEnv, stat) =>
-      typecheckStat(stat, prevEnv)
-    }
+    val preparedEnv = typecheckBlockTrees(prepStats, initialEnv)
 
     for (arg <- superCall.args)
       typecheckExprOrSpread(arg, preparedEnv)
@@ -524,7 +518,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
       val setterBodyEnv = Env.fromSignature(thisType, clazz.jsClassCaptures,
           List(setterArg))
-      typecheckStat(setterBody, setterBodyEnv)
+      typecheck(setterBody, setterBodyEnv)
     }
   }
 
@@ -611,17 +605,65 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     }
   }
 
-  private def typecheckStat(tree: Tree, env: Env): Env = {
+  private def typecheckExpect(tree: Tree, env: Env, expectedType: Type)(
+      implicit ctx: ErrorContext): Unit = {
+    typecheck(tree, env)
+
+    if (!isSubtype(tree.tpe, expectedType)) {
+      reportError(i"$expectedType expected but ${tree.tpe} found "+
+          i"for tree of type ${tree.getClass.getName}")
+    }
+  }
+
+  private def typecheckExpr(tree: Tree, env: Env)(
+      implicit ctx: ErrorContext): Unit = {
+    typecheckExpect(tree, env, AnyType)
+  }
+
+  private def typecheckExprOrSpread(tree: TreeOrJSSpread, env: Env)(
+      implicit ctx: ErrorContext): Unit = {
+    tree match {
+      case JSSpread(items) =>
+        typecheckExpr(items, env)
+      case tree: Tree =>
+        typecheckExpr(tree, env)
+    }
+  }
+
+  private def typecheck(tree: Tree, env: Env): Unit = {
     implicit val ctx = ErrorContext(tree)
 
+    def checkApplyGeneric(methodName: MethodName, methodFullName: String,
+        args: List[Tree], tpe: Type, isStatic: Boolean): Unit = {
+      val (methodParams, resultType) = inferMethodType(methodName, isStatic)
+      if (args.size != methodParams.size)
+        reportError(i"Arity mismatch: ${methodParams.size} expected but "+
+            i"${args.size} found")
+      for ((actual, formal) <- args zip methodParams) {
+        typecheckExpect(actual, env, formal)
+      }
+      if (tpe != resultType)
+        reportError(i"Call to $methodFullName of type $resultType "+
+            i"typed as ${tree.tpe}")
+    }
+
     tree match {
-      case VarDef(ident, _, vtpe, mutable, rhs) =>
+      // Definitions
+
+      case VarDef(ident, _, vtpe, _, rhs) =>
         checkDeclareLocalVar(ident)
         typecheckExpect(rhs, env, vtpe)
-        env.withLocal(LocalDef(ident.name, vtpe, mutable))
+
+      // Control flow constructs
 
       case Skip() =>
-        env
+
+      case Block(trees) =>
+        typecheckBlockTrees(trees, env)
+
+      case Labeled(label, tpe, body) =>
+        checkDeclareLabel(label)
+        typecheckExpect(body, env.withLabeledReturnType(label.name, tpe), tpe)
 
       case Assign(lhs, rhs) =>
         def checkNonStaticField(receiver: Tree, className: ClassName, name: FieldName): Unit = {
@@ -653,147 +695,18 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
           case _:ArraySelect | _:RecordSelect | _:JSSelect | _:JSSuperSelect | _:JSGlobalRef =>
         }
-        val lhsTpe = typecheckExpr(lhs, env)
-        typecheckExpect(rhs, env, lhsTpe)
-        env
-
-      case StoreModule(className, value) =>
-        val clazz = lookupClass(className)
-        if (!clazz.kind.hasModuleAccessor)
-          reportError("StoreModule of non-module class $className")
-        val expectedType =
-          if (clazz.kind == ClassKind.JSModuleClass) AnyType
-          else ClassType(className)
-        typecheckExpect(value, env, expectedType)
-        env
-
-      case Block(stats) =>
-        stats.foldLeft(env) { (prevEnv, stat) =>
-          typecheckStat(stat, prevEnv)
-        }
-        env
-
-      case Labeled(label, NoType, body) =>
-        checkDeclareLabel(label)
-        typecheckStat(body, env.withLabeledReturnType(label.name, AnyType))
-        env
-
-      case If(cond, thenp, elsep) =>
-        typecheckExpect(cond, env, BooleanType)
-        typecheckStat(thenp, env)
-        typecheckStat(elsep, env)
-        env
-
-      case While(cond, body) =>
-        typecheckExpect(cond, env, BooleanType)
-        typecheckStat(body, env)
-        env
-
-      case DoWhile(body, cond) =>
-        typecheckStat(body, env)
-        typecheckExpect(cond, env, BooleanType)
-        env
-
-      case ForIn(obj, keyVar, _, body) =>
-        typecheckExpr(obj, env)
-        val bodyEnv = env.withLocal(LocalDef(keyVar.name, AnyType, false))
-        typecheckStat(body, bodyEnv)
-        env
-
-      case TryCatch(block, errVar, _, handler) =>
-        typecheckStat(block, env)
-        val handlerEnv = env.withLocal(LocalDef(errVar.name, AnyType, false))
-        typecheckStat(handler, handlerEnv)
-        env
-
-      case TryFinally(block, finalizer) =>
-        typecheckStat(block, env)
-        typecheckStat(finalizer, env)
-        env
-
-      case Match(selector, cases, default) =>
-        typecheckExpect(selector, env, IntType)
-        // The alternatives are IntLiterals, no point typechecking them
-        for ((_, body) <- cases)
-          typecheckStat(body, env)
-        typecheckStat(default, env)
-        env
-
-      case Debugger() =>
-        env
-
-      case JSDelete(qualifier, item) =>
-        typecheckExpr(qualifier, env)
-        typecheckExpr(item, env)
-        env
-
-      case _ =>
-        typecheck(tree, env)
-        env
-    }
-  }
-
-  private def typecheckExpect(tree: Tree, env: Env, expectedType: Type)(
-      implicit ctx: ErrorContext): Unit = {
-    val tpe = typecheckExpr(tree, env)
-    if (!isSubtype(tpe, expectedType))
-      reportError(i"$expectedType expected but $tpe found "+
-          i"for tree of type ${tree.getClass.getName}")
-  }
-
-  private def typecheckExpr(tree: Tree, env: Env): Type = {
-    implicit val ctx = ErrorContext(tree)
-    if (tree.tpe == NoType)
-      reportError(i"Expression tree has type NoType")
-    typecheck(tree, env)
-  }
-
-  private def typecheckExprOrSpread(tree: TreeOrJSSpread, env: Env): Unit = {
-    tree match {
-      case JSSpread(items) =>
-        typecheckExpr(items, env)
-      case tree: Tree =>
-        typecheckExpr(tree, env)
-    }
-  }
-
-  private def typecheck(tree: Tree, env: Env): Type = {
-    implicit val ctx = ErrorContext(tree)
-
-    def checkApplyGeneric(methodName: MethodName, methodFullName: String,
-        args: List[Tree], tpe: Type, isStatic: Boolean): Unit = {
-      val (methodParams, resultType) = inferMethodType(methodName, isStatic)
-      if (args.size != methodParams.size)
-        reportError(i"Arity mismatch: ${methodParams.size} expected but "+
-            i"${args.size} found")
-      for ((actual, formal) <- args zip methodParams) {
-        typecheckExpect(actual, env, formal)
-      }
-      if (tpe != resultType)
-        reportError(i"Call to $methodFullName of type $resultType "+
-            i"typed as ${tree.tpe}")
-    }
-
-    tree match {
-      // Control flow constructs
-
-      case Block(statsAndExpr) =>
-        val stats :+ expr = statsAndExpr
-        val envAfterStats = stats.foldLeft(env) { (prevEnv, stat) =>
-          typecheckStat(stat, prevEnv)
-        }
-        typecheckExpr(expr, envAfterStats)
-
-      case Labeled(label, tpe, body) =>
-        checkDeclareLabel(label)
-        typecheckExpect(body, env.withLabeledReturnType(label.name, tpe), tpe)
+        typecheckExpr(lhs, env)
+        typecheckExpect(rhs, env, lhs.tpe)
 
       case Return(expr, label) =>
         env.returnTypes.get(label.name).fold[Unit] {
           reportError(i"Cannot return to label $label.")
           typecheckExpr(expr, env)
         } { returnType =>
-          typecheckExpect(expr, env, returnType)
+          if (returnType == NoType)
+            typecheckExpr(expr, env)
+          else
+            typecheckExpect(expr, env, returnType)
         }
 
       case If(cond, thenp, elsep) =>
@@ -802,8 +715,18 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         typecheckExpect(thenp, env, tpe)
         typecheckExpect(elsep, env, tpe)
 
-      case While(BooleanLiteral(true), body) if tree.tpe == NothingType =>
-        typecheckStat(body, env)
+      case While(cond, body) =>
+        typecheckExpect(cond, env, BooleanType)
+        typecheck(body, env)
+
+      case DoWhile(body, cond) =>
+        typecheck(body, env)
+        typecheckExpect(cond, env, BooleanType)
+
+      case ForIn(obj, keyVar, _, body) =>
+        typecheckExpr(obj, env)
+        val bodyEnv = env.withLocal(LocalDef(keyVar.name, AnyType, false))
+        typecheck(body, bodyEnv)
 
       case TryCatch(block, errVar, _, handler) =>
         val tpe = tree.tpe
@@ -815,7 +738,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       case TryFinally(block, finalizer) =>
         val tpe = tree.tpe
         typecheckExpect(block, env, tpe)
-        typecheckStat(finalizer, env)
+        typecheck(finalizer, env)
 
       case Throw(expr) =>
         typecheckExpr(expr, env)
@@ -827,6 +750,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         for ((_, body) <- cases)
           typecheckExpect(body, env, tpe)
         typecheckExpect(default, env, tpe)
+
+      case Debugger() =>
 
       // Scala expressions
 
@@ -841,6 +766,15 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         val clazz = lookupClass(className)
         if (clazz.kind != ClassKind.ModuleClass)
           reportError("LoadModule of non-module class $className")
+
+      case StoreModule(className, value) =>
+        val clazz = lookupClass(className)
+        if (!clazz.kind.hasModuleAccessor)
+          reportError("StoreModule of non-module class $className")
+        val expectedType =
+          if (clazz.kind == ClassKind.JSModuleClass) AnyType
+          else ClassType(className)
+        typecheckExpect(value, env, expectedType)
 
       case Select(qualifier, className, FieldIdent(item)) =>
         val c = lookupClass(className)
@@ -895,8 +829,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       case Apply(flags, receiver, MethodIdent(method), args) =>
         if (flags.isPrivate)
           reportError("Illegal flag for Apply: Private")
-        val receiverType = typecheckExpr(receiver, env)
-        val fullCheck = receiverType match {
+        typecheckExpr(receiver, env)
+        val fullCheck = receiver.tpe match {
           case ClassType(className) =>
             /* For class types, we only perform full checks if the class has
              * instances. This is necessary because the BaseLinker can
@@ -916,7 +850,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             true
         }
         if (fullCheck) {
-          checkApplyGeneric(method, i"$receiverType.$method", args, tree.tpe,
+          checkApplyGeneric(method, i"${receiver.tpe}.$method", args, tree.tpe,
               isStatic = false)
         } else {
           for (arg <- args)
@@ -1008,13 +942,14 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
           typecheckExpect(elem, env, elemType)
 
       case ArrayLength(array) =>
-        val arrayType = typecheckExpr(array, env)
-        if (!arrayType.isInstanceOf[ArrayType])
-          reportError(i"Array type expected but $arrayType found")
+        typecheckExpr(array, env)
+        if (!array.tpe.isInstanceOf[ArrayType])
+          reportError(i"Array type expected but ${array.tpe} found")
 
       case ArraySelect(array, index) =>
         typecheckExpect(index, env, IntType)
-        typecheckExpr(array, env) match {
+        typecheckExpr(array, env)
+        array.tpe match {
           case arrayType: ArrayType =>
             if (tree.tpe != arrayElemType(arrayType))
               reportError(i"Array select of array type $arrayType typed as ${tree.tpe}")
@@ -1116,6 +1051,10 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         else if (clazz.kind == ClassKind.NativeJSModuleClass && clazz.jsNativeLoadSpec.isEmpty)
           reportError(i"Cannot load JS module of native JS module class $className without native load spec")
 
+      case JSDelete(qualifier, item) =>
+        typecheckExpr(qualifier, env)
+        typecheckExpr(item, env)
+
       case JSUnaryOp(op, lhs) =>
         typecheckExpr(lhs, env)
 
@@ -1211,11 +1150,21 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
             typecheckExpect(value, env, ctpe)
         }
 
-      case _ =>
-        reportError(i"Invalid expression tree")
+      case _:JSSuperConstructorCall | _:RecordSelect | _:RecordValue | _:Transient =>
+        reportError("invalid tree")
     }
+  }
 
-    tree.tpe
+  private def typecheckBlockTrees(trees: List[Tree], env: Env): Env = {
+    trees.foldLeft(env) { (prevEnv, tree) =>
+      typecheck(tree, prevEnv)
+      tree match {
+        case VarDef(ident, _, vtpe, mutable, _) =>
+          prevEnv.withLocal(LocalDef(ident.name, vtpe, mutable))
+        case _ =>
+          prevEnv
+      }
+    }
   }
 
   /** Check the parameters for a method with JS calling conventions. */

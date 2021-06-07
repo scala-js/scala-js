@@ -289,78 +289,75 @@ object Types {
   }
 
   /** Tests whether a type `lhs` is a subtype of `rhs` (or equal).
-   *  [[NoType]] is never a subtype or supertype of anything (including
-   *  itself). All other types are subtypes of themselves.
    *  @param isSubclass A function testing whether a class/interface is a
    *                    subclass of another class/interface.
    */
   def isSubtype(lhs: Type, rhs: Type)(
       isSubclass: (ClassName, ClassName) => Boolean): Boolean = {
+    (lhs == rhs) ||
+    ((lhs, rhs) match {
+      case (_, NoType)      => true
+      case (NoType, _)      => false
+      case (_, AnyType)     => true
+      case (NothingType, _) => true
 
-    (lhs != NoType && rhs != NoType) && {
-      (lhs == rhs) ||
-      ((lhs, rhs) match {
-        case (_, AnyType)     => true
-        case (NothingType, _) => true
+      case (ClassType(lhsClass), ClassType(rhsClass)) =>
+        isSubclass(lhsClass, rhsClass)
 
-        case (ClassType(lhsClass), ClassType(rhsClass)) =>
-          isSubclass(lhsClass, rhsClass)
+      case (NullType, ClassType(_)) => true
+      case (NullType, ArrayType(_)) => true
 
-        case (NullType, ClassType(_)) => true
-        case (NullType, ArrayType(_)) => true
+      case (UndefType, ClassType(className)) =>
+        isSubclass(BoxedUnitClass, className)
+      case (BooleanType, ClassType(className)) =>
+        isSubclass(BoxedBooleanClass, className)
+      case (CharType, ClassType(className)) =>
+        isSubclass(BoxedCharacterClass, className)
+      case (ByteType, ClassType(className)) =>
+        isSubclass(BoxedByteClass, className)
+      case (ShortType, ClassType(className)) =>
+        isSubclass(BoxedShortClass, className)
+      case (IntType, ClassType(className)) =>
+        isSubclass(BoxedIntegerClass, className)
+      case (LongType, ClassType(className)) =>
+        isSubclass(BoxedLongClass, className)
+      case (FloatType, ClassType(className)) =>
+        isSubclass(BoxedFloatClass, className)
+      case (DoubleType, ClassType(className)) =>
+        isSubclass(BoxedDoubleClass, className)
+      case (StringType, ClassType(className)) =>
+        isSubclass(BoxedStringClass, className)
 
-        case (UndefType, ClassType(className)) =>
-          isSubclass(BoxedUnitClass, className)
-        case (BooleanType, ClassType(className)) =>
-          isSubclass(BoxedBooleanClass, className)
-        case (CharType, ClassType(className)) =>
-          isSubclass(BoxedCharacterClass, className)
-        case (ByteType, ClassType(className)) =>
-          isSubclass(BoxedByteClass, className)
-        case (ShortType, ClassType(className)) =>
-          isSubclass(BoxedShortClass, className)
-        case (IntType, ClassType(className)) =>
-          isSubclass(BoxedIntegerClass, className)
-        case (LongType, ClassType(className)) =>
-          isSubclass(BoxedLongClass, className)
-        case (FloatType, ClassType(className)) =>
-          isSubclass(BoxedFloatClass, className)
-        case (DoubleType, ClassType(className)) =>
-          isSubclass(BoxedDoubleClass, className)
-        case (StringType, ClassType(className)) =>
-          isSubclass(BoxedStringClass, className)
-
-        case (ArrayType(ArrayTypeRef(lhsBase, lhsDims)),
-            ArrayType(ArrayTypeRef(rhsBase, rhsDims))) =>
-          if (lhsDims < rhsDims) {
-            false // because Array[A] </: Array[Array[A]]
-          } else if (lhsDims > rhsDims) {
-            rhsBase match {
-              case ClassRef(ObjectClass) =>
-                true // because Array[Array[A]] <: Array[Object]
-              case _ =>
-                false
-            }
-          } else { // lhsDims == rhsDims
-            // lhsBase must be <: rhsBase
-            (lhsBase, rhsBase) match {
-              case (ClassRef(lhsBaseName), ClassRef(rhsBaseName)) =>
-                /* All things must be considered subclasses of Object for this
-                 * purpose, even JS types and interfaces, which do not have
-                 * Object in their ancestors.
-                 */
-                rhsBaseName == ObjectClass || isSubclass(lhsBaseName, rhsBaseName)
-              case _ =>
-                lhsBase eq rhsBase
-            }
+      case (ArrayType(ArrayTypeRef(lhsBase, lhsDims)),
+          ArrayType(ArrayTypeRef(rhsBase, rhsDims))) =>
+        if (lhsDims < rhsDims) {
+          false // because Array[A] </: Array[Array[A]]
+        } else if (lhsDims > rhsDims) {
+          rhsBase match {
+            case ClassRef(ObjectClass) =>
+              true // because Array[Array[A]] <: Array[Object]
+            case _ =>
+              false
           }
+        } else { // lhsDims == rhsDims
+          // lhsBase must be <: rhsBase
+          (lhsBase, rhsBase) match {
+            case (ClassRef(lhsBaseName), ClassRef(rhsBaseName)) =>
+              /* All things must be considered subclasses of Object for this
+               * purpose, even JS types and interfaces, which do not have
+               * Object in their ancestors.
+               */
+              rhsBaseName == ObjectClass || isSubclass(lhsBaseName, rhsBaseName)
+            case _ =>
+              lhsBase eq rhsBase
+          }
+        }
 
-        case (ArrayType(_), ClassType(className)) =>
-          AncestorsOfPseudoArrayClass.contains(className)
+      case (ArrayType(_), ClassType(className)) =>
+        AncestorsOfPseudoArrayClass.contains(className)
 
-        case _ =>
-          false
-      })
-    }
+      case _ =>
+        false
+    })
   }
 }

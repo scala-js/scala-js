@@ -211,9 +211,7 @@ class IRCheckerTest {
 
     for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
       log.assertContainsError(
-          "Expression tree has type NoType")
-      log.assertContainsError(
-          "Invalid expression tree")
+          "any expected but <notype> found for tree of type org.scalajs.ir.Trees$Skip")
     }
   }
 
@@ -241,9 +239,7 @@ class IRCheckerTest {
 
     for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
       log.assertContainsError(
-          "Expression tree has type NoType")
-      log.assertContainsError(
-          "Invalid expression tree")
+          "any expected but <notype> found for tree of type org.scalajs.ir.Trees$VarDef")
     }
   }
 

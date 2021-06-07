@@ -254,6 +254,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   private val isSubclassFun = isSubclass _
 
   private def isSubtype(lhs: Type, rhs: Type): Boolean = {
+    assert(lhs != NoType)
+    assert(rhs != NoType)
+
     Types.isSubtype(lhs, rhs)(isSubclassFun) || {
       (lhs, rhs) match {
         case (LongType | ClassType(BoxedLongClass),
