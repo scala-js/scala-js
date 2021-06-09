@@ -18,6 +18,8 @@ import java.util.Comparator
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
+import scala.scalajs.runtime.linkingInfo
+import scala.scalajs.LinkingInfo.ESVersion
 
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
@@ -53,15 +55,21 @@ final class _String private () // scalastyle:ignore
   }
 
   def codePointAt(index: Int): Int = {
-    val high = charAt(index)
-    if (index+1 < length()) {
-      val low = charAt(index+1)
-      if (Character.isSurrogatePair(high, low))
-        Character.toCodePoint(high, low)
-      else
-        high.toInt
+    if (linkingInfo.esVersion >= ESVersion.ES2015) {
+      this.asInstanceOf[js.Dynamic]
+        .codePointAt(index.asInstanceOf[js.Dynamic])
+        .asInstanceOf[Int]
     } else {
-      high.toInt
+      val high = charAt(index)
+      if (index+1 < length()) {
+        val low = charAt(index+1)
+        if (Character.isSurrogatePair(high, low))
+          Character.toCodePoint(high, low)
+        else
+          high.toInt
+      } else {
+        high.toInt
+      }
     }
   }
 
