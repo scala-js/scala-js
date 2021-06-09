@@ -674,6 +674,8 @@ run/inlineHandlers.scala
 run/optimizer-array-load.scala
 run/t6827.scala
 run/t8601.scala
+run/t5887.scala
+run/t11534c.scala
 
 # Expecting exceptions that are linking errors in Scala.js (e.g. NoSuchMethodException)
 run/t10334.scala
@@ -824,6 +826,8 @@ run/t11899.scala
 run/t11915.scala
 run/t11991.scala
 run/t12276.scala
+run/interpolation-repl.scala
+run/t12292.scala
 
 # Using Scala Script (partest.ScriptTest)
 
@@ -859,7 +863,6 @@ run/settings-parse.scala
 run/sm-interpolator.scala
 run/t1501.scala
 run/t1500.scala
-run/sammy_java8.scala
 run/t1618.scala
 run/t2464
 run/t4072.scala
@@ -875,11 +878,9 @@ run/t6745-2.scala
 run/t7096.scala
 run/t7271.scala
 run/t7337.scala
-run/t7398.scala
 run/t7569.scala
 run/t7852.scala
 run/t7817-tree-gen.scala
-run/t7825.scala
 run/extend-global.scala
 run/nowarn.scala
 
@@ -946,6 +947,9 @@ run/t11385.scala
 run/t11731.scala
 run/t11746.scala
 run/t11815.scala
+run/splain.scala
+run/splain-tree.scala
+run/splain-truncrefined.scala
 
 # Using partest.StoreReporterDirectTest
 run/t10171
@@ -962,7 +966,6 @@ run/StubErrorTypeclass.scala
 run/StubErrorTypeDef.scala
 
 # partest.CompilerTest
-run/t8852a.scala
 run/t12062.scala
 
 # partest.ASMConverters
@@ -1082,6 +1085,7 @@ run/t12019
 run/t12038a
 run/t12038b
 run/t12195
+run/t12380
 
 # Using scala-script
 run/t7791-script-linenums.scala
@@ -1114,6 +1118,9 @@ run/indy-via-macro-with-dynamic-args
 
 # Crashes our optimizer because of artificially insane amount of inlining
 run/t10594.scala
+
+# Relies on a main() method that does not return Unit
+run/t7448.scala
 
 ###  Incorrect partests  ###
 # Badly uses constract of Console.print (no flush)
