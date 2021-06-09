@@ -993,6 +993,7 @@ run/t8918-unary-ids.scala
 run/t1931.scala
 run/t8935-class.scala
 run/t8935-object.scala
+run/t12354.scala
 
 # partest.JavapTest
 run/t8608-no-format.scala
@@ -1070,6 +1071,9 @@ run/t3899
 run/t11373
 run/t8928
 run/indy-meth-refs-j
+run/t12019
+run/t12038a
+run/t12038b
 
 # Using scala-script
 run/t7791-script-linenums.scala
@@ -1098,6 +1102,9 @@ run/t3493.scala
 
 # Custom invoke dynamic node
 run/indy-via-macro
+run/indy-via-macro-class-constant-bsa
+run/indy-via-macro-method-type-bsa
+run/indy-via-macro-reflector
 run/indy-via-macro-with-dynamic-args
 
 # Crashes our optimizer because of artificially insane amount of inlining

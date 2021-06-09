@@ -13,14 +13,14 @@
 
 inThisBuild(Def.settings(
   version := scalaJSVersion,
-  scalaVersion := "2.12.13",
+  scalaVersion := "2.12.14",
 ))
 
 lazy val check = taskKey[Any]("")
 
 lazy val customLinker = project.in(file("custom-linker"))
   .settings(
-    scalaVersion := "2.12.13", // needs to match sbt's version
+    scalaVersion := "2.12.14", // needs to match the minor version of Scala used by sbt
     libraryDependencies += "org.scala-js" %% "scalajs-linker" % scalaJSVersion,
   )
 
