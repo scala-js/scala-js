@@ -1748,9 +1748,10 @@ object Build {
         val scalaV = scalaVersion.value
         val isScalaAtLeast212 = !scalaV.startsWith("2.11.")
 
-        List(sharedTestDir / "scala", sharedTestDir / "require-scala2") ++
-        includeIf(sharedTestDir / "require-jdk11", javaV >= 11) ++
-        includeIf(testDir / "require-2.12", isJSTest && isScalaAtLeast212) ++
+        List(sharedTestDir / "scala", sharedTestDir / "require-scala2") :::
+        collectionsEraDependentDirectory(scalaV, sharedTestDir) ::
+        includeIf(sharedTestDir / "require-jdk11", javaV >= 11) :::
+        includeIf(testDir / "require-2.12", isJSTest && isScalaAtLeast212) :::
         includeIf(testDir / "require-scala2", isJSTest)
       },
 
