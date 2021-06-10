@@ -101,8 +101,8 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     val gccResult = for {
       sjsModule <- moduleSet.modules.headOption
     } yield {
-      val closureModule = logger.time("Closure: Create trees)") {
-        buildModule(emitterResult.body(sjsModule.id))
+      val closureChunk = logger.time("Closure: Create trees)") {
+        buildChunk(emitterResult.body(sjsModule.id))
       }
 
       logger.time("Closure: Compiler pass") {
@@ -116,7 +116,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
             ClosureSource.fromCode("ScalaJSExportExterns.js",
                 makeExternsForExports(emitterResult.topLevelVarDecls, sjsModule)))
 
-        compile(externs, closureModule, options, logger)
+        compile(externs, closureChunk, options, logger)
       }
     }
 
@@ -125,23 +125,23 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     }
   }
 
-  private def buildModule(tree: js.Tree): JSModule = {
+  private def buildChunk(tree: js.Tree): JSChunk = {
     val root = ClosureAstTransformer.transformScript(tree,
         languageMode.toFeatureSet(), config.relativizeSourceMapBase)
 
-    val module = new JSModule("Scala.js")
-    module.add(new CompilerInput(new SyntheticAst(root)))
-    module
+    val chunk = new JSChunk("Scala.js")
+    chunk.add(new CompilerInput(new SyntheticAst(root)))
+    chunk
   }
 
-  private def compile(externs: java.util.List[ClosureSource], module: JSModule,
+  private def compile(externs: java.util.List[ClosureSource], chunk: JSChunk,
       options: ClosureOptions, logger: Logger) = {
     val compiler = new ClosureCompiler
     compiler.setErrorManager(new SortingErrorManager(new HashSet(Arrays.asList(
         new LoggerErrorReportGenerator(logger)))))
 
     val result =
-      compiler.compileModules(externs, Arrays.asList(module), options)
+      compiler.compileModules(externs, Arrays.asList(chunk), options)
 
     if (!result.success) {
       throw new LinkingException(
