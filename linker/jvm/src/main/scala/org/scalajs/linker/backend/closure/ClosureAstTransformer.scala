@@ -26,6 +26,7 @@ import com.google.javascript.jscomp.parsing.parser.FeatureSet
 
 import scala.annotation.tailrec
 
+import java.lang.{Double => JDouble}
 import java.net.URI
 
 private[closure] object ClosureAstTransformer {
@@ -372,9 +373,9 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
       case BooleanLiteral(value) =>
         if (value) new Node(Token.TRUE) else new Node(Token.FALSE)
       case IntLiteral(value) =>
-        Node.newNumber(value)
+        mkNumberLiteral(value)
       case DoubleLiteral(value) =>
-        Node.newNumber(value)
+        mkNumberLiteral(value)
       case StringLiteral(value) =>
         Node.newString(value)
       case VarRef(ident) =>
@@ -541,6 +542,27 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
   }
 
   // Helpers for IR
+
+  private def mkNumberLiteral(value: Double)(implicit pos: Position): Node = {
+    /* Since GCC v20210601, Number nodes can only hold finite non-negative
+     * values. NaNs and Infinities must be represented as text nodes, and
+     * negative values as a NEG unary operator of a positive value.
+     */
+
+    if (JDouble.isNaN(value)) {
+      setNodePosition(Node.newString(Token.NAME, "NaN"), pos)
+    } else {
+      val absValueNode =
+        if (JDouble.isInfinite(value)) Node.newString(Token.NAME, "Infinity")
+        else Node.newNumber(Math.abs(value))
+      val positionedAbsValueNode = setNodePosition(absValueNode, pos)
+      if (value < 0.0 || (value == 0.0 && 1.0 / value < 0.0))
+        setNodePosition(new Node(Token.NEG, positionedAbsValueNode), pos)
+      else
+        positionedAbsValueNode
+    }
+  }
+
   @inline
   private def mkUnaryOp(op: UnaryOp.Code, lhs: Node): Node = {
     import ir.Trees.JSUnaryOp._
