@@ -858,4 +858,38 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
     """
   }
 
+  @Test // #4511
+  def noConflictingProperties: Unit = {
+    """
+    class A extends js.Object {
+      def a: Unit = ()
+
+      @JSName("a")
+      def b: Unit = ()
+    }
+    """ hasErrors
+    s"""
+      |newSource1.scala:9: error: Cannot disambiguate overloads for getter a with types
+      |  ${methodSig("()", "Unit")}
+      |  ${methodSig("()", "Unit")}
+      |      def b: Unit = ()
+      |          ^
+    """
+
+    """
+    class A extends js.Object {
+      class B extends js.Object
+
+      object B
+    }
+    """ hasErrors
+    s"""
+      |newSource1.scala:8: error: Cannot disambiguate overloads for getter B with types
+      |  ${methodSig("()", "A$B.type")}
+      |  ${methodSig("()", "Object")}
+      |      object B
+      |             ^
+    """
+  }
+
 }
