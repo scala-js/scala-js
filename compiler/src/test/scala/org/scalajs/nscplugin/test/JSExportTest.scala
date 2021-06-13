@@ -1597,9 +1597,11 @@ class JSExportTest extends DirectTest with TestHelpers {
       def bar: Int = 2
     }
     """ hasErrors
-    """
-      |newSource1.scala:7: error: Duplicate static getter export with name 'foo'
-      |      def foo: Int = 1
+    s"""
+      |newSource1.scala:10: error: Cannot disambiguate overloads for exported getter foo with types
+      |  ${methodSig("()", "Int")}
+      |  ${methodSig("()", "Int")}
+      |      def bar: Int = 2
       |          ^
     """
   }
@@ -1618,7 +1620,7 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     s"""
-      |newSource1.scala:10: error: Cannot disambiguate overloads for exported method foo with types
+      |newSource1.scala:10: error: Cannot disambiguate overloads for exported setter foo with types
       |  ${methodSig("(v: Int)", "Unit")}
       |  ${methodSig("(v: Int)", "Unit")}
       |      def bar_=(v: Int): Unit = ()
