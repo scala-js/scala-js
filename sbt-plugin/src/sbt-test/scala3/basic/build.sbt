@@ -1,10 +1,10 @@
 enablePlugins(ScalaJSPlugin)
 
-scalaVersion := "3.0.0-M1"
+scalaVersion := "3.0.0"
 
-// Test withDottyCompat for %%% dependencies
+// Test CrossVersion.for3Use2_13 for %%% dependencies
 libraryDependencies +=
-  ("org.scala-js" %%% "scalajs-ir" % scalaJSVersion).withDottyCompat(scalaVersion.value)
+  ("org.scala-js" %%% "scalajs-ir" % scalaJSVersion).cross(CrossVersion.for3Use2_13)
 
 scalaJSUseMainModuleInitializer := true
 
