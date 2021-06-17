@@ -45,7 +45,11 @@ final class Byte private () extends Number with Comparable[Byte] {
 }
 
 object Byte {
-  final val TYPE = scala.Predef.classOf[scala.Byte]
+  /* TYPE should be a `final val`, but that crashes the JVM back-end, so we
+   * use a 'def' instead, which is binary compatible.
+   */
+  def TYPE: Class[_] = scala.Predef.classOf[scala.Byte]
+
   final val SIZE = 8
   final val BYTES = 1
 

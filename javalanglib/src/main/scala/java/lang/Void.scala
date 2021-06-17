@@ -29,5 +29,8 @@ final class Void private () extends AnyRef {
 }
 
 object Void {
-  final val TYPE = scala.Predef.classOf[scala.Unit]
+  /* TYPE should be a `final val`, but that crashes the JVM back-end, so we
+   * use a 'def' instead, which is binary compatible.
+   */
+  def TYPE: Class[_] = scala.Predef.classOf[scala.Unit]
 }

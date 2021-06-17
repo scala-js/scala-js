@@ -52,7 +52,11 @@ final class Double private () extends Number with Comparable[Double] {
 }
 
 object Double {
-  final val TYPE = scala.Predef.classOf[scala.Double]
+  /* TYPE should be a `final val`, but that crashes the JVM back-end, so we
+   * use a 'def' instead, which is binary compatible.
+   */
+  def TYPE: Class[_] = scala.Predef.classOf[scala.Double]
+
   final val POSITIVE_INFINITY = 1.0 / 0.0
   final val NEGATIVE_INFINITY = 1.0 / -0.0
   final val NaN = 0.0 / 0.0
