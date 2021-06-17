@@ -28,7 +28,6 @@ import org.scalajs.jsenv.nodejs.NodeJSEnv
 
 import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
 import org.scalastyle.sbt.ScalastylePlugin.autoImport.scalastyle
-import ExternalCompile.scalaJSExternalCompileSettings
 import Loggers._
 
 import org.scalajs.linker.interface._
@@ -482,13 +481,6 @@ object Build {
       }
   )
 
-  val noClassFilesSettings: Setting[_] = {
-    scalacOptions in (Compile, compile) += {
-      if (isGeneratingForIDE) "-Yskip:jvm"
-      else "-Ystop-after:jscode"
-    }
-  }
-
   val publishSettings = Seq(
       publishMavenStyle := true,
       publishTo := {
@@ -567,6 +559,13 @@ object Build {
 
         Seq(outputDir)
       }
+  )
+
+  val recompileAllOrNothingSettings = Def.settings(
+    /* Recompile all sources when at least 1/10,000 of the source files have
+     * changed, i.e., as soon as at least one source file changed.
+     */
+    incOptions ~= { _.withRecompileAllFraction(0.0001) },
   )
 
   private def parallelCollectionsDependencies(
@@ -1161,7 +1160,8 @@ object Build {
       publishArtifact in Compile := false,
       delambdafySetting,
       ensureSAMSupportSetting,
-      noClassFilesSettings,
+
+      recompileAllOrNothingSettings,
 
       /* When writing code in the java.lang package, references to things
        * like `Boolean` or `Double` refer to `j.l.Boolean` or `j.l.Double`.
@@ -1184,7 +1184,6 @@ object Build {
 
         Seq(output)
       }.taskValue,
-      scalaJSExternalCompileSettings,
       cleanIRSettings,
   ).withScalaJSCompiler.dependsOnLibraryNoJar
 
@@ -1199,8 +1198,8 @@ object Build {
       publishArtifact in Compile := false,
       delambdafySetting,
       ensureSAMSupportSetting,
-      noClassFilesSettings,
-      scalaJSExternalCompileSettings,
+
+      recompileAllOrNothingSettings,
 
       /* Do not import `Predef._` so that we have a better control of when
        * we rely on the Scala library.
@@ -1262,7 +1261,8 @@ object Build {
       publishArtifact in Compile := false,
       NoIDEExport.noIDEExportSettings,
       delambdafySetting,
-      noClassFilesSettings,
+
+      recompileAllOrNothingSettings,
 
       // Ignore scalastyle for this project
       scalastyleCheck := {},
@@ -1386,8 +1386,6 @@ object Build {
 
       headerSources in Compile := Nil,
       headerSources in Test := Nil,
-
-      scalaJSExternalCompileSettings
   ).withScalaJSCompiler.dependsOnLibraryNoJar
 
   lazy val libraryAux: MultiScalaProject = MultiScalaProject(
@@ -1401,8 +1399,8 @@ object Build {
       publishArtifact in Compile := false,
       NoIDEExport.noIDEExportSettings,
       delambdafySetting,
-      noClassFilesSettings,
-      scalaJSExternalCompileSettings
+
+      recompileAllOrNothingSettings,
   ).withScalaJSCompiler.dependsOnLibraryNoJar
 
   lazy val library: MultiScalaProject = MultiScalaProject(
@@ -1420,8 +1418,6 @@ object Build {
       exportJars := !isGeneratingForIDE,
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.Library,
-
-      scalaJSExternalCompileSettings,
 
       test in Test := {
         streams.value.log.warn("Skipping library/test. Run testSuite/test to test library.")
@@ -2164,9 +2160,12 @@ object Build {
       publishArtifact in Compile := false,
       delambdafySetting,
       ensureSAMSupportSetting,
-      noClassFilesSettings,
-      scalaJSExternalCompileSettings,
+
+      // Ensure that .class files are not used in downstream projects
       exportJars := true,
+      Compile / packageBin / mappings ~= {
+        _.filter(!_._2.endsWith(".class"))
+      },
 
       /* Do not import `Predef._` so that we have a better control of when
        * we rely on the Scala library.
