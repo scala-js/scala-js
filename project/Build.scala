@@ -101,6 +101,20 @@ object MyScalaJSPlugin extends AutoPlugin {
     }
   }
 
+  def mapSourceURISetting(baseDir: File, targetURI: String): String = {
+    /* Ensure that there is a trailing '/', otherwise we can get no '/'
+     * before the first compilation (because the directory does not exist yet)
+     * but a '/' after the first compilation, causing a full recompilation on
+     * the *second* run after 'clean' (but not third and following).
+     */
+    val baseDirURI0 = baseDir.toURI.toString
+    val baseDirURI =
+      if (baseDirURI0.endsWith("/")) baseDirURI0
+      else baseDirURI0 + "/"
+
+    s"mapSourceURI:$baseDirURI->$targetURI"
+  }
+
   override def globalSettings: Seq[Setting[_]] = Def.settings(
       fullClasspath in scalaJSLinkerImpl := {
         (fullClasspath in (Build.linker.v2_12, Runtime)).value
@@ -194,10 +208,9 @@ object MyScalaJSPlugin extends AutoPlugin {
         Nil
       } else {
         addScalaJSCompilerOption(Def.setting {
-          "mapSourceURI:" +
-          (baseDirectory in LocalProject("scalajs")).value.toURI +
-          "->https://raw.githubusercontent.com/scala-js/scala-js/v" +
-          scalaJSVersion + "/"
+          mapSourceURISetting(
+              (baseDirectory in LocalProject("scalajs")).value,
+              s"https://raw.githubusercontent.com/scala-js/scala-js/v$scalaJSVersion/")
         })
       },
 
@@ -223,7 +236,12 @@ object MyScalaJSPlugin extends AutoPlugin {
 }
 
 object Build {
-  import MyScalaJSPlugin.{addScalaJSCompilerOption, addScalaJSCompilerOptionInConfig, isGeneratingForIDE}
+  import MyScalaJSPlugin.{
+    addScalaJSCompilerOption,
+    addScalaJSCompilerOptionInConfig,
+    mapSourceURISetting,
+    isGeneratingForIDE
+  }
 
   val scalastyleCheck = taskKey[Unit]("Run scalastyle")
 
@@ -1234,12 +1252,9 @@ object Build {
         if (isGeneratingForIDE) {
           prev
         } else {
-          val option = {
-            "-P:scalajs:mapSourceURI:" +
-            (artifactPath in fetchScalaSource).value.toURI +
-            "->https://raw.githubusercontent.com/scala/scala/v" +
-            scalaVersion.value + "/src/library/"
-          }
+          val option = mapSourceURISetting(
+              (artifactPath in fetchScalaSource).value,
+              s"https://raw.githubusercontent.com/scala/scala/v${scalaVersion.value}/src/library/")
           option +: prev
         }
       },
