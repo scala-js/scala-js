@@ -208,11 +208,23 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
   def typeRefVar(field: String, typeRef: NonArrayTypeRef)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
+    /* Explicitly bringing `PrimRefScope` and `ClassScope` as local implicit
+     * vals should not be necessary, and used not to be there. When upgrading
+     * to sbt 1.5.4 from 1.2.8, compilation started failing because of missing
+     * implicit `Scope[PrimRef]` and `Scope[ClassName]` in this method, in
+     * *some* environments (depending on machine, OS, JDK version, in or out
+     * IDE, regular compile versus Scaladoc, etc., perhaps the phase of the
+     * moon, for all I could tell). It is not even clear that the sbt version
+     * is actually relevant.
+     * Regardless, the explicit vals reliably fix the issue.
+     */
     typeRef match {
       case primRef: PrimRef =>
+        implicit val primRefScope: Scope[PrimRef] = Scope.PrimRefScope
         globalVar(field, primRef)
 
       case ClassRef(className) =>
+        implicit val classScope: Scope[ClassName] = Scope.ClassScope
         globalVar(field, className)
     }
   }

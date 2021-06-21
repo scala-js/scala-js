@@ -1,6 +1,6 @@
 addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.0.0")
 
-addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.1.18")
+addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.8.1")
 
 addSbtPlugin("org.scalastyle" % "scalastyle-sbt-plugin" % "1.0.0")
 
@@ -13,7 +13,7 @@ libraryDependencies += "org.eclipse.jgit" % "org.eclipse.jgit.pgm" % "3.2.0.2013
 libraryDependencies += "org.scala-js" %% "scalajs-js-envs" % "1.1.1"
 libraryDependencies += "org.scala-js" %% "scalajs-env-nodejs" % "1.1.1"
 
-unmanagedSourceDirectories in Compile ++= {
+Compile / unmanagedSourceDirectories ++= {
   val root = baseDirectory.value.getParentFile
   Seq(
     root / "ir/shared/src/main/scala",
@@ -26,7 +26,12 @@ unmanagedSourceDirectories in Compile ++= {
   )
 }
 
-unmanagedResourceDirectories in Compile += {
+Compile / unmanagedResourceDirectories += {
   val root = baseDirectory.value.getParentFile
   root / "test-adapter/src/main/resources"
 }
+
+/* Don't warn for using the 'in' syntax instead of the '/' syntax.
+ * We cannot get rid of it in the sbt plugin, whose sources we use in the build.
+ */
+scalacOptions += "-Wconf:msg=method in in trait ScopingSetting is deprecated:s"

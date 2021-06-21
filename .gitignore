@@ -1,5 +1,6 @@
 # Fundamental to the build
 target/
+/.bsp/
 /scalalib/fetchedSources/
 /partest/fetchedSources/
 /linker-interface/**/scalajs-logging-src/
