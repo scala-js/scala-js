@@ -45,7 +45,11 @@ final class Integer private () extends Number with Comparable[Integer] {
 }
 
 object Integer {
-  final val TYPE = scala.Predef.classOf[scala.Int]
+  /* TYPE should be a `final val`, but that crashes the JVM back-end, so we
+   * use a 'def' instead, which is binary compatible.
+   */
+  def TYPE: Class[_] = scala.Predef.classOf[scala.Int]
+
   final val MIN_VALUE = -2147483648
   final val MAX_VALUE = 2147483647
   final val SIZE = 32

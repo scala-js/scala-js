@@ -49,7 +49,11 @@ class Character private ()
 }
 
 object Character {
-  final val TYPE = scala.Predef.classOf[scala.Char]
+  /* TYPE should be a `final val`, but that crashes the JVM back-end, so we
+   * use a 'def' instead, which is binary compatible.
+   */
+  def TYPE: Class[_] = scala.Predef.classOf[scala.Char]
+
   final val MIN_VALUE = '\u0000'
   final val MAX_VALUE = '\uffff'
   final val SIZE = 16

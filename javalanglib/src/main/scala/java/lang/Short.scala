@@ -44,7 +44,11 @@ final class Short private () extends Number with Comparable[Short] {
 }
 
 object Short {
-  final val TYPE = scala.Predef.classOf[scala.Short]
+  /* TYPE should be a `final val`, but that crashes the JVM back-end, so we
+   * use a 'def' instead, which is binary compatible.
+   */
+  def TYPE: Class[_] = scala.Predef.classOf[scala.Short]
+
   final val SIZE = 16
   final val BYTES = 2
 

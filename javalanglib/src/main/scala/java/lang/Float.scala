@@ -54,7 +54,11 @@ final class Float private () extends Number with Comparable[Float] {
 }
 
 object Float {
-  final val TYPE = scala.Predef.classOf[scala.Float]
+  /* TYPE should be a `final val`, but that crashes the JVM back-end, so we
+   * use a 'def' instead, which is binary compatible.
+   */
+  def TYPE: Class[_] = scala.Predef.classOf[scala.Float]
+
   final val POSITIVE_INFINITY = 1.0f / 0.0f
   final val NEGATIVE_INFINITY = 1.0f / -0.0f
   final val NaN = 0.0f / 0.0f

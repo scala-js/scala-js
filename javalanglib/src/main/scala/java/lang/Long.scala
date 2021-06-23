@@ -49,7 +49,11 @@ final class Long private () extends Number with Comparable[Long] {
 }
 
 object Long {
-  final val TYPE = scala.Predef.classOf[scala.Long]
+  /* TYPE should be a `final val`, but that crashes the JVM back-end, so we
+   * use a 'def' instead, which is binary compatible.
+   */
+  def TYPE: Class[_] = scala.Predef.classOf[scala.Long]
+
   final val MIN_VALUE = -9223372036854775808L
   final val MAX_VALUE = 9223372036854775807L
   final val SIZE = 64

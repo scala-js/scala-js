@@ -2,6 +2,11 @@ package scala.runtime
 
 import scala.math.ScalaNumber
 
+/* The declaration of the class is only to make the JVM back-end happy when
+ * compiling the scalalib.
+ */
+final class BoxesRunTime
+
 object BoxesRunTime {
   def boxToBoolean(b: Boolean): java.lang.Boolean =
     b.asInstanceOf[java.lang.Boolean]
