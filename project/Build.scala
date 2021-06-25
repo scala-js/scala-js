@@ -292,7 +292,12 @@ object Build {
     if (condition) List(testDir)
     else Nil
 
-  val previousArtifactSetting: Setting[_] = {
+  val previousArtifactSetting: Seq[Setting[_]] = Def.settings(
+    /* Do not fail mimaReportBinaryIssues when mimaPreviousArtifacts is empty.
+     * We specifically set it to empty below when binary compat is irrelevant.
+     */
+    mimaFailOnNoPrevious := false,
+
     mimaPreviousArtifacts ++= {
       val scalaV = scalaVersion.value
       val scalaBinaryV = scalaBinaryVersion.value
@@ -319,8 +324,8 @@ object Build {
             .extra(prevExtraAttributes.toSeq: _*)
         Set(prevProjectID)
       }
-    }
-  }
+    },
+  )
 
   val commonSettings = Seq(
       organization := "org.scala-js",
