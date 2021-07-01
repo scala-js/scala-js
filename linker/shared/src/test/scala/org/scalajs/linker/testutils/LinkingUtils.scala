@@ -49,7 +49,8 @@ object LinkingUtils {
 
     val coreSpec: CoreSpec = originalBackend.coreSpec
 
-    val symbolRequirements: SymbolRequirement = originalBackend.symbolRequirements
+    val symbolRequirements: SymbolRequirement =
+      originalBackend.symbolRequirements
 
     override def injectedIRFiles: Seq[IRFile] = originalBackend.injectedIRFiles
 
@@ -61,7 +62,8 @@ object LinkingUtils {
 
     def moduleSet: ModuleSet = {
       if (_moduleSet == null)
-        throw new IllegalStateException("Cannot access moduleSet before emit is called")
+        throw new IllegalStateException(
+            "Cannot access moduleSet before emit is called")
       _moduleSet
     }
   }
@@ -110,7 +112,8 @@ object LinkingUtils {
     for {
       baseFiles <- stdlib
       _ <- irLoader.update(classDefIRFiles ++ baseFiles ++ injectedIRFiles)
-      analysis <- analyzer.computeReachability(moduleInitializers, symbolRequirements, logger)
+      analysis <- analyzer.computeReachability(
+          moduleInitializers, symbolRequirements, logger)
     } yield {
       analysis
     }

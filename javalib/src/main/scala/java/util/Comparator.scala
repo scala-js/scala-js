@@ -68,7 +68,8 @@ trait Comparator[A] { self =>
   def thenComparingLong(keyExtractor: ToLongFunction[_ >: A]): Comparator[A] =
     thenComparing(comparingLong(keyExtractor))
 
-  def thenComparingDouble(keyExtractor: ToDoubleFunction[_ >: A]): Comparator[A] =
+  def thenComparingDouble(
+      keyExtractor: ToDoubleFunction[_ >: A]): Comparator[A] =
     thenComparing(comparingDouble(keyExtractor))
 
 }
@@ -98,26 +99,28 @@ object Comparator {
   }
 
   @inline
-  def nullsFirst[T](comparator: Comparator[_ >: T]): Comparator[T] = new Comparator[T] with Serializable {
-    def compare(o1: T, o2: T): Int = {
-      if (o1 == null && o2 == null) 0
-      else if (o1 == null) -1
-      else if (o2 == null) 1
-      else if (comparator == null) 0
-      else comparator.compare(o1, o2)
+  def nullsFirst[T](comparator: Comparator[_ >: T]): Comparator[T] =
+    new Comparator[T] with Serializable {
+      def compare(o1: T, o2: T): Int = {
+        if (o1 == null && o2 == null) 0
+        else if (o1 == null) -1
+        else if (o2 == null) 1
+        else if (comparator == null) 0
+        else comparator.compare(o1, o2)
+      }
     }
-  }
 
   @inline
-  def nullsLast[T](comparator: Comparator[_ >: T]): Comparator[T] = new Comparator[T] with Serializable {
-    def compare(o1: T, o2: T): Int = {
-      if (o1 == null && o2 == null) 0
-      else if (o1 == null) 1
-      else if (o2 == null) -1
-      else if (comparator == null) 0
-      else comparator.compare(o1, o2)
+  def nullsLast[T](comparator: Comparator[_ >: T]): Comparator[T] =
+    new Comparator[T] with Serializable {
+      def compare(o1: T, o2: T): Int = {
+        if (o1 == null && o2 == null) 0
+        else if (o1 == null) 1
+        else if (o2 == null) -1
+        else if (comparator == null) 0
+        else comparator.compare(o1, o2)
+      }
     }
-  }
 
   @inline
   def comparing[T, U](keyExtractor: Function[_ >: T, _ <: U],
@@ -157,16 +160,19 @@ object Comparator {
     keyExtractor.getClass() // null check
     new Comparator[T] with Serializable {
       def compare(o1: T, o2: T): Int =
-        java.lang.Long.compare(keyExtractor.applyAsLong(o1), keyExtractor.applyAsLong(o2))
+        java.lang.Long.compare(
+            keyExtractor.applyAsLong(o1), keyExtractor.applyAsLong(o2))
     }
   }
 
   @inline
-  def comparingDouble[T](keyExtractor: ToDoubleFunction[_ >: T]): Comparator[T] = {
+  def comparingDouble[T](
+      keyExtractor: ToDoubleFunction[_ >: T]): Comparator[T] = {
     keyExtractor.getClass() // null check
     new Comparator[T] with Serializable {
       def compare(o1: T, o2: T): Int =
-        java.lang.Double.compare(keyExtractor.applyAsDouble(o1), keyExtractor.applyAsDouble(o2))
+        java.lang.Double.compare(
+            keyExtractor.applyAsDouble(o1), keyExtractor.applyAsDouble(o2))
     }
   }
 }

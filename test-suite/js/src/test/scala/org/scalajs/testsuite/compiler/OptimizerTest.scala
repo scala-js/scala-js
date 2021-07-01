@@ -42,7 +42,7 @@ class OptimizerTest {
 
   @Test def timesNegativeOneForInt_Issue1453(): Unit = {
     @noinline
-    def start0: Int = (() => 10) ()
+    def start0: Int = (() => 10)()
 
     val start = start0
     val step = -1
@@ -53,17 +53,17 @@ class OptimizerTest {
 
   @Test def timesNegativeOneForFloatAndDouble_Issue1478(): Unit = {
     @noinline
-    def a: Float = (() => 5.0f) ()
+    def a: Float = (() => 5.0f)()
     assertEquals(-5.0f, a * -1.0f, 0.0)
 
     @noinline
-    def b: Double = (() => 7.0) ()
+    def b: Double = (() => 7.0)()
     assertEquals(-7.0, b * -1.0, 0.0)
   }
 
   @Test def foreachOnDownwardRange_Issue1453(): Unit = {
     @noinline
-    def start0: Int = (() => 10) ()
+    def start0: Int = (() => 10)()
 
     val elements = js.Array[Int]()
     for (i <- start0 to 2 by -1) {
@@ -93,7 +93,7 @@ class OptimizerTest {
     def mockPrintln(x: Any): Unit =
       b += ("" + x)
 
-    def get[T](x: T) = { mockPrintln("get: "+ x); x }
+    def get[T](x: T) = { mockPrintln("get: " + x); x }
 
     def bn2(a: Int, b: => Int)(c: Int = b) = a + b
     mockPrintln(bn2(b = get(2), a = get(1))()) // should get: 1, 2, 2
@@ -172,7 +172,9 @@ class OptimizerTest {
   @Test def preserveSideEffectsInUnwrapFromThrowable(): Unit = {
     var i: Int = 1
     val x =
-      if (i > 0) js.special.unwrapFromThrowable({ i += 1; new js.JavaScriptException(i) })
+      if (i > 0) js.special.unwrapFromThrowable({
+        i += 1; new js.JavaScriptException(i)
+      })
       else 42
     assertEquals(2, x)
     assertEquals(2, i)
@@ -255,7 +257,8 @@ class OptimizerTest {
     testLong(true, 5L, 5L)
     testLong(false, 5L, 6L)
 
-    @inline def testDouble(expectEq: Boolean, lhs: Double, rhs: Double): Unit = {
+    @inline def testDouble(expectEq: Boolean, lhs: Double,
+        rhs: Double): Unit = {
       assertEquals(expectEq, lhs == rhs)
       assertEquals(!expectEq, lhs != rhs)
     }
@@ -320,8 +323,8 @@ class OptimizerTest {
   }
 
   @Test def foldingDoubleWithDecimalAndString(): Unit = {
-    assertEquals("1.2323919403474454e+21hello", 1.2323919403474454E21 + "hello")
-    assertEquals("hello1.2323919403474454e+21", "hello" + 1.2323919403474454E21)
+    assertEquals("1.2323919403474454e+21hello", 1.2323919403474454e21 + "hello")
+    assertEquals("hello1.2323919403474454e+21", "hello" + 1.2323919403474454e21)
   }
 
   @Test def foldingDoubleThatJVMWouldPrintInScientificNotationAndString(): Unit = {
@@ -429,7 +432,7 @@ class OptimizerTest {
 
     // special cases when ulp > 1
     test(18271179521433728.0)
-    test(1.15292150460684685E18)
+    test(1.15292150460684685e18)
     test(1234567890123456770.0)
     test(2234567890123456770.0)
     test(4234567890123450000.0)
@@ -453,7 +456,7 @@ class OptimizerTest {
   }
 
   @Test def foldingUnitAndString(): Unit = {
-    assertEquals("undefined is undefined", "undefined is " +())
+    assertEquals("undefined is undefined", "undefined is " + ())
   }
 
   @Test def foldingNullAndString(): Unit = {
@@ -600,7 +603,8 @@ class OptimizerTest {
   }
 
   @inline def doWhile(
-      condition: js.Function1[js.Function1[Boolean, String], String]): String = {
+      condition: js.Function1[js.Function1[Boolean, String],
+          String]): String = {
     condition { (conditionValue: Boolean) =>
       doWhile(condition)
     }
@@ -708,7 +712,7 @@ object OptimizerTest {
   @inline
   class InlineClassDependentFields(val x: Int) {
     val b = x > 3
-    val y = if (b) x + 6 else x-2
+    val y = if (b) x + 6 else x - 2
   }
 
   @inline

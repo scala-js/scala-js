@@ -39,8 +39,10 @@ final class FileIRLoader extends IRLoader {
   private var classNameToFile: collection.Map[ClassName, IRFileImpl] = _
   private var entryPoints: collection.Set[ClassName] = _
 
-  def update(irInput: Seq[IRFile])(implicit ec: ExecutionContext): Future[this.type] = {
-    Future.traverse(irInput)(i => IRFileImpl.fromIRFile(i).entryPointsInfo).map { infos =>
+  def update(irInput: Seq[IRFile])(
+      implicit ec: ExecutionContext): Future[this.type] = {
+    Future.traverse(irInput)(i =>
+      IRFileImpl.fromIRFile(i).entryPointsInfo).map { infos =>
       val classNameToFile = mutable.Map.empty[ClassName, IRFileImpl]
       val entryPoints = mutable.Set.empty[ClassName]
 

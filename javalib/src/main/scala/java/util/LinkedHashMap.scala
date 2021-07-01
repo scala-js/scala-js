@@ -158,7 +158,8 @@ class LinkedHashMap[K, V](initialCapacity: Int, loadFactor: Float,
     override def remove(): Unit = {
       val last = lastNode
       if (last eq null)
-        throw new IllegalStateException("next must be called at least once before remove")
+        throw new IllegalStateException(
+            "next must be called at least once before remove")
       removeNode(last)
       lastNode = null
     }

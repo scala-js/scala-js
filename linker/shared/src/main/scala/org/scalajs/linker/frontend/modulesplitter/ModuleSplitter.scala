@@ -32,13 +32,15 @@ final class ModuleSplitter private (analyzer: ModuleAnalyzer) {
   import ModuleAnalyzer.{DependencyInfo, ClassInfo}
 
   def split(unit: LinkingUnit, logger: Logger): ModuleSet = {
-    val dependencyInfo = logger.time("Module Splitter: Calculate Dependency Info") {
-      val classDeps = unit.classDefs.map { c =>
-        c.className -> new ClassInfo(c.staticDependencies, c.dynamicDependencies)
-      }.toMap
+    val dependencyInfo =
+      logger.time("Module Splitter: Calculate Dependency Info") {
+        val classDeps = unit.classDefs.map { c =>
+          c.className -> new ClassInfo(
+              c.staticDependencies, c.dynamicDependencies)
+        }.toMap
 
-      new DependencyInfo(classDeps, publicModuleDependencies(unit))
-    }
+        new DependencyInfo(classDeps, publicModuleDependencies(unit))
+      }
 
     if (dependencyInfo.publicModuleDependencies.isEmpty) {
       /* If there are no public modules, we need no code whatsoever.
@@ -89,7 +91,8 @@ final class ModuleSplitter private (analyzer: ModuleAnalyzer) {
             }
           }
 
-          classDef.externalDependencies.foreach(builder.externalDependencies += _)
+          classDef.externalDependencies.foreach(
+              builder.externalDependencies += _)
       }
     }
 
@@ -192,8 +195,10 @@ object ModuleSplitter {
     val internalDependencies: Builder[ModuleID, Set[ModuleID]] = Set.newBuilder
     val externalDependencies: Builder[String, Set[String]] = Set.newBuilder
     val classDefs: Builder[LinkedClass, List[LinkedClass]] = List.newBuilder
-    val topLevelExports: Builder[LinkedTopLevelExport, List[LinkedTopLevelExport]] = List.newBuilder
-    val initializers: Builder[ModuleInitializer.Initializer, List[ModuleInitializer.Initializer]] = List.newBuilder
+    val topLevelExports: Builder[LinkedTopLevelExport,
+        List[LinkedTopLevelExport]] = List.newBuilder
+    val initializers: Builder[ModuleInitializer.Initializer,
+        List[ModuleInitializer.Initializer]] = List.newBuilder
 
     def result(): ModuleSet.Module = {
       val tles = topLevelExports.result()

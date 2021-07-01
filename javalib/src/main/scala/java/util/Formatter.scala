@@ -355,7 +355,8 @@ final class Formatter private (private[this] var dest: Appendable,
     (conversionLower: @switch) match {
       case 'b' =>
         val str =
-          if ((arg.asInstanceOf[AnyRef] eq false.asInstanceOf[AnyRef]) || arg == null) "false"
+          if ((arg.asInstanceOf[AnyRef] eq false.asInstanceOf[
+                  AnyRef]) || arg == null) "false"
           else "true"
         formatNonNumericString(RootLocaleInfo, flags, width, precision, str)
 
@@ -395,7 +396,8 @@ final class Formatter private (private[this] var dest: Appendable,
               js.Dynamic.global.String.fromCharCode(arg).asInstanceOf[String]
             } else {
               js.Dynamic.global.String
-                .fromCharCode(0xd800 | ((arg >> 10) - (0x10000 >> 10)), 0xdc00 | (arg & 0x3ff))
+                .fromCharCode(0xd800 | ((arg >> 10) - (0x10000 >> 10)),
+                    0xdc00 | (arg & 0x3ff))
                 .asInstanceOf[String]
             }
           case _ =>
@@ -463,9 +465,12 @@ final class Formatter private (private[this] var dest: Appendable,
             else 6
 
           val notation = conversionLower match {
-            case 'e' => computerizedScientificNotation(x, digitsAfterDot = actualPrecision, forceDecimalSep)
-            case 'f' => decimalNotation(x, scale = actualPrecision, forceDecimalSep)
-            case _   => generalScientificNotation(x, precision = actualPrecision, forceDecimalSep)
+            case 'e' => computerizedScientificNotation(
+                  x, digitsAfterDot = actualPrecision, forceDecimalSep)
+            case 'f' =>
+              decimalNotation(x, scale = actualPrecision, forceDecimalSep)
+            case _ => generalScientificNotation(
+                  x, precision = actualPrecision, forceDecimalSep)
           }
           formatNumericString(localeInfo, flags, width, notation)
         }
@@ -498,7 +503,8 @@ final class Formatter private (private[this] var dest: Appendable,
   }
 
   @inline private def checkIllegalFormatFlags(flags: Flags): Unit = {
-    if (flags.hasAllOf(LeftAlign | ZeroPad) || flags.hasAllOf(PositivePlus | PositiveSpace))
+    if (flags.hasAllOf(LeftAlign | ZeroPad) || flags.hasAllOf(
+            PositivePlus | PositiveSpace))
       throwIllegalFormatFlagsException(flags)
   }
 
@@ -506,7 +512,8 @@ final class Formatter private (private[this] var dest: Appendable,
       flags: Flags, illegalFlags: Int): Unit = {
 
     if (flags.hasAnyOf(illegalFlags))
-      throwFormatFlagsConversionMismatchException(conversionLower, flags, illegalFlags)
+      throwFormatFlagsConversionMismatchException(
+          conversionLower, flags, illegalFlags)
   }
 
   /* Should in theory be a method of `Flags`. See the comment on that class
@@ -604,9 +611,11 @@ final class Formatter private (private[this] var dest: Appendable,
     val rounded = x.round(p)
     val orderOfMagnitude = (rounded.precision - 1) - rounded.scale
     if (orderOfMagnitude >= -4 && orderOfMagnitude < p)
-      decimalNotation(rounded, scale = Math.max(0, p - orderOfMagnitude - 1), forceDecimalSep)
+      decimalNotation(rounded, scale = Math.max(0, p - orderOfMagnitude - 1),
+          forceDecimalSep)
     else
-      computerizedScientificNotation(rounded, digitsAfterDot = p - 1, forceDecimalSep)
+      computerizedScientificNotation(
+          rounded, digitsAfterDot = p - 1, forceDecimalSep)
   }
 
   /** Format an argument for the 'a' conversion.
@@ -823,7 +832,8 @@ final class Formatter private (private[this] var dest: Appendable,
    *  The reason is that we do not want to insert a character that would
    *  collide with another meaning (such as '.') at this point.
    */
-  private def insertGroupingCommas(localeInfo: LocaleInfo, s: String): String = {
+  private def insertGroupingCommas(localeInfo: LocaleInfo,
+      s: String): String = {
     val groupingSize = localeInfo.groupingSize
 
     val len = s.length
@@ -851,7 +861,8 @@ final class Formatter private (private[this] var dest: Appendable,
     if (flags.upperCase) str.toUpperCase() // uppercasing is not localized for numbers
     else str
 
-  private def applyUpperCase(localeInfo: LocaleInfo, flags: Flags, str: String): String =
+  private def applyUpperCase(localeInfo: LocaleInfo, flags: Flags,
+      str: String): String =
     if (flags.upperCase) localeInfo.toUpperCase(str)
     else str
 
@@ -952,7 +963,8 @@ final class Formatter private (private[this] var dest: Appendable,
   private def throwIllegalFormatFlagsException(flags: Flags): Nothing =
     throw new IllegalFormatFlagsException(flagsToString(flags))
 
-  private def throwMissingFormatWidthException(fullFormatSpecifier: String): Nothing =
+  private def throwMissingFormatWidthException(
+      fullFormatSpecifier: String): Nothing =
     throw new MissingFormatWidthException(fullFormatSpecifier)
 
   private def throwFormatFlagsConversionMismatchException(conversionLower: Char,
@@ -961,10 +973,12 @@ final class Formatter private (private[this] var dest: Appendable,
         flagsToString(new Flags(flags.bits & illegalFlags)), conversionLower)
   }
 
-  private def throwMissingFormatArgumentException(fullFormatSpecifier: String): Nothing =
+  private def throwMissingFormatArgumentException(
+      fullFormatSpecifier: String): Nothing =
     throw new MissingFormatArgumentException(fullFormatSpecifier)
 
-  private def throwIllegalFormatConversionException(conversionLower: Char, arg: Any): Nothing =
+  private def throwIllegalFormatConversionException(conversionLower: Char,
+      arg: Any): Nothing =
     throw new IllegalFormatConversionException(conversionLower, arg.getClass)
 
   private def throwIllegalFormatCodePointException(arg: Int): Nothing =
@@ -1049,21 +1063,32 @@ object Formatter {
     // 'n' and '%' are not here because they have special paths in `format`
 
     Array(
-        UseGroupingSeps | NegativeParen,          // a
-        NumericOnlyFlags | AltFormat,             // b
-        NumericOnlyFlags | AltFormat | Precision, // c
-        AltFormat | UpperCase | Precision,        // d
-        UseGroupingSeps,                          // e
-        UpperCase,                                // f
-        AltFormat,                                // g
-        NumericOnlyFlags | AltFormat,             // h
-        -1, -1, -1, -1, -1, -1,                   // i -> n
-        UseGroupingSeps | UpperCase | Precision,  // o
-        -1, -1, -1,                               // p -> r
-        NumericOnlyFlags,                         // s
-        -1, -1, -1, -1,                           // t -> w
-        UseGroupingSeps | Precision,              // x
-        -1, -1                                    // y -> z
+      UseGroupingSeps | NegativeParen, // a
+      NumericOnlyFlags | AltFormat, // b
+      NumericOnlyFlags | AltFormat | Precision, // c
+      AltFormat | UpperCase | Precision, // d
+      UseGroupingSeps, // e
+      UpperCase, // f
+      AltFormat, // g
+      NumericOnlyFlags | AltFormat, // h
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1, // i -> n
+      UseGroupingSeps | UpperCase | Precision, // o
+      -1,
+      -1,
+      -1, // p -> r
+      NumericOnlyFlags, // s
+      -1,
+      -1,
+      -1,
+      -1, // t -> w
+      UseGroupingSeps | Precision, // x
+      -1,
+      -1 // y -> z
     )
   }
 
@@ -1104,7 +1129,8 @@ object Formatter {
         new Decimal(negative, unscaledValue, scale)
       } else {
         // There is a '.'; there can be leading 0's, which we must remove
-        val digits = s.substring(0, dotPos) + s.substring(dotPos + 1, significandEnd)
+        val digits =
+          s.substring(0, dotPos) + s.substring(dotPos + 1, significandEnd)
         val digitsLen = digits.length()
         var i = 0
         while (i < digitsLen && digits.charAt(i) == '0')
@@ -1197,7 +1223,9 @@ object Formatter {
       if (rounded.isZero || rounded.scale == newScale)
         rounded
       else
-        new Decimal(negative, rounded.unscaledValue + strOfZeros(newScale - rounded.scale), newScale)
+        new Decimal(negative,
+            rounded.unscaledValue + strOfZeros(newScale - rounded.scale),
+            newScale)
     }
 
     /** Rounds the number at the given position in its `unscaledValue`.
@@ -1235,7 +1263,8 @@ object Formatter {
           if (roundingPos == 0)
             Decimal.zero(negative)
           else
-            new Decimal(negative, digits.substring(0, roundingPos), scaleAtPos(roundingPos))
+            new Decimal(negative, digits.substring(0, roundingPos),
+                scaleAtPos(roundingPos))
         } else {
           // Truncate and increment at roundingPos
 
@@ -1246,7 +1275,8 @@ object Formatter {
 
           val newUnscaledValue =
             if (lastNonNinePos < 0) "1"
-            else digits.substring(0, lastNonNinePos) + (digits.charAt(lastNonNinePos) + 1).toChar
+            else digits.substring(0, lastNonNinePos) + (digits.charAt(
+                lastNonNinePos) + 1).toChar
 
           val newScale = scaleAtPos(lastNonNinePos + 1)
 

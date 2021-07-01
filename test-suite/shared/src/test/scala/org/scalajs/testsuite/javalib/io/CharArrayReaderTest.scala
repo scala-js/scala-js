@@ -18,7 +18,8 @@ import org.junit.Test
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class CharArrayReaderTest {
-  private val hw: Array[Char] = Array('H', 'e', 'l', 'l', 'o', 'W', 'o', 'r', 'l', 'd')
+  private val hw: Array[Char] =
+    Array('H', 'e', 'l', 'l', 'o', 'W', 'o', 'r', 'l', 'd')
 
   private def withClose[T <: AutoCloseable](closeable: T)(fn: T => Unit): Unit = {
     fn(closeable)
@@ -55,7 +56,8 @@ class CharArrayReaderTest {
       // Doesn't read past buffer length
       val bytesRead: Int = cr.read(c, 0, 100)
       assertEquals(5, bytesRead)
-      assertArrayEquals("World".toCharArray, java.util.Arrays.copyOf(c, bytesRead))
+      assertArrayEquals(
+          "World".toCharArray, java.util.Arrays.copyOf(c, bytesRead))
       assertEquals(-1, cr.read())
       assertFalse(cr.ready())
     }
@@ -127,7 +129,8 @@ class CharArrayReaderTest {
       cr.mark(-1)
       val c = new Array[Char](5)
       cr.read(c, 0, 5)
-      assertArrayEquals("Mark read limit should be ignored", "World".toCharArray, c)
+      assertArrayEquals(
+          "Mark read limit should be ignored", "World".toCharArray, c)
 
       // Reset back  to 'W'
       cr.reset()

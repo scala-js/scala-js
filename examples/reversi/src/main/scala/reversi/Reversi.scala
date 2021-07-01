@@ -49,7 +49,8 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
       }
     }
 
-    override def toString(): String = "Square("+x+", "+y+", "+owner+")"
+    override def toString(): String =
+      "Square(" + x + ", " + y + ", " + owner + ")"
   }
 
   val board = Array.tabulate[Square](BoardSize, BoardSize)(new Square(_, _))
@@ -64,15 +65,19 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
   buildUI()
 
   def createResetButton(): JQuery = {
-    jQuery("<input>", js.Dynamic.literal(
-        `type` = "button", value = "Reset"
-    )).click(() => reset())
+    jQuery("<input>",
+        js.Dynamic.literal(
+          `type` = "button",
+          value = "Reset"
+        )).click(() => reset())
   }
 
   def createPassButton(): JQuery = {
-    jQuery("<input>", js.Dynamic.literal(
-        `type` = "button", value = "Pass"
-    )).click(() => pass())
+    jQuery("<input>",
+        js.Dynamic.literal(
+          `type` = "button",
+          value = "Pass"
+        )).click(() => pass())
   }
 
   def createStatus(): JQuery = {
@@ -82,15 +87,16 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
   def buildUI(): Unit = {
     // Some dimensions
     val SquareSizePx = 48
-    val HalfSquareSizePx = SquareSizePx/2
-    val PawnRadiusPx = HalfSquareSizePx-4
-    val BoardSizePx = BoardSize*SquareSizePx + 3
+    val HalfSquareSizePx = SquareSizePx / 2
+    val PawnRadiusPx = HalfSquareSizePx - 4
+    val BoardSizePx = BoardSize * SquareSizePx + 3
 
     // Create the board canvas
     val boardCanvas = jQuery(
-        "<canvas width='"+BoardSizePx+"' height='"+BoardSizePx+"'></canvas>")
+        "<canvas width='" + BoardSizePx + "' height='" + BoardSizePx + "'></canvas>")
     val domCanvas = boardCanvas.get(0).asInstanceOf[HTMLCanvasElement]
-    val context = domCanvas.getContext("2d").asInstanceOf[CanvasRenderingContext2D]
+    val context =
+      domCanvas.getContext("2d").asInstanceOf[CanvasRenderingContext2D]
 
     playground.append(jQuery("<div>").append(boardCanvas))
 
@@ -112,8 +118,8 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
       if (square.owner != NoPlayer) {
         context.fillStyle = if (square.owner == White) "white" else "black"
         context.beginPath()
-        context.arc(x+HalfSquareSizePx, y+HalfSquareSizePx, PawnRadiusPx,
-            0, 2*Math.PI, true)
+        context.arc(x + HalfSquareSizePx, y + HalfSquareSizePx, PawnRadiusPx,
+            0, 2 * Math.PI, true)
         context.fill()
       }
     }
@@ -169,8 +175,8 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
 
   def startTurn(): Unit = {
     val (scoreWhite, scoreBlack) = computeScore()
-    status.text(""+currentPlayer+"'s turn -- White: "+scoreWhite+
-        " -- Black: "+scoreBlack)
+    status.text("" + currentPlayer + "'s turn -- White: " + scoreWhite +
+        " -- Black: " + scoreBlack)
 
     passButton.prop("disabled", true)
 
@@ -188,8 +194,8 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
           if (scoreWhite > scoreBlack) "White won!"
           else if (scoreBlack > scoreWhite) "Black won!"
           else "Draw"
-        status.text("Game finished -- White: "+scoreWhite+
-            " -- Black: "+scoreBlack+" -- "+winnerText)
+        status.text("Game finished -- White: " + scoreWhite +
+            " -- Black: " + scoreBlack + " -- " + winnerText)
       }
     }
   }
@@ -252,8 +258,8 @@ class Reversi(jQuery: JQueryStatic, playground: JQuery) {
   def computeScore(): (Int, Int) = {
     allSquares.foldLeft((0, 0)) { case ((white, black), square) =>
       square.owner match {
-        case White => (white+1, black)
-        case Black => (white, black+1)
+        case White    => (white + 1, black)
+        case Black    => (white, black + 1)
         case NoPlayer => (white, black)
       }
     }

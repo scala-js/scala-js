@@ -16,11 +16,13 @@ package java.util.function
 trait DoubleUnaryOperator {
   def applyAsDouble(operand: Double): Double
 
-  def andThen(after: DoubleUnaryOperator): DoubleUnaryOperator = { (d: Double) =>
+  def andThen(
+      after: DoubleUnaryOperator): DoubleUnaryOperator = { (d: Double) =>
     after.applyAsDouble(applyAsDouble(d))
   }
 
-  def compose(before: DoubleUnaryOperator): DoubleUnaryOperator = { (d: Double) =>
+  def compose(
+      before: DoubleUnaryOperator): DoubleUnaryOperator = { (d: Double) =>
     applyAsDouble(before.applyAsDouble(d))
   }
 }

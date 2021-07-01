@@ -169,7 +169,8 @@ private[emitter] final class SJSGen(
     else classRef.prototype
   }
 
-  def genAssignPrototype(classRef: Tree, value: Tree, localDecl: Boolean = false)(implicit pos: Position): Tree = {
+  def genAssignPrototype(classRef: Tree, value: Tree, localDecl: Boolean = false)(
+      implicit pos: Position): Tree = {
     import TreeDSL._
     val assign = classRef.prototype := value
     if (!minify)
@@ -221,7 +222,8 @@ private[emitter] final class SJSGen(
       case NullType    => Null()
 
       case LongType =>
-        assert(useBigIntForLongs, s"cannot generate a zero value for primitive long at $pos")
+        assert(useBigIntForLongs,
+            s"cannot generate a zero value for primitive long at $pos")
         BigIntLiteral(0L)
 
       case VoidType | NothingType =>
@@ -242,7 +244,8 @@ private[emitter] final class SJSGen(
   def genLongApplyStatic(methodName: MethodName, args: Tree*)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
-    Apply(globalVar(VarField.s, (LongImpl.RuntimeLongClass, methodName)), args.toList)
+    Apply(globalVar(VarField.s, (LongImpl.RuntimeLongClass, methodName)),
+        args.toList)
   }
 
   def usesUnderlyingTypedArray(elemTypeRef: NonArrayTypeRef): Boolean = {
@@ -256,16 +259,18 @@ private[emitter] final class SJSGen(
   }
 
   def getArrayUnderlyingTypedArrayClassRef(elemTypeRef: NonArrayTypeRef)(
-      implicit tracking: GlobalRefTracking, pos: Position): Option[WithGlobals[VarRef]] = {
+      implicit tracking: GlobalRefTracking, pos: Position): Option[WithGlobals[
+      VarRef]] = {
     elemTypeRef match {
       case _ if esFeatures.esVersion < ESVersion.ES2015 => None
-      case primRef: PrimRef                             => typedArrayRef(primRef)
-      case _                                            => None
+      case primRef: PrimRef => typedArrayRef(primRef)
+      case _                => None
     }
   }
 
   def typedArrayRef(primRef: PrimRef)(
-      implicit tracking: GlobalRefTracking, pos: Position): Option[WithGlobals[VarRef]] = {
+      implicit tracking: GlobalRefTracking, pos: Position): Option[WithGlobals[
+      VarRef]] = {
     def some(name: String) = Some(globalRef(name))
 
     primRef match {
@@ -310,7 +315,8 @@ private[emitter] final class SJSGen(
         val jsOrigName = genOriginalName(fieldName, originalName, jsName)
         Ident(jsName, jsOrigName)(field.pos)
       case Some(compressor) =>
-        DelayedIdent(compressor.genResolverFor(fieldName), originalName.orElse(fieldName))(field.pos)
+        DelayedIdent(compressor.genResolverFor(fieldName),
+            originalName.orElse(fieldName))(field.pos)
     }
     DotSelect(receiver, fieldIdent)
   }
@@ -344,10 +350,12 @@ private[emitter] final class SJSGen(
     val (loFieldIdent, hiFieldIdent) = nameCompressor match {
       case None =>
         val baseName = genName(fieldName)
-        (Ident(baseName + "_$lo", loOrigName)(field.pos), Ident(baseName + "_$hi", hiOrigName)(field.pos))
+        (Ident(baseName + "_$lo", loOrigName)(field.pos),
+            Ident(baseName + "_$hi", hiOrigName)(field.pos))
       case Some(compressor) =>
         val (loResolver, hiResolver) = compressor.genResolversForLong(fieldName)
-        (DelayedIdent(loResolver, loOrigName)(field.pos), DelayedIdent(hiResolver, hiOrigName)(field.pos))
+        (DelayedIdent(loResolver, loOrigName)(field.pos),
+            DelayedIdent(hiResolver, hiOrigName)(field.pos))
     }
 
     (DotSelect(receiver, loFieldIdent), DotSelect(receiver, hiFieldIdent))
@@ -371,9 +379,10 @@ private[emitter] final class SJSGen(
     genMethodIdentForDef(methodIdent.name, originalName)(methodIdent.pos)
   }
 
-  def genMethodIdent(methodName: MethodName)(implicit pos: Position): MaybeDelayedIdent = {
+  def genMethodIdent(methodName: MethodName)(
+      implicit pos: Position): MaybeDelayedIdent = {
     nameCompressor match {
-      case None             => Ident(genName(methodName))
+      case None => Ident(genName(methodName))
       case Some(compressor) => DelayedIdent(compressor.genResolverFor(methodName))
     }
   }
@@ -386,7 +395,8 @@ private[emitter] final class SJSGen(
         val jsOrigName = genOriginalName(methodName, originalName, jsName)
         Ident(jsName, jsOrigName)
       case Some(compressor) =>
-        DelayedIdent(compressor.genResolverFor(methodName), originalName.orElse(methodName))
+        DelayedIdent(compressor.genResolverFor(methodName),
+            originalName.orElse(methodName))
     }
   }
 
@@ -395,7 +405,8 @@ private[emitter] final class SJSGen(
     genSyntheticPropApply(receiver, prop, args.toList)
   }
 
-  def genSyntheticPropApply(receiver: Tree, prop: SyntheticProperty, args: List[Tree])(
+  def genSyntheticPropApply(receiver: Tree, prop: SyntheticProperty,
+      args: List[Tree])(
       implicit pos: Position): Tree = {
     Apply(genSyntheticPropSelect(receiver, prop), args)
   }
@@ -405,24 +416,29 @@ private[emitter] final class SJSGen(
     DotSelect(qualifier, genSyntheticProperty(prop))
   }
 
-  def genSyntheticProperty(prop: SyntheticProperty)(implicit pos: Position): MaybeDelayedIdent = {
+  def genSyntheticProperty(prop: SyntheticProperty)(
+      implicit pos: Position): MaybeDelayedIdent = {
     nameCompressor match {
       case None             => Ident(prop.nonMinifiedName)
       case Some(compressor) => DelayedIdent(compressor.genResolverFor(prop))
     }
   }
 
-  def genSyntheticPropertyForDef(prop: SyntheticProperty)(implicit pos: Position): MaybeDelayedIdent = {
+  def genSyntheticPropertyForDef(prop: SyntheticProperty)(
+      implicit pos: Position): MaybeDelayedIdent = {
     nameCompressor match {
       case None             => Ident(prop.nonMinifiedName)
-      case Some(compressor) => DelayedIdent(compressor.genResolverFor(prop), prop.originalName)
+      case Some(compressor) =>
+        DelayedIdent(compressor.genResolverFor(prop), prop.originalName)
     }
   }
 
-  def genAncestorIdent(ancestor: ClassName)(implicit pos: Position): MaybeDelayedIdent = {
+  def genAncestorIdent(ancestor: ClassName)(
+      implicit pos: Position): MaybeDelayedIdent = {
     nameCompressor match {
       case None             => Ident(genName(ancestor))
-      case Some(compressor) => DelayedIdent(compressor.genResolverForAncestor(ancestor))
+      case Some(compressor) =>
+        DelayedIdent(compressor.genResolverForAncestor(ancestor))
     }
   }
 
@@ -460,7 +476,8 @@ private[emitter] final class SJSGen(
           case ArrayTypeRef(_:PrimRef | ClassRef(ObjectClass), 1) =>
             expr instanceof genArrayConstrOf(arrayTypeRef)
           case ArrayTypeRef(base, depth) =>
-            Apply(typeRefVar(VarField.isArrayOf, base), List(expr, IntLiteral(depth)))
+            Apply(typeRefVar(VarField.isArrayOf, base),
+                List(expr, IntLiteral(depth)))
         }
 
       case UndefType   => expr === Undefined()
@@ -477,7 +494,8 @@ private[emitter] final class SJSGen(
       case AnyNotNullType => expr !== Null()
 
       case VoidType | NullType | NothingType | AnyType |
-          ClassType(_, true) | ArrayType(_, true) | _:ClosureType | _:RecordType =>
+          ClassType(_, true) | ArrayType(
+              _, true) | _:ClosureType | _:RecordType =>
         throw new AssertionError(s"Unexpected type $tpe in genIsInstanceOf")
     }
   }
@@ -506,14 +524,15 @@ private[emitter] final class SJSGen(
     className match {
       case BoxedUnitClass      => expr === Undefined()
       case BoxedBooleanClass   => typeof(expr) === "boolean"
-      case BoxedCharacterClass => expr instanceof globalVar(VarField.Char, CoreVar)
-      case BoxedByteClass      => genCallHelper(VarField.isByte, expr)
-      case BoxedShortClass     => genCallHelper(VarField.isShort, expr)
-      case BoxedIntegerClass   => genCallHelper(VarField.isInt, expr)
-      case BoxedLongClass      => genIsLong(expr)
-      case BoxedFloatClass     => genCallHelper(VarField.isFloat, expr)
-      case BoxedDoubleClass    => typeof(expr) === "number"
-      case BoxedStringClass    => typeof(expr) === "string"
+      case BoxedCharacterClass =>
+        expr instanceof globalVar(VarField.Char, CoreVar)
+      case BoxedByteClass    => genCallHelper(VarField.isByte, expr)
+      case BoxedShortClass   => genCallHelper(VarField.isShort, expr)
+      case BoxedIntegerClass => genCallHelper(VarField.isInt, expr)
+      case BoxedLongClass    => genIsLong(expr)
+      case BoxedFloatClass   => genCallHelper(VarField.isFloat, expr)
+      case BoxedDoubleClass  => typeof(expr) === "number"
+      case BoxedStringClass  => typeof(expr) === "string"
     }
   }
 
@@ -539,19 +558,20 @@ private[emitter] final class SJSGen(
         case ClassType(_, true) | ArrayType(_, true) | AnyType =>
           wg(expr)
 
-        case UndefType                     => wg(Block(expr, Undefined()))
-        case BooleanType                   => wg(!(!expr))
-        case CharType                      => wg(genCallHelper(VarField.uC, expr))
-        case ByteType | ShortType| IntType => wg(expr | 0)
-        case LongType                      => wg(genCallHelper(VarField.uJ, expr))
-        case DoubleType                    => wg(UnaryOp(irt.JSUnaryOp.+, expr))
-        case StringType                    => wg(expr || StringLiteral(""))
+        case UndefType   => wg(Block(expr, Undefined()))
+        case BooleanType => wg(!(!expr))
+        case CharType    => wg(genCallHelper(VarField.uC, expr))
+        case ByteType | ShortType | IntType => wg(expr | 0)
+        case LongType   => wg(genCallHelper(VarField.uJ, expr))
+        case DoubleType => wg(UnaryOp(irt.JSUnaryOp.+, expr))
+        case StringType => wg(expr || StringLiteral(""))
 
         case FloatType =>
           genCallPolyfillableBuiltin(FroundBuiltin, expr)
 
         case VoidType | NullType | NothingType | AnyNotNullType |
-            ClassType(_, false) | ArrayType(_, false) | _:ClosureType | _:RecordType =>
+            ClassType(_, false) | ArrayType(
+                _, false) | _:ClosureType | _:RecordType =>
           throw new AssertionError(s"Unexpected type $tpe in genAsInstanceOf")
       }
     } else {
@@ -562,7 +582,8 @@ private[emitter] final class SJSGen(
           Apply(globalVar(VarField.as, className), List(expr))
 
         case ArrayType(ArrayTypeRef(base, depth), true) =>
-          Apply(typeRefVar(VarField.asArrayOf, base), List(expr, IntLiteral(depth)))
+          Apply(
+              typeRefVar(VarField.asArrayOf, base), List(expr, IntLiteral(depth)))
 
         case UndefType   => genCallHelper(VarField.uV, expr)
         case BooleanType => genCallHelper(VarField.uZ, expr)
@@ -577,7 +598,8 @@ private[emitter] final class SJSGen(
         case AnyType     => expr
 
         case VoidType | NullType | NothingType | AnyNotNullType |
-            ClassType(_, false) | ArrayType(_, false) | _:ClosureType | _:RecordType =>
+            ClassType(_, false) | ArrayType(
+                _, false) | _:ClosureType | _:RecordType =>
           throw new AssertionError(s"Unexpected type $tpe in genAsInstanceOf")
       }
 
@@ -615,12 +637,12 @@ private[emitter] final class SJSGen(
    *  Those with `typeof`-based tests come first because they are cheaper.
    */
   private val nonSmallNumberHijackedClassesOrderedForTypeTests = List(
-    BoxedStringClass,
-    BoxedDoubleClass,
-    BoxedBooleanClass,
-    BoxedUnitClass,
-    BoxedLongClass,
-    BoxedCharacterClass
+      BoxedStringClass,
+      BoxedDoubleClass,
+      BoxedBooleanClass,
+      BoxedUnitClass,
+      BoxedLongClass,
+      BoxedCharacterClass
   )
 
   /** List of all the hijacked classes ordered by priority for a series of type
@@ -645,11 +667,11 @@ private[emitter] final class SJSGen(
     if (esFeatures.esVersion >= builtin.availableInESVersion) {
       builtin match {
         case builtin: GlobalVarBuiltin =>
-          for (global <- globalRef(builtin.globalVar)) yield
-            Apply(global, args.toList)
+          for (global <- globalRef(builtin.globalVar))
+            yield Apply(global, args.toList)
         case builtin: NamespacedBuiltin =>
-          for (namespace <- globalRef(builtin.namespaceGlobalVar)) yield
-            Apply(genIdentBracketSelect(namespace, builtin.builtinName), args.toList)
+          for (namespace <- globalRef(builtin.namespaceGlobalVar)) yield Apply(
+              genIdentBracketSelect(namespace, builtin.builtinName), args.toList)
       }
     } else {
       WithGlobals(genCallHelper(builtin.polyfillField, args: _*))
@@ -671,7 +693,8 @@ private[emitter] final class SJSGen(
     if (globalKnowledge.hasInlineableInit(className)) {
       New(encodedClassVar, argsList)
     } else {
-      Apply(globalVar(VarField.ct, (className, ctor)), New(encodedClassVar, Nil) :: argsList)
+      Apply(globalVar(VarField.ct, (className, ctor)),
+          New(encodedClassVar, Nil) :: argsList)
     }
   }
 
@@ -715,8 +738,8 @@ private[emitter] final class SJSGen(
 
     spec match {
       case irt.JSNativeLoadSpec.Global(globalRefName, path) =>
-        for (globalVarRef <- globalRef(globalRefName)) yield
-          pathSelection(globalVarRef, path)
+        for (globalVarRef <- globalRef(globalRefName))
+          yield pathSelection(globalVarRef, path)
 
       case irt.JSNativeLoadSpec.Import(module, path) =>
         val moduleValue = VarRef(externalModuleFieldIdent(module))
@@ -728,7 +751,8 @@ private[emitter] final class SJSGen(
             WithGlobals(pathSelection(moduleValue, path))
         }
 
-      case irt.JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, globalSpec) =>
+      case irt.JSNativeLoadSpec.ImportWithGlobalFallback(
+              importSpec, globalSpec) =>
         moduleKind match {
           case ModuleKind.NoModule =>
             genLoadJSFromSpec(globalSpec)
@@ -751,8 +775,8 @@ private[emitter] final class SJSGen(
       case ArrayTypeRef(elemTypeRef, 1) =>
         getArrayUnderlyingTypedArrayClassRef(elemTypeRef) match {
           case Some(typedArrayWithGlobals) =>
-            for (typedArray <- typedArrayWithGlobals) yield
-              New(typedArray, nativeArray :: Nil)
+            for (typedArray <- typedArrayWithGlobals)
+              yield New(typedArray, nativeArray :: Nil)
           case _ =>
             WithGlobals(nativeArray)
         }
@@ -760,8 +784,8 @@ private[emitter] final class SJSGen(
         WithGlobals(nativeArray)
     }
 
-    for (arg <- argWithGlobals) yield
-      New(genArrayConstrOf(arrayTypeRef), arg :: Nil)
+    for (arg <- argWithGlobals)
+      yield New(genArrayConstrOf(arrayTypeRef), arg :: Nil)
   }
 
   def genArrayConstrOf(arrayTypeRef: ArrayTypeRef)(

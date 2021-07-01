@@ -20,7 +20,8 @@ final class StackTraceElement(declaringClass: String, methodName: String,
     fileName: String, lineNumber: Int, private[this] var columnNumber: Int)
     extends AnyRef with java.io.Serializable {
 
-  def this(declaringClass: String, methodName: String, fileName: String, lineNumber: Int) =
+  def this(declaringClass: String, methodName: String, fileName: String,
+      lineNumber: Int) =
     this(declaringClass, methodName, fileName, lineNumber, -1)
 
   def getFileName(): String = fileName
@@ -33,7 +34,9 @@ final class StackTraceElement(declaringClass: String, methodName: String,
   def getColumnNumber(): Int = columnNumber
 
   // Not part of the JDK API, accessible through reflection.
-  @deprecated("old internal API; use the constructor with a column number instead", "1.11.0")
+  @deprecated(
+      "old internal API; use the constructor with a column number instead",
+      "1.11.0")
   def setColumnNumber(columnNumber: Int): Unit =
     this.columnNumber = columnNumber
 

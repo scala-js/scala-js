@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+set -e
+
+COURSIER_VERSION="2.1.25-M22"
+
+HERE="`dirname $0`"
+SCALAFMT_VERSION=$(sed -nre \
+  's#^[ ]*version[ ]*[=][ ]*["]?([0-9A-Za-z.+-]+).*#\1#p' \
+  $HERE/../.scalafmt.conf)
+
+COURSIER="$HERE/.coursier-$COURSIER_VERSION"
+SCALAFMT="$HERE/.scalafmt-$SCALAFMT_VERSION"
+
+if [ ! -f $COURSIER ]; then
+  # https://get-coursier.io/docs/cli-installation#specific-versions
+  curl -L -o $COURSIER \
+    https://github.com/coursier/coursier/releases/download/v$COURSIER_VERSION/coursier
+  chmod +x $COURSIER
+fi
+
+if [ ! -f $SCALAFMT ]; then
+  $COURSIER bootstrap \
+    org.scalameta:scalafmt-cli_2.13:$SCALAFMT_VERSION \
+    --main org.scalafmt.cli.Cli \
+    -r central:maven-snapshots \
+    -o $SCALAFMT
+  chmod +x $SCALAFMT
+fi
+
+exec $SCALAFMT "$@"

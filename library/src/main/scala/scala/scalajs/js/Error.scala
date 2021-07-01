@@ -46,7 +46,8 @@ object Error extends js.Object {
  */
 @js.native
 @JSGlobal
-class AggregateError(errors: js.Iterable[scala.Any], message: String = "") extends js.Error {
+class AggregateError(errors: js.Iterable[scala.Any], message: String = "")
+    extends js.Error {
 
   /**
    * The errors that were aggregated.
@@ -59,7 +60,8 @@ class AggregateError(errors: js.Iterable[scala.Any], message: String = "") exten
 @js.native
 @JSGlobal
 object AggregateError extends js.Object {
-  def apply(errors: js.Iterable[scala.Any], message: String = ""): js.AggregateError = js.native
+  def apply(errors: js.Iterable[scala.Any],
+      message: String = ""): js.AggregateError = js.native
 }
 
 /**

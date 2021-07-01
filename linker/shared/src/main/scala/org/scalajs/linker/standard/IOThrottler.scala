@@ -22,7 +22,8 @@ private[linker] final class IOThrottler(totalSlots: Int) {
   private val slots = new Semaphore(totalSlots)
   private val queue = new ConcurrentLinkedQueue[() => Unit]()
 
-  def throttle[T](future: => Future[T])(implicit ec: ExecutionContext): Future[T] = {
+  def throttle[T](future: => Future[T])(
+      implicit ec: ExecutionContext): Future[T] = {
     if (slots.tryAcquire()) {
       // Fast path.
       val result = future

@@ -90,7 +90,8 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
     @inline final def toJSIterator: js.Iterator[T] = new IteratorAdapter(self)
   }
 
-  private class IterableAdapter[+T](col: GenIterable[T]) extends js.Iterable[T] {
+  private class IterableAdapter[+T](
+      col: GenIterable[T]) extends js.Iterable[T] {
     @JSName(js.Symbol.iterator)
     final def jsIterator(): js.Iterator[T] = col.iterator.toJSIterator
   }
@@ -136,7 +137,7 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
   }
 
   implicit final class JSRichSet[T](
-     private val self: GenSet[T]) extends AnyVal {
+      private val self: GenSet[T]) extends AnyVal {
 
     @inline final def toJSSet: js.Set[T] = {
       val result = js.Set.empty[T]
@@ -151,7 +152,8 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
     new JSRichGenTraversableOnce(coll)
 
   @inline
-  implicit def JSRichFutureThenable[A](f: Future[js.Thenable[A]]): JSRichFuture[A] =
+  implicit def JSRichFutureThenable[A](
+      f: Future[js.Thenable[A]]): JSRichFuture[A] =
     new JSRichFuture[A](f)
 
   // For access in JSConvertersLowPrioImplicits
@@ -176,7 +178,8 @@ object JSConverters extends js.JSConvertersLowPrioImplicits {
      */
     def toJSPromise(implicit ec: ExecutionContext): js.Promise[A] = {
       new js.Promise[A]({
-        (resolve: js.Function1[A | js.Thenable[A], _], reject: js.Function1[scala.Any, _]) =>
+        (resolve: js.Function1[A | js.Thenable[A], _],
+            reject: js.Function1[scala.Any, _]) =>
           self onComplete {
             case scala.util.Success(value) =>
               resolve(value)

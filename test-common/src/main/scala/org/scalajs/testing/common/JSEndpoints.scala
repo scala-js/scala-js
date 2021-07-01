@@ -15,7 +15,8 @@ package org.scalajs.testing.common
 import sbt.testing.TaskDef
 
 private[testing] object JSEndpoints {
-  val detectFrameworks: RPCEndpoint.EP[List[List[String]], List[Option[FrameworkInfo]]] =
+  val detectFrameworks: RPCEndpoint.EP[List[List[String]],
+      List[Option[FrameworkInfo]]] =
     RPCEndpoint[List[List[String]], List[Option[FrameworkInfo]]](2)
 
   val createControllerRunner: RPCEndpoint.EP[RunnerArgs, Unit] =

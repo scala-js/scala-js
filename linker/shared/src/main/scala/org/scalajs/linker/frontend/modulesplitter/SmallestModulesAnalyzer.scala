@@ -24,7 +24,8 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
  *  In practice, this means it generates a module per strongly connected
  *  component of the (static) dependency graph.
  */
-private[modulesplitter] final class SmallestModulesAnalyzer extends ModuleAnalyzer {
+private[modulesplitter] final class SmallestModulesAnalyzer
+    extends ModuleAnalyzer {
   def analyze(info: ModuleAnalyzer.DependencyInfo): ModuleAnalyzer.Analysis = {
     val run = new SmallestModulesAnalyzer.Run(info)
     run.analyze()
@@ -38,14 +39,16 @@ private[modulesplitter] object SmallestModulesAnalyzer {
       extends StrongConnect(info) with ModuleAnalyzer.Analysis {
 
     private val internalModIDGenerator =
-      new InternalModuleIDGenerator.ForClassNames(info.publicModuleDependencies.keys)
+      new InternalModuleIDGenerator.ForClassNames(
+          info.publicModuleDependencies.keys)
 
     private[this] val moduleIndexToID = mutable.Map.empty[Int, ModuleID]
 
     def moduleForClass(className: ClassName): Option[ModuleID] =
       moduleIndex(className).map(moduleIndexToID)
 
-    protected def emitModule(moduleIndex: Int, classNames: List[ClassName]): Unit = {
+    protected def emitModule(moduleIndex: Int,
+        classNames: List[ClassName]): Unit = {
       val repr = internalModIDGenerator.representativeClass(classNames)
       val id = internalModIDGenerator.forClassName(repr)
       moduleIndexToID(moduleIndex) = id

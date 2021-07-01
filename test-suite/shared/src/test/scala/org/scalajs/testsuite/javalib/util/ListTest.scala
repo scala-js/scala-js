@@ -225,7 +225,8 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
 
     val result = coll.toArray()
     assertSame(classOf[Array[AnyRef]], result.getClass())
-    assertArrayEquals(Array[AnyRef]("one", "two", "three", "four", "five"), result)
+    assertArrayEquals(
+        Array[AnyRef]("one", "two", "three", "four", "five"), result)
   }
 
   @Test def toArraySpecificForList(): Unit = {
@@ -251,7 +252,8 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     val result3 = coll.toArray(arrayString7)
     assertSame(arrayString7, result3)
     assertSame(classOf[Array[String]], result3.getClass())
-    assertArrayEquals(Array[AnyRef]("one", "two", "three", "four", "five", null, "bar"),
+    assertArrayEquals(
+        Array[AnyRef]("one", "two", "three", "four", "five", null, "bar"),
         result3.asInstanceOf[Array[AnyRef]])
   }
 
@@ -524,7 +526,8 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     testSortWithComparator[jl.Double](_.toDouble, (x, y) => x.compareTo(y))
   }
 
-  private def testSortWithNaturalOrdering[T <: AnyRef with Comparable[T]: ClassTag](
+  private def testSortWithNaturalOrdering[
+      T <: AnyRef with Comparable[T]: ClassTag](
       toElem: Int => T, absoluteOrder: Boolean = true): Unit = {
 
     val list = factory.empty[T]

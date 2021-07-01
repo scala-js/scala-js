@@ -43,7 +43,8 @@ class EmitterTest {
 
     val t = "\t"
     val gClef = "\uD834\uDD1E"
-    val header = s"""
+    val header =
+      s"""
       |#!/usr/bin/env node
       |// foo
       |  $t
@@ -102,7 +103,8 @@ class EmitterTest {
       report <- linker.link(javalib ++ classDefsFiles,
           MainTestModuleInitializers, MemOutputDirectory(), logger)
     } yield {
-      logger.allLogLines.assertNotContains(EmitterSetOfDangerousGlobalRefsChangedMessage)
+      logger.allLogLines.assertNotContains(
+          EmitterSetOfDangerousGlobalRefsChangedMessage)
     }
   }
 
@@ -126,7 +128,8 @@ class EmitterTest {
       report <- linker.link(javalib ++ classDefsFiles,
           MainTestModuleInitializers, MemOutputDirectory(), logger)
     } yield {
-      logger.allLogLines.assertContains(EmitterSetOfDangerousGlobalRefsChangedMessage)
+      logger.allLogLines.assertContains(
+          EmitterSetOfDangerousGlobalRefsChangedMessage)
     }
   }
 
@@ -173,38 +176,48 @@ class EmitterTest {
       // Class tree caches
 
       val Seq(classCacheReused1, classCacheInvalidated1) =
-        lines1.assertContainsMatch(EmitterClassTreeCacheStatsMessage).map(_.toInt)
+        lines1.assertContainsMatch(EmitterClassTreeCacheStatsMessage).map(
+            _.toInt)
 
       val Seq(classCacheReused2, classCacheInvalidated2) =
-        lines2.assertContainsMatch(EmitterClassTreeCacheStatsMessage).map(_.toInt)
+        lines2.assertContainsMatch(EmitterClassTreeCacheStatsMessage).map(
+            _.toInt)
 
       // As of the latest update to this test, classCacheInvalidated1 reports 46
       assertTrue(
           s"Not enough invalidated class caches (got $classCacheInvalidated1); extraction must have gone wrong",
           classCacheInvalidated1 > 40)
 
-      assertEquals("First run must not reuse any class cache", 0, classCacheReused1)
+      assertEquals(
+          "First run must not reuse any class cache", 0, classCacheReused1)
 
-      assertEquals("Second run must reuse all class caches", classCacheReused2, classCacheInvalidated1)
-      assertEquals("Second run must not invalidate any class cache", 0, classCacheInvalidated2)
+      assertEquals("Second run must reuse all class caches", classCacheReused2,
+          classCacheInvalidated1)
+      assertEquals("Second run must not invalidate any class cache", 0,
+          classCacheInvalidated2)
 
       // Method tree caches
 
       val Seq(methodCacheReused1, methodCacheInvalidated1) =
-        lines1.assertContainsMatch(EmitterMethodTreeCacheStatsMessage).map(_.toInt)
+        lines1.assertContainsMatch(EmitterMethodTreeCacheStatsMessage).map(
+            _.toInt)
 
       val Seq(methodCacheReused2, methodCacheInvalidated2) =
-        lines2.assertContainsMatch(EmitterMethodTreeCacheStatsMessage).map(_.toInt)
+        lines2.assertContainsMatch(EmitterMethodTreeCacheStatsMessage).map(
+            _.toInt)
 
       // As of the latest update to this test, methodCacheInvalidated1 reports 100
       assertTrue(
           s"Not enough invalidated method caches (got $methodCacheInvalidated1); extraction must have gone wrong",
           methodCacheInvalidated1 > 95)
 
-      assertEquals("First run must not reuse any method cache", 0, methodCacheReused1)
+      assertEquals(
+          "First run must not reuse any method cache", 0, methodCacheReused1)
 
-      assertEquals("Second run must reuse all method caches", methodCacheReused2, methodCacheInvalidated1)
-      assertEquals("Second run must not invalidate any method cache", 0, methodCacheInvalidated2)
+      assertEquals("Second run must reuse all method caches", methodCacheReused2,
+          methodCacheInvalidated1)
+      assertEquals("Second run must not invalidate any method cache", 0,
+          methodCacheInvalidated2)
 
       // Pre prints
 

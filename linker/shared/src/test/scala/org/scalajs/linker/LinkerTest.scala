@@ -37,9 +37,9 @@ class LinkerTest {
   import scala.concurrent.ExecutionContext.Implicits.global
 
   val helloWorldClassDefs = Seq(
-      mainTestClassDef({
-        consoleLog(str("Hello world!"))
-      })
+    mainTestClassDef({
+      consoleLog(str("Hello world!"))
+    })
   )
 
   /** Makes sure that the minilib is sufficient to completely link a hello
@@ -72,7 +72,8 @@ class LinkerTest {
           output = outputDirectory)
     } yield {
       assertFalse(outputDirectory.content(staleFileName).isDefined)
-      assertTrue(outputDirectory.content(report.publicModules.head.jsFileName).isDefined)
+      assertTrue(outputDirectory.content(
+          report.publicModules.head.jsFileName).isDefined)
     }
   }
 
@@ -137,13 +138,15 @@ class LinkerTest {
       val jsContent = new String(jsOutput.content, StandardCharsets.UTF_8)
 
       // Check we replaced the source map reference.
-      assertTrue(jsContent.contains("\n//# sourceMappingURL=http://example.org/my-source-map-uri\n"))
+      assertTrue(jsContent.contains(
+          "\n//# sourceMappingURL=http://example.org/my-source-map-uri\n"))
       assertFalse(jsContent.contains("//# sourceMappingURL=main.js.map"))
 
       val smContent = new String(smOutput.content, StandardCharsets.UTF_8)
 
       // Check we replaced the js file reference.
-      assertTrue(smContent.contains(""""file": "http://example.org/my-js-file-uri""""))
+      assertTrue(
+          smContent.contains(""""file": "http://example.org/my-js-file-uri""""))
       assertFalse(smContent.contains("main.js"))
     }
   }

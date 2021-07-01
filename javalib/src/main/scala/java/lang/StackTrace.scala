@@ -61,7 +61,8 @@ private[lang] object StackTrace {
        * prototypes.
        */
       reference
-    } else if ((js.constructorOf[js.Error].captureStackTrace eq ().asInstanceOf[AnyRef]) ||
+    } else if ((js.constructorOf[js.Error].captureStackTrace eq ().asInstanceOf[
+            AnyRef]) ||
         js.Object.isSealed(throwable.asInstanceOf[js.Object])) {
       /* If `captureStackTrace` is not available, or if the `throwable` instance
        * is sealed (which notably happens on Wasm), create a JS `Error` with the
@@ -177,10 +178,14 @@ private[lang] object StackTrace {
    *    javalanglib.
    */
   private def extractClassMethod(functionName: String): js.Array[String] = {
-    val PatBC = """^(?:Object\.|\[object Object\]\.|Module\.)?\$[bc]_([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
-    val PatS = """^(?:Object\.|\[object Object\]\.|Module\.)?\$(?:ps?|s|f)_((?:_[^_]|[^_])+)__([^\.]+)$""".re
-    val PatCT = """^(?:Object\.|\[object Object\]\.|Module\.)?\$ct_((?:_[^_]|[^_])+)__([^\.]*)$""".re
-    val PatN = """^new (?:Object\.|\[object Object\]\.|Module\.)?\$c_([^\.]+)$""".re
+    val PatBC =
+      """^(?:Object\.|\[object Object\]\.|Module\.)?\$[bc]_([^\.]+)(?:\.prototype)?\.([^\.]+)$""".re
+    val PatS =
+      """^(?:Object\.|\[object Object\]\.|Module\.)?\$(?:ps?|s|f)_((?:_[^_]|[^_])+)__([^\.]+)$""".re
+    val PatCT =
+      """^(?:Object\.|\[object Object\]\.|Module\.)?\$ct_((?:_[^_]|[^_])+)__([^\.]*)$""".re
+    val PatN =
+      """^new (?:Object\.|\[object Object\]\.|Module\.)?\$c_([^\.]+)$""".re
     val PatM = """^(?:Object\.|\[object Object\]\.|Module\.)?\$m_([^\.]+)$""".re
 
     val matchBC = PatBC.exec(functionName)
@@ -192,11 +197,13 @@ private[lang] object StackTrace {
       val matchCT = PatCT.exec(functionName)
       val matchCTOrN = if (matchCT ne null) matchCT else PatN.exec(functionName)
       if (matchCTOrN ne null) {
-        js.Array[String](decodeClassName(undefOrForceGet(matchCTOrN(1))), "<init>")
+        js.Array[String](
+            decodeClassName(undefOrForceGet(matchCTOrN(1))), "<init>")
       } else {
         val matchM = PatM.exec(functionName)
         if (matchM ne null) {
-          js.Array[String](decodeClassName(undefOrForceGet(matchM(1))), "<clinit>")
+          js.Array[String](
+              decodeClassName(undefOrForceGet(matchM(1))), "<clinit>")
         } else {
           js.Array[String]("<jscode>", functionName)
         }
@@ -215,9 +222,10 @@ private[lang] object StackTrace {
         if (i < compressedPrefixes.length) {
           val prefix = compressedPrefixes(i)
           if (encodedName.startsWith(prefix))
-            dictRawApply(decompressedPrefixes, prefix) + encodedName.jsSubstring(prefix.length)
+            dictRawApply(decompressedPrefixes, prefix) + encodedName.jsSubstring(
+                prefix.length)
           else
-            loop(i+1)
+            loop(i + 1)
         } else {
           // no prefix matches
           if (encodedName.startsWith("L")) encodedName.jsSubstring(1)
@@ -344,7 +352,8 @@ private[lang] object StackTrace {
       .jsReplace("""^[\s\S]+?\s+at\s+""".re, " at ") // remove message
       .jsReplace("""^\s+(at eval )?at\s+""".re("gm"), "") // remove 'at' and indentation
       .jsReplace("""^([^\(]+?)([\n])""".re("gm"), "{anonymous}() ($1)$2") // see note
-      .jsReplace("""^Object.<anonymous>\s*\(([^\)]+)\)""".re("gm"), "{anonymous}() ($1)")
+      .jsReplace("""^Object.<anonymous>\s*\(([^\)]+)\)""".re("gm"),
+          "{anonymous}() ($1)")
       .jsReplace("""^([^\(]+|\{anonymous\}\(\)) \((.+)\)$""".re("gm"), "$1@$2")
       .jsSplit("\n")
       .jsSlice(0, -1)
@@ -393,7 +402,7 @@ private[lang] object StackTrace {
         result.push(
             "{anonymous}()@" + undefOrForceGet(mtch(2)) + ":" +
             undefOrForceGet(mtch(1))
-            /* + " -- " + lines(i+1).replace("""^\s+""".re, "") */)
+            /* + " -- " + lines(i+1).replace("""^\s+""".re, "") */ )
       }
       i += 2
     }
@@ -404,7 +413,8 @@ private[lang] object StackTrace {
   private def extractOpera10a(e: js.Dynamic): js.Array[String] = {
     // "  Line 27 of linked script file://localhost/G:/js/stacktrace.js\n"
     // "  Line 11 of inline#1 script in file://localhost/G:/js/test/functional/testcase1.html: In function foo\n"
-    val lineRE = """Line (\d+).*script (?:in )?(\S+)(?:: In function (\S+))?$""".re("i")
+    val lineRE =
+      """Line (\d+).*script (?:in )?(\S+)(?:: In function (\S+))?$""".re("i")
     val lines = (e.stacktrace.asInstanceOf[String]).jsSplit("\n")
     val result = new js.Array[String]
 
@@ -417,7 +427,7 @@ private[lang] object StackTrace {
         result.push(
             fnName + "()@" + undefOrForceGet(mtch(2)) + ":" +
             undefOrForceGet(mtch(1))
-            /* + " -- " + lines(i+1).replace("""^\s+""".re, "")*/)
+            /* + " -- " + lines(i+1).replace("""^\s+""".re, "")*/ )
       }
       i += 2
     }
@@ -439,7 +449,8 @@ private[lang] object StackTrace {
       val mtch = lineRE.exec(lines(i))
       if (mtch ne null) {
         val fnName = undefOrFold(mtch(1))(() => "global code")(_ + "()")
-        result.push(fnName + "@" + undefOrForceGet(mtch(2)) + ":" + undefOrForceGet(mtch(3)))
+        result.push(fnName + "@" + undefOrForceGet(
+            mtch(2)) + ":" + undefOrForceGet(mtch(3)))
       }
       i += 1
     }
@@ -457,13 +468,14 @@ private[lang] object StackTrace {
     while (i < len) {
       val mtch = lineRE.exec(lines(i))
       if (mtch ne null) {
-        val location = undefOrForceGet(mtch(4)) + ":" + undefOrForceGet(mtch(1)) + ":" + undefOrForceGet(mtch(2))
+        val location = undefOrForceGet(mtch(4)) + ":" + undefOrForceGet(
+            mtch(1)) + ":" + undefOrForceGet(mtch(2))
         val fnName0 = undefOrGetOrElse(mtch(2))(() => "global code")
         val fnName = fnName0
           .jsReplace("""<anonymous function: (\S+)>""".re, "$1")
           .jsReplace("""<anonymous function>""".re, "{anonymous}")
         result.push(fnName + "@" + location
-            /* + " -- " + lines(i+1).replace("""^\s+""".re, "")*/)
+        /* + " -- " + lines(i+1).replace("""^\s+""".re, "")*/ )
       }
       i += 2
     }

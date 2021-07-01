@@ -21,7 +21,8 @@ class SequencedCollectionTest {
 
   @Test def knownSequencedCollections(): Unit = {
     def test(expected: Boolean, testClass: Class[_]): Unit = {
-      assertEquals(expected, classOf[ju.SequencedCollection[_]].isAssignableFrom(testClass))
+      assertEquals(expected,
+          classOf[ju.SequencedCollection[_]].isAssignableFrom(testClass))
     }
 
     test(true, classOf[ju.List[String]])

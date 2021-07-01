@@ -40,7 +40,7 @@ object MathContext {
     checkNotNull(s, "null string")
     val precisionLength = "precision=".length
     val roundingModeLength = "roundingMode=".length
-    val spaceIndex= s.indexOf(' ', precisionLength)
+    val spaceIndex = s.indexOf(' ', precisionLength)
 
     if (!s.startsWith("precision=") || spaceIndex == -1)
       invalidMathContext("Missing precision", s)
@@ -55,7 +55,8 @@ object MathContext {
     }
 
     val roundingModeStrStart = spaceIndex + 1
-    if (!s.regionMatches(roundingModeStrStart, "roundingMode=", 0, roundingModeLength))
+    if (!s.regionMatches(
+            roundingModeStrStart, "roundingMode=", 0, roundingModeLength))
       invalidMathContext("Missing rounding mode", s)
 
     val roundingModeStart = roundingModeStrStart + roundingModeLength

@@ -60,7 +60,8 @@ object BufferAdapter {
     def put(src: BufferType): BufferType = buffer.put(src)
     def put(src: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.put(src, offset, length)
-    def put(src: Array[ElementType])(implicit dummy: DummyImplicit): BufferType =
+    def put(src: Array[ElementType])(
+        implicit dummy: DummyImplicit): BufferType =
       buffer.put(src)
     def hasArray(): Boolean = buffer.hasArray()
     def array(): Array[ElementType] = buffer.array()
@@ -84,7 +85,8 @@ object BufferAdapter {
     def put(src: BufferType): BufferType = buffer.put(src)
     def put(src: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.put(src, offset, length)
-    def put(src: Array[ElementType])(implicit dummy: DummyImplicit): BufferType =
+    def put(src: Array[ElementType])(
+        implicit dummy: DummyImplicit): BufferType =
       buffer.put(src)
     def hasArray(): Boolean = buffer.hasArray()
     def array(): Array[ElementType] = buffer.array()
@@ -108,7 +110,8 @@ object BufferAdapter {
     def put(src: BufferType): BufferType = buffer.put(src)
     def put(src: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.put(src, offset, length)
-    def put(src: Array[ElementType])(implicit dummy: DummyImplicit): BufferType =
+    def put(src: Array[ElementType])(
+        implicit dummy: DummyImplicit): BufferType =
       buffer.put(src)
     def hasArray(): Boolean = buffer.hasArray()
     def array(): Array[ElementType] = buffer.array()
@@ -132,7 +135,8 @@ object BufferAdapter {
     def put(src: BufferType): BufferType = buffer.put(src)
     def put(src: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.put(src, offset, length)
-    def put(src: Array[ElementType])(implicit dummy: DummyImplicit): BufferType =
+    def put(src: Array[ElementType])(
+        implicit dummy: DummyImplicit): BufferType =
       buffer.put(src)
     def hasArray(): Boolean = buffer.hasArray()
     def array(): Array[ElementType] = buffer.array()
@@ -156,7 +160,8 @@ object BufferAdapter {
     def put(src: BufferType): BufferType = buffer.put(src)
     def put(src: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.put(src, offset, length)
-    def put(src: Array[ElementType])(implicit dummy: DummyImplicit): BufferType =
+    def put(src: Array[ElementType])(
+        implicit dummy: DummyImplicit): BufferType =
       buffer.put(src)
     def hasArray(): Boolean = buffer.hasArray()
     def array(): Array[ElementType] = buffer.array()
@@ -180,7 +185,8 @@ object BufferAdapter {
     def put(src: BufferType): BufferType = buffer.put(src)
     def put(src: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.put(src, offset, length)
-    def put(src: Array[ElementType])(implicit dummy: DummyImplicit): BufferType =
+    def put(src: Array[ElementType])(
+        implicit dummy: DummyImplicit): BufferType =
       buffer.put(src)
     def hasArray(): Boolean = buffer.hasArray()
     def array(): Array[ElementType] = buffer.array()
@@ -204,7 +210,8 @@ object BufferAdapter {
     def put(src: BufferType): BufferType = buffer.put(src)
     def put(src: Array[ElementType], offset: Int, length: Int): BufferType =
       buffer.put(src, offset, length)
-    def put(src: Array[ElementType])(implicit dummy: DummyImplicit): BufferType =
+    def put(src: Array[ElementType])(
+        implicit dummy: DummyImplicit): BufferType =
       buffer.put(src)
     def hasArray(): Boolean = buffer.hasArray()
     def array(): Array[ElementType] = buffer.array()

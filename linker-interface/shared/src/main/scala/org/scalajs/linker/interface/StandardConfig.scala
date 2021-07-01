@@ -162,7 +162,8 @@ final class StandardConfig private (
   def withSourceMap(sourceMap: Boolean): StandardConfig =
     copy(sourceMap = sourceMap)
 
-  def withRelativizeSourceMapBase(relativizeSourceMapBase: Option[URI]): StandardConfig =
+  def withRelativizeSourceMapBase(
+      relativizeSourceMapBase: Option[URI]): StandardConfig =
     copy(relativizeSourceMapBase = relativizeSourceMapBase)
 
   def withOutputPatterns(outputPatterns: OutputPatterns): StandardConfig =
@@ -174,7 +175,8 @@ final class StandardConfig private (
   def withMinify(minify: Boolean): StandardConfig =
     copy(minify = minify)
 
-  def withClosureCompilerIfAvailable(closureCompilerIfAvailable: Boolean): StandardConfig =
+  def withClosureCompilerIfAvailable(
+      closureCompilerIfAvailable: Boolean): StandardConfig =
     copy(closureCompilerIfAvailable = closureCompilerIfAvailable)
 
   def withPrettyPrint(prettyPrint: Boolean): StandardConfig =
@@ -214,7 +216,8 @@ final class StandardConfig private (
    *  @throws java.lang.UnsupportedOperationException
    *    In the future, if the feature gets removed.
    */
-  def withExperimentalUseWebAssembly(experimentalUseWebAssembly: Boolean): StandardConfig =
+  def withExperimentalUseWebAssembly(
+      experimentalUseWebAssembly: Boolean): StandardConfig =
     copy(experimentalUseWebAssembly = experimentalUseWebAssembly)
 
   override def toString(): String = {
@@ -306,7 +309,8 @@ object StandardConfig {
         .addField("prettyPrint", config.prettyPrint)
         .addField("batchMode", config.batchMode)
         .addField("maxConcurrentWrites", config.maxConcurrentWrites)
-        .addField("experimentalUseWebAssembly", config.experimentalUseWebAssembly)
+        .addField(
+            "experimentalUseWebAssembly", config.experimentalUseWebAssembly)
         .build()
     }
   }
@@ -364,7 +368,7 @@ object StandardConfig {
     while (i != len) {
       def isNewLine(c: Char): Boolean = (c: @switch) match {
         case '\u000B' | '\u000C' | '\r' | '\u0085' | '\u2028' | '\u2029' => true
-        case _                                                           => false
+        case _ => false
       }
 
       val cp = jsHeader.codePointAt(i)

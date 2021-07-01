@@ -36,7 +36,8 @@ class ReflectArrayTest {
   }
 
   @noinline
-  private def testNewInstanceNoInline(clazz: Class[_], length: Int, expectedClazz: Class[_],
+  private def testNewInstanceNoInline(clazz: Class[_], length: Int,
+      expectedClazz: Class[_],
       sampleElem: Any): Unit = {
     testBase(clazz, length, expectedClazz, sampleElem)
   }
@@ -62,8 +63,10 @@ class ReflectArrayTest {
     testNewInstance(classOf[Object], classOf[Array[Object]], null)
     testNewInstance(classOf[String], classOf[Array[String]], null)
 
-    testNewInstance(classOf[java.lang.Integer], classOf[Array[java.lang.Integer]], null)
-    testNewInstance(classOf[java.lang.Long], classOf[Array[java.lang.Long]], null)
+    testNewInstance(
+        classOf[java.lang.Integer], classOf[Array[java.lang.Integer]], null)
+    testNewInstance(
+        classOf[java.lang.Long], classOf[Array[java.lang.Long]], null)
 
     testNewInstance(classOf[Array[Object]], classOf[Array[Array[Object]]], null)
     testNewInstance(classOf[Array[Int]], classOf[Array[Array[Int]]], null)
@@ -73,50 +76,79 @@ class ReflectArrayTest {
   @Test def newInstanceNegativeArraySize(): Unit = {
     import java.lang.{reflect => jlr}
 
-    assumeTrue("Assuming compliant negative array sizes", hasCompliantNegativeArraySizes)
+    assumeTrue("Assuming compliant negative array sizes",
+        hasCompliantNegativeArraySizes)
 
-    assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[Int], -5))
-    assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[Boolean], -5))
-    assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[AnyRef], -5))
-    assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[String], -5))
-    assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[Array[AnyRef]], -5))
+    assertThrows(classOf[NegativeArraySizeException],
+        jlr.Array.newInstance(classOf[Int], -5))
+    assertThrows(classOf[NegativeArraySizeException],
+        jlr.Array.newInstance(classOf[Boolean], -5))
+    assertThrows(classOf[NegativeArraySizeException],
+        jlr.Array.newInstance(classOf[AnyRef], -5))
+    assertThrows(classOf[NegativeArraySizeException],
+        jlr.Array.newInstance(classOf[String], -5))
+    assertThrows(classOf[NegativeArraySizeException],
+        jlr.Array.newInstance(classOf[Array[AnyRef]], -5))
 
-    assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[Int], -5, 5))
-    assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[Boolean], -5, 5))
-    assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[AnyRef], -5, 5))
-    assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[String], -5, 5))
-    assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[Array[AnyRef]], -5, 5))
+    assertThrows(classOf[NegativeArraySizeException],
+        jlr.Array.newInstance(classOf[Int], -5, 5))
+    assertThrows(classOf[NegativeArraySizeException],
+        jlr.Array.newInstance(classOf[Boolean], -5, 5))
+    assertThrows(classOf[NegativeArraySizeException],
+        jlr.Array.newInstance(classOf[AnyRef], -5, 5))
+    assertThrows(classOf[NegativeArraySizeException],
+        jlr.Array.newInstance(classOf[String], -5, 5))
+    assertThrows(classOf[NegativeArraySizeException],
+        jlr.Array.newInstance(classOf[Array[AnyRef]], -5, 5))
 
-    assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[Int], 5, -5))
-    assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[Boolean], 5, -5))
-    assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[AnyRef], 5, -5))
-    assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[String], 5, -5))
-    assertThrows(classOf[NegativeArraySizeException], jlr.Array.newInstance(classOf[Array[AnyRef]], 5, -5))
+    assertThrows(classOf[NegativeArraySizeException],
+        jlr.Array.newInstance(classOf[Int], 5, -5))
+    assertThrows(classOf[NegativeArraySizeException],
+        jlr.Array.newInstance(classOf[Boolean], 5, -5))
+    assertThrows(classOf[NegativeArraySizeException],
+        jlr.Array.newInstance(classOf[AnyRef], 5, -5))
+    assertThrows(classOf[NegativeArraySizeException],
+        jlr.Array.newInstance(classOf[String], 5, -5))
+    assertThrows(classOf[NegativeArraySizeException],
+        jlr.Array.newInstance(classOf[Array[AnyRef]], 5, -5))
   }
 
   @Test def newInstanceIllegalArgument(): Unit = {
     import java.lang.{reflect => jlr}
 
-    assertThrows(classOf[IllegalArgumentException], jlr.Array.newInstance(classOf[Unit], 0))
-    assertThrows(classOf[IllegalArgumentException], jlr.Array.newInstance(classOf[Unit], 5))
+    assertThrows(classOf[IllegalArgumentException],
+        jlr.Array.newInstance(classOf[Unit], 0))
+    assertThrows(classOf[IllegalArgumentException],
+        jlr.Array.newInstance(classOf[Unit], 5))
 
-    assertThrows(classOf[IllegalArgumentException], jlr.Array.newInstance(classOf[Unit]))
-    assertThrows(classOf[IllegalArgumentException], jlr.Array.newInstance(classOf[Unit], 1, 1))
+    assertThrows(
+        classOf[IllegalArgumentException], jlr.Array.newInstance(classOf[Unit]))
+    assertThrows(classOf[IllegalArgumentException],
+        jlr.Array.newInstance(classOf[Unit], 1, 1))
 
-    assertThrows(classOf[IllegalArgumentException], jlr.Array.newInstance(classOf[Unit]))
-    assertThrows(classOf[IllegalArgumentException], jlr.Array.newInstance(classOf[Int]))
-    assertThrows(classOf[IllegalArgumentException], jlr.Array.newInstance(classOf[AnyRef]))
-    assertThrows(classOf[IllegalArgumentException], jlr.Array.newInstance(classOf[Array[Int]]))
-    assertThrows(classOf[IllegalArgumentException], jlr.Array.newInstance(classOf[Array[String]]))
+    assertThrows(
+        classOf[IllegalArgumentException], jlr.Array.newInstance(classOf[Unit]))
+    assertThrows(
+        classOf[IllegalArgumentException], jlr.Array.newInstance(classOf[Int]))
+    assertThrows(
+        classOf[IllegalArgumentException], jlr.Array.newInstance(classOf[AnyRef]))
+    assertThrows(classOf[IllegalArgumentException],
+        jlr.Array.newInstance(classOf[Array[Int]]))
+    assertThrows(classOf[IllegalArgumentException],
+        jlr.Array.newInstance(classOf[Array[String]]))
   }
 
   @Test def newInstanceNegativeArraySizeOrIllegalArgument(): Unit = {
     import java.lang.{reflect => jlr}
 
-    assumeTrue("Assuming compliant negative array sizes", hasCompliantNegativeArraySizes)
+    assumeTrue("Assuming compliant negative array sizes",
+        hasCompliantNegativeArraySizes)
 
-    assertThrows(classOf[RuntimeException], jlr.Array.newInstance(classOf[Unit], -3))
-    assertThrows(classOf[RuntimeException], jlr.Array.newInstance(classOf[Unit], -3, 1))
-    assertThrows(classOf[RuntimeException], jlr.Array.newInstance(classOf[Unit], 3, -1))
+    assertThrows(
+        classOf[RuntimeException], jlr.Array.newInstance(classOf[Unit], -3))
+    assertThrows(
+        classOf[RuntimeException], jlr.Array.newInstance(classOf[Unit], -3, 1))
+    assertThrows(
+        classOf[RuntimeException], jlr.Array.newInstance(classOf[Unit], 3, -1))
   }
 }

@@ -23,6 +23,7 @@ import org.scalajs.linker.interface.unstable.OutputDirectoryImpl
 
 /** OutputDirectory that simply writes to memory. */
 sealed trait MemOutputDirectory extends OutputDirectory {
+
   /** Content of the file with `name` or `None` if the file was not written. */
   def content(name: String): Option[Array[Byte]]
 
@@ -62,11 +63,13 @@ object MemOutputDirectory {
       }
     }
 
-    def listFiles()(implicit ec: ExecutionContext): Future[List[String]] = synchronized {
+    def listFiles()(
+        implicit ec: ExecutionContext): Future[List[String]] = synchronized {
       Future.successful(fileNames())
     }
 
-    def delete(name: String)(implicit ec: ExecutionContext): Future[Unit] = synchronized {
+    def delete(name: String)(
+        implicit ec: ExecutionContext): Future[Unit] = synchronized {
       if (_content.remove(name).isDefined)
         Future.successful(())
       else

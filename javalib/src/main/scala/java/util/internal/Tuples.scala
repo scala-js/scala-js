@@ -19,8 +19,10 @@ final class Tuple2[+T1, +T2](val _1: T1, val _2: T2)
 final class Tuple3[+T1, +T2, +T3](val _1: T1, val _2: T2, val _3: T3)
 
 @inline
-final class Tuple4[+T1, +T2, +T3, +T4](val _1: T1, val _2: T2, val _3: T3, val _4: T4)
+final class Tuple4[+T1, +T2, +T3, +T4](val _1: T1, val _2: T2, val _3: T3,
+    val _4: T4)
 
 @inline
 final class Tuple8[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8](
-    val _1: T1, val _2: T2, val _3: T3, val _4: T4, val _5: T5, val _6: T6, val _7: T7, val _8: T8)
+    val _1: T1, val _2: T2, val _3: T3, val _4: T4, val _5: T5, val _6: T6,
+    val _7: T7, val _8: T8)

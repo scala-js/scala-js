@@ -63,7 +63,7 @@ final class TestSelector(_testName: String) extends Selector with Serializable {
 
   override def equals(that: Any): Boolean = that match {
     case that: TestSelector => this.testName() == that.testName()
-    case _ => false
+    case _                  => false
   }
 
   override def hashCode(): Int = testName().hashCode()
@@ -73,7 +73,8 @@ final class TestSelector(_testName: String) extends Selector with Serializable {
 /** Information in addition to a test class name that identifies a nested suite
  *  about which an event was fired.
  */
-final class NestedSuiteSelector(_suiteId: String) extends Selector with Serializable {
+final class NestedSuiteSelector(_suiteId: String) extends Selector
+    with Serializable {
 
   if (_suiteId == null)
     throw new NullPointerException("suiteId was null");
@@ -87,7 +88,7 @@ final class NestedSuiteSelector(_suiteId: String) extends Selector with Serializ
 
   override def equals(that: Any): Boolean = that match {
     case that: NestedSuiteSelector => this.suiteId() == that.suiteId()
-    case _ => false
+    case _                         => false
   }
 
   override def hashCode(): Int = suiteId().hashCode()

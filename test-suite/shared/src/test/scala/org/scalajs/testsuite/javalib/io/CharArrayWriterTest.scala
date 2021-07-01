@@ -18,7 +18,8 @@ import org.junit.Test
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class CharArrayWriterTest {
-  private val hw: Array[Char] = Array('H', 'e', 'l', 'l', 'o', 'W', 'o', 'r', 'l', 'd')
+  private val hw: Array[Char] =
+    Array('H', 'e', 'l', 'l', 'o', 'W', 'o', 'r', 'l', 'd')
 
   private def withClose[T <: AutoCloseable](closeable: T)(fn: T => Unit): Unit = {
     fn(closeable)

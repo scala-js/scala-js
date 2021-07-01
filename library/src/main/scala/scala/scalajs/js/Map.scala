@@ -40,9 +40,9 @@ class Map[K, V]() extends js.Object with js.Iterable[js.Tuple2[K, V]] {
   def size: Int = js.native
 }
 
-
 /** Factory for [[js.Map]] instances. */
 object Map {
+
   /** Returns a new empty map */
   @inline def empty[K, V]: js.Map[K, V] = new Map[K, V]()
 

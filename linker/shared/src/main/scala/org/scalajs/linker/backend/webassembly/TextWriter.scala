@@ -29,20 +29,24 @@ private class TextWriter(module: Module) {
 
   private val typeNames: Map[TypeID, String] = {
     val nameGen = new FreshNameGenerator
-    module.types.flatMap(_.subTypes).map(st => st.id -> nameGen.genName(st.originalName)).toMap
+    module.types.flatMap(_.subTypes).map(st =>
+      st.id -> nameGen.genName(st.originalName)).toMap
   }
 
   private val dataNames: Map[DataID, String] = {
     val nameGen = new FreshNameGenerator
-    module.datas.map(data => data.id -> nameGen.genName(data.originalName)).toMap
+    module.datas.map(data =>
+      data.id -> nameGen.genName(data.originalName)).toMap
   }
 
   private val funcNames: Map[FunctionID, String] = {
     val nameGen = new FreshNameGenerator
     val importedFunctionNames = module.imports.collect {
-      case Import(_, _, ImportDesc.Func(id, origName, _)) => id -> nameGen.genName(origName)
+      case Import(_, _, ImportDesc.Func(id, origName, _)) =>
+        id -> nameGen.genName(origName)
     }
-    val definedFunctionNames = module.funcs.map(f => f.id -> nameGen.genName(f.originalName))
+    val definedFunctionNames = module.funcs.map(f =>
+      f.id -> nameGen.genName(f.originalName))
     (importedFunctionNames ::: definedFunctionNames).toMap
   }
 
@@ -52,16 +56,19 @@ private class TextWriter(module: Module) {
       case Import(_, _, ImportDesc.Tag(id, origName, _)) =>
         id -> nameGen.genName(origName)
     }
-    val definedTagNames = module.tags.map(t => t.id -> nameGen.genName(t.originalName))
+    val definedTagNames = module.tags.map(t =>
+      t.id -> nameGen.genName(t.originalName))
     (importedTagNames ::: definedTagNames).toMap
   }
 
   private val globalNames: Map[GlobalID, String] = {
     val nameGen = new FreshNameGenerator
     val importedGlobalNames = module.imports.collect {
-      case Import(_, _, ImportDesc.Global(id, origName, _, _)) => id -> nameGen.genName(origName)
+      case Import(_, _, ImportDesc.Global(id, origName, _, _)) =>
+        id -> nameGen.genName(origName)
     }
-    val definedGlobalNames = module.globals.map(g => g.id -> nameGen.genName(g.originalName))
+    val definedGlobalNames = module.globals.map(g =>
+      g.id -> nameGen.genName(g.originalName))
     (importedGlobalNames ::: definedGlobalNames).toMap
   }
 
@@ -245,7 +252,8 @@ private class TextWriter(module: Module) {
 
     localNames = {
       val nameGen = new FreshNameGenerator
-      Some((params ::: locals).map(l => l.id -> nameGen.genName(l.originalName)).toMap)
+      Some((params ::: locals).map(l =>
+        l.id -> nameGen.genName(l.originalName)).toMap)
     }
     labelNames = Some(mutable.HashMap.empty)
     labelNameGen = Some(new FreshNameGenerator)
@@ -337,7 +345,7 @@ private class TextWriter(module: Module) {
       appendName(id)
       mode match {
         case Data.Mode.Passive =>
-          // do nothing
+        // do nothing
       }
       b.appendElement("\"" + bytes.map("\\%02x".format(_)).mkString + "\"")
     }
@@ -392,7 +400,7 @@ private class TextWriter(module: Module) {
       case BlockType.FunctionType(typeID) =>
         writeTypeUse(typeID)
       case BlockType.ValueType(None) =>
-        // do nothing
+      // do nothing
       case BlockType.ValueType(Some(tpe)) =>
         b.sameLineList("result")(writeType(tpe))
     }
@@ -407,7 +415,7 @@ private class TextWriter(module: Module) {
   private def writeInstr(instr: Instr): Unit = {
     instr match {
       case PositionMark(_) =>
-        // ignore
+      // ignore
 
       case _ =>
         instr match {
@@ -423,14 +431,14 @@ private class TextWriter(module: Module) {
               appendName(label)
             }
           case _ =>
-            // do nothing
+          // do nothing
         }
 
         writeInstrImmediates(instr)
 
         instr match {
-          case _: StructuredLabeledInstr | Else => b.indent()
-          case _                                => // do nothing
+          case _:StructuredLabeledInstr | Else => b.indent()
+          case _                               => // do nothing
         }
     }
   }
@@ -440,7 +448,7 @@ private class TextWriter(module: Module) {
       // Convenience categories
 
       case instr: SimpleInstr =>
-        // do nothing
+      // do nothing
       case instr: BlockTypeLabeledInstr =>
         writeBlockType(instr.blockTypeArgument)
       case instr: LabelInstr =>
@@ -522,7 +530,8 @@ object TextWriter {
 
     def genName(originalName: OriginalName): String = {
       val base =
-        if (originalName.isDefined) "$" + sanitizeWatIdentifier(originalName.get.toString())
+        if (originalName.isDefined)
+          "$" + sanitizeWatIdentifier(originalName.get.toString())
         else "$"
       if (originalName.isDefined && generated.add(base)) {
         base
@@ -595,8 +604,9 @@ object TextWriter {
         str.charAt(i) match {
           case '"'                        => builder.append("\\\"")
           case '\\'                       => builder.append("\\\\")
-          case c if c < 0x20 || c == 0x7f => builder.append("\\%02x".format(c.toInt))
-          case c                          => builder.append(c)
+          case c if c < 0x20 || c == 0x7f =>
+            builder.append("\\%02x".format(c.toInt))
+          case c => builder.append(c)
         }
         i += 1
       }

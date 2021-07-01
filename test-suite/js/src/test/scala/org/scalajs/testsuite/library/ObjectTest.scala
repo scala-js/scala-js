@@ -17,7 +17,7 @@ import org.junit.Assume._
 import org.junit.Test
 
 import scala.scalajs.js
-import scala.scalajs.js.annotation.{ JSBracketAccess, JSName }
+import scala.scalajs.js.annotation.{JSBracketAccess, JSName}
 import scala.scalajs.LinkingInfo.ESVersion
 
 import org.scalajs.testsuite.utils.Platform._

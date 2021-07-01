@@ -179,8 +179,8 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
     }
 
     clazz.isLocalToBlock &&
-    !clazz.isTrait && clazz.hasAnnotation(JSTypeAnnot) &&
-    !isJSLambda
+        !clazz.isTrait && clazz.hasAnnotation(JSTypeAnnot) &&
+        !isJSLambda
   }
 
   class ExplicitLocalJSTransformer(unit: CompilationUnit)
@@ -212,7 +212,8 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
           for (decl <- decls) {
             decl match {
               case ClassDef(_, _, _, impl)
-                  if decl.symbol.isModuleClass && isInnerJSClassOrObject(decl.symbol) =>
+                  if decl.symbol.isModuleClass && isInnerJSClassOrObject(
+                      decl.symbol) =>
                 nestedObject2superClassTpe(decl.symbol) =
                   extractSuperTpeFromImpl(impl)
               case _ =>
@@ -225,10 +226,12 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
           val newStats = mutable.ListBuffer.empty[Tree]
           for (stat <- stats) {
             stat match {
-              case ClassDef(mods, name, tparams, impl) if isLocalJSClass(stat.symbol) =>
+              case ClassDef(mods, name, tparams, impl)
+                  if isLocalJSClass(stat.symbol) =>
                 val clazz = stat.symbol
                 val jsclassVal = currentOwner
-                  .newValue(unit.freshTermName(name.toString() + "$jsname"), stat.pos)
+                  .newValue(
+                      unit.freshTermName(name.toString() + "$jsname"), stat.pos)
                   .setInfo(AnyRefTpe)
                 localClass2jsclassVal(clazz) = jsclassVal
                 notYetSelfReferencingLocalClasses += clazz

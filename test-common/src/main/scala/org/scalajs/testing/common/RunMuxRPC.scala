@@ -37,18 +37,22 @@ private[testing] final class RunMuxRPC(rpc: RPCCore) {
    *  Access to the outer map needs to synchronized.
    *  Access to the inner map only needs to be synchronize for writing.
    */
-  private[this] val mux = mutable.Map.empty[RPCCore.OpCode, ConcurrentHashMap[RunID, _]]
+  private[this] val mux =
+    mutable.Map.empty[RPCCore.OpCode, ConcurrentHashMap[RunID, _]]
 
-  def call[Req](ep: MuxRPCEndpoint[Req], runId: RunID)(req: Req): Future[ep.Resp] =
+  def call[Req](ep: MuxRPCEndpoint[Req], runId: RunID)(
+      req: Req): Future[ep.Resp] =
     rpc.call(ep)(new RunMux(runId, req))
 
   def send[Msg](ep: MuxMsgEndpoint[Msg], runId: RunID)(msg: Msg): Unit =
     rpc.send(ep)(new RunMux(runId, msg))
 
-  def attach[Msg](ep: MuxMsgEndpoint[Msg], runId: RunID)(ex: Msg => Unit): Unit =
+  def attach[Msg](ep: MuxMsgEndpoint[Msg], runId: RunID)(
+      ex: Msg => Unit): Unit =
     attachMux(ep.opCode, runId, ex)(rpc.attach(ep))
 
-  def attach[Req](ep: MuxRPCEndpoint[Req], runId: RunID)(ex: Req => ep.Resp): Unit =
+  def attach[Req](ep: MuxRPCEndpoint[Req], runId: RunID)(
+      ex: Req => ep.Resp): Unit =
     attachAsync(ep, runId)(x => Future.fromTry(Try(ex(x))))
 
   def attachAsync[Req](ep: MuxRPCEndpoint[Req], runId: RunID)(
@@ -83,8 +87,9 @@ private[testing] final class RunMuxRPC(rpc: RPCCore) {
   def detach(ep: Endpoint, runId: RunID): Unit = synchronized {
     val opCode = ep.opCode
 
-    val dispatch = mux.getOrElse(opCode, throw new IllegalArgumentException(
-        s"No endpoint attached for opCode $opCode"))
+    val dispatch = mux.getOrElse(opCode,
+        throw new IllegalArgumentException(
+            s"No endpoint attached for opCode $opCode"))
 
     val old = dispatch.remove(runId)
     require(old != null, s"No endpoint attached for opCode $opCode run $runId")

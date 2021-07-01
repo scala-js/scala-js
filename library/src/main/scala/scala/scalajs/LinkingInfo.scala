@@ -300,6 +300,7 @@ object LinkingInfo {
 
   /** Constants for the value of `esVersion`. */
   object ESVersion {
+
     /** ECMAScrîpt 5.1. */
     final val ES5_1 = 5
 

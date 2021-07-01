@@ -19,15 +19,24 @@ import java.io.Serializable
 
 class SerializableTest {
   @Test def nonUnitBoxedClassesAreSerializable(): Unit = {
-    assertTrue("Boolean", classOf[Serializable].isAssignableFrom(classOf[java.lang.Boolean]))
-    assertTrue("Character", classOf[Serializable].isAssignableFrom(classOf[java.lang.Character]))
-    assertTrue("Byte", classOf[Serializable].isAssignableFrom(classOf[java.lang.Byte]))
-    assertTrue("Short", classOf[Serializable].isAssignableFrom(classOf[java.lang.Short]))
-    assertTrue("Integer", classOf[Serializable].isAssignableFrom(classOf[java.lang.Integer]))
-    assertTrue("Long", classOf[Serializable].isAssignableFrom(classOf[java.lang.Long]))
-    assertTrue("Float", classOf[Serializable].isAssignableFrom(classOf[java.lang.Float]))
-    assertTrue("Double", classOf[Serializable].isAssignableFrom(classOf[java.lang.Double]))
-    assertTrue("String", classOf[Serializable].isAssignableFrom(classOf[java.lang.String]))
+    assertTrue("Boolean",
+        classOf[Serializable].isAssignableFrom(classOf[java.lang.Boolean]))
+    assertTrue("Character",
+        classOf[Serializable].isAssignableFrom(classOf[java.lang.Character]))
+    assertTrue(
+        "Byte", classOf[Serializable].isAssignableFrom(classOf[java.lang.Byte]))
+    assertTrue(
+        "Short", classOf[Serializable].isAssignableFrom(classOf[java.lang.Short]))
+    assertTrue("Integer",
+        classOf[Serializable].isAssignableFrom(classOf[java.lang.Integer]))
+    assertTrue(
+        "Long", classOf[Serializable].isAssignableFrom(classOf[java.lang.Long]))
+    assertTrue(
+        "Float", classOf[Serializable].isAssignableFrom(classOf[java.lang.Float]))
+    assertTrue("Double",
+        classOf[Serializable].isAssignableFrom(classOf[java.lang.Double]))
+    assertTrue("String",
+        classOf[Serializable].isAssignableFrom(classOf[java.lang.String]))
   }
 
   @Test def nonUnitBoxedPrimitiveValuesAreSerializable(): Unit = {

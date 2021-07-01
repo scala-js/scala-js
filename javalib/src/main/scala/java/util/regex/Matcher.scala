@@ -88,7 +88,8 @@ final class Matcher private[regex] (
     appendReplacementGeneric(sb, replacement)
 
   @inline
-  private def appendReplacementGeneric(sb: Appendable, replacement: String): Matcher = {
+  private def appendReplacementGeneric(sb: Appendable,
+      replacement: String): Matcher = {
     sb.append(inputstr.substring(appendPos, start()))
 
     @inline def isDigit(c: Char) = c >= '0' && c <= '9'
@@ -246,10 +247,10 @@ final class Matcher private[regex] (
   // Other query state methods
 
   // Cannot be implemented (see #3454)
-  //def hitEnd(): Boolean
+  // def hitEnd(): Boolean
 
   // Similar difficulties as with hitEnd()
-  //def requireEnd(): Boolean
+  // def requireEnd(): Boolean
 
   // Region management
 
@@ -264,10 +265,10 @@ final class Matcher private[regex] (
   }
 
   def hasTransparentBounds(): Boolean = false
-  //def useTransparentBounds(b: Boolean): Matcher
+  // def useTransparentBounds(b: Boolean): Matcher
 
   def hasAnchoringBounds(): Boolean = true
-  //def useAnchoringBounds(b: Boolean): Matcher
+  // def useAnchoringBounds(b: Boolean): Matcher
 }
 
 object Matcher {
@@ -277,8 +278,8 @@ object Matcher {
     while (i < s.length) {
       val c = s.charAt(i)
       result += ((c: @switch) match {
-        case '\\' | '$' => "\\"+c
-        case _ => c
+        case '\\' | '$' => "\\" + c
+        case _          => c
       })
       i += 1
     }
@@ -303,10 +304,12 @@ object Matcher {
      */
 
     def start(group: Int): Int =
-      undefOrFold(indices(pattern.numberedGroup(group)))(() => -1)(_._1 + regionStart)
+      undefOrFold(indices(pattern.numberedGroup(group)))(() => -1)(
+          _._1 + regionStart)
 
     def end(group: Int): Int =
-      undefOrFold(indices(pattern.numberedGroup(group)))(() => -1)(_._2 + regionStart)
+      undefOrFold(indices(pattern.numberedGroup(group)))(() => -1)(
+          _._2 + regionStart)
 
     def group(group: Int): String =
       undefOrGetOrNull(ensureLastMatch(pattern.numberedGroup(group)))

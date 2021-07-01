@@ -61,7 +61,8 @@ object Transformers {
           If(transform(cond), transform(thenp), transform(elsep))(tree.tpe)
 
         case LinkTimeIf(cond, thenp, elsep) =>
-          LinkTimeIf(transform(cond), transform(thenp), transform(elsep))(tree.tpe)
+          LinkTimeIf(transform(cond), transform(thenp), transform(elsep))(
+              tree.tpe)
 
         case While(cond, body) =>
           While(transform(cond), transform(body))
@@ -191,7 +192,8 @@ object Transformers {
 
         // Atomic expressions
 
-        case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
+        case Closure(flags, captureParams, params, restParam, resultType, body,
+                captureValues) =>
           Closure(flags, captureParams, params, restParam, resultType,
               transform(body), transformTrees(captureValues))
 
@@ -219,7 +221,8 @@ object Transformers {
       ClassDef(name, originalName, kind, jsClassCaptures, superClass,
           interfaces, transformTreeOpt(jsSuperClass), jsNativeLoadSpec,
           fields.map(transformAnyFieldDef(_)),
-          methods.map(transformMethodDef), jsConstructor.map(transformJSConstructorDef),
+          methods.map(transformMethodDef),
+          jsConstructor.map(transformJSConstructorDef),
           jsMethodProps.map(transformJSMethodPropDef), jsNativeMembers,
           topLevelExportDefs.map(transformTopLevelExportDef))(
           tree.optimizerHints)(tree.pos)
@@ -229,19 +232,22 @@ object Transformers {
       fieldDef
 
     def transformMethodDef(methodDef: MethodDef): MethodDef = {
-      val MethodDef(flags, name, originalName, args, resultType, body) = methodDef
+      val MethodDef(flags, name, originalName, args, resultType, body) =
+        methodDef
       val newBody = transformTreeOpt(body)
       MethodDef(flags, name, originalName, args, resultType, newBody)(
           methodDef.optimizerHints, Unversioned)(methodDef.pos)
     }
 
-    def transformJSConstructorDef(jsConstructor: JSConstructorDef): JSConstructorDef = {
+    def transformJSConstructorDef(
+        jsConstructor: JSConstructorDef): JSConstructorDef = {
       val JSConstructorDef(flags, args, restParam, body) = jsConstructor
       JSConstructorDef(flags, args, restParam, transformJSConstructorBody(body))(
           jsConstructor.optimizerHints, Unversioned)(jsConstructor.pos)
     }
 
-    def transformJSMethodPropDef(jsMethodPropDef: JSMethodPropDef): JSMethodPropDef = {
+    def transformJSMethodPropDef(
+        jsMethodPropDef: JSMethodPropDef): JSMethodPropDef = {
       jsMethodPropDef match {
         case jsMethodDef: JSMethodDef =>
           transformJSMethodDef(jsMethodDef)
@@ -258,7 +264,8 @@ object Transformers {
     }
 
     def transformJSPropertyDef(jsPropertyDef: JSPropertyDef): JSPropertyDef = {
-      val JSPropertyDef(flags, name, getterBody, setterArgAndBody) = jsPropertyDef
+      val JSPropertyDef(flags, name, getterBody, setterArgAndBody) =
+        jsPropertyDef
       JSPropertyDef(
         flags,
         transform(name),
@@ -273,7 +280,8 @@ object Transformers {
       implicit val pos = body.pos
 
       val newBeforeSuper = transformTrees(body.beforeSuper)
-      val newSuperCall = transform(body.superCall).asInstanceOf[JSSuperConstructorCall]
+      val newSuperCall =
+        transform(body.superCall).asInstanceOf[JSSuperConstructorCall]
       val newAfterSuper = transformTrees(body.afterSuper)
 
       JSConstructorBody(newBeforeSuper, newSuperCall, newAfterSuper)
@@ -302,7 +310,8 @@ object Transformers {
    */
   abstract class LocalScopeTransformer extends Transformer {
     override def transform(tree: Tree): Tree = tree match {
-      case Closure(flags, captureParams, params, restParam, resultType, body, captureValues) =>
+      case Closure(flags, captureParams, params, restParam, resultType, body,
+              captureValues) =>
         Closure(flags, captureParams, params, restParam, resultType, body,
             transformTrees(captureValues))(tree.pos)
       case _ =>

@@ -372,7 +372,8 @@ class TreeSetWithNullFactory extends TreeSetFactory {
 
   override def empty[E: ClassTag]: ju.TreeSet[E] = {
     val natural = Comparator.comparing[E, Comparable[Any]](
-        ((_: E).asInstanceOf[Comparable[Any]]): ju.function.Function[E, Comparable[Any]])
+        ((_: E).asInstanceOf[Comparable[Any]]): ju.function.Function[E,
+            Comparable[Any]])
     new TreeSet[E](Comparator.nullsFirst(natural))
   }
 

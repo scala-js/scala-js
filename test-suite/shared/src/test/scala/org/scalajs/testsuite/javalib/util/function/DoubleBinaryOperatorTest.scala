@@ -20,7 +20,8 @@ import java.util.function._
 class DoubleBinaryOperatorTest {
   @Test def applyAsDouble(): Unit = {
     val sumOp = new DoubleBinaryOperator {
-      override def applyAsDouble(left: Double, right: Double): Double = left + right
+      override def applyAsDouble(left: Double, right: Double): Double =
+        left + right
     }
     assertEquals(30, sumOp.applyAsDouble(10, 20), 0)
   }

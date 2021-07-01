@@ -30,7 +30,7 @@ class FormatterTestEx {
    * not find any locale for which it would be different from 3.
    */
 
-  val French = new Locale("fr")  // decimal sep ','  grouping sep '\u00A0'
+  val French = new Locale("fr") // decimal sep ','  grouping sep '\u00A0'
   val Turkish = new Locale("tr") // special uppercase behavior
 
   // non-ASCII digits
@@ -41,7 +41,8 @@ class FormatterTestEx {
       .build()
   }
 
-  def assertF(locale: Locale, expected: String, format: String, args: Any*): Unit = {
+  def assertF(locale: Locale, expected: String, format: String,
+      args: Any*): Unit = {
     // Locale passed as constructor parameter
     val fmt1 = new Formatter(locale)
     val res1 = fmt1.format(format, args.asInstanceOf[Seq[AnyRef]]: _*).toString()
@@ -50,12 +51,14 @@ class FormatterTestEx {
 
     // Locale passed as argument to `format`
     val fmt2 = new Formatter()
-    val res2 = fmt2.format(locale, format, args.asInstanceOf[Seq[AnyRef]]: _*).toString()
+    val res2 =
+      fmt2.format(locale, format, args.asInstanceOf[Seq[AnyRef]]: _*).toString()
     fmt2.close()
     assertEquals(expected, res2)
 
     // String.format
-    assertEquals(expected, String.format(locale, format, args.asInstanceOf[Seq[AnyRef]]: _*))
+    assertEquals(expected,
+        String.format(locale, format, args.asInstanceOf[Seq[AnyRef]]: _*))
   }
 
   @Test def testLocale(): Unit = {

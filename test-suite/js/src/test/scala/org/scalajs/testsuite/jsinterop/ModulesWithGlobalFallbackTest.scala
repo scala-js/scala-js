@@ -130,9 +130,11 @@ object ModulesWithGlobalFallbackTest {
     if (isNoModule) {
       val global = org.scalajs.testsuite.utils.JSUtils.globalObject
       global.ModulesWithGlobalFallbackTest_Module = ModuleFallbackImpl
-      global.ModulesWithGlobalFallbackTest_DefaultAsSelf = DefaultAsSelfFallbackImpl
+      global.ModulesWithGlobalFallbackTest_DefaultAsSelf =
+        DefaultAsSelfFallbackImpl
       global.ModulesWithGlobalFallbackTest_DefaultFun = defaultFunFallbackImpl
-      global.ModulesWithGlobalFallbackTest_MyBox = js.constructorOf[MyBoxFallbackImpl[_]]
+      global.ModulesWithGlobalFallbackTest_MyBox =
+        js.constructorOf[MyBoxFallbackImpl[_]]
       global.ModulesWithGlobalFallbackTest_MyBoxStatic = MyBoxStaticFallbackImpl
     }
   }

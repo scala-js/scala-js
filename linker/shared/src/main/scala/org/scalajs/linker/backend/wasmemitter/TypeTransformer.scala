@@ -48,8 +48,9 @@ object TypeTransformer {
   def transformParamType(tpe: Type)(implicit ctx: WasmContext): watpe.Type = {
     tpe match {
       case NothingType   => watpe.Int32
-      case _: RecordType => throw new AssertionError(s"Unexpected $tpe for parameter")
-      case _             => transformSingleType(tpe)
+      case _: RecordType =>
+        throw new AssertionError(s"Unexpected $tpe for parameter")
+      case _ => transformSingleType(tpe)
     }
   }
 
@@ -67,7 +68,8 @@ object TypeTransformer {
    *  @see
    *    https://webassembly.github.io/spec/core/syntax/types.html#result-types
    */
-  def transformResultType(tpe: Type)(implicit ctx: WasmContext): List[watpe.Type] = {
+  def transformResultType(tpe: Type)(
+      implicit ctx: WasmContext): List[watpe.Type] = {
     tpe match {
       case VoidType           => Nil
       case NothingType        => Nil
@@ -88,8 +90,9 @@ object TypeTransformer {
     tpe match {
       case AnyType                        => watpe.RefType.anyref
       case AnyNotNullType                 => watpe.RefType.any
-      case ClassType(className, nullable) => transformClassType(className, nullable)
-      case tpe: PrimType                  => transformPrimType(tpe)
+      case ClassType(className, nullable) =>
+        transformClassType(className, nullable)
+      case tpe: PrimType => transformPrimType(tpe)
 
       case ArrayType(arrayTypeRef, nullable) =>
         watpe.RefType(nullable, genTypeID.forArrayClass(arrayTypeRef))

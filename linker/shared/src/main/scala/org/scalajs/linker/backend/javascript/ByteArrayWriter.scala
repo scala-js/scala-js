@@ -16,7 +16,8 @@ import java.io.OutputStream
 import java.nio.ByteBuffer
 
 /** Like a `java.io.ByteArrayOutputStream` but with more control. */
-private[backend] final class ByteArrayWriter(originalCapacity: Int) extends OutputStream {
+private[backend] final class ByteArrayWriter(
+    originalCapacity: Int) extends OutputStream {
   private var buffer: Array[Byte] =
     new Array[Byte](powerOfTwoAtLeast(Math.max(originalCapacity, 1024)))
 
@@ -118,7 +119,8 @@ private[backend] final class ByteArrayWriter(originalCapacity: Int) extends Outp
    *    the number of ASCII chars (i.e., bytes) that were written in total,
    *    including the first `start` bytes.
    */
-  private def writeASCIIEscapedJSStringSlowPath(str: String, start: Int): Int = {
+  private def writeASCIIEscapedJSStringSlowPath(str: String,
+      start: Int): Int = {
     val oldSize = size
 
     var offset = oldSize + start

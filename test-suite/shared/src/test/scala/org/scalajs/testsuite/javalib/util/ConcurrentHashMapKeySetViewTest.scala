@@ -16,7 +16,8 @@ import java.{util => ju}
 import scala.reflect.ClassTag
 
 class ConcurrentHashMapKeySetViewTest extends SetTest {
-  override def factory: ConcurrentHashMapKeySetViewFactory = new ConcurrentHashMapKeySetViewFactory
+  override def factory: ConcurrentHashMapKeySetViewFactory =
+    new ConcurrentHashMapKeySetViewFactory
 }
 
 class ConcurrentHashMapKeySetViewFactory extends SetFactory {

@@ -256,11 +256,13 @@ private[emitter] object VarField {
 
   final val throwArrayCastException = mk("$throwArrayCastException")
 
-  final val throwArrayIndexOutOfBoundsException = mk("$throwArrayIndexOutOFBoundsException")
+  final val throwArrayIndexOutOfBoundsException =
+    mk("$throwArrayIndexOutOFBoundsException")
 
   final val throwArrayStoreException = mk("$throwArrayStoreException")
 
-  final val throwNegativeArraySizeException = mk("$throwNegativeArraySizeException")
+  final val throwNegativeArraySizeException =
+    mk("$throwNegativeArraySizeException")
 
   final val aJCheckGet = mk("$aJCheckGet")
 

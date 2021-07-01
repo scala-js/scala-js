@@ -32,7 +32,7 @@ class ExportsTest {
       @JSExport
       def bar(): Int = 42
       @JSExport
-      def double(x: Int): Int = x*2
+      def double(x: Int): Int = x * 2
     }
 
     val foo = (new Foo).asInstanceOf[js.Dynamic]
@@ -46,7 +46,7 @@ class ExportsTest {
       @JSExport("theAnswer")
       def bar(): Int = 42
       @JSExport("doubleTheParam")
-      def double(x: Int): Int = x*2
+      def double(x: Int): Int = x * 2
     }
 
     val foo = (new Foo).asInstanceOf[js.Dynamic]
@@ -422,7 +422,7 @@ class ExportsTest {
       @JSExport
       var x: Int = 3
       @JSExport
-      def doubleX: Int = x*2
+      def doubleX: Int = x * 2
       @JSExport
       def y: String = myY + " get"
       @JSExport
@@ -451,7 +451,7 @@ class ExportsTest {
       @JSExport("x")
       var xScala: Int = 3
       @JSExport("doubleX")
-      def doubleXScala: Int = xScala*2
+      def doubleXScala: Int = xScala * 2
       @JSExport("y")
       def yGetter: String = myY + " get"
       @JSExport("y")
@@ -582,7 +582,8 @@ class ExportsTest {
   }
 
   @Test def exportsForAbstractClassPropertiesImplementedWithStaticObject(): Unit = {
-    val bar = StaticObjectWithObjectForExportFromAbstractClass.asInstanceOf[js.Dynamic]
+    val bar =
+      StaticObjectWithObjectForExportFromAbstractClass.asInstanceOf[js.Dynamic]
     assertEquals(1, bar.x.y)
   }
 
@@ -628,7 +629,7 @@ class ExportsTest {
       @JSExport("foobar")
       def foo(): Int = 42
       @JSExport("foobar")
-      def bar(x: Int): Int = x*2
+      def bar(x: Int): Int = x * 2
     }
 
     val foo = (new Foo).asInstanceOf[js.Dynamic]
@@ -723,17 +724,18 @@ class ExportsTest {
     assertEquals("ValueClassWithExports(value = 5)", obj.toString())
 
     // Export for toString() visible from JavaScript
-    val f = new js.Function("obj", "return '' + obj;").asInstanceOf[js.Function1[Any, String]]
+    val f = new js.Function(
+        "obj", "return '' + obj;").asInstanceOf[js.Function1[Any, String]]
     assertEquals("ValueClassWithExports(value = 5)", f(obj))
   }
 
   @Test def overloadingWithInheritedExports(): Unit = {
     class A {
       @JSExport
-      def foo(x: Int): Int = 2*x
+      def foo(x: Int): Int = 2 * x
     }
 
-    class B extends A{
+    class B extends A {
       @JSExport("foo")
       def bar(x: String): String = s"Hello $x"
     }
@@ -766,7 +768,7 @@ class ExportsTest {
     val foo = (new Foo).asInstanceOf[js.Dynamic]
     assertEquals("function", js.typeOf(foo.lambda))
 
-    val lambda = foo.lambda(5).asInstanceOf[Function1[Int,Int]]
+    val lambda = foo.lambda(5).asInstanceOf[Function1[Int, Int]]
 
     assertEquals(9, lambda(4))
   }
@@ -779,7 +781,7 @@ class ExportsTest {
 
     val foo = (new Foo).asInstanceOf[js.Dynamic]
     assertEquals("function", js.typeOf(foo.multiParam))
-    assertEquals(11, foo.multiParam(5,6))
+    assertEquals(11, foo.multiParam(5, 6))
   }
 
   @Test def exportsForDefaultArguments(): Unit = {
@@ -973,16 +975,16 @@ class ExportsTest {
     assertEquals(9, jsa.foo(2))
     assertEquals(5, a.oneCount)
 
-    assertEquals(11, jsa.foo(2,4))
+    assertEquals(11, jsa.foo(2, 4))
     assertEquals(6, a.oneCount)
 
-    assertEquals(16, jsa.foo(2,4,10))
+    assertEquals(16, jsa.foo(2, 4, 10))
     assertEquals(6, a.oneCount)
 
-    assertEquals(15, jsa.foo((),4,10))
+    assertEquals(15, jsa.foo((), 4, 10))
     assertEquals(7, a.oneCount)
 
-    assertEquals(10, jsa.foo((),4))
+    assertEquals(10, jsa.foo((), 4))
     assertEquals(9, a.oneCount)
   }
 
@@ -1039,7 +1041,7 @@ class ExportsTest {
     assertEquals(3, a.foo(1, 2))
     assertEquals("", a.foo())
     assertEquals("foo", a.foo("foo"))
-    assertEquals("foo|bar", a.foo("foo","bar"))
+    assertEquals("foo|bar", a.foo("foo", "bar"))
 
   }
 
@@ -1132,9 +1134,9 @@ class ExportsTest {
   @Test def distinguishIntFromChar(): Unit = {
     class Foo {
       @JSExport
-      def bar(x: Char): String = "char: "+x
+      def bar(x: Char): String = "char: " + x
       @JSExport
-      def bar(x: Int): String = "int: "+x
+      def bar(x: Int): String = "int: " + x
     }
     val foo = (new Foo).asInstanceOf[js.Dynamic]
 
@@ -1482,7 +1484,8 @@ abstract class AbstractClasstWithPropertyForExport {
   def x: js.Object
 }
 
-object StaticObjectWithObjectForExportFromAbstractClass extends AbstractClasstWithPropertyForExport {
+object StaticObjectWithObjectForExportFromAbstractClass
+    extends AbstractClasstWithPropertyForExport {
   object x extends js.Object {
     val y = 1
   }
@@ -1493,7 +1496,8 @@ trait TraitWithPropertyForExport {
   def x: js.Object
 }
 
-object StaticObjectWithObjectForExportFromTrait extends TraitWithPropertyForExport {
+object StaticObjectWithObjectForExportFromTrait
+    extends TraitWithPropertyForExport {
   object x extends js.Object {
     val y = 1
   }

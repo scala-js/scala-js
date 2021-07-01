@@ -55,6 +55,7 @@ sealed trait Dictionary[A] extends js.Any
 
 /** Factory for [[js.Dictionary]] instances. */
 object Dictionary {
+
   /** Returns a new empty dictionary */
   @inline def empty[A]: js.Dictionary[A] =
     (new js.Object).asInstanceOf[js.Dictionary[A]]

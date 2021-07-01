@@ -183,7 +183,8 @@ abstract class ByteBufferTest extends BaseBufferTest {
       buf.limit(8).position(1)
 
       val charBuf1 = buf.asReadOnlyBuffer().asCharBuffer()
-      assertThrows(classOf[ReadOnlyBufferException], charBuf1.put(1, 0x7e7f.toChar))
+      assertThrows(
+          classOf[ReadOnlyBufferException], charBuf1.put(1, 0x7e7f.toChar))
     }
   }
 
@@ -268,7 +269,8 @@ abstract class ByteBufferTest extends BaseBufferTest {
       assertEquals(0x82.toByte, buf.get(6))
       assertEquals(0x81.toByte, buf.get(7))
 
-      assertThrows(classOf[IndexOutOfBoundsException], buf.putShort(9, 0xffff8384))
+      assertThrows(
+          classOf[IndexOutOfBoundsException], buf.putShort(9, 0xffff8384))
     } else {
       val buf = allocBuffer(10)
       assertThrows(classOf[ReadOnlyBufferException], buf.putShort(3, 0x7576))
@@ -337,7 +339,8 @@ abstract class ByteBufferTest extends BaseBufferTest {
       buf.limit(8).position(1)
 
       val shortBuf1 = buf.asReadOnlyBuffer().asShortBuffer()
-      assertThrows(classOf[ReadOnlyBufferException], shortBuf1.put(1, 0x7e7f.toShort))
+      assertThrows(
+          classOf[ReadOnlyBufferException], shortBuf1.put(1, 0x7e7f.toShort))
     }
   }
 
@@ -630,7 +633,8 @@ abstract class ByteBufferTest extends BaseBufferTest {
       assertEquals(0x82.toByte, buf.get(15))
       assertEquals(0x81.toByte, buf.get(16))
 
-      assertThrows(classOf[IndexOutOfBoundsException], buf.putLong(16, 0xffff8384))
+      assertThrows(
+          classOf[IndexOutOfBoundsException], buf.putLong(16, 0xffff8384))
     } else {
       val buf = allocBuffer(20)
       assertThrows(classOf[ReadOnlyBufferException], buf.putLong(3, 0x7576))
@@ -723,7 +727,8 @@ abstract class ByteBufferTest extends BaseBufferTest {
       buf.limit(19).position(3)
 
       val longBuf1 = buf.asReadOnlyBuffer().asLongBuffer()
-      assertThrows(classOf[ReadOnlyBufferException], longBuf1.put(1, 0x8182838485868788L))
+      assertThrows(
+          classOf[ReadOnlyBufferException], longBuf1.put(1, 0x8182838485868788L))
     }
   }
 
@@ -907,7 +912,8 @@ abstract class ByteBufferTest extends BaseBufferTest {
   @Test def relativeGetDouble(): Unit = {
     val buf = withContent(pos = 0, limit = 20, capacity = 20,
         0x40, 0x09, 0x21, 0xfb.toByte, 0x54, 0x44, 0x2d, 0x18,
-        0x40, 0x97.toByte, 0x9c.toByte, 0xcb.toByte, 0xac.toByte, 0x71, 0x0c, 0xb3.toByte,
+        0x40, 0x97.toByte, 0x9c.toByte, 0xcb.toByte, 0xac.toByte, 0x71, 0x0c,
+        0xb3.toByte,
         0x20, 0xe8.toByte, 0x74, 0xb5.toByte)
 
     buf.order(ByteOrder.BIG_ENDIAN)
@@ -971,7 +977,8 @@ abstract class ByteBufferTest extends BaseBufferTest {
   @Test def absoluteGetDouble(): Unit = {
     val buf = withContent(pos = 0, limit = 20, capacity = 20,
         0x40, 0x09, 0x21, 0xfb.toByte, 0x54, 0x44, 0x2d, 0x18,
-        0x40, 0x97.toByte, 0x9c.toByte, 0xcb.toByte, 0xac.toByte, 0x71, 0x0c, 0xb3.toByte,
+        0x40, 0x97.toByte, 0x9c.toByte, 0xcb.toByte, 0xac.toByte, 0x71, 0x0c,
+        0xb3.toByte,
         0x20, 0xe8.toByte, 0x74, 0xb5.toByte)
 
     buf.order(ByteOrder.BIG_ENDIAN)
@@ -1025,7 +1032,8 @@ abstract class ByteBufferTest extends BaseBufferTest {
       assertEquals(0x74, buf.get(15))
       assertEquals(0xb5.toByte, buf.get(16))
 
-      assertThrows(classOf[IndexOutOfBoundsException], buf.putDouble(17, 1511.1989))
+      assertThrows(
+          classOf[IndexOutOfBoundsException], buf.putDouble(17, 1511.1989))
     } else {
       val buf = allocBuffer(20)
       assertThrows(classOf[ReadOnlyBufferException], buf.putDouble(3, 1511.1989))
@@ -1038,7 +1046,8 @@ abstract class ByteBufferTest extends BaseBufferTest {
     val buf = withContent(pos = 0, limit = 20, capacity = 20,
         0x20, 0xe8.toByte,
         0x40, 0x09, 0x21, 0xfb.toByte, 0x54, 0x44, 0x2d, 0x18,
-        0xb3.toByte, 0x0c, 0x71, 0xac.toByte, 0xcb.toByte, 0x9c.toByte, 0x97.toByte, 0x40,
+        0xb3.toByte, 0x0c, 0x71, 0xac.toByte, 0xcb.toByte, 0x9c.toByte,
+        0x97.toByte, 0x40,
         0x74, 0xb5.toByte)
     buf.limit(19).position(2)
 

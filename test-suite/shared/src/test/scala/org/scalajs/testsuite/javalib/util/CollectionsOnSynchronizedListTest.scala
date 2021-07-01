@@ -42,7 +42,8 @@ class CollectionsOnSynchronizedListAbstractListTest
   def originalFactory: ListFactory = new AbstractListFactory
 }
 
-class CollectionsOnSynchronizedListArrayListTest extends CollectionsSynchronizedListTest {
+class CollectionsOnSynchronizedListArrayListTest
+    extends CollectionsSynchronizedListTest {
   def originalFactory: ListFactory = new ArrayListFactory
 }
 

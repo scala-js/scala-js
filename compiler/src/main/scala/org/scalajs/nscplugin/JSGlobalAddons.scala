@@ -24,7 +24,7 @@ import org.scalajs.ir.{Trees => js}
  *  @author Sébastien Doeraene
  */
 trait JSGlobalAddons extends JSDefinitions
-                        with CompatComponent {
+    with CompatComponent {
   val global: Global
 
   import global._
@@ -161,7 +161,8 @@ trait JSGlobalAddons extends JSDefinitions
         def displayName: String = "unary operator"
       }
 
-      case class BinaryOp(code: js.JSBinaryOp.Code) extends JSCallingConvention {
+      case class BinaryOp(
+          code: js.JSBinaryOp.Code) extends JSCallingConvention {
         def displayName: String = "binary operator"
       }
 
@@ -186,11 +187,13 @@ trait JSGlobalAddons extends JSDefinitions
               case nme.apply => Call
 
               case JSUnaryOpMethodName(code, defaultsToOp)
-                  if (defaultsToOp || sym.hasAnnotation(JSOperatorAnnotation)) && pc == 0 =>
+                  if (defaultsToOp || sym.hasAnnotation(
+                      JSOperatorAnnotation)) && pc == 0 =>
                 UnaryOp(code)
 
               case JSBinaryOpMethodName(code, defaultsToOp)
-                  if (defaultsToOp || sym.hasAnnotation(JSOperatorAnnotation)) && pc == 1 =>
+                  if (defaultsToOp || sym.hasAnnotation(
+                      JSOperatorAnnotation)) && pc == 1 =>
                 BinaryOp(code)
 
               case _ =>
@@ -236,7 +239,7 @@ trait JSGlobalAddons extends JSDefinitions
         nme.LSL -> (js.JSBinaryOp.<<, true),
         nme.ASR -> (js.JSBinaryOp.>>, true),
         nme.LSR -> (js.JSBinaryOp.>>>, true),
-        nme.OR  -> (js.JSBinaryOp.|, true),
+        nme.OR -> (js.JSBinaryOp.|, true),
         nme.AND -> (js.JSBinaryOp.&, true),
         nme.XOR -> (js.JSBinaryOp.^, true),
 
@@ -246,7 +249,7 @@ trait JSGlobalAddons extends JSDefinitions
         nme.GE -> (js.JSBinaryOp.>=, true),
 
         nme.ZAND -> (js.JSBinaryOp.&&, true),
-        nme.ZOR  -> (js.JSBinaryOp.||, true),
+        nme.ZOR -> (js.JSBinaryOp.||, true),
 
         global.encode("**") -> (js.JSBinaryOp.**, false)
       )
@@ -264,12 +267,14 @@ trait JSGlobalAddons extends JSDefinitions
       jsNativeLoadSpecs.clear()
     }
 
-    def registerTopLevelExports(sym: Symbol, infos: List[TopLevelExportInfo]): Unit = {
+    def registerTopLevelExports(sym: Symbol,
+        infos: List[TopLevelExportInfo]): Unit = {
       assert(!topLevelExports.contains(sym), s"symbol exported twice: $sym")
       topLevelExports.put(sym, infos)
     }
 
-    def registerStaticExports(sym: Symbol, infos: List[StaticExportInfo]): Unit = {
+    def registerStaticExports(sym: Symbol,
+        infos: List[StaticExportInfo]): Unit = {
       assert(!staticExports.contains(sym), s"symbol exported twice: $sym")
       staticExports.put(sym, infos)
     }
@@ -295,7 +300,7 @@ trait JSGlobalAddons extends JSDefinitions
      *  is a property
      */
     def jsExportInfo(name: Name): (String, Boolean) = {
-      def dropPrefix(prefix: String) ={
+      def dropPrefix(prefix: String) = {
         if (name.startsWith(prefix)) {
           // We can't decode right away due to $ separators
           val enc = name.toString.substring(prefix.length)
@@ -303,8 +308,8 @@ trait JSGlobalAddons extends JSDefinitions
         } else None
       }
 
-      dropPrefix(methodExportPrefix).map((_,false)).orElse {
-        dropPrefix(propExportPrefix).map((_,true))
+      dropPrefix(methodExportPrefix).map((_, false)).orElse {
+        dropPrefix(propExportPrefix).map((_, true))
       }.getOrElse {
         throw new IllegalArgumentException(
             "non-exported name passed to jsExportInfo")

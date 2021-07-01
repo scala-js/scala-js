@@ -37,7 +37,8 @@ object SWasmGen {
       case ClassType(BoxedStringClass, true) =>
         RefNull(Types.HeapType.NoExtern)
 
-      case AnyType | ClassType(_, true) | ArrayType(_, true) | ClosureType(_, _, true) | NullType =>
+      case AnyType | ClassType(_, true) | ArrayType(_, true) | ClosureType(
+              _, _, true) | NullType =>
         RefNull(Types.HeapType.None)
 
       case NothingType | VoidType | ClassType(_, false) | ArrayType(_, false) |
@@ -46,17 +47,21 @@ object SWasmGen {
     }
   }
 
-  def genLoadTypeData(fb: FunctionBuilder, typeRef: TypeRef): Unit = typeRef match {
-    case typeRef: NonArrayTypeRef  => genLoadNonArrayTypeData(fb, typeRef)
-    case typeRef: ArrayTypeRef     => genLoadArrayTypeData(fb, typeRef)
-    case typeRef: TransientTypeRef => throw new IllegalArgumentException(typeRef.toString())
-  }
+  def genLoadTypeData(fb: FunctionBuilder, typeRef: TypeRef): Unit =
+    typeRef match {
+      case typeRef: NonArrayTypeRef  => genLoadNonArrayTypeData(fb, typeRef)
+      case typeRef: ArrayTypeRef     => genLoadArrayTypeData(fb, typeRef)
+      case typeRef: TransientTypeRef =>
+        throw new IllegalArgumentException(typeRef.toString())
+    }
 
-  def genLoadNonArrayTypeData(fb: FunctionBuilder, typeRef: NonArrayTypeRef): Unit = {
+  def genLoadNonArrayTypeData(fb: FunctionBuilder,
+      typeRef: NonArrayTypeRef): Unit = {
     fb += GlobalGet(genGlobalID.forVTable(typeRef))
   }
 
-  def genLoadArrayTypeData(fb: FunctionBuilder, arrayTypeRef: ArrayTypeRef): Unit = {
+  def genLoadArrayTypeData(fb: FunctionBuilder,
+      arrayTypeRef: ArrayTypeRef): Unit = {
     val ArrayTypeRef(base, dimensions) = arrayTypeRef
 
     base match {
@@ -85,7 +90,8 @@ object SWasmGen {
     }
   }
 
-  def genArrayValueFromUnderlying(fb: FunctionBuilder, arrayTypeRef: ArrayTypeRef)(
+  def genArrayValueFromUnderlying(fb: FunctionBuilder,
+      arrayTypeRef: ArrayTypeRef)(
       genUnderlying: => Unit): Unit = {
     genLoadArrayTypeData(fb, arrayTypeRef) // vtable
     genUnderlying

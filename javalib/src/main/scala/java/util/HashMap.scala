@@ -181,7 +181,8 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
     }
   }
 
-  override def computeIfAbsent(key: K, mappingFunction: Function[_ >: K, _ <: V]): V = {
+  override def computeIfAbsent(key: K,
+      mappingFunction: Function[_ >: K, _ <: V]): V = {
     val (node, hash, idx, oldValue) = getNode0(key)
     if (oldValue != null) {
       oldValue
@@ -193,7 +194,8 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
     }
   }
 
-  override def computeIfPresent(key: K, remappingFunction: BiFunction[_ >: K, _ >: V, _ <: V]): V = {
+  override def computeIfPresent(key: K,
+      remappingFunction: BiFunction[_ >: K, _ >: V, _ <: V]): V = {
     val (node, hash, idx, oldValue) = getNode0(key)
     if (oldValue == null) {
       oldValue
@@ -203,13 +205,15 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
     }
   }
 
-  override def compute(key: K, remappingFunction: BiFunction[_ >: K, _ >: V, _ <: V]): V = {
+  override def compute(key: K,
+      remappingFunction: BiFunction[_ >: K, _ >: V, _ <: V]): V = {
     val (node, hash, idx, oldValue) = getNode0(key)
     val newValue = remappingFunction.apply(key, oldValue)
     putOrRemove0(key, hash, idx, node, newValue)
   }
 
-  override def merge(key: K, value: V, remappingFunction: BiFunction[_ >: V, _ >: V, _ <: V]): V = {
+  override def merge(key: K, value: V,
+      remappingFunction: BiFunction[_ >: V, _ >: V, _ <: V]): V = {
     Objects.requireNonNull(value)
 
     val (node, hash, idx, oldValue) = getNode0(key)
@@ -382,7 +386,8 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
    *  @param hash the **improved** hashcode of `key` (see computeHash)
    *  @param node the entry for the given `key`, or `null` if there is no such entry
    */
-  private[this] def put0(key: K, value: V, hash: Int, node: Node[K, V]): Unit = {
+  private[this] def put0(key: K, value: V, hash: Int,
+      node: Node[K, V]): Unit = {
     if (node ne null) {
       node.value = value
     } else {
@@ -570,7 +575,8 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Float)
     override def remove(): Unit = {
       val last = lastNode
       if (last eq null)
-        throw new IllegalStateException("next must be called at least once before remove")
+        throw new IllegalStateException(
+            "next must be called at least once before remove")
       removeNode(last)
       lastNode = null
     }

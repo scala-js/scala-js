@@ -43,7 +43,8 @@ class IntegerDivisionsTreeShapeTest {
   val integerDivisions = new IntegerDivisions(useRuntimeLong = false)
 
   /** Main test helper. */
-  private def testSpecificShape(op: BinaryOp.Code, divisor: Int)(expectedTree: Tree): Unit = {
+  private def testSpecificShape(op: BinaryOp.Code, divisor: Int)(
+      expectedTree: Tree): Unit = {
     val actual = integerDivisions.makeOptimizedDivision(op, divisor)
     if (actual != expectedTree)
       fail(s"Expected:\n${expectedTree.show}\nbut got\n${actual.show}")

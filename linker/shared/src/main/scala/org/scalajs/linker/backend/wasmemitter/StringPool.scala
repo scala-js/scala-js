@@ -68,7 +68,8 @@ private[wasmemitter] final class StringPool {
             WTF16StringConstantsModule,
             indexStr,
             ImportDesc.Global(genGlobalID.forStringLiteral(str),
-                OriginalName("wtf16." + indexStr), isMutable = false, RefType.extern)
+                OriginalName("wtf16." + indexStr), isMutable = false,
+                RefType.extern)
           )
         )
       }

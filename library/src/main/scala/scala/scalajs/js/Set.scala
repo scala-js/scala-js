@@ -38,6 +38,7 @@ class Set[T]() extends js.Object with js.Iterable[T] {
 
 /** Factory for [[js.Set]] instances. */
 object Set {
+
   /** Returns a new empty map */
   @inline def empty[V]: js.Set[V] = new Set[V]()
 

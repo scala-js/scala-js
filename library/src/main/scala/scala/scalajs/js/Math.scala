@@ -29,36 +29,42 @@ import scala.scalajs.js.annotation._
 @js.native
 @JSGlobal
 object Math extends js.Object {
+
   /**
    * Euler's constant and the base of natural logarithms, approximately 2.718.
    *
    * MDN
    */
   val E: Double = js.native
+
   /**
    * Natural logarithm of 10, approximately 2.303.
    *
    * MDN
    */
   val LN10: Double = js.native
+
   /**
    * Natural logarithm of 2, approximately 0.693.
    *
    * MDN
    */
   val LN2: Double = js.native
+
   /**
    * Base 2 logarithm of E, approximately 1.443.
    *
    * MDN
    */
   val LOG2E: Double = js.native
+
   /**
    * Base 10 logarithm of E, approximately 0.434.
    *
    * MSN
    */
   val LOG10E: Double = js.native
+
   /**
    * Ratio of the circumference of a circle to its diameter, approximately 3.14159.
    *

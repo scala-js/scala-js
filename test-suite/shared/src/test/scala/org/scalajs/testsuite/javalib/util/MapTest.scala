@@ -35,7 +35,8 @@ trait MapTest {
   def testObj(i: Int): TestObj = TestObj(i)
 
   private def assumeNotIdentityHashMapOnJVM(): Unit =
-    assumeFalse("JVM vs JS cache differences", executingInJVM && factory.isIdentityBased)
+    assumeFalse(
+        "JVM vs JS cache differences", executingInJVM && factory.isIdentityBased)
 
   @Test def testSizeGetPutWithStrings(): Unit = {
     assumeNotIdentityHashMapOnJVM()
@@ -1147,7 +1148,8 @@ trait MapTest {
   }
 
   @Test def testGetOrDefault(): Unit = {
-    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+    val mp = factory.fromKeyValuePairs(
+        "ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
 
     assertEquals("one", mp.getOrDefault("ONE", "def"))
     assertEquals("def", mp.getOrDefault("FOUR", "def"))
@@ -1160,7 +1162,8 @@ trait MapTest {
   }
 
   @Test def testForEach(): Unit = {
-    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+    val mp = factory.fromKeyValuePairs(
+        "ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
 
     val b = List.newBuilder[(String, String)]
     mp.forEach(new BiConsumer[String, String] {
@@ -1178,7 +1181,8 @@ trait MapTest {
   }
 
   @Test def testReplaceAll(): Unit = {
-    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+    val mp = factory.fromKeyValuePairs(
+        "ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
 
     mp.replaceAll(new BiFunction[String, String, String] {
       def apply(key: String, value: String): String =
@@ -1204,9 +1208,10 @@ trait MapTest {
       assertNull(mp.get("ONE"))
       assertEquals("it was null", mp.get("nullable"))
     } else {
-      assertThrowsNPEIfCompliant(mp.replaceAll(new BiFunction[String, String, String] {
-        def apply(key: String, value: String): String = null
-      }))
+      assertThrowsNPEIfCompliant(
+          mp.replaceAll(new BiFunction[String, String, String] {
+            def apply(key: String, value: String): String = null
+          }))
     }
   }
 
@@ -1236,7 +1241,8 @@ trait MapTest {
   }
 
   @Test def testConditionalRemove(): Unit = {
-    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+    val mp = factory.fromKeyValuePairs(
+        "ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
 
     assertFalse(mp.remove("non existing", "value"))
     assertFalse(mp.containsKey("non existing"))
@@ -1272,7 +1278,8 @@ trait MapTest {
   }
 
   @Test def testUnconditionalRemove(): Unit = {
-    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+    val mp = factory.fromKeyValuePairs(
+        "ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
 
     assertEquals(null, mp.remove("non existing"))
     assertFalse(mp.containsKey("non existing"))
@@ -1291,7 +1298,8 @@ trait MapTest {
   }
 
   @Test def testConditionalReplace(): Unit = {
-    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+    val mp = factory.fromKeyValuePairs(
+        "ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
 
     assertTrue(mp.replace("ONE", "one", "four"))
     assertEquals("four", mp.get("ONE"))
@@ -1330,7 +1338,8 @@ trait MapTest {
   }
 
   @Test def testUnconditionalReplace(): Unit = {
-    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+    val mp = factory.fromKeyValuePairs(
+        "ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
 
     assertEquals("one", mp.replace("ONE", "four"))
     assertEquals("four", mp.get("ONE"))
@@ -1364,11 +1373,13 @@ trait MapTest {
   }
 
   @Test def testComputeIfAbsent(): Unit = {
-    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+    val mp = factory.fromKeyValuePairs(
+        "ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
 
     val notCalled = new Function[String, String] {
       def apply(key: String): String =
-        throw new AssertionError(s"function should not have been called for $key")
+        throw new AssertionError(
+            s"function should not have been called for $key")
     }
 
     val lengthAsString = new Function[String, String] {
@@ -1401,11 +1412,13 @@ trait MapTest {
   }
 
   @Test def testComputeIfPresent(): Unit = {
-    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+    val mp = factory.fromKeyValuePairs(
+        "ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
 
     val notCalled = new BiFunction[String, String, String] {
       def apply(key: String, value: String): String =
-        throw new AssertionError(s"function should not have been called for $key")
+        throw new AssertionError(
+            s"function should not have been called for $key")
     }
 
     val remappingFun = new BiFunction[String, String, String] {
@@ -1434,7 +1447,8 @@ trait MapTest {
   }
 
   @Test def testCompute(): Unit = {
-    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+    val mp = factory.fromKeyValuePairs(
+        "ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
 
     val remappingFun = new BiFunction[String, String, String] {
       def apply(key: String, value: String): String = s"$key - $value"
@@ -1468,15 +1482,18 @@ trait MapTest {
   }
 
   @Test def testMerge(): Unit = {
-    val mp = factory.fromKeyValuePairs("ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
+    val mp = factory.fromKeyValuePairs(
+        "ONE" -> "one", "TWO" -> "two", "THREE" -> "three")
 
     val notCalled = new BiFunction[String, String, String] {
       def apply(prevValue: String, newValue: String): String =
-        throw new AssertionError(s"function should not have been called for $prevValue")
+        throw new AssertionError(
+            s"function should not have been called for $prevValue")
     }
 
     val remappingFun = new BiFunction[String, String, String] {
-      def apply(prevValue: String, newValue: String): String = s"$prevValue - $newValue"
+      def apply(prevValue: String, newValue: String): String =
+        s"$prevValue - $newValue"
     }
 
     val returnsNull = new BiFunction[String, String, String] {
@@ -1506,8 +1523,10 @@ trait MapTest {
     val set = factory.empty[String, String].keySet()
 
     assertThrows(classOf[UnsupportedOperationException], set.add("ONE"))
-    assertThrows(classOf[UnsupportedOperationException], set.addAll(ju.Arrays.asList("ONE")))
-    assertThrows(classOf[UnsupportedOperationException], set.addAll(ju.Arrays.asList(null)))
+    assertThrows(classOf[UnsupportedOperationException],
+        set.addAll(ju.Arrays.asList("ONE")))
+    assertThrows(
+        classOf[UnsupportedOperationException], set.addAll(ju.Arrays.asList(null)))
     assertThrows(classOf[UnsupportedOperationException], set.add(null))
   }
 }
@@ -1523,7 +1542,8 @@ trait MapFactory {
 
   def empty[K: ClassTag, V: ClassTag]: ju.Map[K, V]
 
-  def fromKeyValuePairs[K: ClassTag, V: ClassTag](pairs: (K, V)*): ju.Map[K, V] = {
+  def fromKeyValuePairs[K: ClassTag, V: ClassTag](
+      pairs: (K, V)*): ju.Map[K, V] = {
     val result = empty[K, V]
     for ((key, value) <- pairs)
       result.put(key, value)

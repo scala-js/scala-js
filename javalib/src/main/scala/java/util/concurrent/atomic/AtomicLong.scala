@@ -33,7 +33,8 @@ class AtomicLong(private[this] var value: Long) extends Number with Serializable
   }
 
   final def compareAndSet(expect: Long, update: Long): Boolean = {
-    if (expect != value) false else {
+    if (expect != value) false
+    else {
       value = update
       true
     }
@@ -78,13 +79,15 @@ class AtomicLong(private[this] var value: Long) extends Number with Serializable
     value
   }
 
-  final def getAndAccumulate(x: Long, accumulatorFunction: LongBinaryOperator): Long = {
+  final def getAndAccumulate(x: Long,
+      accumulatorFunction: LongBinaryOperator): Long = {
     val old = value
     value = accumulatorFunction.applyAsLong(old, x)
     old
   }
 
-  final def accumulateAndGet(x: Long, accumulatorFunction: LongBinaryOperator): Long = {
+  final def accumulateAndGet(x: Long,
+      accumulatorFunction: LongBinaryOperator): Long = {
     val old = value
     value = accumulatorFunction.applyAsLong(old, x)
     value

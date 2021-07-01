@@ -104,7 +104,8 @@ class DateTest {
 
   @Test def toStringTest(): Unit = {
     def test(expectedRegex: String, actual: String): Unit =
-      assertTrue(s"expected:<$expectedRegex> to match:<$actual>", actual.matches(expectedRegex))
+      assertTrue(s"expected:<$expectedRegex> to match:<$actual>",
+          actual.matches(expectedRegex))
     test("Mon Nov 03 05:23:27 .+ 1997", new Date(97, 10, 3, 5, 23, 27).toString)
     test("Sun Dec 31 00:00:00 .+ 1899", new Date(0, 0, 0, 0, 0, 0).toString)
     test("Sun Jan 05 08:01:09 .+ 1902", new Date(1, 12, 5, 8, 1, 9).toString)
@@ -112,10 +113,14 @@ class DateTest {
   }
 
   @Test def toGMTString(): Unit = {
-    assertEquals("31 Dec 1899 00:00:00 GMT", new Date(Date.UTC(0, 0, 0, 0, 0, 0)).toGMTString)
-    assertEquals("3 Nov 1997 05:23:27 GMT", new Date(Date.UTC(97, 10, 3, 5, 23, 27)).toGMTString)
-    assertEquals("5 Jan 1902 08:01:09 GMT", new Date(Date.UTC(1, 12, 5, 8, 1, 9)).toGMTString)
-    assertEquals("9 Jan 2900 05:03:04 GMT", new Date(Date.UTC(1000, 0, 9, 5, 3, 4)).toGMTString)
+    assertEquals("31 Dec 1899 00:00:00 GMT",
+        new Date(Date.UTC(0, 0, 0, 0, 0, 0)).toGMTString)
+    assertEquals("3 Nov 1997 05:23:27 GMT",
+        new Date(Date.UTC(97, 10, 3, 5, 23, 27)).toGMTString)
+    assertEquals("5 Jan 1902 08:01:09 GMT",
+        new Date(Date.UTC(1, 12, 5, 8, 1, 9)).toGMTString)
+    assertEquals("9 Jan 2900 05:03:04 GMT",
+        new Date(Date.UTC(1000, 0, 9, 5, 3, 4)).toGMTString)
   }
 
   // #4131
@@ -129,13 +134,16 @@ class DateTest {
 
   @Test def largeToString(): Unit = {
     assumeFalse(executingInJVM)
-    assertEquals("java.util.Date(8640000000000001)", new Date(8640000000000001L).toString())
+    assertEquals(
+        "java.util.Date(8640000000000001)", new Date(8640000000000001L).toString())
   }
 
   @Test def preventsUnsafeRead(): Unit = {
     assumeFalse(executingInJVM)
-    assertThrows(classOf[IllegalArgumentException], new Date(8640000000000001L).getDate())
-    assertThrows(classOf[IllegalArgumentException], new Date(-8640000000000001L).getDate())
+    assertThrows(
+        classOf[IllegalArgumentException], new Date(8640000000000001L).getDate())
+    assertThrows(
+        classOf[IllegalArgumentException], new Date(-8640000000000001L).getDate())
   }
 
   @Test def preventsUnsafeWrite(): Unit = {

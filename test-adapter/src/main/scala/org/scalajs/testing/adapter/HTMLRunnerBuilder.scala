@@ -36,19 +36,22 @@ object HTMLRunnerBuilder {
 
     sys.addShutdownHook {
       Files.walkFileTree(artifactsDir, new SimpleFileVisitor[Path] {
-        override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
+        override def visitFile(file: Path,
+            attrs: BasicFileAttributes): FileVisitResult = {
           Files.delete(file)
           FileVisitResult.CONTINUE
         }
 
-        override def postVisitDirectory(dir: Path, exc: IOException): FileVisitResult = {
+        override def postVisitDirectory(dir: Path,
+            exc: IOException): FileVisitResult = {
           Files.delete(dir)
           FileVisitResult.CONTINUE
         }
       })
     }
 
-    write(outputPath, artifactsDir, title, input, frameworkImplClassNames, taskDefs)
+    write(outputPath, artifactsDir, title, input, frameworkImplClassNames,
+        taskDefs)
   }
 
   def write(output: Path, artifactsDir: Path, title: String, input: Seq[Input],
@@ -78,7 +81,8 @@ object HTMLRunnerBuilder {
         } catch {
           case _: IllegalArgumentException =>
             // Cannot relativize this content.
-            val (src, target) = artifactPath(f"input$index-${content.getFileName()}")
+            val (src, target) =
+              artifactPath(f"input$index-${content.getFileName()}")
             Files.copy(content, target, StandardCopyOption.REPLACE_EXISTING)
             src
         }
@@ -88,7 +92,7 @@ object HTMLRunnerBuilder {
     }
 
     val loadJSTags = input.zipWithIndex.map {
-      case (Input.Script(script), i)   => scriptTag(i, "text/javascript", script)
+      case (Input.Script(script), i) => scriptTag(i, "text/javascript", script)
       case (Input.ESModule(module), i) => scriptTag(i, "module", module)
 
       case _ =>
@@ -117,7 +121,8 @@ object HTMLRunnerBuilder {
         <head>
           <title>${htmlEscaped(title)}</title>
           <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-          <link rel="stylesheet" type="text/css" href="${htmlEscaped(cssHref)}" />
+          <link rel="stylesheet" type="text/css" href="${htmlEscaped(
+          cssHref)}" />
           <script type="text/javascript">
             var __ScalaJSTestBridgeMode = "${escapeJS(bridgeModeStr)}";
           </script>

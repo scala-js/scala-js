@@ -213,7 +213,8 @@ private[lang] object IntegerLong {
   }
 
   @inline
-  private def parallelSuffix[I, F](x: I)(implicit ops: IntFloatBits[I, F]): I = {
+  private def parallelSuffix[I, F](x: I)(
+      implicit ops: IntFloatBits[I, F]): I = {
     // Hacker's Delight, Section 5-2
 
     import ops._

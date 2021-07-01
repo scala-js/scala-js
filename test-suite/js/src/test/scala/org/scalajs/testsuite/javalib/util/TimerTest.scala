@@ -46,7 +46,8 @@ class TimerTest {
       val secondTask = new TimerTask {
         def run(): Unit = {}
       }
-      assertThrows(classOf[IllegalArgumentException], timer.schedule(secondTask, -1))
+      assertThrows(
+          classOf[IllegalArgumentException], timer.schedule(secondTask, -1))
     }
   }
 

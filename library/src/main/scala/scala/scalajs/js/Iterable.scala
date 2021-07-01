@@ -19,6 +19,7 @@ import js.annotation._
  *  JavaScript Iterable.
  */
 trait Iterable[+A] extends js.Object {
+
   /** JavaScript Iterator for this Iterable. */
   @JSName(js.Symbol.iterator)
   def jsIterator(): js.Iterator[A]

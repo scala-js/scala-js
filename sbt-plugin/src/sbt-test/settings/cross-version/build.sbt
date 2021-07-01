@@ -6,17 +6,17 @@ version := scalaJSVersion
 scalaVersion := "2.12.20"
 
 lazy val js = project.enablePlugins(ScalaJSPlugin).settings(
-    check := {
-      val value = platformDepsCrossVersion.value
-      assert(value eq ScalaJSCrossVersion.binary,
-          "platformDepsCrossVersion should be ScalaJSCrossVersion.binary in js")
-    }
+  check := {
+    val value = platformDepsCrossVersion.value
+    assert(value eq ScalaJSCrossVersion.binary,
+        "platformDepsCrossVersion should be ScalaJSCrossVersion.binary in js")
+  }
 )
 
 lazy val jvm = project.settings(
-    check := {
-      val value = platformDepsCrossVersion.value
-      assert(value == CrossVersion.binary,
-          "platformDepsCrossVersion should be CrossVersion.binary in jvm")
-    }
+  check := {
+    val value = platformDepsCrossVersion.value
+    assert(value == CrossVersion.binary,
+        "platformDepsCrossVersion should be CrossVersion.binary in jvm")
+  }
 )

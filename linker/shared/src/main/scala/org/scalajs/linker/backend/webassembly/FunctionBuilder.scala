@@ -169,7 +169,8 @@ final class FunctionBuilder(
    */
   BlockTypeLike.ForResultTypes
 
-  def ifThenElse[BT: BlockTypeLike](blockType: BT = Nil)(thenp: => Unit)(elsep: => Unit): Unit = {
+  def ifThenElse[BT: BlockTypeLike](blockType: BT = Nil)(thenp: => Unit)(
+      elsep: => Unit): Unit = {
     instrs += If(toBlockType(blockType))
     thenp
     instrs += Else
@@ -183,7 +184,8 @@ final class FunctionBuilder(
     instrs += End
   }
 
-  def block[BT: BlockTypeLike, A](blockType: BT = Nil)(body: LabelID => A): A = {
+  def block[BT: BlockTypeLike, A](blockType: BT = Nil)(
+      body: LabelID => A): A = {
     val label = genLabel()
     instrs += Block(toBlockType(blockType), Some(label))
     val result = body(label)
@@ -267,7 +269,8 @@ final class FunctionBuilder(
         ((caseValues, _), clauseLabel) <- clauses.zip(clauseLabels)
         caseValue <- caseValues
       } {
-        require(dv(caseValue) == defaultLabel, s"Duplicate case value for switch: $caseValue")
+        require(dv(caseValue) == defaultLabel,
+            s"Duplicate case value for switch: $caseValue")
         dv(caseValue) = clauseLabel
       }
       dv.toList
@@ -278,8 +281,10 @@ final class FunctionBuilder(
       clauseSig.params.drop(scrutineeSig.results.size) ::: scrutineeSig.params
 
     // Compute the BlockType's we will need
-    val doneBlockType = sigToBlockType(FunctionType(switchInputParams, clauseSig.results))
-    val clauseBlockType = sigToBlockType(FunctionType(switchInputParams, clauseSig.params))
+    val doneBlockType =
+      sigToBlockType(FunctionType(switchInputParams, clauseSig.results))
+    val clauseBlockType =
+      sigToBlockType(FunctionType(switchInputParams, clauseSig.params))
 
     // Open done block
     instrs += Block(doneBlockType, Some(doneLabel))
@@ -332,14 +337,14 @@ final class FunctionBuilder(
     val dcedInstrs = localDeadCodeEliminationOfInstrs()
 
     val func = Function(
-      functionID,
-      functionOriginalName,
-      functionTypeID,
-      params.toList,
-      resultTypes,
-      locals.toList,
-      Expr(dcedInstrs),
-      functionPos
+        functionID,
+        functionOriginalName,
+        functionTypeID,
+        params.toList,
+        resultTypes,
+        locals.toList,
+        Expr(dcedInstrs),
+        functionPos
     )
     moduleBuilder.addFunction(func)
     func
@@ -403,13 +408,15 @@ final class FunctionBuilder(
 }
 
 object FunctionBuilder {
-  private final class ParamIDImpl(index: Int, originalName: OriginalName) extends LocalID {
+  private final class ParamIDImpl(index: Int, originalName: OriginalName)
+      extends LocalID {
     override def toString(): String =
       if (originalName.isDefined) originalName.get.toString()
       else s"<param $index>"
   }
 
-  private final class LocalIDImpl(index: Int, originalName: OriginalName) extends LocalID {
+  private final class LocalIDImpl(index: Int, originalName: OriginalName)
+      extends LocalID {
     override def toString(): String =
       if (originalName.isDefined) originalName.get.toString()
       else s"<local $index>"
@@ -419,7 +426,8 @@ object FunctionBuilder {
     override def toString(): String = s"<label $index>"
   }
 
-  final class InstructionIndex(private[FunctionBuilder] val value: Int) extends AnyVal
+  final class InstructionIndex(private[FunctionBuilder] val value: Int)
+      extends AnyVal
 
   sealed abstract class BlockTypeLike[-A] {
     def toBlockType(fb: FunctionBuilder, value: A): BlockType

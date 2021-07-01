@@ -16,7 +16,8 @@ import java.{lang => jl}
 
 object StackTraceElement {
   def createWithColumnNumber(declaringClass: String, methodName: String,
-      fileName: String, lineNumber: Int, columnNumber: Int): jl.StackTraceElement = {
+      fileName: String, lineNumber: Int,
+      columnNumber: Int): jl.StackTraceElement = {
     new jl.StackTraceElement(declaringClass, methodName, fileName,
         lineNumber, columnNumber)
   }

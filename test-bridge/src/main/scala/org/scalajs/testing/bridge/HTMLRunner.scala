@@ -73,7 +73,7 @@ protected[bridge] object HTMLRunner {
      * of a test. While this is reasonable in most cases, there could be a test
      * that is run by multiple test frameworks.
      */
-    val (testFilter, optExcludedHash): (TaskDef => Boolean, Option[Int])  = {
+    val (testFilter, optExcludedHash): (TaskDef => Boolean, Option[Int]) = {
       val search = dom.document.location.search.stripPrefix("?")
       search.split("&").map(decodeURIComponent).toList match {
         case "i" :: excludedHash :: included =>
@@ -145,7 +145,8 @@ protected[bridge] object HTMLRunner {
     // Schedule test via timeout so we yield to the UI event thread.
     val newTasks = Promise[Array[Task]]()
     val invocation = Future(task.execute(handler, Array(uiBox.logger),
-        newTasks.success))(QueueExecutionContext.timeouts())
+        newTasks.success))(
+        QueueExecutionContext.timeouts())
 
     val result = for {
       _ <- invocation
@@ -211,7 +212,7 @@ protected[bridge] object HTMLRunner {
       // Note: The following is not entirely true. The warning will also appear
       // if tests have been removed.
       line.newTextNode("There are new excluded tests in your project. You " +
-        "may wish to ")
+          "may wish to ")
       line.newLink("?", "Run all")
       line.newTextNode(" to rediscover all available tests.")
     }
@@ -461,7 +462,8 @@ protected[bridge] object HTMLRunner {
     @JSGlobal
     @js.native
     object window extends js.Object {
-      def addEventListener(tpe: String, handler: js.Function0[Unit]): Unit = js.native
+      def addEventListener(tpe: String, handler: js.Function0[Unit]): Unit =
+        js.native
     }
 
     @JSGlobal
@@ -486,7 +488,8 @@ protected[bridge] object HTMLRunner {
       var className: String = js.native
       val style: Style = js.native
       var onclick: js.Function0[Boolean] = js.native
-      def insertAdjacentElement(location: String, element: Element): Unit = js.native
+      def insertAdjacentElement(location: String, element: Element): Unit =
+        js.native
     }
 
     @js.native

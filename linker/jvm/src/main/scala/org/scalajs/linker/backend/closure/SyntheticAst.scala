@@ -23,9 +23,11 @@ import com.google.javascript.rhino.StaticSourceFile.SourceKind
  *  upstream repo in
  *  https://github.com/google/closure-compiler/commit/7a53987dd77dcc69511a42f58606f9d77709a50e
  */
-private[closure] final class SyntheticAst(private var root: Node) extends SourceAst {
+private[closure] final class SyntheticAst(
+    private var root: Node) extends SourceAst {
   private val inputId = new InputId(root.getSourceFileName())
-  private val sourceFile = SourceFile.fromCode(root.getSourceFileName(), "", SourceKind.STRONG)
+  private val sourceFile =
+    SourceFile.fromCode(root.getSourceFileName(), "", SourceKind.STRONG)
 
   def getAstRoot(compiler: AbstractCompiler): Node = root
 

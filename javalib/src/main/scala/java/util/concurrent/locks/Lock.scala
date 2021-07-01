@@ -21,6 +21,6 @@ trait Lock {
   def tryLock(time: Long, unit: TimeUnit): Boolean
   def unlock(): Unit
 
-  //Not implemented:
-  //def newCondition(): Condition
+  // Not implemented:
+  // def newCondition(): Condition
 }

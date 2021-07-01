@@ -12,7 +12,8 @@
 
 package java.io
 
-abstract class FilterReader protected (protected val in: Reader) extends Reader {
+abstract class FilterReader protected (
+    protected val in: Reader) extends Reader {
 
   in.getClass() // null check
 

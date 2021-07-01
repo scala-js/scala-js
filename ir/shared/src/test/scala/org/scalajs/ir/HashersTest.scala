@@ -44,34 +44,34 @@ class HashersTest {
   }
 
   private val bodyWithInterestingStuff = Block(
-      // All primitive literals, which exercise hashing of primitives
-      BooleanLiteral(true),
-      CharLiteral('A'),
-      ByteLiteral(12),
-      ShortLiteral(12345),
-      IntLiteral(1234567890),
-      LongLiteral(123456789101112L),
-      FloatLiteral(151.189f),
-      DoubleLiteral(151.189),
+    // All primitive literals, which exercise hashing of primitives
+    BooleanLiteral(true),
+    CharLiteral('A'),
+    ByteLiteral(12),
+    ShortLiteral(12345),
+    IntLiteral(1234567890),
+    LongLiteral(123456789101112L),
+    FloatLiteral(151.189f),
+    DoubleLiteral(151.189),
 
-      /* String literals, which exercise hashing strings, and, underlying
-       * that, hashing part of an Array[Byte], and hashing more than 64 bytes
-       * at a time, forcing decomposition in 64-byte chunks.
-       */
-      s(""),
-      s("hello"),
-      s("wPtOG7TtwcP1Z3gBgUzm"),
-      s("JEKzMO5kLpv7ZBu5FcSdIZngrMJTmZz90siAAxC7YCkBVp9M2DJRuI8jE278zRzjlvqC8syqM5G8Ujob"),
-      s(
-          "hU9TP2tpK0AQGyccLKotncR7PafADrjb1731xzvcp0MXKfcAQYnPniUUYphqwwj5LEt74QwSssGWh59q" +
-          "dBifWTbHqgXAncHzMqTU07g4Pj6BaYmGAsMxeC9IRgiKfMSOFpLyrXFz7zsIRhywapYjXV"
-      ),
+    /* String literals, which exercise hashing strings, and, underlying
+     * that, hashing part of an Array[Byte], and hashing more than 64 bytes
+     * at a time, forcing decomposition in 64-byte chunks.
+     */
+    s(""),
+    s("hello"),
+    s("wPtOG7TtwcP1Z3gBgUzm"),
+    s("JEKzMO5kLpv7ZBu5FcSdIZngrMJTmZz90siAAxC7YCkBVp9M2DJRuI8jE278zRzjlvqC8syqM5G8Ujob"),
+    s(
+      "hU9TP2tpK0AQGyccLKotncR7PafADrjb1731xzvcp0MXKfcAQYnPniUUYphqwwj5LEt74QwSssGWh59q" +
+      "dBifWTbHqgXAncHzMqTU07g4Pj6BaYmGAsMxeC9IRgiKfMSOFpLyrXFz7zsIRhywapYjXV"
+    ),
 
-      // A var ref that contains a Name, which exercises hashing an Array[Byte]
-      ref("x", IntType),
+    // A var ref that contains a Name, which exercises hashing an Array[Byte]
+    ref("x", IntType),
 
-      // Result value of type int, for consistency
-      i(5)
+    // Result value of type int, for consistency
+    i(5)
   )
 
   @Test def testHashMethodDef(): Unit = {
@@ -83,19 +83,19 @@ class HashersTest {
     val mIIMethodName = MethodName("m", List(I), I)
 
     test(
-        "64940df7c6aae58962eb56f4aa6c6b085ca06c25",
-        MethodDef(MemberFlags.empty, mIIMethodName, NON,
-            List(ParamDef("x", NON, IntType, mutable = false)),
-            IntType, None)(
-            NoOptHints, UNV)
+      "64940df7c6aae58962eb56f4aa6c6b085ca06c25",
+      MethodDef(MemberFlags.empty, mIIMethodName, NON,
+          List(ParamDef("x", NON, IntType, mutable = false)),
+          IntType, None)(
+          NoOptHints, UNV)
     )
 
     test(
-        "82df9d6beb7df0ee9f501380323bdb2038cc50cb",
-        MethodDef(MemberFlags.empty, mIIMethodName, NON,
-            List(ParamDef("x", NON, IntType, mutable = false)),
-            IntType, Some(bodyWithInterestingStuff))(
-            NoOptHints, UNV)
+      "82df9d6beb7df0ee9f501380323bdb2038cc50cb",
+      MethodDef(MemberFlags.empty, mIIMethodName, NON,
+          List(ParamDef("x", NON, IntType, mutable = false)),
+          IntType, Some(bodyWithInterestingStuff))(
+          NoOptHints, UNV)
     )
   }
 
@@ -106,11 +106,11 @@ class HashersTest {
     }
 
     test(
-        "d0fa6c753502e3d1df34e53ca6f6afb5cbdcd9d4",
-        JSMethodDef(MemberFlags.empty, s("m"),
-            List(ParamDef("x", NON, AnyType, mutable = false)), None,
-            bodyWithInterestingStuff)(
-            NoOptHints, UNV)
+      "d0fa6c753502e3d1df34e53ca6f6afb5cbdcd9d4",
+      JSMethodDef(MemberFlags.empty, s("m"),
+          List(ParamDef("x", NON, AnyType, mutable = false)), None,
+          bodyWithInterestingStuff)(
+          NoOptHints, UNV)
     )
   }
 

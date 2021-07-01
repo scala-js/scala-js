@@ -31,7 +31,8 @@ private[nio] object GenTypedArrayBuffer {
   @inline
   def generic_fromTypedArrayByteBuffer[BufferType <: Buffer](
       byteBuffer: TypedArrayByteBuffer)(
-      implicit newTypedArrayBuffer: NewTypedArrayBuffer[BufferType]): BufferType = {
+      implicit newTypedArrayBuffer: NewTypedArrayBuffer[
+          BufferType]): BufferType = {
     val byteArray = byteBuffer._typedArray
     val byteBufferPos = byteBuffer.position()
     val byteBufferLimit = byteBuffer.limit()
@@ -67,7 +68,8 @@ private[nio] final class GenTypedArrayBuffer[B <: Buffer] private (val self: B)
   @inline
   def generic_duplicate()(
       implicit newTypedArrayBuffer: NewThisTypedArrayBuffer): BufferType = {
-    val result = newTypedArrayBuffer(_typedArray, position(), limit(), isReadOnly())
+    val result =
+      newTypedArrayBuffer(_typedArray, position(), limit(), isReadOnly())
     result._mark = _mark
     result
   }

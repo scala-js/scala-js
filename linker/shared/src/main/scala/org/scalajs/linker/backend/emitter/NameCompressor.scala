@@ -35,9 +35,10 @@ private[emitter] final class NameCompressor(config: Emitter.Config) {
   def allocateNames(moduleSet: ModuleSet, logger: Logger): Unit = {
     assert(!namesAllocated, "Cannot allocate names a second time")
 
-    val propertyNamesToAvoid = logger.time("Name compressor: Collect property names to avoid") {
-      collectPropertyNamesToAvoid(moduleSet)
-    }
+    val propertyNamesToAvoid =
+      logger.time("Name compressor: Collect property names to avoid") {
+        collectPropertyNamesToAvoid(moduleSet)
+      }
 
     logger.time("Name compressor: Allocate property names") {
       allocatePropertyNames(entries, propertyNamesToAvoid)
@@ -51,7 +52,8 @@ private[emitter] final class NameCompressor(config: Emitter.Config) {
   }
 
   def genResolverFor(fieldName: FieldName): Resolver =
-    entries.getOrElseUpdate(fieldName, new FieldNameEntry(fieldName)).genResolver()
+    entries.getOrElseUpdate(
+        fieldName, new FieldNameEntry(fieldName)).genResolver()
 
   def genResolversForLong(fieldName: FieldName): (Resolver, Resolver) = {
     def genPartResolver(hi: Boolean): Resolver = {
@@ -63,13 +65,15 @@ private[emitter] final class NameCompressor(config: Emitter.Config) {
   }
 
   def genResolverFor(methodName: MethodName): Resolver =
-    entries.getOrElseUpdate(methodName, new MethodNameEntry(methodName)).genResolver()
+    entries.getOrElseUpdate(
+        methodName, new MethodNameEntry(methodName)).genResolver()
 
   def genResolverFor(prop: SyntheticProperty): Resolver =
     entries.getOrElseUpdate(prop, new SyntheticPropEntry(prop)).genResolver()
 
   def genResolverForAncestor(ancestor: ClassName): Resolver =
-    ancestorEntries.getOrElseUpdate(ancestor, new AncestorNameEntry(ancestor)).genResolver()
+    ancestorEntries.getOrElseUpdate(
+        ancestor, new AncestorNameEntry(ancestor)).genResolver()
 
   /** Collects the property names to avoid for Scala instance members.
    *
@@ -103,6 +107,7 @@ private[emitter] final class NameCompressor(config: Emitter.Config) {
 }
 
 private[emitter] object NameCompressor {
+
   /** Base set of names that should be avoided when allocating property names
    *  in any namespace.
    *
@@ -117,8 +122,10 @@ private[emitter] object NameCompressor {
   private val BasePropertyNamesToAvoid: Set[String] =
     NameGen.ReservedJSIdentifierNames + "then"
 
-  private def allocatePropertyNames[K <: AnyRef, E <: BaseEntry with Comparable[E]: ClassTag](
-      entries: mutable.AnyRefMap[K, E], namesToAvoid: collection.Set[String]): Unit = {
+  private def allocatePropertyNames[K <: AnyRef,
+      E <: BaseEntry with Comparable[E]: ClassTag](
+      entries: mutable.AnyRefMap[K, E],
+      namesToAvoid: collection.Set[String]): Unit = {
     val comparator: Comparator[E] =
       Comparator.comparingInt[E](_.occurrences).reversed() // by decreasing order of occurrences
         .thenComparing(Comparator.naturalOrder[E]()) // tie-break
@@ -148,7 +155,8 @@ private[emitter] object NameCompressor {
     private object resolver extends Resolver {
       def resolve(): String = {
         if (allocatedName == null)
-          throw new IllegalStateException(s"Cannot resolve name before it was allocated, for $this")
+          throw new IllegalStateException(
+              s"Cannot resolve name before it was allocated, for $this")
         allocatedName
       }
 
@@ -159,7 +167,8 @@ private[emitter] object NameCompressor {
 
     private def incOccurrences(): Unit = {
       if (allocatedName != null)
-        throw new IllegalStateException(s"Cannot increase occurrences after name was allocated for $this")
+        throw new IllegalStateException(
+            s"Cannot increase occurrences after name was allocated for $this")
       occurrences += 1
     }
 
@@ -218,14 +227,16 @@ private[emitter] object NameCompressor {
       extends PropertyNameEntry {
     protected def debugString: String = methodName.nameString
 
-    override def toString(): String = s"MethodNameEntry(${methodName.nameString})"
+    override def toString(): String =
+      s"MethodNameEntry(${methodName.nameString})"
   }
 
   private final class SyntheticPropEntry(val property: SyntheticProperty)
       extends PropertyNameEntry {
     protected def debugString: String = property.nonMinifiedName
 
-    override def toString(): String = s"SyntheticPropEntry(${property.nonMinifiedName})"
+    override def toString(): String =
+      s"SyntheticPropEntry(${property.nonMinifiedName})"
   }
 
   private final class AncestorNameEntry(val ancestor: ClassName)
@@ -236,7 +247,8 @@ private[emitter] object NameCompressor {
 
     protected def debugString: String = ancestor.nameString
 
-    override def toString(): String = s"AncestorNameEntry(${ancestor.nameString})"
+    override def toString(): String =
+      s"AncestorNameEntry(${ancestor.nameString})"
   }
 
   // private[emitter] for tests

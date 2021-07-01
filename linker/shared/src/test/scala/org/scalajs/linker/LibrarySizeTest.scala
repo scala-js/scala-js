@@ -55,7 +55,8 @@ class LibrarySizeTest {
           ClassType(PatternClass, nullable = true))
 
       val matcher = Apply(EAF, compiledPattern,
-          m("matcher", List(ClassRef("java.lang.CharSequence")), ClassRef(MatcherClass)),
+          m("matcher", List(ClassRef("java.lang.CharSequence")),
+              ClassRef(MatcherClass)),
           List(str(input)))(
           ClassType(MatcherClass, nullable = true))
 
@@ -63,18 +64,18 @@ class LibrarySizeTest {
     }
 
     val classDefs = Seq(
-        mainTestClassDef(Block(
-          line("[c-f]", 0, "d"),
-          line("[c-f]", java.util.regex.Pattern.CASE_INSENSITIVE, "D")
-        ))
+      mainTestClassDef(Block(
+        line("[c-f]", 0, "d"),
+        line("[c-f]", java.util.regex.Pattern.CASE_INSENSITIVE, "D")
+      ))
     )
 
     testLinkedSizes(
-      expectedFastLinkSize = 144074,
-      expectedFullLinkSizeWithoutClosure = 88141,
-      expectedFullLinkSizeWithClosure = 19946,
-      classDefs,
-      moduleInitializers = MainTestModuleInitializers
+        expectedFastLinkSize = 144074,
+        expectedFullLinkSizeWithoutClosure = 88141,
+        expectedFullLinkSizeWithClosure = 19946,
+        classDefs,
+        moduleInitializers = MainTestModuleInitializers
     )
   }
 }
@@ -111,14 +112,17 @@ object LibrarySizeTest {
     for {
       javalib <- TestIRRepo.javalib
       irFiles = javalib ++ classDefsFiles
-      fastLinkReport <- fastLinker.link(irFiles, moduleInitializers, fastOutput, logger)
-      fullLinkReport <- fullLinker.link(irFiles, moduleInitializers, fullOutput, logger)
+      fastLinkReport <-
+        fastLinker.link(irFiles, moduleInitializers, fastOutput, logger)
+      fullLinkReport <-
+        fullLinker.link(irFiles, moduleInitializers, fullOutput, logger)
     } yield {
       val fastSize = fastOutput.content("main.js").get.length
       val fullSize = fullOutput.content("main.js").get.length
 
       val (expectedFullLinkSize, fullLinkTolerance) =
-        if (fullLinkConfig.closureCompiler) (expectedFullLinkSizeWithClosure, 100)
+        if (fullLinkConfig.closureCompiler)
+          (expectedFullLinkSizeWithClosure, 100)
         else (expectedFullLinkSizeWithoutClosure, 500)
 
       def roughlyEquals(expected: Int, actual: Int, tolerance: Int): Boolean =

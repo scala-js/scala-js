@@ -15,7 +15,8 @@ package java.util.function
 trait BiFunction[T, U, R] {
   def apply(t: T, u: U): R
 
-  def andThen[V](after: Function[_ >: R, _ <: V]): BiFunction[T, U, V] = { (t: T, u: U) =>
+  def andThen[V](
+      after: Function[_ >: R, _ <: V]): BiFunction[T, U, V] = { (t: T, u: U) =>
     after.apply(this.apply(t, u))
   }
 }

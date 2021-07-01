@@ -87,7 +87,8 @@ class SpecialTest {
   @Test def allowDeletingNonConfigurableProperty_Issue461_Issue679(): Unit = {
     val obj = js.Dynamic.literal()
     js.Object.defineProperty(obj, "nonconfig",
-        js.Dynamic.literal(value = 4, writable = false).asInstanceOf[js.PropertyDescriptor])
+        js.Dynamic.literal(
+            value = 4, writable = false).asInstanceOf[js.PropertyDescriptor])
     assertEquals(4, obj.nonconfig)
     assertThrows(classOf[Exception], js.special.delete(obj, "nonconfig"))
     assertEquals(4, obj.nonconfig)
@@ -108,10 +109,12 @@ class SpecialTest {
   // js.special.tryCatch
 
   @Test def jsThrow(): Unit = {
-    val e = assertThrows(classOf[js.JavaScriptException], js.special.`throw`("foo"))
+    val e =
+      assertThrows(classOf[js.JavaScriptException], js.special.`throw`("foo"))
     assertEquals("foo", e.exception)
 
-    assertThrows(classOf[IllegalArgumentException], js.special.`throw`(new IllegalArgumentException))
+    assertThrows(classOf[IllegalArgumentException],
+        js.special.`throw`(new IllegalArgumentException))
   }
 
   @Test def jsTryCatch(): Unit = {
@@ -230,7 +233,8 @@ class SpecialTest {
     assumeTrue("assumed compliant NPEs", Platform.hasCompliantNullPointers)
 
     // Unwrapping null throws
-    assertThrows(classOf[NullPointerException], js.special.unwrapFromThrowable(null))
+    assertThrows(
+        classOf[NullPointerException], js.special.unwrapFromThrowable(null))
   }
 
   // js.special.fileLevelThis

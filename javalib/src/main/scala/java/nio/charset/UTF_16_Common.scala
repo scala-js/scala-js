@@ -30,7 +30,7 @@ private[charset] abstract class UTF_16_Common protected (
   def newEncoder(): CharsetEncoder = new Encoder
 
   private class Decoder extends CharsetDecoder(
-      UTF_16_Common.this, 0.5f, 1.0f) {
+          UTF_16_Common.this, 0.5f, 1.0f) {
     private var endianness = UTF_16_Common.this.endianness
 
     override protected def implReset(): Unit = {
@@ -116,10 +116,11 @@ private[charset] abstract class UTF_16_Common protected (
   }
 
   private class Encoder extends CharsetEncoder(
-      UTF_16_Common.this, 2.0f,
-      if (endianness == AutoEndian) 4.0f else 2.0f,
-      // Character 0xfffd
-      if (endianness == LittleEndian) Array(-3.toByte, -1.toByte) else Array(-1.toByte, -3.toByte)) {
+          UTF_16_Common.this, 2.0f,
+          if (endianness == AutoEndian) 4.0f else 2.0f,
+          // Character 0xfffd
+          if (endianness == LittleEndian) Array(-3.toByte, -1.toByte)
+          else Array(-1.toByte, -3.toByte)) {
 
     private var needToWriteBOM: Boolean = endianness == AutoEndian
 

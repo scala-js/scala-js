@@ -51,7 +51,7 @@ abstract class ComparisonCriteria {
     expected.isInstanceOf[Array[_]]
 
   private def assertArraysAreSameLength(expecteds: AnyRef, actuals: AnyRef,
-        header: String): Int = {
+      header: String): Int = {
     if (expecteds == null)
       Assert.fail(header + "expected array was null")
     if (actuals == null)

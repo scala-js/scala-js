@@ -54,10 +54,12 @@ trait LinkerImpl {
  *    future minor versions of Scala.js.
  */
 object LinkerImpl {
+
   /** Returns an implementation of the standard linker loaded via reflection. */
   def reflect(classpath: Seq[File]): LinkerImpl.Reflect = {
     val urls = classpath.map(_.toURI.toURL).toArray
-    val loader = new URLClassLoader(urls, new FilteringClassLoader(getClass.getClassLoader))
+    val loader =
+      new URLClassLoader(urls, new FilteringClassLoader(getClass.getClassLoader))
     new Reflect(loader)
   }
 
@@ -89,40 +91,40 @@ object LinkerImpl {
   private final class FilteringClassLoader(parent: ClassLoader)
       extends ClassLoader(parent) {
     private val parentPrefixes = List(
-      "java.",
-      "scala.",
-      "org.scalajs.linker.interface.",
-      "org.scalajs.logging.",
-      "org.scalajs.ir.",
-      /*
-       * A workaround for the OpenJDK bug 6265952 (#3921)
-       * https://bugs.java.com/bugdatabase/view_bug.do?bug_id=6265952
-       *
+        "java.",
+        "scala.",
+        "org.scalajs.linker.interface.",
+        "org.scalajs.logging.",
+        "org.scalajs.ir.",
+        /*
+         * A workaround for the OpenJDK bug 6265952 (#3921)
+         * https://bugs.java.com/bugdatabase/view_bug.do?bug_id=6265952
+         *
        * It manifests as a `java.lang.NoClassDefFoundError` being thrown,
-       * claiming the class `MethodAccessorImpl` is missing. The package of the
-       * class is implementation specific. The currently known packages are
-       * listed as prefixes below.
-       *
+         * claiming the class `MethodAccessorImpl` is missing. The package of the
+         * class is implementation specific. The currently known packages are
+         * listed as prefixes below.
+         *
        * The bug is triggered when calling `java.lang.Method#invoke` if both of
-       * the following conditions are met:
-       *
+         * the following conditions are met:
+         *
        * - this is the 15th (or later) time `invoke` is called on this instance,
-       * - the `ClassLoader` of the method's owning class does not make
-       *   `MethodAccessorImpl` available.
-       *
+         * - the `ClassLoader` of the method's owning class does not make
+         *   `MethodAccessorImpl` available.
+         *
        * Depending on the JDK implementation, the system property
-       * `sun.reflect.inflationThreshold` controls the invocation count
-       * threshold and can serve as a temporary workaround (e.g. set
-       * `-Dsun.reflect.inflationThreshold=30`)
-       *
+         * `sun.reflect.inflationThreshold` controls the invocation count
+         * threshold and can serve as a temporary workaround (e.g. set
+         * `-Dsun.reflect.inflationThreshold=30`)
+         *
        * To work around the issue, this `ClassLoader` delegates loading of
-       * classes in these internal packages to the parent `ClassLoader`.
-       * Additional package prefixes may need to be added in the future if the
-       * internal package names change or another implementation uses a
-       * different name.
-       */
-      "sun.reflect.",
-      "jdk.internal.reflect."
+         * classes in these internal packages to the parent `ClassLoader`.
+         * Additional package prefixes may need to be added in the future if the
+         * internal package names change or another implementation uses a
+         * different name.
+         */
+        "sun.reflect.",
+        "jdk.internal.reflect."
     )
 
     override def loadClass(name: String, resolve: Boolean): Class[_] = {
@@ -144,8 +146,10 @@ object LinkerImpl {
   final class Reflect private[LinkerImpl] (val loader: ClassLoader)
       extends LinkerImpl {
 
-    private def loadMethod(clazz: String, method: String, result: Class[_], params: Class[_]*): Method = {
-      val m = Class.forName("org.scalajs.linker." + clazz, true, loader).getMethod(method, params: _*)
+    private def loadMethod(clazz: String, method: String, result: Class[_],
+        params: Class[_]*): Method = {
+      val m = Class.forName("org.scalajs.linker." + clazz, true,
+          loader).getMethod(method, params: _*)
       require(Modifier.isStatic(m.getModifiers()))
       require(result.isAssignableFrom(m.getReturnType()))
       m
@@ -158,10 +162,12 @@ object LinkerImpl {
      * are invoked.
      */
     private val clearableLinkerMethod =
-      loadMethod("StandardImpl", "clearableLinker", classOf[ClearableLinker], classOf[StandardConfig])
+      loadMethod("StandardImpl", "clearableLinker", classOf[ClearableLinker],
+          classOf[StandardConfig])
 
     private val irFileCacheMethod =
-      loadMethod("StandardImpl", "irFileCache", classOf[IRFileCache], classOf[IRFileCacheConfig])
+      loadMethod("StandardImpl", "irFileCache", classOf[IRFileCache],
+          classOf[IRFileCacheConfig])
 
     private val irContainersMethod = {
       loadMethod("PathIRContainer", "fromClasspath", classOf[Future[_]],
@@ -169,7 +175,8 @@ object LinkerImpl {
     }
 
     private val outputDirectoryMethod =
-      loadMethod("PathOutputDirectory", "apply", classOf[OutputDirectory], classOf[Path])
+      loadMethod(
+          "PathOutputDirectory", "apply", classOf[OutputDirectory], classOf[Path])
 
     def clearableLinker(cfg: StandardConfig): ClearableLinker =
       invoke(clearableLinkerMethod, cfg)
@@ -178,7 +185,8 @@ object LinkerImpl {
       invoke(irFileCacheMethod, cfg)
 
     def irContainers(classpath: Seq[Path])(
-        implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[Path])] = {
+        implicit ec: ExecutionContext): Future[
+        (Seq[IRContainer], Seq[Path])] = {
       invoke(irContainersMethod, classpath, ec)
     }
 

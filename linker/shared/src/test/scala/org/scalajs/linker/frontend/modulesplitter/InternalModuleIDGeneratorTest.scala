@@ -28,10 +28,12 @@ class InternalModuleIDGeneratorTest {
       // test collision with hashed name
       ModuleID("-x4a1f096d13ea514c484d8604fd6984a699983e13")
     )
-    val generator = new InternalModuleIDGenerator.ForClassNames(testPublicModuleIDs)
+    val generator =
+      new InternalModuleIDGenerator.ForClassNames(testPublicModuleIDs)
 
     def test(expected: String, classNameString: String): Unit =
-      assertEquals(expected, generator.forClassName(ClassName(classNameString)).id)
+      assertEquals(
+          expected, generator.forClassName(ClassName(classNameString)).id)
 
     test("java.lang.-String", "java.lang.String")
     test("java.lang.-String-Builder", "java.lang.StringBuilder")
@@ -49,7 +51,8 @@ class InternalModuleIDGeneratorTest {
     test("test.-Other-Public.", "test.OtherPublic")
 
     // Too long resulting name (#5026)
-    test("-xb204ce10b523cf072bd79c3142cd349f155632b8", "НазваниеКлассаНаРусскомЯзыке")
+    test("-xb204ce10b523cf072bd79c3142cd349f155632b8",
+        "НазваниеКлассаНаРусскомЯзыке")
     test("-x4a1f096d13ea514c484d8604fd6984a699983e13.", "日本語でも長い名前になれます")
   }
 
@@ -65,16 +68,20 @@ class InternalModuleIDGeneratorTest {
     val generator1 = new InternalModuleIDGenerator.ForDigests(Nil)
     assertEquals("internal-1234ef", generator1.forDigest(digest).id)
 
-    val generator2 = new InternalModuleIDGenerator.ForDigests(List(goodModuleID, otherGoodModuleID))
+    val generator2 = new InternalModuleIDGenerator.ForDigests(
+        List(goodModuleID, otherGoodModuleID))
     assertEquals("internal-1234ef", generator2.forDigest(digest).id)
 
-    val generator3 = new InternalModuleIDGenerator.ForDigests(List(goodModuleID, collidingModuleID))
+    val generator3 = new InternalModuleIDGenerator.ForDigests(
+        List(goodModuleID, collidingModuleID))
     assertEquals("internal--1234ef", generator3.forDigest(digest).id)
 
-    val generator4 = new InternalModuleIDGenerator.ForDigests(List(collidingCaseInsensitiveModuleID, goodModuleID))
+    val generator4 = new InternalModuleIDGenerator.ForDigests(
+        List(collidingCaseInsensitiveModuleID, goodModuleID))
     assertEquals("internal---1234ef", generator4.forDigest(digest).id)
 
-    val generator5 = new InternalModuleIDGenerator.ForDigests(List(collidingCaseInsensitiveModuleID2, goodModuleID))
+    val generator5 = new InternalModuleIDGenerator.ForDigests(
+        List(collidingCaseInsensitiveModuleID2, goodModuleID))
     assertEquals("internal--1234ef", generator5.forDigest(digest).id)
   }
 }

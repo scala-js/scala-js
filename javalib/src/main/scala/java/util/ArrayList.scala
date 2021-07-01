@@ -129,7 +129,8 @@ class ArrayList[E] private (innerInit: AnyRef, private var _size: Int)
     checkIndexInBounds(index)
     if (isWebAssembly) {
       val removed = innerWasm(index).asInstanceOf[E]
-      System.arraycopy(innerWasm, index + 1, innerWasm, index, size() - index - 1)
+      System.arraycopy(
+          innerWasm, index + 1, innerWasm, index, size() - index - 1)
       innerWasm(size - 1) = null // free reference for GC
       _size -= 1
       removed
@@ -152,7 +153,8 @@ class ArrayList[E] private (innerInit: AnyRef, private var _size: Int)
         checkIndexOnBounds(index)
         if (isWebAssembly) {
           ensureCapacity(size() + other.size())
-          System.arraycopy(innerWasm, index, innerWasm, index + other.size(), size() - index)
+          System.arraycopy(
+              innerWasm, index, innerWasm, index + other.size(), size() - index)
           System.arraycopy(other.innerWasm, 0, innerWasm, index, other.size())
           _size += c.size()
         } else {
@@ -168,7 +170,8 @@ class ArrayList[E] private (innerInit: AnyRef, private var _size: Int)
       throw new IndexOutOfBoundsException()
     if (isWebAssembly) {
       if (fromIndex != toIndex) {
-        System.arraycopy(innerWasm, toIndex, innerWasm, fromIndex, size() - toIndex)
+        System.arraycopy(
+            innerWasm, toIndex, innerWasm, fromIndex, size() - toIndex)
         val newSize = size() - toIndex + fromIndex
         Arrays.fill(innerWasm, newSize, size(), null) // free references for GC
         _size = newSize

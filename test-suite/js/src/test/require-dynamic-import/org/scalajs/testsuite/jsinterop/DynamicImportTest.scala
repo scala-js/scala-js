@@ -27,7 +27,8 @@ class DynamicImportTest {
   import DynamicImportTest._
 
   @Test def testSuccessfulImport(): AsyncResult = await {
-    js.`import`[ModulesTestModuleAPI]("../test-classes/modules-test.js").toFuture.map { m =>
+    js.`import`[ModulesTestModuleAPI](
+        "../test-classes/modules-test.js").toFuture.map { m =>
       assertEquals("object", js.typeOf(m))
       assertEquals(5, m.ssum(2))
       assertEquals(13, m.ssum(2, 3))

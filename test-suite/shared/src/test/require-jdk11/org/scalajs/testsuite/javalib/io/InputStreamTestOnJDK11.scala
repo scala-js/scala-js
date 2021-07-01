@@ -22,15 +22,17 @@ import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform
 
 class InputStreamTestOnJDK11 {
-  /** InputStream that only ever reads max bytes at once */
-  def chunkedStream(max: Int, seq: Seq[Int]): InputStream = new SeqInputStreamForTest(seq) {
-    require(max > 0)
 
-    override def read(b: Array[Byte], off: Int, len: Int): Int = {
-      val newLen = Math.min(max, len)
-      super.read(b, off, newLen)
+  /** InputStream that only ever reads max bytes at once */
+  def chunkedStream(max: Int, seq: Seq[Int]): InputStream =
+    new SeqInputStreamForTest(seq) {
+      require(max > 0)
+
+      override def read(b: Array[Byte], off: Int, len: Int): Int = {
+        val newLen = Math.min(max, len)
+        super.read(b, off, newLen)
+      }
     }
-  }
 
   def emptyStream(): InputStream = new InputStream {
     def read(): Int = -1
@@ -51,7 +53,8 @@ class InputStreamTestOnJDK11 {
     assertBytesEqual(Nil, emptyStream().readNBytes(1000))
 
     // test buffer growing
-    assertBytesEqual(0 until 2000, chunkedStream(200, 0 until 2000).readNBytes(2000))
+    assertBytesEqual(
+        0 until 2000, chunkedStream(200, 0 until 2000).readNBytes(2000))
 
     assertThrows(classOf[IllegalArgumentException], emptyStream().readNBytes(-1))
   }
@@ -93,10 +96,12 @@ class InputStreamTestOnJDK11 {
     assertThrows(classOf[IOException], stream.read(new Array[Byte](1))) // JDK doesn't throw if len == 0
     assertThrows(classOf[IOException], stream.read(new Array[Byte](1), 0, 1)) // JDK doesn't throw if len == 0
     assertThrows(classOf[IOException], stream.readAllBytes())
-    assertThrows(classOf[IOException], stream.readNBytes(new Array[Byte](1), 0, 0))
+    assertThrows(
+        classOf[IOException], stream.readNBytes(new Array[Byte](1), 0, 0))
     assertThrows(classOf[IOException], stream.readNBytes(0))
     assertThrows(classOf[IOException], stream.skip(1))
     assertThrows(classOf[IOException], stream.skip(0))
-    assertThrows(classOf[IOException], stream.transferTo(new ByteArrayOutputStream))
+    assertThrows(
+        classOf[IOException], stream.transferTo(new ByteArrayOutputStream))
   }
 }

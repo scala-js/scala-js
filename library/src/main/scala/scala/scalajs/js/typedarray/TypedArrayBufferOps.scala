@@ -94,27 +94,34 @@ final class TypedArrayBufferOps[ // scalastyle:ignore
  *  JavaScript Typed Arrays.
  */
 object TypedArrayBufferOps {
-  implicit def bufferOps(buffer: Buffer): TypedArrayBufferOps[_ <: TypedArray[_, _]] =
+  implicit def bufferOps(
+      buffer: Buffer): TypedArrayBufferOps[_ <: TypedArray[_, _]] =
     new TypedArrayBufferOps(buffer)
 
-  implicit def byteBufferOps(buffer: ByteBuffer): TypedArrayBufferOps[Int8Array] =
+  implicit def byteBufferOps(
+      buffer: ByteBuffer): TypedArrayBufferOps[Int8Array] =
     new TypedArrayBufferOps(buffer)
 
-  implicit def charBufferOps(buffer: CharBuffer): TypedArrayBufferOps[Uint16Array] =
+  implicit def charBufferOps(
+      buffer: CharBuffer): TypedArrayBufferOps[Uint16Array] =
     new TypedArrayBufferOps(buffer)
 
-  implicit def shortBufferOps(buffer: ShortBuffer): TypedArrayBufferOps[Int16Array] =
+  implicit def shortBufferOps(
+      buffer: ShortBuffer): TypedArrayBufferOps[Int16Array] =
     new TypedArrayBufferOps(buffer)
 
-  implicit def intBufferOps(buffer: IntBuffer): TypedArrayBufferOps[Int32Array] =
+  implicit def intBufferOps(
+      buffer: IntBuffer): TypedArrayBufferOps[Int32Array] =
     new TypedArrayBufferOps(buffer)
 
   implicit def longBufferOps(buffer: LongBuffer): TypedArrayBufferOps[Nothing] =
     new TypedArrayBufferOps(buffer)
 
-  implicit def floatBufferOps(buffer: FloatBuffer): TypedArrayBufferOps[Float32Array] =
+  implicit def floatBufferOps(
+      buffer: FloatBuffer): TypedArrayBufferOps[Float32Array] =
     new TypedArrayBufferOps(buffer)
 
-  implicit def doubleBufferOps(buffer: DoubleBuffer): TypedArrayBufferOps[Float64Array] =
+  implicit def doubleBufferOps(
+      buffer: DoubleBuffer): TypedArrayBufferOps[Float64Array] =
     new TypedArrayBufferOps(buffer)
 }

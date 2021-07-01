@@ -52,10 +52,13 @@ final class WasmContext(
 ) {
   import WasmContext._
 
-  private val functionTypes = LinkedHashMap.empty[watpe.FunctionType, wanme.TypeID]
-  private val tableFunctionTypes = mutable.HashMap.empty[MethodName, wanme.TypeID]
+  private val functionTypes =
+    LinkedHashMap.empty[watpe.FunctionType, wanme.TypeID]
+  private val tableFunctionTypes =
+    mutable.HashMap.empty[MethodName, wanme.TypeID]
   private val closureDataTypes = LinkedHashMap.empty[List[Type], wanme.TypeID]
-  private val typedClosureTypes = LinkedHashMap.empty[ClosureType, (wanme.TypeID, wanme.TypeID)]
+  private val typedClosureTypes =
+    LinkedHashMap.empty[ClosureType, (wanme.TypeID, wanme.TypeID)]
 
   val jsNameGen = new JSNameGen()
 
@@ -75,7 +78,8 @@ final class WasmContext(
     })
   }
 
-  def addCustomJSHelper(jsFunction: js.Function, wasmType: watpe.FunctionType): wanme.FunctionID = {
+  def addCustomJSHelper(jsFunction: js.Function,
+      wasmType: watpe.FunctionType): wanme.FunctionID = {
     val id = CustomJSHelperFunctionID(customJSHelpers.size)
     moduleBuilder.addImport(
       wamod.Import(
@@ -101,7 +105,8 @@ final class WasmContext(
   val constantArrayPool: ConstantArrayPool = new ConstantArrayPool
 
   /** The main `rectype` containing the object model types. */
-  val mainRecType: ModuleBuilder.RecTypeBuilder = new ModuleBuilder.RecTypeBuilder
+  val mainRecType: ModuleBuilder.RecTypeBuilder =
+    new ModuleBuilder.RecTypeBuilder
 
   def getClassInfoOption(name: ClassName): Option[ClassInfo] =
     classInfo.get(name)
@@ -192,7 +197,8 @@ final class WasmContext(
    *    the capture data and the `ref.func` (i.e., the actual Wasm type of
    *    values of the given `ClosureType`).
    */
-  def genTypedClosureStructType(tpe0: ClosureType): (wanme.TypeID, wanme.TypeID) = {
+  def genTypedClosureStructType(tpe0: ClosureType): (wanme.TypeID,
+      wanme.TypeID) = {
     // Normalize to the non-nullable variant
     val tpe = tpe0.toNonNullable
 
@@ -202,11 +208,13 @@ final class WasmContext(
       val tpeNameString = tpe.show()
 
       val funType = watpe.FunctionType(
-        watpe.RefType.struct :: tpe.paramTypes.map(TypeTransformer.transformParamType(_)),
+        watpe.RefType.struct :: tpe.paramTypes.map(
+            TypeTransformer.transformParamType(_)),
         TypeTransformer.transformResultType(tpe.resultType)
       )
       val funTypeID = genTypeID.forClosureFunType(tpe)
-      mainRecType.addSubType(funTypeID, OriginalName("fun" + tpeNameString), funType)
+      mainRecType.addSubType(
+          funTypeID, OriginalName("fun" + tpeNameString), funType)
 
       val fields: List[watpe.StructField] = List(
         watpe.StructField(
@@ -225,7 +233,8 @@ final class WasmContext(
 
       val structTypeID = genTypeID.forClosureType(tpe)
       val structType = watpe.StructType(fields)
-      mainRecType.addSubType(structTypeID, OriginalName(tpeNameString), structType)
+      mainRecType.addSubType(
+          structTypeID, OriginalName(tpeNameString), structType)
 
       (funTypeID, structTypeID)
     })
@@ -247,7 +256,8 @@ final class WasmContext(
 }
 
 object WasmContext {
-  private final case class CustomJSHelperFunctionID(index: Int) extends wanme.FunctionID {
+  private final case class CustomJSHelperFunctionID(
+      index: Int) extends wanme.FunctionID {
     override def toString(): String = s"customJSHelper.$index"
 
     val importName: String = index.toString()
@@ -333,7 +343,8 @@ object WasmContext {
       kind == ClassKind.Interface
   }
 
-  final class ConcreteMethodInfo(val ownerClass: ClassName, val methodName: MethodName) {
+  final class ConcreteMethodInfo(val ownerClass: ClassName,
+      val methodName: MethodName) {
     val tableEntryID = genFunctionID.forTableEntry(ownerClass, methodName)
   }
 }

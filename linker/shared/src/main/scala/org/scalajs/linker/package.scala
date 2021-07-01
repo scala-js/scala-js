@@ -20,16 +20,18 @@ package object linker {
   private[linker] implicit class FutureOps[T](private val self: Future[T])
       extends AnyVal {
 
-    def transformWith[S](f: Try[T] => Future[S])(implicit ec: ExecutionContext): Future[S] =
+    def transformWith[S](f: Try[T] => Future[S])(
+        implicit ec: ExecutionContext): Future[S] =
       self.map[Try[T]](Success(_)).recover { case t => Failure(t) }.flatMap(f)
 
-    def finallyWith(f: => Future[Unit])(implicit ec: ExecutionContext): Future[T] = {
+    def finallyWith(f: => Future[Unit])(
+        implicit ec: ExecutionContext): Future[T] = {
       self.transformWith {
         case Success(x) =>
           f.map(_ => x)
 
         case Failure(vt) =>
-          f.transform(_  => throw vt, ft => { ft.addSuppressed(vt); ft })
+          f.transform(_ => throw vt, ft => { ft.addSuppressed(vt); ft })
       }
     }
   }

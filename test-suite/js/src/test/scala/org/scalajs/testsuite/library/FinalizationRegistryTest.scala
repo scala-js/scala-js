@@ -19,7 +19,8 @@ import scala.scalajs.js
 
 class FinalizationRegistryTest {
   @Test def testMethods(): Unit = {
-    val registry = new js.FinalizationRegistry[js.Date, String, Any]((heldValue: String) => ())
+    val registry =
+      new js.FinalizationRegistry[js.Date, String, Any]((heldValue: String) => ())
 
     val obj1 = new js.Date()
     registry.register(obj1, "foo")

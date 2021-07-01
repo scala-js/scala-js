@@ -97,11 +97,14 @@ class BackwardsCompatTest {
       mainTestClassDef(systemOutPrintln {
         Apply(
           EAF,
-          ApplyStatic(EAF, Base64Class, m("getDecoder", Nil, DecoderTypeRef), Nil)(DecoderType),
+          ApplyStatic(EAF, Base64Class, m("getDecoder", Nil, DecoderTypeRef),
+              Nil)(DecoderType),
           m("decode", List(ByteBufferTypeRef), ByteBufferTypeRef),
           List(
-            ApplyStatic(EAF, ByteBufferClass, m("wrap", List(AB), ByteBufferTypeRef),
-                List(ArrayValue(AB, List[Byte](65, 81, 73, 61).map(ByteLiteral(_)))))(ByteBufferType)
+            ApplyStatic(
+                EAF, ByteBufferClass, m("wrap", List(AB), ByteBufferTypeRef),
+                List(ArrayValue(AB, List[Byte](65, 81, 73, 61).map(ByteLiteral(_)))))(
+                ByteBufferType)
           )
         )(ByteBufferType)
       })
@@ -124,11 +127,13 @@ class BackwardsCompatTest {
     val classDefs = Seq(
       mainTestClassDef(Block(
         systemOutPrintln(
-          ApplyStatic(EAF, ReflectArrayClass, m("newInstance", List(ClassClassRef, I), O),
+          ApplyStatic(
+              EAF, ReflectArrayClass, m("newInstance", List(ClassClassRef, I), O),
               List(ClassOf(T), int(5)))(AnyType)
         ),
         systemOutPrintln(
-          ApplyStatic(EAF, ReflectArrayClass, m("newInstance", List(ClassClassRef, AI), O),
+          ApplyStatic(EAF, ReflectArrayClass,
+              m("newInstance", List(ClassClassRef, AI), O),
               List(ClassOf(T), ArrayValue(AI, List(int(5), int(4)))))(AnyType)
         )
       ))

@@ -126,9 +126,9 @@ abstract class ExplicitInnerJS[G <: Global with Singleton](val global: G)
    */
   private def isApplicableOwner(sym: Symbol): Boolean = {
     !sym.isStaticOwner || (
-        sym.isModuleClass &&
-        sym.hasAnnotation(JSTypeAnnot) &&
-        !sym.hasAnnotation(JSNativeAnnotation)
+      sym.isModuleClass &&
+      sym.hasAnnotation(JSTypeAnnot) &&
+      !sym.hasAnnotation(JSNativeAnnotation)
     )
   }
 
@@ -151,7 +151,8 @@ abstract class ExplicitInnerJS[G <: Global with Singleton](val global: G)
    *  This method was inspired by `ExplicitOuter.transformInfo`.
    */
   def transformInfo(sym: Symbol, tp: Type): Type = tp match {
-    case ClassInfoType(parents, decls, clazz) if !clazz.isJava && isApplicableOwner(clazz) =>
+    case ClassInfoType(parents, decls, clazz)
+        if !clazz.isJava && isApplicableOwner(clazz) =>
       val innerJSClasses = decls.filter(isJSClass)
 
       val innerObjectsForAdHocExposed =
@@ -241,7 +242,8 @@ abstract class ExplicitInnerJS[G <: Global with Singleton](val global: G)
     override def transform(tree: Tree): Tree = {
       tree match {
         // Add the ValDefs for inner JS class values
-        case Template(parents, self, decls) if isApplicableOwner(currentOwner) =>
+        case Template(parents, self, decls)
+            if isApplicableOwner(currentOwner) =>
           val newDecls = mutable.ListBuffer.empty[Tree]
           atOwner(tree, currentOwner) {
             for (decl <- decls) {

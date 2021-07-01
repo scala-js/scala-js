@@ -15,7 +15,8 @@ package scala.scalajs.js
 import scala.annotation.tailrec
 
 import scala.collection.{immutable, mutable}
-import scala.collection.{AbstractIndexedSeqView, AbstractIterator, IndexedSeqView, IterableOnce}
+import scala.collection.{AbstractIndexedSeqView, AbstractIterator,
+  IndexedSeqView, IterableOnce}
 
 import scala.reflect.ClassTag
 
@@ -1133,7 +1134,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *    third elements from each element triple of this array.
    */
   def unzip3[A1, A2, A3](
-      implicit asTriple: A => (A1, A2, A3)): (js.Array[A1], js.Array[A2], js.Array[A3]) = {
+      implicit asTriple: A => (A1, A2, A3)): (js.Array[A1], js.Array[A2],
+      js.Array[A3]) = {
 
     val len = xs.length
     val a1 = new js.Array[A1](len)
@@ -1350,7 +1352,6 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
   def copyToArray[B >: A](xs: scala.Array[B], start: Int): Int =
     copyToArray(xs, start, Int.MaxValue)
 
-
   /** Copy elements of this array to a Scala array.
    *
    *  Fills the given array `xs` starting at index `start` with at most `len`
@@ -1373,7 +1374,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
 
     // Copied from IterableOnce.elemsToCopyToArray
     @inline
-    def elemsToCopyToArray(srcLen: Int, destLen: Int, start: Int, len: Int): Int =
+    def elemsToCopyToArray(srcLen: Int, destLen: Int, start: Int,
+        len: Int): Int =
       max(min(min(len, srcLen), destLen - start), 0)
 
     val copied = elemsToCopyToArray(src.length, dest.length, start, len)
@@ -1525,7 +1527,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
    *    (which may be the only element) will be truncated if there are fewer
    *    than `size` elements remaining to be grouped.
    */
-  def sliding(size: Int, step: Int = 1): scala.collection.Iterator[js.Array[A]] =
+  def sliding(size: Int, step: Int = 1): scala.collection.Iterator[js.Array[
+      A]] =
     new js.WrappedArray(xs).sliding(size, step).map(js.WrappedArray.toJSArray _)
 
   /** Iterates over combinations. */
@@ -1924,7 +1927,8 @@ final class ArrayOps[A](private val xs: js.Array[A]) extends AnyVal {
 }
 
 object ArrayOps {
-  private class ArrayView[A](xs: js.Array[A]) extends AbstractIndexedSeqView[A] {
+  private class ArrayView[A](
+      xs: js.Array[A]) extends AbstractIndexedSeqView[A] {
     @inline def length: Int = xs.length
 
     @inline def apply(n: Int): A = xs(n)
@@ -2003,7 +2007,8 @@ object ArrayOps {
     }
 
     def flatMap[BS, B](f: A => BS)(
-        implicit asIterable: BS => scala.collection.Iterable[B]): js.Array[B] = {
+        implicit asIterable: BS => scala.collection.Iterable[B]): js.Array[
+        B] = {
       flatMap[B](x => asIterable(f(x)))
     }
 

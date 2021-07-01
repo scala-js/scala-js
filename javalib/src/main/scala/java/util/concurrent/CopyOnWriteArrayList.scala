@@ -145,14 +145,16 @@ class CopyOnWriteArrayList[E <: AnyRef] private (initialCapacity: Int)
 
   def remove(o: scala.Any): Boolean = {
     val index = indexOf(o)
-    if (index == -1) false else {
+    if (index == -1) false
+    else {
       remove(index)
       true
     }
   }
 
   def addIfAbsent(e: E): Boolean = {
-    if (contains(e)) false else {
+    if (contains(e)) false
+    else {
       copyIfNeeded()
       innerPush(e)
       true
@@ -259,7 +261,9 @@ class CopyOnWriteArrayList[E <: AnyRef] private (initialCapacity: Int)
       obj match {
         case obj: List[_] =>
           val oIter = obj.listIterator()
-          this.scalaOps.forall(elem => oIter.hasNext() && Objects.equals(elem, oIter.next())) && !oIter.hasNext()
+          this.scalaOps.forall(elem =>
+            oIter.hasNext() && Objects.equals(
+                elem, oIter.next())) && !oIter.hasNext()
         case _ => false
       }
     }
@@ -330,7 +334,8 @@ class CopyOnWriteArrayList[E <: AnyRef] private (initialCapacity: Int)
     inner
   }
 
-  private class CopyOnWriteArrayListView(fromIndex: Int, private var toIndex: Int)
+  private class CopyOnWriteArrayListView(fromIndex: Int,
+      private var toIndex: Int)
       extends CopyOnWriteArrayList[E](initialCapacity) {
     viewSelf =>
 
@@ -347,7 +352,8 @@ class CopyOnWriteArrayList[E <: AnyRef] private (initialCapacity: Int)
       checkIndexOnBounds(index)
       new CopyOnWriteArrayListIterator[E](innerSnapshot(), fromIndex + index,
           fromIndex, toIndex) {
-        override protected def onSizeChanged(delta: Int): Unit = changeSize(delta)
+        override protected def onSizeChanged(
+            delta: Int): Unit = changeSize(delta)
       }
     }
 
@@ -421,7 +427,8 @@ class CopyOnWriteArrayList[E <: AnyRef] private (initialCapacity: Int)
 }
 
 private class CopyOnWriteArrayListIterator[E](
-    arraySnapshot: CopyOnWriteArrayList.innerImpl.Repr[E], i: Int, start: Int, end: Int)
+    arraySnapshot: CopyOnWriteArrayList.innerImpl.Repr[E], i: Int, start: Int,
+    end: Int)
     extends AbstractRandomAccessListIterator[E](i, start, end) {
   override def remove(): Unit =
     throw new UnsupportedOperationException
@@ -506,7 +513,8 @@ object CopyOnWriteArrayList {
         v
       }
 
-      @inline def add[E](v: Repr[E], index: Int, items: Collection[_ <: E]): Repr[E] = {
+      @inline def add[E](v: Repr[E], index: Int,
+          items: Collection[_ <: E]): Repr[E] = {
         val itemsArray = js.Array[AnyRef]()
         items.scalaOps.foreach(e => itemsArray.push(e.asInstanceOf[AnyRef]))
         v.splice(index, 0, itemsArray.toSeq: _*)
@@ -534,7 +542,8 @@ object CopyOnWriteArrayList {
 
       @inline def length(v: Repr[_]): Int = v(0).asInstanceOf[Int]
 
-      @inline def get[E](v: Repr[E], index: Int): E = v(index + 1).asInstanceOf[E] // Index 0 stores the length
+      @inline def get[E](v: Repr[E], index: Int): E =
+        v(index + 1).asInstanceOf[E] // Index 0 stores the length
 
       @inline def set[E](v: Repr[E], index: Int, e: E): Unit =
         v(index + 1) = e.asInstanceOf[AnyRef]
@@ -551,18 +560,21 @@ object CopyOnWriteArrayList {
         val innerIdx = index + 1
         val size = length(v)
         val newArr = ensureCapacity(v, size + 1)
-        System.arraycopy(newArr, innerIdx, newArr, innerIdx + 1, size + 1 - innerIdx)
+        System.arraycopy(
+            newArr, innerIdx, newArr, innerIdx + 1, size + 1 - innerIdx)
         newArr(innerIdx) = e.asInstanceOf[AnyRef]
         newArr(0) = (size + 1).asInstanceOf[AnyRef]
         newArr
       }
 
-      @inline def add[E](v: Repr[E], index: Int, items: Collection[_ <: E]): Repr[E] = {
+      @inline def add[E](v: Repr[E], index: Int,
+          items: Collection[_ <: E]): Repr[E] = {
         val innerIdx = index + 1
         val size = length(v)
         val itemsSize = items.size()
         val newArr = ensureCapacity(v, size + itemsSize)
-        System.arraycopy(newArr, innerIdx, newArr, innerIdx + itemsSize, size + 1 - innerIdx)
+        System.arraycopy(
+            newArr, innerIdx, newArr, innerIdx + itemsSize, size + 1 - innerIdx)
         System.arraycopy(items.toArray(), 0, newArr, innerIdx, itemsSize)
         newArr(0) = (size + itemsSize).asInstanceOf[AnyRef]
         newArr
@@ -591,7 +603,8 @@ object CopyOnWriteArrayList {
       @inline def clone[E](v: Repr[E]): Repr[E] =
         v.clone()
 
-      @inline private def ensureCapacity[E](v: Repr[E], minCapacity: Int): Repr[E] = {
+      @inline private def ensureCapacity[
+          E](v: Repr[E], minCapacity: Int): Repr[E] = {
         val capacity = v.length - 1
         if (capacity < minCapacity) {
           val newCapacity = roundUpToPowerOfTwo(minCapacity + 1) // Index 0 stores the length

@@ -36,6 +36,7 @@ sealed trait Symbol extends js.Any
 @js.native
 @JSGlobal
 object Symbol extends js.Object {
+
   /** Creates a new unique symbol without description.
    *
    *  @group factories

@@ -34,6 +34,7 @@ object Types {
    *  across the backend, so it also makes sense for it to be the "default".
    */
   sealed abstract class Type extends StorageType {
+
     /** Returns true if and only if this type is defaultable. */
     final def isDefaultable: Boolean = this match {
       case RefType(nullable, _) => nullable
@@ -53,15 +54,17 @@ object Types {
   }
 
   /** Convenience superclass for `Type`s that are encoded with a simple opcode. */
-  sealed abstract class SimpleType(val textName: String, val binaryCode: Byte) extends Type
+  sealed abstract class SimpleType(val textName: String, val binaryCode: Byte)
+      extends Type
 
-  case object Int32 extends SimpleType("i32", 0x7F)
-  case object Int64 extends SimpleType("i64", 0x7E)
-  case object Float32 extends SimpleType("f32", 0x7D)
-  case object Float64 extends SimpleType("f64", 0x7C)
+  case object Int32 extends SimpleType("i32", 0x7f)
+  case object Int64 extends SimpleType("i64", 0x7e)
+  case object Float32 extends SimpleType("f32", 0x7d)
+  case object Float64 extends SimpleType("f64", 0x7c)
 
   /** A WebAssembly `packedtype`. */
-  sealed abstract class PackedType(val textName: String, val binaryCode: Byte) extends StorageType
+  sealed abstract class PackedType(val textName: String, val binaryCode: Byte)
+      extends StorageType
 
   case object Int8 extends PackedType("i8", 0x78)
   case object Int16 extends PackedType("i16", 0x77)
@@ -139,12 +142,12 @@ object Types {
     case object NoExtern extends AbsHeapType("noextern", "nullexternref", 0x72)
     case object None extends AbsHeapType("none", "nullref", 0x71)
     case object Func extends AbsHeapType("func", "funcref", 0x70)
-    case object Extern extends AbsHeapType("extern", "externref", 0x6F)
-    case object Any extends AbsHeapType("any", "anyref", 0x6E)
-    case object Eq extends AbsHeapType("eq", "eqref", 0x6D)
-    case object I31 extends AbsHeapType("i31", "i31ref", 0x6C)
-    case object Struct extends AbsHeapType("struct", "structref", 0x6B)
-    case object Array extends AbsHeapType("array", "arrayref", 0x6A)
+    case object Extern extends AbsHeapType("extern", "externref", 0x6f)
+    case object Any extends AbsHeapType("any", "anyref", 0x6e)
+    case object Eq extends AbsHeapType("eq", "eqref", 0x6d)
+    case object I31 extends AbsHeapType("i31", "i31ref", 0x6c)
+    case object Struct extends AbsHeapType("struct", "structref", 0x6b)
+    case object Array extends AbsHeapType("array", "arrayref", 0x6a)
     case object Exn extends AbsHeapType("exn", "exnref", 0x69)
 
     def apply(typeID: TypeID): HeapType.Type =
@@ -178,7 +181,8 @@ object Types {
   object SubType {
 
     /** Builds a `subtype` that is `final` and without any super type. */
-    def apply(id: TypeID, originalName: OriginalName, compositeType: CompositeType): SubType =
+    def apply(id: TypeID, originalName: OriginalName,
+        compositeType: CompositeType): SubType =
       SubType(id, originalName, isFinal = true, superType = None, compositeType)
   }
 
@@ -186,7 +190,8 @@ object Types {
   sealed abstract class CompositeType
 
   /** A WebAssembly `functype`. */
-  final case class FunctionType(params: List[Type], results: List[Type]) extends CompositeType
+  final case class FunctionType(params: List[Type], results: List[Type])
+      extends CompositeType
 
   object FunctionType {
     val NilToNil: FunctionType = FunctionType(Nil, Nil)
@@ -196,7 +201,8 @@ object Types {
   final case class StructType(fields: List[StructField]) extends CompositeType
 
   /** A member of a `StructType`, with a field name and a WebAssembly `fieldtype`. */
-  final case class StructField(id: FieldID, originalName: OriginalName, fieldType: FieldType)
+  final case class StructField(id: FieldID, originalName: OriginalName,
+      fieldType: FieldType)
 
   /** A WebAssembly `arraytype`. */
   final case class ArrayType(fieldType: FieldType) extends CompositeType

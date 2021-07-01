@@ -31,13 +31,15 @@ private[emitter] sealed abstract class GlobalRefTracking {
   /** Given a set of global refs tracked under the rules of `fromTracking`,
    *  keep only the ones needed according to `this`.
    */
-  def refineFrom(fromTracking: GlobalRefTracking, globalRefs: Set[String]): Set[String] = {
+  def refineFrom(fromTracking: GlobalRefTracking, globalRefs: Set[String]): Set[
+      String] = {
     if (this == fromTracking)
       globalRefs
     else if (this == Dangerous)
       GlobalRefUtils.keepOnlyDangerousGlobalRefs(globalRefs)
     else
-      throw new AssertionError(s"Cannot refine set of global refs from $fromTracking to $this")
+      throw new AssertionError(
+          s"Cannot refine set of global refs from $fromTracking to $this")
   }
 }
 

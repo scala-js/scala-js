@@ -41,7 +41,8 @@ abstract class CharsetDecoder protected (cs: Charset,
 
   final def replaceWith(newReplacement: String): CharsetDecoder = {
     if (newReplacement == null || newReplacement == "")
-      throw new IllegalArgumentException("Invalid replacement: "+newReplacement)
+      throw new IllegalArgumentException(
+          "Invalid replacement: " + newReplacement)
     if (newReplacement.length() > maxCharsPerByte())
       throw new IllegalArgumentException(
           "Replacement string cannot be longer than maxCharsPerByte")
@@ -64,9 +65,11 @@ abstract class CharsetDecoder protected (cs: Charset,
 
   protected def implOnMalformedInput(newAction: CodingErrorAction): Unit = ()
 
-  def unmappableCharacterAction(): CodingErrorAction = _unmappableCharacterAction
+  def unmappableCharacterAction(): CodingErrorAction =
+    _unmappableCharacterAction
 
-  final def onUnmappableCharacter(newAction: CodingErrorAction): CharsetDecoder = {
+  final def onUnmappableCharacter(
+      newAction: CodingErrorAction): CharsetDecoder = {
     if (newAction == null)
       throw new IllegalArgumentException("null CodingErrorAction")
     _unmappableCharacterAction = newAction
@@ -74,7 +77,8 @@ abstract class CharsetDecoder protected (cs: Charset,
     this
   }
 
-  protected def implOnUnmappableCharacter(newAction: CodingErrorAction): Unit = ()
+  protected def implOnUnmappableCharacter(newAction: CodingErrorAction): Unit =
+    ()
 
   final def averageCharsPerByte(): Float = _averageCharsPerByte
   final def maxCharsPerByte(): Float = _maxCharsPerByte
@@ -90,14 +94,15 @@ abstract class CharsetDecoder protected (cs: Charset,
     @inline
     @tailrec
     def loop(): CoderResult = {
-      val result1 = try {
-        decodeLoop(in, out)
-      } catch {
-        case ex: BufferOverflowException =>
-          throw new CoderMalfunctionError(ex)
-        case ex: BufferUnderflowException =>
-          throw new CoderMalfunctionError(ex)
-      }
+      val result1 =
+        try {
+          decodeLoop(in, out)
+        } catch {
+          case ex: BufferOverflowException =>
+            throw new CoderMalfunctionError(ex)
+          case ex: BufferUnderflowException =>
+            throw new CoderMalfunctionError(ex)
+        }
 
       val result2 = if (result1.isUnderflow()) {
         val remaining = in.remaining()
