@@ -7,6 +7,10 @@ target/
 /linker-interface/**/scalajs-logging-src-jars/
 /node_modules/
 
+# scalafmt generated
+scripts/.coursier
+scripts/.scalafmt*
+
 # IDE specific
 .cache
 .classpath
