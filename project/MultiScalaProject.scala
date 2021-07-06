@@ -83,6 +83,15 @@ object MultiScalaProject {
     "2.13" -> Seq("2.13.0", "2.13.1", "2.13.2", "2.13.3", "2.13.4", "2.13.5", "2.13.6"),
   )
 
+  val Default2_11ScalaVersion = versions("2.11").last
+  val Default2_12ScalaVersion = versions("2.12").last
+  val Default2_13ScalaVersion = versions("2.13").last
+
+  /** The default Scala version is the default 2.12 Scala version, because it
+   *  must work for sbt plugins.
+   */
+  val DefaultScalaVersion = Default2_12ScalaVersion
+
   private final val ideVersion = "2.12"
 
   private def projectID(id: String, major: String) = id + major.replace('.', '_')

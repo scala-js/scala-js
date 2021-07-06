@@ -242,6 +242,13 @@ object Build {
     isGeneratingForIDE
   }
 
+  import MultiScalaProject.{
+    Default2_11ScalaVersion,
+    Default2_12ScalaVersion,
+    Default2_13ScalaVersion,
+    DefaultScalaVersion
+  }
+
   val scalastyleCheck = taskKey[Unit]("Run scalastyle")
 
   val fetchScalaSource = taskKey[File](
@@ -258,7 +265,7 @@ object Build {
   val previousBinaryCrossVersion = CrossVersion.binaryWith("sjs1_", "")
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set("2.11.12", "2.12.14", "2.13.6")
+    Set(Default2_11ScalaVersion, Default2_12ScalaVersion, Default2_13ScalaVersion)
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
 
@@ -870,7 +877,7 @@ object Build {
       MyScalaJSPlugin
   ).settings(
       commonSettings,
-      scalaVersion := "2.12.14",
+      scalaVersion := DefaultScalaVersion,
       fatalWarningsSettings,
       name := "Scala.js linker private library",
       publishArtifact in Compile := false,
@@ -1062,7 +1069,7 @@ object Build {
       name := "Scala.js sbt plugin",
       normalizedName := "sbt-scalajs",
       sbtPlugin := true,
-      crossScalaVersions := Seq("2.12.14"),
+      crossScalaVersions := Seq(DefaultScalaVersion),
       scalaVersion := crossScalaVersions.value.head,
       sbtVersion := "1.0.0",
       scalaBinaryVersion :=
@@ -1682,7 +1689,7 @@ object Build {
 
       MyScalaJSPlugin.expectedSizes := {
         scalaVersion.value match {
-          case "2.11.12" =>
+          case Default2_11ScalaVersion =>
             Some(ExpectedSizes(
                 fastLink = 520000 to 521000,
                 fullLink = 108000 to 109000,
@@ -1690,7 +1697,7 @@ object Build {
                 fullLinkGz = 28000 to 29000,
             ))
 
-          case "2.12.14" =>
+          case Default2_12ScalaVersion =>
             Some(ExpectedSizes(
                 fastLink = 782000 to 783000,
                 fullLink = 150000 to 151000,
@@ -1698,7 +1705,7 @@ object Build {
                 fullLinkGz = 36000 to 37000,
             ))
 
-          case "2.13.6" =>
+          case Default2_13ScalaVersion =>
             Some(ExpectedSizes(
                 fastLink = 777000 to 778000,
                 fullLink = 169000 to 170000,
