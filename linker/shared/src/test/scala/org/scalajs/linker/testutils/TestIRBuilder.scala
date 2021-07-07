@@ -35,6 +35,7 @@ object TestIRBuilder {
 
   val V = VoidRef
   val I = IntRef
+  val Z = BooleanRef
   val O = ClassRef(ObjectClass)
   val T = ClassRef(BoxedStringClass)
 

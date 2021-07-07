@@ -869,6 +869,9 @@ object Build {
 
         fileSet.toSeq.filter(_.getPath().endsWith(".scala"))
       }.taskValue,
+
+      // Required for the regex (?m) flag in ReportToLinkerOutputAdapter.scala
+      scalaJSLinkerConfig ~= { _.withESFeatures(_.withESVersion(ESVersion.ES2018)) },
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, irProjectJS, jUnitRuntime % "test", testBridge % "test", jUnitAsyncJS % "test",
   )
@@ -947,7 +950,15 @@ object Build {
 
       exportJars := true, // required so ScalaDoc linking works
 
-      testOptions += Tests.Argument(TestFrameworks.JUnit, "-a")
+      testOptions += Tests.Argument(TestFrameworks.JUnit, "-a"),
+
+      // Execute LibrarySizeTest only for the default Scala version of the build
+      testOptions ++= {
+        if (scalaVersion.value == DefaultScalaVersion)
+          Nil
+        else
+          Seq(Tests.Filter(s => !s.endsWith("LibrarySizeTest")))
+      },
   )
 
   lazy val linker: MultiScalaProject = MultiScalaProject(
@@ -1034,6 +1045,9 @@ object Build {
           Seq(output)
         }.taskValue,
       },
+
+      // Required for the regex (?m) flag in ReportToLinkerOutputAdapter.scala
+      scalaJSLinkerConfig ~= { _.withESFeatures(_.withESVersion(ESVersion.ES2018)) },
 
       scalaJSLinkerConfig in Test ~= (_.withModuleKind(ModuleKind.CommonJSModule))
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(

@@ -26,6 +26,8 @@ object Platform {
 
   final val executingInJVMOnJDK8OrLower = false
 
+  final val executingInJVMOnLowerThanJDK15 = false
+
   def executingInNodeJS: Boolean = {
     js.typeOf(js.Dynamic.global.process) != "undefined" &&
     !js.isUndefined(js.Dynamic.global.process.release) &&
@@ -101,6 +103,15 @@ object Platform {
    */
   def hasAccurateFloats: Boolean =
     hasStrictFloats || js.typeOf(js.Dynamic.global.Math.fround) != "undefined"
+
+  def regexSupportsUnicodeCase: Boolean =
+    assumedESVersion >= ESVersion.ES2015
+
+  def regexSupportsUnicodeCharacterClasses: Boolean =
+    assumedESVersion >= ESVersion.ES2018
+
+  def regexSupportsLookBehinds: Boolean =
+    assumedESVersion >= ESVersion.ES2018
 
   def isNoModule: Boolean = BuildInfo.isNoModule
   def isESModule: Boolean = BuildInfo.isESModule

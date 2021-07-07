@@ -38,21 +38,38 @@ import scala.scalajs.js
  *  - It computes the start of every group thanks to the groups before it
  *  - It builds and returns the mapping of previous group number -> start
  *
+ *  The `pattern` that is parsed by `GroupStartMapper` is the *compiled* JS
+ *  pattern produced by `PatternCompiler`, not the original Java pattern. This
+ *  means that we can simplify a number of things with the knowledge that:
+ *
+ *  - the pattern is well-formed,
+ *  - it contains no named group or named back references, and
+ *  - a '\' is always followed by an ASCII character that is:
+ *    - a digit, for a back reference,
+ *    - one of `^ $ \ . * + ? ( ) [ ] { } |`, for an escape,
+ *    - 'b' or 'B' for a word boundary,
+ *    - 'd' or 'D' for a digit character class (used in `[\d\D]` for any code point), or
+ *    - 'p' or 'P' followed by a `{}`-enclosed name that contains only ASCII word characters.
+ *
  *  @author Mikaël Mayer
  */
 private[regex] class GroupStartMapper private (pattern: String, flags: String,
     node: GroupStartMapper.Node, groupCount: Int,
-    allMatchingRegex: js.RegExp) {
+    jsRegExpForFind: js.RegExp, jsRegExpForMatches: js.RegExp) {
 
   import GroupStartMapper._
 
-  def apply(string: String, start: Int): js.Array[Int] = {
-    allMatchingRegex.lastIndex = start
-    val allMatchResult = allMatchingRegex.exec(string)
-    if (allMatchResult == null) {
+  def apply(forMatches: Boolean, string: String, index: Int): js.Array[Int] = {
+    val regExp =
+      if (forMatches) jsRegExpForMatches
+      else jsRegExpForFind
+
+    regExp.lastIndex = index
+    val allMatchResult = regExp.exec(string)
+    if (allMatchResult == null || allMatchResult.index != index) {
       throw new AssertionError(
-          s"[Internal error] Executed '$allMatchingRegex' on " +
-          s"'$string' at position $start, got an error.\n" +
+          s"[Internal error] Executed '$regExp' on " +
+          s"'$string' at position $index, got an error.\n" +
           s"Original pattern '$pattern' with flags '$flags' did match however.")
     }
 
@@ -65,7 +82,7 @@ private[regex] class GroupStartMapper private (pattern: String, flags: String,
       i += 1
     }
 
-    node.propagateFromStart(allMatchResult, groupStartMap, start)
+    node.propagateFromStart(allMatchResult, groupStartMap, index)
 
     groupStartMap
   }
@@ -76,10 +93,12 @@ private[regex] object GroupStartMapper {
     val parser = new Parser(pattern)
     val node = parser.parseTopLevel()
     node.setNewGroup(1)
-    val allMatchingRegex =
-      new js.RegExp(node.buildRegex(parser.groupNodeMap), flags)
+    val allMatchingPattern = node.buildRegex(parser.groupNodeMap)
+    val jsRegExpForFind = new js.RegExp(allMatchingPattern, flags + "g")
+    val jsRegExpForMatches =
+      new js.RegExp(Pattern.wrapJSPatternForMatches(allMatchingPattern), flags)
     new GroupStartMapper(pattern, flags, node, parser.parsedGroupCount,
-        allMatchingRegex)
+        jsRegExpForFind, jsRegExpForMatches)
   }
 
   /** Node of the regex tree. */
@@ -98,48 +117,36 @@ private[regex] object GroupStartMapper {
 
     def buildRegex(groupNodeMap: js.Array[Node]): String
 
-    /* When assigning group positions. I could not choose between assigning
-     * group numbers from left to right or from right to left, because there
-     * both failed in one case each. Normally, both directions give the same
-     * result. But there are corner cases.
+    /* The overall algorithm consists in, given known start and end positions
+     * of a parent node, determine the positions of its children. This is done
+     * in the main polymorphic method `propagate`, which each node implements.
      *
-     * Consider the following regex matching `abbbbbbc`
+     * For some kinds of parent nodes, even when we know both their start and
+     * end positions, we can only determine one side of their children.
+     * Obvious examples are look-around nodes. Since they are zero-length,
+     * their start and end are always equal, but correspond to different sides
+     * of their children:
      *
-     *     (?=ab*(c))ab
+     * - For look-ahead nodes (?=X) and (?!X), they correspond to the *start* of X.
+     * - For look-behind nodes (?<=X) and (?<!X), they correspond to the *end* of X.
      *
-     * After conversion, this becomes:
+     * Because of this, we have `propagateFromStart` and `propagateFromEnd`.
+     * In either case, since we know the length of the child, we can compute
+     * the position of the other side, which then allows to call `propagate`.
      *
-     *     (?=(ab*)(c))(ab)
+     * In addition to look-around nodes, repeated nodes also have a constraint
+     * on the side on which they operate. In X+ and X*, the groups inside X
+     * correspond to the *last* iteration of the repetition. When we know the
+     * start and end of X*, we only know the *end* of the last iteration of X.
      *
-     * To recover the position of the group (c), we cannot do anything but
-     * compute it from the length of (ab*), that is, propagate the start,
-     * compute the length, and return the end, and this, recursively. This is
-     * what we need to do in a forward-matching regex.
+     * Sequence nodes can choose either direction. We choose to process their
+     * children from start to end, and therefore thread the start of the
+     * sequence through the children, using the computed end of each child as
+     * the start of its next sibling.
      *
-     * However, consider the following regex matching `abcbdbe`
-     *
-     *     a(b.)*
-     *
-     * After conversion, it is transformed to:
-     *
-     *     (a)((b.)*)
-     *
-     * The semantics of group matching under a star are that the last match is
-     * kept. Therefore, we cannot obtain the start position of (b.) from
-     * propagating lengths from left to right. What we first do is to get the
-     * start, then the end, of the group `((b.)*)`, and then we propagate this
-     * end to the inner group.
-     *
-     * Note that when JavaScript will support back-matching `(?<= )` and
-     * `(?<! )` (hopefully one day), we will be able to implement the length
-     * transfer using the `propagateFromEnd` method, because we have no clue on
-     * where the match started (this is different from the `start` position
-     * because it can extend before it).
-     *
-     * Zero-length test nodes of the type `(?= )` or `(?! )` do not
-     * count to propagate the length on the right or on the left.
-     *
-     * `RepeatedNode`s use the semantics of propagating the end to the start.
+     * Other nodes such as alternatives or capturing groups have both the same
+     * start and end position as their children, so they can directly call
+     * `propagate`.
      */
 
     /** Propagates the start or end position of this node to its descendants.
@@ -152,21 +159,18 @@ private[regex] object GroupStartMapper {
 
     /** Propagates the appropriate positions to the descendants of this node
      *  from its end position.
-     *
-     *  @return the start position of this node
      */
     final def propagateFromEnd(matchResult: js.RegExp.ExecResult,
-        groupStartMap: js.Array[Int], end: Int): Int = {
+        groupStartMap: js.Array[Int], end: Int): Unit = {
 
       val start = matchResult(newGroup).fold(-1)(matched => end - matched.length)
       propagate(matchResult, groupStartMap, start, end)
-      start
     }
 
     /** Propagates the appropriate positions to the descendants of this node
      *  from its start position.
      *
-     *  @return the end position of this node
+     *  @return the end position of this node, as a convenience for `SequenceNode.propagate`
      */
     final def propagateFromStart(matchResult: js.RegExp.ExecResult,
         groupStartMap: js.Array[Int], start: Int): Int = {
@@ -194,12 +198,16 @@ private[regex] object GroupStartMapper {
        */
       if (matchResult(newGroup).isDefined)
         groupStartMap(number) = start
-      inner.propagateFromStart(matchResult, groupStartMap, start)
+      inner.propagate(matchResult, groupStartMap, start, end)
     }
   }
 
-  /** A zero-length test of the form `(?= )` or `(?! )`. */
-  private final class ZeroLengthTestNode(val indicator: String, val inner: Node)
+  /** A look-around group of the form `(?= )`, `(?! )`, `(?<= )` or `(?<! )`.
+   *
+   *  Look-aheads propagate from left to right, while look-behinds propagate
+   *  from right to left.
+   */
+  private final class LookAroundNode(isLookBehind: Boolean, indicator: String, inner: Node)
       extends Node {
 
     override def setNewGroup(newGroupIndex: Int): Int =
@@ -210,7 +218,10 @@ private[regex] object GroupStartMapper {
 
     def propagate(matchResult: js.RegExp.ExecResult,
         groupStartMap: js.Array[Int], start: Int, end: Int): Unit = {
-      inner.propagateFromStart(matchResult, groupStartMap, start)
+      if (isLookBehind)
+        inner.propagateFromEnd(matchResult, groupStartMap, end)
+      else
+        inner.propagateFromStart(matchResult, groupStartMap, start)
     }
   }
 
@@ -326,7 +337,7 @@ private[regex] object GroupStartMapper {
       val len = alternatives.length
       var i = 0
       while (i != len) {
-        alternatives(i).propagateFromStart(matchResult, groupStartMap, start)
+        alternatives(i).propagate(matchResult, groupStartMap, start, end)
         i += 1
       }
     }
@@ -362,7 +373,15 @@ private[regex] object GroupStartMapper {
       }
 
       while (true) {
-        val baseNode = (pattern.charAt(pIndex): @switch) match {
+        /* Parse the pattern by code points if RegExp supports the 'u' flag,
+         * in which case PatternCompiler always uses it, or by chars if it
+         * doesn't. This distinction is important for repeated surrogate pairs.
+         */
+        val dispatchCP =
+          if (PatternCompiler.Support.supportsUnicode) pattern.codePointAt(pIndex)
+          else pattern.charAt(pIndex).toInt
+
+        val baseNode = (dispatchCP: @switch) match {
           case '|' =>
             // Complete one alternative
             alternatives.push(completeSequence(sequence))
@@ -384,15 +403,25 @@ private[regex] object GroupStartMapper {
           case '(' =>
             val indicator = pattern.substring(pIndex + 1, pIndex + 3)
             if (indicator == "?=" || indicator == "?!") {
-              // Non-capturing test group
+              // Look-ahead group
               pIndex += 3
               val inner = parseInsideParensAndClosingParen()
-              new ZeroLengthTestNode(indicator, inner)
+              new LookAroundNode(isLookBehind = false, indicator, inner)
+            } else if (indicator == "?<") {
+              // Look-behind group, which must be ?<= or ?<!
+              val fullIndicator = pattern.substring(pIndex + 1, pIndex + 4)
+              pIndex += 4
+              val inner = parseInsideParensAndClosingParen()
+              new LookAroundNode(isLookBehind = true, fullIndicator, inner)
             } else if (indicator == "?:") {
               // Non-capturing group
               pIndex += 3
               val inner = parseInsideParensAndClosingParen()
-              inner
+              // Wrap LeafRegexNode's so that they do not merge with their neighbors
+              if (inner.isInstanceOf[LeafRegexNode])
+                new SequenceNode(js.Array(inner))
+              else
+                inner
             } else {
               // Capturing group
               pIndex += 1
@@ -408,26 +437,31 @@ private[regex] object GroupStartMapper {
             @inline
             def isDigit(c: Char): Boolean = c >= '0' && c <= '9'
 
-            if (isDigit(pattern.charAt(pIndex + 1))) {
+            val startIndex = pIndex
+            val c = pattern.charAt(startIndex + 1)
+            pIndex += 2
+
+            if (isDigit(c)) {
               // it is a back reference; parse all following digits
-              val startIndex = pIndex
-              pIndex += 2
               while (isDigit(pattern.charAt(pIndex)))
                 pIndex += 1
               new BackReferenceNode(
                   Integer.parseInt(pattern.substring(startIndex + 1, pIndex)))
             } else {
-              // it is a character escape
-              val e = pattern.substring(pIndex, pIndex + 2)
-              pIndex += 2
-              new LeafRegexNode(e)
+              // it is a character escape, or one of \b, \B, \d, \D, \p{...} or \P{...}
+              if (c == 'p' || c == 'P') {
+                while (pattern.charAt(pIndex) != '}')
+                  pIndex += 1
+                pIndex += 1
+              }
+              new LeafRegexNode(pattern.substring(startIndex, pIndex))
             }
 
           case '[' =>
-            // parse until the corresponding ']'
+            // parse until the corresponding ']' (here surrogate pairs don't matter)
             @tailrec def loop(pIndex: Int): Int = {
               pattern.charAt(pIndex) match {
-                case '\\' => loop(pIndex + 2)
+                case '\\' => loop(pIndex + 2) // this is also fine for \p{...} and \P{...}
                 case ']'  => pIndex + 1
                 case _    => loop(pIndex + 1)
               }
@@ -439,9 +473,9 @@ private[regex] object GroupStartMapper {
             new LeafRegexNode(regex)
 
           case _ =>
-            val e = pattern.substring(pIndex, pIndex + 1)
-            pIndex += 1
-            new LeafRegexNode(e)
+            val start = pIndex
+            pIndex += Character.charCount(dispatchCP)
+            new LeafRegexNode(pattern.substring(start, pIndex))
         }
 
         if (baseNode ne null) { // null if we just completed an alternative

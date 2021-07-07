@@ -74,6 +74,8 @@ final class NodeJSEnvForcePolyfills(esVersion: ESVersion, config: NodeJSEnv.Conf
         |delete global.Uint32Array;
         |delete global.Float32Array;
         |delete global.Float64Array;
+        |
+        |delete String.prototype.repeat;
       """.stripMargin
     }
 

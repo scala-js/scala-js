@@ -24,6 +24,8 @@ object Platform {
 
   def executingInJVMOnJDK8OrLower: Boolean = jdkVersion <= 8
 
+  def executingInJVMOnLowerThanJDK15: Boolean = jdkVersion < 15
+
   private lazy val jdkVersion = {
     val v = System.getProperty("java.version")
     if (v.startsWith("1.")) Integer.parseInt(v.drop(2).takeWhile(_.isDigit))
@@ -37,4 +39,8 @@ object Platform {
   def hasCompliantModule: Boolean = true
   def hasStrictFloats: Boolean = true
   def hasAccurateFloats: Boolean = true
+
+  def regexSupportsUnicodeCase: Boolean = true
+  def regexSupportsUnicodeCharacterClasses: Boolean = true
+  def regexSupportsLookBehinds: Boolean = true
 }

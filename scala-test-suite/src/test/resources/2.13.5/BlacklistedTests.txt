@@ -204,10 +204,6 @@ scala/util/SystemPropertiesTest.scala
 # Reflection
 scala/reflect/ClassTagTest.scala
 
-# Regex
-scala/util/matching/CharRegexTest.scala
-scala/util/matching/RegexTest.scala
-
 # Require strict-floats
 scala/math/BigDecimalTest.scala
 

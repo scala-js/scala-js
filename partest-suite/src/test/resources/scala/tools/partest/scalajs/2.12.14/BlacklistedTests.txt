@@ -77,9 +77,6 @@ run/t2250.scala
 run/hashhash.scala
 run/is-valid-num.scala
 
-# Documented semantic difference on String.split(x: Array[Char])
-run/t0325.scala
-
 # Using Threads
 run/inner-obj-auto.scala
 run/predef-cycle.scala

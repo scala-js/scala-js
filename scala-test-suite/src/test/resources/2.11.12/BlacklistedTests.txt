@@ -73,10 +73,6 @@ scala/tools/testing/AssertUtilTest.scala
 scala/reflect/ClassTag.scala
 scala/tools/testing/AssertThrowsTest.scala
 
-# Regex
-scala/util/matching/CharRegexTest.scala
-scala/util/matching/RegexTest.scala
-
 # Require strict-floats
 scala/math/BigDecimalTest.scala
 
