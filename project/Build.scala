@@ -869,9 +869,6 @@ object Build {
 
         fileSet.toSeq.filter(_.getPath().endsWith(".scala"))
       }.taskValue,
-
-      // Required for the regex (?m) flag in ReportToLinkerOutputAdapter.scala
-      scalaJSLinkerConfig ~= { _.withESFeatures(_.withESVersion(ESVersion.ES2018)) },
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(
       library, irProjectJS, jUnitRuntime % "test", testBridge % "test", jUnitAsyncJS % "test",
   )
@@ -1045,9 +1042,6 @@ object Build {
           Seq(output)
         }.taskValue,
       },
-
-      // Required for the regex (?m) flag in ReportToLinkerOutputAdapter.scala
-      scalaJSLinkerConfig ~= { _.withESFeatures(_.withESVersion(ESVersion.ES2018)) },
 
       scalaJSLinkerConfig in Test ~= (_.withModuleKind(ModuleKind.CommonJSModule))
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOn(

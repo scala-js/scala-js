@@ -151,7 +151,10 @@ object ReportToLinkerOutputAdapter {
     }
   }
 
-  private val sourceMapRe = """(?m)^//# sourceMappingURL=.*$""".r
+  /* This regex would normally be written with the (?m) flag, but that would
+   * require ES2018, so we work around it.
+   */
+  private val sourceMapRe = """(?:^|\n)(//# sourceMappingURL=[^\n]*)(?:\n|$)""".r
 
   /** Patches the JS file content to have the provided source map link (or none)
    *
@@ -170,14 +173,14 @@ object ReportToLinkerOutputAdapter {
     } { reMatch =>
       val res = new StringBuilder
 
-      res.append(reMatch.before)
+      res.append(reMatch.before(1))
 
       /* If there is no source map link, keep an empty line to not break a
        * potential (unlinked) source map
        */
       newLine.foreach(res.append(_))
 
-      res.append(reMatch.after)
+      res.append(reMatch.after(1))
 
       res.toString()
     }
@@ -193,7 +196,7 @@ object ReportToLinkerOutputAdapter {
    * So as a legacy mechanism, this is OK-ish. It keeps us from having to build
    * the infrastructure to parse JSON cross platform.
    */
-  private val fileFieldRe = """(?m)([,{])\s*"file"\s*:\s*".*"\s*([,}])""".r
+  private val fileFieldRe = """([,{])\s*"file"\s*:\s*"[^"]*"\s*([,}])""".r
 
   /** Patches the source map content to have the provided JS file link (or none).
    *
