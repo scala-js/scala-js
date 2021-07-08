@@ -12,51 +12,134 @@
 
 package java.util.regex
 
-import scala.annotation.switch
+import scala.annotation.tailrec
 
 import scala.scalajs.js
 
-import java.util.ScalaOps._
+import PatternCompiler.Support._
 
-final class Pattern private (jsRegExp: js.RegExp, _pattern: String, _flags: Int)
-    extends Serializable {
+final class Pattern private[regex] (
+  _pattern: String,
+  _flags: Int,
+  jsPattern: String,
+  jsFlags: String,
+  sticky: Boolean,
+  private[regex] val groupCount: Int,
+  groupNumberMap: js.Array[Int],
+  namedGroups: js.Dictionary[Int]
+) extends Serializable {
 
   import Pattern._
 
-  def pattern(): String = _pattern
-  def flags(): Int = _flags
+  @inline private def jsFlagsForFind: String =
+    jsFlags + (if (sticky && supportsSticky) "gy" else "g")
 
-  private def jsPattern: String = jsRegExp.source
+  /** Compile the native RegExp once.
+   *
+   *  In `newJSRegExp()`, we clone that native RegExp using
+   *  `new js.RegExp(jsRegExpBlueprint)`, which the JS engine hopefully
+   *  optimizes by reusing the compiled internal representation of the RegExp.
+   *  Otherwise, well, there's not much we can do about it.
+   */
+  private[this] val jsRegExpBlueprint =
+    new js.RegExp(jsPattern, jsFlagsForFind)
 
-  private def jsFlags: String = {
-    (if (jsRegExp.global) "g" else "") +
-    (if (jsRegExp.ignoreCase) "i" else "") +
-    (if (jsRegExp.multiline) "m" else "")
-  }
-
-  private[regex] lazy val groupCount: Int =
-    new js.RegExp("|" + jsPattern).exec("").length - 1
+  /** Another version of the RegExp that is used by `Matcher.matches()`.
+   *
+   *  It forces `^` and `$` at the beginning and end of the pattern so that
+   *  only entire inputs are matched. In addition, it does not have the 'g'
+   *  flag, so that it can be repeatedly used without managing `lastIndex`.
+   *
+   *  Since that RegExp is only used locally within `execMatches()`, we can
+   *  always reuse the same instance.
+   */
+  private[this] val jsRegExpForMatches: js.RegExp =
+    new js.RegExp(wrapJSPatternForMatches(jsPattern), jsFlags)
 
   private[regex] lazy val groupStartMapper: GroupStartMapper =
     GroupStartMapper(jsPattern, jsFlags)
 
-  override def toString(): String = pattern()
-
   private[regex] def newJSRegExp(): js.RegExp = {
-    val r = new js.RegExp(jsRegExp)
-    if (r ne jsRegExp) {
+    val r = new js.RegExp(jsRegExpBlueprint)
+    if (r ne jsRegExpBlueprint) {
       r
     } else {
       /* Workaround for the PhantomJS 1.x bug
        * https://github.com/ariya/phantomjs/issues/11494
-       * which causes new js.RegExp(jsRegExp) to return the same object,
-       * rather than a new one.
-       * We therefore reconstruct the pattern and flags used to create
-       * jsRegExp and create a new one from there.
+       * which causes new js.RegExp(jsRegExpBlueprint) to return the same
+       * object, rather than a new one.
+       * In that case, we reconstruct a new js.RegExp from scratch.
        */
-      new js.RegExp(jsPattern, jsFlags)
+      new js.RegExp(jsPattern, jsFlagsForFind)
     }
   }
+
+  private[regex] def execMatches(input: String): js.RegExp.ExecResult =
+    jsRegExpForMatches.exec(input)
+
+  private[regex] def execFind(regexp: js.RegExp, input: String): js.RegExp.ExecResult = {
+    if (!supportsSticky && sticky) {
+      val start = regexp.lastIndex
+      val mtch = regexp.exec(input)
+      if (mtch == null || mtch.index > start)
+        null
+      else
+        mtch
+    } else if (supportsUnicode) {
+      regexp.exec(input)
+    } else {
+      /* When the native RegExp does not support the 'u' flag (introduced in
+       * ECMAScript 2015), it can find a match starting in the middle of a
+       * surrogate pair. This can happen if the pattern can match a substring
+       * starting with a lone low surrogate. However, that is not valid,
+       * because surrogate pairs must always stick together.
+       *
+       * In all the other situations, the `PatternCompiler` makes sure that
+       * surrogate pairs are always matched together or not at all, but it
+       * cannot avoid this specific situation because there is no look-behind
+       * support in that case either. So we take care of it now by skipping
+       * matches that start in the middle of a surrogate pair.
+       */
+      @tailrec
+      def loop(): js.RegExp.ExecResult = {
+        val start = regexp.lastIndex
+        val mtch = regexp.exec(input)
+        if (mtch == null) {
+          null
+        } else {
+          val index = mtch.index
+          if (index > start && index < input.length() &&
+              Character.isLowSurrogate(input.charAt(index)) &&
+              Character.isHighSurrogate(input.charAt(index - 1))) {
+            regexp.lastIndex = index + 1
+            loop()
+          } else {
+            mtch
+          }
+        }
+      }
+      loop()
+    }
+  }
+
+  private[regex] def numberedGroup(group: Int): Int = {
+    if (group < 0 || group > groupCount)
+      throw new IndexOutOfBoundsException(group.toString())
+    groupNumberMap(group)
+  }
+
+  private[regex] def namedGroup(name: String): Int = {
+    groupNumberMap(namedGroups.getOrElse(name, {
+      throw new IllegalArgumentException(s"No group with name <$name>")
+    }))
+  }
+
+  // Public API ---------------------------------------------------------------
+
+  def pattern(): String = _pattern
+  def flags(): Int = _flags
+
+  override def toString(): String = pattern()
 
   def matcher(input: CharSequence): Matcher =
     new Matcher(this, input, 0, input.length)
@@ -123,27 +206,8 @@ object Pattern {
   final val CANON_EQ = 0x80
   final val UNICODE_CHARACTER_CLASS = 0x100
 
-  def compile(regex: String, flags: Int): Pattern = {
-    val (jsPattern, flags1) = {
-      if ((flags & LITERAL) != 0) {
-        (quote(regex), flags)
-      } else {
-        trySplitHack(regex, flags) orElse
-        tryFlagHack(regex, flags) getOrElse
-        (regex, flags)
-      }
-    }
-
-    val jsFlags = {
-      "g" +
-      (if ((flags1 & CASE_INSENSITIVE) != 0) "i" else "") +
-      (if ((flags1 & MULTILINE) != 0) "m" else "")
-    }
-
-    val jsRegExp = new js.RegExp(jsPattern, jsFlags)
-
-    new Pattern(jsRegExp, regex, flags1)
-  }
+  def compile(regex: String, flags: Int): Pattern =
+    PatternCompiler.compile(regex, flags)
 
   def compile(regex: String): Pattern =
     compile(regex, 0)
@@ -152,66 +216,18 @@ object Pattern {
     compile(regex).matcher(input).matches()
 
   def quote(s: String): String = {
-    var result = ""
-    var i = 0
-    while (i < s.length) {
-      val c = s.charAt(i)
-      result += ((c: @switch) match {
-        case '\\' | '.' | '(' | ')' | '[' | ']' | '{' | '}' | '|'
-          | '?' | '*' | '+' | '^' | '$' => "\\"+c
-        case _ => c
-      })
-      i += 1
+    var result = "\\Q"
+    var start = 0
+    var end = s.indexOf("\\E", start)
+    while (end >= 0) {
+      result += s.substring(start, end) + "\\E\\\\E\\Q"
+      start = end + 2
+      end = s.indexOf("\\E", start)
     }
-    result
-  }
-
-  /** This is a hack to support StringLike.split().
-   *  It replaces occurrences of \Q<char>\E by quoted(<char>)
-   */
-  @inline
-  private def trySplitHack(pat: String, flags: Int) = {
-    val m = splitHackPat.exec(pat)
-    if (m != null)
-      Some((quote(m(1).get), flags))
-    else
-      None
+    result + s.substring(start) + "\\E"
   }
 
   @inline
-  private def tryFlagHack(pat: String, flags0: Int) = {
-    val m = flagHackPat.exec(pat)
-    if (m != null) {
-      val newPat = pat.substring(m(0).get.length) // cut off the flag specifiers
-      var flags = flags0
-      for (chars <- m(1)) {
-        for (i <- 0 until chars.length())
-          flags |= charToFlag(chars.charAt(i))
-      }
-      for (chars <- m(2)) {
-        for (i <- 0 until chars.length())
-          flags &= ~charToFlag(chars.charAt(i))
-      }
-      Some((newPat, flags))
-    } else
-      None
-  }
-
-  private def charToFlag(c: Char) = (c: @switch) match {
-    case 'i' => CASE_INSENSITIVE
-    case 'd' => UNIX_LINES
-    case 'm' => MULTILINE
-    case 's' => DOTALL
-    case 'u' => UNICODE_CASE
-    case 'x' => COMMENTS
-    case 'U' => UNICODE_CHARACTER_CLASS
-    case _   => throw new IllegalArgumentException("bad in-pattern flag")
-  }
-
-  /** matches \Q<char>\E to support StringLike.split */
-  private val splitHackPat = new js.RegExp("^\\\\Q(.|\\n|\\r)\\\\E$")
-
-  /** regex to match flag specifiers in regex. E.g. (?u), (?-i), (?U-i) */
-  private val flagHackPat =
-    new js.RegExp("^\\(\\?([idmsuxU]*)(?:-([idmsuxU]*))?\\)")
+  private[regex] def wrapJSPatternForMatches(jsPattern: String): String =
+    "^(?:" + jsPattern + ")$" // the group is needed if there is a top-level | in jsPattern
 }

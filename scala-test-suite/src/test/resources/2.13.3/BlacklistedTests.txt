@@ -128,6 +128,7 @@ scala/tools/nsc/typechecker/ParamAliasTest.scala
 scala/tools/nsc/typechecker/TypedTreeTest.scala
 scala/tools/nsc/util/StackTraceTest.scala
 scala/util/ChainingOpsTest.scala
+scala/util/matching/RegexTest.scala
 
 ## Do not link
 scala/CollectTest.scala
@@ -197,10 +198,6 @@ scala/util/control/ControlThrowableTest.scala
 
 # Reflection
 scala/reflect/ClassTagTest.scala
-
-# Regex
-scala/util/matching/CharRegexTest.scala
-scala/util/matching/RegexTest.scala
 
 # Require strict-floats
 scala/math/BigDecimalTest.scala

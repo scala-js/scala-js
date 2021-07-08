@@ -131,6 +131,7 @@ scala/tools/testing/BytecodeTesting.scala
 scala/tools/testing/JOL.scala
 scala/tools/testing/RunTesting.scala
 scala/tools/testing/VirtualCompilerTesting.scala
+scala/util/matching/RegexTest.scala
 
 ## Do not link
 scala/MatchErrorSerializationTest.scala
@@ -171,10 +172,6 @@ scala/util/SystemPropertiesTest.scala
 
 # Reflection
 scala/reflect/ClassTagTest.scala
-
-# Regex
-scala/util/matching/CharRegexTest.scala
-scala/util/matching/RegexTest.scala
 
 # Require strict-floats
 scala/math/BigDecimalTest.scala

@@ -32,6 +32,7 @@ class RegexPatternTest {
     assertTrue(Pattern.matches("[Scal]*\\.js", "Scala.js"))
     assertTrue(Pattern.matches(".[cal]*\\.j.", "Scala.js"))
     assertTrue(Pattern.matches(".*\\.js", "Scala.js"))
+    assertTrue(Pattern.matches("ba*?", "baaaa"))
     assertFalse(Pattern.matches("S[a-z]*", "Scala.js"))
   }
 
@@ -136,14 +137,31 @@ class RegexPatternTest {
   }
 
   @Test def flags(): Unit = {
-    val pattern0 = Pattern.compile("a")
-    val pattern1 = Pattern.compile("a", 0)
-    val flags2 = Pattern.CASE_INSENSITIVE | Pattern.DOTALL
-    val pattern2 = Pattern.compile("a", flags2)
+    import Pattern._
 
-    assertEquals(0, pattern0.flags)
-    assertEquals(0, pattern1.flags)
-    assertEquals(flags2, pattern2.flags)
+    assertEquals(0, Pattern.compile("a").flags())
+    assertEquals(0, Pattern.compile("a", 0).flags())
+    assertEquals(CASE_INSENSITIVE | DOTALL,
+        Pattern.compile("a", CASE_INSENSITIVE | DOTALL).flags())
+
+    // flags() reflects value of embedded flag expressions as well
+    assertEquals(CASE_INSENSITIVE | DOTALL,
+        Pattern.compile("(?i-x)ab", DOTALL | COMMENTS).flags())
+
+    if (regexSupportsUnicodeCharacterClasses) {
+      assertEquals(UNICODE_CASE | UNICODE_CHARACTER_CLASS, Pattern.compile("(?U)a").flags())
+
+      if (!executingInJVM) // the JVM does not like the 'U' after the '-', but it makes no sense
+        assertEquals(UNICODE_CASE, Pattern.compile("(?U-U)a").flags())
+
+      /* Somehow, we can produce a state where flags have
+       * UNICODE_CHARACTER_CLASS without UNICODE_CASE.
+       */
+      assertEquals(UNICODE_CHARACTER_CLASS,
+          Pattern.compile("(?-u)a", UNICODE_CHARACTER_CLASS | UNICODE_CASE).flags())
+      assertEquals(UNICODE_CHARACTER_CLASS,
+          Pattern.compile("(?-u)a", UNICODE_CHARACTER_CLASS).flags())
+    }
   }
 
   @Test def patternAndToString(): Unit = {
@@ -166,6 +184,9 @@ class RegexPatternTest {
     val splitNoQuote = Pattern.compile("$1&$2").split("Scala$1&$2.js")
     assertEquals("Scala.js", splitWithQuote.mkString)
     assertEquals("Scala$1&$2.js", splitNoQuote.mkString)
+
+    // Tricky case with a \E sequence in the string to quote
+    assertTrue(Pattern.matches(Pattern.quote("a[\\n\\E(e"), "a[\\n\\E(e"))
   }
 
   @Test def compileInvalidPatternThrows_Issue1718(): Unit = {

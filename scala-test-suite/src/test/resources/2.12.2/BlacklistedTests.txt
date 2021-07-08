@@ -70,6 +70,7 @@ scala/tools/nsc/typechecker/Implicits.scala
 scala/tools/nsc/util/StackTraceTest.scala
 scala/tools/testing/BytecodeTesting.scala
 scala/tools/testing/RunTesting.scala
+scala/util/matching/RegexTest.scala
 
 ## Do not link
 scala/PartialFunctionSerializationTest.scala
@@ -104,10 +105,6 @@ scala/util/SystemPropertiesTest.scala
 
 # Reflection
 scala/reflect/ClassTagTest.scala
-
-# Regex
-scala/util/matching/CharRegexTest.scala
-scala/util/matching/RegexTest.scala
 
 # Require strict-floats
 scala/math/BigDecimalTest.scala

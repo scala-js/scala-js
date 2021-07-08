@@ -89,9 +89,6 @@ run/hashhash.scala
 run/is-valid-num.scala
 run/stringinterpolation_macro-run.scala
 
-# Documented semantic difference on String.split(x: Array[Char])
-run/t0325.scala
-
 # Using Threads
 run/t6969.scala
 run/inner-obj-auto.scala
