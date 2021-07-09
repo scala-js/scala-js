@@ -34,14 +34,21 @@ final class Pattern private[regex] (
   @inline private def jsFlagsForFind: String =
     jsFlags + (if (sticky && supportsSticky) "gy" else "g")
 
-  /** Compile the native RegExp once.
+  /** Whether we already added the 'd' flag to the native RegExp's. */
+  private var enabledNativeIndices: Boolean = false
+
+  /** The RegExp that is used for `Matcher.find()`.
    *
-   *  In `newJSRegExp()`, we clone that native RegExp using
-   *  `new js.RegExp(jsRegExpBlueprint)`, which the JS engine hopefully
-   *  optimizes by reusing the compiled internal representation of the RegExp.
-   *  Otherwise, well, there's not much we can do about it.
+   *  It receives the 'g' flag so that `lastIndex` is taken into acount.
+   *
+   *  It also receives the 'y' flag if this pattern is sticky and it is
+   *  supported. If it is not supported, its behavior is polyfilled in
+   *  `execFind()`.
+   *
+   *  Since that RegExp is only used locally within `execFind()`, we can
+   *  always reuse the same instance.
    */
-  private[this] val jsRegExpBlueprint =
+  private[this] var jsRegExpForFind =
     new js.RegExp(jsPattern, jsFlagsForFind)
 
   /** Another version of the RegExp that is used by `Matcher.matches()`.
@@ -53,39 +60,34 @@ final class Pattern private[regex] (
    *  Since that RegExp is only used locally within `execMatches()`, we can
    *  always reuse the same instance.
    */
-  private[this] val jsRegExpForMatches: js.RegExp =
+  private[this] var jsRegExpForMatches: js.RegExp =
     new js.RegExp(wrapJSPatternForMatches(jsPattern), jsFlags)
 
-  private[regex] lazy val groupStartMapper: GroupStartMapper =
-    GroupStartMapper(jsPattern, jsFlags)
-
-  private[regex] def newJSRegExp(): js.RegExp = {
-    val r = new js.RegExp(jsRegExpBlueprint)
-    if (r ne jsRegExpBlueprint) {
-      r
-    } else {
-      /* Workaround for the PhantomJS 1.x bug
-       * https://github.com/ariya/phantomjs/issues/11494
-       * which causes new js.RegExp(jsRegExpBlueprint) to return the same
-       * object, rather than a new one.
-       * In that case, we reconstruct a new js.RegExp from scratch.
-       */
-      new js.RegExp(jsPattern, jsFlagsForFind)
-    }
-  }
+  private lazy val indicesBuilder: IndicesBuilder =
+    IndicesBuilder(jsPattern, jsFlags)
 
   private[regex] def execMatches(input: String): js.RegExp.ExecResult =
     jsRegExpForMatches.exec(input)
 
-  private[regex] def execFind(regexp: js.RegExp, input: String): js.RegExp.ExecResult = {
+  @inline // to stack-allocate the tuple
+  private[regex] def execFind(input: String, start: Int): (js.RegExp.ExecResult, Int) = {
+    val mtch = execFindInternal(input, start)
+    val end = jsRegExpForFind.lastIndex
+    (mtch, end)
+  }
+
+  private def execFindInternal(input: String, start: Int): js.RegExp.ExecResult = {
+    val regexp = jsRegExpForFind
+
     if (!supportsSticky && sticky) {
-      val start = regexp.lastIndex
+      regexp.lastIndex = start
       val mtch = regexp.exec(input)
       if (mtch == null || mtch.index > start)
         null
       else
         mtch
     } else if (supportsUnicode) {
+      regexp.lastIndex = start
       regexp.exec(input)
     } else {
       /* When the native RegExp does not support the 'u' flag (introduced in
@@ -101,8 +103,8 @@ final class Pattern private[regex] (
        * matches that start in the middle of a surrogate pair.
        */
       @tailrec
-      def loop(): js.RegExp.ExecResult = {
-        val start = regexp.lastIndex
+      def loop(start: Int): js.RegExp.ExecResult = {
+        regexp.lastIndex = start
         val mtch = regexp.exec(input)
         if (mtch == null) {
           null
@@ -111,14 +113,13 @@ final class Pattern private[regex] (
           if (index > start && index < input.length() &&
               Character.isLowSurrogate(input.charAt(index)) &&
               Character.isHighSurrogate(input.charAt(index - 1))) {
-            regexp.lastIndex = index + 1
-            loop()
+            loop(index + 1)
           } else {
             mtch
           }
         }
       }
-      loop()
+      loop(start)
     }
   }
 
@@ -134,6 +135,25 @@ final class Pattern private[regex] (
     }))
   }
 
+  private[regex] def getIndices(lastMatch: js.RegExp.ExecResult, forMatches: Boolean): IndicesArray = {
+    val lastMatchDyn = lastMatch.asInstanceOf[js.Dynamic]
+    if (js.isUndefined(lastMatchDyn.indices)) {
+      if (supportsIndices) {
+        if (!enabledNativeIndices) {
+          jsRegExpForFind = new js.RegExp(jsPattern, jsFlagsForFind + "d")
+          jsRegExpForMatches = new js.RegExp(wrapJSPatternForMatches(jsPattern), jsFlags + "d")
+          enabledNativeIndices = true
+        }
+        val regexp = if (forMatches) jsRegExpForMatches else jsRegExpForFind
+        regexp.lastIndex = lastMatch.index
+        lastMatchDyn.indices = regexp.exec(lastMatch.input).asInstanceOf[js.Dynamic].indices
+      } else {
+        lastMatchDyn.indices = indicesBuilder(forMatches, lastMatch.input, lastMatch.index)
+      }
+    }
+    lastMatchDyn.indices.asInstanceOf[IndicesArray]
+  }
+
   // Public API ---------------------------------------------------------------
 
   def pattern(): String = _pattern
@@ -141,15 +161,19 @@ final class Pattern private[regex] (
 
   override def toString(): String = pattern()
 
+  @inline // `input` is almost certainly a String at call site
   def matcher(input: CharSequence): Matcher =
-    new Matcher(this, input, 0, input.length)
+    new Matcher(this, input.toString())
 
+  @inline // `input` is almost certainly a String at call site
   def split(input: CharSequence): Array[String] =
     split(input, 0)
 
-  def split(input: CharSequence, limit: Int): Array[String] = {
-    val inputStr = input.toString
+  @inline // `input` is almost certainly a String at call site
+  def split(input: CharSequence, limit: Int): Array[String] =
+    split(input.toString(), limit)
 
+  private def split(inputStr: String, limit: Int): Array[String] = {
     // If the input string is empty, always return Array("") - #987, #2592
     if (inputStr == "") {
       Array("")
@@ -196,6 +220,8 @@ final class Pattern private[regex] (
 }
 
 object Pattern {
+  private[regex] type IndicesArray = js.Array[js.UndefOr[js.Tuple2[Int, Int]]]
+
   final val UNIX_LINES = 0x01
   final val CASE_INSENSITIVE = 0x02
   final val COMMENTS = 0x04
@@ -212,7 +238,11 @@ object Pattern {
   def compile(regex: String): Pattern =
     compile(regex, 0)
 
+  @inline // `input` is almost certainly a String at call site
   def matches(regex: String, input: CharSequence): Boolean =
+    matches(regex, input.toString())
+
+  private def matches(regex: String, input: String): Boolean =
     compile(regex).matcher(input).matches()
 
   def quote(s: String): String = {

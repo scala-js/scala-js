@@ -465,18 +465,36 @@ class RegexMatcherTest  {
   }
 
   @Test def zeroLengthMatches(): Unit = {
-    val pat = Pattern.compile("a*?")
-    val mat = pat.matcher("aaaaa")
-    for (i <- 0 to 5) {
-      assertTrue(mat.find())
-      assertEquals(i, mat.start)
-      assertEquals(i, mat.end)
+    @noinline
+    def assertZeroLengthMatches(pattern: String, input: String, jvmBug: Boolean, positions: Int*): Unit = {
+      val m = Pattern.compile(pattern).matcher(input)
+      for (pos <- positions) {
+        val msg = s"$pattern in $input at $pos"
+        assertTrue(msg, m.find())
+        assertEquals(msg, pos, m.start())
+        assertEquals(msg, pos, m.end())
+      }
+
+      /* Check that subsequent `find()`s return `false`.
+       * Do it 3 times because internal conditions vary the first two times.
+       */
+      val msg = s"$pattern in $input at end"
+      assertFalse(msg, m.find())
+
+      if (!(jvmBug && executingInJVM)) {
+        assertFalse(msg, m.find())
+        assertFalse(msg, m.find())
+      }
     }
 
-    // Make sure we don't suddenly re-match
-    for (i <- 0 to 5) {
-      assertFalse(mat.find())
-    }
+    assertZeroLengthMatches("a*?", "aaaaa", false, (0 to 5): _*)
+    assertZeroLengthMatches("(?!b)", "abcdba", false, 0, 2, 3, 5, 6)
+
+    /* Unexplicably, on the following inputs, the JVM alternates between
+     * `false` and `true` after the end is reached.
+     */
+    assertZeroLengthMatches("(?=b)", "abcdbab", true, 1, 4, 6)
+    assertZeroLengthMatches("(?=b)", "abcdba", true, 1, 4)
   }
 
   @Test def inPatternFlags_Issue997(): Unit = {
