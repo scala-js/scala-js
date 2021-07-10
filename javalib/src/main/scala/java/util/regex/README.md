@@ -274,7 +274,7 @@ In general, we make sure that:
 * something that can match a supplementary code point or a high surrogate never selects the high surrogate if it could match the whole code point.
 
 We do nothing special for low surrogates, as all possible patterns go from left to right (we don't have look-behinds in this context) and we otherwise make sure that all code points from the input are either fully matched or not at all.
-Therefore, the "cursor" of the engine can never stop in the middle of a code point, and so low surrogates are only visible if they were unpaired to being with.
+Therefore, the "cursor" of the engine can never stop in the middle of a code point, and so low surrogates are only visible if they were unpaired to begin with.
 The only exception to this is when the cursor is at the beginning of the pattern, when using `find`.
 In that case we cannot a priori prevent the JS engine from trying to find a match starting in the middle of a code point.
 To address that, we have special a posteriori handling in `Pattern.execFind()`.
