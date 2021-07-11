@@ -469,6 +469,13 @@ class NestedJSClassTest {
     assertEquals(1, container.moduleSideEffect)
   }
 
+  @Test def defaultCtorParamsInnerJSClassPrivateCompanion_Issue4526(): Unit = {
+    val container = new ScalaClassContainer("container")
+
+    val inner = new container.InnerJSClassDefaultParamsPrivateCompanion_Issue4526()
+    assertEquals("container inner foo", inner.foo())
+  }
+
   @Test def doublyNestedInnerObject_Issue4114(): Unit = {
     val outer1 = new DoublyNestedInnerObject_Issue4114().asInstanceOf[js.Dynamic]
     val outer2 = new DoublyNestedInnerObject_Issue4114().asInstanceOf[js.Dynamic]
@@ -696,6 +703,14 @@ object NestedJSClassTest {
     object InnerJSClassDefaultParams_Issue4465 {
       moduleSideEffect += 1
     }
+
+    class InnerJSClassDefaultParamsPrivateCompanion_Issue4526(
+        withDefault: String = "inner") extends js.Object {
+      def foo(methodDefault: String = "foo"): String =
+        s"$xxx $withDefault $methodDefault"
+    }
+
+    private object InnerJSClassDefaultParamsPrivateCompanion_Issue4526
   }
 
   trait ScalaTraitContainer {
