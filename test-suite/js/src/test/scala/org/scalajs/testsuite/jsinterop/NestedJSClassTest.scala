@@ -436,6 +436,10 @@ class NestedJSClassTest {
     // Check that we do not create two companion modules.
     new container.InnerJSClassDefaultParams_Issue4465()()
     assertEquals(1, container.moduleSideEffect)
+
+    // Check constructor delegation.
+    val inner2 = new container.InnerJSClassDefaultParams_Issue4465(1)
+    assertEquals("container 1 1 foo", inner2.foo())
   }
 
   @Test def defaultCtorParamsInnerJSClassTraitContainer_Issue4465(): Unit = {
@@ -449,6 +453,10 @@ class NestedJSClassTest {
     // Check that we do not create two companion modules.
     new container.InnerJSClassDefaultParams_Issue4465()()
     assertEquals(1, container.moduleSideEffect)
+
+    // Check constructor delegation.
+    val inner2 = new container.InnerJSClassDefaultParams_Issue4465(1)
+    assertEquals("container 1 1 foo", inner2.foo())
   }
 
   @Test def defaultCtorParamsInnerJSClassJSContainer_Issue4465(): Unit = {
@@ -467,6 +475,10 @@ class NestedJSClassTest {
 
     // Check that we do not create two companion modules.
     assertEquals(1, container.moduleSideEffect)
+
+    // Check constructor delegation.
+    val inner2 = new container.InnerJSClassDefaultParams_Issue4465(1)
+    assertEquals("container 1 1 foo", inner2.foo())
   }
 
   @Test def defaultCtorParamsInnerJSClassPrivateCompanion_Issue4526(): Unit = {
@@ -696,6 +708,8 @@ object NestedJSClassTest {
 
     class InnerJSClassDefaultParams_Issue4465(withDefault: String = "inner")(
         dependentDefault: String = withDefault) extends js.Object {
+      def this(x: Int) = this(x.toString)()
+
       def foo(methodDefault: String = "foo"): String =
         s"$xxx $withDefault $dependentDefault $methodDefault"
     }
@@ -739,6 +753,8 @@ object NestedJSClassTest {
 
     class InnerJSClassDefaultParams_Issue4465(withDefault: String = "inner")(
         dependentDefault: String = withDefault) extends js.Object {
+      def this(x: Int) = this(x.toString)()
+
       def foo(methodDefault: String = "foo"): String =
         s"$xxx $withDefault $dependentDefault $methodDefault"
     }
@@ -846,6 +862,8 @@ object NestedJSClassTest {
 
     class InnerJSClassDefaultParams_Issue4465(withDefault: String = "inner")(
         dependentDefault: String = withDefault) extends js.Object {
+      def this(x: Int) = this(x.toString)()
+
       def foo(methodDefault: String = "foo"): String =
         s"$xxx $withDefault $dependentDefault $methodDefault"
     }

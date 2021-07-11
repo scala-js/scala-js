@@ -1475,7 +1475,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         val jsClassCaptures = List.newBuilder[js.ParamDef]
 
         def add(tree: ConstructorTree[_ <: JSCtor]): Unit = {
-          val (e, c) = genJSClassCtorDispatch(tree.ctor.sym, tree.ctor.params, tree.overloadNum)
+          val (e, c) = genJSClassCtorDispatch(tree.ctor.sym,
+              tree.ctor.paramsAndInfo, tree.overloadNum)
           exports += e
           jsClassCaptures ++= c
           tree.subCtors.foreach(add(_))
@@ -1522,7 +1523,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
        * call, and are therefore executed later than for a Scala class.
        */
       withPerMethodBodyState(sym) {
-        stats.foreach {
+        flatStats(stats).foreach {
           case tree @ Apply(fun @ Select(Super(This(_), _), _), args)
                 if fun.symbol.isClassConstructor =>
             assert(jsSuperCall.isEmpty, s"Found 2 JS Super calls at ${dd.pos}")
@@ -1543,9 +1544,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       assert(jsSuperCall.isDefined, "Did not find Super call in primary JS " +
           s"construtor at ${dd.pos}")
 
-      val params = if (vparamss.isEmpty) Nil else vparamss.head.map(_.symbol)
-
-      new PrimaryJSCtor(sym, params, jsSuperCall.get :: jsStats.result())
+      new PrimaryJSCtor(sym, genParamsAndInfo(sym, vparamss),
+          jsSuperCall.get :: jsStats.result())
     }
 
     private def genSecondaryJSClassCtor(dd: DefDef): SplitSecondaryJSCtor = {
@@ -1558,7 +1558,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val afterThisCall = List.newBuilder[js.Tree]
 
       withPerMethodBodyState(sym) {
-        stats.foreach {
+        flatStats(stats).foreach {
           case tree @ Apply(fun @ Select(This(_), _), args)
               if fun.symbol.isClassConstructor =>
             assert(thisCall.isEmpty,
@@ -1579,21 +1579,27 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       val Some((targetCtor, ctorArgs)) = thisCall
 
-      val params = if (vparamss.isEmpty) Nil else vparamss.head.map(_.symbol)
-
-      new SplitSecondaryJSCtor(sym, params, beforeThisCall.result(), targetCtor,
-          ctorArgs, afterThisCall.result())
+      new SplitSecondaryJSCtor(sym, genParamsAndInfo(sym, vparamss),
+          beforeThisCall.result(), targetCtor, ctorArgs, afterThisCall.result())
     }
 
-    private def genJSClassCtorDispatch(ctorSym: Symbol, allParamSyms: List[Symbol],
-        overloadNum: Int): (Exported, List[js.ParamDef]) = {
+    private def genParamsAndInfo(ctorSym: Symbol,
+        vparamss: List[List[ValDef]]): List[(js.VarRef, JSParamInfo)] = {
       implicit val pos = ctorSym.pos
 
-      val allParamsAndInfos = for {
-        (paramSym, info) <- allParamSyms.zip(jsParamInfos(ctorSym))
+      val paramSyms = if (vparamss.isEmpty) Nil else vparamss.head.map(_.symbol)
+
+      for {
+        (paramSym, info) <- paramSyms.zip(jsParamInfos(ctorSym))
       } yield {
         genVarRef(paramSym) -> info
       }
+    }
+
+    private def genJSClassCtorDispatch(ctorSym: Symbol,
+        allParamsAndInfos: List[(js.VarRef, JSParamInfo)],
+        overloadNum: Int): (Exported, List[js.ParamDef]) = {
+      implicit val pos = ctorSym.pos
 
       /* `allParams` are the parameters as seen from *inside* the constructor
        * body. the symbols returned in jsParamInfos are the parameters as seen
@@ -1674,39 +1680,60 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
        */
 
       def preStats(tree: ConstructorTree[SplitSecondaryJSCtor],
-          nextParams: List[Symbol]): js.Tree = {
-        assert(tree.ctor.ctorArgs.size == nextParams.size, "param count mismatch")
+          nextParamsAndInfo: List[(js.VarRef, JSParamInfo)]): js.Tree = {
+        val inner = tree.subCtors.map(preStats(_, tree.ctor.paramsAndInfo))
 
-        val inner = tree.subCtors.map(preStats(_, tree.ctor.params))
+        assert(tree.ctor.ctorArgs.size == nextParamsAndInfo.size, "param count mismatch")
+        val paramsInfosAndArgs = nextParamsAndInfo.zip(tree.ctor.ctorArgs)
 
-        /* Reject undefined params (i.e. using a default value of another
-         * constructor) via implementation restriction.
-         *
-         * This is mostly for historical reasons. The ideal solution here would
-         * be to recognize calls to default param getters of JS class
-         * constructors and not even translate them to UndefinedParam in the
-         * first place.
-         */
-        def isUndefinedParam(tree: js.Tree): Boolean = tree match {
-          case js.Transient(UndefinedParam) => true
-          case _                            => false
-        }
+        val (captureParamsInfosAndArgs, normalParamsInfosAndArgs) =
+          paramsInfosAndArgs.partition(_._1._2.capture)
 
-        if (tree.ctor.ctorArgs.exists(isUndefinedParam)) {
-          reporter.error(tree.ctor.sym.pos,
-              "Implementation restriction: in a JS class, a secondary " +
-              "constructor calling another constructor with default " +
-              "parameters must provide the values of all parameters.")
-        }
-
-        val assignments = for {
-          (param, arg) <- nextParams.zip(tree.ctor.ctorArgs)
-          if !isUndefinedParam(arg)
+        val captureAssigns = for {
+          ((param, _), arg) <- captureParamsInfosAndArgs
         } yield {
-          js.Assign(genVarRef(param), arg)
+          js.Assign(param, arg)
         }
 
-        ifOverload(tree, js.Block(inner ++ tree.ctor.beforeCall ++ assignments))
+        val normalAssigns = for {
+          (((param, info), arg), i) <- normalParamsInfosAndArgs.zipWithIndex
+        } yield {
+          val newArg = arg match {
+            case js.Transient(UndefinedParam) =>
+              assert(info.hasDefault,
+                  s"unexpected UndefinedParam for non default param: $param")
+
+              /* Go full circle: We have ignored the default param getter for
+               * this, we'll create it again.
+               *
+               * This seems not optimal: We could simply not ignore the calls to
+               * default param getters in the first place.
+               *
+               * However, this proves to be difficult: Because of translations in
+               * earlier phases, calls to default param getters may be assigned
+               * to temporary variables first (see the undefinedDefaultParams
+               * ScopedVar). If this happens, it becomes increasingly difficult
+               * to distinguish a default param getter call for a constructor
+               * call of *this* instance (in which case we would want to keep
+               * the default param getter call) from one for a *different*
+               * instance (in which case we would want to discard the default
+               * param getter call)
+               *
+               * Because of this, it ends up being easier to just re-create the
+               * default param getter call if necessary.
+               */
+              genCallDefaultGetter(tree.ctor.sym, i, tree.ctor.sym.pos, static = false,
+                  captures = captureParamsInfosAndArgs.map(_._1._1))(
+                  prevArgsCount => normalParamsInfosAndArgs.take(prevArgsCount).map(_._1._1))
+
+            case arg => arg
+          }
+
+          js.Assign(param, newArg)
+        }
+
+        ifOverload(tree, js.Block(
+            inner ++ tree.ctor.beforeCall ++ captureAssigns ++ normalAssigns))
       }
 
       def postStats(tree: ConstructorTree[SplitSecondaryJSCtor]): js.Tree = {
@@ -1718,7 +1745,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val secondaryCtorTrees = ctorTree.subCtors
 
       js.Block(
-          secondaryCtorTrees.map(preStats(_, primaryCtor.params)) ++
+          secondaryCtorTrees.map(preStats(_, primaryCtor.paramsAndInfo)) ++
           primaryCtor.body ++
           secondaryCtorTrees.map(postStats(_))
       )
@@ -1726,14 +1753,16 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     private sealed trait JSCtor {
       val sym: Symbol
-      val params: List[Symbol]
+      val paramsAndInfo: List[(js.VarRef, JSParamInfo)]
     }
 
     private class PrimaryJSCtor(val sym: Symbol,
-        val params: List[Symbol], val body: List[js.Tree]) extends JSCtor
+        val paramsAndInfo: List[(js.VarRef, JSParamInfo)],
+        val body: List[js.Tree]) extends JSCtor
 
     private class SplitSecondaryJSCtor(val sym: Symbol,
-        val params: List[Symbol], val beforeCall: List[js.Tree],
+        val paramsAndInfo: List[(js.VarRef, JSParamInfo)],
+        val beforeCall: List[js.Tree],
         val targetCtor: Symbol, val ctorArgs: List[js.Tree],
         val afterCall: List[js.Tree]) extends JSCtor
 
@@ -6765,6 +6794,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       i > 0 &&
       name.endsWith(tpnme.ANON_CLASS_NAME, i) &&
       (i + 1 until name.length).forall(j => name.charAt(j).isDigit)
+    }
+  }
+
+  private def flatStats(stats: List[Tree]): Iterator[Tree] = {
+    stats.iterator.flatMap {
+      case Block(stats, expr) => stats.iterator ++ Iterator.single(expr)
+      case tree               => Iterator.single(tree)
     }
   }
 
