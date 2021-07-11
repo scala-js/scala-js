@@ -518,13 +518,14 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val env = jsEnv.value
 
         val className = mainClass.value.getOrElse("<unknown class>")
-        log.info(s"Running $className. Hit any key to interrupt.")
+        log.info(s"Running $className.")
         log.debug(s"with JSEnv ${env.name}")
 
         val input = jsEnvInput.value
         val config = RunConfig().withLogger(sbtLogger2ToolsLogger(log))
 
-        Run.runInterruptible(env, input, config)
+        val run = env.start(input, config)
+        Await.result(run.future, Duration.Inf)
       },
 
       runMain := {
