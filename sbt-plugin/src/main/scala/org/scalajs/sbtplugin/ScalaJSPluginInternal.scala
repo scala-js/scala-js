@@ -19,6 +19,7 @@ import scala.concurrent.{Future, _}
 import scala.concurrent.duration._
 
 import scala.util.{Failure, Success}
+import scala.util.control.NonFatal
 
 import java.util.concurrent.atomic.AtomicReference
 
@@ -81,6 +82,33 @@ private[sbtplugin] object ScalaJSPluginInternal {
             s"${e.getMessage}\nYou may need to upgrade the Scala.js sbt " +
             s"plugin to version ${e.version} or later.",
             e)
+    }
+  }
+
+  private object FailedToStartCmd {
+    def unapply(t: Throwable): Option[String] = {
+      val causeChain = Iterator
+        .iterate(t)(_.getCause())
+        .takeWhile(_ != null)
+
+      causeChain.collectFirst {
+        case ExternalJSRun.FailedToStartException(cmd :: _, _) =>
+          cmd
+      }
+    }
+  }
+
+  private def enhanceNotInstalledException[A](skey: ScopedKey[_], log: Logger)(body: => A): A = {
+    try {
+      body
+    } catch {
+      case NonFatal(t @ FailedToStartCmd(cmd)) =>
+        // trace the original failure in case there is another problem.
+        log.debug(StackTrace.trimmed(t, 0))
+
+        val keyStr = Scope.display(skey.scope, skey.key.label)
+        throw new MessageOnlyException(
+            s"failed to start $cmd; did you install it? (run `last $keyStr` for the full stack trace)")
     }
   }
 
@@ -525,7 +553,10 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val config = RunConfig().withLogger(sbtLogger2ToolsLogger(log))
 
         val run = env.start(input, config)
-        Await.result(run.future, Duration.Inf)
+
+        enhanceNotInstalledException(resolvedScoped.value, log) {
+          Await.result(run.future, Duration.Inf)
+        }
       },
 
       runMain := {
@@ -598,12 +629,14 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val env = jsEnv.value
         val frameworkNames = frameworks.map(_.implClassNames.toList).toList
 
-        val logger = sbtLogger2ToolsLogger(streams.value.log)
+        val log = streams.value.log
         val config = TestAdapter.Config()
-          .withLogger(logger)
+          .withLogger(sbtLogger2ToolsLogger(log))
 
         val adapter = newTestAdapter(env, input, config)
-        val frameworkAdapters = adapter.loadFrameworks(frameworkNames)
+        val frameworkAdapters = enhanceNotInstalledException(resolvedScoped.value, log) {
+          adapter.loadFrameworks(frameworkNames)
+        }
 
         frameworks.zip(frameworkAdapters).collect {
           case (tf, Some(adapter)) => (tf, adapter)
