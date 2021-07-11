@@ -649,7 +649,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       val varDefs = new mutable.ListBuffer[js.VarDef]
 
       for ((param, i) <- jsParamInfos(sym).zipWithIndex) {
-        val rhs = genScalaArg(sym, i, formalArgsRegistry, param, static)(
+        val rhs = genScalaArg(sym, i, formalArgsRegistry, param, static, captures = Nil)(
             prevArgsCount => varDefs.take(prevArgsCount).toList.map(_.ref))
 
         varDefs += js.VarDef(freshLocalIdent("prep" + i), NoOriginalName,
@@ -668,7 +668,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
      */
     def genScalaArg(methodSym: Symbol, paramIndex: Int,
         formalArgsRegistry: FormalArgsRegistry, param: JSParamInfo,
-        static: Boolean)(previousArgsValues: Int => List[js.Tree])(
+        static: Boolean, captures: List[js.Tree])(
+        previousArgsValues: Int => List[js.Tree])(
         implicit pos: Position): js.Tree = {
 
       if (param.repeated) {
@@ -681,7 +682,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         if (param.hasDefault) {
           // If argument is undefined and there is a default getter, call it
           val default = genCallDefaultGetter(methodSym, paramIndex,
-              param.sym.pos, static)(previousArgsValues)
+              param.sym.pos, static, captures)(previousArgsValues)
           js.If(js.BinaryOp(js.BinaryOp.===, jsArg, js.Undefined()),
               default, unboxedArg)(unboxedArg.tpe)
         } else {
@@ -692,7 +693,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
     }
 
     private def genCallDefaultGetter(sym: Symbol, paramIndex: Int,
-        paramPos: Position, static: Boolean)(
+        paramPos: Position, static: Boolean, captures: List[js.Tree])(
         previousArgsValues: Int => List[js.Tree])(
         implicit pos: Position): js.Tree = {
 
@@ -701,6 +702,10 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           /* Get the companion module class.
            * For inner classes the sym.owner.companionModule can be broken,
            * therefore companionModule is fetched at uncurryPhase.
+           *
+           * #4465: If owner is a nested class, the linked class is *not* a
+           * module value, but another class. In this case we need to call the
+           * module accessor on the enclosing class to retrieve this.
            */
           val companionModule = enteringPhase(currentRun.namerPhase) {
             sym.owner.companionModule
@@ -719,8 +724,28 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           s"found overloaded default getter $defaultGetter")
 
       val trgTree = {
-        if (sym.isClassConstructor || static) genLoadModule(trgSym)
-        else js.This()(encodeClassType(trgSym))
+        if (sym.isClassConstructor || static) {
+          if (!trgSym.isLifted) {
+            assert(captures.isEmpty, "expected empty captures")
+            genLoadModule(trgSym)
+          } else {
+            assert(captures.size == 1, "expected exactly one capture")
+
+            // Find the module accessor.
+            val outer = trgSym.originalOwner
+            val name = enteringPhase(currentRun.typerPhase)(trgSym.unexpandedName)
+
+            val modAccessor = outer.info.members.lookupModule(name)
+            val receiver = captures.head
+            if (isJSType(outer)) {
+              genApplyJSClassMethod(receiver, modAccessor, Nil)
+            } else {
+              genApplyMethodMaybeStatically(receiver, modAccessor, Nil)
+            }
+          }
+        } else {
+          js.This()(encodeClassType(trgSym))
+        }
       }
 
       // Pass previous arguments to defaultGetter
