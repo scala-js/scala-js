@@ -70,7 +70,7 @@ Examples:
 
 ###  Versioning / Release Frequency / Quality
 
-Is the versioning (i.e. pre-relese v.s. stable) and release frequency
+Is the versioning (i.e. pre-release v.s. stable) and release frequency
 of the core artifacts appropriate for the API?
 
 Are the quality expectations of the core repo appropriate for the

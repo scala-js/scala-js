@@ -15,6 +15,8 @@ package org.scalajs.testsuite.javalib.util.concurrent.atomic
 import org.junit.Test
 import org.junit.Assert._
 
+import java.util.function.UnaryOperator
+
 class AtomicTest {
 
   @Test def atomicLongTest(): Unit = {
@@ -109,6 +111,18 @@ class AtomicTest {
     assertSame(thing2, atomic.get())
   }
 
+  @Test def atomicReferenceUpdateTest(): Unit = {
+    val atomic = new java.util.concurrent.atomic.AtomicReference(1)
+
+    val addOne = new UnaryOperator[Int] {
+      def apply(x: Int): Int = x + 1
+    }
+
+    assertSame(atomic.updateAndGet(addOne), 2)
+    assertSame(atomic.getAndUpdate(addOne), 2)
+    assertSame(atomic.get(), 3)
+  }
+
   @Test def atomicReferenceArrayTest(): Unit = {
     val thing1 = Foo(5)
     val thing1bis = Foo(5) // equals(), but not the same reference
@@ -165,6 +179,42 @@ class AtomicTest {
 
     val initArray = Array(a, b)
     val atomic2 = new java.util.concurrent.atomic.AtomicLongArray(initArray)
+    assertEquals(a, atomic2.get(0))
+    assertEquals(b, atomic2.get(1))
+    initArray(0) = c
+    assertEquals(a, atomic2.get(0))
+  }
+
+  @Test def atomicIntegerArrayTest(): Unit = {
+    val a = 7
+    val b = 17
+    val c = 177
+
+    val atomic = new java.util.concurrent.atomic.AtomicIntegerArray(2)
+    assertEquals(2, atomic.length)
+    assertEquals(0, atomic.get(0))
+    atomic.set(0, a)
+    assertEquals(a, atomic.get(0))
+    atomic.set(1, b)
+    assertEquals(b, atomic.get(1))
+    assertFalse(atomic.compareAndSet(0, b, a))
+    assertEquals(a, atomic.get(0))
+    assertTrue(atomic.compareAndSet(1, b, a))
+    assertEquals(a, atomic.get(1))
+    assertFalse(atomic.compareAndSet(1, c, b))
+    assertEquals(a, atomic.getAndSet(1, b))
+    assertEquals(b, atomic.get(1))
+    assertEquals(b, atomic.getAndIncrement(1))
+    assertEquals(b + 1, atomic.get(1))
+    assertEquals(b + 2, atomic.incrementAndGet(1))
+    assertEquals(b + 2, atomic.getAndDecrement(1))
+    assertEquals(b, atomic.decrementAndGet(1))
+    assertEquals(a, atomic.getAndAdd(0, 2))
+    assertEquals(a + 2, atomic.get(0))
+    assertEquals(a, atomic.addAndGet(0, -2))
+
+    val initArray = Array(a, b)
+    val atomic2 = new java.util.concurrent.atomic.AtomicIntegerArray(initArray)
     assertEquals(a, atomic2.get(0))
     assertEquals(b, atomic2.get(1))
     initArray(0) = c
