@@ -45,5 +45,6 @@ class LinkingInfoTest {
     assertEquals(9, ESVersion.ES2018)
     assertEquals(10, ESVersion.ES2019)
     assertEquals(11, ESVersion.ES2020)
+    assertEquals(12, ESVersion.ES2021)
   }
 }

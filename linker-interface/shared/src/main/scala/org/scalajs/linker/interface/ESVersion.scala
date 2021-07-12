@@ -86,6 +86,16 @@ object ESVersion {
    */
   val ES2020: ESVersion = new ESVersion(11, "ECMAScript 2020")
 
+  /** ECMAScript 2021 (12th edition).
+   *
+   *  Contains the following notable features:
+   *
+   *  - `WeakRef` and `FinalizationRegistry`
+   *  - `AggregateError`
+   *  - Separators for numeric literals (e.g., `1_000`)
+   */
+  val ES2021: ESVersion = new ESVersion(12, "ECMAScript 2021")
+
   private[interface] implicit object ESVersionFingerprint
       extends Fingerprint[ESVersion] {
 
