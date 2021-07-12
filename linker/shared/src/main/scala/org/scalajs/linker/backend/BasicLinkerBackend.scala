@@ -35,6 +35,7 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
 
   private[this] val emitter = {
     val emitterConfig = Emitter.Config(config.commonConfig.coreSpec)
+      .withJSHeader(config.jsHeader)
       .withInternalModulePattern(m => OutputPatternsImpl.moduleName(config.outputPatterns, m.id))
 
     new Emitter(emitterConfig)

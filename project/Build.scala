@@ -1695,6 +1695,16 @@ object Build {
       name := "Reversi - Scala.js example",
       moduleName := "reversi",
 
+      scalaJSLinkerConfig ~= {
+        _.withJSHeader(
+          """
+            |/* The Scala.js Reversi demo
+            | * with a header to check that source maps take it into account.
+            | */
+          """.stripMargin.trim() + "\n"
+        )
+      },
+
       MyScalaJSPlugin.expectedSizes := {
         scalaVersion.value match {
           case Default2_11ScalaVersion =>
@@ -1707,10 +1717,10 @@ object Build {
 
           case Default2_12ScalaVersion =>
             Some(ExpectedSizes(
-                fastLink = 782000 to 783000,
+                fastLink = 783000 to 784000,
                 fullLink = 150000 to 151000,
                 fastLinkGz = 92000 to 93000,
-                fullLinkGz = 36000 to 37000,
+                fullLinkGz = 37000 to 38000,
             ))
 
           case Default2_13ScalaVersion =>
@@ -1956,6 +1966,16 @@ object Build {
 
       scalaJSLinkerConfig ~= { _.withSemantics(TestSuiteLinkerOptions.semantics _) },
       scalaJSModuleInitializers in Test ++= TestSuiteLinkerOptions.moduleInitializers,
+
+      scalaJSLinkerConfig ~= {
+        _.withJSHeader(
+          """
+            |/* The Scala.js test suite
+            | * with a header to check that source maps take it into account.
+            | */
+          """.stripMargin.trim() + "\n"
+        )
+      },
 
       /* The script that calls setExportsNamespaceForExportsTest to provide
        * ExportsTest with a loopback reference to its own exports namespace.

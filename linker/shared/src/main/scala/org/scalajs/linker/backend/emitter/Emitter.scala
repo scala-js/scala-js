@@ -93,7 +93,7 @@ final class Emitter(config: Emitter.Config) {
           } else {
             ""
           }
-          maybeTopLevelVarDecls + "(function(){\n"
+          config.jsHeader + maybeTopLevelVarDecls + "(function(){\n"
         }
 
         val footer = "}).call(this);\n"
@@ -101,7 +101,7 @@ final class Emitter(config: Emitter.Config) {
         new Result(header, body, footer, topLevelVars, globalRefs)
 
       case ModuleKind.ESModule | ModuleKind.CommonJSModule =>
-        new Result("", body, "", Nil, globalRefs)
+        new Result(config.jsHeader, body, "", Nil, globalRefs)
     }
   }
 
@@ -718,6 +718,7 @@ object Emitter {
       val semantics: Semantics,
       val moduleKind: ModuleKind,
       val esFeatures: ESFeatures,
+      val jsHeader: String,
       val internalModulePattern: ModuleID => String,
       val optimizeBracketSelects: Boolean,
       val trackAllGlobalRefs: Boolean
@@ -730,6 +731,7 @@ object Emitter {
           semantics,
           moduleKind,
           esFeatures,
+          jsHeader = "",
           internalModulePattern = "./" + _.id,
           optimizeBracketSelects = true,
           trackAllGlobalRefs = false)
@@ -744,6 +746,11 @@ object Emitter {
     def withESFeatures(f: ESFeatures => ESFeatures): Config =
       copy(esFeatures = f(esFeatures))
 
+    def withJSHeader(jsHeader: String): Config = {
+      require(StandardConfig.isValidJSHeader(jsHeader), jsHeader)
+      copy(jsHeader = jsHeader)
+    }
+
     def withInternalModulePattern(internalModulePattern: ModuleID => String): Config =
       copy(internalModulePattern = internalModulePattern)
 
@@ -757,11 +764,12 @@ object Emitter {
         semantics: Semantics = semantics,
         moduleKind: ModuleKind = moduleKind,
         esFeatures: ESFeatures = esFeatures,
+        jsHeader: String = jsHeader,
         internalModulePattern: ModuleID => String = internalModulePattern,
         optimizeBracketSelects: Boolean = optimizeBracketSelects,
         trackAllGlobalRefs: Boolean = trackAllGlobalRefs): Config = {
-      new Config(semantics, moduleKind, esFeatures, internalModulePattern,
-          optimizeBracketSelects, trackAllGlobalRefs)
+      new Config(semantics, moduleKind, esFeatures, jsHeader,
+          internalModulePattern, optimizeBracketSelects, trackAllGlobalRefs)
     }
   }
 

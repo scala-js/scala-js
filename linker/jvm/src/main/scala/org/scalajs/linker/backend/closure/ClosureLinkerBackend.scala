@@ -53,6 +53,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
 
   private[this] val emitter = {
     val emitterConfig = Emitter.Config(config.commonConfig.coreSpec)
+      .withJSHeader(config.jsHeader)
       .withOptimizeBracketSelects(false)
       .withTrackAllGlobalRefs(true)
       .withInternalModulePattern(m => OutputPatternsImpl.moduleName(config.outputPatterns, m.id))
