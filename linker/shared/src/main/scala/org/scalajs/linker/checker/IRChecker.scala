@@ -744,9 +744,16 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         typecheckExpr(expr, env)
 
       case Match(selector, cases, default) =>
+        // Typecheck the selector as an int or a java.lang.String
+        typecheck(selector, env)
+        if (!isSubtype(selector.tpe, IntType) && !isSubtype(selector.tpe, BoxedStringType)) {
+          reportError(
+              i"int or java.lang.String expected but ${selector.tpe} found" +
+              i"for tree of type ${selector.getClass.getName}")
+        }
+
+        // The alternatives are MatchableLiterals, no point typechecking them
         val tpe = tree.tpe
-        typecheckExpect(selector, env, IntType)
-        // The alternatives are IntLiterals, no point typechecking them
         for ((_, body) <- cases)
           typecheckExpect(body, env, tpe)
         typecheckExpect(default, env, tpe)
@@ -1396,6 +1403,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 }
 
 object IRChecker {
+  private val BoxedStringType = ClassType(BoxedStringClass)
+
   /** Checks that the IR in a [[frontend.LinkingUnit LinkingUnit]] is correct.
    *
    *  @return Count of IR checking errors (0 in case of success)

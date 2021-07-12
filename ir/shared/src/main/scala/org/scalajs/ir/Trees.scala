@@ -199,13 +199,30 @@ object Trees {
   }
 
   /** A break-free switch (without fallthrough behavior).
+   *
    *  Unlike a JavaScript switch, it can be used in expression position.
-   *  It supports alternatives explicitly (hence the `List[IntLiteral]` in
-   *  cases), whereas in a switch one would use the fallthrough behavior to
+   *  It supports alternatives explicitly (hence the `List[MatchableLiteral]`
+   *  in cases), whereas in a switch one would use the fallthrough behavior to
    *  implement alternatives.
    *  (This is not a pattern matching construct like in Scala.)
+   *
+   *  The selector must be either an `int` (`IntType`) or a `java.lang.String`.
+   *  The cases can be any `MatchableLiteral`, even if they do not make sense
+   *  for the type of the selecter (they simply will never match).
+   *
+   *  Because `+0.0 === -0.0` in JavaScript, and because those semantics are
+   *  used in a JS `switch`, we have to prevent the selector from ever being
+   *  `-0.0`. Otherwise, it would be matched by a `case IntLiteral(0)`. At the
+   *  same time, we must allow at least `int` and `java.lang.String` to support
+   *  all switchable `match`es from Scala. Since the latter two have no common
+   *  super type that does not allow `-0.0`, we really have to special-case
+   *  those two types.
+   *
+   *  This is also why we restrict `MatchableLiteral`s to `IntLiteral`,
+   *  `StringLiteral` and `Null`. Allowing more cases would only make IR
+   *  checking more complicated, without bringing any added value.
    */
-  sealed case class Match(selector: Tree, cases: List[(List[IntLiteral], Tree)],
+  sealed case class Match(selector: Tree, cases: List[(List[MatchableLiteral], Tree)],
       default: Tree)(val tpe: Type)(implicit val pos: Position) extends Tree
 
   sealed case class Debugger()(implicit val pos: Position) extends Tree {
@@ -866,11 +883,23 @@ object Trees {
   /** Marker for literals. Literals are always pure. */
   sealed trait Literal extends Tree
 
+  /** Marker for literals that can be used in a [[Match]] case.
+   *
+   *  Matchable literals are:
+   *
+   *  - `IntLiteral`
+   *  - `StringLiteral`
+   *  - `Null`
+   *
+   *  See [[Match]] for the rationale about that specific set.
+   */
+  sealed trait MatchableLiteral extends Literal
+
   sealed case class Undefined()(implicit val pos: Position) extends Literal {
     val tpe = UndefType
   }
 
-  sealed case class Null()(implicit val pos: Position) extends Literal {
+  sealed case class Null()(implicit val pos: Position) extends MatchableLiteral {
     val tpe = NullType
   }
 
@@ -895,7 +924,7 @@ object Trees {
   }
 
   sealed case class IntLiteral(value: Int)(
-      implicit val pos: Position) extends Literal {
+      implicit val pos: Position) extends MatchableLiteral {
     val tpe = IntType
   }
 
@@ -915,7 +944,7 @@ object Trees {
   }
 
   sealed case class StringLiteral(value: String)(
-      implicit val pos: Position) extends Literal {
+      implicit val pos: Position) extends MatchableLiteral {
     val tpe = StringType
   }
 
