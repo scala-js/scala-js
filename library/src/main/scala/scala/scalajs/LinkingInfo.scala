@@ -281,5 +281,15 @@ object LinkingInfo {
      *  - `import.meta`
      */
     final val ES2020 = 11
+
+    /** ECMAScript 2021 (12th edition).
+     *
+     *  Contains the following notable features:
+     *
+     *  - `WeakRef` and `FinalizationRegistry`
+     *  - `AggregateError`
+     *  - Separators for numeric literals (e.g., `1_000`)
+     */
+    final val ES2021 = 12
   }
 }

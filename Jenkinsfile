@@ -443,6 +443,7 @@ def allESVersions = [
   "ES2018",
   // "ES2019", // We do not use anything specifically from ES2019
   "ES2020"
+  // "ES2021", // We do not use anything specifically from ES2021
 ]
 
 // The 'quick' matrix
