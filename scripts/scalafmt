@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+set -e
+
+HERE="`dirname $0`"
+VERSION="3.0.0-RC5"
+COURSIER="$HERE/.coursier"
+SCALAFMT="$HERE/.scalafmt-$VERSION"
+
+if [ ! -f $COURSIER ]; then
+  curl -L -o $COURSIER https://git.io/coursier-cli
+  chmod +x $COURSIER
+fi
+
+if [ ! -f $SCALAFMT ]; then
+  $COURSIER bootstrap org.scalameta:scalafmt-cli_2.13:$VERSION --main org.scalafmt.cli.Cli -o $SCALAFMT
+  chmod +x $SCALAFMT
+fi
+
+$SCALAFMT "$@"
