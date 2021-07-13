@@ -461,9 +461,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case Match(selector, cases, default) =>
         val newSelector = transformExpr(selector)
         newSelector match {
-          case IntLiteral(selectorValue) =>
+          case selectorValue: MatchableLiteral =>
             val body = cases.collectFirst {
-              case (alts, body) if alts.exists(_.value == selectorValue) => body
+              case (alts, body) if alts.exists(matchableLiteral_===(_, selectorValue)) => body
             }.getOrElse(default)
             transform(body, isStat)
           case _ =>
@@ -798,9 +798,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case Match(selector, cases, default) =>
         val newSelector = transformExpr(selector)
         newSelector match {
-          case IntLiteral(selectorValue) =>
+          case selectorValue: MatchableLiteral =>
             val body = cases.collectFirst {
-              case (alts, body) if alts.exists(_.value == selectorValue) => body
+              case (alts, body) if alts.exists(matchableLiteral_===(_, selectorValue)) => body
             }.getOrElse(default)
             pretransformExpr(body)(cont)
           case _ =>
@@ -2949,6 +2949,23 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case (Undefined(), Undefined())             => true
       case (Null(), Null())                       => true
       case _                                      => false
+    }
+  }
+
+  /** Performs `===` for two matchable literals.
+   *
+   *  This corresponds to the test used by a `Match` at run-time, to decide
+   *  which case is selected.
+   *
+   *  The result is always known statically.
+   */
+  private def matchableLiteral_===(lhs: MatchableLiteral,
+      rhs: MatchableLiteral): Boolean = {
+    (lhs, rhs) match {
+      case (IntLiteral(l), IntLiteral(r))       => l == r
+      case (StringLiteral(l), StringLiteral(r)) => l == r
+      case (Null(), Null())                     => true
+      case _                                    => false
     }
   }
 

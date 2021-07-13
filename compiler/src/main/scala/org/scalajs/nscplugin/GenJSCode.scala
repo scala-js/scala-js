@@ -3494,7 +3494,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           body.symbol
       }.getOrElse(NoSymbol)
 
-      var clauses: List[(List[js.Tree], js.Tree)] = Nil
+      var clauses: List[(List[js.MatchableLiteral], js.Tree)] = Nil
       var optElseClause: Option[js.Tree] = None
       var optElseClauseLabel: Option[js.LabelIdent] = None
 
@@ -3545,9 +3545,19 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             genStatOrExpr(body, isStat)
         }
 
+        def invalidCase(tree: Tree): Nothing =
+          abort(s"Invalid case in alternative in switch-like pattern match: $tree at: ${tree.pos}")
+
+        def genMatchableLiteral(tree: Literal): js.MatchableLiteral = {
+          genExpr(tree) match {
+            case matchableLiteral: js.MatchableLiteral => matchableLiteral
+            case otherExpr                             => invalidCase(tree)
+          }
+        }
+
         pat match {
           case lit: Literal =>
-            clauses = (List(genExpr(lit)), genBody(body)) :: clauses
+            clauses = (List(genMatchableLiteral(lit)), genBody(body)) :: clauses
           case Ident(nme.WILDCARD) =>
             optElseClause = Some(body match {
               case LabelDef(_, Nil, rhs) if hasSynthCaseSymbol(body) =>
@@ -3558,16 +3568,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           case Alternative(alts) =>
             val genAlts = {
               alts map {
-                case lit: Literal => genExpr(lit)
-                case _ =>
-                  abort("Invalid case in alternative in switch-like pattern match: " +
-                      tree + " at: " + tree.pos)
+                case lit: Literal => genMatchableLiteral(lit)
+                case _            => invalidCase(tree)
               }
             }
             clauses = (genAlts, genBody(body)) :: clauses
           case _ =>
-            abort("Invalid case statement in switch-like pattern match: " +
-                tree + " at: " + (tree.pos))
+            invalidCase(tree)
         }
       }
 
@@ -3580,12 +3587,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
        * case is a typical product of `match`es that are full of
        * `case n if ... =>`, which are used instead of `if` chains for
        * convenience and/or readability.
-       *
-       * When no optimization applies, and any of the case values is not a
-       * literal int, we emit a series of `if..else` instead of a `js.Match`.
-       * This became necessary in 2.13.2 with strings and nulls.
        */
-      def buildMatch(cases: List[(List[js.Tree], js.Tree)],
+      def buildMatch(cases: List[(List[js.MatchableLiteral], js.Tree)],
           default: js.Tree, tpe: jstpe.Type): js.Tree = {
 
         def isInt(tree: js.Tree): Boolean = tree.tpe == jstpe.IntType
@@ -3609,32 +3612,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             js.If(js.BinaryOp(op, genSelector, uniqueAlt), caseRhs, default)(tpe)
 
           case _ =>
-            if (isInt(genSelector) &&
-                cases.forall(_._1.forall(_.isInstanceOf[js.IntLiteral]))) {
-              // We have int literals only: use a js.Match
-              val intCases = cases.asInstanceOf[List[(List[js.IntLiteral], js.Tree)]]
-              js.Match(genSelector, intCases, default)(tpe)
-            } else {
-              // We have other stuff: generate an if..else chain
-              val (tempSelectorDef, tempSelectorRef) = genSelector match {
-                case varRef: js.VarRef =>
-                  (js.Skip(), varRef)
-                case _ =>
-                  val varDef = js.VarDef(freshLocalIdent(), NoOriginalName,
-                      genSelector.tpe, mutable = false, genSelector)
-                  (varDef, varDef.ref)
-              }
-              val ifElseChain = cases.foldRight(default) { (caze, elsep) =>
-                val conds = caze._1.map { caseValue =>
-                  js.BinaryOp(js.BinaryOp.===, tempSelectorRef, caseValue)
-                }
-                val cond = conds.reduceRight[js.Tree] { (left, right) =>
-                  js.If(left, js.BooleanLiteral(true), right)(jstpe.BooleanType)
-                }
-                js.If(cond, caze._2, elsep)(tpe)
-              }
-              js.Block(tempSelectorDef, ifElseChain)
-            }
+            // We have more than one case: use a js.Match
+            js.Match(genSelector, cases, default)(tpe)
         }
       }
 
