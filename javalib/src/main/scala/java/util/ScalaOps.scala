@@ -18,6 +18,9 @@ private[java] object ScalaOps {
   implicit class IntScalaOps private[ScalaOps] (val __self: Int) extends AnyVal {
     @inline def until(end: Int): SimpleRange =
       new SimpleRange(__self, end)
+
+    @inline def to(end: Int): SimpleRange =
+      new SimpleRange(__self, end+1)
   }
 
   @inline
@@ -28,6 +31,21 @@ private[java] object ScalaOps {
       while (i < end) {
         f(i)
         i += 1
+      }
+    }
+
+    @inline
+    def reverse: ReverseSimpleRange = new ReverseSimpleRange(start, end)
+  }
+
+  @inline
+  final class ReverseSimpleRange(start: Int, end: Int) {
+    @inline
+    def foreach[U](f: Int => U): Unit = {
+      var i = end-1
+      while (i >= start) {
+        f(i)
+        i -= 1
       }
     }
   }
