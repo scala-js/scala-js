@@ -12,18 +12,69 @@
 
 package org.scalajs.linker
 
+import java.nio.charset.StandardCharsets
+
+import scala.concurrent.{ExecutionContext, Future}
+
 import org.junit.Test
+import org.junit.Assert._
 
 import org.scalajs.ir.Trees._
 
 import org.scalajs.junit.async._
 
 import org.scalajs.linker.interface._
+import org.scalajs.linker.standard._
 import org.scalajs.linker.testutils._
 import org.scalajs.linker.testutils.TestIRBuilder._
 
+import org.scalajs.logging._
+
 class EmitterTest {
+  import EmitterTest._
   import scala.concurrent.ExecutionContext.Implicits.global
+
+  @Test
+  def jsHeader(): AsyncResult = await {
+    val classDefs = List(
+      mainTestClassDef(consoleLog(str("Hello world!")))
+    )
+
+    val t = "\t"
+    val gClef = "\uD834\uDD1E"
+    val header = s"""
+      |// foo
+      |  $t
+      |  /* bar
+      |   * A latin1 character: é
+      |   * A BMP character: U+03B1 α Greek Small Letter Alpha
+      |   * A supplementary character: U+1D11E $gClef Musical Symbol G Clef
+      |baz
+      |  */ $t // foo
+    """.stripMargin.trim() + "\n"
+
+    val config = StandardConfig().withJSHeader(header)
+
+    for {
+      fastContent <- linkToContent(classDefs,
+          moduleInitializers = MainTestModuleInitializers,
+          config = config)
+      fullContent <- linkToContent(classDefs,
+          moduleInitializers = MainTestModuleInitializers,
+          config = config.withClosureCompilerIfAvailable(true))
+    } yield {
+      def testContent(content: String): Unit = {
+        if (!content.startsWith(header)) {
+          assertEquals(header, content.substring(0, header.length()))
+          fail("unreachable")
+        }
+      }
+
+      testContent(fastContent)
+      testContent(fullContent)
+    }
+
+  }
 
   private val EmitterSetOfDangerousGlobalRefsChangedMessage =
     "Emitter: The set of dangerous global refs has changed."
@@ -74,4 +125,26 @@ class EmitterTest {
       logger.allLogLines.assertContains(EmitterSetOfDangerousGlobalRefsChangedMessage)
     }
   }
+}
+
+object EmitterTest {
+  private def linkToContent(classDefs: Seq[ClassDef],
+      moduleInitializers: Seq[ModuleInitializer] = Nil,
+      config: StandardConfig = StandardConfig())(
+      implicit ec: ExecutionContext): Future[String] = {
+
+    val logger = new ScalaConsoleLogger(Level.Error)
+    val linker = StandardImpl.linker(config)
+    val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
+    val output = MemOutputDirectory()
+
+    for {
+      minilib <- TestIRRepo.minilib
+      irFiles = minilib ++ classDefsFiles
+      report <- linker.link(irFiles, moduleInitializers, output, logger)
+    } yield {
+      new String(output.content("main.js").get, StandardCharsets.UTF_8)
+    }
+  }
+
 }

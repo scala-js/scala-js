@@ -19,6 +19,7 @@ object StandardLinkerBackend {
   def apply(config: StandardConfig): LinkerBackend = {
     val backendConfig = LinkerBackendImpl.Config()
       .withCommonConfig(CommonPhaseConfig.fromStandardConfig(config))
+      .withJSHeader(config.jsHeader)
       .withSourceMap(config.sourceMap)
       .withOutputPatterns(config.outputPatterns)
       .withRelativizeSourceMapBase(config.relativizeSourceMapBase)
