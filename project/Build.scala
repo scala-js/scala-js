@@ -493,7 +493,7 @@ object Build {
       }
   )
 
-  val publishSettings = Seq(
+  private val basePublishSettings = Seq(
       publishMavenStyle := true,
       publishTo := {
         val nexus = "https://oss.sonatype.org/"
@@ -522,6 +522,35 @@ object Build {
           </developers>
       ),
       pomIncludeRepository := { _ => false }
+  )
+
+  /** Constants for the `verScheme` parameter of `publishSettings`.
+   *
+   *  sbt does not define constants in its API for `versionScheme`. It
+   *  specifies some strings instead. We use the following version schemes,
+   *  depending on the artifacts and the versioning policy in `VERSIONING.md`:
+   *
+   *  - `"strict"` for artifacts whose public API can break in patch releases (e.g., `compiler`)
+   *  - `"pvp"` for artifacts whose public API can break in minor releases (e.g., `linker`)
+   *  - `"semver-spec"` for artifacts whose public API can only break in major releases (e.g., `library`)
+   *    or in severe releases (e.g., `testAdapter`).
+   *
+   *  The version scheme of Severe changes may need to be revisited if and when
+   *  we publish such a release, as its impact on the version numbers is
+   *  decided on a case-by-case basis, as explained in `VERSIONING.md`.
+   *
+   *  See also https://www.scala-sbt.org/1.x/docs/Publishing.html#Version+scheme
+   */
+  object VersionScheme {
+    final val BreakOnPatch = "strict"
+    final val BreakOnMinor = "pvp"
+    final val BreakOnSevere = "semver-spec"
+    final val BreakOnMajor = "semver-spec"
+  }
+
+  def publishSettings(verScheme: String): Seq[Setting[_]] = Def.settings(
+    basePublishSettings,
+    versionScheme := Some(verScheme),
   )
 
   val fatalWarningsSettings = Def.settings(
@@ -712,7 +741,7 @@ object Build {
 
   val commonIrProjectSettings = Def.settings(
       commonSettings,
-      publishSettings,
+      publishSettings(VersionScheme.BreakOnMinor),
       fatalWarningsSettings,
       name := "Scala.js IR",
       previousArtifactSetting,
@@ -748,7 +777,7 @@ object Build {
       id = "compiler", base = file("compiler")
   ).settings(
       commonSettings,
-      publishSettings,
+      publishSettings(VersionScheme.BreakOnPatch),
       fatalWarningsSettings,
       name := "Scala.js compiler",
       crossVersion := CrossVersion.full, // because compiler api is not binary compatible
@@ -801,7 +830,7 @@ object Build {
 
   val commonLinkerInterfaceSettings = Def.settings(
       commonSettings,
-      publishSettings,
+      publishSettings(VersionScheme.BreakOnSevere),
       fatalWarningsSettings,
       name := "Scala.js linker interface",
 
@@ -889,7 +918,7 @@ object Build {
 
   def commonLinkerSettings(library: LocalProject) = Def.settings(
       commonSettings,
-      publishSettings,
+      publishSettings(VersionScheme.BreakOnMinor),
       fatalWarningsSettings,
       name := "Scala.js linker",
       ensureSAMSupportSetting,
@@ -1052,7 +1081,7 @@ object Build {
       id = "testAdapter", base = file("test-adapter")
   ).settings(
       commonSettings,
-      publishSettings,
+      publishSettings(VersionScheme.BreakOnSevere),
       fatalWarningsSettings,
       name := "Scala.js sbt test adapter",
       libraryDependencies ++= Seq(
@@ -1072,7 +1101,7 @@ object Build {
   lazy val plugin: Project = Project(id = "sbtPlugin", base = file("sbt-plugin"))
       .enablePlugins(ScriptedPlugin).settings(
       commonSettings,
-      publishSettings,
+      publishSettings(VersionScheme.BreakOnSevere),
       fatalWarningsSettings,
       name := "Scala.js sbt plugin",
       normalizedName := "sbt-scalajs",
@@ -1429,7 +1458,7 @@ object Build {
       MyScalaJSPlugin
   ).settings(
       commonSettings,
-      publishSettings,
+      publishSettings(VersionScheme.BreakOnMajor),
       crossVersion := CrossVersion.binary, // no _sjs suffix
       fatalWarningsSettings,
       name := "Scala.js library",
@@ -1549,7 +1578,7 @@ object Build {
       MyScalaJSPlugin
   ).settings(
       commonSettings,
-      publishSettings,
+      publishSettings(VersionScheme.BreakOnMajor),
       crossVersion := CrossVersion.binary, // no _sjs suffix
       fatalWarningsSettings,
       name := "Scala.js test interface",
@@ -1564,7 +1593,7 @@ object Build {
       MyScalaJSPlugin
   ).settings(
       commonSettings,
-      publishSettings,
+      publishSettings(VersionScheme.BreakOnPatch),
       crossVersion := CrossVersion.binary, // no _sjs suffix
       fatalWarningsSettings,
       name := "Scala.js test bridge",
@@ -1588,7 +1617,7 @@ object Build {
       MyScalaJSPlugin
   ).settings(
       commonSettings,
-      publishSettings,
+      publishSettings(VersionScheme.BreakOnMajor),
       crossVersion := CrossVersion.binary, // no _sjs suffix
       fatalWarningsSettings,
       name := "Scala.js JUnit test runtime",
@@ -1642,7 +1671,7 @@ object Build {
       id = "jUnitPlugin", base = file("junit-plugin")
   ).settings(
       commonSettings,
-      publishSettings,
+      publishSettings(VersionScheme.BreakOnPatch),
       fatalWarningsSettings,
       name := "Scala.js JUnit test plugin",
       crossVersion := CrossVersion.full,
