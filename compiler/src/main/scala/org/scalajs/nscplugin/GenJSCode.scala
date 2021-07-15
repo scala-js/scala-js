@@ -1809,7 +1809,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           params.map(genParamDef(_))
         }
 
-        if (isAbstractMethod(dd)) {
+        val jsMethodDef = if (isAbstractMethod(dd)) {
           val body = if (scalaUsesImplClasses &&
               sym.hasAnnotation(JavaDefaultMethodAnnotation)) {
             /* For an interface method with @JavaDefaultMethod, make it a
@@ -1899,6 +1899,24 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
           methodDefWithoutUselessVars
         }
+
+        /* #3953 Patch the param defs to have the type advertised by the method's type.
+         * This works around https://github.com/scala/bug/issues/11884, whose fix
+         * upstream is blocked because it is not binary compatible. The fix here
+         * only affects the inside of the js.MethodDef, so it is binary compat.
+         */
+        val paramTypeRewrites = jsParams.zip(sym.tpe.paramTypes.map(toIRType(_))).collect {
+          case (js.ParamDef(name, _, tpe, _), sigType) if tpe != sigType => name.name -> sigType
+        }
+        if (paramTypeRewrites.isEmpty) {
+          // Overwhelmingly common case: all the types match, so there is nothing to do
+          jsMethodDef
+        } else {
+          devWarning(
+              "Working around https://github.com/scala/bug/issues/11884 " +
+              s"for ${sym.fullName} at ${sym.pos}")
+          patchTypeOfParamDefs(jsMethodDef, paramTypeRewrites.toMap)
+        }
       }
     }
 
@@ -1945,6 +1963,42 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             assert(isStat, s"found a VarDef in expression position at ${tree.pos}")
             super.transform(js.VarDef(name, originalName, vtpe,
                 newMutable(name.name, mutable), rhs)(tree.pos), isStat)
+          case js.Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+            js.Closure(arrow, captureParams, params, restParam, body,
+                captureValues.map(transformExpr))(tree.pos)
+          case _ =>
+            super.transform(tree, isStat)
+        }
+      }
+      val newBody = body.map(
+          b => transformer.transform(b, isStat = resultType == jstpe.NoType))
+      js.MethodDef(flags, methodName, originalName, newParams, resultType,
+          newBody)(methodDef.optimizerHints, None)(methodDef.pos)
+    }
+
+    /** Patches the type of selected param defs in a [[js.MethodDef]].
+     *
+     *  @param patches
+     *    Map from local name to new type. For param defs not in the map, the
+     *    type is untouched.
+     */
+    private def patchTypeOfParamDefs(methodDef: js.MethodDef,
+        patches: Map[LocalName, jstpe.Type]): js.MethodDef = {
+
+      def newType(name: js.LocalIdent, oldType: jstpe.Type): jstpe.Type =
+        patches.getOrElse(name.name, oldType)
+
+      val js.MethodDef(flags, methodName, originalName, params, resultType, body) =
+        methodDef
+      val newParams = for {
+        p @ js.ParamDef(name, originalName, ptpe, mutable) <- params
+      } yield {
+        js.ParamDef(name, originalName, newType(name, ptpe), mutable)(p.pos)
+      }
+      val transformer = new ir.Transformers.Transformer {
+        override def transform(tree: js.Tree, isStat: Boolean): js.Tree = tree match {
+          case tree @ js.VarRef(name) =>
+            js.VarRef(name)(newType(name, tree.tpe))(tree.pos)
           case js.Closure(arrow, captureParams, params, restParam, body, captureValues) =>
             js.Closure(arrow, captureParams, params, restParam, body,
                 captureValues.map(transformExpr))(tree.pos)
