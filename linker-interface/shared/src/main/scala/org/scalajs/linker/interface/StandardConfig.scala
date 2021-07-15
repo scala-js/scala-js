@@ -14,6 +14,8 @@ package org.scalajs.linker.interface
 
 import scala.language.implicitConversions
 
+import scala.annotation.switch
+
 import java.net.URI
 
 import Fingerprint.FingerprintBuilder
@@ -32,6 +34,8 @@ final class StandardConfig private (
     val checkIR: Boolean,
     /** Whether to use the Scala.js optimizer. */
     val optimizer: Boolean,
+    /** A header that will be added at the top of generated .js files. */
+    val jsHeader: String,
     /** Whether things that can be parallelized should be parallelized.
      *  On the JavaScript platform, this does not have any effect.
      */
@@ -71,6 +75,7 @@ final class StandardConfig private (
         esFeatures = ESFeatures.Defaults,
         checkIR = false,
         optimizer = true,
+        jsHeader = "",
         parallel = true,
         sourceMap = true,
         relativizeSourceMapBase = None,
@@ -105,6 +110,26 @@ final class StandardConfig private (
 
   def withOptimizer(optimizer: Boolean): StandardConfig =
     copy(optimizer = optimizer)
+
+  /** Sets the `jsHeader` to a JS comment to add at the top of generated .js files.
+   *
+   *  The header must satisfy the following constraints:
+   *
+   *  - It must contain only valid JS whitespace and/or JS comments (single- or multi-line).
+   *  - It must not use new line characters that are not UNIX new lines (`"\n"`).
+   *  - If non-empty, it must end with a new line.
+   *
+   *  Those requirements can be checked with [[StandardConfig.isValidJSHeader]].
+   *
+   *  @throws java.lang.IllegalArgumentException
+   *    if the header is not valid
+   */
+  def withJSHeader(jsHeader: String): StandardConfig = {
+    require(StandardConfig.isValidJSHeader(jsHeader),
+        "Invalid JS header; it must be a valid JS comment ending with a new line, using UNIX new lines:\n" +
+        jsHeader)
+    copy(jsHeader = jsHeader)
+  }
 
   def withParallel(parallel: Boolean): StandardConfig =
     copy(parallel = parallel)
@@ -141,6 +166,7 @@ final class StandardConfig private (
        |  esFeatures                 = $esFeatures,
        |  checkIR                    = $checkIR,
        |  optimizer                  = $optimizer,
+       |  jsHeader                   = "$jsHeader",
        |  parallel                   = $parallel,
        |  sourceMap                  = $sourceMap,
        |  relativizeSourceMapBase    = $relativizeSourceMapBase,
@@ -159,6 +185,7 @@ final class StandardConfig private (
       esFeatures: ESFeatures = esFeatures,
       checkIR: Boolean = checkIR,
       optimizer: Boolean = optimizer,
+      jsHeader: String = jsHeader,
       parallel: Boolean = parallel,
       sourceMap: Boolean = sourceMap,
       outputPatterns: OutputPatterns = outputPatterns,
@@ -175,6 +202,7 @@ final class StandardConfig private (
         esFeatures,
         checkIR,
         optimizer,
+        jsHeader,
         parallel,
         sourceMap,
         relativizeSourceMapBase,
@@ -201,6 +229,7 @@ object StandardConfig {
         .addField("esFeatures", config.esFeatures)
         .addField("checkIR", config.checkIR)
         .addField("optimizer", config.optimizer)
+        .addField("jsHeader", config.jsHeader)
         .addField("parallel", config.parallel)
         .addField("sourceMap", config.sourceMap)
         .addField("relativizeSourceMapBase",
@@ -228,6 +257,7 @@ object StandardConfig {
    *  - `esFeatures`: [[ESFeatures.Defaults]]
    *  - `checkIR`: `false`
    *  - `optimizer`: `true`
+   *  - `jsHeader`: `""`
    *  - `parallel`: `true`
    *  - `sourceMap`: `true`
    *  - `relativizeSourceMapBase`: `None`
@@ -238,6 +268,100 @@ object StandardConfig {
    *  - `maxConcurrentWrites`: `50`
    */
   def apply(): StandardConfig = new StandardConfig()
+
+  /** Tests whether a string is a valid JS header.
+   *
+   *  A header is valid if and only if it satisfies the following constraints:
+   *
+   *  - It must contain only valid JS whitespace and/or JS comments (single- or multi-line).
+   *  - It must not use new line characters that are not UNIX new lines (`"\n"`).
+   *  - If non-empty, it must end with a new line.
+   *  - It must not contain unpaired surrogate characters (i.e., it must be a valid UTF-16 string).
+   */
+  def isValidJSHeader(jsHeader: String): Boolean = {
+    // scalastyle:off return
+
+    /* First, reject any non-UNIX Unicode new line code point, wherever they
+     * appear (in comments or not). This includes VT and FF, which JavaScript
+     * considers as whitespace but not line separators, as well as NEL.
+     * https://www.unicode.org/reports/tr14/tr14-32.html#BK
+     * VT | FF | CR | NEL | LS | PS
+     *
+     * Also reject unpaired surrogate chars, wherever they appear.
+     */
+    val len = jsHeader.length()
+    var i = 0
+    while (i != len) {
+      def isNewLine(c: Char): Boolean = (c: @switch) match {
+        case '\u000B' | '\u000C' | '\r' | '\u0085' | '\u2028' | '\u2029' => true
+        case _                                                           => false
+      }
+
+      val cp = jsHeader.codePointAt(i)
+      i += Character.charCount(cp)
+      if (Character.isBmpCodePoint(cp)) {
+        if (isNewLine(cp.toChar) || Character.isSurrogate(cp.toChar))
+          return false
+      }
+    }
+
+    // Now, parse whitespace and comments, and reject anything else
+
+    i = 0
+    while (i != len) {
+      val cp = jsHeader.codePointAt(i)
+      i += Character.charCount(cp)
+
+      (cp: @switch) match {
+        // Accept the UNIX new line
+        case '\n' =>
+          ()
+
+        /* Accept JavaScript comments
+         * https://262.ecma-international.org/12.0/#sec-comments
+         */
+        case '/' =>
+          if (i == len)
+            return false
+
+          jsHeader.charAt(i) match {
+            // Single-line comment
+            case '/' =>
+              while (i != len && jsHeader.charAt(i) != '\n')
+                i += 1
+
+            // Multi-line comment
+            case '*' =>
+              i += 1
+              val closingMarkerPos = jsHeader.indexOf("*/", i)
+              if (closingMarkerPos < 0)
+                return false
+              i = closingMarkerPos + 2
+
+            case _ =>
+              return false
+          }
+
+        /* Accept JavaScript Whitespace that are not Unicode new lines
+         * https://262.ecma-international.org/12.0/#sec-white-space
+         * TAB | SP | NBSP | ZWNBSP | <Unicode category Zs>
+         */
+        case '\t' | ' ' | 0x00a0 | 0xfeff =>
+          ()
+        case _ if Character.getType(cp) == Character.SPACE_SEPARATOR =>
+          () // General category 'Zs'
+
+        // Reject anything else
+        case _ =>
+          return false
+      }
+    }
+
+    // Non-empty headers must end with a new line
+    len == 0 || jsHeader.charAt(len - 1) == '\n'
+
+    // scalastyle:on return
+  }
 
   implicit def configExt(config: StandardConfig): ConfigExt =
     new ConfigExt(config)

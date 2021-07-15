@@ -19,7 +19,7 @@ import java.net.URI
 import org.scalajs.logging.Logger
 
 import org.scalajs.linker._
-import org.scalajs.linker.interface.OutputPatterns
+import org.scalajs.linker.interface.{OutputPatterns, StandardConfig}
 import org.scalajs.linker.standard._
 
 /** A backend of the Scala.js linker.
@@ -45,6 +45,8 @@ object LinkerBackendImpl {
   final class Config private (
       /** Common phase config. */
       val commonConfig: CommonPhaseConfig,
+      /** A header that will be added at the top of generated .js files. */
+      val jsHeader: String,
       /** Whether to emit a source map. */
       val sourceMap: Boolean,
       /** Name patterns for output. */
@@ -63,6 +65,7 @@ object LinkerBackendImpl {
     private def this() = {
       this(
           commonConfig = CommonPhaseConfig(),
+          jsHeader = "",
           sourceMap = true,
           outputPatterns = OutputPatterns.Defaults,
           relativizeSourceMapBase = None,
@@ -73,6 +76,11 @@ object LinkerBackendImpl {
 
     def withCommonConfig(commonConfig: CommonPhaseConfig): Config =
       copy(commonConfig = commonConfig)
+
+    def withJSHeader(jsHeader: String): Config = {
+      require(StandardConfig.isValidJSHeader(jsHeader), jsHeader)
+      copy(jsHeader = jsHeader)
+    }
 
     def withSourceMap(sourceMap: Boolean): Config =
       copy(sourceMap = sourceMap)
@@ -94,13 +102,14 @@ object LinkerBackendImpl {
 
     private def copy(
         commonConfig: CommonPhaseConfig = commonConfig,
+        jsHeader: String = jsHeader,
         sourceMap: Boolean = sourceMap,
         outputPatterns: OutputPatterns = outputPatterns,
         relativizeSourceMapBase: Option[URI] = relativizeSourceMapBase,
         closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
         prettyPrint: Boolean = prettyPrint,
         maxConcurrentWrites: Int = maxConcurrentWrites): Config = {
-      new Config(commonConfig, sourceMap, outputPatterns,
+      new Config(commonConfig, jsHeader, sourceMap, outputPatterns,
           relativizeSourceMapBase, closureCompilerIfAvailable, prettyPrint,
           maxConcurrentWrites)
     }
