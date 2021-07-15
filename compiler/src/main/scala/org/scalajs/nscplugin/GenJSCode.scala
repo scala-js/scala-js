@@ -1747,9 +1747,37 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     // Generate a method -------------------------------------------------------
 
+    /** Maybe gen JS code for a method definition.
+     *
+     *  Some methods are not emitted at all:
+     *
+     *  - Primitives, since they are never actually called (with exceptions)
+     *  - Abstract methods in non-native JS classes
+     *  - Default accessor of a native JS constructor
+     *  - Constructors of hijacked classes
+     *  - Methods with the {{{@JavaDefaultMethod}}} annotation mixed in classes.
+     */
     def genMethod(dd: DefDef): Option[js.MethodDef] = {
-      withNewLocalNameScope {
-        genMethodWithCurrentLocalNameScope(dd)
+      val sym = dd.symbol
+      val isAbstract = isAbstractMethod(dd)
+
+      if (scalaPrimitives.isPrimitive(sym)) {
+        None
+      } else if (isAbstract && isNonNativeJSClass(currentClassSym)) {
+        // #4409: Do not emit abstract methods in non-native JS classes
+        None
+      } else if (isJSNativeCtorDefaultParam(sym)) {
+        None
+      } else if (sym.isClassConstructor && isHijackedClass(sym.owner)) {
+        None
+      } else if (scalaUsesImplClasses && !isImplClass(sym.owner) &&
+          !isAbstract && sym.hasAnnotation(JavaDefaultMethodAnnotation)) {
+        // Do not emit trait impl forwarders with @JavaDefaultMethod
+        None
+      } else {
+        withNewLocalNameScope {
+          Some(genMethodWithCurrentLocalNameScope(dd))
+        }
       }
     }
 
@@ -1758,12 +1786,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  of the Scala method, as described in `JSEncoding`, to support
      *  overloading.
      *
-     *  Some methods are not emitted at all:
-     *  * Primitives, since they are never actually called (with exceptions)
-     *  * Abstract methods
-     *  * Constructors of hijacked classes
-     *  * Methods with the {{{@JavaDefaultMethod}}} annotation mixed in classes.
-     *
      *  Constructors are emitted by generating their body as a statement.
      *
      *  Interface methods with the {{{@JavaDefaultMethod}}} annotation produce
@@ -1771,29 +1793,23 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *
      *  Other (normal) methods are emitted with `genMethodDef()`.
      */
-    def genMethodWithCurrentLocalNameScope(dd: DefDef): Option[js.MethodDef] = {
+    def genMethodWithCurrentLocalNameScope(dd: DefDef): js.MethodDef = {
       implicit val pos = dd.pos
-      val DefDef(mods, name, _, vparamss, _, rhs) = dd
       val sym = dd.symbol
 
       withPerMethodBodyState(sym) {
-        assert(vparamss.isEmpty || vparamss.tail.isEmpty,
-            "Malformed parameter list: " + vparamss)
-        val params = if (vparamss.isEmpty) Nil else vparamss.head map (_.symbol)
-
         val methodName = encodeMethodSym(sym)
         val originalName = originalNameOfMethod(sym)
 
-        val isAbstract = isAbstractMethod(dd)
+        val jsParams = {
+          val vparamss = dd.vparamss
+          assert(vparamss.isEmpty || vparamss.tail.isEmpty,
+              "Malformed parameter list: " + vparamss)
+          val params = if (vparamss.isEmpty) Nil else vparamss.head.map(_.symbol)
+          params.map(genParamDef(_))
+        }
 
-        def jsParams = params.map(genParamDef(_))
-
-        if (scalaPrimitives.isPrimitive(sym)) {
-          None
-        } else if (isAbstract && isNonNativeJSClass(currentClassSym)) {
-          // #4409: Do not emit abstract methods in non-native JS classes
-          None
-        } else if (isAbstract) {
+        if (isAbstractMethod(dd)) {
           val body = if (scalaUsesImplClasses &&
               sym.hasAnnotation(JavaDefaultMethodAnnotation)) {
             /* For an interface method with @JavaDefaultMethod, make it a
@@ -1814,17 +1830,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           } else {
             None
           }
-          Some(js.MethodDef(js.MemberFlags.empty, methodName, originalName,
+          js.MethodDef(js.MemberFlags.empty, methodName, originalName,
               jsParams, toIRType(sym.tpe.resultType), body)(
-              OptimizerHints.empty, None))
-        } else if (isJSNativeCtorDefaultParam(sym)) {
-          None
-        } else if (sym.isClassConstructor && isHijackedClass(sym.owner)) {
-          None
-        } else if (scalaUsesImplClasses && !isImplClass(sym.owner) &&
-            sym.hasAnnotation(JavaDefaultMethodAnnotation)) {
-          // Do not emit trait impl forwarders with @JavaDefaultMethod
-          None
+              OptimizerHints.empty, None)
         } else {
           def isTraitImplForwarder = dd.rhs match {
             case app: Apply => isImplClass(app.symbol.owner)
@@ -1853,7 +1861,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               val namespace = js.MemberNamespace.Constructor
               js.MethodDef(
                   js.MemberFlags.empty.withNamespace(namespace), methodName,
-                  originalName, jsParams, jstpe.NoType, Some(genStat(rhs)))(
+                  originalName, jsParams, jstpe.NoType, Some(genStat(dd.rhs)))(
                   optimizerHints, None)
             } else {
               val resultIRType = toIRType(sym.tpe.resultType)
@@ -1866,8 +1874,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                   else js.MemberNamespace.Public
                 }
               }
-              genMethodDef(namespace, methodName, originalName, params,
-                  resultIRType, rhs, optimizerHints)
+              genMethodDef(namespace, methodName, originalName, jsParams,
+                  resultIRType, dd.rhs, optimizerHints)
             }
           }
 
@@ -1889,7 +1897,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             }
           }
 
-          Some(methodDefWithoutUselessVars)
+          methodDefWithoutUselessVars
         }
       }
     }
@@ -1972,12 +1980,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  `this`.
      */
     def genMethodDef(namespace: js.MemberNamespace, methodName: js.MethodIdent,
-        originalName: OriginalName, paramsSyms: List[Symbol],
+        originalName: OriginalName, jsParams: List[js.ParamDef],
         resultIRType: jstpe.Type, tree: Tree,
         optimizerHints: OptimizerHints): js.MethodDef = {
       implicit val pos = tree.pos
-
-      val jsParams = paramsSyms.map(genParamDef(_))
 
       val bodyIsStat = resultIRType == jstpe.NoType
 
@@ -5823,8 +5829,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             tryingToGenMethodAsJSFunction := true
         ) {
           try {
-            genMethodWithCurrentLocalNameScope(applyDef).getOrElse(
-                abort(s"Oops, $applyDef did not produce a method"))
+            genMethodWithCurrentLocalNameScope(applyDef)
           } catch {
             case e: CancelGenMethodAsJSFunction =>
               fail(e.getMessage)
