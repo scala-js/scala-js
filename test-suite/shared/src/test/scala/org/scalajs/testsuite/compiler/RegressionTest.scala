@@ -891,6 +891,20 @@ class RegressionTest {
     assertTrue(result)
   }
 
+  @Test
+  def traitMixinInLocalLazyVal_Issue3918(): Unit = {
+    trait TraitMixedInLocalLazyVal {
+      val foo = "foobar"
+    }
+
+    lazy val localLazyVal = {
+      class ClassExtendsTraitInLocalLazyVal extends TraitMixedInLocalLazyVal
+      val obj = new ClassExtendsTraitInLocalLazyVal
+      obj.foo
+    }
+    assertEquals("foobar", localLazyVal)
+  }
+
 }
 
 object RegressionTest {
