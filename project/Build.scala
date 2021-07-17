@@ -1085,7 +1085,7 @@ object Build {
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
 
-      addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.0"),
+      addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.1"),
       libraryDependencies += "org.scala-js" %% "scalajs-js-envs" % "1.1.1",
       libraryDependencies += "org.scala-js" %% "scalajs-env-nodejs" % "1.1.1",
 
