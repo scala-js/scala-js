@@ -148,7 +148,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     // Scoped state ------------------------------------------------------------
     // Per class body
     val currentClassSym = new ScopedVar[Symbol]
-    private val unexpectedMutatedFields = new ScopedVar[mutable.Set[Symbol]]
+    private val fieldsMutatedInCurrentClass = new ScopedVar[mutable.Set[Name]]
     private val generatedSAMWrapperCount = new ScopedVar[VarBox[Int]]
 
     private def currentClassType = encodeClassType(currentClassSym)
@@ -213,7 +213,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     private def nestedGenerateClass[T](clsSym: Symbol)(body: => T): T = {
       withScopedVars(
           currentClassSym := clsSym,
-          unexpectedMutatedFields := mutable.Set.empty,
+          fieldsMutatedInCurrentClass := mutable.Set.empty,
           generatedSAMWrapperCount := new VarBox(0),
           currentMethodSym := null,
           thisLocalVarIdent := null,
@@ -339,8 +339,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
           if (!isPrimitive && !isJSImplClass(sym)) {
             withScopedVars(
-                currentClassSym          := sym,
-                unexpectedMutatedFields  := mutable.Set.empty,
+                currentClassSym := sym,
+                fieldsMutatedInCurrentClass := mutable.Set.empty,
                 generatedSAMWrapperCount := new VarBox(0)
             ) {
               try {
@@ -1255,7 +1255,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
         val mutable = {
           static || // static fields must always be mutable
-          suspectFieldMutable(f) || unexpectedMutatedFields.contains(f)
+          f.isMutable || // mutable fields can be mutated from anywhere
+          fieldsMutatedInCurrentClass.contains(f.name) // the field is mutated in the current class
         }
 
         val namespace =
@@ -2466,13 +2467,34 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           def genRhs = genExpr(rhs)
           lhs match {
             case Select(qualifier, _) =>
-              val ctorAssignment = (
-                  currentMethodSym.isClassConstructor &&
-                  currentMethodSym.owner == qualifier.symbol &&
-                  qualifier.isInstanceOf[This]
-              )
-              if (!ctorAssignment && !suspectFieldMutable(sym))
-                unexpectedMutatedFields += sym
+              /* Record assignments to fields of the current class.
+               *
+               * We only do that for fields of the current class sym. For other
+               * fields, even if we recorded it, we would forget them when
+               * `fieldsMutatedInCurrentClass` is reset when going out of the
+               * class. If we assign to an immutable field in a different
+               * class, it will be reported as an IR checking error.
+               *
+               * Assignments to `this.` fields in the constructor are valid
+               * even for immutable fields, and are therefore not recorded.
+               *
+               * #3918 We record the *names* of the fields instead of their
+               * symbols because, in rare cases, scalac has different fields in
+               * the trees than in the class' decls. Since we only record fields
+               * from the current class, names are non ambiguous. For the same
+               * reason, we record assignments to *all* fields, not only the
+               * immutable ones, because in 2.13 the symbol here can be mutable
+               * but not the one in the class' decls.
+               */
+              if (sym.owner == currentClassSym.get) {
+                val ctorAssignment = (
+                    currentMethodSym.isClassConstructor &&
+                    currentMethodSym.owner == qualifier.symbol &&
+                    qualifier.isInstanceOf[This]
+                )
+                if (!ctorAssignment)
+                  fieldsMutatedInCurrentClass += sym.name
+              }
 
               def genBoxedRhs: js.Tree = {
                 val tpeEnteringPosterasure =
@@ -6686,19 +6708,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     val result = flatOwnerInfo.decl(sym.name).filter(_ isCoDefinedWith sym)
     if (!result.isOverloaded) result
     else result.alternatives.head
-  }
-
-  /** Whether a field is suspected to be mutable in the IR's terms
-   *
-   *  A field is mutable in the IR, if it is assigned to elsewhere than in the
-   *  constructor of its class.
-   *
-   *  Mixed-in fields are always mutable, since they will be assigned to in
-   *  a trait initializer (rather than a constructor).
-   */
-  private def suspectFieldMutable(sym: Symbol) = {
-    import scala.reflect.internal.Flags
-    sym.hasFlag(Flags.MIXEDIN) || sym.isMutable
   }
 
   private def isStringType(tpe: Type): Boolean =
