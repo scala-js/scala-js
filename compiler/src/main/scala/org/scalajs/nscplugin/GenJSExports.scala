@@ -697,24 +697,78 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         previousArgsValues: Int => List[js.Tree])(
         implicit pos: Position): js.Tree = {
 
-      val trgSym = {
-        if (sym.isClassConstructor) {
-          /* Get the companion module class.
-           * For inner classes the sym.owner.companionModule can be broken,
-           * therefore companionModule is fetched at uncurryPhase.
+      val owner = sym.owner
+      val isNested = owner.isLifted && !isStaticModule(owner.originalOwner)
+
+      val (trgSym, trgTree) = {
+        if (!sym.isClassConstructor && !static) {
+          /* Default getter is on the receiver.
+           *
+           * Since we only use this method for class internal exports
+           * dispatchers, we know the default getter is on `this`. This applies
+           * to both top-level and nested classes.
+           */
+          (owner, js.This()(encodeClassType(owner)))
+        } else if (isNested) {
+          assert(captures.size == 1,
+              s"expected exactly one capture got $captures ($sym at $pos)")
+
+          /* Find the module accessor.
            *
            * #4465: If owner is a nested class, the linked class is *not* a
            * module value, but another class. In this case we need to call the
            * module accessor on the enclosing class to retrieve this.
+           *
+           * #4526: If the companion module is private, linkedClassOfClass
+           * does not work (because the module name is prefixed with the full
+           * path). So we find the module accessor first and take its result
+           * type to be the companion module type.
            */
-          val companionModule = enteringPhase(currentRun.namerPhase) {
-            sym.owner.companionModule
+          val outer = owner.originalOwner
+
+          val modAccessor = {
+            val name = enteringPhase(currentRun.typerPhase) {
+              owner.unexpandedName.toTermName
+            }
+
+            outer.info.members.find { sym =>
+              sym.isModule && sym.unexpandedName == name
+            }.getOrElse {
+              throw new AssertionError(
+                  s"couldn't find module accessor for ${owner.fullName} at $pos")
+            }
           }
-          companionModule.moduleClass
+
+          val receiver = captures.head
+
+          val trgSym = modAccessor.tpe.resultType.typeSymbol
+
+          val trgTree = if (isJSType(outer)) {
+            genApplyJSClassMethod(receiver, modAccessor, Nil)
+          } else {
+            genApplyMethodMaybeStatically(receiver, modAccessor, Nil)
+          }
+
+          (trgSym, trgTree)
+        } else if (sym.isClassConstructor) {
+          assert(captures.isEmpty, "expected empty captures")
+
+          /* Get the companion module class.
+           * For classes nested inside modules the sym.owner.companionModule
+           * can be broken, therefore companionModule is fetched at
+           * uncurryPhase.
+           */
+          val trgSym = enteringPhase(currentRun.uncurryPhase) {
+            owner.linkedClassOfClass
+          }
+          (trgSym, genLoadModule(trgSym))
         } else {
-          sym.owner
+          assert(static, "expected static")
+          assert(captures.isEmpty, "expected empty captures")
+          (owner, genLoadModule(owner))
         }
       }
+
       val defaultGetter = trgSym.tpe.member(
           nme.defaultGetterName(sym.name, paramIndex + 1))
 
@@ -722,31 +776,6 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           s"need default getter for method ${sym.fullName}")
       assert(!defaultGetter.isOverloaded,
           s"found overloaded default getter $defaultGetter")
-
-      val trgTree = {
-        if (sym.isClassConstructor || static) {
-          if (!trgSym.isLifted) {
-            assert(captures.isEmpty, "expected empty captures")
-            genLoadModule(trgSym)
-          } else {
-            assert(captures.size == 1, "expected exactly one capture")
-
-            // Find the module accessor.
-            val outer = trgSym.originalOwner
-            val name = enteringPhase(currentRun.typerPhase)(trgSym.unexpandedName)
-
-            val modAccessor = outer.info.members.lookupModule(name)
-            val receiver = captures.head
-            if (isJSType(outer)) {
-              genApplyJSClassMethod(receiver, modAccessor, Nil)
-            } else {
-              genApplyMethodMaybeStatically(receiver, modAccessor, Nil)
-            }
-          }
-        } else {
-          js.This()(encodeClassType(trgSym))
-        }
-      }
 
       // Pass previous arguments to defaultGetter
       val defaultGetterArgs = previousArgsValues(defaultGetter.tpe.params.size)
