@@ -707,7 +707,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
            * module value, but another class. In this case we need to call the
            * module accessor on the enclosing class to retrieve this.
            */
-          val companionModule = enteringPhase(currentRun.namerPhase) {
+          val companionModule = enteringPhase(currentRun.uncurryPhase) {
             sym.owner.companionModule
           }
           companionModule.moduleClass
