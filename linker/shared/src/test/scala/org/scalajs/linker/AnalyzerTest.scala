@@ -728,7 +728,7 @@ object AnalyzerTest {
       implicit ec: ExecutionContext): Future[Unit] = {
 
     testForEachModuleKind(classDefs, moduleInitializers) { (kind, analysis) =>
-      if (kind == ModuleKind.NoModule)
+      if (kind == ModuleKind.NoModule || kind == ModuleKind.WeakNoModule)
         scriptTest(analysis)
       else
         moduleTest(analysis)

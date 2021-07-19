@@ -117,6 +117,15 @@ def Tasks = [
         ++$scala helloworld$v/run \
         helloworld$v/clean &&
     sbtretry ++$scala \
+        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.WeakNoModule))' \
+        helloworld$v/run \
+        helloworld$v/clean &&
+    sbtretry ++$scala \
+        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.WeakNoModule))' \
+        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
+        helloworld$v/run \
+        helloworld$v/clean &&
+    sbtretry ++$scala \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         helloworld$v/run \
         helloworld$v/clean &&
@@ -214,6 +223,16 @@ def Tasks = [
     sbtretry 'set scalacOptions in $testSuite.v$v += "-Xexperimental"' \
         'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite$v/test &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.WeakNoModule))' \
+        ++$scala $testSuite$v/test &&
+    sbtretry \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.WeakNoModule))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
+        ++$scala $testSuite$v/test &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.WeakNoModule))' \
+        'set scalaJSStage in Global := FullOptStage' \
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         ++$scala $testSuite$v/test &&
     sbtretry \
@@ -305,6 +324,19 @@ def Tasks = [
         ++$scala $testSuite$v/test \
         $testSuite$v/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion).withAllowBigIntsForLongs(true)).withOptimizer(false))' \
+        ++$scala $testSuite$v/test \
+        $testSuite$v/clean &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.WeakNoModule))' \
+        ++$scala $testSuite$v/test &&
+    sbtretry \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.WeakNoModule))' \
+        ++$scala $testSuite$v/test &&
+    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.WeakNoModule))' \
+        'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite$v/test \
         $testSuite$v/clean &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \

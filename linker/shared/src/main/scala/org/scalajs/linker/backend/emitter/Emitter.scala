@@ -79,7 +79,7 @@ final class Emitter(config: Emitter.Config) {
     val WithGlobals(body, globalRefs) = emitInternal(moduleSet, logger)
 
     moduleKind match {
-      case ModuleKind.NoModule =>
+      case ModuleKind.NoModule | ModuleKind.WeakNoModule=>
         assert(moduleSet.modules.size <= 1)
         val topLevelVars = moduleSet.modules
           .headOption.toList
@@ -308,7 +308,7 @@ final class Emitter(config: Emitter.Config) {
     ).toList.sortBy(_._1.name)
 
     moduleKind match {
-      case ModuleKind.NoModule =>
+      case ModuleKind.NoModule | ModuleKind.WeakNoModule =>
         WithGlobals(Nil)
 
       case ModuleKind.ESModule =>

@@ -24,6 +24,7 @@ object ModuleKind {
    */
   val All: List[ModuleKind] = List(
       NoModule,
+      WeakNoModule,
       ESModule,
       CommonJSModule)
 
@@ -34,6 +35,16 @@ object ModuleKind {
    *  Imports are not supported.
    */
   case object NoModule extends ModuleKind
+
+  /** Weak No module structure.
+   *
+   *  With this module kind, exports are stored on the global object.
+   *
+   *  Imports are not supported.
+   *
+   *  Analyzer ignores all modules warnings.
+   */
+  case object WeakNoModule extends ModuleKind
 
   /** An ECMAScript 2015 module.
    *
@@ -55,6 +66,7 @@ object ModuleKind {
     override def fingerprint(moduleKind: ModuleKind): String = {
       moduleKind match {
         case NoModule       => "NoModule"
+        case WeakNoModule   => "WeakNoModule"
         case ESModule       => "ESModule"
         case CommonJSModule => "CommonJSModule"
       }

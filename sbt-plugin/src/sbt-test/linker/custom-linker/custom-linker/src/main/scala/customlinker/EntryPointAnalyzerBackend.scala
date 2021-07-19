@@ -18,7 +18,7 @@ final class EntryPointAnalyzerBackend(linkerConfig: StandardConfig,
     entryPointOutputFile: Path)
     extends LinkerBackend  {
 
-  require(linkerConfig.moduleKind != ModuleKind.NoModule,
+  require(linkerConfig.moduleKind != ModuleKind.NoModule || linkerConfig.moduleKind != ModuleKind.WeakNoModule,
       s"linkerConfig.moduleKind was ${linkerConfig.moduleKind}")
 
   private val standard = StandardLinkerBackend(linkerConfig)

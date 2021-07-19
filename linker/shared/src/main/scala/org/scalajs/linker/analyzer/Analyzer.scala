@@ -48,7 +48,9 @@ private final class Analyzer(config: CommonPhaseConfig,
 
   import Analyzer._
 
-  private val isNoModule = config.coreSpec.moduleKind == ModuleKind.NoModule
+  private val isWeakNoModule = config.coreSpec.moduleKind == ModuleKind.WeakNoModule
+
+  private val isNoModule = (config.coreSpec.moduleKind == ModuleKind.NoModule) || isWeakNoModule
 
   private var objectClassInfo: ClassInfo = _
   private[this] val _classInfos = mutable.Map.empty[ClassName, ClassLoadingState]
@@ -267,7 +269,7 @@ private final class Analyzer(config: CommonPhaseConfig,
 
       infos.foreach(_.reach())
 
-      if (isNoModule) {
+      if (isNoModule && !isWeakNoModule) {
         // Check there is only a single module.
         val publicModuleIDs = (
             infos.map(_.moduleID) ++
@@ -1112,7 +1114,7 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     private def validateLoadSpec(jsNativeLoadSpec: JSNativeLoadSpec,
         jsNativeMember: Option[MethodName])(implicit from: From): Unit = {
-      if (isNoModule) {
+      if (isNoModule && !isWeakNoModule) {
         jsNativeLoadSpec match {
           case JSNativeLoadSpec.Import(module, _) =>
             _errors += ImportWithoutModuleSupport(module, this, jsNativeMember, from)
@@ -1324,7 +1326,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
 
     if (isNoModule) {
-      if (data.methodsCalledDynamicImport.nonEmpty)
+      if (data.methodsCalledDynamicImport.nonEmpty && !isWeakNoModule)
         _errors += DynamicImportWithoutModuleSupport(from)
     } else {
       val methodsCalledDynamicImportIterator = data.methodsCalledDynamicImport.iterator

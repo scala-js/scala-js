@@ -114,6 +114,7 @@ object Report {
         case ModuleKind.NoModule       => 0
         case ModuleKind.ESModule       => 1
         case ModuleKind.CommonJSModule => 2
+        case ModuleKind.WeakNoModule   => 3
       }
       writeByte(i)
     }
@@ -150,6 +151,7 @@ object Report {
         case 0 => ModuleKind.NoModule
         case 1 => ModuleKind.ESModule
         case 2 => ModuleKind.CommonJSModule
+        case 3 => ModuleKind.WeakNoModule
         case v => throw new IllegalArgumentException(s"unknown module byte: $v")
       }
     }

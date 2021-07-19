@@ -460,7 +460,7 @@ private[emitter] final class SJSGen(
 
       case irt.JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, globalSpec) =>
         moduleKind match {
-          case ModuleKind.NoModule =>
+          case ModuleKind.NoModule | ModuleKind.WeakNoModule =>
             genLoadJSFromSpec(globalSpec, keepOnlyDangerousVarNames)
           case ModuleKind.ESModule | ModuleKind.CommonJSModule =>
             genLoadJSFromSpec(importSpec, keepOnlyDangerousVarNames)

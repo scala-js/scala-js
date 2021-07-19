@@ -1129,7 +1129,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       exportedValue: js.Tree)(
       implicit pos: Position): WithGlobals[js.Tree] = {
     moduleKind match {
-      case ModuleKind.NoModule =>
+      case ModuleKind.NoModule | ModuleKind.WeakNoModule =>
         genAssignToNoModuleExportVar(exportName, exportedValue)
 
       case ModuleKind.ESModule =>
@@ -1170,7 +1170,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     val varScope = (className, field.name)
 
     moduleKind match {
-      case ModuleKind.NoModule =>
+      case ModuleKind.NoModule | ModuleKind.WeakNoModule =>
         /* Initial value of the export. Updates are taken care of explicitly
          * when we assign to the static field.
          */

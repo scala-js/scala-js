@@ -465,6 +465,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
         mainModule.moduleKind match {
           case ModuleKind.NoModule       => Input.Script(path)
+          case ModuleKind.WeakNoModule   => Input.Script(path)
           case ModuleKind.ESModule       => Input.ESModule(path)
           case ModuleKind.CommonJSModule => Input.CommonJSModule(path)
         }

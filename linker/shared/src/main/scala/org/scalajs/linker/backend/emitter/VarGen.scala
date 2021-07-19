@@ -159,7 +159,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
       val moduleName = config.internalModulePattern(moduleID)
 
       val moduleTree = config.moduleKind match {
-        case ModuleKind.NoModule =>
+        case ModuleKind.NoModule | ModuleKind.WeakNoModule =>
           /* If we get here, it means that what we are trying to import is in a
            * different module than the module we're currently generating
            * (otherwise we'd take the other branch of `foldSameModule`). But
@@ -274,7 +274,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
       WithGlobals(tree)
     } else {
       val export = config.moduleKind match {
-        case ModuleKind.NoModule =>
+        case ModuleKind.NoModule | ModuleKind.WeakNoModule =>
           throw new AssertionError("non-public module in NoModule mode")
 
         case ModuleKind.ESModule =>

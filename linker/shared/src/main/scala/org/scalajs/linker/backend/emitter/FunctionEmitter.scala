@@ -1439,7 +1439,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               transformExpr(rhs, lhs.tpe))
           lhs match {
             case SelectStatic(className, FieldIdent(field))
-                if moduleKind == ModuleKind.NoModule =>
+                if (moduleKind == ModuleKind.NoModule || moduleKind == ModuleKind.WeakNoModule) =>
               val mirrors =
                 globalKnowledge.getStaticFieldMirrors(className, field)
               mirrors.foldLeft(base) { (prev, mirror) =>
