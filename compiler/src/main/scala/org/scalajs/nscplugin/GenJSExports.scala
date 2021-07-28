@@ -692,7 +692,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       }
     }
 
-    private def genCallDefaultGetter(sym: Symbol, paramIndex: Int,
+    def genCallDefaultGetter(sym: Symbol, paramIndex: Int,
         paramPos: Position, static: Boolean, captures: List[js.Tree])(
         previousArgsValues: Int => List[js.Tree])(
         implicit pos: Position): js.Tree = {

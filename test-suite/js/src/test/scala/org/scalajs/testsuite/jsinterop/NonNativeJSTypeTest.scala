@@ -1018,6 +1018,14 @@ class NonNativeJSTypeTest {
     assertEquals(7, baz10.bar)
   }
 
+  @Test def secondaryConstructorUseDefaultParam(): Unit = {
+    val a = new SecondaryConstructorUseDefaultParam(1)
+    assertEquals(a.y, "1y")
+
+    val b = new SecondaryConstructorUseDefaultParam()()
+    assertEquals(b.y, "xy")
+  }
+
   @Test def polytypeNullaryMethod_Issue2445(): Unit = {
     class PolyTypeNullaryMethod extends js.Object {
       def emptyArray[T]: js.Array[T] = js.Array()
@@ -2001,6 +2009,10 @@ object NonNativeJSTypeTest {
     }
     def this(a: String, x: String, b: String = "", y: String = "") =
       this((a + b).length, (x + y).length)
+  }
+
+  class SecondaryConstructorUseDefaultParam(x: String = "x")(val y: String = x + "y") extends js.Object {
+    def this(x: Int) = this(x.toString())()
   }
 
   class SimpleConstructorAutoFields(val x: Int, var y: Int) extends js.Object {
