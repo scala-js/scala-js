@@ -80,27 +80,11 @@ object MyScalaJSPlugin extends AutoPlugin {
 
   val expectedSizes = settingKey[Option[ExpectedSizes]]("Expected sizes for checksizes")
 
-  def addScalaJSCompilerOption(option: String): Setting[_] =
-    addScalaJSCompilerOption(Def.setting(option))
+  def scalaJSCompilerOption(option: String): Seq[String] =
+    if (isGeneratingForIDE) Nil
+    else Seq(s"-P:scalajs:$option")
 
-  def addScalaJSCompilerOption(option: Def.Initialize[String]): Setting[_] =
-    addScalaJSCompilerOption(None, option)
-
-  def addScalaJSCompilerOptionInConfig(config: Configuration,
-      option: String): Setting[_] = {
-    addScalaJSCompilerOption(Some(config), Def.setting(option))
-  }
-
-  def addScalaJSCompilerOption(config: Option[Configuration],
-      option: Def.Initialize[String]): Setting[_] = {
-    config.fold(scalacOptions)(scalacOptions in _) ++= {
-      val o = option.value
-      if (isGeneratingForIDE) Nil
-      else Seq(s"-P:scalajs:$o")
-    }
-  }
-
-  def mapSourceURISetting(baseDir: File, targetURI: String): String = {
+  def scalaJSMapSourceURIOption(baseDir: File, targetURI: String): Seq[String] = {
     /* Ensure that there is a trailing '/', otherwise we can get no '/'
      * before the first compilation (because the directory does not exist yet)
      * but a '/' after the first compilation, causing a full recompilation on
@@ -111,7 +95,7 @@ object MyScalaJSPlugin extends AutoPlugin {
       if (baseDirURI0.endsWith("/")) baseDirURI0
       else baseDirURI0 + "/"
 
-    s"mapSourceURI:$baseDirURI->$targetURI"
+    scalaJSCompilerOption(s"mapSourceURI:$baseDirURI->$targetURI")
   }
 
   override def globalSettings: Seq[Setting[_]] = Def.settings(
@@ -203,14 +187,14 @@ object MyScalaJSPlugin extends AutoPlugin {
       },
 
       // Link source maps to GitHub sources
-      if (scalaJSVersion.endsWith("-SNAPSHOT")) {
-        Nil
-      } else {
-        addScalaJSCompilerOption(Def.setting {
-          mapSourceURISetting(
+      scalacOptions ++= {
+        if (scalaJSVersion.endsWith("-SNAPSHOT")) {
+          Nil
+        } else {
+          scalaJSMapSourceURIOption(
               (baseDirectory in LocalProject("scalajs")).value,
               s"https://raw.githubusercontent.com/scala-js/scala-js/v$scalaJSVersion/")
-        })
+        }
       },
 
       testHtmlJSDom in Test := {
@@ -236,9 +220,8 @@ object MyScalaJSPlugin extends AutoPlugin {
 
 object Build {
   import MyScalaJSPlugin.{
-    addScalaJSCompilerOption,
-    addScalaJSCompilerOptionInConfig,
-    mapSourceURISetting,
+    scalaJSCompilerOption,
+    scalaJSMapSourceURIOption,
     isGeneratingForIDE
   }
 
@@ -1221,7 +1204,7 @@ object Build {
        */
       scalacOptions += "-Yno-predef",
       // We implement JDK classes, so we emit static forwarders for all static objects
-      addScalaJSCompilerOption("genStaticForwardersForNonTopLevelObjects"),
+      scalacOptions ++= scalaJSCompilerOption("genStaticForwardersForNonTopLevelObjects"),
 
       resourceGenerators in Compile += Def.task {
         val output = (resourceManaged in Compile).value / "java/lang/Object.sjsir"
@@ -1255,7 +1238,7 @@ object Build {
        */
       scalacOptions += "-Yno-predef",
       // We implement JDK classes, so we emit static forwarders for all static objects
-      addScalaJSCompilerOption("genStaticForwardersForNonTopLevelObjects"),
+      scalacOptions ++= scalaJSCompilerOption("genStaticForwardersForNonTopLevelObjects"),
 
       /* In the javalib, we often need to perform `a.equals(b)` with operands
        * of unconstrained types in order to implement the JDK specs. Scala
@@ -1293,18 +1276,13 @@ object Build {
       /* Link source maps to the GitHub sources of the original scalalib
        * #2195 This must come *before* the option added by MyScalaJSPlugin
        * because mapSourceURI works on a first-match basis.
-       * That is why we cannot use addScalaJSCompilerOption.
        */
       scalacOptions := {
         val prev = scalacOptions.value
-        if (isGeneratingForIDE) {
-          prev
-        } else {
-          val option = mapSourceURISetting(
-              (artifactPath in fetchScalaSource).value,
-              s"https://raw.githubusercontent.com/scala/scala/v${scalaVersion.value}/src/library/")
-          option +: prev
-        }
+        val option = scalaJSMapSourceURIOption(
+            (artifactPath in fetchScalaSource).value,
+            s"https://raw.githubusercontent.com/scala/scala/v${scalaVersion.value}/src/library/")
+        option ++ prev
       },
       name := "Scala library for Scala.js",
       publishArtifact in Compile := false,
@@ -1321,7 +1299,7 @@ object Build {
           Set("-deprecation", "-unchecked", "-feature") contains _)),
 
       // Tell the plugin to hack-fix bad classOf trees
-      addScalaJSCompilerOption("fixClassOf"),
+      scalacOptions ++= scalaJSCompilerOption("fixClassOf"),
 
       libraryDependencies +=
         "org.scala-lang" % "scala-library" % scalaVersion.value classifier "sources",
@@ -1991,7 +1969,7 @@ object Build {
         }
       },
 
-      addScalaJSCompilerOptionInConfig(Test, "genStaticForwardersForNonTopLevelObjects"),
+      Test / scalacOptions ++= scalaJSCompilerOption("genStaticForwardersForNonTopLevelObjects"),
 
       scalaJSLinkerConfig ~= { _.withSemantics(TestSuiteLinkerOptions.semantics _) },
       scalaJSModuleInitializers in Test ++= TestSuiteLinkerOptions.moduleInitializers,
@@ -2241,7 +2219,7 @@ object Build {
        */
       scalacOptions += "-Yno-predef",
       // We implement JDK classes, so we emit static forwarders for all static objects
-      addScalaJSCompilerOption("genStaticForwardersForNonTopLevelObjects"),
+      scalacOptions ++= scalaJSCompilerOption("genStaticForwardersForNonTopLevelObjects"),
   ).withScalaJSCompiler.dependsOn(
       library
   )
