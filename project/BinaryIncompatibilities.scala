@@ -14,9 +14,6 @@ object BinaryIncompatibilities {
   )
 
   val SbtPlugin = Seq(
-    // private[sbtplugin], not an issue.
-    exclude[MissingClassProblem]("org.scalajs.sbtplugin.Run"),
-    exclude[MissingClassProblem]("org.scalajs.sbtplugin.Run$"),
   )
 
   val TestCommon = Seq(
