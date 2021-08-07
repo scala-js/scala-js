@@ -17,7 +17,10 @@ import scala.annotation.tailrec
 import scala.collection.immutable
 import scala.collection.mutable
 
+import java.nio.charset.StandardCharsets
+
 import org.scalajs.ir.Names.ClassName
+import org.scalajs.ir.SHA1
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 /** Build fewest (largest) possible modules (without reaching unnecessary code).
@@ -37,66 +40,24 @@ private[modulesplitter] final class MaxModuleAnalyzer extends ModuleAnalyzer {
       // Fast path.
       new SingleModuleAnalysis(info.publicModuleDependencies.head._1)
     } else {
-      val allTags = new Tagger(info).tagAll()
-
-      val moduleIDs =
-        buildModuleIDs(info.publicModuleDependencies.keys, allTags.flatMap(_._2._2))
-
-      val moduleMap = allTags.map {
-        case (className, tags) => className -> moduleIDs(tags)
-      }.toMap
+      val prefix = internalModuleIDPrefix(info.publicModuleDependencies.keys)
+      val moduleMap = new Tagger(info).tagAll(prefix)
 
       new FullAnalysis(moduleMap)
     }
   }
 
-  private def buildModuleIDs(publicIDsUnordered: Iterable[ModuleID],
-      dynamicIDsUnordered: Iterable[ClassName]): Map[(Set[ModuleID], Set[ClassName]), ModuleID] = {
-    /* We build the new module IDs independent of the actually present
-     * modules to ensure stability.
-     *
-     * We sort the ModuleIDs to not depend on map iteration order (or the
-     * order of the input files).
-     */
-    val publicIDs = sortedSet(publicIDsUnordered)(Ordering.by[ModuleID, String](_.id))
-    val dynamicIDs = sortedSet(dynamicIDsUnordered)
-
-    /* Internal ModuleIDs are simply generated with consecutive numbers.
-     * (earlier versions concatenated all the tags; which lead to too
-     * long names, see #4499).
-     */
-    val internalIDs = Iterator.from(0)
-      .map(i => ModuleID(s"internal-$i"))
-      .filterNot(publicIDs.contains(_)) // avoid module ID collisions.
-
-    val tups = for {
-      dynamicModules <- dynamicIDs.subsets()
-      publicModules <- publicIDs.subsets()
-      if publicModules.nonEmpty || dynamicModules.nonEmpty
-    } yield {
-      val moduleID = {
-        if (dynamicModules.isEmpty && publicModules.size == 1) {
-          /* Classes tagged with exactly a single public module, get assigned to
-           * that public module.
-           */
-          publicModules.head
-        } else {
-          // for all other tag combinations, we generate a new internal module
-          internalIDs.next()
-        }
-      }
-
-      (publicModules, dynamicModules) -> moduleID
-    }
-
-    tups.toMap
-  }
-
-  private def sortedSet[T: Ordering](s: Iterable[T]): immutable.SortedSet[T] = {
-    // Best way I could find to create a SortedSet from an Iterable (i.e. not Seq) :-/
-    val b = immutable.SortedSet.newBuilder[T]
-    s.foreach(b += _)
-    b.result()
+  /** Create a prefix for internal modules.
+   *
+   *  Chosen such that it is not a prefix of any public module ID.
+   *  This ensures that a generated internal module ID never collides with a
+   *  public module ID.
+   */
+  private def internalModuleIDPrefix(publicIDs: Iterable[ModuleID]): String = {
+    Iterator
+      .iterate("internal-")(_ + "-")
+      .find(p => !publicIDs.exists(_.id.startsWith(p)))
+      .get
   }
 }
 
@@ -108,7 +69,7 @@ private object MaxModuleAnalyzer {
       Some(moduleID)
   }
 
-  private final class FullAnalysis(map: Map[ClassName, ModuleID])
+  private final class FullAnalysis(map: scala.collection.Map[ClassName, ModuleID])
       extends ModuleAnalyzer.Analysis {
     def moduleForClass(className: ClassName): Option[ModuleID] =
       map.get(className)
@@ -149,9 +110,11 @@ private object MaxModuleAnalyzer {
   private final class Tagger(infos: ModuleAnalyzer.DependencyInfo) {
     private[this] val allPaths = mutable.Map.empty[ClassName, Paths]
 
-    def tagAll(): scala.collection.Map[ClassName, (Set[ModuleID], Set[ClassName])] = {
+    def tagAll(internalModuleIDPrefix: String): scala.collection.Map[ClassName, ModuleID] = {
       tagEntryPoints()
-      allPaths.map { case (className, paths) => className -> paths.tags() }
+      allPaths.map { case (className, paths) =>
+        className -> paths.moduleID(internalModuleIDPrefix)
+      }
     }
 
     private def tag(className: ClassName, pathRoot: ModuleID, pathSteps: List[ClassName]): Unit = {
@@ -201,19 +164,58 @@ private object MaxModuleAnalyzer {
       }
     }
 
-    def tags(): (Set[ModuleID], Set[ClassName]) = {
-      /* Remove dynamic paths to class that are also reached by a public module.
-       * However, only do this if there are other tags as well. Otherwise, this
-       * class will end up in a public module, but the dynamically loaded module
-       * will try to import it (but importing public modules is forbidden).
-       */
-      if (direct.size > 1 || direct != dynamic.keySet) {
-        direct.foreach(dynamic.remove(_))
-      }
+    def moduleID(internalModuleIDPrefix: String): ModuleID = {
+      if (direct.size == 1 && dynamic.isEmpty) {
+        /* Class is only used by a single public module. Put it there.
+         *
+         * Note that we must not do this if there are any dynamic modules
+         * requiring this class. Otherwise, the dynamically loaded module
+         * will try to import the public module (but importing public modules is
+         * forbidden).
+         */
+        direct.head
+      } else {
+        /* Class is used by multiple public modules and/or dynamic edges.
+         * Create a module ID grouping it with other classes that have the same
+         * dependees.
+         */
+        val digestBuilder = new SHA1.DigestBuilder
 
-      val endsBuilder = Set.newBuilder[ClassName]
-      dynamic.values.foreach(_.ends(endsBuilder))
-      (direct.toSet, endsBuilder.result())
+        // Public modules using this.
+        for (id <- direct.toList.sortBy(_.id))
+          digestBuilder.update(id.id.getBytes(StandardCharsets.UTF_8))
+
+        // Dynamic modules using this.
+        for (className <- dynamicEnds)
+          digestBuilder.updateUTF8String(className.encoded)
+
+        // Build a hex string of the hash with the right prefix.
+        @inline def hexDigit(digit: Int): Char =
+          Character.forDigit(digit & 0x0f, 16)
+
+        val id = new java.lang.StringBuilder(internalModuleIDPrefix)
+
+        for (b <- digestBuilder.finalizeDigest()) {
+          id.append(hexDigit(b >> 4))
+          id.append(hexDigit(b))
+        }
+
+        ModuleID(id.toString())
+      }
+    }
+
+    private def dynamicEnds: immutable.SortedSet[ClassName] = {
+      val builder = immutable.SortedSet.newBuilder[ClassName]
+      /* We ignore paths that originate in a module that imports this class
+       * directly: They are irrelevant for the final ID.
+       *
+       * However, they are important to ensure we do not attempt to import a
+       * public module (see the comment in moduleID); therefore, we only filter
+       * them here.
+       */
+      for ((h, t) <- dynamic if !direct.contains(h))
+        t.ends(builder)
+      builder.result()
     }
   }
 
