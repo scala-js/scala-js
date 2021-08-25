@@ -14,7 +14,8 @@ package org.scalajs.ir
 
 import java.security.MessageDigest
 
-private[ir] object SHA1 {
+/** Wrapper around java.security.MessageDigest.getInstance("SHA-1") */
+object SHA1 {
   final class DigestBuilder {
     private val digest = MessageDigest.getInstance("SHA-1")
 
@@ -26,6 +27,9 @@ private[ir] object SHA1 {
 
     def update(b: Array[Byte], off: Int, len: Int): Unit =
       digest.update(b, off, len)
+
+    def updateUTF8String(str: UTF8String): Unit =
+      update(str.bytes)
 
     def finalizeDigest(): Array[Byte] =
       digest.digest()

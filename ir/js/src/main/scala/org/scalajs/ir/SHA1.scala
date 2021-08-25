@@ -12,19 +12,18 @@
 
 package org.scalajs.ir
 
-/* An implementation of the SHA-1 algorithm for use in Hashers.
- *
- * Reference: https://en.wikipedia.org/wiki/SHA-1#SHA-1_pseudocode
- *
- * This implementation MUST NOT be used for any cryptographic purposes. It did
- * not receive the care and attention required for security purposes. It is
- * only meant as a best-effort hash for incremental linking.
- */
-
 import scala.scalajs.js.typedarray._
 import scala.scalajs.js.typedarray.DataViewExt._
 
-private[ir] object SHA1 {
+/** An implementation of the SHA-1 algorithm for use in Hashers.
+ *
+ *  Reference: https://en.wikipedia.org/wiki/SHA-1#SHA-1_pseudocode
+ *
+ *  This implementation MUST NOT be used for any cryptographic purposes. It did
+ *  not receive the care and attention required for security purposes. It is
+ *  only meant as a best-effort hash for incremental linking.
+ */
+object SHA1 {
   final class DigestBuilder {
     /** The SHA-1 state.
      *
@@ -77,6 +76,9 @@ private[ir] object SHA1 {
 
       sha1Update(b, off, len)
     }
+
+    def updateUTF8String(str: UTF8String): Unit =
+      update(str.bytes)
 
     def finalizeDigest(): Array[Byte] =
       sha1Final()
