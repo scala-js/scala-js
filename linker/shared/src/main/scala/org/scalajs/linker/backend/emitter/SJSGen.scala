@@ -351,10 +351,8 @@ private[emitter] final class SJSGen(
     BoxedStringClass,
     BoxedDoubleClass,
     BoxedBooleanClass,
-    BoxedUnitClass
-  ) ::: (
-    if (useBigIntForLongs) List(BoxedLongClass) else Nil
-  ) ::: List(
+    BoxedUnitClass,
+    BoxedLongClass,
     BoxedCharacterClass
   )
 
