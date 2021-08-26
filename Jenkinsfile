@@ -406,7 +406,7 @@ def Tasks = [
 ]
 
 def mainJavaVersion = "1.8"
-def otherJavaVersions = ["11"]
+def otherJavaVersions = ["11", "16"]
 def allJavaVersions = otherJavaVersions.clone()
 allJavaVersions << mainJavaVersion
 
@@ -446,11 +446,21 @@ def allESVersions = [
   // "ES2021", // We do not use anything specifically from ES2021
 ]
 
+// Scala 2.11 does not support newer Java versions
+def isExcludedForScala211(javaVersion) {
+  return javaVersion != "1.8" && javaVersion != "11"
+}
+
+def isExcludedScalaJavaCombo(scalaVersion, javaVersion) {
+  return scalaVersion.startsWith("2.11.") && isExcludedForScala211(javaVersion)
+}
+
 // The 'quick' matrix
 def quickMatrix = []
 mainScalaVersions.each { scalaVersion ->
   allJavaVersions.each { javaVersion ->
-    quickMatrix.add([task: "main", scala: scalaVersion, java: javaVersion])
+    if (!isExcludedScalaJavaCombo(scalaVersion, javaVersion))
+      quickMatrix.add([task: "main", scala: scalaVersion, java: javaVersion])
   }
   quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-custom-esversion", scala: scalaVersion, java: mainJavaVersion, esVersion: "ES5_1", testSuite: "testSuite"])
@@ -463,8 +473,11 @@ allESVersions.each { esVersion ->
   quickMatrix.add([task: "test-suite-custom-esversion-force-polyfills", scala: mainScalaVersion, java: mainJavaVersion, esVersion: esVersion, testSuite: "testSuite"])
 }
 allJavaVersions.each { javaVersion ->
-  quickMatrix.add([task: "tools-sbtplugin", scala: "2.12.14", java: javaVersion])
-  quickMatrix.add([task: "tools", scala: "2.11.12", java: javaVersion])
+  if (!isExcludedForScala211(javaVersion)) {
+    // the sbt plugin tests want to compile everything for 2.11, 2.12 and 2.13
+    quickMatrix.add([task: "tools-sbtplugin", scala: "2.12.14", java: javaVersion])
+    quickMatrix.add([task: "tools", scala: "2.11.12", java: javaVersion])
+  }
   quickMatrix.add([task: "tools", scala: "2.13.6", java: javaVersion])
 }
 
@@ -475,7 +488,8 @@ otherScalaVersions.each { scalaVersion ->
 }
 mainScalaVersions.each { scalaVersion ->
   otherJavaVersions.each { javaVersion ->
-    quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: javaVersion, testSuite: "testSuite"])
+    if (!isExcludedScalaJavaCombo(scalaVersion, javaVersion))
+      quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: javaVersion, testSuite: "testSuite"])
   }
   fullMatrix.add([task: "partest-noopt", scala: scalaVersion, java: mainJavaVersion])
   fullMatrix.add([task: "partest-fullopt", scala: scalaVersion, java: mainJavaVersion])
