@@ -12,12 +12,15 @@
 
 package java.lang
 
+import java.lang.constant.Constable
+
 import scala.scalajs.js
 
 /* This is a hijacked class. Its instances are primitive numbers.
  * Constructors are not emitted.
  */
-final class Byte private () extends Number with Comparable[Byte] {
+final class Byte private ()
+    extends Number with Comparable[Byte] with Constable {
 
   def this(value: scala.Byte) = this()
   def this(s: String) = this()

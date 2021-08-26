@@ -15,6 +15,7 @@ package java.lang
 import scala.annotation.{tailrec, switch}
 import scala.scalajs.js
 
+import java.lang.constant.Constable
 import java.util.{ArrayList, Arrays, HashMap}
 
 /* This is a hijacked class. Its instances are primitive chars.
@@ -26,7 +27,8 @@ import java.util.{ArrayList, Arrays, HashMap}
  * Constructors are not emitted.
  */
 class Character private ()
-    extends AnyRef with java.io.Serializable with Comparable[Character] {
+    extends AnyRef with java.io.Serializable with Comparable[Character]
+    with Constable {
 
   def this(value: scala.Char) = this()
 

@@ -905,6 +905,26 @@ class RegressionTest {
     assertEquals("foobar", localLazyVal)
   }
 
+  @Test
+  def inferConstableOrConstantDesc_Issue4545(): Unit = {
+    /* Depending on the JDK version used to compile this test, the types
+     * inferred for the arrays will change. On JDK 12+, they will involve
+     * Constable and/or ConstantDesc.
+     */
+
+    // On JDK 12+, both Constable and ConstantDesc
+    val b = Array("foo", java.lang.Integer.valueOf(5))
+    assertEquals(2, b.length)
+    assertEquals("foo", b(0))
+    assertEquals(5, b(1))
+
+    // On JDK 15+, both Constable but Boolean is not a ConstantDesc
+    val a = Array("foo", java.lang.Boolean.TRUE)
+    assertEquals(2, a.length)
+    assertEquals("foo", a(0))
+    assertEquals(true, a(1))
+  }
+
 }
 
 object RegressionTest {

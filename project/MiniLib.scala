@@ -45,7 +45,12 @@ object MiniLib {
         "Serializable"
     ).map("java/io/" + _)
 
-    val allBaseNames = inJavaLang ::: inJavaIO
+    val inJavaLangConstant = List(
+        "Constable",
+        "ConstantDesc"
+    ).map("java/lang/constant/" + _)
+
+    val allBaseNames = inJavaLang ::: inJavaIO ::: inJavaLangConstant
 
     allBaseNames.flatMap(name => List(name + ".sjsir", name + "$.sjsir")).toSet
   }

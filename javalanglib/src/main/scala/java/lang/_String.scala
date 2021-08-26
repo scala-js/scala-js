@@ -21,6 +21,7 @@ import scala.scalajs.js.annotation._
 import scala.scalajs.runtime.linkingInfo
 import scala.scalajs.LinkingInfo.ESVersion
 
+import java.lang.constant.{Constable, ConstantDesc}
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.util.Locale
@@ -38,7 +39,7 @@ import Utils.Implicits.enableJSStringOps
  */
 final class _String private () // scalastyle:ignore
     extends AnyRef with java.io.Serializable with Comparable[String]
-    with CharSequence {
+    with CharSequence with Constable with ConstantDesc {
 
   import _String._
 

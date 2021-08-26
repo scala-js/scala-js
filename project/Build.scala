@@ -1726,7 +1726,7 @@ object Build {
             Some(ExpectedSizes(
                 fastLink = 783000 to 784000,
                 fullLink = 150000 to 151000,
-                fastLinkGz = 91000 to 92000,
+                fastLinkGz = 92000 to 93000,
                 fullLinkGz = 37000 to 38000,
             ))
 
@@ -1799,6 +1799,7 @@ object Build {
         List(sharedTestDir / "scala", sharedTestDir / "require-scala2") :::
         collectionsEraDependentDirectory(scalaV, sharedTestDir) ::
         includeIf(sharedTestDir / "require-jdk11", javaV >= 11) :::
+        includeIf(sharedTestDir / "require-jdk15", javaV >= 15) :::
         includeIf(testDir / "require-2.12", isJSTest && isScalaAtLeast212) :::
         includeIf(testDir / "require-scala2", isJSTest)
       },
