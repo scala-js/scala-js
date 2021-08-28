@@ -95,7 +95,7 @@ class MaxModuleSplittingTest {
     def dynClass(i: Int, body: Tree): ClassDef = {
       val dynMethod = MethodDef(
           MemberFlags.empty.withNamespace(MemberNamespace.PublicStatic),
-          dynTargetName, NON, Nil, NoType, Some(body))(EOH, None)
+          dynTargetName, NON, Nil, AnyType, Some(body))(EOH, None)
 
       classDef(
           className = "Dyn" + i,
