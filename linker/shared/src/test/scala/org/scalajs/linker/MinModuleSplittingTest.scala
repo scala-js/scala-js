@@ -33,13 +33,15 @@ class MinModuleSplittingTest {
   /** Smoke test to ensure modules do not get merged too much. */
   @Test
   def splitsModules(): AsyncResult = await {
+    val strClsType = ClassType(BoxedStringClass)
+
     val greetMethodName = m("greet", Nil, T)
 
     val greeterMemberDefs = List(
         trivialCtor("lib.Greeter"),
 
         // @noinline def greet(): String = "Hello world!"
-        MethodDef(EMF, greetMethodName, NON, Nil, StringType, Some {
+        MethodDef(EMF, greetMethodName, NON, Nil, strClsType, Some {
           str("Hello world!")
         })(EOH.withNoinline(true), None)
     )
@@ -53,7 +55,7 @@ class MinModuleSplittingTest {
         mainTestClassDef({
             // console.log(new lib.Greeter().greet())
             val newGreeter = New("lib.Greeter", NoArgConstructorName, Nil)
-            val callGreet = Apply(EAF, newGreeter, greetMethodName, Nil)(StringType)
+            val callGreet = Apply(EAF, newGreeter, greetMethodName, Nil)(strClsType)
             consoleLog(callGreet)
         })
     )
