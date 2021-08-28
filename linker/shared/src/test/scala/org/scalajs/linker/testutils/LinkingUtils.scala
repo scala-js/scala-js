@@ -28,7 +28,7 @@ object LinkingUtils {
       output: OutputDirectory = MemOutputDirectory())(
       implicit ec: ExecutionContext): Future[Report] = {
 
-    val linker = StandardImpl.linker(config)
+    val linker = StandardImpl.linker(config.withCheckIR(true))
     val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
 
     TestIRRepo.minilib.flatMap { stdLibFiles =>
