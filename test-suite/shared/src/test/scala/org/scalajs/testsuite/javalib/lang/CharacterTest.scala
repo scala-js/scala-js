@@ -1483,7 +1483,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
 
   @Test def isUnicodeIdentifierPart(): Unit = {
     /* 100 randomly generated positives and 100 randomly generated negatives,
-     * minus those that became positive in JDK 11.
+     * minus those that became positive in JDK 11 or later.
      */
 
     assertTrue(Character.isUnicodeIdentifierPart('\u48d3'))
@@ -1612,7 +1612,6 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertFalse(Character.isUnicodeIdentifierPart('\u1bfd'))
     assertFalse(Character.isUnicodeIdentifierPart('\u4dd0'))
     assertFalse(Character.isUnicodeIdentifierPart('\uea99'))
-    assertFalse(Character.isUnicodeIdentifierPart('\u309b'))
     assertFalse(Character.isUnicodeIdentifierPart('\uf592'))
     assertFalse(Character.isUnicodeIdentifierPart('\uf4dd'))
     assertFalse(Character.isUnicodeIdentifierPart('\udfaf'))
@@ -1628,7 +1627,6 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertFalse(Character.isUnicodeIdentifierPart('\ueb44'))
     assertFalse(Character.isUnicodeIdentifierPart('\uebd4'))
     assertFalse(Character.isUnicodeIdentifierPart('\u2f10'))
-    assertFalse(Character.isUnicodeIdentifierPart('\u1cbf'))
     assertFalse(Character.isUnicodeIdentifierPart('\u2362'))
     assertFalse(Character.isUnicodeIdentifierPart('\uebeb'))
     assertFalse(Character.isUnicodeIdentifierPart('\u2ede'))
@@ -2335,7 +2333,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertTrue(Character.isLetterOrDigit('\uFEBD'))
 
     /* 100 randomly chosen characters that produce false,
-     * minus those that became true in JDK 11
+     * minus those that became true in JDK 11 or later.
      */
     assertFalse(Character.isLetterOrDigit('\u02D8'))
     assertFalse(Character.isLetterOrDigit('\u0312'))
@@ -2382,7 +2380,6 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertFalse(Character.isLetterOrDigit('\u2EAE'))
     assertFalse(Character.isLetterOrDigit('\u2EB1'))
     assertFalse(Character.isLetterOrDigit('\u32E8'))
-    assertFalse(Character.isLetterOrDigit('\uA7C3'))
     assertFalse(Character.isLetterOrDigit('\uA837'))
     assertFalse(Character.isLetterOrDigit('\uA8B4'))
     assertFalse(Character.isLetterOrDigit('\uA8B7'))
@@ -3254,7 +3251,9 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertTrue(Character.isDefined('\uFD39'))
     assertTrue(Character.isDefined('\uFF3A'))
 
-    // 100 randomly chosen characters that produce false, generated on JDK 11
+    /* 100 randomly chosen characters that produce false, generated on JDK 11,
+     * minus those that became true later.
+     */
     assertFalse(Character.isDefined('\u13FE'))
     assertFalse(Character.isDefined('\u0AF7'))
     assertFalse(Character.isDefined('\u0DFB'))
@@ -3266,7 +3265,6 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertFalse(Character.isDefined('\u09D6'))
     assertFalse(Character.isDefined('\u2D7C'))
     assertFalse(Character.isDefined('\u2DC7'))
-    assertFalse(Character.isDefined('\uA7C6'))
     assertFalse(Character.isDefined('\u0A3A'))
     assertFalse(Character.isDefined('\u0E3D'))
     assertFalse(Character.isDefined('\u1775'))
@@ -3282,7 +3280,6 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertFalse(Character.isDefined('\uFBD0'))
     assertFalse(Character.isDefined('\u0B5A'))
     assertFalse(Character.isDefined('\uA7E5'))
-    assertFalse(Character.isDefined('\u1C9F'))
     assertFalse(Character.isDefined('\u0BD1'))
     assertFalse(Character.isDefined('\u0E3D'))
     assertFalse(Character.isDefined('\u0BBC'))
@@ -3324,9 +3321,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertFalse(Character.isDefined('\u13FF'))
     assertFalse(Character.isDefined('\u1AD4'))
     assertFalse(Character.isDefined('\u088A'))
-    assertFalse(Character.isDefined('\u08C3'))
     assertFalse(Character.isDefined('\uAAF8'))
-    assertFalse(Character.isDefined('\uA7BB'))
     assertFalse(Character.isDefined('\u1978'))
     assertFalse(Character.isDefined('\u17EA'))
     assertFalse(Character.isDefined('\u0DCC'))
@@ -3340,7 +3335,6 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertFalse(Character.isDefined('\uFDD3'))
     assertFalse(Character.isDefined('\u0E3B'))
     assertFalse(Character.isDefined('\u1B4C'))
-    assertFalse(Character.isDefined('\u0E8E'))
     assertFalse(Character.isDefined('\uFB45'))
     assertFalse(Character.isDefined('\u1AEF'))
     assertFalse(Character.isDefined('\uA7E7'))
@@ -3799,7 +3793,9 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertTrue(Character.isJavaLetter('\uF9C0'))
     assertTrue(Character.isJavaLetter('\uFD8F'))
 
-    // 50 randomly chosen characters that produce false
+    /* 50 randomly chosen characters that produce false,
+     * minus those that became true in JDK 11 or later.
+     */
     assertFalse(Character.isJavaLetter('\u19CF'))
     assertFalse(Character.isJavaLetter('\u23D7'))
     assertFalse(Character.isJavaLetter('\u26A9'))
@@ -3813,7 +3809,6 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertFalse(Character.isJavaLetter('\u0037'))
     assertFalse(Character.isJavaLetter('\u073F'))
     assertFalse(Character.isJavaLetter('\u0969'))
-    assertFalse(Character.isJavaLetter('\u9FF3'))
     assertFalse(Character.isJavaLetter('\uA9E5'))
     assertFalse(Character.isJavaLetter('\uAAC1'))
     assertFalse(Character.isJavaLetter('\uAAF7'))
@@ -3905,10 +3900,9 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertTrue(Character.isJavaLetterOrDigit('\uFEE5'))
 
     /* 50 randomly chosen characters that produce false,
-     * minus those that became true in JDK 11.
+     * minus those that became true in JDK 11 or later.
      */
     assertFalse(Character.isJavaLetterOrDigit('\u05FD'))
-    assertFalse(Character.isJavaLetterOrDigit('\u09FE'))
     assertFalse(Character.isJavaLetterOrDigit('\u0AD6'))
     assertFalse(Character.isJavaLetterOrDigit('\u0F3D'))
     assertFalse(Character.isJavaLetterOrDigit('\u0FCA'))
@@ -3930,7 +3924,6 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertFalse(Character.isJavaLetterOrDigit('\u2F0F'))
     assertFalse(Character.isJavaLetterOrDigit('\uA4C1'))
     assertFalse(Character.isJavaLetterOrDigit('\uA4C3'))
-    assertFalse(Character.isJavaLetterOrDigit('\uA7C3'))
     assertFalse(Character.isJavaLetterOrDigit('\uDA09'))
     assertFalse(Character.isJavaLetterOrDigit('\uDB3E'))
     assertFalse(Character.isJavaLetterOrDigit('\uDE30'))
@@ -4010,7 +4003,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertTrue(Character.isJavaIdentifierStart(78380))
 
     /* 50 randomly chosen characters that produce false,
-     * minus those that became true in JDK 11.
+     * minus those that became true in JDK 11 or later.
      */
     assertFalse(Character.isJavaIdentifierStart('\uE8A1'))
     assertFalse(Character.isJavaIdentifierStart('\uEBB6'))
@@ -4019,7 +4012,6 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     assertFalse(Character.isJavaIdentifierStart(1080963))
     assertFalse(Character.isJavaIdentifierStart(1098681))
     assertFalse(Character.isJavaIdentifierStart(1101181))
-    assertFalse(Character.isJavaIdentifierStart(200078))
     assertFalse(Character.isJavaIdentifierStart(212082))
     assertFalse(Character.isJavaIdentifierStart(219401))
     assertFalse(Character.isJavaIdentifierStart(223687))
