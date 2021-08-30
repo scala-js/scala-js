@@ -93,14 +93,9 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
     // parseServerAuthority()
   }
 
-  /** Compare this URI to another URI while supplying a comparator
-   *
-   *  This helper is required to account for the semantic differences
-   *  between [[compareTo]] and [[equals]]. ([[equals]] does treat
-   *  URI escapes specially: they are never case-sensitive).
-   */
-  @inline
-  private def internalCompare(that: URI)(cmp: (String, String) => Int): Int = {
+  def compareTo(that: URI): Int = {
+    import URI.{escapeAwareCompare => cmp}
+
     @inline
     def cmpOpt[T](x: js.UndefOr[T], y: js.UndefOr[T])(comparator: (T, T) => Int): Int = {
       if (x == y) 0
@@ -154,10 +149,8 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
     }
   }
 
-  def compareTo(that: URI): Int = internalCompare(that)(_.compareTo(_))
-
   override def equals(that: Any): Boolean = that match {
-    case that: URI => internalCompare(that)(URI.escapeAwareCompare) == 0
+    case that: URI => this.compareTo(that) == 0
     case _ => false
   }
 
