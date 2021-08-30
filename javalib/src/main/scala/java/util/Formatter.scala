@@ -172,8 +172,13 @@ final class Formatter private (private[this] var dest: Appendable,
 
       val conversion = format.charAt(fmtIndex - 1)
       val flags = parseFlags(execResult(2).asInstanceOf[String], conversion)
-      val width = parsePositiveIntSilent(execResult(3), default = -1)
-      val precision = parsePositiveIntSilent(execResult(4), default = -1)
+      val width = parsePositiveInt(execResult(3))
+      val precision = parsePositiveInt(execResult(4))
+
+      if (width == -2)
+        throwIllegalFormatWidthException(Int.MinValue) // Int.MinValue mimics the JVM
+      if (precision == -2)
+        throwIllegalFormatPrecisionException(Int.MinValue) // Int.MinValue mimics the JVM
 
       /* At this point, we need to branch off for 'n', because it has a
        * completely different error reporting spec. In particular, it must
@@ -253,13 +258,14 @@ final class Formatter private (private[this] var dest: Appendable,
           // Explicitly use the last index
           lastArgIndex
         } else {
-          val i = parsePositiveIntSilent(execResult(1), default = 0)
-          if (i == 0) {
-            // Either there is no explicit index, or the explicit index is 0
+          val i = parsePositiveInt(execResult(1))
+          if (i == -1) {
+            // No explicit index
             lastImplicitArgIndex += 1
             lastImplicitArgIndex
-          } else if (i < 0) {
-            // Cannot be parsed, same as useLastIndex
+          } else if (i <= 0) {
+            // Out of range
+            throwIllegalFormatArgumentIndexException(i)
             lastArgIndex
           } else {
             // Could be parsed, this is the index
@@ -322,16 +328,20 @@ final class Formatter private (private[this] var dest: Appendable,
     new Flags(bits)
   }
 
-  private def parsePositiveIntSilent(capture: js.UndefOr[String],
-      default: Int): Int = {
+  /** Parses an optional integer argument.
+   *
+   *  Returns -1 if it was not specified, and -2 if it was out of the
+   *  Int range.
+   */
+  private def parsePositiveInt(capture: js.UndefOr[String]): Int = {
     capture.fold {
-      default
+      -1
     } { s =>
       val x = js.Dynamic.global.parseInt(s, 10).asInstanceOf[Double]
       if (x <= Int.MaxValue)
         x.toInt
       else
-        -1 // Silently ignore and return -1
+        -2
     }
   }
 
@@ -930,6 +940,13 @@ final class Formatter private (private[this] var dest: Appendable,
 
   private def throwIllegalFormatWidthException(width: Int): Nothing =
     throw new IllegalFormatWidthException(width)
+
+  private def throwIllegalFormatArgumentIndexException(index: Int): Nothing = {
+    val msg =
+      if (index == 0) "Illegal format argument index = 0"
+      else "Format argument index: (not representable as int)"
+    throw new IllegalFormatArgumentIndexException(msg)
+  }
 
   private def throwIllegalFormatFlagsException(flags: Flags): Nothing =
     throw new IllegalFormatFlagsException(flagsToString(flags))

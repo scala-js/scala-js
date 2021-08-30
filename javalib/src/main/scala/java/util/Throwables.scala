@@ -80,6 +80,12 @@ class IllegalFormatWidthException(w: Int) extends IllegalFormatException {
   override def getMessage(): String = Integer.toString(w)
 }
 
+// See https://bugs.openjdk.java.net/browse/JDK-8253875
+private[util] class IllegalFormatArgumentIndexException(msg: String)
+    extends IllegalFormatException {
+  override def getMessage(): String = msg
+}
+
 class IllformedLocaleException(s: String, errorIndex: Int)
   extends RuntimeException(s + (if (errorIndex < 0) "" else " [at index " + errorIndex + "]")) {
   def this() = this(null, -1)
