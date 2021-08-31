@@ -1043,8 +1043,13 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
 
     def accessData()(implicit from: From): Unit = {
-      if (!isDataAccessed)
+      if (!isDataAccessed) {
         isDataAccessed = true
+
+        // #4548 The `isInstance` function will refer to the class value
+        if (kind == ClassKind.NativeJSClass)
+          jsNativeLoadSpec.foreach(addLoadSpec(externalDependencies, _))
+      }
     }
 
     def callMethod(methodName: MethodName)(implicit from: From): Unit = {
