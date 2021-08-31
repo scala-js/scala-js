@@ -31,7 +31,7 @@ class DecimalFormatSymbols(locale: Locale) extends NumberFormat {
 
   def getGroupingSeparator(): Char = {
     locale.getLanguage() match {
-      case "fr"             => '\u00A0' // NO-BREAK SPACE
+      case "fr"             => '\u202F' // NARROW NO-BREAK SPACE
       case "" | "en" | "hi" => ','
       case _                => unsupported()
     }

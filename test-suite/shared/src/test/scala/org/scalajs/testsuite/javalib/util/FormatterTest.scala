@@ -15,6 +15,7 @@ package org.scalajs.testsuite.javalib.util
 import java.math.{BigDecimal, BigInteger}
 
 import org.junit.Assert._
+import org.junit.Assume._
 import org.junit.Test
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
@@ -1684,16 +1685,34 @@ class FormatterTest {
     }
   }
 
-  @Test def indexTooLargeUsesLastIndex(): Unit = {
-    expectFormatterThrows(classOf[MissingFormatArgumentException],
-        "%9876543210$d", 56, 78)
+  @Test def indexNotInRangeThrows(): Unit = {
+    assumeFalse("https://bugs.openjdk.java.net/browse/JDK-8253875",
+        executingInJVMOnLowerThanJDK16)
 
-    assertF("56 56", "%d %9876543210$d", 56, 78)
+    /* The public JavaDoc says that these situations throw an
+     * IllegalFormatException, without being more specific. However, the bug
+     * report specifically chooses a design that throws a package-private
+     * java.util.IllegalFormatArgumentIndexException, with the explicit intent
+     * of making it public in the future if the need arises. Therefore, we also
+     * throw such an exception, and check that its class name is as expected.
+     */
+
+    def expectIllegalFormatArgumentIndexException(format: String, args: Any*): Unit = {
+      val e = expectFormatterThrows(classOf[IllegalFormatException], format, args: _*)
+      assertEquals("java.util.IllegalFormatArgumentIndexException", e.getClass().getName())
+    }
+
+    expectIllegalFormatArgumentIndexException("%9876543210$d", 56, 78)
+    expectIllegalFormatArgumentIndexException("%d %9876543210$d", 56, 78)
+    expectIllegalFormatArgumentIndexException("%d %0$d", 56, 78)
   }
 
-  @Test def widthOrPrecisionTooLargeIsIgnored(): Unit = {
-    assertF("56 78", "%d %9876543210d", 56, 78)
-    assertF("56 78", "%d %.9876543210d", 56, 78)
+  @Test def widthOrPrecisionTooLargeThrows(): Unit = {
+    assumeFalse("https://bugs.openjdk.java.net/browse/JDK-8253875",
+        executingInJVMOnLowerThanJDK16)
+
+    expectFormatterThrows(classOf[IllegalFormatWidthException], "%d %9876543210d", 56, 78)
+    expectFormatterThrows(classOf[IllegalFormatPrecisionException], "%d %.9876543210f", 56, 78.5)
   }
 
   @Test def closeThenUseThrows(): Unit = {

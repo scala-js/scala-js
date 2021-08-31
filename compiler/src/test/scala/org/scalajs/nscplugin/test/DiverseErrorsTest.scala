@@ -368,11 +368,12 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
     object Foo {
       val bar: String = "$veryLongString"
     }
-    """ hasErrors
+    """ containsErrors
     """
       |error: Error while emitting newSource1.scala
-      |encoded string too long: 70000 bytes
+      |encoded string
     """
+    // optionally followed by the string, then by " too long: 70000 bytes"
   }
 
 }

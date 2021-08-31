@@ -19,7 +19,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
-import org.scalajs.testsuite.utils.Platform.executingInJVMOnJDK8OrLower
+import org.scalajs.testsuite.utils.Platform._
 
 /** Additional tests for java.lang.String that require `java.util.Locale`
  *  as well as classes in `java.text.*`.
@@ -72,9 +72,16 @@ class FormatterTestEx {
   }
 
   @Test def testFormatFrench(): Unit = {
-    // U+00A0 NO-BREAK SPACE
-    assertF(French, "1\u00A0234\u00A0567", "%,d", 1234567)
-    assertF(French, "1\u00A0234\u00A0567,89", "%,.2f", 1234567.89)
+    /* Since CLDR v34, which is included in JDK 13, the French
+     * locale uses U+202F NARROW NO-BREAK SPACE as grouping
+     * separator, instead of U+00A0 NO-BREAK SPACE.
+     */
+    if (!executingInJVMOnLowerThanJDK13) {
+      // U+202F NARROW NO-BREAK SPACE
+      assertF(French, "1\u202F234\u202F567", "%,d", 1234567)
+      assertF(French, "1\u202F234\u202F567,89", "%,.2f", 1234567.89)
+    }
+
     assertF(French, "0012", "%04d", 12)
     assertF(French, "0012", "%04d", new BigInteger("12"))
 

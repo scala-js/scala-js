@@ -26,7 +26,11 @@ object Platform {
 
   final val executingInJVMOnJDK8OrLower = false
 
+  final val executingInJVMOnLowerThanJDK13 = false
+
   final val executingInJVMOnLowerThanJDK15 = false
+
+  final val executingInJVMOnLowerThanJDK16 = false
 
   def executingInNodeJS: Boolean = {
     js.typeOf(js.Dynamic.global.process) != "undefined" &&
