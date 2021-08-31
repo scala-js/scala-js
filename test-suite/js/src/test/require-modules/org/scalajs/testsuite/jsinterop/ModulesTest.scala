@@ -104,6 +104,11 @@ class ModulesTest {
     val instance = new ChildOfNativeClass("Bob")
     assertEquals("Hello Bob", instance.x)
   }
+
+  @Test def testClassReferencedOnlyInClassData_Issue4548(): Unit = {
+    val cls = classOf[JSClassReferencedOnlyInClassData]
+    assertFalse(cls.isInstance(new js.Date()))
+  }
 }
 
 package object modulestestpackageobject {
@@ -197,4 +202,11 @@ object ModulesTest {
 
   class ChildOfNativeClass(name: String)
       extends NativeParentClass("Hello " + name)
+
+  // #4548 Test that a class referenced only in class data *is* imported.
+  @js.native
+  @JSImport(
+      "../test-classes/modules-test-referenced-only-in-classdata.js",
+      "JSClassReferencedOnlyInClassData")
+  class JSClassReferencedOnlyInClassData() extends js.Object
 }
