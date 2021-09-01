@@ -12,6 +12,7 @@
 
 package java.lang
 
+import java.lang.constant.{Constable, ConstantDesc}
 import java.math.BigInteger
 
 import scala.scalajs.js
@@ -19,7 +20,8 @@ import scala.scalajs.js
 /* This is a hijacked class. Its instances are primitive numbers.
  * Constructors are not emitted.
  */
-final class Float private () extends Number with Comparable[Float] {
+final class Float private ()
+    extends Number with Comparable[Float] with Constable with ConstantDesc {
 
   def this(value: scala.Float) = this()
   def this(s: String) = this()

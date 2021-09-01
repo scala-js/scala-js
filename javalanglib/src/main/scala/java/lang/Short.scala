@@ -12,10 +12,13 @@
 
 package java.lang
 
+import java.lang.constant.Constable
+
 /* This is a hijacked class. Its instances are primitive numbers.
  * Constructors are not emitted.
  */
-final class Short private () extends Number with Comparable[Short] {
+final class Short private ()
+    extends Number with Comparable[Short] with Constable {
 
   def this(value: scala.Short) = this()
   def this(s: String) = this()

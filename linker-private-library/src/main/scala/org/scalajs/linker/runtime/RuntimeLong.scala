@@ -39,8 +39,7 @@ import scala.annotation.tailrec
 
 /** Emulates a Long on the JavaScript platform. */
 @inline
-final class RuntimeLong(val lo: Int, val hi: Int)
-    extends java.lang.Number with java.lang.Comparable[java.lang.Long] {
+final class RuntimeLong(val lo: Int, val hi: Int) {
   a =>
 
   import RuntimeLong._
@@ -72,22 +71,28 @@ final class RuntimeLong(val lo: Int, val hi: Int)
 
   // java.lang.Number
 
-  @inline override def byteValue(): Byte = toByte
-  @inline override def shortValue(): Short = toShort
+  @inline def byteValue(): Byte = toByte
+  @inline def shortValue(): Short = toShort
   @inline def intValue(): Int = toInt
   @inline def longValue(): Long = toLong
   @inline def floatValue(): Float = toFloat
   @inline def doubleValue(): Double = toDouble
 
-  // Comparisons and java.lang.Comparable interface
+  // java.lang.Comparable, including bridges
 
   @inline
-  def compareTo(b: RuntimeLong): Int =
-    RuntimeLong.compare(a.lo, a.hi, b.lo, b.hi)
+  def compareTo(that: Object): Int =
+    compareTo(that.asInstanceOf[RuntimeLong])
 
   @inline
   def compareTo(that: java.lang.Long): Int =
     compareTo(that.asInstanceOf[RuntimeLong])
+
+  // Comparisons
+
+  @inline
+  def compareTo(b: RuntimeLong): Int =
+    RuntimeLong.compare(a.lo, a.hi, b.lo, b.hi)
 
   @inline
   private def inline_equals(b: RuntimeLong): Boolean =

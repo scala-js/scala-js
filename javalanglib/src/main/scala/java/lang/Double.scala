@@ -12,12 +12,15 @@
 
 package java.lang
 
+import java.lang.constant.{Constable, ConstantDesc}
+
 import scala.scalajs.js
 
 /* This is a hijacked class. Its instances are primitive numbers.
  * Constructors are not emitted.
  */
-final class Double private () extends Number with Comparable[Double] {
+final class Double private ()
+    extends Number with Comparable[Double] with Constable with ConstantDesc {
 
   def this(value: scala.Double) = this()
   def this(s: String) = this()
