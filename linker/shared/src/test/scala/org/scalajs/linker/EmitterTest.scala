@@ -91,7 +91,8 @@ class EmitterTest {
 
     val logger = new CapturingLogger
 
-    val linker = StandardImpl.linker(StandardConfig())
+    val config = StandardConfig().withCheckIR(true)
+    val linker = StandardImpl.linker(config)
     val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
 
     for {
@@ -114,7 +115,8 @@ class EmitterTest {
 
     val logger = new CapturingLogger
 
-    val linker = StandardImpl.linker(StandardConfig())
+    val config = StandardConfig().withCheckIR(true)
+    val linker = StandardImpl.linker(config)
     val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
 
     for {
@@ -130,11 +132,11 @@ class EmitterTest {
 object EmitterTest {
   private def linkToContent(classDefs: Seq[ClassDef],
       moduleInitializers: Seq[ModuleInitializer] = Nil,
-      config: StandardConfig = StandardConfig())(
+      config: StandardConfig)(
       implicit ec: ExecutionContext): Future[String] = {
 
     val logger = new ScalaConsoleLogger(Level.Error)
-    val linker = StandardImpl.linker(config)
+    val linker = StandardImpl.linker(config.withCheckIR(true))
     val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
     val output = MemOutputDirectory()
 

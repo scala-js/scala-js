@@ -87,11 +87,13 @@ object LibrarySizeTest {
       expectedFullLinkSizeWithClosure: Int,
       classDefs: Seq[ClassDef],
       symbolRequirements: SymbolRequirement = reqsFactory.none(),
-      moduleInitializers: Seq[ModuleInitializer] = Nil,
-      config: StandardConfig = StandardConfig())(
+      moduleInitializers: Seq[ModuleInitializer] = Nil)(
       implicit ec: ExecutionContext): Future[Unit] = {
 
     val logger = new ScalaConsoleLogger(Level.Error)
+
+    val config = StandardConfig()
+      .withCheckIR(true)
 
     val fullLinkConfig = config
       .withSemantics(_.optimized)

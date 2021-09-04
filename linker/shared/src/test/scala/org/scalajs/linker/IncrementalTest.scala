@@ -303,8 +303,7 @@ object IncrementalTest {
 
   def testIncrementalBidirectional(
       classDefs: Boolean => Seq[ClassDef],
-      moduleInitializers: Boolean => List[ModuleInitializer],
-      config: StandardConfig = StandardConfig())(
+      moduleInitializers: Boolean => List[ModuleInitializer])(
       implicit ec: ExecutionContext): Future[Unit] = {
 
     def testOneDirection(contextMessage: String, forward: Boolean): Future[Unit] = {
@@ -312,8 +311,7 @@ object IncrementalTest {
         if (forward) step == 0
         else step == 1
       testIncrementalSteps(contextMessage, steps = 2,
-          step => classDefs(pre(step)), step => moduleInitializers(pre(step)),
-          config)
+          step => classDefs(pre(step)), step => moduleInitializers(pre(step)))
     }
 
     for {
@@ -326,13 +324,13 @@ object IncrementalTest {
       contextMessage: String,
       steps: Int,
       stepToClassDefs: Int => Seq[ClassDef],
-      stepToModuleInitializers: Int => List[ModuleInitializer],
-      config: StandardConfig = StandardConfig())(
+      stepToModuleInitializers: Int => List[ModuleInitializer])(
       implicit ec: ExecutionContext): Future[Unit] = {
 
     require(steps >= 2, s"require at least 2 steps but got $steps")
 
     val outputInc = MemOutputDirectory()
+    val config = StandardConfig().withCheckIR(true)
     val linkerInc = StandardImpl.linker(config)
 
     val logger = new ScalaConsoleLogger(Level.Error)

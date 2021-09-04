@@ -331,7 +331,7 @@ object OptimizerTest {
       moduleInitializers: List[ModuleInitializer], stdlib: Future[Seq[IRFile]])(
       implicit ec: ExecutionContext): Future[ModuleSet] = {
 
-    val config = StandardConfig()
+    val config = StandardConfig().withCheckIR(true)
     val frontend = StandardLinkerFrontend(config)
     val backend = new StoreModuleSetLinkerBackend(StandardLinkerBackend(config))
     val linker = StandardLinkerImpl(frontend, backend)
