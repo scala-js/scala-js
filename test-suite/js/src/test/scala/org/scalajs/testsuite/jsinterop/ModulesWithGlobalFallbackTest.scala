@@ -94,13 +94,16 @@ class ModulesWithGlobalFallbackTest {
 
 object ModulesWithGlobalFallbackTest {
   private object ModuleFallbackImpl extends js.Object {
-    /* We cannot use default parameters, because they require the function call
-     * to have a `this` bound to the containing object. But we cannot test
-     * fallbacks for native imports for this.
+    /* We cannot use defs, because they require the function call to have a
+     * `this` bound to the containing object. But we cannot test fallbacks for
+     * native imports for this.
      * Admittedly, this is a bit hacky.
      */
-    def ssum(x: Int): Int = ssum(x, 1)
-    def ssum(x: Int, y: Int): Int = x * x + y * y
+    val ssum: js.Function = { (x: Int, y: js.UndefOr[Int]) =>
+      val y2 = y.getOrElse(1)
+      x * x + y2 * y2
+    }
+
     val strConstant: String = "value"
   }
 
@@ -140,7 +143,11 @@ object ModulesWithGlobalFallbackTest {
   @JSImport(modulePath, JSImport.Namespace,
       globalFallback = "ModulesWithGlobalFallbackTest_Module")
   object NamespaceImport extends js.Object {
-    def ssum(x: Int, y: Int = 1): Int = js.native
+    /* In this facade, 50 is not the actual default value for `y`.
+     * We intentionally use a different value to check that it is ignored.
+     * See #4554.
+     */
+    def ssum(x: Int, y: Int = 50): Int = js.native
     val strConstant: String = js.native
 
     @JSName("strConstant")
@@ -161,10 +168,14 @@ object ModulesWithGlobalFallbackTest {
   def defaultFunction(): Int = js.native
 
   object NativeMembers {
+    /* In this facade, 50 is not the actual default value for `y`.
+     * We intentionally use a different value to check that it is ignored.
+     * See #4554.
+     */
     @js.native
     @JSImport(modulePath, "ssum",
         globalFallback = "ModulesWithGlobalFallbackTest_Module.ssum")
-    def ssum(x: Int, y: Int = 1): Int = js.native
+    def ssum(x: Int, y: Int = 50): Int = js.native
 
     @js.native
     @JSImport(modulePath, "strConstant",
