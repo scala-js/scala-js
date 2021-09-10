@@ -1791,12 +1791,59 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val sym = dd.symbol
       val isAbstract = isAbstractMethod(dd)
 
+      /* Is this method a default accessor that should be ignored?
+       *
+       * This is the case iff one of the following applies:
+       * - It is a constructor default accessor and the linked class is a
+       *   native JS class.
+       * - It is a default accessor for a native JS def, but with the caveat
+       *   that its rhs must be `js.native` because of #4553.
+       *
+       * Both of those conditions can only happen if the default accessor is in
+       * a module class, so we use that as a fast way out. (But omitting that
+       * condition would not change the result.)
+       *
+       * This is different than `isJSDefaultParam` in `genApply`: we do not
+       * ignore default accessors of *non-native* JS types. Neither for
+       * constructor default accessor nor regular default accessors. We also
+       * do not need to worry about non-constructor members of native JS types,
+       * since for those, the entire member list is ignored in `genJSClassData`.
+       */
+      def isIgnorableDefaultParam: Boolean = {
+        sym.hasFlag(Flags.DEFAULTPARAM) && sym.owner.isModuleClass && {
+          val info = new DefaultParamInfo(sym)
+          if (info.isForConstructor) {
+            /* This is a default accessor for a constructor parameter. Check
+             * whether the attached constructor is a native JS constructor,
+             * which is the case iff the linked class is a native JS type.
+             */
+            isJSNativeClass(info.constructorOwner)
+          } else {
+            /* #4553 We need to ignore default accessors for JS native defs.
+             * However, because Scala.js <= 1.7.0 actually emitted code calling
+             * those accessors, we must keep default accessors that would
+             * compile. The only accessors we can actually get rid of are those
+             * that are `= js.native`.
+             */
+            !isJSType(sym.owner) &&
+            info.attachedMethod.hasAnnotation(JSNativeAnnotation) && {
+              dd.rhs match {
+                case MaybeAsInstanceOf(Apply(fun, _)) =>
+                  fun.symbol == JSPackage_native
+                case _ =>
+                  false
+              }
+            }
+          }
+        }
+      }
+
       if (scalaPrimitives.isPrimitive(sym)) {
         None
       } else if (isAbstract && isNonNativeJSClass(currentClassSym)) {
         // #4409: Do not emit abstract methods in non-native JS classes
         None
-      } else if (isJSNativeCtorDefaultParam(sym)) {
+      } else if (isIgnorableDefaultParam) {
         None
       } else if (sym.isClassConstructor && isHijackedClass(sym.owner)) {
         None
@@ -2919,6 +2966,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
        * - It is a default param of an instance method of a non-native JS type
        *   and the attached method is exposed.
        * - It is a default param for a native JS def.
+       *
+       * This is different than `isIgnorableDefaultParam` in `genMethod`: we
+       * include here the default accessors of *non-native* JS types (unless
+       * the corresponding methods are not exposed). We also need to handle
+       * non-constructor members of native JS types.
        */
       def isJSDefaultParam: Boolean = {
         sym.hasFlag(Flags.DEFAULTPARAM) && {
@@ -6696,13 +6748,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     sym.isAnonymousClass &&
     sym.superClass == JSFunctionClass &&
     sym.info.decl(nme.apply).filter(JSCallingConvention.isCall(_)).exists
-  }
-
-  private def isJSNativeCtorDefaultParam(sym: Symbol) = {
-    sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM) &&
-    sym.owner.isModuleClass &&
-    nme.defaultGetterToMethod(sym.name) == nme.CONSTRUCTOR &&
-    isJSNativeClass(patchedLinkedClassOfClass(sym.owner))
   }
 
   private def hasDefaultCtorArgsAndJSModule(classSym: Symbol): Boolean = {

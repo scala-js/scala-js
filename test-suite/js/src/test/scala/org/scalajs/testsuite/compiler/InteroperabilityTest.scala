@@ -407,7 +407,7 @@ class InteroperabilityTest {
         return interoperabilityTestGlobalValDefVariable + x;
       };
       var interoperabilityTestGlobalValDefFunctionWithDefaultParam = function(x, y) {
-        return x + (y || 5);
+        return (x || 20) + (y || 5);
       };
     """)
 
@@ -426,6 +426,8 @@ class InteroperabilityTest {
 
     assertEquals(18, Global.interoperabilityTestGlobalValDefFunctionWithDefaultParam(10, 8))
     assertEquals(15, Global.interoperabilityTestGlobalValDefFunctionWithDefaultParam(10))
+    assertEquals(25, Global.interoperabilityTestGlobalValDefFunctionWithDefaultParam())
+    assertEquals(23, Global.interoperabilityTestGlobalValDefFunctionWithDefaultParam(y = 3))
   }
 
   @Test def accessTopLevelJSVarsAndFunctionsViaPackageObjectWithNativeValsAndDefs(): Unit = {
@@ -442,7 +444,7 @@ class InteroperabilityTest {
         return interoperabilityTestGlobalValDefVariableInPackageObject + x;
       };
       var interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject = function(x, y) {
-        return x + (y || 5);
+        return (x || 20) + (y || 5);
       };
     """)
 
@@ -461,6 +463,8 @@ class InteroperabilityTest {
 
     assertEquals(18, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParam(10, 8))
     assertEquals(15, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParam(10))
+    assertEquals(25, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParam())
+    assertEquals(23, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParam(y = 3))
   }
 
 
@@ -995,10 +999,11 @@ object InteroperabilityTestGlobalValsAndDefs {
   /* In this facade, 50 is not the actual default value for `y`.
    * We intentionally use a different value to check that it is ignored.
    * See #4554.
+   * The default value `= js.native` of `x` is a test for #4553.
    */
   @js.native
   @JSGlobal("interoperabilityTestGlobalValDefFunctionWithDefaultParam")
-  def interoperabilityTestGlobalValDefFunctionWithDefaultParam(x: Int, y: Int = 50): Int = js.native
+  def interoperabilityTestGlobalValDefFunctionWithDefaultParam(x: Int = js.native, y: Int = 50): Int = js.native
 }
 
 package object interoperabilitytestglobalvalsanddefspackageobject {
@@ -1025,10 +1030,11 @@ package object interoperabilitytestglobalvalsanddefspackageobject {
   /* In this facade, 50 is not the actual default value for `y`.
    * We intentionally use a different value to check that it is ignored.
    * See #4554.
+   * The default value `= js.native` of `x` is a test for #4553.
    */
   @js.native
   @JSGlobal("interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject")
-  def interoperabilityTestGlobalValDefFunctionWithDefaultParam(x: Int, y: Int = 50): Int = js.native
+  def interoperabilityTestGlobalValDefFunctionWithDefaultParam(x: Int = js.native, y: Int = 50): Int = js.native
 }
 
 class SomeValueClass(val i: Int) extends AnyVal {
