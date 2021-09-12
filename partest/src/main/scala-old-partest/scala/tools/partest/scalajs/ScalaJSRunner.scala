@@ -47,6 +47,13 @@ class ScalaJSRunner(testFile: File, suiteRunner: SuiteRunner,
   }
 
   override def newCompiler = new DirectCompiler(this) with ScalaJSDirectCompiler
+
+  override def flagsForCompilation(sources: List[File]): List[String] = {
+    // Never warn, so we do not need to update tons of checkfiles.
+    "-P:scalajs:nowarnGlobalExecutionContext" ::
+    super.flagsForCompilation(sources)
+  }
+
   override def extraJavaOptions = {
     super.extraJavaOptions ++ Seq(
         s"-Dscalajs.partest.optMode=${options.optMode.id}",

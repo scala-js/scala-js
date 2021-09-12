@@ -13,7 +13,13 @@
 package org.scalajs.junit
 
 import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
+
+/* Use the queue execution context (based on JS promises) explicitly:
+ * We do not have anything better at our disposal and it is accceptable in
+ * terms of fairness: All we use it for is to map over a completed Future once.
+ */
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+
 import scala.util.{Try, Success}
 
 package object async {

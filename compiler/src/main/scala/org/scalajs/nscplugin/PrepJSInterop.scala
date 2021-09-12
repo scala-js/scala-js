@@ -377,6 +377,34 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
                 |program is unlikely to function properly.""".stripMargin)
           super.transform(tree)
 
+        case tree if tree.symbol == ExecutionContext_global ||
+            tree.symbol == ExecutionContextImplicits_global =>
+          if (scalaJSOpts.warnGlobalExecutionContext) {
+            global.runReporting.warning(tree.pos,
+                """The global execution context in Scala.js is based on JS Promises (microtasks).
+                  |Using it may prevent macrotasks (I/O, timers, UI rendering) from running reliably.
+                  |
+                  |Unfortunately, there is no way with ECMAScript only to implement a performant
+                  |macrotask execution context (and hence Scala.js core does not contain one).
+                  |
+                  |We recommend you use: https://github.com/scala-js/scala-js-macrotask-executor
+                  |Please refer to the README.md of that project for more details regarding
+                  |microtask vs. macrotask execution contexts.
+                  |
+                  |If you do not care about macrotask fairness, you can silence this warning by:
+                  |- Adding @nowarn("cat=other") (Scala >= 2.13.x only)
+                  |- Setting the -P:scalajs:nowarnGlobalExecutionContext compiler option
+                  |- Using scala.scalajs.concurrent.JSExecutionContext.queue
+                  |  (the implementation of ExecutionContext.global in Scala.js) directly.
+                  |
+                  |If you do not care about performance, you can use
+                  |scala.scalajs.concurrent.QueueExecutionContext.timeouts().
+                  |It is based on setTimeout which makes it fair but slow (due to clamping).
+                """.stripMargin,
+                WarningCategory.Other, tree.symbol)
+          }
+          super.transform(tree)
+
         // Validate js.constructorOf[T]
         case TypeApply(ctorOfTree, List(tpeArg))
             if ctorOfTree.symbol == JSPackage_constructorOf =>

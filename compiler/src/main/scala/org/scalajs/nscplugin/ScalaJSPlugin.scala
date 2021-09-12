@@ -62,6 +62,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
       else
         relSourceMap.toList.map(URIMap(_, absSourceMap))
     }
+    var warnGlobalExecutionContext: Boolean = true
     var _sourceURIMaps: List[URIMap] = Nil
     var relSourceMap: Option[URI] = None
     var absSourceMap: Option[URI] = None
@@ -121,6 +122,8 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
         fixClassOf = true
       } else if (option == "genStaticForwardersForNonTopLevelObjects") {
         genStaticForwardersForNonTopLevelObjects = true
+      } else if (option == "nowarnGlobalExecutionContext") {
+        warnGlobalExecutionContext = false
       } else if (option.startsWith("mapSourceURI:")) {
         val uris = option.stripPrefix("mapSourceURI:").split("->")
 

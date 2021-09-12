@@ -13,6 +13,13 @@
 package org.scalajs.testing.bridge
 
 import scala.scalajs.js
+
+/* Use the queue (Promise) execution context by default to avoid slowdown by clamping
+ *
+ * To avoid blocking the UI thread, we use QueueExecutionContext.timeout in
+ * specific spots in the code. See #4129 for context.
+ */
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import scala.scalajs.concurrent.QueueExecutionContext
 import scala.scalajs.js.annotation._
 import js.URIUtils.{decodeURIComponent, encodeURIComponent}
@@ -20,7 +27,6 @@ import js.URIUtils.{decodeURIComponent, encodeURIComponent}
 import scala.collection.mutable
 
 import scala.concurrent.{Future, Promise}
-import scala.concurrent.ExecutionContext.Implicits.global
 
 import scala.util.Try
 

@@ -12,6 +12,8 @@
 
 package scala.tools.partest.scalajs
 
+import java.io.File
+
 import scala.tools.partest.nest
 import scala.tools.partest.nest.{AbstractRunner, DirectCompiler, TestInfo}
 
@@ -21,6 +23,12 @@ class ScalaJSRunner(testInfo: ScalaJSTestInfo, suiteRunner: AbstractRunner,
 
   override def newCompiler = {
     new DirectCompiler(this) with ScalaJSDirectCompiler
+  }
+
+  override def flagsForCompilation(sources: List[File]): List[String] = {
+    // Never warn, so we do not need to update tons of checkfiles.
+    "-P:scalajs:nowarnGlobalExecutionContext" ::
+    super.flagsForCompilation(sources)
   }
 
   override def extraJavaOptions = {

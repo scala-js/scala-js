@@ -38,6 +38,11 @@ trait ScalaJSOptions {
    *  should they be mapped to)? */
   def sourceURIMaps: List[URIMap]
 
+  /** Whether to warn if the global execution context is used.
+   *
+   *  See the warning itself or #4129 for context.
+   */
+  def warnGlobalExecutionContext: Boolean
 }
 
 object ScalaJSOptions {

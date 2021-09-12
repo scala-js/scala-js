@@ -846,6 +846,8 @@ object Build {
   ).settings(
       commonLinkerInterfaceSettings,
 
+      Test / scalacOptions ++= scalaJSCompilerOption("nowarnGlobalExecutionContext"),
+
       /* Add the sources of scalajs-logging to managed sources. This is outside
        * of `target/` so that `clean` does not remove them, making IDE happier.
        */
@@ -1007,6 +1009,8 @@ object Build {
   ).zippedSettings("library")(
       commonLinkerSettings _
   ).settings(
+      Test / scalacOptions ++= scalaJSCompilerOption("nowarnGlobalExecutionContext"),
+
       if (isGeneratingForIDE) {
         unmanagedSourceDirectories in Compile +=
           baseDirectory.value.getParentFile.getParentFile / "js/src/main/scala-ide-stubs"
@@ -1576,6 +1580,7 @@ object Build {
       fatalWarningsSettings,
       name := "Scala.js test bridge",
       delambdafySetting,
+      Test / scalacOptions ++= scalaJSCompilerOption("nowarnGlobalExecutionContext"),
       /* By design, the test-bridge has a completely private API (it is
        * only loaded through a privately-known top-level export), so it
        * does not have `previousArtifactSetting` nor
@@ -1973,6 +1978,7 @@ object Build {
       },
 
       Test / scalacOptions ++= scalaJSCompilerOption("genStaticForwardersForNonTopLevelObjects"),
+      Test / scalacOptions ++= scalaJSCompilerOption("nowarnGlobalExecutionContext"),
 
       scalaJSLinkerConfig ~= { _.withSemantics(TestSuiteLinkerOptions.semantics _) },
       scalaJSModuleInitializers in Test ++= TestSuiteLinkerOptions.moduleInitializers,
