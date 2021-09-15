@@ -1135,8 +1135,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       case ModuleKind.ESModule =>
         val field = fileLevelVar("e", exportName)
         val let = js.Let(field.ident, mutable = true, Some(exportedValue))
-        val export = js.Export((field.ident -> js.ExportName(exportName)) :: Nil)
-        WithGlobals(js.Block(let, export))
+        val exportStat = js.Export((field.ident -> js.ExportName(exportName)) :: Nil)
+        WithGlobals(js.Block(let, exportStat))
 
       case ModuleKind.CommonJSModule =>
         globalRef("exports").map { exportsVarRef =>
