@@ -1204,10 +1204,21 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         else exitingUncurry(listMembersBasedOnFlags)
 
       def isExcluded(m: Symbol): Boolean = {
-        m.isDeferred || m.isConstructor || m.hasAccessBoundary || {
+        def isOfJLObject: Boolean = {
           val o = m.owner
           (o eq ObjectClass) || (o eq AnyRefClass) || (o eq AnyClass)
         }
+
+        def isDefaultParamOfJSNativeDef: Boolean = {
+          m.hasFlag(Flags.DEFAULTPARAM) && {
+            val info = new DefaultParamInfo(m)
+            !info.isForConstructor && info.attachedMethod.hasAnnotation(JSNativeAnnotation)
+          }
+        }
+
+        m.isDeferred || m.isConstructor || m.hasAccessBoundary ||
+        isOfJLObject ||
+        m.hasAnnotation(JSNativeAnnotation) || isDefaultParamOfJSNativeDef // #4557
       }
 
       val forwarders = for {

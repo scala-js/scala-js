@@ -42,8 +42,7 @@ class BinaryCompatTest extends JSASTTest  {
       def bar(x: Int): Int = x
     }
     """.hasExactly(1, "default accessor for x in foo") {
-      // The isStatic test works around #4557
-      case MethodDef(flags, MethodIdent(XDefaultAccessorName), _, _, _, _) if !flags.namespace.isStatic =>
+      case MethodDef(flags, MethodIdent(XDefaultAccessorName), _, _, _, _) =>
     }
 
     // Check that it is not emitted for `= js.native`.
@@ -58,8 +57,7 @@ class BinaryCompatTest extends JSASTTest  {
       def bar(x: Int): Int = x
     }
     """.hasNot("default accessor for x in foo") {
-      // The isStatic test works around #4557
-      case MethodDef(flags, MethodIdent(XDefaultAccessorName), _, _, _, _) if !flags.namespace.isStatic =>
+      case MethodDef(flags, MethodIdent(XDefaultAccessorName), _, _, _, _) =>
     }
 
   }

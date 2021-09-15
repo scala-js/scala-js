@@ -106,6 +106,20 @@ abstract class JSASTTest extends DirectTest {
       this
     }
 
+    def extractOne[A](trgName: String)(pf: PartialFunction[js.IRNode, A]): A = {
+      var result: Option[A] = None
+      val tr = new PFTraverser(pf.andThen { r =>
+        if (result.isDefined)
+          fail(s"AST has more than one $trgName")
+        result = Some(r)
+      })
+      tr.traverse()
+      result.getOrElse {
+        fail(s"AST should have a $trgName")
+        throw new AssertionError("unreachable")
+      }
+    }
+
     def traverse(pf: Pat): this.type = {
       val tr = new PFTraverser(pf)
       tr.traverse()
