@@ -273,7 +273,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     if (moduleContext.public) {
       WithGlobals(tree)
     } else {
-      val export = config.moduleKind match {
+      val exportStat = config.moduleKind match {
         case ModuleKind.NoModule =>
           throw new AssertionError("non-public module in NoModule mode")
 
@@ -299,7 +299,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
           }
       }
 
-      export.map(Block(tree, _))
+      exportStat.map(Block(tree, _))
     }
   }
 
