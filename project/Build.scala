@@ -1663,6 +1663,7 @@ object Build {
       MyScalaJSPlugin
   ).withScalaJSCompiler.settings(
       commonSettings,
+      fatalWarningsSettings,
       name := "Scala.js internal JUnit async JS support",
       publishArtifact in Compile := false
   ).dependsOn(library)
@@ -1671,6 +1672,7 @@ object Build {
       id = "jUnitAsyncJVM", base = file("junit-async/jvm")
   ).settings(
       commonSettings,
+      fatalWarningsSettings,
       name := "Scala.js internal JUnit async JVM support",
       publishArtifact in Compile := false
   )
