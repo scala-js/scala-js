@@ -112,9 +112,13 @@ class ModulesTest {
 }
 
 package object modulestestpackageobject {
+  /* In this facade, 50 is not the actual default value for `y`.
+   * We intentionally use a different value to check that it is ignored.
+   * See #4554.
+   */
   @js.native
   @JSImport(ModulesTest.modulePath, "ssum")
-  def ssum(x: Int, y: Int = 1): Int = js.native
+  def ssum(x: Int, y: Int = 50): Int = js.native
 
   @js.native
   @JSImport(ModulesTest.modulePath, "strConstant")
@@ -131,7 +135,11 @@ object ModulesTest {
   @js.native
   @JSImport(modulePath, JSImport.Namespace)
   object NamespaceImport extends js.Object {
-    def ssum(x: Int, y: Int = 1): Int = js.native
+    /* In this facade, 50 is not the actual default value for `y`.
+     * We intentionally use a different value to check that it is ignored.
+     * See #4554.
+     */
+    def ssum(x: Int, y: Int = 50): Int = js.native
     val strConstant: String = js.native
 
     @JSName("strConstant")
@@ -150,9 +158,13 @@ object ModulesTest {
   def defaultFunction(): Int = js.native
 
   object NativeMembers {
+    /* In this facade, 50 is not the actual default value for `y`.
+     * We intentionally use a different value to check that it is ignored.
+     * See #4554.
+     */
     @js.native
     @JSImport(modulePath, "ssum")
-    def ssum(x: Int, y: Int = 1): Int = js.native
+    def ssum(x: Int, y: Int = 50): Int = js.native
 
     @js.native
     @JSImport(modulePath, "strConstant")

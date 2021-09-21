@@ -1204,10 +1204,21 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         else exitingUncurry(listMembersBasedOnFlags)
 
       def isExcluded(m: Symbol): Boolean = {
-        m.isDeferred || m.isConstructor || m.hasAccessBoundary || {
+        def isOfJLObject: Boolean = {
           val o = m.owner
           (o eq ObjectClass) || (o eq AnyRefClass) || (o eq AnyClass)
         }
+
+        def isDefaultParamOfJSNativeDef: Boolean = {
+          m.hasFlag(Flags.DEFAULTPARAM) && {
+            val info = new DefaultParamInfo(m)
+            !info.isForConstructor && info.attachedMethod.hasAnnotation(JSNativeAnnotation)
+          }
+        }
+
+        m.isDeferred || m.isConstructor || m.hasAccessBoundary ||
+        isOfJLObject ||
+        m.hasAnnotation(JSNativeAnnotation) || isDefaultParamOfJSNativeDef // #4557
       }
 
       val forwarders = for {
@@ -1791,12 +1802,59 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val sym = dd.symbol
       val isAbstract = isAbstractMethod(dd)
 
+      /* Is this method a default accessor that should be ignored?
+       *
+       * This is the case iff one of the following applies:
+       * - It is a constructor default accessor and the linked class is a
+       *   native JS class.
+       * - It is a default accessor for a native JS def, but with the caveat
+       *   that its rhs must be `js.native` because of #4553.
+       *
+       * Both of those conditions can only happen if the default accessor is in
+       * a module class, so we use that as a fast way out. (But omitting that
+       * condition would not change the result.)
+       *
+       * This is different than `isJSDefaultParam` in `genApply`: we do not
+       * ignore default accessors of *non-native* JS types. Neither for
+       * constructor default accessor nor regular default accessors. We also
+       * do not need to worry about non-constructor members of native JS types,
+       * since for those, the entire member list is ignored in `genJSClassData`.
+       */
+      def isIgnorableDefaultParam: Boolean = {
+        sym.hasFlag(Flags.DEFAULTPARAM) && sym.owner.isModuleClass && {
+          val info = new DefaultParamInfo(sym)
+          if (info.isForConstructor) {
+            /* This is a default accessor for a constructor parameter. Check
+             * whether the attached constructor is a native JS constructor,
+             * which is the case iff the linked class is a native JS type.
+             */
+            isJSNativeClass(info.constructorOwner)
+          } else {
+            /* #4553 We need to ignore default accessors for JS native defs.
+             * However, because Scala.js <= 1.7.0 actually emitted code calling
+             * those accessors, we must keep default accessors that would
+             * compile. The only accessors we can actually get rid of are those
+             * that are `= js.native`.
+             */
+            !isJSType(sym.owner) &&
+            info.attachedMethod.hasAnnotation(JSNativeAnnotation) && {
+              dd.rhs match {
+                case MaybeAsInstanceOf(Apply(fun, _)) =>
+                  fun.symbol == JSPackage_native
+                case _ =>
+                  false
+              }
+            }
+          }
+        }
+      }
+
       if (scalaPrimitives.isPrimitive(sym)) {
         None
       } else if (isAbstract && isNonNativeJSClass(currentClassSym)) {
         // #4409: Do not emit abstract methods in non-native JS classes
         None
-      } else if (isJSNativeCtorDefaultParam(sym)) {
+      } else if (isIgnorableDefaultParam) {
         None
       } else if (sym.isClassConstructor && isHijackedClass(sym.owner)) {
         None
@@ -2910,29 +2968,46 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val Apply(fun, args) = tree
       val sym = fun.symbol
 
+      /* Is the method a JS default accessor, which should become an
+       * `UndefinedParam` rather than being compiled normally.
+       *
+       * This is true iff one of the following conditions apply:
+       * - It is a constructor default param for the constructor of a JS class.
+       * - It is a default param of an instance method of a native JS type.
+       * - It is a default param of an instance method of a non-native JS type
+       *   and the attached method is exposed.
+       * - It is a default param for a native JS def.
+       *
+       * This is different than `isIgnorableDefaultParam` in `genMethod`: we
+       * include here the default accessors of *non-native* JS types (unless
+       * the corresponding methods are not exposed). We also need to handle
+       * non-constructor members of native JS types.
+       */
       def isJSDefaultParam: Boolean = {
-        if (isCtorDefaultParam(sym)) {
-          isJSCtorDefaultParam(sym)
-        } else {
-          /* If this is a default parameter accessor on a
-           * non-native JS class, we need to know if the method for which we
-           * are the default parameter is exposed or not.
-           * We do this by removing the $default suffix from the method name,
-           * and looking up a member with that name in the owner.
-           * Note that this does not work for local methods. But local methods
-           * are never exposed.
-           * Further note that overloads are easy, because either all or none
-           * of them are exposed.
-           */
-          def isAttachedMethodExposed = {
-            val methodName = nme.defaultGetterToMethod(sym.name)
-            val ownerMethod = sym.owner.info.decl(methodName)
-            ownerMethod.filter(isExposed).exists
+        sym.hasFlag(Flags.DEFAULTPARAM) && {
+          val info = new DefaultParamInfo(sym)
+          if (info.isForConstructor) {
+            /* This is a default accessor for a constructor parameter. Check
+             * whether the attached constructor is a JS constructor, which is
+             * the case iff the linked class is a JS type.
+             */
+            isJSType(info.constructorOwner)
+          } else {
+            if (isJSType(sym.owner)) {
+              /* The default accessor is in a JS type. It is a JS default
+               * param iff the enclosing class is native or the attached method
+               * is exposed.
+               */
+              !isNonNativeJSClass(sym.owner) || isExposed(info.attachedMethod)
+            } else {
+              /* The default accessor is in a Scala type. It is a JS default
+               * param iff the attached method is a native JS def. This can
+               * only happen if the owner is a module class, which we test
+               * first as a fast way out.
+               */
+              sym.owner.isModuleClass && info.attachedMethod.hasAnnotation(JSNativeAnnotation)
+            }
           }
-
-          sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM) && (
-              (isJSType(sym.owner) && (!isNonNativeJSClass(sym.owner) || isAttachedMethodExposed)) ||
-              sym.hasAnnotation(JSNativeAnnotation))
         }
       }
 
@@ -6686,22 +6761,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     sym.info.decl(nme.apply).filter(JSCallingConvention.isCall(_)).exists
   }
 
-  private def isJSCtorDefaultParam(sym: Symbol) = {
-    isCtorDefaultParam(sym) &&
-    isJSType(patchedLinkedClassOfClass(sym.owner))
-  }
-
-  private def isJSNativeCtorDefaultParam(sym: Symbol) = {
-    isCtorDefaultParam(sym) &&
-    isJSNativeClass(patchedLinkedClassOfClass(sym.owner))
-  }
-
-  private def isCtorDefaultParam(sym: Symbol) = {
-    sym.hasFlag(reflect.internal.Flags.DEFAULTPARAM) &&
-    sym.owner.isModuleClass &&
-    nme.defaultGetterToMethod(sym.name) == nme.CONSTRUCTOR
-  }
-
   private def hasDefaultCtorArgsAndJSModule(classSym: Symbol): Boolean = {
     /* Get the companion module class.
      * For inner classes the sym.owner.companionModule can be broken,
@@ -6737,6 +6796,52 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     val result = flatOwnerInfo.decl(sym.name).filter(_ isCoDefinedWith sym)
     if (!result.isOverloaded) result
     else result.alternatives.head
+  }
+
+  /** Info about a default param accessor.
+   *
+   *  The method must have the flag `DEFAULTPARAM` for this class to make
+   *  sense.
+   */
+  private class DefaultParamInfo(sym: Symbol) {
+    private val methodName = nme.defaultGetterToMethod(sym.name)
+
+    def isForConstructor: Boolean = methodName == nme.CONSTRUCTOR
+
+    /** When `isForConstructor` is true, returns the owner of the attached
+     *  constructor.
+     */
+    def constructorOwner: Symbol = patchedLinkedClassOfClass(sym.owner)
+
+    /** When `isForConstructor` is false, returns the method attached to the
+     *  specified default accessor.
+     */
+    def attachedMethod: Symbol = {
+      // If there are overloads, we need to find the one that has default params.
+      val overloads = sym.owner.info.decl(methodName)
+      if (!overloads.isOverloaded) {
+        overloads
+      } else {
+        /* We should use `suchThat` here instead of `filter`+`head`. Normally,
+         * it can never happen that two overloads of a method both have default
+         * params. However, there is a loophole until Scala 2.12, with the
+         * `-Xsource:2.10` flag, which disables a check and allows that to
+         * happen in some circumstances. This is still tested as part of the
+         * partest test `pos/t8157-2.10.scala`. The use of `filter` instead of
+         * `suchThat` allows those situations not to crash, although that is
+         * mostly for (intense) backward compatibility purposes.
+         *
+         * This loophole can be use to construct a case of miscompilation where
+         * one of the overloads would be `@js.native` but the other not. We
+         * don't really care, though, as it needs some deep hackery to produce
+         * it.
+         */
+        overloads
+          .filter(_.paramss.exists(_.exists(_.hasFlag(Flags.DEFAULTPARAM))))
+          .alternatives
+          .head
+      }
+    }
   }
 
   private def isStringType(tpe: Type): Boolean =

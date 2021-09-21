@@ -406,6 +406,9 @@ class InteroperabilityTest {
       var interoperabilityTestGlobalValDefFunction = function(x) {
         return interoperabilityTestGlobalValDefVariable + x;
       };
+      var interoperabilityTestGlobalValDefFunctionWithDefaultParam = function(x, y) {
+        return (x || 20) + (y || 5);
+      };
     """)
 
     // Use alias for convenience: see end of file for definition
@@ -420,6 +423,11 @@ class InteroperabilityTest {
     Global.interoperabilityTestGlobalValDefSetVariable(123)
     assertEquals(123, Global.interoperabilityTestGlobalValDefGetVariable())
     assertEquals(126, Global.interoperabilityTestGlobalValDefFunction(3))
+
+    assertEquals(18, Global.interoperabilityTestGlobalValDefFunctionWithDefaultParam(10, 8))
+    assertEquals(15, Global.interoperabilityTestGlobalValDefFunctionWithDefaultParam(10))
+    assertEquals(25, Global.interoperabilityTestGlobalValDefFunctionWithDefaultParam())
+    assertEquals(23, Global.interoperabilityTestGlobalValDefFunctionWithDefaultParam(y = 3))
   }
 
   @Test def accessTopLevelJSVarsAndFunctionsViaPackageObjectWithNativeValsAndDefs(): Unit = {
@@ -435,6 +443,9 @@ class InteroperabilityTest {
       var interoperabilityTestGlobalValDefFunctionInPackageObject = function(x) {
         return interoperabilityTestGlobalValDefVariableInPackageObject + x;
       };
+      var interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject = function(x, y) {
+        return (x || 20) + (y || 5);
+      };
     """)
 
     // Use alias for convenience: see end of file for definition
@@ -449,6 +460,11 @@ class InteroperabilityTest {
     pack.interoperabilityTestGlobalValDefSetVariable(123)
     assertEquals(123, pack.interoperabilityTestGlobalValDefGetVariable())
     assertEquals(126, pack.interoperabilityTestGlobalValDefFunction(3))
+
+    assertEquals(18, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParam(10, 8))
+    assertEquals(15, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParam(10))
+    assertEquals(25, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParam())
+    assertEquals(23, pack.interoperabilityTestGlobalValDefFunctionWithDefaultParam(y = 3))
   }
 
 
@@ -979,6 +995,15 @@ object InteroperabilityTestGlobalValsAndDefs {
   @js.native
   @JSGlobal("interoperabilityTestGlobalValDefFunction")
   def interoperabilityTestGlobalValDefFunction(x: Int): Int = js.native
+
+  /* In this facade, 50 is not the actual default value for `y`.
+   * We intentionally use a different value to check that it is ignored.
+   * See #4554.
+   * The default value `= js.native` of `x` is a test for #4553.
+   */
+  @js.native
+  @JSGlobal("interoperabilityTestGlobalValDefFunctionWithDefaultParam")
+  def interoperabilityTestGlobalValDefFunctionWithDefaultParam(x: Int = js.native, y: Int = 50): Int = js.native
 }
 
 package object interoperabilitytestglobalvalsanddefspackageobject {
@@ -1001,6 +1026,15 @@ package object interoperabilitytestglobalvalsanddefspackageobject {
   @js.native
   @JSGlobal("interoperabilityTestGlobalValDefFunctionInPackageObject")
   def interoperabilityTestGlobalValDefFunction(x: Int): Int = js.native
+
+  /* In this facade, 50 is not the actual default value for `y`.
+   * We intentionally use a different value to check that it is ignored.
+   * See #4554.
+   * The default value `= js.native` of `x` is a test for #4553.
+   */
+  @js.native
+  @JSGlobal("interoperabilityTestGlobalValDefFunctionWithDefaultParamInPackageObject")
+  def interoperabilityTestGlobalValDefFunctionWithDefaultParam(x: Int = js.native, y: Int = 50): Int = js.native
 }
 
 class SomeValueClass(val i: Int) extends AnyVal {
