@@ -410,8 +410,8 @@ def otherJavaVersions = ["11", "16"]
 def allJavaVersions = otherJavaVersions.clone()
 allJavaVersions << mainJavaVersion
 
-def mainScalaVersion = "2.12.14"
-def mainScalaVersions = ["2.11.12", "2.12.14", "2.13.6"]
+def mainScalaVersion = "2.12.15"
+def mainScalaVersions = ["2.11.12", "2.12.15", "2.13.6"]
 def otherScalaVersions = [
   "2.11.12",
   "2.12.1",
@@ -427,6 +427,7 @@ def otherScalaVersions = [
   "2.12.11",
   "2.12.12",
   "2.12.13",
+  "2.12.14",
   "2.13.0",
   "2.13.1",
   "2.13.2",
@@ -475,7 +476,7 @@ allESVersions.each { esVersion ->
 allJavaVersions.each { javaVersion ->
   if (!isExcludedForScala211(javaVersion)) {
     // the sbt plugin tests want to compile everything for 2.11, 2.12 and 2.13
-    quickMatrix.add([task: "tools-sbtplugin", scala: "2.12.14", java: javaVersion])
+    quickMatrix.add([task: "tools-sbtplugin", scala: "2.12.15", java: javaVersion])
     quickMatrix.add([task: "tools", scala: "2.11.12", java: javaVersion])
   }
   quickMatrix.add([task: "tools", scala: "2.13.6", java: javaVersion])
