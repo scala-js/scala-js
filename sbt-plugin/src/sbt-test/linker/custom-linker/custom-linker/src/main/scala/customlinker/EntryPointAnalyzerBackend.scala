@@ -32,7 +32,7 @@ final class EntryPointAnalyzerBackend(linkerConfig: StandardConfig,
       implicit ec: ExecutionContext): Future[Report] = {
 
     val modules = moduleSet.modules.flatMap(_.externalDependencies).toSet
-    Files.write(entryPointOutputFile, modules.toIterable.asJava,
+    Files.write(entryPointOutputFile, (modules: Iterable[String]).asJava,
         StandardCharsets.UTF_8)
 
     standard.emit(moduleSet, output, logger)
