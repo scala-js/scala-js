@@ -37,7 +37,7 @@ object JUnitTestPlatformImpl {
   }
 
   def writeLines(lines: List[String], file: String): Unit =
-    Files.write(Paths.get(file), lines.toIterable.asJava, UTF_8)
+    Files.write(Paths.get(file), (lines: Iterable[String]).asJava, UTF_8)
 
   def readLines(file: String): List[String] =
     Files.readAllLines(Paths.get(file), UTF_8).asScala.toList
