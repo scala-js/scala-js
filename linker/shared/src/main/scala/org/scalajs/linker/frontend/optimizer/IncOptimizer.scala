@@ -993,7 +993,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
       /** Look up the target of a static call to an instance method. */
       protected def staticCall(className: ClassName, namespace: MemberNamespace,
-          methodName: MethodName): Option[MethodID] = {
+          methodName: MethodName): MethodID = {
 
         def inStaticsLike =
           getInterface(className).staticLike(namespace)
@@ -1004,7 +1004,11 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
         MethodImpl.this.registerStaticCall(container.myInterface, namespace,
             methodName)
-        container.lookupMethod(methodName)
+
+        // Method must exist, otherwise it's a bug / invalid IR.
+        container.lookupMethod(methodName).getOrElse {
+          throw new AssertionError(s"could not find method $className.$methodName")
+        }
       }
 
       protected def getAncestorsOf(intfName: ClassName): List[ClassName] = {

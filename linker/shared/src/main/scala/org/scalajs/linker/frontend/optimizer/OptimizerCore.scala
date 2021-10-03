@@ -60,7 +60,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
   /** Returns the target of a static call. */
   protected def staticCall(className: ClassName, namespace: MemberNamespace,
-      methodName: MethodName): Option[MethodID]
+      methodName: MethodName): MethodID
 
   /** Returns the list of ancestors of a class or interface. */
   protected def getAncestorsOf(className: ClassName): List[ClassName]
@@ -1482,7 +1482,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             treceiver.tpe.isExact || treceiver.tpe.base.isInstanceOf[ArrayType]
 
           val impls =
-            if (useStaticResolution) staticCall(className, namespace, methodName).toList
+            if (useStaticResolution) List(staticCall(className, namespace, methodName))
             else dynamicCall(className, methodName)
           val allocationSites =
             (treceiver :: targs).map(_.tpe.allocationSite)
@@ -1609,35 +1609,29 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       // Never inline reflective proxies
       treeNotInlined
     } else {
-      val optTarget = staticCall(className, MemberNamespace.forNonStaticCall(flags),
+      val target = staticCall(className, MemberNamespace.forNonStaticCall(flags),
           methodName)
-      if (optTarget.isEmpty) {
-        // just in case
-        treeNotInlined
-      } else {
-        val target = optTarget.get
-        pretransformExprs(receiver, args) { (treceiver, targs) =>
-          val intrinsicCode = intrinsics(flags, target)
-          if (intrinsicCode >= 0) {
-            callIntrinsic(intrinsicCode, flags, Some(treceiver), methodName,
-                targs, isStat, usePreTransform)(cont)
-          } else {
-            val shouldInline = target.inlineable && (
-                target.shouldInline ||
-                shouldInlineBecauseOfArgs(target, treceiver :: targs))
-            val allocationSites =
-              (treceiver :: targs).map(_.tpe.allocationSite)
-            val beingInlined =
-              scope.implsBeingInlined((allocationSites, target))
+      pretransformExprs(receiver, args) { (treceiver, targs) =>
+        val intrinsicCode = intrinsics(flags, target)
+        if (intrinsicCode >= 0) {
+          callIntrinsic(intrinsicCode, flags, Some(treceiver), methodName,
+              targs, isStat, usePreTransform)(cont)
+        } else {
+          val shouldInline = target.inlineable && (
+              target.shouldInline ||
+              shouldInlineBecauseOfArgs(target, treceiver :: targs))
+          val allocationSites =
+            (treceiver :: targs).map(_.tpe.allocationSite)
+          val beingInlined =
+            scope.implsBeingInlined((allocationSites, target))
 
-            if (shouldInline && !beingInlined) {
-              val receiverType = ClassType(target.enclosingClassName)
-              inline(allocationSites, Some((receiverType, treceiver)), targs,
-                  target, isStat, usePreTransform)(cont)
-            } else {
-              treeNotInlined0(finishTransformExpr(treceiver),
-                  targs.map(finishTransformExpr))
-            }
+          if (shouldInline && !beingInlined) {
+            val receiverType = ClassType(target.enclosingClassName)
+            inline(allocationSites, Some((receiverType, treceiver)), targs,
+                target, isStat, usePreTransform)(cont)
+          } else {
+            treeNotInlined0(finishTransformExpr(treceiver),
+                targs.map(finishTransformExpr))
           }
         }
       }
@@ -1658,31 +1652,25 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
     def treeNotInlined = treeNotInlined0(args.map(transformExpr))
 
-    val optTarget = staticCall(className, MemberNamespace.forStaticCall(flags),
+    val target = staticCall(className, MemberNamespace.forStaticCall(flags),
         methodName)
-    if (optTarget.isEmpty) {
-      // just in case
-      treeNotInlined
-    } else {
-      val target = optTarget.get
-      pretransformExprs(args) { targs =>
-        val intrinsicCode = intrinsics(flags, target)
-        if (intrinsicCode >= 0) {
-          callIntrinsic(intrinsicCode, flags, None, methodName, targs,
+    pretransformExprs(args) { targs =>
+      val intrinsicCode = intrinsics(flags, target)
+      if (intrinsicCode >= 0) {
+        callIntrinsic(intrinsicCode, flags, None, methodName, targs,
+            isStat, usePreTransform)(cont)
+      } else {
+        val shouldInline = target.inlineable && (
+            target.shouldInline || shouldInlineBecauseOfArgs(target, targs))
+        val allocationSites = targs.map(_.tpe.allocationSite)
+        val beingInlined =
+          scope.implsBeingInlined((allocationSites, target))
+
+        if (shouldInline && !beingInlined) {
+          inline(allocationSites, None, targs, target,
               isStat, usePreTransform)(cont)
         } else {
-          val shouldInline = target.inlineable && (
-              target.shouldInline || shouldInlineBecauseOfArgs(target, targs))
-          val allocationSites = targs.map(_.tpe.allocationSite)
-          val beingInlined =
-            scope.implsBeingInlined((allocationSites, target))
-
-          if (shouldInline && !beingInlined) {
-            inline(allocationSites, None, targs, target,
-                isStat, usePreTransform)(cont)
-          } else {
-            treeNotInlined0(targs.map(finishTransformExpr))
-          }
+          treeNotInlined0(targs.map(finishTransformExpr))
         }
       }
     }
@@ -2328,8 +2316,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = tailcall {
 
-    val target = staticCall(ctorClass, MemberNamespace.Constructor,
-        ctor.name).getOrElse(cancelFun())
+    val target = staticCall(ctorClass, MemberNamespace.Constructor, ctor.name)
     val targetID = (allocationSite :: args.map(_.tpe.allocationSite), target)
     if (scope.implsBeingInlined.contains(targetID))
       cancelFun()
