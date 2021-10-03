@@ -235,7 +235,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
    *  [[IncOptimizer.StaticLikeNamespace]].
    */
   private abstract class MethodContainer(val className: ClassName,
-      val namespace: MemberNamespace, val myInterface: InterfaceType) {
+      val namespace: MemberNamespace) {
 
     def thisType: Type =
       if (namespace.isStatic) NoType
@@ -329,9 +329,10 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
    *  maintains a list of its direct subclasses, so that the instances of
    *  [[Class]] form a tree of the class hierarchy.
    */
-  private final class Class(val superClass: Option[Class],
-      _className: ClassName)
-      extends MethodContainer(_className, MemberNamespace.Public, getInterface(_className)) {
+  private final class Class(val superClass: Option[Class], _className: ClassName)
+      extends MethodContainer(_className, MemberNamespace.Public) {
+
+    val myInterface = getInterface(_className)
 
     if (className == ObjectClass) {
       assert(superClass.isEmpty)
@@ -668,8 +669,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
   /** Namespace for static members of a class. */
   private final class StaticLikeNamespace(className: ClassName,
-      namespace: MemberNamespace, myInterface: InterfaceType)
-      extends MethodContainer(className, namespace, myInterface) {
+      namespace: MemberNamespace)
+      extends MethodContainer(className, namespace) {
 
     /** BOTH PASSES. */
     final def lookupMethod(methodName: MethodName): Option[MethodImpl] =
@@ -706,33 +707,57 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     private val staticLikes: Array[StaticLikeNamespace] = {
       Array.tabulate(MemberNamespace.Count) { ord =>
-        new StaticLikeNamespace(className, MemberNamespace.fromOrdinal(ord), this)
+        new StaticLikeNamespace(className, MemberNamespace.fromOrdinal(ord))
       }
     }
 
     override def toString(): String =
       s"intf ${className.nameString}"
 
-    /** PROCESS PASS ONLY. Concurrency safe except with
-     *  [[addInstantiatedSubclass]] and [[removeInstantiatedSubclass]]
-     */
-    def instantiatedSubclasses: Iterable[Class] = _instantiatedSubclasses.keys
+    /** PROCESS PASS ONLY. */
+    def askDynamicCallTargets(methodName: MethodName,
+        asker: MethodImpl): List[MethodImpl] = {
+      dynamicCallers
+        .getOrElseUpdate(methodName, collOps.emptyMap)
+        .put(asker, ())
+      asker.registerTo(this)
+      _instantiatedSubclasses.keys.flatMap(_.lookupMethod(methodName)).toList
+    }
 
-    /** UPDATE PASS ONLY. Concurrency safe except with
-     *  [[instantiatedSubclasses]]
-     */
+    /** PROCESS PASS ONLY. */
+    def askStaticCallTarget(namespace: MemberNamespace, methodName: MethodName,
+        asker: MethodImpl): MethodImpl = {
+      staticCallers(namespace.ordinal)
+        .getOrElseUpdate(methodName, collOps.emptyMap)
+        .put(asker, ())
+      asker.registerTo(this)
+
+      def inStaticsLike = staticLike(namespace)
+
+      val container =
+        if (namespace != MemberNamespace.Public) inStaticsLike
+        else classes.getOrElse(className, inStaticsLike)
+
+      // Method must exist, otherwise it's a bug / invalid IR.
+      container.lookupMethod(methodName).getOrElse {
+        throw new AssertionError(s"could not find method $className.$methodName")
+      }
+    }
+
+    /** UPDATE PASS ONLY. */
     def addInstantiatedSubclass(x: Class): Unit =
       _instantiatedSubclasses.put(x, ())
 
-    /** UPDATE PASS ONLY. Concurrency safe except with
-     *  [[instantiatedSubclasses]]
-     */
+    /** UPDATE PASS ONLY. */
     def removeInstantiatedSubclass(x: Class): Unit =
       _instantiatedSubclasses -= x
 
-    /** PROCESS PASS ONLY. Concurrency safe except with [[updateWith]] */
-    def ancestors: List[ClassName] =
+    /** PROCESS PASS ONLY. */
+    def askAncestors(asker: MethodImpl): List[ClassName] = {
+      ancestorsAskers.put(asker, ())
+      asker.registerTo(this)
       _ancestors
+    }
 
     @inline
     def staticLike(namespace: MemberNamespace): StaticLikeNamespace =
@@ -760,29 +785,6 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     def delete(): Unit = {
       // Mark all static like methods as deleted.
       staticLikes.foreach(_.methods.values.foreach(_.delete()))
-    }
-
-    /** PROCESS PASS ONLY. Concurrency safe except with [[updateWith]]. */
-    def registerAskAncestors(asker: MethodImpl): Unit =
-      ancestorsAskers.put(asker, ())
-
-    /** Register a dynamic-caller of an instance method.
-     *  PROCESS PASS ONLY.
-     */
-    def registerDynamicCaller(methodName: MethodName, caller: MethodImpl): Unit = {
-      dynamicCallers
-        .getOrElseUpdate(methodName, collOps.emptyMap)
-        .put(caller, ())
-    }
-
-    /** Register a static-caller of an instance method.
-     *  PROCESS PASS ONLY.
-     */
-    def registerStaticCaller(namespace: MemberNamespace, methodName: MethodName,
-        caller: MethodImpl): Unit = {
-      staticCallers(namespace.ordinal)
-        .getOrElseUpdate(methodName, collOps.emptyMap)
-        .put(caller, ())
     }
 
     /** Tag the dynamic-callers of an instance method.
@@ -847,8 +849,11 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       s"$owner.${methodName.nameString}"
 
     /** PROCESS PASS ONLY. */
-    def registerBodyAsker(asker: MethodImpl): Unit =
+    def askBody(asker: MethodImpl): MethodDef = {
       bodyAskers.put(asker, ())
+      asker.registerTo(this)
+      originalDef
+    }
 
     /** UPDATE PASS ONLY. */
     def tagBodyAskers(): Unit = {
@@ -860,35 +865,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     def unregisterDependee(dependee: MethodImpl): Unit =
       bodyAskers.remove(dependee)
 
-    /** PROCESS PASS ONLY. */
-    private def registerAskAncestors(intf: InterfaceType): Unit = {
-      intf.registerAskAncestors(this)
-      registeredTo.put(intf, ())
-    }
-
-    /** Register that this method is a dynamic-caller of an instance method.
-     *  PROCESS PASS ONLY.
-     */
-    private def registerDynamicCall(intf: InterfaceType,
-        methodName: MethodName): Unit = {
-      intf.registerDynamicCaller(methodName, this)
-      registeredTo.put(intf, ())
-    }
-
-    /** Register that this method is a static-caller of an instance method.
-     *  PROCESS PASS ONLY.
-     */
-    private def registerStaticCall(intf: InterfaceType,
-        namespace: MemberNamespace, methodName: MethodName): Unit = {
-      intf.registerStaticCaller(namespace, methodName, this)
-      registeredTo.put(intf, ())
-    }
-
-    /** PROCESS PASS ONLY. */
-    def registerAskBody(target: MethodImpl): Unit = {
-      target.registerBodyAsker(this)
-      registeredTo.put(target, ())
-    }
+    def registerTo(unregisterable: Unregisterable): Unit =
+      registeredTo.put(unregisterable, ())
 
     /** UPDATE PASS ONLY. */
     private def unregisterFromEverywhere(): Unit = {
@@ -978,44 +956,23 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
       val myself: MethodImpl.this.type = MethodImpl.this
 
-      protected def getMethodBody(method: MethodID): MethodDef = {
-        MethodImpl.this.registerAskBody(method)
-        method.originalDef
-      }
+      protected def getMethodBody(method: MethodID): MethodDef =
+        method.askBody(myself)
 
       /** Look up the targets of a dynamic call to an instance method. */
       protected def dynamicCall(intfName: ClassName,
           methodName: MethodName): List[MethodID] = {
-        val intf = getInterface(intfName)
-        MethodImpl.this.registerDynamicCall(intf, methodName)
-        intf.instantiatedSubclasses.flatMap(_.lookupMethod(methodName)).toList
+        getInterface(intfName).askDynamicCallTargets(methodName, myself)
       }
 
       /** Look up the target of a static call to an instance method. */
       protected def staticCall(className: ClassName, namespace: MemberNamespace,
           methodName: MethodName): MethodID = {
-
-        def inStaticsLike =
-          getInterface(className).staticLike(namespace)
-
-        val container =
-          if (namespace != MemberNamespace.Public) inStaticsLike
-          else classes.getOrElse(className, inStaticsLike)
-
-        MethodImpl.this.registerStaticCall(container.myInterface, namespace,
-            methodName)
-
-        // Method must exist, otherwise it's a bug / invalid IR.
-        container.lookupMethod(methodName).getOrElse {
-          throw new AssertionError(s"could not find method $className.$methodName")
-        }
+        getInterface(className).askStaticCallTarget(namespace, methodName, myself)
       }
 
-      protected def getAncestorsOf(intfName: ClassName): List[ClassName] = {
-        val intf = getInterface(intfName)
-        registerAskAncestors(intf)
-        intf.ancestors
-      }
+      protected def getAncestorsOf(intfName: ClassName): List[ClassName] =
+        getInterface(intfName).askAncestors(myself)
 
       protected def hasElidableModuleAccessor(moduleClassName: ClassName): Boolean =
         classes(moduleClassName).hasElidableModuleAccessor
