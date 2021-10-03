@@ -71,7 +71,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
   private var methodsToProcess = collOps.emptyAddable[MethodImpl]
 
   private def getInterface(className: ClassName): InterfaceType =
-    interfaces.getOrElseUpdate(className, new InterfaceType(className))
+    interfaces(className)
 
   /** Update the incremental analyzer with a new run. */
   def update(unit: LinkingUnit, logger: Logger): LinkingUnit = {
@@ -127,7 +127,9 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     val neededClasses = collOps.emptyParMap[ClassName, LinkedClass]
     for (linkedClass <- linkedClasses) {
       // Update the list of ancestors for all linked classes
-      getInterface(linkedClass.className).ancestors = linkedClass.ancestors
+      val intf = interfaces.getOrElseUpdate(linkedClass.className,
+          new InterfaceType(linkedClass.className))
+      intf.ancestors = linkedClass.ancestors
 
       collOps.put(neededStaticLikes, linkedClass.className, linkedClass)
 
@@ -706,8 +708,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
   }
 
   /** Type of a class or interface.
-   *  Types are created on demand when a method is called on a given
-   *  [[org.scalajs.ir.Types.ClassType ClassType]].
+   *
+   *  There exists exactly one instance of this per LinkedClass.
    *
    *  Fully concurrency safe unless otherwise noted.
    */
