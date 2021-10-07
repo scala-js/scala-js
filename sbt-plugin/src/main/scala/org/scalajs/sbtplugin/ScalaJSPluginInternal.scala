@@ -48,6 +48,23 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
   import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
 
+  private val baseRunConfig: RunConfig = {
+    /* #4560 Explicitly redirect out/err to System.out/System.err, instead of
+     * relying on `inheritOut` and `inheritErr`, so that streams installed with
+     * `System.setOut` and `System.setErr` are always taken into account.
+     * sbt installs such alternative outputs when it runs in server mode.
+     */
+    val onOutputStream: RunConfig.OnOutputStream = { (out, err) =>
+      out.foreach(o => new PipeOutputThread(o, System.out).start())
+      err.foreach(e => new PipeOutputThread(e, System.err).start())
+    }
+
+    RunConfig()
+      .withOnOutputStream(onOutputStream)
+      .withInheritOut(false)
+      .withInheritErr(false)
+  }
+
   @tailrec
   final private def registerResource[T <: AnyRef](
       l: AtomicReference[List[T]], r: T): r.type = {
@@ -550,7 +567,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         log.debug(s"with JSEnv ${env.name}")
 
         val input = jsEnvInput.value
-        val config = RunConfig().withLogger(sbtLogger2ToolsLogger(log))
+        val config = baseRunConfig.withLogger(sbtLogger2ToolsLogger(log))
 
         val run = env.start(input, config)
 
@@ -630,8 +647,9 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val frameworkNames = frameworks.map(_.implClassNames.toList).toList
 
         val log = streams.value.log
+        val runConfig = baseRunConfig.withLogger(sbtLogger2ToolsLogger(log))
         val config = TestAdapter.Config()
-          .withLogger(sbtLogger2ToolsLogger(log))
+          .withRunConfig(runConfig)
 
         val adapter = newTestAdapter(env, input, config)
         val frameworkAdapters = enhanceNotInstalledException(resolvedScoped.value, log) {
