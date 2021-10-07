@@ -15,14 +15,35 @@ package org.scalajs.testing.adapter
 import scala.concurrent.ExecutionContext
 
 import org.scalajs.jsenv._
+import org.scalajs.logging.Logger
 import org.scalajs.testing.common._
 
 /** RPC Core for use with a [[JSEnv]]. */
 private[adapter] final class JSEnvRPC(
-    jsenv: JSEnv, input: Seq[Input], config: RunConfig)(
+    jsenv: JSEnv, input: Seq[Input], logger: Logger)(
     implicit ec: ExecutionContext) extends RPCCore {
 
-  private val run = jsenv.startWithCom(input, config, handleMessage)
+  private val run: JSComRun = {
+    /* #4560 Explicitly redirect out/err to System.out/System.err, instead of
+     * relying on `inheritOut` and `inheritErr`, so that streams installed with
+     * `System.setOut` and `System.setErr` are always taken into account.
+     * sbt installs such alternative outputs when it runs in server mode.
+     *
+     * We never wait for these threads to finish. In theory, tasks that use the
+     * test adapter may complete before all output has been transferred to
+     * `System.out` and `System.err`.
+     */
+    val runConfig = RunConfig()
+      .withLogger(logger)
+      .withInheritOut(false)
+      .withInheritErr(false)
+      .withOnOutputStream { (out, err) =>
+        out.foreach(o => PipeOutputThread.start(o, System.out))
+        err.foreach(e => PipeOutputThread.start(e, System.err))
+      }
+
+    jsenv.startWithCom(input, runConfig, handleMessage)
+  }
 
   /* Once the com closes, ensure all still pending calls are failing.
    * This can be necessary, if the JSEnv terminates unexpectedly.
