@@ -3823,6 +3823,21 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
     }
 
+    /** Flatten nested Blocks that can be flattened without compromising the
+     *  identification of pattern matches.
+     */
+    private def flatStats(stats: List[Tree]): Iterator[Tree] = {
+      /* #4581 Never decompose a Block with <case> LabelDef's, as they need to
+       * be processed by genBlockWithCaseLabelDefs.
+       */
+      stats.iterator.flatMap {
+        case Block(stats, expr) if !stats.exists(isCaseLabelDef(_)) =>
+          stats.iterator ++ Iterator.single(expr)
+        case tree =>
+          Iterator.single(tree)
+      }
+    }
+
     /** Predicate satisfied by LabelDefs produced by the pattern matcher,
      *  except matchEnd's.
      */
@@ -6899,13 +6914,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       i > 0 &&
       name.endsWith(tpnme.ANON_CLASS_NAME, i) &&
       (i + 1 until name.length).forall(j => name.charAt(j).isDigit)
-    }
-  }
-
-  private def flatStats(stats: List[Tree]): Iterator[Tree] = {
-    stats.iterator.flatMap {
-      case Block(stats, expr) => stats.iterator ++ Iterator.single(expr)
-      case tree               => Iterator.single(tree)
     }
   }
 

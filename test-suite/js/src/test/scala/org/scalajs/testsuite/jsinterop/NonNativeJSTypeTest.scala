@@ -1026,6 +1026,17 @@ class NonNativeJSTypeTest {
     assertEquals(b.y, "xy")
   }
 
+  @Test def constructorsWithPatternMatch_Issue4581(): Unit = {
+    val a = new PrimaryConstructorWithPatternMatch_Issue4581(5 :: Nil)
+    assertEquals(5, a.head)
+
+    val b = new SecondaryConstructorWithPatternMatch_Issue4581()
+    assertEquals(0, b.head)
+
+    val c = new SecondaryConstructorWithPatternMatch_Issue4581(6 :: Nil)
+    assertEquals(6, c.head)
+  }
+
   @Test def polytypeNullaryMethod_Issue2445(): Unit = {
     class PolyTypeNullaryMethod extends js.Object {
       def emptyArray[T]: js.Array[T] = js.Array()
@@ -2013,6 +2024,28 @@ object NonNativeJSTypeTest {
 
   class SecondaryConstructorUseDefaultParam(x: String = "x")(val y: String = x + "y") extends js.Object {
     def this(x: Int) = this(x.toString())()
+  }
+
+  class PrimaryConstructorWithPatternMatch_Issue4581(xs: List[Int]) extends js.Object {
+    var head: Int = 0
+
+    xs match {
+      case x :: xr => head = x
+      case _       => fail(xs.toString())
+    }
+  }
+
+  class SecondaryConstructorWithPatternMatch_Issue4581 extends js.Object {
+    var head: Int = 0
+
+    def this(xs: List[Int]) = {
+      this()
+
+      xs match {
+        case x :: xr => head = x
+        case _       => fail(xs.toString())
+      }
+    }
   }
 
   class SimpleConstructorAutoFields(val x: Int, var y: Int) extends js.Object {
