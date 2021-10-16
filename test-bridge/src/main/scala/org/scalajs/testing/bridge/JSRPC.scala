@@ -15,8 +15,15 @@ package org.scalajs.testing.bridge
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
+/* Use the queue execution context (based on JS promises) explicitly:
+ * We do not have anything better at our disposal and it is accceptable in
+ * terms of fairness: JSRPC only handles in-between test communcation, so any
+ * future chain will "yield" to I/O (waiting for a message) or an RPC handler in
+ * a finite number of steps.
+ */
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
 
 import org.scalajs.testing.common.RPCCore
 

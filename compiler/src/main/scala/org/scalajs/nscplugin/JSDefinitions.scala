@@ -135,6 +135,11 @@ trait JSDefinitions {
 
     lazy val EnableReflectiveInstantiationAnnotation = getRequiredClass("scala.scalajs.reflect.annotation.EnableReflectiveInstantiation")
 
+    lazy val ExecutionContextModule = getRequiredModule("scala.concurrent.ExecutionContext")
+      lazy val ExecutionContext_global = getMemberMethod(ExecutionContextModule, newTermName("global"))
+
+    lazy val ExecutionContextImplicitsModule = getRequiredModule("scala.concurrent.ExecutionContext.Implicits")
+      lazy val ExecutionContextImplicits_global = getMemberMethod(ExecutionContextImplicitsModule, newTermName("global"))
   }
 
   // scalastyle:on line.size.limit

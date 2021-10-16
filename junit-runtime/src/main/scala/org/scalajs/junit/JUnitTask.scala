@@ -13,7 +13,14 @@
 package org.scalajs.junit
 
 import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
+
+/* Use the queue execution context (based on JS promises) explicitly:
+ * We do not have anything better at our disposal and it is accceptable in
+ * terms of fairness: We only use it for test dispatching and orchestation.
+ * The real async work is done in Bootstrapper#invokeTest which does not take
+ * an (implicit) ExecutionContext parameter.
+ */
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 import scala.util.{Try, Success, Failure}
 

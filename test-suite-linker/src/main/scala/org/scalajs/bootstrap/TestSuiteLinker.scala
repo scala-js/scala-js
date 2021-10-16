@@ -1,12 +1,14 @@
 package org.scalajs.linker.test
 
 import scala.concurrent._
-import scala.concurrent.ExecutionContext.Implicits.global
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 import scala.scalajs.js.typedarray._
 import scala.scalajs.js.JSConverters._
+
+// Use the queue execution context explicitly to avoid warnings.
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 import org.scalajs.logging._
 
