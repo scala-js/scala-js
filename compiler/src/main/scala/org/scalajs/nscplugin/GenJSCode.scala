@@ -1210,7 +1210,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }
 
         def isDefaultParamOfJSNativeDef: Boolean = {
-          m.hasFlag(Flags.DEFAULTPARAM) && {
+          DefaultParamInfo.isApplicable(m) && {
             val info = new DefaultParamInfo(m)
             !info.isForConstructor && info.attachedMethod.hasAnnotation(JSNativeAnnotation)
           }
@@ -1821,7 +1821,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
        * since for those, the entire member list is ignored in `genJSClassData`.
        */
       def isIgnorableDefaultParam: Boolean = {
-        sym.hasFlag(Flags.DEFAULTPARAM) && sym.owner.isModuleClass && {
+        DefaultParamInfo.isApplicable(sym) && sym.owner.isModuleClass && {
           val info = new DefaultParamInfo(sym)
           if (info.isForConstructor) {
             /* This is a default accessor for a constructor parameter. Check
@@ -2984,7 +2984,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
        * non-constructor members of native JS types.
        */
       def isJSDefaultParam: Boolean = {
-        sym.hasFlag(Flags.DEFAULTPARAM) && {
+        DefaultParamInfo.isApplicable(sym) && {
           val info = new DefaultParamInfo(sym)
           if (info.isForConstructor) {
             /* This is a default accessor for a constructor parameter. Check
@@ -6813,9 +6813,25 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     else result.alternatives.head
   }
 
+  private object DefaultParamInfo {
+    /** Is the symbol applicable to `DefaultParamInfo`?
+     *
+     *  This is true iff it is a default accessor and it is not an value class
+     *  `$extension` method. The latter condition is for #4583.
+     *
+     *  Excluding all `$extension` methods is fine because `DefaultParamInfo`
+     *  is used for JS default accessors, i.e., default accessors of
+     *  `@js.native def`s or of `def`s in JS types. Those can never appear in
+     *  an `AnyVal` class (as a class, it cannot contain `@js.native def`s, and
+     *  as `AnyVal` it cannot also extend `js.Any`).
+     */
+    def isApplicable(sym: Symbol): Boolean =
+      sym.hasFlag(Flags.DEFAULTPARAM) && !sym.name.endsWith("$extension")
+  }
+
   /** Info about a default param accessor.
    *
-   *  The method must have the flag `DEFAULTPARAM` for this class to make
+   *  `DefaultParamInfo.isApplicable(sym)` must be true for this class to make
    *  sense.
    */
   private class DefaultParamInfo(sym: Symbol) {
