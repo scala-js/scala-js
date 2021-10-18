@@ -14,15 +14,10 @@ package scala.scalajs.js.annotation
 
 import scala.annotation.meta._
 
-/** Marks the annotated class or object as imported from another JS module.
+/** Marks the annotated declaration as imported from another JS module.
  *
  *  Intuitively, this corresponds to ECMAScript import directives. See the
  *  documentation of the various constructors.
- *
- *  `@JSImport` is not compatible with the `jsDependencies` mechanism offered
- *  by the Scala.js sbt plugin. You are responsible for resolving and/or
- *  bundling the JavaScript modules that you are importing using other
- *  mechanisms.
  */
 @field @getter @setter
 class JSImport private () extends scala.annotation.StaticAnnotation {
@@ -32,7 +27,7 @@ class JSImport private () extends scala.annotation.StaticAnnotation {
    *  Intuitively, this corresponds to the following ECMAScript import
    *  directive:
    *  {{{
-   *  import { <name> as AnnotatedClassOrObject } from <module>
+   *  import { <name> as AnnotatedDeclaration } from <module>
    *  }}}
    *
    *  To import the default export of a module, use `JSImport.Default` as
@@ -46,7 +41,7 @@ class JSImport private () extends scala.annotation.StaticAnnotation {
    *
    *  Intuitively, this corresponds to
    *  {{{
-   *  import * as AnnotatedObject from <module>
+   *  import * as AnnotatedDeclaration from <module>
    *  }}}
    */
   def this(module: String, name: JSImport.Namespace.type) = this()
@@ -88,7 +83,7 @@ object JSImport {
    *
    *  Intuitively, it corresponds to `*` in an ECMAScript import:
    *  {{{
-   *  import * as AnnotatedObject from <module>
+   *  import * as AnnotatedDeclaration from <module>
    *  }}}
    */
   object Namespace
