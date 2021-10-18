@@ -925,6 +925,16 @@ class RegressionTest {
     assertEquals(true, a(1))
   }
 
+  @Test
+  def anyValMethodWithDefaultParamsOverloadedInCompanion_Issue4583(): Unit = {
+    assertEquals(5, Bug4583.bar(5))
+    assertEquals("hello", Bug4583.bar("hello"))
+
+    val foo = new Bug4583(6)
+    assertEquals(6, foo.bar())
+    assertEquals(8, foo.bar(2))
+  }
+
 }
 
 object RegressionTest {
@@ -986,6 +996,15 @@ object RegressionTest {
 
   object `class` { // scalastyle:ignore
     def foo(x: Int): Int = x + 1
+  }
+
+  class Bug4583(val x: Int) extends AnyVal {
+    def bar(y: Int = 0): Int = x + y
+  }
+
+  object Bug4583 {
+    def bar(x: Int): Int = x
+    def bar(x: String): String = x
   }
 
   /* The objects and classes here intentionally have names that differ only in
