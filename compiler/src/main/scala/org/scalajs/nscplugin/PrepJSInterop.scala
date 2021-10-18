@@ -930,7 +930,23 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
             val module = annot.stringArg(0).getOrElse {
               "" // an error is reported by checkJSImportLiteral in this case
             }
-            val path = annot.stringArg(1).fold[List[String]](Nil)(parsePath)
+            val path = annot.stringArg(1).fold {
+              if (annot.args.size < 2) {
+                val symTermName = sym.name.dropModule.toTermName.dropLocal
+                if (symTermName == nme.apply) {
+                  reporter.error(annot.pos,
+                      "Native JS definitions named 'apply' must have an explicit name in @JSImport")
+                } else if (symTermName.endsWith(nme.SETTER_SUFFIX)) {
+                  reporter.error(annot.pos,
+                      "Native JS definitions with a name ending in '_=' must have an explicit name in @JSImport")
+                }
+                parsePath(jsInterop.defaultJSNameOf(sym))
+              } else {
+                Nil
+              }
+            } { pathName =>
+              parsePath(pathName)
+            }
             val importSpec = Import(module, path)
             val loadSpec = annot.stringArg(2).fold[JSNativeLoadSpec] {
               importSpec
@@ -1451,8 +1467,9 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
    *  Reports an error on the annotation if it is not the case.
    */
   private def checkJSImportLiteral(annot: AnnotationInfo): Unit = {
-    assert(annot.args.size == 2 || annot.args.size == 3,
-        s"@JSImport annotation $annot does not have exactly 2 or 3 arguments")
+    val argCount = annot.args.size
+    assert(argCount >= 1 && argCount <= 3,
+        s"@JSImport annotation $annot does not have between 1 and 3 arguments")
 
     val firstArgIsValid = annot.stringArg(0).isDefined
     if (!firstArgIsValid) {
@@ -1461,6 +1478,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
     }
 
     val secondArgIsValid = {
+      argCount < 2 ||
       annot.stringArg(1).isDefined ||
       annot.args(1).symbol == JSImportNamespaceObject
     }
@@ -1470,7 +1488,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
           "JSImport.Namespace object.")
     }
 
-    val thirdArgIsValid = annot.args.size < 3 || annot.stringArg(2).isDefined
+    val thirdArgIsValid = argCount < 3 || annot.stringArg(2).isDefined
     if (!thirdArgIsValid) {
       reporter.error(annot.args(2).pos,
           "The third argument to @JSImport, when present, must be a " +

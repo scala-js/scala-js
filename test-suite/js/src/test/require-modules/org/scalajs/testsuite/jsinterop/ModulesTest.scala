@@ -63,11 +63,18 @@ class ModulesTest {
   @Test def testImportFunctionInModule(): Unit = {
     assertEquals(5, NativeMembers.ssum(2))
     assertEquals(13, NativeMembers.ssum(2, 3))
+
+    assertEquals(5, NativeMembers.ssumRenamed(2))
+    assertEquals(13, NativeMembers.ssumRenamed(2, 3))
+
+    assertEquals(15, NativeMembers.apply(5))
   }
 
   @Test def testImportFieldInModule(): Unit = {
     assertEquals("string", js.typeOf(NativeMembers.strConstant))
     assertEquals("string", js.typeOf(NativeMembers.strConstantAsDef))
+
+    assertEquals("string", js.typeOf(NativeMembers.strConstantRenamed))
   }
 
   @Test def testImportFunctionInModulePackageObject(): Unit = {
@@ -83,11 +90,18 @@ class ModulesTest {
   @Test def testImportObjectInModule(): Unit = {
     assertTrue((MyBox: Any).isInstanceOf[js.Object])
     assertTrue(MyBox.make(5).isInstanceOf[MyBox[_]])
+
+    assertTrue((MyBoxRenamed: Any).isInstanceOf[js.Object])
+    assertTrue(MyBoxRenamed.make(5).isInstanceOf[MyBoxRenamed[_]])
   }
 
   @Test def testImportClassInModule(): Unit = {
-    val b = new MyBox(1L)
+    val a = new MyBox(1L)
+    assertEquals(1L, a.get())
+    a.set(5L)
+    assertEquals(5L, a.get())
 
+    val b = new MyBoxRenamed(1L)
     assertEquals(1L, b.get())
     b.set(5L)
     assertEquals(5L, b.get())
@@ -117,11 +131,11 @@ package object modulestestpackageobject {
    * See #4554.
    */
   @js.native
-  @JSImport(ModulesTest.modulePath, "ssum")
+  @JSImport(ModulesTest.modulePath)
   def ssum(x: Int, y: Int = 50): Int = js.native
 
   @js.native
-  @JSImport(ModulesTest.modulePath, "strConstant")
+  @JSImport(ModulesTest.modulePath)
   val strConstant: String = js.native
 
   @js.native
@@ -163,29 +177,54 @@ object ModulesTest {
      * See #4554.
      */
     @js.native
-    @JSImport(modulePath, "ssum")
+    @JSImport(modulePath)
     def ssum(x: Int, y: Int = 50): Int = js.native
 
     @js.native
-    @JSImport(modulePath, "strConstant")
+    @JSImport(modulePath, "ssum")
+    def ssumRenamed(x: Int, y: Int = 50): Int = js.native
+
+    @js.native
+    @JSImport(modulePath)
     val strConstant: String = js.native
 
     @js.native
     @JSImport(modulePath, "strConstant")
+    val strConstantRenamed: String = js.native
+
+    @js.native
+    @JSImport(modulePath, "strConstant")
     def strConstantAsDef: String = js.native
+
+    @js.native
+    @JSImport(modulePath, "apply")
+    def apply(x: Int): Int = js.native
   }
 
   @js.native
-  @JSImport(modulePath, "MyBox")
+  @JSImport(modulePath)
   class MyBox[T](x: T) extends js.Object {
     def get(): T = js.native
     def set(x: T): Unit = js.native
   }
 
   @js.native
-  @JSImport(modulePath, "MyBox")
+  @JSImport(modulePath)
   object MyBox extends js.Object {
     def make[T](x: T): MyBox[T] = js.native
+  }
+
+  @js.native
+  @JSImport(modulePath, "MyBox")
+  class MyBoxRenamed[T](x: T) extends js.Object {
+    def get(): T = js.native
+    def set(x: T): Unit = js.native
+  }
+
+  @js.native
+  @JSImport(modulePath, "MyBox")
+  object MyBoxRenamed extends js.Object {
+    def make[T](x: T): MyBoxRenamed[T] = js.native
   }
 
   // #4001 - Test that unused super-classes are not imported.

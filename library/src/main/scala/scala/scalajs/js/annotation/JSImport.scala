@@ -27,6 +27,20 @@ class JSImport private () extends scala.annotation.StaticAnnotation {
    *  Intuitively, this corresponds to the following ECMAScript import
    *  directive:
    *  {{{
+   *  import { AnnotatedDeclaration } from <module>
+   *  }}}
+   *
+   *  The import name is inferred from the annotated declaration's name.
+   *  To import the default export of a module, use `JSImport.Default` as
+   *  the second parameter `name`.
+   */
+  def this(module: String) = this()
+
+  /** Named import of a member of the module.
+   *
+   *  Intuitively, this corresponds to the following ECMAScript import
+   *  directive:
+   *  {{{
    *  import { <name> as AnnotatedDeclaration } from <module>
    *  }}}
    *

@@ -1162,6 +1162,15 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def goo_=(x: Int*): Unit = js.native
       @js.native @JSGlobal("hoo")
       def hoo_=(x: Int = 1): Unit = js.native
+
+      @js.native @JSImport("module.js", "foo")
+      def foo2_=(x: Int): Int = js.native
+      @js.native @JSImport("module.js", "bar")
+      def bar2_=(x: Int, y: Int): Unit = js.native
+      @js.native @JSImport("module.js", "goo")
+      def goo2_=(x: Int*): Unit = js.native
+      @js.native @JSImport("module.js", "hoo")
+      def hoo2_=(x: Int = 1): Unit = js.native
     }
     """ hasErrors
     """
@@ -1177,6 +1186,40 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:13: error: @js.native is not allowed on vars, lazy vals and setter defs
       |      def hoo_=(x: Int = 1): Unit = js.native
       |          ^
+      |newSource1.scala:16: error: @js.native is not allowed on vars, lazy vals and setter defs
+      |      def foo2_=(x: Int): Int = js.native
+      |          ^
+      |newSource1.scala:18: error: @js.native is not allowed on vars, lazy vals and setter defs
+      |      def bar2_=(x: Int, y: Int): Unit = js.native
+      |          ^
+      |newSource1.scala:20: error: @js.native is not allowed on vars, lazy vals and setter defs
+      |      def goo2_=(x: Int*): Unit = js.native
+      |          ^
+      |newSource1.scala:22: error: @js.native is not allowed on vars, lazy vals and setter defs
+      |      def hoo2_=(x: Int = 1): Unit = js.native
+      |          ^
+    """
+
+    // containsErrors because some versions of the compiler use `_=` and some use `_=' (notice the quotes)
+    """
+    object Container {
+      @js.native @JSGlobal("foo")
+      val foo_= : Int = js.native
+    }
+    """ containsErrors
+    """
+      |newSource1.scala:7: error: Names of vals or vars may not end in `_=
+    """
+
+    // containsErrors because some versions of the compiler use `_=` and some use `_=' (notice the quotes)
+    """
+    object Container {
+      @js.native @JSImport("module.js")
+      val foo_= : Int = js.native
+    }
+    """ containsErrors
+    """
+      |newSource1.scala:7: error: Names of vals or vars may not end in `_=
     """
   }
 
@@ -1908,6 +1951,24 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
 
     """
+    @js.native
+    @JSImport("foo.js")
+    class apply extends js.Object
+
+    @js.native
+    @JSImport("foo.js")
+    object apply extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: Native JS definitions named 'apply' must have an explicit name in @JSImport
+      |    @JSImport("foo.js")
+      |     ^
+      |newSource1.scala:10: error: Native JS definitions named 'apply' must have an explicit name in @JSImport
+      |    @JSImport("foo.js")
+      |     ^
+    """
+
+    """
     object A {
       @js.native
       @JSGlobal
@@ -1924,6 +1985,26 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |       ^
       |newSource1.scala:11: error: Native JS definitions named 'apply' must have an explicit name in @JSGlobal
       |      @JSGlobal
+      |       ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSImport("foo.js")
+      class apply extends js.Object
+
+      @js.native
+      @JSImport("foo.js")
+      object apply extends js.Object
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions named 'apply' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+      |newSource1.scala:11: error: Native JS definitions named 'apply' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
       |       ^
     """
 
@@ -1948,6 +2029,26 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
 
     """
+    package object A {
+      @js.native
+      @JSImport("foo.js")
+      class apply extends js.Object
+
+      @js.native
+      @JSImport("foo.js")
+      object apply extends js.Object
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions named 'apply' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+      |newSource1.scala:11: error: Native JS definitions named 'apply' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+    """
+
+    """
     object A {
       @js.native
       @JSGlobal
@@ -1957,6 +2058,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
       |newSource1.scala:7: error: Native JS definitions named 'apply' must have an explicit name in @JSGlobal
       |      @JSGlobal
+      |       ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSImport("foo.js")
+      val apply: Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions named 'apply' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
       |       ^
     """
 
@@ -1976,6 +2090,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
     object A {
       @js.native
+      @JSImport("foo.js")
+      def apply: Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions named 'apply' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+    """
+
+    """
+    object A {
+      @js.native
       @JSGlobal
       def apply(x: Int): Int = js.native
     }
@@ -1983,6 +2110,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
       |newSource1.scala:7: error: Native JS definitions named 'apply' must have an explicit name in @JSGlobal
       |      @JSGlobal
+      |       ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSImport("foo.js")
+      def apply(x: Int): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions named 'apply' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
       |       ^
     """
 
@@ -2042,6 +2182,24 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @js.native
       object apply extends js.Object
     }
+
+    object B {
+      @JSImport("foo.js", "apply")
+      @js.native
+      val apply: Int = js.native
+    }
+
+    object C {
+      @JSImport("foo.js", "apply")
+      @js.native
+      def apply: Int = js.native
+    }
+
+    object D {
+      @JSImport("foo.js", "apply")
+      @js.native
+      def apply(x: Int): Int = js.native
+    }
     """.hasNoWarns()
 
     """
@@ -2087,6 +2245,24 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
 
     """
+    @js.native
+    @JSImport("foo.js")
+    class foo_= extends js.Object
+
+    @js.native
+    @JSImport("foo.js")
+    object foo_= extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSImport
+      |    @JSImport("foo.js")
+      |     ^
+      |newSource1.scala:10: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSImport
+      |    @JSImport("foo.js")
+      |     ^
+    """
+
+    """
     object A {
       @js.native
       @JSGlobal
@@ -2103,6 +2279,26 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |       ^
       |newSource1.scala:11: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSGlobal
       |      @JSGlobal
+      |       ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSImport("foo.js")
+      class foo_= extends js.Object
+
+      @js.native
+      @JSImport("foo.js")
+      object foo_= extends js.Object
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+      |newSource1.scala:11: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
       |       ^
     """
 
@@ -2126,11 +2322,43 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |       ^
     """
 
+    """
+    package object A {
+      @js.native
+      @JSImport("foo.js")
+      class foo_= extends js.Object
+
+      @js.native
+      @JSImport("foo.js")
+      object foo_= extends js.Object
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+      |newSource1.scala:11: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+    """
+
     // containsErrors because some versions of the compiler use `_=` and some use `_=' (notice the quotes)
     """
     object A {
       @js.native
       @JSGlobal
+      val foo_= : Int = js.native
+    }
+    """ containsErrors
+    """
+      |newSource1.scala:8: error: Names of vals or vars may not end in `_=
+    """
+
+    // containsErrors because some versions of the compiler use `_=` and some use `_=' (notice the quotes)
+    """
+    object A {
+      @js.native
+      @JSImport("foo.js")
       val foo_= : Int = js.native
     }
     """ containsErrors
@@ -2182,6 +2410,35 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
     object A {
       @js.native
+      @JSImport("foo.js")
+      def foo_= : Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+      |newSource1.scala:8: error: @js.native is not allowed on vars, lazy vals and setter defs
+      |      def foo_= : Int = js.native
+      |          ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSImport("foo.js", "foo")
+      def foo_= : Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: @js.native is not allowed on vars, lazy vals and setter defs
+      |      def foo_= : Int = js.native
+      |          ^
+    """
+
+    """
+    object A {
+      @js.native
       @JSGlobal
       def foo_=(x: Int): Int = js.native
     }
@@ -2199,6 +2456,35 @@ class JSInteropTest extends DirectTest with TestHelpers {
     object A {
       @js.native
       @JSGlobal("foo")
+      def foo_=(x: Int): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: @js.native is not allowed on vars, lazy vals and setter defs
+      |      def foo_=(x: Int): Int = js.native
+      |          ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSImport("foo.js")
+      def foo_=(x: Int): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+      |newSource1.scala:8: error: @js.native is not allowed on vars, lazy vals and setter defs
+      |      def foo_=(x: Int): Int = js.native
+      |          ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSImport("foo.js", "foo")
       def foo_=(x: Int): Int = js.native
     }
     """ hasErrors
