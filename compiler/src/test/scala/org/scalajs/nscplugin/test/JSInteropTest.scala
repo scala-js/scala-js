@@ -1848,6 +1848,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
     @js.native
     abstract class B extends js.Object
+
+    object Container {
+      @js.native
+      class C extends js.Object
+    }
     """ hasErrors
     """
       |newSource1.scala:6: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
@@ -1856,6 +1861,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:9: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |    abstract class B extends js.Object
       |                   ^
+      |newSource1.scala:13: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
+      |      class C extends js.Object
+      |            ^
     """
   }
 
@@ -1863,193 +1871,20 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
     @js.native
     object A extends js.Object
+
+    object Container {
+      @js.native
+      object B extends js.Object
+    }
     """ hasErrors
     """
       |newSource1.scala:6: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
       |    object A extends js.Object
       |           ^
-    """
-  }
-
-  @Test def noNativeClassObjectWithoutExplicitNameInsideScalaObject: Unit = {
-
-    """
-    object A {
-      @js.native
-      class B extends js.Object
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
-      |      class B extends js.Object
-      |            ^
-    """
-
-    """
-    object A {
-      @js.native
-      object B extends js.Object
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
+      |newSource1.scala:10: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
       |      object B extends js.Object
       |             ^
     """
-
-    """
-    object A {
-      @js.native
-      @JSGlobal
-      class B extends js.Object
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: Native JS members inside non-native objects must have an explicit name in @JSGlobal
-      |      @JSGlobal
-      |       ^
-    """
-
-    """
-    object A {
-      @js.native
-      @JSGlobal
-      object B extends js.Object
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: Native JS members inside non-native objects must have an explicit name in @JSGlobal
-      |      @JSGlobal
-      |       ^
-    """
-
-    // From issue #2401
-    """
-    package object A {
-      @js.native
-      object B extends js.Object
-
-      @js.native
-      @JSGlobal
-      object C extends js.Object
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
-      |      object B extends js.Object
-      |             ^
-    """
-
-    """
-    package object A {
-      @js.native
-      class B extends js.Object
-
-      @js.native
-      @JSGlobal
-      class C extends js.Object
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
-      |      class B extends js.Object
-      |            ^
-    """
-
-    """
-    object A {
-      @JSName("InnerB")
-      @js.native
-      class B extends js.Object
-
-      @JSName("InnerC")
-      @js.native
-      abstract class C extends js.Object
-
-      @JSName("InnerD")
-      @js.native
-      object D extends js.Object
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:6: error: @JSName can only be used on members of JS types.
-      |      @JSName("InnerB")
-      |       ^
-      |newSource1.scala:8: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
-      |      class B extends js.Object
-      |            ^
-      |newSource1.scala:10: error: @JSName can only be used on members of JS types.
-      |      @JSName("InnerC")
-      |       ^
-      |newSource1.scala:12: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
-      |      abstract class C extends js.Object
-      |                     ^
-      |newSource1.scala:14: error: @JSName can only be used on members of JS types.
-      |      @JSName("InnerD")
-      |       ^
-      |newSource1.scala:16: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
-      |      object D extends js.Object
-      |             ^
-    """
-
-    """
-    object A {
-      @JSGlobal("InnerB")
-      @js.native
-      class B extends js.Object
-
-      @JSGlobal("InnerC")
-      @js.native
-      object C extends js.Object
-    }
-    """.hasNoWarns()
-
-    """
-    object A {
-      @JSImport("InnerB", JSImport.Namespace)
-      @js.native
-      class B extends js.Object
-
-      @JSImport("InnerC", JSImport.Namespace)
-      @js.native
-      object C extends js.Object
-    }
-    """.hasNoWarns()
-
-    """
-    object A {
-      @JSImport("InnerB", JSImport.Namespace, globalFallback = "Foo")
-      @js.native
-      class B extends js.Object
-
-      @JSImport("InnerC", JSImport.Namespace, globalFallback = "Foo")
-      @js.native
-      object C extends js.Object
-    }
-    """.hasNoWarns()
-
-    """
-    object A {
-      @js.native
-      trait B extends js.Object
-    }
-    """.hasNoWarns()
-
-    """
-    @js.native
-    @JSGlobal
-    object A extends js.Object {
-      @js.native
-      class B extends js.Object
-
-      @js.native
-      trait C extends js.Object
-
-      @js.native
-      object D extends js.Object
-    }
-    """.hasNoWarns()
-
   }
 
   @Test def noNativeDefinitionNamedApplyWithoutExplicitName: Unit = {

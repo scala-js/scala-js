@@ -919,10 +919,6 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
               } else if (symTermName.endsWith(nme.SETTER_SUFFIX)) {
                 reporter.error(annot.pos,
                     "Native JS definitions with a name ending in '_=' must have an explicit name in @JSGlobal")
-              } else if ((enclosingOwner is OwnerKind.ScalaMod) && !sym.owner.isPackageObjectClass) {
-                reporter.error(annot.pos,
-                    "Native JS members inside non-native objects " +
-                    "must have an explicit name in @JSGlobal")
               }
               jsInterop.defaultJSNameOf(sym)
             }
