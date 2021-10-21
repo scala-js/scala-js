@@ -448,13 +448,13 @@ protected[bridge] object HTMLRunner {
 
   // Mini dom facade.
   private object dom {
-    @JSGlobal("window")
+    @JSGlobal
     @js.native
     object window extends js.Object {
       def addEventListener(tpe: String, handler: js.Function0[Unit]): Unit = js.native
     }
 
-    @JSGlobal("document")
+    @JSGlobal
     @js.native
     object document extends js.Object {
       def body: Element = js.native

@@ -4,7 +4,7 @@ import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
 @js.native
-@JSImport("foo.js", "JustImport")
+@JSImport("foo.js")
 object JustImport extends js.Object
 
 @js.native
@@ -16,7 +16,7 @@ object AnotherInFoo extends js.Object
 object ImportWithGlobalFallback extends js.Object
 
 @js.native
-@JSImport("unused.js", "Unreachable")
+@JSImport("unused.js")
 object Unreachable extends js.Object
 
 @js.native

@@ -52,53 +52,53 @@ private[linker] object NodeFS {
     def isDirectory(): Boolean
   }
 
-  @JSImport("fs", "open")
+  @JSImport("fs")
   @js.native
   def open(path: String, flags: String, callback: CB[Int]): Unit = js.native
 
-  @JSImport("fs", "close")
+  @JSImport("fs")
   @js.native
   def close(fd: Int, callback: CB[Unit]): Unit = js.native
 
-  @JSImport("fs", "read")
+  @JSImport("fs")
   @js.native
   def read(fd: Int, buffer: TypedArray[_, _], offset: Int, length: Int, position: Int,
       callback: CB[Int]): Unit = js.native
 
-  @JSImport("fs", "writeFile")
+  @JSImport("fs")
   @js.native
   def writeFile(path: String, data: TypedArray[_, _], callback: CB[Unit]): Unit = js.native
 
-  @JSImport("fs", "readdir")
+  @JSImport("fs")
   @js.native
   def readdir(path: String, opts: ReadDirOpt.type,
       cb: CB[js.Array[Dirent]]): Unit = js.native
 
-  @JSImport("fs", "readdir")
+  @JSImport("fs")
   @js.native
   def readdir(path: String, cb: CB[js.Array[String]]): Unit = js.native
 
-  @JSImport("fs", "readFile")
+  @JSImport("fs")
   @js.native
   def readFile(path: String, cb: CB[Uint8Array]): Unit = js.native
 
-  @JSImport("fs", "stat")
+  @JSImport("fs")
   @js.native
   def stat(path: String, cb: CB[Stats]): Unit = js.native
 
-  @JSImport("fs", "unlink")
+  @JSImport("fs")
   @js.native
   def unlink(path: String, cb: CB[Unit]): Unit = js.native
 
-  @JSImport("path", "join")
+  @JSImport("path")
   @js.native
   def join(paths: String*): String = js.native
 
-  @JSImport("path", "basename")
+  @JSImport("path")
   @js.native
   def basename(path: String): String = js.native
 
-  @JSImport("path", "dirname")
+  @JSImport("path")
   @js.native
   def dirname(path: String): String = js.native
 }
