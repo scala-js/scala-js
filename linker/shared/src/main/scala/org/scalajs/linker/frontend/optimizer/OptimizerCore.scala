@@ -656,8 +656,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       // Trees that need not be transformed
 
       case _:Skip | _:Debugger | _:LoadModule | _:SelectStatic |
-          _:SelectJSNativeMember | _:JSImportMeta | _:LoadJSConstructor | _:LoadJSModule |
-          _:JSLinkingInfo | _:JSGlobalRef | _:JSTypeOfGlobalRef | _:Literal =>
+          _:SelectJSNativeMember | _:JSNewTarget | _:JSImportMeta |
+          _:LoadJSConstructor | _:LoadJSModule | _:JSLinkingInfo |
+          _:JSGlobalRef | _:JSTypeOfGlobalRef | _:Literal =>
         tree
 
       case _ =>
@@ -901,8 +902,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           if (!arrow || restParam.isDefined) {
             /* TentativeClosureReplacement assumes there are no rest
              * parameters, because that would not be inlineable anyway.
-             * Likewise, it assumes that there is no binding for `this`, which
-             * is only true for arrow functions.
+             * Likewise, it assumes that there is no binding for `this` nor for
+             * `new.target`, which is only true for arrow functions.
              * So we never try to inline non-arrow Closures, nor Closures with
              * a rest parameter. There are few use cases for either anyway.
              */

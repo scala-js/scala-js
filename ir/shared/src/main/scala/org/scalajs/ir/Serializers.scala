@@ -448,6 +448,9 @@ object Serializers {
           writeTagAndPos(TagJSImportCall)
           writeTree(arg)
 
+        case JSNewTarget() =>
+          writeTagAndPos(TagJSNewTarget)
+
         case JSImportMeta() =>
           writeTagAndPos(TagJSImportMeta)
 
@@ -1149,6 +1152,7 @@ object Serializers {
           JSSuperMethodCall(readTree(), readTree(), readTree(), readTreeOrJSSpreads())
         case TagJSSuperConstructorCall => JSSuperConstructorCall(readTreeOrJSSpreads())
         case TagJSImportCall         => JSImportCall(readTree())
+        case TagJSNewTarget          => JSNewTarget()
         case TagJSImportMeta         => JSImportMeta()
         case TagLoadJSConstructor    => LoadJSConstructor(readClassName())
         case TagLoadJSModule         => LoadJSModule(readClassName())

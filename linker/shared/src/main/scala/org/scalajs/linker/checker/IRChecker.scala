@@ -171,7 +171,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         else if (superClass.kind == ClassKind.NativeJSClass && superClass.jsNativeLoadSpec.isEmpty)
           reportError(i"Native super class ${superClass.name} must have a native load spec")
       } { tree =>
-        val env = Env.fromSignature(NoType, classDef.jsClassCaptures, Nil)
+        val env = Env.fromSignature(hasNewTarget = false, NoType, classDef.jsClassCaptures, Nil)
         typecheckExpect(tree, env, AnyType)
       }
     } else {
@@ -389,7 +389,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       val inConstructorOf =
         if (isConstructor) Some(classDef.name.name)
         else None
-      Env.fromSignature(thisType, None, params, inConstructorOf)
+      Env.fromSignature(hasNewTarget = false, thisType, None, params, inConstructorOf)
     }
 
     body.fold {
@@ -441,7 +441,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         else ClassType(clazz.name)
       }
 
-      val bodyEnv = Env.fromSignature(thisType, clazz.jsClassCaptures, params ++ restParam)
+      val bodyEnv = Env.fromSignature(hasNewTarget = false, thisType,
+          clazz.jsClassCaptures, params ++ restParam)
       typecheckExpect(body, bodyEnv, AnyType)
     }
   }
@@ -469,8 +470,9 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         (JSSuperConstructorCall(Nil)(methodDef.pos), Nil)
     }
 
-    val initialEnv = Env.fromSignature(NoType, clazz.jsClassCaptures,
-        params ++ restParam, inConstructorOf = Some(clazz.name))
+    val initialEnv = Env.fromSignature(hasNewTarget = true, NoType,
+        clazz.jsClassCaptures, params ++ restParam,
+        inConstructorOf = Some(clazz.name))
 
     val preparedEnv = typecheckBlockTrees(prepStats, initialEnv)
 
@@ -506,7 +508,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       else ClassType(clazz.name)
 
     getterBody.foreach { getterBody =>
-      val getterBodyEnv = Env.fromSignature(thisType, clazz.jsClassCaptures, Nil)
+      val getterBodyEnv = Env.fromSignature(hasNewTarget = false, thisType,
+          clazz.jsClassCaptures, Nil)
       typecheckExpect(getterBody, getterBodyEnv, AnyType)
     }
 
@@ -516,8 +519,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
         reportError("Setter argument of exported property def has type "+
             i"${setterArg.ptpe}, but must be Any")
 
-      val setterBodyEnv = Env.fromSignature(thisType, clazz.jsClassCaptures,
-          List(setterArg))
+      val setterBodyEnv = Env.fromSignature(hasNewTarget = false, thisType,
+          clazz.jsClassCaptures, List(setterArg))
       typecheck(setterBody, setterBodyEnv)
     }
   }
@@ -579,7 +582,7 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
     checkJSParamDefs(params, restParam)
 
-    val bodyEnv = Env.fromSignature(NoType, None, params ++ restParam)
+    val bodyEnv = Env.fromSignature(hasNewTarget = false, NoType, None, params ++ restParam)
     typecheckExpect(body, bodyEnv, AnyType)
   }
 
@@ -1032,6 +1035,10 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
       case JSImportCall(arg) =>
         typecheckExpr(arg, env)
 
+      case JSNewTarget() =>
+        if (!env.hasNewTarget)
+          reportError(i"Cannot refer to `new.target` outside of a JS class constructor or non-arrow function")
+
       case JSImportMeta() =>
 
       case LoadJSConstructor(className) =>
@@ -1140,8 +1147,9 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
 
           checkJSParamDefs(params, restParam)
 
+          val hasNewTarget = !arrow
           val thisType = if (arrow) NoType else AnyType
-          val bodyEnv = Env.fromSignature(thisType, None, captureParams ++ params ++ restParam)
+          val bodyEnv = Env.fromSignature(hasNewTarget, thisType, None, captureParams ++ params ++ restParam)
           typecheckExpect(body, bodyEnv, AnyType)
         }
 
@@ -1314,6 +1322,8 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
   }
 
   private class Env(
+      /** Whether there is a valid `new.target` in scope. */
+      val hasNewTarget: Boolean,
       /** Type of `this`. Can be NoType. */
       val thisTpe: Type,
       /** Local variables in scope (including through closures). */
@@ -1326,28 +1336,28 @@ private final class IRChecker(unit: LinkingUnit, logger: Logger) {
     import Env._
 
     def withThis(thisTpe: Type): Env =
-      new Env(thisTpe, this.locals, this.returnTypes, this.inConstructorOf)
+      new Env(hasNewTarget, thisTpe, this.locals, this.returnTypes, this.inConstructorOf)
 
     def withLocal(localDef: LocalDef): Env = {
-      new Env(thisTpe, locals + (localDef.name -> localDef), returnTypes,
-          this.inConstructorOf)
+      new Env(hasNewTarget, thisTpe, locals + (localDef.name -> localDef),
+          returnTypes, this.inConstructorOf)
     }
 
     def withLabeledReturnType(label: LabelName, returnType: Type): Env =
-      new Env(this.thisTpe, this.locals,
+      new Env(hasNewTarget, this.thisTpe, this.locals,
           returnTypes + (label -> returnType), this.inConstructorOf)
   }
 
   private object Env {
-    val empty: Env = new Env(NoType, Map.empty, Map.empty, None)
+    val empty: Env = new Env(hasNewTarget = false, NoType, Map.empty, Map.empty, None)
 
-    def fromSignature(thisType: Type, jsClassCaptures: Option[List[ParamDef]],
+    def fromSignature(hasNewTarget: Boolean, thisType: Type, jsClassCaptures: Option[List[ParamDef]],
         params: List[ParamDef], inConstructorOf: Option[ClassName] = None): Env = {
       val allParams = jsClassCaptures.getOrElse(Nil) ::: params
       val paramLocalDefs =
         for (p @ ParamDef(ident, _, tpe, mutable) <- allParams)
           yield ident.name -> LocalDef(ident.name, tpe, mutable)
-      new Env(thisType, paramLocalDefs.toMap, Map.empty, inConstructorOf)
+      new Env(hasNewTarget, thisType, paramLocalDefs.toMap, Map.empty, inConstructorOf)
     }
   }
 

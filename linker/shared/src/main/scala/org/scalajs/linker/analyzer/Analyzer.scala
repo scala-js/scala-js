@@ -29,7 +29,7 @@ import org.scalajs.ir.Trees.{MemberNamespace, JSNativeLoadSpec}
 import org.scalajs.ir.Types.ClassRef
 
 import org.scalajs.linker._
-import org.scalajs.linker.interface.{ModuleKind, ModuleInitializer}
+import org.scalajs.linker.interface.{ESVersion, ModuleKind, ModuleInitializer}
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
 import org.scalajs.linker.standard._
 import org.scalajs.linker.standard.ModuleSet.ModuleID
@@ -1352,6 +1352,10 @@ private final class Analyzer(config: CommonPhaseConfig,
           classInfo.useJSNativeMember(member)
             .foreach(addLoadSpec(externalDependencies, _))
       }
+    }
+
+    if (data.accessedNewTarget && config.coreSpec.esFeatures.esVersion < ESVersion.ES2015) {
+      _errors += NewTargetWithoutES2015Support(from)
     }
 
     if (data.accessedImportMeta && config.coreSpec.moduleKind != ModuleKind.ESModule) {

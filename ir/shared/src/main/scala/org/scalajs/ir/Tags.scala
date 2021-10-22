@@ -118,6 +118,10 @@ private[ir] object Tags {
 
   final val TagJSImportMeta = TagClone + 1
 
+  // New in 1.8
+
+  final val TagJSNewTarget = TagJSImportMeta + 1
+
   // Tags for member defs
 
   final val TagFieldDef = 1

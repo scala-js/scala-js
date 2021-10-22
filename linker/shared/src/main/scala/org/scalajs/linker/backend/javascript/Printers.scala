@@ -377,6 +377,9 @@ object Printers {
           print(arg)
           print(')')
 
+        case NewTarget() =>
+          print("new.target")
+
         case ImportMeta()  =>
           print("import.meta")
 

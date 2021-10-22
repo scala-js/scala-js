@@ -46,7 +46,9 @@ abstract class JSPrimitives {
 
   final val UNITVAL = JS_NATIVE + 1 // () value, which is undefined
 
-  final val JS_IMPORT = UNITVAL + 1        // js.import.apply(specifier)
+  final val JS_NEW_TARGET = UNITVAL + 1 // js.new.target
+
+  final val JS_IMPORT = JS_NEW_TARGET + 1  // js.import.apply(specifier)
   final val JS_IMPORT_META = JS_IMPORT + 1 // js.import.meta
 
   final val CONSTRUCTOROF = JS_IMPORT_META + 1                         // runtime.constructorOf(clazz)
@@ -92,6 +94,8 @@ abstract class JSPrimitives {
     addPrimitive(JSPackage_native, JS_NATIVE)
 
     addPrimitive(BoxedUnit_UNIT, UNITVAL)
+
+    addPrimitive(JSNew_target, JS_NEW_TARGET)
 
     addPrimitive(JSImport_apply, JS_IMPORT)
     addPrimitive(JSImport_meta, JS_IMPORT_META)
