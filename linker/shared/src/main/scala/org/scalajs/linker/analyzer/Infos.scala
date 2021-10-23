@@ -90,13 +90,15 @@ object Infos {
       val usedInstanceTests: List[ClassName],
       val accessedClassData: List[ClassName],
       val referencedClasses: List[ClassName],
+      val accessedNewTarget: Boolean,
       val accessedImportMeta: Boolean
   )
 
   object ReachabilityInfo {
     val Empty: ReachabilityInfo = {
       new ReachabilityInfo(Map.empty, Map.empty, Map.empty, Map.empty,
-          Map.empty, Map.empty, Map.empty, Nil, Nil, Nil, Nil, Nil, false)
+          Map.empty, Map.empty, Map.empty, Nil, Nil, Nil, Nil, Nil, false,
+          false)
     }
   }
 
@@ -159,6 +161,7 @@ object Infos {
     private val usedInstanceTests = mutable.Set.empty[ClassName]
     private val accessedClassData = mutable.Set.empty[ClassName]
     private val referencedClasses = mutable.Set.empty[ClassName]
+    private var accessedNewTarget = false
     private var accessedImportMeta = false
 
     def addPrivateJSFieldUsed(cls: ClassName, field: FieldName): this.type = {
@@ -308,6 +311,11 @@ object Infos {
       this
     }
 
+    def addAccessNewTarget(): this.type = {
+      accessedNewTarget = true
+      this
+    }
+
     def addAccessImportMeta(): this.type = {
       accessedImportMeta = true
       this
@@ -330,6 +338,7 @@ object Infos {
           usedInstanceTests = usedInstanceTests.toList,
           accessedClassData = accessedClassData.toList,
           referencedClasses = referencedClasses.toList,
+          accessedNewTarget = accessedNewTarget,
           accessedImportMeta = accessedImportMeta
       )
     }
@@ -571,6 +580,9 @@ object Infos {
 
             case JSPrivateSelect(qualifier, className, field) =>
               builder.addPrivateJSFieldUsed(className, field.name)
+
+            case JSNewTarget() =>
+              builder.addAccessNewTarget()
 
             case JSImportMeta() =>
               builder.addAccessImportMeta()

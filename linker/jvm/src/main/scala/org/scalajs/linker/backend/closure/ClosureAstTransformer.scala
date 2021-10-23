@@ -344,6 +344,8 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
 
       case ImportCall(arg) =>
         new Node(Token.DYNAMIC_IMPORT, transformExpr(arg))
+      case NewTarget() =>
+        new Node(Token.NEW_TARGET)
       case Delete(prop) =>
         new Node(Token.DELPROP, transformExpr(prop))
       case UnaryOp(op, lhs) =>

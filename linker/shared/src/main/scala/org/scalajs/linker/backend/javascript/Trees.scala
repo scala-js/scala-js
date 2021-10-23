@@ -249,6 +249,9 @@ object Trees {
   sealed case class ImportCall(arg: Tree)(implicit val pos: Position)
       extends Tree
 
+  /** Meta-property `new.target`. */
+  sealed case class NewTarget()(implicit val pos: Position) extends Tree
+
   /** Meta-property `import.meta`. */
   sealed case class ImportMeta()(implicit val pos: Position) extends Tree
 

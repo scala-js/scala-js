@@ -672,6 +672,19 @@ object Trees {
     val tpe = AnyType // it is a JavaScript Promise
   }
 
+  /** JavaScript meta-property `new.target`.
+   *
+   *  This form is its own node, rather than using something like
+   *  {{{
+   *  JSSelect(JSNew(), StringLiteral("target"))
+   *  }}}
+   *  because `new` is not a first-class term in JavaScript. `new.target`
+   *  is a dedicated syntactic form that cannot be dissociated.
+   */
+  sealed case class JSNewTarget()(implicit val pos: Position) extends Tree {
+    val tpe = AnyType
+  }
+
   /** JavaScript meta-property `import.meta`.
    *
    *  This form is its own node, rather than using something like

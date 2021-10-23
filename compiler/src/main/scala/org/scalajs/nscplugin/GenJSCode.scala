@@ -5155,6 +5155,18 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           }
           genAsInstanceOf(typeofExpr, StringClass.tpe)
 
+        case JS_NEW_TARGET =>
+          // js.new.target
+          val valid = currentMethodSym.isClassConstructor && isNonNativeJSClass(currentClassSym)
+          if (!valid) {
+            reporter.error(pos,
+                "Illegal use of js.`new`.target.\n" +
+                "It can only be used in the constructor of a JS class, " +
+                "as a statement or in the rhs of a val or var.\n" +
+                "It cannot be used inside a lambda or by-name parameter, nor in any other location.")
+          }
+          js.JSNewTarget()
+
         case JS_IMPORT =>
           // js.import(arg)
           val arg = genArgs1

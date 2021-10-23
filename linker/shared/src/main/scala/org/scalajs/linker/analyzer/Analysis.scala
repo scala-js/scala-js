@@ -200,6 +200,8 @@ object Analysis {
 
   final case class DynamicImportWithoutModuleSupport(from: From) extends Error
 
+  final case class NewTargetWithoutES2015Support(from: From) extends Error
+
   final case class ImportMetaWithoutESModule(from: From) extends Error
 
   sealed trait From
@@ -259,6 +261,8 @@ object Analysis {
         moduleIDs.map(_.id).mkString("[", ", ", "]")
       case DynamicImportWithoutModuleSupport(_) =>
         "Uses dynamic import but module support is disabled"
+      case NewTargetWithoutES2015Support(_) =>
+        "Uses new.target with an ECMAScript version older than ES 2015"
       case ImportMetaWithoutESModule(_) =>
         "Uses import.meta with a module kind other than ESModule"
     }

@@ -1953,10 +1953,13 @@ object Build {
           case FullOptStage => (scalaJSLinkerConfig in (Compile, fullLinkJS)).value
         }
 
+        val esVersion = linkerConfig.esFeatures.esVersion
         val moduleKind = linkerConfig.moduleKind
         val hasModules = moduleKind != ModuleKind.NoModule
 
         collectionsEraDependentDirectory(scalaV, testDir) ::
+        includeIf(testDir / "require-new-target",
+            esVersion >= ESVersion.ES2015) :::
         includeIf(testDir / "require-modules",
             hasModules) :::
         includeIf(testDir / "require-multi-modules",

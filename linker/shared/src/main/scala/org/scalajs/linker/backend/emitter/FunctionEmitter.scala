@@ -1222,6 +1222,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         // Atomic expressions
         case _: Literal       => true
         case _: This          => true
+        case _: JSNewTarget   => true
         case _: JSLinkingInfo => true
 
         // Vars (side-effect free, pure if immutable)
@@ -2754,6 +2755,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case JSImportCall(arg) =>
           js.ImportCall(transformExprNoChar(arg))
+
+        case JSNewTarget() =>
+          js.NewTarget()
 
         case JSImportMeta() =>
           js.ImportMeta()

@@ -638,6 +638,9 @@ object Printers {
           print(arg)
           print(')')
 
+        case JSNewTarget() =>
+          print("new.target")
+
         case JSImportMeta() =>
           print("import.meta")
 
