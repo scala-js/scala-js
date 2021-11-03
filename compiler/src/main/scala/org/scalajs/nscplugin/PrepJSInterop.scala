@@ -912,12 +912,14 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
             if (shouldCheckLiterals)
               checkJSGlobalLiteral(annot)
             val pathName = annot.stringArg(0).getOrElse {
-              val needsExplicitJSName = {
-                (enclosingOwner is OwnerKind.ScalaMod) &&
-                !sym.owner.isPackageObjectClass
-              }
-
-              if (needsExplicitJSName) {
+              val symTermName = sym.name.dropModule.toTermName.dropLocal
+              if (symTermName == nme.apply) {
+                reporter.error(annot.pos,
+                    "Native JS definitions named 'apply' must have an explicit name in @JSGlobal")
+              } else if (symTermName.endsWith(nme.SETTER_SUFFIX)) {
+                reporter.error(annot.pos,
+                    "Native JS definitions with a name ending in '_=' must have an explicit name in @JSGlobal")
+              } else if ((enclosingOwner is OwnerKind.ScalaMod) && !sym.owner.isPackageObjectClass) {
                 reporter.error(annot.pos,
                     "Native JS members inside non-native objects " +
                     "must have an explicit name in @JSGlobal")
