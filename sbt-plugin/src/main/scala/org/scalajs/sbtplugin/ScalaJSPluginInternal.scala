@@ -48,23 +48,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
   import ScalaJSPlugin.autoImport.{ModuleKind => _, _}
 
-  private val baseRunConfig: RunConfig = {
-    /* #4560 Explicitly redirect out/err to System.out/System.err, instead of
-     * relying on `inheritOut` and `inheritErr`, so that streams installed with
-     * `System.setOut` and `System.setErr` are always taken into account.
-     * sbt installs such alternative outputs when it runs in server mode.
-     */
-    val onOutputStream: RunConfig.OnOutputStream = { (out, err) =>
-      out.foreach(o => new PipeOutputThread(o, System.out).start())
-      err.foreach(e => new PipeOutputThread(e, System.err).start())
-    }
-
-    RunConfig()
-      .withOnOutputStream(onOutputStream)
-      .withInheritOut(false)
-      .withInheritErr(false)
-  }
-
   @tailrec
   final private def registerResource[T <: AnyRef](
       l: AtomicReference[List[T]], r: T): r.type = {
@@ -567,13 +550,46 @@ private[sbtplugin] object ScalaJSPluginInternal {
         log.debug(s"with JSEnv ${env.name}")
 
         val input = jsEnvInput.value
-        val config = baseRunConfig.withLogger(sbtLogger2ToolsLogger(log))
+
+        /* The list of threads that are piping output to System.out and
+         * System.err. This is not an AtomicReference or any other thread-safe
+         * structure because the `onOutputStream` callback is always called
+         * within the thread that calls `env.start()`.
+         */
+        var pipeOutputThreads: List[Thread] = Nil
+
+        /* #4560 Explicitly redirect out/err to System.out/System.err, instead
+         * of relying on `inheritOut` and `inheritErr`, so that streams
+         * installed with `System.setOut` and `System.setErr` are always taken
+         * into account. sbt installs such alternative outputs when it runs in
+         * server mode.
+         */
+        val config = RunConfig()
+          .withLogger(sbtLogger2ToolsLogger(log))
+          .withInheritOut(false)
+          .withInheritErr(false)
+          .withOnOutputStream { (out, err) =>
+            for ((optInput, output) <- List(out -> System.out, err -> System.err)) {
+              for (input <- optInput) {
+                val pipeOutputThread = new PipeOutputThread(input, output)
+                pipeOutputThreads ::= pipeOutputThread
+                pipeOutputThread.start()
+              }
+            }
+          }
 
         val run = env.start(input, config)
 
         enhanceNotInstalledException(resolvedScoped.value, log) {
           Await.result(run.future, Duration.Inf)
         }
+
+        /* Wait for the pipe output threads to be done, to make sure that we
+         * do not finish the `run` task before *all* output has been
+         * transferred to System.out and System.err.
+         */
+        for (pipeOutputThread <- pipeOutputThreads)
+          pipeOutputThread.join()
       },
 
       runMain := {
@@ -647,9 +663,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val frameworkNames = frameworks.map(_.implClassNames.toList).toList
 
         val log = streams.value.log
-        val runConfig = baseRunConfig.withLogger(sbtLogger2ToolsLogger(log))
         val config = TestAdapter.Config()
-          .withRunConfig(runConfig)
+          .withLogger(sbtLogger2ToolsLogger(log))
 
         val adapter = newTestAdapter(env, input, config)
         val frameworkAdapters = enhanceNotInstalledException(resolvedScoped.value, log) {

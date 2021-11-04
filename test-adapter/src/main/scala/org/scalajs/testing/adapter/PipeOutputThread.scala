@@ -10,14 +10,14 @@
  * additional information regarding copyright ownership.
  */
 
-package org.scalajs.sbtplugin
+package org.scalajs.testing.adapter
 
 import scala.annotation.tailrec
 
 import java.io._
 
-// !!! Duplicate code with adapter/PipeOutputThread.scala.
-private[sbtplugin] final class PipeOutputThread(from: InputStream, to: OutputStream) extends Thread {
+// !!! Duplicate code with sbtplugin/PipeOutputThread.scala.
+private[adapter] final class PipeOutputThread(from: InputStream, to: OutputStream) extends Thread {
   override def run(): Unit = {
     /* Copied from scala.sys.process.BasicIO.transferFully, except that we
      * don't have the try/catch around `flush()` because we do not use this
