@@ -6,6 +6,10 @@ export function ssum(x, y) {
   return x * x + y * y;
 }
 
+export function apply(x) {
+  return 3 * x;
+}
+
 export default function() {
   return 5;
 }

@@ -1162,6 +1162,15 @@ class JSInteropTest extends DirectTest with TestHelpers {
       def goo_=(x: Int*): Unit = js.native
       @js.native @JSGlobal("hoo")
       def hoo_=(x: Int = 1): Unit = js.native
+
+      @js.native @JSImport("module.js", "foo")
+      def foo2_=(x: Int): Int = js.native
+      @js.native @JSImport("module.js", "bar")
+      def bar2_=(x: Int, y: Int): Unit = js.native
+      @js.native @JSImport("module.js", "goo")
+      def goo2_=(x: Int*): Unit = js.native
+      @js.native @JSImport("module.js", "hoo")
+      def hoo2_=(x: Int = 1): Unit = js.native
     }
     """ hasErrors
     """
@@ -1177,6 +1186,40 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:13: error: @js.native is not allowed on vars, lazy vals and setter defs
       |      def hoo_=(x: Int = 1): Unit = js.native
       |          ^
+      |newSource1.scala:16: error: @js.native is not allowed on vars, lazy vals and setter defs
+      |      def foo2_=(x: Int): Int = js.native
+      |          ^
+      |newSource1.scala:18: error: @js.native is not allowed on vars, lazy vals and setter defs
+      |      def bar2_=(x: Int, y: Int): Unit = js.native
+      |          ^
+      |newSource1.scala:20: error: @js.native is not allowed on vars, lazy vals and setter defs
+      |      def goo2_=(x: Int*): Unit = js.native
+      |          ^
+      |newSource1.scala:22: error: @js.native is not allowed on vars, lazy vals and setter defs
+      |      def hoo2_=(x: Int = 1): Unit = js.native
+      |          ^
+    """
+
+    // containsErrors because some versions of the compiler use `_=` and some use `_=' (notice the quotes)
+    """
+    object Container {
+      @js.native @JSGlobal("foo")
+      val foo_= : Int = js.native
+    }
+    """ containsErrors
+    """
+      |newSource1.scala:7: error: Names of vals or vars may not end in `_=
+    """
+
+    // containsErrors because some versions of the compiler use `_=` and some use `_=' (notice the quotes)
+    """
+    object Container {
+      @js.native @JSImport("module.js")
+      val foo_= : Int = js.native
+    }
+    """ containsErrors
+    """
+      |newSource1.scala:7: error: Names of vals or vars may not end in `_=
     """
   }
 
@@ -1848,6 +1891,11 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
     @js.native
     abstract class B extends js.Object
+
+    object Container {
+      @js.native
+      class C extends js.Object
+    }
     """ hasErrors
     """
       |newSource1.scala:6: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
@@ -1856,6 +1904,9 @@ class JSInteropTest extends DirectTest with TestHelpers {
       |newSource1.scala:9: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
       |    abstract class B extends js.Object
       |                   ^
+      |newSource1.scala:13: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
+      |      class C extends js.Object
+      |            ^
     """
   }
 
@@ -1863,190 +1914,643 @@ class JSInteropTest extends DirectTest with TestHelpers {
     """
     @js.native
     object A extends js.Object
+
+    object Container {
+      @js.native
+      object B extends js.Object
+    }
     """ hasErrors
     """
       |newSource1.scala:6: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
       |    object A extends js.Object
       |           ^
+      |newSource1.scala:10: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
+      |      object B extends js.Object
+      |             ^
     """
   }
 
-  @Test def noNativeClassObjectWithoutExplicitNameInsideScalaObject: Unit = {
-
-    """
-    object A {
-      @js.native
-      class B extends js.Object
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
-      |      class B extends js.Object
-      |            ^
-    """
-
-    """
-    object A {
-      @js.native
-      object B extends js.Object
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
-      |      object B extends js.Object
-      |             ^
-    """
-
-    """
-    object A {
-      @js.native
-      @JSGlobal
-      class B extends js.Object
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: Native JS members inside non-native objects must have an explicit name in @JSGlobal
-      |      @JSGlobal
-      |       ^
-    """
-
-    """
-    object A {
-      @js.native
-      @JSGlobal
-      object B extends js.Object
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: Native JS members inside non-native objects must have an explicit name in @JSGlobal
-      |      @JSGlobal
-      |       ^
-    """
-
-    // From issue #2401
-    """
-    package object A {
-      @js.native
-      object B extends js.Object
-
-      @js.native
-      @JSGlobal
-      object C extends js.Object
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
-      |      object B extends js.Object
-      |             ^
-    """
-
-    """
-    package object A {
-      @js.native
-      class B extends js.Object
-
-      @js.native
-      @JSGlobal
-      class C extends js.Object
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:7: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
-      |      class B extends js.Object
-      |            ^
-    """
-
-    """
-    object A {
-      @JSName("InnerB")
-      @js.native
-      class B extends js.Object
-
-      @JSName("InnerC")
-      @js.native
-      abstract class C extends js.Object
-
-      @JSName("InnerD")
-      @js.native
-      object D extends js.Object
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:6: error: @JSName can only be used on members of JS types.
-      |      @JSName("InnerB")
-      |       ^
-      |newSource1.scala:8: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
-      |      class B extends js.Object
-      |            ^
-      |newSource1.scala:10: error: @JSName can only be used on members of JS types.
-      |      @JSName("InnerC")
-      |       ^
-      |newSource1.scala:12: error: Native JS classes, vals and defs must have exactly one annotation among @JSGlobal and @JSImport.
-      |      abstract class C extends js.Object
-      |                     ^
-      |newSource1.scala:14: error: @JSName can only be used on members of JS types.
-      |      @JSName("InnerD")
-      |       ^
-      |newSource1.scala:16: error: Native JS objects must have exactly one annotation among @JSGlobal, @JSImport and @JSGlobalScope.
-      |      object D extends js.Object
-      |             ^
-    """
-
-    """
-    object A {
-      @JSGlobal("InnerB")
-      @js.native
-      class B extends js.Object
-
-      @JSGlobal("InnerC")
-      @js.native
-      object C extends js.Object
-    }
-    """.hasNoWarns()
-
-    """
-    object A {
-      @JSImport("InnerB", JSImport.Namespace)
-      @js.native
-      class B extends js.Object
-
-      @JSImport("InnerC", JSImport.Namespace)
-      @js.native
-      object C extends js.Object
-    }
-    """.hasNoWarns()
-
-    """
-    object A {
-      @JSImport("InnerB", JSImport.Namespace, globalFallback = "Foo")
-      @js.native
-      class B extends js.Object
-
-      @JSImport("InnerC", JSImport.Namespace, globalFallback = "Foo")
-      @js.native
-      object C extends js.Object
-    }
-    """.hasNoWarns()
-
-    """
-    object A {
-      @js.native
-      trait B extends js.Object
-    }
-    """.hasNoWarns()
+  @Test def noNativeDefinitionNamedApplyWithoutExplicitName: Unit = {
 
     """
     @js.native
     @JSGlobal
-    object A extends js.Object {
+    class apply extends js.Object
+
+    @js.native
+    @JSGlobal
+    object apply extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: Native JS definitions named 'apply' must have an explicit name in @JSGlobal
+      |    @JSGlobal
+      |     ^
+      |newSource1.scala:10: error: Native JS definitions named 'apply' must have an explicit name in @JSGlobal
+      |    @JSGlobal
+      |     ^
+    """
+
+    """
+    @js.native
+    @JSImport("foo.js")
+    class apply extends js.Object
+
+    @js.native
+    @JSImport("foo.js")
+    object apply extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: Native JS definitions named 'apply' must have an explicit name in @JSImport
+      |    @JSImport("foo.js")
+      |     ^
+      |newSource1.scala:10: error: Native JS definitions named 'apply' must have an explicit name in @JSImport
+      |    @JSImport("foo.js")
+      |     ^
+    """
+
+    """
+    object A {
       @js.native
-      class B extends js.Object
+      @JSGlobal
+      class apply extends js.Object
 
       @js.native
-      trait C extends js.Object
+      @JSGlobal
+      object apply extends js.Object
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions named 'apply' must have an explicit name in @JSGlobal
+      |      @JSGlobal
+      |       ^
+      |newSource1.scala:11: error: Native JS definitions named 'apply' must have an explicit name in @JSGlobal
+      |      @JSGlobal
+      |       ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSImport("foo.js")
+      class apply extends js.Object
 
       @js.native
-      object D extends js.Object
+      @JSImport("foo.js")
+      object apply extends js.Object
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions named 'apply' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+      |newSource1.scala:11: error: Native JS definitions named 'apply' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+    """
+
+    """
+    package object A {
+      @js.native
+      @JSGlobal
+      class apply extends js.Object
+
+      @js.native
+      @JSGlobal
+      object apply extends js.Object
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions named 'apply' must have an explicit name in @JSGlobal
+      |      @JSGlobal
+      |       ^
+      |newSource1.scala:11: error: Native JS definitions named 'apply' must have an explicit name in @JSGlobal
+      |      @JSGlobal
+      |       ^
+    """
+
+    """
+    package object A {
+      @js.native
+      @JSImport("foo.js")
+      class apply extends js.Object
+
+      @js.native
+      @JSImport("foo.js")
+      object apply extends js.Object
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions named 'apply' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+      |newSource1.scala:11: error: Native JS definitions named 'apply' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSGlobal
+      val apply: Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions named 'apply' must have an explicit name in @JSGlobal
+      |      @JSGlobal
+      |       ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSImport("foo.js")
+      val apply: Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions named 'apply' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSGlobal
+      def apply: Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions named 'apply' must have an explicit name in @JSGlobal
+      |      @JSGlobal
+      |       ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSImport("foo.js")
+      def apply: Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions named 'apply' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSGlobal
+      def apply(x: Int): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions named 'apply' must have an explicit name in @JSGlobal
+      |      @JSGlobal
+      |       ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSImport("foo.js")
+      def apply(x: Int): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions named 'apply' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+    """
+
+    """
+    @JSGlobal("apply")
+    @js.native
+    class apply extends js.Object
+
+    @JSGlobal("apply")
+    @js.native
+    object apply extends js.Object
+
+    object A {
+      @JSGlobal("apply")
+      @js.native
+      class apply extends js.Object
+
+      @JSGlobal("apply")
+      @js.native
+      object apply extends js.Object
+    }
+
+    object B {
+      @JSGlobal("apply")
+      @js.native
+      val apply: Int = js.native
+    }
+
+    object C {
+      @JSGlobal("apply")
+      @js.native
+      def apply: Int = js.native
+    }
+
+    object D {
+      @JSGlobal("apply")
+      @js.native
+      def apply(x: Int): Int = js.native
+    }
+    """.hasNoWarns()
+
+    """
+    @JSImport("foo.js", "apply")
+    @js.native
+    class apply extends js.Object
+
+    @JSImport("foo.js", "apply")
+    @js.native
+    object apply extends js.Object
+
+    object A {
+      @JSImport("foo.js", "apply")
+      @js.native
+      class apply extends js.Object
+
+      @JSImport("foo.js", "apply")
+      @js.native
+      object apply extends js.Object
+    }
+
+    object B {
+      @JSImport("foo.js", "apply")
+      @js.native
+      val apply: Int = js.native
+    }
+
+    object C {
+      @JSImport("foo.js", "apply")
+      @js.native
+      def apply: Int = js.native
+    }
+
+    object D {
+      @JSImport("foo.js", "apply")
+      @js.native
+      def apply(x: Int): Int = js.native
+    }
+    """.hasNoWarns()
+
+    """
+    @JSImport("foo.js", "apply", globalFallback = "apply")
+    @js.native
+    class apply extends js.Object
+
+    @JSImport("foo.js", "apply", globalFallback = "apply")
+    @js.native
+    object apply extends js.Object
+
+    object A {
+      @JSImport("foo.js", "apply", globalFallback = "apply")
+      @js.native
+      class apply extends js.Object
+
+      @JSImport("foo.js", "apply", globalFallback = "apply")
+      @js.native
+      object apply extends js.Object
+    }
+    """.hasNoWarns()
+
+  }
+
+  @Test def noNativeDefinitionWithSetterNameWithoutExplicitName: Unit = {
+
+    """
+    @js.native
+    @JSGlobal
+    class foo_= extends js.Object
+
+    @js.native
+    @JSGlobal
+    object foo_= extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSGlobal
+      |    @JSGlobal
+      |     ^
+      |newSource1.scala:10: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSGlobal
+      |    @JSGlobal
+      |     ^
+    """
+
+    """
+    @js.native
+    @JSImport("foo.js")
+    class foo_= extends js.Object
+
+    @js.native
+    @JSImport("foo.js")
+    object foo_= extends js.Object
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSImport
+      |    @JSImport("foo.js")
+      |     ^
+      |newSource1.scala:10: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSImport
+      |    @JSImport("foo.js")
+      |     ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSGlobal
+      class foo_= extends js.Object
+
+      @js.native
+      @JSGlobal
+      object foo_= extends js.Object
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSGlobal
+      |      @JSGlobal
+      |       ^
+      |newSource1.scala:11: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSGlobal
+      |      @JSGlobal
+      |       ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSImport("foo.js")
+      class foo_= extends js.Object
+
+      @js.native
+      @JSImport("foo.js")
+      object foo_= extends js.Object
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+      |newSource1.scala:11: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+    """
+
+    """
+    package object A {
+      @js.native
+      @JSGlobal
+      class foo_= extends js.Object
+
+      @js.native
+      @JSGlobal
+      object foo_= extends js.Object
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSGlobal
+      |      @JSGlobal
+      |       ^
+      |newSource1.scala:11: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSGlobal
+      |      @JSGlobal
+      |       ^
+    """
+
+    """
+    package object A {
+      @js.native
+      @JSImport("foo.js")
+      class foo_= extends js.Object
+
+      @js.native
+      @JSImport("foo.js")
+      object foo_= extends js.Object
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+      |newSource1.scala:11: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+    """
+
+    // containsErrors because some versions of the compiler use `_=` and some use `_=' (notice the quotes)
+    """
+    object A {
+      @js.native
+      @JSGlobal
+      val foo_= : Int = js.native
+    }
+    """ containsErrors
+    """
+      |newSource1.scala:8: error: Names of vals or vars may not end in `_=
+    """
+
+    // containsErrors because some versions of the compiler use `_=` and some use `_=' (notice the quotes)
+    """
+    object A {
+      @js.native
+      @JSImport("foo.js")
+      val foo_= : Int = js.native
+    }
+    """ containsErrors
+    """
+      |newSource1.scala:8: error: Names of vals or vars may not end in `_=
+    """
+
+    // containsErrors because some versions of the compiler use `_=` and some use `_=' (notice the quotes)
+    """
+    object A {
+      @js.native
+      @JSGlobal
+      var foo_= : Int = js.native
+    }
+    """ containsErrors
+    """
+      |newSource1.scala:8: error: Names of vals or vars may not end in `_=
+    """
+
+    """
+    object A {
+      @js.native
+      @JSGlobal
+      def foo_= : Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSGlobal
+      |      @JSGlobal
+      |       ^
+      |newSource1.scala:8: error: @js.native is not allowed on vars, lazy vals and setter defs
+      |      def foo_= : Int = js.native
+      |          ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSGlobal("foo")
+      def foo_= : Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: @js.native is not allowed on vars, lazy vals and setter defs
+      |      def foo_= : Int = js.native
+      |          ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSImport("foo.js")
+      def foo_= : Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+      |newSource1.scala:8: error: @js.native is not allowed on vars, lazy vals and setter defs
+      |      def foo_= : Int = js.native
+      |          ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSImport("foo.js", "foo")
+      def foo_= : Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: @js.native is not allowed on vars, lazy vals and setter defs
+      |      def foo_= : Int = js.native
+      |          ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSGlobal
+      def foo_=(x: Int): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSGlobal
+      |      @JSGlobal
+      |       ^
+      |newSource1.scala:8: error: @js.native is not allowed on vars, lazy vals and setter defs
+      |      def foo_=(x: Int): Int = js.native
+      |          ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSGlobal("foo")
+      def foo_=(x: Int): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: @js.native is not allowed on vars, lazy vals and setter defs
+      |      def foo_=(x: Int): Int = js.native
+      |          ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSImport("foo.js")
+      def foo_=(x: Int): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:7: error: Native JS definitions with a name ending in '_=' must have an explicit name in @JSImport
+      |      @JSImport("foo.js")
+      |       ^
+      |newSource1.scala:8: error: @js.native is not allowed on vars, lazy vals and setter defs
+      |      def foo_=(x: Int): Int = js.native
+      |          ^
+    """
+
+    """
+    object A {
+      @js.native
+      @JSImport("foo.js", "foo")
+      def foo_=(x: Int): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:8: error: @js.native is not allowed on vars, lazy vals and setter defs
+      |      def foo_=(x: Int): Int = js.native
+      |          ^
+    """
+
+    """
+    @JSGlobal("foo")
+    @js.native
+    class foo_= extends js.Object
+
+    @JSGlobal("foo")
+    @js.native
+    object foo_= extends js.Object
+
+    object A {
+      @JSGlobal("foo")
+      @js.native
+      class foo_= extends js.Object
+
+      @JSGlobal("foo")
+      @js.native
+      object foo_= extends js.Object
+    }
+    """.hasNoWarns()
+
+    """
+    @JSImport("foo.js", "foo_=")
+    @js.native
+    class foo_= extends js.Object
+
+    @JSImport("foo.js", "foo_=")
+    @js.native
+    object foo_= extends js.Object
+
+    object A {
+      @JSImport("foo.js", "foo_=")
+      @js.native
+      class foo_= extends js.Object
+
+      @JSImport("foo.js", "foo_=")
+      @js.native
+      object foo_= extends js.Object
+    }
+    """.hasNoWarns()
+
+    """
+    @JSImport("foo.js", "foo_=", globalFallback = "foo")
+    @js.native
+    class foo_= extends js.Object
+
+    @JSImport("foo.js", "foo_=", globalFallback = "foo")
+    @js.native
+    object foo_= extends js.Object
+
+    object A {
+      @JSImport("foo.js", "foo_=", globalFallback = "foo")
+      @js.native
+      class foo_= extends js.Object
+
+      @JSImport("foo.js", "foo_=", globalFallback = "foo")
+      @js.native
+      object foo_= extends js.Object
     }
     """.hasNoWarns()
 
