@@ -21,6 +21,7 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 import scala.util.control.NonFatal
 
+import java.io.{InputStream, OutputStream}
 import java.util.concurrent.atomic.AtomicReference
 
 import sbt._
@@ -553,10 +554,16 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
         /* The list of threads that are piping output to System.out and
          * System.err. This is not an AtomicReference or any other thread-safe
-         * structure because the `onOutputStream` callback is always called
-         * within the thread that calls `env.start()`.
+         * structure because:
+         * - `onOutputStream` is guaranteed to be called exactly once, and
+         * - `pipeOutputThreads` is only read once the run is completed
+         *   (although the JSEnv interface does not explicitly specify that the
+         *   call to `onOutputStream must happen before that, anything else is
+         *   just plain unreasonable).
+         * We only mark it as `@volatile` to ensure that there is an
+         * appropriate memory barrier between writing to it and reading it back.
          */
-        var pipeOutputThreads: List[Thread] = Nil
+        @volatile var pipeOutputThreads: List[Thread] = Nil
 
         /* #4560 Explicitly redirect out/err to System.out/System.err, instead
          * of relying on `inheritOut` and `inheritErr`, so that streams
@@ -569,27 +576,31 @@ private[sbtplugin] object ScalaJSPluginInternal {
           .withInheritOut(false)
           .withInheritErr(false)
           .withOnOutputStream { (out, err) =>
-            for ((optInput, output) <- List(out -> System.out, err -> System.err)) {
-              for (input <- optInput) {
-                val pipeOutputThread = new PipeOutputThread(input, output)
-                pipeOutputThreads ::= pipeOutputThread
-                pipeOutputThread.start()
-              }
-            }
+            pipeOutputThreads = (
+              out.map(PipeOutputThread.start(_, System.out)).toList :::
+              err.map(PipeOutputThread.start(_, System.err)).toList
+            )
           }
 
-        val run = env.start(input, config)
+        try {
+          val run = env.start(input, config)
 
-        enhanceNotInstalledException(resolvedScoped.value, log) {
-          Await.result(run.future, Duration.Inf)
+          enhanceNotInstalledException(resolvedScoped.value, log) {
+            Await.result(run.future, Duration.Inf)
+          }
+        } finally {
+          /* Wait for the pipe output threads to be done, to make sure that we
+           * do not finish the `run` task before *all* output has been
+           * transferred to System.out and System.err.
+           * We do that in a `finally` block so that the stdout and stderr
+           * streams are propagated even if the run finishes with a failure.
+           * `join()` itself does not throw except if the current thread is
+           * interrupted, which is not supposed to happen (if it does happen,
+           * the interrupted exception will shadow any error from the run).
+           */
+          for (pipeOutputThread <- pipeOutputThreads)
+            pipeOutputThread.join()
         }
-
-        /* Wait for the pipe output threads to be done, to make sure that we
-         * do not finish the `run` task before *all* output has been
-         * transferred to System.out and System.err.
-         */
-        for (pipeOutputThread <- pipeOutputThreads)
-          pipeOutputThread.join()
       },
 
       runMain := {

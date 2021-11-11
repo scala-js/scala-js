@@ -17,26 +17,29 @@ import scala.annotation.tailrec
 import java.io._
 
 // !!! Duplicate code with adapter/PipeOutputThread.scala.
-private[sbtplugin] final class PipeOutputThread(from: InputStream, to: OutputStream) extends Thread {
+private[sbtplugin] object PipeOutputThread {
+  def start(from: InputStream, to: OutputStream): Thread = {
+    val thread = new PipeOutputThread(from, to)
+    thread.start()
+    thread
+  }
+}
+
+private final class PipeOutputThread(from: InputStream, to: OutputStream) extends Thread {
   override def run(): Unit = {
-    /* Copied from scala.sys.process.BasicIO.transferFully, except that we
-     * don't have the try/catch around `flush()` because we do not use this
-     * method for stdin (only for stdout and stderr).
-     */
     try {
       val buffer = new Array[Byte](8192)
       @tailrec def loop(): Unit = {
         val byteCount = from.read(buffer)
         if (byteCount > 0) {
           to.write(buffer, 0, byteCount)
-          to.flush()
+          to.flush() // if the sender flushed (which we can't tell), we need to propagate the flush
           loop()
         }
       }
       loop()
-    } catch {
-      case _: InterruptedIOException => ()
+    } finally {
+      from.close()
     }
-    from.close()
   }
 }

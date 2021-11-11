@@ -20,6 +20,9 @@ object BinaryIncompatibilities {
   )
 
   val TestAdapter = TestCommon ++ Seq(
+      // private[adapter], not an issue
+      ProblemFilters.exclude[IncompatibleMethTypeProblem](
+          "org.scalajs.testing.adapter.JSEnvRPC.this"),
   )
 
   val Library = Seq(

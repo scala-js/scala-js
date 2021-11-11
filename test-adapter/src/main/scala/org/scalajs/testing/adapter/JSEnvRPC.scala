@@ -38,8 +38,8 @@ private[adapter] final class JSEnvRPC(
       .withInheritOut(false)
       .withInheritErr(false)
       .withOnOutputStream { (out, err) =>
-        out.foreach(o => new PipeOutputThread(o, System.out).start())
-        err.foreach(e => new PipeOutputThread(e, System.err).start())
+        out.foreach(o => PipeOutputThread.start(o, System.out))
+        err.foreach(e => PipeOutputThread.start(e, System.err))
       }
 
     jsenv.startWithCom(input, runConfig, handleMessage)
