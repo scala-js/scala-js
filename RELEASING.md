@@ -29,6 +29,8 @@
     - Announce on Twitter using the @scala_js account
     - Announce on [Gitter](https://gitter.im/scala-js/scala-js)
     - Cross-post as an Announcement in Scala Users ([example][7])
+    - Send a PR to Scala Steward to "unleash" the release by updating
+      [these lines][8] with the next possible version numbers
 
 [1]: https://github.com/scala-js/scala-js/issues?utf8=%E2%9C%93&q=is%3Aissue%20is%3Aclosed%20no%3Amilestone%20-label%3Ainvalid%20-label%3Aduplicate%20-label%3Aas-designed%20-label%3Aquestion%20-label%3Awontfix%20-label%3A%22can%27t%20reproduce%22%20-label%3A%22separate%20repo%22
 [2]: https://github.com/scala-js/scala-js/commit/c3520bb9dae46757a975cccd428a77b8d6e6a75e
@@ -36,3 +38,4 @@
 [5]: https://github.com/scala-js/scala-js/commit/c6c82e80f56bd2008ff8273088bbbbbbbc30f777
 [6]: https://github.com/scala-js/scala-js-website/commit/057f743c3fb8abe6077fb4debeeec45cd5c53d5d
 [7]: https://users.scala-lang.org/t/announcing-scala-js-1-4-0/7013
+[8]: https://github.com/scala-steward-org/scala-steward/blob/30f3217ce11bbb0208d70070e7d5f49a3b1a25f0/modules/core/src/main/resources/default.scala-steward.conf#L19-L73
