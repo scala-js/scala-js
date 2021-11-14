@@ -293,7 +293,6 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
       this match {
         case cls: Class =>
-          cls.isModuleClass = linkedClass.kind == ClassKind.ModuleClass
           cls.fields = linkedClass.fields
         case _          =>
       }
@@ -353,7 +352,6 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     var subclasses: collOps.ParIterable[Class] = collOps.emptyParIterable
     var isInstantiated: Boolean = false
 
-    var isModuleClass: Boolean = false
     var hasElidableModuleAccessor: Boolean = false
 
     var fields: List[AnyFieldDef] = Nil
@@ -475,7 +473,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         myInterface.tagStaticCallersOf(namespace, methodName)
 
       // Module class specifics
-      updateHasElidableModuleAccessor()
+      updateHasElidableModuleAccessor(linkedClass)
 
       // Inlineable class
       if (updateTryNewInlineable(linkedClass)) {
@@ -507,13 +505,15 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     }
 
     /** UPDATE PASS ONLY. */
-    def updateHasElidableModuleAccessor(): Unit = {
+    def updateHasElidableModuleAccessor(linkedClass: LinkedClass): Unit = {
       def lookupModuleConstructor: Option[MethodImpl] = {
         getInterface(className)
           .staticLike(MemberNamespace.Constructor)
           .methods
           .get(NoArgConstructorName)
       }
+
+      val isModuleClass = linkedClass.kind == ClassKind.ModuleClass
 
       hasElidableModuleAccessor =
         isAdHocElidableModuleAccessor(className) ||
@@ -584,7 +584,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
           myInterface.tagStaticCallersOf(namespace, methodName)
       }
 
-      updateHasElidableModuleAccessor()
+      updateHasElidableModuleAccessor(linkedClass)
       updateTryNewInlineable(linkedClass)
     }
 
