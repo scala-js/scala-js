@@ -155,9 +155,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
      * Easy, we don't have to notify anyone.
      */
     collOps.valuesForeach(neededInterfaces) { linkedClass =>
-      val interface = new InterfaceType(linkedClass.className)
+      val interface = new InterfaceType(linkedClass)
       collOps.put(interfaces, interface.className, interface)
-      interface.updateWith(linkedClass)
     }
 
     if (!batchMode) {
@@ -193,11 +192,10 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     val newChildrenByParent = collOps.emptyAccMap[ClassName, LinkedClass]
 
     collOps.valuesForeach(neededClasses) { linkedClass =>
-      linkedClass.superClass.fold {
+      linkedClass.superClass.fold[Unit] {
         assert(batchMode, "Trying to add java.lang.Object in incremental mode")
-        objectClass = new Class(None, linkedClass.className)
+        objectClass = new Class(None, linkedClass)
         classes += linkedClass.className -> objectClass
-        objectClass.setupAfterCreation(linkedClass)
       } { superClassName =>
         collOps.acc(newChildrenByParent, superClassName.name, linkedClass)
       }
@@ -234,14 +232,18 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
   /** Base class for [[IncOptimizer.Class]] and
    *  [[IncOptimizer.StaticLikeNamespace]].
    */
-  private abstract class MethodContainer(val className: ClassName,
+  private abstract class MethodContainer(linkedClass: LinkedClass,
       val namespace: MemberNamespace) {
+
+    val className: ClassName = linkedClass.className
 
     def thisType: Type =
       if (namespace.isStatic) NoType
       else ClassType(className)
 
     val methods = mutable.Map.empty[MethodName, MethodImpl]
+
+    updateWith(linkedClass)
 
     def optimizedDefs: List[Versioned[MethodDef]] = {
       (for {
@@ -322,10 +324,10 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
    *  maintains a list of its direct subclasses, so that the instances of
    *  [[Class]] form a tree of the class hierarchy.
    */
-  private final class Class(val superClass: Option[Class], _className: ClassName)
-      extends MethodContainer(_className, MemberNamespace.Public) {
+  private final class Class(val superClass: Option[Class], linkedClass: LinkedClass)
+      extends MethodContainer(linkedClass, MemberNamespace.Public) {
 
-    val myInterface = getInterface(_className)
+    val myInterface = getInterface(className)
 
     if (className == ObjectClass) {
       assert(superClass.isEmpty)
@@ -342,14 +344,16 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     val reverseParentChain: List[Class] =
       parentChain.reverse
 
-    var interfaces: Set[InterfaceType] = Set.empty
+    var interfaces: Set[InterfaceType] = linkedClass.ancestors.map(getInterface).toSet
     var subclasses: collOps.ParIterable[Class] = collOps.emptyParIterable
-    var isInstantiated: Boolean = false
+    var isInstantiated: Boolean = linkedClass.hasInstances
 
     var hasElidableModuleAccessor: Boolean = false
 
-    var fields: List[AnyFieldDef] = Nil
+    var fields: List[AnyFieldDef] = linkedClass.fields
     var tryNewInlineable: Option[OptimizerCore.InlineableClassStructure] = None
+
+    setupAfterCreation(linkedClass)
 
     override def toString(): String =
       className.nameString
@@ -490,10 +494,9 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       val subclassAcc = collOps.prepAdd(subclasses)
 
       collOps.foreach(getNewChildren(className)) { linkedClass =>
-        val cls = new Class(Some(this), linkedClass.className)
+        val cls = new Class(Some(this), linkedClass)
         collOps.add(subclassAcc, cls)
         classes += linkedClass.className -> cls
-        cls.setupAfterCreation(linkedClass)
         cls.walkForAdditions(getNewChildren)
       }
 
@@ -543,13 +546,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     }
 
     /** UPDATE PASS ONLY. */
-    def setupAfterCreation(linkedClass: LinkedClass): Unit = {
-
-      updateWith(linkedClass)
-      interfaces = linkedClass.ancestors.map(getInterface).toSet
-      fields = linkedClass.fields
-      isInstantiated = linkedClass.hasInstances
-
+    private[this] def setupAfterCreation(linkedClass: LinkedClass): Unit = {
       if (batchMode) {
         if (isInstantiated) {
           /* Only add the class to all its ancestor interfaces */
@@ -664,9 +661,9 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
   }
 
   /** Namespace for static members of a class. */
-  private final class StaticLikeNamespace(className: ClassName,
+  private final class StaticLikeNamespace(linkedClass: LinkedClass,
       namespace: MemberNamespace)
-      extends MethodContainer(className, namespace) {
+      extends MethodContainer(linkedClass, namespace) {
 
     /** BOTH PASSES. */
     final def lookupMethod(methodName: MethodName): Option[MethodImpl] =
@@ -685,8 +682,9 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
    *
    *  Fully concurrency safe unless otherwise noted.
    */
-  private final class InterfaceType(
-      val className: ClassName) extends Unregisterable {
+  private final class InterfaceType(linkedClass: LinkedClass) extends Unregisterable {
+
+    val className: ClassName = linkedClass.className
 
     private type MethodCallers = collOps.Map[MethodName, collOps.Map[MethodImpl, Unit]]
 
@@ -697,13 +695,13 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     private val staticCallers =
       mutable.ArrayBuffer.fill[MethodCallers](MemberNamespace.Count)(collOps.emptyMap)
 
-    private var _ancestors: List[ClassName] = className :: Nil
+    private var _ancestors: List[ClassName] = linkedClass.ancestors
 
     private val _instantiatedSubclasses = collOps.emptyMap[Class, Unit]
 
     private val staticLikes: Array[StaticLikeNamespace] = {
       Array.tabulate(MemberNamespace.Count) { ord =>
-        new StaticLikeNamespace(className, MemberNamespace.fromOrdinal(ord))
+        new StaticLikeNamespace(linkedClass, MemberNamespace.fromOrdinal(ord))
       }
     }
 
