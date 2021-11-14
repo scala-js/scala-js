@@ -291,12 +291,6 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         }
       }
 
-      this match {
-        case cls: Class =>
-          cls.fields = linkedClass.fields
-        case _          =>
-      }
-
       for (linkedMethodDef <- linkedMethodDefs) {
         val methodName = linkedMethodDef.value.methodName
 
@@ -423,6 +417,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
       val (addedMethods, changedMethods, deletedMethods) =
         updateWith(linkedClass)
+
+      fields = linkedClass.fields
 
       val oldInterfaces = interfaces
       val newInterfaces = linkedClass.ancestors.map(getInterface).toSet
@@ -551,7 +547,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
       updateWith(linkedClass)
       interfaces = linkedClass.ancestors.map(getInterface).toSet
-
+      fields = linkedClass.fields
       isInstantiated = linkedClass.hasInstances
 
       if (batchMode) {
