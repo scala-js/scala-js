@@ -297,6 +297,43 @@ class IncrementalTest {
         _ => MainTestModuleInitializers)
   }
 
+  @Test
+  def testInvalidateElidableModuleAccessors_Issue4593(): AsyncResult = await {
+    val FooModule = ClassName("Foo")
+
+    def fooCtor(pre: Boolean) = {
+      val superCtor = {
+        ApplyStatically(EAF.withConstructor(true),
+            This()(ClassType(FooModule)),
+            ObjectClass, MethodIdent(NoArgConstructorName),
+            Nil)(NoType)
+      }
+
+      val body =
+        if (pre) superCtor
+        else Block(superCtor, consoleLog(str("bar")))
+
+      MethodDef(MemberFlags.empty.withNamespace(MemberNamespace.Constructor),
+          MethodIdent(NoArgConstructorName), NON, Nil, NoType,
+          Some(body))(EOH, None)
+    }
+
+    def classDefs(pre: Boolean): Seq[ClassDef] = Seq(
+        mainTestClassDef(Block(
+          consoleLog(str("foo")),
+          LoadModule(FooModule)
+        )),
+        classDef(
+            FooModule,
+            kind = ClassKind.ModuleClass,
+            superClass = Some(ObjectClass),
+            memberDefs = List(fooCtor(pre))
+        )
+    )
+
+    testIncrementalBidirectional(classDefs(_), _ => MainTestModuleInitializers)
+  }
+
 }
 
 object IncrementalTest {

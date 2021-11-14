@@ -325,7 +325,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
    *  [[Class]] form a tree of the class hierarchy.
    */
   private final class Class(val superClass: Option[Class], linkedClass: LinkedClass)
-      extends MethodContainer(linkedClass, MemberNamespace.Public) {
+      extends MethodContainer(linkedClass, MemberNamespace.Public) with Unregisterable {
 
     val myInterface = getInterface(className)
 
@@ -348,7 +348,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     var subclasses: collOps.ParIterable[Class] = collOps.emptyParIterable
     var isInstantiated: Boolean = linkedClass.hasInstances
 
-    var hasElidableModuleAccessor: Boolean = false
+    private var hasElidableModuleAccessor: Boolean = computeHasElidableModuleAccessor(linkedClass)
+    private val hasElidableModuleAccessorAskers = collOps.emptyMap[MethodImpl, Unit]
 
     var fields: List[AnyFieldDef] = linkedClass.fields
     var tryNewInlineable: Option[OptimizerCore.InlineableClassStructure] = None
@@ -473,7 +474,12 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         myInterface.tagStaticCallersOf(namespace, methodName)
 
       // Module class specifics
-      updateHasElidableModuleAccessor(linkedClass)
+      val newHasElidableModuleAccessor = computeHasElidableModuleAccessor(linkedClass)
+      if (hasElidableModuleAccessor != newHasElidableModuleAccessor) {
+        hasElidableModuleAccessor = newHasElidableModuleAccessor
+        hasElidableModuleAccessorAskers.keysIterator.foreach(_.tag())
+        hasElidableModuleAccessorAskers.clear()
+      }
 
       // Inlineable class
       if (updateTryNewInlineable(linkedClass)) {
@@ -503,10 +509,16 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       subclasses = collOps.finishAdd(subclassAcc)
     }
 
+    def askHasElidableModuleAccessor(asker: MethodImpl): Boolean = {
+      hasElidableModuleAccessorAskers.put(asker, ())
+      asker.registerTo(this)
+      hasElidableModuleAccessor
+    }
+
     /** UPDATE PASS ONLY. */
-    def updateHasElidableModuleAccessor(linkedClass: LinkedClass): Unit = {
+    private def computeHasElidableModuleAccessor(linkedClass: LinkedClass): Boolean = {
       def lookupModuleConstructor: Option[MethodImpl] = {
-        getInterface(className)
+        myInterface
           .staticLike(MemberNamespace.Constructor)
           .methods
           .get(NoArgConstructorName)
@@ -514,9 +526,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
       val isModuleClass = linkedClass.kind == ClassKind.ModuleClass
 
-      hasElidableModuleAccessor =
-        isAdHocElidableModuleAccessor(className) ||
-        (isModuleClass && lookupModuleConstructor.exists(isElidableModuleConstructor))
+      isAdHocElidableModuleAccessor(className) ||
+      (isModuleClass && lookupModuleConstructor.exists(isElidableModuleConstructor))
     }
 
     /** UPDATE PASS ONLY. */
@@ -577,7 +588,6 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
           myInterface.tagStaticCallersOf(namespace, methodName)
       }
 
-      updateHasElidableModuleAccessor(linkedClass)
       updateTryNewInlineable(linkedClass)
     }
 
@@ -657,6 +667,10 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
             case none    => None
           }
       }
+    }
+
+    def unregisterDependee(dependee: MethodImpl): Unit = {
+      hasElidableModuleAccessorAskers.remove(dependee)
     }
   }
 
@@ -969,7 +983,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         getInterface(intfName).askAncestors(myself)
 
       protected def hasElidableModuleAccessor(moduleClassName: ClassName): Boolean =
-        classes(moduleClassName).hasElidableModuleAccessor
+        classes(moduleClassName).askHasElidableModuleAccessor(myself)
 
       protected def tryNewInlineableClass(
           className: ClassName): Option[OptimizerCore.InlineableClassStructure] = {
