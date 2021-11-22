@@ -115,9 +115,11 @@ final class StandardConfig private (
    *
    *  The header must satisfy the following constraints:
    *
-   *  - It must contain only valid JS whitespace and/or JS comments (single- or multi-line).
+   *  - It must contain only valid JS whitespace and/or JS comments (single- or
+   *    multi-line comment, or, at the very beginning, a hashbang comment).
    *  - It must not use new line characters that are not UNIX new lines (`"\n"`).
    *  - If non-empty, it must end with a new line.
+   *  - It must not contain unpaired surrogate characters (i.e., it must be a valid UTF-16 string).
    *
    *  Those requirements can be checked with [[StandardConfig.isValidJSHeader]].
    *
@@ -273,7 +275,8 @@ object StandardConfig {
    *
    *  A header is valid if and only if it satisfies the following constraints:
    *
-   *  - It must contain only valid JS whitespace and/or JS comments (single- or multi-line).
+   *  - It must contain only valid JS whitespace and/or JS comments (single- or
+   *    multi-line comment, or, at the very beginning, a hashbang comment).
    *  - It must not use new line characters that are not UNIX new lines (`"\n"`).
    *  - If non-empty, it must end with a new line.
    *  - It must not contain unpaired surrogate characters (i.e., it must be a valid UTF-16 string).
@@ -341,6 +344,17 @@ object StandardConfig {
             case _ =>
               return false
           }
+
+        /* Accept a hashbang comment, but only at the very beginning
+         * This is a Stage 3 proposal:
+         * https://github.com/tc39/proposal-hashbang
+         * Documentation on MDN:
+         * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#hashbang_comments
+         */
+        case '#' if i == 1 && len >= 2 && jsHeader.charAt(1) == '!' =>
+          i += 1
+          while (i != len && jsHeader.charAt(i) != '\n')
+            i += 1
 
         /* Accept JavaScript Whitespace that are not Unicode new lines
          * https://262.ecma-international.org/12.0/#sec-white-space

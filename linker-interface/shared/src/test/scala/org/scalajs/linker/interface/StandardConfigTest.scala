@@ -104,8 +104,32 @@ class StandardConfigTest {
     testInvalid("/* \uD834 */\n")
     testInvalid("/* \uDD1E */\n")
 
+    // Valid hashbang comments
+    testValid("#!/usr/bin/env node\n")
+    testValid("#!\n")
+    testValid("#! foo\n")
+    testValid("#! foo\tbar\n")
+    testValid("#! one\n// two\n")
+    testValid("#! α\n") // U+03B1 α Greek Small Letter Alpha
+    testValid("#! \uD834\uDD1E\n") // U+1D11E 𝄞 Musical Symbol G Clef
+
+    // Invalid hashbang comments
+    testInvalid("#!")
+    testInvalid("#! foo")
+    testInvalid("#! foo\nbar\n")
+    testInvalid("#! \uD834\n")
+    testInvalid("#! \uDD1E\n")
+    testInvalid("  \t #! foo\n")
+    testInvalid(" #!foo\n")
+    testInvalid("\n#!foo\n")
+    testInvalid("// bar\n#!foo\n")
+    testInvalid("#foo\n")
+    testInvalid("#")
+    testInvalid("#\n")
+    testInvalid("##foo\n")
+
     // Valid combination
-    testValid("  // foo\n\t/* foo bar\nbaz hello\n*/\n/**///foo\n")
+    testValid("#!foo\n  // foo\n\t/* foo bar\nbaz hello\n*/\n/**///foo\n")
 
     // Invalid combination
     testInvalid(" ! // foo\n\t/* foo bar\nbaz hello\n*/\n/**///foo\n")
@@ -114,5 +138,6 @@ class StandardConfigTest {
     testInvalid("  // foo\n\t/* foo bar\nbaz hello\n*/\n/**/!//foo\n")
     testInvalid("  // foo\n\t/* foo bar\nbaz hello\n*/\n/**//!/foo\n")
     testInvalid("  // foo\n\t/* foo bar\nbaz hello\n*/\n/**///foo\n!")
+    testInvalid("  // foo\n\t/* foo bar\nbaz hello\n*/\n#!foo\n/**///foo\n")
   }
 }
