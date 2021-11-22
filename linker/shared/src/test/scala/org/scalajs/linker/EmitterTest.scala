@@ -43,6 +43,7 @@ class EmitterTest {
     val t = "\t"
     val gClef = "\uD834\uDD1E"
     val header = s"""
+      |#!/usr/bin/env node
       |// foo
       |  $t
       |  /* bar
