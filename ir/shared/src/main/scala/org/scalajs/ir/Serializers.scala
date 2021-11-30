@@ -1231,12 +1231,19 @@ object Serializers {
         if (!hacks.use15) {
           body
         } else {
-          // #4442 Patch If and TryCatch nodes in statement position to have type NoType
+          /* #4442 and #4601: Patch Labeled, If, Match and TryCatch nodes in
+           * statement position to have type NoType. These 4 nodes are the
+           * control structures whose result type is explicitly specified (and
+           * not derived from their children like Block or TryFinally, or
+           * constant like While).
+           */
           new Transformers.Transformer {
             override def transform(tree: Tree, isStat: Boolean): Tree = {
               val newTree = super.transform(tree, isStat)
               if (isStat && newTree.tpe != NoType) {
                 newTree match {
+                  case Labeled(label, _, body) =>
+                    Labeled(label, NoType, body)(newTree.pos)
                   case If(cond, thenp, elsep) =>
                     If(cond, thenp, elsep)(NoType)(newTree.pos)
                   case Match(selector, cases, default) =>
