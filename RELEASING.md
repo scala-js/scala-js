@@ -7,7 +7,7 @@
 1. Create a "Version x.y.z." commit ([example][2]) and push it to a branch on
    your fork.
     1. Ping people on the commit for review.
-    1. Once you have LGTM, push to master (do *not* create a merge commit).
+    1. Once you have LGTM, push to `main` (do *not* create a merge commit).
 1. Testing (post results as comments to commit):
     - Full build
     - [Manual testing][3]
@@ -34,7 +34,7 @@
 
 [1]: https://github.com/scala-js/scala-js/issues?utf8=%E2%9C%93&q=is%3Aissue%20is%3Aclosed%20no%3Amilestone%20-label%3Ainvalid%20-label%3Aduplicate%20-label%3Aas-designed%20-label%3Aquestion%20-label%3Awontfix%20-label%3A%22can%27t%20reproduce%22%20-label%3A%22separate%20repo%22
 [2]: https://github.com/scala-js/scala-js/commit/c3520bb9dae46757a975cccd428a77b8d6e6a75e
-[3]: https://github.com/scala-js/scala-js/blob/master/TESTING.md
+[3]: https://github.com/scala-js/scala-js/blob/main/TESTING.md
 [5]: https://github.com/scala-js/scala-js/commit/c6c82e80f56bd2008ff8273088bbbbbbbc30f777
 [6]: https://github.com/scala-js/scala-js-website/commit/057f743c3fb8abe6077fb4debeeec45cd5c53d5d
 [7]: https://users.scala-lang.org/t/announcing-scala-js-1-4-0/7013

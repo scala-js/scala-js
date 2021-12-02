@@ -41,7 +41,7 @@ In order for a Pull Request to be considered, it has to meet these requirements:
     - Not violate [DRY](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself).
     - The [Boy Scout Rule](https://medium.com/@biratkirat/step-8-the-boy-scout-rule-robert-c-martin-uncle-bob-9ac839778385) should be applied.
 2.  Be accompanied by appropriate tests.
-3.  Be issued from a branch *other than master* (PRs coming from master will not be accepted, as we've had trouble in the past with such PRs)
+3.  Be issued from a branch *other than main or master* (PRs coming from `main` or `master` will not be accepted, as we've had trouble in the past with such PRs)
 
 If not *all* of these requirements are met then the code should **not** be
 merged into the distribution, and need not even be reviewed.
