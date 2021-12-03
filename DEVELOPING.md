@@ -12,7 +12,7 @@ requires [Node.js](https://nodejs.org/en/) to be installed. For complete
 support, Node.js >= 13.2.0 is required.
 
 The first time, or in the rare events where `package.json` changes
-([history](https://github.com/scala-js/scala-js/commits/master/package.json)),
+([history](https://github.com/scala-js/scala-js/commits/main/package.json)),
 you need to run
 
     $ npm install
