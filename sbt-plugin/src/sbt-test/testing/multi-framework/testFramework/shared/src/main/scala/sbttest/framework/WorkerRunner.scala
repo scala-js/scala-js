@@ -4,7 +4,7 @@ import sbt.testing._
 
 import scala.concurrent._
 
-final class SlaveRunner(
+final class WorkerRunner(
     args: Array[String],
     remoteArgs: Array[String],
     testClassLoader: ClassLoader,
@@ -14,16 +14,16 @@ final class SlaveRunner(
   /** Number of tasks completed on this node */
   private[this] var doneCount = 0
 
-  /** Whether we have seen a Hello message from the master yet */
+  /** Whether we have seen a Hello message from the controller yet */
   private[this] val seenHello = Promise[Unit]()
 
   private[framework] override val taskBlock = seenHello.future
 
-  // Notify master of our existence
+  // Notify the controller of our existence
   send("s")
 
   def tasks(taskDefs: Array[TaskDef]): Array[Task] = {
-    // Notify master of new tasks
+    // Notify the controller of new tasks
     send("t" + taskDefs.length)
     taskDefs.map(newTask)
   }

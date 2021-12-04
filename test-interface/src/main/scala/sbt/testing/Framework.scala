@@ -46,9 +46,15 @@ trait Framework {
   def runner(args: Array[String], remoteArgs: Array[String],
       testClassLoader: ClassLoader): Runner
 
-  /** Scala.js specific: Creates a slave runner for a given run.
+  /** Scala.js specific: Creates a worker runner for a given run.
    *
-   *  The slave may send a message to the master runner by calling `send`.
+   *  The worker may send a message to the controller runner by calling `send`.
+   *
+   *  @note
+   *    This method is called `slaveRunner` rather than `workerRunner` for
+   *    historical reasons. To preserve binary compatibility, it cannot be
+   *    renamed. Moreover, since it must be implemented by user code, we cannot
+   *    add another method with the right name and deprecate this one either.
    */
   def slaveRunner(args: Array[String], remoteArgs: Array[String],
       testClassLoader: ClassLoader, send: String => Unit): Runner

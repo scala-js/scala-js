@@ -29,8 +29,8 @@ private[bridge] object TestAdapterBridge {
     import JSEndpoints._
 
     JSRPC.attach(detectFrameworks)(detectFrameworksFun)
-    JSRPC.attach(createMasterRunner)(createRunnerFun(isMaster = true))
-    JSRPC.attach(createSlaveRunner)(createRunnerFun(isMaster = false))
+    JSRPC.attach(createControllerRunner)(createRunnerFun(isController = true))
+    JSRPC.attach(createWorkerRunner)(createRunnerFun(isController = false))
   }
 
   private def detectFrameworksFun = { names: List[List[String]] =>
@@ -42,41 +42,41 @@ private[bridge] object TestAdapterBridge {
     }
   }
 
-  private def createRunnerFun(isMaster: Boolean) = { args: RunnerArgs =>
+  private def createRunnerFun(isController: Boolean) = { args: RunnerArgs =>
     val framework = FrameworkLoader.loadFramework(args.frameworkImpl)
     val loader = new ScalaJSClassLoader()
 
     val runID = args.runID
 
     val runner = {
-      if (isMaster) {
+      if (isController) {
         framework.runner(args.args.toArray, args.remoteArgs.toArray, loader)
       } else {
         framework.slaveRunner(args.args.toArray, args.remoteArgs.toArray, loader,
-            mux.send(JVMEndpoints.msgSlave, runID))
+            mux.send(JVMEndpoints.msgWorker, runID))
       }
     }
 
     mux.attach(JSEndpoints.tasks, runID)(tasksFun(runner))
     mux.attachAsync(JSEndpoints.execute, runID)(executeFun(runID, runner))
-    mux.attach(JSEndpoints.done, runID)(doneFun(runID, runner, isMaster))
+    mux.attach(JSEndpoints.done, runID)(doneFun(runID, runner, isController))
 
-    if (isMaster) {
-      mux.attach(JSEndpoints.msgMaster, runID)(msgMasterFun(runID, runner))
+    if (isController) {
+      mux.attach(JSEndpoints.msgController, runID)(msgControllerFun(runID, runner))
     } else {
-      mux.attach(JSEndpoints.msgSlave, runID)(runner.receiveMessage _)
+      mux.attach(JSEndpoints.msgWorker, runID)(runner.receiveMessage _)
     }
   }
 
-  private def detachRunnerCommands(runID: RunMux.RunID, isMaster: Boolean) = {
+  private def detachRunnerCommands(runID: RunMux.RunID, isController: Boolean) = {
     mux.detach(JSEndpoints.tasks, runID)
     mux.detach(JSEndpoints.execute, runID)
     mux.detach(JSEndpoints.done, runID)
 
-    if (isMaster)
-      mux.detach(JSEndpoints.msgMaster, runID)
+    if (isController)
+      mux.detach(JSEndpoints.msgController, runID)
     else
-      mux.detach(JSEndpoints.msgSlave, runID)
+      mux.detach(JSEndpoints.msgWorker, runID)
   }
 
   private def tasksFun(runner: Runner) = { taskDefs: List[TaskDef] =>
@@ -109,15 +109,15 @@ private[bridge] object TestAdapterBridge {
     promise.future
   }
 
-  private def doneFun(runID: RunMux.RunID, runner: Runner, isMaster: Boolean) = { _: Unit =>
+  private def doneFun(runID: RunMux.RunID, runner: Runner, isController: Boolean) = { _: Unit =>
     try runner.done()
-    finally detachRunnerCommands(runID, isMaster)
+    finally detachRunnerCommands(runID, isController)
   }
 
-  private def msgMasterFun(runID: RunMux.RunID, runner: Runner) = { msg: FrameworkMessage =>
+  private def msgControllerFun(runID: RunMux.RunID, runner: Runner) = { msg: FrameworkMessage =>
     for (reply <- runner.receiveMessage(msg.msg)) {
-      val fm = new FrameworkMessage(msg.slaveId, reply)
-      mux.send(JVMEndpoints.msgMaster, runID)(fm)
+      val fm = new FrameworkMessage(msg.workerId, reply)
+      mux.send(JVMEndpoints.msgController, runID)(fm)
     }
   }
 

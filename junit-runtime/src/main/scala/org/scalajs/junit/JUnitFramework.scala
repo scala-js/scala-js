@@ -33,6 +33,7 @@ final class JUnitFramework extends Framework {
     new JUnitRunner(args, remoteArgs, parseRunSettings(args))
   }
 
+  // Aka `workerRunner`; see the Scaladoc of `sbt.testing.Framework` about the name.
   def slaveRunner(args: Array[String], remoteArgs: Array[String],
       testClassLoader: ClassLoader, send: String => Unit): Runner = {
     new JUnitRunner(args, remoteArgs, parseRunSettings(args))

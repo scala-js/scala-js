@@ -6,7 +6,7 @@ import scala.concurrent._
 
 import java.util.concurrent.atomic.AtomicInteger
 
-final class MasterRunner(
+final class ControllerRunner(
     args: Array[String],
     remoteArgs: Array[String],
     testClassLoader: ClassLoader
@@ -18,10 +18,10 @@ final class MasterRunner(
   /** Number of tasks completed in the whole system */
   private[this] val doneCount = new AtomicInteger(0)
 
-  /** Number of running slaves in the whole system */
-  private[this] val slaveCount = new AtomicInteger(0)
+  /** Number of running workers in the whole system */
+  private[this] val workerCount = new AtomicInteger(0)
 
-  /** If a task gets called in the master, there is no point waiting for
+  /** If a task gets called in the controller, there is no point waiting for
    *  messages.
    */
   private[framework] override val taskBlock = Future.successful(())
@@ -32,13 +32,13 @@ final class MasterRunner(
   }
 
   def done(): String = {
-    val slaves = slaveCount.get
+    val workers = workerCount.get
     val registered = registeredCount.get
     val done = doneCount.get
 
-    if (slaves > 0) {
+    if (workers > 0) {
       throw new IllegalStateException(
-          s"There are still $slaves slaves running")
+          s"There are still $workers workers running")
     }
 
     if (registered != done)
@@ -52,18 +52,18 @@ final class MasterRunner(
 
   def receiveMessage(msg: String): Option[String] = msg(0) match {
     case 's' =>
-      slaveCount.incrementAndGet()
+      workerCount.incrementAndGet()
       // Send Hello message back
       Some("Hello")
     case 't' =>
-      // Slave notifies us of registration of tasks
+      // A worker notifies us of the registration of tasks
       registeredCount.addAndGet(msg.tail.toInt)
       None
     case 'd' =>
-      // Slave notifies us of completion of tasks
+      // A worker notifies us of the completion of tasks
       val count = msg.tail.toInt
       doneCount.addAndGet(count)
-      slaveCount.decrementAndGet()
+      workerCount.decrementAndGet()
       None
   }
 

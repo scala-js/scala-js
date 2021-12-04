@@ -12,12 +12,12 @@
 
 package org.scalajs.testing.common
 
-private[testing] final class FrameworkMessage(val slaveId: Long, val msg: String)
+private[testing] final class FrameworkMessage(val workerId: Long, val msg: String)
 
 private[testing] object FrameworkMessage {
   implicit object FrameworkMessageSerializer extends Serializer[FrameworkMessage] {
     def serialize(x: FrameworkMessage, out: Serializer.SerializeState): Unit = {
-      out.write(x.slaveId)
+      out.write(x.workerId)
       out.write(x.msg)
     }
 

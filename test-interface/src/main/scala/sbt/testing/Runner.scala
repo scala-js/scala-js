@@ -25,10 +25,11 @@ package sbt.testing
  *  <code>IllegalStateException</code>.
  *
  *  In Scala.js, the client may request multiple instances of
- *  <code>Runner</code>, where one of these instances is considered the master.
- *  The slaves receive a communication channel to the master. Once the master's
- *  <code>done</code> method is invoked, nothing may be invoked on the slaves
- *  or the master. Slaves can be de-commissioned before the master terminates.
+ *  <code>Runner</code>, where one of these instances is considered the
+ *  controller. The workers receive a communication channel to the controller.
+ *  Once the controller's <code>done</code> method is invoked, nothing may be
+ *  invoked on the workers nor on the controller. Workers can be
+ *  de-commissioned before the controller terminates.
  */
 trait Runner {
 
@@ -102,9 +103,10 @@ trait Runner {
    *  the Framework should throw an IllegalStateException (since it cannot
    *  block).
    *
-   *  Further, if this is the master, the client must not call this method
-   *  before, all done methods of all slaves have returned (otherwise,
-   *  IllegalStateException). If this is a slave, the returned string is ignored.
+   *  Further, if this is the controller, the client must not call this method
+   *  before all `done` methods of all workers have returned (otherwise, an
+   *  `IllegalStateException` is thrown). If this is a worker, the returned
+   *  string is ignored.
    *
    *  @return a possibly multi-line summary string, or the empty string if no
    *          summary is provided
@@ -126,16 +128,17 @@ trait Runner {
    */
   def args: Array[String]
 
-  /** Scala.js specific: Invoked on the master <code>Runner</code>, if a slave
-   *  sends a message (through the channel provided by the client).
+  /** Scala.js specific: Invoked on the controller <code>Runner</code> when a
+   *  worker sends a message (through the channel provided by the client).
    *
-   *  The master may send a message back to the sending slave by returning the
-   *  message in a Some.
+   *  The controller may send a message back to the sending worker by returning
+   *  the message in a `Some`.
    *
-   *  Invoked on a slave <code>Runner</code>, if the master responds to a
-   *  message (sent by the slave via the supplied closure in
-   *  <code>slaveRunner</code>). The return value of the call is ignored in
-   *  this case.
+   *  Invoked on a worker <code>Runner</code> when the controller responds to a
+   *  message (sent by the worker via the supplied closure in
+   *  <code>slaveRunner</code>, aka `workerRunner`; see the Scaladoc of
+   *  `sbt.testing.Framework` about the name.). The return value of the call is
+   *  ignored in this case.
    */
   def receiveMessage(msg: String): Option[String]
 
