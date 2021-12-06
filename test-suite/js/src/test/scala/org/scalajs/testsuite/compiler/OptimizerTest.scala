@@ -19,6 +19,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 class OptimizerTest {
@@ -430,6 +431,38 @@ class OptimizerTest {
   @Test def foldingCharAndString(): Unit = {
     assertEquals("Scala.js", 'S' + "cala.js")
     assertEquals("Scala.js", "Scala.j" + 's')
+  }
+
+  // Division by zero
+
+  @Test def divideByZero_Issue4604(): Unit = {
+    // Ints
+
+    @noinline def intDivByZeroInExpressionPosition(): Int = {
+      0 / 0
+    }
+
+    @noinline def intDivByZeroInStatementPosition(): Unit = {
+      0 / 0
+      fail("should be unreachable")
+    }
+
+    assertThrows(classOf[ArithmeticException], intDivByZeroInExpressionPosition())
+    assertThrows(classOf[ArithmeticException], intDivByZeroInStatementPosition())
+
+    // Longs
+
+    @noinline def longDivByZeroInExpressionPosition(): Long = {
+      0L / 0L
+    }
+
+    @noinline def longDivByZeroInStatementPosition(): Unit = {
+      0L / 0L
+      fail("should be unreachable")
+    }
+
+    assertThrows(classOf[ArithmeticException], longDivByZeroInExpressionPosition())
+    assertThrows(classOf[ArithmeticException], longDivByZeroInStatementPosition())
   }
 
   // Virtualization of JSArrayConstr
