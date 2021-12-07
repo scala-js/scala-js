@@ -1420,8 +1420,36 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         case (Skip(), Skip())     => keepOnlySideEffects(cond)
         case (newThenp, newElsep) => If(cond, newThenp, newElsep)(NoType)(stat.pos)
       }
-    case BinaryOp(_, lhs, rhs) =>
-      Block(keepOnlySideEffects(lhs), keepOnlySideEffects(rhs))(stat.pos)
+
+    case BinaryOp(op, lhs, rhs) =>
+      // Here we need to preserve the side-effects of integer division/modulo
+      import BinaryOp._
+
+      implicit val pos = stat.pos
+      val newLhs = keepOnlySideEffects(lhs)
+
+      def finishNoSideEffects: Tree =
+        Block(newLhs, keepOnlySideEffects(rhs))
+
+      op match {
+        case Int_/ | Int_% =>
+          rhs match {
+            case IntLiteral(r) if r != 0 =>
+              finishNoSideEffects
+            case _ =>
+              Block(newLhs, BinaryOp(op, IntLiteral(0), rhs))
+          }
+        case Long_/ | Long_% =>
+          rhs match {
+            case LongLiteral(r) if r != 0L =>
+              finishNoSideEffects
+            case _ =>
+              Block(newLhs, BinaryOp(op, LongLiteral(0L), rhs))
+          }
+        case _ =>
+          finishNoSideEffects
+      }
+
     case RecordValue(_, elems) =>
       Block(elems.map(keepOnlySideEffects))(stat.pos)
     case RecordSelect(record, _) =>
