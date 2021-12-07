@@ -734,6 +734,208 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
     }
   }
 
+  def stripLeading(): String = {
+    val len = length()
+    var idx = 0
+    while (idx < len && Character.isWhitespace(charAt(idx)))
+      idx += 1
+    substring(idx)
+  }
+
+  def stripTrailing(): String = {
+    val len = length()
+    var idx = len - 1
+    while (idx >= 0 && Character.isWhitespace(charAt(idx)))
+      idx -= 1
+    substring(0, idx + 1)
+  }
+
+  def strip(): String = {
+    val len = length()
+    var leading = 0
+    while (leading < len && Character.isWhitespace(charAt(leading)))
+      leading += 1
+    if (leading == len) {
+      ""
+    } else {
+      var trailing = len
+      while (Character.isWhitespace(charAt(trailing - 1)))
+        trailing -= 1
+      if (leading == 0 && trailing == len) thisString
+      else substring(leading, trailing)
+    }
+  }
+
+  def isBlank(): scala.Boolean = {
+    val len = length()
+    var start = 0
+    while (start != len && Character.isWhitespace(charAt(start)))
+      start += 1
+    start == len
+  }
+
+  private def splitLines(): js.Array[String] = {
+    val xs = js.Array[String]()
+    val len = length()
+    var idx = 0
+    var last = 0
+    while (idx < len) {
+      val c = charAt(idx)
+      if (c == '\n' || c == '\r') {
+        xs.push(substring(last, idx))
+        if (c == '\r' && idx + 1 < len && charAt(idx + 1) == '\n')
+          idx += 1
+        last = idx + 1
+      }
+      idx += 1
+    }
+    // make sure we add the last segment, but not the last new line
+    if (last != len)
+      xs.push(substring(last))
+    xs
+  }
+
+  def indent(n: Int): String = {
+
+    def forEachLn(f: js.Function1[String, String]): String = {
+      var out = ""
+      var i = 0
+      val xs = splitLines()
+      while (i < xs.length) {
+        out += f(xs(i)) + "\n"
+        i += 1
+      }
+      out
+    }
+
+    if (n < 0) {
+      forEachLn { l =>
+        // n is negative here
+        var idx = 0
+        val lim = if (l.length() <= -n) l.length() else -n
+        while (idx < lim && Character.isWhitespace(l.charAt(idx)))
+          idx += 1
+        l.substring(idx)
+      }
+    } else {
+      val padding = " ".asInstanceOf[_String].repeat(n)
+      forEachLn(padding + _)
+    }
+  }
+
+  def stripIndent(): String = {
+    if (isEmpty()) {
+      ""
+    } else {
+      import Character.{isWhitespace => isWS}
+      // splitLines discards the last NL if it's empty so we identify it here first
+      val trailingNL = charAt(length() - 1) match {
+        // this also covers the \r\n case via the last \n
+        case '\r' | '\n' => true
+        case _           => false
+      }
+
+      val xs = splitLines()
+      var i = 0
+      var minLeading = Int.MaxValue
+
+      while (i < xs.length) {
+        val l = xs(i)
+        // count the last line even if blank
+        if (i == xs.length - 1 || !l.asInstanceOf[_String].isBlank()) {
+          var idx = 0
+          while (idx < l.length() && isWS(l.charAt(idx)))
+            idx += 1
+          if (idx < minLeading)
+            minLeading = idx
+        }
+        i += 1
+      }
+      // if trailingNL, then the last line is zero width
+      if (trailingNL || minLeading == Int.MaxValue)
+        minLeading = 0
+
+      var out = ""
+      var j = 0
+      while (j < xs.length) {
+        val line = xs(j)
+        if (!line.asInstanceOf[_String].isBlank()) {
+          // we strip the computed leading WS and also any *trailing* WS
+          out += line.substring(minLeading).asInstanceOf[_String].stripTrailing()
+        }
+        // different from indent, we don't add an LF at the end unless there's already one
+        if (j != xs.length - 1)
+          out += "\n"
+        j += 1
+      }
+      if (trailingNL)
+        out += "\n"
+      out
+    }
+  }
+
+  def translateEscapes(): String = {
+    def isOctalDigit(c: Char): scala.Boolean = c >= '0' && c <= '7'
+    def isValidIndex(n: Int): scala.Boolean = n < length()
+    var i = 0
+    var result = ""
+    while (i < length()) {
+      if (charAt(i) == '\\') {
+        if (isValidIndex(i + 1)) {
+          charAt(i + 1) match {
+            // <line-terminator>, so CR(\r), LF(\n), or CRLF(\r\n)
+            case '\r' if isValidIndex(i + 2) && charAt(i + 2) == '\n' =>
+              i += 1 // skip \r and \n and discard, so 2+1 chars
+            case '\r' | '\n' => // skip and discard
+
+            // normal one char escapes
+            case 'b'  => result += "\b"
+            case 't'  => result += "\t"
+            case 'n'  => result += "\n"
+            case 'f'  => result += "\f"
+            case 'r'  => result += "\r"
+            case 's'  => result += " "
+            case '"'  => result += "\""
+            case '\'' => result += "\'"
+            case '\\' => result += "\\"
+
+            // we're parsing octal now, as per JLS-3, we got three cases:
+            // 1) [0-3][0-7][0-7]
+            case a @ ('0' | '1' | '2' | '3')
+                if isValidIndex(i + 3) && isOctalDigit(charAt(i + 2)) && isOctalDigit(charAt(i + 3)) =>
+              val codePoint =
+                ((a - '0') * 64) + ((charAt(i + 2) - '0') * 8) + (charAt(i + 3) - '0')
+              result += codePoint.toChar
+              i += 2 // skip two other numbers, so 2+2 chars
+            // 2) [0-7][0-7]
+            case a if isOctalDigit(a) && isValidIndex(i + 2) && isOctalDigit(charAt(i + 2)) =>
+              val codePoint = ((a - '0') * 8) + (charAt(i + 2) - '0')
+              result += codePoint.toChar
+              i += 1 // skip one other number, so 2+1 chars
+            // 3) [0-7]
+            case a if isOctalDigit(a) =>
+              val codePoint = a - '0'
+              result += codePoint.toChar
+            // bad escape otherwise, this catches everything else including the Unicode ones
+            case bad =>
+              throw new IllegalArgumentException("Illegal escape: `\\" + bad + "`")
+          }
+          // skip ahead 2 chars (\ and the escape char) at minimum, cases above can add more if needed
+          i += 2
+        } else {
+          throw new IllegalArgumentException("Illegal escape: `\\(end-of-string)`")
+        }
+      } else {
+        result += charAt(i)
+        i += 1
+      }
+    }
+    result
+  }
+
+  def transform[R](f: java.util.function.Function[String, R]): R =
+    f.apply(thisString)
+
   @inline
   override def toString(): String =
     thisString
