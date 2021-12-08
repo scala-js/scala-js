@@ -978,7 +978,7 @@ object Build {
     commonLinkerSettings _
   ).settings(
       libraryDependencies ++= Seq(
-          "com.google.javascript" % "closure-compiler" % "v20210601",
+          "com.google.javascript" % "closure-compiler" % "v20211201",
           "com.google.jimfs" % "jimfs" % "1.1" % "test"
       ) ++ (
           parallelCollectionsDependencies(scalaVersion.value)
