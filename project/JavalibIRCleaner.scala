@@ -89,12 +89,16 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
   }
 
   private final class ErrorManager(logger: Logger) {
+    private val seenErrors = mutable.Set.empty[String]
     private var _errorCount: Int = 0
 
     def reportError(msg: String)(implicit pos: Position): Unit = {
       val fileStr = baseDirectoryURI.relativize(pos.source).toString
-      logger.error(s"$msg at $fileStr:${pos.line}:${pos.column}")
-      _errorCount += 1
+      val fullMessage = s"$msg at $fileStr:${pos.line}:${pos.column}"
+      if (seenErrors.add(fullMessage)) {
+        logger.error(fullMessage)
+        _errorCount += 1
+      }
     }
 
     def hasErrors: Boolean = _errorCount != 0
