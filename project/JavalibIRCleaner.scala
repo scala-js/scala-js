@@ -603,6 +603,16 @@ object JavalibIRCleaner {
       funClass -> ObjectClass
     }
 
-    functionTypePairs.toMap
+    val refBaseNames =
+      List("Boolean", "Char", "Byte", "Short", "Int", "Long", "Float", "Double", "Object")
+    val refPairs = for {
+      refBaseName <- refBaseNames
+    } yield {
+      val simpleName = refBaseName + "Ref"
+      ClassName("scala.runtime." + simpleName) -> ClassName("java.util.internal." + simpleName)
+    }
+
+    val allPairs = functionTypePairs ++ refPairs
+    allPairs.toMap
   }
 }
