@@ -35,38 +35,60 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
   if (_fld == null)
     throw new URISyntaxException(origStr, "Malformed URI")
 
-  private val _isAbsolute = fld(AbsScheme).isDefined
-  private val _isOpaque = fld(AbsOpaquePart).isDefined
+  private val _isAbsolute = _fld(AbsScheme).isDefined
+  private val _isOpaque = _fld(AbsOpaquePart).isDefined
 
-  @inline private def fld(idx: Int): js.UndefOr[String] = _fld(idx)
+  @inline private def fld(idx: Int): String = _fld(idx).orNull
 
-  @inline private def fld(absIdx: Int, relIdx: Int): js.UndefOr[String] =
-    if (_isAbsolute) _fld(absIdx) else _fld(relIdx)
+  @inline private def fld(absIdx: Int, relIdx: Int): String =
+    if (_isAbsolute) fld(absIdx) else fld(relIdx)
 
+  /** Nullable */
   private val _scheme = fld(AbsScheme)
 
+  /** Non-nullable */
   private val _schemeSpecificPart = {
     if (!_isAbsolute) fld(RelSchemeSpecificPart)
     else if (_isOpaque) fld(AbsOpaquePart)
     else fld(AbsHierPart)
-  }.get
-
-  private val _authority = fld(AbsAuthority, RelAuthority).filter(_ != "")
-  private val _userInfo = fld(AbsUserInfo, RelUserInfo)
-  private val _host = fld(AbsHost, RelHost)
-  private val _port = fld(AbsPort, RelPort).map(Integer.parseInt(_))
-
-  private val _path = {
-    val useNetPath = fld(AbsAuthority, RelAuthority).isDefined
-    if (useNetPath)
-      fld(AbsNetPath, RelNetPath) orElse ""
-    else if (_isAbsolute)
-      fld(AbsAbsPath)
-    else
-      fld(RelAbsPath) orElse fld(RelRelPath)
   }
 
+  /** Nullable */
+  private val _authority = {
+    val authPart = fld(AbsAuthority, RelAuthority)
+    if (authPart == "") null else authPart
+  }
+
+  /** Nullable */
+  private val _userInfo = fld(AbsUserInfo, RelUserInfo)
+
+  /** Nullable */
+  private val _host = fld(AbsHost, RelHost)
+
+  /** `-1` means not present */
+  private val _port = {
+    val portPart = fld(AbsPort, RelPort)
+    if (portPart == null) -1 else Integer.parseInt(portPart)
+  }
+
+  /** Nullable */
+  private val _path = {
+    val useNetPath = fld(AbsAuthority, RelAuthority) != null
+    if (useNetPath) {
+      val netPath = fld(AbsNetPath, RelNetPath)
+      if (netPath == null) "" else netPath
+    } else if (_isAbsolute) {
+      fld(AbsAbsPath)
+    } else {
+      val relAbsPath = fld(RelAbsPath)
+      if (relAbsPath != null) relAbsPath else fld(RelRelPath)
+    }
+  }
+
+  /** Nullable */
   private val _query = fld(AbsQuery, RelQuery)
+
+  /** Nullable */
   private val _fragment = fld(Fragment)
 
   // End of default ctor. Unset helper field
@@ -94,26 +116,20 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
   }
 
   def compareTo(that: URI): Int = {
-    import URI.{escapeAwareCompare => cmp}
+    import URI.{caseInsensitiveCompare, escapeAwareCompare => cmp}
 
-    @inline
-    def cmpOpt[T](x: js.UndefOr[T], y: js.UndefOr[T])(comparator: (T, T) => Int): Int = {
-      if (x == y) 0
-      // Undefined components are considered less than defined components
-      else x.fold(-1)(s1 => y.fold(1)(s2 => comparator(s1, s2)))
-    }
     def comparePathQueryFragement(): Int = {
-      val cmpPath = cmpOpt(this._path, that._path)(cmp)
+      val cmpPath = cmp(this._path, that._path)
       if (cmpPath != 0) {
         cmpPath
       } else {
-        val cmpQuery = cmpOpt(this._query, that._query)(cmp)
+        val cmpQuery = cmp(this._query, that._query)
         if (cmpQuery != 0) cmpQuery
-        else cmpOpt(this._fragment, that._fragment)(cmp)
+        else cmp(this._fragment, that._fragment)
       }
     }
 
-    val cmpScheme = cmpOpt(this._scheme, that._scheme)(_.compareToIgnoreCase(_))
+    val cmpScheme = caseInsensitiveCompare(this._scheme, that._scheme)
     if (cmpScheme != 0) {
       cmpScheme
     } else {
@@ -126,22 +142,22 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
           val cmpSchemeSpecificPart = cmp(this._schemeSpecificPart, that._schemeSpecificPart)
           if (cmpSchemeSpecificPart != 0) cmpSchemeSpecificPart
           else comparePathQueryFragement()
-        } else if (this._host.isDefined && that._host.isDefined) {
-          val cmpUserInfo = cmpOpt(this._userInfo, that._userInfo)(cmp)
+        } else if (this._host != null && that._host != null) {
+          val cmpUserInfo = cmp(this._userInfo, that._userInfo)
           if (cmpUserInfo != 0) {
             cmpUserInfo
           } else {
-            val cmpHost = cmpOpt(this._host, that._host)(_.compareToIgnoreCase(_))
+            val cmpHost = caseInsensitiveCompare(this._host, that._host)
             if (cmpHost != 0) {
               cmpHost
             } else {
-              val cmpPort = cmpOpt(this._port, that._port)(_ - _)
+              val cmpPort = this._port - that._port // absent as -1 is smaller than valid port numbers
               if (cmpPort != 0) cmpPort
               else comparePathQueryFragement()
             }
           }
         } else {
-          val cmpAuthority = cmpOpt(this._authority, that._authority)(cmp)
+          val cmpAuthority = cmp(this._authority, that._authority)
           if (cmpAuthority != 0) cmpAuthority
           else comparePathQueryFragement()
         }
@@ -154,33 +170,33 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
     case _ => false
   }
 
-  def getAuthority(): String = _authority.map(decodeComponent).orNull
-  def getFragment(): String = _fragment.map(decodeComponent).orNull
-  def getHost(): String = _host.orNull
-  def getPath(): String = _path.map(decodeComponent).orNull
-  def getPort(): Int = _port.getOrElse(-1)
-  def getQuery(): String = _query.map(decodeComponent).orNull
-  def getRawAuthority(): String = _authority.orNull
-  def getRawFragment(): String = _fragment.orNull
-  def getRawPath(): String = _path.orNull
-  def getRawQuery(): String = _query.orNull
+  def getAuthority(): String = decodeComponent(_authority)
+  def getFragment(): String = decodeComponent(_fragment)
+  def getHost(): String = _host
+  def getPath(): String = decodeComponent(_path)
+  def getPort(): Int = _port
+  def getQuery(): String = decodeComponent(_query)
+  def getRawAuthority(): String = _authority
+  def getRawFragment(): String = _fragment
+  def getRawPath(): String = _path
+  def getRawQuery(): String = _query
   def getRawSchemeSpecificPart(): String = _schemeSpecificPart
-  def getRawUserInfo(): String = _userInfo.orNull
-  def getScheme(): String = _scheme.orNull
+  def getRawUserInfo(): String = _userInfo
+  def getScheme(): String = _scheme
   def getSchemeSpecificPart(): String = decodeComponent(_schemeSpecificPart)
-  def getUserInfo(): String = _userInfo.map(decodeComponent).orNull
+  def getUserInfo(): String = decodeComponent(_userInfo)
 
   override def hashCode(): Int = {
     import scala.util.hashing.MurmurHash3._
     import URI.normalizeEscapes
 
     var acc = URI.uriSeed
-    acc = mix(acc, _scheme.map(_.toLowerCase).##) // scheme may not contain escapes
+    acc = mix(acc, if (_scheme == null) 0 else _scheme.toLowerCase.##) // scheme may not contain escapes
     if (this.isOpaque()) {
       acc = mix(acc, normalizeEscapes(this._schemeSpecificPart).##)
-    } else if (this._host.isDefined) {
+    } else if (this._host != null) {
       acc = mix(acc, normalizeEscapes(this._userInfo).##)
-      acc = mix(acc, this._host.map(_.toLowerCase).##)
+      acc = mix(acc, this._host.toLowerCase.##)
       acc = mix(acc, this._port.##)
     } else {
       acc = mix(acc, normalizeEscapes(this._authority).##)
@@ -194,10 +210,10 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
   def isAbsolute(): Boolean = _isAbsolute
   def isOpaque(): Boolean = _isOpaque
 
-  def normalize(): URI = if (_isOpaque || _path.isEmpty) this else {
+  def normalize(): URI = if (_isOpaque || _path == null) this else {
     import js.JSStringOps._
 
-    val origPath = _path.get
+    val origPath = _path
 
     val segments = origPath.jsSplit("/")
 
@@ -277,19 +293,16 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
   }
 
   def parseServerAuthority(): URI = {
-    if (_authority.nonEmpty && _host.isEmpty)
+    if (_authority != null && _host == null)
       throw new URISyntaxException(origStr, "No Host in URI")
     else this
   }
 
   def relativize(uri: URI): URI = {
-    def authoritiesEqual = this._authority.fold(uri._authority.isEmpty) { a1 =>
-      uri._authority.fold(false)(a2 => URI.escapeAwareCompare(a1, a2) == 0)
-    }
-
-    if (this.isOpaque() || uri.isOpaque() ||
-      this._scheme != uri._scheme || !authoritiesEqual) uri
-    else {
+    if (this.isOpaque() || uri.isOpaque() || this._scheme != uri._scheme ||
+        URI.escapeAwareCompare(this._authority, uri._authority) != 0) {
+      uri
+    } else {
       val thisN = this.normalize()
       val uriN = uri.normalize()
 
@@ -309,8 +322,8 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
 
   def resolve(uri: URI): URI = {
     if (uri.isAbsolute() || this.isOpaque()) uri
-    else if (uri._scheme.isEmpty && uri._authority.isEmpty &&
-      uri._path.get == "" && uri._query.isEmpty)
+    else if (uri._scheme == null && uri._authority == null &&
+      uri._path == "" && uri._query == null)
       // This is a special case for URIs like: "#foo". This allows to
       // just change the fragment in the current document.
       new URI(
@@ -319,14 +332,14 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
         this.getRawPath(),
         this.getRawQuery(),
         uri.getRawFragment())
-    else if (uri._authority.isDefined)
+    else if (uri._authority != null)
       new URI(
         this.getScheme(),
         uri.getRawAuthority(),
         uri.getRawPath(),
         uri.getRawQuery(),
         uri.getRawFragment())
-    else if (uri._path.get.startsWith("/"))
+    else if (uri._path.startsWith("/"))
       new URI(
         this.getScheme(),
         this.getRawAuthority(),
@@ -334,8 +347,8 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
         uri.getRawQuery(),
         uri.getRawFragment())
     else {
-      val basePath = this._path.get
-      val relPath = uri._path.get
+      val basePath = this._path
+      val relPath = uri._path
       val endIdx = basePath.lastIndexOf('/')
       val path =
         if (endIdx == -1) relPath
@@ -678,8 +691,8 @@ object URI {
       // scalastyle:on return
     }
 
-    // Fast-track, if no encoded components
-    if (containsNoEncodedComponent()) {
+    // Fast-track, if null or no encoded components
+    if (str == null || containsNoEncodedComponent()) {
       str
     } else {
       val inBuf = CharBuffer.wrap(str)
@@ -822,9 +835,23 @@ object URI {
     str.jsReplace(nonASCIIQuoteRe, quoteStr)
   }
 
+  /** Case-insensitive comparison that accepts `null` values.
+   *
+   *  `null` is considered smaller than any other value.
+   */
+  private def caseInsensitiveCompare(x: String, y: String): Int = {
+    if (x == null)
+      if (y == null) 0 else -1
+    else
+      if (y == null) 1 else x.compareToIgnoreCase(y)
+  }
+
   /** Case-sensitive comparison that is case-insensitive inside URI
    *  escapes. Will compare `a%A0` and `a%a0` as equal, but `a%A0` and
    *  `A%A0` as different.
+   *
+   *  Accepts `null` arguments. `null` is considered smaller than any other
+   *  value.
    */
   private def escapeAwareCompare(x: String, y: String): Int = {
     @tailrec
@@ -846,12 +873,17 @@ object URI {
       }
     }
 
-    loop(0)
+    if (x == null)
+      if (y == null) 0 else -1
+    else
+      if (y == null) 1 else loop(0)
   }
 
-  /** Upper-cases all URI escape sequences in `str`. Used for hashing */
-  private def normalizeEscapes(maybeStr: js.UndefOr[String]): js.UndefOr[String] = {
-    maybeStr.map { str =>
+  /** Upper-cases all URI escape sequences in the nullable `str`. Used for hashing */
+  private def normalizeEscapes(str: String): String = {
+    if (str == null) {
+      null
+    } else {
       var i = 0
       var res = ""
       while (i < str.length) {
