@@ -187,7 +187,7 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
   def getUserInfo(): String = decodeComponent(_userInfo)
 
   override def hashCode(): Int = {
-    import scala.util.hashing.MurmurHash3._
+    import java.util.internal.MurmurHash3._
     import URI.normalizeEscapes
 
     def normalizeEscapesHash(str: String): Int =
