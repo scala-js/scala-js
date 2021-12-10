@@ -17,7 +17,7 @@ import scala.scalajs.js
 object Normalizer {
   
   @inline def normalize(src: CharSequence, form: Form): String = {
-    if (src == null or form == null) {
+    if (src == null || form == null) {
       throw new NullPointerException
     } else {
       val normalized = src.toString().asInstanceOf[js.Dynamic].normalize(form.name())
