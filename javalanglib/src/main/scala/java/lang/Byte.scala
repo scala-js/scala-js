@@ -96,4 +96,10 @@ object Byte {
 
   @inline def compare(x: scala.Byte, y: scala.Byte): scala.Int =
     x - y
+
+  @inline def toUnsignedInt(x: scala.Byte): scala.Int =
+    x.toInt & 0xff
+
+  @inline def toUnsignedLong(x: scala.Byte): scala.Long =
+    toUnsignedInt(x).toLong
 }

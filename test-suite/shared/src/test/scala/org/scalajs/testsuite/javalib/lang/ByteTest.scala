@@ -43,6 +43,22 @@ class ByteTest {
     assertEquals(0, compare(3.toByte, 3.toByte))
   }
 
+  @Test def toUnsignedInt(): Unit = {
+    assertEquals(0, JByte.toUnsignedInt(0.toByte))
+    assertEquals(42, JByte.toUnsignedInt(42.toByte))
+    assertEquals(214, JByte.toUnsignedInt(-42.toByte))
+    assertEquals(128, JByte.toUnsignedInt(Byte.MinValue))
+    assertEquals(127, JByte.toUnsignedInt(Byte.MaxValue))
+  }
+
+  @Test def toUnsignedLong(): Unit = {
+    assertEquals(0L, JByte.toUnsignedLong(0.toByte))
+    assertEquals(42L, JByte.toUnsignedLong(42.toByte))
+    assertEquals(214L, JByte.toUnsignedLong(-42.toByte))
+    assertEquals(128L, JByte.toUnsignedLong(Byte.MinValue))
+    assertEquals(127L, JByte.toUnsignedLong(Byte.MaxValue))
+  }
+
   @Test def parseString(): Unit = {
     def test(s: String, v: Byte): Unit = {
       assertEquals(v, JByte.parseByte(s))
