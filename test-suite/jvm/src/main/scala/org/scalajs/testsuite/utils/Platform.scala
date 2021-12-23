@@ -41,6 +41,7 @@ object Platform {
   def hasCompliantAsInstanceOfs: Boolean = true
   def hasCompliantArrayIndexOutOfBounds: Boolean = true
   def hasCompliantModule: Boolean = true
+  def hasDirectBuffers: Boolean = true
   def hasStrictFloats: Boolean = true
   def hasAccurateFloats: Boolean = true
 
