@@ -98,4 +98,10 @@ object Short {
 
   def reverseBytes(i: scala.Short): scala.Short =
     (((i >>> 8) & 0xff) + ((i & 0xff) << 8)).toShort
+
+  @inline def toUnsignedInt(x: scala.Short): scala.Int =
+    x.toInt & 0xffff
+
+  @inline def toUnsignedLong(x: scala.Short): scala.Long =
+    toUnsignedInt(x).toLong
 }

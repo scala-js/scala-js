@@ -43,6 +43,22 @@ class ShortTest {
     assertEquals(0, compare(3.toShort, 3.toShort))
   }
 
+  @Test def toUnsignedInt(): Unit = {
+    assertEquals(0, JShort.toUnsignedInt(0.toShort))
+    assertEquals(42, JShort.toUnsignedInt(42.toShort))
+    assertEquals(65494, JShort.toUnsignedInt(-42.toShort))
+    assertEquals(32768, JShort.toUnsignedInt(Short.MinValue))
+    assertEquals(32767, JShort.toUnsignedInt(Short.MaxValue))
+  }
+
+  @Test def toUnsignedLong(): Unit = {
+    assertEquals(0L, JShort.toUnsignedLong(0.toShort))
+    assertEquals(42L, JShort.toUnsignedLong(42.toShort))
+    assertEquals(65494L, JShort.toUnsignedLong(-42.toShort))
+    assertEquals(32768L, JShort.toUnsignedLong(Short.MinValue))
+    assertEquals(32767L, JShort.toUnsignedLong(Short.MaxValue))
+  }
+
   @Test def parseString(): Unit = {
     def test(s: String, v: Short): Unit = {
       assertEquals(v, JShort.parseShort(s))
