@@ -80,9 +80,8 @@ class BigIntTest {
     val mod = multi % js.BigInt(10)
     assertEquals(mod, js.BigInt("2"))
 
-    // TODO: Scala.js does not recongnize ** as operator
-    //    val bigN = js.BigInt(2) ** js.BigInt(54)
-    //    assertEquals(bigN, js.BigInt("18014398509481984"))
+    val bigN = js.BigInt(2) pow js.BigInt(54)
+    assertEquals(bigN, js.BigInt("81129638414606663681390495662081"))
 
     val negative = -js.BigInt("18014398509481984")
     assertEquals(negative, js.BigInt("-18014398509481984"))

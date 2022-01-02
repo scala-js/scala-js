@@ -52,6 +52,10 @@ final class BigInt private[this] () extends js.Object {
   def >(x: BigInt): Boolean = js.native
   def >=(x: BigInt): Boolean = js.native
 
+  // TODO: migrate to **
+  /** Scala.js does not recongnize ** as operator */
+  def pow(exp: BigInt): BigInt = BigInt.powFunction(this, exp)
+
   /** Returns a localized string representation of this BigInt.
    *
    *  @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toLocaleString
@@ -103,6 +107,9 @@ object BigInt extends js.Object {
 
   /** @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/asUintN */
   def asUintN(width: Int, bigint: BigInt): BigInt = js.native
+
+  private[js] val powFunction: Function2[BigInt, BigInt, BigInt] = js.eval("var f = function(b, p) { return b ** p; }; f;")
+    .asInstanceOf[js.Function2[js.BigInt, js.BigInt, js.BigInt]]
 
   // scalastyle:off line.size.limit
   /** Type of the `options` parameter of [[BigInt.toLocaleString]].
