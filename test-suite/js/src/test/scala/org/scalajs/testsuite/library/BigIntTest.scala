@@ -24,12 +24,18 @@ class BigIntTest {
   @Test def apply(): Unit = {
     val fromString = js.BigInt("9007199254740992")
     assertEquals(fromString.toString(), "9007199254740992")
+    assertEquals(fromString.toString(16), "20000000000000")
+    assertEquals(fromString.toString(3), "1121202011211211122211100012101112")
 
     val fromInt = js.BigInt(2147483647)
     assertEquals(fromInt.toString(), "2147483647")
+    assertEquals(fromInt.toString(16), "7fffffff")
+    assertEquals(fromInt.toString(3), "12112122212110202101")
 
     val fromDouble = js.BigInt(4294967295d)
     assertEquals(fromDouble.toString(), "4294967295")
+    assertEquals(fromDouble.toString(16), "ffffffff")
+    assertEquals(fromDouble.toString(3), "102002022201221111210")
   }
 
   @Test def asIntN(): Unit = {

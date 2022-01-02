@@ -70,6 +70,14 @@ final class BigInt private[this] () extends js.Object {
    *  @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toString
    */
   override def toString(): String = js.native
+
+  /** Returns a string representation of this BigInt.
+   *
+   *  The trailing "n" is not part of the string.
+   *
+   *  @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt/toString
+   */
+  def toString(radix: Int): String = js.native
 }
 
 
