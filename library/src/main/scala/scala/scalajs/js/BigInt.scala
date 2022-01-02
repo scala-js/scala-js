@@ -31,6 +31,7 @@ final class BigInt private[this] () extends js.Object {
 
   def +(other: BigInt): BigInt = js.native
   def *(other: BigInt): BigInt = js.native
+  def /(other: BigInt): BigInt = js.native
   def -(other: BigInt): BigInt = js.native
   def %(other: BigInt): BigInt = js.native
 
