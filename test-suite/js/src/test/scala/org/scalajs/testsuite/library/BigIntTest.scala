@@ -74,6 +74,9 @@ class BigIntTest {
     val multi = previousMaxSafe * js.BigInt(2)
     assertEquals(multi, js.BigInt("18014398509481982"))
 
+    val div = previousMaxSafe / js.BigInt(2)
+    assertEquals(div, js.BigInt("4503599627370495"))
+
     val subtr = multi - js.BigInt(10)
     assertEquals(subtr, js.BigInt("18014398509481972"))
 
