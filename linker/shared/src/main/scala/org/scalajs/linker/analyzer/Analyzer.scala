@@ -1270,6 +1270,17 @@ private final class Analyzer(config: CommonPhaseConfig,
       lookupClass(className)(_.accessData())
     }
 
+    if (data.accessedClassClass) {
+      /* java.lang.Class is only ever instantiated in the CoreJSLib.
+       * Therefore, make java.lang.Object depend on it instead of the caller itself.
+       */
+      objectClassInfo.staticDependencies += ClassClass
+      lookupClass(ClassClass) { clazz =>
+        clazz.instantiated()
+        clazz.callMethodStatically(MemberNamespace.Constructor, ObjectArgConstructorName)
+      }
+    }
+
     for (className <- data.referencedClasses) {
       /* No need to add to staticDependencies: The classes will not be
        * referenced in the final JS code.

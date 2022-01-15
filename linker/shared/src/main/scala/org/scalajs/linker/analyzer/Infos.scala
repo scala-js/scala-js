@@ -90,6 +90,7 @@ object Infos {
       val usedInstanceTests: List[ClassName],
       val accessedClassData: List[ClassName],
       val referencedClasses: List[ClassName],
+      val accessedClassClass: Boolean,
       val accessedNewTarget: Boolean,
       val accessedImportMeta: Boolean
   )
@@ -98,7 +99,7 @@ object Infos {
     val Empty: ReachabilityInfo = {
       new ReachabilityInfo(Map.empty, Map.empty, Map.empty, Map.empty,
           Map.empty, Map.empty, Map.empty, Nil, Nil, Nil, Nil, Nil, false,
-          false)
+          false, false)
     }
   }
 
@@ -161,6 +162,7 @@ object Infos {
     private val usedInstanceTests = mutable.Set.empty[ClassName]
     private val accessedClassData = mutable.Set.empty[ClassName]
     private val referencedClasses = mutable.Set.empty[ClassName]
+    private var accessedClassClass = false
     private var accessedNewTarget = false
     private var accessedImportMeta = false
 
@@ -311,6 +313,11 @@ object Infos {
       this
     }
 
+    def addAccessedClassClass(): this.type = {
+      accessedClassClass = true
+      this
+    }
+
     def addAccessNewTarget(): this.type = {
       accessedNewTarget = true
       this
@@ -338,6 +345,7 @@ object Infos {
           usedInstanceTests = usedInstanceTests.toList,
           accessedClassData = accessedClassData.toList,
           referencedClasses = referencedClasses.toList,
+          accessedClassClass = accessedClassClass,
           accessedNewTarget = accessedNewTarget,
           accessedImportMeta = accessedImportMeta
       )
@@ -570,13 +578,10 @@ object Infos {
 
             case ClassOf(cls) =>
               builder.maybeAddAccessedClassData(cls)
-
-              // `ClassOf` instantiates a java.lang.Class.
-              builder.addInstantiatedClass(ClassClass, ObjectArgConstructorName)
+              builder.addAccessedClassClass()
 
             case GetClass(_) =>
-              // `GetClass` instantiates a java.lang.Class.
-              builder.addInstantiatedClass(ClassClass, ObjectArgConstructorName)
+              builder.addAccessedClassClass()
 
             case JSPrivateSelect(qualifier, className, field) =>
               builder.addPrivateJSFieldUsed(className, field.name)

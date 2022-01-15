@@ -979,7 +979,8 @@ object Build {
       libraryDependencies ++= Seq(
           "com.google.javascript" % "closure-compiler" % "v20211201",
           "com.google.jimfs" % "jimfs" % "1.1" % "test",
-          "org.scala-js" %% "scalajs-env-nodejs" % "1.3.0" % "test"
+          "org.scala-js" %% "scalajs-env-nodejs" % "1.3.0" % "test",
+          "org.scala-js" %% "scalajs-js-envs-test-kit" % "1.3.0" % "test"
       ) ++ (
           parallelCollectionsDependencies(scalaVersion.value)
       ),
