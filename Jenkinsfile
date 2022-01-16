@@ -151,6 +151,10 @@ def Tasks = [
     sbtretry ++$scala testSuiteEx$v/test &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala testSuiteEx$v/test &&
+    sbtretry ++$scala \
+        'set scalaJSLinkerConfig in testSuiteEx.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
+        'set scalaJSLinkerConfig in testSuiteEx.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
+        testSuiteEx$v/test &&
     sbtretry ++$scala testSuite$v/test:doc library$v/test compiler$v/test &&
     sbtretry ++$scala \
         'set scalaJSLinkerConfig in reversi.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
