@@ -17,6 +17,10 @@ import scala.scalajs.js.annotation._
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
+
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+import org.scalajs.testsuite.utils.Platform._
 
 class RegressionJSTest {
   import RegressionJSTest._
@@ -94,6 +98,43 @@ class RegressionJSTest {
     val obj2 = g()()
     assertEquals("object", js.typeOf(obj2))
     assertEquals(6, obj2.bar)
+  }
+
+  @Test def preserveSideEffectsOfJSOpsWithBigInts_Issue4621(): Unit = {
+    assumeTrue("requires BigInts support", jsBigInts)
+
+    @noinline def bi(x: Int): js.BigInt = js.BigInt(x)
+
+    // These must be stored as `val`s first in order to trigger the original problem
+    val bi5: Any = bi(5)
+    val bi0: Any = bi(0)
+    val bi1: Any = bi(1)
+
+    assertThrows(classOf[js.JavaScriptException], {
+      bi5.asInstanceOf[js.Dynamic] / bi0.asInstanceOf[js.Dynamic]
+      fail("unreachable") // required for the above line to be in statement position
+    })
+    assertThrows(classOf[js.JavaScriptException], {
+      +bi5.asInstanceOf[js.Dynamic]
+      fail("unreachable")
+    })
+  }
+
+  @Test def preserveSideEffectsOfJSOpsWithCustomValueOf_Issue4621(): Unit = {
+    // This must be a `val` in order to trigger the original problem
+    val obj: Any = new js.Object {
+      override def valueOf(): Double =
+        throw new UnsupportedOperationException()
+    }
+
+    assertThrows(classOf[UnsupportedOperationException], {
+      obj.asInstanceOf[js.Dynamic] + 5.asInstanceOf[js.Dynamic]
+      fail("unreachable")
+    })
+    assertThrows(classOf[UnsupportedOperationException], {
+      -obj.asInstanceOf[js.Dynamic]
+      fail("unreachable")
+    })
   }
 
 }
