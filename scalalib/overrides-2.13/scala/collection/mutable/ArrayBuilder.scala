@@ -103,6 +103,10 @@ object ArrayBuilder {
     protected[this] def elems: Array[T] = throw new Error("unreachable")
     private var jsElems: js.Array[Any] = js.Array()
 
+    override def length: Int = jsElems.length
+
+    override def knownSize: Int = jsElems.length
+
     def addOne(elem: T): this.type = {
       val unboxedElem =
         if (isCharArrayBuilder) elem.asInstanceOf[Char].toInt

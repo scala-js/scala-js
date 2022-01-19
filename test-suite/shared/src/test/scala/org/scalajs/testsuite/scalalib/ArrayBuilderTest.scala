@@ -324,11 +324,46 @@ class ArrayBuilderTest {
     b.addAll(arr, 3, 2)
     assertArrayEquals(Array[Int](4, 5), b.result())
   }
+
+  @Test def lengthAndKnownSize_Issue4627(): Unit = {
+    assumeFalse("Needs at least Scala 2.13",
+        scalaVersion.startsWith("2.11.") ||
+        scalaVersion.startsWith("2.12."))
+
+    val b = ArrayBuilder.make[Int]
+    assertEquals(0, b.length)
+    assertEquals(0, b.knownSize)
+
+    b += 5
+    b += 7
+    assertEquals(2, b.length)
+    assertEquals(2, b.knownSize)
+
+    b += -1
+    b += 98
+    b += 4
+    assertEquals(5, b.length)
+    assertEquals(5, b.knownSize)
+
+    b.clear()
+    assertEquals(0, b.length)
+    assertEquals(0, b.knownSize)
+
+    b += 4
+    assertEquals(1, b.length)
+    assertEquals(1, b.knownSize)
+  }
 }
 
 object ArrayBuilderTest {
   implicit class ArrayBuilderCompat[A](val __sef: ArrayBuilder[A]) extends AnyVal {
     def addAll(xs: Array[_ <: A], offset: Int, length: Int): Unit =
+      throw new AssertionError("unreachable code")
+
+    def length: Int =
+      throw new AssertionError("unreachable code")
+
+    def knownSize: Int =
       throw new AssertionError("unreachable code")
   }
 }
