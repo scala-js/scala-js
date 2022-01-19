@@ -1256,8 +1256,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case If(cond, thenp, elsep)  => test(cond) && test(thenp) && test(elsep)
         case BinaryOp(_, lhs, rhs)   => test(lhs) && test(rhs)
         case UnaryOp(_, lhs)         => test(lhs)
-        case JSBinaryOp(_, lhs, rhs) => test(lhs) && test(rhs)
-        case JSUnaryOp(_, lhs)       => test(lhs)
         case ArrayLength(array)      => test(array)
         case RecordSelect(record, _) => test(record)
         case IsInstanceOf(expr, _)   => test(expr)
@@ -1346,6 +1344,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           allowSideEffects
         case LoadJSModule(_) =>
           allowSideEffects
+        case JSBinaryOp(_, lhs, rhs) =>
+          allowSideEffects && test(lhs) && test(rhs)
+        case JSUnaryOp(_, lhs) =>
+          allowSideEffects && test(lhs)
         case JSGlobalRef(_) =>
           allowSideEffects
         case JSTypeOfGlobalRef(_) =>
