@@ -44,7 +44,6 @@ object ExposedValues extends AutoPlugin {
           .withAsInstanceOfs(CheckedBehavior.Compliant)
           .withArrayIndexOutOfBounds(CheckedBehavior.Compliant)
           .withModuleInit(CheckedBehavior.Compliant)
-          .withStrictFloats(true)
       }
     }
 
@@ -1725,7 +1724,7 @@ object Build {
         scalaVersion.value match {
           case Default2_11ScalaVersion =>
             Some(ExpectedSizes(
-                fastLink = 520000 to 521000,
+                fastLink = 521000 to 522000,
                 fullLink = 108000 to 109000,
                 fastLinkGz = 66000 to 67000,
                 fullLinkGz = 28000 to 29000,

@@ -63,7 +63,6 @@ class MainGenericRunner {
         case "asInstanceOfs"         => prev.withAsInstanceOfs(Compliant)
         case "arrayIndexOutOfBounds" => prev.withArrayIndexOutOfBounds(Compliant)
         case "moduleInit"            => prev.withModuleInit(Compliant)
-        case "strictFloats"          => prev.withStrictFloats(true)
       }
     }
   }
