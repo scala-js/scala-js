@@ -33,6 +33,7 @@ import org.scalajs.linker.backend.javascript.{Trees => js}
 import java.io.StringWriter
 
 import EmitterNames._
+import PolyfillableBuiltin._
 import Transients._
 
 /** Desugaring of the IR to JavaScript functions.
@@ -2361,10 +2362,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 js.BinaryOp(if (op == ===) JSBinaryOp.=== else JSBinaryOp.!==,
                     newLhs, newRhs)
               } else {
-                val objectIs =
-                  if (!es2015) globalVar("is", CoreVar)
-                  else genIdentBracketSelect(genGlobalVarRef("Object"), "is")
-                val objectIsCall = js.Apply(objectIs, newLhs :: newRhs :: Nil)
+                val objectIsCall =
+                  genCallPolyfillableBuiltin(ObjectIsBuiltin, newLhs, newRhs)
                 if (op == ===) objectIsCall
                 else js.UnaryOp(JSUnaryOp.!, objectIsCall)
               }
@@ -2388,7 +2387,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 case IntLiteral(0) => or0(js.UnaryOp(JSUnaryOp.-, newRhs))
                 case _             => or0(js.BinaryOp(JSBinaryOp.-, newLhs, newRhs))
               }
-            case Int_* => genCallHelper("imul", newLhs, newRhs)
+            case Int_* =>
+              genCallPolyfillableBuiltin(ImulBuiltin, newLhs, newRhs)
             case Int_/ =>
               rhs match {
                 case IntLiteral(r) if r != 0 =>
@@ -2662,7 +2662,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
 
         case Transient(NumberOfLeadingZeroes(num)) =>
-          genCallHelper("clz32", transformExprNoChar(num))
+          genCallPolyfillableBuiltin(Clz32Builtin, transformExprNoChar(num))
 
         case Transient(ObjectClassName(obj)) =>
           genCallHelper("objectClassName", transformExprNoChar(obj))
@@ -2991,9 +2991,14 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       js.Apply(globalVar(field, (className, method.name)), args)
     }
 
-    private def genFround(arg: js.Tree)(implicit pos: Position): js.Tree = {
-      genCallHelper("fround", arg)
+    private def genCallPolyfillableBuiltin(
+        builtin: PolyfillableBuiltin, args: js.Tree*)(
+        implicit pos: Position): js.Tree = {
+      extractWithGlobals(sjsGen.genCallPolyfillableBuiltin(builtin, args: _*))
     }
+
+    private def genFround(arg: js.Tree)(implicit pos: Position): js.Tree =
+      genCallPolyfillableBuiltin(FroundBuiltin, arg)
 
     private def wrapBigInt32(tree: js.Tree)(implicit pos: Position): js.Tree =
       wrapBigIntN(32, tree)

@@ -28,6 +28,7 @@ import org.scalajs.linker.interface.unstable.RuntimeClassNameMapperImpl
 import org.scalajs.linker.backend.javascript.Trees._
 
 import EmitterNames._
+import PolyfillableBuiltin._
 
 private[emitter] object CoreJSLib {
 
@@ -167,8 +168,8 @@ private[emitter] object CoreJSLib {
     }
 
     private def defineJSBuiltinsSnapshotsAndPolyfills(): Tree = {
-      def genPolyfillFor(builtinName: String): Tree = builtinName match {
-        case "is" =>
+      def genPolyfillFor(builtin: PolyfillableBuiltin): Tree = builtin match {
+        case ObjectIsBuiltin =>
           val x = varRef("x")
           val y = varRef("y")
           genArrowFunction(paramList(x, y), Return {
@@ -181,7 +182,7 @@ private[emitter] object CoreJSLib {
             })
           })
 
-        case "imul" =>
+        case ImulBuiltin =>
           val a = varRef("a")
           val b = varRef("b")
           val ah = varRef("ah")
@@ -196,7 +197,7 @@ private[emitter] object CoreJSLib {
               Return((al * bl) + (((ah * bl + al * bh) << 16) >>> 0) | 0)
           ))
 
-        case "fround" =>
+        case FroundBuiltin =>
           val v = varRef("v")
           if (!strictFloats) {
             genArrowFunction(paramList(v), Return(+v))
@@ -300,7 +301,7 @@ private[emitter] object CoreJSLib {
                 typedArrayPolyfill, noTypedArrayPolyfill)
           }
 
-        case "clz32" =>
+        case Clz32Builtin =>
           val i = varRef("i")
           val r = varRef("r")
           genArrowFunction(paramList(i), Block(
@@ -314,7 +315,7 @@ private[emitter] object CoreJSLib {
               Return(r + (i >> 31))
           ))
 
-        case "privateJSFieldSymbol" =>
+        case PrivateSymbolBuiltin =>
           /* function privateJSFieldSymbol(description) {
            *   function rand32() {
            *     const s = ((Math.random() * 4294967296.0) | 0).toString(16);
@@ -359,7 +360,7 @@ private[emitter] object CoreJSLib {
               }
           ))
 
-        case "getOwnPropertyDescriptors" =>
+        case GetOwnPropertyDescriptorsBuiltin =>
           /* getOwnPropertyDescriptors = (() => {
            *   // Fetch or polyfill Reflect.ownKeys
            *   var ownKeysFun;
@@ -457,31 +458,24 @@ private[emitter] object CoreJSLib {
           Apply(funGenerator, Nil)
       }
 
-      val mathBuiltins = Block(
-        List("imul", "fround", "clz32").map { builtinName =>
-          val rhs0 = genIdentBracketSelect(MathRef, builtinName)
-          val rhs =
-            if (esVersion >= ESVersion.ES2015) rhs0
-            else rhs0 || genPolyfillFor(builtinName)
-          extractWithGlobals(globalVarDef(builtinName, CoreVar, rhs))
+      val polyfillDefs = for {
+        builtin <- PolyfillableBuiltin.All
+        if esVersion < builtin.availableInESVersion
+      } yield {
+        val polyfill = genPolyfillFor(builtin)
+        val rhs = builtin match {
+          case builtin: GlobalVarBuiltin =>
+            // (typeof GlobalVar !== "undefined") ? GlobalVar : polyfill
+            val globalVarRef = globalRef(builtin.globalVar)
+            If(UnaryOp(JSUnaryOp.typeof, globalVarRef) !== str("undefined"),
+                globalVarRef, polyfill)
+          case builtin: NamespacedBuiltin =>
+            // NamespaceGlobalVar.builtinName || polyfill
+            genIdentBracketSelect(globalRef(builtin.namespaceGlobalVar), builtin.builtinName) || polyfill
         }
-      )
-
-      val es5Compat = condTree(esVersion < ESVersion.ES2015)(Block(
-        extractWithGlobals(globalVarDef("is", CoreVar,
-            genIdentBracketSelect(ObjectRef, "is") || genPolyfillFor("is"))),
-        extractWithGlobals(globalVarDef("privateJSFieldSymbol", CoreVar,
-            If(UnaryOp(JSUnaryOp.typeof, SymbolRef) !== str("undefined"),
-                SymbolRef, genPolyfillFor("privateJSFieldSymbol"))))
-      ))
-
-      val es2017Compat = condTree(esVersion < ESVersion.ES2017)(Block(
-        extractWithGlobals(globalVarDef("getOwnPropertyDescriptors", CoreVar,
-            genIdentBracketSelect(ObjectRef, "getOwnPropertyDescriptors") ||
-                genPolyfillFor("getOwnPropertyDescriptors")))
-      ))
-
-      Block(mathBuiltins, es5Compat, es2017Compat)
+        extractWithGlobals(globalVarDef(builtin.builtinName, CoreVar, rhs))
+      }
+      Block(polyfillDefs)
     }
 
     private def declareCachedL0(): Tree = {
@@ -611,12 +605,8 @@ private[emitter] object CoreJSLib {
 
       defineFunction1("objectClone") { instance =>
         // return Object.create(Object.getPrototypeOf(instance), $getOwnPropertyDescriptors(instance));
-        val callGetOwnPropertyDescriptors = {
-          if (esVersion >= ESVersion.ES2017)
-            Apply(genIdentBracketSelect(ObjectRef, "getOwnPropertyDescriptors"), instance :: Nil)
-          else
-            genCallHelper("getOwnPropertyDescriptors", instance)
-        }
+        val callGetOwnPropertyDescriptors = genCallPolyfillableBuiltin(
+            GetOwnPropertyDescriptorsBuiltin, instance)
         Return(Apply(genIdentBracketSelect(ObjectRef, "create"), List(
             Apply(genIdentBracketSelect(ObjectRef, "getPrototypeOf"), instance :: Nil),
             callGetOwnPropertyDescriptors)))
@@ -894,7 +884,7 @@ private[emitter] object CoreJSLib {
                 (abs & bigInt(~0xffffL)) | bigInt(0x8000L)
               })),
               const(absR, Apply(NumberRef, y :: Nil)),
-              Return(genCallHelper("fround", If(x < bigInt(0L), -absR, absR)))
+              Return(genCallPolyfillableBuiltin(FroundBuiltin, If(x < bigInt(0L), -absR, absR)))
             )
           }
         ))
@@ -1188,7 +1178,7 @@ private[emitter] object CoreJSLib {
         condTree(strictFloats)(
           defineFunction1("isFloat") { v =>
             Return((typeof(v) === str("number")) &&
-                ((v !== v) || (genCallHelper("fround", v) === v)))
+                ((v !== v) || (genCallPolyfillableBuiltin(FroundBuiltin, v) === v)))
           }
         )
       )
@@ -1952,6 +1942,11 @@ private[emitter] object CoreJSLib {
 
     private def genArrowFunction(args: List[ParamDef], body: Tree): Function =
       jsGen.genArrowFunction(args, None, body)
+
+    private def genCallPolyfillableBuiltin(builtin: PolyfillableBuiltin,
+        args: Tree*): Tree = {
+      extractWithGlobals(sjsGen.genCallPolyfillableBuiltin(builtin, args: _*))
+    }
 
     private def maybeWrapInUBE(behavior: CheckedBehavior, exception: Tree): Tree = {
       if (behavior == CheckedBehavior.Fatal) {
