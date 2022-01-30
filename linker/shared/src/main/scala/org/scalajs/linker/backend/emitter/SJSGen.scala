@@ -21,6 +21,7 @@ import org.scalajs.linker.backend.javascript.Trees._
 import org.scalajs.linker.interface._
 
 import EmitterNames._
+import PolyfillableBuiltin._
 
 /** Scala.js specific tree generators that are used across the board.
  *
@@ -370,6 +371,23 @@ private[emitter] final class SJSGen(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
     Apply(globalVar(helperName, CoreVar), args.toList)
+  }
+
+  def genCallPolyfillableBuiltin(builtin: PolyfillableBuiltin, args: Tree*)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): WithGlobals[Tree] = {
+    if (esFeatures.esVersion >= builtin.availableInESVersion) {
+      builtin match {
+        case builtin: GlobalVarBuiltin =>
+          for (global <- globalRef(builtin.globalVar)) yield
+            Apply(global, args.toList)
+        case builtin: NamespacedBuiltin =>
+          for (namespace <- globalRef(builtin.namespaceGlobalVar)) yield
+            Apply(genIdentBracketSelect(namespace, builtin.builtinName), args.toList)
+      }
+    } else {
+      WithGlobals(genCallHelper(builtin.builtinName, args: _*))
+    }
   }
 
   def genLoadModule(moduleClass: ClassName)(

@@ -442,20 +442,17 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     } yield {
       implicit val pos = field.pos
 
-      val symbolValue = {
+      val symbolValueWithGlobals = {
         def description = origName.getOrElse(name).toString()
         val args =
           if (semantics.productionMode) Nil
           else js.StringLiteral(description) :: Nil
-
-        if (esFeatures.esVersion >= ESVersion.ES2015)
-          js.Apply(js.VarRef(js.Ident("Symbol")), args)
-        else
-          genCallHelper("privateJSFieldSymbol", args: _*)
+        genCallPolyfillableBuiltin(PolyfillableBuiltin.PrivateSymbolBuiltin, args: _*)
       }
 
-      globalVarDef("r", (tree.className, name), symbolValue,
-          origName.orElse(name))
+      symbolValueWithGlobals.flatMap { symbolValue =>
+        globalVarDef("r", (tree.className, name), symbolValue, origName.orElse(name))
+      }
     }
 
     WithGlobals.list(defs)
