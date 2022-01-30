@@ -846,7 +846,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     var originalDef: MethodDef = _
     var optimizedMethodDef: Versioned[MethodDef] = _
 
-    var attributes: Attributes = _
+    var attributes: OptimizerCore.MethodAttributes = _
 
     def enclosingClassName: ClassName = owner.className
 

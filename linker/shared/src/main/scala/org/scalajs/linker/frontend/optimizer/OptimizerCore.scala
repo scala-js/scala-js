@@ -1546,8 +1546,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             if (intrinsicCode >= 0) {
               callIntrinsic(intrinsicCode, flags, Some(treceiver), methodName,
                   targs, isStat, usePreTransform)(cont)
-            } else if (target.inlineable && (
-                target.shouldInline ||
+            } else if (target.attributes.inlineable && (
+                target.attributes.shouldInline ||
                 shouldInlineBecauseOfArgs(target, treceiver :: targs))) {
               /* When inlining a single method, the declared type of the `this`
                * value is its enclosing class.
@@ -1580,7 +1580,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
   private def canMultiInline(impls: List[MethodID]): Boolean = {
     // TODO? Inline multiple non-forwarders with the exact same body?
-    impls.forall(impl => impl.isForwarder && impl.inlineable) &&
+    impls.forall(impl => impl.attributes.isForwarder && impl.attributes.inlineable) &&
     (getMethodBody(impls.head).body.get match {
       // Trait impl forwarder
       case ApplyStatic(flags, staticCls, MethodIdent(methodName), _) =>
@@ -1667,8 +1667,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           callIntrinsic(intrinsicCode, flags, Some(treceiver), methodName,
               targs, isStat, usePreTransform)(cont)
         } else {
-          val shouldInline = target.inlineable && (
-              target.shouldInline ||
+          val shouldInline = target.attributes.inlineable && (
+              target.attributes.shouldInline ||
               shouldInlineBecauseOfArgs(target, treceiver :: targs))
           val allocationSites =
             (treceiver :: targs).map(_.tpe.allocationSite)
@@ -1710,8 +1710,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         callIntrinsic(intrinsicCode, flags, None, methodName, targs,
             isStat, usePreTransform)(cont)
       } else {
-        val shouldInline = target.inlineable && (
-            target.shouldInline || shouldInlineBecauseOfArgs(target, targs))
+        val shouldInline = target.attributes.inlineable && (
+            target.attributes.shouldInline || shouldInlineBecauseOfArgs(target, targs))
         val allocationSites = targs.map(_.tpe.allocationSite)
         val beingInlined =
           scope.implsBeingInlined((allocationSites, target))
@@ -1960,7 +1960,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
 
-    require(target.inlineable)
+    require(target.attributes.inlineable)
 
     attemptedInlining += target
 
@@ -5376,9 +5376,7 @@ private[optimizer] object OptimizerCore {
   trait AbstractMethodID {
     def enclosingClassName: ClassName
     def methodName: MethodName
-    def inlineable: Boolean
-    def shouldInline: Boolean
-    def isForwarder: Boolean
+    def attributes: MethodAttributes
 
     final def is(className: ClassName, methodName: MethodName): Boolean =
       this.enclosingClassName == className && this.methodName == methodName
@@ -5391,15 +5389,7 @@ private[optimizer] object OptimizerCore {
     def originalDef: MethodDef
     def thisType: Type
 
-    protected type Attributes = MethodImpl.Attributes
-
-    protected def attributes: Attributes
-
-    final def inlineable: Boolean = attributes.inlineable
-    final def shouldInline: Boolean = attributes.shouldInline
-    final def isForwarder: Boolean = attributes.isForwarder
-
-    protected def computeNewAttributes(): Attributes = {
+    protected def computeNewAttributes(): MethodAttributes = {
       val MethodDef(_, MethodIdent(methodName), _, params, _, optBody) = originalDef
       val body = optBody getOrElse {
         throw new AssertionError("Methods in optimizer must be concrete")
@@ -5468,17 +5458,22 @@ private[optimizer] object OptimizerCore {
         }
       }
 
-      MethodImpl.Attributes(inlineable, shouldInline, isForwarder)
+      new MethodAttributes(inlineable, shouldInline, isForwarder)
     }
   }
 
-  object MethodImpl {
-    final case class Attributes(
-        inlineable: Boolean,
-        shouldInline: Boolean,
-        isForwarder: Boolean
-    )
-  }
+  /* This is a "broken" case class so we get equals (and hashCode) for free.
+   *
+   * This hack is somewhat acceptable, because:
+   * - it is only part of the OptimizerCore / IncOptimizer interface.
+   * - the risk of getting equals wrong is high: it only affects the incremental
+   *   behavior of the optimizer, which we have few tests for.
+   */
+  final case class MethodAttributes private[OptimizerCore] (
+      private[OptimizerCore] val inlineable: Boolean,
+      private[OptimizerCore] val shouldInline: Boolean,
+      private[OptimizerCore] val isForwarder: Boolean
+  )
 
   private object MaybeUnbox {
     def unapply(tree: Tree): Some[(Tree, Any)] = tree match {
