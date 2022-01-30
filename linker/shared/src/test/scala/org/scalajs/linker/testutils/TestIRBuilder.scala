@@ -44,19 +44,21 @@ object TestIRBuilder {
     MethodName(name, paramTypeRefs, resultTypeRef)
 
   def classDef(
-      className: ClassName,
-      kind: ClassKind = ClassKind.Class,
-      jsClassCaptures: Option[List[ParamDef]] = None,
-      superClass: Option[ClassName] = None,
-      interfaces: List[ClassName] = Nil,
-      jsSuperClass: Option[Tree] = None,
-      jsNativeLoadSpec: Option[JSNativeLoadSpec] = None,
-      memberDefs: List[MemberDef] = Nil,
-      topLevelExportDefs: List[TopLevelExportDef] = Nil): ClassDef = {
+    className: ClassName,
+    kind: ClassKind = ClassKind.Class,
+    jsClassCaptures: Option[List[ParamDef]] = None,
+    superClass: Option[ClassName] = None,
+    interfaces: List[ClassName] = Nil,
+    jsSuperClass: Option[Tree] = None,
+    jsNativeLoadSpec: Option[JSNativeLoadSpec] = None,
+    memberDefs: List[MemberDef] = Nil,
+    topLevelExportDefs: List[TopLevelExportDef] = Nil,
+    optimizerHints: OptimizerHints = EOH
+  ): ClassDef = {
     val notHashed = ClassDef(ClassIdent(className), NON, kind, jsClassCaptures,
         superClass.map(ClassIdent(_)), interfaces.map(ClassIdent(_)),
         jsSuperClass, jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
-        EOH)
+        optimizerHints)
     Hashers.hashClassDef(notHashed)
   }
 

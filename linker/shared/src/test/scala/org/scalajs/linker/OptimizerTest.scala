@@ -184,7 +184,7 @@ class OptimizerTest {
     )
 
     for (moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers, TestIRRepo.fulllib)) yield {
-      assertFalse(moduleSet.modules.flatMap(_.classDefs).exists(_.className == ClassClass))
+      assertFalse(findClass(moduleSet, ClassClass).isDefined)
     }
   }
 
@@ -216,8 +216,7 @@ class OptimizerTest {
     )
 
     for (moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers)) yield {
-      val mainClassDef = moduleSet.modules.flatMap(_.classDefs)
-        .find(_.className == MainTestClassName).get
+      val mainClassDef = findClass(moduleSet, MainTestClassName).get
       assertTrue(mainClassDef.fields.exists {
         case FieldDef(_, FieldIdent(name), _, _) => name == FieldName("foo")
         case _                                   => false
@@ -364,11 +363,73 @@ class OptimizerTest {
       assertEquals("wrong closure params", List(List(x2, x4)), closureParams)
     }
   }
+
+  @Test
+  def testOptimizeDynamicImport(): AsyncResult = await {
+    val thunkMethodName = m("thunk", Nil, O)
+    val implMethodName = m("impl", Nil, O)
+
+    val memberMethodName = m("member", Nil, O)
+
+    val SMF = EMF.withNamespace(MemberNamespace.PublicStatic)
+
+    val classDefs = Seq(
+        mainTestClassDef({
+          consoleLog(ApplyDynamicImport(EAF, "Thunk", thunkMethodName, Nil))
+        }),
+        classDef("Thunk",
+            superClass = Some(ObjectClass),
+            optimizerHints = EOH.withInline(true),
+            memberDefs = List(
+                trivialCtor("Thunk"),
+                MethodDef(EMF, implMethodName, NON, Nil, AnyType, Some {
+                  SelectJSNativeMember("Holder", memberMethodName)
+                })(EOH, None),
+                MethodDef(SMF, thunkMethodName, NON, Nil, AnyType, Some {
+                  val inst = New("Thunk", NoArgConstructorName, Nil)
+                  Apply(EAF, inst, implMethodName, Nil)(AnyType)
+                })(EOH, None)
+            )
+        ),
+        classDef("Holder", kind = ClassKind.Interface,
+            memberDefs = List(
+                JSNativeMemberDef(SMF, memberMethodName, JSNativeLoadSpec.Import("foo", List("bar")))
+            )
+        )
+    )
+
+    val linkerConfig = StandardConfig()
+      .withModuleKind(ModuleKind.ESModule)
+
+    for {
+      moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers,
+          linkerConfig = linkerConfig)
+    } yield {
+      assertFalse(findClass(moduleSet, "Thunk").isDefined)
+
+      var foundJSImport = false
+      val main = findClass(moduleSet, MainTestClassName).get
+      val traverser = new Traverser {
+        override def traverse(tree: Tree): Unit = tree match {
+          case tree: ApplyDynamicImport => fail(s"found ApplyDynamicImport " + tree)
+          case tree: JSImportCall       => foundJSImport = true
+          case tree                     => super.traverse(tree)
+        }
+      }
+
+      main.methods.foreach(v => traverser.traverseMemberDef(v.value))
+
+      assertTrue(foundJSImport)
+    }
+  }
 }
 
 object OptimizerTest {
   private val cloneMethodName = m("clone", Nil, O)
   private val witnessMethodName = m("witness", Nil, O)
+
+  private def findClass(moduleSet: ModuleSet, name: ClassName): Option[LinkedClass] =
+    moduleSet.modules.flatMap(_.classDefs).find(_.className == name)
 
   private final class StoreModuleSetLinkerBackend(
       originalBackend: LinkerBackend)
@@ -397,17 +458,12 @@ object OptimizerTest {
   }
 
   def linkToModuleSet(classDefs: Seq[ClassDef],
-      moduleInitializers: List[ModuleInitializer])(
+      moduleInitializers: List[ModuleInitializer],
+      stdlib: Future[Seq[IRFile]] = TestIRRepo.minilib,
+      linkerConfig: StandardConfig = StandardConfig())(
       implicit ec: ExecutionContext): Future[ModuleSet] = {
 
-    linkToModuleSet(classDefs, moduleInitializers, TestIRRepo.minilib)
-  }
-
-  def linkToModuleSet(classDefs: Seq[ClassDef],
-      moduleInitializers: List[ModuleInitializer], stdlib: Future[Seq[IRFile]])(
-      implicit ec: ExecutionContext): Future[ModuleSet] = {
-
-    val config = StandardConfig().withCheckIR(true)
+    val config = linkerConfig.withCheckIR(true)
     val frontend = StandardLinkerFrontend(config)
     val backend = new StoreModuleSetLinkerBackend(StandardLinkerBackend(config))
     val linker = StandardLinkerImpl(frontend, backend)

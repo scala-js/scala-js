@@ -133,6 +133,71 @@ class SJSDynamicImportTest {
   }
 
   @Test
+  def optimizedNativeMethod(): AsyncResult = await {
+    val promise = js.dynamicImport {
+      ModulesTest.NativeMembers.ssum(2, 3)
+    }
+
+    promise.toFuture.map { x =>
+      assertEquals(13, x)
+    }
+  }
+
+  @Test
+  def optimizedNativeProperty(): AsyncResult = await {
+    val promise = js.dynamicImport {
+      ModulesTest.NativeMembers.strConstant
+    }
+
+    promise.toFuture.map { x =>
+      assertEquals("value", x)
+    }
+  }
+
+  @Test
+  def optimizedNativeModule(): AsyncResult = await {
+    val promise = js.dynamicImport { ModulesTest.MyBox }
+
+    promise.toFuture.map { x =>
+      assertSame(ModulesTest.MyBox, x)
+    }
+  }
+
+  @Test
+  def optimizedNativeModuleMethod(): AsyncResult = await {
+    val promise = js.dynamicImport {
+      ModulesTest.NamespaceImport.ssum(1, 2)
+    }
+
+    promise.toFuture.map { x =>
+      assertEquals(5, x)
+    }
+  }
+
+  @Test
+  def optimizedNativeModuleProperty(): AsyncResult = await {
+    val promise = js.dynamicImport {
+      ModulesTest.NamespaceImport.strConstantAsDef
+    }
+
+    promise.toFuture.map { x =>
+      assertEquals("value", x)
+    }
+  }
+
+  @Test
+  def optimizedNativeNew(): AsyncResult = await {
+    val promise = js.dynamicImport {
+      new ModulesTest.MyBox(2L)
+    }
+
+    promise.toFuture.map { b =>
+      assertEquals(2L, b.get())
+      assertTrue(b.isInstanceOf[ModulesTest.MyBox[_]])
+    }
+  }
+
+  @Test
   def nested(): AsyncResult = await {
     // Ludicrously complicated nested dynamic imports.
 
