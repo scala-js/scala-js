@@ -268,31 +268,34 @@ private[emitter] final class SJSGen(
 
   def genAsInstanceOf(expr: Tree, tpe: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): Tree = {
+      pos: Position): WithGlobals[Tree] = {
     import TreeDSL._
+
+    // Local short-hand of WithGlobals(...)
+    def wg(tree: Tree): WithGlobals[Tree] = WithGlobals(tree)
 
     if (semantics.asInstanceOfs == CheckedBehavior.Unchecked) {
       tpe match {
         case _:ClassType | _:ArrayType | AnyType =>
-          expr
+          wg(expr)
 
-        case UndefType                     => Block(expr, Undefined())
-        case BooleanType                   => !(!expr)
-        case CharType                      => genCallHelper("uC", expr)
-        case ByteType | ShortType| IntType => expr | 0
-        case LongType                      => genCallHelper("uJ", expr)
-        case DoubleType                    => UnaryOp(irt.JSUnaryOp.+, expr)
-        case StringType                    => expr || StringLiteral("")
+        case UndefType                     => wg(Block(expr, Undefined()))
+        case BooleanType                   => wg(!(!expr))
+        case CharType                      => wg(genCallHelper("uC", expr))
+        case ByteType | ShortType| IntType => wg(expr | 0)
+        case LongType                      => wg(genCallHelper("uJ", expr))
+        case DoubleType                    => wg(UnaryOp(irt.JSUnaryOp.+, expr))
+        case StringType                    => wg(expr || StringLiteral(""))
 
         case FloatType =>
-          if (semantics.strictFloats) genCallHelper("fround", expr)
-          else UnaryOp(irt.JSUnaryOp.+, expr)
+          if (semantics.strictFloats) genCallPolyfillableBuiltin(FroundBuiltin, expr)
+          else wg(UnaryOp(irt.JSUnaryOp.+, expr))
 
         case NoType | NullType | NothingType | _:RecordType =>
           throw new AssertionError(s"Unexpected type $tpe in genAsInstanceOf")
       }
     } else {
-      tpe match {
+      val resultTree = tpe match {
         case ClassType(ObjectClass) =>
           expr
         case ClassType(className) =>
@@ -316,6 +319,8 @@ private[emitter] final class SJSGen(
         case NoType | NullType | NothingType | _:RecordType =>
           throw new AssertionError(s"Unexpected type $tpe in genAsInstanceOf")
       }
+
+      wg(resultTree)
     }
   }
 
