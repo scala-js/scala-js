@@ -2597,7 +2597,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           genIsInstanceOf(transformExprNoChar(expr), testType)
 
         case AsInstanceOf(expr, tpe) =>
-          genAsInstanceOf(transformExprNoChar(expr), tpe)
+          extractWithGlobals(genAsInstanceOf(transformExprNoChar(expr), tpe))
 
         case GetClass(expr) =>
           genCallHelper("objectGetClass", transformExprNoChar(expr))
