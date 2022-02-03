@@ -1203,7 +1203,7 @@ object Trees {
       case TopLevelJSClassExportDef(_, name) => name
 
       case TopLevelMethodExportDef(_, JSMethodDef(_, propName, _, _, _)) =>
-        val StringLiteral(name) = propName
+        val StringLiteral(name) = propName: @unchecked  // unchecked is needed for Scala 3.2+
         name
 
       case TopLevelFieldExportDef(_, name, _) => name
