@@ -34,6 +34,11 @@ final class Semantics private (
   def withModuleInit(moduleInit: CheckedBehavior): Semantics =
     copy(moduleInit = moduleInit)
 
+  @deprecated(
+      "Scala.js now uses strict floats by default. " +
+      "Non-strict float semantics are deprecated and will eventually be " +
+      "removed.",
+      "1.9.0")
   def withStrictFloats(strictFloats: Boolean): Semantics =
     copy(strictFloats = strictFloats)
 
@@ -224,7 +229,7 @@ object Semantics {
       asInstanceOfs = Fatal,
       arrayIndexOutOfBounds = Fatal,
       moduleInit = Unchecked,
-      strictFloats = false,
+      strictFloats = true,
       productionMode = false,
       runtimeClassNameMapper = RuntimeClassNameMapper.keepAll())
 }
