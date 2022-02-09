@@ -222,6 +222,17 @@ private[emitter] object CoreJSLib {
              *    as storage of the floats, and
              * 2) we are only interested in the float32 case.
              *
+             * Eventually, the last bits of the above were replaced by an
+             * application of Veltkamp's splitting (see below). The inspiration
+             * for that use case came from core-js' implementation at
+             * https://github.com/zloirock/core-js/blob/a3f591658e063a6e2c2594ec3c80eff16340a98d/packages/core-js/internals/math-fround.js
+             * The code does not mention Veltkamp's splitting, but the PR
+             * discussion that led to it does, although with a question mark,
+             * and without any explanation of how/why it works:
+             * https://github.com/paulmillr/es6-shim/pull/140#issuecomment-91787165
+             * We tracked down the descriptions and proofs relative to
+             * Veltkamp's splitting and re-derived an implementation from there.
+             *
              * The direct tests for this polyfill are the tests for `toFloat`
              * in org.scalajs.testsuite.compiler.DoubleTest.
              */
@@ -229,70 +240,96 @@ private[emitter] object CoreJSLib {
             val isNegative = varRef("isNegative")
             val av = varRef("av")
             val absResult = varRef("absResult")
-            val e = varRef("e")
-            val twoPowE = varRef("twoPowE")
-            val significand = varRef("significand")
-
-            def callMathFun(fun: String, args: Tree*): Tree =
-              Apply(genIdentBracketSelect(MathRef, fun), args.toList)
-
-            /* Rounds `value` to the nearest multiple of `unit`, breaking ties
-             * to an even multiple. The `unit` must be a (negative) power of 2.
-             *
-             * We do this by leveraging the inherent loss of precision near the
-             * minimum positive double value: conceptually, we divide the value
-             * by
-             *   unit / Double.MinPositiveValue
-             * which will drop the excess precision, applying exactly the
-             * rounding strategy that we want. Then we multiply the value back
-             * by the same constant.
-             *
-             * However, `unit / Double.MinPositiveValue` is not representable
-             * as a finite Double for all the values of `unit` that we are
-             * interested in (namely, `1 / 2^23`). Therefore, we instead use
-             * the *inverse* constant
-             *   Double.MinPositiveValue / unit
-             * and we first multiply by that constant, then divide by it.
-             */
-            def roundToNearestBreakTiesToEven(value: Tree, unit: Double): Tree = {
-              val roundingFactor = double(Double.MinPositiveValue / unit)
-              (value * roundingFactor) / roundingFactor
-            }
+            val p = varRef("p")
 
             val Inf = double(Double.PositiveInfinity)
             val overflowThreshold = double(3.4028235677973366e38)
             val normalThreshold = double(1.1754943508222875e-38)
-            val ln2 = double(0.6931471805599453)
 
             val noTypedArrayPolyfill = genArrowFunction(paramList(v), Block(
-              If((v !== v) || (v === 0), {
-                Return(v)
-              }),
-              const(isNegative, v < 0),
-              const(av, If(isNegative, -v, v)),
-              genEmptyMutableLet(absResult.ident),
+              v := +v, // turns `null` into +0, making sure not to deoptimize what follows
+              const(isNegative, v < 0), // false for NaN, +0 and -0
+              const(av, If(isNegative, -v, v)), // abs(v), or -0 if v is -0
+              genEmptyMutableLet(absResult.ident), // abs(result), or -0 if the result is -0
               If(av >= overflowThreshold, { // also handles the case av === Infinity
                 absResult := Inf
               }, If(av >= normalThreshold, Block(
-                const(e, callMathFun("floor", callMathFun("log", av) / ln2)),
-                let(twoPowE, callMathFun("pow", 2, e)),
-                let(significand, av / twoPowE),
-                /* Because of loss of precision in its computation, e might be 1 up or down,
-                 * which causes twoPowE and significant to be a factor 2 up or down.
-                 * We now adjust that so that significant is really in the range [1.0, 2.0).
+                /* Here, we know that both the input and output are expressed
+                 * in a Double normal form, so standard floating point
+                 * algorithms from papers can be used.
+                 *
+                 * We use Veltkamp's splitting, as described and studied in
+                 *   Sylvie Boldo.
+                 *   Pitfalls of a Full Floating-Point Proof: Example on the
+                 *   Formal Proof of the Veltkamp/Dekker Algorithms
+                 *   https://dx.doi.org/10.1007/11814771_6
+                 * Section 3, with β = 2, t = 53, s = 53 - 24 = 29, x = av.
+                 * 53 is the number of effective mantissa bits in a Double;
+                 * 24 in a Float.
+                 *
+                 * ◦ is the round-to-nearest operation with a tie-breaking
+                 * rule (in our case, break-to-even).
+                 *
+                 *   Let C = βˢ + 1 = 536870913
+                 *   p = ◦(x × C)
+                 *   q = ◦(x − p)
+                 *   x₁ = ◦(p + q)
+                 *
+                 * Boldo proves that x₁ is the (t-s)-bit float closest to x,
+                 * using the same tie-breaking rule as ◦. Since (t-s) = 24,
+                 * this is the closest float32 (with 24 mantissa bits), and
+                 * therefore the correct result of `fround`.
+                 *
+                 * Boldo also proves that if the computation of x × C does not
+                 * cause overflow, then none of the following operations will
+                 * cause overflow. We know that x (av) is less than the
+                 * overflowThreshold, and overflowThreshold × C does not
+                 * overflow, so that computation can never cause an overflow.
+                 *
+                 * If the reader does not have access to Boldo's paper, they
+                 * may refer instead to
+                 *   Claude-Pierre Jeannerod, Jean-Michel Muller, Paul Zimmermann.
+                 *   On various ways to split a floating-point number.
+                 *   ARITH 2018 - 25th IEEE Symposium on Computer Arithmetic,
+                 *   Jun 2018, Amherst (MA), United States.
+                 *   pp.53-60, 10.1109/ARITH.2018.8464793. hal-01774587v2
+                 * available at
+                 *   https://hal.inria.fr/hal-01774587v2/document
+                 * Section III, although that paper defers some theorems and
+                 * proofs to Boldo's.
                  */
-                If(significand < 1, Block(
-                  twoPowE := twoPowE / 2,
-                  significand := significand * 2
-                ), If(significand >= 2, Block(
-                  twoPowE := twoPowE * 2,
-                  significand := significand / 2
-                ))),
-                // Round the significant to 23 bits of fractional part, and multiply back by twoPowE
-                absResult := roundToNearestBreakTiesToEven(significand, 1.0 / (1 << 23).toDouble) * twoPowE
+                const(p, av * 536870913),
+                absResult := (p + (av - p))
               ), {
-                // Round the value to a multiple of the smallest Float ULP, which is Float.MinPositiveValue
-                absResult := roundToNearestBreakTiesToEven(av, Float.MinPositiveValue.toDouble)
+                /* Here, the result is represented as a subnormal form in a
+                 * float32 representation.
+                 *
+                 * We round `av` to the nearest multiple of the smallest
+                 * positive Float value (i.e., `Float.MinPositiveValue`),
+                 * breaking ties to an even multiple.
+                 *
+                 * We do this by leveraging the inherent loss of precision near
+                 * the minimum positive *double* value: conceptually, we divide
+                 * the value by
+                 *   Float.MinPositiveValue / Double.MinPositiveValue
+                 * which will drop the excess precision, applying exactly the
+                 * rounding strategy that we want. Then we multiply the value
+                 * back by the same constant.
+                 *
+                 * However, `Float.MinPositiveValue / Double.MinPositiveValue`
+                 * is not representable as a finite Double. Therefore, we
+                 * instead use the *inverse* constant
+                 *   Double.MinPositiveValue / Float.MinPositiveValue
+                 * and we first multiply by that constant, then divide by it.
+                 *
+                 * ---
+                 *
+                 * As an additional "hack", the input values NaN, +0 and -0
+                 * also fall in this code path. For them, this computation
+                 * happens to be an identity, and is therefore correct as well.
+                 */
+                val roundingFactor = double(Double.MinPositiveValue / Float.MinPositiveValue.toDouble)
+                absResult := (av * roundingFactor) / roundingFactor
               })),
               Return(If(isNegative, -absResult, absResult))
             ))
