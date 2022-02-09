@@ -149,7 +149,6 @@ run/future-flatmap-exec-count.scala
 
 # Using detailed stack trace / getStackTrace()
 
-run/productElementName-oob.scala
 run/t6308.scala
 run/t10277.scala
 run/t10277b.scala
@@ -825,6 +824,8 @@ run/t11991.scala
 run/t12276.scala
 run/interpolation-repl.scala
 run/t12292.scala
+run/StringConcat.scala
+run/t10016.scala
 
 # Using Scala Script (partest.ScriptTest)
 
@@ -947,8 +948,16 @@ run/t11815.scala
 run/splain.scala
 run/splain-tree.scala
 run/splain-truncrefined.scala
+run/t12405.scala
+run/t1406.scala
+run/t1406b.scala
 
 # Using partest.StoreReporterDirectTest
+run/package-object-stale-decl.scala
+run/package-object-toolbox.scala
+run/package-object-with-inner-class-in-ancestor.scala
+run/package-object-with-inner-class-in-ancestor-simpler.scala
+run/package-object-with-inner-class-in-ancestor-simpler-still.scala
 run/t10171
 
 # partest.StubErrorMessageTest
@@ -963,7 +972,9 @@ run/StubErrorTypeclass.scala
 run/StubErrorTypeDef.scala
 
 # partest.CompilerTest
+run/infix-rangepos.scala
 run/t12062.scala
+run/t12490.scala
 
 # partest.ASMConverters
 run/t9403
@@ -1004,6 +1015,9 @@ run/t0421-old.scala
 run/t0528.scala
 run/t1192.scala
 run/t3158.scala
+
+# scala.tools.testkit.AssertUtil
+run/productElementName.scala
 
 # Using .java source files
 
@@ -1104,6 +1118,7 @@ run/t1195-old.scala
 run/t3758-old.scala
 run/t4110-old.scala
 run/t6246.scala
+run/t12481.scala
 
 # Using ScalaRunTime.stringOf
 run/value-class-extractor-seq.scala
@@ -1112,6 +1127,9 @@ run/t3493.scala
 # Custom invoke dynamic node
 run/indy-via-macro
 run/indy-via-macro-with-dynamic-args
+run/indy-via-macro-class-constant-bsa
+run/indy-via-macro-method-type-bsa
+run/indy-via-macro-reflector
 
 # Crashes our optimizer because of artificially insane amount of inlining
 run/t10594.scala

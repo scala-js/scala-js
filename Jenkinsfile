@@ -457,7 +457,7 @@ def allJavaVersions = otherJavaVersions.clone()
 allJavaVersions << mainJavaVersion
 
 def mainScalaVersion = "2.12.15"
-def mainScalaVersions = ["2.11.12", "2.12.15", "2.13.6"]
+def mainScalaVersions = ["2.11.12", "2.12.15", "2.13.8"]
 def otherScalaVersions = [
   "2.11.12",
   "2.12.1",
@@ -479,7 +479,9 @@ def otherScalaVersions = [
   "2.13.2",
   "2.13.3",
   "2.13.4",
-  "2.13.5"
+  "2.13.5",
+  "2.13.6",
+  "2.13.7"
 ]
 
 def allESVersions = [
@@ -525,7 +527,7 @@ allJavaVersions.each { javaVersion ->
     quickMatrix.add([task: "tools-sbtplugin", scala: "2.12.15", java: javaVersion])
     quickMatrix.add([task: "tools", scala: "2.11.12", java: javaVersion])
   }
-  quickMatrix.add([task: "tools", scala: "2.13.6", java: javaVersion])
+  quickMatrix.add([task: "tools", scala: "2.13.8", java: javaVersion])
 }
 
 // The 'full' matrix
