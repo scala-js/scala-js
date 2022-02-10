@@ -204,14 +204,27 @@ private[emitter] object CoreJSLib {
           } else {
             val Float32ArrayRef = globalRef("Float32Array")
 
+            /* (function(array) {
+             *   return function(v) {
+             *     array[0] = v;
+             *     return array[0];
+             *   }
+             * })(new Float32Array(1))
+             *
+             * Allocating the Float32Array once and for all, and capturing it
+             * in an IIFE, is *much* faster than recreating it in every call of
+             * the polyfill (about an order of magnitude).
+             */
             val array = varRef("array")
-            val typedArrayPolyfill = genArrowFunction(paramList(v), {
+            val typedArrayPolyfillInner = genArrowFunction(paramList(v), {
               Block(
-                  const(array, New(Float32ArrayRef, 1 :: Nil)),
                   BracketSelect(array, 0) := v,
                   Return(BracketSelect(array, 0))
               )
             })
+            val typedArrayPolyfill = Apply(
+                genArrowFunction(paramList(array), Return(typedArrayPolyfillInner)),
+                New(Float32ArrayRef, 1 :: Nil) :: Nil)
 
             // scalastyle:off line.size.limit
             /* Originally inspired by the Typed Array polyfills written by
