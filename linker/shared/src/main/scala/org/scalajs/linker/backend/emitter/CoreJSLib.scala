@@ -204,14 +204,27 @@ private[emitter] object CoreJSLib {
           } else {
             val Float32ArrayRef = globalRef("Float32Array")
 
+            /* (function(array) {
+             *   return function(v) {
+             *     array[0] = v;
+             *     return array[0];
+             *   }
+             * })(new Float32Array(1))
+             *
+             * Allocating the Float32Array once and for all, and capturing it
+             * in an IIFE, is *much* faster than recreating it in every call of
+             * the polyfill (about an order of magnitude).
+             */
             val array = varRef("array")
-            val typedArrayPolyfill = genArrowFunction(paramList(v), {
+            val typedArrayPolyfillInner = genArrowFunction(paramList(v), {
               Block(
-                  const(array, New(Float32ArrayRef, 1 :: Nil)),
                   BracketSelect(array, 0) := v,
                   Return(BracketSelect(array, 0))
               )
             })
+            val typedArrayPolyfill = Apply(
+                genArrowFunction(paramList(array), Return(typedArrayPolyfillInner)),
+                New(Float32ArrayRef, 1 :: Nil) :: Nil)
 
             // scalastyle:off line.size.limit
             /* Originally inspired by the Typed Array polyfills written by
@@ -237,9 +250,8 @@ private[emitter] object CoreJSLib {
              * in org.scalajs.testsuite.compiler.DoubleTest.
              */
             // scalastyle:on line.size.limit
-            val isNegative = varRef("isNegative")
+            val sign = varRef("sign")
             val av = varRef("av")
-            val absResult = varRef("absResult")
             val p = varRef("p")
 
             val Inf = double(Double.PositiveInfinity)
@@ -248,11 +260,10 @@ private[emitter] object CoreJSLib {
 
             val noTypedArrayPolyfill = genArrowFunction(paramList(v), Block(
               v := +v, // turns `null` into +0, making sure not to deoptimize what follows
-              const(isNegative, v < 0), // false for NaN, +0 and -0
-              const(av, If(isNegative, -v, v)), // abs(v), or -0 if v is -0
-              genEmptyMutableLet(absResult.ident), // abs(result), or -0 if the result is -0
+              const(sign, If(v < 0, -1, 1)), // 1 for NaN, +0 and -0
+              const(av, sign * v), // abs(v), or -0 if v is -0
               If(av >= overflowThreshold, { // also handles the case av === Infinity
-                absResult := Inf
+                Return(sign * Inf)
               }, If(av >= normalThreshold, Block(
                 /* Here, we know that both the input and output are expressed
                  * in a Double normal form, so standard floating point
@@ -299,7 +310,7 @@ private[emitter] object CoreJSLib {
                  * proofs to Boldo's.
                  */
                 const(p, av * 536870913),
-                absResult := (p + (av - p))
+                Return(sign * (p + (av - p)))
               ), {
                 /* Here, the result is represented as a subnormal form in a
                  * float32 representation.
@@ -329,9 +340,8 @@ private[emitter] object CoreJSLib {
                  * happens to be an identity, and is therefore correct as well.
                  */
                 val roundingFactor = double(Double.MinPositiveValue / Float.MinPositiveValue.toDouble)
-                absResult := (av * roundingFactor) / roundingFactor
-              })),
-              Return(If(isNegative, -absResult, absResult))
+                Return(sign * ((av * roundingFactor) / roundingFactor))
+              }))
             ))
 
             If(typeof(Float32ArrayRef) !== str("undefined"),
