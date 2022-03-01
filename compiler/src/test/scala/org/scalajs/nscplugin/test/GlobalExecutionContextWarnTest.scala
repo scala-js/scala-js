@@ -42,7 +42,7 @@ class GlobalExecutionContextWarnTest extends DirectTest with TestHelpers {
       |
       |If you do not care about macrotask fairness, you can silence this warning by:
       |- Adding @nowarn("cat=other") (Scala >= 2.13.x only)
-      |- Setting the -P:scalajs:nowarnGlobalExecutionContext compiler option
+      |- Setting the -P:scalajs:nowarnGlobalExecutionContext compiler option (Scala < 3.x.y only)
       |- Using scala.scalajs.concurrent.JSExecutionContext.queue
       |  (the implementation of ExecutionContext.global in Scala.js) directly.
       |
@@ -77,7 +77,7 @@ class GlobalExecutionContextWarnTest extends DirectTest with TestHelpers {
       |
       |If you do not care about macrotask fairness, you can silence this warning by:
       |- Adding @nowarn("cat=other") (Scala >= 2.13.x only)
-      |- Setting the -P:scalajs:nowarnGlobalExecutionContext compiler option
+      |- Setting the -P:scalajs:nowarnGlobalExecutionContext compiler option (Scala < 3.x.y only)
       |- Using scala.scalajs.concurrent.JSExecutionContext.queue
       |  (the implementation of ExecutionContext.global in Scala.js) directly.
       |
