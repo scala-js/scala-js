@@ -24,7 +24,6 @@ object MiniLib {
         "String",
 
         "FloatingPointBits",
-        "FloatingPointBits$EncodeIEEE754Result",
 
         "Throwable",
         "StackTrace",

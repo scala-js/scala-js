@@ -1735,7 +1735,7 @@ object Build {
 
           case Default2_12ScalaVersion =>
             Some(ExpectedSizes(
-                fastLink = 783000 to 784000,
+                fastLink = 784000 to 785000,
                 fullLink = 150000 to 151000,
                 fastLinkGz = 92000 to 93000,
                 fullLinkGz = 37000 to 38000,
