@@ -5,7 +5,7 @@
   </a>
 </p>
 
-[![Join the chat at https://gitter.im/scala-js/scala-js](https://badges.gitter.im/scala-js/scala-js.svg)](https://gitter.im/scala-js/scala-js)
+Chat: [#scala-js](https://discord.com/invite/scala) on Discord.
 
 This is the repository for
 [Scala.js, the Scala to JavaScript compiler](https://www.scala-js.org/).
