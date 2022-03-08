@@ -562,6 +562,8 @@ object Build {
 
         val outputDir = crossTarget.value / "cleaned-classes"
 
+        val irCleaner = new JavalibIRCleaner((LocalRootProject / baseDirectory).value.toURI())
+
         val libFileMappings = (PathFinder(prevProducts) ** "*.sjsir")
           .pair(Path.rebase(prevProducts, outputDir))
 
@@ -578,7 +580,7 @@ object Build {
             IO.delete(outputDir)
           IO.createDirectory(outputDir)
 
-          JavalibIRCleaner.cleanIR(dependencyFiles, libFileMappings, s.log)
+          irCleaner.cleanIR(dependencyFiles, libFileMappings, s.log)
         } ((dependencyFiles ++ libFileMappings.map(_._1)).toSet)
 
         Seq(outputDir)
