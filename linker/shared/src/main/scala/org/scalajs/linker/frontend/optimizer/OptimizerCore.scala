@@ -427,7 +427,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         val (newName, newOriginalName) =
           freshLocalName(name, originalName, mutable = false)
         val localDef = LocalDef(RefinedType(AnyType), mutable = false,
-            ReplaceWithVarRef(newName, newSimpleState(true), None))
+            ReplaceWithVarRef(newName, newSimpleState(Used), None))
         val newBody = {
           val bodyScope = scope.withEnv(scope.env.withLocalDef(name, localDef))
           transformStat(body)(bodyScope)
@@ -440,7 +440,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         val (newName, newOriginalName) =
           freshLocalName(name, originalName, mutable = false)
         val localDef = LocalDef(RefinedType(AnyType), true,
-            ReplaceWithVarRef(newName, newSimpleState(true), None))
+            ReplaceWithVarRef(newName, newSimpleState(Used), None))
         val newHandler = {
           val handlerScope = scope.withEnv(scope.env.withLocalDef(name, localDef))
           transform(handler, isStat)(handlerScope)
@@ -919,7 +919,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
               withNewLocalDefs(captureBindings) { (captureLocalDefs, cont1) =>
                 val replacement = TentativeClosureReplacement(
                     captureParams, params, body, captureLocalDefs,
-                    alreadyUsed = newSimpleState(false), cancelFun)
+                    alreadyUsed = newSimpleState(Unused), cancelFun)
                 val localDef = LocalDef(
                     RefinedType(AnyType, isExact = false, isNullable = false),
                     mutable = false,
@@ -1160,7 +1160,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case PreTransLocalDef(localDef @ LocalDef(tpe, _, replacement)) =>
         replacement match {
           case ReplaceWithRecordVarRef(name, recordType, used, cancelFun) =>
-            used.value = true
+            used.value = Used
             PreTransRecordTree(
                 VarRef(LocalIdent(name))(recordType), tpe, cancelFun)
 
@@ -1369,7 +1369,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             (name, used)
         }
 
-        if (used.value) {
+        if (used.value.isUsed) {
           val ident = LocalIdent(name)
           val varDef = resolveLocalDef(value) match {
             case PreTransRecordTree(valueTree, valueTpe, cancelFun) =>
@@ -1792,8 +1792,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
               closure @ TentativeClosureReplacement(
                   captureParams, params, body, captureLocalDefs,
                   alreadyUsed, cancelFun)))
-              if !alreadyUsed.value && argsNoSpread.size <= params.size =>
-            alreadyUsed.value = true
+              if !alreadyUsed.value.isUsed && argsNoSpread.size <= params.size =>
+            alreadyUsed.value = Used
             val missingArgCount = params.size - argsNoSpread.size
             val expandedArgs =
               if (missingArgCount == 0) argsNoSpread
@@ -4014,7 +4014,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     } yield {
       val (newName, newOriginalName) = freshLocalName(name, originalName, mutable)
       val localDef = LocalDef(RefinedType(ptpe), mutable,
-          ReplaceWithVarRef(newName, newSimpleState(true), None))
+          ReplaceWithVarRef(newName, newSimpleState(Used), None))
       val newParamDef = ParamDef(LocalIdent(newName)(ident.pos),
           newOriginalName, ptpe, mutable)(p.pos)
       ((name -> localDef), newParamDef)
@@ -4271,7 +4271,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         // Otherwise, we effectively declare a new binding
         val (newName, newOriginalName) = freshLocalName(bindingName, mutable)
 
-        val used = newSimpleState(false)
+        val used = newSimpleState[IsUsed](Unused)
 
         val (replacement, refinedType) = resolveRecordType(value) match {
           case Some((recordType, cancelFun)) =>
@@ -4374,7 +4374,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         case PreTransTree(VarRef(LocalIdent(refName)), _)
             if !localIsMutable(refName) =>
           buildInner(LocalDef(computeRefinedType(), false,
-              ReplaceWithVarRef(refName, newSimpleState(true), None)), cont)
+              ReplaceWithVarRef(refName, newSimpleState(Used), None)), cont)
 
         case _ =>
           withDedicatedVar(computeRefinedType())
@@ -4667,7 +4667,7 @@ private[optimizer] object OptimizerCore {
         implicit pos: Position): Tree = replacement match {
 
       case ReplaceWithVarRef(name, used, _) =>
-        used.value = true
+        used.value = Used
         VarRef(LocalIdent(name))(tpe.base)
 
       /* Allocate an instance of RuntimeLong on the fly.
@@ -4676,7 +4676,7 @@ private[optimizer] object OptimizerCore {
        */
       case ReplaceWithRecordVarRef(name, recordType, used, _)
           if tpe.base == ClassType(LongImpl.RuntimeLongClass) =>
-        used.value = true
+        used.value = Used
         createNewLong(VarRef(LocalIdent(name))(recordType))
 
       case ReplaceWithRecordVarRef(_, _, _, cancelFun) =>
@@ -4738,12 +4738,12 @@ private[optimizer] object OptimizerCore {
   private sealed abstract class LocalDefReplacement
 
   private final case class ReplaceWithVarRef(name: LocalName,
-      used: SimpleState[Boolean],
+      used: SimpleState[IsUsed],
       longOpTree: Option[() => Tree]) extends LocalDefReplacement
 
   private final case class ReplaceWithRecordVarRef(name: LocalName,
       recordType: RecordType,
-      used: SimpleState[Boolean],
+      used: SimpleState[IsUsed],
       cancelFun: CancelFun) extends LocalDefReplacement
 
   private final case class ReplaceWithThis() extends LocalDefReplacement
@@ -4763,7 +4763,7 @@ private[optimizer] object OptimizerCore {
   private final case class TentativeClosureReplacement(
       captureParams: List[ParamDef], params: List[ParamDef], body: Tree,
       captureValues: List[LocalDef],
-      alreadyUsed: SimpleState[Boolean],
+      alreadyUsed: SimpleState[IsUsed],
       cancelFun: CancelFun) extends LocalDefReplacement
 
   private final case class InlineClassBeingConstructedReplacement(
@@ -4898,8 +4898,8 @@ private[optimizer] object OptimizerCore {
         localDef.replacement)
 
     def isAlreadyUsed: Boolean = (localDef.replacement: @unchecked) match {
-      case ReplaceWithVarRef(_, used, _)          => used.value
-      case ReplaceWithRecordVarRef(_, _, used, _) => used.value
+      case ReplaceWithVarRef(_, used, _)          => used.value.isUsed
+      case ReplaceWithRecordVarRef(_, _, used, _) => used.value.isUsed
     }
   }
 
@@ -5668,6 +5668,16 @@ private[optimizer] object OptimizerCore {
 
     def apply(ownerClassName: ClassName, fieldDef: FieldDef): FieldID =
       new FieldID(ownerClassName, fieldDef.name.name)
+  }
+
+  private sealed abstract class IsUsed {
+    def isUsed: Boolean
+  }
+  private case object Used extends IsUsed {
+    override def isUsed: Boolean = true
+  }
+  private case object Unused extends IsUsed {
+    override def isUsed: Boolean = false
   }
 
 }
