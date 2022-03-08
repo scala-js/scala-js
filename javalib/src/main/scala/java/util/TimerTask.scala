@@ -12,7 +12,6 @@
 
 package java.util
 
-import scala.concurrent.duration.FiniteDuration
 import scala.scalajs.js.timers._
 import scala.scalajs.js.timers.SetTimeoutHandle
 
@@ -41,9 +40,9 @@ abstract class TimerTask {
 
   def scheduledExecutionTime(): Long = lastScheduled
 
-  private[util] def timeout(delay: FiniteDuration)(body: => Unit): Unit = {
+  private[util] def timeout(delay: Long)(body: => Unit): Unit = {
     if (!canceled) {
-      handle = setTimeout(delay)(body)
+      handle = setTimeout(delay.toDouble)(body)
     }
   }
 

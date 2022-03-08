@@ -31,9 +31,9 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
    *  This is a local val for the primary constructor. It is a val,
    *  since we'll set it to null after initializing all fields.
    */
-  private[this] var _fld = Option(URI.uriRe.exec(origStr)).getOrElse {
+  private[this] var _fld: RegExp.ExecResult = URI.uriRe.exec(origStr)
+  if (_fld == null)
     throw new URISyntaxException(origStr, "Malformed URI")
-  }
 
   private val _isAbsolute = fld(AbsScheme).isDefined
   private val _isOpaque = fld(AbsOpaquePart).isDefined

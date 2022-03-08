@@ -12,8 +12,6 @@
 
 package java.util
 
-import scala.concurrent.duration._
-
 class Timer() {
   private[util] var canceled: Boolean = false
 
@@ -49,7 +47,7 @@ class Timer() {
 
   private def scheduleOnce(task: TimerTask, delay: Long): Unit = {
     acquire(task)
-    task.timeout(delay.millis) {
+    task.timeout(delay) {
       task.scheduledOnceAndStarted = true
       task.doRun()
     }
@@ -72,13 +70,13 @@ class Timer() {
   private def schedulePeriodically(
       task: TimerTask, delay: Long, period: Long): Unit = {
     acquire(task)
-    task.timeout(delay.millis) {
+    task.timeout(delay) {
       def loop(): Unit = {
         val startTime = System.nanoTime()
         task.doRun()
         val endTime = System.nanoTime()
         val duration = (endTime - startTime) / 1000000
-        task.timeout((period - duration).millis) {
+        task.timeout(period - duration) {
           loop()
         }
       }
@@ -102,7 +100,7 @@ class Timer() {
   private def scheduleFixed(
       task: TimerTask, delay: Long, period: Long): Unit = {
     acquire(task)
-    task.timeout(delay.millis) {
+    task.timeout(delay) {
       def loop(scheduledTime: Long): Unit = {
         task.doRun()
         val nextScheduledTime = scheduledTime + period
@@ -112,7 +110,7 @@ class Timer() {
           loop(nextScheduledTime)
         } else {
           // Re-run after a timeout.
-          task.timeout((nextScheduledTime - nowTime).millis) {
+          task.timeout(nextScheduledTime - nowTime) {
             loop(nextScheduledTime)
           }
         }

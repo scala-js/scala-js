@@ -16,13 +16,15 @@ import java.nio.CharBuffer
 
 import scala.annotation.tailrec
 
-abstract class Reader private[this] (_lock: Option[Object])
-    extends Readable with Closeable {
+abstract class Reader() extends Readable with Closeable {
+  protected var lock: Object = this
 
-  protected val lock = _lock.getOrElse(this)
-
-  protected def this(lock: Object) = this(Some(lock))
-  protected def this() = this(None)
+  protected def this(lock: Object) = {
+    this()
+    if (lock eq null)
+      throw new NullPointerException()
+    this.lock = lock
+  }
 
   def read(target: CharBuffer): Int = {
     if (!target.hasRemaining()) 0
