@@ -38,6 +38,7 @@ object TestIRBuilder {
   val Z = BooleanRef
   val O = ClassRef(ObjectClass)
   val T = ClassRef(BoxedStringClass)
+  val AT = ArrayTypeRef(ClassRef(BoxedStringClass), 1)
 
   def m(name: String, paramTypeRefs: List[TypeRef], resultTypeRef: TypeRef): MethodName =
     MethodName(name, paramTypeRefs, resultTypeRef)
@@ -85,13 +86,13 @@ object TestIRBuilder {
         EOH, None)
   }
 
+  val MainMethodName: MethodName = m("main", List(AT), VoidRef)
+
   def mainMethodDef(body: Tree): MethodDef = {
-    val stringArrayTypeRef = ArrayTypeRef(ClassRef(BoxedStringClass), 1)
-    val stringArrayType = ArrayType(stringArrayTypeRef)
-    val argsParamDef = paramDef("args", stringArrayType)
+    val argsParamDef = paramDef("args", ArrayType(AT))
     MethodDef(MemberFlags.empty.withNamespace(MemberNamespace.PublicStatic),
-        m("main", List(stringArrayTypeRef), VoidRef), NON,
-        List(argsParamDef), NoType, Some(body))(EOH, None)
+        MainMethodName, NON, List(argsParamDef), NoType, Some(body))(
+        EOH, None)
   }
 
   def consoleLog(expr: Tree): Tree =

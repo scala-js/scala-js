@@ -20,6 +20,7 @@ import org.junit.Assert._
 import org.scalajs.ir.ClassKind
 import org.scalajs.ir.EntryPointsInfo
 import org.scalajs.ir.Names._
+import org.scalajs.ir.Traversers.Traverser
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Trees.MemberNamespace._
 import org.scalajs.ir.Types._
@@ -288,6 +289,81 @@ class OptimizerTest {
     testLink(classDefs, MainTestModuleInitializers)
   }
 
+  @Test
+  def testCaptureElimination(): AsyncResult = await {
+    val sideEffect = m("sideEffect", List(I), I)
+
+    val x = LocalName("x")
+    val x2 = LocalName("x2")
+    val x4 = LocalName("x4")
+
+    val classDefs = Seq(
+        classDef(
+            MainTestClassName,
+            kind = ClassKind.Class,
+            superClass = Some(ObjectClass),
+            memberDefs = List(
+                trivialCtor(MainTestClassName),
+                // @noinline static def sideEffect(x: Int): Int = x
+                MethodDef(EMF.withNamespace(PublicStatic), sideEffect, NON,
+                    List(paramDef(x, IntType)), IntType, Some(VarRef(x)(IntType)))(
+                    EOH.withNoinline(true), None),
+                /* static def main(args: String[]) {
+                 *   console.log(arrow-lambda<
+                 *     x1 = sideEffect(1),
+                 *     x2 = sideEffect(2),
+                 *     ...
+                 *     x5 = sideEffect(5),
+                 *   >() = {
+                 *     console.log(x4);
+                 *     console.log(x2);
+                 *   });
+                 * }
+                 */
+                mainMethodDef({
+                  val closure = Closure(
+                    arrow = true,
+                    (1 to 5).toList.map(i => paramDef(LocalName("x" + i), IntType)),
+                    Nil,
+                    None,
+                    Block(
+                      consoleLog(VarRef(x4)(IntType)),
+                      consoleLog(VarRef(x2)(IntType))
+                    ),
+                    (1 to 5).toList.map(i => ApplyStatic(EAF, MainTestClassName, sideEffect, List(int(i)))(IntType))
+                  )
+                  consoleLog(closure)
+                })
+            )
+        )
+    )
+
+    for (moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers)) yield {
+      val mainClassDef = moduleSet.modules.flatMap(_.classDefs)
+        .find(_.className == MainTestClassName).get
+      val mainMethodDef = mainClassDef.methods.map(_.value)
+        .find(_.name.name == MainMethodName).get
+
+      var lastSideEffectFound = 0
+      var closureParams = List.empty[List[LocalName]]
+      new Traverser {
+        override def traverse(tree: Tree): Unit = {
+          super.traverse(tree)
+          tree match {
+            case ApplyStatic(_, MainTestClassName, MethodIdent(`sideEffect`), List(IntLiteral(i))) =>
+              assertEquals("wrong side effect ordering", lastSideEffectFound + 1, i)
+              lastSideEffectFound = i
+            case c: Closure =>
+              closureParams :+= c.captureParams.map(_.name.name)
+            case _ =>
+              ()
+          }
+        }
+      }.traverseMemberDef(mainMethodDef)
+      assertEquals("wrong number of side effect calls", 5, lastSideEffectFound)
+      assertEquals("wrong closure params", List(List(x2, x4)), closureParams)
+    }
+  }
 }
 
 object OptimizerTest {

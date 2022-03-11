@@ -135,7 +135,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         throw new AssertionError("Methods to optimize must be concrete")
       }
 
-      val (newParams, newBody1) = try {
+      val (newParamsWithUsage, newBody1) = try {
         transformIsolatedBody(Some(myself), thisType, params, resultType, body,
             Set.empty)
       } catch {
@@ -151,6 +151,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       val newBody =
         if (originalDef.methodName == NoArgConstructorName) tryElimStoreModule(newBody1)
         else newBody1
+      val newParams = newParamsWithUsage.map(_._1)
       MethodDef(static, name, originalName, newParams, resultType,
           Some(newBody))(originalDef.optimizerHints, None)(originalDef.pos)
     } catch {
@@ -647,8 +648,12 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         }
 
       case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
-        transformClosureCommon(arrow, captureParams, params, restParam, body,
-            captureValues.map(transformExpr))
+        trampoline {
+          pretransformExprs(captureValues) { tcaptureValues =>
+            transformClosureCommon(arrow, captureParams, params, restParam, body,
+                tcaptureValues)(finishTransform(isStat))
+          }
+        }
 
       case CreateJSClass(className, captureValues) =>
         CreateJSClass(className, captureValues.map(transformExpr))
@@ -673,19 +678,39 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   private def transformClosureCommon(arrow: Boolean,
       captureParams: List[ParamDef], params: List[ParamDef],
       restParam: Option[ParamDef], body: Tree,
-      newCaptureValues: List[Tree])(
-      implicit scope: Scope, pos: Position): Closure = {
+      tcaptureValues: List[PreTransform])(cont: PreTransCont)(
+      implicit scope: Scope, pos: Position): TailRec[Tree] = {
 
     val thisType = if (arrow) NoType else AnyType
-    val (allNewParams, newBody) = transformIsolatedBody(None, thisType,
+
+    val (allNewParamsWithUse, newBody) = transformIsolatedBody(None, thisType,
         captureParams ++ params ++ restParam, AnyType, body, scope.implsBeingInlined)
-    val (newCaptureParams, newParams, newRestParam) = {
-      val (c, t) = allNewParams.splitAt(captureParams.size)
-      if (restParam.isDefined) (c, t.init, Some(t.last))
-      else (c, t, None)
+
+    val (newCaptureParamsWithUse, newParamsWithUse) = allNewParamsWithUse.splitAt(captureParams.size)
+
+    val (newParams, newRestParam) = {
+      val t = newParamsWithUse.map(_._1).toList
+      if (restParam.isDefined) (t.init, Some(t.last))
+      else (t, None)
     }
 
-    Closure(arrow, newCaptureParams, newParams, newRestParam, newBody, newCaptureValues)
+    val captureBindings = {
+      newCaptureParamsWithUse.iterator.zip(tcaptureValues.iterator).map { case ((param, _), value) =>
+        Binding.temp(param.name.name, param.ptpe, mutable = false, value)
+      }.toList
+    }
+
+    withNewLocalDefs(captureBindings) { (localDefs, cont1) =>
+      val (finalCaptureParams, finalCaptureValues) = (for {
+        (localDef, (param, use)) <- localDefs.iterator.zip(newCaptureParamsWithUse.iterator)
+        if use.isUsed
+      } yield {
+        param -> localDef.newReplacement
+      }).toList.unzip
+      val newClosure = Closure(arrow, finalCaptureParams, newParams, newRestParam, newBody, finalCaptureValues)
+      val newTree = PreTransTree(newClosure, RefinedType(AnyType, isExact = false, isNullable = false))
+      cont1(newTree)
+    } (cont)
   }
 
   private def transformBlock(tree: Block, isStat: Boolean)(
@@ -892,11 +917,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
         pretransformExprs(captureValues) { tcaptureValues =>
           def default(): TailRec[Tree] = {
-            val newClosure = transformClosureCommon(arrow, captureParams,
-                params, restParam, body, tcaptureValues.map(finishTransformExpr))
-            cont(PreTransTree(
-                newClosure,
-                RefinedType(AnyType, isExact = false, isNullable = false)))
+            transformClosureCommon(arrow, captureParams, params, restParam, body, tcaptureValues)(cont)
           }
 
           if (!arrow || restParam.isDefined) {
@@ -4005,19 +4026,20 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     }
   }
 
-  def transformIsolatedBody(optTarget: Option[MethodID],
+  private def transformIsolatedBody(optTarget: Option[MethodID],
       thisType: Type, params: List[ParamDef], resultType: Type,
       body: Tree,
-      alreadyInlining: Set[Scope.InliningID]): (List[ParamDef], Tree) = {
-    val (paramLocalDefs, newParamDefs) = (for {
+      alreadyInlining: Set[Scope.InliningID]): (List[(ParamDef, IsUsed)], Tree) = {
+
+    val (paramLocalDefs, newParamDefsAndRepls) = (for {
       p @ ParamDef(ident @ LocalIdent(name), originalName, ptpe, mutable) <- params
     } yield {
       val (newName, newOriginalName) = freshLocalName(name, originalName, mutable)
-      val localDef = LocalDef(RefinedType(ptpe), mutable,
-          ReplaceWithVarRef(newName, newSimpleState(Used), None))
-      val newParamDef = ParamDef(LocalIdent(newName)(ident.pos),
-          newOriginalName, ptpe, mutable)(p.pos)
-      ((name -> localDef), newParamDef)
+      val replacement = ReplaceWithVarRef(newName, newSimpleState(Unused), None)
+      val localDef = LocalDef(RefinedType(ptpe), mutable, replacement)
+      val localIdent = LocalIdent(newName)(ident.pos)
+      val newParamDef = ParamDef(localIdent, newOriginalName, ptpe, mutable)(p.pos)
+      (name -> localDef, newParamDef -> replacement)
     }).unzip
 
     val thisLocalDef =
@@ -4043,7 +4065,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     val scope = Scope.Empty.inlining(inlining).withEnv(env)
     val newBody = transform(body, resultType == NoType)(scope)
 
-    (newParamDefs, newBody)
+    val newParamDefsWithUsage = newParamDefsAndRepls.map(t => (t._1, t._2.used.value))
+
+    (newParamDefsWithUsage, newBody)
   }
 
   private def pretransformLabeled(oldLabelName: LabelName, resultType: Type,
