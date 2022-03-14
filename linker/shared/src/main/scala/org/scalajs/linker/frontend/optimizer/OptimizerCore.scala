@@ -135,9 +135,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         throw new AssertionError("Methods to optimize must be concrete")
       }
 
-      val (newParamsWithUsage, newBody1) = try {
-        transformIsolatedBody(Some(myself), thisType, params, resultType, body,
-            Set.empty)
+      val bodyResult = try {
+        transformIsolatedBody(Some(myself), thisType, Nil, params, resultType, body, Set.empty)
       } catch {
         case _: TooManyRollbacksException =>
           localNameAllocator.clear()
@@ -145,13 +144,12 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           labelNameAllocator.clear()
           stateBackupChain = Nil
           disableOptimisticOptimizations = true
-          transformIsolatedBody(Some(myself), thisType, params, resultType,
-              body, Set.empty)
+          transformIsolatedBody(Some(myself), thisType, Nil, params, resultType, body, Set.empty)
       }
+      val newParams = bodyResult.newParamWithUse.map(_._1)
       val newBody =
-        if (originalDef.methodName == NoArgConstructorName) tryElimStoreModule(newBody1)
-        else newBody1
-      val newParams = newParamsWithUsage.map(_._1)
+        if (originalDef.methodName == NoArgConstructorName) tryElimStoreModule(bodyResult.body)
+        else bodyResult.body
       MethodDef(static, name, originalName, newParams, resultType,
           Some(newBody))(originalDef.optimizerHints, None)(originalDef.pos)
     } catch {
@@ -683,10 +681,21 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
     val thisType = if (arrow) NoType else AnyType
 
-    val (allNewParamsWithUse, newBody) = transformIsolatedBody(None, thisType,
-        captureParams ++ params ++ restParam, AnyType, body, scope.implsBeingInlined)
+    val (inlinableCaptures, normalCaptureParams) = {
+      val (i, n) = captureParams.iterator.zip(tcaptureValues.iterator).partition {
+        _._2 match {
+          // TODO: Add more criteria here
+          case PreTransLocalDef(LocalDef(_, _, _: ReplaceWithThis | _: ReplaceWithConstant)) => true
+          case _ => false
+        }
+      }
+      (i.toList, n.map(_._1).toList)
+    }
 
-    val (newCaptureParamsWithUse, newParamsWithUse) = allNewParamsWithUse.splitAt(captureParams.size)
+    val bodyResult = transformIsolatedBody(None, thisType, inlinableCaptures.map(_._1),
+        normalCaptureParams ++ params ++ restParam, AnyType, body, scope.implsBeingInlined)
+
+    val (newCaptureParamsWithUse, newParamsWithUse) = bodyResult.newParamWithUse.splitAt(normalCaptureParams.size)
 
     val (newParams, newRestParam) = {
       val t = newParamsWithUse.map(_._1).toList
@@ -696,17 +705,28 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
     val captureBindings = {
       newCaptureParamsWithUse.iterator.zip(tcaptureValues.iterator).map { case ((param, _), value) =>
-        Binding.temp(param.name.name, param.ptpe, mutable = false, value)
+        Binding.temp(param.name.name, param.ptpe, mutable = param.mutable, value)
       }.toList
     }
 
     withNewLocalDefs(captureBindings) { (localDefs, cont1) =>
+
+      // Retain IIFE for used params
       val (finalCaptureParams, finalCaptureValues) = (for {
         (localDef, (param, use)) <- localDefs.iterator.zip(newCaptureParamsWithUse.iterator)
         if use.isUsed
       } yield {
         param -> localDef.newReplacement
       }).toList.unzip
+
+      // Move inlinable capture params into start of closure body
+      val inlineBindings = inlinableCaptures.iterator.zip(bodyResult.inlinedParams.iterator)
+        .map { case ((_, tvalue), (newOrigName, newLocalDef)) =>
+          val value = finishTransformExpr(tvalue)
+          Left(PreTransBinding(newOrigName, newLocalDef, tvalue))
+        }.toList
+      val newBody = finishTransformBindings(inlineBindings, bodyResult.body)
+
       val newClosure = Closure(arrow, finalCaptureParams, newParams, newRestParam, newBody, finalCaptureValues)
       val newTree = PreTransTree(newClosure, RefinedType(AnyType, isExact = false, isNullable = false))
       cont1(newTree)
@@ -4027,9 +4047,18 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   }
 
   private def transformIsolatedBody(optTarget: Option[MethodID],
-      thisType: Type, params: List[ParamDef], resultType: Type,
-      body: Tree,
-      alreadyInlining: Set[Scope.InliningID]): (List[(ParamDef, IsUsed)], Tree) = {
+      thisType: Type, inlineParams: List[ParamDef], params: List[ParamDef], resultType: Type,
+      body: Tree, alreadyInlining: Set[Scope.InliningID]): TransformIsolatedBodyResult = {
+
+    // These are side-effect free so order doesn't matter
+    val inlinedParamData = (for {
+      p @ ParamDef(ident @ LocalIdent(name), originalName, ptpe, mutable) <- inlineParams
+    } yield {
+      val (newName, newOriginalName) = freshLocalName(name, originalName, mutable)
+      val replacement = ReplaceWithVarRef(newName, newSimpleState(Unused), None)
+      val localDef = LocalDef(RefinedType(ptpe), mutable, replacement)
+      (name, newOriginalName, localDef)
+    })
 
     val (paramLocalDefs, newParamDefsAndRepls) = (for {
       p @ ParamDef(ident @ LocalIdent(name), originalName, ptpe, mutable) <- params
@@ -4050,9 +4079,11 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             false, ReplaceWithThis()))
       }
 
+    val allParamLocalDefs = inlinedParamData.map(x => (x._1, x._3)) ::: paramLocalDefs
+
     val inlining = optTarget.fold(alreadyInlining) { target =>
       val allocationSiteCount =
-        paramLocalDefs.size + (if (thisLocalDef.isDefined) 1 else 0)
+        allParamLocalDefs.size + (if (thisLocalDef.isDefined) 1 else 0)
       val allocationSites =
         List.fill(allocationSiteCount)(AllocationSite.Anonymous)
       alreadyInlining + ((allocationSites, target))
@@ -4060,14 +4091,14 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     val env = {
       val envWithThis =
         thisLocalDef.fold(OptEnv.Empty)(OptEnv.Empty.withThisLocalDef(_))
-      envWithThis.withLocalDefs(paramLocalDefs)
+      envWithThis.withLocalDefs(allParamLocalDefs)
     }
     val scope = Scope.Empty.inlining(inlining).withEnv(env)
     val newBody = transform(body, resultType == NoType)(scope)
 
     val newParamDefsWithUsage = newParamDefsAndRepls.map(t => (t._1, t._2.used.value))
 
-    (newParamDefsWithUsage, newBody)
+    TransformIsolatedBodyResult(newBody, newParamDefsWithUsage, inlinedParamData.map(x => (x._2, x._3)))
   }
 
   private def pretransformLabeled(oldLabelName: LabelName, resultType: Type,
@@ -5704,4 +5735,6 @@ private[optimizer] object OptimizerCore {
     override def isUsed: Boolean = false
   }
 
+  private case class TransformIsolatedBodyResult(body: Tree, newParamWithUse: List[(ParamDef, IsUsed)],
+      inlinedParams: List[(OriginalName, LocalDef)])
 }
