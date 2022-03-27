@@ -184,6 +184,9 @@ object ModuleSplitter {
   def fewestModules(): ModuleSplitter =
     new ModuleSplitter(new FewestModulesAnalyzer())
 
+  def smallModulesFor(packages: List[String]): ModuleSplitter =
+    new ModuleSplitter(new SmallModulesForAnalyzer(packages.map(ClassName(_))))
+
   private class ModuleBuilder(id: ModuleID) {
     val internalDependencies: Builder[ModuleID, Set[ModuleID]] = Set.newBuilder
     val externalDependencies: Builder[String, Set[String]] = Set.newBuilder

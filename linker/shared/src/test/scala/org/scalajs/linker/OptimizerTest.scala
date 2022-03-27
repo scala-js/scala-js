@@ -183,7 +183,10 @@ class OptimizerTest {
         })
     )
 
-    for (moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers, TestIRRepo.fulllib)) yield {
+    for {
+      moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers,
+          stdlib = TestIRRepo.fulllib)
+    } yield {
       assertFalse(findClass(moduleSet, ClassClass).isDefined)
     }
   }
@@ -403,7 +406,7 @@ class OptimizerTest {
 
     for {
       moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers,
-          linkerConfig = linkerConfig)
+          config = linkerConfig)
     } yield {
       assertFalse(findClass(moduleSet, "Thunk").isDefined)
 
@@ -430,52 +433,4 @@ object OptimizerTest {
 
   private def findClass(moduleSet: ModuleSet, name: ClassName): Option[LinkedClass] =
     moduleSet.modules.flatMap(_.classDefs).find(_.className == name)
-
-  private final class StoreModuleSetLinkerBackend(
-      originalBackend: LinkerBackend)
-      extends LinkerBackend {
-
-    @volatile
-    private var _moduleSet: ModuleSet = _
-
-    val coreSpec: CoreSpec = originalBackend.coreSpec
-
-    val symbolRequirements: SymbolRequirement = originalBackend.symbolRequirements
-
-    override def injectedIRFiles: Seq[IRFile] = originalBackend.injectedIRFiles
-
-    def emit(moduleSet: ModuleSet, output: OutputDirectory, logger: Logger)(
-        implicit ec: ExecutionContext): Future[Report] = {
-      _moduleSet = moduleSet
-      originalBackend.emit(moduleSet, output, logger)
-    }
-
-    def moduleSet: ModuleSet = {
-      if (_moduleSet == null)
-        throw new IllegalStateException("Cannot access moduleSet before emit is called")
-      _moduleSet
-    }
-  }
-
-  def linkToModuleSet(classDefs: Seq[ClassDef],
-      moduleInitializers: List[ModuleInitializer],
-      stdlib: Future[Seq[IRFile]] = TestIRRepo.minilib,
-      linkerConfig: StandardConfig = StandardConfig())(
-      implicit ec: ExecutionContext): Future[ModuleSet] = {
-
-    val config = linkerConfig.withCheckIR(true)
-    val frontend = StandardLinkerFrontend(config)
-    val backend = new StoreModuleSetLinkerBackend(StandardLinkerBackend(config))
-    val linker = StandardLinkerImpl(frontend, backend)
-
-    val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
-    val output = MemOutputDirectory()
-
-    stdlib.flatMap { stdLibFiles =>
-      linker.link(stdLibFiles ++ classDefsFiles, moduleInitializers,
-          output, new ScalaConsoleLogger(Level.Error))
-    }.map { _ =>
-      backend.moduleSet
-    }
-  }
 }
