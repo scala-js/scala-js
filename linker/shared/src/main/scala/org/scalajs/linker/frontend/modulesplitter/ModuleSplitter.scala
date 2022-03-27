@@ -177,11 +177,12 @@ final class ModuleSplitter private (analyzer: ModuleAnalyzer) {
 }
 
 object ModuleSplitter {
-  def minSplitter(): ModuleSplitter =
-    new ModuleSplitter(new MinModuleAnalyzer())
 
-  def maxSplitter(): ModuleSplitter =
-    new ModuleSplitter(new MaxModuleAnalyzer())
+  def smallestModules(): ModuleSplitter =
+    new ModuleSplitter(new SmallestModulesAnalyzer())
+
+  def fewestModules(): ModuleSplitter =
+    new ModuleSplitter(new FewestModulesAnalyzer())
 
   private class ModuleBuilder(id: ModuleID) {
     val internalDependencies: Builder[ModuleID, Set[ModuleID]] = Set.newBuilder

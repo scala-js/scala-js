@@ -25,15 +25,15 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
  *  In practice, this means it generates a module per strongly connected
  *  component of the (static) dependency graph.
  */
-private[modulesplitter] final class MinModuleAnalyzer extends ModuleAnalyzer {
+private[modulesplitter] final class SmallestModulesAnalyzer extends ModuleAnalyzer {
   def analyze(info: ModuleAnalyzer.DependencyInfo): ModuleAnalyzer.Analysis = {
-    val run = new MinModuleAnalyzer.Run(info)
+    val run = new SmallestModulesAnalyzer.Run(info)
     run.analyze()
     run
   }
 }
 
-private object MinModuleAnalyzer {
+private object SmallestModulesAnalyzer {
   private final class Node(val className: ClassName, val index: Int) {
     var lowlink: Int = index
     var moduleIndex: Int = -1

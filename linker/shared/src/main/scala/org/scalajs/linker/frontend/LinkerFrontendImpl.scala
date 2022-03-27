@@ -46,8 +46,8 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
   private[this] val refiner: Refiner = new Refiner(config.commonConfig)
 
   private[this] val splitter: ModuleSplitter = config.moduleSplitStyle match {
-    case ModuleSplitStyle.FewestModules   => ModuleSplitter.maxSplitter()
-    case ModuleSplitStyle.SmallestModules => ModuleSplitter.minSplitter()
+    case ModuleSplitStyle.FewestModules   => ModuleSplitter.fewestModules()
+    case ModuleSplitStyle.SmallestModules => ModuleSplitter.smallestModules()
   }
 
   /** Link and optionally optimize the given IR to a

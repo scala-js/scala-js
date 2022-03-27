@@ -30,8 +30,8 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
  *  each public module it can be reached by. We then create a module for each
  *  distinct set of tags.
  */
-private[modulesplitter] final class MaxModuleAnalyzer extends ModuleAnalyzer {
-  import MaxModuleAnalyzer._
+private[modulesplitter] final class FewestModulesAnalyzer extends ModuleAnalyzer {
+  import FewestModulesAnalyzer._
 
   def analyze(info: ModuleAnalyzer.DependencyInfo): ModuleAnalyzer.Analysis = {
     val hasDynDeps = info.classDependencies.exists(_._2.dynamicDependencies.nonEmpty)
@@ -61,7 +61,7 @@ private[modulesplitter] final class MaxModuleAnalyzer extends ModuleAnalyzer {
   }
 }
 
-private object MaxModuleAnalyzer {
+private object FewestModulesAnalyzer {
 
   private final class SingleModuleAnalysis(moduleID: ModuleID)
       extends ModuleAnalyzer.Analysis {
