@@ -142,12 +142,6 @@ class UUIDTest {
       new UUID(0x0000000000001000L, 0x8000000000000000L).toString)
   }
 
-  @Test def randomUUID(): Unit = {
-    val uuid = UUID.randomUUID()
-    assertEquals(2, uuid.variant())
-    assertEquals(4, uuid.version())
-  }
-
   @Test def fromString(): Unit = {
     val uuid1 = UUID.fromString("f81d4fae-7dec-11d0-a765-00a0c91e6bf6")
     assertTrue(uuid1.equals(new UUID(0xf81d4fae7dec11d0L, 0xa76500a0c91e6bf6L)))
