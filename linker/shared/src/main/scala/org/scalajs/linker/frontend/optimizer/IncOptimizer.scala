@@ -28,6 +28,7 @@ import org.scalajs.logging._
 import org.scalajs.linker._
 import org.scalajs.linker.backend.emitter.LongImpl
 import org.scalajs.linker.frontend.LinkingUnit
+import org.scalajs.linker.interface.ModuleKind
 import org.scalajs.linker.standard._
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
@@ -709,6 +710,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     private val staticCallers =
       mutable.ArrayBuffer.fill[MethodCallers](MemberNamespace.Count)(collOps.emptyMap)
 
+    private val jsNativeImportsAskers = collOps.emptyMap[MethodImpl, Unit]
+
     private var _ancestors: List[ClassName] = linkedClass.ancestors
 
     private val _instantiatedSubclasses = collOps.emptyMap[Class, Unit]
@@ -718,6 +721,17 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         new StaticLikeNamespace(linkedClass, MemberNamespace.fromOrdinal(ord))
       }
     }
+
+    /* For now, we track all JS native imports together (the class itself and native members).
+     *
+     * This is more to avoid unnecessary tracking than due to an intrinsic reason.
+     */
+
+    private type JSNativeImports =
+      (Option[JSNativeLoadSpec.Import], Map[MethodName, JSNativeLoadSpec.Import])
+
+    private var jsNativeImports: JSNativeImports =
+      computeJSNativeImports(linkedClass)
 
     override def toString(): String =
       s"intf ${className.nameString}"
@@ -767,6 +781,21 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       _ancestors
     }
 
+    /** PROCESS PASS ONLY. Concurrency safe except with [[updateWith]]. */
+    def askJSNativeImport(asker: MethodImpl): Option[JSNativeLoadSpec.Import] = {
+      jsNativeImportsAskers.put(asker, ())
+      asker.registerTo(this)
+      jsNativeImports._1
+    }
+
+    /** PROCESS PASS ONLY. Concurrency safe except with [[updateWith]]. */
+    def askJSNativeImport(methodName: MethodName,
+        asker: MethodImpl): Option[JSNativeLoadSpec.Import] = {
+      jsNativeImportsAskers.put(asker, ())
+      asker.registerTo(this)
+      jsNativeImports._2.get(methodName)
+    }
+
     @inline
     def staticLike(namespace: MemberNamespace): StaticLikeNamespace =
       staticLikes(namespace.ordinal)
@@ -778,6 +807,14 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         _ancestors = linkedClass.ancestors
         ancestorsAskers.keysIterator.foreach(_.tag())
         ancestorsAskers.clear()
+      }
+
+      // Update jsNativeImports
+      val newJSNativeImports = computeJSNativeImports(linkedClass)
+      if (jsNativeImports != newJSNativeImports) {
+        jsNativeImports = newJSNativeImports
+        jsNativeImportsAskers.keysIterator.foreach(_.tag())
+        jsNativeImportsAskers.clear()
       }
 
       // Update static likes
@@ -817,6 +854,31 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       ancestorsAskers.remove(dependee)
       dynamicCallers.valuesIterator.foreach(_.remove(dependee))
       staticCallers.foreach(_.valuesIterator.foreach(_.remove(dependee)))
+      jsNativeImportsAskers.remove(dependee)
+    }
+
+    private def computeJSNativeImports(linkedClass: LinkedClass): JSNativeImports = {
+      def maybeImport(spec: JSNativeLoadSpec): Option[JSNativeLoadSpec.Import] = spec match {
+        case i: JSNativeLoadSpec.Import =>
+          Some(i)
+
+        case JSNativeLoadSpec.ImportWithGlobalFallback(i, _) =>
+          if (config.coreSpec.moduleKind != ModuleKind.NoModule) Some(i)
+          else None
+
+        case _: JSNativeLoadSpec.Global =>
+          None
+      }
+
+      val clazz = linkedClass.jsNativeLoadSpec.flatMap(maybeImport(_))
+      val nativeMembers = for {
+        member <- linkedClass.jsNativeMembers
+        jsImport <- maybeImport(member.jsNativeLoadSpec)
+      } yield {
+        member.name.name -> jsImport
+      }
+
+      (clazz, nativeMembers.toMap)
     }
   }
 
@@ -846,7 +908,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     var originalDef: MethodDef = _
     var optimizedMethodDef: Versioned[MethodDef] = _
 
-    var attributes: Attributes = _
+    var attributes: OptimizerCore.MethodAttributes = _
 
     def enclosingClassName: ClassName = owner.className
 
@@ -960,6 +1022,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     /** All methods are PROCESS PASS ONLY */
     private class Optimizer extends OptimizerCore(config) {
+      import OptimizerCore.ImportTarget
+
       type MethodID = MethodImpl
 
       val myself: MethodImpl.this.type = MethodImpl.this
@@ -988,6 +1052,16 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       protected def tryNewInlineableClass(
           className: ClassName): Option[OptimizerCore.InlineableClassStructure] = {
         classes(className).tryNewInlineable
+      }
+
+      protected def getJSNativeImportOf(
+          target: ImportTarget): Option[JSNativeLoadSpec.Import] = {
+        target match {
+          case ImportTarget.Class(className) =>
+            getInterface(className).askJSNativeImport(myself)
+          case ImportTarget.Member(className, methodName) =>
+            getInterface(className).askJSNativeImport(methodName, myself)
+        }
       }
     }
   }

@@ -79,6 +79,13 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   protected def tryNewInlineableClass(
       className: ClassName): Option[InlineableClassStructure]
 
+  /** Returns the jsNativeLoadSpec of the given import target if it is an Import.
+   *
+   *  Otherwise returns None.
+   */
+  protected def getJSNativeImportOf(
+      target: ImportTarget): Option[JSNativeLoadSpec.Import]
+
   private val localNameAllocator = new FreshNameAllocator.Local
 
   /** An allocated local variable name is mutable iff it belongs to this set. */
@@ -135,9 +142,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         throw new AssertionError("Methods to optimize must be concrete")
       }
 
+      implicit val scope = Scope.Empty
+
       val (newParamsWithUsage, newBody1) = try {
-        transformIsolatedBody(Some(myself), thisType, params, resultType, body,
-            Set.empty)
+        transformIsolatedBody(Some(myself), thisType, params, resultType, body)
       } catch {
         case _: TooManyRollbacksException =>
           localNameAllocator.clear()
@@ -145,8 +153,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           labelNameAllocator.clear()
           stateBackupChain = Nil
           disableOptimisticOptimizations = true
-          transformIsolatedBody(Some(myself), thisType, params, resultType,
-              body, Set.empty)
+          transformIsolatedBody(Some(myself), thisType, params, resultType, body)
       }
       val newBody =
         if (originalDef.methodName == NoArgConstructorName) tryElimStoreModule(newBody1)
@@ -505,8 +512,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
               finishTransform(isStat))
         }
 
-      case ApplyDynamicImport(flags, className, method, args) =>
-        ApplyDynamicImport(flags, className, method, args.map(transformExpr(_)))
+      case tree: ApplyDynamicImport =>
+        trampoline {
+          pretransformApplyDynamicImport(tree, isStat)(finishTransform(isStat))
+        }
 
       case tree: UnaryOp =>
         trampoline {
@@ -658,11 +667,19 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case CreateJSClass(className, captureValues) =>
         CreateJSClass(className, captureValues.map(transformExpr))
 
+      case SelectJSNativeMember(className, MethodIdent(member)) =>
+        transformJSLoadCommon(ImportTarget.Member(className, member), tree)
+
+      case LoadJSModule(className) =>
+        transformJSLoadCommon(ImportTarget.Class(className), tree)
+
+      case LoadJSConstructor(className) =>
+        transformJSLoadCommon(ImportTarget.Class(className), tree)
+
       // Trees that need not be transformed
 
       case _:Skip | _:Debugger | _:LoadModule | _:SelectStatic |
-          _:SelectJSNativeMember | _:JSNewTarget | _:JSImportMeta |
-          _:LoadJSConstructor | _:LoadJSModule | _:JSLinkingInfo |
+          _:JSNewTarget | _:JSImportMeta | _:JSLinkingInfo |
           _:JSGlobalRef | _:JSTypeOfGlobalRef | _:Literal =>
         tree
 
@@ -684,7 +701,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     val thisType = if (arrow) NoType else AnyType
 
     val (allNewParamsWithUse, newBody) = transformIsolatedBody(None, thisType,
-        captureParams ++ params ++ restParam, AnyType, body, scope.implsBeingInlined)
+        captureParams ++ params ++ restParam, AnyType, body)
 
     val (newCaptureParamsWithUse, newParamsWithUse) = allNewParamsWithUse.splitAt(captureParams.size)
 
@@ -694,22 +711,32 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       else (t, None)
     }
 
-    val captureBindings = {
+    withCaptures(newCaptureParamsWithUse, tcaptureValues) { (finalCaptureParams, finalCaptureValues, cont1) =>
+      val newClosure = Closure(arrow, finalCaptureParams, newParams, newRestParam, newBody, finalCaptureValues)
+      val newTree = PreTransTree(newClosure, RefinedType(AnyType, isExact = false, isNullable = false))
+      cont1(newTree)
+    } (cont)
+  }
+
+  private def withCaptures(newCaptureParamsWithUse: List[(ParamDef, IsUsed)],
+      tcaptureValues: List[PreTransform])(
+      buildInner: (List[ParamDef], List[Tree], PreTransCont) => TailRec[Tree])(
+      cont: PreTransCont)(implicit scope: Scope, pos: Position) = {
+    val bindings = {
       newCaptureParamsWithUse.iterator.zip(tcaptureValues.iterator).map { case ((param, _), value) =>
         Binding.temp(param.name.name, param.ptpe, mutable = false, value)
       }.toList
     }
 
-    withNewLocalDefs(captureBindings) { (localDefs, cont1) =>
+    withNewLocalDefs(bindings) { (localDefs, cont1) =>
       val (finalCaptureParams, finalCaptureValues) = (for {
         (localDef, (param, use)) <- localDefs.iterator.zip(newCaptureParamsWithUse.iterator)
         if use.isUsed
       } yield {
         param -> localDef.newReplacement
       }).toList.unzip
-      val newClosure = Closure(arrow, finalCaptureParams, newParams, newRestParam, newBody, finalCaptureValues)
-      val newTree = PreTransTree(newClosure, RefinedType(AnyType, isExact = false, isNullable = false))
-      cont1(newTree)
+
+      buildInner(finalCaptureParams, finalCaptureValues, cont1)
     } (cont)
   }
 
@@ -858,6 +885,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case tree: ApplyStatic =>
         pretransformApplyStatic(tree, isStat = false,
             usePreTransform = true)(cont)
+
+      case tree: ApplyDynamicImport =>
+        pretransformApplyDynamicImport(tree, isStat = false)(cont)
 
       case tree: UnaryOp =>
         pretransformUnaryOp(tree)(cont)
@@ -1546,8 +1576,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             if (intrinsicCode >= 0) {
               callIntrinsic(intrinsicCode, flags, Some(treceiver), methodName,
                   targs, isStat, usePreTransform)(cont)
-            } else if (target.inlineable && (
-                target.shouldInline ||
+            } else if (target.attributes.inlineable && (
+                target.attributes.shouldInline ||
                 shouldInlineBecauseOfArgs(target, treceiver :: targs))) {
               /* When inlining a single method, the declared type of the `this`
                * value is its enclosing class.
@@ -1580,7 +1610,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
   private def canMultiInline(impls: List[MethodID]): Boolean = {
     // TODO? Inline multiple non-forwarders with the exact same body?
-    impls.forall(impl => impl.isForwarder && impl.inlineable) &&
+    impls.forall(impl => impl.attributes.isForwarder && impl.attributes.inlineable) &&
     (getMethodBody(impls.head).body.get match {
       // Trait impl forwarder
       case ApplyStatic(flags, staticCls, MethodIdent(methodName), _) =>
@@ -1667,8 +1697,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           callIntrinsic(intrinsicCode, flags, Some(treceiver), methodName,
               targs, isStat, usePreTransform)(cont)
         } else {
-          val shouldInline = target.inlineable && (
-              target.shouldInline ||
+          val shouldInline = target.attributes.inlineable && (
+              target.attributes.shouldInline ||
               shouldInlineBecauseOfArgs(target, treceiver :: targs))
           val allocationSites =
             (treceiver :: targs).map(_.tpe.allocationSite)
@@ -1710,8 +1740,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         callIntrinsic(intrinsicCode, flags, None, methodName, targs,
             isStat, usePreTransform)(cont)
       } else {
-        val shouldInline = target.inlineable && (
-            target.shouldInline || shouldInlineBecauseOfArgs(target, targs))
+        val shouldInline = target.attributes.inlineable && (
+            target.attributes.shouldInline || shouldInlineBecauseOfArgs(target, targs))
         val allocationSites = targs.map(_.tpe.allocationSite)
         val beingInlined =
           scope.implsBeingInlined((allocationSites, target))
@@ -1723,6 +1753,78 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           treeNotInlined0(targs.map(finishTransformExpr))
         }
       }
+    }
+  }
+
+  private def pretransformApplyDynamicImport(tree: ApplyDynamicImport, isStat: Boolean)(
+      cont: PreTransCont)(
+      implicit outerScope: Scope): TailRec[Tree] = {
+
+    val ApplyDynamicImport(flags, className, method, args) = tree
+    implicit val pos = tree.pos
+
+    def treeNotInlined0(transformedArgs: List[Tree]) =
+      cont(PreTransTree(ApplyDynamicImport(flags, className, method, transformedArgs),
+          RefinedType(AnyType)))
+
+    def treeNotInlined = treeNotInlined0(args.map(transformExpr))
+
+    val targetMethod =
+      staticCall(className, MemberNamespace.forStaticCall(flags), method.name)
+
+    if (!targetMethod.attributes.inlineable) {
+      treeNotInlined
+    } else {
+      val maybeImportTarget = targetMethod.attributes.jsDynImportInlineTarget.orElse {
+        targetMethod.attributes.jsDynImportThunkFor.flatMap { thunkTarget =>
+          val id = staticCall(className, MemberNamespace.Public, thunkTarget)
+          if (id.attributes.inlineable)
+            id.attributes.jsDynImportInlineTarget
+          else
+            None
+        }
+      }
+
+      val maybeInlined = for {
+        importTarget <- maybeImportTarget
+        jsNativeLoadSpec <- getJSNativeImportOf(importTarget)
+      } yield {
+        pretransformExprs(args) { targs =>
+          tryOrRollback { cancelFun =>
+            val moduleName = freshLocalNameWithoutOriginalName(
+                LocalName("module"), mutable = false)
+
+            val moduleParam =
+              ParamDef(LocalIdent(moduleName), NoOriginalName, AnyType, mutable = false)
+
+            val importReplacement = ImportReplacement(importTarget, moduleName,
+                jsNativeLoadSpec.path, newSimpleState(Unused), cancelFun)
+
+            val (newCaptureParamsWithUse, newBody) = {
+              val newScope = outerScope.withImportReplacement(importReplacement)
+              val MethodDef(_, _, _, params, resultType, Some(body)) = getMethodBody(targetMethod)
+              transformIsolatedBody(Some(targetMethod), NoType, params, resultType, body)(newScope)
+            }
+
+            if (!importReplacement.used.value.isUsed)
+              cancelFun()
+
+            withCaptures(newCaptureParamsWithUse, targs) { (captureParams, captureValues, cont1) =>
+              val inlinedClosure = Closure(arrow = true, captureParams, List(moduleParam),
+                  restParam = None, newBody, captureValues)
+
+              val newTree = JSImport(config.coreSpec.moduleKind, jsNativeLoadSpec.module,
+                  inlinedClosure)
+
+              cont1(PreTransTree(newTree))
+            } (cont)
+          } { () =>
+            treeNotInlined0(targs.map(finishTransformExpr))
+          }
+        }
+      }
+
+      maybeInlined.getOrElse(treeNotInlined)
     }
   }
 
@@ -1791,6 +1893,24 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         }
       case _ =>
         item
+    }
+  }
+
+  private def transformJSLoadCommon(target: ImportTarget, tree: Tree)(
+      implicit scope: Scope, pos: Position): Tree = {
+    scope.importReplacement match {
+      case Some(ImportReplacement(expectedTarget, moduleVarName, path, used, cancelFun)) =>
+        if (target != expectedTarget)
+          cancelFun()
+
+        used.value = Used
+        val module = VarRef(LocalIdent(moduleVarName))(AnyType)
+        path.foldLeft[Tree](module) { (inner, pathElem) =>
+          JSSelect(inner, StringLiteral(pathElem))
+        }
+
+      case None =>
+        tree
     }
   }
 
@@ -1960,7 +2080,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
 
-    require(target.inlineable)
+    require(target.attributes.inlineable)
 
     attemptedInlining += target
 
@@ -4027,9 +4147,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   }
 
   private def transformIsolatedBody(optTarget: Option[MethodID],
-      thisType: Type, params: List[ParamDef], resultType: Type,
-      body: Tree,
-      alreadyInlining: Set[Scope.InliningID]): (List[(ParamDef, IsUsed)], Tree) = {
+      thisType: Type, params: List[ParamDef], resultType: Type, body: Tree)(
+      implicit outerScope: Scope): (List[(ParamDef, IsUsed)], Tree) = {
 
     val (paramLocalDefs, newParamDefsAndRepls) = (for {
       p @ ParamDef(ident @ LocalIdent(name), originalName, ptpe, mutable) <- params
@@ -4050,19 +4169,21 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             false, ReplaceWithThis()))
       }
 
-    val inlining = optTarget.fold(alreadyInlining) { target =>
+    val inlining = optTarget.map { target =>
       val allocationSiteCount =
         paramLocalDefs.size + (if (thisLocalDef.isDefined) 1 else 0)
       val allocationSites =
         List.fill(allocationSiteCount)(AllocationSite.Anonymous)
-      alreadyInlining + ((allocationSites, target))
-    }
+      allocationSites -> target
+    }.toSet[Scope.InliningID]
+
     val env = {
       val envWithThis =
         thisLocalDef.fold(OptEnv.Empty)(OptEnv.Empty.withThisLocalDef(_))
       envWithThis.withLocalDefs(paramLocalDefs)
     }
-    val scope = Scope.Empty.inlining(inlining).withEnv(env)
+    val scope = outerScope.inlining(inlining).withEnv(env)
+
     val newBody = transform(body, resultType == NoType)(scope)
 
     val newParamDefsWithUsage = newParamDefsAndRepls.map(t => (t._1, t._2.used.value))
@@ -4804,6 +4925,14 @@ private[optimizer] object OptimizerCore {
       elemLocalDefs: Vector[LocalDef],
       cancelFun: CancelFun) extends LocalDefReplacement
 
+  /** Replaces an import target. Part of the ApplyDynamicImport inlining.
+   *
+   *  @note This is **not** a LocalDefReplacement.
+   */
+  private final case class ImportReplacement(target: ImportTarget,
+      moduleVarName: LocalName, path: List[String],
+      used: SimpleState[IsUsed], cancelFun: CancelFun)
+
   private final class LabelInfo(
       val newName: LabelName,
       val acceptRecords: Boolean,
@@ -4845,27 +4974,43 @@ private[optimizer] object OptimizerCore {
     val Empty: OptEnv = new OptEnv(None, Map.empty, Map.empty)
   }
 
-  private class Scope(val env: OptEnv,
-      val implsBeingInlined: Set[Scope.InliningID]) {
-    def withEnv(env: OptEnv): Scope =
-      new Scope(env, implsBeingInlined)
+  private class Scope private (
+    val env: OptEnv,
+    val implsBeingInlined: Set[Scope.InliningID],
+    val importReplacement: Option[ImportReplacement]
+  ) {
+    def withEnv(env: OptEnv): Scope = copy(env = env)
 
     def inlining(impl: Scope.InliningID): Scope = {
       assert(!implsBeingInlined(impl), s"Circular inlining of $impl")
-      new Scope(env, implsBeingInlined + impl)
+      copy(implsBeingInlined = implsBeingInlined + impl)
     }
 
     def inlining(impls: Set[Scope.InliningID]): Scope = {
       val intersection = implsBeingInlined.intersect(impls)
       assert(intersection.isEmpty, s"Circular inlining of $intersection")
-      new Scope(env, implsBeingInlined ++ impls)
+      copy(implsBeingInlined = implsBeingInlined ++ impls)
+    }
+
+    def withImportReplacement(importReplacement: ImportReplacement): Scope = {
+      assert(this.importReplacement.isEmpty, "Alreadying replacing " +
+          s"$this.importReplacement while trying to replace $importReplacement")
+      copy(importReplacement = Some(importReplacement))
+    }
+
+    private def copy(
+      env: OptEnv = env,
+      implsBeingInlined: Set[Scope.InliningID] = implsBeingInlined,
+      importReplacement: Option[ImportReplacement] = importReplacement
+    ): Scope = {
+      new Scope(env, implsBeingInlined, importReplacement)
     }
   }
 
   private object Scope {
     type InliningID = (List[AllocationSite], AbstractMethodID)
 
-    val Empty: Scope = new Scope(OptEnv.Empty, Set.empty)
+    val Empty: Scope = new Scope(OptEnv.Empty, Set.empty, None)
   }
 
   /** The result of pretransformExpr().
@@ -5182,6 +5327,32 @@ private[optimizer] object OptimizerCore {
       If(lhs, rhs, BooleanLiteral(false))(BooleanType)
   }
 
+  private object JSImport {
+    /** Import module and call `callback` with it. */
+    def apply(moduleKind: ModuleKind, module: String, callback: Closure)(implicit pos: Position): Tree = {
+      def genThen(receiver: Tree, callback: Closure): Tree =
+        JSMethodApply(receiver, StringLiteral("then"), List(callback))
+
+      val importTree = moduleKind match {
+        case ModuleKind.NoModule =>
+          throw new AssertionError("Cannot import module in NoModule mode")
+
+        case ModuleKind.ESModule =>
+          JSImportCall(StringLiteral(module))
+
+        case ModuleKind.CommonJSModule =>
+          val require =
+            JSFunctionApply(JSGlobalRef("require"), List(StringLiteral(module)))
+
+          val unitPromise = JSMethodApply(
+              JSGlobalRef("Promise"), StringLiteral("resolve"), List(Undefined()))
+          genThen(unitPromise, Closure(arrow = true, Nil, Nil, None, require, Nil))
+      }
+
+      genThen(importTree, callback)
+    }
+  }
+
   /** Creates a new instance of `RuntimeLong` from a record of its `lo` and
    *  `hi` parts.
    */
@@ -5376,9 +5547,7 @@ private[optimizer] object OptimizerCore {
   trait AbstractMethodID {
     def enclosingClassName: ClassName
     def methodName: MethodName
-    def inlineable: Boolean
-    def shouldInline: Boolean
-    def isForwarder: Boolean
+    def attributes: MethodAttributes
 
     final def is(className: ClassName, methodName: MethodName): Boolean =
       this.enclosingClassName == className && this.methodName == methodName
@@ -5386,20 +5555,13 @@ private[optimizer] object OptimizerCore {
 
   /** Parts of [[GenIncOptimizer#MethodImpl]] with decisions about optimizations. */
   abstract class MethodImpl {
+    def enclosingClassName: ClassName
     def methodName: MethodName
     def optimizerHints: OptimizerHints
     def originalDef: MethodDef
     def thisType: Type
 
-    protected type Attributes = MethodImpl.Attributes
-
-    protected def attributes: Attributes
-
-    final def inlineable: Boolean = attributes.inlineable
-    final def shouldInline: Boolean = attributes.shouldInline
-    final def isForwarder: Boolean = attributes.isForwarder
-
-    protected def computeNewAttributes(): Attributes = {
+    protected def computeNewAttributes(): MethodAttributes = {
       val MethodDef(_, MethodIdent(methodName), _, params, _, optBody) = originalDef
       val body = optBody getOrElse {
         throw new AssertionError("Methods in optimizer must be concrete")
@@ -5468,16 +5630,63 @@ private[optimizer] object OptimizerCore {
         }
       }
 
-      MethodImpl.Attributes(inlineable, shouldInline, isForwarder)
+      val jsDynImportInlineTarget = body match {
+        case MaybeUnbox(SelectJSNativeMember(className, MethodIdent(member)), _) =>
+          Some(ImportTarget.Member(className, member))
+
+        case MaybeUnbox(JSFunctionApply(SelectJSNativeMember(className,
+            MethodIdent(member)), args), _) if args.forall(isSmallTree(_))=>
+          Some(ImportTarget.Member(className, member))
+
+        case MaybeUnbox(LoadJSModule(className), _) =>
+          Some(ImportTarget.Class(className))
+
+        case MaybeUnbox(JSSelect(LoadJSModule(className), arg), _) if isSmallTree(arg) =>
+          Some(ImportTarget.Class(className))
+
+        case MaybeUnbox(JSMethodApply(LoadJSModule(className), method, args), _)
+            if isSmallTree(method) && args.forall(isSmallTree(_)) =>
+          Some(ImportTarget.Class(className))
+
+        case JSNew(LoadJSConstructor(className), args) if args.forall(isSmallTree(_)) =>
+          Some(ImportTarget.Class(className))
+
+        case _ =>
+          None
+      }
+
+      val jsDynImportThunkFor = body match {
+        case Apply(_, New(clazz, _, _), MethodIdent(target), _) if clazz == enclosingClassName =>
+          Some(target)
+
+        case _ =>
+          None
+      }
+
+      new MethodAttributes(inlineable, shouldInline, isForwarder, jsDynImportInlineTarget, jsDynImportThunkFor)
     }
   }
 
-  object MethodImpl {
-    final case class Attributes(
-        inlineable: Boolean,
-        shouldInline: Boolean,
-        isForwarder: Boolean
-    )
+  /* This is a "broken" case class so we get equals (and hashCode) for free.
+   *
+   * This hack is somewhat acceptable, because:
+   * - it is only part of the OptimizerCore / IncOptimizer interface.
+   * - the risk of getting equals wrong is high: it only affects the incremental
+   *   behavior of the optimizer, which we have few tests for.
+   */
+  final case class MethodAttributes private[OptimizerCore] (
+      private[OptimizerCore] val inlineable: Boolean,
+      private[OptimizerCore] val shouldInline: Boolean,
+      private[OptimizerCore] val isForwarder: Boolean,
+      private[OptimizerCore] val jsDynImportInlineTarget: Option[ImportTarget],
+      private[OptimizerCore] val jsDynImportThunkFor: Option[MethodName]
+  )
+
+  sealed trait ImportTarget
+
+  object ImportTarget {
+    case class Member(className: ClassName, member: MethodName) extends ImportTarget
+    case class Class(className: ClassName) extends ImportTarget
   }
 
   private object MaybeUnbox {
@@ -5500,6 +5709,21 @@ private[optimizer] object OptimizerCore {
       methodName.simpleName == TraitInitSimpleMethodName
     case _ =>
       false
+  }
+
+  /** Whether a tree is going to result in a small code size.
+   *
+   *  This is used to determine whether it is acceptable to move a tree accross
+   *  a dynamic module load boundary.
+   */
+  private def isSmallTree(tree: TreeOrJSSpread): Boolean = tree match {
+    case _:VarRef | _:Literal    => true
+    case Select(This(), _, _)    => true
+    case UnaryOp(_, lhs)         => isSmallTree(lhs)
+    case BinaryOp(_, lhs, rhs)   => isSmallTree(lhs) && isSmallTree(rhs)
+    case JSUnaryOp(_, lhs)       => isSmallTree(lhs)
+    case JSBinaryOp(_, lhs, rhs) => isSmallTree(lhs) && isSmallTree(rhs)
+    case _                       => false
   }
 
   private object SimpleMethodBody {
