@@ -133,6 +133,10 @@ def Tasks = [
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         helloworld$v/run &&
     sbtretry ++$scala \
+        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallModulesFor(List("helloworld"))))' \
+        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
+        helloworld$v/run &&
+    sbtretry ++$scala \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         'set scalaJSStage in Global := FullOptStage' \
         helloworld$v/run \
@@ -158,6 +162,12 @@ def Tasks = [
     sbtretry ++$scala testSuite$v/test:doc library$v/test compiler$v/test &&
     sbtretry ++$scala \
         'set scalaJSLinkerConfig in reversi.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
+        'set scalaJSLinkerConfig in reversi.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
+        reversi$v/fastLinkJS \
+        reversi$v/fullLinkJS \
+        reversi$v/clean &&
+    sbtretry ++$scala \
+        'set scalaJSLinkerConfig in reversi.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallModulesFor(List("reversi"))))' \
         'set scalaJSLinkerConfig in reversi.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         reversi$v/fastLinkJS \
         reversi$v/fullLinkJS \
@@ -246,6 +256,10 @@ def Tasks = [
         ++$scala $testSuite$v/test &&
     sbtretry \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
+        ++$scala $testSuite$v/test &&
+    sbtretry \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallModulesFor(List("org.scalajs.testsuite"))))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         ++$scala $testSuite$v/test &&
     sbtretry \

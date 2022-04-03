@@ -27,7 +27,7 @@ import org.scalajs.linker.interface._
 import org.scalajs.linker.testutils.LinkingUtils._
 import org.scalajs.linker.testutils.TestIRBuilder._
 
-class MinModuleSplittingTest {
+class SmallestModulesSplittingTest {
   import scala.concurrent.ExecutionContext.Implicits.global
 
   /** Smoke test to ensure modules do not get merged too much. */

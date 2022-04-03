@@ -28,7 +28,7 @@ import org.scalajs.linker.interface._
 import org.scalajs.linker.testutils.LinkingUtils._
 import org.scalajs.linker.testutils.TestIRBuilder._
 
-class MaxModuleSplittingTest {
+class FewestModulesSplittingTest {
   import scala.concurrent.ExecutionContext.Implicits.global
 
   @Test

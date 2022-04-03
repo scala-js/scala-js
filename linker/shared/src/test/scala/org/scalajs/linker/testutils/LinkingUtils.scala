@@ -19,6 +19,7 @@ import org.scalajs.ir.Trees.ClassDef
 import org.scalajs.logging._
 
 import org.scalajs.linker._
+import org.scalajs.linker.standard._
 import org.scalajs.linker.interface._
 
 object LinkingUtils {
@@ -34,6 +35,53 @@ object LinkingUtils {
     TestIRRepo.minilib.flatMap { stdLibFiles =>
       linker.link(stdLibFiles ++ classDefsFiles, moduleInitializers,
           output, new ScalaConsoleLogger(Level.Error))
+    }
+  }
+
+  private final class StoreModuleSetLinkerBackend(originalBackend: LinkerBackend)
+      extends LinkerBackend {
+
+    @volatile
+    private var _moduleSet: ModuleSet = _
+
+    val coreSpec: CoreSpec = originalBackend.coreSpec
+
+    val symbolRequirements: SymbolRequirement = originalBackend.symbolRequirements
+
+    override def injectedIRFiles: Seq[IRFile] = originalBackend.injectedIRFiles
+
+    def emit(moduleSet: ModuleSet, output: OutputDirectory, logger: Logger)(
+        implicit ec: ExecutionContext): Future[Report] = {
+      _moduleSet = moduleSet
+      originalBackend.emit(moduleSet, output, logger)
+    }
+
+    def moduleSet: ModuleSet = {
+      if (_moduleSet == null)
+        throw new IllegalStateException("Cannot access moduleSet before emit is called")
+      _moduleSet
+    }
+  }
+
+  def linkToModuleSet(classDefs: Seq[ClassDef],
+      moduleInitializers: List[ModuleInitializer],
+      config: StandardConfig = StandardConfig(),
+      stdlib: Future[Seq[IRFile]] = TestIRRepo.minilib)(
+      implicit ec: ExecutionContext): Future[ModuleSet] = {
+
+    val cfg = config.withCheckIR(true)
+    val frontend = StandardLinkerFrontend(cfg)
+    val backend = new StoreModuleSetLinkerBackend(StandardLinkerBackend(cfg))
+    val linker = StandardLinkerImpl(frontend, backend)
+
+    val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
+    val output = MemOutputDirectory()
+
+    stdlib.flatMap { stdLibFiles =>
+      linker.link(stdLibFiles ++ classDefsFiles, moduleInitializers,
+          output, new ScalaConsoleLogger(Level.Error))
+    }.map { _ =>
+      backend.moduleSet
     }
   }
 }
