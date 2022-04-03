@@ -12,8 +12,6 @@
 
 package org.scalajs.linker.backend.emitter
 
-import org.scalajs.linker.interface.IRFile
-
-object PrivateLibHolder {
-  val files: Seq[IRFile] = Nil
+private[emitter] object PrivateLibData {
+  val pathsAndContents: Seq[(String, String)] = Nil
 }

@@ -1038,52 +1038,30 @@ object Build {
   ).settings(
       Test / scalacOptions ++= scalaJSCompilerOption("nowarnGlobalExecutionContext"),
 
-      if (isGeneratingForIDE) {
-        unmanagedSourceDirectories in Compile +=
-          baseDirectory.value.getParentFile.getParentFile / "js/src/main/scala-ide-stubs"
-      } else {
-        sourceGenerators in Compile += Def.task {
-          val dir = (sourceManaged in Compile).value
+      buildInfoOrStubs(Compile, Def.setting(
+          baseDirectory.value.getParentFile.getParentFile / "js/src/main")),
+
+      buildInfoPackage in Compile := "org.scalajs.linker.backend.emitter",
+      buildInfoObject in Compile := "PrivateLibData",
+      buildInfoOptions in Compile += BuildInfoOption.PackagePrivate,
+      buildInfoKeys := {
+        val pathsAndContentsTask = Def.task {
           val privateLibProducts = (products in (linkerPrivateLibrary, Compile)).value
 
-          val content = {
-            val namesAndContents = for {
-              f <- (privateLibProducts ** "*.sjsir").get
-            } yield {
-              val bytes = IO.readBytes(f)
-              val base64 = java.util.Base64.getEncoder().encodeToString(bytes)
-              s""""${f.getName}" -> "$base64""""
-            }
-
-            s"""
-            |package org.scalajs.linker.backend.emitter
-            |
-            |import org.scalajs.linker.interface.IRFile
-            |import org.scalajs.linker.standard.MemIRFileImpl
-            |
-            |object PrivateLibHolder {
-            |  private val namesAndContents = Seq(
-            |    ${namesAndContents.mkString(",\n    ")}
-            |  )
-            |
-            |  val files: Seq[IRFile] = {
-            |    for ((name, contentBase64) <- namesAndContents) yield {
-            |      new MemIRFileImpl(
-            |          path = "org/scalajs/linker/runtime/" + name,
-            |          version = Some(""), // this indicates that the file never changes
-            |          content = java.util.Base64.getDecoder().decode(contentBase64)
-            |      )
-            |    }
-            |  }
-            |}
-            """.stripMargin
+          for {
+            f <- (privateLibProducts ** "*.sjsir").get
+          } yield {
+            val bytes = IO.readBytes(f)
+            val base64 = java.util.Base64.getEncoder().encodeToString(bytes)
+            f.getName -> base64
           }
+        }.taskValue
 
-          IO.createDirectory(dir)
-          val output = dir / "PrivateLibHolder.scala"
-          IO.write(output, content)
-          Seq(output)
-        }.taskValue,
+        Seq(
+          BuildInfoKey.map(pathsAndContentsTask) {
+            case (_, v) => "pathsAndContents" -> v
+          },
+        )
       },
 
       scalaJSLinkerConfig in Test ~= (_.withModuleKind(ModuleKind.CommonJSModule))
