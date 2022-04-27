@@ -355,10 +355,10 @@ object Arrays {
     binarySearchImplRef(a, startIndex, endIndex, key)
   }
 
-  @noinline def binarySearch[T](a: Array[T], key: T, c: Comparator[_ >: T]): Int =
+  @noinline def binarySearch[T <: AnyRef](a: Array[T], key: T, c: Comparator[_ >: T]): Int =
     binarySearchImpl[T](a, 0, a.length, key, (a, b) => c.compare(a, b) < 0)
 
-  @noinline def binarySearch[T](a: Array[T], startIndex: Int, endIndex: Int, key: T,
+  @noinline def binarySearch[T <: AnyRef](a: Array[T], startIndex: Int, endIndex: Int, key: T,
       c: Comparator[_ >: T]): Int = {
     checkRangeIndices(a, startIndex, endIndex)
     binarySearchImpl[T](a, startIndex, endIndex, key, (a, b) => c.compare(a, b) < 0)
