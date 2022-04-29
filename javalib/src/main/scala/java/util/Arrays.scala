@@ -394,12 +394,12 @@ object Arrays {
   }
 
   @noinline def binarySearch[T <: AnyRef](a: Array[T], key: T, c: Comparator[_ >: T]): Int =
-    binarySearchImpl[T](a, 0, a.length, key)(c)
+    binarySearchImpl[T](a, 0, a.length, key)(ifNullUseNaturalComparator(c))
 
   @noinline def binarySearch[T <: AnyRef](a: Array[T], startIndex: Int, endIndex: Int, key: T,
       c: Comparator[_ >: T]): Int = {
     checkRangeIndices(a, startIndex, endIndex)
-    binarySearchImpl[T](a, startIndex, endIndex, key)(c)
+    binarySearchImpl[T](a, startIndex, endIndex, key)(ifNullUseNaturalComparator(c))
   }
 
   @inline
