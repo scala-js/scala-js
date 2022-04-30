@@ -16,20 +16,28 @@ import scala.collection.mutable
 import scala.concurrent._
 
 import org.scalajs.linker.analyzer._
+import org.scalajs.linker.checker.ClassDefChecker
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable._
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
+
+import org.scalajs.logging._
 
 import org.scalajs.ir
 import org.scalajs.ir.Names.ClassName
 import org.scalajs.ir.Trees.ClassDef
 
-final class IRLoader extends Analyzer.InputProvider with MethodSynthesizer.InputProvider {
+final class IRLoader(checkIR: Boolean) extends Analyzer.InputProvider
+    with MethodSynthesizer.InputProvider {
   private var classNameToFile: collection.Map[ClassName, IRFileImpl] = _
   private var entryPoints: collection.Set[ClassName] = _
+  private var logger: Logger = _
   private val cache = mutable.Map.empty[ClassName, ClassDefAndInfoCache]
 
-  def update(irInput: Seq[IRFile])(implicit ec: ExecutionContext): Future[this.type] = {
+
+  def update(irInput: Seq[IRFile], logger: Logger)(implicit ec: ExecutionContext): Future[this.type] = {
+    this.logger = logger
+
     Future.traverse(irInput)(i => IRFileImpl.fromIRFile(i).entryPointsInfo).map { infos =>
       val classNameToFile = mutable.Map.empty[ClassName, IRFileImpl]
       val entryPoints = mutable.Set.empty[ClassName]
@@ -82,13 +90,15 @@ final class IRLoader extends Analyzer.InputProvider with MethodSynthesizer.Input
   private def maybeGet[T](className: ClassName, f: ClassDefAndInfoCache.Update => T)(
       implicit ec: ExecutionContext): Option[Future[T]] = {
     classNameToFile.get(className).map { irFile =>
-      cache.getOrElseUpdate(className, new ClassDefAndInfoCache).update(irFile).map(f)
+      cache.getOrElseUpdate(className, new ClassDefAndInfoCache)
+        .update(irFile, logger, checkIR).map(f)
     }
   }
 
   def cleanAfterRun(): Unit = {
     classNameToFile = null
     entryPoints = null
+    logger = null
     cache.filterInPlace((_, fileCache) => fileCache.cleanAfterRun())
   }
 }
@@ -108,7 +118,7 @@ private final class ClassDefAndInfoCache {
   private var version: Option[String] = None
   private var cacheUpdate: Future[Update] = _
 
-  def update(irFile: IRFileImpl)(
+  def update(irFile: IRFileImpl, logger: Logger, checkIR: Boolean)(
       implicit ec: ExecutionContext): Future[Update] = synchronized {
     /* If the cache was already used in this run, the classDef and info are
      * already correct, no matter what the versions say.
@@ -121,6 +131,13 @@ private final class ClassDefAndInfoCache {
           version.get != newVersion.get) {
         version = newVersion
         cacheUpdate = irFile.tree.map { tree =>
+          if (checkIR) {
+            val errorCount = ClassDefChecker.check(tree, logger)
+            if (errorCount != 0) {
+              throw new LinkingException(
+                  s"There were $errorCount ClassDef checking errors.")
+            }
+          }
           new Update(tree, Infos.generateClassInfo(tree),
               Infos.generateTopLevelExportInfos(tree), version)
         }

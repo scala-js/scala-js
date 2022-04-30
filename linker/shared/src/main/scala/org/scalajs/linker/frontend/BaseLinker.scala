@@ -33,19 +33,19 @@ import Analysis._
 /** Links the information from [[interface.IRFile IRFile]]s into
  *  [[standard.LinkedClass LinkedClass]]es. Does a dead code elimination pass.
  */
-final class BaseLinker(config: CommonPhaseConfig) {
+final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
   import BaseLinker._
 
-  private val irLoader = new IRLoader
+  private val irLoader = new IRLoader(checkIR)
   private val methodSynthesizer = new MethodSynthesizer(irLoader)
 
   def link(irInput: Seq[IRFile],
       moduleInitializers: Seq[ModuleInitializer], logger: Logger,
-      symbolRequirements: SymbolRequirement, checkIR: Boolean)(
+      symbolRequirements: SymbolRequirement)(
       implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
     val result = for {
-      _ <- irLoader.update(irInput)
+      _ <- irLoader.update(irInput, logger)
       analysis <- logger.timeFuture("Linker: Compute reachability") {
         analyze(moduleInitializers, symbolRequirements, logger)
       }

@@ -96,9 +96,13 @@ object LinkingUtils {
       config: StandardConfig = StandardConfig(),
       stdlib: Future[Seq[IRFile]] = TestIRRepo.minilib)(
       implicit ec: ExecutionContext): Future[Analysis] = {
+
+    val loader = new IRLoader(checkIR = true)
+    val logger = new ScalaConsoleLogger(Level.Error)
+
     for {
       baseFiles <- stdlib
-      irLoader <- new IRLoader().update(classDefs.map(MemClassDefIRFile(_)) ++ baseFiles)
+      irLoader <- loader.update(classDefs.map(MemClassDefIRFile(_)) ++ baseFiles, logger)
       analysis <- Analyzer.computeReachability(
           CommonPhaseConfig.fromStandardConfig(config), moduleInitializers,
           symbolRequirements, allowAddingSyntheticMethods = true,

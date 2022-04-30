@@ -125,6 +125,12 @@ object TestIRBuilder {
     )
   }
 
+  def requiredMemberDefs(className: ClassName,
+      classKind: ClassKind): List[MemberDef] = {
+    if (classKind == ClassKind.ModuleClass) List(trivialCtor(className))
+    else Nil
+  }
+
   implicit def string2LocalName(name: String): LocalName =
     LocalName(name)
   implicit def string2LabelName(name: String): LabelName =

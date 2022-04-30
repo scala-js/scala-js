@@ -91,78 +91,6 @@ class IRCheckerTest {
   }
 
   @Test
-  def testDuplicateMembers(): AsyncResult = await {
-    val FooClass = ClassName("Foo")
-    val FooType = ClassType(FooClass)
-    val BoxedStringType = ClassType(BoxedStringClass)
-
-    val stringCtorName = MethodName.constructor(List(ClassRef(BoxedStringClass)))
-    val babarMethodName = MethodName("babar", List(IntRef), IntRef)
-
-    val callPrimaryCtorBody: Tree = {
-      ApplyStatically(EAF.withConstructor(true), This()(FooType),
-          FooClass, NoArgConstructorName, Nil)(NoType)
-    }
-
-    def babarMethodBody(paramName: String): Tree = {
-      BinaryOp(BinaryOp.Int_+,
-          Select(This()(FooType), FooClass, "foobar")(IntType),
-          VarRef(paramName)(IntType))
-    }
-
-    val classDefs = Seq(
-        classDef("Foo",
-            superClass = Some(ObjectClass),
-            memberDefs = List(
-                trivialCtor("Foo"),
-
-                // Duplicate fields
-
-                FieldDef(EMF, "foobar", NON, IntType),
-                FieldDef(EMF, "foobar", NON, BoxedStringType),
-
-                // Duplicate constructors
-
-                MethodDef(EMF.withNamespace(MemberNamespace.Constructor),
-                    stringCtorName, NON, List(paramDef("x", BoxedStringType)),
-                    NoType, Some(callPrimaryCtorBody))(
-                    EOH, None),
-
-                MethodDef(EMF.withNamespace(MemberNamespace.Constructor),
-                    stringCtorName, NON, List(paramDef("y", BoxedStringType)),
-                    NoType, Some(callPrimaryCtorBody))(
-                    EOH, None),
-
-                // Duplicate methods
-
-                MethodDef(EMF, babarMethodName, NON, List(paramDef("x", IntType)),
-                    IntType, Some(babarMethodBody("x")))(
-                    EOH, None),
-
-                MethodDef(EMF, babarMethodName, NON, List(paramDef("y", IntType)),
-                    IntType, Some(babarMethodBody("y")))(
-                    EOH, None)
-            )
-        ),
-
-        mainTestClassDef(Block(
-            VarDef("foo", NON, FooType, mutable = false,
-                New(FooClass, stringCtorName, List(str("hello")))),
-            Apply(EAF, VarRef("foo")(FooType), babarMethodName, List(int(5)))(IntType)
-        ))
-    )
-
-    for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
-      log.assertContainsError(
-          "Duplicate definition of field 'foobar' in class 'Foo'")
-      log.assertContainsError(
-          "Duplicate definition of constructor method '<init>(java.lang.String)void' in class 'Foo'")
-      log.assertContainsError(
-          "Duplicate definition of method 'babar(int)int' in class 'Foo'")
-    }
-  }
-
-  @Test
   def missingJSNativeLoadSpec(): AsyncResult = await {
     val classDefs = Seq(
       classDef("A", kind = ClassKind.NativeJSClass, superClass = Some(ObjectClass)),
@@ -211,7 +139,7 @@ class IRCheckerTest {
 
     for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
       log.assertContainsError(
-          "any expected but <notype> found for tree of type org.scalajs.ir.Trees$Skip")
+          "any expected but <notype> found for tree of type org.scalajs.ir.Trees$JSSuperConstructorCall")
     }
   }
 
@@ -239,7 +167,7 @@ class IRCheckerTest {
 
     for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
       log.assertContainsError(
-          "any expected but <notype> found for tree of type org.scalajs.ir.Trees$VarDef")
+          "any expected but <notype> found for tree of type org.scalajs.ir.Trees$Block")
     }
   }
 
