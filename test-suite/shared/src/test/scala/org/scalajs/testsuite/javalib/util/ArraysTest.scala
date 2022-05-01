@@ -519,6 +519,82 @@ class ArraysTest {
     assertEquals(-7, ret)
   }
 
+  @Test def binarySearchWithStartAndEndIndexOnSpecificAnyRefWithNullComparator(): Unit = {
+    val strings: Array[String] = Array("aac", "abc", "cc", "cf", "zz", "zzzs", "zzzt")
+
+    assertEquals(2, Arrays.binarySearch(strings, 2, 6, "cc", null))
+    assertEquals(5, Arrays.binarySearch(strings, 2, 6, "zzzs", null))
+    assertEquals(3, Arrays.binarySearch(strings, 2, 6, "cf", null))
+
+    assertEquals(-2 - 1, Arrays.binarySearch(strings, 2, 6, "aaa", null))
+    assertEquals(-2 - 1, Arrays.binarySearch(strings, 2, 6, "aac", null))
+    assertEquals(-2 - 1, Arrays.binarySearch(strings, 2, 6, "bb", null))
+    assertEquals(-4 - 1, Arrays.binarySearch(strings, 2, 6, "ff", null))
+    assertEquals(-5 - 1, Arrays.binarySearch(strings, 2, 6, "zza", null))
+    assertEquals(-6 - 1, Arrays.binarySearch(strings, 2, 6, "zzzt", null))
+    assertEquals(-6 - 1, Arrays.binarySearch(strings, 2, 6, "zzzz", null))
+  }
+
+  @Test def binarySearchOnSpecificAnyRefWithNullComparator(): Unit = {
+    val strings: Array[String] = Array("aac", "abc", "cc", "cf", "zz", "zzzs", "zzzt")
+
+    assertEquals(0, Arrays.binarySearch(strings, "aac", null))
+    assertEquals(2, Arrays.binarySearch(strings, "cc", null))
+    assertEquals(3, Arrays.binarySearch(strings, "cf", null))
+    assertEquals(5, Arrays.binarySearch(strings, "zzzs", null))
+    assertEquals(6, Arrays.binarySearch(strings, "zzzt", null))
+
+    assertEquals(-0 - 1, Arrays.binarySearch(strings, "aaa", null))
+    assertEquals(-2 - 1, Arrays.binarySearch(strings, "bb", null))
+    assertEquals(-4 - 1, Arrays.binarySearch(strings, "ff", null))
+    assertEquals(-5 - 1, Arrays.binarySearch(strings, "zza", null))
+    assertEquals(-7 - 1, Arrays.binarySearch(strings, "zzzz", null))
+  }
+
+  @Test def binarySearchWithStartAndEndIndexOnSpecificAnyRefWithComparator(): Unit = {
+    val cmp = new java.util.Comparator[(Int, Int)] {
+      def compare(o1: (Int, Int), o2: (Int, Int)): Int =
+        if (o1._1 != o2._1) Integer.compare(o1._1, o2._1)
+        else Integer.compare(o1._2, o2._2)
+    }
+
+    val pairs: Array[(Int, Int)] = Array((5, 8), (5, 15), (6, 3), (6, 10), (6, 20), (10, -1), (10, 3))
+
+    assertEquals(2, Arrays.binarySearch(pairs, 2, 6, (6, 3), cmp))
+    assertEquals(5, Arrays.binarySearch(pairs, 2, 6, (10, -1), cmp))
+    assertEquals(3, Arrays.binarySearch(pairs, 2, 6, (6, 10), cmp))
+
+    assertEquals(-2 - 1, Arrays.binarySearch(pairs, 2, 6, (4, 50), cmp))
+    assertEquals(-2 - 1, Arrays.binarySearch(pairs, 2, 6, (5, 8), cmp))
+    assertEquals(-2 - 1, Arrays.binarySearch(pairs, 2, 6, (6, 0), cmp))
+    assertEquals(-4 - 1, Arrays.binarySearch(pairs, 2, 6, (6, 15), cmp))
+    assertEquals(-5 - 1, Arrays.binarySearch(pairs, 2, 6, (7, 3), cmp))
+    assertEquals(-6 - 1, Arrays.binarySearch(pairs, 2, 6, (10, 3), cmp))
+    assertEquals(-6 - 1, Arrays.binarySearch(pairs, 2, 6, (10, 7), cmp))
+  }
+
+  @Test def binarySearchOnSpecificAnyRefWithComparator(): Unit = {
+    val cmp = new java.util.Comparator[(Int, Int)] {
+      def compare(o1: (Int, Int), o2: (Int, Int)): Int =
+        if (o1._1 != o2._1) Integer.compare(o1._1, o2._1)
+        else Integer.compare(o1._2, o2._2)
+    }
+
+    val pairs: Array[(Int, Int)] = Array((5, 8), (5, 15), (6, 3), (6, 10), (6, 20), (10, -1), (10, 3))
+
+    assertEquals(0, Arrays.binarySearch(pairs, (5, 8), cmp))
+    assertEquals(2, Arrays.binarySearch(pairs, (6, 3), cmp))
+    assertEquals(3, Arrays.binarySearch(pairs, (6, 10), cmp))
+    assertEquals(5, Arrays.binarySearch(pairs, (10, -1), cmp))
+    assertEquals(6, Arrays.binarySearch(pairs, (10, 3), cmp))
+
+    assertEquals(-0 - 1, Arrays.binarySearch(pairs, (4, 50), cmp))
+    assertEquals(-2 - 1, Arrays.binarySearch(pairs, (6, 0), cmp))
+    assertEquals(-4 - 1, Arrays.binarySearch(pairs, (6, 15), cmp))
+    assertEquals(-5 - 1, Arrays.binarySearch(pairs, (7, 3), cmp))
+    assertEquals(-7 - 1, Arrays.binarySearch(pairs, (10, 7), cmp))
+  }
+
   @Test def binarySearchIllegalArgumentException(): Unit = {
     val array = Array(0, 1, 3, 4)
 

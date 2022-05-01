@@ -12,279 +12,317 @@
 
 package java.util
 
+import java.lang.{reflect => jlr}
+
 import scala.scalajs.js
 
 import scala.annotation.tailrec
-
-import scala.reflect.ClassTag
 
 import ScalaOps._
 
 object Arrays {
 
+  private object NaturalComparator extends Comparator[AnyRef] {
+    @inline
+    def compare(o1: AnyRef, o2: AnyRef): Int =
+      o1.asInstanceOf[Comparable[AnyRef]].compareTo(o2)
+  }
+
+  @inline def ifNullUseNaturalComparator[T <: AnyRef](comparator: Comparator[_ >: T]): Comparator[_ >: T] =
+    if (comparator == null) NaturalComparator
+    else comparator
+
+  /** A custom typeclass for the operations we need in `Arrays` to implement
+   *  the algorithms generically.
+   */
+  private sealed trait ArrayOps[A] {
+    def length(a: Array[A]): Int
+    def get(a: Array[A], i: Int): A
+    def set(a: Array[A], i: Int, v: A): Unit
+  }
+
+  /** A custom typeclass for the ability to create arrays of a given type. */
+  private sealed trait ArrayCreateOps[A] {
+    def create(length: Int): Array[A]
+  }
+
+  // ArrayOps and ArrayCreateOps instances for reference types
+
+  private object ReusableAnyRefArrayOps extends ArrayOps[AnyRef] {
+    @inline def length(a: Array[AnyRef]): Int = a.length
+    @inline def get(a: Array[AnyRef], i: Int): AnyRef = a(i)
+    @inline def set(a: Array[AnyRef], i: Int, v: AnyRef): Unit = a(i) = v
+  }
+
   @inline
-  private final implicit def naturalOrdering[T <: AnyRef]: Ordering[T] = {
-    new Ordering[T] {
-      def compare(x: T, y: T): Int = x.asInstanceOf[Comparable[T]].compareTo(y)
-    }
+  private implicit def specificAnyRefArrayOps[A <: AnyRef]: ArrayOps[A] =
+    ReusableAnyRefArrayOps.asInstanceOf[ArrayOps[A]]
+
+  @inline
+  private final class ClassArrayOps[A <: AnyRef](clazz: Class[_ <: Array[A]])
+      extends ArrayCreateOps[A] {
+    @inline def create(length: Int): Array[A] =
+      createArrayOfClass(clazz, length)
   }
 
-  // Impose the total ordering of java.lang.Float.compare in Arrays
-  private implicit object FloatTotalOrdering extends Ordering[Float] {
-    def compare(x: Float, y: Float): Int = java.lang.Float.compare(x, y)
+  @inline
+  private final class TemplateArrayOps[A <: AnyRef](template: Array[A])
+      extends ArrayCreateOps[A] {
+    @inline def create(length: Int): Array[A] =
+      createArrayOfClass(template.getClass(), length)
   }
 
-  // Impose the total ordering of java.lang.Double.compare in Arrays
-  private implicit object DoubleTotalOrdering extends Ordering[Double] {
-    def compare(x: Double, y: Double): Int = java.lang.Double.compare(x, y)
+  @inline
+  private def createArrayOfClass[A <: AnyRef](clazz: Class[_ <: Array[A]], length: Int): Array[A] =
+    jlr.Array.newInstance(clazz.getComponentType(), length).asInstanceOf[Array[A]]
+
+  private implicit object AnyRefArrayCreateOps extends ArrayCreateOps[AnyRef] {
+    @inline def create(length: Int): Array[AnyRef] = new Array[AnyRef](length)
   }
+
+  /* ArrayOps and ArrayCreateOps instances for primitive types.
+   *
+   * With the exception of the one for Boolean, they also implement
+   * `java.util.Comparator` for the same element type. In a perfect design, we
+   * would define separate objects for that, but it would result in more
+   * generated code for no good reason.
+   */
+
+  private implicit object BooleanArrayOps
+      extends ArrayOps[Boolean] with ArrayCreateOps[Boolean] {
+    @inline def length(a: Array[Boolean]): Int = a.length
+    @inline def get(a: Array[Boolean], i: Int): Boolean = a(i)
+    @inline def set(a: Array[Boolean], i: Int, v: Boolean): Unit = a(i) = v
+    @inline def create(length: Int): Array[Boolean] = new Array[Boolean](length)
+  }
+
+  private implicit object CharArrayOps
+      extends ArrayOps[Char] with ArrayCreateOps[Char] with Comparator[Char] {
+    @inline def length(a: Array[Char]): Int = a.length
+    @inline def get(a: Array[Char], i: Int): Char = a(i)
+    @inline def set(a: Array[Char], i: Int, v: Char): Unit = a(i) = v
+    @inline def create(length: Int): Array[Char] = new Array[Char](length)
+    @inline def compare(x: Char, y: Char): Int = java.lang.Character.compare(x, y)
+  }
+
+  private implicit object ByteArrayOps
+      extends ArrayOps[Byte] with ArrayCreateOps[Byte] with Comparator[Byte] {
+    @inline def length(a: Array[Byte]): Int = a.length
+    @inline def get(a: Array[Byte], i: Int): Byte = a(i)
+    @inline def set(a: Array[Byte], i: Int, v: Byte): Unit = a(i) = v
+    @inline def create(length: Int): Array[Byte] = new Array[Byte](length)
+    @inline def compare(x: Byte, y: Byte): Int = java.lang.Byte.compare(x, y)
+  }
+
+  private implicit object ShortArrayOps
+      extends ArrayOps[Short] with ArrayCreateOps[Short] with Comparator[Short] {
+    @inline def length(a: Array[Short]): Int = a.length
+    @inline def get(a: Array[Short], i: Int): Short = a(i)
+    @inline def set(a: Array[Short], i: Int, v: Short): Unit = a(i) = v
+    @inline def create(length: Int): Array[Short] = new Array[Short](length)
+    @inline def compare(x: Short, y: Short): Int = java.lang.Short.compare(x, y)
+  }
+
+  private implicit object IntArrayOps
+      extends ArrayOps[Int] with ArrayCreateOps[Int] with Comparator[Int] {
+    @inline def length(a: Array[Int]): Int = a.length
+    @inline def get(a: Array[Int], i: Int): Int = a(i)
+    @inline def set(a: Array[Int], i: Int, v: Int): Unit = a(i) = v
+    @inline def create(length: Int): Array[Int] = new Array[Int](length)
+    @inline def compare(x: Int, y: Int): Int = java.lang.Integer.compare(x, y)
+  }
+
+  private implicit object LongArrayOps
+      extends ArrayOps[Long] with ArrayCreateOps[Long] with Comparator[Long] {
+    @inline def length(a: Array[Long]): Int = a.length
+    @inline def get(a: Array[Long], i: Int): Long = a(i)
+    @inline def set(a: Array[Long], i: Int, v: Long): Unit = a(i) = v
+    @inline def create(length: Int): Array[Long] = new Array[Long](length)
+    @inline def compare(x: Long, y: Long): Int = java.lang.Long.compare(x, y)
+  }
+
+  private implicit object FloatArrayOps
+      extends ArrayOps[Float] with ArrayCreateOps[Float] with Comparator[Float] {
+    @inline def length(a: Array[Float]): Int = a.length
+    @inline def get(a: Array[Float], i: Int): Float = a(i)
+    @inline def set(a: Array[Float], i: Int, v: Float): Unit = a(i) = v
+    @inline def create(length: Int): Array[Float] = new Array[Float](length)
+    @inline def compare(x: Float, y: Float): Int = java.lang.Float.compare(x, y)
+  }
+
+  private implicit object DoubleArrayOps
+      extends ArrayOps[Double] with ArrayCreateOps[Double] with Comparator[Double] {
+    @inline def length(a: Array[Double]): Int = a.length
+    @inline def get(a: Array[Double], i: Int): Double = a(i)
+    @inline def set(a: Array[Double], i: Int, v: Double): Unit = a(i) = v
+    @inline def create(length: Int): Array[Double] = new Array[Double](length)
+    @inline def compare(x: Double, y: Double): Int = java.lang.Double.compare(x, y)
+  }
+
+  // Implementation of the API
 
   @noinline def sort(a: Array[Int]): Unit =
-    sortImpl(a)
+    sortImpl(a)(IntArrayOps)
 
   @noinline def sort(a: Array[Int], fromIndex: Int, toIndex: Int): Unit =
-    sortRangeImpl[Int](a, fromIndex, toIndex)
+    sortRangeImpl(a, fromIndex, toIndex)(IntArrayOps)
 
   @noinline def sort(a: Array[Long]): Unit =
-    sortImpl(a)
+    sortImpl(a)(LongArrayOps)
 
   @noinline def sort(a: Array[Long], fromIndex: Int, toIndex: Int): Unit =
-    sortRangeImpl[Long](a, fromIndex, toIndex)
+    sortRangeImpl(a, fromIndex, toIndex)(LongArrayOps)
 
   @noinline def sort(a: Array[Short]): Unit =
-    sortImpl(a)
+    sortImpl(a)(ShortArrayOps)
 
   @noinline def sort(a: Array[Short], fromIndex: Int, toIndex: Int): Unit =
-    sortRangeImpl[Short](a, fromIndex, toIndex)
+    sortRangeImpl(a, fromIndex, toIndex)(ShortArrayOps)
 
   @noinline def sort(a: Array[Char]): Unit =
-    sortImpl(a)
+    sortImpl(a)(CharArrayOps)
 
   @noinline def sort(a: Array[Char], fromIndex: Int, toIndex: Int): Unit =
-    sortRangeImpl[Char](a, fromIndex, toIndex)
+    sortRangeImpl(a, fromIndex, toIndex)(CharArrayOps)
 
   @noinline def sort(a: Array[Byte]): Unit =
-    sortImpl(a)
+    sortImpl(a)(ByteArrayOps)
 
   @noinline def sort(a: Array[Byte], fromIndex: Int, toIndex: Int): Unit =
-    sortRangeImpl[Byte](a, fromIndex, toIndex)
+    sortRangeImpl(a, fromIndex, toIndex)(ByteArrayOps)
 
   @noinline def sort(a: Array[Float]): Unit =
-    sortImpl(a)
+    sortImpl(a)(FloatArrayOps)
 
   @noinline def sort(a: Array[Float], fromIndex: Int, toIndex: Int): Unit =
-    sortRangeImpl[Float](a, fromIndex, toIndex)
+    sortRangeImpl(a, fromIndex, toIndex)(FloatArrayOps)
 
   @noinline def sort(a: Array[Double]): Unit =
-    sortImpl(a)
+    sortImpl(a)(DoubleArrayOps)
 
   @noinline def sort(a: Array[Double], fromIndex: Int, toIndex: Int): Unit =
-    sortRangeImpl[Double](a, fromIndex, toIndex)
+    sortRangeImpl(a, fromIndex, toIndex)(DoubleArrayOps)
 
   @noinline def sort(a: Array[AnyRef]): Unit =
-    sortAnyRefImpl(a)
+    sortImpl(a)(NaturalComparator)
 
   @noinline def sort(a: Array[AnyRef], fromIndex: Int, toIndex: Int): Unit =
-    sortRangeAnyRefImpl(a, fromIndex, toIndex)
+    sortRangeImpl(a, fromIndex, toIndex)(NaturalComparator)
 
   @noinline def sort[T <: AnyRef](array: Array[T], comparator: Comparator[_ >: T]): Unit = {
-    implicit val ord = toOrdering(comparator).asInstanceOf[Ordering[AnyRef]]
-    sortAnyRefImpl(array.asInstanceOf[Array[AnyRef]])
+    implicit val createOps = new TemplateArrayOps(array)
+    sortImpl(array)(ifNullUseNaturalComparator(comparator))
   }
 
   @noinline def sort[T <: AnyRef](array: Array[T], fromIndex: Int, toIndex: Int,
       comparator: Comparator[_ >: T]): Unit = {
-    implicit val ord = toOrdering(comparator).asInstanceOf[Ordering[AnyRef]]
-    sortRangeAnyRefImpl(array.asInstanceOf[Array[AnyRef]], fromIndex, toIndex)
+    implicit val createOps = new TemplateArrayOps(array)
+    sortRangeImpl(array, fromIndex, toIndex)(ifNullUseNaturalComparator(comparator))
   }
 
   @inline
-  private def sortRangeImpl[@specialized T: ClassTag](
-      a: Array[T], fromIndex: Int, toIndex: Int)(implicit ord: Ordering[T]): Unit = {
-    checkRangeIndices(a, fromIndex, toIndex)
-    stableMergeSort[T](a, fromIndex, toIndex)
+  private def sortRangeImpl[T](a: Array[T], fromIndex: Int, toIndex: Int)(
+      comparator: Comparator[_ >: T])(
+      implicit ops: ArrayOps[T], createOps: ArrayCreateOps[T]): Unit = {
+    checkRangeIndices(a, fromIndex, toIndex)(ops)
+    stableMergeSort[T](a, fromIndex, toIndex)(comparator)
   }
 
   @inline
-  private def sortRangeAnyRefImpl(a: Array[AnyRef], fromIndex: Int, toIndex: Int)(
-      implicit ord: Ordering[AnyRef]): Unit = {
-    checkRangeIndices(a, fromIndex, toIndex)
-    stableMergeSortAnyRef(a, fromIndex, toIndex)
+  private def sortImpl[T](a: Array[T])(comparator: Comparator[_ >: T])(
+      implicit ops: ArrayOps[T], createOps: ArrayCreateOps[T]): Unit = {
+    stableMergeSort[T](a, 0, ops.length(a))(comparator)
   }
-
-  @inline
-  private def sortImpl[@specialized T: ClassTag: Ordering](a: Array[T]): Unit =
-    stableMergeSort[T](a, 0, a.length)
-
-  @inline
-  private def sortAnyRefImpl(a: Array[AnyRef])(implicit ord: Ordering[AnyRef]): Unit =
-    stableMergeSortAnyRef(a, 0, a.length)
 
   private final val inPlaceSortThreshold = 16
 
-  /** Sort array `a` with merge sort and insertion sort,
-   *  using the Ordering on its elements.
-   */
+  /** Sort array `a` with merge sort and insertion sort. */
   @inline
-  private def stableMergeSort[@specialized K: ClassTag](a: Array[K],
-      start: Int, end: Int)(implicit ord: Ordering[K]): Unit = {
+  private def stableMergeSort[T](a: Array[T], start: Int, end: Int)(
+      comparator: Comparator[_ >: T])(
+      implicit ops: ArrayOps[T], createOps: ArrayCreateOps[T]): Unit = {
     if (end - start > inPlaceSortThreshold)
-      stableSplitMerge(a, new Array[K](a.length), start, end)
+      stableSplitMerge(a, createOps.create(ops.length(a)), start, end)(comparator)
     else
-      insertionSort(a, start, end)
+      insertionSort(a, start, end)(comparator)
   }
 
   @noinline
-  private def stableSplitMerge[@specialized K](a: Array[K], temp: Array[K],
-      start: Int, end: Int)(implicit ord: Ordering[K]): Unit = {
+  private def stableSplitMerge[T](a: Array[T], temp: Array[T], start: Int,
+      end: Int)(
+      comparator: Comparator[_ >: T])(
+      implicit ops: ArrayOps[T]): Unit = {
     val length = end - start
     if (length > inPlaceSortThreshold) {
       val middle = start + (length / 2)
-      stableSplitMerge(a, temp, start, middle)
-      stableSplitMerge(a, temp, middle, end)
-      stableMerge(a, temp, start, middle, end)
+      stableSplitMerge(a, temp, start, middle)(comparator)
+      stableSplitMerge(a, temp, middle, end)(comparator)
+      stableMerge(a, temp, start, middle, end)(comparator)
       System.arraycopy(temp, start, a, start, length)
     } else {
-      insertionSort(a, start, end)
+      insertionSort(a, start, end)(comparator)
     }
   }
 
   @inline
-  private def stableMerge[@specialized K](a: Array[K], temp: Array[K],
-      start: Int, middle: Int, end: Int)(implicit ord: Ordering[K]): Unit = {
+  private def stableMerge[T](a: Array[T], temp: Array[T], start: Int,
+      middle: Int, end: Int)(
+      comparator: Comparator[_ >: T])(
+      implicit ops: ArrayOps[T]): Unit = {
     var outIndex = start
     var leftInIndex = start
     var rightInIndex = middle
     while (outIndex < end) {
       if (leftInIndex < middle &&
-          (rightInIndex >= end || ord.lteq(a(leftInIndex), a(rightInIndex)))) {
-        temp(outIndex) = a(leftInIndex)
+          (rightInIndex >= end || comparator.compare(ops.get(a, leftInIndex), ops.get(a, rightInIndex)) <= 0)) {
+        ops.set(temp, outIndex, ops.get(a, leftInIndex))
         leftInIndex += 1
       } else {
-        temp(outIndex) = a(rightInIndex)
+        ops.set(temp, outIndex, ops.get(a, rightInIndex))
         rightInIndex += 1
       }
       outIndex += 1
     }
   }
 
-  // Ordering[T] might be slow especially for boxed primitives, so use binary
-  // search variant of insertion sort
-  // Caller must pass end >= start or math will fail.  Also, start >= 0.
-  @noinline
-  private final def insertionSort[@specialized T](a: Array[T], start: Int,
-      end: Int)(implicit ord: Ordering[T]): Unit = {
-    val n = end - start
-    if (n >= 2) {
-      if (ord.compare(a(start), a(start + 1)) > 0) {
-        val temp = a(start)
-        a(start) = a(start + 1)
-        a(start + 1) = temp
-      }
-      var m = 2
-      while (m < n) {
-        // Speed up already-sorted case by checking last element first
-        val next = a(start + m)
-        if (ord.compare(next, a(start + m - 1)) < 0) {
-          var iA = start
-          var iB = start + m - 1
-          while (iB - iA > 1) {
-            val ix = (iA + iB) >>> 1 // Use bit shift to get unsigned div by 2
-            if (ord.compare(next, a(ix)) < 0)
-              iB = ix
-            else
-              iA = ix
-          }
-          val ix = iA + (if (ord.compare(next, a(iA)) < 0) 0 else 1)
-          var i = start + m
-          while (i > ix) {
-            a(i) = a(i - 1)
-            i -= 1
-          }
-          a(ix) = next
-        }
-        m += 1
-      }
-    }
-  }
-
-  /** Sort array `a` with merge sort and insertion sort,
-   *  using the Ordering on its elements.
+  /* ArrayOps[T] and Comparator[T] might be slow especially for boxed
+   * primitives, so use a binary search variant of insertion sort.
+   * The caller must pass end >= start or math will fail. Also, start >= 0.
    */
-  @inline
-  private def stableMergeSortAnyRef(a: Array[AnyRef], start: Int, end: Int)(
-      implicit ord: Ordering[AnyRef]): Unit = {
-    if (end - start > inPlaceSortThreshold)
-      stableSplitMergeAnyRef(a, new Array(a.length), start, end)
-    else
-      insertionSortAnyRef(a, start, end)
-  }
-
   @noinline
-  private def stableSplitMergeAnyRef(a: Array[AnyRef], temp: Array[AnyRef],
-      start: Int, end: Int)(implicit ord: Ordering[AnyRef]): Unit = {
-    val length = end - start
-    if (length > inPlaceSortThreshold) {
-      val middle = start + (length / 2)
-      stableSplitMergeAnyRef(a, temp, start, middle)
-      stableSplitMergeAnyRef(a, temp, middle, end)
-      stableMergeAnyRef(a, temp, start, middle, end)
-      System.arraycopy(temp, start, a, start, length)
-    } else {
-      insertionSortAnyRef(a, start, end)
-    }
-  }
-
-  @inline
-  private def stableMergeAnyRef(a: Array[AnyRef], temp: Array[AnyRef],
-      start: Int, middle: Int, end: Int)(implicit ord: Ordering[AnyRef]): Unit = {
-    var outIndex = start
-    var leftInIndex = start
-    var rightInIndex = middle
-    while (outIndex < end) {
-      if (leftInIndex < middle &&
-          (rightInIndex >= end || ord.lteq(a(leftInIndex), a(rightInIndex)))) {
-        temp(outIndex) = a(leftInIndex)
-        leftInIndex += 1
-      } else {
-        temp(outIndex) = a(rightInIndex)
-        rightInIndex += 1
-      }
-      outIndex += 1
-    }
-  }
-
-  @noinline
-  private final def insertionSortAnyRef(a: Array[AnyRef], start: Int, end: Int)(
-      implicit ord: Ordering[AnyRef]): Unit = {
+  private final def insertionSort[T](a: Array[T], start: Int, end: Int)(
+      comparator: Comparator[_ >: T])(
+      implicit ops: ArrayOps[T]): Unit = {
     val n = end - start
     if (n >= 2) {
-      if (ord.compare(a(start), a(start + 1)) > 0) {
-        val temp = a(start)
-        a(start) = a(start + 1)
-        a(start + 1) = temp
+      val aStart = ops.get(a, start)
+      val aStartPlusOne = ops.get(a, start + 1)
+      if (comparator.compare(aStart, aStartPlusOne) > 0) {
+        ops.set(a, start, aStartPlusOne)
+        ops.set(a, start + 1, aStart)
       }
+
       var m = 2
       while (m < n) {
         // Speed up already-sorted case by checking last element first
-        val next = a(start + m)
-        if (ord.compare(next, a(start + m - 1)) < 0) {
+        val next = ops.get(a, start + m)
+        if (comparator.compare(next, ops.get(a, start + m - 1)) < 0) {
           var iA = start
           var iB = start + m - 1
           while (iB - iA > 1) {
             val ix = (iA + iB) >>> 1 // Use bit shift to get unsigned div by 2
-            if (ord.compare(next, a(ix)) < 0)
+            if (comparator.compare(next, ops.get(a, ix)) < 0)
               iB = ix
             else
               iA = ix
           }
-          val ix = iA + (if (ord.compare(next, a(iA)) < 0) 0 else 1)
+          val ix = iA + (if (comparator.compare(next, ops.get(a, iA)) < 0) 0 else 1)
           var i = start + m
           while (i > ix) {
-            a(i) = a(i - 1)
+            ops.set(a, i, ops.get(a, i - 1))
             i -= 1
           }
-          a(ix) = next
+          ops.set(a, ix, next)
         }
         m += 1
       }
@@ -292,118 +330,99 @@ object Arrays {
   }
 
   @noinline def binarySearch(a: Array[Long], key: Long): Int =
-    binarySearchImpl[Long](a, 0, a.length, key, _ < _)
+    binarySearchImpl(a, 0, a.length, key)(LongArrayOps)
 
   @noinline def binarySearch(a: Array[Long], startIndex: Int, endIndex: Int, key: Long): Int = {
     checkRangeIndices(a, startIndex, endIndex)
-    binarySearchImpl[Long](a, startIndex, endIndex, key, _ < _)
+    binarySearchImpl(a, startIndex, endIndex, key)(LongArrayOps)
   }
 
   @noinline def binarySearch(a: Array[Int], key: Int): Int =
-    binarySearchImpl[Int](a, 0, a.length, key, _ < _)
+    binarySearchImpl(a, 0, a.length, key)(IntArrayOps)
 
   @noinline def binarySearch(a: Array[Int], startIndex: Int, endIndex: Int, key: Int): Int = {
     checkRangeIndices(a, startIndex, endIndex)
-    binarySearchImpl[Int](a, startIndex, endIndex, key, _ < _)
+    binarySearchImpl(a, startIndex, endIndex, key)(IntArrayOps)
   }
 
   @noinline def binarySearch(a: Array[Short], key: Short): Int =
-    binarySearchImpl[Short](a, 0, a.length, key, _ < _)
+    binarySearchImpl(a, 0, a.length, key)(ShortArrayOps)
 
   @noinline def binarySearch(a: Array[Short], startIndex: Int, endIndex: Int, key: Short): Int = {
     checkRangeIndices(a, startIndex, endIndex)
-    binarySearchImpl[Short](a, startIndex, endIndex, key, _ < _)
+    binarySearchImpl(a, startIndex, endIndex, key)(ShortArrayOps)
   }
 
   @noinline def binarySearch(a: Array[Char], key: Char): Int =
-    binarySearchImpl[Char](a, 0, a.length, key, _ < _)
+    binarySearchImpl(a, 0, a.length, key)(CharArrayOps)
 
   @noinline def binarySearch(a: Array[Char], startIndex: Int, endIndex: Int, key: Char): Int = {
     checkRangeIndices(a, startIndex, endIndex)
-    binarySearchImpl[Char](a, startIndex, endIndex, key, _ < _)
+    binarySearchImpl(a, startIndex, endIndex, key)(CharArrayOps)
   }
 
   @noinline def binarySearch(a: Array[Byte], key: Byte): Int =
-    binarySearchImpl[Byte](a, 0, a.length, key, _ < _)
+    binarySearchImpl(a, 0, a.length, key)(ByteArrayOps)
 
   @noinline def binarySearch(a: Array[Byte], startIndex: Int, endIndex: Int, key: Byte): Int = {
     checkRangeIndices(a, startIndex, endIndex)
-    binarySearchImpl[Byte](a, startIndex, endIndex, key, _ < _)
+    binarySearchImpl(a, startIndex, endIndex, key)(ByteArrayOps)
   }
 
   @noinline def binarySearch(a: Array[Double], key: Double): Int =
-    binarySearchImpl[Double](a, 0, a.length, key, _ < _)
+    binarySearchImpl(a, 0, a.length, key)(DoubleArrayOps)
 
   @noinline def binarySearch(a: Array[Double], startIndex: Int, endIndex: Int, key: Double): Int = {
     checkRangeIndices(a, startIndex, endIndex)
-    binarySearchImpl[Double](a, startIndex, endIndex, key, _ < _)
+    binarySearchImpl(a, startIndex, endIndex, key)(DoubleArrayOps)
   }
 
   @noinline def binarySearch(a: Array[Float], key: Float): Int =
-    binarySearchImpl[Float](a, 0, a.length, key, _ < _)
+    binarySearchImpl(a, 0, a.length, key)(FloatArrayOps)
 
   @noinline def binarySearch(a: Array[Float], startIndex: Int, endIndex: Int, key: Float): Int = {
     checkRangeIndices(a, startIndex, endIndex)
-    binarySearchImpl[Float](a, startIndex, endIndex, key, _ < _)
+    binarySearchImpl(a, startIndex, endIndex, key)(FloatArrayOps)
   }
 
   @noinline def binarySearch(a: Array[AnyRef], key: AnyRef): Int =
-    binarySearchImplRef(a, 0, a.length, key)
+    binarySearchImpl(a, 0, a.length, key)(NaturalComparator)
 
   @noinline def binarySearch(a: Array[AnyRef], startIndex: Int, endIndex: Int, key: AnyRef): Int = {
     checkRangeIndices(a, startIndex, endIndex)
-    binarySearchImplRef(a, startIndex, endIndex, key)
+    binarySearchImpl(a, startIndex, endIndex, key)(NaturalComparator)
   }
 
-  @noinline def binarySearch[T](a: Array[T], key: T, c: Comparator[_ >: T]): Int =
-    binarySearchImpl[T](a, 0, a.length, key, (a, b) => c.compare(a, b) < 0)
+  @noinline def binarySearch[T <: AnyRef](a: Array[T], key: T, c: Comparator[_ >: T]): Int =
+    binarySearchImpl[T](a, 0, a.length, key)(ifNullUseNaturalComparator(c))
 
-  @noinline def binarySearch[T](a: Array[T], startIndex: Int, endIndex: Int, key: T,
+  @noinline def binarySearch[T <: AnyRef](a: Array[T], startIndex: Int, endIndex: Int, key: T,
       c: Comparator[_ >: T]): Int = {
     checkRangeIndices(a, startIndex, endIndex)
-    binarySearchImpl[T](a, startIndex, endIndex, key, (a, b) => c.compare(a, b) < 0)
+    binarySearchImpl[T](a, startIndex, endIndex, key)(ifNullUseNaturalComparator(c))
   }
 
   @inline
   @tailrec
-  private def binarySearchImpl[T](a: Array[T],
-      startIndex: Int, endIndex: Int, key: T, lt: (T, T) => Boolean): Int = {
+  private def binarySearchImpl[T](a: Array[T], startIndex: Int, endIndex: Int,
+      key: T)(
+      comparator: Comparator[_ >: T])(
+      implicit ops: ArrayOps[T]): Int = {
     if (startIndex == endIndex) {
       // Not found
       -startIndex - 1
     } else {
       // Indices are unsigned 31-bit integer, so this does not overflow
       val mid = (startIndex + endIndex) >>> 1
-      val elem = a(mid)
-      if (lt(key, elem)) {
-        binarySearchImpl(a, startIndex, mid, key, lt)
-      } else if (key == elem) {
-        // Found
-        mid
-      } else {
-        binarySearchImpl(a, mid + 1, endIndex, key, lt)
-      }
-    }
-  }
-
-  @inline
-  @tailrec
-  def binarySearchImplRef(a: Array[AnyRef],
-      startIndex: Int, endIndex: Int, key: AnyRef): Int = {
-    if (startIndex == endIndex) {
-      // Not found
-      -startIndex - 1
-    } else {
-      // Indices are unsigned 31-bit integer, so this does not overflow
-      val mid = (startIndex + endIndex) >>> 1
-      val cmp = key.asInstanceOf[Comparable[AnyRef]].compareTo(a(mid))
+      val elem = ops.get(a, mid)
+      val cmp = comparator.compare(key, elem)
       if (cmp < 0) {
-        binarySearchImplRef(a, startIndex, mid, key)
+        binarySearchImpl(a, startIndex, mid, key)(comparator)
       } else if (cmp == 0) {
         // Found
         mid
       } else {
-        binarySearchImplRef(a, mid + 1, endIndex, key)
+        binarySearchImpl(a, mid + 1, endIndex, key)(comparator)
       }
     }
   }
@@ -436,18 +455,19 @@ object Arrays {
     equalsImpl(a, b)
 
   @inline
-  private def equalsImpl[T](a: Array[T], b: Array[T]): Boolean = {
+  private def equalsImpl[T](a: Array[T], b: Array[T])(
+      implicit ops: ArrayOps[T]): Boolean = {
     // scalastyle:off return
     if (a eq b)
       return true
     if (a == null || b == null)
       return false
-    val len = a.length
-    if (b.length != len)
+    val len = ops.length(a)
+    if (ops.length(b) != len)
       return false
     var i = 0
     while (i != len) {
-      if (a(i) != b(i))
+      if (!ops.get(a, i).equals(ops.get(b, i)))
         return false
       i += 1
     }
@@ -511,24 +531,25 @@ object Arrays {
 
   @inline
   private def fillImpl[T](a: Array[T], fromIndex: Int, toIndex: Int,
-      value: T, checkIndices: Boolean = true): Unit = {
+      value: T, checkIndices: Boolean = true)(
+      implicit ops: ArrayOps[T]): Unit = {
     if (checkIndices)
       checkRangeIndices(a, fromIndex, toIndex)
     var i = fromIndex
     while (i != toIndex) {
-      a(i) = value
+      ops.set(a, i, value)
       i += 1
     }
   }
 
   @noinline def copyOf[T <: AnyRef](original: Array[T], newLength: Int): Array[T] = {
-    implicit val tagT = ClassTag[T](original.getClass.getComponentType)
+    implicit val tops = new TemplateArrayOps(original)
     copyOfImpl(original, newLength)
   }
 
   @noinline def copyOf[T <: AnyRef, U <: AnyRef](original: Array[U], newLength: Int,
       newType: Class[_ <: Array[T]]): Array[T] = {
-    implicit val tag = ClassTag[T](newType.getComponentType)
+    implicit val tops = new ClassArrayOps(newType)
     copyOfImpl(original, newLength)
   }
 
@@ -557,26 +578,28 @@ object Arrays {
     copyOfImpl(original, newLength)
 
   @inline
-  private def copyOfImpl[U, T: ClassTag](original: Array[U], newLength: Int): Array[T] = {
+  private def copyOfImpl[U, T](original: Array[U], newLength: Int)(
+      implicit uops: ArrayOps[U], tops: ArrayCreateOps[T]): Array[T] = {
     checkArrayLength(newLength)
-    val copyLength = Math.min(newLength, original.length)
-    val ret = new Array[T](newLength)
+    val copyLength = Math.min(newLength, uops.length(original))
+    val ret = tops.create(newLength)
     System.arraycopy(original, 0, ret, 0, copyLength)
     ret
   }
 
   @noinline def copyOfRange[T <: AnyRef](original: Array[T], from: Int, to: Int): Array[T] = {
-    copyOfRangeImpl[T](original, from, to)(ClassTag(original.getClass.getComponentType)).asInstanceOf[Array[T]]
+    implicit val tops = new TemplateArrayOps(original)
+    copyOfRangeImpl(original, from, to)
   }
 
-  @noinline def copyOfRange[T <: AnyRef, U <: AnyRef](original: Array[U], from: Int, to: Int,
-      newType: Class[_ <: Array[T]]): Array[T] = {
-    copyOfRangeImpl[AnyRef](original.asInstanceOf[Array[AnyRef]], from, to)(
-        ClassTag(newType.getComponentType)).asInstanceOf[Array[T]]
+  @noinline def copyOfRange[T <: AnyRef, U <: AnyRef](original: Array[U],
+      from: Int, to: Int, newType: Class[_ <: Array[T]]): Array[T] = {
+    implicit val tops = new ClassArrayOps(newType)
+    copyOfRangeImpl(original, from, to)
   }
 
   @noinline def copyOfRange(original: Array[Byte], start: Int, end: Int): Array[Byte] =
-    copyOfRangeImpl[Byte](original, start, end)
+    copyOfRangeImpl(original, start, end)
 
   @noinline def copyOfRange(original: Array[Short], start: Int, end: Int): Array[Short] =
     copyOfRangeImpl(original, start, end)
@@ -600,14 +623,15 @@ object Arrays {
     copyOfRangeImpl(original, start, end)
 
   @inline
-  private def copyOfRangeImpl[T: ClassTag](original: Array[T],
-      start: Int, end: Int): Array[T] = {
+  private def copyOfRangeImpl[T, U](original: Array[U], start: Int, end: Int)(
+      implicit uops: ArrayOps[U], tops: ArrayCreateOps[T]): Array[T] = {
     if (start > end)
       throw new IllegalArgumentException("" + start + " > " + end)
 
+    val len = uops.length(original)
     val retLength = end - start
-    val copyLength = Math.min(retLength, original.length - start)
-    val ret = new Array[T](retLength)
+    val copyLength = Math.min(retLength, len - start)
+    val ret = tops.create(retLength)
     System.arraycopy(original, start, ret, 0, copyLength)
     ret
   }
@@ -634,61 +658,73 @@ object Arrays {
   }
 
   @noinline def hashCode(a: Array[Long]): Int =
-    hashCodeImpl[Long](a, _.hashCode())
+    hashCodeImpl(a)
 
   @noinline def hashCode(a: Array[Int]): Int =
-    hashCodeImpl[Int](a, _.hashCode())
+    hashCodeImpl(a)
 
   @noinline def hashCode(a: Array[Short]): Int =
-    hashCodeImpl[Short](a, _.hashCode())
+    hashCodeImpl(a)
 
   @noinline def hashCode(a: Array[Char]): Int =
-    hashCodeImpl[Char](a, _.hashCode())
+    hashCodeImpl(a)
 
   @noinline def hashCode(a: Array[Byte]): Int =
-    hashCodeImpl[Byte](a, _.hashCode())
+    hashCodeImpl(a)
 
   @noinline def hashCode(a: Array[Boolean]): Int =
-    hashCodeImpl[Boolean](a, _.hashCode())
+    hashCodeImpl(a)
 
   @noinline def hashCode(a: Array[Float]): Int =
-    hashCodeImpl[Float](a, _.hashCode())
+    hashCodeImpl(a)
 
   @noinline def hashCode(a: Array[Double]): Int =
-    hashCodeImpl[Double](a, _.hashCode())
+    hashCodeImpl(a)
 
   @noinline def hashCode(a: Array[AnyRef]): Int =
-    hashCodeImpl[AnyRef](a, Objects.hashCode(_))
+    hashCodeImpl(a)
 
   @inline
-  private def hashCodeImpl[T](a: Array[T], elementHashCode: T => Int): Int = {
+  private def hashCodeImpl[T](a: Array[T])(implicit ops: ArrayOps[T]): Int = {
     if (a == null) {
       0
     } else {
       var acc = 1
-      for (i <- 0 until a.length)
-        acc = 31 * acc + elementHashCode(a(i))
+      val len = ops.length(a)
+      var i = 0
+      while (i != len) {
+        acc = 31 * acc + Objects.hashCode(ops.get(a, i))
+        i += 1
+      }
       acc
     }
   }
 
   @noinline def deepHashCode(a: Array[AnyRef]): Int = {
-    @inline
-    def getHash(elem: AnyRef): Int = {
-      elem match {
-        case elem: Array[AnyRef]  => deepHashCode(elem)
-        case elem: Array[Long]    => hashCode(elem)
-        case elem: Array[Int]     => hashCode(elem)
-        case elem: Array[Short]   => hashCode(elem)
-        case elem: Array[Char]    => hashCode(elem)
-        case elem: Array[Byte]    => hashCode(elem)
-        case elem: Array[Boolean] => hashCode(elem)
-        case elem: Array[Float]   => hashCode(elem)
-        case elem: Array[Double]  => hashCode(elem)
-        case _                    => Objects.hashCode(elem)
+    def rec(a: Array[AnyRef]): Int = {
+      var acc = 1
+      val len = a.length
+      var i = 0
+      while (i != len) {
+        acc = 31 * acc + (a(i) match {
+          case elem: Array[AnyRef]  => rec(elem)
+          case elem: Array[Long]    => hashCode(elem)
+          case elem: Array[Int]     => hashCode(elem)
+          case elem: Array[Short]   => hashCode(elem)
+          case elem: Array[Char]    => hashCode(elem)
+          case elem: Array[Byte]    => hashCode(elem)
+          case elem: Array[Boolean] => hashCode(elem)
+          case elem: Array[Float]   => hashCode(elem)
+          case elem: Array[Double]  => hashCode(elem)
+          case elem                 => Objects.hashCode(elem)
+        })
+        i += 1
       }
+      acc
     }
-    hashCodeImpl(a, getHash)
+
+    if (a == null) 0
+    else rec(a)
   }
 
   @noinline def deepEquals(a1: Array[AnyRef], a2: Array[AnyRef]): Boolean = {
@@ -738,17 +774,17 @@ object Arrays {
     toStringImpl[AnyRef](a)
 
   @inline
-  private def toStringImpl[T](a: Array[T]): String = {
+  private def toStringImpl[T](a: Array[T])(implicit ops: ArrayOps[T]): String = {
     if (a == null) {
       "null"
     } else {
       var result = "["
-      val len = a.length
+      val len = ops.length(a)
       var i = 0
       while (i != len) {
         if (i != 0)
           result += ", "
-        result += a(i)
+        result += ops.get(a, i)
         i += 1
       }
       result + "]"
@@ -808,27 +844,16 @@ object Arrays {
   }
 
   @inline
-  private def checkRangeIndices[@specialized T](
-      a: Array[T], start: Int, end: Int): Unit = {
+  private def checkRangeIndices[T](a: Array[T], start: Int, end: Int)(
+      implicit ops: ArrayOps[T]): Unit = {
     if (start > end)
       throw new IllegalArgumentException("fromIndex(" + start + ") > toIndex(" + end + ")")
 
     // bounds checks
     if (start < 0)
-      a(start)
+      ops.get(a, start)
 
     if (end > 0)
-      a(end - 1)
-  }
-
-  @inline
-  private def toOrdering[T <: AnyRef](cmp: Comparator[_ >: T]): Ordering[T] = {
-    if (cmp == null) {
-      naturalOrdering[T]
-    } else {
-      new Ordering[T] {
-        def compare(x: T, y: T): Int = cmp.compare(x, y)
-      }
-    }
+      ops.get(a, end - 1)
   }
 }
