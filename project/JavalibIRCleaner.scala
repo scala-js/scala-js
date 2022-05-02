@@ -272,8 +272,8 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
     private def genLoadFromLoadSpec(loadSpec: JSNativeLoadSpec)(
         implicit pos: Position): Tree = {
       loadSpec match {
-        case JSNativeLoadSpec.Global(globalRef, Nil) =>
-          JSGlobalRef(globalRef)
+        case JSNativeLoadSpec.Global(globalRef, path) =>
+          path.foldLeft[Tree](JSGlobalRef(globalRef)) { case (ref, segment) => JSSelect(ref, StringLiteral(segment)) }
         case _ =>
           reportError(
               s"unsupported load spec $loadSpec; " +
