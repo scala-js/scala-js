@@ -12,7 +12,7 @@
 
 package java.util
 
-import scala.annotation.tailrec
+import java.lang.Cloneable
 
 import ScalaOps._
 

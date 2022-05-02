@@ -12,7 +12,9 @@
 
 package java.util
 
+import java.lang.Cloneable
 import java.time.Instant
+
 import scalajs.js
 
 class Date(private var millis: Long) extends Object

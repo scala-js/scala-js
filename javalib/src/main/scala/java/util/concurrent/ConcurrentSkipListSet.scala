@@ -12,6 +12,7 @@
 
 package java.util.concurrent
 
+import java.lang.Cloneable
 import java.util._
 
 class ConcurrentSkipListSet[E] private (inner: TreeSet[E])

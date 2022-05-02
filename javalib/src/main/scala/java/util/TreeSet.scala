@@ -12,6 +12,7 @@
 
 package java.util
 
+import java.lang.Cloneable
 import java.util.{RedBlackTree => RB}
 
 class TreeSet[E] private (tree: RB.Tree[E, Any])(
