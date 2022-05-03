@@ -17,6 +17,7 @@ import org.junit.Assert._
 
 import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Names._
+import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
@@ -125,6 +126,47 @@ class ClassDefCheckerTest {
                   EOH, None)
           )),
         "duplicate constructor method '<init>(java.lang.String)void'")
+  }
+
+  @Test
+  def noDuplicateVarDef(): Unit = {
+    val body = Block(
+      VarDef("x", NoOriginalName, IntType, mutable = false, int(1)),
+      While(BooleanLiteral(true), {
+        VarDef("x", NoOriginalName, IntType, mutable = false, int(1))
+      })
+    )
+
+    assertError(
+        classDef("A", kind = ClassKind.Interface, memberDefs = List(mainMethodDef(body))),
+        "Duplicate local variable name x."
+    )
+  }
+
+  @Test
+  def noDuplicateVarDefForIn(): Unit = {
+    val body = Block(
+      VarDef("x", NoOriginalName, IntType, mutable = false, int(1)),
+      ForIn(JSObjectConstr(Nil), "x", NoOriginalName, Skip())
+    )
+
+    assertError(
+        classDef("A", kind = ClassKind.Interface, memberDefs = List(mainMethodDef(body))),
+        "Duplicate local variable name x."
+    )
+  }
+
+  @Test
+  def noDuplicateVarDefTryCatch(): Unit = {
+    val body = Block(
+      VarDef("x", NoOriginalName, IntType, mutable = false, int(1)),
+      TryCatch(Skip(), "x", NoOriginalName, Skip())(NoType)
+    )
+
+    assertError(
+        classDef("A", kind = ClassKind.Interface, memberDefs = List(mainMethodDef(body))),
+        "Duplicate local variable name x."
+    )
   }
 }
 

@@ -543,13 +543,13 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
 
       case ForIn(obj, keyVar, _, body) =>
         checkTree(obj, env)
-        // TODO: Check name for duplicate?
+        checkDeclareLocalVar(keyVar)
         val bodyEnv = env.withLocal(LocalDef(keyVar.name, AnyType, false))
         checkTree(body, bodyEnv)
 
       case TryCatch(block, errVar, _, handler) =>
         checkTree(block, env)
-        // TODO: Check name for duplicate?
+        checkDeclareLocalVar(errVar)
         val handlerEnv =
           env.withLocal(LocalDef(errVar.name, AnyType, false))
         checkTree(handler, handlerEnv)
