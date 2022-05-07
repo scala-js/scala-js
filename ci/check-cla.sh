@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eux
 
-AUTHOR=$GITHUB_ACTOR
+AUTHOR="$1"
 echo "Pull request submitted by $AUTHOR";
 URL_AUTHOR=$(jq -rn --arg x "$AUTHOR" '$x|@uri')
 signed=$(curl -s "https://www.lightbend.com/contribute/cla/scala/check/$URL_AUTHOR" | jq -r ".signed");
