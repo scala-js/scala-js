@@ -5,4 +5,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
-    - run: ./ci/check-cla.sh
+    - run: ./ci/check-cla.sh "${{ github.event.pull_request.user.login }}"
