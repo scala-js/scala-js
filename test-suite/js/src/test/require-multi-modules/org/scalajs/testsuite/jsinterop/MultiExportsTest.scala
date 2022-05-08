@@ -12,27 +12,51 @@
 
 package org.scalajs.testsuite.jsinterop
 
+import scala.scalajs.js
 import scala.scalajs.js.annotation._
+
+import scala.concurrent._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 import org.junit.Assert._
 import org.junit.Test
 
+import org.scalajs.junit.async._
+
 class MultiExportsTest {
-  import ExportsTest.exportsNameSpace
+  import MultiExportsTest._
 
   @Test
-  def exportsToDifferentModules(): Unit = {
-    assertEquals("Hello World from mod1",
-        exportsNameSpace("mod1").MultiTopLevelExport("World"))
-
-    assertEquals("Hello World from mod2",
-        exportsNameSpace("mod2").MultiTopLevelExport("World"))
+  def exportsToDifferentModulesMod1(): AsyncResult = await {
+    for (res <- js.dynamicImport(mod1Fun("World")).toFuture)
+      yield assertEquals("Hello World from mod1", res)
   }
 
   @Test
-  def overloadsInASingleModule(): Unit = {
-    assertEquals(5, exportsNameSpace("mod1").MultiTopLevelExport(2, 3))
+  def exportsToDifferentModulesMod2(): AsyncResult = await {
+    for (res <- js.dynamicImport(mod2Fun("World")).toFuture)
+      yield assertEquals("Hello World from mod2", res)
   }
+
+  @Test
+  def overloadsInASingleModule(): AsyncResult = await {
+    for (res <- js.dynamicImport(mod1Fun(2, 3)).toFuture)
+      yield assertEquals(5, res)
+  }
+}
+
+object MultiExportsTest {
+  @js.native
+  @JSImport("./mod1.js", "MultiTopLevelExport")
+  def mod1Fun(x: Int, y: Int): Int = js.native
+
+  @js.native
+  @JSImport("./mod1.js", "MultiTopLevelExport")
+  def mod1Fun(x: String): String = js.native
+
+  @js.native
+  @JSImport("./mod2.js", "MultiTopLevelExport")
+  def mod2Fun(x: String): String = js.native
 }
 
 object MultiTopLevelExports {
