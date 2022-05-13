@@ -172,6 +172,8 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
 
     if (namespace.isPrivate)
       reportError("A field cannot be private")
+    if (namespace.isConstructor)
+      reportError("A field cannot be a constuctor")
 
     fieldDef match {
       case FieldDef(_, FieldIdent(name), _, ftpe) =>
@@ -264,6 +266,8 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
       reportError("An exported method cannot have the flag Mutable")
     if (flags.namespace.isPrivate)
       reportError("An exported method cannot be private")
+    if (flags.namespace.isConstructor)
+      reportError("An exported method cannot be in the constructor namespace")
 
     if (!classDef.kind.isAnyNonNativeClass)
       reportError("Exported method def can only appear in a class")
@@ -332,6 +336,8 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
       reportError("An exported property def cannot have the flag Mutable")
     if (flags.namespace.isPrivate)
       reportError("An exported property def cannot be private")
+    if (flags.namespace.isConstructor)
+      reportError("An exported property def cannot be in the constructor namespace")
 
     if (!classDef.kind.isAnyNonNativeClass)
       reportError("Exported property def can only appear in a class")
