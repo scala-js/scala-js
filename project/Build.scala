@@ -9,6 +9,8 @@ import Keys._
 
 import com.typesafe.tools.mima.plugin.MimaPlugin.autoImport._
 import de.heikoseeberger.sbtheader.HeaderPlugin.autoImport._
+import sbtbuildinfo.BuildInfoPlugin
+import sbtbuildinfo.BuildInfoPlugin.autoImport._
 import ScriptedPlugin.autoImport._
 
 import java.util.Arrays
@@ -281,6 +283,20 @@ object Build {
   private def includeIf(testDir: File, condition: Boolean): List[File] =
     if (condition) List(testDir)
     else Nil
+
+  private def buildInfoOrStubs(config: Configuration, stubsBaseDir: Def.Initialize[File]) = {
+    if (isGeneratingForIDE) {
+      Def.settings(
+          unmanagedSourceDirectories in config +=
+            stubsBaseDir.value / "scala-ide-stubs"
+      )
+    } else {
+      Def.settings(
+        BuildInfoPlugin.buildInfoScopedSettings(config),
+        BuildInfoPlugin.buildInfoDefaultSettings,
+      )
+    }
+  }
 
   val previousArtifactSetting: Seq[Setting[_]] = Def.settings(
     /* Do not fail mimaReportBinaryIssues when mimaPreviousArtifacts is empty.
@@ -915,11 +931,14 @@ object Build {
       unmanagedSourceDirectories in Test +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/test/scala",
 
-      if (isGeneratingForIDE) {
-        unmanagedSourceDirectories in Test +=
-          baseDirectory.value.getParentFile.getParentFile / "shared/src/test/scala-ide-stubs"
-      } else {
-        sourceGenerators in Test += Def.task {
+      buildInfoOrStubs(Test, Def.setting(
+          baseDirectory.value.getParentFile.getParentFile / "shared/src/test")),
+
+      buildInfoPackage in Test := "org.scalajs.linker.testutils",
+      buildInfoObject in Test := "StdlibHolder",
+      buildInfoOptions in Test += BuildInfoOption.PackagePrivate,
+      buildInfoKeys in Test := {
+        val previousLibsTask = Def.task {
           val s = streams.value
           val log = s.log
           val lm = dependencyResolution.value
@@ -927,22 +946,26 @@ object Build {
 
           val retrieveDir = s.cacheDirectory / "previous-stdlibs"
 
-          val previousStdLibs = previousVersions.map { version =>
+          previousVersions.map { version =>
             val jars = lm.retrieve("org.scala-js" % s"scalajs-library_$binVer" % version intransitive(),
                 scalaModuleInfo = None, retrieveDir, log)
               .fold(w => throw w.resolveException, _.distinct)
             assert(jars.size == 1, jars.toString())
-            version -> jars.head
+            version -> jars.head.getAbsolutePath
           }.toMap
-
-          ConstantHolderGenerator.generate(
-              (sourceManaged in Test).value,
-              "org.scalajs.linker.testutils.StdlibHolder",
-              "minilib" -> (packageMinilib in (library, Compile)).value,
-              "fulllib" -> (packageBin in (library, Compile)).value,
-              "previousLibs" -> previousStdLibs,
-          )
         }.taskValue
+
+        Seq(
+          BuildInfoKey.map(previousLibsTask) {
+            case (_, v) => "previousLibs" -> v
+          },
+          BuildInfoKey.map(packageMinilib in (library, Compile)) {
+            case (_, v) => "minilib" -> v.getAbsolutePath
+          },
+          BuildInfoKey.map(packageBin in (library, Compile)) {
+            case (_, v) => "fulllib" -> v.getAbsolutePath
+          },
+        )
       },
 
       previousArtifactSetting,
@@ -1015,52 +1038,30 @@ object Build {
   ).settings(
       Test / scalacOptions ++= scalaJSCompilerOption("nowarnGlobalExecutionContext"),
 
-      if (isGeneratingForIDE) {
-        unmanagedSourceDirectories in Compile +=
-          baseDirectory.value.getParentFile.getParentFile / "js/src/main/scala-ide-stubs"
-      } else {
-        sourceGenerators in Compile += Def.task {
-          val dir = (sourceManaged in Compile).value
+      buildInfoOrStubs(Compile, Def.setting(
+          baseDirectory.value.getParentFile.getParentFile / "js/src/main")),
+
+      buildInfoPackage in Compile := "org.scalajs.linker.backend.emitter",
+      buildInfoObject in Compile := "PrivateLibData",
+      buildInfoOptions in Compile += BuildInfoOption.PackagePrivate,
+      buildInfoKeys := {
+        val pathsAndContentsTask = Def.task {
           val privateLibProducts = (products in (linkerPrivateLibrary, Compile)).value
 
-          val content = {
-            val namesAndContents = for {
-              f <- (privateLibProducts ** "*.sjsir").get
-            } yield {
-              val bytes = IO.readBytes(f)
-              val base64 = java.util.Base64.getEncoder().encodeToString(bytes)
-              s""""${f.getName}" -> "$base64""""
-            }
-
-            s"""
-            |package org.scalajs.linker.backend.emitter
-            |
-            |import org.scalajs.linker.interface.IRFile
-            |import org.scalajs.linker.standard.MemIRFileImpl
-            |
-            |object PrivateLibHolder {
-            |  private val namesAndContents = Seq(
-            |    ${namesAndContents.mkString(",\n    ")}
-            |  )
-            |
-            |  val files: Seq[IRFile] = {
-            |    for ((name, contentBase64) <- namesAndContents) yield {
-            |      new MemIRFileImpl(
-            |          path = "org/scalajs/linker/runtime/" + name,
-            |          version = Some(""), // this indicates that the file never changes
-            |          content = java.util.Base64.getDecoder().decode(contentBase64)
-            |      )
-            |    }
-            |  }
-            |}
-            """.stripMargin
+          for {
+            f <- (privateLibProducts ** "*.sjsir").get
+          } yield {
+            val bytes = IO.readBytes(f)
+            val base64 = java.util.Base64.getEncoder().encodeToString(bytes)
+            f.getName -> base64
           }
+        }.taskValue
 
-          IO.createDirectory(dir)
-          val output = dir / "PrivateLibHolder.scala"
-          IO.write(output, content)
-          Seq(output)
-        }.taskValue,
+        Seq(
+          BuildInfoKey.map(pathsAndContentsTask) {
+            case (_, v) => "pathsAndContents" -> v
+          },
+        )
       },
 
       scalaJSLinkerConfig in Test ~= (_.withModuleKind(ModuleKind.CommonJSModule))
@@ -2062,39 +2063,36 @@ object Build {
         }
       },
 
-      if (isGeneratingForIDE) {
-        unmanagedSourceDirectories in Compile +=
-          baseDirectory.value / "src/main/scala-ide-stubs"
-      } else {
-        sourceGenerators in Compile += Def.task {
-          val stage = scalaJSStage.value
+      buildInfoOrStubs(Compile, Def.setting(baseDirectory.value / "src/main")),
 
-          val linkerConfig = stage match {
-            case FastOptStage => (scalaJSLinkerConfig in (Compile, fastLinkJS)).value
-            case FullOptStage => (scalaJSLinkerConfig in (Compile, fullLinkJS)).value
-          }
+      buildInfoPackage in Compile := "org.scalajs.testsuite.utils",
+      buildInfoOptions in Compile += BuildInfoOption.PackagePrivate,
+      buildInfoKeys in Compile := {
+        val stage = scalaJSStage.value
 
-          val moduleKind = linkerConfig.moduleKind
-          val sems = linkerConfig.semantics
+        val linkerConfig = stage match {
+          case FastOptStage => (scalaJSLinkerConfig in (Compile, fastLinkJS)).value
+          case FullOptStage => (scalaJSLinkerConfig in (Compile, fullLinkJS)).value
+        }
 
-          ConstantHolderGenerator.generate(
-              (sourceManaged in Compile).value,
-              "org.scalajs.testsuite.utils.BuildInfo",
-              "scalaVersion" -> scalaVersion.value,
-              "hasSourceMaps" -> MyScalaJSPlugin.wantSourceMaps.value,
-              "isNoModule" -> (moduleKind == ModuleKind.NoModule),
-              "isESModule" -> (moduleKind == ModuleKind.ESModule),
-              "isCommonJSModule" -> (moduleKind == ModuleKind.CommonJSModule),
-              "isFullOpt" -> (stage == Stage.FullOpt),
-              "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
-              "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant),
-              "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
-              "strictFloats" -> sems.strictFloats,
-              "productionMode" -> sems.productionMode,
-              "esVersion" -> linkerConfig.esFeatures.esVersion.edition,
-              "useECMAScript2015Semantics" -> linkerConfig.esFeatures.useECMAScript2015Semantics,
-          )
-        }.taskValue
+        val moduleKind = linkerConfig.moduleKind
+        val sems = linkerConfig.semantics
+
+        Seq[BuildInfoKey](
+          scalaVersion,
+          "hasSourceMaps" -> MyScalaJSPlugin.wantSourceMaps.value,
+          "isNoModule" -> (moduleKind == ModuleKind.NoModule),
+          "isESModule" -> (moduleKind == ModuleKind.ESModule),
+          "isCommonJSModule" -> (moduleKind == ModuleKind.CommonJSModule),
+          "isFullOpt" -> (stage == Stage.FullOpt),
+          "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
+          "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant),
+          "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
+          "strictFloats" -> sems.strictFloats,
+          "productionMode" -> sems.productionMode,
+          "esVersion" -> linkerConfig.esFeatures.esVersion.edition,
+          "useECMAScript2015Semantics" -> linkerConfig.esFeatures.useECMAScript2015Semantics,
+        )
       },
 
       /* Generate a scala source file that throws exceptions in
