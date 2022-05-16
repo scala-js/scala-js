@@ -23,52 +23,20 @@ import org.scalajs.testsuite.utils.Platform._
 
 import scala.annotation.meta
 
+import scala.concurrent._
+import scala.concurrent.ExecutionContext.Implicits.{global => globalEc}
+
 import org.junit.Assert._
 import org.junit.Assume._
 import org.junit.Test
 
-object ExportsTest {
-  /* When using ES modules, there is no way to get hold of our own exports
-   * namespace from within. The build instead sets up a small script that will
-   * import our module and call `setExportsNamespaceForExportsTest` with our
-   * module namespace.
-   */
-
-  private[this] var explicitlySetExportsNamespaces: Option[js.Dictionary[js.Dynamic]] =
-    None
-
-  @JSExportTopLevel("setExportsNamespaceForExportsTest")
-  def setExportsNamespaceForExportsTest(value: js.Dictionary[js.Dynamic]): Unit =
-    explicitlySetExportsNamespaces = Some(value)
-
-  /** The namespace in which top-level exports are stored.
-   *
-   *  If it has been explicitly set, which is the case for `ESModule`, take
-   *  that value.
-   *
-   *  If we are linking the test suite in `NoModule`, then exports are in the
-   *  global object (technically they're in the global scope, but at least so
-   *  far we can find them in the global object too).
-   *
-   *  If we are linking in `CommonJSModule`, then exports are in the `exports`
-   *  module-global variable, which we can retrieve as if it were in the global
-   *  scope.
-   */
-  def exportsNameSpace(moduleID: String): js.Dynamic = {
-    explicitlySetExportsNamespaces.fold[js.Dynamic] {
-      assert(isNoModule,
-          "The exportsNamespace should have been explicitly set for a module")
-      null // need to use `global` instead
-    } { dict =>
-      dict(moduleID)
-    }
-  }
-}
+import org.scalajs.junit.async._
 
 class ExportsTest {
 
   /** The namespace in which top-level exports are stored. */
-  val exportsNamespace = ExportsTest.exportsNameSpace("main")
+  private lazy val exportsNamespace: Future[js.Dynamic] =
+    ExportLoopback.exportsNamespace
 
   // @JSExport
 
@@ -742,179 +710,207 @@ class ExportsTest {
     assertEquals(3, a.foo(vc1.asInstanceOf[js.Any], vc2.asInstanceOf[js.Any]))
   }
 
-  @Test def toplevelExportsForObjects(): Unit = {
-    val obj =
-      if (isNoModule) global.TopLevelExportedObject
-      else exportsNamespace.TopLevelExportedObject
-    assertJSNotUndefined(obj)
-    assertEquals("object", js.typeOf(obj))
-    assertEquals("witness", obj.witness)
-  }
-
-  @Test def toplevelExportsForScalaJSDefinedJSObjects(): Unit = {
-    val obj1 =
-      if (isNoModule) global.SJSDefinedTopLevelExportedObject
-      else exportsNamespace.SJSDefinedTopLevelExportedObject
-    assertJSNotUndefined(obj1)
-    assertEquals("object", js.typeOf(obj1))
-    assertEquals("witness", obj1.witness)
-
-    assertSame(obj1, SJSDefinedExportedObject)
-  }
-
-  @Test def toplevelExportsForNestedObjects(): Unit = {
-    val obj =
-      if (isNoModule) global.NestedExportedObject
-      else exportsNamespace.NestedExportedObject
-    assertJSNotUndefined(obj)
-    assertEquals("object", js.typeOf(obj))
-    assertSame(obj, ExportHolder.ExportedObject)
-  }
-
-  @Test def exportsForObjectsWithConstantFoldedName(): Unit = {
-    val obj =
-      if (isNoModule) global.ConstantFoldedObjectExport
-      else exportsNamespace.ConstantFoldedObjectExport
-    assertJSNotUndefined(obj)
-    assertEquals("object", js.typeOf(obj))
-    assertEquals("witness", obj.witness)
-  }
-
-  @Test def exportsForProtectedObjects(): Unit = {
-    val obj =
-      if (isNoModule) global.ProtectedExportedObject
-      else exportsNamespace.ProtectedExportedObject
-    assertJSNotUndefined(obj)
-    assertEquals("object", js.typeOf(obj))
-    assertEquals("witness", obj.witness)
-  }
-
-  @Test def toplevelExportsForClasses(): Unit = {
-    val constr =
-      if (isNoModule) global.TopLevelExportedClass
-      else exportsNamespace.TopLevelExportedClass
-    assertJSNotUndefined(constr)
-    assertEquals("function", js.typeOf(constr))
-    val obj = js.Dynamic.newInstance(constr)(5)
-    assertEquals(5, obj.x)
-  }
-
-  @Test def toplevelExportsForScalaJSDefinedJSClasses(): Unit = {
-    val constr =
-      if (isNoModule) global.SJSDefinedTopLevelExportedClass
-      else exportsNamespace.SJSDefinedTopLevelExportedClass
-    assertJSNotUndefined(constr)
-    assertEquals("function", js.typeOf(constr))
-    val obj = js.Dynamic.newInstance(constr)(5)
-    assertTrue((obj: Any).isInstanceOf[SJSDefinedTopLevelExportedClass])
-    assertEquals(5, obj.x)
-
-    assertSame(constr, js.constructorOf[SJSDefinedTopLevelExportedClass])
-  }
-
-  @Test def toplevelExportsForAbstractJSClasses_Issue4117(): Unit = {
-    val constr =
-      if (isNoModule) global.TopLevelExportedAbstractJSClass
-      else exportsNamespace.TopLevelExportedAbstractJSClass
-
-    assertEquals("function", js.typeOf(constr))
-
-    val body = if (useECMAScript2015Semantics) {
-      """
-      class SubClass extends constr {
-        constructor(x) {
-          super(x);
-        }
-        foo(y) {
-           return y + this.x;
-        }
-      }
-      return SubClass;
-      """
-    } else {
-      """
-      function SubClass(x) {
-        constr.call(this, x);
-      }
-      SubClass.prototype = Object.create(constr.prototype);
-      SubClass.prototype.foo = function(y) {
-        return y + this.x;
-      };
-      return SubClass;
-      """
+  @Test def toplevelExportsForObjects(): AsyncResult = await {
+    val objFuture =
+      if (isNoModule) Future.successful(global.TopLevelExportedObject)
+      else exportsNamespace.map(_.TopLevelExportedObject)
+    for (obj <- objFuture) yield {
+      assertJSNotUndefined(obj)
+      assertEquals("object", js.typeOf(obj))
+      assertEquals("witness", obj.witness)
     }
-
-    val subclassFun = new js.Function("constr", body)
-      .asInstanceOf[js.Function1[js.Dynamic, js.Dynamic]]
-    val subclass = subclassFun(constr)
-    assertEquals("function", js.typeOf(subclass))
-
-    val obj = js.Dynamic.newInstance(subclass)(5)
-      .asInstanceOf[TopLevelExportedAbstractJSClass]
-
-    assertEquals(5, obj.x)
-    assertEquals(11, obj.foo(6))
-    assertEquals(33, obj.bar(6))
   }
 
-  @Test def toplevelExportsForNestedClasses(): Unit = {
-    val constr =
-      if (isNoModule) global.NestedExportedClass
-      else exportsNamespace.NestedExportedClass
-    assertJSNotUndefined(constr)
-    assertEquals("function", js.typeOf(constr))
-    val obj = js.Dynamic.newInstance(constr)()
-    assertTrue((obj: Any).isInstanceOf[ExportHolder.ExportedClass])
+  @Test def toplevelExportsForScalaJSDefinedJSObjects(): AsyncResult = await {
+    val obj1Future =
+      if (isNoModule) Future.successful(global.SJSDefinedTopLevelExportedObject)
+      else exportsNamespace.map(_.SJSDefinedTopLevelExportedObject)
+    for (obj1 <- obj1Future) yield {
+      assertJSNotUndefined(obj1)
+      assertEquals("object", js.typeOf(obj1))
+      assertEquals("witness", obj1.witness)
+
+      assertSame(obj1, SJSDefinedExportedObject)
+    }
   }
 
-  @Test def toplevelExportsForNestedSjsDefinedClasses(): Unit = {
-    val constr =
-      if (isNoModule) global.NestedSJSDefinedExportedClass
-      else exportsNamespace.NestedSJSDefinedExportedClass
-    assertJSNotUndefined(constr)
-    assertEquals("function", js.typeOf(constr))
-    val obj = js.Dynamic.newInstance(constr)()
-    assertTrue((obj: Any).isInstanceOf[ExportHolder.SJSDefinedExportedClass])
+  @Test def toplevelExportsForNestedObjects(): AsyncResult = await {
+    val objFuture =
+      if (isNoModule) Future.successful(global.NestedExportedObject)
+      else exportsNamespace.map(_.NestedExportedObject)
+    for (obj <- objFuture) yield {
+      assertJSNotUndefined(obj)
+      assertEquals("object", js.typeOf(obj))
+      assertSame(obj, ExportHolder.ExportedObject)
+    }
   }
 
-  @Test def exportsForClassesWithConstantFoldedName(): Unit = {
-    val constr =
-      if (isNoModule) global.ConstantFoldedClassExport
-      else exportsNamespace.ConstantFoldedClassExport
-    assertJSNotUndefined(constr)
-    assertEquals("function", js.typeOf(constr))
-    val obj = js.Dynamic.newInstance(constr)(5)
-    assertEquals(5, obj.x)
+  @Test def exportsForObjectsWithConstantFoldedName(): AsyncResult = await {
+    val objFuture =
+      if (isNoModule) Future.successful(global.ConstantFoldedObjectExport)
+      else exportsNamespace.map(_.ConstantFoldedObjectExport)
+    for (obj <- objFuture) yield {
+      assertJSNotUndefined(obj)
+      assertEquals("object", js.typeOf(obj))
+      assertEquals("witness", obj.witness)
+    }
   }
 
-  @Test def exportsForProtectedClasses(): Unit = {
-    val constr =
-      if (isNoModule) global.ProtectedExportedClass
-      else exportsNamespace.ProtectedExportedClass
-    assertJSNotUndefined(constr)
-    assertEquals("function", js.typeOf(constr))
-    val obj = js.Dynamic.newInstance(constr)(5)
-    assertEquals(5, obj.x)
+  @Test def exportsForProtectedObjects(): AsyncResult = await {
+    val objFuture =
+      if (isNoModule) Future.successful(global.ProtectedExportedObject)
+      else exportsNamespace.map(_.ProtectedExportedObject)
+    for (obj <- objFuture) yield {
+      assertJSNotUndefined(obj)
+      assertEquals("object", js.typeOf(obj))
+      assertEquals("witness", obj.witness)
+    }
   }
 
-  @Test def exportForClassesWithRepeatedParametersInCtor(): Unit = {
-    val constr =
-      if (isNoModule) global.ExportedVarArgClass
-      else exportsNamespace.ExportedVarArgClass
-    assertEquals("", js.Dynamic.newInstance(constr)().result)
-    assertEquals("a", js.Dynamic.newInstance(constr)("a").result)
-    assertEquals("a|b", js.Dynamic.newInstance(constr)("a", "b").result)
-    assertEquals("a|b|c", js.Dynamic.newInstance(constr)("a", "b", "c").result)
-    assertEquals("Number: <5>|a", js.Dynamic.newInstance(constr)(5, "a").result)
+  @Test def toplevelExportsForClasses(): AsyncResult = await {
+    val constrFuture =
+      if (isNoModule) Future.successful(global.TopLevelExportedClass)
+      else exportsNamespace.map(_.TopLevelExportedClass)
+    for (constr <- constrFuture) yield {
+      assertJSNotUndefined(constr)
+      assertEquals("function", js.typeOf(constr))
+      val obj = js.Dynamic.newInstance(constr)(5)
+      assertEquals(5, obj.x)
+    }
   }
 
-  @Test def exportForClassesWithDefaultParametersInCtor(): Unit = {
-    val constr =
-      if (isNoModule) global.ExportedDefaultArgClass
-      else exportsNamespace.ExportedDefaultArgClass
-    assertEquals(6, js.Dynamic.newInstance(constr)(1,2,3).result)
-    assertEquals(106, js.Dynamic.newInstance(constr)(1).result)
-    assertEquals(103, js.Dynamic.newInstance(constr)(1,2).result)
+  @Test def toplevelExportsForScalaJSDefinedJSClasses(): AsyncResult = await {
+    val constrFuture =
+      if (isNoModule) Future.successful(global.SJSDefinedTopLevelExportedClass)
+      else exportsNamespace.map(_.SJSDefinedTopLevelExportedClass)
+    for (constr <- constrFuture) yield {
+      assertJSNotUndefined(constr)
+      assertEquals("function", js.typeOf(constr))
+      val obj = js.Dynamic.newInstance(constr)(5)
+      assertTrue((obj: Any).isInstanceOf[SJSDefinedTopLevelExportedClass])
+      assertEquals(5, obj.x)
+
+      assertSame(constr, js.constructorOf[SJSDefinedTopLevelExportedClass])
+    }
+  }
+
+  @Test def toplevelExportsForAbstractJSClasses_Issue4117(): AsyncResult = await {
+    val constrFuture =
+      if (isNoModule) Future.successful(global.TopLevelExportedAbstractJSClass)
+      else exportsNamespace.map(_.TopLevelExportedAbstractJSClass)
+
+    for (constr <- constrFuture) yield {
+      assertEquals("function", js.typeOf(constr))
+
+      val body = if (useECMAScript2015Semantics) {
+        """
+        class SubClass extends constr {
+          constructor(x) {
+            super(x);
+          }
+          foo(y) {
+             return y + this.x;
+          }
+        }
+        return SubClass;
+        """
+      } else {
+        """
+        function SubClass(x) {
+          constr.call(this, x);
+        }
+        SubClass.prototype = Object.create(constr.prototype);
+        SubClass.prototype.foo = function(y) {
+          return y + this.x;
+        };
+        return SubClass;
+        """
+      }
+
+      val subclassFun = new js.Function("constr", body)
+        .asInstanceOf[js.Function1[js.Dynamic, js.Dynamic]]
+      val subclass = subclassFun(constr)
+      assertEquals("function", js.typeOf(subclass))
+
+      val obj = js.Dynamic.newInstance(subclass)(5)
+        .asInstanceOf[TopLevelExportedAbstractJSClass]
+
+      assertEquals(5, obj.x)
+      assertEquals(11, obj.foo(6))
+      assertEquals(33, obj.bar(6))
+    }
+  }
+
+  @Test def toplevelExportsForNestedClasses(): AsyncResult = await {
+    val constrFuture =
+      if (isNoModule) Future.successful(global.NestedExportedClass)
+      else exportsNamespace.map(_.NestedExportedClass)
+    for (constr <- constrFuture) yield {
+      assertJSNotUndefined(constr)
+      assertEquals("function", js.typeOf(constr))
+      val obj = js.Dynamic.newInstance(constr)()
+      assertTrue((obj: Any).isInstanceOf[ExportHolder.ExportedClass])
+    }
+  }
+
+  @Test def toplevelExportsForNestedSjsDefinedClasses(): AsyncResult = await {
+    val constrFuture =
+      if (isNoModule) Future.successful(global.NestedSJSDefinedExportedClass)
+      else exportsNamespace.map(_.NestedSJSDefinedExportedClass)
+    for (constr <- constrFuture) yield {
+      assertJSNotUndefined(constr)
+      assertEquals("function", js.typeOf(constr))
+      val obj = js.Dynamic.newInstance(constr)()
+      assertTrue((obj: Any).isInstanceOf[ExportHolder.SJSDefinedExportedClass])
+    }
+  }
+
+  @Test def exportsForClassesWithConstantFoldedName(): AsyncResult = await {
+    val constrFuture =
+      if (isNoModule) Future.successful(global.ConstantFoldedClassExport)
+      else exportsNamespace.map(_.ConstantFoldedClassExport)
+    for (constr <- constrFuture) yield {
+      assertJSNotUndefined(constr)
+      assertEquals("function", js.typeOf(constr))
+      val obj = js.Dynamic.newInstance(constr)(5)
+      assertEquals(5, obj.x)
+    }
+  }
+
+  @Test def exportsForProtectedClasses(): AsyncResult = await {
+    val constrFuture =
+      if (isNoModule) Future.successful(global.ProtectedExportedClass)
+      else exportsNamespace.map(_.ProtectedExportedClass)
+    for (constr <- constrFuture) yield {
+      assertJSNotUndefined(constr)
+      assertEquals("function", js.typeOf(constr))
+      val obj = js.Dynamic.newInstance(constr)(5)
+      assertEquals(5, obj.x)
+    }
+  }
+
+  @Test def exportForClassesWithRepeatedParametersInCtor(): AsyncResult = await {
+    val constrFuture =
+      if (isNoModule) Future.successful(global.ExportedVarArgClass)
+      else exportsNamespace.map(_.ExportedVarArgClass)
+    for (constr <- constrFuture) yield {
+      assertEquals("", js.Dynamic.newInstance(constr)().result)
+      assertEquals("a", js.Dynamic.newInstance(constr)("a").result)
+      assertEquals("a|b", js.Dynamic.newInstance(constr)("a", "b").result)
+      assertEquals("a|b|c", js.Dynamic.newInstance(constr)("a", "b", "c").result)
+      assertEquals("Number: <5>|a", js.Dynamic.newInstance(constr)(5, "a").result)
+    }
+  }
+
+  @Test def exportForClassesWithDefaultParametersInCtor(): AsyncResult = await {
+    val constrFuture =
+      if (isNoModule) Future.successful(global.ExportedDefaultArgClass)
+      else exportsNamespace.map(_.ExportedDefaultArgClass)
+    for (constr <- constrFuture) yield {
+      assertEquals(6, js.Dynamic.newInstance(constr)(1,2,3).result)
+      assertEquals(106, js.Dynamic.newInstance(constr)(1).result)
+      assertEquals(103, js.Dynamic.newInstance(constr)(1,2).result)
+    }
   }
 
   @Test def disambiguateOverloadsInvolvingLongs(): Unit = {
@@ -1283,167 +1279,224 @@ class ExportsTest {
   // @JSExportTopLevel
 
   @Test def basicTopLevelExport(): Unit = {
-    if (isNoModule) {
-      assertEquals(1, global.TopLevelExport_basic())
-    } else {
-      assertEquals(1, exportsNamespace.TopLevelExport_basic())
+    assumeTrue("Assume NoModule", isNoModule)
+    assertEquals(1, global.TopLevelExport_basic())
+  }
+
+  @Test def basicTopLevelExportModule(): AsyncResult = await {
+    assumeFalse("Assume Module", isNoModule)
+    for (exp <- exportsNamespace) yield {
+      assertEquals(1, exp.TopLevelExport_basic())
     }
   }
 
   @Test def overloadedTopLevelExport(): Unit = {
-    if (isNoModule) {
-      assertEquals("Hello World", global.TopLevelExport_overload("World"))
-      assertEquals(2, global.TopLevelExport_overload(2))
-      assertEquals(9, global.TopLevelExport_overload(2, 7))
-      assertEquals(10, global.TopLevelExport_overload(1, 2, 3, 4))
-    } else {
-      assertEquals("Hello World", exportsNamespace.TopLevelExport_overload("World"))
-      assertEquals(2, exportsNamespace.TopLevelExport_overload(2))
-      assertEquals(9, exportsNamespace.TopLevelExport_overload(2, 7))
-      assertEquals(10, exportsNamespace.TopLevelExport_overload(1, 2, 3, 4))
+    assumeTrue("Assume NoModule", isNoModule)
+    assertEquals("Hello World", global.TopLevelExport_overload("World"))
+    assertEquals(2, global.TopLevelExport_overload(2))
+    assertEquals(9, global.TopLevelExport_overload(2, 7))
+    assertEquals(10, global.TopLevelExport_overload(1, 2, 3, 4))
+  }
+
+  @Test def overloadedTopLevelExportModule(): AsyncResult = await {
+    assumeFalse("Assume Module", isNoModule)
+    for (exp <- exportsNamespace) yield {
+      assertEquals("Hello World", exp.TopLevelExport_overload("World"))
+      assertEquals(2, exp.TopLevelExport_overload(2))
+      assertEquals(9, exp.TopLevelExport_overload(2, 7))
+      assertEquals(10, exp.TopLevelExport_overload(1, 2, 3, 4))
     }
   }
 
   @Test def defaultParamsTopLevelExport_Issue4052(): Unit = {
-    if (isNoModule) {
-      assertEquals(7, global.TopLevelExport_defaultParams(6))
-      assertEquals(11, global.TopLevelExport_defaultParams(6, 5))
-    } else {
-      assertEquals(7, exportsNamespace.TopLevelExport_defaultParams(6))
-      assertEquals(11, exportsNamespace.TopLevelExport_defaultParams(6, 5))
+    assumeTrue("Assume NoModule", isNoModule)
+    assertEquals(7, global.TopLevelExport_defaultParams(6))
+    assertEquals(11, global.TopLevelExport_defaultParams(6, 5))
+  }
+
+  @Test def defaultParamsTopLevelExportModule_Issue4052(): AsyncResult = await {
+    assumeFalse("Assume Module", isNoModule)
+    for (exp <- exportsNamespace) yield {
+      assertEquals(7, exp.TopLevelExport_defaultParams(6))
+      assertEquals(11, exp.TopLevelExport_defaultParams(6, 5))
     }
   }
 
   @Test def topLevelExportUsesUniqueObject(): Unit = {
-    if (isNoModule) {
-      global.TopLevelExport_set(3)
+    assumeTrue("Assume NoModule", isNoModule)
+    global.TopLevelExport_set(3)
+    assertEquals(3, TopLevelExports.myVar)
+    global.TopLevelExport_set(7)
+    assertEquals(7, TopLevelExports.myVar)
+  }
+
+  @Test def topLevelExportUsesUniqueObjectModule(): AsyncResult = await {
+    assumeFalse("Assume Module", isNoModule)
+    for (exp <- exportsNamespace) yield {
+      exp.TopLevelExport_set(3)
       assertEquals(3, TopLevelExports.myVar)
-      global.TopLevelExport_set(7)
-      assertEquals(7, TopLevelExports.myVar)
-    } else {
-      exportsNamespace.TopLevelExport_set(3)
-      assertEquals(3, TopLevelExports.myVar)
-      exportsNamespace.TopLevelExport_set(7)
+      exp.TopLevelExport_set(7)
       assertEquals(7, TopLevelExports.myVar)
     }
   }
 
   @Test def topLevelExportFromNestedObject(): Unit = {
-    if (isNoModule)
-      global.TopLevelExport_setNested(28)
-    else
-      exportsNamespace.TopLevelExport_setNested(28)
+    assumeTrue("Assume NoModule", isNoModule)
+    global.TopLevelExport_setNested(28)
     assertEquals(28, TopLevelExports.Nested.myVar)
   }
 
+  @Test def topLevelExportFromNestedObjectModule(): AsyncResult = await {
+    assumeFalse("Assume Module", isNoModule)
+    for (exp <- exportsNamespace) yield {
+      exp.TopLevelExport_setNested(28)
+      assertEquals(28, TopLevelExports.Nested.myVar)
+    }
+  }
+
   @Test def topLevelExportWithDoubleUnderscore(): Unit = {
-    if (isNoModule) {
-      assertEquals(true, global.__topLevelExportWithDoubleUnderscore)
-    } else {
-      assertEquals(true, exportsNamespace.__topLevelExportWithDoubleUnderscore)
+    assumeTrue("Assume NoModule", isNoModule)
+    assertEquals(true, global.__topLevelExportWithDoubleUnderscore)
+  }
+
+  @Test def topLevelExportWithDoubleUnderscoreModule(): AsyncResult = await {
+    assumeFalse("Assume Module", isNoModule)
+    for (exp <- exportsNamespace) yield {
+      assertEquals(true, exp.__topLevelExportWithDoubleUnderscore)
     }
   }
 
   @Test def topLevelExportIsAlwaysReachable(): Unit = {
-    if (isNoModule) {
-      assertEquals("Hello World", global.TopLevelExport_reachability())
-    } else {
-      assertEquals("Hello World", exportsNamespace.TopLevelExport_reachability())
+    assumeTrue("Assume NoModule", isNoModule)
+    assertEquals("Hello World", global.TopLevelExport_reachability())
+  }
+
+  @Test def topLevelExportIsAlwaysReachableModule(): AsyncResult = await {
+    assumeFalse("Assume Module", isNoModule)
+    for (exp <- exportsNamespace) yield {
+      assertEquals("Hello World", exp.TopLevelExport_reachability())
     }
   }
 
   // @JSExportTopLevel fields
 
   @Test def topLevelExportBasicField(): Unit = {
-    if (isNoModule) {
-      // Initialization
-      assertEquals(5, global.TopLevelExport_basicVal)
-      assertEquals("hello", global.TopLevelExport_basicVar)
+    assumeTrue("Assume NoModule", isNoModule)
+    // Initialization
+    assertEquals(5, global.TopLevelExport_basicVal)
+    assertEquals("hello", global.TopLevelExport_basicVar)
 
-      // Scala modifies var
-      TopLevelFieldExports.basicVar = "modified"
-      assertEquals("modified", TopLevelFieldExports.basicVar)
-      assertEquals("modified", global.TopLevelExport_basicVar)
-    } else {
-      // Initialization
-      assertEquals(5, exportsNamespace.TopLevelExport_basicVal)
-      assertEquals("hello", exportsNamespace.TopLevelExport_basicVar)
-
-      // Scala modifies var
-      TopLevelFieldExports.basicVar = "modified"
-      assertEquals("modified", TopLevelFieldExports.basicVar)
-      assertEquals("modified", exportsNamespace.TopLevelExport_basicVar)
-    }
+    // Scala modifies var
+    TopLevelFieldExports.basicVar = "modified"
+    assertEquals("modified", TopLevelFieldExports.basicVar)
+    assertEquals("modified", global.TopLevelExport_basicVar)
 
     // Reset var
     TopLevelFieldExports.basicVar = "hello"
   }
 
-  @Test def topLevelExportFieldTwice(): Unit = {
-    if (isNoModule) {
+  @Test def topLevelExportBasicFieldModule(): AsyncResult = await {
+    assumeFalse("Assume Module", isNoModule)
+    for (exp <- exportsNamespace) yield {
       // Initialization
-      assertEquals(5, global.TopLevelExport_valExportedTwice1)
-      assertEquals("hello", global.TopLevelExport_varExportedTwice1)
-      assertEquals("hello", global.TopLevelExport_varExportedTwice2)
+      assertEquals(5, exp.TopLevelExport_basicVal)
+      assertEquals("hello", exp.TopLevelExport_basicVar)
 
       // Scala modifies var
-      TopLevelFieldExports.varExportedTwice = "modified"
-      assertEquals("modified", TopLevelFieldExports.varExportedTwice)
-      assertEquals("modified", global.TopLevelExport_varExportedTwice1)
-      assertEquals("modified", global.TopLevelExport_varExportedTwice2)
-    } else {
-      // Initialization
-      assertEquals(5, exportsNamespace.TopLevelExport_valExportedTwice1)
-      assertEquals("hello", exportsNamespace.TopLevelExport_varExportedTwice1)
-      assertEquals("hello", exportsNamespace.TopLevelExport_varExportedTwice2)
+      TopLevelFieldExports.basicVar = "modified"
+      assertEquals("modified", TopLevelFieldExports.basicVar)
+      assertEquals("modified", exp.TopLevelExport_basicVar)
 
-      // Scala modifies var
-      TopLevelFieldExports.varExportedTwice = "modified"
-      assertEquals("modified", TopLevelFieldExports.varExportedTwice)
-      assertEquals("modified", exportsNamespace.TopLevelExport_varExportedTwice1)
-      assertEquals("modified", exportsNamespace.TopLevelExport_varExportedTwice2)
+      // Reset var
+      TopLevelFieldExports.basicVar = "hello"
     }
+  }
+
+  @Test def topLevelExportFieldTwice(): Unit = {
+    assumeTrue("Assume NoModule", isNoModule)
+
+    // Initialization
+    assertEquals(5, global.TopLevelExport_valExportedTwice1)
+    assertEquals("hello", global.TopLevelExport_varExportedTwice1)
+    assertEquals("hello", global.TopLevelExport_varExportedTwice2)
+
+    // Scala modifies var
+    TopLevelFieldExports.varExportedTwice = "modified"
+    assertEquals("modified", TopLevelFieldExports.varExportedTwice)
+    assertEquals("modified", global.TopLevelExport_varExportedTwice1)
+    assertEquals("modified", global.TopLevelExport_varExportedTwice2)
 
     // Reset var
     TopLevelFieldExports.varExportedTwice = "hello"
   }
 
-  @Test def topLevelExportWriteValVarCausesTypeerror(): Unit = {
-    assumeFalse("Unchecked in Script mode", isNoModule)
+  @Test def topLevelExportFieldTwiceModule(): AsyncResult = await {
+    assumeFalse("Assume Module", isNoModule)
+    for (exp <- exportsNamespace) yield {
+      // Initialization
+      assertEquals(5, exp.TopLevelExport_valExportedTwice1)
+      assertEquals("hello", exp.TopLevelExport_varExportedTwice1)
+      assertEquals("hello", exp.TopLevelExport_varExportedTwice2)
 
-    assertThrows(classOf[js.JavaScriptException], {
-      exportsNamespace.TopLevelExport_basicVal = 54
-    })
+      // Scala modifies var
+      TopLevelFieldExports.varExportedTwice = "modified"
+      assertEquals("modified", TopLevelFieldExports.varExportedTwice)
+      assertEquals("modified", exp.TopLevelExport_varExportedTwice1)
+      assertEquals("modified", exp.TopLevelExport_varExportedTwice2)
 
-    assertThrows(classOf[js.JavaScriptException], {
-      exportsNamespace.TopLevelExport_basicVar = 54
-    })
+      // Reset var
+      TopLevelFieldExports.varExportedTwice = "hello"
+    }
   }
 
-  @Test def topLevelExportUninitializedFields(): Unit = {
+  @Test def topLevelExportWriteValVarCausesTypeerror(): AsyncResult = await {
+    assumeFalse("Unchecked in Script mode", isNoModule)
+
+    for (exp <- exportsNamespace) yield {
+      assertThrows(classOf[js.JavaScriptException], {
+        exp.TopLevelExport_basicVal = 54
+      })
+
+      assertThrows(classOf[js.JavaScriptException], {
+        exp.TopLevelExport_basicVar = 54
+      })
+    }
+  }
+
+  @Test def topLevelExportUninitializedFieldsScala(): Unit = {
     assertEquals(0, TopLevelFieldExports.uninitializedVarInt)
     assertEquals(0L, TopLevelFieldExports.uninitializedVarLong)
     assertEquals(null, TopLevelFieldExports.uninitializedVarString)
     assertEquals('\u0000', TopLevelFieldExports.uninitializedVarChar)
+  }
 
-    if (isNoModule) {
-      assertEquals(null, global.TopLevelExport_uninitializedVarInt)
-      assertEquals(null, global.TopLevelExport_uninitializedVarLong)
-      assertEquals(null, global.TopLevelExport_uninitializedVarString)
-      assertEquals(null, global.TopLevelExport_uninitializedVarChar)
-    } else {
-      assertEquals(null, exportsNamespace.TopLevelExport_uninitializedVarInt)
-      assertEquals(null, exportsNamespace.TopLevelExport_uninitializedVarLong)
-      assertEquals(null, exportsNamespace.TopLevelExport_uninitializedVarString)
-      assertEquals(null, exportsNamespace.TopLevelExport_uninitializedVarChar)
+  @Test def topLevelExportUninitializedFields(): Unit = {
+    assumeTrue("Assume NoModule", isNoModule)
+    assertEquals(null, global.TopLevelExport_uninitializedVarInt)
+    assertEquals(null, global.TopLevelExport_uninitializedVarLong)
+    assertEquals(null, global.TopLevelExport_uninitializedVarString)
+    assertEquals(null, global.TopLevelExport_uninitializedVarChar)
+  }
+
+  @Test def topLevelExportUninitializedFieldsModule(): AsyncResult = await {
+    assumeFalse("Assume Module", isNoModule)
+    for (exp <- exportsNamespace) yield {
+      assertEquals(null, exp.TopLevelExport_uninitializedVarInt)
+      assertEquals(null, exp.TopLevelExport_uninitializedVarLong)
+      assertEquals(null, exp.TopLevelExport_uninitializedVarString)
+      assertEquals(null, exp.TopLevelExport_uninitializedVarChar)
     }
   }
 
   @Test def topLevelExportFieldIsAlwaysReachableAndInitialized(): Unit = {
-    if (isNoModule) {
-      assertEquals("Hello World", global.TopLevelExport_fieldreachability)
-    } else {
-      assertEquals("Hello World", exportsNamespace.TopLevelExport_fieldreachability)
+    assumeTrue("Assume NoModule", isNoModule)
+    assertEquals("Hello World", global.TopLevelExport_fieldreachability)
+  }
+
+  @Test def topLevelExportFieldIsAlwaysReachableAndInitializedModule(): AsyncResult = await {
+    assumeFalse("Assume Module", isNoModule)
+    for (exp <- exportsNamespace) yield {
+      assertEquals("Hello World", exp.TopLevelExport_fieldreachability)
     }
   }
 

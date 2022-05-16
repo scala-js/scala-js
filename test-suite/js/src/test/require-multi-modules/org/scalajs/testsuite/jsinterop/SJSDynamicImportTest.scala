@@ -281,12 +281,12 @@ class SJSDynamicImportTest {
      * condition. By using the indirection via an export, we can avoid this and
      * trigger the relevant condition.
      */
-    ExportsTest
-      .exportsNameSpace("shared_dep_mod")
-      .useSharedDependencyInPublicModule()
-      .asInstanceOf[js.Promise[Int]]
-      .toFuture
-      .map(assertEquals(2, _))
+    for {
+      facade <- js.dynamicImport(SharedDepFacade).toFuture
+      res <- facade.useSharedDependencyInPublicModule().toFuture
+    } yield {
+      assertEquals(2, res)
+    }
   }
 
   private def assertDynamicLoad[T](promise: js.Promise[T]): Future[Unit] = {
@@ -310,6 +310,12 @@ private object FailureOnLoad extends js.Object
 @JSImport("../test-classes/fail-load.js", JSImport.Default)
 @js.native
 private class FailureOnLoad extends js.Object
+
+@js.native
+@JSImport("./shared_dep_mod.js", JSImport.Namespace)
+private object SharedDepFacade extends js.Object{
+  def useSharedDependencyInPublicModule(): js.Promise[Int] = js.native
+}
 
 private object UseSharedDependencyInPublicModule {
   @JSExportTopLevel("useSharedDependencyInPublicModule", "shared_dep_mod")

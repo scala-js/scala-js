@@ -1969,6 +1969,8 @@ object Build {
             esVersion >= ESVersion.ES2015) :::
         includeIf(testDir / "require-modules",
             hasModules) :::
+        includeIf(testDir / "require-no-modules",
+            !hasModules) :::
         includeIf(testDir / "require-multi-modules",
             hasModules && !linkerConfig.closureCompiler) :::
         includeIf(testDir / "require-dynamic-import",
@@ -2001,66 +2003,6 @@ object Build {
             | */
           """.stripMargin.trim() + "\n"
         )
-      },
-
-      /* The script that calls setExportsNamespaceForExportsTest to provide
-       * ExportsTest with a loopback reference to its own exports namespace.
-       * Only when using an ES module.
-       * See the comment in ExportsTest for more details.
-       */
-      jsEnvInput in Test ++= {
-        val moduleKind = (scalaJSLinkerConfig in Test).value.moduleKind
-        val linkerResult = (scalaJSLinkerResult in Test).value
-
-        val report = linkerResult.data
-
-        val outputFile = {
-          val outputDir = linkerResult.get(scalaJSLinkerOutputDirectory.key).get
-
-          val ext = {
-            val name = report.publicModules.head.jsFileName
-            val dotPos = name.lastIndexOf('.')
-            if (dotPos < 0) ".js" else name.substring(dotPos)
-          }
-
-          outputDir / ("export-loopback" + ext)
-        }
-
-        val setDict = {
-          val dict = report.publicModules
-            .map(m => s"${m.moduleID}: ${m.moduleID}")
-            .mkString("{", ",", "}")
-
-          s"main.setExportsNamespaceForExportsTest($dict);"
-        }
-
-        moduleKind match {
-          case ModuleKind.ESModule =>
-            /* Due to the asynchronous nature of ES module loading, there
-             * exists a theoretical risk for a race condition here. It is
-             * possible that tests will start running and reaching the
-             * ExportsTest before this module is executed. It's quite
-             * unlikely, though, given all the message passing for the com
-             * and all that.
-             */
-            val imports = report.publicModules
-              .map(m => s"""import * as ${m.moduleID} from "./${escapeJS(m.jsFileName)}";\n""")
-              .mkString
-
-            IO.write(outputFile, imports + setDict)
-            List(Input.ESModule(outputFile.toPath))
-
-          case ModuleKind.CommonJSModule =>
-            val requires = report.publicModules
-              .map(m => s"""var ${m.moduleID} = require("./${escapeJS(m.jsFileName)}");\n""")
-              .mkString
-
-            IO.write(outputFile, requires + setDict)
-            List(Input.CommonJSModule(outputFile.toPath))
-
-          case ModuleKind.NoModule =>
-            Nil
-        }
       },
 
       buildInfoOrStubs(Compile, Def.setting(baseDirectory.value / "src/main")),
