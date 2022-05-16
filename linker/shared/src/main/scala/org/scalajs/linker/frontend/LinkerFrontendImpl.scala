@@ -38,7 +38,7 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
   val coreSpec = config.commonConfig.coreSpec
 
   private[this] val linker: BaseLinker =
-    new BaseLinker(config.commonConfig)
+    new BaseLinker(config.commonConfig, config.checkIR)
 
   private[this] val optOptimizer: Option[IncOptimizer] =
     LinkerFrontendImplPlatform.createOptimizer(config)
@@ -65,7 +65,7 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
 
     val linkResult = logger.timeFuture("Linker") {
       linker.link(irFiles, moduleInitializers, logger,
-          preOptimizerRequirements, config.checkIR)
+          preOptimizerRequirements)
     }
 
     val optimizedResult = optOptimizer.fold(linkResult) { optimizer =>

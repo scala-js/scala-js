@@ -88,17 +88,12 @@ private final class Analyzer(config: CommonPhaseConfig,
 
       case Some(future) =>
         workQueue.enqueue(future) { data =>
-          if (data.kind != ClassKind.Class || data.superClass.isDefined ||
-            data.interfaces.nonEmpty) {
-            _errors += InvalidJavaLangObjectClass(fromAnalyzer)
-          } else {
-            objectClassInfo = new ClassInfo(data,
-                unvalidatedSuperClass = None,
-                unvalidatedInterfaces = Nil, nonExistent = false)
+          objectClassInfo = new ClassInfo(data,
+              unvalidatedSuperClass = None,
+              unvalidatedInterfaces = Nil, nonExistent = false)
 
-            objectClassInfo.link()
-            onSuccess()
-          }
+          objectClassInfo.link()
+          onSuccess()
         }
     }
   }
@@ -492,22 +487,16 @@ private final class Analyzer(config: CommonPhaseConfig,
 
       kind match {
         case ClassKind.Class | ClassKind.ModuleClass | ClassKind.HijackedClass =>
-          superClass.fold[Option[ClassInfo]] {
-            _errors += MissingSuperClass(this, from)
+          val superCl = superClass.get // checked by ClassDef checker.
+          if (superCl.kind != ClassKind.Class) {
+            _errors += InvalidSuperClass(superCl, this, from)
             Some(objectClassInfo)
-          } { superCl =>
-            if (superCl.kind != ClassKind.Class) {
-              _errors += InvalidSuperClass(superCl, this, from)
-              Some(objectClassInfo)
-            } else {
-              superClass
-            }
+          } else {
+            superClass
           }
 
         case ClassKind.Interface =>
-          superClass.foreach { superCl =>
-            _errors += InvalidSuperClass(superCl, this, from)
-          }
+          assert(superClass.isEmpty)
 
           None
 
@@ -518,33 +507,25 @@ private final class Analyzer(config: CommonPhaseConfig,
            * So we just say superClass = None in invalid cases, and make sure
            * this does not blow up the rest of the analysis.
            */
-          superClass.fold[Option[ClassInfo]] {
-            _errors += MissingSuperClass(this, from)
-            None
-          } { superCl =>
-            superCl.kind match {
-              case ClassKind.JSClass | ClassKind.NativeJSClass =>
-                superClass // ok
-              case _ =>
-                _errors += InvalidSuperClass(superCl, this, from)
-                None
-            }
+          val superCl = superClass.get // checked by ClassDef checker.
+          superCl.kind match {
+            case ClassKind.JSClass | ClassKind.NativeJSClass =>
+              superClass // ok
+            case _ =>
+              _errors += InvalidSuperClass(superCl, this, from)
+              None
           }
 
         case ClassKind.NativeJSClass | ClassKind.NativeJSModuleClass =>
-          superClass.fold[Option[ClassInfo]] {
-            _errors += MissingSuperClass(this, from)
-            Some(objectClassInfo)
-          } { superCl =>
-            superCl.kind match {
-              case ClassKind.JSClass | ClassKind.NativeJSClass =>
-                superClass // ok
-              case _ if superCl eq objectClassInfo =>
-                superClass // ok
-              case _ =>
-                _errors += InvalidSuperClass(superCl, this, from)
-                Some(objectClassInfo)
-            }
+          val superCl = superClass.get // checked by ClassDef checker.
+          superCl.kind match {
+            case ClassKind.JSClass | ClassKind.NativeJSClass =>
+              superClass // ok
+            case _ if superCl eq objectClassInfo =>
+              superClass // ok
+            case _ =>
+              _errors += InvalidSuperClass(superCl, this, from)
+              Some(objectClassInfo)
           }
 
         case ClassKind.AbstractJSType =>

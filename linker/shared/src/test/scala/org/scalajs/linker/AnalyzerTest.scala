@@ -28,7 +28,6 @@ import org.scalajs.junit.async._
 import org.scalajs.logging.NullLogger
 import org.scalajs.linker._
 import org.scalajs.linker.analyzer._
-import org.scalajs.linker.frontend.IRLoader
 import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
 import org.scalajs.linker.standard.ModuleSet.ModuleID
@@ -37,6 +36,7 @@ import Analysis._
 
 import org.scalajs.linker.testutils._
 import org.scalajs.linker.testutils.TestIRBuilder._
+import org.scalajs.linker.testutils.LinkingUtils._
 
 class AnalyzerTest {
   import scala.concurrent.ExecutionContext.Implicits.global
@@ -52,24 +52,6 @@ class AnalyzerTest {
   def missingJavaLangObject(): AsyncResult = await {
     val analysis = computeAnalysis(Nil, stdlib = TestIRRepo.empty)
     assertExactErrors(analysis, MissingJavaLangObjectClass(fromAnalyzer))
-  }
-
-  @Test
-  def invalidJavaLangObject(): AsyncResult = await {
-    val invalidJLObjectDefs = Seq(
-        // j.l.Object cannot have a super class
-        classDef(ObjectClass, superClass = Some("Parent")),
-        // j.l.Object must have kind == ClassKind.Class
-        classDef(ObjectClass, kind = ClassKind.ModuleClass),
-        // j.l.Object cannot extend any interface
-        classDef(ObjectClass, interfaces = List("Parent"))
-    )
-
-    Future.traverse(invalidJLObjectDefs) { jlObjectDef =>
-      val analysis = computeAnalysis(Seq(jlObjectDef), stdlib = TestIRRepo.empty)
-      assertExactErrors(analysis,
-          InvalidJavaLangObjectClass(fromAnalyzer))
-    }
   }
 
   @Test
@@ -142,38 +124,11 @@ class AnalyzerTest {
   }
 
   @Test
-  def missingSuperClass(): AsyncResult = await {
-    val kinds = Seq(
-        ClassKind.Class,
-        ClassKind.ModuleClass,
-        ClassKind.HijackedClass,
-        ClassKind.JSClass,
-        ClassKind.JSModuleClass,
-        ClassKind.NativeJSClass,
-        ClassKind.NativeJSModuleClass
-    )
-
-    Future.traverse(kinds) { kind =>
-      val classDefs = Seq(
-          classDef("A", kind = kind, memberDefs = List(trivialCtor("A")))
-      )
-
-      val analysis = computeAnalysis(classDefs,
-          reqsFactory.instantiateClass("A", NoArgConstructorName))
-
-      assertContainsError("MissingSuperClass(A)", analysis) {
-        case MissingSuperClass(ClsInfo("A"), FromClass(ClsInfo("A"))) => true
-      }
-    }
-  }
-
-  @Test
   def invalidSuperClass(): AsyncResult = await {
     val kindsSub = Seq(
         ClassKind.Class,
         ClassKind.ModuleClass,
         ClassKind.HijackedClass,
-        ClassKind.Interface,
         ClassKind.JSClass,
         ClassKind.JSModuleClass,
         ClassKind.NativeJSClass,
@@ -187,7 +142,8 @@ class AnalyzerTest {
         case Class | ModuleClass | HijackedClass =>
           Seq(Interface, ModuleClass, JSClass, NativeJSClass)
         case Interface =>
-          Seq(Class, Interface)
+          // interfaces are checked in the ClassDefChecker.
+          throw new AssertionError("unreachable")
         case JSClass | JSModuleClass | NativeJSClass | NativeJSModuleClass |
             AbstractJSType =>
           Seq(Class, Interface, AbstractJSType, JSModuleClass)
@@ -198,9 +154,12 @@ class AnalyzerTest {
       Future.traverse(kindsBaseFor(kindSub)) { kindBase =>
 
         val classDefs = Seq(
-            classDef("A", kind = kindSub, superClass = Some("B")),
+            classDef("A", kind = kindSub,
+                superClass = Some("B"),
+                memberDefs = requiredMemberDefs("A", kindSub)),
             classDef("B", kind = kindBase,
-                superClass = validParentForKind(kindBase))
+                superClass = validParentForKind(kindBase),
+                memberDefs = requiredMemberDefs("B", kindBase))
         )
 
         val analysis = computeAnalysis(classDefs,
@@ -246,9 +205,11 @@ class AnalyzerTest {
         val classDefs = Seq(
             classDef("A", kind = kindCls,
                 superClass = validParentForKind(kindCls),
-                interfaces = List("B")),
+                interfaces = List("B"),
+                memberDefs = requiredMemberDefs("A", kindCls)),
             classDef("B", kind = kindIntf,
-                superClass = validParentForKind(kindIntf))
+                superClass = validParentForKind(kindIntf),
+                memberDefs = requiredMemberDefs("A", kindIntf))
         )
 
         val analysis = computeAnalysis(classDefs,
@@ -326,7 +287,8 @@ class AnalyzerTest {
         Some(SelectJSNativeMember("A", testName)))(EOH, None)
 
     val classDefs = Seq(
-        classDef("A", memberDefs = List(method))
+        classDef("A", superClass = Some(ObjectClass),
+            memberDefs = List(method))
     )
 
     val analysis = computeAnalysis(classDefs,
@@ -375,6 +337,7 @@ class AnalyzerTest {
             "A",
             kind = ClassKind.ModuleClass,
             superClass = Some(ObjectClass),
+            memberDefs = List(trivialCtor("A")),
             topLevelExportDefs = List(
                 TopLevelMethodExportDef("main", JSMethodDef(
                     EMF.withNamespace(MemberNamespace.PublicStatic),
@@ -517,7 +480,8 @@ class AnalyzerTest {
         JSNativeLoadSpec.Import("my-module", List("test")))
 
     val classDefs = Seq(
-        classDef("A", memberDefs = List(mainMethod, nativeMember))
+        classDef("A", superClass = Some(ObjectClass),
+            memberDefs = List(mainMethod, nativeMember))
     )
 
     val analysis = computeAnalysis(classDefs,
@@ -568,9 +532,10 @@ class AnalyzerTest {
         kind = ClassKind.JSClass,
         superClass = Some(JSObjectLikeClass),
         memberDefs = List(
-          JSMethodDef(EMF, str("constructor"), Nil, None, {
+          JSMethodDef(EMF, str("constructor"), Nil, None, Block(
+            JSSuperConstructorCall(Nil),
             JSNewTarget()
-          })(EOH, None)
+          ))(EOH, None)
         )
       ),
       JSObjectLikeClassDef
@@ -727,24 +692,6 @@ object AnalyzerTest {
         Some(ClassName("scala.scalajs.js.Object"))
       case Interface | AbstractJSType =>
         None
-    }
-  }
-
-  private def computeAnalysis(classDefs: Seq[ClassDef],
-      symbolRequirements: SymbolRequirement = reqsFactory.none(),
-      moduleInitializers: Seq[ModuleInitializer] = Nil,
-      config: StandardConfig = StandardConfig(),
-      stdlib: Future[Seq[IRFile]] = TestIRRepo.minilib)(
-      implicit ec: ExecutionContext): Future[Analysis] = {
-    for {
-      baseFiles <- stdlib
-      irLoader <- new IRLoader().update(classDefs.map(MemClassDefIRFile(_)) ++ baseFiles)
-      analysis <- Analyzer.computeReachability(
-          CommonPhaseConfig.fromStandardConfig(config), moduleInitializers,
-          symbolRequirements, allowAddingSyntheticMethods = true,
-          checkAbstractReachability = true, irLoader)
-    } yield {
-      analysis
     }
   }
 

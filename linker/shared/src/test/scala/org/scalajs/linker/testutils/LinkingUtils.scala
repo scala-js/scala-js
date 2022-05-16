@@ -19,8 +19,10 @@ import org.scalajs.ir.Trees.ClassDef
 import org.scalajs.logging._
 
 import org.scalajs.linker._
-import org.scalajs.linker.standard._
+import org.scalajs.linker.analyzer._
+import org.scalajs.linker.frontend.IRLoader
 import org.scalajs.linker.interface._
+import org.scalajs.linker.standard._
 
 object LinkingUtils {
   def testLink(classDefs: Seq[ClassDef],
@@ -82,6 +84,31 @@ object LinkingUtils {
           output, new ScalaConsoleLogger(Level.Error))
     }.map { _ =>
       backend.moduleSet
+    }
+  }
+
+  private lazy val noSymbolRequirements: SymbolRequirement =
+    SymbolRequirement.factory("linking utils").none()
+
+  def computeAnalysis(classDefs: Seq[ClassDef],
+      symbolRequirements: SymbolRequirement = noSymbolRequirements,
+      moduleInitializers: Seq[ModuleInitializer] = Nil,
+      config: StandardConfig = StandardConfig(),
+      stdlib: Future[Seq[IRFile]] = TestIRRepo.minilib)(
+      implicit ec: ExecutionContext): Future[Analysis] = {
+
+    val loader = new IRLoader(checkIR = true)
+    val logger = new ScalaConsoleLogger(Level.Error)
+
+    for {
+      baseFiles <- stdlib
+      irLoader <- loader.update(classDefs.map(MemClassDefIRFile(_)) ++ baseFiles, logger)
+      analysis <- Analyzer.computeReachability(
+          CommonPhaseConfig.fromStandardConfig(config), moduleInitializers,
+          symbolRequirements, allowAddingSyntheticMethods = true,
+          checkAbstractReachability = true, irLoader)
+    } yield {
+      analysis
     }
   }
 }

@@ -161,12 +161,8 @@ object Analysis {
   }
 
   final case class MissingJavaLangObjectClass(from: From) extends Error
-  final case class InvalidJavaLangObjectClass(from: From) extends Error
   final case class CycleInInheritanceChain(encodedClassNames: List[ClassName], from: From) extends Error
   final case class MissingClass(info: ClassInfo, from: From) extends Error
-
-  final case class MissingSuperClass(subClassInfo: ClassInfo, from: From)
-      extends Error
 
   final case class InvalidSuperClass(superClassInfo: ClassInfo,
       subClassInfo: ClassInfo, from: From)
@@ -214,17 +210,11 @@ object Analysis {
     val headMsg = error match {
       case MissingJavaLangObjectClass(_) =>
         "Fatal error: java.lang.Object is missing"
-      case InvalidJavaLangObjectClass(_) =>
-        "Fatal error: java.lang.Object is invalid (it must be a Scala class " +
-        "without superclass nor any implemented interface)"
       case CycleInInheritanceChain(encodedClassNames, _) =>
         ("Fatal error: cycle in inheritance chain involving " +
             encodedClassNames.map(_.nameString).mkString(", "))
       case MissingClass(info, _) =>
         s"Referring to non-existent class ${info.displayName}"
-      case MissingSuperClass(subClassInfo, _) =>
-        s"${subClassInfo.displayName} (of kind ${subClassInfo.kind}) is " +
-        "missing a super class"
       case InvalidSuperClass(superClassInfo, subClassInfo, _) =>
         s"${superClassInfo.displayName} (of kind ${superClassInfo.kind}) is " +
         s"not a valid super class of ${subClassInfo.displayName} (of kind " +

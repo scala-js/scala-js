@@ -24,7 +24,6 @@ import org.scalajs.ir.Types._
 import org.scalajs.junit.async._
 
 import org.scalajs.linker.analyzer._
-import org.scalajs.linker.frontend.IRLoader
 import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
 
@@ -46,8 +45,8 @@ class LibraryReachabilityTest {
             trivialCtor("A"),
             MethodDef(EMF, m("test", Nil, V), NON, Nil, NoType, Some(Block(
                 Apply(EAF, systemMod, m("getProperty", List(T), T), List(emptyStr))(StringType),
-                Apply(EAF, systemMod, m("getProperty", List(T, T), T), List(emptyStr))(StringType),
-                Apply(EAF, systemMod, m("setProperty", List(T, T), T), List(emptyStr))(StringType),
+                Apply(EAF, systemMod, m("getProperty", List(T, T), T), List(emptyStr, emptyStr))(StringType),
+                Apply(EAF, systemMod, m("setProperty", List(T, T), T), List(emptyStr, emptyStr))(StringType),
                 Apply(EAF, systemMod, m("clearProperty", List(T), T), List(emptyStr))(StringType)
             )))(EOH, None)
         ))
@@ -106,12 +105,8 @@ object LibraryReachabilityTest {
       config: StandardConfig = StandardConfig())(
       implicit ec: ExecutionContext): Future[Analysis] = {
     for {
-      baseFiles <- TestIRRepo.fulllib
-      irLoader <- new IRLoader().update(classDefs.map(MemClassDefIRFile(_)) ++ baseFiles)
-      analysis <- Analyzer.computeReachability(
-          CommonPhaseConfig.fromStandardConfig(config), moduleInitializers,
-          symbolRequirements, allowAddingSyntheticMethods = true,
-          checkAbstractReachability = true, irLoader)
+      analysis <- LinkingUtils.computeAnalysis(classDefs, symbolRequirements,
+          moduleInitializers, config, stdlib = TestIRRepo.fulllib)
     } yield {
       if (analysis.errors.nonEmpty)
         fail(analysis.errors.mkString("Unexpected errors:\n", "\n", ""))
