@@ -612,7 +612,13 @@ object JavalibIRCleaner {
       ClassName("scala.runtime." + simpleName) -> ClassName("java.util.internal." + simpleName)
     }
 
-    val allPairs = functionTypePairs ++ refPairs
+    val tuplePairs = for {
+      n <- (2 to 22).toList
+    } yield {
+      ClassName("scala.Tuple" + n) -> ClassName("java.util.internal.Tuple" + n)
+    }
+
+    val allPairs = functionTypePairs ++ refPairs ++ tuplePairs
     allPairs.toMap
   }
 }
