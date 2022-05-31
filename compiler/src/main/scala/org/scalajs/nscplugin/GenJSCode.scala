@@ -2398,7 +2398,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case Throw(expr) =>
           val ex = genExpr(expr)
           js.Throw {
-            if (isMaybeJavaScriptException(expr.tpe)) {
+            if (!ex.isInstanceOf[js.Null] && isMaybeJavaScriptException(expr.tpe)) {
               genApplyMethod(
                   genLoadModule(RuntimePackageModule),
                   Runtime_unwrapJavaScriptException,
