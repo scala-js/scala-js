@@ -273,6 +273,8 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
           arg
         case IntrinsicCall(JSStringOpsMod, `enableJSStringOpsMethodName`, List(arg)) =>
           arg
+        case IntrinsicCall(UnionTypeMod, `unionTypeFromMethodName`, List(arg, _)) =>
+          arg
 
         case IntrinsicCall(JSDynamicImplicitsMod, `truthValueMethodName`, List(arg)) =>
           AsInstanceOf(
@@ -555,6 +557,9 @@ object JavalibIRCleaner {
   private val ScalaSerializable = ClassName("scala.Serializable")
   private val ScalaJSRuntimeMod = ClassName("scala.scalajs.runtime.package$")
   private val StringContextClass = ClassName("scala.StringContext")
+  private val UnionType = ClassName("scala.scalajs.js.$bar")
+  private val UnionTypeMod = ClassName("scala.scalajs.js.$bar$")
+  private val UnionTypeEvidence = ClassName("scala.scalajs.js.$bar$Evidence")
 
   private val FunctionNClasses: IndexedSeq[ClassName] =
     (0 to MaxFunctionArity).map(n => ClassName(s"scala.Function$n"))
@@ -594,6 +599,8 @@ object JavalibIRCleaner {
     MethodName("toSeq", Nil, ClassRef(ReadOnlySeq))
   private val truthValueMethodName =
     MethodName("truthValue", List(ClassRef(JSDynamic)), BooleanRef)
+  private val unionTypeFromMethodName =
+    MethodName("from", List(ClassRef(ObjectClass), ClassRef(UnionTypeEvidence)), ClassRef(UnionType))
   private val writeReplaceMethodName =
     MethodName("writeReplace", Nil, ClassRef(ObjectClass))
 
