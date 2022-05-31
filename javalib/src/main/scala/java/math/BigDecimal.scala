@@ -811,7 +811,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
       val (q, l) = loop(1, q1.shiftRight(k), 0)
 
       // If  abs(q) != 1  then the quotient is periodic
-      if (q.abs() != BigInteger.ONE) {
+      if (!q.abs().equals(BigInteger.ONE)) {
         throw new ArithmeticException(
             "Non-terminating decimal expansion; no exact representable decimal result")
       }
@@ -1264,7 +1264,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     case that: BigDecimal =>
       that._scale == this._scale && (
           if (_bitLength < 64) that._smallValue == this._smallValue
-          else this._intVal == that._intVal)
+          else this._intVal.equals(that._intVal))
     case _ => false
   }
 

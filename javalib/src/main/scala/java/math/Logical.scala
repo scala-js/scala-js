@@ -44,7 +44,7 @@ private[math] object Logical {
     // scalastyle:off return
     if (bi.sign == 0) {
       BigInteger.MINUS_ONE
-    } else if (bi == BigInteger.MINUS_ONE) {
+    } else if (bi.equals(BigInteger.MINUS_ONE)) {
       BigInteger.ZERO
     } else {
       val resDigits = new Array[Int](bi.numberLength + 1)
@@ -88,9 +88,9 @@ private[math] object Logical {
   def and(bi: BigInteger, that: BigInteger): BigInteger = {
     if (that.sign == 0 || bi.sign == 0)
       BigInteger.ZERO
-    else if (that == BigInteger.MINUS_ONE)
+    else if (that.equals(BigInteger.MINUS_ONE))
       bi
-    else if (bi == BigInteger.MINUS_ONE)
+    else if (bi.equals(BigInteger.MINUS_ONE))
       that
     else if (bi.sign > 0 && that.sign > 0)
       andPositive(bi, that)
@@ -235,9 +235,9 @@ private[math] object Logical {
       bi
     else if (bi.sign == 0)
       BigInteger.ZERO
-    else if (bi == BigInteger.MINUS_ONE)
+    else if (bi.equals(BigInteger.MINUS_ONE))
       that.not()
-    else if (that == BigInteger.MINUS_ONE)
+    else if (that.equals(BigInteger.MINUS_ONE))
       BigInteger.ZERO
     else if (bi.sign > 0 && that.sign > 0)
       andNotPositive(bi, that)
@@ -446,7 +446,7 @@ private[math] object Logical {
 
   /** @see BigInteger#or(BigInteger) */
   def or(bi: BigInteger, that: BigInteger): BigInteger = {
-    if (that == BigInteger.MINUS_ONE || bi == BigInteger.MINUS_ONE) {
+    if (that.equals(BigInteger.MINUS_ONE) || bi.equals(BigInteger.MINUS_ONE)) {
       BigInteger.MINUS_ONE
     } else if (that.sign == 0) {
       bi
@@ -593,9 +593,9 @@ private[math] object Logical {
       bi
     } else if (bi.sign == 0) {
       that
-    } else if (that == BigInteger.MINUS_ONE) {
+    } else if (that.equals(BigInteger.MINUS_ONE)) {
       bi.not()
-    } else if (bi == BigInteger.MINUS_ONE) {
+    } else if (bi.equals(BigInteger.MINUS_ONE)) {
       that.not()
     } else if (bi.sign > 0) {
       if (that.sign > 0) {
