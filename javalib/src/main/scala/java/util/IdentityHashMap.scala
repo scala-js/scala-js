@@ -12,6 +12,7 @@
 
 package java.util
 
+import java.lang.Cloneable
 import java.{util => ju}
 
 import scala.annotation.tailrec

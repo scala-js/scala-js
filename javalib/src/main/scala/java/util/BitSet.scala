@@ -13,6 +13,7 @@
 package java.util
 
 import java.io.Serializable
+import java.lang.Cloneable
 import java.lang.Integer.bitCount
 import java.lang.Integer.toUnsignedLong
 import java.nio.{ByteBuffer, LongBuffer}
