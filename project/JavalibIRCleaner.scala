@@ -657,7 +657,15 @@ object JavalibIRCleaner {
       ClassName("scala.Tuple" + n) -> ClassName("java.util.internal.Tuple" + n)
     }
 
-    val allPairs = functionTypePairs ++ refPairs ++ tuplePairs
+    val otherPairs = List(
+      /* AssertionError conveniently features a constructor taking an Object.
+       * Since any MatchError in the javalib would be a bug, it is fine to
+       * rewrite them to AssertionErrors.
+       */
+      ClassName("scala.MatchError") -> ClassName("java.lang.AssertionError"),
+    )
+
+    val allPairs = functionTypePairs ++ refPairs ++ tuplePairs ++ otherPairs
     allPairs.toMap
   }
 }
