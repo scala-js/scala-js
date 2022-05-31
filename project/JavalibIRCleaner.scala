@@ -244,9 +244,26 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
             if isFunctionNType(n, fun.tpe) =>
           JSFunctionApply(fun, args)
 
+        // <= 2.12 : toJSVarArgs(jsArrayOps(jsArray).toSeq) -> jsArray
+        case IntrinsicCall(ScalaJSRuntimeMod, `toJSVarArgsReadOnlyMethodName`,
+            List(Apply(
+                ApplyFlags.empty,
+                IntrinsicCall(JSAnyMod, `jsArrayOpsToArrayOpsMethodName`, List(jsArray)),
+                MethodIdent(`toReadOnlySeqMethodName`),
+                Nil)
+            )) =>
+          jsArray
+
+        // >= 2.13 : toJSVarArgs(toSeq$extension(jsArray)) -> jsArray
+        case IntrinsicCall(ScalaJSRuntimeMod, `toJSVarArgsImmutableMethodName`,
+            List(IntrinsicCall(JSArrayOpsMod, `toImmutableSeqExtensionMethodName`, List(jsArray)))) =>
+          jsArray
+
         case IntrinsicCall(JSAnyMod, `jsAnyFromIntMethodName`, List(arg)) =>
           arg
         case IntrinsicCall(JSAnyMod, `jsAnyFromStringMethodName`, List(arg)) =>
+          arg
+        case IntrinsicCall(JSAnyMod, `jsArrayOpsToArrayMethodName`, List(arg)) =>
           arg
         case IntrinsicCall(JSDynamicImplicitsMod, `number2dynamicMethodName`, List(arg)) =>
           arg
@@ -521,10 +538,13 @@ object JavalibIRCleaner {
   // Within js.JavaScriptException, which is part of the linker private lib, we can refer to itself
   private val JavaScriptExceptionClass = ClassName("scala.scalajs.js.JavaScriptException")
 
+  private val ImmutableSeq = ClassName("scala.collection.immutable.Seq")
   private val JavaIOSerializable = ClassName("java.io.Serializable")
   private val JSAny = ClassName("scala.scalajs.js.Any")
   private val JSAnyMod = ClassName("scala.scalajs.js.Any$")
   private val JSArray = ClassName("scala.scalajs.js.Array")
+  private val JSArrayOps = ClassName("scala.scalajs.js.ArrayOps")
+  private val JSArrayOpsMod = ClassName("scala.scalajs.js.ArrayOps$")
   private val JSDynamic = ClassName("scala.scalajs.js.Dynamic")
   private val JSDynamicImplicitsMod = ClassName("scala.scalajs.js.DynamicImplicits$")
   private val JSNumberOps = ClassName("scala.scalajs.js.JSNumberOps")
@@ -552,14 +572,26 @@ object JavalibIRCleaner {
     MethodName("fromInt", List(IntRef), ClassRef(JSAny))
   private val jsAnyFromStringMethodName =
     MethodName("fromString", List(ClassRef(BoxedStringClass)), ClassRef(JSAny))
+  private val jsArrayOpsToArrayMethodName =
+    MethodName("jsArrayOps", List(ClassRef(JSArray)), ClassRef(JSArray))
+  private val jsArrayOpsToArrayOpsMethodName =
+    MethodName("jsArrayOps", List(ClassRef(JSArray)), ClassRef(JSArrayOps))
   private val number2dynamicMethodName =
     MethodName("number2dynamic", List(DoubleRef), ClassRef(JSDynamic))
   private val sMethodName =
     MethodName("s", List(ClassRef(ReadOnlySeq)), ClassRef(BoxedStringClass))
   private val stringContextCtorMethodName =
     MethodName.constructor(List(ClassRef(ReadOnlySeq)))
+  private val toImmutableSeqExtensionMethodName =
+    MethodName("toSeq$extension", List(ClassRef(JSArray)), ClassRef(ImmutableSeq))
+  private val toJSVarArgsImmutableMethodName =
+    MethodName("toJSVarArgs", List(ClassRef(ImmutableSeq)), ClassRef(JSArray))
+  private val toJSVarArgsReadOnlyMethodName =
+    MethodName("toJSVarArgs", List(ClassRef(ReadOnlySeq)), ClassRef(JSArray))
   private val toScalaVarArgsReadOnlyMethodName =
     MethodName("toScalaVarArgs", List(ClassRef(JSArray)), ClassRef(ReadOnlySeq))
+  private val toReadOnlySeqMethodName =
+    MethodName("toSeq", Nil, ClassRef(ReadOnlySeq))
   private val truthValueMethodName =
     MethodName("truthValue", List(ClassRef(JSDynamic)), BooleanRef)
   private val writeReplaceMethodName =
