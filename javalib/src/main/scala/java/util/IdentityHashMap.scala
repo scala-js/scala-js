@@ -50,21 +50,21 @@ class IdentityHashMap[K, V] private (
   }
 
   override def containsKey(key: Any): Boolean =
-    inner.containsKey(IdentityBox(key))
+    inner.containsKey(new IdentityBox(key))
 
   override def containsValue(value: Any): Boolean =
     inner.valueIterator().scalaOps.exists(same(_, value))
 
   override def get(key: Any): V =
-    inner.get(IdentityBox(key))
+    inner.get(new IdentityBox(key))
 
   override def isEmpty(): Boolean = inner.isEmpty()
 
   override def put(key: K, value: V): V =
-    inner.put(IdentityBox(key), value)
+    inner.put(new IdentityBox(key), value)
 
   override def remove(key: Any): V =
-    inner.remove(IdentityBox(key))
+    inner.remove(new IdentityBox(key))
 
   override def size(): Int = inner.size()
 
@@ -241,7 +241,7 @@ class IdentityHashMap[K, V] private (
 }
 
 object IdentityHashMap {
-  private final case class IdentityBox[+K](inner: K) {
+  private final class IdentityBox[+K](val inner: K) {
     override def equals(o: Any): Boolean = {
       o match {
         case o: IdentityBox[_] =>
