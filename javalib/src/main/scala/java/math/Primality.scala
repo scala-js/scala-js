@@ -134,13 +134,15 @@ private[math] object Primality {
       Arrays.binarySearch(Primes, n.digits(0)) >= 0
     } else {
       // To check if 'n' is divisible by some prime of the table
-      for (i <- 1 until Primes.length) {
+      var i: Int = 1
+      val primesLength = Primes.length
+      while (i != primesLength) {
         if (Division.remainderArrayByInt(n.digits, n.numberLength, Primes(i)) == 0)
           return false
+        i += 1
       }
 
       // To set the number of iterations necessary for Miller-Rabin test
-      var i: Int = 0
       val bitLength = n.bitLength()
       i = 2
       while (bitLength < Bits(i)) {
@@ -218,13 +220,15 @@ private[math] object Primality {
         }
       }
       // To execute Miller-Rabin for non-divisible numbers by all first primes
-      for (j <- 0 until gapSize) {
+      var j = 0
+      while (j != gapSize) {
         if (!isDivisible(j)) {
           Elementary.inplaceAdd(probPrime, j)
           if (millerRabin(probPrime, certainty)) {
             return probPrime
           }
         }
+        j += 1
       }
       Elementary.inplaceAdd(startPoint, gapSize)
     }
@@ -251,7 +255,9 @@ private[math] object Primality {
     val k = nMinus1.getLowestSetBit()
     val q = nMinus1.shiftRight(k)
     val rnd = new Random()
-    for (i <- 0 until t) {
+
+    var i = 0
+    while (i != t) {
       // To generate a witness 'x', first it use the primes of table
       if (i < Primes.length) {
         x = BiPrimes(i)
@@ -268,16 +274,20 @@ private[math] object Primality {
 
       y = x.modPow(q, n)
       if (!(y.isOne || y == nMinus1)) {
-        for (j <- 1 until k) {
+        var j = 1
+        while (j != k) {
           if (y != nMinus1) {
             y = y.multiply(y).mod(n)
             if (y.isOne)
               return false
           }
+          j += 1
         }
         if (y != nMinus1)
           return false
       }
+
+      i += 1
     }
     true
     // scalastyle:on return
