@@ -12,8 +12,9 @@
 
 package java.nio
 
+import java.nio.DataViewExt._
+
 import scala.scalajs.js.typedarray._
-import DataViewExt._
 
 private[nio] final class TypedArrayByteBuffer private (
     override private[nio] val _typedArray: Int8Array,
@@ -128,13 +129,13 @@ private[nio] final class TypedArrayByteBuffer private (
   }
 
   @noinline def getLong(): Long =
-    _dataView.getInt64(getPosAndAdvanceRead(8), !isBigEndian)
+    dataViewGetInt64(_dataView, getPosAndAdvanceRead(8), !isBigEndian)
   @noinline def putLong(value: Long): ByteBuffer =
-    { ensureNotReadOnly(); _dataView.setInt64(getPosAndAdvanceWrite(8), value, !isBigEndian); this }
+    { ensureNotReadOnly(); dataViewSetInt64(_dataView, getPosAndAdvanceWrite(8), value, !isBigEndian); this }
   @noinline def getLong(index: Int): Long =
-    _dataView.getInt64(validateIndex(index, 8), !isBigEndian)
+    dataViewGetInt64(_dataView, validateIndex(index, 8), !isBigEndian)
   @noinline def putLong(index: Int, value: Long): ByteBuffer =
-    { ensureNotReadOnly(); _dataView.setInt64(validateIndex(index, 8), value, !isBigEndian); this }
+    { ensureNotReadOnly(); dataViewSetInt64(_dataView, validateIndex(index, 8), value, !isBigEndian); this }
 
   def asLongBuffer(): LongBuffer =
     DataViewLongBuffer.fromTypedArrayByteBuffer(this)
