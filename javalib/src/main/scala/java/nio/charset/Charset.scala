@@ -36,7 +36,7 @@ abstract class Charset protected (canonicalName: String,
 
   override final def toString(): String = name()
 
-  override final def hashCode(): Int = name().##
+  override final def hashCode(): Int = name().hashCode()
 
   override final def compareTo(that: Charset): Int =
     name().compareToIgnoreCase(that.name())

@@ -190,20 +190,24 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
     import scala.util.hashing.MurmurHash3._
     import URI.normalizeEscapes
 
+    def normalizeEscapesHash(str: String): Int =
+      if (str == null) 0
+      else normalizeEscapes(str).hashCode()
+
     var acc = URI.uriSeed
-    acc = mix(acc, if (_scheme == null) 0 else _scheme.toLowerCase.##) // scheme may not contain escapes
+    acc = mix(acc, if (_scheme == null) 0 else _scheme.toLowerCase.hashCode()) // scheme may not contain escapes
     if (this.isOpaque()) {
-      acc = mix(acc, normalizeEscapes(this._schemeSpecificPart).##)
+      acc = mix(acc, normalizeEscapesHash(this._schemeSpecificPart))
     } else if (this._host != null) {
-      acc = mix(acc, normalizeEscapes(this._userInfo).##)
-      acc = mix(acc, this._host.toLowerCase.##)
-      acc = mix(acc, this._port.##)
+      acc = mix(acc, normalizeEscapesHash(this._userInfo))
+      acc = mix(acc, this._host.toLowerCase.hashCode())
+      acc = mix(acc, this._port.hashCode())
     } else {
-      acc = mix(acc, normalizeEscapes(this._authority).##)
+      acc = mix(acc, normalizeEscapesHash(this._authority))
     }
-    acc = mix(acc, normalizeEscapes(this._path).##)
-    acc = mix(acc, normalizeEscapes(this._query).##)
-    acc = mixLast(acc, normalizeEscapes(this._fragment).##)
+    acc = mix(acc, normalizeEscapesHash(this._path))
+    acc = mix(acc, normalizeEscapesHash(this._query))
+    acc = mixLast(acc, normalizeEscapesHash(this._fragment))
     finalizeHash(acc, 3)
   }
 

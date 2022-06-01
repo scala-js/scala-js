@@ -122,7 +122,7 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
     var h = hashSeed
     var i = start
     while (i != end) {
-      h = mix(h, load(i).##)
+      h = mix(h, load(i).hashCode())
       i += 1
     }
     finalizeHash(h, end-start)
