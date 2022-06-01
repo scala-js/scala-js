@@ -20,6 +20,21 @@ object Utils {
   def SIE[K, V](key: K, value: V): ju.Map.Entry[K, V] =
     new ju.AbstractMap.SimpleImmutableEntry(key, value)
 
+  def arrayIterator[A](array: Array[A]): ju.Iterator[A] = {
+    new ju.Iterator[A] {
+      private[this] var index = 0
+
+      def hasNext(): Boolean = index < array.length
+
+      def next(): A = {
+        if (!hasNext())
+          throw new ju.NoSuchElementException()
+        index += 1
+        array(index - 1)
+      }
+    }
+  }
+
   def iteratorIsEmpty(iter: ju.Iterator[_]): Boolean =
     !iter.hasNext()
 
@@ -76,6 +91,9 @@ object Utils {
     }
     assertEquals(expectedSet.size, size)
   }
+
+  def assertArraySameElementsAsSet[A](expected: A*)(array: Array[A]): Unit =
+    assertIteratorSameElementsAsSet(expected: _*)(arrayIterator(array))
 
   def assertIteratorSameElementsAsSetDupesAllowed[A](expected: A*)(
       iter: ju.Iterator[A]): Unit = {
