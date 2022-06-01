@@ -494,11 +494,56 @@ class OptimizationTest extends JSASTTest {
       case cl: js.ClassDef if !allowedNames.contains(cl.name.name) =>
     }
   }
+
+  @Test
+  def noWrapJavaScriptExceptionWhenCatchingWildcardThrowable: Unit = {
+    """
+    class Test {
+      def foo(): Int = throw new IllegalArgumentException("foo")
+
+      def testCatchFullWildcard(): Int = {
+        try {
+          foo()
+        } catch {
+          case _ => -1 // causes an expected Scala compile warning
+        }
+      }
+
+      def testCatchWildcardOfTypeThrowable(): Int = {
+        try {
+          foo()
+        } catch {
+          case _: Throwable => -1
+        }
+      }
+    }
+    """.hasNot("call to the scala.scalajs.runtime.package$ package module class") {
+      case js.LoadModule(ScalaJSRuntimePackageClass) =>
+    }
+
+    // Confidence check
+    """
+    class Test {
+      def foo(): Int = throw new IllegalArgumentException("foo")
+
+      def testCatchWildcardOfTypeRuntimeException(): Int = {
+        try {
+          foo()
+        } catch {
+          case _: RuntimeException => -1
+        }
+      }
+    }
+    """.hasExactly(1, "call to the scala.scalajs.runtime.package$ package module class") {
+      case js.LoadModule(ScalaJSRuntimePackageClass) =>
+    }
+  }
 }
 
 object OptimizationTest {
 
   private val ArrayModuleClass = ClassName("scala.Array$")
+  private val ScalaJSRuntimePackageClass = ClassName("scala.scalajs.runtime.package$")
 
   private val applySimpleMethodName = SimpleMethodName("apply")
 
