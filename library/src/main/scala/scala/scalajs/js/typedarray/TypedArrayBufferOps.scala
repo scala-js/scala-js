@@ -41,7 +41,7 @@ final class TypedArrayBufferOps[ // scalastyle:ignore
    *    If this buffer has no backing [[ArrayBuffer]], i.e., !hasArrayBuffer()
    */
   def arrayBuffer(): ArrayBuffer =
-    TypedArrayBufferBridge.Buffer_arrayBuffer(buffer)
+    TypedArrayBufferBridge.Buffer_arrayBuffer(buffer).asInstanceOf[ArrayBuffer]
 
   /** Byte offset in the associated [[ArrayBuffer]] _(optional operation)_.
    *
@@ -60,7 +60,7 @@ final class TypedArrayBufferOps[ // scalastyle:ignore
    *    If this buffer has no backing [[ArrayBuffer]], i.e., !hasArrayBuffer()
    */
   def dataView(): DataView =
-    TypedArrayBufferBridge.Buffer_dataView(buffer)
+    TypedArrayBufferBridge.Buffer_dataView(buffer).asInstanceOf[DataView]
 
   /** Tests whether this direct buffer has a valid associated [[TypedArray]].
    *
