@@ -73,7 +73,7 @@ private[regex] object PatternCompiler {
       new js.RegExp("", flags)
       true
     } catch {
-      case _: js.JavaScriptException =>
+      case _: Throwable =>
         false
     }
   }
@@ -1658,7 +1658,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
       try {
         new js.RegExp(s"\\p{sc=$canonical}", "u")
       } catch {
-        case _: js.JavaScriptException =>
+        case _: Throwable =>
           parseError(s"Unknown character script name {$scriptName}")
       }
 
