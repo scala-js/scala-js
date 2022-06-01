@@ -593,7 +593,15 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
       def isJavaScriptExceptionWithinItself =
         cls == JavaScriptExceptionClass && enclosingClassName == JavaScriptExceptionClass
 
-      if (cls.nameString.startsWith("scala.") && !isJavaScriptExceptionWithinItself)
+      def isTypedArrayBufferBridgeWithinItself = {
+        (cls == TypedArrayBufferBridge || cls == TypedArrayBufferBridgeMod) &&
+        (enclosingClassName == TypedArrayBufferBridge || enclosingClassName == TypedArrayBufferBridgeMod)
+      }
+
+      def isAnException: Boolean =
+        isJavaScriptExceptionWithinItself || isTypedArrayBufferBridgeWithinItself
+
+      if (cls.nameString.startsWith("scala.") && !isAnException)
         reportError(s"Illegal reference to Scala class ${cls.nameString}")
     }
 
@@ -622,6 +630,10 @@ object JavalibIRCleaner {
 
   // Within js.JavaScriptException, which is part of the linker private lib, we can refer to itself
   private val JavaScriptExceptionClass = ClassName("scala.scalajs.js.JavaScriptException")
+
+  // Within TypedArrayBufferBridge, which is actually part of the library, we can refer to itself
+  private val TypedArrayBufferBridge = ClassName("scala.scalajs.js.typedarray.TypedArrayBufferBridge")
+  private val TypedArrayBufferBridgeMod = ClassName("scala.scalajs.js.typedarray.TypedArrayBufferBridge$")
 
   private val ImmutableSeq = ClassName("scala.collection.immutable.Seq")
   private val JavaIOSerializable = ClassName("java.io.Serializable")
