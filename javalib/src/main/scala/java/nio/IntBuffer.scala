@@ -28,8 +28,8 @@ object IntBuffer {
 
   // Extended API
 
-  def wrap(array: Int32Array): IntBuffer =
-    TypedArrayIntBuffer.wrap(array)
+  def wrapInt32Array(array: Int32Array): IntBuffer =
+    TypedArrayIntBuffer.wrapInt32Array(array)
 }
 
 abstract class IntBuffer private[nio] (

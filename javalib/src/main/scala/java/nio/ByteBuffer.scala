@@ -31,14 +31,14 @@ object ByteBuffer {
 
   // Extended API
 
-  def wrap(array: ArrayBuffer): ByteBuffer =
-    TypedArrayByteBuffer.wrap(array)
+  def wrapArrayBuffer(array: ArrayBuffer): ByteBuffer =
+    TypedArrayByteBuffer.wrapArrayBuffer(array)
 
-  def wrap(array: ArrayBuffer, byteOffset: Int, length: Int): ByteBuffer =
-    TypedArrayByteBuffer.wrap(array, byteOffset, length)
+  def wrapArrayBuffer(array: ArrayBuffer, byteOffset: Int, length: Int): ByteBuffer =
+    TypedArrayByteBuffer.wrapArrayBuffer(array, byteOffset, length)
 
-  def wrap(array: Int8Array): ByteBuffer =
-    TypedArrayByteBuffer.wrap(array)
+  def wrapInt8Array(array: Int8Array): ByteBuffer =
+    TypedArrayByteBuffer.wrapInt8Array(array)
 }
 
 abstract class ByteBuffer private[nio] (

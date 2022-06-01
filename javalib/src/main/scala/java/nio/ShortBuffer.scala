@@ -28,8 +28,8 @@ object ShortBuffer {
 
   // Extended API
 
-  def wrap(array: Int16Array): ShortBuffer =
-    TypedArrayShortBuffer.wrap(array)
+  def wrapInt16Array(array: Int16Array): ShortBuffer =
+    TypedArrayShortBuffer.wrapInt16Array(array)
 }
 
 abstract class ShortBuffer private[nio] (

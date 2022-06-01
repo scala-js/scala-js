@@ -28,8 +28,8 @@ object DoubleBuffer {
 
   // Extended API
 
-  def wrap(array: Float64Array): DoubleBuffer =
-    TypedArrayDoubleBuffer.wrap(array)
+  def wrapFloat64Array(array: Float64Array): DoubleBuffer =
+    TypedArrayDoubleBuffer.wrapFloat64Array(array)
 }
 
 abstract class DoubleBuffer private[nio] (

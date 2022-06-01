@@ -135,6 +135,6 @@ private[nio] object TypedArrayCharBuffer {
   def fromTypedArrayByteBuffer(byteBuffer: TypedArrayByteBuffer): CharBuffer =
     GenTypedArrayBuffer.generic_fromTypedArrayByteBuffer(byteBuffer)
 
-  def wrap(array: Uint16Array): CharBuffer =
+  def wrapUint16Array(array: Uint16Array): CharBuffer =
     new TypedArrayCharBuffer(array, 0, array.length, false)
 }

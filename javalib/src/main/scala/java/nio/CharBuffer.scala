@@ -34,8 +34,8 @@ object CharBuffer {
 
   // Extended API
 
-  def wrap(array: Uint16Array): CharBuffer =
-    TypedArrayCharBuffer.wrap(array)
+  def wrapUint16Array(array: Uint16Array): CharBuffer =
+    TypedArrayCharBuffer.wrapUint16Array(array)
 }
 
 abstract class CharBuffer private[nio] (

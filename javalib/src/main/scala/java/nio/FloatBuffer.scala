@@ -28,8 +28,8 @@ object FloatBuffer {
 
   // Extended API
 
-  def wrap(array: Float32Array): FloatBuffer =
-    TypedArrayFloatBuffer.wrap(array)
+  def wrapFloat32Array(array: Float32Array): FloatBuffer =
+    TypedArrayFloatBuffer.wrapFloat32Array(array)
 }
 
 abstract class FloatBuffer private[nio] (

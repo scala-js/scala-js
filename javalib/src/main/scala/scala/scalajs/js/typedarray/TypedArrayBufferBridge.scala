@@ -42,28 +42,28 @@ import java.nio._
 
 private[typedarray] object TypedArrayBufferBridge {
   def wrapArrayBuffer(array: Any): ByteBuffer =
-    ByteBuffer.wrap(array.asInstanceOf[ArrayBuffer])
+    ByteBuffer.wrapArrayBuffer(array.asInstanceOf[ArrayBuffer])
 
   def wrapArrayBuffer(array: Any, byteOffset: Int, length: Int): ByteBuffer =
-    ByteBuffer.wrap(array.asInstanceOf[ArrayBuffer], byteOffset, length)
+    ByteBuffer.wrapArrayBuffer(array.asInstanceOf[ArrayBuffer], byteOffset, length)
 
   def wrapInt8Array(array: Any): ByteBuffer =
-    ByteBuffer.wrap(array.asInstanceOf[Int8Array])
+    ByteBuffer.wrapInt8Array(array.asInstanceOf[Int8Array])
 
   def wrapUint16Array(array: Any): CharBuffer =
-    CharBuffer.wrap(array.asInstanceOf[Uint16Array])
+    CharBuffer.wrapUint16Array(array.asInstanceOf[Uint16Array])
 
   def wrapInt16Array(array: Any): ShortBuffer =
-    ShortBuffer.wrap(array.asInstanceOf[Int16Array])
+    ShortBuffer.wrapInt16Array(array.asInstanceOf[Int16Array])
 
   def wrapInt32Array(array: Any): IntBuffer =
-    IntBuffer.wrap(array.asInstanceOf[Int32Array])
+    IntBuffer.wrapInt32Array(array.asInstanceOf[Int32Array])
 
   def wrapFloat32Array(array: Any): FloatBuffer =
-    FloatBuffer.wrap(array.asInstanceOf[Float32Array])
+    FloatBuffer.wrapFloat32Array(array.asInstanceOf[Float32Array])
 
   def wrapFloat64Array(array: Any): DoubleBuffer =
-    DoubleBuffer.wrap(array.asInstanceOf[Float64Array])
+    DoubleBuffer.wrapFloat64Array(array.asInstanceOf[Float64Array])
 
   def Buffer_hasArrayBuffer(buffer: Buffer): Boolean =
     buffer.hasArrayBuffer()
