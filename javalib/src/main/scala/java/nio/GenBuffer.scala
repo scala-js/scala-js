@@ -12,6 +12,8 @@
 
 package java.nio
 
+import java.util.internal.GenericArrayOps._
+
 private[nio] object GenBuffer {
   def apply[B <: Buffer](self: B): GenBuffer[B] =
     new GenBuffer(self)
@@ -49,8 +51,8 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
   }
 
   @inline
-  def generic_get(dst: Array[ElementType],
-      offset: Int, length: Int): BufferType = {
+  def generic_get(dst: Array[ElementType], offset: Int, length: Int)(
+      implicit arrayOps: ArrayOps[ElementType]): BufferType = {
     validateArrayIndexRange(dst, offset, length)
     load(getPosAndAdvanceRead(length), dst, offset, length)
     self
@@ -82,8 +84,8 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
   }
 
   @inline
-  def generic_put(src: Array[ElementType],
-      offset: Int, length: Int): BufferType = {
+  def generic_put(src: Array[ElementType], offset: Int, length: Int)(
+      implicit arrayOps: ArrayOps[ElementType]): BufferType = {
     ensureNotReadOnly()
     validateArrayIndexRange(src, offset, length)
     store(getPosAndAdvanceWrite(length), src, offset, length)
@@ -156,12 +158,13 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
 
   @inline
   def generic_load(startIndex: Int,
-      dst: Array[ElementType], offset: Int, length: Int): Unit = {
+      dst: Array[ElementType], offset: Int, length: Int)(
+      implicit arrayOps: ArrayOps[ElementType]): Unit = {
     var selfPos = startIndex
     val endPos = selfPos + length
     var arrayIndex = offset
     while (selfPos != endPos) {
-      dst(arrayIndex) = load(selfPos)
+      arrayOps.set(dst, arrayIndex, load(selfPos))
       selfPos += 1
       arrayIndex += 1
     }
@@ -169,12 +172,13 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
 
   @inline
   def generic_store(startIndex: Int,
-      src: Array[ElementType], offset: Int, length: Int): Unit = {
+      src: Array[ElementType], offset: Int, length: Int)(
+      implicit arrayOps: ArrayOps[ElementType]): Unit = {
     var selfPos = startIndex
     val endPos = selfPos + length
     var arrayIndex = offset
     while (selfPos != endPos) {
-      store(selfPos, src(arrayIndex))
+      store(selfPos, arrayOps.get(src, arrayIndex))
       selfPos += 1
       arrayIndex += 1
     }

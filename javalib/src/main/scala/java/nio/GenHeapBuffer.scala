@@ -12,6 +12,8 @@
 
 package java.nio
 
+import java.util.internal.GenericArrayOps._
+
 private[nio] object GenHeapBuffer {
   def apply[B <: Buffer](self: B): GenHeapBuffer[B] =
     new GenHeapBuffer(self)
@@ -25,8 +27,9 @@ private[nio] object GenHeapBuffer {
   def generic_wrap[BufferType <: Buffer, ElementType](
       array: Array[ElementType], arrayOffset: Int, capacity: Int,
       initialPosition: Int, initialLength: Int, isReadOnly: Boolean)(
-      implicit newHeapBuffer: NewHeapBuffer[BufferType, ElementType]): BufferType = {
-    if (arrayOffset < 0 || capacity < 0 || arrayOffset+capacity > array.length)
+      implicit arrayOps: ArrayOps[ElementType],
+      newHeapBuffer: NewHeapBuffer[BufferType, ElementType]): BufferType = {
+    if (arrayOffset < 0 || capacity < 0 || arrayOffset+capacity > arrayOps.length(array))
       throw new IndexOutOfBoundsException
     val initialLimit = initialPosition + initialLength
     if (initialPosition < 0 || initialLength < 0 || initialLimit > capacity)
@@ -86,12 +89,12 @@ private[nio] final class GenHeapBuffer[B <: Buffer] private (val self: B)
   }
 
   @inline
-  def generic_load(index: Int): ElementType =
-    _array(_arrayOffset + index)
+  def generic_load(index: Int)(implicit arrayOps: ArrayOps[ElementType]): ElementType =
+    arrayOps.get(_array, _arrayOffset + index)
 
   @inline
-  def generic_store(index: Int, elem: ElementType): Unit =
-    _array(_arrayOffset + index) = elem
+  def generic_store(index: Int, elem: ElementType)(implicit arrayOps: ArrayOps[ElementType]): Unit =
+    arrayOps.set(_array, _arrayOffset + index, elem)
 
   @inline
   def generic_load(startIndex: Int,
