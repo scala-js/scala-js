@@ -82,7 +82,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
   def toArray(): Array[AnyRef] =
     toArray(new Array[AnyRef](size()))
 
-  def toArray[T](a: Array[T]): Array[T] = {
+  def toArray[T <: AnyRef](a: Array[T]): Array[T] = {
     val componentType = a.getClass.getComponentType
     val toFill: Array[T] =
       if (a.length >= size()) a
