@@ -250,8 +250,8 @@ private[lang] object StackTrace {
     var index = 0
     while (index <= 22) {
       if (index >= 2)
-        dictSet(dict, "T" + index, "scala_Tuple" + index)
-      dictSet(dict, "F" + index, "scala_Function" + index)
+        dictSet(dict, s"T$index", s"scala_Tuple$index")
+      dictSet(dict, s"F$index", s"scala_Function$index")
       index += 1
     }
 

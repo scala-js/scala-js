@@ -318,7 +318,7 @@ object Long {
   }
 
   private def parseLongError(s: String): Nothing =
-    throw new NumberFormatException("For input string: \"" + s + "\"")
+    throw new NumberFormatException(s"""For input string: "$s"""")
 
   @inline def `new`(value: scala.Long): Long = valueOf(value)
 

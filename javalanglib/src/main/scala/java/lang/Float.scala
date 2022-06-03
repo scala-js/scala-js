@@ -113,7 +113,7 @@ object Float {
 
     val groups = parseFloatRegExp.exec(s)
     if (groups == null)
-      throw new NumberFormatException("For input string: \"" + s + "\"")
+      throw new NumberFormatException(s"""For input string: "$s"""")
 
     val absResult = if (undefOrIsDefined(groups(2))) {
       scala.Float.NaN
@@ -264,7 +264,7 @@ object Float {
      * subnormal floats).
      */
     if (biasedK == 0)
-      throw new AssertionError("parseFloatCorrection was given a subnormal mid: " + mid)
+      throw new AssertionError(s"parseFloatCorrection was given a subnormal mid: $mid")
 
     val mExplicitBits = midBits & ((1L << mbits) - 1)
     val mImplicit1Bit = 1L << mbits // the implicit '1' bit of a normalized floating-point number

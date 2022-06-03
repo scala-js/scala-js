@@ -262,6 +262,33 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
               JSUnaryOp(JSUnaryOp.!, JSUnaryOp(JSUnaryOp.!, arg)),
               BooleanType)
 
+        // 2.11 s"..." interpolator
+        case Apply(
+            ApplyFlags.empty,
+            New(StringContextClass, MethodIdent(`stringContextCtorMethodName`),
+                List(ScalaVarArgsReadOnlyLiteral(stringElems))),
+            MethodIdent(`sMethodName`),
+            List(ScalaVarArgsReadOnlyLiteral(valueElems))) =>
+          if (stringElems.size != valueElems.size + 1) {
+            reportError("Found s\"...\" interpolator but the sizes do not match")
+            tree
+          } else {
+            val processedEscapesStringElems = stringElems.map { s =>
+              (s: @unchecked) match {
+                case StringLiteral(value) =>
+                  StringLiteral(StringContext.processEscapes(value))
+              }
+            }
+            val stringsIter = processedEscapesStringElems.iterator
+            val valuesIter = valueElems.iterator
+            var result: Tree = stringsIter.next()
+            while (valuesIter.hasNext) {
+              result = BinaryOp(BinaryOp.String_+, result, valuesIter.next())
+              result = BinaryOp(BinaryOp.String_+, result, stringsIter.next())
+            }
+            result
+          }
+
         case _ =>
           tree
       }
@@ -271,6 +298,19 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
       def unapply(tree: Apply): Option[(ClassName, MethodName, List[Tree])] = tree match {
         case Apply(ApplyFlags.empty, LoadModule(moduleClassName), MethodIdent(methodName), args) =>
           Some(moduleClassName, methodName, args)
+        case _ =>
+          None
+      }
+    }
+
+    private object ScalaVarArgsReadOnlyLiteral {
+      def unapply(tree: Apply): Option[List[Tree]] = tree match {
+        case IntrinsicCall(ScalaJSRuntimeMod, `toScalaVarArgsReadOnlyMethodName`,
+            List(JSArrayConstr(args))) =>
+          if (args.forall(_.isInstanceOf[Tree]))
+            Some(args.map(_.asInstanceOf[Tree]))
+          else
+            None
         case _ =>
           None
       }
@@ -478,13 +518,17 @@ object JavalibIRCleaner {
   private val JavaIOSerializable = ClassName("java.io.Serializable")
   private val JSAny = ClassName("scala.scalajs.js.Any")
   private val JSAnyMod = ClassName("scala.scalajs.js.Any$")
+  private val JSArray = ClassName("scala.scalajs.js.Array")
   private val JSDynamic = ClassName("scala.scalajs.js.Dynamic")
   private val JSDynamicImplicitsMod = ClassName("scala.scalajs.js.DynamicImplicits$")
   private val JSNumberOps = ClassName("scala.scalajs.js.JSNumberOps")
   private val JSNumberOpsMod = ClassName("scala.scalajs.js.JSNumberOps$")
   private val JSStringOps = ClassName("scala.scalajs.js.JSStringOps")
   private val JSStringOpsMod = ClassName("scala.scalajs.js.JSStringOps$")
+  private val ReadOnlySeq = ClassName("scala.collection.Seq")
   private val ScalaSerializable = ClassName("scala.Serializable")
+  private val ScalaJSRuntimeMod = ClassName("scala.scalajs.runtime.package$")
+  private val StringContextClass = ClassName("scala.StringContext")
 
   private val FunctionNClasses: IndexedSeq[ClassName] =
     (0 to MaxFunctionArity).map(n => ClassName(s"scala.Function$n"))
@@ -504,6 +548,12 @@ object JavalibIRCleaner {
     MethodName("fromString", List(ClassRef(BoxedStringClass)), ClassRef(JSAny))
   private val number2dynamicMethodName =
     MethodName("number2dynamic", List(DoubleRef), ClassRef(JSDynamic))
+  private val sMethodName =
+    MethodName("s", List(ClassRef(ReadOnlySeq)), ClassRef(BoxedStringClass))
+  private val stringContextCtorMethodName =
+    MethodName.constructor(List(ClassRef(ReadOnlySeq)))
+  private val toScalaVarArgsReadOnlyMethodName =
+    MethodName("toScalaVarArgs", List(ClassRef(JSArray)), ClassRef(ReadOnlySeq))
   private val truthValueMethodName =
     MethodName("truthValue", List(ClassRef(JSDynamic)), BooleanRef)
   private val writeReplaceMethodName =

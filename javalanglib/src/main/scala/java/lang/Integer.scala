@@ -84,7 +84,7 @@ object Integer {
       signed: scala.Boolean): scala.Int = {
 
     def fail(): Nothing =
-      throw new NumberFormatException("For input string: \"" + s + "\"")
+      throw new NumberFormatException(s"""For input string: "$s"""")
 
     val len = if (s == null) 0 else s.length
 

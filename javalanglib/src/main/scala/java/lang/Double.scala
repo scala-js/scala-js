@@ -116,7 +116,7 @@ object Double {
   // Slow path of `parseDouble` for hexadecimal notation and failure
   private def parseDoubleSlowPath(s: String): scala.Double = {
     def fail(): Nothing =
-      throw new NumberFormatException("For input string: \"" + s + "\"")
+      throw new NumberFormatException(s"""For input string: "$s"""")
 
     val groups = doubleStrHexPat.exec(s)
     if (groups == null)

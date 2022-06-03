@@ -349,7 +349,7 @@ private final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
 
   // This is the method invoked by Predef.println(x).
   @inline
-  override def println(obj: AnyRef): Unit = printString("" + obj + "\n")
+  override def println(obj: AnyRef): Unit = printString(s"$obj\n")
 
   private def printString(s: String): Unit = {
     var rest: String = s

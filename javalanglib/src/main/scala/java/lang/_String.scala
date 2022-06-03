@@ -906,7 +906,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
               result += codePoint.toChar
             // bad escape otherwise, this catches everything else including the Unicode ones
             case bad =>
-              throw new IllegalArgumentException("Illegal escape: `\\" + bad + "`")
+              throw new IllegalArgumentException(s"Illegal escape: `\\$bad`")
           }
           // skip ahead 2 chars (\ and the escape char) at minimum, cases above can add more if needed
           i += 2
