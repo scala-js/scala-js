@@ -711,6 +711,9 @@ class NonNativeJSTypeTest {
       x.bar = 2
     })
 
+    // Read the property to trick GCC into not discarding the writes.
+    assertEquals(1, x.bar)
+
     // Anonymous classes
     val y = new js.Object {
       def bar: Int = 1
@@ -719,6 +722,9 @@ class NonNativeJSTypeTest {
     assertThrows(classOf[js.JavaScriptException], {
       y.bar = 2
     })
+
+    // Read the property to trick GCC into not discarding the writes.
+    assertEquals(1, y.bar)
   }
 
   @Test def propertiesAreNotEnumerable(): Unit = {

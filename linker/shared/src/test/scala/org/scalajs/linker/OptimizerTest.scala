@@ -341,27 +341,16 @@ class OptimizerTest {
     )
 
     for (moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers)) yield {
-      val mainClassDef = moduleSet.modules.flatMap(_.classDefs)
-        .find(_.className == MainTestClassName).get
-      val mainMethodDef = mainClassDef.methods.map(_.value)
-        .find(_.name.name == MainMethodName).get
-
       var lastSideEffectFound = 0
       var closureParams = List.empty[List[LocalName]]
-      new Traverser {
-        override def traverse(tree: Tree): Unit = {
-          super.traverse(tree)
-          tree match {
-            case ApplyStatic(_, MainTestClassName, MethodIdent(`sideEffect`), List(IntLiteral(i))) =>
-              assertEquals("wrong side effect ordering", lastSideEffectFound + 1, i)
-              lastSideEffectFound = i
-            case c: Closure =>
-              closureParams :+= c.captureParams.map(_.name.name)
-            case _ =>
-              ()
-          }
-        }
-      }.traverseMemberDef(mainMethodDef)
+      traverseMainMethod(moduleSet) {
+        case ApplyStatic(_, MainTestClassName, MethodIdent(`sideEffect`), List(IntLiteral(i))) =>
+          assertEquals("wrong side effect ordering", lastSideEffectFound + 1, i)
+          lastSideEffectFound = i
+        case c: Closure =>
+          closureParams :+= c.captureParams.map(_.name.name)
+        case _ =>
+      }
       assertEquals("wrong number of side effect calls", 5, lastSideEffectFound)
       assertEquals("wrong closure params", List(List(x2, x4)), closureParams)
     }
@@ -425,6 +414,69 @@ class OptimizerTest {
       assertTrue(foundJSImport)
     }
   }
+
+  @Test
+  def testFoldLiteralClosureCaptures(): AsyncResult = await {
+    val classDefs = Seq(
+      mainTestClassDef({
+        consoleLog(Closure(true, List(paramDef("x", IntType)), Nil, None, {
+          BinaryOp(BinaryOp.Int_+, VarRef("x")(IntType), int(2))
+        }, List(int(3))))
+      })
+    )
+
+    for {
+      moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers)
+    } yield {
+      traverseMainMethod(moduleSet) {
+        case c: Closure =>
+          assertTrue(s"captures remaining: $c", c.captureParams.isEmpty)
+          assertTrue(s"body is not a constant: $c", c.body.isInstanceOf[IntLiteral])
+        case _ =>
+      }
+    }
+  }
+
+  @Test
+  def testSupportImplicitClosureCaptures(): AsyncResult = await {
+    val calc = m("calc", Nil, I)
+
+    val classDefs = Seq(
+      classDef(
+          MainTestClassName,
+          kind = ClassKind.Class,
+          superClass = Some(ObjectClass),
+          memberDefs = List(
+              // @noinline static def calc(): Int = 1
+              MethodDef(EMF.withNamespace(PublicStatic), calc, NON, Nil,
+                  IntType, Some(int(1)))(EOH.withNoinline(true), None),
+              mainMethodDef(Block(
+                VarDef("x", NON, IntType, mutable = false,
+                    ApplyStatic(EAF, MainTestClassName, calc, Nil)(IntType)),
+                consoleLog(Closure(true, List(paramDef("y", IntType)), Nil, None,
+                    VarRef("y")(IntType), List(VarRef("x")(IntType))))
+              ))
+          )
+      )
+    )
+
+    for {
+      moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers)
+    } yield {
+      traverseMainMethod(moduleSet) {
+        case c: Closure =>
+          c.captureValues match {
+            case List(VarRef(LocalIdent(name))) =>
+              assertEquals(s"unexpected capture name: $c", c.captureParams.head.name.name, name)
+
+            case _ =>
+              fail(s"unexpected capture values: $c")
+          }
+
+        case _ =>
+      }
+    }
+  }
 }
 
 object OptimizerTest {
@@ -433,4 +485,17 @@ object OptimizerTest {
 
   private def findClass(moduleSet: ModuleSet, name: ClassName): Option[LinkedClass] =
     moduleSet.modules.flatMap(_.classDefs).find(_.className == name)
+
+  private def traverseMainMethod(moduleSet: ModuleSet)(f: Tree => Unit) = {
+    val mainClassDef = findClass(moduleSet, MainTestClassName).get
+    val mainMethodDef = mainClassDef.methods.map(_.value)
+      .find(m => m.name.name == MainMethodName && m.flags.namespace == MemberNamespace.PublicStatic).get
+
+    new Traverser {
+      override def traverse(tree: Tree): Unit = {
+        f(tree)
+        super.traverse(tree)
+      }
+    }.traverseMemberDef(mainMethodDef)
+  }
 }
