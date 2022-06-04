@@ -199,7 +199,7 @@ object MyScalaJSPlugin extends AutoPlugin {
       },
 
       testHtmlJSDom in Test := {
-        val target = crossTarget.value.toPath().toAbsolutePath()
+        val target = (baseDirectory in LocalRootProject).value.toPath().toAbsolutePath()
 
         // When serving `target` over HTTP, the path of the runner file.
         val runnerPath = {

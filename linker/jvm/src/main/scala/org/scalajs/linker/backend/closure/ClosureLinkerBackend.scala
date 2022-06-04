@@ -76,6 +76,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
       case ESVersion.ES2018 => ECMASCRIPT_2018
       case ESVersion.ES2019 => ECMASCRIPT_2019
       case ESVersion.ES2020 => ECMASCRIPT_2020
+      case ESVersion.ES2021 => ECMASCRIPT_2021
 
       case _ =>
         throw new AssertionError(s"Unknown ES version ${esFeatures.esVersion}")

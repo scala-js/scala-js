@@ -505,8 +505,8 @@ def allESVersions = [
   "ES2017",
   "ES2018",
   // "ES2019", // We do not use anything specifically from ES2019
-  "ES2020"
-  // "ES2021", // We do not use anything specifically from ES2021
+  "ES2020",
+  "ES2021" // We do not use anything specifically from ES2021, but always test the latest to avoid #4675
 ]
 
 // Scala 2.11 does not support newer Java versions
