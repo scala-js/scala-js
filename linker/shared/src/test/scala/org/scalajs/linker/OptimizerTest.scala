@@ -477,6 +477,87 @@ class OptimizerTest {
       }
     }
   }
+
+  private def commonClassDefsForFieldRemovalTests(classInline: Boolean,
+      witnessMutable: Boolean): Seq[ClassDef] = {
+    val methodName = m("method", Nil, I)
+
+    val witnessType = ClassType("Witness")
+
+    val fooMemberDefs = List(
+      // x: Witness
+      FieldDef(EMF.withMutable(witnessMutable), "x", NON, witnessType),
+
+      // y: Int
+      FieldDef(EMF, "y", NON, IntType),
+
+      // def this() = {
+      //   this.x = null
+      //   this.y = 5
+      // }
+      MethodDef(EMF.withNamespace(Constructor), NoArgConstructorName, NON, Nil, NoType, Some(Block(
+        Assign(Select(This()(ClassType("Foo")), "Foo", "x")(witnessType), Null()),
+        Assign(Select(This()(ClassType("Foo")), "Foo", "y")(IntType), int(5))
+      )))(EOH, None),
+
+      // def method(): Int = this.y
+      MethodDef(EMF, methodName, NON, Nil, IntType, Some {
+        Select(This()(ClassType("Foo")), "Foo", "y")(IntType)
+      })(EOH, None)
+    )
+
+    Seq(
+      classDef("Witness", kind = ClassKind.Interface),
+      classDef("Foo", kind = ClassKind.Class, superClass = Some(ObjectClass),
+          memberDefs = fooMemberDefs, optimizerHints = EOH.withInline(classInline)),
+      mainTestClassDef({
+        consoleLog(Apply(EAF, New("Foo", NoArgConstructorName, Nil), methodName, Nil)(IntType))
+      })
+    )
+  }
+
+  @Test
+  def removeUnusedFields(): AsyncResult = await {
+    val classDefs = commonClassDefsForFieldRemovalTests(classInline = false, witnessMutable = false)
+
+    for {
+      moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers)
+    } yield {
+      findClass(moduleSet, "Foo").get.fields match {
+        case List(FieldDef(_, FieldIdent(name), _, _)) if name == FieldName("y") =>
+          // ok
+
+        case fields =>
+          fail(s"Unexpected fields: $fields")
+      }
+
+      assertFalse(findClass(moduleSet, "Witness").isDefined)
+    }
+  }
+
+  @Test
+  def removeUnusedFieldsInline(): AsyncResult = await {
+    val classDefs = commonClassDefsForFieldRemovalTests(classInline = true, witnessMutable = false)
+
+    for {
+      moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers)
+    } yield {
+      assertFalse(findClass(moduleSet, "Foo").isDefined)
+      assertFalse(findClass(moduleSet, "Witness").isDefined)
+    }
+  }
+
+  @Test
+  def removeUnusedMutableFieldsInline(): AsyncResult = await {
+    val classDefs = commonClassDefsForFieldRemovalTests(classInline = true, witnessMutable = true)
+
+    for {
+      moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers)
+    } yield {
+      assertFalse(findClass(moduleSet, "Foo").isDefined)
+      assertFalse(findClass(moduleSet, "Witness").isDefined)
+    }
+  }
 }
 
 object OptimizerTest {

@@ -88,6 +88,12 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   protected def getJSNativeImportOf(
       target: ImportTarget): Option[JSNativeLoadSpec.Import]
 
+  /** Returns true if the given (non-static) field is ever read. */
+  protected def isFieldRead(className: ClassName, fieldName: FieldName): Boolean
+
+  /** Returns true if the given static field is ever read. */
+  protected def isStaticFieldRead(className: ClassName, fieldName: FieldName): Boolean
+
   private val localNameAllocator = new FreshNameAllocator.Local
 
   /** An allocated local variable name is mutable iff it belongs to this set. */
@@ -331,53 +337,39 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         }
 
       case Assign(lhs, rhs) =>
-        val cont = { (preTransLhs: PreTransform) =>
-          resolveLocalDef(preTransLhs) match {
-            case PreTransRecordTree(lhsTree, lhsOrigType, lhsCancelFun) =>
-              val recordType = lhsTree.tpe.asInstanceOf[RecordType]
-
-              def buildInner(trhs: PreTransform): TailRec[Tree] = {
-                resolveLocalDef(trhs) match {
-                  case PreTransRecordTree(rhsTree, rhsOrigType, rhsCancelFun) =>
-                    if (rhsTree.tpe != recordType || rhsOrigType != lhsOrigType)
-                      lhsCancelFun()
-                    TailCalls.done(Assign(lhsTree.asInstanceOf[AssignLhs], rhsTree))
-                  case _ =>
-                    lhsCancelFun()
-                }
-              }
-
-              pretransformExpr(rhs) { trhs =>
-                (trhs.tpe.base, lhsOrigType) match {
-                  case (LongType, RefinedType(
-                      ClassType(LongImpl.RuntimeLongClass), true, false)) =>
-                    /* The lhs is a stack-allocated RuntimeLong, but the rhs is
-                     * a primitive Long. We expand the primitive Long into a
-                     * new stack-allocated RuntimeLong so that we do not need
-                     * to cancel.
-                     */
-                    expandLongValue(trhs) { expandedRhs =>
-                      buildInner(expandedRhs)
-                    }
-
-                  case _ =>
-                    buildInner(trhs)
-                }
-              }
-
-            case PreTransTree(lhsTree, _) =>
-              TailCalls.done(Assign(lhsTree.asInstanceOf[AssignLhs], transformExpr(rhs)))
+        val cont = { (tlhs: PreTransform) =>
+          pretransformExpr(rhs) { trhs =>
+            pretransformAssign(tlhs, trhs)(finishTransform(isStat))
           }
         }
-        trampoline {
-          lhs match {
-            case lhs: Select =>
+
+        lhs match {
+          case Select(qualifier, className, FieldIdent(name)) if !isFieldRead(className, name) =>
+            // Field is never read. Drop assign, keep side effects only.
+            Block(transformStat(qualifier), transformStat(rhs))
+
+          case SelectStatic(className, FieldIdent(name)) if !isStaticFieldRead(className, name) =>
+            // Field is never read. Drop assign, keep side effects only.
+            transformStat(rhs)
+
+          case JSPrivateSelect(qualifier, className, FieldIdent(name)) if !isFieldRead(className, name) =>
+            // Field is never read. Drop assign, keep side effects only.
+            Block(transformStat(qualifier), transformStat(rhs))
+
+          case lhs: Select =>
+            trampoline {
               pretransformSelectCommon(lhs, isLhsOfAssign = true)(cont)
-            case lhs: JSSelect =>
+            }
+
+          case lhs: JSSelect =>
+            trampoline {
               pretransformJSSelect(lhs, isLhsOfAssign = true)(cont)
-            case _ =>
+            }
+
+          case _ =>
+            trampoline {
               pretransformExpr(lhs)(cont)
-          }
+            }
         }
 
       case Return(expr, label) =>
@@ -1204,6 +1196,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       isLhsOfAssign: Boolean)(
       cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
+    /* Note: Callers are expected to have already removed writes to fields that
+     * are never read.
+     */
+
     preTransQual match {
       case PreTransLocalDef(LocalDef(_, _,
           InlineClassBeingConstructedReplacement(_, fieldLocalDefs, cancelFun))) =>
@@ -1254,6 +1250,47 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             cont(PreTransTree(Select(newQual, className, field)(expectedType),
                 RefinedType(expectedType)))
         }
+    }
+  }
+
+  private def pretransformAssign(tlhs: PreTransform, trhs: PreTransform)(
+      cont: PreTransCont)(implicit scope: Scope, pos: Position): TailRec[Tree] = {
+    def contAssign(lhs: Tree, rhs: Tree) =
+      cont(PreTransTree(Assign(lhs.asInstanceOf[AssignLhs], rhs)))
+
+    resolveLocalDef(tlhs) match {
+      case PreTransRecordTree(lhsTree, lhsOrigType, lhsCancelFun) =>
+        val recordType = lhsTree.tpe.asInstanceOf[RecordType]
+
+        def buildInner(trhs: PreTransform): TailRec[Tree] = {
+          resolveLocalDef(trhs) match {
+            case PreTransRecordTree(rhsTree, rhsOrigType, rhsCancelFun) =>
+              if (rhsTree.tpe != recordType || rhsOrigType != lhsOrigType)
+                lhsCancelFun()
+              contAssign(lhsTree, rhsTree)
+            case _ =>
+              lhsCancelFun()
+          }
+        }
+
+        (trhs.tpe.base, lhsOrigType) match {
+          case (LongType, RefinedType(
+              ClassType(LongImpl.RuntimeLongClass), true, false)) =>
+            /* The lhs is a stack-allocated RuntimeLong, but the rhs is
+             * a primitive Long. We expand the primitive Long into a
+             * new stack-allocated RuntimeLong so that we do not need
+             * to cancel.
+             */
+            expandLongValue(trhs) { expandedRhs =>
+              buildInner(expandedRhs)
+            }
+
+          case _ =>
+            buildInner(trhs)
+        }
+
+      case PreTransTree(lhsTree, _) =>
+        contAssign(lhsTree, finishTransformExpr(trhs))
     }
   }
 
@@ -2223,13 +2260,19 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         assert(isStat, "Found Assign in expression position")
         assert(optReceiver.isDefined,
             "There was a This(), there should be a receiver")
-        pretransformSelectCommon(lhs.tpe, optReceiver.get._2, className, field,
-            isLhsOfAssign = true) { preTransLhs =>
-          // TODO Support assignment of record
-          cont(PreTransTree(
-              Assign(finishTransformExpr(preTransLhs).asInstanceOf[AssignLhs],
-                  finishTransformExpr(args.head)),
-              RefinedType.NoRefinedType))
+
+        val treceiver = optReceiver.get._2
+        val trhs = args.head
+
+        if (!isFieldRead(className, field.name)) {
+          // Field is never read, discard assign, keep side effects only.
+          cont(PreTransTree(Block(finishTransformStat(treceiver),
+              finishTransformStat(trhs))))
+        } else {
+          pretransformSelectCommon(lhs.tpe, treceiver, className, field,
+              isLhsOfAssign = true) { tlhs =>
+            pretransformAssign(tlhs, args.head)(cont)
+          }
         }
 
       case _ =>
@@ -2630,10 +2673,36 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       buildInner: (Map[FieldID, LocalDef], PreTransCont) => TailRec[Tree])(
       cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = {
+
+    def withStat(stat: Tree, rest: List[Tree]): TailRec[Tree] = {
+      val transformedStat = transformStat(stat)
+      transformedStat match {
+        case Skip() =>
+          inlineClassConstructorBodyList(allocationSite, structure,
+              thisLocalDef, inputFieldsLocalDefs,
+              className, rest, cancelFun)(buildInner)(cont)
+        case _ =>
+          if (transformedStat.tpe == NothingType)
+            cont(PreTransTree(transformedStat, RefinedType.Nothing))
+          else {
+            inlineClassConstructorBodyList(allocationSite, structure,
+                thisLocalDef, inputFieldsLocalDefs,
+                className, rest, cancelFun)(buildInner) { tinner =>
+              cont(PreTransBlock(transformedStat, tinner))
+            }
+          }
+      }
+    }
+
     stats match {
       case This() :: rest =>
         inlineClassConstructorBodyList(allocationSite, structure, thisLocalDef,
             inputFieldsLocalDefs, className, rest, cancelFun)(buildInner)(cont)
+
+      case Assign(s @ Select(ths: This, className, field), value) :: rest
+          if !inputFieldsLocalDefs.contains(FieldID(className, field)) =>
+        // Field is being optimized away. Only keep side effects of the write.
+        withStat(value, rest)
 
       case Assign(s @ Select(ths: This, className, field), value) :: rest
           if !inputFieldsLocalDefs(FieldID(className, field)).mutable =>
@@ -2711,23 +2780,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         }
 
       case stat :: rest =>
-        val transformedStat = transformStat(stat)
-        transformedStat match {
-          case Skip() =>
-            inlineClassConstructorBodyList(allocationSite, structure,
-                thisLocalDef, inputFieldsLocalDefs,
-                className, rest, cancelFun)(buildInner)(cont)
-          case _ =>
-            if (transformedStat.tpe == NothingType)
-              cont(PreTransTree(transformedStat, RefinedType.Nothing))
-            else {
-              inlineClassConstructorBodyList(allocationSite, structure,
-                  thisLocalDef, inputFieldsLocalDefs,
-                  className, rest, cancelFun)(buildInner) { tinner =>
-                cont(PreTransBlock(transformedStat, tinner))
-              }
-            }
-        }
+        withStat(stat, rest)
 
       case Nil =>
         buildInner(inputFieldsLocalDefs, cont)

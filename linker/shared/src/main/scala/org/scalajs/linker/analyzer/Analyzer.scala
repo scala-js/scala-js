@@ -574,8 +574,11 @@ private final class Analyzer(config: CommonPhaseConfig,
     var isModuleAccessed: Boolean = false
     var areInstanceTestsUsed: Boolean = false
     var isDataAccessed: Boolean = false
-    var isAnyStaticFieldUsed: Boolean = false
-    var isAnyPrivateJSFieldUsed: Boolean = false
+
+    val fieldsRead: mutable.Set[FieldName] = mutable.Set.empty
+    val fieldsWritten: mutable.Set[FieldName] = mutable.Set.empty
+    val staticFieldsRead: mutable.Set[FieldName] = mutable.Set.empty
+    val staticFieldsWritten: mutable.Set[FieldName] = mutable.Set.empty
 
     val jsNativeMembersUsed: mutable.Set[MethodName] = mutable.Set.empty
 
@@ -942,18 +945,8 @@ private final class Analyzer(config: CommonPhaseConfig,
           (isScalaClass || isJSClass || isNativeJSClass)) {
         isInstantiated = true
 
-        /* Reach referenced classes of non-static fields
-         *
-         * Note that the classes referenced by static fields are reached
-         * implicitly by the call-sites that read or write the field: the
-         * SelectStatic expression has the same type as the field.
-         *
-         * We do not need to add this to staticDependencies: The definition
-         * site will not reference the classes in the final JS code.
-         */
         // TODO: Why is this not in subclassInstantiated()?
-        for (className <- data.referencedFieldClasses)
-          lookupClass(className)(_ => ())
+        referenceFieldClasses(fieldsRead ++ fieldsWritten)
 
         if (isScalaClass) {
           accessData()
@@ -1082,6 +1075,18 @@ private final class Analyzer(config: CommonPhaseConfig,
         lookupMethod(methodName).reachStatic()
     }
 
+    def readFields(names: List[FieldName])(implicit from: From): Unit = {
+      fieldsRead ++= names
+      if (isInstantiated)
+        referenceFieldClasses(names)
+    }
+
+    def writeFields(names: List[FieldName])(implicit from: From): Unit = {
+      fieldsWritten ++= names
+      if (isInstantiated)
+        referenceFieldClasses(names)
+    }
+
     def useJSNativeMember(name: MethodName)(
         implicit from: From): Option[JSNativeLoadSpec] = {
       val maybeJSNativeLoadSpec = data.jsNativeMembers.get(name)
@@ -1094,6 +1099,23 @@ private final class Analyzer(config: CommonPhaseConfig,
         }
       }
       maybeJSNativeLoadSpec
+    }
+
+    private def referenceFieldClasses(fieldNames: Iterable[FieldName])(
+        implicit from: From): Unit = {
+      assert(isInstantiated)
+
+      /* Reach referenced classes of non-static fields
+       *
+       * We do not need to add this to staticDependencies: The definition
+       * site will not reference the classes in the final JS code.
+       */
+      for {
+        fieldName <- fieldNames
+        className <- data.referencedFieldClasses.get(fieldName)
+      } {
+        lookupClass(className)(_ => ())
+      }
     }
 
     private def validateLoadSpec(jsNativeLoadSpec: JSNativeLoadSpec,
@@ -1269,35 +1291,39 @@ private final class Analyzer(config: CommonPhaseConfig,
       lookupClass(className)(_ => ())
     }
 
+    for (className <- data.staticallyReferencedClasses) {
+      staticDependencies += className
+      lookupClass(className)(_ => ())
+    }
+
     /* `for` loops on maps are written with `while` loops to help the JIT
      * compiler to inline and stack allocate tuples created by the iterators
      */
 
-    val privateJSFieldsUsedIterator = data.privateJSFieldsUsed.iterator
-    while (privateJSFieldsUsedIterator.hasNext) {
-      val (className, fields) = privateJSFieldsUsedIterator.next()
-      if (fields.nonEmpty) {
-        staticDependencies += className
-        lookupClass(className)(_.isAnyPrivateJSFieldUsed = true)
-      }
+    val fieldsReadIterator = data.fieldsRead.iterator
+    while (fieldsReadIterator.hasNext) {
+      val (className, fields) = fieldsReadIterator.next()
+      lookupClass(className)(_.readFields(fields))
+    }
+
+    val fieldsWrittenIterator = data.fieldsWritten.iterator
+    while (fieldsWrittenIterator.hasNext) {
+      val (className, fields) = fieldsWrittenIterator.next()
+      lookupClass(className)(_.writeFields(fields))
     }
 
     val staticFieldsReadIterator = data.staticFieldsRead.iterator
     while (staticFieldsReadIterator.hasNext) {
       val (className, fields) = staticFieldsReadIterator.next()
-      if (fields.nonEmpty) {
-        staticDependencies += className
-        lookupClass(className)(_.isAnyStaticFieldUsed = true)
-      }
+      staticDependencies += className
+      lookupClass(className)(_.staticFieldsRead ++= fields)
     }
 
     val staticFieldsWrittenIterator = data.staticFieldsWritten.iterator
     while (staticFieldsWrittenIterator.hasNext) {
       val (className, fields) = staticFieldsWrittenIterator.next()
-      if (fields.nonEmpty) {
-        staticDependencies += className
-        lookupClass(className)(_.isAnyStaticFieldUsed = true)
-      }
+      staticDependencies += className
+      lookupClass(className)(_.staticFieldsWritten ++= fields)
     }
 
     val methodsCalledIterator = data.methodsCalled.iterator

@@ -610,6 +610,66 @@ class OptimizerTest {
     }
   }
 
+  @Test def keepQualifierSideEffectsOfEliminatedField(): Unit = {
+    @noinline
+    class Foo(var x: Int)
+
+    val foo = new Foo(2)
+
+    var called = false
+
+    @noinline
+    def getFoo() = {
+      called = true
+      foo
+    }
+
+    getFoo().x = 1
+
+    assertTrue(called)
+  }
+
+  @Test def keepQualifierSideEffectsOfEliminatedFieldInline(): Unit = {
+    @inline
+    class Foo(var x: Int)
+
+    val foo = new Foo(2)
+
+    var called = false
+
+    @inline
+    def getFoo() = {
+      called = true
+      foo
+    }
+
+    getFoo().x = 1
+
+    assertTrue(called)
+  }
+
+  @Test def keepQualifierSideEffectsOfEliminatedJSField(): Unit = {
+    class Foo extends js.Object {
+      private[this] var x: Int = 1
+
+      @inline
+      final private[OptimizerTest] def set() = {
+        x = 2
+      }
+    }
+
+    val foo = new Foo
+    var called = false
+
+    def getFoo() = {
+      called = true
+      foo
+    }
+
+    getFoo().set()
+
+    assertTrue(called)
+  }
 }
 
 object OptimizerTest {

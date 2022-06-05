@@ -224,6 +224,8 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
         hasInstances = analyzerInfo.isAnySubclassInstantiated,
         hasInstanceTests = analyzerInfo.areInstanceTestsUsed,
         hasRuntimeTypeInfo = analyzerInfo.isDataAccessed,
+        fieldsRead = analyzerInfo.fieldsRead.toSet,
+        staticFieldsRead = analyzerInfo.staticFieldsRead.toSet,
         staticDependencies = analyzerInfo.staticDependencies.toSet,
         externalDependencies = analyzerInfo.externalDependencies.toSet,
         dynamicDependencies = analyzerInfo.dynamicDependencies.toSet,
@@ -238,9 +240,12 @@ private[frontend] object BaseLinker {
 
     field match {
       case field: FieldDef =>
-        if (field.flags.namespace.isStatic) classInfo.isAnyStaticFieldUsed
-        else if (classInfo.kind.isJSType) classInfo.isAnyPrivateJSFieldUsed
-        else classInfo.isAnySubclassInstantiated
+        if (field.flags.namespace.isStatic)
+          classInfo.staticFieldsRead(field.name.name) || classInfo.staticFieldsWritten(field.name.name)
+        else if (classInfo.kind.isJSClass || classInfo.isAnySubclassInstantiated)
+          classInfo.fieldsRead(field.name.name) || classInfo.fieldsWritten(field.name.name)
+        else
+          false
 
       case field: JSFieldDef =>
         classInfo.isAnySubclassInstantiated
