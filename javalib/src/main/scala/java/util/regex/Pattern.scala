@@ -14,6 +14,8 @@ package java.util.regex
 
 import scala.annotation.tailrec
 
+import java.util.ScalaOps._
+
 import scala.scalajs.js
 
 import PatternCompiler.Support._
@@ -181,40 +183,33 @@ final class Pattern private[regex] (
       // Actually split original string
       val lim = if (limit > 0) limit else Int.MaxValue
       val matcher = this.matcher(inputStr)
-      val builder = Array.newBuilder[String]
+      val result = js.Array[String]()
       var prevEnd = 0
-      var size = 0
-      while ((size < lim-1) && matcher.find()) {
+      while ((result.length < lim - 1) && matcher.find()) {
         if (matcher.end() == 0) {
           /* If there is a zero-width match at the beginning of the string,
            * ignore it, i.e., omit the resulting empty string at the beginning
            * of the array.
            */
         } else {
-          builder += inputStr.substring(prevEnd, matcher.start())
-          size += 1
+          result.push(inputStr.substring(prevEnd, matcher.start()))
         }
         prevEnd = matcher.end()
       }
-      builder += inputStr.substring(prevEnd)
-      val result = builder.result()
+      result.push(inputStr.substring(prevEnd))
 
       // With `limit == 0`, remove trailing empty strings.
-      if (limit != 0) {
-        result
-      } else {
-        var actualLength = result.length
+      var actualLength = result.length
+      if (limit == 0) {
         while (actualLength != 0 && result(actualLength - 1) == "")
           actualLength -= 1
-
-        if (actualLength == result.length) {
-          result
-        } else {
-          val actualResult = new Array[String](actualLength)
-          System.arraycopy(result, 0, actualResult, 0, actualLength)
-          actualResult
-        }
       }
+
+      // Build result array
+      val r = new Array[String](actualLength)
+      for (i <- 0 until actualLength)
+        r(i) = result(i)
+      r
     }
   }
 }

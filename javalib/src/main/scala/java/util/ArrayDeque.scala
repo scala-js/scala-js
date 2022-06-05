@@ -16,7 +16,7 @@ import java.lang.Cloneable
 
 import scala.scalajs.js
 
-class ArrayDeque[E] private (private var inner: js.Array[E])
+class ArrayDeque[E] private (private val inner: js.Array[E])
     extends AbstractCollection[E] with Deque[E] with Cloneable with Serializable {
   self =>
 
@@ -47,7 +47,7 @@ class ArrayDeque[E] private (private var inner: js.Array[E])
     if (e == null) {
       throw new NullPointerException()
     } else {
-      inner = e +: inner
+      inner.unshift(e)
       status += 1
       true
     }
@@ -57,7 +57,7 @@ class ArrayDeque[E] private (private var inner: js.Array[E])
     if (e == null) {
       throw new NullPointerException()
     } else {
-      inner += e
+      inner.push(e)
       status += 1
       true
     }
@@ -80,7 +80,7 @@ class ArrayDeque[E] private (private var inner: js.Array[E])
   def pollFirst(): E = {
     if (inner.isEmpty) null.asInstanceOf[E]
     else {
-      val res = inner.remove(0)
+      val res = inner.shift()
       status += 1
       res
     }

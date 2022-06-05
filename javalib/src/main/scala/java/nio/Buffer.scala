@@ -12,6 +12,8 @@
 
 package java.nio
 
+import java.util.internal.GenericArrayOps._
+
 import scala.scalajs.js.typedarray._
 
 abstract class Buffer private[nio] (val _capacity: Int) {
@@ -192,8 +194,9 @@ abstract class Buffer private[nio] (val _capacity: Int) {
   }
 
   @inline private[nio] def validateArrayIndexRange(
-      array: Array[_], offset: Int, length: Int): Unit = {
-    if (offset < 0 || length < 0 || offset > array.length - length)
+      array: Array[ElementType], offset: Int, length: Int)(
+      implicit arrayOps: ArrayOps[ElementType]): Unit = {
+    if (offset < 0 || length < 0 || offset > arrayOps.length(array) - length)
       throw new IndexOutOfBoundsException
   }
 

@@ -119,7 +119,7 @@ private[charset] abstract class UTF_16_Common protected (
       UTF_16_Common.this, 2.0f,
       if (endianness == AutoEndian) 4.0f else 2.0f,
       // Character 0xfffd
-      if (endianness == LittleEndian) Array(-3, -1) else Array(-1, -3)) {
+      if (endianness == LittleEndian) Array(-3.toByte, -1.toByte) else Array(-1.toByte, -3.toByte)) {
 
     private var needToWriteBOM: Boolean = endianness == AutoEndian
 

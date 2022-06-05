@@ -13,6 +13,7 @@
 package java.util
 
 import java.io.Serializable
+import java.lang.Cloneable
 import java.lang.Integer.bitCount
 import java.lang.Integer.toUnsignedLong
 import java.nio.{ByteBuffer, LongBuffer}
@@ -263,7 +264,7 @@ class BitSet private (private var bits: Array[Int]) extends Serializable with Cl
       if (result == 0)
         return new BitSet(0)
 
-      new BitSet(Array[Int](result))
+      new BitSet(Array(result))
     } else {
       val newbits = new Array[Int](idx2 - idx1 + 1)
       // first fill in the first and last indexes in the new bitset
@@ -687,4 +688,3 @@ class BitSet private (private var bits: Array[Int]) extends Serializable with Cl
       throw new IndexOutOfBoundsException(s"bitIndex < 0: $bitIndex")
   }
 }
-

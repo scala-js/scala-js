@@ -37,22 +37,10 @@ private[nio] object GenDataViewBuffer {
     val viewCapacity =
       (byteBufferLimit - byteBufferPos) / newDataViewBuffer.bytesPerElem
     val byteLength = viewCapacity * newDataViewBuffer.bytesPerElem
-    val dataView = newDataView(
+    val dataView = new DataView(
         byteArray.buffer, byteArray.byteOffset + byteBufferPos, byteLength)
     newDataViewBuffer(dataView,
         0, viewCapacity, byteBuffer.isReadOnly(), byteBuffer.isBigEndian)
-  }
-
-  /* Work around for https://github.com/joyent/node/issues/6051
-   * node 0.10 does not like creating a DataView whose byteOffset is equal to
-   * the buffer's length, even if byteLength == 0.
-   */
-  @inline
-  private def newDataView(buffer: ArrayBuffer, byteOffset: Int, byteLength: Int): DataView = {
-    if (byteLength == 0)
-      lit(buffer = buffer, byteOffset = byteOffset, byteLength = byteLength).asInstanceOf[DataView]
-    else
-      new DataView(buffer, byteOffset, byteLength)
   }
 }
 
@@ -65,8 +53,6 @@ private[nio] final class GenDataViewBuffer[B <: Buffer] private (val self: B)
 
   import self._
 
-  import GenDataViewBuffer.newDataView
-
   type NewThisDataViewBuffer = GenDataViewBuffer.NewDataViewBuffer[BufferType]
 
   @inline
@@ -76,7 +62,7 @@ private[nio] final class GenDataViewBuffer[B <: Buffer] private (val self: B)
     val dataView = _dataView
     val pos = position()
     val newCapacity = limit() - pos
-    val slicedDataView = newDataView(dataView.buffer,
+    val slicedDataView = new DataView(dataView.buffer,
         dataView.byteOffset + bytesPerElem*pos, bytesPerElem*newCapacity)
     newDataViewBuffer(slicedDataView,
         0, newCapacity, isReadOnly(), isBigEndian)

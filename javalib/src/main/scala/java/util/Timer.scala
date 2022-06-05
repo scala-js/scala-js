@@ -54,7 +54,7 @@ class Timer() {
   }
 
   private def getMillisUntil(time: Date): Long =
-    math.max(0L, time.getTime() - System.currentTimeMillis())
+    Math.max(0L, time.getTime() - System.currentTimeMillis())
 
   def schedule(task: TimerTask, delay: Long): Unit = {
     checkDelay(delay)

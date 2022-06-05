@@ -403,7 +403,7 @@ object Base64 {
   // --------------------------------------------------------------------------
 
   class Encoder private[Base64] (table: Array[Byte], lineLength: Int = 0,
-      lineSeparator: Array[Byte] = Array.empty, withPadding: Boolean = true) {
+      lineSeparator: Array[Byte] = new Array[Byte](0), withPadding: Boolean = true) {
 
     def encode(src: Array[Byte]): Array[Byte] = {
       val dst = new Array[Byte](dstLength(src.length))

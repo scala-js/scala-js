@@ -211,6 +211,40 @@ trait CollectionTest extends IterableTest {
         coll.iterator())
   }
 
+  @Test def toArrayObject(): Unit = {
+    val coll = factory.fromElements("one", "two", "three", "four", "five")
+
+    val result = coll.toArray()
+    assertSame(classOf[Array[AnyRef]], result.getClass())
+    assertArraySameElementsAsSet[AnyRef]("one", "two", "three", "four", "five")(result)
+  }
+
+  @Test def toArraySpecific(): Unit = {
+    val coll = factory.fromElements("one", "two", "three", "four", "five")
+
+    val arrayString3 = new Array[String](3)
+    val result1 = coll.toArray(arrayString3)
+    assertNotSame(arrayString3, result1)
+    assertSame(classOf[Array[String]], result1.getClass())
+    assertArraySameElementsAsSet[String]("one", "two", "three", "four", "five")(result1)
+
+    val arrayString5 = new Array[String](5)
+    val result2 = coll.toArray(arrayString5)
+    assertSame(arrayString5, result2)
+    assertSame(classOf[Array[String]], result2.getClass())
+    assertArraySameElementsAsSet[String]("one", "two", "three", "four", "five")(result2)
+
+    val arrayString7 = new Array[String](7)
+    arrayString7(5) = "foo"
+    arrayString7(6) = "bar"
+    val result3 = coll.toArray(arrayString7)
+    assertSame(arrayString7, result3)
+    assertSame(classOf[Array[String]], result3.getClass())
+    assertArraySameElementsAsSet[String]("one", "two", "three", "four", "five", null, "bar")(result3)
+    assertNull(result3(5))
+    assertEquals("bar", result3(6))
+  }
+
   @Test def removeIf(): Unit = {
     val coll = factory.fromElements[Int](42, 50, 12, 0, -45, 102, 32, 75)
     assertEquals(8, coll.size())
