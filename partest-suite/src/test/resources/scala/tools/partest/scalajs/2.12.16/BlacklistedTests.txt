@@ -969,8 +969,10 @@ run/StubErrorTypeclass.scala
 run/StubErrorTypeDef.scala
 
 # partest.CompilerTest
+run/infix-rangepos.scala
 run/t8852a.scala
 run/t12062.scala
+run/t12490.scala
 
 # partest.ASMConverters
 run/t9403
@@ -1092,6 +1094,7 @@ run/t1195-old.scala
 run/t3758-old.scala
 run/t4110-old.scala
 run/t6246.scala
+run/t12481.scala
 
 # Using ScalaRunTime.stringOf
 run/value-class-extractor-seq.scala
