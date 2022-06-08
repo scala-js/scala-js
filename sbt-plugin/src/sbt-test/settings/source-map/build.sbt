@@ -3,7 +3,7 @@ import org.scalajs.linker.interface.ModuleInitializer
 val check = taskKey[Unit]("Run checks of this test")
 
 version := scalaJSVersion
-scalaVersion := "2.12.15"
+scalaVersion := "2.12.16"
 
 enablePlugins(ScalaJSPlugin)
 
