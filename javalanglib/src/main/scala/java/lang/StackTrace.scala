@@ -15,9 +15,9 @@ package java.lang
 import scala.annotation.tailrec
 
 import scala.scalajs.js
+import scala.scalajs.js.JSStringOps.enableJSStringOps
 
 import Utils._
-import Utils.Implicits.enableJSStringOps
 
 /** Conversions of JavaScript stack traces to Java stack traces.
  */
@@ -304,7 +304,7 @@ private[lang] object StackTrace {
    */
 
   private def normalizeStackTraceLines(e: js.Dynamic): js.Array[String] = {
-    import Utils.DynamicImplicits.{truthValue, number2dynamic}
+    import js.DynamicImplicits.{truthValue, number2dynamic}
 
     /* You would think that we could test once and for all which "mode" to
      * adopt. But the format can actually differ for different exceptions

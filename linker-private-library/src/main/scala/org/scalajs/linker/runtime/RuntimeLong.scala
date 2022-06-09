@@ -1017,10 +1017,8 @@ object RuntimeLong {
 
   @inline
   private def substring(s: String, start: Int): String = {
-    import scala.scalajs.js
-    s.asInstanceOf[js.Dynamic]
-      .substring(start.asInstanceOf[js.Dynamic])
-      .asInstanceOf[String]
+    import scala.scalajs.js.JSStringOps.enableJSStringOps
+    s.jsSubstring(start)
   }
 
   /** Tests whether the long (lo, hi) is 0. */
@@ -1067,14 +1065,14 @@ object RuntimeLong {
    *  `Double`.
    */
   @inline def asUint(x: Int): Double = {
-    import scala.scalajs.js
-    (x.asInstanceOf[js.Dynamic] >>> 0.asInstanceOf[js.Dynamic]).asInstanceOf[Double]
+    import scala.scalajs.js.DynamicImplicits.number2dynamic
+    (x.toDouble >>> 0).asInstanceOf[Double]
   }
 
   /** Performs the JavaScript operation `(x | 0)`. */
   @inline def rawToInt(x: Double): Int = {
-    import scala.scalajs.js
-    (x.asInstanceOf[js.Dynamic] | 0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]
+    import scala.scalajs.js.DynamicImplicits.number2dynamic
+    (x | 0).asInstanceOf[Int]
   }
 
   /** Tests whether the given non-zero unsigned Int is an exact power of 2. */

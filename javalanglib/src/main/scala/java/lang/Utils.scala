@@ -132,28 +132,8 @@ private[lang] object Utils {
     }
   }
 
-  @inline def toUint(x: scala.Double): scala.Double =
-    (x.asInstanceOf[js.Dynamic] >>> 0.asInstanceOf[js.Dynamic]).asInstanceOf[scala.Double]
-
-  object Implicits {
-    implicit def enableJSStringOps(x: String): js.JSStringOps =
-      x.asInstanceOf[js.JSStringOps]
-
-    implicit def enableJSNumberOps(x: Int): js.JSNumberOps =
-      x.asInstanceOf[js.JSNumberOps]
-
-    implicit def enableJSNumberOps(x: scala.Double): js.JSNumberOps =
-      x.asInstanceOf[js.JSNumberOps]
-  }
-
-  object DynamicImplicits {
-    @inline implicit def truthValue(x: js.Dynamic): scala.Boolean =
-      (!(!x)).asInstanceOf[scala.Boolean]
-
-    implicit def number2dynamic(x: scala.Double): js.Dynamic =
-      x.asInstanceOf[js.Dynamic]
-
-    implicit def boolean2dynamic(x: scala.Boolean): js.Dynamic =
-      x.asInstanceOf[js.Dynamic]
+  @inline def toUint(x: scala.Double): scala.Double = {
+    import js.DynamicImplicits.number2dynamic
+    (x >>> 0).asInstanceOf[scala.Double]
   }
 }

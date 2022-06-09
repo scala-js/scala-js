@@ -117,23 +117,17 @@ object Character {
 
   @inline def hashCode(value: Char): Int = value.toInt
 
-  @inline def toString(c: Char): String = {
-    js.Dynamic.global.String
-      .fromCharCode(c.toInt.asInstanceOf[js.Dynamic])
-      .asInstanceOf[String]
-  }
+  @inline def toString(c: Char): String =
+    js.Dynamic.global.String.fromCharCode(c.toInt).asInstanceOf[String]
 
   def toString(codePoint: Int): String = {
     if (isBmpCodePoint(codePoint)) {
       js.Dynamic.global.String
-        .fromCharCode(codePoint.asInstanceOf[js.Dynamic])
+        .fromCharCode(codePoint)
         .asInstanceOf[String]
     } else if (isValidCodePoint(codePoint)) {
       js.Dynamic.global.String
-        .fromCharCode(
-            highSurrogate(codePoint).toInt.asInstanceOf[js.Dynamic],
-            lowSurrogate(codePoint).toInt.asInstanceOf[js.Dynamic]
-        )
+        .fromCharCode(highSurrogate(codePoint).toInt, lowSurrogate(codePoint).toInt)
         .asInstanceOf[String]
     } else {
       throw new IllegalArgumentException()

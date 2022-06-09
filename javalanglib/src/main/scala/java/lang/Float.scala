@@ -145,7 +145,7 @@ object Float {
       integralPartStr: String, fractionalPartStr: String,
       exponentStr: String): scala.Float = {
 
-    val z0 = js.Dynamic.global.parseFloat(fullNumberStr.asInstanceOf[js.Any]).asInstanceOf[scala.Double]
+    val z0 = js.Dynamic.global.parseFloat(fullNumberStr).asInstanceOf[scala.Double]
     val z = z0.toFloat
     val zDouble = z.toDouble
 

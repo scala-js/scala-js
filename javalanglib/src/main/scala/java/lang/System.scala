@@ -71,7 +71,7 @@ object System {
 
   private object NanoTime {
     val getHighPrecisionTime: js.Function0[scala.Double] = {
-      import Utils.DynamicImplicits.truthValue
+      import js.DynamicImplicits.truthValue
 
       if (js.typeOf(global.performance) != "undefined") {
         if (global.performance.now) {
@@ -382,13 +382,13 @@ private final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
   override def close(): Unit = ()
 
   private def doWriteLine(line: String): Unit = {
-    import Utils.DynamicImplicits.truthValue
+    import js.DynamicImplicits.truthValue
 
     if (js.typeOf(global.console) != "undefined") {
       if (isErr && global.console.error)
-        global.console.error(line.asInstanceOf[js.Any])
+        global.console.error(line)
       else
-        global.console.log(line.asInstanceOf[js.Any])
+        global.console.log(line)
     }
   }
 }

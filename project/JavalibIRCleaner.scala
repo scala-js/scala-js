@@ -29,16 +29,14 @@ import sbt.{Logger, MessageOnlyException}
  *    `java.lang.Object`.
  *  - Eagerly dereference `LoadJSConstructor` and `LoadJSModule` by "inlining"
  *    the JS load spec of the mentioned class ref.
+ *  - Replace calls to "intrinsic" methods of the Scala.js library by their
+ *    meaning at call site.
  *
  *  Afterwards, we check that the IR does not contain any reference to classes
  *  under the `scala.*` package.
  */
 final class JavalibIRCleaner(baseDirectoryURI: URI) {
-  private val JavaIOSerializable = ClassName("java.io.Serializable")
-  private val ScalaSerializable = ClassName("scala.Serializable")
-
-  private val writeReplaceMethodName =
-    MethodName("writeReplace", Nil, ClassRef(ObjectClass))
+  import JavalibIRCleaner._
 
   def cleanIR(dependencyFiles: Seq[File], libFileMappings: Seq[(File, File)],
       logger: Logger): Set[File] = {
@@ -207,7 +205,55 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
     override def transform(tree: Tree, isStat: Boolean): Tree = {
       implicit val pos = tree.pos
 
-      val result = super.transform(tree, isStat) match {
+      val tree1 = preTransform(tree, isStat)
+      val tree2 = if (tree1 eq tree) super.transform(tree, isStat) else transform(tree1, isStat)
+      val result = postTransform(tree2, isStat)
+
+      validateType(result.tpe)
+
+      result
+    }
+
+    private def preTransform(tree: Tree, isStat: Boolean): Tree = {
+      implicit val pos = tree.pos
+
+      tree match {
+        case IntrinsicCall(JSAnyMod, `jsAnyFromIntMethodName`, List(arg)) =>
+          arg
+        case IntrinsicCall(JSAnyMod, `jsAnyFromStringMethodName`, List(arg)) =>
+          arg
+        case IntrinsicCall(JSDynamicImplicitsMod, `number2dynamicMethodName`, List(arg)) =>
+          arg
+        case IntrinsicCall(JSNumberOpsMod, `enableJSNumberOpsDoubleMethodName`, List(arg)) =>
+          arg
+        case IntrinsicCall(JSNumberOpsMod, `enableJSNumberOpsIntMethodName`, List(arg)) =>
+          arg
+        case IntrinsicCall(JSStringOpsMod, `enableJSStringOpsMethodName`, List(arg)) =>
+          arg
+
+        case IntrinsicCall(JSDynamicImplicitsMod, `truthValueMethodName`, List(arg)) =>
+          AsInstanceOf(
+              JSUnaryOp(JSUnaryOp.!, JSUnaryOp(JSUnaryOp.!, arg)),
+              BooleanType)
+
+        case _ =>
+          tree
+      }
+    }
+
+    private object IntrinsicCall {
+      def unapply(tree: Apply): Option[(ClassName, MethodName, List[Tree])] = tree match {
+        case Apply(ApplyFlags.empty, LoadModule(moduleClassName), MethodIdent(methodName), args) =>
+          Some(moduleClassName, methodName, args)
+        case _ =>
+          None
+      }
+    }
+
+    private def postTransform(tree: Tree, isStat: Boolean): Tree = {
+      implicit val pos = tree.pos
+
+      tree match {
         case New(className, ctor, args) =>
           New(className, transformMethodIdent(ctor), args)
 
@@ -242,12 +288,9 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
             reportError(s"illegal ClassOf(${t.typeRef})")
           t
 
-        case t =>
-          t
+        case _ =>
+          tree
       }
-
-      validateType(result.tpe)
-      result
     }
 
     private def genLoadFromLoadSpecOf(className: ClassName)(
@@ -373,4 +416,34 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
       errorManager.reportError(s"$msg in ${enclosingClassName.nameString}")
     }
   }
+}
+
+object JavalibIRCleaner {
+  private val JavaIOSerializable = ClassName("java.io.Serializable")
+  private val JSAny = ClassName("scala.scalajs.js.Any")
+  private val JSAnyMod = ClassName("scala.scalajs.js.Any$")
+  private val JSDynamic = ClassName("scala.scalajs.js.Dynamic")
+  private val JSDynamicImplicitsMod = ClassName("scala.scalajs.js.DynamicImplicits$")
+  private val JSNumberOps = ClassName("scala.scalajs.js.JSNumberOps")
+  private val JSNumberOpsMod = ClassName("scala.scalajs.js.JSNumberOps$")
+  private val JSStringOps = ClassName("scala.scalajs.js.JSStringOps")
+  private val JSStringOpsMod = ClassName("scala.scalajs.js.JSStringOps$")
+  private val ScalaSerializable = ClassName("scala.Serializable")
+
+  private val enableJSNumberOpsDoubleMethodName =
+    MethodName("enableJSNumberOps", List(DoubleRef), ClassRef(JSNumberOps))
+  private val enableJSNumberOpsIntMethodName =
+    MethodName("enableJSNumberOps", List(IntRef), ClassRef(JSNumberOps))
+  private val enableJSStringOpsMethodName =
+    MethodName("enableJSStringOps", List(ClassRef(BoxedStringClass)), ClassRef(JSStringOps))
+  private val jsAnyFromIntMethodName =
+    MethodName("fromInt", List(IntRef), ClassRef(JSAny))
+  private val jsAnyFromStringMethodName =
+    MethodName("fromString", List(ClassRef(BoxedStringClass)), ClassRef(JSAny))
+  private val number2dynamicMethodName =
+    MethodName("number2dynamic", List(DoubleRef), ClassRef(JSDynamic))
+  private val truthValueMethodName =
+    MethodName("truthValue", List(ClassRef(JSDynamic)), BooleanRef)
+  private val writeReplaceMethodName =
+    MethodName("writeReplace", Nil, ClassRef(ObjectClass))
 }

@@ -16,6 +16,8 @@ import java.lang.constant.{Constable, ConstantDesc}
 
 import scala.scalajs.js
 
+import Utils._
+
 /* This is a hijacked class. Its instances are primitive numbers.
  * Constructors are not emitted.
  */
@@ -106,7 +108,7 @@ object Double {
   def parseDouble(s: String): scala.Double = {
     val groups = doubleStrPat.exec(s)
     if (groups != null)
-      js.Dynamic.global.parseFloat(groups(1).asInstanceOf[js.Any]).asInstanceOf[scala.Double]
+      js.Dynamic.global.parseFloat(undefOrForceGet[String](groups(1))).asInstanceOf[scala.Double]
     else
       parseDoubleSlowPath(s)
   }
@@ -120,10 +122,10 @@ object Double {
     if (groups == null)
       fail()
 
-    val signStr = groups(1).asInstanceOf[String]
-    val integralPartStr = groups(2).asInstanceOf[String]
-    val fractionalPartStr = groups(3).asInstanceOf[String]
-    val binaryExpStr = groups(4).asInstanceOf[String]
+    val signStr = undefOrForceGet(groups(1))
+    val integralPartStr = undefOrForceGet(groups(2))
+    val fractionalPartStr = undefOrForceGet(groups(3))
+    val binaryExpStr = undefOrForceGet(groups(4))
 
     if (integralPartStr == "" && fractionalPartStr == "")
       fail()
@@ -236,11 +238,8 @@ object Double {
      * `binaryExp` (see below) did not stray too far from that range itself.
      */
 
-    @inline def nativeParseInt(s: String, radix: Int): scala.Double = {
-      js.Dynamic.global
-        .parseInt(s.asInstanceOf[js.Any], radix.asInstanceOf[js.Any])
-        .asInstanceOf[scala.Double]
-    }
+    @inline def nativeParseInt(s: String, radix: Int): scala.Double =
+      js.Dynamic.global.parseInt(s, radix).asInstanceOf[scala.Double]
 
     val mantissa = nativeParseInt(truncatedMantissaStr, 16)
     // Assert: mantissa != 0.0 && mantissa != scala.Double.PositiveInfinity
