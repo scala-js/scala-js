@@ -70,7 +70,7 @@ object System {
     (new js.Date).getTime().toLong
 
   private object NanoTime {
-    val getHighPrecisionTime: js.Function0[scala.Double] = {
+    val getHighPrecisionTime: () => scala.Double = {
       import js.DynamicImplicits.truthValue
 
       if (js.typeOf(global.performance) != "undefined") {
@@ -102,7 +102,7 @@ object System {
     def mismatch(): Nothing =
       throw new ArrayStoreException("Incompatible array types")
 
-    def impl(srcLen: Int, destLen: Int, f: js.Function2[Int, Int, Any]): Unit = {
+    def impl(srcLen: Int, destLen: Int, f: (Int, Int) => Any): Unit = {
       /* Perform dummy swaps to trigger an ArrayIndexOutOfBoundsException or
        * UBE if the positions / lengths are bad.
        */

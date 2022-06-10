@@ -130,7 +130,7 @@ object Integer {
     decodeGeneric(nm, valueOf(_, _))
 
   @inline private[lang] def decodeGeneric[A](nm: String,
-      parse: js.Function2[String, Int, A]): A = {
+      parse: (String, Int) => A): A = {
 
     val len = nm.length()
     var i = 0

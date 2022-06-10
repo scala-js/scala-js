@@ -31,17 +31,12 @@ private[lang] object Utils {
     x.asInstanceOf[A]
 
   @inline
-  def undefOrGetOrElse[A](x: js.UndefOr[A], default: A): A =
+  def undefOrGetOrElse[A](x: js.UndefOr[A])(default: => A): A =
     if (undefOrIsDefined(x)) undefOrForceGet(x)
     else default
 
   @inline
-  def undefOrGetOrElseCompute[A](x: js.UndefOr[A])(default: js.Function0[A]): A =
-    if (undefOrIsDefined(x)) undefOrForceGet(x)
-    else default()
-
-  @inline
-  def undefOrFold[A, B](x: js.UndefOr[A])(default: B, f: js.Function1[A, B]): B =
+  def undefOrFold[A, B](x: js.UndefOr[A])(default: => B, f: A => B): B =
     if (undefOrIsDefined(x)) f(undefOrForceGet(x))
     else default
 
@@ -123,7 +118,7 @@ private[lang] object Utils {
     map.asInstanceOf[MapRaw[K, V]].set(key, value)
 
   @inline
-  def forArrayElems[A](array: js.Array[A])(f: js.Function1[A, Any]): Unit = {
+  def forArrayElems[A](array: js.Array[A])(f: A => Any): Unit = {
     val len = array.length
     var i = 0
     while (i != len) {

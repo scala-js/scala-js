@@ -426,7 +426,7 @@ private[lang] object StackTrace {
     while (i < len) {
       val mtch = lineRE.exec(lines(i))
       if (mtch ne null) {
-        val fnName = undefOrGetOrElse(mtch(3), "{anonymous}")
+        val fnName = undefOrGetOrElse(mtch(3))("{anonymous}")
         result.push(
             fnName + "()@" + undefOrForceGet(mtch(2)) + ":" +
             undefOrForceGet(mtch(1))
@@ -471,7 +471,7 @@ private[lang] object StackTrace {
       val mtch = lineRE.exec(lines(i))
       if (mtch ne null) {
         val location = undefOrForceGet(mtch(4)) + ":" + undefOrForceGet(mtch(1)) + ":" + undefOrForceGet(mtch(2))
-        val fnName0 = undefOrGetOrElse(mtch(2), "global code")
+        val fnName0 = undefOrGetOrElse(mtch(2))("global code")
         val fnName = fnName0
           .jsReplace("""<anonymous function: (\S+)>""".re, "$1")
           .jsReplace("""<anonymous function>""".re, "{anonymous}")
