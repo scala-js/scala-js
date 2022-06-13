@@ -1055,15 +1055,21 @@ class NonNativeJSTypeTest {
 
   @Test def defaultParameters(): Unit = {
     class DefaultParameters extends js.Object {
+      var sideEffectCounter: Int = 0
+
       def bar(x: Int, y: Int = 1): Int = x + y
       def dependent(x: Int)(y: Int = x + 1): Int = x + y
+      def unitParam(x: Unit, y: Unit = { sideEffectCounter += 1; () }): Int = sideEffectCounter
 
       def foobar(x: Int): Int = bar(x)
     }
 
     object DefaultParametersMod extends js.Object {
+      var sideEffectCounter: Int = 0
+
       def bar(x: Int, y: Int = 1): Int = x + y
       def dependent(x: Int)(y: Int = x + 1): Int = x + y
+      def unitParam(x: Unit, y: Unit = { sideEffectCounter += 1; () }): Int = sideEffectCounter
 
       def foobar(x: Int): Int = bar(x)
     }
@@ -1075,11 +1081,25 @@ class NonNativeJSTypeTest {
     assertEquals(9, foo.dependent(4)(5))
     assertEquals(17, foo.dependent(8)())
 
+    // #4684 Default params with Unit type
+    assertEquals(0, foo.sideEffectCounter)
+    assertEquals(1, foo.unitParam(()))
+    assertEquals(1, foo.sideEffectCounter)
+    assertEquals(2, foo.unitParam((), ())) // an actual undefined param counts as not provided
+    assertEquals(2, foo.sideEffectCounter)
+
     assertEquals(9, DefaultParametersMod.bar(4, 5))
     assertEquals(5, DefaultParametersMod.bar(4))
     assertEquals(4, DefaultParametersMod.foobar(3))
     assertEquals(9, DefaultParametersMod.dependent(4)(5))
     assertEquals(17, DefaultParametersMod.dependent(8)())
+
+    // #4684 Default params with Unit type
+    assertEquals(0, DefaultParametersMod.sideEffectCounter)
+    assertEquals(1, DefaultParametersMod.unitParam(()))
+    assertEquals(1, DefaultParametersMod.sideEffectCounter)
+    assertEquals(2, DefaultParametersMod.unitParam((), ())) // an actual undefined param counts as not provided
+    assertEquals(2, DefaultParametersMod.sideEffectCounter)
 
     def testDyn(dyn: js.Dynamic): Unit = {
       assertEquals(9, dyn.bar(4, 5))

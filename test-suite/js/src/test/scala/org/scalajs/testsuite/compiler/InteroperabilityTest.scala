@@ -543,6 +543,10 @@ class InteroperabilityTest {
 
     assertJSArrayEquals[Any](js.Array(js.undefined, 1, 2, 3, 4), obj.multi()(1, 2, 3, 4)())
     assertJSArrayEquals[Any](js.Array(2, 5), obj.multi(2)()(5))
+
+    // #4684 Default params with Unit type
+    assertJSArrayEquals[Any](js.Array(()), obj.unitParam(()))
+    assertJSArrayEquals[Any](js.Array((), ()), obj.unitParam((), ()))
   }
 
   @Test def defaultParametersForConstructors_Issue791(): Unit = {
@@ -793,6 +797,8 @@ object InteroperabilityTest {
     def named(x: Int = 1, y: Int = 1, z: Int = 1): js.Array[Any] = js.native
     @JSName("fun")
     def multi(x: Int = 1)(ys: Int*)(z: Int = 1): js.Array[Any] = js.native
+    @JSName("fun")
+    def unitParam(x: Unit, y: Unit = ()): js.Array[Any] = js.native
   }
 
   @js.native

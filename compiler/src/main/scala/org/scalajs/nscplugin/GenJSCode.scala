@@ -3857,8 +3857,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val Block(stats, expr) = tree
 
       val genStatsAndExpr = if (!stats.exists(isCaseLabelDef(_))) {
-        // fast path
-        stats.map(genStat(_)) :+ genStatOrExpr(expr, isStat)
+        // #4684 Collapse { <undefined-param>; BoxedUnit } to <undefined-param>
+        val genStatsAndExpr0 = stats.map(genStat(_)) :+ genStatOrExpr(expr, isStat)
+        genStatsAndExpr0 match {
+          case (undefParam @ js.Transient(UndefinedParam)) :: js.Undefined() :: Nil =>
+            undefParam :: Nil
+          case _ =>
+            genStatsAndExpr0
+        }
       } else {
         genBlockWithCaseLabelDefs(stats :+ expr, isStat)
       }
