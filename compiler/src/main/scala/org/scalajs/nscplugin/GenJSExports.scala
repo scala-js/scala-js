@@ -780,7 +780,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       // Pass previous arguments to defaultGetter
       val defaultGetterArgs = previousArgsValues(defaultGetter.tpe.params.size)
 
-      if (isJSType(trgSym)) {
+      val callGetter = if (isJSType(trgSym)) {
         if (isNonNativeJSClass(defaultGetter.owner)) {
           if (defaultGetter.hasAnnotation(JSOptionalAnnotation))
             js.Undefined()
@@ -802,6 +802,12 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       } else {
         genApplyMethod(trgTree, defaultGetter, defaultGetterArgs)
       }
+
+      // #4684 If the getter returns void, we must "box" it by returning undefined
+      if (callGetter.tpe == jstpe.NoType)
+        js.Block(callGetter, js.Undefined())
+      else
+        callGetter
     }
 
     /** Generate the final forwarding call to the exported method. */

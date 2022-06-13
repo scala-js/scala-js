@@ -530,39 +530,23 @@ class InteroperabilityTest {
   @Test def handleDefaultParameters(): Unit = {
     val obj = js.eval("""
       var interoperabilityTestDefaultParam = {
-        fun: function() { return arguments; }
+        fun: function() { return Array.prototype.slice.call(arguments); }
       };
       interoperabilityTestDefaultParam;
     """).asInstanceOf[InteroperabilityTestDefaultParam]
 
-    // Helpers
-    val keys = js.Dynamic.global.Object.keys
-    val undef = js.undefined
+    assertJSArrayEquals[Any](js.Array(1), obj.simple(1))
+    assertJSArrayEquals[Any](js.Array(1, 5), obj.simple(1, 5))
 
-    assertEquals(1, keys(obj.simple(1)).length)
-    assertEquals(1, obj.simple(1)("0"))
+    assertJSArrayEquals[Any](js.Array(js.undefined, 5), obj.named(y = 5))
+    assertJSArrayEquals[Any](js.Array(5), obj.named(x = 5))
 
-    assertEquals(2, keys(obj.simple(1, 5)).length)
-    assertEquals(1, obj.simple(1, 5)("0"))
-    assertEquals(5, obj.simple(1, 5)("1"))
+    assertJSArrayEquals[Any](js.Array(js.undefined, 1, 2, 3, 4), obj.multi()(1, 2, 3, 4)())
+    assertJSArrayEquals[Any](js.Array(2, 5), obj.multi(2)()(5))
 
-    assertEquals(2, keys(obj.named(y = 5)).length)
-    assertEquals(undef, obj.named(y = 5)("0"))
-    assertEquals(5, obj.named(y = 5)("1"))
-
-    assertEquals(1, keys(obj.named(x = 5)).length)
-    assertEquals(5, obj.named(x = 5)("0"))
-
-    assertEquals(5, keys(obj.multi()(1,2,3,4)()).length)
-    assertEquals(undef, obj.multi()(1,2,3,4)()("0"))
-    assertEquals(1, obj.multi()(1,2,3,4)()("1"))
-    assertEquals(2, obj.multi()(1,2,3,4)()("2"))
-    assertEquals(3, obj.multi()(1,2,3,4)()("3"))
-    assertEquals(4, obj.multi()(1,2,3,4)()("4"))
-
-    assertEquals(2, keys(obj.multi(2)()(5)).length)
-    assertEquals(2, obj.multi(2)()(5)("0"))
-    assertEquals(5, obj.multi(2)()(5)("1"))
+    // #4684 Default params with Unit type
+    assertJSArrayEquals[Any](js.Array(()), obj.unitParam(()))
+    assertJSArrayEquals[Any](js.Array((), ()), obj.unitParam((), ()))
   }
 
   @Test def defaultParametersForConstructors_Issue791(): Unit = {
@@ -808,11 +792,13 @@ object InteroperabilityTest {
   @js.native
   trait InteroperabilityTestDefaultParam extends js.Object {
     @JSName("fun")
-    def simple(x: Int, y: Int = 5): js.Dictionary[Any] = js.native
+    def simple(x: Int, y: Int = 5): js.Array[Any] = js.native
     @JSName("fun")
-    def named(x: Int = 1, y: Int = 1, z: Int = 1): js.Dictionary[Any] = js.native
+    def named(x: Int = 1, y: Int = 1, z: Int = 1): js.Array[Any] = js.native
     @JSName("fun")
-    def multi(x: Int = 1)(ys: Int*)(z: Int = 1): js.Dictionary[Any] = js.native
+    def multi(x: Int = 1)(ys: Int*)(z: Int = 1): js.Array[Any] = js.native
+    @JSName("fun")
+    def unitParam(x: Unit, y: Unit = ()): js.Array[Any] = js.native
   }
 
   @js.native
