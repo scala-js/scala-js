@@ -184,68 +184,40 @@ object Types {
   sealed abstract class NonArrayTypeRef extends TypeRef
 
   /** Primitive type reference. */
-  final case class PrimRef private[ir] (tpe: PrimTypeWithRef)
-      extends NonArrayTypeRef {
+  final case class PrimRef private[ir] (tpe: PrimTypeWithRef)(
+      val displayName: String, val charCode: Char)
+      extends NonArrayTypeRef
 
-    /** The display name of this primitive type.
-     *
-     *  For all primitive types except `NullType` and `NothingType`, this is
-     *  specified by the IR spec in the sense that it is the result of
-     *  `classOf[Prim].getName()`.
-     *
-     *  For `NullType` and `NothingType`, the names are `"null"` and
-     *  `"nothing"`, respectively.
-     */
-    val displayName: String = tpe match {
-      case NoType      => "void"
-      case BooleanType => "boolean"
-      case CharType    => "char"
-      case ByteType    => "byte"
-      case ShortType   => "short"
-      case IntType     => "int"
-      case LongType    => "long"
-      case FloatType   => "float"
-      case DoubleType  => "double"
-      case NullType    => "null"
-      case NothingType => "nothing"
-    }
-
-    /** The char code of this primitive type.
-     *
-     *  For all primitive types except `NullType` and `NothingType`, this is
-     *  specified by the IR spec in the sense that it is visible in the result
-     *  of `classOf[Array[Prim]].getName()` (e.g., that is `"[I"` for
-     *  `Array[Int]`).
-     *
-     *  For `NullType` and `NothingType`, the char codes are `'N'` and `'E'`,
-     *  respectively.
-     */
-    val charCode: Char = tpe match {
-      case NoType      => 'V'
-      case BooleanType => 'Z'
-      case CharType    => 'C'
-      case ByteType    => 'B'
-      case ShortType   => 'S'
-      case IntType     => 'I'
-      case LongType    => 'J'
-      case FloatType   => 'F'
-      case DoubleType  => 'D'
-      case NullType    => 'N'
-      case NothingType => 'E'
-    }
-  }
-
-  final val VoidRef = PrimRef(NoType)
-  final val BooleanRef = PrimRef(BooleanType)
-  final val CharRef = PrimRef(CharType)
-  final val ByteRef = PrimRef(ByteType)
-  final val ShortRef = PrimRef(ShortType)
-  final val IntRef = PrimRef(IntType)
-  final val LongRef = PrimRef(LongType)
-  final val FloatRef = PrimRef(FloatType)
-  final val DoubleRef = PrimRef(DoubleType)
-  final val NullRef = PrimRef(NullType)
-  final val NothingRef = PrimRef(NothingType)
+  /** Display name of primitive types:
+   *
+   *  1. For all primitive types except `NullType` and `NothingType`, this is
+   *     specified by the IR spec in the sense that it is the result of
+   *     `classOf[Prim].getName()`.
+   *
+   *  2. For `NullType` and `NothingType`, the names are `"null"` and
+   *     `"nothing"`, respectively.
+   *
+   *  Char code of primitive types:
+   *
+   *  1. For all primitive types except `NullType` and `NothingType`, this is
+   *     specified by the IR spec in the sense that it is visible in the result
+   *     of `classOf[Array[Prim]].getName()` (e.g., that is `"[I"` for
+   *     `Array[Int]`).
+   *
+   *  2. For `NullType` and `NothingType`, the char codes are `'N'` and `'E'`,
+   *     respectively.
+   */
+  final val VoidRef = PrimRef(NoType)("void", 'V')
+  final val BooleanRef = PrimRef(BooleanType)("boolean", 'Z')
+  final val CharRef = PrimRef(CharType)("char", 'C')
+  final val ByteRef = PrimRef(ByteType)("byte", 'B')
+  final val ShortRef = PrimRef(ShortType)("short", 'S')
+  final val IntRef = PrimRef(IntType)("int", 'I')
+  final val LongRef = PrimRef(LongType)("long", 'J')
+  final val FloatRef = PrimRef(FloatType)("float", 'F')
+  final val DoubleRef = PrimRef(DoubleType)("double", 'D')
+  final val NullRef = PrimRef(NullType)("null", 'N')
+  final val NothingRef = PrimRef(NothingType)("nothing", 'E')
 
   /** Class (or interface) type. */
   final case class ClassRef(className: ClassName) extends NonArrayTypeRef {
