@@ -235,17 +235,26 @@ object Types {
     }
   }
 
-  final val VoidRef = PrimRef(NoType)
-  final val BooleanRef = PrimRef(BooleanType)
-  final val CharRef = PrimRef(CharType)
-  final val ByteRef = PrimRef(ByteType)
-  final val ShortRef = PrimRef(ShortType)
-  final val IntRef = PrimRef(IntType)
-  final val LongRef = PrimRef(LongType)
-  final val FloatRef = PrimRef(FloatType)
-  final val DoubleRef = PrimRef(DoubleType)
-  final val NullRef = PrimRef(NullType)
-  final val NothingRef = PrimRef(NothingType)
+  /* @unchecked for the initialization checker of Scala 3
+   * When we get here, `NoType` is not yet considered fully initialized because
+   * its method `primRef` can access `VoidRef`. Since the constructor of
+   * `PrimRef` pattern-matches on its `tpe`, which is `NoType`, this is flagged
+   * by the init checker, although our usage is safe given that we do not call
+   * `primRef`. The same reasoning applies to the other primitive types.
+   * In the future, we may want to rearrange the initialization sequence of
+   * this file to avoid this issue.
+   */
+  final val VoidRef = PrimRef(NoType: @unchecked)
+  final val BooleanRef = PrimRef(BooleanType: @unchecked)
+  final val CharRef = PrimRef(CharType: @unchecked)
+  final val ByteRef = PrimRef(ByteType: @unchecked)
+  final val ShortRef = PrimRef(ShortType: @unchecked)
+  final val IntRef = PrimRef(IntType: @unchecked)
+  final val LongRef = PrimRef(LongType: @unchecked)
+  final val FloatRef = PrimRef(FloatType: @unchecked)
+  final val DoubleRef = PrimRef(DoubleType: @unchecked)
+  final val NullRef = PrimRef(NullType: @unchecked)
+  final val NothingRef = PrimRef(NothingType: @unchecked)
 
   /** Class (or interface) type. */
   final case class ClassRef(className: ClassName) extends NonArrayTypeRef {
