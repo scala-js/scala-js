@@ -2398,7 +2398,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case Throw(expr) =>
           val ex = genExpr(expr)
           js.Throw {
-            if (isMaybeJavaScriptException(expr.tpe)) {
+            if (!ex.isInstanceOf[js.Null] && isMaybeJavaScriptException(expr.tpe)) {
               genApplyMethod(
                   genLoadModule(RuntimePackageModule),
                   Runtime_unwrapJavaScriptException,
@@ -2885,8 +2885,35 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     }
 
     private def genTryCatch(body: js.Tree, catches: List[CaseDef],
-        resultType: jstpe.Type,
-        isStat: Boolean)(implicit pos: Position): js.Tree = {
+        resultType: jstpe.Type, isStat: Boolean)(
+        implicit pos: Position): js.Tree = {
+
+      catches match {
+        case CaseDef(Ident(nme.WILDCARD), _, catchAllBody) :: Nil =>
+          genTryCatchCatchIgnoreAll(body, catchAllBody, resultType, isStat)
+
+        case CaseDef(Typed(Ident(nme.WILDCARD), tpt), _, catchAllBody) :: Nil
+            if tpt.tpe.typeSymbol == ThrowableClass =>
+          genTryCatchCatchIgnoreAll(body, catchAllBody, resultType, isStat)
+
+        case _ =>
+          genTryCatchNotIgnoreAll(body, catches, resultType, isStat)
+      }
+    }
+
+    private def genTryCatchCatchIgnoreAll(body: js.Tree, catchAllBody: Tree,
+        resultType: jstpe.Type, isStat: Boolean)(
+        implicit pos: Position): js.Tree = {
+
+      js.TryCatch(body, freshLocalIdent("e"), NoOriginalName,
+          genStatOrExpr(catchAllBody, isStat))(
+          resultType)
+    }
+
+    private def genTryCatchNotIgnoreAll(body: js.Tree, catches: List[CaseDef],
+        resultType: jstpe.Type, isStat: Boolean)(
+        implicit pos: Position): js.Tree = {
+
       val exceptIdent = freshLocalIdent("e")
       val origExceptVar = js.VarRef(exceptIdent)(jstpe.AnyType)
 
