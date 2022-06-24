@@ -270,6 +270,10 @@ class ExportsTest {
     assertThrows(classOf[js.JavaScriptException], {
       x.bar = 2
     })
+
+    // Read the properties to trick GCC into not discarding the writes.
+    assertEquals(1, x.foo)
+    assertEquals(1, x.bar)
   }
 
   @Test def propertiesAreNotEnumerable(): Unit = {

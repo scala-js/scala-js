@@ -22,6 +22,8 @@ import org.junit.Assume._
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
+import org.scalajs.testsuite.utils.JSAssert._
+
 class RegressionJSTest {
   import RegressionJSTest._
 
@@ -137,6 +139,21 @@ class RegressionJSTest {
     })
   }
 
+  @Test def captureLoopValInLambda(): Unit = {
+    // Test of a regression that appeared during fixing of #2675.
+    val functions = js.Array[js.Function0[Int]]()
+
+    var i = 0
+    while (i != 5) {
+      val j = i
+      functions.push(() => j)
+      i += 1
+    }
+
+    val result = functions.map(_())
+
+    assertJSArrayEquals(js.Array(0, 1, 2, 3, 4), result)
+  }
 }
 
 object RegressionJSTest {

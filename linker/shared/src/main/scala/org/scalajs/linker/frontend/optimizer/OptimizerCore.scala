@@ -142,10 +142,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         throw new AssertionError("Methods to optimize must be concrete")
       }
 
-      implicit val scope = Scope.Empty
-
-      val (newParamsWithUsage, newBody1) = try {
-        transformIsolatedBody(Some(myself), thisType, params, resultType, body)
+      val (newParams, newBody1) = try {
+        transformMethodDefBody(myself, thisType, params, resultType, body)
       } catch {
         case _: TooManyRollbacksException =>
           localNameAllocator.clear()
@@ -153,12 +151,11 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           labelNameAllocator.clear()
           stateBackupChain = Nil
           disableOptimisticOptimizations = true
-          transformIsolatedBody(Some(myself), thisType, params, resultType, body)
+          transformMethodDefBody(myself, thisType, params, resultType, body)
       }
       val newBody =
         if (originalDef.methodName == NoArgConstructorName) tryElimStoreModule(newBody1)
         else newBody1
-      val newParams = newParamsWithUsage.map(_._1)
       MethodDef(static, name, originalName, newParams, resultType,
           Some(newBody))(originalDef.optimizerHints, None)(originalDef.pos)
     } catch {
@@ -698,45 +695,97 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       tcaptureValues: List[PreTransform])(cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
 
-    val thisType = if (arrow) NoType else AnyType
-
-    val (allNewParamsWithUse, newBody) = transformIsolatedBody(None, thisType,
-        captureParams ++ params ++ restParam, AnyType, body)
-
-    val (newCaptureParamsWithUse, newParamsWithUse) = allNewParamsWithUse.splitAt(captureParams.size)
-
-    val (newParams, newRestParam) = {
-      val t = newParamsWithUse.map(_._1).toList
-      if (restParam.isDefined) (t.init, Some(t.last))
-      else (t, None)
+    val (paramLocalDefs, newParams) = params.map(newParamReplacement(_)).unzip
+    val (restParamLocalDef, newRestParam) = {
+      // Option#unzip
+      restParam.map(newParamReplacement(_)) match {
+        case None         => (None, None)
+        case Some((x, y)) => (Some(x), Some(y))
+      }
     }
 
-    withCaptures(newCaptureParamsWithUse, tcaptureValues) { (finalCaptureParams, finalCaptureValues, cont1) =>
-      val newClosure = Closure(arrow, finalCaptureParams, newParams, newRestParam, newBody, finalCaptureValues)
-      val newTree = PreTransTree(newClosure, RefinedType(AnyType, isExact = false, isNullable = false))
-      cont1(newTree)
+    val thisLocalDef =
+      if (arrow) None
+      else Some(newThisLocalDef(AnyType))
+
+    val innerEnv = OptEnv.Empty
+      .withThisLocalDef(thisLocalDef)
+      .withLocalDefs(paramLocalDefs)
+      .withLocalDefs(restParamLocalDef.toList)
+
+    transformCapturingBody(captureParams, tcaptureValues, body, innerEnv) {
+      (newCaptureParams, newCaptureValues, newBody) =>
+        val newClosure = Closure(arrow, newCaptureParams, newParams, newRestParam, newBody, newCaptureValues)
+        PreTransTree(newClosure, RefinedType(AnyType, isExact = false, isNullable = false))
     } (cont)
   }
 
-  private def withCaptures(newCaptureParamsWithUse: List[(ParamDef, IsUsed)],
-      tcaptureValues: List[PreTransform])(
-      buildInner: (List[ParamDef], List[Tree], PreTransCont) => TailRec[Tree])(
-      cont: PreTransCont)(implicit scope: Scope, pos: Position) = {
-    val bindings = {
-      newCaptureParamsWithUse.iterator.zip(tcaptureValues.iterator).map { case ((param, _), value) =>
-        Binding.temp(param.name.name, param.ptpe, mutable = false, value)
-      }.toList
+  private def transformCapturingBody(captureParams: List[ParamDef],
+      tcaptureValues: List[PreTransform], body: Tree, innerEnv: OptEnv)(
+      inner: (List[ParamDef], List[Tree], Tree) => PreTransTree)(cont: PreTransCont)(
+      implicit scope: Scope, pos: Position): TailRec[Tree] = {
+    /* Process captures.
+     *
+     * This is different than normal param replacement:
+     *
+     * - We inline literals into the closure.
+     * - We introduce bindings for the (remaining) capture values. This allows to
+     *   eliminate captures that are not used (but preserve side effects).
+     * - If the capture value is a VarRef, we give the capture param the exact
+     *   same name. This is to help the FunctionEmitter eliminate IIFEs.
+     */
+    val captureParamLocalDefs = List.newBuilder[(LocalName, LocalDef)]
+    val newCaptureParamDefsAndRepls = List.newBuilder[(ParamDef, ReplaceWithVarRef)]
+    val captureValueBindings = List.newBuilder[Binding]
+
+    for ((paramDef, tcaptureValue) <- captureParams.zip(tcaptureValues)) {
+      val ParamDef(ident @ LocalIdent(paramName), originalName, ptpe, mutable) = paramDef
+
+      assert(!mutable, s"Found mutable capture at ${paramDef.pos}")
+
+      def addCaptureParam(newName: LocalName): Unit = {
+        val newOriginalName = originalNameForFresh(paramName, originalName, newName)
+
+        val replacement = ReplaceWithVarRef(newName, newSimpleState(Unused), None)
+        val localDef = LocalDef(tcaptureValue.tpe, mutable, replacement)
+        val localIdent = LocalIdent(newName)(ident.pos)
+        val newParamDef = ParamDef(localIdent, newOriginalName, ptpe, mutable)(paramDef.pos)
+
+        /* Note that the binding will never create a fresh name for a
+         * ReplaceWithVarRef. So this will not put our name alignment at risk.
+         */
+        val valueBinding = Binding.temp(paramName, ptpe, mutable, tcaptureValue)
+
+        captureParamLocalDefs += paramName -> localDef
+        newCaptureParamDefsAndRepls += newParamDef -> replacement
+        captureValueBindings += valueBinding
+      }
+
+      tcaptureValue match {
+        case PreTransLit(literal) =>
+          captureParamLocalDefs += paramName -> LocalDef(tcaptureValue.tpe, false, ReplaceWithConstant(literal))
+
+        case PreTransLocalDef(LocalDef(_, /* mutable = */ false, ReplaceWithVarRef(captureName, _, _))) =>
+          addCaptureParam(captureName)
+
+        case _ =>
+          addCaptureParam(freshLocalNameWithoutOriginalName(paramName, mutable))
+      }
     }
 
-    withNewLocalDefs(bindings) { (localDefs, cont1) =>
+    val innerScope = scope.withEnv(innerEnv.withLocalDefs(captureParamLocalDefs.result()))
+
+    val newBody = transformExpr(body)(innerScope)
+
+    withNewLocalDefs(captureValueBindings.result()) { (localDefs, cont1) =>
       val (finalCaptureParams, finalCaptureValues) = (for {
-        (localDef, (param, use)) <- localDefs.iterator.zip(newCaptureParamsWithUse.iterator)
-        if use.isUsed
+        (localDef, (param, replacement)) <- localDefs.iterator.zip(newCaptureParamDefsAndRepls.result().iterator)
+        if replacement.used.value.isUsed
       } yield {
         param -> localDef.newReplacement
       }).toList.unzip
 
-      buildInner(finalCaptureParams, finalCaptureValues, cont1)
+      cont1(inner(finalCaptureParams, finalCaptureValues, newBody))
     } (cont)
   }
 
@@ -1800,24 +1849,22 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             val importReplacement = ImportReplacement(importTarget, moduleName,
                 jsNativeLoadSpec.path, newSimpleState(Unused), cancelFun)
 
-            val (newCaptureParamsWithUse, newBody) = {
-              val newScope = outerScope.withImportReplacement(importReplacement)
-              val MethodDef(_, _, _, params, resultType, Some(body)) = getMethodBody(targetMethod)
-              transformIsolatedBody(Some(targetMethod), NoType, params, resultType, body)(newScope)
-            }
+            val newScope = outerScope.withImportReplacement(importReplacement)
 
-            if (!importReplacement.used.value.isUsed)
-              cancelFun()
+            val methodDef = getMethodBody(targetMethod)
 
-            withCaptures(newCaptureParamsWithUse, targs) { (captureParams, captureValues, cont1) =>
-              val inlinedClosure = Closure(arrow = true, captureParams, List(moduleParam),
-                  restParam = None, newBody, captureValues)
+            transformCapturingBody(methodDef.args, targs, methodDef.body.get, OptEnv.Empty) {
+              (newCaptureParams, newCaptureValues, newBody) =>
+                if (!importReplacement.used.value.isUsed)
+                  cancelFun()
 
-              val newTree = JSImport(config.coreSpec.moduleKind, jsNativeLoadSpec.module,
-                  inlinedClosure)
+                val closure = Closure(arrow = true, newCaptureParams, List(moduleParam),
+                    restParam = None, newBody, newCaptureValues)
 
-              cont1(PreTransTree(newTree))
-            } (cont)
+                val newTree = JSImport(config.coreSpec.moduleKind, jsNativeLoadSpec.module, closure)
+
+                PreTransTree(newTree)
+            } (cont) (newScope, methodDef.pos)
           } { () =>
             treeNotInlined0(targs.map(finishTransformExpr))
           }
@@ -4146,49 +4193,32 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     }
   }
 
-  private def transformIsolatedBody(optTarget: Option[MethodID],
-      thisType: Type, params: List[ParamDef], resultType: Type, body: Tree)(
-      implicit outerScope: Scope): (List[(ParamDef, IsUsed)], Tree) = {
+  private def transformMethodDefBody(target: MethodID, thisType: Type,
+      params: List[ParamDef], resultType: Type, body: Tree): (List[ParamDef], Tree) = {
 
-    val (paramLocalDefs, newParamDefsAndRepls) = (for {
-      p @ ParamDef(ident @ LocalIdent(name), originalName, ptpe, mutable) <- params
-    } yield {
-      val (newName, newOriginalName) = freshLocalName(name, originalName, mutable)
-      val replacement = ReplaceWithVarRef(newName, newSimpleState(Unused), None)
-      val localDef = LocalDef(RefinedType(ptpe), mutable, replacement)
-      val localIdent = LocalIdent(newName)(ident.pos)
-      val newParamDef = ParamDef(localIdent, newOriginalName, ptpe, mutable)(p.pos)
-      (name -> localDef, newParamDef -> replacement)
-    }).unzip
+    val (paramLocalDefs, newParamDefs) = params.map(newParamReplacement(_)).unzip
 
     val thisLocalDef =
       if (thisType == NoType) None
-      else {
-        Some(LocalDef(
-            RefinedType(thisType, isExact = false, isNullable = false),
-            false, ReplaceWithThis()))
-      }
+      else Some(newThisLocalDef(thisType))
 
-    val inlining = optTarget.map { target =>
+    val inlining = {
       val allocationSiteCount =
         paramLocalDefs.size + (if (thisLocalDef.isDefined) 1 else 0)
       val allocationSites =
         List.fill(allocationSiteCount)(AllocationSite.Anonymous)
       allocationSites -> target
-    }.toSet[Scope.InliningID]
-
-    val env = {
-      val envWithThis =
-        thisLocalDef.fold(OptEnv.Empty)(OptEnv.Empty.withThisLocalDef(_))
-      envWithThis.withLocalDefs(paramLocalDefs)
     }
-    val scope = outerScope.inlining(inlining).withEnv(env)
+
+    val env = OptEnv.Empty
+      .withThisLocalDef(thisLocalDef)
+      .withLocalDefs(paramLocalDefs)
+
+    val scope = Scope.Empty.inlining(inlining).withEnv(env)
 
     val newBody = transform(body, resultType == NoType)(scope)
 
-    val newParamDefsWithUsage = newParamDefsAndRepls.map(t => (t._1, t._2.used.value))
-
-    (newParamDefsWithUsage, newBody)
+    (newParamDefs, newBody)
   }
 
   private def pretransformLabeled(oldLabelName: LabelName, resultType: Type,
@@ -4335,6 +4365,24 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           None
       }
     }
+  }
+
+  private def newParamReplacement(paramDef: ParamDef): ((LocalName, LocalDef), ParamDef) = {
+    val ParamDef(ident @ LocalIdent(name), originalName, ptpe, mutable) = paramDef
+
+    val (newName, newOriginalName) = freshLocalName(name, originalName, mutable)
+
+    val replacement = ReplaceWithVarRef(newName, newSimpleState(Unused), None)
+    val localDef = LocalDef(RefinedType(ptpe), mutable, replacement)
+    val localIdent = LocalIdent(newName)(ident.pos)
+    val newParamDef = ParamDef(localIdent, newOriginalName, ptpe, mutable)(paramDef.pos)
+    (name -> localDef, newParamDef)
+  }
+
+  private def newThisLocalDef(thisType: Type): LocalDef = {
+    LocalDef(
+        RefinedType(thisType, isExact = false, isNullable = false),
+        false, ReplaceWithThis())
   }
 
   private def withBindings(bindings: List[Binding])(
@@ -4489,6 +4537,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           }
 
         case PreTransLocalDef(localDef) if !localDef.mutable =>
+          /* Attention: the same-name optimization in transformCapturingBody
+           * relies on immutable bindings to var refs not being renamed.
+           */
+
           val refinedType = computeRefinedType()
           val newLocalDef = if (refinedType == value.tpe) {
             localDef
@@ -4945,7 +4997,10 @@ private[optimizer] object OptimizerCore {
       val labelInfos: Map[LabelName, LabelInfo]) {
 
     def withThisLocalDef(rep: LocalDef): OptEnv =
-      new OptEnv(Some(rep), localDefs, labelInfos)
+      withThisLocalDef(Some(rep))
+
+    def withThisLocalDef(rep: Option[LocalDef]): OptEnv =
+      new OptEnv(rep, localDefs, labelInfos)
 
     def withLocalDef(oldName: LocalName, rep: LocalDef): OptEnv =
       new OptEnv(thisLocalDef, localDefs + (oldName -> rep), labelInfos)
