@@ -1174,19 +1174,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case PreTransLocalDef(LocalDef(_, _,
           InlineClassInstanceReplacement(_, fieldLocalDefs, cancelFun))) =>
         val fieldLocalDef = fieldLocalDefs(FieldID(className, field))
-        if (!isLhsOfAssign || fieldLocalDef.mutable) {
-          cont(fieldLocalDef.toPreTransform)
-        } else {
-          /* In an ideal world, this should not happen (assigning to an
-           * immutable field of an already constructed object). However, since
-           * we cannot IR-check that this does not happen (see #1021), this is
-           * effectively allowed by the IR spec. We are therefore not allowed
-           * to crash. We cancel instead. This will become an actual field
-           * (rather than an optimized local val) which is not considered pure
-           * (for that same reason).
-           */
-          cancelFun()
-        }
+        assert(!isLhsOfAssign || fieldLocalDef.mutable, s"assign to immutable field at $pos")
+        cont(fieldLocalDef.toPreTransform)
 
       // Select the lo or hi "field" of a Long literal
       case PreTransLit(LongLiteral(value)) if useRuntimeLong =>
