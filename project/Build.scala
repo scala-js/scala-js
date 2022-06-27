@@ -571,6 +571,9 @@ object Build {
   )
 
   val cleanIRSettings = Def.settings(
+      // In order to rewrite anonymous functions, the code must not be specialized
+      scalacOptions += "-no-specialization",
+
       products in Compile := {
         val s = streams.value
 

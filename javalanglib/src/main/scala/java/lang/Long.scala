@@ -144,7 +144,7 @@ object Long {
     val hi = (i >>> 32).toInt
     if (lo >> 31 == hi) {
       // It's a signed int32
-      import Utils.Implicits.enableJSNumberOps
+      import js.JSNumberOps.enableJSNumberOps
       lo.toString(radix)
     } else if (hi < 0) {
       "-" + toUnsignedStringInternalLarge(-i, radix)
@@ -157,7 +157,7 @@ object Long {
   private def toUnsignedStringImpl(i: scala.Long, radix: Int): String = {
     if ((i >>> 32).toInt == 0) {
       // It's an unsigned int32
-      import Utils.Implicits.enableJSNumberOps
+      import js.JSNumberOps.enableJSNumberOps
       Utils.toUint(i.toInt).toString(radix)
     } else {
       toUnsignedStringInternalLarge(i, radix)
@@ -166,7 +166,8 @@ object Long {
 
   // Must be called only with valid radix
   private def toUnsignedStringInternalLarge(i: scala.Long, radix: Int): String = {
-    import Utils.Implicits._
+    import js.JSNumberOps.enableJSNumberOps
+    import js.JSStringOps.enableJSStringOps
 
     val radixInfo = StringRadixInfos(radix)
     val divisor = radixInfo.radixPowLength
@@ -317,7 +318,7 @@ object Long {
   }
 
   private def parseLongError(s: String): Nothing =
-    throw new NumberFormatException("For input string: \"" + s + "\"")
+    throw new NumberFormatException(s"""For input string: "$s"""")
 
   @inline def `new`(value: scala.Long): Long = valueOf(value)
 

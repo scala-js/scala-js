@@ -82,7 +82,7 @@ object Short {
   def parseShort(s: String, radix: Int): scala.Short = {
     val r = Integer.parseInt(s, radix)
     if (r < MIN_VALUE || r > MAX_VALUE)
-      throw new NumberFormatException("For input string: \"" + s + "\"")
+      throw new NumberFormatException(s"""For input string: "$s"""")
     else
       r.toShort
   }

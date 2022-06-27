@@ -15,9 +15,9 @@ package java.lang
 import scala.annotation.tailrec
 
 import scala.scalajs.js
+import scala.scalajs.js.JSStringOps.enableJSStringOps
 
 import Utils._
-import Utils.Implicits.enableJSStringOps
 
 /** Conversions of JavaScript stack traces to Java stack traces.
  */
@@ -250,8 +250,8 @@ private[lang] object StackTrace {
     var index = 0
     while (index <= 22) {
       if (index >= 2)
-        dictSet(dict, "T" + index, "scala_Tuple" + index)
-      dictSet(dict, "F" + index, "scala_Function" + index)
+        dictSet(dict, s"T$index", s"scala_Tuple$index")
+      dictSet(dict, s"F$index", s"scala_Function$index")
       index += 1
     }
 
@@ -304,7 +304,7 @@ private[lang] object StackTrace {
    */
 
   private def normalizeStackTraceLines(e: js.Dynamic): js.Array[String] = {
-    import Utils.DynamicImplicits.{truthValue, number2dynamic}
+    import js.DynamicImplicits.{truthValue, number2dynamic}
 
     /* You would think that we could test once and for all which "mode" to
      * adopt. But the format can actually differ for different exceptions
@@ -426,7 +426,7 @@ private[lang] object StackTrace {
     while (i < len) {
       val mtch = lineRE.exec(lines(i))
       if (mtch ne null) {
-        val fnName = undefOrGetOrElse(mtch(3), "{anonymous}")
+        val fnName = undefOrGetOrElse(mtch(3))("{anonymous}")
         result.push(
             fnName + "()@" + undefOrForceGet(mtch(2)) + ":" +
             undefOrForceGet(mtch(1))
@@ -471,7 +471,7 @@ private[lang] object StackTrace {
       val mtch = lineRE.exec(lines(i))
       if (mtch ne null) {
         val location = undefOrForceGet(mtch(4)) + ":" + undefOrForceGet(mtch(1)) + ":" + undefOrForceGet(mtch(2))
-        val fnName0 = undefOrGetOrElse(mtch(2), "global code")
+        val fnName0 = undefOrGetOrElse(mtch(2))("global code")
         val fnName = fnName0
           .jsReplace("""<anonymous function: (\S+)>""".re, "$1")
           .jsReplace("""<anonymous function>""".re, "{anonymous}")

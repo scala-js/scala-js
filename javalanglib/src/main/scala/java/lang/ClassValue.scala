@@ -57,7 +57,7 @@ abstract class ClassValue[T] protected () {
      * then `get`.
      */
     if (useJSMap) {
-      undefOrGetOrElseCompute(mapGet(jsMap, `type`)) { () =>
+      undefOrGetOrElse(mapGet(jsMap, `type`)) {
         if (mapHas(jsMap, `type`)) {
           ().asInstanceOf[T]
         } else {

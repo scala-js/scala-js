@@ -84,7 +84,7 @@ object Integer {
       signed: scala.Boolean): scala.Int = {
 
     def fail(): Nothing =
-      throw new NumberFormatException("For input string: \"" + s + "\"")
+      throw new NumberFormatException(s"""For input string: "$s"""")
 
     val len = if (s == null) 0 else s.length
 
@@ -130,7 +130,7 @@ object Integer {
     decodeGeneric(nm, valueOf(_, _))
 
   @inline private[lang] def decodeGeneric[A](nm: String,
-      parse: js.Function2[String, Int, A]): A = {
+      parse: (String, Int) => A): A = {
 
     val len = nm.length()
     var i = 0
@@ -299,7 +299,7 @@ object Integer {
     if (radix == 10 || radix < Character.MIN_RADIX || radix > Character.MAX_RADIX) {
       Integer.toString(i)
     } else {
-      import Utils.Implicits.enableJSNumberOps
+      import js.JSNumberOps.enableJSNumberOps
       i.toString(radix)
     }
   }
@@ -313,14 +313,17 @@ object Integer {
   @inline def min(a: Int, b: Int): Int = Math.min(a, b)
 
   @inline private[this] def toStringBase(i: scala.Int, base: scala.Int): String = {
-    asUint(i).asInstanceOf[js.Dynamic]
-      .applyDynamic("toString")(base.asInstanceOf[js.Dynamic])
-      .asInstanceOf[String]
+    import js.JSNumberOps.enableJSNumberOps
+    asUint(i).toString(base)
   }
 
-  @inline private def asInt(n: scala.Double): scala.Int =
-    (n.asInstanceOf[js.Dynamic] | 0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]
+  @inline private def asInt(n: scala.Double): scala.Int = {
+    import js.DynamicImplicits.number2dynamic
+    (n | 0).asInstanceOf[Int]
+  }
 
-  @inline private def asUint(n: scala.Int): scala.Double =
-    (n.asInstanceOf[js.Dynamic] >>> 0.asInstanceOf[js.Dynamic]).asInstanceOf[scala.Double]
+  @inline private def asUint(n: scala.Int): scala.Double = {
+    import js.DynamicImplicits.number2dynamic
+    (n.toDouble >>> 0).asInstanceOf[scala.Double]
+  }
 }

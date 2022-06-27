@@ -18,6 +18,7 @@ import java.util.Comparator
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
+import scala.scalajs.js.JSStringOps.enableJSStringOps
 import scala.scalajs.runtime.linkingInfo
 import scala.scalajs.LinkingInfo.ESVersion
 
@@ -26,8 +27,6 @@ import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.util.Locale
 import java.util.regex._
-
-import Utils.Implicits.enableJSStringOps
 
 /* This is the implementation of java.lang.String, which is a hijacked class.
  * Its instances are primitive strings. Constructors are not emitted.
@@ -48,18 +47,12 @@ final class _String private () // scalastyle:ignore
     this.asInstanceOf[String]
 
   @inline
-  def charAt(index: Int): Char = {
-    this.asInstanceOf[js.Dynamic]
-      .charCodeAt(index.asInstanceOf[js.Dynamic])
-      .asInstanceOf[Int]
-      .toChar
-  }
+  def charAt(index: Int): Char =
+    this.asInstanceOf[js.Dynamic].charCodeAt(index).asInstanceOf[Int].toChar
 
   def codePointAt(index: Int): Int = {
     if (linkingInfo.esVersion >= ESVersion.ES2015) {
-      this.asInstanceOf[js.Dynamic]
-        .codePointAt(index.asInstanceOf[js.Dynamic])
-        .asInstanceOf[Int]
+      this.asInstanceOf[js.Dynamic].codePointAt(index).asInstanceOf[Int]
     } else {
       val high = charAt(index)
       if (index+1 < length()) {
@@ -377,11 +370,8 @@ final class _String private () // scalastyle:ignore
     thisString.jsSubstring(beginIndex)
 
   @inline
-  def substring(beginIndex: Int, endIndex: Int): String = {
-    this.asInstanceOf[js.Dynamic]
-      .substring(beginIndex.asInstanceOf[js.Dynamic], endIndex.asInstanceOf[js.Dynamic])
-      .asInstanceOf[String]
-  }
+  def substring(beginIndex: Int, endIndex: Int): String =
+    thisString.jsSubstring(beginIndex, endIndex)
 
   def toCharArray(): Array[Char] = {
     val len = length()
@@ -662,9 +652,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
    *    the character at the given index is not special.
    */
   @inline
-  private def replaceCharsAtIndex(
-      replacementAtIndex: js.Function1[Int, String]): String = {
-
+  private def replaceCharsAtIndex(replacementAtIndex: Int => String): String = {
     var prep = ""
     val len = this.length()
     var i = 0
@@ -797,7 +785,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
 
   def indent(n: Int): String = {
 
-    def forEachLn(f: js.Function1[String, String]): String = {
+    def forEachLn(f: String => String): String = {
       var out = ""
       var i = 0
       val xs = splitLines()
@@ -918,7 +906,7 @@ for (cp <- 0 to Character.MAX_CODE_POINT) {
               result += codePoint.toChar
             // bad escape otherwise, this catches everything else including the Unicode ones
             case bad =>
-              throw new IllegalArgumentException("Illegal escape: `\\" + bad + "`")
+              throw new IllegalArgumentException(s"Illegal escape: `\\$bad`")
           }
           // skip ahead 2 chars (\ and the escape char) at minimum, cases above can add more if needed
           i += 2

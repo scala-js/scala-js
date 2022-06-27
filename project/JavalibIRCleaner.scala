@@ -10,6 +10,7 @@ import java.io._
 import java.net.URI
 import java.nio.file.Files
 
+import scala.collection.immutable.IndexedSeq
 import scala.collection.mutable
 
 import sbt.{Logger, MessageOnlyException}
@@ -29,16 +30,16 @@ import sbt.{Logger, MessageOnlyException}
  *    `java.lang.Object`.
  *  - Eagerly dereference `LoadJSConstructor` and `LoadJSModule` by "inlining"
  *    the JS load spec of the mentioned class ref.
+ *  - Replace calls to "intrinsic" methods of the Scala.js library by their
+ *    meaning at call site.
+ *  - Erase Scala FunctionN's to JavaScript closures (hence, of type `any`),
+ *    including `new AnonFunctionN` and `someFunctionN.apply` calls.
  *
  *  Afterwards, we check that the IR does not contain any reference to classes
  *  under the `scala.*` package.
  */
 final class JavalibIRCleaner(baseDirectoryURI: URI) {
-  private val JavaIOSerializable = ClassName("java.io.Serializable")
-  private val ScalaSerializable = ClassName("scala.Serializable")
-
-  private val writeReplaceMethodName =
-    MethodName("writeReplace", Nil, ClassRef(ObjectClass))
+  import JavalibIRCleaner._
 
   def cleanIR(dependencyFiles: Seq[File], libFileMappings: Seq[(File, File)],
       logger: Logger): Set[File] = {
@@ -159,6 +160,7 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
           newMemberDefs, topLevelExportDefs)(
           optimizerHints)(pos)
 
+      // Only validate the hierarchy; do not transform
       validateClassName(preprocessedTree.name.name)
       for (superClass <- preprocessedTree.superClass)
         validateClassName(superClass.name)
@@ -196,41 +198,167 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
 
     override def transformMemberDef(memberDef: MemberDef): MemberDef = {
       super.transformMemberDef(memberDef) match {
+        case m @ FieldDef(flags, name, originalName, ftpe) =>
+          implicit val pos = m.pos
+          FieldDef(flags, name, originalName, transformType(ftpe))
         case m @ MethodDef(flags, name, originalName, args, resultType, body) =>
-          MethodDef(flags, transformMethodIdent(name), originalName, args,
-              resultType, body)(m.optimizerHints, m.hash)(m.pos)
+          implicit val pos = m.pos
+          MethodDef(flags, transformMethodIdent(name), originalName, transformParamDefs(args),
+              transformType(resultType), body)(m.optimizerHints, m.hash)
         case m =>
           m
+      }
+    }
+
+    private def transformParamDefs(paramDefs: List[ParamDef]): List[ParamDef] = {
+      for (paramDef <- paramDefs) yield {
+        implicit val pos = paramDef.pos
+        val ParamDef(name, originalName, ptpe, mutable) = paramDef
+        ParamDef(name, originalName, transformType(ptpe), mutable)
       }
     }
 
     override def transform(tree: Tree, isStat: Boolean): Tree = {
       implicit val pos = tree.pos
 
-      val result = super.transform(tree, isStat) match {
+      val tree1 = preTransform(tree, isStat)
+      val tree2 = if (tree1 eq tree) super.transform(tree, isStat) else transform(tree1, isStat)
+      val result = postTransform(tree2, isStat)
+
+      if (transformType(result.tpe) != result.tpe)
+        reportError(s"the result type of a ${result.getClass().getSimpleName()} was not transformed")
+
+      result
+    }
+
+    private def preTransform(tree: Tree, isStat: Boolean): Tree = {
+      implicit val pos = tree.pos
+
+      tree match {
+        // new AnonFunctionN(closure)  -->  closure
+        case New(AnonFunctionNClass(n), _, List(closure)) =>
+          closure
+
+        // someFunctionN.apply(args)  -->  someFunctionN(args)
+        case Apply(ApplyFlags.empty, fun, MethodIdent(FunctionApplyMethodName(n)), args)
+            if isFunctionNType(n, fun.tpe) =>
+          JSFunctionApply(fun, args)
+
+        case IntrinsicCall(JSAnyMod, `jsAnyFromIntMethodName`, List(arg)) =>
+          arg
+        case IntrinsicCall(JSAnyMod, `jsAnyFromStringMethodName`, List(arg)) =>
+          arg
+        case IntrinsicCall(JSDynamicImplicitsMod, `number2dynamicMethodName`, List(arg)) =>
+          arg
+        case IntrinsicCall(JSNumberOpsMod, `enableJSNumberOpsDoubleMethodName`, List(arg)) =>
+          arg
+        case IntrinsicCall(JSNumberOpsMod, `enableJSNumberOpsIntMethodName`, List(arg)) =>
+          arg
+        case IntrinsicCall(JSStringOpsMod, `enableJSStringOpsMethodName`, List(arg)) =>
+          arg
+
+        case IntrinsicCall(JSDynamicImplicitsMod, `truthValueMethodName`, List(arg)) =>
+          AsInstanceOf(
+              JSUnaryOp(JSUnaryOp.!, JSUnaryOp(JSUnaryOp.!, arg)),
+              BooleanType)
+
+        // 2.11 s"..." interpolator
+        case Apply(
+            ApplyFlags.empty,
+            New(StringContextClass, MethodIdent(`stringContextCtorMethodName`),
+                List(ScalaVarArgsReadOnlyLiteral(stringElems))),
+            MethodIdent(`sMethodName`),
+            List(ScalaVarArgsReadOnlyLiteral(valueElems))) =>
+          if (stringElems.size != valueElems.size + 1) {
+            reportError("Found s\"...\" interpolator but the sizes do not match")
+            tree
+          } else {
+            val processedEscapesStringElems = stringElems.map { s =>
+              (s: @unchecked) match {
+                case StringLiteral(value) =>
+                  StringLiteral(StringContext.processEscapes(value))
+              }
+            }
+            val stringsIter = processedEscapesStringElems.iterator
+            val valuesIter = valueElems.iterator
+            var result: Tree = stringsIter.next()
+            while (valuesIter.hasNext) {
+              result = BinaryOp(BinaryOp.String_+, result, valuesIter.next())
+              result = BinaryOp(BinaryOp.String_+, result, stringsIter.next())
+            }
+            result
+          }
+
+        case _ =>
+          tree
+      }
+    }
+
+    private object IntrinsicCall {
+      def unapply(tree: Apply): Option[(ClassName, MethodName, List[Tree])] = tree match {
+        case Apply(ApplyFlags.empty, LoadModule(moduleClassName), MethodIdent(methodName), args) =>
+          Some(moduleClassName, methodName, args)
+        case _ =>
+          None
+      }
+    }
+
+    private object ScalaVarArgsReadOnlyLiteral {
+      def unapply(tree: Apply): Option[List[Tree]] = tree match {
+        case IntrinsicCall(ScalaJSRuntimeMod, `toScalaVarArgsReadOnlyMethodName`,
+            List(JSArrayConstr(args))) =>
+          if (args.forall(_.isInstanceOf[Tree]))
+            Some(args.map(_.asInstanceOf[Tree]))
+          else
+            None
+        case _ =>
+          None
+      }
+    }
+
+    private def postTransform(tree: Tree, isStat: Boolean): Tree = {
+      implicit val pos = tree.pos
+
+      tree match {
+        case VarDef(name, originalName, vtpe, mutable, rhs) =>
+          VarDef(name, originalName, transformType(vtpe), mutable, rhs)
+
+        case Labeled(label, tpe, body) =>
+          Labeled(label, transformType(tpe), body)
+        case If(cond, thenp, elsep) =>
+          If(cond, thenp, elsep)(transformType(tree.tpe))
+        case TryCatch(block, errVar, errVarOriginalName, handler) =>
+          TryCatch(block, errVar, errVarOriginalName, handler)(transformType(tree.tpe))
+        case Match(selector, cases, default) =>
+          Match(selector, cases, default)(transformType(tree.tpe))
+
         case New(className, ctor, args) =>
-          New(className, transformMethodIdent(ctor), args)
+          New(transformNonJSClassName(className), transformMethodIdent(ctor), args)
+        case Select(qualifier, className, field) =>
+          Select(qualifier, transformNonJSClassName(className), field)(transformType(tree.tpe))
 
         case t: Apply =>
-          Apply(t.flags, t.receiver, transformMethodIdent(t.method),
-              t.args)(t.tpe)
+          Apply(t.flags, t.receiver, transformMethodIdent(t.method), t.args)(
+              transformType(t.tpe))
         case t: ApplyStatically =>
-          validateNonJSClassName(t.className)
-          ApplyStatically(t.flags, t.receiver, t.className,
-              transformMethodIdent(t.method), t.args)(t.tpe)
+          ApplyStatically(t.flags, t.receiver,
+              transformNonJSClassName(t.className),
+              transformMethodIdent(t.method), t.args)(transformType(t.tpe))
         case t: ApplyStatic =>
-          validateNonJSClassName(t.className)
-          ApplyStatic(t.flags, t.className,
-              transformMethodIdent(t.method), t.args)(t.tpe)
+          ApplyStatic(t.flags, transformNonJSClassName(t.className),
+              transformMethodIdent(t.method), t.args)(transformType(t.tpe))
 
         case NewArray(typeRef, lengths) =>
           NewArray(transformArrayTypeRef(typeRef), lengths)
         case ArrayValue(typeRef, elems) =>
           ArrayValue(transformArrayTypeRef(typeRef), elems)
+        case ArraySelect(array, index) =>
+          ArraySelect(array, index)(transformType(tree.tpe))
 
-        case t: IsInstanceOf =>
-          validateType(t.testType)
-          t
+        case IsInstanceOf(expr, testType) =>
+          IsInstanceOf(expr, transformType(testType))
+        case AsInstanceOf(expr, tpe) =>
+          AsInstanceOf(expr, transformType(tpe))
 
         case LoadJSConstructor(className) =>
           genLoadFromLoadSpecOf(className)
@@ -242,12 +370,16 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
             reportError(s"illegal ClassOf(${t.typeRef})")
           t
 
-        case t =>
-          t
-      }
+        case t @ VarRef(ident) =>
+          VarRef(ident)(transformType(t.tpe))
 
-      validateType(result.tpe)
-      result
+        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+          Closure(arrow, transformParamDefs(captureParams), transformParamDefs(params),
+              restParam, body, captureValues)
+
+        case _ =>
+          tree
+      }
     }
 
     private def genLoadFromLoadSpecOf(className: ClassName)(
@@ -284,28 +416,15 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
 
     private def transformMethodIdent(ident: MethodIdent): MethodIdent = {
       implicit val pos = ident.pos
-      val methodName = ident.name
-      val paramTypeRefs = methodName.paramTypeRefs
-      val newParamTypeRefs = paramTypeRefs.map(transformTypeRef)
-      val resultTypeRef = methodName.resultTypeRef
-      val newResultTypeRef = transformTypeRef(resultTypeRef)
-      if (newParamTypeRefs == paramTypeRefs && newResultTypeRef == resultTypeRef) {
-        ident
-      } else {
-        val newMethodName = MethodName(methodName.simpleName,
-            newParamTypeRefs, newResultTypeRef, methodName.isReflectiveProxy)
-        MethodIdent(newMethodName)
-      }
+      MethodIdent(transformMethodName(ident.name))
     }
 
     private def transformClassRef(cls: ClassRef)(
         implicit pos: Position): ClassRef = {
-      if (jsTypes.contains(cls.className)) {
+      if (jsTypes.contains(cls.className))
         ClassRef(ObjectClass)
-      } else {
-        validateClassName(cls.className)
-        cls
-      }
+      else
+        ClassRef(transformClassName(cls.className))
     }
 
     private def transformArrayTypeRef(typeRef: ArrayTypeRef)(
@@ -314,12 +433,10 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
         case _: PrimRef =>
           typeRef
         case ClassRef(baseClassName) =>
-          if (jsTypes.contains(baseClassName)) {
+          if (jsTypes.contains(baseClassName))
             ArrayTypeRef(ClassRef(ObjectClass), typeRef.dimensions)
-          } else {
-            validateClassName(baseClassName)
-            typeRef
-          }
+          else
+            ArrayTypeRef(ClassRef(transformClassName(baseClassName)), typeRef.dimensions)
       }
     }
 
@@ -346,15 +463,28 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
       }
     }
 
-    private def validateType(tpe: Type)(implicit pos: Position): Unit = {
+    private def transformType(tpe: Type)(implicit pos: Position): Type = {
       tpe match {
+        case ClassType(ObjectClass) =>
+          // In java.lang.Object iself, there are ClassType(ObjectClass) that must be preserved as is.
+          tpe
         case ClassType(cls) =>
-          validateClassName(cls)
-        case ArrayType(ArrayTypeRef(ClassRef(cls), _)) =>
-          validateClassName(cls)
+          transformClassName(cls) match {
+            case ObjectClass => AnyType
+            case newCls      => ClassType(newCls)
+          }
+        case ArrayType(arrayTypeRef) =>
+          ArrayType(transformArrayTypeRef(arrayTypeRef))
         case _ =>
-          // ok
+          tpe
       }
+    }
+
+    private def transformClassName(cls: ClassName)(implicit pos: Position): ClassName = {
+      ClassNameSubstitutions.getOrElse(cls, {
+        validateClassName(cls)
+        cls
+      })
     }
 
     private def validateClassName(cls: ClassName)(implicit pos: Position): Unit = {
@@ -362,15 +492,111 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
         reportError(s"Illegal reference to Scala class ${cls.nameString}")
     }
 
-    private def validateNonJSClassName(cls: ClassName)(implicit pos: Position): Unit = {
-      if (jsTypes.contains(cls))
+    private def transformNonJSClassName(cls: ClassName)(implicit pos: Position): ClassName = {
+      if (jsTypes.contains(cls)) {
         reportError(s"Invalid reference to JS class ${cls.nameString}")
-      else
-        validateClassName(cls)
+        cls
+      } else {
+        transformClassName(cls)
+      }
+    }
+
+    private def transformMethodName(name: MethodName)(implicit pos: Position): MethodName = {
+      MethodName(name.simpleName, name.paramTypeRefs.map(transformTypeRef),
+          transformTypeRef(name.resultTypeRef), name.isReflectiveProxy)
     }
 
     private def reportError(msg: String)(implicit pos: Position): Unit = {
       errorManager.reportError(s"$msg in ${enclosingClassName.nameString}")
     }
+  }
+}
+
+object JavalibIRCleaner {
+  private final val MaxFunctionArity = 4
+
+  private val JavaIOSerializable = ClassName("java.io.Serializable")
+  private val JSAny = ClassName("scala.scalajs.js.Any")
+  private val JSAnyMod = ClassName("scala.scalajs.js.Any$")
+  private val JSArray = ClassName("scala.scalajs.js.Array")
+  private val JSDynamic = ClassName("scala.scalajs.js.Dynamic")
+  private val JSDynamicImplicitsMod = ClassName("scala.scalajs.js.DynamicImplicits$")
+  private val JSNumberOps = ClassName("scala.scalajs.js.JSNumberOps")
+  private val JSNumberOpsMod = ClassName("scala.scalajs.js.JSNumberOps$")
+  private val JSStringOps = ClassName("scala.scalajs.js.JSStringOps")
+  private val JSStringOpsMod = ClassName("scala.scalajs.js.JSStringOps$")
+  private val ReadOnlySeq = ClassName("scala.collection.Seq")
+  private val ScalaSerializable = ClassName("scala.Serializable")
+  private val ScalaJSRuntimeMod = ClassName("scala.scalajs.runtime.package$")
+  private val StringContextClass = ClassName("scala.StringContext")
+
+  private val FunctionNClasses: IndexedSeq[ClassName] =
+    (0 to MaxFunctionArity).map(n => ClassName(s"scala.Function$n"))
+
+  private val AnonFunctionNClasses: IndexedSeq[ClassName] =
+    (0 to MaxFunctionArity).map(n => ClassName(s"scala.scalajs.runtime.AnonFunction$n"))
+
+  private val enableJSNumberOpsDoubleMethodName =
+    MethodName("enableJSNumberOps", List(DoubleRef), ClassRef(JSNumberOps))
+  private val enableJSNumberOpsIntMethodName =
+    MethodName("enableJSNumberOps", List(IntRef), ClassRef(JSNumberOps))
+  private val enableJSStringOpsMethodName =
+    MethodName("enableJSStringOps", List(ClassRef(BoxedStringClass)), ClassRef(JSStringOps))
+  private val jsAnyFromIntMethodName =
+    MethodName("fromInt", List(IntRef), ClassRef(JSAny))
+  private val jsAnyFromStringMethodName =
+    MethodName("fromString", List(ClassRef(BoxedStringClass)), ClassRef(JSAny))
+  private val number2dynamicMethodName =
+    MethodName("number2dynamic", List(DoubleRef), ClassRef(JSDynamic))
+  private val sMethodName =
+    MethodName("s", List(ClassRef(ReadOnlySeq)), ClassRef(BoxedStringClass))
+  private val stringContextCtorMethodName =
+    MethodName.constructor(List(ClassRef(ReadOnlySeq)))
+  private val toScalaVarArgsReadOnlyMethodName =
+    MethodName("toScalaVarArgs", List(ClassRef(JSArray)), ClassRef(ReadOnlySeq))
+  private val truthValueMethodName =
+    MethodName("truthValue", List(ClassRef(JSDynamic)), BooleanRef)
+  private val writeReplaceMethodName =
+    MethodName("writeReplace", Nil, ClassRef(ObjectClass))
+
+  private val functionApplyMethodNames: IndexedSeq[MethodName] = {
+    (0 to MaxFunctionArity).map { n =>
+      MethodName("apply", (1 to n).toList.map(_ => ClassRef(ObjectClass)), ClassRef(ObjectClass))
+    }
+  }
+
+  private object AnonFunctionNClass {
+    private val AnonFunctionNClassToN: Map[ClassName, Int] =
+      AnonFunctionNClasses.zipWithIndex.toMap
+
+    def apply(n: Int): ClassName = AnonFunctionNClasses(n)
+
+    def unapply(cls: ClassName): Option[Int] = AnonFunctionNClassToN.get(cls)
+  }
+
+  private object FunctionApplyMethodName {
+    private val FunctionApplyMethodNameToN: Map[MethodName, Int] =
+      functionApplyMethodNames.zipWithIndex.toMap
+
+    def apply(n: Int): MethodName = functionApplyMethodNames(n)
+
+    def unapply(name: MethodName): Option[Int] = FunctionApplyMethodNameToN.get(name)
+  }
+
+  private def isFunctionNType(n: Int, tpe: Type): Boolean = tpe match {
+    case ClassType(cls) =>
+      cls == FunctionNClasses(n) || cls == AnonFunctionNClasses(n)
+    case _ =>
+      false
+  }
+
+  private val ClassNameSubstitutions: Map[ClassName, ClassName] = {
+    val functionTypePairs = for {
+      funClass <- FunctionNClasses ++ AnonFunctionNClasses
+    } yield {
+      funClass -> ObjectClass
+    }
+
+    functionTypePairs.toMap
   }
 }

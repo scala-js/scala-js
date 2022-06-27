@@ -348,7 +348,9 @@ private[lang] object FloatingPointBits {
     }
   }
 
-  @inline private def rawToInt(x: scala.Double): Int =
-    (x.asInstanceOf[js.Dynamic] | 0.asInstanceOf[js.Dynamic]).asInstanceOf[Int]
+  @inline private def rawToInt(x: scala.Double): Int = {
+    import scala.scalajs.js.DynamicImplicits.number2dynamic
+    (x | 0).asInstanceOf[Int]
+  }
 
 }

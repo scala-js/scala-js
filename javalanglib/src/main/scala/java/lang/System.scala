@@ -70,8 +70,8 @@ object System {
     (new js.Date).getTime().toLong
 
   private object NanoTime {
-    val getHighPrecisionTime: js.Function0[scala.Double] = {
-      import Utils.DynamicImplicits.truthValue
+    val getHighPrecisionTime: () => scala.Double = {
+      import js.DynamicImplicits.truthValue
 
       if (js.typeOf(global.performance) != "undefined") {
         if (global.performance.now) {
@@ -102,7 +102,7 @@ object System {
     def mismatch(): Nothing =
       throw new ArrayStoreException("Incompatible array types")
 
-    def impl(srcLen: Int, destLen: Int, f: js.Function2[Int, Int, Any]): Unit = {
+    def impl(srcLen: Int, destLen: Int, f: (Int, Int) => Any): Unit = {
       /* Perform dummy swaps to trigger an ArrayIndexOutOfBoundsException or
        * UBE if the positions / lengths are bad.
        */
@@ -349,7 +349,7 @@ private final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
 
   // This is the method invoked by Predef.println(x).
   @inline
-  override def println(obj: AnyRef): Unit = printString("" + obj + "\n")
+  override def println(obj: AnyRef): Unit = printString(s"$obj\n")
 
   private def printString(s: String): Unit = {
     var rest: String = s
@@ -382,13 +382,13 @@ private final class JSConsoleBasedPrintStream(isErr: scala.Boolean)
   override def close(): Unit = ()
 
   private def doWriteLine(line: String): Unit = {
-    import Utils.DynamicImplicits.truthValue
+    import js.DynamicImplicits.truthValue
 
     if (js.typeOf(global.console) != "undefined") {
       if (isErr && global.console.error)
-        global.console.error(line.asInstanceOf[js.Any])
+        global.console.error(line)
       else
-        global.console.log(line.asInstanceOf[js.Any])
+        global.console.log(line)
     }
   }
 }

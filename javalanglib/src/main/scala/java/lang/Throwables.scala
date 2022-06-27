@@ -92,7 +92,7 @@ class Throwable protected (s: String, private var e: Throwable,
   def printStackTrace(s: java.io.PrintWriter): Unit =
     printStackTraceImpl(s.println(_))
 
-  private[this] def printStackTraceImpl(sprintln: js.Function1[String, Unit]): Unit = {
+  private[this] def printStackTraceImpl(sprintln: String => Unit): Unit = {
     getStackTrace() // will init it if still null
 
     // Message
@@ -102,7 +102,7 @@ class Throwable protected (s: String, private var e: Throwable,
     if (stackTrace.length != 0) {
       var i = 0
       while (i < stackTrace.length) {
-        sprintln("  at "+stackTrace(i))
+        sprintln(s"  at ${stackTrace(i)}")
         i += 1
       }
     } else {
@@ -119,7 +119,7 @@ class Throwable protected (s: String, private var e: Throwable,
       val thisLength = thisTrace.length
       val parentLength = parentTrace.length
 
-      sprintln("Caused by: " + wCause.toString)
+      sprintln(s"Caused by: $wCause")
 
       if (thisLength != 0) {
         /* Count how many frames are shared between this stack trace and the
@@ -141,12 +141,12 @@ class Throwable protected (s: String, private var e: Throwable,
         val lengthToPrint = thisLength - sameFrameCount
         var i = 0
         while (i < lengthToPrint) {
-          sprintln("  at "+thisTrace(i))
+          sprintln(s"  at ${thisTrace(i)}")
           i += 1
         }
 
         if (sameFrameCount > 0)
-          sprintln("  ... " + sameFrameCount + " more")
+          sprintln(s"  ... $sameFrameCount more")
       } else {
         sprintln("  <no stack trace available>")
       }
@@ -161,7 +161,7 @@ class Throwable protected (s: String, private var e: Throwable,
     val className = getClass().getName()
     val message = getMessage()
     if (message eq null) className
-    else className + ": " + message
+    else s"$className: $message"
   }
 
   def addSuppressed(exception: Throwable): Unit = {
@@ -346,7 +346,7 @@ class ArithmeticException(s: String) extends RuntimeException(s) {
 }
 
 class ArrayIndexOutOfBoundsException(s: String) extends IndexOutOfBoundsException(s) {
-  def this(index: Int) = this("Array index out of range: " + index)
+  def this(index: Int) = this(s"Array index out of range: $index")
   def this() = this(null)
 }
 
@@ -370,7 +370,7 @@ class CloneNotSupportedException(s: String) extends Exception(s) {
 }
 
 class EnumConstantNotPresentException(e: Class[_ <: Enum[_]], c: String)
-    extends RuntimeException(e.getName() + "." + c) {
+    extends RuntimeException(s"${e.getName()}.$c") {
   def enumType(): Class[_ <: Enum[_]] = e
   def constantName(): String = c
 }
@@ -468,12 +468,12 @@ class SecurityException(s: String, e: Throwable) extends RuntimeException(s, e) 
 }
 
 class StringIndexOutOfBoundsException(s: String) extends IndexOutOfBoundsException(s) {
-  def this(index: Int) = this("String index out of range: " + index)
+  def this(index: Int) = this(s"String index out of range: $index")
   def this() = this(null)
 }
 
 class TypeNotPresentException(t: String, e: Throwable)
-  extends RuntimeException("Type " + t + " not present", e) {
+  extends RuntimeException(s"Type $t not present", e) {
   def typeName(): String = t
 }
 

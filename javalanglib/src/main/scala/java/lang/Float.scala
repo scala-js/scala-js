@@ -113,7 +113,7 @@ object Float {
 
     val groups = parseFloatRegExp.exec(s)
     if (groups == null)
-      throw new NumberFormatException("For input string: \"" + s + "\"")
+      throw new NumberFormatException(s"""For input string: "$s"""")
 
     val absResult = if (undefOrIsDefined(groups(2))) {
       scala.Float.NaN
@@ -122,14 +122,14 @@ object Float {
     } else if (undefOrIsDefined(groups(4))) {
       // Decimal notation
       val fullNumberStr = undefOrForceGet(groups(4))
-      val integralPartStr = undefOrGetOrElse(groups(5), "")
-      val fractionalPartStr = undefOrGetOrElse(groups(6), "") + undefOrGetOrElse(groups(7), "")
-      val exponentStr = undefOrGetOrElse(groups(8), "0")
+      val integralPartStr = undefOrGetOrElse(groups(5))("")
+      val fractionalPartStr = undefOrGetOrElse(groups(6))("") + undefOrGetOrElse(groups(7))("")
+      val exponentStr = undefOrGetOrElse(groups(8))("0")
       parseFloatDecimal(fullNumberStr, integralPartStr, fractionalPartStr, exponentStr)
     } else {
       // Hexadecimal notation
-      val integralPartStr = undefOrGetOrElse(groups(10), "")
-      val fractionalPartStr = undefOrGetOrElse(groups(11), "") + undefOrGetOrElse(groups(12), "")
+      val integralPartStr = undefOrGetOrElse(groups(10))("")
+      val fractionalPartStr = undefOrGetOrElse(groups(11))("") + undefOrGetOrElse(groups(12))("")
       val binaryExpStr = undefOrForceGet(groups(13))
       parseFloatHexadecimal(integralPartStr, fractionalPartStr, binaryExpStr)
     }
@@ -145,7 +145,7 @@ object Float {
       integralPartStr: String, fractionalPartStr: String,
       exponentStr: String): scala.Float = {
 
-    val z0 = js.Dynamic.global.parseFloat(fullNumberStr.asInstanceOf[js.Any]).asInstanceOf[scala.Double]
+    val z0 = js.Dynamic.global.parseFloat(fullNumberStr).asInstanceOf[scala.Double]
     val z = z0.toFloat
     val zDouble = z.toDouble
 
@@ -264,7 +264,7 @@ object Float {
      * subnormal floats).
      */
     if (biasedK == 0)
-      throw new AssertionError("parseFloatCorrection was given a subnormal mid: " + mid)
+      throw new AssertionError(s"parseFloatCorrection was given a subnormal mid: $mid")
 
     val mExplicitBits = midBits & ((1L << mbits) - 1)
     val mImplicit1Bit = 1L << mbits // the implicit '1' bit of a normalized floating-point number
