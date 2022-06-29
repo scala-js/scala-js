@@ -54,6 +54,23 @@ final class WrappedDictionary[A](private val dict: js.Dictionary[A])
       throw new NoSuchElementException("key not found: " + key)
   }
 
+  override def getOrElse[V1 >: A](key: String, default: => V1): V1 = {
+    if (contains(key))
+      rawApply(key)
+    else
+      default
+  }
+
+  override def getOrElseUpdate(key: String, op: => A): A = {
+    if (contains(key)) {
+      rawApply(key)
+    } else {
+      val v = op
+      update(key, v)
+      v
+    }
+  }
+
   @inline
   private def rawApply(key: String): A =
     dict.asInstanceOf[DictionaryRawApply[A]].rawApply(key)
