@@ -1,0 +1,29 @@
+/*
+ * Scala.js (https://www.scala-js.org/)
+ *
+ * Copyright EPFL.
+ *
+ * Licensed under Apache License 2.0
+ * (https://www.apache.org/licenses/LICENSE-2.0).
+ *
+ * See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.
+ */
+
+package scala.scalajs.js
+
+import scala.language.reflectiveCalls
+
+final class JavaScriptException(val exception: scala.Any)
+    extends RuntimeException {
+
+  override def getMessage(): String = exception.toString()
+
+  override def fillInStackTrace(): Throwable = {
+    type JSExceptionEx = JavaScriptException {
+      def setStackTraceStateInternal(e: scala.Any): Unit
+    }
+    this.asInstanceOf[JSExceptionEx].setStackTraceStateInternal(exception)
+    this
+  }
+}

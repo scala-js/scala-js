@@ -493,6 +493,16 @@ object Trees {
     val tpe = IntType
   }
 
+  sealed case class WrapAsThrowable(expr: Tree)(implicit val pos: Position)
+      extends Tree {
+    val tpe = ClassType(ThrowableClass)
+  }
+
+  sealed case class UnwrapFromThrowable(expr: Tree)(implicit val pos: Position)
+      extends Tree {
+    val tpe = AnyType
+  }
+
   // JavaScript expressions
 
   sealed case class JSNew(ctor: Tree, args: List[TreeOrJSSpread])(

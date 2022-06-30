@@ -33,4 +33,21 @@ class JavaScriptExceptionTest {
         jsException.toString())
   }
 
+  @Test def caseClassAPI(): Unit = {
+    /* This is mostly to ensure that the js.JavaScriptException from the
+     * scalajs-library takes precedence over the one from the
+     * linker-private-library.
+     */
+
+    val error = new js.TypeError("custom message")
+    val jsException = js.JavaScriptException(error)
+    val jsException2 = jsException.copy()
+    assertNotSame(jsException, jsException2)
+    assertSame(error, jsException2.exception)
+
+    val product: Product = jsException
+    assertEquals("JavaScriptException", product.productPrefix)
+    assertSame(error, product.productElement(0))
+  }
+
 }

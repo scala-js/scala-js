@@ -488,7 +488,10 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
     }
 
     private def validateClassName(cls: ClassName)(implicit pos: Position): Unit = {
-      if (cls.nameString.startsWith("scala."))
+      def isJavaScriptExceptionWithinItself =
+        cls == JavaScriptExceptionClass && enclosingClassName == JavaScriptExceptionClass
+
+      if (cls.nameString.startsWith("scala.") && !isJavaScriptExceptionWithinItself)
         reportError(s"Illegal reference to Scala class ${cls.nameString}")
     }
 
@@ -514,6 +517,9 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
 
 object JavalibIRCleaner {
   private final val MaxFunctionArity = 4
+
+  // Within js.JavaScriptException, which is part of the linker private lib, we can refer to itself
+  private val JavaScriptExceptionClass = ClassName("scala.scalajs.js.JavaScriptException")
 
   private val JavaIOSerializable = ClassName("java.io.Serializable")
   private val JSAny = ClassName("scala.scalajs.js.Any")

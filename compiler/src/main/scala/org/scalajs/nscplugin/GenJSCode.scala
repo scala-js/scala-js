@@ -2398,14 +2398,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case Throw(expr) =>
           val ex = genExpr(expr)
           js.Throw {
-            if (!ex.isInstanceOf[js.Null] && isMaybeJavaScriptException(expr.tpe)) {
-              genApplyMethod(
-                  genLoadModule(RuntimePackageModule),
-                  Runtime_unwrapJavaScriptException,
-                  List(ex))
-            } else {
+            if (!ex.isInstanceOf[js.Null] && isMaybeJavaScriptException(expr.tpe))
+              js.UnwrapFromThrowable(ex)
+            else
               ex
-            }
           }
 
         /* !!! Copy-pasted from `CleanUp.scala` upstream and simplified with
@@ -2930,12 +2926,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       val (exceptValDef, exceptVar) = if (mightCatchJavaScriptException) {
         val valDef = js.VarDef(freshLocalIdent("e"), NoOriginalName,
-            encodeClassType(ThrowableClass), mutable = false, {
-          genApplyMethod(
-              genLoadModule(RuntimePackageModule),
-              Runtime_wrapJavaScriptException,
-              List(origExceptVar))
-        })
+            encodeClassType(ThrowableClass), mutable = false, js.WrapAsThrowable(origExceptVar))
         (valDef, valDef.ref)
       } else {
         (js.Skip(), origExceptVar)

@@ -31,6 +31,15 @@ object Infos {
 
   private val cloneMethodName = MethodName("clone", Nil, ClassRef(ObjectClass))
 
+  /* Elements of WrapAsThrowable and UnwrapFromThrowable used by the Emitter
+   * In theory, these should be an implementation detail of the Emitter, and
+   * requested through `symbolRequirements`. However, doing so would mean that
+   * we would never be able to dead-code-eliminate JavaScriptException, which
+   * would be annoying.
+   */
+  private val JavaScriptExceptionClass = ClassName("scala.scalajs.js.JavaScriptException")
+  private val AnyArgConstructorName = MethodName.constructor(List(ClassRef(ObjectClass)))
+
   final case class NamespacedMethodName(
       namespace: MemberNamespace, methodName: MethodName)
 
@@ -582,6 +591,13 @@ object Infos {
 
             case GetClass(_) =>
               builder.addAccessedClassClass()
+
+            case WrapAsThrowable(_) =>
+              builder.addUsedInstanceTest(ThrowableClass)
+              builder.addInstantiatedClass(JavaScriptExceptionClass, AnyArgConstructorName)
+
+            case UnwrapFromThrowable(_) =>
+              builder.addUsedInstanceTest(JavaScriptExceptionClass)
 
             case JSPrivateSelect(qualifier, className, field) =>
               builder.addPrivateJSFieldUsed(className, field.name)

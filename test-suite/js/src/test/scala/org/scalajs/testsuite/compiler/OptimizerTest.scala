@@ -157,6 +157,26 @@ class OptimizerTest {
     // scalastyle:on return
   }
 
+  @Test def preserveSideEffectsInUnwrapFromThrowable(): Unit = {
+    /* This is also indirectly serves as a test for WrapAsThrowable. It's not
+     * possible to write user-level Scala code that produces a WrapAsThrowable
+     * with anything but a VarRef. But since WrapAsThrowable is handled exactly
+     * like UnwrapFromThrowable in the linker, this test somewhat covers both.
+     */
+
+    var i: Int = 1
+    try {
+      if (i > 0)
+        throw ({ i += 1; new js.JavaScriptException(i) })
+      i = -1 // unreachable
+    } catch {
+      case js.JavaScriptException(x) =>
+        assertEquals(2, x)
+        assertEquals(2, i)
+    }
+    assertEquals(2, i)
+  }
+
   // === constant folding
 
   @Test def constantFoldingEqEqEq(): Unit = {

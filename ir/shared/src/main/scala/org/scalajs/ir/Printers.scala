@@ -558,6 +558,16 @@ object Printers {
           print(expr)
           print(')')
 
+        case WrapAsThrowable(expr) =>
+          print("<wrapAsThrowable>(")
+          print(expr)
+          print(")")
+
+        case UnwrapFromThrowable(expr) =>
+          print("<unwrapFromThrowable>(")
+          print(expr)
+          print(")")
+
         // JavaScript expressions
 
         case JSNew(ctor, args) =>

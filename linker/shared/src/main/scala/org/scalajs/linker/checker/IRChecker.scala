@@ -550,6 +550,12 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
       case IdentityHashCode(expr) =>
         typecheckExpr(expr, env)
 
+      case WrapAsThrowable(expr) =>
+        typecheckExpr(expr, env)
+
+      case UnwrapFromThrowable(expr) =>
+        typecheckExpect(expr, env, ClassType(ThrowableClass))
+
       // JavaScript expressions
 
       case JSNew(ctor, args) =>

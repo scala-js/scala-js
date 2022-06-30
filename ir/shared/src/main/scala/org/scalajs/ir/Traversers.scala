@@ -142,6 +142,12 @@ object Traversers {
       case IdentityHashCode(expr) =>
         traverse(expr)
 
+      case WrapAsThrowable(expr) =>
+        traverse(expr)
+
+      case UnwrapFromThrowable(expr) =>
+        traverse(expr)
+
       // JavaScript expressions
 
       case JSNew(ctor, args) =>

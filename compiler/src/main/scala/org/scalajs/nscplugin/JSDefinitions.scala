@@ -110,8 +110,6 @@ trait JSDefinitions {
       lazy val Special_debugger = getMemberMethod(SpecialPackageModule, newTermName("debugger"))
 
     lazy val RuntimePackageModule = getPackageObject("scala.scalajs.runtime")
-      lazy val Runtime_wrapJavaScriptException    = getMemberMethod(RuntimePackageModule, newTermName("wrapJavaScriptException"))
-      lazy val Runtime_unwrapJavaScriptException  = getMemberMethod(RuntimePackageModule, newTermName("unwrapJavaScriptException"))
       lazy val Runtime_toScalaVarArgs             = getMemberMethod(RuntimePackageModule, newTermName("toScalaVarArgs"))
       lazy val Runtime_toJSVarArgs                = getMemberMethod(RuntimePackageModule, newTermName("toJSVarArgs"))
       lazy val Runtime_constructorOf              = getMemberMethod(RuntimePackageModule, newTermName("constructorOf"))

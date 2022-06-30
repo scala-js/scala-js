@@ -1270,6 +1270,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case IdentityHashCode(expr)  => test(expr)
         case GetClass(arg)           => test(arg) // may NPE but that is UB.
 
+        // Expressions preserving pureness but requiring that expr be a var
+        case WrapAsThrowable(expr @ (VarRef(_) | Transient(JSVarRef(_, _))))     => test(expr)
+        case UnwrapFromThrowable(expr @ (VarRef(_) | Transient(JSVarRef(_, _)))) => test(expr)
+
         // Transients preserving pureness
         case Transient(ZeroOf(runtimeClass)) =>
           test(runtimeClass) // may NPE but that is UB.
@@ -1784,6 +1788,22 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             redo(IdentityHashCode(newExpr))(env)
           }
 
+        case WrapAsThrowable(expr) =>
+          unnest(expr) { (newExpr, newEnv) =>
+            implicit val env = newEnv
+            withTempJSVar(newExpr) { varRef =>
+              redo(WrapAsThrowable(varRef))
+            }
+          }
+
+        case UnwrapFromThrowable(expr) =>
+          unnest(expr) { (newExpr, newEnv) =>
+            implicit val env = newEnv
+            withTempJSVar(newExpr) { varRef =>
+              redo(UnwrapFromThrowable(varRef))
+            }
+          }
+
         case Transient(ZeroOf(runtimeClass)) =>
           unnest(runtimeClass) { (newRuntimeClass, env) =>
             redo(Transient(ZeroOf(newRuntimeClass)))(env)
@@ -2000,6 +2020,20 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 "rhs = " + rhs + " of class " + rhs.getClass)
           }
       })
+    }
+
+    private def withTempJSVar(value: Tree)(makeBody: Transient => js.Tree)(
+        implicit env: Env, pos: Position): js.Tree = {
+      withTempJSVar(transformExpr(value, value.tpe), value.tpe)(makeBody)
+    }
+
+    private def withTempJSVar(value: js.Tree, tpe: Type)(
+        makeBody: Transient => js.Tree)(
+        implicit pos: Position): js.Tree = {
+      val varIdent = newSyntheticVar()
+      val varDef = genLet(varIdent, mutable = false, value)
+      val body = makeBody(Transient(JSVarRef(varIdent, mutable = false)(tpe)))
+      js.Block(varDef, body)
     }
 
     private def needsToTranslateAnySpread(args: List[TreeOrJSSpread]): Boolean =
@@ -2628,6 +2662,20 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case IdentityHashCode(expr) =>
           genCallHelper("systemIdentityHashCode", transformExprNoChar(expr))
+
+        case WrapAsThrowable(expr) =>
+          val newExpr = transformExprNoChar(expr).asInstanceOf[js.VarRef]
+          js.If(
+              genIsInstanceOfClass(newExpr, ThrowableClass),
+              newExpr,
+              genScalaClassNew(JavaScriptExceptionClass, AnyArgConstructorName, newExpr))
+
+        case UnwrapFromThrowable(expr) =>
+          val newExpr = transformExprNoChar(expr).asInstanceOf[js.VarRef]
+          js.If(
+              genIsInstanceOfClass(newExpr, JavaScriptExceptionClass),
+              genSelect(newExpr, JavaScriptExceptionClass, FieldIdent(exceptionFieldName)),
+              newExpr)
 
         // Transients
 

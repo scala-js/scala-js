@@ -661,6 +661,12 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
       case IdentityHashCode(expr) =>
         checkTree(expr, env)
 
+      case WrapAsThrowable(expr) =>
+        checkTree(expr, env)
+
+      case UnwrapFromThrowable(expr) =>
+        checkTree(expr, env)
+
       // JavaScript expressions
 
       case JSNew(ctor, args) =>

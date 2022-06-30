@@ -122,6 +122,11 @@ private[ir] object Tags {
 
   final val TagJSNewTarget = TagJSImportMeta + 1
 
+  // New in 1.11
+
+  final val TagWrapAsThrowable = TagJSNewTarget + 1
+  final val TagUnwrapFromThrowable = TagWrapAsThrowable + 1
+
   // Tags for member defs
 
   final val TagFieldDef = 1
