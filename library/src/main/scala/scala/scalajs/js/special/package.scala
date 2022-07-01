@@ -135,6 +135,50 @@ package object special {
   def forin(obj: scala.Any)(f: js.Function1[scala.Any, scala.Any]): Unit =
     throw new java.lang.Error("stub")
 
+  /** Throw an arbitrary value, which will be caught as is by a JavaScript
+   *  `try..catch` statement.
+   *
+   *  Usually, a Scala `throw` expression is more appropriate. Even if you
+   *  want to throw a JS error type such as [[js.Error]], it is more idiomatic
+   *  to wrap it in a [[js.JavaScriptException]] and throw that one.
+   *
+   *  However, if you hold a value of an arbitrary type, which was caught by a
+   *  JavaScript `try..catch` statement (sometimes indirectly, such as with
+   *  [[js.Promise]]s), it is appropriate to use `js.special.throw` to rethrow
+   *  it.
+   */
+  def `throw`(ex: scala.Any): Nothing =
+    throw new java.lang.Error("stub")
+
+  /** Performs a JavaScript `try..catch`, which can catch any type of value.
+   *
+   *  Usually, a Scala `try..catch` expression catching [[Throwable]] is more
+   *  appropriate. Values that are not instances of [[Throwable]], such as JS
+   *  error values, are then wrapped in a [[js.JavaScriptException]].
+   *
+   *  However, if you need to get the originally thrown value, for example to
+   *  pass it on to a JavaScript error handler, it is appropriate to use
+   *  `js.special.tryCatch`.
+   */
+  def tryCatch[A](body: js.Function0[A])(handler: js.Function1[scala.Any, A]): A =
+    throw new java.lang.Error("stub")
+
+  /** Wrap any value so that it can be assigned to a [[Throwable]].
+   *
+   *  Instances of [[Throwable]] are returned as is. Other values are wrapped
+   *  in a [[js.JavaScriptException]].
+   */
+  def wrapAsThrowable(ex: scala.Any): Throwable =
+    throw new java.lang.Error("stub")
+
+  /** Unwrap an exception value wrapped with `wrapAsThrowable`.
+   *
+   *  Instances of [[js.JavaScriptException]] are unwrapped to return the
+   *  underlying value. Other values are returned as is.
+   */
+  def unwrapFromThrowable(th: Throwable): scala.Any =
+    throw new java.lang.Error("stub")
+
   /** The value of the JavaScript `this` at the top-level of the generated
    *  file.
    *

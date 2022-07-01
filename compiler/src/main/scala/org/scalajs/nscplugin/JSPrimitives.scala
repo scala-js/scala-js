@@ -59,12 +59,16 @@ abstract class JSPrimitives {
   final val IDENTITY_HASH_CODE = LINKING_INFO + 1                      // runtime.identityHashCode
   final val DYNAMIC_IMPORT = IDENTITY_HASH_CODE + 1                    // runtime.dynamicImport
 
-  final val STRICT_EQ = DYNAMIC_IMPORT + 1     // js.special.strictEquals
-  final val IN = STRICT_EQ + 1                 // js.special.in
-  final val INSTANCEOF = IN + 1                // js.special.instanceof
-  final val DELETE = INSTANCEOF + 1            // js.special.delete
-  final val FORIN = DELETE + 1                 // js.special.forin
-  final val DEBUGGER = FORIN + 1               // js.special.debugger
+  final val STRICT_EQ = DYNAMIC_IMPORT + 1                // js.special.strictEquals
+  final val IN = STRICT_EQ + 1                            // js.special.in
+  final val INSTANCEOF = IN + 1                           // js.special.instanceof
+  final val DELETE = INSTANCEOF + 1                       // js.special.delete
+  final val FORIN = DELETE + 1                            // js.special.forin
+  final val JS_THROW = FORIN + 1                          // js.special.throw
+  final val JS_TRY_CATCH = JS_THROW + 1                   // js.special.tryCatch
+  final val WRAP_AS_THROWABLE = JS_TRY_CATCH + 1          // js.special.wrapAsThrowable
+  final val UNWRAP_FROM_THROWABLE = WRAP_AS_THROWABLE + 1 // js.special.unwrapFromThrowable
+  final val DEBUGGER = UNWRAP_FROM_THROWABLE + 1          // js.special.debugger
 
   final val LastJSPrimitiveCode = DEBUGGER
 
@@ -114,6 +118,10 @@ abstract class JSPrimitives {
     addPrimitive(Special_instanceof, INSTANCEOF)
     addPrimitive(Special_delete, DELETE)
     addPrimitive(Special_forin, FORIN)
+    addPrimitive(Special_throw, JS_THROW)
+    addPrimitive(Special_tryCatch, JS_TRY_CATCH)
+    addPrimitive(Special_wrapAsThrowable, WRAP_AS_THROWABLE)
+    addPrimitive(Special_unwrapFromThrowable, UNWRAP_FROM_THROWABLE)
     addPrimitive(Special_debugger, DEBUGGER)
   }
 

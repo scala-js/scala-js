@@ -157,13 +157,29 @@ class OptimizerTest {
     // scalastyle:on return
   }
 
-  @Test def preserveSideEffectsInUnwrapFromThrowable(): Unit = {
-    /* This is also indirectly serves as a test for WrapAsThrowable. It's not
-     * possible to write user-level Scala code that produces a WrapAsThrowable
-     * with anything but a VarRef. But since WrapAsThrowable is handled exactly
-     * like UnwrapFromThrowable in the linker, this test somewhat covers both.
-     */
+  @Test def preserveSideEffectsInWrapAsThrowable(): Unit = {
+    var i: Int = 1
+    val x =
+      if (i > 0) js.special.wrapAsThrowable({ i += 1; i })
+      else 42
 
+    x match {
+      case js.JavaScriptException(y) =>
+        assertEquals(2, y)
+    }
+    assertEquals(2, i)
+  }
+
+  @Test def preserveSideEffectsInUnwrapFromThrowable(): Unit = {
+    var i: Int = 1
+    val x =
+      if (i > 0) js.special.unwrapFromThrowable({ i += 1; new js.JavaScriptException(i) })
+      else 42
+    assertEquals(2, x)
+    assertEquals(2, i)
+  }
+
+  @Test def preserveSideEffectsInUnwrapFromThrowableInThrow(): Unit = {
     var i: Int = 1
     try {
       if (i > 0)

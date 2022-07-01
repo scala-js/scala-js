@@ -5288,6 +5288,53 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               js.ForIn(objVarDef.ref, keyVarIdent, NoOriginalName, {
                 js.JSFunctionApply(fVarDef.ref, List(keyVarRef))
               }))
+
+        case JS_THROW =>
+          // js.special.throw(arg)
+          js.Throw(genArgs1)
+
+        case JS_TRY_CATCH =>
+          /* js.special.tryCatch(arg1, arg2)
+           *
+           * We must generate:
+           *
+           * val body = arg1
+           * val handler = arg2
+           * try {
+           *   body()
+           * } catch (e) {
+           *   handler(e)
+           * }
+           *
+           * with temporary vals, because `arg2` must be evaluated before
+           * `body` executes. Moreover, exceptions thrown while evaluating
+           * the function values `arg1` and `arg2` must not be caught.
+           */
+          val (arg1, arg2) = genArgs2
+          val bodyVarDef = js.VarDef(freshLocalIdent("body"), NoOriginalName,
+              jstpe.AnyType, mutable = false, arg1)
+          val handlerVarDef = js.VarDef(freshLocalIdent("handler"), NoOriginalName,
+              jstpe.AnyType, mutable = false, arg2)
+          val exceptionVarIdent = freshLocalIdent("e")
+          val exceptionVarRef = js.VarRef(exceptionVarIdent)(jstpe.AnyType)
+          js.Block(
+            bodyVarDef,
+            handlerVarDef,
+            js.TryCatch(
+              js.JSFunctionApply(bodyVarDef.ref, Nil),
+              exceptionVarIdent,
+              NoOriginalName,
+              js.JSFunctionApply(handlerVarDef.ref, List(exceptionVarRef))
+            )(jstpe.AnyType)
+          )
+
+        case WRAP_AS_THROWABLE =>
+          // js.special.wrapAsThrowable(arg)
+          js.WrapAsThrowable(genArgs1)
+
+        case UNWRAP_FROM_THROWABLE =>
+          // js.special.unwrapFromThrowable(arg)
+          js.UnwrapFromThrowable(genArgs1)
       }
     }
 

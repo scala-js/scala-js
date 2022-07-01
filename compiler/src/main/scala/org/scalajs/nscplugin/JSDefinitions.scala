@@ -107,6 +107,10 @@ trait JSDefinitions {
       lazy val Special_instanceof = getMemberMethod(SpecialPackageModule, newTermName("instanceof"))
       lazy val Special_delete = getMemberMethod(SpecialPackageModule, newTermName("delete"))
       lazy val Special_forin = getMemberMethod(SpecialPackageModule, newTermName("forin"))
+      lazy val Special_throw = getMemberMethod(SpecialPackageModule, newTermName("throw"))
+      lazy val Special_tryCatch = getMemberMethod(SpecialPackageModule, newTermName("tryCatch"))
+      lazy val Special_wrapAsThrowable = getMemberMethod(SpecialPackageModule, newTermName("wrapAsThrowable"))
+      lazy val Special_unwrapFromThrowable = getMemberMethod(SpecialPackageModule, newTermName("unwrapFromThrowable"))
       lazy val Special_debugger = getMemberMethod(SpecialPackageModule, newTermName("debugger"))
 
     lazy val RuntimePackageModule = getPackageObject("scala.scalajs.runtime")
