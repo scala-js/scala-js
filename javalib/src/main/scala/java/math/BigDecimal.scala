@@ -276,11 +276,20 @@ object BigDecimal {
     32 - java.lang.Integer.numberOfLeadingZeros(smallValue)
   }
 
-  @inline
-  private def charNotEqualTo(c: Char, cs: Char*): Boolean = !cs.contains(c)
+  private def charNotEqualTo(c: Char, cs: Array[Char]): Boolean = !charEqualTo(c, cs)
 
-  @inline
-  private def charEqualTo(c: Char, cs: Char*): Boolean = cs.contains(c)
+  private def charEqualTo(c: Char, cs: Array[Char]): Boolean = {
+    // scalastyle:off return
+    val len = cs.length
+    var i = 0
+    while (i != len) {
+      if (cs(i) == c)
+        return true
+      i += 1
+    }
+    false
+    // scalastyle:on return
+  }
 
   @inline
   private def insertString(s: String, pos: Int, s2: String): String =
@@ -374,12 +383,12 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     if (offset <= last && in(offset) == '+') {
       index += 1
       // Fail if the next character is another sign.
-      if (index < last && charEqualTo(in(index), '+', '-'))
+      if (index < last && charEqualTo(in(index), Array('+', '-')))
         throw new NumberFormatException("For input string: " + in.toString)
     } else {
       // check that '-' is not followed by another sign
       val isMinus = index <= last && in(index) == '-'
-      val nextIsSign = index + 1 < last && charEqualTo(in(index + 1), '+', '-')
+      val nextIsSign = index + 1 < last && charEqualTo(in(index + 1), Array('+', '-'))
       if (isMinus && nextIsSign)
         throw new NumberFormatException("For input string: " + in.toString)
     }
@@ -388,7 +397,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     var counter = 0
     var wasNonZero = false
     // Accumulating all digits until a possible decimal point
-    while (index <= last && charNotEqualTo(in(index), '.', 'e', 'E')) {
+    while (index <= last && charNotEqualTo(in(index), Array('.', 'e', 'E'))) {
       if (!wasNonZero) {
         if (in(index) == '0') counter += 1
         else wasNonZero = true
@@ -404,7 +413,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
         index += 1
         // Accumulating all digits until a possible exponent
         val begin = index
-        while (index <= last && charNotEqualTo(in(index), 'e', 'E')) {
+        while (index <= last && charNotEqualTo(in(index), Array('e', 'E'))) {
           if (!wasNonZero) {
             if (in(index) == '0') counter += 1
             else wasNonZero = true
@@ -420,7 +429,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     }
 
     // An exponent was found
-    if ((index <= last) && charEqualTo(in(index), 'e', 'E')) {
+    if ((index <= last) && charEqualTo(in(index), Array('e', 'E'))) {
       index += 1
       // Checking for a possible sign of scale
       val indexIsPlus = index <= last && in(index) == '+'
