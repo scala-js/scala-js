@@ -58,8 +58,13 @@ object BigDecimal {
 
   private final val LongFivePows = newArrayOfPows(28, 5)
 
-  private final val LongFivePowsBitLength =
-    Array.tabulate[Int](LongFivePows.length)(i => bitLength(LongFivePows(i)))
+  private final val LongFivePowsBitLength = {
+    val len = LongFivePows.length
+    val result = new Array[Int](len)
+    for (i <- 0 until len)
+      result(i) = bitLength(LongFivePows(i))
+    result
+  }
 
   /** An array of longs with powers of ten.
    *
@@ -68,8 +73,13 @@ object BigDecimal {
    */
   private[math] final val LongTenPows = newArrayOfPows(19, 10)
 
-  private final val LongTenPowsBitLength =
-    Array.tabulate[Int](LongTenPows.length)(i => bitLength(LongTenPows(i)))
+  private final val LongTenPowsBitLength = {
+    val len = LongTenPows.length
+    val result = new Array[Int](len)
+    for (i <- 0 until len)
+      result(i) = bitLength(LongTenPows(i))
+    result
+  }
 
   private final val BigIntScaledByZeroLength = 11
 
@@ -77,15 +87,23 @@ object BigDecimal {
    *
    *  (<code>[0,0],[1,0],...,[10,0]</code>).
    */
-  private final val BigIntScaledByZero =
-    Array.tabulate[BigDecimal](BigIntScaledByZeroLength)(new BigDecimal(_, 0))
+  private final val BigIntScaledByZero = {
+    val result = new Array[BigDecimal](BigIntScaledByZeroLength)
+    for (i <- 0 until BigIntScaledByZeroLength)
+      result(i) = new BigDecimal(i, 0)
+    result
+  }
 
   /** An array with the zero number scaled by the first positive scales.
    *
    *  (<code>0*10^0, 0*10^1, ..., 0*10^10</code>).
    */
-  private final val ZeroScaledBy =
-    Array.tabulate[BigDecimal](BigIntScaledByZeroLength)(new BigDecimal(0, _))
+  private final val ZeroScaledBy = {
+    val result = new Array[BigDecimal](BigIntScaledByZeroLength)
+    for (i <- 0 until BigIntScaledByZeroLength)
+      result(i) = new BigDecimal(0, i)
+    result
+  }
 
   /** A string filled with 100 times the character `'0'`.
    *  It is not a `final` val so that it isn't copied at every call site.
@@ -205,8 +223,13 @@ object BigDecimal {
     else 0
   }
 
-  private[math] def newArrayOfPows(len: Int, pow: Int): Array[Long] =
-    Array.iterate(1L, len)(_ * pow)
+  private[math] def newArrayOfPows(len: Int, pow: Int): Array[Long] = {
+    val result = new Array[Long](len)
+    result(0) = 1L
+    for (i <- 1 until len)
+      result(i) = result(i - 1) * pow
+    result
+  }
 
   /** Return an increment that can be -1,0 or 1, depending on {@code roundingMode}.
    *

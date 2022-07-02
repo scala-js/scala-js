@@ -79,8 +79,13 @@ private[math] object Primality {
       (18, 13), (31, 23), (54, 43), (97, 75))
 
   /** All {@code BigInteger} prime numbers with bit length lesser than 8 bits. */
-  private val BiPrimes =
-    Array.tabulate[BigInteger](Primes.length)(i => BigInteger.valueOf(Primes(i)))
+  private val BiPrimes = {
+    val len = Primes.length
+    val result = new Array[BigInteger](len)
+    for (i <- 0 until len)
+      result(i) = BigInteger.valueOf(Primes(i))
+    result
+  }
 
   /** A random number is generated until a probable prime number is found.
    *

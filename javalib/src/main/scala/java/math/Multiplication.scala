@@ -449,6 +449,11 @@ private[math] object Multiplication {
     }
   }
 
-  private def newArrayOfPows(len: Int, pow: Int): Array[Int] =
-    Array.iterate(1, len)(_ * pow)
+  private def newArrayOfPows(len: Int, pow: Int): Array[Int] = {
+    val result = new Array[Int](len)
+    result(0) = 1
+    for (i <- 1 until len)
+      result(i) = result(i - 1) * pow
+    result
+  }
 }
