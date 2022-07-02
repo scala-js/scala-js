@@ -19,6 +19,7 @@ import scala.annotation.tailrec
 
 import java.nio._
 import java.nio.charset.{CodingErrorAction, StandardCharsets}
+import java.util.JSUtils._
 
 final class URI(origStr: String) extends Serializable with Comparable[URI] {
 
@@ -35,10 +36,10 @@ final class URI(origStr: String) extends Serializable with Comparable[URI] {
   if (_fld == null)
     throw new URISyntaxException(origStr, "Malformed URI")
 
-  private val _isAbsolute = _fld(AbsScheme).isDefined
-  private val _isOpaque = _fld(AbsOpaquePart).isDefined
+  private val _isAbsolute = undefOrIsDefined(_fld(AbsScheme))
+  private val _isOpaque = undefOrIsDefined(_fld(AbsOpaquePart))
 
-  @inline private def fld(idx: Int): String = _fld(idx).orNull
+  @inline private def fld(idx: Int): String = undefOrGetOrNull(_fld(idx))
 
   @inline private def fld(absIdx: Int, relIdx: Int): String =
     if (_isAbsolute) fld(absIdx) else fld(relIdx)

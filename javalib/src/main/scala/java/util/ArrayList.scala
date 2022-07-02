@@ -13,6 +13,7 @@
 package java.util
 
 import java.lang.Cloneable
+import java.util.JSUtils._
 
 import scala.scalajs._
 
@@ -60,22 +61,22 @@ class ArrayList[E] private (private[ArrayList] val inner: js.Array[E])
   }
 
   override def add(e: E): Boolean = {
-    inner += e
+    inner.push(e)
     true
   }
 
   override def add(index: Int, element: E): Unit = {
     checkIndexOnBounds(index)
-    inner.insert(index, element)
+    inner.splice(index, 0, element)
   }
 
   override def remove(index: Int): E = {
     checkIndexInBounds(index)
-    inner.remove(index)
+    arrayRemoveAndGet(inner, index)
   }
 
   override def clear(): Unit =
-    inner.clear()
+    inner.length = 0
 
   override def addAll(index: Int, c: Collection[_ <: E]): Boolean = {
     c match {

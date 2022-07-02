@@ -14,6 +14,7 @@ package java.util.regex
 
 import scala.annotation.tailrec
 
+import java.util.JSUtils._
 import java.util.ScalaOps._
 
 import scala.scalajs.js
@@ -132,14 +133,14 @@ final class Pattern private[regex] (
   }
 
   private[regex] def namedGroup(name: String): Int = {
-    groupNumberMap(namedGroups.getOrElse(name, {
+    groupNumberMap(dictGetOrElse(namedGroups, name) {
       throw new IllegalArgumentException(s"No group with name <$name>")
-    }))
+    })
   }
 
   private[regex] def getIndices(lastMatch: js.RegExp.ExecResult, forMatches: Boolean): IndicesArray = {
     val lastMatchDyn = lastMatch.asInstanceOf[js.Dynamic]
-    if (js.isUndefined(lastMatchDyn.indices)) {
+    if (isUndefined(lastMatchDyn.indices)) {
       if (supportsIndices) {
         if (!enabledNativeIndices) {
           jsRegExpForFind = new js.RegExp(jsPattern, jsFlagsForFind + "d")

@@ -15,6 +15,7 @@ package java.nio.charset
 import scala.annotation.switch
 
 import java.nio._
+import java.util.JSUtils._
 
 import scala.scalajs.js
 
@@ -77,7 +78,7 @@ object CoderResult {
   }
 
   private def malformedForLengthImpl(length: Int): CoderResult = {
-    uniqueMalformed(length).fold {
+    undefOrFold(uniqueMalformed(length)) {
       val result = new CoderResult(Malformed, length)
       uniqueMalformed(length) = result
       result
@@ -95,7 +96,7 @@ object CoderResult {
   }
 
   private def unmappableForLengthImpl(length: Int): CoderResult = {
-    uniqueUnmappable(length).fold {
+    undefOrFold(uniqueUnmappable(length)) {
       val result = new CoderResult(Unmappable, length)
       uniqueUnmappable(length) = result
       result
