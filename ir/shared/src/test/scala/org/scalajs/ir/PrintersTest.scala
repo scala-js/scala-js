@@ -599,6 +599,15 @@ class PrintersTest {
     assertPrintEquals("<identityHashCode>(x)", IdentityHashCode(ref("x", AnyType)))
   }
 
+  @Test def printWrapAsThrowable(): Unit = {
+    assertPrintEquals("<wrapAsThrowable>(e)", WrapAsThrowable(ref("e", AnyType)))
+  }
+
+  @Test def printUnwrapFromThrowable(): Unit = {
+    assertPrintEquals("<unwrapFromThrowable>(e)",
+        UnwrapFromThrowable(ref("e", ClassType(ThrowableClass))))
+  }
+
   @Test def printJSNew(): Unit = {
     assertPrintEquals("new C()", JSNew(ref("C", AnyType), Nil))
     assertPrintEquals("new C(4, 5)", JSNew(ref("C", AnyType), List(i(4), i(5))))

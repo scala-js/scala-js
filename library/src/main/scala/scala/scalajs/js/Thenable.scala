@@ -59,10 +59,7 @@ object Thenable {
             (): Unit | js.Thenable[Unit]
           },
           js.defined { (e: scala.Any) =>
-            p2.failure(e match {
-              case th: Throwable => th
-              case _             => js.JavaScriptException(e)
-            })
+            p2.failure(js.special.wrapAsThrowable(e))
             (): Unit | js.Thenable[Unit]
           })
       p2.future

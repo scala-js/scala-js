@@ -412,6 +412,14 @@ object Serializers {
           writeTagAndPos(TagIdentityHashCode)
           writeTree(expr)
 
+        case WrapAsThrowable(expr) =>
+          writeTagAndPos(TagWrapAsThrowable)
+          writeTree(expr)
+
+        case UnwrapFromThrowable(expr) =>
+          writeTagAndPos(TagUnwrapFromThrowable)
+          writeTree(expr)
+
         case JSNew(ctor, args) =>
           writeTagAndPos(TagJSNew)
           writeTree(ctor); writeTreeOrJSSpreads(args)
@@ -1141,6 +1149,11 @@ object Serializers {
         case TagGetClass         => GetClass(readTree())
         case TagClone            => Clone(readTree())
         case TagIdentityHashCode => IdentityHashCode(readTree())
+
+        case TagWrapAsThrowable =>
+          WrapAsThrowable(readTree())
+        case TagUnwrapFromThrowable =>
+          UnwrapFromThrowable(readTree())
 
         case TagJSNew                => JSNew(readTree(), readTreeOrJSSpreads())
         case TagJSPrivateSelect      => JSPrivateSelect(readTree(), readClassName(), readFieldIdent())

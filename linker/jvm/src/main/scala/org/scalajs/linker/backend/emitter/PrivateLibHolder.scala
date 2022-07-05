@@ -18,17 +18,18 @@ import org.scalajs.linker.interface.IRFile
 import org.scalajs.linker.standard.MemIRFileImpl
 
 object PrivateLibHolder {
-  private val relativeDir = "org/scalajs/linker/runtime/"
-  private val sjsirNames = Seq(
-      "RuntimeLong.sjsir",
-      "RuntimeLong$.sjsir",
-      "UndefinedBehaviorError.sjsir"
+  private val sjsirPaths = Seq(
+      "org/scalajs/linker/runtime/RuntimeLong.sjsir",
+      "org/scalajs/linker/runtime/RuntimeLong$.sjsir",
+      "org/scalajs/linker/runtime/UndefinedBehaviorError.sjsir",
+      "scala/scalajs/js/JavaScriptException.sjsir"
   )
 
   val files: Seq[IRFile] = {
-    for (name <- sjsirNames) yield {
+    for (path <- sjsirPaths) yield {
+      val name = path.substring(path.lastIndexOf('/') + 1)
       new MemIRFileImpl(
-          path = relativeDir + name,
+          path = path,
           version = Some(""), // this indicates that the file never changes
           content = readResource(name)
       )

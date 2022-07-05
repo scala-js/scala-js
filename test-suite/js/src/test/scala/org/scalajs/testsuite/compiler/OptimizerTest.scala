@@ -157,6 +157,42 @@ class OptimizerTest {
     // scalastyle:on return
   }
 
+  @Test def preserveSideEffectsInWrapAsThrowable(): Unit = {
+    var i: Int = 1
+    val x =
+      if (i > 0) js.special.wrapAsThrowable({ i += 1; i })
+      else 42
+
+    x match {
+      case js.JavaScriptException(y) =>
+        assertEquals(2, y)
+    }
+    assertEquals(2, i)
+  }
+
+  @Test def preserveSideEffectsInUnwrapFromThrowable(): Unit = {
+    var i: Int = 1
+    val x =
+      if (i > 0) js.special.unwrapFromThrowable({ i += 1; new js.JavaScriptException(i) })
+      else 42
+    assertEquals(2, x)
+    assertEquals(2, i)
+  }
+
+  @Test def preserveSideEffectsInUnwrapFromThrowableInThrow(): Unit = {
+    var i: Int = 1
+    try {
+      if (i > 0)
+        throw ({ i += 1; new js.JavaScriptException(i) })
+      i = -1 // unreachable
+    } catch {
+      case js.JavaScriptException(x) =>
+        assertEquals(2, x)
+        assertEquals(2, i)
+    }
+    assertEquals(2, i)
+  }
+
   // === constant folding
 
   @Test def constantFoldingEqEqEq(): Unit = {

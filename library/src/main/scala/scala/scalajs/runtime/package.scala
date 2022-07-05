@@ -18,15 +18,13 @@ package object runtime {
 
   import scala.scalajs.runtime.Compat._
 
-  def wrapJavaScriptException(e: Any): Throwable = e match {
-    case e: Throwable => e
-    case _            => js.JavaScriptException(e)
-  }
+  @deprecated("Unused by the codegen; use js.special.wrapAsThrowable instead", "1.11.0")
+  @inline def wrapJavaScriptException(e: Any): Throwable =
+    js.special.wrapAsThrowable(e)
 
-  def unwrapJavaScriptException(th: Throwable): Any = th match {
-    case js.JavaScriptException(e) => e
-    case _                         => th
-  }
+  @deprecated("Unused by the codegen; use js.special.unwrapFromThrowable instead", "1.11.0")
+  @inline def unwrapJavaScriptException(th: Throwable): Any =
+    js.special.unwrapFromThrowable(th)
 
   @inline def toScalaVarArgs[A](array: js.Array[A]): Seq[A] =
     toScalaVarArgsImpl(array)

@@ -18,13 +18,19 @@ import org.scalajs.ir.Types._
 private[emitter] object EmitterNames {
   // Class names
 
+  val JavaScriptExceptionClass =
+    ClassName("scala.scalajs.js.JavaScriptException")
+
   val UndefinedBehaviorErrorClass =
     ClassName("org.scalajs.linker.runtime.UndefinedBehaviorError")
 
-  val ThrowableClass = ClassName("java.lang.Throwable")
+  // Field names
+
+  val exceptionFieldName = FieldName("exception")
 
   // Method names
 
+  val AnyArgConstructorName = MethodName.constructor(List(ClassRef(ObjectClass)))
   val StringArgConstructorName = MethodName.constructor(List(ClassRef(BoxedStringClass)))
   val ThrowableArgConsructorName = MethodName.constructor(List(ClassRef(ThrowableClass)))
 

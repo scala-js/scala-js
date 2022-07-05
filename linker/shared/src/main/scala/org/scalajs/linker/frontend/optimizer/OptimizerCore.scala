@@ -307,7 +307,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       implicit scope: Scope): Tree = {
 
     @inline implicit def pos = tree.pos
-    val result = tree match {
+    val result: Tree = tree match {
       // Definitions
 
       case VarDef(_, _, _, _, rhs) =>
@@ -590,6 +590,11 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
       case IdentityHashCode(expr) =>
         IdentityHashCode(transformExpr(expr))
+
+      case _:WrapAsThrowable | _:UnwrapFromThrowable =>
+        trampoline {
+          pretransformExpr(tree)(finishTransform(isStat))
+        }
 
       // JavaScript expressions
 
@@ -943,6 +948,48 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
       case tree: BinaryOp =>
         pretransformBinaryOp(tree)(cont)
+
+      case WrapAsThrowable(expr) =>
+        pretransformExpr(expr) { texpr =>
+          def default = {
+            val refinedType: RefinedType = RefinedType(ThrowableClassType, isExact = false, isNullable = false)
+            cont(PreTransTree(WrapAsThrowable(finishTransformExpr(texpr)), refinedType))
+          }
+
+          if (isSubtype(texpr.tpe.base, ThrowableClassType)) {
+            if (texpr.tpe.isNullable)
+              default
+            else
+              cont(texpr)
+          } else {
+            if (texpr.tpe.isExact) {
+              pretransformNew(AllocationSite.Tree(tree), JavaScriptExceptionClass,
+                  MethodIdent(AnyArgConstructorName), texpr :: Nil)(cont)
+            } else {
+              default
+            }
+          }
+        }
+
+      case UnwrapFromThrowable(expr) =>
+        pretransformExpr(expr) { texpr =>
+          def default =
+            cont(PreTransTree(UnwrapFromThrowable(finishTransformExpr(texpr))))
+
+          if (isSubtype(texpr.tpe.base, JavaScriptExceptionClassType)) {
+            if (texpr.tpe.isNullable) {
+              default
+            } else {
+              pretransformSelectCommon(AnyType, texpr, JavaScriptExceptionClass,
+                  FieldIdent(exceptionFieldName), isLhsOfAssign = false)(cont)
+            }
+          } else {
+            if (texpr.tpe.isExact || !isSubtype(JavaScriptExceptionClassType, texpr.tpe.base))
+              cont(texpr)
+            else
+              default
+          }
+        }
 
       case tree: JSSelect =>
         pretransformJSSelect(tree, isLhsOfAssign = false)(cont)
@@ -1543,6 +1590,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       Block(elems.map(keepOnlySideEffects))(stat.pos)
     case RecordSelect(record, _) =>
       keepOnlySideEffects(record)
+    case WrapAsThrowable(expr) =>
+      keepOnlySideEffects(expr)
+    case UnwrapFromThrowable(expr) =>
+      keepOnlySideEffects(expr)
     case _ =>
       stat
   }
@@ -4699,10 +4750,18 @@ private[optimizer] object OptimizerCore {
 
   private val thisOriginalName: OriginalName = OriginalName("this")
 
-  private val Tuple2Class = ClassName("scala.Tuple2")
-  private val NilClass = ClassName("scala.collection.immutable.Nil$")
-  private val JSWrappedArrayClass = ClassName("scala.scalajs.js.WrappedArray")
   private val ClassTagModuleClass = ClassName("scala.reflect.ClassTag$")
+  private val JavaScriptExceptionClass = ClassName("scala.scalajs.js.JavaScriptException")
+  private val JSWrappedArrayClass = ClassName("scala.scalajs.js.WrappedArray")
+  private val NilClass = ClassName("scala.collection.immutable.Nil$")
+  private val Tuple2Class = ClassName("scala.Tuple2")
+
+  private val JavaScriptExceptionClassType = ClassType(JavaScriptExceptionClass)
+  private val ThrowableClassType = ClassType(ThrowableClass)
+
+  private val exceptionFieldName = FieldName("exception")
+
+  private val AnyArgConstructorName = MethodName.constructor(List(ClassRef(ObjectClass)))
 
   private val ObjectCloneName = MethodName("clone", Nil, ClassRef(ObjectClass))
   private val TupleFirstMethodName = MethodName("_1", Nil, ClassRef(ObjectClass))

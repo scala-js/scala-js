@@ -486,6 +486,13 @@ object Names {
   /** `java.io.Serializable`, which is an ancestor of array classes. */
   val SerializableClass: ClassName = ClassName("java.io.Serializable")
 
+  /** The superclass of all throwables.
+   *
+   *  This is the result type of `WrapAsThrowable` nodes, as well as the input
+   *  type of `UnwrapFromThrowable`.
+   */
+  val ThrowableClass = ClassName("java.lang.Throwable")
+
   /** The exception thrown by a division by 0. */
   val ArithmeticExceptionClass: ClassName =
     ClassName("java.lang.ArithmeticException")

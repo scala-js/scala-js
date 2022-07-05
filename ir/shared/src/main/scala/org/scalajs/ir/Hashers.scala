@@ -345,6 +345,14 @@ object Hashers {
           mixTag(TagIdentityHashCode)
           mixTree(expr)
 
+        case WrapAsThrowable(expr) =>
+          mixTag(TagWrapAsThrowable)
+          mixTree(expr)
+
+        case UnwrapFromThrowable(expr) =>
+          mixTag(TagUnwrapFromThrowable)
+          mixTree(expr)
+
         case JSNew(ctor, args) =>
           mixTag(TagJSNew)
           mixTree(ctor)

@@ -105,6 +105,130 @@ class SpecialTest {
     js.special.delete(a[js.Object]("foo"), kh.key)
   }
 
+  // js.special.tryCatch
+
+  @Test def jsThrow(): Unit = {
+    val e = assertThrows(classOf[js.JavaScriptException], js.special.`throw`("foo"))
+    assertEquals("foo", e.exception)
+
+    assertThrows(classOf[IllegalArgumentException], js.special.`throw`(new IllegalArgumentException))
+  }
+
+  @Test def jsTryCatch(): Unit = {
+    @noinline def interrupt(): Unit = throw new IllegalStateException
+
+    // No exception
+    locally {
+      var order = "0"
+      js.special.tryCatch({
+        order += "1"
+
+        { () => order += "3" }
+      })({
+        order += "2"
+
+        { (e: Any) => fail("no exception should be thrown and caught") }
+      })
+      assertEquals("0123", order)
+    }
+
+    // Exception thrown during execution of the body
+    locally {
+      var order = "0"
+      js.special.tryCatch({
+        order += "1"
+
+        { () =>
+          order += "3"
+          interrupt()
+        }
+      })({
+        order += "2"
+
+        { (e: Any) =>
+          order += "4"
+          assertTrue(e.isInstanceOf[IllegalStateException])
+        }
+      })
+      assertEquals("01234", order)
+    }
+
+    // Exception thrown when computing the body
+    locally {
+      var order = "0"
+      assertThrows(classOf[IllegalStateException], {
+        js.special.tryCatch({
+          order += "1"
+          interrupt()
+
+          { () => fail("unreachable 1") }
+        })({
+          fail("unreachable 2")
+
+          { (e: Any) => fail("unreachable 3") }
+        })
+      })
+      assertEquals("01", order)
+    }
+
+    // Exception thrown when computing the handler
+    locally {
+      var order = "0"
+      assertThrows(classOf[IllegalStateException], {
+        js.special.tryCatch({
+          order += "1"
+
+          { () => fail("unreachable 1") }
+        })({
+          order += "2"
+          interrupt()
+
+          { (e: Any) => fail("unreachable 2") }
+        })
+      })
+      assertEquals("012", order)
+    }
+  }
+
+  // js.special.wrapAsThrowable
+
+  @Test def wrapAsThrowable(): Unit = {
+    // Wraps a js.Object
+    val obj = new js.Object
+    val e1 = js.special.wrapAsThrowable(obj)
+    e1 match {
+      case js.JavaScriptException(o) => assertSame(obj, o)
+    }
+
+    // Wraps null
+    val e2 = js.special.wrapAsThrowable(null)
+    e2 match {
+      case js.JavaScriptException(v) => assertNull(v)
+    }
+
+    // Does not wrap a Throwable
+    val th = new IllegalArgumentException
+    assertSame(th, js.special.wrapAsThrowable(th))
+
+    // Does not double-wrap
+    assertSame(e1, js.special.wrapAsThrowable(e1))
+  }
+
+  // js.special.unwrapFromThrowable
+
+  @Test def unwrapFromThrowable(): Unit = {
+    // Unwraps a JavaScriptException
+    val obj = new js.Object
+    assertSame(obj, js.special.unwrapFromThrowable(js.JavaScriptException(obj)))
+
+    // Does not unwrap a Throwable
+    val th = new IllegalArgumentException
+    assertSame(th, js.special.unwrapFromThrowable(th))
+
+    // Does not unwrap null
+    assertNull(null, js.special.unwrapFromThrowable(null))
+  }
+
   // js.special.fileLevelThis
 
   @Test def fileLevelThisCanBeUsedToDetectTheGlobalObject(): Unit = {

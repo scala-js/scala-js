@@ -149,6 +149,12 @@ object Transformers {
         case IdentityHashCode(expr) =>
           IdentityHashCode(transformExpr(expr))
 
+        case WrapAsThrowable(expr) =>
+          WrapAsThrowable(transformExpr(expr))
+
+        case UnwrapFromThrowable(expr) =>
+          UnwrapFromThrowable(transformExpr(expr))
+
         // JavaScript expressions
 
         case JSNew(ctor, args) =>

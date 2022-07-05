@@ -517,8 +517,8 @@ class OptimizationTest extends JSASTTest {
         }
       }
     }
-    """.hasNot("call to the scala.scalajs.runtime.package$ package module class") {
-      case js.LoadModule(ScalaJSRuntimePackageClass) =>
+    """.hasNot("WrapAsThrowable") {
+      case js.WrapAsThrowable(_) =>
     }
 
     // Confidence check
@@ -534,8 +534,8 @@ class OptimizationTest extends JSASTTest {
         }
       }
     }
-    """.hasExactly(1, "call to the scala.scalajs.runtime.package$ package module class") {
-      case js.LoadModule(ScalaJSRuntimePackageClass) =>
+    """.hasExactly(1, "WrapAsThrowable") {
+      case js.WrapAsThrowable(_) =>
     }
   }
 }
@@ -543,7 +543,6 @@ class OptimizationTest extends JSASTTest {
 object OptimizationTest {
 
   private val ArrayModuleClass = ClassName("scala.Array$")
-  private val ScalaJSRuntimePackageClass = ClassName("scala.scalajs.runtime.package$")
 
   private val applySimpleMethodName = SimpleMethodName("apply")
 

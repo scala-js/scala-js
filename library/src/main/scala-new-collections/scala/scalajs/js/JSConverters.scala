@@ -172,10 +172,7 @@ object JSConverters extends JSConvertersLowPrioImplicits {
               resolve(value)
 
             case scala.util.Failure(th) =>
-              reject(th match {
-                case js.JavaScriptException(e) => e
-                case _                         => th
-              })
+              reject(js.special.unwrapFromThrowable(th))
           }
       })
     }

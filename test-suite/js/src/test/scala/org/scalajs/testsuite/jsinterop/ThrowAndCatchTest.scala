@@ -40,12 +40,32 @@ class ThrowAndCatchTest {
     }
   }
 
+  @Test def testJSThrowTypeErrorScalaCatchFuture(): Unit = {
+    val e = new js.TypeError("boom")
+    try {
+      jsThrow(e)
+    } catch {
+      case JSExceptionFuture(e2) =>
+        assertSame(e, e2)
+    }
+  }
+
   @Test def testJSThrowOptionScalaCatch(): Unit = {
     val e = Some("boom")
     try {
       jsThrow(e)
     } catch {
       case js.JavaScriptException(e2) =>
+        assertSame(e, e2)
+    }
+  }
+
+  @Test def testJSThrowOptionScalaCatchFuture(): Unit = {
+    val e = Some("boom")
+    try {
+      jsThrow(e)
+    } catch {
+      case JSExceptionFuture(e2) =>
         assertSame(e, e2)
     }
   }
@@ -62,9 +82,21 @@ class ThrowAndCatchTest {
     assertSame(e, e2)
   }
 
+  @Test def testScalaThrowTypeErrorJSCatchFuture(): Unit = {
+    val e = new js.TypeError("boom")
+    val e2 = jsCatch(() => throw JSExceptionFuture(e))
+    assertSame(e, e2)
+  }
+
   @Test def testScalaThrowOptionJSCatch(): Unit = {
     val e = Some("boom")
     val e2 = jsCatch(() => throw js.JavaScriptException(e))
+    assertSame(e, e2)
+  }
+
+  @Test def testScalaThrowOptionJSCatchFuture(): Unit = {
+    val e = Some("boom")
+    val e2 = jsCatch(() => throw JSExceptionFuture(e))
     assertSame(e, e2)
   }
 
@@ -75,21 +107,43 @@ class ThrowAndCatchTest {
     assertSame(e, e2)
   }
 
+  @Test def testScalaThrowThrowableInJavaScriptExceptionJSCatchFuture(): Unit = {
+    // This is evil, but spec'ed nevertheless
+    val e = new Exception("boom")
+    val e2 = jsCatch(() => throw JSExceptionFuture(e))
+    assertSame(e, e2)
+  }
+
 }
 
 object ThrowAndCatchTest {
-  private val jsThrow: js.Function1[Any, Nothing] =
-    new js.Function("e", "throw e;").asInstanceOf[js.Function1[Any, Nothing]]
+  @noinline
+  def jsThrow(ex: Any): Nothing =
+    js.special.`throw`(ex)
 
-  private val jsCatch: js.Function1[js.Function0[_], Any] = {
-    new js.Function("f",
-        """
-          |try {
-          |  f();
-          |} catch (e) {
-          |  return e;
-          |}
-          |throw new Error("Did not catch anything");
-        """.stripMargin).asInstanceOf[js.Function1[js.Function0[_], Any]]
+  @noinline
+  def jsCatch(body: js.Function0[Any]): Any = {
+    val thrown = js.special.tryCatch[Option[Any]] { () =>
+      body()
+      None
+    } { (ex: Any) =>
+      Some(ex)
+    }
+    thrown.getOrElse {
+      throw new AssertionError("Did not catch anything")
+    }
+  }
+
+  /** `js.JavaScriptException` as we would define it in Scala.js 2.x. */
+  object JSExceptionFuture {
+    @inline def apply(ex: Any): Throwable = js.special.wrapAsThrowable(ex)
+
+    @inline def unapply(th: Throwable): Option[Any] = {
+      val ex = js.special.unwrapFromThrowable(th)
+      if (th eq ex.asInstanceOf[AnyRef])
+        None
+      else
+        Some(ex)
+    }
   }
 }
