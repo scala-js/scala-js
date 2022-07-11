@@ -287,8 +287,9 @@ object Build {
   private def buildInfoOrStubs(config: Configuration, stubsBaseDir: Def.Initialize[File]) = {
     if (isGeneratingForIDE) {
       Def.settings(
-          unmanagedSourceDirectories in config +=
-            stubsBaseDir.value / "scala-ide-stubs"
+        unmanagedSourceDirectories in config +=
+          stubsBaseDir.value / "scala-ide-stubs",
+        config / buildInfoOptions := Nil,
       )
     } else {
       Def.settings(
