@@ -168,7 +168,7 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
         validateClassName(interface.name)
 
       val transformedClassDef =
-        Hashers.hashClassDef(this.transformClassDef(preprocessedTree))
+        Hashers.hashClassDef(eliminateRedundantBridges(this.transformClassDef(preprocessedTree)))
 
       postTransformChecks(transformedClassDef)
       transformedClassDef
@@ -208,6 +208,89 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
         case m =>
           m
       }
+    }
+
+    /** Eliminate bridges that have become redundant because of our additional erasure. */
+    private def eliminateRedundantBridges(classDef: ClassDef): ClassDef = {
+      import MemberNamespace._
+
+      def argsCorrespond(args: List[Tree], paramDefs: List[ParamDef]): Boolean = {
+        (args.size == paramDefs.size) && args.zip(paramDefs).forall {
+          case (VarRef(LocalIdent(argName)), ParamDef(LocalIdent(paramName), _, _, _)) =>
+            argName == paramName
+          case _ =>
+            false
+        }
+      }
+
+      val memberDefs = classDef.memberDefs
+
+      // Instance bridges, which call "themselves" (another version of themselves with the same name)
+
+      def isRedundantBridge(memberDef: MemberDef): Boolean = memberDef match {
+        case MethodDef(flags, MethodIdent(name), _, paramDefs, _, Some(body)) if flags.namespace == Public =>
+          body match {
+            case Apply(ApplyFlags.empty, This(), MethodIdent(`name`), args) =>
+              argsCorrespond(args, paramDefs)
+            case _ =>
+              false
+          }
+        case _ =>
+          false
+      }
+
+      val newMemberDefs1 = memberDefs.filterNot(isRedundantBridge(_))
+
+      // Make sure that we did not remove *all* overloads for any method name
+
+      def publicMethodNames(memberDefs: List[MemberDef]): Set[MethodName] = {
+        memberDefs.collect {
+          case MethodDef(flags, name, _, _, _, _) if flags.namespace == Public => name.name
+        }.toSet
+      }
+
+      val lostMethodNames = publicMethodNames(memberDefs) -- publicMethodNames(newMemberDefs1)
+      if (lostMethodNames.nonEmpty) {
+        for (lostMethodName <- lostMethodNames)
+          reportError(s"eliminateRedundantBridges removed all overloads of ${lostMethodName.nameString}")(classDef.pos)
+      }
+
+      // Static forwarders to redundant bridges -- these are duplicate public static methods
+
+      def isStaticForwarder(memberDef: MethodDef): Boolean = memberDef match {
+        case MethodDef(flags, MethodIdent(name), _, paramDefs, _, Some(body)) if flags.namespace == PublicStatic =>
+          body match {
+            case Apply(ApplyFlags.empty, LoadModule(_), MethodIdent(`name`), args) =>
+              argsCorrespond(args, paramDefs)
+            case _ =>
+              false
+          }
+        case _ =>
+          false
+      }
+
+      val seenStaticForwarderNames = mutable.Set.empty[MethodName]
+      val newMemberDefs2 = newMemberDefs1.filter { memberDef =>
+        memberDef match {
+          case m: MethodDef if isStaticForwarder(m) =>
+            seenStaticForwarderNames.add(m.name.name) // keep if it is the first one
+          case _ =>
+            true // always keep
+        }
+      }
+
+      new ClassDef(
+        classDef.name,
+        classDef.originalName,
+        classDef.kind,
+        classDef.jsClassCaptures,
+        classDef.superClass,
+        classDef.interfaces,
+        classDef.jsSuperClass,
+        classDef.jsNativeLoadSpec,
+        newMemberDefs2,
+        classDef.topLevelExportDefs
+      )(classDef.optimizerHints)(classDef.pos)
     }
 
     private def transformParamDefs(paramDefs: List[ParamDef]): List[ParamDef] = {
