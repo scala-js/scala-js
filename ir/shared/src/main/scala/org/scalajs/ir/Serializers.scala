@@ -1067,7 +1067,7 @@ object Serializers {
 
         case TagAssign =>
           val lhs0 = readTree()
-          val lhs = if (hacks.use14 && lhs0.tpe == NothingType) {
+          val lhs = if (hacks.use4 && lhs0.tpe == NothingType) {
             /* Note [Nothing FieldDef rewrite]
              * (throw qual.field[null]) = rhs  -->  qual.field[null] = rhs
              */
@@ -1112,7 +1112,7 @@ object Serializers {
           val field = readFieldIdent()
           val tpe = readType()
 
-          if (hacks.use14 && tpe == NothingType) {
+          if (hacks.use4 && tpe == NothingType) {
             /* Note [Nothing FieldDef rewrite]
              * qual.field[nothing]  -->  throw qual.field[null]
              */
@@ -1221,7 +1221,7 @@ object Serializers {
       val superClass = readOptClassIdent()
       val parents = readClassIdents()
 
-      /* jsSuperClass is not hacked like in readMemberDef.bodyHack15. The
+      /* jsSuperClass is not hacked like in readMemberDef.bodyHack5. The
        * compilers before 1.6 always use a simple VarRef() as jsSuperClass,
        * when there is one, so no hack is required.
        */
@@ -1240,8 +1240,8 @@ object Serializers {
       implicit val pos = readPosition()
       val tag = readByte()
 
-      def bodyHack15(body: Tree, isStat: Boolean): Tree = {
-        if (!hacks.use15) {
+      def bodyHack5(body: Tree, isStat: Boolean): Tree = {
+        if (!hacks.use5) {
           body
         } else {
           /* #4442 and #4601: Patch Labeled, If, Match and TryCatch nodes in
@@ -1274,7 +1274,7 @@ object Serializers {
         }
       }
 
-      def bodyHack15Expr(body: Tree): Tree = bodyHack15(body, isStat = false)
+      def bodyHack5Expr(body: Tree): Tree = bodyHack5(body, isStat = false)
 
       (tag: @switch) match {
         case TagFieldDef =>
@@ -1283,7 +1283,7 @@ object Serializers {
           val originalName = readOriginalName()
 
           val ftpe0 = readType()
-          val ftpe = if (hacks.use14 && ftpe0 == NothingType) {
+          val ftpe = if (hacks.use4 && ftpe0 == NothingType) {
             /* Note [Nothing FieldDef rewrite]
              * val field: nothing  -->  val field: null
              */
@@ -1315,7 +1315,7 @@ object Serializers {
              * rewrite it as a static initializers instead (`<stinit>`).
              */
             val name0 = readMethodIdent()
-            if (hacks.use11 &&
+            if (hacks.use1 &&
                 name0.name == ClassInitializerName &&
                 !ownerKind.isJSType) {
               MethodIdent(StaticInitializerName)(name0.pos)
@@ -1330,7 +1330,7 @@ object Serializers {
           val body = readOptTree()
           val optimizerHints = OptimizerHints.fromBits(readInt())
 
-          if (hacks.use10 &&
+          if (hacks.use0 &&
               flags.namespace == MemberNamespace.Public &&
               owner == HackNames.SystemModule &&
               name.name == HackNames.identityHashCodeName) {
@@ -1344,7 +1344,7 @@ object Serializers {
 
             MethodDef(flags, name, originalName, args, resultType, patchedBody)(
                 patchedOptimizerHints, optHash)
-          } else if (hacks.use14 &&
+          } else if (hacks.use4 &&
               flags.namespace == MemberNamespace.Public &&
               owner == ObjectClass &&
               name.name == HackNames.cloneName) {
@@ -1375,7 +1375,7 @@ object Serializers {
             MethodDef(flags, name, originalName, args, resultType, patchedBody)(
                 patchedOptimizerHints, optHash)
           } else {
-            val patchedBody = body.map(bodyHack15(_, isStat = resultType == NoType))
+            val patchedBody = body.map(bodyHack5(_, isStat = resultType == NoType))
             MethodDef(flags, name, originalName, args, resultType, patchedBody)(
                 optimizerHints, optHash)
           }
@@ -1388,19 +1388,19 @@ object Serializers {
           assert(len >= 0)
 
           val flags = MemberFlags.fromBits(readInt())
-          val name = bodyHack15Expr(readTree())
+          val name = bodyHack5Expr(readTree())
           val (params, restParam) = readParamDefsWithRest()
-          val body = bodyHack15Expr(readTree())
+          val body = bodyHack5Expr(readTree())
           JSMethodDef(flags, name, params, restParam, body)(
               OptimizerHints.fromBits(readInt()), optHash)
 
         case TagJSPropertyDef =>
           val flags = MemberFlags.fromBits(readInt())
-          val name = bodyHack15Expr(readTree())
-          val getterBody = readOptTree().map(bodyHack15Expr(_))
+          val name = bodyHack5Expr(readTree())
+          val getterBody = readOptTree().map(bodyHack5Expr(_))
           val setterArgAndBody = {
             if (readBoolean())
-              Some((readParamDef(), bodyHack15Expr(readTree())))
+              Some((readParamDef(), bodyHack5Expr(readTree())))
             else
               None
           }
@@ -1419,7 +1419,7 @@ object Serializers {
 
       // #4409: Filter out abstract methods in non-native JS classes for version < 1.5
       if (ownerKind.isJSClass) {
-        if (hacks.use14) {
+        if (hacks.use4) {
           memberDefs.filter { m =>
             m match {
               case MethodDef(_, _, _, _, _, None) => false
@@ -1457,7 +1457,7 @@ object Serializers {
         readMemberDef(owner, ownerKind).asInstanceOf[JSMethodDef]
 
       def readModuleID(): String =
-        if (hacks.use12) DefaultModuleID
+        if (hacks.use2) DefaultModuleID
         else readString()
 
       (tag: @switch) match {
@@ -1513,7 +1513,7 @@ object Serializers {
       val ptpe = readType()
       val mutable = readBoolean()
 
-      if (hacks.use14) {
+      if (hacks.use4) {
         val rest = readBoolean()
         assert(!rest, "Illegal rest parameter")
       }
@@ -1525,7 +1525,7 @@ object Serializers {
       List.fill(readInt())(readParamDef())
 
     def readParamDefsWithRest(): (List[ParamDef], Option[ParamDef]) = {
-      if (hacks.use14) {
+      if (hacks.use4) {
         val (params, isRest) = List.fill(readInt()) {
           implicit val pos = readPosition()
           (ParamDef(readLocalIdent(), readOriginalName(), readType(), readBoolean()), readBoolean())
@@ -1808,17 +1808,17 @@ object Serializers {
 
   /** Hacks for backwards compatible deserializing. */
   private final class Hacks(sourceVersion: String) {
-    val use10: Boolean = sourceVersion == "1.0"
+    val use0: Boolean = sourceVersion == "1.0"
 
-    val use11: Boolean = use10 || sourceVersion == "1.1"
+    val use1: Boolean = use0 || sourceVersion == "1.1"
 
-    val use12: Boolean = use11 || sourceVersion == "1.2"
+    val use2: Boolean = use1 || sourceVersion == "1.2"
 
-    private val use13: Boolean = use12 || sourceVersion == "1.3"
+    private val use3: Boolean = use2 || sourceVersion == "1.3"
 
-    val use14: Boolean = use13 || sourceVersion == "1.4"
+    val use4: Boolean = use3 || sourceVersion == "1.4"
 
-    val use15: Boolean = use14 || sourceVersion == "1.5"
+    val use5: Boolean = use4 || sourceVersion == "1.5"
   }
 
   /** Names needed for hacks. */
