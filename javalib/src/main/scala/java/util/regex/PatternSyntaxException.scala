@@ -13,6 +13,7 @@
 package java.util.regex
 
 import scala.scalajs.js
+import scala.scalajs.runtime.linkingInfo
 import scala.scalajs.LinkingInfo
 
 class PatternSyntaxException(desc: String, regex: String, index: Int)
@@ -41,7 +42,7 @@ class PatternSyntaxException(desc: String, regex: String, index: Int)
   @inline
   private def repeat(s: String, count: Int): String = {
     // TODO Use java.lang.String.repeat() once we can (JDK 11+ method)
-    if (LinkingInfo.esVersion >= LinkingInfo.ESVersion.ES2015) {
+    if (linkingInfo.esVersion >= LinkingInfo.ESVersion.ES2015) {
       s.asInstanceOf[js.Dynamic].repeat(count).asInstanceOf[String]
     } else {
       var result = ""

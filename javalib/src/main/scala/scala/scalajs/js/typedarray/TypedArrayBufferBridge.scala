@@ -21,11 +21,16 @@
  * members are public.
  *
  * In library/, this file has only the signatures, with stub implementations.
- * In javalib/, it has the proper the proper implementations.
+ * In javalib/, it has the proper implementations.
  * The build keeps the .class coming from library/ and the .sjsir file from
  * javalib/. This way, we bridge the library and javalib. But that means the
  * binary interface of TypedArrayBufferBridge must be strictly equivalent in
  * the two copies.
+ *
+ * Because of these copies, we must also explicitly use `Any` instead of all
+ * JS types in the method signatures. The IR cleaner would replace any JS type
+ * by `Any` in the javalib, so if we don't write them like that in the library
+ * as well, there will be mismatches.
  *
  * (Yes, this is a hack.)
  * !!!!!
@@ -36,45 +41,45 @@ package scala.scalajs.js.typedarray
 import java.nio._
 
 private[typedarray] object TypedArrayBufferBridge {
-  def wrap(array: ArrayBuffer): ByteBuffer =
-    ByteBuffer.wrap(array)
+  def wrapArrayBuffer(array: Any): ByteBuffer =
+    ByteBuffer.wrapArrayBuffer(array.asInstanceOf[ArrayBuffer])
 
-  def wrap(array: ArrayBuffer, byteOffset: Int, length: Int): ByteBuffer =
-    ByteBuffer.wrap(array, byteOffset, length)
+  def wrapArrayBuffer(array: Any, byteOffset: Int, length: Int): ByteBuffer =
+    ByteBuffer.wrapArrayBuffer(array.asInstanceOf[ArrayBuffer], byteOffset, length)
 
-  def wrap(array: Int8Array): ByteBuffer =
-    ByteBuffer.wrap(array)
+  def wrapInt8Array(array: Any): ByteBuffer =
+    ByteBuffer.wrapInt8Array(array.asInstanceOf[Int8Array])
 
-  def wrap(array: Uint16Array): CharBuffer =
-    CharBuffer.wrap(array)
+  def wrapUint16Array(array: Any): CharBuffer =
+    CharBuffer.wrapUint16Array(array.asInstanceOf[Uint16Array])
 
-  def wrap(array: Int16Array): ShortBuffer =
-    ShortBuffer.wrap(array)
+  def wrapInt16Array(array: Any): ShortBuffer =
+    ShortBuffer.wrapInt16Array(array.asInstanceOf[Int16Array])
 
-  def wrap(array: Int32Array): IntBuffer =
-    IntBuffer.wrap(array)
+  def wrapInt32Array(array: Any): IntBuffer =
+    IntBuffer.wrapInt32Array(array.asInstanceOf[Int32Array])
 
-  def wrap(array: Float32Array): FloatBuffer =
-    FloatBuffer.wrap(array)
+  def wrapFloat32Array(array: Any): FloatBuffer =
+    FloatBuffer.wrapFloat32Array(array.asInstanceOf[Float32Array])
 
-  def wrap(array: Float64Array): DoubleBuffer =
-    DoubleBuffer.wrap(array)
+  def wrapFloat64Array(array: Any): DoubleBuffer =
+    DoubleBuffer.wrapFloat64Array(array.asInstanceOf[Float64Array])
 
   def Buffer_hasArrayBuffer(buffer: Buffer): Boolean =
     buffer.hasArrayBuffer()
 
-  def Buffer_arrayBuffer(buffer: Buffer): ArrayBuffer =
+  def Buffer_arrayBuffer(buffer: Buffer): Any =
     buffer.arrayBuffer()
 
   def Buffer_arrayBufferOffset(buffer: Buffer): Int =
     buffer.arrayBufferOffset()
 
-  def Buffer_dataView(buffer: Buffer): DataView =
+  def Buffer_dataView(buffer: Buffer): Any =
     buffer.dataView()
 
   def Buffer_hasTypedArray(buffer: Buffer): Boolean =
     buffer.hasTypedArray()
 
-  def Buffer_typedArray(buffer: Buffer): TypedArray[_, _] =
+  def Buffer_typedArray(buffer: Buffer): Any =
     buffer.typedArray()
 }

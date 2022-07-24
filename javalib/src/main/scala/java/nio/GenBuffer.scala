@@ -118,7 +118,7 @@ private[nio] final class GenBuffer[B <: Buffer] private (val self: B)
 
   @inline
   def generic_hashCode(hashSeed: Int): Int = {
-    import scala.util.hashing.MurmurHash3._
+    import java.util.internal.MurmurHash3._
     val start = position()
     val end = limit()
     var h = hashSeed

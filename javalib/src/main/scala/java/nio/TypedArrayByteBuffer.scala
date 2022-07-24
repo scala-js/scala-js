@@ -12,8 +12,9 @@
 
 package java.nio
 
+import java.nio.DataViewExt._
+
 import scala.scalajs.js.typedarray._
-import DataViewExt._
 
 private[nio] final class TypedArrayByteBuffer private (
     override private[nio] val _typedArray: Int8Array,
@@ -128,13 +129,13 @@ private[nio] final class TypedArrayByteBuffer private (
   }
 
   @noinline def getLong(): Long =
-    _dataView.getInt64(getPosAndAdvanceRead(8), !isBigEndian)
+    dataViewGetInt64(_dataView, getPosAndAdvanceRead(8), !isBigEndian)
   @noinline def putLong(value: Long): ByteBuffer =
-    { ensureNotReadOnly(); _dataView.setInt64(getPosAndAdvanceWrite(8), value, !isBigEndian); this }
+    { ensureNotReadOnly(); dataViewSetInt64(_dataView, getPosAndAdvanceWrite(8), value, !isBigEndian); this }
   @noinline def getLong(index: Int): Long =
-    _dataView.getInt64(validateIndex(index, 8), !isBigEndian)
+    dataViewGetInt64(_dataView, validateIndex(index, 8), !isBigEndian)
   @noinline def putLong(index: Int, value: Long): ByteBuffer =
-    { ensureNotReadOnly(); _dataView.setInt64(validateIndex(index, 8), value, !isBigEndian); this }
+    { ensureNotReadOnly(); dataViewSetInt64(_dataView, validateIndex(index, 8), value, !isBigEndian); this }
 
   def asLongBuffer(): LongBuffer =
     DataViewLongBuffer.fromTypedArrayByteBuffer(this)
@@ -225,13 +226,13 @@ private[nio] object TypedArrayByteBuffer {
     new TypedArrayByteBuffer(new Int8Array(capacity), 0, capacity, false)
   }
 
-  def wrap(array: ArrayBuffer): ByteBuffer =
-    wrap(new Int8Array(array))
+  def wrapArrayBuffer(array: ArrayBuffer): ByteBuffer =
+    wrapInt8Array(new Int8Array(array))
 
-  def wrap(array: ArrayBuffer, byteOffset: Int, length: Int): ByteBuffer =
-    wrap(new Int8Array(array, byteOffset, length))
+  def wrapArrayBuffer(array: ArrayBuffer, byteOffset: Int, length: Int): ByteBuffer =
+    wrapInt8Array(new Int8Array(array, byteOffset, length))
 
-  def wrap(typedArray: Int8Array): ByteBuffer = {
+  def wrapInt8Array(typedArray: Int8Array): ByteBuffer = {
     val buf = new TypedArrayByteBuffer(typedArray, 0, typedArray.length, false)
     buf._isBigEndian = ByteOrder.areTypedArraysBigEndian
     buf

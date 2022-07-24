@@ -128,6 +128,6 @@ private[nio] object TypedArrayFloatBuffer {
   def fromTypedArrayByteBuffer(byteBuffer: TypedArrayByteBuffer): FloatBuffer =
     GenTypedArrayBuffer.generic_fromTypedArrayByteBuffer(byteBuffer)
 
-  def wrap(array: Float32Array): FloatBuffer =
+  def wrapFloat32Array(array: Float32Array): FloatBuffer =
     new TypedArrayFloatBuffer(array, 0, array.length, false)
 }

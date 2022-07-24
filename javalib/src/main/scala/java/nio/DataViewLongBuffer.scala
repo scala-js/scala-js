@@ -12,8 +12,9 @@
 
 package java.nio
 
+import java.nio.DataViewExt._
+
 import scala.scalajs.js.typedarray._
-import DataViewExt._
 
 private[nio] final class DataViewLongBuffer private (
     override private[nio] val _dataView: DataView,
@@ -86,11 +87,11 @@ private[nio] final class DataViewLongBuffer private (
 
   @inline
   private[nio] def load(index: Int): Long =
-    _dataView.getInt64(8 * index, !isBigEndian)
+    dataViewGetInt64(_dataView, 8 * index, !isBigEndian)
 
   @inline
   private[nio] def store(index: Int, elem: Long): Unit =
-    _dataView.setInt64(8 * index, elem, !isBigEndian)
+    dataViewSetInt64(_dataView, 8 * index, elem, !isBigEndian)
 
   @inline
   override private[nio] def load(startIndex: Int,

@@ -70,16 +70,18 @@ class Timer() {
   private def schedulePeriodically(
       task: TimerTask, delay: Long, period: Long): Unit = {
     acquire(task)
-    task.timeout(delay) {
-      def loop(): Unit = {
-        val startTime = System.nanoTime()
-        task.doRun()
-        val endTime = System.nanoTime()
-        val duration = (endTime - startTime) / 1000000
-        task.timeout(period - duration) {
-          loop()
-        }
+
+    def loop(): Unit = {
+      val startTime = System.nanoTime()
+      task.doRun()
+      val endTime = System.nanoTime()
+      val duration = (endTime - startTime) / 1000000
+      task.timeout(period - duration) {
+        loop()
       }
+    }
+
+    task.timeout(delay) {
       loop()
     }
   }
@@ -100,21 +102,23 @@ class Timer() {
   private def scheduleFixed(
       task: TimerTask, delay: Long, period: Long): Unit = {
     acquire(task)
-    task.timeout(delay) {
-      def loop(scheduledTime: Long): Unit = {
-        task.doRun()
-        val nextScheduledTime = scheduledTime + period
-        val nowTime = System.nanoTime / 1000000L
-        if (nowTime >= nextScheduledTime) {
-          // Re-run immediately.
+
+    def loop(scheduledTime: Long): Unit = {
+      task.doRun()
+      val nextScheduledTime = scheduledTime + period
+      val nowTime = System.nanoTime / 1000000L
+      if (nowTime >= nextScheduledTime) {
+        // Re-run immediately.
+        loop(nextScheduledTime)
+      } else {
+        // Re-run after a timeout.
+        task.timeout(nextScheduledTime - nowTime) {
           loop(nextScheduledTime)
-        } else {
-          // Re-run after a timeout.
-          task.timeout(nextScheduledTime - nowTime) {
-            loop(nextScheduledTime)
-          }
         }
       }
+    }
+
+    task.timeout(delay) {
       loop(System.nanoTime / 1000000L + period)
     }
   }

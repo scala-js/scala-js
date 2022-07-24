@@ -124,10 +124,13 @@ private[math] object Multiplication {
 
     for (i <- 0 until aLen) {
       carry = 0
-      for (j <- i + 1 until aLen) {
+      // Work around Scala 2.11 limitation with the IR cleaner ; should be for (j <- i + 1 until aLen)
+      var j = i + 1
+      while (j < aLen) {
         val t = unsignedMultAddAdd(a(i), a(j), res(i + j), carry)
         res(i + j) = t.toInt
         carry = (t >>> 32).toInt
+        j += 1
       }
       res(i + aLen) = carry
     }
@@ -439,16 +442,24 @@ private[math] object Multiplication {
       for (i <- 0 until aLen) {
         var carry = 0
         val aI = a(i)
-        for (j <- 0 until bLen) {
+        // Work around Scala 2.11 limitation with the IR cleaner ; should be for (j <- 0 until bLen)
+        var j = 0
+        while (j < bLen) {
           val added = unsignedMultAddAdd(aI, b(j), t(i + j), carry)
           t(i + j) = added.toInt
           carry = (added >>> 32).toInt
+          j += 1
         }
         t(i + bLen) = carry
       }
     }
   }
 
-  private def newArrayOfPows(len: Int, pow: Int): Array[Int] =
-    Array.iterate(1, len)(_ * pow)
+  private def newArrayOfPows(len: Int, pow: Int): Array[Int] = {
+    val result = new Array[Int](len)
+    result(0) = 1
+    for (i <- 1 until len)
+      result(i) = result(i - 1) * pow
+    result
+  }
 }

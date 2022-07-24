@@ -14,6 +14,8 @@ package java.util.regex
 
 import scala.annotation.{tailrec, switch}
 
+import java.util.JSUtils._
+
 import scala.scalajs.js
 
 import Pattern.IndicesArray
@@ -79,7 +81,7 @@ private[regex] class IndicesBuilder private (pattern: String, flags: String,
     }
 
     val start = index // by definition
-    val end = start + allMatchResult(0).get.length()
+    val end = start + undefOrForceGet(allMatchResult(0)).length()
 
     /* Initialize the `indices` array with:
      * - `[start, end]` at index 0, which represents the whole match, and
@@ -91,10 +93,10 @@ private[regex] class IndicesBuilder private (pattern: String, flags: String,
      */
     val len = groupCount + 1
     val indices = new IndicesArray(len)
-    indices(0) = js.Tuple2(start, end)
+    indices(0) = js.Array(start, end).asInstanceOf[js.Tuple2[Int, Int]]
     var i = 1
     while (i != len) {
-      indices(i) = js.undefined
+      indices(i) = undefined
       i += 1
     }
 
@@ -179,7 +181,7 @@ private[regex] object IndicesBuilder {
     final def propagateFromEnd(matchResult: js.RegExp.ExecResult,
         indices: IndicesArray, end: Int): Unit = {
 
-      val start = matchResult(newGroup).fold(-1)(matched => end - matched.length)
+      val start = undefOrFold(matchResult(newGroup))(-1)(matched => end - matched.length)
       propagate(matchResult, indices, start, end)
     }
 
@@ -191,7 +193,7 @@ private[regex] object IndicesBuilder {
     final def propagateFromStart(matchResult: js.RegExp.ExecResult,
         indices: IndicesArray, start: Int): Int = {
 
-      val end = matchResult(newGroup).fold(-1)(matched => start + matched.length)
+      val end = undefOrFold(matchResult(newGroup))(-1)(matched => start + matched.length)
       propagate(matchResult, indices, start, end)
       end
     }
@@ -212,8 +214,8 @@ private[regex] object IndicesBuilder {
        * always keep the default `-1` if this group node does not match
        * anything.
        */
-      if (matchResult(newGroup).isDefined)
-        indices(number) = js.Tuple2(start, end)
+      if (undefOrIsDefined(matchResult(newGroup)))
+        indices(number) = js.Array(start, end).asInstanceOf[js.Tuple2[Int, Int]]
       inner.propagate(matchResult, indices, start, end)
     }
   }

@@ -15,6 +15,7 @@ package java.nio.charset
 import java.nio.{ByteBuffer, CharBuffer}
 import java.util.{Collections, HashSet, Arrays}
 import java.util.ScalaOps._
+import java.util.JSUtils._
 
 import scala.scalajs.js
 
@@ -78,20 +79,22 @@ object Charset {
   def defaultCharset(): Charset =
     UTF_8
 
-  def forName(charsetName: String): Charset =
-    CharsetMap.getOrElse(charsetName.toLowerCase,
-        throw new UnsupportedCharsetException(charsetName))
+  def forName(charsetName: String): Charset = {
+    dictGetOrElse(CharsetMap, charsetName.toLowerCase()) {
+      throw new UnsupportedCharsetException(charsetName)
+    }
+  }
 
   def isSupported(charsetName: String): Boolean =
-    CharsetMap.contains(charsetName.toLowerCase)
+    dictContains(CharsetMap, charsetName.toLowerCase())
 
   private lazy val CharsetMap = {
-    val m = js.Dictionary.empty[Charset]
-    for (c <- js.Array(US_ASCII, ISO_8859_1, UTF_8, UTF_16BE, UTF_16LE, UTF_16)) {
-      m(c.name().toLowerCase) = c
+    val m = dictEmpty[Charset]()
+    forArrayElems(js.Array(US_ASCII, ISO_8859_1, UTF_8, UTF_16BE, UTF_16LE, UTF_16)) { c =>
+      dictSet(m, c.name().toLowerCase(), c)
       val aliases = c._aliases
       for (i <- 0 until aliases.length)
-        m(aliases(i).toLowerCase) = c
+        dictSet(m, aliases(i).toLowerCase(), c)
     }
     m
   }

@@ -58,8 +58,13 @@ object BigDecimal {
 
   private final val LongFivePows = newArrayOfPows(28, 5)
 
-  private final val LongFivePowsBitLength =
-    Array.tabulate[Int](LongFivePows.length)(i => bitLength(LongFivePows(i)))
+  private final val LongFivePowsBitLength = {
+    val len = LongFivePows.length
+    val result = new Array[Int](len)
+    for (i <- 0 until len)
+      result(i) = bitLength(LongFivePows(i))
+    result
+  }
 
   /** An array of longs with powers of ten.
    *
@@ -68,8 +73,13 @@ object BigDecimal {
    */
   private[math] final val LongTenPows = newArrayOfPows(19, 10)
 
-  private final val LongTenPowsBitLength =
-    Array.tabulate[Int](LongTenPows.length)(i => bitLength(LongTenPows(i)))
+  private final val LongTenPowsBitLength = {
+    val len = LongTenPows.length
+    val result = new Array[Int](len)
+    for (i <- 0 until len)
+      result(i) = bitLength(LongTenPows(i))
+    result
+  }
 
   private final val BigIntScaledByZeroLength = 11
 
@@ -77,15 +87,23 @@ object BigDecimal {
    *
    *  (<code>[0,0],[1,0],...,[10,0]</code>).
    */
-  private final val BigIntScaledByZero =
-    Array.tabulate[BigDecimal](BigIntScaledByZeroLength)(new BigDecimal(_, 0))
+  private final val BigIntScaledByZero = {
+    val result = new Array[BigDecimal](BigIntScaledByZeroLength)
+    for (i <- 0 until BigIntScaledByZeroLength)
+      result(i) = new BigDecimal(i, 0)
+    result
+  }
 
   /** An array with the zero number scaled by the first positive scales.
    *
    *  (<code>0*10^0, 0*10^1, ..., 0*10^10</code>).
    */
-  private final val ZeroScaledBy =
-    Array.tabulate[BigDecimal](BigIntScaledByZeroLength)(new BigDecimal(0, _))
+  private final val ZeroScaledBy = {
+    val result = new Array[BigDecimal](BigIntScaledByZeroLength)
+    for (i <- 0 until BigIntScaledByZeroLength)
+      result(i) = new BigDecimal(0, i)
+    result
+  }
 
   /** A string filled with 100 times the character `'0'`.
    *  It is not a `final` val so that it isn't copied at every call site.
@@ -205,8 +223,13 @@ object BigDecimal {
     else 0
   }
 
-  private[math] def newArrayOfPows(len: Int, pow: Int): Array[Long] =
-    Array.iterate(1L, len)(_ * pow)
+  private[math] def newArrayOfPows(len: Int, pow: Int): Array[Long] = {
+    val result = new Array[Long](len)
+    result(0) = 1L
+    for (i <- 1 until len)
+      result(i) = result(i - 1) * pow
+    result
+  }
 
   /** Return an increment that can be -1,0 or 1, depending on {@code roundingMode}.
    *
@@ -276,11 +299,20 @@ object BigDecimal {
     32 - java.lang.Integer.numberOfLeadingZeros(smallValue)
   }
 
-  @inline
-  private def charNotEqualTo(c: Char, cs: Char*): Boolean = !cs.contains(c)
+  private def charNotEqualTo(c: Char, cs: Array[Char]): Boolean = !charEqualTo(c, cs)
 
-  @inline
-  private def charEqualTo(c: Char, cs: Char*): Boolean = cs.contains(c)
+  private def charEqualTo(c: Char, cs: Array[Char]): Boolean = {
+    // scalastyle:off return
+    val len = cs.length
+    var i = 0
+    while (i != len) {
+      if (cs(i) == c)
+        return true
+      i += 1
+    }
+    false
+    // scalastyle:on return
+  }
 
   @inline
   private def insertString(s: String, pos: Int, s2: String): String =
@@ -374,12 +406,12 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     if (offset <= last && in(offset) == '+') {
       index += 1
       // Fail if the next character is another sign.
-      if (index < last && charEqualTo(in(index), '+', '-'))
+      if (index < last && charEqualTo(in(index), Array('+', '-')))
         throw new NumberFormatException("For input string: " + in.toString)
     } else {
       // check that '-' is not followed by another sign
       val isMinus = index <= last && in(index) == '-'
-      val nextIsSign = index + 1 < last && charEqualTo(in(index + 1), '+', '-')
+      val nextIsSign = index + 1 < last && charEqualTo(in(index + 1), Array('+', '-'))
       if (isMinus && nextIsSign)
         throw new NumberFormatException("For input string: " + in.toString)
     }
@@ -388,7 +420,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     var counter = 0
     var wasNonZero = false
     // Accumulating all digits until a possible decimal point
-    while (index <= last && charNotEqualTo(in(index), '.', 'e', 'E')) {
+    while (index <= last && charNotEqualTo(in(index), Array('.', 'e', 'E'))) {
       if (!wasNonZero) {
         if (in(index) == '0') counter += 1
         else wasNonZero = true
@@ -404,7 +436,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
         index += 1
         // Accumulating all digits until a possible exponent
         val begin = index
-        while (index <= last && charNotEqualTo(in(index), 'e', 'E')) {
+        while (index <= last && charNotEqualTo(in(index), Array('e', 'E'))) {
           if (!wasNonZero) {
             if (in(index) == '0') counter += 1
             else wasNonZero = true
@@ -420,7 +452,7 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
     }
 
     // An exponent was found
-    if ((index <= last) && charEqualTo(in(index), 'e', 'E')) {
+    if ((index <= last) && charEqualTo(in(index), Array('e', 'E'))) {
       index += 1
       // Checking for a possible sign of scale
       val indexIsPlus = index <= last && in(index) == '+'

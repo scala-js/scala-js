@@ -16,6 +16,7 @@ import java.lang.Cloneable
 import java.lang.{reflect => jlr}
 import java.util._
 import java.util.function.{Predicate, UnaryOperator}
+import java.util.JSUtils._
 
 import scala.annotation.tailrec
 
@@ -47,7 +48,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
   }
 
   def size(): Int =
-    inner.size
+    inner.length
 
   def isEmpty(): Boolean =
     size() == 0
@@ -291,7 +292,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
   }
 
   protected def innerRemove(index: Int): E =
-    inner.splice(index, 1)(0)
+    arrayRemoveAndGet(inner, index)
 
   protected def innerRemoveMany(index: Int, count: Int): Unit =
     inner.splice(index, count)

@@ -168,7 +168,7 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
         validateClassName(interface.name)
 
       val transformedClassDef =
-        Hashers.hashClassDef(this.transformClassDef(preprocessedTree))
+        Hashers.hashClassDef(eliminateRedundantBridges(this.transformClassDef(preprocessedTree)))
 
       postTransformChecks(transformedClassDef)
       transformedClassDef
@@ -210,6 +210,89 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
       }
     }
 
+    /** Eliminate bridges that have become redundant because of our additional erasure. */
+    private def eliminateRedundantBridges(classDef: ClassDef): ClassDef = {
+      import MemberNamespace._
+
+      def argsCorrespond(args: List[Tree], paramDefs: List[ParamDef]): Boolean = {
+        (args.size == paramDefs.size) && args.zip(paramDefs).forall {
+          case (VarRef(LocalIdent(argName)), ParamDef(LocalIdent(paramName), _, _, _)) =>
+            argName == paramName
+          case _ =>
+            false
+        }
+      }
+
+      val memberDefs = classDef.memberDefs
+
+      // Instance bridges, which call "themselves" (another version of themselves with the same name)
+
+      def isRedundantBridge(memberDef: MemberDef): Boolean = memberDef match {
+        case MethodDef(flags, MethodIdent(name), _, paramDefs, _, Some(body)) if flags.namespace == Public =>
+          body match {
+            case Apply(ApplyFlags.empty, This(), MethodIdent(`name`), args) =>
+              argsCorrespond(args, paramDefs)
+            case _ =>
+              false
+          }
+        case _ =>
+          false
+      }
+
+      val newMemberDefs1 = memberDefs.filterNot(isRedundantBridge(_))
+
+      // Make sure that we did not remove *all* overloads for any method name
+
+      def publicMethodNames(memberDefs: List[MemberDef]): Set[MethodName] = {
+        memberDefs.collect {
+          case MethodDef(flags, name, _, _, _, _) if flags.namespace == Public => name.name
+        }.toSet
+      }
+
+      val lostMethodNames = publicMethodNames(memberDefs) -- publicMethodNames(newMemberDefs1)
+      if (lostMethodNames.nonEmpty) {
+        for (lostMethodName <- lostMethodNames)
+          reportError(s"eliminateRedundantBridges removed all overloads of ${lostMethodName.nameString}")(classDef.pos)
+      }
+
+      // Static forwarders to redundant bridges -- these are duplicate public static methods
+
+      def isStaticForwarder(memberDef: MethodDef): Boolean = memberDef match {
+        case MethodDef(flags, MethodIdent(name), _, paramDefs, _, Some(body)) if flags.namespace == PublicStatic =>
+          body match {
+            case Apply(ApplyFlags.empty, LoadModule(_), MethodIdent(`name`), args) =>
+              argsCorrespond(args, paramDefs)
+            case _ =>
+              false
+          }
+        case _ =>
+          false
+      }
+
+      val seenStaticForwarderNames = mutable.Set.empty[MethodName]
+      val newMemberDefs2 = newMemberDefs1.filter { memberDef =>
+        memberDef match {
+          case m: MethodDef if isStaticForwarder(m) =>
+            seenStaticForwarderNames.add(m.name.name) // keep if it is the first one
+          case _ =>
+            true // always keep
+        }
+      }
+
+      new ClassDef(
+        classDef.name,
+        classDef.originalName,
+        classDef.kind,
+        classDef.jsClassCaptures,
+        classDef.superClass,
+        classDef.interfaces,
+        classDef.jsSuperClass,
+        classDef.jsNativeLoadSpec,
+        newMemberDefs2,
+        classDef.topLevelExportDefs
+      )(classDef.optimizerHints)(classDef.pos)
+    }
+
     private def transformParamDefs(paramDefs: List[ParamDef]): List[ParamDef] = {
       for (paramDef <- paramDefs) yield {
         implicit val pos = paramDef.pos
@@ -244,9 +327,26 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
             if isFunctionNType(n, fun.tpe) =>
           JSFunctionApply(fun, args)
 
+        // <= 2.12 : toJSVarArgs(jsArrayOps(jsArray).toSeq) -> jsArray
+        case IntrinsicCall(ScalaJSRuntimeMod, `toJSVarArgsReadOnlyMethodName`,
+            List(Apply(
+                ApplyFlags.empty,
+                IntrinsicCall(JSAnyMod, `jsArrayOpsToArrayOpsMethodName`, List(jsArray)),
+                MethodIdent(`toReadOnlySeqMethodName`),
+                Nil)
+            )) =>
+          jsArray
+
+        // >= 2.13 : toJSVarArgs(toSeq$extension(jsArray)) -> jsArray
+        case IntrinsicCall(ScalaJSRuntimeMod, `toJSVarArgsImmutableMethodName`,
+            List(IntrinsicCall(JSArrayOpsMod, `toImmutableSeqExtensionMethodName`, List(jsArray)))) =>
+          jsArray
+
         case IntrinsicCall(JSAnyMod, `jsAnyFromIntMethodName`, List(arg)) =>
           arg
         case IntrinsicCall(JSAnyMod, `jsAnyFromStringMethodName`, List(arg)) =>
+          arg
+        case IntrinsicCall(JSAnyMod, `jsArrayOpsToArrayMethodName`, List(arg)) =>
           arg
         case IntrinsicCall(JSDynamicImplicitsMod, `number2dynamicMethodName`, List(arg)) =>
           arg
@@ -255,6 +355,8 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
         case IntrinsicCall(JSNumberOpsMod, `enableJSNumberOpsIntMethodName`, List(arg)) =>
           arg
         case IntrinsicCall(JSStringOpsMod, `enableJSStringOpsMethodName`, List(arg)) =>
+          arg
+        case IntrinsicCall(UnionTypeMod, `unionTypeFromMethodName`, List(arg, _)) =>
           arg
 
         case IntrinsicCall(JSDynamicImplicitsMod, `truthValueMethodName`, List(arg)) =>
@@ -491,7 +593,15 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
       def isJavaScriptExceptionWithinItself =
         cls == JavaScriptExceptionClass && enclosingClassName == JavaScriptExceptionClass
 
-      if (cls.nameString.startsWith("scala.") && !isJavaScriptExceptionWithinItself)
+      def isTypedArrayBufferBridgeWithinItself = {
+        (cls == TypedArrayBufferBridge || cls == TypedArrayBufferBridgeMod) &&
+        (enclosingClassName == TypedArrayBufferBridge || enclosingClassName == TypedArrayBufferBridgeMod)
+      }
+
+      def isAnException: Boolean =
+        isJavaScriptExceptionWithinItself || isTypedArrayBufferBridgeWithinItself
+
+      if (cls.nameString.startsWith("scala.") && !isAnException)
         reportError(s"Illegal reference to Scala class ${cls.nameString}")
     }
 
@@ -521,10 +631,17 @@ object JavalibIRCleaner {
   // Within js.JavaScriptException, which is part of the linker private lib, we can refer to itself
   private val JavaScriptExceptionClass = ClassName("scala.scalajs.js.JavaScriptException")
 
+  // Within TypedArrayBufferBridge, which is actually part of the library, we can refer to itself
+  private val TypedArrayBufferBridge = ClassName("scala.scalajs.js.typedarray.TypedArrayBufferBridge")
+  private val TypedArrayBufferBridgeMod = ClassName("scala.scalajs.js.typedarray.TypedArrayBufferBridge$")
+
+  private val ImmutableSeq = ClassName("scala.collection.immutable.Seq")
   private val JavaIOSerializable = ClassName("java.io.Serializable")
   private val JSAny = ClassName("scala.scalajs.js.Any")
   private val JSAnyMod = ClassName("scala.scalajs.js.Any$")
   private val JSArray = ClassName("scala.scalajs.js.Array")
+  private val JSArrayOps = ClassName("scala.scalajs.js.ArrayOps")
+  private val JSArrayOpsMod = ClassName("scala.scalajs.js.ArrayOps$")
   private val JSDynamic = ClassName("scala.scalajs.js.Dynamic")
   private val JSDynamicImplicitsMod = ClassName("scala.scalajs.js.DynamicImplicits$")
   private val JSNumberOps = ClassName("scala.scalajs.js.JSNumberOps")
@@ -535,6 +652,9 @@ object JavalibIRCleaner {
   private val ScalaSerializable = ClassName("scala.Serializable")
   private val ScalaJSRuntimeMod = ClassName("scala.scalajs.runtime.package$")
   private val StringContextClass = ClassName("scala.StringContext")
+  private val UnionType = ClassName("scala.scalajs.js.$bar")
+  private val UnionTypeMod = ClassName("scala.scalajs.js.$bar$")
+  private val UnionTypeEvidence = ClassName("scala.scalajs.js.$bar$Evidence")
 
   private val FunctionNClasses: IndexedSeq[ClassName] =
     (0 to MaxFunctionArity).map(n => ClassName(s"scala.Function$n"))
@@ -552,16 +672,30 @@ object JavalibIRCleaner {
     MethodName("fromInt", List(IntRef), ClassRef(JSAny))
   private val jsAnyFromStringMethodName =
     MethodName("fromString", List(ClassRef(BoxedStringClass)), ClassRef(JSAny))
+  private val jsArrayOpsToArrayMethodName =
+    MethodName("jsArrayOps", List(ClassRef(JSArray)), ClassRef(JSArray))
+  private val jsArrayOpsToArrayOpsMethodName =
+    MethodName("jsArrayOps", List(ClassRef(JSArray)), ClassRef(JSArrayOps))
   private val number2dynamicMethodName =
     MethodName("number2dynamic", List(DoubleRef), ClassRef(JSDynamic))
   private val sMethodName =
     MethodName("s", List(ClassRef(ReadOnlySeq)), ClassRef(BoxedStringClass))
   private val stringContextCtorMethodName =
     MethodName.constructor(List(ClassRef(ReadOnlySeq)))
+  private val toImmutableSeqExtensionMethodName =
+    MethodName("toSeq$extension", List(ClassRef(JSArray)), ClassRef(ImmutableSeq))
+  private val toJSVarArgsImmutableMethodName =
+    MethodName("toJSVarArgs", List(ClassRef(ImmutableSeq)), ClassRef(JSArray))
+  private val toJSVarArgsReadOnlyMethodName =
+    MethodName("toJSVarArgs", List(ClassRef(ReadOnlySeq)), ClassRef(JSArray))
   private val toScalaVarArgsReadOnlyMethodName =
     MethodName("toScalaVarArgs", List(ClassRef(JSArray)), ClassRef(ReadOnlySeq))
+  private val toReadOnlySeqMethodName =
+    MethodName("toSeq", Nil, ClassRef(ReadOnlySeq))
   private val truthValueMethodName =
     MethodName("truthValue", List(ClassRef(JSDynamic)), BooleanRef)
+  private val unionTypeFromMethodName =
+    MethodName("from", List(ClassRef(ObjectClass), ClassRef(UnionTypeEvidence)), ClassRef(UnionType))
   private val writeReplaceMethodName =
     MethodName("writeReplace", Nil, ClassRef(ObjectClass))
 
@@ -603,6 +737,30 @@ object JavalibIRCleaner {
       funClass -> ObjectClass
     }
 
-    functionTypePairs.toMap
+    val refBaseNames =
+      List("Boolean", "Char", "Byte", "Short", "Int", "Long", "Float", "Double", "Object")
+    val refPairs = for {
+      refBaseName <- refBaseNames
+    } yield {
+      val simpleName = refBaseName + "Ref"
+      ClassName("scala.runtime." + simpleName) -> ClassName("java.util.internal." + simpleName)
+    }
+
+    val tuplePairs = for {
+      n <- (2 to 22).toList
+    } yield {
+      ClassName("scala.Tuple" + n) -> ClassName("java.util.internal.Tuple" + n)
+    }
+
+    val otherPairs = List(
+      /* AssertionError conveniently features a constructor taking an Object.
+       * Since any MatchError in the javalib would be a bug, it is fine to
+       * rewrite them to AssertionErrors.
+       */
+      ClassName("scala.MatchError") -> ClassName("java.lang.AssertionError"),
+    )
+
+    val allPairs = functionTypePairs ++ refPairs ++ tuplePairs ++ otherPairs
+    allPairs.toMap
   }
 }

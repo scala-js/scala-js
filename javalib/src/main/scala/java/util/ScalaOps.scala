@@ -57,8 +57,8 @@ private[java] object ScalaOps {
     @inline def indexWhere(f: A => Boolean): Int =
       __self.iterator().scalaOps.indexWhere(f)
 
-    @inline def find(f: A => Boolean): Option[A] =
-      __self.iterator().scalaOps.find(f)
+    @inline def findFold[B](f: A => Boolean)(default: => B)(g: A => B): B =
+      __self.iterator().scalaOps.findFold(f)(default)(g)
 
     @inline def foldLeft[B](z: B)(f: (B, A) => B): B =
       __self.iterator().scalaOps.foldLeft(z)(f)
@@ -112,14 +112,14 @@ private[java] object ScalaOps {
       // scalastyle:on return
     }
 
-    @inline def find(f: A => Boolean): Option[A] = {
+    @inline def findFold[B](f: A => Boolean)(default: => B)(g: A => B): B = {
       // scalastyle:off return
       while (__self.hasNext()) {
         val x = __self.next()
         if (f(x))
-          return Some(x)
+          return g(x)
       }
-      None
+      default
       // scalastyle:on return
     }
 

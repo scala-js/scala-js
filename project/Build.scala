@@ -572,7 +572,7 @@ object Build {
   )
 
   val cleanIRSettings = Def.settings(
-      // In order to rewrite anonymous functions, the code must not be specialized
+      // In order to rewrite anonymous functions and tuples, the code must not be specialized
       scalacOptions += "-no-specialization",
 
       products in Compile := {
@@ -1270,6 +1270,8 @@ object Build {
         else
           Nil
       },
+
+      cleanIRSettings,
 
       headerSources in Compile ~= { srcs =>
         srcs.filter { src =>

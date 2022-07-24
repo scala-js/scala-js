@@ -74,7 +74,12 @@ object BigInteger {
     new BigInteger(1, 4), new BigInteger(1, 5), new BigInteger(1, 6),
     new BigInteger(1, 7), new BigInteger(1, 8), new BigInteger(1, 9), TEN)
 
-  private final val TWO_POWS = Array.tabulate[BigInteger](32)(i => BigInteger.valueOf(1L << i))
+  private final val TWO_POWS = {
+    val result = new Array[BigInteger](32)
+    for (i <- 0 until 32)
+      result(i) = BigInteger.valueOf(1L << i)
+    result
+  }
 
   /** The first non zero digit is either -1 if sign is zero, otherwise it is >= 0.
    *

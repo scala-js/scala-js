@@ -12,6 +12,8 @@
 
 package java.util.regex
 
+import java.util.JSUtils._
+
 import scala.annotation.switch
 
 import scala.scalajs.js
@@ -182,13 +184,13 @@ final class Matcher private[regex] (
 
   def start(): Int = ensureLastMatch.index + regionStart()
   def end(): Int = start() + group().length
-  def group(): String = ensureLastMatch(0).get
+  def group(): String = undefOrForceGet(ensureLastMatch(0))
 
   private def indices: IndicesArray =
     pattern().getIndices(ensureLastMatch, lastMatchIsForMatches)
 
   private def startInternal(compiledGroup: Int): Int =
-    indices(compiledGroup).fold(-1)(_._1 + regionStart())
+    undefOrFold(indices(compiledGroup))(-1)(_._1 + regionStart())
 
   def start(group: Int): Int =
     startInternal(pattern().numberedGroup(group))
@@ -197,7 +199,7 @@ final class Matcher private[regex] (
     startInternal(pattern().namedGroup(name))
 
   private def endInternal(compiledGroup: Int): Int =
-    indices(compiledGroup).fold(-1)(_._2 + regionStart())
+    undefOrFold(indices(compiledGroup))(-1)(_._2 + regionStart())
 
   def end(group: Int): Int =
     endInternal(pattern().numberedGroup(group))
@@ -206,10 +208,10 @@ final class Matcher private[regex] (
     endInternal(pattern().namedGroup(name))
 
   def group(group: Int): String =
-    ensureLastMatch(pattern().numberedGroup(group)).orNull
+    undefOrGetOrNull(ensureLastMatch(pattern().numberedGroup(group)))
 
   def group(name: String): String =
-    ensureLastMatch(pattern().namedGroup(name)).orNull
+    undefOrGetOrNull(ensureLastMatch(pattern().namedGroup(name)))
 
   // Seal the state
 
@@ -266,7 +268,7 @@ object Matcher {
 
     def start(): Int = ensureLastMatch.index + regionStart
     def end(): Int = start() + group().length
-    def group(): String = ensureLastMatch(0).get
+    def group(): String = undefOrForceGet(ensureLastMatch(0))
 
     private def indices: IndicesArray =
       pattern.getIndices(ensureLastMatch, lastMatchIsForMatches)
@@ -276,13 +278,13 @@ object Matcher {
      */
 
     def start(group: Int): Int =
-      indices(pattern.numberedGroup(group)).fold(-1)(_._1 + regionStart)
+      undefOrFold(indices(pattern.numberedGroup(group)))(-1)(_._1 + regionStart)
 
     def end(group: Int): Int =
-      indices(pattern.numberedGroup(group)).fold(-1)(_._2 + regionStart)
+      undefOrFold(indices(pattern.numberedGroup(group)))(-1)(_._2 + regionStart)
 
     def group(group: Int): String =
-      ensureLastMatch(pattern.numberedGroup(group)).orNull
+      undefOrGetOrNull(ensureLastMatch(pattern.numberedGroup(group)))
 
     private def ensureLastMatch: js.RegExp.ExecResult = {
       if (lastMatch == null)

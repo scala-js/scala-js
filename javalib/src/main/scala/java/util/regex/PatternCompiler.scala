@@ -25,10 +25,12 @@ import java.lang.Character.{
   MAX_LOW_SURROGATE
 }
 
+import java.util.JSUtils._
 import java.util.ScalaOps._
 
 import scala.scalajs.js
-import scala.scalajs.LinkingInfo.{ESVersion, esVersion}
+import scala.scalajs.runtime.linkingInfo
+import scala.scalajs.LinkingInfo.ESVersion
 
 /** Compiler from Java regular expressions to JavaScript regular expressions.
  *
@@ -80,15 +82,15 @@ private[regex] object PatternCompiler {
 
   /** Cache for `Support.supportsUnicode`. */
   private val _supportsUnicode =
-    (esVersion >= ESVersion.ES2015) || featureTest("u")
+    (linkingInfo.esVersion >= ESVersion.ES2015) || featureTest("u")
 
   /** Cache for `Support.supportsSticky`. */
   private val _supportsSticky =
-    (esVersion >= ESVersion.ES2015) || featureTest("y")
+    (linkingInfo.esVersion >= ESVersion.ES2015) || featureTest("y")
 
   /** Cache for `Support.supportsDotAll`. */
   private val _supportsDotAll =
-    (esVersion >= ESVersion.ES2018) || featureTest("us")
+    (linkingInfo.esVersion >= ESVersion.ES2018) || featureTest("us")
 
   /** Cache for `Support.supportsIndices`. */
   private val _supportsIndices =
@@ -104,17 +106,17 @@ private[regex] object PatternCompiler {
     /** Tests whether the underlying JS RegExp supports the 'u' flag. */
     @inline
     def supportsUnicode: Boolean =
-      (esVersion >= ESVersion.ES2015) || _supportsUnicode
+      (linkingInfo.esVersion >= ESVersion.ES2015) || _supportsUnicode
 
     /** Tests whether the underlying JS RegExp supports the 'y' flag. */
     @inline
     def supportsSticky: Boolean =
-      (esVersion >= ESVersion.ES2015) || _supportsSticky
+      (linkingInfo.esVersion >= ESVersion.ES2015) || _supportsSticky
 
     /** Tests whether the underlying JS RegExp supports the 's' flag. */
     @inline
     def supportsDotAll: Boolean =
-      (esVersion >= ESVersion.ES2018) || _supportsDotAll
+      (linkingInfo.esVersion >= ESVersion.ES2018) || _supportsDotAll
 
     /** Tests whether the underlying JS RegExp supports the 'd' flag. */
     @inline
@@ -128,7 +130,7 @@ private[regex] object PatternCompiler {
      */
     @inline
     def enableUnicodeCaseInsensitive: Boolean =
-      esVersion >= ESVersion.ES2015
+      linkingInfo.esVersion >= ESVersion.ES2015
 
     /** Tests whether features requiring \p{} and/or look-behind assertions are enabled.
      *
@@ -137,7 +139,7 @@ private[regex] object PatternCompiler {
      */
     @inline
     def enableUnicodeCharacterClassesAndLookBehinds: Boolean =
-      esVersion >= ESVersion.ES2018
+      linkingInfo.esVersion >= ESVersion.ES2018
   }
 
   import Support._
@@ -212,7 +214,7 @@ private[regex] object PatternCompiler {
   import InlinedHelpers._
 
   private def codePointToString(codePoint: Int): String = {
-    if (esVersion >= ESVersion.ES2015) {
+    if (linkingInfo.esVersion >= ESVersion.ES2015) {
       js.Dynamic.global.String.fromCodePoint(codePoint).asInstanceOf[String]
     } else {
       if (isBmpCodePoint(codePoint)) {
@@ -286,24 +288,24 @@ private[regex] object PatternCompiler {
    *  This is a `js.Dictionary` because it can be used even when compiling to
    *  ECMAScript 5.1.
    */
-  private val asciiPOSIXCharacterClasses = {
+  private val asciiPOSIXCharacterClasses: js.Dictionary[CompiledCharClass] = {
     import CompiledCharClass._
 
-    js.Dictionary(
-      ("Lower", posClass("a-z")),
-      ("Upper", posClass("A-Z")),
-      ("ASCII", posClass("\u0000-\u007f")),
-      ("Alpha", posClass("A-Za-z")), // [\p{Lower}\p{Upper}]
-      ("Digit", posClass("0-9")),
-      ("Alnum", posClass("0-9A-Za-z")), // [\p{Alpha}\p{Digit}]
-      ("Punct", posClass("!-/:-@[-`{-~")), // One of !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~
-      ("Graph", posClass("!-~")), // [\p{Alnum}\p{Punct}]
-      ("Print", posClass(" -~")), // [\p{Graph}\x20]
-      ("Blank", posClass("\t ")),
-      ("Cntrl", posClass("\u0000-\u001f\u007f")),
-      ("XDigit", posClass("0-9A-Fa-f")),
-      ("Space", posClass("\t-\r ")) // [ \t\n\x0B\f\r]
-    )
+    val r = dictEmpty[CompiledCharClass]()
+    dictSet(r, "Lower", posClass("a-z"))
+    dictSet(r, "Upper", posClass("A-Z"))
+    dictSet(r, "ASCII", posClass("\u0000-\u007f"))
+    dictSet(r, "Alpha", posClass("A-Za-z")) // [\p{Lower}\p{Upper}]
+    dictSet(r, "Digit", posClass("0-9"))
+    dictSet(r, "Alnum", posClass("0-9A-Za-z")) // [\p{Alpha}\p{Digit}]
+    dictSet(r, "Punct", posClass("!-/:-@[-`{-~")) // One of !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~
+    dictSet(r, "Graph", posClass("!-~")) // [\p{Alnum}\p{Punct}]
+    dictSet(r, "Print", posClass(" -~")) // [\p{Graph}\x20]
+    dictSet(r, "Blank", posClass("\t "))
+    dictSet(r, "Cntrl", posClass("\u0000-\u001f\u007f"))
+    dictSet(r, "XDigit", posClass("0-9A-Fa-f"))
+    dictSet(r, "Space", posClass("\t-\r ")) // [ \t\n\x0B\f\r]
+    r
   }
 
   /** Mapping of predefined character classes to the corresponding character
@@ -333,70 +335,70 @@ private[regex] object PatternCompiler {
       "Cc", "Cf", "Cs", "Co", "Cn", "C"
     )
 
-    for (gc <- generalCategories) {
+    forArrayElems(generalCategories) { gc =>
       val compiled = posP(gc)
-      result(gc) = compiled
-      result("Is" + gc) = compiled
-      result("general_category=" + gc) = compiled
-      result("gc=" + gc) = compiled
+      mapSet(result, gc, compiled)
+      mapSet(result, "Is" + gc, compiled)
+      mapSet(result, "general_category=" + gc, compiled)
+      mapSet(result, "gc=" + gc, compiled)
     }
 
     // Binary properties
 
-    result("IsAlphabetic") = posP("Alphabetic")
-    result("IsIdeographic") = posP("Ideographic")
-    result("IsLetter") = posP("Letter")
-    result("IsLowercase") = posP("Lowercase")
-    result("IsUppercase") = posP("Uppercase")
-    result("IsTitlecase") = posP("Lt")
-    result("IsPunctuation") = posP("Punctuation")
-    result("IsControl") = posP("Control")
-    result("IsWhite_Space") = posP("White_Space")
-    result("IsDigit") = posP("Nd")
-    result("IsHex_Digit") = posP("Hex_Digit")
-    result("IsJoin_Control") = posP("Join_Control")
-    result("IsNoncharacter_Code_Point") = posP("Noncharacter_Code_Point")
-    result("IsAssigned") = posP("Assigned")
+    mapSet(result, "IsAlphabetic", posP("Alphabetic"))
+    mapSet(result, "IsIdeographic", posP("Ideographic"))
+    mapSet(result, "IsLetter", posP("Letter"))
+    mapSet(result, "IsLowercase", posP("Lowercase"))
+    mapSet(result, "IsUppercase", posP("Uppercase"))
+    mapSet(result, "IsTitlecase", posP("Lt"))
+    mapSet(result, "IsPunctuation", posP("Punctuation"))
+    mapSet(result, "IsControl", posP("Control"))
+    mapSet(result, "IsWhite_Space", posP("White_Space"))
+    mapSet(result, "IsDigit", posP("Nd"))
+    mapSet(result, "IsHex_Digit", posP("Hex_Digit"))
+    mapSet(result, "IsJoin_Control", posP("Join_Control"))
+    mapSet(result, "IsNoncharacter_Code_Point", posP("Noncharacter_Code_Point"))
+    mapSet(result, "IsAssigned", posP("Assigned"))
 
     // java.lang.Character classes
 
-    result("javaAlphabetic") = posP("Alphabetic")
-    result("javaDefined") = negP("Cn")
-    result("javaDigit") = posP("Nd")
-    result("javaIdentifierIgnorable") = posClass("\u0000-\u0008\u000E-\u001B\u007F-\u009F\\p{Cf}")
-    result("javaIdeographic") = posP("Ideographic")
-    result("javaISOControl") = posClass("\u0000-\u001F\u007F-\u009F")
-    result("javaJavaIdentifierPart") =
-      posClass("\\p{L}\\p{Sc}\\p{Pc}\\p{Nd}\\p{Nl}\\p{Mn}\\p{Mc}\u0000-\u0008\u000E-\u001B\u007F-\u009F\\p{Cf}")
-    result("javaJavaIdentifierStart") = posClass("\\p{L}\\p{Sc}\\p{Pc}\\p{Nl}")
-    result("javaLetterOrDigit") = posClass("\\p{L}\\p{Nd}")
-    result("javaLowerCase") = posP("Lowercase")
-    result("javaMirrored") = posP("Bidi_Mirrored")
-    result("javaSpaceChar") = posP("Z")
-    result("javaTitleCase") = posP("Lt")
-    result("javaUnicodeIdentifierPart") =
-      posClass("\\p{ID_Continue}\u2E2F\u0000-\u0008\u000E-\u001B\u007F-\u009F\\p{Cf}")
-    result("javaUnicodeIdentifierStart") = posClass("\\p{ID_Start}\u2E2F")
-    result("javaUpperCase") = posP("Uppercase")
+    mapSet(result, "javaAlphabetic", posP("Alphabetic"))
+    mapSet(result, "javaDefined", negP("Cn"))
+    mapSet(result, "javaDigit", posP("Nd"))
+    mapSet(result, "javaIdentifierIgnorable", posClass("\u0000-\u0008\u000E-\u001B\u007F-\u009F\\p{Cf}"))
+    mapSet(result, "javaIdeographic", posP("Ideographic"))
+    mapSet(result, "javaISOControl", posClass("\u0000-\u001F\u007F-\u009F"))
+    mapSet(result, "javaJavaIdentifierPart",
+      posClass("\\p{L}\\p{Sc}\\p{Pc}\\p{Nd}\\p{Nl}\\p{Mn}\\p{Mc}\u0000-\u0008\u000E-\u001B\u007F-\u009F\\p{Cf}"))
+    mapSet(result, "javaJavaIdentifierStart", posClass("\\p{L}\\p{Sc}\\p{Pc}\\p{Nl}"))
+    mapSet(result, "javaLetterOrDigit", posClass("\\p{L}\\p{Nd}"))
+    mapSet(result, "javaLowerCase", posP("Lowercase"))
+    mapSet(result, "javaMirrored", posP("Bidi_Mirrored"))
+    mapSet(result, "javaSpaceChar", posP("Z"))
+    mapSet(result, "javaTitleCase", posP("Lt"))
+    mapSet(result, "javaUnicodeIdentifierPart",
+      posClass("\\p{ID_Continue}\u2E2F\u0000-\u0008\u000E-\u001B\u007F-\u009F\\p{Cf}"))
+    mapSet(result, "javaUnicodeIdentifierStart", posClass("\\p{ID_Start}\u2E2F"))
+    mapSet(result, "javaUpperCase", posP("Uppercase"))
 
     // [\t-\r\u001C-\u001F\\p{Z}&&[^\u00A0\u2007\u202F]]
-    result("javaWhitespace") =
-      posClass("\t-\r\u001C-\u001F \u1680\u2000-\u2006\u2008-\u200A\u205F\u3000\\p{Zl}\\p{Zp}")
+    mapSet(result, "javaWhitespace",
+      posClass("\t-\r\u001C-\u001F \u1680\u2000-\u2006\u2008-\u200A\u205F\u3000\\p{Zl}\\p{Zp}"))
 
     /* POSIX character classes with Unicode compatibility
      * (resolved from the original definitions, which are in comments)
      */
 
-    result("Lower") = posP("Lower") // \p{IsLowercase}
-    result("Upper") = posP("Upper") // \p{IsUppercase}
-    result("ASCII") = posClass("\u0000-\u007f")
-    result("Alpha") = posP("Alpha") // \p{IsAlphabetic}
-    result("Digit") = posP("Nd") // \p{IsDigit}
-    result("Alnum") = posClass("\\p{Alpha}\\p{Nd}") // [\p{IsAlphabetic}\p{IsDigit}]
-    result("Punct") = posP("P") // \p{IsPunctuation}
+    mapSet(result, "Lower", posP("Lower")) // \p{IsLowercase}
+    mapSet(result, "Upper", posP("Upper")) // \p{IsUppercase}
+    mapSet(result, "ASCII", posClass("\u0000-\u007f"))
+    mapSet(result, "Alpha", posP("Alpha")) // \p{IsAlphabetic}
+    mapSet(result, "Digit", posP("Nd")) // \p{IsDigit}
+    mapSet(result, "Alnum", posClass("\\p{Alpha}\\p{Nd}")) // [\p{IsAlphabetic}\p{IsDigit}]
+    mapSet(result, "Punct", posP("P")) // \p{IsPunctuation}
 
     // [^\p{IsWhite_Space}\p{gc=Cc}\p{gc=Cs}\p{gc=Cn}]
-    result("Graph") = negClass("\\p{White_Space}\\p{Cc}\\p{Cs}\\p{Cn}")
+    mapSet(result, "Graph", negClass("\\p{White_Space}\\p{Cc}\\p{Cs}\\p{Cn}"))
 
     /* [\p{Graph}\p{Blank}&&[^\p{Cntrl}]]
      *   === (by definition of Cntrl)
@@ -416,7 +418,7 @@ private[regex] object PatternCompiler {
      *   === (because \x09-\x0d and \x85 are all in the Cc category)
      * [^\p{Zl}\p{Zp}\p{Cc}\p{Cs}\p{Cn}]
      */
-    result("Print") = negClass("\\p{Zl}\\p{Zp}\\p{Cc}\\p{Cs}\\p{Cn}")
+    mapSet(result, "Print", negClass("\\p{Zl}\\p{Zp}\\p{Cc}\\p{Cs}\\p{Cn}"))
 
     /* [\p{IsWhite_Space}&&[^\p{gc=Zl}\p{gc=Zp}\x0a\x0b\x0c\x0d\x85]]
      *   === (see the excerpt from PropList.txt below)
@@ -424,11 +426,11 @@ private[regex] object PatternCompiler {
      *   === (by simplification)
      * [\x09\p{gc=Zs}]
      */
-    result("Blank") = posClass("\t\\p{Zs}")
+    mapSet(result, "Blank", posClass("\t\\p{Zs}"))
 
-    result("Cntrl") = posP("Cc") // \p{gc=Cc}
-    result("XDigit") = posClass("\\p{Nd}\\p{Hex}") // [\p{gc=Nd}\p{IsHex_Digit}]
-    result("Space") = posP("White_Space") // \p{IsWhite_Space}
+    mapSet(result, "Cntrl", posP("Cc")) // \p{gc=Cc}
+    mapSet(result, "XDigit", posClass("\\p{Nd}\\p{Hex}")) // [\p{gc=Nd}\p{IsHex_Digit}]
+    mapSet(result, "Space", posP("White_Space")) // \p{IsWhite_Space}
 
     result
   }
@@ -473,7 +475,7 @@ private[regex] object PatternCompiler {
     /* SignWriting is an exception. It has an uppercase 'W' even though it is
      * not after '_'. We add the exception to the map immediately.
      */
-    result("signwriting") = "SignWriting"
+    mapSet(result, "signwriting", "SignWriting")
 
     result
   }
@@ -741,7 +743,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
    *  We store *original* group numbers, rather than compiled group numbers,
    *  in order to make the renumbering caused by possessive quantifiers easier.
    */
-  private val namedGroups = js.Dictionary.empty[Int]
+  private val namedGroups = dictEmpty[Int]()
 
   @inline private def hasFlag(flag: Int): Boolean = (flags & flag) != 0
 
@@ -850,7 +852,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
   private def processLeadingEmbeddedFlags(): Unit = {
     val m = leadingEmbeddedFlagSpecifierRegExp.exec(pattern)
     if (m != null) {
-      for (chars <- m(1)) {
+      undefOrForeach(m(1)) { chars =>
         for (i <- 0 until chars.length())
           flags |= charToFlag(chars.charAt(i))
       }
@@ -859,7 +861,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
       if (hasFlag(UNICODE_CHARACTER_CLASS))
         flags |= UNICODE_CASE
 
-      for (chars <- m(2)) {
+      undefOrForeach(m(2)) { chars =>
         for (i <- 0 until chars.length())
           flags &= ~charToFlag(chars.charAt(i))
       }
@@ -872,7 +874,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
        */
 
       // Advance past the embedded flags
-      pIndex += m(0).get.length()
+      pIndex += undefOrForceGet(m(0)).length()
     }
   }
 
@@ -1362,9 +1364,9 @@ private final class PatternCompiler(private val pattern: String, private var fla
           parseError("\\k is not followed by '<' for named capturing group")
         pIndex += 1
         val groupName = parseGroupName()
-        val groupNumber = namedGroups.getOrElse(groupName, {
+        val groupNumber = dictGetOrElse(namedGroups, groupName) {
           parseError(s"named capturing group <$groupName> does not exit")
-        })
+        }
         val compiledGroupNumber = groupNumberMap(groupNumber)
         pIndex += 1
         // Wrap in a non-capturing group in case it's followed by a (de-escaped) digit
@@ -1607,16 +1609,16 @@ private final class PatternCompiler(private val pattern: String, private var fla
       pattern.substring(start, start + 1)
     }
 
-    val result = if (!unicodeCharacterClass && asciiPOSIXCharacterClasses.contains(property)) {
+    val result = if (!unicodeCharacterClass && dictContains(asciiPOSIXCharacterClasses, property)) {
       val property2 =
         if (asciiCaseInsensitive && (property == "Lower" || property == "Upper")) "Alpha"
         else property
-      asciiPOSIXCharacterClasses(property2)
+      dictRawApply(asciiPOSIXCharacterClasses, property2)
     } else {
       // For anything else, we need built-in support for \p
       requireES2018Features("Unicode character family")
 
-      predefinedPCharacterClasses.getOrElse(property, {
+      mapGetOrElse(predefinedPCharacterClasses, property) {
         val scriptPrefixLen = if (property.startsWith("Is")) {
           2
         } else if (property.startsWith("sc=")) {
@@ -1630,7 +1632,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
           parseError(s"Unknown Unicode character class '$property'")
         }
         CompiledCharClass.posP("sc=" + canonicalizeScriptName(property.substring(scriptPrefixLen)))
-      })
+      }
     }
 
     pIndex += 1
@@ -1651,7 +1653,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
 
     val lowercase = scriptName.toLowerCase()
 
-    canonicalizedScriptNameCache.getOrElseUpdate(lowercase, {
+    mapGetOrElseUpdate(canonicalizedScriptNameCache, lowercase) {
       val canonical = lowercase.jsReplace(scriptCanonicalizeRegExp,
           ((s: String) => s.toUpperCase()): js.Function1[String, String])
 
@@ -1663,7 +1665,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
       }
 
       canonical
-    })
+    }
   }
 
   private def compileCharacterClass(): String = {
@@ -1805,11 +1807,11 @@ private final class PatternCompiler(private val pattern: String, private var fla
           // Named capturing group
           pIndex = start + 3
           val name = parseGroupName()
-          if (namedGroups.contains(name))
+          if (dictContains(namedGroups, name))
             parseError(s"named capturing group <$name> is already defined")
           compiledGroupCount += 1
           groupNumberMap.push(compiledGroupCount) // this changes originalGroupCount
-          namedGroups(name) = originalGroupCount
+          dictSet(namedGroups, name, originalGroupCount)
           pIndex += 1
           "(" + compileInsideGroup() + ")"
         } else {
