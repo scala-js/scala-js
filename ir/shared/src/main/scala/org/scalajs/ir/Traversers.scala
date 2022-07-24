@@ -244,6 +244,9 @@ object Traversers {
         case MethodDef(_, _, _, _, _, body) =>
           body.foreach(traverse)
 
+        case JSConstructorDef(_, _, _, body) =>
+          body.allStats.foreach(traverse)
+
         case JSMethodDef(_, _, _, _, body) =>
           traverse(body)
 

@@ -150,6 +150,7 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
     val fields = List.newBuilder[AnyFieldDef]
     val methods = List.newBuilder[Versioned[MethodDef]]
     val jsNativeMembers = List.newBuilder[JSNativeMemberDef]
+    var jsConstructorDef: Option[Versioned[JSConstructorDef]] = None
     val exportedMembers = List.newBuilder[Versioned[JSMethodPropDef]]
 
     def linkedMethod(m: MethodDef) = {
@@ -171,6 +172,14 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
               s"The abstract method ${classDef.name.name}.${m.methodName} " +
               "is reachable.")
           methods += linkedMethod(m)
+        }
+
+      case m: JSConstructorDef =>
+        if (analyzerInfo.isAnySubclassInstantiated) {
+          assert(jsConstructorDef.isEmpty,
+              s"Duplicate JS constructor in ${classDef.name.name} at ${m.pos}")
+          val version = m.hash.map(Hashers.hashAsVersion(_))
+          jsConstructorDef = Some(new Versioned(m, version))
         }
 
       case m: JSMethodDef =>
@@ -206,6 +215,7 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
         classDef.jsNativeLoadSpec,
         fields.result(),
         methods.result(),
+        jsConstructorDef,
         exportedMembers.result(),
         jsNativeMembers.result(),
         classDef.optimizerHints,

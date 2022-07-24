@@ -667,6 +667,30 @@ object Serializers {
           writeInt(length)
           bufferUnderlying.continue()
 
+        case ctorDef: JSConstructorDef =>
+          val JSConstructorDef(flags, args, restParam, body) = ctorDef
+
+          writeByte(TagJSConstructorDef)
+          writeOptHash(ctorDef.hash)
+
+          // Prepare for back-jump and write dummy length
+          bufferUnderlying.markJump()
+          writeInt(-1)
+
+          // Write out ctor def
+          writeInt(MemberFlags.toBits(flags))
+          writeParamDefs(args); writeOptParamDef(restParam)
+          writePosition(body.pos)
+          writeTrees(body.beforeSuper)
+          writeTree(body.superCall)
+          writeTrees(body.afterSuper)
+          writeInt(OptimizerHints.toBits(ctorDef.optimizerHints))
+
+          // Jump back and write true length
+          val length = bufferUnderlying.jumpBack()
+          writeInt(length)
+          bufferUnderlying.continue()
+
         case methodDef: JSMethodDef =>
           val JSMethodDef(flags, name, args, restParam, body) = methodDef
 
@@ -1228,12 +1252,48 @@ object Serializers {
       val jsSuperClass = readOptTree()
 
       val jsNativeLoadSpec = readJSNativeLoadSpec()
-      val memberDefs = readMemberDefs(name.name, kind)
+      val memberDefs0 = readMemberDefs(name.name, kind)
       val topLevelExportDefs = readTopLevelExportDefs(name.name, kind)
       val optimizerHints = OptimizerHints.fromBits(readInt())
+
+      val memberDefs =
+        if (/*hacks.use8 &&*/ kind.isJSClass) memberDefs0.map(jsConstructorDefHack(_)) // scalastyle:ignore
+        else memberDefs0
+
       ClassDef(name, originalName, kind, jsClassCaptures, superClass, parents,
           jsSuperClass, jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
           optimizerHints)
+    }
+
+    private def jsConstructorDefHack(memberDef: MemberDef): MemberDef = {
+      memberDef match {
+        case methodDef @ JSMethodDef(flags, StringLiteral("constructor"), args, restParam, body)
+            if flags.namespace == MemberNamespace.Public =>
+          val bodyStats = body match {
+            case Block(stats) => stats
+            case _            => body :: Nil
+          }
+
+          bodyStats.span(!_.isInstanceOf[JSSuperConstructorCall]) match {
+            case (beforeSuper, (superCall: JSSuperConstructorCall) :: afterSuper) =>
+              val newFlags = flags.withNamespace(MemberNamespace.Constructor)
+              val newBody = JSConstructorBody(beforeSuper, superCall, afterSuper)(body.pos)
+              val ctorDef = JSConstructorDef(newFlags, args, restParam, newBody)(
+                  methodDef.optimizerHints, None)(methodDef.pos)
+              Hashers.hashJSConstructorDef(ctorDef)
+
+            case _ =>
+              /* This is awkward: we have an old-style JS constructor that is
+               * structurally invalid. We crash in order not to silently
+               * ignore errors.
+               */
+              throw new IOException(
+                  s"Found invalid pre-1.11 JS constructor def at ${methodDef.pos}:\n${methodDef.show}")
+          }
+
+        case _ =>
+          memberDef
+      }
     }
 
     def readMemberDef(owner: ClassName, ownerKind: ClassKind): MemberDef = {
@@ -1380,6 +1440,25 @@ object Serializers {
                 optimizerHints, optHash)
           }
 
+        case TagJSConstructorDef =>
+          val optHash = readOptHash()
+          // read and discard the length
+          val len = readInt()
+          assert(len >= 0)
+
+          /* JSConstructorDef was introduced in 1.11. Therefore, by
+           * construction, they never need the body hack of 1.5.
+           */
+
+          val flags = MemberFlags.fromBits(readInt())
+          val (params, restParam) = readParamDefsWithRest()
+          val bodyPos = readPosition()
+          val beforeSuper = readTrees()
+          val superCall = readTree().asInstanceOf[JSSuperConstructorCall]
+          val afterSuper = readTrees()
+          val body = JSConstructorBody(beforeSuper, superCall, afterSuper)(bodyPos)
+          JSConstructorDef(flags, params, restParam, body)(
+              OptimizerHints.fromBits(readInt()), optHash)
 
         case TagJSMethodDef =>
           val optHash = readOptHash()
@@ -1819,6 +1898,12 @@ object Serializers {
     val use4: Boolean = use3 || sourceVersion == "1.4"
 
     val use5: Boolean = use4 || sourceVersion == "1.5"
+
+    private val use6: Boolean = use5 || sourceVersion == "1.6"
+
+    private val use7: Boolean = use6 || sourceVersion == "1.7"
+
+    val use8: Boolean = use7 || sourceVersion == "1.8"
   }
 
   /** Names needed for hacks. */

@@ -57,6 +57,10 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         checkMethodDef(versioned.value, classDef)
       }
 
+      classDef.jsConstructorDef.foreach { versioned =>
+        checkJSConstructorDef(versioned.value, classDef)
+      }
+
       classDef.exportedMembers.foreach { versioned =>
         versioned.value match {
           case jsMethodDef: JSMethodDef =>
@@ -136,6 +140,25 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
     }
   }
 
+  private def checkJSConstructorDef(ctorDef: JSConstructorDef,
+      clazz: LinkedClass): Unit =  {
+    val JSConstructorDef(flags, params, restParam, body) = ctorDef
+    implicit val ctx = ErrorContext(ctorDef)
+
+    // JS constructors only get a valid `this` after the super call.
+
+    val beforeSuperEnv = Env.fromSignature(thisType = NoType, inConstructorOf = Some(clazz.name.name))
+    body.beforeSuper.foreach(typecheck(_, beforeSuperEnv))
+    body.superCall.args.foreach(typecheckExprOrSpread(_, beforeSuperEnv))
+
+    val afterSuperEnv = beforeSuperEnv.withThis(AnyType)
+    body.afterSuper.foreach(typecheck(_, afterSuperEnv))
+
+    val resultType = body.afterSuper.lastOption.fold[Type](NoType)(_.tpe)
+    if (resultType == NoType)
+      reportError(i"${AnyType} expected but $resultType found for JS constructor body")
+  }
+
   private def checkJSMethodDef(methodDef: JSMethodDef,
       clazz: LinkedClass): Unit =  {
     val JSMethodDef(flags, pName, params, restParam, body) = methodDef
@@ -145,27 +168,13 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
 
     typecheckExpr(pName, Env.empty)
 
-    val isJSConstructor = {
-      clazz.kind.isJSClass && !static && {
-        pName match {
-          case StringLiteral("constructor") => true
-          case _                            => false
-        }
-      }
-    }
-
     val thisType = {
-      // JS constructors only get a valid `this` after the super call.
-      if (static || isJSConstructor) NoType
+      if (static) NoType
       else if (clazz.kind.isJSClass) AnyType
       else ClassType(clazz.name.name)
     }
 
-    val inConstructorOf =
-      if (isJSConstructor) Some(clazz.name.name)
-      else None
-
-    val bodyEnv = Env.fromSignature(thisType, inConstructorOf)
+    val bodyEnv = Env.fromSignature(thisType)
     typecheckExpect(body, bodyEnv, AnyType)
   }
 
@@ -240,7 +249,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
       case Skip() =>
 
       case Block(trees) =>
-        typecheckBlockTrees(trees, env)
+        trees.foreach(typecheck(_, env))
 
       case Labeled(label, tpe, body) =>
         typecheckExpect(body, env.withLabeledReturnType(label.name, tpe), tpe)
@@ -604,10 +613,6 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         for (arg <- args)
           typecheckExprOrSpread(arg, env)
 
-      case JSSuperConstructorCall(args) =>
-        for (arg <- args)
-          typecheckExprOrSpread(arg, env)
-
       case JSImportCall(arg) =>
         typecheckExpr(arg, env)
 
@@ -707,20 +712,8 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
             typecheckExpect(value, env, ctpe)
         }
 
-      case _:RecordSelect | _:RecordValue | _:Transient =>
+      case _:RecordSelect | _:RecordValue | _:Transient | _:JSSuperConstructorCall =>
         reportError("invalid tree")
-    }
-  }
-
-  private def typecheckBlockTrees(trees: List[Tree], env: Env): Env = {
-    trees.foldLeft(env) { (prevEnv, tree) =>
-      typecheck(tree, prevEnv)
-      tree match {
-        case JSSuperConstructorCall(_) =>
-          prevEnv.withThis(AnyType)
-        case _ =>
-          prevEnv
-      }
     }
   }
 

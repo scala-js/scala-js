@@ -817,6 +817,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               "Non-static, unexported method in non-native JS class")
           classDefMembers += mdef
 
+        case cdef: js.JSConstructorDef =>
+          abort(s"we do not generate JSConstructorDef's yet, at ${cdef.pos}")
+
         case mdef: js.JSMethodDef =>
           mdef.name match {
             case js.StringLiteral("constructor") =>
@@ -894,6 +897,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
         case mdef: js.MethodDef =>
           throw new AssertionError("unexpected MethodDef")
+
+        case cdef: js.JSConstructorDef =>
+          throw new AssertionError("unexpected JSConstructorDef")
 
         case mdef: js.JSMethodDef =>
           implicit val pos = mdef.pos

@@ -26,7 +26,7 @@ import Types._
 import TestIRBuilder._
 
 class PrintersTest {
-  import MemberNamespace.{Private, PublicStatic => Static, PrivateStatic}
+  import MemberNamespace.{Constructor, Private, PublicStatic => Static, PrivateStatic}
 
   /** An original name. */
   private val TestON = OriginalName("orig name")
@@ -1251,6 +1251,47 @@ class PrintersTest {
         MethodDef(MemberFlags.empty, mIIMethodName, TestON,
             List(ParamDef("x", TestON, IntType, mutable = false)),
             IntType, None)(NoOptHints, None))
+  }
+
+  @Test def printJSConstructorDef(): Unit = {
+    assertPrintEquals(
+        """
+          |constructor def constructor(x: any): any = {
+          |  5;
+          |  super(6);
+          |  (void 0)
+          |}
+        """,
+        JSConstructorDef(MemberFlags.empty.withNamespace(Constructor),
+            List(ParamDef("x", NON, AnyType, mutable = false)), None,
+            JSConstructorBody(List(i(5)), JSSuperConstructorCall(List(i(6))), List(Undefined())))(
+            NoOptHints, None))
+
+    assertPrintEquals(
+        """
+          |constructor def constructor(x: any, ...y: any): any = {
+          |  super(6);
+          |  7
+          |}
+        """,
+        JSConstructorDef(MemberFlags.empty.withNamespace(Constructor),
+            List(ParamDef("x", NON, AnyType, mutable = false)),
+            Some(ParamDef("y", NON, AnyType, mutable = false)),
+            JSConstructorBody(Nil, JSSuperConstructorCall(List(i(6))), List(i(7))))(
+            NoOptHints, None))
+
+    // This example is an invalid constructor, but it should be printed anyway
+    assertPrintEquals(
+        """
+          |def constructor(x{orig name}: any): any = {
+          |  5;
+          |  super(6)
+          |}
+        """,
+        JSConstructorDef(MemberFlags.empty,
+            List(ParamDef("x", TestON, AnyType, mutable = false)), None,
+            JSConstructorBody(List(i(5)), JSSuperConstructorCall(List(i(6))), Nil))(
+            NoOptHints, None))
   }
 
   @Test def printJSMethodDef(): Unit = {

@@ -44,6 +44,28 @@ object Hashers {
     }
   }
 
+  def hashJSConstructorDef(ctorDef: JSConstructorDef): JSConstructorDef = {
+    if (ctorDef.hash.isDefined) {
+      ctorDef
+    } else {
+      val hasher = new TreeHasher()
+      val JSConstructorDef(flags, params, restParam, body) = ctorDef
+
+      hasher.mixPos(ctorDef.pos)
+      hasher.mixInt(MemberFlags.toBits(flags))
+      hasher.mixParamDefs(params)
+      restParam.foreach(hasher.mixParamDef(_))
+      hasher.mixPos(body.pos)
+      hasher.mixTrees(body.allStats)
+      hasher.mixInt(OptimizerHints.toBits(ctorDef.optimizerHints))
+
+      val hash = hasher.finalizeHash()
+
+      JSConstructorDef(flags, params, restParam, body)(
+          ctorDef.optimizerHints, Some(hash))(ctorDef.pos)
+    }
+  }
+
   def hashJSMethodDef(methodDef: JSMethodDef): JSMethodDef = {
     if (methodDef.hash.isDefined) methodDef
     else {
@@ -67,9 +89,10 @@ object Hashers {
 
   /** Hash definitions from a ClassDef where applicable */
   def hashMemberDefs(memberDefs: List[MemberDef]): List[MemberDef] = memberDefs.map {
-    case methodDef: MethodDef   => hashMethodDef(methodDef)
-    case methodDef: JSMethodDef => hashJSMethodDef(methodDef)
-    case otherDef               => otherDef
+    case methodDef: MethodDef      => hashMethodDef(methodDef)
+    case ctorDef: JSConstructorDef => hashJSConstructorDef(ctorDef)
+    case methodDef: JSMethodDef    => hashJSMethodDef(methodDef)
+    case otherDef                  => otherDef
   }
 
   /** Hash the definitions in a ClassDef (where applicable) */

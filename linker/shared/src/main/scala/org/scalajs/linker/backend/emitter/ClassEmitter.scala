@@ -382,14 +382,12 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     require(tree.kind.isJSClass)
 
-    tree.exportedMembers.map(_.value) collectFirst {
-      case JSMethodDef(flags, StringLiteral("constructor"), params, restParam, body)
-          if flags.namespace == MemberNamespace.Public =>
-        desugarToFunction(tree.className, params, restParam, body, resultType = AnyType)
-    } getOrElse {
+    val JSConstructorDef(_, params, restParam, body) = tree.jsConstructorDef.getOrElse {
       throw new IllegalArgumentException(
           s"${tree.className} does not have an exported constructor")
-    }
+    }.value
+
+    desugarToFunction(tree.className, params, restParam, body)
   }
 
   /** Generates the creation of fields for a Scala class. */
@@ -1065,9 +1063,6 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     val exportsWithGlobals = tree.exportedMembers map { member =>
       member.value match {
-        case JSMethodDef(flags, StringLiteral("constructor"), _, _, _)
-            if flags.namespace == MemberNamespace.Public && tree.kind.isJSClass =>
-          WithGlobals(js.Skip()(member.value.pos))
         case m: JSMethodDef =>
           genJSMethod(tree, useESClass, m)
         case p: JSPropertyDef =>

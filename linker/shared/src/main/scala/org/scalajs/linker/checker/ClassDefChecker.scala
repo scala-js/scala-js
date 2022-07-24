@@ -80,6 +80,7 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
     classDef.memberDefs.foreach {
       case fieldDef: AnyFieldDef                => checkFieldDef(fieldDef)
       case methodDef: MethodDef                 => checkMethodDef(methodDef)
+      case jsCtorDef: JSConstructorDef          => checkJSConstructorDef(jsCtorDef)
       case jsMethodDef: JSMethodDef             => checkJSMethodDef(jsMethodDef)
       case jsPropertyDef: JSPropertyDef         => checkJSPropertyDef(jsPropertyDef)
       case jsNativeMemberDef: JSNativeMemberDef => checkJSNativeMemberDef(jsNativeMemberDef)
@@ -93,6 +94,9 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
     if (classDef.kind == ClassKind.ModuleClass &&
         methods(MemberNamespace.Constructor.ordinal).size != 1)
       reportError("Module class must have exactly 1 constructor")
+
+    if (classDef.kind.isJSClass && classDef.memberDefs.count(_.isInstanceOf[JSConstructorDef]) != 1)
+      reportError("JS classes and module classes must have exactly 1 constructor")
   }
 
   private def checkKind()(implicit ctx: ErrorContext): Unit = {
@@ -256,6 +260,32 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
     body.foreach(checkTree(_, Env.fromParams(params)))
   }
 
+  private def checkJSConstructorDef(ctorDef: JSConstructorDef): Unit = withPerMethodState {
+    val JSConstructorDef(flags, params, restParam, body) = ctorDef
+    implicit val ctx = ErrorContext(ctorDef)
+
+    if (flags.isMutable)
+      reportError("A JS constructor cannot have the flag Mutable")
+    if (flags.namespace != MemberNamespace.Constructor)
+      reportError("A JS constructor must be in the constructor namespace")
+
+    if (!classDef.kind.isJSClass)
+      reportError("JS constructor defs can only appear in JS classes")
+
+    checkJSParamDefs(params, restParam)
+
+    val startEnv = Env.fromParams(classDef.jsClassCaptures.getOrElse(Nil) ++ params ++ restParam)
+      .withHasNewTarget(true)
+
+    val envJustBeforeSuper = body.beforeSuper.foldLeft(startEnv) { (prevEnv, stat) =>
+      checkTree(stat, prevEnv)
+    }
+    checkTreeOrSpreads(body.superCall.args, envJustBeforeSuper)
+    body.afterSuper.foldLeft(envJustBeforeSuper) { (prevEnv, stat) =>
+      checkTree(stat, prevEnv)
+    }
+  }
+
   private def checkJSMethodDef(methodDef: JSMethodDef): Unit = withPerMethodState {
     val JSMethodDef(flags, pName, params, restParam, body) = methodDef
     implicit val ctx = ErrorContext(methodDef)
@@ -277,53 +307,10 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
     checkExportedPropertyName(pName)
     checkJSParamDefs(params, restParam)
 
-    val isJSConstructor = {
-      classDef.kind.isJSClass && !static && {
-        pName match {
-          case StringLiteral("constructor") => true
-          case _                            => false
-        }
-      }
-    }
-
     val env =
       Env.fromParams(classDef.jsClassCaptures.getOrElse(Nil) ++ params ++ restParam)
 
-    if (isJSConstructor)
-      checkJSClassConstructorBody(body, env.withHasNewTarget(true))
-    else
-      checkTree(body, env)
-  }
-
-  private def checkJSClassConstructorBody(body: Tree, env: Env)(
-      implicit ctx: ErrorContext): Unit = {
-    val bodyStats = body match {
-      case Block(stats) => stats
-      case _            => body :: Nil
-    }
-
-    var seenSuperCall = false
-    var curEnv = env
-
-    bodyStats.foreach {
-      case tree @ JSSuperConstructorCall(args) =>
-        if (seenSuperCall) {
-          implicit val ctx = ErrorContext(tree)
-          reportError("Duplicate JSSuperConstructorCall")
-        }
-
-        seenSuperCall = true
-        checkTreeOrSpreads(args, curEnv)
-
-      case tree =>
-        curEnv = checkTree(tree, curEnv)
-    }
-
-    if (!seenSuperCall) {
-      reportError(
-          "A JS class constructor must contain one super constructor " +
-          "call at the top-level")
-    }
+    checkTree(body, env)
   }
 
   private def checkJSPropertyDef(propDef: JSPropertyDef): Unit = {

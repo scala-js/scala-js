@@ -78,16 +78,15 @@ object Printers {
     }
 
     protected def printBlock(tree: Tree): Unit = {
-      tree match {
-        case Block(trees) =>
-          printColumn(trees, "{", ";", "}")
-
-        case _ =>
-          print('{'); indent(); println()
-          print(tree)
-          undent(); println(); print('}')
+      val trees = tree match {
+        case Block(trees) => trees
+        case _            => tree :: Nil
       }
+      printBlock(trees)
     }
+
+    protected def printBlock(trees: List[Tree]): Unit =
+      printColumn(trees, "{", ";", "}")
 
     protected def printSig(args: List[ParamDef], restParam: Option[ParamDef],
         resultType: Type): Unit = {
@@ -132,6 +131,7 @@ object Printers {
         case node: JSSpread          => print(node)
         case node: ClassDef          => print(node)
         case node: MemberDef         => print(node)
+        case node: JSConstructorBody => printBlock(node.allStats)
         case node: TopLevelExportDef => print(node)
       }
     }
@@ -980,6 +980,14 @@ object Printers {
           } { body =>
             printBlock(body)
           }
+
+        case tree: JSConstructorDef =>
+          val JSConstructorDef(flags, args, restParam, body) = tree
+          print(tree.optimizerHints)
+          print(flags.namespace.prefixString)
+          print("def constructor")
+          printSig(args, restParam, AnyType)
+          printBlock(body.allStats)
 
         case tree: JSMethodDef =>
           val JSMethodDef(flags, name, args, restParam, body) = tree

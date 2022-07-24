@@ -376,6 +376,9 @@ object Infos {
       case methodDef: MethodDef =>
         builder.addMethod(generateMethodInfo(methodDef))
 
+      case ctorDef: JSConstructorDef =>
+        builder.addExportedMember(generateJSConstructorInfo(ctorDef))
+
       case methodDef: JSMethodDef =>
         builder.addExportedMember(generateJSMethodInfo(methodDef))
 
@@ -409,6 +412,12 @@ object Infos {
    */
   def generateMethodInfo(methodDef: MethodDef): MethodInfo =
     new GenInfoTraverser().generateMethodInfo(methodDef)
+
+  /** Generates the [[ReachabilityInfo]] of a
+   *  [[org.scalajs.ir.Trees.JSConstructorDef Trees.JSConstructorDef]].
+   */
+  def generateJSConstructorInfo(ctorDef: JSConstructorDef): ReachabilityInfo =
+    new GenInfoTraverser().generateJSConstructorInfo(ctorDef)
 
   /** Generates the [[ReachabilityInfo]] of a
    *  [[org.scalajs.ir.Trees.JSMethodDef Trees.JSMethodDef]].
@@ -450,6 +459,12 @@ object Infos {
           methodDef.body.isEmpty,
           reachabilityInfo
       )
+    }
+
+    def generateJSConstructorInfo(ctorDef: JSConstructorDef): ReachabilityInfo = {
+      ctorDef.body.allStats.foreach(traverse(_))
+
+      builder.result()
     }
 
     def generateJSMethodInfo(methodDef: JSMethodDef): ReachabilityInfo = {

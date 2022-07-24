@@ -264,6 +264,18 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         resultType)
   }
 
+  /** Desugars parameters and body to a JS function (JS constructor variant).
+   */
+  def desugarToFunction(enclosingClassName: ClassName, params: List[ParamDef],
+      restParam: Option[ParamDef], body: JSConstructorBody)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): WithGlobals[js.Function] = {
+    val bodyBlock = Block(body.allStats)(body.pos)
+    new JSDesugar().desugarToFunction(params, restParam, bodyBlock,
+        isStat = false,
+        Env.empty(AnyType).withEnclosingClassName(Some(enclosingClassName)))
+  }
+
   /** Desugars parameters and body to a JS function.
    */
   def desugarToFunction(enclosingClassName: ClassName, params: List[ParamDef],
