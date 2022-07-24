@@ -18,6 +18,9 @@ import Types._
 object Transformers {
 
   abstract class Transformer {
+    final def transformStats(trees: List[Tree]): List[Tree] =
+      trees.map(transformStat(_))
+
     final def transformStat(tree: Tree): Tree =
       transform(tree, isStat = true)
 

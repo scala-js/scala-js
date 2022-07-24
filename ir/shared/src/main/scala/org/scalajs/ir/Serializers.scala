@@ -1257,7 +1257,7 @@ object Serializers {
       val optimizerHints = OptimizerHints.fromBits(readInt())
 
       val memberDefs =
-        if (/*hacks.use8 &&*/ kind.isJSClass) memberDefs0.map(jsConstructorDefHack(_)) // scalastyle:ignore
+        if (hacks.use8 && kind.isJSClass) memberDefs0.map(jsConstructorDefHack(_))
         else memberDefs0
 
       ClassDef(name, originalName, kind, jsClassCaptures, superClass, parents,
