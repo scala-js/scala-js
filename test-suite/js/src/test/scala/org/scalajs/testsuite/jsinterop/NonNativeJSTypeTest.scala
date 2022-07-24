@@ -201,6 +201,26 @@ class NonNativeJSTypeTest {
     assertEquals(List(1, 2, 3, 4, 5, 6), obj.allArgs)
   }
 
+  @Test def methodNamedConstructor(): Unit = {
+    val obj1 = new MethodNamedConstructor(5)
+    assertEquals(5, obj1.x)
+    assertEquals(7, obj1.constructor(2))
+    assertNotSame(js.constructorOf[MethodNamedConstructor], obj1.asInstanceOf[js.Dynamic].constructor)
+
+    val obj2 = new SubclassOfMethodNamedConstructor(11, 15)
+    assertEquals(11, obj2.x)
+    assertEquals(15, obj2.z)
+    assertEquals(13, obj2.constructor(2))
+    assertEquals("foo 15", obj2.constructor("foo "))
+
+    // Undesirable behavior, but the same as what would happen if we did it in JavaScript
+    val obj3 = new SubclassOfMethodNamedConstructorNoRedefine(42)
+    assertSame(js.constructorOf[SubclassOfMethodNamedConstructorNoRedefine],
+        obj3.asInstanceOf[js.Dynamic].constructor)
+    if (Platform.useECMAScript2015Semantics)
+      assertThrows(classOf[Exception], obj3.constructor(1))
+  }
+
   @Test def defaultValuesForFields(): Unit = {
     val obj = new DefaultFieldValues
     assertEquals(0, obj.int)
@@ -2087,6 +2107,16 @@ object NonNativeJSTypeTest {
       extends js.Object {
     val allArgs = List(arg, arg$1, arg$2, prep, prep$1, prep$2)
   }
+
+  class MethodNamedConstructor(val x: Int) extends js.Object {
+    def constructor(y: Int): Int = x + y
+  }
+
+  class SubclassOfMethodNamedConstructor(x: Int, val z: Int) extends MethodNamedConstructor(x) {
+    def constructor(y: String): String = y + z
+  }
+
+  class SubclassOfMethodNamedConstructorNoRedefine(x: Int) extends MethodNamedConstructor(x)
 
   class DefaultFieldValues extends js.Object {
     var int: Int = _

@@ -696,8 +696,16 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   def genMemberNameTree(name: Tree)(
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge): WithGlobals[js.PropertyName] = {
+    /* When it's a string literal but not "constructor", we can directly use a
+     * string literal in the ES class definition. Otherwise, we must wrap the
+     * expression in a `js.ComputedName`, which is `[tree]` in ES syntax.
+     * We must exclude "constructor" because that would represent the actual
+     * ES class constructor (which is taken care of by a JSConstructorDef),
+     * whereas `["constructor"]` represents a non-constructor method called
+     * "constructor".
+     */
     name match {
-      case StringLiteral(value) =>
+      case StringLiteral(value) if value != "constructor" =>
         WithGlobals(js.StringLiteral(value)(name.pos))
 
       case _ =>
