@@ -13,7 +13,7 @@
 package java.util
 
 import java.lang.Cloneable
-import java.util.JSUtils._
+import java.lang.Utils._
 
 import scala.scalajs._
 

@@ -16,9 +16,9 @@ import scala.annotation.switch
 import scala.scalajs.js
 
 import java.lang.{Double => JDouble}
+import java.lang.Utils._
 import java.io._
 import java.math.{BigDecimal, BigInteger}
-import java.util.JSUtils._
 
 final class Formatter private (private[this] var dest: Appendable,
     formatterLocaleInfo: Formatter.LocaleInfo)

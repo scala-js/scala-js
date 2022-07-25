@@ -15,9 +15,12 @@ package java.lang
 import scala.language.implicitConversions
 
 import scala.scalajs.js
-import scala.scalajs.js.annotation.JSBracketAccess
+import scala.scalajs.js.annotation._
 
-private[lang] object Utils {
+private[java] object Utils {
+  @inline
+  def undefined: js.UndefOr[Nothing] = ().asInstanceOf[js.UndefOr[Nothing]]
+
   @inline
   def isUndefined(x: Any): scala.Boolean =
     x.asInstanceOf[AnyRef] eq ().asInstanceOf[AnyRef]
@@ -36,7 +39,18 @@ private[lang] object Utils {
     else default
 
   @inline
-  def undefOrFold[A, B](x: js.UndefOr[A])(default: => B, f: A => B): B =
+  def undefOrGetOrNull[A >: Null](x: js.UndefOr[A]): A =
+    if (undefOrIsDefined(x)) undefOrForceGet(x)
+    else null
+
+  @inline
+  def undefOrForeach[A](x: js.UndefOr[A])(f: A => Any): Unit = {
+    if (undefOrIsDefined(x))
+      f(undefOrForceGet(x))
+  }
+
+  @inline
+  def undefOrFold[A, B](x: js.UndefOr[A])(default: => B)(f: A => B): B =
     if (undefOrIsDefined(x)) f(undefOrForceGet(x))
     else default
 
@@ -64,8 +78,13 @@ private[lang] object Utils {
     def rawUpdate(key: String, value: A): Unit = js.native
   }
 
-  def dictGetOrElse[A](dict: js.Dictionary[_ <: A], key: String,
-      default: A): A = {
+  @inline
+  def dictEmpty[A](): js.Dictionary[A] =
+    new js.Object().asInstanceOf[js.Dictionary[A]]
+
+  @inline
+  def dictGetOrElse[A](dict: js.Dictionary[_ <: A], key: String)(
+      default: => A): A = {
     if (dictContains(dict, key))
       dictRawApply(dict, key)
     else
@@ -101,8 +120,10 @@ private[lang] object Utils {
   @js.native
   private trait MapRaw[K, V] extends js.Object {
     def has(key: K): scala.Boolean = js.native
-    def get(key: K): js.UndefOr[V] = js.native
+    def get(key: K): V = js.native
+    @JSName("get") def getOrUndefined(key: K): js.UndefOr[V] = js.native
     def set(key: K, value: V): Unit = js.native
+    def keys(): js.Iterator[K] = js.native
   }
 
   @inline
@@ -110,12 +131,28 @@ private[lang] object Utils {
     map.asInstanceOf[MapRaw[K, V]].has(key)
 
   @inline
-  def mapGet[K, V](map: js.Map[K, V], key: K): js.UndefOr[V] =
+  def mapGet[K, V](map: js.Map[K, V], key: K): V =
     map.asInstanceOf[MapRaw[K, V]].get(key)
 
   @inline
   def mapSet[K, V](map: js.Map[K, V], key: K, value: V): Unit =
     map.asInstanceOf[MapRaw[K, V]].set(key, value)
+
+  @inline
+  def mapGetOrElse[K, V](map: js.Map[K, V], key: K)(default: => V): V = {
+    val value = map.asInstanceOf[MapRaw[K, V]].getOrUndefined(key)
+    if (!isUndefined(value) || mapHas(map, key)) value.asInstanceOf[V]
+    else default
+  }
+
+  @inline
+  def mapGetOrElseUpdate[K, V](map: js.Map[K, V], key: K)(default: => V): V = {
+    mapGetOrElse(map, key) {
+      val value = default
+      mapSet(map, key, value)
+      value
+    }
+  }
 
   @inline
   def forArrayElems[A](array: js.Array[A])(f: A => Any): Unit = {
@@ -125,6 +162,28 @@ private[lang] object Utils {
       f(array(i))
       i += 1
     }
+  }
+
+  @inline
+  def arrayRemove[A](array: js.Array[A], index: Int): Unit =
+    array.splice(index, 1)
+
+  @inline
+  def arrayRemoveAndGet[A](array: js.Array[A], index: Int): A =
+    array.splice(index, 1)(0)
+
+  @inline
+  def arrayExists[A](array: js.Array[A])(f: A => scala.Boolean): scala.Boolean = {
+    // scalastyle:off return
+    val len = array.length
+    var i = 0
+    while (i != len) {
+      if (f(array(i)))
+        return true
+      i += 1
+    }
+    false
+    // scalastyle:on return
   }
 
   @inline def toUint(x: scala.Double): scala.Double = {

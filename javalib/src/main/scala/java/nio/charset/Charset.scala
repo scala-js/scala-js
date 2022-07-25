@@ -12,10 +12,10 @@
 
 package java.nio.charset
 
+import java.lang.Utils._
 import java.nio.{ByteBuffer, CharBuffer}
 import java.util.{Collections, HashSet, Arrays}
 import java.util.ScalaOps._
-import java.util.JSUtils._
 
 import scala.scalajs.js
 

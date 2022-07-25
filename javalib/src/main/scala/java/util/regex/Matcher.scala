@@ -12,7 +12,7 @@
 
 package java.util.regex
 
-import java.util.JSUtils._
+import java.lang.Utils._
 
 import scala.annotation.switch
 

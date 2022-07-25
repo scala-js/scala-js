@@ -451,7 +451,7 @@ private[lang] object StackTrace {
     while (i < len) {
       val mtch = lineRE.exec(lines(i))
       if (mtch ne null) {
-        val fnName = undefOrFold(mtch(1))("global code", _ + "()")
+        val fnName = undefOrFold(mtch(1))("global code")(_ + "()")
         result.push(fnName + "@" + undefOrForceGet(mtch(2)) + ":" + undefOrForceGet(mtch(3)))
       }
       i += 1

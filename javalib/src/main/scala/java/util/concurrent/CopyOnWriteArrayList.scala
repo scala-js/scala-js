@@ -13,10 +13,10 @@
 package java.util.concurrent
 
 import java.lang.Cloneable
+import java.lang.Utils._
 import java.lang.{reflect => jlr}
 import java.util._
 import java.util.function.{Predicate, UnaryOperator}
-import java.util.JSUtils._
 
 import scala.annotation.tailrec
 

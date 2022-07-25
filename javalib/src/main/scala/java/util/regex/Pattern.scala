@@ -14,7 +14,7 @@ package java.util.regex
 
 import scala.annotation.tailrec
 
-import java.util.JSUtils._
+import java.lang.Utils._
 import java.util.ScalaOps._
 
 import scala.scalajs.js
