@@ -63,7 +63,7 @@ object JavaLangObject {
             GetClass(This()(ThisType))
           })(OptimizerHints.empty.withInline(true), None),
 
-        /* def hashCode(): Int = System.identityHashCode(this) */
+        /* def hashCode(): Int = <identityHashCode>(this) */
         MethodDef(
           MemberFlags.empty,
           MethodIdent(MethodName("hashCode", Nil, IntRef)),
@@ -71,12 +71,8 @@ object JavaLangObject {
           Nil,
           IntType,
           Some {
-            Apply(
-              EAF,
-              LoadModule(ClassName("java.lang.System$")),
-              MethodIdent(MethodName("identityHashCode", List(ObjectClassRef), IntRef)),
-              List(This()(ThisType)))(IntType)
-          })(OptimizerHints.empty, None),
+            IdentityHashCode(This()(ThisType))
+          })(OptimizerHints.empty.withInline(true), None),
 
         /* def equals(that: Object): Boolean = this eq that */
         MethodDef(
