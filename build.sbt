@@ -11,7 +11,6 @@ val linker = Build.linker
 val linkerJS = Build.linkerJS
 val testAdapter = Build.testAdapter
 val sbtPlugin = Build.plugin
-val javalanglib = Build.javalanglib
 val javalib = Build.javalib
 val scalalib = Build.scalalib
 val libraryAux = Build.libraryAux

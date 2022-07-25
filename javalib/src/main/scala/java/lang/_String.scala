@@ -1022,9 +1022,9 @@ object _String { // scalastyle:ignore
     `new`(data, offset, count)
 
   def format(format: String, args: Array[AnyRef]): String =
-    new java.util.Formatter().format(format, args: _*).toString()
+    new java.util.Formatter().format(format, args).toString()
 
   def format(l: Locale, format: String, args: Array[AnyRef]): String =
-    new java.util.Formatter(l).format(format, args: _*).toString()
+    new java.util.Formatter(l).format(format, args).toString()
 
 }

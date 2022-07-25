@@ -182,8 +182,8 @@ object System {
   }
 
   @inline
-  def identityHashCode(x: Object): scala.Int =
-    scala.scalajs.runtime.identityHashCode(x)
+  def identityHashCode(x: Any): scala.Int =
+    scala.scalajs.runtime.identityHashCode(x.asInstanceOf[AnyRef])
 
   // System properties --------------------------------------------------------
 
