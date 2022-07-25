@@ -5,7 +5,6 @@ object MiniLib {
     val inJavaLang = List(
         "Object",
         "Class",
-        "System",
 
         "CharSequence",
         "Cloneable",
