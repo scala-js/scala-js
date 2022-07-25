@@ -59,7 +59,7 @@ class Properties(protected val defaults: Properties)
 
     writer.write('#')
     writer.write(new Date().toString)
-    writer.write(System.lineSeparator)
+    writer.write(System.lineSeparator())
 
     entrySet().scalaOps.foreach { entry =>
       writer.write(encodeString(entry.getKey().asInstanceOf[String],
@@ -67,7 +67,7 @@ class Properties(protected val defaults: Properties)
       writer.write('=')
       writer.write(encodeString(entry.getValue().asInstanceOf[String],
           isKey = false, toHex))
-      writer.write(System.lineSeparator)
+      writer.write(System.lineSeparator())
     }
     writer.flush()
   }
@@ -299,7 +299,7 @@ class Properties(protected val defaults: Properties)
           if (isCrlf) {
             index += 1
           }
-          writer.write(System.lineSeparator)
+          writer.write(System.lineSeparator())
 
           def noExplicitComment = {
             index + 1 < chars.length &&
@@ -321,7 +321,7 @@ class Properties(protected val defaults: Properties)
       }
       index += 1
     }
-    writer.write(System.lineSeparator)
+    writer.write(System.lineSeparator())
   }
 
   private def encodeString(string: String, isKey: Boolean,

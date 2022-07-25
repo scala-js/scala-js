@@ -31,7 +31,7 @@ class Timer() {
   }
 
   private def checkDelay(delay: Long): Unit = {
-    if (delay < 0 || (delay + System.currentTimeMillis) < 0)
+    if (delay < 0 || (delay + System.currentTimeMillis()) < 0)
       throw new IllegalArgumentException("Negative delay.")
   }
 
@@ -106,7 +106,7 @@ class Timer() {
     def loop(scheduledTime: Long): Unit = {
       task.doRun()
       val nextScheduledTime = scheduledTime + period
-      val nowTime = System.nanoTime / 1000000L
+      val nowTime = System.nanoTime() / 1000000L
       if (nowTime >= nextScheduledTime) {
         // Re-run immediately.
         loop(nextScheduledTime)
@@ -119,7 +119,7 @@ class Timer() {
     }
 
     task.timeout(delay) {
-      loop(System.nanoTime / 1000000L + period)
+      loop(System.nanoTime() / 1000000L + period)
     }
   }
 

@@ -32,7 +32,7 @@ abstract class AbstractQueue[E] protected ()
   }
 
   override def addAll(c: Collection[_ <: E]): Boolean = {
-    val iter = c.iterator
+    val iter = c.iterator()
     var changed = false
     while (iter.hasNext())
       changed = add(iter.next()) || changed

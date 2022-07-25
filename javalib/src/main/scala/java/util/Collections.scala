@@ -544,7 +544,7 @@ object Collections {
   }
 
   def enumeration[T](c: Collection[T]): Enumeration[T] = {
-    val it = c.iterator
+    val it = c.iterator()
     new Enumeration[T] {
       override def hasMoreElements(): Boolean =
         it.hasNext()

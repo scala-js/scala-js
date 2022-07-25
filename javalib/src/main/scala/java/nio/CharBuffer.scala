@@ -27,10 +27,10 @@ object CharBuffer {
     wrap(array, 0, array.length)
 
   def wrap(csq: CharSequence, start: Int, end: Int): CharBuffer =
-    StringCharBuffer.wrap(csq, 0, csq.length, start, end - start)
+    StringCharBuffer.wrap(csq, 0, csq.length(), start, end - start)
 
   def wrap(csq: CharSequence): CharBuffer =
-    wrap(csq, 0, csq.length)
+    wrap(csq, 0, csq.length())
 
   // Extended API
 

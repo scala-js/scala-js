@@ -123,7 +123,7 @@ class LinkedList[E]() extends AbstractSequentialList[E]
     _removeOccurrence(listIterator(), o)
 
   override def addAll(c: Collection[_ <: E]): Boolean = {
-    val iter = c.iterator
+    val iter = c.iterator()
     val changed = iter.hasNext()
     while (iter.hasNext())
       addLast(iter.next())

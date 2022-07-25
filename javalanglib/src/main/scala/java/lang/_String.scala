@@ -212,14 +212,14 @@ final class _String private () // scalastyle:ignore
     thisString.jsSubstring(this.length() - suffix.length()) == suffix
 
   def getBytes(): Array[scala.Byte] =
-    getBytes(Charset.defaultCharset)
+    getBytes(Charset.defaultCharset())
 
   def getBytes(charsetName: String): Array[scala.Byte] =
     getBytes(Charset.forName(charsetName))
 
   def getBytes(charset: Charset): Array[scala.Byte] = {
     val buf = charset.encode(thisString)
-    val res = new Array[scala.Byte](buf.remaining)
+    val res = new Array[scala.Byte](buf.remaining())
     buf.get(res)
     res
   }
@@ -958,7 +958,7 @@ object _String { // scalastyle:ignore
   }
 
   def `new`(bytes: Array[scala.Byte]): String =
-    `new`(bytes, Charset.defaultCharset)
+    `new`(bytes, Charset.defaultCharset())
 
   def `new`(bytes: Array[scala.Byte], charsetName: String): String =
     `new`(bytes, Charset.forName(charsetName))
@@ -967,7 +967,7 @@ object _String { // scalastyle:ignore
     charset.decode(ByteBuffer.wrap(bytes)).toString()
 
   def `new`(bytes: Array[scala.Byte], offset: Int, length: Int): String =
-    `new`(bytes, offset, length, Charset.defaultCharset)
+    `new`(bytes, offset, length, Charset.defaultCharset())
 
   def `new`(bytes: Array[scala.Byte], offset: Int, length: Int,
       charsetName: String): String =
