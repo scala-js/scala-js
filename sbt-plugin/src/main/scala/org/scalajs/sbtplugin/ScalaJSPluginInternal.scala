@@ -368,23 +368,24 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val tlog = sbtLogger2ToolsLogger(log)
         val config = configuration.value.name
 
-        /* #4610 Warn if `-Xplugin:scalajs-compiler.jar` (Scala 2) or
+        /* #4610 Error if `-Xplugin:scalajs-compiler.jar` (Scala 2) or
          * `-scalajs` (Scala 3) is missing from the `scalacOptions`.
          * This feature is not automatically tested.
          */
-        def warnMissingScalacOption(thingMissing: String): Unit = {
-          log.warn(
+        def errorMissingScalacOption(thingMissing: String): Unit = {
+          log.error(
               s"$thingMissing was missing from `$config / scalacOptions`, but it is required to produce Scala.js IR.")
-          log.warn("Linking, running and/or testing will probably go wrong.")
-          log.warn("The most likely cause is that you used `scalacOptions := ...` instead of using `++=`.")
+          log.error("Linking, running and/or testing will probably go wrong.")
+          log.error("The most likely cause is that you used `scalacOptions := ...` instead of using `++=`.")
+          throw new MessageOnlyException(s"$thingMissing was missing from `$config / scalacOptions`.")
         }
         val scalacOpts = scalacOptions.value
         if (scalaVersion.value.startsWith("2.")) {
           if (!scalacOpts.exists(opt => opt.startsWith("-Xplugin:") && opt.contains("scalajs-compiler")))
-            warnMissingScalacOption("The `scalajs-compiler.jar` compiler plugin")
+            errorMissingScalacOption("The `scalajs-compiler.jar` compiler plugin")
         } else {
           if (!scalacOpts.contains("-scalajs"))
-            warnMissingScalacOption("The `-scalajs` flag")
+            errorMissingScalacOption("The `-scalajs` flag")
         }
 
         val (irFiles, paths) = enhanceIRVersionNotSupportedException {
