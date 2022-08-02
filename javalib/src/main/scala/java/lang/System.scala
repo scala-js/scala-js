@@ -182,8 +182,8 @@ object System {
   }
 
   @inline
-  def identityHashCode(x: Object): scala.Int =
-    scala.scalajs.runtime.identityHashCode(x)
+  def identityHashCode(x: Any): scala.Int =
+    scala.scalajs.runtime.identityHashCode(x.asInstanceOf[AnyRef])
 
   // System properties --------------------------------------------------------
 
@@ -233,11 +233,11 @@ object System {
     }
 
     def getProperty(key: String): String =
-      if (dict ne null) dictGetOrElse(dict, key, null)
+      if (dict ne null) dictGetOrElse(dict, key)(null)
       else properties.getProperty(key)
 
     def getProperty(key: String, default: String): String =
-      if (dict ne null) dictGetOrElse(dict, key, default)
+      if (dict ne null) dictGetOrElse(dict, key)(default)
       else properties.getProperty(key, default)
 
     def clearProperty(key: String): String =

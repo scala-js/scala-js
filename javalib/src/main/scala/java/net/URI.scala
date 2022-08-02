@@ -17,9 +17,9 @@ import scala.scalajs.js
 
 import scala.annotation.tailrec
 
+import java.lang.Utils._
 import java.nio._
 import java.nio.charset.{CodingErrorAction, StandardCharsets}
-import java.util.JSUtils._
 
 final class URI(origStr: String) extends Serializable with Comparable[URI] {
 

@@ -47,13 +47,13 @@ final class UUID private (
   def getLeastSignificantBits(): Long = {
     if (l2 eq null)
       l2 = JLong.valueOf((i3.toLong << 32) | (i4.toLong & 0xffffffffL))
-    l2.longValue
+    l2.longValue()
   }
 
   def getMostSignificantBits(): Long = {
     if (l1 eq null)
       l1 = JLong.valueOf((i1.toLong << 32) | (i2.toLong & 0xffffffffL))
-    l1.longValue
+    l1.longValue()
   }
 
   def version(): Int =

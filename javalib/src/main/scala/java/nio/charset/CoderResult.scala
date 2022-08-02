@@ -14,8 +14,8 @@ package java.nio.charset
 
 import scala.annotation.switch
 
+import java.lang.Utils._
 import java.nio._
-import java.util.JSUtils._
 
 import scala.scalajs.js
 

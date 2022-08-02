@@ -21,9 +21,9 @@ private trait ScalaJSClassData[A] extends js.Object {
   val isInterface: scala.Boolean = js.native
   val isArrayClass: scala.Boolean = js.native
 
-  def isInstance(obj: Object): scala.Boolean = js.native
+  def isInstance(obj: Any): scala.Boolean = js.native
   def isAssignableFrom(that: ScalaJSClassData[_]): scala.Boolean = js.native
-  def checkCast(obj: Object): scala.Unit = js.native
+  def checkCast(obj: Any): scala.Unit = js.native
 
   def getSuperclass(): Class[_ >: A] = js.native
   def getComponentType(): Class[_] = js.native
@@ -55,7 +55,7 @@ final class Class[A] private (data0: Object) extends Object {
         if (isPrimitive()) "" else "class ")+getName()
   }
 
-  def isInstance(obj: Object): scala.Boolean =
+  def isInstance(obj: Any): scala.Boolean =
     data.isInstance(obj)
 
   def isAssignableFrom(that: Class[_]): scala.Boolean =
@@ -141,7 +141,7 @@ final class Class[A] private (data0: Object) extends Object {
     data.getComponentType()
 
   @inline
-  def cast(obj: Object): A = {
+  def cast(obj: Any): A = {
     getData().checkCast(obj)
     obj.asInstanceOf[A]
   }

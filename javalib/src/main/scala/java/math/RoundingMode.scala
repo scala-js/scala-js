@@ -58,7 +58,7 @@ object RoundingMode {
     var i = 0
     while (i != len) {
       val value = values(i)
-      if (value.name == name)
+      if (value.name() == name)
         return value
       i += 1
     }

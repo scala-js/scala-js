@@ -25,7 +25,7 @@ import java.lang.Character.{
   MAX_LOW_SURROGATE
 }
 
-import java.util.JSUtils._
+import java.lang.Utils._
 import java.util.ScalaOps._
 
 import scala.scalajs.js

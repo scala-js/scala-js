@@ -10,14 +10,14 @@
  * additional information regarding copyright ownership.
  */
 
-package java.util
+package java.lang
 
 import scala.language.implicitConversions
 
 import scala.scalajs.js
-import scala.scalajs.js.annotation.JSBracketAccess
+import scala.scalajs.js.annotation._
 
-private[java] object JSUtils {
+private[java] object Utils {
   @inline
   def undefined: js.UndefOr[Nothing] = ().asInstanceOf[js.UndefOr[Nothing]]
 
@@ -35,12 +35,12 @@ private[java] object JSUtils {
 
   @inline
   def undefOrGetOrElse[A](x: js.UndefOr[A])(default: => A): A =
-    if (undefOrIsDefined(x)) x.asInstanceOf[A]
+    if (undefOrIsDefined(x)) undefOrForceGet(x)
     else default
 
   @inline
   def undefOrGetOrNull[A >: Null](x: js.UndefOr[A]): A =
-    if (undefOrIsDefined(x)) x.asInstanceOf[A]
+    if (undefOrIsDefined(x)) undefOrForceGet(x)
     else null
 
   @inline
@@ -117,6 +117,43 @@ private[java] object JSUtils {
   def dictSet[A](dict: js.Dictionary[A], key: String, value: A): Unit =
     dict.asInstanceOf[DictionaryRawApply[A]].rawUpdate(key, value)
 
+  @js.native
+  private trait MapRaw[K, V] extends js.Object {
+    def has(key: K): scala.Boolean = js.native
+    def get(key: K): V = js.native
+    @JSName("get") def getOrUndefined(key: K): js.UndefOr[V] = js.native
+    def set(key: K, value: V): Unit = js.native
+    def keys(): js.Iterator[K] = js.native
+  }
+
+  @inline
+  def mapHas[K, V](map: js.Map[K, V], key: K): scala.Boolean =
+    map.asInstanceOf[MapRaw[K, V]].has(key)
+
+  @inline
+  def mapGet[K, V](map: js.Map[K, V], key: K): V =
+    map.asInstanceOf[MapRaw[K, V]].get(key)
+
+  @inline
+  def mapSet[K, V](map: js.Map[K, V], key: K, value: V): Unit =
+    map.asInstanceOf[MapRaw[K, V]].set(key, value)
+
+  @inline
+  def mapGetOrElse[K, V](map: js.Map[K, V], key: K)(default: => V): V = {
+    val value = map.asInstanceOf[MapRaw[K, V]].getOrUndefined(key)
+    if (!isUndefined(value) || mapHas(map, key)) value.asInstanceOf[V]
+    else default
+  }
+
+  @inline
+  def mapGetOrElseUpdate[K, V](map: js.Map[K, V], key: K)(default: => V): V = {
+    mapGetOrElse(map, key) {
+      val value = default
+      mapSet(map, key, value)
+      value
+    }
+  }
+
   @inline
   def forArrayElems[A](array: js.Array[A])(f: A => Any): Unit = {
     val len = array.length
@@ -136,7 +173,7 @@ private[java] object JSUtils {
     array.splice(index, 1)(0)
 
   @inline
-  def arrayExists[A](array: js.Array[A])(f: A => Boolean): Boolean = {
+  def arrayExists[A](array: js.Array[A])(f: A => scala.Boolean): scala.Boolean = {
     // scalastyle:off return
     val len = array.length
     var i = 0
@@ -149,34 +186,8 @@ private[java] object JSUtils {
     // scalastyle:on return
   }
 
-  @js.native
-  private trait RawMap[K, V] extends js.Object {
-    def has(key: K): Boolean = js.native
-    def keys(): js.Iterator[K] = js.native
-    def set(key: K, value: V): js.Map[K, V] = js.native
-    def get(key: K): V = js.native
-  }
-
-  @inline def mapHas[K, V](m: js.Map[K, V], key: K): Boolean =
-    m.asInstanceOf[RawMap[K, V]].has(key)
-
-  @inline def mapGet[K, V](m: js.Map[K, V], key: K): V =
-    m.asInstanceOf[RawMap[K, V]].get(key)
-
-  @inline def mapSet[K, V](m: js.Map[K, V], key: K, value: V): Unit =
-    m.asInstanceOf[RawMap[K, V]].set(key, value)
-
-  @inline def mapGetOrElse[K, V](m: js.Map[K, V], key: K)(default: => V): V =
-    if (mapHas(m, key)) mapGet(m, key)
-    else default
-
-  @inline def mapGetOrElseUpdate[K, V](m: js.Map[K, V], key: K)(default: => V): V = {
-    if (mapHas(m, key)) {
-      mapGet(m, key)
-    } else {
-      val value = default
-      mapSet(m, key, value)
-      value
-    }
+  @inline def toUint(x: scala.Double): scala.Double = {
+    import js.DynamicImplicits.number2dynamic
+    (x >>> 0).asInstanceOf[scala.Double]
   }
 }

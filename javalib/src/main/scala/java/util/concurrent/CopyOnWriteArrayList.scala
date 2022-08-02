@@ -13,10 +13,10 @@
 package java.util.concurrent
 
 import java.lang.Cloneable
+import java.lang.Utils._
 import java.lang.{reflect => jlr}
 import java.util._
 import java.util.function.{Predicate, UnaryOperator}
-import java.util.JSUtils._
 
 import scala.annotation.tailrec
 
@@ -54,7 +54,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
     size() == 0
 
   def contains(o: scala.Any): Boolean =
-    iterator.scalaOps.exists(Objects.equals(o, _))
+    iterator().scalaOps.exists(Objects.equals(o, _))
 
   def indexOf(o: scala.Any): Int =
     indexOf(o.asInstanceOf[E], 0)
@@ -84,12 +84,12 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
     toArray(new Array[AnyRef](size()))
 
   def toArray[T <: AnyRef](a: Array[T]): Array[T] = {
-    val componentType = a.getClass.getComponentType
+    val componentType = a.getClass().getComponentType()
     val toFill: Array[T] =
       if (a.length >= size()) a
       else jlr.Array.newInstance(componentType, size()).asInstanceOf[Array[T]]
 
-    val iter = iterator
+    val iter = iterator()
     for (i <- 0 until size())
       toFill(i) = iter.next().asInstanceOf[T]
     if (toFill.length > size())
@@ -145,7 +145,7 @@ class CopyOnWriteArrayList[E <: AnyRef] private (private var inner: js.Array[E])
   }
 
   def containsAll(c: Collection[_]): Boolean =
-    c.iterator.scalaOps.forall(this.contains(_))
+    c.iterator().scalaOps.forall(this.contains(_))
 
   def removeAll(c: Collection[_]): Boolean = {
     copyIfNeeded()

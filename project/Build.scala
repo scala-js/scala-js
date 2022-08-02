@@ -712,7 +712,7 @@ object Build {
             compiler, irProject, irProjectJS,
             linkerInterface, linkerInterfaceJS, linker, linkerJS,
             testAdapter,
-            javalanglib, javalib, scalalib, libraryAux, library,
+            javalib, scalalib, libraryAux, library,
             testInterface, jUnitRuntime, testBridge, jUnitPlugin, jUnitAsyncJS,
             jUnitAsyncJVM, jUnitTestOutputsJS, jUnitTestOutputsJVM,
             helloworld, reversi, testingExample, testSuite, testSuiteJVM,
@@ -1194,44 +1194,6 @@ object Build {
     }
   }
 
-  lazy val javalanglib: MultiScalaProject = MultiScalaProject(
-      id = "javalanglib", base = file("javalanglib")
-  ).enablePlugins(
-      MyScalaJSPlugin
-  ).settings(
-      commonSettings,
-      fatalWarningsSettings,
-      name := "java.lang library for Scala.js",
-      publishArtifact in Compile := false,
-      delambdafySetting,
-      ensureSAMSupportSetting,
-
-      recompileAllOrNothingSettings,
-
-      /* When writing code in the java.lang package, references to things
-       * like `Boolean` or `Double` refer to `j.l.Boolean` or `j.l.Double`.
-       * Usually this is not what we want (we want the primitive types
-       * instead), but the implicits available in `Predef` hide mistakes by
-       * introducing boxing and unboxing where required. The `-Yno-predef`
-       * flag prevents these mistakes from happening.
-       */
-      scalacOptions += "-Yno-predef",
-      // We implement JDK classes, so we emit static forwarders for all static objects
-      scalacOptions ++= scalaJSCompilerOption("genStaticForwardersForNonTopLevelObjects"),
-
-      resourceGenerators in Compile += Def.task {
-        val output = (resourceManaged in Compile).value / "java/lang/Object.sjsir"
-        val data = JavaLangObject.irBytes
-
-        if (!output.exists || !Arrays.equals(data, IO.readBytes(output))) {
-          IO.write(output, data)
-        }
-
-        Seq(output)
-      }.taskValue,
-      cleanIRSettings,
-  ).withScalaJSCompiler.dependsOnLibraryNoJar
-
   lazy val javalib: MultiScalaProject = MultiScalaProject(
       id = "javalib", base = file("javalib")
   ).enablePlugins(
@@ -1248,6 +1210,12 @@ object Build {
 
       /* Do not import `Predef._` so that we have a better control of when
        * we rely on the Scala library.
+       * This is particularly important within the java.lang package, as
+       * references to things like `Boolean` or `Double` refer to `j.l.Boolean`
+       * or `j.l.Double`. Usually this is not what we want (we want the
+       * primitive types instead), but the implicits available in `Predef`
+       * hide mistakes by introducing boxing and unboxing where required.
+       * The `-Yno-predef` flag prevents these mistakes from happening.
        */
       scalacOptions += "-Yno-predef",
       // We implement JDK classes, so we emit static forwarders for all static objects
@@ -1270,6 +1238,15 @@ object Build {
         else
           Nil
       },
+
+      // The implementation of java.lang.Object, which is hard-coded in JavaLangObject.scala
+      resourceGenerators in Compile += Def.task {
+        val output = (resourceManaged in Compile).value / "java/lang/Object.sjsir"
+        val data = JavaLangObject.irBytes
+        if (!output.exists || !Arrays.equals(data, IO.readBytes(output)))
+          IO.write(output, data)
+        Seq(output)
+      }.taskValue,
 
       cleanIRSettings,
 
@@ -1522,7 +1499,7 @@ object Build {
            */
           dependencyClasspath in doc ++= exportedProducts.value,
       ))
-  ).zippedSettings(Seq("javalanglib", "javalib", "scalalib", "libraryAux"))(localProjects =>
+  ).zippedSettings(Seq("javalib", "scalalib", "libraryAux"))(localProjects =>
         inConfig(Compile)(Seq(
           /* Add the .sjsir files from other lib projects
            * (but not .class files)
@@ -1543,8 +1520,7 @@ object Build {
             val otherProducts = (
                 (products in localProjects(0)).value ++
                 (products in localProjects(1)).value ++
-                (products in localProjects(2)).value ++
-                (products in localProjects(3)).value)
+                (products in localProjects(2)).value)
             val otherMappings =
               otherProducts.flatMap(base => Path.selectSubpaths(base, filter))
 
@@ -1752,8 +1728,8 @@ object Build {
 
           case Default2_13ScalaVersion =>
             Some(ExpectedSizes(
-                fastLink = 728000 to 729000,
-                fullLink = 156000 to 157000,
+                fastLink = 727000 to 728000,
+                fullLink = 155000 to 156000,
                 fastLinkGz = 91000 to 92000,
                 fullLinkGz = 40000 to 41000,
             ))

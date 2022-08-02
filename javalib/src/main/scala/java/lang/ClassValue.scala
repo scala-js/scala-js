@@ -49,24 +49,16 @@ abstract class ClassValue[T] protected () {
   protected def computeValue(`type`: Class[_]): T
 
   def get(`type`: Class[_]): T = {
-    /* We first perform `get`, and if the result is undefined/null, we use
-     * `has` to disambiguate a present undefined/null from an absent key.
-     * Since the purpose of ClassValue is to be used a cache indexed by Class
-     * values, the expected use case will have more hits than misses, and so
-     * this ordering should be faster on average than first performing `has`
-     * then `get`.
-     */
     if (useJSMap) {
-      undefOrGetOrElse(mapGet(jsMap, `type`)) {
-        if (mapHas(jsMap, `type`)) {
-          ().asInstanceOf[T]
-        } else {
-          val newValue = computeValue(`type`)
-          mapSet(jsMap, `type`, newValue)
-          newValue
-        }
-      }
+      mapGetOrElseUpdate(jsMap, `type`)(computeValue(`type`))
     } else {
+      /* We first perform `get`, and if the result is null, we use
+       * `containsKey` to disambiguate a present null from an absent key.
+       * Since the purpose of ClassValue is to be used a cache indexed by Class
+       * values, the expected use case will have more hits than misses, and so
+       * this ordering should be faster on average than first performing `has`
+       * then `get`.
+       */
       javaMap.get(`type`) match {
         case null =>
           if (javaMap.containsKey(`type`)) {

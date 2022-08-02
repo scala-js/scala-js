@@ -100,7 +100,7 @@ private[nio] final class StringCharBuffer private (
 private[nio] object StringCharBuffer {
   private[nio] def wrap(csq: CharSequence, csqOffset: Int, capacity: Int,
       initialPosition: Int, initialLength: Int): CharBuffer = {
-    if (csqOffset < 0 || capacity < 0 || csqOffset+capacity > csq.length)
+    if (csqOffset < 0 || capacity < 0 || csqOffset + capacity > csq.length())
       throw new IndexOutOfBoundsException
     val initialLimit = initialPosition + initialLength
     if (initialPosition < 0 || initialLength < 0 || initialLimit > capacity)

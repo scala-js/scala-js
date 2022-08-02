@@ -212,14 +212,14 @@ final class _String private () // scalastyle:ignore
     thisString.jsSubstring(this.length() - suffix.length()) == suffix
 
   def getBytes(): Array[scala.Byte] =
-    getBytes(Charset.defaultCharset)
+    getBytes(Charset.defaultCharset())
 
   def getBytes(charsetName: String): Array[scala.Byte] =
     getBytes(Charset.forName(charsetName))
 
   def getBytes(charset: Charset): Array[scala.Byte] = {
     val buf = charset.encode(thisString)
-    val res = new Array[scala.Byte](buf.remaining)
+    val res = new Array[scala.Byte](buf.remaining())
     buf.get(res)
     res
   }
@@ -313,6 +313,12 @@ final class _String private () // scalastyle:ignore
   def repeat(count: Int): String = {
     if (count < 0) {
       throw new IllegalArgumentException
+    } else if (linkingInfo.esVersion >= ESVersion.ES2015) {
+      /* This will throw a `js.RangeError` if `count` is too large, instead of
+       * an `OutOfMemoryError`. That's fine because the behavior of `repeat` is
+       * not specified for `count` too large.
+       */
+      this.asInstanceOf[js.Dynamic].repeat(count).asInstanceOf[String]
     } else if (thisString == "" || count == 0) {
       ""
     } else if (thisString.length > (Int.MaxValue / count)) {
@@ -958,7 +964,7 @@ object _String { // scalastyle:ignore
   }
 
   def `new`(bytes: Array[scala.Byte]): String =
-    `new`(bytes, Charset.defaultCharset)
+    `new`(bytes, Charset.defaultCharset())
 
   def `new`(bytes: Array[scala.Byte], charsetName: String): String =
     `new`(bytes, Charset.forName(charsetName))
@@ -967,7 +973,7 @@ object _String { // scalastyle:ignore
     charset.decode(ByteBuffer.wrap(bytes)).toString()
 
   def `new`(bytes: Array[scala.Byte], offset: Int, length: Int): String =
-    `new`(bytes, offset, length, Charset.defaultCharset)
+    `new`(bytes, offset, length, Charset.defaultCharset())
 
   def `new`(bytes: Array[scala.Byte], offset: Int, length: Int,
       charsetName: String): String =
@@ -1022,9 +1028,9 @@ object _String { // scalastyle:ignore
     `new`(data, offset, count)
 
   def format(format: String, args: Array[AnyRef]): String =
-    new java.util.Formatter().format(format, args: _*).toString()
+    new java.util.Formatter().format(format, args).toString()
 
   def format(l: Locale, format: String, args: Array[AnyRef]): String =
-    new java.util.Formatter(l).format(format, args: _*).toString()
+    new java.util.Formatter(l).format(format, args).toString()
 
 }

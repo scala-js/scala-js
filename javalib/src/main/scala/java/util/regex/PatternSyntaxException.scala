@@ -34,24 +34,8 @@ class PatternSyntaxException(desc: String, regex: String, index: Int)
     val base = desc + indexHint + "\n" + re
 
     if (idx >= 0 && re != null && idx < re.length())
-      base + "\n" + repeat(" ", idx) + "^"
+      base + "\n" + " ".asInstanceOf[java.lang._String].repeat(idx) + "^"
     else
       base
-  }
-
-  @inline
-  private def repeat(s: String, count: Int): String = {
-    // TODO Use java.lang.String.repeat() once we can (JDK 11+ method)
-    if (linkingInfo.esVersion >= LinkingInfo.ESVersion.ES2015) {
-      s.asInstanceOf[js.Dynamic].repeat(count).asInstanceOf[String]
-    } else {
-      var result = ""
-      var i = 0
-      while (i != count) {
-        result += s
-        i += 1
-      }
-      result
-    }
   }
 }
