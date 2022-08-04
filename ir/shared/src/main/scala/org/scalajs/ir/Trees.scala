@@ -863,6 +863,11 @@ object Trees {
      *  - The identifier `arguments`, because any attempt to refer to it always
      *    refers to the magical `arguments` pseudo-array from the enclosing
      *    function, rather than a global variable.
+     *
+     *  This set does *not* contain `await`, although it is a reserved word
+     *  within ES modules. It used to be allowed before 1.11.0, and even
+     *  browsers do not seem to reject it. For compatibility reasons, we only
+     *  warn about it at compile time, but the IR allows it.
      */
     final val ReservedJSIdentifierNames: Set[String] = Set(
         "arguments", "break", "case", "catch", "class", "const", "continue",

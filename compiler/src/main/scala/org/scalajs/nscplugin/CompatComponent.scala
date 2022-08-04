@@ -127,6 +127,7 @@ trait CompatComponent {
   object WarningCategoryCompat {
     object Reporting {
       object WarningCategory {
+        val Deprecation: Any = null
         val Other: Any = null
       }
     }

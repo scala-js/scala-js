@@ -13,13 +13,18 @@
 package org.scalajs.nscplugin.test
 
 import org.scalajs.nscplugin.test.util._
+import org.scalajs.nscplugin.test.util.VersionDependentUtils.scalaSupportsNoWarn
 
 import org.junit.Test
 import org.junit.Ignore
+import org.junit.Assume._
 
 // scalastyle:off line.size.limit
 
 class JSGlobalScopeTest extends DirectTest with TestHelpers {
+
+  override def extraArgs: List[String] =
+    super.extraArgs :+ "-deprecation"
 
   override def preamble: String = {
     """
@@ -244,6 +249,9 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     s"""
+      |newSource1.scala:41: warning: method apply in object global is deprecated${since("forever")}: The global scope cannot be called as function.
+      |        val a = js.Dynamic.global(3)
+      |                           ^
       |newSource1.scala:41: error: Loading the global scope as a value (anywhere but as the left-hand-side of a `.`-selection) is not allowed.
       |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
       |        val a = js.Dynamic.global(3)
@@ -387,6 +395,105 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
         |          val d = CustomGlobalScope.`${reservedIdentifier}2`(5)
         |                                       $spaces^
       """
+    }
+  }
+
+  @Test
+  def warnAboutAwaitReservedWord_Issue4705(): Unit = {
+    val reservedIdentifiers = List("await")
+
+    for (reservedIdentifier <- reservedIdentifiers) {
+      val spaces = " " * reservedIdentifier.length()
+
+      s"""
+      @js.native
+      @JSGlobalScope
+      object CustomGlobalScope extends js.Any {
+        var `$reservedIdentifier`: Int = js.native
+        @JSName("$reservedIdentifier")
+        def `${reservedIdentifier}2`(x: Int): Int = js.native
+      }
+
+      object Main {
+        def main(): Unit = {
+          val a = js.Dynamic.global.`$reservedIdentifier`
+          js.Dynamic.global.`$reservedIdentifier` = 5
+          val b = js.Dynamic.global.`$reservedIdentifier`(5)
+
+          val c = CustomGlobalScope.`$reservedIdentifier`
+          CustomGlobalScope.`$reservedIdentifier` = 5
+          val d = CustomGlobalScope.`${reservedIdentifier}2`(5)
+        }
+      }
+      """ hasWarns
+      s"""
+        |newSource1.scala:49: warning: Selecting a field of the global scope with the name '$reservedIdentifier' is deprecated.
+        |  It may produce invalid JavaScript code causing a SyntaxError in some environments.
+        |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
+        |          val a = js.Dynamic.global.`$reservedIdentifier`
+        |                             ^
+        |newSource1.scala:50: warning: Selecting a field of the global scope with the name '$reservedIdentifier' is deprecated.
+        |  It may produce invalid JavaScript code causing a SyntaxError in some environments.
+        |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
+        |          js.Dynamic.global.`$reservedIdentifier` = 5
+        |                     ^
+        |newSource1.scala:51: warning: Calling a method of the global scope with the name '$reservedIdentifier' is deprecated.
+        |  It may produce invalid JavaScript code causing a SyntaxError in some environments.
+        |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
+        |          val b = js.Dynamic.global.`$reservedIdentifier`(5)
+        |                                      $spaces^
+        |newSource1.scala:53: warning: Selecting a field of the global scope with the name '$reservedIdentifier' is deprecated.
+        |  It may produce invalid JavaScript code causing a SyntaxError in some environments.
+        |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
+        |          val c = CustomGlobalScope.`$reservedIdentifier`
+        |                                    ^
+        |newSource1.scala:54: warning: Selecting a field of the global scope with the name '$reservedIdentifier' is deprecated.
+        |  It may produce invalid JavaScript code causing a SyntaxError in some environments.
+        |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
+        |          CustomGlobalScope.`$reservedIdentifier` = 5
+        |                               $spaces^
+        |newSource1.scala:55: warning: Calling a method of the global scope with the name '$reservedIdentifier' is deprecated.
+        |  It may produce invalid JavaScript code causing a SyntaxError in some environments.
+        |  See https://www.scala-js.org/doc/interoperability/global-scope.html for further information.
+        |          val d = CustomGlobalScope.`${reservedIdentifier}2`(5)
+        |                                       $spaces^
+      """
+    }
+  }
+
+  @Test
+  def noWarnAboutAwaitReservedWordIfSelectivelyDisabled(): Unit = {
+    assumeTrue(scalaSupportsNoWarn)
+
+    val reservedIdentifiers = List("await")
+
+    for (reservedIdentifier <- reservedIdentifiers) {
+      val spaces = " " * reservedIdentifier.length()
+
+      s"""
+      import scala.annotation.nowarn
+
+      @js.native
+      @JSGlobalScope
+      object CustomGlobalScope extends js.Any {
+        var `$reservedIdentifier`: Int = js.native
+        @JSName("$reservedIdentifier")
+        def `${reservedIdentifier}2`(x: Int): Int = js.native
+      }
+
+      object Main {
+        @nowarn("cat=deprecation")
+        def main(): Unit = {
+          val a = js.Dynamic.global.`$reservedIdentifier`
+          js.Dynamic.global.`$reservedIdentifier` = 5
+          val b = js.Dynamic.global.`$reservedIdentifier`(5)
+
+          val c = CustomGlobalScope.`$reservedIdentifier`
+          CustomGlobalScope.`$reservedIdentifier` = 5
+          val d = CustomGlobalScope.`${reservedIdentifier}2`(5)
+        }
+      }
+      """.hasNoWarns()
     }
   }
 
