@@ -355,6 +355,8 @@ private object NameGen {
    *  - All ECMAScript 2015 keywords;
    *  - Identifier names that are treated as keywords in ECMAScript 2015
    *    Strict Mode;
+   *  - Identifier names that are treated as keywords in some contexts, such as
+   *    ES modules;
    *  - The identifiers `arguments` and `eval`, because they cannot be used for
    *    local variable names in ECMAScript 2015 Strict Mode;
    *  - The identifier `undefined`, because that's way too confusing if it does
@@ -362,13 +364,13 @@ private object NameGen {
    *    cliffs we can trigger with that.
    */
   private final val ReservedJSIdentifierNames: Set[String] = Set(
-      "arguments", "break", "case", "catch", "class", "const", "continue",
-      "debugger", "default", "delete", "do", "else", "enum", "eval", "export",
-      "extends", "false", "finally", "for", "function", "if", "implements",
-      "import", "in", "instanceof", "interface", "let", "new", "null",
-      "package", "private", "protected", "public", "return", "static", "super",
-      "switch", "this", "throw", "true", "try", "typeof", "undefined", "var",
-      "void", "while", "with", "yield"
+      "arguments", "await", "break", "case", "catch", "class", "const",
+      "continue", "debugger", "default", "delete", "do", "else", "enum",
+      "eval", "export", "extends", "false", "finally", "for", "function", "if",
+      "implements", "import", "in", "instanceof", "interface", "let", "new",
+      "null", "package", "private", "protected", "public", "return", "static",
+      "super", "switch", "this", "throw", "true", "try", "typeof", "undefined",
+      "var", "void", "while", "with", "yield"
   )
 
   private val compressedPrefixes: List[(UTF8String, String)] = {
