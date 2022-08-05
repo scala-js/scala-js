@@ -794,8 +794,12 @@ private[emitter] object CoreJSLib {
           case _                 => None
         }
 
-        def genHijackedMethodApply(className: ClassName): Tree =
-          Apply(globalVar("f", (className, methodName)), instance :: args)
+        def genHijackedMethodApply(className: ClassName): Tree = {
+          val instanceAsPrimitive =
+            if (className == BoxedCharacterClass) genCallHelper("uC", instance)
+            else instance
+          Apply(globalVar("f", (className, methodName)), instanceAsPrimitive :: args)
+        }
 
         def genBodyNoSwitch(hijackedClasses: List[ClassName]): Tree = {
           val normalCall = Return(Apply(instance DOT genName(methodName), args))

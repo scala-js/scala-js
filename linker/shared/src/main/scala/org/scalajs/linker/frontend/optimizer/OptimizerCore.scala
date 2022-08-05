@@ -562,7 +562,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case AsInstanceOf(arg, tpe) =>
         trampoline {
           pretransformExpr(arg) { targ =>
-            foldAsInstanceOf(targ, tpe)(finishTransform(isStat))
+            finishTransform(isStat)(foldAsInstanceOf(targ, tpe))
           }
         }
 
@@ -1037,7 +1037,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
       case AsInstanceOf(expr, tpe) =>
         pretransformExpr(expr) { texpr =>
-          foldAsInstanceOf(texpr, tpe)(cont)
+          cont(foldAsInstanceOf(texpr, tpe))
         }
 
       case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
@@ -1671,7 +1671,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
               /* When inlining a single method, the declared type of the `this`
                * value is its enclosing class.
                */
-              val receiverType = ClassType(target.enclosingClassName)
+              val receiverType = receiverTypeFor(target)
               inline(allocationSites, Some((receiverType, treceiver)), targs,
                   target, isStat, usePreTransform)(cont)
             } else {
@@ -1795,7 +1795,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             scope.implsBeingInlined((allocationSites, target))
 
           if (shouldInline && !beingInlined) {
-            val receiverType = ClassType(target.enclosingClassName)
+            val receiverType = receiverTypeFor(target)
             inline(allocationSites, Some((receiverType, treceiver)), targs,
                 target, isStat, usePreTransform)(cont)
           } else {
@@ -1806,6 +1806,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       }
     }
   }
+
+  private def receiverTypeFor(target: MethodID): Type =
+    BoxedClassToPrimType.getOrElse(target.enclosingClassName, ClassType(target.enclosingClassName))
 
   private def pretransformApplyStatic(tree: ApplyStatic, isStat: Boolean,
       usePreTransform: Boolean)(
@@ -2237,7 +2240,17 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       implicit scope: Scope, pos: Position): TailRec[Tree] = tailcall {
 
     val optReceiverBinding = optReceiver map { receiver =>
-      Binding(Binding.This, receiver._1, false, receiver._2)
+      /* If the declaredType is CharType, we must introduce a cast, because we
+       * must communicate to the emitter that it has to unbox the value.
+       * For other primitive types, unboxes/casts are not necessary, because
+       * they would only convert `null` to the zero value of the type. However,
+       * calling a method on `null` is UB, so we need not do anything about it.
+       */
+      val (declaredType, value0) = receiver
+      val value =
+        if (declaredType == CharType) foldAsInstanceOf(value0, declaredType)
+        else value0
+      Binding(Binding.This, declaredType, false, value)
     }
 
     assert(formals.size == args.size,
@@ -2316,9 +2329,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             val index = finishTransformExpr(tindex)
             val elemType = cursoryArrayElemType(arrayTpe)
             val select = ArraySelect(array, index)(elemType)
-            foldAsInstanceOf(tvalue, elemType) { tunboxedValue =>
-              contTree(Assign(select, finishTransformExpr(tunboxedValue)))
-            }
+            val tunboxedValue = foldAsInstanceOf(tvalue, elemType)
+            contTree(Assign(select, finishTransformExpr(tunboxedValue)))
           case _ =>
             defaultApply(AnyType)
         }
@@ -4202,11 +4214,11 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   }
 
   private def foldAsInstanceOf(arg: PreTransform, tpe: Type)(
-      cont: PreTransCont): TailRec[Tree] = {
+      implicit pos: Position): PreTransform = {
     if (isSubtype(arg.tpe.base, tpe))
-      cont(arg)
+      arg
     else
-      cont(AsInstanceOf(finishTransformExpr(arg), tpe)(arg.pos).toPreTransform)
+      AsInstanceOf(finishTransformExpr(arg), tpe).toPreTransform
   }
 
   private def foldJSSelect(qualifier: Tree, item: Tree)(

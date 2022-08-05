@@ -2217,17 +2217,38 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case Apply(_, receiver, method, args) =>
           val methodName = method.name
-          val newReceiver = transformExprNoChar(receiver)
+
+          def newReceiver(asChar: Boolean): js.Tree = {
+            if (asChar) {
+              /* When statically calling a (hijacked) method of j.l.Character,
+               * the receiver must be passed as a primitive CharType. If it is
+               * not already a CharType, we must introduce a cast to unbox the
+               * value.
+               */
+              if (realTreeType(receiver) == CharType)
+                transformExpr(receiver, preserveChar = true)
+              else
+                transformExpr(AsInstanceOf(receiver, CharType), preserveChar = true)
+            } else {
+              /* For other primitive types, unboxes/casts are not necessary,
+               * because they would only convert `null` to the zero value of
+               * the type. However, calling a method on `null` is UB, so we
+               * need not do anything about it.
+               */
+              transformExprNoChar(receiver)
+            }
+          }
+
           val newArgs = transformTypedArgs(method.name, args)
 
           def genNormalApply(): js.Tree =
-            js.Apply(newReceiver DOT transformMethodIdent(method), newArgs)
+            js.Apply(newReceiver(false) DOT transformMethodIdent(method), newArgs)
 
           def genDispatchApply(): js.Tree =
-            genCallHelper("dp_" + genName(methodName), newReceiver :: newArgs: _*)
+            genCallHelper("dp_" + genName(methodName), newReceiver(false) :: newArgs: _*)
 
           def genHijackedMethodApply(className: ClassName): js.Tree =
-            genApplyStaticLike("f", className, method, newReceiver :: newArgs)
+            genApplyStaticLike("f", className, method, newReceiver(className == BoxedCharacterClass) :: newArgs)
 
           if (isMaybeHijackedClass(receiver.tpe) &&
               !methodName.isReflectiveProxy) {
@@ -2944,10 +2965,25 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               tree.getClass)
       }
 
-      if (preserveChar || tree.tpe != CharType)
+      if (preserveChar || realTreeType(tree) != CharType)
         baseResult
       else
         genCallHelper("bC", baseResult)
+    }
+
+    private def realTreeType(tree: Tree)(implicit env: Env): Type = {
+      val tpe = tree.tpe
+      tree match {
+        case This() if tpe.isInstanceOf[ClassType] =>
+          env.enclosingClassName match {
+            case Some(enclosingClassName) =>
+              BoxedClassToPrimType.getOrElse(enclosingClassName, ClassType(enclosingClassName))
+            case None =>
+              tpe
+          }
+        case _ =>
+          tpe
+      }
     }
 
     private def transformApplyDynamicImport(tree: ApplyDynamicImport)(

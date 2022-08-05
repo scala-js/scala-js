@@ -240,6 +240,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     def thisType: Type =
       if (namespace.isStatic) NoType
+      else if (linkedClass.kind == ClassKind.HijackedClass) BoxedClassToPrimType(className)
       else ClassType(className)
 
     val methods = mutable.Map.empty[MethodName, MethodImpl]
