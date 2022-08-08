@@ -33,6 +33,8 @@ object TestIRBuilder {
   val EOH = OptimizerHints.empty
   val NON = NoOriginalName
 
+  val JSCtorFlags = EMF.withNamespace(MemberNamespace.Constructor)
+
   val V = VoidRef
   val I = IntRef
   val Z = BooleanRef
@@ -88,6 +90,12 @@ object TestIRBuilder {
         EOH, None)
   }
 
+  def trivialJSCtor: JSConstructorDef = {
+    JSConstructorDef(JSCtorFlags, Nil, None,
+        JSConstructorBody(Nil, JSSuperConstructorCall(Nil), Undefined() :: Nil))(
+        EOH, None)
+  }
+
   val MainMethodName: MethodName = m("main", List(AT), VoidRef)
 
   def mainMethodDef(body: Tree): MethodDef = {
@@ -128,6 +136,7 @@ object TestIRBuilder {
   def requiredMemberDefs(className: ClassName,
       classKind: ClassKind): List[MemberDef] = {
     if (classKind == ClassKind.ModuleClass) List(trivialCtor(className))
+    else if (classKind.isJSClass) List(trivialJSCtor)
     else Nil
   }
 

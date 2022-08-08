@@ -532,9 +532,10 @@ class AnalyzerTest {
         kind = ClassKind.JSClass,
         superClass = Some(JSObjectLikeClass),
         memberDefs = List(
-          JSMethodDef(EMF, str("constructor"), Nil, None, Block(
+          JSConstructorDef(JSCtorFlags, Nil, None, JSConstructorBody(
+            Nil,
             JSSuperConstructorCall(Nil),
-            JSNewTarget()
+            JSNewTarget() :: Nil
           ))(EOH, None)
         )
       ),

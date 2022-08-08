@@ -803,7 +803,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val privateFieldDefs = ListBuffer.empty[js.FieldDef]
       val classDefMembers = ListBuffer.empty[js.MemberDef]
       val instanceMembers = ListBuffer.empty[js.MemberDef]
-      var constructor: Option[js.JSMethodDef] = None
+      var constructor: Option[js.JSConstructorDef] = None
 
       origJsClass.memberDefs.foreach {
         case fdef: js.FieldDef =>
@@ -817,17 +817,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               "Non-static, unexported method in non-native JS class")
           classDefMembers += mdef
 
-        case mdef: js.JSMethodDef =>
-          mdef.name match {
-            case js.StringLiteral("constructor") =>
-              assert(!mdef.flags.namespace.isStatic, "Exported static method")
-              assert(constructor.isEmpty, "two ctors in class")
-              constructor = Some(mdef)
+        case cdef: js.JSConstructorDef =>
+          assert(constructor.isEmpty, "two ctors in class")
+          constructor = Some(cdef)
 
-            case _ =>
-              assert(!mdef.flags.namespace.isStatic, "Exported static method")
-              instanceMembers += mdef
-          }
+        case mdef: js.JSMethodDef =>
+          assert(!mdef.flags.namespace.isStatic, "Exported static method")
+          instanceMembers += mdef
 
         case property: js.JSPropertyDef =>
           instanceMembers += property
@@ -858,7 +854,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         throw new AssertionError(
             s"no class captures for anonymous JS class at $pos")
       }
-      val js.JSMethodDef(_, _, ctorParams, ctorRestParam, ctorBody) = constructor.getOrElse {
+      val js.JSConstructorDef(_, ctorParams, ctorRestParam, ctorBody) = constructor.getOrElse {
         throw new AssertionError("No ctor found")
       }
       assert(ctorParams.isEmpty && ctorRestParam.isEmpty,
@@ -894,6 +890,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
         case mdef: js.MethodDef =>
           throw new AssertionError("unexpected MethodDef")
+
+        case cdef: js.JSConstructorDef =>
+          throw new AssertionError("unexpected JSConstructorDef")
 
         case mdef: js.JSMethodDef =>
           implicit val pos = mdef.pos
@@ -966,37 +965,44 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
 
       // Transform the constructor body.
-      val inlinedCtorStats = new ir.Transformers.Transformer {
-        override def transform(tree: js.Tree, isStat: Boolean): js.Tree = tree match {
-          // The super constructor call. Transform this into a simple new call.
-          case js.JSSuperConstructorCall(args) =>
-            implicit val pos = tree.pos
+      val inlinedCtorStats = {
+        val beforeSuper = ctorBody.beforeSuper
 
-            val newTree = {
-              val ident =
-                origJsClass.superClass.getOrElse(abort("No superclass"))
-              if (args.isEmpty && ident.name == JSObjectClassName)
-                js.JSObjectConstr(Nil)
-              else
-                js.JSNew(jsSuperClassRef, args)
-            }
+        val superCall = {
+          implicit val pos = ctorBody.superCall.pos
+          val js.JSSuperConstructorCall(args) = ctorBody.superCall
 
-            js.Block(
-                js.VarDef(selfName, thisOriginalName, jstpe.AnyType,
-                    mutable = false, newTree) ::
-                memberDefinitions)(NoPosition)
+          val newTree = {
+            val ident =
+              origJsClass.superClass.getOrElse(abort("No superclass"))
+            if (args.isEmpty && ident.name == JSObjectClassName)
+              js.JSObjectConstr(Nil)
+            else
+              js.JSNew(jsSuperClassRef, args)
+          }
 
-          case js.This() => selfRef(tree.pos)
-
-          // Don't traverse closure boundaries
-          case closure: js.Closure =>
-            val newCaptureValues = closure.captureValues.map(transformExpr)
-            closure.copy(captureValues = newCaptureValues)(closure.pos)
-
-          case tree =>
-            super.transform(tree, isStat)
+          val selfVarDef = js.VarDef(selfName, thisOriginalName, jstpe.AnyType, mutable = false, newTree)
+          selfVarDef :: memberDefinitions
         }
-      }.transform(ctorBody, isStat = true)
+
+        // After the super call, substitute `selfRef` for `This()`
+        val afterSuper = new ir.Transformers.Transformer {
+          override def transform(tree: js.Tree, isStat: Boolean): js.Tree = tree match {
+            case js.This() =>
+              selfRef(tree.pos)
+
+            // Don't traverse closure boundaries
+            case closure: js.Closure =>
+              val newCaptureValues = closure.captureValues.map(transformExpr)
+              closure.copy(captureValues = newCaptureValues)(closure.pos)
+
+            case tree =>
+              super.transform(tree, isStat)
+          }
+        }.transformStats(ctorBody.afterSuper)
+
+        beforeSuper ::: superCall ::: afterSuper
+      }
 
       val closure = js.Closure(arrow = true, jsClassCaptures, Nil, None,
           js.Block(inlinedCtorStats, selfRef), jsSuperClassValue :: args)
@@ -1425,7 +1431,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     // Constructor of a non-native JS class ------------------------------
 
     def genJSClassCapturesAndConstructor(constructorTrees: List[DefDef])(
-        implicit pos: Position): (List[js.ParamDef], js.JSMethodDef) = {
+        implicit pos: Position): (List[js.ParamDef], js.JSConstructorDef) = {
       /* We need to merge all Scala constructors into a single one because
        * JavaScript only allows a single one.
        *
@@ -1498,20 +1504,21 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         (exports.result(), jsClassCaptures.result())
       }
 
+      // The name 'constructor' is used for error reporting here
       val (formalArgs, restParam, overloadDispatchBody) =
         genOverloadDispatch(JSName.Literal("constructor"), exports, jstpe.IntType)
 
       val overloadVar = js.VarDef(freshLocalIdent("overload"), NoOriginalName,
           jstpe.IntType, mutable = false, overloadDispatchBody)
 
-      val ctorStats = genJSClassCtorStats(overloadVar.ref, ctorTree)
+      val constructorBody = wrapJSCtorBody(
+        paramVarDefs :+ overloadVar,
+        genJSClassCtorBody(overloadVar.ref, ctorTree),
+        js.Undefined() :: Nil
+      )
 
-      val constructorBody = js.Block(
-          paramVarDefs ::: List(overloadVar, ctorStats, js.Undefined()))
-
-      val constructorDef = js.JSMethodDef(
-          js.MemberFlags.empty,
-          js.StringLiteral("constructor"),
+      val constructorDef = js.JSConstructorDef(
+          js.MemberFlags.empty.withNamespace(js.MemberNamespace.Constructor),
           formalArgs, restParam, constructorBody)(OptimizerHints.empty, None)
 
       (jsClassCaptures, constructorDef)
@@ -1556,7 +1563,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           s"construtor at ${dd.pos}")
 
       new PrimaryJSCtor(sym, genParamsAndInfo(sym, vparamss),
-          jsSuperCall.get :: jsStats.result())
+          js.JSConstructorBody(Nil, jsSuperCall.get, jsStats.result())(dd.pos))
     }
 
     private def genSecondaryJSClassCtor(dd: DefDef): SplitSecondaryJSCtor = {
@@ -1656,9 +1663,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       (jsExport, jsClassCaptures)
     }
 
-    /** generates a sequence of JS constructor statements based on a constructor tree. */
-    private def genJSClassCtorStats(overloadVar: js.VarRef,
-        ctorTree: ConstructorTree[PrimaryJSCtor])(implicit pos: Position): js.Tree = {
+    /** Generates a JS constructor body based on a constructor tree. */
+    private def genJSClassCtorBody(overloadVar: js.VarRef,
+        ctorTree: ConstructorTree[PrimaryJSCtor])(implicit pos: Position): js.JSConstructorBody = {
 
       /* generates a statement that conditionally executes body iff the chosen
        * overload is any of the descendants of `tree` (including itself).
@@ -1755,11 +1762,17 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val primaryCtor = ctorTree.ctor
       val secondaryCtorTrees = ctorTree.subCtors
 
-      js.Block(
-          secondaryCtorTrees.map(preStats(_, primaryCtor.paramsAndInfo)) ++
-          primaryCtor.body ++
+      wrapJSCtorBody(
+          secondaryCtorTrees.map(preStats(_, primaryCtor.paramsAndInfo)),
+          primaryCtor.body,
           secondaryCtorTrees.map(postStats(_))
       )
+    }
+
+    private def wrapJSCtorBody(before: List[js.Tree], body: js.JSConstructorBody,
+        after: List[js.Tree]): js.JSConstructorBody = {
+      js.JSConstructorBody(before ::: body.beforeSuper, body.superCall,
+          body.afterSuper ::: after)(body.pos)
     }
 
     private sealed trait JSCtor {
@@ -1769,7 +1782,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
     private class PrimaryJSCtor(val sym: Symbol,
         val paramsAndInfo: List[(js.VarRef, JSParamInfo)],
-        val body: List[js.Tree]) extends JSCtor
+        val body: js.JSConstructorBody) extends JSCtor
 
     private class SplitSecondaryJSCtor(val sym: Symbol,
         val paramsAndInfo: List[(js.VarRef, JSParamInfo)],

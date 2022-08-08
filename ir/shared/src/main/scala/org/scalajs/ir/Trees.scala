@@ -1132,7 +1132,8 @@ object Trees {
 
   /** Any member of a `ClassDef`.
    *
-   *  Partitioned into `AnyFieldDef`, `MethodDef` and `JSMethodPropDef`.
+   *  Partitioned into `AnyFieldDef`, `MethodDef`, `JSConstructorDef` and
+   *  `JSMethodPropDef`.
    */
   sealed abstract class MemberDef extends IRNode {
     val flags: MemberFlags
@@ -1156,6 +1157,19 @@ object Trees {
       val optimizerHints: OptimizerHints, val hash: Option[TreeHash])(
       implicit val pos: Position) extends MemberDef {
     def methodName: MethodName = name.name
+  }
+
+  sealed case class JSConstructorDef(flags: MemberFlags,
+      args: List[ParamDef], restParam: Option[ParamDef], body: JSConstructorBody)(
+      val optimizerHints: OptimizerHints, val hash: Option[TreeHash])(
+      implicit val pos: Position)
+      extends MemberDef
+
+  sealed case class JSConstructorBody(
+      beforeSuper: List[Tree], superCall: JSSuperConstructorCall, afterSuper: List[Tree])(
+      implicit val pos: Position)
+      extends IRNode {
+    val allStats: List[Tree] = beforeSuper ::: superCall :: afterSuper
   }
 
   sealed abstract class JSMethodPropDef extends MemberDef

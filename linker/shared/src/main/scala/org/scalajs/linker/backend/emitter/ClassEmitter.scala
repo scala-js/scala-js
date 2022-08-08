@@ -382,14 +382,12 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     require(tree.kind.isJSClass)
 
-    tree.exportedMembers.map(_.value) collectFirst {
-      case JSMethodDef(flags, StringLiteral("constructor"), params, restParam, body)
-          if flags.namespace == MemberNamespace.Public =>
-        desugarToFunction(tree.className, params, restParam, body, resultType = AnyType)
-    } getOrElse {
+    val JSConstructorDef(_, params, restParam, body) = tree.jsConstructorDef.getOrElse {
       throw new IllegalArgumentException(
           s"${tree.className} does not have an exported constructor")
-    }
+    }.value
+
+    desugarToFunction(tree.className, params, restParam, body)
   }
 
   /** Generates the creation of fields for a Scala class. */
@@ -698,8 +696,16 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   def genMemberNameTree(name: Tree)(
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge): WithGlobals[js.PropertyName] = {
+    /* When it's a string literal but not "constructor", we can directly use a
+     * string literal in the ES class definition. Otherwise, we must wrap the
+     * expression in a `js.ComputedName`, which is `[tree]` in ES syntax.
+     * We must exclude "constructor" because that would represent the actual
+     * ES class constructor (which is taken care of by a JSConstructorDef),
+     * whereas `["constructor"]` represents a non-constructor method called
+     * "constructor".
+     */
     name match {
-      case StringLiteral(value) =>
+      case StringLiteral(value) if value != "constructor" =>
         WithGlobals(js.StringLiteral(value)(name.pos))
 
       case _ =>
@@ -1065,9 +1071,6 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     val exportsWithGlobals = tree.exportedMembers map { member =>
       member.value match {
-        case JSMethodDef(flags, StringLiteral("constructor"), _, _, _)
-            if flags.namespace == MemberNamespace.Public && tree.kind.isJSClass =>
-          WithGlobals(js.Skip()(member.value.pos))
         case m: JSMethodDef =>
           genJSMethod(tree, useESClass, m)
         case p: JSPropertyDef =>

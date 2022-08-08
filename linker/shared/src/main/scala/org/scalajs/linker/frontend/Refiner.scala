@@ -176,6 +176,7 @@ private object Refiner {
   private class LinkedClassInfoCache {
     private var cacheUsed: Boolean = false
     private val methodsInfoCaches = LinkedMethodDefsInfosCache()
+    private val jsConstructorInfoCache = new LinkedJSConstructorDefInfoCache()
     private val exportedMembersInfoCaches = LinkedJSMethodPropDefsInfosCache()
     private var info: Infos.ClassInfo = _
 
@@ -198,6 +199,8 @@ private object Refiner {
           builder.addMethod(methodsInfoCaches.getInfo(linkedMethod))
         for (jsNativeMember <- linkedClass.jsNativeMembers)
           builder.addJSNativeMember(jsNativeMember)
+        for (jsConstructorDef <- linkedClass.jsConstructorDef)
+          builder.addExportedMember(jsConstructorInfoCache.getInfo(jsConstructorDef))
         for (info <- exportedMembersInfoCaches.getInfos(linkedClass.exportedMembers))
           builder.addExportedMember(info)
 
@@ -212,6 +215,7 @@ private object Refiner {
       if (result) {
         // No point in cleaning the inner caches if the whole class disappears
         methodsInfoCaches.cleanAfterRun()
+        jsConstructorInfoCache.cleanAfterRun()
         exportedMembersInfoCaches.cleanAfterRun()
       }
       result
@@ -314,14 +318,21 @@ private object Refiner {
   private final class LinkedMethodDefInfoCache
       extends AbstractLinkedMemberInfoCache[MethodDef, Infos.MethodInfo] {
 
-    protected  def computeInfo(member: MethodDef): Infos.MethodInfo =
+    protected def computeInfo(member: MethodDef): Infos.MethodInfo =
       Infos.generateMethodInfo(member)
+  }
+
+  private final class LinkedJSConstructorDefInfoCache
+      extends AbstractLinkedMemberInfoCache[JSConstructorDef, Infos.ReachabilityInfo] {
+
+    protected def computeInfo(member: JSConstructorDef): Infos.ReachabilityInfo =
+      Infos.generateJSConstructorInfo(member)
   }
 
   private final class LinkedJSMethodPropDefInfoCache
       extends AbstractLinkedMemberInfoCache[JSMethodPropDef, Infos.ReachabilityInfo] {
 
-    protected  def computeInfo(member: JSMethodPropDef): Infos.ReachabilityInfo = {
+    protected def computeInfo(member: JSMethodPropDef): Infos.ReachabilityInfo = {
       member match {
         case methodDef: JSMethodDef =>
           Infos.generateJSMethodInfo(methodDef)

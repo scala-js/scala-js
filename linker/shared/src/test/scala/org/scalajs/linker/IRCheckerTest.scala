@@ -97,7 +97,7 @@ class IRCheckerTest {
       classDef("B", kind = ClassKind.NativeJSClass, superClass = Some(ObjectClass)),
       classDef("C", kind = ClassKind.NativeJSModuleClass, superClass = Some(ObjectClass)),
 
-      classDef("D", kind = ClassKind.JSClass, superClass = Some("A")),
+      classDef("D", kind = ClassKind.JSClass, superClass = Some("A"), memberDefs = List(trivialJSCtor)),
 
       mainTestClassDef(Block(
         LoadJSConstructor("B"),
@@ -126,8 +126,10 @@ class IRCheckerTest {
         kind = ClassKind.JSClass,
         superClass = Some(JSObjectLikeClass),
         memberDefs = List(
-          JSMethodDef(EMF, str("constructor"), Nil, None, Block(
-            JSSuperConstructorCall(Nil)
+          JSConstructorDef(JSCtorFlags, Nil, None, JSConstructorBody(
+            Nil,
+            JSSuperConstructorCall(Nil),
+            Nil
           ))(EOH, None)
         )
       ),
@@ -139,7 +141,7 @@ class IRCheckerTest {
 
     for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
       log.assertContainsError(
-          "any expected but <notype> found for tree of type org.scalajs.ir.Trees$JSSuperConstructorCall")
+          "any expected but <notype> found for JS constructor body")
     }
   }
 
@@ -153,9 +155,10 @@ class IRCheckerTest {
         kind = ClassKind.JSClass,
         superClass = Some(JSObjectLikeClass),
         memberDefs = List(
-          JSMethodDef(EMF, str("constructor"), Nil, None, Block(
+          JSConstructorDef(JSCtorFlags, Nil, None, JSConstructorBody(
+            Nil,
             JSSuperConstructorCall(Nil),
-            VarDef("x", NON, IntType, mutable = false, int(5))
+            VarDef("x", NON, IntType, mutable = false, int(5)) :: Nil
           ))(EOH, None)
         )
       ),
@@ -167,7 +170,7 @@ class IRCheckerTest {
 
     for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
       log.assertContainsError(
-          "any expected but <notype> found for tree of type org.scalajs.ir.Trees$Block")
+          "any expected but <notype> found for JS constructor body")
     }
   }
 

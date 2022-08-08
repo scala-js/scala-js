@@ -18,6 +18,9 @@ import Types._
 object Transformers {
 
   abstract class Transformer {
+    final def transformStats(trees: List[Tree]): List[Tree] =
+      trees.map(transformStat(_))
+
     final def transformStat(tree: Tree): Tree =
       transform(tree, isStat = true)
 
@@ -253,6 +256,11 @@ object Transformers {
           MethodDef(flags, name, originalName, args, resultType, newBody)(
               memberDef.optimizerHints, None)
 
+        case ctorDef: JSConstructorDef =>
+          val JSConstructorDef(flags, args, restParam, body) = memberDef
+          JSConstructorDef(flags, args, restParam, transformJSConstructorBody(body))(
+              ctorDef.optimizerHints, None)
+
         case memberDef: JSMethodDef =>
           val JSMethodDef(flags, name, args, restParam, body) = memberDef
           JSMethodDef(flags, name, args, restParam, transformExpr(body))(
@@ -267,6 +275,19 @@ object Transformers {
                 (arg, transformStat(body))
               })
       }
+    }
+
+    def transformJSConstructorBody(body: JSConstructorBody): JSConstructorBody = {
+      implicit val pos = body.pos
+
+      val newBeforeSuper = body.beforeSuper.map(transformStat(_))
+      val newSuperCall = transformStat(body.superCall).asInstanceOf[JSSuperConstructorCall]
+      val newAfterSuper = body.afterSuper match {
+        case stats :+ expr => stats.map(transformStat(_)) :+ transformExpr(expr)
+        case empty         => empty // cannot use Nil here because the compiler does not know that it is exhaustive
+      }
+
+      JSConstructorBody(newBeforeSuper, newSuperCall, newAfterSuper)
     }
 
     def transformTopLevelExportDef(

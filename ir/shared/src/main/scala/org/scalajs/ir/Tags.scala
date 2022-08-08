@@ -139,6 +139,10 @@ private[ir] object Tags {
 
   final val TagJSNativeMemberDef = TagJSPropertyDef + 1
 
+  // New in 1.11
+
+  final val TagJSConstructorDef = TagJSNativeMemberDef + 1
+
   // Tags for top-level export defs
 
   final val TagTopLevelJSClassExportDef = 1
