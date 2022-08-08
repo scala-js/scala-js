@@ -103,6 +103,8 @@ class FormatterTest {
       assertF("nul", "%.3" + conversion, null)
       assertF("  nul", "%5.3" + conversion, null)
       assertF("nul  ", "%-5.3" + conversion, null)
+      assertF("null", "%.4" + conversion, null)
+      assertF("null", "%.10" + conversion, null)
     }
 
     if (acceptUpperCase) {
@@ -190,6 +192,9 @@ class FormatterTest {
     assertF("     tru", "%8.3b", true)
     assertF("fal", "%.3b", null)
     assertF("     fal", "%8.3b", null)
+    assertF("true", "%.7b", true)
+    assertF("false", "%.7b", false)
+    assertF("false", "%.7b", null)
 
     expectFormatFlagsConversionMismatch('b', "#+ 0,(", true)
     expectFormatFlagsConversionMismatch('b', "#+ 0,(", null)
@@ -203,6 +208,7 @@ class FormatterTest {
     assertF("  f1e2a3", "%8h", x)
 
     assertF("f1e2a", "%.5h", x)
+    assertF("f1e2a3", "%.10h", x)
 
     testWithNull('h', "")
 
@@ -222,6 +228,7 @@ class FormatterTest {
 
     assertF("hel", "%.3s", "hello")
     assertF("    HEL", "%7.3S", "hello")
+    assertF("hello", "%.10s", "hello")
 
     testWithNull('s', "")
 

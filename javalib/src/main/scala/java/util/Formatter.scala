@@ -751,7 +751,7 @@ final class Formatter private (private[this] var dest: Appendable,
       width: Int, precision: Int, str: String): Unit = {
 
     val truncatedStr =
-      if (precision < 0) str
+      if (precision < 0 || precision >= str.length()) str
       else str.substring(0, precision)
     padAndSendToDestNoZeroPad(flags, width,
         applyUpperCase(localeInfo, flags, truncatedStr))

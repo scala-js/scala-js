@@ -17,6 +17,7 @@ import scala.annotation.{tailrec, switch}
 import java.lang.Utils._
 
 import scala.scalajs.js
+import scala.scalajs.js.JSStringOps._
 
 import Pattern.IndicesArray
 
@@ -419,7 +420,7 @@ private[regex] object IndicesBuilder {
             }
 
           case '(' =>
-            val indicator = pattern.substring(pIndex + 1, pIndex + 3)
+            val indicator = pattern.jsSubstring(pIndex + 1, pIndex + 3)
             if (indicator == "?=" || indicator == "?!") {
               // Look-ahead group
               pIndex += 3
@@ -427,7 +428,7 @@ private[regex] object IndicesBuilder {
               new LookAroundNode(isLookBehind = false, indicator, inner)
             } else if (indicator == "?<") {
               // Look-behind group, which must be ?<= or ?<!
-              val fullIndicator = pattern.substring(pIndex + 1, pIndex + 4)
+              val fullIndicator = pattern.jsSubstring(pIndex + 1, pIndex + 4)
               pIndex += 4
               val inner = parseInsideParensAndClosingParen()
               new LookAroundNode(isLookBehind = true, fullIndicator, inner)
@@ -464,7 +465,7 @@ private[regex] object IndicesBuilder {
               while (isDigit(pattern.charAt(pIndex)))
                 pIndex += 1
               new BackReferenceNode(
-                  Integer.parseInt(pattern.substring(startIndex + 1, pIndex)))
+                  Integer.parseInt(pattern.jsSubstring(startIndex + 1, pIndex)))
             } else {
               // it is a character escape, or one of \b, \B, \d, \D, \p{...} or \P{...}
               if (c == 'p' || c == 'P') {
@@ -472,7 +473,7 @@ private[regex] object IndicesBuilder {
                   pIndex += 1
                 pIndex += 1
               }
-              new LeafRegexNode(pattern.substring(startIndex, pIndex))
+              new LeafRegexNode(pattern.jsSubstring(startIndex, pIndex))
             }
 
           case '[' =>
@@ -487,13 +488,13 @@ private[regex] object IndicesBuilder {
 
             val startIndex = pIndex
             pIndex = loop(startIndex + 1)
-            val regex = pattern.substring(startIndex, pIndex)
+            val regex = pattern.jsSubstring(startIndex, pIndex)
             new LeafRegexNode(regex)
 
           case _ =>
             val start = pIndex
             pIndex += Character.charCount(dispatchCP)
-            new LeafRegexNode(pattern.substring(start, pIndex))
+            new LeafRegexNode(pattern.jsSubstring(start, pIndex))
         }
 
         if (baseNode ne null) { // null if we just completed an alternative
@@ -505,7 +506,7 @@ private[regex] object IndicesBuilder {
               else
                 pIndex += 1
 
-              val repeater = pattern.substring(startIndex, pIndex)
+              val repeater = pattern.jsSubstring(startIndex, pIndex)
               sequence.push(new RepeatedNode(baseNode, repeater))
 
             case '{' =>
@@ -514,7 +515,7 @@ private[regex] object IndicesBuilder {
               pIndex = pattern.indexOf("}", startIndex + 1) + 1
               if (pattern.charAt(pIndex) == '?') // non-greedy mark
                 pIndex += 1
-              val repeater = pattern.substring(startIndex, pIndex)
+              val repeater = pattern.jsSubstring(startIndex, pIndex)
               sequence.push(new RepeatedNode(baseNode, repeater))
 
             case _ =>
