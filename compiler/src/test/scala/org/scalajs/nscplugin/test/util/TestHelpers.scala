@@ -32,6 +32,12 @@ trait TestHelpers extends DirectTest {
   /** will be prefixed to every code that is compiled. use for imports */
   def preamble: String = ""
 
+  protected def since(v: String): String = {
+    val version = scala.util.Properties.versionNumberString
+    if (version.startsWith("2.11.")) ""
+    else s" (since $v)"
+  }
+
   /** pimps a string to compile it and apply the specified test */
   implicit class CompileTests(val code: String) {
     private lazy val (success, output) = {

@@ -6639,31 +6639,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           js.JSSelect(qualTree, item)
 
         case MaybeGlobalScope.GlobalScope(_) =>
-          item match {
-            case js.StringLiteral(value) =>
-              if (js.JSGlobalRef.isValidJSGlobalRefName(value)) {
-                js.JSGlobalRef(value)
-              } else if (js.JSGlobalRef.ReservedJSIdentifierNames.contains(value)) {
-                reporter.error(pos,
-                    "Invalid selection in the global scope of the reserved " +
-                    s"identifier name `$value`." +
-                    GenericGlobalObjectInformationMsg)
-                js.JSGlobalRef("erroneous")
-              } else {
-                reporter.error(pos,
-                    "Selecting a field of the global scope whose name is " +
-                    "not a valid JavaScript identifier is not allowed." +
-                    GenericGlobalObjectInformationMsg)
-                js.JSGlobalRef("erroneous")
-              }
-
-            case _ =>
-              reporter.error(pos,
-                  "Selecting a field of the global scope with a dynamic " +
-                  "name is not allowed." +
-                  GenericGlobalObjectInformationMsg)
-              js.JSGlobalRef("erroneous")
-          }
+          genJSGlobalRef(item, "Selecting a field", "selection")
       }
     }
 
@@ -6686,31 +6662,43 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           js.JSMethodApply(receiverTree, method, args)
 
         case MaybeGlobalScope.GlobalScope(_) =>
-          method match {
-            case js.StringLiteral(value) =>
-              if (js.JSGlobalRef.isValidJSGlobalRefName(value)) {
-                js.JSFunctionApply(js.JSGlobalRef(value), args)
-              } else if (js.JSGlobalRef.ReservedJSIdentifierNames.contains(value)) {
-                reporter.error(pos,
-                    "Invalid call in the global scope of the reserved " +
-                    s"identifier name `$value`." +
-                    GenericGlobalObjectInformationMsg)
-                js.Undefined()
-              } else {
-                reporter.error(pos,
-                    "Calling a method of the global scope whose name is not " +
-                    "a valid JavaScript identifier is not allowed." +
-                    GenericGlobalObjectInformationMsg)
-                js.Undefined()
-              }
+          val globalRef = genJSGlobalRef(method, "Calling a method", "call")
+          js.JSFunctionApply(globalRef, args)
+      }
+    }
 
-            case _ =>
-              reporter.error(pos,
-                  "Calling a method of the global scope with a dynamic " +
-                  "name is not allowed." +
-                  GenericGlobalObjectInformationMsg)
-              js.Undefined()
+    private def genJSGlobalRef(propName: js.Tree,
+        actionFull: String, actionSimpleNoun: String)(
+        implicit pos: Position): js.JSGlobalRef = {
+      propName match {
+        case js.StringLiteral(value) =>
+          if (js.JSGlobalRef.isValidJSGlobalRefName(value)) {
+            if (value == "await") {
+              global.runReporting.warning(pos,
+                  s"$actionFull of the global scope with the name '$value' is deprecated.\n" +
+                  "  It may produce invalid JavaScript code causing a SyntaxError in some environments." +
+                  GenericGlobalObjectInformationMsg,
+                  WarningCategory.Deprecation,
+                  currentMethodSym.get)
+            }
+            js.JSGlobalRef(value)
+          } else if (js.JSGlobalRef.ReservedJSIdentifierNames.contains(value)) {
+            reporter.error(pos,
+                s"Invalid $actionSimpleNoun in the global scope of the reserved identifier name `$value`." +
+                GenericGlobalObjectInformationMsg)
+            js.JSGlobalRef("erroneous")
+          } else {
+            reporter.error(pos,
+                s"$actionFull of the global scope whose name is not a valid JavaScript identifier is not allowed." +
+                GenericGlobalObjectInformationMsg)
+            js.JSGlobalRef("erroneous")
           }
+
+        case _ =>
+          reporter.error(pos,
+              s"$actionFull of the global scope with a dynamic name is not allowed." +
+              GenericGlobalObjectInformationMsg)
+          js.JSGlobalRef("erroneous")
       }
     }
 

@@ -1033,12 +1033,6 @@ class JSExportTest extends DirectTest with TestHelpers {
 
   }
 
-  private def since(v: String): String = {
-    val version = scala.util.Properties.versionNumberString
-    if (version.startsWith("2.11.")) ""
-    else s" (since $v)"
-  }
-
   @Test
   def noExportTopLevelTrait(): Unit = {
     """
