@@ -411,6 +411,12 @@ object Printers {
           print(rhs)
           print(')')
 
+        case BinaryOp(BinaryOp.String_charAt, lhs, rhs) =>
+          print(lhs)
+          print('[')
+          print(rhs)
+          print(']')
+
         case BinaryOp(op, lhs, rhs) =>
           import BinaryOp._
           print('(')

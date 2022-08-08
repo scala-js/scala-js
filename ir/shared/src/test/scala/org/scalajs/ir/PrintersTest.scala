@@ -538,6 +538,9 @@ class PrintersTest {
         BinaryOp(Double_>, ref("x", DoubleType), ref("y", DoubleType)))
     assertPrintEquals("(x >=[double] y)",
         BinaryOp(Double_>=, ref("x", DoubleType), ref("y", DoubleType)))
+
+    assertPrintEquals("x[y]",
+        BinaryOp(String_charAt, ref("x", StringType), ref("y", IntType)))
   }
 
   @Test def printNewArray(): Unit = {

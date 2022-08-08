@@ -72,6 +72,9 @@ object Platform {
   def hasCompliantArrayIndexOutOfBounds: Boolean =
     BuildInfo.compliantArrayIndexOutOfBounds
 
+  def hasCompliantStringIndexOutOfBounds: Boolean =
+    BuildInfo.compliantStringIndexOutOfBounds
+
   def hasCompliantModuleInit: Boolean = BuildInfo.compliantModuleInit
 
   def hasDirectBuffers: Boolean = typedArrays

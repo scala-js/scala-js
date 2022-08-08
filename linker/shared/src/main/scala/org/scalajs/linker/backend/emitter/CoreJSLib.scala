@@ -892,6 +892,22 @@ private[emitter] object CoreJSLib {
           Return(If(x > 2147483647, 2147483647, If(x < -2147483648, -2147483648, x | 0)))
         },
 
+        condTree(semantics.stringIndexOutOfBounds != CheckedBehavior.Unchecked)(
+          defineFunction2("charAt") { (s, i) =>
+            val r = varRef("r")
+
+            val throwStringIndexOutOfBoundsException = {
+              Throw(maybeWrapInUBE(semantics.stringIndexOutOfBounds,
+                  genScalaClassNew(StringIndexOutOfBoundsExceptionClass, IntArgConstructorName, i)))
+            }
+
+            Block(
+              const(r, Apply(genIdentBracketSelect(s, "charCodeAt"), List(i))),
+              If(r !== r, throwStringIndexOutOfBoundsException, Return(r))
+            )
+          }
+        ),
+
         condTree(allowBigIntsForLongs)(Block(
           defineFunction2("longDiv") { (x, y) =>
             If(y === bigInt(0), throwDivByZero, {

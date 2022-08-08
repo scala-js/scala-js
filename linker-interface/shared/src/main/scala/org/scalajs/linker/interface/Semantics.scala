@@ -18,6 +18,7 @@ import Fingerprint.FingerprintBuilder
 final class Semantics private (
     val asInstanceOfs: CheckedBehavior,
     val arrayIndexOutOfBounds: CheckedBehavior,
+    val stringIndexOutOfBounds: CheckedBehavior,
     val moduleInit: CheckedBehavior,
     val strictFloats: Boolean,
     val productionMode: Boolean,
@@ -30,6 +31,9 @@ final class Semantics private (
 
   def withArrayIndexOutOfBounds(behavior: CheckedBehavior): Semantics =
     copy(arrayIndexOutOfBounds = behavior)
+
+  def withStringIndexOutOfBounds(behavior: CheckedBehavior): Semantics =
+    copy(stringIndexOutOfBounds = behavior)
 
   def withModuleInit(moduleInit: CheckedBehavior): Semantics =
     copy(moduleInit = moduleInit)
@@ -53,6 +57,7 @@ final class Semantics private (
   def optimized: Semantics = {
     copy(asInstanceOfs = this.asInstanceOfs.optimized,
         arrayIndexOutOfBounds = this.arrayIndexOutOfBounds.optimized,
+        stringIndexOutOfBounds = this.stringIndexOutOfBounds.optimized,
         moduleInit = this.moduleInit.optimized,
         productionMode = true)
   }
@@ -61,6 +66,7 @@ final class Semantics private (
     case that: Semantics =>
       this.asInstanceOfs == that.asInstanceOfs &&
       this.arrayIndexOutOfBounds == that.arrayIndexOutOfBounds &&
+      this.stringIndexOutOfBounds == that.stringIndexOutOfBounds &&
       this.moduleInit == that.moduleInit &&
       this.strictFloats == that.strictFloats &&
       this.productionMode == that.productionMode &&
@@ -74,26 +80,29 @@ final class Semantics private (
     var acc = HashSeed
     acc = mix(acc, asInstanceOfs.##)
     acc = mix(acc, arrayIndexOutOfBounds.##)
+    acc = mix(acc, stringIndexOutOfBounds.##)
     acc = mix(acc, moduleInit.##)
     acc = mix(acc, strictFloats.##)
     acc = mix(acc, productionMode.##)
     acc = mixLast(acc, runtimeClassNameMapper.##)
-    finalizeHash(acc, 6)
+    finalizeHash(acc, 7)
   }
 
   override def toString(): String = {
     s"""Semantics(
-       |  asInstanceOfs         = $asInstanceOfs,
-       |  arrayIndexOutOfBounds = $arrayIndexOutOfBounds,
-       |  moduleInit            = $moduleInit,
-       |  strictFloats          = $strictFloats,
-       |  productionMode        = $productionMode
+       |  asInstanceOfs          = $asInstanceOfs,
+       |  arrayIndexOutOfBounds  = $arrayIndexOutOfBounds,
+       |  stringIndexOutOfBounds = $stringIndexOutOfBounds,
+       |  moduleInit             = $moduleInit,
+       |  strictFloats           = $strictFloats,
+       |  productionMode         = $productionMode
        |)""".stripMargin
   }
 
   private def copy(
       asInstanceOfs: CheckedBehavior = this.asInstanceOfs,
       arrayIndexOutOfBounds: CheckedBehavior = this.arrayIndexOutOfBounds,
+      stringIndexOutOfBounds: CheckedBehavior = this.stringIndexOutOfBounds,
       moduleInit: CheckedBehavior = this.moduleInit,
       strictFloats: Boolean = this.strictFloats,
       productionMode: Boolean = this.productionMode,
@@ -102,6 +111,7 @@ final class Semantics private (
     new Semantics(
         asInstanceOfs = asInstanceOfs,
         arrayIndexOutOfBounds = arrayIndexOutOfBounds,
+        stringIndexOutOfBounds = stringIndexOutOfBounds,
         moduleInit = moduleInit,
         strictFloats = strictFloats,
         productionMode = productionMode,
@@ -217,6 +227,7 @@ object Semantics {
       new FingerprintBuilder("Semantics")
         .addField("asInstanceOfs", semantics.asInstanceOfs)
         .addField("arrayIndexOutOfBounds", semantics.arrayIndexOutOfBounds)
+        .addField("stringIndexOutOfBounds", semantics.stringIndexOutOfBounds)
         .addField("moduleInit", semantics.moduleInit)
         .addField("strictFloats", semantics.strictFloats)
         .addField("productionMode", semantics.productionMode)
@@ -228,6 +239,7 @@ object Semantics {
   val Defaults: Semantics = new Semantics(
       asInstanceOfs = Fatal,
       arrayIndexOutOfBounds = Fatal,
+      stringIndexOutOfBounds = Fatal,
       moduleInit = Unchecked,
       strictFloats = true,
       productionMode = false,

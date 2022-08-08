@@ -2236,7 +2236,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           isJSFunctionDef(currentClassSym)) {
         val flags = js.MemberFlags.empty.withNamespace(namespace)
         val body = {
-          if (isImplClass(currentClassSym)) {
+          if (currentClassSym.get == HackedStringClass && methodName.name == charAtMethodName) {
+            // Hijack the body of String.charAt and replace it with a String_charAt binary op
+            js.BinaryOp(js.BinaryOp.String_charAt, genThis(), jsParams.head.ref)
+          } else if (isImplClass(currentClassSym)) {
             val thisParam = jsParams.head
             withScopedVars(
                 thisLocalVarIdent := Some(thisParam.name)
@@ -7058,6 +7061,9 @@ private object GenJSCode {
 
   private val ObjectArgConstructorName =
     MethodName.constructor(List(jstpe.ClassRef(ir.Names.ObjectClass)))
+
+  private val charAtMethodName =
+    MethodName("charAt", List(jstpe.IntRef), jstpe.CharRef)
 
   private val thisOriginalName = OriginalName("this")
 

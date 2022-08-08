@@ -45,6 +45,7 @@ object ExposedValues extends AutoPlugin {
         semantics
           .withAsInstanceOfs(CheckedBehavior.Compliant)
           .withArrayIndexOutOfBounds(CheckedBehavior.Compliant)
+          .withStringIndexOutOfBounds(CheckedBehavior.Compliant)
           .withModuleInit(CheckedBehavior.Compliant)
       }
     }
@@ -1712,15 +1713,15 @@ object Build {
         scalaVersion.value match {
           case Default2_11ScalaVersion =>
             Some(ExpectedSizes(
-                fastLink = 515000 to 516000,
+                fastLink = 516500 to 517500,
                 fullLink = 107000 to 108000,
-                fastLinkGz = 65000 to 66000,
+                fastLinkGz = 65500 to 66500,
                 fullLinkGz = 28000 to 29000,
             ))
 
           case Default2_12ScalaVersion =>
             Some(ExpectedSizes(
-                fastLink = 777000 to 778000,
+                fastLink = 778000 to 779000,
                 fullLink = 148000 to 149000,
                 fastLinkGz = 90000 to 91000,
                 fullLinkGz = 36000 to 37000,
@@ -1731,7 +1732,7 @@ object Build {
                 fastLink = 727000 to 728000,
                 fullLink = 155000 to 156000,
                 fastLinkGz = 91000 to 92000,
-                fullLinkGz = 40000 to 41000,
+                fullLinkGz = 39000 to 40000,
             ))
 
           case _ =>
@@ -2011,6 +2012,7 @@ object Build {
           "isFullOpt" -> (stage == Stage.FullOpt),
           "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
           "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant),
+          "compliantStringIndexOutOfBounds" -> (sems.stringIndexOutOfBounds == CheckedBehavior.Compliant),
           "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
           "strictFloats" -> sems.strictFloats,
           "productionMode" -> sems.productionMode,

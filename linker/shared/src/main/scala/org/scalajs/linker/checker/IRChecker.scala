@@ -513,10 +513,12 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
               Double_== | Double_!= |
               Double_< | Double_<= | Double_> | Double_>= =>
             DoubleType
+          case String_charAt =>
+            StringType
         }
         val expectedRhsType = (op: @switch) match {
-          case Long_<< | Long_>>> | Long_>> => IntType
-          case _                            => expectedLhsType
+          case Long_<< | Long_>>> | Long_>> | String_charAt => IntType
+          case _                                            => expectedLhsType
         }
         typecheckExpect(lhs, env, expectedLhsType)
         typecheckExpect(rhs, env, expectedRhsType)

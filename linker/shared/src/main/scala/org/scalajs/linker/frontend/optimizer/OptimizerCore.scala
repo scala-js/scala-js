@@ -47,6 +47,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
   val myself: MethodID
 
+  private def semantics: Semantics = config.coreSpec.semantics
+
   // Uncomment and adapt to print debug messages only during one method
   //lazy val debugThisMethod: Boolean =
   //  myself.toString() == "java.lang.FloatingPointBits$.numberHashCode;D;I"
@@ -1440,15 +1442,15 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       finishTransformStat(lhs)
 
     case PreTransBinaryOp(op, lhs, rhs) =>
-      // Here we need to preserve the side-effects of integer division/modulo
+      // Here we need to preserve the side-effects of integer division/modulo and String_charAt
       import BinaryOp._
 
-      val newLhs = finishTransformStat(lhs)
+      def newLhs = finishTransformStat(lhs)
 
       def finishNoSideEffects: Tree =
         Block(newLhs, finishTransformStat(rhs))(stat.pos)
 
-      op match {
+      (op: @switch) match {
         case Int_/ | Int_% =>
           rhs match {
             case PreTransLit(IntLiteral(r)) if r != 0 =>
@@ -1465,6 +1467,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
               Block(newLhs, BinaryOp(op, LongLiteral(0L)(stat.pos),
                   finishTransformExpr(rhs))(stat.pos))(stat.pos)
           }
+        case String_charAt if semantics.stringIndexOutOfBounds != CheckedBehavior.Unchecked =>
+          finishTransformExpr(stat)
         case _ =>
           finishNoSideEffects
       }
@@ -1558,11 +1562,12 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       }
 
     case BinaryOp(op, lhs, rhs) =>
-      // Here we need to preserve the side-effects of integer division/modulo
+      // Here we need to preserve the side-effects of integer division/modulo and String_charAt
       import BinaryOp._
 
       implicit val pos = stat.pos
-      val newLhs = keepOnlySideEffects(lhs)
+
+      def newLhs = keepOnlySideEffects(lhs)
 
       def finishNoSideEffects: Tree =
         Block(newLhs, keepOnlySideEffects(rhs))
@@ -1582,6 +1587,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             case _ =>
               Block(newLhs, BinaryOp(op, LongLiteral(0L), rhs))
           }
+        case String_charAt if semantics.stringIndexOutOfBounds != CheckedBehavior.Unchecked =>
+          stat
         case _ =>
           finishNoSideEffects
       }
@@ -3249,6 +3256,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case BooleanLiteral(value) => value
     }
 
+    @inline def string(lit: Literal): String = (lit: @unchecked) match {
+      case StringLiteral(value) => value
+    }
+
     (op: @switch) match {
       case === => BooleanLiteral(literal_===(lhs, rhs, isJSStrictEq = false))
       case !== => BooleanLiteral(!literal_===(lhs, rhs, isJSStrictEq = false))
@@ -3320,6 +3331,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case Boolean_!= => BooleanLiteral(boolean(lhs) != boolean(rhs))
       case Boolean_|  => BooleanLiteral(boolean(lhs) | boolean(rhs))
       case Boolean_&  => BooleanLiteral(boolean(lhs) & boolean(rhs))
+
+      case String_charAt => CharLiteral(string(lhs).charAt(int(rhs)))
     }
   }
 
@@ -3392,6 +3405,13 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             rhsLit match {
               case LongLiteral(0) => nonConstant()
               case _              => constant(lhsLit, rhsLit)
+            }
+          case String_charAt =>
+            (lhsLit, rhsLit) match {
+              case (StringLiteral(lhsStr), IntLiteral(rhsInt)) if rhsInt < 0 || rhsInt >= lhsStr.length() =>
+                nonConstant()
+              case _ =>
+                constant(lhsLit, rhsLit)
             }
           case _ =>
             constant(lhsLit, rhsLit)
@@ -4225,7 +4245,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       implicit pos: Position): Tree = {
     // !!! Must be in sync with scala.scalajs.runtime.LinkingInfo
 
-    import config.coreSpec._
+    import config.coreSpec.esFeatures
 
     (qualifier, item) match {
       case (JSLinkingInfo(), StringLiteral("productionMode")) =>

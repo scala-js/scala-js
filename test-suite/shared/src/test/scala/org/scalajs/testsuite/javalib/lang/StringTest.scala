@@ -16,6 +16,7 @@ import java.nio.charset.Charset
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
@@ -144,8 +145,42 @@ class StringTest {
   }
 
   @Test def charAt(): Unit = {
-    assertEquals('.', "Scala.js".charAt(5))
-    assertNotEquals("Scala.js".charAt(6), '.')
+    @noinline def testNoInline(expected: Char, s: String, i: Int): Unit =
+      assertEquals(expected, s.charAt(i))
+
+    @inline def test(expected: Char, s: String, i: Int): Unit = {
+      testNoInline(expected, s, i)
+      assertEquals(expected, s.charAt(i))
+    }
+
+    test('S', "Scala.js", 0)
+    test('.', "Scala.js", 5)
+    test('s', "Scala.js", 7)
+    test('o', "foo", 1)
+  }
+
+  @Test def charAtIndexOutOfBounds(): Unit = {
+    assumeTrue("Assuming compliant StringIndexOutOfBounds",
+        hasCompliantStringIndexOutOfBounds)
+
+    def test(s: String, i: Int): Unit = {
+      val e = assertThrows(classOf[StringIndexOutOfBoundsException], s.charAt(i))
+      assertTrue(e.getMessage(), e.getMessage().contains(i.toString()))
+    }
+
+    test("foo", -1)
+    test("foo", -10000)
+    test("foo", Int.MinValue)
+    test("foo", 3)
+    test("foo", 10000)
+    test("foo", Int.MaxValue)
+
+    test("", -1)
+    test("", 0)
+    test("", 1)
+
+    // Test non-constant-folding
+    assertThrows(classOf[StringIndexOutOfBoundsException], "foo".charAt(4))
   }
 
   @Test def codePointAt(): Unit = {
@@ -165,13 +200,18 @@ class StringTest {
     // Lone low surrogates
     assertEquals(0xDF06, "\uDF06abc".codePointAt(0))
     assertEquals(0xD834, "abc\uD834".codePointAt(3))
+  }
 
-    if (executingInJVM) {
-      assertThrows(classOf[IndexOutOfBoundsException],
-          "abc\ud834\udf06def".codePointAt(-1))
-      assertThrows(classOf[IndexOutOfBoundsException],
-          "abc\ud834\udf06def".codePointAt(15))
-    }
+  @Test def codePointAtIndexOutOfBounds(): Unit = {
+    assumeTrue("Assuming compliant StringIndexOutOfBounds",
+        hasCompliantStringIndexOutOfBounds)
+
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "abc\ud834\udf06def".codePointAt(-1))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "abc\ud834\udf06def".codePointAt(8))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "abc\ud834\udf06def".codePointAt(15))
   }
 
   @Test def codePointBefore(): Unit = {
@@ -179,17 +219,23 @@ class StringTest {
     assertEquals(0x1d306, "abc\ud834\udf06def".codePointBefore(5))
     assertEquals(0xd834, "abc\ud834\udf06def".codePointBefore(4))
     assertEquals(0x64, "abc\ud834\udf06def".codePointBefore(6))
+    assertEquals('f'.toInt, "abc\ud834\udf06def".codePointBefore(8))
     assertEquals(0x1d306, "\ud834\udf06def".codePointBefore(2))
     assertEquals(0xd834, "\ud834\udf06def".codePointBefore(1))
     assertEquals(0xd834, "\ud834abc".codePointBefore(1))
     assertEquals(0xdf06, "\udf06abc".codePointBefore(1))
+  }
 
-    if (executingInJVM) {
-      assertThrows(classOf[IndexOutOfBoundsException],
-          "abc\ud834\udf06def".codePointBefore(0))
-      assertThrows(classOf[IndexOutOfBoundsException],
-          "abc\ud834\udf06def".codePointBefore(15))
-    }
+  @Test def codePointBeforeIndexOutOfBounds(): Unit = {
+    assumeTrue("Assuming compliant StringIndexOutOfBounds",
+        hasCompliantStringIndexOutOfBounds)
+
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "abc\ud834\udf06def".codePointBefore(0))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "abc\ud834\udf06def".codePointBefore(9))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "abc\ud834\udf06def".codePointBefore(15))
   }
 
   @Test def codePointCount(): Unit = {
@@ -255,11 +301,91 @@ class StringTest {
     assertThrows(classOf[IndexOutOfBoundsException], s.offsetByCodePoints(30, 2))
   }
 
+  @Test def substringBegin(): Unit = {
+    assertEquals("", "".substring(0))
+    assertEquals("", "foo".substring(3))
+    assertEquals("", "hello".substring(5))
+    assertEquals("lo", "hello".substring(3))
+    assertEquals("baz", "foo bar baz".substring(8))
+    assertEquals("foo bar baz", "foo bar baz".substring(0))
+  }
+
+  @Test def substringBeginIndexOutOfBounds(): Unit = {
+    assumeTrue("Assuming compliant StringIndexOutOfBounds",
+        hasCompliantStringIndexOutOfBounds)
+
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "foo".substring(-1))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "foo".substring(4))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "foo".substring(15))
+
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "".substring(-1))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "".substring(1))
+  }
+
+  @Test def substringBeginEnd(): Unit = {
+    assertEquals("", "".substring(0, 0))
+    assertEquals("", "foo".substring(3, 3))
+    assertEquals("", "hello".substring(3, 3))
+    assertEquals("lo", "hello".substring(3, 5))
+    assertEquals("bar", "foo bar baz".substring(4, 7))
+    assertEquals("foo bar baz", "foo bar baz".substring(0, 11))
+    assertEquals("foo bar", "foo bar baz".substring(0, 7))
+  }
+
+  @Test def substringBeginEndIndexOutOfBounds(): Unit = {
+    assumeTrue("Assuming compliant StringIndexOutOfBounds",
+        hasCompliantStringIndexOutOfBounds)
+
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "foo".substring(-1, 1))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "foo".substring(4, 4))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "foo".substring(1, 4))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "foo".substring(-1, 4))
+
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "foo".substring(2, 1))
+
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "".substring(-1, -1))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "".substring(1, 1))
+  }
+
   @Test def subSequence(): Unit = {
     assertEquals("Scala", "Scala.js".subSequence(0, 5))
     assertEquals("js", "Scala.js".subSequence(6, 8))
     assertEquals("la", "Scala.js".subSequence(3, 5))
     assertEquals("", "Scala.js".subSequence(3, 3))
+  }
+
+  @Test def subSequenceIndexOutOfBounds(): Unit = {
+    assumeTrue("Assuming compliant StringIndexOutOfBounds",
+        hasCompliantStringIndexOutOfBounds)
+
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "foo".subSequence(-1, 1))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "foo".subSequence(4, 4))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "foo".subSequence(1, 4))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "foo".subSequence(-1, 4))
+
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "foo".subSequence(2, 1))
+
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "".subSequence(-1, -1))
+    assertThrows(classOf[StringIndexOutOfBoundsException],
+        "".subSequence(1, 1))
   }
 
   @Test def replace(): Unit = {

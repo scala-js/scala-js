@@ -15,6 +15,8 @@ object BinaryIncompatibilities {
   )
 
   val LinkerInterface = Seq(
+    // private, not an issue
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.linker.interface.Semantics.this"),
   )
 
   val SbtPlugin = Seq(

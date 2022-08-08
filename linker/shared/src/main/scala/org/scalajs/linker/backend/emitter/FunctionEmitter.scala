@@ -1271,6 +1271,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             case _                         => false
           }
 
+        // String_charAt preserves pureness iff the semantics for stringIndexOutOfBounds are unchecked
+        case BinaryOp(BinaryOp.String_charAt, lhs, rhs) =>
+          (allowSideEffects || semantics.stringIndexOutOfBounds == Unchecked) && test(lhs) && test(rhs)
+
         // Expressions preserving pureness
         case Block(trees)            => trees forall test
         case If(cond, thenp, elsep)  => test(cond) && test(thenp) && test(elsep)
@@ -2621,6 +2625,14 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
             case Boolean_| => !(!js.BinaryOp(JSBinaryOp.|, newLhs, newRhs))
             case Boolean_& => !(!js.BinaryOp(JSBinaryOp.&, newLhs, newRhs))
+
+            case String_charAt =>
+              semantics.stringIndexOutOfBounds match {
+                case CheckedBehavior.Compliant | CheckedBehavior.Fatal =>
+                  genCallHelper("charAt", newLhs, newRhs)
+                case CheckedBehavior.Unchecked =>
+                  js.Apply(genIdentBracketSelect(newLhs, "charCodeAt"), List(newRhs))
+              }
           }
 
         case NewArray(typeRef, lengths) =>
