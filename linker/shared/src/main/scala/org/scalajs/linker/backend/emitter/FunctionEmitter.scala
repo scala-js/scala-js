@@ -2378,6 +2378,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 genCallHelper("longToFloat", newLhs)
               else
                 genLongMethodApply(newLhs, LongImpl.toFloat)
+
+            // String.length
+            case String_length =>
+              genIdentBracketSelect(newLhs, "length")
           }
 
         case BinaryOp(op, lhs, rhs) =>

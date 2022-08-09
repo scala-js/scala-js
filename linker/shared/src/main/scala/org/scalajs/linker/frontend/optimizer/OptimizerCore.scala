@@ -3172,6 +3172,16 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             default
         }
 
+      // String.length
+
+      case String_length =>
+        arg match {
+          case PreTransLit(StringLiteral(s)) =>
+            PreTransLit(IntLiteral(s.length()))
+          case _ =>
+            default
+        }
+
       case _ =>
         default
     }

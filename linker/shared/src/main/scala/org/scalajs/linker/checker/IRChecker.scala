@@ -489,6 +489,8 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
             FloatType
           case DoubleToInt | DoubleToFloat | DoubleToLong =>
             DoubleType
+          case String_length =>
+            StringType
         }
         typecheckExpect(lhs, env, expectedArgType)
 

@@ -320,6 +320,9 @@ object Trees {
     // Long -> Float (neither widening nor narrowing), introduced in 1.6
     final val LongToFloat = 16
 
+    // String.length, introduced in 1.11
+    final val String_length = 17
+
     def resultTypeOf(op: Code): Type = (op: @switch) match {
       case Boolean_! =>
         BooleanType
@@ -329,7 +332,7 @@ object Trees {
         ByteType
       case IntToShort =>
         ShortType
-      case CharToInt | ByteToInt | ShortToInt | LongToInt | DoubleToInt =>
+      case CharToInt | ByteToInt | ShortToInt | LongToInt | DoubleToInt | String_length =>
         IntType
       case IntToLong | DoubleToLong =>
         LongType
