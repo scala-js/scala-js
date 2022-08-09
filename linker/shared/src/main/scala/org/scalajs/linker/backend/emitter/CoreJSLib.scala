@@ -365,7 +365,7 @@ private[emitter] object CoreJSLib {
         case PrivateSymbolBuiltin =>
           /* function privateJSFieldSymbol(description) {
            *   function rand32() {
-           *     const s = ((Math.random() * 4294967296.0) | 0).toString(16);
+           *     const s = ((Math.random() * 4294967296.0) >>> 0).toString(16);
            *     return "00000000".substring(s.length) + s;
            *   }
            *   return description + rand32() + rand32() + rand32() + rand32();
@@ -386,9 +386,9 @@ private[emitter] object CoreJSLib {
                   genLet(s.ident, mutable = false, {
                       val randomDouble =
                         Apply(genIdentBracketSelect(MathRef, "random"), Nil)
-                      val randomInt =
-                        (randomDouble * double(4294967296.0)) | 0
-                      Apply(genIdentBracketSelect(randomInt, "toString"), 16 :: Nil)
+                      val randomUint =
+                        (randomDouble * double(4294967296.0)) >>> 0
+                      Apply(genIdentBracketSelect(randomUint, "toString"), 16 :: Nil)
                   }),
                   {
                     val padding = Apply(
