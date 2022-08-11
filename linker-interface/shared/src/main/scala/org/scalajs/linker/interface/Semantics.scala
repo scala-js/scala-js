@@ -18,6 +18,7 @@ import Fingerprint.FingerprintBuilder
 final class Semantics private (
     val asInstanceOfs: CheckedBehavior,
     val arrayIndexOutOfBounds: CheckedBehavior,
+    val arrayStores: CheckedBehavior,
     val stringIndexOutOfBounds: CheckedBehavior,
     val moduleInit: CheckedBehavior,
     val strictFloats: Boolean,
@@ -31,6 +32,9 @@ final class Semantics private (
 
   def withArrayIndexOutOfBounds(behavior: CheckedBehavior): Semantics =
     copy(arrayIndexOutOfBounds = behavior)
+
+  def withArrayStores(behavior: CheckedBehavior): Semantics =
+    copy(arrayStores = behavior)
 
   def withStringIndexOutOfBounds(behavior: CheckedBehavior): Semantics =
     copy(stringIndexOutOfBounds = behavior)
@@ -57,6 +61,7 @@ final class Semantics private (
   def optimized: Semantics = {
     copy(asInstanceOfs = this.asInstanceOfs.optimized,
         arrayIndexOutOfBounds = this.arrayIndexOutOfBounds.optimized,
+        arrayStores = this.arrayStores.optimized,
         stringIndexOutOfBounds = this.stringIndexOutOfBounds.optimized,
         moduleInit = this.moduleInit.optimized,
         productionMode = true)
@@ -66,6 +71,7 @@ final class Semantics private (
     case that: Semantics =>
       this.asInstanceOfs == that.asInstanceOfs &&
       this.arrayIndexOutOfBounds == that.arrayIndexOutOfBounds &&
+      this.arrayStores == that.arrayStores &&
       this.stringIndexOutOfBounds == that.stringIndexOutOfBounds &&
       this.moduleInit == that.moduleInit &&
       this.strictFloats == that.strictFloats &&
@@ -80,18 +86,20 @@ final class Semantics private (
     var acc = HashSeed
     acc = mix(acc, asInstanceOfs.##)
     acc = mix(acc, arrayIndexOutOfBounds.##)
+    acc = mix(acc, arrayStores.##)
     acc = mix(acc, stringIndexOutOfBounds.##)
     acc = mix(acc, moduleInit.##)
     acc = mix(acc, strictFloats.##)
     acc = mix(acc, productionMode.##)
     acc = mixLast(acc, runtimeClassNameMapper.##)
-    finalizeHash(acc, 7)
+    finalizeHash(acc, 8)
   }
 
   override def toString(): String = {
     s"""Semantics(
        |  asInstanceOfs          = $asInstanceOfs,
        |  arrayIndexOutOfBounds  = $arrayIndexOutOfBounds,
+       |  arrayStores            = $arrayStores,
        |  stringIndexOutOfBounds = $stringIndexOutOfBounds,
        |  moduleInit             = $moduleInit,
        |  strictFloats           = $strictFloats,
@@ -102,6 +110,7 @@ final class Semantics private (
   private def copy(
       asInstanceOfs: CheckedBehavior = this.asInstanceOfs,
       arrayIndexOutOfBounds: CheckedBehavior = this.arrayIndexOutOfBounds,
+      arrayStores: CheckedBehavior = this.arrayStores,
       stringIndexOutOfBounds: CheckedBehavior = this.stringIndexOutOfBounds,
       moduleInit: CheckedBehavior = this.moduleInit,
       strictFloats: Boolean = this.strictFloats,
@@ -111,6 +120,7 @@ final class Semantics private (
     new Semantics(
         asInstanceOfs = asInstanceOfs,
         arrayIndexOutOfBounds = arrayIndexOutOfBounds,
+        arrayStores = arrayStores,
         stringIndexOutOfBounds = stringIndexOutOfBounds,
         moduleInit = moduleInit,
         strictFloats = strictFloats,
@@ -227,6 +237,7 @@ object Semantics {
       new FingerprintBuilder("Semantics")
         .addField("asInstanceOfs", semantics.asInstanceOfs)
         .addField("arrayIndexOutOfBounds", semantics.arrayIndexOutOfBounds)
+        .addField("arrayStores", semantics.arrayStores)
         .addField("stringIndexOutOfBounds", semantics.stringIndexOutOfBounds)
         .addField("moduleInit", semantics.moduleInit)
         .addField("strictFloats", semantics.strictFloats)
@@ -239,6 +250,7 @@ object Semantics {
   val Defaults: Semantics = new Semantics(
       asInstanceOfs = Fatal,
       arrayIndexOutOfBounds = Fatal,
+      arrayStores = Fatal,
       stringIndexOutOfBounds = Fatal,
       moduleInit = Unchecked,
       strictFloats = true,

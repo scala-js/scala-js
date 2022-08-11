@@ -617,16 +617,25 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 val genArray = transformExprNoChar(newArray)
                 val genIndex = transformExprNoChar(newIndex)
                 val genRhs = transformExpr(newRhs, lhs.tpe)
-                semantics.arrayIndexOutOfBounds match {
-                  case CheckedBehavior.Compliant | CheckedBehavior.Fatal =>
-                    js.Apply(js.DotSelect(genArray, js.Ident("set")),
-                        List(genIndex, genRhs))
-                  case CheckedBehavior.Unchecked =>
-                    js.Assign(
-                        js.BracketSelect(
-                            js.DotSelect(genArray, js.Ident("u"))(lhs.pos),
-                            genIndex)(lhs.pos),
-                        genRhs)
+
+                /* We need to use a checked 'set' if at least one of the following applies:
+                 * - Array index out of bounds are checked, or
+                 * - Array stores are checked and the array is an array of reference types.
+                 */
+                val checked = {
+                  (semantics.arrayIndexOutOfBounds != CheckedBehavior.Unchecked) ||
+                  ((semantics.arrayStores != CheckedBehavior.Unchecked) && RefArray.is(array.tpe))
+                }
+
+                if (checked) {
+                  js.Apply(js.DotSelect(genArray, js.Ident("set")),
+                      List(genIndex, genRhs))
+                } else {
+                  js.Assign(
+                      js.BracketSelect(
+                          js.DotSelect(genArray, js.Ident("u"))(lhs.pos),
+                          genIndex)(lhs.pos),
+                      genRhs)
                 }
               }
 
@@ -894,10 +903,18 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             implicit val env = env0
             val jsArgs = newArgs.map(transformExprNoChar(_))
 
-            if (es2015)
-              js.Apply(js.DotSelect(jsArgs.head, js.Ident("copyTo")), jsArgs.tail)
-            else
-              genCallHelper("systemArraycopy", jsArgs: _*)
+            if (semantics.arrayStores == Unchecked) {
+              genUncheckedArraycopy(jsArgs)
+            } else {
+              (src.tpe, dest.tpe) match {
+                case (PrimArray(srcPrimRef), PrimArray(destPrimRef)) if srcPrimRef == destPrimRef =>
+                  genUncheckedArraycopy(jsArgs)
+                case (RefArray(), RefArray()) =>
+                  genCallHelper("systemArraycopyRefs", jsArgs: _*)
+                case _ =>
+                  genCallHelper("systemArraycopyFull", jsArgs: _*)
+              }
+            }
           }
 
         /* Anything else is an expression => pushLhsInto(Lhs.Discard, _)
@@ -3250,6 +3267,26 @@ private object FunctionEmitter {
   private val UTF8Period: UTF8String = UTF8String(".")
 
   private val thisOriginalName: OriginalName = OriginalName("this")
+
+  private object PrimArray {
+    def unapply(tpe: ArrayType): Option[PrimRef] = tpe.arrayTypeRef match {
+      case ArrayTypeRef(primRef: PrimRef, 1) => Some(primRef)
+      case _                                 => None
+    }
+  }
+
+  private object RefArray {
+    def unapply(tpe: ArrayType): Boolean = tpe.arrayTypeRef match {
+      case ArrayTypeRef(_, n) if n > 1  => true
+      case ArrayTypeRef(_: ClassRef, _) => true
+      case _                            => false
+    }
+
+    def is(tpe: Type): Boolean = tpe match {
+      case RefArray() => true
+      case _          => false
+    }
+  }
 
   private final case class JSVarRef(ident: js.Ident, mutable: Boolean)(val tpe: Type)
       extends Transient.Value {

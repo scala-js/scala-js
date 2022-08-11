@@ -42,6 +42,7 @@ object Platform {
 
   def hasCompliantAsInstanceOfs: Boolean = true
   def hasCompliantArrayIndexOutOfBounds: Boolean = true
+  def hasCompliantArrayStores: Boolean = true
   def hasCompliantStringIndexOutOfBounds: Boolean = true
   def hasCompliantModule: Boolean = true
   def hasDirectBuffers: Boolean = true

@@ -45,6 +45,7 @@ object ExposedValues extends AutoPlugin {
         semantics
           .withAsInstanceOfs(CheckedBehavior.Compliant)
           .withArrayIndexOutOfBounds(CheckedBehavior.Compliant)
+          .withArrayStores(CheckedBehavior.Compliant)
           .withStringIndexOutOfBounds(CheckedBehavior.Compliant)
           .withModuleInit(CheckedBehavior.Compliant)
       }
@@ -1805,7 +1806,7 @@ object Build {
         scalaVersion.value match {
           case Default2_11ScalaVersion =>
             Some(ExpectedSizes(
-                fastLink = 380000 to 381000,
+                fastLink = 382000 to 383000,
                 fullLink = 79000 to 80000,
                 fastLinkGz = 49000 to 50000,
                 fullLinkGz = 21000 to 22000,
@@ -1813,7 +1814,7 @@ object Build {
 
           case Default2_12ScalaVersion =>
             Some(ExpectedSizes(
-                fastLink = 756000 to 757000,
+                fastLink = 759000 to 760000,
                 fullLink = 145000 to 146000,
                 fastLinkGz = 88000 to 89000,
                 fullLinkGz = 35000 to 36000,
@@ -1821,7 +1822,7 @@ object Build {
 
           case Default2_13ScalaVersion =>
             Some(ExpectedSizes(
-                fastLink = 443000 to 444000,
+                fastLink = 446000 to 447000,
                 fullLink = 97000 to 98000,
                 fastLinkGz = 57000 to 58000,
                 fullLinkGz = 26000 to 27000,
@@ -2104,6 +2105,7 @@ object Build {
           "isFullOpt" -> (stage == Stage.FullOpt),
           "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
           "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant),
+          "compliantArrayStores" -> (sems.arrayStores == CheckedBehavior.Compliant),
           "compliantStringIndexOutOfBounds" -> (sems.stringIndexOutOfBounds == CheckedBehavior.Compliant),
           "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
           "strictFloats" -> sems.strictFloats,

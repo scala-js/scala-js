@@ -582,11 +582,49 @@ private[emitter] object CoreJSLib {
     }
 
     private def defineRuntimeFunctions(): Tree = Block(
+      condTree(asInstanceOfs != CheckedBehavior.Unchecked || arrayStores != CheckedBehavior.Unchecked)(
+        /* Returns a safe string description of a value.
+         * This helper is never called for `value === null`. As implemented,
+         * it would return `"object"` if it were.
+         */
+        defineFunction1("valueDescription") { value =>
+          Return {
+            If(typeof(value) === str("number"), {
+              If((value === 0) && (int(1) / value < 0), {
+                str("number(-0)")
+              }, {
+                str("number(") + value + str(")")
+              })
+            }, {
+              val longOrBigIntTest =
+                if (useBigIntForLongs) typeof(value) === str("bigint")
+                else genIsInstanceOfHijackedClass(value, BoxedLongClass)
+              If(longOrBigIntTest, {
+                if (useBigIntForLongs)
+                  str("bigint(") + value + str(")")
+                else
+                  str("long")
+              }, {
+                If(genIsInstanceOfHijackedClass(value, BoxedCharacterClass), {
+                  str("char")
+                }, {
+                  If(genIsScalaJSObject(value), {
+                    genIdentBracketSelect(value DOT classData, "name")
+                  }, {
+                    typeof(value)
+                  })
+                })
+              })
+            })
+          }
+        }
+      ),
+
       condTree(asInstanceOfs != CheckedBehavior.Unchecked)(Block(
         defineFunction2("throwClassCastException") { (instance, classFullName) =>
           Throw(maybeWrapInUBE(asInstanceOfs, {
             genScalaClassNew(ClassCastExceptionClass, StringArgConstructorName,
-                instance + str(" is not an instance of ") + classFullName)
+                genCallHelper("valueDescription", instance) + str(" cannot be cast to ") + classFullName)
           }))
         },
 
@@ -606,6 +644,16 @@ private[emitter] object CoreJSLib {
             genScalaClassNew(ArrayIndexOutOfBoundsExceptionClass,
                 StringArgConstructorName,
                 If(i === Null(), Null(), str("") + i))
+          }))
+        }
+      ),
+
+      condTree(arrayStores != CheckedBehavior.Unchecked)(
+        defineFunction1("throwArrayStoreException") { v =>
+          Throw(maybeWrapInUBE(arrayStores, {
+            genScalaClassNew(ArrayStoreExceptionClass,
+                StringArgConstructorName,
+                If(v === Null(), Null(), genCallHelper("valueDescription", v)))
           }))
         }
       ),
@@ -1077,6 +1125,60 @@ private[emitter] object CoreJSLib {
         }
       ),
 
+      condTree(arrayStores != CheckedBehavior.Unchecked)(Block(
+        defineFunction5("systemArraycopyRefs") { (src, srcPos, dest, destPos, length) =>
+          If(Apply(genIdentBracketSelect(dest DOT classData, "isAssignableFrom"), List(src DOT classData)), {
+            /* Fast-path, no need for array store checks. This always applies
+             * for arrays of the same type, and a fortiori, when `src eq dest`.
+             */
+            genCallHelper("arraycopyGeneric", src.u, srcPos, dest.u, destPos, length)
+          }, {
+            /* Slow copy with "set" calls for every element. By construction,
+             * we have `src ne dest` in this case.
+             */
+            val srcArray = varRef("srcArray")
+            val i = varRef("i")
+            Block(
+              const(srcArray, src.u),
+              condTree(arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
+                genCallHelper("arraycopyCheckBounds", srcArray.length,
+                    srcPos, dest.u.length, destPos, length)
+              },
+              For(let(i, 0), i < length, i := ((i + 1) | 0), {
+                Apply(dest DOT "set", List((destPos + i) | 0, BracketSelect(srcArray, (srcPos + i) | 0)))
+              })
+            )
+          })
+        },
+
+        defineFunction5("systemArraycopyFull") { (src, srcPos, dest, destPos, length) =>
+          val ObjectArray = globalVar("ac", ObjectClass)
+          val srcData = varRef("srcData")
+
+          Block(
+            const(srcData, src && (src DOT classData)),
+            If(srcData === (dest && (dest DOT classData)), {
+              // Both values have the same "data" (could also be falsy values)
+              If(srcData && genIdentBracketSelect(srcData, "isArrayClass"), {
+                // Fast path: the values are array of the same type
+                genUncheckedArraycopy(List(src, srcPos, dest, destPos, length))
+              }, {
+                genCallHelper("throwArrayStoreException", Null())
+              })
+            }, {
+              /* src and dest are of different types; the only situation that
+               * can still be valid is if they are two reference array types.
+               */
+              If((src instanceof ObjectArray) && (dest instanceof ObjectArray), {
+                genCallHelper("systemArraycopyRefs", src, srcPos, dest, destPos, length)
+              }, {
+                genCallHelper("throwArrayStoreException", Null())
+              })
+            })
+          )
+        }
+      )),
+
       // systemIdentityHashCode
       locally {
         val WeakMapRef = globalRef("WeakMap")
@@ -1308,6 +1410,7 @@ private[emitter] object CoreJSLib {
       for (componentTypeRef <- specializedArrayTypeRefs) yield {
         val ArrayClass = globalVar("ac", componentTypeRef)
 
+        val isArrayOfObject = componentTypeRef == ClassRef(ObjectClass)
         val isTypedArray = usesUnderlyingTypedArray(componentTypeRef)
 
         val ctor = {
@@ -1342,6 +1445,18 @@ private[emitter] object CoreJSLib {
                     BracketSelect(This().u, i) := v
                 )
               })
+          )
+        } else if (isArrayOfObject && arrayStores != CheckedBehavior.Unchecked) {
+          /* We need to define a straightforward "set" method, without any
+           * check necessary, which will be overridden in subclasses.
+           */
+          val i = varRef("i")
+          val v = varRef("v")
+
+          List(
+            MethodDef(static = false, Ident("set"), paramList(i, v), None, {
+              BracketSelect(This().u, i) := v
+            })
           )
         } else {
           Nil
@@ -1463,12 +1578,12 @@ private[emitter] object CoreJSLib {
               privateFieldSet("isAssignableFromFun", Undefined()),
 
               privateFieldSet("wrapArray", Undefined()),
+              privateFieldSet("isJSType", bool(false)),
 
               publicFieldSet("name", str("")),
               publicFieldSet("isPrimitive", bool(false)),
               publicFieldSet("isInterface", bool(false)),
               publicFieldSet("isArrayClass", bool(false)),
-              publicFieldSet("isJSClass", bool(false)),
               publicFieldSet("isInstance", Undefined())
           )
         })
@@ -1634,6 +1749,34 @@ private[emitter] object CoreJSLib {
               })
             }
 
+            val set = if (arrayStores != CheckedBehavior.Unchecked) {
+              val i = varRef("i")
+              val v = varRef("v")
+
+              val boundsCheck = condTree(arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
+                If((i < 0) || (i >= This().u.length),
+                    genCallHelper("throwArrayIndexOutOfBoundsException", i))
+              }
+
+              val storeCheck = {
+                If((v !== Null()) && !(componentData DOT "isJSType") &&
+                    !Apply(genIdentBracketSelect(componentData, "isInstance"), v :: Nil),
+                    genCallHelper("throwArrayStoreException", v))
+              }
+
+              List(
+                MethodDef(static = false, Ident("set"), paramList(i, v), None, {
+                  Block(
+                      boundsCheck,
+                      storeCheck,
+                      BracketSelect(This().u, i) := v
+                  )
+                })
+              )
+            } else {
+              Nil
+            }
+
             val copyTo = if (esVersion >= ESVersion.ES2015) {
               val srcPos = varRef("srcPos")
               val dest = varRef("dest")
@@ -1654,7 +1797,7 @@ private[emitter] object CoreJSLib {
                   Apply(genIdentBracketSelect(This().u, "slice"), Nil) :: Nil))
             })
 
-            val members = copyTo ::: clone :: Nil
+            val members = set ::: copyTo ::: clone :: Nil
 
             if (useClassesForRegularClasses) {
               ClassDef(Some(ArrayClass.ident), Some(globalVar("ac", ObjectClass)),
@@ -1810,6 +1953,10 @@ private[emitter] object CoreJSLib {
                 getSuperclass,
                 getComponentType,
                 newArrayOfThisClass
+            )
+          } else if (arrayStores != CheckedBehavior.Unchecked) {
+            List(
+              isAssignableFrom
             )
           } else {
             Nil
