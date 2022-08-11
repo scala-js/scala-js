@@ -824,8 +824,12 @@ object Emitter {
         },
 
         cond(arrayErrors != Unchecked) {
-          instantiateClass(ArrayIndexOutOfBoundsExceptionClass,
-              StringArgConstructorName)
+          multiple(
+            instantiateClass(ArrayIndexOutOfBoundsExceptionClass,
+                StringArgConstructorName),
+            instantiateClass(ArrayStoreExceptionClass,
+                StringArgConstructorName)
+          )
         },
 
         cond(stringIndexOutOfBounds != Unchecked) {

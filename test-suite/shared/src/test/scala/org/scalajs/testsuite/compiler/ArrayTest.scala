@@ -21,6 +21,9 @@ import org.scalajs.testsuite.utils.Platform._
 
 class ArrayTest {
 
+  private def covariantUpcast[A <: AnyRef](array: Array[_ <: A]): Array[A] =
+    array.asInstanceOf[Array[A]]
+
   @Test
   def getArrayIndexOutOfBounds(): Unit = {
     assumeTrue("Assuming compliant array errors", hasCompliantArrayErrors)
@@ -30,6 +33,18 @@ class ArrayTest {
     assertThrows(classOf[ArrayIndexOutOfBoundsException], a(5))
     assertThrows(classOf[ArrayIndexOutOfBoundsException], a(Int.MinValue))
     assertThrows(classOf[ArrayIndexOutOfBoundsException], a(Int.MaxValue))
+
+    val b = new Array[AnyRef](5)
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], b(-1))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], b(5))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], b(Int.MinValue))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], b(Int.MaxValue))
+
+    val c = new Array[Seq[_]](5)
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], c(-1))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], c(5))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], c(Int.MinValue))
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], c(Int.MaxValue))
   }
 
   @Test
@@ -41,6 +56,85 @@ class ArrayTest {
     assertThrows(classOf[ArrayIndexOutOfBoundsException], a(5) = 1)
     assertThrows(classOf[ArrayIndexOutOfBoundsException], a(Int.MinValue) = 1)
     assertThrows(classOf[ArrayIndexOutOfBoundsException], a(Int.MaxValue) = 1)
+
+    val b = new Array[AnyRef](5)
+    val obj = new AnyRef
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], b(-1) = obj)
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], b(5) = obj)
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], b(Int.MinValue) = obj)
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], b(Int.MaxValue) = obj)
+
+    val c = new Array[Seq[_]](5)
+    val seq = List(1, 2)
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], c(-1) = seq)
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], c(5) = seq)
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], c(Int.MinValue) = seq)
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], c(Int.MaxValue) = seq)
+
+    // IndexOutOfBoundsException is stronger than ArrayStoreException
+    val d: Array[AnyRef] = covariantUpcast(c)
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], d(-1) = obj)
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], d(5) = obj)
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], d(Int.MinValue) = obj)
+    assertThrows(classOf[ArrayIndexOutOfBoundsException], d(Int.MaxValue) = obj)
+  }
+
+  @Test
+  def setArrayStoreExceptions(): Unit = {
+    assumeTrue("Assuming compliant array errors", hasCompliantArrayErrors)
+
+    val obj = new AnyRef
+    val str = "foo"
+    val list = List(1, 2)
+    val vector = Vector(3, 4)
+
+    val a: Array[AnyRef] = covariantUpcast(new Array[Seq[_]](5))
+    a(1) = list
+    assertSame(list, a(1))
+    assertThrows(classOf[ArrayStoreException], a(1) = obj)
+    assertSame(list, a(1))
+    assertThrows(classOf[ArrayStoreException], a(2) = str)
+    assertNull(a(2))
+    a(1) = null
+    assertNull(a(1))
+
+    val b: Array[Seq[_]] = covariantUpcast(new Array[List[Any]](5))
+    b(1) = list
+    assertSame(list, b(1))
+    assertThrows(classOf[ArrayStoreException], b(1) = vector)
+    assertSame(list, b(1))
+
+    val c: Array[Number] = covariantUpcast(new Array[Integer](5))
+    c(1) = Integer.valueOf(5)
+    assertEquals(5, c(1))
+    assertThrows(classOf[ArrayStoreException], c(1) = java.lang.Double.valueOf(5.5))
+    assertEquals(5, c(1))
+    val c2: Array[Object] = covariantUpcast(c)
+    c2(2) = Integer.valueOf(42)
+    assertThrows(classOf[ArrayStoreException], c2(2) = str)
+    assertEquals(42, c2(2))
+    assertEquals(42, c(2))
+
+    val x: Array[AnyRef] = covariantUpcast(new Array[Array[Seq[_]]](5))
+    x(1) = new Array[Seq[_]](1)
+    x(2) = new Array[List[Any]](1)
+    assertThrows(classOf[ArrayStoreException], x(3) = new Array[String](1))
+    assertThrows(classOf[ArrayStoreException], x(3) = new Array[AnyRef](1))
+    assertThrows(classOf[ArrayStoreException], x(3) = new Array[Int](1))
+    assertThrows(classOf[ArrayStoreException], x(3) = obj)
+    assertThrows(classOf[ArrayStoreException], x(3) = str)
+    x(1) = null
+    assertNull(x(1))
+
+    val y: Array[AnyRef] = covariantUpcast(new Array[Array[Int]](5))
+    y(1) = new Array[Int](1)
+    assertThrows(classOf[ArrayStoreException], y(3) = new Array[String](1))
+    assertThrows(classOf[ArrayStoreException], y(3) = new Array[AnyRef](1))
+    assertThrows(classOf[ArrayStoreException], y(3) = new Array[List[Any]](1))
+    assertThrows(classOf[ArrayStoreException], y(3) = obj)
+    assertThrows(classOf[ArrayStoreException], y(3) = str)
+    y(1) = null
+    assertNull(y(1))
   }
 
   @Test

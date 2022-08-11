@@ -894,10 +894,43 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             implicit val env = env0
             val jsArgs = newArgs.map(transformExprNoChar(_))
 
-            if (es2015)
-              js.Apply(js.DotSelect(jsArgs.head, js.Ident("copyTo")), jsArgs.tail)
-            else
-              genCallHelper("systemArraycopy", jsArgs: _*)
+            def withoutChecks: js.Tree = {
+              if (es2015)
+                js.Apply(js.DotSelect(jsArgs.head, js.Ident("copyTo")), jsArgs.tail)
+              else
+                genCallHelper("systemArraycopy", jsArgs: _*)
+            }
+
+            def withLateArrayStoreChecks: js.Tree =
+              genCallHelper("systemArraycopyRefs", jsArgs: _*)
+
+            def withFullChecks: js.Tree =
+              genCallHelper("systemArraycopyFull", jsArgs: _*)
+
+            if (semantics.arrayErrors == Unchecked) {
+              withoutChecks
+            } else {
+              src.tpe match {
+                case ArrayType(ArrayTypeRef(primRef: PrimRef, 1)) =>
+                  dest.tpe match {
+                    case ArrayType(ArrayTypeRef(`primRef`, 1)) =>
+                      withoutChecks
+                    case _ =>
+                      withFullChecks
+                  }
+                case ArrayType(_) =>
+                  dest.tpe match {
+                    case ArrayType(ArrayTypeRef(primRef: PrimRef, 1)) =>
+                      withFullChecks // bound to throw
+                    case ArrayType(_) =>
+                      withLateArrayStoreChecks
+                    case _ =>
+                      withFullChecks
+                  }
+                case _ =>
+                  withFullChecks // may or may not throw
+              }
+            }
           }
 
         /* Anything else is an expression => pushLhsInto(Lhs.Discard, _)
