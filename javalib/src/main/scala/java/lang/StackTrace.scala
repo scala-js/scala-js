@@ -119,14 +119,14 @@ private[lang] object StackTrace {
         if (mtch ne null) {
           val classAndMethodName =
             extractClassMethod(undefOrForceGet(mtch(1)))
-          val elem = new StackTraceElement(classAndMethodName(0),
+          trace.push(new StackTraceElement(classAndMethodName(0),
               classAndMethodName(1), undefOrForceGet(mtch(2)),
-              parseInt(undefOrForceGet(mtch(3))))
-          undefOrForeach(mtch(4))(c => elem.setColumnNumber(parseInt(c)))
-          trace.push(elem)
+              parseInt(undefOrForceGet(mtch(3))),
+              undefOrFold(mtch(4))(-1)(parseInt(_))))
         } else {
           // just in case
-          trace.push(new StackTraceElement("<jscode>", line, null, -1))
+          // (explicitly use the constructor with column number so that STE has an inlineable init)
+          trace.push(new StackTraceElement("<jscode>", line, null, -1, -1))
         }
       }
       i += 1
