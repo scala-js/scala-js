@@ -44,6 +44,7 @@ final class StackTraceElement(declaringClass: String, methodName: String,
     case that: StackTraceElement =>
       (getFileName() == that.getFileName()) &&
       (getLineNumber() == that.getLineNumber()) &&
+      (getColumnNumber() == that.getColumnNumber()) &&
       (getClassName() == that.getClassName()) &&
       (getMethodName() == that.getMethodName())
     case _ =>
@@ -73,6 +74,10 @@ final class StackTraceElement(declaringClass: String, methodName: String,
   }
 
   override def hashCode(): Int = {
-    declaringClass.hashCode() ^ methodName.hashCode()
+    declaringClass.hashCode() ^
+    methodName.hashCode() ^
+    fileName.hashCode() ^
+    lineNumber ^
+    columnNumber
   }
 }
