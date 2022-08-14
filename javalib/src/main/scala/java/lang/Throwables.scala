@@ -24,7 +24,7 @@ class Throwable protected (s: String, private var e: Throwable,
   def this(s: String) = this(s, null)
   def this(e: Throwable) = this(if (e == null) null else e.toString, e)
 
-  private[this] var stackTraceStateInternal: Any = _
+  private[this] var jsErrorForStackTrace: Any = _
   private[this] var stackTrace: Array[StackTraceElement] = _
 
   /* We use an Array rather than, say, a List, so that Throwable does not
@@ -45,26 +45,14 @@ class Throwable protected (s: String, private var e: Throwable,
   def getLocalizedMessage(): String = getMessage()
 
   def fillInStackTrace(): Throwable = {
-    StackTrace.captureState(this)
+    jsErrorForStackTrace = StackTrace.captureJSError(this)
     this
   }
-
-  /* Not part of the JDK API, used internally in java.lang and accessible
-   * through reflection.
-   */
-  def getStackTraceStateInternal(): Any =
-    stackTraceStateInternal
-
-  /* Not part of the JDK API, used internally in java.lang and accessible
-   * through reflection.
-   */
-  def setStackTraceStateInternal(e: Any): Unit =
-    stackTraceStateInternal = e
 
   def getStackTrace(): Array[StackTraceElement] = {
     if (stackTrace eq null) {
       if (writableStackTrace)
-        stackTrace = StackTrace.extract(this)
+        stackTrace = StackTrace.extract(jsErrorForStackTrace)
       else
         stackTrace = new Array[StackTraceElement](0)
     }

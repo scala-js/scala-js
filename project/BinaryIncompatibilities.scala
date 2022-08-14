@@ -28,6 +28,8 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+    // Static initializer (2.11 only), not an issue
+    ProblemFilters.exclude[DirectMissingMethodProblem]("scala.scalajs.js.JavaScriptException.<clinit>"),
   )
 
   val TestInterface = Seq(

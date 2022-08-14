@@ -18,12 +18,4 @@ final class JavaScriptException(val exception: scala.Any)
     extends RuntimeException {
 
   override def getMessage(): String = exception.toString()
-
-  override def fillInStackTrace(): Throwable = {
-    type JSExceptionEx = JavaScriptException {
-      def setStackTraceStateInternal(e: scala.Any): Unit
-    }
-    this.asInstanceOf[JSExceptionEx].setStackTraceStateInternal(exception)
-    this
-  }
 }
