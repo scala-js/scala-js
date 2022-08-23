@@ -1119,8 +1119,14 @@ object Serializers {
         case TagTryFinally =>
           TryFinally(readTree(), readTree())
 
-        case TagThrow    => Throw(readTree())
-        case TagMatch    =>
+        case TagThrow =>
+          val expr = readTree()
+          val patchedExpr =
+            if (hacks.use8) throwArgumentHack8(expr)
+            else expr
+          Throw(patchedExpr)
+
+        case TagMatch =>
           Match(readTree(), List.fill(readInt()) {
             (readTrees().map(_.asInstanceOf[MatchableLiteral]), readTree())
           }, readTree())(readType())
@@ -1227,6 +1233,83 @@ object Serializers {
           Closure(arrow, captureParams, params, restParam, readTree(), readTrees())
         case TagCreateJSClass =>
           CreateJSClass(readClassName(), readTrees())
+      }
+    }
+
+    /** Patches the argument of a `Throw` for IR version until 1.8.
+     *
+     *  Prior to Scala.js 1.11, `Throw(e)` was emitted by the compiler with
+     *  the somewhat implied assumption that it would "throw an NPE" (but
+     *  subject to UB so not really) when `e` is a `null` `Throwable`.
+     *
+     *  Moreover, there was no other user-space way to emit a `Throw(e)` in the
+     *  IR (`js.special.throw` was introduced in 1.11), so *all* `Throw` nodes
+     *  are part of the semantics of a Scala `throw expr` or of an implicit
+     *  re-throw in a Scala `try..catch`.
+     *
+     *  In Scala.js 1.11, we explicitly ruled out the NPE behavior of `Throw`,
+     *  so that `Throw(e)` only ever throws the value of `e`, while the NPE UB
+     *  is specified by `UnwrapFromThrowable`. Among other things, this allows
+     *  the user-space code `js.special.throw(e)` to indiscriminately throw `e`
+     *  even if it is `null`.
+     *
+     *  With this hack, we patch `Throw(e)` where `e` is a nullable `Throwable`
+     *  by inserting an appropriate `UnwrapFromThrowable`.
+     *
+     *  Naively, we would just return `UnwrapFromThrowable(e)`. Unfortunately,
+     *  we cannot prove that this is type-correct when the type of `e` is a
+     *  `ClassType(cls)`, as we cannot test whether `cls` is a subclass of
+     *  `java.lang.Throwable`. So we have to produce the following instead:
+     *
+     *  {{{
+     *    if (expr === null) unwrapFromThrowable(null) else expr
+     *  }}}
+     *
+     *  except that evaluates `expr` twice. If it is a `VarRef`, which is a
+     *  common case, that is fine. Otherwise, we have to wrap this pattern in
+     *  an IIFE.
+     *
+     *  We also have to avoid the transformation altogether when the `expr` is
+     *  an `AnyType`. This happens when the previous Scala.js compiler already
+     *  provides the unwrapped exception, which is either
+     *
+     *  - when automatically re-throwing an unhandled exception at the end of a
+     *    `try..catch`, or
+     *  - when throwing a maybe-JavaScriptException, with an explicit call to
+     *    `runtime.package$.unwrapJavaScriptException(x)`.
+     */
+    private def throwArgumentHack8(expr: Tree)(implicit pos: Position): Tree = {
+      expr.tpe match {
+        case NullType =>
+          // Evaluate the expression then definitely run into an NPE UB
+          UnwrapFromThrowable(expr)
+
+        case ClassType(_) =>
+          expr match {
+            case New(_, _, _) =>
+              // Common case (`throw new SomeException(...)`) that is known not to be `null`
+              expr
+            case VarRef(_) =>
+              /* Common case (explicit re-throw of the form `throw th`) where we don't need the IIFE.
+               * if (expr === null) unwrapFromThrowable(null) else expr
+               */
+              If(BinaryOp(BinaryOp.===, expr, Null()), UnwrapFromThrowable(Null()), expr)(AnyType)
+            case _ =>
+              /* General case where we need to avoid evaluating `expr` twice.
+               * ((x) => if (x === null) unwrapFromThrowable(null) else x)(expr)
+               */
+              val x = LocalIdent(LocalName("x"))
+              val xParamDef = ParamDef(x, OriginalName.NoOriginalName, AnyType, mutable = false)
+              val xRef = xParamDef.ref
+              val closure = Closure(arrow = true, Nil, List(xParamDef), None, {
+                If(BinaryOp(BinaryOp.===, xRef, Null()), UnwrapFromThrowable(Null()), xRef)(AnyType)
+              }, Nil)
+              JSFunctionApply(closure, List(expr))
+          }
+
+        case _ =>
+          // Do not transform expressions of other types, in particular `AnyType`
+          expr
       }
     }
 

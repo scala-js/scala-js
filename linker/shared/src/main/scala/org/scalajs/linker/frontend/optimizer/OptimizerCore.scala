@@ -978,7 +978,14 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           def default =
             cont(PreTransTree(UnwrapFromThrowable(finishTransformExpr(texpr))))
 
-          if (isSubtype(texpr.tpe.base, JavaScriptExceptionClassType)) {
+          val baseTpe = texpr.tpe.base
+
+          if (baseTpe == NothingType) {
+            cont(texpr)
+          } else if (baseTpe == NullType) {
+            // Undefined behavior for NPE
+            cont(texpr)
+          } else if (isSubtype(baseTpe, JavaScriptExceptionClassType)) {
             if (texpr.tpe.isNullable) {
               default
             } else {
@@ -986,7 +993,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
                   FieldIdent(exceptionFieldName), isLhsOfAssign = false)(cont)
             }
           } else {
-            if (texpr.tpe.isExact || !isSubtype(JavaScriptExceptionClassType, texpr.tpe.base))
+            if (texpr.tpe.isExact || !isSubtype(JavaScriptExceptionClassType, baseTpe))
               cont(texpr)
             else
               default
