@@ -38,6 +38,11 @@ sealed abstract class BufferFactory {
 
   val createsReadOnly: Boolean = false
 
+  protected[this] def explicitlyValidateCapacity(capacity: Int): Unit = {
+    if (capacity < 0)
+      throw new IllegalArgumentException(s"negative capacity: $capacity")
+  }
+
   def allocBuffer(capacity: Int): BufferType
 
   def allocBuffer(pos: Int, limit: Int, capacity: Int): BufferType = {
@@ -173,11 +178,15 @@ object BufferFactory {
     protected def baseWrap(array: Array[ElementType],
         offset: Int, length: Int): BufferType
 
-    def allocBuffer(capacity: Int): BufferType =
+    def allocBuffer(capacity: Int): BufferType = {
+      explicitlyValidateCapacity(capacity)
       baseWrap(new Array[ElementType](capacity))
+    }
 
-    override def allocBuffer(pos: Int, limit: Int, capacity: Int): BufferType =
+    override def allocBuffer(pos: Int, limit: Int, capacity: Int): BufferType = {
+      explicitlyValidateCapacity(capacity)
       baseWrap(new Array[ElementType](capacity), pos, limit-pos)
+    }
 
     override def withContent(pos: Int, limit: Int, capacity: Int,
         content: ElementType*): BufferType = {
@@ -215,8 +224,7 @@ object BufferFactory {
 
   trait SlicedBufferFactory extends BufferFactory {
     abstract override def allocBuffer(capacity: Int): BufferType = {
-      if (capacity < 0)
-        throw new IllegalArgumentException
+      explicitlyValidateCapacity(capacity)
       val buf = super.allocBuffer(capacity+25)
       buf.position(17)
       buf.limit(17+capacity)
@@ -225,6 +233,7 @@ object BufferFactory {
 
     override def withContent(pos: Int, limit: Int, capacity: Int,
         content: ElementType*): BufferType = {
+      explicitlyValidateCapacity(capacity)
       if (!(0 <= pos && pos <= limit && limit <= capacity))
         throw new IllegalArgumentException
       val buf = super.allocBuffer(capacity+25)

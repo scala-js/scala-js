@@ -17,8 +17,10 @@ import scala.scalajs.js.typedarray._
 object IntBuffer {
   private final val HashSeed = 39599817 // "java.nio.IntBuffer".##
 
-  def allocate(capacity: Int): IntBuffer =
+  def allocate(capacity: Int): IntBuffer = {
+    GenBuffer.validateAllocateCapacity(capacity)
     wrap(new Array[Int](capacity))
+  }
 
   def wrap(array: Array[Int], offset: Int, length: Int): IntBuffer =
     HeapIntBuffer.wrap(array, 0, array.length, offset, length, false)

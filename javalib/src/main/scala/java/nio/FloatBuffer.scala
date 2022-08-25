@@ -17,8 +17,10 @@ import scala.scalajs.js.typedarray._
 object FloatBuffer {
   private final val HashSeed = 1920204022 // "java.nio.FloatBuffer".##
 
-  def allocate(capacity: Int): FloatBuffer =
+  def allocate(capacity: Int): FloatBuffer = {
+    GenBuffer.validateAllocateCapacity(capacity)
     wrap(new Array[Float](capacity))
+  }
 
   def wrap(array: Array[Float], offset: Int, length: Int): FloatBuffer =
     HeapFloatBuffer.wrap(array, 0, array.length, offset, length, false)

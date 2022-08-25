@@ -39,7 +39,9 @@ abstract class BaseBufferTest {
 
     assertEquals(0, allocBuffer(0).capacity)
 
-    assertThrows(classOf[Exception], allocBuffer(-1))
+    assertThrows(classOf[IllegalArgumentException], allocBuffer(-1))
+    assertThrows(classOf[IllegalArgumentException], allocBuffer(-100))
+
     assertThrows(classOf[Throwable], allocBuffer(0, -1, 1))
     assertThrows(classOf[Throwable], allocBuffer(1, 0, 1))
     assertThrows(classOf[Throwable], allocBuffer(0, 1, 0))
