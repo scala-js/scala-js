@@ -1316,8 +1316,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           test(obj) // may NPE but that is UB.
 
         // Expressions preserving side-effect freedom
-        case NewArray(tpe, lengths) =>
-          allowUnpure && (lengths forall test)
         case ArrayValue(tpe, elems) =>
           allowUnpure && (elems forall test)
         case Clone(arg) =>
@@ -1357,9 +1355,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Transient(TypedArrayToArray(expr, primRef)) =>
           allowSideEffects && test(expr) // may TypeError
 
-        // Array access can throw ArrayIndexOutOfBounds exception
+        // Array operations with conditional exceptions
+        case NewArray(tpe, lengths) =>
+          (allowSideEffects || (semantics.negativeArraySizes == Unchecked && allowUnpure)) &&
+          lengths.forall(test)
         case ArraySelect(array, index) =>
-          (allowSideEffects || semantics.arrayIndexOutOfBounds == Unchecked && allowUnpure) &&
+          (allowSideEffects || (semantics.arrayIndexOutOfBounds == Unchecked && allowUnpure)) &&
           test(array) && test(index)
 
         // Casts

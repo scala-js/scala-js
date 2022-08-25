@@ -77,6 +77,9 @@ object Platform {
   def hasCompliantArrayStores: Boolean =
     BuildInfo.compliantArrayStores
 
+  def hasCompliantNegativeArraySizes: Boolean =
+    BuildInfo.compliantNegativeArraySizes
+
   def hasCompliantStringIndexOutOfBounds: Boolean =
     BuildInfo.compliantStringIndexOutOfBounds
 
