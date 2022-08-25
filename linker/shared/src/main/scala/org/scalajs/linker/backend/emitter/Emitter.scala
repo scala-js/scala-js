@@ -828,7 +828,9 @@ object Emitter {
             instantiateClass(ArrayIndexOutOfBoundsExceptionClass,
                 StringArgConstructorName),
             instantiateClass(ArrayStoreExceptionClass,
-                StringArgConstructorName)
+                StringArgConstructorName),
+            instantiateClass(NegativeArraySizeExceptionClass,
+                NoArgConstructorName)
           )
         },
 

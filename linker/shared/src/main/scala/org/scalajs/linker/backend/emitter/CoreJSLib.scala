@@ -653,6 +653,13 @@ private[emitter] object CoreJSLib {
                 StringArgConstructorName,
                 If(v === Null(), Null(), genCallHelper("valueDescription", v)))
           }))
+        },
+
+        defineFunction0("throwNegativeArraySizeException") {
+          Throw(maybeWrapInUBE(arrayErrors, {
+            genScalaClassNew(NegativeArraySizeExceptionClass,
+                NoArgConstructorName)
+          }))
         }
       )),
 
@@ -1516,11 +1523,21 @@ private[emitter] object CoreJSLib {
       val i = varRef("i")
 
       If(typeof(arg) === str("number"), {
+        val arraySizeCheck = if (arrayErrors != CheckedBehavior.Unchecked) {
+          If(arg < 0, genCallHelper("throwNegativeArraySizeException"))
+        } else {
+          Skip()
+        }
+
         getArrayUnderlyingTypedArrayClassRef(componentTypeRef) match {
           case Some(typeArrayClassWithGlobalRefs) =>
-            This().u := New(extractWithGlobals(typeArrayClassWithGlobalRefs), arg :: Nil)
+            Block(
+                arraySizeCheck,
+                This().u := New(extractWithGlobals(typeArrayClassWithGlobalRefs), arg :: Nil)
+            )
           case None =>
             Block(
+                arraySizeCheck,
                 This().u := New(ArrayRef, arg :: Nil),
                 For(let(i, 0), i < arg, i.++, {
                   BracketSelect(This().u, i) := genZeroOf(componentTypeRef)
@@ -2114,6 +2131,9 @@ private[emitter] object CoreJSLib {
       extractWithGlobals(globalFunctionDef(name, CoreVar, args, None, body))
 
     private val argRefs = List.tabulate(5)(i => varRef("arg" + i))
+
+    private def defineFunction0(name: String)(body: Tree): Tree =
+      defineFunction(name, Nil, body)
 
     private def defineFunction1(name: String)(body: VarRef => Tree): Tree = {
       val a :: _ = argRefs

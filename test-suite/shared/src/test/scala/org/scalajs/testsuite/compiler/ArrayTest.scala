@@ -147,4 +147,37 @@ class ArrayTest {
 
     assertThrows(classOf[ArrayIndexOutOfBoundsException], testAccess(Array()))
   }
+
+  @Test def negativeArraySizes(): Unit = {
+    assumeTrue("Assuming compliant array errors", hasCompliantArrayErrors)
+
+    @noinline def getNegValue(): Int = -5
+    val negValue = getNegValue()
+
+    assertThrows(classOf[NegativeArraySizeException], new Array[Int](-5))
+    assertThrows(classOf[NegativeArraySizeException], new Array[Int](negValue))
+
+    assertThrows(classOf[NegativeArraySizeException], new Array[Boolean](-5))
+    assertThrows(classOf[NegativeArraySizeException], new Array[Boolean](negValue))
+
+    assertThrows(classOf[NegativeArraySizeException], new Array[AnyRef](-5))
+    assertThrows(classOf[NegativeArraySizeException], new Array[AnyRef](negValue))
+
+    assertThrows(classOf[NegativeArraySizeException], new Array[String](-5))
+    assertThrows(classOf[NegativeArraySizeException], new Array[String](negValue))
+
+    assertThrows(classOf[NegativeArraySizeException], new Array[Array[AnyRef]](-5))
+    assertThrows(classOf[NegativeArraySizeException], new Array[Array[AnyRef]](negValue))
+
+    assertThrows(classOf[NegativeArraySizeException], Array.ofDim[Int](-5, 5))
+    assertThrows(classOf[NegativeArraySizeException], Array.ofDim[Int](negValue, 5))
+    assertThrows(classOf[NegativeArraySizeException], Array.ofDim[Int](5, -5))
+    assertThrows(classOf[NegativeArraySizeException], Array.ofDim[Int](5, negValue))
+
+    // Force unit result type to tempt the optimizer and emtiter into getting rid of the expression
+    @noinline
+    def testCreateNegativeSizeArray(): Unit = new Array[Int](-1)
+
+    assertThrows(classOf[NegativeArraySizeException], testCreateNegativeSizeArray())
+  }
 }

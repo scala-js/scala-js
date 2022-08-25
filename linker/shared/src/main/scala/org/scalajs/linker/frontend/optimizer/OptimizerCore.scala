@@ -1602,7 +1602,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     case LoadModule(moduleClassName) =>
       if (hasElidableModuleAccessor(moduleClassName)) Skip()(stat.pos)
       else stat
-    case NewArray(_, lengths) =>
+    case NewArray(_, lengths) if lengths.forall(isNonNegativeIntLiteral(_)) =>
+      Skip()(stat.pos)
+    case NewArray(_, lengths) if semantics.arrayErrors == CheckedBehavior.Unchecked =>
       Block(lengths.map(keepOnlySideEffects))(stat.pos)
     case Select(qualifier, _, _) =>
       keepOnlySideEffects(qualifier)
@@ -1658,6 +1660,11 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       keepOnlySideEffects(expr)
     case _ =>
       stat
+  }
+
+  private def isNonNegativeIntLiteral(tree: Tree): Boolean = tree match {
+    case IntLiteral(value) => value >= 0
+    case _                 => false
   }
 
   private def pretransformApply(tree: Apply, isStat: Boolean,
