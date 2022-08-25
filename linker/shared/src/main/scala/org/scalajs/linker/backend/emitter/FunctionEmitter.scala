@@ -617,7 +617,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 val genArray = transformExprNoChar(newArray)
                 val genIndex = transformExprNoChar(newIndex)
                 val genRhs = transformExpr(newRhs, lhs.tpe)
-                semantics.arrayIndexOutOfBounds match {
+                semantics.arrayErrors match {
                   case CheckedBehavior.Compliant | CheckedBehavior.Fatal =>
                     js.Apply(js.DotSelect(genArray, js.Ident("set")),
                         List(genIndex, genRhs))
@@ -1342,7 +1342,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         // Array access can throw ArrayIndexOutOfBounds exception
         case ArraySelect(array, index) =>
-          (allowSideEffects || semantics.arrayIndexOutOfBounds == Unchecked && allowUnpure) &&
+          (allowSideEffects || semantics.arrayErrors == Unchecked && allowUnpure) &&
           test(array) && test(index)
 
         // Casts
@@ -2657,7 +2657,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case ArraySelect(array, index) =>
           val newArray = transformExprNoChar(array)
           val newIndex = transformExprNoChar(index)
-          semantics.arrayIndexOutOfBounds match {
+          semantics.arrayErrors match {
             case CheckedBehavior.Compliant | CheckedBehavior.Fatal =>
               js.Apply(js.DotSelect(newArray, js.Ident("get")), List(newIndex))
             case CheckedBehavior.Unchecked =>

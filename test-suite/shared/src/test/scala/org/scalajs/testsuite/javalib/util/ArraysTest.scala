@@ -156,8 +156,7 @@ class ArraysTest {
   }
 
   @Test def sortArrayIndexOutOfBoundsException(): Unit = {
-    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
-        hasCompliantArrayIndexOutOfBounds)
+    assumeTrue("Assuming compliant array errors", hasCompliantArrayErrors)
 
     val array = Array(0, 1, 3, 4)
 
@@ -609,8 +608,7 @@ class ArraysTest {
   }
 
   @Test def binarySearchArrayIndexOutOfBoundsException(): Unit = {
-    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
-        hasCompliantArrayIndexOutOfBounds)
+    assumeTrue("Assuming compliant array errors", hasCompliantArrayErrors)
 
     val array = Array(0, 1, 3, 4)
 
@@ -713,8 +711,7 @@ class ArraysTest {
   }
 
   @Test def copyOfRangeAnyRefArrayIndexOutOfBoundsException(): Unit = {
-    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
-        hasCompliantArrayIndexOutOfBounds)
+    assumeTrue("Assuming compliant array errors", hasCompliantArrayErrors)
 
     val anyrefs: Array[AnyRef] = Array("a", "b", "c", "d", "e")
     assertThrows(classOf[ArrayIndexOutOfBoundsException],

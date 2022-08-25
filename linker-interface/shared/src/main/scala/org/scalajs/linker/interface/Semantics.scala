@@ -17,7 +17,7 @@ import Fingerprint.FingerprintBuilder
 
 final class Semantics private (
     val asInstanceOfs: CheckedBehavior,
-    val arrayIndexOutOfBounds: CheckedBehavior,
+    val arrayErrors: CheckedBehavior,
     val stringIndexOutOfBounds: CheckedBehavior,
     val moduleInit: CheckedBehavior,
     val strictFloats: Boolean,
@@ -26,11 +26,18 @@ final class Semantics private (
 
   import Semantics._
 
+  @deprecated("Use arrayErrors instead", "1.11.0")
+  val arrayIndexOutOfBounds: CheckedBehavior = arrayErrors
+
   def withAsInstanceOfs(behavior: CheckedBehavior): Semantics =
     copy(asInstanceOfs = behavior)
 
+  def withArrayErrors(behavior: CheckedBehavior): Semantics =
+    copy(arrayErrors = behavior)
+
+  @deprecated("Use withArrayErrors instead", "1.11.0")
   def withArrayIndexOutOfBounds(behavior: CheckedBehavior): Semantics =
-    copy(arrayIndexOutOfBounds = behavior)
+    withArrayErrors(behavior)
 
   def withStringIndexOutOfBounds(behavior: CheckedBehavior): Semantics =
     copy(stringIndexOutOfBounds = behavior)
@@ -56,7 +63,7 @@ final class Semantics private (
 
   def optimized: Semantics = {
     copy(asInstanceOfs = this.asInstanceOfs.optimized,
-        arrayIndexOutOfBounds = this.arrayIndexOutOfBounds.optimized,
+        arrayErrors = this.arrayErrors.optimized,
         stringIndexOutOfBounds = this.stringIndexOutOfBounds.optimized,
         moduleInit = this.moduleInit.optimized,
         productionMode = true)
@@ -65,7 +72,7 @@ final class Semantics private (
   override def equals(that: Any): Boolean = that match {
     case that: Semantics =>
       this.asInstanceOfs == that.asInstanceOfs &&
-      this.arrayIndexOutOfBounds == that.arrayIndexOutOfBounds &&
+      this.arrayErrors == that.arrayErrors &&
       this.stringIndexOutOfBounds == that.stringIndexOutOfBounds &&
       this.moduleInit == that.moduleInit &&
       this.strictFloats == that.strictFloats &&
@@ -79,7 +86,7 @@ final class Semantics private (
     import scala.util.hashing.MurmurHash3._
     var acc = HashSeed
     acc = mix(acc, asInstanceOfs.##)
-    acc = mix(acc, arrayIndexOutOfBounds.##)
+    acc = mix(acc, arrayErrors.##)
     acc = mix(acc, stringIndexOutOfBounds.##)
     acc = mix(acc, moduleInit.##)
     acc = mix(acc, strictFloats.##)
@@ -91,7 +98,7 @@ final class Semantics private (
   override def toString(): String = {
     s"""Semantics(
        |  asInstanceOfs          = $asInstanceOfs,
-       |  arrayIndexOutOfBounds  = $arrayIndexOutOfBounds,
+       |  arrayErrors            = $arrayErrors,
        |  stringIndexOutOfBounds = $stringIndexOutOfBounds,
        |  moduleInit             = $moduleInit,
        |  strictFloats           = $strictFloats,
@@ -101,7 +108,7 @@ final class Semantics private (
 
   private def copy(
       asInstanceOfs: CheckedBehavior = this.asInstanceOfs,
-      arrayIndexOutOfBounds: CheckedBehavior = this.arrayIndexOutOfBounds,
+      arrayErrors: CheckedBehavior = this.arrayErrors,
       stringIndexOutOfBounds: CheckedBehavior = this.stringIndexOutOfBounds,
       moduleInit: CheckedBehavior = this.moduleInit,
       strictFloats: Boolean = this.strictFloats,
@@ -110,7 +117,7 @@ final class Semantics private (
         this.runtimeClassNameMapper): Semantics = {
     new Semantics(
         asInstanceOfs = asInstanceOfs,
-        arrayIndexOutOfBounds = arrayIndexOutOfBounds,
+        arrayErrors = arrayErrors,
         stringIndexOutOfBounds = stringIndexOutOfBounds,
         moduleInit = moduleInit,
         strictFloats = strictFloats,
@@ -226,7 +233,7 @@ object Semantics {
     override def fingerprint(semantics: Semantics): String = {
       new FingerprintBuilder("Semantics")
         .addField("asInstanceOfs", semantics.asInstanceOfs)
-        .addField("arrayIndexOutOfBounds", semantics.arrayIndexOutOfBounds)
+        .addField("arrayErrors", semantics.arrayErrors)
         .addField("stringIndexOutOfBounds", semantics.stringIndexOutOfBounds)
         .addField("moduleInit", semantics.moduleInit)
         .addField("strictFloats", semantics.strictFloats)
@@ -238,7 +245,7 @@ object Semantics {
 
   val Defaults: Semantics = new Semantics(
       asInstanceOfs = Fatal,
-      arrayIndexOutOfBounds = Fatal,
+      arrayErrors = Fatal,
       stringIndexOutOfBounds = Fatal,
       moduleInit = Unchecked,
       strictFloats = true,

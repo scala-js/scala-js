@@ -112,8 +112,7 @@ class SystemTest {
   }
 
   @Test def arraycopyIndexOutOfBounds(): Unit = {
-    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
-        hasCompliantArrayIndexOutOfBounds)
+    assumeTrue("Assuming compliant array errors", hasCompliantArrayErrors)
 
     val src = Array(0, 1, 2, 3, 4, 5, 6, 0, 0, 0)
     val dest = Array(11, 12, 13, 15, 15, 16)

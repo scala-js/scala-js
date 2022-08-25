@@ -823,7 +823,7 @@ object Emitter {
           instantiateClass(ClassCastExceptionClass, StringArgConstructorName)
         },
 
-        cond(arrayIndexOutOfBounds != Unchecked) {
+        cond(arrayErrors != Unchecked) {
           instantiateClass(ArrayIndexOutOfBoundsExceptionClass,
               StringArgConstructorName)
         },
@@ -833,7 +833,7 @@ object Emitter {
               IntArgConstructorName)
         },
 
-        cond(asInstanceOfs == Fatal || arrayIndexOutOfBounds == Fatal || stringIndexOutOfBounds == Fatal) {
+        cond(asInstanceOfs == Fatal || arrayErrors == Fatal || stringIndexOutOfBounds == Fatal) {
           instantiateClass(UndefinedBehaviorErrorClass,
               ThrowableArgConsructorName)
         },

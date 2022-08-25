@@ -61,7 +61,7 @@ class MainGenericRunner {
     compliantSems.foldLeft(Semantics.Defaults) { (prev, compliantSem) =>
       compliantSem match {
         case "asInstanceOfs"          => prev.withAsInstanceOfs(Compliant)
-        case "arrayIndexOutOfBounds"  => prev.withArrayIndexOutOfBounds(Compliant)
+        case "arrayErrors"            => prev.withArrayErrors(Compliant)
         case "stringIndexOutOfBounds" => prev.withStringIndexOutOfBounds(Compliant)
         case "moduleInit"             => prev.withModuleInit(Compliant)
       }

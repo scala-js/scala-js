@@ -24,7 +24,7 @@ private[utils] object BuildInfo {
   final val isCommonJSModule = false
   final val isFullOpt = false
   final val compliantAsInstanceOfs = false
-  final val compliantArrayIndexOutOfBounds = false
+  final val compliantArrayErrors = false
   final val compliantStringIndexOutOfBounds = false
   final val compliantModuleInit = false
   final val strictFloats = false

@@ -600,9 +600,9 @@ private[emitter] object CoreJSLib {
         }
       )),
 
-      condTree(arrayIndexOutOfBounds != CheckedBehavior.Unchecked)(
+      condTree(arrayErrors != CheckedBehavior.Unchecked)(
         defineFunction1("throwArrayIndexOutOfBoundsException") { i =>
-          Throw(maybeWrapInUBE(arrayIndexOutOfBounds, {
+          Throw(maybeWrapInUBE(arrayErrors, {
             genScalaClassNew(ArrayIndexOutOfBoundsExceptionClass,
                 StringArgConstructorName,
                 If(i === Null(), Null(), str("") + i))
@@ -1040,7 +1040,7 @@ private[emitter] object CoreJSLib {
     }
 
     private def defineIntrinsics(): Tree = Block(
-      condTree(arrayIndexOutOfBounds != CheckedBehavior.Unchecked)(
+      condTree(arrayErrors != CheckedBehavior.Unchecked)(
         defineFunction5("arraycopyCheckBounds") { (srcLen, srcPos, destLen, destPos, length) =>
           If((srcPos < 0) || (destPos < 0) || (length < 0) ||
               (srcPos > ((srcLen - length) | 0)) ||
@@ -1053,7 +1053,7 @@ private[emitter] object CoreJSLib {
       defineFunction5("arraycopyGeneric") { (srcArray, srcPos, destArray, destPos, length) =>
         val i = varRef("i")
         Block(
-          if (arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
+          if (arrayErrors != CheckedBehavior.Unchecked) {
             genCallHelper("arraycopyCheckBounds", srcArray.length,
                 srcPos, destArray.length, destPos, length)
           } else {
@@ -1320,7 +1320,7 @@ private[emitter] object CoreJSLib {
           })
         }
 
-        val getAndSet = if (arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
+        val getAndSet = if (arrayErrors != CheckedBehavior.Unchecked) {
           val i = varRef("i")
           val v = varRef("v")
 
@@ -1356,7 +1356,7 @@ private[emitter] object CoreJSLib {
               paramList(srcPos, dest, destPos, length), None, {
             if (isTypedArray) {
               Block(
-                  if (semantics.arrayIndexOutOfBounds != CheckedBehavior.Unchecked) {
+                  if (semantics.arrayErrors != CheckedBehavior.Unchecked) {
                     genCallHelper("arraycopyCheckBounds", This().u.length,
                         srcPos, dest.u.length, destPos, length)
                   } else {

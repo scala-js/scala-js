@@ -71,8 +71,8 @@ object Platform {
 
   def hasCompliantAsInstanceOfs: Boolean = BuildInfo.compliantAsInstanceOfs
 
-  def hasCompliantArrayIndexOutOfBounds: Boolean =
-    BuildInfo.compliantArrayIndexOutOfBounds
+  def hasCompliantArrayErrors: Boolean =
+    BuildInfo.compliantArrayErrors
 
   def hasCompliantStringIndexOutOfBounds: Boolean =
     BuildInfo.compliantStringIndexOutOfBounds

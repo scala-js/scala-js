@@ -44,7 +44,7 @@ object ExposedValues extends AutoPlugin {
       _.withSemantics { semantics =>
         semantics
           .withAsInstanceOfs(CheckedBehavior.Compliant)
-          .withArrayIndexOutOfBounds(CheckedBehavior.Compliant)
+          .withArrayErrors(CheckedBehavior.Compliant)
           .withStringIndexOutOfBounds(CheckedBehavior.Compliant)
           .withModuleInit(CheckedBehavior.Compliant)
       }
@@ -2103,7 +2103,7 @@ object Build {
           "isCommonJSModule" -> (moduleKind == ModuleKind.CommonJSModule),
           "isFullOpt" -> (stage == Stage.FullOpt),
           "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
-          "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant),
+          "compliantArrayErrors" -> (sems.arrayErrors == CheckedBehavior.Compliant),
           "compliantStringIndexOutOfBounds" -> (sems.stringIndexOutOfBounds == CheckedBehavior.Compliant),
           "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
           "strictFloats" -> sems.strictFloats,

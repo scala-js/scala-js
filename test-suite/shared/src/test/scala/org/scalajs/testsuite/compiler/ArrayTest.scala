@@ -17,14 +17,13 @@ import org.junit.Assert._
 import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
-import org.scalajs.testsuite.utils.Platform.hasCompliantArrayIndexOutOfBounds
+import org.scalajs.testsuite.utils.Platform._
 
 class ArrayTest {
 
   @Test
   def getArrayIndexOutOfBounds(): Unit = {
-    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
-        hasCompliantArrayIndexOutOfBounds)
+    assumeTrue("Assuming compliant array errors", hasCompliantArrayErrors)
 
     val a = new Array[Int](5)
     assertThrows(classOf[ArrayIndexOutOfBoundsException], a(-1))
@@ -35,8 +34,7 @@ class ArrayTest {
 
   @Test
   def setArrayIndexOutOfBounds(): Unit = {
-    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
-        hasCompliantArrayIndexOutOfBounds)
+    assumeTrue("Assuming compliant array errors", hasCompliantArrayErrors)
 
     val a = new Array[Int](5)
     assertThrows(classOf[ArrayIndexOutOfBoundsException], a(-1) = 1)
@@ -47,8 +45,7 @@ class ArrayTest {
 
   @Test
   def arraySelectSideEffecting_Issue3848(): Unit = {
-    assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
-        hasCompliantArrayIndexOutOfBounds)
+    assumeTrue("Assuming compliant array errors", hasCompliantArrayErrors)
 
     // Force unit return type so the Emitter tries to get rid of the expression.
     @noinline
