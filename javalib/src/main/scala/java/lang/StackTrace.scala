@@ -228,12 +228,12 @@ private[lang] object StackTrace {
         if (i < compressedPrefixes.length) {
           val prefix = compressedPrefixes(i)
           if (encodedName.startsWith(prefix))
-            dictRawApply(decompressedPrefixes, prefix) + encodedName.substring(prefix.length)
+            dictRawApply(decompressedPrefixes, prefix) + encodedName.jsSubstring(prefix.length)
           else
             loop(i+1)
         } else {
           // no prefix matches
-          if (encodedName.startsWith("L")) encodedName.substring(1)
+          if (encodedName.startsWith("L")) encodedName.jsSubstring(1)
           else encodedName // just in case
         }
       }
@@ -284,7 +284,7 @@ private[lang] object StackTrace {
     } else {
       val methodNameLen = encodedName.indexOf("__")
       if (methodNameLen < 0) encodedName
-      else encodedName.substring(0, methodNameLen)
+      else encodedName.jsSubstring(0, methodNameLen)
     }
   }
 

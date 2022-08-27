@@ -396,6 +396,8 @@ class PrintersTest {
     assertPrintEquals("((long)x)", UnaryOp(DoubleToLong, ref("x", DoubleType)))
 
     assertPrintEquals("((float)x)", UnaryOp(LongToFloat, ref("x", LongType)))
+
+    assertPrintEquals("x.length", UnaryOp(String_length, ref("x", StringType)))
   }
 
   @Test def printPseudoUnaryOp(): Unit = {
@@ -538,6 +540,9 @@ class PrintersTest {
         BinaryOp(Double_>, ref("x", DoubleType), ref("y", DoubleType)))
     assertPrintEquals("(x >=[double] y)",
         BinaryOp(Double_>=, ref("x", DoubleType), ref("y", DoubleType)))
+
+    assertPrintEquals("x[y]",
+        BinaryOp(String_charAt, ref("x", StringType), ref("y", IntType)))
   }
 
   @Test def printNewArray(): Unit = {

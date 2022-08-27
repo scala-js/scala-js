@@ -297,6 +297,22 @@ object Types {
       throw new IllegalArgumentException(s"cannot generate a zero for $tpe")
   }
 
+  val BoxedClassToPrimType: Map[ClassName, PrimType] = Map(
+    BoxedUnitClass -> UndefType,
+    BoxedBooleanClass -> BooleanType,
+    BoxedCharacterClass -> CharType,
+    BoxedByteClass -> ByteType,
+    BoxedShortClass -> ShortType,
+    BoxedIntegerClass -> IntType,
+    BoxedLongClass -> LongType,
+    BoxedFloatClass -> FloatType,
+    BoxedDoubleClass -> DoubleType,
+    BoxedStringClass -> StringType
+  )
+
+  val PrimTypeToBoxedClass: Map[PrimType, ClassName] =
+    BoxedClassToPrimType.map(_.swap)
+
   /** Tests whether a type `lhs` is a subtype of `rhs` (or equal).
    *  @param isSubclass A function testing whether a class/interface is a
    *                    subclass of another class/interface.
@@ -316,26 +332,11 @@ object Types {
       case (NullType, ClassType(_)) => true
       case (NullType, ArrayType(_)) => true
 
-      case (UndefType, ClassType(className)) =>
-        isSubclass(BoxedUnitClass, className)
-      case (BooleanType, ClassType(className)) =>
-        isSubclass(BoxedBooleanClass, className)
-      case (CharType, ClassType(className)) =>
-        isSubclass(BoxedCharacterClass, className)
-      case (ByteType, ClassType(className)) =>
-        isSubclass(BoxedByteClass, className)
-      case (ShortType, ClassType(className)) =>
-        isSubclass(BoxedShortClass, className)
-      case (IntType, ClassType(className)) =>
-        isSubclass(BoxedIntegerClass, className)
-      case (LongType, ClassType(className)) =>
-        isSubclass(BoxedLongClass, className)
-      case (FloatType, ClassType(className)) =>
-        isSubclass(BoxedFloatClass, className)
-      case (DoubleType, ClassType(className)) =>
-        isSubclass(BoxedDoubleClass, className)
-      case (StringType, ClassType(className)) =>
-        isSubclass(BoxedStringClass, className)
+      case (primType: PrimType, ClassType(rhsClass)) =>
+        val lhsClass = PrimTypeToBoxedClass.getOrElse(primType, {
+          throw new AssertionError(s"unreachable case for isSubtype($lhs, $rhs)")
+        })
+        isSubclass(lhsClass, rhsClass)
 
       case (ArrayType(ArrayTypeRef(lhsBase, lhsDims)),
           ArrayType(ArrayTypeRef(rhsBase, rhsDims))) =>

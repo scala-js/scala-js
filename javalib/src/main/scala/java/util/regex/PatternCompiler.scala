@@ -29,6 +29,7 @@ import java.lang.Utils._
 import java.util.ScalaOps._
 
 import scala.scalajs.js
+import scala.scalajs.js.JSStringOps.enableJSStringOps
 import scala.scalajs.runtime.linkingInfo
 import scala.scalajs.LinkingInfo.ESVersion
 
@@ -807,7 +808,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
     val jsPattern = if (isLiteral) {
       literal(pattern)
     } else {
-      if (pattern.substring(pIndex, pIndex + 2) == "\\G") {
+      if (pattern.jsSubstring(pIndex, pIndex + 2) == "\\G") {
         sticky = true
         pIndex += 2
       }
@@ -1133,7 +1134,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
       pIndex += 1
     }
 
-    pattern.substring(startOfRepeater, pIndex)
+    pattern.jsSubstring(startOfRepeater, pIndex)
   }
 
   /** Builds a possessive quantifier, which is sugar for an atomic group over
@@ -1262,7 +1263,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
       // Boundary matchers
 
       case 'b' =>
-        if (pattern.substring(pIndex, pIndex + 4) == "b{g}") {
+        if (pattern.jsSubstring(pIndex, pIndex + 4) == "b{g}") {
           parseError("\\b{g} is not supported")
         } else {
           /* Compile as is if both `UNICODE_CASE` and `UNICODE_CHARACTER_CLASS` are false.
@@ -1345,11 +1346,11 @@ private final class PatternCompiler(private val pattern: String, private var fla
 
         // In most cases, one of the first two conditions is immediately false
         while (end != len && isDigit(pattern.charAt(end)) &&
-            parseInt(pattern.substring(start, end + 1), 10) <= originalGroupCount) {
+            parseInt(pattern.jsSubstring(start, end + 1), 10) <= originalGroupCount) {
           end += 1
         }
 
-        val groupString = pattern.substring(start, end)
+        val groupString = pattern.jsSubstring(start, end)
         val groupNumber = parseInt(groupString, 10)
         if (groupNumber > originalGroupCount)
           parseError(s"numbered capturing group <$groupNumber> does not exist")
@@ -1379,10 +1380,10 @@ private final class PatternCompiler(private val pattern: String, private var fla
         val end = pattern.indexOf("\\E", start)
         if (end < 0) {
           pIndex = pattern.length()
-          literal(pattern.substring(start))
+          literal(pattern.jsSubstring(start))
         } else {
           pIndex = end + 2
-          literal(pattern.substring(start, end))
+          literal(pattern.jsSubstring(start, end))
         }
 
       // Other
@@ -1527,7 +1528,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
     val lowStart = end + 2
     val lowEnd = lowStart + 4
 
-    if (isHighSurrogateCP(codeUnit) && pattern.substring(end, lowStart) == "\\u") {
+    if (isHighSurrogateCP(codeUnit) && pattern.jsSubstring(end, lowStart) == "\\u") {
       val low = parseHexCodePoint(lowStart, lowEnd, "Unicode")
       if (isLowSurrogateCP(low)) {
         pIndex = lowEnd
@@ -1554,7 +1555,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
 
     val cp =
       if (end - start > 6) Character.MAX_CODE_POINT + 1
-      else parseInt(pattern.substring(start, end), 16)
+      else parseInt(pattern.jsSubstring(start, end), 16)
     if (cp > Character.MAX_CODE_POINT)
       parseError("Hexadecimal codepoint is too big")
 
@@ -1604,9 +1605,9 @@ private final class PatternCompiler(private val pattern: String, private var fla
       if (innerEnd < 0)
         parseError("Unclosed character family")
       pIndex = innerEnd
-      pattern.substring(innerStart, innerEnd)
+      pattern.jsSubstring(innerStart, innerEnd)
     } else {
-      pattern.substring(start, start + 1)
+      pattern.jsSubstring(start, start + 1)
     }
 
     val result = if (!unicodeCharacterClass && dictContains(asciiPOSIXCharacterClasses, property)) {
@@ -1631,7 +1632,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
           // Error
           parseError(s"Unknown Unicode character class '$property'")
         }
-        CompiledCharClass.posP("sc=" + canonicalizeScriptName(property.substring(scriptPrefixLen)))
+        CompiledCharClass.posP("sc=" + canonicalizeScriptName(property.jsSubstring(scriptPrefixLen)))
       }
     }
 
@@ -1796,7 +1797,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
       if (c1 == ':' || c1 == '=' || c1 == '!') {
         // Non-capturing group or look-ahead
         pIndex = start + 3
-        pattern.substring(start, start + 3) + compileInsideGroup() + ")"
+        pattern.jsSubstring(start, start + 3) + compileInsideGroup() + ")"
       } else if (c1 == '<') {
         if (start + 3 == len)
           parseError("Unclosed group")
@@ -1820,7 +1821,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
             parseError("Unknown look-behind group")
           requireES2018Features("Look-behind group")
           pIndex = start + 4
-          pattern.substring(start, start + 4) + compileInsideGroup() + ")"
+          pattern.jsSubstring(start, start + 4) + compileInsideGroup() + ")"
         }
       } else if (c1 == '>') {
         // Atomic group
@@ -1848,6 +1849,6 @@ private final class PatternCompiler(private val pattern: String, private var fla
       pIndex += 1
     if (pIndex == len || pattern.charAt(pIndex) != '>')
       parseError("named capturing group is missing trailing '>'")
-    pattern.substring(start, pIndex)
+    pattern.jsSubstring(start, pIndex)
   }
 }

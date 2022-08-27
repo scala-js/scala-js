@@ -151,7 +151,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     private val fieldsMutatedInCurrentClass = new ScopedVar[mutable.Set[Name]]
     private val generatedSAMWrapperCount = new ScopedVar[VarBox[Int]]
 
-    private def currentClassType = encodeClassType(currentClassSym)
+    private def currentThisType: jstpe.Type = {
+      encodeClassType(currentClassSym) match {
+        case tpe @ jstpe.ClassType(cls) =>
+          jstpe.BoxedClassToPrimType.getOrElse(cls, tpe)
+        case tpe =>
+          tpe
+      }
+    }
 
     // Per method body
     private val currentMethodSym = new ScopedVar[Symbol]
@@ -1927,7 +1934,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               }
             }
             Some(genApplyStatic(implMethodSym,
-                js.This()(currentClassType) :: jsParams.map(_.ref)))
+                js.This()(currentThisType) :: jsParams.map(_.ref)))
           } else {
             None
           }
@@ -2179,7 +2186,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                 mutableLocalVars += thisSym
 
               val thisLocalIdent = encodeLocalSym(thisSym)
-              val thisLocalType = currentClassType
+              val thisLocalType = currentThisType
 
               val genRhs = {
                 /* #3267 In default methods, scalac will type its _$this
@@ -2229,7 +2236,19 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           isJSFunctionDef(currentClassSym)) {
         val flags = js.MemberFlags.empty.withNamespace(namespace)
         val body = {
-          if (isImplClass(currentClassSym)) {
+          if (currentClassSym.get == HackedStringClass) {
+            /* Hijack the bodies of String.length and String.charAt and replace
+             * them with String_length and String_charAt operations, respectively.
+             */
+            methodName.name match {
+              case `lengthMethodName` =>
+                js.UnaryOp(js.UnaryOp.String_length, genThis())
+              case `charAtMethodName` =>
+                js.BinaryOp(js.BinaryOp.String_charAt, genThis(), jsParams.head.ref)
+              case _ =>
+                genBody()
+            }
+          } else if (isImplClass(currentClassSym)) {
             val thisParam = jsParams.head
             withScopedVars(
                 thisLocalVarIdent := Some(thisParam.name)
@@ -2660,14 +2679,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           throw new CancelGenMethodAsJSFunction(
               "Trying to generate `this` inside the body")
         }
-        js.This()(currentClassType)
+        js.This()(currentThisType)
       } { thisLocalIdent =>
         // .copy() to get the correct position
         val tpe = {
           if (isImplClass(currentClassSym))
             encodeClassType(traitOfImplClass(currentClassSym))
           else
-            currentClassType
+            currentThisType
         }
         js.VarRef(thisLocalIdent.copy())(tpe)
       }
@@ -3337,7 +3356,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           val isTailJumpThisLocalVar = formalArgSym.name == nme.THIS
 
           val tpe =
-            if (isTailJumpThisLocalVar) currentClassType
+            if (isTailJumpThisLocalVar) currentThisType
             else toIRType(formalArgSym.tpe)
 
           val fixedActualArg =
@@ -7051,6 +7070,11 @@ private object GenJSCode {
 
   private val ObjectArgConstructorName =
     MethodName.constructor(List(jstpe.ClassRef(ir.Names.ObjectClass)))
+
+  private val lengthMethodName =
+    MethodName("length", Nil, jstpe.IntRef)
+  private val charAtMethodName =
+    MethodName("charAt", List(jstpe.IntRef), jstpe.CharRef)
 
   private val thisOriginalName = OriginalName("this")
 

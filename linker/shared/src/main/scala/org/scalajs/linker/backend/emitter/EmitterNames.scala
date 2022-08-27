@@ -31,6 +31,7 @@ private[emitter] object EmitterNames {
   // Method names
 
   val AnyArgConstructorName = MethodName.constructor(List(ClassRef(ObjectClass)))
+  val IntArgConstructorName = MethodName.constructor(List(IntRef))
   val StringArgConstructorName = MethodName.constructor(List(ClassRef(BoxedStringClass)))
   val ThrowableArgConsructorName = MethodName.constructor(List(ClassRef(ThrowableClass)))
 

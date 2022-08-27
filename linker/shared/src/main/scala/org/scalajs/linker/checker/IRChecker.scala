@@ -128,7 +128,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
     } { body =>
       val thisType =
         if (static) NoType
-        else ClassType(classDef.name.name)
+        else thisTypeForScalaClass(classDef)
 
       val inConstructorOf =
         if (flags.namespace.isConstructor) Some(classDef.name.name)
@@ -171,7 +171,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
     val thisType = {
       if (static) NoType
       else if (clazz.kind.isJSClass) AnyType
-      else ClassType(clazz.name.name)
+      else thisTypeForScalaClass(clazz)
     }
 
     val bodyEnv = Env.fromSignature(thisType)
@@ -188,7 +188,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
     val thisType =
       if (flags.namespace.isStatic) NoType
       else if (clazz.kind.isJSClass) AnyType
-      else ClassType(clazz.name.name)
+      else thisTypeForScalaClass(clazz)
 
     val env = Env.fromSignature(thisType)
 
@@ -198,6 +198,10 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
       typecheck(body, env)
     }
   }
+
+  private def thisTypeForScalaClass(clazz: LinkedClass): Type =
+    if (clazz.kind == ClassKind.HijackedClass) BoxedClassToPrimType(clazz.name.name)
+    else ClassType(clazz.name.name)
 
   private def typecheckExpect(tree: Tree, env: Env, expectedType: Type)(
       implicit ctx: ErrorContext): Unit = {
@@ -485,6 +489,8 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
             FloatType
           case DoubleToInt | DoubleToFloat | DoubleToLong =>
             DoubleType
+          case String_length =>
+            StringType
         }
         typecheckExpect(lhs, env, expectedArgType)
 
@@ -509,10 +515,12 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
               Double_== | Double_!= |
               Double_< | Double_<= | Double_> | Double_>= =>
             DoubleType
+          case String_charAt =>
+            StringType
         }
         val expectedRhsType = (op: @switch) match {
-          case Long_<< | Long_>>> | Long_>> => IntType
-          case _                            => expectedLhsType
+          case Long_<< | Long_>>> | Long_>> | String_charAt => IntType
+          case _                                            => expectedLhsType
         }
         typecheckExpect(lhs, env, expectedLhsType)
         typecheckExpect(rhs, env, expectedRhsType)

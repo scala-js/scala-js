@@ -828,7 +828,12 @@ object Emitter {
               StringArgConstructorName)
         },
 
-        cond(asInstanceOfs == Fatal || arrayIndexOutOfBounds == Fatal) {
+        cond(stringIndexOutOfBounds != Unchecked) {
+          instantiateClass(StringIndexOutOfBoundsExceptionClass,
+              IntArgConstructorName)
+        },
+
+        cond(asInstanceOfs == Fatal || arrayIndexOutOfBounds == Fatal || stringIndexOutOfBounds == Fatal) {
           instantiateClass(UndefinedBehaviorErrorClass,
               ThrowableArgConsructorName)
         },

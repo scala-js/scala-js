@@ -356,6 +356,10 @@ object Printers {
           print(method)
           printArgs(args)
 
+        case UnaryOp(UnaryOp.String_length, lhs) =>
+          print(lhs)
+          print(".length")
+
         case UnaryOp(op, lhs) =>
           import UnaryOp._
           print('(')
@@ -410,6 +414,12 @@ object Printers {
           print("(-")
           print(rhs)
           print(')')
+
+        case BinaryOp(BinaryOp.String_charAt, lhs, rhs) =>
+          print(lhs)
+          print('[')
+          print(rhs)
+          print(']')
 
         case BinaryOp(op, lhs, rhs) =>
           import BinaryOp._

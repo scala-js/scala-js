@@ -501,6 +501,10 @@ object Names {
   val ArrayIndexOutOfBoundsExceptionClass: ClassName =
     ClassName("java.lang.ArrayIndexOutOfBoundsException")
 
+  /** The exception thrown by a `BinaryOp.String_charAt` that is out of bounds. */
+  val StringIndexOutOfBoundsExceptionClass: ClassName =
+    ClassName("java.lang.StringIndexOutOfBoundsException")
+
   /** The exception thrown by an `AsInstanceOf` that fails. */
   val ClassCastExceptionClass: ClassName =
     ClassName("java.lang.ClassCastException")

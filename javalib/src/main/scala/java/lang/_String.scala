@@ -47,11 +47,16 @@ final class _String private () // scalastyle:ignore
     this.asInstanceOf[String]
 
   @inline
+  def length(): Int =
+    throw new Error("stub") // body replaced by the compiler back-end
+
+  @inline
   def charAt(index: Int): Char =
-    this.asInstanceOf[js.Dynamic].charCodeAt(index).asInstanceOf[Int].toChar
+    throw new Error("stub") // body replaced by the compiler back-end
 
   def codePointAt(index: Int): Int = {
     if (linkingInfo.esVersion >= ESVersion.ES2015) {
+      charAt(index) // bounds check
       this.asInstanceOf[js.Dynamic].codePointAt(index).asInstanceOf[Int]
     } else {
       val high = charAt(index)
@@ -278,10 +283,6 @@ final class _String private () // scalastyle:ignore
     else thisString.jsLastIndexOf(str, fromIndex)
 
   @inline
-  def length(): Int =
-    this.asInstanceOf[js.Dynamic].length.asInstanceOf[Int]
-
-  @inline
   def matches(regex: String): scala.Boolean =
     Pattern.matches(regex, thisString)
 
@@ -372,12 +373,26 @@ final class _String private () // scalastyle:ignore
     substring(beginIndex, endIndex)
 
   @inline
-  def substring(beginIndex: Int): String =
+  def substring(beginIndex: Int): String = {
+    // Bounds check
+    if (beginIndex < 0 || beginIndex > length())
+      charAt(beginIndex)
+
     thisString.jsSubstring(beginIndex)
+  }
 
   @inline
-  def substring(beginIndex: Int, endIndex: Int): String =
+  def substring(beginIndex: Int, endIndex: Int): String = {
+    // Bounds check
+    if (beginIndex < 0)
+      charAt(beginIndex)
+    if (endIndex > length())
+      charAt(endIndex)
+    if (endIndex < beginIndex)
+      charAt(-1)
+
     thisString.jsSubstring(beginIndex, endIndex)
+  }
 
   def toCharArray(): Array[Char] = {
     val len = length()
