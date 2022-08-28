@@ -112,8 +112,7 @@ private[lang] object StackTrace {
   private def normalizedLinesToStackTrace(
       lines: js.Array[String]): Array[StackTraceElement] = {
 
-    val NormalizedFrameLine = """^([^\@]*)\@(.*):([0-9]+)$""".re
-    val NormalizedFrameLineWithColumn = """^([^\@]*)\@(.*):([0-9]+):([0-9]+)$""".re
+    val NormalizedFrameLine = """^([^@]*)@(.*?):([0-9]+)(?::([0-9]+))?$""".re
 
     @inline def parseInt(s: String): Int =
       js.Dynamic.global.parseInt(s).asInstanceOf[Int]
@@ -123,27 +122,18 @@ private[lang] object StackTrace {
     while (i < lines.length) {
       val line = lines(i)
       if (!line.isEmpty) {
-        val mtch1 = NormalizedFrameLineWithColumn.exec(line)
-        if (mtch1 ne null) {
+        val mtch = NormalizedFrameLine.exec(line)
+        if (mtch ne null) {
           val classAndMethodName =
-            extractClassMethod(undefOrForceGet(mtch1(1)))
+            extractClassMethod(undefOrForceGet(mtch(1)))
           val elem = new StackTraceElement(classAndMethodName(0),
-              classAndMethodName(1), undefOrForceGet(mtch1(2)),
-              parseInt(undefOrForceGet(mtch1(3))))
-          elem.setColumnNumber(parseInt(undefOrForceGet(mtch1(4))))
+              classAndMethodName(1), undefOrForceGet(mtch(2)),
+              parseInt(undefOrForceGet(mtch(3))))
+          undefOrForeach(mtch(4))(c => elem.setColumnNumber(parseInt(c)))
           trace.push(elem)
         } else {
-          val mtch2 = NormalizedFrameLine.exec(line)
-          if (mtch2 ne null) {
-            val classAndMethodName =
-              extractClassMethod(undefOrForceGet(mtch2(1)))
-            trace.push(new StackTraceElement(classAndMethodName(0),
-                classAndMethodName(1), undefOrForceGet(mtch2(2)),
-                parseInt(undefOrForceGet(mtch2(3)))))
-          } else {
-            // just in case
-            trace.push(new StackTraceElement("<jscode>", line, null, -1))
-          }
+          // just in case
+          trace.push(new StackTraceElement("<jscode>", line, null, -1))
         }
       }
       i += 1
