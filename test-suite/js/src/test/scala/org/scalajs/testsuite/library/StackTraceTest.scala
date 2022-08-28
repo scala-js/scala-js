@@ -24,13 +24,14 @@ import org.scalajs.testsuite.utils.Platform._
 class StackTraceTest {
   import StackTraceTest._
 
+  @noinline
   private def verifyClassMethodNames(
       places: (String, String)*)(body: => Any): Unit = {
     try {
       body
       throw new AssertionError("body should have thrown an exception")
     } catch {
-      case e: IllegalArgumentException =>
+      case e: RuntimeException => // common superclass of IllegalArgumentException and js.JavaScriptException
         val trace = e.getStackTrace()
         for ((className, methodName) <- places) {
           val found = trace.exists { elem =>
@@ -55,46 +56,65 @@ class StackTraceTest {
 
     val Error = js.constructorOf[js.Error]
     val oldStackTraceLimit = Error.stackTraceLimit
+    val oldThrowJSError = throwJSError
     Error.stackTraceLimit = 20
 
     try {
-      verifyClassMethodNames("Foo" -> "f") {
-        new Foo().f(25)
-      }
+      for (jsError <- List(false, true)) {
+        throwJSError = jsError
 
-      verifyClassMethodNames("Foo" -> "f", "Bar" -> "g") {
-        new Bar().g(7)
-      }
+        verifyClassMethodNames("Foo" -> "f") {
+          new Foo().f(25)
+        }
 
-      verifyClassMethodNames("Foo" -> "f", "FooTrait" -> "h") {
-        new Foo().h(78)
-      }
+        verifyClassMethodNames("Foo" -> "f", "Bar" -> "g") {
+          new Bar().g(7)
+        }
 
-      verifyClassMethodNames("Foo" -> "f", "FooTrait" -> "h",
-          "Baz" -> "<init>") {
-        new Baz()
-      }
+        verifyClassMethodNames("Foo" -> "f", "FooTrait" -> "h") {
+          new Foo().h(78)
+        }
 
-      verifyClassMethodNames("Foo" -> "f", "Bar" -> "g",
-          "Foobar$" -> "<clinit>", "Foobar$" -> "<init>") {
-        Foobar.z
-      }
+        verifyClassMethodNames("Foo" -> "f", "FooTrait" -> "h",
+            "Baz" -> "<init>") {
+          new Baz()
+        }
 
-      verifyClassMethodNames(
-          "Foo" -> "f",
-          "SJS" -> "m", // Scala method actually implementing m()
-          "SJS" -> "n"  // Exported JS method forwarding to m()
-      ) {
-        new SJS().m()
+        /* For the test with a module initializer, we must use a different
+         * module in each iteration, because exceptions happening during the
+         * module initializer put their module in a corrupted state.
+         */
+        if (!jsError) {
+          verifyClassMethodNames("Foo" -> "f", "Bar" -> "g",
+              "Foobar1$" -> "<clinit>", "Foobar1$" -> "<init>") {
+            Foobar1.z
+          }
+        } else {
+          verifyClassMethodNames("Foo" -> "f", "Bar" -> "g",
+              "Foobar2$" -> "<clinit>", "Foobar2$" -> "<init>") {
+            Foobar2.z
+          }
+        }
+
+        verifyClassMethodNames(
+            "Foo" -> "f",
+            "SJS" -> "m", // Scala method actually implementing m()
+            "SJS" -> "n"  // Exported JS method forwarding to m()
+        ) {
+          new SJS().m()
+        }
       }
     } finally {
       Error.stackTraceLimit = oldStackTraceLimit
+      throwJSError = oldThrowJSError
     }
   }
 
 }
 
 object StackTraceTest {
+
+  var throwJSError: Boolean = false
 
   trait FooTrait {
     def f(x: Int): Int
@@ -106,10 +126,14 @@ object StackTraceTest {
   class Foo extends FooTrait {
     @noinline
     def f(x: Int): Int = {
-      if (x > 10)
-        throw new IllegalArgumentException(x.toString)
-      else
+      if (x > 10) {
+        if (throwJSError)
+          js.special.`throw`(new js.Error(x.toString()))
+        else
+          throw new IllegalArgumentException(x.toString)
+      } else {
         x + 4
+      }
     }
   }
 
@@ -122,7 +146,11 @@ object StackTraceTest {
     val z = new Foo().h(50)
   }
 
-  object Foobar {
+  object Foobar1 {
+    val z = new Bar().g(7)
+  }
+
+  object Foobar2 {
     val z = new Bar().g(7)
   }
 
