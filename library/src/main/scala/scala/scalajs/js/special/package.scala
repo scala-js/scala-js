@@ -175,6 +175,9 @@ package object special {
    *
    *  Instances of [[js.JavaScriptException]] are unwrapped to return the
    *  underlying value. Other values are returned as is.
+   *
+   *  @throws java.lang.NullPointerException
+   *    If `th` is `null`. Subject to Undefined Behaviors.
    */
   def unwrapFromThrowable(th: Throwable): scala.Any =
     throw new java.lang.Error("stub")

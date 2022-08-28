@@ -225,8 +225,7 @@ class SpecialTest {
     val th = new IllegalArgumentException
     assertSame(th, js.special.unwrapFromThrowable(th))
 
-    // Does not unwrap null
-    assertNull(null, js.special.unwrapFromThrowable(null))
+    // unwrapFromThrowable(null) is UB (as NullPointerException) and is therefore not tested
   }
 
   // js.special.fileLevelThis

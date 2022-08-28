@@ -2429,11 +2429,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
         case Throw(expr) =>
           val ex = genExpr(expr)
-          js.Throw {
-            if (!ex.isInstanceOf[js.Null] && isMaybeJavaScriptException(expr.tpe))
-              js.UnwrapFromThrowable(ex)
-            else
-              ex
+          ex match {
+            case js.New(cls, _, _) if cls != JavaScriptExceptionClassName =>
+              // Common case where ex is neither null nor a js.JavaScriptException
+              js.Throw(ex)
+            case _ =>
+              js.Throw(js.UnwrapFromThrowable(ex))
           }
 
         /* !!! Copy-pasted from `CleanUp.scala` upstream and simplified with
@@ -7065,6 +7066,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
 private object GenJSCode {
   private val JSObjectClassName = ClassName("scala.scalajs.js.Object")
+  private val JavaScriptExceptionClassName = ClassName("scala.scalajs.js.JavaScriptException")
 
   private val newSimpleMethodName = SimpleMethodName("new")
 
