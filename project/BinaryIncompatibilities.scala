@@ -10,8 +10,10 @@ object BinaryIncompatibilities {
   )
 
   val Linker = Seq(
-    // Breaking! LinkedClass has one more argument in its constructor
-    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.linker.standard.LinkedClass.this"),
+    // Breaking (minor change)
+    exclude[DirectMissingMethodProblem]("org.scalajs.linker.standard.LinkedClass.this"),
+    // private[linker], not an issue.
+    exclude[DirectMissingMethodProblem]("org.scalajs.linker.standard.LinkedClass.refined"),
   )
 
   val LinkerInterface = Seq(

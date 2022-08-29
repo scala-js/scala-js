@@ -14,7 +14,7 @@ package org.scalajs.linker.standard
 
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.{ClassKind, Position}
-import org.scalajs.ir.Names.ClassName
+import org.scalajs.ir.Names.{ClassName, FieldName}
 
 /** A ClassDef after linking.
  *
@@ -52,6 +52,8 @@ final class LinkedClass(
     val hasInstances: Boolean,
     val hasInstanceTests: Boolean,
     val hasRuntimeTypeInfo: Boolean,
+    val fieldsRead: Set[FieldName],
+    val staticFieldsRead: Set[FieldName],
 
     val staticDependencies: Set[ClassName],
     val externalDependencies: Set[String],
@@ -87,6 +89,8 @@ final class LinkedClass(
       hasInstances: Boolean,
       hasInstanceTests: Boolean,
       hasRuntimeTypeInfo: Boolean,
+      fieldsRead: Set[FieldName],
+      staticFieldsRead: Set[FieldName],
       staticDependencies: Set[ClassName],
       externalDependencies: Set[String],
       dynamicDependencies: Set[ClassName]
@@ -99,6 +103,8 @@ final class LinkedClass(
         hasInstances = hasInstances,
         hasInstanceTests = hasInstanceTests,
         hasRuntimeTypeInfo = hasRuntimeTypeInfo,
+        fieldsRead = fieldsRead,
+        staticFieldsRead = staticFieldsRead,
         staticDependencies = staticDependencies,
         externalDependencies = externalDependencies,
         dynamicDependencies = dynamicDependencies
@@ -130,6 +136,8 @@ final class LinkedClass(
       hasInstances: Boolean = this.hasInstances,
       hasInstanceTests: Boolean = this.hasInstanceTests,
       hasRuntimeTypeInfo: Boolean = this.hasRuntimeTypeInfo,
+      fieldsRead: Set[FieldName] = this.fieldsRead,
+      staticFieldsRead: Set[FieldName] = this.staticFieldsRead,
       staticDependencies: Set[ClassName] = this.staticDependencies,
       externalDependencies: Set[String] = this.externalDependencies,
       dynamicDependencies: Set[ClassName] = this.dynamicDependencies,
@@ -153,6 +161,8 @@ final class LinkedClass(
         hasInstances,
         hasInstanceTests,
         hasRuntimeTypeInfo,
+        fieldsRead,
+        staticFieldsRead,
         staticDependencies,
         externalDependencies,
         dynamicDependencies,

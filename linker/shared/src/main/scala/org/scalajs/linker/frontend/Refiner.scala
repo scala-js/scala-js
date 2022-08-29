@@ -118,6 +118,8 @@ final class Refiner(config: CommonPhaseConfig) {
         hasInstances = info.isAnySubclassInstantiated,
         hasInstanceTests = info.areInstanceTestsUsed,
         hasRuntimeTypeInfo = info.isDataAccessed,
+        fieldsRead = info.fieldsRead.toSet,
+        staticFieldsRead = info.staticFieldsRead.toSet,
         staticDependencies = info.staticDependencies.toSet,
         externalDependencies = info.externalDependencies.toSet,
         dynamicDependencies = info.dynamicDependencies.toSet
@@ -193,8 +195,13 @@ private object Refiner {
             linkedClass.kind, linkedClass.superClass.map(_.name),
             linkedClass.interfaces.map(_.name), linkedClass.jsNativeLoadSpec)
 
-        for (field <- linkedClass.fields)
-          builder.maybeAddReferencedFieldClass(field.ftpe)
+        for {
+          FieldDef(flags, FieldIdent(name), _, ftpe) <- linkedClass.fields
+          if !flags.namespace.isStatic
+        } {
+          builder.maybeAddReferencedFieldClass(name, ftpe)
+        }
+
         for (linkedMethod <- linkedClass.methods)
           builder.addMethod(methodsInfoCaches.getInfo(linkedMethod))
         for (jsNativeMember <- linkedClass.jsNativeMembers)

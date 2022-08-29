@@ -64,8 +64,12 @@ object Analysis {
     def isModuleAccessed: Boolean
     def areInstanceTestsUsed: Boolean
     def isDataAccessed: Boolean
-    def isAnyStaticFieldUsed: Boolean
-    def isAnyPrivateJSFieldUsed: Boolean
+
+    def fieldsRead: scala.collection.Set[FieldName]
+    def fieldsWritten: scala.collection.Set[FieldName]
+    def staticFieldsRead: scala.collection.Set[FieldName]
+    def staticFieldsWritten: scala.collection.Set[FieldName]
+
     def jsNativeMembersUsed: scala.collection.Set[MethodName]
 
     def staticDependencies: scala.collection.Set[ClassName]

@@ -49,7 +49,16 @@ object Infos {
       val superClass: Option[ClassName], // always None for interfaces
       val interfaces: List[ClassName], // direct parent interfaces only
       val jsNativeLoadSpec: Option[JSNativeLoadSpec],
-      val referencedFieldClasses: List[ClassName],
+      /* Referenced classes of non-static fields.
+       *
+       * Note that the classes referenced by static fields are reached
+       * implicitly by the call-sites that read or write the field: the
+       * SelectStatic expression has the same type as the field.
+       *
+       * Further, note that some existing fields might not appear in this map:
+       * This happens when they have non-class type (e.g. Int)
+       */
+      val referencedFieldClasses: Map[FieldName, ClassName],
       val methods: List[MethodInfo],
       val jsNativeMembers: Map[MethodName, JSNativeLoadSpec],
       val exportedMembers: List[ReachabilityInfo]
@@ -84,7 +93,8 @@ object Infos {
   )
 
   final class ReachabilityInfo private[Infos] (
-      val privateJSFieldsUsed: Map[ClassName, List[FieldName]],
+      val fieldsRead: Map[ClassName, List[FieldName]],
+      val fieldsWritten: Map[ClassName, List[FieldName]],
       val staticFieldsRead: Map[ClassName, List[FieldName]],
       val staticFieldsWritten: Map[ClassName, List[FieldName]],
       val methodsCalled: Map[ClassName, List[MethodName]],
@@ -99,6 +109,7 @@ object Infos {
       val usedInstanceTests: List[ClassName],
       val accessedClassData: List[ClassName],
       val referencedClasses: List[ClassName],
+      val staticallyReferencedClasses: List[ClassName],
       val accessedClassClass: Boolean,
       val accessedNewTarget: Boolean,
       val accessedImportMeta: Boolean
@@ -107,8 +118,8 @@ object Infos {
   object ReachabilityInfo {
     val Empty: ReachabilityInfo = {
       new ReachabilityInfo(Map.empty, Map.empty, Map.empty, Map.empty,
-          Map.empty, Map.empty, Map.empty, Nil, Nil, Nil, Nil, Nil, false,
-          false, false)
+          Map.empty, Map.empty, Map.empty, Map.empty, Nil, Nil, Nil, Nil, Nil, Nil,
+          false, false, false)
     }
   }
 
@@ -119,17 +130,17 @@ object Infos {
       private val interfaces: List[ClassName],
       private val jsNativeLoadSpec: Option[JSNativeLoadSpec]
   ) {
-    private val referencedFieldClasses = mutable.Set.empty[ClassName]
+    private val referencedFieldClasses = mutable.Map.empty[FieldName, ClassName]
     private val methods = mutable.ListBuffer.empty[MethodInfo]
     private val jsNativeMembers = mutable.Map.empty[MethodName, JSNativeLoadSpec]
     private val exportedMembers = mutable.ListBuffer.empty[ReachabilityInfo]
 
-    def maybeAddReferencedFieldClass(tpe: Type): this.type = {
+    def maybeAddReferencedFieldClass(name: FieldName, tpe: Type): this.type = {
       tpe match {
         case ClassType(cls) =>
-          referencedFieldClasses += cls
+          referencedFieldClasses.put(name, cls)
         case ArrayType(ArrayTypeRef(ClassRef(cls), _)) =>
-          referencedFieldClasses += cls
+          referencedFieldClasses.put(name, cls)
         case _ =>
       }
 
@@ -153,13 +164,14 @@ object Infos {
 
     def result(): ClassInfo = {
       new ClassInfo(className, kind, superClass,
-          interfaces, jsNativeLoadSpec, referencedFieldClasses.toList,
+          interfaces, jsNativeLoadSpec, referencedFieldClasses.toMap,
           methods.toList, jsNativeMembers.toMap, exportedMembers.toList)
     }
   }
 
   final class ReachabilityInfoBuilder {
-    private val privateJSFieldsUsed = mutable.Map.empty[ClassName, mutable.Set[FieldName]]
+    private val fieldsRead = mutable.Map.empty[ClassName, mutable.Set[FieldName]]
+    private val fieldsWritten = mutable.Map.empty[ClassName, mutable.Set[FieldName]]
     private val staticFieldsRead = mutable.Map.empty[ClassName, mutable.Set[FieldName]]
     private val staticFieldsWritten = mutable.Map.empty[ClassName, mutable.Set[FieldName]]
     private val methodsCalled = mutable.Map.empty[ClassName, mutable.Set[MethodName]]
@@ -171,12 +183,18 @@ object Infos {
     private val usedInstanceTests = mutable.Set.empty[ClassName]
     private val accessedClassData = mutable.Set.empty[ClassName]
     private val referencedClasses = mutable.Set.empty[ClassName]
+    private val staticallyReferencedClasses = mutable.Set.empty[ClassName]
     private var accessedClassClass = false
     private var accessedNewTarget = false
     private var accessedImportMeta = false
 
-    def addPrivateJSFieldUsed(cls: ClassName, field: FieldName): this.type = {
-      privateJSFieldsUsed.getOrElseUpdate(cls, mutable.Set.empty) += field
+    def addFieldRead(cls: ClassName, field: FieldName): this.type = {
+      fieldsRead.getOrElseUpdate(cls, mutable.Set.empty) += field
+      this
+    }
+
+    def addFieldWritten(cls: ClassName, field: FieldName): this.type = {
+      fieldsWritten.getOrElseUpdate(cls, mutable.Set.empty) += field
       this
     }
 
@@ -311,6 +329,11 @@ object Infos {
       this
     }
 
+    def addStaticallyReferencedClass(cls: ClassName): this.type = {
+      staticallyReferencedClasses += cls
+      this
+    }
+
     def maybeAddReferencedClass(tpe: Type): this.type = {
       tpe match {
         case ClassType(cls) =>
@@ -342,7 +365,8 @@ object Infos {
         m.map(kv => kv._1 -> kv._2.toList).toMap
 
       new ReachabilityInfo(
-          privateJSFieldsUsed = toMapOfLists(privateJSFieldsUsed),
+          fieldsRead = toMapOfLists(fieldsRead),
+          fieldsWritten = toMapOfLists(fieldsWritten),
           staticFieldsRead = toMapOfLists(staticFieldsRead),
           staticFieldsWritten = toMapOfLists(staticFieldsWritten),
           methodsCalled = toMapOfLists(methodsCalled),
@@ -354,6 +378,7 @@ object Infos {
           usedInstanceTests = usedInstanceTests.toList,
           accessedClassData = accessedClassData.toList,
           referencedClasses = referencedClasses.toList,
+          staticallyReferencedClasses = staticallyReferencedClasses.toList,
           accessedClassClass = accessedClassClass,
           accessedNewTarget = accessedNewTarget,
           accessedImportMeta = accessedImportMeta
@@ -370,8 +395,13 @@ object Infos {
         classDef.jsNativeLoadSpec)
 
     classDef.memberDefs foreach {
-      case fieldDef: AnyFieldDef =>
-        builder.maybeAddReferencedFieldClass(fieldDef.ftpe)
+      case FieldDef(flags, FieldIdent(name), _, ftpe) =>
+        if (!flags.namespace.isStatic) {
+          builder.maybeAddReferencedFieldClass(name, ftpe)
+        }
+
+      case _: JSFieldDef =>
+        // Nothing to do.
 
       case methodDef: MethodDef =>
         builder.addMethod(generateMethodInfo(methodDef))
@@ -510,11 +540,23 @@ object Infos {
       builder.maybeAddReferencedClass(tree.tpe)
 
       tree match {
-        /* Do not call super.traverse() so that the field is not also marked as
+        /* Do not call super.traverse() so that fields are not also marked as
          * read.
          */
-        case Assign(SelectStatic(className, field), rhs) =>
-          builder.addStaticFieldWritten(className, field.name)
+        case Assign(lhs, rhs) =>
+          lhs match {
+            case Select(qualifier, className, field) =>
+              builder.addFieldWritten(className, field.name)
+              traverse(qualifier)
+            case SelectStatic(className, field) =>
+              builder.addStaticFieldWritten(className, field.name)
+            case JSPrivateSelect(qualifier, className, field) =>
+              builder.addStaticallyReferencedClass(className) // for the private name of the field
+              builder.addFieldWritten(className, field.name)
+              traverse(qualifier)
+            case _ =>
+              traverse(lhs)
+          }
           traverse(rhs)
 
         // In all other cases, we'll have to call super.traverse()
@@ -523,8 +565,8 @@ object Infos {
             case New(className, ctor, _) =>
               builder.addInstantiatedClass(className, ctor.name)
 
-            case Select(_, className, _) =>
-              builder.addReferencedClass(className)
+            case Select(_, className, field) =>
+              builder.addFieldRead(className, field.name)
             case SelectStatic(className, field) =>
               builder.addStaticFieldRead(className, field.name)
             case SelectJSNativeMember(className, member) =>
@@ -614,8 +656,9 @@ object Infos {
             case UnwrapFromThrowable(_) =>
               builder.addUsedInstanceTest(JavaScriptExceptionClass)
 
-            case JSPrivateSelect(qualifier, className, field) =>
-              builder.addPrivateJSFieldUsed(className, field.name)
+            case JSPrivateSelect(_, className, field) =>
+              builder.addStaticallyReferencedClass(className) // for the private name of the field
+              builder.addFieldRead(className, field.name)
 
             case JSNewTarget() =>
               builder.addAccessNewTarget()

@@ -354,6 +354,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     private val hasElidableModuleAccessorAskers = collOps.emptyMap[MethodImpl, Unit]
 
     var fields: List[AnyFieldDef] = linkedClass.fields
+    var fieldsRead: Set[FieldName] = linkedClass.fieldsRead
     var tryNewInlineable: Option[OptimizerCore.InlineableClassStructure] = None
 
     setupAfterCreation(linkedClass)
@@ -426,6 +427,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         updateWith(linkedClass)
 
       fields = linkedClass.fields
+      fieldsRead = linkedClass.fieldsRead
 
       val oldInterfaces = interfaces
       val newInterfaces = linkedClass.ancestors.map(getInterface).toSet
@@ -541,18 +543,16 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       } else {
         val allFields = for {
           parent <- reverseParentChain
-          field <- parent.fields
-          if !field.flags.namespace.isStatic
+          anyField <- parent.fields
+          if !anyField.flags.namespace.isStatic
+          // non-JS class may only contain FieldDefs (no JSFieldDef)
+          field = anyField.asInstanceOf[FieldDef]
+          if parent.fieldsRead.contains(field.name.name)
         } yield {
           parent.className -> field
         }
 
-        if (allFields.forall(_._2.isInstanceOf[FieldDef])) {
-          Some(new OptimizerCore.InlineableClassStructure(
-              allFields.asInstanceOf[List[(ClassName, FieldDef)]]))
-        } else {
-          None
-        }
+        Some(new OptimizerCore.InlineableClassStructure(allFields))
       }
 
       tryNewInlineable != oldTryNewInlineable
@@ -712,6 +712,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       mutable.ArrayBuffer.fill[MethodCallers](MemberNamespace.Count)(collOps.emptyMap)
 
     private val jsNativeImportsAskers = collOps.emptyMap[MethodImpl, Unit]
+    private val fieldsReadAskers = collOps.emptyMap[MethodImpl, Unit]
 
     private var _ancestors: List[ClassName] = linkedClass.ancestors
 
@@ -733,6 +734,13 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     private var jsNativeImports: JSNativeImports =
       computeJSNativeImports(linkedClass)
+
+    /* Similar comment than for JS native imports:
+     * We track read state of all fields together to avoid too much tracking.
+     */
+
+    private var fieldsRead: Set[FieldName] = linkedClass.fieldsRead
+    private var staticFieldsRead: Set[FieldName] = linkedClass.staticFieldsRead
 
     override def toString(): String =
       s"intf ${className.nameString}"
@@ -797,6 +805,18 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       jsNativeImports._2.get(methodName)
     }
 
+    def askFieldRead(name: FieldName, asker: MethodImpl): Boolean = {
+      fieldsReadAskers.put(asker, ())
+      asker.registerTo(this)
+      fieldsRead.contains(name)
+    }
+
+    def askStaticFieldRead(name: FieldName, asker: MethodImpl): Boolean = {
+      fieldsReadAskers.put(asker, ())
+      asker.registerTo(this)
+      staticFieldsRead.contains(name)
+    }
+
     @inline
     def staticLike(namespace: MemberNamespace): StaticLikeNamespace =
       staticLikes(namespace.ordinal)
@@ -816,6 +836,15 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         jsNativeImports = newJSNativeImports
         jsNativeImportsAskers.keysIterator.foreach(_.tag())
         jsNativeImportsAskers.clear()
+      }
+
+      // Update fields read.
+      if (fieldsRead != linkedClass.fieldsRead ||
+          staticFieldsRead != linkedClass.staticFieldsRead) {
+        fieldsRead = linkedClass.fieldsRead
+        staticFieldsRead = linkedClass.staticFieldsRead
+        fieldsReadAskers.keysIterator.foreach(_.tag())
+        fieldsReadAskers.clear()
       }
 
       // Update static likes
@@ -1064,6 +1093,12 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
             getInterface(className).askJSNativeImport(methodName, myself)
         }
       }
+
+      protected def isFieldRead(className: ClassName, fieldName: FieldName): Boolean =
+        getInterface(className).askFieldRead(fieldName, myself)
+
+      protected def isStaticFieldRead(className: ClassName, fieldName: FieldName): Boolean =
+        getInterface(className).askStaticFieldRead(fieldName, myself)
     }
   }
 
