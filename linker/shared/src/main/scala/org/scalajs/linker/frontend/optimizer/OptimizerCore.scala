@@ -736,13 +736,14 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     val captureParamLocalDefs = List.newBuilder[(LocalName, LocalDef)]
     val newCaptureParamDefsAndRepls = List.newBuilder[(ParamDef, ReplaceWithVarRef)]
     val captureValueBindings = List.newBuilder[Binding]
+    val captureParamLocalDefsForVarRefs = mutable.Map.empty[LocalName, LocalDef]
 
     for ((paramDef, tcaptureValue) <- captureParams.zip(tcaptureValues)) {
       val ParamDef(ident @ LocalIdent(paramName), originalName, ptpe, mutable) = paramDef
 
       assert(!mutable, s"Found mutable capture at ${paramDef.pos}")
 
-      def addCaptureParam(newName: LocalName): Unit = {
+      def addCaptureParam(newName: LocalName): LocalDef = {
         val newOriginalName = originalNameForFresh(paramName, originalName, newName)
 
         val replacement = ReplaceWithVarRef(newName, newSimpleState(Unused), None)
@@ -758,6 +759,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         captureParamLocalDefs += paramName -> localDef
         newCaptureParamDefsAndRepls += newParamDef -> replacement
         captureValueBindings += valueBinding
+
+        localDef
       }
 
       tcaptureValue match {
@@ -765,7 +768,15 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           captureParamLocalDefs += paramName -> LocalDef(tcaptureValue.tpe, false, ReplaceWithConstant(literal))
 
         case PreTransLocalDef(LocalDef(_, /* mutable = */ false, ReplaceWithVarRef(captureName, _, _))) =>
-          addCaptureParam(captureName)
+          captureParamLocalDefsForVarRefs.get(captureName).fold[Unit] {
+            captureParamLocalDefsForVarRefs += captureName -> addCaptureParam(captureName)
+          } { prevLocalDef =>
+            /* #4716 Two capture values may have been aliased to the same VarRef.
+             * They must use the same capture param LocalDef, otherwise we will
+             * create duplicate capture params.
+             */
+            captureParamLocalDefs += paramName -> prevLocalDef
+          }
 
         case _ =>
           addCaptureParam(freshLocalNameWithoutOriginalName(paramName, mutable))

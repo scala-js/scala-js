@@ -935,6 +935,34 @@ class RegressionTest {
     assertEquals(8, foo.bar(2))
   }
 
+  @Test
+  def valueCapturedTwiceWithDifferentNames_Issue4716(): Unit = {
+    /* The optimizer used to produce Closures with duplicate capture parameter
+     * names. This happens when two different vals are captured in a lambda,
+     * and these vals are aliases of each other so the optimizer merges them.
+     * It then gives the same name to the capture params.
+     *
+     * To reproduce the bug, we need captures that cannot be eliminated by the
+     * emitter afterwards. This is why we need the loop.
+     */
+
+    @noinline def hideClosure[A](f: () => A): A = f()
+
+    var done = false
+    while (!done) { // don't remove this loop or the test becomes moot
+      @noinline def makePair(): (Int, Int) = (5, 6)
+
+      val capture1 = makePair()
+      val capture2: scala.Product2[Int, Int] = capture1
+
+      assertEquals(11, hideClosure { () =>
+        capture1._1 + capture2._2
+      })
+
+      done = true
+    }
+  }
+
 }
 
 object RegressionTest {
