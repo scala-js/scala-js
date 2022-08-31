@@ -108,23 +108,18 @@ def Tasks = [
     sbtretry ++$scala helloworld$v/run &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withPrettyPrint(true))' \
-        ++$scala helloworld$v/run \
-        helloworld$v/clean &&
+        ++$scala helloworld$v/run &&
     sbtretry 'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withOptimizer(false))' \
-        ++$scala helloworld$v/run \
-        helloworld$v/clean &&
+        ++$scala helloworld$v/run &&
     sbtretry 'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withSemantics(_.withAsInstanceOfs(CheckedBehavior.Unchecked)))' \
-        ++$scala helloworld$v/run \
-        helloworld$v/clean &&
+        ++$scala helloworld$v/run &&
     sbtretry ++$scala \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
-        helloworld$v/run \
-        helloworld$v/clean &&
+        helloworld$v/run &&
     sbtretry ++$scala \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
-        helloworld$v/run \
-        helloworld$v/clean &&
+        helloworld$v/run &&
     sbtretry ++$scala \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         helloworld$v/run &&
@@ -139,18 +134,15 @@ def Tasks = [
     sbtretry ++$scala \
         'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         'set scalaJSStage in Global := FullOptStage' \
-        helloworld$v/run \
-        helloworld$v/clean &&
+        helloworld$v/run &&
     sbtretry ++$scala testingExample$v/testHtmlJSDom &&
     sbtretry ++$scala \
         'set scalaJSLinkerConfig in testingExample.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
         'set scalaJSLinkerConfig in testingExample.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
-        testingExample$v/testHtml \
-        testingExample$v/clean &&
+        testingExample$v/testHtml &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala testingExample$v/testHtmlJSDom \
-        testingExample$v/clean &&
-    sbtretry ++$scala testSuiteJVM$v/test testSuiteJVM$v/clean testSuiteExJVM$v/test testSuiteExJVM$v/clean &&
+        ++$scala testingExample$v/testHtmlJSDom  &&
+    sbtretry ++$scala testSuiteJVM$v/test testSuiteExJVM$v/test &&
     sbtretry ++$scala testSuite$v/test &&
     sbtretry ++$scala testSuiteEx$v/test &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
@@ -164,14 +156,12 @@ def Tasks = [
         'set scalaJSLinkerConfig in reversi.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
         'set scalaJSLinkerConfig in reversi.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         reversi$v/fastLinkJS \
-        reversi$v/fullLinkJS \
-        reversi$v/clean &&
+        reversi$v/fullLinkJS &&
     sbtretry ++$scala \
         'set scalaJSLinkerConfig in reversi.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallModulesFor(List("reversi"))))' \
         'set scalaJSLinkerConfig in reversi.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         reversi$v/fastLinkJS \
-        reversi$v/fullLinkJS \
-        reversi$v/clean &&
+        reversi$v/fullLinkJS &&
     sbtretry ++$scala \
         reversi$v/fastLinkJS \
         reversi$v/fullLinkJS \
@@ -194,48 +184,39 @@ def Tasks = [
     sbtretry ++$scala $testSuite$v/test $testSuite$v/testHtmlJSDom &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala $testSuite$v/test \
-        $testSuite$v/testHtmlJSDom \
-        $testSuite$v/clean &&
+        $testSuite$v/testHtmlJSDom &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withAllowBigIntsForLongs(true)))' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withAllowBigIntsForLongs(true)).withOptimizer(false))' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withAvoidLetsAndConsts(false).withAvoidClasses(false)))' \
         ++$scala $testSuite$v/test &&
     sbtretry \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withAvoidLetsAndConsts(false).withAvoidClasses(false)))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalacOptions in $testSuite.v$v += "-Xexperimental"' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalacOptions in $testSuite.v$v += "-Xexperimental"' \
@@ -249,8 +230,7 @@ def Tasks = [
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         ++$scala $testSuite$v/test &&
@@ -277,13 +257,11 @@ def Tasks = [
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
         'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := ("$esVersion" != "ES5_1"))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
         'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := ("$esVersion" != "ES5_1"))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
         'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := ("$esVersion" != "ES5_1"))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
@@ -292,14 +270,12 @@ def Tasks = [
         'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := ("$esVersion" != "ES5_1"))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
         'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := ("$esVersion" != "ES5_1"))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
         'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := ("$esVersion" != "ES5_1"))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
@@ -308,14 +284,12 @@ def Tasks = [
         'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := ("$esVersion" != "ES5_1"))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
         'set Seq(jsEnv in $testSuite.v$v := new NodeJSEnvForcePolyfills(ESVersion.$esVersion), MyScalaJSPlugin.wantSourceMaps in $testSuite.v$v := ("$esVersion" != "ES5_1"))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean
+        ++$scala $testSuite$v/test
   ''',
 
   "test-suite-custom-esversion": '''
@@ -325,48 +299,40 @@ def Tasks = [
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
         ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion).withAllowBigIntsForLongs(true)))' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion).withAllowBigIntsForLongs(true)).withOptimizer(false))' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         ++$scala $testSuite$v/test &&
@@ -378,8 +344,7 @@ def Tasks = [
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test \
-        $testSuite$v/clean &&
+        ++$scala $testSuite$v/test &&
     sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withESVersion(ESVersion.$esVersion)))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         ++$scala $testSuite$v/test &&
@@ -593,9 +558,9 @@ matrix.each { taskDef ->
   buildDefs.put(fullTaskName, {
     node('linuxworker') {
       checkout scm
-      sh "git clean -fdx && rm -rf partest/fetchedSources/"
-      writeFile file: 'ciscript.sh', text: ciScript, encoding: 'UTF-8'
       retry(2) {
+        sh "git clean -fdx && rm -rf partest/fetchedSources/"
+        writeFile file: 'ciscript.sh', text: ciScript, encoding: 'UTF-8'
         timeout(time: 4, unit: 'HOURS') {
           sh "echo '$fullTaskName' && cat ciscript.sh && sh ciscript.sh"
         }
