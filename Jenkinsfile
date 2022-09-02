@@ -166,7 +166,7 @@ def Tasks = [
         reversi$v/fastLinkJS \
         reversi$v/fullLinkJS \
         reversi$v/checksizes &&
-    sbtretry ++$scala compiler$v/compile:doc library$v/compile:doc \
+    sbtretry ++$scala javalibintf/compile:doc compiler$v/compile:doc library$v/compile:doc \
         testInterface$v/compile:doc testBridge$v/compile:doc &&
     sbtretry ++$scala headerCheck &&
     sbtretry ++$scala partest$v/fetchScalaSource &&

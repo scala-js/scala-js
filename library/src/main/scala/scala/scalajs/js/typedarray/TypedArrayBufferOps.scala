@@ -16,6 +16,8 @@ import scala.language.implicitConversions
 
 import java.nio._
 
+import org.scalajs.javalibintf.{TypedArrayBuffer => Intf}
+
 /** Additional operations on a [[java.nio.Buffer Buffer]] with interoperability
  *  with JavaScript Typed Arrays.
  *
@@ -33,7 +35,7 @@ final class TypedArrayBufferOps[ // scalastyle:ignore
    *  This is true iff the buffer is direct and not read-only.
    */
   def hasArrayBuffer(): Boolean =
-    TypedArrayBufferBridge.Buffer_hasArrayBuffer(buffer)
+    Intf.hasArrayBuffer(buffer)
 
   /** [[ArrayBuffer]] backing this buffer _(optional operation)_.
    *
@@ -41,7 +43,7 @@ final class TypedArrayBufferOps[ // scalastyle:ignore
    *    If this buffer has no backing [[ArrayBuffer]], i.e., !hasArrayBuffer()
    */
   def arrayBuffer(): ArrayBuffer =
-    TypedArrayBufferBridge.Buffer_arrayBuffer(buffer).asInstanceOf[ArrayBuffer]
+    Intf.arrayBuffer(buffer).asInstanceOf[ArrayBuffer]
 
   /** Byte offset in the associated [[ArrayBuffer]] _(optional operation)_.
    *
@@ -49,7 +51,7 @@ final class TypedArrayBufferOps[ // scalastyle:ignore
    *    If this buffer has no backing [[ArrayBuffer]], i.e., !hasArrayBuffer()
    */
   def arrayBufferOffset(): Int =
-    TypedArrayBufferBridge.Buffer_arrayBufferOffset(buffer)
+    Intf.arrayBufferOffset(buffer)
 
   /** [[DataView]] of the backing [[ArrayBuffer]] _(optional operation)_.
    *
@@ -60,7 +62,7 @@ final class TypedArrayBufferOps[ // scalastyle:ignore
    *    If this buffer has no backing [[ArrayBuffer]], i.e., !hasArrayBuffer()
    */
   def dataView(): DataView =
-    TypedArrayBufferBridge.Buffer_dataView(buffer).asInstanceOf[DataView]
+    Intf.dataView(buffer).asInstanceOf[DataView]
 
   /** Tests whether this direct buffer has a valid associated [[TypedArray]].
    *
@@ -74,7 +76,7 @@ final class TypedArrayBufferOps[ // scalastyle:ignore
    *    only if their byte order is the native order of the platform.
    */
   def hasTypedArray(): Boolean =
-    TypedArrayBufferBridge.Buffer_hasTypedArray(buffer)
+    Intf.hasTypedArray(buffer)
 
   /** [[TypedArray]] backing this direct buffer _(optional operation)_.
    *
@@ -85,7 +87,7 @@ final class TypedArrayBufferOps[ // scalastyle:ignore
    *    If this buffer does not have a backing [[TypedArray]], i.e., !hasTypedArray().
    */
   def typedArray(): TypedArrayType =
-    TypedArrayBufferBridge.Buffer_typedArray(buffer).asInstanceOf[TypedArrayType]
+    Intf.typedArray(buffer).asInstanceOf[TypedArrayType]
 }
 
 /** Extensions to [[java.nio.Buffer Buffer]]s for interoperability with

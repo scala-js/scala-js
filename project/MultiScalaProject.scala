@@ -27,6 +27,9 @@ final class MultiScalaProject private (private val projects: Map[String, Project
     zipped(depsByVersion)(_.dependsOn(_: _*))
   }
 
+  def dependsOn(deps: ClasspathDependency*)(implicit dummy: DummyImplicit): MultiScalaProject =
+    transform(_.dependsOn(deps: _*))
+
   def configs(cs: Configuration*): MultiScalaProject =
     transform(_.configs(cs: _*))
 

@@ -713,6 +713,7 @@ object Build {
             compiler, irProject, irProjectJS,
             linkerInterface, linkerInterfaceJS, linker, linkerJS,
             testAdapter,
+            javalibintf,
             javalib, scalalib, libraryAux, library,
             testInterface, jUnitRuntime, testBridge, jUnitPlugin, jUnitAsyncJS,
             jUnitAsyncJVM, jUnitTestOutputsJS, jUnitTestOutputsJVM,
@@ -1195,6 +1196,17 @@ object Build {
     }
   }
 
+  lazy val javalibintf: Project = Project(
+      id = "javalibintf", base = file("javalibintf")
+  ).settings(
+      commonSettings,
+      publishSettings(Some(VersionScheme.BreakOnMajor)),
+      name := "scalajs-javalib-intf",
+
+      crossPaths := false,
+      autoScalaLibrary := false,
+  )
+
   lazy val javalib: MultiScalaProject = MultiScalaProject(
       id = "javalib", base = file("javalib")
   ).enablePlugins(
@@ -1427,6 +1439,8 @@ object Build {
       id = "library", base = file("library")
   ).enablePlugins(
       MyScalaJSPlugin
+  ).dependsOn(
+      javalibintf % Provided,
   ).settings(
       commonSettings,
       publishSettings(Some(VersionScheme.BreakOnMajor)),
@@ -1506,15 +1520,7 @@ object Build {
            * (but not .class files)
            */
           mappings in packageBin := {
-            /* From library, we must take everything, except the
-             * java.nio.TypedArrayBufferBridge object, whose actual
-             * implementation is in javalib.
-             */
-            val superMappings = (mappings in packageBin).value
-            val libraryMappings = superMappings.filter { mapping =>
-              !mapping._2.replace('\\', '/').startsWith(
-                  "scala/scalajs/js/typedarray/TypedArrayBufferBridge")
-            }
+            val libraryMappings = (mappings in packageBin).value
 
             val filter = ("*.sjsir": NameFilter)
 
