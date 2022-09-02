@@ -445,7 +445,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         case ex: InterruptedException =>
           throw ex
         case ex: Throwable =>
-          if (settings.debug)
+          if (settings.debug.value)
             ex.printStackTrace()
           globalError(s"Error while emitting ${cunit.source}\n${ex.getMessage}")
       } finally {
@@ -1129,7 +1129,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  static forwarders?
      */
     def isCandidateForForwarders(sym: Symbol): Boolean = {
-      !settings.noForwarders && sym.isStatic && !isImplClass(sym) && {
+      !settings.noForwarders.value && sym.isStatic && !isImplClass(sym) && {
         // Reject non-top-level objects unless opted in via the appropriate option
         scalaJSOpts.genStaticForwardersForNonTopLevelObjects ||
         !sym.name.containsChar('$') // this is the same test that scalac performs
