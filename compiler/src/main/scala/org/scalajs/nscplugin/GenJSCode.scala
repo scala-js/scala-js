@@ -151,7 +151,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     private val fieldsMutatedInCurrentClass = new ScopedVar[mutable.Set[Name]]
     private val generatedSAMWrapperCount = new ScopedVar[VarBox[Int]]
 
-    private def currentThisType: jstpe.Type = {
+    def currentThisType: jstpe.Type = {
       encodeClassType(currentClassSym) match {
         case tpe @ jstpe.ClassType(cls) =>
           jstpe.BoxedClassToPrimType.getOrElse(cls, tpe)

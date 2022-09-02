@@ -1229,7 +1229,7 @@ object Serializers {
 
         case TagThis =>
           val tpe = readType()
-          if (/*hacks.use8*/ true) // scalastyle:ignore
+          if (hacks.use8)
             This()(thisTypeForHack8)
           else
             This()(tpe)
@@ -1238,7 +1238,7 @@ object Serializers {
           val arrow = readBoolean()
           val captureParams = readParamDefs()
           val (params, restParam) = readParamDefsWithRest()
-          val body = if (/*!hacks.use8*/ false) { // scalastyle:ignore
+          val body = if (!hacks.use8) {
             readTree()
           } else {
             val prevThisTypeForHack8 = thisTypeForHack8
@@ -1344,7 +1344,7 @@ object Serializers {
       val originalName = readOriginalName()
       val kind = ClassKind.fromByte(readByte())
 
-      if (/*hacks.use8*/ true) { // scalastyle:ignore
+      if (hacks.use8) {
         thisTypeForHack8 = {
           if (kind.isJSType)
             AnyType

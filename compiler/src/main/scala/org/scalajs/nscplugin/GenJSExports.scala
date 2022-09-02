@@ -624,7 +624,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         }
       }
 
-      val receiver = js.This()(jstpe.AnyType)
+      val receiver = js.This()(currentThisType)
       val nameString = genExpr(jsNameOf(sym))
 
       if (jsInterop.isJSGetter(sym)) {
@@ -708,7 +708,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
            * dispatchers, we know the default getter is on `this`. This applies
            * to both top-level and nested classes.
            */
-          (owner, js.This()(encodeClassType(owner)))
+          (owner, js.This()(currentThisType))
         } else if (isNested) {
           assert(captures.size == 1,
               s"expected exactly one capture got $captures ($sym at $pos)")
@@ -816,10 +816,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       def receiver = {
         if (static)
           genLoadModule(sym.owner)
-        else if (sym.owner == ObjectClass)
-          js.This()(jstpe.ClassType(ir.Names.ObjectClass))
         else
-          js.This()(encodeClassType(sym.owner))
+          js.This()(currentThisType)
       }
 
       if (isNonNativeJSClass(currentClassSym)) {
