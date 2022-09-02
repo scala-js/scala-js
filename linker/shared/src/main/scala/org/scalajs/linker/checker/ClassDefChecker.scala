@@ -33,6 +33,16 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
 
   private[this] val isJLObject = classDef.name.name == ObjectClass
 
+  private[this] val instanceThisType: Type = {
+    val cls = classDef.name.name
+    if (classDef.kind.isJSType)
+      AnyType
+    else if (classDef.kind == ClassKind.HijackedClass)
+      BoxedClassToPrimType.getOrElse(cls, ClassType(cls)) // getOrElse not to crash on invalid ClassDef
+    else
+      ClassType(cls)
+  }
+
   private[this] val fields =
     Array.fill(MemberNamespace.Count)(mutable.Map.empty[FieldName, Type])
 
@@ -266,7 +276,8 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
     }
 
     // Body
-    body.foreach(checkTree(_, Env.fromParams(params)))
+    val thisType = if (static) NoType else instanceThisType
+    body.foreach(checkTree(_, Env.fromParams(params).withThisType(thisType)))
   }
 
   private def checkJSConstructorDef(ctorDef: JSConstructorDef): Unit = withPerMethodState {
@@ -290,7 +301,8 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
       checkTree(stat, prevEnv)
     }
     checkTreeOrSpreads(body.superCall.args, envJustBeforeSuper)
-    body.afterSuper.foldLeft(envJustBeforeSuper) { (prevEnv, stat) =>
+    val envJustAfterSuper = envJustBeforeSuper.withThisType(instanceThisType)
+    body.afterSuper.foldLeft(envJustAfterSuper) { (prevEnv, stat) =>
       checkTree(stat, prevEnv)
     }
   }
@@ -316,8 +328,9 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
     checkExportedPropertyName(pName)
     checkJSParamDefs(params, restParam)
 
+    val thisType = if (static) NoType else instanceThisType
     val env =
-      Env.fromParams(classDef.jsClassCaptures.getOrElse(Nil) ++ params ++ restParam)
+      Env.fromParams(classDef.jsClassCaptures.getOrElse(Nil) ++ params ++ restParam).withThisType(thisType)
 
     checkTree(body, env)
   }
@@ -340,16 +353,21 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
 
     checkExportedPropertyName(pName)
 
+    val jsClassCaptures = classDef.jsClassCaptures.getOrElse(Nil)
+    val thisType = if (static) NoType else instanceThisType
+
     getterBody.foreach { body =>
       withPerMethodState {
-        checkTree(body, Env.fromParams(classDef.jsClassCaptures.getOrElse(Nil)))
+        val bodyEnv = Env.fromParams(jsClassCaptures).withThisType(thisType)
+        checkTree(body, bodyEnv)
       }
     }
 
     setterArgAndBody.foreach { case (setterArg, body) =>
       withPerMethodState {
         checkJSParamDefs(setterArg :: Nil, None)
-        checkTree(body, Env.fromParams(classDef.jsClassCaptures.getOrElse(Nil) :+ setterArg))
+        val bodyEnv = Env.fromParams(jsClassCaptures :+ setterArg).withThisType(thisType)
+        checkTree(body, bodyEnv)
       }
     }
   }
@@ -764,7 +782,10 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
         }
 
       case This() =>
-        // TODO: Force type to be exact? This would allow to remove thisType tracking from IRChecker.
+        if (env.thisType == NoType)
+          reportError(i"Cannot find `this` in scope")
+        else if (tree.tpe != env.thisType)
+          reportError(i"`this` of type ${env.thisType} typed as ${tree.tpe}")
 
       case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
         /* Check compliance of captureValues wrt. captureParams in the current
@@ -793,6 +814,7 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
           val bodyEnv = Env
             .fromParams(captureParams ++ params ++ restParam)
             .withHasNewTarget(!arrow)
+            .withThisType(if (arrow) NoType else AnyType)
           checkTree(body, bodyEnv)
         }
 
@@ -862,6 +884,8 @@ object ClassDefChecker {
   private class Env(
       /** Whether there is a valid `new.target` in scope. */
       val hasNewTarget: Boolean,
+      /** The type of `this` in scope, or `NoType` if there is no `this` in scope. */
+      val thisType: Type,
       /** Local variables in scope (including through closures). */
       val locals: Map[LocalName, LocalDef],
       /** Return types by label. */
@@ -872,6 +896,9 @@ object ClassDefChecker {
     def withHasNewTarget(hasNewTarget: Boolean): Env =
       copy(hasNewTarget = hasNewTarget)
 
+    def withThisType(thisType: Type): Env =
+      copy(thisType = thisType)
+
     def withLocal(localDef: LocalDef): Env =
       copy(locals = locals + (localDef.name -> localDef))
 
@@ -880,21 +907,23 @@ object ClassDefChecker {
 
     private def copy(
       hasNewTarget: Boolean = hasNewTarget,
+      thisType: Type = thisType,
       locals: Map[LocalName, LocalDef] = locals,
       returnLabels: Set[LabelName] = returnLabels
     ): Env = {
-      new Env(hasNewTarget, locals, returnLabels)
+      new Env(hasNewTarget, thisType, locals, returnLabels)
     }
   }
 
   private object Env {
-    val empty: Env = new Env(hasNewTarget = false, Map.empty, Set.empty)
+    val empty: Env =
+      new Env(hasNewTarget = false, thisType = NoType, Map.empty, Set.empty)
 
     def fromParams(params: List[ParamDef]): Env = {
       val paramLocalDefs =
         for (p @ ParamDef(ident, _, tpe, mutable) <- params)
           yield ident.name -> LocalDef(ident.name, tpe, mutable)
-      new Env(hasNewTarget = false, paramLocalDefs.toMap, Set.empty)
+      new Env(hasNewTarget = false, thisType = NoType, paramLocalDefs.toMap, Set.empty)
     }
   }
 

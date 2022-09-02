@@ -211,7 +211,7 @@ class AnalyzerTest {
                 memberDefs = requiredMemberDefs("A", kindCls)),
             classDef("B", kind = kindIntf,
                 superClass = validParentForKind(kindIntf),
-                memberDefs = requiredMemberDefs("A", kindIntf))
+                memberDefs = requiredMemberDefs("B", kindIntf))
         )
 
         val analysis = computeAnalysis(classDefs,
