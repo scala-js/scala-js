@@ -100,8 +100,17 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
   }
 
   private def checkKind()(implicit ctx: ErrorContext): Unit = {
-    if (isJLObject && classDef.kind != ClassKind.Class)
+    val className = classDef.name.name
+
+    if (isJLObject && classDef.kind != ClassKind.Class) {
       reportError("java.lang.Object must be a Class")
+    } else {
+      val isHijacked = HijackedClasses.contains(className)
+      if (isHijacked && classDef.kind != ClassKind.HijackedClass)
+        reportError(i"$className must be a HijackedClass")
+      else if (!isHijacked && classDef.kind == ClassKind.HijackedClass)
+        reportError(i"$className must not be a HijackedClass")
+    }
   }
 
   private def checkJSClassCaptures()(implicit ctx: ErrorContext): Unit = {

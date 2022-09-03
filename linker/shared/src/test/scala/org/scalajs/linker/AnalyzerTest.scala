@@ -128,7 +128,6 @@ class AnalyzerTest {
     val kindsSub = Seq(
         ClassKind.Class,
         ClassKind.ModuleClass,
-        ClassKind.HijackedClass,
         ClassKind.JSClass,
         ClassKind.JSModuleClass,
         ClassKind.NativeJSClass,
@@ -139,7 +138,7 @@ class AnalyzerTest {
     def kindsBaseFor(kindSub: ClassKind): Seq[ClassKind] = {
       import ClassKind._
       kindSub match {
-        case Class | ModuleClass | HijackedClass =>
+        case Class | ModuleClass =>
           Seq(Interface, ModuleClass, JSClass, NativeJSClass)
         case Interface =>
           // interfaces are checked in the ClassDefChecker.
@@ -147,6 +146,8 @@ class AnalyzerTest {
         case JSClass | JSModuleClass | NativeJSClass | NativeJSModuleClass |
             AbstractJSType =>
           Seq(Class, Interface, AbstractJSType, JSModuleClass)
+        case HijackedClass =>
+          throw new AssertionError("Cannot test HijackedClass because it fails earlier")
       }
     }
 
@@ -179,7 +180,6 @@ class AnalyzerTest {
     val kindsCls = Seq(
         ClassKind.Class,
         ClassKind.ModuleClass,
-        ClassKind.HijackedClass,
         ClassKind.Interface,
         ClassKind.JSClass,
         ClassKind.JSModuleClass,
@@ -191,12 +191,14 @@ class AnalyzerTest {
     def kindsIntfFor(kindCls: ClassKind): Seq[ClassKind] = {
       import ClassKind._
       kindCls match {
-        case Class | ModuleClass | HijackedClass | Interface =>
+        case Class | ModuleClass | Interface =>
           Seq(Class, ModuleClass, JSClass, NativeJSClass, AbstractJSType)
         case JSClass | JSModuleClass | NativeJSClass | NativeJSModuleClass |
             AbstractJSType =>
-          Seq(Class, ModuleClass, HijackedClass, Interface, JSClass,
+          Seq(Class, ModuleClass, Interface, JSClass,
               JSModuleClass, NativeJSClass, NativeJSModuleClass)
+        case HijackedClass =>
+          throw new AssertionError("Cannot test HijackedClass because it fails earlier")
       }
     }
 

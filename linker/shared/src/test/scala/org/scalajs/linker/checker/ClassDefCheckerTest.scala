@@ -48,6 +48,17 @@ class ClassDefCheckerTest {
   }
 
   @Test
+  def hijackedClassesKinds(): Unit = {
+    assertError(
+        classDef(BoxedIntegerClass, kind = ClassKind.Class, superClass = Some(ObjectClass)),
+        "java.lang.Integer must be a HijackedClass")
+
+    assertError(
+        classDef("A", kind = ClassKind.HijackedClass, superClass = Some(ObjectClass)),
+        "A must not be a HijackedClass")
+  }
+
+  @Test
   def missingSuperClass(): Unit = {
     val kinds = Seq(
         ClassKind.Class,
@@ -60,8 +71,9 @@ class ClassDefCheckerTest {
     )
 
     for (kind <- kinds) {
+      val name = if (kind == ClassKind.HijackedClass) BoxedIntegerClass else ClassName("A")
       assertError(
-          classDef("A", kind = kind, memberDefs = requiredMemberDefs("A", kind)),
+          classDef(name, kind = kind, memberDefs = requiredMemberDefs(name, kind)),
           "missing superClass")
     }
   }
