@@ -20,7 +20,7 @@ import org.scalajs.linker.interface.IRFile
 
 object TestIRRepo {
   val minilib: Future[Seq[IRFile]] = load(StdlibHolder.minilib)
-  val fulllib: Future[Seq[IRFile]] = load(StdlibHolder.fulllib)
+  val javalib: Future[Seq[IRFile]] = load(StdlibHolder.javalib)
   val empty: Future[Seq[IRFile]] = Future.successful(Nil)
   val previousLibs: Map[String, Future[Seq[IRFile]]] =
     StdlibHolder.previousLibs.map(x => x._1 -> load(x._2))

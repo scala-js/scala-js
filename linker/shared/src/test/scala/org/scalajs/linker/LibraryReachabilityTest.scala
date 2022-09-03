@@ -106,7 +106,7 @@ object LibraryReachabilityTest {
       implicit ec: ExecutionContext): Future[Analysis] = {
     for {
       analysis <- LinkingUtils.computeAnalysis(classDefs, symbolRequirements,
-          moduleInitializers, config, stdlib = TestIRRepo.fulllib)
+          moduleInitializers, config, stdlib = TestIRRepo.javalib)
     } yield {
       if (analysis.errors.nonEmpty)
         fail(analysis.errors.mkString("Unexpected errors:\n", "\n", ""))

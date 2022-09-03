@@ -18,6 +18,6 @@ package org.scalajs.linker.testutils
 
 private[testutils] object StdlibHolder {
   final val minilib = ""
-  final val fulllib = ""
+  final val javalib = ""
   final val previousLibs: Map[String, String] = Map.empty
 }

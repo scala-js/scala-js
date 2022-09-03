@@ -941,7 +941,7 @@ object Build {
       library.v2_12, jUnitRuntime.v2_12 % "test", testBridge.v2_12 % "test",
   )
 
-  def commonLinkerSettings(library: LocalProject) = Def.settings(
+  def commonLinkerSettings: Seq[Setting[_]] = Def.settings(
       commonSettings,
       publishSettings(None),
       fatalWarningsSettings,
@@ -984,8 +984,8 @@ object Build {
           BuildInfoKey.map(packageMinilib in (LocalProject("javalib"), Compile)) {
             case (_, v) => "minilib" -> v.getAbsolutePath
           },
-          BuildInfoKey.map(packageBin in (library, Compile)) {
-            case (_, v) => "fulllib" -> v.getAbsolutePath
+          BuildInfoKey.map(packageBin in (LocalProject("javalib"), Compile)) {
+            case (_, v) => "javalib" -> v.getAbsolutePath
           },
         )
       },
@@ -1009,21 +1009,13 @@ object Build {
       exportJars := true, // required so ScalaDoc linking works
 
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a"),
-
-      // Execute LibrarySizeTest only for the default Scala version of the build
-      testOptions ++= {
-        if (scalaVersion.value == DefaultScalaVersion)
-          Nil
-        else
-          Seq(Tests.Filter(s => !s.endsWith("LibrarySizeTest")))
-      },
   )
 
   lazy val linker: MultiScalaProject = MultiScalaProject(
       id = "linker", base = file("linker/jvm")
-  ).zippedSettings("library")(
-    commonLinkerSettings _
   ).settings(
+      commonLinkerSettings,
+
       libraryDependencies ++= Seq(
           "com.google.javascript" % "closure-compiler" % "v20220202",
           "com.google.jimfs" % "jimfs" % "1.1" % "test",
@@ -1055,9 +1047,9 @@ object Build {
       id = "linkerJS", base = file("linker/js")
   ).enablePlugins(
       MyScalaJSPlugin
-  ).zippedSettings("library")(
-      commonLinkerSettings _
   ).settings(
+      commonLinkerSettings,
+
       Test / scalacOptions ++= scalaJSCompilerOption("nowarnGlobalExecutionContext"),
 
       buildInfoOrStubs(Compile, Def.setting(

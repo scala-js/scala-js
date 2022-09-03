@@ -87,7 +87,7 @@ class EmitterTest {
   @Test
   def linkNoSecondAttemptInEmitter(): AsyncResult = await {
     val classDefs = List(
-      mainTestClassDef(predefPrintln(str("Hello world!")))
+      mainTestClassDef(systemOutPrintln(str("Hello world!")))
     )
 
     val logger = new CapturingLogger
@@ -97,8 +97,8 @@ class EmitterTest {
     val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
 
     for {
-      fulllib <- TestIRRepo.fulllib
-      report <- linker.link(fulllib ++ classDefsFiles,
+      javalib <- TestIRRepo.javalib
+      report <- linker.link(javalib ++ classDefsFiles,
           MainTestModuleInitializers, MemOutputDirectory(), logger)
     } yield {
       logger.allLogLines.assertNotContains(EmitterSetOfDangerousGlobalRefsChangedMessage)
@@ -111,7 +111,7 @@ class EmitterTest {
   @Test
   def linkYesSecondAttemptInEmitter(): AsyncResult = await {
     val classDefs = List(
-      mainTestClassDef(predefPrintln(JSGlobalRef("$dangerousGlobalRef")))
+      mainTestClassDef(systemOutPrintln(JSGlobalRef("$dangerousGlobalRef")))
     )
 
     val logger = new CapturingLogger
@@ -121,8 +121,8 @@ class EmitterTest {
     val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
 
     for {
-      fulllib <- TestIRRepo.fulllib
-      report <- linker.link(fulllib ++ classDefsFiles,
+      javalib <- TestIRRepo.javalib
+      report <- linker.link(javalib ++ classDefsFiles,
           MainTestModuleInitializers, MemOutputDirectory(), logger)
     } yield {
       logger.allLogLines.assertContains(EmitterSetOfDangerousGlobalRefsChangedMessage)

@@ -108,12 +108,13 @@ object TestIRBuilder {
   def consoleLog(expr: Tree): Tree =
     JSMethodApply(JSGlobalRef("console"), str("log"), List(expr))
 
-  def predefPrintln(expr: Tree): Tree = {
-    val PredefModuleClass = ClassName("scala.Predef$")
+  def systemOutPrintln(expr: Tree): Tree = {
+    val PrintStreamClass = ClassName("java.io.PrintStream")
+    val outMethodName = m("out", Nil, ClassRef(PrintStreamClass))
     val printlnMethodName = m("println", List(O), VoidRef)
 
-    Apply(EAF, LoadModule(PredefModuleClass), printlnMethodName, List(expr))(
-        NoType)
+    val out = ApplyStatic(EAF, "java.lang.System", outMethodName, Nil)(ClassType(PrintStreamClass))
+    Apply(EAF, out, printlnMethodName, List(expr))(NoType)
   }
 
   def paramDef(name: LocalName, ptpe: Type): ParamDef =
