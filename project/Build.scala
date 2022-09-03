@@ -632,6 +632,22 @@ object Build {
       else project.dependsOn(compiler.v2_12 % "plugin")
     }
 
+    /** Depends on library2_12 as if (exportJars in library) was set to false. */
+    def dependsOnLibraryNoJar2_12: Project = {
+      val library = LocalProject("library2_12")
+      if (isGeneratingForIDE) {
+        project.dependsOn(library)
+      } else {
+        project.settings(
+          internalDependencyClasspath in Compile ++= {
+            val prods = (products in (library, Compile)).value
+            val analysis = (compile in (library, Compile)).value
+            prods.map(p => Classpaths.analyzed(p, analysis))
+          }
+        )
+      }
+    }
+
     def withScalaJSJUnitPlugin2_12: Project = {
       project.settings(
           scalacOptions in Test ++= {
@@ -965,7 +981,7 @@ object Build {
           BuildInfoKey.map(previousLibsTask) {
             case (_, v) => "previousLibs" -> v
           },
-          BuildInfoKey.map(packageMinilib in (library, Compile)) {
+          BuildInfoKey.map(packageMinilib in (LocalProject("javalib"), Compile)) {
             case (_, v) => "minilib" -> v.getAbsolutePath
           },
           BuildInfoKey.map(packageBin in (library, Compile)) {
@@ -1207,17 +1223,17 @@ object Build {
       autoScalaLibrary := false,
   )
 
-  lazy val javalib: MultiScalaProject = MultiScalaProject(
+  lazy val javalib: Project = Project(
       id = "javalib", base = file("javalib")
   ).enablePlugins(
       MyScalaJSPlugin
   ).settings(
       commonSettings,
+      scalaVersion := DefaultScalaVersion,
       fatalWarningsSettings,
-      name := "Java library for Scala.js",
+      name := "scalajs-javalib",
       publishArtifact in Compile := false,
       delambdafySetting,
-      ensureSAMSupportSetting,
 
       recompileAllOrNothingSettings,
 
@@ -1233,24 +1249,6 @@ object Build {
       scalacOptions += "-Yno-predef",
       // We implement JDK classes, so we emit static forwarders for all static objects
       scalacOptions ++= scalaJSCompilerOption("genStaticForwardersForNonTopLevelObjects"),
-
-      /* In the javalib, we often need to perform `a.equals(b)` with operands
-       * of unconstrained types in order to implement the JDK specs. Scala
-       * 2.13.4+ warns for such calls, but those warnings are always noise in
-       * the javalib, so we globally silence them.
-       */
-      scalacOptions ++= {
-        val scalaV = scalaVersion.value
-        val scalaWarnsForNonCooperativeEquals = {
-          !scalaV.startsWith("2.11.") &&
-          !scalaV.startsWith("2.12.") &&
-          scalaV != "2.13.0" && scalaV != "2.13.1" && scalaV != "2.13.2" && scalaV != "2.13.3"
-        }
-        if (scalaWarnsForNonCooperativeEquals)
-          Seq("-Wconf:cat=other-non-cooperative-equals:s")
-        else
-          Nil
-      },
 
       // The implementation of java.lang.Object, which is hard-coded in JavaLangObject.scala
       resourceGenerators in Compile += Def.task {
@@ -1269,8 +1267,19 @@ object Build {
           !path.contains("/java/math/") &&
           !path.endsWith("/java/util/concurrent/ThreadLocalRandom.scala")
         }
-      }
-  ).withScalaJSCompiler.dependsOnLibraryNoJar
+      },
+
+      Compile / packageMinilib := {
+        val sources = (Compile / packageBin / mappings).value.filter { mapping =>
+          MiniLib.Whitelist.contains(mapping._2.replace('\\', '/'))
+        }
+        val jar = crossTarget.value / "minilib.jar"
+        val config = new sbt.Package.Configuration(sources, jar, Nil)
+        val s = streams.value
+        sbt.Package(config, s.cacheStoreFactory, s.log)
+        jar
+      },
+  ).withScalaJSCompiler2_12.dependsOnLibraryNoJar2_12
 
   lazy val scalalib: MultiScalaProject = MultiScalaProject(
       id = "scalalib", base = file("scalalib")
@@ -1514,7 +1523,7 @@ object Build {
            */
           dependencyClasspath in doc ++= exportedProducts.value,
       ))
-  ).zippedSettings(Seq("javalib", "scalalib", "libraryAux"))(localProjects =>
+  ).zippedSettings(Seq("scalalib", "libraryAux"))(localProjects =>
         inConfig(Compile)(Seq(
           /* Add the .sjsir files from other lib projects
            * (but not .class files)
@@ -1527,23 +1536,12 @@ object Build {
             val otherProducts = (
                 (products in localProjects(0)).value ++
                 (products in localProjects(1)).value ++
-                (products in localProjects(2)).value)
+                (products in LocalProject("javalib")).value)
             val otherMappings =
               otherProducts.flatMap(base => Path.selectSubpaths(base, filter))
 
             libraryMappings ++ otherMappings
           },
-
-          packageMinilib := {
-            val sources = (mappings in packageBin).value.filter { mapping =>
-              MiniLib.Whitelist.contains(mapping._2.replace('\\', '/'))
-            }
-            val jar = crossTarget.value / "minilib.jar"
-            val config = new sbt.Package.Configuration(sources, jar, Nil)
-            val s = streams.value
-            sbt.Package(config, s.cacheStoreFactory, s.log)
-            jar
-          }
       ))
   ).withScalaJSCompiler
 
