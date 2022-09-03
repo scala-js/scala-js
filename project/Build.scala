@@ -1713,7 +1713,7 @@ object Build {
         scalaVersion.value match {
           case Default2_11ScalaVersion =>
             Some(ExpectedSizes(
-                fastLink = 379000 to 380000,
+                fastLink = 380000 to 381000,
                 fullLink = 79000 to 80000,
                 fastLinkGz = 49000 to 50000,
                 fullLinkGz = 21000 to 22000,

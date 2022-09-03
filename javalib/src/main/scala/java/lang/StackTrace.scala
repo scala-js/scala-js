@@ -24,79 +24,72 @@ import Utils._
 private[lang] object StackTrace {
 
   /* !!! Note that in this unit, we go to great lengths *not* to use anything
-   * from the Scala collections library.
+   * from the collections library, and in general to use as little non-JS APIs
+   * as possible.
    *
-   * This minimizes the risk of runtime errors during the process of decoding
+   * This minimizes the risk of run-time errors during the process of decoding
    * errors, which would be very bad if it happened.
    */
 
   /** Returns the current stack trace.
-   *  If the stack trace cannot be analyzed in meaningful way (because we don't
-   *  know the browser), an empty array is returned.
+   *
+   *  If the stack trace cannot be analyzed in a meaningful way (normally,
+   *  only in case we don't know the engine's format for stack traces), an
+   *  empty array is returned.
    */
   def getCurrentStackTrace(): Array[StackTraceElement] =
-    extract(createException().asInstanceOf[js.Dynamic])
+    extract(new js.Error())
 
-  /** Captures browser-specific state recording the current stack trace.
+  /** Captures a JavaScript error object recording the stack trace of the given
+   *  `Throwable`.
+   *
    *  The state is stored as a magic field of the throwable, and will be used
    *  by `extract()` to create an Array[StackTraceElement].
    */
-  @inline def captureState(throwable: Throwable): Unit = {
-    val throwableAsJSAny = throwable.asInstanceOf[js.Any]
+  @inline def captureJSError(throwable: Throwable): Any = {
+    val reference = js.special.unwrapFromThrowable(throwable)
     val identifyingString: Any = {
       js.constructorOf[js.Object].prototype
         .selectDynamic("toString")
-        .call(throwableAsJSAny)
+        .call(reference.asInstanceOf[js.Any])
     }
     if ("[object Error]" == identifyingString) {
-      /* The `throwable` has an `[[ErrorData]]` internal slot, which is as good
+      /* The `reference` has an `[[ErrorData]]` internal slot, which is as good
        * a guarantee as any that it contains stack trace data itself. In
        * practice, this happens when we emit ES 2015 classes, and no other
        * compiler down the line has compiled them away as ES 5.1 functions and
        * prototypes.
        */
-      captureState(throwable, throwable)
+      reference
     } else if (js.constructorOf[js.Error].captureStackTrace eq ().asInstanceOf[AnyRef]) {
-      captureState(throwable, createException())
+      // Create a JS Error with the current stack trace.
+      new js.Error()
     } else {
       /* V8-specific.
-       * The Error.captureStackTrace(e) method records the current stack trace
-       * on `e` as would do `new Error()`, thereby turning `e` into a proper
-       * exception. This avoids creating a dummy exception, but is mostly
-       * important so that Node.js will show stack traces if the exception
-       * is never caught and reaches the global event queue.
+       *
+       * The `Error.captureStackTrace(e)` method records the current stack
+       * trace on `e` as would do `new Error()`, thereby turning `e` into a
+       * proper exception. This avoids creating a dummy exception, but is
+       * mostly important so that Node.js will show stack traces if the
+       * exception is never caught and reaches the global event queue.
+       *
+       * We use the `throwable` itself instead of the `reference` in this case,
+       * since the latter is not under our control, and could even be a
+       * primitive value which cannot be passed to `captureStackTrace`.
        */
-      js.constructorOf[js.Error].captureStackTrace(throwableAsJSAny)
-      captureState(throwable, throwable)
+      js.constructorOf[js.Error].captureStackTrace(throwable.asInstanceOf[js.Any])
+      throwable
     }
   }
 
-  /** Creates a JS Error with the current stack trace state. */
-  @inline private def createException(): Any =
-    new js.Error()
-
-  /** Captures browser-specific state recording the stack trace of a JS error.
-   *  The state is stored as a magic field of the throwable, and will be used
-   *  by `extract()` to create an Array[StackTraceElement].
+  /** Extracts a stack trace from a JavaScript error object.
+   *  If the provided error is not a JavaScript object, or if its stack data
+   *  otherwise cannot be analyzed in a meaningful way (normally, only in case
+   *  we don't know the engine's format for stack traces), an empty array is
+   *  returned.
    */
-  @inline def captureState(throwable: Throwable, e: Any): Unit =
-    throwable.setStackTraceStateInternal(e)
-
-  /** Extracts a throwable's stack trace from captured browser-specific state.
-   *  If no stack trace state has been recorded, or if the state cannot be
-   *  analyzed in meaningful way (because we don't know the browser), an
-   *  empty array is returned.
-   */
-  def extract(throwable: Throwable): Array[StackTraceElement] =
-    extract(throwable.getStackTraceStateInternal())
-
-  /** Extracts a stack trace from captured browser-specific stackdata.
-   *  If no stack trace state has been recorded, or if the state cannot be
-   *  analyzed in meaningful way (because we don't know the browser), an
-   *  empty array is returned.
-   */
-  private def extract(stackdata: Any): Array[StackTraceElement] = {
-    val lines = normalizeStackTraceLines(stackdata.asInstanceOf[js.Dynamic])
+  def extract(jsError: Any): Array[StackTraceElement] = {
+    val lines = normalizeStackTraceLines(jsError.asInstanceOf[js.Dynamic])
     normalizedLinesToStackTrace(lines)
   }
 
@@ -112,8 +105,7 @@ private[lang] object StackTrace {
   private def normalizedLinesToStackTrace(
       lines: js.Array[String]): Array[StackTraceElement] = {
 
-    val NormalizedFrameLine = """^([^\@]*)\@(.*):([0-9]+)$""".re
-    val NormalizedFrameLineWithColumn = """^([^\@]*)\@(.*):([0-9]+):([0-9]+)$""".re
+    val NormalizedFrameLine = """^([^@]*)@(.*?):([0-9]+)(?::([0-9]+))?$""".re
 
     @inline def parseInt(s: String): Int =
       js.Dynamic.global.parseInt(s).asInstanceOf[Int]
@@ -123,27 +115,18 @@ private[lang] object StackTrace {
     while (i < lines.length) {
       val line = lines(i)
       if (!line.isEmpty) {
-        val mtch1 = NormalizedFrameLineWithColumn.exec(line)
-        if (mtch1 ne null) {
+        val mtch = NormalizedFrameLine.exec(line)
+        if (mtch ne null) {
           val classAndMethodName =
-            extractClassMethod(undefOrForceGet(mtch1(1)))
-          val elem = new StackTraceElement(classAndMethodName(0),
-              classAndMethodName(1), undefOrForceGet(mtch1(2)),
-              parseInt(undefOrForceGet(mtch1(3))))
-          elem.setColumnNumber(parseInt(undefOrForceGet(mtch1(4))))
-          trace.push(elem)
+            extractClassMethod(undefOrForceGet(mtch(1)))
+          trace.push(new StackTraceElement(classAndMethodName(0),
+              classAndMethodName(1), undefOrForceGet(mtch(2)),
+              parseInt(undefOrForceGet(mtch(3))),
+              undefOrFold(mtch(4))(-1)(parseInt(_))))
         } else {
-          val mtch2 = NormalizedFrameLine.exec(line)
-          if (mtch2 ne null) {
-            val classAndMethodName =
-              extractClassMethod(undefOrForceGet(mtch2(1)))
-            trace.push(new StackTraceElement(classAndMethodName(0),
-                classAndMethodName(1), undefOrForceGet(mtch2(2)),
-                parseInt(undefOrForceGet(mtch2(3)))))
-          } else {
-            // just in case
-            trace.push(new StackTraceElement("<jscode>", line, null, -1))
-          }
+          // just in case
+          // (explicitly use the constructor with column number so that STE has an inlineable init)
+          trace.push(new StackTraceElement("<jscode>", line, null, -1, -1))
         }
       }
       i += 1
