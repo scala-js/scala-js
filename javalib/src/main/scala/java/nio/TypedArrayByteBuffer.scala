@@ -226,12 +226,6 @@ private[nio] object TypedArrayByteBuffer {
     new TypedArrayByteBuffer(new Int8Array(capacity), 0, capacity, false)
   }
 
-  def wrapArrayBuffer(array: ArrayBuffer): ByteBuffer =
-    wrapInt8Array(new Int8Array(array))
-
-  def wrapArrayBuffer(array: ArrayBuffer, byteOffset: Int, length: Int): ByteBuffer =
-    wrapInt8Array(new Int8Array(array, byteOffset, length))
-
   def wrapInt8Array(typedArray: Int8Array): ByteBuffer = {
     val buf = new TypedArrayByteBuffer(typedArray, 0, typedArray.length, false)
     buf._isBigEndian = ByteOrder.areTypedArraysBigEndian

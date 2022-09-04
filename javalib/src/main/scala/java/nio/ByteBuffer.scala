@@ -31,12 +31,6 @@ object ByteBuffer {
 
   // Extended API
 
-  def wrapArrayBuffer(array: ArrayBuffer): ByteBuffer =
-    TypedArrayByteBuffer.wrapArrayBuffer(array)
-
-  def wrapArrayBuffer(array: ArrayBuffer, byteOffset: Int, length: Int): ByteBuffer =
-    TypedArrayByteBuffer.wrapArrayBuffer(array, byteOffset, length)
-
   def wrapInt8Array(array: Int8Array): ByteBuffer =
     TypedArrayByteBuffer.wrapInt8Array(array)
 }

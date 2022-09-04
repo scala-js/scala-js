@@ -22,13 +22,25 @@ import java.nio._
  *  the native byte order of the platform.
  */
 object TypedArrayBuffer {
-  /** Wraps an [[ArrayBuffer]] in a direct [[java.nio.ByteBuffer ByteBuffer]]. */
-  def wrap(array: ArrayBuffer): ByteBuffer =
-    TypedArrayBufferBridge.wrapArrayBuffer(array)
+  /** Wraps an [[ArrayBuffer]] in a direct [[java.nio.ByteBuffer ByteBuffer]].
+   *
+   *  Equivalent to
+   *  {{{
+   *  TypedArrayBuffer.wrap(new Int8Array(buffer))
+   *  }}}
+   */
+  def wrap(buffer: ArrayBuffer): ByteBuffer =
+    wrap(new Int8Array(buffer))
 
-  /** Wraps an [[ArrayBuffer]] in a direct [[java.nio.ByteBuffer ByteBuffer]]. */
-  def wrap(array: ArrayBuffer, byteOffset: Int, length: Int): ByteBuffer =
-    TypedArrayBufferBridge.wrapArrayBuffer(array, byteOffset, length)
+  /** Wraps a view of an [[ArrayBuffer]] in a direct [[java.nio.ByteBuffer ByteBuffer]].
+   *
+   *  Equivalent to
+   *  {{{
+   *  TypedArrayBuffer.wrap(new Int8Array(buffer, byteOffset, length))
+   *  }}}
+   */
+  def wrap(buffer: ArrayBuffer, byteOffset: Int, length: Int): ByteBuffer =
+    wrap(new Int8Array(buffer, byteOffset, length))
 
   /** Wraps an [[Int8Array]] in a direct [[java.nio.ByteBuffer ByteBuffer]]. */
   def wrap(array: Int8Array): ByteBuffer =

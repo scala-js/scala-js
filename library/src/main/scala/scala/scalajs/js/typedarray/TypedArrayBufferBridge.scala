@@ -41,10 +41,6 @@ package scala.scalajs.js.typedarray
 import java.nio._
 
 private[typedarray] object TypedArrayBufferBridge {
-  def wrapArrayBuffer(array: Any): ByteBuffer = stub()
-
-  def wrapArrayBuffer(array: Any, byteOffset: Int, length: Int): ByteBuffer = stub()
-
   def wrapInt8Array(array: Any): ByteBuffer = stub()
 
   def wrapUint16Array(array: Any): CharBuffer = stub()
