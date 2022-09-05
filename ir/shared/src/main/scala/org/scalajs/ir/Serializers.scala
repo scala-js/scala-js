@@ -1000,6 +1000,8 @@ object Serializers {
 
     private[this] var lastPosition: Position = Position.NoPosition
 
+    private[this] var thisTypeForHack8: Type = NoType
+
     def deserializeEntryPointsInfo(): EntryPointsInfo = {
       hacks = new Hacks(sourceVersion = readHeader())
       readEntryPointsInfo()
@@ -1224,13 +1226,32 @@ object Serializers {
 
         case TagVarRef =>
           VarRef(readLocalIdent())(readType())
+
         case TagThis =>
-          This()(readType())
+          val tpe = readType()
+          if (hacks.use8)
+            This()(thisTypeForHack8)
+          else
+            This()(tpe)
+
         case TagClosure =>
           val arrow = readBoolean()
           val captureParams = readParamDefs()
           val (params, restParam) = readParamDefsWithRest()
-          Closure(arrow, captureParams, params, restParam, readTree(), readTrees())
+          val body = if (!hacks.use8) {
+            readTree()
+          } else {
+            val prevThisTypeForHack8 = thisTypeForHack8
+            thisTypeForHack8 = if (arrow) NoType else AnyType
+            try {
+              readTree()
+            } finally {
+              thisTypeForHack8 = prevThisTypeForHack8
+            }
+          }
+          val captureValues = readTrees()
+          Closure(arrow, captureParams, params, restParam, body, captureValues)
+
         case TagCreateJSClass =>
           CreateJSClass(readClassName(), readTrees())
       }
@@ -1319,8 +1340,21 @@ object Serializers {
     def readClassDef(): ClassDef = {
       implicit val pos = readPosition()
       val name = readClassIdent()
+      val cls = name.name
       val originalName = readOriginalName()
       val kind = ClassKind.fromByte(readByte())
+
+      if (hacks.use8) {
+        thisTypeForHack8 = {
+          if (kind.isJSType)
+            AnyType
+          else if (kind == ClassKind.HijackedClass)
+            BoxedClassToPrimType.getOrElse(cls, ClassType(cls)) // getOrElse as safety guard
+          else
+            ClassType(cls)
+        }
+      }
+
       val hasJSClassCaptures = readBoolean()
       val jsClassCaptures =
         if (!hasJSClassCaptures) None
@@ -1335,8 +1369,8 @@ object Serializers {
       val jsSuperClass = readOptTree()
 
       val jsNativeLoadSpec = readJSNativeLoadSpec()
-      val memberDefs0 = readMemberDefs(name.name, kind)
-      val topLevelExportDefs = readTopLevelExportDefs(name.name, kind)
+      val memberDefs0 = readMemberDefs(cls, kind)
+      val topLevelExportDefs = readTopLevelExportDefs(cls, kind)
       val optimizerHints = OptimizerHints.fromBits(readInt())
 
       val memberDefs =

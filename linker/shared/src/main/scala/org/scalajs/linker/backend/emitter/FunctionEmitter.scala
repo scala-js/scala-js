@@ -2229,7 +2229,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                * not already a CharType, we must introduce a cast to unbox the
                * value.
                */
-              if (realTreeType(receiver) == CharType)
+              if (receiver.tpe == CharType)
                 transformExpr(receiver, preserveChar = true)
               else
                 transformExpr(AsInstanceOf(receiver, CharType), preserveChar = true)
@@ -2981,25 +2981,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               tree.getClass)
       }
 
-      if (preserveChar || realTreeType(tree) != CharType)
+      if (preserveChar || tree.tpe != CharType)
         baseResult
       else
         genCallHelper("bC", baseResult)
-    }
-
-    private def realTreeType(tree: Tree)(implicit env: Env): Type = {
-      val tpe = tree.tpe
-      tree match {
-        case This() if tpe.isInstanceOf[ClassType] =>
-          env.enclosingClassName match {
-            case Some(enclosingClassName) =>
-              BoxedClassToPrimType.getOrElse(enclosingClassName, ClassType(enclosingClassName))
-            case None =>
-              tpe
-          }
-        case _ =>
-          tpe
-      }
     }
 
     private def transformApplyDynamicImport(tree: ApplyDynamicImport)(

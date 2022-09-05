@@ -48,6 +48,17 @@ class ClassDefCheckerTest {
   }
 
   @Test
+  def hijackedClassesKinds(): Unit = {
+    assertError(
+        classDef(BoxedIntegerClass, kind = ClassKind.Class, superClass = Some(ObjectClass)),
+        "java.lang.Integer must be a HijackedClass")
+
+    assertError(
+        classDef("A", kind = ClassKind.HijackedClass, superClass = Some(ObjectClass)),
+        "A must not be a HijackedClass")
+  }
+
+  @Test
   def missingSuperClass(): Unit = {
     val kinds = Seq(
         ClassKind.Class,
@@ -60,8 +71,9 @@ class ClassDefCheckerTest {
     )
 
     for (kind <- kinds) {
+      val name = if (kind == ClassKind.HijackedClass) BoxedIntegerClass else ClassName("A")
       assertError(
-          classDef("A", kind = kind, memberDefs = requiredMemberDefs("A", kind)),
+          classDef(name, kind = kind, memberDefs = requiredMemberDefs(name, kind)),
           "missing superClass")
     }
   }
@@ -167,6 +179,62 @@ class ClassDefCheckerTest {
         classDef("A", kind = ClassKind.Interface, memberDefs = List(mainMethodDef(body))),
         "Duplicate local variable name x."
     )
+  }
+
+  @Test
+  def thisType(): Unit = {
+    def testThisTypeError(static: Boolean, expr: Tree, expectedMsg: String): Unit = {
+      val methodFlags =
+        if (static) EMF.withNamespace(MemberNamespace.PublicStatic)
+        else EMF
+
+      assertError(
+          classDef(
+            "Foo", superClass = Some(ObjectClass),
+            memberDefs = List(
+              MethodDef(methodFlags, m("bar", Nil, V), NON, Nil, NoType, Some({
+                consoleLog(expr)
+              }))(EOH, None)
+            )
+          ),
+          expectedMsg)
+    }
+
+    testThisTypeError(static = true,
+        This()(NoType),
+        "Cannot find `this` in scope")
+
+    testThisTypeError(static = true,
+        This()(ClassType("Foo")),
+        "Cannot find `this` in scope")
+
+    testThisTypeError(static = false,
+        This()(NoType),
+        "`this` of type Foo typed as <notype>")
+
+    testThisTypeError(static = false,
+        This()(AnyType),
+        "`this` of type Foo typed as any")
+
+    testThisTypeError(static = false,
+        This()(ClassType("Bar")),
+        "`this` of type Foo typed as Bar")
+
+    testThisTypeError(static = false,
+        Closure(arrow = true, Nil, Nil, None, This()(NoType), Nil),
+        "Cannot find `this` in scope")
+
+    testThisTypeError(static = false,
+        Closure(arrow = true, Nil, Nil, None, This()(AnyType), Nil),
+        "Cannot find `this` in scope")
+
+    testThisTypeError(static = false,
+        Closure(arrow = false, Nil, Nil, None, This()(NoType), Nil),
+        "`this` of type any typed as <notype>")
+
+    testThisTypeError(static = false,
+        Closure(arrow = false, Nil, Nil, None, This()(ClassType("Foo")), Nil),
+        "`this` of type any typed as Foo")
   }
 }
 

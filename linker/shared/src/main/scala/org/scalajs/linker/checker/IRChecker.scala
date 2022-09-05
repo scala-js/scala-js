@@ -126,15 +126,9 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
           i"The abstract method ${classDef.name.name}.$name survived the " +
           "Analyzer (this is a bug)")
     } { body =>
-      val thisType =
-        if (static) NoType
-        else thisTypeForScalaClass(classDef)
-
-      val inConstructorOf =
-        if (flags.namespace.isConstructor) Some(classDef.name.name)
-        else None
-
-      val bodyEnv = Env.fromSignature(thisType, inConstructorOf)
+      val bodyEnv =
+        if (flags.namespace.isConstructor) Env.forConstructorOf(classDef.name.name)
+        else Env.empty
 
       typecheckExpect(body, bodyEnv, resultType)
     }
@@ -147,12 +141,10 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
 
     // JS constructors only get a valid `this` after the super call.
 
-    val beforeSuperEnv = Env.fromSignature(thisType = NoType, inConstructorOf = Some(clazz.name.name))
-    body.beforeSuper.foreach(typecheck(_, beforeSuperEnv))
-    body.superCall.args.foreach(typecheckExprOrSpread(_, beforeSuperEnv))
-
-    val afterSuperEnv = beforeSuperEnv.withThis(AnyType)
-    body.afterSuper.foreach(typecheck(_, afterSuperEnv))
+    val bodyEnv = Env.forConstructorOf(clazz.name.name)
+    body.beforeSuper.foreach(typecheck(_, bodyEnv))
+    body.superCall.args.foreach(typecheckExprOrSpread(_, bodyEnv))
+    body.afterSuper.foreach(typecheck(_, bodyEnv))
 
     val resultType = body.afterSuper.lastOption.fold[Type](NoType)(_.tpe)
     if (resultType == NoType)
@@ -168,14 +160,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
 
     typecheckExpr(pName, Env.empty)
 
-    val thisType = {
-      if (static) NoType
-      else if (clazz.kind.isJSClass) AnyType
-      else thisTypeForScalaClass(clazz)
-    }
-
-    val bodyEnv = Env.fromSignature(thisType)
-    typecheckExpect(body, bodyEnv, AnyType)
+    typecheckExpect(body, Env.empty, AnyType)
   }
 
   private def checkJSPropertyDef(propDef: JSPropertyDef,
@@ -185,23 +170,12 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
 
     typecheckExpr(pName, Env.empty)
 
-    val thisType =
-      if (flags.namespace.isStatic) NoType
-      else if (clazz.kind.isJSClass) AnyType
-      else thisTypeForScalaClass(clazz)
-
-    val env = Env.fromSignature(thisType)
-
-    getterBody.foreach(typecheckExpr(_, env))
+    getterBody.foreach(typecheckExpr(_, Env.empty))
 
     setterArgAndBody.foreach { case (_, body) =>
-      typecheck(body, env)
+      typecheck(body, Env.empty)
     }
   }
-
-  private def thisTypeForScalaClass(clazz: LinkedClass): Type =
-    if (clazz.kind == ClassKind.HijackedClass) BoxedClassToPrimType(clazz.name.name)
-    else ClassType(clazz.name.name)
 
   private def typecheckExpect(tree: Tree, env: Env, expectedType: Type)(
       implicit ctx: ErrorContext): Unit = {
@@ -690,8 +664,6 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
       case _: VarRef =>
 
       case This() =>
-        if (!isSubtype(env.thisTpe, tree.tpe))
-          reportError(i"this of type ${env.thisTpe} typed as ${tree.tpe}")
 
       case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
         assert(captureParams.size == captureValues.size) // checked by ClassDefChecker
@@ -702,9 +674,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         }
 
         // Then check the closure params and body in its own env
-        val thisType = if (arrow) NoType else AnyType
-        val bodyEnv = Env.fromSignature(thisType)
-        typecheckExpect(body, bodyEnv, AnyType)
+        typecheckExpect(body, Env.empty, AnyType)
 
       case CreateJSClass(className, captureValues) =>
         val clazz = lookupClass(className)
@@ -813,8 +783,6 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
   }
 
   private class Env(
-      /** Type of `this`. Can be NoType. */
-      val thisTpe: Type,
       /** Return types by label. */
       val returnTypes: Map[LabelName, Type],
       /** Whether we're in a constructor of the class */
@@ -822,19 +790,15 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
   ) {
     import Env._
 
-    def withThis(thisTpe: Type): Env =
-      new Env(thisTpe, this.returnTypes, this.inConstructorOf)
-
     def withLabeledReturnType(label: LabelName, returnType: Type): Env =
-      new Env(this.thisTpe, returnTypes + (label -> returnType), this.inConstructorOf)
+      new Env(returnTypes + (label -> returnType), this.inConstructorOf)
   }
 
   private object Env {
-    val empty: Env = new Env(NoType, Map.empty, None)
+    val empty: Env = new Env(Map.empty, None)
 
-    def fromSignature(thisType: Type, inConstructorOf: Option[ClassName] = None): Env = {
-      new Env(thisType, Map.empty, inConstructorOf)
-    }
+    def forConstructorOf(className: ClassName): Env =
+      new Env(Map.empty, inConstructorOf = Some(className))
   }
 
   private class CheckedClass(
