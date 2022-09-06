@@ -201,7 +201,7 @@ class FloatTest {
 
     // the limit between MaxValue and PositiveInfinity
     test(Float.MaxValue, "0x1.fffffefp127")
-    //test(Float.MaxValue, "0x1.fffffeffffffffffffffffffffffffffp127")
+    test(Float.MaxValue, "0x1.fffffeffffffffffffffffffffffffffp127")
     test(Float.PositiveInfinity, "0x1.ffffff00000000000000p127")
     test(Float.PositiveInfinity, "0x1.ffffff00000000000001p127")
 
