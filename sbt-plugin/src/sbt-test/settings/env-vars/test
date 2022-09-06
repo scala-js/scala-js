@@ -1,0 +1,6 @@
+> show jvmReference/Compile/run/envVars
+> jvmReference/run
+> show jvmReference/Test/envVars
+> jvmReference/test
+> jsTests/run
+> jsTests/test

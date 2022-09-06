@@ -20,7 +20,7 @@ import org.scalajs.testing.common._
 
 /** RPC Core for use with a [[JSEnv]]. */
 private[adapter] final class JSEnvRPC(
-    jsenv: JSEnv, input: Seq[Input], logger: Logger)(
+    jsenv: JSEnv, input: Seq[Input], logger: Logger, env: Map[String, String])(
     implicit ec: ExecutionContext) extends RPCCore {
 
   private val run: JSComRun = {
@@ -35,6 +35,7 @@ private[adapter] final class JSEnvRPC(
      */
     val runConfig = RunConfig()
       .withLogger(logger)
+      .withEnv(env)
       .withInheritOut(false)
       .withInheritErr(false)
       .withOnOutputStream { (out, err) =>

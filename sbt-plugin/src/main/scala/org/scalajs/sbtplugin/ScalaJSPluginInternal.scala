@@ -593,6 +593,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
          */
         val config = RunConfig()
           .withLogger(sbtLogger2ToolsLogger(log))
+          .withEnv((envVars in run).value)
           .withInheritOut(false)
           .withInheritErr(false)
           .withOnOutputStream { (out, err) =>
@@ -696,6 +697,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         val log = streams.value.log
         val config = TestAdapter.Config()
           .withLogger(sbtLogger2ToolsLogger(log))
+          .withEnv(envVars.value)
 
         val adapter = newTestAdapter(env, input, config)
         val frameworkAdapters = enhanceNotInstalledException(resolvedScoped.value, log) {
