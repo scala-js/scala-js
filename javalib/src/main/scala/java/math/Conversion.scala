@@ -282,37 +282,4 @@ private[math] object Conversion {
       else result
     }
   }
-
-  def bigInteger2Double(bi: BigInteger): Double = {
-    if (bi.numberLength < 2 || ((bi.numberLength == 2) && (bi.digits(1) > 0))) {
-      bi.longValue().toDouble
-    } else if (bi.numberLength > 32) {
-      if (bi.sign > 0) Double.PositiveInfinity
-      else Double.NegativeInfinity
-    } else {
-      val bitLen = bi.abs().bitLength()
-      var exponent: Long = bitLen - 1
-      val delta = bitLen - 54
-      val lVal = bi.abs().shiftRight(delta).longValue()
-      var mantissa = lVal & 0x1FFFFFFFFFFFFFL
-
-      if (exponent == 1023 && mantissa == 0X1FFFFFFFFFFFFFL) {
-        if (bi.sign > 0) Double.PositiveInfinity
-        else Double.NegativeInfinity
-      } else if (exponent == 1023 && mantissa == 0x1FFFFFFFFFFFFEL) {
-        if (bi.sign > 0) Double.MaxValue
-        else -Double.MaxValue
-      } else {
-        val droppedBits = BitLevel.nonZeroDroppedBits(delta, bi.digits)
-        if (((mantissa & 1) == 1) && (((mantissa & 2) == 2) || droppedBits))
-          mantissa += 2
-
-        mantissa >>= 1
-        val resSign = if (bi.sign < 0) 0x8000000000000000L else 0
-        exponent = ((1023 + exponent) << 52) & 0x7FF0000000000000L
-        val result = resSign | exponent | mantissa
-        java.lang.Double.longBitsToDouble(result)
-      }
-    }
-  }
 }
