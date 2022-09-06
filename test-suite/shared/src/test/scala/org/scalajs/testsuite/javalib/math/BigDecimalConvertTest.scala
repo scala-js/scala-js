@@ -23,8 +23,10 @@ import java.math._
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+import org.scalajs.testsuite.utils.Platform._
 
 class BigDecimalConvertTest {
 
@@ -71,6 +73,8 @@ class BigDecimalConvertTest {
   }
 
   @Test def testFloatValueNegInfinity(): Unit = {
+    assumeTrue("requires accurate floats", hasAccurateFloats)
+
     val a = "-123809648392384755735.63567887678287E+200"
     val aNumber = new BigDecimal(a)
     val result =  Float.NegativeInfinity
@@ -85,10 +89,79 @@ class BigDecimalConvertTest {
   }
 
   @Test def testFloatValuePosInfinity(): Unit = {
+    assumeTrue("requires accurate floats", hasAccurateFloats)
+
     val a = "123809648373567356745735.6356789787678287E+200"
     val aNumber = new BigDecimal(a)
     val result =  Float.PositiveInfinity
     assertTrue(aNumber.floatValue() == result)
+  }
+
+  /** Test cases for `Float.parseFloat`, with an indirection through `BigDecimal`. */
+  @Test def testFloatValueLikeParseFloat_Issue4726(): Unit = {
+    def test(expected: Float, s: String): Unit = {
+      if (hasAccurateFloats) {
+        assertEquals(s, expected: Any, new BigDecimal(s).floatValue())
+      } else {
+        val epsilon = Math.ulp(expected)
+        assertEquals(s, expected, new BigDecimal(s).floatValue(), epsilon)
+      }
+    }
+
+    // Zeros (BigDecimal has no negative 0, so they all parse to +0.0f)
+
+    test(+0.0f, "0")
+    test(+0.0f, "0.0")
+    test(+0.0f, "-0.0")
+    test(+0.0f, "0.e5")
+
+    // Regular values
+
+    test(5.3f, "5.3")
+    test(12700.0f, "127e2")
+    test(1.27f, "127E-2")
+    test(10f, "1E+1")
+    test(-123.4f, "-123.4")
+    test(65432.10f, "65432.1")
+    test(-87654.321f, "-87654.321")
+    test(0.3f, "+.3")
+
+    // Corner cases that require the BigInteger arithmetics code paths
+
+    test(1.1999999f, "1.199999988079071") // from the bug report
+
+    // k >= 0, e >= 0, f*10^e < m*2^k
+    test(1.72544037e18f, "1725440439005216752")
+    test(1.72544037e18f, "1725440439005216767")
+
+    // k >= 0, e >= 0, f*10^e = m*2^k, even is upwards
+    test(1.72544051e18f, "1725440439005216768")
+
+    // k >= 0, e >= 0, f*10^e > m*2^k
+    test(1.72544051e18f, "1725440439005216775")
+
+    // k >= 0, e >= 0, f*10^e = m*2^k, even is downwards
+    test(1.72544051e18f, "1725440576444170240")
+    test(1.72544051e18f, "172544057644417024e1")
+
+    // k >= 0, e < 0, f*10^e < m*2^k
+    test(1.72544037e18f, "172544043900521676700000e-5")
+
+    // k < 0, e < 0, f*10^e < m*2^k
+    test(1.7254404e-18f, "1.725440493251219023E-18")
+
+    /* Attempt at k < 0, e >= 0, f*10^e < m*2^k, but e is adjusted downwards to
+     * compensate the number of digits after the '.', so it ends up being
+     * negative anyway. I am not sure we can craft an example that would
+     * actually use that code path.
+     */
+    test(1.7254404e-18f, "0.00000000000000000000001725440493251219023e5")
+
+    // the limit between MaxValue and PositiveInfinity
+    test(Float.MaxValue, "3.4028235677973366e38")
+    test(Float.MaxValue, "3.4028235677973366163e38")
+    test(Float.PositiveInfinity, "3.4028235677973366164e38")
+    test(Float.PositiveInfinity, "3.4028235677973367e38")
   }
 
   @Test def testIntValueNeg(): Unit = {
