@@ -25,6 +25,8 @@ object BinaryIncompatibilities {
   )
 
   val TestAdapter = Seq(
+    // private[adapter], not an issue
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.testing.adapter.JSEnvRPC.this"),
   )
 
   val Library = Seq(

@@ -1011,8 +1011,8 @@ object Build {
       libraryDependencies ++= Seq(
           "com.google.javascript" % "closure-compiler" % "v20220202",
           "com.google.jimfs" % "jimfs" % "1.1" % "test",
-          "org.scala-js" %% "scalajs-env-nodejs" % "1.3.0" % "test",
-          "org.scala-js" %% "scalajs-js-envs-test-kit" % "1.3.0" % "test"
+          "org.scala-js" %% "scalajs-env-nodejs" % "1.4.0" % "test",
+          "org.scala-js" %% "scalajs-js-envs-test-kit" % "1.4.0" % "test"
       ) ++ (
           parallelCollectionsDependencies(scalaVersion.value)
       ),
@@ -1084,7 +1084,7 @@ object Build {
       name := "Scala.js sbt test adapter",
       libraryDependencies ++= Seq(
           "org.scala-sbt" % "test-interface" % "1.0",
-          "org.scala-js" %% "scalajs-js-envs" % "1.3.0",
+          "org.scala-js" %% "scalajs-js-envs" % "1.4.0",
           "com.google.jimfs" % "jimfs" % "1.1" % "test",
       ),
       libraryDependencies ++= JUnitDeps,
@@ -1113,8 +1113,8 @@ object Build {
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.SbtPlugin,
 
       addSbtPlugin("org.portable-scala" % "sbt-platform-deps" % "1.0.1"),
-      libraryDependencies += "org.scala-js" %% "scalajs-js-envs" % "1.3.0",
-      libraryDependencies += "org.scala-js" %% "scalajs-env-nodejs" % "1.3.0",
+      libraryDependencies += "org.scala-js" %% "scalajs-js-envs" % "1.4.0",
+      libraryDependencies += "org.scala-js" %% "scalajs-env-nodejs" % "1.4.0",
 
       scriptedLaunchOpts += "-Dplugin.version=" + version.value,
 
@@ -2270,7 +2270,7 @@ object Build {
 
       resolvers += Resolver.typesafeIvyRepo("releases"),
 
-      libraryDependencies += "org.scala-js" %% "scalajs-env-nodejs" % "1.3.0",
+      libraryDependencies += "org.scala-js" %% "scalajs-env-nodejs" % "1.4.0",
 
       artifactPath in fetchScalaSource :=
         baseDirectory.value.getParentFile / "fetchedSources" / scalaVersion.value,

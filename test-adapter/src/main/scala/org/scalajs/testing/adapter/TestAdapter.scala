@@ -125,7 +125,7 @@ final class TestAdapter(jsEnv: JSEnv, input: Seq[Input], config: TestAdapter.Con
     // Otherwise we might leak runners.
     require(!closed, "We are closed. Cannot create new runner.")
 
-    val com = new JSEnvRPC(jsEnv, input, config.logger)
+    val com = new JSEnvRPC(jsEnv, input, config.logger, config.env)
     val mux = new RunMuxRPC(com)
 
     new ManagedRunner(threadId, com, mux)
@@ -134,21 +134,27 @@ final class TestAdapter(jsEnv: JSEnv, input: Seq[Input], config: TestAdapter.Con
 
 object TestAdapter {
   final class Config private (
-      val logger: Logger
+      val logger: Logger,
+      val env: Map[String, String]
   ) {
     private def this() = {
       this(
-          logger = NullLogger
+          logger = NullLogger,
+          env = Map.empty
       )
     }
 
     def withLogger(logger: Logger): Config =
       copy(logger = logger)
 
+    def withEnv(env: Map[String, String]): Config =
+      copy(env = env)
+
     private def copy(
-        logger: Logger = logger
+        logger: Logger = logger,
+        env: Map[String, String] = env
     ): Config = {
-      new Config(logger)
+      new Config(logger, env)
     }
   }
 
