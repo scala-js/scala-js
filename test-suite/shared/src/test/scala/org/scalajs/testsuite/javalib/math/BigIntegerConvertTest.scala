@@ -21,7 +21,7 @@ package org.scalajs.testsuite.javalib.math
 
 import java.math.BigInteger
 
-import org.junit.{Test, Ignore}
+import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
@@ -253,14 +253,18 @@ class BigIntegerConvertTest {
     assertEquals(Float.NegativeInfinity, aNumber, 0.0f)
   }
 
-  @Ignore @Test def testFloatValueNegativeInfinity2(): Unit = {
+  @Test def testFloatValueNegativeInfinity2(): Unit = {
+    assumeTrue("requires accurate floats", hasAccurateFloats)
+
     val a = Array[Byte](0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1)
     val aSign = -1
     val aNumber = new BigInteger(aSign, a).floatValue()
     assertEquals(Float.NegativeInfinity, aNumber, 0.0f)
   }
 
-  @Ignore @Test def testFloatValueNegMantissaIsZero(): Unit = {
+  @Test def testFloatValueNegMantissaIsZero(): Unit = {
+    assumeTrue("requires accurate floats", hasAccurateFloats)
+
     val a = Array[Byte](1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
     val aSign = -1
     val aNumber = new BigInteger(aSign, a).floatValue()
@@ -294,14 +298,18 @@ class BigIntegerConvertTest {
     assertTrue(aNumber - result < delta)
   }
 
-  @Ignore @Test def testFloatValuePastNegMaxValue(): Unit = {
+  @Test def testFloatValuePastNegMaxValue(): Unit = {
+    assumeTrue("requires accurate floats", hasAccurateFloats)
+
     val a = Array[Byte](0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1)
     val aSign = -1
     val aNumber = new BigInteger(aSign, a).floatValue()
     assertEquals(Float.NegativeInfinity, aNumber, 0.0f)
   }
 
-  @Ignore @Test def testFloatValuePastPosMaxValue(): Unit = {
+  @Test def testFloatValuePastPosMaxValue(): Unit = {
+    assumeTrue("requires accurate floats", hasAccurateFloats)
+
     val a = Array[Byte](0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1)
     val aSign = 1
     val aNumber = new BigInteger(aSign, a).floatValue()
@@ -323,7 +331,9 @@ class BigIntegerConvertTest {
     assertTrue(aNumber - result < delta)
   }
 
-  @Ignore @Test def testFloatValuePositiveInfinity1(): Unit = {
+  @Test def testFloatValuePositiveInfinity1(): Unit = {
+    assumeTrue("requires accurate floats", hasAccurateFloats)
+
     val a = Array[Byte](0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1)
     val aSign = 1
     val aNumber: Float = new BigInteger(aSign, a).floatValue()

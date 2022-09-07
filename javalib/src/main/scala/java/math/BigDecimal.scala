@@ -1509,116 +1509,14 @@ class BigDecimal() extends Number with Comparable[BigDecimal] {
 
   def byteValueExact(): Byte = valueExact(8).toByte
 
-  override def floatValue(): Float = {
-    /* A similar code like in doubleValue() could be repeated here,
-     * but this simple implementation is quite efficient. */
-    val powerOfTwo = this._bitLength - (_scale / Log2).toLong
-    val floatResult0: Float = signum().toFloat
-    val floatResult: Float = {
-      if (powerOfTwo < -149 || floatResult0 == 0.0f) // 'this' is very small
-        floatResult0 * 0.0f
-      else if (powerOfTwo > 129) // 'this' is very large
-        floatResult0 * Float.PositiveInfinity
-      else
-        doubleValue().toFloat
-    }
-    floatResult
-  }
+  @noinline override def floatValue(): Float =
+    java.lang.Float.parseFloat(toStringForFloatingPointValue())
 
-  override def doubleValue(): Double = {
-    val sign = signum()
-    val powerOfTwo = this._bitLength - (_scale / Log2).toLong
+  @noinline override def doubleValue(): Double =
+    java.lang.Double.parseDouble(toStringForFloatingPointValue())
 
-    if (powerOfTwo < -1074 || sign == 0) {
-      // Cases which 'this' is very small
-      sign * 0.0d
-    } else if (powerOfTwo > 1025) {
-      // Cases which 'this' is very large
-      sign * Double.PositiveInfinity
-    } else {
-      val mantissa0 = getUnscaledValue.abs()
-      var exponent = 1076  // bias + 53
-
-      val mantissa = {
-        if (_scale <= 0) {
-          mantissa0.multiply(powerOf10(-_scale))
-        } else {
-          val powerOfTen: BigInteger = powerOf10(_scale)
-          val k = 100 - powerOfTwo.toInt
-          val m = {
-            if (k > 0) {
-              /* Computing (mantissa * 2^k) , where 'k' is a enough big
-               * power of '2' to can divide by 10^s */
-              exponent -= k
-              mantissa0.shiftLeft(k)
-            } else {
-              mantissa0
-            }
-          }
-          // Computing (mantissa * 2^k) / 10^s
-          val qr = m.divideAndRemainderImpl(powerOfTen)
-          // To check if the fractional part >= 0.5
-          val compRem = qr.rem.shiftLeftOneBit().compareTo(powerOfTen)
-          // To add two rounded bits at end of mantissa
-          exponent -= 2
-          qr.quot.shiftLeft(2).add(BigInteger.valueOf((compRem * (compRem + 3)) / 2 + 1))
-        }
-      }
-
-      val lowestSetBit = mantissa.getLowestSetBit()
-      val discardedSize = mantissa.bitLength() - 54
-      var bits: Long = 0L // IEEE-754 Standard
-      var tempBits: Long = 0L // for temporal calculations
-      if (discardedSize > 0) { // (#bits > 54)
-        bits = mantissa.shiftRight(discardedSize).longValue()
-        tempBits = bits
-        if (((bits & 1) == 1 && lowestSetBit < discardedSize) || (bits & 3) == 3)
-          bits += 2
-      } else { // (#bits <= 54)
-        bits = mantissa.longValue() << -discardedSize
-        tempBits = bits
-        if ((bits & 3) == 3)
-          bits += 2
-      }
-      // Testing bit 54 to check if the carry creates a new binary digit
-      if ((bits & 0x40000000000000L) == 0) {
-        // To drop the last bit of mantissa (first discarded)
-        bits >>= 1
-        exponent += discardedSize
-      } else {
-        // #bits = 54
-        bits >>= 2
-        exponent += (discardedSize + 1)
-      }
-      // To test if the 53-bits number fits in 'double'
-      if (exponent > 2046) {
-        // (exponent - bias > 1023)
-        sign * Double.PositiveInfinity
-      } else if (exponent < -53) {
-        sign * 0.0d
-      } else {
-        if (exponent <= 0) {
-          bits = tempBits >> 1
-          tempBits = bits & (-1L >>> (63 + exponent))
-          bits >>= (-exponent)
-          // To test if after discard bits, a new carry is generated
-          if (((bits & 3) == 3) ||
-              (((bits & 1) == 1) && (tempBits != 0) && (lowestSetBit < discardedSize))) {
-            bits += 1
-          }
-          exponent = 0
-          bits >>= 1
-        }
-
-        // Construct the 64 double bits: [sign(1), exponent(11), mantissa(52)]
-        val resultBits =
-          (sign & 0x8000000000000000L) |
-          (exponent.toLong << 52)      |
-          (bits & 0xFFFFFFFFFFFFFL)
-        java.lang.Double.longBitsToDouble(resultBits)
-      }
-    }
-  }
+  @inline private def toStringForFloatingPointValue(): String =
+    s"${unscaledValue()}e${-scale()}"
 
   def ulp(): BigDecimal = valueOf(1, _scale)
 
