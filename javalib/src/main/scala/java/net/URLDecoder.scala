@@ -21,15 +21,15 @@ import java.nio.charset.{Charset, CharsetDecoder}
 object URLDecoder {
 
   @Deprecated
-  def decode(s: String): String = decodeImpl(s, Charset.defaultCharset())
+  def decode(s: String): String = decode(s, Charset.defaultCharset())
 
   def decode(s: String, enc: String): String = {
     if (!Charset.isSupported(enc))
       throw new UnsupportedEncodingException(enc)
-    decodeImpl(s, Charset.forName(enc))
+    decode(s, Charset.forName(enc))
   }
 
-  private def decodeImpl(s: String, charset: Charset): String = {
+  def decode(s: String, charset: Charset): String = {
     val len = s.length
     val charBuffer = CharBuffer.allocate(len)
 
