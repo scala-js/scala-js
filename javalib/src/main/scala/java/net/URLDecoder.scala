@@ -21,21 +21,15 @@ import java.nio.charset.{Charset, CharsetDecoder}
 object URLDecoder {
 
   @Deprecated
-  def decode(s: String): String = decodeImpl(s, () => Charset.defaultCharset())
+  def decode(s: String): String = decodeImpl(s, Charset.defaultCharset())
 
   def decode(s: String, enc: String): String = {
-    decodeImpl(s, { () =>
-      /* An exception is thrown only if the
-       * character encoding needs to be consulted
-       */
-      if (!Charset.isSupported(enc))
-        throw new UnsupportedEncodingException(enc)
-      else
-        Charset.forName(enc)
-    })
+    if (!Charset.isSupported(enc))
+      throw new UnsupportedEncodingException(enc)
+    decodeImpl(s, Charset.forName(enc))
   }
 
-  private def decodeImpl(s: String, getCharset: js.Function0[Charset]): String = {
+  private def decodeImpl(s: String, charset: Charset): String = {
     val len = s.length
     val charBuffer = CharBuffer.allocate(len)
 
@@ -60,7 +54,7 @@ object URLDecoder {
 
         case '%' =>
           if (decoder == null) { // equivalent to `byteBuffer == null`
-            decoder = getCharset().newDecoder()
+            decoder = charset.newDecoder()
             byteBuffer = ByteBuffer.allocate(len / 3)
           } else {
             byteBuffer.clear()

@@ -16,7 +16,7 @@ import org.junit.Test
 import org.junit.Assert._
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
-import org.scalajs.testsuite.utils.Platform.executingInJVM
+import org.scalajs.testsuite.utils.Platform._
 
 import java.net.URLDecoder
 import java.io.UnsupportedEncodingException
@@ -77,12 +77,17 @@ class URLDecoderTest {
     // invalid encoding
     unsupportedEncoding("2a%20b%20c", enc = "dummy")
 
-    // doesn't throw when charset is not needed (not respected by JDK 11)
-    try {
-      test("a+b+c", "a b c", enc = "dummy")
-    } catch {
-      case th: UnsupportedEncodingException if executingInJVM =>
-        () // ok
+    /* Throw even if the charset is not needed.
+     * Despite what the documentation says, `decode` eagerly throws when the
+     * charset is not supported. This behavior started in JDK 10, when they
+     * added the overload of `decode` taking a `Charset`. With that addition,
+     * maintaining the lazy behavior would probably have required duplicating
+     * the implementation. So in all likelihood, it will not be coming back.
+     * It is still throwing as of JDK 17.
+     */
+    if (!executingInJVMOnLowerThanJDK10) {
+      unsupportedEncoding("abc", enc = "dummy")
+      unsupportedEncoding("a+b+c", enc = "dummy")
     }
 
     // other charsets

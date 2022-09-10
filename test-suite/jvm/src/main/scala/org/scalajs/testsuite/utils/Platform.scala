@@ -24,6 +24,8 @@ object Platform {
 
   def executingInJVMOnJDK8OrLower: Boolean = jdkVersion <= 8
 
+  def executingInJVMOnLowerThanJDK10: Boolean = jdkVersion < 10
+
   def executingInJVMOnLowerThanJDK13: Boolean = jdkVersion < 13
 
   def executingInJVMOnLowerThanJDK15: Boolean = jdkVersion < 15
