@@ -18,6 +18,9 @@ private[java] object ScalaOps {
   implicit class IntScalaOps private[ScalaOps] (val __self: Int) extends AnyVal {
     @inline def until(end: Int): SimpleRange =
       new SimpleRange(__self, end)
+
+    @inline def to(end: Int): SimpleInclusiveRange =
+      new SimpleInclusiveRange(__self, end)
   }
 
   @inline
@@ -26,6 +29,18 @@ private[java] object ScalaOps {
     def foreach[U](f: Int => U): Unit = {
       var i = start
       while (i < end) {
+        f(i)
+        i += 1
+      }
+    }
+  }
+
+  @inline
+  final class SimpleInclusiveRange(start: Int, end: Int) {
+    @inline
+    def foreach[U](f: Int => U): Unit = {
+      var i = start
+      while (i <= end) {
         f(i)
         i += 1
       }

@@ -26,6 +26,8 @@ object Platform {
 
   final val executingInJVMOnJDK8OrLower = false
 
+  final val executingInJVMOnLowerThanJDK10 = false
+
   final val executingInJVMOnLowerThanJDK13 = false
 
   final val executingInJVMOnLowerThanJDK15 = false
