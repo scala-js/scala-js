@@ -171,6 +171,7 @@ def Tasks = [
     sbtretry ++$scala headerCheck &&
     sbtretry ++$scala partest$v/fetchScalaSource &&
     sbtretry ++$scala \
+        javalibintf/mimaReportBinaryIssues \
         library$v/mimaReportBinaryIssues \
         testInterface$v/mimaReportBinaryIssues \
         jUnitRuntime$v/mimaReportBinaryIssues

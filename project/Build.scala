@@ -245,7 +245,7 @@ object Build {
 
   val previousVersions = List("1.0.0", "1.0.1", "1.1.0", "1.1.1", "1.2.0",
       "1.3.0", "1.3.1", "1.4.0", "1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1",
-      "1.8.0", "1.9.0", "1.10.0", "1.10.1")
+      "1.8.0", "1.9.0", "1.10.0", "1.10.1", "1.11.0")
   val previousVersion = previousVersions.last
 
   val previousBinaryCrossVersion = CrossVersion.binaryWith("sjs1_", "")
@@ -1270,6 +1270,11 @@ object Build {
       commonSettings,
       publishSettings(Some(VersionScheme.BreakOnMajor)),
       name := "scalajs-javalib-intf",
+
+      mimaPreviousArtifacts += {
+        val thisProjectID = projectID.value
+        thisProjectID.organization % thisProjectID.name % previousVersion
+      },
 
       crossPaths := false,
       autoScalaLibrary := false,
