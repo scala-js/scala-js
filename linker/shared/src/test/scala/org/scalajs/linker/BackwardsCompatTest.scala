@@ -40,7 +40,7 @@ class BackwardsCompatTest {
   @Test
   def testHelloWorld(): AsyncResult = await {
     val classDefs = Seq(
-      mainTestClassDef(predefPrintln(str("Hello world!")))
+      mainTestClassDef(systemOutPrintln(str("Hello world!")))
     )
 
     test(classDefs, MainTestModuleInitializers)
@@ -50,8 +50,8 @@ class BackwardsCompatTest {
   def testSystemIdentityHashCode(): AsyncResult = await {
     val classDefs = Seq(
       mainTestClassDef(
-          predefPrintln(Apply(EAF,
-              LoadModule("java.lang.System$"),
+          systemOutPrintln(ApplyStatic(EAF,
+              "java.lang.System",
               m("identityHashCode", List(O), I),
               List(JSObjectConstr(Nil)))(IntType)))
     )
@@ -67,7 +67,7 @@ class BackwardsCompatTest {
           interfaces = List(CloneableClass),
           memberDefs = List(trivialCtor("A"))),
       mainTestClassDef(
-          predefPrintln(Apply(EAF,
+          systemOutPrintln(Apply(EAF,
               New("A", NoArgConstructorName, Nil),
               m("clone", Nil, O), Nil)(AnyType)))
     )

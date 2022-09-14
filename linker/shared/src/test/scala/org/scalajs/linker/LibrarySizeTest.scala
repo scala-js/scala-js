@@ -108,8 +108,8 @@ object LibrarySizeTest {
     val fullOutput = MemOutputDirectory()
 
     for {
-      fulllib <- TestIRRepo.fulllib
-      irFiles = fulllib ++ classDefsFiles
+      javalib <- TestIRRepo.javalib
+      irFiles = javalib ++ classDefsFiles
       fastLinkReport <- fastLinker.link(irFiles, moduleInitializers, fastOutput, logger)
       fullLinkReport <- fullLinker.link(irFiles, moduleInitializers, fullOutput, logger)
     } yield {

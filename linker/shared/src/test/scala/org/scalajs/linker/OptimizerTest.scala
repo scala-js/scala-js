@@ -179,13 +179,13 @@ class OptimizerTest {
   def testHelloWorldDoesNotNeedClassClass(): AsyncResult = await {
     val classDefs = Seq(
         mainTestClassDef({
-          predefPrintln(str("Hello world!"))
+          systemOutPrintln(str("Hello world!"))
         })
     )
 
     for {
       moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers,
-          stdlib = TestIRRepo.fulllib)
+          stdlib = TestIRRepo.javalib)
     } yield {
       assertFalse(findClass(moduleSet, ClassClass).isDefined)
     }

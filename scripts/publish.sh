@@ -9,7 +9,7 @@ fi
 
 SUFFIXES="2_11 2_12 2_13"
 
-JAVA_LIBS="javalibintf"
+JAVA_LIBS="javalibintf javalib"
 COMPILER="compiler jUnitPlugin"
 JS_LIBS="library irJS linkerInterfaceJS linkerJS testInterface testBridge jUnitRuntime"
 JVM_LIBS="ir linkerInterface linker testAdapter"
