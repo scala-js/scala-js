@@ -340,7 +340,7 @@ object Arrays {
       return false
     var i = 0
     while (i != len) {
-      if (!ops.get(a, i).equals(ops.get(b, i)))
+      if (!Objects.equals(ops.get(a, i), ops.get(b, i)))
         return false
       i += 1
     }
