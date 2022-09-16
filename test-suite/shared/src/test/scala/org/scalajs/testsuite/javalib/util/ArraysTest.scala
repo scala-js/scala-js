@@ -960,18 +960,28 @@ class ArraysTest {
 
     def A(x: Int): A = new A(x)
 
-    val a1 = Array[AnyRef](A(1), A(-7), A(10))
+    val a1 = Array[AnyRef](A(1), A(-7), null, A(10))
 
     assertTrue(Arrays.equals(null: Array[AnyRef], null: Array[AnyRef]))
     assertTrue(Arrays.equals(a1, a1))
-    assertTrue(Arrays.equals(a1, Array[AnyRef](A(1), A(-7), A(10))))
+    assertTrue(Arrays.equals(a1, Array[AnyRef](A(1), A(-7), null, A(10))))
+    assertTrue(Arrays.equals(Array[AnyRef](A(1), A(-7), null, A(10)), a1))
 
     assertFalse(Arrays.equals(a1, null))
     assertFalse(Arrays.equals(a1, Array[AnyRef](A(3))))
     assertFalse(Arrays.equals(a1, Array[AnyRef](A(1))))
     assertFalse(Arrays.equals(a1, Array[AnyRef]()))
-    assertFalse(Arrays.equals(a1, Array[AnyRef](A(1), null, A(11))))
-    assertFalse(Arrays.equals(a1, Array[AnyRef](A(1), A(-7), A(11), A(20))))
+    assertFalse(Arrays.equals(a1, Array[AnyRef](A(1), null, null, A(10))))
+    assertFalse(Arrays.equals(a1, Array[AnyRef](A(1), A(-7), null, A(10), A(20))))
+    assertFalse(Arrays.equals(a1, Array[AnyRef](A(1), A(-7), A(11), A(10))))
+
+    assertFalse(Arrays.equals(null, a1))
+    assertFalse(Arrays.equals(Array[AnyRef](A(3)), a1))
+    assertFalse(Arrays.equals(Array[AnyRef](A(1)), a1))
+    assertFalse(Arrays.equals(Array[AnyRef](), a1))
+    assertFalse(Arrays.equals(Array[AnyRef](A(1), null, null, A(10)), a1))
+    assertFalse(Arrays.equals(Array[AnyRef](A(1), A(-7), null, A(10), A(20)), a1))
+    assertFalse(Arrays.equals(Array[AnyRef](A(1), A(-7), A(11), A(10)), a1))
   }
 
   @Test def deepEquals(): Unit = {
