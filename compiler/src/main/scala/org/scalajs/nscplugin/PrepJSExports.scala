@@ -68,8 +68,13 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
      */
     val isCaseApplyOrUnapplyParam = sym.isLocalToBlock && sym.owner.isCaseApplyOrUnapply
 
+    /* Filter constructors of module classes: The module classes themselves will
+     * be exported.
+     */
+    val isModuleClassCtor = sym.isConstructor && sym.owner.isModuleClass
+
     val exports =
-      if (isScalaClass || isCaseApplyOrUnapplyParam) Nil
+      if (isScalaClass || isCaseApplyOrUnapplyParam || isModuleClassCtor) Nil
       else exportsOf(sym)
 
     assert(exports.isEmpty || !sym.isBridge,
@@ -95,15 +100,8 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
       registerStaticAndTopLevelExports(sym, topLevelAndStaticExports)
     }
 
-    if (sym.isClass || sym.isConstructor) {
-      /* we can generate constructors, classes and modules entirely in the backend,
-       * since they do not need inheritance and such.
-       */
-      Nil
-    } else {
-      // For normal exports, generate exporter methods.
-      normalExports.flatMap(exp => genExportDefs(sym, exp.jsName, exp.pos))
-    }
+    // For normal exports, generate exporter methods.
+    normalExports.flatMap(exp => genExportDefs(sym, exp.jsName, exp.pos))
   }
 
   private def registerStaticAndTopLevelExports(sym: Symbol,
@@ -139,17 +137,30 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
       else sym
     }
 
+    val symOwner =
+      if (sym.isConstructor) sym.owner.owner
+      else sym.owner
+
     // Annotations that are directly on the member
     val directAnnots = trgSym.annotations.filter(
         annot => isDirectMemberAnnot(annot.symbol))
 
-    // Is this a member export (i.e. not a class or module export)?
-    val isMember = !sym.isClass && !sym.isConstructor
-
-    // Annotations for this member on the whole unit
+    /* Annotations for this member on the whole unit
+     *
+     * Note that for top-level classes / modules this is always empty, because
+     * packages cannot have annotations.
+     */
     val unitAnnots = {
-      if (isMember && sym.isPublic && !sym.isSynthetic)
-        sym.owner.annotations.filter(_.symbol == JSExportAllAnnotation)
+      val useExportAll = {
+        sym.isPublic &&
+        !sym.isSynthetic &&
+        !sym.isConstructor &&
+        !sym.isTrait &&
+        (!sym.isClass || sym.isModuleClass)
+      }
+
+      if (useExportAll)
+        symOwner.annotations.filter(_.symbol == JSExportAllAnnotation)
       else
         Nil
     }
@@ -184,7 +195,15 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
             "dummy"
           }
         } else {
-          sym.unexpandedName.decoded.stripSuffix("_=")
+          val nameBase =
+            (if (sym.isConstructor) sym.owner else sym).unexpandedName
+
+          if (nme.isSetterName(nameBase) && !jsInterop.isJSSetter(sym)) {
+            reporter.error(annot.pos, "You must set an explicit name when " +
+                "exporting a non-setter with a name ending in _=")
+          }
+
+          nameBase.decoded.stripSuffix("_=")
         }
       }
 
@@ -217,17 +236,13 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
             "An exported name may not contain a double underscore (`__`)")
       }
 
-      val symOwner =
-        if (sym.isConstructor) sym.owner.owner
-        else sym.owner
-
       // Destination-specific restrictions
       destination match {
         case ExportDestination.Normal =>
-          if (!isMember) {
-            // Disallow @JSExport on non-members.
+          if (symOwner.hasPackageFlag) {
+            // Disallow @JSExport on top-level definitions.
             reporter.error(annot.pos,
-                "@JSExport is forbidden on objects and classes. " +
+                "@JSExport is forbidden on top-level objects and classes. " +
                 "Use @JSExportTopLevel instead.")
           }
 
@@ -302,20 +317,20 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
                 "non-native JS class may export its members as static.")
           }
 
-          if (isMember) {
-            if (sym.isLazy) {
-              reporter.error(annot.pos,
-                  "You may not export a lazy val as static")
-            }
+          if (sym.isLazy) {
+            reporter.error(annot.pos,
+                "You may not export a lazy val as static")
+          }
 
-            // Illegal function application export
-            if (!hasExplicitName && sym.name == nme.apply) {
-              reporter.error(annot.pos,
-                  "A member cannot be exported to function application as " +
-                  "static. Use @JSExportStatic(\"apply\") to export it under " +
-                  "the name 'apply'.")
-            }
-          } else {
+          // Illegal function application export
+          if (!hasExplicitName && sym.name == nme.apply) {
+            reporter.error(annot.pos,
+                "A member cannot be exported to function application as " +
+                "static. Use @JSExportStatic(\"apply\") to export it under " +
+                "the name 'apply'.")
+          }
+
+          if (sym.isClass || sym.isConstructor) {
             reporter.error(annot.pos,
                 "Implementation restriction: cannot export a class or " +
                 "object as static")
@@ -433,55 +448,43 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
     }
   }
 
-  /** generate an exporter for a DefDef including default parameter methods */
-  private def genExportDefs(defSym: Symbol, jsName: String, pos: Position) = {
-    val clsSym = defSym.owner
-    val scalaName =
-      jsInterop.scalaExportName(jsName, jsInterop.isJSProperty(defSym))
+  /** generate an exporter for a target including default parameter methods */
+  private def genExportDefs(sym: Symbol, jsName: String, pos: Position) = {
+    val siblingSym =
+      if (sym.isConstructor) sym.owner
+      else sym
+
+    val clsSym = siblingSym.owner
+
+    val isProperty = sym.isModuleClass || isJSAny(sym) || jsInterop.isJSProperty(sym)
+    val scalaName = jsInterop.scalaExportName(jsName, isProperty)
+
+    val copiedFlags = siblingSym.flags & (Flags.PROTECTED | Flags.FINAL)
 
     // Create symbol for new method
-    val expSym = defSym.cloneSymbol
+    val expSym = clsSym.newMethod(scalaName, pos, Flags.SYNTHETIC | copiedFlags)
+    expSym.privateWithin = siblingSym.privateWithin
 
-    // Set position of symbol
-    expSym.pos = pos
+    val expSymTpe = {
+      /* Alter type for new method (lift return type to Any)
+       * The return type is lifted, in order to avoid bridge
+       * construction and to detect methods whose signature only differs
+       * in the return type.
+       */
+      if (sym.isClass) NullaryMethodType(AnyClass.tpe)
+      else retToAny(sym.tpe.cloneInfo(expSym))
+    }
 
-    // Alter type for new method (lift return type to Any)
-    // The return type is lifted, in order to avoid bridge
-    // construction and to detect methods whose signature only differs
-    // in the return type.
-    // Attention: This will cause boxes for primitive value types and value
-    // classes. However, since we have restricted the return types, we can
-    // always safely remove these boxes again in the back-end.
-    if (!defSym.isConstructor)
-      expSym.setInfo(retToAny(expSym.tpe))
-
-    // Change name for new method
-    expSym.name = scalaName
-
-    // Update flags
-    expSym.setFlag(Flags.SYNTHETIC)
-    expSym.resetFlag(
-        Flags.DEFERRED     | // We always have a body
-        Flags.ACCESSOR     | // We are never a "direct" accessor
-        Flags.CASEACCESSOR | // And a fortiori not a case accessor
-        Flags.LAZY         | // We are not a lazy val (even if we export one)
-        Flags.OVERRIDE       // Synthetic methods need not bother with this
-    )
-
-    // Remove export annotations
-    expSym.removeAnnotation(JSExportAnnotation)
-
-    // Add symbol to class
-    clsSym.info.decls.enter(expSym)
+    expSym.setInfoAndEnter(expSymTpe)
 
     // Construct exporter DefDef tree
-    val exporter = genProxyDefDef(defSym, expSym, pos)
+    val exporter = genProxyDefDef(sym, expSym, pos)
 
     // Construct exporters for default getters
     val defaultGetters = for {
       (param, i) <- expSym.paramss.flatten.zipWithIndex
       if param.hasFlag(Flags.DEFAULTPARAM)
-    } yield genExportDefaultGetter(clsSym, defSym, expSym, i + 1, pos)
+    } yield genExportDefaultGetter(clsSym, sym, expSym, i + 1, pos)
 
     exporter :: defaultGetters
   }
@@ -513,9 +516,29 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
 
   /** generate a DefDef tree (from [[proxySym]]) that calls [[trgSym]] */
   private def genProxyDefDef(trgSym: Symbol, proxySym: Symbol, pos: Position) = atPos(pos) {
-    val fun = gen.mkAttributedRef(trgSym)
+    val tpeParams = proxySym.typeParams.map(gen.mkAttributedIdent(_))
 
-    val nonPolyFun = gen.mkTypeApply(fun, proxySym.typeParams.map(gen.mkAttributedIdent(_)))
+    // Construct proxied function call
+    val nonPolyFun = {
+      if (trgSym.isConstructor) {
+        val clsTpe = trgSym.owner.tpe
+        val tpe = gen.mkTypeApply(TypeTree(clsTpe), tpeParams)
+        Select(New(tpe), trgSym)
+      } else if (trgSym.isModuleClass) {
+        assert(proxySym.paramss.isEmpty,
+            s"got a module export with non-empty paramss. target: $trgSym, proxy: $proxySym at $pos")
+        gen.mkAttributedRef(trgSym.sourceModule)
+      } else if (trgSym.isClass) {
+        assert(isJSAny(trgSym), s"got a class export for a non-JS class ($trgSym) at $pos")
+        assert(proxySym.paramss.isEmpty,
+            s"got a class export with non-empty paramss. target: $trgSym, proxy: $proxySym at $pos")
+        val tpe = gen.mkTypeApply(TypeTree(trgSym.tpe), tpeParams)
+        gen.mkTypeApply(gen.mkAttributedRef(JSPackage_constructorOf), List(tpe))
+      } else {
+        val fun = gen.mkAttributedRef(trgSym)
+        gen.mkTypeApply(fun, tpeParams)
+      }
+    }
 
     val rhs = proxySym.paramss.foldLeft(nonPolyFun) { (fun, params) =>
       val args = params.map { param =>

@@ -173,7 +173,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
         case tree: ImplDef =>
           if (shouldPrepareExports) {
             val exports = genExport(sym)
-            assert(exports.isEmpty, s"got non-empty exports for $sym")
+            if (exports.nonEmpty)
+              exporters.getOrElseUpdate(sym.owner, mutable.ListBuffer.empty) ++= exports
           }
 
           if ((enclosingOwner is OwnerKind.JSNonNative) && sym.owner.isTrait && !sym.isTrait) {
@@ -195,8 +196,13 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
            */
           if (shouldPrepareExports && (sym.isMethod || sym.isLocalToBlock)) {
             val exports = genExport(sym)
-            if (exports.nonEmpty)
-              exporters.getOrElseUpdate(sym.owner, mutable.ListBuffer.empty) ++= exports
+            if (exports.nonEmpty) {
+              val target =
+                if (sym.isConstructor) sym.owner.owner
+                else sym.owner
+
+              exporters.getOrElseUpdate(target, mutable.ListBuffer.empty) ++= exports
+            }
           }
 
           if (sym.isLocalToBlock) {
