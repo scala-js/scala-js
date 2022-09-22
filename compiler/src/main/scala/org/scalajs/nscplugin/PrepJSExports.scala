@@ -54,89 +54,55 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
   private case class ExportInfo(jsName: String,
       destination: ExportDestination)(val pos: Position)
 
-  /** Generate the exporter for the given DefDef
-   *  or ValDef (abstract val in class, val in trait or lazy val;
-   *  these don't get DefDefs until the fields phase)
+  /** Generate exports for the given Symbol.
    *
-   *  If this DefDef is a constructor, it is registered to be exported by
-   *  GenJSCode instead and no trees are returned.
+   *  * Registers top-level and static exports.
+   *  * Returns (non-static) exporters for this symbol.
    */
-  def genExportMember(baseSym: Symbol): List[Tree] = {
-    val clsSym = baseSym.owner
+  def genExport(sym: Symbol): List[Tree] = {
+    // Scala classes are never exported: Their constructors are.
+    val isScalaClass = sym.isClass && !sym.isTrait && !sym.isModuleClass && !isJSAny(sym)
 
-    val exports = exportsOf(baseSym)
+    /* Filter case class apply (and unapply) to work around
+     * https://github.com/scala/bug/issues/8826
+     */
+    val isCaseApplyOrUnapplyParam = sym.isLocalToBlock && sym.owner.isCaseApplyOrUnapply
 
-    // Helper function for errors
-    def err(msg: String) = {
-      reporter.error(exports.head.pos, msg)
-      Nil
+    val exports =
+      if (isScalaClass || isCaseApplyOrUnapplyParam) Nil
+      else exportsOf(sym)
+
+    assert(exports.isEmpty || !sym.isBridge,
+        s"found exports for bridge symbol $sym. exports: $exports")
+
+    val (normalExports, topLevelAndStaticExports) =
+      exports.partition(_.destination == ExportDestination.Normal)
+
+    /* We can handle top level exports and static exports entirely in the
+     * backend. So just register them here.
+     *
+     * For accessors, we need to apply some special logic to static and
+     * top-level exports: They actually apply to the *fields*, not to the
+     * accessors.
+     */
+    if (sym.isAccessor && sym.accessed != NoSymbol) {
+      /* Only forward registration from the getter (not the setter) to avoid
+       * duplicate registration.
+       */
+      if (sym.isGetter)
+        registerStaticAndTopLevelExports(sym.accessed, topLevelAndStaticExports)
+    } else {
+      registerStaticAndTopLevelExports(sym, topLevelAndStaticExports)
     }
 
-    def memType = if (baseSym.isConstructor) "constructor" else "method"
-
-    if (exports.isEmpty) {
-      Nil
-    } else if (!hasLegalExportVisibility(baseSym)) {
-      err(s"You may only export public and protected ${memType}s")
-    } else if (baseSym.isMacro) {
-      err("You may not export a macro")
-    } else if (isJSAny(clsSym)) {
-      err(s"You may not export a $memType of a subclass of js.Any")
-    } else if (scalaPrimitives.isPrimitive(baseSym)) {
-      err("You may not export a primitive")
-    } else if (baseSym.isLocalToBlock) {
-      // We exclude case class apply (and unapply) to work around SI-8826
-      if (clsSym.isCaseApplyOrUnapply) {
-        Nil
-      } else {
-        err("You may not export a local definition")
-      }
-    } else if (hasIllegalRepeatedParam(baseSym)) {
-      err(s"In an exported $memType, a *-parameter must come last " +
-        "(through all parameter lists)")
-    } else if (hasIllegalDefaultParam(baseSym)) {
-      err(s"In an exported $memType, all parameters with defaults " +
-        "must be at the end")
-    } else if (baseSym.isConstructor) {
-      // we can generate constructors entirely in the backend, since they
-      // do not need inheritance and such. But we want to check their sanity
-      // here by previous tests and the following ones.
-      if (checkClassOrModuleExports(clsSym, exports.head.pos))
-        registerStaticAndTopLevelExports(baseSym, exports)
-
+    if (sym.isClass || sym.isConstructor) {
+      /* we can generate constructors, classes and modules entirely in the backend,
+       * since they do not need inheritance and such.
+       */
       Nil
     } else {
-      assert(!baseSym.isBridge,
-          s"genExportMember called for bridge symbol $baseSym")
-
-      // Reset interface flag: Any trait will contain non-empty methods
-      clsSym.resetFlag(Flags.INTERFACE)
-
-      val (normalExports, topLevelAndStaticExports) =
-        exports.partition(_.destination == ExportDestination.Normal)
-
-      /* We can handle top level exports and static exports entirely in the
-       * backend. So just register them here.
-       */
-      registerStaticAndTopLevelExports(baseSym, topLevelAndStaticExports)
-
-      // Actually generate exporter methods
-      normalExports.flatMap(exp => genExportDefs(baseSym, exp.jsName, exp.pos))
-    }
-  }
-
-  /** Check and (potentially) register a class or module for export.
-   *
-   *  Note that Scala classes are never registered for export, their
-   *  constructors are.
-   */
-  def registerClassOrModuleExports(sym: Symbol): Unit = {
-    val exports = exportsOf(sym)
-    def isScalaClass = !sym.isModuleClass && !isJSAny(sym)
-
-    if (exports.nonEmpty && checkClassOrModuleExports(sym, exports.head.pos) &&
-        !isScalaClass) {
-      registerStaticAndTopLevelExports(sym, exports)
+      // For normal exports, generate exporter methods.
+      normalExports.flatMap(exp => genExportDefs(sym, exp.jsName, exp.pos))
     }
   }
 
@@ -157,56 +123,6 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
 
     if (static.nonEmpty)
       jsInterop.registerStaticExports(sym, static)
-  }
-
-  /** Check a class or module for export.
-   *
-   *  There are 2 ways that this method can be reached:
-   *  - via `registerClassOrModuleExports`
-   *  - via `genExportMember` (constructor of Scala class)
-   */
-  private def checkClassOrModuleExports(sym: Symbol, errPos: Position): Boolean = {
-    val isMod = sym.isModuleClass
-
-    def err(msg: String) = {
-      reporter.error(errPos, msg)
-      false
-    }
-
-    def hasAnyNonPrivateCtor: Boolean =
-      sym.info.member(nme.CONSTRUCTOR).filter(!isPrivateMaybeWithin(_)).exists
-
-    def isJSNative = sym.hasAnnotation(JSNativeAnnotation)
-
-    if (sym.isTrait) {
-      err("You may not export a trait")
-    } else if (isJSNative) {
-      err("You may not export a native JS " + (if (isMod) "object" else "class"))
-    } else if (!hasLegalExportVisibility(sym)) {
-      err("You may only export public and protected " +
-          (if (isMod) "objects" else "classes"))
-    } else if (sym.isLocalToBlock) {
-      err("You may not export a local " +
-          (if (isMod) "object" else "class"))
-    } else if (!sym.isStatic) {
-      err("You may not export a nested " +
-          (if (isMod) "object" else s"class. $createFactoryInOuterClassHint"))
-    } else if (sym.isAbstractClass && !isJSAny(sym)) {
-      err("You may not export an abstract class")
-    } else if (!isMod && !hasAnyNonPrivateCtor) {
-      /* This test is only relevant for JS classes but doesn't hurt for Scala
-       * classes as we could not reach it if there were only private
-       * constructors.
-       */
-      err("You may not export a class that has only private constructors")
-    } else {
-      true
-    }
-  }
-
-  private def createFactoryInOuterClassHint = {
-    "Create an exported factory method in the outer class to work " +
-    "around this limitation."
   }
 
   /** retrieves the names a sym should be exported to from its annotations
@@ -238,8 +154,19 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
         Nil
     }
 
+    val allAnnots = {
+      val allAnnots0 = directAnnots ++ unitAnnots
+
+      if (allAnnots0.nonEmpty) {
+        if (checkExportTarget(sym, allAnnots0.head.pos)) allAnnots0
+        else Nil // prevent code generation from running to avoid crashes.
+      } else {
+        Nil
+      }
+    }
+
     val allExportInfos = for {
-      annot <- directAnnots ++ unitAnnots
+      annot <- allAnnots
     } yield {
       val isExportAll = annot.symbol == JSExportAllAnnotation
       val isTopLevelExport = annot.symbol == JSExportTopLevelAnnotation
@@ -281,10 +208,6 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
         }
       }
 
-      // Enforce proper setter signature
-      if (jsInterop.isJSSetter(sym))
-        checkSetterSignature(sym, annot.pos, exported = true)
-
       // Enforce no __ in name
       if (!isTopLevelExport && name.contains("__")) {
         // Get position for error message
@@ -294,12 +217,34 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
             "An exported name may not contain a double underscore (`__`)")
       }
 
-      /* Illegal function application exports, i.e., method named 'apply'
-       * without an explicit export name.
-       */
-      if (isMember && !hasExplicitName && sym.name == nme.apply) {
-        destination match {
-          case ExportDestination.Normal =>
+      val symOwner =
+        if (sym.isConstructor) sym.owner.owner
+        else sym.owner
+
+      // Destination-specific restrictions
+      destination match {
+        case ExportDestination.Normal =>
+          if (!isMember) {
+            // Disallow @JSExport on non-members.
+            reporter.error(annot.pos,
+                "@JSExport is forbidden on objects and classes. " +
+                "Use @JSExportTopLevel instead.")
+          }
+
+          // Make sure we do not override the default export of toString
+          def isIllegalToString = {
+            name == "toString" && sym.name != nme.toString_ &&
+            sym.tpe.params.isEmpty && !jsInterop.isJSGetter(sym)
+          }
+          if (isIllegalToString) {
+            reporter.error(annot.pos, "You may not export a zero-argument " +
+                "method named other than 'toString' under the name 'toString'")
+          }
+
+          /* Illegal function application exports, i.e., method named 'apply'
+           * without an explicit export name.
+           */
+          if (!hasExplicitName && sym.name == nme.apply) {
             def shouldBeTolerated = {
               isExportAll && directAnnots.exists { annot =>
                 annot.symbol == JSExportAnnotation &&
@@ -317,42 +262,6 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
                   "application. Add @JSExport(\"apply\") to export under the " +
                   "name apply.")
             }
-
-          case _: ExportDestination.TopLevel =>
-            throw new AssertionError(
-                "Found a top-level export without an explicit name at " +
-                annot.pos)
-
-          case ExportDestination.Static =>
-            reporter.error(annot.pos,
-                "A member cannot be exported to function application as " +
-                "static. Use @JSExportStatic(\"apply\") to export it under " +
-                "the name 'apply'.")
-        }
-      }
-
-      val symOwner =
-        if (sym.isConstructor) sym.owner.owner
-        else sym.owner
-
-      // Destination-specific restrictions
-      destination match {
-        case ExportDestination.Normal =>
-          // Make sure we do not override the default export of toString
-          def isIllegalToString = {
-            isMember && name == "toString" && sym.name != nme.toString_ &&
-            sym.tpe.params.isEmpty && !jsInterop.isJSGetter(sym)
-          }
-          if (isIllegalToString) {
-            reporter.error(annot.pos, "You may not export a zero-argument " +
-                "method named other than 'toString' under the name 'toString'")
-          }
-
-          // Disallow @JSExport on non-members.
-          if (!isMember && !sym.isTrait) {
-            reporter.error(annot.pos,
-                "@JSExport is forbidden on objects and classes. " +
-                "Use @JSExportTopLevel instead.")
           }
 
         case _: ExportDestination.TopLevel =>
@@ -364,11 +273,8 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
                 "You may not export a getter or a setter to the top level")
           }
 
-          /* Disallow non-static methods.
-           * Note: Non-static classes have more specific error messages in
-           * checkClassOrModuleExports
-           */
-          if (sym.isMethod && (!symOwner.isStatic || !symOwner.isModuleClass)) {
+          // Disallow non-static definitions.
+          if (!symOwner.isStatic || !symOwner.isModuleClass) {
             reporter.error(annot.pos,
                 "Only static objects may export their members to the top level")
           }
@@ -401,15 +307,18 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
               reporter.error(annot.pos,
                   "You may not export a lazy val as static")
             }
-          } else {
-            if (sym.isTrait) {
+
+            // Illegal function application export
+            if (!hasExplicitName && sym.name == nme.apply) {
               reporter.error(annot.pos,
-                  "You may not export a trait as static.")
-            } else {
-              reporter.error(annot.pos,
-                  "Implementation restriction: cannot export a class or " +
-                  "object as static")
+                  "A member cannot be exported to function application as " +
+                  "static. Use @JSExportStatic(\"apply\") to export it under " +
+                  "the name 'apply'.")
             }
+          } else {
+            reporter.error(annot.pos,
+                "Implementation restriction: cannot export a class or " +
+                "object as static")
           }
       }
 
@@ -427,52 +336,101 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
       }
       .foreach(_ => reporter.warning(sym.pos, s"Found duplicate @JSExport"))
 
-    /* Filter out static exports of accessors (as they are not actually
-     * exported, their fields are). The above is only used to uniformly perform
-     * checks.
+    /* Check that no field is exported *twice* as static, nor both as static
+     * and as top-level (it is possible to export a field several times as
+     * top-level, though).
      */
-    val filteredExports = if (!sym.isAccessor || sym.accessed == NoSymbol) {
-      allExportInfos
-    } else {
-      /* For accessors, we need to apply some special logic to static exports.
-       * When tested on accessors, they actually apply on *fields*, not on the
-       * accessors. We use the same code paths hereabove to uniformly perform
-       * relevant checks, but at the end of the day, we have to throw away the
-       * ExportInfo.
-       * However, we must make sure that no field is exported *twice* as static,
-       * nor both as static and as top-level (it is possible to export a field
-       * several times as top-level, though).
-       */
-      val (topLevelAndStaticExportInfos, actualExportInfos) =
-        allExportInfos.partition(_.destination != ExportDestination.Normal)
+    if (sym.isGetter) {
+      for {
+        firstStatic <- allExportInfos.find(_.destination == ExportDestination.Static).toList
+        duplicate <- allExportInfos
+        if duplicate ne firstStatic
+      } {
+        duplicate.destination match {
+          case ExportDestination.Normal => // OK
 
-      if (sym.isGetter) {
-        topLevelAndStaticExportInfos.find {
-          _.destination == ExportDestination.Static
-        }.foreach { firstStatic =>
-          for {
-            duplicate <- topLevelAndStaticExportInfos
-            if duplicate ne firstStatic
-          } {
-            if (duplicate.destination == ExportDestination.Static) {
-              reporter.error(duplicate.pos,
-                  "Fields (val or var) cannot be exported as static more " +
-                  "than once")
-            } else {
-              reporter.error(duplicate.pos,
-                  "Fields (val or var) cannot be exported both as static " +
-                  "and at the top-level")
-            }
-          }
+          case ExportDestination.Static =>
+            reporter.error(duplicate.pos,
+                "Fields (val or var) cannot be exported as static more " +
+                "than once")
+
+          case _: ExportDestination.TopLevel =>
+            reporter.error(duplicate.pos,
+                "Fields (val or var) cannot be exported both as static " +
+                "and at the top-level")
         }
-
-        registerStaticAndTopLevelExports(sym.accessed, topLevelAndStaticExportInfos)
       }
-
-      actualExportInfos
     }
 
-    filteredExports.distinct
+    allExportInfos.distinct
+  }
+
+  /** Checks whether the given target is suitable for export and exporting
+   *  should be performed.
+   *
+   *  Reports any errors for unsuitable targets.
+   *  @returns a boolean indicating whether exporting should be performed. Note:
+   *      a result of true is not a guarantee that no error was emitted. But it is
+   *      a guarantee that the target is not "too broken" to run the rest of
+   *      the generation. This approximation is done to avoid having to complicate
+   *      shared code verifying conditions.
+   */
+  private def checkExportTarget(sym: Symbol, errPos: Position): Boolean = {
+    def err(msg: String) = {
+      reporter.error(errPos, msg)
+      false
+    }
+
+    def hasLegalExportVisibility(sym: Symbol) =
+      sym.isPublic || sym.isProtected && !sym.isProtectedLocal
+
+    lazy val params = sym.paramss.flatten
+
+    def hasIllegalDefaultParam = {
+      val isDefParam = (_: Symbol).hasFlag(Flags.DEFAULTPARAM)
+      params.reverse.dropWhile(isDefParam).exists(isDefParam)
+    }
+
+    def hasAnyNonPrivateCtor: Boolean =
+      sym.info.member(nme.CONSTRUCTOR).filter(!isPrivateMaybeWithin(_)).exists
+
+    if (sym.isTrait) {
+      err("You may not export a trait")
+    } else if (sym.hasAnnotation(JSNativeAnnotation)) {
+      err("You may not export a native JS definition")
+    } else if (!hasLegalExportVisibility(sym)) {
+      err("You may only export public and protected definitions")
+    } else if (sym.isConstructor && !hasLegalExportVisibility(sym.owner)) {
+      err("You may only export constructors of public and protected classes")
+    } else if (sym.isMacro) {
+      err("You may not export a macro")
+    } else if (isJSAny(sym.owner)) {
+      err("You may not export a member of a subclass of js.Any")
+    } else if (scalaPrimitives.isPrimitive(sym)) {
+      err("You may not export a primitive")
+    } else if (sym.isLocalToBlock) {
+      err("You may not export a local definition")
+    } else if (sym.isConstructor && sym.owner.isLocalToBlock) {
+      err("You may not export constructors of local classes")
+    } else if (params.nonEmpty && params.init.exists(isRepeated _)) {
+      err("In an exported method or constructor, a *-parameter must come last " +
+          "(through all parameter lists)")
+    } else if (hasIllegalDefaultParam) {
+      err("In an exported method or constructor, all parameters with " +
+          "defaults must be at the end")
+    } else if (sym.isConstructor && sym.owner.isAbstractClass && !isJSAny(sym)) {
+      err("You may not export an abstract class")
+    } else if (sym.isClass && !sym.isModuleClass && isJSAny(sym) && !hasAnyNonPrivateCtor) {
+      /* This test is only relevant for JS classes: We'll complain on the
+       * individual exported constructors in case of a Scala class.
+       */
+      err("You may not export a class that has only private constructors")
+    } else {
+      if (jsInterop.isJSSetter(sym))
+        checkSetterSignature(sym, errPos, exported = true)
+
+      true // ok even if a setter has the wrong signature.
+    }
   }
 
   /** generate an exporter for a DefDef including default parameter methods */
@@ -579,26 +537,6 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
     case NullaryMethodType(result)  => NullaryMethodType(AnyClass.tpe)
     case PolyType(tparams, result)  => PolyType(tparams, retToAny(result))
     case _                          => AnyClass.tpe
-  }
-
-  /** Whether the given symbol has a visibility that allows exporting */
-  private def hasLegalExportVisibility(sym: Symbol): Boolean =
-    sym.isPublic || sym.isProtected && !sym.isProtectedLocal
-
-  /** checks whether this type has a repeated parameter elsewhere than at the end
-    * of all the params
-    */
-  private def hasIllegalRepeatedParam(sym: Symbol): Boolean = {
-    val params = sym.paramss.flatten
-    params.nonEmpty && params.init.exists(isRepeated _)
-  }
-
-  /** checks whether there are default parameters not at the end of
-    * the flattened parameter list
-    */
-  private def hasIllegalDefaultParam(sym: Symbol): Boolean = {
-    val isDefParam = (_: Symbol).hasFlag(Flags.DEFAULTPARAM)
-    sym.paramss.flatten.reverse.dropWhile(isDefParam).exists(isDefParam)
   }
 
   /** Whether a symbol is an annotation that goes directly on a member */

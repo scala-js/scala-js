@@ -1038,7 +1038,9 @@ class ExportsTest {
 
       lazy val c = 3
 
-      class Bar // not exported, but should not fail
+      // the following are not exported, but should not fail
+      class Bar
+      trait Baz
     }
 
     val foo = (new Foo).asInstanceOf[js.Dynamic]

@@ -53,6 +53,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
   import jsDefinitions._
   import jsInterop.{JSCallingConvention, JSName}
 
+  import scala.reflect.internal.Flags
+
   val phaseName: String = "jsinterop"
   override def description: String = "prepare ASTs for JavaScript interop"
 
@@ -169,8 +171,10 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       // @unchecked needed because MemberDef is not marked `sealed`
       val transformedTree: Tree = (tree: @unchecked) match {
         case tree: ImplDef =>
-          if (shouldPrepareExports)
-            registerClassOrModuleExports(sym)
+          if (shouldPrepareExports) {
+            val exports = genExport(sym)
+            assert(exports.isEmpty, s"got non-empty exports for $sym")
+          }
 
           if ((enclosingOwner is OwnerKind.JSNonNative) && sym.owner.isTrait && !sym.isTrait) {
             reporter.error(tree.pos,
@@ -190,8 +194,9 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
            * messages for that are handled by genExportMember).
            */
           if (shouldPrepareExports && (sym.isMethod || sym.isLocalToBlock)) {
-            exporters.getOrElseUpdate(sym.owner, mutable.ListBuffer.empty) ++=
-              genExportMember(sym)
+            val exports = genExport(sym)
+            if (exports.nonEmpty)
+              exporters.getOrElseUpdate(sym.owner, mutable.ListBuffer.empty) ++= exports
           }
 
           if (sym.isLocalToBlock) {
@@ -307,6 +312,11 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       val transformedBodyWithExports = exporters.get(clsSym).fold {
         transformedBody
       } { exports =>
+        assert(exports.nonEmpty, s"found empty exporters for $clsSym" )
+
+        // Reset interface flag: We're adding non-empty methods.
+        clsSym.resetFlag(Flags.INTERFACE)
+
         transformedBody ::: exports.toList
       }
 
