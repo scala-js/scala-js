@@ -17,8 +17,10 @@ import scala.scalajs.js.typedarray._
 object DoubleBuffer {
   private final val HashSeed = 2140173175 // "java.nio.DoubleBuffer".##
 
-  def allocate(capacity: Int): DoubleBuffer =
+  def allocate(capacity: Int): DoubleBuffer = {
+    GenBuffer.validateAllocateCapacity(capacity)
     wrap(new Array[Double](capacity))
+  }
 
   def wrap(array: Array[Double], offset: Int, length: Int): DoubleBuffer =
     HeapDoubleBuffer.wrap(array, 0, array.length, offset, length, false)

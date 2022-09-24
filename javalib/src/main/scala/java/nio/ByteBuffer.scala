@@ -17,11 +17,15 @@ import scala.scalajs.js.typedarray._
 object ByteBuffer {
   private final val HashSeed = -547316498 // "java.nio.ByteBuffer".##
 
-  def allocate(capacity: Int): ByteBuffer =
+  def allocate(capacity: Int): ByteBuffer = {
+    GenBuffer.validateAllocateCapacity(capacity)
     wrap(new Array[Byte](capacity))
+  }
 
-  def allocateDirect(capacity: Int): ByteBuffer =
+  def allocateDirect(capacity: Int): ByteBuffer = {
+    GenBuffer.validateAllocateCapacity(capacity)
     TypedArrayByteBuffer.allocate(capacity)
+  }
 
   def wrap(array: Array[Byte], offset: Int, length: Int): ByteBuffer =
     HeapByteBuffer.wrap(array, 0, array.length, offset, length, false)

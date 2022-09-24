@@ -17,6 +17,11 @@ import java.util.internal.GenericArrayOps._
 private[nio] object GenBuffer {
   def apply[B <: Buffer](self: B): GenBuffer[B] =
     new GenBuffer(self)
+
+  @inline def validateAllocateCapacity(capacity: Int): Unit = {
+    if (capacity < 0)
+      throw new IllegalArgumentException
+  }
 }
 
 /* The underlying `val self` is intentionally public because
