@@ -517,7 +517,7 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
     clsSym.info.decls.enter(expSym)
 
     // Construct exporter DefDef tree
-    val exporter = genProxyDefDef(clsSym, defSym, expSym, pos)
+    val exporter = genProxyDefDef(defSym, expSym, pos)
 
     // Construct exporters for default getters
     val defaultGetters = for {
@@ -548,27 +548,26 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
 
       clsSym.info.decls.enter(expGetter)
 
-      genProxyDefDef(clsSym, trgGetter, expGetter, pos)
+      genProxyDefDef(trgGetter, expGetter, pos)
 
     } else EmptyTree
   }
 
   /** generate a DefDef tree (from [[proxySym]]) that calls [[trgSym]] */
-  private def genProxyDefDef(clsSym: Symbol, trgSym: Symbol,
-      proxySym: Symbol, pos: Position) = atPos(pos) {
+  private def genProxyDefDef(trgSym: Symbol, proxySym: Symbol, pos: Position) = atPos(pos) {
+    val fun = gen.mkAttributedRef(trgSym)
 
-    // Helper to ascribe repeated argument lists when calling
-    def spliceParam(sym: Symbol) = {
-      if (isRepeated(sym))
-        Typed(Ident(sym), Ident(tpnme.WILDCARD_STAR))
-      else
-        Ident(sym)
-    }
+    val nonPolyFun = gen.mkTypeApply(fun, proxySym.typeParams.map(gen.mkAttributedIdent(_)))
 
-    // Construct proxied function call
-    val sel = Select(This(clsSym), trgSym)
-    val rhs = proxySym.paramss.foldLeft[Tree](sel) {
-      (fun,params) => Apply(fun, params map spliceParam)
+    val rhs = proxySym.paramss.foldLeft(nonPolyFun) { (fun, params) =>
+      val args = params.map { param =>
+        val ident = gen.mkAttributedIdent(param)
+
+        if (isRepeated(param)) Typed(ident, Ident(tpnme.WILDCARD_STAR))
+        else ident
+      }
+
+      Apply(fun, args)
     }
 
     typer.typedDefDef(DefDef(proxySym, rhs))
