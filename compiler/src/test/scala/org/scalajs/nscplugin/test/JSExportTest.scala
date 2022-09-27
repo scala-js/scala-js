@@ -504,6 +504,11 @@ class JSExportTest extends DirectTest with TestHelpers {
 
     @JSExportTopLevel("D")
     protected[this] class D extends js.Object
+
+    private class E(x: Int) {
+      @JSExportTopLevel("E")
+      def this() = this(1)
+    }
     """ hasErrors
     """
       |newSource1.scala:3: error: You may only export public and protected classes
@@ -518,6 +523,9 @@ class JSExportTest extends DirectTest with TestHelpers {
       |newSource1.scala:12: error: You may only export public and protected classes
       |    @JSExportTopLevel("D")
       |     ^
+      |newSource1.scala:16: error: You may only export public and protected classes
+      |      @JSExportTopLevel("E")
+      |       ^
     """
 
     """
