@@ -1021,6 +1021,28 @@ class JSExportTest extends DirectTest with TestHelpers {
     }
     """.hasNoWarns()
 
+    """
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic
+      def apply(): Int = 1
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:6: error: A member cannot be exported to function application as static. Use @JSExportStatic("apply") to export it under the name 'apply'.
+      |      @JSExportStatic
+      |       ^
+    """
+
+    """
+    class StaticContainer extends js.Object
+
+    object StaticContainer {
+      @JSExportStatic("apply")
+      def apply(): Int = 1
+    }
+    """.hasNoWarns()
   }
 
   @Test
