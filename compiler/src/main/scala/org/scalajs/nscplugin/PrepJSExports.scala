@@ -256,10 +256,6 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
                 s"The argument to ${annot.symbol.name} must be a literal string")
             "dummy"
           }
-        } else if (sym.isConstructor) {
-          decodedFullName(sym.owner)
-        } else if (sym.isClass) {
-          decodedFullName(sym)
         } else {
           sym.unexpandedName.decoded.stripSuffix("_=")
         }
@@ -477,13 +473,6 @@ trait PrepJSExports[G <: Global with Singleton] { this: PrepJSInterop[G] =>
     }
 
     filteredExports.distinct
-  }
-
-  /** Just like sym.fullName, but does not encode components */
-  private def decodedFullName(sym: Symbol): String = {
-    if (sym.isRoot || sym.isRootPackage || sym == NoSymbol) sym.name.decoded
-    else if (sym.owner.isEffectiveRoot) sym.name.decoded
-    else decodedFullName(sym.effectiveOwner.enclClass) + '.' + sym.name.decoded
   }
 
   /** generate an exporter for a DefDef including default parameter methods */
