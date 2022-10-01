@@ -2393,13 +2393,12 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
       case IntegerNLZ =>
         val tvalue = targs.head
-        contTree(tvalue match {
+        tvalue match {
           case PreTransLit(IntLiteral(value)) =>
-            IntLiteral(Integer.numberOfLeadingZeros(value))
-
-          case tvalue =>
-            Transient(NumberOfLeadingZeroes(finishTransformExpr(tvalue)))
-        })
+            contTree(IntLiteral(Integer.numberOfLeadingZeros(value)))
+          case _ =>
+            default
+        }
 
       // java.lang.Long
 

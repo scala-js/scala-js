@@ -88,23 +88,6 @@ object Transients {
     }
   }
 
-  final case class NumberOfLeadingZeroes(num: Tree) extends Transient.Value {
-    val tpe: Type = IntType
-
-    def traverse(traverser: Traverser): Unit =
-      traverser.traverse(num)
-
-    def transform(transformer: Transformer, isStat: Boolean)(
-        implicit pos: Position): Tree = {
-      Transient(NumberOfLeadingZeroes(transformer.transformExpr(num)))
-    }
-
-    def printIR(out: IRTreePrinter): Unit = {
-      out.print("$numberOfLeadingZeroes")
-      out.printArgs(List(num))
-    }
-  }
-
   final case class ObjectClassName(obj: Tree) extends Transient.Value {
     val tpe: Type = StringType
 

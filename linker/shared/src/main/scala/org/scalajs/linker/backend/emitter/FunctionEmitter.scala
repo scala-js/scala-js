@@ -1114,8 +1114,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
               case Transient(ZeroOf(runtimeClass)) =>
                 Transient(ZeroOf(rec(runtimeClass)))
-              case Transient(NumberOfLeadingZeroes(num)) =>
-                Transient(NumberOfLeadingZeroes(rec(num)))
               case Transient(ObjectClassName(obj)) =>
                 Transient(ObjectClassName(rec(obj)))
 
@@ -1310,8 +1308,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         // Transients preserving pureness
         case Transient(ZeroOf(runtimeClass)) =>
           test(runtimeClass) // may NPE but that is UB.
-        case Transient(NumberOfLeadingZeroes(num)) =>
-          test(num)
         case Transient(ObjectClassName(obj)) =>
           test(obj) // may NPE but that is UB.
 
@@ -1846,11 +1842,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Transient(NativeArrayWrapper(elemClass, nativeArray)) =>
           unnest(elemClass, nativeArray) { (newElemClass, newNativeArray, env) =>
             redo(Transient(NativeArrayWrapper(newElemClass, newNativeArray)(rhs.tpe)))(env)
-          }
-
-        case Transient(NumberOfLeadingZeroes(num)) =>
-          unnest(num) { (newNum, env) =>
-            redo(Transient(NumberOfLeadingZeroes(newNum)))(env)
           }
 
         case Transient(ObjectClassName(obj)) =>
@@ -2766,9 +2757,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   js.DotSelect(elemClassData, js.Ident("getArrayOf")), Nil)
               js.Apply(arrayClassData DOT "wrapArray", newNativeArray :: Nil)
           }
-
-        case Transient(NumberOfLeadingZeroes(num)) =>
-          genCallPolyfillableBuiltin(Clz32Builtin, transformExprNoChar(num))
 
         case Transient(ObjectClassName(obj)) =>
           genCallHelper("objectClassName", transformExprNoChar(obj))
