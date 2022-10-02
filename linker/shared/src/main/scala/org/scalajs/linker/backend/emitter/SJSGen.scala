@@ -142,6 +142,20 @@ private[emitter] final class SJSGen(
     }
   }
 
+  def genUncheckedArraycopy(args: List[Tree])(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
+    import TreeDSL._
+
+    assert(args.lengthCompare(5) == 0,
+        s"wrong number of args for genUncheckedArrayCopy: $args")
+
+    if (esFeatures.esVersion >= ESVersion.ES2015)
+      Apply(args.head DOT "copyTo", args.tail)
+    else
+      genCallHelper("systemArraycopy", args: _*)
+  }
+
   def genSelect(receiver: Tree, className: ClassName, field: irt.FieldIdent)(
       implicit pos: Position): Tree = {
     DotSelect(receiver, Ident(genFieldJSName(className, field))(field.pos))

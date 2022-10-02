@@ -818,6 +818,9 @@ object Emitter {
     def cond(p: Boolean)(v: => SymbolRequirement): SymbolRequirement =
       if (p) v else none()
 
+    def isAnyFatal(behaviors: CheckedBehavior*): Boolean =
+      behaviors.contains(Fatal)
+
     multiple(
         cond(asInstanceOfs != Unchecked) {
           instantiateClass(ClassCastExceptionClass, StringArgConstructorName)
@@ -828,12 +831,23 @@ object Emitter {
               StringArgConstructorName)
         },
 
+        cond(arrayStores != Unchecked) {
+          instantiateClass(ArrayStoreExceptionClass,
+              StringArgConstructorName)
+        },
+
+        cond(negativeArraySizes != Unchecked) {
+          instantiateClass(NegativeArraySizeExceptionClass,
+              NoArgConstructorName)
+        },
+
         cond(stringIndexOutOfBounds != Unchecked) {
           instantiateClass(StringIndexOutOfBoundsExceptionClass,
               IntArgConstructorName)
         },
 
-        cond(asInstanceOfs == Fatal || arrayIndexOutOfBounds == Fatal || stringIndexOutOfBounds == Fatal) {
+        cond(isAnyFatal(asInstanceOfs, arrayIndexOutOfBounds, arrayStores,
+            negativeArraySizes, stringIndexOutOfBounds)) {
           instantiateClass(UndefinedBehaviorErrorClass,
               ThrowableArgConsructorName)
         },

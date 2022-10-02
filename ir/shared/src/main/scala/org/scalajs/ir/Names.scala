@@ -501,6 +501,14 @@ object Names {
   val ArrayIndexOutOfBoundsExceptionClass: ClassName =
     ClassName("java.lang.ArrayIndexOutOfBoundsException")
 
+  /** The exception thrown by an `Assign(ArraySelect, ...)` where the value cannot be stored. */
+  val ArrayStoreExceptionClass: ClassName =
+    ClassName("java.lang.ArrayStoreException")
+
+  /** The exception thrown by a `NewArray(...)` with a negative size. */
+  val NegativeArraySizeExceptionClass: ClassName =
+    ClassName("java.lang.NegativeArraySizeException")
+
   /** The exception thrown by a `BinaryOp.String_charAt` that is out of bounds. */
   val StringIndexOutOfBoundsExceptionClass: ClassName =
     ClassName("java.lang.StringIndexOutOfBoundsException")
