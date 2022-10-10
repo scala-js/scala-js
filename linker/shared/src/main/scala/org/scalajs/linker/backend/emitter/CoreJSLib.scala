@@ -348,20 +348,6 @@ private[emitter] object CoreJSLib {
                 typedArrayPolyfill, noTypedArrayPolyfill)
           }
 
-        case Clz32Builtin =>
-          val i = varRef("i")
-          val r = varRef("r")
-          genArrowFunction(paramList(i), Block(
-              // See Hacker's Delight, Section 5-3
-              If(i === 0, Return(32), Skip()),
-              let(r, 1),
-              If((i & 0xffff0000) === 0, Block(i := i << 16, r := r + 16), Skip()),
-              If((i & 0xff000000) === 0, Block(i := i << 8, r := r + 8), Skip()),
-              If((i & 0xf0000000) === 0, Block(i := i << 4, r := r + 4), Skip()),
-              If((i & 0xc0000000) === 0, Block(i := i << 2, r := r + 2), Skip()),
-              Return(r + (i >> 31))
-          ))
-
         case PrivateSymbolBuiltin =>
           /* function privateJSFieldSymbol(description) {
            *   function rand32() {

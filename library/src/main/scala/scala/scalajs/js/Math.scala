@@ -154,6 +154,15 @@ object Math extends js.Object {
    */
   def ceil(x: Double): Double = js.native
 
+  /** <span class="badge badge-ecma2015" style="float: right;">ECMAScript 2015</span>
+   *
+   *  The Math.clz32() function returns the number of leading zero bits in the
+   *  32-bit binary representation of a number.
+   *
+   *  MDN
+   */
+  def clz32(x: Int): Int = js.native
+
   /**
    * The Math.cos() function returns the cosine of a number.
    *

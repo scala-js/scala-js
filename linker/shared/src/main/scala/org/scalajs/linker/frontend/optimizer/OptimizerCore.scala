@@ -1722,32 +1722,20 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           val impls =
             if (useStaticResolution) List(staticCall(className, namespace, methodName))
             else dynamicCall(className, methodName)
-          val allocationSites =
-            (treceiver :: targs).map(_.tpe.allocationSite)
-          if (impls.isEmpty || impls.exists(impl =>
-              scope.implsBeingInlined((allocationSites, impl)))) {
-            // isEmpty could happen, have to leave it as is for the TypeError
-            treeNotInlined
-          } else if (impls.size == 1) {
-            val target = impls.head
-            val intrinsicCode = intrinsics(flags, target)
-            if (intrinsicCode >= 0) {
-              callIntrinsic(intrinsicCode, flags, Some(treceiver), methodName,
-                  targs, isStat, usePreTransform)(cont)
-            } else if (target.attributes.inlineable && (
-                target.attributes.shouldInline ||
-                shouldInlineBecauseOfArgs(target, treceiver :: targs))) {
-              /* When inlining a single method, the declared type of the `this`
-               * value is its enclosing class.
-               */
-              val receiverType = receiverTypeFor(target)
-              inline(allocationSites, Some((receiverType, treceiver)), targs,
-                  target, isStat, usePreTransform)(cont)
-            } else {
+          if (impls.size == 1) {
+            pretransformSingleDispatch(flags, impls.head, Some(treceiver), targs, isStat, usePreTransform)(cont) {
               treeNotInlined
             }
           } else {
-            if (canMultiInline(impls)) {
+            val allocationSites =
+              (treceiver :: targs).map(_.tpe.allocationSite)
+            val shouldMultiInline = {
+              impls.nonEmpty && // will fail at runtime.
+              !impls.exists(impl => scope.implsBeingInlined((allocationSites, impl))) &&
+              canMultiInline(impls)
+            }
+
+            if (shouldMultiInline) {
               /* When multi-inlining, we cannot use the enclosing class of the
                * target method as the declared type of the receiver, since we
                * have no guarantee that the receiver is in fact of that
@@ -1850,27 +1838,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       val target = staticCall(className, MemberNamespace.forNonStaticCall(flags),
           methodName)
       pretransformExprs(receiver, args) { (treceiver, targs) =>
-        val intrinsicCode = intrinsics(flags, target)
-        if (intrinsicCode >= 0) {
-          callIntrinsic(intrinsicCode, flags, Some(treceiver), methodName,
-              targs, isStat, usePreTransform)(cont)
-        } else {
-          val shouldInline = target.attributes.inlineable && (
-              target.attributes.shouldInline ||
-              shouldInlineBecauseOfArgs(target, treceiver :: targs))
-          val allocationSites =
-            (treceiver :: targs).map(_.tpe.allocationSite)
-          val beingInlined =
-            scope.implsBeingInlined((allocationSites, target))
-
-          if (shouldInline && !beingInlined) {
-            val receiverType = receiverTypeFor(target)
-            inline(allocationSites, Some((receiverType, treceiver)), targs,
-                target, isStat, usePreTransform)(cont)
-          } else {
-            treeNotInlined0(finishTransformExpr(treceiver),
-                targs.map(finishTransformExpr))
-          }
+        pretransformSingleDispatch(flags, target, Some(treceiver), targs, isStat, usePreTransform)(cont) {
+          treeNotInlined0(finishTransformExpr(treceiver), targs.map(finishTransformExpr))
         }
       }
     }
@@ -1887,32 +1856,13 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         methodIdent @ MethodIdent(methodName), args) = tree
     implicit val pos = tree.pos
 
-    def treeNotInlined0(transformedArgs: List[Tree]) =
-      cont(PreTransTree(ApplyStatic(flags, className, methodIdent,
-          transformedArgs)(tree.tpe), RefinedType(tree.tpe)))
-
-    def treeNotInlined = treeNotInlined0(args.map(transformExpr))
-
     val target = staticCall(className, MemberNamespace.forStaticCall(flags),
         methodName)
     pretransformExprs(args) { targs =>
-      val intrinsicCode = intrinsics(flags, target)
-      if (intrinsicCode >= 0) {
-        callIntrinsic(intrinsicCode, flags, None, methodName, targs,
-            isStat, usePreTransform)(cont)
-      } else {
-        val shouldInline = target.attributes.inlineable && (
-            target.attributes.shouldInline || shouldInlineBecauseOfArgs(target, targs))
-        val allocationSites = targs.map(_.tpe.allocationSite)
-        val beingInlined =
-          scope.implsBeingInlined((allocationSites, target))
-
-        if (shouldInline && !beingInlined) {
-          inline(allocationSites, None, targs, target,
-              isStat, usePreTransform)(cont)
-        } else {
-          treeNotInlined0(targs.map(finishTransformExpr))
-        }
+      pretransformSingleDispatch(flags, target, None, targs, isStat, usePreTransform)(cont) {
+        val newArgs = targs.map(finishTransformExpr)
+        cont(PreTransTree(ApplyStatic(flags, className, methodIdent,
+            newArgs)(tree.tpe), RefinedType(tree.tpe)))
       }
     }
   }
@@ -2349,23 +2299,36 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     } (cont) (scope.withEnv(OptEnv.Empty))
   }
 
-  private def callIntrinsic(code: Int, flags: ApplyFlags,
-      optTReceiver: Option[PreTransform], methodName: MethodName,
-      targs: List[PreTransform], isStat: Boolean, usePreTransform: Boolean)(
-      cont: PreTransCont)(
+  private def pretransformSingleDispatch(flags: ApplyFlags, target: MethodID,
+      optTReceiver: Option[PreTransform], targs: List[PreTransform], isStat: Boolean,
+      usePreTransform: Boolean)(cont: PreTransCont)(treeNotInlined: => TailRec[Tree])(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
 
     import Intrinsics._
 
-    lazy val newReceiver = finishTransformExpr(optTReceiver.get)
-    lazy val newArgs = targs.map(finishTransformExpr)
+    // In this method, we resolve intrinsics or fall-back to the default.
+
+    val intrinsicCode = intrinsics(flags, target)
+
+    def default = {
+      val tall = optTReceiver.toList ::: targs
+      val shouldInline = target.attributes.inlineable && (
+          target.attributes.shouldInline ||
+          shouldInlineBecauseOfArgs(target, tall))
+
+      val allocationSites = tall.map(_.tpe.allocationSite)
+      val beingInlined = scope.implsBeingInlined((allocationSites, target))
+      if (shouldInline && !beingInlined) {
+        val optReceiver = optTReceiver.map((receiverTypeFor(target), _))
+        inline(allocationSites, optReceiver, targs, target, isStat, usePreTransform)(cont)
+      } else {
+        treeNotInlined
+      }
+    }
 
     @inline def contTree(result: Tree) = cont(result.toPreTransform)
 
     @inline def StringClassType = ClassType(BoxedStringClass)
-
-    def defaultApply(resultType: Type): TailRec[Tree] =
-      contTree(Apply(flags, newReceiver, MethodIdent(methodName), newArgs)(resultType))
 
     def cursoryArrayElemType(tpe: ArrayType): Type = {
       if (tpe.arrayTypeRef.dimensions != 1) AnyType
@@ -2375,25 +2338,32 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       })
     }
 
-    (code: @switch) match {
+    (intrinsicCode: @switch) match {
+      // Not an intrisic
+
+      case -1 =>
+        default
+
       // java.lang.System
 
       case ArrayCopy =>
         assert(isStat, "System.arraycopy must be used in statement position")
-        val List(src, srcPos, dest, destPos, length) = newArgs
+        val List(src, srcPos, dest, destPos, length) = targs.map(finishTransformExpr(_))
         contTree(Transient(SystemArrayCopy(src, srcPos, dest, destPos, length)))
 
       // scala.runtime.ScalaRunTime object
 
       case ArrayApply =>
-        val List(array, index) = newArgs
-        array.tpe match {
+        val List(tarray, tindex) = targs
+        tarray.tpe.base match {
           case arrayTpe @ ArrayType(ArrayTypeRef(base, _)) =>
+            val array = finishTransformExpr(tarray)
+            val index = finishTransformExpr(tindex)
             val elemType = cursoryArrayElemType(arrayTpe)
             contTree(ArraySelect(array, index)(elemType))
 
           case _ =>
-            defaultApply(AnyType)
+            default
         }
 
       case ArrayUpdate =>
@@ -2407,24 +2377,28 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             val tunboxedValue = foldAsInstanceOf(tvalue, elemType)
             contTree(Assign(select, finishTransformExpr(tunboxedValue)))
           case _ =>
-            defaultApply(AnyType)
+            default
         }
 
       case ArrayLength =>
-        targs.head.tpe.base match {
+        val tarray = targs.head
+        tarray.tpe.base match {
           case _: ArrayType =>
-            contTree(Trees.ArrayLength(newArgs.head))
+            contTree(Trees.ArrayLength(finishTransformExpr(tarray)))
           case _ =>
-            defaultApply(IntType)
+            default
         }
 
       // java.lang.Integer
 
       case IntegerNLZ =>
-        contTree(newArgs.head match {
-          case IntLiteral(value) => IntLiteral(Integer.numberOfLeadingZeros(value))
-          case newArg            => Transient(NumberOfLeadingZeroes(newArg))
-        })
+        val tvalue = targs.head
+        tvalue match {
+          case PreTransLit(IntLiteral(value)) =>
+            contTree(IntLiteral(Integer.numberOfLeadingZeros(value)))
+          case _ =>
+            default
+        }
 
       // java.lang.Long
 
@@ -2452,7 +2426,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       // scala.collection.mutable.ArrayBuilder
 
       case GenericArrayBuilderResult =>
-        val List(runtimeClass, array) = newArgs
+        val List(runtimeClass, array) = targs.map(finishTransformExpr(_))
         val (resultType, isExact) = runtimeClass match {
           case ClassOf(elemTypeRef) => (ArrayType(ArrayTypeRef.of(elemTypeRef)), true)
           case _                    => (AnyType, false)
@@ -2485,20 +2459,20 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       // java.lang.Class
 
       case ClassGetComponentType =>
-        newReceiver match {
-          case ClassOf(ArrayTypeRef(base, depth)) =>
+        optTReceiver.get match {
+          case PreTransLit(ClassOf(ArrayTypeRef(base, depth))) =>
             contTree(ClassOf(
                 if (depth == 1) base
                 else ArrayTypeRef(base, depth - 1)))
-          case ClassOf(ClassRef(_)) =>
+          case PreTransLit(ClassOf(ClassRef(_))) =>
             contTree(Null())
           case receiver =>
-            defaultApply(ClassType(ClassClass))
+            default
         }
 
       case ClassGetName =>
-        newReceiver match {
-          case BlockOrAlone(stats, ClassOf(typeRef)) =>
+        optTReceiver.get match {
+          case PreTransMaybeBlock(bindingsAndStats, PreTransLit(ClassOf(typeRef))) =>
             def mappedClassName(className: ClassName): String = {
               RuntimeClassNameMapperImpl.map(
                   config.coreSpec.semantics.runtimeClassNameMapper,
@@ -2516,33 +2490,32 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
                 "[" * dimensions + "L" + mappedClassName(className) + ";"
             }
 
-            contTree(Block(stats, StringLiteral(nameString)))
+            contTree(finishTransformBindings(
+                bindingsAndStats, StringLiteral(nameString)))
 
-          case BlockOrAlone(stats, GetClass(expr)) =>
-            contTree(Block(stats,
-                Transient(ObjectClassName(expr))))
+          case PreTransMaybeBlock(bindingsAndStats, PreTransTree(GetClass(expr), _)) =>
+            contTree(finishTransformBindings(
+                bindingsAndStats, Transient(ObjectClassName(expr))))
 
           case _ =>
-            defaultApply(StringClassType)
+            default
         }
 
       // java.lang.reflect.Array
 
       case ArrayNewInstance =>
-        newArgs.head match {
-          case ClassOf(elementTypeRef) =>
+        val List(tcomponentType, tlength) = targs
+        tcomponentType match {
+          case PreTransTree(ClassOf(elementTypeRef), _) =>
             val arrayTypeRef = ArrayTypeRef.of(elementTypeRef)
-            contTree(NewArray(arrayTypeRef, List(newArgs.tail.head)))
+            contTree(NewArray(arrayTypeRef, List(finishTransformExpr(tlength))))
           case _ =>
-            defaultApply(AnyType)
+            default
         }
 
       // js.special
 
       case ObjectLiteral =>
-        def default =
-          defaultApply(AnyType)
-
         val List(tprops) = targs
         tprops match {
           case PreTransMaybeBlock(bindingsAndStats,
@@ -2595,30 +2568,30 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       // TypedArray conversions
 
       case ByteArrayToInt8Array =>
-        contTree(Transient(ArrayToTypedArray(newArgs.head, ByteRef)))
+        contTree(Transient(ArrayToTypedArray(finishTransformExpr(targs.head), ByteRef)))
       case ShortArrayToInt16Array =>
-        contTree(Transient(ArrayToTypedArray(newArgs.head, ShortRef)))
+        contTree(Transient(ArrayToTypedArray(finishTransformExpr(targs.head), ShortRef)))
       case CharArrayToUint16Array =>
-        contTree(Transient(ArrayToTypedArray(newArgs.head, CharRef)))
+        contTree(Transient(ArrayToTypedArray(finishTransformExpr(targs.head), CharRef)))
       case IntArrayToInt32Array =>
-        contTree(Transient(ArrayToTypedArray(newArgs.head, IntRef)))
+        contTree(Transient(ArrayToTypedArray(finishTransformExpr(targs.head), IntRef)))
       case FloatArrayToFloat32Array =>
-        contTree(Transient(ArrayToTypedArray(newArgs.head, FloatRef)))
+        contTree(Transient(ArrayToTypedArray(finishTransformExpr(targs.head), FloatRef)))
       case DoubleArrayToFloat64Array =>
-        contTree(Transient(ArrayToTypedArray(newArgs.head, DoubleRef)))
+        contTree(Transient(ArrayToTypedArray(finishTransformExpr(targs.head), DoubleRef)))
 
       case Int8ArrayToByteArray =>
-        contTree(Transient(TypedArrayToArray(newArgs.head, ByteRef)))
+        contTree(Transient(TypedArrayToArray(finishTransformExpr(targs.head), ByteRef)))
       case Int16ArrayToShortArray =>
-        contTree(Transient(TypedArrayToArray(newArgs.head, ShortRef)))
+        contTree(Transient(TypedArrayToArray(finishTransformExpr(targs.head), ShortRef)))
       case Uint16ArrayToCharArray =>
-        contTree(Transient(TypedArrayToArray(newArgs.head, CharRef)))
+        contTree(Transient(TypedArrayToArray(finishTransformExpr(targs.head), CharRef)))
       case Int32ArrayToIntArray =>
-        contTree(Transient(TypedArrayToArray(newArgs.head, IntRef)))
+        contTree(Transient(TypedArrayToArray(finishTransformExpr(targs.head), IntRef)))
       case Float32ArrayToFloatArray =>
-        contTree(Transient(TypedArrayToArray(newArgs.head, FloatRef)))
+        contTree(Transient(TypedArrayToArray(finishTransformExpr(targs.head), FloatRef)))
       case Float64ArrayToDoubleArray =>
-        contTree(Transient(TypedArrayToArray(newArgs.head, DoubleRef)))
+        contTree(Transient(TypedArrayToArray(finishTransformExpr(targs.head), DoubleRef)))
     }
   }
 
