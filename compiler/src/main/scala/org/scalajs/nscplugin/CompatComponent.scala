@@ -38,6 +38,8 @@ trait CompatComponent {
     def implClass: Symbol = NoSymbol
 
     def isTraitOrInterface: Boolean = self.isTrait || self.isInterface
+
+    def isScala3Defined: Boolean = false
   }
 
   implicit final class GlobalCompat(
@@ -87,26 +89,34 @@ trait CompatComponent {
     def interfaceName(implname: Name): TypeName = noImplClasses()
   }
 
-  // SAMFunction was introduced in 2.12 for LMF-capable SAM types
+  /* SAMFunction was introduced in 2.12 for LMF-capable SAM types.
+   * DottyEnumSingleton was introduced in 2.13.6 to identify Scala 3 `enum` singleton cases.
+   */
 
-  object SAMFunctionAttachCompatDef {
+  object AttachmentsCompatDef {
     case class SAMFunction(samTp: Type, sam: Symbol, synthCls: Symbol)
         extends PlainAttachment
+
+    object DottyEnumSingleton extends PlainAttachment
   }
 
-  object SAMFunctionAttachCompat {
-    import SAMFunctionAttachCompatDef._
+  object AttachmentsCompat {
+    import AttachmentsCompatDef._
 
     object Inner {
       import global._
 
       type SAMFunctionAlias = SAMFunction
       val SAMFunctionAlias = SAMFunction
+
+      val DottyEnumSingletonAlias = DottyEnumSingleton
     }
   }
 
-  type SAMFunctionCompat = SAMFunctionAttachCompat.Inner.SAMFunctionAlias
-  lazy val SAMFunctionCompat = SAMFunctionAttachCompat.Inner.SAMFunctionAlias
+  type SAMFunctionCompat = AttachmentsCompat.Inner.SAMFunctionAlias
+  lazy val SAMFunctionCompat = AttachmentsCompat.Inner.SAMFunctionAlias
+
+  lazy val DottyEnumSingletonCompat = AttachmentsCompat.Inner.DottyEnumSingletonAlias
 
   implicit final class SAMFunctionCompatOps(self: SAMFunctionCompat) {
     // Introduced in 2.12.5 to synthesize bridges in LMF classes
