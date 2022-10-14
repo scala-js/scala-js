@@ -6610,17 +6610,32 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       require(sym0.isModuleOrModuleClass,
           "genLoadModule called with non-module symbol: " + sym0)
-      val sym = if (sym0.isModule) sym0.moduleClass else sym0
 
-      // Does that module refer to the global scope?
-      if (sym.hasAnnotation(JSGlobalScopeAnnotation)) {
-        MaybeGlobalScope.GlobalScope(pos)
-      } else {
-        val className = encodeClassName(sym)
-        val tree =
-          if (isJSType(sym)) js.LoadJSModule(className)
-          else js.LoadModule(className)
+      if (sym0.isModule && sym0.isScala3Defined && sym0.hasAttachment[DottyEnumSingletonCompat.type]) {
+        /* #4739 This is a reference to a singleton `case` from a Scala 3 `enum`.
+         * It is not a module. Instead, it is a static field (accessed through
+         * a static getter) in the `enum` class.
+         * We use `originalOwner` and `rawname` because that's what the JVM back-end uses.
+         */
+        val className = encodeClassName(sym0.originalOwner)
+        val getterSimpleName = sym0.rawname.toString()
+        val getterMethodName = MethodName(getterSimpleName, Nil, toTypeRef(sym0.tpe))
+        val tree = js.ApplyStatic(js.ApplyFlags.empty, className, js.MethodIdent(getterMethodName), Nil)(
+            toIRType(sym0.tpe))
         MaybeGlobalScope.NotGlobalScope(tree)
+      } else {
+        val sym = if (sym0.isModule) sym0.moduleClass else sym0
+
+        // Does that module refer to the global scope?
+        if (sym.hasAnnotation(JSGlobalScopeAnnotation)) {
+          MaybeGlobalScope.GlobalScope(pos)
+        } else {
+          val className = encodeClassName(sym)
+          val tree =
+            if (isJSType(sym)) js.LoadJSModule(className)
+            else js.LoadModule(className)
+          MaybeGlobalScope.NotGlobalScope(tree)
+        }
       }
     }
 
