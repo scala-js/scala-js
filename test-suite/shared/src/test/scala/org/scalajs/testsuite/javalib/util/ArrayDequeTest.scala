@@ -25,6 +25,11 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
 
   override def factory: ArrayDequeFactory = new ArrayDequeFactory
 
+  @Test def allowNegativeCapacity(): Unit = {
+    // specified to allocate *at least* the given capacity.
+    new ju.ArrayDeque(-2)
+  }
+
   @Test def addRemovePeekFirstAndLastInt(): Unit = {
     val ad = factory.empty[Int]
 
@@ -137,9 +142,13 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
         TrivialImmutableCollection("one", "two", "three", "two", "one"))
 
     assertTrue(ad.removeFirstOccurrence("one"))
+    assertEquals("two", ad.peekFirst())
     assertTrue(ad.removeLastOccurrence("two"))
+    assertEquals("two", ad.peekFirst())
     assertTrue(ad.removeFirstOccurrence("one"))
+    assertEquals("three", ad.peekLast())
     assertTrue(ad.removeLastOccurrence("two"))
+    assertEquals("three", ad.peekFirst())
     assertTrue(ad.removeFirstOccurrence("three"))
     assertFalse(ad.removeLastOccurrence("three"))
     assertTrue(ad.isEmpty)
@@ -162,6 +171,68 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
       assertEquals(diter.next(), l(i))
     }
     assertFalse(diter.hasNext())
+  }
+
+  @Test def iteratorRemoveTowards(): Unit = {
+    /* Test case that triggers a condition where upon removal of an element
+     * during iteration, we must shift elements still pending iteration onto the
+     * current index (due to the state of the ringbuffer).
+     *
+     * If iterators do not handle this special case, the proper next element
+     * will be skipped.
+     */
+
+    val ad = factory.empty[Int]
+
+    // Shift the internal buffer position
+    for (i <- 0 to 10) {
+      ad.offerLast(i)
+      ad.pollFirst()
+    }
+
+    // Fill (over ringbuffer boundary, default capacity is 16)
+    for (i <- 0 to 10) {
+      ad.offerLast(i)
+    }
+
+    val iter = ad.iterator()
+    for (i <- 0 to 10) {
+      assertTrue(iter.hasNext())
+      assertEquals(i, iter.next())
+
+      // Skip some elements, so we remove non-trailing (or leading elements)
+      if (i > 3)
+        iter.remove()
+    }
+
+    assertFalse(iter.hasNext())
+  }
+
+  @Test def iteratorDescendingRemoveTowards(): Unit = {
+    val ad = factory.empty[Int]
+
+    // Shift the internal buffer position
+    for (i <- 0 to 10) {
+      ad.offerLast(i)
+      ad.pollFirst()
+    }
+
+    // Fill (over ringbuffer boundary, default capacity is 16)
+    for (i <- 0 to 10) {
+      ad.offerLast(i)
+    }
+
+    val iter = ad.descendingIterator()
+    for (i <- 10 to 0 by -1) {
+      assertTrue(iter.hasNext())
+      assertEquals(i, iter.next())
+
+      // Skip some elements, so we remove non-trailing (or leading elements)
+      if (i < 6)
+        iter.remove()
+    }
+
+    assertFalse(iter.hasNext())
   }
 }
 
