@@ -21,6 +21,8 @@ import java.{util => ju}
 
 import scala.reflect.ClassTag
 
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+
 class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
 
   override def factory: ArrayDequeFactory = new ArrayDequeFactory
@@ -206,6 +208,7 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
     }
 
     assertFalse(iter.hasNext())
+    assertThrows(classOf[NoSuchElementException], iter.next())
   }
 
   @Test def iteratorDescendingRemoveTowards(): Unit = {
@@ -233,6 +236,7 @@ class ArrayDequeTest extends AbstractCollectionTest with DequeTest {
     }
 
     assertFalse(iter.hasNext())
+    assertThrows(classOf[NoSuchElementException], iter.next())
   }
 }
 
