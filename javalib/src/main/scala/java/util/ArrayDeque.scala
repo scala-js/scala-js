@@ -212,7 +212,7 @@ class ArrayDeque[E] private (initialCapacity: Int)
 
     def next(): E = {
       if (!hasNext()) // also checks status
-        throw new IllegalStateException()
+        throw new NoSuchElementException()
 
       lastIndex = nextIndex
 
@@ -266,7 +266,7 @@ class ArrayDeque[E] private (initialCapacity: Int)
 
     def next(): E = {
       if (!hasNext()) // also checks status
-          throw new IllegalStateException()
+          throw new NoSuchElementException()
 
       lastIndex = nextIndex
 
