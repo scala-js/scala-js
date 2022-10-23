@@ -21,6 +21,8 @@ import scala.reflect.ClassTag
 import org.junit.Test
 import org.junit.Assert._
 
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+
 /** Tests the implementation of the java standard library Iterable
  */
 trait IterableTest {
@@ -43,6 +45,13 @@ trait IterableTest {
       def accept(x: Int): Unit = sum = sum + x
     })
     assertEquals(268, sum)
+  }
+
+  @Test def iteratorThrowsNoSuchElementException(): Unit = {
+    val iterable = factory.fromElements[String]("foo")
+    val iterator = iterable.iterator()
+    assertEquals("foo", iterator.next())
+    assertThrows(classOf[NoSuchElementException], iterator.next())
   }
 }
 

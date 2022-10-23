@@ -21,6 +21,9 @@ abstract private[util] class AbstractRandomAccessListIterator[E](private var i: 
     i < end
 
   def next(): E = {
+    if (!hasNext())
+      throw new NoSuchElementException()
+
     last = i
     i += 1
     get(last)
