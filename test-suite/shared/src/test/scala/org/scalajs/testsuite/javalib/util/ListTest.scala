@@ -265,6 +265,12 @@ trait ListTest extends CollectionTest with CollectionsTestBase {
     assertEquals("one", elements.previous())
   }
 
+  @Test def listIteratorPreviousThrowsNoSuchElementException(): Unit = {
+    val lst = factory.empty[String]
+    val iter = lst.listIterator()
+    assertThrows(classOf[NoSuchElementException], iter.previous())
+  }
+
   @Test def addIndex(): Unit = {
     val al = factory.empty[String]
     al.add(0, "one") // ["one"]
