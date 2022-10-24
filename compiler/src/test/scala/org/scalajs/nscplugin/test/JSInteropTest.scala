@@ -966,15 +966,15 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:8: error: @JSBracketAccess is not allowed on @js.native vals and defs
-      |      val a: Int = js.native
-      |          ^
-      |newSource1.scala:12: error: @JSBracketAccess is not allowed on @js.native vals and defs
-      |      def b: Int = js.native
-      |          ^
-      |newSource1.scala:16: error: @JSBracketAccess is not allowed on @js.native vals and defs
-      |      def c(x: Int): Int = js.native
-      |          ^
+      |newSource1.scala:7: error: @JSBracketAccess can only be used on members of JS types.
+      |      @JSBracketAccess
+      |       ^
+      |newSource1.scala:11: error: @JSBracketAccess can only be used on members of JS types.
+      |      @JSBracketAccess
+      |       ^
+      |newSource1.scala:15: error: @JSBracketAccess can only be used on members of JS types.
+      |      @JSBracketAccess
+      |       ^
     """
   }
 
@@ -995,15 +995,15 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:8: error: @JSBracketCall is not allowed on @js.native vals and defs
-      |      val a: Int = js.native
-      |          ^
-      |newSource1.scala:12: error: @JSBracketCall is not allowed on @js.native vals and defs
-      |      def b: Int = js.native
-      |          ^
-      |newSource1.scala:16: error: @JSBracketCall is not allowed on @js.native vals and defs
-      |      def c(x: Int): Int = js.native
-      |          ^
+      |newSource1.scala:7: error: @JSBracketCall can only be used on members of JS types.
+      |      @JSBracketCall
+      |       ^
+      |newSource1.scala:11: error: @JSBracketCall can only be used on members of JS types.
+      |      @JSBracketCall
+      |       ^
+      |newSource1.scala:15: error: @JSBracketCall can only be used on members of JS types.
+      |      @JSBracketCall
+      |       ^
     """
   }
 
@@ -3370,12 +3370,12 @@ class JSInteropTest extends DirectTest with TestHelpers {
     object B extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:8: error: @JSBracketCall is not allowed on JS classes and objects
-      |    class A extends js.Object
-      |          ^
-      |newSource1.scala:13: error: @JSBracketAccess is not allowed on JS classes and objects
-      |    object B extends js.Object
-      |           ^
+      |newSource1.scala:7: error: @JSBracketCall can only be used on members of JS types.
+      |    @JSBracketCall
+      |     ^
+      |newSource1.scala:12: error: @JSBracketAccess can only be used on members of JS types.
+      |    @JSBracketAccess
+      |     ^
     """
 
     // Non-native
@@ -3387,12 +3387,12 @@ class JSInteropTest extends DirectTest with TestHelpers {
     object B extends js.Object
     """ hasErrors
     """
-      |newSource1.scala:6: error: @JSBracketCall is not allowed on JS classes and objects
-      |    class A extends js.Object
-      |          ^
-      |newSource1.scala:9: error: @JSBracketAccess is not allowed on JS classes and objects
-      |    object B extends js.Object
-      |           ^
+      |newSource1.scala:5: error: @JSBracketCall can only be used on members of JS types.
+      |    @JSBracketCall
+      |     ^
+      |newSource1.scala:8: error: @JSBracketAccess can only be used on members of JS types.
+      |    @JSBracketAccess
+      |     ^
     """
 
     // Nested native
@@ -3410,12 +3410,12 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:10: error: @JSBracketCall is not allowed on JS classes and objects
-      |      class A extends js.Object
-      |            ^
-      |newSource1.scala:14: error: @JSBracketAccess is not allowed on JS classes and objects
-      |      object B extends js.Object
-      |             ^
+      |newSource1.scala:8: error: @JSBracketCall can only be used on methods.
+      |      @JSBracketCall
+      |       ^
+      |newSource1.scala:12: error: @JSBracketAccess can only be used on methods.
+      |      @JSBracketAccess
+      |       ^
     """
 
     // Nested non-native
@@ -3429,12 +3429,12 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:7: error: @JSBracketCall is not allowed on JS classes and objects
-      |      object A extends js.Object
-      |             ^
-      |newSource1.scala:10: error: @JSBracketAccess is not allowed on JS classes and objects
-      |      class B extends js.Object
-      |            ^
+      |newSource1.scala:6: error: @JSBracketCall can only be used on methods.
+      |      @JSBracketCall
+      |       ^
+      |newSource1.scala:9: error: @JSBracketAccess can only be used on methods.
+      |      @JSBracketAccess
+      |       ^
     """
   }
 
