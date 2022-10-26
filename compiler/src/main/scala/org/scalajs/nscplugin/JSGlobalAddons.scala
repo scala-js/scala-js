@@ -208,7 +208,7 @@ trait JSGlobalAddons extends JSDefinitions
         of(sym) == Call
     }
 
-    private object JSUnaryOpMethodName {
+    object JSUnaryOpMethodName {
       private val map = Map[Name, js.JSUnaryOp.Code](
         nme.UNARY_+ -> js.JSUnaryOp.+,
         nme.UNARY_- -> js.JSUnaryOp.-,
@@ -223,7 +223,7 @@ trait JSGlobalAddons extends JSDefinitions
         map.get(name)
     }
 
-    private object JSBinaryOpMethodName {
+    object JSBinaryOpMethodName {
       private val map = Map[Name, js.JSBinaryOp.Code](
         nme.ADD -> js.JSBinaryOp.+,
         nme.SUB -> js.JSBinaryOp.-,

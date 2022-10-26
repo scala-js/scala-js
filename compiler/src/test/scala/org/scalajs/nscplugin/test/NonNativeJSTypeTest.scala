@@ -179,8 +179,14 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
+      |newSource1.scala:6: warning: Method 'unary_+' should have an explicit @JSName or @JSOperator annotation because its name is one of the JavaScript operators
+      |      def unary_+ : Int = 1
+      |          ^
       |newSource1.scala:6: error: A non-native JS class cannot declare a method named like a unary operation without `@JSName`
       |      def unary_+ : Int = 1
+      |          ^
+      |newSource1.scala:7: warning: Method 'unary_-' should have an explicit @JSName or @JSOperator annotation because its name is one of the JavaScript operators
+      |      def unary_-() : Int = 1
       |          ^
       |newSource1.scala:7: error: A non-native JS class cannot declare a method named like a unary operation without `@JSName`
       |      def unary_-() : Int = 1
@@ -206,8 +212,14 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
+      |newSource1.scala:6: warning: Method '+' should have an explicit @JSName or @JSOperator annotation because its name is one of the JavaScript operators
+      |      def +(x: Int): Int = x
+      |          ^
       |newSource1.scala:6: error: A non-native JS class cannot declare a method named like a binary operation without `@JSName`
       |      def +(x: Int): Int = x
+      |          ^
+      |newSource1.scala:7: warning: Method '&&' should have an explicit @JSName or @JSOperator annotation because its name is one of the JavaScript operators
+      |      def &&(x: String): String = x
       |          ^
       |newSource1.scala:7: error: A non-native JS class cannot declare a method named like a binary operation without `@JSName`
       |      def &&(x: String): String = x
@@ -223,7 +235,15 @@ class NonNativeJSTypeTest extends DirectTest with TestHelpers {
       @JSName("&&")
       def &&(x: String): String = x
     }
-    """.succeeds()
+    """ hasWarns
+    """
+      |newSource1.scala:6: warning: Method '+' should have an explicit @JSName or @JSOperator annotation because its name is one of the JavaScript operators
+      |      def + : Int = 2
+      |          ^
+      |newSource1.scala:8: warning: Method '-' should have an explicit @JSName or @JSOperator annotation because its name is one of the JavaScript operators
+      |      def -(x: Int, y: Int): Int = 7
+      |          ^
+    """
   }
 
   @Test // #4281

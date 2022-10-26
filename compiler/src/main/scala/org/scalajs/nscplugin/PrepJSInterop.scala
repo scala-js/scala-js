@@ -994,6 +994,35 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
               "application in JavaScript. A parameterless member should be " +
               "exported as a property. You must add @JSName(\"apply\")")
 
+        case jsInterop.JSUnaryOpMethodName(_) =>
+          if (sym.hasAnnotation(JSOperatorAnnotation)) {
+            if (sym.paramss.map(_.size).sum != 0) {
+              reporter.error(tree.pos,
+                  s"@JSOperator methods with the name '${sym.nameString}' may not have any parameters")
+            }
+          } else if (!sym.annotations.exists(annot => JSCallingConventionAnnots.contains(annot.symbol))) {
+            reporter.warning(tree.pos,
+                s"Method '${sym.nameString}' should have an explicit @JSName or @JSOperator annotation " +
+                "because its name is one of the JavaScript operators")
+          }
+
+        case jsInterop.JSBinaryOpMethodName(_) =>
+          if (sym.hasAnnotation(JSOperatorAnnotation)) {
+            if (sym.paramss.map(_.size).sum != 1) {
+              reporter.error(tree.pos,
+                  s"@JSOperator methods with the name '${sym.nameString}' must have exactly one parameter")
+            }
+          } else if (!sym.annotations.exists(annot => JSCallingConventionAnnots.contains(annot.symbol))) {
+            reporter.warning(tree.pos,
+                s"Method '${sym.nameString}' should have an explicit @JSName or @JSOperator annotation " +
+                "because its name is one of the JavaScript operators")
+          }
+
+        case _ if sym.hasAnnotation(JSOperatorAnnotation) =>
+          reporter.error(tree.pos,
+              s"@JSOperator cannot be used on a method with the name '${sym.nameString}' " +
+              "because it is not one of the JavaScript operators")
+
         case nme.equals_ if sym.tpe.matches(Any_equals.tpe) =>
           reporter.warning(sym.pos, "Overriding equals in a JS class does " +
               "not change how it is compared. To silence this warning, change " +
@@ -1320,7 +1349,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
               case JSNameAnnotation =>
                 if (shouldCheckLiterals)
                   checkJSNameArgument(sym, annot)
-              case JSBracketAccessAnnotation | JSBracketCallAnnotation =>
+              case JSOperatorAnnotation | JSBracketAccessAnnotation | JSBracketCallAnnotation =>
                 if (!sym.isMethod) {
                   reporter.error(annot.pos,
                       s"@$annotName can only be used on methods.")
@@ -1335,13 +1364,13 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
           for (duplicateAnnot <- rest) {
             reporter.error(duplicateAnnot.pos,
                 "A member can have at most one annotation among " +
-                "@JSName, @JSBracketAccess and @JSBracketCall.")
+                "@JSName, @JSOperator, @JSBracketAccess and @JSBracketCall.")
           }
       }
     }
 
     private lazy val JSCallingConventionAnnots: Set[Symbol] =
-      Set(JSNameAnnotation, JSBracketAccessAnnotation, JSBracketCallAnnotation)
+      Set(JSNameAnnotation, JSOperatorAnnotation, JSBracketAccessAnnotation, JSBracketCallAnnotation)
 
     /** Checks that argument to @JSName on [[member]] is a literal.
      *  Reports an error on each annotation where this is not the case.

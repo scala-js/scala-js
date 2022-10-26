@@ -1428,6 +1428,24 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
   }
 
+  @Test
+  def noJSOperatorAndJSName: Unit = {
+    """
+    @js.native
+    @JSGlobal
+    class A extends js.Object {
+      @JSOperator
+      @JSName("bar")
+      def +(x: Int): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:9: error: A member can have at most one annotation among @JSName, @JSOperator, @JSBracketAccess and @JSBracketCall.
+      |      @JSName("bar")
+      |       ^
+    """
+  }
+
   @Test // #4284
   def noBracketAccessAndJSName: Unit = {
     """
@@ -1440,7 +1458,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:9: error: A member can have at most one annotation among @JSName, @JSBracketAccess and @JSBracketCall.
+      |newSource1.scala:9: error: A member can have at most one annotation among @JSName, @JSOperator, @JSBracketAccess and @JSBracketCall.
       |      @JSName("bar")
       |       ^
     """
@@ -1458,7 +1476,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:9: error: A member can have at most one annotation among @JSName, @JSBracketAccess and @JSBracketCall.
+      |newSource1.scala:9: error: A member can have at most one annotation among @JSName, @JSOperator, @JSBracketAccess and @JSBracketCall.
       |      @JSName("bar")
       |       ^
     """
@@ -1476,9 +1494,53 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:9: error: A member can have at most one annotation among @JSName, @JSBracketAccess and @JSBracketCall.
+      |newSource1.scala:9: error: A member can have at most one annotation among @JSName, @JSOperator, @JSBracketAccess and @JSBracketCall.
       |      @JSBracketCall
       |       ^
+    """
+  }
+
+  @Test def noBadUnaryOp: Unit = {
+    """
+    @js.native
+    @JSGlobal
+    class A extends js.Object {
+      @JSOperator
+      def unary_!(x: Int*): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:9: error: @JSOperator methods with the name 'unary_!' may not have any parameters
+      |      def unary_!(x: Int*): Int = js.native
+      |          ^
+    """
+
+    """
+    @js.native
+    @JSGlobal
+    class A extends js.Object {
+      @JSOperator
+      def unary_-(x: Int): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:9: error: @JSOperator methods with the name 'unary_-' may not have any parameters
+      |      def unary_-(x: Int): Int = js.native
+      |          ^
+    """
+
+    """
+    @js.native
+    @JSGlobal
+    class A extends js.Object {
+      @JSOperator
+      def unary_%(): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:9: error: @JSOperator cannot be used on a method with the name 'unary_%' because it is not one of the JavaScript operators
+      |      def unary_%(): Int = js.native
+      |          ^
     """
   }
 
@@ -1491,9 +1553,54 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
+      |newSource1.scala:8: warning: Method '+' should have an explicit @JSName or @JSOperator annotation because its name is one of the JavaScript operators
+      |      def +(x: Int*): Int = js.native
+      |          ^
       |newSource1.scala:8: error: methods representing binary operations may not have repeated parameters
       |      def +(x: Int*): Int = js.native
       |            ^
+    """
+
+    """
+    @js.native
+    @JSGlobal
+    class A extends js.Object {
+      @JSOperator
+      def +(x: Int*): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:9: error: methods representing binary operations may not have repeated parameters
+      |      def +(x: Int*): Int = js.native
+      |            ^
+    """
+
+    """
+    @js.native
+    @JSGlobal
+    class A extends js.Object {
+      @JSOperator
+      def +(x: Int, y: Int): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:9: error: @JSOperator methods with the name '+' must have exactly one parameter
+      |      def +(x: Int, y: Int): Int = js.native
+      |          ^
+    """
+
+    """
+    @js.native
+    @JSGlobal
+    class A extends js.Object {
+      @JSOperator
+      def %%(x: Int): Int = js.native
+    }
+    """ hasErrors
+    """
+      |newSource1.scala:9: error: @JSOperator cannot be used on a method with the name '%%' because it is not one of the JavaScript operators
+      |      def %%(x: Int): Int = js.native
+      |          ^
     """
   }
 
@@ -3456,7 +3563,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
       }
       """ hasErrors
       """
-        |newSource1.scala:13: error: A member can have at most one annotation among @JSName, @JSBracketAccess and @JSBracketCall.
+        |newSource1.scala:13: error: A member can have at most one annotation among @JSName, @JSOperator, @JSBracketAccess and @JSBracketCall.
         |        @JSName("foo")
         |         ^
       """
@@ -4336,6 +4443,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     @js.native
     @JSGlobal
     class A extends js.Object {
+      @JSOperator
       def unary_+ : Int
     }
 
@@ -4345,7 +4453,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     s"""
-      |newSource1.scala:13: error: A member of a JS class is overriding another member with a different JS calling convention.
+      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
       |def unary_+$postUnarySpace: Int in class B called from JS as property 'unary_+'
       |    is conflicting with
@@ -4365,13 +4473,19 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName("unary_+")
       override def unary_+(x: String): Int = 2
     }
-    """.succeeds()
+    """ hasWarns
+    """
+      |newSource1.scala:6: warning: Method 'unary_+' should have an explicit @JSName or @JSOperator annotation because its name is one of the JavaScript operators
+      |      def unary_+(x: String): Int = 1
+      |          ^
+    """
 
     // binary op vs thing named like it
     """
     @js.native
     @JSGlobal
     class A extends js.Object {
+      @JSOperator
       def ||(x: Int): Int
     }
 
@@ -4381,7 +4495,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     """
-      |newSource1.scala:13: error: A member of a JS class is overriding another member with a different JS calling convention.
+      |newSource1.scala:14: error: A member of a JS class is overriding another member with a different JS calling convention.
       |
       |def ||(x: Int): Int in class B called from JS as method '||'
       |    is conflicting with
@@ -4401,7 +4515,12 @@ class JSInteropTest extends DirectTest with TestHelpers {
       @JSName("||")
       override def ||(): Int = 2
     }
-    """.succeeds()
+    """ hasWarns
+    """
+      |newSource1.scala:6: warning: Method '||' should have an explicit @JSName or @JSOperator annotation because its name is one of the JavaScript operators
+      |      def ||(): Int = 1
+      |          ^
+    """
   }
 
   @Test def noDefaultConstructorArgsIfModuleIsJSNative: Unit = {
