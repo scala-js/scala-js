@@ -763,6 +763,9 @@ class PrintersTest {
         JSBinaryOp(JSBinaryOp.in, ref("x", AnyType), ref("y", AnyType)))
     assertPrintEquals("(x instanceof y)",
         JSBinaryOp(JSBinaryOp.instanceof, ref("x", AnyType), ref("y", AnyType)))
+
+    assertPrintEquals("(x ** y)",
+        JSBinaryOp(JSBinaryOp.**, ref("x", AnyType), ref("y", AnyType)))
   }
 
   @Test def printJSArrayConstr(): Unit = {

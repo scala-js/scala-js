@@ -2044,6 +2044,8 @@ object Build {
         collectionsEraDependentDirectory(scalaV, testDir) ::
         includeIf(testDir / "require-new-target",
             esVersion >= ESVersion.ES2015) :::
+        includeIf(testDir / "require-exponent-op",
+            esVersion >= ESVersion.ES2016) :::
         includeIf(testDir / "require-modules",
             hasModules) :::
         includeIf(testDir / "require-no-modules",

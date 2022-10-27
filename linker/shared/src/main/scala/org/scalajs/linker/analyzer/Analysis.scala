@@ -204,6 +204,8 @@ object Analysis {
 
   final case class ImportMetaWithoutESModule(from: From) extends Error
 
+  final case class ExponentOperatorWithoutES2016Support(from: From) extends Error
+
   sealed trait From
   final case class FromMethod(methodInfo: MethodInfo) extends From
   final case class FromClass(classInfo: ClassInfo) extends From
@@ -259,6 +261,8 @@ object Analysis {
         "Uses new.target with an ECMAScript version older than ES 2015"
       case ImportMetaWithoutESModule(_) =>
         "Uses import.meta with a module kind other than ESModule"
+      case ExponentOperatorWithoutES2016Support(_) =>
+        "Uses the ** operator with an ECMAScript version older than ES 2016"
     }
 
     logger.log(level, headMsg)

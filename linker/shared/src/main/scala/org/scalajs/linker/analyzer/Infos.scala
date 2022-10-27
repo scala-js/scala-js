@@ -112,14 +112,15 @@ object Infos {
       val staticallyReferencedClasses: List[ClassName],
       val accessedClassClass: Boolean,
       val accessedNewTarget: Boolean,
-      val accessedImportMeta: Boolean
+      val accessedImportMeta: Boolean,
+      val usedExponentOperator: Boolean
   )
 
   object ReachabilityInfo {
     val Empty: ReachabilityInfo = {
       new ReachabilityInfo(Map.empty, Map.empty, Map.empty, Map.empty,
           Map.empty, Map.empty, Map.empty, Map.empty, Nil, Nil, Nil, Nil, Nil, Nil,
-          false, false, false)
+          false, false, false, false)
     }
   }
 
@@ -187,6 +188,7 @@ object Infos {
     private var accessedClassClass = false
     private var accessedNewTarget = false
     private var accessedImportMeta = false
+    private var usedExponentOperator = false
 
     def addFieldRead(cls: ClassName, field: FieldName): this.type = {
       fieldsRead.getOrElseUpdate(cls, mutable.Set.empty) += field
@@ -360,6 +362,11 @@ object Infos {
       this
     }
 
+    def addUsedExponentOperator(): this.type = {
+      usedExponentOperator = true
+      this
+    }
+
     def result(): ReachabilityInfo = {
       def toMapOfLists[A, B](m: mutable.Map[A, mutable.Set[B]]): Map[A, List[B]] =
         m.map(kv => kv._1 -> kv._2.toList).toMap
@@ -381,7 +388,8 @@ object Infos {
           staticallyReferencedClasses = staticallyReferencedClasses.toList,
           accessedClassClass = accessedClassClass,
           accessedNewTarget = accessedNewTarget,
-          accessedImportMeta = accessedImportMeta
+          accessedImportMeta = accessedImportMeta,
+          usedExponentOperator = usedExponentOperator
       )
     }
   }
@@ -665,6 +673,9 @@ object Infos {
 
             case JSImportMeta() =>
               builder.addAccessImportMeta()
+
+            case JSBinaryOp(JSBinaryOp.**, _, _) =>
+              builder.addUsedExponentOperator()
 
             case LoadJSConstructor(className) =>
               builder.addInstantiatedClass(className)

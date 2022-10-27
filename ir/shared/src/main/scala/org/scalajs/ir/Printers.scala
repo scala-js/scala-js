@@ -726,6 +726,8 @@ object Printers {
 
             case `in`         => "in"
             case `instanceof` => "instanceof"
+
+            case ** => "**"
           })
           print(" ")
           print(rhs)

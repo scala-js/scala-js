@@ -70,6 +70,9 @@ sealed trait Dynamic extends js.Any with scala.Dynamic {
 
   @JSOperator def &&(that: js.Dynamic): js.Dynamic = js.native
   @JSOperator def ||(that: js.Dynamic): js.Dynamic = js.native
+
+  /** <span class="badge badge-ecma2016" style="float: right;">ECMAScript 2016</span> */
+  @JSOperator def **(that: js.Dynamic): js.Dynamic = js.native
 }
 
 /** Factory for dynamically typed JavaScript values. */

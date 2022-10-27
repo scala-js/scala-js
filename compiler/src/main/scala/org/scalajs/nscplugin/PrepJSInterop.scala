@@ -994,7 +994,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
               "application in JavaScript. A parameterless member should be " +
               "exported as a property. You must add @JSName(\"apply\")")
 
-        case jsInterop.JSUnaryOpMethodName(_) =>
+        case jsInterop.JSUnaryOpMethodName(_, _) =>
           if (sym.hasAnnotation(JSOperatorAnnotation)) {
             if (sym.paramss.map(_.size).sum != 0) {
               reporter.error(tree.pos,
@@ -1006,7 +1006,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
                 "because its name is one of the JavaScript operators")
           }
 
-        case jsInterop.JSBinaryOpMethodName(_) =>
+        case jsInterop.JSBinaryOpMethodName(_, _) =>
           if (sym.hasAnnotation(JSOperatorAnnotation)) {
             if (sym.paramss.map(_.size).sum != 1) {
               reporter.error(tree.pos,

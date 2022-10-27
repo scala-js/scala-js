@@ -1379,6 +1379,9 @@ private final class Analyzer(config: CommonPhaseConfig,
     if (data.accessedImportMeta && config.coreSpec.moduleKind != ModuleKind.ESModule) {
       _errors += ImportMetaWithoutESModule(from)
     }
+
+    if (data.usedExponentOperator && config.coreSpec.esFeatures.esVersion < ESVersion.ES2016)
+      _errors += ExponentOperatorWithoutES2016Support(from)
   }
 
   @tailrec

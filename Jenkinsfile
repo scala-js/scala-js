@@ -483,7 +483,7 @@ def otherScalaVersions = [
 def allESVersions = [
   "ES5_1",
   "ES2015",
-  // "ES2016", // We do not use anything specifically from ES2016
+  // "ES2016", // Technically we have the '**' operator dependent on ES2016, but it's not enough to justify testing this version
   "ES2017",
   "ES2018",
   // "ES2019", // We do not use anything specifically from ES2019

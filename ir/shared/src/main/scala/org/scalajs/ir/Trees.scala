@@ -826,6 +826,9 @@ object Trees {
     final val in         = 20
     final val instanceof = 21
 
+    // New in 1.12
+    final val ** = 22
+
     def resultTypeOf(op: Code): Type = op match {
       case === | !== =>
         /* We assume that ECMAScript will never pervert `===` and `!==` to the
