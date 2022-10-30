@@ -76,7 +76,7 @@ setJavaVersion() {
   export PATH=$JAVA_HOME/bin:$PATH
 }
 
-# Define sbtretry
+# Define sbtretry and sbtnoretry
 
 sbtretry() {
   local TIMEOUT=45m
@@ -95,8 +95,20 @@ sbtretry() {
     fi
     if [ "$CODE" -ne 0 ]; then
       echo "FAILED TWICE"
+      echo "Command was: sbt" "$@"
       return $CODE
     fi
+  fi
+}
+
+sbtnoretry() {
+  echo "RUNNING sbt" "$@"
+  sbt $SBT_OPTS "$@"
+  CODE=$?
+  if [ "$CODE" -ne 0 ]; then
+    echo "FAILED"
+    echo "Command was: sbt" "$@"
+    return $CODE
   fi
 }
 '''
@@ -367,29 +379,29 @@ def Tasks = [
   "bootstrap": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala linker$v/test &&
-    sbt linkerPrivateLibrary/test &&
-    sbt ++$scala irJS$v/test linkerJS$v/test linkerInterfaceJS$v/test &&
-    sbt 'set scalaJSStage in Global := FullOptStage' \
+    sbtnoretry ++$scala linker$v/test &&
+    sbtnoretry linkerPrivateLibrary/test &&
+    sbtnoretry ++$scala irJS$v/test linkerJS$v/test linkerInterfaceJS$v/test &&
+    sbtnoretry 'set scalaJSStage in Global := FullOptStage' \
         'set scalaJSStage in testSuite.v$v := FastOptStage' \
         ++$scala irJS$v/test linkerJS$v/test linkerInterfaceJS$v/test &&
-    sbt ++$scala testSuite$v/bootstrap:test &&
-    sbt 'set scalaJSStage in Global := FullOptStage' \
+    sbtnoretry ++$scala testSuite$v/bootstrap:test &&
+    sbtnoretry 'set scalaJSStage in Global := FullOptStage' \
         'set scalaJSStage in testSuite.v$v := FastOptStage' \
         ++$scala testSuite$v/bootstrap:test &&
-    sbt ++$scala irJS$v/mimaReportBinaryIssues \
+    sbtnoretry ++$scala irJS$v/mimaReportBinaryIssues \
         linkerInterfaceJS$v/mimaReportBinaryIssues linkerJS$v/mimaReportBinaryIssues
   ''',
 
   "tools": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala ir$v/test linkerInterface$v/test \
+    sbtnoretry ++$scala ir$v/test linkerInterface$v/test \
         linker$v/compile testAdapter$v/test \
         ir$v/mimaReportBinaryIssues \
         linkerInterface$v/mimaReportBinaryIssues linker$v/mimaReportBinaryIssues \
         testAdapter$v/mimaReportBinaryIssues &&
-    sbt ++$scala ir$v/compile:doc \
+    sbtnoretry ++$scala ir$v/compile:doc \
         linkerInterface$v/compile:doc linker$v/compile:doc \
         testAdapter$v/compile:doc
   ''',
@@ -397,37 +409,40 @@ def Tasks = [
   "tools-sbtplugin": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala ir$v/test linkerInterface$v/compile \
+    sbtnoretry ++$scala ir$v/test linkerInterface$v/compile \
         linker$v/compile testAdapter$v/test \
         sbtPlugin/package \
         ir$v/mimaReportBinaryIssues \
         linkerInterface$v/mimaReportBinaryIssues linker$v/mimaReportBinaryIssues \
         testAdapter$v/mimaReportBinaryIssues \
         sbtPlugin/mimaReportBinaryIssues &&
-    sbt ++$scala scalastyleCheck &&
-    sbt ++$scala ir$v/compile:doc \
+    sbtnoretry ++$scala scalastyleCheck &&
+    sbtnoretry ++$scala ir$v/compile:doc \
         linkerInterface$v/compile:doc linker$v/compile:doc \
         testAdapter$v/compile:doc \
         sbtPlugin/compile:doc &&
-    sbt sbtPlugin/scripted
+    sbtnoretry sbtPlugin/scripted
   ''',
 
   "partest-noopt": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala package "partestSuite$v/testOnly -- --showDiff"
+    sbtnoretry ++$scala partestSuite$v/test:compile &&
+    sbtnoretry ++$scala "partestSuite$v/testOnly -- --showDiff"
   ''',
 
   "partest-fastopt": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala package "partestSuite$v/testOnly -- --fastOpt --showDiff"
+    sbtnoretry ++$scala partestSuite$v/test:compile &&
+    sbtnoretry ++$scala "partestSuite$v/testOnly -- --fastOpt --showDiff"
   ''',
 
   "partest-fullopt": '''
     setJavaVersion $java
     npm install &&
-    sbt ++$scala package "partestSuite$v/testOnly -- --fullOpt --showDiff"
+    sbtnoretry ++$scala partestSuite$v/test:compile &&
+    sbtnoretry ++$scala "partestSuite$v/testOnly -- --fullOpt --showDiff"
   '''
 ]
 
