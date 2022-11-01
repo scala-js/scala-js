@@ -2441,7 +2441,7 @@ object Build {
       NoIDEExport.noIDEExportSettings,
 
       fork in Test := true,
-      javaOptions in Test += "-Xmx1G",
+      javaOptions in Test += "-Xmx3G",
 
       // Override the dependency of partest - see #1889
       dependencyOverrides += "org.scala-lang" % "scala-library" % scalaVersion.value % "test",
