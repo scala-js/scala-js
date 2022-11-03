@@ -164,8 +164,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       else
         checkJSNativeSpecificAnnotsOnNonJSNative(tree)
 
-      checkJSNameAnnots(sym)
-      checkDuplicateJSMemberAnnots(sym)
+      checkJSCallingConventionAnnots(sym)
 
       // @unchecked needed because MemberDef is not marked `sealed`
       val transformedTree: Tree = (tree: @unchecked) match {
@@ -679,15 +678,6 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
         }
       }
 
-      // Disallow bracket access / bracket call
-      if (jsInterop.isJSBracketAccess(sym)) {
-        reporter.error(implDef.pos,
-            "@JSBracketAccess is not allowed on JS classes and objects")
-      } else if (jsInterop.isJSBracketCall(sym)) {
-        reporter.error(implDef.pos,
-            "@JSBracketCall is not allowed on JS classes and objects")
-      }
-
       // Checks for non-native JS stuff
       if (!isJSNative) {
         // It cannot be in a native JS class or trait
@@ -975,12 +965,6 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       if (sym.isLazy || jsInterop.isJSSetter(sym)) {
         reporter.error(tree.pos,
             "@js.native is not allowed on vars, lazy vals and setter defs")
-      } else if (jsInterop.isJSBracketAccess(sym)) {
-        reporter.error(tree.pos,
-            "@JSBracketAccess is not allowed on @js.native vals and defs")
-      } else if (jsInterop.isJSBracketCall(sym)) {
-        reporter.error(tree.pos,
-            "@JSBracketCall is not allowed on @js.native vals and defs")
       }
 
       if (!sym.isAccessor)
@@ -1009,6 +993,35 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
           reporter.error(sym.pos, "A member named apply represents function " +
               "application in JavaScript. A parameterless member should be " +
               "exported as a property. You must add @JSName(\"apply\")")
+
+        case jsInterop.JSUnaryOpMethodName(_, _) =>
+          if (sym.hasAnnotation(JSOperatorAnnotation)) {
+            if (sym.paramss.map(_.size).sum != 0) {
+              reporter.error(tree.pos,
+                  s"@JSOperator methods with the name '${sym.nameString}' may not have any parameters")
+            }
+          } else if (!sym.annotations.exists(annot => JSCallingConventionAnnots.contains(annot.symbol))) {
+            reporter.warning(tree.pos,
+                s"Method '${sym.nameString}' should have an explicit @JSName or @JSOperator annotation " +
+                "because its name is one of the JavaScript operators")
+          }
+
+        case jsInterop.JSBinaryOpMethodName(_, _) =>
+          if (sym.hasAnnotation(JSOperatorAnnotation)) {
+            if (sym.paramss.map(_.size).sum != 1) {
+              reporter.error(tree.pos,
+                  s"@JSOperator methods with the name '${sym.nameString}' must have exactly one parameter")
+            }
+          } else if (!sym.annotations.exists(annot => JSCallingConventionAnnots.contains(annot.symbol))) {
+            reporter.warning(tree.pos,
+                s"Method '${sym.nameString}' should have an explicit @JSName or @JSOperator annotation " +
+                "because its name is one of the JavaScript operators")
+          }
+
+        case _ if sym.hasAnnotation(JSOperatorAnnotation) =>
+          reporter.error(tree.pos,
+              s"@JSOperator cannot be used on a method with the name '${sym.nameString}' " +
+              "because it is not one of the JavaScript operators")
 
         case nme.equals_ if sym.tpe.matches(Any_equals.tpe) =>
           reporter.warning(sym.pos, "Overriding equals in a JS class does " +
@@ -1312,37 +1325,52 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
       }
     }
 
-    private def checkJSNameAnnots(sym: Symbol): Unit = {
-      for (annot <- sym.getAnnotation(JSNameAnnotation)) {
-        // Check everything about the first @JSName annotation
-        if (sym.isLocalToBlock || (enclosingOwner isnt OwnerKind.JSType)) {
-          reporter.error(annot.pos,
-              "@JSName can only be used on members of JS types.")
-        } else if (sym.isTrait) {
-          reporter.error(annot.pos,
-              "@JSName cannot be used on traits.")
-        } else if ((sym.isMethod || sym.isClass) && isPrivateMaybeWithin(sym)) {
-          reporter.error(annot.pos,
-              "@JSName cannot be used on private members.")
-        } else {
-          if (shouldCheckLiterals)
-            checkJSNameArgument(sym, annot)
-        }
+    private def checkJSCallingConventionAnnots(sym: Symbol): Unit = {
+      val callingConvAnnots = sym.annotations.filter(annot => JSCallingConventionAnnots.contains(annot.symbol))
+
+      callingConvAnnots match {
+        case Nil =>
+          () // OK
+
+        case annot :: rest =>
+          def annotName: String = annot.symbol.nameString
+
+          if (sym.isLocalToBlock || (enclosingOwner isnt OwnerKind.JSType)) {
+            reporter.error(annot.pos,
+                s"@$annotName can only be used on members of JS types.")
+          } else if (sym.isTrait) {
+            reporter.error(annot.pos,
+                s"@$annotName cannot be used on traits.")
+          } else if ((sym.isMethod || sym.isClass) && isPrivateMaybeWithin(sym)) {
+            reporter.error(annot.pos,
+                s"@$annotName cannot be used on private members.")
+          } else {
+            annot.symbol match {
+              case JSNameAnnotation =>
+                if (shouldCheckLiterals)
+                  checkJSNameArgument(sym, annot)
+              case JSOperatorAnnotation | JSBracketAccessAnnotation | JSBracketCallAnnotation =>
+                if (!sym.isMethod) {
+                  reporter.error(annot.pos,
+                      s"@$annotName can only be used on methods.")
+                }
+              case _ =>
+                throw new AssertionError(
+                    s"Found unexpected annotation ${annot.symbol} " +
+                    s"in calling convention annots at ${annot.pos}")
+            }
+          }
+
+          for (duplicateAnnot <- rest) {
+            reporter.error(duplicateAnnot.pos,
+                "A member can have at most one annotation among " +
+                "@JSName, @JSOperator, @JSBracketAccess and @JSBracketCall.")
+          }
       }
     }
 
-    private def checkDuplicateJSMemberAnnots(sym: Symbol): Unit = {
-      sym.annotations
-        .filter(annot => JSMemberAnnots.contains(annot.symbol))
-        .drop(1)
-        .foreach { annot =>
-          reporter.error(annot.pos, "A member can have at most one " +
-              "annotation among @JSName, @JSBracketAccess and @JSBracketCall.")
-        }
-    }
-
-    private lazy val JSMemberAnnots: Set[Symbol] =
-      Set(JSNameAnnotation, JSBracketAccessAnnotation, JSBracketCallAnnotation)
+    private lazy val JSCallingConventionAnnots: Set[Symbol] =
+      Set(JSNameAnnotation, JSOperatorAnnotation, JSBracketAccessAnnotation, JSBracketCallAnnotation)
 
     /** Checks that argument to @JSName on [[member]] is a literal.
      *  Reports an error on each annotation where this is not the case.

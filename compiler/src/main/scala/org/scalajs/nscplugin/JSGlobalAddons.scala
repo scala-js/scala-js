@@ -185,10 +185,12 @@ trait JSGlobalAddons extends JSDefinitions
             sym.name match {
               case nme.apply => Call
 
-              case JSUnaryOpMethodName(code) if pc == 0 =>
+              case JSUnaryOpMethodName(code, defaultsToOp)
+                  if (defaultsToOp || sym.hasAnnotation(JSOperatorAnnotation)) && pc == 0 =>
                 UnaryOp(code)
 
-              case JSBinaryOpMethodName(code) if pc == 1 =>
+              case JSBinaryOpMethodName(code, defaultsToOp)
+                  if (defaultsToOp || sym.hasAnnotation(JSOperatorAnnotation)) && pc == 1 =>
                 BinaryOp(code)
 
               case _ =>
@@ -208,49 +210,51 @@ trait JSGlobalAddons extends JSDefinitions
         of(sym) == Call
     }
 
-    private object JSUnaryOpMethodName {
-      private val map = Map[Name, js.JSUnaryOp.Code](
-        nme.UNARY_+ -> js.JSUnaryOp.+,
-        nme.UNARY_- -> js.JSUnaryOp.-,
-        nme.UNARY_~ -> js.JSUnaryOp.~,
-        nme.UNARY_! -> js.JSUnaryOp.!
+    object JSUnaryOpMethodName {
+      private val map = Map[Name, (js.JSUnaryOp.Code, Boolean)](
+        nme.UNARY_+ -> (js.JSUnaryOp.+, true),
+        nme.UNARY_- -> (js.JSUnaryOp.-, true),
+        nme.UNARY_~ -> (js.JSUnaryOp.~, true),
+        nme.UNARY_! -> (js.JSUnaryOp.!, true)
       )
 
       /* We use Name instead of TermName to work around
        * https://github.com/scala/bug/issues/11534
        */
-      def unapply(name: Name): Option[js.JSUnaryOp.Code] =
+      def unapply(name: Name): Option[(js.JSUnaryOp.Code, Boolean)] =
         map.get(name)
     }
 
-    private object JSBinaryOpMethodName {
-      private val map = Map[Name, js.JSBinaryOp.Code](
-        nme.ADD -> js.JSBinaryOp.+,
-        nme.SUB -> js.JSBinaryOp.-,
-        nme.MUL -> js.JSBinaryOp.*,
-        nme.DIV -> js.JSBinaryOp./,
-        nme.MOD -> js.JSBinaryOp.%,
+    object JSBinaryOpMethodName {
+      private val map = Map[Name, (js.JSBinaryOp.Code, Boolean)](
+        nme.ADD -> (js.JSBinaryOp.+, true),
+        nme.SUB -> (js.JSBinaryOp.-, true),
+        nme.MUL -> (js.JSBinaryOp.*, true),
+        nme.DIV -> (js.JSBinaryOp./, true),
+        nme.MOD -> (js.JSBinaryOp.%, true),
 
-        nme.LSL -> js.JSBinaryOp.<<,
-        nme.ASR -> js.JSBinaryOp.>>,
-        nme.LSR -> js.JSBinaryOp.>>>,
-        nme.OR  -> js.JSBinaryOp.|,
-        nme.AND -> js.JSBinaryOp.&,
-        nme.XOR -> js.JSBinaryOp.^,
+        nme.LSL -> (js.JSBinaryOp.<<, true),
+        nme.ASR -> (js.JSBinaryOp.>>, true),
+        nme.LSR -> (js.JSBinaryOp.>>>, true),
+        nme.OR  -> (js.JSBinaryOp.|, true),
+        nme.AND -> (js.JSBinaryOp.&, true),
+        nme.XOR -> (js.JSBinaryOp.^, true),
 
-        nme.LT -> js.JSBinaryOp.<,
-        nme.LE -> js.JSBinaryOp.<=,
-        nme.GT -> js.JSBinaryOp.>,
-        nme.GE -> js.JSBinaryOp.>=,
+        nme.LT -> (js.JSBinaryOp.<, true),
+        nme.LE -> (js.JSBinaryOp.<=, true),
+        nme.GT -> (js.JSBinaryOp.>, true),
+        nme.GE -> (js.JSBinaryOp.>=, true),
 
-        nme.ZAND -> js.JSBinaryOp.&&,
-        nme.ZOR  -> js.JSBinaryOp.||
+        nme.ZAND -> (js.JSBinaryOp.&&, true),
+        nme.ZOR  -> (js.JSBinaryOp.||, true),
+
+        global.encode("**") -> (js.JSBinaryOp.**, false)
       )
 
       /* We use Name instead of TermName to work around
        * https://github.com/scala/bug/issues/11534
        */
-      def unapply(name: Name): Option[js.JSBinaryOp.Code] =
+      def unapply(name: Name): Option[(js.JSBinaryOp.Code, Boolean)] =
         map.get(name)
     }
 

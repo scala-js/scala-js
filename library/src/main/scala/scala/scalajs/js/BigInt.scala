@@ -13,7 +13,7 @@
 package scala.scalajs.js
 
 import scala.scalajs.js
-import scala.scalajs.js.annotation.JSGlobal
+import scala.scalajs.js.annotation._
 
 /** <span class="badge badge-ecma2020" style="float: right;">ECMAScript 2020</span>
  *
@@ -29,29 +29,30 @@ import scala.scalajs.js.annotation.JSGlobal
 @JSGlobal
 final class BigInt private[this] () extends js.Object {
 
-  def +(other: BigInt): BigInt = js.native
-  def *(other: BigInt): BigInt = js.native
-  def /(other: BigInt): BigInt = js.native
-  def -(other: BigInt): BigInt = js.native
-  def %(other: BigInt): BigInt = js.native
+  @JSOperator def +(other: BigInt): BigInt = js.native
+  @JSOperator def *(other: BigInt): BigInt = js.native
+  @JSOperator def /(other: BigInt): BigInt = js.native
+  @JSOperator def -(other: BigInt): BigInt = js.native
+  @JSOperator def %(other: BigInt): BigInt = js.native
+  @JSOperator def **(other: BigInt): BigInt = js.native
 
-  def &(other: BigInt): BigInt = js.native
-  def |(other: BigInt): BigInt = js.native
-  def ^(other: BigInt): BigInt = js.native
-  def <<(other: BigInt): BigInt = js.native
-  def >>(other: BigInt): BigInt = js.native
+  @JSOperator def &(other: BigInt): BigInt = js.native
+  @JSOperator def |(other: BigInt): BigInt = js.native
+  @JSOperator def ^(other: BigInt): BigInt = js.native
+  @JSOperator def <<(other: BigInt): BigInt = js.native
+  @JSOperator def >>(other: BigInt): BigInt = js.native
   // no >>> since BigInt is always signed
 
   // scalastyle:off disallow.space.before.token
-  def unary_- : BigInt = js.native
-  def unary_~ : BigInt = js.native
+  @JSOperator def unary_- : BigInt = js.native
+  @JSOperator def unary_~ : BigInt = js.native
   // unary_+ is not supported by BigInts
   // scalastyle:on disallow.space.before.token
 
-  def <(x: BigInt): Boolean = js.native
-  def <=(x: BigInt): Boolean = js.native
-  def >(x: BigInt): Boolean = js.native
-  def >=(x: BigInt): Boolean = js.native
+  @JSOperator def <(x: BigInt): Boolean = js.native
+  @JSOperator def <=(x: BigInt): Boolean = js.native
+  @JSOperator def >(x: BigInt): Boolean = js.native
+  @JSOperator def >=(x: BigInt): Boolean = js.native
 
   /** Returns a localized string representation of this BigInt.
    *

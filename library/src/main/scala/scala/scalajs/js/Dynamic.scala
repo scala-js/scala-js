@@ -45,31 +45,34 @@ sealed trait Dynamic extends js.Any with scala.Dynamic {
   /** Calls this object as a callable. */
   def apply(args: js.Any*): js.Dynamic = js.native
 
-  def unary_! : js.Dynamic = js.native // scalastyle:ignore
+  @JSOperator def unary_! : js.Dynamic = js.native // scalastyle:ignore
 
-  def unary_+ : js.Dynamic = js.native // scalastyle:ignore
-  def unary_- : js.Dynamic = js.native // scalastyle:ignore
-  def unary_~ : js.Dynamic = js.native // scalastyle:ignore
+  @JSOperator def unary_+ : js.Dynamic = js.native // scalastyle:ignore
+  @JSOperator def unary_- : js.Dynamic = js.native // scalastyle:ignore
+  @JSOperator def unary_~ : js.Dynamic = js.native // scalastyle:ignore
 
-  def +(that: js.Dynamic): js.Dynamic = js.native
-  def -(that: js.Dynamic): js.Dynamic = js.native
-  def *(that: js.Dynamic): js.Dynamic = js.native
-  def /(that: js.Dynamic): js.Dynamic = js.native
-  def %(that: js.Dynamic): js.Dynamic = js.native
-  def <<(that: js.Dynamic): js.Dynamic = js.native
-  def >>(that: js.Dynamic): js.Dynamic = js.native
-  def >>>(that: js.Dynamic): js.Dynamic = js.native
-  def &(that: js.Dynamic): js.Dynamic = js.native
-  def |(that: js.Dynamic): js.Dynamic = js.native
-  def ^(that: js.Dynamic): js.Dynamic = js.native
+  @JSOperator def +(that: js.Dynamic): js.Dynamic = js.native
+  @JSOperator def -(that: js.Dynamic): js.Dynamic = js.native
+  @JSOperator def *(that: js.Dynamic): js.Dynamic = js.native
+  @JSOperator def /(that: js.Dynamic): js.Dynamic = js.native
+  @JSOperator def %(that: js.Dynamic): js.Dynamic = js.native
+  @JSOperator def <<(that: js.Dynamic): js.Dynamic = js.native
+  @JSOperator def >>(that: js.Dynamic): js.Dynamic = js.native
+  @JSOperator def >>>(that: js.Dynamic): js.Dynamic = js.native
+  @JSOperator def &(that: js.Dynamic): js.Dynamic = js.native
+  @JSOperator def |(that: js.Dynamic): js.Dynamic = js.native
+  @JSOperator def ^(that: js.Dynamic): js.Dynamic = js.native
 
-  def <(that: js.Dynamic): js.Dynamic = js.native
-  def >(that: js.Dynamic): js.Dynamic = js.native
-  def <=(that: js.Dynamic): js.Dynamic = js.native
-  def >=(that: js.Dynamic): js.Dynamic = js.native
+  @JSOperator def <(that: js.Dynamic): js.Dynamic = js.native
+  @JSOperator def >(that: js.Dynamic): js.Dynamic = js.native
+  @JSOperator def <=(that: js.Dynamic): js.Dynamic = js.native
+  @JSOperator def >=(that: js.Dynamic): js.Dynamic = js.native
 
-  def &&(that: js.Dynamic): js.Dynamic = js.native
-  def ||(that: js.Dynamic): js.Dynamic = js.native
+  @JSOperator def &&(that: js.Dynamic): js.Dynamic = js.native
+  @JSOperator def ||(that: js.Dynamic): js.Dynamic = js.native
+
+  /** <span class="badge badge-ecma2016" style="float: right;">ECMAScript 2016</span> */
+  @JSOperator def **(that: js.Dynamic): js.Dynamic = js.native
 }
 
 /** Factory for dynamically typed JavaScript values. */

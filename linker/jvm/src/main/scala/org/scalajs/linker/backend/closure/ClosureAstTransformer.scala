@@ -609,6 +609,8 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
 
       case `in`         => Token.IN
       case `instanceof` => Token.INSTANCEOF
+
+      case ** => Token.EXPONENT
     }
 
     new Node(tok, lhs, rhs)

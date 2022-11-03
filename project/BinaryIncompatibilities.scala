@@ -22,6 +22,8 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+    // new methods in sealed trait, not an issue
+    ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.scalajs.js.Dynamic.**"),
   )
 
   val TestInterface = Seq(

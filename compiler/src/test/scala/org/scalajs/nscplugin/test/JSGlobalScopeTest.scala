@@ -44,7 +44,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
       var `not-a-valid-identifier-var`: Int = js.native
       def `not-a-valid-identifier-def`(): Int = js.native
 
-      def +(that: Int): Int = js.native
+      @JSOperator def +(that: Int): Int = js.native
 
       def apply(x: Int): Int = js.native
 
