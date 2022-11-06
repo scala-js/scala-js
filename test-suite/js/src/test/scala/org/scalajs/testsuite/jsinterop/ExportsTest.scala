@@ -12,6 +12,8 @@
 
 package org.scalajs.testsuite.jsinterop
 
+import scala.language.higherKinds
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 import scala.scalajs.js.Dynamic.global
@@ -440,6 +442,19 @@ class ExportsTest {
     val foo = (new Foo).asInstanceOf[js.Dynamic]
     assertEquals("function", js.typeOf(foo.defArg))
     assertEquals(5, foo.defArg(5))
+  }
+
+  @Test def exportsForHigherKinds(): Unit = {
+    class HK {
+      /* Probably there's no real use case for this
+       * but make sure it doesn't crash the compiler.
+       */
+      @JSExport
+      def ahem[F[T] <: Seq[T]](x: F[Int]): F[String] = ???
+    }
+
+    val x = (new HK).asInstanceOf[js.Dynamic]
+    assertEquals("function", js.typeOf(x.ahem))
   }
 
   @Test def exportsForWeirdStuff(): Unit = {
