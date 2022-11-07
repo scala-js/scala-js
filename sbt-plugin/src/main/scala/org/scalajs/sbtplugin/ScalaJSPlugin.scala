@@ -180,6 +180,12 @@ object ScalaJSPlugin extends AutoPlugin {
     val fullLinkJS = TaskKey[Attributed[Report]]("fullLinkJS",
         "Link all compiled JavaScript and fully optimize", APlusTask)
 
+    val fastLinkJSOutput = TaskKey[File]("fastLinkJSOutput",
+        "Quickly link all compiled JavaScript and return the output directory", AMinusTask)
+
+    val fullLinkJSOutput = TaskKey[File]("fullLinkJSOutput",
+        "Link all compiled JavaScript with full optimizations and return the output directory", AMinusTask)
+
     val testHtml = TaskKey[Attributed[File]]("testHtml",
         "Create an HTML test runner. Honors `scalaJSStage`.", AMinusTask)
 

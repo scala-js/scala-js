@@ -113,11 +113,12 @@ private[sbtplugin] object ScalaJSPluginInternal {
     }
   }
 
-  private def linkerOutputDirectory(v: Attributed[Report]): File = {
+  private def linkerOutputDirectory(v: Attributed[Report], scope: Scope, key: TaskKey[_]): File = {
     v.get(scalaJSLinkerOutputDirectory.key).getOrElse {
+      val keyStr = Scope.display(scope, key.key.label)
       throw new MessageOnlyException(
-          "Linking report was not attributed with output directory. " +
-          "Please report this as s Scala.js bug.")
+          s"The linking report produced by $keyStr was not attributed with an output directory. " +
+          "Please report this as a Scala.js bug.")
     }
   }
 
@@ -147,7 +148,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
   /** Settings for the production key (e.g. fastLinkJS) of a given stage */
   private def scalaJSStageSettings(stage: Stage,
-      key: TaskKey[Attributed[Report]],
+      key: TaskKey[Attributed[Report]], outputKey: TaskKey[File],
       legacyKey: TaskKey[Attributed[File]]): Seq[Setting[_]] = Seq(
 
       scalaJSLinkerBox in key := new CacheBox,
@@ -268,8 +269,9 @@ private[sbtplugin] object ScalaJSPluginInternal {
           } (realFiles.toSet)
 
           val report = Report.deserialize(IO.readBytes(reportFile)).getOrElse {
-            throw new MessageOnlyException("failed to deserialize report after " +
-                "linking. Please report this as s Scala.js bug.")
+            throw new MessageOnlyException(
+                "Failed to deserialize report after linking. " +
+                "Please report this as a Scala.js bug.")
           }
 
           Attributed.blank(report)
@@ -277,14 +279,14 @@ private[sbtplugin] object ScalaJSPluginInternal {
         }.tag(usesLinkerTag, ScalaJSTags.Link)
       }.value,
 
+      outputKey := linkerOutputDirectory(key.value, resolvedScoped.value.scope, key),
+
       legacyKey := {
-        val linkingResult = key.value
-
         val linkerImpl = (scalaJSLinkerImpl in key).value
+        val report = key.value.data
+        val linkerOutputDir = outputKey.value
 
-        val report = linkingResult.data
-        val outDir =
-          linkerImpl.outputDirectory(linkerOutputDirectory(linkingResult).toPath())
+        val outDir = linkerImpl.outputDirectory(linkerOutputDir.toPath())
 
         val outputJSFile = (artifactPath in legacyKey).value
         val outputSourceMapFile = new File(outputJSFile.getPath + ".map")
@@ -340,8 +342,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
   val scalaJSConfigSettings: Seq[Setting[_]] = Seq(
       incOptions ~= scalaJSPatchIncOptions
   ) ++ (
-      scalaJSStageSettings(Stage.FastOpt, fastLinkJS, fastOptJS) ++
-      scalaJSStageSettings(Stage.FullOpt, fullLinkJS, fullOptJS)
+      scalaJSStageSettings(Stage.FastOpt, fastLinkJS, fastLinkJSOutput, fastOptJS) ++
+      scalaJSStageSettings(Stage.FullOpt, fullLinkJS, fullLinkJSOutput, fullOptJS)
   ) ++ (
       Seq(fastOptJS, fullOptJS).map { key =>
         moduleName in key := {
@@ -509,8 +511,9 @@ private[sbtplugin] object ScalaJSPluginInternal {
               s"Full report:\n$report")
         }
 
-        val path =
-          (linkerOutputDirectory(linkingResult) / mainModule.jsFileName).toPath
+        val linkerOutputDir =
+          linkerOutputDirectory(linkingResult, resolvedScoped.value.scope, scalaJSLinkerResult)
+        val path = (linkerOutputDir / mainModule.jsFileName).toPath
 
         mainModule.moduleKind match {
           case ModuleKind.NoModule       => Input.Script(path)
