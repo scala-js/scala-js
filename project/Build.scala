@@ -2444,6 +2444,12 @@ object Build {
 
       fork in Test := true,
       javaOptions in Test += "-Xmx3G",
+      javaOptions in Test += {
+        // Use maximum 8 threads in partest (avoid saturating the memory on machines with lots of processors)
+        val availableProcs = java.lang.Runtime.getRuntime().availableProcessors()
+        val numThreads = if (availableProcs < 1) 1 else if (availableProcs > 8) 8 else availableProcs
+        s"-Dpartest.threads=$numThreads"
+      },
 
       // Override the dependency of partest - see #1889
       dependencyOverrides += "org.scala-lang" % "scala-library" % scalaVersion.value % "test",
