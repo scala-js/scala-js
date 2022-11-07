@@ -1,5 +1,5 @@
 inThisBuild(Def.settings(
-  scalaVersion := "2.12.16",
+  scalaVersion := "2.12.17",
 ))
 
 lazy val sharedSettings = Def.settings(

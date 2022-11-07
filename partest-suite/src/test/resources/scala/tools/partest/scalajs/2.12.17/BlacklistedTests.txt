@@ -970,9 +970,11 @@ run/StubErrorTypeDef.scala
 
 # partest.CompilerTest
 run/infix-rangepos.scala
+run/infixPostfixAttachments.scala
 run/t8852a.scala
 run/t12062.scala
 run/t12490.scala
+run/t12597.scala
 
 # partest.ASMConverters
 run/t9403
