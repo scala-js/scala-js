@@ -830,6 +830,22 @@ object Build {
         baseDirectory.value.getParentFile.getParentFile / "shared/src/main/scala",
       unmanagedSourceDirectories in Test +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/test/scala",
+
+      /* The Scala 3 compiler includes this project by source. Therefore, we
+       * test that we can compile it using Scala 3, with the compiler options
+       * that are used when building the Scala 3 compiler.
+       *
+       * We do not include `-Yexplicit-nulls` although it is used in Scala 3,
+       * because we cannot cross-compile code that way. Instead, the build of
+       * Scala 3 adds an `import scala.language.unsafeNulls` in all the IR
+       * source files.
+       */
+      scalacOptions ++= {
+        if (scalaVersion.value.startsWith("3."))
+          List("-Ysafe-init")
+        else
+          Nil
+      },
   )
 
   lazy val irProject: MultiScalaProject = MultiScalaProject(
