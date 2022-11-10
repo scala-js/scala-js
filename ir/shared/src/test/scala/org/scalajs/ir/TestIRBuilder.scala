@@ -22,7 +22,7 @@ import Types._
 
 object TestIRBuilder {
 
-  implicit val dummyPos = Position.NoPosition
+  implicit val dummyPos: Position = Position.NoPosition
 
   /** Empty ApplyFlags, for short. */
   val EAF = ApplyFlags.empty
