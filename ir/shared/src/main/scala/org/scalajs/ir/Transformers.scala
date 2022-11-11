@@ -256,10 +256,10 @@ object Transformers {
           MethodDef(flags, name, originalName, args, resultType, newBody)(
               memberDef.optimizerHints, None)
 
-        case ctorDef: JSConstructorDef =>
+        case memberDef: JSConstructorDef =>
           val JSConstructorDef(flags, args, restParam, body) = memberDef
           JSConstructorDef(flags, args, restParam, transformJSConstructorBody(body))(
-              ctorDef.optimizerHints, None)
+              memberDef.optimizerHints, None)
 
         case memberDef: JSMethodDef =>
           val JSMethodDef(flags, name, args, restParam, body) = memberDef
