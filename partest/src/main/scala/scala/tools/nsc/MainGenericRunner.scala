@@ -74,7 +74,7 @@ class MainGenericRunner {
     val command = new GenericRunnerCommand(args.toList, (x: String) => errorFn(x))
 
     if (!command.ok) return errorFn("\n" + command.shortUsageMsg)
-    else if (command.settings.version) return errorFn("Scala code runner %s -- %s".format(versionString, copyrightString))
+    else if (command.settings.version.value) return errorFn("Scala code runner %s -- %s".format(versionString, copyrightString))
     else if (command.shouldStopWithInfo) return errorFn("shouldStopWithInfo")
 
     if (command.howToRun != AsObject)
