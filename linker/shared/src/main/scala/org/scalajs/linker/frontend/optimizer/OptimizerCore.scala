@@ -1026,12 +1026,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
           pretransformExprs(itemsNoSpread) { titems =>
             tryOrRollback { cancelFun =>
-              val itemBindings = for {
-                (titem, index) <- titems.zipWithIndex
-              } yield {
-                Binding.temp(LocalName("x" + index), AnyType, mutable = false, titem)
-              }
-              withNewLocalDefs(itemBindings) { (itemLocalDefs, cont1) =>
+              withNewTempLocalDefs(titems) { (itemLocalDefs, cont1) =>
                 val replacement = InlineJSArrayReplacement(
                     itemLocalDefs.toVector, cancelFun)
                 val localDef = LocalDef(
@@ -4111,9 +4106,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
                */
               val emptyScope = Scope.Empty
 
-              withNewLocalDefs(List(
-                  Binding.temp(LocalName("x"), IntType, false, x),
-                  Binding.temp(LocalName("y"), IntType, false, y))) {
+              withNewTempLocalDefs(List(x, y)) {
                 (tempsLocalDefs, cont) =>
                   val List(tempXDef, tempYDef) = tempsLocalDefs
                   val tempX = tempXDef.newReplacement
@@ -4615,6 +4608,17 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       buildInner(scope.withEnv(scope.env.withLocalDef(binding.name, localDef)),
           cont1)
     } (cont)
+  }
+
+  private def withNewTempLocalDefs(texprs: List[PreTransform])(
+      buildInner: (List[LocalDef], PreTransCont) => TailRec[Tree])(
+      cont: PreTransCont)(
+      implicit scope: Scope): TailRec[Tree] = {
+    val bindings = {
+      for ((texpr, index) <- texprs.zipWithIndex) yield
+        Binding.temp(LocalName("x" + index), texpr)
+    }
+    withNewLocalDefs(bindings)(buildInner)(cont)
   }
 
   private def withNewLocalDefs(bindings: List[Binding])(
@@ -5577,6 +5581,9 @@ private[optimizer] object OptimizerCore {
         value: PreTransform): Binding = {
       apply(Local(baseName, NoOriginalName), declaredType, mutable, value)
     }
+
+    def temp(baseName: LocalName, value: PreTransform): Binding =
+      temp(baseName, value.tpe.base, false, value)
   }
 
   private object LongFromInt {
