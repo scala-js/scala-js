@@ -80,6 +80,8 @@ object Platform {
   def hasCompliantNegativeArraySizes: Boolean =
     BuildInfo.compliantNegativeArraySizes
 
+  def hasCompliantNullPointers: Boolean = BuildInfo.compliantNullPointers
+
   def hasCompliantStringIndexOutOfBounds: Boolean =
     BuildInfo.compliantStringIndexOutOfBounds
 

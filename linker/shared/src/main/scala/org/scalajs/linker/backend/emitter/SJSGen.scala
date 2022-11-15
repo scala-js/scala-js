@@ -150,7 +150,7 @@ private[emitter] final class SJSGen(
     assert(args.lengthCompare(5) == 0,
         s"wrong number of args for genUncheckedArrayCopy: $args")
 
-    if (esFeatures.esVersion >= ESVersion.ES2015)
+    if (esFeatures.esVersion >= ESVersion.ES2015 && semantics.nullPointers == CheckedBehavior.Unchecked)
       Apply(args.head DOT "copyTo", args.tail)
     else
       genCallHelper("systemArraycopy", args: _*)
@@ -590,5 +590,14 @@ private[emitter] final class SJSGen(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
     genClassDataOf(ClassRef(className))
+  }
+
+  def genCheckNotNull(obj: Tree)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): Tree = {
+    if (semantics.nullPointers == CheckedBehavior.Unchecked)
+      obj
+    else
+      genCallHelper("n", obj)
   }
 }

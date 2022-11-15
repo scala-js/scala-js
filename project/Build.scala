@@ -47,6 +47,7 @@ object ExposedValues extends AutoPlugin {
           .withArrayIndexOutOfBounds(CheckedBehavior.Compliant)
           .withArrayStores(CheckedBehavior.Compliant)
           .withNegativeArraySizes(CheckedBehavior.Compliant)
+          .withNullPointers(CheckedBehavior.Compliant)
           .withStringIndexOutOfBounds(CheckedBehavior.Compliant)
           .withModuleInit(CheckedBehavior.Compliant)
       }
@@ -1823,25 +1824,25 @@ object Build {
         scalaVersion.value match {
           case Default2_11ScalaVersion =>
             Some(ExpectedSizes(
-                fastLink = 383000 to 384000,
+                fastLink = 389000 to 390000,
                 fullLink = 79000 to 80000,
-                fastLinkGz = 49000 to 50000,
+                fastLinkGz = 50000 to 51000,
                 fullLinkGz = 21000 to 22000,
             ))
 
           case Default2_12ScalaVersion =>
             Some(ExpectedSizes(
-                fastLink = 760000 to 761000,
+                fastLink = 772000 to 773000,
                 fullLink = 145000 to 146000,
-                fastLinkGz = 89000 to 90000,
+                fastLinkGz = 91000 to 92000,
                 fullLinkGz = 35000 to 36000,
             ))
 
           case Default2_13ScalaVersion =>
             Some(ExpectedSizes(
-                fastLink = 449000 to 450000,
+                fastLink = 456000 to 457000,
                 fullLink = 97000 to 98000,
-                fastLinkGz = 58000 to 59000,
+                fastLinkGz = 59000 to 60000,
                 fullLinkGz = 26000 to 27000,
             ))
 
@@ -2126,6 +2127,7 @@ object Build {
           "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant),
           "compliantArrayStores" -> (sems.arrayStores == CheckedBehavior.Compliant),
           "compliantNegativeArraySizes" -> (sems.negativeArraySizes == CheckedBehavior.Compliant),
+          "compliantNullPointers" -> (sems.nullPointers == CheckedBehavior.Compliant),
           "compliantStringIndexOutOfBounds" -> (sems.stringIndexOutOfBounds == CheckedBehavior.Compliant),
           "compliantModuleInit" -> (sems.moduleInit == CheckedBehavior.Compliant),
           "strictFloats" -> sems.strictFloats,

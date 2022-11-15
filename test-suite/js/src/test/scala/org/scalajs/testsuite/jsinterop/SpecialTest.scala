@@ -224,8 +224,13 @@ class SpecialTest {
     // Does not unwrap a Throwable
     val th = new IllegalArgumentException
     assertSame(th, js.special.unwrapFromThrowable(th))
+  }
 
-    // unwrapFromThrowable(null) is UB (as NullPointerException) and is therefore not tested
+  @Test def unwrapFromThrowableNull(): Unit = {
+    assumeTrue("assumed compliant NPEs", Platform.hasCompliantNullPointers)
+
+    // Unwrapping null throws
+    assertThrows(classOf[NullPointerException], js.special.unwrapFromThrowable(null))
   }
 
   // js.special.fileLevelThis

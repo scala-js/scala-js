@@ -27,6 +27,7 @@ private[utils] object BuildInfo {
   final val compliantArrayIndexOutOfBounds = false
   final val compliantArrayStores = false
   final val compliantNegativeArraySizes = false
+  final val compliantNullPointers = false
   final val compliantStringIndexOutOfBounds = false
   final val compliantModuleInit = false
   final val strictFloats = false

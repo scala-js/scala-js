@@ -604,7 +604,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Assign(lhs, rhs) =>
           lhs match {
             case Select(qualifier, className, field) =>
-              unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
+              unnest(checkNotNull(qualifier), rhs) { (newQualifier, newRhs, env0) =>
                 implicit val env = env0
                 js.Assign(
                     genSelect(transformExprNoChar(newQualifier), className, field)(lhs.pos),
@@ -612,7 +612,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               }
 
             case ArraySelect(array, index) =>
-              unnest(array, index, rhs) { (newArray, newIndex, newRhs, env0) =>
+              unnest(checkNotNull(array), index, rhs) { (newArray, newIndex, newRhs, env0) =>
                 implicit val env = env0
                 val genArray = transformExprNoChar(newArray)
                 val genIndex = transformExprNoChar(newIndex)
@@ -1112,11 +1112,15 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               case RecordSelect(record, field) if noExtractYet =>
                 RecordSelect(rec(record), field)(arg.tpe)
 
+              case Transient(AssumeNotNull(obj)) =>
+                Transient(AssumeNotNull(rec(obj)))
               case Transient(ZeroOf(runtimeClass)) =>
                 Transient(ZeroOf(rec(runtimeClass)))
               case Transient(ObjectClassName(obj)) =>
                 Transient(ObjectClassName(rec(obj)))
 
+              case Transient(CheckNotNull(obj)) if noExtractYet =>
+                Transient(CheckNotNull(rec(obj)))
               case Transient(NativeArrayWrapper(elemClass, nativeArray)) if noExtractYet =>
                 val newNativeArray = rec(nativeArray)
                 val newElemClass = rec(elemClass)
@@ -1256,6 +1260,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case tree: Tree      => test(tree)
       }
 
+      def testNPE(tree: Tree): Boolean = {
+        val npeOK = allowBehavior(semantics.nullPointers) || isNotNull(tree)
+        npeOK && test(tree)
+      }
+
       def test(tree: Tree): Boolean = tree match {
         // Atomic expressions
         case _: Literal       => true
@@ -1285,36 +1294,38 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case BinaryOp(BinaryOp.String_charAt, lhs, rhs) =>
           allowBehavior(semantics.stringIndexOutOfBounds) && test(lhs) && test(rhs)
 
-        // Expressions preserving pureness
+        // Expressions preserving pureness (modulo NPE)
         case Block(trees)            => trees forall test
         case If(cond, thenp, elsep)  => test(cond) && test(thenp) && test(elsep)
         case BinaryOp(_, lhs, rhs)   => test(lhs) && test(rhs)
         case UnaryOp(_, lhs)         => test(lhs)
-        case ArrayLength(array)      => test(array)
+        case ArrayLength(array)      => testNPE(array)
         case RecordSelect(record, _) => test(record)
         case IsInstanceOf(expr, _)   => test(expr)
         case IdentityHashCode(expr)  => test(expr)
-        case GetClass(arg)           => test(arg) // may NPE but that is UB.
+        case GetClass(arg)           => testNPE(arg)
 
-        // Expressions preserving pureness but requiring that expr be a var
+        // Expressions preserving pureness (modulo NPE) but requiring that expr be a var
         case WrapAsThrowable(expr @ (VarRef(_) | Transient(JSVarRef(_, _))))     => test(expr)
-        case UnwrapFromThrowable(expr @ (VarRef(_) | Transient(JSVarRef(_, _)))) => test(expr)
+        case UnwrapFromThrowable(expr @ (VarRef(_) | Transient(JSVarRef(_, _)))) => testNPE(expr)
 
-        // Transients preserving pureness
+        // Transients preserving pureness (modulo NPE)
+        case Transient(AssumeNotNull(obj)) =>
+          test(obj)
         case Transient(ZeroOf(runtimeClass)) =>
-          test(runtimeClass) // may NPE but that is UB.
+          test(runtimeClass) // ZeroOf *assumes* that `runtimeClass ne null`
         case Transient(ObjectClassName(obj)) =>
-          test(obj) // may NPE but that is UB.
+          testNPE(obj)
 
-        // Expressions preserving side-effect freedom
+        // Expressions preserving side-effect freedom (modulo NPE)
         case Select(qualifier, _, _) =>
-          allowUnpure && test(qualifier) // may NPE but that is UB.
+          allowUnpure && testNPE(qualifier)
         case SelectStatic(_, _) =>
           allowUnpure
         case ArrayValue(tpe, elems) =>
           allowUnpure && (elems forall test)
         case Clone(arg) =>
-          allowUnpure && test(arg) // may NPE but that is UB.
+          allowUnpure && testNPE(arg)
         case JSArrayConstr(items) =>
           allowUnpure && (items.forall(testJSArg))
         case tree @ JSObjectConstr(items) =>
@@ -1326,11 +1337,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
           allowUnpure && (captureValues forall test)
 
-        // Transients preserving side-effect freedom
+        // Transients preserving side-effect freedom (modulo NPE)
         case Transient(NativeArrayWrapper(elemClass, nativeArray)) =>
-          allowUnpure && test(elemClass) && test(nativeArray) // may NPE but that is UB.
+          allowUnpure && testNPE(elemClass) && test(nativeArray)
         case Transient(ArrayToTypedArray(expr, primRef)) =>
-          allowUnpure && test(expr) // may NPE but that is UB.
+          allowUnpure && testNPE(expr)
 
         // Scala expressions that can always have side-effects
         case New(className, constr, args) =>
@@ -1347,6 +1358,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           allowSideEffects && args.forall(test)
 
         // Transients with side effects.
+        case Transient(CheckNotNull(obj)) =>
+          allowSideEffects && test(obj)
         case Transient(TypedArrayToArray(expr, primRef)) =>
           allowSideEffects && test(expr) // may TypeError
 
@@ -1354,7 +1367,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case NewArray(tpe, lengths) =>
           allowBehavior(semantics.negativeArraySizes) && allowUnpure && lengths.forall(test)
         case ArraySelect(array, index) =>
-          allowBehavior(semantics.arrayIndexOutOfBounds) && allowUnpure && test(array) && test(index)
+          allowBehavior(semantics.arrayIndexOutOfBounds) && allowUnpure && testNPE(array) && test(index)
 
         // Casts
         case AsInstanceOf(expr, _) =>
@@ -1735,12 +1748,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
 
         case Apply(flags, receiver, method, args) =>
-          unnest(receiver, args) { (newReceiver, newArgs, env) =>
+          unnest(checkNotNull(receiver), args) { (newReceiver, newArgs, env) =>
             redo(Apply(flags, newReceiver, method, newArgs)(rhs.tpe))(env)
           }
 
         case ApplyStatically(flags, receiver, className, method, args) =>
-          unnest(receiver, args) { (newReceiver, newArgs, env) =>
+          unnest(checkNotNull(receiver), args) { (newReceiver, newArgs, env) =>
             redo(ApplyStatically(flags, newReceiver, className, method,
                 newArgs)(rhs.tpe))(env)
           }
@@ -1781,7 +1794,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
 
         case ArraySelect(array, index) =>
-          unnest(array, index) { (newArray, newIndex, env) =>
+          unnest(checkNotNull(array), index) { (newArray, newIndex, env) =>
             redo(ArraySelect(newArray, newIndex)(rhs.tpe))(env)
           }
 
@@ -1829,6 +1842,16 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             withTempJSVar(newExpr) { varRef =>
               redo(UnwrapFromThrowable(varRef))
             }
+          }
+
+        case Transient(CheckNotNull(obj)) =>
+          unnest(obj) { (newObj, env) =>
+            redo(Transient(CheckNotNull(newObj)))(env)
+          }
+
+        case Transient(AssumeNotNull(obj)) =>
+          unnest(obj) { (newObj, env) =>
+            redo(Transient(AssumeNotNull(newObj)))(env)
           }
 
         case Transient(ZeroOf(runtimeClass)) =>
@@ -2214,7 +2237,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           genLoadModule(className)
 
         case Select(qualifier, className, field) =>
-          genSelect(transformExprNoChar(qualifier), className, field)
+          genSelect(transformExprNoChar(checkNotNull(qualifier)), className, field)
 
         case SelectStatic(className, item) =>
           globalVar("t", (className, item.name))
@@ -2238,14 +2261,14 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               if (receiver.tpe == CharType)
                 transformExpr(receiver, preserveChar = true)
               else
-                transformExpr(AsInstanceOf(receiver, CharType), preserveChar = true)
+                transformExpr(AsInstanceOf(checkNotNull(receiver), CharType), preserveChar = true)
             } else {
               /* For other primitive types, unboxes/casts are not necessary,
                * because they would only convert `null` to the zero value of
-               * the type. However, calling a method on `null` is UB, so we
-               * need not do anything about it.
+               * the type. However, `null` is ruled out by `checkNotNull` (or
+               * because it is UB).
                */
-              transformExprNoChar(receiver)
+              transformExprNoChar(checkNotNull(receiver))
             }
           }
 
@@ -2303,7 +2326,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
 
         case ApplyStatically(flags, receiver, className, method, args) =>
-          val newReceiver = transformExprNoChar(receiver)
+          val newReceiver = transformExprNoChar(checkNotNull(receiver))
           val newArgs = transformTypedArgs(method.name, args)
           val transformedArgs = newReceiver :: newArgs
 
@@ -2657,11 +2680,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               genArrayValue(typeRef, elems.map(transformExpr(_, preserveChar))))
 
         case ArrayLength(array) =>
-          genIdentBracketSelect(js.DotSelect(transformExprNoChar(array),
+          genIdentBracketSelect(js.DotSelect(transformExprNoChar(checkNotNull(array)),
               js.Ident("u")), "length")
 
         case ArraySelect(array, index) =>
-          val newArray = transformExprNoChar(array)
+          val newArray = transformExprNoChar(checkNotNull(array))
           val newIndex = transformExprNoChar(index)
           semantics.arrayIndexOutOfBounds match {
             case CheckedBehavior.Compliant | CheckedBehavior.Fatal =>
@@ -2683,7 +2706,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           genCallHelper("objectGetClass", transformExprNoChar(expr))
 
         case Clone(expr) =>
-          val newExpr = transformExprNoChar(expr)
+          val newExpr = transformExprNoChar(checkNotNull(expr))
           expr.tpe match {
             /* If the argument is known to be an array, directly call its
              * `clone__O` method.
@@ -2730,13 +2753,18 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           js.If(
               genIsInstanceOfClass(newExpr, JavaScriptExceptionClass),
               genSelect(newExpr, JavaScriptExceptionClass, FieldIdent(exceptionFieldName)),
-              newExpr)
+              genCheckNotNull(newExpr))
 
         // Transients
 
+        case Transient(CheckNotNull(obj)) =>
+          genCallHelper("n", transformExpr(obj, preserveChar = true))
+        case Transient(AssumeNotNull(obj)) =>
+          transformExpr(obj, preserveChar = true)
+
         case Transient(ZeroOf(runtimeClass)) =>
           js.DotSelect(
-              js.DotSelect(transformExprNoChar(runtimeClass), js.Ident("jl_Class__f_data")),
+              js.DotSelect(transformExprNoChar(checkNotNull(runtimeClass)), js.Ident("jl_Class__f_data")),
               js.Ident("zero"))
 
         case Transient(NativeArrayWrapper(elemClass, nativeArray)) =>
@@ -2748,7 +2776,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   genNativeArrayWrapper(arrayTypeRef, newNativeArray))
             case _ =>
               val elemClassData = js.DotSelect(
-                  transformExprNoChar(elemClass),
+                  transformExprNoChar(checkNotNull(elemClass)),
                   js.Ident("jl_Class__f_data"))
               val arrayClassData = js.Apply(
                   js.DotSelect(elemClassData, js.Ident("getArrayOf")), Nil)
@@ -2759,7 +2787,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           genCallHelper("objectClassName", transformExprNoChar(obj))
 
         case Transient(ArrayToTypedArray(expr, primRef)) =>
-          val value = transformExprNoChar(expr)
+          val value = transformExprNoChar(checkNotNull(expr))
 
           if (es2015) {
             js.Apply(genIdentBracketSelect(value.u, "slice"), Nil)
@@ -3165,6 +3193,36 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         MethodName("notify", Nil, VoidRef),
         MethodName("notifyAll", Nil, VoidRef)
     )
+
+    private def checkNotNull(tree: Tree)(implicit pos: Position): Tree = {
+      if (semantics.nullPointers == CheckedBehavior.Unchecked || isNotNull(tree))
+        tree
+      else
+        Transient(CheckNotNull(tree))
+    }
+
+    private def isNotNull(tree: Tree): Boolean = {
+      // !!! Duplicate code with OptimizerCore.isNotNull
+
+      def isNullableType(tpe: Type): Boolean = tpe match {
+        case NullType    => true
+        case _: PrimType => false
+        case _           => true
+      }
+
+      def isShapeNotNull(tree: Tree): Boolean = tree match {
+        case Transient(CheckNotNull(_) | AssumeNotNull(_)) =>
+          true
+        case _: This =>
+          tree.tpe != AnyType
+        case _:New | _:LoadModule | _:NewArray | _:ArrayValue | _:Clone | _:ClassOf =>
+          true
+        case _ =>
+          false
+      }
+
+      !isNullableType(tree.tpe) || isShapeNotNull(tree)
+    }
 
     private def transformParamDef(paramDef: ParamDef): js.ParamDef =
       js.ParamDef(transformLocalVarIdent(paramDef.name, paramDef.originalName))(paramDef.pos)

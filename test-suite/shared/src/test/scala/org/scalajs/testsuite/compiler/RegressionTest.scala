@@ -21,6 +21,7 @@ import org.junit.Assume._
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 import org.scalajs.testsuite.utils.Platform
+import org.scalajs.testsuite.utils.Platform._
 
 class RegressionTest {
   import RegressionTest._
@@ -210,14 +211,21 @@ class RegressionTest {
     assertEquals(1, c)
   }
 
-  @Test def irCheckerAllowsApplySelectOnNullTypeAndNothingType_Issue1123(): Unit = {
-    def giveMeANull(): Null = null
-    assertThrows(classOf[Exception], (giveMeANull(): StringBuilder).append(5))
-    assertThrows(classOf[Exception], (giveMeANull(): scala.runtime.IntRef).elem)
+  @Test def irCheckerAllowsApplySelectOnNullType_Issue1123(): Unit = {
+    /* The IR checker checks this code whether or not the assumption holds.
+     * The assumption only applies to the run-time behavior.
+     */
+    assumeTrue("assuming compliant null pointer checks", hasCompliantNullPointers)
 
-    def giveMeANothing(): Nothing = throw new Exception("boom")
-    assertThrows(classOf[Exception], (giveMeANothing(): StringBuilder).append(5))
-    assertThrows(classOf[Exception], (giveMeANothing(): scala.runtime.IntRef).elem)
+    def giveMeANull(): Null = null
+    assertThrows(classOf[NullPointerException], (giveMeANull(): StringBuilder).append(5))
+    assertThrows(classOf[NullPointerException], (giveMeANull(): scala.runtime.IntRef).elem)
+  }
+
+  @Test def irCheckerAllowsApplySelectOnNothingType_Issue1123(): Unit = {
+    def giveMeANothing(): Nothing = throw new IllegalStateException("boom")
+    assertThrows(classOf[IllegalStateException], (giveMeANothing(): StringBuilder).append(5))
+    assertThrows(classOf[IllegalStateException], (giveMeANothing(): scala.runtime.IntRef).elem)
   }
 
   @Test def irCheckerDoesNotCheckFieldExistenceOnNonExistentClasses(): Unit = {

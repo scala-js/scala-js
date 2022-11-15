@@ -14,9 +14,11 @@ package org.scalajs.testsuite.javalib.lang
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import scala.runtime.BoxedUnit
 
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 class ClassTest {
@@ -105,6 +107,17 @@ class ClassTest {
 
     test("[[I", new Array[Array[Int]](1))
     test("[[[Ljava.lang.String;", new Array[Array[Array[String]]](1))
+  }
+
+  @Test def getClassGetNameNull(): Unit = {
+    // x.getClass().getName() is subject to optimizations
+
+    assumeTrue("Assuming compliant null pointers", hasCompliantNullPointers)
+
+    @noinline def getNull(): Any = null
+
+    assertThrows(classOf[NullPointerException], (null: Any).getClass().getName())
+    assertThrows(classOf[NullPointerException], getNull().getClass().getName())
   }
 
   @Test def wellKnownClasses(): Unit = {

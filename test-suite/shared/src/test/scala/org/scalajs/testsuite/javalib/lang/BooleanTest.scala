@@ -16,8 +16,10 @@ import java.lang.{Boolean => JBoolean}
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+import org.scalajs.testsuite.utils.Platform._
 
 /** Tests the implementation of the java standard library Boolean
  */
@@ -26,7 +28,12 @@ class BooleanTest {
   @Test def booleanValue(): Unit = {
     assertEquals(true, JBoolean.TRUE.booleanValue())
     assertEquals(false, JBoolean.FALSE.booleanValue())
-    assertThrows(classOf[Exception], (null: JBoolean).booleanValue())
+  }
+
+  @Test def booleanValueNull(): Unit = {
+    assumeTrue("assuming compliant null pointer checks", hasCompliantNullPointers)
+
+    assertThrows(classOf[NullPointerException], (null: JBoolean).booleanValue())
   }
 
   @Test def compareTo(): Unit = {

@@ -14,10 +14,26 @@ package org.scalajs.testsuite.javalib.lang
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
 
 import scala.scalajs.js
 
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+import org.scalajs.testsuite.utils.Platform._
+
 class ClassJSTest {
+
+  @Test def getClassGetNameForJSObjects(): Unit = {
+    // getClass().getName() is subject to optimizations
+
+    assumeTrue("Assuming compliant null pointers", hasCompliantNullPointers)
+
+    assertThrows(classOf[NullPointerException], new js.Object().getClass().getName())
+
+    @noinline def newJSObject(): Any = new js.Object()
+
+    assertThrows(classOf[NullPointerException], newJSObject().getClass().getName())
+  }
 
   @Test def isAssignableFrom(): Unit = {
     /* isAssignableFrom should respect the JVM rules even for JS types,

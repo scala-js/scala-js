@@ -164,7 +164,7 @@ trait SetTest extends CollectionTest {
       assertTrue(hs.add(null))
       assertTrue(hs.contains(null))
     } else {
-      assertThrows(classOf[Exception], hs.add(null))
+      assertThrowsNPEIfCompliant(hs.add(null))
     }
   }
 
@@ -180,7 +180,7 @@ trait SetTest extends CollectionTest {
       assertTrue(hs.contains("TWO"))
       assertTrue(hs.contains(null))
     } else {
-      assertThrows(classOf[Exception], hs.addAll(l))
+      assertThrowsNPEIfCompliant(hs.addAll(l))
     }
   }
 

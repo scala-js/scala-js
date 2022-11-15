@@ -20,6 +20,7 @@ final class Semantics private (
     val arrayIndexOutOfBounds: CheckedBehavior,
     val arrayStores: CheckedBehavior,
     val negativeArraySizes: CheckedBehavior,
+    val nullPointers: CheckedBehavior,
     val stringIndexOutOfBounds: CheckedBehavior,
     val moduleInit: CheckedBehavior,
     val strictFloats: Boolean,
@@ -39,6 +40,9 @@ final class Semantics private (
 
   def withNegativeArraySizes(behavior: CheckedBehavior): Semantics =
     copy(negativeArraySizes = behavior)
+
+  def withNullPointers(behavior: CheckedBehavior): Semantics =
+    copy(nullPointers = behavior)
 
   def withStringIndexOutOfBounds(behavior: CheckedBehavior): Semantics =
     copy(stringIndexOutOfBounds = behavior)
@@ -67,6 +71,7 @@ final class Semantics private (
         arrayIndexOutOfBounds = this.arrayIndexOutOfBounds.optimized,
         arrayStores = this.arrayStores.optimized,
         negativeArraySizes = this.negativeArraySizes.optimized,
+        nullPointers = this.nullPointers.optimized,
         stringIndexOutOfBounds = this.stringIndexOutOfBounds.optimized,
         moduleInit = this.moduleInit.optimized,
         productionMode = true)
@@ -78,6 +83,7 @@ final class Semantics private (
       this.arrayIndexOutOfBounds == that.arrayIndexOutOfBounds &&
       this.arrayStores == that.arrayStores &&
       this.negativeArraySizes == that.negativeArraySizes &&
+      this.nullPointers == that.nullPointers &&
       this.stringIndexOutOfBounds == that.stringIndexOutOfBounds &&
       this.moduleInit == that.moduleInit &&
       this.strictFloats == that.strictFloats &&
@@ -94,12 +100,13 @@ final class Semantics private (
     acc = mix(acc, arrayIndexOutOfBounds.##)
     acc = mix(acc, arrayStores.##)
     acc = mix(acc, negativeArraySizes.##)
+    acc = mix(acc, nullPointers.##)
     acc = mix(acc, stringIndexOutOfBounds.##)
     acc = mix(acc, moduleInit.##)
     acc = mix(acc, strictFloats.##)
     acc = mix(acc, productionMode.##)
     acc = mixLast(acc, runtimeClassNameMapper.##)
-    finalizeHash(acc, 9)
+    finalizeHash(acc, 10)
   }
 
   override def toString(): String = {
@@ -108,6 +115,7 @@ final class Semantics private (
        |  arrayIndexOutOfBounds  = $arrayIndexOutOfBounds,
        |  arrayStores            = $arrayStores,
        |  negativeArraySizes     = $negativeArraySizes,
+       |  nullPointers           = $nullPointers,
        |  stringIndexOutOfBounds = $stringIndexOutOfBounds,
        |  moduleInit             = $moduleInit,
        |  strictFloats           = $strictFloats,
@@ -120,6 +128,7 @@ final class Semantics private (
       arrayIndexOutOfBounds: CheckedBehavior = this.arrayIndexOutOfBounds,
       arrayStores: CheckedBehavior = this.arrayStores,
       negativeArraySizes: CheckedBehavior = this.negativeArraySizes,
+      nullPointers: CheckedBehavior = this.nullPointers,
       stringIndexOutOfBounds: CheckedBehavior = this.stringIndexOutOfBounds,
       moduleInit: CheckedBehavior = this.moduleInit,
       strictFloats: Boolean = this.strictFloats,
@@ -131,6 +140,7 @@ final class Semantics private (
         arrayIndexOutOfBounds = arrayIndexOutOfBounds,
         arrayStores = arrayStores,
         negativeArraySizes = negativeArraySizes,
+        nullPointers = nullPointers,
         stringIndexOutOfBounds = stringIndexOutOfBounds,
         moduleInit = moduleInit,
         strictFloats = strictFloats,
@@ -249,6 +259,7 @@ object Semantics {
         .addField("arrayIndexOutOfBounds", semantics.arrayIndexOutOfBounds)
         .addField("arrayStores", semantics.arrayStores)
         .addField("negativeArraySizes", semantics.negativeArraySizes)
+        .addField("nullPointers", semantics.nullPointers)
         .addField("stringIndexOutOfBounds", semantics.stringIndexOutOfBounds)
         .addField("moduleInit", semantics.moduleInit)
         .addField("strictFloats", semantics.strictFloats)
@@ -263,6 +274,7 @@ object Semantics {
       arrayIndexOutOfBounds = Fatal,
       arrayStores = Fatal,
       negativeArraySizes = Fatal,
+      nullPointers = Fatal,
       stringIndexOutOfBounds = Fatal,
       moduleInit = Unchecked,
       strictFloats = true,
