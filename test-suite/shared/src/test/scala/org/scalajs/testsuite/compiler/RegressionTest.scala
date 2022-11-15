@@ -200,10 +200,6 @@ class RegressionTest {
     foo(2, 4)
   }
 
-  @Test def nullSynchronizedThrows_Issue874(): Unit = {
-    assertThrows(classOf[NullPointerException], null.synchronized(5))
-  }
-
   @Test def synchronizedXPreservesSideEffectsOfX(): Unit = {
     var c = 0
     def x: RegressionTest.this.type = { c += 1; this }
