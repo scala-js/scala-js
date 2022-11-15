@@ -1823,12 +1823,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       cont(PreTransTree(ApplyStatically(flags, transformedReceiver, className,
           methodIdent, transformedArgs)(tree.tpe), RefinedType(tree.tpe)))
 
-    def treeNotInlined =
-      treeNotInlined0(transformExpr(receiver), args.map(transformExpr))
-
     if (methodName.isReflectiveProxy) {
       // Never inline reflective proxies
-      treeNotInlined
+      treeNotInlined0(transformExpr(receiver), args.map(transformExpr))
     } else {
       val target = staticCall(className, MemberNamespace.forNonStaticCall(flags),
           methodName)
