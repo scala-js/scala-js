@@ -24,6 +24,20 @@ class ArrayTest {
   private def covariantUpcast[A <: AnyRef](array: Array[_ <: A]): Array[A] =
     array.asInstanceOf[Array[A]]
 
+  @noinline
+  private def nullOf[T >: Null]: T = null
+
+  @inline
+  private def inlineNullOf[T >: Null]: T = null
+
+  @noinline
+  private def throwIllegalStateAsInt(): Int =
+    throw new IllegalStateException()
+
+  @inline
+  private def throwIllegalStateAsIntInline(): Int =
+    throw new IllegalStateException()
+
   @Test
   def getArrayIndexOutOfBounds(): Unit = {
     assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
@@ -194,5 +208,47 @@ class ArrayTest {
     def testCreateNegativeSizeArray(): Unit = new Array[Int](-1)
 
     assertThrows(classOf[NegativeArraySizeException], testCreateNegativeSizeArray())
+  }
+
+  @Test def genericArrayNullsShortCircuited_Issue4755(): Unit = {
+    // Tests for the intrinsics for ScalaRunTime.array_{apply,update,select}.
+
+    @inline def testGeneric[T](array: Array[T], value: T): Unit = {
+      assertThrows(classOf[IllegalStateException], array(throwIllegalStateAsInt()))
+      assertThrows(classOf[IllegalStateException], array(throwIllegalStateAsIntInline()))
+
+      assertThrows(classOf[IllegalStateException], array(throwIllegalStateAsInt()) = value)
+      assertThrows(classOf[IllegalStateException], array(throwIllegalStateAsIntInline()) = value)
+
+      assertThrows(classOf[IllegalStateException], array(1) = (throw new IllegalStateException()))
+    }
+
+    @noinline def testNoInline[T](array: Array[T], value: T): Unit = {
+      testGeneric(array, value)
+    }
+
+    @inline def test[T](array: Array[T], value: T): Unit = {
+      testNoInline(array, value)
+      testGeneric(array, value)
+    }
+
+    /* Explicitly store the result of `nullOf` in local vals typed in right
+     * way, to force scalac's erasure to insert a cast and to retain that type.
+     * Otherwise, after erasure, `nullOf` returns an `Object`, and `test` takes
+     * an `Object`, so the `Array[X]` type never appears, and the optimization
+     * that we want to test does not get triggered at all.
+     * In other words, if we "inline" those `val`s, the test becomes moot.
+     *
+     * For `inlineNullOf`, it makes no difference since it becomes a constant
+     * `null` anyway.
+     */
+    val nullArrayRef: Array[AnyRef] = nullOf[Array[AnyRef]]
+    val nullArrayInt: Array[Int] = nullOf[Array[Int]]
+
+    test(nullArrayRef, List(1))
+    test(inlineNullOf[Array[AnyRef]], List(1))
+
+    test(nullArrayInt, 1)
+    test(inlineNullOf[Array[Int]], 1)
   }
 }

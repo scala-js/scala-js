@@ -2349,11 +2349,31 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         val List(tarray, tindex) = targs
         tarray.tpe.base match {
           case arrayTpe @ ArrayType(ArrayTypeRef(base, _)) =>
-            val array = finishTransformExpr(tarray)
-            val index = finishTransformExpr(tindex)
+            /* Rewrite to `tarray[tindex]` as an `ArraySelect` node.
+             * If `tarray` is `null`, an `ArraySelect`'s semantics will run
+             * into a (UB) NPE *before* evaluating `tindex`, by spec. This is
+             * not compatible with the method-call semantics of an intrinsic,
+             * in which all arguments are evaluated before the body starts
+             * executing (and can notice that the array is `null`).
+             * Therefore, in the general case, we first evaluate `tarray` and
+             * `tindex` in temp LocalDefs. When `tarray` is not nullable, we
+             * can directly emit an `ArraySelect`: in the absence of that NPE
+             * code path, the semantics of `ArraySelect` are equivalent to the
+             * intrinsic.
+             */
             val elemType = cursoryArrayElemType(arrayTpe)
-            contTree(ArraySelect(array, index)(elemType))
-
+            if (!tarray.tpe.isNullable) {
+              val array = finishTransformExpr(tarray)
+              val index = finishTransformExpr(tindex)
+              val select = ArraySelect(array, index)(elemType)
+              contTree(select)
+            } else {
+              withNewTempLocalDefs(targs) { (localDefs, cont1) =>
+                val List(arrayDef, indexDef) = localDefs
+                val select = ArraySelect(arrayDef.newReplacement, indexDef.newReplacement)(elemType)
+                cont1(select.toPreTransform)
+              } (cont)
+            }
           case _ =>
             default
         }
@@ -2362,12 +2382,26 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         val List(tarray, tindex, tvalue) = targs
         tarray.tpe.base match {
           case arrayTpe @ ArrayType(ArrayTypeRef(base, depth)) =>
-            val array = finishTransformExpr(tarray)
-            val index = finishTransformExpr(tindex)
+            /* Rewrite to `tarray[index] = tvalue` as an `Assign(ArraySelect, _)`.
+             * See `ArrayApply` above for the handling of a nullable `tarray`.
+             */
             val elemType = cursoryArrayElemType(arrayTpe)
-            val select = ArraySelect(array, index)(elemType)
-            val tunboxedValue = foldAsInstanceOf(tvalue, elemType)
-            contTree(Assign(select, finishTransformExpr(tunboxedValue)))
+            if (!tarray.tpe.isNullable) {
+              val array = finishTransformExpr(tarray)
+              val index = finishTransformExpr(tindex)
+              val select = ArraySelect(array, index)(elemType)
+              val tunboxedValue = foldAsInstanceOf(tvalue, elemType)
+              val assign = Assign(select, finishTransformExpr(tunboxedValue))
+              contTree(assign)
+            } else {
+              withNewTempLocalDefs(targs) { (localDefs, cont1) =>
+                val List(arrayDef, indexDef, valueDef) = localDefs
+                val select = ArraySelect(arrayDef.newReplacement, indexDef.newReplacement)(elemType)
+                val tunboxedValue = foldAsInstanceOf(valueDef.toPreTransform, elemType)
+                val assign = Assign(select, finishTransformExpr(tunboxedValue))
+                cont1(assign.toPreTransform)
+              } (cont)
+            }
           case _ =>
             default
         }
