@@ -5512,10 +5512,13 @@ private[optimizer] object OptimizerCore {
 
   private object PreTransTree {
     def apply(tree: Tree): PreTransTree = {
-      val refinedTpe: RefinedType = tree match {
-        case BlockOrAlone(_,
-            _:LoadModule | _:NewArray | _:ArrayValue | _:GetClass |
-            _:ClassOf) =>
+      val refinedTpe: RefinedType = BlockOrAlone.last(tree) match {
+        case _:LoadModule | _:NewArray | _:ArrayValue | _:ClassOf =>
+          RefinedType(tree.tpe, isExact = true, isNullable = false)
+        case GetClass(x) if x.tpe != AnyType && x.tpe != ClassType(ObjectClass) =>
+          /* If x.tpe is neither AnyType nor j.l.Object, it cannot be a JS
+           * object, so its getClass() cannot be null.
+           */
           RefinedType(tree.tpe, isExact = true, isNullable = false)
         case _ =>
           RefinedType(tree.tpe)
@@ -6049,6 +6052,11 @@ private[optimizer] object OptimizerCore {
       case Block(init :+ last) => (init, last)
       case _                   => (Nil, tree)
     })
+
+    def last(tree: Tree): Tree = tree match {
+      case Block(stats) => stats.last
+      case _            => tree
+    }
   }
 
   private def exceptionMsg(myself: AbstractMethodID,
