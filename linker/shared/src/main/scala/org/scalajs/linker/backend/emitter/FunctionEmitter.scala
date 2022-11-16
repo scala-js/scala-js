@@ -1266,14 +1266,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Transient(JSVarRef(_, mutable)) =>
           allowUnpure || !mutable
 
-        // Fields may throw if qualifier is null but that is UB.
-        case Select(qualifier, _, _) =>
-          allowUnpure && test(qualifier)
-
-        // Static fields are side-effect free
-        case SelectStatic(_, _) =>
-          allowUnpure
-
         // Division and modulo, preserve pureness unless they can divide by 0
         case BinaryOp(BinaryOp.Int_/ | BinaryOp.Int_%, lhs, rhs) if !allowSideEffects =>
           rhs match {
@@ -1312,6 +1304,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           test(obj) // may NPE but that is UB.
 
         // Expressions preserving side-effect freedom
+        case Select(qualifier, _, _) =>
+          allowUnpure && test(qualifier) // may NPE but that is UB.
+        case SelectStatic(_, _) =>
+          allowUnpure
         case ArrayValue(tpe, elems) =>
           allowUnpure && (elems forall test)
         case Clone(arg) =>
