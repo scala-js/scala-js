@@ -1248,6 +1248,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
       require(!allowSideEffects || allowUnpure)
 
+      def allowBehavior(behavior: CheckedBehavior): Boolean =
+        allowSideEffects || behavior == Unchecked
+
       def testJSArg(tree: TreeOrJSSpread): Boolean = tree match {
         case JSSpread(items) => es2015 && test(items)
         case tree: Tree      => test(tree)
@@ -1280,7 +1283,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         // String_charAt preserves pureness iff the semantics for stringIndexOutOfBounds are unchecked
         case BinaryOp(BinaryOp.String_charAt, lhs, rhs) =>
-          (allowSideEffects || semantics.stringIndexOutOfBounds == Unchecked) && test(lhs) && test(rhs)
+          allowBehavior(semantics.stringIndexOutOfBounds) && test(lhs) && test(rhs)
 
         // Expressions preserving pureness
         case Block(trees)            => trees forall test
@@ -1349,15 +1352,13 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         // Array operations with conditional exceptions
         case NewArray(tpe, lengths) =>
-          (allowSideEffects || (semantics.negativeArraySizes == Unchecked && allowUnpure)) &&
-          lengths.forall(test)
+          allowBehavior(semantics.negativeArraySizes) && allowUnpure && lengths.forall(test)
         case ArraySelect(array, index) =>
-          (allowSideEffects || (semantics.arrayIndexOutOfBounds == Unchecked && allowUnpure)) &&
-          test(array) && test(index)
+          allowBehavior(semantics.arrayIndexOutOfBounds) && allowUnpure && test(array) && test(index)
 
         // Casts
         case AsInstanceOf(expr, _) =>
-          (allowSideEffects || semantics.asInstanceOfs == Unchecked) && test(expr)
+          allowBehavior(semantics.asInstanceOfs) && test(expr)
 
         // JavaScript expressions that can always have side-effects
         case SelectJSNativeMember(_, _) =>
