@@ -110,6 +110,27 @@ class ReflectionTest {
     assertEquals(classOf[java.lang.Float], (1.5: Any).getClass)
     assertEquals(classOf[scala.runtime.BoxedUnit], ((): Any).getClass)
   }
+
+  @Test def getClassForJSTypes(): Unit = {
+    @noinline
+    def getClassOfNoInline(x: Any): Class[_] =
+      x.getClass()
+
+    @noinline
+    def hide(x: Any): Any = x
+
+    val jsObj = new js.Object()
+
+    assertNull(jsObj.getClass())
+    assertNull(getClassOfNoInline(jsObj))
+
+    if (jsObj.getClass() != null)
+      fail("optimizer thought that jsObj.getClass() was non-null")
+
+    val hiddenJSObj = hide(jsObj)
+    if (hiddenJSObj.getClass() != null)
+      fail("optimizer thought that hiddenJSObj.getClass() was non-null")
+  }
 }
 
 object ReflectionTest {
