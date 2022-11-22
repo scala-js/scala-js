@@ -1026,12 +1026,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
           pretransformExprs(itemsNoSpread) { titems =>
             tryOrRollback { cancelFun =>
-              val itemBindings = for {
-                (titem, index) <- titems.zipWithIndex
-              } yield {
-                Binding.temp(LocalName("x" + index), AnyType, mutable = false, titem)
-              }
-              withNewLocalDefs(itemBindings) { (itemLocalDefs, cont1) =>
+              withNewTempLocalDefs(titems) { (itemLocalDefs, cont1) =>
                 val replacement = InlineJSArrayReplacement(
                     itemLocalDefs.toVector, cancelFun)
                 val localDef = LocalDef(
@@ -1828,12 +1823,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       cont(PreTransTree(ApplyStatically(flags, transformedReceiver, className,
           methodIdent, transformedArgs)(tree.tpe), RefinedType(tree.tpe)))
 
-    def treeNotInlined =
-      treeNotInlined0(transformExpr(receiver), args.map(transformExpr))
-
     if (methodName.isReflectiveProxy) {
       // Never inline reflective proxies
-      treeNotInlined
+      treeNotInlined0(transformExpr(receiver), args.map(transformExpr))
     } else {
       val target = staticCall(className, MemberNamespace.forNonStaticCall(flags),
           methodName)
@@ -2357,11 +2349,31 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         val List(tarray, tindex) = targs
         tarray.tpe.base match {
           case arrayTpe @ ArrayType(ArrayTypeRef(base, _)) =>
-            val array = finishTransformExpr(tarray)
-            val index = finishTransformExpr(tindex)
+            /* Rewrite to `tarray[tindex]` as an `ArraySelect` node.
+             * If `tarray` is `null`, an `ArraySelect`'s semantics will run
+             * into a (UB) NPE *before* evaluating `tindex`, by spec. This is
+             * not compatible with the method-call semantics of an intrinsic,
+             * in which all arguments are evaluated before the body starts
+             * executing (and can notice that the array is `null`).
+             * Therefore, in the general case, we first evaluate `tarray` and
+             * `tindex` in temp LocalDefs. When `tarray` is not nullable, we
+             * can directly emit an `ArraySelect`: in the absence of that NPE
+             * code path, the semantics of `ArraySelect` are equivalent to the
+             * intrinsic.
+             */
             val elemType = cursoryArrayElemType(arrayTpe)
-            contTree(ArraySelect(array, index)(elemType))
-
+            if (!tarray.tpe.isNullable) {
+              val array = finishTransformExpr(tarray)
+              val index = finishTransformExpr(tindex)
+              val select = ArraySelect(array, index)(elemType)
+              contTree(select)
+            } else {
+              withNewTempLocalDefs(targs) { (localDefs, cont1) =>
+                val List(arrayDef, indexDef) = localDefs
+                val select = ArraySelect(arrayDef.newReplacement, indexDef.newReplacement)(elemType)
+                cont1(select.toPreTransform)
+              } (cont)
+            }
           case _ =>
             default
         }
@@ -2370,12 +2382,26 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         val List(tarray, tindex, tvalue) = targs
         tarray.tpe.base match {
           case arrayTpe @ ArrayType(ArrayTypeRef(base, depth)) =>
-            val array = finishTransformExpr(tarray)
-            val index = finishTransformExpr(tindex)
+            /* Rewrite to `tarray[index] = tvalue` as an `Assign(ArraySelect, _)`.
+             * See `ArrayApply` above for the handling of a nullable `tarray`.
+             */
             val elemType = cursoryArrayElemType(arrayTpe)
-            val select = ArraySelect(array, index)(elemType)
-            val tunboxedValue = foldAsInstanceOf(tvalue, elemType)
-            contTree(Assign(select, finishTransformExpr(tunboxedValue)))
+            if (!tarray.tpe.isNullable) {
+              val array = finishTransformExpr(tarray)
+              val index = finishTransformExpr(tindex)
+              val select = ArraySelect(array, index)(elemType)
+              val tunboxedValue = foldAsInstanceOf(tvalue, elemType)
+              val assign = Assign(select, finishTransformExpr(tunboxedValue))
+              contTree(assign)
+            } else {
+              withNewTempLocalDefs(targs) { (localDefs, cont1) =>
+                val List(arrayDef, indexDef, valueDef) = localDefs
+                val select = ArraySelect(arrayDef.newReplacement, indexDef.newReplacement)(elemType)
+                val tunboxedValue = foldAsInstanceOf(valueDef.toPreTransform, elemType)
+                val assign = Assign(select, finishTransformExpr(tunboxedValue))
+                cont1(assign.toPreTransform)
+              } (cont)
+            }
           case _ =>
             default
         }
@@ -4111,9 +4137,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
                */
               val emptyScope = Scope.Empty
 
-              withNewLocalDefs(List(
-                  Binding.temp(LocalName("x"), IntType, false, x),
-                  Binding.temp(LocalName("y"), IntType, false, y))) {
+              withNewTempLocalDefs(List(x, y)) {
                 (tempsLocalDefs, cont) =>
                   val List(tempXDef, tempYDef) = tempsLocalDefs
                   val tempX = tempXDef.newReplacement
@@ -4615,6 +4639,17 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       buildInner(scope.withEnv(scope.env.withLocalDef(binding.name, localDef)),
           cont1)
     } (cont)
+  }
+
+  private def withNewTempLocalDefs(texprs: List[PreTransform])(
+      buildInner: (List[LocalDef], PreTransCont) => TailRec[Tree])(
+      cont: PreTransCont)(
+      implicit scope: Scope): TailRec[Tree] = {
+    val bindings = {
+      for ((texpr, index) <- texprs.zipWithIndex) yield
+        Binding.temp(LocalName("x" + index), texpr)
+    }
+    withNewLocalDefs(bindings)(buildInner)(cont)
   }
 
   private def withNewLocalDefs(bindings: List[Binding])(
@@ -5577,6 +5612,9 @@ private[optimizer] object OptimizerCore {
         value: PreTransform): Binding = {
       apply(Local(baseName, NoOriginalName), declaredType, mutable, value)
     }
+
+    def temp(baseName: LocalName, value: PreTransform): Binding =
+      temp(baseName, value.tpe.base, false, value)
   }
 
   private object LongFromInt {
