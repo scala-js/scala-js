@@ -5960,19 +5960,29 @@ private[optimizer] object OptimizerCore {
       this.enclosingClassName == className && this.methodName == methodName
   }
 
-  /** Parts of [[GenIncOptimizer#MethodImpl]] with decisions about optimizations. */
-  abstract class MethodImpl {
-    def enclosingClassName: ClassName
-    def methodName: MethodName
-    def optimizerHints: OptimizerHints
-    def originalDef: MethodDef
-    def thisType: Type
+  /* This is a "broken" case class so we get equals (and hashCode) for free.
+   *
+   * This hack is somewhat acceptable, because:
+   * - it is only part of the OptimizerCore / IncOptimizer interface.
+   * - the risk of getting equals wrong is high: it only affects the incremental
+   *   behavior of the optimizer, which we have few tests for.
+   */
+  final case class MethodAttributes private[OptimizerCore] (
+      private[OptimizerCore] val inlineable: Boolean,
+      private[OptimizerCore] val shouldInline: Boolean,
+      private[OptimizerCore] val isForwarder: Boolean,
+      private[OptimizerCore] val jsDynImportInlineTarget: Option[ImportTarget],
+      private[OptimizerCore] val jsDynImportThunkFor: Option[MethodName]
+  )
 
-    protected def computeNewAttributes(): MethodAttributes = {
-      val MethodDef(_, MethodIdent(methodName), _, params, _, optBody) = originalDef
+  object MethodAttributes {
+    def compute(enclosingClassName: ClassName, methodDef: MethodDef): MethodAttributes = {
+      val MethodDef(_, MethodIdent(methodName), _, params, _, optBody) = methodDef
       val body = optBody getOrElse {
         throw new AssertionError("Methods in optimizer must be concrete")
       }
+
+      val optimizerHints = methodDef.optimizerHints
 
       val isForwarder = body match {
         // Shape of forwarders to trait impls
@@ -6073,21 +6083,6 @@ private[optimizer] object OptimizerCore {
       new MethodAttributes(inlineable, shouldInline, isForwarder, jsDynImportInlineTarget, jsDynImportThunkFor)
     }
   }
-
-  /* This is a "broken" case class so we get equals (and hashCode) for free.
-   *
-   * This hack is somewhat acceptable, because:
-   * - it is only part of the OptimizerCore / IncOptimizer interface.
-   * - the risk of getting equals wrong is high: it only affects the incremental
-   *   behavior of the optimizer, which we have few tests for.
-   */
-  final case class MethodAttributes private[OptimizerCore] (
-      private[OptimizerCore] val inlineable: Boolean,
-      private[OptimizerCore] val shouldInline: Boolean,
-      private[OptimizerCore] val isForwarder: Boolean,
-      private[OptimizerCore] val jsDynImportInlineTarget: Option[ImportTarget],
-      private[OptimizerCore] val jsDynImportThunkFor: Option[MethodName]
-  )
 
   sealed trait ImportTarget
 

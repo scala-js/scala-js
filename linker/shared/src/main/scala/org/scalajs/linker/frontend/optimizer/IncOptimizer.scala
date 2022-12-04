@@ -903,8 +903,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
    */
   private final class MethodImpl(owner: MethodContainer,
       val methodName: MethodName)
-      extends OptimizerCore.MethodImpl with OptimizerCore.AbstractMethodID
-      with Unregisterable {
+      extends OptimizerCore.AbstractMethodID with Unregisterable {
 
     private[this] var _deleted: Boolean = false
 
@@ -915,7 +914,6 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     var lastInVersion: Option[String] = None
     var lastOutVersion: Int = 0
 
-    var optimizerHints: OptimizerHints = OptimizerHints.empty
     var originalDef: MethodDef = _
     var optimizedMethodDef: Versioned[MethodDef] = _
 
@@ -923,7 +921,6 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     def enclosingClassName: ClassName = owner.className
 
-    def thisType: Type = owner.thisType
     def deleted: Boolean = _deleted
 
     override def toString(): String =
@@ -989,10 +986,9 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
           val oldAttributes = attributes
 
-          optimizerHints = methodDef.optimizerHints
           originalDef = methodDef
           optimizedMethodDef = null
-          attributes = computeNewAttributes()
+          attributes = OptimizerCore.MethodAttributes.compute(enclosingClassName, methodDef)
           tag()
 
           attributes != oldAttributes
@@ -1030,7 +1026,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         throw new AssertionError("Methods to optimize must be concrete")
       }
 
-      val (newParams, newBody) = new Optimizer().optimize(thisType, params,
+      val (newParams, newBody) = new Optimizer().optimize(owner.thisType, params,
           resultType, body, isNoArgCtor = name.name == NoArgConstructorName)
       lastOutVersion += 1
 
