@@ -40,18 +40,17 @@ import org.scalajs.linker.backend.emitter.Transients._
  *  optimizer does. To perform inlining, it relies on abstract protected
  *  methods to identify the target of calls.
  */
-private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
+private[optimizer] abstract class OptimizerCore(
+    config: CommonPhaseConfig, debugID: String) {
   import OptimizerCore._
 
   type MethodID <: AbstractMethodID
-
-  val myself: MethodID
 
   private def semantics: Semantics = config.coreSpec.semantics
 
   // Uncomment and adapt to print debug messages only during one method
   //lazy val debugThisMethod: Boolean =
-  //  myself.toString() == "java.lang.FloatingPointBits$.numberHashCode;D;I"
+  //  debugID == "java.lang.FloatingPointBits$.numberHashCode;D;I"
 
   /** Returns the body of a method. */
   protected def getMethodBody(method: MethodID): MethodDef
@@ -142,8 +141,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   private val intrinsics =
     Intrinsics.buildIntrinsics(config.coreSpec.esFeatures)
 
-  def optimize(thisType: Type, params: List[ParamDef], resultType: Type,
-      body: Tree, isNoArgCtor: Boolean): (List[ParamDef], Tree) = {
+  def optimize(myself: Option[MethodID], thisType: Type, params: List[ParamDef],
+      resultType: Type, body: Tree, isNoArgCtor: Boolean): (List[ParamDef], Tree) = {
     try {
       try {
         transformMethodDefBody(myself, thisType, params, resultType, body, isNoArgCtor)
@@ -158,11 +157,11 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       }
     } catch {
       case NonFatal(cause) =>
-        throw new OptimizeException(myself, attemptedInlining.distinct.toList, cause)
+        throw new OptimizeException(debugID, attemptedInlining.distinct.toList, cause)
       case e: Throwable =>
         // This is a fatal exception. Don't wrap, just output debug info error
         Console.err.println(exceptionMsg(
-            myself, attemptedInlining.distinct.toList, e))
+            debugID, attemptedInlining.distinct.toList, e))
         throw e
     }
   }
@@ -870,7 +869,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         val localDef = scope.env.localDefs.getOrElse(name, {
           throw new AssertionError(
               s"Cannot find local def '$name' at $pos\n" +
-              s"While optimizing $myself\n" +
+              s"While optimizing $debugID\n" +
               s"Env is ${scope.env}\n" +
               s"Inlining ${scope.implsBeingInlined}")
         })
@@ -880,7 +879,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         val localDef = scope.env.thisLocalDef.getOrElse {
           throw new AssertionError(
               s"Found invalid 'this' at $pos\n" +
-              s"While optimizing $myself\n" +
+              s"While optimizing $debugID\n" +
               s"Env is ${scope.env}\n" +
               s"Inlining ${scope.implsBeingInlined}")
         }
@@ -4442,7 +4441,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     }
   }
 
-  private def transformMethodDefBody(target: MethodID, thisType: Type,
+  private def transformMethodDefBody(optTarget: Option[MethodID], thisType: Type,
       params: List[ParamDef], resultType: Type, body: Tree,
       isNoArgCtor: Boolean): (List[ParamDef], Tree) = {
 
@@ -4452,19 +4451,22 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       if (thisType == NoType) None
       else Some(newThisLocalDef(thisType))
 
-    val inlining = {
-      val allocationSiteCount =
-        paramLocalDefs.size + (if (thisLocalDef.isDefined) 1 else 0)
-      val allocationSites =
-        List.fill(allocationSiteCount)(AllocationSite.Anonymous)
-      allocationSites -> target
-    }
-
     val env = OptEnv.Empty
       .withThisLocalDef(thisLocalDef)
       .withLocalDefs(paramLocalDefs)
 
-    val scope = Scope.Empty.inlining(inlining).withEnv(env)
+    val scope = {
+      val scope0 = Scope.Empty.withEnv(env)
+
+      optTarget.fold(scope0) { target =>
+        val allocationSiteCount =
+          paramLocalDefs.size + (if (thisLocalDef.isDefined) 1 else 0)
+        val allocationSites =
+          List.fill(allocationSiteCount)(AllocationSite.Anonymous)
+
+        scope0.inlining(allocationSites -> target)
+      }
+    }
 
     val newBody0 = transform(body, resultType == NoType)(scope)
 
@@ -6186,13 +6188,11 @@ private[optimizer] object OptimizerCore {
     }
   }
 
-  private def exceptionMsg(myself: AbstractMethodID,
+  private def exceptionMsg(debugID: String,
       attemptedInlining: List[AbstractMethodID], cause: Throwable) = {
     val buf = new StringBuilder()
 
-    buf.append("The Scala.js optimizer crashed while optimizing " + myself +
-        ": " + cause.toString)
-
+    buf.append(s"The Scala.js optimizer crashed while optimizing $debugID: $cause")
     buf.append("\nMethods attempted to inline:\n")
 
     for (m <- attemptedInlining) {
@@ -6211,9 +6211,9 @@ private[optimizer] object OptimizerCore {
       val savedStateBackupChain: List[StateBackup],
       val cont: () => TailRec[Tree]) extends ControlThrowable
 
-  class OptimizeException(val myself: AbstractMethodID,
+  class OptimizeException(val debugID: String,
       val attemptedInlining: List[AbstractMethodID], cause: Throwable
-  ) extends Exception(exceptionMsg(myself, attemptedInlining, cause), cause)
+  ) extends Exception(exceptionMsg(debugID, attemptedInlining, cause), cause)
 
   private abstract class FreshNameAllocator[N <: Name] private (
       initialMap: Map[N, Int]) {

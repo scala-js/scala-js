@@ -65,7 +65,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
   private val classes = collOps.emptyMap[ClassName, Class]
   private val interfaces = collOps.emptyParMap[ClassName, InterfaceType]
 
-  private var methodsToProcess = collOps.emptyAddable[MethodImpl]
+  private var methodsToProcess = collOps.emptyAddable[Processable]
 
   @inline
   private def getInterface(className: ClassName): InterfaceType =
@@ -107,7 +107,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         val container =
           if (namespace == MemberNamespace.Public) publicContainer
           else interface.staticLike(namespace)
-        container.methods(m.value.methodName).optimizedMethodDef
+        container.methods(m.value.methodName).optimizedDef
       }
 
       linkedClass.optimized(methods = newMethods)
@@ -342,7 +342,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     var isInstantiated: Boolean = linkedClass.hasInstances
 
     private var hasElidableModuleAccessor: Boolean = computeHasElidableModuleAccessor(linkedClass)
-    private val hasElidableModuleAccessorAskers = collOps.emptyMap[MethodImpl, Unit]
+    private val hasElidableModuleAccessorAskers = collOps.emptyMap[Processable, Unit]
 
     var fields: List[AnyFieldDef] = linkedClass.fields
     var fieldsRead: Set[FieldName] = linkedClass.fieldsRead
@@ -504,7 +504,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       subclasses = collOps.finishAdd(subclassAcc)
     }
 
-    def askHasElidableModuleAccessor(asker: MethodImpl): Boolean = {
+    def askHasElidableModuleAccessor(asker: Processable): Boolean = {
       hasElidableModuleAccessorAskers.put(asker, ())
       asker.registerTo(this)
       hasElidableModuleAccessor
@@ -652,7 +652,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       }
     }
 
-    def unregisterDependee(dependee: MethodImpl): Unit = {
+    def unregisterDependee(dependee: Processable): Unit = {
       hasElidableModuleAccessorAskers.remove(dependee)
     }
   }
@@ -670,7 +670,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
   /** Thing from which a [[MethodImpl]] can unregister itself from. */
   private trait Unregisterable {
     /** UPDATE PASS ONLY. */
-    def unregisterDependee(dependee: MethodImpl): Unit
+    def unregisterDependee(dependee: Processable): Unit
   }
 
   /** Type of a class or interface.
@@ -683,17 +683,17 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     val className: ClassName = linkedClass.className
 
-    private type MethodCallers = collOps.Map[MethodName, collOps.Map[MethodImpl, Unit]]
+    private type MethodCallers = collOps.Map[MethodName, collOps.Map[Processable, Unit]]
 
-    private val ancestorsAskers = collOps.emptyMap[MethodImpl, Unit]
+    private val ancestorsAskers = collOps.emptyMap[Processable, Unit]
     private val dynamicCallers: MethodCallers = collOps.emptyMap
 
     // ArrayBuffer to avoid need for ClassTag[collOps.Map[_, _]]
     private val staticCallers =
       mutable.ArrayBuffer.fill[MethodCallers](MemberNamespace.Count)(collOps.emptyMap)
 
-    private val jsNativeImportsAskers = collOps.emptyMap[MethodImpl, Unit]
-    private val fieldsReadAskers = collOps.emptyMap[MethodImpl, Unit]
+    private val jsNativeImportsAskers = collOps.emptyMap[Processable, Unit]
+    private val fieldsReadAskers = collOps.emptyMap[Processable, Unit]
 
     private var _ancestors: List[ClassName] = linkedClass.ancestors
 
@@ -728,7 +728,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     /** PROCESS PASS ONLY. */
     def askDynamicCallTargets(methodName: MethodName,
-        asker: MethodImpl): List[MethodImpl] = {
+        asker: Processable): List[MethodImpl] = {
       dynamicCallers
         .getOrElseUpdate(methodName, collOps.emptyMap)
         .put(asker, ())
@@ -738,7 +738,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     /** PROCESS PASS ONLY. */
     def askStaticCallTarget(namespace: MemberNamespace, methodName: MethodName,
-        asker: MethodImpl): MethodImpl = {
+        asker: Processable): MethodImpl = {
       staticCallers(namespace.ordinal)
         .getOrElseUpdate(methodName, collOps.emptyMap)
         .put(asker, ())
@@ -765,14 +765,14 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       _instantiatedSubclasses -= x
 
     /** PROCESS PASS ONLY. */
-    def askAncestors(asker: MethodImpl): List[ClassName] = {
+    def askAncestors(asker: Processable): List[ClassName] = {
       ancestorsAskers.put(asker, ())
       asker.registerTo(this)
       _ancestors
     }
 
     /** PROCESS PASS ONLY. Concurrency safe except with [[updateWith]]. */
-    def askJSNativeImport(asker: MethodImpl): Option[JSNativeLoadSpec.Import] = {
+    def askJSNativeImport(asker: Processable): Option[JSNativeLoadSpec.Import] = {
       jsNativeImportsAskers.put(asker, ())
       asker.registerTo(this)
       jsNativeImports._1
@@ -780,19 +780,19 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     /** PROCESS PASS ONLY. Concurrency safe except with [[updateWith]]. */
     def askJSNativeImport(methodName: MethodName,
-        asker: MethodImpl): Option[JSNativeLoadSpec.Import] = {
+        asker: Processable): Option[JSNativeLoadSpec.Import] = {
       jsNativeImportsAskers.put(asker, ())
       asker.registerTo(this)
       jsNativeImports._2.get(methodName)
     }
 
-    def askFieldRead(name: FieldName, asker: MethodImpl): Boolean = {
+    def askFieldRead(name: FieldName, asker: Processable): Boolean = {
       fieldsReadAskers.put(asker, ())
       asker.registerTo(this)
       fieldsRead.contains(name)
     }
 
-    def askStaticFieldRead(name: FieldName, asker: MethodImpl): Boolean = {
+    def askStaticFieldRead(name: FieldName, asker: Processable): Boolean = {
       fieldsReadAskers.put(asker, ())
       asker.registerTo(this)
       staticFieldsRead.contains(name)
@@ -861,7 +861,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     }
 
     /** UPDATE PASS ONLY. */
-    def unregisterDependee(dependee: MethodImpl): Unit = {
+    def unregisterDependee(dependee: Processable): Unit = {
       ancestorsAskers.remove(dependee)
       dynamicCallers.valuesIterator.foreach(_.remove(dependee))
       staticCallers.foreach(_.valuesIterator.foreach(_.remove(dependee)))
@@ -893,102 +893,59 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     }
   }
 
-  /** A method implementation.
-   *  It must be concrete, and belong either to a [[IncOptimizer.Class]] or a
-   *  [[IncOptimizer.StaticsNamespace]].
-   *
-   *  A single instance is **not** concurrency safe (unless otherwise noted in
-   *  a method comment). However, the global state modifications are
-   *  concurrency safe.
-   */
-  private final class MethodImpl(owner: MethodContainer,
-      val methodName: MethodName)
-      extends OptimizerCore.AbstractMethodID with Unregisterable {
+  /** A thing that can be tagged for reprocessing and then reprocessed. */
+  private abstract class Processable {
+    type Def
 
+    private[this] val registeredTo = collOps.emptyMap[Unregisterable, Unit]
+    private[this] val tagged = new AtomicBoolean(false)
     private[this] var _deleted: Boolean = false
 
-    private val bodyAskers = collOps.emptyMap[MethodImpl, Unit]
-    private val registeredTo = collOps.emptyMap[Unregisterable, Unit]
-    private val tagged = new AtomicBoolean(false)
+    private[this] var lastInVersion: Option[String] = None
+    private[this] var lastOutVersion: Int = 0
 
-    var lastInVersion: Option[String] = None
-    var lastOutVersion: Int = 0
+    private[this] var _originalDef: Def = _
+    private[this] var _optimizedDef: Versioned[Def] = _
 
-    var originalDef: MethodDef = _
-    var optimizedMethodDef: Versioned[MethodDef] = _
+    protected def doProcess(): Def
 
-    var attributes: OptimizerCore.MethodAttributes = _
+    final def deleted: Boolean = _deleted
 
-    def enclosingClassName: ClassName = owner.className
-
-    def deleted: Boolean = _deleted
-
-    override def toString(): String =
-      s"$owner.${methodName.nameString}"
+    final def originalDef: Def = _originalDef
+    final def optimizedDef: Versioned[Def] = _optimizedDef
 
     /** PROCESS PASS ONLY. */
-    def askBody(asker: MethodImpl): MethodDef = {
-      bodyAskers.put(asker, ())
-      asker.registerTo(this)
-      originalDef
+    final def process(): Unit = {
+      if (!_deleted) {
+        lastOutVersion += 1
+        val newDef = doProcess()
+        _optimizedDef = new Versioned(newDef, Some(lastOutVersion.toString()))
+        tagged.set(false)
+      }
     }
 
-    /** UPDATE PASS ONLY. */
-    def tagBodyAskers(): Unit = {
-      bodyAskers.keysIterator.foreach(_.tag())
-      bodyAskers.clear()
-    }
-
-    /** UPDATE PASS ONLY. */
-    def unregisterDependee(dependee: MethodImpl): Unit =
-      bodyAskers.remove(dependee)
-
-    def registerTo(unregisterable: Unregisterable): Unit =
-      registeredTo.put(unregisterable, ())
-
-    /** UPDATE PASS ONLY. */
-    private def unregisterFromEverywhere(): Unit = {
-      registeredTo.keysIterator.foreach(_.unregisterDependee(this))
-      registeredTo.clear()
-    }
-
-    /** Tag this method and return true iff it wasn't tagged before.
-     *  UPDATE PASS ONLY.
-     */
-    private def protectTag(): Boolean = !tagged.getAndSet(true)
-
-    /** Returns true if the method's attributes changed.
-     *  Attributes are whether it is inlineable, and whether it is a trait
-     *  impl forwarder. Basically this is what is declared in
-     *  `OptimizerCore.AbstractMethodID`.
-     *  In the process, tags all the body askers if the body changes.
-     *  UPDATE PASS ONLY. Not concurrency safe on same instance.
-     */
-    def updateWith(linkedMethod: Versioned[MethodDef]): Boolean = {
-      assert(!_deleted, "updateWith() called on a deleted method")
+    /** Returns true if the method changed */
+    protected def updateDef(linkedMethod: Versioned[Def]): Boolean = {
+      assert(!deleted, "updateDef() called on a deleted method")
 
       if (lastInVersion.isDefined && lastInVersion == linkedMethod.version) {
         false
       } else {
         lastInVersion = linkedMethod.version
-
-        val methodDef = linkedMethod.value
-
-        tagBodyAskers()
-
-        val oldAttributes = attributes
-
-        originalDef = methodDef
-        optimizedMethodDef = null
-        attributes = OptimizerCore.MethodAttributes.compute(enclosingClassName, methodDef)
+        _originalDef = linkedMethod.value
+        _optimizedDef = null
         tag()
-
-        attributes != oldAttributes
+        true
       }
     }
 
+    private def unregisterFromEverywhere(): Unit = {
+      registeredTo.keysIterator.foreach(_.unregisterDependee(this))
+      registeredTo.clear()
+    }
+
     /** UPDATE PASS ONLY. Not concurrency safe on same instance. */
-    def delete(): Unit = {
+    final def delete(): Unit = {
       assert(!_deleted, "delete() called twice")
       _deleted = true
       if (protectTag())
@@ -1002,80 +959,152 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
      *
      *  UPDATE PASS ONLY.
      */
-    def tag(): Unit = if (protectTag()) {
-      collOps.add(methodsToProcess, this)
-      unregisterFromEverywhere()
+    final def tag(): Unit = {
+      if (protectTag()) {
+        collOps.add(methodsToProcess, this)
+        unregisterFromEverywhere()
+      }
     }
 
     /** PROCESS PASS ONLY. */
-    def process(): Unit = if (!_deleted) {
+    final def registerTo(unregisterable: Unregisterable): Unit =
+      registeredTo.put(unregisterable, ())
+
+    /** Tag this method and return true iff it wasn't tagged before.
+     *  UPDATE PASS ONLY.
+     */
+    private def protectTag(): Boolean = !tagged.getAndSet(true)
+  }
+
+  /** A method implementation.
+   *  It must be concrete, and belong either to a [[IncOptimizer.Class]] or a
+   *  [[IncOptimizer.StaticsNamespace]].
+   *
+   *  A single instance is **not** concurrency safe (unless otherwise noted in
+   *  a method comment). However, the global state modifications are
+   *  concurrency safe.
+   */
+  private final class MethodImpl(owner: MethodContainer,
+      val methodName: MethodName)
+      extends Processable with OptimizerCore.AbstractMethodID with Unregisterable {
+
+    type Def = MethodDef
+
+    private val bodyAskers = collOps.emptyMap[Processable, Unit]
+
+    var attributes: OptimizerCore.MethodAttributes = _
+
+    def enclosingClassName: ClassName = owner.className
+
+    override def toString(): String =
+      s"$owner.${methodName.nameString}"
+
+    /** PROCESS PASS ONLY. */
+    def askBody(asker: Processable): MethodDef = {
+      bodyAskers.put(asker, ())
+      asker.registerTo(this)
+      originalDef
+    }
+
+    /** UPDATE PASS ONLY. */
+    def tagBodyAskers(): Unit = {
+      bodyAskers.keysIterator.foreach(_.tag())
+      bodyAskers.clear()
+    }
+
+    /** UPDATE PASS ONLY. */
+    def unregisterDependee(dependee: Processable): Unit =
+      bodyAskers.remove(dependee)
+
+    /** Returns true if the method's attributes changed.
+     *  Attributes are whether it is inlineable, and whether it is a trait
+     *  impl forwarder. Basically this is what is declared in
+     *  `OptimizerCore.AbstractMethodID`.
+     *  In the process, tags all the body askers if the body changes.
+     *  UPDATE PASS ONLY. Not concurrency safe on same instance.
+     */
+    def updateWith(linkedMethod: Versioned[MethodDef]): Boolean = {
+      val changed = updateDef(linkedMethod)
+      if (changed) {
+        tagBodyAskers()
+
+        val oldAttributes = attributes
+        attributes = OptimizerCore.MethodAttributes.compute(enclosingClassName, linkedMethod.value)
+        attributes != oldAttributes
+      } else {
+        false
+      }
+    }
+
+    /** PROCESS PASS ONLY. */
+    protected def doProcess(): MethodDef = {
       val MethodDef(static, name, originalName, params, resultType, optBody) =
         originalDef
       val body = optBody.getOrElse {
         throw new AssertionError("Methods to optimize must be concrete")
       }
 
-      val (newParams, newBody) = new Optimizer().optimize(owner.thisType, params,
-          resultType, body, isNoArgCtor = name.name == NoArgConstructorName)
-      lastOutVersion += 1
+      val (newParams, newBody) = new Optimizer(this, this.toString()).optimize(
+          Some(this), owner.thisType, params, resultType, body,
+          isNoArgCtor = name.name == NoArgConstructorName)
 
-      optimizedMethodDef = new Versioned(MethodDef(static, name, originalName,
+      MethodDef(static, name, originalName,
           newParams, resultType, Some(newBody))(
-          originalDef.optimizerHints, None)(originalDef.pos),
-          Some(lastOutVersion.toString))
-      tagged.set(false)
+          originalDef.optimizerHints, None)(originalDef.pos)
+    }
+  }
+
+  /** Concrete optimizer bound to types we use.
+   *
+   *  All methods are PROCESS PASS ONLY
+   */
+  private final class Optimizer(asker: Processable, debugID: String)
+      extends OptimizerCore(config, debugID) {
+    import OptimizerCore.ImportTarget
+
+    type MethodID = MethodImpl
+
+    protected def getMethodBody(method: MethodID): MethodDef =
+      method.askBody(asker)
+
+    /** Look up the targets of a dynamic call to an instance method. */
+    protected def dynamicCall(intfName: ClassName,
+        methodName: MethodName): List[MethodID] = {
+      getInterface(intfName).askDynamicCallTargets(methodName, asker)
     }
 
-    /** All methods are PROCESS PASS ONLY */
-    private class Optimizer extends OptimizerCore(config) {
-      import OptimizerCore.ImportTarget
-
-      type MethodID = MethodImpl
-
-      val myself: MethodImpl.this.type = MethodImpl.this
-
-      protected def getMethodBody(method: MethodID): MethodDef =
-        method.askBody(myself)
-
-      /** Look up the targets of a dynamic call to an instance method. */
-      protected def dynamicCall(intfName: ClassName,
-          methodName: MethodName): List[MethodID] = {
-        getInterface(intfName).askDynamicCallTargets(methodName, myself)
-      }
-
-      /** Look up the target of a static call to an instance method. */
-      protected def staticCall(className: ClassName, namespace: MemberNamespace,
-          methodName: MethodName): MethodID = {
-        getInterface(className).askStaticCallTarget(namespace, methodName, myself)
-      }
-
-      protected def getAncestorsOf(intfName: ClassName): List[ClassName] =
-        getInterface(intfName).askAncestors(myself)
-
-      protected def hasElidableModuleAccessor(moduleClassName: ClassName): Boolean =
-        classes(moduleClassName).askHasElidableModuleAccessor(myself)
-
-      protected def tryNewInlineableClass(
-          className: ClassName): Option[OptimizerCore.InlineableClassStructure] = {
-        classes(className).tryNewInlineable
-      }
-
-      protected def getJSNativeImportOf(
-          target: ImportTarget): Option[JSNativeLoadSpec.Import] = {
-        target match {
-          case ImportTarget.Class(className) =>
-            getInterface(className).askJSNativeImport(myself)
-          case ImportTarget.Member(className, methodName) =>
-            getInterface(className).askJSNativeImport(methodName, myself)
-        }
-      }
-
-      protected def isFieldRead(className: ClassName, fieldName: FieldName): Boolean =
-        getInterface(className).askFieldRead(fieldName, myself)
-
-      protected def isStaticFieldRead(className: ClassName, fieldName: FieldName): Boolean =
-        getInterface(className).askStaticFieldRead(fieldName, myself)
+    /** Look up the target of a static call to an instance method. */
+    protected def staticCall(className: ClassName, namespace: MemberNamespace,
+        methodName: MethodName): MethodID = {
+      getInterface(className).askStaticCallTarget(namespace, methodName, asker)
     }
+
+    protected def getAncestorsOf(intfName: ClassName): List[ClassName] =
+      getInterface(intfName).askAncestors(asker)
+
+    protected def hasElidableModuleAccessor(moduleClassName: ClassName): Boolean =
+      classes(moduleClassName).askHasElidableModuleAccessor(asker)
+
+    protected def tryNewInlineableClass(
+        className: ClassName): Option[OptimizerCore.InlineableClassStructure] = {
+      classes(className).tryNewInlineable
+    }
+
+    protected def getJSNativeImportOf(
+        target: ImportTarget): Option[JSNativeLoadSpec.Import] = {
+      target match {
+        case ImportTarget.Class(className) =>
+          getInterface(className).askJSNativeImport(asker)
+        case ImportTarget.Member(className, methodName) =>
+          getInterface(className).askJSNativeImport(methodName, asker)
+      }
+    }
+
+    protected def isFieldRead(className: ClassName, fieldName: FieldName): Boolean =
+      getInterface(className).askFieldRead(fieldName, asker)
+
+    protected def isStaticFieldRead(className: ClassName, fieldName: FieldName): Boolean =
+      getInterface(className).askStaticFieldRead(fieldName, asker)
   }
 
 }
