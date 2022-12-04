@@ -142,16 +142,11 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   private val intrinsics =
     Intrinsics.buildIntrinsics(config.coreSpec.esFeatures)
 
-  def optimize(thisType: Type, originalDef: MethodDef): MethodDef = {
+  def optimize(thisType: Type, params: List[ParamDef], resultType: Type,
+      body: Tree, isNoArgCtor: Boolean): (List[ParamDef], Tree) = {
     try {
-      val MethodDef(static, name, originalName, params, resultType, optBody) =
-        originalDef
-      val body = optBody getOrElse {
-        throw new AssertionError("Methods to optimize must be concrete")
-      }
-
-      val (newParams, newBody1) = try {
-        transformMethodDefBody(myself, thisType, params, resultType, body)
+      try {
+        transformMethodDefBody(myself, thisType, params, resultType, body, isNoArgCtor)
       } catch {
         case _: TooManyRollbacksException =>
           localNameAllocator.clear()
@@ -159,13 +154,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           labelNameAllocator.clear()
           stateBackupChain = Nil
           disableOptimisticOptimizations = true
-          transformMethodDefBody(myself, thisType, params, resultType, body)
+          transformMethodDefBody(myself, thisType, params, resultType, body, isNoArgCtor)
       }
-      val newBody =
-        if (originalDef.methodName == NoArgConstructorName) tryElimStoreModule(newBody1)
-        else newBody1
-      MethodDef(static, name, originalName, newParams, resultType,
-          Some(newBody))(originalDef.optimizerHints, None)(originalDef.pos)
     } catch {
       case NonFatal(cause) =>
         throw new OptimizeException(myself, attemptedInlining.distinct.toList, cause)
@@ -4453,7 +4443,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   }
 
   private def transformMethodDefBody(target: MethodID, thisType: Type,
-      params: List[ParamDef], resultType: Type, body: Tree): (List[ParamDef], Tree) = {
+      params: List[ParamDef], resultType: Type, body: Tree,
+      isNoArgCtor: Boolean): (List[ParamDef], Tree) = {
 
     val (paramLocalDefs, newParamDefs) = params.map(newParamReplacement(_)).unzip
 
@@ -4475,7 +4466,11 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
     val scope = Scope.Empty.inlining(inlining).withEnv(env)
 
-    val newBody = transform(body, resultType == NoType)(scope)
+    val newBody0 = transform(body, resultType == NoType)(scope)
+
+    val newBody =
+      if (isNoArgCtor) tryElimStoreModule(newBody0)
+      else newBody0
 
     (newParamDefs, newBody)
   }

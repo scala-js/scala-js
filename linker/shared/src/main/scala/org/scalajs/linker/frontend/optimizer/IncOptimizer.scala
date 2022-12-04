@@ -1024,10 +1024,20 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     /** PROCESS PASS ONLY. */
     def process(): Unit = if (!_deleted) {
-      val optimizedDef = new Optimizer().optimize(thisType, originalDef)
+      val MethodDef(static, name, originalName, params, resultType, optBody) =
+        originalDef
+      val body = optBody.getOrElse {
+        throw new AssertionError("Methods to optimize must be concrete")
+      }
+
+      val (newParams, newBody) = new Optimizer().optimize(thisType, params,
+          resultType, body, isNoArgCtor = name.name == NoArgConstructorName)
       lastOutVersion += 1
-      optimizedMethodDef =
-        new Versioned(optimizedDef, Some(lastOutVersion.toString))
+
+      optimizedMethodDef = new Versioned(MethodDef(static, name, originalName,
+          newParams, resultType, Some(newBody))(
+          originalDef.optimizerHints, None)(originalDef.pos),
+          Some(lastOutVersion.toString))
       tagged.set(false)
     }
 
