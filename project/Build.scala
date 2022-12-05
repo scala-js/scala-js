@@ -1093,7 +1093,7 @@ object Build {
       commonLinkerSettings,
 
       libraryDependencies ++= Seq(
-          "com.google.javascript" % "closure-compiler" % "v20220202",
+          "com.google.javascript" % "closure-compiler" % "v20221102",
           "com.google.jimfs" % "jimfs" % "1.1" % "test",
           "org.scala-js" %% "scalajs-env-nodejs" % "1.4.0" % "test",
           "org.scala-js" %% "scalajs-js-envs-test-kit" % "1.4.0" % "test"
