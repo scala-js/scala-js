@@ -1601,6 +1601,12 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       Skip()(stat.pos)
     case NewArray(_, lengths) if semantics.negativeArraySizes == CheckedBehavior.Unchecked =>
       Block(lengths.map(keepOnlySideEffects))(stat.pos)
+    case ArrayValue(_, elems) =>
+      Block(elems.map(keepOnlySideEffects(_)))(stat.pos)
+    case ArrayLength(array) =>
+      keepOnlySideEffects(array)
+    case ArraySelect(array, index) if semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked =>
+      Block(keepOnlySideEffects(array), keepOnlySideEffects(index))(stat.pos)
     case Select(qualifier, _, _) =>
       keepOnlySideEffects(qualifier)
     case Closure(_, _, _, _, _, captureValues) =>
@@ -1649,6 +1655,10 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       Block(elems.map(keepOnlySideEffects))(stat.pos)
     case RecordSelect(record, _) =>
       keepOnlySideEffects(record)
+    case GetClass(expr) =>
+      keepOnlySideEffects(expr)
+    case Clone(expr) =>
+      keepOnlySideEffects(expr)
     case WrapAsThrowable(expr) =>
       keepOnlySideEffects(expr)
     case UnwrapFromThrowable(expr) =>
