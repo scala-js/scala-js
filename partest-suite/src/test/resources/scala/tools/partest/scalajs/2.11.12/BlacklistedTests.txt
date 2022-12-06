@@ -634,18 +634,6 @@ run/enums.scala
 run/t3719.scala
 run/t8611b.scala
 
-# Exceptions that become JavaScriptException
-
-run/pf-catch.scala
-run/exceptions-2.scala
-run/exceptions-nest.scala
-run/t8601c.scala
-run/t8601b.scala
-
-# Expecting unsupported exceptions (e.g. ArrayIndexOutOfBounds)
-run/optimizer-array-load.scala
-run/t8601.scala
-
 # Playing with classfile format
 
 run/classfile-format-51.scala
