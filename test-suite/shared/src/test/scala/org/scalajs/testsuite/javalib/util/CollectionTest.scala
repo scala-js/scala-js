@@ -181,7 +181,7 @@ trait CollectionTest extends IterableTest {
     if (factory.allowsNullElementQuery) {
       assertFalse(coll.contains(null))
     } else {
-      assertThrows(classOf[Exception], coll.contains(null))
+      assertThrowsNPEIfCompliant(coll.contains(null))
     }
   }
 

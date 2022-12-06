@@ -64,6 +64,7 @@ class MainGenericRunner {
         case "arrayIndexOutOfBounds"  => prev.withArrayIndexOutOfBounds(Compliant)
         case "arrayStores"            => prev.withArrayStores(Compliant)
         case "negativeArraySizes"     => prev.withNegativeArraySizes(Compliant)
+        case "nullPointers"           => prev.withNullPointers(Compliant)
         case "stringIndexOutOfBounds" => prev.withStringIndexOutOfBounds(Compliant)
         case "moduleInit"             => prev.withModuleInit(Compliant)
       }

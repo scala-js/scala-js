@@ -564,7 +564,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         trampoline {
           pretransformExpr(expr) { texpr =>
             def constant(typeRef: TypeRef): TailRec[Tree] =
-              TailCalls.done(Block(finishTransformStat(texpr), ClassOf(typeRef)))
+              TailCalls.done(Block(checkNotNullStatement(texpr), ClassOf(typeRef)))
 
             texpr.tpe match {
               case RefinedType(ClassType(LongImpl.RuntimeLongClass), true, false) =>
@@ -574,7 +574,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
               case RefinedType(ArrayType(arrayTypeRef), true, false) =>
                 constant(arrayTypeRef)
               case _ =>
-                TailCalls.done(GetClass(finishTransformExpr(texpr)))
+                TailCalls.done(GetClass(finishTransformExprMaybeAssumeNotNull(texpr)))
             }
           }
         }
@@ -986,18 +986,13 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           if (baseTpe == NothingType) {
             cont(texpr)
           } else if (baseTpe == NullType) {
-            // Undefined behavior for NPE
-            cont(texpr)
+            cont(checkNotNull(texpr))
           } else if (isSubtype(baseTpe, JavaScriptExceptionClassType)) {
-            if (texpr.tpe.isNullable) {
-              default
-            } else {
-              pretransformSelectCommon(AnyType, texpr, JavaScriptExceptionClass,
-                  FieldIdent(exceptionFieldName), isLhsOfAssign = false)(cont)
-            }
+            pretransformSelectCommon(AnyType, texpr, JavaScriptExceptionClass,
+                FieldIdent(exceptionFieldName), isLhsOfAssign = false)(cont)
           } else {
             if (texpr.tpe.isExact || !isSubtype(JavaScriptExceptionClassType, baseTpe))
-              cont(texpr)
+              cont(checkNotNull(texpr))
             else
               default
           }
@@ -1259,8 +1254,9 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
                 cont(PreTransTree(sel, RefinedType(sel.tpe)))
             }
 
-          case PreTransTree(newQual, _) =>
-            cont(PreTransTree(Select(newQual, className, field)(expectedType),
+          case PreTransTree(newQual, newQualType) =>
+            val newQual1 = maybeAssumeNotNull(newQual, newQualType)
+            cont(PreTransTree(Select(newQual1, className, field)(expectedType),
                 RefinedType(expectedType)))
         }
     }
@@ -1343,7 +1339,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         }
 
       case _:PreTransUnaryOp | _:PreTransBinaryOp | _:PreTransJSBinaryOp =>
-        PreTransTree(finishTransformExpr(preTrans))
+        PreTransTree(finishTransformExpr(preTrans), preTrans.tpe)
 
       case PreTransLocalDef(localDef @ LocalDef(tpe, _, replacement)) =>
         replacement match {
@@ -1424,6 +1420,12 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       else        finishTransformExpr(preTrans)
     }
   }
+
+  /** Finishes an expression pretransform to get a normal [[Tree]], recording
+   *  whether the pretransform was known to be not-null.
+   */
+  private def finishTransformExprMaybeAssumeNotNull(preTrans: PreTransform): Tree =
+    maybeAssumeNotNull(finishTransformExpr(preTrans), preTrans.tpe)
 
   /** Finishes an expression pretransform to get a normal [[Tree]].
    *  This method (together with finishTransformStat) must not be called more
@@ -1601,8 +1603,14 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       Skip()(stat.pos)
     case NewArray(_, lengths) if semantics.negativeArraySizes == CheckedBehavior.Unchecked =>
       Block(lengths.map(keepOnlySideEffects))(stat.pos)
+    case ArrayValue(_, elems) =>
+      Block(elems.map(keepOnlySideEffects(_)))(stat.pos)
+    case ArrayLength(array) =>
+      checkNotNullStatement(array)(stat.pos)
+    case ArraySelect(array, index) if semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked =>
+      Block(checkNotNullStatement(array)(stat.pos), keepOnlySideEffects(index))(stat.pos)
     case Select(qualifier, _, _) =>
-      keepOnlySideEffects(qualifier)
+      checkNotNullStatement(qualifier)(stat.pos)
     case Closure(_, _, _, _, _, captureValues) =>
       Block(captureValues.map(keepOnlySideEffects))(stat.pos)
     case UnaryOp(_, arg) =>
@@ -1649,10 +1657,14 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       Block(elems.map(keepOnlySideEffects))(stat.pos)
     case RecordSelect(record, _) =>
       keepOnlySideEffects(record)
+    case GetClass(expr) =>
+      checkNotNullStatement(expr)(stat.pos)
+    case Clone(expr) =>
+      checkNotNullStatement(expr)(stat.pos)
     case WrapAsThrowable(expr) =>
       keepOnlySideEffects(expr)
     case UnwrapFromThrowable(expr) =>
-      keepOnlySideEffects(expr)
+      checkNotNullStatement(expr)(stat.pos)
     case _ =>
       stat
   }
@@ -1684,16 +1696,25 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     val methodName = methodIdent.name
 
     def treeNotInlined = {
-      cont(PreTransTree(Apply(flags, finishTransformExpr(treceiver), methodIdent,
+      cont(PreTransTree(Apply(flags,
+          finishTransformExprMaybeAssumeNotNull(treceiver), methodIdent,
           targs.map(finishTransformExpr))(resultType), RefinedType(resultType)))
     }
 
     treceiver.tpe.base match {
       case NothingType =>
-        cont(treceiver)
+        cont(treceiver) // throws
       case NullType =>
-        // Apply on null is UB, just create a well-typed tree.
-        cont(Block(finishTransformStat(treceiver), Throw(Null())).toPreTransform)
+        val checked = checkNotNull(treceiver)
+        /* When NPEs are Unchecked, checkNotNull directly returns `treceiver`,
+         * whose `tpe` is still `Null`. If the call is used in a context that
+         * expects a non-nullable type (such as a primitive), this causes
+         * ill-typed IR. In that case, we explicitly insert a `throw null`.
+         */
+        val checkedAndWellTyped =
+          if (checked.tpe.isNothingType) checked
+          else PreTransTree(Block(finishTransformStat(checked), Throw(Null())))
+        cont(checkedAndWellTyped)
       case _ =>
         if (methodName.isReflectiveProxy) {
           // Never inline reflective proxies
@@ -1831,7 +1852,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           methodName)
       pretransformExprs(receiver, args) { (treceiver, targs) =>
         pretransformSingleDispatch(flags, target, Some(treceiver), targs, isStat, usePreTransform)(cont) {
-          treeNotInlined0(finishTransformExpr(treceiver), targs.map(finishTransformExpr))
+          treeNotInlined0(finishTransformExprMaybeAssumeNotNull(treceiver),
+              targs.map(finishTransformExpr))
         }
       }
     }
@@ -2194,7 +2216,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
     def finishTransformArgsAsStat(): Tree = {
       val newOptReceiver =
-        optReceiver.fold[Tree](Skip())(r => finishTransformStat(r._2))
+        optReceiver.fold[Tree](Skip())(r => checkNotNullStatement(r._2))
       val newArgs = args.map(finishTransformStat(_))
       Block(newOptReceiver :: newArgs)
     }
@@ -2214,7 +2236,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       case This() if args.isEmpty =>
         assert(optReceiver.isDefined,
             "There was a This(), there should be a receiver")
-        cont(optReceiver.get._2)
+        cont(checkNotNull(optReceiver.get._2))
 
       case Select(This(), className, field) if formals.isEmpty =>
         assert(optReceiver.isDefined,
@@ -2233,8 +2255,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
         if (!isFieldRead(className, field.name)) {
           // Field is never read, discard assign, keep side effects only.
-          cont(PreTransTree(Block(finishTransformStat(treceiver),
-              finishTransformStat(trhs))))
+          cont(PreTransTree(finishTransformArgsAsStat(), RefinedType.NoRefinedType))
         } else {
           pretransformSelectCommon(lhs.tpe, treceiver, className, field,
               isLhsOfAssign = true) { tlhs =>
@@ -2261,12 +2282,13 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
        * must communicate to the emitter that it has to unbox the value.
        * For other primitive types, unboxes/casts are not necessary, because
        * they would only convert `null` to the zero value of the type. However,
-       * calling a method on `null` is UB, so we need not do anything about it.
+       * `null` is ruled out by `checkNotNull` (or because it is UB).
        */
       val (declaredType, value0) = receiver
+      val value1 = checkNotNull(value0)
       val value =
-        if (declaredType == CharType) foldAsInstanceOf(value0, declaredType)
-        else value0
+        if (declaredType == CharType) foldAsInstanceOf(value1, declaredType)
+        else value1
       Binding(Binding.This, declaredType, false, value)
     }
 
@@ -2340,8 +2362,17 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
 
       case ArrayCopy =>
         assert(isStat, "System.arraycopy must be used in statement position")
-        val List(src, srcPos, dest, destPos, length) = targs.map(finishTransformExpr(_))
-        contTree(Transient(SystemArrayCopy(src, srcPos, dest, destPos, length)))
+        val List(tsrc, tsrcPos, tdest, tdestPos, tlength) = targs
+        withNewTempLocalDefs(targs) { (localDefs, cont1) =>
+          val List(srcDef, srcPosDef, destDef, destPosDef, lengthDef) = localDefs
+          cont1(PreTransTree(Transient(SystemArrayCopy(
+            finishTransformExpr(checkNotNull(srcDef.toPreTransform)),
+            srcPosDef.newReplacement,
+            finishTransformExpr(checkNotNull(destDef.toPreTransform)),
+            destPosDef.newReplacement,
+            lengthDef.newReplacement
+          ))))
+        } (cont)
 
       // scala.runtime.ScalaRunTime object
 
@@ -2363,7 +2394,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
              */
             val elemType = cursoryArrayElemType(arrayTpe)
             if (!tarray.tpe.isNullable) {
-              val array = finishTransformExpr(tarray)
+              val array = finishTransformExprMaybeAssumeNotNull(tarray)
               val index = finishTransformExpr(tindex)
               val select = ArraySelect(array, index)(elemType)
               contTree(select)
@@ -2387,7 +2418,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
              */
             val elemType = cursoryArrayElemType(arrayTpe)
             if (!tarray.tpe.isNullable) {
-              val array = finishTransformExpr(tarray)
+              val array = finishTransformExprMaybeAssumeNotNull(tarray)
               val index = finishTransformExpr(tindex)
               val select = ArraySelect(array, index)(elemType)
               val tunboxedValue = foldAsInstanceOf(tvalue, elemType)
@@ -2410,7 +2441,8 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         val tarray = targs.head
         tarray.tpe.base match {
           case _: ArrayType =>
-            contTree(Trees.ArrayLength(finishTransformExpr(tarray)))
+            val array = finishTransformExprMaybeAssumeNotNull(tarray)
+            contTree(Trees.ArrayLength(array))
           case _ =>
             default
         }
@@ -2452,6 +2484,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       // scala.collection.mutable.ArrayBuilder
 
       case GenericArrayBuilderResult =>
+        // This is a private API: `runtimeClass` is known not to be `null`
         val List(runtimeClass, array) = targs.map(finishTransformExpr(_))
         val (resultType, isExact) = runtimeClass match {
           case ClassOf(elemTypeRef) => (ArrayType(ArrayTypeRef.of(elemTypeRef)), true)
@@ -2462,6 +2495,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
             RefinedType(resultType, isExact = isExact, isNullable = false)))
 
       case ArrayBuilderZeroOf =>
+        // This is a private API: `runtimeClass` is known not to be `null`
         contTree(finishTransformExpr(targs.head) match {
           case ClassOf(PrimRef(tpe)) =>
             /* Note that for CharType we produce a literal int instead of char.
@@ -2594,17 +2628,17 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       // TypedArray conversions
 
       case ByteArrayToInt8Array =>
-        contTree(Transient(ArrayToTypedArray(finishTransformExpr(targs.head), ByteRef)))
+        contTree(Transient(ArrayToTypedArray(finishTransformExprMaybeAssumeNotNull(targs.head), ByteRef)))
       case ShortArrayToInt16Array =>
-        contTree(Transient(ArrayToTypedArray(finishTransformExpr(targs.head), ShortRef)))
+        contTree(Transient(ArrayToTypedArray(finishTransformExprMaybeAssumeNotNull(targs.head), ShortRef)))
       case CharArrayToUint16Array =>
-        contTree(Transient(ArrayToTypedArray(finishTransformExpr(targs.head), CharRef)))
+        contTree(Transient(ArrayToTypedArray(finishTransformExprMaybeAssumeNotNull(targs.head), CharRef)))
       case IntArrayToInt32Array =>
-        contTree(Transient(ArrayToTypedArray(finishTransformExpr(targs.head), IntRef)))
+        contTree(Transient(ArrayToTypedArray(finishTransformExprMaybeAssumeNotNull(targs.head), IntRef)))
       case FloatArrayToFloat32Array =>
-        contTree(Transient(ArrayToTypedArray(finishTransformExpr(targs.head), FloatRef)))
+        contTree(Transient(ArrayToTypedArray(finishTransformExprMaybeAssumeNotNull(targs.head), FloatRef)))
       case DoubleArrayToFloat64Array =>
-        contTree(Transient(ArrayToTypedArray(finishTransformExpr(targs.head), DoubleRef)))
+        contTree(Transient(ArrayToTypedArray(finishTransformExprMaybeAssumeNotNull(targs.head), DoubleRef)))
 
       case Int8ArrayToByteArray =>
         contTree(Transient(TypedArrayToArray(finishTransformExpr(targs.head), ByteRef)))
@@ -4598,6 +4632,80 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           None
       }
     }
+  }
+
+  private def checkNotNull(texpr: PreTransform)(implicit pos: Position): PreTransform = {
+    val tpe = texpr.tpe
+
+    if (!tpe.isNullable || semantics.nullPointers == CheckedBehavior.Unchecked) {
+      texpr
+    } else {
+      val refinedType: RefinedType = tpe.base match {
+        case NullType => RefinedType.Nothing
+        case baseType => RefinedType(baseType, isExact = tpe.isExact, isNullable = false)
+      }
+      PreTransTree(Transient(CheckNotNull(finishTransformExpr(texpr))), refinedType)
+    }
+  }
+
+  private def checkNotNull(expr: Tree)(implicit pos: Position): Tree = {
+    if (semantics.nullPointers == CheckedBehavior.Unchecked || isNotNull(expr))
+      expr
+    else
+      Transient(CheckNotNull(expr))
+  }
+
+  private def checkNotNullStatement(texpr: PreTransform)(implicit pos: Position): Tree = {
+    if (!texpr.tpe.isNullable || semantics.nullPointers == CheckedBehavior.Unchecked)
+      finishTransformStat(texpr)
+    else
+      Transient(CheckNotNull(finishTransformExpr(texpr)))
+  }
+
+  private def checkNotNullStatement(expr: Tree)(implicit pos: Position): Tree = {
+    if (semantics.nullPointers == CheckedBehavior.Unchecked || isNotNull(expr))
+      keepOnlySideEffects(expr)
+    else
+      Transient(CheckNotNull(expr))
+  }
+
+  private def maybeAssumeNotNull(tree: Tree, tpe: RefinedType): Tree = {
+    if (tpe.isNullable || semantics.nullPointers == CheckedBehavior.Unchecked) {
+      tree
+    } else {
+      /* Do not introduce AssumeNotNull for some tree shapes that the function
+       * emitter will trivially recognize as non-null. This is particularly
+       * important not to hide `This` nodes in a way that prevents elimination
+       * of `StoreModule`s.
+       */
+      if (isNotNull(tree))
+        tree
+      else
+        Transient(AssumeNotNull(tree))(tree.pos)
+    }
+  }
+
+  private def isNotNull(tree: Tree): Boolean = {
+    // !!! Duplicate code with FunctionEmitter.isNotNull
+
+    def isNullableType(tpe: Type): Boolean = tpe match {
+      case NullType    => true
+      case _: PrimType => false
+      case _           => true
+    }
+
+    def isShapeNotNull(tree: Tree): Boolean = tree match {
+      case Transient(CheckNotNull(_) | AssumeNotNull(_)) =>
+        true
+      case _: This =>
+        tree.tpe != AnyType
+      case _:New | _:LoadModule | _:NewArray | _:ArrayValue | _:Clone | _:ClassOf =>
+        true
+      case _ =>
+        false
+    }
+
+    !isNullableType(tree.tpe) || isShapeNotNull(tree)
   }
 
   private def newParamReplacement(paramDef: ParamDef): ((LocalName, LocalDef), ParamDef) = {

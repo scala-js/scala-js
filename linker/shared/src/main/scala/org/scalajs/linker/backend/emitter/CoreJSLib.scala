@@ -661,6 +661,22 @@ private[emitter] object CoreJSLib {
         }
       ),
 
+      condTree(nullPointers != CheckedBehavior.Unchecked)(Block(
+        defineFunction0("throwNullPointerException") {
+          Throw(maybeWrapInUBE(nullPointers, {
+            genScalaClassNew(NullPointerExceptionClass, NoArgConstructorName)
+          }))
+        },
+
+        // "checkNotNull", but with a very short name
+        defineFunction1("n") { x =>
+          Block(
+            If(x === Null(), genCallHelper("throwNullPointerException")),
+            Return(x)
+          )
+        }
+      )),
+
       defineFunction1("noIsInstance") { instance =>
         Throw(New(TypeErrorRef,
             str("Cannot call isInstance() on a Class representing a JS trait/object") :: Nil))
@@ -754,7 +770,10 @@ private[emitter] object CoreJSLib {
               }
           ), {
             If(instance === Null(), {
-              Return(Apply(instance DOT genName(getClassMethodName), Nil))
+              if (nullPointers == CheckedBehavior.Unchecked)
+                Return(Apply(instance DOT genName(getClassMethodName), Nil))
+              else
+                genCallHelper("throwNullPointerException")
             }, {
               If(genIsInstanceOfHijackedClass(instance, BoxedLongClass), {
                 Return(constantClassResult(BoxedLongClass))
@@ -798,7 +817,12 @@ private[emitter] object CoreJSLib {
                   semantics.runtimeClassNameMapper, className.nameString))
             },
             instance => genIdentBracketSelect(instance DOT classData, "name"),
-            Apply(Null() DOT genName(getNameMethodName), Nil)
+            {
+              if (nullPointers == CheckedBehavior.Unchecked)
+                Apply(Null() DOT genName(getNameMethodName), Nil)
+              else
+                genCallHelper("throwNullPointerException")
+            }
         )
       )
     }
@@ -1117,6 +1141,11 @@ private[emitter] object CoreJSLib {
       condTree(esVersion < ESVersion.ES2015)(
         defineFunction5("systemArraycopy") { (src, srcPos, dest, destPos, length) =>
           genCallHelper("arraycopyGeneric", src.u, srcPos, dest.u, destPos, length)
+        }
+      ),
+      condTree(esVersion >= ESVersion.ES2015 && nullPointers != CheckedBehavior.Unchecked)(
+        defineFunction5("systemArraycopy") { (src, srcPos, dest, destPos, length) =>
+          Apply(src DOT "copyTo", List(srcPos, dest, destPos, length))
         }
       ),
 

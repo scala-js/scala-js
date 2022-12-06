@@ -13,11 +13,13 @@
 package org.scalajs.testsuite.javalib.util
 
 import org.junit.Assert._
+import org.junit.Assume._
 import org.junit.Test
 
 import java.util.UUID
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+import org.scalajs.testsuite.utils.Platform._
 
 class UUIDTest {
 
@@ -163,18 +165,23 @@ class UUIDTest {
     assertEquals(0, uuid2.clockSequence())
     assertEquals(0L, uuid2.node())
 
-    assertThrows(classOf[Exception], UUID.fromString(null))
-    assertThrows(classOf[Exception], UUID.fromString(""))
-    assertThrows(classOf[Exception], UUID.fromString("f81d4fae_7dec-11d0-a765-00a0c91e6bf6"))
-    assertThrows(classOf[Exception], UUID.fromString("f81d4fae-7dec_11d0-a765-00a0c91e6bf6"))
-    assertThrows(classOf[Exception], UUID.fromString("f81d4fae-7dec-11d0_a765-00a0c91e6bf6"))
-    assertThrows(classOf[Exception], UUID.fromString("f81d4fae-7dec-11d0-a765_00a0c91e6bf6"))
-    assertThrows(classOf[Exception], UUID.fromString("-7dec-11d0-a765-00a0c91e6bf6"))
-    assertThrows(classOf[Exception], UUID.fromString("f81d4fae--11d0-a765-00a0c91e6bf6"))
-    assertThrows(classOf[Exception], UUID.fromString("f81d4fae-7dec--a765-00a0c91e6bf6"))
-    assertThrows(classOf[Exception], UUID.fromString("f81d4fae-7dec-11d0--00a0c91e6bf6"))
-    assertThrows(classOf[Exception], UUID.fromString("f81d4fae-7dec-11d0-a765-"))
-    assertThrows(classOf[Exception], UUID.fromString("f81d4fae-7dec-11d0-a765"))
-    assertThrows(classOf[Exception], UUID.fromString("f81d4fae-7dZc-11d0-a765-00a0c91e6bf6"))
+    assertThrows(classOf[IllegalArgumentException], UUID.fromString(""))
+    assertThrows(classOf[IllegalArgumentException], UUID.fromString("f81d4fae_7dec-11d0-a765-00a0c91e6bf6"))
+    assertThrows(classOf[IllegalArgumentException], UUID.fromString("f81d4fae-7dec_11d0-a765-00a0c91e6bf6"))
+    assertThrows(classOf[IllegalArgumentException], UUID.fromString("f81d4fae-7dec-11d0_a765-00a0c91e6bf6"))
+    assertThrows(classOf[IllegalArgumentException], UUID.fromString("f81d4fae-7dec-11d0-a765_00a0c91e6bf6"))
+    assertThrows(classOf[IllegalArgumentException], UUID.fromString("-7dec-11d0-a765-00a0c91e6bf6"))
+    assertThrows(classOf[IllegalArgumentException], UUID.fromString("f81d4fae--11d0-a765-00a0c91e6bf6"))
+    assertThrows(classOf[IllegalArgumentException], UUID.fromString("f81d4fae-7dec--a765-00a0c91e6bf6"))
+    assertThrows(classOf[IllegalArgumentException], UUID.fromString("f81d4fae-7dec-11d0--00a0c91e6bf6"))
+    assertThrows(classOf[IllegalArgumentException], UUID.fromString("f81d4fae-7dec-11d0-a765-"))
+    assertThrows(classOf[IllegalArgumentException], UUID.fromString("f81d4fae-7dec-11d0-a765"))
+    assertThrows(classOf[IllegalArgumentException], UUID.fromString("f81d4fae-7dZc-11d0-a765-00a0c91e6bf6"))
+  }
+
+  @Test def fromStringNull(): Unit = {
+    assumeTrue("assuming compliant null pointer checks", hasCompliantNullPointers)
+
+    assertThrows(classOf[NullPointerException], UUID.fromString(null))
   }
 }

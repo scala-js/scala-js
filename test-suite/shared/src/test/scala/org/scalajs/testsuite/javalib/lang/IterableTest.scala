@@ -22,12 +22,19 @@ import org.junit.Test
 import org.junit.Assert._
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+import org.scalajs.testsuite.utils.Platform._
 
 /** Tests the implementation of the java standard library Iterable
  */
 trait IterableTest {
 
   def factory: IterableFactory
+
+  @noinline
+  protected def assertThrowsNPEIfCompliant(code: => Unit): Unit = {
+    if (hasCompliantNullPointers)
+      assertThrows(classOf[NullPointerException], code)
+  }
 
   @Test def empty(): Unit = {
     val iter = factory.fromElements[Int]()

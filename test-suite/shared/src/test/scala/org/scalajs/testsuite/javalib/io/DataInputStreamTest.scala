@@ -15,7 +15,7 @@ package org.scalajs.testsuite.javalib.io
 import java.io._
 
 import org.scalajs.testsuite.utils.AssertThrows.assertThrows
-import org.scalajs.testsuite.utils.Platform.executingInJVM
+import org.scalajs.testsuite.utils.Platform._
 
 import org.junit._
 import org.junit.Assert._
@@ -230,8 +230,6 @@ trait DataInputStreamTest {
     stream.readFully(buf)
     assertArrayEquals(toByteArray(-100 to -51), buf)
 
-    assertThrows(classOf[Exception], stream.readFully(null))
-
     stream.readFully(buf, 40, 10)
     assertArrayEquals(toByteArray((-100 to -61) ++ (-50 to -41)), buf)
 
@@ -247,6 +245,22 @@ trait DataInputStreamTest {
     assertArrayEquals(toByteArray(10 to 59), buf)
 
     assertThrows(classOf[Exception], stream.readFully(buf))
+  }
+
+  @Test def readFullyOneArgThreeArgNull(): Unit = {
+    assumeTrue("assuming compliant null pointer checks", hasCompliantNullPointers)
+
+    val stream = newStream(-100 to 99: _*)
+    val buf = new Array[Byte](50)
+
+    stream.readFully(buf)
+    assertArrayEquals(toByteArray(-100 to -51), buf)
+
+    assertThrows(classOf[NullPointerException], stream.readFully(null))
+    assertThrows(classOf[NullPointerException], stream.readFully(null, 70, 1))
+
+    stream.readFully(buf, 40, 10)
+    assertArrayEquals(toByteArray((-100 to -61) ++ (-50 to -41)), buf)
   }
 
   @Test def readFullyForBurstyStreams(): Unit = {

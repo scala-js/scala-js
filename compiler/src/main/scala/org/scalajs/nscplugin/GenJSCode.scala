@@ -4761,12 +4761,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           // common case for which there is no side-effect nor NPE
           newArg
         case _ =>
-          val NPECtor = getMemberMethod(NullPointerExceptionClass,
-              nme.CONSTRUCTOR).suchThat(_.tpe.params.isEmpty)
           js.Block(
-              js.If(js.BinaryOp(js.BinaryOp.===, newReceiver, js.Null()),
-                  js.Throw(genNew(NullPointerExceptionClass, NPECtor, Nil)),
-                  js.Skip())(jstpe.NoType),
+              js.GetClass(newReceiver), // null check
               newArg)
       }
     }

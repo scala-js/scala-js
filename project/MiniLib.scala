@@ -37,6 +37,7 @@ object MiniLib {
         "CloneNotSupportedException",
         "IndexOutOfBoundsException",
         "NegativeArraySizeException",
+        "NullPointerException",
         "StringIndexOutOfBoundsException"
     ).map("java/lang/" + _)
 

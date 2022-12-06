@@ -185,6 +185,107 @@ class SystemArraycopyTest {
     assertArrayRefEquals(Array(null, "1", "2", null, "1", "1", null, "2", "1", null), array)
   }
 
+  @Test def arraycopyNulls(): Unit = {
+    assumeTrue("Assuming compliant NullPointers",
+        hasCompliantNullPointers)
+
+    @noinline def assertThrowsNPE[U](body: => U): Unit =
+      assertThrows(classOf[NullPointerException], body)
+
+    @noinline def getNull(): Any = null
+    val nul = getNull()
+
+    val nullArrayRef = nul.asInstanceOf[Array[AnyRef]]
+    val nullArrayInt = nul.asInstanceOf[Array[Int]]
+
+    val arrayRef = new Array[AnyRef](10)
+    val arrayInt = new Array[Int](10)
+
+    val otherValues = List[Any](
+      null,
+      arrayRef,
+      arrayInt,
+      new Array[String](10),
+      "foo",
+      (),
+      List(1)
+    )
+
+    for (otherValue <- otherValues) {
+      assertThrowsNPE(arraycopy(nul, 0, otherValue, 0, 0))
+      assertThrowsNPE(arraycopy(otherValue, 0, nul, 0, 0))
+
+      assertThrowsNPE(arraycopy(nul, 0, otherValue, 0, 1))
+      assertThrowsNPE(arraycopy(otherValue, 0, nul, 0, 1))
+
+      assertThrowsNPE(arraycopy(nul, -1, otherValue, 0, 1))
+      assertThrowsNPE(arraycopy(otherValue, -1, nul, 0, 1))
+
+      assertThrowsNPE(arraycopy(nul, 5, otherValue, 0, 1))
+      assertThrowsNPE(arraycopy(otherValue, 5, nul, 0, 1))
+
+      assertThrowsNPE(arraycopy(nul, 15, otherValue, 0, 1))
+      assertThrowsNPE(arraycopy(otherValue, 15, nul, 0, 1))
+
+      assertThrowsNPE(arraycopy(nul, 0, otherValue, -1, 1))
+      assertThrowsNPE(arraycopy(otherValue, 0, nul, -1, 1))
+
+      assertThrowsNPE(arraycopy(nul, 0, otherValue, 5, 1))
+      assertThrowsNPE(arraycopy(otherValue, 0, nul, 5, 1))
+
+      assertThrowsNPE(arraycopy(nul, 0, otherValue, 15, 1))
+      assertThrowsNPE(arraycopy(otherValue, 0, nul, 15, 1))
+
+      assertThrowsNPE(arraycopy(nullArrayRef, 0, otherValue, 0, 1))
+      assertThrowsNPE(arraycopy(otherValue, 0, nullArrayRef, 0, 1))
+    }
+
+    assertThrowsNPE(arraycopy(nullArrayRef, 0, arrayRef, 5, 1))
+    assertThrowsNPE(arraycopy(arrayRef, 0, nullArrayRef, 5, 1))
+
+    assertThrowsNPE(arraycopy(nullArrayInt, 0, arrayInt, 5, 1))
+    assertThrowsNPE(arraycopy(arrayInt, 0, nullArrayInt, 5, 1))
+  }
+
+  @Test def arraycopyNullsShortcircuited(): Unit = {
+    @noinline def getNull(): Any = null
+    val nul = getNull()
+
+    val nullArrayRef = nul.asInstanceOf[Array[AnyRef]]
+    val nullArrayInt = nul.asInstanceOf[Array[Int]]
+
+    val arrayRef = new Array[AnyRef](10)
+    val arrayInt = new Array[Int](10)
+
+    def throwIllegalArgNothing(): Nothing =
+      throw new IllegalArgumentException
+
+    @noinline def assertThrowsIllegalArg[U](body: => U): Unit =
+      assertThrows(classOf[IllegalArgumentException], body)
+
+    @noinline def throwIllegalArgArrayRef(): Array[AnyRef] =
+      throwIllegalArgNothing()
+
+    @noinline def throwIllegalArgArrayInt(): Array[Int] =
+      throwIllegalArgNothing()
+
+    @noinline def throwIllegalArgInt(): Int =
+      throwIllegalArgNothing()
+
+    assertThrowsIllegalArg(arraycopy(nul, throwIllegalArgInt(), nul, 0, 0))
+    assertThrowsIllegalArg(arraycopy(nul, 0, nul, 0, throwIllegalArgInt()))
+
+    assertThrowsIllegalArg(arraycopy(nul, 0, throwIllegalArgArrayRef(), 0, 0))
+    assertThrowsIllegalArg(arraycopy(nullArrayRef, 0, throwIllegalArgArrayRef(), 0, 0))
+    assertThrowsIllegalArg(arraycopy(throwIllegalArgArrayRef(), 0, nul, 0, 0))
+    assertThrowsIllegalArg(arraycopy(throwIllegalArgArrayRef(), 0, nullArrayRef, 0, 0))
+
+    assertThrowsIllegalArg(arraycopy(nul, 0, throwIllegalArgArrayInt(), 0, 0))
+    assertThrowsIllegalArg(arraycopy(nullArrayInt, 0, throwIllegalArgArrayInt(), 0, 0))
+    assertThrowsIllegalArg(arraycopy(throwIllegalArgArrayInt(), 0, nul, 0, 0))
+    assertThrowsIllegalArg(arraycopy(throwIllegalArgArrayInt(), 0, nullArrayInt, 0, 0))
+  }
+
   @Test def arraycopyIndexOutOfBoundsInt(): Unit = {
     assumeTrue("Assuming compliant ArrayIndexOutOfBounds",
         hasCompliantArrayIndexOutOfBounds)

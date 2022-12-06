@@ -69,7 +69,7 @@ class OptimizerTest {
     val anObjectMethodName = m("anObject", Nil, O)
 
     def callCloneOn(receiver: Tree): Tree =
-      Apply(EAF, receiver, cloneMethodName, Nil)(AnyType)
+      consoleLog(Apply(EAF, receiver, cloneMethodName, Nil)(AnyType))
 
     val fooMemberDefs = List(
         trivialCtor("Foo"),

@@ -509,6 +509,16 @@ object Names {
   val NegativeArraySizeExceptionClass: ClassName =
     ClassName("java.lang.NegativeArraySizeException")
 
+  /** The exception thrown by a variety of nodes for `null` arguments.
+   *
+   *  - `Apply` and `ApplyStatically` for the receiver,
+   *  - `Select` for the qualifier,
+   *  - `ArrayLength` and `ArraySelect` for the array,
+   *  - `GetClass`, `Clone` and `UnwrapFromException` for their respective only arguments.
+   */
+  val NullPointerExceptionClass: ClassName =
+    ClassName("java.lang.NullPointerException")
+
   /** The exception thrown by a `BinaryOp.String_charAt` that is out of bounds. */
   val StringIndexOutOfBoundsExceptionClass: ClassName =
     ClassName("java.lang.StringIndexOutOfBoundsException")

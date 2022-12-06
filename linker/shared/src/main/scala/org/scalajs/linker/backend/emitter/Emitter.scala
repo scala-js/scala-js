@@ -841,13 +841,17 @@ object Emitter {
               NoArgConstructorName)
         },
 
+        cond(nullPointers != Unchecked) {
+          instantiateClass(NullPointerExceptionClass, NoArgConstructorName)
+        },
+
         cond(stringIndexOutOfBounds != Unchecked) {
           instantiateClass(StringIndexOutOfBoundsExceptionClass,
               IntArgConstructorName)
         },
 
         cond(isAnyFatal(asInstanceOfs, arrayIndexOutOfBounds, arrayStores,
-            negativeArraySizes, stringIndexOutOfBounds)) {
+            negativeArraySizes, nullPointers, stringIndexOutOfBounds)) {
           instantiateClass(UndefinedBehaviorErrorClass,
               ThrowableArgConsructorName)
         },

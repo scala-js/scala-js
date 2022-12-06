@@ -12,8 +12,12 @@
 
 package org.scalajs.testsuite.typedarray
 
-import org.junit.Assert._
 import org.junit.Test
+import org.junit.Assert._
+import org.junit.Assume._
+
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+import org.scalajs.testsuite.utils.Platform._
 import org.scalajs.testsuite.utils.Requires
 
 import scala.scalajs.js
@@ -192,5 +196,21 @@ class TypedArrayConversionTest {
     // Ensure its a copy
     x(0) = 0
     assertEquals(1.0, y(0), 0.0)
+  }
+
+  @Test def convertScalaArrayToTypedArrayNulls(): Unit = {
+    assumeTrue("Assuming compliant nullPointers", hasCompliantNullPointers)
+
+    @noinline def assertNPE[U](body: => U): Unit =
+      assertThrows(classOf[NullPointerException], body)
+
+    @noinline def nullOf[T >: Null]: T = null
+
+    assertNPE(nullOf[Array[Byte]].toTypedArray)
+    assertNPE(nullOf[Array[Short]].toTypedArray)
+    assertNPE(nullOf[Array[Char]].toTypedArray)
+    assertNPE(nullOf[Array[Int]].toTypedArray)
+    assertNPE(nullOf[Array[Float]].toTypedArray)
+    assertNPE(nullOf[Array[Double]].toTypedArray)
   }
 }

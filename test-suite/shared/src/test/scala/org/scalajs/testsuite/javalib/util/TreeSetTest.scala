@@ -254,7 +254,7 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
       assertTrue(hs.add(null))
       assertTrue(hs.contains(null))
     } else {
-      assertThrows(classOf[Exception], hs.add(null))
+      assertThrowsNPEIfCompliant(hs.add(null))
     }
   }
 
@@ -268,7 +268,7 @@ abstract class TreeSetTest(val factory: TreeSetFactory)
       assertTrue(ts1.contains("ONE"))
       assertFalse(ts1.contains("THREE"))
     } else {
-      assertThrows(classOf[Exception], ts1.addAll(l))
+      assertThrowsNPEIfCompliant(ts1.addAll(l))
     }
   }
 
