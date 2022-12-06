@@ -23,9 +23,6 @@ import org.scalajs.testsuite.utils.Platform._
 class DefaultMethodsTest {
 
   @Test def canOverrideDefaultMethod(): Unit = {
-    assumeFalse("Affected by https://github.com/scala/bug/issues/10609",
-        executingInJVM && scalaVersion == "2.11.12")
-
     var counter = 0
 
     class SpecialIntComparator extends ju.Comparator[Int] {

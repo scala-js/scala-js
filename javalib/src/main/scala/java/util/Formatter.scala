@@ -83,12 +83,8 @@ final class Formatter private (private[this] var dest: Appendable,
 
   @noinline
   private def sendToDestSlowPath(ss: js.Array[String]): Unit = {
-    // Workaround Scala 2.11 limitation: cannot nest anonymous functions for the IR cleaner
-    @inline def body(): Unit =
-      forArrayElems(ss)(dest.append(_))
-
     trapIOExceptions {
-      body()
+      forArrayElems(ss)(dest.append(_))
     }
   }
 

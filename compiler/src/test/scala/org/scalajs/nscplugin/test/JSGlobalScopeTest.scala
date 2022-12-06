@@ -249,7 +249,7 @@ class JSGlobalScopeTest extends DirectTest with TestHelpers {
     }
     """ hasErrors
     s"""
-      |newSource1.scala:41: warning: method apply in object global is deprecated${since("forever")}: The global scope cannot be called as function.
+      |newSource1.scala:41: warning: method apply in object global is deprecated (since forever): The global scope cannot be called as function.
       |        val a = js.Dynamic.global(3)
       |                           ^
       |newSource1.scala:41: error: Loading the global scope as a value (anywhere but as the left-hand-side of a `.`-selection) is not allowed.

@@ -69,7 +69,7 @@ f(
 
 Notes about the list style:
 * The parentheses must be on individual lines.
-* A trailing comma will become mandatory if/once we drop 2.11.
+* A trailing comma will become mandatory if/once we drop 2.12.1
 * This style is relatively new, so a lot of code does not comply to it; apply the boy scout rule where this does not cause unnecessary diffs.
 
 ### Blank lines

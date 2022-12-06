@@ -17,7 +17,6 @@ object VersionDependentUtils {
 
   /** Does the current Scala version support the `@nowarn` annotation? */
   val scalaSupportsNoWarn = {
-    !scalaVersion.startsWith("2.11.") &&
     !scalaVersion.startsWith("2.12.") &&
     scalaVersion != "2.13.0" &&
     scalaVersion != "2.13.1"
@@ -27,7 +26,6 @@ object VersionDependentUtils {
     /* Yes, this is the same test as in scalaSupportsNoWarn, but that's
      * completely coincidental, so we have a copy.
      */
-    !scalaVersion.startsWith("2.11.") &&
     !scalaVersion.startsWith("2.12.") &&
     scalaVersion != "2.13.0" &&
     scalaVersion != "2.13.1"

@@ -7,7 +7,7 @@ else
     CMD="echo sbt"
 fi
 
-SUFFIXES="2_11 2_12 2_13"
+SUFFIXES="2_12 2_13"
 
 JAVA_LIBS="javalibintf javalib"
 COMPILER="compiler jUnitPlugin"

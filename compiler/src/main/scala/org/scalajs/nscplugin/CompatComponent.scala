@@ -25,29 +25,18 @@ import scala.tools.nsc._
  *  @author Sébastien Doeraene
  */
 trait CompatComponent {
-  import CompatComponent.{infiniteLoop, noImplClasses}
+  import CompatComponent.infiniteLoop
 
   val global: Global
 
   import global._
 
   implicit final class SymbolCompat(self: Symbol) {
-    def originalOwner: Symbol =
-      global.originalOwner.getOrElse(self, self.rawowner)
-
-    def implClass: Symbol = NoSymbol
-
-    def isTraitOrInterface: Boolean = self.isTrait || self.isInterface
-
     def isScala3Defined: Boolean = false
   }
 
   implicit final class GlobalCompat(
       self: CompatComponent.this.global.type) {
-
-    object originalOwner {
-      def getOrElse(sym: Symbol, orElse: => Symbol): Symbol = infiniteLoop()
-    }
 
     // Added in Scala 2.13.2 for configurable warnings
     object runReporting {
@@ -65,38 +54,8 @@ trait CompatComponent {
       infiniteLoop()
   }
 
-  private implicit final class FlagsCompat(self: Flags.type) {
-    def IMPLCLASS: Long = infiniteLoop()
-  }
-
-  lazy val scalaUsesImplClasses: Boolean =
-    definitions.SeqClass.implClass != NoSymbol // a trait we know has an impl class
-
-  def isImplClass(sym: Symbol): Boolean =
-    scalaUsesImplClasses && sym.hasFlag(Flags.IMPLCLASS)
-
-  lazy val isScala211: Boolean = scalaUsesImplClasses
-
-  implicit final class StdTermNamesCompat(self: global.nme.type) {
-    def IMPL_CLASS_SUFFIX: String = noImplClasses()
-
-    def isImplClassName(name: Name): Boolean = false
-  }
-
-  implicit final class StdTypeNamesCompat(self: global.tpnme.type) {
-    def IMPL_CLASS_SUFFIX: String = noImplClasses()
-
-    def interfaceName(implname: Name): TypeName = noImplClasses()
-  }
-
-  /* SAMFunction was introduced in 2.12 for LMF-capable SAM types.
-   * DottyEnumSingleton was introduced in 2.13.6 to identify Scala 3 `enum` singleton cases.
-   */
-
+  // DottyEnumSingleton was introduced in 2.13.6 to identify Scala 3 `enum` singleton cases.
   object AttachmentsCompatDef {
-    case class SAMFunction(samTp: Type, sam: Symbol, synthCls: Symbol)
-        extends PlainAttachment
-
     object DottyEnumSingleton extends PlainAttachment
   }
 
@@ -106,19 +65,13 @@ trait CompatComponent {
     object Inner {
       import global._
 
-      type SAMFunctionAlias = SAMFunction
-      val SAMFunctionAlias = SAMFunction
-
       val DottyEnumSingletonAlias = DottyEnumSingleton
     }
   }
 
-  type SAMFunctionCompat = AttachmentsCompat.Inner.SAMFunctionAlias
-  lazy val SAMFunctionCompat = AttachmentsCompat.Inner.SAMFunctionAlias
-
   lazy val DottyEnumSingletonCompat = AttachmentsCompat.Inner.DottyEnumSingletonAlias
 
-  implicit final class SAMFunctionCompatOps(self: SAMFunctionCompat) {
+  implicit final class SAMFunctionCompatOps(self: SAMFunction) {
     // Introduced in 2.12.5 to synthesize bridges in LMF classes
     def synthCls: Symbol = NoSymbol
   }
@@ -157,7 +110,4 @@ trait CompatComponent {
 object CompatComponent {
   private def infiniteLoop(): Nothing =
     throw new AssertionError("Infinite loop in Compat")
-
-  private def noImplClasses(): Nothing =
-    throw new AssertionError("No impl classes in this version")
 }

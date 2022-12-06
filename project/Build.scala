@@ -231,7 +231,6 @@ object Build {
   }
 
   import MultiScalaProject.{
-    Default2_11ScalaVersion,
     Default2_12ScalaVersion,
     Default2_13ScalaVersion,
     DefaultScalaVersion
@@ -254,14 +253,12 @@ object Build {
   val previousBinaryCrossVersion = CrossVersion.binaryWith("sjs1_", "")
 
   val scalaVersionsUsedForPublishing: Set[String] =
-    Set(Default2_11ScalaVersion, Default2_12ScalaVersion, Default2_13ScalaVersion)
+    Set(Default2_12ScalaVersion, Default2_13ScalaVersion)
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
 
-  def hasNewCollections(version: String): Boolean = {
-    !version.startsWith("2.11.") &&
+  def hasNewCollections(version: String): Boolean =
     !version.startsWith("2.12.")
-  }
 
   /** Returns the appropriate subdirectory of `sourceDir` depending on the
    *  collection "era" used by the `scalaV`.
@@ -564,7 +561,6 @@ object Build {
         val prev = (scalacOptions in (Compile, doc)).value
         val scalaV = scalaVersion.value
         def scaladocFullySupportsJDKgreaterThan8 = {
-          !scalaV.startsWith("2.11.") &&
           !scalaV.startsWith("2.12.") &&
           scalaV != "2.13.0" && scalaV != "2.13.1" && scalaV != "2.13.2"
         }
@@ -1016,7 +1012,6 @@ object Build {
       publishSettings(None),
       fatalWarningsSettings,
       name := "Scala.js linker",
-      ensureSAMSupportSetting,
 
       unmanagedSourceDirectories in Compile +=
         baseDirectory.value.getParentFile.getParentFile / "shared/src/main/scala",
@@ -1216,9 +1211,6 @@ object Build {
       scriptedDependencies := {
         scriptedDependencies.dependsOn(
             // Compiler Plugins
-            publishLocal in compiler.v2_11,
-            publishLocal in jUnitPlugin.v2_11,
-
             publishLocal in compiler.v2_12,
             publishLocal in jUnitPlugin.v2_12,
 
@@ -1227,12 +1219,6 @@ object Build {
 
             // JS libs
             publishLocal in javalib,
-
-            publishLocal in library.v2_11,
-            publishLocal in testInterface.v2_11,
-            publishLocal in testBridge.v2_11,
-            publishLocal in jUnitRuntime.v2_11,
-            publishLocal in irProjectJS.v2_11,
 
             publishLocal in library.v2_12,
             publishLocal in testInterface.v2_12,
@@ -1274,13 +1260,6 @@ object Build {
     scalacOptions ++= (
         if (isGeneratingForIDE) Seq()
         else Seq("-Ydelambdafy:method"))
-  }
-
-  lazy val ensureSAMSupportSetting: Setting[_] = {
-    scalacOptions ++= {
-      if (scalaBinaryVersion.value == "2.11") Seq("-Xexperimental")
-      else Nil
-    }
   }
 
   lazy val javalibintf: Project = Project(
@@ -1565,7 +1544,6 @@ object Build {
       fatalWarningsSettings,
       name := "Scala.js library",
       delambdafySetting,
-      ensureSAMSupportSetting,
       exportJars := !isGeneratingForIDE,
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.Library,
@@ -1599,7 +1577,6 @@ object Build {
              */
             val mustAvoidJavaDoc = {
               javaV >= 9 && {
-                scalaV.startsWith("2.11.") ||
                 scalaV == "2.12.0" ||
                 scalaV == "2.12.1"
               }
@@ -1822,14 +1799,6 @@ object Build {
 
       MyScalaJSPlugin.expectedSizes := {
         scalaVersion.value match {
-          case Default2_11ScalaVersion =>
-            Some(ExpectedSizes(
-                fastLink = 389000 to 390000,
-                fullLink = 79000 to 80000,
-                fastLinkGz = 50000 to 51000,
-                fullLinkGz = 21000 to 22000,
-            ))
-
           case Default2_12ScalaVersion =>
             Some(ExpectedSizes(
                 fastLink = 772000 to 773000,
@@ -1876,19 +1845,6 @@ object Build {
       publishArtifact in Compile := false,
       scalacOptions ~= (_.filter(_ != "-deprecation")),
 
-      // To support calls to static methods in interfaces
-      scalacOptions in Test ++= {
-        /* Starting from 2.11.12, scalac refuses to emit calls to static methods
-         * in interfaces unless the -target:jvm-1.8 flag is given.
-         * scalac 2.12+ emits JVM 8 bytecode by default, of course, so it is not
-         * needed for later versions.
-         */
-        if (scalaVersion.value.startsWith("2.11."))
-          Seq("-target:jvm-1.8")
-        else
-          Nil
-      },
-
       // Need reflect for typechecking macros
       libraryDependencies +=
         "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
@@ -1902,49 +1858,25 @@ object Build {
 
         val javaV = javaVersion.value
         val scalaV = scalaVersion.value
-        val isScalaAtLeast212 = !scalaV.startsWith("2.11.")
 
         List(sharedTestDir / "scala", sharedTestDir / "require-scala2") :::
         collectionsEraDependentDirectory(scalaV, sharedTestDir) ::
         includeIf(sharedTestDir / "require-jdk11", javaV >= 11) :::
         includeIf(sharedTestDir / "require-jdk15", javaV >= 15) :::
-        includeIf(testDir / "require-2.12", isJSTest && isScalaAtLeast212) :::
         includeIf(testDir / "require-scala2", isJSTest)
       },
 
-      sources in Test ++= {
-        val supportsSAM = scalaBinaryVersion.value match {
-          case "2.11" => scalacOptions.value.contains("-Xexperimental")
-          case _      => true
-        }
-
+      sources in Test := {
+        val allSources = (sources in Test).value
         val scalaV = scalaVersion.value
 
-        /* Can't add require-sam as unmanagedSourceDirectories because of the
-         * use of scalacOptions. Hence sources are added individually.
-         * Note that a testSuite/test will not trigger a compile when sources
-         * are modified in require-sam
-         */
-        if (supportsSAM) {
-          val testDir = (sourceDirectory in Test).value
-          val sharedTestDir =
-            testDir.getParentFile.getParentFile.getParentFile / "shared/src/test"
+        val hasBugWithOverriddenMethods =
+          Set("2.12.0", "2.12.1", "2.12.2", "2.12.3", "2.12.4").contains(scalaV)
 
-          val allSAMSources = {
-            ((sharedTestDir / "require-sam") ** "*.scala").get ++
-            (if (isJSTest) ((testDir / "require-sam") ** "*.scala").get else Nil)
-          }
-
-          val hasBugWithOverriddenMethods =
-            Set("2.12.0", "2.12.1", "2.12.2", "2.12.3", "2.12.4").contains(scalaV)
-
-          if (hasBugWithOverriddenMethods)
-            allSAMSources.filter(_.getName != "SAMWithOverridingBridgesTest.scala")
-          else
-            allSAMSources
-        } else {
-          Nil
-        }
+        if (hasBugWithOverriddenMethods)
+          allSources.filter(_.getName != "SAMWithOverridingBridgesTest.scala")
+        else
+          allSources
       }
   )
 
@@ -2264,7 +2196,6 @@ object Build {
       name := "Java Ext Dummies library for Scala.js",
       publishArtifact in Compile := false,
       delambdafySetting,
-      ensureSAMSupportSetting,
 
       // Ensure that .class files are not used in downstream projects
       exportJars := true,
@@ -2363,10 +2294,8 @@ object Build {
       },
   )
 
-  private def useOldPartest(scalaV: String): Boolean = {
-    scalaV.startsWith("2.11.") ||
+  private def useOldPartest(scalaV: String): Boolean =
     (scalaV.startsWith("2.12.") && scalaV.substring(5).takeWhile(_.isDigit).toInt < 13)
-  }
 
   lazy val partest: MultiScalaProject = MultiScalaProject(
       id = "partest", base = file("partest")
@@ -2419,10 +2348,7 @@ object Build {
               {
                 val scalaV = scalaVersion.value
                 if (useOldPartest(scalaV)) {
-                  if (scalaV.startsWith("2.11."))
-                    "org.scala-lang.modules" %% "scala-partest" % "1.0.16"
-                  else
-                    "org.scala-lang.modules" %% "scala-partest" % "1.1.4"
+                  "org.scala-lang.modules" %% "scala-partest" % "1.1.4"
                 } else {
                   "org.scala-lang" % "scala-partest" % scalaV
                 }
@@ -2515,8 +2441,7 @@ object Build {
         val scalaV = scalaVersion.value
         val upstreamSrcDir = (fetchScalaSource in partest).value
 
-        if (scalaV.startsWith("2.11.") ||
-            scalaV.startsWith("2.12.")) {
+        if (scalaV.startsWith("2.12.")) {
           Nil
         } else {
           List(upstreamSrcDir / "src/testkit/scala/tools/testkit/AssertUtil.scala")

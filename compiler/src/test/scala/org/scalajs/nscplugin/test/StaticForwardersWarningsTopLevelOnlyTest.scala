@@ -25,7 +25,6 @@ class StaticForwardersWarningsTopLevelOnlyTest extends DirectTest with TestHelpe
   @Test
   def warnWhenAvoidingStaticForwardersForTopLevelObject: Unit = {
     val jvmBackendIssuesWarningOfItsOwn = {
-      !scalaVersion.startsWith("2.11.") &&
       scalaVersion != "2.12.1" &&
       scalaVersion != "2.12.2" &&
       scalaVersion != "2.12.3" &&

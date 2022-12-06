@@ -27,7 +27,6 @@ class DiverseErrorsTest extends DirectTest with TestHelpers  {
   private def version = scala.util.Properties.versionNumberString
 
   private val allowsSingletonClassOf = (
-      !version.startsWith("2.11.") &&
       !version.startsWith("2.12.") &&
       version != "2.13.0" &&
       version != "2.13.1" &&

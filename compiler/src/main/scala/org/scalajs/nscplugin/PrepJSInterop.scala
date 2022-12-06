@@ -452,6 +452,11 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 
           typer.typed {
             atPos(tree.pos) {
+              /* gen.mkSuperInitCall would be nicer, but that doesn't get past the typer:
+               *
+               * scala.reflect.internal.Types$TypeError:
+               * stable identifier required, but $anon.super.<init> found.
+               */
               val superCtorCall = gen.mkMethodCall(
                   Super(clsSym, tpnme.EMPTY),
                   ObjectClass.primaryConstructor, Nil, Nil)
@@ -459,9 +464,7 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
               // class $anon extends DynamicImportThunk
               val clsDef = ClassDef(clsSym, List(
                   // def <init>() = { super.<init>(); () }
-                  DefDef(ctorSym,
-                      // `gen.mkUnitBlock(gen.mkSuperInitCall)` would be better but that fails on 2.11.
-                      Block(superCtorCall, Literal(Constant(())))),
+                  DefDef(ctorSym, gen.mkUnitBlock(superCtorCall)),
                   // def apply(): Any = body
                   DefDef(applySym, newBody)))
 
@@ -600,9 +603,6 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
 
       val isJSNative = sym.hasAnnotation(JSNativeAnnotation)
 
-      val isJSFunctionSAMInScala211 =
-        isScala211 && sym.name == tpnme.ANON_FUN_NAME && sym.superClass == JSFunctionClass
-
       // Forbid @EnableReflectiveInstantiation on JS types
       sym.getAnnotation(EnableReflectiveInstantiationAnnotation).foreach {
         annot =>
@@ -646,11 +646,6 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
              * This causes the unsoundness filed as #1385.
              */
             ()
-          case SerializableClass if isJSFunctionSAMInScala211 =>
-            /* Ignore the scala.Serializable trait that Scala 2.11 adds on all
-             * SAM classes when on a JS function SAM.
-             */
-            ()
           case parentSym =>
             /* This is a Scala class or trait other than AnyRef and Dynamic,
              * which is never valid.
@@ -658,23 +653,6 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
             reporter.error(implDef.pos,
                 s"${sym.nameString} extends ${parentSym.fullName} " +
                 "which does not extend js.Any.")
-        }
-      }
-
-      // Require that the SAM of a JS function def be `apply` (2.11-only here)
-      if (isJSFunctionSAMInScala211) {
-        if (!sym.info.decl(nme.apply).filter(JSCallingConvention.isCall(_)).exists) {
-          val samType = sym.parentSymbols.find(_ != JSFunctionClass).getOrElse {
-            /* This shouldn't happen, but fall back on this symbol (which has a
-             * compiler-generated name) not to crash.
-             */
-            sym
-          }
-          reporter.error(implDef.pos,
-              "Using an anonymous function as a SAM for the JavaScript type " +
-              s"${samType.fullNameString} is not allowed because its single " +
-              "abstract method is not named `apply`. " +
-              "Use an anonymous class instead.")
         }
       }
 
@@ -1050,15 +1028,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
              * synthetic `apply` method if it is in a SAM for a JS function
              * type.
              */
-            val isJSFunctionSAM = {
-              /* Under 2.11, sym.owner.isAnonymousFunction does not properly
-               * recognize anonymous functions here (because they seem to not
-               * be marked as synthetic).
-               */
-              sym.isSynthetic &&
-              sym.owner.name == tpnme.ANON_FUN_NAME &&
-              sym.owner.superClass == JSFunctionClass
-            }
+            val isJSFunctionSAM =
+              sym.isSynthetic && sym.owner.isAnonymousFunction
             if (!isJSFunctionSAM) {
               reporter.error(sym.pos,
                   "A non-native JS class cannot declare a concrete method " +
@@ -1221,16 +1192,8 @@ abstract class PrepJSInterop[G <: Global with Singleton](val global: G)
               }
             }
 
-            /* Check that the right-hand-side is `js.undefined`.
-             *
-             * On 2.12+, fields are created later than this phase, and getters
-             * still hold the right-hand-side that we need to check (we
-             * identify this case with `sym.accessed == NoSymbol`).
-             * On 2.11 and before, however, the getter has already been
-             * rewritten to read the field, so we must not check it.
-             * In either case, setters must not be checked.
-             */
-            if (!sym.isAccessor || (sym.isGetter && sym.accessed == NoSymbol)) {
+            // Check that the right-hand-side is `js.undefined`.
+            if (!sym.isSetter) {
               // Check that the tree's body is `js.undefined`
               tree.rhs match {
                 case sel: Select if sel.symbol == JSPackage_undefined =>

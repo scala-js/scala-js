@@ -20,4 +20,5 @@ package scala.scalajs.js.annotation
  *
  *  Otherwise using this annotation is unspecified.
  */
+@deprecated("Has no effect in Scala 2.12+ (default methods are the default). Remove", "1.13.0")
 class JavaDefaultMethod extends scala.annotation.StaticAnnotation

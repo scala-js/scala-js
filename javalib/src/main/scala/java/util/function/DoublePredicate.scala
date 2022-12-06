@@ -12,13 +12,10 @@
 
 package java.util.function
 
-import scala.scalajs.js.annotation.JavaDefaultMethod
-
 @FunctionalInterface
 trait DoublePredicate { self =>
   def test(t: Double): Boolean
 
-  @JavaDefaultMethod
   def and(other: DoublePredicate): DoublePredicate = {
     new DoublePredicate {
       def test(value: Double): Boolean =
@@ -26,7 +23,6 @@ trait DoublePredicate { self =>
     }
   }
 
-  @JavaDefaultMethod
   def negate(): DoublePredicate = {
     new DoublePredicate {
       def test(value: Double): Boolean =
@@ -34,7 +30,6 @@ trait DoublePredicate { self =>
     }
   }
 
-  @JavaDefaultMethod
   def or(other: DoublePredicate): DoublePredicate = {
     new DoublePredicate {
       def test(value: Double): Boolean =

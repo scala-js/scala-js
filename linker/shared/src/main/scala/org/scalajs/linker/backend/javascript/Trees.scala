@@ -21,7 +21,7 @@ import org.scalajs.ir.Position.NoPosition
 
 object Trees {
   /* The case classes for JS Trees are sealed instead of final because making
-   * them final triggers bugs with Scala 2.11.x and 2.12.{1-4}, in combination
+   * them final triggers bugs with 2.12.{1-4}, in combination
    * with their `implicit val pos`.
    */
 

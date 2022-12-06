@@ -12,18 +12,14 @@
 
 package java.util.function
 
-import scala.scalajs.js.annotation.JavaDefaultMethod
-
 @FunctionalInterface
 trait DoubleUnaryOperator {
   def applyAsDouble(operand: Double): Double
 
-  @JavaDefaultMethod
   def andThen(after: DoubleUnaryOperator): DoubleUnaryOperator = { (d: Double) =>
     after.applyAsDouble(applyAsDouble(d))
   }
 
-  @JavaDefaultMethod
   def compose(before: DoubleUnaryOperator): DoubleUnaryOperator = { (d: Double) =>
     applyAsDouble(before.applyAsDouble(d))
   }

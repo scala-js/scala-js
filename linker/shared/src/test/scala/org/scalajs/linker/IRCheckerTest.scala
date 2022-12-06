@@ -189,12 +189,9 @@ object IRCheckerTest {
 
     val logger = new CapturingLogger
 
-    // We cannot use `transform` because of 2.11.
-    link(classDefs, moduleInitializers, logger).failed.recoverWith {
-      case _: NoSuchElementException =>
-        Future.failed(new AssertionError("IR checking did not fail"))
-    }.map { _ =>
-      logger.allLogLines
+    link(classDefs, moduleInitializers, logger).transform {
+      case Success(_) => Failure(new AssertionError("IR checking did not fail"))
+      case Failure(_) => Success(logger.allLogLines)
     }
   }
 

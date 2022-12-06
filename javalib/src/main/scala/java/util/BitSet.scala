@@ -637,20 +637,16 @@ class BitSet private (private var bits: Array[Int]) extends Serializable with Cl
     var result: String = "{"
     var comma: Boolean = false
 
-    // Work around Scala 2.11 limitation with the IR cleaner ; should be double-for over i and j
     for {
       i <- 0 until getActualArrayLength()
+      j <- 0 until ElementSize
     } {
-      var j = 0
-      while (j < ElementSize) {
-        if ((bits(i) & (1 << j)) != 0) {
-          if (comma)
-            result += ", "
-          else
-            comma = true
-          result += (i << AddressBitsPerWord) + j
-        }
-        j += 1
+      if ((bits(i) & (1 << j)) != 0) {
+        if (comma)
+          result += ", "
+        else
+          comma = true
+        result += (i << AddressBitsPerWord) + j
       }
     }
 

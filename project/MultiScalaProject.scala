@@ -8,7 +8,6 @@ final class MultiScalaProject private (private val projects: Map[String, Project
     extends CompositeProject {
   import MultiScalaProject._
 
-  val v2_11: Project = projects("2.11")
   val v2_12: Project = projects("2.12")
   val v2_13: Project = projects("2.13")
 
@@ -81,9 +80,6 @@ object MultiScalaProject {
     v.map(v => (v._1, f(v._2)))
 
   private final val versions = Map[String, Seq[String]](
-    "2.11" -> Seq(
-      "2.11.12",
-    ),
     "2.12" -> Seq(
       "2.12.1",
       "2.12.2",
@@ -118,7 +114,6 @@ object MultiScalaProject {
     ),
   )
 
-  val Default2_11ScalaVersion = versions("2.11").last
   val Default2_12ScalaVersion = versions("2.12").last
   val Default2_13ScalaVersion = versions("2.13").last
 

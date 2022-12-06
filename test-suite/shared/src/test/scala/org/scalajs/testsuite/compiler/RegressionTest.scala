@@ -106,7 +106,6 @@ class RegressionTest {
 
     assumeFalse("Affected by https://github.com/scala/bug/issues/10551",
         Platform.executingInJVM && {
-          scalaVersion.startsWith("2.11.") ||
           scalaVersion == "2.12.0" || scalaVersion == "2.12.1" ||
           scalaVersion == "2.12.2" || scalaVersion == "2.12.3" ||
           scalaVersion == "2.12.4"
@@ -558,12 +557,7 @@ class RegressionTest {
     def getNull(): Any = null
     val x = getNull().asInstanceOf[Unit]: Any
 
-    if (Platform.scalaVersion.startsWith("2.11.")) {
-      assertNull(x.asInstanceOf[AnyRef])
-    } else {
-      // As of Scala 2.12.0-M5, null.asInstanceOf[Unit] (correctly) returns ()
-      assertEquals((), x)
-    }
+    assertEquals((), x)
   }
 
   @Test def lambdaParameterWithDash_Issue1790(): Unit = {
@@ -599,10 +593,8 @@ class RegressionTest {
     assertEquals((Nil, 10), result)
   }
 
-  private val hasEqEqJLFloatDoubleBug: Boolean = {
-    val v = Platform.scalaVersion
-    v.startsWith("2.11.") || v == "2.12.1"
-  }
+  private val hasEqEqJLFloatDoubleBug: Boolean =
+    Platform.scalaVersion == "2.12.1"
 
   def assertTrueUnlessEqEqJLFloatDoubleBug(actual: Boolean): Unit = {
     if (hasEqEqJLFloatDoubleBug)
@@ -875,9 +867,6 @@ class RegressionTest {
   }
 
   @Test def paramDefWithWrongTypeWithHKTAndTypeAliases_Issue3953(): Unit = {
-    assumeFalse("Scala/JVM 2.11.x produces wrong bytecode for this test",
-        Platform.executingInJVM && Platform.scalaVersion.startsWith("2.11."))
-
     import scala.language.higherKinds
 
     sealed class StreamT[M[_]](val step: M[Step[StreamT[M]]])

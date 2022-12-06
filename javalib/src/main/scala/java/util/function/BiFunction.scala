@@ -12,12 +12,9 @@
 
 package java.util.function
 
-import scala.scalajs.js.annotation.JavaDefaultMethod
-
 trait BiFunction[T, U, R] {
   def apply(t: T, u: U): R
 
-  @JavaDefaultMethod
   def andThen[V](after: Function[_ >: R, _ <: V]): BiFunction[T, U, V] = { (t: T, u: U) =>
     after.apply(this.apply(t, u))
   }

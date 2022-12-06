@@ -12,13 +12,10 @@
 
 package java.util.function
 
-import scala.scalajs.js.annotation.JavaDefaultMethod
-
 @FunctionalInterface
 trait IntPredicate { self =>
   def test(t: Int): Boolean
 
-  @JavaDefaultMethod
   def and(other: IntPredicate): IntPredicate = {
     new IntPredicate {
       def test(value: Int): Boolean =
@@ -26,7 +23,6 @@ trait IntPredicate { self =>
     }
   }
 
-  @JavaDefaultMethod
   def negate(): IntPredicate = {
     new IntPredicate {
       def test(value: Int): Boolean =
@@ -34,7 +30,6 @@ trait IntPredicate { self =>
     }
   }
 
-  @JavaDefaultMethod
   def or(other: IntPredicate): IntPredicate = {
     new IntPredicate {
       def test(value: Int): Boolean =

@@ -93,12 +93,12 @@ trait TypeConversions[G <: Global with Singleton] extends SubComponent {
    */
   private def convert(t: Type): (Symbol, Int) = t.normalize match {
     case ThisType(ArrayClass)            => (ObjectClass, 0)
-    case ThisType(sym)                   => (convertBase(sym), 0)
-    case SingleType(_, sym)              => (convertBase(sym), 0)
+    case ThisType(sym)                   => (sym, 0)
+    case SingleType(_, sym)              => (sym, 0)
     case ConstantType(_)                 => convert(t.underlying)
     case TypeRef(_, sym, args)           => convertMaybeArray(sym, args)
     case ClassInfoType(_, _, ArrayClass) => abort("ClassInfoType to ArrayClass!")
-    case ClassInfoType(_, _, sym)        => (convertBase(sym), 0)
+    case ClassInfoType(_, _, sym)        => (sym, 0)
 
     // !!! Iulian says types which make no sense after erasure should not reach here,
     // which includes the ExistentialType, AnnotatedType, RefinedType.  I don't know
@@ -114,7 +114,7 @@ trait TypeConversions[G <: Global with Singleton] extends SubComponent {
      * run/valueclasses-classtag-existential. I have no idea how icode does
      * not fail this test: we do everything the same as icode up to here.
      */
-    case tpe: ErasedValueType            => (convertBase(tpe.valueClazz), 0)
+    case tpe: ErasedValueType            => (tpe.valueClazz, 0)
 
     // For sure WildcardTypes shouldn't reach here either, but when
     // debugging such situations this may come in handy.
@@ -133,23 +133,9 @@ trait TypeConversions[G <: Global with Singleton] extends SubComponent {
       val convertedArg = convert(targs.head)
       (convertedArg._1, convertedArg._2 + 1)
     case _ if sym.isClass =>
-      (convertBase(sym), 0)
+      (sym, 0)
     case _ =>
       assert(sym.isType, sym) // it must be compiling Array[a]
       (ObjectClass, 0)
-  }
-
-  /** Convert a class ref, definitely not an array type. */
-  private def convertBase(sym: Symbol): Symbol = {
-    if (isImplClass(sym)) {
-      // pos/spec-List.scala is the sole failure if we don't check for NoSymbol
-      val traitSym = sym.owner.info.decl(tpnme.interfaceName(sym.name))
-      if (traitSym != NoSymbol)
-        traitSym
-      else
-        sym
-    } else {
-      sym
-    }
   }
 }

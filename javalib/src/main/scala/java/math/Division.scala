@@ -884,14 +884,11 @@ private[math] object Division {
     for (i <- 0 until modulusLen) {
       var innnerCarry: Int = 0 // unsigned
       val m = Multiplication.unsignedMultAddAdd(res(i), n2, 0, 0).toInt
-      // Work around Scala 2.11 limitation with the IR cleaner ; should be for (j <- 0 until modulusLen)
-      var j = 0
-      while (j < modulusLen) {
+      for (j <- 0 until modulusLen) {
         val nextInnnerCarry =
           unsignedMultAddAdd(m, modulusDigits(j), res(i + j), innnerCarry)
         res(i + j) = nextInnnerCarry.toInt
         innnerCarry = (nextInnnerCarry >> 32).toInt
-        j += 1
       }
       val nextOuterCarry =
         (outerCarry & UINT_MAX) + (res(i + modulusLen) & UINT_MAX) + (innnerCarry & UINT_MAX)

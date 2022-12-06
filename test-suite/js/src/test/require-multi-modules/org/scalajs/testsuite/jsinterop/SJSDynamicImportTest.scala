@@ -219,8 +219,7 @@ class SJSDynamicImportTest {
       Future.sequence(List(a, b.toFuture))
     }
 
-    // Future#flatten, but that's not available on 2.11.
-    for (i <- promise.toFuture; _ <- i) yield {
+    promise.toFuture.flatten.map { _ =>
       assertEquals(3, x)
     }
   }
