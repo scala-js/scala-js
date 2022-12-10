@@ -142,10 +142,11 @@ private[optimizer] abstract class OptimizerCore(
     Intrinsics.buildIntrinsics(config.coreSpec.esFeatures)
 
   def optimize(myself: Option[MethodID], thisType: Type, params: List[ParamDef],
-      resultType: Type, body: Tree, isNoArgCtor: Boolean): (List[ParamDef], Tree) = {
+      jsClassCaptures: List[ParamDef], resultType: Type, body: Tree,
+      isNoArgCtor: Boolean): (List[ParamDef], Tree) = {
     try {
       try {
-        transformMethodDefBody(myself, thisType, params, resultType, body, isNoArgCtor)
+        transformMethodDefBody(myself, thisType, params, jsClassCaptures, resultType, body, isNoArgCtor)
       } catch {
         case _: TooManyRollbacksException =>
           localNameAllocator.clear()
@@ -153,7 +154,7 @@ private[optimizer] abstract class OptimizerCore(
           labelNameAllocator.clear()
           stateBackupChain = Nil
           disableOptimisticOptimizations = true
-          transformMethodDefBody(myself, thisType, params, resultType, body, isNoArgCtor)
+          transformMethodDefBody(myself, thisType, params, jsClassCaptures, resultType, body, isNoArgCtor)
       }
     } catch {
       case NonFatal(cause) =>
@@ -4442,8 +4443,21 @@ private[optimizer] abstract class OptimizerCore(
   }
 
   private def transformMethodDefBody(optTarget: Option[MethodID], thisType: Type,
-      params: List[ParamDef], resultType: Type, body: Tree,
-      isNoArgCtor: Boolean): (List[ParamDef], Tree) = {
+      params: List[ParamDef], jsClassCaptures: List[ParamDef], resultType: Type,
+      body: Tree, isNoArgCtor: Boolean): (List[ParamDef], Tree) = {
+
+    val jsClassCaptureLocalDefs = for {
+      ParamDef(LocalIdent(name), _, ptpe, mutable) <- jsClassCaptures
+    } yield {
+      /* Reserve capture name: They have the same name for the whole class
+       * definition, so we cannot rename them.
+       */
+      localNameAllocator.reserve(name)
+
+      val replacement = ReplaceWithVarRef(name, newSimpleState(Unused), None)
+      val localDef = LocalDef(RefinedType(ptpe), mutable, replacement)
+      name -> localDef
+    }
 
     val (paramLocalDefs, newParamDefs) = params.map(newParamReplacement(_)).unzip
 
@@ -4454,6 +4468,7 @@ private[optimizer] abstract class OptimizerCore(
     val env = OptEnv.Empty
       .withThisLocalDef(thisLocalDef)
       .withLocalDefs(paramLocalDefs)
+      .withLocalDefs(jsClassCaptureLocalDefs)
 
     val scope = {
       val scope0 = Scope.Empty.withEnv(env)
@@ -6242,6 +6257,14 @@ private[optimizer] object OptimizerCore {
     }
 
     protected def nameWithSuffix(name: N, suffix: String): N
+
+    /** Reserves the provided name to not be allocated.
+     *
+     *  May only be called on a "cleared" instance (i.e. [[freshName]] has not
+     *  been called yet or clear has just been called).
+     */
+    def reserve(name: N): Unit =
+      usedNamesToNextCounter = usedNamesToNextCounter.updated(name, 1)
 
     def snapshot(): Snapshot[N] = new Snapshot(usedNamesToNextCounter)
 

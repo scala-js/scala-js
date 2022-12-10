@@ -22,6 +22,7 @@ import org.scalajs.ir._
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
+import org.scalajs.ir.Position.NoPosition
 
 import org.scalajs.logging._
 
@@ -30,7 +31,7 @@ import org.scalajs.linker.backend.emitter.LongImpl
 import org.scalajs.linker.frontend.LinkingUnit
 import org.scalajs.linker.interface.ModuleKind
 import org.scalajs.linker.standard._
-import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
+import org.scalajs.linker.CollectionsCompat._
 
 /** Incremental optimizer.
  *
@@ -110,7 +111,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         container.methods(m.value.methodName).optimizedDef
       }
 
-      linkedClass.optimized(methods = newMethods)
+      linkedClass.optimized(newMethods, interface.optimizedExportedMembers(),
+          interface.optimizedJSConstructorDef())
     }
 
     new LinkingUnit(unit.coreSpec, newLinkedClasses, unit.topLevelExports,
@@ -665,6 +667,80 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       methods.get(methodName)
   }
 
+  private final class JSMethodContainer(linkedClass: LinkedClass,
+      val myInterface: InterfaceType) {
+
+    val className: ClassName = linkedClass.className
+
+    private[this] val exportedMembers = mutable.ArrayBuffer.empty[JSMethodImpl]
+    private[this] var jsConstructorDef: Option[JSCtorImpl] = None
+    private[this] var _jsClassCaptures: List[ParamDef] = Nil
+
+    updateWith(linkedClass)
+
+    /** JS class captures
+     *
+     *  A similar argument applies here than for
+     *  [[InterfaceType#untrackedThisType]]: The captures are merely a
+     *  convenience for the optimizer's environment: Any real change of usage
+     *  also necessarily changes the body of the method.
+     */
+    def untrackedJSClassCaptures: List[ParamDef] = _jsClassCaptures
+
+    def untrackedThisType(namespace: MemberNamespace): Type =
+      if (namespace.isStatic) NoType
+      else myInterface.untrackedInstanceThisType
+
+    def updateWith(linkedClass: LinkedClass): Unit = {
+      _jsClassCaptures = linkedClass.jsClassCaptures.getOrElse(Nil)
+      updateExportedMembers(linkedClass.exportedMembers)
+      updateJSConstructorDef(linkedClass.jsConstructorDef)
+    }
+
+    private def updateExportedMembers(
+        newExportedMembers: List[Versioned[JSMethodPropDef]]): Unit = {
+      val newLen = newExportedMembers.length
+      val oldLen = exportedMembers.length
+
+      if (newLen > oldLen) {
+        exportedMembers.sizeHint(newLen)
+        for (i <- oldLen until newLen)
+          exportedMembers += new JSMethodImpl(this, i)
+      } else if (newLen < oldLen) {
+        for (i <- newLen until oldLen)
+          exportedMembers(i).delete()
+        exportedMembers.dropRightInPlace(oldLen - newLen)
+      }
+
+      for {
+        (method, methodIdx) <- newExportedMembers.zipWithIndex
+      } {
+        exportedMembers(methodIdx).updateWith(method)
+      }
+    }
+
+    private def updateJSConstructorDef(
+        newJSConstructorDef: Option[Versioned[JSConstructorDef]]): Unit = {
+
+      newJSConstructorDef.fold {
+        jsConstructorDef.foreach(_.delete())
+        jsConstructorDef = None
+      } { newJSConstructorDef =>
+        if (jsConstructorDef.isEmpty) {
+          jsConstructorDef = Some(new JSCtorImpl(this))
+        }
+
+        jsConstructorDef.get.updateWith(newJSConstructorDef)
+      }
+    }
+
+    def optimizedExportedMembers(): List[Versioned[JSMethodPropDef]] =
+      exportedMembers.map(_.optimizedDef).toList
+
+    def optimizedJSConstructorDef(): Option[Versioned[JSConstructorDef]] =
+      jsConstructorDef.map(_.optimizedDef)
+  }
+
   /** Thing from which a [[MethodImpl]] can unregister itself from. */
   private trait Unregisterable {
     /** UPDATE PASS ONLY. */
@@ -702,6 +778,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         new StaticLikeNamespace(linkedClass, this, MemberNamespace.fromOrdinal(ord))
       }
     }
+
+    private val jsMethodContainer = new JSMethodContainer(linkedClass, this)
 
     /* For now, we track all JS native imports together (the class itself and native members).
      *
@@ -815,6 +893,12 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     def staticLike(namespace: MemberNamespace): StaticLikeNamespace =
       staticLikes(namespace.ordinal)
 
+    def optimizedExportedMembers(): List[Versioned[JSMethodPropDef]] =
+      jsMethodContainer.optimizedExportedMembers()
+
+    def optimizedJSConstructorDef(): Option[Versioned[JSConstructorDef]] =
+      jsMethodContainer.optimizedJSConstructorDef()
+
     /** UPDATE PASS ONLY. Not concurrency safe. */
     def updateWith(linkedClass: LinkedClass): Unit = {
       // Update ancestors
@@ -850,6 +934,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       }
 
       _instanceThisType = computeInstanceThisType(linkedClass)
+
+      jsMethodContainer.updateWith(linkedClass)
     }
 
     /** UPDATE PASS ONLY. */
@@ -1066,11 +1152,98 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       }
 
       val (newParams, newBody) = new Optimizer(this, this.toString()).optimize(
-          Some(this), owner.untrackedThisType, params, resultType, body,
-          isNoArgCtor = name.name == NoArgConstructorName)
+          Some(this), owner.untrackedThisType, params, jsClassCaptures = Nil,
+          resultType, body, isNoArgCtor = name.name == NoArgConstructorName)
 
       MethodDef(static, name, originalName,
           newParams, resultType, Some(newBody))(
+          originalDef.optimizerHints, None)(originalDef.pos)
+    }
+  }
+
+  private final class JSMethodImpl(owner: JSMethodContainer, idx: Int) extends Processable {
+
+    type Def = JSMethodPropDef
+
+    override def toString(): String =
+      s"$owner[$idx]"
+
+    def updateWith(linkedMethod: Versioned[JSMethodPropDef]): Unit =
+      updateDef(linkedMethod)
+
+    protected def doProcess(): JSMethodPropDef = {
+      originalDef match {
+        case originalDef @ JSMethodDef(flags, name, params, restParam, body) =>
+          val thisType = owner.untrackedThisType(flags.namespace)
+
+          val (newParamsAndRest, newBody) = new Optimizer(this, this.toString()).optimize(
+            None, thisType, params ++ restParam.toList, owner.untrackedJSClassCaptures,
+            AnyType, body, isNoArgCtor = false)
+
+          val (newParams, newRestParam) =
+            if (restParam.isDefined) (newParamsAndRest.init, Some(newParamsAndRest.last))
+            else (newParamsAndRest, None)
+
+          JSMethodDef(flags, name, newParams, newRestParam, newBody)(
+              originalDef.optimizerHints, None)(originalDef.pos)
+
+        case originalDef @ JSPropertyDef(flags, name, getterBody, setterArgAndBody) =>
+          val thisType = owner.untrackedThisType(flags.namespace)
+          val jsClassCaptures = owner.untrackedJSClassCaptures
+
+          val newGetterBody = getterBody.map { body =>
+            val (_, newBody) = new Optimizer(this, "get " + this.toString()).optimize(
+                None, thisType, Nil, jsClassCaptures, AnyType, body, isNoArgCtor = false)
+            newBody
+          }
+
+          val newSetterArgAndBody = setterArgAndBody.map { case (param, body) =>
+            val (List(newParam), newBody) = new Optimizer(this, "set " + this.toString()).optimize(
+                None, thisType, List(param), jsClassCaptures, AnyType, body,
+                isNoArgCtor = false)
+            (newParam, newBody)
+          }
+
+          JSPropertyDef(flags, name, newGetterBody, newSetterArgAndBody)(None)(originalDef.pos)
+      }
+    }
+  }
+
+  private final class JSCtorImpl(owner: JSMethodContainer) extends Processable {
+
+    type Def = JSConstructorDef
+
+    override def toString(): String =
+      s"$owner ctor"
+
+    def updateWith(linkedMethod: Versioned[JSConstructorDef]): Unit =
+      updateDef(linkedMethod)
+
+    protected def doProcess(): JSConstructorDef = {
+      val JSConstructorDef(flags, params, restParam, body) = originalDef
+
+      val thisType = owner.untrackedThisType(flags.namespace)
+
+      val (newParamsAndRest, newRawBody) = new Optimizer(this, this.toString()).optimize(
+          None, thisType, params ++ restParam.toList, owner.untrackedJSClassCaptures, AnyType,
+          Block(body.allStats)(body.pos), isNoArgCtor = false)
+
+      val (newParams, newRestParam) =
+        if (restParam.isDefined) (newParamsAndRest.init, Some(newParamsAndRest.last))
+        else (newParamsAndRest, None)
+
+      val bodyStats = newRawBody match {
+        case Block(stats) => stats
+        case stat         => List(stat)
+      }
+
+      val (beforeSuper, superCall :: afterSuper) =
+        bodyStats.span(!_.isInstanceOf[JSSuperConstructorCall])
+
+      val newBody = JSConstructorBody(beforeSuper,
+          superCall.asInstanceOf[JSSuperConstructorCall], afterSuper)(body.pos)
+
+      JSConstructorDef(flags, newParams, newRestParam, newBody)(
           originalDef.optimizerHints, None)(originalDef.pos)
     }
   }
