@@ -106,7 +106,6 @@ class RegressionTest {
 
     assumeFalse("Affected by https://github.com/scala/bug/issues/10551",
         Platform.executingInJVM && {
-          scalaVersion == "2.12.0" || scalaVersion == "2.12.1" ||
           scalaVersion == "2.12.2" || scalaVersion == "2.12.3" ||
           scalaVersion == "2.12.4"
         })
@@ -593,16 +592,6 @@ class RegressionTest {
     assertEquals((Nil, 10), result)
   }
 
-  private val hasEqEqJLFloatDoubleBug: Boolean =
-    Platform.scalaVersion == "2.12.1"
-
-  def assertTrueUnlessEqEqJLFloatDoubleBug(actual: Boolean): Unit = {
-    if (hasEqEqJLFloatDoubleBug)
-      assertFalse(actual)
-    else
-      assertTrue(actual)
-  }
-
   @Test def eqEqJLDouble(): Unit = {
     // Taken from run/sd329.scala in scala/scala
 
@@ -617,10 +606,10 @@ class RegressionTest {
     def d2B: java.lang.Double = d2
     def d3B: java.lang.Double = d3
     def d4B: java.lang.Double = d4
-    assertTrueUnlessEqEqJLFloatDoubleBug(d1B == d2B)
+    assertTrue(d1B == d2B)
     assertTrue(d1 == d1B)
     assertTrue(d1B == d1)
-    assertTrueUnlessEqEqJLFloatDoubleBug(d3B != d4B)
+    assertTrue(d3B != d4B)
     assertTrue(d3 != d4B)
     assertTrue(d3B != d4)
 
@@ -658,10 +647,10 @@ class RegressionTest {
     def f2B: java.lang.Float = f2
     def f3B: java.lang.Float = f3
     def f4B: java.lang.Float = f4
-    assertTrueUnlessEqEqJLFloatDoubleBug(f1B == f2B)
+    assertTrue(f1B == f2B)
     assertTrue(f1 == f1B)
     assertTrue(f1B == f1)
-    assertTrueUnlessEqEqJLFloatDoubleBug(f3B != f4B)
+    assertTrue(f3B != f4B)
     assertTrue(f3 != f4B)
     assertTrue(f3B != f4)
 
@@ -710,8 +699,7 @@ class RegressionTest {
   @Test def superMixinCallIn212_Issue3013(): Unit = {
     assumeTrue(
         "Super mixin calls are broken in Scala/JVM 2.12.{0-2}",
-        !Platform.executingInJVM ||
-        !Set("2.12.1", "2.12.2").contains(Platform.scalaVersion))
+        !Platform.executingInJVM || Platform.scalaVersion != "2.12.2")
 
     import Bug3013._
 

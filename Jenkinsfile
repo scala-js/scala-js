@@ -455,7 +455,6 @@ allJavaVersions << mainJavaVersion
 def mainScalaVersion = "2.12.17"
 def mainScalaVersions = ["2.12.17", "2.13.10"]
 def otherScalaVersions = [
-  "2.12.1",
   "2.12.2",
   "2.12.3",
   "2.12.4",

@@ -59,10 +59,6 @@ class RangesTest {
   }
 
   @Test def numericRangeWithArbitraryIntegral(): Unit = {
-    // This is broken in Scala JVM up to (including) 2.11.8, 2.12.1 (SI-10086).
-    assumeFalse("Assumed not on JVM for 2.12.1",
-        executingInJVM && scalaVersion == "2.12.1")
-
     // Our custom integral type.
     case class A(v: Int)
 
