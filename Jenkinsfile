@@ -507,11 +507,8 @@ allESVersions.each { esVersion ->
   quickMatrix.add([task: "test-suite-custom-esversion-force-polyfills", scala: mainScalaVersion, java: mainJavaVersion, esVersion: esVersion, testSuite: "testSuite"])
 }
 allJavaVersions.each { javaVersion ->
-  if (javaVersion != "16") {
-    // the sbt plugin tests fail on Java 16, filed as #4763
-    // the `scala` version is irrelevant here
-    quickMatrix.add([task: "sbt-plugin-and-scalastyle", scala: mainScalaVersion, java: javaVersion])
-  }
+  // the `scala` version is irrelevant here
+  quickMatrix.add([task: "sbt-plugin-and-scalastyle", scala: mainScalaVersion, java: javaVersion])
 }
 quickMatrix.add([task: "scala3-compat", scala: scala3Version, java: mainJavaVersion])
 
