@@ -15,8 +15,6 @@ package org.scalajs.testsuite.compiler
 import org.junit.Test
 import org.junit.Assert._
 
-import scala.scalajs.js.annotation.JavaDefaultMethod
-
 class DefaultMethodsJSTest {
 
   import DefaultMethodsJSTest._
@@ -35,7 +33,6 @@ object DefaultMethodsJSTest {
   trait SimpleInterfaceWithDefault {
     def value: Int
 
-    @JavaDefaultMethod
     def foo(x: Int): Int = value + x
   }
 }

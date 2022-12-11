@@ -12,13 +12,10 @@
 
 package java.util.function
 
-import scala.scalajs.js.annotation.JavaDefaultMethod
-
 @FunctionalInterface
 trait IntConsumer {
   def accept(value: Int): Unit
 
-  @JavaDefaultMethod
   def andThen(after: IntConsumer): IntConsumer = { (value: Int) =>
     this.accept(value)
     after.accept(value)

@@ -22,13 +22,6 @@ import org.junit.Test
 
 class JSSAMTest extends DirectTest with TestHelpers {
 
-  override def extraArgs: List[String] = {
-    if (scalaVersion.startsWith("2.11."))
-      super.extraArgs :+ "-Xexperimental"
-    else
-      super.extraArgs
-  }
-
   override def preamble: String =
     """
     import scala.scalajs.js
@@ -36,46 +29,7 @@ class JSSAMTest extends DirectTest with TestHelpers {
     """
 
   @Test
-  def noSAMAsJSType211: Unit = {
-    assumeTrue(scalaVersion.startsWith("2.11."))
-
-    """
-    @js.native
-    trait Foo extends js.Object {
-      def foo(x: Int): Int
-    }
-
-    trait Bar extends js.Object {
-      def bar(x: Int): Int
-    }
-
-    class Foobar extends js.Function {
-      def foobar(x: Int): Int
-    }
-
-    class A {
-      val foo: Foo = x => x + 1
-      val bar: Bar = x => x + 1
-      val foobar: Foobar = x => x + 1
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:19: error: Non-native JS types cannot directly extend native JS traits.
-      |      val foo: Foo = x => x + 1
-      |                       ^
-      |newSource1.scala:20: error: $anonfun extends scala.Serializable which does not extend js.Any.
-      |      val bar: Bar = x => x + 1
-      |                       ^
-      |newSource1.scala:21: error: $anonfun extends scala.Serializable which does not extend js.Any.
-      |      val foobar: Foobar = x => x + 1
-      |                             ^
-    """
-  }
-
-  @Test
-  def noSAMAsJSType212Plus: Unit = {
-    assumeTrue(!scalaVersion.startsWith("2.11."))
-
+  def noSAMAsJSType: Unit = {
     """
     @js.native
     trait Foo extends js.Object {
@@ -110,39 +64,7 @@ class JSSAMTest extends DirectTest with TestHelpers {
   }
 
   @Test
-  def noSAMOfNativeJSFunctionType211: Unit = {
-    assumeTrue(scalaVersion.startsWith("2.11."))
-
-    """
-    @js.native
-    trait Foo extends js.Function {
-      def apply(x: Int): Int
-    }
-
-    @js.native
-    trait Bar extends js.Function {
-      def bar(x: Int = 5): Int
-    }
-
-    class A {
-      val foo: Foo = x => x + 1
-      val bar: Bar = x => x + 1
-    }
-    """ hasErrors
-    """
-      |newSource1.scala:16: error: Non-native JS types cannot directly extend native JS traits.
-      |      val foo: Foo = x => x + 1
-      |                       ^
-      |newSource1.scala:17: error: Non-native JS types cannot directly extend native JS traits.
-      |      val bar: Bar = x => x + 1
-      |                       ^
-    """
-  }
-
-  @Test
-  def noSAMOfNativeJSFunctionType212Plus: Unit = {
-    assumeTrue(!scalaVersion.startsWith("2.11."))
-
+  def noSAMOfNativeJSFunctionType: Unit = {
     """
     @js.native
     trait Foo extends js.Function {

@@ -603,17 +603,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         case Block(stats)                      => stats.forall(isElidableStat)
         case Assign(Select(This(), _, _), rhs) => isTriviallySideEffectFree(rhs)
 
-        // Mixin constructor, 2.11
-        case ApplyStatic(flags, className, methodName, List(This()))
-            if !flags.isPrivate =>
-          val container =
-            getInterface(className).staticLike(MemberNamespace.PublicStatic)
-          container.methods(methodName.name).originalDef.body.exists {
-            case Skip() => true
-            case _      => false
-          }
-
-        // Mixin constructor, 2.12+
+        // Mixin constructor
         case ApplyStatically(flags, This(), className, methodName, Nil)
             if !flags.isPrivate && !classes.contains(className) =>
           // Since className is not in classes, it must be a default method call.

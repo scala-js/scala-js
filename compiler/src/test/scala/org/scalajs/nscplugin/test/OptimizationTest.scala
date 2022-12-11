@@ -546,12 +546,8 @@ object OptimizationTest {
 
   private val applySimpleMethodName = SimpleMethodName("apply")
 
-  private val hasOldCollections = {
-    val version = scala.util.Properties.versionNumberString
-
-    version.startsWith("2.11.") ||
-    version.startsWith("2.12.")
-  }
+  private val hasOldCollections =
+    scala.util.Properties.versionNumberString.startsWith("2.12.")
 
   private object WrapArrayCall {
     private val WrappedArrayTypeRef = {

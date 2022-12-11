@@ -12,12 +12,9 @@
 
 package java.util.function
 
-import scala.scalajs.js.annotation.JavaDefaultMethod
-
 trait BiConsumer[T, U] {
   def accept(t: T, u: U): Unit
 
-  @JavaDefaultMethod
   def andThen(after: BiConsumer[T, U]): BiConsumer[T, U] = { (t: T, u: U) =>
     accept(t, u)
     after.accept(t, u)

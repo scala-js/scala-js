@@ -300,7 +300,7 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
   }
 
   def needsModuleClassSuffix(sym: Symbol): Boolean =
-    sym.isModuleClass && !sym.isJavaDefined && !isImplClass(sym)
+    sym.isModuleClass && !sym.isJavaDefined
 
   def originalNameOfLocal(sym: Symbol): OriginalName = {
     val irName = localSymbolName(sym)

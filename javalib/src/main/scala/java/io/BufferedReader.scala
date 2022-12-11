@@ -16,9 +16,7 @@ class BufferedReader(in: Reader, sz: Int) extends Reader {
 
   def this(in: Reader) = this(in, 4096)
 
-  // Workaround 2.11 with no-specialization ; buf should be initialized on the same line
-  private[this] var buf: Array[Char] = null
-  buf = new Array[Char](sz)
+  private[this] var buf: Array[Char] = new Array[Char](sz)
 
   /** Last valid value in the buffer (exclusive) */
   private[this] var end = 0

@@ -315,9 +315,7 @@ class ArrayBuilderTest {
   }
 
   @Test def addAll(): Unit = {
-    assumeFalse("Needs at least Scala 2.13",
-        scalaVersion.startsWith("2.11.") ||
-        scalaVersion.startsWith("2.12."))
+    assumeFalse("Needs at least Scala 2.13", scalaVersion.startsWith("2.12."))
 
     val b = ArrayBuilder.make[Int]
     val arr = Array[Int](1, 2, 3, 4, 5)
@@ -326,9 +324,7 @@ class ArrayBuilderTest {
   }
 
   @Test def lengthAndKnownSize_Issue4627(): Unit = {
-    assumeFalse("Needs at least Scala 2.13",
-        scalaVersion.startsWith("2.11.") ||
-        scalaVersion.startsWith("2.12."))
+    assumeFalse("Needs at least Scala 2.13", scalaVersion.startsWith("2.12."))
 
     val b = ArrayBuilder.make[Int]
     assertEquals(0, b.length)

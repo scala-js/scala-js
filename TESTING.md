@@ -4,8 +4,8 @@ This file contains test cases that should be manually executed.
 
 The following HTML-runners must be manually tested:
 
-    examples/helloworld/helloworld-{2.11|2.12}{|-fastopt}.html
-    examples/reversi/reversi-{2.11|2.12}{|-fastopt}.html
+    examples/helloworld/helloworld-2.12{|-fastopt}.html
+    examples/reversi/reversi-2.12{|-fastopt}.html
 
 ## HTML-Test Runner with Modules
 
@@ -29,7 +29,7 @@ $ python3 -m http.server
 
 To test source maps, do the following on:
 
-    examples/reversi/reversi-{2.11|2.12}{|-fastopt}.html
+    examples/reversi/reversi-2.12{|-fastopt}.html
 
 1. Open the respective file in Google Chrome
 2. Set a break-point in the HTML launcher on the `new Reversi` statement

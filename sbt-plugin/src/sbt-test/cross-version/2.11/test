@@ -1,3 +1,0 @@
-> ; run ; test ; testHtml
-> clean
-> ; set scalaJSStage in Global := FullOptStage ; run ; test ; testHtml

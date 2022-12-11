@@ -12,18 +12,14 @@
 
 package java.util.function
 
-import scala.scalajs.js.annotation.JavaDefaultMethod
-
 @FunctionalInterface
 trait LongUnaryOperator {
   def applyAsLong(operand: Long): Long
 
-  @JavaDefaultMethod
   def andThen(after: LongUnaryOperator): LongUnaryOperator = { (l: Long) =>
     after.applyAsLong(applyAsLong(l))
   }
 
-  @JavaDefaultMethod
   def compose(before: LongUnaryOperator): LongUnaryOperator = { (l: Long) =>
     applyAsLong(before.applyAsLong(l))
   }

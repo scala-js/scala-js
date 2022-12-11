@@ -57,8 +57,6 @@ class SymbolTest {
     val scalajs = Symbol("ScalaJS")
 
     val toStringUsesQuoteSyntax = {
-      scalaVersion.startsWith("2.10.") ||
-      scalaVersion.startsWith("2.11.") ||
       scalaVersion.startsWith("2.12.") ||
       scalaVersion == "2.13.0" ||
       scalaVersion == "2.13.1" ||

@@ -38,8 +38,7 @@ class JSInteropTest extends DirectTest with TestHelpers {
   private def version = scala.util.Properties.versionNumberString
 
   private def ifHasNewRefChecks(msg: String): String = {
-    if (version.startsWith("2.11.") ||
-        version.startsWith("2.12.")) {
+    if (version.startsWith("2.12.")) {
       ""
     } else {
       msg.stripMargin.trim()
@@ -4420,7 +4419,6 @@ class JSInteropTest extends DirectTest with TestHelpers {
 
     val postUnarySpace = {
       val hasNoSpace = {
-        version.startsWith("2.11.") ||
         version == "2.12.1" ||
         version == "2.12.2" ||
         version == "2.12.3" ||
