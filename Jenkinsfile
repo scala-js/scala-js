@@ -401,21 +401,14 @@ def Tasks = [
         testAdapter$v/compile:doc
   ''',
 
-  "tools-sbtplugin": '''
+  // These are agnostic to the Scala version
+  "sbt-plugin-and-scalastyle": '''
     setJavaVersion $java
     npm install &&
-    sbtnoretry ++$scala ir$v/test linkerInterface$v/compile \
-        linker$v/compile testAdapter$v/test \
-        sbtPlugin/package \
-        ir$v/mimaReportBinaryIssues \
-        linkerInterface$v/mimaReportBinaryIssues linker$v/mimaReportBinaryIssues \
-        testAdapter$v/mimaReportBinaryIssues \
-        sbtPlugin/mimaReportBinaryIssues &&
-    sbtnoretry ++$scala scalastyleCheck &&
-    sbtnoretry ++$scala ir$v/compile:doc \
-        linkerInterface$v/compile:doc linker$v/compile:doc \
-        testAdapter$v/compile:doc \
-        sbtPlugin/compile:doc &&
+    sbtnoretry \
+        sbtPlugin/compile:doc \
+        sbtPlugin/mimaReportBinaryIssues \
+        scalastyleCheck &&
     sbtnoretry sbtPlugin/scripted
   ''',
 
@@ -501,6 +494,7 @@ def quickMatrix = []
 mainScalaVersions.each { scalaVersion ->
   allJavaVersions.each { javaVersion ->
     quickMatrix.add([task: "main", scala: scalaVersion, java: javaVersion])
+    quickMatrix.add([task: "tools", scala: scalaVersion, java: javaVersion])
   }
   quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-custom-esversion", scala: scalaVersion, java: mainJavaVersion, esVersion: "ES5_1", testSuite: "testSuite"])
@@ -515,9 +509,9 @@ allESVersions.each { esVersion ->
 allJavaVersions.each { javaVersion ->
   if (javaVersion != "16") {
     // the sbt plugin tests fail on Java 16, filed as #4763
-    quickMatrix.add([task: "tools-sbtplugin", scala: "2.12.17", java: javaVersion])
+    // the `scala` version is irrelevant here
+    quickMatrix.add([task: "sbt-plugin-and-scalastyle", scala: mainScalaVersion, java: javaVersion])
   }
-  quickMatrix.add([task: "tools", scala: "2.13.10", java: javaVersion])
 }
 quickMatrix.add([task: "scala3-compat", scala: scala3Version, java: mainJavaVersion])
 
