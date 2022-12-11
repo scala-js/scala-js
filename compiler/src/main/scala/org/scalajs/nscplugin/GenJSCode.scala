@@ -4479,10 +4479,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
     }
 
-    /** See comment in `genEqEqPrimitive()` about `mustUseAnyComparator`. */
-    private lazy val shouldPreserveEqEqBugWithJLFloatDouble =
-      scala.util.Properties.versionNumberString == "2.12.1"
-
     /** Gen JS code for a call to Any.== */
     def genEqEqPrimitive(ltpe: Type, rtpe: Type, lsrc: js.Tree, rsrc: js.Tree)(
         implicit pos: Position): js.Tree = {
@@ -4498,9 +4494,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
        * own equals method will do ok), except for java.lang.Float and
        * java.lang.Double: their `equals` have different behavior around `NaN`
        * and `-0.0`, see Javadoc (scala-dev#329, #2799).
-       *
-       * The latter case is only avoided in 2.12.2+, to remain bug-compatible
-       * with the Scala/JVM compiler.
        */
       val mustUseAnyComparator: Boolean = {
         val lsym = ltpe.typeSymbol
@@ -4509,12 +4502,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           isMaybeBoxed(lsym) && isMaybeBoxed(rsym) && {
             val areSameFinals =
               ltpe.isFinalType && rtpe.isFinalType && lsym == rsym
-            !areSameFinals || {
-              (lsym == BoxedFloatClass || lsym == BoxedDoubleClass) && {
-                // Bug-compatibility for Scala < 2.12.2
-                !shouldPreserveEqEqBugWithJLFloatDouble
-              }
-            }
+            !areSameFinals || (lsym == BoxedFloatClass || lsym == BoxedDoubleClass)
           }
         }
       }

@@ -1566,41 +1566,22 @@ object Build {
           // Filter doc sources to remove implementation details from doc.
           sources in doc := {
             val prev = (sources in doc).value
-            val javaV = javaVersion.value
-            val scalaV = scalaVersion.value
 
-            /* On Java 9+, Scaladoc will crash with "bad constant pool tag 20"
-             * until version 2.12.1 included. The problem seems to have been
-             * fixed in 2.12.2, perhaps through
-             * https://github.com/scala/scala/pull/5711.
-             * See also #3152.
-             */
-            val mustAvoidJavaDoc = {
-              javaV >= 9 && {
-                scalaV == "2.12.0" ||
-                scalaV == "2.12.1"
+            def containsFileFilter(s: String): FileFilter = new FileFilter {
+              override def accept(f: File): Boolean = {
+                val path = f.getAbsolutePath.replace('\\', '/')
+                path.contains(s)
               }
             }
 
-            if (!mustAvoidJavaDoc) {
-              def containsFileFilter(s: String): FileFilter = new FileFilter {
-                override def accept(f: File): Boolean = {
-                  val path = f.getAbsolutePath.replace('\\', '/')
-                  path.contains(s)
-                }
-              }
+            val filter: FileFilter = (
+                AllPassFilter
+                  -- containsFileFilter("/scala/scalajs/runtime/")
+                  -- containsFileFilter("/scala/scalajs/js/annotation/internal/")
+                  -- "*.nodoc.scala"
+            )
 
-              val filter: FileFilter = (
-                  AllPassFilter
-                    -- containsFileFilter("/scala/scalajs/runtime/")
-                    -- containsFileFilter("/scala/scalajs/js/annotation/internal/")
-                    -- "*.nodoc.scala"
-              )
-
-              prev.filter(filter.accept)
-            } else {
-              Nil
-            }
+            prev.filter(filter.accept)
           },
 
           /* Add compiled .class files to doc dependencyClasspath, so we can
@@ -1871,7 +1852,7 @@ object Build {
         val scalaV = scalaVersion.value
 
         val hasBugWithOverriddenMethods =
-          Set("2.12.0", "2.12.1", "2.12.2", "2.12.3", "2.12.4").contains(scalaV)
+          Set("2.12.2", "2.12.3", "2.12.4").contains(scalaV)
 
         if (hasBugWithOverriddenMethods)
           allSources.filter(_.getName != "SAMWithOverridingBridgesTest.scala")

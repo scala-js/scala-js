@@ -81,7 +81,6 @@ object MultiScalaProject {
 
   private final val versions = Map[String, Seq[String]](
     "2.12" -> Seq(
-      "2.12.1",
       "2.12.2",
       "2.12.3",
       "2.12.4",
