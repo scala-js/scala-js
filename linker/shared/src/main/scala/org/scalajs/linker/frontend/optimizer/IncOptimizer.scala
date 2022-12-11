@@ -974,27 +974,16 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
         val methodDef = linkedMethod.value
 
-        val changed = {
-          originalDef == null ||
-          (methodDef.hash zip originalDef.hash).forall {
-            case (h1, h2) => !Hashers.hashesEqual(h1, h2)
-          }
-        }
+        tagBodyAskers()
 
-        if (changed) {
-          tagBodyAskers()
+        val oldAttributes = attributes
 
-          val oldAttributes = attributes
+        originalDef = methodDef
+        optimizedMethodDef = null
+        attributes = OptimizerCore.MethodAttributes.compute(enclosingClassName, methodDef)
+        tag()
 
-          originalDef = methodDef
-          optimizedMethodDef = null
-          attributes = OptimizerCore.MethodAttributes.compute(enclosingClassName, methodDef)
-          tag()
-
-          attributes != oldAttributes
-        } else {
-          false
-        }
+        attributes != oldAttributes
       }
     }
 
