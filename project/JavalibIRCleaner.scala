@@ -364,6 +364,33 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
               JSUnaryOp(JSUnaryOp.!, JSUnaryOp(JSUnaryOp.!, arg)),
               BooleanType)
 
+        // s"..." interpolator in 2.12.2 up to 2.12.4
+        case Apply(
+            ApplyFlags.empty,
+            New(StringContextClass, MethodIdent(`stringContextCtorMethodName`),
+                List(ScalaVarArgsReadOnlyLiteral(stringElems))),
+            MethodIdent(`sMethodName`),
+            List(ScalaVarArgsReadOnlyLiteral(valueElems))) =>
+          if (stringElems.size != valueElems.size + 1) {
+            reportError("Found s\"...\" interpolator but the sizes do not match")
+            tree
+          } else {
+            val processedEscapesStringElems = stringElems.map { s =>
+              (s: @unchecked) match {
+                case StringLiteral(value) =>
+                  StringLiteral(StringContext.processEscapes(value))
+              }
+            }
+            val stringsIter = processedEscapesStringElems.iterator
+            val valuesIter = valueElems.iterator
+            var result: Tree = stringsIter.next()
+            while (valuesIter.hasNext) {
+              result = BinaryOp(BinaryOp.String_+, result, valuesIter.next())
+              result = BinaryOp(BinaryOp.String_+, result, stringsIter.next())
+            }
+            result
+          }
+
         case _ =>
           tree
       }
