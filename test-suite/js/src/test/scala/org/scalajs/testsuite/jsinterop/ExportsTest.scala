@@ -12,6 +12,8 @@
 
 package org.scalajs.testsuite.jsinterop
 
+import scala.language.higherKinds
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 import scala.scalajs.js.Dynamic.global
@@ -120,6 +122,313 @@ class ExportsTest {
     assertEquals(100, foo.foo())
   }
 
+  @Test def exportsForNestedClassesInClass(): Unit = {
+    class A(x: Int) {
+      @JSExport
+      class Nested(y: Int) {
+        @JSExport
+        def this() = this(2)
+
+        @JSExport
+        def witness = x + y
+      }
+
+      @JSExport
+      class Nested2(y: Int) extends js.Object {
+        def witness = x + y
+      }
+    }
+
+    val scalaA = new A(2)
+    val jsA = scalaA.asInstanceOf[js.Dynamic]
+
+    val n0 = jsA.Nested(3)
+    assertTrue(n0.isInstanceOf[scalaA.Nested])
+    assertEquals(5, n0.witness)
+
+    val n1 = jsA.Nested()
+    assertTrue(n1.isInstanceOf[scalaA.Nested])
+    assertEquals(4, n1.witness)
+
+    val n2 = js.Dynamic.newInstance(jsA.Nested2)(4)
+    assertTrue(n2.isInstanceOf[scalaA.Nested2])
+    assertEquals(6, n2.witness)
+  }
+
+  @Test def exportsForNestedClassesInTrait(): Unit = {
+    trait A {
+      val x: Int
+
+      @JSExport
+      class Nested(y: Int) {
+        @JSExport
+        def this() = this(2)
+
+        @JSExport
+        def witness = x + y
+      }
+
+      @JSExport
+      class Nested2(y: Int) extends js.Object {
+        def witness = x + y
+      }
+    }
+
+    val scalaA = new A { val x = 2 }
+    val jsA = scalaA.asInstanceOf[js.Dynamic]
+
+    val n0 = jsA.Nested(3)
+    assertTrue(n0.isInstanceOf[scalaA.Nested])
+    assertEquals(5, n0.witness)
+
+    val n1 = jsA.Nested()
+    assertTrue(n1.isInstanceOf[scalaA.Nested])
+    assertEquals(4, n1.witness)
+
+    val n2 = js.Dynamic.newInstance(jsA.Nested2)(4)
+    assertTrue(n2.isInstanceOf[scalaA.Nested2])
+    assertEquals(6, n2.witness)
+  }
+
+  @Test def exportsForNestedClassesInObject(): Unit = {
+    object A {
+      val x = 2
+
+      @JSExport
+      class Nested(y: Int) {
+        @JSExport
+        def this() = this(2)
+
+        @JSExport
+        def witness = x + y
+      }
+
+      @JSExport
+      class Nested2(y: Int) extends js.Object {
+        def witness = x + y
+      }
+    }
+
+    val jsA = A.asInstanceOf[js.Dynamic]
+
+    val n0 = jsA.Nested(3)
+    assertTrue(n0.isInstanceOf[A.Nested])
+    assertEquals(5, n0.witness)
+
+    val n1 = jsA.Nested()
+    assertTrue(n1.isInstanceOf[A.Nested])
+    assertEquals(4, n1.witness)
+
+    val n2 = js.Dynamic.newInstance(jsA.Nested2)(4)
+    assertTrue(n2.isInstanceOf[A.Nested2])
+    assertEquals(6, n2.witness)
+  }
+
+  @Test def exportsForNestedClassesInStaticObject(): Unit = {
+    val jsObj = StaticObjectWithNestedClasses.asInstanceOf[js.Dynamic]
+
+    val n0 = jsObj.Nested(3)
+    assertTrue(n0.isInstanceOf[StaticObjectWithNestedClasses.Nested])
+    assertEquals(5, n0.witness)
+
+    val n1 = jsObj.Nested()
+    assertTrue(n1.isInstanceOf[StaticObjectWithNestedClasses.Nested])
+    assertEquals(4, n1.witness)
+
+    val n2 = js.Dynamic.newInstance(jsObj.Nested2)(4)
+    assertTrue(n2.isInstanceOf[StaticObjectWithNestedClasses.Nested2])
+    assertEquals(6, n2.witness)
+  }
+
+  @Test def exportsForNestedGenericClasses(): Unit = {
+    class A[A](x: A) {
+      @JSExport
+      class Nested[B](y: B) {
+        @JSExport
+        def witness: (A, B) = (x, y)
+      }
+    }
+
+    val scalaA = new A("foo")
+    val jsA = scalaA.asInstanceOf[js.Dynamic]
+
+    val n0 = jsA.Nested(3)
+    assertTrue(n0.isInstanceOf[scalaA.Nested[_]])
+    assertEquals(("foo", 3), n0.witness)
+
+    val n1 = jsA.Nested("bar")
+    assertTrue(n1.isInstanceOf[scalaA.Nested[_]])
+    assertEquals(("foo", "bar"), n1.witness)
+  }
+
+  @Test def exportsForNestedGenericJSClasses(): Unit = {
+    class A[A](x: A) {
+      @JSExport
+      class Nested[B](y: B) extends js.Object {
+        def witness: (A, B) = (x, y)
+      }
+    }
+
+    val scalaA = new A("foo")
+    val jsA = scalaA.asInstanceOf[js.Dynamic]
+
+    val n0 = js.Dynamic.newInstance(jsA.Nested)(3)
+    assertTrue(n0.isInstanceOf[scalaA.Nested[_]])
+    assertEquals(("foo", 3), n0.witness)
+
+    val n1 = js.Dynamic.newInstance(jsA.Nested)("bar")
+    assertTrue(n1.isInstanceOf[scalaA.Nested[_]])
+    assertEquals(("foo", "bar"), n1.witness)
+  }
+
+  @Test def exportsForNestedAbstractJSClasses(): Unit = {
+    class A(x: String) {
+      @JSExport
+      abstract class Nested(y: String) extends js.Object {
+        def foo(): String
+        def witness: String = s"$x | $y | ${foo()}"
+      }
+    }
+
+    val scalaA = new A("outer")
+    val jsA = scalaA.asInstanceOf[js.Dynamic]
+
+    val body = if (useECMAScript2015Semantics) {
+      """
+      class SubClass extends constr {
+        constructor(x) {
+          super(x + " from super");
+        }
+        foo() {
+           return "foo result";
+        }
+      }
+      return SubClass;
+      """
+    } else {
+      """
+      function SubClass(x) {
+        constr.call(this, x + " from super");
+      }
+      SubClass.prototype = Object.create(constr.prototype);
+      SubClass.prototype.foo = function(y) {
+        return "foo result";
+      };
+      return SubClass;
+      """
+    }
+
+    val subclassFun = new js.Function("constr", body)
+      .asInstanceOf[js.Function1[js.Dynamic, js.Dynamic]]
+    val subclass = subclassFun(jsA.Nested)
+    val obj = js.Dynamic.newInstance(subclass)("inner")
+
+    assertEquals("outer | inner from super | foo result", obj.witness)
+  }
+
+  @Test def exportsForNestedObjectsInClass(): Unit = {
+    class Foo(x: Int) {
+      @JSExport
+      object obj {
+        @JSExport
+        def witness = x + 1
+      }
+
+      @JSExport
+      object jsObj extends js.Object {
+        def witness = x + 1
+      }
+    }
+
+    val scalaFoo0 = new Foo(0)
+    val scalaFoo1 = new Foo(1)
+
+    val foo0 = scalaFoo0.asInstanceOf[js.Dynamic]
+    val foo1 = scalaFoo1.asInstanceOf[js.Dynamic]
+
+    assertSame(scalaFoo0.obj, foo0.obj)
+    assertSame(scalaFoo1.obj, foo1.obj)
+    assertNotSame(foo0.obj, foo1.obj)
+    assertEquals(1, foo0.obj.witness)
+    assertEquals(2, foo1.obj.witness)
+
+    assertSame(scalaFoo0.jsObj, foo0.jsObj)
+    assertSame(scalaFoo1.jsObj, foo1.jsObj)
+    assertNotSame(foo0.jsObj, foo1.jsObj)
+    assertEquals(1, foo0.jsObj.witness)
+    assertEquals(2, foo1.jsObj.witness)
+  }
+
+  @Test def exportsForNestedObjectsInTrait(): Unit = {
+    trait Foo {
+      val x: Int
+
+      @JSExport
+      object obj {
+        @JSExport
+        def witness = x + 1
+      }
+
+      @JSExport
+      object jsObj extends js.Object {
+        def witness = x + 1
+      }
+    }
+
+    val scalaFoo0 = new Foo { val x = 0 }
+    val scalaFoo1 = new Foo { val x = 1 }
+
+    val foo0 = scalaFoo0.asInstanceOf[js.Dynamic]
+    val foo1 = scalaFoo1.asInstanceOf[js.Dynamic]
+
+    assertSame(scalaFoo0.obj, foo0.obj)
+    assertSame(scalaFoo1.obj, foo1.obj)
+    assertNotSame(foo0.obj, foo1.obj)
+    assertEquals(1, foo0.obj.witness)
+    assertEquals(2, foo1.obj.witness)
+
+    assertSame(scalaFoo0.jsObj, foo0.jsObj)
+    assertSame(scalaFoo1.jsObj, foo1.jsObj)
+    assertNotSame(foo0.jsObj, foo1.jsObj)
+    assertEquals(1, foo0.jsObj.witness)
+    assertEquals(2, foo1.jsObj.witness)
+  }
+
+  @Test def exportsForNestedObjectsInObject(): Unit = {
+    object Foo {
+      val x: Int = 1
+
+      @JSExport
+      object obj {
+        @JSExport
+        def witness = x + 1
+      }
+
+      @JSExport
+      object jsObj extends js.Object {
+        def witness = x + 1
+      }
+    }
+
+    val foo = Foo.asInstanceOf[js.Dynamic]
+
+    assertSame(Foo.obj, foo.obj)
+    assertEquals(2, foo.obj.witness)
+
+    assertSame(Foo.jsObj, foo.jsObj)
+    assertEquals(2, foo.jsObj.witness)
+  }
+
+  @Test def exportsForNestedObjectsInStaticObject(): Unit = {
+    val foo = StaticObjectWithNestedObjects.asInstanceOf[js.Dynamic]
+
+    assertSame(StaticObjectWithNestedObjects.obj, foo.obj)
+    assertEquals(2, foo.obj.witness)
+
+    assertSame(StaticObjectWithNestedObjects.jsObj, foo.jsObj)
+    assertEquals(2, foo.jsObj.witness)
+  }
+
   @Test def exportsForPropertiesWithImplicitName(): Unit = {
     class Foo {
       private[this] var myY: String = "hello"
@@ -135,7 +444,8 @@ class ExportsTest {
       def y_=(v: String): Unit = myY = v + " set"
     }
 
-    val foo = (new Foo).asInstanceOf[js.Dynamic]
+    val scalaFoo = new Foo
+    val foo = scalaFoo.asInstanceOf[js.Dynamic]
     assertEquals("number", js.typeOf(foo.answer))
     assertEquals(42, foo.answer)
     assertEquals(3, foo.x)
@@ -252,6 +562,48 @@ class ExportsTest {
     assertEquals(6, bar.y)
     bar.y = 7
     assertEquals(7, bar.y)
+  }
+
+  @Test def exportsForAbstractClassPropertiesImplementedWithObject(): Unit = {
+    abstract class Foo {
+      @JSExport
+      def x: js.Object
+    }
+
+    class Bar extends Foo {
+      object x extends js.Object {
+        val y = 1
+      }
+    }
+
+    val bar = (new Bar).asInstanceOf[js.Dynamic]
+    assertEquals(1, bar.x.y)
+  }
+
+  @Test def exportsForTraitPropertiesImplementedWithObject(): Unit = {
+    trait Foo {
+      @JSExport
+      def x: js.Object
+    }
+
+    class Bar extends Foo {
+      object x extends js.Object {
+        val y = 1
+      }
+    }
+
+    val bar = (new Bar).asInstanceOf[js.Dynamic]
+    assertEquals(1, bar.x.y)
+  }
+
+  @Test def exportsForAbstractClassPropertiesImplementedWithStaticObject(): Unit = {
+    val bar = StaticObjectWithObjectForExportFromAbstractClass.asInstanceOf[js.Dynamic]
+    assertEquals(1, bar.x.y)
+  }
+
+  @Test def exportsForTraitPropertiesImplementedWithStaticObject(): Unit = {
+    val bar = StaticObjectWithObjectForExportFromTrait.asInstanceOf[js.Dynamic]
+    assertEquals(1, bar.x.y)
   }
 
   @Test def readonlyProperties(): Unit = {
@@ -440,6 +792,19 @@ class ExportsTest {
     val foo = (new Foo).asInstanceOf[js.Dynamic]
     assertEquals("function", js.typeOf(foo.defArg))
     assertEquals(5, foo.defArg(5))
+  }
+
+  @Test def exportsForHigherKinds(): Unit = {
+    class HK {
+      /* Probably there's no real use case for this
+       * but make sure it doesn't crash the compiler.
+       */
+      @JSExport
+      def ahem[F[T] <: Seq[T]](x: F[Int]): F[String] = ???
+    }
+
+    val x = (new HK).asInstanceOf[js.Dynamic]
+    assertEquals("function", js.typeOf(x.ahem))
   }
 
   @Test def exportsForWeirdStuff(): Unit = {
@@ -1023,14 +1388,28 @@ class ExportsTest {
 
       lazy val c = 3
 
-      class Bar // not exported, but should not fail
+      object d
+
+      // Classes should not be exported automatically.
+      class Bar
+      class JSBar extends js.Object
+      abstract class AbstractBar
+      abstract class JSAbstractBar extends js.Object
+      trait Baz
     }
 
-    val foo = (new Foo).asInstanceOf[js.Dynamic]
+    val scalaFoo = new Foo
+    val jsFoo = scalaFoo.asInstanceOf[js.Dynamic]
 
-    assertEquals(1, foo.a)
-    assertEquals(2, foo.b)
-    assertEquals(3, foo.c)
+    assertEquals(1, jsFoo.a)
+    assertEquals(2, jsFoo.b)
+    assertEquals(3, jsFoo.c)
+    assertSame(scalaFoo.d, jsFoo.d)
+    assertJSUndefined(jsFoo.Bar)
+    assertJSUndefined(jsFoo.JSBar)
+    assertJSUndefined(jsFoo.AbstractBar)
+    assertJSUndefined(jsFoo.JSAbstractBar)
+    assertJSUndefined(jsFoo.Baz)
   }
 
   @Test def noExportOfSyntheticMembersWithJSExportAll_Issue1195(): Unit = {
@@ -1699,4 +2078,59 @@ object TopLevelFieldExportsReachability {
 
   @JSExportTopLevel("TopLevelExport_fieldreachability")
   val greeting = "Hello " + name
+}
+
+abstract class AbstractClasstWithPropertyForExport {
+  @JSExport
+  def x: js.Object
+}
+
+object StaticObjectWithObjectForExportFromAbstractClass extends AbstractClasstWithPropertyForExport {
+  object x extends js.Object {
+    val y = 1
+  }
+}
+
+trait TraitWithPropertyForExport {
+  @JSExport
+  def x: js.Object
+}
+
+object StaticObjectWithObjectForExportFromTrait extends TraitWithPropertyForExport {
+  object x extends js.Object {
+    val y = 1
+  }
+}
+
+object StaticObjectWithNestedClasses {
+  val x = 2
+
+  @JSExport
+  class Nested(y: Int) {
+    @JSExport
+    def this() = this(2)
+
+    @JSExport
+    def witness: Int = x + y
+  }
+
+  @JSExport
+  class Nested2(y: Int) extends js.Object {
+    def witness: Int = x + y
+  }
+}
+
+object StaticObjectWithNestedObjects {
+  val x: Int = 1
+
+  @JSExport
+  object obj {
+    @JSExport
+    def witness: Int = x + 1
+  }
+
+  @JSExport
+  object jsObj extends js.Object {
+    def witness: Int = x + 1
+  }
 }

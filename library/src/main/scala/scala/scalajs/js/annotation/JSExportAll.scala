@@ -12,11 +12,13 @@
 
 package scala.scalajs.js.annotation
 
-/** Exports all public members directly defined in a class / object.
+/** Exports all public term members directly defined in a class / object.
  *
- *  Strictly equivalent to putting [[JSExport]] on every public member.
- *  Note: You are allowed to export protected members, but you'll have to do
- *  this explicitly on each member.
+ *  Strictly equivalent to putting [[JSExport]] on every public term
+ *  member (def, val, var, lazy val, object).
+ *
+ *  Note: You are allowed to export protected members and classes. However,
+ *  you'll have to do this explicitly on each member.
  *
  *  @see [[http://www.scala-js.org/doc/export-to-javascript.html Export Scala.js APIs to JavaScript]]
  */
