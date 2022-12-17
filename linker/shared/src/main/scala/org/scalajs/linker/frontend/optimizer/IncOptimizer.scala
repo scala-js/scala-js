@@ -247,15 +247,6 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     updateWith(linkedClass)
 
-    def optimizedDefs: List[Versioned[MethodDef]] = {
-      (for {
-        method <- methods.values
-        if !method.deleted
-      } yield {
-        method.optimizedMethodDef
-      }).toList
-    }
-
     /** UPDATE PASS ONLY. Global concurrency safe but not on same instance */
     def updateWith(linkedClass: LinkedClass):
         (Set[MethodName], Set[MethodName], Set[MethodName]) = {
