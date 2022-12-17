@@ -22,4 +22,6 @@ package org.scalajs.linker.standard
  *  versions can be reliably used to determine at phase P+1 whether the given
  *  item coming from phase P must be reprocessed.
  */
-final class Versioned[+T](val value: T, val version: Option[String])
+sealed class Versioned[+T](val value: T, val version: Option[String])
+
+final class VersionedWithID[+T](value: T, val id: String, version: Option[String]) extends Versioned(value, version)

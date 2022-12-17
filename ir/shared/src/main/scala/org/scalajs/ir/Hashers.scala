@@ -104,6 +104,12 @@ object Hashers {
         optimizerHints)
   }
 
+  def hashTree(tree: Tree): TreeHash = {
+    val hasher = new TreeHasher()
+    hasher.mixTree(tree)
+    hasher.finalizeHash()
+  }
+
   def hashesEqual(x: TreeHash, y: TreeHash): Boolean =
     Arrays.equals(x.hash, y.hash)
 

@@ -265,6 +265,7 @@ private object Refiner {
   private final class LinkedJSMethodPropDefsInfosCache private (
       private var caches: Array[LinkedJSMethodPropDefInfoCache]) {
 
+    // TODO: Split into individuals
     def getInfos(members: List[Versioned[JSMethodPropDef]]): List[Infos.ReachabilityInfo] = {
       if (members.isEmpty) {
         caches = null

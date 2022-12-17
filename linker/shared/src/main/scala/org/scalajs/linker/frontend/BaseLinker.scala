@@ -151,7 +151,7 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
     val methods = List.newBuilder[Versioned[MethodDef]]
     val jsNativeMembers = List.newBuilder[JSNativeMemberDef]
     var jsConstructorDef: Option[Versioned[JSConstructorDef]] = None
-    val exportedMembers = List.newBuilder[Versioned[JSMethodPropDef]]
+    val exportedMembers = List.newBuilder[VersionedWithID[JSMethodPropDef]]
 
     def linkedMethod(m: MethodDef) = {
       val version = m.hash.map(Hashers.hashAsVersion(_))
@@ -185,12 +185,15 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
       case m: JSMethodDef =>
         if (analyzerInfo.isAnySubclassInstantiated) {
           val version = m.hash.map(Hashers.hashAsVersion(_))
-          exportedMembers += new Versioned(m, version)
+          val id = Hashers.hashAsVersion(Hashers.hashTree(m.name))
+          exportedMembers += new VersionedWithID(m, id, version)
         }
 
       case m: JSPropertyDef =>
-        if (analyzerInfo.isAnySubclassInstantiated)
-          exportedMembers += new Versioned(m, None)
+        if (analyzerInfo.isAnySubclassInstantiated) {
+          val id = Hashers.hashAsVersion(Hashers.hashTree(m.name))
+          exportedMembers += new VersionedWithID(m, id, None)
+        }
 
       case m: JSNativeMemberDef =>
         if (analyzerInfo.jsNativeMembersUsed.contains(m.name.name))
