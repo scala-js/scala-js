@@ -234,14 +234,13 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
    *  [[IncOptimizer.StaticLikeNamespace]].
    */
   private abstract class MethodContainer(linkedClass: LinkedClass,
-      val namespace: MemberNamespace) {
+      val myInterface: InterfaceType, val namespace: MemberNamespace) {
 
     val className: ClassName = linkedClass.className
 
-    def thisType: Type =
+    def untrackedThisType: Type =
       if (namespace.isStatic) NoType
-      else if (linkedClass.kind == ClassKind.HijackedClass) BoxedClassToPrimType(className)
-      else ClassType(className)
+      else myInterface.untrackedInstanceThisType
 
     val methods = mutable.Map.empty[MethodName, MethodImpl]
 
@@ -318,9 +317,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
    *  [[Class]] form a tree of the class hierarchy.
    */
   private final class Class(val superClass: Option[Class], linkedClass: LinkedClass)
-      extends MethodContainer(linkedClass, MemberNamespace.Public) with Unregisterable {
-
-    val myInterface = getInterface(className)
+      extends MethodContainer(linkedClass, getInterface(linkedClass.className), MemberNamespace.Public)
+      with Unregisterable {
 
     if (className == ObjectClass) {
       assert(superClass.isEmpty)
@@ -659,8 +657,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
   /** Namespace for static members of a class. */
   private final class StaticLikeNamespace(linkedClass: LinkedClass,
-      namespace: MemberNamespace)
-      extends MethodContainer(linkedClass, namespace) {
+      myInterface: InterfaceType, namespace: MemberNamespace)
+      extends MethodContainer(linkedClass, myInterface, namespace) {
 
     /** BOTH PASSES. */
     final def lookupMethod(methodName: MethodName): Option[MethodImpl] =
@@ -701,7 +699,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     private val staticLikes: Array[StaticLikeNamespace] = {
       Array.tabulate(MemberNamespace.Count) { ord =>
-        new StaticLikeNamespace(linkedClass, MemberNamespace.fromOrdinal(ord))
+        new StaticLikeNamespace(linkedClass, this, MemberNamespace.fromOrdinal(ord))
       }
     }
 
@@ -722,6 +720,21 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     private var fieldsRead: Set[FieldName] = linkedClass.fieldsRead
     private var staticFieldsRead: Set[FieldName] = linkedClass.staticFieldsRead
+
+    /** The type of instances of this interface.
+     *
+     *  Offered via untracked accessor since its only usage is in the
+     *  environment of the Optimizer.
+     *
+     *  However, this is merely a convenience: If the this type changes
+     *  and a method body relies on it, the method body itself must change,
+     *  because the type of the This() tree must change.
+     *
+     *  Therefore, any tracking would be unnecessarily duplicate.
+     */
+    def untrackedInstanceThisType: Type = _instanceThisType
+
+    private var _instanceThisType = computeInstanceThisType(linkedClass)
 
     override def toString(): String =
       s"intf ${className.nameString}"
@@ -835,6 +848,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
           this.tagStaticCallersOf(staticLike.namespace, method)
         }
       }
+
+      _instanceThisType = computeInstanceThisType(linkedClass)
     }
 
     /** UPDATE PASS ONLY. */
@@ -890,6 +905,12 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       }
 
       (clazz, nativeMembers.toMap)
+    }
+
+    private def computeInstanceThisType(linkedClass: LinkedClass): Type = {
+      if (linkedClass.kind.isJSType) AnyType
+      else if (linkedClass.kind == ClassKind.HijackedClass) BoxedClassToPrimType(className)
+      else ClassType(className)
     }
   }
 
@@ -1045,7 +1066,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       }
 
       val (newParams, newBody) = new Optimizer(this, this.toString()).optimize(
-          Some(this), owner.thisType, params, resultType, body,
+          Some(this), owner.untrackedThisType, params, resultType, body,
           isNoArgCtor = name.name == NoArgConstructorName)
 
       MethodDef(static, name, originalName,
