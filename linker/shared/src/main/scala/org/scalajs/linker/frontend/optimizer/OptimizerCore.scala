@@ -5067,7 +5067,6 @@ private[optimizer] object OptimizerCore {
 
   private val AnyArgConstructorName = MethodName.constructor(List(ClassRef(ObjectClass)))
 
-  private val ObjectCloneName = MethodName("clone", Nil, ClassRef(ObjectClass))
   private val TupleFirstMethodName = MethodName("_1", Nil, ClassRef(ObjectClass))
   private val TupleSecondMethodName = MethodName("_2", Nil, ClassRef(ObjectClass))
   private val ClassTagApplyMethodName =
