@@ -1360,7 +1360,7 @@ class PrintersTest {
             |  5
             |}
           """,
-          JSPropertyDef(flags, StringLiteral("prop"), Some(i(5)), None))
+          JSPropertyDef(flags, StringLiteral("prop"), Some(i(5)), None)(None))
 
       assertPrintEquals(
           s"""
@@ -1370,7 +1370,7 @@ class PrintersTest {
           """,
           JSPropertyDef(flags, StringLiteral("prop"),
               None,
-              Some((ParamDef("x", NON, AnyType, mutable = false), i(7)))))
+              Some((ParamDef("x", NON, AnyType, mutable = false), i(7))))(None))
 
       assertPrintEquals(
           s"""
@@ -1380,7 +1380,7 @@ class PrintersTest {
           """,
           JSPropertyDef(flags, StringLiteral("prop"),
               None,
-              Some((ParamDef("x", TestON, AnyType, mutable = false), i(7)))))
+              Some((ParamDef("x", TestON, AnyType, mutable = false), i(7))))(None))
 
       assertPrintEquals(
           s"""
@@ -1394,7 +1394,7 @@ class PrintersTest {
           JSPropertyDef(flags, StringLiteral("prop"),
               Some(i(5)),
               Some((ParamDef("x", NON, AnyType, mutable = false),
-                  i(7)))))
+                  i(7))))(None))
     }
   }
 

@@ -1193,6 +1193,7 @@ object Trees {
 
   sealed case class JSPropertyDef(flags: MemberFlags, name: Tree,
       getterBody: Option[Tree], setterArgAndBody: Option[(ParamDef, Tree)])(
+      val hash: Option[TreeHash])(
       implicit val pos: Position)
       extends JSMethodPropDef
 

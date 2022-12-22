@@ -5,6 +5,10 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 
 object BinaryIncompatibilities {
   val IR = Seq(
+    // Breaking, but in minor verison, so OK.
+    exclude[DirectMissingMethodProblem]("org.scalajs.ir.Trees#JSPropertyDef.copy"),
+    exclude[DirectMissingMethodProblem]("org.scalajs.ir.Trees#JSPropertyDef.this"),
+    exclude[DirectMissingMethodProblem]("org.scalajs.ir.Trees#JSPropertyDef.apply"),
   )
 
   val Linker = Seq(
