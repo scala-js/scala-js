@@ -17,6 +17,7 @@ import scala.concurrent._
 import java.io._
 import java.nio._
 import java.nio.channels._
+import java.nio.charset.StandardCharsets
 import java.nio.file._
 import java.nio.file.attribute._
 
@@ -30,8 +31,13 @@ object PathIRFile {
       .map(new PathIRFileImpl(path, _))
   }
 
+  private[linker] def fileTimeToVersion(time: FileTime): ir.Version = {
+    // FileTime.toString seems to be the only lossless way to get a byte string.
+    ir.Version.fromBytes(time.toString().getBytes(StandardCharsets.US_ASCII))
+  }
+
   private[linker] final class PathIRFileImpl(path: Path, lastModified: FileTime)
-      extends IRFileImpl(path.toString, Some(lastModified.toString)) {
+      extends IRFileImpl(path.toString, fileTimeToVersion(lastModified)) {
     def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] = {
       def loop(chan: AsynchronousFileChannel, buf: ByteBuffer): Future[ir.EntryPointsInfo] = {
         readAsync(chan, buf).map { _ =>

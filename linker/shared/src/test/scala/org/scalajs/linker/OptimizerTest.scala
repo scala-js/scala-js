@@ -77,22 +77,22 @@ class OptimizerTest {
         // @noinline def witness(): AnyRef = throw null
         MethodDef(EMF, witnessMethodName, NON, Nil, AnyType, Some {
           Throw(Null())
-        })(EOH.withNoinline(true), None),
+        })(EOH.withNoinline(true), UNV),
 
         // @noinline def reachClone(): Object = clone()
         MethodDef(EMF, reachCloneMethodName, NON, Nil, AnyType, Some {
           Apply(EAF, thisFoo, cloneMethodName, Nil)(AnyType)
-        })(EOH.withNoinline(true), None),
+        })(EOH.withNoinline(true), UNV),
 
         // @noinline def anArray(): Array[Int] = Array(1)
         MethodDef(EMF, anArrayMethodName, NON, Nil, intArrayType, Some {
           anArrayOfInts
-        })(EOH.withNoinline(true), None),
+        })(EOH.withNoinline(true), UNV),
 
         // @noinline def anObject(): AnyRef = Array(1)
         MethodDef(EMF, anObjectMethodName, NON, Nil, AnyType, Some {
           anArrayOfInts
-        })(EOH.withNoinline(true), None)
+        })(EOH.withNoinline(true), UNV)
     ) ::: customMemberDefs
 
     val classDefs = Seq(
@@ -140,7 +140,7 @@ class OptimizerTest {
         // @inline override def clone(): AnyRef = witness()
         MethodDef(EMF, cloneMethodName, NON, Nil, AnyType, Some {
           Apply(EAF, This()(ClassType("Foo")), witnessMethodName, Nil)(AnyType)
-        })(EOH.withInline(true), None)
+        })(EOH.withInline(true), UNV)
     ))
   }
 
@@ -168,7 +168,7 @@ class OptimizerTest {
               ApplyStatically(EAF, This()(ClassType("Foo")),
                   ObjectClass, cloneMethodName, Nil)(AnyType)
           )
-        })(EOH.withInline(true), None)
+        })(EOH.withInline(true), UNV)
     ))
   }
 
@@ -209,7 +209,7 @@ class OptimizerTest {
                 MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
                     fooGetter, NON, Nil, StringType, Some({
                       SelectStatic(MainTestClassName, "foo")(StringType)
-                    }))(EOH, None),
+                    }))(EOH, UNV),
                 // static def main(args: String[]) { println(Test::foo()) }
                 mainMethodDef({
                   consoleLog(ApplyStatic(EAF, MainTestClassName, fooGetter, Nil)(StringType))
@@ -309,7 +309,7 @@ class OptimizerTest {
                 // @noinline static def sideEffect(x: Int): Int = x
                 MethodDef(EMF.withNamespace(PublicStatic), sideEffect, NON,
                     List(paramDef(x, IntType)), IntType, Some(VarRef(x)(IntType)))(
-                    EOH.withNoinline(true), None),
+                    EOH.withNoinline(true), UNV),
                 /* static def main(args: String[]) {
                  *   console.log(arrow-lambda<
                  *     x1 = sideEffect(1),
@@ -376,11 +376,11 @@ class OptimizerTest {
                 trivialCtor("Thunk"),
                 MethodDef(EMF, implMethodName, NON, Nil, AnyType, Some {
                   SelectJSNativeMember("Holder", memberMethodName)
-                })(EOH, None),
+                })(EOH, UNV),
                 MethodDef(SMF, thunkMethodName, NON, Nil, AnyType, Some {
                   val inst = New("Thunk", NoArgConstructorName, Nil)
                   Apply(EAF, inst, implMethodName, Nil)(AnyType)
-                })(EOH, None)
+                })(EOH, UNV)
             )
         ),
         classDef("Holder", kind = ClassKind.Interface,
@@ -409,7 +409,7 @@ class OptimizerTest {
         }
       }
 
-      main.methods.foreach(v => traverser.traverseMemberDef(v.value))
+      main.methods.foreach(traverser.traverseMemberDef(_))
 
       assertTrue(foundJSImport)
     }
@@ -449,7 +449,7 @@ class OptimizerTest {
           memberDefs = List(
               // @noinline static def calc(): Int = 1
               MethodDef(EMF.withNamespace(PublicStatic), calc, NON, Nil,
-                  IntType, Some(int(1)))(EOH.withNoinline(true), None),
+                  IntType, Some(int(1)))(EOH.withNoinline(true), UNV),
               mainMethodDef(Block(
                 VarDef("x", NON, IntType, mutable = false,
                     ApplyStatic(EAF, MainTestClassName, calc, Nil)(IntType)),
@@ -498,12 +498,12 @@ class OptimizerTest {
       MethodDef(EMF.withNamespace(Constructor), NoArgConstructorName, NON, Nil, NoType, Some(Block(
         Assign(Select(This()(ClassType("Foo")), "Foo", "x")(witnessType), Null()),
         Assign(Select(This()(ClassType("Foo")), "Foo", "y")(IntType), int(5))
-      )))(EOH, None),
+      )))(EOH, UNV),
 
       // def method(): Int = this.y
       MethodDef(EMF, methodName, NON, Nil, IntType, Some {
         Select(This()(ClassType("Foo")), "Foo", "y")(IntType)
-      })(EOH, None)
+      })(EOH, UNV)
     )
 
     Seq(
@@ -569,7 +569,7 @@ object OptimizerTest {
 
   private def traverseMainMethod(moduleSet: ModuleSet)(f: Tree => Unit) = {
     val mainClassDef = findClass(moduleSet, MainTestClassName).get
-    val mainMethodDef = mainClassDef.methods.map(_.value)
+    val mainMethodDef = mainClassDef.methods
       .find(m => m.name.name == MainMethodName && m.flags.namespace == MemberNamespace.PublicStatic).get
 
     new Traverser {

@@ -30,6 +30,9 @@ object TestIRBuilder {
   /** No original name, for short. */
   val NON = NoOriginalName
 
+  /** Unversioned, for short */
+  val UNV = Version.Unversioned
+
   /** No optimizer hints, for short. */
   val NoOptHints = OptimizerHints.empty
 

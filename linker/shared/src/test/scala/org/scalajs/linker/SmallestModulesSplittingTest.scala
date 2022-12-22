@@ -43,7 +43,7 @@ class SmallestModulesSplittingTest {
         // @noinline def greet(): String = "Hello world!"
         MethodDef(EMF, greetMethodName, NON, Nil, strClsType, Some {
           str("Hello world!")
-        })(EOH.withNoinline(true), None)
+        })(EOH.withNoinline(true), UNV)
     )
 
     val classDefs = Seq(

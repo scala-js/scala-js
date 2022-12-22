@@ -23,6 +23,8 @@ import org.scalajs.linker.interface.{IRContainer, IRFile}
 import org.scalajs.linker.interface.unstable.IRContainerImpl
 import org.scalajs.linker.standard.MemIRFileImpl
 
+import PathIRFile.fileTimeToVersion
+
 object PathIRContainer {
   def fromClasspath(classpath: Seq[Path])(
       implicit ec: ExecutionContext): Future[(Seq[IRContainer], Seq[Path])] = Future {
@@ -52,7 +54,7 @@ object PathIRContainer {
   }
 
   private final class JarIRContainer(path: Path, lastModified: FileTime)
-      extends IRContainerImpl(path.toString, Some(lastModified.toString)) {
+      extends IRContainerImpl(path.toString, fileTimeToVersion(lastModified)) {
     def sjsirFiles(implicit ec: ExecutionContext): Future[List[IRFile]] = Future {
       val files = List.newBuilder[IRFile]
 

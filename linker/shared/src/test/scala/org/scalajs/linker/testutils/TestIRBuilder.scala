@@ -32,6 +32,7 @@ object TestIRBuilder {
   val EMF = MemberFlags.empty
   val EOH = OptimizerHints.empty
   val NON = NoOriginalName
+  val UNV = ir.Version.Unversioned
 
   val JSCtorFlags = EMF.withNamespace(MemberNamespace.Constructor)
 
@@ -87,13 +88,13 @@ object TestIRBuilder {
             This()(ClassType(enclosingClassName)),
             ObjectClass, MethodIdent(NoArgConstructorName),
             Nil)(NoType)))(
-        EOH, None)
+        EOH, UNV)
   }
 
   def trivialJSCtor: JSConstructorDef = {
     JSConstructorDef(JSCtorFlags, Nil, None,
         JSConstructorBody(Nil, JSSuperConstructorCall(Nil), Undefined() :: Nil))(
-        EOH, None)
+        EOH, UNV)
   }
 
   val MainMethodName: MethodName = m("main", List(AT), VoidRef)
@@ -102,7 +103,7 @@ object TestIRBuilder {
     val argsParamDef = paramDef("args", ArrayType(AT))
     MethodDef(MemberFlags.empty.withNamespace(MemberNamespace.PublicStatic),
         MainMethodName, NON, List(argsParamDef), NoType, Some(body))(
-        EOH, None)
+        EOH, UNV)
   }
 
   def consoleLog(expr: Tree): Tree =

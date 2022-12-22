@@ -127,7 +127,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
        */
       !classesWithInstantiatedSubclasses(classDef.className) && {
         classDef.methods.count(
-            x => x.value.flags.namespace == MemberNamespace.Constructor) == 1
+            x => x.flags.namespace == MemberNamespace.Constructor) == 1
       }
     }
 
@@ -213,7 +213,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     def methodsInRepresentativeClasses(): List[(MethodName, Set[ClassName])] =
       specialInfo.askMethodsInRepresentativeClasses(this)
 
-    def methodsInObject(): List[Versioned[MethodDef]] =
+    def methodsInObject(): List[MethodDef] =
       specialInfo.askMethodsInObject(this)
 
     def hijackedDescendants(className: ClassName): Set[ClassName] =
@@ -541,8 +541,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private def computeIsParentDataAccessed(classClass: Option[LinkedClass]): Boolean = {
       def methodExists(linkedClass: LinkedClass, methodName: MethodName): Boolean = {
         linkedClass.methods.exists { m =>
-          m.value.flags.namespace == MemberNamespace.Public &&
-          m.value.methodName == methodName
+          m.flags.namespace == MemberNamespace.Public &&
+          m.methodName == methodName
         }
       }
 
@@ -559,18 +559,18 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       for {
         representativeClass <- representativeClasses
         method <- representativeClass.methods
-        if method.value.flags.namespace == MemberNamespace.Public
+        if method.flags.namespace == MemberNamespace.Public
       } {
-        result.getOrElseUpdate(method.value.methodName, mutable.Set.empty) +=
+        result.getOrElseUpdate(method.methodName, mutable.Set.empty) +=
           representativeClass.className
       }
 
       result.toList.sortBy(_._1.nameString).map(kv => (kv._1, kv._2.toSet))
     }
 
-    private def computeMethodsInObject(objectClass: Option[LinkedClass]): List[Versioned[MethodDef]] = {
+    private def computeMethodsInObject(objectClass: Option[LinkedClass]): List[MethodDef] = {
       objectClass.toList.flatMap(
-          _.methods.filter(_.value.flags.namespace == MemberNamespace.Public))
+          _.methods.filter(_.flags.namespace == MemberNamespace.Public))
     }
 
     private def computeHijackedDescendants(
@@ -606,7 +606,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       methodsInRepresentativeClasses
     }
 
-    def askMethodsInObject(invalidatable: Invalidatable): List[Versioned[MethodDef]] = {
+    def askMethodsInObject(invalidatable: Invalidatable): List[MethodDef] = {
       invalidatable.registeredTo(this)
       methodsInObjectAskers += invalidatable
       methodsInObject

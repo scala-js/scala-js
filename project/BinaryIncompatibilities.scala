@@ -6,19 +6,18 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 object BinaryIncompatibilities {
   val IR = Seq(
     // Breaking, but in minor verison, so OK.
-    exclude[DirectMissingMethodProblem]("org.scalajs.ir.Trees#JSPropertyDef.copy"),
-    exclude[DirectMissingMethodProblem]("org.scalajs.ir.Trees#JSPropertyDef.this"),
-    exclude[DirectMissingMethodProblem]("org.scalajs.ir.Trees#JSPropertyDef.apply"),
-    exclude[MissingClassProblem]("org.scalajs.ir.Trees$DoWhile"),
-    exclude[MissingClassProblem]("org.scalajs.ir.Trees$DoWhile$"),
+    exclude[Problem]("org.scalajs.ir.*"),
   )
 
   val Linker = Seq(
-    // private[linker], not an issue
-    exclude[DirectMissingMethodProblem]("org.scalajs.linker.standard.LinkedClass.optimized"),
+    // Breaking, but in minor version, so OK.
+    exclude[Problem]("org.scalajs.linker.standard.*"),
   )
 
   val LinkerInterface = Seq(
+    // Breaking, but in minor version, so OK.
+    exclude[Problem]("org.scalajs.linker.interface.unstable.*"),
+
     // private, not an issue
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.linker.interface.Semantics.this"),
   )

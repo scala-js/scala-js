@@ -13,7 +13,6 @@
 package org.scalajs.ir
 
 import java.io.{DataOutputStream, OutputStream}
-import java.util.Arrays
 
 import Names._
 import Trees._
@@ -23,8 +22,9 @@ import Tags._
 object Hashers {
 
   def hashMethodDef(methodDef: MethodDef): MethodDef = {
-    if (methodDef.hash.isDefined) methodDef
-    else {
+    if (methodDef.version.isHash) {
+      methodDef
+    } else {
       val hasher = new TreeHasher()
       val MethodDef(flags, name, originalName, args, resultType, body) = methodDef
 
@@ -40,12 +40,12 @@ object Hashers {
       val hash = hasher.finalizeHash()
 
       MethodDef(flags, name, originalName, args, resultType, body)(
-          methodDef.optimizerHints, Some(hash))(methodDef.pos)
+          methodDef.optimizerHints, hash)(methodDef.pos)
     }
   }
 
   def hashJSConstructorDef(ctorDef: JSConstructorDef): JSConstructorDef = {
-    if (ctorDef.hash.isDefined) {
+    if (ctorDef.version.isHash) {
       ctorDef
     } else {
       val hasher = new TreeHasher()
@@ -62,13 +62,14 @@ object Hashers {
       val hash = hasher.finalizeHash()
 
       JSConstructorDef(flags, params, restParam, body)(
-          ctorDef.optimizerHints, Some(hash))(ctorDef.pos)
+          ctorDef.optimizerHints, hash)(ctorDef.pos)
     }
   }
 
   def hashJSMethodDef(methodDef: JSMethodDef): JSMethodDef = {
-    if (methodDef.hash.isDefined) methodDef
-    else {
+    if (methodDef.version.isHash) {
+      methodDef
+    } else {
       val hasher = new TreeHasher()
       val JSMethodDef(flags, name, params, restParam, body) = methodDef
 
@@ -83,13 +84,14 @@ object Hashers {
       val hash = hasher.finalizeHash()
 
       JSMethodDef(flags, name, params, restParam, body)(
-          methodDef.optimizerHints, Some(hash))(methodDef.pos)
+          methodDef.optimizerHints, hash)(methodDef.pos)
     }
   }
 
   def hashJSPropertyDef(propDef: JSPropertyDef): JSPropertyDef = {
-    if (propDef.hash.isDefined) propDef
-    else {
+    if (propDef.version.isHash) {
+      propDef
+    } else {
       val hasher = new TreeHasher()
       val JSPropertyDef(flags, name, getterBody, setterArgAndBody) = propDef
 
@@ -104,7 +106,7 @@ object Hashers {
 
       val hash = hasher.finalizeHash()
 
-      JSPropertyDef(flags, name, getterBody, setterArgAndBody)(Some(hash))(propDef.pos)
+      JSPropertyDef(flags, name, getterBody, setterArgAndBody)(hash)(propDef.pos)
     }
   }
 
@@ -127,22 +129,6 @@ object Hashers {
         optimizerHints)
   }
 
-  def hashesEqual(x: TreeHash, y: TreeHash): Boolean =
-    Arrays.equals(x.hash, y.hash)
-
-  def hashAsVersion(hash: TreeHash): String = {
-    // 2 chars per byte, 20 bytes in a hash
-    val size = 2 * 20
-    val builder = new StringBuilder(size)
-
-    def hexDigit(digit: Int): Char = Character.forDigit(digit, 16)
-
-    for (b <- hash.hash)
-      builder.append(hexDigit((b >> 4) & 0x0f)).append(hexDigit(b & 0x0f))
-
-    builder.toString
-  }
-
   private final class TreeHasher {
     private[this] val digestBuilder = new SHA1.DigestBuilder
 
@@ -159,8 +145,8 @@ object Hashers {
       })
     }
 
-    def finalizeHash(): TreeHash =
-      new TreeHash(digestBuilder.finalizeDigest())
+    def finalizeHash(): Version =
+      Version.fromHash(digestBuilder.finalizeDigest())
 
     def mixParamDef(paramDef: ParamDef): Unit = {
       mixPos(paramDef.pos)

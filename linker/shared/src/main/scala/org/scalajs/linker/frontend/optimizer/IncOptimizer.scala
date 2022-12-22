@@ -104,11 +104,11 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       }
 
       val newMethods = for (m <- linkedClass.methods) yield {
-        val namespace = m.value.flags.namespace
+        val namespace = m.flags.namespace
         val container =
           if (namespace == MemberNamespace.Public) publicContainer
           else interface.staticLike(namespace)
-        container.methods(m.value.methodName).optimizedDef
+        container.methods(m.methodName).optimizedDef
       }
 
       linkedClass.optimized(newMethods, interface.optimizedExportedMembers(),
@@ -269,10 +269,10 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
           namespace.ordinal
       }
       val linkedMethodDefs = linkedClass.methods.withFilter {
-        _.value.flags.namespace.ordinal == applicableNamespaceOrdinal
+        _.flags.namespace.ordinal == applicableNamespaceOrdinal
       }
 
-      val newMethodNames = linkedMethodDefs.map(_.value.methodName).toSet
+      val newMethodNames = linkedMethodDefs.map(_.methodName).toSet
       val methodSetChanged = methods.keySet != newMethodNames
       if (methodSetChanged) {
         // Remove deleted methods
@@ -288,7 +288,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       }
 
       for (linkedMethodDef <- linkedMethodDefs) {
-        val methodName = linkedMethodDef.value.methodName
+        val methodName = linkedMethodDef.methodName
 
         methods.get(methodName).fold {
           addedMethods += methodName
@@ -698,7 +698,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     }
 
     private def updateExportedMembers(
-        newExportedMembers: List[Versioned[JSMethodPropDef]]): Unit = {
+        newExportedMembers: List[JSMethodPropDef]): Unit = {
       val newLen = newExportedMembers.length
       val oldLen = exportedMembers.length
 
@@ -720,7 +720,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     }
 
     private def updateJSConstructorDef(
-        newJSConstructorDef: Option[Versioned[JSConstructorDef]]): Unit = {
+        newJSConstructorDef: Option[JSConstructorDef]): Unit = {
 
       newJSConstructorDef.fold {
         jsConstructorDef.foreach(_.delete())
@@ -734,10 +734,10 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       }
     }
 
-    def optimizedExportedMembers(): List[Versioned[JSMethodPropDef]] =
+    def optimizedExportedMembers(): List[JSMethodPropDef] =
       exportedMembers.map(_.optimizedDef).toList
 
-    def optimizedJSConstructorDef(): Option[Versioned[JSConstructorDef]] =
+    def optimizedJSConstructorDef(): Option[JSConstructorDef] =
       jsConstructorDef.map(_.optimizedDef)
   }
 
@@ -893,10 +893,10 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     def staticLike(namespace: MemberNamespace): StaticLikeNamespace =
       staticLikes(namespace.ordinal)
 
-    def optimizedExportedMembers(): List[Versioned[JSMethodPropDef]] =
+    def optimizedExportedMembers(): List[JSMethodPropDef] =
       jsMethodContainer.optimizedExportedMembers()
 
-    def optimizedJSConstructorDef(): Option[Versioned[JSConstructorDef]] =
+    def optimizedJSConstructorDef(): Option[JSConstructorDef] =
       jsMethodContainer.optimizedJSConstructorDef()
 
     /** UPDATE PASS ONLY. Not concurrency safe. */
@@ -1002,44 +1002,43 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
   /** A thing that can be tagged for reprocessing and then reprocessed. */
   private abstract class Processable {
-    type Def
+    type Def >: scala.Null <: VersionedMemberDef
 
     private[this] val registeredTo = collOps.emptyMap[Unregisterable, Unit]
     private[this] val tagged = new AtomicBoolean(false)
     private[this] var _deleted: Boolean = false
 
-    private[this] var lastInVersion: Option[String] = None
+    private[this] var lastInVersion: Version = Version.Unversioned
     private[this] var lastOutVersion: Int = 0
 
     private[this] var _originalDef: Def = _
-    private[this] var _optimizedDef: Versioned[Def] = _
+    private[this] var _optimizedDef: Def = _
 
-    protected def doProcess(): Def
+    protected def doProcess(newVersion: Version): Def
 
     final def deleted: Boolean = _deleted
 
     final def originalDef: Def = _originalDef
-    final def optimizedDef: Versioned[Def] = _optimizedDef
+    final def optimizedDef: Def = _optimizedDef
 
     /** PROCESS PASS ONLY. */
     final def process(): Unit = {
       if (!_deleted) {
         lastOutVersion += 1
-        val newDef = doProcess()
-        _optimizedDef = new Versioned(newDef, Some(lastOutVersion.toString()))
+        _optimizedDef = doProcess(Version.fromInt(lastOutVersion))
         tagged.set(false)
       }
     }
 
     /** Returns true if the method changed */
-    protected def updateDef(linkedMethod: Versioned[Def]): Boolean = {
+    protected def updateDef(methodDef: Def): Boolean = {
       assert(!deleted, "updateDef() called on a deleted method")
 
-      if (lastInVersion.isDefined && lastInVersion == linkedMethod.version) {
+      if (lastInVersion.sameVersion(methodDef.version)) {
         false
       } else {
-        lastInVersion = linkedMethod.version
-        _originalDef = linkedMethod.value
+        lastInVersion = methodDef.version
+        _originalDef = methodDef
         _optimizedDef = null
         tag()
         true
@@ -1130,13 +1129,13 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
      *  In the process, tags all the body askers if the body changes.
      *  UPDATE PASS ONLY. Not concurrency safe on same instance.
      */
-    def updateWith(linkedMethod: Versioned[MethodDef]): Boolean = {
-      val changed = updateDef(linkedMethod)
+    def updateWith(methodDef: MethodDef): Boolean = {
+      val changed = updateDef(methodDef)
       if (changed) {
         tagBodyAskers()
 
         val oldAttributes = attributes
-        attributes = OptimizerCore.MethodAttributes.compute(enclosingClassName, linkedMethod.value)
+        attributes = OptimizerCore.MethodAttributes.compute(enclosingClassName, methodDef)
         attributes != oldAttributes
       } else {
         false
@@ -1144,7 +1143,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     }
 
     /** PROCESS PASS ONLY. */
-    protected def doProcess(): MethodDef = {
+    protected def doProcess(newVersion: Version): MethodDef = {
       val MethodDef(static, name, originalName, params, resultType, optBody) =
         originalDef
       val body = optBody.getOrElse {
@@ -1157,7 +1156,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
       MethodDef(static, name, originalName,
           newParams, resultType, Some(newBody))(
-          originalDef.optimizerHints, None)(originalDef.pos)
+          originalDef.optimizerHints, newVersion)(originalDef.pos)
     }
   }
 
@@ -1168,10 +1167,10 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     override def toString(): String =
       s"$owner[$idx]"
 
-    def updateWith(linkedMethod: Versioned[JSMethodPropDef]): Unit =
+    def updateWith(linkedMethod: JSMethodPropDef): Unit =
       updateDef(linkedMethod)
 
-    protected def doProcess(): JSMethodPropDef = {
+    protected def doProcess(newVersion: Version): JSMethodPropDef = {
       originalDef match {
         case originalDef @ JSMethodDef(flags, name, params, restParam, body) =>
           val thisType = owner.untrackedThisType(flags.namespace)
@@ -1185,7 +1184,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
             else (newParamsAndRest, None)
 
           JSMethodDef(flags, name, newParams, newRestParam, newBody)(
-              originalDef.optimizerHints, None)(originalDef.pos)
+              originalDef.optimizerHints, newVersion)(originalDef.pos)
 
         case originalDef @ JSPropertyDef(flags, name, getterBody, setterArgAndBody) =>
           val thisType = owner.untrackedThisType(flags.namespace)
@@ -1204,7 +1203,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
             (newParam, newBody)
           }
 
-          JSPropertyDef(flags, name, newGetterBody, newSetterArgAndBody)(None)(originalDef.pos)
+          JSPropertyDef(flags, name, newGetterBody, newSetterArgAndBody)(newVersion)(originalDef.pos)
       }
     }
   }
@@ -1216,10 +1215,10 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     override def toString(): String =
       s"$owner ctor"
 
-    def updateWith(linkedMethod: Versioned[JSConstructorDef]): Unit =
+    def updateWith(linkedMethod: JSConstructorDef): Unit =
       updateDef(linkedMethod)
 
-    protected def doProcess(): JSConstructorDef = {
+    protected def doProcess(newVersion: Version): JSConstructorDef = {
       val JSConstructorDef(flags, params, restParam, body) = originalDef
 
       val thisType = owner.untrackedThisType(flags.namespace)
@@ -1244,7 +1243,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
           superCall.asInstanceOf[JSSuperConstructorCall], afterSuper)(body.pos)
 
       JSConstructorDef(flags, newParams, newRestParam, newBody)(
-          originalDef.optimizerHints, None)(originalDef.pos)
+          originalDef.optimizerHints, newVersion)(originalDef.pos)
     }
   }
 

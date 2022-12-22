@@ -104,9 +104,9 @@ class ClassDefCheckerTest {
         classDef("A", superClass = Some(ObjectClass),
           memberDefs = List(
               MethodDef(EMF, babarMethodName, NON, List(paramDef("x", IntType)),
-                      IntType, None)(EOH, None),
+                      IntType, None)(EOH, UNV),
               MethodDef(EMF, babarMethodName, NON, List(paramDef("y", IntType)),
-                      IntType, None)(EOH, None)
+                      IntType, None)(EOH, UNV)
             )),
         "duplicate method 'babar(int)int'")
   }
@@ -131,11 +131,11 @@ class ClassDefCheckerTest {
               MethodDef(EMF.withNamespace(MemberNamespace.Constructor),
                   stringCtorName, NON, List(paramDef("x", BoxedStringType)),
                   NoType, Some(callPrimaryCtorBody))(
-                  EOH, None),
+                  EOH, UNV),
               MethodDef(EMF.withNamespace(MemberNamespace.Constructor),
                   stringCtorName, NON, List(paramDef("y", BoxedStringType)),
                   NoType, Some(callPrimaryCtorBody))(
-                  EOH, None)
+                  EOH, UNV)
           )),
         "duplicate constructor method '<init>(java.lang.String)void'")
   }
@@ -194,7 +194,7 @@ class ClassDefCheckerTest {
             memberDefs = List(
               MethodDef(methodFlags, m("bar", Nil, V), NON, Nil, NoType, Some({
                 consoleLog(expr)
-              }))(EOH, None)
+              }))(EOH, UNV)
             )
           ),
           expectedMsg)

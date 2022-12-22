@@ -23,7 +23,7 @@ import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
 import org.scalajs.logging._
 
-import org.scalajs.ir
+import org.scalajs.ir.Version
 import org.scalajs.ir.Names.ClassName
 import org.scalajs.ir.Trees.ClassDef
 
@@ -71,7 +71,7 @@ final class IRLoader(checkIR: Boolean) extends Analyzer.InputProvider
   }
 
   def loadClassDefAndVersion(className: ClassName)(
-      implicit ec: ExecutionContext): Future[(ClassDef, Option[String])] = {
+      implicit ec: ExecutionContext): Future[(ClassDef, Version)] = {
     get(className, u => (u.classDef, u.version))
   }
 
@@ -108,14 +108,14 @@ private object ClassDefAndInfoCache {
       val classDef: ClassDef,
       val classInfo: Infos.ClassInfo,
       val topLevelExportInfos: List[Infos.TopLevelExportInfo],
-      val version: Option[String])
+      val version: Version)
 }
 
 private final class ClassDefAndInfoCache {
   import ClassDefAndInfoCache.Update
 
   private var cacheUsed: Boolean = false
-  private var version: Option[String] = None
+  private var version: Version = Version.Unversioned
   private var cacheUpdate: Future[Update] = _
 
   def update(irFile: IRFileImpl, logger: Logger, checkIR: Boolean)(
@@ -127,8 +127,7 @@ private final class ClassDefAndInfoCache {
       cacheUsed = true
 
       val newVersion = irFile.version
-      if (version.isEmpty || newVersion.isEmpty ||
-          version.get != newVersion.get) {
+      if (!version.sameVersion(newVersion)) {
         version = newVersion
         cacheUpdate = irFile.tree.map { tree =>
           if (checkIR) {

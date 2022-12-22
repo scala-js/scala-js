@@ -48,7 +48,7 @@ class LibraryReachabilityTest {
                 Apply(EAF, systemMod, m("getProperty", List(T, T), T), List(emptyStr, emptyStr))(StringType),
                 Apply(EAF, systemMod, m("setProperty", List(T, T), T), List(emptyStr, emptyStr))(StringType),
                 Apply(EAF, systemMod, m("clearProperty", List(T), T), List(emptyStr))(StringType)
-            )))(EOH, None)
+            )))(EOH, UNV)
         ))
     )
 
@@ -74,7 +74,7 @@ class LibraryReachabilityTest {
         trivialCtor("A"),
         MethodDef(EMF, m("test", Nil, V), NON, Nil, NoType, Some(Block(
           ApplyStatic(EAF, BoxedStringClass, formatMethod, List(str("hello %d"), int(42)))(StringType)
-        )))(EOH, None)
+        )))(EOH, UNV)
       ))
     )
 

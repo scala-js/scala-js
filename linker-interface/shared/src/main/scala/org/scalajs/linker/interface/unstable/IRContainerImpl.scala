@@ -42,7 +42,7 @@ abstract class IRContainerImpl(
    *  Such a token can be used by caches: the file need not be read and
    *  processed again if its version has not changed.
    */
-  val version: Option[String]
+  val version: ir.Version
 ) extends IRContainer {
   private[interface] final def impl: IRContainerImpl = this
 

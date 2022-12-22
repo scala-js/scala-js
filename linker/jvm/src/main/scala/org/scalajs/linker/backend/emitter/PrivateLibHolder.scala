@@ -14,6 +14,8 @@ package org.scalajs.linker.backend.emitter
 
 import java.io._
 
+import org.scalajs.ir
+
 import org.scalajs.linker.interface.IRFile
 import org.scalajs.linker.standard.MemIRFileImpl
 
@@ -30,7 +32,7 @@ object PrivateLibHolder {
       val name = path.substring(path.lastIndexOf('/') + 1)
       new MemIRFileImpl(
           path = path,
-          version = Some(""), // this indicates that the file never changes
+          version = ir.Version.fromInt(0), // never changes
           content = readResource(name)
       )
     }

@@ -61,9 +61,9 @@ class IncrementalTest {
                     EMF, jsMethodName, Nil, None,
                     if (pre) int(5)
                     else ApplyStatic(EAF, FooClass, staticMethodName, Nil)(IntType))(
-                    EOH, None),
+                    EOH, UNV),
                 MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
-                    staticMethodName, NON, Nil, IntType, Some(int(6)))(EOH, None)
+                    staticMethodName, NON, Nil, IntType, Some(int(6)))(EOH, UNV)
             )
         )
     )
@@ -90,7 +90,7 @@ class IncrementalTest {
                 trivialCtor(FooClass),
                 MethodDef(EMF, foo, NON, List(paramDef(x, IntType)), IntType,
                     Some(VarRef(x)(IntType)))(
-                    EOH.withNoinline(pre), None)
+                    EOH.withNoinline(pre), UNV)
             )
         )
     )
@@ -120,7 +120,7 @@ class IncrementalTest {
                         consoleLog(VarRef(x)(IntType)),
                         VarRef(x)(IntType)
                     )))(
-                    EOH.withInline(pre), None)
+                    EOH.withInline(pre), UNV)
             )
         )
     )
@@ -166,7 +166,7 @@ class IncrementalTest {
         classDef(BarInterface, kind = ClassKind.Interface, memberDefs = List(
             MethodDef(EMF, meth, NON, methParamDefs, IntType, Some({
               BinaryOp(BinaryOp.Int_+, int(5), BinaryOp(BinaryOp.Int_*, xRef, int(2)))
-            }))(EOH, None)
+            }))(EOH, UNV)
         )),
 
         // Foo1
@@ -175,7 +175,7 @@ class IncrementalTest {
             MethodDef(EMF, meth, NON, methParamDefs, IntType, Some({
               ApplyStatically(EAF, if (pre) This()(Foo1Type) else foo1Ref,
                   BarInterface, meth, List(foo1Ref, xRef))(IntType)
-            }))(EOH, None)
+            }))(EOH, UNV)
         )),
 
         // Foo2
@@ -183,7 +183,7 @@ class IncrementalTest {
             trivialCtor(Foo2Class),
             MethodDef(EMF, meth, NON, methParamDefs, IntType, Some({
               ApplyStatically(EAF, This()(Foo2Type), BarInterface, meth, List(foo1Ref, xRef))(IntType)
-            }))(EOH, None)
+            }))(EOH, UNV)
         ))
     )
 
@@ -198,7 +198,7 @@ class IncrementalTest {
     val meth2 = m("meth2", Nil, VoidRef)
 
     def methDef(name: MethodName, body: Tree): MethodDef =
-      MethodDef(EMF, name, NON, Nil, NoType, Some(body))(EOH.withNoinline(true), None)
+      MethodDef(EMF, name, NON, Nil, NoType, Some(body))(EOH.withNoinline(true), UNV)
 
     def callMeth(targetMeth: MethodName): Tree =
       Apply(EAF, LoadModule(FooClass), targetMeth, Nil)(NoType)
@@ -255,7 +255,7 @@ class IncrementalTest {
     def methDef(name: MethodName, body: Tree): MethodDef = {
       MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic), name, NON, Nil,
           NoType, Some(body))(
-          EOH.withNoinline(true), None)
+          EOH.withNoinline(true), UNV)
     }
 
     def callMeth(targetMeth: MethodName): Tree =
@@ -315,7 +315,7 @@ class IncrementalTest {
 
       MethodDef(MemberFlags.empty.withNamespace(MemberNamespace.Constructor),
           MethodIdent(NoArgConstructorName), NON, Nil, NoType,
-          Some(body))(EOH, None)
+          Some(body))(EOH, UNV)
     }
 
     def classDefs(pre: Boolean): Seq[ClassDef] = Seq(

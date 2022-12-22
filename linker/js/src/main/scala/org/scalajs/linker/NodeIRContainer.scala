@@ -79,7 +79,7 @@ object NodeIRContainer {
     (e.asInstanceOf[js.Dynamic].code: Any) == "ENOENT"
 
   private final class NodeJarIRContainer(path: String, version: Option[js.Date])
-      extends IRContainerImpl(path, version.map(_.getTime().toString)) {
+      extends IRContainerImpl(path, NodeIRFile.dateToVersion(version)) {
     import NodeFS._
 
     def sjsirFiles(implicit ec: ExecutionContext): Future[List[IRFile]] = {

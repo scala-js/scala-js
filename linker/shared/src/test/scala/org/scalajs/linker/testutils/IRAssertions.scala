@@ -83,12 +83,9 @@ object IRAssertions {
     protected def newTraverser(f: IRNode => Unit): TestTraverser[LinkedClass] = {
       new TestTraverser[LinkedClass](f) {
         def baseTraverse(node: LinkedClass): Unit = {
-          for (memberDef <- node.fields)
-            traverseMemberDef(memberDef)
-          for (memberDef <- node.methods)
-            traverseMemberDef(memberDef.value)
-          for (memberDef <- node.exportedMembers)
-            traverseMemberDef(memberDef.value)
+          node.fields.foreach(traverseMemberDef(_))
+          node.methods.foreach(traverseMemberDef(_))
+          node.exportedMembers.foreach(traverseMemberDef(_))
         }
       }
     }

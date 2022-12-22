@@ -16,12 +16,13 @@ import scala.concurrent._
 
 import org.scalajs.ir.EntryPointsInfo
 import org.scalajs.ir.Trees.ClassDef
+import org.scalajs.ir.Version.Unversioned
 
 import org.scalajs.linker.interface.IRFile
 import org.scalajs.linker.interface.unstable.IRFileImpl
 
 private final class MemClassDefIRFile(classDef: ClassDef)
-    extends IRFileImpl("mem://" + classDef.name.name + ".sjsir", None) {
+    extends IRFileImpl("mem://" + classDef.name.name + ".sjsir", Unversioned) {
 
   def tree(implicit ec: ExecutionContext): Future[ClassDef] =
     Future(classDef)

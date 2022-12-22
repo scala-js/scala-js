@@ -26,6 +26,7 @@ import Position._
 import Trees._
 import Types._
 import Tags._
+import Version.Unversioned
 
 import Utils.JumpBackByteArrayOutputStream
 
@@ -646,7 +647,7 @@ object Serializers {
           val MethodDef(flags, name, originalName, args, resultType, body) = methodDef
 
           writeByte(TagMethodDef)
-          writeOptHash(methodDef.hash)
+          writeOptHash(methodDef.version)
 
           // Prepare for back-jump and write dummy length
           bufferUnderlying.markJump()
@@ -667,7 +668,7 @@ object Serializers {
           val JSConstructorDef(flags, args, restParam, body) = ctorDef
 
           writeByte(TagJSConstructorDef)
-          writeOptHash(ctorDef.hash)
+          writeOptHash(ctorDef.version)
 
           // Prepare for back-jump and write dummy length
           bufferUnderlying.markJump()
@@ -691,7 +692,7 @@ object Serializers {
           val JSMethodDef(flags, name, args, restParam, body) = methodDef
 
           writeByte(TagJSMethodDef)
-          writeOptHash(methodDef.hash)
+          writeOptHash(methodDef.version)
 
           // Prepare for back-jump and write dummy length
           bufferUnderlying.markJump()
@@ -711,7 +712,7 @@ object Serializers {
           val JSPropertyDef(flags, name, getter, setterArgAndBody) = propDef
 
           writeByte(TagJSPropertyDef)
-          writeOptHash(propDef.hash)
+          writeOptHash(propDef.version)
 
           // Prepare for back-jump and write dummy length
           bufferUnderlying.markJump()
@@ -979,10 +980,11 @@ object Serializers {
       }
     }
 
-    def writeOptHash(optHash: Option[TreeHash]): Unit = {
-      buffer.writeBoolean(optHash.isDefined)
-      for (hash <- optHash)
-        buffer.write(hash.hash)
+    def writeOptHash(version: Version): Unit = {
+      val isHash = version.isHash
+      buffer.writeBoolean(isHash)
+      if (isHash)
+        version.writeHash(buffer)
     }
 
     def writeString(s: String): Unit =
@@ -1414,7 +1416,7 @@ object Serializers {
               val newFlags = flags.withNamespace(MemberNamespace.Constructor)
               val newBody = JSConstructorBody(beforeSuper, superCall, afterSuper)(body.pos)
               val ctorDef = JSConstructorDef(newFlags, args, restParam, newBody)(
-                  methodDef.optimizerHints, None)(methodDef.pos)
+                  methodDef.optimizerHints, Unversioned)(methodDef.pos)
               Hashers.hashJSConstructorDef(ctorDef)
 
             case _ =>
@@ -1609,9 +1611,9 @@ object Serializers {
               OptimizerHints.fromBits(readInt()), optHash)
 
         case TagJSPropertyDef =>
-          val optHash = {
+          val optHash: Version = {
             if (hacks.use12) {
-              None
+              Unversioned
             } else {
               val optHash = readOptHash()
               // read and discard the length
@@ -1889,13 +1891,13 @@ object Serializers {
       }
     }
 
-    def readOptHash(): Option[TreeHash] = {
+    def readOptHash(): Version = {
       if (readBoolean()) {
         val hash = new Array[Byte](20)
         buf.get(hash)
-        Some(new TreeHash(hash))
+        Version.fromHash(hash)
       } else {
-        None
+        Unversioned
       }
     }
 

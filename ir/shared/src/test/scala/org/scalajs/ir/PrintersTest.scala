@@ -1180,7 +1180,7 @@ class PrintersTest {
         """,
         MethodDef(MemberFlags.empty, mIIMethodName, NON,
             List(ParamDef("x", NON, IntType, mutable = false)),
-            IntType, None)(NoOptHints, None))
+            IntType, None)(NoOptHints, UNV))
 
     assertPrintEquals(
         """
@@ -1190,7 +1190,7 @@ class PrintersTest {
         """,
         MethodDef(MemberFlags.empty, mIIMethodName, NON,
             List(ParamDef("x", NON, IntType, mutable = false)),
-            IntType, Some(i(5)))(NoOptHints, None))
+            IntType, Some(i(5)))(NoOptHints, UNV))
 
     assertPrintEquals(
         """
@@ -1200,7 +1200,7 @@ class PrintersTest {
         """,
         MethodDef(MemberFlags.empty, mIIMethodName, NON,
             List(ParamDef("x", NON, IntType, mutable = false)),
-            IntType, Some(i(5)))(NoOptHints.withInline(true), None))
+            IntType, Some(i(5)))(NoOptHints.withInline(true), UNV))
 
     assertPrintEquals(
         """
@@ -1210,7 +1210,7 @@ class PrintersTest {
         """,
         MethodDef(MemberFlags.empty, mIVMethodName, NON,
             List(ParamDef("x", NON, IntType, mutable = false)),
-            NoType, Some(i(5)))(NoOptHints, None))
+            NoType, Some(i(5)))(NoOptHints, UNV))
 
     assertPrintEquals(
         """
@@ -1220,7 +1220,7 @@ class PrintersTest {
         """,
         MethodDef(MemberFlags.empty.withNamespace(Static), mIIMethodName, NON,
             List(ParamDef("x", NON, IntType, mutable = false)),
-            IntType, Some(i(5)))(NoOptHints, None))
+            IntType, Some(i(5)))(NoOptHints, UNV))
 
     assertPrintEquals(
         """
@@ -1230,7 +1230,7 @@ class PrintersTest {
         """,
         MethodDef(MemberFlags.empty.withNamespace(Private), mIIMethodName, NON,
             List(ParamDef("x", NON, IntType, mutable = false)),
-            IntType, Some(i(5)))(NoOptHints, None))
+            IntType, Some(i(5)))(NoOptHints, UNV))
 
     assertPrintEquals(
         """
@@ -1240,7 +1240,7 @@ class PrintersTest {
         """,
         MethodDef(MemberFlags.empty.withNamespace(PrivateStatic), mIIMethodName, NON,
             List(ParamDef("x", NON, IntType, mutable = false)),
-            IntType, Some(i(5)))(NoOptHints, None))
+            IntType, Some(i(5)))(NoOptHints, UNV))
 
     assertPrintEquals(
         """
@@ -1248,7 +1248,7 @@ class PrintersTest {
         """,
         MethodDef(MemberFlags.empty, mIIMethodName, TestON,
             List(ParamDef("x", TestON, IntType, mutable = false)),
-            IntType, None)(NoOptHints, None))
+            IntType, None)(NoOptHints, UNV))
   }
 
   @Test def printJSConstructorDef(): Unit = {
@@ -1263,7 +1263,7 @@ class PrintersTest {
         JSConstructorDef(MemberFlags.empty.withNamespace(Constructor),
             List(ParamDef("x", NON, AnyType, mutable = false)), None,
             JSConstructorBody(List(i(5)), JSSuperConstructorCall(List(i(6))), List(Undefined())))(
-            NoOptHints, None))
+            NoOptHints, UNV))
 
     assertPrintEquals(
         """
@@ -1276,7 +1276,7 @@ class PrintersTest {
             List(ParamDef("x", NON, AnyType, mutable = false)),
             Some(ParamDef("y", NON, AnyType, mutable = false)),
             JSConstructorBody(Nil, JSSuperConstructorCall(List(i(6))), List(i(7))))(
-            NoOptHints, None))
+            NoOptHints, UNV))
 
     // This example is an invalid constructor, but it should be printed anyway
     assertPrintEquals(
@@ -1289,7 +1289,7 @@ class PrintersTest {
         JSConstructorDef(MemberFlags.empty,
             List(ParamDef("x", TestON, AnyType, mutable = false)), None,
             JSConstructorBody(List(i(5)), JSSuperConstructorCall(List(i(6))), Nil))(
-            NoOptHints, None))
+            NoOptHints, UNV))
   }
 
   @Test def printJSMethodDef(): Unit = {
@@ -1301,7 +1301,7 @@ class PrintersTest {
         """,
         JSMethodDef(MemberFlags.empty, StringLiteral("m"),
             List(ParamDef("x", NON, AnyType, mutable = false)), None,
-            i(5))(NoOptHints, None))
+            i(5))(NoOptHints, UNV))
 
     assertPrintEquals(
         """
@@ -1312,7 +1312,7 @@ class PrintersTest {
         JSMethodDef(MemberFlags.empty, StringLiteral("m"),
             List(ParamDef("x", NON, AnyType, mutable = false)),
             Some(ParamDef("y", NON, AnyType, mutable = false)),
-            i(5))(NoOptHints, None))
+            i(5))(NoOptHints, UNV))
 
     assertPrintEquals(
         """
@@ -1322,7 +1322,7 @@ class PrintersTest {
         """,
         JSMethodDef(MemberFlags.empty.withNamespace(Static), StringLiteral("m"),
             List(ParamDef("x", NON, AnyType, mutable = false)), None,
-            i(5))(NoOptHints, None))
+            i(5))(NoOptHints, UNV))
 
     assertPrintEquals(
         """
@@ -1332,7 +1332,7 @@ class PrintersTest {
         """,
         JSMethodDef(MemberFlags.empty, StringLiteral("m"),
             List(ParamDef("x", TestON, AnyType, mutable = false)), None,
-            i(5))(NoOptHints, None))
+            i(5))(NoOptHints, UNV))
   }
 
   @Test def printJSPropertyDef(): Unit = {
@@ -1350,7 +1350,7 @@ class PrintersTest {
             |  5
             |}
           """,
-          JSPropertyDef(flags, StringLiteral("prop"), Some(i(5)), None)(None))
+          JSPropertyDef(flags, StringLiteral("prop"), Some(i(5)), None)(UNV))
 
       assertPrintEquals(
           s"""
@@ -1360,7 +1360,7 @@ class PrintersTest {
           """,
           JSPropertyDef(flags, StringLiteral("prop"),
               None,
-              Some((ParamDef("x", NON, AnyType, mutable = false), i(7))))(None))
+              Some((ParamDef("x", NON, AnyType, mutable = false), i(7))))(UNV))
 
       assertPrintEquals(
           s"""
@@ -1370,7 +1370,7 @@ class PrintersTest {
           """,
           JSPropertyDef(flags, StringLiteral("prop"),
               None,
-              Some((ParamDef("x", TestON, AnyType, mutable = false), i(7))))(None))
+              Some((ParamDef("x", TestON, AnyType, mutable = false), i(7))))(UNV))
 
       assertPrintEquals(
           s"""
@@ -1384,7 +1384,7 @@ class PrintersTest {
           JSPropertyDef(flags, StringLiteral("prop"),
               Some(i(5)),
               Some((ParamDef("x", NON, AnyType, mutable = false),
-                  i(7))))(None))
+                  i(7))))(UNV))
     }
   }
 
@@ -1409,7 +1409,7 @@ class PrintersTest {
         TopLevelMethodExportDef("main", JSMethodDef(
             MemberFlags.empty.withNamespace(Static), StringLiteral("foo"),
             List(ParamDef("x", NON, AnyType, mutable = false)), None,
-            i(5))(NoOptHints, None)))
+            i(5))(NoOptHints, UNV)))
   }
 
   @Test def printTopLevelFieldExportDef(): Unit = {
