@@ -711,8 +711,17 @@ object Serializers {
           writeInt(length)
           bufferUnderlying.continue()
 
-        case JSPropertyDef(flags, name, getter, setterArgAndBody) =>
+        case propDef: JSPropertyDef =>
+          val JSPropertyDef(flags, name, getter, setterArgAndBody) = propDef
+
           writeByte(TagJSPropertyDef)
+          writeOptHash(propDef.hash)
+
+          // Prepare for back-jump and write dummy length
+          bufferUnderlying.markJump()
+          writeInt(-1)
+
+          // Write out prop def
           writeInt(MemberFlags.toBits(flags))
           writeTree(name)
           writeOptTree(getter)
@@ -720,6 +729,11 @@ object Serializers {
           setterArgAndBody foreach { case (arg, body) =>
             writeParamDef(arg); writeTree(body)
           }
+
+          // Jump back and write true length
+          val length = bufferUnderlying.jumpBack()
+          writeInt(length)
+          bufferUnderlying.continue()
 
         case JSNativeMemberDef(flags, name, jsNativeLoadSpec) =>
           writeByte(TagJSNativeMemberDef)
@@ -1591,6 +1605,18 @@ object Serializers {
               OptimizerHints.fromBits(readInt()), optHash)
 
         case TagJSPropertyDef =>
+          val optHash = {
+            if (hacks.use12) {
+              None
+            } else {
+              val optHash = readOptHash()
+              // read and discard the length
+              val len = readInt()
+              assert(len >= 0)
+              optHash
+            }
+          }
+
           val flags = MemberFlags.fromBits(readInt())
           val name = bodyHack5Expr(readTree())
           val getterBody = readOptTree().map(bodyHack5Expr(_))
@@ -1600,7 +1626,7 @@ object Serializers {
             else
               None
           }
-          JSPropertyDef(flags, name, getterBody, setterArgAndBody)
+          JSPropertyDef(flags, name, getterBody, setterArgAndBody)(optHash)
 
         case TagJSNativeMemberDef =>
           val flags = MemberFlags.fromBits(readInt())
@@ -2021,6 +2047,13 @@ object Serializers {
     private val use7: Boolean = use6 || sourceVersion == "1.7"
 
     val use8: Boolean = use7 || sourceVersion == "1.8"
+
+    assert(sourceVersion != "1.9", "source version 1.9 does not exist")
+    assert(sourceVersion != "1.10", "source version 1.10 does not exist")
+
+    private val use11: Boolean = use8 || sourceVersion == "1.11"
+
+    val use12: Boolean = use11 || sourceVersion == "1.12"
   }
 
   /** Names needed for hacks. */

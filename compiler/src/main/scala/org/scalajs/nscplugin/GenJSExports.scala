@@ -264,7 +264,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         reporter.error(alts.head.pos,
             s"Conflicting properties and methods for ${classSym.fullName}::$name.")
         implicit val pos = alts.head.pos
-        js.JSPropertyDef(js.MemberFlags.empty, genExpr(name), None, None)
+        js.JSPropertyDef(js.MemberFlags.empty, genExpr(name), None, None)(None)
       } else {
         genMemberExportOrDispatcher(name, isProp, alts, static = false)
       }
@@ -317,7 +317,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         }
       }
 
-      js.JSPropertyDef(flags, genExpr(jsName), getterBody, setterArgAndBody)
+      js.JSPropertyDef(flags, genExpr(jsName), getterBody, setterArgAndBody)(None)
     }
 
     /** generates the exporter function (i.e. exporter for non-properties) for

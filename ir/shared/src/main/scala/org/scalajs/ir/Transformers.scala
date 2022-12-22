@@ -273,7 +273,7 @@ object Transformers {
               getterBody.map(transformStat),
               setterArgAndBody map { case (arg, body) =>
                 (arg, transformStat(body))
-              })
+              })(None)
       }
     }
 

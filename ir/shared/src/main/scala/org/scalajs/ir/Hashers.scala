@@ -87,12 +87,35 @@ object Hashers {
     }
   }
 
+  def hashJSPropertyDef(propDef: JSPropertyDef): JSPropertyDef = {
+    if (propDef.hash.isDefined) propDef
+    else {
+      val hasher = new TreeHasher()
+      val JSPropertyDef(flags, name, getterBody, setterArgAndBody) = propDef
+
+      hasher.mixPos(propDef.pos)
+      hasher.mixInt(MemberFlags.toBits(flags))
+      hasher.mixTree(name)
+      getterBody.foreach(hasher.mixTree(_))
+      setterArgAndBody.foreach { case (param, body) =>
+        hasher.mixParamDef(param)
+        hasher.mixTree(body)
+      }
+
+      val hash = hasher.finalizeHash()
+
+      JSPropertyDef(flags, name, getterBody, setterArgAndBody)(Some(hash))(propDef.pos)
+    }
+  }
+
   /** Hash definitions from a ClassDef where applicable */
   def hashMemberDefs(memberDefs: List[MemberDef]): List[MemberDef] = memberDefs.map {
     case methodDef: MethodDef      => hashMethodDef(methodDef)
     case ctorDef: JSConstructorDef => hashJSConstructorDef(ctorDef)
     case methodDef: JSMethodDef    => hashJSMethodDef(methodDef)
-    case otherDef                  => otherDef
+    case propDef: JSPropertyDef    => hashJSPropertyDef(propDef)
+    case fieldDef: AnyFieldDef     => fieldDef
+    case native: JSNativeMemberDef => native
   }
 
   /** Hash the definitions in a ClassDef (where applicable) */

@@ -189,8 +189,10 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
         }
 
       case m: JSPropertyDef =>
-        if (analyzerInfo.isAnySubclassInstantiated)
-          exportedMembers += new Versioned(m, None)
+        if (analyzerInfo.isAnySubclassInstantiated) {
+          val version = m.hash.map(Hashers.hashAsVersion(_))
+          exportedMembers += new Versioned(m, version)
+        }
 
       case m: JSNativeMemberDef =>
         if (analyzerInfo.jsNativeMembersUsed.contains(m.name.name))
