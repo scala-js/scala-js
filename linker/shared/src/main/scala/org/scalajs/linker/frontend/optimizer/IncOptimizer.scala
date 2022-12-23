@@ -65,6 +65,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
   private var objectClass: Class = _
   private val classes = collOps.emptyMap[ClassName, Class]
   private val interfaces = collOps.emptyParMap[ClassName, InterfaceType]
+  private val topLevelExports = new JSTopLevelMethodContainer
 
   private var methodsToProcess = collOps.emptyAddable[Processable]
 
@@ -79,7 +80,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     logger.time("Optimizer: Incremental part") {
       /* UPDATE PASS */
-      updateAndTagEverything(unit.classDefs)
+      updateAndTagEverything(unit)
     }
 
     logger.time("Optimizer: Optimizer part") {
@@ -87,42 +88,64 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       processAllTaggedMethods(logger)
     }
 
-    val newLinkedClasses = for (linkedClass <- unit.classDefs) yield {
-      val className = linkedClass.className
-      val interface = getInterface(className)
+    val newLinkedClasses = unit.classDefs.map(optimizedLinkedClass(_))
+    val newTopLevelExports = unit.topLevelExports.map(optimizedTopLevelExport(_))
 
-      val publicContainer = classes.get(className).getOrElse {
-        /* For interfaces, we need to look at default methods.
-         * For other kinds of classes, the public namespace is necessarily
-         * empty.
-         */
-        val container = interface.staticLike(MemberNamespace.Public)
-        assert(
-            linkedClass.kind == ClassKind.Interface || container.methods.isEmpty,
-            linkedClass.className -> linkedClass.kind)
-        container
-      }
+    new LinkingUnit(unit.coreSpec, newLinkedClasses, newTopLevelExports,
+        unit.moduleInitializers)
+  }
 
-      val newMethods = for (m <- linkedClass.methods) yield {
-        val namespace = m.flags.namespace
-        val container =
-          if (namespace == MemberNamespace.Public) publicContainer
-          else interface.staticLike(namespace)
-        container.methods(m.methodName).optimizedDef
-      }
+  private def optimizedLinkedClass(linkedClass: LinkedClass): LinkedClass = {
+    val className = linkedClass.className
+    val interface = getInterface(className)
 
-      linkedClass.optimized(newMethods, interface.optimizedExportedMembers(),
-          interface.optimizedJSConstructorDef())
+    val publicContainer = classes.get(className).getOrElse {
+      /* For interfaces, we need to look at default methods.
+       * For other kinds of classes, the public namespace is necessarily
+       * empty.
+       */
+      val container = interface.staticLike(MemberNamespace.Public)
+      assert(
+          linkedClass.kind == ClassKind.Interface || container.methods.isEmpty,
+          linkedClass.className -> linkedClass.kind)
+      container
     }
 
-    new LinkingUnit(unit.coreSpec, newLinkedClasses, unit.topLevelExports,
-        unit.moduleInitializers)
+    val newMethods = for (m <- linkedClass.methods) yield {
+      val namespace = m.flags.namespace
+      val container =
+        if (namespace == MemberNamespace.Public) publicContainer
+        else interface.staticLike(namespace)
+      container.methods(m.methodName).optimizedDef
+    }
+
+    linkedClass.optimized(newMethods, interface.optimizedExportedMembers(),
+        interface.optimizedJSConstructorDef())
+  }
+
+  private def optimizedTopLevelExport(linked: LinkedTopLevelExport): LinkedTopLevelExport = {
+    linked.tree match {
+      case method: TopLevelMethodExportDef =>
+        val newMethod =
+          topLevelExports.optimizedMethod(method.moduleID, method.topLevelExportName)
+
+        new LinkedTopLevelExport(linked.owningClass, newMethod,
+            linked.staticDependencies, linked.externalDependencies)
+
+      case _ =>
+        linked
+    }
   }
 
   /** Incremental part: update state and detect what needs to be re-optimized.
    *  UPDATE PASS ONLY. (This IS the update pass).
-   */
-  private def updateAndTagEverything(linkedClasses: List[LinkedClass]): Unit = {
+    */
+  private def updateAndTagEverything(unit: LinkingUnit): Unit = {
+    updateAndTagClasses(unit.classDefs)
+    topLevelExports.updateWith(unit.topLevelExports)
+  }
+
+  private def updateAndTagClasses(linkedClasses: List[LinkedClass]): Unit = {
     val neededInterfaces = collOps.emptyParMap[ClassName, LinkedClass]
     val neededClasses = collOps.emptyParMap[ClassName, LinkedClass]
     for (linkedClass <- linkedClasses) {
@@ -667,8 +690,13 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       methods.get(methodName)
   }
 
-  private final class JSMethodContainer(linkedClass: LinkedClass,
-      val myInterface: InterfaceType) {
+  private sealed abstract class JSMethodContainer {
+    def untrackedJSClassCaptures: List[ParamDef]
+    def untrackedThisType(namespace: MemberNamespace): Type
+  }
+
+  private final class JSClassMethodContainer(linkedClass: LinkedClass,
+      val myInterface: InterfaceType) extends JSMethodContainer {
 
     val className: ClassName = linkedClass.className
 
@@ -741,6 +769,36 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       jsConstructorDef.map(_.optimizedDef)
   }
 
+  private final class JSTopLevelMethodContainer extends JSMethodContainer {
+
+    private[this] var methods = Map.empty[(String, String), (JSMethodImpl, Position)]
+
+    val untrackedJSClassCaptures: List[ParamDef] = Nil
+    def untrackedThisType(namespace: MemberNamespace): Type = NoType
+
+    def updateWith(topLevelExports: List[LinkedTopLevelExport]): Unit = {
+      val newMethods = topLevelExports.map(_.tree).collect {
+        case m: TopLevelMethodExportDef =>
+          val key = (m.moduleID, m.topLevelExportName)
+          val impl = methods.get(key).fold(new JSMethodImpl(this, key))(_._1)
+          impl.updateWith(m.methodDef)
+          key -> (impl, m.pos)
+      }.toMap
+
+      methods
+        .withFilter(e => !newMethods.contains(e._1))
+        .foreach(_._2._1.delete())
+
+      methods = newMethods
+    }
+
+    def optimizedMethod(moduleID: String, name: String): TopLevelMethodExportDef = {
+      val (impl, pos) = methods((moduleID, name))
+      val newMethod = impl.optimizedDef.asInstanceOf[JSMethodDef]
+      TopLevelMethodExportDef(moduleID, newMethod)(pos)
+    }
+  }
+
   /** Thing from which a [[MethodImpl]] can unregister itself from. */
   private trait Unregisterable {
     /** UPDATE PASS ONLY. */
@@ -779,7 +837,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       }
     }
 
-    private val jsMethodContainer = new JSMethodContainer(linkedClass, this)
+    private val jsMethodContainer = new JSClassMethodContainer(linkedClass, this)
 
     /* For now, we track all JS native imports together (the class itself and native members).
      *
@@ -1160,12 +1218,12 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     }
   }
 
-  private final class JSMethodImpl(owner: JSMethodContainer, idx: Int) extends Processable {
+  private final class JSMethodImpl(owner: JSMethodContainer, id: Any) extends Processable {
 
     type Def = JSMethodPropDef
 
     override def toString(): String =
-      s"$owner[$idx]"
+      s"$owner[$id]"
 
     def updateWith(linkedMethod: JSMethodPropDef): Unit =
       updateDef(linkedMethod)

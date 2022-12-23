@@ -425,6 +425,38 @@ class IncrementalTest {
 
     testIncrementalBidirectional(classDefs(_), _ => MainTestModuleInitializers)
   }
+
+  @Test
+  def testInvalidateTopLevelExportDependency(): AsyncResult = await {
+    val AModule = ClassName("A")
+    val BModule = ClassName("B")
+
+    val targetMethodName = m("value", Nil, IntRef)
+
+    def classDefs(pre: Boolean) = Seq(
+      v0 -> classDef(
+          AModule,
+          kind = ClassKind.Interface,
+          topLevelExportDefs = List(
+              TopLevelMethodExportDef("main", JSMethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
+                  str("foo"), Nil, None,
+                  Apply(EAF, LoadModule(BModule), targetMethodName, Nil)(IntType))(EOH, UNV))
+          )
+      ),
+      v(pre) -> classDef(
+          BModule,
+          kind = ClassKind.ModuleClass,
+          superClass = Some(ObjectClass),
+          memberDefs = List(
+              trivialCtor(BModule),
+              MethodDef(EMF, targetMethodName, NON, Nil, IntType,
+                  Some(int(if (pre) 1 else 2)))(EOH.withInline(true), UNV)
+          )
+      )
+    )
+
+    testIncrementalBidirectional(classDefs(_), _ => Nil)
+  }
 }
 
 object IncrementalTest {
