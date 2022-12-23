@@ -219,11 +219,6 @@ object Hashers {
           mixTree(cond)
           mixTree(body)
 
-        case DoWhile(body, cond) =>
-          mixTag(TagDoWhile)
-          mixTree(body)
-          mixTree(cond)
-
         case ForIn(obj, keyVar, keyVarOriginalName, body) =>
           mixTag(TagForIn)
           mixTree(obj)
