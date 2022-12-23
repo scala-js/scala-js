@@ -52,10 +52,6 @@ object Traversers {
         traverse(cond)
         traverse(body)
 
-      case DoWhile(body, cond) =>
-        traverse(body)
-        traverse(cond)
-
       case ForIn(obj, _, _, body) =>
         traverse(obj)
         traverse(body)

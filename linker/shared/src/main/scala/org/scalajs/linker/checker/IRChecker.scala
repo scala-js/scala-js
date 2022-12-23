@@ -280,10 +280,6 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         typecheckExpect(cond, env, BooleanType)
         typecheck(body, env)
 
-      case DoWhile(body, cond) =>
-        typecheck(body, env)
-        typecheckExpect(cond, env, BooleanType)
-
       case ForIn(obj, keyVar, _, body) =>
         typecheckExpr(obj, env)
         typecheck(body, env)

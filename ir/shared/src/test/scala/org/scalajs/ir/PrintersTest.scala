@@ -199,16 +199,6 @@ class PrintersTest {
         While(b(true), i(5)))
   }
 
-  @Test def printDoWhile(): Unit = {
-    assertPrintEquals(
-        """
-          |do {
-          |  5
-          |} while (true)
-        """,
-        DoWhile(i(5), b(true)))
-  }
-
   @Test def printForIn(): Unit = {
     assertPrintEquals(
         """

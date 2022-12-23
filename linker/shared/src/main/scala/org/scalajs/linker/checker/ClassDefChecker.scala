@@ -551,10 +551,6 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
         checkTree(cond, env)
         checkTree(body, env)
 
-      case DoWhile(body, cond) =>
-        checkTree(body, env)
-        checkTree(cond, env)
-
       case ForIn(obj, keyVar, _, body) =>
         checkTree(obj, env)
         checkDeclareLocalVar(keyVar)

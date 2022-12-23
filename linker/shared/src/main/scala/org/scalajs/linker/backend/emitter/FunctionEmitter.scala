@@ -741,37 +741,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             }, optLabel)
           }
 
-        case DoWhile(body, cond) =>
-          val loopEnv = env.withInLoopForVarCapture(true)
-
-          /* We cannot simply unnest(cond) here, because that would eject the
-           * evaluation of the condition out of the loop.
-           */
-          val bodyEnv = loopEnv
-            .withDefaultBreakTargets(tailPosLabels)
-            .withDefaultContinueTargets(Set.empty)
-          val newBody = transformStat(body, Set.empty)(bodyEnv)
-          if (isExpression(cond)) {
-            /* Here, we could do the same optimization with `continue` as in
-             * `While` loops (see above), but no Scala source code produces
-             * patterns where this happens. Therefore, we do not bother.
-             */
-            js.DoWhile(newBody, transformExprNoChar(cond)(loopEnv))
-          } else {
-            /* Since in this rewriting, the old body is not in tail position of
-             * the emitted do..while body, we cannot optimize an inner Labeled
-             * block into using `continue` statements.
-             */
-            js.While(js.BooleanLiteral(true), {
-              js.Block(
-                  newBody,
-                  unnest(cond) { (newCond, env0) =>
-                    implicit val env = env0
-                    js.If(transformExprNoChar(newCond), js.Skip(), js.Break())
-                  } (loopEnv))
-            })
-          }
-
         case ForIn(obj, keyVar, keyVarOriginalName, body) =>
           unnest(obj) { (newObj, env0) =>
             implicit val env = env0
@@ -2048,7 +2017,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
              * we use to "add" all the code of pushLhsInto() to transformStat().
              */
             rhs match {
-              case _:Skip | _:VarDef | _:Assign | _:While | _:DoWhile |
+              case _:Skip | _:VarDef | _:Assign | _:While |
                   _:Debugger | _:JSSuperConstructorCall | _:JSDelete |
                   _:StoreModule | Transient(_:SystemArrayCopy) =>
                 transformStat(rhs, tailPosLabels)

@@ -66,9 +66,6 @@ object Transformers {
         case While(cond, body) =>
           While(transformExpr(cond), transformStat(body))
 
-        case DoWhile(body, cond) =>
-          DoWhile(transformStat(body), transformExpr(cond))
-
         case ForIn(obj, keyVar, keyVarOriginalName, body) =>
           ForIn(transformExpr(obj), keyVar, keyVarOriginalName,
               transformStat(body))

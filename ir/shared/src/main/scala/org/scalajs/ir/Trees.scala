@@ -174,11 +174,6 @@ object Trees {
     }
   }
 
-  sealed case class DoWhile(body: Tree, cond: Tree)(
-      implicit val pos: Position) extends Tree {
-    val tpe = NoType // cannot be in expression position
-  }
-
   sealed case class ForIn(obj: Tree, keyVar: LocalIdent,
       keyVarOriginalName: OriginalName, body: Tree)(
       implicit val pos: Position) extends Tree {

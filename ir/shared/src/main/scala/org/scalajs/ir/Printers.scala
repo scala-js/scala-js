@@ -223,13 +223,6 @@ object Printers {
           print(") ")
           printBlock(body)
 
-        case DoWhile(body, cond) =>
-          print("do ")
-          printBlock(body)
-          print(" while (")
-          print(cond)
-          print(')')
-
         case ForIn(obj, keyVar, keyVarOriginalName, body) =>
           print("for (val ")
           print(keyVar)

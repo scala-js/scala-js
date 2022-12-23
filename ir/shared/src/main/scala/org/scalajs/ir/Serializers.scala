@@ -277,10 +277,6 @@ object Serializers {
           writeTagAndPos(TagWhile)
           writeTree(cond); writeTree(body)
 
-        case DoWhile(body, cond) =>
-          writeTagAndPos(TagDoWhile)
-          writeTree(body); writeTree(cond)
-
         case ForIn(obj, keyVar, keyVarOriginalName, body) =>
           writeTagAndPos(TagForIn)
           writeTree(obj); writeLocalIdent(keyVar)
@@ -1126,7 +1122,15 @@ object Serializers {
         case TagReturn  => Return(readTree(), readLabelIdent())
         case TagIf      => If(readTree(), readTree(), readTree())(readType())
         case TagWhile   => While(readTree(), readTree())
-        case TagDoWhile => DoWhile(readTree(), readTree())
+
+        case TagDoWhile =>
+          if (!hacks.use12)
+            throw new IOException(s"Found invalid pre-1.13 DoWhile loop at $pos")
+          // Rewrite `do { body } while (cond)` to `while ({ body; cond }) {}`
+          val body = readTree()
+          val cond = readTree()
+          While(Block(body, cond), Skip())
+
         case TagForIn   => ForIn(readTree(), readLocalIdent(), readOriginalName(), readTree())
 
         case TagTryCatch =>

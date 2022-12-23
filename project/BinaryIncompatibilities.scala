@@ -9,6 +9,8 @@ object BinaryIncompatibilities {
     exclude[DirectMissingMethodProblem]("org.scalajs.ir.Trees#JSPropertyDef.copy"),
     exclude[DirectMissingMethodProblem]("org.scalajs.ir.Trees#JSPropertyDef.this"),
     exclude[DirectMissingMethodProblem]("org.scalajs.ir.Trees#JSPropertyDef.apply"),
+    exclude[MissingClassProblem]("org.scalajs.ir.Trees$DoWhile"),
+    exclude[MissingClassProblem]("org.scalajs.ir.Trees$DoWhile$"),
   )
 
   val Linker = Seq(

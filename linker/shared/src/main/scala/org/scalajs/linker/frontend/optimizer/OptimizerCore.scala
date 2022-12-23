@@ -413,14 +413,6 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           case _                     => While(newCond, transformStat(body))
         }
 
-      case DoWhile(body, cond) =>
-        val newBody = transformStat(body)
-        val newCond = transformExpr(cond)
-        newCond match {
-          case BooleanLiteral(false) => newBody
-          case _                     => DoWhile(newBody, newCond)
-        }
-
       case ForIn(obj, keyVar @ LocalIdent(name), originalName, body) =>
         val newObj = transformExpr(obj)
         val (newName, newOriginalName) =
