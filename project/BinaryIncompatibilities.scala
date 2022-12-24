@@ -14,6 +14,8 @@ object BinaryIncompatibilities {
   )
 
   val Linker = Seq(
+    // private[linker], not an issue
+    exclude[DirectMissingMethodProblem]("org.scalajs.linker.standard.LinkedClass.optimized"),
   )
 
   val LinkerInterface = Seq(

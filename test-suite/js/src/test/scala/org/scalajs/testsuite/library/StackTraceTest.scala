@@ -156,6 +156,7 @@ object StackTraceTest {
 
   class SJS extends js.Object {
     @JSName("n")
+    @noinline
     def m(): Int = new Foo().f(20)
   }
 }

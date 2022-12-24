@@ -29,4 +29,11 @@ private[linker] object CollectionsCompat {
       }
     }
   }
+
+  implicit class ArrayBufferCompatOps[V](private val self: mutable.ArrayBuffer[V])
+      extends AnyVal {
+
+    def dropRightInPlace(n: Int): Unit =
+      self.remove(self.length - n, n)
+  }
 }

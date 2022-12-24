@@ -112,9 +112,15 @@ final class LinkedClass(
   }
 
   private[linker] def optimized(
-      methods: List[Versioned[MethodDef]]
+      methods: List[Versioned[MethodDef]],
+      exportedMembers: List[Versioned[JSMethodPropDef]],
+      jsConstructorDef: Option[Versioned[JSConstructorDef]]
   ): LinkedClass = {
-    copy(methods = methods)
+    copy(
+      methods = methods,
+      exportedMembers = exportedMembers,
+      jsConstructorDef = jsConstructorDef
+    )
   }
 
   private def copy(

@@ -40,18 +40,17 @@ import org.scalajs.linker.backend.emitter.Transients._
  *  optimizer does. To perform inlining, it relies on abstract protected
  *  methods to identify the target of calls.
  */
-private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
+private[optimizer] abstract class OptimizerCore(
+    config: CommonPhaseConfig, debugID: String) {
   import OptimizerCore._
 
   type MethodID <: AbstractMethodID
-
-  val myself: MethodID
 
   private def semantics: Semantics = config.coreSpec.semantics
 
   // Uncomment and adapt to print debug messages only during one method
   //lazy val debugThisMethod: Boolean =
-  //  myself.toString() == "java.lang.FloatingPointBits$.numberHashCode;D;I"
+  //  debugID == "java.lang.FloatingPointBits$.numberHashCode;D;I"
 
   /** Returns the body of a method. */
   protected def getMethodBody(method: MethodID): MethodDef
@@ -142,16 +141,12 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
   private val intrinsics =
     Intrinsics.buildIntrinsics(config.coreSpec.esFeatures)
 
-  def optimize(thisType: Type, originalDef: MethodDef): MethodDef = {
+  def optimize(myself: Option[MethodID], thisType: Type, params: List[ParamDef],
+      jsClassCaptures: List[ParamDef], resultType: Type, body: Tree,
+      isNoArgCtor: Boolean): (List[ParamDef], Tree) = {
     try {
-      val MethodDef(static, name, originalName, params, resultType, optBody) =
-        originalDef
-      val body = optBody getOrElse {
-        throw new AssertionError("Methods to optimize must be concrete")
-      }
-
-      val (newParams, newBody1) = try {
-        transformMethodDefBody(myself, thisType, params, resultType, body)
+      try {
+        transformMethodDefBody(myself, thisType, params, jsClassCaptures, resultType, body, isNoArgCtor)
       } catch {
         case _: TooManyRollbacksException =>
           localNameAllocator.clear()
@@ -159,20 +154,15 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
           labelNameAllocator.clear()
           stateBackupChain = Nil
           disableOptimisticOptimizations = true
-          transformMethodDefBody(myself, thisType, params, resultType, body)
+          transformMethodDefBody(myself, thisType, params, jsClassCaptures, resultType, body, isNoArgCtor)
       }
-      val newBody =
-        if (originalDef.methodName == NoArgConstructorName) tryElimStoreModule(newBody1)
-        else newBody1
-      MethodDef(static, name, originalName, newParams, resultType,
-          Some(newBody))(originalDef.optimizerHints, None)(originalDef.pos)
     } catch {
       case NonFatal(cause) =>
-        throw new OptimizeException(myself, attemptedInlining.distinct.toList, cause)
+        throw new OptimizeException(debugID, attemptedInlining.distinct.toList, cause)
       case e: Throwable =>
         // This is a fatal exception. Don't wrap, just output debug info error
         Console.err.println(exceptionMsg(
-            myself, attemptedInlining.distinct.toList, e))
+            debugID, attemptedInlining.distinct.toList, e))
         throw e
     }
   }
@@ -880,7 +870,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         val localDef = scope.env.localDefs.getOrElse(name, {
           throw new AssertionError(
               s"Cannot find local def '$name' at $pos\n" +
-              s"While optimizing $myself\n" +
+              s"While optimizing $debugID\n" +
               s"Env is ${scope.env}\n" +
               s"Inlining ${scope.implsBeingInlined}")
         })
@@ -890,7 +880,7 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
         val localDef = scope.env.thisLocalDef.getOrElse {
           throw new AssertionError(
               s"Found invalid 'this' at $pos\n" +
-              s"While optimizing $myself\n" +
+              s"While optimizing $debugID\n" +
               s"Env is ${scope.env}\n" +
               s"Inlining ${scope.implsBeingInlined}")
         }
@@ -4452,8 +4442,22 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
     }
   }
 
-  private def transformMethodDefBody(target: MethodID, thisType: Type,
-      params: List[ParamDef], resultType: Type, body: Tree): (List[ParamDef], Tree) = {
+  private def transformMethodDefBody(optTarget: Option[MethodID], thisType: Type,
+      params: List[ParamDef], jsClassCaptures: List[ParamDef], resultType: Type,
+      body: Tree, isNoArgCtor: Boolean): (List[ParamDef], Tree) = {
+
+    val jsClassCaptureLocalDefs = for {
+      ParamDef(LocalIdent(name), _, ptpe, mutable) <- jsClassCaptures
+    } yield {
+      /* Reserve capture name: They have the same name for the whole class
+       * definition, so we cannot rename them.
+       */
+      localNameAllocator.reserve(name)
+
+      val replacement = ReplaceWithVarRef(name, newSimpleState(Unused), None)
+      val localDef = LocalDef(RefinedType(ptpe), mutable, replacement)
+      name -> localDef
+    }
 
     val (paramLocalDefs, newParamDefs) = params.map(newParamReplacement(_)).unzip
 
@@ -4461,21 +4465,29 @@ private[optimizer] abstract class OptimizerCore(config: CommonPhaseConfig) {
       if (thisType == NoType) None
       else Some(newThisLocalDef(thisType))
 
-    val inlining = {
-      val allocationSiteCount =
-        paramLocalDefs.size + (if (thisLocalDef.isDefined) 1 else 0)
-      val allocationSites =
-        List.fill(allocationSiteCount)(AllocationSite.Anonymous)
-      allocationSites -> target
-    }
-
     val env = OptEnv.Empty
       .withThisLocalDef(thisLocalDef)
       .withLocalDefs(paramLocalDefs)
+      .withLocalDefs(jsClassCaptureLocalDefs)
 
-    val scope = Scope.Empty.inlining(inlining).withEnv(env)
+    val scope = {
+      val scope0 = Scope.Empty.withEnv(env)
 
-    val newBody = transform(body, resultType == NoType)(scope)
+      optTarget.fold(scope0) { target =>
+        val allocationSiteCount =
+          paramLocalDefs.size + (if (thisLocalDef.isDefined) 1 else 0)
+        val allocationSites =
+          List.fill(allocationSiteCount)(AllocationSite.Anonymous)
+
+        scope0.inlining(allocationSites -> target)
+      }
+    }
+
+    val newBody0 = transform(body, resultType == NoType)(scope)
+
+    val newBody =
+      if (isNoArgCtor) tryElimStoreModule(newBody0)
+      else newBody0
 
     (newParamDefs, newBody)
   }
@@ -5067,7 +5079,6 @@ private[optimizer] object OptimizerCore {
 
   private val AnyArgConstructorName = MethodName.constructor(List(ClassRef(ObjectClass)))
 
-  private val ObjectCloneName = MethodName("clone", Nil, ClassRef(ObjectClass))
   private val TupleFirstMethodName = MethodName("_1", Nil, ClassRef(ObjectClass))
   private val TupleSecondMethodName = MethodName("_2", Nil, ClassRef(ObjectClass))
   private val ClassTagApplyMethodName =
@@ -5966,19 +5977,29 @@ private[optimizer] object OptimizerCore {
       this.enclosingClassName == className && this.methodName == methodName
   }
 
-  /** Parts of [[GenIncOptimizer#MethodImpl]] with decisions about optimizations. */
-  abstract class MethodImpl {
-    def enclosingClassName: ClassName
-    def methodName: MethodName
-    def optimizerHints: OptimizerHints
-    def originalDef: MethodDef
-    def thisType: Type
+  /* This is a "broken" case class so we get equals (and hashCode) for free.
+   *
+   * This hack is somewhat acceptable, because:
+   * - it is only part of the OptimizerCore / IncOptimizer interface.
+   * - the risk of getting equals wrong is high: it only affects the incremental
+   *   behavior of the optimizer, which we have few tests for.
+   */
+  final case class MethodAttributes private[OptimizerCore] (
+      private[OptimizerCore] val inlineable: Boolean,
+      private[OptimizerCore] val shouldInline: Boolean,
+      private[OptimizerCore] val isForwarder: Boolean,
+      private[OptimizerCore] val jsDynImportInlineTarget: Option[ImportTarget],
+      private[OptimizerCore] val jsDynImportThunkFor: Option[MethodName]
+  )
 
-    protected def computeNewAttributes(): MethodAttributes = {
-      val MethodDef(_, MethodIdent(methodName), _, params, _, optBody) = originalDef
+  object MethodAttributes {
+    def compute(enclosingClassName: ClassName, methodDef: MethodDef): MethodAttributes = {
+      val MethodDef(_, MethodIdent(methodName), _, params, _, optBody) = methodDef
       val body = optBody getOrElse {
         throw new AssertionError("Methods in optimizer must be concrete")
       }
+
+      val optimizerHints = methodDef.optimizerHints
 
       val isForwarder = body match {
         // Shape of forwarders to trait impls
@@ -6079,21 +6100,6 @@ private[optimizer] object OptimizerCore {
       new MethodAttributes(inlineable, shouldInline, isForwarder, jsDynImportInlineTarget, jsDynImportThunkFor)
     }
   }
-
-  /* This is a "broken" case class so we get equals (and hashCode) for free.
-   *
-   * This hack is somewhat acceptable, because:
-   * - it is only part of the OptimizerCore / IncOptimizer interface.
-   * - the risk of getting equals wrong is high: it only affects the incremental
-   *   behavior of the optimizer, which we have few tests for.
-   */
-  final case class MethodAttributes private[OptimizerCore] (
-      private[OptimizerCore] val inlineable: Boolean,
-      private[OptimizerCore] val shouldInline: Boolean,
-      private[OptimizerCore] val isForwarder: Boolean,
-      private[OptimizerCore] val jsDynImportInlineTarget: Option[ImportTarget],
-      private[OptimizerCore] val jsDynImportThunkFor: Option[MethodName]
-  )
 
   sealed trait ImportTarget
 
@@ -6197,13 +6203,11 @@ private[optimizer] object OptimizerCore {
     }
   }
 
-  private def exceptionMsg(myself: AbstractMethodID,
+  private def exceptionMsg(debugID: String,
       attemptedInlining: List[AbstractMethodID], cause: Throwable) = {
     val buf = new StringBuilder()
 
-    buf.append("The Scala.js optimizer crashed while optimizing " + myself +
-        ": " + cause.toString)
-
+    buf.append(s"The Scala.js optimizer crashed while optimizing $debugID: $cause")
     buf.append("\nMethods attempted to inline:\n")
 
     for (m <- attemptedInlining) {
@@ -6222,9 +6226,9 @@ private[optimizer] object OptimizerCore {
       val savedStateBackupChain: List[StateBackup],
       val cont: () => TailRec[Tree]) extends ControlThrowable
 
-  class OptimizeException(val myself: AbstractMethodID,
+  class OptimizeException(val debugID: String,
       val attemptedInlining: List[AbstractMethodID], cause: Throwable
-  ) extends Exception(exceptionMsg(myself, attemptedInlining, cause), cause)
+  ) extends Exception(exceptionMsg(debugID, attemptedInlining, cause), cause)
 
   private abstract class FreshNameAllocator[N <: Name] private (
       initialMap: Map[N, Int]) {
@@ -6253,6 +6257,14 @@ private[optimizer] object OptimizerCore {
     }
 
     protected def nameWithSuffix(name: N, suffix: String): N
+
+    /** Reserves the provided name to not be allocated.
+     *
+     *  May only be called on a "cleared" instance (i.e. [[freshName]] has not
+     *  been called yet or clear has just been called).
+     */
+    def reserve(name: N): Unit =
+      usedNamesToNextCounter = usedNamesToNextCounter.updated(name, 1)
 
     def snapshot(): Snapshot[N] = new Snapshot(usedNamesToNextCounter)
 
