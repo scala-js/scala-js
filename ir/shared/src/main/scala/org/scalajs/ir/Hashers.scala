@@ -120,12 +120,22 @@ object Hashers {
     case native: JSNativeMemberDef => native
   }
 
+  def hashTopLevelExportDef(tle: TopLevelExportDef): TopLevelExportDef = tle match {
+    case TopLevelMethodExportDef(moduleID, methodDef) =>
+      TopLevelMethodExportDef(moduleID, hashJSMethodDef(methodDef))(tle.pos)
+
+    case _:TopLevelFieldExportDef | _:TopLevelModuleExportDef |
+        _:TopLevelJSClassExportDef =>
+      tle
+  }
+
   /** Hash the definitions in a ClassDef (where applicable) */
   def hashClassDef(classDef: ClassDef): ClassDef = {
     import classDef._
     val newMemberDefs = hashMemberDefs(memberDefs)
+    val newTopLevelExportDefs = topLevelExportDefs.map(hashTopLevelExportDef(_))
     ClassDef(name, originalName, kind, jsClassCaptures, superClass, interfaces,
-        jsSuperClass, jsNativeLoadSpec, newMemberDefs, topLevelExportDefs)(
+        jsSuperClass, jsNativeLoadSpec, newMemberDefs, newTopLevelExportDefs)(
         optimizerHints)
   }
 
