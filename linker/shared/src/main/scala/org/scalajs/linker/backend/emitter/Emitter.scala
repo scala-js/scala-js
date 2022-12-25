@@ -426,12 +426,21 @@ final class Emitter(config: Emitter.Config) {
       val ctorWithGlobals = {
         /* The constructor depends both on the class version, and the version
          * of the inlineable init, if there is one.
+         *
+         * If it is a JS class, it depends on the jsConstructorDef.
          */
         val ctorCache = classCache.getConstructorCache()
-        val ctorVersion = linkedInlineableInit.fold {
-          Version.combine(linkedClass.version)
-        } { linkedInit =>
-          Version.combine(linkedClass.version, linkedInit.version)
+        val ctorVersion = {
+          if (linkedClass.kind.isJSClass) {
+            assert(linkedInlineableInit.isEmpty)
+            Version.combine(linkedClass.version, linkedClass.jsConstructorDef.get.version)
+          } else {
+            linkedInlineableInit.fold {
+              Version.combine(linkedClass.version)
+            } { linkedInit =>
+              Version.combine(linkedClass.version, linkedInit.version)
+            }
+          }
         }
         ctorCache.getOrElseUpdate(ctorVersion,
             classEmitter.genConstructor(linkedClass, useESClass, linkedInlineableInit)(moduleContext, ctorCache))

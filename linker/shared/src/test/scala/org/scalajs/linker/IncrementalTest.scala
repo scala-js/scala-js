@@ -380,6 +380,51 @@ class IncrementalTest {
 
     testIncrementalBidirectional(classDefs(_), _ => MainTestModuleInitializers)
   }
+
+  @Test
+  def testInvalidateJSCtor_Issue4774(): AsyncResult = await {
+    val AClass = ClassName("A")
+    val BModule = ClassName("B")
+    val JSObject = ClassName("jso")
+
+    val jsMethodName = str("foo")
+    val targetMethodName = m("value", Nil, IntRef)
+
+    def classDefs(pre: Boolean) = Seq(
+      v0 -> mainTestClassDef(
+          consoleLog(JSNew(LoadJSConstructor(AClass), Nil))
+      ),
+      v0 -> classDef(
+          JSObject,
+          kind = ClassKind.NativeJSClass,
+          jsNativeLoadSpec = Some(JSNativeLoadSpec.Global("Object", Nil)),
+          superClass = Some(ObjectClass)
+      ),
+      v0 -> classDef(
+          AClass,
+          kind = ClassKind.JSClass,
+          superClass = Some(JSObject),
+          memberDefs = List(
+              JSConstructorDef(EMF.withNamespace(MemberNamespace.Constructor), Nil, None,
+                  JSConstructorBody(Nil, JSSuperConstructorCall(Nil), List({
+                    consoleLog(Apply(EAF, LoadModule(BModule), targetMethodName, Nil)(IntType))
+                  })))(EOH, UNV)
+          )
+      ),
+      v(pre) -> classDef(
+          BModule,
+          kind = ClassKind.ModuleClass,
+          superClass = Some(ObjectClass),
+          memberDefs = List(
+              trivialCtor(BModule),
+              MethodDef(EMF, targetMethodName, NON, Nil, IntType,
+                  Some(int(if (pre) 1 else 2)))(EOH.withInline(true), UNV)
+          )
+      )
+    )
+
+    testIncrementalBidirectional(classDefs(_), _ => MainTestModuleInitializers)
+  }
 }
 
 object IncrementalTest {
