@@ -485,13 +485,19 @@ final class Emitter(config: Emitter.Config) {
       }
 
       // Exported Members
-      val exportedMembersWithGlobals = classTreeCache.exportedMembers.getOrElseUpdate(
-          classEmitter.genExportedMembers(linkedClass, useESClass)(moduleContext, classCache))
+      val exportedMembersWithGlobals = for {
+        (member, idx) <- linkedClass.exportedMembers.zipWithIndex
+      } yield {
+        val memberCache = classCache.getExportedMemberCache(idx)
+        val version = Version.combine(linkedClass.version, member.version)
+        memberCache.getOrElseUpdate(version,
+            classEmitter.genExportedMember(linkedClass, useESClass, member)(moduleContext, memberCache))
+      }
 
       val fullClass = for {
         ctor <- ctorWithGlobals
         memberMethods <- WithGlobals.list(memberMethodsWithGlobals)
-        exportedMembers <- exportedMembersWithGlobals
+        exportedMembers <- WithGlobals.list(exportedMembersWithGlobals)
         clazz <- classEmitter.buildClass(linkedClass, useESClass, ctor,
             memberMethods, exportedMembers)(moduleContext, classCache)
       } yield {
@@ -575,6 +581,9 @@ final class Emitter(config: Emitter.Config) {
 
     private[this] var _constructorCache: Option[MethodCache[js.Tree]] = None
 
+    private[this] val _exportedMembersCache =
+      mutable.Map.empty[Int, MethodCache[js.Tree]]
+
     override def invalidate(): Unit = {
       /* Do not invalidate contained methods, as they have their own
        * invalidation logic.
@@ -623,12 +632,17 @@ final class Emitter(config: Emitter.Config) {
       }
     }
 
+    def getExportedMemberCache(idx: Int): MethodCache[js.Tree] =
+      _exportedMembersCache.getOrElseUpdate(idx, new MethodCache)
+
     def cleanAfterRun(): Boolean = {
       _methodCaches.foreach(_.filterInPlace((_, c) => c.cleanAfterRun()))
       _memberMethodCache.filterInPlace((_, c) => c.cleanAfterRun())
 
       if (_constructorCache.exists(!_.cleanAfterRun()))
         _constructorCache = None
+
+      _exportedMembersCache.filterInPlace((_, c) => c.cleanAfterRun())
 
       if (!_cacheUsed)
         invalidate()
@@ -768,7 +782,6 @@ object Emitter {
 
   private final class DesugaredClassCache {
     val privateJSFields = new OneTimeCache[WithGlobals[List[js.Tree]]]
-    val exportedMembers = new OneTimeCache[WithGlobals[js.Tree]]
     val instanceTests = new OneTimeCache[WithGlobals[js.Tree]]
     val typeData = new OneTimeCache[WithGlobals[js.Tree]]
     val setTypeData = new OneTimeCache[js.Tree]

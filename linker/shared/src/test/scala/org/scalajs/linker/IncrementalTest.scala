@@ -344,6 +344,42 @@ class IncrementalTest {
     testIncrementalBidirectional(classDefs(_), _ => MainTestModuleInitializers)
   }
 
+  @Test
+  def testInvalidateExportedMethods_Issue4774(): AsyncResult = await {
+    val AModule = ClassName("A")
+    val BModule = ClassName("B")
+
+    val jsMethodName = str("foo")
+    val targetMethodName = m("value", Nil, IntRef)
+
+    def classDefs(pre: Boolean) = Seq(
+      v0 -> mainTestClassDef(
+          consoleLog(JSMethodApply(LoadModule(AModule), jsMethodName, Nil))
+      ),
+      v0 -> classDef(
+          AModule,
+          kind = ClassKind.ModuleClass,
+          superClass = Some(ObjectClass),
+          memberDefs = List(
+              trivialCtor(AModule),
+              JSMethodDef(EMF, str("foo"), Nil, None,
+                  Apply(EAF, LoadModule(BModule), targetMethodName, Nil)(IntType))(EOH, UNV)
+          )
+      ),
+      v(pre) -> classDef(
+          BModule,
+          kind = ClassKind.ModuleClass,
+          superClass = Some(ObjectClass),
+          memberDefs = List(
+              trivialCtor(BModule),
+              MethodDef(EMF, targetMethodName, NON, Nil, IntType,
+                  Some(int(if (pre) 1 else 2)))(EOH.withInline(true), UNV)
+          )
+      )
+    )
+
+    testIncrementalBidirectional(classDefs(_), _ => MainTestModuleInitializers)
+  }
 }
 
 object IncrementalTest {
