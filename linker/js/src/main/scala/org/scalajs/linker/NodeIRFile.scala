@@ -34,8 +34,17 @@ object NodeIRFile {
         new NodeIRFileImpl(path, stats.mtime.toOption))
   }
 
+  private[linker] def dateToVersion(optDate: Option[js.Date]): ir.Version = {
+    optDate
+      .map(_.getTime())
+      // filter invalid dates and over / underflows.
+      .filter(d => !d.isNaN && !d.isInfinity)
+      .map(_.toLong)
+      .fold(ir.Version.Unversioned)(ir.Version.fromLong(_))
+  }
+
   private final class NodeIRFileImpl(path: String, version: Option[js.Date])
-      extends IRFileImpl(path, version.map(_.getTime().toString)) {
+      extends IRFileImpl(path, dateToVersion(version)) {
 
     def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] = {
       def loop(fd: Int, buf: ByteBuffer): Future[ir.EntryPointsInfo] = {

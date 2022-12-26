@@ -26,7 +26,7 @@ import org.scalajs.linker.analyzer._
 import org.scalajs.ir
 import org.scalajs.ir.Names.ClassName
 import org.scalajs.ir.Trees.{ClassDef, MethodDef}
-import org.scalajs.ir.Hashers
+import org.scalajs.ir.Version
 
 import Analysis._
 
@@ -142,21 +142,16 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
 
   /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass.
    */
-  private def linkedClassDef(classDef: ClassDef, version: Option[String],
+  private def linkedClassDef(classDef: ClassDef, version: Version,
       syntheticMethodDefs: Iterator[MethodDef],
       analyzerInfo: ClassInfo): LinkedClass = {
     import ir.Trees._
 
     val fields = List.newBuilder[AnyFieldDef]
-    val methods = List.newBuilder[Versioned[MethodDef]]
+    val methods = List.newBuilder[MethodDef]
     val jsNativeMembers = List.newBuilder[JSNativeMemberDef]
-    var jsConstructorDef: Option[Versioned[JSConstructorDef]] = None
-    val exportedMembers = List.newBuilder[Versioned[JSMethodPropDef]]
-
-    def linkedMethod(m: MethodDef) = {
-      val version = m.hash.map(Hashers.hashAsVersion(_))
-      new Versioned(m, version)
-    }
+    var jsConstructorDef: Option[JSConstructorDef] = None
+    val exportedMembers = List.newBuilder[JSMethodPropDef]
 
     classDef.memberDefs.foreach {
       case field: AnyFieldDef =>
@@ -171,35 +166,26 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
           assert(m.body.isDefined,
               s"The abstract method ${classDef.name.name}.${m.methodName} " +
               "is reachable.")
-          methods += linkedMethod(m)
+          methods += m
         }
 
       case m: JSConstructorDef =>
         if (analyzerInfo.isAnySubclassInstantiated) {
           assert(jsConstructorDef.isEmpty,
               s"Duplicate JS constructor in ${classDef.name.name} at ${m.pos}")
-          val version = m.hash.map(Hashers.hashAsVersion(_))
-          jsConstructorDef = Some(new Versioned(m, version))
+          jsConstructorDef = Some(m)
         }
 
-      case m: JSMethodDef =>
-        if (analyzerInfo.isAnySubclassInstantiated) {
-          val version = m.hash.map(Hashers.hashAsVersion(_))
-          exportedMembers += new Versioned(m, version)
-        }
-
-      case m: JSPropertyDef =>
-        if (analyzerInfo.isAnySubclassInstantiated) {
-          val version = m.hash.map(Hashers.hashAsVersion(_))
-          exportedMembers += new Versioned(m, version)
-        }
+      case m: JSMethodPropDef =>
+        if (analyzerInfo.isAnySubclassInstantiated)
+          exportedMembers += m
 
       case m: JSNativeMemberDef =>
         if (analyzerInfo.jsNativeMembersUsed.contains(m.name.name))
           jsNativeMembers += m
     }
 
-    methods ++= syntheticMethodDefs.map(linkedMethod)
+    methods ++= syntheticMethodDefs
 
     val kind =
       if (analyzerInfo.isModuleAccessed) classDef.kind

@@ -16,6 +16,7 @@ import scala.concurrent._
 
 import scala.collection.mutable
 
+import org.scalajs.ir.Version
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 
@@ -96,8 +97,7 @@ final class Refiner(config: CommonPhaseConfig) {
       BaseLinker.isFieldDefNeeded(info, f)
     }
 
-    val methods = classDef.methods.filter { m =>
-      val methodDef = m.value
+    val methods = classDef.methods.filter { methodDef =>
       info.methodInfos(methodDef.flags.namespace)(methodDef.methodName)
         .isReachable
     }
@@ -233,11 +233,10 @@ private object Refiner {
       val caches: Array[mutable.Map[MethodName, LinkedMethodDefInfoCache]])
       extends AnyVal {
 
-    def getInfo(method: Versioned[MethodDef]): Infos.MethodInfo = {
-      val methodDef = method.value
+    def getInfo(methodDef: MethodDef): Infos.MethodInfo = {
       val cache = caches(methodDef.flags.namespace.ordinal)
         .getOrElseUpdate(methodDef.methodName, new LinkedMethodDefInfoCache)
-      cache.getInfo(method)
+      cache.getInfo(methodDef)
     }
 
     def cleanAfterRun(): Unit = {
@@ -265,7 +264,7 @@ private object Refiner {
   private final class LinkedJSMethodPropDefsInfosCache private (
       private var caches: Array[LinkedJSMethodPropDefInfoCache]) {
 
-    def getInfos(members: List[Versioned[JSMethodPropDef]]): List[Infos.ReachabilityInfo] = {
+    def getInfos(members: List[JSMethodPropDef]): List[Infos.ReachabilityInfo] = {
       if (members.isEmpty) {
         caches = null
         Nil
@@ -291,22 +290,22 @@ private object Refiner {
       new LinkedJSMethodPropDefsInfosCache(null)
   }
 
-  private abstract class AbstractLinkedMemberInfoCache[Def <: MemberDef, Info] {
+  private abstract class AbstractLinkedMemberInfoCache[Def <: VersionedMemberDef, Info] {
     private var cacheUsed: Boolean = false
-    private var lastVersion: Option[String] = None
+    private var lastVersion: Version = Version.Unversioned
     private var info: Info = _
 
-    final def getInfo(member: Versioned[Def]): Info = {
+    final def getInfo(member: Def): Info = {
       update(member)
       info
     }
 
-    private final def update(member: Versioned[Def]): Unit = {
+    private final def update(member: Def): Unit = {
       if (!cacheUsed) {
         cacheUsed = true
         val newVersion = member.version
-        if (!versionsMatch(newVersion, lastVersion)) {
-          info = computeInfo(member.value)
+        if (!lastVersion.sameVersion(newVersion)) {
+          info = computeInfo(member)
           lastVersion = newVersion
         }
       }
@@ -348,7 +347,4 @@ private object Refiner {
       }
     }
   }
-
-  private def versionsMatch(a: Option[String], b: Option[String]): Boolean =
-    a.isDefined && b.isDefined && a.get == b.get
 }

@@ -65,7 +65,7 @@ class IRCheckerTest {
                 MethodDef(EMF, methMethodName, NON,
                     List(paramDef("foo", ClassType("Foo"))), NoType,
                     Some(Skip()))(
-                    EOH, None)
+                    EOH, UNV)
             )
         ),
 
@@ -76,7 +76,7 @@ class IRCheckerTest {
                 MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
                     nullBarMethodName, NON, Nil, ClassType("Bar"),
                     Some(Null()))(
-                    EOH, None),
+                    EOH, UNV),
                 mainMethodDef(Block(
                     callMethOn(ApplyStatic(EAF, MainTestClassName,
                         nullBarMethodName, Nil)(ClassType("Bar"))),
@@ -130,7 +130,7 @@ class IRCheckerTest {
             Nil,
             JSSuperConstructorCall(Nil),
             Nil
-          ))(EOH, None)
+          ))(EOH, UNV)
         )
       ),
 
@@ -159,7 +159,7 @@ class IRCheckerTest {
             Nil,
             JSSuperConstructorCall(Nil),
             VarDef("x", NON, IntType, mutable = false, int(5)) :: Nil
-          ))(EOH, None)
+          ))(EOH, UNV)
         )
       ),
 

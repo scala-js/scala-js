@@ -14,6 +14,8 @@ package org.scalajs.ir
 
 import scala.language.implicitConversions
 
+import java.io.ByteArrayOutputStream
+
 import org.junit.Test
 import org.junit.Assert._
 
@@ -27,18 +29,20 @@ import Types._
 import TestIRBuilder._
 
 class HashersTest {
-  private def assertHashEquals(expected: String, actual: Option[TreeHash]): Unit = {
-    assertTrue(actual.isDefined)
-    assertEquals(expected, hashAsVersion(actual.get))
-  }
+  private def assertHashEquals(expected: String, actual: Version): Unit = {
+    assertTrue(actual.isHash)
 
-  @Test def testHashAsVersion(): Unit = {
-    val hash: TreeHash = new TreeHash(Array(
-        0x10, 0x32, 0x54, 0x76, 0x98, 0xba, 0xdc, 0xfe, 0xc3, 0x7f,
-        0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0xbb, 0x34
-    ).map(_.toByte))
+    val actualBytes = {
+      val out = new ByteArrayOutputStream
+      actual.writeHash(out)
+      out.close()
+      out.toByteArray()
+    }
 
-    assertEquals("1032547698badcfec37f0123456789abcdefbb34", hashAsVersion(hash))
+    val expectedBytes = expected.grouped(2)
+      .map(Integer.parseInt(_, 16).toByte).toArray
+
+    assertArrayEquals(expectedBytes, actualBytes)
   }
 
   private val bodyWithInterestingStuff = Block(
@@ -75,7 +79,7 @@ class HashersTest {
   @Test def testHashMethodDef(): Unit = {
     def test(expected: String, methodDef: MethodDef): Unit = {
       val hashedMethodDef = hashMethodDef(methodDef)
-      assertHashEquals(expected, hashedMethodDef.hash)
+      assertHashEquals(expected, hashedMethodDef.version)
     }
 
     val mIIMethodName = MethodName("m", List(I), I)
@@ -85,7 +89,7 @@ class HashersTest {
         MethodDef(MemberFlags.empty, mIIMethodName, NON,
             List(ParamDef("x", NON, IntType, mutable = false)),
             IntType, None)(
-            NoOptHints, None)
+            NoOptHints, UNV)
     )
 
     test(
@@ -93,14 +97,14 @@ class HashersTest {
         MethodDef(MemberFlags.empty, mIIMethodName, NON,
             List(ParamDef("x", NON, IntType, mutable = false)),
             IntType, Some(bodyWithInterestingStuff))(
-            NoOptHints, None)
+            NoOptHints, UNV)
     )
   }
 
   @Test def testHashJSMethodDef(): Unit = {
     def test(expected: String, methodDef: JSMethodDef): Unit = {
       val hashedMethodDef = hashJSMethodDef(methodDef)
-      assertHashEquals(expected, hashedMethodDef.hash)
+      assertHashEquals(expected, hashedMethodDef.version)
     }
 
     test(
@@ -108,7 +112,7 @@ class HashersTest {
         JSMethodDef(MemberFlags.empty, s("m"),
             List(ParamDef("x", NON, AnyType, mutable = false)), None,
             bodyWithInterestingStuff)(
-            NoOptHints, None)
+            NoOptHints, UNV)
     )
   }
 

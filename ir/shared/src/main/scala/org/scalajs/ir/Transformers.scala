@@ -14,6 +14,7 @@ package org.scalajs.ir
 
 import Trees._
 import Types._
+import Version.Unversioned
 
 object Transformers {
 
@@ -251,17 +252,17 @@ object Transformers {
           val MethodDef(flags, name, originalName, args, resultType, body) = memberDef
           val newBody = body.map(transform(_, isStat = resultType == NoType))
           MethodDef(flags, name, originalName, args, resultType, newBody)(
-              memberDef.optimizerHints, None)
+              memberDef.optimizerHints, Unversioned)
 
         case memberDef: JSConstructorDef =>
           val JSConstructorDef(flags, args, restParam, body) = memberDef
           JSConstructorDef(flags, args, restParam, transformJSConstructorBody(body))(
-              memberDef.optimizerHints, None)
+              memberDef.optimizerHints, Unversioned)
 
         case memberDef: JSMethodDef =>
           val JSMethodDef(flags, name, args, restParam, body) = memberDef
           JSMethodDef(flags, name, args, restParam, transformExpr(body))(
-              memberDef.optimizerHints, None)
+              memberDef.optimizerHints, Unversioned)
 
         case JSPropertyDef(flags, name, getterBody, setterArgAndBody) =>
           JSPropertyDef(
@@ -270,7 +271,7 @@ object Transformers {
               getterBody.map(transformStat),
               setterArgAndBody map { case (arg, body) =>
                 (arg, transformStat(body))
-              })(None)
+              })(Unversioned)
       }
     }
 

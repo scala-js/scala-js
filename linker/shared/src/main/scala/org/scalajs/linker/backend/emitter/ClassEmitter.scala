@@ -155,11 +155,11 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   /** Extracts the inlineable init method, if there is one. */
   def extractInlineableInit(tree: LinkedClass)(
-      implicit globalKnowledge: GlobalKnowledge): (Option[Versioned[MethodDef]], List[Versioned[MethodDef]]) = {
+      implicit globalKnowledge: GlobalKnowledge): (Option[MethodDef], List[MethodDef]) = {
 
     if (globalKnowledge.hasInlineableInit(tree.className)) {
       val (constructors, otherMethods) = tree.methods.partition { m =>
-        m.value.flags.namespace == MemberNamespace.Constructor
+        m.flags.namespace == MemberNamespace.Constructor
       }
       assert(constructors.size == 1,
           s"Found ${constructors.size} constructors in class " +
@@ -385,7 +385,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     val JSConstructorDef(_, params, restParam, body) = tree.jsConstructorDef.getOrElse {
       throw new IllegalArgumentException(
           s"${tree.className} does not have an exported constructor")
-    }.value
+    }
 
     desugarToFunction(tree.className, params, restParam, body)
   }
@@ -486,8 +486,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       globalKnowledge: GlobalKnowledge): List[js.Tree] = {
     implicit val pos = tree.pos
     val hasStaticInit = tree.methods.exists { m =>
-      m.value.flags.namespace == MemberNamespace.StaticConstructor &&
-      m.value.methodName.isStaticInitializer
+      m.flags.namespace == MemberNamespace.StaticConstructor &&
+      m.methodName.isStaticInitializer
     }
     if (hasStaticInit) {
       val field = globalVar("sct", (tree.className, StaticInitializerName),
@@ -514,8 +514,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   private def hasClassInitializer(tree: LinkedClass): Boolean = {
     tree.methods.exists { m =>
-      m.value.flags.namespace == MemberNamespace.StaticConstructor &&
-      m.value.methodName.isClassInitializer
+      m.flags.namespace == MemberNamespace.StaticConstructor &&
+      m.methodName.isClassInitializer
     }
   }
 
@@ -1070,7 +1070,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     val exportsWithGlobals = tree.exportedMembers map { member =>
-      member.value match {
+      member match {
         case m: JSMethodDef =>
           genJSMethod(tree, useESClass, m)
         case p: JSPropertyDef =>

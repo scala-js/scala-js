@@ -22,6 +22,7 @@ import org.scalajs.junit.async._
 import org.scalajs.ir.EntryPointsInfo
 import org.scalajs.ir.Trees.ClassDef
 import org.scalajs.ir.Names.{ClassName, ObjectClass}
+import org.scalajs.ir.Version.Unversioned
 
 import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable._
@@ -80,7 +81,7 @@ class StandardIRFileCacheTest {
 
 object StandardIRFileCacheTest {
   final class MockIRContainer(path: String)
-      extends IRContainerImpl(path, version = None) {
+      extends IRContainerImpl(path, Unversioned) {
     private val files = List.tabulate(10)(i => new MockIRFile(f"$path.F$i"))
 
     private val _sjsirFiles = new MockOperation(files)
@@ -91,7 +92,7 @@ object StandardIRFileCacheTest {
       _sjsirFiles.run()
   }
 
-  final class MockIRFile(path: String) extends IRFileImpl(path, version = None) {
+  final class MockIRFile(path: String) extends IRFileImpl(path, Unversioned) {
     private val className: ClassName = path
 
     private val _entryPointsInfo =

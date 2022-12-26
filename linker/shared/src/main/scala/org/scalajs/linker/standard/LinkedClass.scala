@@ -13,7 +13,7 @@
 package org.scalajs.linker.standard
 
 import org.scalajs.ir.Trees._
-import org.scalajs.ir.{ClassKind, Position}
+import org.scalajs.ir.{ClassKind, Position, Version}
 import org.scalajs.ir.Names.{ClassName, FieldName}
 
 /** A ClassDef after linking.
@@ -40,9 +40,9 @@ final class LinkedClass(
     val jsSuperClass: Option[Tree],
     val jsNativeLoadSpec: Option[JSNativeLoadSpec],
     val fields: List[AnyFieldDef],
-    val methods: List[Versioned[MethodDef]],
-    val jsConstructorDef: Option[Versioned[JSConstructorDef]],
-    val exportedMembers: List[Versioned[JSMethodPropDef]],
+    val methods: List[MethodDef],
+    val jsConstructorDef: Option[JSConstructorDef],
+    val exportedMembers: List[JSMethodPropDef],
     val jsNativeMembers: List[JSNativeMemberDef],
     val optimizerHints: OptimizerHints,
     val pos: Position,
@@ -59,13 +59,12 @@ final class LinkedClass(
     val externalDependencies: Set[String],
     val dynamicDependencies: Set[ClassName],
 
-    val version: Option[String]) {
+    val version: Version) {
 
   def className: ClassName = name.name
 
   val hasStaticInitializer: Boolean = {
-    methods.exists { m =>
-      val methodDef = m.value
+    methods.exists { methodDef =>
       methodDef.flags.namespace == MemberNamespace.StaticConstructor &&
       methodDef.methodName.isStaticInitializer
     }
@@ -84,7 +83,7 @@ final class LinkedClass(
   private[linker] def refined(
       kind: ClassKind,
       fields: List[AnyFieldDef],
-      methods: List[Versioned[MethodDef]],
+      methods: List[MethodDef],
       jsNativeMembers: List[JSNativeMemberDef],
       hasInstances: Boolean,
       hasInstanceTests: Boolean,
@@ -112,9 +111,9 @@ final class LinkedClass(
   }
 
   private[linker] def optimized(
-      methods: List[Versioned[MethodDef]],
-      exportedMembers: List[Versioned[JSMethodPropDef]],
-      jsConstructorDef: Option[Versioned[JSConstructorDef]]
+      methods: List[MethodDef],
+      exportedMembers: List[JSMethodPropDef],
+      jsConstructorDef: Option[JSConstructorDef]
   ): LinkedClass = {
     copy(
       methods = methods,
@@ -132,9 +131,9 @@ final class LinkedClass(
       jsSuperClass: Option[Tree] = this.jsSuperClass,
       jsNativeLoadSpec: Option[JSNativeLoadSpec] = this.jsNativeLoadSpec,
       fields: List[AnyFieldDef] = this.fields,
-      methods: List[Versioned[MethodDef]] = this.methods,
-      jsConstructorDef: Option[Versioned[JSConstructorDef]] = this.jsConstructorDef,
-      exportedMembers: List[Versioned[JSMethodPropDef]] = this.exportedMembers,
+      methods: List[MethodDef] = this.methods,
+      jsConstructorDef: Option[JSConstructorDef] = this.jsConstructorDef,
+      exportedMembers: List[JSMethodPropDef] = this.exportedMembers,
       jsNativeMembers: List[JSNativeMemberDef] = this.jsNativeMembers,
       optimizerHints: OptimizerHints = this.optimizerHints,
       pos: Position = this.pos,
@@ -147,7 +146,7 @@ final class LinkedClass(
       staticDependencies: Set[ClassName] = this.staticDependencies,
       externalDependencies: Set[String] = this.externalDependencies,
       dynamicDependencies: Set[ClassName] = this.dynamicDependencies,
-      version: Option[String] = this.version): LinkedClass = {
+      version: Version = this.version): LinkedClass = {
     new LinkedClass(
         name,
         kind,

@@ -30,6 +30,7 @@ import org.scalajs.ir.{Trees => js, Types => jstpe, ClassKind, Hashers, Original
 import org.scalajs.ir.Names.{LocalName, FieldName, SimpleMethodName, MethodName, ClassName}
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees.OptimizerHints
+import org.scalajs.ir.Version.Unversioned
 
 import org.scalajs.nscplugin.util.{ScopedVar, VarBox}
 import ScopedVar.withScopedVars
@@ -1217,7 +1218,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
           js.MethodDef(flags, methodIdent, originalName, jsParams, resultType, Some {
             genApplyMethod(genLoadModule(moduleClass), m, jsParams.map(_.ref))
-          })(OptimizerHints.empty, None)
+          })(OptimizerHints.empty, Unversioned)
         }
       }
 
@@ -1314,7 +1315,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           Nil,
           jstpe.NoType,
           Some(stats))(
-          OptimizerHints.empty, None)
+          OptimizerHints.empty, Unversioned)
     }
 
     private def genRegisterReflectiveInstantiation(sym: Symbol)(
@@ -1496,7 +1497,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       val constructorDef = js.JSConstructorDef(
           js.MemberFlags.empty.withNamespace(js.MemberNamespace.Constructor),
-          formalArgs, restParam, constructorBody)(OptimizerHints.empty, None)
+          formalArgs, restParam, constructorBody)(OptimizerHints.empty, Unversioned)
 
       (jsClassCaptures, constructorDef)
     }
@@ -1882,7 +1883,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         val jsMethodDef = if (isAbstractMethod(dd)) {
           js.MethodDef(js.MemberFlags.empty, methodName, originalName,
               jsParams, toIRType(sym.tpe.resultType), None)(
-              OptimizerHints.empty, None)
+              OptimizerHints.empty, Unversioned)
         } else {
           val shouldMarkInline = {
             sym.hasAnnotation(InlineAnnotationClass) ||
@@ -1906,7 +1907,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               js.MethodDef(
                   js.MemberFlags.empty.withNamespace(namespace), methodName,
                   originalName, jsParams, jstpe.NoType, Some(genStat(dd.rhs)))(
-                  optimizerHints, None)
+                  optimizerHints, Unversioned)
             } else {
               val resultIRType = toIRType(sym.tpe.resultType)
               val namespace = {
@@ -2007,7 +2008,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val newBody = body.map(
           b => transformer.transform(b, isStat = resultType == jstpe.NoType))
       js.MethodDef(flags, methodName, originalName, newParams, resultType,
-          newBody)(methodDef.optimizerHints, None)(methodDef.pos)
+          newBody)(methodDef.optimizerHints, Unversioned)(methodDef.pos)
     }
 
     /** Patches the type of selected param defs in a [[js.MethodDef]].
@@ -2043,7 +2044,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val newBody = body.map(
           b => transformer.transform(b, isStat = resultType == jstpe.NoType))
       js.MethodDef(flags, methodName, originalName, newParams, resultType,
-          newBody)(methodDef.optimizerHints, None)(methodDef.pos)
+          newBody)(methodDef.optimizerHints, Unversioned)(methodDef.pos)
     }
 
     /** Generates the JSNativeMemberDef of a JS native method. */
@@ -2155,7 +2156,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }
         js.MethodDef(flags, methodName, originalName, jsParams, resultIRType,
             Some(body))(
-            optimizerHints, None)
+            optimizerHints, Unversioned)
       } else {
         assert(!namespace.isStatic, tree.pos)
 
@@ -2173,7 +2174,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
           js.MethodDef(flags, methodName, originalName,
               thisParamDef :: jsParams, resultIRType, Some(genBody()))(
-              optimizerHints, None)
+              optimizerHints, Unversioned)
         }
       }
     }
@@ -6248,7 +6249,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                     ir.Names.ObjectClass,
                     js.MethodIdent(ir.Names.NoArgConstructorName),
                     Nil)(jstpe.NoType)))))(
-            js.OptimizerHints.empty, None)
+            js.OptimizerHints.empty, Unversioned)
       }
 
       // Compute the set of method symbols that we need to implement
@@ -6302,7 +6303,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         js.MethodDef(js.MemberFlags.empty, encodeMethodSym(sam),
             originalNameOfMethod(sam), jsParams, resultType,
             Some(body))(
-            js.OptimizerHints.empty, None)
+            js.OptimizerHints.empty, Unversioned)
       }
 
       // The class definition
@@ -6397,7 +6398,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             NoOriginalName,
             paramDefs,
             jstpe.AnyType,
-            Some(body))(OptimizerHints.empty, None)
+            Some(body))(OptimizerHints.empty, Unversioned)
       }
     }
 

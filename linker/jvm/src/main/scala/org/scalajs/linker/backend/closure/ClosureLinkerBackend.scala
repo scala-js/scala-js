@@ -177,7 +177,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     val exportedPropertyNames = for {
       classDef <- sjsModule.classDefs
       member <- classDef.exportedMembers
-      name <- exportName(member.value)
+      name <- exportName(member)
       if isValidJSIdentifierName(name)
     } yield {
       name

@@ -1145,6 +1145,10 @@ object Trees {
     val flags: MemberFlags
   }
 
+  sealed trait VersionedMemberDef extends MemberDef {
+    val version: Version
+  }
+
   sealed abstract class AnyFieldDef extends MemberDef {
     // val name: Ident | Tree
     val ftpe: Type
@@ -1160,16 +1164,16 @@ object Trees {
   sealed case class MethodDef(flags: MemberFlags, name: MethodIdent,
       originalName: OriginalName, args: List[ParamDef], resultType: Type,
       body: Option[Tree])(
-      val optimizerHints: OptimizerHints, val hash: Option[TreeHash])(
-      implicit val pos: Position) extends MemberDef {
+      val optimizerHints: OptimizerHints, val version: Version)(
+      implicit val pos: Position) extends VersionedMemberDef {
     def methodName: MethodName = name.name
   }
 
   sealed case class JSConstructorDef(flags: MemberFlags,
       args: List[ParamDef], restParam: Option[ParamDef], body: JSConstructorBody)(
-      val optimizerHints: OptimizerHints, val hash: Option[TreeHash])(
+      val optimizerHints: OptimizerHints, val version: Version)(
       implicit val pos: Position)
-      extends MemberDef
+      extends VersionedMemberDef
 
   sealed case class JSConstructorBody(
       beforeSuper: List[Tree], superCall: JSSuperConstructorCall, afterSuper: List[Tree])(
@@ -1178,17 +1182,17 @@ object Trees {
     val allStats: List[Tree] = beforeSuper ::: superCall :: afterSuper
   }
 
-  sealed abstract class JSMethodPropDef extends MemberDef
+  sealed abstract class JSMethodPropDef extends VersionedMemberDef
 
   sealed case class JSMethodDef(flags: MemberFlags, name: Tree,
       args: List[ParamDef], restParam: Option[ParamDef], body: Tree)(
-      val optimizerHints: OptimizerHints, val hash: Option[TreeHash])(
+      val optimizerHints: OptimizerHints, val version: Version)(
       implicit val pos: Position)
       extends JSMethodPropDef
 
   sealed case class JSPropertyDef(flags: MemberFlags, name: Tree,
       getterBody: Option[Tree], setterArgAndBody: Option[(ParamDef, Tree)])(
-      val hash: Option[TreeHash])(
+      val version: Version)(
       implicit val pos: Position)
       extends JSMethodPropDef
 
@@ -1493,13 +1497,5 @@ object Trees {
         globalSpec: Global)
         extends JSNativeLoadSpec
 
-  }
-
-  /** A hash of a tree (usually a MethodDef).
-   *
-   *  Contains a SHA-1 hash.
-   */
-  final class TreeHash(val hash: Array[Byte]) {
-    assert(hash.length == 20)
   }
 }

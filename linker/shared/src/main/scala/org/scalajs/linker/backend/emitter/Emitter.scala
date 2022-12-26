@@ -16,7 +16,7 @@ import scala.annotation.tailrec
 
 import scala.collection.mutable
 
-import org.scalajs.ir.{ClassKind, Position}
+import org.scalajs.ir.{ClassKind, Position, Version}
 import org.scalajs.ir.Names._
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees.{JSNativeLoadSpec, MemberNamespace}
@@ -377,8 +377,7 @@ final class Emitter(config: Emitter.Config) {
     }
 
     // Static-like methods
-    for (m <- linkedMethods) {
-      val methodDef = m.value
+    for (methodDef <- linkedMethods) {
       val namespace = methodDef.flags.namespace
 
       val emitAsStaticLike = {
@@ -391,8 +390,8 @@ final class Emitter(config: Emitter.Config) {
         val methodCache =
           classCache.getStaticLikeMethodCache(namespace, methodDef.methodName)
 
-        addToMain(methodCache.getOrElseUpdate(m.version,
-            classEmitter.genStaticLikeMethod(className, m.value)(moduleContext, methodCache)))
+        addToMain(methodCache.getOrElseUpdate(methodDef.version,
+            classEmitter.genStaticLikeMethod(className, methodDef)(moduleContext, methodCache)))
       }
     }
 
@@ -429,14 +428,13 @@ final class Emitter(config: Emitter.Config) {
          * of the inlineable init, if there is one.
          */
         val ctorCache = classCache.getConstructorCache()
-        val ctorVersion = linkedInlineableInit.fold[Option[String]] {
-          linkedClass.version.map("1-" + _)
+        val ctorVersion = linkedInlineableInit.fold {
+          Version.combine(linkedClass.version)
         } { linkedInit =>
-          mergeVersions(linkedClass.version, linkedInit.version).map("2-" + _)
+          Version.combine(linkedClass.version, linkedInit.version)
         }
-        val initToInline = linkedInlineableInit.map(_.value)
         ctorCache.getOrElseUpdate(ctorVersion,
-            classEmitter.genConstructor(linkedClass, useESClass, initToInline)(moduleContext, ctorCache))
+            classEmitter.genConstructor(linkedClass, useESClass, linkedInlineableInit)(moduleContext, ctorCache))
       }
 
       /* Bridges from Throwable to methods of Object, which are necessary
@@ -445,19 +443,17 @@ final class Emitter(config: Emitter.Config) {
        */
       val linkedMethodsAndBridges = if (ClassEmitter.shouldExtendJSError(linkedClass)) {
         val existingMethods = linkedMethods
-          .withFilter(_.value.flags.namespace == MemberNamespace.Public)
-          .map(_.value.methodName)
+          .withFilter(_.flags.namespace == MemberNamespace.Public)
+          .map(_.methodName)
           .toSet
 
         val bridges = for {
-          m <- uncachedKnowledge.methodsInObject()
-          methodName = m.value.methodName
-          if !existingMethods.contains(methodName)
+          methodDef <- uncachedKnowledge.methodsInObject()
+          if !existingMethods.contains(methodDef.methodName)
         } yield {
           import org.scalajs.ir.Trees._
           import org.scalajs.ir.Types._
 
-          val methodDef = m.value
           implicit val pos = methodDef.pos
 
           val methodName = methodDef.name
@@ -465,11 +461,10 @@ final class Emitter(config: Emitter.Config) {
               This()(ClassType(className)), ObjectClass, methodName,
               methodDef.args.map(_.ref))(
               methodDef.resultType)
-          val newMethodDef = MethodDef(MemberFlags.empty, methodName,
+          MethodDef(MemberFlags.empty, methodName,
               methodDef.originalName, methodDef.args, methodDef.resultType,
               Some(newBody))(
-              OptimizerHints.empty, None)
-          new Versioned(newMethodDef, m.version)
+              OptimizerHints.empty, methodDef.version)
         }
 
         linkedMethods ++ bridges
@@ -479,14 +474,14 @@ final class Emitter(config: Emitter.Config) {
 
       // Normal methods
       val memberMethodsWithGlobals = for {
-        m <- linkedMethodsAndBridges
-        if m.value.flags.namespace == MemberNamespace.Public
+        method <- linkedMethodsAndBridges
+        if method.flags.namespace == MemberNamespace.Public
       } yield {
         val methodCache =
-          classCache.getMemberMethodCache(m.value.methodName)
+          classCache.getMemberMethodCache(method.methodName)
 
-        methodCache.getOrElseUpdate(m.version,
-            classEmitter.genMemberMethod(className, m.value)(moduleContext, methodCache))
+        methodCache.getOrElseUpdate(method.version,
+            classEmitter.genMemberMethod(className, method)(moduleContext, methodCache))
       }
 
       // Exported Members
@@ -565,18 +560,11 @@ final class Emitter(config: Emitter.Config) {
     )
   }
 
-  // Helpers
-
-  private def mergeVersions(v1: Option[String],
-      v2: Option[String]): Option[String] = {
-    v1.flatMap(s1 => v2.map(s2 => "" + s1.length + "-" + s1 + s2))
-  }
-
   // Caching
 
   private final class ClassCache extends knowledgeGuardian.KnowledgeAccessor {
     private[this] var _cache: DesugaredClassCache = null
-    private[this] var _lastVersion: Option[String] = None
+    private[this] var _lastVersion: Version = Version.Unversioned
     private[this] var _cacheUsed = false
 
     private[this] val _methodCaches =
@@ -593,7 +581,7 @@ final class Emitter(config: Emitter.Config) {
        */
       super.invalidate()
       _cache = null
-      _lastVersion = None
+      _lastVersion = Version.Unversioned
     }
 
     def startRun(): Unit = {
@@ -603,8 +591,8 @@ final class Emitter(config: Emitter.Config) {
       _constructorCache.foreach(_.startRun())
     }
 
-    def getCache(version: Option[String]): DesugaredClassCache = {
-      if (_cache == null || _lastVersion.isEmpty || _lastVersion != version) {
+    def getCache(version: Version): DesugaredClassCache = {
+      if (_cache == null || !_lastVersion.sameVersion(version)) {
         invalidate()
         statsClassesInvalidated += 1
         _lastVersion = version
@@ -651,20 +639,20 @@ final class Emitter(config: Emitter.Config) {
 
   private final class MethodCache[T <: js.Tree] extends knowledgeGuardian.KnowledgeAccessor {
     private[this] var _tree: WithGlobals[T] = null
-    private[this] var _lastVersion: Option[String] = None
+    private[this] var _lastVersion: Version = Version.Unversioned
     private[this] var _cacheUsed = false
 
     override def invalidate(): Unit = {
       super.invalidate()
       _tree = null
-      _lastVersion = None
+      _lastVersion = Version.Unversioned
     }
 
     def startRun(): Unit = _cacheUsed = false
 
-    def getOrElseUpdate(version: Option[String],
+    def getOrElseUpdate(version: Version,
         v: => WithGlobals[T]): WithGlobals[T] = {
-      if (_tree == null || _lastVersion.isEmpty || _lastVersion != version) {
+      if (_tree == null || !_lastVersion.sameVersion(version)) {
         invalidate()
         statsMethodsInvalidated += 1
         _tree = v

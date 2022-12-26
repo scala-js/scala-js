@@ -47,7 +47,7 @@ class SmallModulesForSplittingTest {
         kind = ClassKind.Interface,
         memberDefs = List(
           MethodDef(SMF, methodName, NON, Nil, strClsType, Some(body))(
-              EOH.withNoinline(true), None)
+              EOH.withNoinline(true), UNV)
         ))
     }
 

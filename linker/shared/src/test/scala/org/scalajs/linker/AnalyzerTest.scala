@@ -266,7 +266,7 @@ class AnalyzerTest {
         classDef("B", superClass = Some("A"),
             memberDefs = List(
                 trivialCtor("B"),
-                MethodDef(EMF, fooMethodName, NON, Nil, IntType, Some(int(5)))(EOH, None)
+                MethodDef(EMF, fooMethodName, NON, Nil, IntType, Some(int(5)))(EOH, UNV)
             ))
     )
 
@@ -286,7 +286,7 @@ class AnalyzerTest {
     val method = MethodDef(
         EMF.withNamespace(MemberNamespace.PublicStatic),
         mainName, NON, Nil, NoType,
-        Some(SelectJSNativeMember("A", testName)))(EOH, None)
+        Some(SelectJSNativeMember("A", testName)))(EOH, UNV)
 
     val classDefs = Seq(
         classDef("A", superClass = Some(ObjectClass),
@@ -305,7 +305,7 @@ class AnalyzerTest {
   @Test
   def conflictingDefaultMethods(): AsyncResult = await {
     val defaultMethodDef = MethodDef(EMF, m("foo", Nil, V), NON, Nil,
-        NoType, Some(Skip()))(EOH, None)
+        NoType, Some(Skip()))(EOH, UNV)
     val classDefs = Seq(
         classDef("I1", kind = ClassKind.Interface,
             memberDefs = List(defaultMethodDef)),
@@ -344,7 +344,7 @@ class AnalyzerTest {
                 TopLevelMethodExportDef("main", JSMethodDef(
                     EMF.withNamespace(MemberNamespace.PublicStatic),
                     str("default"), Nil, None, Undefined())(
-                    EOH, None))
+                    EOH, UNV))
             )
         )
     )
@@ -476,7 +476,7 @@ class AnalyzerTest {
     val mainMethod = MethodDef(
         EMF.withNamespace(MemberNamespace.PublicStatic),
         mainName, NON, Nil, NoType,
-        Some(SelectJSNativeMember("A", testName)))(EOH, None)
+        Some(SelectJSNativeMember("A", testName)))(EOH, UNV)
     val nativeMember = JSNativeMemberDef(
         EMF.withNamespace(MemberNamespace.PublicStatic), testName,
         JSNativeLoadSpec.Import("my-module", List("test")))
@@ -511,7 +511,7 @@ class AnalyzerTest {
             memberDefs = List(
                 MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
                     dynName, NON, Nil, AnyType,
-                    Some(consoleLog(str("hello world"))))(EOH, None)))
+                    Some(consoleLog(str("hello world"))))(EOH, UNV)))
     )
 
     val moduleInitializer = ModuleInitializer.mainMethodWithArgs("A", "main")
@@ -538,7 +538,7 @@ class AnalyzerTest {
             Nil,
             JSSuperConstructorCall(Nil),
             JSNewTarget() :: Nil
-          ))(EOH, None)
+          ))(EOH, UNV)
         )
       ),
       JSObjectLikeClassDef
@@ -597,9 +597,9 @@ class AnalyzerTest {
             memberDefs = List(
                 trivialCtor("X"),
                 MethodDef(EMF, fooAMethodName, NON, Nil, ClassType("A"),
-                    Some(Null()))(EOH, None),
+                    Some(Null()))(EOH, UNV),
                 MethodDef(EMF, fooBMethodName, NON, Nil, ClassType("B"),
-                    Some(Null()))(EOH, None)
+                    Some(Null()))(EOH, UNV)
             )
         )
     )
@@ -629,26 +629,26 @@ class AnalyzerTest {
     val classDefs = Seq(
         classDef("I1", kind = ClassKind.Interface,
             memberDefs = List(
-                MethodDef(EMF, barMethodName, NON, Nil, IntType, None)(EOH, None)
+                MethodDef(EMF, barMethodName, NON, Nil, IntType, None)(EOH, UNV)
             )),
         classDef("I2", kind = ClassKind.Interface,
             memberDefs = List(
-                MethodDef(EMF, barMethodName, NON, Nil, IntType, None)(EOH, None)
+                MethodDef(EMF, barMethodName, NON, Nil, IntType, None)(EOH, UNV)
             )),
         classDef("A", superClass = Some(ObjectClass), interfaces = List("I1"),
             memberDefs = List(
                 trivialCtor("A"),
-                MethodDef(EMF, fooMethodName, NON, Nil, IntType, None)(EOH, None)
+                MethodDef(EMF, fooMethodName, NON, Nil, IntType, None)(EOH, UNV)
             )),
         classDef("B", superClass = Some("A"), interfaces = List("I2"),
             memberDefs = List(
                 trivialCtor("B"),
-                MethodDef(EMF, fooMethodName, NON, Nil, IntType, Some(int(5)))(EOH, None)
+                MethodDef(EMF, fooMethodName, NON, Nil, IntType, Some(int(5)))(EOH, UNV)
             )),
         classDef("C", superClass = Some("B"),
             memberDefs = List(
                 trivialCtor("C"),
-                MethodDef(EMF, barMethodName, NON, Nil, IntType, Some(int(5)))(EOH, None)
+                MethodDef(EMF, barMethodName, NON, Nil, IntType, Some(int(5)))(EOH, UNV)
             ))
     )
 

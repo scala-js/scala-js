@@ -53,22 +53,15 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         case JSFieldDef(_, name, _) => typecheckExpr(name, Env.empty)
       }
 
-      classDef.methods.foreach { versioned =>
-        checkMethodDef(versioned.value, classDef)
-      }
+      classDef.methods.foreach(checkMethodDef(_, classDef))
+      classDef.jsConstructorDef.foreach(checkJSConstructorDef(_, classDef))
 
-      classDef.jsConstructorDef.foreach { versioned =>
-        checkJSConstructorDef(versioned.value, classDef)
-      }
+      classDef.exportedMembers.foreach {
+        case jsMethodDef: JSMethodDef =>
+          checkJSMethodDef(jsMethodDef, classDef)
 
-      classDef.exportedMembers.foreach { versioned =>
-        versioned.value match {
-          case jsMethodDef: JSMethodDef =>
-            checkJSMethodDef(jsMethodDef, classDef)
-
-          case jsPropertyDef: JSPropertyDef =>
-            checkJSPropertyDef(jsPropertyDef, classDef)
-        }
+        case jsPropertyDef: JSPropertyDef =>
+          checkJSPropertyDef(jsPropertyDef, classDef)
       }
     }
 

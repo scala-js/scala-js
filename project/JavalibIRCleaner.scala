@@ -5,6 +5,7 @@ import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
+import org.scalajs.ir.Version.Unversioned
 
 import java.io._
 import java.net.URI
@@ -204,7 +205,7 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
         case m @ MethodDef(flags, name, originalName, args, resultType, body) =>
           implicit val pos = m.pos
           MethodDef(flags, transformMethodIdent(name), originalName, transformParamDefs(args),
-              transformType(resultType), body)(m.optimizerHints, m.hash)
+              transformType(resultType), body)(m.optimizerHints, Unversioned)
         case m =>
           m
       }

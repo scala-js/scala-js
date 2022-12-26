@@ -16,7 +16,6 @@ import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees.{AnyFieldDef, MethodDef, JSNativeLoadSpec}
 import org.scalajs.ir.Types.Type
 
-import org.scalajs.linker.standard.Versioned
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 private[emitter] trait GlobalKnowledge {
@@ -105,7 +104,7 @@ private[emitter] trait GlobalKnowledge {
   def methodsInRepresentativeClasses(): List[(MethodName, Set[ClassName])]
 
   /** The public (non-static) methods of java.lang.Object. */
-  def methodsInObject(): List[Versioned[MethodDef]]
+  def methodsInObject(): List[MethodDef]
 
   /** Hijacked classes that are strict descendants of `className`. */
   def hijackedDescendants(className: ClassName): Set[ClassName]

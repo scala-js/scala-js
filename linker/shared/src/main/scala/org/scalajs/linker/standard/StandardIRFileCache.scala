@@ -21,7 +21,7 @@ import java.net.URI
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
-import org.scalajs.ir.EntryPointsInfo
+import org.scalajs.ir.{EntryPointsInfo, Version}
 import org.scalajs.ir.Trees.ClassDef
 
 import org.scalajs.linker.interface._
@@ -121,7 +121,7 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
      *  May only be written under synchronization, except if this is a tombstone
      */
     @volatile
-    private[this] var _version: Option[String] = None
+    private[this] var _version: Version = Version.Unversioned
 
     /** Files in this [[PersistedFiles]] being calculated.
      *  May only be written under synchronization, except if this is a tombstone
@@ -173,7 +173,7 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
        */
       globalCache.remove(path, this)
       // aggressively free stuff for GC
-      _version = null
+      _version = Version.Unversioned
       _files = null
     }
 
@@ -185,17 +185,13 @@ final class StandardIRFileCache(config: IRFileCacheConfig) extends IRFileCacheIm
       assert(_references.get > 0, "Updating an unreferenced file")
       assert(file.path == path, s"Path mismatch: $path, ${file.path}")
 
-      // Helper to ensure v is stable during check
-      @inline
-      def upToDate(v: Option[String]) = v.isDefined && v == file.version
-
-      if (upToDate(_version)) {
+      if (_version.sameVersion(file.version)) {
         // yeepeeh, nothing to do
         statsReused.incrementAndGet()
       } else {
         // We need to update this. We synchronize
         synchronized {
-          if (upToDate(_version)) {
+          if (_version.sameVersion(file.version)) {
             // someone else had the same idea and did our work
             statsReused.incrementAndGet()
           } else {

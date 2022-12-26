@@ -24,6 +24,7 @@ import org.scalajs.ir.{Trees => js, Types => jstpe}
 import org.scalajs.ir.Names.LocalName
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees.OptimizerHints
+import org.scalajs.ir.Version.Unversioned
 
 import org.scalajs.nscplugin.util.ScopedVar
 import ScopedVar.withScopedVars
@@ -264,7 +265,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         reporter.error(alts.head.pos,
             s"Conflicting properties and methods for ${classSym.fullName}::$name.")
         implicit val pos = alts.head.pos
-        js.JSPropertyDef(js.MemberFlags.empty, genExpr(name), None, None)(None)
+        js.JSPropertyDef(js.MemberFlags.empty, genExpr(name), None, None)(Unversioned)
       } else {
         genMemberExportOrDispatcher(name, isProp, alts, static = false)
       }
@@ -317,7 +318,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         }
       }
 
-      js.JSPropertyDef(flags, genExpr(jsName), getterBody, setterArgAndBody)(None)
+      js.JSPropertyDef(flags, genExpr(jsName), getterBody, setterArgAndBody)(Unversioned)
     }
 
     /** generates the exporter function (i.e. exporter for non-properties) for
@@ -352,7 +353,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         genOverloadDispatch(jsName, overloads, jstpe.AnyType)
 
       js.JSMethodDef(flags, genExpr(jsName), formalArgs, restParam, body)(
-          OptimizerHints.empty, None)
+          OptimizerHints.empty, Unversioned)
     }
 
     def genOverloadDispatch(jsName: JSName, alts: List[Exported], tpe: jstpe.Type)(

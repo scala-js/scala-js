@@ -13,6 +13,7 @@ import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 import org.scalajs.ir.Position.NoPosition
+import org.scalajs.ir.Version.Unversioned
 
 /** Hard-coded IR for java.lang.Object.
  *  We cannot so much as begin to fake a compilation of java.lang.Object,
@@ -50,7 +51,7 @@ object JavaLangObject {
           NoOriginalName,
           Nil,
           NoType,
-          Some(Skip()))(OptimizerHints.empty, None),
+          Some(Skip()))(OptimizerHints.empty, Unversioned),
 
         /* def getClass(): java.lang.Class[_] = <getclass>(this) */
         MethodDef(
@@ -61,7 +62,7 @@ object JavaLangObject {
           ClassType(ClassClass),
           Some {
             GetClass(This()(ThisType))
-          })(OptimizerHints.empty.withInline(true), None),
+          })(OptimizerHints.empty.withInline(true), Unversioned),
 
         /* def hashCode(): Int = <identityHashCode>(this) */
         MethodDef(
@@ -72,7 +73,7 @@ object JavaLangObject {
           IntType,
           Some {
             IdentityHashCode(This()(ThisType))
-          })(OptimizerHints.empty.withInline(true), None),
+          })(OptimizerHints.empty.withInline(true), Unversioned),
 
         /* def equals(that: Object): Boolean = this eq that */
         MethodDef(
@@ -86,7 +87,7 @@ object JavaLangObject {
             BinaryOp(BinaryOp.===,
               This()(ThisType),
               VarRef(LocalIdent(LocalName("that")))(AnyType))
-          })(OptimizerHints.empty.withInline(true), None),
+          })(OptimizerHints.empty.withInline(true), Unversioned),
 
         /* protected def clone(): Object =
          *   if (this.isInstanceOf[Cloneable]) <clone>(this.asInstanceOf[Cloneable])
@@ -105,7 +106,7 @@ object JavaLangObject {
               Throw(New(ClassName("java.lang.CloneNotSupportedException"),
                 MethodIdent(NoArgConstructorName), Nil))
             })(AnyType)
-          })(OptimizerHints.empty.withInline(true), None),
+          })(OptimizerHints.empty.withInline(true), Unversioned),
 
         /* def toString(): String =
          *   getClass().getName() + "@" + Integer.toHexString(hashCode())
@@ -133,7 +134,7 @@ object JavaLangObject {
                 MethodIdent(MethodName("toHexString", List(IntRef), StringClassRef)),
                 List(Apply(EAF, This()(ThisType), MethodIdent(MethodName("hashCode", Nil, IntRef)), Nil)(IntType)))(
                 ClassType(BoxedStringClass)))
-          })(OptimizerHints.empty, None),
+          })(OptimizerHints.empty, Unversioned),
 
         /* Since wait() is not supported in any way, a correct implementation
          * of notify() and notifyAll() is to do nothing.
@@ -146,7 +147,7 @@ object JavaLangObject {
           NoOriginalName,
           Nil,
           NoType,
-          Some(Skip()))(OptimizerHints.empty, None),
+          Some(Skip()))(OptimizerHints.empty, Unversioned),
 
         /* def notifyAll(): Unit = () */
         MethodDef(
@@ -155,7 +156,7 @@ object JavaLangObject {
           NoOriginalName,
           Nil,
           NoType,
-          Some(Skip()))(OptimizerHints.empty, None),
+          Some(Skip()))(OptimizerHints.empty, Unversioned),
 
         /* def finalize(): Unit = () */
         MethodDef(
@@ -164,7 +165,7 @@ object JavaLangObject {
           NoOriginalName,
           Nil,
           NoType,
-          Some(Skip()))(OptimizerHints.empty, None),
+          Some(Skip()))(OptimizerHints.empty, Unversioned),
 
         // Exports
 
@@ -177,7 +178,7 @@ object JavaLangObject {
             Apply(EAF, This()(ThisType),
                 MethodIdent(MethodName("toString", Nil, StringClassRef)),
                 Nil)(ClassType(BoxedStringClass))
-          })(OptimizerHints.empty, None)
+          })(OptimizerHints.empty, Unversioned)
       ),
       Nil)(OptimizerHints.empty)
 

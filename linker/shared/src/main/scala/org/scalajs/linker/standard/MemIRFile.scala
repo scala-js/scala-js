@@ -24,7 +24,7 @@ import org.scalajs.linker.interface.unstable.IRFileImpl
 /** A simple in-memory virtual serialized Scala.js IR file. */
 final class MemIRFileImpl(
     path: String,
-    version: Option[String],
+    version: ir.Version,
     content: Array[Byte]
 ) extends IRFileImpl(path, version) {
   def entryPointsInfo(implicit ec: ExecutionContext): Future[ir.EntryPointsInfo] =

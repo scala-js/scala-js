@@ -75,7 +75,7 @@ private[frontend] final class MethodSynthesizer(
 
       MethodDef(MemberFlags.empty, proxyIdent, targetMDef.originalName, params,
           AnyType, Some(body))(
-          OptimizerHints.empty, targetMDef.hash)
+          OptimizerHints.empty, targetMDef.version)
     }
   }
 
@@ -103,7 +103,7 @@ private[frontend] final class MethodSynthesizer(
 
       MethodDef(MemberFlags.empty, bridgeIdent, targetMDef.originalName,
           params, targetMDef.resultType, Some(body))(
-          OptimizerHints.empty, targetMDef.hash)
+          OptimizerHints.empty, targetMDef.version)
     }
   }
 
