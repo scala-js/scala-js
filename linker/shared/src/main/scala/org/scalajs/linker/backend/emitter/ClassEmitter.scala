@@ -44,7 +44,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   import varGen._
 
   def buildClass(tree: LinkedClass, useESClass: Boolean, ctor: js.Tree,
-      memberDefs: List[js.MethodDef], exportedDefs: js.Tree)(
+      memberDefs: List[js.MethodDef], exportedDefs: List[js.Tree])(
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
 
@@ -52,7 +52,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     val className = tree.name.name
     def allES6Defs = {
-      js.Block(ctor +: memberDefs :+ exportedDefs)(tree.pos) match {
+      js.Block(ctor +: (memberDefs ++ exportedDefs))(tree.pos) match {
         case js.Block(allDefs) => allDefs
         case js.Skip()         => Nil
         case oneDef            => List(oneDef)
@@ -61,7 +61,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     def allES5Defs(classVar: js.Tree) = {
       WithGlobals(js.Block(
-          ctor, assignES5ClassMembers(classVar, memberDefs), exportedDefs))
+          ctor, assignES5ClassMembers(classVar, memberDefs), js.Block(exportedDefs: _*)))
     }
 
     if (!tree.kind.isJSClass) {
@@ -1066,20 +1066,13 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     createAccessor.map(js.Block(createModuleInstanceField, _))
   }
 
-  def genExportedMembers(tree: LinkedClass, useESClass: Boolean)(
+  def genExportedMember(tree: LinkedClass, useESClass: Boolean, member: JSMethodPropDef)(
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
-    val exportsWithGlobals = tree.exportedMembers map { member =>
-      member match {
-        case m: JSMethodDef =>
-          genJSMethod(tree, useESClass, m)
-        case p: JSPropertyDef =>
-          genJSProperty(tree, useESClass, p)
-      }
+    member match {
+      case m: JSMethodDef   => genJSMethod(tree, useESClass, m)
+      case p: JSPropertyDef => genJSProperty(tree, useESClass, p)
     }
-
-    for (exports <- WithGlobals.list(exportsWithGlobals))
-      yield js.Block(exports)(tree.pos)
   }
 
   def genTopLevelExports(topLevelExports: List[LinkedTopLevelExport])(
