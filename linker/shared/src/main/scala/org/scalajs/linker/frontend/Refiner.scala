@@ -25,6 +25,7 @@ import org.scalajs.logging._
 import org.scalajs.linker._
 import org.scalajs.linker.interface.ModuleInitializer
 import org.scalajs.linker.standard._
+import org.scalajs.linker.standard.ModuleSet.ModuleID
 import org.scalajs.linker.analyzer._
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
@@ -55,7 +56,17 @@ final class Refiner(config: CommonPhaseConfig) {
           refineClassDef(linkedClassesByName(info.className), info)
         }
 
-        new LinkingUnit(unit.coreSpec, linkedClassDefs.toList, unit.topLevelExports,
+        val refinedTopLevelExports = for {
+          linkedTopLevelExport <- unit.topLevelExports
+        } yield {
+          val tree = linkedTopLevelExport.tree
+          val infos =
+            analysis.topLevelExportInfos((ModuleID(tree.moduleID), tree.topLevelExportName))
+          new LinkedTopLevelExport(linkedTopLevelExport.owningClass, tree,
+              infos.staticDependencies.toSet, infos.externalDependencies.toSet)
+        }
+
+        new LinkingUnit(unit.coreSpec, linkedClassDefs.toList, refinedTopLevelExports,
             unit.moduleInitializers)
       }
 
