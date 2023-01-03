@@ -45,7 +45,7 @@ class SmallModulesForSplittingTest {
     def methodHolder(name: ClassName, body: Tree) = {
       classDef(name,
         kind = ClassKind.Interface,
-        memberDefs = List(
+        methods = List(
           MethodDef(SMF, methodName, NON, Nil, strClsType, Some(body))(
               EOH.withNoinline(true), UNV)
         ))

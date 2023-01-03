@@ -100,7 +100,7 @@ class FewestModulesSplittingTest {
       classDef(
           className = "Dyn" + i,
           kind = ClassKind.Interface,
-          memberDefs = List(dynMethod)
+          methods = List(dynMethod)
       )
     }
 

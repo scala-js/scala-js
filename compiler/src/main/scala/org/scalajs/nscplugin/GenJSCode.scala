@@ -491,7 +491,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       // Generate members (constructor + methods)
 
-      val generatedNonFieldMembers = new ListBuffer[js.MemberDef]
+      val methodsBuilder = List.newBuilder[js.MethodDef]
+      val jsNativeMembersBuilder = List.newBuilder[js.JSNativeMemberDef]
 
       def gen(tree: Tree): Unit = {
         tree match {
@@ -503,9 +504,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
           case dd: DefDef =>
             if (dd.symbol.hasAnnotation(JSNativeAnnotation))
-              generatedNonFieldMembers += genJSNativeMemberDef(dd)
+              jsNativeMembersBuilder += genJSNativeMemberDef(dd)
             else
-              generatedNonFieldMembers ++= genMethod(dd)
+              methodsBuilder ++= genMethod(dd)
 
           case _ => abort("Illegal tree in gen of genClass(): " + tree)
         }
@@ -513,15 +514,13 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       gen(impl)
 
-      // Generate fields if necessary (and add to methods + ctors)
-      val generatedMembers =
-        if (!isHijacked) genClassFields(cd) ++ generatedNonFieldMembers.toList
-        else generatedNonFieldMembers.toList // No fields needed
+      val fields = if (!isHijacked) genClassFields(cd) else Nil
 
-      // Generate member exports
+      val jsNativeMembers = jsNativeMembersBuilder.result()
+      val generatedMethods = methodsBuilder.result()
+
       val memberExports = genMemberExports(sym)
 
-      // Generate the exported members, constructors and accessors
       val topLevelExportDefs = genTopLevelExports(sym)
 
       // Static initializer
@@ -561,12 +560,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         if (isDynamicImportThunk) List(genDynamicImportForwarder(sym))
         else Nil
 
-      val allMemberDefsExceptStaticForwarders =
-        generatedMembers ::: memberExports ::: optStaticInitializer ::: optDynamicImportForwarder
+      val allMethodsExceptStaticForwarders: List[js.MethodDef] =
+        generatedMethods ::: optStaticInitializer ::: optDynamicImportForwarder
 
       // Add static forwarders
-      val allMemberDefs = if (!isCandidateForForwarders(sym)) {
-        allMemberDefsExceptStaticForwarders
+      val allMethods = if (!isCandidateForForwarders(sym)) {
+        allMethodsExceptStaticForwarders
       } else {
         if (sym.isModuleClass) {
           /* If the module class has no linked class, we must create one to
@@ -585,22 +584,23 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                   Nil,
                   None,
                   None,
-                  forwarders,
-                  Nil
+                  fields = Nil,
+                  methods = forwarders,
+                  jsConstructor = None,
+                  jsMethodProps = Nil,
+                  jsNativeMembers = Nil,
+                  topLevelExportDefs = Nil
               )(js.OptimizerHints.empty)
               generatedStaticForwarderClasses += sym -> forwardersClassDef
             }
           }
-          allMemberDefsExceptStaticForwarders
+          allMethodsExceptStaticForwarders
         } else {
           val forwarders = genStaticForwardersForClassOrInterface(
-              allMemberDefsExceptStaticForwarders, sym)
-          allMemberDefsExceptStaticForwarders ::: forwarders
+              allMethodsExceptStaticForwarders, sym)
+          allMethodsExceptStaticForwarders ::: forwarders
         }
       }
-
-      // Hashed definitions of the class
-      val hashedMemberDefs = Hashers.hashMemberDefs(allMemberDefs)
 
       // The complete class definition
       val kind =
@@ -617,11 +617,15 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           genClassInterfaces(sym, forJSClass = false),
           None,
           None,
-          hashedMemberDefs,
+          fields,
+          allMethods,
+          jsConstructor = None,
+          memberExports,
+          jsNativeMembers,
           topLevelExportDefs)(
           optimizerHints)
 
-      classDefinition
+      Hashers.hashClassDef(classDefinition)
     }
 
     /** Gen the IR ClassDef for a non-native JS class. */
@@ -688,7 +692,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       gen(cd.impl)
 
       // Static members (exported from the companion object)
-      val staticMembers = {
+      val (staticFields, staticExports) = {
         /* Phase travel is necessary for non-top-level classes, because flatten
          * breaks their companionModule. This is tracked upstream at
          * https://github.com/scala/scala-dev/issues/403
@@ -696,19 +700,20 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         val companionModuleClass =
           exitingPhase(currentRun.picklerPhase)(sym.linkedClassOfClass)
         if (companionModuleClass == NoSymbol) {
-          Nil
+          (Nil, Nil)
         } else {
-          val exports = withScopedVars(currentClassSym := companionModuleClass) {
-            genStaticExports(companionModuleClass)
+          val (staticFields, staticExports) = {
+            withScopedVars(currentClassSym := companionModuleClass) {
+              genStaticExports(companionModuleClass)
+            }
           }
-          if (exports.exists(_.isInstanceOf[js.JSFieldDef])) {
-            val classInitializer = genStaticConstructorWithStats(
-                ir.Names.ClassInitializerName,
-                genLoadModule(companionModuleClass))
-            exports :+ classInitializer
-          } else {
-            exports
+
+          if (staticFields.nonEmpty) {
+            generatedMethods += genStaticConstructorWithStats(
+                ir.Names.ClassInitializerName, genLoadModule(companionModuleClass))
           }
+
+          (staticFields, staticExports)
         }
       }
 
@@ -741,17 +746,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       }
 
       // Generate fields (and add to methods + ctors)
-      val generatedMembers = {
-        genClassFields(cd) :::
-        generatedCtor ::
-        genJSClassDispatchers(sym, dispatchMethodNames.result().distinct) :::
-        generatedMethods.toList :::
-        staticMembers
-      }
+      val fields = genClassFields(cd)
 
-      // Hashed definitions of the class
-      val hashedMemberDefs =
-        Hashers.hashMemberDefs(generatedMembers)
+      val jsMethodProps =
+        genJSClassDispatchers(sym, dispatchMethodNames.result().distinct) ::: staticExports
 
       // The complete class definition
       val kind =
@@ -767,11 +765,15 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           genClassInterfaces(sym, forJSClass = true),
           jsSuperClass = jsClassCaptures.map(_.head.ref),
           None,
-          hashedMemberDefs,
+          fields ::: staticFields,
+          generatedMethods.toList,
+          Some(generatedCtor),
+          jsMethodProps,
+          jsNativeMembers = Nil,
           topLevelExports)(
           OptimizerHints.empty)
 
-      classDefinition
+      Hashers.hashClassDef(classDefinition)
     }
 
     /** Generate an instance of an anonymous (non-lambda) JS class inline
@@ -796,36 +798,18 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       // Partition class members.
       val privateFieldDefs = ListBuffer.empty[js.FieldDef]
-      val classDefMembers = ListBuffer.empty[js.MemberDef]
-      val instanceMembers = ListBuffer.empty[js.MemberDef]
-      var constructor: Option[js.JSConstructorDef] = None
+      val jsFieldDefs = ListBuffer.empty[js.JSFieldDef]
 
-      origJsClass.memberDefs.foreach {
+      origJsClass.fields.foreach {
         case fdef: js.FieldDef =>
           privateFieldDefs += fdef
 
         case fdef: js.JSFieldDef =>
-          instanceMembers += fdef
-
-        case mdef: js.MethodDef =>
-          assert(mdef.flags.namespace.isStatic,
-              "Non-static, unexported method in non-native JS class")
-          classDefMembers += mdef
-
-        case cdef: js.JSConstructorDef =>
-          assert(constructor.isEmpty, "two ctors in class")
-          constructor = Some(cdef)
-
-        case mdef: js.JSMethodDef =>
-          assert(!mdef.flags.namespace.isStatic, "Exported static method")
-          instanceMembers += mdef
-
-        case property: js.JSPropertyDef =>
-          instanceMembers += property
-
-        case nativeMemberDef: js.JSNativeMemberDef =>
-          abort("illegal native JS member in JS class at " + nativeMemberDef.pos)
+          jsFieldDefs += fdef
       }
+
+      assert(origJsClass.jsNativeMembers.isEmpty,
+          "Found JS native members in anonymous JS class at " + pos)
 
       assert(origJsClass.topLevelExportDefs.isEmpty,
           "Found top-level exports in anonymous JS class at " + pos)
@@ -836,8 +820,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         val parent = js.ClassIdent(ir.Names.ObjectClass)
         js.ClassDef(origJsClass.name, origJsClass.originalName,
             ClassKind.AbstractJSType, None, Some(parent), interfaces = Nil,
-            jsSuperClass = None, jsNativeLoadSpec = None,
-            classDefMembers.toList, Nil)(
+            jsSuperClass = None, jsNativeLoadSpec = None, fields = Nil,
+            methods = origJsClass.methods, jsConstructor = None, jsMethodProps = Nil,
+            jsNativeMembers = Nil, topLevelExportDefs = Nil)(
             origJsClass.optimizerHints)
       }
 
@@ -849,7 +834,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         throw new AssertionError(
             s"no class captures for anonymous JS class at $pos")
       }
-      val js.JSConstructorDef(_, ctorParams, ctorRestParam, ctorBody) = constructor.getOrElse {
+      val js.JSConstructorDef(_, ctorParams, ctorRestParam, ctorBody) = origJsClass.jsConstructor.getOrElse {
         throw new AssertionError("No ctor found")
       }
       assert(ctorParams.isEmpty && ctorRestParam.isEmpty,
@@ -875,20 +860,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             captureValues = Nil)
       }
 
-      val memberDefinitions0 = instanceMembers.toList.map {
-        case fdef: js.FieldDef =>
-          throw new AssertionError("unexpected FieldDef")
+      val fieldDefinitions = jsFieldDefs.toList.map { fdef =>
+        implicit val pos = fdef.pos
+        js.Assign(js.JSSelect(selfRef, fdef.name), jstpe.zeroOf(fdef.ftpe))
+      }
 
-        case fdef: js.JSFieldDef =>
-          implicit val pos = fdef.pos
-          js.Assign(js.JSSelect(selfRef, fdef.name), jstpe.zeroOf(fdef.ftpe))
-
-        case mdef: js.MethodDef =>
-          throw new AssertionError("unexpected MethodDef")
-
-        case cdef: js.JSConstructorDef =>
-          throw new AssertionError("unexpected JSConstructorDef")
-
+      val memberDefinitions0 = origJsClass.jsMethodProps.toList.map {
         case mdef: js.JSMethodDef =>
           implicit val pos = mdef.pos
           val impl = memberLambda(mdef.args, mdef.restParam, mdef.body)
@@ -910,13 +887,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           js.JSMethodApply(js.JSGlobalRef("Object"),
               js.StringLiteral("defineProperty"),
               List(selfRef, pdef.name, descriptor))
-
-        case nativeMemberDef: js.JSNativeMemberDef =>
-          abort("illegal native JS member in JS class at " + nativeMemberDef.pos)
       }
 
+      val memberDefinitions1 = fieldDefinitions ::: memberDefinitions0
+
       val memberDefinitions = if (privateFieldDefs.isEmpty) {
-        memberDefinitions0
+        memberDefinitions1
       } else {
         /* Private fields, declared in FieldDefs, are stored in a separate
          * object, itself stored as a non-enumerable field of the `selfRef`.
@@ -956,7 +932,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               )
           )
         }
-        definePrivateFieldsObj :: memberDefinitions0
+        definePrivateFieldsObj :: memberDefinitions1
       }
 
       // Transform the constructor body.
@@ -1026,7 +1002,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
       js.ClassDef(classIdent, originalNameOfClass(sym), kind, None, superClass,
           genClassInterfaces(sym, forJSClass = true), None, jsNativeLoadSpec,
-          Nil, Nil)(
+          Nil, Nil, None, Nil, Nil, Nil)(
           OptimizerHints.empty)
     }
 
@@ -1060,13 +1036,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         if (!isCandidateForForwarders(sym)) generatedMethods
         else generatedMethods ::: genStaticForwardersForClassOrInterface(generatedMethods, sym)
 
-      // Hashed definitions of the interface
-      val hashedMemberDefs =
-        Hashers.hashMemberDefs(allMemberDefs)
-
-      js.ClassDef(classIdent, originalNameOfClass(sym), ClassKind.Interface,
-          None, None, interfaces, None, None, hashedMemberDefs, Nil)(
+      val classDef = js.ClassDef(classIdent, originalNameOfClass(sym), ClassKind.Interface,
+          None, None, interfaces, None, None, fields = Nil, methods = allMemberDefs,
+          None, Nil, Nil, Nil)(
           OptimizerHints.empty)
+
+      Hashers.hashClassDef(classDef)
     }
 
     private lazy val jsTypeInterfacesBlacklist: Set[Symbol] =
@@ -1132,8 +1107,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *  Precondition: `isCandidateForForwarders(sym)` is true
      */
     def genStaticForwardersForClassOrInterface(
-        existingMembers: List[js.MemberDef], sym: Symbol)(
-        implicit pos: Position): List[js.MemberDef] = {
+        existingMethods: List[js.MethodDef], sym: Symbol)(
+        implicit pos: Position): List[js.MethodDef] = {
       /* Phase travel is necessary for non-top-level classes, because flatten
        * breaks their companionModule. This is tracked upstream at
        * https://github.com/scala/scala-dev/issues/403
@@ -1144,7 +1119,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       } else {
         val moduleClass = module.moduleClass
         if (!isJSType(moduleClass))
-          genStaticForwardersFromModuleClass(existingMembers, moduleClass)
+          genStaticForwardersFromModuleClass(existingMethods, moduleClass)
         else
           Nil
       }
@@ -1154,18 +1129,14 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
      *
      *  Precondition: `isCandidateForForwarders(moduleClass)` is true
      */
-    def genStaticForwardersFromModuleClass(existingMembers: List[js.MemberDef],
+    def genStaticForwardersFromModuleClass(existingMethods: List[js.MethodDef],
         moduleClass: Symbol)(
-        implicit pos: Position): List[js.MemberDef] = {
+        implicit pos: Position): List[js.MethodDef] = {
 
       assert(moduleClass.isModuleClass, moduleClass)
 
-      val hasAnyExistingPublicStaticMethod = existingMembers.exists {
-        case js.MethodDef(flags, _, _, _, _, _) =>
-          flags.namespace == js.MemberNamespace.PublicStatic
-        case _ =>
-          false
-      }
+      val hasAnyExistingPublicStaticMethod =
+        existingMethods.exists(_.flags.namespace == js.MemberNamespace.PublicStatic)
       if (hasAnyExistingPublicStaticMethod) {
         reporter.error(pos,
             "Unexpected situation: found existing public static methods in " +
@@ -6316,7 +6287,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           List(js.ClassIdent(intfName)),
           None,
           None,
-          fFieldDef :: ctorDef :: samMethodDefs,
+          fields = fFieldDef :: Nil,
+          methods = ctorDef :: samMethodDefs,
+          jsConstructor = None,
+          Nil,
+          Nil,
           Nil)(
           js.OptimizerHints.empty.withInline(true))
 

@@ -621,7 +621,7 @@ object Serializers {
       writeClassIdents(interfaces)
       writeOptTree(jsSuperClass)
       writeJSNativeLoadSpec(jsNativeLoadSpec)
-      writeMemberDefs(memberDefs)
+      writeMemberDefs(fields ::: methods ::: jsConstructor.toList ::: jsMethodProps ::: jsNativeMembers)
       writeTopLevelExportDefs(topLevelExportDefs)
       writeInt(OptimizerHints.toBits(optimizerHints))
     }
@@ -1389,21 +1389,65 @@ object Serializers {
       val jsSuperClass = readOptTree()
 
       val jsNativeLoadSpec = readJSNativeLoadSpec()
-      val memberDefs0 = readMemberDefs(cls, kind)
+
+      // Read member defs
+      val fieldsBuilder = List.newBuilder[AnyFieldDef]
+      val methodsBuilder = List.newBuilder[MethodDef]
+      val jsConstructorBuilder = new OptionBuilder[JSConstructorDef]
+      val jsMethodPropsBuilder = List.newBuilder[JSMethodPropDef]
+      val jsNativeMembersBuilder = List.newBuilder[JSNativeMemberDef]
+
+      for (_ <- 0 until readInt()) {
+        implicit val pos = readPosition()
+        readByte() match {
+          case TagFieldDef          => fieldsBuilder += readFieldDef()
+          case TagJSFieldDef        => fieldsBuilder += readJSFieldDef()
+          case TagMethodDef         => methodsBuilder += readMethodDef(cls, kind)
+          case TagJSConstructorDef  => jsConstructorBuilder += readJSConstructorDef()
+          case TagJSMethodDef       => jsMethodPropsBuilder += readJSMethodDef()
+          case TagJSPropertyDef     => jsMethodPropsBuilder += readJSPropertyDef()
+          case TagJSNativeMemberDef => jsNativeMembersBuilder += readJSNativeMemberDef()
+        }
+      }
+
       val topLevelExportDefs = readTopLevelExportDefs()
       val optimizerHints = OptimizerHints.fromBits(readInt())
 
-      val memberDefs =
-        if (hacks.use8 && kind.isJSClass) memberDefs0.map(jsConstructorDefHack(_))
-        else memberDefs0
+      val fields = fieldsBuilder.result()
+
+      val methods = {
+        val methods0 = methodsBuilder.result()
+        if (hacks.use4 && kind.isJSClass) {
+          // #4409: Filter out abstract methods in non-native JS classes for version < 1.5
+          methods0.filter(_.body.isDefined)
+        } else {
+          methods0
+        }
+      }
+
+      val (jsConstructor, jsMethodProps) = {
+        if (hacks.use8 && kind.isJSClass) {
+          assert(jsConstructorBuilder.result().isEmpty, "found JSConstructorDef in pre 1.8 IR")
+          jsConstructorHack(jsMethodPropsBuilder.result())
+        } else {
+          (jsConstructorBuilder.result(), jsMethodPropsBuilder.result())
+        }
+      }
+
+      val jsNativeMembers = jsNativeMembersBuilder.result()
 
       ClassDef(name, originalName, kind, jsClassCaptures, superClass, parents,
-          jsSuperClass, jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
+          jsSuperClass, jsNativeLoadSpec, fields, methods, jsConstructor,
+          jsMethodProps, jsNativeMembers, topLevelExportDefs)(
           optimizerHints)
     }
 
-    private def jsConstructorDefHack(memberDef: MemberDef): MemberDef = {
-      memberDef match {
+    private def jsConstructorHack(
+        jsMethodProps: List[JSMethodPropDef]): (Option[JSConstructorDef], List[JSMethodPropDef]) = {
+      val jsConstructorBuilder = new OptionBuilder[JSConstructorDef]
+      val jsMethodPropsBuilder = List.newBuilder[JSMethodPropDef]
+
+      jsMethodProps.foreach {
         case methodDef @ JSMethodDef(flags, StringLiteral("constructor"), args, restParam, body)
             if flags.namespace == MemberNamespace.Public =>
           val bodyStats = body match {
@@ -1417,7 +1461,7 @@ object Serializers {
               val newBody = JSConstructorBody(beforeSuper, superCall, afterSuper)(body.pos)
               val ctorDef = JSConstructorDef(newFlags, args, restParam, newBody)(
                   methodDef.optimizerHints, Unversioned)(methodDef.pos)
-              Hashers.hashJSConstructorDef(ctorDef)
+              jsConstructorBuilder += Hashers.hashJSConstructorDef(ctorDef)
 
             case _ =>
               /* This is awkward: we have an old-style JS constructor that is
@@ -1428,40 +1472,11 @@ object Serializers {
                   s"Found invalid pre-1.11 JS constructor def at ${methodDef.pos}:\n${methodDef.show}")
           }
 
-        case _ =>
-          memberDef
+        case exportedMember =>
+          jsMethodPropsBuilder += exportedMember
       }
-    }
 
-    def readMemberDef(owner: ClassName, ownerKind: ClassKind): MemberDef = {
-      implicit val pos = readPosition()
-      val tag = readByte()
-
-      (tag: @switch) match {
-        case TagFieldDef          => readFieldDef()
-        case TagJSFieldDef        => readJSFieldDef()
-        case TagMethodDef         => readMethodDef(owner, ownerKind)
-        case TagJSConstructorDef  => readJSConstructorDef()
-        case TagJSMethodDef       => readJSMethodDef()
-        case TagJSPropertyDef     => readJSPropertyDef()
-        case TagJSNativeMemberDef => readJSNativeMemberDef()
-      }
-    }
-
-    def readMemberDefs(owner: ClassName, ownerKind: ClassKind): List[MemberDef] = {
-      val memberDefs = List.fill(readInt())(readMemberDef(owner, ownerKind))
-
-      // #4409: Filter out abstract methods in non-native JS classes for version < 1.5
-      if (ownerKind.isJSClass && hacks.use4) {
-        memberDefs.filter { m =>
-          m match {
-            case MethodDef(_, _, _, _, _, None) => false
-            case _                              => true
-          }
-        }
-      } else {
-        memberDefs
-      }
+      (jsConstructorBuilder.result(), jsMethodPropsBuilder.result())
     }
 
     private def readFieldDef()(implicit pos: Position): FieldDef = {
@@ -2071,6 +2086,17 @@ object Serializers {
       MethodName("clone", Nil, ClassRef(ObjectClass))
     val identityHashCodeName: MethodName =
       MethodName("identityHashCode", List(ClassRef(ObjectClass)), IntRef)
+  }
+
+  private class OptionBuilder[T] {
+    private[this] var value: Option[T] = None
+
+    def +=(x: T): Unit = {
+      require(value.isEmpty)
+      value = Some(x)
+    }
+
+    def result(): Option[T] = value
   }
 
   /* Note [Nothing FieldDef rewrite]

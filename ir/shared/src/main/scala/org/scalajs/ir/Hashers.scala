@@ -110,16 +110,6 @@ object Hashers {
     }
   }
 
-  /** Hash definitions from a ClassDef where applicable */
-  def hashMemberDefs(memberDefs: List[MemberDef]): List[MemberDef] = memberDefs.map {
-    case methodDef: MethodDef      => hashMethodDef(methodDef)
-    case ctorDef: JSConstructorDef => hashJSConstructorDef(ctorDef)
-    case methodDef: JSMethodDef    => hashJSMethodDef(methodDef)
-    case propDef: JSPropertyDef    => hashJSPropertyDef(propDef)
-    case fieldDef: AnyFieldDef     => fieldDef
-    case native: JSNativeMemberDef => native
-  }
-
   def hashTopLevelExportDef(tle: TopLevelExportDef): TopLevelExportDef = tle match {
     case TopLevelMethodExportDef(moduleID, methodDef) =>
       TopLevelMethodExportDef(moduleID, hashJSMethodDef(methodDef))(tle.pos)
@@ -132,10 +122,16 @@ object Hashers {
   /** Hash the definitions in a ClassDef (where applicable) */
   def hashClassDef(classDef: ClassDef): ClassDef = {
     import classDef._
-    val newMemberDefs = hashMemberDefs(memberDefs)
+    val newMethods = methods.map(hashMethodDef(_))
+    val newJSConstructorDef = jsConstructor.map(hashJSConstructorDef(_))
+    val newExportedMembers = jsMethodProps.map {
+      case methodDef: JSMethodDef => hashJSMethodDef(methodDef)
+      case propDef: JSPropertyDef => hashJSPropertyDef(propDef)
+    }
     val newTopLevelExportDefs = topLevelExportDefs.map(hashTopLevelExportDef(_))
     ClassDef(name, originalName, kind, jsClassCaptures, superClass, interfaces,
-        jsSuperClass, jsNativeLoadSpec, newMemberDefs, newTopLevelExportDefs)(
+        jsSuperClass, jsNativeLoadSpec, fields, newMethods, newJSConstructorDef,
+        newExportedMembers, jsNativeMembers, newTopLevelExportDefs)(
         optimizerHints)
   }
 

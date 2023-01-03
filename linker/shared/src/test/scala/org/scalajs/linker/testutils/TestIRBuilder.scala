@@ -54,13 +54,18 @@ object TestIRBuilder {
     interfaces: List[ClassName] = Nil,
     jsSuperClass: Option[Tree] = None,
     jsNativeLoadSpec: Option[JSNativeLoadSpec] = None,
-    memberDefs: List[MemberDef] = Nil,
+    fields: List[AnyFieldDef] = Nil,
+    methods: List[MethodDef] = Nil,
+    jsConstructor: Option[JSConstructorDef] = None,
+    jsMethodProps: List[JSMethodPropDef] = Nil,
+    jsNativeMembers: List[JSNativeMemberDef] = Nil,
     topLevelExportDefs: List[TopLevelExportDef] = Nil,
     optimizerHints: OptimizerHints = EOH
   ): ClassDef = {
     val notHashed = ClassDef(ClassIdent(className), NON, kind, jsClassCaptures,
         superClass.map(ClassIdent(_)), interfaces.map(ClassIdent(_)),
-        jsSuperClass, jsNativeLoadSpec, memberDefs, topLevelExportDefs)(
+        jsSuperClass, jsNativeLoadSpec, fields, methods, jsConstructor,
+        jsMethodProps, jsNativeMembers, topLevelExportDefs)(
         optimizerHints)
     Hashers.hashClassDef(notHashed)
   }
@@ -74,7 +79,7 @@ object TestIRBuilder {
         MainTestClassName,
         kind = ClassKind.ModuleClass,
         superClass = Some(ObjectClass),
-        memberDefs = List(
+        methods = List(
             trivialCtor(MainTestClassName),
             mainMethodDef(mainBody)
         )
@@ -135,11 +140,15 @@ object TestIRBuilder {
     )
   }
 
-  def requiredMemberDefs(className: ClassName,
-      classKind: ClassKind): List[MemberDef] = {
+  def requiredMethods(className: ClassName,
+      classKind: ClassKind): List[MethodDef] = {
     if (classKind == ClassKind.ModuleClass) List(trivialCtor(className))
-    else if (classKind.isJSClass) List(trivialJSCtor)
     else Nil
+  }
+
+  def requiredJSConstructor(classKind: ClassKind): Option[JSConstructorDef] = {
+    if (classKind.isJSClass) Some(trivialJSCtor)
+    else None
   }
 
   implicit def string2LocalName(name: String): LocalName =

@@ -981,7 +981,7 @@ private final class Analyzer(config: CommonPhaseConfig,
               validateLoadSpec(jsNativeLoadSpec, jsNativeMember = None)
           }
 
-          for (reachabilityInfo <- data.exportedMembers)
+          for (reachabilityInfo <- data.jsMethodProps)
             followReachabilityInfo(reachabilityInfo, staticDependencies,
                 externalDependencies, dynamicDependencies)(FromExports)
         }
@@ -1004,7 +1004,7 @@ private final class Analyzer(config: CommonPhaseConfig,
 
         // Reach exported members
         if (!isJSClass) {
-          for (reachabilityInfo <- data.exportedMembers)
+          for (reachabilityInfo <- data.jsMethodProps)
             followReachabilityInfo(reachabilityInfo, staticDependencies,
                 externalDependencies, dynamicDependencies)(FromExports)
         }
