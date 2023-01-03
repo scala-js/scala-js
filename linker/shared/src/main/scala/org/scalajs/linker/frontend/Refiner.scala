@@ -35,39 +35,34 @@ final class Refiner(config: CommonPhaseConfig) {
 
   private val inputProvider = new InputProvider
 
-  def refine(unit: LinkingUnit, symbolRequirements: SymbolRequirement,
-      logger: Logger)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
+  def refine(classDefs: Seq[(ClassDef, Version)],
+      moduleInitializers: List[ModuleInitializer],
+      symbolRequirements: SymbolRequirement, logger: Logger)(
+      implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
-    val linkedClassesByName =
-      Map(unit.classDefs.map(c => c.className -> c): _*)
-    inputProvider.update(linkedClassesByName, unit.topLevelExports)
+    val linkedClassesByName = classDefs.map(c => c._1.className -> c._1).toMap
+    inputProvider.update(linkedClassesByName)
 
     val analysis = logger.timeFuture("Refiner: Compute reachability") {
-      analyze(unit.moduleInitializers, symbolRequirements, logger)
+      analyze(moduleInitializers, symbolRequirements, logger)
     }
 
     for {
       analysis <- analysis
     } yield {
       val result = logger.time("Refiner: Assemble LinkedClasses") {
-        val linkedClassDefs = for {
-          info <- analysis.classInfos.values
+        val assembled = for {
+          (classDef, version) <- classDefs
+          if analysis.classInfos.contains(classDef.className)
         } yield {
-          refineClassDef(linkedClassesByName(info.className), info)
+          BaseLinker.linkClassDef(classDef, version,
+              syntheticMethodDefs = Iterator.empty, analysis)
         }
 
-        val refinedTopLevelExports = for {
-          linkedTopLevelExport <- unit.topLevelExports
-        } yield {
-          val tree = linkedTopLevelExport.tree
-          val infos =
-            analysis.topLevelExportInfos((ModuleID(tree.moduleID), tree.topLevelExportName))
-          new LinkedTopLevelExport(linkedTopLevelExport.owningClass, tree,
-              infos.staticDependencies.toSet, infos.externalDependencies.toSet)
-        }
+        val (linkedClassDefs, linkedTopLevelExports) = assembled.unzip
 
-        new LinkingUnit(unit.coreSpec, linkedClassDefs.toList, refinedTopLevelExports,
-            unit.moduleInitializers)
+        new LinkingUnit(config.coreSpec, linkedClassDefs.toList,
+            linkedTopLevelExports.flatten.toList, moduleInitializers)
       }
 
       inputProvider.cleanAfterRun()
@@ -100,60 +95,27 @@ final class Refiner(config: CommonPhaseConfig) {
       }
     }
   }
-
-  private def refineClassDef(classDef: LinkedClass,
-      info: Analysis.ClassInfo): LinkedClass = {
-
-    val fields = classDef.fields.filter { f =>
-      BaseLinker.isFieldDefNeeded(info, f)
-    }
-
-    val methods = classDef.methods.filter { methodDef =>
-      info.methodInfos(methodDef.flags.namespace)(methodDef.methodName)
-        .isReachable
-    }
-
-    val jsNativeMembers = classDef.jsNativeMembers.filter { m =>
-      info.jsNativeMembersUsed.contains(m.name.name)
-    }
-
-    val kind =
-      if (info.isModuleAccessed) classDef.kind
-      else classDef.kind.withoutModuleAccessor
-
-    classDef.refined(
-        kind = kind,
-        fields = fields,
-        methods = methods,
-        jsNativeMembers = jsNativeMembers,
-        hasInstances = info.isAnySubclassInstantiated,
-        hasInstanceTests = info.areInstanceTestsUsed,
-        hasRuntimeTypeInfo = info.isDataAccessed,
-        fieldsRead = info.fieldsRead.toSet,
-        staticFieldsRead = info.staticFieldsRead.toSet,
-        staticDependencies = info.staticDependencies.toSet,
-        externalDependencies = info.externalDependencies.toSet,
-        dynamicDependencies = info.dynamicDependencies.toSet
-    )
-  }
-
 }
 
 private object Refiner {
   private class InputProvider extends Analyzer.InputProvider {
-    private var linkedClassesByName: Map[ClassName, LinkedClass] = _
-    private var topLevelExports: List[LinkedTopLevelExport] = _
-    private val cache = mutable.Map.empty[ClassName, LinkedClassInfoCache]
+    private var classesByName: Map[ClassName, ClassDef] = _
+    private val cache = mutable.Map.empty[ClassName, ClassInfoCache]
 
-    def update(linkedClassesByName: Map[ClassName, LinkedClass],
-        topLevelExports: List[LinkedTopLevelExport]): Unit = {
-      this.linkedClassesByName = linkedClassesByName
-      this.topLevelExports = topLevelExports
+    def update(classesByName: Map[ClassName, ClassDef]): Unit = {
+      this.classesByName = classesByName
     }
 
     def classesWithEntryPoints(): Iterable[ClassName] = {
-      linkedClassesByName.values
-        .filter(_.hasStaticInitializer)
+      def hasStaticInit(classDef: ClassDef): Boolean = {
+        classDef.methods.exists { m =>
+          m.flags.namespace == MemberNamespace.StaticConstructor &&
+          m.methodName.isStaticInitializer
+        }
+      }
+
+      classesByName.values
+        .withFilter(hasStaticInit(_))
         .map(_.className)
     }
 
@@ -162,16 +124,16 @@ private object Refiner {
       /* We do not cache top-level exports, because they're quite rare,
        * and usually quite small when they exist.
        */
-      Infos.generateTopLevelExportInfos(topLevelExports)
+      classesByName.values.flatMap(Infos.generateTopLevelExportInfos(_)).toList
     }
 
     def loadInfo(className: ClassName)(implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] =
-      getCache(className).map(_.loadInfo(linkedClassesByName(className)))
+      getCache(className).map(_.loadInfo(classesByName(className)))
 
-    private def getCache(className: ClassName): Option[LinkedClassInfoCache] = {
+    private def getCache(className: ClassName): Option[ClassInfoCache] = {
       cache.get(className).orElse {
-        if (linkedClassesByName.contains(className)) {
-          val fileCache = new LinkedClassInfoCache
+        if (classesByName.contains(className)) {
+          val fileCache = new ClassInfoCache
           cache += className -> fileCache
           Some(fileCache)
         } else {
@@ -181,46 +143,52 @@ private object Refiner {
     }
 
     def cleanAfterRun(): Unit = {
-      linkedClassesByName = null
+      classesByName = null
       cache.filterInPlace((_, linkedClassCache) => linkedClassCache.cleanAfterRun())
     }
   }
 
-  private class LinkedClassInfoCache {
+  private class ClassInfoCache {
     private var cacheUsed: Boolean = false
-    private val methodsInfoCaches = LinkedMethodDefsInfosCache()
-    private val jsConstructorInfoCache = new LinkedJSConstructorDefInfoCache()
-    private val exportedMembersInfoCaches = LinkedJSMethodPropDefsInfosCache()
+    private val methodsInfoCaches = MethodDefsInfosCache()
+    private val jsConstructorInfoCache = new JSConstructorDefInfoCache()
+    private val exportedMembersInfoCaches = JSMethodPropDefsInfosCache()
     private var info: Infos.ClassInfo = _
 
-    def loadInfo(linkedClass: LinkedClass)(implicit ec: ExecutionContext): Future[Infos.ClassInfo] = Future {
-      update(linkedClass)
+    def loadInfo(classDef: ClassDef)(implicit ec: ExecutionContext): Future[Infos.ClassInfo] = Future {
+      update(classDef)
       info
     }
 
-    private def update(linkedClass: LinkedClass): Unit = synchronized {
+    private def update(classDef: ClassDef): Unit = synchronized {
       if (!cacheUsed) {
         cacheUsed = true
 
-        val builder = new Infos.ClassInfoBuilder(linkedClass.className,
-            linkedClass.kind, linkedClass.superClass.map(_.name),
-            linkedClass.interfaces.map(_.name), linkedClass.jsNativeLoadSpec)
+        val builder = new Infos.ClassInfoBuilder(classDef.className,
+            classDef.kind, classDef.superClass.map(_.name),
+            classDef.interfaces.map(_.name), classDef.jsNativeLoadSpec)
 
-        for {
-          FieldDef(flags, FieldIdent(name), _, ftpe) <- linkedClass.fields
-          if !flags.namespace.isStatic
-        } {
-          builder.maybeAddReferencedFieldClass(name, ftpe)
+        classDef.fields.foreach {
+          case FieldDef(flags, FieldIdent(name), _, ftpe) =>
+            if (!flags.namespace.isStatic)
+              builder.maybeAddReferencedFieldClass(name, ftpe)
+
+          case _: JSFieldDef =>
+            // Nothing to do.
         }
 
-        for (linkedMethod <- linkedClass.methods)
-          builder.addMethod(methodsInfoCaches.getInfo(linkedMethod))
-        for (jsNativeMember <- linkedClass.jsNativeMembers)
-          builder.addJSNativeMember(jsNativeMember)
-        for (jsConstructorDef <- linkedClass.jsConstructorDef)
-          builder.addExportedMember(jsConstructorInfoCache.getInfo(jsConstructorDef))
-        for (info <- exportedMembersInfoCaches.getInfos(linkedClass.exportedMembers))
+        classDef.methods.foreach { method =>
+          builder.addMethod(methodsInfoCaches.getInfo(method))
+        }
+
+        classDef.jsConstructor.foreach { jsConstructor =>
+          builder.addExportedMember(jsConstructorInfoCache.getInfo(jsConstructor))
+        }
+
+        for (info <- exportedMembersInfoCaches.getInfos(classDef.jsMethodProps))
           builder.addExportedMember(info)
+
+        classDef.jsNativeMembers.foreach(builder.addJSNativeMember(_))
 
         info = builder.result()
       }
@@ -240,13 +208,13 @@ private object Refiner {
     }
   }
 
-  private final class LinkedMethodDefsInfosCache private (
-      val caches: Array[mutable.Map[MethodName, LinkedMethodDefInfoCache]])
+  private final class MethodDefsInfosCache private (
+      val caches: Array[mutable.Map[MethodName, MethodDefInfoCache]])
       extends AnyVal {
 
     def getInfo(methodDef: MethodDef): Infos.MethodInfo = {
       val cache = caches(methodDef.flags.namespace.ordinal)
-        .getOrElseUpdate(methodDef.methodName, new LinkedMethodDefInfoCache)
+        .getOrElseUpdate(methodDef.methodName, new MethodDefInfoCache)
       cache.getInfo(methodDef)
     }
 
@@ -255,9 +223,9 @@ private object Refiner {
     }
   }
 
-  private object LinkedMethodDefsInfosCache {
-    def apply(): LinkedMethodDefsInfosCache = {
-      new LinkedMethodDefsInfosCache(
+  private object MethodDefsInfosCache {
+    def apply(): MethodDefsInfosCache = {
+      new MethodDefsInfosCache(
           Array.fill(MemberNamespace.Count)(mutable.Map.empty))
     }
   }
@@ -272,8 +240,8 @@ private object Refiner {
    * only missing opportunities for incrementality in the case where JS members
    * are added or removed in the original .sjsir, which is not a big deal.
    */
-  private final class LinkedJSMethodPropDefsInfosCache private (
-      private var caches: Array[LinkedJSMethodPropDefInfoCache]) {
+  private final class JSMethodPropDefsInfosCache private (
+      private var caches: Array[JSMethodPropDefInfoCache]) {
 
     def getInfos(members: List[JSMethodPropDef]): List[Infos.ReachabilityInfo] = {
       if (members.isEmpty) {
@@ -282,7 +250,7 @@ private object Refiner {
       } else {
         val membersSize = members.size
         if (caches == null || membersSize != caches.size)
-          caches = Array.fill(membersSize)(new LinkedJSMethodPropDefInfoCache)
+          caches = Array.fill(membersSize)(new JSMethodPropDefInfoCache)
 
         for ((member, i) <- members.zipWithIndex) yield {
           caches(i).getInfo(member)
@@ -296,12 +264,12 @@ private object Refiner {
     }
   }
 
-  private object LinkedJSMethodPropDefsInfosCache {
-    def apply(): LinkedJSMethodPropDefsInfosCache =
-      new LinkedJSMethodPropDefsInfosCache(null)
+  private object JSMethodPropDefsInfosCache {
+    def apply(): JSMethodPropDefsInfosCache =
+      new JSMethodPropDefsInfosCache(null)
   }
 
-  private abstract class AbstractLinkedMemberInfoCache[Def <: VersionedMemberDef, Info] {
+  private abstract class AbstractMemberInfoCache[Def <: VersionedMemberDef, Info] {
     private var cacheUsed: Boolean = false
     private var lastVersion: Version = Version.Unversioned
     private var info: Info = _
@@ -332,22 +300,22 @@ private object Refiner {
     }
   }
 
-  private final class LinkedMethodDefInfoCache
-      extends AbstractLinkedMemberInfoCache[MethodDef, Infos.MethodInfo] {
+  private final class MethodDefInfoCache
+      extends AbstractMemberInfoCache[MethodDef, Infos.MethodInfo] {
 
     protected def computeInfo(member: MethodDef): Infos.MethodInfo =
       Infos.generateMethodInfo(member)
   }
 
-  private final class LinkedJSConstructorDefInfoCache
-      extends AbstractLinkedMemberInfoCache[JSConstructorDef, Infos.ReachabilityInfo] {
+  private final class JSConstructorDefInfoCache
+      extends AbstractMemberInfoCache[JSConstructorDef, Infos.ReachabilityInfo] {
 
     protected def computeInfo(member: JSConstructorDef): Infos.ReachabilityInfo =
       Infos.generateJSConstructorInfo(member)
   }
 
-  private final class LinkedJSMethodPropDefInfoCache
-      extends AbstractLinkedMemberInfoCache[JSMethodPropDef, Infos.ReachabilityInfo] {
+  private final class JSMethodPropDefInfoCache
+      extends AbstractMemberInfoCache[JSMethodPropDef, Infos.ReachabilityInfo] {
 
     protected def computeInfo(member: JSMethodPropDef): Infos.ReachabilityInfo = {
       member match {

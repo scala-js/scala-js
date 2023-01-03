@@ -439,15 +439,6 @@ object Infos {
     }
   }
 
-  def generateTopLevelExportInfos(
-      topLevelExports: List[LinkedTopLevelExport]): List[TopLevelExportInfo] = {
-    for {
-      topLevelExport <- topLevelExports
-    } yield {
-      Infos.generateTopLevelExportInfo(topLevelExport.owningClass, topLevelExport.tree)
-    }
-  }
-
   /** Generates the [[MethodInfo]] of a
    *  [[org.scalajs.ir.Trees.MethodDef Trees.MethodDef]].
    */
