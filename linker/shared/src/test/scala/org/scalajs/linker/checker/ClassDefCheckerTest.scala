@@ -141,6 +141,22 @@ class ClassDefCheckerTest {
   }
 
   @Test
+  def noStaticAbstractMethods(): Unit = {
+    val fooMethodName = MethodName("foo", Nil, IntRef)
+
+    assertError(
+        classDef("A",
+            kind = ClassKind.Interface,
+            memberDefs = List(
+              MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
+                  fooMethodName, NON, Nil, IntType, None)(EOH, UNV),
+              MethodDef(EMF, fooMethodName, NON, Nil, IntType, None)(EOH, UNV) // OK
+            )
+        ),
+        "Abstract methods may only be in the public namespace")
+  }
+
+  @Test
   def noDuplicateVarDef(): Unit = {
     val body = Block(
       VarDef("x", NoOriginalName, IntType, mutable = false, int(1)),

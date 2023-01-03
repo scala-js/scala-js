@@ -231,6 +231,9 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
     if (!methods(namespace.ordinal).add(name))
       reportError(i"duplicate ${namespace.prefixString}method '$name'")
 
+    if (body.isEmpty && namespace != MemberNamespace.Public)
+      reportError("Abstract methods may only be in the public namespace")
+
     // ClassInitializer
     if (name.isClassInitializer) {
       if (!classDef.kind.isJSClass) {
