@@ -64,7 +64,10 @@ private final class Analyzer(config: CommonPhaseConfig,
   def classInfos: scala.collection.Map[ClassName, Analysis.ClassInfo] =
     _loadedClassInfos
 
-  var topLevelExportInfos: Map[(ModuleID, String), Analysis.TopLevelExportInfo] = _
+  private[this] val _topLevelExportInfos = mutable.Map.empty[(ModuleID, String), TopLevelExportInfo]
+
+  def topLevelExportInfos: scala.collection.Map[(ModuleID, String), Analysis.TopLevelExportInfo] =
+    _topLevelExportInfos
 
   def errors: scala.collection.Seq[Error] = _errors
 
@@ -124,18 +127,27 @@ private final class Analyzer(config: CommonPhaseConfig,
     // External symbol requirements.
     reachSymbolRequirement(symbolRequirements)
 
-    // Reach static initializers.
+    // Reach entry points
     for (className <- inputProvider.classesWithEntryPoints())
-      lookupClass(className)(_.reachStaticInitializer())
+      lookupClass(className)(_.reachEntryPoints())
 
     // Reach module initializers.
     reachInitializers(moduleInitializers)
-
-    // Reach top level exports
-    reachTopLevelExports()
   }
 
   private def postLoad(): Unit = {
+    if (isNoModule) {
+      // Check there is only a single module.
+      val publicModuleIDs = (
+         topLevelExportInfos.keys.map(_._1).toList ++
+         moduleInitializers.map(i => ModuleID(i.moduleID))
+      ).distinct
+
+      if (publicModuleIDs.size > 1)
+        _errors += MultiplePublicModulesWithoutModuleSupport(publicModuleIDs)
+    }
+
+    // Assemble loaded infos.
     val infos = _classInfos.collect { case (k, i: ClassInfo) => (k, i) }
 
     assert(_errors.nonEmpty || infos.size == _classInfos.size,
@@ -251,36 +263,6 @@ private final class Analyzer(config: CommonPhaseConfig,
 
           // For new Array[String]
           lookupClass(BoxedStringClass)(_.accessData())
-      }
-    }
-  }
-
-  private def reachTopLevelExports(): Unit = {
-    workQueue.enqueue(inputProvider.loadTopLevelExportInfos()(ec)) { data =>
-      // Assemble individual infos.
-      val infos = data.map(new TopLevelExportInfo(_))
-
-      infos.foreach(_.reach())
-
-      if (isNoModule) {
-        // Check there is only a single module.
-        val publicModuleIDs = (
-            infos.map(_.moduleID) ++
-            moduleInitializers.map(i => ModuleID(i.moduleID))
-        ).distinct
-
-        if (publicModuleIDs.size > 1)
-          _errors += MultiplePublicModulesWithoutModuleSupport(publicModuleIDs)
-      }
-
-      // Check conflicts, record infos
-      topLevelExportInfos = for {
-        (id @ (moduleID, exportName), infos) <- infos.groupBy(i => (i.moduleID, i.exportName))
-      } yield {
-        if (infos.size > 1)
-          _errors += ConflictingTopLevelExport(moduleID, exportName, infos)
-
-        id -> infos.head
       }
     }
   }
@@ -914,12 +896,26 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     override def toString(): String = className.nameString
 
-    def reachStaticInitializer(): Unit = {
+    def reachEntryPoints(): Unit = {
       implicit val from = FromExports
 
+      // Static initializer
       tryLookupStaticLikeMethod(MemberNamespace.StaticConstructor,
           StaticInitializerName).foreach {
         _.reachStatic()(fromAnalyzer)
+      }
+
+      // Top Level Exports
+      for (tle <- data.topLevelExports) {
+        val key = (tle.moduleID, tle.exportName)
+        val info = new TopLevelExportInfo(className, tle)
+        info.reach()
+
+        _topLevelExportInfos.get(key).fold[Unit] {
+          _topLevelExportInfos.put(key, info)
+        } { other =>
+          _errors += ConflictingTopLevelExport(tle.moduleID, tle.exportName, List(info, other))
+        }
       }
     }
 
@@ -1218,8 +1214,8 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
-  private class TopLevelExportInfo(data: Infos.TopLevelExportInfo) extends Analysis.TopLevelExportInfo {
-    val owningClass: ClassName = data.owningClass
+  private class TopLevelExportInfo(val owningClass: ClassName, data: Infos.TopLevelExportInfo)
+      extends Analysis.TopLevelExportInfo {
     val moduleID: ModuleID = data.moduleID
     val exportName: String = data.exportName
 
@@ -1441,9 +1437,6 @@ object Analyzer {
 
   trait InputProvider {
     def classesWithEntryPoints(): Iterable[ClassName]
-
-    def loadTopLevelExportInfos()(
-        implicit ec: ExecutionContext): Future[List[Infos.TopLevelExportInfo]]
 
     def loadInfo(className: ClassName)(
         implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]]

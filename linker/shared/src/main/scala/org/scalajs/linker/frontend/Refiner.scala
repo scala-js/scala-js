@@ -16,7 +16,7 @@ import scala.concurrent._
 
 import scala.collection.mutable
 
-import org.scalajs.ir.Version
+import org.scalajs.ir.{EntryPointsInfo, Version}
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 
@@ -107,24 +107,9 @@ private object Refiner {
     }
 
     def classesWithEntryPoints(): Iterable[ClassName] = {
-      def hasStaticInit(classDef: ClassDef): Boolean = {
-        classDef.methods.exists { m =>
-          m.flags.namespace == MemberNamespace.StaticConstructor &&
-          m.methodName.isStaticInitializer
-        }
-      }
-
       classesByName.values
-        .withFilter(hasStaticInit(_))
+        .withFilter(EntryPointsInfo.forClassDef(_).hasEntryPoint)
         .map(_.className)
-    }
-
-    def loadTopLevelExportInfos()(
-        implicit ec: ExecutionContext): Future[List[Infos.TopLevelExportInfo]] = Future {
-      /* We do not cache top-level exports, because they're quite rare,
-       * and usually quite small when they exist.
-       */
-      classesByName.values.flatMap(Infos.generateTopLevelExportInfos(_)).toList
     }
 
     def loadInfo(className: ClassName)(implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] =
@@ -187,6 +172,13 @@ private object Refiner {
 
         for (info <- exportedMembersInfoCaches.getInfos(classDef.jsMethodProps))
           builder.addExportedMember(info)
+
+        /* We do not cache top-level exports, because they're quite rare,
+         * and usually quite small when they exist.
+         */
+        classDef.topLevelExportDefs.foreach { topLevelExportDef =>
+          builder.addTopLevelExport(Infos.generateTopLevelExportInfo(classDef.name.name, topLevelExportDef))
+        }
 
         classDef.jsNativeMembers.foreach(builder.addJSNativeMember(_))
 

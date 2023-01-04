@@ -60,11 +60,6 @@ final class IRLoader(checkIR: Boolean) extends Analyzer.InputProvider
 
   def classesWithEntryPoints(): Iterable[ClassName] = entryPoints
 
-  def loadTopLevelExportInfos()(implicit ec: ExecutionContext): Future[List[Infos.TopLevelExportInfo]] = {
-    Future.traverse(entryPoints)(get(_, _.topLevelExportInfos))
-      .map(_.flatten.toList)
-  }
-
   def loadInfo(className: ClassName)(
       implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] = {
     maybeGet(className, _.classInfo)
@@ -107,7 +102,6 @@ private object ClassDefAndInfoCache {
   final class Update(
       val classDef: ClassDef,
       val classInfo: Infos.ClassInfo,
-      val topLevelExportInfos: List[Infos.TopLevelExportInfo],
       val version: Version)
 }
 
@@ -137,8 +131,7 @@ private final class ClassDefAndInfoCache {
                   s"There were $errorCount ClassDef checking errors.")
             }
           }
-          new Update(tree, Infos.generateClassInfo(tree),
-              Infos.generateTopLevelExportInfos(tree), version)
+          new Update(tree, Infos.generateClassInfo(tree), version)
         }
       }
     }
