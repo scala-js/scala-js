@@ -34,106 +34,54 @@ object IRAssertions {
   implicit def linkedClassAssertions(linkedClass: LinkedClass): LinkedClassAssertions =
     new LinkedClassAssertions(linkedClass)
 
-  type Pat = PartialFunction[IRNode, Boolean]
+  type Pat = PartialFunction[Tree, Boolean]
 
-  private def patToTotal(pat: Pat): IRNode => Boolean =
-    node => pat.applyOrElse(node, (_: IRNode) => false)
+  abstract class AbstractIRNodeAssertions {
+    protected def startTraverse(traverser: Traverser): Unit
 
-  abstract class AbstractIRNodeAssertions[T](selfNode: T) {
-    protected def newTraverser(f: IRNode => Unit): TestTraverser[T]
+    private def countTrees(pf: Pat): Int = {
+      var count = 0
+      val traverser = new Traverser {
+        override def traverse(tree: Tree): Unit = {
+          if (pf.applyOrElse(tree, (_: Tree) => false))
+            count += 1
+          super.traverse(tree)
+        }
+      }
 
-    private def find(pf: Pat): Boolean =
-      new TestFinder[T](patToTotal(pf))(newTraverser(_)).find(selfNode)
+      startTraverse(traverser)
+      count
+    }
 
     def has(trgName: String)(pf: Pat): this.type = {
-      assertTrue(s"AST should have $trgName", find(pf))
+      assertTrue(s"AST should have $trgName", countTrees(pf) > 0)
       this
     }
 
     def hasNot(trgName: String)(pf: Pat): this.type = {
-      assertFalse(s"AST should not have $trgName", find(pf))
+      assertTrue(s"AST should not have $trgName", countTrees(pf) == 0)
       this
     }
 
     def hasExactly(count: Int, trgName: String)(pf: Pat): this.type = {
-      var actualCount = 0
-      val traverser = newTraverser(patToTotal(pf).andThen { matches =>
-        if (matches)
-          actualCount += 1
-      })
-      traverser.traverse(selfNode)
+      val actualCount = countTrees(pf)
       assertEquals(s"AST has the wrong number of $trgName", count, actualCount)
       this
     }
   }
 
-  class ClassDefAssertions(classDef: ClassDef)
-      extends AbstractIRNodeAssertions(classDef) {
-
-    protected def newTraverser(f: IRNode => Unit): TestTraverser[ClassDef] = {
-      new TestTraverser[ClassDef](f) {
-        def baseTraverse(node: ClassDef): Unit = traverseClassDef(node)
-      }
-    }
+  class ClassDefAssertions(classDef: ClassDef) extends AbstractIRNodeAssertions {
+    protected def startTraverse(traverser: Traverser): Unit =
+      traverser.traverseClassDef(classDef)
   }
 
-  class LinkedClassAssertions(linkedClass: LinkedClass)
-      extends AbstractIRNodeAssertions(linkedClass) {
-
-    protected def newTraverser(f: IRNode => Unit): TestTraverser[LinkedClass] = {
-      new TestTraverser[LinkedClass](f) {
-        def baseTraverse(node: LinkedClass): Unit = {
-          node.fields.foreach(traverseMemberDef(_))
-          node.methods.foreach(traverseMemberDef(_))
-          node.exportedMembers.foreach(traverseMemberDef(_))
-        }
-      }
-    }
-  }
-
-  abstract class TestTraverser[T](f: IRNode => Unit) extends Traverser {
-    protected def baseTraverse(node: T): Unit
-
-    def traverse(node: T): Unit =
-      baseTraverse(node)
-
-    override def traverse(tree: Tree): Unit = {
-      f(tree)
-      super.traverse(tree)
-    }
-
-    override def traverseClassDef(classDef: ClassDef): Unit = {
-      f(classDef)
-      super.traverseClassDef(classDef)
-    }
-
-    override def traverseMemberDef(memberDef: MemberDef): Unit = {
-      f(memberDef)
-      super.traverseMemberDef(memberDef)
-    }
-
-    override def traverseTopLevelExportDef(
-        exportDef: TopLevelExportDef): Unit = {
-      f(exportDef)
-      super.traverseTopLevelExportDef(exportDef)
-    }
-  }
-
-  final class TestFinder[T](f: IRNode => Boolean)(
-      newTraverser: (IRNode => Unit) => TestTraverser[T]) {
-
-    private case object Found extends ControlThrowable
-
-    def find(node: T): Boolean = {
-      try {
-        newTraverser { innerNode =>
-          if (f(innerNode))
-            throw Found
-        }.traverse(node)
-        false
-      } catch {
-        case Found => true
-      }
+  class LinkedClassAssertions(linkedClass: LinkedClass) extends AbstractIRNodeAssertions {
+    protected def startTraverse(traverser: Traverser): Unit = {
+      linkedClass.jsSuperClass.foreach(traverser.traverse(_))
+      linkedClass.fields.foreach(traverser.traverseMemberDef(_))
+      linkedClass.methods.foreach(traverser.traverseMemberDef(_))
+      linkedClass.jsConstructorDef.foreach(traverser.traverseMemberDef(_))
+      linkedClass.exportedMembers.foreach(traverser.traverseMemberDef(_))
     }
   }
 }
