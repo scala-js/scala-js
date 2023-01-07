@@ -35,3 +35,32 @@ abstract class OutputStream extends Object with Closeable with Flushable {
   def close(): Unit = ()
 
 }
+
+object OutputStream {
+  def nullOutputStream(): OutputStream = new OutputStream {
+    private[this] var closed = false
+
+    private def ensureOpen(): Unit = {
+      if (closed)
+        throw new IOException
+    }
+
+    def write(b: Int): Unit = ensureOpen()
+
+    override def write(b: Array[Byte]): Unit = {
+      ensureOpen()
+
+      b.length // Null check
+    }
+
+    override def write(b: Array[Byte], off: Int, len: Int): Unit = {
+      ensureOpen()
+
+      if (off < 0 || len < 0 || len > b.length - off)
+        throw new IndexOutOfBoundsException()
+    }
+
+    override def close(): Unit =
+      closed = true
+  }
+}
