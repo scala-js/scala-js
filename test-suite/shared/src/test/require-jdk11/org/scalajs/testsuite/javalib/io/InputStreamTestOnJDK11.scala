@@ -77,4 +77,26 @@ class InputStreamTestOnJDK11 {
     // nothing to write, should still throw.
     assertThrows(classOf[NullPointerException], emptyStream().transferTo(null))
   }
+
+  @Test def nullInputStream(): Unit = {
+    val stream = InputStream.nullInputStream()
+
+    assertEquals(-1, stream.read())
+    assertEquals(0, stream.skip(10))
+    assertBytesEqual(Nil, stream.readAllBytes())
+
+    stream.close()
+    stream.close() // shouldn't throw
+
+    assertThrows(classOf[IOException], stream.available())
+    assertThrows(classOf[IOException], stream.read())
+    assertThrows(classOf[IOException], stream.read(new Array[Byte](1))) // JDK doesn't throw if len == 0
+    assertThrows(classOf[IOException], stream.read(new Array[Byte](1), 0, 1)) // JDK doesn't throw if len == 0
+    assertThrows(classOf[IOException], stream.readAllBytes())
+    assertThrows(classOf[IOException], stream.readNBytes(new Array[Byte](1), 0, 0))
+    assertThrows(classOf[IOException], stream.readNBytes(0))
+    assertThrows(classOf[IOException], stream.skip(1))
+    assertThrows(classOf[IOException], stream.skip(0))
+    assertThrows(classOf[IOException], stream.transferTo(new ByteArrayOutputStream))
+  }
 }

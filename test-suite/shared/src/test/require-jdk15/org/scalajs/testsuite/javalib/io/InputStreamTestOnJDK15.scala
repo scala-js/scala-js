@@ -64,4 +64,12 @@ class InputStreamTestOnJDK15 {
     new BadSkipStream(2).skipNBytes(0)
     new BadSkipStream(2).skipNBytes(-1)
   }
+
+  @Test def nullInputStream(): Unit = {
+    val stream = InputStream.nullInputStream()
+
+    stream.close()
+
+    assertThrows(classOf[IOException], stream.skipNBytes(0))
+  }
 }

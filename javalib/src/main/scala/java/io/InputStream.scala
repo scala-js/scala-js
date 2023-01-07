@@ -159,3 +159,48 @@ abstract class InputStream extends Closeable {
     transferred
   }
 }
+
+object InputStream {
+  def nullInputStream(): InputStream = new InputStream {
+    private[this] var closed = false
+
+    @inline
+    private def ensureOpen(): Unit = {
+      if (closed)
+        throw new IOException
+    }
+
+    override def available(): Int = {
+      ensureOpen()
+      0
+    }
+
+    def read(): Int = {
+      ensureOpen()
+      -1
+    }
+
+    override def readNBytes(n: Int): Array[Byte] = {
+      ensureOpen()
+      super.readNBytes(n)
+    }
+
+    override def readNBytes(b: Array[Byte], off: Int, len: Int): Int = {
+      ensureOpen()
+      super.readNBytes(b, off, len)
+    }
+
+    override def skip(n: Long): Long = {
+      ensureOpen()
+      0L
+    }
+
+    override def skipNBytes(n: Long): Unit = {
+      ensureOpen()
+      super.skipNBytes(n)
+    }
+
+    override def close(): Unit =
+      closed = true
+  }
+}
