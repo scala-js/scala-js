@@ -62,4 +62,21 @@ abstract class InputStream extends Closeable {
 
   def markSupported(): Boolean = false
 
+  def transferTo(out: OutputStream): Long = {
+    out.getClass() // Trigger NPE (if enabled).
+
+    var transferred = 0L
+    val buf = new Array[Byte](4096)
+    var bytesRead = 0
+
+    while (bytesRead != -1) {
+      bytesRead = read(buf)
+      if (bytesRead != -1) {
+        out.write(buf, 0, bytesRead)
+        transferred += bytesRead
+      }
+    }
+
+    transferred
+  }
 }
