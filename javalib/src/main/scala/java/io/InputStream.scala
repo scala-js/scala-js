@@ -114,6 +114,22 @@ abstract class InputStream extends Closeable {
     skipped
   }
 
+  def skipNBytes(n: Long): Unit = {
+    var remaining = n
+    while (remaining > 0) {
+      val skipped = skip(remaining)
+      if (skipped < 0 || skipped > remaining) {
+        throw new IOException
+      } else if (skipped == 0) {
+        if (read() == -1)
+          throw new EOFException
+        remaining -= 1
+      } else {
+        remaining -= skipped
+      }
+    }
+  }
+
   def available(): Int = 0
 
   def close(): Unit = ()
