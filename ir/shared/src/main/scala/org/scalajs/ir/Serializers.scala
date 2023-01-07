@@ -1646,30 +1646,12 @@ object Serializers {
       val memberDefs = List.fill(readInt())(readMemberDef(owner, ownerKind))
 
       // #4409: Filter out abstract methods in non-native JS classes for version < 1.5
-      if (ownerKind.isJSClass) {
-        if (hacks.use4) {
-          memberDefs.filter { m =>
-            m match {
-              case MethodDef(_, _, _, _, _, None) => false
-              case _                              => true
-            }
+      if (ownerKind.isJSClass && hacks.use4) {
+        memberDefs.filter { m =>
+          m match {
+            case MethodDef(_, _, _, _, _, None) => false
+            case _                              => true
           }
-        } else {
-          /* #4388 This check should be moved to a link-time check dependent on
-           * `checkIR`, but currently we only have the post-BaseLinker IR
-           * checker, at which points those methods have already been
-           * eliminated.
-           */
-          for (m <- memberDefs) {
-            m match {
-              case MethodDef(_, _, _, _, _, None) =>
-                throw new InvalidIRException(m,
-                    "Invalid abstract method in non-native JS class")
-              case _ =>
-                // ok
-            }
-          }
-          memberDefs
         }
       } else {
         memberDefs
