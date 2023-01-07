@@ -39,6 +39,31 @@ class InputStreamTestOnJDK11 {
   private def assertBytesEqual(expect: Seq[Int], got: Array[Byte]) =
     assertArrayEquals(expect.toArray.map(_.toByte), got)
 
+  @Test def readAllBytes(): Unit = {
+    assertBytesEqual(0 until 100, chunkedStream(10, 0 until 100).readAllBytes())
+    assertBytesEqual(Nil, emptyStream().readAllBytes())
+  }
+
+  @Test def readNBytes(): Unit = {
+    assertBytesEqual(0 until 20, chunkedStream(10, 0 until 100).readNBytes(20))
+    assertBytesEqual(0 until 100, chunkedStream(10, 0 until 100).readNBytes(200))
+    assertBytesEqual(Nil, chunkedStream(10, 0 until 100).readNBytes(0))
+    assertBytesEqual(Nil, emptyStream().readNBytes(1000))
+
+    // test buffer growing
+    assertBytesEqual(0 until 2000, chunkedStream(200, 0 until 2000).readNBytes(2000))
+
+    assertThrows(classOf[IllegalArgumentException], emptyStream().readNBytes(-1))
+  }
+
+  @Test def readNBytesBuf(): Unit = {
+    val buf = new Array[Byte](30)
+
+    chunkedStream(10, 0 until 100).readNBytes(buf, 2, 22)
+
+    assertBytesEqual(Seq.fill(2)(0) ++ (0 until 22) ++ Seq.fill(6)(0), buf)
+  }
+
   @Test def transferTo(): Unit = {
     val stream = chunkedStream(10, 0 until 100)
     val out = new ByteArrayOutputStream()

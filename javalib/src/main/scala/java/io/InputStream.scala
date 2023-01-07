@@ -12,6 +12,8 @@
 
 package java.io
 
+import java.util.Arrays
+
 abstract class InputStream extends Closeable {
   def read(): Int
 
@@ -42,6 +44,67 @@ abstract class InputStream extends Closeable {
       if (bytesWritten <= 0) -1
       else bytesWritten
     }
+  }
+
+  def readAllBytes(): Array[Byte] =
+    readNBytes(Integer.MAX_VALUE)
+
+  def readNBytes(len: Int): Array[Byte] = {
+    if (len < 0) {
+      throw new IllegalArgumentException
+    } else if (len == 0) {
+      new Array[Byte](0)
+    } else {
+      var bytesRead = 0
+
+      /* Allocate a buffer.
+       *
+       * Note that the implementation is required to grow memory proportional to
+       * the amount read, not the amount requested. Therefore, we cannot simply
+       * allocate an array of length len.
+       */
+      var buf = new Array[Byte](Math.min(len, 1024))
+
+      var lastRead = 0
+
+      while (bytesRead < len && lastRead != -1) {
+        if (buf.length == bytesRead) {
+          /* Note that buf.length < Integer.MAX_VALUE, because:
+           * - bytesRead < len (loop condition)
+           * - len <= Integer.MAX_VALUE (because of its type)
+           */
+          val newLen =
+            if (Integer.MAX_VALUE / 2 > buf.length) Integer.MAX_VALUE
+            else buf.length * 2
+          buf = Arrays.copyOf(buf, Math.min(len, newLen))
+        }
+
+        lastRead = read(buf, bytesRead, buf.length - bytesRead)
+        if (lastRead > 0)
+          bytesRead += lastRead
+      }
+
+      if (buf.length > bytesRead)
+        Arrays.copyOf(buf, bytesRead)
+      else
+        buf
+    }
+  }
+
+  def readNBytes(b: Array[Byte], off: Int, len: Int): Int = {
+    if (off < 0 || len < 0 || len > b.length - off)
+      throw new IndexOutOfBoundsException
+
+    var bytesRead = 0
+    var lastRead = 0
+    while (bytesRead < len && lastRead != -1) {
+      lastRead = read(b, off + bytesRead, len - bytesRead)
+      if (lastRead > 0) {
+        bytesRead += lastRead
+      }
+    }
+
+    bytesRead
   }
 
   def skip(n: Long): Long = {
