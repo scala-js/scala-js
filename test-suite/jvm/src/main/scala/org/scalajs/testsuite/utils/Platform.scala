@@ -32,6 +32,8 @@ object Platform {
 
   def executingInJVMOnLowerThanJDK16: Boolean = jdkVersion < 16
 
+  def executingInJVMOnLowerThanJDK17: Boolean = jdkVersion < 17
+
   private lazy val jdkVersion = {
     val v = System.getProperty("java.version")
     if (v.startsWith("1.")) Integer.parseInt(v.drop(2).takeWhile(_.isDigit))
