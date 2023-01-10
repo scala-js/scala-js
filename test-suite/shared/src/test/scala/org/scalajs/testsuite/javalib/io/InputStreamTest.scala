@@ -21,21 +21,8 @@ import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 
 class InputStreamTest extends CommonStreamsTests {
 
-  def mkStream(seq: Seq[Int]): InputStream = new InputStream {
-    private var i: Int = 0
-    private var m: Int = 0
-
-    override def read(b: Array[Byte], off: Int, len: Int): Int = super.read(b, off, len)
-
-    def read(): Int = if (i < seq.length) { val e = seq(i); i += 1; e & 0xFF } else -1
-    override def available(): Int = seq.length - i
-
-    override def mark(readlimit: Int): Unit = m = i
-
-    override def reset(): Unit = i = m
-
-    override def markSupported(): Boolean = true
-  }
+  def mkStream(seq: Seq[Int]): InputStream =
+    new SeqInputStreamForTest(seq)
 
   @Test def readArrayByte(): Unit = {
     val stream = mkStream(1 to 200)
