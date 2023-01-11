@@ -1083,6 +1083,33 @@ private final class PatternCompiler(private val pattern: String, private var fla
 
     if (hasRepeater) {
       // There is a repeater
+
+      /* #4784 Wrap tokens that are Assertions in ES' pattern syntax, since
+       * it is not syntactically valid to directly quantify them. It is valid
+       * to quantify a group containing an Assertion, however.
+       *
+       * There is no index-out-of-bounds in the following code because
+       * `compiledToken` is known to be a syntactically valid, non-empty regex.
+       */
+      val isTokenAnAssertion = (compiledToken.charAt(0): @switch) match {
+        case '^' | '$' =>
+          true
+        case '(' =>
+          /* This expression would also match named capturing groups, but we
+           * never emit those. Anyway, even if we did, we would uselessly wrap
+           * a group that does not need to be, but it would still be correct.
+           */
+          compiledToken.charAt(1) == '?' && compiledToken.charAt(2) != ':'
+        case '\\' =>
+          val c = compiledToken.charAt(1)
+          c == 'b' || c == 'B'
+        case _ =>
+          false
+      }
+      val wrappedToken =
+        if (isTokenAnAssertion) "(?:" + compiledToken + ")"
+        else compiledToken
+
       val baseRepeater = parseBaseRepeater(repeaterDispatchChar)
 
       if (pIndex != len) {
@@ -1090,18 +1117,18 @@ private final class PatternCompiler(private val pattern: String, private var fla
           case '+' =>
             // Possessive quantifier
             pIndex += 1
-            buildPossessiveQuantifier(compiledGroupCountBeforeThisToken, compiledToken, baseRepeater)
+            buildPossessiveQuantifier(compiledGroupCountBeforeThisToken, wrappedToken, baseRepeater)
           case '?' =>
             // Lazy quantifier
             pIndex += 1
-            compiledToken + baseRepeater + "?"
+            wrappedToken + baseRepeater + "?"
           case _ =>
             // Greedy quantifier
-            compiledToken + baseRepeater
+            wrappedToken + baseRepeater
         }
       } else {
         // Greedy quantifier
-        compiledToken + baseRepeater
+        wrappedToken + baseRepeater
       }
     } else {
       // No repeater
@@ -1192,13 +1219,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
       else
         "(?<=^|\r(?!\n)|[\n\u0085\u2028\u2029])"
     } else {
-      /* Wrap as (?:^) in case it ends up being repeated, for example `^+`
-       * becomes `(?:^)+`. This is necessary because `^+` is not syntactically
-       * valid in JS, although it is valid once wrapped in a group.
-       * (Not that repeating ^ has any useful purpose, but the spec does not
-       * prevent it.)
-       */
-      "(?:^)"
+      "^"
     }
   }
 
@@ -1214,8 +1235,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
       else
         "(?=$|(?<!\r)\n|[\r\u0085\u2028\u2029])"
     } else {
-      // Wrap as (?:$) for the same reason as ^ above
-      "(?:$)"
+      "$"
     }
   }
 
@@ -1303,7 +1323,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
       case 'A' =>
         // We can always use ^ for start-of-text because we never use the 'm' flag in the JS RegExp
         pIndex += 1
-        "(?:^)" // wrap in case it is quantified (see compilation of '^')
+        "^"
       case 'G' =>
         parseError("\\G in the middle of a pattern is not supported")
       case 'Z' =>
@@ -1316,7 +1336,7 @@ private final class PatternCompiler(private val pattern: String, private var fla
       case 'z' =>
         // We can always use $ for end-of-text because we never use the 'm' flag in the JS RegExp
         pIndex += 1
-        "(?:$)" // wrap in case it is quantified (see compilation of '$')
+        "$"
 
       // Linebreak matcher
 
