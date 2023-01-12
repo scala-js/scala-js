@@ -18,7 +18,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
-import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+import org.scalajs.testsuite.utils.AssertThrows.{assertThrows, _}
 import org.scalajs.testsuite.utils.Platform._
 
 import java.{util => ju}

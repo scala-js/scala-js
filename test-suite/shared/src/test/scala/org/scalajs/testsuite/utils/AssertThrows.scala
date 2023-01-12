@@ -21,4 +21,9 @@ object AssertThrows {
       def run(): Unit = code
     })
   }
+
+  def assertThrowsNPEIfCompliant(code: => Unit): Unit = {
+    if (Platform.hasCompliantNullPointers)
+      assertThrows(classOf[NullPointerException], code)
+  }
 }
