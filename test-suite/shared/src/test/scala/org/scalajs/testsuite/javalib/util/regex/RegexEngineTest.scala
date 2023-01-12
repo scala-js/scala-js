@@ -535,6 +535,96 @@ class RegexEngineTest  {
     assertEquals("c", m.group("D"))
   }
 
+  @Test def quantifiedAssertions_Issue4784(): Unit = {
+    /* In ES RegExp's, Assertions cannot be quantified. We test here that our
+     * compiler emits them in a way that satisfies the ES regex syntax.
+     */
+
+    val questionStart = compile("^?a")
+    assertFind(questionStart, "ab", 0, 1)
+    assertFind(questionStart, "ba", 1, 2)
+    assertNotFind(questionStart, "bc")
+
+    val plusStart = compile("^+a")
+    assertFind(plusStart, "ab", 0, 1)
+    assertNotFind(plusStart, "ba")
+    assertNotFind(plusStart, "bc")
+
+    val questionEnd = compile("a$?")
+    assertFind(questionEnd, "ab", 0, 1)
+    assertFind(questionEnd, "ba", 1, 2)
+    assertNotFind(questionEnd, "bc")
+
+    val plusEnd = compile("a$+")
+    assertNotFind(plusEnd, "ab")
+    assertFind(plusEnd, "ba", 1, 2)
+    assertNotFind(plusEnd, "bc")
+
+    val questionWordBoundary = compile("a\\b?")
+    assertFind(questionWordBoundary, "ab", 0, 1)
+    assertFind(questionWordBoundary, "ba", 1, 2)
+    assertNotFind(questionWordBoundary, "bc")
+
+    val plusWordBoundary = compile("a\\b+")
+    assertNotFind(plusWordBoundary, "ab")
+    assertFind(plusWordBoundary, "ba", 1, 2)
+    assertNotFind(plusWordBoundary, "bc")
+
+    val questionNotWordBoundary = compile("a\\B?")
+    assertFind(questionNotWordBoundary, "ab", 0, 1)
+    assertFind(questionNotWordBoundary, "ba", 1, 2)
+    assertNotFind(questionNotWordBoundary, "bc")
+
+    val plusNotWordBoundary = compile("a\\B+")
+    assertFind(plusNotWordBoundary, "ab", 0, 1)
+    assertNotFind(plusNotWordBoundary, "ba")
+    assertNotFind(plusNotWordBoundary, "bc")
+
+    val questionPosLookahead = compile("a(?=b)?")
+    assertFind(questionPosLookahead, "ab", 0, 1)
+    assertFind(questionPosLookahead, "ba", 1, 2)
+    assertNotFind(questionPosLookahead, "bc")
+
+    val plusPosLookahead = compile("a(?=b)+")
+    assertFind(plusPosLookahead, "ab", 0, 1)
+    assertNotFind(plusPosLookahead, "ba")
+    assertNotFind(plusPosLookahead, "bc")
+
+    val questionNegLookahead = compile("a(?!b)?")
+    assertFind(questionNegLookahead, "ab", 0, 1)
+    assertFind(questionNegLookahead, "ba", 1, 2)
+    assertNotFind(questionNegLookahead, "bc")
+
+    val plusNegLookahead = compile("a(?!b)+")
+    assertNotFind(plusNegLookahead, "ab")
+    assertFind(plusNegLookahead, "ba", 1, 2)
+    assertNotFind(plusNegLookahead, "bc")
+  }
+
+  @Test def quantifiedLookBehindAssertions_Issue4784(): Unit = {
+    assumeTrue("requires look-behinds", regexSupportsLookBehinds)
+
+    val questionPosLookbehind = compile("(?<=b)?a")
+    assertFind(questionPosLookbehind, "ab", 0, 1)
+    assertFind(questionPosLookbehind, "ba", 1, 2)
+    assertNotFind(questionPosLookbehind, "bc")
+
+    val plusPosLookbehind = compile("(?<=b)+a")
+    assertNotFind(plusPosLookbehind, "ab")
+    assertFind(plusPosLookbehind, "ba", 1, 2)
+    assertNotFind(plusPosLookbehind, "bc")
+
+    val questionNegLookbehind = compile("(?<!b)?a")
+    assertFind(questionNegLookbehind, "ab", 0, 1)
+    assertFind(questionNegLookbehind, "ba", 1, 2)
+    assertNotFind(questionNegLookbehind, "bc")
+
+    val plusNegLookbehind = compile("(?<!b)+a")
+    assertFind(plusNegLookbehind, "ab", 0, 1)
+    assertNotFind(plusNegLookbehind, "ba")
+    assertNotFind(plusNegLookbehind, "bc")
+  }
+
   @Test def quotes(): Unit = {
     val str = "D($[^e" + DominoHigh + "\\R)]" + GClef + DominoLow
     val quoted = compile("a\\Q" + str + "\\Ec")
