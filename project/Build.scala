@@ -1539,6 +1539,8 @@ object Build {
 
       // Tell the plugin to hack-fix bad classOf trees
       scalacOptions ++= scalaJSCompilerOption("fixClassOf"),
+      // And not to optimize Scala varargs as js.Array-based seqs
+      scalacOptions ++= scalaJSCompilerOption("avoidOptimizingScalaVarargsAsJSArray"),
 
       libraryDependencies +=
         "org.scala-lang" % "scala-library" % scalaVersion.value classifier "sources",
@@ -1923,16 +1925,16 @@ object Build {
         scalaVersion.value match {
           case `default212Version` =>
             Some(ExpectedSizes(
-                fastLink = 772000 to 773000,
-                fullLink = 145000 to 146000,
-                fastLinkGz = 91000 to 92000,
+                fastLink = 766000 to 767000,
+                fullLink = 144000 to 145000,
+                fastLinkGz = 90000 to 91000,
                 fullLinkGz = 35000 to 36000,
             ))
 
           case `default213Version` =>
             Some(ExpectedSizes(
-                fastLink = 480000 to 481000,
-                fullLink = 102000 to 103000,
+                fastLink = 482000 to 483000,
+                fullLink = 103000 to 104000,
                 fastLinkGz = 62000 to 63000,
                 fullLinkGz = 27000 to 28000,
             ))

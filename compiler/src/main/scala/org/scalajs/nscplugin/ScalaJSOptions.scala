@@ -26,6 +26,12 @@ trait ScalaJSOptions {
    *  If false, bad calls to classOf will cause an error. */
   def fixClassOf: Boolean
 
+  /** Should we avoid optimizing Scala varargs as js.Array-based seqs?
+   *
+   *  This is normally only used when compiling the scalalib.
+   */
+  def avoidOptimizingScalaVarargsAsJSArray: Boolean
+
   /** Should static forwarders be emitted for non-top-level objects.
    *
    *  Scala/JVM does not do that. Since Scala.js 1.2.0, we do not do it by
