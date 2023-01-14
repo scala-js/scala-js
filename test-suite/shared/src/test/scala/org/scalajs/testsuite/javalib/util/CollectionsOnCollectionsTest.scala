@@ -80,15 +80,12 @@ trait CollectionsOnCollectionsTest extends CollectionsTestBase {
   }
 
   @Test def minWithComparator(): Unit = {
-    def test[T: ClassTag](toElem: Int => T, cmpFun: (T, T) => Int): Unit = {
-      testMinMax2(factory, toElem, true, new Comparator[T] {
-        override def compare(o1: T, o2: T): Int = cmpFun(o1, o2)
-      })
-    }
+    def test[T: ClassTag](toElem: Int => T, cmp: Comparator[T]): Unit =
+      testMinMax2(factory, toElem, true, cmp)
 
-    test[jl.Integer](_.toInt, (x: jl.Integer, y: jl.Integer) => x.compareTo(y))
-    test[jl.Long](_.toLong, (x: jl.Long, y: jl.Long) => x.compareTo(y))
-    test[jl.Double](_.toDouble, (x: jl.Double, y: jl.Double) => x.compareTo(y))
+    test[jl.Integer](_.toInt, Comparator.naturalOrder[jl.Integer])
+    test[jl.Long](_.toLong, Comparator.naturalOrder[jl.Long])
+    test[jl.Double](_.toDouble, Comparator.naturalOrder[jl.Double])
   }
 
   @Test def maxOnComparables(): Unit = {
@@ -101,15 +98,12 @@ trait CollectionsOnCollectionsTest extends CollectionsTestBase {
   }
 
   @Test def maxWithComparator(): Unit = {
-    def test[T: ClassTag](toElem: Int => T, cmpFun: (T, T) => Int): Unit = {
-      testMinMax2(factory, toElem, false, new Comparator[T] {
-        override def compare(o1: T, o2: T): Int = cmpFun(o1, o2)
-      })
-    }
+    def test[T: ClassTag](toElem: Int => T, cmp: Comparator[T]): Unit =
+      testMinMax2(factory, toElem, false, cmp)
 
-    test[jl.Integer](_.toInt, (x: jl.Integer, y: jl.Integer) => x.compareTo(y))
-    test[jl.Long](_.toLong, (x: jl.Long, y: jl.Long) => x.compareTo(y))
-    test[jl.Double](_.toDouble, (x: jl.Double, y: jl.Double) => x.compareTo(y))
+    test[jl.Integer](_.toInt, Comparator.naturalOrder[jl.Integer])
+    test[jl.Long](_.toLong, Comparator.naturalOrder[jl.Long])
+    test[jl.Double](_.toDouble, Comparator.naturalOrder[jl.Double])
   }
 
   @Test def frequency(): Unit = {
