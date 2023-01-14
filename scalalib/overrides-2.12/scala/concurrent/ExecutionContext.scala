@@ -75,7 +75,7 @@ trait ExecutionContext {
   /** Prepares for the execution of a task. Returns the prepared
      *  execution context. The recommended implementation of
      *  `prepare` is to return `this`.
-     * 
+     *
      *  This method should no longer be overridden or called. It was
      *  originally expected that `prepare` would be called by
      *  all libraries that consume ExecutionContexts, in order to
@@ -130,7 +130,7 @@ object ExecutionContext {
      * [[https://docs.oracle.com/javase/8/docs/api/java/lang/Runtime.html#availableProcessors-- available processors]].
      */
     implicit lazy val global: ExecutionContext =
-      scala.scalajs.concurrent.JSExecutionContext.queue
+      JSGlobalExecutionContext()
   }
 
   /** Creates an `ExecutionContext` from the given `ExecutorService`.
@@ -179,5 +179,3 @@ object ExecutionContext {
    */
   def defaultReporter: Throwable => Unit = _.printStackTrace()
 }
-
-

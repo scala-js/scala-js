@@ -94,8 +94,6 @@ class AsyncTest {
       queueExecOrderTests { () =>
         tick(1)
       }(ExecutionContext.global)
-
-      assertSame(JSExecutionContext.queue, ExecutionContext.global)
     }
   }
 
