@@ -673,9 +673,9 @@ object Build {
       }
   )
 
-  val cleanIRSettings = Def.settings(
+  def cleanIRSettings(forScalalib: Boolean): Seq[Setting[_]] = Def.settings(
       // In order to rewrite anonymous functions and tuples, the code must not be specialized
-      scalacOptions += "-no-specialization",
+      scalacOptions ++= (if (forScalalib) Nil else Seq("-no-specialization")),
 
       products in Compile := {
         val s = streams.value
@@ -684,7 +684,7 @@ object Build {
 
         val outputDir = crossTarget.value / "cleaned-classes"
 
-        val irCleaner = new JavalibIRCleaner((LocalRootProject / baseDirectory).value.toURI())
+        val irCleaner = new JavalibIRCleaner((LocalRootProject / baseDirectory).value.toURI(), forScalalib)
 
         val libFileMappings = (PathFinder(prevProducts) ** "*.sjsir")
           .pair(Path.rebase(prevProducts, outputDir))
@@ -1141,7 +1141,7 @@ object Build {
       name := "Scala.js linker private library",
       publishArtifact in Compile := false,
       delambdafySetting,
-      cleanIRSettings
+      cleanIRSettings(forScalalib = false),
   ).withScalaJSCompiler2_12.withScalaJSJUnitPlugin2_12.dependsOnLibrary2_12.dependsOn(
       jUnitRuntime.v2_12 % "test", testBridge.v2_12 % "test",
   )
@@ -1457,7 +1457,7 @@ object Build {
         Seq(output)
       }.taskValue,
 
-      cleanIRSettings,
+      cleanIRSettings(forScalalib = false),
 
       Compile / doc := {
         val dir = (Compile / doc / target).value
@@ -1654,6 +1654,8 @@ object Build {
 
       headerSources in Compile := Nil,
       headerSources in Test := Nil,
+
+      cleanIRSettings(forScalalib = true),
   ).withScalaJSCompiler.dependsOnLibraryNoJar
 
   lazy val libraryAux: MultiScalaProject = MultiScalaProject(
@@ -1669,6 +1671,8 @@ object Build {
       delambdafySetting,
 
       recompileAllOrNothingSettings,
+
+      cleanIRSettings(forScalalib = true),
   ).withScalaJSCompiler.dependsOnLibraryNoJar
 
   lazy val library: MultiScalaProject = MultiScalaProject(
@@ -1925,7 +1929,7 @@ object Build {
         scalaVersion.value match {
           case `default212Version` =>
             Some(ExpectedSizes(
-                fastLink = 766000 to 767000,
+                fastLink = 767000 to 768000,
                 fullLink = 144000 to 145000,
                 fastLinkGz = 90000 to 91000,
                 fullLinkGz = 35000 to 36000,
@@ -1933,7 +1937,7 @@ object Build {
 
           case `default213Version` =>
             Some(ExpectedSizes(
-                fastLink = 482000 to 483000,
+                fastLink = 483000 to 484000,
                 fullLink = 103000 to 104000,
                 fastLinkGz = 62000 to 63000,
                 fullLinkGz = 27000 to 28000,

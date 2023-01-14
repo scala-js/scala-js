@@ -5906,6 +5906,8 @@ private[optimizer] object OptimizerCore {
         ),
         ClassName("scala.collection.mutable.ArrayBuilder$") -> List(
             m("scala$collection$mutable$ArrayBuilder$$zeroOf", List(ClassClassRef), O) -> ArrayBuilderZeroOf,
+            m("scala$collection$mutable$ArrayBuilder$$genericArrayBuilderResult", List(ClassClassRef, O), O) -> GenericArrayBuilderResult,
+            // and its legacy signature (< v1.13.0)
             m("scala$collection$mutable$ArrayBuilder$$genericArrayBuilderResult", List(ClassClassRef, JSArrayClassRef), O) -> GenericArrayBuilderResult
         ),
         ClassName("java.lang.Class") -> List(
