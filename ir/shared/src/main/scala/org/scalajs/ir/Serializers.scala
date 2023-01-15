@@ -1390,7 +1390,7 @@ object Serializers {
 
       val jsNativeLoadSpec = readJSNativeLoadSpec()
       val memberDefs0 = readMemberDefs(cls, kind)
-      val topLevelExportDefs = readTopLevelExportDefs(cls, kind)
+      val topLevelExportDefs = readTopLevelExportDefs()
       val optimizerHints = OptimizerHints.fromBits(readInt())
 
       val memberDefs =
@@ -1437,208 +1437,14 @@ object Serializers {
       implicit val pos = readPosition()
       val tag = readByte()
 
-      def bodyHack5(body: Tree, isStat: Boolean): Tree = {
-        if (!hacks.use5) {
-          body
-        } else {
-          /* #4442 and #4601: Patch Labeled, If, Match and TryCatch nodes in
-           * statement position to have type NoType. These 4 nodes are the
-           * control structures whose result type is explicitly specified (and
-           * not derived from their children like Block or TryFinally, or
-           * constant like While).
-           */
-          new Transformers.Transformer {
-            override def transform(tree: Tree, isStat: Boolean): Tree = {
-              val newTree = super.transform(tree, isStat)
-              if (isStat && newTree.tpe != NoType) {
-                newTree match {
-                  case Labeled(label, _, body) =>
-                    Labeled(label, NoType, body)(newTree.pos)
-                  case If(cond, thenp, elsep) =>
-                    If(cond, thenp, elsep)(NoType)(newTree.pos)
-                  case Match(selector, cases, default) =>
-                    Match(selector, cases, default)(NoType)(newTree.pos)
-                  case TryCatch(block, errVar, errVarOriginalName, handler) =>
-                    TryCatch(block, errVar, errVarOriginalName, handler)(NoType)(newTree.pos)
-                  case _ =>
-                    newTree
-                }
-              } else {
-                newTree
-              }
-            }
-          }.transform(body, isStat)
-        }
-      }
-
-      def bodyHack5Expr(body: Tree): Tree = bodyHack5(body, isStat = false)
-
       (tag: @switch) match {
-        case TagFieldDef =>
-          val flags = MemberFlags.fromBits(readInt())
-          val name = readFieldIdent()
-          val originalName = readOriginalName()
-
-          val ftpe0 = readType()
-          val ftpe = if (hacks.use4 && ftpe0 == NothingType) {
-            /* Note [Nothing FieldDef rewrite]
-             * val field: nothing  -->  val field: null
-             */
-            NullType
-          } else {
-            ftpe0
-          }
-
-          FieldDef(flags, name, originalName, ftpe)
-
-        case TagJSFieldDef =>
-          JSFieldDef(MemberFlags.fromBits(readInt()), readTree(), readType())
-
-        case TagMethodDef =>
-          val optHash = readOptHash()
-          // read and discard the length
-          val len = readInt()
-          assert(len >= 0)
-
-          val flags = MemberFlags.fromBits(readInt())
-
-          val name = {
-            /* In versions 1.0 and 1.1 of the IR, static initializers and
-             * class initializers were conflated into one concept, which was
-             * handled differently in the linker based on whether the owner
-             * was a JS type or not. They were serialized as `<clinit>`.
-             * Starting with 1.2, `<clinit>` is only for class initializers.
-             * If we read a definition for a `<clinit>` in a non-JS type, we
-             * rewrite it as a static initializers instead (`<stinit>`).
-             */
-            val name0 = readMethodIdent()
-            if (hacks.use1 &&
-                name0.name == ClassInitializerName &&
-                !ownerKind.isJSType) {
-              MethodIdent(StaticInitializerName)(name0.pos)
-            } else {
-              name0
-            }
-          }
-
-          val originalName = readOriginalName()
-          val args = readParamDefs()
-          val resultType = readType()
-          val body = readOptTree()
-          val optimizerHints = OptimizerHints.fromBits(readInt())
-
-          if (hacks.use0 &&
-              flags.namespace == MemberNamespace.Public &&
-              owner == HackNames.SystemModule &&
-              name.name == HackNames.identityHashCodeName) {
-            /* #3976: 1.0 javalib relied on wrong linker dispatch.
-             * We simply replace it with a correct implementation.
-             */
-            assert(args.size == 1)
-
-            val patchedBody = Some(IdentityHashCode(args(0).ref))
-            val patchedOptimizerHints = OptimizerHints.empty.withInline(true)
-
-            MethodDef(flags, name, originalName, args, resultType, patchedBody)(
-                patchedOptimizerHints, optHash)
-          } else if (hacks.use4 &&
-              flags.namespace == MemberNamespace.Public &&
-              owner == ObjectClass &&
-              name.name == HackNames.cloneName) {
-            /* #4391: In version 1.5, we introduced a dedicated IR node for the
-             * primitive operation behind `Object.clone()`. This allowed to
-             * simplify the linker by removing several special-cases that
-             * treated it specially (for example, preventing it from being
-             * inlined if the receiver could be an array). The simplifications
-             * mean that the old implementation is not valid anymore, and so we
-             * must force using the new implementation if we read IR from an
-             * older version.
-             */
-            assert(args.isEmpty)
-
-            val thisValue = This()(ClassType(ObjectClass))
-            val cloneableClassType = ClassType(CloneableClass)
-
-            val patchedBody = Some {
-              If(IsInstanceOf(thisValue, cloneableClassType),
-                  Clone(AsInstanceOf(thisValue, cloneableClassType)),
-                  Throw(New(
-                      HackNames.CloneNotSupportedExceptionClass,
-                      MethodIdent(NoArgConstructorName),
-                      Nil)))(cloneableClassType)
-            }
-            val patchedOptimizerHints = OptimizerHints.empty.withInline(true)
-
-            MethodDef(flags, name, originalName, args, resultType, patchedBody)(
-                patchedOptimizerHints, optHash)
-          } else {
-            val patchedBody = body.map(bodyHack5(_, isStat = resultType == NoType))
-            MethodDef(flags, name, originalName, args, resultType, patchedBody)(
-                optimizerHints, optHash)
-          }
-
-        case TagJSConstructorDef =>
-          val optHash = readOptHash()
-          // read and discard the length
-          val len = readInt()
-          assert(len >= 0)
-
-          /* JSConstructorDef was introduced in 1.11. Therefore, by
-           * construction, they never need the body hack of 1.5.
-           */
-
-          val flags = MemberFlags.fromBits(readInt())
-          val (params, restParam) = readParamDefsWithRest()
-          val bodyPos = readPosition()
-          val beforeSuper = readTrees()
-          val superCall = readTree().asInstanceOf[JSSuperConstructorCall]
-          val afterSuper = readTrees()
-          val body = JSConstructorBody(beforeSuper, superCall, afterSuper)(bodyPos)
-          JSConstructorDef(flags, params, restParam, body)(
-              OptimizerHints.fromBits(readInt()), optHash)
-
-        case TagJSMethodDef =>
-          val optHash = readOptHash()
-          // read and discard the length
-          val len = readInt()
-          assert(len >= 0)
-
-          val flags = MemberFlags.fromBits(readInt())
-          val name = bodyHack5Expr(readTree())
-          val (params, restParam) = readParamDefsWithRest()
-          val body = bodyHack5Expr(readTree())
-          JSMethodDef(flags, name, params, restParam, body)(
-              OptimizerHints.fromBits(readInt()), optHash)
-
-        case TagJSPropertyDef =>
-          val optHash: Version = {
-            if (hacks.use12) {
-              Unversioned
-            } else {
-              val optHash = readOptHash()
-              // read and discard the length
-              val len = readInt()
-              assert(len >= 0)
-              optHash
-            }
-          }
-
-          val flags = MemberFlags.fromBits(readInt())
-          val name = bodyHack5Expr(readTree())
-          val getterBody = readOptTree().map(bodyHack5Expr(_))
-          val setterArgAndBody = {
-            if (readBoolean())
-              Some((readParamDef(), bodyHack5Expr(readTree())))
-            else
-              None
-          }
-          JSPropertyDef(flags, name, getterBody, setterArgAndBody)(optHash)
-
-        case TagJSNativeMemberDef =>
-          val flags = MemberFlags.fromBits(readInt())
-          val name = readMethodIdent()
-          val jsNativeLoadSpec = readJSNativeLoadSpec().get
-          JSNativeMemberDef(flags, name, jsNativeLoadSpec)
+        case TagFieldDef          => readFieldDef()
+        case TagJSFieldDef        => readJSFieldDef()
+        case TagMethodDef         => readMethodDef(owner, ownerKind)
+        case TagJSConstructorDef  => readJSConstructorDef()
+        case TagJSMethodDef       => readJSMethodDef()
+        case TagJSPropertyDef     => readJSPropertyDef()
+        case TagJSNativeMemberDef => readJSNativeMemberDef()
       }
     }
 
@@ -1658,13 +1464,225 @@ object Serializers {
       }
     }
 
-    def readTopLevelExportDef(owner: ClassName,
-        ownerKind: ClassKind): TopLevelExportDef = {
+    private def readFieldDef()(implicit pos: Position): FieldDef = {
+      val flags = MemberFlags.fromBits(readInt())
+      val name = readFieldIdent()
+      val originalName = readOriginalName()
+
+      val ftpe0 = readType()
+      val ftpe = if (hacks.use4 && ftpe0 == NothingType) {
+        /* Note [Nothing FieldDef rewrite]
+         * val field: nothing  -->  val field: null
+         */
+        NullType
+      } else {
+        ftpe0
+      }
+
+      FieldDef(flags, name, originalName, ftpe)
+    }
+
+    private def readJSFieldDef()(implicit pos: Position): JSFieldDef =
+      JSFieldDef(MemberFlags.fromBits(readInt()), readTree(), readType())
+
+    private def readMethodDef(owner: ClassName, ownerKind: ClassKind)(
+        implicit pos: Position): MethodDef = {
+      val optHash = readOptHash()
+      // read and discard the length
+      val len = readInt()
+      assert(len >= 0)
+
+      val flags = MemberFlags.fromBits(readInt())
+
+      val name = {
+        /* In versions 1.0 and 1.1 of the IR, static initializers and
+         * class initializers were conflated into one concept, which was
+         * handled differently in the linker based on whether the owner
+         * was a JS type or not. They were serialized as `<clinit>`.
+         * Starting with 1.2, `<clinit>` is only for class initializers.
+         * If we read a definition for a `<clinit>` in a non-JS type, we
+         * rewrite it as a static initializers instead (`<stinit>`).
+         */
+        val name0 = readMethodIdent()
+        if (hacks.use1 &&
+            name0.name == ClassInitializerName &&
+            !ownerKind.isJSType) {
+          MethodIdent(StaticInitializerName)(name0.pos)
+        } else {
+          name0
+        }
+      }
+
+      val originalName = readOriginalName()
+      val args = readParamDefs()
+      val resultType = readType()
+      val body = readOptTree()
+      val optimizerHints = OptimizerHints.fromBits(readInt())
+
+      if (hacks.use0 &&
+          flags.namespace == MemberNamespace.Public &&
+          owner == HackNames.SystemModule &&
+          name.name == HackNames.identityHashCodeName) {
+        /* #3976: 1.0 javalib relied on wrong linker dispatch.
+         * We simply replace it with a correct implementation.
+         */
+        assert(args.size == 1)
+
+        val patchedBody = Some(IdentityHashCode(args(0).ref))
+        val patchedOptimizerHints = OptimizerHints.empty.withInline(true)
+
+        MethodDef(flags, name, originalName, args, resultType, patchedBody)(
+            patchedOptimizerHints, optHash)
+      } else if (hacks.use4 &&
+          flags.namespace == MemberNamespace.Public &&
+          owner == ObjectClass &&
+          name.name == HackNames.cloneName) {
+        /* #4391: In version 1.5, we introduced a dedicated IR node for the
+         * primitive operation behind `Object.clone()`. This allowed to
+         * simplify the linker by removing several special-cases that
+         * treated it specially (for example, preventing it from being
+         * inlined if the receiver could be an array). The simplifications
+         * mean that the old implementation is not valid anymore, and so we
+         * must force using the new implementation if we read IR from an
+         * older version.
+         */
+        assert(args.isEmpty)
+
+        val thisValue = This()(ClassType(ObjectClass))
+        val cloneableClassType = ClassType(CloneableClass)
+
+        val patchedBody = Some {
+          If(IsInstanceOf(thisValue, cloneableClassType),
+              Clone(AsInstanceOf(thisValue, cloneableClassType)),
+              Throw(New(
+                  HackNames.CloneNotSupportedExceptionClass,
+                  MethodIdent(NoArgConstructorName),
+                  Nil)))(cloneableClassType)
+        }
+        val patchedOptimizerHints = OptimizerHints.empty.withInline(true)
+
+        MethodDef(flags, name, originalName, args, resultType, patchedBody)(
+            patchedOptimizerHints, optHash)
+      } else {
+        val patchedBody = body.map(bodyHack5(_, isStat = resultType == NoType))
+        MethodDef(flags, name, originalName, args, resultType, patchedBody)(
+            optimizerHints, optHash)
+      }
+    }
+
+    private def readJSConstructorDef()(implicit pos: Position): JSConstructorDef = {
+      val optHash = readOptHash()
+      // read and discard the length
+      val len = readInt()
+      assert(len >= 0)
+
+      /* JSConstructorDef was introduced in 1.11. Therefore, by
+       * construction, they never need the body hack of 1.5.
+       */
+
+      val flags = MemberFlags.fromBits(readInt())
+      val (params, restParam) = readParamDefsWithRest()
+      val bodyPos = readPosition()
+      val beforeSuper = readTrees()
+      val superCall = readTree().asInstanceOf[JSSuperConstructorCall]
+      val afterSuper = readTrees()
+      val body = JSConstructorBody(beforeSuper, superCall, afterSuper)(bodyPos)
+      JSConstructorDef(flags, params, restParam, body)(
+          OptimizerHints.fromBits(readInt()), optHash)
+    }
+
+    private def readJSMethodDef()(implicit pos: Position): JSMethodDef = {
+      val optHash = readOptHash()
+      // read and discard the length
+      val len = readInt()
+      assert(len >= 0)
+
+      val flags = MemberFlags.fromBits(readInt())
+      val name = bodyHack5Expr(readTree())
+      val (params, restParam) = readParamDefsWithRest()
+      val body = bodyHack5Expr(readTree())
+      JSMethodDef(flags, name, params, restParam, body)(
+          OptimizerHints.fromBits(readInt()), optHash)
+    }
+
+    private def readJSPropertyDef()(implicit pos: Position): JSPropertyDef = {
+      val optHash: Version = {
+        if (hacks.use12) {
+          Unversioned
+        } else {
+          val optHash = readOptHash()
+          // read and discard the length
+          val len = readInt()
+          assert(len >= 0)
+          optHash
+        }
+      }
+
+      val flags = MemberFlags.fromBits(readInt())
+      val name = bodyHack5Expr(readTree())
+      val getterBody = readOptTree().map(bodyHack5Expr(_))
+      val setterArgAndBody = {
+        if (readBoolean())
+          Some((readParamDef(), bodyHack5Expr(readTree())))
+        else
+          None
+      }
+      JSPropertyDef(flags, name, getterBody, setterArgAndBody)(optHash)
+    }
+
+    private def readJSNativeMemberDef()(implicit pos: Position): JSNativeMemberDef = {
+      val flags = MemberFlags.fromBits(readInt())
+      val name = readMethodIdent()
+      val jsNativeLoadSpec = readJSNativeLoadSpec().get
+      JSNativeMemberDef(flags, name, jsNativeLoadSpec)
+    }
+
+    private def bodyHack5(body: Tree, isStat: Boolean): Tree = {
+      if (!hacks.use5) {
+        body
+      } else {
+        /* #4442 and #4601: Patch Labeled, If, Match and TryCatch nodes in
+         * statement position to have type NoType. These 4 nodes are the
+         * control structures whose result type is explicitly specified (and
+         * not derived from their children like Block or TryFinally, or
+         * constant like While).
+         */
+        new Transformers.Transformer {
+          override def transform(tree: Tree, isStat: Boolean): Tree = {
+            val newTree = super.transform(tree, isStat)
+            if (isStat && newTree.tpe != NoType) {
+              newTree match {
+                case Labeled(label, _, body) =>
+                  Labeled(label, NoType, body)(newTree.pos)
+                case If(cond, thenp, elsep) =>
+                  If(cond, thenp, elsep)(NoType)(newTree.pos)
+                case Match(selector, cases, default) =>
+                  Match(selector, cases, default)(NoType)(newTree.pos)
+                case TryCatch(block, errVar, errVarOriginalName, handler) =>
+                  TryCatch(block, errVar, errVarOriginalName, handler)(NoType)(newTree.pos)
+                case _ =>
+                  newTree
+              }
+            } else {
+              newTree
+            }
+          }
+        }.transform(body, isStat)
+      }
+    }
+
+    private def bodyHack5Expr(body: Tree): Tree = bodyHack5(body, isStat = false)
+
+    def readTopLevelExportDef(): TopLevelExportDef = {
       implicit val pos = readPosition()
       val tag = readByte()
 
-      def readJSMethodDef(): JSMethodDef =
-        readMemberDef(owner, ownerKind).asInstanceOf[JSMethodDef]
+      def readJSMethodDef(): JSMethodDef = {
+        implicit val pos = readPosition()
+        val tag = readByte()
+        assert(tag == TagJSMethodDef, s"unexpected tag $tag")
+        this.readJSMethodDef()
+      }
 
       def readModuleID(): String =
         if (hacks.use2) DefaultModuleID
@@ -1678,10 +1696,8 @@ object Serializers {
       }
     }
 
-    def readTopLevelExportDefs(owner: ClassName,
-        ownerKind: ClassKind): List[TopLevelExportDef] = {
-      List.fill(readInt())(readTopLevelExportDef(owner, ownerKind))
-    }
+    def readTopLevelExportDefs(): List[TopLevelExportDef] =
+      List.fill(readInt())(readTopLevelExportDef())
 
     def readLocalIdent(): LocalIdent = {
       implicit val pos = readPosition()
