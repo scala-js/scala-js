@@ -147,45 +147,32 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
       analyzerInfo: ClassInfo): LinkedClass = {
     import ir.Trees._
 
-    val fields = List.newBuilder[AnyFieldDef]
-    val methods = List.newBuilder[MethodDef]
-    val jsNativeMembers = List.newBuilder[JSNativeMemberDef]
-    var jsConstructorDef: Option[JSConstructorDef] = None
-    val exportedMembers = List.newBuilder[JSMethodPropDef]
+    val fields = classDef.fields.filter(isFieldDefNeeded(analyzerInfo, _))
 
-    classDef.memberDefs.foreach {
-      case field: AnyFieldDef =>
-        if (isFieldDefNeeded(analyzerInfo, field))
-          fields += field
+    val methods = classDef.methods.filter { m =>
+      val methodInfo =
+        analyzerInfo.methodInfos(m.flags.namespace)(m.methodName)
 
-      case m: MethodDef =>
-        val methodInfo =
-          analyzerInfo.methodInfos(m.flags.namespace)(m.methodName)
+      val reachable = methodInfo.isReachable
+      assert(m.body.isDefined || !reachable,
+          s"The abstract method ${classDef.name.name}.${m.methodName} " +
+          "is reachable.")
 
-        if (methodInfo.isReachable) {
-          assert(m.body.isDefined,
-              s"The abstract method ${classDef.name.name}.${m.methodName} " +
-              "is reachable.")
-          methods += m
-        }
-
-      case m: JSConstructorDef =>
-        if (analyzerInfo.isAnySubclassInstantiated) {
-          assert(jsConstructorDef.isEmpty,
-              s"Duplicate JS constructor in ${classDef.name.name} at ${m.pos}")
-          jsConstructorDef = Some(m)
-        }
-
-      case m: JSMethodPropDef =>
-        if (analyzerInfo.isAnySubclassInstantiated)
-          exportedMembers += m
-
-      case m: JSNativeMemberDef =>
-        if (analyzerInfo.jsNativeMembersUsed.contains(m.name.name))
-          jsNativeMembers += m
+      reachable
     }
 
-    methods ++= syntheticMethodDefs
+    val jsConstructor =
+      if (analyzerInfo.isAnySubclassInstantiated) classDef.jsConstructor
+      else None
+
+    val jsMethodProps =
+      if (analyzerInfo.isAnySubclassInstantiated) classDef.jsMethodProps
+      else Nil
+
+    val jsNativeMembers = classDef.jsNativeMembers
+      .filter(m => analyzerInfo.jsNativeMembersUsed.contains(m.name.name))
+
+    val allMethods = methods ++ syntheticMethodDefs
 
     val kind =
       if (analyzerInfo.isModuleAccessed) classDef.kind
@@ -201,11 +188,11 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
         classDef.interfaces,
         classDef.jsSuperClass,
         classDef.jsNativeLoadSpec,
-        fields.result(),
-        methods.result(),
-        jsConstructorDef,
-        exportedMembers.result(),
-        jsNativeMembers.result(),
+        fields,
+        allMethods,
+        jsConstructor,
+        jsMethodProps,
+        jsNativeMembers,
         classDef.optimizerHints,
         classDef.pos,
         ancestors.toList,

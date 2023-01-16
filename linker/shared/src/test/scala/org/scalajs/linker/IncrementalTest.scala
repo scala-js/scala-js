@@ -56,15 +56,17 @@ class IncrementalTest {
             FooClass,
             kind = ClassKind.ModuleClass,
             superClass = Some(ObjectClass),
-            memberDefs = List(
-                trivialCtor(FooClass),
-                JSMethodDef(
-                    EMF, jsMethodName, Nil, None,
-                    if (pre) int(5)
-                    else ApplyStatic(EAF, FooClass, staticMethodName, Nil)(IntType))(
-                    EOH, UNV),
-                MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
-                    staticMethodName, NON, Nil, IntType, Some(int(6)))(EOH, UNV)
+            methods = List(
+              trivialCtor(FooClass),
+              MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
+                  staticMethodName, NON, Nil, IntType, Some(int(6)))(EOH, UNV)
+            ),
+            jsMethodProps = List(
+              JSMethodDef(
+                  EMF, jsMethodName, Nil, None,
+                  if (pre) int(5)
+                  else ApplyStatic(EAF, FooClass, staticMethodName, Nil)(IntType))(
+                  EOH, UNV)
             )
         )
     )
@@ -87,7 +89,7 @@ class IncrementalTest {
         v(pre) -> classDef(
             FooClass,
             superClass = Some(ObjectClass),
-            memberDefs = List(
+            methods = List(
                 trivialCtor(FooClass),
                 MethodDef(EMF, foo, NON, List(paramDef(x, IntType)), IntType,
                     Some(VarRef(x)(IntType)))(
@@ -114,7 +116,7 @@ class IncrementalTest {
         v(pre) -> classDef(
             FooClass,
             superClass = Some(ObjectClass),
-            memberDefs = List(
+            methods = List(
                 trivialCtor(FooClass),
                 MethodDef(EMF, foo, NON, List(paramDef(x, IntType)), IntType,
                     Some(Block(
@@ -164,7 +166,7 @@ class IncrementalTest {
         )),
 
         // Bar
-        v0 -> classDef(BarInterface, kind = ClassKind.Interface, memberDefs = List(
+        v0 -> classDef(BarInterface, kind = ClassKind.Interface, methods = List(
             MethodDef(EMF, meth, NON, methParamDefs, IntType, Some({
               BinaryOp(BinaryOp.Int_+, int(5), BinaryOp(BinaryOp.Int_*, xRef, int(2)))
             }))(EOH, UNV)
@@ -175,7 +177,7 @@ class IncrementalTest {
             Foo1Class,
             superClass = Some(ObjectClass),
             interfaces = List(BarInterface),
-            memberDefs = List(
+            methods = List(
               trivialCtor(Foo1Class),
               MethodDef(EMF, meth, NON, methParamDefs, IntType, Some({
                 ApplyStatically(EAF, if (pre) This()(Foo1Type) else foo1Ref,
@@ -185,7 +187,7 @@ class IncrementalTest {
         ),
 
         // Foo2
-        v0 -> classDef(Foo2Class, superClass = Some(ObjectClass), interfaces = List(BarInterface), memberDefs = List(
+        v0 -> classDef(Foo2Class, superClass = Some(ObjectClass), interfaces = List(BarInterface), methods = List(
             trivialCtor(Foo2Class),
             MethodDef(EMF, meth, NON, methParamDefs, IntType, Some({
               ApplyStatically(EAF, This()(Foo2Type), BarInterface, meth, List(foo1Ref, xRef))(IntType)
@@ -237,7 +239,7 @@ class IncrementalTest {
 
       List(
         v -> classDef(FooClass, kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
-            memberDefs = trivialCtor(FooClass) :: stepDependentMembers),
+            methods = trivialCtor(FooClass) :: stepDependentMembers),
 
         v -> mainTestClassDef(Block(stepDependentMainStats))
       )
@@ -297,7 +299,7 @@ class IncrementalTest {
 
       List(
         v -> classDef(FooClass, superClass = Some(ObjectClass),
-            memberDefs = trivialCtor(FooClass) :: stepDependentMembers),
+            methods = trivialCtor(FooClass) :: stepDependentMembers),
 
         v -> mainTestClassDef(Block(stepDependentMainStats))
       )
@@ -337,7 +339,7 @@ class IncrementalTest {
             FooModule,
             kind = ClassKind.ModuleClass,
             superClass = Some(ObjectClass),
-            memberDefs = List(fooCtor(pre))
+            methods = List(fooCtor(pre))
         )
     )
 
@@ -360,17 +362,19 @@ class IncrementalTest {
           AModule,
           kind = ClassKind.ModuleClass,
           superClass = Some(ObjectClass),
-          memberDefs = List(
-              trivialCtor(AModule),
-              JSMethodDef(EMF, str("foo"), Nil, None,
-                  Apply(EAF, LoadModule(BModule), targetMethodName, Nil)(IntType))(EOH, UNV)
+          methods = List(
+            trivialCtor(AModule)
+          ),
+          jsMethodProps = List(
+            JSMethodDef(EMF, str("foo"), Nil, None,
+                Apply(EAF, LoadModule(BModule), targetMethodName, Nil)(IntType))(EOH, UNV)
           )
       ),
       v(pre) -> classDef(
           BModule,
           kind = ClassKind.ModuleClass,
           superClass = Some(ObjectClass),
-          memberDefs = List(
+          methods = List(
               trivialCtor(BModule),
               MethodDef(EMF, targetMethodName, NON, Nil, IntType,
                   Some(int(if (pre) 1 else 2)))(EOH.withInline(true), UNV)
@@ -404,7 +408,7 @@ class IncrementalTest {
           AClass,
           kind = ClassKind.JSClass,
           superClass = Some(JSObject),
-          memberDefs = List(
+          jsConstructor = Some(
               JSConstructorDef(EMF.withNamespace(MemberNamespace.Constructor), Nil, None,
                   JSConstructorBody(Nil, JSSuperConstructorCall(Nil), List({
                     consoleLog(Apply(EAF, LoadModule(BModule), targetMethodName, Nil)(IntType))
@@ -415,7 +419,7 @@ class IncrementalTest {
           BModule,
           kind = ClassKind.ModuleClass,
           superClass = Some(ObjectClass),
-          memberDefs = List(
+          methods = List(
               trivialCtor(BModule),
               MethodDef(EMF, targetMethodName, NON, Nil, IntType,
                   Some(int(if (pre) 1 else 2)))(EOH.withInline(true), UNV)
@@ -447,7 +451,7 @@ class IncrementalTest {
           BModule,
           kind = ClassKind.ModuleClass,
           superClass = Some(ObjectClass),
-          memberDefs = List(
+          methods = List(
               trivialCtor(BModule),
               MethodDef(EMF, targetMethodName, NON, Nil, IntType,
                   Some(int(if (pre) 1 else 2)))(EOH.withInline(true), UNV)

@@ -78,10 +78,10 @@ object IRAssertions {
   class LinkedClassAssertions(linkedClass: LinkedClass) extends AbstractIRNodeAssertions {
     protected def startTraverse(traverser: Traverser): Unit = {
       linkedClass.jsSuperClass.foreach(traverser.traverse(_))
-      linkedClass.fields.foreach(traverser.traverseMemberDef(_))
-      linkedClass.methods.foreach(traverser.traverseMemberDef(_))
-      linkedClass.jsConstructorDef.foreach(traverser.traverseMemberDef(_))
-      linkedClass.exportedMembers.foreach(traverser.traverseMemberDef(_))
+      linkedClass.fields.foreach(traverser.traverseAnyFieldDef(_))
+      linkedClass.methods.foreach(traverser.traverseMethodDef(_))
+      linkedClass.jsConstructorDef.foreach(traverser.traverseJSConstructorDef(_))
+      linkedClass.exportedMembers.foreach(traverser.traverseJSMethodPropDef(_))
     }
   }
 }

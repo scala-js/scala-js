@@ -43,10 +43,10 @@ class StaticForwardersASTTest extends JSASTTest  {
       case cd: ClassDef if cd.name.name == ClassName("Foo") => cd
     }
 
-    val staticMethodNames = classDef.memberDefs.collect {
-      case MethodDef(flags, MethodIdent(name), _, _, _, _) if flags.namespace.isStatic =>
-        name
-    }.sortBy(_.simpleName)
+    val staticMethodNames = classDef.methods
+      .withFilter(_.flags.namespace.isStatic)
+      .map(_.name.name)
+      .sortBy(_.simpleName)
 
     assertEquals(
       List(
@@ -74,10 +74,10 @@ class StaticForwardersASTTest extends JSASTTest  {
       case cd: ClassDef if cd.name.name == ClassName("Foo") => cd
     }
 
-    val staticMethodNames = classDef.memberDefs.collect {
-      case MethodDef(flags, MethodIdent(name), _, _, _, _) if flags.namespace.isStatic =>
-        name
-    }.sortBy(_.simpleName)
+    val staticMethodNames = classDef.methods
+      .withFilter(_.flags.namespace.isStatic)
+      .map(_.name.name)
+      .sortBy(_.simpleName)
 
     assertEquals(
       List(

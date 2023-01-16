@@ -48,7 +48,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
      *
      *  @param classSym symbol of the class we export for
      */
-    def genMemberExports(classSym: Symbol): List[js.MemberDef] = {
+    def genMemberExports(classSym: Symbol): List[js.JSMethodPropDef] = {
       val allExports = classSym.info.members.filter(jsInterop.isExport(_))
 
       val newlyDecldExports = if (classSym.superClass == NoSymbol) {
@@ -67,7 +67,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
     }
 
     def genJSClassDispatchers(classSym: Symbol,
-        dispatchMethodsNames: List[JSName]): List[js.MemberDef] = {
+        dispatchMethodsNames: List[JSName]): List[js.JSMethodPropDef] = {
       dispatchMethodsNames
         .map(genJSClassDispatcher(classSym, _))
     }
@@ -167,7 +167,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       }).toList
     }
 
-    def genStaticExports(classSym: Symbol): List[js.MemberDef] = {
+    def genStaticExports(classSym: Symbol): (List[js.JSFieldDef], List[js.JSMethodPropDef]) = {
       val exports = (for {
         sym <- classSym.info.members
         info <- jsInterop.staticExportsOf(sym)
@@ -175,10 +175,13 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         (info, sym)
       }).toList
 
-      (for {
+      val fields = List.newBuilder[js.JSFieldDef]
+      val methodProps = List.newBuilder[js.JSMethodPropDef]
+
+      for {
         (info, tups) <- exports.groupBy(_._1)
         kind <- checkSameKind(tups)
-      } yield {
+      } {
         def alts = tups.map(_._2)
 
         implicit val pos = info.pos
@@ -187,11 +190,11 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
         kind match {
           case Method =>
-            genMemberExportOrDispatcher(
+            methodProps += genMemberExportOrDispatcher(
                 JSName.Literal(info.jsName), isProp = false, alts, static = true)
 
           case Property =>
-            genMemberExportOrDispatcher(
+            methodProps += genMemberExportOrDispatcher(
                 JSName.Literal(info.jsName), isProp = true, alts, static = true)
 
           case Field =>
@@ -203,15 +206,17 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
               .withMutable(true)
             val name = js.StringLiteral(info.jsName)
             val irTpe = genExposedFieldIRType(sym)
-            js.JSFieldDef(flags, name, irTpe)
+            fields += js.JSFieldDef(flags, name, irTpe)
 
           case kind =>
             throw new AssertionError(s"unexpected static export kind: $kind")
         }
-      }).toList
+      }
+
+      (fields.result(), methodProps.result())
     }
 
-    private def genMemberExport(classSym: Symbol, name: TermName): js.MemberDef = {
+    private def genMemberExport(classSym: Symbol, name: TermName): js.JSMethodPropDef = {
       /* This used to be `.member(name)`, but it caused #3538, since we were
        * sometimes selecting mixin forwarders, whose type history does not go
        * far enough back in time to see varargs. We now explicitly exclude
@@ -242,7 +247,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       genMemberExportOrDispatcher(JSName.Literal(jsName), isProp, alts, static = false)
     }
 
-    private def genJSClassDispatcher(classSym: Symbol, name: JSName): js.MemberDef = {
+    private def genJSClassDispatcher(classSym: Symbol, name: JSName): js.JSMethodPropDef = {
       val alts = classSym.info.members.toList.filter { sym =>
         sym.isMethod &&
         !sym.isBridge &&
@@ -272,7 +277,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
     }
 
     def genMemberExportOrDispatcher(jsName: JSName, isProp: Boolean,
-        alts: List[Symbol], static: Boolean): js.MemberDef = {
+        alts: List[Symbol], static: Boolean): js.JSMethodPropDef = {
       withNewLocalNameScope {
         if (isProp)
           genExportProperty(alts, jsName, static)

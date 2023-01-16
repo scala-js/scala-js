@@ -65,7 +65,7 @@ class BackwardsCompatTest {
       classDef("A",
           superClass = Some(ObjectClass),
           interfaces = List(CloneableClass),
-          memberDefs = List(trivialCtor("A"))),
+          methods = List(trivialCtor("A"))),
       mainTestClassDef(
           systemOutPrintln(Apply(EAF,
               New("A", NoArgConstructorName, Nil),

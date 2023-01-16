@@ -41,7 +41,7 @@ class LibraryReachabilityTest {
     val StringType = ClassType(BoxedStringClass)
 
     val classDefs = Seq(
-        classDef("A", superClass = Some(ObjectClass), memberDefs = List(
+        classDef("A", superClass = Some(ObjectClass), methods = List(
             trivialCtor("A"),
             MethodDef(EMF, m("test", Nil, V), NON, Nil, NoType, Some(Block(
                 Apply(EAF, systemMod, m("getProperty", List(T), T), List(emptyStr))(StringType),
@@ -70,7 +70,7 @@ class LibraryReachabilityTest {
     val formatMethod = m("format", List(T, ArrayTypeRef(O, 1)), T)
 
     val classDefs = Seq(
-      classDef("A", superClass = Some(ObjectClass), memberDefs = List(
+      classDef("A", superClass = Some(ObjectClass), methods = List(
         trivialCtor("A"),
         MethodDef(EMF, m("test", Nil, V), NON, Nil, NoType, Some(Block(
           ApplyStatic(EAF, BoxedStringClass, formatMethod, List(str("hello %d"), int(42)))(StringType)

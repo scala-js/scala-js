@@ -1105,7 +1105,11 @@ object Trees {
        */
       val jsSuperClass: Option[Tree],
       val jsNativeLoadSpec: Option[JSNativeLoadSpec],
-      val memberDefs: List[MemberDef],
+      val fields: List[AnyFieldDef],
+      val methods: List[MethodDef],
+      val jsConstructor: Option[JSConstructorDef],
+      val jsMethodProps: List[JSMethodPropDef],
+      val jsNativeMembers: List[JSNativeMemberDef],
       val topLevelExportDefs: List[TopLevelExportDef]
   )(
       val optimizerHints: OptimizerHints
@@ -1123,13 +1127,17 @@ object Trees {
         interfaces: List[ClassIdent],
         jsSuperClass: Option[Tree],
         jsNativeLoadSpec: Option[JSNativeLoadSpec],
-        memberDefs: List[MemberDef],
+        fields: List[AnyFieldDef],
+        methods: List[MethodDef],
+        jsConstructor: Option[JSConstructorDef],
+        jsMethodProps: List[JSMethodPropDef],
+        jsNativeMembers: List[JSNativeMemberDef],
         topLevelExportDefs: List[TopLevelExportDef])(
         optimizerHints: OptimizerHints)(
         implicit pos: Position): ClassDef = {
       new ClassDef(name, originalName, kind, jsClassCaptures, superClass,
-          interfaces, jsSuperClass, jsNativeLoadSpec, memberDefs,
-          topLevelExportDefs)(
+          interfaces, jsSuperClass, jsNativeLoadSpec, fields, methods,
+          jsConstructor, jsMethodProps, jsNativeMembers, topLevelExportDefs)(
           optimizerHints)
     }
   }

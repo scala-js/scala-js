@@ -56,7 +56,7 @@ class OptimizerTest {
    *  `j.l.Object.clone()` is not otherwise reachable).
    */
   private def testCloneOnArrayInliningGeneric(inlinedWhenOnObject: Boolean,
-      customMemberDefs: List[MemberDef]): Future[Unit] = {
+      customMethodDefs: List[MethodDef]): Future[Unit] = {
 
     val thisFoo = This()(ClassType("Foo"))
     val intArrayTypeRef = ArrayTypeRef(IntRef, 1)
@@ -71,7 +71,7 @@ class OptimizerTest {
     def callCloneOn(receiver: Tree): Tree =
       consoleLog(Apply(EAF, receiver, cloneMethodName, Nil)(AnyType))
 
-    val fooMemberDefs = List(
+    val fooMethodDefs = List(
         trivialCtor("Foo"),
 
         // @noinline def witness(): AnyRef = throw null
@@ -93,13 +93,13 @@ class OptimizerTest {
         MethodDef(EMF, anObjectMethodName, NON, Nil, AnyType, Some {
           anArrayOfInts
         })(EOH.withNoinline(true), UNV)
-    ) ::: customMemberDefs
+    ) ::: customMethodDefs
 
     val classDefs = Seq(
         classDef("Foo",
             superClass = Some(ObjectClass),
             interfaces = List("java.lang.Cloneable"),
-            memberDefs = fooMemberDefs
+            methods = fooMethodDefs
         ),
         mainTestClassDef(Block(
             // new Foo().reachClone() -- make Foo.clone() reachable for sure
@@ -200,11 +200,13 @@ class OptimizerTest {
             MainTestClassName,
             kind = ClassKind.Class,
             superClass = Some(ObjectClass),
-            memberDefs = List(
+            fields = List(
+              // static var foo: java.lang.String
+              FieldDef(EMF.withNamespace(PublicStatic).withMutable(true),
+                  "foo", NON, StringType)
+            ),
+            methods = List(
                 trivialCtor(MainTestClassName),
-                // static var foo: java.lang.String
-                FieldDef(EMF.withNamespace(PublicStatic).withMutable(true),
-                    "foo", NON, StringType),
                 // static def foo(): java.lang.String = Test::foo
                 MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
                     fooGetter, NON, Nil, StringType, Some({
@@ -304,7 +306,7 @@ class OptimizerTest {
             MainTestClassName,
             kind = ClassKind.Class,
             superClass = Some(ObjectClass),
-            memberDefs = List(
+            methods = List(
                 trivialCtor(MainTestClassName),
                 // @noinline static def sideEffect(x: Int): Int = x
                 MethodDef(EMF.withNamespace(PublicStatic), sideEffect, NON,
@@ -372,7 +374,7 @@ class OptimizerTest {
         classDef("Thunk",
             superClass = Some(ObjectClass),
             optimizerHints = EOH.withInline(true),
-            memberDefs = List(
+            methods = List(
                 trivialCtor("Thunk"),
                 MethodDef(EMF, implMethodName, NON, Nil, AnyType, Some {
                   SelectJSNativeMember("Holder", memberMethodName)
@@ -384,7 +386,7 @@ class OptimizerTest {
             )
         ),
         classDef("Holder", kind = ClassKind.Interface,
-            memberDefs = List(
+            jsNativeMembers = List(
                 JSNativeMemberDef(SMF, memberMethodName, JSNativeLoadSpec.Import("foo", List("bar")))
             )
         )
@@ -409,7 +411,7 @@ class OptimizerTest {
         }
       }
 
-      main.methods.foreach(traverser.traverseMemberDef(_))
+      main.methods.foreach(traverser.traverseMethodDef(_))
 
       assertTrue(foundJSImport)
     }
@@ -446,7 +448,7 @@ class OptimizerTest {
           MainTestClassName,
           kind = ClassKind.Class,
           superClass = Some(ObjectClass),
-          memberDefs = List(
+          methods = List(
               // @noinline static def calc(): Int = 1
               MethodDef(EMF.withNamespace(PublicStatic), calc, NON, Nil,
                   IntType, Some(int(1)))(EOH.withNoinline(true), UNV),
@@ -484,32 +486,33 @@ class OptimizerTest {
 
     val witnessType = ClassType("Witness")
 
-    val fooMemberDefs = List(
-      // x: Witness
-      FieldDef(EMF.withMutable(witnessMutable), "x", NON, witnessType),
-
-      // y: Int
-      FieldDef(EMF, "y", NON, IntType),
-
-      // def this() = {
-      //   this.x = null
-      //   this.y = 5
-      // }
-      MethodDef(EMF.withNamespace(Constructor), NoArgConstructorName, NON, Nil, NoType, Some(Block(
-        Assign(Select(This()(ClassType("Foo")), "Foo", "x")(witnessType), Null()),
-        Assign(Select(This()(ClassType("Foo")), "Foo", "y")(IntType), int(5))
-      )))(EOH, UNV),
-
-      // def method(): Int = this.y
-      MethodDef(EMF, methodName, NON, Nil, IntType, Some {
-        Select(This()(ClassType("Foo")), "Foo", "y")(IntType)
-      })(EOH, UNV)
-    )
-
     Seq(
       classDef("Witness", kind = ClassKind.Interface),
       classDef("Foo", kind = ClassKind.Class, superClass = Some(ObjectClass),
-          memberDefs = fooMemberDefs, optimizerHints = EOH.withInline(classInline)),
+          fields = List(
+            // x: Witness
+            FieldDef(EMF.withMutable(witnessMutable), "x", NON, witnessType),
+
+            // y: Int
+            FieldDef(EMF, "y", NON, IntType)
+          ),
+          methods = List(
+            // def this() = {
+            //   this.x = null
+            //   this.y = 5
+            // }
+            MethodDef(EMF.withNamespace(Constructor), NoArgConstructorName, NON, Nil, NoType, Some(Block(
+              Assign(Select(This()(ClassType("Foo")), "Foo", "x")(witnessType), Null()),
+              Assign(Select(This()(ClassType("Foo")), "Foo", "y")(IntType), int(5))
+            )))(EOH, UNV),
+
+            // def method(): Int = this.y
+            MethodDef(EMF, methodName, NON, Nil, IntType, Some {
+              Select(This()(ClassType("Foo")), "Foo", "y")(IntType)
+            })(EOH, UNV)
+          ),
+          optimizerHints = EOH.withInline(classInline)
+      ),
       mainTestClassDef({
         consoleLog(Apply(EAF, New("Foo", NoArgConstructorName, Nil), methodName, Nil)(IntType))
       })
@@ -577,6 +580,6 @@ object OptimizerTest {
         f(tree)
         super.traverse(tree)
       }
-    }.traverseMemberDef(mainMethodDef)
+    }.traverseMethodDef(mainMethodDef)
   }
 }

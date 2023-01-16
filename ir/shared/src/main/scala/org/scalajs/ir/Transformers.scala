@@ -236,33 +236,33 @@ object Transformers {
       import tree._
       ClassDef(name, originalName, kind, jsClassCaptures, superClass,
           interfaces, jsSuperClass.map(transformExpr), jsNativeLoadSpec,
-          memberDefs.map(transformMemberDef),
+          fields.map(transformAnyFieldDef(_)),
+          methods.map(transformMethodDef), jsConstructor.map(transformJSConstructorDef),
+          jsMethodProps.map(transformJSMethodPropDef), jsNativeMembers,
           topLevelExportDefs.map(transformTopLevelExportDef))(
           tree.optimizerHints)(tree.pos)
     }
 
-    def transformMemberDef(memberDef: MemberDef): MemberDef = {
-      implicit val pos = memberDef.pos
+    def transformAnyFieldDef(fieldDef: AnyFieldDef): AnyFieldDef =
+      fieldDef
 
-      memberDef match {
-        case _:AnyFieldDef | _:JSNativeMemberDef =>
-          memberDef
+    def transformMethodDef(methodDef: MethodDef): MethodDef = {
+      val MethodDef(flags, name, originalName, args, resultType, body) = methodDef
+      val newBody = body.map(transform(_, isStat = resultType == NoType))
+      MethodDef(flags, name, originalName, args, resultType, newBody)(
+          methodDef.optimizerHints, Unversioned)(methodDef.pos)
+    }
 
-        case memberDef: MethodDef =>
-          val MethodDef(flags, name, originalName, args, resultType, body) = memberDef
-          val newBody = body.map(transform(_, isStat = resultType == NoType))
-          MethodDef(flags, name, originalName, args, resultType, newBody)(
-              memberDef.optimizerHints, Unversioned)
+    def transformJSConstructorDef(jsConstructor: JSConstructorDef): JSConstructorDef = {
+      val JSConstructorDef(flags, args, restParam, body) = jsConstructor
+      JSConstructorDef(flags, args, restParam, transformJSConstructorBody(body))(
+          jsConstructor.optimizerHints, Unversioned)(jsConstructor.pos)
+    }
 
-        case memberDef: JSConstructorDef =>
-          val JSConstructorDef(flags, args, restParam, body) = memberDef
-          JSConstructorDef(flags, args, restParam, transformJSConstructorBody(body))(
-              memberDef.optimizerHints, Unversioned)
-
-        case memberDef: JSMethodDef =>
-          val JSMethodDef(flags, name, args, restParam, body) = memberDef
-          JSMethodDef(flags, name, args, restParam, transformExpr(body))(
-              memberDef.optimizerHints, Unversioned)
+    def transformJSMethodPropDef(jsMethodPropDef: JSMethodPropDef): JSMethodPropDef = {
+      jsMethodPropDef match {
+        case jsMethodDef: JSMethodDef =>
+          transformJSMethodDef(jsMethodDef)
 
         case JSPropertyDef(flags, name, getterBody, setterArgAndBody) =>
           JSPropertyDef(
@@ -271,8 +271,14 @@ object Transformers {
               getterBody.map(transformStat),
               setterArgAndBody map { case (arg, body) =>
                 (arg, transformStat(body))
-              })(Unversioned)
+              })(Unversioned)(jsMethodPropDef.pos)
       }
+    }
+
+    def transformJSMethodDef(jsMethodDef: JSMethodDef): JSMethodDef = {
+      val JSMethodDef(flags, name, args, restParam, body) = jsMethodDef
+      JSMethodDef(flags, name, args, restParam, transformExpr(body))(
+          jsMethodDef.optimizerHints, Unversioned)(jsMethodDef.pos)
     }
 
     def transformJSConstructorBody(body: JSConstructorBody): JSConstructorBody = {
@@ -299,8 +305,7 @@ object Transformers {
           exportDef
 
         case TopLevelMethodExportDef(moduleID, methodDef) =>
-          TopLevelMethodExportDef(moduleID,
-              transformMemberDef(methodDef).asInstanceOf[JSMethodDef])
+          TopLevelMethodExportDef(moduleID, transformJSMethodDef(methodDef))
       }
     }
   }

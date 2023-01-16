@@ -61,7 +61,7 @@ object Infos {
       val referencedFieldClasses: Map[FieldName, ClassName],
       val methods: List[MethodInfo],
       val jsNativeMembers: Map[MethodName, JSNativeLoadSpec],
-      val exportedMembers: List[ReachabilityInfo]
+      val jsMethodProps: List[ReachabilityInfo]
   ) {
     override def toString(): String = className.nameString
   }
@@ -134,7 +134,7 @@ object Infos {
     private val referencedFieldClasses = mutable.Map.empty[FieldName, ClassName]
     private val methods = mutable.ListBuffer.empty[MethodInfo]
     private val jsNativeMembers = mutable.Map.empty[MethodName, JSNativeLoadSpec]
-    private val exportedMembers = mutable.ListBuffer.empty[ReachabilityInfo]
+    private val jsMethodProps = mutable.ListBuffer.empty[ReachabilityInfo]
 
     def maybeAddReferencedFieldClass(name: FieldName, tpe: Type): this.type = {
       tpe match {
@@ -159,14 +159,14 @@ object Infos {
     }
 
     def addExportedMember(reachabilityInfo: ReachabilityInfo): this.type = {
-      exportedMembers += reachabilityInfo
+      jsMethodProps += reachabilityInfo
       this
     }
 
     def result(): ClassInfo = {
       new ClassInfo(className, kind, superClass,
           interfaces, jsNativeLoadSpec, referencedFieldClasses.toMap,
-          methods.toList, jsNativeMembers.toMap, exportedMembers.toList)
+          methods.toList, jsNativeMembers.toMap, jsMethodProps.toList)
     }
   }
 
@@ -402,7 +402,7 @@ object Infos {
         classDef.superClass.map(_.name), classDef.interfaces.map(_.name),
         classDef.jsNativeLoadSpec)
 
-    classDef.memberDefs foreach {
+    classDef.fields foreach {
       case FieldDef(flags, FieldIdent(name), _, ftpe) =>
         if (!flags.namespace.isStatic) {
           builder.maybeAddReferencedFieldClass(name, ftpe)
@@ -410,22 +410,25 @@ object Infos {
 
       case _: JSFieldDef =>
         // Nothing to do.
+    }
 
-      case methodDef: MethodDef =>
-        builder.addMethod(generateMethodInfo(methodDef))
+    classDef.methods.foreach { methodDef =>
+      builder.addMethod(generateMethodInfo(methodDef))
+    }
 
-      case ctorDef: JSConstructorDef =>
-        builder.addExportedMember(generateJSConstructorInfo(ctorDef))
+    classDef.jsConstructor.foreach { ctorDef =>
+      builder.addExportedMember(generateJSConstructorInfo(ctorDef))
+    }
 
+    classDef.jsMethodProps.foreach {
       case methodDef: JSMethodDef =>
         builder.addExportedMember(generateJSMethodInfo(methodDef))
 
       case propertyDef: JSPropertyDef =>
         builder.addExportedMember(generateJSPropertyInfo(propertyDef))
-
-      case nativeMemberDef: JSNativeMemberDef =>
-        builder.addJSNativeMember(nativeMemberDef)
     }
+
+    classDef.jsNativeMembers.foreach(builder.addJSNativeMember(_))
 
     builder.result()
   }

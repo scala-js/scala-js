@@ -73,7 +73,9 @@ class ClassDefCheckerTest {
     for (kind <- kinds) {
       val name = if (kind == ClassKind.HijackedClass) BoxedIntegerClass else ClassName("A")
       assertError(
-          classDef(name, kind = kind, memberDefs = requiredMemberDefs(name, kind)),
+          classDef(name, kind = kind,
+              methods = requiredMethods(name, kind),
+              jsConstructor = requiredJSConstructor(kind)),
           "missing superClass")
     }
   }
@@ -89,7 +91,7 @@ class ClassDefCheckerTest {
   def noDuplicateFields(): Unit = {
     assertError(
         classDef("A", superClass = Some(ObjectClass),
-            memberDefs = List(
+            fields = List(
               FieldDef(EMF, "foobar", NON, IntType),
               FieldDef(EMF, "foobar", NON, BooleanType)
             )),
@@ -102,7 +104,7 @@ class ClassDefCheckerTest {
 
     assertError(
         classDef("A", superClass = Some(ObjectClass),
-          memberDefs = List(
+          methods = List(
               MethodDef(EMF, babarMethodName, NON, List(paramDef("x", IntType)),
                       IntType, None)(EOH, UNV),
               MethodDef(EMF, babarMethodName, NON, List(paramDef("y", IntType)),
@@ -126,7 +128,7 @@ class ClassDefCheckerTest {
 
     assertError(
         classDef(FooClass, superClass = Some(ObjectClass),
-            memberDefs = List(
+            methods = List(
               trivialCtor(FooClass),
               MethodDef(EMF.withNamespace(MemberNamespace.Constructor),
                   stringCtorName, NON, List(paramDef("x", BoxedStringType)),
@@ -147,7 +149,7 @@ class ClassDefCheckerTest {
     assertError(
         classDef("A",
             kind = ClassKind.Interface,
-            memberDefs = List(
+            methods = List(
               MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
                   fooMethodName, NON, Nil, IntType, None)(EOH, UNV),
               MethodDef(EMF, fooMethodName, NON, Nil, IntType, None)(EOH, UNV) // OK
@@ -166,7 +168,7 @@ class ClassDefCheckerTest {
     )
 
     assertError(
-        classDef("A", kind = ClassKind.Interface, memberDefs = List(mainMethodDef(body))),
+        classDef("A", kind = ClassKind.Interface, methods = List(mainMethodDef(body))),
         "Duplicate local variable name x."
     )
   }
@@ -179,7 +181,7 @@ class ClassDefCheckerTest {
     )
 
     assertError(
-        classDef("A", kind = ClassKind.Interface, memberDefs = List(mainMethodDef(body))),
+        classDef("A", kind = ClassKind.Interface, methods = List(mainMethodDef(body))),
         "Duplicate local variable name x."
     )
   }
@@ -192,7 +194,7 @@ class ClassDefCheckerTest {
     )
 
     assertError(
-        classDef("A", kind = ClassKind.Interface, memberDefs = List(mainMethodDef(body))),
+        classDef("A", kind = ClassKind.Interface, methods = List(mainMethodDef(body))),
         "Duplicate local variable name x."
     )
   }
@@ -207,7 +209,7 @@ class ClassDefCheckerTest {
       assertError(
           classDef(
             "Foo", superClass = Some(ObjectClass),
-            memberDefs = List(
+            methods = List(
               MethodDef(methodFlags, m("bar", Nil, V), NON, Nil, NoType, Some({
                 consoleLog(expr)
               }))(EOH, UNV)

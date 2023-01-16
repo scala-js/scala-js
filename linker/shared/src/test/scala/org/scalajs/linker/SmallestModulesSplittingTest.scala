@@ -37,7 +37,7 @@ class SmallestModulesSplittingTest {
 
     val greetMethodName = m("greet", Nil, T)
 
-    val greeterMemberDefs = List(
+    val greeterMethods = List(
         trivialCtor("lib.Greeter"),
 
         // @noinline def greet(): String = "Hello world!"
@@ -49,7 +49,7 @@ class SmallestModulesSplittingTest {
     val classDefs = Seq(
         classDef("lib.Greeter",
             superClass = Some(ObjectClass),
-            memberDefs = greeterMemberDefs
+            methods = greeterMethods
         ),
 
         mainTestClassDef({

@@ -157,10 +157,12 @@ class AnalyzerTest {
         val classDefs = Seq(
             classDef("A", kind = kindSub,
                 superClass = Some("B"),
-                memberDefs = requiredMemberDefs("A", kindSub)),
+                methods = requiredMethods("A", kindSub),
+                jsConstructor = requiredJSConstructor(kindSub)),
             classDef("B", kind = kindBase,
                 superClass = validParentForKind(kindBase),
-                memberDefs = requiredMemberDefs("B", kindBase))
+                methods = requiredMethods("B", kindBase),
+                jsConstructor = requiredJSConstructor(kindBase))
         )
 
         val analysis = computeAnalysis(classDefs,
@@ -208,10 +210,12 @@ class AnalyzerTest {
             classDef("A", kind = kindCls,
                 superClass = validParentForKind(kindCls),
                 interfaces = List("B"),
-                memberDefs = requiredMemberDefs("A", kindCls)),
+                methods = requiredMethods("A", kindCls),
+                jsConstructor = requiredJSConstructor(kindCls)),
             classDef("B", kind = kindIntf,
                 superClass = validParentForKind(kindIntf),
-                memberDefs = requiredMemberDefs("B", kindIntf))
+                methods = requiredMethods("B", kindIntf),
+                jsConstructor = requiredJSConstructor(kindIntf))
         )
 
         val analysis = computeAnalysis(classDefs,
@@ -230,7 +234,7 @@ class AnalyzerTest {
   def notAModule(): AsyncResult = await {
     val classDefs = Seq(
         classDef("A", superClass = Some(ObjectClass),
-            memberDefs = List(trivialCtor("A")))
+            methods = List(trivialCtor("A")))
     )
 
     val analysis = computeAnalysis(classDefs, reqsFactory.accessModule("A"))
@@ -244,7 +248,7 @@ class AnalyzerTest {
   def missingMethod(): AsyncResult = await {
     val classDefs = Seq(
         classDef("A", superClass = Some(ObjectClass),
-            memberDefs = List(trivialCtor("A")))
+            methods = List(trivialCtor("A")))
     )
 
     val analysis = computeAnalysis(classDefs,
@@ -262,9 +266,9 @@ class AnalyzerTest {
 
     val classDefs = Seq(
         classDef("A", superClass = Some(ObjectClass),
-            memberDefs = List(trivialCtor("A"))),
+            methods = List(trivialCtor("A"))),
         classDef("B", superClass = Some("A"),
-            memberDefs = List(
+            methods = List(
                 trivialCtor("B"),
                 MethodDef(EMF, fooMethodName, NON, Nil, IntType, Some(int(5)))(EOH, UNV)
             ))
@@ -290,7 +294,7 @@ class AnalyzerTest {
 
     val classDefs = Seq(
         classDef("A", superClass = Some(ObjectClass),
-            memberDefs = List(method))
+            methods = List(method))
     )
 
     val analysis = computeAnalysis(classDefs,
@@ -308,12 +312,12 @@ class AnalyzerTest {
         NoType, Some(Skip()))(EOH, UNV)
     val classDefs = Seq(
         classDef("I1", kind = ClassKind.Interface,
-            memberDefs = List(defaultMethodDef)),
+            methods = List(defaultMethodDef)),
         classDef("I2", kind = ClassKind.Interface,
-            memberDefs = List(defaultMethodDef)),
+            methods = List(defaultMethodDef)),
         classDef("A", superClass = Some(ObjectClass),
             interfaces = List("I1", "I2"),
-            memberDefs = List(trivialCtor("A")))
+            methods = List(trivialCtor("A")))
     )
 
     val analysis = computeAnalysis(classDefs,
@@ -339,7 +343,7 @@ class AnalyzerTest {
             "A",
             kind = ClassKind.ModuleClass,
             superClass = Some(ObjectClass),
-            memberDefs = List(trivialCtor("A")),
+            methods = List(trivialCtor("A")),
             topLevelExportDefs = List(
                 TopLevelMethodExportDef("main", JSMethodDef(
                     EMF.withNamespace(MemberNamespace.PublicStatic),
@@ -364,7 +368,7 @@ class AnalyzerTest {
     def singleDef(name: String) = {
       classDef(name,
           kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
-          memberDefs = List(trivialCtor(name)),
+          methods = List(trivialCtor(name)),
           topLevelExportDefs = List(TopLevelModuleExportDef(name, "foo")))
     }
 
@@ -387,7 +391,7 @@ class AnalyzerTest {
     def singleDef(name: String) = {
       classDef(name,
           kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
-          memberDefs = List(trivialCtor(name)),
+          methods = List(trivialCtor(name)),
           topLevelExportDefs = List(TopLevelModuleExportDef("main", "foo")))
     }
 
@@ -408,7 +412,7 @@ class AnalyzerTest {
   def degenerateConflictingTopLevelExports(): AsyncResult = await {
     val classDefs = Seq(classDef("A",
         kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
-        memberDefs = List(trivialCtor("A")),
+        methods = List(trivialCtor("A")),
         topLevelExportDefs = List(
             TopLevelModuleExportDef("main", "foo"),
             TopLevelModuleExportDef("main", "foo"))))
@@ -423,7 +427,7 @@ class AnalyzerTest {
   def multipleModulesTopLevelExportAndModuleInitializer(): AsyncResult = await {
     val classDefs = Seq(classDef("A",
         kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
-        memberDefs = List(
+        methods = List(
             trivialCtor("A"),
             mainMethodDef(Skip())
         ),
@@ -483,7 +487,8 @@ class AnalyzerTest {
 
     val classDefs = Seq(
         classDef("A", superClass = Some(ObjectClass),
-            memberDefs = List(mainMethod, nativeMember))
+            methods = List(mainMethod),
+            jsNativeMembers = List(nativeMember))
     )
 
     val analysis = computeAnalysis(classDefs,
@@ -502,13 +507,13 @@ class AnalyzerTest {
     val classDefs = Seq(
         classDef("A",
             kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
-            memberDefs = List(
+            methods = List(
                 trivialCtor("A"),
                 mainMethodDef(ApplyDynamicImport(EAF, "B", dynName, Nil)))
         ),
         classDef("B",
             kind = ClassKind.Class, superClass = Some(ObjectClass),
-            memberDefs = List(
+            methods = List(
                 MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
                     dynName, NON, Nil, AnyType,
                     Some(consoleLog(str("hello world"))))(EOH, UNV)))
@@ -533,7 +538,7 @@ class AnalyzerTest {
       classDef("A",
         kind = ClassKind.JSClass,
         superClass = Some(JSObjectLikeClass),
-        memberDefs = List(
+        jsConstructor = Some(
           JSConstructorDef(JSCtorFlags, Nil, None, JSConstructorBody(
             Nil,
             JSSuperConstructorCall(Nil),
@@ -560,7 +565,7 @@ class AnalyzerTest {
     val classDefs = Seq(
       classDef("A",
         kind = ClassKind.ModuleClass, superClass = Some(ObjectClass),
-        memberDefs = List(
+        methods = List(
           trivialCtor("A"),
           mainMethodDef(JSImportMeta())
         )
@@ -594,7 +599,7 @@ class AnalyzerTest {
         classDef("A", superClass = Some(ObjectClass)),
         classDef("B", superClass = Some("A")),
         classDef("X", superClass = Some(ObjectClass),
-            memberDefs = List(
+            methods = List(
                 trivialCtor("X"),
                 MethodDef(EMF, fooAMethodName, NON, Nil, ClassType("A"),
                     Some(Null()))(EOH, UNV),
@@ -628,25 +633,25 @@ class AnalyzerTest {
 
     val classDefs = Seq(
         classDef("I1", kind = ClassKind.Interface,
-            memberDefs = List(
+            methods = List(
                 MethodDef(EMF, barMethodName, NON, Nil, IntType, None)(EOH, UNV)
             )),
         classDef("I2", kind = ClassKind.Interface,
-            memberDefs = List(
+            methods = List(
                 MethodDef(EMF, barMethodName, NON, Nil, IntType, None)(EOH, UNV)
             )),
         classDef("A", superClass = Some(ObjectClass), interfaces = List("I1"),
-            memberDefs = List(
+            methods = List(
                 trivialCtor("A"),
                 MethodDef(EMF, fooMethodName, NON, Nil, IntType, None)(EOH, UNV)
             )),
         classDef("B", superClass = Some("A"), interfaces = List("I2"),
-            memberDefs = List(
+            methods = List(
                 trivialCtor("B"),
                 MethodDef(EMF, fooMethodName, NON, Nil, IntType, Some(int(5)))(EOH, UNV)
             )),
         classDef("C", superClass = Some("B"),
-            memberDefs = List(
+            methods = List(
                 trivialCtor("C"),
                 MethodDef(EMF, barMethodName, NON, Nil, IntType, Some(int(5)))(EOH, UNV)
             ))

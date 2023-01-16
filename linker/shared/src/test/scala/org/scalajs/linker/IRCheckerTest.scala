@@ -56,7 +56,7 @@ class IRCheckerTest {
 
         classDef("Bar",
             superClass = Some(ObjectClass),
-            memberDefs = List(
+            methods = List(
                 trivialCtor("Bar"),
 
                 /* This method is called, but unreachable because there are no
@@ -71,7 +71,7 @@ class IRCheckerTest {
 
         classDef(MainTestClassName,
             superClass = Some(ObjectClass),
-            memberDefs = List(
+            methods = List(
                 trivialCtor(MainTestClassName),
                 MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
                     nullBarMethodName, NON, Nil, ClassType("Bar"),
@@ -97,7 +97,7 @@ class IRCheckerTest {
       classDef("B", kind = ClassKind.NativeJSClass, superClass = Some(ObjectClass)),
       classDef("C", kind = ClassKind.NativeJSModuleClass, superClass = Some(ObjectClass)),
 
-      classDef("D", kind = ClassKind.JSClass, superClass = Some("A"), memberDefs = List(trivialJSCtor)),
+      classDef("D", kind = ClassKind.JSClass, superClass = Some("A"), jsConstructor = Some(trivialJSCtor)),
 
       mainTestClassDef(Block(
         LoadJSConstructor("B"),
@@ -125,7 +125,7 @@ class IRCheckerTest {
         "Foo",
         kind = ClassKind.JSClass,
         superClass = Some(JSObjectLikeClass),
-        memberDefs = List(
+        jsConstructor = Some(
           JSConstructorDef(JSCtorFlags, Nil, None, JSConstructorBody(
             Nil,
             JSSuperConstructorCall(Nil),
@@ -154,7 +154,7 @@ class IRCheckerTest {
         "Foo",
         kind = ClassKind.JSClass,
         superClass = Some(JSObjectLikeClass),
-        memberDefs = List(
+        jsConstructor = Some(
           JSConstructorDef(JSCtorFlags, Nil, None, JSConstructorBody(
             Nil,
             JSSuperConstructorCall(Nil),

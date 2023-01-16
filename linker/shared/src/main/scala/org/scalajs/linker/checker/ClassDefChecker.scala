@@ -87,14 +87,14 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
     /* These checks also populate the lookup maps on the instance
      * (fields, methods, jsNativeMembers).
      */
-    classDef.memberDefs.foreach {
-      case fieldDef: AnyFieldDef                => checkFieldDef(fieldDef)
-      case methodDef: MethodDef                 => checkMethodDef(methodDef)
-      case jsCtorDef: JSConstructorDef          => checkJSConstructorDef(jsCtorDef)
+    classDef.fields.foreach(checkFieldDef(_))
+    classDef.methods.foreach(checkMethodDef(_))
+    classDef.jsConstructor.foreach(checkJSConstructorDef(_))
+    classDef.jsMethodProps.foreach {
       case jsMethodDef: JSMethodDef             => checkJSMethodDef(jsMethodDef)
       case jsPropertyDef: JSPropertyDef         => checkJSPropertyDef(jsPropertyDef)
-      case jsNativeMemberDef: JSNativeMemberDef => checkJSNativeMemberDef(jsNativeMemberDef)
     }
+    classDef.jsNativeMembers.foreach(checkJSNativeMemberDef(_))
 
     // top level exports need the lookup maps to be populated.
     classDef.topLevelExportDefs.foreach(checkTopLevelExportDef(_))
@@ -105,8 +105,8 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
         methods(MemberNamespace.Constructor.ordinal).size != 1)
       reportError("Module class must have exactly 1 constructor")
 
-    if (classDef.kind.isJSClass && classDef.memberDefs.count(_.isInstanceOf[JSConstructorDef]) != 1)
-      reportError("JS classes and module classes must have exactly 1 constructor")
+    if (classDef.kind.isJSClass && classDef.jsConstructor.isEmpty)
+      reportError("JS classes and module classes must have a constructor")
   }
 
   private def checkKind()(implicit ctx: ErrorContext): Unit = {

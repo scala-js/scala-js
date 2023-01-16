@@ -946,7 +946,8 @@ object Printers {
         print(spec)
       }
       print(" ")
-      printColumn(memberDefs ::: topLevelExportDefs, "{", "", "}")
+      printColumn(fields ::: methods ::: jsConstructor.toList :::
+          jsMethodProps ::: jsNativeMembers ::: topLevelExportDefs, "{", "", "}")
     }
 
     def print(memberDef: MemberDef): Unit = {

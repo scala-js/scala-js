@@ -62,9 +62,24 @@ abstract class JSASTTest extends DirectTest {
         super.traverseClassDef(classDef)
       }
 
-      override def traverseMemberDef(memberDef: js.MemberDef): Unit = {
-        handle(memberDef)
-        super.traverseMemberDef(memberDef)
+      override def traverseAnyFieldDef(fieldDef: js.AnyFieldDef): Unit = {
+        handle(fieldDef)
+        super.traverseAnyFieldDef(fieldDef)
+      }
+
+      override def traverseMethodDef(methodDef: js.MethodDef): Unit = {
+        handle(methodDef)
+        super.traverseMethodDef(methodDef)
+      }
+
+      override def traverseJSConstructorDef(jsConstructor: js.JSConstructorDef): Unit = {
+        handle(jsConstructor)
+        super.traverseJSConstructorDef(jsConstructor)
+      }
+
+      override def traverseJSMethodPropDef(jsMethodPropDef: js.JSMethodPropDef): Unit = {
+        handle(jsMethodPropDef)
+        super.traverseJSMethodPropDef(jsMethodPropDef)
       }
 
       override def traverseTopLevelExportDef(

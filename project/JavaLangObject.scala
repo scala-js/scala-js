@@ -43,6 +43,7 @@ object JavaLangObject {
       Nil,
       None,
       None,
+      fields = Nil,
       List(
         /* def this() = () */
         MethodDef(
@@ -166,9 +167,9 @@ object JavaLangObject {
           Nil,
           NoType,
           Some(Skip()))(OptimizerHints.empty, Unversioned),
-
-        // Exports
-
+      ),
+      jsConstructor = None,
+      jsMethodProps = List(
         /* JSExport for toString(). */
         JSMethodDef(
           MemberFlags.empty,
@@ -180,7 +181,8 @@ object JavaLangObject {
                 Nil)(ClassType(BoxedStringClass))
           })(OptimizerHints.empty, Unversioned)
       ),
-      Nil)(OptimizerHints.empty)
+      jsNativeMembers = Nil,
+      topLevelExportDefs = Nil)(OptimizerHints.empty)
 
     Hashers.hashClassDef(classDef)
   }

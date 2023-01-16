@@ -24,13 +24,9 @@ object EntryPointsInfo {
   def forClassDef(classDef: ClassDef): EntryPointsInfo = {
     val hasEntryPoint = {
       classDef.topLevelExportDefs.nonEmpty ||
-      classDef.memberDefs.exists {
-        case m: MethodDef =>
+      classDef.methods.exists(m =>
           m.flags.namespace == MemberNamespace.StaticConstructor &&
-          m.methodName.isStaticInitializer
-        case _ =>
-          false
-      }
+          m.methodName.isStaticInitializer)
     }
     new EntryPointsInfo(classDef.name.name, hasEntryPoint)
   }

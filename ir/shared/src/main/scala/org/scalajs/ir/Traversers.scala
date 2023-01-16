@@ -229,20 +229,23 @@ object Traversers {
 
     def traverseClassDef(tree: ClassDef): Unit = {
       tree.jsSuperClass.foreach(traverse)
-      tree.memberDefs.foreach(traverseMemberDef)
+      tree.fields.foreach(traverseAnyFieldDef)
+      tree.methods.foreach(traverseMethodDef)
+      tree.jsConstructor.foreach(traverseJSConstructorDef)
+      tree.jsMethodProps.foreach(traverseJSMethodPropDef)
       tree.topLevelExportDefs.foreach(traverseTopLevelExportDef)
     }
 
-    def traverseMemberDef(memberDef: MemberDef): Unit = {
-      memberDef match {
-        case _:AnyFieldDef | _:JSNativeMemberDef =>
+    def traverseAnyFieldDef(fieldDef: AnyFieldDef): Unit = ()
 
-        case MethodDef(_, _, _, _, _, body) =>
-          body.foreach(traverse)
+    def traverseMethodDef(methodDef: MethodDef): Unit =
+      methodDef.body.foreach(traverse)
 
-        case JSConstructorDef(_, _, _, body) =>
-          body.allStats.foreach(traverse)
+    def traverseJSConstructorDef(jsConstructor: JSConstructorDef): Unit =
+      jsConstructor.body.allStats.foreach(traverse)
 
+    def traverseJSMethodPropDef(jsMethodPropDef: JSMethodPropDef): Unit = {
+      jsMethodPropDef match {
         case JSMethodDef(_, _, _, _, body) =>
           traverse(body)
 
@@ -258,7 +261,7 @@ object Traversers {
             _:TopLevelFieldExportDef =>
 
         case TopLevelMethodExportDef(_, methodDef) =>
-          traverseMemberDef(methodDef)
+          traverseJSMethodPropDef(methodDef)
       }
     }
   }
