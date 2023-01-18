@@ -16,11 +16,17 @@ import scala.concurrent.duration.FiniteDuration
 
 /**
  *  <span class="badge badge-non-std" style="float: right;">Non-Standard</span>
- *  Non-standard, but in general well supported methods to schedule asynchronous
+ *  Non-standard, although often supported methods to schedule asynchronous
  *  execution.
  *
- *  The methods in this package work in all JavaScript virtual machines
- *  supporting `setTimeout` and `setInterval`.
+ *  The methods in this package are not supported in all JavaScript
+ *  environments. Each relies on the global JavaScript function with the same
+ *  name.
+ *
+ *  The corresponding methods are not standard in ECMAScript.
+ *  Different JavaScript environments support all, some or none of them.
+ *
+ *  Browsers support all those methods as part the of the DOM standard.
  */
 package object timers {
 
