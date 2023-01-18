@@ -107,25 +107,14 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
   private def assemble(moduleInitializers: Seq[ModuleInitializer],
       analysis: Analysis)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
     def assembleClass(info: ClassInfo) = {
-      val className = info.className
-      val classAndVersion = irLoader.loadClassDefAndVersion(className)
+      val classAndVersion = irLoader.loadClassDefAndVersion(info.className)
       val syntheticMethods = methodSynthesizer.synthesizeMembers(info, analysis)
 
       for {
         (classDef, version) <- classAndVersion
         syntheticMethods <- syntheticMethods
       } yield {
-        val linkedClass = linkedClassDef(classDef, version, syntheticMethods, info)
-        val linkedTopLevelExports = for {
-          topLevelExport <- classDef.topLevelExportDefs
-        } yield {
-          val infos = analysis.topLevelExportInfos(
-              (ModuleID(topLevelExport.moduleID), topLevelExport.topLevelExportName))
-          new LinkedTopLevelExport(className, topLevelExport,
-              infos.staticDependencies.toSet, infos.externalDependencies.toSet)
-        }
-
-        (linkedClass, linkedTopLevelExports)
+        BaseLinker.linkClassDef(classDef, version, syntheticMethods, analysis)
       }
     }
 
@@ -139,19 +128,35 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
           moduleInitializers.toList)
     }
   }
+}
+
+private[frontend] object BaseLinker {
 
   /** Takes a ClassDef and DCE infos to construct a stripped down LinkedClass.
    */
-  private def linkedClassDef(classDef: ClassDef, version: Version,
+  private[frontend] def linkClassDef(classDef: ClassDef, version: Version,
       syntheticMethodDefs: Iterator[MethodDef],
-      analyzerInfo: ClassInfo): LinkedClass = {
+      analysis: Analysis): (LinkedClass, List[LinkedTopLevelExport]) = {
     import ir.Trees._
 
-    val fields = classDef.fields.filter(isFieldDefNeeded(analyzerInfo, _))
+    val classInfo = analysis.classInfos(classDef.className)
+
+    val fields = classDef.fields.filter {
+      case field: FieldDef =>
+        if (field.flags.namespace.isStatic)
+          classInfo.staticFieldsRead(field.name.name) || classInfo.staticFieldsWritten(field.name.name)
+        else if (classInfo.kind.isJSClass || classInfo.isAnySubclassInstantiated)
+          classInfo.fieldsRead(field.name.name) || classInfo.fieldsWritten(field.name.name)
+        else
+          false
+
+      case field: JSFieldDef =>
+        classInfo.isAnySubclassInstantiated
+    }
 
     val methods = classDef.methods.filter { m =>
       val methodInfo =
-        analyzerInfo.methodInfos(m.flags.namespace)(m.methodName)
+        classInfo.methodInfos(m.flags.namespace)(m.methodName)
 
       val reachable = methodInfo.isReachable
       assert(m.body.isDefined || !reachable,
@@ -162,25 +167,25 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
     }
 
     val jsConstructor =
-      if (analyzerInfo.isAnySubclassInstantiated) classDef.jsConstructor
+      if (classInfo.isAnySubclassInstantiated) classDef.jsConstructor
       else None
 
     val jsMethodProps =
-      if (analyzerInfo.isAnySubclassInstantiated) classDef.jsMethodProps
+      if (classInfo.isAnySubclassInstantiated) classDef.jsMethodProps
       else Nil
 
     val jsNativeMembers = classDef.jsNativeMembers
-      .filter(m => analyzerInfo.jsNativeMembersUsed.contains(m.name.name))
+      .filter(m => classInfo.jsNativeMembersUsed.contains(m.name.name))
 
     val allMethods = methods ++ syntheticMethodDefs
 
     val kind =
-      if (analyzerInfo.isModuleAccessed) classDef.kind
+      if (classInfo.isModuleAccessed) classDef.kind
       else classDef.kind.withoutModuleAccessor
 
-    val ancestors = analyzerInfo.ancestors.map(_.className)
+    val ancestors = classInfo.ancestors.map(_.className)
 
-    new LinkedClass(
+    val linkedClass = new LinkedClass(
         classDef.name,
         kind,
         classDef.jsClassCaptures,
@@ -196,34 +201,25 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
         classDef.optimizerHints,
         classDef.pos,
         ancestors.toList,
-        hasInstances = analyzerInfo.isAnySubclassInstantiated,
-        hasInstanceTests = analyzerInfo.areInstanceTestsUsed,
-        hasRuntimeTypeInfo = analyzerInfo.isDataAccessed,
-        fieldsRead = analyzerInfo.fieldsRead.toSet,
-        staticFieldsRead = analyzerInfo.staticFieldsRead.toSet,
-        staticDependencies = analyzerInfo.staticDependencies.toSet,
-        externalDependencies = analyzerInfo.externalDependencies.toSet,
-        dynamicDependencies = analyzerInfo.dynamicDependencies.toSet,
+        hasInstances = classInfo.isAnySubclassInstantiated,
+        hasInstanceTests = classInfo.areInstanceTestsUsed,
+        hasRuntimeTypeInfo = classInfo.isDataAccessed,
+        fieldsRead = classInfo.fieldsRead.toSet,
+        staticFieldsRead = classInfo.staticFieldsRead.toSet,
+        staticDependencies = classInfo.staticDependencies.toSet,
+        externalDependencies = classInfo.externalDependencies.toSet,
+        dynamicDependencies = classInfo.dynamicDependencies.toSet,
         version)
-  }
-}
 
-private[frontend] object BaseLinker {
-  private[frontend] def isFieldDefNeeded(classInfo: ClassInfo,
-      field: ir.Trees.AnyFieldDef): Boolean = {
-    import ir.Trees._
-
-    field match {
-      case field: FieldDef =>
-        if (field.flags.namespace.isStatic)
-          classInfo.staticFieldsRead(field.name.name) || classInfo.staticFieldsWritten(field.name.name)
-        else if (classInfo.kind.isJSClass || classInfo.isAnySubclassInstantiated)
-          classInfo.fieldsRead(field.name.name) || classInfo.fieldsWritten(field.name.name)
-        else
-          false
-
-      case field: JSFieldDef =>
-        classInfo.isAnySubclassInstantiated
+    val linkedTopLevelExports = for {
+      topLevelExport <- classDef.topLevelExportDefs
+    } yield {
+      val infos = analysis.topLevelExportInfos(
+        (ModuleID(topLevelExport.moduleID), topLevelExport.topLevelExportName))
+      new LinkedTopLevelExport(classDef.className, topLevelExport,
+          infos.staticDependencies.toSet, infos.externalDependencies.toSet)
     }
+
+    (linkedClass, linkedTopLevelExports)
   }
 }

@@ -61,7 +61,8 @@ object Infos {
       val referencedFieldClasses: Map[FieldName, ClassName],
       val methods: List[MethodInfo],
       val jsNativeMembers: Map[MethodName, JSNativeLoadSpec],
-      val jsMethodProps: List[ReachabilityInfo]
+      val jsMethodProps: List[ReachabilityInfo],
+      val topLevelExports: List[TopLevelExportInfo]
   ) {
     override def toString(): String = className.nameString
   }
@@ -86,7 +87,6 @@ object Infos {
   }
 
   final class TopLevelExportInfo private[Infos] (
-      val owningClass: ClassName,
       val reachability: ReachabilityInfo,
       val moduleID: ModuleID,
       val exportName: String
@@ -135,6 +135,7 @@ object Infos {
     private val methods = mutable.ListBuffer.empty[MethodInfo]
     private val jsNativeMembers = mutable.Map.empty[MethodName, JSNativeLoadSpec]
     private val jsMethodProps = mutable.ListBuffer.empty[ReachabilityInfo]
+    private val topLevelExports = mutable.ListBuffer.empty[TopLevelExportInfo]
 
     def maybeAddReferencedFieldClass(name: FieldName, tpe: Type): this.type = {
       tpe match {
@@ -163,10 +164,16 @@ object Infos {
       this
     }
 
+    def addTopLevelExport(topLevelExportInfo: TopLevelExportInfo): this.type = {
+      topLevelExports += topLevelExportInfo
+      this
+    }
+
     def result(): ClassInfo = {
       new ClassInfo(className, kind, superClass,
           interfaces, jsNativeLoadSpec, referencedFieldClasses.toMap,
-          methods.toList, jsNativeMembers.toMap, jsMethodProps.toList)
+          methods.toList, jsNativeMembers.toMap, jsMethodProps.toList,
+          topLevelExports.toList)
     }
   }
 
@@ -430,22 +437,11 @@ object Infos {
 
     classDef.jsNativeMembers.foreach(builder.addJSNativeMember(_))
 
+    classDef.topLevelExportDefs.foreach { topLevelExportDef =>
+      builder.addTopLevelExport(generateTopLevelExportInfo(classDef.name.name, topLevelExportDef))
+    }
+
     builder.result()
-  }
-
-  def generateTopLevelExportInfos(classDef: ClassDef): List[TopLevelExportInfo] = {
-    classDef.topLevelExportDefs.map { topLevelExportDef =>
-      generateTopLevelExportInfo(classDef.name.name, topLevelExportDef)
-    }
-  }
-
-  def generateTopLevelExportInfos(
-      topLevelExports: List[LinkedTopLevelExport]): List[TopLevelExportInfo] = {
-    for {
-      topLevelExport <- topLevelExports
-    } yield {
-      Infos.generateTopLevelExportInfo(topLevelExport.owningClass, topLevelExport.tree)
-    }
   }
 
   /** Generates the [[MethodInfo]] of a
@@ -477,7 +473,7 @@ object Infos {
       topLevelExportDef: TopLevelExportDef): TopLevelExportInfo = {
     val info = new GenInfoTraverser().generateTopLevelExportInfo(enclosingClass,
         topLevelExportDef)
-    new TopLevelExportInfo(enclosingClass, info,
+    new TopLevelExportInfo(info,
         ModuleID(topLevelExportDef.moduleID),
         topLevelExportDef.topLevelExportName)
   }

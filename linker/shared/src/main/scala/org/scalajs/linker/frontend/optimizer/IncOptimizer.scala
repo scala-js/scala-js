@@ -74,7 +74,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     collOps.forceGet(interfaces, className)
 
   /** Update the incremental analyzer with a new run. */
-  def update(unit: LinkingUnit, logger: Logger): LinkingUnit = {
+  def update(unit: LinkingUnit, logger: Logger): List[(ClassDef, Version)] = {
     batchMode = objectClass == null
     logger.debug(s"Optimizer: Batch mode: $batchMode")
 
@@ -88,14 +88,18 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       processAllTaggedMethods(logger)
     }
 
-    val newLinkedClasses = unit.classDefs.map(optimizedLinkedClass(_))
-    val newTopLevelExports = unit.topLevelExports.map(optimizedTopLevelExport(_))
+    val groupedTopLevelExports = unit.topLevelExports.groupBy(_.owningClass)
 
-    new LinkingUnit(unit.coreSpec, newLinkedClasses, newTopLevelExports,
-        unit.moduleInitializers)
+    for {
+      linkedClass <- unit.classDefs
+    } yield {
+      val topLevelExports = groupedTopLevelExports.getOrElse(linkedClass.className, Nil)
+      optimizedClass(linkedClass, topLevelExports)
+    }
   }
 
-  private def optimizedLinkedClass(linkedClass: LinkedClass): LinkedClass = {
+  private def optimizedClass(linkedClass: LinkedClass,
+      tles: List[LinkedTopLevelExport]): (ClassDef, Version) = {
     val className = linkedClass.className
     val interface = getInterface(className)
 
@@ -119,22 +123,34 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       container.methods(m.methodName).optimizedDef
     }
 
-    linkedClass.optimized(newMethods, interface.optimizedExportedMembers(),
-        interface.optimizedJSConstructorDef())
-  }
-
-  private def optimizedTopLevelExport(linked: LinkedTopLevelExport): LinkedTopLevelExport = {
-    linked.tree match {
-      case method: TopLevelMethodExportDef =>
-        val newMethod =
+    val newTopLevelExports = tles.map { tle =>
+      tle.tree match {
+        case method: TopLevelMethodExportDef =>
           topLevelExports.optimizedMethod(method.moduleID, method.topLevelExportName)
 
-        new LinkedTopLevelExport(linked.owningClass, newMethod,
-            linked.staticDependencies, linked.externalDependencies)
-
-      case _ =>
-        linked
+        case tree =>
+          tree
+      }
     }
+
+    val classDef = ClassDef(
+      linkedClass.name,
+      OriginalName.NoOriginalName,
+      linkedClass.kind,
+      linkedClass.jsClassCaptures,
+      linkedClass.superClass,
+      linkedClass.interfaces,
+      linkedClass.jsSuperClass,
+      linkedClass.jsNativeLoadSpec,
+      linkedClass.fields,
+      newMethods,
+      interface.optimizedJSConstructorDef(),
+      interface.optimizedExportedMembers(),
+      linkedClass.jsNativeMembers,
+      newTopLevelExports
+    )(linkedClass.optimizerHints)(linkedClass.pos)
+
+    (classDef, linkedClass.version)
   }
 
   /** Incremental part: update state and detect what needs to be re-optimized.

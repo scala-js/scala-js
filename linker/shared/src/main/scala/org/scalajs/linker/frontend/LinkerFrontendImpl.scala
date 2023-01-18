@@ -87,7 +87,7 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
     }
 
     logger.timeFuture("Refiner") {
-      refiner.refine(optimized, symbolRequirements, logger)
+      refiner.refine(optimized, unit.moduleInitializers, symbolRequirements, logger)
     }
   }
 }

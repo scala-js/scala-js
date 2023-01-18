@@ -35,7 +35,7 @@ trait Analysis {
   import Analysis._
 
   def classInfos: scala.collection.Map[ClassName, ClassInfo]
-  def topLevelExportInfos: Map[(ModuleID, String), TopLevelExportInfo]
+  def topLevelExportInfos: scala.collection.Map[(ModuleID, String), TopLevelExportInfo]
 
   def errors: scala.collection.Seq[Error]
 }
