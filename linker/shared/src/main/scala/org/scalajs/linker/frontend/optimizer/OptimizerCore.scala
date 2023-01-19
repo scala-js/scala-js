@@ -1741,9 +1741,10 @@ private[optimizer] abstract class OptimizerCore(
                * targets belong to. Therefore, we have to keep the receiver's
                * static type as a declared type, which is our only safe choice.
                */
+              val representative = impls.minBy(_.enclosingClassName) // for stability
               val receiverType = treceiver.tpe.base
               inline(allocationSites, Some((receiverType, treceiver)), targs,
-                  impls.head, isStat, usePreTransform)(cont)
+                  representative, isStat, usePreTransform)(cont)
             } else {
               treeNotInlined
             }
