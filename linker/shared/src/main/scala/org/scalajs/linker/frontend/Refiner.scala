@@ -56,7 +56,7 @@ final class Refiner(config: CommonPhaseConfig) {
           if analysis.classInfos.contains(classDef.className)
         } yield {
           BaseLinker.linkClassDef(classDef, version,
-              syntheticMethodDefs = Iterator.empty, analysis)
+              syntheticMethodDefs = Nil, analysis)
         }
 
         val (linkedClassDefs, linkedTopLevelExports) = assembled.unzip

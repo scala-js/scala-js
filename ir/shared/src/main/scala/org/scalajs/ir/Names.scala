@@ -12,7 +12,7 @@
 
 package org.scalajs.ir
 
-import scala.annotation.switch
+import scala.annotation.{switch, tailrec}
 
 import Types._
 
@@ -271,7 +271,8 @@ object Names {
    */
   final class MethodName private (val simpleName: SimpleMethodName,
       val paramTypeRefs: List[TypeRef], val resultTypeRef: TypeRef,
-      val isReflectiveProxy: Boolean) {
+      val isReflectiveProxy: Boolean)
+      extends Comparable[MethodName] {
 
     import MethodName._
 
@@ -299,6 +300,35 @@ object Names {
     }
 
     override def hashCode(): Int = _hashCode
+
+    def compareTo(that: MethodName): Int = {
+      @tailrec
+      def compareParamTypeRefs(xs: List[TypeRef], ys: List[TypeRef]): Int = (xs, ys) match {
+        case (x :: xr, y :: yr) =>
+          val cmp = x.compareTo(y)
+          if (cmp != 0) cmp
+          else compareParamTypeRefs(xr, yr)
+        case _ =>
+          java.lang.Boolean.compare(xs.isEmpty, ys.isEmpty)
+      }
+
+      val simpleCmp = this.simpleName.compareTo(that.simpleName)
+      if (simpleCmp != 0) {
+        simpleCmp
+      } else {
+        val paramsCmp = compareParamTypeRefs(this.paramTypeRefs, that.paramTypeRefs)
+        if (paramsCmp != 0) {
+          paramsCmp
+        } else {
+          val reflProxyCmp = java.lang.Boolean.compare(
+              this.isReflectiveProxy, that.isReflectiveProxy)
+          if (reflProxyCmp != 0)
+            reflProxyCmp
+          else
+            this.resultTypeRef.compareTo(that.resultTypeRef)
+        }
+      }
+    }
 
     protected def stringPrefix: String = "MethodName"
 

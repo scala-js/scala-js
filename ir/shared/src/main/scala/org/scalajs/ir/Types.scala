@@ -170,7 +170,29 @@ object Types {
    *  type refs that are used in method signatures, and which therefore dictate
    *  JVM/IR overloading.
    */
-  sealed abstract class TypeRef {
+  sealed abstract class TypeRef extends Comparable[TypeRef] {
+    final def compareTo(that: TypeRef): Int = this match {
+      case thiz: PrimRef =>
+        that match {
+          case that: PrimRef => Character.compare(thiz.charCode, that.charCode)
+          case _             => -1
+        }
+      case thiz: ClassRef =>
+        that match {
+          case that: ClassRef     => thiz.className.compareTo(that.className)
+          case that: PrimRef      => 1
+          case that: ArrayTypeRef => -1
+        }
+      case thiz: ArrayTypeRef =>
+        that match {
+          case that: ArrayTypeRef =>
+            if (thiz.dimensions != that.dimensions) thiz.dimensions - that.dimensions
+            else thiz.base.compareTo(that.base)
+          case _ =>
+            1
+        }
+    }
+
     def show(): String = {
       val writer = new java.io.StringWriter
       val printer = new Printers.IRTreePrinter(writer)
