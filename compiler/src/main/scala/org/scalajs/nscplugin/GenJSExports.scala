@@ -399,12 +399,28 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         } yield (argc, method)
       }
 
-      // Create a map: argCount -> methods (methods may appear multiple times)
-      val methodByArgCount =
-        methodArgCounts.groupBy(_._1).map(kv => kv._1 -> kv._2.map(_._2).toSet)
+      /** Like groupBy, but returns a sorted List instead of an unordered Map. */
+      def sortedGroupBy[A, K, O](xs: List[A])(grouper: A => K)(
+          sorter: ((K, List[A])) => O)(implicit ord: Ordering[O]): List[(K, List[A])] = {
+        xs.groupBy(grouper).toList.sortBy(sorter)
+      }
+
+      /* Create tuples: (argCount, methods).
+       * Methods may appear multiple times.
+       *
+       * The method lists preserve the order out of `methodArgCounts`, so if
+       * two such lists contain the same set of methods, they are equal.
+       *
+       * The resulting list is sorted by argCount. This is both for stability
+       * and because we then rely on the fact that the head is the minimum.
+       */
+      val methodByArgCount: List[(Int, List[Exported])] = {
+        sortedGroupBy(methodArgCounts)(_._1)(_._1) // sort by the Int
+          .map(kv => kv._1 -> kv._2.map(_._2)) // preserves the relative order of the Exported's
+      }
 
       // Create the formal args registry
-      val minArgc = methodByArgCount.keys.min
+      val minArgc = methodByArgCount.head._1 // it is sorted by argCount, so the head is the minimum
       val hasVarArg = varArgMeths.nonEmpty
       val needsRestParam = maxArgc != minArgc || hasVarArg
       val formalArgsRegistry = new FormalArgsRegistry(minArgc, needsRestParam)
@@ -412,32 +428,48 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       // List of formal parameters
       val (formalArgs, restParam) = formalArgsRegistry.genFormalArgs()
 
-      // Create tuples: (methods, argCounts). This will be the cases we generate
-      val caseDefinitions =
-        methodByArgCount.groupBy(_._2).map(kv => kv._1 -> kv._2.keySet)
+      /* Create tuples: (methods, argCounts). These will be the cases we generate.
+       *
+       * Within each element, the argCounts are sorted. (This sort order is
+       * inherited from the sort order of `methodByArgCount`.)
+       *
+       * For stability, the list as a whole is sorted by the minimum (head) of
+       * argCounts.
+       */
+      val caseDefinitions: List[(List[Exported], List[Int])] = {
+        sortedGroupBy(methodByArgCount)(_._2)(_._2.head._1) // sort by the minimum of the Ints
+          .map(kv => kv._1 -> kv._2.map(_._1)) // the Ints are still sorted from `methodByArgCount`
+      }
 
       // Verify stuff about caseDefinitions
       assert({
-        val argcs = caseDefinitions.values.flatten.toList
+        val argcs = caseDefinitions.map(_._2).flatten
         argcs == argcs.distinct &&
         argcs.forall(_ <= maxArgc)
       }, "every argc should appear only once and be lower than max")
 
+      /* We will avoid generating cases where the set of methods is exactly the
+       * the set of varargs methods. Since all the `Exported` in `alts`, and
+       * hence in `varArgMeths` and `methods`, are distinct, we can do
+       * something faster than converting both sides to sets.
+       */
+      def isSameAsVarArgMethods(methods: List[Exported]): Boolean =
+        methods.size == varArgMeths.size && methods.forall(varArgMeths.contains(_))
+
       // Generate a case block for each (methods, argCounts) tuple
-      val cases = for {
+      val cases: List[(List[js.IntLiteral], js.Tree)] = for {
         (methods, argcs) <- caseDefinitions
-        if methods.nonEmpty && argcs.nonEmpty
+        if methods.nonEmpty && argcs.nonEmpty && !isSameAsVarArgMethods(methods)
+      } yield {
+        val argcAlternatives = argcs.map(argc => js.IntLiteral(argc - minArgc))
 
-        // exclude default case we're generating anyways for varargs
-        if methods != varArgMeths.toSet
+        // body of case to disambiguate methods with current count
+        val maxUsableArgc = argcs.head // i.e., the *minimum* of the argcs here
+        val caseBody = genOverloadDispatchSameArgc(jsName, formalArgsRegistry,
+            methods, tpe, paramIndex = 0, Some(maxUsableArgc))
 
-        // body of case to disambiguates methods with current count
-        caseBody = genOverloadDispatchSameArgc(jsName, formalArgsRegistry,
-            methods.toList, tpe, paramIndex = 0, Some(argcs.min))
-
-        // argc in reverse order
-        argcList = argcs.toList.sortBy(- _)
-      } yield (argcList.map(argc => js.IntLiteral(argc - minArgc)), caseBody)
+        (argcAlternatives, caseBody)
+      }
 
       def defaultCase = {
         if (!hasVarArg) {
@@ -459,7 +491,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
           val restArgRef = formalArgsRegistry.genRestArgRef()
           js.Match(
               js.AsInstanceOf(js.JSSelect(restArgRef, js.StringLiteral("length")), jstpe.IntType),
-              cases.toList, defaultCase)(tpe)
+              cases, defaultCase)(tpe)
         }
       }
 
