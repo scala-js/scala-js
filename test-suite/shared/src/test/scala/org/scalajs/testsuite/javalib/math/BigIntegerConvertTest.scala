@@ -25,6 +25,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
 import org.scalajs.testsuite.utils.Platform._
 
 class BigIntegerConvertTest {
@@ -393,6 +394,42 @@ class BigIntegerConvertTest {
     assertEquals(result, aNumber, 0.0f)
   }
 
+  @Test def testIntValueExact1(): Unit = {
+    val aBytes = Array[Byte](12, 56, 100)
+    val resInt = 800868
+    val aNumber = new BigInteger(aBytes).intValueExact()
+    assertEquals(resInt, aNumber)
+  }
+
+  @Test def testIntValueExact2(): Unit = {
+    val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3)
+    assertThrows(classOf[ArithmeticException], new BigInteger(aBytes).intValueExact())
+  }
+
+  @Test def testIntValueExact3(): Unit = {
+    val aBytes = Array[Byte](-128, 0, 0, 0) // Int.MinValue
+    val resInt = Int.MinValue
+    val aNumber = new BigInteger(aBytes).intValueExact()
+    assertEquals(resInt, aNumber)
+  }
+
+  @Test def testIntValueExact4(): Unit = {
+    val aBytes = Array[Byte](-1, 127, -1, -1, -1) // Int.MinValue - 1
+    assertThrows(classOf[ArithmeticException], new BigInteger(aBytes).intValueExact())
+  }
+
+  @Test def testIntValueExact5(): Unit = {
+    val aBytes = Array[Byte](127, -1, -1, -1) // Int.MaxValue
+    val resInt = Int.MaxValue
+    val aNumber = new BigInteger(aBytes).intValueExact()
+    assertEquals(resInt, aNumber)
+  }
+
+  @Test def testIntValueExact6(): Unit = {
+    val aBytes = Array[Byte](0, -128, 0, 0, 0) // Int.MaxValue + 1
+    assertThrows(classOf[ArithmeticException], new BigInteger(aBytes).intValueExact())
+  }
+
   @Test def testIntValueNegative1(): Unit = {
     val aBytes = Array[Byte](12, 56, 100, -2, -76, -128, 45, 91, 3)
     val sign = -1
@@ -436,6 +473,42 @@ class BigIntegerConvertTest {
     val resInt = -184862620
     val aNumber = new BigInteger(sign, aBytes).intValue()
     assertEquals(resInt, aNumber)
+  }
+
+  @Test def testLongValueExact1(): Unit = {
+    val aBytes = Array[Byte](12, 56, 100, 18, -105, 34, -18, 45)
+    val result = 880563758158769709L
+    val aNumber = new BigInteger(aBytes).longValueExact()
+    assertEquals(result, aNumber)
+  }
+
+  @Test def testIntLongExact2(): Unit = {
+    val aBytes = Array[Byte](12, 56, 100, -2, -76, 89, 45, 91, 3, 120, -34, -12, 45, 98)
+    assertThrows(classOf[ArithmeticException], new BigInteger(aBytes).longValueExact())
+  }
+
+  @Test def testLongValueExact3(): Unit = {
+    val aBytes = Array[Byte](-128, 0, 0, 0, 0, 0, 0, 0) // Long.MinValue
+    val result = Long.MinValue
+    val aNumber = new BigInteger(aBytes).longValueExact()
+    assertEquals(result, aNumber)
+  }
+
+  @Test def testLongValueExact4(): Unit = {
+    val aBytes = Array[Byte](-1, 127, -1, -1, -1, -1, -1, -1, -1) // Long.MinValue - 1
+    assertThrows(classOf[ArithmeticException], new BigInteger(aBytes).longValueExact())
+  }
+
+  @Test def testLongValueExact5(): Unit = {
+    val aBytes = Array[Byte](127, -1, -1, -1, -1, -1, -1, -1) // Long.MaxValue
+    val result = Long.MaxValue
+    val aNumber = new BigInteger(aBytes).longValueExact()
+    assertEquals(result, aNumber)
+  }
+
+  @Test def testLongValueExact6(): Unit = {
+    val aBytes = Array[Byte](0, -128, 0, 0, 0, 0, 0, 0, 0) // Long.MaxValue + 1
+    assertThrows(classOf[ArithmeticException], new BigInteger(aBytes).longValueExact())
   }
 
   @Test def testLongValueNegative1(): Unit = {

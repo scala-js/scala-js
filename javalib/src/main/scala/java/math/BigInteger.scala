@@ -501,6 +501,13 @@ class BigInteger extends Number with Comparable[BigInteger] {
 
   override def intValue(): Int = sign * digits(0)
 
+  def intValueExact(): Int = {
+    if (numberLength <= 1 && bitLength() < Integer.SIZE)
+      intValue()
+    else
+      throw new ArithmeticException("BigInteger out of int range")
+  }
+
   def isProbablePrime(certainty: Int): Boolean =
     Primality.isProbablePrime(abs(), certainty)
 
@@ -509,6 +516,13 @@ class BigInteger extends Number with Comparable[BigInteger] {
       if (numberLength > 1) (digits(1).toLong << 32) | (digits(0) & 0xFFFFFFFFL)
       else digits(0) & 0xFFFFFFFFL
     sign * value
+  }
+
+  def longValueExact(): Long = {
+    if (numberLength <= 2 && bitLength() < java.lang.Long.SIZE)
+      longValue()
+    else
+      throw new ArithmeticException("BigInteger out of long range")
   }
 
   def max(bi: BigInteger): BigInteger = {
