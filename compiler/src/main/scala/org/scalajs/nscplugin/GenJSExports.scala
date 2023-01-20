@@ -134,8 +134,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         (info, sym)
       }
 
-      (for {
-        (info, tups) <- exports.groupBy(_._1)
+      for {
+        (info, tups) <- stableGroupByWithoutHashCode(exports)(_._1)
         kind <- checkSameKind(tups)
       } yield {
         import ExportKind._
@@ -164,7 +164,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
             val sym = checkSingleField(tups)
             js.TopLevelFieldExportDef(info.moduleID, info.jsName, encodeFieldSym(sym))
         }
-      }).toList
+      }
     }
 
     def genStaticExports(classSym: Symbol): (List[js.JSFieldDef], List[js.JSMethodPropDef]) = {
@@ -179,7 +179,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       val methodProps = List.newBuilder[js.JSMethodPropDef]
 
       for {
-        (info, tups) <- exports.groupBy(_._1)
+        (info, tups) <- stableGroupByWithoutHashCode(exports)(_._1)
         kind <- checkSameKind(tups)
       } {
         def alts = tups.map(_._2)
@@ -524,7 +524,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         reportCannotDisambiguateError(jsName, alts.map(_.sym))
         js.Undefined()
       } else {
-        val altsByTypeTest = groupByWithoutHashCode(alts) { exported =>
+        val altsByTypeTest = stableGroupByWithoutHashCode(alts) { exported =>
           typeTestForTpe(exported.exportArgTypeAt(paramIndex))
         }
 
@@ -965,22 +965,30 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
     }
   }
 
-  // Group-by that does not rely on hashCode(), only equals() - O(n²)
-  private def groupByWithoutHashCode[A, B](
+  /** Stable group-by that does not rely on hashCode(), only equals() - O(n²).
+   *
+   *  In addition to preserving the relative order of elements in the value
+   *  lists (like `groupBy`), this stable group-by also preserves the relative
+   *  order of they keys, by their first appearance in the collection.
+   */
+  private def stableGroupByWithoutHashCode[A, B](
       coll: List[A])(f: A => B): List[(B, List[A])] = {
 
-    import scala.collection.mutable.ArrayBuffer
-    val m = new ArrayBuffer[(B, List[A])]
+    import scala.collection.mutable.{ArrayBuffer, Builder}
+
+    val m = new ArrayBuffer[(B, Builder[A, List[A]])]
     m.sizeHint(coll.length)
 
     for (elem <- coll) {
       val key = f(elem)
       val index = m.indexWhere(_._1 == key)
-      if (index < 0) m += ((key, List(elem)))
-      else m(index) = (key, elem :: m(index)._2)
+      if (index < 0)
+        m += ((key, List.newBuilder[A] += elem))
+      else
+        m(index)._2 += elem
     }
 
-    m.toList
+    m.toList.map(kv => kv._1 -> kv._2.result())
   }
 
   private def genThrowTypeError(msg: String = "No matching overload")(
