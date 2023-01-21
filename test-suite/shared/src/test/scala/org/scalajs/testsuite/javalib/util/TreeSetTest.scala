@@ -27,6 +27,16 @@ import ju.Comparator
 
 import scala.reflect.ClassTag
 
+class TreeSetComparatorTest {
+
+  @Test def naturalComparator_issue4796(): Unit = {
+    val cmp = ju.Comparator.naturalOrder[String]()
+
+    assertSame(cmp, new TreeSet[String](cmp).comparator())
+  }
+
+}
+
 class TreeSetWithoutNullTest extends TreeSetTest(new TreeSetFactory) {
 
   @Test def comparatorNull(): Unit = {
