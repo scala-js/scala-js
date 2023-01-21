@@ -66,10 +66,7 @@ class PriorityQueueTest extends CollectionTest {
   @Test def addAndRemoveObjectWithCustomComparator(): Unit = {
     case class Rect(x: Int, y: Int)
 
-    val areaComp = new Comparator[Rect] {
-      def compare(a: Rect, b: Rect): Int = (a.x*a.y) - (b.x*b.y)
-    }
-
+    val areaComp = Comparator.comparingInt((r: Rect) => r.x * r.y)
     val pq = new PriorityQueue[Rect](11, areaComp)
 
     assertTrue(pq.add(Rect(1,2)))

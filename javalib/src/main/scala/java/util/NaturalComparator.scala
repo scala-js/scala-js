@@ -24,7 +24,7 @@ package java.util
  *  Scala.js is configured with compliant `asInstanceOf`s. The behavior is
  *  otherwise undefined.
  */
-private[util] object NaturalComparator extends Comparator[Any] {
+private[util] object NaturalComparator extends Comparator[Any] with Serializable {
   def compare(o1: Any, o2: Any): Int =
     o1.asInstanceOf[Comparable[Any]].compareTo(o2)
 

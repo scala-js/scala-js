@@ -260,14 +260,14 @@ object Collections {
 
   // Differs from original type definition, original: [T <: jl.Comparable[_ >: T]], returning T
   def min[T <: AnyRef with jl.Comparable[T]](coll: Collection[_ <: T]): AnyRef =
-    min(coll, naturalComparator[T])
+    min(coll, Comparator.naturalOrder[T])
 
   def min[T](coll: Collection[_ <: T], comp: Comparator[_ >: T]): T =
     coll.scalaOps.reduceLeft((a, b) => if (comp.compare(a, b) <= 0) a else b)
 
   // Differs from original type definition, original: [T <: jl.Comparable[_ >: T]], returning T
   def max[T <: AnyRef with jl.Comparable[T]](coll: Collection[_ <: T]): AnyRef =
-    max(coll, naturalComparator[T])
+    max(coll, Comparator.naturalOrder[T])
 
   def max[T](coll: Collection[_ <: T], comp: Comparator[_ >: T]): T =
     coll.scalaOps.reduceLeft((a, b) => if (comp.compare(a, b) >= 0) a else b)
@@ -603,13 +603,6 @@ object Collections {
 
   @inline
   private def modulo(a: Int, b: Int): Int = ((a % b) + b) % b
-
-  @inline
-  private def naturalComparator[T <: jl.Comparable[T]]: Comparator[T] = {
-    new Comparator[T] with Serializable {
-      final def compare(o1: T, o2: T): Int = o1.compareTo(o2)
-    }
-  }
 
   private trait WrappedEquals {
     protected def inner: AnyRef

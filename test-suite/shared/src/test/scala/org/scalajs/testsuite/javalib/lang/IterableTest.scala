@@ -30,12 +30,6 @@ trait IterableTest {
 
   def factory: IterableFactory
 
-  @noinline
-  protected def assertThrowsNPEIfCompliant(code: => Unit): Unit = {
-    if (hasCompliantNullPointers)
-      assertThrows(classOf[NullPointerException], code)
-  }
-
   @Test def empty(): Unit = {
     val iter = factory.fromElements[Int]()
     var hit = false

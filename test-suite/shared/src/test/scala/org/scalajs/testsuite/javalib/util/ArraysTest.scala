@@ -45,10 +45,6 @@ class ArraysTest {
   /** Overridden by typedarray tests */
   def Array[T: ClassTag](v: T*): scala.Array[T] = scala.Array(v: _*)
 
-  val stringComparator = new Comparator[String]() {
-    def compare(s1: String, s2: String): Int = s1.compareTo(s2)
-  }
-
   @Test def sortInt(): Unit =
     testSort[Int](_.toInt, new Array(_), Arrays.sort(_), Arrays.sort(_, _, _))
 
@@ -124,15 +120,13 @@ class ArraysTest {
     val scalajs: Array[String] = Array("S", "c", "a", "l", "a", ".", "j", "s")
     val sorted = Array[String](".", "S", "a", "a", "c", "j", "l", "s")
 
-    Arrays.sort(scalajs, stringComparator)
+    Arrays.sort(scalajs, Comparator.naturalOrder[String])
     assertArrayEquals(sorted, scalajs)
   }
 
   @Test def sortIsStable(): Unit = {
     case class A(n: Int)
-    val cmp = new Comparator[A]() {
-      def compare(a1: A, a2: A): Int = a1.n.compareTo(a2.n)
-    }
+    val cmp = Comparator.comparingInt((_: A).n)
     val scalajs: Array[A] = Array(A(1), A(2), A(2), A(3), A(1), A(2), A(3))
     val sorted = Array[A](scalajs(0), scalajs(4), scalajs(1), scalajs(2),
         scalajs(5), scalajs(3), scalajs(6))
