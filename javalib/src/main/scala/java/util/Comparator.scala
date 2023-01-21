@@ -86,7 +86,16 @@ object Comparator {
    */
   @inline
   def naturalOrder[T <: Comparable[T]](): Comparator[T] =
-    NaturalComparator.asInstanceOf[Comparator[T]]
+    ReusableNaturalComparator.asInstanceOf[Comparator[T]]
+
+  /* Not the same object as NaturalComparator.
+   *
+   * Otherwise we'll get null back from TreeSet#comparator() (see #4796).
+   */
+  private object ReusableNaturalComparator extends Comparator[Any] {
+    def compare(o1: Any, o2: Any): Int =
+      o1.asInstanceOf[Comparable[Any]].compareTo(o2)
+  }
 
   @inline
   def nullsFirst[T](comparator: Comparator[_ >: T]): Comparator[T] = new Comparator[T] with Serializable {
