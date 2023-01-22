@@ -50,7 +50,7 @@ class TreeSet[E] private (tree: RB.Tree[E, Any])(
 
   def descendingSet(): NavigableSet[E] = {
     new DescendingProjection(tree, null.asInstanceOf[E], RB.NoBound,
-        null.asInstanceOf[E], RB.NoBound)
+        null.asInstanceOf[E], RB.NoBound, ())
   }
 
   def size(): Int =
@@ -75,19 +75,19 @@ class TreeSet[E] private (tree: RB.Tree[E, Any])(
       toInclusive: Boolean): NavigableSet[E] = {
     new Projection(tree,
         fromElement, RB.boundKindFromIsInclusive(fromInclusive),
-        toElement, RB.boundKindFromIsInclusive(toInclusive))
+        toElement, RB.boundKindFromIsInclusive(toInclusive), ())
   }
 
   def headSet(toElement: E, inclusive: Boolean): NavigableSet[E] = {
     new Projection(tree,
         null.asInstanceOf[E], RB.NoBound,
-        toElement, RB.boundKindFromIsInclusive(inclusive))
+        toElement, RB.boundKindFromIsInclusive(inclusive), ())
   }
 
   def tailSet(fromElement: E, inclusive: Boolean): NavigableSet[E] = {
     new Projection(tree,
         fromElement, RB.boundKindFromIsInclusive(inclusive),
-        null.asInstanceOf[E], RB.NoBound)
+        null.asInstanceOf[E], RB.NoBound, ())
   }
 
   def subSet(fromElement: E, toElement: E): SortedSet[E] =
@@ -150,11 +150,13 @@ class TreeSet[E] private (tree: RB.Tree[E, Any])(
     new TreeSet(tree.treeCopy())(comp)
 }
 
-private object TreeSet {
-  private abstract class AbstractProjection[E](
-      protected val tree: RB.Tree[E, Any],
+private[util] object TreeSet {
+  private[util] abstract class AbstractProjection[E, V](
+      protected val tree: RB.Tree[E, V],
       protected val lowerBound: E, protected val lowerKind: RB.BoundKind,
-      protected val upperBound: E, protected val upperKind: RB.BoundKind)(
+      protected val upperBound: E, protected val upperKind: RB.BoundKind,
+      private val valueForAdd: V
+  )(
       implicit protected val comp: Comparator[_ >: E])
       extends AbstractSet[E] with NavigableSet[E] {
 
@@ -180,9 +182,11 @@ private object TreeSet {
       isWithinBounds(o) && RB.contains(tree, o)
 
     override def add(e: E): Boolean = {
+      if (valueForAdd == null)
+        throw new UnsupportedOperationException
       if (!isWithinBounds(e))
         throw new IllegalArgumentException
-      RB.insert(tree, e, ()) == null
+      RB.insert(tree, e, valueForAdd) == null
     }
 
     override def remove(o: Any): Boolean =
@@ -280,12 +284,12 @@ private object TreeSet {
       else null.asInstanceOf[E]
   }
 
-  private final class Projection[E](
-      tree0: RB.Tree[E, Any], fromElement0: E, fromBoundKind0: RB.BoundKind,
-      toElement0: E, toBoundKind0: RB.BoundKind)(
+  private[util] final class Projection[E, V](
+      tree0: RB.Tree[E, V], fromElement0: E, fromBoundKind0: RB.BoundKind,
+      toElement0: E, toBoundKind0: RB.BoundKind, valueForAdd: V)(
       implicit comp: Comparator[_ >: E])
-      extends AbstractProjection[E](tree0, fromElement0, fromBoundKind0,
-          toElement0, toBoundKind0) {
+      extends AbstractProjection[E, V](tree0, fromElement0, fromBoundKind0,
+          toElement0, toBoundKind0, valueForAdd) {
 
     // Access fields under a different name, more appropriate for some uses
 
@@ -319,7 +323,7 @@ private object TreeSet {
           new RB.Bound(newToElement, newToBoundKind))
       new Projection(tree,
           intersectedFromBound.bound, intersectedFromBound.kind,
-          intersectedToBound.bound, intersectedToBound.kind)
+          intersectedToBound.bound, intersectedToBound.kind, valueForAdd)
     }
 
     // Methods of the NavigableSet API that are not implemented in AbstractProjection
@@ -353,18 +357,18 @@ private object TreeSet {
       pollUpper()
 
     def descendingSet(): NavigableSet[E] =
-      new DescendingProjection(tree, toElement, toBoundKind, fromElement, fromBoundKind)
+      new DescendingProjection(tree, toElement, toBoundKind, fromElement, fromBoundKind, valueForAdd)
 
     def descendingIterator(): Iterator[E] =
       RB.descendingKeysIterator(tree, toElement, toBoundKind, fromElement, fromBoundKind)
   }
 
-  private final class DescendingProjection[E](
-      tree0: RB.Tree[E, Any], fromElement0: E, fromBoundKind0: RB.BoundKind,
-      toElement0: E, toBoundKind0: RB.BoundKind)(
+  private[util] final class DescendingProjection[E, V](
+      tree0: RB.Tree[E, V], fromElement0: E, fromBoundKind0: RB.BoundKind,
+      toElement0: E, toBoundKind0: RB.BoundKind, valueForAdd: V)(
       implicit comp: Comparator[_ >: E])
-      extends AbstractProjection[E](tree0, toElement0, toBoundKind0,
-          fromElement0, fromBoundKind0) {
+      extends AbstractProjection[E, V](tree0, toElement0, toBoundKind0,
+          fromElement0, fromBoundKind0, valueForAdd) {
 
     // Access fields under a different name, more appropriate for some uses
 
@@ -392,7 +396,7 @@ private object TreeSet {
           new RB.Bound(newToElement, newToBoundKind))
       new Projection(tree,
           intersectedFromBound.bound, intersectedFromBound.kind,
-          intersectedToBound.bound, intersectedToBound.kind)
+          intersectedToBound.bound, intersectedToBound.kind, valueForAdd)
     }
 
     // Methods of the NavigableSet API that are not implemented in AbstractProjection
@@ -426,7 +430,7 @@ private object TreeSet {
       pollLower()
 
     def descendingSet(): NavigableSet[E] =
-      new Projection(tree, toElement, toBoundKind, fromElement, fromBoundKind)
+      new Projection(tree, toElement, toBoundKind, fromElement, fromBoundKind, valueForAdd)
 
     def descendingIterator(): Iterator[E] =
       RB.projectionKeysIterator(tree, toElement, toBoundKind, fromElement, fromBoundKind)
