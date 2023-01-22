@@ -156,6 +156,13 @@ def Tasks = [
         ++$scala testingExample$v/testHtmlJSDom  &&
     sbtretry ++$scala testSuiteJVM$v/test testSuiteExJVM$v/test &&
     sbtretry ++$scala testSuite$v/test &&
+    sbtretry ++$scala \
+        testSuite$v/saveForStabilityTest \
+        testSuite$v/checkStability \
+        testSuite$v/forceRelinkForStabilityTest \
+        testSuite$v/checkStability \
+        testSuite$v/clean \
+        testSuite$v/checkStability &&
     sbtretry ++$scala testSuiteEx$v/test &&
     sbtretry 'set scalaJSStage in Global := FullOptStage' \
         ++$scala testSuiteEx$v/test &&

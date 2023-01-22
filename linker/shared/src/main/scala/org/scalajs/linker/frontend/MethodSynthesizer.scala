@@ -29,7 +29,7 @@ private[frontend] final class MethodSynthesizer(
     inputProvider: MethodSynthesizer.InputProvider) {
 
   def synthesizeMembers(classInfo: ClassInfo, analysis: Analysis)(
-      implicit ec: ExecutionContext): Future[Iterator[MethodDef]] = {
+      implicit ec: ExecutionContext): Future[List[MethodDef]] = {
     val publicMethodInfos = classInfo.methodInfos(MemberNamespace.Public)
     val futures = publicMethodInfos.valuesIterator.filter(_.isReachable).flatMap { m =>
       m.syntheticKind match {
@@ -44,7 +44,12 @@ private[frontend] final class MethodSynthesizer(
       }
     }
 
-    Future.sequence(futures)
+    /* Sort for stability.
+     * All synthetic members are in the Public namespace, so their `methodName`
+     * uniquely identifies them.
+     */
+    Future.sequence(futures.toList)
+      .map(_.sortBy(_.methodName))
   }
 
   private def synthesizeReflectiveProxy(

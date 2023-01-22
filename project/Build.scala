@@ -245,6 +245,13 @@ object Build {
 
   val packageMinilib = taskKey[File]("Produces the minilib jar.")
 
+  val saveForStabilityTest = taskKey[Unit](
+    "Saves the output of fastLinkJS for a later stability test")
+  val checkStability = taskKey[Unit](
+    "Checks that the output of fastLinkJS corresponds to the saved stability test")
+  val forceRelinkForStabilityTest = taskKey[Unit](
+    "Deletes the output directory of fastLinkJS to force it to rerun")
+
   val previousVersions = List("1.0.0", "1.0.1", "1.1.0", "1.1.1", "1.2.0",
       "1.3.0", "1.3.1", "1.4.0", "1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1",
       "1.8.0", "1.9.0", "1.10.0", "1.10.1", "1.11.0", "1.12.0")
@@ -2127,6 +2134,38 @@ object Build {
           actual
         }
       },
+
+      // Infrastructure for stability test
+      inConfig(Test)(Def.settings(
+        saveForStabilityTest / artifactPath := {
+          // this path intentionally survives a `clean`
+          (LocalRootProject / baseDirectory).value / "test-suite/target/test-suite-stability.js",
+        },
+        saveForStabilityTest := {
+          val output = fastLinkJSOutput.value / "main.js"
+          val targetFile = (saveForStabilityTest / artifactPath).value
+          IO.copyFile(output, targetFile)
+        },
+        checkStability := {
+          val log = streams.value.log
+          val rootDir = (LocalRootProject / baseDirectory).value
+          val reference = (saveForStabilityTest / artifactPath).value
+          val output = fastLinkJSOutput.value / "main.js"
+          if (java.util.Arrays.equals(IO.readBytes(reference), IO.readBytes(output))) {
+            log.info("Stability check passed")
+          } else {
+            def rel(f: File): String =
+              f.relativeTo(rootDir).getOrElse(f).toString().replace('\\', '/')
+            throw new MessageOnlyException(
+                "Stability check failed; show diff with\n" +
+                s"diff -u ${rel(reference)} ${rel(output)}")
+          }
+        },
+        forceRelinkForStabilityTest := {
+          val outputDir = (fastLinkJS / scalaJSLinkerOutputDirectory).value
+          IO.delete(outputDir)
+        },
+      )),
   ).zippedSettings(testSuiteLinker)(
       l => inConfig(Bootstrap)(testSuiteBootstrapSetting(l))
   ).withScalaJSCompiler.withScalaJSJUnitPlugin.dependsOnLibrary.dependsOn(
