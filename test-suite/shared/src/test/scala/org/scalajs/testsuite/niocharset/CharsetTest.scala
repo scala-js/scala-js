@@ -15,6 +15,8 @@ package org.scalajs.testsuite.niocharset
 import java.nio.charset._
 import java.nio.charset.StandardCharsets._
 
+import scala.annotation.tailrec
+
 import org.junit.Test
 import org.junit.Assert._
 
@@ -96,5 +98,66 @@ class CharsetTest {
         javaSet("819", "ISO8859-1", "l1", "ISO_8859-1:1987", "ISO_8859-1", "8859_1",
             "iso-ir-100", "latin1", "cp819", "ISO8859_1", "IBM819", "ISO_8859_1",
             "IBM-819", "csISOLatin1"))
+  }
+
+  @Test def availableCharsets(): Unit = {
+    val c = Charset.availableCharsets()
+
+    /* - Check available charsets with case insensitive canonical name
+     * - Check aliases are *not* present
+     */
+
+    assertSame(ISO_8859_1, c.get("IsO-8859-1"))
+    assertNull(c.get("Iso8859-1"))
+    assertNull(c.get("iso_8859_1"))
+    assertNull(c.get("LaTin1"))
+    assertNull(c.get("l1"))
+
+    assertSame(US_ASCII, c.get("us-ASCII"))
+    assertNull(c.get("Default"))
+
+    assertSame(UTF_8, c.get("UTF-8"))
+    assertNull(c.get("UtF8"))
+
+    assertSame(UTF_16BE, c.get("UtF-16BE"))
+    assertNull(c.get("Utf_16BE"))
+    assertNull(c.get("UnicodeBigUnmarked"))
+
+    assertSame(UTF_16LE, c.get("UtF-16le"))
+    assertNull(c.get("Utf_16le"))
+    assertNull(c.get("UnicodeLittleUnmarked"))
+
+    assertSame(UTF_16, c.get("UtF-16"))
+    assertNull(c.get("Utf_16"))
+    assertNull(c.get("unicode"))
+    assertNull(c.get("UnicodeBig"))
+
+    // Check unavailable charsets & modification
+
+    assertNull(c.get("this-charset-does-not-exist"))
+    assertThrows(classOf[UnsupportedOperationException], c.put("my-charset", US_ASCII))
+
+    // Check iteration: On the JVM we only assert the subsequence.
+
+    val iter = c.entrySet().iterator()
+
+    for (expect <- List(ISO_8859_1, US_ASCII, UTF_16, UTF_16BE, UTF_16LE, UTF_8)) {
+      @tailrec
+      def assertNext(): Unit = {
+        assertTrue(iter.hasNext())
+        val e = iter.next()
+        if (!executingInJVM || (e.getValue() eq expect)) {
+          assertSame(expect, e.getValue())
+          assertEquals(expect.name, e.getKey())
+        } else {
+          assertNext()
+        }
+      }
+
+      assertNext()
+    }
+
+    if (!executingInJVM)
+      assertFalse(iter.hasNext())
   }
 }

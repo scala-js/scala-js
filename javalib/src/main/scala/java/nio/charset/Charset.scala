@@ -88,9 +88,20 @@ object Charset {
   def isSupported(charsetName: String): Boolean =
     dictContains(CharsetMap, charsetName.toLowerCase())
 
+  def availableCharsets(): java.util.SortedMap[String, Charset] =
+    availableCharsetsResult
+
+  private lazy val availableCharsetsResult = {
+    val m = new java.util.TreeMap[String, Charset](String.CASE_INSENSITIVE_ORDER)
+    forArrayElems(allSJSCharsets) { c =>
+      m.put(c.name(), c)
+    }
+    Collections.unmodifiableSortedMap(m)
+  }
+
   private lazy val CharsetMap = {
     val m = dictEmpty[Charset]()
-    forArrayElems(js.Array(US_ASCII, ISO_8859_1, UTF_8, UTF_16BE, UTF_16LE, UTF_16)) { c =>
+    forArrayElems(allSJSCharsets) { c =>
       dictSet(m, c.name().toLowerCase(), c)
       val aliases = c._aliases
       for (i <- 0 until aliases.length)
@@ -98,4 +109,7 @@ object Charset {
     }
     m
   }
+
+  private def allSJSCharsets =
+    js.Array(US_ASCII, ISO_8859_1, UTF_8, UTF_16BE, UTF_16LE, UTF_16)
 }
