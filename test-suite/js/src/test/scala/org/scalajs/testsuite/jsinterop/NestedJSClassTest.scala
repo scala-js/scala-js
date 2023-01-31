@@ -649,31 +649,39 @@ class NestedJSClassTest {
   }
 
   @Test
-  def extendInnerJSClassInClass_Issue4402(): Unit = {
+  def extendInnerJSClassInClass_Issue4402_Issue4801(): Unit = {
     val msg = "hello world"
 
     val outer = js.Dynamic.literal(
       InnerClass = js.constructorOf[DynamicInnerClass_Issue4402]
     ).asInstanceOf[OuterNativeClass_Issue4402]
 
-    class Subclass(arg: String) extends outer.InnerClass(arg)
+    class Subclass(arg: String) extends outer.InnerClass(arg) {
+      override def methodSuper_Issue4801(x: Int): String =
+        super.methodSuper_Issue4801(x) + " overridden"
+    }
 
     val obj = new Subclass(msg)
     assertEquals(msg, obj.message)
+    assertEquals(msg + "3 overridden", obj.methodSuper_Issue4801(3))
   }
 
   @Test
-  def extendInnerJSClassInTrait_Issue4402(): Unit = {
+  def extendInnerJSClassInTrait_Issue4402_Issue4801(): Unit = {
     val msg = "hello world"
 
     val outer = js.Dynamic.literal(
       InnerClass = js.constructorOf[DynamicInnerClass_Issue4402]
     ).asInstanceOf[OuterNativeTrait_Issue4402]
 
-    class Subclass(arg: String) extends outer.InnerClass(arg)
+    class Subclass(arg: String) extends outer.InnerClass(arg) {
+      override def methodSuper_Issue4801(x: Int): String =
+        super.methodSuper_Issue4801(x) + " overridden"
+    }
 
     val obj = new Subclass(msg)
     assertEquals(msg, obj.message)
+    assertEquals(msg + "3 overridden", obj.methodSuper_Issue4801(3))
   }
 }
 
@@ -900,6 +908,8 @@ object NestedJSClassTest {
 
   class DynamicInnerClass_Issue4402(arg: String) extends js.Object {
     val message: String = arg
+
+    def methodSuper_Issue4801(x: Int): String = arg + x
   }
 
   @js.native
@@ -908,6 +918,8 @@ object NestedJSClassTest {
     @js.native
     class InnerClass(arg: String) extends js.Object {
       def message: String = js.native
+
+      def methodSuper_Issue4801(x: Int): String = js.native
     }
   }
 
@@ -916,6 +928,8 @@ object NestedJSClassTest {
     @js.native
     class InnerClass(arg: String) extends js.Object {
       def message: String = js.native
+
+      def methodSuper_Issue4801(x: Int): String = js.native
     }
   }
 }

@@ -317,7 +317,7 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
         case Apply(fun @ Select(sup: Super, _), _)
             if !fun.symbol.isConstructor &&
                 isInnerOrLocalJSClass(sup.symbol.superClass) =>
-          wrapWithContextualJSClassValue(sup.symbol.superClass.tpe_*) {
+          wrapWithContextualSuperJSClassValue(sup.symbol.superClass) {
             super.transform(tree)
           }
 
@@ -325,7 +325,7 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
         case Apply(TypeApply(fun @ Select(sup: Super, _), _), _)
             if !fun.symbol.isConstructor &&
                 isInnerOrLocalJSClass(sup.symbol.superClass) =>
-          wrapWithContextualJSClassValue(sup.symbol.superClass.tpe_*) {
+          wrapWithContextualSuperJSClassValue(sup.symbol.superClass) {
             super.transform(tree)
           }
 
@@ -391,6 +391,38 @@ abstract class ExplicitLocalJS[G <: Global with Singleton](val global: G)
             gen.mkMethodCall(Runtime_constructorOf, List(classValue))
           }
         }
+      }
+    }
+
+    /** Wraps with the contextual super JS class value for super calls. */
+    private def wrapWithContextualSuperJSClassValue(superClass: Symbol)(
+        tree: Tree): Tree = {
+      /* #4801 We need to interpret the superClass type as seen from the
+       * current class' thisType.
+       *
+       * For example, in the test NestedJSClassTest.extendInnerJSClassInClass,
+       * the original `superClass.tpe_*` is
+       *
+       *   OuterNativeClass_Issue4402.this.InnerClass
+       *
+       * because `InnerClass` is path-dependent. However, the path
+       * `OuterNativeClass.this` is only valid within `OuterNativeClass`
+       * itself. In the context of the current local class `Subclass`, this
+       * path must be replaced by the actual path `outer.`. This is precisely
+       * the role of `asSeenFrom`. We tell it to replace any `superClass.this`
+       * by `currentClass.this`, and it also transitively replaces paths for
+       * outer classes of `superClass`, matching them with the corresponding
+       * outer paths of `currentClass.thisType` if necessary. The result for
+       * that test case is
+       *
+       *   outer.InnerClass
+       */
+      val jsClassTypeInSuperClass = superClass.tpe_*
+      val jsClassTypeAsSeenFromThis =
+        jsClassTypeInSuperClass.asSeenFrom(currentClass.thisType, superClass)
+
+      wrapWithContextualJSClassValue(jsClassTypeAsSeenFromThis) {
+        tree
       }
     }
 
