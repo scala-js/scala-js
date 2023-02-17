@@ -246,6 +246,8 @@ class AnalyzerTest {
 
   @Test
   def missingMethod(): AsyncResult = await {
+    val fooMethodName = m("foo", Nil, V)
+
     val classDefs = Seq(
         classDef("A", superClass = Some(ObjectClass),
             methods = List(trivialCtor("A")))
@@ -253,10 +255,10 @@ class AnalyzerTest {
 
     val analysis = computeAnalysis(classDefs,
         reqsFactory.instantiateClass("A", NoArgConstructorName) ++
-        reqsFactory.callMethod("A", m("foo", Nil, V)))
+        reqsFactory.callMethod("A", fooMethodName))
 
     assertContainsError("MissingMethod(A.foo;V)", analysis) {
-      case MissingMethod(MethInfo("A", "foo;V"), `fromUnitTest`) => true
+      case MissingMethod(MethInfo("A", "foo;V"), FromDispatch(ClsInfo("A"), `fooMethodName`)) => true
     }
   }
 
@@ -279,7 +281,7 @@ class AnalyzerTest {
         reqsFactory.callMethod("A", fooMethodName))
 
     assertContainsError("MissingMethod(A.foo;I)", analysis) {
-      case MissingMethod(MethInfo("A", "foo;I"), `fromUnitTest`) => true
+      case MissingMethod(MethInfo("A", "foo;I"), FromDispatch(ClsInfo("A"), `fooMethodName`)) => true
     }
   }
 

@@ -579,11 +579,13 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     var instantiatedFrom: List[From] = Nil
 
+    val dispatchCalledFrom: mutable.Map[MethodName, List[From]] = mutable.Map.empty
+
     /** List of all instantiated (Scala) subclasses of this Scala class/trait.
      *  For JS types, this always remains empty.
      */
     var instantiatedSubclasses: List[ClassInfo] = Nil
-    var methodsCalledLog: List[(MethodName, From)] = Nil
+    var methodsCalledLog: List[MethodName] = Nil
 
     private val nsMethodInfos = {
       val nsMethodInfos = Array.fill(MemberNamespace.Count) {
@@ -947,18 +949,25 @@ private final class Analyzer(config: CommonPhaseConfig,
         if (isScalaClass) {
           accessData()
 
+          /* First mark the ancestors as subclassInstantiated() and fetch the
+           * methodsCalledLog, for all ancestors. Only then perform the
+           * resolved calls for all the logs. This order is important because,
+           * during the resolved calls, new methods could be called and added
+           * to the log; they will already see the new subclasses so we should
+           * *not* see them in the logs, lest we perform some work twice.
+           */
+
           val allMethodsCalledLogs = for (ancestor <- ancestors) yield {
             ancestor.subclassInstantiated()
             ancestor.instantiatedSubclasses ::= this
-            ancestor.methodsCalledLog
+            ancestor -> ancestor.methodsCalledLog
           }
 
           for {
-            log <- allMethodsCalledLogs
-            logEntry <- log
+            (ancestor, ancestorLog) <- allMethodsCalledLogs
+            methodName <- ancestorLog
           } {
-            val methodName = logEntry._1
-            implicit val from = logEntry._2
+            implicit val from = FromDispatch(ancestor, methodName)
             callMethodResolved(methodName)
           }
         } else {
@@ -1029,19 +1038,32 @@ private final class Analyzer(config: CommonPhaseConfig,
        * detected, and those need to see the updated log, since the loop in
        * this method won't see them.
        */
-      methodsCalledLog ::= ((methodName, from))
-      val subclasses = instantiatedSubclasses
-      for (subclass <- subclasses)
-        subclass.callMethodResolved(methodName)
 
-      if (checkAbstractReachability) {
-        /* Also lookup the method as abstract from this class, to make sure it
-         * is *declared* on this type. We do this after the concrete lookup to
-         * avoid work, since a concretely reachable method is already marked as
-         * abstractly reachable.
-         */
-        if (!methodName.isReflectiveProxy)
-          lookupAbstractMethod(methodName).reachAbstract()
+      dispatchCalledFrom.get(methodName) match {
+        case Some(froms) =>
+          // Already called before; add the new from
+          dispatchCalledFrom.update(methodName, from :: froms)
+
+        case None =>
+          // New call
+          dispatchCalledFrom.update(methodName, from :: Nil)
+
+          val fromDispatch = FromDispatch(this, methodName)
+
+          methodsCalledLog ::= methodName
+          val subclasses = instantiatedSubclasses
+          for (subclass <- subclasses)
+            subclass.callMethodResolved(methodName)(fromDispatch)
+
+          if (checkAbstractReachability) {
+            /* Also lookup the method as abstract from this class, to make sure it
+             * is *declared* on this type. We do this after the concrete lookup to
+             * avoid work, since a concretely reachable method is already marked as
+             * abstractly reachable.
+             */
+            if (!methodName.isReflectiveProxy)
+              lookupAbstractMethod(methodName).reachAbstract()(fromDispatch)
+          }
       }
     }
 

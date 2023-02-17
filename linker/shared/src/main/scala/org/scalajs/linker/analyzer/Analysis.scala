@@ -78,6 +78,7 @@ object Analysis {
 
     def linkedFrom: scala.collection.Seq[From]
     def instantiatedFrom: scala.collection.Seq[From]
+    def dispatchCalledFrom: scala.collection.Map[MethodName, scala.collection.Seq[From]]
     def methodInfos(
         namespace: MemberNamespace): scala.collection.Map[MethodName, MethodInfo]
 
@@ -208,6 +209,7 @@ object Analysis {
 
   sealed trait From
   final case class FromMethod(methodInfo: MethodInfo) extends From
+  final case class FromDispatch(classInfo: ClassInfo, methodName: MethodName) extends From
   final case class FromClass(classInfo: ClassInfo) extends From
   final case class FromCore(moduleName: String) extends From
   case object FromExports extends From
@@ -303,6 +305,15 @@ object Analysis {
 
       @tailrec
       def loopTrace(optFrom: Option[From], verb: String = "called"): Unit = {
+        def sameMethod(methodInfo: MethodInfo, fromDispatch: FromDispatch): Boolean = {
+          methodInfo.owner == fromDispatch.classInfo &&
+          methodInfo.namespace == MemberNamespace.Public &&
+          methodInfo.methodName == fromDispatch.methodName
+        }
+
+        def followDispatch(fromDispatch: FromDispatch): Option[From] =
+          fromDispatch.classInfo.dispatchCalledFrom.get(fromDispatch.methodName).flatMap(_.lastOption)
+
         optFrom match {
           case None =>
             log(level, s"$verb from ... er ... nowhere!? (this is a bug in dce)")
@@ -312,8 +323,17 @@ object Analysis {
                 log(level, s"$verb from ${methodInfo.fullDisplayName}")
                 if (onlyOnce(level, methodInfo)) {
                   involvedClasses ++= methodInfo.instantiatedSubclasses
-                  loopTrace(methodInfo.calledFrom.lastOption)
+                  methodInfo.calledFrom.lastOption match {
+                    case Some(fromDispatch: FromDispatch) if sameMethod(methodInfo, fromDispatch) =>
+                      // avoid logging "dispatch from C.m" just after "called from C.m"
+                      loopTrace(followDispatch(fromDispatch))
+                    case nextFrom =>
+                      loopTrace(nextFrom)
+                  }
                 }
+              case from @ FromDispatch(classInfo, methodName) =>
+                log(level, s"dispatched from ${classInfo.displayName}.${methodName.displayName}")
+                loopTrace(followDispatch(from))
               case FromClass(classInfo) =>
                 log(level, s"$verb from ${classInfo.displayName}")
                 loopTrace(classInfo.linkedFrom.lastOption)
