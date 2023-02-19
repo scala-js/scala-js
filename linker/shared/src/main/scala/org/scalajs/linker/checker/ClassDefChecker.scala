@@ -644,13 +644,11 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
         checkTrees(elems, env)
 
       case ArrayLength(array) =>
-        if (!array.tpe.isInstanceOf[ArrayType])
-          reportError(i"Array type expected but ${array.tpe} found")
+        checkArrayReceiverType(array.tpe)
         checkTree(array, env)
 
       case ArraySelect(array, index) =>
-        if (!array.tpe.isInstanceOf[ArrayType])
-          reportError(i"Array type expected but ${array.tpe} found")
+        checkArrayReceiverType(array.tpe)
         checkTree(array, env)
         checkTree(index, env)
 
@@ -839,6 +837,13 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
       case _ =>
         // ok
     }
+  }
+
+  private def checkArrayReceiverType(tpe: Type)(
+      implicit ctx: ErrorContext): Unit = tpe match {
+    case tpe: ArrayType         => checkArrayType(tpe)
+    case NullType | NothingType => // ok
+    case _                      => reportError(i"Array type expected but $tpe found")
   }
 
   private def checkArrayType(tpe: ArrayType)(
