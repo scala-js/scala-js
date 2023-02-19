@@ -731,12 +731,12 @@ private[optimizer] abstract class OptimizerCore(
         val replacement = ReplaceWithVarRef(newName, newSimpleState(Unused), None)
         val localDef = LocalDef(tcaptureValue.tpe, mutable, replacement)
         val localIdent = LocalIdent(newName)(ident.pos)
-        val newParamDef = ParamDef(localIdent, newOriginalName, ptpe, mutable)(paramDef.pos)
+        val newParamDef = ParamDef(localIdent, newOriginalName, tcaptureValue.tpe.base, mutable)(paramDef.pos)
 
         /* Note that the binding will never create a fresh name for a
          * ReplaceWithVarRef. So this will not put our name alignment at risk.
          */
-        val valueBinding = Binding.temp(paramName, ptpe, mutable, tcaptureValue)
+        val valueBinding = Binding.temp(paramName, tcaptureValue)
 
         captureParamLocalDefs += paramName -> localDef
         newCaptureParamDefsAndRepls += newParamDef -> replacement
@@ -5220,13 +5220,7 @@ private[optimizer] object OptimizerCore {
       }
     }
 
-    def newReplacement(implicit pos: Position): Tree =
-      newReplacementInternal(replacement)
-
-    @tailrec
-    private def newReplacementInternal(replacement: LocalDefReplacement)(
-        implicit pos: Position): Tree = replacement match {
-
+    def newReplacement(implicit pos: Position): Tree = this.replacement match {
       case ReplaceWithVarRef(name, used, _) =>
         used.value = Used
         VarRef(LocalIdent(name))(tpe.base)
@@ -5247,7 +5241,18 @@ private[optimizer] object OptimizerCore {
         This()(tpe.base)
 
       case ReplaceWithOtherLocalDef(localDef) =>
-        newReplacementInternal(localDef.replacement)
+        /* A previous version would push down the `tpe` of this `LocalDef` to
+         * use for the replacement. While that creates trees with narrower types,
+         * it also creates inconsistent trees:
+         * - This() not typed as the enclosing class.
+         * - VarRef not typed as the corresponding VarDef / ParamDef.
+         *
+         * Type based optimizations happen (mainly) in the optimizer so
+         * consistent downstream types are more important than narrower types;
+         * notably because it allows us to run the ClassDefChecker after the
+         * optimizer.
+         */
+        localDef.newReplacement
 
       case ReplaceWithConstant(value) =>
         value

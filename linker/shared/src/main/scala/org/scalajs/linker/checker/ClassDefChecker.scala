@@ -26,7 +26,8 @@ import org.scalajs.logging._
 import org.scalajs.linker.checker.ErrorReporter._
 
 /** Checker for the validity of the IR. */
-private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter) {
+private final class ClassDefChecker(classDef: ClassDef,
+    allowReflectiveProxies: Boolean, allowTransients: Boolean, reporter: ErrorReporter) {
   import ClassDefChecker._
 
   import reporter.reportError
@@ -462,8 +463,12 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
   private def checkMethodNameNamespace(name: MethodName, namespace: MemberNamespace)(
       implicit ctx: ErrorContext): Unit = {
     if (name.isReflectiveProxy) {
-      // Only allowed after the analyzer.
-      reportError("illegal reflective proxy")
+      if (allowReflectiveProxies) {
+        if (namespace != MemberNamespace.Public)
+          reportError("reflective profixes are only allowed in the public namespace")
+      } else {
+        reportError("illegal reflective proxy")
+      }
     }
 
     if (name.isConstructor != (namespace == MemberNamespace.Constructor))
@@ -652,8 +657,13 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
         checkTree(array, env)
         checkTree(index, env)
 
-      case _:RecordSelect | _:RecordValue =>
-        reportError("invalid tree")
+      case RecordSelect(record, _) =>
+        checkAllowTransients()
+        checkTree(record, env)
+
+      case RecordValue(_, elems) =>
+        checkAllowTransients()
+        checkTrees(elems, env)
 
       case IsInstanceOf(expr, testType) =>
         checkTree(expr, env)
@@ -818,11 +828,19 @@ private final class ClassDefChecker(classDef: ClassDef, reporter: ErrorReporter)
       case CreateJSClass(className, captureValues) =>
         checkTrees(captureValues, env)
 
-      case _:Transient =>
-        reportError("invalid tree")
+      case Transient(transient) =>
+        checkAllowTransients()
+        transient.traverse(new Traversers.Traverser {
+          override def traverse(tree: Tree): Unit = checkTree(tree, env)
+        })
     }
 
     newEnv
+  }
+
+  private def checkAllowTransients()(implicit ctx: ErrorContext): Unit = {
+    if (!allowTransients)
+      reportError("invalid transient tree")
   }
 
   private def checkIsAsInstanceTargetType(tpe: Type)(
@@ -879,9 +897,9 @@ object ClassDefChecker {
    *
    *  @return Count of IR checking errors (0 in case of success)
    */
-  def check(classDef: ClassDef, logger: Logger): Int = {
+  def check(classDef: ClassDef, allowReflectiveProxies: Boolean, allowTransients: Boolean, logger: Logger): Int = {
     val reporter = new LoggerErrorReporter(logger)
-    new ClassDefChecker(classDef, reporter).checkClassDef()
+    new ClassDefChecker(classDef, allowReflectiveProxies, allowTransients, reporter).checkClassDef()
     reporter.errorCount
   }
 

@@ -43,7 +43,8 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
   private[this] val optOptimizer: Option[IncOptimizer] =
     LinkerFrontendImplPlatform.createOptimizer(config)
 
-  private[this] val refiner: Refiner = new Refiner(config.commonConfig)
+  private[this] val refiner: Refiner =
+    new Refiner(config.commonConfig, config.checkIR)
 
   private[this] val splitter: ModuleSplitter = config.moduleSplitStyle match {
     case ModuleSplitStyle.FewestModules             => ModuleSplitter.fewestModules()
