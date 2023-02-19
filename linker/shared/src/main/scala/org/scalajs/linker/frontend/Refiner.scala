@@ -30,12 +30,8 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
   import Refiner._
 
   private val irLoader = new ClassDefIRLoader
-  private val infoLoader = {
-    new InfoLoader(irLoader,
-        if (checkIR) InfoLoader.InternalIRCheck
-        else InfoLoader.NoIRCheck
-    )
-  }
+  private val analyzer =
+    new Analyzer(config, initial = false, checkIR = checkIR, irLoader)
 
   def refine(classDefs: Seq[(ClassDef, Version)],
       moduleInitializers: List[ModuleInitializer],
@@ -43,7 +39,6 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
       implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
     irLoader.update(classDefs)
-    infoLoader.update(logger)
 
     val analysis = logger.timeFuture("Refiner: Compute reachability") {
       analyze(moduleInitializers, symbolRequirements, logger)
@@ -68,7 +63,6 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
       }
 
       irLoader.cleanAfterRun()
-      infoLoader.cleanAfterRun()
 
       result
     }
@@ -78,9 +72,7 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
       symbolRequirements: SymbolRequirement, logger: Logger)(
       implicit ec: ExecutionContext): Future[Analysis] = {
     for {
-      analysis <- Analyzer.computeReachability(config, moduleInitializers,
-          symbolRequirements, allowAddingSyntheticMethods = false,
-          checkAbstractReachability = false, infoLoader)
+      analysis <- analyzer.computeReachability(moduleInitializers, symbolRequirements, logger)
     } yield {
       /* There must not be linking errors at this point. If there are, it is a
        * bug in the optimizer.

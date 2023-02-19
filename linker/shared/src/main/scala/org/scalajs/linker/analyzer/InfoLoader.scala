@@ -27,7 +27,7 @@ import org.scalajs.linker.frontend.IRLoader
 import org.scalajs.linker.interface.LinkingException
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
-final class InfoLoader(irLoader: IRLoader, irCheckMode: InfoLoader.IRCheckMode) {
+private[analyzer] final class InfoLoader(irLoader: IRLoader, irCheckMode: InfoLoader.IRCheckMode) {
   private var logger: Logger = _
   private val cache = mutable.Map.empty[ClassName, InfoLoader.ClassInfoCache]
 
@@ -55,7 +55,7 @@ final class InfoLoader(irLoader: IRLoader, irCheckMode: InfoLoader.IRCheckMode) 
   }
 }
 
-object InfoLoader {
+private[analyzer] object InfoLoader {
   sealed trait IRCheckMode
 
   case object NoIRCheck extends IRCheckMode
