@@ -809,11 +809,26 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     private def findProxyMatch(proxyName: MethodName)(
         implicit from: From): Future[Option[MethodInfo]] = {
-      val candidates = publicMethodInfos.valuesIterator.filter { m =>
+      val candidates = findProxyCandidates(proxyName)
+
+      // Fast paths for 0 and 1 candidates
+      candidates match {
+        case Nil                  => Future.successful(None)
+        case onlyCandidate :: Nil => Future.successful(Some(onlyCandidate))
+        case _                    => computeMostSpecificProxyMatch(candidates)
+      }
+    }
+
+    private def findProxyCandidates(proxyName: MethodName): List[MethodInfo] = {
+      publicMethodInfos.valuesIterator.filter { m =>
         // TODO In theory we should filter out protected methods
         !m.isReflectiveProxy && !m.isDefaultBridge && !m.isAbstract &&
         reflProxyMatches(m.methodName, proxyName)
-      }.toSeq
+      }.toList
+    }
+
+    private def computeMostSpecificProxyMatch(candidates: List[MethodInfo])(
+        implicit from: From): Future[Option[MethodInfo]] = {
 
       /* From the JavaDoc of java.lang.Class.getMethod:
        *
