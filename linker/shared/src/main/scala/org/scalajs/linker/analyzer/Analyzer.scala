@@ -765,32 +765,79 @@ private final class Analyzer(config: CommonPhaseConfig,
        * if the IR retained the information that a method is protected.
        */
 
-      val superClasses =
-        Iterator.iterate(this)(_.superClass.orNull).takeWhile(_ ne null)
-      val superClassesThenAncestors = superClasses ++ ancestors.iterator
-
-      val candidates = superClassesThenAncestors.map(_.findProxyMatch(proxyName))
-
-      val targetFuture = locally {
-        implicit val iec = ec
-        Future.sequence(candidates).map(_.collectFirst { case Some(m) => m })
+      @tailrec
+      def findFirstNonEmptyCandidates(ancestors: List[ClassInfo]): List[MethodInfo] = {
+        ancestors match {
+          case ancestor :: nextAncestors =>
+            val candidates = ancestor.findProxyCandidates(proxyName)
+            if (candidates.isEmpty)
+              findFirstNonEmptyCandidates(nextAncestors)
+            else
+              candidates
+          case Nil =>
+            Nil
+        }
       }
 
-      workQueue.enqueue(targetFuture) { maybeTarget =>
-        maybeTarget.foreach { reflectiveTarget =>
-          val proxy = createReflProxy(proxyName, reflectiveTarget.methodName)
+      val candidates = findFirstNonEmptyCandidates(ancestorsInReflectiveTargetOrder)
+
+      candidates match {
+        case Nil =>
+          ()
+
+        case onlyCandidate :: Nil =>
+          // Fast path that does not require workQueue.enqueue
+          val proxy = createReflProxy(proxyName, onlyCandidate.methodName)
           onSuccess(proxy)
-        }
+
+        case _ =>
+          val targetFuture = computeMostSpecificProxyMatch(candidates)
+          workQueue.enqueue(targetFuture) { reflectiveTarget =>
+            val proxy = createReflProxy(proxyName, reflectiveTarget.methodName)
+            onSuccess(proxy)
+          }
       }
     }
 
-    private def findProxyMatch(proxyName: MethodName)(
-        implicit from: From): Future[Option[MethodInfo]] = {
-      val candidates = publicMethodInfos.valuesIterator.filter { m =>
-        // TODO In theory we should filter out protected methods
-        !m.isReflectiveProxy && !m.isDefaultBridge && !m.isAbstract &&
-        reflProxyMatches(m.methodName, proxyName)
-      }.toSeq
+    private lazy val ancestorsInReflectiveTargetOrder: List[ClassInfo] = {
+      val b = new mutable.ListBuffer[ClassInfo]
+
+      @tailrec
+      def addSuperClasses(superClass: ClassInfo): Unit = {
+        b += superClass
+        superClass.superClass match {
+          case Some(next) => addSuperClasses(next)
+          case None       => ()
+        }
+      }
+      addSuperClasses(this)
+
+      b.prependToList(ancestors.filter(_.isInterface))
+    }
+
+    private def findProxyCandidates(proxyName: MethodName): List[MethodInfo] =
+      proxyCandidates.getOrElse(proxyName, Nil)
+
+    private lazy val proxyCandidates = {
+      val result = mutable.Map.empty[MethodName, List[MethodInfo]]
+      val iter = publicMethodInfos.valuesIterator
+      while (iter.hasNext) {
+        val m = iter.next()
+        val include = {
+          // TODO In theory we should filter out protected methods
+          !m.isReflectiveProxy && !m.isDefaultBridge && !m.isAbstract
+        }
+        if (include) {
+          val proxyName = MethodName.reflectiveProxy(m.methodName.simpleName, m.methodName.paramTypeRefs)
+          val prev = result.getOrElse(proxyName, Nil)
+          result.update(proxyName, m :: prev)
+        }
+      }
+      result
+    }
+
+    private def computeMostSpecificProxyMatch(candidates: List[MethodInfo])(
+        implicit from: From): Future[MethodInfo] = {
 
       /* From the JavaDoc of java.lang.Class.getMethod:
        *
@@ -823,7 +870,7 @@ private final class Analyzer(config: CommonPhaseConfig,
            * the implementation of reflective calls. This is bug-compatible with
            * Scala/JVM.
            */
-          targets.headOption
+          targets.head
         }
       }
     }
