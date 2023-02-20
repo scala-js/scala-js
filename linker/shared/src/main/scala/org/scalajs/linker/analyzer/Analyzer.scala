@@ -778,7 +778,32 @@ private final class Analyzer(config: CommonPhaseConfig,
 
       locally {
         implicit val iec = ec
-        Future.sequence(candidates).map(_.collectFirst { case Some(m) => m })
+
+        /* Manual version of
+         * Future.sequence(candidates).map(_.collectFirst { case Some(m) => m })
+         *
+         * We use a manual version because `Future.sequence` uses zipWith, not
+         * flatMap, and therefore does not wait for one future to complete
+         * before continuing on to the next one. This is generally good
+         * behavior, but it kills our use case, as it bypasses the
+         * short-circuiting behavior of `Iterator`s, resulting in *a lot* of
+         * useless computations!
+         */
+        def loop(): Future[Option[MethodInfo]] = {
+          if (candidates.isEmpty) {
+            Future.successful(None)
+          } else {
+            val candidate = candidates.next()
+            candidate.flatMap { optResult =>
+              if (optResult.isDefined)
+                Future.successful(optResult)
+              else
+                loop()
+            }
+          }
+        }
+
+        loop()
       }
     }
 
