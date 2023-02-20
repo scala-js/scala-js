@@ -820,11 +820,20 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
 
     private def findProxyCandidates(proxyName: MethodName): List[MethodInfo] = {
-      publicMethodInfos.valuesIterator.filter { m =>
-        // TODO In theory we should filter out protected methods
-        !m.isReflectiveProxy && !m.isDefaultBridge && !m.isAbstract &&
-        reflProxyMatches(m.methodName, proxyName)
-      }.toList
+      // This is a manual version of .filter(...).toList, for speed
+      var result: List[MethodInfo] = Nil
+      val iter = publicMethodInfos.valuesIterator
+      while (iter.hasNext) {
+        val m = iter.next()
+        val include = {
+          // TODO In theory we should filter out protected methods
+          !m.isReflectiveProxy && !m.isDefaultBridge && !m.isAbstract &&
+          reflProxyMatches(m.methodName, proxyName)
+        }
+        if (include)
+          result ::= m
+      }
+      result
     }
 
     private def computeMostSpecificProxyMatch(candidates: List[MethodInfo])(
