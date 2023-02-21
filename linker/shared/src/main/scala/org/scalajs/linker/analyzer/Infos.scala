@@ -93,35 +93,45 @@ object Infos {
   )
 
   final class ReachabilityInfo private[Infos] (
-      val fieldsRead: Map[ClassName, List[FieldName]],
-      val fieldsWritten: Map[ClassName, List[FieldName]],
-      val staticFieldsRead: Map[ClassName, List[FieldName]],
-      val staticFieldsWritten: Map[ClassName, List[FieldName]],
-      val methodsCalled: Map[ClassName, List[MethodName]],
-      val methodsCalledStatically: Map[ClassName, List[NamespacedMethodName]],
-      val methodsCalledDynamicImport: Map[ClassName, List[NamespacedMethodName]],
-      val jsNativeMembersUsed: Map[ClassName, List[MethodName]],
-      /** For a Scala class, it is instantiated with a `New`; for a JS class,
-       *  its constructor is accessed with a `JSLoadConstructor`.
-       */
-      val instantiatedClasses: List[ClassName],
-      val accessedModules: List[ClassName],
-      val usedInstanceTests: List[ClassName],
-      val accessedClassData: List[ClassName],
-      val referencedClasses: List[ClassName],
-      val staticallyReferencedClasses: List[ClassName],
-      val accessedClassClass: Boolean,
-      val accessedNewTarget: Boolean,
-      val accessedImportMeta: Boolean,
-      val usedExponentOperator: Boolean
+      val byClass: List[ReachabilityInfoInClass],
+      val globalFlags: ReachabilityInfo.Flags
   )
 
   object ReachabilityInfo {
-    val Empty: ReachabilityInfo = {
-      new ReachabilityInfo(Map.empty, Map.empty, Map.empty, Map.empty,
-          Map.empty, Map.empty, Map.empty, Map.empty, Nil, Nil, Nil, Nil, Nil, Nil,
-          false, false, false, false)
-    }
+    type Flags = Int
+
+    final val FlagAccessedClassClass = 1 << 0
+    final val FlagAccessedNewTarget = 1 << 1
+    final val FlagAccessedImportMeta = 1 << 2
+    final val FlagUsedExponentOperator = 1 << 3
+  }
+
+  /** Things from a given class that are reached by one method. */
+  final class ReachabilityInfoInClass private[Infos] (
+      val className: ClassName,
+      val fieldsRead: List[FieldName],
+      val fieldsWritten: List[FieldName],
+      val staticFieldsRead: List[FieldName],
+      val staticFieldsWritten: List[FieldName],
+      val methodsCalled: List[MethodName],
+      val methodsCalledStatically: List[NamespacedMethodName],
+      val methodsCalledDynamicImport: List[NamespacedMethodName],
+      val jsNativeMembersUsed: List[MethodName],
+      val flags: ReachabilityInfoInClass.Flags
+  )
+
+  object ReachabilityInfoInClass {
+    type Flags = Int
+
+    /** For a Scala class, it is instantiated with a `New`; for a JS class,
+     *  its constructor is accessed with a `JSLoadConstructor`.
+     */
+    final val FlagInstantiated = 1 << 0
+
+    final val FlagModuleAccessed = 1 << 1
+    final val FlagInstanceTestsUsed = 1 << 2
+    final val FlagClassDataAccessed = 1 << 3
+    final val FlagStaticallyReferenced = 1 << 4
   }
 
   final class ClassInfoBuilder(
@@ -178,42 +188,29 @@ object Infos {
   }
 
   final class ReachabilityInfoBuilder {
-    private val fieldsRead = mutable.Map.empty[ClassName, mutable.Set[FieldName]]
-    private val fieldsWritten = mutable.Map.empty[ClassName, mutable.Set[FieldName]]
-    private val staticFieldsRead = mutable.Map.empty[ClassName, mutable.Set[FieldName]]
-    private val staticFieldsWritten = mutable.Map.empty[ClassName, mutable.Set[FieldName]]
-    private val methodsCalled = mutable.Map.empty[ClassName, mutable.Set[MethodName]]
-    private val methodsCalledStatically = mutable.Map.empty[ClassName, mutable.Set[NamespacedMethodName]]
-    private val methodsCalledDynamicImport = mutable.Map.empty[ClassName, mutable.Set[NamespacedMethodName]]
-    private val jsNativeMembersUsed = mutable.Map.empty[ClassName, mutable.Set[MethodName]]
-    private val instantiatedClasses = mutable.Set.empty[ClassName]
-    private val accessedModules = mutable.Set.empty[ClassName]
-    private val usedInstanceTests = mutable.Set.empty[ClassName]
-    private val accessedClassData = mutable.Set.empty[ClassName]
-    private val referencedClasses = mutable.Set.empty[ClassName]
-    private val staticallyReferencedClasses = mutable.Set.empty[ClassName]
-    private var accessedClassClass = false
-    private var accessedNewTarget = false
-    private var accessedImportMeta = false
-    private var usedExponentOperator = false
+    private val byClass = mutable.Map.empty[ClassName, ReachabilityInfoInClassBuilder]
+    private var flags: ReachabilityInfo.Flags = 0
+
+    private def forClass(cls: ClassName): ReachabilityInfoInClassBuilder =
+      byClass.getOrElseUpdate(cls, new ReachabilityInfoInClassBuilder(cls))
 
     def addFieldRead(cls: ClassName, field: FieldName): this.type = {
-      fieldsRead.getOrElseUpdate(cls, mutable.Set.empty) += field
+      forClass(cls).addFieldRead(field)
       this
     }
 
     def addFieldWritten(cls: ClassName, field: FieldName): this.type = {
-      fieldsWritten.getOrElseUpdate(cls, mutable.Set.empty) += field
+      forClass(cls).addFieldWritten(field)
       this
     }
 
     def addStaticFieldRead(cls: ClassName, field: FieldName): this.type = {
-      staticFieldsRead.getOrElseUpdate(cls, mutable.Set.empty) += field
+      forClass(cls).addStaticFieldRead(field)
       this
     }
 
     def addStaticFieldWritten(cls: ClassName, field: FieldName): this.type = {
-      staticFieldsWritten.getOrElseUpdate(cls, mutable.Set.empty) += field
+      forClass(cls).addStaticFieldWritten(field)
       this
     }
 
@@ -254,39 +251,40 @@ object Infos {
     }
 
     def addMethodCalled(cls: ClassName, method: MethodName): this.type = {
-      methodsCalled.getOrElseUpdate(cls, mutable.Set.empty) += method
+      forClass(cls).addMethodCalled(method)
       this
     }
 
     def addMethodCalledStatically(cls: ClassName,
         method: NamespacedMethodName): this.type = {
-      methodsCalledStatically.getOrElseUpdate(cls, mutable.Set.empty) += method
+      forClass(cls).addMethodCalledStatically(method)
       this
     }
 
     def addMethodCalledDynamicImport(cls: ClassName,
         method: NamespacedMethodName): this.type = {
-      methodsCalledDynamicImport.getOrElseUpdate(cls, mutable.Set.empty) += method
+      forClass(cls).addMethodCalledDynamicImport(method)
       this
     }
 
     def addJSNativeMemberUsed(cls: ClassName, member: MethodName): this.type = {
-      jsNativeMembersUsed.getOrElseUpdate(cls, mutable.Set.empty) += member
+      forClass(cls).addJSNativeMemberUsed(member)
       this
     }
 
     def addInstantiatedClass(cls: ClassName): this.type = {
-      instantiatedClasses += cls
+      forClass(cls).setInstantiated()
       this
     }
 
     def addInstantiatedClass(cls: ClassName, ctor: MethodName): this.type = {
-      addInstantiatedClass(cls).addMethodCalledStatically(cls,
+      forClass(cls).setInstantiated().addMethodCalledStatically(
           NamespacedMethodName(MemberNamespace.Constructor, ctor))
+      this
     }
 
     def addAccessedModule(cls: ClassName): this.type = {
-      accessedModules += cls
+      forClass(cls).setModuleAccessed()
       this
     }
 
@@ -302,7 +300,7 @@ object Infos {
     }
 
     def addUsedInstanceTest(cls: ClassName): this.type = {
-      usedInstanceTests += cls
+      forClass(cls).setInstanceTestsUsed()
       this
     }
 
@@ -318,7 +316,7 @@ object Infos {
     }
 
     def addAccessedClassData(cls: ClassName): this.type = {
-      accessedClassData += cls
+      forClass(cls).setClassDataAccessed()
       this
     }
 
@@ -334,12 +332,16 @@ object Infos {
     }
 
     def addReferencedClass(cls: ClassName): this.type = {
-      referencedClasses += cls
+      /* We only need the class to appear in `byClass` so that the Analyzer
+       * knows to perform `lookupClass` for it. But then nothing further needs
+       * to happen.
+       */
+      forClass(cls)
       this
     }
 
     def addStaticallyReferencedClass(cls: ClassName): this.type = {
-      staticallyReferencedClasses += cls
+      forClass(cls).setStaticallyReferenced()
       this
     }
 
@@ -354,51 +356,116 @@ object Infos {
       this
     }
 
-    def addAccessedClassClass(): this.type = {
-      accessedClassClass = true
+    private def setFlag(flag: ReachabilityInfo.Flags): this.type = {
+      flags |= flag
       this
     }
 
-    def addAccessNewTarget(): this.type = {
-      accessedNewTarget = true
+    def addAccessedClassClass(): this.type =
+      setFlag(ReachabilityInfo.FlagAccessedClassClass)
+
+    def addAccessNewTarget(): this.type =
+      setFlag(ReachabilityInfo.FlagAccessedNewTarget)
+
+    def addAccessImportMeta(): this.type =
+      setFlag(ReachabilityInfo.FlagAccessedImportMeta)
+
+    def addUsedExponentOperator(): this.type =
+      setFlag(ReachabilityInfo.FlagUsedExponentOperator)
+
+    def result(): ReachabilityInfo =
+      new ReachabilityInfo(byClass.valuesIterator.map(_.result()).toList, flags)
+  }
+
+  final class ReachabilityInfoInClassBuilder(val className: ClassName) {
+    private val fieldsRead = mutable.Set.empty[FieldName]
+    private val fieldsWritten = mutable.Set.empty[FieldName]
+    private val staticFieldsRead = mutable.Set.empty[FieldName]
+    private val staticFieldsWritten = mutable.Set.empty[FieldName]
+    private val methodsCalled = mutable.Set.empty[MethodName]
+    private val methodsCalledStatically = mutable.Set.empty[NamespacedMethodName]
+    private val methodsCalledDynamicImport = mutable.Set.empty[NamespacedMethodName]
+    private val jsNativeMembersUsed = mutable.Set.empty[MethodName]
+    private var flags: ReachabilityInfoInClass.Flags = 0
+
+    def addFieldRead(field: FieldName): this.type = {
+      fieldsRead += field
       this
     }
 
-    def addAccessImportMeta(): this.type = {
-      accessedImportMeta = true
+    def addFieldWritten(field: FieldName): this.type = {
+      fieldsWritten += field
       this
     }
 
-    def addUsedExponentOperator(): this.type = {
-      usedExponentOperator = true
+    def addStaticFieldRead(field: FieldName): this.type = {
+      staticFieldsRead += field
       this
     }
 
-    def result(): ReachabilityInfo = {
-      def toMapOfLists[A, B](m: mutable.Map[A, mutable.Set[B]]): Map[A, List[B]] =
-        m.map(kv => kv._1 -> kv._2.toList).toMap
+    def addStaticFieldWritten(field: FieldName): this.type = {
+      staticFieldsWritten += field
+      this
+    }
 
-      new ReachabilityInfo(
-          fieldsRead = toMapOfLists(fieldsRead),
-          fieldsWritten = toMapOfLists(fieldsWritten),
-          staticFieldsRead = toMapOfLists(staticFieldsRead),
-          staticFieldsWritten = toMapOfLists(staticFieldsWritten),
-          methodsCalled = toMapOfLists(methodsCalled),
-          methodsCalledStatically = toMapOfLists(methodsCalledStatically),
-          methodsCalledDynamicImport = toMapOfLists(methodsCalledDynamicImport),
-          jsNativeMembersUsed = toMapOfLists(jsNativeMembersUsed),
-          instantiatedClasses = instantiatedClasses.toList,
-          accessedModules = accessedModules.toList,
-          usedInstanceTests = usedInstanceTests.toList,
-          accessedClassData = accessedClassData.toList,
-          referencedClasses = referencedClasses.toList,
-          staticallyReferencedClasses = staticallyReferencedClasses.toList,
-          accessedClassClass = accessedClassClass,
-          accessedNewTarget = accessedNewTarget,
-          accessedImportMeta = accessedImportMeta,
-          usedExponentOperator = usedExponentOperator
+    def addMethodCalled(method: MethodName): this.type = {
+      methodsCalled += method
+      this
+    }
+
+    def addMethodCalledStatically(method: NamespacedMethodName): this.type = {
+      methodsCalledStatically += method
+      this
+    }
+
+    def addMethodCalledDynamicImport(method: NamespacedMethodName): this.type = {
+      methodsCalledDynamicImport += method
+      this
+    }
+
+    def addJSNativeMemberUsed(member: MethodName): this.type = {
+      jsNativeMembersUsed += member
+      this
+    }
+
+    private def setFlag(flag: ReachabilityInfoInClass.Flags): this.type = {
+      flags |= flag
+      this
+    }
+
+    def setInstantiated(): this.type =
+      setFlag(ReachabilityInfoInClass.FlagInstantiated)
+
+    def setModuleAccessed(): this.type =
+      setFlag(ReachabilityInfoInClass.FlagModuleAccessed)
+
+    def setInstanceTestsUsed(): this.type =
+      setFlag(ReachabilityInfoInClass.FlagInstanceTestsUsed)
+
+    def setClassDataAccessed(): this.type =
+      setFlag(ReachabilityInfoInClass.FlagClassDataAccessed)
+
+    def setStaticallyReferenced(): this.type =
+      setFlag(ReachabilityInfoInClass.FlagStaticallyReferenced)
+
+    def result(): ReachabilityInfoInClass = {
+      new ReachabilityInfoInClass(
+          className,
+          fieldsRead = toLikelyEmptyList(fieldsRead),
+          fieldsWritten = toLikelyEmptyList(fieldsWritten),
+          staticFieldsRead = toLikelyEmptyList(staticFieldsRead),
+          staticFieldsWritten = toLikelyEmptyList(staticFieldsWritten),
+          methodsCalled = toLikelyEmptyList(methodsCalled),
+          methodsCalledStatically = toLikelyEmptyList(methodsCalledStatically),
+          methodsCalledDynamicImport = toLikelyEmptyList(methodsCalledDynamicImport),
+          jsNativeMembersUsed = toLikelyEmptyList(jsNativeMembersUsed),
+          flags = flags
       )
     }
+
+    private def toLikelyEmptyList[A](set: mutable.Set[A]): List[A] =
+      if (set.isEmpty) Nil
+      else set.toList
   }
 
   /** Generates the [[ClassInfo]] of a
