@@ -767,38 +767,25 @@ private final class Analyzer(config: CommonPhaseConfig,
 
       val candidates = ancestorsInReflectiveTargetOrder.iterator.map(_.findProxyMatch(proxyName))
 
-      val targetFuture = locally {
-        implicit val iec = ec
-
-        /* Manual version of
-         * Future.sequence(candidates).map(_.collectFirst { case Some(m) => m })
-         *
-         * We use a manual version because `Future.sequence` uses zipWith, not
-         * flatMap, and therefore does not wait for one future to complete
-         * before continuing on to the next one. This is generally good
-         * behavior, but it kills our use case, as it bypasses the
-         * short-circuiting behavior of `Iterator`s, resulting in *a lot* of
-         * useless computations!
-         */
-        def loop(): Future[Option[MethodInfo]] = {
+      val optTargetFuture = {
+        @tailrec
+        def loop(): Option[Future[MethodInfo]] = {
           if (candidates.isEmpty) {
-            Future.successful(None)
+            None
           } else {
             val candidate = candidates.next()
-            candidate.flatMap { optResult =>
-              if (optResult.isDefined)
-                Future.successful(optResult)
-              else
-                loop()
-            }
+            if (candidate.isDefined)
+              candidate
+            else
+              loop()
           }
         }
 
         loop()
       }
 
-      workQueue.enqueue(targetFuture) { maybeTarget =>
-        maybeTarget.foreach { reflectiveTarget =>
+      optTargetFuture.foreach { targetFuture =>
+        workQueue.enqueue(targetFuture) { reflectiveTarget =>
           val proxy = createReflProxy(proxyName, reflectiveTarget.methodName)
           onSuccess(proxy)
         }
@@ -822,14 +809,13 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
 
     private def findProxyMatch(proxyName: MethodName)(
-        implicit from: From): Future[Option[MethodInfo]] = {
+        implicit from: From): Option[Future[MethodInfo]] = {
       val candidates = findProxyCandidates(proxyName)
 
-      // Fast paths for 0 and 1 candidates
       candidates match {
-        case Nil                  => Future.successful(None)
-        case onlyCandidate :: Nil => Future.successful(Some(onlyCandidate))
-        case _                    => computeMostSpecificProxyMatch(candidates)
+        case Nil                  => None
+        case onlyCandidate :: Nil => Some(Future.successful(onlyCandidate)) // fast path
+        case _                    => Some(computeMostSpecificProxyMatch(candidates))
       }
     }
 
@@ -851,7 +837,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
 
     private def computeMostSpecificProxyMatch(candidates: List[MethodInfo])(
-        implicit from: From): Future[Option[MethodInfo]] = {
+        implicit from: From): Future[MethodInfo] = {
 
       /* From the JavaDoc of java.lang.Class.getMethod:
        *
@@ -884,7 +870,7 @@ private final class Analyzer(config: CommonPhaseConfig,
            * the implementation of reflective calls. This is bug-compatible with
            * Scala/JVM.
            */
-          targets.headOption
+          targets.head
         }
       }
     }
