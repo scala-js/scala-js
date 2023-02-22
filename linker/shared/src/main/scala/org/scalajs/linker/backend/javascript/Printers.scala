@@ -726,7 +726,7 @@ object Printers {
   }
 
   class JSTreePrinterWithSourceMap(_out: Writer,
-      sourceMap: SourceMapWriter) extends JSTreePrinter(_out) {
+      sourceMap: SourceMapWriter.Builder) extends JSTreePrinter(_out) {
 
     private var column = 0
 
