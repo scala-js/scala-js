@@ -75,4 +75,48 @@ private[javascript] object Utils {
    * js-envs/.../JSUtils.scala
    */
 
+  private final val EscapeJSBytes = EscapeJSChars.toArray.map(_.toByte)
+
+  def writeEscapeJS(str: String, out: java.io.OutputStream): Unit = {
+    /* Note that Java and JavaScript happen to use the same encoding for
+     * Unicode, namely UTF-16, which means that 1 char from Java always equals
+     * 1 char in JavaScript. */
+
+    val end = str.length()
+    var i = 0
+
+    while (i != end) {
+      val c: Int = str.charAt(i)
+
+      if (c >= 32 && c <= 126 && c != 34 && c != 92) {
+        out.write(c)
+      } else {
+        def escapeJSEncoded(c: Int): Unit = {
+          if (7 < c && c < 14) {
+            val i = 2 * (c - 8)
+            out.write(EscapeJSBytes, i, 2)
+          } else if (c == 34) {
+            out.write(EscapeJSBytes, 12, 2)
+          } else if (c == 92) {
+            out.write(EscapeJSBytes, 14, 2)
+          } else {
+            out.write('\\')
+            out.write('u')
+
+            def hexDigit(x: Int): Int =
+              if (x < 10) x + '0' else x + ('a' - 10)
+
+            out.write(hexDigit(c >> 12))
+            out.write(hexDigit((c >> 8) & 0x0f))
+            out.write(hexDigit((c >> 4) & 0x0f))
+            out.write(hexDigit(c & 0x0f))
+          }
+        }
+        escapeJSEncoded(c)
+      }
+
+      i += 1
+    }
+  }
+
 }

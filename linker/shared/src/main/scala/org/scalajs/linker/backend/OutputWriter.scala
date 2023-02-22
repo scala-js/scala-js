@@ -16,7 +16,6 @@ import scala.concurrent._
 
 import java.io._
 import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets
 
 import org.scalajs.linker.interface.{OutputDirectory, Report}
 import org.scalajs.linker.interface.unstable.{OutputDirectoryImpl, OutputPatternsImpl, ReportImpl}
@@ -25,15 +24,14 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 private[backend] abstract class OutputWriter(output: OutputDirectory,
     config: LinkerBackendImpl.Config) {
-  import OutputWriter.ByteArrayWriter
 
   private val outputImpl = OutputDirectoryImpl.fromOutputDirectory(output)
   private val moduleKind = config.commonConfig.coreSpec.moduleKind
 
-  protected def writeModule(moduleID: ModuleID, jsFileWriter: Writer): Unit
+  protected def writeModule(moduleID: ModuleID, jsFileWriter: ByteArrayWriter): Unit
 
-  protected def writeModule(moduleID: ModuleID, jsFileWriter: Writer,
-      sourceMapWriter: Writer): Unit
+  protected def writeModule(moduleID: ModuleID, jsFileWriter: ByteArrayWriter,
+      sourceMapWriter: ByteArrayWriter): Unit
 
   def write(moduleSet: ModuleSet)(implicit ec: ExecutionContext): Future[Report] = {
     val ioThrottler = new IOThrottler(config.maxConcurrentWrites)
@@ -71,7 +69,7 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
       val codeWriter = new ByteArrayWriter
       val smWriter = new ByteArrayWriter
 
-      writeModule(moduleID, codeWriter.writer, smWriter.writer)
+      writeModule(moduleID, codeWriter, smWriter)
 
       val code = codeWriter.result()
       val sourceMap = smWriter.result()
@@ -85,7 +83,7 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
     } else {
       val codeWriter = new ByteArrayWriter
 
-      writeModule(moduleID, codeWriter.writer)
+      writeModule(moduleID, codeWriter)
 
       val code = codeWriter.result()
 
@@ -94,19 +92,6 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
       } yield {
         new ReportImpl.ModuleImpl(moduleID.id, jsFileName, None, moduleKind)
       }
-    }
-  }
-}
-
-private object OutputWriter {
-  private class ByteArrayWriter {
-    private val byteStream = new ByteArrayOutputStream
-
-    val writer: Writer = new OutputStreamWriter(byteStream, StandardCharsets.UTF_8)
-
-    def result(): ByteBuffer = {
-      writer.close()
-      ByteBuffer.wrap(byteStream.toByteArray())
     }
   }
 }
