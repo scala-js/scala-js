@@ -766,27 +766,36 @@ private final class Analyzer(config: CommonPhaseConfig,
        */
 
       @tailrec
-      def findFirstNonEmptyCandidate(ancestors: List[ClassInfo]): Option[Future[MethodInfo]] = {
+      def findFirstNonEmptyCandidates(ancestors: List[ClassInfo]): List[MethodInfo] = {
         ancestors match {
           case ancestor :: nextAncestors =>
             val candidates = ancestor.findProxyCandidates(proxyName)
-            candidates match {
-              case Nil                  => findFirstNonEmptyCandidate(nextAncestors)
-              case onlyCandidate :: Nil => Some(Future.successful(onlyCandidate)) // fast path
-              case _                    => Some(computeMostSpecificProxyMatch(candidates))
-            }
+            if (candidates.isEmpty)
+              findFirstNonEmptyCandidates(nextAncestors)
+            else
+              candidates
           case Nil =>
-            None
+            Nil
         }
       }
 
-      val optTargetFuture = findFirstNonEmptyCandidate(ancestorsInReflectiveTargetOrder)
+      val candidates = findFirstNonEmptyCandidates(ancestorsInReflectiveTargetOrder)
 
-      optTargetFuture.foreach { targetFuture =>
-        workQueue.enqueue(targetFuture) { reflectiveTarget =>
-          val proxy = createReflProxy(proxyName, reflectiveTarget.methodName)
+      candidates match {
+        case Nil =>
+          ()
+
+        case onlyCandidate :: Nil =>
+          // Fast path that does not require workQueue.enqueue
+          val proxy = createReflProxy(proxyName, onlyCandidate.methodName)
           onSuccess(proxy)
-        }
+
+        case _ =>
+          val targetFuture = computeMostSpecificProxyMatch(candidates)
+          workQueue.enqueue(targetFuture) { reflectiveTarget =>
+            val proxy = createReflProxy(proxyName, reflectiveTarget.methodName)
+            onSuccess(proxy)
+          }
       }
     }
 
