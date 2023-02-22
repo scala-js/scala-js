@@ -743,18 +743,13 @@ private final class Analyzer(config: CommonPhaseConfig,
         tryLookupMethod(proxyName).foreach(onSuccess)
       } else {
         publicMethodInfos.get(proxyName).fold {
-          workQueue.enqueue(findReflectiveTarget(proxyName)) { maybeTarget =>
-            maybeTarget.foreach { reflectiveTarget =>
-              val proxy = createReflProxy(proxyName, reflectiveTarget.methodName)
-              onSuccess(proxy)
-            }
-          }
+          findReflectiveTarget(proxyName)(onSuccess)
         } (onSuccess)
       }
     }
 
     private def findReflectiveTarget(proxyName: MethodName)(
-        implicit from: From): Future[Option[MethodInfo]] = {
+        onSuccess: MethodInfo => Unit)(implicit from: From): Unit = {
       /* The lookup for a target method in this code implements the
        * algorithm defining `java.lang.Class.getMethod`. This mimics how
        * reflective calls are implemented on the JVM, at link time.
@@ -776,9 +771,16 @@ private final class Analyzer(config: CommonPhaseConfig,
 
       val candidates = superClassesThenAncestors.map(_.findProxyMatch(proxyName))
 
-      locally {
+      val targetFuture = locally {
         implicit val iec = ec
         Future.sequence(candidates).map(_.collectFirst { case Some(m) => m })
+      }
+
+      workQueue.enqueue(targetFuture) { maybeTarget =>
+        maybeTarget.foreach { reflectiveTarget =>
+          val proxy = createReflProxy(proxyName, reflectiveTarget.methodName)
+          onSuccess(proxy)
+        }
       }
     }
 
