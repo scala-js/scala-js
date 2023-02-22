@@ -770,11 +770,7 @@ private final class Analyzer(config: CommonPhaseConfig,
        * if the IR retained the information that a method is protected.
        */
 
-      val superClasses =
-        Iterator.iterate(this)(_.superClass.orNull).takeWhile(_ ne null)
-      val superClassesThenAncestors = superClasses ++ ancestors.iterator
-
-      val candidates = superClassesThenAncestors.map(_.findProxyMatch(proxyName))
+      val candidates = ancestorsInReflectiveTargetOrder.iterator.map(_.findProxyMatch(proxyName))
 
       locally {
         implicit val iec = ec
@@ -805,6 +801,22 @@ private final class Analyzer(config: CommonPhaseConfig,
 
         loop()
       }
+    }
+
+    private lazy val ancestorsInReflectiveTargetOrder: List[ClassInfo] = {
+      val b = new mutable.ListBuffer[ClassInfo]
+
+      @tailrec
+      def addSuperClasses(superClass: ClassInfo): Unit = {
+        b += superClass
+        superClass.superClass match {
+          case Some(next) => addSuperClasses(next)
+          case None       => ()
+        }
+      }
+      addSuperClasses(this)
+
+      b.prependToList(ancestors.filter(_.isInterface))
     }
 
     private def findProxyMatch(proxyName: MethodName)(
