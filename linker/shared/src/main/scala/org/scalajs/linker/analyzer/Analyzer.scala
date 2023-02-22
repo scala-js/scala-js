@@ -815,19 +815,23 @@ private final class Analyzer(config: CommonPhaseConfig,
       b.prependToList(ancestors.filter(_.isInterface))
     }
 
-    private def findProxyCandidates(proxyName: MethodName): List[MethodInfo] = {
-      // This is a manual version of .filter(...).toList, for speed
-      var result: List[MethodInfo] = Nil
+    private def findProxyCandidates(proxyName: MethodName): List[MethodInfo] =
+      proxyCandidates.getOrElse(proxyName, Nil)
+
+    private lazy val proxyCandidates = {
+      val result = mutable.Map.empty[MethodName, List[MethodInfo]]
       val iter = publicMethodInfos.valuesIterator
       while (iter.hasNext) {
         val m = iter.next()
         val include = {
           // TODO In theory we should filter out protected methods
-          !m.isReflectiveProxy && !m.isDefaultBridge && !m.isAbstract &&
-          reflProxyMatches(m.methodName, proxyName)
+          !m.isReflectiveProxy && !m.isDefaultBridge && !m.isAbstract
         }
-        if (include)
-          result ::= m
+        if (include) {
+          val proxyName = MethodName.reflectiveProxy(m.methodName.simpleName, m.methodName.paramTypeRefs)
+          val prev = result.getOrElse(proxyName, Nil)
+          result.update(proxyName, m :: prev)
+        }
       }
       result
     }
