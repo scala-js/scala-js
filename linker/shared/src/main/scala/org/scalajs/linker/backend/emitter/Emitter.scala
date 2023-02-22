@@ -503,14 +503,21 @@ final class Emitter(config: Emitter.Config) {
             classEmitter.genExportedMember(linkedClass, useESClass, member)(moduleContext, memberCache))
       }
 
-      val fullClass = for {
-        ctor <- ctorWithGlobals
-        memberMethods <- WithGlobals.list(memberMethodsWithGlobals)
-        exportedMembers <- WithGlobals.list(exportedMembersWithGlobals)
-        clazz <- classEmitter.buildClass(linkedClass, useESClass, ctor,
-            memberMethods, exportedMembers)(moduleContext, classCache)
-      } yield {
-        clazz
+      val fullClass = {
+        val fullClassCache = classCache.getFullClassCache()
+
+        fullClassCache.getOrElseUpdate(useESClass, ctorWithGlobals,
+            memberMethodsWithGlobals, exportedMembersWithGlobals, {
+          for {
+            ctor <- ctorWithGlobals
+            memberMethods <- WithGlobals.list(memberMethodsWithGlobals)
+            exportedMembers <- WithGlobals.list(exportedMembersWithGlobals)
+            clazz <- classEmitter.buildClass(linkedClass, useESClass, ctor,
+                memberMethods, exportedMembers)(moduleContext, fullClassCache)
+          } yield {
+            clazz
+          }
+        })
       }
 
       addToMain(fullClass)
@@ -593,6 +600,8 @@ final class Emitter(config: Emitter.Config) {
     private[this] val _exportedMembersCache =
       mutable.Map.empty[Int, MethodCache[js.Tree]]
 
+    private[this] var _fullClassCache: Option[FullClassCache] = None
+
     override def invalidate(): Unit = {
       /* Do not invalidate contained methods, as they have their own
        * invalidation logic.
@@ -607,6 +616,7 @@ final class Emitter(config: Emitter.Config) {
       _methodCaches.foreach(_.valuesIterator.foreach(_.startRun()))
       _memberMethodCache.valuesIterator.foreach(_.startRun())
       _constructorCache.foreach(_.startRun())
+      _fullClassCache.foreach(_.startRun())
     }
 
     def getCache(version: Version): DesugaredClassCache = {
@@ -644,6 +654,14 @@ final class Emitter(config: Emitter.Config) {
     def getExportedMemberCache(idx: Int): MethodCache[js.Tree] =
       _exportedMembersCache.getOrElseUpdate(idx, new MethodCache)
 
+    def getFullClassCache(): FullClassCache = {
+      _fullClassCache.getOrElse {
+        val cache = new FullClassCache
+        _fullClassCache = Some(cache)
+        cache
+      }
+    }
+
     def cleanAfterRun(): Boolean = {
       _methodCaches.foreach(_.filterInPlace((_, c) => c.cleanAfterRun()))
       _memberMethodCache.filterInPlace((_, c) => c.cleanAfterRun())
@@ -652,6 +670,9 @@ final class Emitter(config: Emitter.Config) {
         _constructorCache = None
 
       _exportedMembersCache.filterInPlace((_, c) => c.cleanAfterRun())
+
+      if (_fullClassCache.exists(!_.cleanAfterRun()))
+        _fullClassCache = None
 
       if (!_cacheUsed)
         invalidate()
@@ -683,6 +704,57 @@ final class Emitter(config: Emitter.Config) {
       } else {
         statsMethodsReused += 1
       }
+      _cacheUsed = true
+      _tree
+    }
+
+    def cleanAfterRun(): Boolean = {
+      if (!_cacheUsed)
+        invalidate()
+
+      _cacheUsed
+    }
+  }
+
+  private class FullClassCache extends knowledgeGuardian.KnowledgeAccessor {
+    private[this] var _tree: WithGlobals[js.Tree] = null
+    private[this] var _lastUseESClass: Boolean = false
+    private[this] var _lastCtor: WithGlobals[js.Tree] = null
+    private[this] var _lastMemberMethods: List[WithGlobals[js.MethodDef]] = null
+    private[this] var _lastExportedMembers: List[WithGlobals[js.Tree]] = null
+    private[this] var _cacheUsed = false
+
+    override def invalidate(): Unit = {
+      super.invalidate()
+      _tree = null
+      _lastCtor = null
+      _lastMemberMethods = null
+      _lastExportedMembers = null
+    }
+
+    def startRun(): Unit = _cacheUsed = false
+
+    def getOrElseUpdate(useESClass: Boolean, ctor: WithGlobals[js.Tree],
+        memberMethods: List[WithGlobals[js.MethodDef]], exportedMembers: List[WithGlobals[js.Tree]],
+        compute: => WithGlobals[js.Tree]): WithGlobals[js.Tree] = {
+
+      @tailrec
+      def allSame[A <: AnyRef](xs: List[A], ys: List[A]): Boolean = {
+        xs.isEmpty == ys.isEmpty && {
+          xs.isEmpty ||
+          ((xs.head eq ys.head) && allSame(xs.tail, ys.tail))
+        }
+      }
+
+      if (_tree == null || (_lastCtor ne ctor) || !allSame(_lastMemberMethods, memberMethods) ||
+          !allSame(_lastExportedMembers, exportedMembers)) {
+        invalidate()
+        _tree = compute
+        _lastCtor = ctor
+        _lastMemberMethods = memberMethods
+        _lastExportedMembers = exportedMembers
+      }
+
       _cacheUsed = true
       _tree
     }
