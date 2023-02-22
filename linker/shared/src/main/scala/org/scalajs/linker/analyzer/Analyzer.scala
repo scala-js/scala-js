@@ -765,24 +765,22 @@ private final class Analyzer(config: CommonPhaseConfig,
        * if the IR retained the information that a method is protected.
        */
 
-      val candidates = ancestorsInReflectiveTargetOrder.iterator.map(_.findProxyMatch(proxyName))
-
-      val optTargetFuture = {
-        @tailrec
-        def loop(): Option[Future[MethodInfo]] = {
-          if (candidates.isEmpty) {
+      @tailrec
+      def findFirstNonEmptyCandidate(ancestors: List[ClassInfo]): Option[Future[MethodInfo]] = {
+        ancestors match {
+          case ancestor :: nextAncestors =>
+            val candidates = ancestor.findProxyCandidates(proxyName)
+            candidates match {
+              case Nil                  => findFirstNonEmptyCandidate(nextAncestors)
+              case onlyCandidate :: Nil => Some(Future.successful(onlyCandidate)) // fast path
+              case _                    => Some(computeMostSpecificProxyMatch(candidates))
+            }
+          case Nil =>
             None
-          } else {
-            val candidate = candidates.next()
-            if (candidate.isDefined)
-              candidate
-            else
-              loop()
-          }
         }
-
-        loop()
       }
+
+      val optTargetFuture = findFirstNonEmptyCandidate(ancestorsInReflectiveTargetOrder)
 
       optTargetFuture.foreach { targetFuture =>
         workQueue.enqueue(targetFuture) { reflectiveTarget =>
@@ -806,17 +804,6 @@ private final class Analyzer(config: CommonPhaseConfig,
       addSuperClasses(this)
 
       b.prependToList(ancestors.filter(_.isInterface))
-    }
-
-    private def findProxyMatch(proxyName: MethodName)(
-        implicit from: From): Option[Future[MethodInfo]] = {
-      val candidates = findProxyCandidates(proxyName)
-
-      candidates match {
-        case Nil                  => None
-        case onlyCandidate :: Nil => Some(Future.successful(onlyCandidate)) // fast path
-        case _                    => Some(computeMostSpecificProxyMatch(candidates))
-      }
     }
 
     private def findProxyCandidates(proxyName: MethodName): List[MethodInfo] = {
