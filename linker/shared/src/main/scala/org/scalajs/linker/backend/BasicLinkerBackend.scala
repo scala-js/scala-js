@@ -24,7 +24,7 @@ import org.scalajs.linker.standard._
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 import org.scalajs.linker.backend.emitter.Emitter
-import org.scalajs.linker.backend.javascript.{Printers, SourceMapWriter}
+import org.scalajs.linker.backend.javascript.{Printers, SourceMapWriter, Trees => js}
 
 /** The basic backend for the Scala.js linker.
  *
@@ -32,6 +32,8 @@ import org.scalajs.linker.backend.javascript.{Printers, SourceMapWriter}
  */
 final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
     extends LinkerBackendImpl(config) {
+
+  import BasicLinkerBackend._
 
   private[this] val emitter = {
     val emitterConfig = Emitter.Config(config.commonConfig.coreSpec)
@@ -42,6 +44,8 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
   }
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
+
+  private val printedModuleSetCache = new PrintedModuleSetCache(config.sourceMap)
 
   override def injectedIRFiles: Seq[IRFile] = emitter.injectedIRFiles
 
@@ -60,25 +64,28 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
 
     val writer = new OutputWriter(output, config) {
       protected def writeModule(moduleID: ModuleID, jsFileWriter: Writer): Unit = {
-        val printer = new Printers.JSTreePrinter(jsFileWriter)
+        val printedModuleCache = printedModuleSetCache.getModuleCache(moduleID)
+
         jsFileWriter.write(emitterResult.header)
         jsFileWriter.write("'use strict';\n")
 
-        for (topLevelTree <- emitterResult.body(moduleID))
-          printer.printTopLevelTree(topLevelTree)
+        for (topLevelTree <- emitterResult.body(moduleID)) {
+          val printedTree = printedModuleCache.getPrintedTree(topLevelTree)
+          jsFileWriter.write(printedTree.jsCode)
+        }
 
         jsFileWriter.write(emitterResult.footer)
       }
 
       protected def writeModule(moduleID: ModuleID, jsFileWriter: Writer,
           sourceMapWriter: Writer): Unit = {
+        val printedModuleCache = printedModuleSetCache.getModuleCache(moduleID)
+
         val jsFileURI = OutputPatternsImpl.jsFileURI(config.outputPatterns, moduleID.id)
         val sourceMapURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)
 
         val smWriter = new SourceMapWriter(sourceMapWriter, jsFileURI,
             config.relativizeSourceMapBase)
-
-        val printer = new Printers.JSTreePrinterWithSourceMap(jsFileWriter, smWriter)
 
         jsFileWriter.write(emitterResult.header)
         for (_ <- 0 until emitterResult.header.count(_ == '\n'))
@@ -87,8 +94,11 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
         jsFileWriter.write("'use strict';\n")
         smWriter.nextLine()
 
-        for (topLevelTree <- emitterResult.body(moduleID))
-          printer.printTopLevelTree(topLevelTree)
+        for (topLevelTree <- emitterResult.body(moduleID)) {
+          val printedTree = printedModuleCache.getPrintedTree(topLevelTree)
+          jsFileWriter.write(printedTree.jsCode)
+          smWriter.insertFragment(printedTree.sourceMapFragment)
+        }
 
         jsFileWriter.write(emitterResult.footer)
         jsFileWriter.write("//# sourceMappingURL=" + sourceMapURI + "\n")
@@ -97,8 +107,135 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
       }
     }
 
+    printedModuleSetCache.startRun()
+
     logger.timeFuture("BasicBackend: Write result") {
       writer.write(moduleSet)
+    }.andThen { case _ =>
+      printedModuleSetCache.cleanAfterRun()
+      printedModuleSetCache.logStats(logger)
+    }
+  }
+}
+
+private object BasicLinkerBackend {
+  private final class PrintedModuleSetCache(withSourceMaps: Boolean) {
+    private val modules = new java.util.concurrent.ConcurrentHashMap[ModuleID, PrintedModuleCache]
+
+    private var totalTopLevelTrees = 0
+    private var recomputedTopLevelTrees = 0
+
+    def startRun(): Unit = {
+      totalTopLevelTrees = 0
+      recomputedTopLevelTrees = 0
+    }
+
+    def getModuleCache(moduleID: ModuleID): PrintedModuleCache = {
+      val result = modules.computeIfAbsent(moduleID, { _ =>
+        if (withSourceMaps) new PrintedModuleCacheWithSourceMaps
+        else new PrintedModuleCache
+      })
+
+      result.startRun()
+      result
+    }
+
+    def cleanAfterRun(): Unit = {
+      val iter = modules.entrySet().iterator()
+      while (iter.hasNext()) {
+        val moduleCache = iter.next().getValue()
+        if (moduleCache.cleanAfterRun()) {
+          totalTopLevelTrees += moduleCache.getTotalTopLevelTrees
+          recomputedTopLevelTrees += moduleCache.getRecomputedTopLevelTrees
+        } else {
+          iter.remove()
+        }
+      }
+    }
+
+    def logStats(logger: Logger): Unit = {
+      /* This message is extracted in BasicLinkerBackendTest to assert that we
+       * do not invalidate anything in a no-op second run.
+       */
+      logger.debug(
+          s"BasicBackend: total top-level trees: $totalTopLevelTrees; re-computed: $recomputedTopLevelTrees")
+    }
+  }
+
+  /* TODO Instead of caching the String, we should cache the already
+   * UTF-8-encoded Byte array.
+   */
+  private final class PrintedTree(val jsCode: String, val sourceMapFragment: SourceMapWriter.Fragment) {
+    var cachedUsed: Boolean = false
+  }
+
+  private sealed class PrintedModuleCache {
+    private var cacheUsed = false
+    private val cache = new java.util.IdentityHashMap[js.Tree, PrintedTree]
+
+    private var totalTopLevelTrees = 0
+    private var recomputedTopLevelTrees = 0
+
+    def startRun(): Unit = {
+      cacheUsed = true
+      totalTopLevelTrees = 0
+      recomputedTopLevelTrees = 0
+    }
+
+    def getPrintedTree(tree: js.Tree): PrintedTree = {
+      totalTopLevelTrees += 1
+
+      val result = cache.computeIfAbsent(tree, { (tree: js.Tree) =>
+        recomputedTopLevelTrees += 1
+        computePrintedTree(tree)
+      })
+
+      result.cachedUsed = true
+      result
+    }
+
+    protected def computePrintedTree(tree: js.Tree): PrintedTree = {
+      val jsCodeWriter = new java.io.StringWriter()
+      val printer = new Printers.JSTreePrinter(jsCodeWriter)
+
+      printer.printTopLevelTree(tree)
+
+      new PrintedTree(jsCodeWriter.toString(), SourceMapWriter.Fragment.Empty)
+    }
+
+    def cleanAfterRun(): Boolean = {
+      if (cacheUsed) {
+        cacheUsed = false
+
+        val iter = cache.entrySet().iterator()
+        while (iter.hasNext()) {
+          val printedTree = iter.next().getValue()
+          if (printedTree.cachedUsed)
+            printedTree.cachedUsed = false
+          else
+            iter.remove()
+        }
+
+        true
+      } else {
+        false
+      }
+    }
+
+    def getTotalTopLevelTrees: Int = totalTopLevelTrees
+    def getRecomputedTopLevelTrees: Int = recomputedTopLevelTrees
+  }
+
+  private final class PrintedModuleCacheWithSourceMaps extends PrintedModuleCache {
+    override protected def computePrintedTree(tree: js.Tree): PrintedTree = {
+      val jsCodeWriter = new java.io.StringWriter()
+      val smFragmentBuilder = new SourceMapWriter.FragmentBuilder()
+      val printer = new Printers.JSTreePrinterWithSourceMap(jsCodeWriter, smFragmentBuilder)
+
+      printer.printTopLevelTree(tree)
+      smFragmentBuilder.complete()
+
+      new PrintedTree(jsCodeWriter.toString(), smFragmentBuilder.result())
     }
   }
 }
