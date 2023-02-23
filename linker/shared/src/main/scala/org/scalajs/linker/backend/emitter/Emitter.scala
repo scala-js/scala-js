@@ -578,8 +578,12 @@ final class Emitter(config: Emitter.Config) {
 
     // Static initialization
 
-    val staticInitialization =
-      classEmitter.genStaticInitialization(linkedClass)(moduleContext, uncachedKnowledge)
+    val staticInitialization = if (classEmitter.needStaticInitialization(linkedClass)) {
+      classTreeCache.staticInitialization.getOrElseUpdate(
+          classEmitter.genStaticInitialization(linkedClass)(moduleContext, classCache))
+    } else {
+      Nil
+    }
 
     // Build the result
 
@@ -877,6 +881,7 @@ object Emitter {
     val typeData = new OneTimeCache[WithGlobals[js.Tree]]
     val setTypeData = new OneTimeCache[js.Tree]
     val moduleAccessor = new OneTimeCache[WithGlobals[js.Tree]]
+    val staticInitialization = new OneTimeCache[List[js.Tree]]
     val staticFields = new OneTimeCache[WithGlobals[List[js.Tree]]]
   }
 
