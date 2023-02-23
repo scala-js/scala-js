@@ -20,15 +20,17 @@ final case class Position(
     /** Zero-based column number. */
     column: Int
 ) {
-  def show: String = s"$line:$column"
-
-  def isEmpty: Boolean = {
+  private val _isEmpty: Boolean = {
     def isEmptySlowPath(): Boolean = {
       source.getScheme == null && source.getRawAuthority == null &&
         source.getRawQuery == null && source.getRawFragment == null
     }
     source.getRawPath == "" && isEmptySlowPath()
   }
+
+  def show: String = s"$line:$column"
+
+  def isEmpty: Boolean = _isEmpty
 
   def isDefined: Boolean = !isEmpty
 
