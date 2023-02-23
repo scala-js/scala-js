@@ -39,7 +39,7 @@ object JSON extends js.Object {
    * MDN
    */
   def parse(text: String,
-      reviver: js.Function2[js.Any, js.Any, js.Any] = ???): js.Dynamic = js.native
+      reviver: js.Function2[js.Any, js.Any, js.Any] = js.native): js.Dynamic = js.native
 
   // scalastyle:off line.size.limit
   /**
@@ -85,8 +85,8 @@ object JSON extends js.Object {
    */
   // scalastyle:on line.size.limit
   def stringify(value: js.Any,
-      replacer: js.Function2[String, js.Any, js.Any] = ???,
-      space: Int | String = ???): String = js.native
+      replacer: js.Function2[String, js.Any, js.Any] = js.native,
+      space: Int | String = js.native): String = js.native
   def stringify(value: js.Any, replacer: js.Array[Any]): String = js.native
   def stringify(value: js.Any, replacer: js.Array[Any],
       space: Int | String): String = js.native
