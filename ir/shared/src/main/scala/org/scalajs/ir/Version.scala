@@ -48,6 +48,17 @@ final class Version private (private val v: Array[Byte]) extends AnyVal {
 
   @inline
   private def isVersioned: Boolean = v != null
+
+  // For debugging purposes
+  override def toString(): String = {
+    if (v == null) {
+      "Unversioned"
+    } else {
+      val typeByte = v(0)
+      val otherBytesStr = v.iterator.drop(1).map(b => "%02x".format(b & 0xff)).mkString
+      s"Version($typeByte, $otherBytesStr)"
+    }
+  }
 }
 
 object Version {
