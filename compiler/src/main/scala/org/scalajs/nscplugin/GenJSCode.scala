@@ -236,7 +236,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     // Global class generation state -------------------------------------------
 
     private val lazilyGeneratedAnonClasses = mutable.Map.empty[Symbol, ClassDef]
-    private val generatedClasses = ListBuffer.empty[js.ClassDef]
+    private val generatedClasses = ListBuffer.empty[(js.ClassDef, Position)]
     private val generatedStaticForwarderClasses = ListBuffer.empty[(Symbol, js.ClassDef)]
 
     private def consumeLazilyGeneratedAnonClass(sym: Symbol): ClassDef = {
@@ -338,44 +338,25 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                 fieldsMutatedInCurrentClass := mutable.Set.empty,
                 generatedSAMWrapperCount := new VarBox(0)
             ) {
-              try {
-                val tree = if (isJSType(sym)) {
-                  if (!sym.isTraitOrInterface && isNonNativeJSClass(sym) &&
-                      !isJSFunctionDef(sym)) {
-                    genNonNativeJSClass(cd)
-                  } else {
-                    genJSClassData(cd)
-                  }
-                } else if (sym.isTraitOrInterface) {
-                  genInterface(cd)
+              val tree = if (isJSType(sym)) {
+                if (!sym.isTraitOrInterface && isNonNativeJSClass(sym) &&
+                    !isJSFunctionDef(sym)) {
+                  genNonNativeJSClass(cd)
                 } else {
-                  genClass(cd)
+                  genJSClassData(cd)
                 }
-
-                generatedClasses += tree
-              } catch {
-                case e: ir.InvalidIRException =>
-                  e.tree match {
-                    case ir.Trees.Transient(UndefinedParam) =>
-                      reporter.error(sym.pos,
-                          "Found a dangling UndefinedParam at " +
-                          s"${e.tree.pos}. This is likely due to a bad " +
-                          "interaction between a macro or a compiler plugin " +
-                          "and the Scala.js compiler plugin. If you hit " +
-                          "this, please let us know.")
-
-                    case _ =>
-                      reporter.error(sym.pos,
-                          "The Scala.js compiler generated invalid IR for " +
-                          "this class. Please report this as a bug. IR: " +
-                          e.tree)
-                  }
+              } else if (sym.isTraitOrInterface) {
+                genInterface(cd)
+              } else {
+                genClass(cd)
               }
+
+              generatedClasses += tree -> sym.pos
             }
           }
         }
 
-        val clDefs = if (generatedStaticForwarderClasses.isEmpty) {
+        val clDefs: List[(js.ClassDef, Position)] = if (generatedStaticForwarderClasses.isEmpty) {
           /* Fast path, applicable under -Xno-forwarders, as well as when all
            * the `object`s of a compilation unit have a companion class.
            */
@@ -402,7 +383,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             classDef.name.name.nameString.toLowerCase(java.util.Locale.ENGLISH)
 
           val generatedCaseInsensitiveNames =
-            regularClasses.map(caseInsensitiveNameOf).toSet
+            regularClasses.map(pair => caseInsensitiveNameOf(pair._1)).toSet
           val staticForwarderClasses = generatedStaticForwarderClasses.toList
             .withFilter { case (site, classDef) =>
               if (!generatedCaseInsensitiveNames.contains(caseInsensitiveNameOf(classDef))) {
@@ -418,14 +399,34 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                 false
               }
             }
-            .map(_._2)
+            .map(pair => (pair._2, pair._1.pos))
 
           regularClasses ::: staticForwarderClasses
         }
 
-        for (tree <- clDefs) {
-          generatedJSAST(tree)
-          genIRFile(cunit, tree)
+        for ((classDef, pos) <- clDefs) {
+          try {
+            val hashedClassDef = Hashers.hashClassDef(classDef)
+            generatedJSAST(hashedClassDef)
+            genIRFile(cunit, hashedClassDef)
+          } catch {
+            case e: ir.InvalidIRException =>
+              e.tree match {
+                case ir.Trees.Transient(UndefinedParam) =>
+                  reporter.error(pos,
+                      "Found a dangling UndefinedParam at " +
+                      s"${e.tree.pos}. This is likely due to a bad " +
+                      "interaction between a macro or a compiler plugin " +
+                      "and the Scala.js compiler plugin. If you hit " +
+                      "this, please let us know.")
+
+                case _ =>
+                  reporter.error(pos,
+                      "The Scala.js compiler generated invalid IR for " +
+                      "this class. Please report this as a bug. IR: " +
+                      e.tree)
+              }
+          }
         }
       } catch {
         // Handle exceptions in exactly the same way as the JVM backend
@@ -607,7 +608,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         else if (isHijacked) ClassKind.HijackedClass
         else ClassKind.Class
 
-      val classDefinition = js.ClassDef(
+      js.ClassDef(
           classIdent,
           originalName,
           kind,
@@ -623,8 +624,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           jsNativeMembers,
           topLevelExportDefs)(
           optimizerHints)
-
-      Hashers.hashClassDef(classDefinition)
     }
 
     /** Gen the IR ClassDef for a non-native JS class. */
@@ -755,7 +754,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         if (isStaticModule(sym)) ClassKind.JSModuleClass
         else ClassKind.JSClass
 
-      val classDefinition = js.ClassDef(
+      js.ClassDef(
           classIdent,
           originalNameOfClass(sym),
           kind,
@@ -771,8 +770,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           jsNativeMembers = Nil,
           topLevelExports)(
           OptimizerHints.empty)
-
-      Hashers.hashClassDef(classDefinition)
     }
 
     /** Generate an instance of an anonymous (non-lambda) JS class inline
@@ -825,7 +822,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             origJsClass.optimizerHints)
       }
 
-      generatedClasses += newClassDef
+      generatedClasses += newClassDef -> pos
 
       // Construct inline class definition
 
@@ -1035,12 +1032,10 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         if (!isCandidateForForwarders(sym)) generatedMethods
         else generatedMethods ::: genStaticForwardersForClassOrInterface(generatedMethods, sym)
 
-      val classDef = js.ClassDef(classIdent, originalNameOfClass(sym), ClassKind.Interface,
+      js.ClassDef(classIdent, originalNameOfClass(sym), ClassKind.Interface,
           None, None, interfaces, None, None, fields = Nil, methods = allMemberDefs,
           None, Nil, Nil, Nil)(
           OptimizerHints.empty)
-
-      Hashers.hashClassDef(classDef)
     }
 
     private lazy val jsTypeInterfacesBlacklist: Set[Symbol] =
@@ -3107,7 +3102,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         val classDef = consumeLazilyGeneratedAnonClass(clsSym)
         tryGenAnonFunctionClass(classDef, args.map(genExpr)).getOrElse {
           // Cannot optimize anonymous function class. Generate full class.
-          generatedClasses += nestedGenerateClass(clsSym)(genClass(classDef))
+          generatedClasses += nestedGenerateClass(clsSym)(genClass(classDef)) -> clsSym.pos
           genNew(clsSym, ctor, genActualArgs(ctor, args))
         }
       } else if (isJSType(clsSym)) {
@@ -6294,7 +6289,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           Nil)(
           js.OptimizerHints.empty.withInline(true))
 
-      generatedClasses += classDef
+      generatedClasses += classDef -> pos
 
       className
     }
