@@ -55,6 +55,8 @@ final class Emitter(config: Emitter.Config) {
 
     val coreJSLibCache: CoreJSLibCache = new CoreJSLibCache
 
+    val moduleCaches: mutable.Map[ModuleID, ModuleCache] = mutable.Map.empty
+
     val classCaches: mutable.Map[ClassID, ClassCache] = mutable.Map.empty
   }
 
@@ -135,6 +137,7 @@ final class Emitter(config: Emitter.Config) {
           s"invalidated: $statsMethodsInvalidated")
 
       // Inform caches about run completion.
+      state.moduleCaches.filterInPlace((_, c) => c.cleanAfterRun())
       classCaches.filterInPlace((_, c) => c.cleanAfterRun())
     }
   }
@@ -191,8 +194,15 @@ final class Emitter(config: Emitter.Config) {
     val moduleTrees = logger.time("Emitter: Write trees") {
       moduleSet.modules.map { module =>
         val moduleContext = ModuleContext.fromModule(module)
+        val moduleCache = state.moduleCaches.getOrElseUpdate(module.id, new ModuleCache)
 
         val moduleClasses = generatedClasses(module.id)
+
+        val moduleImports = extractWithGlobals {
+          moduleCache.getOrComputeImports(module.externalDependencies, module.internalDependencies) {
+            genModuleImports(module)
+          }
+        }
 
         val topLevelExports = extractWithGlobals {
           // We do not cache top level exports since typically there are few.
@@ -279,16 +289,15 @@ final class Emitter(config: Emitter.Config) {
           case stat            => stat :: Nil
         }.toList
 
+        // Make sure that there is at least one non-import definition.
         assert(!defTrees.isEmpty, {
             val classNames = module.classDefs.map(_.fullName).mkString(", ")
             s"Module ${module.id} is empty. Classes in this module: $classNames"
         })
 
-        /* Module imports, which depend on nothing.
+        /* Add module imports, which depend on nothing, at the front.
          * All classes potentially depend on them.
          */
-        val moduleImports = extractWithGlobals(genModuleImports(module))
-
         val allTrees = moduleImports ::: defTrees
 
         classIter.foreach { genClass =>
@@ -319,7 +328,7 @@ final class Emitter(config: Emitter.Config) {
 
     moduleKind match {
       case ModuleKind.NoModule =>
-        WithGlobals(Nil)
+        WithGlobals.nil
 
       case ModuleKind.ESModule =>
         val imports = importParts.map { case (ident, moduleName) =>
@@ -597,6 +606,33 @@ final class Emitter(config: Emitter.Config) {
   }
 
   // Caching
+
+  private final class ModuleCache {
+    private[this] var _cacheUsed: Boolean = false
+
+    private[this] var _importsCache: WithGlobals[List[js.Tree]] = WithGlobals.nil
+    private[this] var _lastExternalDependencies: Set[String] = Set.empty
+    private[this] var _lastInternalDependencies: Set[ModuleID] = Set.empty
+
+    def getOrComputeImports(externalDependencies: Set[String], internalDependencies: Set[ModuleID])(
+        compute: => WithGlobals[List[js.Tree]]): WithGlobals[List[js.Tree]] = {
+
+      _cacheUsed = true
+
+      if (externalDependencies != _lastExternalDependencies || internalDependencies != _lastInternalDependencies) {
+        _importsCache = compute
+        _lastExternalDependencies = externalDependencies
+        _lastInternalDependencies = internalDependencies
+      }
+      _importsCache
+    }
+
+    def cleanAfterRun(): Boolean = {
+      val result = _cacheUsed
+      _cacheUsed = false
+      result
+    }
+  }
 
   private final class ClassCache extends knowledgeGuardian.KnowledgeAccessor {
     private[this] var _cache: DesugaredClassCache = null
