@@ -22,6 +22,11 @@ private[backend] final class ByteArrayWriter extends OutputStream {
   private var buffer: Array[Byte] = new Array[Byte](1024)
   private var size: Int = 0
 
+  def currentSize: Int = size
+
+  def sizeHint(capacity: Int): Unit =
+    ensureCapacity(capacity)
+
   private def ensureCapacity(capacity: Int): Unit = {
     if (buffer.length < capacity)
       buffer = java.util.Arrays.copyOf(buffer, powerOfTwoAtLeast(capacity))
