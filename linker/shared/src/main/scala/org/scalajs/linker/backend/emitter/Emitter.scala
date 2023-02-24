@@ -55,6 +55,8 @@ final class Emitter(config: Emitter.Config) {
 
     val coreJSLibCache: CoreJSLibCache = new CoreJSLibCache
 
+    val moduleImportsCache: mutable.Map[ModuleID, ModuleImportsCache] = mutable.Map.empty
+
     val classCaches: mutable.Map[ClassID, ClassCache] = mutable.Map.empty
   }
 
@@ -135,6 +137,7 @@ final class Emitter(config: Emitter.Config) {
           s"invalidated: $statsMethodsInvalidated")
 
       // Inform caches about run completion.
+      state.moduleImportsCache.filterInPlace((_, c) => c.cleanAfterRun())
       classCaches.filterInPlace((_, c) => c.cleanAfterRun())
     }
   }
@@ -305,7 +308,7 @@ final class Emitter(config: Emitter.Config) {
   private def genModuleImports(module: ModuleSet.Module): WithGlobals[List[js.Tree]] = {
     implicit val pos = Position.NoPosition
 
-    def importParts = (
+    def computeImportParts(): List[(js.Ident, String)] = (
         (
             module.externalDependencies.map { x =>
               sjsGen.varGen.externalModuleFieldIdent(x) -> x
@@ -317,25 +320,34 @@ final class Emitter(config: Emitter.Config) {
         )
     ).toList.sortBy(_._1.name)
 
+    def getCache(): ModuleImportsCache =
+      state.moduleImportsCache.getOrElseUpdate(module.id, new ModuleImportsCache())
+
     moduleKind match {
       case ModuleKind.NoModule =>
         WithGlobals(Nil)
 
       case ModuleKind.ESModule =>
-        val imports = importParts.map { case (ident, moduleName) =>
-          val from = js.StringLiteral(moduleName)
-          js.ImportNamespace(ident, from)
+        val importParts = computeImportParts()
+        getCache().getOrElseCompute(importParts) {
+          val imports = importParts.map { case (ident, moduleName) =>
+            val from = js.StringLiteral(moduleName)
+            js.ImportNamespace(ident, from)
+          }
+          WithGlobals(imports)
         }
-        WithGlobals(imports)
 
       case ModuleKind.CommonJSModule =>
-        val imports = importParts.map { case (ident, moduleName) =>
-          for (requireRef <- jsGen.globalRef("require")) yield {
-            val rhs = js.Apply(requireRef, List(js.StringLiteral(moduleName)))
-            jsGen.genLet(ident, mutable = false, rhs)
+        val importParts = computeImportParts()
+        getCache().getOrElseCompute(importParts) {
+          val imports = importParts.map { case (ident, moduleName) =>
+            for (requireRef <- jsGen.globalRef("require")) yield {
+              val rhs = js.Apply(requireRef, List(js.StringLiteral(moduleName)))
+              jsGen.genLet(ident, mutable = false, rhs)
+            }
           }
+          WithGlobals.list(imports)
         }
-        WithGlobals.list(imports)
     }
   }
 
@@ -597,6 +609,41 @@ final class Emitter(config: Emitter.Config) {
   }
 
   // Caching
+
+  private final class ModuleImportsCache {
+    private[this] var _cache: WithGlobals[List[js.Tree]] = WithGlobals(Nil)
+    private[this] var _lastInputs: List[(js.Ident, String)] = Nil
+    private[this] var _cacheUsed: Boolean = false
+
+    def getOrElseCompute(inputs: List[(js.Ident, String)])(
+        compute: => WithGlobals[List[js.Tree]]): WithGlobals[List[js.Tree]] = {
+
+      _cacheUsed = true
+      if (!sameInputs(_lastInputs, inputs)) {
+        _cache = compute
+        _lastInputs = inputs
+      }
+      _cache
+    }
+
+    @tailrec
+    private def sameInputs(before: List[(js.Ident, String)], after: List[(js.Ident, String)]): Boolean = {
+      (before, after) match {
+        case ((beforeIdent, beforeMod) :: restBefore, (afterIdent, afterMod) :: restAfter) =>
+          beforeIdent.name == afterIdent.name &&
+          beforeMod == afterMod &&
+          sameInputs(restBefore, restAfter)
+        case _ =>
+          before.isEmpty && after.isEmpty
+      }
+    }
+
+    def cleanAfterRun(): Boolean = {
+      val result = _cacheUsed
+      _cacheUsed = false
+      result
+    }
+  }
 
   private final class ClassCache extends knowledgeGuardian.KnowledgeAccessor {
     private[this] var _cache: DesugaredClassCache = null
