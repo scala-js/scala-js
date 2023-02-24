@@ -18,7 +18,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.{util => ju}
 
-import scala.collection.mutable.{ ArrayBuffer, ListBuffer, HashMap, Stack, StringBuilder }
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 import org.scalajs.ir
 import org.scalajs.ir.OriginalName
@@ -210,10 +210,10 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
   import SourceMapWriter._
 
   private val sources = new ListBuffer[String]
-  private val _srcToIndex = new HashMap[SourceFile, Int]
+  private val _srcToIndex = new ju.HashMap[SourceFile, Int]
 
   private val names = new ListBuffer[String]
-  private val _nameToIndex = new HashMap[String, Int]
+  private val _nameToIndex = new ju.HashMap[String, Int]
 
   private var lineCountInGenerated = 0
   private var lastColumnInGenerated = 0
@@ -226,26 +226,22 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
 
   writeHeader()
 
-  private def sourceToIndex(source: SourceFile): Int = {
-    if (_srcToIndex.contains(source)) {
-      _srcToIndex(source)
-    } else {
-      val index = sources.size
-      _srcToIndex.put(source, index)
-      sources += SourceFileUtil.webURI(relativizeBaseURI, source)
-      index
-    }
+  private def sourceToIndex(source: SourceFile): Int =
+    _srcToIndex.computeIfAbsent(source, sourceToIndexComputeFun)
+
+  private val sourceToIndexComputeFun: ju.function.Function[SourceFile, Int] = { source =>
+    val index = sources.size
+    sources += SourceFileUtil.webURI(relativizeBaseURI, source)
+    index
   }
 
-  private def nameToIndex(name: String): Int = {
-    if (_nameToIndex.contains(name)) {
-      _nameToIndex(name)
-    } else {
-      val index = names.size
-      _nameToIndex.put(name, index)
-      names += name
-      index
-    }
+  private def nameToIndex(name: String): Int =
+    _nameToIndex.computeIfAbsent(name, nameToIndexComputeFun)
+
+  private val nameToIndexComputeFun: ju.function.Function[String, Int] = { name =>
+    val index = names.size
+    names += name
+    index
   }
 
   private def writeJSONString(s: String): Unit = {
