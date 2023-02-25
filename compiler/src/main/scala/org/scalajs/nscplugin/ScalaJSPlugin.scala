@@ -40,8 +40,8 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     }
   }
 
-  /** Called when the JS ASTs are generated. Override for testing */
-  def generatedJSAST(clDefs: List[Trees.ClassDef]): Unit = {}
+  /** Called for each generated `ClassDef`. Override for testing. */
+  def generatedJSAST(clDef: Trees.ClassDef): Unit = {}
 
   /** A trick to avoid early initializers while still enforcing that `global`
    *  is initialized early.
@@ -98,8 +98,8 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     override val runsAfter = List("mixin")
     override val runsBefore = List("delambdafy", "cleanup", "terminal")
 
-    def generatedJSAST(clDefs: List[Trees.ClassDef]): Unit =
-      ScalaJSPlugin.this.generatedJSAST(clDefs)
+    def generatedJSAST(clDef: Trees.ClassDef): Unit =
+      ScalaJSPlugin.this.generatedJSAST(clDef)
   }
 
   override def init(options: List[String], error: String => Unit): Boolean = {

@@ -67,8 +67,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
   val phaseName: String = "jscode"
   override val description: String = "generate JavaScript code from ASTs"
 
-  /** testing: this will be called when ASTs are generated */
-  def generatedJSAST(clDefs: List[js.ClassDef]): Unit
+  /** testing: this will be called for each generated `ClassDef`. */
+  def generatedJSAST(clDef: js.ClassDef): Unit
 
   /** Implicit conversion from nsc Position to ir.Position. */
   implicit def pos2irPos(pos: Position): ir.Position = {
@@ -423,9 +423,8 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           regularClasses ::: staticForwarderClasses
         }
 
-        generatedJSAST(clDefs)
-
         for (tree <- clDefs) {
+          generatedJSAST(tree)
           genIRFile(cunit, tree)
         }
       } catch {
