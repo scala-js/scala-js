@@ -23,6 +23,7 @@ import org.scalajs.ir.Trees._
 import org.scalajs.logging._
 
 import org.scalajs.linker._
+import org.scalajs.linker.checker.ClassDefChecker
 import org.scalajs.linker.interface.ModuleInitializer
 import org.scalajs.linker.standard._
 import org.scalajs.linker.standard.ModuleSet.ModuleID
@@ -30,10 +31,10 @@ import org.scalajs.linker.analyzer._
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
 /** Does a dead code elimination pass on a [[LinkingUnit]]. */
-final class Refiner(config: CommonPhaseConfig) {
+final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
   import Refiner._
 
-  private val inputProvider = new InputProvider
+  private val inputProvider = new InputProvider(checkIR)
 
   def refine(classDefs: Seq[(ClassDef, Version)],
       moduleInitializers: List[ModuleInitializer],
@@ -41,7 +42,7 @@ final class Refiner(config: CommonPhaseConfig) {
       implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
     val linkedClassesByName = classDefs.map(c => c._1.className -> c._1).toMap
-    inputProvider.update(linkedClassesByName)
+    inputProvider.update(linkedClassesByName, logger)
 
     val analysis = logger.timeFuture("Refiner: Compute reachability") {
       analyze(moduleInitializers, symbolRequirements, logger)
@@ -98,11 +99,13 @@ final class Refiner(config: CommonPhaseConfig) {
 }
 
 private object Refiner {
-  private class InputProvider extends Analyzer.InputProvider {
+  private class InputProvider(checkIR: Boolean) extends Analyzer.InputProvider {
     private var classesByName: Map[ClassName, ClassDef] = _
+    private var logger: Logger = _
     private val cache = mutable.Map.empty[ClassName, ClassInfoCache]
 
-    def update(classesByName: Map[ClassName, ClassDef]): Unit = {
+    def update(classesByName: Map[ClassName, ClassDef], logger: Logger): Unit = {
+      this.logger = logger
       this.classesByName = classesByName
     }
 
@@ -113,12 +116,12 @@ private object Refiner {
     }
 
     def loadInfo(className: ClassName)(implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] =
-      getCache(className).map(_.loadInfo(classesByName(className)))
+      getCache(className).map(_.loadInfo(classesByName(className), logger))
 
     private def getCache(className: ClassName): Option[ClassInfoCache] = {
       cache.get(className).orElse {
         if (classesByName.contains(className)) {
-          val fileCache = new ClassInfoCache
+          val fileCache = new ClassInfoCache(checkIR)
           cache += className -> fileCache
           Some(fileCache)
         } else {
@@ -133,21 +136,31 @@ private object Refiner {
     }
   }
 
-  private class ClassInfoCache {
+  private class ClassInfoCache(checkIR: Boolean) {
     private var cacheUsed: Boolean = false
     private val methodsInfoCaches = MethodDefsInfosCache()
     private val jsConstructorInfoCache = new JSConstructorDefInfoCache()
     private val exportedMembersInfoCaches = JSMethodPropDefsInfosCache()
     private var info: Infos.ClassInfo = _
 
-    def loadInfo(classDef: ClassDef)(implicit ec: ExecutionContext): Future[Infos.ClassInfo] = Future {
-      update(classDef)
+    def loadInfo(classDef: ClassDef, logger: Logger)(implicit ec: ExecutionContext): Future[Infos.ClassInfo] = Future {
+      update(classDef, logger)
       info
     }
 
-    private def update(classDef: ClassDef): Unit = synchronized {
+    private def update(classDef: ClassDef, logger: Logger): Unit = synchronized {
       if (!cacheUsed) {
         cacheUsed = true
+
+        if (checkIR) {
+          val errorCount = ClassDefChecker.check(classDef,
+              allowReflectiveProxies = true, allowTransients = true, logger)
+          if (errorCount != 0) {
+            throw new AssertionError(
+                s"There were $errorCount ClassDef checking errors after optimizing. " +
+                "Please report this as a bug.")
+          }
+        }
 
         val builder = new Infos.ClassInfoBuilder(classDef.className,
             classDef.kind, classDef.superClass.map(_.name),

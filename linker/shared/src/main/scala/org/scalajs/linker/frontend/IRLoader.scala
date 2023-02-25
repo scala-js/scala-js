@@ -125,7 +125,8 @@ private final class ClassDefAndInfoCache {
         version = newVersion
         cacheUpdate = irFile.tree.map { tree =>
           if (checkIR) {
-            val errorCount = ClassDefChecker.check(tree, logger)
+            val errorCount = ClassDefChecker.check(tree,
+                allowReflectiveProxies = false, allowTransients = false, logger)
             if (errorCount != 0) {
               throw new LinkingException(
                   s"There were $errorCount ClassDef checking errors.")

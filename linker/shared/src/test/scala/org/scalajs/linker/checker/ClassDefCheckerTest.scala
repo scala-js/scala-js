@@ -159,6 +159,22 @@ class ClassDefCheckerTest {
   }
 
   @Test
+  def publicReflectiveProxy(): Unit = {
+    val babarMethodName = MethodName.reflectiveProxy("babar", Nil)
+
+    assertError(
+        classDef("A", superClass = Some(ObjectClass),
+          methods = List(
+            MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
+                babarMethodName, NON, Nil, AnyType, Some(int(1)))(EOH, UNV)
+          )
+        ),
+        "reflective profixes are only allowed in the public namespace",
+        allowReflectiveProxies = true
+    )
+  }
+
+  @Test
   def noDuplicateVarDef(): Unit = {
     val body = Block(
       VarDef("x", NoOriginalName, IntType, mutable = false, int(1)),
@@ -257,7 +273,8 @@ class ClassDefCheckerTest {
 }
 
 private object ClassDefCheckerTest {
-  private def assertError(clazz: ClassDef, expectMsg: String) = {
+  private def assertError(clazz: ClassDef, expectMsg: String,
+      allowReflectiveProxies: Boolean = false, allowTransients: Boolean = false) = {
     var seen = false
     val reporter = new ErrorReporter {
       def reportError(msg: String)(implicit ctx: ErrorReporter.ErrorContext) = {
@@ -267,7 +284,7 @@ private object ClassDefCheckerTest {
       }
     }
 
-    new ClassDefChecker(clazz, reporter).checkClassDef()
+    new ClassDefChecker(clazz, allowReflectiveProxies, allowTransients, reporter).checkClassDef()
     assertTrue("no errors reported", seen)
   }
 }
