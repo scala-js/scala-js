@@ -127,8 +127,8 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
     }
   }
 
-  private def buildChunk(tree: js.Tree): JSChunk = {
-    val root = ClosureAstTransformer.transformScript(tree,
+  private def buildChunk(topLevelTrees: List[js.Tree]): JSChunk = {
+    val root = ClosureAstTransformer.transformScript(topLevelTrees,
         languageMode.toFeatureSet(), config.relativizeSourceMapBase)
 
     val chunk = new JSChunk("Scala.js")

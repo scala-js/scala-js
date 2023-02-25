@@ -106,7 +106,7 @@ final class Emitter(config: Emitter.Config) {
   }
 
   private def emitInternal(moduleSet: ModuleSet,
-      logger: Logger): WithGlobals[Map[ModuleID, js.Tree]] = {
+      logger: Logger): WithGlobals[Map[ModuleID, List[js.Tree]]] = {
     // Reset caching stats.
     statsClassesReused = 0
     statsClassesInvalidated = 0
@@ -147,7 +147,7 @@ final class Emitter(config: Emitter.Config) {
    */
   @tailrec
   private def emitAvoidGlobalClash(moduleSet: ModuleSet,
-      logger: Logger, secondAttempt: Boolean): WithGlobals[Map[ModuleID, js.Tree]] = {
+      logger: Logger, secondAttempt: Boolean): WithGlobals[Map[ModuleID, List[js.Tree]]] = {
     val result = emitOnce(moduleSet, logger)
 
     val mentionedDangerousGlobalRefs =
@@ -172,7 +172,7 @@ final class Emitter(config: Emitter.Config) {
   }
 
   private def emitOnce(moduleSet: ModuleSet,
-      logger: Logger): WithGlobals[Map[ModuleID, js.Tree]] = {
+      logger: Logger): WithGlobals[Map[ModuleID, List[js.Tree]]] = {
     // Genreate classes first so we can measure time separately.
     val generatedClasses = logger.time("Emitter: Generate Classes") {
       moduleSet.modules.map { module =>
@@ -217,7 +217,7 @@ final class Emitter(config: Emitter.Config) {
          * requires consistency between the Analyzer and the Emitter. As such,
          * it is crucial that we verify it.
          */
-        val defTrees = js.Block(
+        val defTreesIterator: Iterator[js.Tree] = (
             /* The definitions of the CoreJSLib that come before the definition
              * of `j.l.Object`. They depend on nothing else.
              */
@@ -267,19 +267,29 @@ final class Emitter(config: Emitter.Config) {
               extractWithGlobals(classEmitter.genModuleInitializer(initializer)(
                   moduleContext, uncachedKnowledge))
             }
-        )(Position.NoPosition)
+        )
 
-        assert(!defTrees.isInstanceOf[js.Skip], {
+        /* Flatten all the top-level js.Block's, because we temporarily use
+         * them to gather several top-level trees under a single `js.Tree`.
+         * TODO We should improve this in the future.
+         */
+        val defTrees: List[js.Tree] = defTreesIterator.flatMap {
+          case js.Block(stats) => stats
+          case js.Skip()       => Nil
+          case stat            => stat :: Nil
+        }.toList
+
+        assert(!defTrees.isEmpty, {
             val classNames = module.classDefs.map(_.fullName).mkString(", ")
             s"Module ${module.id} is empty. Classes in this module: $classNames"
         })
 
-        val allTrees = js.Block(
-            /* Module imports, which depend on nothing.
-             * All classes potentially depend on them.
-             */
-            extractWithGlobals(genModuleImports(module)) :+ defTrees
-        )(Position.NoPosition)
+        /* Module imports, which depend on nothing.
+         * All classes potentially depend on them.
+         */
+        val moduleImports = extractWithGlobals(genModuleImports(module))
+
+        val allTrees = moduleImports ::: defTrees
 
         classIter.foreach { genClass =>
           trackedGlobalRefs = unionPreserveEmpty(trackedGlobalRefs, genClass.trackedGlobalRefs)
@@ -790,7 +800,7 @@ object Emitter {
   /** Result of an emitter run. */
   final class Result private[Emitter](
       val header: String,
-      val body: Map[ModuleID, js.Tree],
+      val body: Map[ModuleID, List[js.Tree]],
       val footer: String,
       val topLevelVarDecls: List[String],
       val globalRefs: Set[String]

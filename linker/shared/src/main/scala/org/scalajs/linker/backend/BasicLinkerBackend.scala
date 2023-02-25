@@ -63,7 +63,10 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
         val printer = new Printers.JSTreePrinter(jsFileWriter)
         jsFileWriter.write(emitterResult.header)
         jsFileWriter.write("'use strict';\n")
-        printer.printTopLevelTree(emitterResult.body(moduleID))
+
+        for (topLevelTree <- emitterResult.body(moduleID))
+          printer.printTopLevelTree(topLevelTree)
+
         jsFileWriter.write(emitterResult.footer)
       }
 
@@ -84,7 +87,8 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
         jsFileWriter.write("'use strict';\n")
         smWriter.nextLine()
 
-        printer.printTopLevelTree(emitterResult.body(moduleID))
+        for (topLevelTree <- emitterResult.body(moduleID))
+          printer.printTopLevelTree(topLevelTree)
 
         jsFileWriter.write(emitterResult.footer)
         jsFileWriter.write("//# sourceMappingURL=" + sourceMapURI + "\n")
