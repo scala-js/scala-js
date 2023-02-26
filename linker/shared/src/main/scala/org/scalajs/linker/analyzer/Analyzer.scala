@@ -35,7 +35,7 @@ import org.scalajs.linker.standard._
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 import Analysis._
-import Infos.{NamespacedMethodName, ReachabilityInfo}
+import Infos.{NamespacedMethodName, ReachabilityInfo, ReachabilityInfoInClass}
 
 private final class Analyzer(config: CommonPhaseConfig,
     moduleInitializers: Seq[ModuleInitializer],
@@ -1267,139 +1267,120 @@ private final class Analyzer(config: CommonPhaseConfig,
         staticDependencies += info.className
     }
 
-    for (moduleName <- data.accessedModules) {
-      lookupClass(moduleName) { module =>
-        module.accessModule()
-        addInstanceDependency(module)
-      }
-    }
+    for (dataInClass <- data.byClass) {
+      lookupClass(dataInClass.className) { clazz =>
+        val className = dataInClass.className
 
-    for (className <- data.instantiatedClasses) {
-      lookupClass(className) { clazz =>
-        clazz.instantiated()
-        addInstanceDependency(clazz)
-      }
-    }
+        val flags = dataInClass.flags
+        if (flags != 0) {
+          if ((flags & ReachabilityInfoInClass.FlagModuleAccessed) != 0) {
+            clazz.accessModule()
+            addInstanceDependency(clazz)
+          }
 
-    for (className <- data.usedInstanceTests) {
-      staticDependencies += className
-      lookupClass(className)(_.useInstanceTests())
-    }
+          if ((flags & ReachabilityInfoInClass.FlagInstantiated) != 0) {
+            clazz.instantiated()
+            addInstanceDependency(clazz)
+          }
 
-    for (className <- data.accessedClassData) {
-      staticDependencies += className
-      lookupClass(className)(_.accessData())
-    }
+          if ((flags & ReachabilityInfoInClass.FlagInstanceTestsUsed) != 0) {
+            staticDependencies += className
+            clazz.useInstanceTests()
+          }
 
-    if (data.accessedClassClass) {
-      /* java.lang.Class is only ever instantiated in the CoreJSLib.
-       * Therefore, make java.lang.Object depend on it instead of the caller itself.
-       */
-      objectClassInfo.staticDependencies += ClassClass
-      lookupClass(ClassClass) { clazz =>
-        clazz.instantiated()
-        clazz.callMethodStatically(MemberNamespace.Constructor, ObjectArgConstructorName)
-      }
-    }
+          if ((flags & ReachabilityInfoInClass.FlagClassDataAccessed) != 0) {
+            staticDependencies += className
+            clazz.accessData()
+          }
 
-    for (className <- data.referencedClasses) {
-      /* No need to add to staticDependencies: The classes will not be
-       * referenced in the final JS code.
-       */
-      lookupClass(className)(_ => ())
-    }
+          if ((flags & ReachabilityInfoInClass.FlagStaticallyReferenced) != 0) {
+            staticDependencies += className
+          }
+        }
 
-    for (className <- data.staticallyReferencedClasses) {
-      staticDependencies += className
-      lookupClass(className)(_ => ())
-    }
+        /* Since many of the lists below are likely to be empty, we always
+         * test `!list.isEmpty` before calling `foreach` or any other
+         * processing, avoiding closure allocations.
+         */
 
-    /* `for` loops on maps are written with `while` loops to help the JIT
-     * compiler to inline and stack allocate tuples created by the iterators
-     */
+        if (!dataInClass.fieldsRead.isEmpty) {
+          clazz.readFields(dataInClass.fieldsRead)
+        }
 
-    val fieldsReadIterator = data.fieldsRead.iterator
-    while (fieldsReadIterator.hasNext) {
-      val (className, fields) = fieldsReadIterator.next()
-      lookupClass(className)(_.readFields(fields))
-    }
+        if (!dataInClass.fieldsWritten.isEmpty) {
+          clazz.writeFields(dataInClass.fieldsWritten)
+        }
 
-    val fieldsWrittenIterator = data.fieldsWritten.iterator
-    while (fieldsWrittenIterator.hasNext) {
-      val (className, fields) = fieldsWrittenIterator.next()
-      lookupClass(className)(_.writeFields(fields))
-    }
+        if (!dataInClass.staticFieldsRead.isEmpty) {
+          staticDependencies += className
+          clazz.staticFieldsRead ++= dataInClass.staticFieldsRead
+        }
 
-    val staticFieldsReadIterator = data.staticFieldsRead.iterator
-    while (staticFieldsReadIterator.hasNext) {
-      val (className, fields) = staticFieldsReadIterator.next()
-      staticDependencies += className
-      lookupClass(className)(_.staticFieldsRead ++= fields)
-    }
+        if (!dataInClass.staticFieldsWritten.isEmpty) {
+          staticDependencies += className
+          clazz.staticFieldsWritten ++= dataInClass.staticFieldsWritten
+        }
 
-    val staticFieldsWrittenIterator = data.staticFieldsWritten.iterator
-    while (staticFieldsWrittenIterator.hasNext) {
-      val (className, fields) = staticFieldsWrittenIterator.next()
-      staticDependencies += className
-      lookupClass(className)(_.staticFieldsWritten ++= fields)
-    }
+        if (!dataInClass.methodsCalled.isEmpty) {
+          // Do not add to staticDependencies: We call these on the object.
+          for (methodName <- dataInClass.methodsCalled)
+            clazz.callMethod(methodName)
+        }
 
-    val methodsCalledIterator = data.methodsCalled.iterator
-    while (methodsCalledIterator.hasNext) {
-      val (className, methods) = methodsCalledIterator.next()
-      // Do not add to staticDependencies: We call these on the object.
-      lookupClass(className) { classInfo =>
-        for (methodName <- methods)
-          classInfo.callMethod(methodName)
-      }
-    }
+        if (!dataInClass.methodsCalledStatically.isEmpty) {
+          staticDependencies += className
+          for (methodName <- dataInClass.methodsCalledStatically)
+            clazz.callMethodStatically(methodName)
+        }
 
-    val methodsCalledStaticallyIterator = data.methodsCalledStatically.iterator
-    while (methodsCalledStaticallyIterator.hasNext) {
-      val (className, methods) = methodsCalledStaticallyIterator.next()
-      staticDependencies += className
-      lookupClass(className) { classInfo =>
-        for (methodName <- methods)
-          classInfo.callMethodStatically(methodName)
-      }
-    }
+        if (!dataInClass.methodsCalledDynamicImport.isEmpty) {
+          if (isNoModule) {
+            _errors += DynamicImportWithoutModuleSupport(from)
+          } else {
+            dynamicDependencies += className
+            // In terms of reachability, a dynamic import call is just a static call.
+            for (methodName <- dataInClass.methodsCalledDynamicImport)
+              clazz.callMethodStatically(methodName)
+          }
+        }
 
-    if (isNoModule) {
-      if (data.methodsCalledDynamicImport.nonEmpty)
-        _errors += DynamicImportWithoutModuleSupport(from)
-    } else {
-      val methodsCalledDynamicImportIterator = data.methodsCalledDynamicImport.iterator
-      while (methodsCalledDynamicImportIterator.hasNext) {
-        val (className, methods) = methodsCalledDynamicImportIterator.next()
-        dynamicDependencies += className
-        lookupClass(className) { classInfo =>
-          // In terms of reachability, a dynamic import call is just a static call.
-          for (methodName <- methods)
-            classInfo.callMethodStatically(methodName)
+        if (!dataInClass.jsNativeMembersUsed.isEmpty) {
+          for (member <- dataInClass.jsNativeMembersUsed)
+            clazz.useJSNativeMember(member)
+              .foreach(addLoadSpec(externalDependencies, _))
         }
       }
     }
 
-    val jsNativeMembersUsedIterator = data.jsNativeMembersUsed.iterator
-    while (jsNativeMembersUsedIterator.hasNext) {
-      val (className, members) = jsNativeMembersUsedIterator.next()
-      lookupClass(className) { classInfo =>
-        for (member <- members)
-          classInfo.useJSNativeMember(member)
-            .foreach(addLoadSpec(externalDependencies, _))
+    val globalFlags = data.globalFlags
+
+    if (globalFlags != 0) {
+      if ((globalFlags & ReachabilityInfo.FlagAccessedClassClass) != 0) {
+        /* java.lang.Class is only ever instantiated in the CoreJSLib.
+         * Therefore, make java.lang.Object depend on it instead of the caller itself.
+         */
+        objectClassInfo.staticDependencies += ClassClass
+        lookupClass(ClassClass) { clazz =>
+          clazz.instantiated()
+          clazz.callMethodStatically(MemberNamespace.Constructor, ObjectArgConstructorName)
+        }
+      }
+
+      if ((globalFlags & ReachabilityInfo.FlagAccessedNewTarget) != 0 &&
+          config.coreSpec.esFeatures.esVersion < ESVersion.ES2015) {
+        _errors += NewTargetWithoutES2015Support(from)
+      }
+
+      if ((globalFlags & ReachabilityInfo.FlagAccessedImportMeta) != 0 &&
+          config.coreSpec.moduleKind != ModuleKind.ESModule) {
+        _errors += ImportMetaWithoutESModule(from)
+      }
+
+      if ((globalFlags & ReachabilityInfo.FlagUsedExponentOperator) != 0 &&
+          config.coreSpec.esFeatures.esVersion < ESVersion.ES2016) {
+        _errors += ExponentOperatorWithoutES2016Support(from)
       }
     }
-
-    if (data.accessedNewTarget && config.coreSpec.esFeatures.esVersion < ESVersion.ES2015) {
-      _errors += NewTargetWithoutES2015Support(from)
-    }
-
-    if (data.accessedImportMeta && config.coreSpec.moduleKind != ModuleKind.ESModule) {
-      _errors += ImportMetaWithoutESModule(from)
-    }
-
-    if (data.usedExponentOperator && config.coreSpec.esFeatures.esVersion < ESVersion.ES2016)
-      _errors += ExponentOperatorWithoutES2016Support(from)
   }
 
   @tailrec
