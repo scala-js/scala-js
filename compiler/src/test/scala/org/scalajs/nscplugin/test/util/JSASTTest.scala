@@ -17,6 +17,7 @@ import language.implicitConversions
 import scala.tools.nsc._
 import scala.reflect.internal.util.SourceFile
 
+import scala.collection.mutable
 import scala.util.control.ControlThrowable
 
 import org.junit.Assert._
@@ -26,8 +27,6 @@ import org.scalajs.ir
 import ir.{Trees => js}
 
 abstract class JSASTTest extends DirectTest {
-
-  private var lastAST: JSAST = _
 
   class JSAST(val clDefs: List[js.ClassDef]) {
     type Pat = PartialFunction[js.IRNode, Unit]
@@ -148,26 +147,45 @@ abstract class JSASTTest extends DirectTest {
 
   implicit def string2ast(str: String): JSAST = stringAST(str)
 
+  private var generatedClassDefs: Option[mutable.ListBuffer[js.ClassDef]] = None
+
+  private def captureGeneratedClassDefs(body: => Unit): JSAST = {
+    if (generatedClassDefs.isDefined)
+      throw new IllegalStateException(s"Nested or concurrent calls to captureGeneratedClassDefs")
+
+    val buffer = new mutable.ListBuffer[js.ClassDef]
+    generatedClassDefs = Some(buffer)
+    try {
+      body
+      new JSAST(buffer.toList)
+    } finally {
+      generatedClassDefs = None
+    }
+  }
+
   override def newScalaJSPlugin(global: Global): ScalaJSPlugin = {
     new ScalaJSPlugin(global) {
-      override def generatedJSAST(cld: List[js.ClassDef]): Unit = {
-        lastAST = new JSAST(cld)
+      override def generatedJSAST(cld: js.ClassDef): Unit = {
+        for (buffer <- generatedClassDefs)
+          buffer += cld
       }
     }
   }
 
   def stringAST(code: String): JSAST = stringAST(defaultGlobal)(code)
   def stringAST(global: Global)(code: String): JSAST = {
-    if (!compileString(global)(code))
-      throw new IllegalArgumentException("snippet did not compile")
-    lastAST
+    captureGeneratedClassDefs {
+      if (!compileString(global)(code))
+        throw new IllegalArgumentException("snippet did not compile")
+    }
   }
 
   def sourceAST(source: SourceFile): JSAST = sourceAST(defaultGlobal)(source)
   def sourceAST(global: Global)(source: SourceFile): JSAST = {
-    if (!compileSources(global)(source))
-      throw new IllegalArgumentException("snippet did not compile")
-    lastAST
+    captureGeneratedClassDefs {
+      if (!compileSources(global)(source))
+        throw new IllegalArgumentException("snippet did not compile")
+    }
   }
 
 }
