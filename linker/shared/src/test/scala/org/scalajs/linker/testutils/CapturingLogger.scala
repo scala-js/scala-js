@@ -13,6 +13,7 @@
 package org.scalajs.linker.testutils
 
 import scala.collection.mutable
+import scala.util.matching.Regex
 
 import org.scalajs.logging._
 
@@ -21,7 +22,7 @@ import org.junit.Assert._
 final class CapturingLogger extends Logger {
   import CapturingLogger._
 
-  val lines = mutable.ListBuffer.empty[LogLine]
+  private val lines = mutable.ListBuffer.empty[LogLine]
 
   def log(level: Level, message: => String): Unit =
     lines += new LogLine(level, message)
@@ -33,7 +34,7 @@ final class CapturingLogger extends Logger {
 }
 
 object CapturingLogger {
-  final class LogLine(val level: Level, val message: String) {
+  final case class LogLine(val level: Level, val message: String) {
     def contains(messagePart: String): Boolean =
       message.contains(messagePart)
 
@@ -77,6 +78,14 @@ object CapturingLogger {
 
     def assertContainsError(messagePart: String): Unit =
       assertContains(Level.Error, messagePart)
+
+    def assertContainsMatch(messageRegex: Regex): Seq[String] = {
+      lines.collectFirst {
+        case LogLine(_, messageRegex(captures @ _*)) => captures
+      }.getOrElse {
+        throw new AssertionError(s"expected a log line matching '$messageRegex', but got \n${this}")
+      }
+    }
 
     override def toString(): String =
       lines.mkString("  ", "\n  ", "")

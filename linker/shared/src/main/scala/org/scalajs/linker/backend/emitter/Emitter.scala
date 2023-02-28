@@ -106,7 +106,7 @@ final class Emitter(config: Emitter.Config) {
   }
 
   private def emitInternal(moduleSet: ModuleSet,
-      logger: Logger): WithGlobals[Map[ModuleID, js.Tree]] = {
+      logger: Logger): WithGlobals[Map[ModuleID, List[js.Tree]]] = {
     // Reset caching stats.
     statsClassesReused = 0
     statsClassesInvalidated = 0
@@ -147,7 +147,7 @@ final class Emitter(config: Emitter.Config) {
    */
   @tailrec
   private def emitAvoidGlobalClash(moduleSet: ModuleSet,
-      logger: Logger, secondAttempt: Boolean): WithGlobals[Map[ModuleID, js.Tree]] = {
+      logger: Logger, secondAttempt: Boolean): WithGlobals[Map[ModuleID, List[js.Tree]]] = {
     val result = emitOnce(moduleSet, logger)
 
     val mentionedDangerousGlobalRefs =
@@ -172,7 +172,7 @@ final class Emitter(config: Emitter.Config) {
   }
 
   private def emitOnce(moduleSet: ModuleSet,
-      logger: Logger): WithGlobals[Map[ModuleID, js.Tree]] = {
+      logger: Logger): WithGlobals[Map[ModuleID, List[js.Tree]]] = {
     // Genreate classes first so we can measure time separately.
     val generatedClasses = logger.time("Emitter: Generate Classes") {
       moduleSet.modules.map { module =>
@@ -217,7 +217,7 @@ final class Emitter(config: Emitter.Config) {
          * requires consistency between the Analyzer and the Emitter. As such,
          * it is crucial that we verify it.
          */
-        val defTrees = js.Block(
+        val defTreesIterator: Iterator[js.Tree] = (
             /* The definitions of the CoreJSLib that come before the definition
              * of `j.l.Object`. They depend on nothing else.
              */
@@ -267,19 +267,29 @@ final class Emitter(config: Emitter.Config) {
               extractWithGlobals(classEmitter.genModuleInitializer(initializer)(
                   moduleContext, uncachedKnowledge))
             }
-        )(Position.NoPosition)
+        )
 
-        assert(!defTrees.isInstanceOf[js.Skip], {
+        /* Flatten all the top-level js.Block's, because we temporarily use
+         * them to gather several top-level trees under a single `js.Tree`.
+         * TODO We should improve this in the future.
+         */
+        val defTrees: List[js.Tree] = defTreesIterator.flatMap {
+          case js.Block(stats) => stats
+          case js.Skip()       => Nil
+          case stat            => stat :: Nil
+        }.toList
+
+        assert(!defTrees.isEmpty, {
             val classNames = module.classDefs.map(_.fullName).mkString(", ")
             s"Module ${module.id} is empty. Classes in this module: $classNames"
         })
 
-        val allTrees = js.Block(
-            /* Module imports, which depend on nothing.
-             * All classes potentially depend on them.
-             */
-            extractWithGlobals(genModuleImports(module)) :+ defTrees
-        )(Position.NoPosition)
+        /* Module imports, which depend on nothing.
+         * All classes potentially depend on them.
+         */
+        val moduleImports = extractWithGlobals(genModuleImports(module))
+
+        val allTrees = moduleImports ::: defTrees
 
         classIter.foreach { genClass =>
           trackedGlobalRefs = unionPreserveEmpty(trackedGlobalRefs, genClass.trackedGlobalRefs)
@@ -503,14 +513,21 @@ final class Emitter(config: Emitter.Config) {
             classEmitter.genExportedMember(linkedClass, useESClass, member)(moduleContext, memberCache))
       }
 
-      val fullClass = for {
-        ctor <- ctorWithGlobals
-        memberMethods <- WithGlobals.list(memberMethodsWithGlobals)
-        exportedMembers <- WithGlobals.list(exportedMembersWithGlobals)
-        clazz <- classEmitter.buildClass(linkedClass, useESClass, ctor,
-            memberMethods, exportedMembers)(moduleContext, classCache)
-      } yield {
-        clazz
+      val fullClass = {
+        val fullClassCache = classCache.getFullClassCache()
+
+        fullClassCache.getOrElseUpdate(useESClass, ctorWithGlobals,
+            memberMethodsWithGlobals, exportedMembersWithGlobals, {
+          for {
+            ctor <- ctorWithGlobals
+            memberMethods <- WithGlobals.list(memberMethodsWithGlobals)
+            exportedMembers <- WithGlobals.list(exportedMembersWithGlobals)
+            clazz <- classEmitter.buildClass(linkedClass, useESClass, ctor,
+                memberMethods, exportedMembers)(moduleContext, fullClassCache)
+          } yield {
+            clazz
+          }
+        })
       }
 
       addToMain(fullClass)
@@ -593,6 +610,8 @@ final class Emitter(config: Emitter.Config) {
     private[this] val _exportedMembersCache =
       mutable.Map.empty[Int, MethodCache[js.Tree]]
 
+    private[this] var _fullClassCache: Option[FullClassCache] = None
+
     override def invalidate(): Unit = {
       /* Do not invalidate contained methods, as they have their own
        * invalidation logic.
@@ -607,6 +626,7 @@ final class Emitter(config: Emitter.Config) {
       _methodCaches.foreach(_.valuesIterator.foreach(_.startRun()))
       _memberMethodCache.valuesIterator.foreach(_.startRun())
       _constructorCache.foreach(_.startRun())
+      _fullClassCache.foreach(_.startRun())
     }
 
     def getCache(version: Version): DesugaredClassCache = {
@@ -644,6 +664,14 @@ final class Emitter(config: Emitter.Config) {
     def getExportedMemberCache(idx: Int): MethodCache[js.Tree] =
       _exportedMembersCache.getOrElseUpdate(idx, new MethodCache)
 
+    def getFullClassCache(): FullClassCache = {
+      _fullClassCache.getOrElse {
+        val cache = new FullClassCache
+        _fullClassCache = Some(cache)
+        cache
+      }
+    }
+
     def cleanAfterRun(): Boolean = {
       _methodCaches.foreach(_.filterInPlace((_, c) => c.cleanAfterRun()))
       _memberMethodCache.filterInPlace((_, c) => c.cleanAfterRun())
@@ -652,6 +680,9 @@ final class Emitter(config: Emitter.Config) {
         _constructorCache = None
 
       _exportedMembersCache.filterInPlace((_, c) => c.cleanAfterRun())
+
+      if (_fullClassCache.exists(!_.cleanAfterRun()))
+        _fullClassCache = None
 
       if (!_cacheUsed)
         invalidate()
@@ -695,6 +726,57 @@ final class Emitter(config: Emitter.Config) {
     }
   }
 
+  private class FullClassCache extends knowledgeGuardian.KnowledgeAccessor {
+    private[this] var _tree: WithGlobals[js.Tree] = null
+    private[this] var _lastUseESClass: Boolean = false
+    private[this] var _lastCtor: WithGlobals[js.Tree] = null
+    private[this] var _lastMemberMethods: List[WithGlobals[js.MethodDef]] = null
+    private[this] var _lastExportedMembers: List[WithGlobals[js.Tree]] = null
+    private[this] var _cacheUsed = false
+
+    override def invalidate(): Unit = {
+      super.invalidate()
+      _tree = null
+      _lastCtor = null
+      _lastMemberMethods = null
+      _lastExportedMembers = null
+    }
+
+    def startRun(): Unit = _cacheUsed = false
+
+    def getOrElseUpdate(useESClass: Boolean, ctor: WithGlobals[js.Tree],
+        memberMethods: List[WithGlobals[js.MethodDef]], exportedMembers: List[WithGlobals[js.Tree]],
+        compute: => WithGlobals[js.Tree]): WithGlobals[js.Tree] = {
+
+      @tailrec
+      def allSame[A <: AnyRef](xs: List[A], ys: List[A]): Boolean = {
+        xs.isEmpty == ys.isEmpty && {
+          xs.isEmpty ||
+          ((xs.head eq ys.head) && allSame(xs.tail, ys.tail))
+        }
+      }
+
+      if (_tree == null || (_lastCtor ne ctor) || !allSame(_lastMemberMethods, memberMethods) ||
+          !allSame(_lastExportedMembers, exportedMembers)) {
+        invalidate()
+        _tree = compute
+        _lastCtor = ctor
+        _lastMemberMethods = memberMethods
+        _lastExportedMembers = exportedMembers
+      }
+
+      _cacheUsed = true
+      _tree
+    }
+
+    def cleanAfterRun(): Boolean = {
+      if (!_cacheUsed)
+        invalidate()
+
+      _cacheUsed
+    }
+  }
+
   private class CoreJSLibCache extends knowledgeGuardian.KnowledgeAccessor {
     private[this] var _lastModuleContext: ModuleContext = _
     private[this] var _lib: WithGlobals[CoreJSLib.Lib] = _
@@ -718,7 +800,7 @@ object Emitter {
   /** Result of an emitter run. */
   final class Result private[Emitter](
       val header: String,
-      val body: Map[ModuleID, js.Tree],
+      val body: Map[ModuleID, List[js.Tree]],
       val footer: String,
       val topLevelVarDecls: List[String],
       val globalRefs: Set[String]

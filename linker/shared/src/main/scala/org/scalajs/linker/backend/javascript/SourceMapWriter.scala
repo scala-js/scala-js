@@ -18,14 +18,14 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.{util => ju}
 
-import scala.collection.mutable.{ ListBuffer, HashMap, Stack, StringBuilder }
+import scala.collection.mutable.{ ArrayBuffer, ListBuffer, HashMap, Stack, StringBuilder }
 
 import org.scalajs.ir
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.Position
 import org.scalajs.ir.Position._
 
-private object SourceMapWriter {
+object SourceMapWriter {
   private val Base64Map =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
       "abcdefghijklmnopqrstuvwxyz" +
@@ -73,10 +73,143 @@ private object SourceMapWriter {
       nameStack = ju.Arrays.copyOf(nameStack, newSize)
     }
   }
+
+  private sealed abstract class FragmentElement
+
+  private object FragmentElement {
+    case object NewLine extends FragmentElement
+
+    // name is nullable
+    final case class Segment(columnInGenerated: Int, pos: Position, name: String)
+        extends FragmentElement
+  }
+
+  final class Fragment private[SourceMapWriter] (
+      private[SourceMapWriter] val elements: Array[FragmentElement])
+
+  object Fragment {
+    val Empty: Fragment = new Fragment(new Array(0))
+  }
+
+  sealed abstract class Builder {
+    // Strings are nullable in this stack
+    private val nodePosStack = new SourceMapWriter.NodePosStack
+    nodePosStack.push(NoPosition, null)
+
+    private var pendingColumnInGenerated: Int = -1
+    private var pendingPos: Position = NoPosition
+    private var pendingIsIdent: Boolean = false
+    // pendingName string is nullable
+    private var pendingName: String = null
+
+    final def nextLine(): Unit = {
+      writePendingSegment()
+      doWriteNewLine()
+      pendingColumnInGenerated = -1
+      pendingPos = nodePosStack.topPos
+      pendingName = nodePosStack.topName
+    }
+
+    final def startNode(column: Int, originalPos: Position): Unit = {
+      nodePosStack.push(originalPos, null)
+      startSegment(column, originalPos, isIdent = false, null)
+    }
+
+    final def startIdentNode(column: Int, originalPos: Position,
+        optOriginalName: OriginalName): Unit = {
+      // TODO The then branch allocates a String; we should avoid that at some point
+      val originalName =
+        if (optOriginalName.isDefined) optOriginalName.get.toString()
+        else null
+      nodePosStack.push(originalPos, originalName)
+      startSegment(column, originalPos, isIdent = true, originalName)
+    }
+
+    final def endNode(column: Int): Unit = {
+      nodePosStack.pop()
+      startSegment(column, nodePosStack.topPos, isIdent = false,
+          nodePosStack.topName)
+    }
+
+    final def insertFragment(fragment: Fragment): Unit = {
+      require(pendingColumnInGenerated < 0, s"Cannot add fragment when in the middle of a line")
+
+      val elements = fragment.elements
+      val len = elements.length
+      var i = 0
+      while (i != len) {
+        elements(i) match {
+          case FragmentElement.Segment(columnInGenerated, pos, name) =>
+            doWriteSegment(columnInGenerated, pos, name)
+          case FragmentElement.NewLine =>
+            doWriteNewLine()
+        }
+        i += 1
+      }
+    }
+
+    final def complete(): Unit = {
+      writePendingSegment()
+      doComplete()
+    }
+
+    private def startSegment(startColumn: Int, originalPos: Position,
+        isIdent: Boolean, originalName: String): Unit = {
+      // scalastyle:off return
+
+      // There is no point in outputting a segment with the same information
+      if ((originalPos == pendingPos) && (isIdent == pendingIsIdent) &&
+          (originalName == pendingName)) {
+        return
+      }
+
+      // Write pending segment if it covers a non-empty range
+      if (startColumn != pendingColumnInGenerated)
+        writePendingSegment()
+
+      // New pending
+      pendingColumnInGenerated = startColumn
+      pendingPos = originalPos
+      pendingIsIdent = isIdent
+      pendingName = originalName
+
+      // scalastyle:on return
+    }
+
+    private def writePendingSegment(): Unit = {
+      if (pendingColumnInGenerated >= 0)
+        doWriteSegment(pendingColumnInGenerated, pendingPos, pendingName)
+    }
+
+    protected def doWriteNewLine(): Unit
+
+    protected def doWriteSegment(columnInGenerated: Int, pos: Position, name: String): Unit
+
+    protected def doComplete(): Unit
+  }
+
+  final class FragmentBuilder extends Builder {
+    private val elements = new ArrayBuffer[FragmentElement]
+
+    protected def doWriteNewLine(): Unit =
+      elements += FragmentElement.NewLine
+
+    protected def doWriteSegment(columnInGenerated: Int, pos: Position, name: String): Unit =
+      elements += FragmentElement.Segment(columnInGenerated, pos, name)
+
+    protected def doComplete(): Unit = {
+      if (elements.nonEmpty && elements.last != FragmentElement.NewLine)
+        throw new IllegalStateException("Trying to complete a fragment in the middle of a line")
+    }
+
+    def result(): Fragment =
+      new Fragment(elements.toArray)
+  }
 }
 
 final class SourceMapWriter(out: Writer, jsFileName: String,
-    relativizeBaseURI: Option[URI]) {
+    relativizeBaseURI: Option[URI])
+    extends SourceMapWriter.Builder {
 
   import SourceMapWriter._
 
@@ -86,10 +219,6 @@ final class SourceMapWriter(out: Writer, jsFileName: String,
   private val names = new ListBuffer[String]
   private val _nameToIndex = new HashMap[String, Int]
 
-  // Strings are nullable in this stack
-  private val nodePosStack = new SourceMapWriter.NodePosStack
-  nodePosStack.push(NoPosition, null)
-
   private var lineCountInGenerated = 0
   private var lastColumnInGenerated = 0
   private var firstSegmentOfLine = true
@@ -98,12 +227,6 @@ final class SourceMapWriter(out: Writer, jsFileName: String,
   private var lastLine: Int = 0
   private var lastColumn: Int = 0
   private var lastNameIndex: Int = 0
-
-  private var pendingColumnInGenerated: Int = -1
-  private var pendingPos: Position = NoPosition
-  private var pendingIsIdent: Boolean = false
-  // pendingName string is nullable
-  private var pendingName: String = null
 
   writeHeader()
 
@@ -136,84 +259,32 @@ final class SourceMapWriter(out: Writer, jsFileName: String,
     out.write(",\n\"mappings\": \"")
   }
 
-  def nextLine(): Unit = {
-    writePendingSegment()
+  protected def doWriteNewLine(): Unit = {
     out.write(';')
     lineCountInGenerated += 1
     lastColumnInGenerated = 0
     firstSegmentOfLine = true
-    pendingColumnInGenerated = -1
-    pendingPos = nodePosStack.topPos
-    pendingName = nodePosStack.topName
   }
 
-  def startNode(column: Int, originalPos: Position): Unit = {
-    nodePosStack.push(originalPos, null)
-    startSegment(column, originalPos, isIdent = false, null)
-  }
-
-  def startIdentNode(column: Int, originalPos: Position,
-      optOriginalName: OriginalName): Unit = {
-    // TODO The then branch allocates a String; we should avoid that at some point
-    val originalName =
-      if (optOriginalName.isDefined) optOriginalName.get.toString()
-      else null
-    nodePosStack.push(originalPos, originalName)
-    startSegment(column, originalPos, isIdent = true, originalName)
-  }
-
-  def endNode(column: Int): Unit = {
-    nodePosStack.pop()
-    startSegment(column, nodePosStack.topPos, isIdent = false,
-        nodePosStack.topName)
-  }
-
-  private def startSegment(startColumn: Int, originalPos: Position,
-      isIdent: Boolean, originalName: String): Unit = {
+  protected def doWriteSegment(columnInGenerated: Int, pos: Position, name: String): Unit = {
     // scalastyle:off return
-
-    // There is no point in outputting a segment with the same information
-    if ((originalPos == pendingPos) && (isIdent == pendingIsIdent) &&
-        (originalName == pendingName)) {
-      return
-    }
-
-    // Write pending segment if it covers a non-empty range
-    if (startColumn != pendingColumnInGenerated)
-      writePendingSegment()
-
-    // New pending
-    pendingColumnInGenerated = startColumn
-    pendingPos = originalPos
-    pendingIsIdent = isIdent
-    pendingName = originalName
-
-    // scalastyle:on return
-  }
-
-  private def writePendingSegment(): Unit = {
-    // scalastyle:off return
-
-    if (pendingColumnInGenerated < 0)
-      return
 
     // Segments of a line are separated by ','
     if (firstSegmentOfLine) firstSegmentOfLine = false
     else out.write(',')
 
     // Generated column field
-    writeBase64VLQ(pendingColumnInGenerated-lastColumnInGenerated)
-    lastColumnInGenerated = pendingColumnInGenerated
+    writeBase64VLQ(columnInGenerated-lastColumnInGenerated)
+    lastColumnInGenerated = columnInGenerated
 
     // If the position is NoPosition, stop here
-    val pendingPos1 = pendingPos
-    if (pendingPos1.isEmpty)
+    if (pos.isEmpty)
       return
 
     // Extract relevant properties of pendingPos
-    val source = pendingPos1.source
-    val line = pendingPos1.line
-    val column = pendingPos1.column
+    val source = pos.source
+    val line = pos.line
+    val column = pos.column
 
     // Source index field
     if (source eq lastSource) { // highly likely
@@ -234,8 +305,8 @@ final class SourceMapWriter(out: Writer, jsFileName: String,
     lastColumn = column
 
     // Name field
-    if (pendingName != null) {
-      val nameIndex = nameToIndex(pendingName)
+    if (name != null) {
+      val nameIndex = nameToIndex(name)
       writeBase64VLQ(nameIndex-lastNameIndex)
       lastNameIndex = nameIndex
     }
@@ -243,9 +314,7 @@ final class SourceMapWriter(out: Writer, jsFileName: String,
     // scalastyle:on return
   }
 
-  def complete(): Unit = {
-    writePendingSegment()
-
+  protected def doComplete(): Unit = {
     var restSources = sources.result()
     out.write("\",\n\"sources\": [")
     while (restSources.nonEmpty) {

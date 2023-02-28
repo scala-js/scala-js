@@ -30,10 +30,10 @@ import java.lang.{Double => JDouble}
 import java.net.URI
 
 private[closure] object ClosureAstTransformer {
-  def transformScript(tree: Tree, featureSet: FeatureSet,
+  def transformScript(topLevelTrees: List[Tree], featureSet: FeatureSet,
       relativizeBaseURI: Option[URI]): Node = {
     val transformer = new ClosureAstTransformer(featureSet, relativizeBaseURI)
-    transformer.transformScript(tree)
+    transformer.transformScript(topLevelTrees)
   }
 }
 
@@ -41,27 +41,10 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
     relativizeBaseURI: Option[URI]) {
   private val dummySourceName = new java.net.URI("virtualfile:scala.js-ir")
 
-  def transformScript(tree: Tree): Node = {
-    /* Top-level `js.Block`s must be explicitly flattened here.
-     * Our `js.Block`s do not have the same semantics as GCC's `BLOCK`s: GCC's
-     * impose strict scoping for `let`s, `const`s and `class`es, while ours are
-     * only a means of putting together several statements in one `js.Tree`
-     * (in fact, they automatically flatten themselves out upon construction).
-     */
+  def transformScript(topLevelTrees: List[Tree]): Node = {
     val script = setNodePosition(new Node(Token.SCRIPT), NoPosition)
-
-    tree match {
-      case Block(stats) =>
-        transformBlockStats(stats)(NoPosition).foreach(script.addChildToBack(_))
-
-      case Skip() =>
-
-      case tree =>
-        script.addChildToBack(transformStat(tree)(NoPosition))
-    }
-
+    transformBlockStats(topLevelTrees)(NoPosition).foreach(script.addChildToBack(_))
     script.putProp(Node.FEATURE_SET, featureSet)
-
     script
   }
 
