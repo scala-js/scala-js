@@ -14,10 +14,6 @@ package org.scalajs.ir
 
 private[ir] object Utils {
 
-  /* !!! BEGIN CODE VERY SIMILAR TO linker/.../javascript/Utils.scala and
-   * js-envs/.../JSUtils.scala
-   */
-
   private final val EscapeJSChars = "\\b\\t\\n\\v\\f\\r\\\"\\\\"
 
   private[ir] def printEscapeJS(str: String, out: java.io.Writer): Unit = {
@@ -63,10 +59,6 @@ private[ir] object Utils {
       }
     }
   }
-
-  /* !!! END CODE VERY SIMILAR TO linker/.../javascript/Utils.scala and
-   * js-envs/.../JSUtils.scala
-   */
 
   /** A ByteArrayOutput stream that allows to jump back to a given
    *  position and complete some bytes. Methods must be called in the
