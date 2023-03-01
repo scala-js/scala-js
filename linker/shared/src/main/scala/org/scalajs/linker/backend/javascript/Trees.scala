@@ -14,6 +14,8 @@ package org.scalajs.linker.backend.javascript
 
 import scala.annotation.switch
 
+import java.nio.charset.StandardCharsets
+
 import org.scalajs.ir
 import org.scalajs.ir.{OriginalName, Position}
 import org.scalajs.ir.OriginalName.NoOriginalName
@@ -30,10 +32,10 @@ object Trees {
     val pos: Position
 
     def show: String = {
-      val writer = new java.io.StringWriter
+      val writer = new ByteArrayWriter()
       val printer = new Printers.JSTreePrinter(writer)
       printer.printTree(this, isStat = true)
-      writer.toString()
+      new String(writer.toByteArray(), StandardCharsets.US_ASCII)
     }
   }
 

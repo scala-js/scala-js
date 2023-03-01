@@ -15,6 +15,7 @@ package org.scalajs.linker.backend.closure
 import scala.concurrent._
 
 import java.io.Writer
+import java.nio.charset.StandardCharsets
 import java.util.{Arrays, HashSet}
 
 import com.google.javascript.jscomp.{
@@ -30,7 +31,7 @@ import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable.OutputPatternsImpl
 import org.scalajs.linker.backend._
 import org.scalajs.linker.backend.emitter.Emitter
-import org.scalajs.linker.backend.javascript.{Trees => js}
+import org.scalajs.linker.backend.javascript.{ByteArrayWriter, Trees => js}
 import org.scalajs.linker.standard._
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
@@ -207,21 +208,27 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
         writer.write(footer)
       }
 
-      protected def writeModule(moduleID: ModuleID, jsFileWriter: Writer): Unit = {
-        writeCode(jsFileWriter)
+      protected def writeModule(moduleID: ModuleID, jsFileWriter: ByteArrayWriter): Unit = {
+        val jsFileStrWriter = new java.io.OutputStreamWriter(jsFileWriter, StandardCharsets.UTF_8)
+        writeCode(jsFileStrWriter)
+        jsFileStrWriter.flush()
       }
 
-      protected def writeModule(moduleID: ModuleID, jsFileWriter: Writer,
-          sourceMapWriter: Writer): Unit = {
+      protected def writeModule(moduleID: ModuleID, jsFileWriter: ByteArrayWriter,
+          sourceMapWriter: ByteArrayWriter): Unit = {
         val jsFileURI = OutputPatternsImpl.jsFileURI(config.outputPatterns, moduleID.id)
         val sourceMapURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)
 
-        writeCode(jsFileWriter)
-        jsFileWriter.write("//# sourceMappingURL=" + sourceMapURI + "\n")
+        val jsFileStrWriter = new java.io.OutputStreamWriter(jsFileWriter, StandardCharsets.UTF_8)
+        writeCode(jsFileStrWriter)
+        jsFileStrWriter.write("//# sourceMappingURL=" + sourceMapURI + "\n")
+        jsFileStrWriter.flush()
 
+        val sourceMapStrWriter = new java.io.OutputStreamWriter(sourceMapWriter, StandardCharsets.UTF_8)
         val sourceMap = gccResult.get._2
         sourceMap.setWrapperPrefix(header)
-        sourceMap.appendTo(sourceMapWriter, jsFileURI)
+        sourceMap.appendTo(sourceMapStrWriter, jsFileURI)
+        sourceMapStrWriter.flush()
       }
     }
 

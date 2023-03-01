@@ -17,12 +17,9 @@ import scala.annotation.switch
 // Unimport default print and println to avoid invoking them by mistake
 import scala.Predef.{print => _, println => _, _}
 
-import java.io.Writer
-
 import org.scalajs.ir
 import ir.Position
 import ir.Position.NoPosition
-import ir.Printers.IndentationManager
 
 import Trees._
 
@@ -32,8 +29,37 @@ import Trees._
  * hotspots in this object.
  */
 object Printers {
+  private val ReusableIndentArray = Array.fill(128)(' '.toByte)
 
-  class JSTreePrinter(protected val out: Writer) extends IndentationManager {
+  class JSTreePrinter(protected val out: ByteArrayWriter) {
+    private final val IndentStep = 2
+
+    private var indentMargin = 0
+    private var indentArray = ReusableIndentArray
+
+    private def indent(): Unit = indentMargin += IndentStep
+    private def undent(): Unit = indentMargin -= IndentStep
+
+    protected final def getIndentMargin(): Int = indentMargin
+
+    protected def println(): Unit = {
+      out.write('\n')
+      val indentArray = this.indentArray
+      val indentMargin = this.indentMargin
+      val bigEnoughIndentArray =
+        if (indentMargin <= indentArray.length) indentArray
+        else growIndentArray()
+      out.write(bigEnoughIndentArray, 0, indentMargin)
+    }
+
+    private def growIndentArray(): Array[Byte] = {
+      val oldIndentArray = indentArray
+      val oldLen = oldIndentArray.length
+      val newIndentArray = java.util.Arrays.copyOf(oldIndentArray, oldLen * 2)
+      System.arraycopy(oldIndentArray, 0, newIndentArray, oldLen, oldLen)
+      indentArray = newIndentArray
+      newIndentArray
+    }
 
     def printTopLevelTree(tree: Tree): Unit = {
       tree match {
@@ -700,7 +726,7 @@ object Printers {
     }
 
     protected def printEscapeJS(s: String): Unit =
-      Utils.printEscapeJS(s, out)
+      out.writeASCIIEscapedJSString(s)
 
     protected def print(ident: Ident): Unit =
       printEscapeJS(ident.name)
@@ -718,14 +744,15 @@ object Printers {
     protected def print(exportName: ExportName): Unit =
       printEscapeJS(exportName.name)
 
+    /** Prints an ASCII string -- use for syntax strings, not for user strings. */
     protected def print(s: String): Unit =
-      out.write(s)
+      out.writeASCIIString(s)
 
     protected def print(c: Int): Unit =
       out.write(c)
   }
 
-  class JSTreePrinterWithSourceMap(_out: Writer,
+  class JSTreePrinterWithSourceMap(_out: ByteArrayWriter,
       sourceMap: SourceMapWriter.Builder) extends JSTreePrinter(_out) {
 
     private var column = 0
@@ -742,7 +769,7 @@ object Printers {
     }
 
     override protected def printEscapeJS(s: String): Unit =
-      column += Utils.printEscapeJS(s, out)
+      column += out.writeASCIIEscapedJSString(s)
 
     override protected def print(ident: Ident): Unit = {
       if (ident.pos.isDefined)

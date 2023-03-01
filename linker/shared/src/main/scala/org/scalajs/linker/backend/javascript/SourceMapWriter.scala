@@ -38,12 +38,6 @@ object SourceMapWriter {
   private final val VLQBaseMask = VLQBase - 1
   private final val VLQContinuationBit = VLQBase
 
-  private def printJSONString(s: String, out: Writer) = {
-    out.write('\"')
-    Utils.printEscapeJS(s, out)
-    out.write('\"')
-  }
-
   private final class NodePosStack {
     private var topIndex: Int = -1
     private var posStack: Array[Position] = new Array(128)
@@ -207,7 +201,7 @@ object SourceMapWriter {
   }
 }
 
-final class SourceMapWriter(out: Writer, jsFileName: String,
+final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
     relativizeBaseURI: Option[URI])
     extends SourceMapWriter.Builder {
 
@@ -252,11 +246,17 @@ final class SourceMapWriter(out: Writer, jsFileName: String,
     }
   }
 
+  private def writeJSONString(s: String): Unit = {
+    out.write('\"')
+    out.writeASCIIEscapedJSString(s)
+    out.write('\"')
+  }
+
   private def writeHeader(): Unit = {
-    out.write("{\n\"version\": 3")
-    out.write(",\n\"file\": ")
-    printJSONString(jsFileName, out)
-    out.write(",\n\"mappings\": \"")
+    out.writeASCIIString("{\n\"version\": 3")
+    out.writeASCIIString(",\n\"file\": ")
+    writeJSONString(jsFileName)
+    out.writeASCIIString(",\n\"mappings\": \"")
   }
 
   protected def doWriteNewLine(): Unit = {
@@ -316,25 +316,25 @@ final class SourceMapWriter(out: Writer, jsFileName: String,
 
   protected def doComplete(): Unit = {
     var restSources = sources.result()
-    out.write("\",\n\"sources\": [")
+    out.writeASCIIString("\",\n\"sources\": [")
     while (restSources.nonEmpty) {
-      printJSONString(restSources.head, out)
+      writeJSONString(restSources.head)
       restSources = restSources.tail
       if (restSources.nonEmpty)
-        out.write(", ")
+        out.writeASCIIString(", ")
     }
 
     var restNames = names.result()
-    out.write("],\n\"names\": [")
+    out.writeASCIIString("],\n\"names\": [")
     while (restNames.nonEmpty) {
-      printJSONString(restNames.head, out)
+      writeJSONString(restNames.head)
       restNames = restNames.tail
       if (restNames.nonEmpty)
-        out.write(", ")
+        out.writeASCIIString(", ")
     }
-    out.write("],\n\"lineCount\": ")
-    out.write(lineCountInGenerated.toString)
-    out.write("\n}\n")
+    out.writeASCIIString("],\n\"lineCount\": ")
+    out.writeASCIIString(lineCountInGenerated.toString)
+    out.writeASCIIString("\n}\n")
   }
 
   /** Write the Base 64 VLQ of an integer to the mappings
