@@ -210,6 +210,16 @@ final class Emitter(config: Emitter.Config) {
               moduleContext, uncachedKnowledge)
         }
 
+        val moduleInitializers = extractWithGlobals {
+          val initializers = module.initializers.toList
+          moduleCache.getOrComputeInitializers(initializers) {
+            WithGlobals.list(initializers.map { initializer =>
+              classEmitter.genModuleInitializer(initializer)(
+                  moduleContext, moduleCache)
+            })
+          }
+        }
+
         val coreJSLib =
           if (module.isRoot) Some(extractWithGlobals(state.coreJSLibCache.build(moduleContext)))
           else None
@@ -270,13 +280,10 @@ final class Emitter(config: Emitter.Config) {
              * causing JS static initializers to run. Those also must not observe
              * a non-initialized state of other static fields.
              */
-            topLevelExports ++
+            topLevelExports.iterator ++
 
             /* Module initializers, which by spec run at the end. */
-            module.initializers.iterator.map { initializer =>
-              extractWithGlobals(classEmitter.genModuleInitializer(initializer)(
-                  moduleContext, uncachedKnowledge))
-            }
+            moduleInitializers.iterator
         )
 
         /* Flatten all the top-level js.Block's, because we temporarily use
@@ -607,12 +614,29 @@ final class Emitter(config: Emitter.Config) {
 
   // Caching
 
-  private final class ModuleCache {
+  private final class ModuleCache extends knowledgeGuardian.KnowledgeAccessor {
     private[this] var _cacheUsed: Boolean = false
 
     private[this] var _importsCache: WithGlobals[List[js.Tree]] = WithGlobals.nil
     private[this] var _lastExternalDependencies: Set[String] = Set.empty
     private[this] var _lastInternalDependencies: Set[ModuleID] = Set.empty
+
+    private[this] var _initializersCache: WithGlobals[List[js.Tree]] = WithGlobals.nil
+    private[this] var _lastInitializers: List[ModuleInitializer.Initializer] = Nil
+
+    override def invalidate(): Unit = {
+      super.invalidate()
+
+      /* In order to keep reasoning as local as possible, we also invalidate
+       * the imports cache, although imports do not use any global knowledge.
+       */
+      _importsCache = WithGlobals.nil
+      _lastExternalDependencies = Set.empty
+      _lastInternalDependencies = Set.empty
+
+      _initializersCache = WithGlobals.nil
+      _lastInitializers = Nil
+    }
 
     def getOrComputeImports(externalDependencies: Set[String], internalDependencies: Set[ModuleID])(
         compute: => WithGlobals[List[js.Tree]]): WithGlobals[List[js.Tree]] = {
@@ -625,6 +649,18 @@ final class Emitter(config: Emitter.Config) {
         _lastInternalDependencies = internalDependencies
       }
       _importsCache
+    }
+
+    def getOrComputeInitializers(initializers: List[ModuleInitializer.Initializer])(
+        compute: => WithGlobals[List[js.Tree]]): WithGlobals[List[js.Tree]] = {
+
+      _cacheUsed = true
+
+      if (initializers != _lastInitializers) {
+        _initializersCache = compute
+        _lastInitializers = initializers
+      }
+      _initializersCache
     }
 
     def cleanAfterRun(): Boolean = {

@@ -40,7 +40,7 @@ class BasicLinkerBackendTest {
    *  does not invalidate any top-level tree in the second run.
    */
   @Test
-  def linkNoSecondAttemptInEmitter(): AsyncResult = await {
+  def noInvalidatedTopLevelTreeInSecondRun(): AsyncResult = await {
     val classDefs = List(
       mainTestClassDef(systemOutPrintln(str("Hello world!")))
     )
@@ -76,10 +76,7 @@ class BasicLinkerBackendTest {
 
       assertEquals("First run must invalidate every top-level tree", total1, recomputed1)
       assertEquals("Second run must have the same total as first run", total1, total2)
-
-      assertEquals(
-          "Second run must not invalidate any top-level tree beside the module initializer",
-          1, recomputed2)
+      assertEquals("Second run must not invalidate any top-level tree", 0, recomputed2)
     }
   }
 }
