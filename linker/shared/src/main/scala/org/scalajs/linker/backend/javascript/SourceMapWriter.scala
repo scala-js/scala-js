@@ -26,10 +26,13 @@ import org.scalajs.ir.Position
 import org.scalajs.ir.Position._
 
 object SourceMapWriter {
-  private val Base64Map =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
-      "abcdefghijklmnopqrstuvwxyz" +
-      "0123456789+/"
+  private val Base64Map: Array[Byte] = {
+    (
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+        "abcdefghijklmnopqrstuvwxyz" +
+        "0123456789+/"
+    ).toArray.map(_.toByte)
+  }
 
   // Some constants for writeBase64VLQ
   // Each base-64 digit covers 6 bits, but 1 is used for the continuation
@@ -380,7 +383,7 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
           value = value >>> VLQBaseShift
           if (value != 0)
             digit |= VLQContinuationBit
-          out.write(Base64Map.charAt(digit))
+          out.write(Base64Map(digit))
         } while (value != 0)
       }
       writeBase64VLQSlowPath(value)
