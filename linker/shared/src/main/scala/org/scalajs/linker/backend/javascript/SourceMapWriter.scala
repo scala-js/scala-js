@@ -207,7 +207,7 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
 
   import SourceMapWriter._
 
-  private val sources = new ListBuffer[String]
+  private val sources = new ListBuffer[SourceFile]
   private val _srcToIndex = new HashMap[SourceFile, Int]
 
   private val names = new ListBuffer[String]
@@ -230,7 +230,7 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
     } else {
       val index = sources.size
       _srcToIndex.put(source, index)
-      sources += SourceFileUtil.webURI(relativizeBaseURI, source)
+      sources += source
       index
     }
   }
@@ -315,10 +315,11 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
   }
 
   protected def doComplete(): Unit = {
+    val relativizeBaseURI = this.relativizeBaseURI // local copy
     var restSources = sources.result()
     out.writeASCIIString("\",\n\"sources\": [")
     while (restSources.nonEmpty) {
-      writeJSONString(restSources.head)
+      writeJSONString(SourceFileUtil.webURI(relativizeBaseURI, restSources.head))
       restSources = restSources.tail
       if (restSources.nonEmpty)
         out.writeASCIIString(", ")
