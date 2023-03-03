@@ -16,14 +16,15 @@ import java.io.OutputStream
 import java.nio.ByteBuffer
 
 /** Like a `java.io.ByteArrayOutputStream` but with more control. */
-private[backend] final class ByteArrayWriter extends OutputStream {
-  private var buffer: Array[Byte] = new Array[Byte](1024)
+private[backend] final class ByteArrayWriter(originalCapacity: Int) extends OutputStream {
+  private var buffer: Array[Byte] =
+    new Array[Byte](powerOfTwoAtLeast(Math.max(originalCapacity, 1024)))
+
   private var size: Int = 0
 
-  def currentSize: Int = size
+  def this() = this(0)
 
-  def sizeHint(capacity: Int): Unit =
-    ensureCapacity(capacity)
+  def currentSize: Int = size
 
   private def ensureCapacity(capacity: Int): Unit = {
     if (buffer.length < capacity)
