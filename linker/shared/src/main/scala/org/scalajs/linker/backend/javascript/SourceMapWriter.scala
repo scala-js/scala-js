@@ -18,7 +18,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.{util => ju}
 
-import scala.collection.mutable.{ ArrayBuffer, ListBuffer, HashMap, Stack, StringBuilder }
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 import org.scalajs.ir
 import org.scalajs.ir.OriginalName
@@ -211,10 +211,10 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
   import SourceMapWriter._
 
   private val sources = new ListBuffer[SourceFile]
-  private val _srcToIndex = new HashMap[SourceFile, Int]
+  private val _srcToIndex = new ju.HashMap[SourceFile, Integer]
 
   private val names = new ListBuffer[String]
-  private val _nameToIndex = new HashMap[String, Int]
+  private val _nameToIndex = new ju.HashMap[String, Integer]
 
   private var lineCountInGenerated = 0
   private var lastColumnInGenerated = 0
@@ -228,8 +228,9 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
   writeHeader()
 
   private def sourceToIndex(source: SourceFile): Int = {
-    if (_srcToIndex.contains(source)) {
-      _srcToIndex(source)
+    val existing = _srcToIndex.get(source)
+    if (existing != null) {
+      existing.intValue()
     } else {
       val index = sources.size
       _srcToIndex.put(source, index)
@@ -239,8 +240,9 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
   }
 
   private def nameToIndex(name: String): Int = {
-    if (_nameToIndex.contains(name)) {
-      _nameToIndex(name)
+    val existing = _nameToIndex.get(name)
+    if (existing != null) {
+      existing.intValue()
     } else {
       val index = names.size
       _nameToIndex.put(name, index)
