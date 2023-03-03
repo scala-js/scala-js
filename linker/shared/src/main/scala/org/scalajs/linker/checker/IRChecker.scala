@@ -198,15 +198,14 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
   private def typecheck(tree: Tree, env: Env): Unit = {
     implicit val ctx = ErrorContext(tree)
 
-    def checkApplyGeneric(methodName: MethodName, methodFullName: String,
+    def checkApplyGeneric(receiverTypeForError: Any, methodName: MethodName,
         args: List[Tree], tpe: Type, isStatic: Boolean): Unit = {
       val (methodParams, resultType) = inferMethodType(methodName, isStatic)
       for ((actual, formal) <- args zip methodParams) {
         typecheckExpect(actual, env, formal)
       }
       if (tpe != resultType)
-        reportError(i"Call to $methodFullName of type $resultType "+
-            i"typed as ${tree.tpe}")
+        reportError(i"Call to $receiverTypeForError.$methodName of type $resultType typed as ${tree.tpe}")
     }
 
     tree match {
@@ -313,8 +312,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         val clazz = lookupClass(className)
         if (clazz.kind != ClassKind.Class)
           reportError(i"new $className which is not a class")
-        checkApplyGeneric(ctor.name, i"$className.$ctor", args, NoType,
-            isStatic = false)
+        checkApplyGeneric(className, ctor.name, args, NoType, isStatic = false)
 
       case LoadModule(className) =>
         val clazz = lookupClass(className)
@@ -404,8 +402,7 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
             true
         }
         if (fullCheck) {
-          checkApplyGeneric(method, i"${receiver.tpe}.$method", args, tree.tpe,
-              isStatic = false)
+          checkApplyGeneric(receiver.tpe, method, args, tree.tpe, isStatic = false)
         } else {
           for (arg <- args)
             typecheckExpr(arg, env)
@@ -413,24 +410,19 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
 
       case ApplyStatically(_, receiver, className, MethodIdent(method), args) =>
         typecheckExpect(receiver, env, ClassType(className))
-        checkApplyGeneric(method, i"$className.$method", args, tree.tpe,
-            isStatic = false)
+        checkApplyGeneric(className, method, args, tree.tpe, isStatic = false)
 
       case ApplyStatic(_, className, MethodIdent(method), args) =>
-        val clazz = lookupClass(className)
-        checkApplyGeneric(method, i"$className.$method", args, tree.tpe,
-            isStatic = true)
+        checkApplyGeneric(className, method, args, tree.tpe, isStatic = true)
 
       case ApplyDynamicImport(_, className, MethodIdent(method), args) =>
-        val clazz = lookupClass(className)
-        val methodFullName = i"$className.$method"
-
-        checkApplyGeneric(method, methodFullName, args, AnyType, isStatic = true)
+        checkApplyGeneric(className, method, args, AnyType, isStatic = true)
 
         val resultType = method.resultTypeRef
         if (resultType != ClassRef(ObjectClass)) {
-          reportError(i"illegal dynamic import call to $methodFullName with " +
-              i"non-object result type: $resultType")
+          reportError(
+              i"illegal dynamic import call to $className.$method " +
+              i"with non-object result type: $resultType")
         }
 
       case UnaryOp(op, lhs) =>
