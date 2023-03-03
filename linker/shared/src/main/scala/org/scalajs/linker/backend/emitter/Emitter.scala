@@ -205,9 +205,13 @@ final class Emitter(config: Emitter.Config) {
         }
 
         val topLevelExports = extractWithGlobals {
-          // We do not cache top level exports since typically there are few.
-          classEmitter.genTopLevelExports(module.topLevelExports)(
-              moduleContext, uncachedKnowledge)
+          /* We cache top level exports all together, rather than individually,
+           * since typically there are few.
+           */
+          moduleCache.getOrComputeTopLevelExports(module.topLevelExports) {
+            classEmitter.genTopLevelExports(module.topLevelExports)(
+                moduleContext, moduleCache)
+          }
         }
 
         val moduleInitializers = extractWithGlobals {
@@ -621,6 +625,9 @@ final class Emitter(config: Emitter.Config) {
     private[this] var _lastExternalDependencies: Set[String] = Set.empty
     private[this] var _lastInternalDependencies: Set[ModuleID] = Set.empty
 
+    private[this] var _topLevelExportsCache: WithGlobals[List[js.Tree]] = WithGlobals.nil
+    private[this] var _lastTopLevelExports: List[LinkedTopLevelExport] = Nil
+
     private[this] var _initializersCache: WithGlobals[List[js.Tree]] = WithGlobals.nil
     private[this] var _lastInitializers: List[ModuleInitializer.Initializer] = Nil
 
@@ -633,6 +640,9 @@ final class Emitter(config: Emitter.Config) {
       _importsCache = WithGlobals.nil
       _lastExternalDependencies = Set.empty
       _lastInternalDependencies = Set.empty
+
+      _topLevelExportsCache = WithGlobals.nil
+      _lastTopLevelExports = Nil
 
       _initializersCache = WithGlobals.nil
       _lastInitializers = Nil
@@ -649,6 +659,45 @@ final class Emitter(config: Emitter.Config) {
         _lastInternalDependencies = internalDependencies
       }
       _importsCache
+    }
+
+    def getOrComputeTopLevelExports(topLevelExports: List[LinkedTopLevelExport])(
+        compute: => WithGlobals[List[js.Tree]]): WithGlobals[List[js.Tree]] = {
+
+      _cacheUsed = true
+
+      if (!sameTopLevelExports(topLevelExports, _lastTopLevelExports)) {
+        _topLevelExportsCache = compute
+        _lastTopLevelExports = topLevelExports
+      }
+      _topLevelExportsCache
+    }
+
+    private def sameTopLevelExports(tles1: List[LinkedTopLevelExport], tles2: List[LinkedTopLevelExport]): Boolean = {
+      import org.scalajs.ir.Trees._
+
+      /* Because of how/when we use this method, we already know that all the
+       * `tles1` and `tles2` have the same `moduleID` (namely the ID of the
+       * module represented by this `ModuleCache`). Therefore, we do not
+       * compare that field.
+       */
+
+      tles1.corresponds(tles2) { (tle1, tle2) =>
+        tle1.tree.pos == tle2.tree.pos && tle1.owningClass == tle2.owningClass && {
+          (tle1.tree, tle2.tree) match {
+            case (TopLevelJSClassExportDef(_, exportName1), TopLevelJSClassExportDef(_, exportName2)) =>
+              exportName1 == exportName2
+            case (TopLevelModuleExportDef(_, exportName1), TopLevelModuleExportDef(_, exportName2)) =>
+              exportName1 == exportName2
+            case (TopLevelMethodExportDef(_, methodDef1), TopLevelMethodExportDef(_, methodDef2)) =>
+              methodDef1.version.sameVersion(methodDef2.version)
+            case (TopLevelFieldExportDef(_, exportName1, field1), TopLevelFieldExportDef(_, exportName2, field2)) =>
+              exportName1 == exportName2 && field1.name == field2.name && field1.pos == field2.pos
+            case _ =>
+              false
+          }
+        }
+      }
     }
 
     def getOrComputeInitializers(initializers: List[ModuleInitializer.Initializer])(
