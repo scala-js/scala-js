@@ -66,6 +66,8 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
       protected def writeModule(moduleID: ModuleID, jsFileWriter: ByteArrayWriter): Unit = {
         val printedModuleCache = printedModuleSetCache.getModuleCache(moduleID)
 
+        jsFileWriter.sizeHint(sizeHintFor(printedModuleCache.getPreviousFinalJSFileSize()))
+
         jsFileWriter.write(emitterResult.header.getBytes(StandardCharsets.UTF_8))
         jsFileWriter.writeASCIIString("'use strict';\n")
 
@@ -75,11 +77,16 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
         }
 
         jsFileWriter.write(emitterResult.footer.getBytes(StandardCharsets.UTF_8))
+
+        printedModuleCache.recordFinalSizes(jsFileWriter.currentSize, 0)
       }
 
       protected def writeModule(moduleID: ModuleID, jsFileWriter: ByteArrayWriter,
           sourceMapWriter: ByteArrayWriter): Unit = {
         val printedModuleCache = printedModuleSetCache.getModuleCache(moduleID)
+
+        jsFileWriter.sizeHint(sizeHintFor(printedModuleCache.getPreviousFinalJSFileSize()))
+        sourceMapWriter.sizeHint(sizeHintFor(printedModuleCache.getPreviousFinalSourceMapSize()))
 
         val jsFileURI = OutputPatternsImpl.jsFileURI(config.outputPatterns, moduleID.id)
         val sourceMapURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)
@@ -104,7 +111,12 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
         jsFileWriter.write(("//# sourceMappingURL=" + sourceMapURI + "\n").getBytes(StandardCharsets.UTF_8))
 
         smWriter.complete()
+
+        printedModuleCache.recordFinalSizes(jsFileWriter.currentSize, sourceMapWriter.currentSize)
       }
+
+      private def sizeHintFor(previousSize: Int): Int =
+        previousSize + (previousSize / 10)
     }
 
     printedModuleSetCache.startRun()
@@ -170,6 +182,9 @@ private object BasicLinkerBackend {
     private var cacheUsed = false
     private val cache = new java.util.IdentityHashMap[js.Tree, PrintedTree]
 
+    private var previousFinalJSFileSize: Int = 0
+    private var previousFinalSourceMapSize: Int = 0
+
     private var totalTopLevelTrees = 0
     private var recomputedTopLevelTrees = 0
 
@@ -177,6 +192,15 @@ private object BasicLinkerBackend {
       cacheUsed = true
       totalTopLevelTrees = 0
       recomputedTopLevelTrees = 0
+    }
+
+    def getPreviousFinalJSFileSize(): Int = previousFinalJSFileSize
+
+    def getPreviousFinalSourceMapSize(): Int = previousFinalSourceMapSize
+
+    def recordFinalSizes(finalJSFileSize: Int, finalSourceMapSize: Int): Unit = {
+      previousFinalJSFileSize = finalJSFileSize
+      previousFinalSourceMapSize = finalSourceMapSize
     }
 
     def getPrintedTree(tree: js.Tree): PrintedTree = {
