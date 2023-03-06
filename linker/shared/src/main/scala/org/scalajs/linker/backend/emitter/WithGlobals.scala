@@ -91,6 +91,8 @@ private[emitter] object WithGlobals {
   def apply[A](value: A): WithGlobals[A] =
     new WithGlobals(value, Set.empty)
 
+  val nil: WithGlobals[Nil.type] = WithGlobals(Nil)
+
   def list[A](xs: List[WithGlobals[A]]): WithGlobals[List[A]] = {
     /* This could be a cascade of flatMap's, but the following should be more
      * efficient.

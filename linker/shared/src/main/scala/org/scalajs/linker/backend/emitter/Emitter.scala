@@ -55,6 +55,8 @@ final class Emitter(config: Emitter.Config) {
 
     val coreJSLibCache: CoreJSLibCache = new CoreJSLibCache
 
+    val moduleCaches: mutable.Map[ModuleID, ModuleCache] = mutable.Map.empty
+
     val classCaches: mutable.Map[ClassID, ClassCache] = mutable.Map.empty
   }
 
@@ -135,6 +137,7 @@ final class Emitter(config: Emitter.Config) {
           s"invalidated: $statsMethodsInvalidated")
 
       // Inform caches about run completion.
+      state.moduleCaches.filterInPlace((_, c) => c.cleanAfterRun())
       classCaches.filterInPlace((_, c) => c.cleanAfterRun())
     }
   }
@@ -191,13 +194,34 @@ final class Emitter(config: Emitter.Config) {
     val moduleTrees = logger.time("Emitter: Write trees") {
       moduleSet.modules.map { module =>
         val moduleContext = ModuleContext.fromModule(module)
+        val moduleCache = state.moduleCaches.getOrElseUpdate(module.id, new ModuleCache)
 
         val moduleClasses = generatedClasses(module.id)
 
+        val moduleImports = extractWithGlobals {
+          moduleCache.getOrComputeImports(module.externalDependencies, module.internalDependencies) {
+            genModuleImports(module)
+          }
+        }
+
         val topLevelExports = extractWithGlobals {
-          // We do not cache top level exports since typically there are few.
-          classEmitter.genTopLevelExports(module.topLevelExports)(
-              moduleContext, uncachedKnowledge)
+          /* We cache top level exports all together, rather than individually,
+           * since typically there are few.
+           */
+          moduleCache.getOrComputeTopLevelExports(module.topLevelExports) {
+            classEmitter.genTopLevelExports(module.topLevelExports)(
+                moduleContext, moduleCache)
+          }
+        }
+
+        val moduleInitializers = extractWithGlobals {
+          val initializers = module.initializers.toList
+          moduleCache.getOrComputeInitializers(initializers) {
+            WithGlobals.list(initializers.map { initializer =>
+              classEmitter.genModuleInitializer(initializer)(
+                  moduleContext, moduleCache)
+            })
+          }
         }
 
         val coreJSLib =
@@ -260,13 +284,10 @@ final class Emitter(config: Emitter.Config) {
              * causing JS static initializers to run. Those also must not observe
              * a non-initialized state of other static fields.
              */
-            topLevelExports ++
+            topLevelExports.iterator ++
 
             /* Module initializers, which by spec run at the end. */
-            module.initializers.iterator.map { initializer =>
-              extractWithGlobals(classEmitter.genModuleInitializer(initializer)(
-                  moduleContext, uncachedKnowledge))
-            }
+            moduleInitializers.iterator
         )
 
         /* Flatten all the top-level js.Block's, because we temporarily use
@@ -279,16 +300,15 @@ final class Emitter(config: Emitter.Config) {
           case stat            => stat :: Nil
         }.toList
 
+        // Make sure that there is at least one non-import definition.
         assert(!defTrees.isEmpty, {
             val classNames = module.classDefs.map(_.fullName).mkString(", ")
             s"Module ${module.id} is empty. Classes in this module: $classNames"
         })
 
-        /* Module imports, which depend on nothing.
+        /* Add module imports, which depend on nothing, at the front.
          * All classes potentially depend on them.
          */
-        val moduleImports = extractWithGlobals(genModuleImports(module))
-
         val allTrees = moduleImports ::: defTrees
 
         classIter.foreach { genClass =>
@@ -319,7 +339,7 @@ final class Emitter(config: Emitter.Config) {
 
     moduleKind match {
       case ModuleKind.NoModule =>
-        WithGlobals(Nil)
+        WithGlobals.nil
 
       case ModuleKind.ESModule =>
         val imports = importParts.map { case (ident, moduleName) =>
@@ -578,8 +598,12 @@ final class Emitter(config: Emitter.Config) {
 
     // Static initialization
 
-    val staticInitialization =
-      classEmitter.genStaticInitialization(linkedClass)(moduleContext, uncachedKnowledge)
+    val staticInitialization = if (classEmitter.needStaticInitialization(linkedClass)) {
+      classTreeCache.staticInitialization.getOrElseUpdate(
+          classEmitter.genStaticInitialization(linkedClass)(moduleContext, classCache))
+    } else {
+      Nil
+    }
 
     // Build the result
 
@@ -593,6 +617,107 @@ final class Emitter(config: Emitter.Config) {
   }
 
   // Caching
+
+  private final class ModuleCache extends knowledgeGuardian.KnowledgeAccessor {
+    private[this] var _cacheUsed: Boolean = false
+
+    private[this] var _importsCache: WithGlobals[List[js.Tree]] = WithGlobals.nil
+    private[this] var _lastExternalDependencies: Set[String] = Set.empty
+    private[this] var _lastInternalDependencies: Set[ModuleID] = Set.empty
+
+    private[this] var _topLevelExportsCache: WithGlobals[List[js.Tree]] = WithGlobals.nil
+    private[this] var _lastTopLevelExports: List[LinkedTopLevelExport] = Nil
+
+    private[this] var _initializersCache: WithGlobals[List[js.Tree]] = WithGlobals.nil
+    private[this] var _lastInitializers: List[ModuleInitializer.Initializer] = Nil
+
+    override def invalidate(): Unit = {
+      super.invalidate()
+
+      /* In order to keep reasoning as local as possible, we also invalidate
+       * the imports cache, although imports do not use any global knowledge.
+       */
+      _importsCache = WithGlobals.nil
+      _lastExternalDependencies = Set.empty
+      _lastInternalDependencies = Set.empty
+
+      _topLevelExportsCache = WithGlobals.nil
+      _lastTopLevelExports = Nil
+
+      _initializersCache = WithGlobals.nil
+      _lastInitializers = Nil
+    }
+
+    def getOrComputeImports(externalDependencies: Set[String], internalDependencies: Set[ModuleID])(
+        compute: => WithGlobals[List[js.Tree]]): WithGlobals[List[js.Tree]] = {
+
+      _cacheUsed = true
+
+      if (externalDependencies != _lastExternalDependencies || internalDependencies != _lastInternalDependencies) {
+        _importsCache = compute
+        _lastExternalDependencies = externalDependencies
+        _lastInternalDependencies = internalDependencies
+      }
+      _importsCache
+    }
+
+    def getOrComputeTopLevelExports(topLevelExports: List[LinkedTopLevelExport])(
+        compute: => WithGlobals[List[js.Tree]]): WithGlobals[List[js.Tree]] = {
+
+      _cacheUsed = true
+
+      if (!sameTopLevelExports(topLevelExports, _lastTopLevelExports)) {
+        _topLevelExportsCache = compute
+        _lastTopLevelExports = topLevelExports
+      }
+      _topLevelExportsCache
+    }
+
+    private def sameTopLevelExports(tles1: List[LinkedTopLevelExport], tles2: List[LinkedTopLevelExport]): Boolean = {
+      import org.scalajs.ir.Trees._
+
+      /* Because of how/when we use this method, we already know that all the
+       * `tles1` and `tles2` have the same `moduleID` (namely the ID of the
+       * module represented by this `ModuleCache`). Therefore, we do not
+       * compare that field.
+       */
+
+      tles1.corresponds(tles2) { (tle1, tle2) =>
+        tle1.tree.pos == tle2.tree.pos && tle1.owningClass == tle2.owningClass && {
+          (tle1.tree, tle2.tree) match {
+            case (TopLevelJSClassExportDef(_, exportName1), TopLevelJSClassExportDef(_, exportName2)) =>
+              exportName1 == exportName2
+            case (TopLevelModuleExportDef(_, exportName1), TopLevelModuleExportDef(_, exportName2)) =>
+              exportName1 == exportName2
+            case (TopLevelMethodExportDef(_, methodDef1), TopLevelMethodExportDef(_, methodDef2)) =>
+              methodDef1.version.sameVersion(methodDef2.version)
+            case (TopLevelFieldExportDef(_, exportName1, field1), TopLevelFieldExportDef(_, exportName2, field2)) =>
+              exportName1 == exportName2 && field1.name == field2.name && field1.pos == field2.pos
+            case _ =>
+              false
+          }
+        }
+      }
+    }
+
+    def getOrComputeInitializers(initializers: List[ModuleInitializer.Initializer])(
+        compute: => WithGlobals[List[js.Tree]]): WithGlobals[List[js.Tree]] = {
+
+      _cacheUsed = true
+
+      if (initializers != _lastInitializers) {
+        _initializersCache = compute
+        _lastInitializers = initializers
+      }
+      _initializersCache
+    }
+
+    def cleanAfterRun(): Boolean = {
+      val result = _cacheUsed
+      _cacheUsed = false
+      result
+    }
+  }
 
   private final class ClassCache extends knowledgeGuardian.KnowledgeAccessor {
     private[this] var _cache: DesugaredClassCache = null
@@ -877,6 +1002,7 @@ object Emitter {
     val typeData = new OneTimeCache[WithGlobals[js.Tree]]
     val setTypeData = new OneTimeCache[js.Tree]
     val moduleAccessor = new OneTimeCache[WithGlobals[js.Tree]]
+    val staticInitialization = new OneTimeCache[List[js.Tree]]
     val staticFields = new OneTimeCache[WithGlobals[List[js.Tree]]]
   }
 
