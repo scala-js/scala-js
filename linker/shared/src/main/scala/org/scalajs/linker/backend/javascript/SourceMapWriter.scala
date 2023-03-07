@@ -269,17 +269,30 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
   protected def doWriteSegment(columnInGenerated: Int, pos: Position, name: String): Unit = {
     // scalastyle:off return
 
+    /* This method is incredibly performance-sensitive, so we resort to
+     * "unsafe" direct access to the underlying array of `out`.
+     */
+    val MaxSegmentLength = 1 + 5 * 7 // ',' + max 5 base64VLQ of max 7 bytes each
+    val buffer = out.unsafeStartDirectWrite(maxBytes = MaxSegmentLength)
+    var offset = out.currentSize
+
     // Segments of a line are separated by ','
-    if (firstSegmentOfLine) firstSegmentOfLine = false
-    else out.write(',')
+    if (firstSegmentOfLine) {
+      firstSegmentOfLine = false
+    } else {
+      buffer(offset) = ','
+      offset += 1
+    }
 
     // Generated column field
-    writeBase64VLQ(columnInGenerated-lastColumnInGenerated)
+    offset = writeBase64VLQ(buffer, offset, columnInGenerated-lastColumnInGenerated)
     lastColumnInGenerated = columnInGenerated
 
     // If the position is NoPosition, stop here
-    if (pos.isEmpty)
+    if (pos.isEmpty) {
+      out.unsafeEndDirectWrite(offset)
       return
+    }
 
     // Extract relevant properties of pendingPos
     val source = pos.source
@@ -288,28 +301,31 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
 
     // Source index field
     if (source eq lastSource) { // highly likely
-      writeBase64VLQ0()
+      buffer(offset) = 'A' // 0 in Base64VLQ
+      offset += 1
     } else {
       val sourceIndex = sourceToIndex(source)
-      writeBase64VLQ(sourceIndex-lastSourceIndex)
+      offset = writeBase64VLQ(buffer, offset, sourceIndex-lastSourceIndex)
       lastSource = source
       lastSourceIndex = sourceIndex
     }
 
     // Line field
-    writeBase64VLQ(line - lastLine)
+    offset = writeBase64VLQ(buffer, offset, line - lastLine)
     lastLine = line
 
     // Column field
-    writeBase64VLQ(column - lastColumn)
+    offset = writeBase64VLQ(buffer, offset, column - lastColumn)
     lastColumn = column
 
     // Name field
     if (name != null) {
       val nameIndex = nameToIndex(name)
-      writeBase64VLQ(nameIndex-lastNameIndex)
+      offset = writeBase64VLQ(buffer, offset, nameIndex-lastNameIndex)
       lastNameIndex = nameIndex
     }
+
+    out.unsafeEndDirectWrite(offset)
 
     // scalastyle:on return
   }
@@ -344,8 +360,12 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
    *  run of the linker, it takes half of the time of the `BasicLinkerBackend`
    *  and systematically shows up on performance profiles. If you change it,
    *  profile it and measure performance of source map generation.
+   *
+   *  @return
+   *    the offset past the written bytes in the `buffer`, i.e., `offset + x`
+   *    where `x` is the amount of bytes written
    */
-  private def writeBase64VLQ(value0: Int): Unit = {
+  private def writeBase64VLQ(buffer: Array[Byte], offset: Int, value0: Int): Int = {
     /* The sign is encoded in the least significant bit, while the
      * absolute value is shifted one bit to the left.
      * So in theory the "definition" of `value` is:
@@ -410,20 +430,23 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
       Base64UpperMap(v)
 
     // Precondition: 0 <= v < 32, i.e., (v & 31) == v
-    def lastByte(v: Int): Int =
-      v + 'A' + (((25 - v) >> 31) & 6)
+    def lastByte(v: Int): Byte =
+      (v + 'A' + (((25 - v) >> 31) & 6)).toByte
 
     // Write as many base-64 digits as necessary to encode `value`
     if ((value & ~31) == 0) {
       // fast path for value < 32 -- store as a single byte (about 7/8 of the time for the test suite)
-      out.write(lastByte(value))
+      buffer(offset) = lastByte(value)
+      offset + 1
     } else if ((value & ~1023) == 0) {
       // fast path for 32 <= value < 1024 -- store as two bytes (about 1/8 of the time for the test suite)
-      out.write(continuationByte(value & VLQBaseMask))
-      out.write(lastByte(value >>> 5))
+      buffer(offset) = continuationByte(value & VLQBaseMask)
+      buffer(offset + 1) = lastByte(value >>> 5)
+      offset + 2
     } else {
       // slow path for 1024 <= value -- store as 3 bytes or more (a negligible fraction of the time)
-      def writeBase64VLQSlowPath(value0: Int): Unit = {
+      def writeBase64VLQSlowPath(value0: Int): Int = {
+        var offset1 = offset
         var value = value0
         var digit = 0
         while ({
@@ -431,14 +454,13 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
           value = value >>> VLQBaseShift
           value != 0
         }) {
-          out.write(continuationByte(digit))
+          buffer(offset1) = continuationByte(digit)
+          offset1 += 1
         }
-        out.write(lastByte(digit))
+        buffer(offset1) = lastByte(digit)
+        offset1 + 1
       }
       writeBase64VLQSlowPath(value)
     }
   }
-
-  private def writeBase64VLQ0(): Unit =
-    out.write('A')
 }

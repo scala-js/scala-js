@@ -166,6 +166,14 @@ private[backend] final class ByteArrayWriter extends OutputStream {
     offset - oldSize // number of bytes written in total
   }
 
+  def unsafeStartDirectWrite(maxBytes: Int): Array[Byte] = {
+    ensureCapacity(size + maxBytes)
+    buffer
+  }
+
+  def unsafeEndDirectWrite(newSize: Int): Unit =
+    size = newSize
+
   def toByteBuffer(): ByteBuffer =
     ByteBuffer.wrap(buffer, 0, size).asReadOnlyBuffer()
 
