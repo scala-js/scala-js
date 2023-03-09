@@ -12,6 +12,9 @@
 
 package java.util.concurrent.atomic
 
+import java.util.function.LongBinaryOperator
+import java.util.function.LongUnaryOperator
+
 class AtomicLong(private[this] var value: Long) extends Number with Serializable {
   def this() = this(0L)
 
@@ -61,6 +64,30 @@ class AtomicLong(private[this] var value: Long) extends Number with Serializable
     val newValue = value + delta
     value = newValue
     newValue
+  }
+
+  final def getAndUpdate(updateFunction: LongUnaryOperator): Long = {
+    val old = value
+    value = updateFunction.applyAsLong(old)
+    old
+  }
+
+  final def updateAndGet(updateFunction: LongUnaryOperator): Long = {
+    val old = value
+    value = updateFunction.applyAsLong(old)
+    value
+  }
+
+  final def getAndAccumulate(x: Long, accumulatorFunction: LongBinaryOperator): Long = {
+    val old = value
+    value = accumulatorFunction.applyAsLong(old, x)
+    old
+  }
+
+  final def accumulateAndGet(x: Long, accumulatorFunction: LongBinaryOperator): Long = {
+    val old = value
+    value = accumulatorFunction.applyAsLong(old, x)
+    value
   }
 
   override def toString(): String =
