@@ -1,7 +1,7 @@
+const express = require("express");
+const http = require("http");
 const process = require("process");
 const { JSDOM } = require("jsdom");
-const http = require("http");
-const static = require('node-static');
 
 const servingDirectory = process.argv[2];
 const requestPath = process.argv[3];
@@ -60,8 +60,9 @@ function waitComplete(dom) {
 }
 
 function serveDirectory(dir) {
-  const fileServer = new static.Server(dir);
-  const server = http.createServer((req, res) => fileServer.serve(req, res));
+  const app = express();
+  app.use(express.static(dir));
+  const server = http.createServer(app);
 
   return new Promise((res, rej) => {
     server.listen(() => res(server));
