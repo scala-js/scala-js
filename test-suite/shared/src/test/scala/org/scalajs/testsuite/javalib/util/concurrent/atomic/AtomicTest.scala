@@ -107,6 +107,22 @@ class AtomicTest {
     assertFalse(atomic.compareAndSet(thing1bis, thing2))
     assertSame(thing1, atomic.getAndSet(thing2))
     assertSame(thing2, atomic.get())
+
+    atomic.set(thing1)
+    assertSame(thing1, atomic.getAndUpdate(f => Foo(f.i * 2)))
+    assertEquals(thing2, atomic.get())
+
+    atomic.set(thing1)
+    assertEquals(thing2, atomic.updateAndGet(f => Foo(f.i * 2)))
+    assertEquals(thing2, atomic.get())
+
+    atomic.set(thing1)
+    assertSame(thing1, atomic.getAndAccumulate(thing2, (x, y) => Foo(x.i - y.i)))
+    assertEquals(Foo(-5), atomic.get())
+
+    atomic.set(thing1)
+    assertEquals(Foo(-5), atomic.accumulateAndGet(thing2, (x, y) => Foo(x.i - y.i)))
+    assertEquals(Foo(-5), atomic.get())
   }
 
   @Test def atomicReferenceArrayTest(): Unit = {
