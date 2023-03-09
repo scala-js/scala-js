@@ -69,6 +69,22 @@ class AtomicTest {
     assertEquals(10, atomic.get())
     assertTrue(atomic.compareAndSet(10, 20))
     assertEquals(20, atomic.get())
+
+    atomic.set(10)
+    assertEquals(10, atomic.getAndUpdate(_ * 2))
+    assertEquals(20, atomic.get())
+
+    atomic.set(10)
+    assertEquals(20, atomic.updateAndGet(_ * 2))
+    assertEquals(20, atomic.get())
+
+    atomic.set(10)
+    assertEquals(10, atomic.getAndAccumulate(20, (x, y) => x - y))
+    assertEquals(-10, atomic.get())
+
+    atomic.set(10)
+    assertEquals(-10, atomic.accumulateAndGet(20, (x, y) => x - y))
+    assertEquals(-10, atomic.get())
   }
 
   @Test def atomicBooleanTest(): Unit = {
