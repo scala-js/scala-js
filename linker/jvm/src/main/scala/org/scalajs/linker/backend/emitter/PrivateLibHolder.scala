@@ -12,14 +12,17 @@
 
 package org.scalajs.linker.backend.emitter
 
-import java.io._
+import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
 
 import org.scalajs.ir
 
 import org.scalajs.linker.interface.IRFile
-import org.scalajs.linker.standard.MemIRFileImpl
+import org.scalajs.linker.standard.MemClassDefIRFileImpl
 
 object PrivateLibHolder {
+  private val stableVersion = ir.Version.fromInt(0) // never changes
+
   private val sjsirPaths = Seq(
       "org/scalajs/linker/runtime/RuntimeLong.sjsir",
       "org/scalajs/linker/runtime/RuntimeLong$.sjsir",
@@ -30,11 +33,9 @@ object PrivateLibHolder {
   val files: Seq[IRFile] = {
     for (path <- sjsirPaths) yield {
       val name = path.substring(path.lastIndexOf('/') + 1)
-      new MemIRFileImpl(
-          path = path,
-          version = ir.Version.fromInt(0), // never changes
-          content = readResource(name)
-      )
+      val content = readResource(name)
+      val tree = ir.Serializers.deserialize(ByteBuffer.wrap(content))
+      new MemClassDefIRFileImpl(path, stableVersion, tree)
     }
   }
 
