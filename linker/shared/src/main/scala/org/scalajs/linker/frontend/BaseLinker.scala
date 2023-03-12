@@ -36,8 +36,14 @@ import Analysis._
 final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
   import BaseLinker._
 
-  private val irLoader = new IRLoader(checkIR)
+  private val irLoader = new FileIRLoader
   private val methodSynthesizer = new MethodSynthesizer(irLoader)
+  private val infoLoader = {
+    new InfoLoader(irLoader,
+        if (checkIR) InfoLoader.NoIRCheck
+        else InfoLoader.InitialIRCheck
+    )
+  }
 
   def link(irInput: Seq[IRFile],
       moduleInitializers: Seq[ModuleInitializer], logger: Logger,
@@ -45,8 +51,9 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
       implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
     val result = for {
-      _ <- irLoader.update(irInput, logger)
+      _ <- irLoader.update(irInput)
       analysis <- logger.timeFuture("Linker: Compute reachability") {
+        infoLoader.update(logger)
         analyze(moduleInitializers, symbolRequirements, logger)
       }
       linkResult <- logger.timeFuture("Linker: Assemble LinkedClasses") {
@@ -66,7 +73,10 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
       linkResult
     }
 
-    result.andThen { case _ => irLoader.cleanAfterRun() }
+    result.andThen { case _ =>
+      irLoader.cleanAfterRun()
+      infoLoader.cleanAfterRun()
+    }
   }
 
   private def analyze(moduleInitializers: Seq[ModuleInitializer],
@@ -94,7 +104,7 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
     for {
       analysis <- Analyzer.computeReachability(config, moduleInitializers,
           symbolRequirements, allowAddingSyntheticMethods = true,
-          checkAbstractReachability = true, irLoader)
+          checkAbstractReachability = true, infoLoader)
     } yield {
       if (analysis.errors.nonEmpty) {
         reportErrors(analysis.errors)
@@ -107,11 +117,11 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
   private def assemble(moduleInitializers: Seq[ModuleInitializer],
       analysis: Analysis)(implicit ec: ExecutionContext): Future[LinkingUnit] = {
     def assembleClass(info: ClassInfo) = {
-      val classAndVersion = irLoader.loadClassDefAndVersion(info.className)
+      val version = irLoader.irFileVersion(info.className)
       val syntheticMethods = methodSynthesizer.synthesizeMembers(info, analysis)
 
       for {
-        (classDef, version) <- classAndVersion
+        classDef <- irLoader.loadClassDef(info.className)
         syntheticMethods <- syntheticMethods
       } yield {
         BaseLinker.linkClassDef(classDef, version, syntheticMethods, analysis)

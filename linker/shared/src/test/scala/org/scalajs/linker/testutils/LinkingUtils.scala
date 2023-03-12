@@ -20,7 +20,7 @@ import org.scalajs.logging._
 
 import org.scalajs.linker._
 import org.scalajs.linker.analyzer._
-import org.scalajs.linker.frontend.IRLoader
+import org.scalajs.linker.frontend.FileIRLoader
 import org.scalajs.linker.interface._
 import org.scalajs.linker.standard._
 
@@ -100,16 +100,18 @@ object LinkingUtils {
     val classDefIRFiles = classDefs.map(MemClassDefIRFile(_))
     val injectedIRFiles = StandardLinkerBackend(config).injectedIRFiles
 
-    val loader = new IRLoader(checkIR = true)
+    val irLoader = new FileIRLoader
+    val infoLoader = new InfoLoader(irLoader, InfoLoader.InitialIRCheck)
     val logger = new ScalaConsoleLogger(Level.Error)
 
     for {
       baseFiles <- stdlib
-      irLoader <- loader.update(classDefIRFiles ++ baseFiles ++ injectedIRFiles, logger)
+      _ <- irLoader.update(classDefIRFiles ++ baseFiles ++ injectedIRFiles)
+      _ = infoLoader.update(logger)
       analysis <- Analyzer.computeReachability(
           CommonPhaseConfig.fromStandardConfig(config), moduleInitializers,
           symbolRequirements, allowAddingSyntheticMethods = true,
-          checkAbstractReachability = true, irLoader)
+          checkAbstractReachability = true, infoLoader)
     } yield {
       analysis
     }

@@ -42,7 +42,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     symbolRequirements: SymbolRequirement,
     allowAddingSyntheticMethods: Boolean,
     checkAbstractReachability: Boolean,
-    inputProvider: Analyzer.InputProvider,
+    infoLoader: InfoLoader,
     ec: ExecutionContext)
     extends Analysis {
 
@@ -85,7 +85,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     /* Load the java.lang.Object class, and validate it
      * If it is missing or invalid, we're in deep trouble, and cannot continue.
      */
-    inputProvider.loadInfo(ObjectClass)(ec) match {
+    infoLoader.loadInfo(ObjectClass)(ec) match {
       case None =>
         _errors += MissingJavaLangObjectClass(fromAnalyzer)
 
@@ -128,7 +128,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     reachSymbolRequirement(symbolRequirements)
 
     // Reach entry points
-    for (className <- inputProvider.classesWithEntryPoints())
+    for (className <- infoLoader.classesWithEntryPoints())
       lookupClass(className)(_.reachEntryPoints())
 
     // Reach module initializers.
@@ -350,7 +350,7 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     _classInfos(className) = this
 
-    inputProvider.loadInfo(className)(ec) match {
+    infoLoader.loadInfo(className)(ec) match {
       case Some(future) =>
         workQueue.enqueue(future)(link(_, nonExistent = false))
 
@@ -1481,17 +1481,10 @@ object Analyzer {
       symbolRequirements: SymbolRequirement,
       allowAddingSyntheticMethods: Boolean,
       checkAbstractReachability: Boolean,
-      inputProvider: InputProvider)(implicit ec: ExecutionContext): Future[Analysis] = {
+      infoLoader: InfoLoader)(implicit ec: ExecutionContext): Future[Analysis] = {
     val analyzer = new Analyzer(config, moduleInitializers, symbolRequirements,
-        allowAddingSyntheticMethods, checkAbstractReachability, inputProvider, ec)
+        allowAddingSyntheticMethods, checkAbstractReachability, infoLoader, ec)
     analyzer.computeReachability().map(_ => analyzer)
-  }
-
-  trait InputProvider {
-    def classesWithEntryPoints(): Iterable[ClassName]
-
-    def loadInfo(className: ClassName)(
-        implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]]
   }
 
   private class WorkQueue(ec: ExecutionContext) {
