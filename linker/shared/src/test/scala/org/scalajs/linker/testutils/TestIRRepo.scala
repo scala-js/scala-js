@@ -19,6 +19,8 @@ import org.scalajs.linker.StandardImpl
 import org.scalajs.linker.interface.IRFile
 
 object TestIRRepo {
+  private val globalIRCache = StandardImpl.irFileCache()
+
   val minilib: Future[Seq[IRFile]] = load(StdlibHolder.minilib)
   val javalib: Future[Seq[IRFile]] = load(StdlibHolder.javalib)
   val empty: Future[Seq[IRFile]] = Future.successful(Nil)
@@ -26,7 +28,6 @@ object TestIRRepo {
     StdlibHolder.previousLibs.map(x => x._1 -> load(x._2))
 
   private def load(stdlibPath: String) = {
-    val globalIRCache = StandardImpl.irFileCache()
     Platform.loadJar(stdlibPath)
       .flatMap(globalIRCache.newCache.cached _)
   }
