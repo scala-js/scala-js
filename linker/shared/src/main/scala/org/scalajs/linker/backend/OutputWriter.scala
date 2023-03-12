@@ -25,26 +25,26 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
 import org.scalajs.linker.backend.javascript.ByteArrayWriter
 
 private[backend] abstract class OutputWriter(output: OutputDirectory,
-    config: LinkerBackendImpl.Config) {
+    config: LinkerBackendImpl.Config, skipContentCheck: Boolean) {
 
   private val outputImpl = OutputDirectoryImpl.fromOutputDirectory(output)
   private val moduleKind = config.commonConfig.coreSpec.moduleKind
 
-  protected def writeModule(moduleID: ModuleID, jsFileWriter: ByteArrayWriter): Unit
+  protected def writeModuleWithoutSourceMap(moduleID: ModuleID, force: Boolean): Option[ByteBuffer]
 
-  protected def writeModule(moduleID: ModuleID, jsFileWriter: ByteArrayWriter,
-      sourceMapWriter: ByteArrayWriter): Unit
+  protected def writeModuleWithSourceMap(moduleID: ModuleID, force: Boolean): Option[(ByteBuffer, ByteBuffer)]
 
   def write(moduleSet: ModuleSet)(implicit ec: ExecutionContext): Future[Report] = {
     val ioThrottler = new IOThrottler(config.maxConcurrentWrites)
 
-    def filesToRemove(seen: Iterable[String], reports: List[Report.Module]): Set[String] =
-      seen.toSet -- reports.flatMap(r => r.jsFileName :: r.sourceMapName.toList)
+    def filesToRemove(seen: Set[String], reports: List[Report.Module]): Set[String] =
+      seen -- reports.flatMap(r => r.jsFileName :: r.sourceMapName.toList)
 
     for {
-      currentFiles <- outputImpl.listFiles()
+      currentFilesList <- outputImpl.listFiles()
+      currentFiles = currentFilesList.toSet
       reports <- Future.traverse(moduleSet.modules) { m =>
-        ioThrottler.throttle(writeModule(m.id))
+        ioThrottler.throttle(writeModule(m.id, currentFiles))
       }
       _ <- Future.traverse(filesToRemove(currentFiles, reports)) { f =>
         ioThrottler.throttle(outputImpl.delete(f))
@@ -61,38 +61,39 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
     }
   }
 
-  private def writeModule(moduleID: ModuleID)(
+  private def writeModule(moduleID: ModuleID, existingFiles: Set[String])(
       implicit ec: ExecutionContext): Future[Report.Module] = {
     val jsFileName = OutputPatternsImpl.jsFile(config.outputPatterns, moduleID.id)
 
     if (config.sourceMap) {
       val sourceMapFileName = OutputPatternsImpl.sourceMapFile(config.outputPatterns, moduleID.id)
+      val report = new ReportImpl.ModuleImpl(moduleID.id, jsFileName, Some(sourceMapFileName), moduleKind)
+      val force = !existingFiles.contains(jsFileName) || !existingFiles.contains(sourceMapFileName)
 
-      val codeWriter = new ByteArrayWriter
-      val smWriter = new ByteArrayWriter
-
-      writeModule(moduleID, codeWriter, smWriter)
-
-      val code = codeWriter.toByteBuffer()
-      val sourceMap = smWriter.toByteBuffer()
-
-      for {
-        _ <- outputImpl.writeFull(jsFileName, code)
-        _ <- outputImpl.writeFull(sourceMapFileName, sourceMap)
-      } yield {
-        new ReportImpl.ModuleImpl(moduleID.id, jsFileName, Some(sourceMapFileName), moduleKind)
+      writeModuleWithSourceMap(moduleID, force) match {
+        case Some((code, sourceMap)) =>
+          for {
+            _ <- outputImpl.writeFull(jsFileName, code, skipContentCheck)
+            _ <- outputImpl.writeFull(sourceMapFileName, sourceMap, skipContentCheck)
+          } yield {
+            report
+          }
+        case None =>
+          Future.successful(report)
       }
     } else {
-      val codeWriter = new ByteArrayWriter
+      val report = new ReportImpl.ModuleImpl(moduleID.id, jsFileName, None, moduleKind)
+      val force = !existingFiles.contains(jsFileName)
 
-      writeModule(moduleID, codeWriter)
-
-      val code = codeWriter.toByteBuffer()
-
-      for {
-        _ <- outputImpl.writeFull(jsFileName, code)
-      } yield {
-        new ReportImpl.ModuleImpl(moduleID.id, jsFileName, None, moduleKind)
+      writeModuleWithoutSourceMap(moduleID, force) match {
+        case Some(code) =>
+          for {
+            _ <- outputImpl.writeFull(jsFileName, code, skipContentCheck)
+          } yield {
+            report
+          }
+        case None =>
+          Future.successful(report)
       }
     }
   }

@@ -36,47 +36,84 @@ class BasicLinkerBackendTest {
   private val BackendInvalidatedTopLevelTreesStatsMessage =
     raw"""BasicBackend: total top-level trees: (\d+); re-computed: (\d+)""".r
 
+  private val BackendInvalidatedModulesStatsMessage =
+    raw"""BasicBackend: total modules: (\d+); re-written: (\d+)""".r
+
   /** Makes sure that linking a "substantial" program (using `println`) twice
-   *  does not invalidate any top-level tree in the second run.
+   *  does not invalidate any top-level tree nor module in the second run.
    */
   @Test
-  def noInvalidatedTopLevelTreeInSecondRun(): AsyncResult = await {
+  def noInvalidatedTopLevelTreeOrModuleInSecondRun(): AsyncResult = await {
+    import ModuleSplitStyle._
+
     val classDefs = List(
       mainTestClassDef(systemOutPrintln(str("Hello world!")))
     )
 
-    val logger1 = new CapturingLogger
-    val logger2 = new CapturingLogger
+    val results = for (splitStyle <- List(FewestModules, SmallestModules)) yield {
+      val logger1 = new CapturingLogger
+      val logger2 = new CapturingLogger
 
-    val config = StandardConfig().withCheckIR(true)
-    val linker = StandardImpl.linker(config)
-    val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
+      val config = StandardConfig()
+        .withCheckIR(true)
+        .withModuleKind(ModuleKind.ESModule)
+        .withModuleSplitStyle(splitStyle)
 
-    val initializers = MainTestModuleInitializers
-    val outputDir = MemOutputDirectory()
+      val linker = StandardImpl.linker(config)
+      val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
 
-    for {
-      javalib <- TestIRRepo.javalib
-      allIRFiles = javalib ++ classDefsFiles
-      _ <- linker.link(allIRFiles, initializers, outputDir, logger1)
-      _ <- linker.link(allIRFiles, initializers, outputDir, logger2)
-    } yield {
-      val lines1 = logger1.allLogLines
-      val Seq(total1, recomputed1) =
-        lines1.assertContainsMatch(BackendInvalidatedTopLevelTreesStatsMessage).map(_.toInt)
+      val initializers = MainTestModuleInitializers
+      val outputDir = MemOutputDirectory()
 
-      val lines2 = logger2.allLogLines
-      val Seq(total2, recomputed2) =
-        lines2.assertContainsMatch(BackendInvalidatedTopLevelTreesStatsMessage).map(_.toInt)
+      for {
+        javalib <- TestIRRepo.javalib
+        allIRFiles = javalib ++ classDefsFiles
+        _ <- linker.link(allIRFiles, initializers, outputDir, logger1)
+        _ <- linker.link(allIRFiles, initializers, outputDir, logger2)
+      } yield {
+        val lines1 = logger1.allLogLines
+        val lines2 = logger2.allLogLines
 
-      // At the time of writing this test, total1 reports 382 trees
-      assertTrue(
-          s"Not enough total top-level trees (got $total1); extraction must have gone wrong",
-          total1 > 300)
+        // Top-level trees
 
-      assertEquals("First run must invalidate every top-level tree", total1, recomputed1)
-      assertEquals("Second run must have the same total as first run", total1, total2)
-      assertEquals("Second run must not invalidate any top-level tree", 0, recomputed2)
+        val Seq(totalTrees1, recomputedTrees1) =
+          lines1.assertContainsMatch(BackendInvalidatedTopLevelTreesStatsMessage).map(_.toInt)
+
+        val Seq(totalTrees2, recomputedTrees2) =
+          lines2.assertContainsMatch(BackendInvalidatedTopLevelTreesStatsMessage).map(_.toInt)
+
+        // At the time of writing this test, totalTrees1 reports 382 trees
+        assertTrue(
+            s"Not enough total top-level trees (got $totalTrees1); extraction must have gone wrong",
+            totalTrees1 > 300)
+
+        assertEquals("First run must invalidate every top-level tree", totalTrees1, recomputedTrees1)
+        assertEquals("Second run must have the same total top-level trees as first run", totalTrees1, totalTrees2)
+        assertEquals("Second run must not invalidate any top-level tree", 0, recomputedTrees2)
+
+        // Modules
+
+        val Seq(totalModules1, rewrittenModules1) =
+          lines1.assertContainsMatch(BackendInvalidatedModulesStatsMessage).map(_.toInt)
+
+        val Seq(totalModules2, rewrittenModules2) =
+          lines2.assertContainsMatch(BackendInvalidatedModulesStatsMessage).map(_.toInt)
+
+        if (splitStyle == FewestModules) {
+          assertEquals("Expected exactly one module with FewestModules", 1, totalModules1)
+        } else {
+          // At the time of writing this test, totalModules1 reports 9 modules
+          assertTrue(
+              s"Not enough total modules (got $totalModules1); extraction must have gone wrong",
+              totalModules1 > 5)
+        }
+
+        assertEquals("First run must invalidate every module", totalModules1, rewrittenModules1)
+        assertEquals("Second run must have the same total modules as first run", totalModules1, totalModules2)
+        assertEquals("Second run must not invalidate any module", 0, rewrittenModules2)
+      }
     }
+
+    Future.sequence(results)
   }
 }

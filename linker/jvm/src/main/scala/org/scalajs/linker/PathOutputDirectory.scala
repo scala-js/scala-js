@@ -43,6 +43,14 @@ object PathOutputDirectory {
       }
     }
 
+    override def writeFull(name: String, buf: ByteBuffer, skipContentCheck: Boolean)(
+        implicit ec: ExecutionContext): Future[Unit] = {
+      if (skipContentCheck)
+        writeAtomic(name, buf)
+      else
+        writeFull(name, buf)
+    }
+
     def readFull(name: String)(implicit ec: ExecutionContext): Future[ByteBuffer] =
       withChannel(getPath(name), StandardOpenOption.READ)(readFromChannel(_))
 
