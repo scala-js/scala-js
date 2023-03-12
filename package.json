@@ -1,9 +1,9 @@
 {
   "private": true,
   "devDependencies": {
-    "source-map-support": "0.5.19",
-    "jszip": "3.8.0",
+    "express": "4.18.2",
     "jsdom": "16.5.0",
-    "node-static": "0.7.11"
+    "jszip": "3.8.0",
+    "source-map-support": "0.5.19"
   }
 }
