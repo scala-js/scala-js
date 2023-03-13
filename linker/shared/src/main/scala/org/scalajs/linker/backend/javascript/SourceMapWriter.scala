@@ -18,7 +18,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.{util => ju}
 
-import scala.collection.mutable.{ ArrayBuffer, ListBuffer, HashMap, Stack, StringBuilder }
+import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 import org.scalajs.ir
 import org.scalajs.ir.OriginalName
@@ -26,10 +26,8 @@ import org.scalajs.ir.Position
 import org.scalajs.ir.Position._
 
 object SourceMapWriter {
-  private val Base64Map =
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
-      "abcdefghijklmnopqrstuvwxyz" +
-      "0123456789+/"
+  private val Base64UpperMap: Array[Byte] =
+    "ghijklmnopqrstuvwxyz0123456789+/".toArray.map(_.toByte)
 
   // Some constants for writeBase64VLQ
   // Each base-64 digit covers 6 bits, but 1 is used for the continuation
@@ -207,11 +205,11 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
 
   import SourceMapWriter._
 
-  private val sources = new ListBuffer[String]
-  private val _srcToIndex = new HashMap[SourceFile, Int]
+  private val sources = new ListBuffer[SourceFile]
+  private val _srcToIndex = new ju.HashMap[SourceFile, Integer]
 
   private val names = new ListBuffer[String]
-  private val _nameToIndex = new HashMap[String, Int]
+  private val _nameToIndex = new ju.HashMap[String, Integer]
 
   private var lineCountInGenerated = 0
   private var lastColumnInGenerated = 0
@@ -225,19 +223,21 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
   writeHeader()
 
   private def sourceToIndex(source: SourceFile): Int = {
-    if (_srcToIndex.contains(source)) {
-      _srcToIndex(source)
+    val existing = _srcToIndex.get(source)
+    if (existing != null) {
+      existing.intValue()
     } else {
       val index = sources.size
       _srcToIndex.put(source, index)
-      sources += SourceFileUtil.webURI(relativizeBaseURI, source)
+      sources += source
       index
     }
   }
 
   private def nameToIndex(name: String): Int = {
-    if (_nameToIndex.contains(name)) {
-      _nameToIndex(name)
+    val existing = _nameToIndex.get(name)
+    if (existing != null) {
+      existing.intValue()
     } else {
       val index = names.size
       _nameToIndex.put(name, index)
@@ -269,17 +269,30 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
   protected def doWriteSegment(columnInGenerated: Int, pos: Position, name: String): Unit = {
     // scalastyle:off return
 
+    /* This method is incredibly performance-sensitive, so we resort to
+     * "unsafe" direct access to the underlying array of `out`.
+     */
+    val MaxSegmentLength = 1 + 5 * 7 // ',' + max 5 base64VLQ of max 7 bytes each
+    val buffer = out.unsafeStartDirectWrite(maxBytes = MaxSegmentLength)
+    var offset = out.currentSize
+
     // Segments of a line are separated by ','
-    if (firstSegmentOfLine) firstSegmentOfLine = false
-    else out.write(',')
+    if (firstSegmentOfLine) {
+      firstSegmentOfLine = false
+    } else {
+      buffer(offset) = ','
+      offset += 1
+    }
 
     // Generated column field
-    writeBase64VLQ(columnInGenerated-lastColumnInGenerated)
+    offset = writeBase64VLQ(buffer, offset, columnInGenerated-lastColumnInGenerated)
     lastColumnInGenerated = columnInGenerated
 
     // If the position is NoPosition, stop here
-    if (pos.isEmpty)
+    if (pos.isEmpty) {
+      out.unsafeEndDirectWrite(offset)
       return
+    }
 
     // Extract relevant properties of pendingPos
     val source = pos.source
@@ -288,37 +301,41 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
 
     // Source index field
     if (source eq lastSource) { // highly likely
-      writeBase64VLQ0()
+      buffer(offset) = 'A' // 0 in Base64VLQ
+      offset += 1
     } else {
       val sourceIndex = sourceToIndex(source)
-      writeBase64VLQ(sourceIndex-lastSourceIndex)
+      offset = writeBase64VLQ(buffer, offset, sourceIndex-lastSourceIndex)
       lastSource = source
       lastSourceIndex = sourceIndex
     }
 
     // Line field
-    writeBase64VLQ(line - lastLine)
+    offset = writeBase64VLQ(buffer, offset, line - lastLine)
     lastLine = line
 
     // Column field
-    writeBase64VLQ(column - lastColumn)
+    offset = writeBase64VLQ(buffer, offset, column - lastColumn)
     lastColumn = column
 
     // Name field
     if (name != null) {
       val nameIndex = nameToIndex(name)
-      writeBase64VLQ(nameIndex-lastNameIndex)
+      offset = writeBase64VLQ(buffer, offset, nameIndex-lastNameIndex)
       lastNameIndex = nameIndex
     }
+
+    out.unsafeEndDirectWrite(offset)
 
     // scalastyle:on return
   }
 
   protected def doComplete(): Unit = {
+    val relativizeBaseURI = this.relativizeBaseURI // local copy
     var restSources = sources.result()
     out.writeASCIIString("\",\n\"sources\": [")
     while (restSources.nonEmpty) {
-      writeJSONString(restSources.head)
+      writeJSONString(SourceFileUtil.webURI(relativizeBaseURI, restSources.head))
       restSources = restSources.tail
       if (restSources.nonEmpty)
         out.writeASCIIString(", ")
@@ -337,13 +354,18 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
     out.writeASCIIString("\n}\n")
   }
 
-  /** Write the Base 64 VLQ of an integer to the mappings
-   *  Inspired by the implementation in Closure Compiler:
-   *  http://code.google.com/p/closure-compiler/source/browse/src/com/google/debugging/sourcemap/Base64VLQ.java
+  /** Write the Base 64 VLQ of an integer to the mappings.
+   *
+   *  !!! This method is surprisingly performance-sensitive. In an incremental
+   *  run of the linker, it takes half of the time of the `BasicLinkerBackend`
+   *  and systematically shows up on performance profiles. If you change it,
+   *  profile it and measure performance of source map generation.
+   *
+   *  @return
+   *    the offset past the written bytes in the `buffer`, i.e., `offset + x`
+   *    where `x` is the amount of bytes written
    */
-  private def writeBase64VLQ(value0: Int): Unit = {
-    // scalastyle:off return
-
+  private def writeBase64VLQ(buffer: Array[Byte], offset: Int, value0: Int): Int = {
     /* The sign is encoded in the least significant bit, while the
      * absolute value is shifted one bit to the left.
      * So in theory the "definition" of `value` is:
@@ -368,26 +390,77 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
     val signExtended = value0 >> 31
     val value = (((value0 ^ signExtended) - signExtended) << 1) | (signExtended & 1)
 
-    // Write as many base-64 digits as necessary to encode value
-    if (value < 26) {
-      return out.write('A' + value)
+    /* Now that we have a non-negative `value`, we encode it in base64 by
+     * blocks of 5 bits. Each base64 digit stores 6 bits, but the most
+     * significant one is used as a continuation bit (1 to continue, 0 to
+     * indicate the last block). The payload is stored in little endian, with
+     * the least significant blocks first.
+     *
+     * We could use a unique lookup table for the 64 base64 digits. However,
+     * since in every path we either always pick in the lower half (for the
+     * last byte) or the upper half (for continuation bytes), we use two
+     * distinct functions, and omit the implicit `| VLQContinuationBit` in the
+     * upper half.
+     *
+     * The upper half, in `continuationByte`, actually uses a lookup table.
+     *
+     * The lower half, in `lastByte`, uses a branchless, memory access-free
+     * algorithm. The logical way to write it would be
+     *   if (v < 26) v + 'A' else (v - 26) + 'a'
+     * Because 'a' == 'A' + 32, this is equivalent to
+     *   if (v < 26) v + 'A' else v - 26 + 'A' + 32
+     * Factoring out v + 'A' and adding constants, we get
+     *   v + 'A' + (if (v < 26) 0 else 6)
+     * We rewrite the condition as the following branchless algorithm:
+     *   ((25 - v) >> 31) & 6
+     * It is equivalent because:
+     *   * (25 - v) is < 0 iff v >= 26
+     *   * i.e., its sign bit is 1 iff v >= 26
+     *   * (25 - v) >> 31 is all-1's if v >= 26, and all-0's if v < 26
+     *   * ((25 - v) >> 31) & 6 is 6 if v >= 26, and 0 if v < 26
+     * This gives us the algorithm used in `lastByte`:
+     *   v + 'A' + (((25 - v) >> 31) & 6)
+     *
+     * Compared to the lookup table, this seems to exhibit a 5-10% speedup for
+     * the source map generation.
+     */
+
+    // Precondition: 0 <= v < 32, i.e., (v & 31) == v
+    def continuationByte(v: Int): Byte =
+      Base64UpperMap(v)
+
+    // Precondition: 0 <= v < 32, i.e., (v & 31) == v
+    def lastByte(v: Int): Byte =
+      (v + 'A' + (((25 - v) >> 31) & 6)).toByte
+
+    // Write as many base-64 digits as necessary to encode `value`
+    if ((value & ~31) == 0) {
+      // fast path for value < 32 -- store as a single byte (about 7/8 of the time for the test suite)
+      buffer(offset) = lastByte(value)
+      offset + 1
+    } else if ((value & ~1023) == 0) {
+      // fast path for 32 <= value < 1024 -- store as two bytes (about 1/8 of the time for the test suite)
+      buffer(offset) = continuationByte(value & VLQBaseMask)
+      buffer(offset + 1) = lastByte(value >>> 5)
+      offset + 2
     } else {
-      def writeBase64VLQSlowPath(value0: Int): Unit = {
+      // slow path for 1024 <= value -- store as 3 bytes or more (a negligible fraction of the time)
+      def writeBase64VLQSlowPath(value0: Int): Int = {
+        var offset1 = offset
         var value = value0
-        do {
-          var digit = value & VLQBaseMask
+        var digit = 0
+        while ({
+          digit = value & VLQBaseMask
           value = value >>> VLQBaseShift
-          if (value != 0)
-            digit |= VLQContinuationBit
-          out.write(Base64Map.charAt(digit))
-        } while (value != 0)
+          value != 0
+        }) {
+          buffer(offset1) = continuationByte(digit)
+          offset1 += 1
+        }
+        buffer(offset1) = lastByte(digit)
+        offset1 + 1
       }
       writeBase64VLQSlowPath(value)
     }
-
-    // scalastyle:on return
   }
-
-  private def writeBase64VLQ0(): Unit =
-    out.write('A')
 }
