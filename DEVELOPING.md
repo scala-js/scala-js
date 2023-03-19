@@ -170,7 +170,7 @@ To publish your changes locally to be used in a separate project, use the
 following incantations.
 `SCALA_VERSION` refers to the Scala version used by the separate project.
 
-    > ;ir2_12/publishLocal;linkerInterface2_12/publishLocal;linker2_12/publishLocal;testAdapter2_12/publishLocal;sbtPlugin/publishLocal
+    > ;ir2_12/publishLocal;linkerInterface2_12/publishLocal;linker2_12/publishLocal;testAdapter2_12/publishLocal;sbtPlugin/publishLocal;javalib/publishLocal;javalibintf/publishLocal
     > ++SCALA_VERSION
     > ;compiler2_12/publishLocal;library2_12/publishLocal;testInterface2_12/publishLocal;testBridge2_12/publishLocal;jUnitRuntime2_12/publishLocal;jUnitPlugin2_12/publishLocal
 
