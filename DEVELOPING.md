@@ -171,7 +171,7 @@ following incantations.
 `SCALA_VERSION` refers to the Scala version used by the separate project.
 
     > ;ir2_12/publishLocal;linkerInterface2_12/publishLocal;linker2_12/publishLocal;testAdapter2_12/publishLocal;sbtPlugin/publishLocal;javalib/publishLocal;javalibintf/publishLocal
-    > ++SCALA_VERSION
-    > ;compiler2_12/publishLocal;library2_12/publishLocal;testInterface2_12/publishLocal;testBridge2_12/publishLocal;jUnitRuntime2_12/publishLocal;jUnitPlugin2_12/publishLocal
+    > ;library2_12/publishLocal;testInterface2_12/publishLocal;testBridge2_12/publishLocal;jUnitRuntime2_12/publishLocal;jUnitPlugin2_12/publishLocal
+    > ++SCALA_VERSION compiler2_12/publishLocal
 
-If using a non-2.12.x version for the Scala version, the `2_12` suffixes must be adapted in the last command (not in the first command).
+If using a non-2.12.x version for the Scala version, the `2_12` suffixes must be adapted in the second and third command (not in the first command).
