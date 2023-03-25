@@ -12,19 +12,23 @@
 
 package org.scalajs.linker.backend.emitter
 
+import java.nio.ByteBuffer
+import java.util.Base64
+
 import org.scalajs.ir
 
 import org.scalajs.linker.interface.IRFile
-import org.scalajs.linker.standard.MemIRFileImpl
+import org.scalajs.linker.standard.MemClassDefIRFileImpl
 
 object PrivateLibHolder {
+  private val stableVersion = ir.Version.fromInt(0) // never changes
+
   val files: Seq[IRFile] = {
     for ((name, contentBase64) <- PrivateLibData.pathsAndContents) yield {
-      new MemIRFileImpl(
-          path = "org/scalajs/linker/runtime/" + name,
-          version = ir.Version.fromInt(0), // never changes
-          content = java.util.Base64.getDecoder().decode(contentBase64)
-      )
+      val path = "org/scalajs/linker/runtime/" + name
+      val content = Base64.getDecoder().decode(contentBase64)
+      val tree = ir.Serializers.deserialize(ByteBuffer.wrap(content))
+      new MemClassDefIRFileImpl(path, stableVersion, tree)
     }
   }
 }
