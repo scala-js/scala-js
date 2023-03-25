@@ -16,8 +16,10 @@ import scala.collection.mutable
 
 import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Names._
+import org.scalajs.ir.OriginalName
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types.Type
+import org.scalajs.ir.Version
 
 import org.scalajs.linker.interface.ModuleKind
 import org.scalajs.linker.standard._
@@ -310,10 +312,11 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       }
 
       val newFieldDefs = computeFieldDefs(linkedClass)
-      if (newFieldDefs != fieldDefs) {
-        fieldDefs = newFieldDefs
+      if (!newFieldDefs.corresponds(fieldDefs)(anyFieldDefEquals(_, _))) {
         invalidateAskers(fieldDefsAskers)
       }
+      // always store newFieldDefs to get new Tree identities, to speed up future `anyFieldDefEquals`
+      fieldDefs = newFieldDefs
 
       if (newStaticFieldMirrors != staticFieldMirrors) {
         staticFieldMirrors = newStaticFieldMirrors
@@ -323,6 +326,72 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       if (newModule != module) {
         module = newModule
         invalidateAskers(moduleAskers)
+      }
+    }
+
+    private def anyFieldDefEquals(left: AnyFieldDef, right: AnyFieldDef): Boolean = {
+      def fieldIdentEquals(left: FieldIdent, right: FieldIdent): Boolean =
+        left.name == right.name && left.pos == right.pos
+
+      def computeTreeHash(tree: Tree): Version = {
+        /* Since `Hashers` does not really offer a direct way to hash `Tree`s
+         * (it shouldn't), we wrap the tree in a fake `JSPropertyDef` (the tree
+         * we *can* hash and that we can field with the least amount of extra
+         * stuff)).
+         */
+        import org.scalajs.ir.{Hashers, Position}
+        val fakeJSProp = JSPropertyDef(MemberFlags.empty, tree, None, None)(
+            Version.Unversioned)(Position.NoPosition)
+        Hashers.hashJSPropertyDef(fakeJSProp).version
+      }
+
+      def nameTreeEquals(left: Tree, right: Tree): Boolean = {
+        /* This is pretty bad. Normally we never compare arbitrary Trees for
+         * equality. We use Versions instead. However, we do not have any
+         * accurate Version for `JSFieldDef`s.
+         *
+         * In the general case, the only way to compare arbitrary `Tree`s is to
+         * hash them and compare the hashes, which is very expensive.
+         *
+         * We use two fast paths to limit the cases where this is necessary:
+         *
+         * - an identity test first, which given our pipeline, should almost
+         *   always succeed in incremental runs,
+         * - a direct comparison of `StringLiteral`s.
+         *
+         * Few fields have symbolic names, so hopefully the full hash-based
+         * comparison happens rarely.
+         */
+        (left eq right) || {
+          (left, right) match {
+            case (StringLiteral(leftStr), StringLiteral(rightStr)) =>
+              leftStr == rightStr
+
+            case _ =>
+              !left.isInstanceOf[StringLiteral] &&
+              !right.isInstanceOf[StringLiteral] &&
+              computeTreeHash(left).sameVersion(computeTreeHash(right))
+          }
+        }
+      }
+
+      (left eq right) || {
+        /* When different, the `pos` is the property that is most likely to
+         * change, so we test it first.
+         */
+        (left.pos == right.pos) &&
+        (left.flags == right.flags) &&
+        (left.ftpe == right.ftpe) && {
+          (left, right) match {
+            case (FieldDef(_, lName, lOrigName, _), FieldDef(_, rName, rOrigName, _)) =>
+              fieldIdentEquals(lName, rName) &&
+              OriginalName.equals(lOrigName, rOrigName)
+            case (JSFieldDef(_, lName, _), JSFieldDef(_, rName, _)) =>
+              nameTreeEquals(lName, rName)
+            case _ =>
+              false
+          }
+        }
       }
     }
 

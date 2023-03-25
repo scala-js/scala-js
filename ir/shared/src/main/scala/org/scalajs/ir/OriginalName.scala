@@ -90,4 +90,12 @@ object OriginalName {
 
   def apply(name: String): OriginalName =
     apply(UTF8String(name))
+
+  def equals(x: OriginalName, y: OriginalName): Boolean =
+    if (x.isEmpty) y.isEmpty
+    else y.isDefined && java.util.Arrays.equals(x.bytes, y.bytes)
+
+  def hashCode(x: OriginalName): Int =
+    if (x.isEmpty) 0
+    else scala.util.hashing.MurmurHash3.bytesHash(x.bytes)
 }
