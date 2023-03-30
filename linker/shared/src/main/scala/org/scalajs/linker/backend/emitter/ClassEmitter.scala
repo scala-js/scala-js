@@ -339,7 +339,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     implicit val pos = tree.pos
 
     val superCtorCallAndFieldDefs = if (forESClass) {
-      val fieldDefs = genFieldDefsOfScalaClass(tree.className, tree.fields)
+      val directFields = globalKnowledge.getFieldDefs(tree.className)
+      val fieldDefs = genFieldDefsOfScalaClass(tree.className, directFields)
       if (tree.superClass.isEmpty)
         fieldDefs
       else

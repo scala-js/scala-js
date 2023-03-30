@@ -28,6 +28,9 @@ private[emitter] trait GlobalKnowledge {
   /** Tests whether the specified class name refers to an `Interface`. */
   def isInterface(className: ClassName): Boolean
 
+  /** The `FieldDef`s directly defined in a class. */
+  def getFieldDefs(className: ClassName): List[AnyFieldDef]
+
   /** All the `FieldDef`s, included inherited ones, of a Scala class.
    *
    *  It is invalid to call this method with anything but a `Class` or
@@ -77,13 +80,6 @@ private[emitter] trait GlobalKnowledge {
    *  JS class.
    */
   def getSuperClassOfJSClass(className: ClassName): ClassName
-
-  /** The `FieldDef`s of a non-native JS class.
-   *
-   *  It is invalid to call this method with a class that is not a non-native
-   *  JS class.
-   */
-  def getJSClassFieldDefs(className: ClassName): List[AnyFieldDef]
 
   /** The global variables that mirror a given static field. */
   def getStaticFieldMirrors(className: ClassName, field: FieldName): List[String]

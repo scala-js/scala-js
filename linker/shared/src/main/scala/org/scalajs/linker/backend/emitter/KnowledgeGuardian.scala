@@ -179,6 +179,9 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     def isInterface(className: ClassName): Boolean =
       classes(className).askIsInterface(this)
 
+    def getFieldDefs(className: ClassName): List[AnyFieldDef] =
+      classes(className).askFieldDefs(this)
+
     def getAllScalaClassFieldDefs(className: ClassName): List[(ClassName, List[AnyFieldDef])] =
       classes(className).askAllScalaClassFieldDefs(this)
 
@@ -202,9 +205,6 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
     def getSuperClassOfJSClass(className: ClassName): ClassName =
       classes(className).askJSSuperClass(this)
-
-    def getJSClassFieldDefs(className: ClassName): List[AnyFieldDef] =
-      classes(className).askJSClassFieldDefs(this)
 
     def getStaticFieldMirrors(className: ClassName, field: FieldName): List[String] =
       classes(className).askStaticFieldMirrors(this, field)
@@ -437,6 +437,12 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       isInterface
     }
 
+    def askFieldDefs(invalidatable: Invalidatable): List[AnyFieldDef] = {
+      invalidatable.registeredTo(this)
+      fieldDefsAskers += invalidatable
+      fieldDefs
+    }
+
     def askAllScalaClassFieldDefs(
         invalidatable: Invalidatable): List[(ClassName, List[AnyFieldDef])] = {
       invalidatable.registeredTo(this)
@@ -488,12 +494,6 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       invalidatable.registeredTo(this)
       superClassAskers += invalidatable
       superClass
-    }
-
-    def askJSClassFieldDefs(invalidatable: Invalidatable): List[AnyFieldDef] = {
-      invalidatable.registeredTo(this)
-      fieldDefsAskers += invalidatable
-      fieldDefs
     }
 
     def askStaticFieldMirrors(invalidatable: Invalidatable,

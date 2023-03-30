@@ -794,7 +794,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             }
 
             val enclosingClassFieldDefs =
-              globalKnowledge.getJSClassFieldDefs(enclosingClassName)
+              globalKnowledge.getFieldDefs(enclosingClassName)
 
             val fieldDefs = for {
               field <- enclosingClassFieldDefs
