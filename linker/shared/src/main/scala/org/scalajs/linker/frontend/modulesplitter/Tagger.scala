@@ -18,11 +18,11 @@ import scala.collection.immutable
 import scala.collection.mutable
 
 import java.nio.charset.StandardCharsets
+import java.nio.ByteBuffer
 
 import org.scalajs.ir.Names.ClassName
 import org.scalajs.ir.SHA1
 import org.scalajs.linker.standard.ModuleSet.ModuleID
-
 
 /** Tagger groups classes into coarse modules.
  *
@@ -66,7 +66,10 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
  *  provided by a different part of the overall analysis.
  *
  *  The (transitive) dependencies of the class are nevertheless taken into
- *  account and tagged as appropriate.
+ *  account and tagged as appropriate. In particular, to avoid cycles and
+ *  excessive splitting alike (see #4835), we need to track, for each class,
+ *  the number of hops through excluded classes can reach them. The numbers
+ *  of hops are included in the final tagging mechanism.
  */
 private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
     excludedClasses: scala.collection.Set[ClassName] = Set.empty) {
@@ -84,40 +87,47 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
     }
   }
 
-  private def tag(className: ClassName, pathRoot: ModuleID, pathSteps: List[ClassName]): Unit = {
+  private def tag(className: ClassName, pathRoot: ModuleID, pathSteps: List[ClassName],
+      excludedHopCount: Int, fromExcluded: Boolean): Unit = {
+    val isExcluded = excludedClasses.contains(className)
+
+    val newExcludedHopCount =
+      if (isExcluded && !fromExcluded) excludedHopCount + 1
+      else excludedHopCount
+
     val updated = allPaths
       .getOrElseUpdate(className, new Paths)
-      .put(pathRoot, pathSteps)
+      .put(pathRoot, pathSteps, newExcludedHopCount)
 
     if (updated) {
       val classInfo = infos.classDependencies(className)
       classInfo
         .staticDependencies
-        .foreach(staticEdge(_, pathRoot, pathSteps))
+        .foreach(staticEdge(_, pathRoot, pathSteps, newExcludedHopCount, fromExcluded = isExcluded))
 
       classInfo
         .dynamicDependencies
-        .foreach(dynamicEdge(_, pathRoot, pathSteps))
+        .foreach(dynamicEdge(_, pathRoot, pathSteps, newExcludedHopCount, fromExcluded = isExcluded))
     }
   }
 
-  private def staticEdge(className: ClassName, pathRoot: ModuleID, pathSteps: List[ClassName]): Unit = {
-    if (excludedClasses.contains(className))
-      // Force a "dynamic edge" to the external module.
-      dynamicEdge(className, pathRoot, pathSteps)
-    else
-      tag(className, pathRoot, pathSteps)
+  private def staticEdge(className: ClassName, pathRoot: ModuleID, pathSteps: List[ClassName],
+      excludedHopCount: Int, fromExcluded: Boolean): Unit = {
+    tag(className, pathRoot, pathSteps, excludedHopCount, fromExcluded)
   }
 
-  private def dynamicEdge(className: ClassName, pathRoot: ModuleID, pathSteps: List[ClassName]): Unit =
-    tag(className, pathRoot, pathSteps :+ className)
+  private def dynamicEdge(className: ClassName, pathRoot: ModuleID, pathSteps: List[ClassName],
+      excludedHopCount: Int, fromExcluded: Boolean): Unit = {
+    tag(className, pathRoot, pathSteps :+ className, excludedHopCount, fromExcluded)
+  }
 
   private def tagEntryPoints(): Unit = {
     for {
       (moduleID, deps) <- infos.publicModuleDependencies
       className <- deps
     } {
-      staticEdge(className, moduleID, Nil)
+      staticEdge(className, pathRoot = moduleID, pathSteps = Nil,
+          excludedHopCount = 0, fromExcluded = false)
     }
   }
 }
@@ -131,21 +141,31 @@ private object Tagger {
    *  - All non-empty, mutually prefix-free paths of dynamic import hops.
    */
   private final class Paths {
+    private val excludedHopCounts = mutable.BitSet.empty
     private val direct = mutable.Set.empty[ModuleID]
     private val dynamic = mutable.Map.empty[ModuleID, DynamicPaths]
 
-    def put(pathRoot: ModuleID, pathSteps: List[ClassName]): Boolean = {
-      if (pathSteps.isEmpty) {
+    def put(pathRoot: ModuleID, pathSteps: List[ClassName], excludedHopCount: Int): Boolean = {
+      /* We do not add `excludedHopCount == 0` to the set, although 0 is not
+       * supposed to be special here. `moduleID()` has a dedicated code path
+       * for when the only hop count to reach a class would be 0. By excluding
+       * 0 here, that dedicated code path amounts to testing
+       * `excludedHopCounts.isEmpty`. It is also worth nothing that it will
+       * always be 0 in the `FewestModules` mode.
+       */
+      val hopCountsChanged = excludedHopCount > 0 && excludedHopCounts.add(excludedHopCount)
+      val stepsChanged = if (pathSteps.isEmpty) {
         direct.add(pathRoot)
       } else {
         dynamic
           .getOrElseUpdate(pathRoot, new DynamicPaths)
           .put(pathSteps)
       }
+      hopCountsChanged || stepsChanged
     }
 
     def moduleID(internalModuleIDPrefix: String): ModuleID = {
-      if (direct.size == 1 && dynamic.isEmpty) {
+      if (direct.size == 1 && dynamic.isEmpty && excludedHopCounts.isEmpty) {
         /* Class is only used by a single public module. Put it there.
          *
          * Note that we must not do this if there are any dynamic modules
@@ -160,6 +180,10 @@ private object Tagger {
          * dependees.
          */
         val digestBuilder = new SHA1.DigestBuilder
+
+        // Excluded hop counts
+        if (!excludedHopCounts.isEmpty)
+          digestBuilder.update(longsToBytes(excludedHopCounts.toBitMask))
 
         // Public modules using this.
         for (id <- direct.toList.sortBy(_.id))
@@ -182,6 +206,14 @@ private object Tagger {
 
         ModuleID(id.toString())
       }
+    }
+
+    private def longsToBytes(longs: Array[Long]): Array[Byte] = {
+      val result = new Array[Byte](longs.length * 8)
+      val buf = ByteBuffer.wrap(result)
+      for (long <- longs)
+        buf.putLong(long)
+      result
     }
 
     private def dynamicEnds: immutable.SortedSet[ClassName] = {
