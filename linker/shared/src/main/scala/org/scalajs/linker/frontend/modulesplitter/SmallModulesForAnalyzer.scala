@@ -38,7 +38,7 @@ private final class SmallModulesForAnalyzer(
         info.publicModuleDependencies.keys ++ reprToModuleID.values)
 
     val largeModuleMap =
-      new Tagger(info, excludedClasses = targetClassToRepr.keySet).tagAll(prefix)
+      new Tagger(info, excludedClassesToRepr = targetClassToRepr).tagAll(prefix)
 
     new SmallModulesForAnalyzer.Analysis(targetClassToRepr, reprToModuleID, largeModuleMap)
   }
