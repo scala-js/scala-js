@@ -31,6 +31,13 @@ object PathOutputDirectory {
     new Impl(directory)
   }
 
+  /* #4841 In the `CompletionHandler`s of our `AsynchronousFileChannel`s, we
+   * use `promise.trySuccess` and `tryFailure` instead of `success` and
+   * `failure`. This avoids `IllegalStateException` if there are double calls
+   * to `CompletionHandler.{completed,failed}`. It should not happen, but we
+   * observed it to happen on Windows anyway.
+   */
+
   private final class Impl(directory: Path) extends OutputDirectoryImpl {
     def writeFull(name: String, buf: ByteBuffer)(implicit ec: ExecutionContext): Future[Unit] = {
       val file = getPath(name)
@@ -126,11 +133,11 @@ object PathOutputDirectory {
         if (buf.hasRemaining())
           writeLoop()
         else
-          promise.success(())
+          promise.trySuccess(())
       }
 
       def failed(exc: Throwable, unit: Unit): Unit =
-        promise.failure(exc)
+        promise.tryFailure(exc)
     }
 
     writeLoop()
@@ -154,14 +161,14 @@ object PathOutputDirectory {
       def completed(read: Integer, unit: Unit): Unit = {
         if (read == -1 || !buf.hasRemaining()) {
           buf.flip()
-          promise.success(buf)
+          promise.trySuccess(buf)
         } else {
           readLoop()
         }
       }
 
       def failed(exc: Throwable, unit: Unit): Unit =
-        promise.failure(exc)
+        promise.tryFailure(exc)
     }
 
     readLoop()
@@ -229,7 +236,7 @@ object PathOutputDirectory {
             /* We have checked the file size beforehand. So if we get here,
              * there's no diff.
              */
-            promise.success(false)
+            promise.trySuccess(false)
           } else {
             pos += read
 
@@ -239,7 +246,7 @@ object PathOutputDirectory {
             tmpCmpBuf.limit(read)
 
             if (readBuf != tmpCmpBuf) {
-              promise.success(true)
+              promise.trySuccess(true)
             } else {
               cmpBuf.position(cmpBuf.position() + read)
               readNext()
@@ -248,7 +255,7 @@ object PathOutputDirectory {
         }
 
         def failed(exc: Throwable, unit: Unit): Unit =
-          promise.failure(exc)
+          promise.tryFailure(exc)
       }
 
       readNext()
