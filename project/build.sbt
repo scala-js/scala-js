@@ -1,4 +1,4 @@
-addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.0.0")
+addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.9.0")
 
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.8.1")
 
