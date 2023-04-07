@@ -108,6 +108,16 @@ object Version {
     new Version(buf.array())
   }
 
+  /** Create a non-hash version from the given [[UTF8String]].
+   *
+   *  Strictly equivalent to (but potentially more efficient):
+   *  {{{
+   *  fromBytes(Array.tabulate(utf8String.length)(utf8String(_)))
+   *  }}}
+   */
+  def fromUTF8String(utf8String: UTF8String): Version =
+    make(Type.Ephemeral, utf8String.bytes)
+
   /** Create a combined, non-hash version from the given bytes.
    *
    *  Returns [[Unversioned]] if at least one of versions is [[Unversioned]].

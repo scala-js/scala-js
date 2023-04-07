@@ -18,6 +18,7 @@ import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Names._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types.Type
+import org.scalajs.ir.Version
 
 import org.scalajs.linker.interface.ModuleKind
 import org.scalajs.linker.standard._
@@ -241,6 +242,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     private var jsNativeLoadSpec = computeJSNativeLoadSpec(initClass)
     private var jsNativeMemberLoadSpecs = computeJSNativeMemberLoadSpecs(initClass)
     private var superClass = computeSuperClass(initClass)
+    private var fieldDefsVersion = computeFieldDefsVersion(initClass)
     private var fieldDefs = computeFieldDefs(initClass)
     private var staticFieldMirrors = initStaticFieldMirrors
     private var module = initModule
@@ -309,9 +311,10 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
         invalidateAskers(superClassAskers)
       }
 
-      val newFieldDefs = computeFieldDefs(linkedClass)
-      if (newFieldDefs != fieldDefs) {
-        fieldDefs = newFieldDefs
+      val newFieldDefsVersion = computeFieldDefsVersion(linkedClass)
+      if (!newFieldDefsVersion.sameVersion(fieldDefsVersion)) {
+        fieldDefsVersion = newFieldDefsVersion
+        fieldDefs = computeFieldDefs(linkedClass)
         invalidateAskers(fieldDefsAskers)
       }
 
@@ -352,6 +355,31 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
 
     private def computeSuperClass(linkedClass: LinkedClass): ClassName =
       linkedClass.superClass.fold[ClassName](null.asInstanceOf[ClassName])(_.name)
+
+    /** Computes the version of the fields of a `LinkedClass`.
+     *
+     *  The version is composed of
+     *
+     *  - the `version` of the `LinkedClass` itself, which will change every
+     *    time the definition of a field changes,
+     *  - a boolean indicating whether there is at least one `JSFieldDef`,
+     *    which will change every time the reachability analysis of the
+     *    `JSFieldDef`s changes (because we either keep all or none of
+     *    them), and
+     *  - the list of names of the `FieldDef`s, which will change every time
+     *    the reachability analysis of the `FieldDef`s changes.
+     *
+     *  We do not try to use the names of `JSFieldDef`s because they are
+     *  `Tree`s, which are not efficiently comparable nor versionable here.
+     */
+    private def computeFieldDefsVersion(linkedClass: LinkedClass): Version = {
+      val hasAnyJSField = linkedClass.fields.exists(_.isInstanceOf[JSFieldDef])
+      val hasAnyJSFieldVersion = Version.fromInt(if (hasAnyJSField) 1 else 0)
+      val scalaFieldNamesVersion = linkedClass.fields.collect {
+        case FieldDef(_, FieldIdent(name), _, _) => Version.fromUTF8String(name.encoded)
+      }
+      Version.combine((linkedClass.version :: hasAnyJSFieldVersion :: scalaFieldNamesVersion): _*)
+    }
 
     private def computeFieldDefs(linkedClass: LinkedClass): List[AnyFieldDef] =
       linkedClass.fields
