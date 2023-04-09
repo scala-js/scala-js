@@ -18,6 +18,7 @@ import scala.collection.immutable
 import scala.collection.mutable
 
 import java.nio.charset.StandardCharsets
+import java.nio.ByteBuffer
 
 import org.scalajs.ir.Names.ClassName
 import org.scalajs.ir.SHA1
@@ -67,6 +68,94 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
  *
  *  The (transitive) dependencies of the class are nevertheless taken into
  *  account and tagged as appropriate.
+ *  In particular, to avoid cycles and excessive splitting alike (see #4835),
+ *  we need to introduce an additonal tagging mechanism.
+ *
+ *  To illustrate the problem, take the following dependency graph as an example
+ *
+ *    a -> b -> c
+ *
+ *  where B is excluded. Naively, we would want to group a and c together into a'.
+ *  However, this would lead to a circular dependency between a' and c.
+ *
+ *  Nevertheless, in the absence of b, or if b is not an excluded class, we'd
+ *  want to perform the grouping to avoid unnecessary splitting.
+ *
+ *  We achieve this by tracking an additional tag, representing the maximum
+ *  number of hops from an excluded class (aka fine) to a non-excluded class
+ *  (aka coarse) class for any path from an entrypoint to the given class.
+ *
+ *  We then only permit grouping coarse classes with the same tag. This avoids
+ *  the creation of cycles.
+ *
+ *  The following is a proof that this strategy avoids cycles.
+ *
+ *  Given
+ *
+ *  G = (V, E), acyclic, V = F ∪ C, F ∩ C = ∅
+ *    the original dependency graph,
+ *    F: set of fine classes,
+ *    C: set of coarse classes
+ *
+ *  t : V → ℕ (the maxExcludedHopCount tag)
+ *    ∀ (v1, v2) ∈ E : t(v1) ≤ t(v2)
+ *    ∀ (f, c) ∈ E : f ∈ F, c ∈ C ⇒ t(f) < t(c)
+ *
+ *  Define
+ *
+ *  G' = (V', E'), V' = F ∪ C' (the new grouped graph)
+ *
+ *  C' = { n ∈ ℕ | ∃ c ∈ C : t(c) = n }
+ *
+ *  E' = { (f1, f2) ∈ E | f1, f2 ∈ F } ∪
+ *       { (f, n) | f ∈ F, ∃ c ∈ C : (f, c) ∈ E : t(c) = n } ∪
+ *       { (n, f) | f ∈ F, ∃ c ∈ C : (c, f) ∈ E : t(c) = n } ∪
+ *       { (n, m) | n ≠ m, ∃ c1, c2 ∈ C : (c1, c2) ∈ E : t(c1) = n, t(c2) = m }
+ *
+ *  t' : V' → ℕ:
+ *
+ *  t'(f) = t(f)  (if f ∈ F)
+ *  t'(n) = n     (if n ∈ C')
+ *
+ *  Lemma 1 (unproven)
+ *
+ *  ∀ (v1, v2) ∈ E' : t'(v1) ≤ t'(v2)
+ *
+ *  Lemma 2 (unproven)
+ *
+ *  ∀ (f, n) ∈ E' : f ∈ F, n ∈ C' : t'(f) < t'(n)
+ *
+ *  Lemma 3
+ *
+ *  ∀ (n, m) ∈ E' : n,m ∈ C' ⇒ t'(n) < t'(m)
+ *
+ *  Follows from Lemma 1 and (n, m) ∈ E' ⇒ n ≠ m (by definition).
+ *
+ *  Theorem
+ *
+ *  G' is acyclic
+ *
+ *  Proof by contradiction.
+ *
+ *  Assume ∃ p = x1, ..., xn (x1 = xn, n > 1, xi ∈ V)
+ *
+ *  ∃ xi ∈ C' by contradiction: ∀ xi ∈ F ⇒ p is a cycle in G
+ *
+ *  ∃ xi ∈ F by contradiction: ∀ xi ∈ C' ⇒
+ *    t'(xi) increases strictly monotonically (by Lemma 3),
+ *    but x1 = xn ⇒ t'(x1) = t'(xn)
+ *
+ *  Therefore,
+ *
+ *  ∃ (xi, xj) ∈ p : xi ∈ F, xj ∈ C'
+ *
+ *  Therefore (by Lemma 1)
+ *
+ *  t'(x1) ≤ ... ≤ t'(xi) < t'(xj) ≤ ... ≤ t'(xn) ⇒ t'(x1) < t'(xn)
+ *
+ *  But x1 = xn ⇒ t'(x1) = t'(xn), which is a contradiction.
+ *
+ *  Therefore, G' is acyclic.
  */
 private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
     excludedClasses: scala.collection.Set[ClassName] = Set.empty) {
@@ -84,40 +173,47 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
     }
   }
 
-  private def tag(className: ClassName, pathRoot: ModuleID, pathSteps: List[ClassName]): Unit = {
+  private def tag(className: ClassName, pathRoot: ModuleID, pathSteps: List[ClassName],
+      excludedHopCount: Int, fromExcluded: Boolean): Unit = {
+    val isExcluded = excludedClasses.contains(className)
+
+    val newExcludedHopCount =
+      if (fromExcluded && !isExcluded) excludedHopCount + 1 // hop from fine to coarse
+      else excludedHopCount
+
     val updated = allPaths
       .getOrElseUpdate(className, new Paths)
-      .put(pathRoot, pathSteps)
+      .put(pathRoot, pathSteps, newExcludedHopCount)
 
     if (updated) {
       val classInfo = infos.classDependencies(className)
       classInfo
         .staticDependencies
-        .foreach(staticEdge(_, pathRoot, pathSteps))
+        .foreach(staticEdge(_, pathRoot, pathSteps, newExcludedHopCount, fromExcluded = isExcluded))
 
       classInfo
         .dynamicDependencies
-        .foreach(dynamicEdge(_, pathRoot, pathSteps))
+        .foreach(dynamicEdge(_, pathRoot, pathSteps, newExcludedHopCount, fromExcluded = isExcluded))
     }
   }
 
-  private def staticEdge(className: ClassName, pathRoot: ModuleID, pathSteps: List[ClassName]): Unit = {
-    if (excludedClasses.contains(className))
-      // Force a "dynamic edge" to the external module.
-      dynamicEdge(className, pathRoot, pathSteps)
-    else
-      tag(className, pathRoot, pathSteps)
+  private def staticEdge(className: ClassName, pathRoot: ModuleID, pathSteps: List[ClassName],
+      excludedHopCount: Int, fromExcluded: Boolean): Unit = {
+    tag(className, pathRoot, pathSteps, excludedHopCount, fromExcluded)
   }
 
-  private def dynamicEdge(className: ClassName, pathRoot: ModuleID, pathSteps: List[ClassName]): Unit =
-    tag(className, pathRoot, pathSteps :+ className)
+  private def dynamicEdge(className: ClassName, pathRoot: ModuleID, pathSteps: List[ClassName],
+      excludedHopCount: Int, fromExcluded: Boolean): Unit = {
+    tag(className, pathRoot, pathSteps :+ className, excludedHopCount, fromExcluded)
+  }
 
   private def tagEntryPoints(): Unit = {
     for {
       (moduleID, deps) <- infos.publicModuleDependencies
       className <- deps
     } {
-      staticEdge(className, moduleID, Nil)
+      staticEdge(className, pathRoot = moduleID, pathSteps = Nil,
+          excludedHopCount = 0, fromExcluded = false)
     }
   }
 }
@@ -131,25 +227,32 @@ private object Tagger {
    *  - All non-empty, mutually prefix-free paths of dynamic import hops.
    */
   private final class Paths {
+    private var maxExcludedHopCount = 0
     private val direct = mutable.Set.empty[ModuleID]
     private val dynamic = mutable.Map.empty[ModuleID, DynamicPaths]
 
-    def put(pathRoot: ModuleID, pathSteps: List[ClassName]): Boolean = {
-      if (pathSteps.isEmpty) {
+    def put(pathRoot: ModuleID, pathSteps: List[ClassName], excludedHopCount: Int): Boolean = {
+      val hopCountsChanged = excludedHopCount > maxExcludedHopCount
+
+      if (hopCountsChanged)
+        maxExcludedHopCount = excludedHopCount
+
+      val stepsChanged = if (pathSteps.isEmpty) {
         direct.add(pathRoot)
       } else {
         dynamic
           .getOrElseUpdate(pathRoot, new DynamicPaths)
           .put(pathSteps)
       }
+      hopCountsChanged || stepsChanged
     }
 
     def moduleID(internalModuleIDPrefix: String): ModuleID = {
-      if (direct.size == 1 && dynamic.isEmpty) {
+      if (direct.size == 1 && dynamic.isEmpty && maxExcludedHopCount == 0) {
         /* Class is only used by a single public module. Put it there.
          *
-         * Note that we must not do this if there are any dynamic modules
-         * requiring this class. Otherwise, the dynamically loaded module
+         * Note that we must not do this if there are any dynamic or excluded
+         * modules requiring this class. Otherwise, the dynamically loaded module
          * will try to import the public module (but importing public modules is
          * forbidden).
          */
@@ -160,6 +263,10 @@ private object Tagger {
          * dependees.
          */
         val digestBuilder = new SHA1.DigestBuilder
+
+        // Excluded hop counts (exclude 0 for fast path in FewestModules mode)
+        if (maxExcludedHopCount > 0)
+          digestBuilder.update(intToBytes(maxExcludedHopCount))
 
         // Public modules using this.
         for (id <- direct.toList.sortBy(_.id))
@@ -182,6 +289,13 @@ private object Tagger {
 
         ModuleID(id.toString())
       }
+    }
+
+    private def intToBytes(x: Int): Array[Byte] = {
+      val result = new Array[Byte](4)
+      val buf = ByteBuffer.wrap(result)
+      buf.putInt(x)
+      result
     }
 
     private def dynamicEnds: immutable.SortedSet[ClassName] = {
