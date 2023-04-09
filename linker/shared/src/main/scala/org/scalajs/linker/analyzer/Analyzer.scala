@@ -17,7 +17,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.concurrent._
 
-import scala.util.{Success, Failure}
+import scala.util.{Try, Success, Failure}
 
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
@@ -30,18 +30,18 @@ import org.scalajs.ir.Types.ClassRef
 
 import org.scalajs.linker._
 import org.scalajs.linker.frontend.IRLoader
-import org.scalajs.linker.interface.{ESVersion, ModuleKind, ModuleInitializer}
+import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
 import org.scalajs.linker.standard._
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
-import org.scalajs.logging.Logger
+import org.scalajs.logging._
 
 import Analysis._
 import Infos.{NamespacedMethodName, ReachabilityInfo, ReachabilityInfoInClass}
 
 final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
-    checkIR: Boolean, irLoader: IRLoader) {
+    checkIR: Boolean, failOnError: Boolean, irLoader: IRLoader) {
 
   import Analyzer._
 
@@ -81,7 +81,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     loadObjectClass(() => loadEverything(moduleInitializers, symbolRequirements))
 
     workQueue.join()
-      .map(_ => postLoad(moduleInitializers))(ec)
+      .map(_ => postLoad(moduleInitializers, logger))(ec)
       .andThen { case _ => infoLoader.cleanAfterRun() }
   }
 
@@ -150,7 +150,8 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     reachInitializers(moduleInitializers)
   }
 
-  private def postLoad(moduleInitializers: Seq[ModuleInitializer]): Analysis = {
+  private def postLoad(moduleInitializers: Seq[ModuleInitializer],
+      logger: Logger): Analysis = {
     if (isNoModule) {
       // Check there is only a single module.
       val publicModuleIDs = (
@@ -171,10 +172,41 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     // Reach additional data, based on reflection methods used
     reachDataThroughReflection(infos)
 
+    if (failOnError && _errors.nonEmpty)
+      reportErrors(logger)
+
     new Analysis {
       val classInfos = infos
       val topLevelExportInfos = _topLevelExportInfos
       val errors = _errors
+    }
+  }
+
+  private def reportErrors(logger: Logger): Unit = {
+    require(_errors.nonEmpty)
+
+    val maxDisplayErrors = {
+      val propName = "org.scalajs.linker.maxlinkingerrors"
+      Try(System.getProperty(propName, "20").toInt).getOrElse(20).max(1)
+    }
+
+    _errors
+      .take(maxDisplayErrors)
+      .foreach(logError(_, logger, Level.Error))
+
+    val skipped = _errors.size - maxDisplayErrors
+    if (skipped > 0)
+      logger.log(Level.Error, s"Not showing $skipped more linking errors")
+
+    if (initial) {
+      throw new LinkingException("There were linking errors")
+    } else {
+      throw new AssertionError(
+          "There were linking errors after the optimizer has run. " +
+          "This is a bug, please report it. " +
+          "You can work around the bug by disabling the optimizer. " +
+          "In the sbt plugin, this can be done with " +
+          "`scalaJSLinkerConfig ~= { _.withOptimizer(false) }`.")
     }
   }
 

@@ -102,7 +102,7 @@ object LinkingUtils {
 
     val irLoader = new FileIRLoader
     val analyzer = new Analyzer(CommonPhaseConfig.fromStandardConfig(config),
-        initial = true, checkIR = true, irLoader)
+        initial = true, checkIR = true, failOnError = false, irLoader)
     val logger = new ScalaConsoleLogger(Level.Error)
 
     for {

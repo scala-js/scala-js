@@ -31,7 +31,7 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
 
   private val irLoader = new ClassDefIRLoader
   private val analyzer =
-    new Analyzer(config, initial = false, checkIR = checkIR, irLoader)
+    new Analyzer(config, initial = false, checkIR = checkIR, failOnError = true, irLoader)
 
   def refine(classDefs: Seq[(ClassDef, Version)],
       moduleInitializers: List[ModuleInitializer],
@@ -41,7 +41,7 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
     irLoader.update(classDefs)
 
     val analysis = logger.timeFuture("Refiner: Compute reachability") {
-      analyze(moduleInitializers, symbolRequirements, logger)
+      analyzer.computeReachability(moduleInitializers, symbolRequirements, logger)
     }
 
     for {
@@ -65,29 +65,6 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
       irLoader.cleanAfterRun()
 
       result
-    }
-  }
-
-  private def analyze(moduleInitializers: Seq[ModuleInitializer],
-      symbolRequirements: SymbolRequirement, logger: Logger)(
-      implicit ec: ExecutionContext): Future[Analysis] = {
-    for {
-      analysis <- analyzer.computeReachability(moduleInitializers, symbolRequirements, logger)
-    } yield {
-      /* There must not be linking errors at this point. If there are, it is a
-       * bug in the optimizer.
-       */
-      if (analysis.errors.isEmpty) {
-        analysis
-      } else {
-        analysis.errors.foreach(Analysis.logError(_, logger, Level.Error))
-        throw new AssertionError(
-            "There were linking errors after the optimizer has run. " +
-            "This is a bug, please report it. " +
-            "You can work around the bug by disabling the optimizer. " +
-            "In the sbt plugin, this can be done with " +
-            "`scalaJSLinkerConfig ~= { _.withOptimizer(false) }`.")
-      }
     }
   }
 }
