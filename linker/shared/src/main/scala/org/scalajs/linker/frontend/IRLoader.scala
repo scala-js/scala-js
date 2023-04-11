@@ -27,17 +27,19 @@ import org.scalajs.ir.Version
 import org.scalajs.ir.Names.ClassName
 import org.scalajs.ir.Trees.ClassDef
 
-final class IRLoader(checkIR: Boolean) extends Analyzer.InputProvider
-    with MethodSynthesizer.InputProvider {
+trait IRLoader extends MethodSynthesizer.InputProvider {
+  def classesWithEntryPoints(): Iterable[ClassName]
+  def classExists(className: ClassName): Boolean
+  def irFileVersion(className: ClassName): Version
+  def loadClassDef(className: ClassName)(
+      implicit ec: ExecutionContext): Future[ClassDef]
+}
+
+final class FileIRLoader extends IRLoader {
   private var classNameToFile: collection.Map[ClassName, IRFileImpl] = _
   private var entryPoints: collection.Set[ClassName] = _
-  private var logger: Logger = _
-  private val cache = mutable.Map.empty[ClassName, ClassDefAndInfoCache]
 
-
-  def update(irInput: Seq[IRFile], logger: Logger)(implicit ec: ExecutionContext): Future[this.type] = {
-    this.logger = logger
-
+  def update(irInput: Seq[IRFile])(implicit ec: ExecutionContext): Future[this.type] = {
     Future.traverse(irInput)(i => IRFileImpl.fromIRFile(i).entryPointsInfo).map { infos =>
       val classNameToFile = mutable.Map.empty[ClassName, IRFileImpl]
       val entryPoints = mutable.Set.empty[ClassName]
@@ -60,90 +62,19 @@ final class IRLoader(checkIR: Boolean) extends Analyzer.InputProvider
 
   def classesWithEntryPoints(): Iterable[ClassName] = entryPoints
 
-  def loadInfo(className: ClassName)(
-      implicit ec: ExecutionContext): Option[Future[Infos.ClassInfo]] = {
-    maybeGet(className, _.classInfo)
-  }
+  def classExists(className: ClassName): Boolean =
+    classNameToFile.contains(className)
 
-  def loadClassDefAndVersion(className: ClassName)(
-      implicit ec: ExecutionContext): Future[(ClassDef, Version)] = {
-    get(className, u => (u.classDef, u.version))
-  }
+  def irFileVersion(className: ClassName): Version =
+    classNameToFile(className).version
 
   def loadClassDef(className: ClassName)(
       implicit ec: ExecutionContext): Future[ClassDef] = {
-    get(className, _.classDef)
-  }
-
-  private def get[T](className: ClassName, f: ClassDefAndInfoCache.Update => T)(
-      implicit ec: ExecutionContext): Future[T] = {
-    maybeGet(className, f).getOrElse {
-      throw new AssertionError(s"Cannot load file for class $className")
-    }
-  }
-
-  private def maybeGet[T](className: ClassName, f: ClassDefAndInfoCache.Update => T)(
-      implicit ec: ExecutionContext): Option[Future[T]] = {
-    classNameToFile.get(className).map { irFile =>
-      cache.getOrElseUpdate(className, new ClassDefAndInfoCache)
-        .update(irFile, logger, checkIR).map(f)
-    }
+    classNameToFile(className).tree
   }
 
   def cleanAfterRun(): Unit = {
     classNameToFile = null
     entryPoints = null
-    logger = null
-    cache.filterInPlace((_, fileCache) => fileCache.cleanAfterRun())
-  }
-}
-
-private object ClassDefAndInfoCache {
-  final class Update(
-      val classDef: ClassDef,
-      val classInfo: Infos.ClassInfo,
-      val version: Version)
-}
-
-private final class ClassDefAndInfoCache {
-  import ClassDefAndInfoCache.Update
-
-  private var cacheUsed: Boolean = false
-  private var version: Version = Version.Unversioned
-  private var cacheUpdate: Future[Update] = _
-
-  def update(irFile: IRFileImpl, logger: Logger, checkIR: Boolean)(
-      implicit ec: ExecutionContext): Future[Update] = synchronized {
-    /* If the cache was already used in this run, the classDef and info are
-     * already correct, no matter what the versions say.
-     */
-    if (!cacheUsed) {
-      cacheUsed = true
-
-      val newVersion = irFile.version
-      if (!version.sameVersion(newVersion)) {
-        version = newVersion
-        cacheUpdate = irFile.tree.map { tree =>
-          if (checkIR) {
-            val errorCount = ClassDefChecker.check(tree,
-                allowReflectiveProxies = false, allowTransients = false, logger)
-            if (errorCount != 0) {
-              throw new LinkingException(
-                  s"There were $errorCount ClassDef checking errors.")
-            }
-          }
-          new Update(tree, Infos.generateClassInfo(tree), version)
-        }
-      }
-    }
-
-    cacheUpdate
-  }
-
-  /** Returns true if the cache has been used and should be kept. */
-  def cleanAfterRun(): Boolean = synchronized {
-    val result = cacheUsed
-    cacheUsed = false
-    result
   }
 }

@@ -468,49 +468,6 @@ object Infos {
       else set.toList
   }
 
-  /** Generates the [[ClassInfo]] of a
-   *  [[org.scalajs.ir.Trees.ClassDef Trees.ClassDef]].
-   */
-  def generateClassInfo(classDef: ClassDef): ClassInfo = {
-    val builder = new ClassInfoBuilder(classDef.name.name, classDef.kind,
-        classDef.superClass.map(_.name), classDef.interfaces.map(_.name),
-        classDef.jsNativeLoadSpec)
-
-    classDef.fields foreach {
-      case FieldDef(flags, FieldIdent(name), _, ftpe) =>
-        if (!flags.namespace.isStatic) {
-          builder.maybeAddReferencedFieldClass(name, ftpe)
-        }
-
-      case _: JSFieldDef =>
-        // Nothing to do.
-    }
-
-    classDef.methods.foreach { methodDef =>
-      builder.addMethod(generateMethodInfo(methodDef))
-    }
-
-    classDef.jsConstructor.foreach { ctorDef =>
-      builder.addExportedMember(generateJSConstructorInfo(ctorDef))
-    }
-
-    classDef.jsMethodProps.foreach {
-      case methodDef: JSMethodDef =>
-        builder.addExportedMember(generateJSMethodInfo(methodDef))
-
-      case propertyDef: JSPropertyDef =>
-        builder.addExportedMember(generateJSPropertyInfo(propertyDef))
-    }
-
-    classDef.jsNativeMembers.foreach(builder.addJSNativeMember(_))
-
-    classDef.topLevelExportDefs.foreach { topLevelExportDef =>
-      builder.addTopLevelExport(generateTopLevelExportInfo(classDef.name.name, topLevelExportDef))
-    }
-
-    builder.result()
-  }
-
   /** Generates the [[MethodInfo]] of a
    *  [[org.scalajs.ir.Trees.MethodDef Trees.MethodDef]].
    */
