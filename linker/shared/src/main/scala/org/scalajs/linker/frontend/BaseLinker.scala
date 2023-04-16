@@ -40,8 +40,8 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
   private val methodSynthesizer = new MethodSynthesizer(irLoader)
   private val infoLoader = {
     new InfoLoader(irLoader,
-        if (checkIR) InfoLoader.NoIRCheck
-        else InfoLoader.InitialIRCheck
+        if (checkIR) InfoLoader.InitialIRCheck
+        else InfoLoader.NoIRCheck
     )
   }
 

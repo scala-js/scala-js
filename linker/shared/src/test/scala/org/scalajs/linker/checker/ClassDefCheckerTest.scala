@@ -21,10 +21,45 @@ import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
 
+import org.scalajs.logging.NullLogger
+
+import org.scalajs.linker.interface.{LinkingException, StandardConfig}
+import org.scalajs.linker.standard.{StandardLinkerFrontend, SymbolRequirement}
+
+import org.scalajs.linker.testutils._
 import org.scalajs.linker.testutils.TestIRBuilder._
+
+import org.scalajs.junit.async.{AsyncResult, await}
 
 class ClassDefCheckerTest {
   import ClassDefCheckerTest.assertError
+
+  @Test
+  def linkerActuallyFailsOnClassDefCheckerError(): AsyncResult = await {
+    import scala.concurrent.ExecutionContext.Implicits.global
+
+    val wrongClassDef = classDef(
+      "A",
+      kind = ClassKind.Interface,
+      jsNativeLoadSpec = Some(JSNativeLoadSpec.Global("Foo", Nil))
+    )
+
+    val config = StandardConfig()
+      .withCheckIR(true)
+      .withOptimizer(false)
+    val linkerFrontend = StandardLinkerFrontend(config)
+
+    val loadASymbolRequirements = SymbolRequirement
+      .factory("ClassDefCheckerTest")
+      .classData("A")
+
+    TestIRRepo.minilib.flatMap { stdLibFiles =>
+      val irFiles = stdLibFiles :+ MemClassDefIRFile(wrongClassDef)
+      linkerFrontend.link(irFiles, Nil, loadASymbolRequirements, NullLogger)
+    }.failed.map { th =>
+      assertTrue(th.toString(), th.isInstanceOf[LinkingException])
+    }
+  }
 
   @Test
   def javaLangObjectNoSuperClass(): Unit = {
