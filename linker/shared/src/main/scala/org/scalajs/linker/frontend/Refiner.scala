@@ -32,8 +32,8 @@ final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
   private val irLoader = new ClassDefIRLoader
   private val infoLoader = {
     new InfoLoader(irLoader,
-        if (checkIR) InfoLoader.NoIRCheck
-        else InfoLoader.InternalIRCheck
+        if (checkIR) InfoLoader.InternalIRCheck
+        else InfoLoader.NoIRCheck
     )
   }
 
