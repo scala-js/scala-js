@@ -131,6 +131,21 @@ class ReflectionTest {
     if (hiddenJSObj.getClass() != null)
       fail("optimizer thought that hiddenJSObj.getClass() was non-null")
   }
+
+  @Test def jsTypesKeptOnlyForTheirData_Issue4850(): Unit = {
+    import JSTypesKeptOnlyForTheirData._
+
+    @noinline
+    def nameOf(cls: Class[_]): String = cls.getName()
+
+    val prefix = "org.scalajs.testsuite.compiler.ReflectionTest$JSTypesKeptOnlyForTheirData$"
+    assertEquals(prefix + "NativeClass", nameOf(classOf[NativeClass]))
+    assertEquals(prefix + "NativeObject$", nameOf(classOf[Array[NativeObject.type]].getComponentType()))
+    assertEquals(prefix + "NativeTrait", nameOf(classOf[NativeTrait]))
+    assertEquals(prefix + "NonNativeClass", nameOf(classOf[NonNativeClass]))
+    assertEquals(prefix + "NonNativeObject$", nameOf(classOf[Array[NonNativeObject.type]].getComponentType()))
+    assertEquals(prefix + "NonNativeTrait", nameOf(classOf[NonNativeTrait]))
+  }
 }
 
 object ReflectionTest {
@@ -143,4 +158,22 @@ object ReflectionTest {
 
   class OtherPrefixRenamedTestClass
 
+  object JSTypesKeptOnlyForTheirData {
+    @js.native
+    @JSGlobal("NativeClass")
+    class NativeClass extends js.Object
+
+    @js.native
+    @JSGlobal("NativeObject")
+    object NativeObject extends js.Object
+
+    @js.native
+    trait NativeTrait extends js.Object
+
+    class NonNativeClass extends js.Object
+
+    object NonNativeObject extends js.Object
+
+    trait NonNativeTrait extends js.Object
+  }
 }
