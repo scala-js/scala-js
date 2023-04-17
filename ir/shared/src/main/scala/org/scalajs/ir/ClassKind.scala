@@ -50,6 +50,7 @@ sealed abstract class ClassKind {
     case _                                             => false
   }
 
+  @deprecated("not a meaningful operation", since = "1.13.2")
   def withoutModuleAccessor: ClassKind = this match {
     case ModuleClass         => Class
     case JSModuleClass       => JSClass

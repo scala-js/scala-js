@@ -24,6 +24,7 @@ import org.scalajs.linker.checker._
 import org.scalajs.linker.analyzer._
 
 import org.scalajs.ir
+import org.scalajs.ir.ClassKind
 import org.scalajs.ir.Names.ClassName
 import org.scalajs.ir.Trees.{ClassDef, MethodDef}
 import org.scalajs.ir.Version
@@ -189,9 +190,32 @@ private[frontend] object BaseLinker {
 
     val allMethods = methods ++ syntheticMethodDefs
 
-    val kind =
-      if (classInfo.isModuleAccessed) classDef.kind
-      else classDef.kind.withoutModuleAccessor
+    /* #4850 Erase JS classes (possibly native and possibly module) that do
+     * not have any instantiated subclass to native JS classes that do not have
+     * a load spec. As classes, they can still appear as the `superClass` of
+     * other classes for reflection and for array subtyping. Without native
+     * load spec, it is not possible to access their constructor/object value
+     * anymore, which is what it want since reachability says it's not used.
+     */
+    val eraseToNativeJSClassWithoutLoadSpec = {
+      classDef.kind.isJSType &&
+      classDef.kind != ClassKind.AbstractJSType &&
+      !classInfo.isAnySubclassInstantiated
+    }
+
+    val kind = {
+      import ClassKind._
+      classDef.kind match {
+        case _ if eraseToNativeJSClassWithoutLoadSpec     => NativeJSClass
+        case ModuleClass if !classInfo.isModuleAccessed   => Class
+        case JSModuleClass if !classInfo.isModuleAccessed => JSClass
+        case kind                                         => kind
+      }
+    }
+
+    val jsNativeLoadSpec =
+      if (eraseToNativeJSClassWithoutLoadSpec) None
+      else classDef.jsNativeLoadSpec
 
     val ancestors = classInfo.ancestors.map(_.className)
 
@@ -202,7 +226,7 @@ private[frontend] object BaseLinker {
         classDef.superClass,
         classDef.interfaces,
         classDef.jsSuperClass,
-        classDef.jsNativeLoadSpec,
+        jsNativeLoadSpec,
         fields,
         allMethods,
         jsConstructor,
