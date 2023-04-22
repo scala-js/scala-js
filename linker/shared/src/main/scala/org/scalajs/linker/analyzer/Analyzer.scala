@@ -17,7 +17,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.concurrent._
 
-import scala.util.{Success, Failure}
+import scala.util.{Try, Success, Failure}
 
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
@@ -29,24 +29,32 @@ import org.scalajs.ir.Trees.{MemberNamespace, JSNativeLoadSpec}
 import org.scalajs.ir.Types.ClassRef
 
 import org.scalajs.linker._
-import org.scalajs.linker.interface.{ESVersion, ModuleKind, ModuleInitializer}
+import org.scalajs.linker.frontend.IRLoader
+import org.scalajs.linker.interface._
 import org.scalajs.linker.interface.unstable.ModuleInitializerImpl
 import org.scalajs.linker.standard._
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
+import org.scalajs.logging._
+
 import Analysis._
 import Infos.{NamespacedMethodName, ReachabilityInfo, ReachabilityInfoInClass}
 
-private final class Analyzer(config: CommonPhaseConfig,
-    moduleInitializers: Seq[ModuleInitializer],
-    symbolRequirements: SymbolRequirement,
-    allowAddingSyntheticMethods: Boolean,
-    checkAbstractReachability: Boolean,
-    infoLoader: InfoLoader,
-    ec: ExecutionContext)
-    extends Analysis {
+final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
+    checkIR: Boolean, failOnError: Boolean, irLoader: IRLoader) {
 
   import Analyzer._
+
+  private val allowAddingSyntheticMethods = initial
+  private val checkAbstractReachability = initial
+
+  private val infoLoader: InfoLoader = {
+    new InfoLoader(irLoader,
+        if (!checkIR) InfoLoader.NoIRCheck
+        else if (initial) InfoLoader.InitialIRCheck
+        else InfoLoader.InternalIRCheck
+    )
+  }
 
   private val isNoModule = config.coreSpec.moduleKind == ModuleKind.NoModule
 
@@ -55,28 +63,34 @@ private final class Analyzer(config: CommonPhaseConfig,
 
   private[this] val _errors = mutable.Buffer.empty[Error]
 
-  private val workQueue = new WorkQueue(ec)
+  private var workQueue: WorkQueue = _
 
   private val fromAnalyzer = FromCore("analyzer")
 
-  private[this] var _loadedClassInfos: scala.collection.Map[ClassName, ClassInfo] = _
-
-  def classInfos: scala.collection.Map[ClassName, Analysis.ClassInfo] =
-    _loadedClassInfos
-
   private[this] val _topLevelExportInfos = mutable.Map.empty[(ModuleID, String), TopLevelExportInfo]
 
-  def topLevelExportInfos: scala.collection.Map[(ModuleID, String), Analysis.TopLevelExportInfo] =
-    _topLevelExportInfos
+  def computeReachability(moduleInitializers: Seq[ModuleInitializer],
+      symbolRequirements: SymbolRequirement, logger: Logger)(implicit ec: ExecutionContext): Future[Analysis] = {
 
-  def errors: scala.collection.Seq[Error] = _errors
+    resetState()
 
-  def computeReachability(): Future[Unit] = {
-    require(_classInfos.isEmpty, "Cannot run the same Analyzer multiple times")
+    infoLoader.update(logger)
 
-    loadObjectClass(() => loadEverything())
+    workQueue = new WorkQueue(ec)
 
-    workQueue.join().map(_ => postLoad())(ec)
+    loadObjectClass(() => loadEverything(moduleInitializers, symbolRequirements))
+
+    workQueue.join()
+      .map(_ => postLoad(moduleInitializers, logger))(ec)
+      .andThen { case _ => infoLoader.cleanAfterRun() }
+  }
+
+  private def resetState(): Unit = {
+    objectClassInfo = null
+    workQueue = null
+    _errors.clear()
+    _classInfos.clear()
+    _topLevelExportInfos.clear()
   }
 
   private def loadObjectClass(onSuccess: () => Unit): Unit = {
@@ -85,7 +99,7 @@ private final class Analyzer(config: CommonPhaseConfig,
     /* Load the java.lang.Object class, and validate it
      * If it is missing or invalid, we're in deep trouble, and cannot continue.
      */
-    infoLoader.loadInfo(ObjectClass)(ec) match {
+    infoLoader.loadInfo(ObjectClass)(workQueue.ec) match {
       case None =>
         _errors += MissingJavaLangObjectClass(fromAnalyzer)
 
@@ -101,7 +115,8 @@ private final class Analyzer(config: CommonPhaseConfig,
     }
   }
 
-  private def loadEverything(): Unit = {
+  private def loadEverything(moduleInitializers: Seq[ModuleInitializer],
+      symbolRequirements: SymbolRequirement): Unit = {
     assert(objectClassInfo != null)
 
     implicit val from = fromAnalyzer
@@ -135,11 +150,12 @@ private final class Analyzer(config: CommonPhaseConfig,
     reachInitializers(moduleInitializers)
   }
 
-  private def postLoad(): Unit = {
+  private def postLoad(moduleInitializers: Seq[ModuleInitializer],
+      logger: Logger): Analysis = {
     if (isNoModule) {
       // Check there is only a single module.
       val publicModuleIDs = (
-         topLevelExportInfos.keys.map(_._1).toList ++
+         _topLevelExportInfos.keys.map(_._1).toList ++
          moduleInitializers.map(i => ModuleID(i.moduleID))
       ).distinct
 
@@ -153,10 +169,45 @@ private final class Analyzer(config: CommonPhaseConfig,
     assert(_errors.nonEmpty || infos.size == _classInfos.size,
         "unloaded classes in post load phase")
 
-    _loadedClassInfos = infos
-
     // Reach additional data, based on reflection methods used
     reachDataThroughReflection(infos)
+
+    if (failOnError && _errors.nonEmpty)
+      reportErrors(logger)
+
+    new Analysis {
+      val classInfos = infos
+      val topLevelExportInfos = _topLevelExportInfos
+      val errors = _errors
+    }
+  }
+
+  private def reportErrors(logger: Logger): Unit = {
+    require(_errors.nonEmpty)
+
+    val maxDisplayErrors = {
+      val propName = "org.scalajs.linker.maxlinkingerrors"
+      Try(System.getProperty(propName, "20").toInt).getOrElse(20).max(1)
+    }
+
+    _errors
+      .take(maxDisplayErrors)
+      .foreach(logError(_, logger, Level.Error))
+
+    val skipped = _errors.size - maxDisplayErrors
+    if (skipped > 0)
+      logger.log(Level.Error, s"Not showing $skipped more linking errors")
+
+    if (initial) {
+      throw new LinkingException("There were linking errors")
+    } else {
+      throw new AssertionError(
+          "There were linking errors after the optimizer has run. " +
+          "This is a bug, please report it. " +
+          "You can work around the bug by disabling the optimizer. " +
+          "In the sbt plugin, this can be done with " +
+          "`scalaJSLinkerConfig ~= { _.withOptimizer(false) }`.")
+    }
   }
 
   private def reachSymbolRequirement(requirement: SymbolRequirement,
@@ -350,7 +401,7 @@ private final class Analyzer(config: CommonPhaseConfig,
 
     _classInfos(className) = this
 
-    infoLoader.loadInfo(className)(ec) match {
+    infoLoader.loadInfo(className)(workQueue.ec) match {
       case Some(future) =>
         workQueue.enqueue(future)(link(_, nonExistent = false))
 
@@ -858,7 +909,7 @@ private final class Analyzer(config: CommonPhaseConfig,
 
       // Starting here, we just do data juggling, so it can run on any thread.
       locally {
-        implicit val iec = ec
+        implicit val iec = workQueue.ec
 
         val hasMoreSpecific = Future.traverse(specificityChecks)(
             checks => Future.sequence(checks).map(_.contains(true)))
@@ -1476,18 +1527,7 @@ object Analyzer {
   private val getSuperclassMethodName =
     MethodName("getSuperclass", Nil, ClassRef(ClassClass))
 
-  def computeReachability(config: CommonPhaseConfig,
-      moduleInitializers: Seq[ModuleInitializer],
-      symbolRequirements: SymbolRequirement,
-      allowAddingSyntheticMethods: Boolean,
-      checkAbstractReachability: Boolean,
-      infoLoader: InfoLoader)(implicit ec: ExecutionContext): Future[Analysis] = {
-    val analyzer = new Analyzer(config, moduleInitializers, symbolRequirements,
-        allowAddingSyntheticMethods, checkAbstractReachability, infoLoader, ec)
-    analyzer.computeReachability().map(_ => analyzer)
-  }
-
-  private class WorkQueue(ec: ExecutionContext) {
+  private class WorkQueue(val ec: ExecutionContext) {
     private val queue = new ConcurrentLinkedQueue[() => Unit]()
     private val working = new AtomicBoolean(false)
     private val pending = new AtomicInteger(0)

@@ -101,17 +101,14 @@ object LinkingUtils {
     val injectedIRFiles = StandardLinkerBackend(config).injectedIRFiles
 
     val irLoader = new FileIRLoader
-    val infoLoader = new InfoLoader(irLoader, InfoLoader.InitialIRCheck)
+    val analyzer = new Analyzer(CommonPhaseConfig.fromStandardConfig(config),
+        initial = true, checkIR = true, failOnError = false, irLoader)
     val logger = new ScalaConsoleLogger(Level.Error)
 
     for {
       baseFiles <- stdlib
       _ <- irLoader.update(classDefIRFiles ++ baseFiles ++ injectedIRFiles)
-      _ = infoLoader.update(logger)
-      analysis <- Analyzer.computeReachability(
-          CommonPhaseConfig.fromStandardConfig(config), moduleInitializers,
-          symbolRequirements, allowAddingSyntheticMethods = true,
-          checkAbstractReachability = true, infoLoader)
+      analysis <- analyzer.computeReachability(moduleInitializers, symbolRequirements, logger)
     } yield {
       analysis
     }

@@ -13,7 +13,6 @@
 package org.scalajs.linker.frontend
 
 import scala.concurrent._
-import scala.util.Try
 
 import org.scalajs.logging._
 
@@ -37,13 +36,9 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
   import BaseLinker._
 
   private val irLoader = new FileIRLoader
+  private val analyzer =
+    new Analyzer(config, initial = true, checkIR = checkIR, failOnError = true, irLoader)
   private val methodSynthesizer = new MethodSynthesizer(irLoader)
-  private val infoLoader = {
-    new InfoLoader(irLoader,
-        if (checkIR) InfoLoader.InitialIRCheck
-        else InfoLoader.NoIRCheck
-    )
-  }
 
   def link(irInput: Seq[IRFile],
       moduleInitializers: Seq[ModuleInitializer], logger: Logger,
@@ -53,8 +48,7 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
     val result = for {
       _ <- irLoader.update(irInput)
       analysis <- logger.timeFuture("Linker: Compute reachability") {
-        infoLoader.update(logger)
-        analyze(moduleInitializers, symbolRequirements, logger)
+        analyzer.computeReachability(moduleInitializers, symbolRequirements, logger)
       }
       linkResult <- logger.timeFuture("Linker: Assemble LinkedClasses") {
         assemble(moduleInitializers, analysis)
@@ -75,42 +69,6 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
 
     result.andThen { case _ =>
       irLoader.cleanAfterRun()
-      infoLoader.cleanAfterRun()
-    }
-  }
-
-  private def analyze(moduleInitializers: Seq[ModuleInitializer],
-      symbolRequirements: SymbolRequirement, logger: Logger)(
-      implicit ec: ExecutionContext): Future[Analysis] = {
-    def reportErrors(errors: scala.collection.Seq[Analysis.Error]) = {
-      require(errors.nonEmpty)
-
-      val maxDisplayErrors = {
-        val propName = "org.scalajs.linker.maxlinkingerrors"
-        Try(System.getProperty(propName, "20").toInt).getOrElse(20).max(1)
-      }
-
-      errors
-        .take(maxDisplayErrors)
-        .foreach(logError(_, logger, Level.Error))
-
-      val skipped = errors.size - maxDisplayErrors
-      if (skipped > 0)
-        logger.log(Level.Error, s"Not showing $skipped more linking errors")
-
-      throw new LinkingException("There were linking errors")
-    }
-
-    for {
-      analysis <- Analyzer.computeReachability(config, moduleInitializers,
-          symbolRequirements, allowAddingSyntheticMethods = true,
-          checkAbstractReachability = true, infoLoader)
-    } yield {
-      if (analysis.errors.nonEmpty) {
-        reportErrors(analysis.errors)
-      }
-
-      analysis
     }
   }
 
