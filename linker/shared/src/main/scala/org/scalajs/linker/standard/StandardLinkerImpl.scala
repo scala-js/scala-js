@@ -42,8 +42,7 @@ private final class StandardLinkerImpl private (
 
     checkValid()
       .flatMap(_ => frontend.link(
-          irFiles ++ backend.injectedIRFiles, moduleInitializers,
-          backend.symbolRequirements, logger))
+          irFiles ++ backend.injectedIRFiles, moduleInitializers, logger))
       .flatMap(linkingUnit => backend.emit(linkingUnit, output, logger))
       .andThen { case t if t.isFailure => _valid = false }
       .andThen { case t => _linking.set(false) }

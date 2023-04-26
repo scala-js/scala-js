@@ -26,22 +26,21 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
 import org.scalajs.linker.analyzer._
 
 /** Does a dead code elimination pass on a [[LinkingUnit]]. */
-final class Refiner(config: CommonPhaseConfig, checkIR: Boolean) {
+final class Refiner(config: CommonPhaseConfig, checkIR: Boolean, symbolRequirements: SymbolRequirement) {
   import Refiner._
 
   private val irLoader = new ClassDefIRLoader
   private val analyzer =
-    new Analyzer(config, initial = false, checkIR = checkIR, failOnError = true, irLoader)
+    new Analyzer(config, initial = false, checkIR = checkIR, failOnError = true, irLoader, symbolRequirements)
 
   def refine(classDefs: Seq[(ClassDef, Version)],
-      moduleInitializers: List[ModuleInitializer],
-      symbolRequirements: SymbolRequirement, logger: Logger)(
+      moduleInitializers: List[ModuleInitializer], logger: Logger)(
       implicit ec: ExecutionContext): Future[LinkingUnit] = {
 
     irLoader.update(classDefs)
 
     val analysis = logger.timeFuture("Refiner: Compute reachability") {
-      analyzer.computeReachability(moduleInitializers, symbolRequirements, logger)
+      analyzer.computeReachability(moduleInitializers, logger)
     }
 
     for {

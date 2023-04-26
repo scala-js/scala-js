@@ -31,20 +31,24 @@ import org.scalajs.linker.frontend.modulesplitter._
  *  Attention: [[LinkerFrontendImpl]] does not cache the IR input. It is
  *  advisable to do so, unless all IR is already in memory.
  */
-final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
+final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config, backendRequirements: SymbolRequirement)
     extends LinkerFrontend {
 
   /** Core specification that this linker frontend implements. */
   val coreSpec = config.commonConfig.coreSpec
 
-  private[this] val linker: BaseLinker =
-    new BaseLinker(config.commonConfig, config.checkIR)
-
   private[this] val optOptimizer: Option[IncOptimizer] =
     LinkerFrontendImplPlatform.createOptimizer(config)
 
+  private[this] val preOptimizerRequirements = optOptimizer.fold(backendRequirements) {
+    optimizer => backendRequirements ++ optimizer.symbolRequirements
+  }
+
+  private[this] val linker: BaseLinker =
+    new BaseLinker(config.commonConfig, config.checkIR, preOptimizerRequirements)
+
   private[this] val refiner: Refiner =
-    new Refiner(config.commonConfig, config.checkIR)
+    new Refiner(config.commonConfig, config.checkIR, backendRequirements)
 
   private[this] val splitter: ModuleSplitter = config.moduleSplitStyle match {
     case ModuleSplitStyle.FewestModules             => ModuleSplitter.fewestModules()
@@ -55,22 +59,15 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
   /** Link and optionally optimize the given IR to a
    *  [[standard.ModuleSet ModuleSet]].
    */
-  def link(irFiles: Seq[IRFile],
-      moduleInitializers: Seq[ModuleInitializer],
-      symbolRequirements: SymbolRequirement, logger: Logger)(
+  def link(irFiles: Seq[IRFile], moduleInitializers: Seq[ModuleInitializer], logger: Logger)(
       implicit ec: ExecutionContext): Future[ModuleSet] = {
 
-    val preOptimizerRequirements = optOptimizer.fold(symbolRequirements) {
-      optimizer => symbolRequirements ++ optimizer.symbolRequirements
-    }
-
     val linkResult = logger.timeFuture("Linker") {
-      linker.link(irFiles, moduleInitializers, logger,
-          preOptimizerRequirements)
+      linker.link(irFiles, moduleInitializers, logger)
     }
 
     val optimizedResult = optOptimizer.fold(linkResult) { optimizer =>
-      linkResult.flatMap(optimize(_, symbolRequirements, optimizer, logger))
+      linkResult.flatMap(optimize(_, optimizer, logger))
     }
 
     optimizedResult.map { unit =>
@@ -80,22 +77,21 @@ final class LinkerFrontendImpl private (config: LinkerFrontendImpl.Config)
     }
   }
 
-  private def optimize(unit: LinkingUnit, symbolRequirements: SymbolRequirement,
-      optimizer: IncOptimizer, logger: Logger)(
+  private def optimize(unit: LinkingUnit, optimizer: IncOptimizer, logger: Logger)(
       implicit ec: ExecutionContext): Future[LinkingUnit] = {
     val optimized = logger.time("Optimizer") {
       optimizer.update(unit, logger)
     }
 
     logger.timeFuture("Refiner") {
-      refiner.refine(optimized, unit.moduleInitializers, symbolRequirements, logger)
+      refiner.refine(optimized, unit.moduleInitializers, logger)
     }
   }
 }
 
 object LinkerFrontendImpl {
-  def apply(config: Config): LinkerFrontendImpl =
-    new LinkerFrontendImpl(config)
+  def apply(config: Config, backendRequirements: SymbolRequirement): LinkerFrontendImpl =
+    new LinkerFrontendImpl(config, backendRequirements)
 
   /** Configurations relevant to the frontend */
   final class Config private (

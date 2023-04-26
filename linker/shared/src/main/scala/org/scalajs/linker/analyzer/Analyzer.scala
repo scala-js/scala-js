@@ -41,7 +41,7 @@ import Analysis._
 import Infos.{NamespacedMethodName, ReachabilityInfo, ReachabilityInfoInClass}
 
 final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
-    checkIR: Boolean, failOnError: Boolean, irLoader: IRLoader) {
+    checkIR: Boolean, failOnError: Boolean, irLoader: IRLoader, symbolRequirements: SymbolRequirement) {
 
   import Analyzer._
 
@@ -69,8 +69,8 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
   private[this] val _topLevelExportInfos = mutable.Map.empty[(ModuleID, String), TopLevelExportInfo]
 
-  def computeReachability(moduleInitializers: Seq[ModuleInitializer],
-      symbolRequirements: SymbolRequirement, logger: Logger)(implicit ec: ExecutionContext): Future[Analysis] = {
+  def computeReachability(moduleInitializers: Seq[ModuleInitializer], logger: Logger)(
+      implicit ec: ExecutionContext): Future[Analysis] = {
 
     resetState()
 

@@ -47,15 +47,16 @@ class ClassDefCheckerTest {
     val config = StandardConfig()
       .withCheckIR(true)
       .withOptimizer(false)
-    val linkerFrontend = StandardLinkerFrontend(config)
 
     val loadASymbolRequirements = SymbolRequirement
       .factory("ClassDefCheckerTest")
       .classData("A")
 
+    val linkerFrontend = StandardLinkerFrontend(config, loadASymbolRequirements)
+
     TestIRRepo.minilib.flatMap { stdLibFiles =>
       val irFiles = stdLibFiles :+ MemClassDefIRFile(wrongClassDef)
-      linkerFrontend.link(irFiles, Nil, loadASymbolRequirements, NullLogger)
+      linkerFrontend.link(irFiles, Nil, NullLogger)
     }.failed.map { th =>
       assertTrue(th.toString(), th.isInstanceOf[LinkingException])
     }

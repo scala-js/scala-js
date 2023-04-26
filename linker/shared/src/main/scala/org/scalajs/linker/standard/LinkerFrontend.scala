@@ -34,7 +34,6 @@ abstract class LinkerFrontend {
 
   /** Link and optionally optimize the given IR to a [[ModuleSet]]. */
   def link(irFiles: Seq[IRFile],
-      moduleInitializers: Seq[ModuleInitializer],
-      symbolRequirements: SymbolRequirement, logger: Logger)(
+      moduleInitializers: Seq[ModuleInitializer], logger: Logger)(
       implicit ec: ExecutionContext): Future[ModuleSet]
 }

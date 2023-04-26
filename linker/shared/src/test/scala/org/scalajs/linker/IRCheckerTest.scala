@@ -201,11 +201,12 @@ object IRCheckerTest {
     val config = StandardConfig()
       .withCheckIR(true)
       .withOptimizer(false)
-    val linkerFrontend = StandardLinkerFrontend(config)
 
     val noSymbolRequirements = SymbolRequirement
       .factory("IRCheckerTest")
       .none()
+
+    val linkerFrontend = StandardLinkerFrontend(config, noSymbolRequirements)
 
     TestIRRepo.minilib.flatMap { stdLibFiles =>
       val irFiles = (
@@ -213,7 +214,7 @@ object IRCheckerTest {
           classDefs.map(MemClassDefIRFile(_))
       )
 
-      linkerFrontend.link(irFiles, moduleInitializers, noSymbolRequirements, logger)
+      linkerFrontend.link(irFiles, moduleInitializers, logger)
     }.map(_ => ())
   }
 }

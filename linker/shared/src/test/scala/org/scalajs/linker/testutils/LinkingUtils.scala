@@ -72,8 +72,9 @@ object LinkingUtils {
       implicit ec: ExecutionContext): Future[ModuleSet] = {
 
     val cfg = config.withCheckIR(true)
-    val frontend = StandardLinkerFrontend(cfg)
+
     val backend = new StoreModuleSetLinkerBackend(StandardLinkerBackend(cfg))
+    val frontend = StandardLinkerFrontend(cfg, backend.symbolRequirements)
     val linker = StandardLinkerImpl(frontend, backend)
 
     val classDefsFiles = classDefs.map(MemClassDefIRFile(_))
@@ -102,13 +103,13 @@ object LinkingUtils {
 
     val irLoader = new FileIRLoader
     val analyzer = new Analyzer(CommonPhaseConfig.fromStandardConfig(config),
-        initial = true, checkIR = true, failOnError = false, irLoader)
+        initial = true, checkIR = true, failOnError = false, irLoader, symbolRequirements)
     val logger = new ScalaConsoleLogger(Level.Error)
 
     for {
       baseFiles <- stdlib
       _ <- irLoader.update(classDefIRFiles ++ baseFiles ++ injectedIRFiles)
-      analysis <- analyzer.computeReachability(moduleInitializers, symbolRequirements, logger)
+      analysis <- analyzer.computeReachability(moduleInitializers, logger)
     } yield {
       analysis
     }

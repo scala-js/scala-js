@@ -23,8 +23,10 @@ object StandardImpl {
     new StandardIRFileCache(config)
 
   def linker(config: StandardConfig): Linker = {
-    StandardLinkerImpl(StandardLinkerFrontend(config),
-        StandardLinkerBackend(config))
+    val backend = StandardLinkerBackend(config)
+    val frontend = StandardLinkerFrontend(config, backend.symbolRequirements)
+
+    StandardLinkerImpl(frontend, backend)
   }
 
   def clearableLinker(config: StandardConfig): ClearableLinker =
