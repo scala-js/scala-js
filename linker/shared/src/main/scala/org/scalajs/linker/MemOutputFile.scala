@@ -26,12 +26,12 @@ sealed trait MemOutputFile extends LinkerOutput.File {
 
 @deprecated("Part of old Linker interface. Use MemOutputDirectory instead.", "1.3.0")
 object MemOutputFile {
-  private final val name = "mem-file.js"
+  private final val MemFileName = "mem-file.js"
 
   def apply(): MemOutputFile = new Impl(MemOutputDirectory())
 
   private final class Impl(dir: MemOutputDirectory)
-      extends OutputFileImpl(name, dir) with MemOutputFile {
+      extends OutputFileImpl(MemFileName, dir) with MemOutputFile {
     def content: Array[Byte] = {
       dir.content(name).getOrElse {
         throw new IllegalStateException("content hasn't been written yet")
