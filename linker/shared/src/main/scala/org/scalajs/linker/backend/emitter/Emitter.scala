@@ -400,7 +400,7 @@ final class Emitter(config: Emitter.Config) {
     // Symbols for private JS fields
     if (kind.isJSClass) {
       val fieldDefs = classTreeCache.privateJSFields.getOrElseUpdate {
-        classEmitter.genCreatePrivateJSFieldDefsOfJSClass(linkedClass)(
+        classEmitter.genCreatePrivateJSFieldDefsOfJSClass(className)(
             moduleContext, classCache)
       }
       main ++= extractWithGlobals(fieldDefs)
@@ -472,15 +472,24 @@ final class Emitter(config: Emitter.Config) {
             }
           }
         }
+        // TODO: This is probably better split into JS / Scala class ctors.
         ctorCache.getOrElseUpdate(ctorVersion,
-            classEmitter.genConstructor(linkedClass, useESClass, linkedInlineableInit)(moduleContext, ctorCache))
+            classEmitter.genConstructor(
+              className, // invalidated by overall class cache (part of ancestors)
+              kind, // invalidated by class verison
+              linkedClass.superClass, // invalidated by class version
+              linkedClass.jsSuperClass, // invalidated by class version
+              useESClass, // invalidated by class version,
+              linkedInlineableInit, // part of ctor version
+              linkedClass.jsConstructorDef // part of ctor version
+            )(moduleContext, ctorCache, linkedClass.pos))
       }
 
       /* Bridges from Throwable to methods of Object, which are necessary
        * because Throwable is rewired to extend JavaScript's Error instead of
        * j.l.Object.
        */
-      val linkedMethodsAndBridges = if (ClassEmitter.shouldExtendJSError(linkedClass)) {
+      val linkedMethodsAndBridges = if (ClassEmitter.shouldExtendJSError(className, linkedClass.superClass)) {
         val existingMethods = linkedMethods
           .withFilter(_.flags.namespace == MemberNamespace.Public)
           .map(_.methodName)
@@ -530,20 +539,42 @@ final class Emitter(config: Emitter.Config) {
         val memberCache = classCache.getExportedMemberCache(idx)
         val version = Version.combine(linkedClass.version, member.version)
         memberCache.getOrElseUpdate(version,
-            classEmitter.genExportedMember(linkedClass, useESClass, member)(moduleContext, memberCache))
+            classEmitter.genExportedMember(
+                className, // invalidated by overall class cache
+                kind, // invalidated by class verison
+                useESClass, // invalidated by class version (combined)
+                member // invalidated by version (combined)
+            )(moduleContext, memberCache))
+      }
+
+      val hasClassInitializer: Boolean = {
+        linkedClass.methods.exists { m =>
+          m.flags.namespace == MemberNamespace.StaticConstructor &&
+          m.methodName.isClassInitializer
+        }
       }
 
       val fullClass = {
         val fullClassCache = classCache.getFullClassCache()
 
-        fullClassCache.getOrElseUpdate(useESClass, ctorWithGlobals,
+        fullClassCache.getOrElseUpdate(linkedClass.version, ctorWithGlobals,
             memberMethodsWithGlobals, exportedMembersWithGlobals, {
           for {
             ctor <- ctorWithGlobals
             memberMethods <- WithGlobals.list(memberMethodsWithGlobals)
             exportedMembers <- WithGlobals.list(exportedMembersWithGlobals)
-            clazz <- classEmitter.buildClass(linkedClass, useESClass, ctor,
-                memberMethods, exportedMembers)(moduleContext, fullClassCache)
+            clazz <- classEmitter.buildClass(
+              className, // invalidated by overall class cache (part of ancestors)
+              linkedClass.kind, // invalidated by class version
+              linkedClass.jsClassCaptures, // invalidated by class version
+              hasClassInitializer, // invalidated by class version (optimizer cannot remove it)
+              linkedClass.superClass, // invalidated by class version
+              linkedClass.jsSuperClass, // invalidated by class version
+              useESClass, // invalidated by class version (depends on kind, config and ancestry only)
+              ctor, // invalidated directly
+              memberMethods, // invalidated directly
+              exportedMembers // invalidated directly
+            )(moduleContext, fullClassCache, linkedClass.pos) // pos invalidated by class version
           } yield {
             clazz
           }
@@ -569,23 +600,29 @@ final class Emitter(config: Emitter.Config) {
 
       if (classEmitter.needInstanceTests(linkedClass)(classCache)) {
         addToMain(classTreeCache.instanceTests.getOrElseUpdate(
-            classEmitter.genInstanceTests(linkedClass)(moduleContext, classCache)))
+            classEmitter.genInstanceTests(className, kind)(moduleContext, classCache, linkedClass.pos)))
       }
 
       if (linkedClass.hasRuntimeTypeInfo) {
         addToMain(classTreeCache.typeData.getOrElseUpdate(
-            classEmitter.genTypeData(linkedClass)(moduleContext, classCache)))
+            classEmitter.genTypeData(
+              className, // invalidated by overall class cache (part of ancestors)
+              kind, // invalidated by class version
+              linkedClass.superClass, // invalidated by class version
+              linkedClass.ancestors, // invalidated by overall class cache (identity)
+              linkedClass.jsNativeLoadSpec // invalidated by class version
+            )(moduleContext, classCache, linkedClass.pos)))
       }
 
       if (linkedClass.hasInstances && kind.isClass && linkedClass.hasRuntimeTypeInfo) {
         main += classTreeCache.setTypeData.getOrElseUpdate(
-            classEmitter.genSetTypeData(linkedClass)(moduleContext, classCache))
+            classEmitter.genSetTypeData(className)(moduleContext, classCache, linkedClass.pos))
       }
     }
 
     if (linkedClass.kind.hasModuleAccessor)
       addToMain(classTreeCache.moduleAccessor.getOrElseUpdate(
-          classEmitter.genModuleAccessor(linkedClass)(moduleContext, classCache)))
+          classEmitter.genModuleAccessor(className, kind)(moduleContext, classCache, linkedClass.pos)))
 
     // Static fields
 
@@ -593,14 +630,14 @@ final class Emitter(config: Emitter.Config) {
       Nil
     } else {
       extractWithGlobals(classTreeCache.staticFields.getOrElseUpdate(
-          classEmitter.genCreateStaticFieldsOfScalaClass(linkedClass)(moduleContext, classCache)))
+          classEmitter.genCreateStaticFieldsOfScalaClass(className)(moduleContext, classCache)))
     }
 
     // Static initialization
 
     val staticInitialization = if (classEmitter.needStaticInitialization(linkedClass)) {
       classTreeCache.staticInitialization.getOrElseUpdate(
-          classEmitter.genStaticInitialization(linkedClass)(moduleContext, classCache))
+          classEmitter.genStaticInitialization(className)(moduleContext, classCache, linkedClass.pos))
     } else {
       Nil
     }
@@ -853,7 +890,7 @@ final class Emitter(config: Emitter.Config) {
 
   private class FullClassCache extends knowledgeGuardian.KnowledgeAccessor {
     private[this] var _tree: WithGlobals[js.Tree] = null
-    private[this] var _lastUseESClass: Boolean = false
+    private[this] var _lastVersion: Version = Version.Unversioned
     private[this] var _lastCtor: WithGlobals[js.Tree] = null
     private[this] var _lastMemberMethods: List[WithGlobals[js.MethodDef]] = null
     private[this] var _lastExportedMembers: List[WithGlobals[js.Tree]] = null
@@ -862,6 +899,7 @@ final class Emitter(config: Emitter.Config) {
     override def invalidate(): Unit = {
       super.invalidate()
       _tree = null
+      _lastVersion = Version.Unversioned
       _lastCtor = null
       _lastMemberMethods = null
       _lastExportedMembers = null
@@ -869,7 +907,7 @@ final class Emitter(config: Emitter.Config) {
 
     def startRun(): Unit = _cacheUsed = false
 
-    def getOrElseUpdate(useESClass: Boolean, ctor: WithGlobals[js.Tree],
+    def getOrElseUpdate(version: Version, ctor: WithGlobals[js.Tree],
         memberMethods: List[WithGlobals[js.MethodDef]], exportedMembers: List[WithGlobals[js.Tree]],
         compute: => WithGlobals[js.Tree]): WithGlobals[js.Tree] = {
 
@@ -881,10 +919,12 @@ final class Emitter(config: Emitter.Config) {
         }
       }
 
-      if (_tree == null || (_lastCtor ne ctor) || !allSame(_lastMemberMethods, memberMethods) ||
+      if (_tree == null || !version.sameVersion(_lastVersion) || (_lastCtor ne ctor) ||
+          !allSame(_lastMemberMethods, memberMethods) ||
           !allSame(_lastExportedMembers, exportedMembers)) {
         invalidate()
         _tree = compute
+        _lastVersion = version
         _lastCtor = ctor
         _lastMemberMethods = memberMethods
         _lastExportedMembers = exportedMembers

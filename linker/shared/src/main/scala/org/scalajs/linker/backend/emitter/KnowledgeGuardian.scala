@@ -202,8 +202,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     def getSuperClassOfJSClass(className: ClassName): ClassName =
       classes(className).askJSSuperClass(this)
 
-    def getJSClassFieldDefs(className: ClassName): List[AnyFieldDef] =
-      classes(className).askJSClassFieldDefs(this)
+    def getFieldDefs(className: ClassName): List[AnyFieldDef] =
+      classes(className).askFieldDefs(this)
 
     def getStaticFieldMirrors(className: ClassName, field: FieldName): List[String] =
       classes(className).askStaticFieldMirrors(this, field)
@@ -449,7 +449,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       superClass
     }
 
-    def askJSClassFieldDefs(invalidatable: Invalidatable): List[AnyFieldDef] = {
+    def askFieldDefs(invalidatable: Invalidatable): List[AnyFieldDef] = {
       invalidatable.registeredTo(this)
       fieldDefsAskers += invalidatable
       fieldDefs
