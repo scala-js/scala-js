@@ -169,42 +169,36 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     }
   }
 
-  /** Generates the JS constructor for a class. */
-  def genConstructor(className: ClassName, kind: ClassKind, superClass: Option[ClassIdent],
-      jsSuperClass: Option[Tree], useESClass: Boolean,
-      initToInline: Option[MethodDef], jsConstructorDef: Option[JSConstructorDef])(
+  /** Generates the JS constructor for a Scala class. */
+  def genScalaClassConstructor(className: ClassName, superClass: Option[ClassIdent],
+      useESClass: Boolean, initToInline: Option[MethodDef])(
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge, pos: Position): WithGlobals[js.Tree] = {
 
-    assert(kind.isAnyNonNativeClass)
     assert(superClass.isDefined || className == ObjectClass,
         s"Class $className is missing a parent class")
 
-    if (useESClass)
-      genES6Constructor(className, kind, superClass, initToInline, jsConstructorDef)
-    else
-      genES5Constructor(className, kind, superClass, jsSuperClass, initToInline, jsConstructorDef)
-  }
+    val jsConstructorFunWithGlobals =
+      genJSConstructorFun(className, superClass, initToInline, useESClass)
 
-  /** Generates the JS constructor for a class, ES5 style. */
-  private def genES5Constructor(className: ClassName, kind: ClassKind, superClass: Option[ClassIdent],
-      jsSuperClass: Option[Tree], initToInline: Option[MethodDef], jsConstructorDef: Option[JSConstructorDef])(
-      implicit moduleContext: ModuleContext,
-      globalKnowledge: GlobalKnowledge, pos: Position): WithGlobals[js.Tree] = {
-    import TreeDSL._
+    if (useESClass) {
+      for (jsConstructorFun <- jsConstructorFunWithGlobals) yield {
+        val js.Function(_, args, restParam, body) = jsConstructorFun
 
-    def chainPrototypeWithLocalCtor(ctorVar: js.Tree, superCtor: js.Tree): js.Tree = {
-      val dummyCtor = fileLevelVar("hh", genName(className))
+        def isTrivialCtorBody: Boolean = body match {
+          case js.Skip()                 => true
+          case js.Apply(js.Super(), Nil) => true
+          case _                         => false
+        }
 
-      js.Block(
-          js.DocComment("@constructor"),
-          genConst(dummyCtor.ident, js.Function(false, Nil, None, js.Skip())),
-          dummyCtor.prototype := superCtor.prototype,
-          ctorVar.prototype := js.New(dummyCtor, Nil)
-      )
-    }
+        if (args.isEmpty && isTrivialCtorBody)
+          js.Skip()
+        else
+          js.MethodDef(static = false, js.Ident("constructor"), args, restParam, body)
+      }
+    } else {
+      import TreeDSL._
 
-    if (!kind.isJSClass) {
       val ctorVar = globalVar("c", className)
 
       val chainProtoWithGlobals = superClass match {
@@ -212,14 +206,14 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           WithGlobals(js.Skip())
 
         case Some(_) if shouldExtendJSError(className, superClass) =>
-          untrackedGlobalRef("Error").map(chainPrototypeWithLocalCtor(ctorVar, _))
+          untrackedGlobalRef("Error").map(chainPrototypeWithLocalCtor(className, ctorVar, _))
 
         case Some(parentIdent) =>
           WithGlobals(ctorVar.prototype := js.New(globalVar("h", parentIdent.name), Nil))
       }
 
       for {
-        ctorFun <- genJSConstructorFun(className, superClass, initToInline, forESClass = false)
+        ctorFun <- jsConstructorFunWithGlobals
         realCtorDef <-
             globalFunctionDef("c", className, ctorFun.args, ctorFun.restParam, ctorFun.body)
         inheritableCtorDef <-
@@ -239,50 +233,38 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
             globalVar("h", className).prototype := ctorVar.prototype
         )
       }
+    }
+  }
+
+  /** Generates the JS constructor for a JS class. */
+  def genJSConstructor(className: ClassName, superClass: Option[ClassIdent],
+      jsSuperClass: Option[Tree], useESClass: Boolean, jsConstructorDef: JSConstructorDef)(
+      implicit moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge, pos: Position): WithGlobals[js.Tree] = {
+
+    val JSConstructorDef(_, params, restParam, body) = jsConstructorDef
+    val ctorFunWithGlobals = desugarToFunction(className, params, restParam, body)
+
+    if (useESClass) {
+      for (fun <- ctorFunWithGlobals) yield {
+        js.MethodDef(static = false, js.Ident("constructor"),
+            fun.args, fun.restParam, fun.body)
+      }
     } else {
       for {
-        ctorFun <- genConstructorFunForJSClass(className, jsConstructorDef)
+        ctorFun <- ctorFunWithGlobals
         superCtor <- genJSSuperCtor(superClass, jsSuperClass)
       } yield {
+        import TreeDSL._
+
         val ctorVar = fileLevelVar("b", genName(className))
 
         js.Block(
             js.DocComment("@constructor"),
             ctorVar := ctorFun,
-            chainPrototypeWithLocalCtor(ctorVar, superCtor),
+            chainPrototypeWithLocalCtor(className, ctorVar, superCtor),
             genIdentBracketSelect(ctorVar.prototype, "constructor") := ctorVar
         )
-      }
-    }
-  }
-
-  /** Generates the JS constructor for a class, ES6 style. */
-  private def genES6Constructor(className: ClassName, kind: ClassKind, superClass: Option[ClassIdent],
-      initToInline: Option[MethodDef], jsConstructorDef: Option[JSConstructorDef])(
-      implicit moduleContext: ModuleContext,
-      globalKnowledge: GlobalKnowledge, pos: Position): WithGlobals[js.Tree] = {
-    if (kind.isJSClass) {
-      for (fun <- genConstructorFunForJSClass(className, jsConstructorDef)) yield {
-        js.MethodDef(static = false, js.Ident("constructor"),
-            fun.args, fun.restParam, fun.body)
-      }
-    } else {
-      val jsConstructorFunWithGlobals =
-        genJSConstructorFun(className, superClass, initToInline, forESClass = true)
-
-      for (jsConstructorFun <- jsConstructorFunWithGlobals) yield {
-        val js.Function(_, args, restParam, body) = jsConstructorFun
-
-        def isTrivialCtorBody: Boolean = body match {
-          case js.Skip()                 => true
-          case js.Apply(js.Super(), Nil) => true
-          case _                         => false
-        }
-
-        if (args.isEmpty && isTrivialCtorBody)
-          js.Skip()
-        else
-          js.MethodDef(static = false, js.Ident("constructor"), args, restParam, body)
       }
     }
   }
@@ -365,17 +347,18 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     }
   }
 
-  private def genConstructorFunForJSClass(className: ClassName,
-      jsConstructorDef: Option[JSConstructorDef])(
-      implicit moduleContext: ModuleContext,
-      globalKnowledge: GlobalKnowledge, pos: Position): WithGlobals[js.Function] = {
+  private def chainPrototypeWithLocalCtor(className: ClassName, ctorVar: js.Tree,
+      superCtor: js.Tree)(implicit pos: Position): js.Tree = {
+    import TreeDSL._
 
-    val JSConstructorDef(_, params, restParam, body) = jsConstructorDef.getOrElse {
-      throw new IllegalArgumentException(
-          s"$className does not have an exported constructor")
-    }
+    val dummyCtor = fileLevelVar("hh", genName(className))
 
-    desugarToFunction(className, params, restParam, body)
+    js.Block(
+        js.DocComment("@constructor"),
+        genConst(dummyCtor.ident, js.Function(false, Nil, None, js.Skip())),
+        dummyCtor.prototype := superCtor.prototype,
+        ctorVar.prototype := js.New(dummyCtor, Nil)
+    )
   }
 
   /** Generates the creation of fields for a Scala class. */

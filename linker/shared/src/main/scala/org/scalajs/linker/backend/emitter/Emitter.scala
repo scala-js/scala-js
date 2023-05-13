@@ -460,29 +460,38 @@ final class Emitter(config: Emitter.Config) {
          * If it is a JS class, it depends on the jsConstructorDef.
          */
         val ctorCache = classCache.getConstructorCache()
-        val ctorVersion = {
-          if (linkedClass.kind.isJSClass) {
-            assert(linkedInlineableInit.isEmpty)
-            Version.combine(linkedClass.version, linkedClass.jsConstructorDef.get.version)
-          } else {
-            linkedInlineableInit.fold {
-              Version.combine(linkedClass.version)
-            } { linkedInit =>
-              Version.combine(linkedClass.version, linkedInit.version)
-            }
+
+        if (linkedClass.kind.isJSClass) {
+          assert(linkedInlineableInit.isEmpty)
+
+          val jsConstructorDef = linkedClass.jsConstructorDef.getOrElse {
+            throw new IllegalArgumentException(s"$className does not have an exported constructor")
           }
+
+          val ctorVersion = Version.combine(linkedClass.version, jsConstructorDef.version)
+          ctorCache.getOrElseUpdate(ctorVersion,
+              classEmitter.genJSConstructor(
+                className, // invalidated by overall class cache (part of ancestors)
+                linkedClass.superClass, // invalidated by class version
+                linkedClass.jsSuperClass, // invalidated by class version
+                useESClass, // invalidated by class version
+                jsConstructorDef // part of ctor version
+              )(moduleContext, ctorCache, linkedClass.pos))
+        } else {
+          val ctorVersion = linkedInlineableInit.fold {
+            Version.combine(linkedClass.version)
+          } { linkedInit =>
+            Version.combine(linkedClass.version, linkedInit.version)
+          }
+
+          ctorCache.getOrElseUpdate(ctorVersion,
+              classEmitter.genScalaClassConstructor(
+                className, // invalidated by overall class cache (part of ancestors)
+                linkedClass.superClass, // invalidated by class version
+                useESClass, // invalidated by class version,
+                linkedInlineableInit // part of ctor version
+              )(moduleContext, ctorCache, linkedClass.pos))
         }
-        // TODO: This is probably better split into JS / Scala class ctors.
-        ctorCache.getOrElseUpdate(ctorVersion,
-            classEmitter.genConstructor(
-              className, // invalidated by overall class cache (part of ancestors)
-              kind, // invalidated by class verison
-              linkedClass.superClass, // invalidated by class version
-              linkedClass.jsSuperClass, // invalidated by class version
-              useESClass, // invalidated by class version,
-              linkedInlineableInit, // part of ctor version
-              linkedClass.jsConstructorDef // part of ctor version
-            )(moduleContext, ctorCache, linkedClass.pos))
       }
 
       /* Bridges from Throwable to methods of Object, which are necessary
