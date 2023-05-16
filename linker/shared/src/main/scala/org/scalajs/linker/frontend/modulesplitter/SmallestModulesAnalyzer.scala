@@ -37,14 +37,17 @@ private[modulesplitter] object SmallestModulesAnalyzer {
   private final class Run(info: ModuleAnalyzer.DependencyInfo)
       extends StrongConnect(info) with ModuleAnalyzer.Analysis {
 
+    private val internalModIDGenerator =
+      new InternalModuleIDGenerator.ForClassNames(info.publicModuleDependencies.keys)
+
     private[this] val moduleIndexToID = mutable.Map.empty[Int, ModuleID]
 
     def moduleForClass(className: ClassName): Option[ModuleID] =
       moduleIndex(className).map(moduleIndexToID)
 
     protected def emitModule(moduleIndex: Int, classNames: List[ClassName]): Unit = {
-      val repr = ModuleIDs.representativeClass(classNames)
-      val id = ModuleIDs.forClassName(info.publicModuleDependencies.keySet, repr)
+      val repr = internalModIDGenerator.representativeClass(classNames)
+      val id = internalModIDGenerator.forClassName(repr)
       moduleIndexToID(moduleIndex) = id
     }
   }

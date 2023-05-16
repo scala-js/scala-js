@@ -24,6 +24,7 @@ import org.scalajs.ir.Names.ClassName
 import org.scalajs.ir.SHA1
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
+import InternalModuleIDGenerator.ForDigests
 
 /** Tagger groups classes into coarse modules.
  *
@@ -163,13 +164,14 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
 
   private[this] val allPaths = mutable.Map.empty[ClassName, Paths]
 
-  final def tagAll(internalModuleIDPrefix: String): scala.collection.Map[ClassName, ModuleID] = {
+  final def tagAll(modulesToAvoid: Iterable[ModuleID]): scala.collection.Map[ClassName, ModuleID] = {
+    val internalModIDGenerator = new InternalModuleIDGenerator.ForDigests(modulesToAvoid)
     tagEntryPoints()
     for {
       (className, paths) <- allPaths
       if !excludedClasses.contains(className)
     } yield {
-      className -> paths.moduleID(internalModuleIDPrefix)
+      className -> paths.moduleID(internalModIDGenerator)
     }
   }
 
@@ -247,7 +249,7 @@ private object Tagger {
       hopCountsChanged || stepsChanged
     }
 
-    def moduleID(internalModuleIDPrefix: String): ModuleID = {
+    def moduleID(internalModIDGenerator: ForDigests): ModuleID = {
       if (direct.size == 1 && dynamic.isEmpty && maxExcludedHopCount == 0) {
         /* Class is only used by a single public module. Put it there.
          *
@@ -276,18 +278,7 @@ private object Tagger {
         for (className <- dynamicEnds)
           digestBuilder.updateUTF8String(className.encoded)
 
-        // Build a hex string of the hash with the right prefix.
-        @inline def hexDigit(digit: Int): Char =
-          Character.forDigit(digit & 0x0f, 16)
-
-        val id = new java.lang.StringBuilder(internalModuleIDPrefix)
-
-        for (b <- digestBuilder.finalizeDigest()) {
-          id.append(hexDigit(b >> 4))
-          id.append(hexDigit(b))
-        }
-
-        ModuleID(id.toString())
+        internalModIDGenerator.forDigest(digestBuilder.finalizeDigest())
       }
     }
 
