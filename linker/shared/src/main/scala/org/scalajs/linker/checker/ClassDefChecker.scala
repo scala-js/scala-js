@@ -27,7 +27,7 @@ import org.scalajs.linker.checker.ErrorReporter._
 
 /** Checker for the validity of the IR. */
 private final class ClassDefChecker(classDef: ClassDef,
-    allowReflectiveProxies: Boolean, allowTransients: Boolean, reporter: ErrorReporter) {
+    postBaseLinker: Boolean, postOptimizer: Boolean, reporter: ErrorReporter) {
   import ClassDefChecker._
 
   import reporter.reportError
@@ -102,12 +102,23 @@ private final class ClassDefChecker(classDef: ClassDef,
 
     //// Additional checks
 
-    if (classDef.kind == ClassKind.ModuleClass &&
-        methods(MemberNamespace.Constructor.ordinal).size != 1)
-      reportError("Module class must have exactly 1 constructor")
+    /* After the base linker, we may have DCE'ed away the constructors of
+     * module classes and JS classes that are never instantiated. The classes
+     * may still exist because their class data are accessed.
+     */
+    if (!postBaseLinker) {
+      /* Check that we have exactly 1 constructor in a module class. This goes
+       * together with `checkMethodDef`, which checks that a constructor in a
+       * module class must be 0-arg.
+       */
+      if (classDef.kind == ClassKind.ModuleClass &&
+          methods(MemberNamespace.Constructor.ordinal).size != 1) {
+        reportError("Module class must have exactly 1 constructor")
+      }
 
-    if (classDef.kind.isJSClass && classDef.jsConstructor.isEmpty)
-      reportError("JS classes and module classes must have a constructor")
+      if (classDef.kind.isJSClass && classDef.jsConstructor.isEmpty)
+        reportError("JS classes and module classes must have a constructor")
+    }
   }
 
   private def checkKind()(implicit ctx: ErrorContext): Unit = {
@@ -463,7 +474,7 @@ private final class ClassDefChecker(classDef: ClassDef,
   private def checkMethodNameNamespace(name: MethodName, namespace: MemberNamespace)(
       implicit ctx: ErrorContext): Unit = {
     if (name.isReflectiveProxy) {
-      if (allowReflectiveProxies) {
+      if (postBaseLinker) {
         if (namespace != MemberNamespace.Public)
           reportError("reflective profixes are only allowed in the public namespace")
       } else {
@@ -839,7 +850,7 @@ private final class ClassDefChecker(classDef: ClassDef,
   }
 
   private def checkAllowTransients()(implicit ctx: ErrorContext): Unit = {
-    if (!allowTransients)
+    if (!postOptimizer)
       reportError("invalid transient tree")
   }
 
@@ -897,9 +908,9 @@ object ClassDefChecker {
    *
    *  @return Count of IR checking errors (0 in case of success)
    */
-  def check(classDef: ClassDef, allowReflectiveProxies: Boolean, allowTransients: Boolean, logger: Logger): Int = {
+  def check(classDef: ClassDef, postBaseLinker: Boolean, postOptimizer: Boolean, logger: Logger): Int = {
     val reporter = new LoggerErrorReporter(logger)
-    new ClassDefChecker(classDef, allowReflectiveProxies, allowTransients, reporter).checkClassDef()
+    new ClassDefChecker(classDef, postBaseLinker, postOptimizer, reporter).checkClassDef()
     reporter.errorCount
   }
 

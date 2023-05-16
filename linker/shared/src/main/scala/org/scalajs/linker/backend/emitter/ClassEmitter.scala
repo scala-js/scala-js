@@ -903,6 +903,14 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
          */
         if (kind != ClassKind.JSClass && kind != ClassKind.NativeJSClass) {
           WithGlobals(globalVar("noIsInstance", CoreVar))
+        } else if (kind == ClassKind.JSClass && !globalKnowledge.hasInstances(className)) {
+          /* We need to constant-fold the instance test, to avoid emitting
+           * `x instanceof $a_TheClass()`, because `$a_TheClass` won't be
+           * declared at all. Otherwise, we'd get a `ReferenceError`.
+           */
+          WithGlobals(genArrowFunction(List(js.ParamDef(js.Ident("x"))), None, js.Return {
+            js.BooleanLiteral(false)
+          }))
         } else {
           for {
             jsCtor <- genJSClassConstructor(className, jsNativeLoadSpec,

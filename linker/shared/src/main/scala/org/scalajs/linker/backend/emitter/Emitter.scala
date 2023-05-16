@@ -629,9 +629,10 @@ final class Emitter(config: Emitter.Config) {
       }
     }
 
-    if (linkedClass.kind.hasModuleAccessor)
+    if (linkedClass.kind.hasModuleAccessor && linkedClass.hasInstances) {
       addToMain(classTreeCache.moduleAccessor.getOrElseUpdate(
           classEmitter.genModuleAccessor(className, kind)(moduleContext, classCache, linkedClass.pos)))
+    }
 
     // Static fields
 
