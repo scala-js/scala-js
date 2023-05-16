@@ -118,6 +118,15 @@ object MyScalaJSPlugin extends AutoPlugin {
       fullClasspath in scalaJSLinkerImpl := {
         (fullClasspath in (Build.linker.v2_12, Runtime)).value
       },
+
+      /* The AppVeyor CI build definition is very sensitive to weird characthers
+       * in its command lines, so we cannot directly spell out the correct
+       * incantation. Instead, we define this alias.
+       */
+      addCommandAlias(
+        "setSmallESModulesForAppVeyorCI",
+        "set testSuite.v2_12 / scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.ESModule).withModuleSplitStyle(ModuleSplitStyle.SmallModulesFor(List(\"org.scalajs.testsuite\"))))"
+      ),
   )
 
   override def projectSettings: Seq[Setting[_]] = Def.settings(
@@ -1900,6 +1909,13 @@ object Build {
         "org.scala-lang" % "scala-reflect" % scalaVersion.value % "provided",
 
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
+
+      unmanagedSourceDirectories in Compile ++= {
+        val mainDir = (sourceDirectory in Compile).value
+        val sharedMainDir = mainDir.getParentFile.getParentFile.getParentFile / "shared/src/main"
+
+        List(sharedMainDir / "scala")
+      },
 
       unmanagedSourceDirectories in Test ++= {
         val testDir = (sourceDirectory in Test).value
