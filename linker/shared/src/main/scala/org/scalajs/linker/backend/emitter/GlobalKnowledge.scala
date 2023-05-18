@@ -78,12 +78,8 @@ private[emitter] trait GlobalKnowledge {
    */
   def getSuperClassOfJSClass(className: ClassName): ClassName
 
-  /** The `FieldDef`s of a non-native JS class.
-   *
-   *  It is invalid to call this method with a class that is not a non-native
-   *  JS class.
-   */
-  def getJSClassFieldDefs(className: ClassName): List[AnyFieldDef]
+  /** The `FieldDef`s of a class. */
+  def getFieldDefs(className: ClassName): List[AnyFieldDef]
 
   /** The global variables that mirror a given static field. */
   def getStaticFieldMirrors(className: ClassName, field: FieldName): List[String]
