@@ -8,6 +8,11 @@ object BinaryIncompatibilities {
   )
 
   val Linker = Seq(
+    // private[linker], not an issue
+    exclude[MissingClassProblem](
+        "org.scalajs.linker.standard.SymbolRequirement$Nodes$Optional"),
+    exclude[MissingClassProblem](
+        "org.scalajs.linker.standard.SymbolRequirement$Nodes$Optional$"),
   )
 
   val LinkerInterface = Seq(

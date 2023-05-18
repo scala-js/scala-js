@@ -210,42 +210,26 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     }
   }
 
-  private def reachSymbolRequirement(requirement: SymbolRequirement,
-      optional: Boolean = false): Unit = {
+  private def reachSymbolRequirement(requirement: SymbolRequirement): Unit = {
 
     /* We use j.l.Object as representation of the core infrastructure.
      * As such, everything depends on j.l.Object and j.l.Object depends on all
      * symbol requirements.
      */
 
-    def withClass(className: ClassName)(onSuccess: ClassInfo => Unit)(
-        implicit from: From): Unit = {
-      lookupClass(className, ignoreMissing = optional)(onSuccess)
-    }
-
-    def withMethod(className: ClassName, methodName: MethodName)(
-        onSuccess: ClassInfo => Unit)(
-        implicit from: From): Unit = {
-      withClass(className) { clazz =>
-        val doReach = !optional || clazz.tryLookupMethod(methodName).isDefined
-        if (doReach)
-          onSuccess(clazz)
-      }
-    }
-
     import SymbolRequirement.Nodes._
 
     requirement match {
       case AccessModule(origin, moduleName) =>
         implicit val from = FromCore(origin)
-        withClass(moduleName) { clazz =>
+        lookupClass(moduleName) { clazz =>
           objectClassInfo.staticDependencies += clazz.className
           clazz.accessModule()
         }
 
       case InstantiateClass(origin, className, constructor) =>
         implicit val from = FromCore(origin)
-        withMethod(className, constructor) { clazz =>
+        lookupClass(className) { clazz =>
           objectClassInfo.staticDependencies += clazz.className
           clazz.instantiated()
           clazz.callMethodStatically(MemberNamespace.Constructor, constructor)
@@ -253,21 +237,21 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
       case InstanceTests(origin, className) =>
         implicit val from = FromCore(origin)
-        withClass(className){ clazz =>
+        lookupClass(className){ clazz =>
           objectClassInfo.staticDependencies += clazz.className
           clazz.useInstanceTests()
         }
 
       case ClassData(origin, className) =>
         implicit val from = FromCore(origin)
-        withClass(className) { clazz =>
+        lookupClass(className) { clazz =>
           objectClassInfo.staticDependencies += clazz.className
           clazz.accessData()
         }
 
       case CallMethod(origin, className, methodName, statically) =>
         implicit val from = FromCore(origin)
-        withMethod(className, methodName) { clazz =>
+        lookupClass(className) { clazz =>
           if (statically) {
             objectClassInfo.staticDependencies += clazz.className
             clazz.callMethodStatically(MemberNamespace.Public, methodName)
@@ -278,17 +262,14 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
       case CallStaticMethod(origin, className, methodName) =>
         implicit val from = FromCore(origin)
-        withMethod(className, methodName) { clazz =>
+        lookupClass(className) { clazz =>
           objectClassInfo.staticDependencies += clazz.className
           clazz.callMethodStatically(MemberNamespace.PublicStatic, methodName)
         }
 
-      case Optional(requirement) =>
-        reachSymbolRequirement(requirement, optional = true)
-
       case Multiple(requirements) =>
         for (requirement <- requirements)
-          reachSymbolRequirement(requirement, optional)
+          reachSymbolRequirement(requirement)
 
       case NoRequirement => // skip
     }
@@ -352,15 +333,12 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     }
   }
 
-  private def lookupClass(className: ClassName,
-      ignoreMissing: Boolean = false)(
+  private def lookupClass(className: ClassName)(
       onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
     lookupClassForLinking(className, Set.empty) {
       case info: ClassInfo =>
-        if (!info.nonExistent || !ignoreMissing) {
-          info.link()
-          onSuccess(info)
-        }
+        info.link()
+        onSuccess(info)
 
       case CycleInfo(cycle, _) =>
         _errors += CycleInInheritanceChain(cycle, fromAnalyzer)
