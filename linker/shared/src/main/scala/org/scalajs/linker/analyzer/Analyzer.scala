@@ -582,7 +582,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
     var isInstantiated: Boolean = false
     var isAnySubclassInstantiated: Boolean = false
-    var isModuleAccessed: Boolean = false
+    private var isModuleAccessed: Boolean = false
     var areInstanceTestsUsed: Boolean = false
     var isDataAccessed: Boolean = false
 
