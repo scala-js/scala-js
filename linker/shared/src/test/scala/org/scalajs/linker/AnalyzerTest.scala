@@ -124,6 +124,25 @@ class AnalyzerTest {
   }
 
   @Test
+  def missingClassParentSynthesizingConstructorPlusReflectiveCall_Issue4865(): AsyncResult = await {
+    val classDefs = Seq(
+        classDef("A", superClass = Some("B"),
+            methods = List(trivialCtor("A", parentClassName = "B")))
+    )
+
+    val requirements = {
+      reqsFactory.instantiateClass("A", NoArgConstructorName) ++
+      reqsFactory.callMethod(ObjectClass, MethodName.reflectiveProxy("foo", Nil))
+    }
+
+    val analysis = computeAnalysis(classDefs, requirements)
+
+    assertContainsError("MissingClass(B)", analysis) {
+      case MissingClass(ClsInfo("B"), FromClass(ClsInfo("A"))) => true
+    }
+  }
+
+  @Test
   def invalidSuperClass(): AsyncResult = await {
     val kindsSub = Seq(
         ClassKind.Class,
