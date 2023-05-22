@@ -47,6 +47,15 @@ class ClassTest {
       classOf[java.lang.Double]
   )
 
+  @Test def hierarchy(): Unit = {
+    def cls: Class[Product] = classOf[Product]
+
+    def serializable: java.io.Serializable = cls
+
+    // prevent DCE with trivial tests
+    assertSame(cls, serializable)
+  }
+
   @Test def getPrimitiveTypeName(): Unit = {
     @noinline
     def testNoInline(expected: String, cls: Class[_]): Unit =

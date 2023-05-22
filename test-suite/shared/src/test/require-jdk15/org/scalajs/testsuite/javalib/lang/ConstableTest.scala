@@ -33,6 +33,7 @@ class ConstableTest {
     test(true, 1.5f)
     test(true, 1.4)
     test(true, "foo")
+    test(true, classOf[Product])
 
     test(false, null)
     test(false, ())
