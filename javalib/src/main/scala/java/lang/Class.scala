@@ -12,6 +12,9 @@
 
 package java.lang
 
+import java.lang.constant.Constable
+import java.io.Serializable
+
 import scala.scalajs.js
 
 @js.native
@@ -31,7 +34,9 @@ private trait ScalaJSClassData[A] extends js.Object {
   def newArrayOfThisClass(dimensions: js.Array[Int]): AnyRef = js.native
 }
 
-final class Class[A] private (data0: Object) extends Object {
+final class Class[A] private (data0: Object)
+    extends Object with Serializable with Constable {
+
   private[this] val data: ScalaJSClassData[A] =
     data0.asInstanceOf[ScalaJSClassData[A]]
 
