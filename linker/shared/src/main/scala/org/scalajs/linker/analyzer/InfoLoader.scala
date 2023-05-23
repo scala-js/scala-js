@@ -88,7 +88,7 @@ private[analyzer] object InfoLoader {
 
               case InfoLoader.InitialIRCheck =>
                 val errorCount = ClassDefChecker.check(tree,
-                    allowReflectiveProxies = false, allowTransients = false, logger)
+                    postBaseLinker = false, postOptimizer = false, logger)
                 if (errorCount != 0) {
                   throw new LinkingException(
                       s"There were $errorCount ClassDef checking errors.")
@@ -96,7 +96,7 @@ private[analyzer] object InfoLoader {
 
               case InfoLoader.InternalIRCheck =>
                 val errorCount = ClassDefChecker.check(tree,
-                    allowReflectiveProxies = true, allowTransients = true, logger)
+                    postBaseLinker = true, postOptimizer = true, logger)
                 if (errorCount != 0) {
                   throw new LinkingException(
                       s"There were $errorCount ClassDef checking errors after optimizing. " +

@@ -19,6 +19,8 @@ import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
+import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+
 /** Tests the little reflection we support */
 class ReflectionTest {
   import ReflectionTest._
@@ -131,6 +133,112 @@ class ReflectionTest {
     if (hiddenJSObj.getClass() != null)
       fail("optimizer thought that hiddenJSObj.getClass() was non-null")
   }
+
+  @Test def jsTypesKeptOnlyForTheirData_Issue4850(): Unit = {
+    /* Note: it is not possible to write `classOf[SomeObject.type]`. In order
+     * to get the class data of module classes (`object`s) without
+     * instantiating them or reaching anything else about them, we go through
+     * the `classOf` of an `Array[SomeObject.type]` then extract its
+     * `getComponentType()`.
+     */
+
+    import JSTypesKeptOnlyForTheirData._
+
+    @noinline
+    def nameOf(cls: Class[_]): String = cls.getName()
+
+    @inline
+    def testName(expectedShortName: String, cls: Class[_]): Unit = {
+      val prefix = "org.scalajs.testsuite.compiler.ReflectionTest$JSTypesKeptOnlyForTheirData$"
+      val expectedName = prefix + expectedShortName
+
+      assertEquals(expectedName, cls.getName()) // constant-folded
+      assertEquals(expectedName, nameOf(cls)) // evaluated at run-time
+    }
+
+    testName("NativeClass", classOf[NativeClass])
+    testName("NativeObject$", classOf[Array[NativeObject.type]].getComponentType())
+    testName("NativeTrait", classOf[NativeTrait])
+    testName("NonNativeClass", classOf[NonNativeClass])
+    testName("NonNativeObject$", classOf[Array[NonNativeObject.type]].getComponentType())
+    testName("NonNativeTrait", classOf[NonNativeTrait])
+
+    @noinline
+    def isInterfaceOf(cls: Class[_]): Boolean = cls.isInterface()
+
+    @inline
+    def testIsInterface(expected: Boolean, cls: Class[_]): Unit = {
+      assertEquals(expected, cls.isInterface()) // could be constant-folded in the future
+      assertEquals(expected, isInterfaceOf(cls)) // evaluated at run-time
+    }
+
+    // Consistent with isInterfaceForInstantiatedJSTypes()
+    testIsInterface(false, classOf[NativeClass])
+    testIsInterface(false, classOf[Array[NativeObject.type]].getComponentType())
+    testIsInterface(false, classOf[NativeTrait])
+    testIsInterface(false, classOf[NonNativeClass])
+    testIsInterface(false, classOf[Array[NonNativeObject.type]].getComponentType())
+    testIsInterface(false, classOf[NonNativeTrait])
+
+    @noinline
+    def isInstance(cls: Class[_], x: Any): Boolean = cls.isInstance(x)
+
+    @inline
+    def testIsInstance(expected: Boolean, cls: Class[_], x: Any): Unit = {
+      assertEquals(expected, cls.isInstance(x))
+      assertEquals(expected, isInstance(cls, x))
+    }
+
+    @inline
+    def testIsInstanceThrows(expected: js.Dynamic, cls: Class[_], x: Any): Unit = {
+      val e1 = assertThrows(classOf[js.JavaScriptException], cls.isInstance(x))
+      assertTrue(e1.toString(), js.special.instanceof(e1.exception, expected))
+
+      val e2 = assertThrows(classOf[js.JavaScriptException], isInstance(cls, x))
+      assertTrue(e2.toString(), js.special.instanceof(e2.exception, expected))
+    }
+
+    val jsDate: Any = new js.Date(1684246473882.0)
+
+    testIsInstance(false, classOf[NonNativeClass], jsDate)
+    testIsInstance(true, classOf[JSDateForIsInstance], jsDate)
+
+    // NativeClass is not actually defined, so isInstance will throw a ReferenceError
+    testIsInstanceThrows(js.constructorOf[js.ReferenceError], classOf[NativeClass], jsDate)
+
+    // isInstance is not supported on JS objects and traits; it throws a TypeError by spec
+    testIsInstanceThrows(js.constructorOf[js.TypeError],
+        classOf[Array[NativeObject.type]].getComponentType(), jsDate)
+    testIsInstanceThrows(js.constructorOf[js.TypeError], classOf[NativeTrait], jsDate)
+    testIsInstanceThrows(js.constructorOf[js.TypeError],
+        classOf[Array[NonNativeObject.type]].getComponentType(), jsDate)
+    testIsInstanceThrows(js.constructorOf[js.TypeError], classOf[NonNativeTrait], jsDate)
+    testIsInstanceThrows(js.constructorOf[js.TypeError],
+        classOf[Array[JSDateForIsInstance.type]].getComponentType(), jsDate)
+  }
+
+  @Test def isInterfaceForInstantiatedJSTypes(): Unit = {
+    // Make sure the instantiated non-native things are actually instantiated
+    assertEquals("function", js.typeOf(js.constructorOf[InstantiatedNonNativeClass]))
+    assertEquals("object", js.typeOf(InstantiatedNonNativeObject))
+
+    @noinline
+    def isInterfaceOf(cls: Class[_]): Boolean = cls.isInterface()
+
+    @inline
+    def testIsInterface(expected: Boolean, cls: Class[_]): Unit = {
+      assertEquals(expected, cls.isInterface()) // could be constant-folded in the future
+      assertEquals(expected, isInterfaceOf(cls)) // evaluated at run-time
+    }
+
+    // Consistent with jsTypesKeptOnlyForTheirData_Issue4850()
+    testIsInterface(false, classOf[js.Date]) // native class
+    testIsInterface(false, classOf[Array[js.Math.type]].getComponentType()) // native object
+    testIsInterface(false, classOf[js.Function0[Any]]) // native trait
+    testIsInterface(false, classOf[InstantiatedNonNativeClass])
+    testIsInterface(false, classOf[Array[InstantiatedNonNativeObject.type]].getComponentType())
+    testIsInterface(false, classOf[PseudoInstantiatedNonNativeTrait])
+  }
 }
 
 object ReflectionTest {
@@ -143,4 +251,36 @@ object ReflectionTest {
 
   class OtherPrefixRenamedTestClass
 
+  object JSTypesKeptOnlyForTheirData {
+    @js.native
+    @JSGlobal("NativeClass")
+    class NativeClass extends js.Object
+
+    @js.native
+    @JSGlobal("NativeObject")
+    object NativeObject extends js.Object
+
+    @js.native
+    trait NativeTrait extends js.Object
+
+    class NonNativeClass extends js.Object
+
+    object NonNativeObject extends js.Object
+
+    trait NonNativeTrait extends js.Object
+
+    @js.native
+    @JSGlobal("Date")
+    class JSDateForIsInstance extends js.Object
+
+    @js.native
+    @JSGlobal("Date")
+    object JSDateForIsInstance extends js.Object
+  }
+
+  trait PseudoInstantiatedNonNativeTrait extends js.Object
+
+  class InstantiatedNonNativeClass extends js.Object with PseudoInstantiatedNonNativeTrait
+
+  object InstantiatedNonNativeObject extends js.Object with PseudoInstantiatedNonNativeTrait
 }

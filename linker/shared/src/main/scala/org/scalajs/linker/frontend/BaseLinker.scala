@@ -147,15 +147,11 @@ private[frontend] object BaseLinker {
 
     val allMethods = methods ++ syntheticMethodDefs
 
-    val kind =
-      if (classInfo.isModuleAccessed) classDef.kind
-      else classDef.kind.withoutModuleAccessor
-
     val ancestors = classInfo.ancestors.map(_.className)
 
     val linkedClass = new LinkedClass(
         classDef.name,
-        kind,
+        classDef.kind,
         classDef.jsClassCaptures,
         classDef.superClass,
         classDef.interfaces,
