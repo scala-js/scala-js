@@ -646,19 +646,19 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       }
 
       if (candidatesIterator.isEmpty)
-        createNonExistentMethod(methodName)
+        createNonExistentPublicMethod(methodName)
       else
         candidatesIterator.next()
     }
 
     def lookupMethod(methodName: MethodName): MethodInfo = {
       tryLookupMethod(methodName).getOrElse {
-        createNonExistentMethod(methodName)
+        createNonExistentPublicMethod(methodName)
       }
     }
 
-    private def createNonExistentMethod(methodName: MethodName): MethodInfo = {
-      val syntheticData = makeSyntheticMethodInfo(methodName)
+    private def createNonExistentPublicMethod(methodName: MethodName): MethodInfo = {
+      val syntheticData = makeSyntheticMethodInfo(methodName, MemberNamespace.Public)
       val m = new MethodInfo(this, syntheticData)
       m.nonExistent = true
       publicMethodInfos += methodName -> m
@@ -757,6 +757,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
       val syntheticInfo = makeSyntheticMethodInfo(
           methodName = methodName,
+          namespace = MemberNamespace.Public,
           methodsCalledStatically = List(
               targetOwner.className -> NamespacedMethodName(MemberNamespace.Public, methodName)))
       val m = new MethodInfo(this, syntheticInfo)
@@ -951,6 +952,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
       val syntheticInfo = makeSyntheticMethodInfo(
           methodName = proxyName,
+          namespace = MemberNamespace.Public,
           methodsCalled = List(this.className -> targetName))
       val m = new MethodInfo(this, syntheticInfo)
       m.syntheticKind = MethodSyntheticKind.ReflectiveProxy(targetName)
@@ -1479,13 +1481,13 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
   private def createMissingClassInfo(className: ClassName): Infos.ClassInfo = {
     new Infos.ClassInfoBuilder(className, ClassKind.Class,
         superClass = Some(ObjectClass), interfaces = Nil, jsNativeLoadSpec = None)
-      .addMethod(makeSyntheticMethodInfo(NoArgConstructorName))
+      .addMethod(makeSyntheticMethodInfo(NoArgConstructorName, MemberNamespace.Constructor))
       .result()
   }
 
   private def makeSyntheticMethodInfo(
       methodName: MethodName,
-      namespace: MemberNamespace = MemberNamespace.Public,
+      namespace: MemberNamespace,
       methodsCalled: List[(ClassName, MethodName)] = Nil,
       methodsCalledStatically: List[(ClassName, NamespacedMethodName)] = Nil,
       instantiatedClasses: List[ClassName] = Nil

@@ -86,12 +86,12 @@ object TestIRBuilder {
     )
   }
 
-  def trivialCtor(enclosingClassName: ClassName): MethodDef = {
+  def trivialCtor(enclosingClassName: ClassName, parentClassName: ClassName = ObjectClass): MethodDef = {
     val flags = MemberFlags.empty.withNamespace(MemberNamespace.Constructor)
     MethodDef(flags, MethodIdent(NoArgConstructorName), NON, Nil, NoType,
         Some(ApplyStatically(EAF.withConstructor(true),
             This()(ClassType(enclosingClassName)),
-            ObjectClass, MethodIdent(NoArgConstructorName),
+            parentClassName, MethodIdent(NoArgConstructorName),
             Nil)(NoType)))(
         EOH, UNV)
   }
