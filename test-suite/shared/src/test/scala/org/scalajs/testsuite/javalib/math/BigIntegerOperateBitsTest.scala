@@ -1029,6 +1029,19 @@ class BigIntegerOperateBitsTest {
     assertEquals(-1, result.signum())
   }
 
+  @Test def testShiftsWithLargeCounts_Issue4870(): Unit = {
+    val aNumber = new BigInteger(-1, Array[Byte](0, -82, 127, 15, 76, -97, 13, 30, 30))
+
+    assertThrows(classOf[ArithmeticException], aNumber.shiftLeft(Int.MaxValue))
+    assertThrows(classOf[ArithmeticException], aNumber.shiftRight(Int.MinValue))
+    assertThrows(classOf[ArithmeticException], aNumber.shiftRight(Int.MinValue + 1))
+
+    val minusOne = BigInteger.ONE.negate()
+    assertEquals(minusOne, aNumber.shiftRight(Int.MaxValue))
+    assertEquals(minusOne, aNumber.shiftLeft(Int.MinValue))
+    assertEquals(minusOne, aNumber.shiftLeft(Int.MinValue + 1))
+  }
+
   @Test def testTestBitException(): Unit = {
     val aBytes = Array[Byte](-1, -128, 56, 100, -2, -76, 89, 45, 91, 3, -15, 35, 26)
     val aSign = 1

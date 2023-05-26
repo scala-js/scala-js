@@ -130,6 +130,11 @@ object BigInteger {
       throw new IllegalArgumentException(errorMessage)
   }
 
+  private[math] def checkRangeBasedOnIntArrayLength(byteLength: Int): Unit = {
+    if (byteLength < 0 || byteLength >= ((Int.MaxValue + 1) >>> 5))
+      throw new ArithmeticException("BigInteger would overflow supported range")
+  }
+
   @inline
   private[math] final class QuotAndRem(val quot: BigInteger, val rem: BigInteger) {
     def toArray(): Array[BigInteger] = Array[BigInteger](quot, rem)
@@ -668,13 +673,13 @@ class BigInteger extends Number with Comparable[BigInteger] {
   def shiftLeft(n: Int): BigInteger = {
     if (n == 0 || sign == 0) this
     else if (n > 0) BitLevel.shiftLeft(this, n)
-    else BitLevel.shiftRight(this, -n)
+    else BitLevel.shiftRight(this, -n) // -n is interpreted as unsigned, so MinValue is fine
   }
 
   def shiftRight(n: Int): BigInteger = {
     if (n == 0 || sign == 0) this
     else if (n > 0) BitLevel.shiftRight(this, n)
-    else BitLevel.shiftLeft(this, -n)
+    else BitLevel.shiftLeft(this, -n) // -n is interpreted as unsigned, so MinValue is fine
   }
 
   def signum(): Int = sign
