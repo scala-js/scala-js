@@ -220,10 +220,11 @@ private[math] object BitLevel {
    *  @return
    */
   def shiftLeft(source: BigInteger, count: Int): BigInteger = {
-    val intCount: Int = count >> 5
+    val intCount: Int = count >>> 5 // interpret count as unsigned to deal with -MinValue
     val andCount: Int = count & 31
     val offset = if (andCount == 0) 0 else 1
     val resLength: Int = source.numberLength + intCount + offset
+    BigInteger.checkRangeBasedOnIntArrayLength(resLength)
     val resDigits = new Array[Int](resLength)
     shiftLeft(resDigits, source.digits, intCount, andCount)
     val result = new BigInteger(source.sign, resLength, resDigits)
@@ -298,7 +299,7 @@ private[math] object BitLevel {
    *  @return
    */
   def shiftRight(source: BigInteger, count: Int): BigInteger = {
-    val intCount: Int = count >> 5
+    val intCount: Int = count >>> 5 // interpret count as unsigned to deal with -MinValue
     val andCount: Int = count & 31 // count of remaining bits
 
     if (intCount >= source.numberLength) {
