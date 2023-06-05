@@ -816,6 +816,7 @@ object Build {
         "2.13.8",
         "2.13.9",
         "2.13.10",
+        "2.13.11",
       ),
 
       default212ScalaVersion := cross212ScalaVersions.value.last,
@@ -1858,10 +1859,10 @@ object Build {
 
           case `default213Version` =>
             Some(ExpectedSizes(
-                fastLink = 456000 to 457000,
-                fullLink = 97000 to 98000,
-                fastLinkGz = 59000 to 60000,
-                fullLinkGz = 26000 to 27000,
+                fastLink = 480000 to 481000,
+                fullLink = 102000 to 103000,
+                fastLinkGz = 62000 to 63000,
+                fullLinkGz = 27000 to 28000,
             ))
 
           case _ =>

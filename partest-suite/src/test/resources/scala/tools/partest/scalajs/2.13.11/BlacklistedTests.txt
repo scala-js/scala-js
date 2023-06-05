@@ -635,6 +635,11 @@ run/module-static.scala
 run/module-serialization-proxy-class-unload.scala
 run/t9644.scala
 
+run/dotty-i11332.scala
+run/dotty-i11332b.scala
+run/dotty-t12348.scala
+run/t12348.scala
+
 # Uses reflection indirectly through
 # scala.runtime.ScalaRunTime.replStringOf
 run/t6634.scala
@@ -818,6 +823,10 @@ run/interpolation-repl.scala
 run/t12292.scala
 run/StringConcat.scala
 run/t10016.scala
+run/t12705.scala
+run/t12390.scala
+run/repl-release.scala
+run/eta-dependent.scala
 
 # Using Scala Script (partest.ScriptTest)
 
@@ -1101,6 +1110,7 @@ run/t12038b
 run/t12195
 run/t12380
 run/t12523
+run/t12290
 
 # Using scala-script
 run/t7791-script-linenums.scala
