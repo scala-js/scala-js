@@ -79,68 +79,33 @@ object MultiScalaProject {
   private def strictMapValues[K, U, V](v: Map[K, U])(f: U => V): Map[K, V] =
     v.map(v => (v._1, f(v._2)))
 
-  private final val versions = Map[String, Seq[String]](
-    "2.12" -> Seq(
-      "2.12.2",
-      "2.12.3",
-      "2.12.4",
-      "2.12.5",
-      "2.12.6",
-      "2.12.7",
-      "2.12.8",
-      "2.12.9",
-      "2.12.10",
-      "2.12.11",
-      "2.12.12",
-      "2.12.13",
-      "2.12.14",
-      "2.12.15",
-      "2.12.16",
-      "2.12.17",
-    ),
-    "2.13" -> Seq(
-      "2.13.0",
-      "2.13.1",
-      "2.13.2",
-      "2.13.3",
-      "2.13.4",
-      "2.13.5",
-      "2.13.6",
-      "2.13.7",
-      "2.13.8",
-      "2.13.9",
-      "2.13.10",
-    ),
-  )
-
-  val Default2_12ScalaVersion = versions("2.12").last
-  val Default2_13ScalaVersion = versions("2.13").last
-
-  /** The default Scala version is the default 2.12 Scala version, because it
-   *  must work for sbt plugins.
-   */
-  val DefaultScalaVersion = Default2_12ScalaVersion
-
   private final val ideVersion = "2.12"
 
   private def projectID(id: String, major: String) = id + major.replace('.', '_')
 
   def apply(id: String, base: File): MultiScalaProject = {
+    import ExposedValues.autoImport._
+
     val projects = for {
-      (major, minors) <- versions
+      major <- List("2.12", "2.13")
     } yield {
       val noIDEExportSettings =
         if (major == ideVersion) Nil
         else NoIDEExport.noIDEExportSettings
 
+      val (crossVersionsKey, defaultVersionKey) = major match {
+        case "2.12" => (cross212ScalaVersions, default212ScalaVersion)
+        case "2.13" => (cross213ScalaVersions, default213ScalaVersion)
+      }
+
       major -> Project(id = projectID(id, major), base = new File(base, "." + major)).settings(
-        scalaVersion := minors.last,
-        crossScalaVersions := minors,
+        crossScalaVersions := crossVersionsKey.value,
+        scalaVersion := defaultVersionKey.value,
         noIDEExportSettings,
       )
     }
 
-    new MultiScalaProject(projects).settings(
+    new MultiScalaProject(projects.toMap).settings(
       sourceDirectory := baseDirectory.value.getParentFile / "src",
     )
   }
