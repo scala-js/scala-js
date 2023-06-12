@@ -1,5 +1,5 @@
 version := scalaJSVersion
-scalaVersion := "2.12.17"
+scalaVersion := "2.12.18"
 
 enablePlugins(ScalaJSPlugin)
 

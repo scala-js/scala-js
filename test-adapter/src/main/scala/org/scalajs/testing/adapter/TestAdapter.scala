@@ -44,7 +44,7 @@ final class TestAdapter(jsEnv: JSEnv, input: Seq[Input], config: TestAdapter.Con
   /** A custom execution context that delegates to the global one for execution,
    *  but handles failures internally.
    */
-  private implicit val executionContext =
+  private implicit val executionContext: ExecutionContext =
     ExecutionContext.fromExecutor(ExecutionContext.global, reportFailure)
 
   /** Creates an `sbt.testing.Framework` for each framework that can be found.

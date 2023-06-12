@@ -643,6 +643,11 @@ run/t10856.scala
 
 run/t12002.scala
 
+run/dotty-i11332.scala
+run/dotty-i11332b.scala
+run/dotty-t12348.scala
+run/t12348.scala
+
 # Uses reflection indirectly through
 # scala.runtime.ScalaRunTime.replStringOf
 run/t6634.scala
