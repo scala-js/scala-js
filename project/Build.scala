@@ -39,6 +39,17 @@ import org.scalajs.linker.interface._
  */
 object ExposedValues extends AutoPlugin {
   object autoImport {
+    val cross212ScalaVersions: SettingKey[Seq[String]] =
+      settingKey("an ordered sequence of 2.12.x versions with which we build (most recent last)")
+
+    val cross213ScalaVersions: SettingKey[Seq[String]] =
+      settingKey("an ordered sequence of 2.13.x versions with which we build (most recent last)")
+
+    val default212ScalaVersion: SettingKey[String] =
+      settingKey("the default Scala 2.12.x version for this build (derived from cross212ScalaVersions)")
+    val default213ScalaVersion: SettingKey[String] =
+      settingKey("the default Scala 2.13.x version for this build (derived from cross213ScalaVersions)")
+
     // set scalaJSLinkerConfig in someProject ~= makeCompliant
     val makeCompliant: StandardConfig => StandardConfig = {
       _.withSemantics { semantics =>
@@ -224,16 +235,17 @@ object MyScalaJSPlugin extends AutoPlugin {
 }
 
 object Build {
+  import ExposedValues.autoImport.{
+    cross212ScalaVersions,
+    cross213ScalaVersions,
+    default212ScalaVersion,
+    default213ScalaVersion
+  }
+
   import MyScalaJSPlugin.{
     scalaJSCompilerOption,
     scalaJSMapSourceURIOption,
     isGeneratingForIDE
-  }
-
-  import MultiScalaProject.{
-    Default2_12ScalaVersion,
-    Default2_13ScalaVersion,
-    DefaultScalaVersion
   }
 
   val scalastyleCheck = taskKey[Unit]("Run scalastyle")
@@ -260,8 +272,6 @@ object Build {
 
   val previousBinaryCrossVersion = CrossVersion.binaryWith("sjs1_", "")
 
-  val scalaVersionsUsedForPublishing: Set[String] =
-    Set(Default2_12ScalaVersion, Default2_13ScalaVersion)
   val newScalaBinaryVersionsInThisRelease: Set[String] =
     Set()
 
@@ -317,6 +327,8 @@ object Build {
     mimaPreviousArtifacts ++= {
       val scalaV = scalaVersion.value
       val scalaBinaryV = scalaBinaryVersion.value
+      val scalaVersionsUsedForPublishing: Set[String] =
+        Set(default212ScalaVersion.value, default213ScalaVersion.value)
       if (!scalaVersionsUsedForPublishing.contains(scalaV)) {
         // This artifact will not be published. Binary compatibility is irrelevant.
         Set.empty
@@ -500,6 +512,17 @@ object Build {
 
         outDir
       }
+  )
+
+  private val defaultScalaVersionOnlySettings = Def.settings(
+    /* We still need to support all cross versions, otherwise ++2.12.x creates
+     * inconsistent graphs.
+     * We use 2.12.x as default version because of the sbt plugin, which must
+     * use 2.12.x. If we use another default version, importing in IDEs creates
+     * difficult configurations.
+     */
+    crossScalaVersions := cross212ScalaVersions.value,
+    scalaVersion := default212ScalaVersion.value,
   )
 
   private val basePublishSettings = Seq(
@@ -763,6 +786,40 @@ object Build {
   }
 
   val thisBuildSettings = Def.settings(
+      cross212ScalaVersions := Seq(
+        "2.12.2",
+        "2.12.3",
+        "2.12.5",
+        "2.12.6",
+        "2.12.7",
+        "2.12.8",
+        "2.12.9",
+        "2.12.10",
+        "2.12.11",
+        "2.12.12",
+        "2.12.13",
+        "2.12.14",
+        "2.12.15",
+        "2.12.16",
+        "2.12.17",
+      ),
+      cross213ScalaVersions := Seq(
+        "2.13.0",
+        "2.13.1",
+        "2.13.2",
+        "2.13.3",
+        "2.13.4",
+        "2.13.5",
+        "2.13.6",
+        "2.13.7",
+        "2.13.8",
+        "2.13.9",
+        "2.13.10",
+      ),
+
+      default212ScalaVersion := cross212ScalaVersions.value.last,
+      default213ScalaVersion := cross213ScalaVersions.value.last,
+
       // JDK version we are running with
       javaVersion in Global := {
         val fullVersion = System.getProperty("java.version")
@@ -1005,7 +1062,7 @@ object Build {
       MyScalaJSPlugin
   ).settings(
       commonSettings,
-      scalaVersion := DefaultScalaVersion,
+      defaultScalaVersionOnlySettings,
       fatalWarningsSettings,
       name := "Scala.js linker private library",
       publishArtifact in Compile := false,
@@ -1192,8 +1249,7 @@ object Build {
       name := "Scala.js sbt plugin",
       normalizedName := "sbt-scalajs",
       sbtPlugin := true,
-      crossScalaVersions := Seq(DefaultScalaVersion),
-      scalaVersion := crossScalaVersions.value.head,
+      defaultScalaVersionOnlySettings,
       sbtVersion := "1.0.0",
       scalaBinaryVersion :=
         CrossVersion.binaryScalaVersion(scalaVersion.value),
@@ -1297,7 +1353,7 @@ object Build {
       MyScalaJSPlugin
   ).settings(
       commonSettings,
-      scalaVersion := DefaultScalaVersion,
+      defaultScalaVersionOnlySettings,
       fatalWarningsSettings,
       name := "scalajs-javalib-internal",
       publishArtifact in Compile := false,
@@ -1787,8 +1843,11 @@ object Build {
       },
 
       MyScalaJSPlugin.expectedSizes := {
+        val default212Version = default212ScalaVersion.value
+        val default213Version = default213ScalaVersion.value
+
         scalaVersion.value match {
-          case Default2_12ScalaVersion =>
+          case `default212Version` =>
             Some(ExpectedSizes(
                 fastLink = 772000 to 773000,
                 fullLink = 145000 to 146000,
@@ -1796,7 +1855,7 @@ object Build {
                 fullLinkGz = 35000 to 36000,
             ))
 
-          case Default2_13ScalaVersion =>
+          case `default213Version` =>
             Some(ExpectedSizes(
                 fastLink = 456000 to 457000,
                 fullLink = 97000 to 98000,
