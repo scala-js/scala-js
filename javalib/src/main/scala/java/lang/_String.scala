@@ -293,8 +293,8 @@ final class _String private () // scalastyle:ignore
       ooffset: Int, len: Int): scala.Boolean = {
     if (other == null) {
       throw new NullPointerException()
-    } else if (toffset < 0 || ooffset < 0 || toffset + len > this.length() ||
-        ooffset + len > other.length()) {
+    } else if (toffset < 0 || ooffset < 0 || len > this.length() - toffset ||
+        len > other.length() - ooffset) {
       false
     } else if (len <= 0) {
       true

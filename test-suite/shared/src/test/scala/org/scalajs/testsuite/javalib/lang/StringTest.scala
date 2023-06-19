@@ -533,6 +533,18 @@ class StringTest {
     assertFalse(test.regionMatches(100, test, 0, -4))
     assertFalse(test.regionMatches(0, test, 100, -4))
 
+    // offset + len > length
+    assertFalse(test.regionMatches(3, "defg", 0, 4)) // on receiver string
+    assertFalse(test.regionMatches(3, "abcde", 3, 3)) // on other string
+    assertFalse(test.regionMatches(Int.MaxValue, "ab", 0, 1)) // #4878 overflow, large toffset
+    assertFalse(test.regionMatches(0, "ab", Int.MaxValue, 1)) // #4878 overflow, large ooffset
+    assertFalse(test.regionMatches(1, "ab", 1, Int.MaxValue)) // #4878 overflow, large len
+    assertFalse(test.regionMatches(true, 3, "defg", 0, 4)) // on receiver string
+    assertFalse(test.regionMatches(true, 3, "abcde", 3, 3)) // on other string
+    assertFalse(test.regionMatches(true, Int.MaxValue, "ab", 0, 1)) // #4878 overflow, large toffset
+    assertFalse(test.regionMatches(true, 0, "ab", Int.MaxValue, 1)) // #4878 overflow, large ooffset
+    assertFalse(test.regionMatches(true, 1, "ab", 1, Int.MaxValue)) // #4878 overflow, large len
+
     // the strange cases that are true
     assertTrue(test.regionMatches(0, test, 0, -4))
     assertTrue(test.regionMatches(1, "bcdx", 0, -4))
