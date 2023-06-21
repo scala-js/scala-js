@@ -83,8 +83,8 @@ class SmallModulesForSplittingTest {
         module.classDefs.map(_.name.name)
       }
 
-      assertEquals(List[ClassName]("foo.A"), moduleClasses("foo.A"))
-      assertEquals(List[ClassName]("foo.C"), moduleClasses("foo.C"))
+      assertEquals(List[ClassName]("foo.A"), moduleClasses("foo.-A"))
+      assertEquals(List[ClassName]("foo.C"), moduleClasses("foo.-C"))
       assertEquals(List(MainTestClassName), moduleClasses("main"))
 
       /* Expect two additional modules, one for each:

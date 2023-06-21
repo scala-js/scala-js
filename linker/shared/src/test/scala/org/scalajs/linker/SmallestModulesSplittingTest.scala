@@ -61,9 +61,9 @@ class SmallestModulesSplittingTest {
     )
 
     val expectedFiles = Set(
-        "java.lang.Object.js",
-        "Test.js",
-        "lib.Greeter.js",
+        "java.lang.-Object.js",
+        "-Test.js",
+        "lib.-Greeter.js",
         "main.js"
     )
 

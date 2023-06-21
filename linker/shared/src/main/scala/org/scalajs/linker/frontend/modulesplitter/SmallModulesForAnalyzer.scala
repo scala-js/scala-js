@@ -34,11 +34,9 @@ private final class SmallModulesForAnalyzer(
   def analyze(info: ModuleAnalyzer.DependencyInfo): ModuleAnalyzer.Analysis = {
     val (targetClassToRepr, reprToModuleID) = smallRun(info, packages)
 
-    val prefix = ModuleIDs.freeInternalPrefix(
-        info.publicModuleDependencies.keys ++ reprToModuleID.values)
-
+    val modulesToAvoid = info.publicModuleDependencies.keys ++ reprToModuleID.values
     val largeModuleMap =
-      new Tagger(info, excludedClasses = targetClassToRepr.keySet).tagAll(prefix)
+      new Tagger(info, excludedClasses = targetClassToRepr.keySet).tagAll(modulesToAvoid)
 
     new SmallModulesForAnalyzer.Analysis(targetClassToRepr, reprToModuleID, largeModuleMap)
   }
@@ -67,6 +65,9 @@ private object SmallModulesForAnalyzer {
   private final class SmallRun(info: ModuleAnalyzer.DependencyInfo,
       packages: List[ClassName]) extends StrongConnect(info) {
 
+    private val internalModIDGenerator =
+      new InternalModuleIDGenerator.ForClassNames(info.publicModuleDependencies.keys)
+
     /* We expect this to contain relatively few classes.
      *
      * So instead of keeping the underlying graph and relying on [[moduleIndex]],
@@ -81,8 +82,8 @@ private object SmallModulesForAnalyzer {
       val targetNames = classNames.filter(clazz => packages.exists(inPackage(clazz, _)))
 
       if (targetNames.nonEmpty) {
-        val repr = ModuleIDs.representativeClass(targetNames)
-        val id = ModuleIDs.forClassName(info.publicModuleDependencies.keySet, repr)
+        val repr = internalModIDGenerator.representativeClass(targetNames)
+        val id = internalModIDGenerator.forClassName(repr)
         reprToModuleID(repr) = id
         for (className <- classNames)
           targetClassToRepr(className) = repr
