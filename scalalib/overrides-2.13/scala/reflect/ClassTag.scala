@@ -13,6 +13,8 @@
 package scala
 package reflect
 
+import scala.annotation.unchecked.uncheckedStable
+
 import java.lang.{ Class => jClass }
 
 import scala.collection.mutable
@@ -94,21 +96,21 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
 object ClassTag {
   import ManifestFactory._
 
-  def Byte    : ByteManifest               = ManifestFactory.Byte
-  def Short   : ShortManifest              = ManifestFactory.Short
-  def Char    : CharManifest               = ManifestFactory.Char
-  def Int     : IntManifest                = ManifestFactory.Int
-  def Long    : LongManifest               = ManifestFactory.Long
-  def Float   : FloatManifest              = ManifestFactory.Float
-  def Double  : DoubleManifest             = ManifestFactory.Double
-  def Boolean : BooleanManifest            = ManifestFactory.Boolean
-  def Unit    : UnitManifest               = ManifestFactory.Unit
-  def Any     : ClassTag[scala.Any]        = ManifestFactory.Any
-  def Object  : ClassTag[java.lang.Object] = ManifestFactory.Object
-  def AnyVal  : ClassTag[scala.AnyVal]     = ManifestFactory.AnyVal
-  def AnyRef  : ClassTag[scala.AnyRef]     = ManifestFactory.AnyRef
-  def Nothing : ClassTag[scala.Nothing]    = ManifestFactory.Nothing
-  def Null    : ClassTag[scala.Null]       = ManifestFactory.Null
+  @uncheckedStable def Byte    : ByteManifest               = ManifestFactory.Byte
+  @uncheckedStable def Short   : ShortManifest              = ManifestFactory.Short
+  @uncheckedStable def Char    : CharManifest               = ManifestFactory.Char
+  @uncheckedStable def Int     : IntManifest                = ManifestFactory.Int
+  @uncheckedStable def Long    : LongManifest               = ManifestFactory.Long
+  @uncheckedStable def Float   : FloatManifest              = ManifestFactory.Float
+  @uncheckedStable def Double  : DoubleManifest             = ManifestFactory.Double
+  @uncheckedStable def Boolean : BooleanManifest            = ManifestFactory.Boolean
+  @uncheckedStable def Unit    : UnitManifest               = ManifestFactory.Unit
+  @uncheckedStable def Any     : ClassTag[scala.Any]        = ManifestFactory.Any
+  @uncheckedStable def Object  : ClassTag[java.lang.Object] = ManifestFactory.Object
+  @uncheckedStable def AnyVal  : ClassTag[scala.AnyVal]     = ManifestFactory.AnyVal
+  @uncheckedStable def AnyRef  : ClassTag[scala.AnyRef]     = ManifestFactory.AnyRef
+  @uncheckedStable def Nothing : ClassTag[scala.Nothing]    = ManifestFactory.Nothing
+  @uncheckedStable def Null    : ClassTag[scala.Null]       = ManifestFactory.Null
 
   @inline
   @SerialVersionUID(1L)
