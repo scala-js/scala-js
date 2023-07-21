@@ -12,14 +12,11 @@
 
 package java.util
 
-import java.lang.{Long => JLong}
-
 import scala.scalajs.js
 
 final class UUID private (
     private val i1: Int, private val i2: Int,
-    private val i3: Int, private val i4: Int,
-    private[this] var l1: JLong, private[this] var l2: JLong)
+    private val i3: Int, private val i4: Int)
     extends AnyRef with java.io.Serializable with Comparable[UUID] {
 
   import UUID._
@@ -40,21 +37,16 @@ final class UUID private (
 
   def this(mostSigBits: Long, leastSigBits: Long) = {
     this((mostSigBits >>> 32).toInt, mostSigBits.toInt,
-        (leastSigBits >>> 32).toInt, leastSigBits.toInt,
-        JLong.valueOf(mostSigBits), JLong.valueOf(leastSigBits))
+        (leastSigBits >>> 32).toInt, leastSigBits.toInt)
   }
 
-  def getLeastSignificantBits(): Long = {
-    if (l2 eq null)
-      l2 = JLong.valueOf((i3.toLong << 32) | (i4.toLong & 0xffffffffL))
-    l2.longValue()
-  }
+  @inline
+  def getLeastSignificantBits(): Long =
+    (i3.toLong << 32) | (i4.toLong & 0xffffffffL)
 
-  def getMostSignificantBits(): Long = {
-    if (l1 eq null)
-      l1 = JLong.valueOf((i1.toLong << 32) | (i2.toLong & 0xffffffffL))
-    l1.longValue()
-  }
+  @inline
+  def getMostSignificantBits(): Long =
+    (i1.toLong << 32) | (i2.toLong & 0xffffffffL)
 
   def version(): Int =
     (i2 & 0xf000) >> 12
@@ -116,16 +108,21 @@ final class UUID private (
   }
 
   def compareTo(that: UUID): Int = {
-    if (this.i1 != that.i1) {
-      if (this.i1 > that.i1) 1 else -1
-    } else if (this.i2 != that.i2) {
-      if (this.i2 > that.i2) 1 else -1
-    } else if (this.i3 != that.i3) {
-      if (this.i3 > that.i3) 1 else -1
-    } else if (this.i4 != that.i4) {
-      if (this.i4 > that.i4) 1 else -1
+    // See #4882 and the test `UUIDTest.compareTo()` for context
+    val thisHi = this.getMostSignificantBits()
+    val thatHi = that.getMostSignificantBits()
+    if (thisHi != thatHi) {
+      if (thisHi < thatHi) -1
+      else 1
     } else {
-      0
+      val thisLo = this.getLeastSignificantBits()
+      val thatLo = that.getLeastSignificantBits()
+      if (thisLo != thatLo) {
+        if (thisLo < thatLo) -1
+        else 1
+      } else {
+        0
+      }
     }
   }
 }
@@ -156,7 +153,7 @@ object UUID {
     val i2 = (intFromBuffer(4) & ~0x0000f000) | 0x00004000
     val i3 = (intFromBuffer(8) & ~0xc0000000) | 0x80000000
     val i4 = intFromBuffer(12)
-    new UUID(i1, i2, i3, i4, null, null)
+    new UUID(i1, i2, i3, i4)
   }
 
   // Not implemented (requires messing with MD5 or SHA-1):
@@ -180,7 +177,7 @@ object UUID {
       val i2 = parseHex8(name.substring(9, 13), name.substring(14, 18))
       val i3 = parseHex8(name.substring(19, 23), name.substring(24, 28))
       val i4 = parseHex8(name.substring(28, 32), name.substring(32, 36))
-      new UUID(i1, i2, i3, i4, null, null)
+      new UUID(i1, i2, i3, i4)
     } catch {
       case _: NumberFormatException => fail()
     }
