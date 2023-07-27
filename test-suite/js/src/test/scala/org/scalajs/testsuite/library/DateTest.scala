@@ -46,16 +46,16 @@ class DateTest {
     })
     assertEquals("9/13/2563 BE, 12:26 in the afternoon", z)
 
-  val w = new js.Date(1600000000000L).toLocaleDateString(new js.Array("en-US"), new js.DateTimeFormatOptions {
-    numberingSystem = "latn"
-    fractionalSecondDigits = 3
-    hour12 = false
-    hour = "numeric"
-    minute = "numeric"
-    second = "numeric"
-    timeZone = "UTC"
-  })
-  assertEquals("9/13/2020, 12:26:40.000", w)
+    val w = new js.Date(1600000000000L).toLocaleDateString(new js.Array("en-US"), new js.DateTimeFormatOptions {
+      numberingSystem = "latn"
+      fractionalSecondDigits = 3
+      hour12 = false
+      hour = "numeric"
+      minute = "numeric"
+      second = "numeric"
+      timeZone = "UTC"
+    })
+    assertEquals("9/13/2020, 12:26:40.000", w)
   }
 
 }
