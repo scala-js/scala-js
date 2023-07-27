@@ -48,7 +48,7 @@ class Date extends js.Object {
   def toLocaleDateString(): String = js.native
   def toLocaleDateString(locale: String): String = js.native
   def toLocaleDateString(locales: js.Array[String]): String = js.native
-  def toLocaleDateString(locales: String, options: DateTimeFormatOptions): String = js.native
+  def toLocaleDateString(locale: String, options: DateTimeFormatOptions): String = js.native
   def toLocaleDateString(locales: js.Array[String], options: DateTimeFormatOptions): String = js.native
   def toLocaleTimeString(): String = js.native
 
