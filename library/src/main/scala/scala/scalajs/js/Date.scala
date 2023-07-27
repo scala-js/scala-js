@@ -46,6 +46,10 @@ class Date extends js.Object {
   def toDateString(): String = js.native
   def toTimeString(): String = js.native
   def toLocaleDateString(): String = js.native
+  def toLocaleDateString(locale: String): String = js.native
+  def toLocaleDateString(locales: js.Array[String]): String = js.native
+  def toLocaleDateString(locales: String, options: DateTimeFormatOptions): String = js.native
+  def toLocaleDateString(locales: js.Array[String], options: DateTimeFormatOptions): String = js.native
   def toLocaleTimeString(): String = js.native
 
   override def valueOf(): Double = js.native
