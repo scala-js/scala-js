@@ -39,6 +39,29 @@ object Error extends js.Object {
   def apply(message: String = ""): js.Error = js.native
 }
 
+/** <span class="badge badge-ecma2021" style="float: right;">ECMAScript 2021</span>
+ * An instance representing an error when several errors need to be wrapped in a single error.
+ *
+ * MDN
+ */
+@js.native
+@JSGlobal
+class AggregateError(errors: js.Iterable[scala.Any], message: String = "") extends js.Error {
+
+  /**
+   * The errors that were aggregated.
+   *
+   * MDN
+   */
+  def errors: js.Array[scala.Any] = js.native
+}
+
+@js.native
+@JSGlobal
+object AggregateError extends js.Object {
+  def apply(errors: js.Iterable[scala.Any], message: String = ""): js.AggregateError = js.native
+}
+
 /**
  * An instance representing an error that occurs regarding the global function
  * `eval()`.
