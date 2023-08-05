@@ -352,7 +352,13 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     _classInfos.get(className) match {
       case None =>
         val loading = new LoadingClass(className)
+
+        _classInfos(className) = loading
+
+        // Request linking before scheduling the loading to avoid the task queue
+        // dropping to zero intermittently.
         loading.requestLink(knownDescendants)(onSuccess)
+        loading.startLoad()
 
       case Some(loading: LoadingClass) =>
         loading.requestLink(knownDescendants)(onSuccess)
@@ -377,23 +383,23 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     private val promise = Promise[LoadingResult]()
     private var knownDescendants = Set[LoadingClass](this)
 
-    _classInfos(className) = this
-
-    infoLoader.loadInfo(className)(workQueue.ec) match {
-      case Some(future) =>
-        workQueue.enqueue(future)(link(_, nonExistent = false))
-
-      case None =>
-        val data = createMissingClassInfo(className)
-        link(data, nonExistent = true)
-    }
-
     def requestLink(knownDescendants: Set[LoadingClass])(onSuccess: LoadingResult => Unit): Unit = {
       if (knownDescendants.contains(this)) {
         onSuccess(CycleInfo(Nil, this))
       } else {
         this.knownDescendants ++= knownDescendants
         workQueue.enqueue(promise.future)(onSuccess)
+      }
+    }
+
+    def startLoad(): Unit = {
+      infoLoader.loadInfo(className)(workQueue.ec) match {
+        case Some(future) =>
+          workQueue.enqueue(future)(link(_, nonExistent = false))
+
+        case None =>
+          val data = createMissingClassInfo(className)
+          link(data, nonExistent = true)
       }
     }
 
