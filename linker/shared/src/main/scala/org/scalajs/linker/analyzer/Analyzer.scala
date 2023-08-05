@@ -99,19 +99,11 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     /* Load the java.lang.Object class, and validate it
      * If it is missing or invalid, we're in deep trouble, and cannot continue.
      */
-    infoLoader.loadInfo(ObjectClass)(workQueue.ec) match {
-      case None =>
-        _errors += MissingJavaLangObjectClass(fromAnalyzer)
-
-      case Some(future) =>
-        workQueue.enqueue(future) { data =>
-          objectClassInfo = new ClassInfo(data,
-              unvalidatedSuperClass = None,
-              unvalidatedInterfaces = Nil, nonExistent = false)
-
-          objectClassInfo.link()
-          onSuccess()
-        }
+    lookupClass(ObjectClass) { clazz =>
+      if (!clazz.nonExistent) {
+        objectClassInfo = clazz
+        onSuccess()
+      }
     }
   }
 
@@ -352,7 +344,13 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     _classInfos.get(className) match {
       case None =>
         val loading = new LoadingClass(className)
+
+        _classInfos(className) = loading
+
+        // Request linking before scheduling the loading to avoid the task queue
+        // dropping to zero intermittently.
         loading.requestLink(knownDescendants)(onSuccess)
+        loading.startLoad()
 
       case Some(loading: LoadingClass) =>
         loading.requestLink(knownDescendants)(onSuccess)
@@ -377,23 +375,23 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     private val promise = Promise[LoadingResult]()
     private var knownDescendants = Set[LoadingClass](this)
 
-    _classInfos(className) = this
-
-    infoLoader.loadInfo(className)(workQueue.ec) match {
-      case Some(future) =>
-        workQueue.enqueue(future)(link(_, nonExistent = false))
-
-      case None =>
-        val data = createMissingClassInfo(className)
-        link(data, nonExistent = true)
-    }
-
     def requestLink(knownDescendants: Set[LoadingClass])(onSuccess: LoadingResult => Unit): Unit = {
       if (knownDescendants.contains(this)) {
         onSuccess(CycleInfo(Nil, this))
       } else {
         this.knownDescendants ++= knownDescendants
         workQueue.enqueue(promise.future)(onSuccess)
+      }
+    }
+
+    def startLoad(): Unit = {
+      infoLoader.loadInfo(className)(workQueue.ec) match {
+        case Some(future) =>
+          workQueue.enqueue(future)(link(_, nonExistent = false))
+
+        case None =>
+          val data = createMissingClassInfo(className)
+          link(data, nonExistent = true)
       }
     }
 
@@ -461,15 +459,11 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     val isNativeJSClass =
       kind == ClassKind.NativeJSClass || kind == ClassKind.NativeJSModuleClass
 
-    // Note: j.l.Object is special and is validated upfront
-
     val superClass: Option[ClassInfo] =
-      if (className == ObjectClass) unvalidatedSuperClass
-      else validateSuperClass(unvalidatedSuperClass)
+      validateSuperClass(unvalidatedSuperClass)
 
     val interfaces: List[ClassInfo] =
-      if (className == ObjectClass) unvalidatedInterfaces
-      else validateInterfaces(unvalidatedInterfaces)
+      validateInterfaces(unvalidatedInterfaces)
 
     /** Ancestors of this class or interface.
      *
@@ -497,6 +491,11 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       def from = FromClass(this)
 
       kind match {
+        case _ if className == ObjectClass =>
+          assert(superClass.isEmpty)
+
+          None
+
         case ClassKind.Class | ClassKind.ModuleClass | ClassKind.HijackedClass =>
           val superCl = superClass.get // checked by ClassDef checker.
           if (superCl.kind != ClassKind.Class) {
@@ -1479,8 +1478,12 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
   }
 
   private def createMissingClassInfo(className: ClassName): Infos.ClassInfo = {
+    val superClass =
+      if (className == ObjectClass) None
+      else Some(ObjectClass)
+
     new Infos.ClassInfoBuilder(className, ClassKind.Class,
-        superClass = Some(ObjectClass), interfaces = Nil, jsNativeLoadSpec = None)
+        superClass = superClass, interfaces = Nil, jsNativeLoadSpec = None)
       .addMethod(makeSyntheticMethodInfo(NoArgConstructorName, MemberNamespace.Constructor))
       .result()
   }
