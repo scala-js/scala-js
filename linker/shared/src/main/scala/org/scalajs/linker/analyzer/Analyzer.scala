@@ -461,15 +461,11 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     val isNativeJSClass =
       kind == ClassKind.NativeJSClass || kind == ClassKind.NativeJSModuleClass
 
-    // Note: j.l.Object is special and is validated upfront
-
     val superClass: Option[ClassInfo] =
-      if (className == ObjectClass) unvalidatedSuperClass
-      else validateSuperClass(unvalidatedSuperClass)
+      validateSuperClass(unvalidatedSuperClass)
 
     val interfaces: List[ClassInfo] =
-      if (className == ObjectClass) unvalidatedInterfaces
-      else validateInterfaces(unvalidatedInterfaces)
+      validateInterfaces(unvalidatedInterfaces)
 
     /** Ancestors of this class or interface.
      *
@@ -497,6 +493,11 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       def from = FromClass(this)
 
       kind match {
+        case _ if className == ObjectClass =>
+          assert(superClass.isEmpty)
+
+          None
+
         case ClassKind.Class | ClassKind.ModuleClass | ClassKind.HijackedClass =>
           val superCl = superClass.get // checked by ClassDef checker.
           if (superCl.kind != ClassKind.Class) {
