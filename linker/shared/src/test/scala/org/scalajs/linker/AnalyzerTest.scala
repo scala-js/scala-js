@@ -55,6 +55,16 @@ class AnalyzerTest {
   }
 
   @Test
+  def missingJavaLangObjectButOthers(): AsyncResult = await {
+    val classDefs = Seq(classDef("A", superClass = Some(ObjectClass)))
+
+    val analysis = computeAnalysis(classDefs,
+        reqsFactory.classData("A"), stdlib = TestIRRepo.empty)
+
+    assertExactErrors(analysis, MissingJavaLangObjectClass(fromAnalyzer))
+  }
+
+  @Test
   def cycleInInheritanceChainThroughParentClasses(): AsyncResult = await {
     val classDefs = Seq(
         classDef("A", superClass = Some("B")),
