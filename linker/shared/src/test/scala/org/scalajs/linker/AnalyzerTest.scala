@@ -51,7 +51,10 @@ class AnalyzerTest {
   @Test
   def missingJavaLangObject(): AsyncResult = await {
     val analysis = computeAnalysis(Nil, stdlib = TestIRRepo.empty)
-    assertExactErrors(analysis, MissingJavaLangObjectClass(fromAnalyzer))
+    assertContainsError("MissingClass(jlObject)", analysis) {
+      case MissingClass(ClsInfo(name), fromAnalyzer) =>
+        name == ObjectClass.nameString
+    }
   }
 
   @Test
@@ -61,7 +64,10 @@ class AnalyzerTest {
     val analysis = computeAnalysis(classDefs,
         reqsFactory.classData("A"), stdlib = TestIRRepo.empty)
 
-    assertExactErrors(analysis, MissingJavaLangObjectClass(fromAnalyzer))
+    assertContainsError("MissingClass(jlObject)", analysis) {
+      case MissingClass(ClsInfo(name), fromAnalyzer) =>
+        name == ObjectClass.nameString
+    }
   }
 
   @Test

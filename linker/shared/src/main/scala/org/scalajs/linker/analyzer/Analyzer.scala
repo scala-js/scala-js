@@ -99,19 +99,11 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     /* Load the java.lang.Object class, and validate it
      * If it is missing or invalid, we're in deep trouble, and cannot continue.
      */
-    infoLoader.loadInfo(ObjectClass)(workQueue.ec) match {
-      case None =>
-        _errors += MissingJavaLangObjectClass(fromAnalyzer)
-
-      case Some(future) =>
-        workQueue.enqueue(future) { data =>
-          objectClassInfo = new ClassInfo(data,
-              unvalidatedSuperClass = None,
-              unvalidatedInterfaces = Nil, nonExistent = false)
-
-          objectClassInfo.link()
-          onSuccess()
-        }
+    lookupClass(ObjectClass) { clazz =>
+      if (!clazz.nonExistent) {
+        objectClassInfo = clazz
+        onSuccess()
+      }
     }
   }
 
@@ -1486,8 +1478,12 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
   }
 
   private def createMissingClassInfo(className: ClassName): Infos.ClassInfo = {
+    val superClass =
+      if (className == ObjectClass) None
+      else Some(ObjectClass)
+
     new Infos.ClassInfoBuilder(className, ClassKind.Class,
-        superClass = Some(ObjectClass), interfaces = Nil, jsNativeLoadSpec = None)
+        superClass = superClass, interfaces = Nil, jsNativeLoadSpec = None)
       .addMethod(makeSyntheticMethodInfo(NoArgConstructorName, MemberNamespace.Constructor))
       .result()
   }
