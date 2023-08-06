@@ -722,7 +722,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       val candidates = for {
         intf <- ancestors if intf.isInterface
         m <- intf.publicMethodInfos.get(methodName)
-        if !m.isAbstract && !m.isDefaultBridge
+        if !m.isAbstract && !m.isDefaultBridge && !m.nonExistent
       } yield m
 
       val notShadowed = candidates filterNot { m =>
@@ -852,7 +852,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         val m = iter.next()
         val include = {
           // TODO In theory we should filter out protected methods
-          !m.isReflectiveProxy && !m.isDefaultBridge && !m.isAbstract
+          !m.isReflectiveProxy && !m.isDefaultBridge && !m.isAbstract && !m.nonExistent
         }
         if (include) {
           val proxyName = MethodName.reflectiveProxy(m.methodName.simpleName, m.methodName.paramTypeRefs)
