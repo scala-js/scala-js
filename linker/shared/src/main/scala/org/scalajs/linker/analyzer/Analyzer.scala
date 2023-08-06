@@ -658,8 +658,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
     private def createNonExistentPublicMethod(methodName: MethodName): MethodInfo = {
       val syntheticData = makeSyntheticMethodInfo(methodName, MemberNamespace.Public)
-      val m = new MethodInfo(this, syntheticData)
-      m.nonExistent = true
+      val m = new MethodInfo(this, syntheticData, nonExistent = true)
       publicMethodInfos += methodName -> m
       m
     }
@@ -759,9 +758,8 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
           namespace = MemberNamespace.Public,
           methodsCalledStatically = List(
               targetOwner.className -> NamespacedMethodName(MemberNamespace.Public, methodName)))
-      val m = new MethodInfo(this, syntheticInfo)
-      m.syntheticKind = MethodSyntheticKind.DefaultBridge(
-          targetOwner.className)
+      val m = new MethodInfo(this, syntheticInfo,
+          syntheticKind = MethodSyntheticKind.DefaultBridge(targetOwner.className))
       publicMethodInfos += methodName -> m
       m
     }
@@ -953,8 +951,8 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
           methodName = proxyName,
           namespace = MemberNamespace.Public,
           methodsCalled = List(this.className -> targetName))
-      val m = new MethodInfo(this, syntheticInfo)
-      m.syntheticKind = MethodSyntheticKind.ReflectiveProxy(targetName)
+      val m = new MethodInfo(this, syntheticInfo,
+          syntheticKind = MethodSyntheticKind.ReflectiveProxy(targetName))
       publicMethodInfos += proxyName -> m
       m
     }
@@ -963,8 +961,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         methodName: MethodName): MethodInfo = {
       tryLookupStaticLikeMethod(namespace, methodName).getOrElse {
         val syntheticData = makeSyntheticMethodInfo(methodName, namespace)
-        val m = new MethodInfo(this, syntheticData)
-        m.nonExistent = true
+        val m = new MethodInfo(this, syntheticData, nonExistent = true)
         methodInfos(namespace)(methodName) = m
         m
       }
@@ -1227,8 +1224,12 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     }
   }
 
-  private class MethodInfo(val owner: ClassInfo,
-      data: Infos.MethodInfo) extends Analysis.MethodInfo {
+  private class MethodInfo(
+    val owner: ClassInfo,
+    data: Infos.MethodInfo,
+    val nonExistent: Boolean = false,
+    val syntheticKind: MethodSyntheticKind = MethodSyntheticKind.None
+  ) extends Analysis.MethodInfo {
 
     val methodName = data.methodName
     val namespace = data.namespace
@@ -1239,10 +1240,6 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
     var calledFrom: List[From] = Nil
     var instantiatedSubclasses: List[ClassInfo] = Nil
-
-    var nonExistent: Boolean = false
-
-    var syntheticKind: MethodSyntheticKind = MethodSyntheticKind.None
 
     def isReflectiveProxy: Boolean =
       methodName.isReflectiveProxy
