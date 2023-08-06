@@ -298,6 +298,50 @@ class AnalyzerTest {
   }
 
   @Test
+  def missingInheritedMethod(): AsyncResult = await {
+    /* Test that we do not use an inherited missing method:
+     * Otherwise we'll open ourselves up to non-deterministic behavior that
+     * depends on the call graph traversal order.
+     *
+     * The invocation below is carefully crafted to delay traversal of the call
+     * to B#foo as late as possible. If the lookup of B#foo would re-use the
+     * created missing method in A#foo, we'd get one error less.
+     */
+
+    val fooMethodName = m("foo", Nil, V)
+    val barMethodName = m("bar", Nil, V)
+
+    val classDefs = Seq(
+        classDef("A", superClass = Some(ObjectClass),
+            methods = List(
+                trivialCtor("A"),
+                MethodDef(EMF, barMethodName, NON, Nil, NoType, Some(Block(
+                  Apply(EAF, This()(ClassType("A")), fooMethodName, Nil)(NoType),
+                  Apply(EAF, New("B", NoArgConstructorName, Nil), fooMethodName, Nil)(NoType)
+                )))(EOH, UNV)
+            )),
+        classDef("B", superClass = Some("A"),
+            methods = List(trivialCtor("B")))
+    )
+
+    val analysis = computeAnalysis(classDefs,
+        reqsFactory.instantiateClass("A", NoArgConstructorName) ++
+        reqsFactory.callMethod("A", barMethodName))
+
+    assertContainsError("MissingMethod(A.foo;V) from A", analysis) {
+      case MissingMethod(MethInfo("A", "foo;V"), FromDispatch(ClsInfo("A"), `fooMethodName`)) => true
+    }
+
+    assertContainsError("MissingMethod(B.foo;V) from A", analysis) {
+      case MissingMethod(MethInfo("B", "foo;V"), FromDispatch(ClsInfo("A"), `fooMethodName`)) => true
+    }
+
+    assertContainsError("MissingMethod(B.foo;V) from B", analysis) {
+      case MissingMethod(MethInfo("B", "foo;V"), FromDispatch(ClsInfo("B"), `fooMethodName`)) => true
+    }
+  }
+
+  @Test
   def missingAbstractMethod(): AsyncResult = await {
     val fooMethodName = m("foo", Nil, IntRef)
 

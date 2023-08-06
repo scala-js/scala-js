@@ -639,7 +639,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       val candidatesIterator = for {
         ancestor <- ancestors.iterator
         m <- ancestor.publicMethodInfos.get(methodName)
-        if !m.isDefaultBridge
+        if !m.isDefaultBridge && (!m.nonExistent || ancestor == this)
       } yield {
         m
       }
@@ -670,7 +670,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       @tailrec
       def tryLookupInherited(ancestorInfo: ClassInfo): Option[MethodInfo] = {
         ancestorInfo.publicMethodInfos.get(methodName) match {
-          case Some(m) if !m.isAbstract =>
+          case Some(m) if !m.isAbstract && (!m.nonExistent || ancestorInfo == this) =>
             Some(m)
           case _ =>
             ancestorInfo.superClass match {
