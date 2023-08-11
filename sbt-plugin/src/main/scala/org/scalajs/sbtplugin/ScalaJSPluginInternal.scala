@@ -40,8 +40,6 @@ import org.scalajs.ir.Printers.IRTreePrinter
 
 import org.scalajs.testing.adapter.{TestAdapter, HTMLRunnerBuilder, TestAdapterInitializer}
 
-import Loggers._
-
 import sjsonnew.BasicJsonProtocol._
 
 /** Implementation details of `ScalaJSPlugin`. */
@@ -236,6 +234,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
         Def.task {
           val log = s.log
+          val tlog = scalaJSLoggerFactory.value(log)
+
           val realFiles = irInfo.get(scalaJSSourceFiles).get
           val ir = irInfo.data
 
@@ -255,7 +255,6 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
             val report = try {
               enhanceIRVersionNotSupportedException {
-                val tlog = sbtLogger2ToolsLogger(log)
                 await(log)(linker.link(ir, moduleInitializers, out, tlog)(_))
               }
             } catch {
@@ -367,7 +366,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
         val classpath = Attributed.data(fullClasspath.value)
         val log = streams.value.log
-        val tlog = sbtLogger2ToolsLogger(log)
+        val tlog = scalaJSLoggerFactory.value(log)
         val config = configuration.value.name
 
         /* #4610 Warn if `-Xplugin:scalajs-compiler.jar` (Scala 2) or
@@ -595,7 +594,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
          * server mode.
          */
         val config = RunConfig()
-          .withLogger(sbtLogger2ToolsLogger(log))
+          .withLogger(scalaJSLoggerFactory.value(log))
           .withEnv((envVars in run).value)
           .withInheritOut(false)
           .withInheritErr(false)
@@ -699,7 +698,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
 
         val log = streams.value.log
         val config = TestAdapter.Config()
-          .withLogger(sbtLogger2ToolsLogger(log))
+          .withLogger(scalaJSLoggerFactory.value(log))
           .withEnv(envVars.value)
 
         val adapter = newTestAdapter(env, input, config)
