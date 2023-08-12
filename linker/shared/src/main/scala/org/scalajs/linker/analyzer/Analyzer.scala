@@ -667,49 +667,39 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       assert(isScalaClass || isInterface,
           s"Cannot call lookupMethod($methodName) on non Scala class $this")
 
-      @tailrec
-      def tryLookupInherited(ancestorInfo: ClassInfo): Option[MethodInfo] = {
-        ancestorInfo.publicMethodInfos.get(methodName) match {
-          case Some(m) if !m.isAbstract && (!m.nonExistent || ancestorInfo == this) =>
-            Some(m)
-          case _ =>
-            ancestorInfo.superClass match {
-              case Some(superClass) => tryLookupInherited(superClass)
-              case None             => None
-            }
-        }
-      }
-      val existing =
-        if (isScalaClass) tryLookupInherited(this)
-        else publicMethodInfos.get(methodName).filter(!_.isAbstract)
+      publicMethodInfos.get(methodName) match {
+        case Some(m) if !m.isAbstract => Some(m)
 
-      if (!allowAddingSyntheticMethods) {
-        existing
-      } else if (existing.exists(m => !m.isDefaultBridge || m.owner == this)) {
-        /* If we found a non-bridge, it must be the right target.
-         * If we found a bridge directly in this class/interface, it must also
-         * be the right target.
-         */
-        existing
-      } else {
-        // Try and find the target of a possible default bridge
-        findDefaultTarget(methodName).fold {
-          assert(existing.isEmpty)
-          existing
-        } { defaultTarget =>
-          if (existing.exists(_.defaultBridgeTarget == defaultTarget.owner.className)) {
-            /* If we found an existing bridge targeting the right method, we
-             * can reuse it.
-             * We also get here with None when there is no target whatsoever.
-             */
-            existing
+        case _ =>
+          val candidate = superClass
+            .flatMap(_.tryLookupMethod(methodName))
+            .filterNot(_.nonExistent)
+
+          if (allowAddingSyntheticMethods) {
+            def maybeDefaultTarget = getDefaultTarget(methodName)
+
+            def needsDefaultOverride(method: MethodInfo): Boolean = {
+              /* The .get is OK, since we only get here if:
+               * - This class doesn't implement the method directly.
+               * - The superClass has found a default target.
+               * In this case, we always find at least one target.
+               */
+              method.isDefaultBridge && method.defaultBridgeTarget != maybeDefaultTarget.get.owner.className
+            }
+
+            candidate
+              .filterNot(needsDefaultOverride(_))
+              .orElse(maybeDefaultTarget.map(createDefaultBridge(_)))
           } else {
-            // Otherwise, create a new default bridge
-            Some(createDefaultBridge(defaultTarget))
+            candidate
           }
-        }
       }
     }
+
+    private val defaultTargets = mutable.Map.empty[MethodName, Option[MethodInfo]]
+
+    private def getDefaultTarget(methodName: MethodName): Option[MethodInfo] =
+      defaultTargets.getOrElseUpdate(methodName, findDefaultTarget(methodName))
 
     /** Resolves an inherited default method.
      *
