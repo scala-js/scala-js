@@ -4,7 +4,7 @@ import scala.language.implicitConversions
 
 import scala.annotation.tailrec
 
-import sbt._
+import sbt.{Logger => SbtLogger, _}
 import Keys._
 
 import com.typesafe.tools.mima.plugin.MimaPlugin.autoImport._
@@ -14,6 +14,7 @@ import sbtbuildinfo.BuildInfoPlugin.autoImport._
 import ScriptedPlugin.autoImport._
 
 import java.util.Arrays
+import java.io.{FileOutputStream, PrintStream}
 
 import scala.collection.immutable.Range
 import scala.collection.mutable
@@ -22,6 +23,8 @@ import scala.concurrent.duration.Duration
 import scala.util.Properties
 
 import org.scalajs.ir
+
+import org.scalajs.logging._
 
 import org.scalajs.sbtplugin._
 import org.scalajs.jsenv.{JSEnv, RunConfig, Input}
@@ -63,6 +66,31 @@ object ExposedValues extends AutoPlugin {
           .withModuleInit(CheckedBehavior.Compliant)
       }
     }
+
+    /** Variant for linker logger timings (for benchmarking).
+     *
+     *  If set, writes logger timings to `logger-timings.csv` using the provided
+     *  string as "variant" factor (for analysis).
+     *
+     *  For example, use `set loggerTimingVariant in Global := "main"` to record
+     *  baseline metrics.
+     *
+     *  An example R script to read and plot this data:
+     *  {{{
+     *  library(readr)
+     *  library(ggplot2)
+     *  library(dplyr)
+     *
+     *  d <- read_csv("logger-timings.csv", col_names = c("variant", "op", "t_ns"), col_types = "ffi")
+     *
+     *  # Optional filter out some ops only.
+     *  d <- d %>% filter(grepl('Linker', op))
+     *
+     *  ggplot(d, aes(x = op, color = variant, y = t_ns)) + geom_boxplot()
+     *  ggsave("plot.png", width = 9, height = 5)
+     *  }}}
+     */
+    val loggerTimingVariant = settingKey[String]("Variant identifier for logger timings.")
 
     val CheckedBehavior = org.scalajs.linker.interface.CheckedBehavior
 
@@ -117,6 +145,40 @@ object MyScalaJSPlugin extends AutoPlugin {
   override def globalSettings: Seq[Setting[_]] = Def.settings(
       fullClasspath in scalaJSLinkerImpl := {
         (fullClasspath in (Build.linker.v2_12, Runtime)).value
+      },
+
+      scalaJSLoggerFactory := {
+        val default = scalaJSLoggerFactory.value
+
+        ExposedValues.autoImport.loggerTimingVariant.?.value match {
+          case None => default
+
+          case Some(variant) =>
+            /* Instrument logger to dump calls to `time` to a file.
+             * The way we manage the file is a hack: It is difficult to properly
+             * manage resources in sbt's settings system, so we simply set the
+             * printStream to autoFlush, avoiding that we have to close the file.
+             */
+            val stream = new PrintStream(
+                new FileOutputStream("logger-timings.csv", /*append=*/true),
+                /*autoFlush=*/true, "utf8")
+
+            { (sbtLogger: SbtLogger) =>
+              val base = default(sbtLogger)
+              new Logger {
+                def log(level: Level, message: => String): Unit =
+                  base.log(level, message)
+
+                def trace(t: => Throwable): Unit =
+                  base.trace(t)
+
+                override def time(title: String, nanos: Long): Unit = {
+                  stream.println(s"$variant,$title,$nanos")
+                  super.time(title, nanos)
+                }
+              }
+            }
+        }
       },
 
       /* The AppVeyor CI build definition is very sensitive to weird characthers
