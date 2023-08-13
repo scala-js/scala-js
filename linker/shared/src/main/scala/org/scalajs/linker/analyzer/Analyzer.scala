@@ -959,6 +959,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
     def tryLookupStaticLikeMethod(namespace: MemberNamespace,
         methodName: MethodName): Option[MethodInfo] = {
+      assert(namespace != MemberNamespace.Public)
       methodInfos(namespace).get(methodName)
     }
 
