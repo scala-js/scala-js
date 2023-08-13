@@ -365,6 +365,49 @@ class AnalyzerTest {
   }
 
   @Test
+  def callAbstractMethod(): AsyncResult = await {
+    val fooMethodName = m("foo", Nil, IntRef)
+
+    val classDefs = Seq(
+        classDef("A", superClass = Some(ObjectClass),
+            methods = List(
+                trivialCtor("A"),
+                MethodDef(EMF, fooMethodName, NON, Nil, IntType, None)(EOH, UNV)
+            )
+        )
+    )
+
+    val analysis = computeAnalysis(classDefs,
+        reqsFactory.instantiateClass("A", NoArgConstructorName) ++
+        reqsFactory.callMethod("A", fooMethodName))
+
+    assertContainsError("MissingMethod(A.foo;I)", analysis) {
+      case MissingMethod(MethInfo("A", "foo;I"), FromDispatch(ClsInfo("A"),`fooMethodName`)) => true
+    }
+  }
+
+  @Test
+  def staticCallAbstractMethod(): AsyncResult = await {
+    val fooMethodName = m("foo", Nil, IntRef)
+
+    val classDefs = Seq(
+        classDef("A", superClass = Some(ObjectClass),
+            methods = List(
+                trivialCtor("A"),
+                MethodDef(EMF, fooMethodName, NON, Nil, IntType, None)(EOH, UNV)
+            )
+        )
+    )
+
+    val analysis = computeAnalysis(classDefs,
+        reqsFactory.callMethodStatically("A", fooMethodName))
+
+    assertContainsError("MissingMethod(A.foo;I)", analysis) {
+      case MissingMethod(MethInfo("A", "foo;I"), `fromUnitTest`) => true
+    }
+  }
+
+  @Test
   def missingJSNativeMember(): AsyncResult = await {
     val mainName = m("main", Nil, V)
     val testName = m("test", Nil, O)
