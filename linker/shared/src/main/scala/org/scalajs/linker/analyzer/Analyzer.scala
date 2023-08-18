@@ -20,7 +20,7 @@ import scala.concurrent._
 import scala.util.{Try, Success, Failure}
 
 import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
+import java.util.concurrent.atomic._
 
 import org.scalajs.ir
 import org.scalajs.ir.ClassKind
@@ -63,7 +63,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
   private var objectClassInfo: ClassInfo = _
   private[this] var classLoader: ClassLoader = _
 
-  private[this] val _errors = mutable.Buffer.empty[Error]
+  private[this] val _errors = new GrowingList[Error]
 
   private var workQueue: WorkQueue = _
 
@@ -155,7 +155,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       ).distinct
 
       if (publicModuleIDs.size > 1)
-        _errors += MultiplePublicModulesWithoutModuleSupport(publicModuleIDs)
+        _errors ::= MultiplePublicModulesWithoutModuleSupport(publicModuleIDs)
     }
 
     val infos = classLoader.loadedInfos()
@@ -163,29 +163,33 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     // Reach additional data, based on reflection methods used
     reachDataThroughReflection(infos)
 
-    if (failOnError && _errors.nonEmpty)
+    val errs = _errors.get()
+
+    if (failOnError && errs.nonEmpty)
       reportErrors(logger)
 
     new Analysis {
       val classInfos = infos
       val topLevelExportInfos = _topLevelExportInfos
-      val errors = _errors
+      val errors = errs
     }
   }
 
   private def reportErrors(logger: Logger): Unit = {
-    require(_errors.nonEmpty)
+    val errors = _errors.get()
+
+    require(errors.nonEmpty)
 
     val maxDisplayErrors = {
       val propName = "org.scalajs.linker.maxlinkingerrors"
       Try(System.getProperty(propName, "20").toInt).getOrElse(20).max(1)
     }
 
-    _errors
+    errors
       .take(maxDisplayErrors)
       .foreach(logError(_, logger, Level.Error))
 
-    val skipped = _errors.size - maxDisplayErrors
+    val skipped = errors.size - maxDisplayErrors
     if (skipped > 0)
       logger.log(Level.Error, s"Not showing $skipped more linking errors")
 
@@ -333,7 +337,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
       case CycleInfo(cycle, root) =>
         assert(root == null, s"unresolved root: $root")
-        _errors += CycleInInheritanceChain(cycle, fromAnalyzer)
+        _errors ::= CycleInInheritanceChain(cycle, fromAnalyzer)
     }
   }
 
@@ -351,7 +355,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       // Assemble loaded infos.
       val infos = _classInfos.collect { case (k, i: ClassInfo) => (k, i) }
 
-      assert(_errors.nonEmpty || infos.size == _classInfos.size,
+      assert(_errors.get().nonEmpty || infos.size == _classInfos.size,
         "unloaded classes in post load phase")
 
       infos
@@ -499,7 +503,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
     def link()(implicit from: From): Unit = {
       if (nonExistent)
-        _errors += MissingClass(this, from)
+        _errors ::= MissingClass(this, from)
 
       linkedFrom ::= from
     }
@@ -516,7 +520,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         case ClassKind.Class | ClassKind.ModuleClass | ClassKind.HijackedClass =>
           val superCl = superClass.get // checked by ClassDef checker.
           if (superCl.kind != ClassKind.Class) {
-            _errors += InvalidSuperClass(superCl, this, from)
+            _errors ::= InvalidSuperClass(superCl, this, from)
             Some(objectClassInfo)
           } else {
             superClass
@@ -539,7 +543,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
             case ClassKind.JSClass | ClassKind.NativeJSClass =>
               superClass // ok
             case _ =>
-              _errors += InvalidSuperClass(superCl, this, from)
+              _errors ::= InvalidSuperClass(superCl, this, from)
               None
           }
 
@@ -551,7 +555,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
             case _ if superCl eq objectClassInfo =>
               superClass // ok
             case _ =>
-              _errors += InvalidSuperClass(superCl, this, from)
+              _errors ::= InvalidSuperClass(superCl, this, from)
               Some(objectClassInfo)
           }
 
@@ -563,7 +567,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
               case _ if superCl eq objectClassInfo =>
                 superClass // ok
               case _ =>
-                _errors += InvalidSuperClass(superCl, this, from)
+                _errors ::= InvalidSuperClass(superCl, this, from)
                 None
             }
           }
@@ -588,7 +592,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
           // Remove it but do not report an additional error message
           false
         } else if (superIntf.kind != validSuperIntfKind) {
-          _errors += InvalidImplementedInterface(superIntf, this, from)
+          _errors ::= InvalidImplementedInterface(superIntf, this, from)
           false
         } else {
           true
@@ -754,7 +758,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
          * We use fromAnalyzer because we don't have any From here (we
          * shouldn't, since lookup methods are not supposed to produce errors).
          */
-        _errors += ConflictingDefaultMethods(notShadowed, fromAnalyzer)
+        _errors ::= ConflictingDefaultMethods(notShadowed, fromAnalyzer)
       }
 
       notShadowed.headOption
@@ -1004,14 +1008,14 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         _topLevelExportInfos.get(key).fold[Unit] {
           _topLevelExportInfos.put(key, info)
         } { other =>
-          _errors += ConflictingTopLevelExport(tle.moduleID, tle.exportName, List(info, other))
+          _errors ::= ConflictingTopLevelExport(tle.moduleID, tle.exportName, List(info, other))
         }
       }
     }
 
     def accessModule()(implicit from: From): Unit = {
       if (!isAnyModuleClass) {
-        _errors += NotAModule(this, from)
+        _errors ::= NotAModule(this, from)
       } else if (!isModuleAccessed) {
         isModuleAccessed = true
 
@@ -1199,7 +1203,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       if (jsNativeMembersUsed.add(name)) {
         maybeJSNativeLoadSpec match {
           case None =>
-            _errors += MissingJSNativeMember(this, name, from)
+            _errors ::= MissingJSNativeMember(this, name, from)
           case Some(jsNativeLoadSpec) =>
             validateLoadSpec(jsNativeLoadSpec, Some(name))
         }
@@ -1229,7 +1233,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       if (isNoModule) {
         jsNativeLoadSpec match {
           case JSNativeLoadSpec.Import(module, _) =>
-            _errors += ImportWithoutModuleSupport(module, this, jsNativeMember, from)
+            _errors ::= ImportWithoutModuleSupport(module, this, jsNativeMember, from)
           case _ =>
         }
       }
@@ -1310,12 +1314,12 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
     private def checkExistent()(implicit from: From) = {
       if (nonExistent)
-        _errors += MissingMethod(this, from)
+        _errors ::= MissingMethod(this, from)
     }
 
     private def checkConcrete()(implicit from: From) = {
       if (nonExistent || isAbstract)
-        _errors += MissingMethod(this, from)
+        _errors ::= MissingMethod(this, from)
     }
 
     private[this] def doReach(): Unit = {
@@ -1330,7 +1334,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     val exportName: String = data.exportName
 
     if (isNoModule && !ir.Trees.JSGlobalRef.isValidJSGlobalRefName(exportName)) {
-      _errors += InvalidTopLevelExportInScript(this)
+      _errors ::= InvalidTopLevelExportInScript(this)
     }
 
     val staticDependencies: mutable.Set[ClassName] = mutable.Set.empty
@@ -1423,7 +1427,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
         if (!dataInClass.methodsCalledDynamicImport.isEmpty) {
           if (isNoModule) {
-            _errors += DynamicImportWithoutModuleSupport(from)
+            _errors ::= DynamicImportWithoutModuleSupport(from)
           } else {
             dynamicDependencies += className
             // In terms of reachability, a dynamic import call is just a static call.
@@ -1456,17 +1460,17 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
       if ((globalFlags & ReachabilityInfo.FlagAccessedNewTarget) != 0 &&
           config.coreSpec.esFeatures.esVersion < ESVersion.ES2015) {
-        _errors += NewTargetWithoutES2015Support(from)
+        _errors ::= NewTargetWithoutES2015Support(from)
       }
 
       if ((globalFlags & ReachabilityInfo.FlagAccessedImportMeta) != 0 &&
           config.coreSpec.moduleKind != ModuleKind.ESModule) {
-        _errors += ImportMetaWithoutESModule(from)
+        _errors ::= ImportMetaWithoutESModule(from)
       }
 
       if ((globalFlags & ReachabilityInfo.FlagUsedExponentOperator) != 0 &&
           config.coreSpec.esFeatures.esVersion < ESVersion.ES2016) {
-        _errors += ExponentOperatorWithoutES2016Support(from)
+        _errors ::= ExponentOperatorWithoutES2016Support(from)
       }
     }
   }
@@ -1572,5 +1576,12 @@ object Analyzer {
         if (!queue.isEmpty) tryDoWork()
       }
     }
+  }
+
+  private final class GrowingList[A] {
+    private val list = new AtomicReference[List[A]](Nil)
+    def ::=(item: A): Unit = list.updateAndGet(item :: _)
+    def get(): List[A] = list.get()
+    def clear(): Unit = list.set(Nil)
   }
 }
