@@ -81,7 +81,7 @@ object ExposedValues extends AutoPlugin {
      *  library(ggplot2)
      *  library(dplyr)
      *
-     *  d <- read_csv("logger-timings.csv", col_names = c("variant", "op", "t_ns"), col_types = "ffi")
+     *  d <- read_csv("logger-timings.csv", col_names = c("variant", "op", "t_ns"), col_types = "ffn")
      *
      *  # Optional filter out some ops only.
      *  d <- d %>% filter(grepl('Linker', op))
