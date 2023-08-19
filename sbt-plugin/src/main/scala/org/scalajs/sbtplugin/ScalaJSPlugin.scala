@@ -19,6 +19,8 @@ import sbt.Keys._
 
 import org.scalajs.ir.ScalaJSVersions
 
+import org.scalajs.logging.{Logger => SJSLogger}
+
 import org.scalajs.linker.interface._
 
 import org.scalajs.jsenv.{Input, JSEnv}
@@ -271,6 +273,16 @@ object ScalaJSPlugin extends AutoPlugin {
     val scalaJSLinkerOutputDirectory = SettingKey[File]("scalaJSLinkerOutputDirectory",
         "Directory for linker output.",
         BSetting)
+
+    /** Factory for logger (used to intercept timing in Scala.js core)
+     *
+     *  @note
+     *    **Unstable API**: this API is subject to backward incompatible
+     *    changes in future minor versions of Scala.js.
+     */
+    val scalaJSLoggerFactory = SettingKey[sbt.Logger => SJSLogger]("scalaJSLoggerFactory",
+        "Factory for logger",
+        KeyRanks.Invisible)
   }
 
   import autoImport._
@@ -346,6 +358,8 @@ object ScalaJSPlugin extends AutoPlugin {
         },
 
         jsEnv := new NodeJSEnv(),
+
+        scalaJSLoggerFactory := Loggers.sbtLogger2ToolsLogger _,
 
         // Clear the IR cache stats every time a sequence of tasks ends
         onComplete := {
