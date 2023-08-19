@@ -607,11 +607,19 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       }
     }
 
-    var isInstantiated: Boolean = false
-    var isAnySubclassInstantiated: Boolean = false
-    private var isModuleAccessed: Boolean = false
-    var areInstanceTestsUsed: Boolean = false
-    var isDataAccessed: Boolean = false
+    private[this] val _isInstantiated = new AtomicBoolean(false)
+    def isInstantiated: Boolean = _isInstantiated.get()
+
+    private[this] val _isAnySubclassInstantiated = new AtomicBoolean(false)
+    def isAnySubclassInstantiated: Boolean = _isAnySubclassInstantiated.get()
+
+    private[this] val isModuleAccessed = new AtomicBoolean(false)
+
+    private[this] val _areInstanceTestsUsed = new AtomicBoolean(false)
+    def areInstanceTestsUsed: Boolean = _areInstanceTestsUsed.get()
+
+    private[this] val _isDataAccessed = new AtomicBoolean(false)
+    def isDataAccessed: Boolean = _isDataAccessed.get()
 
     private[this] val _fieldsRead: mutable.Map[FieldName, Unit] = emptyThreadSafeMap
     private[this] val _fieldsWritten: mutable.Map[FieldName, Unit] = emptyThreadSafeMap
@@ -1036,10 +1044,8 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     def accessModule()(implicit from: From): Unit = {
       if (!isAnyModuleClass) {
         _errors ::= NotAModule(this, from)
-      } else if (!isModuleAccessed) {
-        isModuleAccessed = true
-
-        instantiated()
+      } else if (!isModuleAccessed.getAndSet(true)) {
+        instantiated() // TODO: Shouldn't we always add the from?
         if (isScalaClass)
           callMethodStatically(MemberNamespace.Constructor, NoArgConstructorName)
       }
@@ -1048,12 +1054,12 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     def instantiated()(implicit from: From): Unit = {
       _instantiatedFrom ::= from
 
-      /* TODO? When the second line is false, shouldn't this be a linking error
-       * instead?
-       */
-      if (!isInstantiated &&
-          (isScalaClass || isJSClass || isNativeJSClass)) {
-        isInstantiated = true
+      if (!(isScalaClass || isJSClass || isNativeJSClass)) {
+        /* Ignore.
+         * TODO? Shouldn't this be a linking error
+         * instead?
+         */
+      } else if (!_isInstantiated.getAndSet(true)) {
 
         // TODO: Why is this not in subclassInstantiated()?
         referenceFieldClasses(fieldsRead ++ fieldsWritten)
@@ -1107,8 +1113,9 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     private def subclassInstantiated()(implicit from: From): Unit = {
       _instantiatedFrom ::= from
 
-      if (!isAnySubclassInstantiated && (isScalaClass || isJSType)) {
-        isAnySubclassInstantiated = true
+      if (!(isScalaClass || isJSType)) {
+        // Ignore
+      } else if (!_isAnySubclassInstantiated.getAndSet(true)) {
 
         if (!isNativeJSClass) {
           for (clazz <- superClass) {
@@ -1128,14 +1135,11 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     }
 
     def useInstanceTests()(implicit from: From): Unit = {
-      if (!areInstanceTestsUsed)
-        areInstanceTestsUsed = true
+      _areInstanceTestsUsed.set(true)
     }
 
     def accessData()(implicit from: From): Unit = {
-      if (!isDataAccessed) {
-        isDataAccessed = true
-
+      if (!_isDataAccessed.getAndSet(true)) {
         // #4548 The `isInstance` function will refer to the class value
         if (kind == ClassKind.NativeJSClass)
           jsNativeLoadSpec.foreach(addLoadSpec(this, _))
@@ -1270,8 +1274,11 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     val namespace = data.namespace
     val isAbstract = data.isAbstract
 
-    var isAbstractReachable: Boolean = false
-    var isReachable: Boolean = false
+    private[this] val _isAbstractReachable = new AtomicBoolean(false)
+    def isAbstractReachable: Boolean = _isAbstractReachable.get()
+
+    private[this] val _isReachable = new AtomicBoolean(false)
+    def isReachable: Boolean = _isReachable.get()
 
     private[this] val _calledFrom = new GrowingList[From]
     def calledFrom: List[From] = _calledFrom.get()
@@ -1297,9 +1304,8 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       checkConcrete()
 
       _calledFrom ::= from
-      if (!isReachable) {
-        isAbstractReachable = true
-        isReachable = true
+      if (!_isReachable.getAndSet(true)) {
+        _isAbstractReachable.set(true)
         doReach()
       }
     }
@@ -1307,10 +1313,9 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     def reachAbstract()(implicit from: From): Unit = {
       assert(namespace == MemberNamespace.Public)
 
-      if (!isAbstractReachable) {
+      if (!_isAbstractReachable.getAndSet(true)) {
         checkExistent()
         _calledFrom ::= from
-        isAbstractReachable = true
       }
     }
 
@@ -1327,9 +1332,8 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       _calledFrom ::= from
       _instantiatedSubclasses ::= inClass
 
-      if (!isReachable) {
-        isAbstractReachable = true
-        isReachable = true
+      if (!_isReachable.getAndSet(true)) {
+        _isAbstractReachable.set(true)
         doReach()
       }
     }
