@@ -129,7 +129,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
      */
     for (hijacked <- HijackedClasses) {
       lookupClass(hijacked) { clazz =>
-        objectClassInfo.staticDependencies += clazz.className
+        objectClassInfo.addStaticDependency(clazz.className)
         clazz.instantiated()
       }
     }
@@ -218,14 +218,14 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       case AccessModule(origin, moduleName) =>
         implicit val from = FromCore(origin)
         lookupClass(moduleName) { clazz =>
-          objectClassInfo.staticDependencies += clazz.className
+          objectClassInfo.addStaticDependency(clazz.className)
           clazz.accessModule()
         }
 
       case InstantiateClass(origin, className, constructor) =>
         implicit val from = FromCore(origin)
         lookupClass(className) { clazz =>
-          objectClassInfo.staticDependencies += clazz.className
+          objectClassInfo.addStaticDependency(clazz.className)
           clazz.instantiated()
           clazz.callMethodStatically(MemberNamespace.Constructor, constructor)
         }
@@ -233,14 +233,14 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       case InstanceTests(origin, className) =>
         implicit val from = FromCore(origin)
         lookupClass(className){ clazz =>
-          objectClassInfo.staticDependencies += clazz.className
+          objectClassInfo.addStaticDependency(clazz.className)
           clazz.useInstanceTests()
         }
 
       case ClassData(origin, className) =>
         implicit val from = FromCore(origin)
         lookupClass(className) { clazz =>
-          objectClassInfo.staticDependencies += clazz.className
+          objectClassInfo.addStaticDependency(clazz.className)
           clazz.accessData()
         }
 
@@ -248,7 +248,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         implicit val from = FromCore(origin)
         lookupClass(className) { clazz =>
           if (statically) {
-            objectClassInfo.staticDependencies += clazz.className
+            objectClassInfo.addStaticDependency(clazz.className)
             clazz.callMethodStatically(MemberNamespace.Public, methodName)
           } else {
             clazz.callMethod(methodName)
@@ -258,7 +258,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       case CallStaticMethod(origin, className, methodName) =>
         implicit val from = FromCore(origin)
         lookupClass(className) { clazz =>
-          objectClassInfo.staticDependencies += clazz.className
+          objectClassInfo.addStaticDependency(clazz.className)
           clazz.callMethodStatically(MemberNamespace.PublicStatic, methodName)
         }
 
@@ -317,7 +317,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
           classInfo.accessData()
           classInfo.superClass match {
             case Some(superClass) =>
-              classInfo.staticDependencies += superClass.className
+              classInfo.addStaticDependency(superClass.className)
               loop(superClass)
 
             case None =>
@@ -461,12 +461,18 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       promise.completeWith(result)
   }
 
+  private sealed trait ModuleUnit {
+    def addStaticDependency(clazz: ClassName): Unit
+    def addExternalDependency(module: String): Unit
+    def addDynamicDependency(clazz: ClassName): Unit
+  }
+
   private class ClassInfo(
       val data: Infos.ClassInfo,
       unvalidatedSuperClass: Option[ClassInfo],
       unvalidatedInterfaces: List[ClassInfo],
       val nonExistent: Boolean)
-      extends Analysis.ClassInfo with ClassLoadingState with LoadingResult {
+      extends Analysis.ClassInfo with ClassLoadingState with LoadingResult with ModuleUnit {
 
     var linkedFrom: List[From] = Nil
 
@@ -615,16 +621,23 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
     val jsNativeLoadSpec: Option[JSNativeLoadSpec] = data.jsNativeLoadSpec
 
+    private[this] val _staticDependencies: mutable.Map[ClassName, Unit] = emptyThreadSafeMap
+    private[this] val _externalDependencies: mutable.Map[String, Unit] = emptyThreadSafeMap
+    private[this] val _dynamicDependencies: mutable.Map[ClassName, Unit] = emptyThreadSafeMap
+
+    def addStaticDependency(clazz: ClassName): Unit = _staticDependencies.update(clazz, ())
+    def addExternalDependency(module: String): Unit = _externalDependencies.update(module, ())
+    def addDynamicDependency(clazz: ClassName): Unit = _dynamicDependencies.update(clazz, ())
+
+    def staticDependencies: scala.collection.Set[ClassName] = _staticDependencies.keySet
+    def externalDependencies: scala.collection.Set[String] = _externalDependencies.keySet
+    def dynamicDependencies: scala.collection.Set[ClassName] = _dynamicDependencies.keySet
+
     /* j.l.Object represents the core infrastructure. As such, everything
      * depends on it unconditionally.
      */
-    val staticDependencies: mutable.Set[ClassName] =
-      if (className == ObjectClass) mutable.Set.empty
-      else mutable.Set(ObjectClass)
-
-    val externalDependencies: mutable.Set[String] = mutable.Set.empty
-
-    val dynamicDependencies: mutable.Set[ClassName] = mutable.Set.empty
+    if (className != ObjectClass)
+      addStaticDependency(ObjectClass)
 
     var instantiatedFrom: List[From] = Nil
 
@@ -1079,8 +1092,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
           }
 
           for (reachabilityInfo <- data.jsMethodProps)
-            followReachabilityInfo(reachabilityInfo, staticDependencies,
-                externalDependencies, dynamicDependencies)(FromExports)
+            followReachabilityInfo(reachabilityInfo, this)(FromExports)
         }
       }
     }
@@ -1093,17 +1105,16 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         if (!isNativeJSClass) {
           for (clazz <- superClass) {
             if (clazz.isNativeJSClass)
-              clazz.jsNativeLoadSpec.foreach(addLoadSpec(externalDependencies, _))
+              clazz.jsNativeLoadSpec.foreach(addLoadSpec(this, _))
             else
-              staticDependencies += clazz.className
+              addStaticDependency(clazz.className)
           }
         }
 
         // Reach exported members
         if (!isJSClass) {
           for (reachabilityInfo <- data.jsMethodProps)
-            followReachabilityInfo(reachabilityInfo, staticDependencies,
-                externalDependencies, dynamicDependencies)(FromExports)
+            followReachabilityInfo(reachabilityInfo, this)(FromExports)
         }
       }
     }
@@ -1119,7 +1130,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
         // #4548 The `isInstance` function will refer to the class value
         if (kind == ClassKind.NativeJSClass)
-          jsNativeLoadSpec.foreach(addLoadSpec(externalDependencies, _))
+          jsNativeLoadSpec.foreach(addLoadSpec(this, _))
       }
     }
 
@@ -1322,14 +1333,12 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         _errors ::= MissingMethod(this, from)
     }
 
-    private[this] def doReach(): Unit = {
-      followReachabilityInfo(data.reachabilityInfo, owner.staticDependencies,
-          owner.externalDependencies, owner.dynamicDependencies)(FromMethod(this))
-    }
+    private[this] def doReach(): Unit =
+      followReachabilityInfo(data.reachabilityInfo, owner)(FromMethod(this))
   }
 
   private class TopLevelExportInfo(val owningClass: ClassName, data: Infos.TopLevelExportInfo)
-      extends Analysis.TopLevelExportInfo {
+      extends Analysis.TopLevelExportInfo with ModuleUnit {
     val moduleID: ModuleID = data.moduleID
     val exportName: String = data.exportName
 
@@ -1337,26 +1346,29 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       _errors ::= InvalidTopLevelExportInScript(this)
     }
 
-    val staticDependencies: mutable.Set[ClassName] = mutable.Set.empty
-    val externalDependencies: mutable.Set[String] = mutable.Set.empty
+    private[this] val _staticDependencies: mutable.Map[ClassName, Unit] = emptyThreadSafeMap
+    private[this] val _externalDependencies: mutable.Map[String, Unit] = emptyThreadSafeMap
 
-    def reach(): Unit = {
-      val dynamicDependencies = mutable.Set.empty[ClassName]
-      followReachabilityInfo(data.reachability, staticDependencies,
-          externalDependencies, dynamicDependencies)(FromExports)
+    def addStaticDependency(clazz: ClassName): Unit = _staticDependencies.update(clazz, ())
+    def addExternalDependency(module: String): Unit = _externalDependencies.update(module, ())
+    def addDynamicDependency(clazz: ClassName): Unit = {
+      throw new AssertionError("dynamic dependency for top level export " +
+          s"$moduleID.$exportName (owned by $owningClass) on $clazz")
     }
+
+    def staticDependencies: scala.collection.Set[ClassName] = _staticDependencies.keySet
+    def externalDependencies: scala.collection.Set[String] = _externalDependencies.keySet
+
+    def reach(): Unit = followReachabilityInfo(data.reachability, this)(FromExports)
   }
 
-  private def followReachabilityInfo(data: ReachabilityInfo,
-      staticDependencies: mutable.Set[ClassName],
-      externalDependencies: mutable.Set[String],
-      dynamicDependencies: mutable.Set[ClassName])(
+  private def followReachabilityInfo(data: ReachabilityInfo, moduleUnit: ModuleUnit)(
       implicit from: From): Unit = {
 
     def addInstanceDependency(info: ClassInfo) = {
-      info.jsNativeLoadSpec.foreach(addLoadSpec(externalDependencies, _))
+      info.jsNativeLoadSpec.foreach(addLoadSpec(moduleUnit, _))
       if (info.kind.isAnyNonNativeClass)
-        staticDependencies += info.className
+        moduleUnit.addStaticDependency(info.className)
     }
 
     for (dataInClass <- data.byClass) {
@@ -1376,17 +1388,17 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
           }
 
           if ((flags & ReachabilityInfoInClass.FlagInstanceTestsUsed) != 0) {
-            staticDependencies += className
+            moduleUnit.addStaticDependency(className)
             clazz.useInstanceTests()
           }
 
           if ((flags & ReachabilityInfoInClass.FlagClassDataAccessed) != 0) {
-            staticDependencies += className
+            moduleUnit.addStaticDependency(className)
             clazz.accessData()
           }
 
           if ((flags & ReachabilityInfoInClass.FlagStaticallyReferenced) != 0) {
-            staticDependencies += className
+            moduleUnit.addStaticDependency(className)
           }
         }
 
@@ -1404,12 +1416,12 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         }
 
         if (!dataInClass.staticFieldsRead.isEmpty) {
-          staticDependencies += className
+          moduleUnit.addStaticDependency(className)
           clazz.staticFieldsRead ++= dataInClass.staticFieldsRead
         }
 
         if (!dataInClass.staticFieldsWritten.isEmpty) {
-          staticDependencies += className
+          moduleUnit.addStaticDependency(className)
           clazz.staticFieldsWritten ++= dataInClass.staticFieldsWritten
         }
 
@@ -1420,7 +1432,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         }
 
         if (!dataInClass.methodsCalledStatically.isEmpty) {
-          staticDependencies += className
+          moduleUnit.addStaticDependency(className)
           for (methodName <- dataInClass.methodsCalledStatically)
             clazz.callMethodStatically(methodName)
         }
@@ -1429,7 +1441,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
           if (isNoModule) {
             _errors ::= DynamicImportWithoutModuleSupport(from)
           } else {
-            dynamicDependencies += className
+            moduleUnit.addDynamicDependency(className)
             // In terms of reachability, a dynamic import call is just a static call.
             for (methodName <- dataInClass.methodsCalledDynamicImport)
               clazz.callMethodStatically(methodName)
@@ -1439,7 +1451,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         if (!dataInClass.jsNativeMembersUsed.isEmpty) {
           for (member <- dataInClass.jsNativeMembersUsed)
             clazz.useJSNativeMember(member)
-              .foreach(addLoadSpec(externalDependencies, _))
+              .foreach(addLoadSpec(moduleUnit, _))
         }
       }
     }
@@ -1451,7 +1463,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         /* java.lang.Class is only ever instantiated in the CoreJSLib.
          * Therefore, make java.lang.Object depend on it instead of the caller itself.
          */
-        objectClassInfo.staticDependencies += ClassClass
+        objectClassInfo.addStaticDependency(ClassClass)
         lookupClass(ClassClass) { clazz =>
           clazz.instantiated()
           clazz.callMethodStatically(MemberNamespace.Constructor, ObjectArgConstructorName)
@@ -1476,17 +1488,17 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
   }
 
   @tailrec
-  private def addLoadSpec(externalDependencies: mutable.Set[String],
+  private def addLoadSpec(moduleUnit: ModuleUnit,
       jsNativeLoadSpec: JSNativeLoadSpec): Unit = {
     jsNativeLoadSpec match {
       case _: JSNativeLoadSpec.Global =>
 
       case JSNativeLoadSpec.Import(module, _) =>
-        externalDependencies += module
+        moduleUnit.addExternalDependency(module)
 
       case JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, _) =>
         if (!isNoModule)
-          addLoadSpec(externalDependencies, importSpec)
+          addLoadSpec(moduleUnit, importSpec)
     }
   }
 
