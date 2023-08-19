@@ -657,10 +657,14 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     }
 
     private def createNonExistentPublicMethod(methodName: MethodName): MethodInfo = {
-      val syntheticData = makeSyntheticMethodInfo(methodName, MemberNamespace.Public)
-      val m = new MethodInfo(this, syntheticData, nonExistent = true)
-      publicMethodInfos += methodName -> m
-      m
+      /* Use getOrElseUpdate to avoid overriding an abstract method:
+       * When being called from lookupMethod, it is possible that an abstract
+       * method exists.
+       */
+      publicMethodInfos.getOrElseUpdate(methodName, {
+        val syntheticData = makeSyntheticMethodInfo(methodName, MemberNamespace.Public)
+        new MethodInfo(this, syntheticData, nonExistent = true)
+      })
     }
 
     def tryLookupMethod(methodName: MethodName): Option[MethodInfo] = {
@@ -959,6 +963,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
     def tryLookupStaticLikeMethod(namespace: MemberNamespace,
         methodName: MethodName): Option[MethodInfo] = {
+      assert(namespace != MemberNamespace.Public)
       methodInfos(namespace).get(methodName)
     }
 
@@ -1246,10 +1251,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       s"$owner.${methodName.simpleName.nameString}"
 
     def reachStatic()(implicit from: From): Unit = {
-      assert(!isAbstract,
-          s"Trying to reach statically the abstract method $this")
-
-      checkExistent()
+      checkConcrete()
 
       calledFrom ::= from
       if (!isReachable) {
@@ -1272,14 +1274,12 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     def reach(inClass: ClassInfo)(implicit from: From): Unit = {
       assert(!namespace.isStatic,
           s"Trying to dynamically reach the static method $this")
-      assert(!isAbstract,
-          s"Trying to dynamically reach the abstract method $this")
       assert(owner.isAnyClass,
           s"Trying to dynamically reach the non-class method $this")
       assert(!namespace.isConstructor,
           s"Trying to dynamically reach the constructor $this")
 
-      checkExistent()
+      checkConcrete()
 
       calledFrom ::= from
       instantiatedSubclasses ::= inClass
@@ -1293,6 +1293,11 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
     private def checkExistent()(implicit from: From) = {
       if (nonExistent)
+        _errors += MissingMethod(this, from)
+    }
+
+    private def checkConcrete()(implicit from: From) = {
+      if (nonExistent || isAbstract)
         _errors += MissingMethod(this, from)
     }
 
