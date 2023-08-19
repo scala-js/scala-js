@@ -618,7 +618,8 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     val staticFieldsRead: mutable.Set[FieldName] = mutable.Set.empty
     val staticFieldsWritten: mutable.Set[FieldName] = mutable.Set.empty
 
-    val jsNativeMembersUsed: mutable.Set[MethodName] = mutable.Set.empty
+    private[this] val _jsNativeMembersUsed: mutable.Map[MethodName, Unit] = emptyThreadSafeMap
+    def jsNativeMembersUsed: scala.collection.Set[MethodName] = _jsNativeMembersUsed.keySet
 
     val jsNativeLoadSpec: Option[JSNativeLoadSpec] = data.jsNativeLoadSpec
 
@@ -1213,7 +1214,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     def useJSNativeMember(name: MethodName)(
         implicit from: From): Option[JSNativeLoadSpec] = {
       val maybeJSNativeLoadSpec = data.jsNativeMembers.get(name)
-      if (jsNativeMembersUsed.add(name)) {
+      if (_jsNativeMembersUsed.put(name, ()).isEmpty) {
         maybeJSNativeLoadSpec match {
           case None =>
             _errors ::= MissingJSNativeMember(this, name, from)
