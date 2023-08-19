@@ -69,7 +69,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
   private val fromAnalyzer = FromCore("analyzer")
 
-  private[this] val _topLevelExportInfos = mutable.Map.empty[(ModuleID, String), TopLevelExportInfo]
+  private[this] val _topLevelExportInfos: mutable.Map[(ModuleID, String), TopLevelExportInfo] = emptyThreadSafeMap
 
   def computeReachability(moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger)(implicit ec: ExecutionContext): Future[Analysis] = {
@@ -1018,9 +1018,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         val info = new TopLevelExportInfo(className, tle)
         info.reach()
 
-        _topLevelExportInfos.get(key).fold[Unit] {
-          _topLevelExportInfos.put(key, info)
-        } { other =>
+        _topLevelExportInfos.put(key, info).foreach { other =>
           _errors ::= ConflictingTopLevelExport(tle.moduleID, tle.exportName, List(info, other))
         }
       }
