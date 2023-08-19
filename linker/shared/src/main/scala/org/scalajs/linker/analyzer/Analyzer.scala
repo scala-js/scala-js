@@ -474,7 +474,8 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       val nonExistent: Boolean)
       extends Analysis.ClassInfo with ClassLoadingState with LoadingResult with ModuleUnit {
 
-    var linkedFrom: List[From] = Nil
+    private[this] val _linkedFrom = new GrowingList[From]
+    def linkedFrom: List[From] = _linkedFrom.get()
 
     val className = data.className
     val kind = data.kind
@@ -511,7 +512,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       if (nonExistent)
         _errors ::= MissingClass(this, from)
 
-      linkedFrom ::= from
+      _linkedFrom ::= from
     }
 
     private[this] def validateSuperClass(superClass: Option[ClassInfo]): Option[ClassInfo] = {
@@ -639,7 +640,8 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     if (className != ObjectClass)
       addStaticDependency(ObjectClass)
 
-    var instantiatedFrom: List[From] = Nil
+    private[this] val _instantiatedFrom = new GrowingList[From]
+    def instantiatedFrom: List[From] = _instantiatedFrom.get()
 
     val dispatchCalledFrom: mutable.Map[MethodName, List[From]] = mutable.Map.empty
 
@@ -1038,7 +1040,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     }
 
     def instantiated()(implicit from: From): Unit = {
-      instantiatedFrom ::= from
+      _instantiatedFrom ::= from
 
       /* TODO? When the second line is false, shouldn't this be a linking error
        * instead?
@@ -1097,7 +1099,8 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     }
 
     private def subclassInstantiated()(implicit from: From): Unit = {
-      instantiatedFrom ::= from
+      _instantiatedFrom ::= from
+
       if (!isAnySubclassInstantiated && (isScalaClass || isJSType)) {
         isAnySubclassInstantiated = true
 
@@ -1264,8 +1267,11 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     var isAbstractReachable: Boolean = false
     var isReachable: Boolean = false
 
-    var calledFrom: List[From] = Nil
-    var instantiatedSubclasses: List[ClassInfo] = Nil
+    private[this] val _calledFrom = new GrowingList[From]
+    def calledFrom: List[From] = _calledFrom.get()
+
+    private[this] val _instantiatedSubclasses = new GrowingList[ClassInfo]
+    def instantiatedSubclasses: List[ClassInfo] = _instantiatedSubclasses.get()
 
     def isReflectiveProxy: Boolean =
       methodName.isReflectiveProxy
@@ -1284,7 +1290,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     def reachStatic()(implicit from: From): Unit = {
       checkConcrete()
 
-      calledFrom ::= from
+      _calledFrom ::= from
       if (!isReachable) {
         isAbstractReachable = true
         isReachable = true
@@ -1297,7 +1303,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
       if (!isAbstractReachable) {
         checkExistent()
-        calledFrom ::= from
+        _calledFrom ::= from
         isAbstractReachable = true
       }
     }
@@ -1312,8 +1318,8 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
       checkConcrete()
 
-      calledFrom ::= from
-      instantiatedSubclasses ::= inClass
+      _calledFrom ::= from
+      _instantiatedSubclasses ::= inClass
 
       if (!isReachable) {
         isAbstractReachable = true
