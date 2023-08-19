@@ -651,7 +651,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
     private val nsMethodInfos = {
       val nsMethodInfos = Array.fill(MemberNamespace.Count) {
-        mutable.Map.empty[MethodName, MethodInfo]
+        emptyThreadSafeMap[MethodName, MethodInfo]
       }
       for (methodData <- data.methods) {
         // TODO It would be good to report duplicates as errors at this point
@@ -734,7 +734,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       }
     }
 
-    private val defaultTargets = mutable.Map.empty[MethodName, Option[MethodInfo]]
+    private val defaultTargets = emptyThreadSafeMap[MethodName, Option[MethodInfo]]
 
     private def getDefaultTarget(methodName: MethodName): Option[MethodInfo] =
       defaultTargets.getOrElseUpdate(methodName, findDefaultTarget(methodName))
@@ -779,17 +779,18 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
     private def createDefaultBridge(target: MethodInfo): MethodInfo = {
       val methodName = target.methodName
-      val targetOwner = target.owner
 
-      val syntheticInfo = makeSyntheticMethodInfo(
-          methodName = methodName,
-          namespace = MemberNamespace.Public,
-          methodsCalledStatically = List(
-              targetOwner.className -> NamespacedMethodName(MemberNamespace.Public, methodName)))
-      val m = new MethodInfo(this, syntheticInfo,
-          syntheticKind = MethodSyntheticKind.DefaultBridge(targetOwner.className))
-      publicMethodInfos += methodName -> m
-      m
+      publicMethodInfos.getOrElseUpdate(methodName, {
+        val targetOwner = target.owner
+
+        val syntheticInfo = makeSyntheticMethodInfo(
+            methodName = methodName,
+            namespace = MemberNamespace.Public,
+            methodsCalledStatically = List(
+                targetOwner.className -> NamespacedMethodName(MemberNamespace.Public, methodName)))
+        new MethodInfo(this, syntheticInfo,
+            syntheticKind = MethodSyntheticKind.DefaultBridge(targetOwner.className))
+      })
     }
 
     def tryLookupReflProxyMethod(proxyName: MethodName)(
@@ -975,24 +976,24 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       assert(this.isScalaClass,
           s"Cannot create reflective proxy in non-Scala class $this")
 
-      val syntheticInfo = makeSyntheticMethodInfo(
-          methodName = proxyName,
-          namespace = MemberNamespace.Public,
-          methodsCalled = List(this.className -> targetName))
-      val m = new MethodInfo(this, syntheticInfo,
-          syntheticKind = MethodSyntheticKind.ReflectiveProxy(targetName))
-      publicMethodInfos += proxyName -> m
-      m
+      publicMethodInfos.getOrElseUpdate(proxyName, {
+        val syntheticInfo = makeSyntheticMethodInfo(
+            methodName = proxyName,
+            namespace = MemberNamespace.Public,
+            methodsCalled = List(this.className -> targetName))
+        new MethodInfo(this, syntheticInfo,
+            syntheticKind = MethodSyntheticKind.ReflectiveProxy(targetName))
+      })
     }
 
     def lookupStaticLikeMethod(namespace: MemberNamespace,
         methodName: MethodName): MethodInfo = {
-      tryLookupStaticLikeMethod(namespace, methodName).getOrElse {
+      assert(namespace != MemberNamespace.Public)
+
+      methodInfos(namespace).getOrElseUpdate(methodName, {
         val syntheticData = makeSyntheticMethodInfo(methodName, namespace)
-        val m = new MethodInfo(this, syntheticData, nonExistent = true)
-        methodInfos(namespace)(methodName) = m
-        m
-      }
+        new MethodInfo(this, syntheticData, nonExistent = true)
+      })
     }
 
     def tryLookupStaticLikeMethod(namespace: MemberNamespace,
