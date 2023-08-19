@@ -65,7 +65,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
   private[this] val _errors = new GrowingList[Error]
 
-  private var workQueue: WorkQueue = _
+  private var workTracker: WorkTracker = _
 
   private val fromAnalyzer = FromCore("analyzer")
 
@@ -78,19 +78,20 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
     infoLoader.update(logger)
 
-    workQueue = new WorkQueue(ec)
+    workTracker = new WorkTracker
     classLoader = new ClassLoader
 
     loadObjectClass(() => loadEverything(moduleInitializers, symbolRequirements))
 
-    workQueue.join()
-      .map(_ => postLoad(moduleInitializers, logger))(ec)
+    workTracker
+      .future
+      .map(_ => postLoad(moduleInitializers, logger))
       .andThen { case _ => infoLoader.cleanAfterRun() }
   }
 
   private def resetState(): Unit = {
     objectClassInfo = null
-    workQueue = null
+    workTracker = null
     _errors.clear()
     classLoader = null
     _topLevelExportInfos.clear()
@@ -330,7 +331,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
   private def lookupClass(className: ClassName)(
       onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
-    workQueue.enqueue(classLoader.lookupClass(className)) {
+    workTracker.track(classLoader.lookupClass(className)) {
       case info: ClassInfo =>
         info.link()
         onSuccess(info)
@@ -871,13 +872,13 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
           ()
 
         case onlyCandidate :: Nil =>
-          // Fast path that does not require workQueue.enqueue
+          // Fast path that does not require workTracker.track
           val proxy = createReflProxy(proxyName, onlyCandidate.methodName)
           onSuccess(proxy)
 
         case _ =>
           val targetFuture = computeMostSpecificProxyMatch(candidates)
-          workQueue.enqueue(targetFuture) { reflectiveTarget =>
+          workTracker.track(targetFuture) { reflectiveTarget =>
             val proxy = createReflProxy(proxyName, reflectiveTarget.methodName)
             onSuccess(proxy)
           }
@@ -943,7 +944,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
       // Starting here, we just do data juggling, so it can run on any thread.
       locally {
-        implicit val iec = workQueue.ec
+        implicit val iec = workTracker.ec
 
         val hasMoreSpecific = Future.traverse(specificityChecks)(
             checks => Future.sequence(checks).map(_.contains(true)))
@@ -1566,59 +1567,42 @@ object Analyzer {
   private val getSuperclassMethodName =
     MethodName("getSuperclass", Nil, ClassRef(ClassClass))
 
-  private class WorkQueue(val ec: ExecutionContext) {
-    private val queue = new ConcurrentLinkedQueue[() => Unit]()
-    private val working = new AtomicBoolean(false)
+  private class WorkTracker(implicit val ec: ExecutionContext) {
     private val pending = new AtomicInteger(0)
     private val promise = Promise[Unit]()
 
-    def enqueue[T](fut: Future[T])(onSuccess: T => Unit): Unit = {
+    def track[T](fut: Future[T])(onSuccess: T => Unit): Unit = {
       val got = pending.incrementAndGet()
       assert(got > 0)
 
-      fut.onComplete {
-        case Success(r) =>
-          queue.add(() => onSuccess(r))
-          tryDoWork()
-
-        case Failure(t) =>
-          promise.tryFailure(t)
-      } (ec)
-    }
-
-    def join(): Future[Unit] = {
-      tryDoWork()
-      promise.future
-    }
-
-    @tailrec
-    private def tryDoWork(): Unit = {
-      if (!working.getAndSet(true)) {
-        while (!queue.isEmpty) {
-          try {
-            val work = queue.poll()
-            work()
-          } catch {
-            case t: Throwable => promise.tryFailure(t)
-          }
-
-          pending.decrementAndGet()
-        }
-
-        if (pending.compareAndSet(0, -1)) {
-          assert(queue.isEmpty)
-          promise.trySuccess(())
-        }
-
-        working.set(false)
-
-        /* Another thread might have inserted work in the meantime but not yet
-         * seen that we released the lock. Try and work steal again if this
-         * happens.
-         */
-        if (!queue.isEmpty) tryDoWork()
+      fut.map(onSuccess).onComplete {
+        case Success(_) => taskDone()
+        case Failure(t) => promise.tryFailure(t)
       }
     }
+
+    private def taskDone(): Unit = {
+      if (pending.decrementAndGet() == 0) {
+        /* TODO: The completion condition in the WorkTracker is not what we want:
+         *
+         * What we have is: The number of pending tasks drops to 0.
+         *
+         * What we want is: The number of pending tasks drops to 0 after a
+         * certain point in the main execution flow has been reached.
+         *
+         * This is currently not a problem, because `loadObjectClass` submits the
+         * initial task and then everything else is done inside a task
+         * (until `postLoad`).
+         *
+         * However, this is not strictly necessary, we could, for example, start
+         * loading infos for other entrypoints in parallel. So we should fix this.
+         */
+        pending.set(-1)
+        promise.trySuccess(())
+      }
+    }
+
+    def future: Future[Unit] = promise.future
   }
 
   private final class GrowingList[A] {
