@@ -657,13 +657,26 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     private[this] val _instantiatedFrom = new GrowingList[From]
     def instantiatedFrom: List[From] = _instantiatedFrom.get()
 
-    val dispatchCalledFrom: mutable.Map[MethodName, List[From]] = mutable.Map.empty
+    private[this] val _dispatchCalledFrom: mutable.Map[MethodName, GrowingList[From]] = emptyThreadSafeMap
+    def dispatchCalledFrom(methodName: MethodName): Option[List[From]] =
+      _dispatchCalledFrom.get(methodName).map(_.get())
+
+    /** Methods that have been called on this interface.
+     *
+     *  Note that we maintain the invariant
+     *
+     *  methodsCalledLog.toSet == dispatchCalledFrom.keySet.
+     *
+     *  This is because we need to be able to snapshot methodsCalledLog in
+     *  subclassInstantiated. TrieMap would support snapshotting, but a plain
+     *  mutable.Map doesn't (so it wouldn't cross compile to JS).
+     */
+    private val methodsCalledLog = new GrowingList[MethodName]
 
     /** List of all instantiated (Scala) subclasses of this Scala class/trait.
      *  For JS types, this always remains empty.
      */
-    var instantiatedSubclasses: List[ClassInfo] = Nil
-    var methodsCalledLog: List[MethodName] = Nil
+    private val _instantiatedSubclasses = new GrowingList[ClassInfo]
 
     private val nsMethodInfos = {
       val nsMethodInfos = Array.fill(MemberNamespace.Count) {
@@ -1067,18 +1080,21 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         if (isScalaClass) {
           accessData()
 
-          /* First mark the ancestors as subclassInstantiated() and fetch the
-           * methodsCalledLog, for all ancestors. Only then perform the
-           * resolved calls for all the logs. This order is important because,
+          /* First mark the ancestors as subclassInstantiated() then fetch the
+           * methodsCalledLog, for all ancestors. This order is important to
+           * ensure that concurrently analyzed method calls work correctly.
+           *
+           * Further, we only actually perform the resolved calls once we have
+           * fetched all the logs. This is to minimize duplicate work:
            * during the resolved calls, new methods could be called and added
            * to the log; they will already see the new subclasses so we should
-           * *not* see them in the logs, lest we perform some work twice.
+           * *not* see them in the logs, lest we perform that work twice.
            */
 
           val allMethodsCalledLogs = for (ancestor <- ancestors) yield {
             ancestor.subclassInstantiated()
-            ancestor.instantiatedSubclasses ::= this
-            ancestor -> ancestor.methodsCalledLog
+            ancestor._instantiatedSubclasses ::= this
+            ancestor -> ancestor.methodsCalledLog.get()
           }
 
           for {
@@ -1154,31 +1170,29 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
        * this method won't see them.
        */
 
-      dispatchCalledFrom.get(methodName) match {
-        case Some(froms) =>
-          // Already called before; add the new from
-          dispatchCalledFrom.update(methodName, from :: froms)
+      val froms = _dispatchCalledFrom.getOrElseUpdate(methodName, new GrowingList)
 
-        case None =>
-          // New call
-          dispatchCalledFrom.update(methodName, from :: Nil)
+      if (froms.addIfNil(from)) {
+        // New call.
+        val fromDispatch = FromDispatch(this, methodName)
 
-          val fromDispatch = FromDispatch(this, methodName)
+        methodsCalledLog ::= methodName
+        val subclasses = _instantiatedSubclasses.get()
+        for (subclass <- subclasses)
+          subclass.callMethodResolved(methodName)(fromDispatch)
 
-          methodsCalledLog ::= methodName
-          val subclasses = instantiatedSubclasses
-          for (subclass <- subclasses)
-            subclass.callMethodResolved(methodName)(fromDispatch)
-
-          if (checkAbstractReachability) {
-            /* Also lookup the method as abstract from this class, to make sure it
-             * is *declared* on this type. We do this after the concrete lookup to
-             * avoid work, since a concretely reachable method is already marked as
-             * abstractly reachable.
-             */
-            if (!methodName.isReflectiveProxy)
-              lookupAbstractMethod(methodName).reachAbstract()(fromDispatch)
-          }
+        if (checkAbstractReachability) {
+          /* Also lookup the method as abstract from this class, to make sure it
+           * is *declared* on this type. We do this after the concrete lookup to
+           * avoid work, since a concretely reachable method is already marked as
+           * abstractly reachable.
+           */
+          if (!methodName.isReflectiveProxy)
+            lookupAbstractMethod(methodName).reachAbstract()(fromDispatch)
+        }
+      } else {
+        // Already called before; add the new from
+        froms ::= from
       }
     }
 
@@ -1611,6 +1625,7 @@ object Analyzer {
     private val list = new AtomicReference[List[A]](Nil)
     def ::=(item: A): Unit = list.updateAndGet(item :: _)
     def get(): List[A] = list.get()
+    def addIfNil(item: A): Boolean = list.compareAndSet(Nil, item :: Nil)
     def clear(): Unit = list.set(Nil)
   }
 }
