@@ -613,10 +613,15 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     var areInstanceTestsUsed: Boolean = false
     var isDataAccessed: Boolean = false
 
-    val fieldsRead: mutable.Set[FieldName] = mutable.Set.empty
-    val fieldsWritten: mutable.Set[FieldName] = mutable.Set.empty
-    val staticFieldsRead: mutable.Set[FieldName] = mutable.Set.empty
-    val staticFieldsWritten: mutable.Set[FieldName] = mutable.Set.empty
+    private[this] val _fieldsRead: mutable.Map[FieldName, Unit] = emptyThreadSafeMap
+    private[this] val _fieldsWritten: mutable.Map[FieldName, Unit] = emptyThreadSafeMap
+    val _staticFieldsRead: mutable.Map[FieldName, Unit] = emptyThreadSafeMap
+    val _staticFieldsWritten: mutable.Map[FieldName, Unit] = emptyThreadSafeMap
+
+    def fieldsRead: scala.collection.Set[FieldName] = _fieldsRead.keySet
+    def fieldsWritten: scala.collection.Set[FieldName] = _fieldsWritten.keySet
+    def staticFieldsRead: scala.collection.Set[FieldName] = _staticFieldsRead.keySet
+    def staticFieldsWritten: scala.collection.Set[FieldName] = _staticFieldsWritten.keySet
 
     private[this] val _jsNativeMembersUsed: mutable.Map[MethodName, Unit] = emptyThreadSafeMap
     def jsNativeMembersUsed: scala.collection.Set[MethodName] = _jsNativeMembersUsed.keySet
@@ -1200,13 +1205,13 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     }
 
     def readFields(names: List[FieldName])(implicit from: From): Unit = {
-      fieldsRead ++= names
+      names.foreach(_fieldsRead.update(_, ()))
       if (isInstantiated)
         referenceFieldClasses(names)
     }
 
     def writeFields(names: List[FieldName])(implicit from: From): Unit = {
-      fieldsWritten ++= names
+      names.foreach(_fieldsWritten.update(_, ()))
       if (isInstantiated)
         referenceFieldClasses(names)
     }
@@ -1423,12 +1428,14 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
         if (!dataInClass.staticFieldsRead.isEmpty) {
           moduleUnit.addStaticDependency(className)
-          clazz.staticFieldsRead ++= dataInClass.staticFieldsRead
+          dataInClass.staticFieldsRead.foreach(
+              clazz._staticFieldsRead.update(_, ()))
         }
 
         if (!dataInClass.staticFieldsWritten.isEmpty) {
           moduleUnit.addStaticDependency(className)
-          clazz.staticFieldsWritten ++= dataInClass.staticFieldsWritten
+          dataInClass.staticFieldsWritten.foreach(
+              clazz._staticFieldsWritten.update(_, ()))
         }
 
         if (!dataInClass.methodsCalled.isEmpty) {
