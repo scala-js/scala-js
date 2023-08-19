@@ -925,6 +925,8 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     private def computeMostSpecificProxyMatch(candidates: List[MethodInfo])(
         implicit from: From): Future[MethodInfo] = {
 
+      implicit val ec = workTracker.ec
+
       /* From the JavaDoc of java.lang.Class.getMethod:
        *
        *   If more than one [candidate] method is found in C, and one of these
@@ -933,31 +935,36 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
        *   chosen arbitrarily.
        */
 
-      val resultTypes = candidates.map(c => c.methodName.resultTypeRef)
+      def ifMostSpecific(candidate: MethodInfo): Future[Option[MethodInfo]] = {
+        val specificityChecks = for {
+          otherCandidate <- candidates
+          if candidate != otherCandidate
+        } yield {
+          isMoreSpecific(otherCandidate.methodName.resultTypeRef,
+              candidate.methodName.resultTypeRef)
+        }
 
-      // We must not use Future.traverse since otherwise we might run things on
-      // the non-main thread.
-      val specificityChecks = resultTypes.map { x =>
-        for (y <- resultTypes if x != y)
-          yield isMoreSpecific(y, x)
+        for {
+          moreSpecific <- Future.find(specificityChecks)(identity)
+        } yield {
+          if (moreSpecific.isEmpty) Some(candidate)
+          else None
+        }
       }
 
-      // Starting here, we just do data juggling, so it can run on any thread.
-      locally {
-        implicit val iec = workTracker.ec
+      val specificCandidates = candidates.map(ifMostSpecific)
 
-        val hasMoreSpecific = Future.traverse(specificityChecks)(
-            checks => Future.sequence(checks).map(_.contains(true)))
-
-        hasMoreSpecific.map { hms =>
-          val targets = candidates.zip(hms).filterNot(_._2).map(_._1)
-
-          /* This last step (chosen arbitrarily) causes some soundness issues of
-           * the implementation of reflective calls. This is bug-compatible with
-           * Scala/JVM.
-           */
-          targets.head
-        }
+      /* This last step (chosen arbitrarily) causes some soundness issues of
+       * the implementation of reflective calls. This is bug-compatible with
+       * Scala/JVM.
+       */
+      for {
+        candidate <- Future.find(specificCandidates)(_.nonEmpty)
+      } yield {
+        /* First get: There must be a most specific candidate.
+         * Second get: That's our find condition from above.
+         */
+        candidate.get.get
       }
     }
 
