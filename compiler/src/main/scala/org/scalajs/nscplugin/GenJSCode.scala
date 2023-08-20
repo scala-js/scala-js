@@ -3263,6 +3263,15 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val Apply(fun @ Select(receiver, _), args) = tree
       val sym = fun.symbol
 
+      val inline = {
+        tree.hasAttachment[InlineCallsiteAttachment.type] ||
+        fun.hasAttachment[InlineCallsiteAttachment.type] // nullary methods
+      }
+      val noinline = {
+        tree.hasAttachment[NoInlineCallsiteAttachment.type] ||
+        fun.hasAttachment[NoInlineCallsiteAttachment.type]  // nullary methods
+      }
+
       if (isJSType(receiver.tpe) && sym.owner != ObjectClass) {
         if (!isNonNativeJSClass(sym.owner) || isExposed(sym))
           genPrimitiveJSCall(tree, isStat)
@@ -3278,38 +3287,47 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
            */
           js.Skip()
         } else {
-          genApplyStatic(sym, args.map(genExpr))
+          genApplyStatic(sym, args.map(genExpr), inline = inline, noinline = noinline)
         }
       } else {
         genApplyMethodMaybeStatically(genExpr(receiver), sym,
-            genActualArgs(sym, args))
+            genActualArgs(sym, args), inline = inline, noinline = noinline)
       }
     }
 
     def genApplyMethodMaybeStatically(receiver: js.Tree,
-        method: Symbol, arguments: List[js.Tree])(
+        method: Symbol, arguments: List[js.Tree],
+        inline: Boolean = false, noinline: Boolean = false)(
         implicit pos: Position): js.Tree = {
       if (method.isPrivate || method.isClassConstructor)
-        genApplyMethodStatically(receiver, method, arguments)
+        genApplyMethodStatically(receiver, method, arguments, inline = inline, noinline = noinline)
       else
-        genApplyMethod(receiver, method, arguments)
+        genApplyMethod(receiver, method, arguments, inline = inline, noinline = noinline)
     }
 
     /** Gen JS code for a call to a Scala method. */
     def genApplyMethod(receiver: js.Tree,
-        method: Symbol, arguments: List[js.Tree])(
+        method: Symbol, arguments: List[js.Tree],
+        inline: Boolean = false, noinline: Boolean = false)(
         implicit pos: Position): js.Tree = {
       assert(!method.isPrivate,
           s"Cannot generate a dynamic call to private method $method at $pos")
-      js.Apply(js.ApplyFlags.empty, receiver, encodeMethodSym(method), arguments)(
+      val flags = js.ApplyFlags.empty
+        .withInline(inline)
+        .withNoinline(noinline)
+
+      js.Apply(flags, receiver, encodeMethodSym(method), arguments)(
           toIRType(method.tpe.resultType))
     }
 
     def genApplyMethodStatically(receiver: js.Tree, method: Symbol,
-        arguments: List[js.Tree])(implicit pos: Position): js.Tree = {
+        arguments: List[js.Tree], inline: Boolean = false, noinline: Boolean = false)(
+        implicit pos: Position): js.Tree = {
       val flags = js.ApplyFlags.empty
         .withPrivate(method.isPrivate && !method.isClassConstructor)
         .withConstructor(method.isClassConstructor)
+        .withInline(inline)
+        .withNoinline(noinline)
       val methodIdent = encodeMethodSym(method)
       val resultType =
         if (method.isClassConstructor) jstpe.NoType
@@ -3323,11 +3341,15 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       genApplyStatic(method, receiver :: arguments)
     }
 
-    def genApplyStatic(method: Symbol, arguments: List[js.Tree])(
+    def genApplyStatic(method: Symbol, arguments: List[js.Tree],
+        inline: Boolean = false, noinline: Boolean = false)(
         implicit pos: Position): js.Tree = {
-      js.ApplyStatic(js.ApplyFlags.empty.withPrivate(method.isPrivate),
-          encodeClassName(method.owner), encodeMethodSym(method), arguments)(
-          toIRType(method.tpe.resultType))
+      val flags = js.ApplyFlags.empty
+        .withPrivate(method.isPrivate)
+        .withInline(inline)
+        .withNoinline(noinline)
+      js.ApplyStatic(flags, encodeClassName(method.owner),
+          encodeMethodSym(method), arguments)(toIRType(method.tpe.resultType))
     }
 
     private def adaptPrimitive(value: js.Tree, to: jstpe.Type)(

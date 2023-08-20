@@ -1698,8 +1698,8 @@ private[optimizer] abstract class OptimizerCore(
           else PreTransTree(Block(finishTransformStat(checked), Throw(Null())))
         cont(checkedAndWellTyped)
       case _ =>
-        if (methodName.isReflectiveProxy) {
-          // Never inline reflective proxies
+        if (methodName.isReflectiveProxy || flags.noinline) {
+          // Never inline reflective proxies or explicit noinlines.
           treeNotInlined
         } else {
           val className = boxedClassForType(treceiver.tpe.base)
@@ -1880,7 +1880,7 @@ private[optimizer] abstract class OptimizerCore(
     val targetMethod =
       staticCall(className, MemberNamespace.forStaticCall(flags), method.name)
 
-    if (!targetMethod.attributes.inlineable) {
+    if (!targetMethod.attributes.inlineable || tree.flags.noinline) {
       treeNotInlined
     } else {
       val maybeImportTarget = targetMethod.attributes.jsDynImportInlineTarget.orElse {
@@ -2309,9 +2309,14 @@ private[optimizer] abstract class OptimizerCore(
 
     def default = {
       val tall = optTReceiver.toList ::: targs
-      val shouldInline = target.attributes.inlineable && (
+      val shouldInline = {
+        target.attributes.inlineable &&
+        !flags.noinline && {
           target.attributes.shouldInline ||
-          shouldInlineBecauseOfArgs(target, tall))
+          flags.inline ||
+          shouldInlineBecauseOfArgs(target, tall)
+        }
+      }
 
       val allocationSites = tall.map(_.tpe.allocationSite)
       val beingInlined = scope.implsBeingInlined((allocationSites, target))
