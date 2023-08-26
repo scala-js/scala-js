@@ -38,14 +38,14 @@ abstract class DirectTest {
   }
 
   def newScalaJSCompiler(args: String*): Global = {
-    val settings = newSettings(
+    val settings0 = newSettings(
         List(
             "-d", testOutputPath,
             "-bootclasspath", scalaLibPath,
             "-classpath", classpath.mkString(File.pathSeparator)) ++
         extraArgs ++ args.toList)
 
-    lazy val global: Global = new Global(settings, newReporter(settings)) {
+    lazy val global: Global = new Global(settings0, newReporter(settings0)) {
       private implicit class PluginCompat(val plugin: Plugin) {
         def options: List[String] = {
           val prefix = plugin.name + ":"
