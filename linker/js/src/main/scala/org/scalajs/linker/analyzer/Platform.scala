@@ -13,7 +13,13 @@
 package org.scalajs.linker.analyzer
 
 import scala.collection.mutable
+import scala.concurrent.ExecutionContext
 
 private[analyzer] object Platform {
   def emptyThreadSafeMap[K, V]: mutable.Map[K, V] = mutable.Map.empty
+
+  def adjustExecutionContextForParallelism(ec: ExecutionContext,
+      parallel: Boolean): ExecutionContext = {
+    ec // we're never parallel on JS
+  }
 }

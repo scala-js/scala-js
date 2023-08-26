@@ -37,7 +37,7 @@ import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 import org.scalajs.logging._
 
-import Platform.emptyThreadSafeMap
+import Platform._
 
 import Analysis._
 import Infos.{NamespacedMethodName, ReachabilityInfo, ReachabilityInfoInClass}
@@ -72,6 +72,14 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
   private[this] val _topLevelExportInfos: mutable.Map[(ModuleID, String), TopLevelExportInfo] = emptyThreadSafeMap
 
   def computeReachability(moduleInitializers: Seq[ModuleInitializer],
+      symbolRequirements: SymbolRequirement, logger: Logger)(implicit ec: ExecutionContext): Future[Analysis] = {
+
+    computeInternal(moduleInitializers, symbolRequirements, logger)(
+        adjustExecutionContextForParallelism(ec, config.parallel))
+  }
+
+  /** Internal helper to isolate the execution context. */
+  private def computeInternal(moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger)(implicit ec: ExecutionContext): Future[Analysis] = {
 
     resetState()
