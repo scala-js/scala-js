@@ -17,15 +17,6 @@ import scala.annotation.{switch, tailrec}
 import Types._
 
 object Names {
-  private final val ConstructorSimpleEncodedName: UTF8String =
-    UTF8String("<init>")
-
-  private final val StaticInitializerSimpleEncodedName: UTF8String =
-    UTF8String("<stinit>")
-
-  private final val ClassInitializerSimpleEncodedName: UTF8String =
-    UTF8String("<clinit>")
-
   // scalastyle:off equals.hash.code
   // we define hashCode() once in Name, but equals() separately in its subclasses
 
@@ -214,16 +205,25 @@ object Names {
   }
 
   object SimpleMethodName {
+    private final val ConstructorSimpleEncodedName: UTF8String =
+      UTF8String("<init>")
+
+    private final val StaticInitializerSimpleEncodedName: UTF8String =
+      UTF8String("<stinit>")
+
+    private final val ClassInitializerSimpleEncodedName: UTF8String =
+      UTF8String("<clinit>")
+
     /** The unique `SimpleMethodName` with encoded name `<init>`. */
-    private val Constructor: SimpleMethodName =
+    val Constructor: SimpleMethodName =
       new SimpleMethodName(ConstructorSimpleEncodedName)
 
     /** The unique `SimpleMethodName` with encoded name `<stinit>`. */
-    private val StaticInitializer: SimpleMethodName =
+    val StaticInitializer: SimpleMethodName =
       new SimpleMethodName(StaticInitializerSimpleEncodedName)
 
     /** The unique `SimpleMethodName` with encoded name `<clinit>`. */
-    private val ClassInitializer: SimpleMethodName =
+    val ClassInitializer: SimpleMethodName =
       new SimpleMethodName(ClassInitializerSimpleEncodedName)
 
     def apply(name: UTF8String): SimpleMethodName = {
@@ -258,14 +258,17 @@ object Names {
       SimpleMethodName(UTF8String(name))
   }
 
-  val ConstructorSimpleName: SimpleMethodName =
-    SimpleMethodName(ConstructorSimpleEncodedName)
+  @deprecated("Use SimpleMethodName.Constructor instead", "1.14.0")
+  def ConstructorSimpleName: SimpleMethodName =
+    SimpleMethodName.Constructor
 
-  val StaticInitializerSimpleName: SimpleMethodName =
-    SimpleMethodName(StaticInitializerSimpleEncodedName)
+  @deprecated("Use SimpleMethodName.StaticInitializer instead", "1.14.0")
+  def StaticInitializerSimpleName: SimpleMethodName =
+    SimpleMethodName.StaticInitializer
 
-  val ClassInitializerSimpleName: SimpleMethodName =
-    SimpleMethodName(ClassInitializerSimpleEncodedName)
+  @deprecated("Use SimpleMethodName.ClassInitializer instead", "1.14.0")
+  def ClassInitializerSimpleName: SimpleMethodName =
+    SimpleMethodName.ClassInitializer
 
   /** The full name of a method, including its simple name and its signature.
    */
@@ -426,7 +429,7 @@ object Names {
     }
 
     def constructor(paramTypeRefs: List[TypeRef]): MethodName = {
-      new MethodName(ConstructorSimpleName, paramTypeRefs, VoidRef,
+      new MethodName(SimpleMethodName.Constructor, paramTypeRefs, VoidRef,
           isReflectiveProxy = false)
     }
 
@@ -578,11 +581,11 @@ object Names {
 
   /** Name of the static initializer method. */
   final val StaticInitializerName: MethodName =
-    MethodName(StaticInitializerSimpleName, Nil, VoidRef)
+    MethodName(SimpleMethodName.StaticInitializer, Nil, VoidRef)
 
   /** Name of the class initializer method. */
   final val ClassInitializerName: MethodName =
-    MethodName(ClassInitializerSimpleName, Nil, VoidRef)
+    MethodName(SimpleMethodName.ClassInitializer, Nil, VoidRef)
 
   /** ModuleID of the default module */
   final val DefaultModuleID: String = "main"
