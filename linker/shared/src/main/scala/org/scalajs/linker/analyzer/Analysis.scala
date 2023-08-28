@@ -78,7 +78,7 @@ object Analysis {
 
     def linkedFrom: scala.collection.Seq[From]
     def instantiatedFrom: scala.collection.Seq[From]
-    def dispatchCalledFrom: scala.collection.Map[MethodName, scala.collection.Seq[From]]
+    def dispatchCalledFrom(methodName: MethodName): Option[scala.collection.Seq[From]]
     def methodInfos(
         namespace: MemberNamespace): scala.collection.Map[MethodName, MethodInfo]
 
@@ -309,7 +309,7 @@ object Analysis {
         }
 
         def followDispatch(fromDispatch: FromDispatch): Option[From] =
-          fromDispatch.classInfo.dispatchCalledFrom.get(fromDispatch.methodName).flatMap(_.lastOption)
+          fromDispatch.classInfo.dispatchCalledFrom(fromDispatch.methodName).flatMap(_.lastOption)
 
         optFrom match {
           case None =>

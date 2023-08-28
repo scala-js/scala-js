@@ -20,7 +20,7 @@ import scala.concurrent._
 import scala.util.{Try, Success, Failure}
 
 import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
+import java.util.concurrent.atomic._
 
 import org.scalajs.ir
 import org.scalajs.ir.ClassKind
@@ -36,6 +36,8 @@ import org.scalajs.linker.standard._
 import org.scalajs.linker.standard.ModuleSet.ModuleID
 
 import org.scalajs.logging._
+
+import Platform._
 
 import Analysis._
 import Infos.{NamespacedMethodName, ReachabilityInfo, ReachabilityInfoInClass}
@@ -59,37 +61,47 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
   private val isNoModule = config.coreSpec.moduleKind == ModuleKind.NoModule
 
   private var objectClassInfo: ClassInfo = _
-  private[this] val _classInfos = mutable.Map.empty[ClassName, ClassLoadingState]
+  private[this] var classLoader: ClassLoader = _
 
-  private[this] val _errors = mutable.Buffer.empty[Error]
+  private[this] val _errors = new GrowingList[Error]
 
-  private var workQueue: WorkQueue = _
+  private var workTracker: WorkTracker = _
 
   private val fromAnalyzer = FromCore("analyzer")
 
-  private[this] val _topLevelExportInfos = mutable.Map.empty[(ModuleID, String), TopLevelExportInfo]
+  private[this] val _topLevelExportInfos: mutable.Map[(ModuleID, String), TopLevelExportInfo] = emptyThreadSafeMap
 
   def computeReachability(moduleInitializers: Seq[ModuleInitializer],
+      symbolRequirements: SymbolRequirement, logger: Logger)(implicit ec: ExecutionContext): Future[Analysis] = {
+
+    computeInternal(moduleInitializers, symbolRequirements, logger)(
+        adjustExecutionContextForParallelism(ec, config.parallel))
+  }
+
+  /** Internal helper to isolate the execution context. */
+  private def computeInternal(moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger)(implicit ec: ExecutionContext): Future[Analysis] = {
 
     resetState()
 
     infoLoader.update(logger)
 
-    workQueue = new WorkQueue(ec)
+    workTracker = new WorkTracker
+    classLoader = new ClassLoader
 
     loadObjectClass(() => loadEverything(moduleInitializers, symbolRequirements))
 
-    workQueue.join()
-      .map(_ => postLoad(moduleInitializers, logger))(ec)
+    workTracker
+      .future
+      .map(_ => postLoad(moduleInitializers, logger))
       .andThen { case _ => infoLoader.cleanAfterRun() }
   }
 
   private def resetState(): Unit = {
     objectClassInfo = null
-    workQueue = null
+    workTracker = null
     _errors.clear()
-    _classInfos.clear()
+    classLoader = null
     _topLevelExportInfos.clear()
   }
 
@@ -126,7 +138,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
      */
     for (hijacked <- HijackedClasses) {
       lookupClass(hijacked) { clazz =>
-        objectClassInfo.staticDependencies += clazz.className
+        objectClassInfo.addStaticDependency(clazz.className)
         clazz.instantiated()
       }
     }
@@ -152,41 +164,41 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       ).distinct
 
       if (publicModuleIDs.size > 1)
-        _errors += MultiplePublicModulesWithoutModuleSupport(publicModuleIDs)
+        _errors ::= MultiplePublicModulesWithoutModuleSupport(publicModuleIDs)
     }
 
-    // Assemble loaded infos.
-    val infos = _classInfos.collect { case (k, i: ClassInfo) => (k, i) }
-
-    assert(_errors.nonEmpty || infos.size == _classInfos.size,
-        "unloaded classes in post load phase")
+    val infos = classLoader.loadedInfos()
 
     // Reach additional data, based on reflection methods used
     reachDataThroughReflection(infos)
 
-    if (failOnError && _errors.nonEmpty)
+    val errs = _errors.get()
+
+    if (failOnError && errs.nonEmpty)
       reportErrors(logger)
 
     new Analysis {
       val classInfos = infos
       val topLevelExportInfos = _topLevelExportInfos
-      val errors = _errors
+      val errors = errs
     }
   }
 
   private def reportErrors(logger: Logger): Unit = {
-    require(_errors.nonEmpty)
+    val errors = _errors.get()
+
+    require(errors.nonEmpty)
 
     val maxDisplayErrors = {
       val propName = "org.scalajs.linker.maxlinkingerrors"
       Try(System.getProperty(propName, "20").toInt).getOrElse(20).max(1)
     }
 
-    _errors
+    errors
       .take(maxDisplayErrors)
       .foreach(logError(_, logger, Level.Error))
 
-    val skipped = _errors.size - maxDisplayErrors
+    val skipped = errors.size - maxDisplayErrors
     if (skipped > 0)
       logger.log(Level.Error, s"Not showing $skipped more linking errors")
 
@@ -215,14 +227,14 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       case AccessModule(origin, moduleName) =>
         implicit val from = FromCore(origin)
         lookupClass(moduleName) { clazz =>
-          objectClassInfo.staticDependencies += clazz.className
+          objectClassInfo.addStaticDependency(clazz.className)
           clazz.accessModule()
         }
 
       case InstantiateClass(origin, className, constructor) =>
         implicit val from = FromCore(origin)
         lookupClass(className) { clazz =>
-          objectClassInfo.staticDependencies += clazz.className
+          objectClassInfo.addStaticDependency(clazz.className)
           clazz.instantiated()
           clazz.callMethodStatically(MemberNamespace.Constructor, constructor)
         }
@@ -230,14 +242,14 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       case InstanceTests(origin, className) =>
         implicit val from = FromCore(origin)
         lookupClass(className){ clazz =>
-          objectClassInfo.staticDependencies += clazz.className
+          objectClassInfo.addStaticDependency(clazz.className)
           clazz.useInstanceTests()
         }
 
       case ClassData(origin, className) =>
         implicit val from = FromCore(origin)
         lookupClass(className) { clazz =>
-          objectClassInfo.staticDependencies += clazz.className
+          objectClassInfo.addStaticDependency(clazz.className)
           clazz.accessData()
         }
 
@@ -245,7 +257,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         implicit val from = FromCore(origin)
         lookupClass(className) { clazz =>
           if (statically) {
-            objectClassInfo.staticDependencies += clazz.className
+            objectClassInfo.addStaticDependency(clazz.className)
             clazz.callMethodStatically(MemberNamespace.Public, methodName)
           } else {
             clazz.callMethod(methodName)
@@ -255,7 +267,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       case CallStaticMethod(origin, className, methodName) =>
         implicit val from = FromCore(origin)
         lookupClass(className) { clazz =>
-          objectClassInfo.staticDependencies += clazz.className
+          objectClassInfo.addStaticDependency(clazz.className)
           clazz.callMethodStatically(MemberNamespace.PublicStatic, methodName)
         }
 
@@ -314,7 +326,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
           classInfo.accessData()
           classInfo.superClass match {
             case Some(superClass) =>
-              classInfo.staticDependencies += superClass.className
+              classInfo.addStaticDependency(superClass.className)
               loop(superClass)
 
             case None =>
@@ -327,115 +339,141 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
   private def lookupClass(className: ClassName)(
       onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
-    lookupClassForLinking(className, Set.empty) {
+    workTracker.track(classLoader.lookupClass(className)) {
       case info: ClassInfo =>
         info.link()
         onSuccess(info)
 
-      case CycleInfo(cycle, _) =>
-        _errors += CycleInInheritanceChain(cycle, fromAnalyzer)
+      case CycleInfo(cycle, root) =>
+        assert(root == null, s"unresolved root: $root")
+        _errors ::= CycleInInheritanceChain(cycle, fromAnalyzer)
     }
   }
 
-  private def lookupClassForLinking(className: ClassName,
-      knownDescendants: Set[LoadingClass] = Set.empty)(
-      onSuccess: LoadingResult => Unit): Unit = {
+  private final class ClassLoader(implicit ec: ExecutionContext) {
+    private[this] val _classInfos = emptyThreadSafeMap[ClassName, ClassLoadingState]
 
-    _classInfos.get(className) match {
-      case None =>
-        val loading = new LoadingClass(className)
-
-        _classInfos(className) = loading
-
-        // Request linking before scheduling the loading to avoid the task queue
-        // dropping to zero intermittently.
-        loading.requestLink(knownDescendants)(onSuccess)
-        loading.startLoad()
-
-      case Some(loading: LoadingClass) =>
-        loading.requestLink(knownDescendants)(onSuccess)
-
-      case Some(info: ClassInfo) =>
-        onSuccess(info)
-    }
-  }
-
-
-  private sealed trait LoadingResult
-  private sealed trait ClassLoadingState
-
-  // sealed instead of final because of spurious unchecked warnings
-  private sealed case class CycleInfo(cycle: List[ClassName],
-      root: LoadingClass)
-      extends LoadingResult
-
-  private final class LoadingClass(className: ClassName)
-      extends ClassLoadingState {
-
-    private val promise = Promise[LoadingResult]()
-    private var knownDescendants = Set[LoadingClass](this)
-
-    def requestLink(knownDescendants: Set[LoadingClass])(onSuccess: LoadingResult => Unit): Unit = {
-      if (knownDescendants.contains(this)) {
-        onSuccess(CycleInfo(Nil, this))
-      } else {
-        this.knownDescendants ++= knownDescendants
-        workQueue.enqueue(promise.future)(onSuccess)
+    def lookupClass(className: ClassName): Future[LoadingResult] = {
+      ensureLoading(className) match {
+        case loading: LoadingClass => loading.result
+        case info: ClassInfo       => Future.successful(info)
       }
     }
 
-    def startLoad(): Unit = {
-      infoLoader.loadInfo(className)(workQueue.ec) match {
-        case Some(future) =>
-          workQueue.enqueue(future)(link(_, nonExistent = false))
+    def loadedInfos(): scala.collection.Map[ClassName, ClassInfo] = {
+      // Assemble loaded infos.
+      val infos = _classInfos.collect { case (k, i: ClassInfo) => (k, i) }
 
-        case None =>
-          val data = createMissingClassInfo(className)
-          link(data, nonExistent = true)
+      assert(_errors.get().nonEmpty || infos.size == _classInfos.size,
+        "unloaded classes in post load phase")
+
+      infos
+    }
+
+    private def lookupClassForLinking(className: ClassName,
+        origin: LoadingClass): Future[LoadingResult] = {
+      ensureLoading(className) match {
+        case loading: LoadingClass => loading.requestLink(origin)
+        case info: ClassInfo       => Future.successful(info)
       }
     }
 
-    private def link(data: Infos.ClassInfo, nonExistent: Boolean): Unit = {
-      lookupAncestors(data.superClass.toList ++ data.interfaces) { classes =>
-        val (superClass, interfaces) =
-          if (data.superClass.isEmpty) (None, classes)
-          else (Some(classes.head), classes.tail)
+    private def ensureLoading(className: ClassName): ClassLoadingState = {
+      var loading: LoadingClass = null
+      val state = _classInfos.getOrElseUpdate(className, {
+        loading = new LoadingClass(className)
+        loading
+      })
 
-        val info = new ClassInfo(data, superClass, interfaces, nonExistent)
+      if (state eq loading) {
+        // We just added `loading`, actually load.
+        val maybeInfo = infoLoader.loadInfo(className)
+        val info = maybeInfo.getOrElse {
+          Future.successful(createMissingClassInfo(className))
+        }
 
-        implicit val from = FromClass(info)
-        classes.foreach(_.link())
+        val result = info.flatMap { data =>
+          doLoad(data, loading, nonExistent = maybeInfo.isEmpty)
+        }
 
-        promise.success(info)
-      } { cycleInfo =>
-        val newInfo = cycleInfo match {
-          case CycleInfo(_, null) => cycleInfo
+        loading.completeWith(result)
+      }
 
-          case CycleInfo(c, root) if root == this =>
+      state
+    }
+
+    private def doLoad(data: Infos.ClassInfo, origin: LoadingClass,
+        nonExistent: Boolean): Future[LoadingResult] = {
+      val className = data.className
+
+      for {
+        maybeAncestors <- Future.traverse(data.superClass.toList ++ data.interfaces)(
+            lookupClassForLinking(_, origin))
+      } yield {
+        val maybeCycle = maybeAncestors.collectFirst {
+          case cycle @ CycleInfo(_, null) => cycle
+
+          case CycleInfo(c, root) if root == className =>
             CycleInfo(className :: c, null)
 
           case CycleInfo(c, root) =>
             CycleInfo(className :: c, root)
         }
 
-        promise.success(newInfo)
+        maybeCycle.getOrElse {
+          val ancestors = maybeAncestors.asInstanceOf[List[ClassInfo]]
+
+          val (superClass, interfaces) =
+            if (data.superClass.isEmpty) (None, ancestors)
+            else (Some(ancestors.head), ancestors.tail)
+
+          val info = new ClassInfo(data, superClass, interfaces, nonExistent)
+
+          _classInfos.put(className, info)
+
+          implicit val from = FromClass(info)
+          ancestors.foreach(_.link())
+
+          info
+        }
+      }
+    }
+  }
+
+  private sealed trait LoadingResult
+  private sealed trait ClassLoadingState
+
+  // sealed instead of final because of spurious unchecked warnings
+  private sealed case class CycleInfo(cycle: List[ClassName], root: ClassName)
+      extends LoadingResult
+
+  private final class LoadingClass(className: ClassName)
+      extends ClassLoadingState {
+
+    private val promise = Promise[LoadingResult]()
+    private val knownDescendants = emptyThreadSafeMap[LoadingClass, Unit]
+
+    knownDescendants.update(this, ())
+
+    def requestLink(origin: LoadingClass): Future[LoadingResult] = {
+      if (origin.knownDescendants.contains(this)) {
+        Future.successful(CycleInfo(Nil, className))
+      } else {
+        this.knownDescendants ++= origin.knownDescendants
+        promise.future
       }
     }
 
-    private def lookupAncestors(classNames: List[ClassName])(
-        loaded: List[ClassInfo] => Unit)(cycle: CycleInfo => Unit): Unit = {
-      classNames match {
-        case first :: rest =>
-          lookupClassForLinking(first, knownDescendants) {
-            case c: CycleInfo => cycle(c)
+    def result: Future[LoadingResult] = promise.future
 
-            case ifirst: ClassInfo =>
-              lookupAncestors(rest)(irest => loaded(ifirst :: irest))(cycle)
-          }
-        case Nil =>
-          loaded(Nil)
-      }
-    }
+    def completeWith(result: Future[LoadingResult]): Unit =
+      promise.completeWith(result)
+  }
+
+  private sealed trait ModuleUnit {
+    def addStaticDependency(clazz: ClassName): Unit
+    def addExternalDependency(module: String): Unit
+    def addDynamicDependency(clazz: ClassName): Unit
   }
 
   private class ClassInfo(
@@ -443,9 +481,10 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       unvalidatedSuperClass: Option[ClassInfo],
       unvalidatedInterfaces: List[ClassInfo],
       val nonExistent: Boolean)
-      extends Analysis.ClassInfo with ClassLoadingState with LoadingResult {
+      extends Analysis.ClassInfo with ClassLoadingState with LoadingResult with ModuleUnit {
 
-    var linkedFrom: List[From] = Nil
+    private[this] val _linkedFrom = new GrowingList[From]
+    def linkedFrom: List[From] = _linkedFrom.get()
 
     val className = data.className
     val kind = data.kind
@@ -478,13 +517,11 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       }
     }
 
-    _classInfos(className) = this
-
     def link()(implicit from: From): Unit = {
       if (nonExistent)
-        _errors += MissingClass(this, from)
+        _errors ::= MissingClass(this, from)
 
-      linkedFrom ::= from
+      _linkedFrom ::= from
     }
 
     private[this] def validateSuperClass(superClass: Option[ClassInfo]): Option[ClassInfo] = {
@@ -499,7 +536,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         case ClassKind.Class | ClassKind.ModuleClass | ClassKind.HijackedClass =>
           val superCl = superClass.get // checked by ClassDef checker.
           if (superCl.kind != ClassKind.Class) {
-            _errors += InvalidSuperClass(superCl, this, from)
+            _errors ::= InvalidSuperClass(superCl, this, from)
             Some(objectClassInfo)
           } else {
             superClass
@@ -522,7 +559,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
             case ClassKind.JSClass | ClassKind.NativeJSClass =>
               superClass // ok
             case _ =>
-              _errors += InvalidSuperClass(superCl, this, from)
+              _errors ::= InvalidSuperClass(superCl, this, from)
               None
           }
 
@@ -534,7 +571,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
             case _ if superCl eq objectClassInfo =>
               superClass // ok
             case _ =>
-              _errors += InvalidSuperClass(superCl, this, from)
+              _errors ::= InvalidSuperClass(superCl, this, from)
               Some(objectClassInfo)
           }
 
@@ -546,7 +583,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
               case _ if superCl eq objectClassInfo =>
                 superClass // ok
               case _ =>
-                _errors += InvalidSuperClass(superCl, this, from)
+                _errors ::= InvalidSuperClass(superCl, this, from)
                 None
             }
           }
@@ -571,7 +608,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
           // Remove it but do not report an additional error message
           false
         } else if (superIntf.kind != validSuperIntfKind) {
-          _errors += InvalidImplementedInterface(superIntf, this, from)
+          _errors ::= InvalidImplementedInterface(superIntf, this, from)
           false
         } else {
           true
@@ -579,45 +616,80 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       }
     }
 
-    var isInstantiated: Boolean = false
-    var isAnySubclassInstantiated: Boolean = false
-    private var isModuleAccessed: Boolean = false
-    var areInstanceTestsUsed: Boolean = false
-    var isDataAccessed: Boolean = false
+    private[this] val _isInstantiated = new AtomicBoolean(false)
+    def isInstantiated: Boolean = _isInstantiated.get()
 
-    val fieldsRead: mutable.Set[FieldName] = mutable.Set.empty
-    val fieldsWritten: mutable.Set[FieldName] = mutable.Set.empty
-    val staticFieldsRead: mutable.Set[FieldName] = mutable.Set.empty
-    val staticFieldsWritten: mutable.Set[FieldName] = mutable.Set.empty
+    private[this] val _isAnySubclassInstantiated = new AtomicBoolean(false)
+    def isAnySubclassInstantiated: Boolean = _isAnySubclassInstantiated.get()
 
-    val jsNativeMembersUsed: mutable.Set[MethodName] = mutable.Set.empty
+    private[this] val isModuleAccessed = new AtomicBoolean(false)
+
+    private[this] val _areInstanceTestsUsed = new AtomicBoolean(false)
+    def areInstanceTestsUsed: Boolean = _areInstanceTestsUsed.get()
+
+    private[this] val _isDataAccessed = new AtomicBoolean(false)
+    def isDataAccessed: Boolean = _isDataAccessed.get()
+
+    private[this] val _fieldsRead: mutable.Map[FieldName, Unit] = emptyThreadSafeMap
+    private[this] val _fieldsWritten: mutable.Map[FieldName, Unit] = emptyThreadSafeMap
+    val _staticFieldsRead: mutable.Map[FieldName, Unit] = emptyThreadSafeMap
+    val _staticFieldsWritten: mutable.Map[FieldName, Unit] = emptyThreadSafeMap
+
+    def fieldsRead: scala.collection.Set[FieldName] = _fieldsRead.keySet
+    def fieldsWritten: scala.collection.Set[FieldName] = _fieldsWritten.keySet
+    def staticFieldsRead: scala.collection.Set[FieldName] = _staticFieldsRead.keySet
+    def staticFieldsWritten: scala.collection.Set[FieldName] = _staticFieldsWritten.keySet
+
+    private[this] val _jsNativeMembersUsed: mutable.Map[MethodName, Unit] = emptyThreadSafeMap
+    def jsNativeMembersUsed: scala.collection.Set[MethodName] = _jsNativeMembersUsed.keySet
 
     val jsNativeLoadSpec: Option[JSNativeLoadSpec] = data.jsNativeLoadSpec
+
+    private[this] val _staticDependencies: mutable.Map[ClassName, Unit] = emptyThreadSafeMap
+    private[this] val _externalDependencies: mutable.Map[String, Unit] = emptyThreadSafeMap
+    private[this] val _dynamicDependencies: mutable.Map[ClassName, Unit] = emptyThreadSafeMap
+
+    def addStaticDependency(clazz: ClassName): Unit = _staticDependencies.update(clazz, ())
+    def addExternalDependency(module: String): Unit = _externalDependencies.update(module, ())
+    def addDynamicDependency(clazz: ClassName): Unit = _dynamicDependencies.update(clazz, ())
+
+    def staticDependencies: scala.collection.Set[ClassName] = _staticDependencies.keySet
+    def externalDependencies: scala.collection.Set[String] = _externalDependencies.keySet
+    def dynamicDependencies: scala.collection.Set[ClassName] = _dynamicDependencies.keySet
 
     /* j.l.Object represents the core infrastructure. As such, everything
      * depends on it unconditionally.
      */
-    val staticDependencies: mutable.Set[ClassName] =
-      if (className == ObjectClass) mutable.Set.empty
-      else mutable.Set(ObjectClass)
+    if (className != ObjectClass)
+      addStaticDependency(ObjectClass)
 
-    val externalDependencies: mutable.Set[String] = mutable.Set.empty
+    private[this] val _instantiatedFrom = new GrowingList[From]
+    def instantiatedFrom: List[From] = _instantiatedFrom.get()
 
-    val dynamicDependencies: mutable.Set[ClassName] = mutable.Set.empty
+    private[this] val _dispatchCalledFrom: mutable.Map[MethodName, GrowingList[From]] = emptyThreadSafeMap
+    def dispatchCalledFrom(methodName: MethodName): Option[List[From]] =
+      _dispatchCalledFrom.get(methodName).map(_.get())
 
-    var instantiatedFrom: List[From] = Nil
-
-    val dispatchCalledFrom: mutable.Map[MethodName, List[From]] = mutable.Map.empty
+    /** Methods that have been called on this interface.
+     *
+     *  Note that we maintain the invariant
+     *
+     *  methodsCalledLog.toSet == dispatchCalledFrom.keySet.
+     *
+     *  This is because we need to be able to snapshot methodsCalledLog in
+     *  subclassInstantiated. TrieMap would support snapshotting, but a plain
+     *  mutable.Map doesn't (so it wouldn't cross compile to JS).
+     */
+    private val methodsCalledLog = new GrowingList[MethodName]
 
     /** List of all instantiated (Scala) subclasses of this Scala class/trait.
      *  For JS types, this always remains empty.
      */
-    var instantiatedSubclasses: List[ClassInfo] = Nil
-    var methodsCalledLog: List[MethodName] = Nil
+    private val _instantiatedSubclasses = new GrowingList[ClassInfo]
 
     private val nsMethodInfos = {
       val nsMethodInfos = Array.fill(MemberNamespace.Count) {
-        mutable.Map.empty[MethodName, MethodInfo]
+        emptyThreadSafeMap[MethodName, MethodInfo]
       }
       for (methodData <- data.methods) {
         // TODO It would be good to report duplicates as errors at this point
@@ -700,7 +772,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       }
     }
 
-    private val defaultTargets = mutable.Map.empty[MethodName, Option[MethodInfo]]
+    private val defaultTargets = emptyThreadSafeMap[MethodName, Option[MethodInfo]]
 
     private def getDefaultTarget(methodName: MethodName): Option[MethodInfo] =
       defaultTargets.getOrElseUpdate(methodName, findDefaultTarget(methodName))
@@ -737,7 +809,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
          * We use fromAnalyzer because we don't have any From here (we
          * shouldn't, since lookup methods are not supposed to produce errors).
          */
-        _errors += ConflictingDefaultMethods(notShadowed, fromAnalyzer)
+        _errors ::= ConflictingDefaultMethods(notShadowed, fromAnalyzer)
       }
 
       notShadowed.headOption
@@ -745,17 +817,18 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
     private def createDefaultBridge(target: MethodInfo): MethodInfo = {
       val methodName = target.methodName
-      val targetOwner = target.owner
 
-      val syntheticInfo = makeSyntheticMethodInfo(
-          methodName = methodName,
-          namespace = MemberNamespace.Public,
-          methodsCalledStatically = List(
-              targetOwner.className -> NamespacedMethodName(MemberNamespace.Public, methodName)))
-      val m = new MethodInfo(this, syntheticInfo,
-          syntheticKind = MethodSyntheticKind.DefaultBridge(targetOwner.className))
-      publicMethodInfos += methodName -> m
-      m
+      publicMethodInfos.getOrElseUpdate(methodName, {
+        val targetOwner = target.owner
+
+        val syntheticInfo = makeSyntheticMethodInfo(
+            methodName = methodName,
+            namespace = MemberNamespace.Public,
+            methodsCalledStatically = List(
+                targetOwner.className -> NamespacedMethodName(MemberNamespace.Public, methodName)))
+        new MethodInfo(this, syntheticInfo,
+            syntheticKind = MethodSyntheticKind.DefaultBridge(targetOwner.className))
+      })
     }
 
     def tryLookupReflProxyMethod(proxyName: MethodName)(
@@ -807,13 +880,13 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
           ()
 
         case onlyCandidate :: Nil =>
-          // Fast path that does not require workQueue.enqueue
+          // Fast path that does not require workTracker.track
           val proxy = createReflProxy(proxyName, onlyCandidate.methodName)
           onSuccess(proxy)
 
         case _ =>
           val targetFuture = computeMostSpecificProxyMatch(candidates)
-          workQueue.enqueue(targetFuture) { reflectiveTarget =>
+          workTracker.track(targetFuture) { reflectiveTarget =>
             val proxy = createReflProxy(proxyName, reflectiveTarget.methodName)
             onSuccess(proxy)
           }
@@ -860,6 +933,8 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     private def computeMostSpecificProxyMatch(candidates: List[MethodInfo])(
         implicit from: From): Future[MethodInfo] = {
 
+      implicit val ec = workTracker.ec
+
       /* From the JavaDoc of java.lang.Class.getMethod:
        *
        *   If more than one [candidate] method is found in C, and one of these
@@ -868,31 +943,36 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
        *   chosen arbitrarily.
        */
 
-      val resultTypes = candidates.map(c => c.methodName.resultTypeRef)
+      def ifMostSpecific(candidate: MethodInfo): Future[Option[MethodInfo]] = {
+        val specificityChecks = for {
+          otherCandidate <- candidates
+          if candidate != otherCandidate
+        } yield {
+          isMoreSpecific(otherCandidate.methodName.resultTypeRef,
+              candidate.methodName.resultTypeRef)
+        }
 
-      // We must not use Future.traverse since otherwise we might run things on
-      // the non-main thread.
-      val specificityChecks = resultTypes.map { x =>
-        for (y <- resultTypes if x != y)
-          yield isMoreSpecific(y, x)
+        for {
+          moreSpecific <- Future.find(specificityChecks)(identity)
+        } yield {
+          if (moreSpecific.isEmpty) Some(candidate)
+          else None
+        }
       }
 
-      // Starting here, we just do data juggling, so it can run on any thread.
-      locally {
-        implicit val iec = workQueue.ec
+      val specificCandidates = candidates.map(ifMostSpecific)
 
-        val hasMoreSpecific = Future.traverse(specificityChecks)(
-            checks => Future.sequence(checks).map(_.contains(true)))
-
-        hasMoreSpecific.map { hms =>
-          val targets = candidates.zip(hms).filterNot(_._2).map(_._1)
-
-          /* This last step (chosen arbitrarily) causes some soundness issues of
-           * the implementation of reflective calls. This is bug-compatible with
-           * Scala/JVM.
-           */
-          targets.head
-        }
+      /* This last step (chosen arbitrarily) causes some soundness issues of
+       * the implementation of reflective calls. This is bug-compatible with
+       * Scala/JVM.
+       */
+      for {
+        candidate <- Future.find(specificCandidates)(_.nonEmpty)
+      } yield {
+        /* First get: There must be a most specific candidate.
+         * Second get: That's our find condition from above.
+         */
+        candidate.get.get
       }
     }
 
@@ -941,24 +1021,24 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       assert(this.isScalaClass,
           s"Cannot create reflective proxy in non-Scala class $this")
 
-      val syntheticInfo = makeSyntheticMethodInfo(
-          methodName = proxyName,
-          namespace = MemberNamespace.Public,
-          methodsCalled = List(this.className -> targetName))
-      val m = new MethodInfo(this, syntheticInfo,
-          syntheticKind = MethodSyntheticKind.ReflectiveProxy(targetName))
-      publicMethodInfos += proxyName -> m
-      m
+      publicMethodInfos.getOrElseUpdate(proxyName, {
+        val syntheticInfo = makeSyntheticMethodInfo(
+            methodName = proxyName,
+            namespace = MemberNamespace.Public,
+            methodsCalled = List(this.className -> targetName))
+        new MethodInfo(this, syntheticInfo,
+            syntheticKind = MethodSyntheticKind.ReflectiveProxy(targetName))
+      })
     }
 
     def lookupStaticLikeMethod(namespace: MemberNamespace,
         methodName: MethodName): MethodInfo = {
-      tryLookupStaticLikeMethod(namespace, methodName).getOrElse {
+      assert(namespace != MemberNamespace.Public)
+
+      methodInfos(namespace).getOrElseUpdate(methodName, {
         val syntheticData = makeSyntheticMethodInfo(methodName, namespace)
-        val m = new MethodInfo(this, syntheticData, nonExistent = true)
-        methodInfos(namespace)(methodName) = m
-        m
-      }
+        new MethodInfo(this, syntheticData, nonExistent = true)
+      })
     }
 
     def tryLookupStaticLikeMethod(namespace: MemberNamespace,
@@ -984,35 +1064,31 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         val info = new TopLevelExportInfo(className, tle)
         info.reach()
 
-        _topLevelExportInfos.get(key).fold[Unit] {
-          _topLevelExportInfos.put(key, info)
-        } { other =>
-          _errors += ConflictingTopLevelExport(tle.moduleID, tle.exportName, List(info, other))
+        _topLevelExportInfos.put(key, info).foreach { other =>
+          _errors ::= ConflictingTopLevelExport(tle.moduleID, tle.exportName, List(info, other))
         }
       }
     }
 
     def accessModule()(implicit from: From): Unit = {
       if (!isAnyModuleClass) {
-        _errors += NotAModule(this, from)
-      } else if (!isModuleAccessed) {
-        isModuleAccessed = true
-
-        instantiated()
+        _errors ::= NotAModule(this, from)
+      } else if (!isModuleAccessed.getAndSet(true)) {
+        instantiated() // TODO: Shouldn't we always add the from?
         if (isScalaClass)
           callMethodStatically(MemberNamespace.Constructor, NoArgConstructorName)
       }
     }
 
     def instantiated()(implicit from: From): Unit = {
-      instantiatedFrom ::= from
+      _instantiatedFrom ::= from
 
-      /* TODO? When the second line is false, shouldn't this be a linking error
-       * instead?
-       */
-      if (!isInstantiated &&
-          (isScalaClass || isJSClass || isNativeJSClass)) {
-        isInstantiated = true
+      if (!(isScalaClass || isJSClass || isNativeJSClass)) {
+        /* Ignore.
+         * TODO? Shouldn't this be a linking error
+         * instead?
+         */
+      } else if (!_isInstantiated.getAndSet(true)) {
 
         // TODO: Why is this not in subclassInstantiated()?
         referenceFieldClasses(fieldsRead ++ fieldsWritten)
@@ -1020,18 +1096,21 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         if (isScalaClass) {
           accessData()
 
-          /* First mark the ancestors as subclassInstantiated() and fetch the
-           * methodsCalledLog, for all ancestors. Only then perform the
-           * resolved calls for all the logs. This order is important because,
+          /* First mark the ancestors as subclassInstantiated() then fetch the
+           * methodsCalledLog, for all ancestors. This order is important to
+           * ensure that concurrently analyzed method calls work correctly.
+           *
+           * Further, we only actually perform the resolved calls once we have
+           * fetched all the logs. This is to minimize duplicate work:
            * during the resolved calls, new methods could be called and added
            * to the log; they will already see the new subclasses so we should
-           * *not* see them in the logs, lest we perform some work twice.
+           * *not* see them in the logs, lest we perform that work twice.
            */
 
           val allMethodsCalledLogs = for (ancestor <- ancestors) yield {
             ancestor.subclassInstantiated()
-            ancestor.instantiatedSubclasses ::= this
-            ancestor -> ancestor.methodsCalledLog
+            ancestor._instantiatedSubclasses ::= this
+            ancestor -> ancestor.methodsCalledLog.get()
           }
 
           for {
@@ -1058,47 +1137,44 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
           }
 
           for (reachabilityInfo <- data.jsMethodProps)
-            followReachabilityInfo(reachabilityInfo, staticDependencies,
-                externalDependencies, dynamicDependencies)(FromExports)
+            followReachabilityInfo(reachabilityInfo, this)(FromExports)
         }
       }
     }
 
     private def subclassInstantiated()(implicit from: From): Unit = {
-      instantiatedFrom ::= from
-      if (!isAnySubclassInstantiated && (isScalaClass || isJSType)) {
-        isAnySubclassInstantiated = true
+      _instantiatedFrom ::= from
+
+      if (!(isScalaClass || isJSType)) {
+        // Ignore
+      } else if (!_isAnySubclassInstantiated.getAndSet(true)) {
 
         if (!isNativeJSClass) {
           for (clazz <- superClass) {
             if (clazz.isNativeJSClass)
-              clazz.jsNativeLoadSpec.foreach(addLoadSpec(externalDependencies, _))
+              clazz.jsNativeLoadSpec.foreach(addLoadSpec(this, _))
             else
-              staticDependencies += clazz.className
+              addStaticDependency(clazz.className)
           }
         }
 
         // Reach exported members
         if (!isJSClass) {
           for (reachabilityInfo <- data.jsMethodProps)
-            followReachabilityInfo(reachabilityInfo, staticDependencies,
-                externalDependencies, dynamicDependencies)(FromExports)
+            followReachabilityInfo(reachabilityInfo, this)(FromExports)
         }
       }
     }
 
     def useInstanceTests()(implicit from: From): Unit = {
-      if (!areInstanceTestsUsed)
-        areInstanceTestsUsed = true
+      _areInstanceTestsUsed.set(true)
     }
 
     def accessData()(implicit from: From): Unit = {
-      if (!isDataAccessed) {
-        isDataAccessed = true
-
+      if (!_isDataAccessed.getAndSet(true)) {
         // #4548 The `isInstance` function will refer to the class value
         if (kind == ClassKind.NativeJSClass)
-          jsNativeLoadSpec.foreach(addLoadSpec(externalDependencies, _))
+          jsNativeLoadSpec.foreach(addLoadSpec(this, _))
       }
     }
 
@@ -1110,31 +1186,29 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
        * this method won't see them.
        */
 
-      dispatchCalledFrom.get(methodName) match {
-        case Some(froms) =>
-          // Already called before; add the new from
-          dispatchCalledFrom.update(methodName, from :: froms)
+      val froms = _dispatchCalledFrom.getOrElseUpdate(methodName, new GrowingList)
 
-        case None =>
-          // New call
-          dispatchCalledFrom.update(methodName, from :: Nil)
+      if (froms.addIfNil(from)) {
+        // New call.
+        val fromDispatch = FromDispatch(this, methodName)
 
-          val fromDispatch = FromDispatch(this, methodName)
+        methodsCalledLog ::= methodName
+        val subclasses = _instantiatedSubclasses.get()
+        for (subclass <- subclasses)
+          subclass.callMethodResolved(methodName)(fromDispatch)
 
-          methodsCalledLog ::= methodName
-          val subclasses = instantiatedSubclasses
-          for (subclass <- subclasses)
-            subclass.callMethodResolved(methodName)(fromDispatch)
-
-          if (checkAbstractReachability) {
-            /* Also lookup the method as abstract from this class, to make sure it
-             * is *declared* on this type. We do this after the concrete lookup to
-             * avoid work, since a concretely reachable method is already marked as
-             * abstractly reachable.
-             */
-            if (!methodName.isReflectiveProxy)
-              lookupAbstractMethod(methodName).reachAbstract()(fromDispatch)
-          }
+        if (checkAbstractReachability) {
+          /* Also lookup the method as abstract from this class, to make sure it
+           * is *declared* on this type. We do this after the concrete lookup to
+           * avoid work, since a concretely reachable method is already marked as
+           * abstractly reachable.
+           */
+          if (!methodName.isReflectiveProxy)
+            lookupAbstractMethod(methodName).reachAbstract()(fromDispatch)
+        }
+      } else {
+        // Already called before; add the new from
+        froms ::= from
       }
     }
 
@@ -1165,13 +1239,13 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     }
 
     def readFields(names: List[FieldName])(implicit from: From): Unit = {
-      fieldsRead ++= names
+      names.foreach(_fieldsRead.update(_, ()))
       if (isInstantiated)
         referenceFieldClasses(names)
     }
 
     def writeFields(names: List[FieldName])(implicit from: From): Unit = {
-      fieldsWritten ++= names
+      names.foreach(_fieldsWritten.update(_, ()))
       if (isInstantiated)
         referenceFieldClasses(names)
     }
@@ -1179,10 +1253,10 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     def useJSNativeMember(name: MethodName)(
         implicit from: From): Option[JSNativeLoadSpec] = {
       val maybeJSNativeLoadSpec = data.jsNativeMembers.get(name)
-      if (jsNativeMembersUsed.add(name)) {
+      if (_jsNativeMembersUsed.put(name, ()).isEmpty) {
         maybeJSNativeLoadSpec match {
           case None =>
-            _errors += MissingJSNativeMember(this, name, from)
+            _errors ::= MissingJSNativeMember(this, name, from)
           case Some(jsNativeLoadSpec) =>
             validateLoadSpec(jsNativeLoadSpec, Some(name))
         }
@@ -1212,7 +1286,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       if (isNoModule) {
         jsNativeLoadSpec match {
           case JSNativeLoadSpec.Import(module, _) =>
-            _errors += ImportWithoutModuleSupport(module, this, jsNativeMember, from)
+            _errors ::= ImportWithoutModuleSupport(module, this, jsNativeMember, from)
           case _ =>
         }
       }
@@ -1230,11 +1304,17 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     val namespace = data.namespace
     val isAbstract = data.isAbstract
 
-    var isAbstractReachable: Boolean = false
-    var isReachable: Boolean = false
+    private[this] val _isAbstractReachable = new AtomicBoolean(false)
+    def isAbstractReachable: Boolean = _isAbstractReachable.get()
 
-    var calledFrom: List[From] = Nil
-    var instantiatedSubclasses: List[ClassInfo] = Nil
+    private[this] val _isReachable = new AtomicBoolean(false)
+    def isReachable: Boolean = _isReachable.get()
+
+    private[this] val _calledFrom = new GrowingList[From]
+    def calledFrom: List[From] = _calledFrom.get()
+
+    private[this] val _instantiatedSubclasses = new GrowingList[ClassInfo]
+    def instantiatedSubclasses: List[ClassInfo] = _instantiatedSubclasses.get()
 
     def isReflectiveProxy: Boolean =
       methodName.isReflectiveProxy
@@ -1253,10 +1333,9 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     def reachStatic()(implicit from: From): Unit = {
       checkConcrete()
 
-      calledFrom ::= from
-      if (!isReachable) {
-        isAbstractReachable = true
-        isReachable = true
+      _calledFrom ::= from
+      if (!_isReachable.getAndSet(true)) {
+        _isAbstractReachable.set(true)
         doReach()
       }
     }
@@ -1264,10 +1343,9 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     def reachAbstract()(implicit from: From): Unit = {
       assert(namespace == MemberNamespace.Public)
 
-      if (!isAbstractReachable) {
+      if (!_isAbstractReachable.getAndSet(true)) {
         checkExistent()
-        calledFrom ::= from
-        isAbstractReachable = true
+        _calledFrom ::= from
       }
     }
 
@@ -1281,61 +1359,61 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
       checkConcrete()
 
-      calledFrom ::= from
-      instantiatedSubclasses ::= inClass
+      _calledFrom ::= from
+      _instantiatedSubclasses ::= inClass
 
-      if (!isReachable) {
-        isAbstractReachable = true
-        isReachable = true
+      if (!_isReachable.getAndSet(true)) {
+        _isAbstractReachable.set(true)
         doReach()
       }
     }
 
     private def checkExistent()(implicit from: From) = {
       if (nonExistent)
-        _errors += MissingMethod(this, from)
+        _errors ::= MissingMethod(this, from)
     }
 
     private def checkConcrete()(implicit from: From) = {
       if (nonExistent || isAbstract)
-        _errors += MissingMethod(this, from)
+        _errors ::= MissingMethod(this, from)
     }
 
-    private[this] def doReach(): Unit = {
-      followReachabilityInfo(data.reachabilityInfo, owner.staticDependencies,
-          owner.externalDependencies, owner.dynamicDependencies)(FromMethod(this))
-    }
+    private[this] def doReach(): Unit =
+      followReachabilityInfo(data.reachabilityInfo, owner)(FromMethod(this))
   }
 
   private class TopLevelExportInfo(val owningClass: ClassName, data: Infos.TopLevelExportInfo)
-      extends Analysis.TopLevelExportInfo {
+      extends Analysis.TopLevelExportInfo with ModuleUnit {
     val moduleID: ModuleID = data.moduleID
     val exportName: String = data.exportName
 
     if (isNoModule && !ir.Trees.JSGlobalRef.isValidJSGlobalRefName(exportName)) {
-      _errors += InvalidTopLevelExportInScript(this)
+      _errors ::= InvalidTopLevelExportInScript(this)
     }
 
-    val staticDependencies: mutable.Set[ClassName] = mutable.Set.empty
-    val externalDependencies: mutable.Set[String] = mutable.Set.empty
+    private[this] val _staticDependencies: mutable.Map[ClassName, Unit] = emptyThreadSafeMap
+    private[this] val _externalDependencies: mutable.Map[String, Unit] = emptyThreadSafeMap
 
-    def reach(): Unit = {
-      val dynamicDependencies = mutable.Set.empty[ClassName]
-      followReachabilityInfo(data.reachability, staticDependencies,
-          externalDependencies, dynamicDependencies)(FromExports)
+    def addStaticDependency(clazz: ClassName): Unit = _staticDependencies.update(clazz, ())
+    def addExternalDependency(module: String): Unit = _externalDependencies.update(module, ())
+    def addDynamicDependency(clazz: ClassName): Unit = {
+      throw new AssertionError("dynamic dependency for top level export " +
+          s"$moduleID.$exportName (owned by $owningClass) on $clazz")
     }
+
+    def staticDependencies: scala.collection.Set[ClassName] = _staticDependencies.keySet
+    def externalDependencies: scala.collection.Set[String] = _externalDependencies.keySet
+
+    def reach(): Unit = followReachabilityInfo(data.reachability, this)(FromExports)
   }
 
-  private def followReachabilityInfo(data: ReachabilityInfo,
-      staticDependencies: mutable.Set[ClassName],
-      externalDependencies: mutable.Set[String],
-      dynamicDependencies: mutable.Set[ClassName])(
+  private def followReachabilityInfo(data: ReachabilityInfo, moduleUnit: ModuleUnit)(
       implicit from: From): Unit = {
 
     def addInstanceDependency(info: ClassInfo) = {
-      info.jsNativeLoadSpec.foreach(addLoadSpec(externalDependencies, _))
+      info.jsNativeLoadSpec.foreach(addLoadSpec(moduleUnit, _))
       if (info.kind.isAnyNonNativeClass)
-        staticDependencies += info.className
+        moduleUnit.addStaticDependency(info.className)
     }
 
     for (dataInClass <- data.byClass) {
@@ -1355,17 +1433,17 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
           }
 
           if ((flags & ReachabilityInfoInClass.FlagInstanceTestsUsed) != 0) {
-            staticDependencies += className
+            moduleUnit.addStaticDependency(className)
             clazz.useInstanceTests()
           }
 
           if ((flags & ReachabilityInfoInClass.FlagClassDataAccessed) != 0) {
-            staticDependencies += className
+            moduleUnit.addStaticDependency(className)
             clazz.accessData()
           }
 
           if ((flags & ReachabilityInfoInClass.FlagStaticallyReferenced) != 0) {
-            staticDependencies += className
+            moduleUnit.addStaticDependency(className)
           }
         }
 
@@ -1383,13 +1461,15 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         }
 
         if (!dataInClass.staticFieldsRead.isEmpty) {
-          staticDependencies += className
-          clazz.staticFieldsRead ++= dataInClass.staticFieldsRead
+          moduleUnit.addStaticDependency(className)
+          dataInClass.staticFieldsRead.foreach(
+              clazz._staticFieldsRead.update(_, ()))
         }
 
         if (!dataInClass.staticFieldsWritten.isEmpty) {
-          staticDependencies += className
-          clazz.staticFieldsWritten ++= dataInClass.staticFieldsWritten
+          moduleUnit.addStaticDependency(className)
+          dataInClass.staticFieldsWritten.foreach(
+              clazz._staticFieldsWritten.update(_, ()))
         }
 
         if (!dataInClass.methodsCalled.isEmpty) {
@@ -1399,16 +1479,16 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         }
 
         if (!dataInClass.methodsCalledStatically.isEmpty) {
-          staticDependencies += className
+          moduleUnit.addStaticDependency(className)
           for (methodName <- dataInClass.methodsCalledStatically)
             clazz.callMethodStatically(methodName)
         }
 
         if (!dataInClass.methodsCalledDynamicImport.isEmpty) {
           if (isNoModule) {
-            _errors += DynamicImportWithoutModuleSupport(from)
+            _errors ::= DynamicImportWithoutModuleSupport(from)
           } else {
-            dynamicDependencies += className
+            moduleUnit.addDynamicDependency(className)
             // In terms of reachability, a dynamic import call is just a static call.
             for (methodName <- dataInClass.methodsCalledDynamicImport)
               clazz.callMethodStatically(methodName)
@@ -1418,7 +1498,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         if (!dataInClass.jsNativeMembersUsed.isEmpty) {
           for (member <- dataInClass.jsNativeMembersUsed)
             clazz.useJSNativeMember(member)
-              .foreach(addLoadSpec(externalDependencies, _))
+              .foreach(addLoadSpec(moduleUnit, _))
         }
       }
     }
@@ -1430,7 +1510,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         /* java.lang.Class is only ever instantiated in the CoreJSLib.
          * Therefore, make java.lang.Object depend on it instead of the caller itself.
          */
-        objectClassInfo.staticDependencies += ClassClass
+        objectClassInfo.addStaticDependency(ClassClass)
         lookupClass(ClassClass) { clazz =>
           clazz.instantiated()
           clazz.callMethodStatically(MemberNamespace.Constructor, ObjectArgConstructorName)
@@ -1439,33 +1519,33 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
       if ((globalFlags & ReachabilityInfo.FlagAccessedNewTarget) != 0 &&
           config.coreSpec.esFeatures.esVersion < ESVersion.ES2015) {
-        _errors += NewTargetWithoutES2015Support(from)
+        _errors ::= NewTargetWithoutES2015Support(from)
       }
 
       if ((globalFlags & ReachabilityInfo.FlagAccessedImportMeta) != 0 &&
           config.coreSpec.moduleKind != ModuleKind.ESModule) {
-        _errors += ImportMetaWithoutESModule(from)
+        _errors ::= ImportMetaWithoutESModule(from)
       }
 
       if ((globalFlags & ReachabilityInfo.FlagUsedExponentOperator) != 0 &&
           config.coreSpec.esFeatures.esVersion < ESVersion.ES2016) {
-        _errors += ExponentOperatorWithoutES2016Support(from)
+        _errors ::= ExponentOperatorWithoutES2016Support(from)
       }
     }
   }
 
   @tailrec
-  private def addLoadSpec(externalDependencies: mutable.Set[String],
+  private def addLoadSpec(moduleUnit: ModuleUnit,
       jsNativeLoadSpec: JSNativeLoadSpec): Unit = {
     jsNativeLoadSpec match {
       case _: JSNativeLoadSpec.Global =>
 
       case JSNativeLoadSpec.Import(module, _) =>
-        externalDependencies += module
+        moduleUnit.addExternalDependency(module)
 
       case JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, _) =>
         if (!isNoModule)
-          addLoadSpec(externalDependencies, importSpec)
+          addLoadSpec(moduleUnit, importSpec)
     }
   }
 
@@ -1502,58 +1582,49 @@ object Analyzer {
   private val getSuperclassMethodName =
     MethodName("getSuperclass", Nil, ClassRef(ClassClass))
 
-  private class WorkQueue(val ec: ExecutionContext) {
-    private val queue = new ConcurrentLinkedQueue[() => Unit]()
-    private val working = new AtomicBoolean(false)
+  private class WorkTracker(implicit val ec: ExecutionContext) {
     private val pending = new AtomicInteger(0)
     private val promise = Promise[Unit]()
 
-    def enqueue[T](fut: Future[T])(onSuccess: T => Unit): Unit = {
+    def track[T](fut: Future[T])(onSuccess: T => Unit): Unit = {
       val got = pending.incrementAndGet()
       assert(got > 0)
 
-      fut.onComplete {
-        case Success(r) =>
-          queue.add(() => onSuccess(r))
-          tryDoWork()
-
-        case Failure(t) =>
-          promise.tryFailure(t)
-      } (ec)
-    }
-
-    def join(): Future[Unit] = {
-      tryDoWork()
-      promise.future
-    }
-
-    @tailrec
-    private def tryDoWork(): Unit = {
-      if (!working.getAndSet(true)) {
-        while (!queue.isEmpty) {
-          try {
-            val work = queue.poll()
-            work()
-          } catch {
-            case t: Throwable => promise.tryFailure(t)
-          }
-
-          pending.decrementAndGet()
-        }
-
-        if (pending.compareAndSet(0, -1)) {
-          assert(queue.isEmpty)
-          promise.trySuccess(())
-        }
-
-        working.set(false)
-
-        /* Another thread might have inserted work in the meantime but not yet
-         * seen that we released the lock. Try and work steal again if this
-         * happens.
-         */
-        if (!queue.isEmpty) tryDoWork()
+      fut.map(onSuccess).onComplete {
+        case Success(_) => taskDone()
+        case Failure(t) => promise.tryFailure(t)
       }
     }
+
+    private def taskDone(): Unit = {
+      if (pending.decrementAndGet() == 0) {
+        /* TODO: The completion condition in the WorkTracker is not what we want:
+         *
+         * What we have is: The number of pending tasks drops to 0.
+         *
+         * What we want is: The number of pending tasks drops to 0 after a
+         * certain point in the main execution flow has been reached.
+         *
+         * This is currently not a problem, because `loadObjectClass` submits the
+         * initial task and then everything else is done inside a task
+         * (until `postLoad`).
+         *
+         * However, this is not strictly necessary, we could, for example, start
+         * loading infos for other entrypoints in parallel. So we should fix this.
+         */
+        pending.set(-1)
+        promise.trySuccess(())
+      }
+    }
+
+    def future: Future[Unit] = promise.future
+  }
+
+  private final class GrowingList[A] {
+    private val list = new AtomicReference[List[A]](Nil)
+    def ::=(item: A): Unit = list.updateAndGet(item :: _)
+    def get(): List[A] = list.get()
+    def addIfNil(item: A): Boolean = list.compareAndSet(Nil, item :: Nil)
+    def clear(): Unit = list.set(Nil)
   }
 }

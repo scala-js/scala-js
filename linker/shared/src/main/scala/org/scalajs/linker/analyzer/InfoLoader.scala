@@ -27,9 +27,11 @@ import org.scalajs.linker.frontend.IRLoader
 import org.scalajs.linker.interface.LinkingException
 import org.scalajs.linker.CollectionsCompat.MutableMapCompatOps
 
+import Platform.emptyThreadSafeMap
+
 private[analyzer] final class InfoLoader(irLoader: IRLoader, irCheckMode: InfoLoader.IRCheckMode) {
   private var logger: Logger = _
-  private val cache = mutable.Map.empty[ClassName, InfoLoader.ClassInfoCache]
+  private val cache = emptyThreadSafeMap[ClassName, InfoLoader.ClassInfoCache]
 
   def update(logger: Logger): Unit = {
     this.logger = logger
