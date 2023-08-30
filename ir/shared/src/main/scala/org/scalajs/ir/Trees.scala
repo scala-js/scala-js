@@ -1299,6 +1299,10 @@ object Trees {
 
     def isConstructor: Boolean = (bits & ConstructorBit) != 0
 
+    def inline: Boolean = (bits & InlineBit) != 0
+
+    def noinline: Boolean = (bits & NoinlineBit) != 0
+
     def withPrivate(value: Boolean): ApplyFlags =
       if (value) new ApplyFlags((bits & ~ConstructorBit) | PrivateBit)
       else new ApplyFlags(bits & ~PrivateBit)
@@ -1306,6 +1310,14 @@ object Trees {
     def withConstructor(value: Boolean): ApplyFlags =
       if (value) new ApplyFlags((bits & ~PrivateBit) | ConstructorBit)
       else new ApplyFlags(bits & ~ConstructorBit)
+
+    def withInline(value: Boolean): ApplyFlags =
+      if (value) new ApplyFlags(bits | InlineBit)
+      else new ApplyFlags(bits & ~InlineBit)
+
+    def withNoinline(value: Boolean): ApplyFlags =
+      if (value) new ApplyFlags(bits | NoinlineBit)
+      else new ApplyFlags(bits & ~NoinlineBit)
   }
 
   object ApplyFlags {
@@ -1314,6 +1326,12 @@ object Trees {
 
     private final val ConstructorShift = 1
     private final val ConstructorBit = 1 << ConstructorShift
+
+    private final val InlineShift = 2
+    private final val InlineBit = 1 << InlineShift
+
+    private final val NoinlineShift = 3
+    private final val NoinlineBit = 1 << NoinlineShift
 
     final val empty: ApplyFlags =
       new ApplyFlags(0)

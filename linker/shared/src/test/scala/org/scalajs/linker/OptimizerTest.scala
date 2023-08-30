@@ -561,6 +561,66 @@ class OptimizerTest {
       assertFalse(findClass(moduleSet, "Witness").isDefined)
     }
   }
+
+  def inlineFlagsTestCommon(optimizerHints: OptimizerHints, applyFlags: ApplyFlags,
+      expectInline: Boolean): AsyncResult = await {
+    val classDefs = Seq(
+        classDef(
+            MainTestClassName,
+            kind = ClassKind.Class,
+            superClass = Some(ObjectClass),
+            methods = List(
+                trivialCtor(MainTestClassName),
+                MethodDef(EMF.withNamespace(PublicStatic), witnessMethodName, NON, Nil, AnyType, Some({
+                  // Non-trivial body to ensure no inlining by heuristics.
+                  Block(consoleLog(str("something")), str("result"))
+                }))(optimizerHints, UNV),
+                mainMethodDef({
+                  consoleLog({
+                    ApplyStatic(applyFlags, MainTestClassName, witnessMethodName, Nil)(AnyType)
+                  })
+                })
+            )
+        )
+    )
+
+    for {
+      moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers)
+    } yield {
+      val didInline = !findClass(moduleSet, MainTestClassName).get
+        .methods.exists(_.name.name == witnessMethodName)
+
+      assertEquals(expectInline, didInline)
+    }
+  }
+
+  @Test
+  def inlineFlagsTestDefault(): AsyncResult =
+    inlineFlagsTestCommon(EOH, EAF, expectInline = false)
+
+  @Test
+  def inlineFlagsTestInlineDefSite(): AsyncResult =
+    inlineFlagsTestCommon(EOH.withInline(true), EAF, expectInline = true)
+
+  @Test
+  def inlineFlagsTestNoinlineDefSite(): AsyncResult =
+    inlineFlagsTestCommon(EOH.withNoinline(true), EAF, expectInline = false)
+
+  @Test
+  def inlineFlagsTestInlineCallSite(): AsyncResult =
+    inlineFlagsTestCommon(EOH, EAF.withInline(true), expectInline = true)
+
+  @Test
+  def inlineFlagsTestNoinlineDefSiteNoOverride(): AsyncResult =
+    inlineFlagsTestCommon(EOH.withNoinline(true), EAF.withInline(true), expectInline = false)
+
+  @Test
+  def inlineFlagsTestNoinlineCallSite(): AsyncResult =
+    inlineFlagsTestCommon(EOH, EAF.withNoinline(true), expectInline = false)
+
+  @Test
+  def inlineFlagsTestNoinlineCallSiteOverride(): AsyncResult =
+    inlineFlagsTestCommon(EOH.withInline(true), EAF.withNoinline(true), expectInline = false)
 }
 
 object OptimizerTest {
