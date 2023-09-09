@@ -835,19 +835,18 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       })
     }
 
-    def tryLookupReflProxyMethod(proxyName: MethodName)(
-        onSuccess: MethodInfo => Unit)(implicit from: From): Unit = {
+    private def maybeReachReflProxyMethod(proxyName: MethodName)(implicit from: From): Unit = {
       if (!allowAddingSyntheticMethods) {
-        tryLookupMethod(proxyName).foreach(onSuccess)
+        tryLookupMethod(proxyName).foreach(_.reach(this))
       } else {
-        publicMethodInfos.get(proxyName).fold {
-          findReflectiveTarget(proxyName)(onSuccess)
-        } (onSuccess)
+        publicMethodInfos
+          .get(proxyName)
+          .fold(findAndReachReflectiveTarget(proxyName))(_.reach(this))
       }
     }
 
-    private def findReflectiveTarget(proxyName: MethodName)(
-        onSuccess: MethodInfo => Unit)(implicit from: From): Unit = {
+    private def findAndReachReflectiveTarget(
+        proxyName: MethodName)(implicit from: From): Unit = {
       /* The lookup for a target method in this code implements the
        * algorithm defining `java.lang.Class.getMethod`. This mimics how
        * reflective calls are implemented on the JVM, at link time.
@@ -885,8 +884,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
         case onlyCandidate :: Nil =>
           // Fast path that does not require workTracker.track
-          val proxy = createReflProxy(proxyName, onlyCandidate.methodName)
-          onSuccess(proxy)
+          createReflProxy(proxyName, onlyCandidate.methodName).reach(this)
 
         case _ =>
           implicit val ec = workTracker.ec
@@ -894,8 +892,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
           val future = for {
             reflectiveTarget <- computeMostSpecificProxyMatch(candidates)
           } yield {
-            val proxy = createReflProxy(proxyName, reflectiveTarget.methodName)
-            onSuccess(proxy)
+            createReflProxy(proxyName, reflectiveTarget.methodName).reach(this)
           }
 
           workTracker.track(future)
@@ -1224,7 +1221,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     private def callMethodResolved(methodName: MethodName)(
         implicit from: From): Unit = {
       if (methodName.isReflectiveProxy) {
-        tryLookupReflProxyMethod(methodName)(_.reach(this))
+        maybeReachReflProxyMethod(methodName)
       } else {
         lookupMethod(methodName).reach(this)
       }
