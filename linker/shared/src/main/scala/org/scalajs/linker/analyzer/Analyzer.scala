@@ -339,14 +339,18 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
   private def lookupClass(className: ClassName)(
       onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
-    workTracker.track(classLoader.lookupClass(className)) {
-      case info: ClassInfo =>
-        info.link()
-        onSuccess(info)
+    implicit val ec = workTracker.ec
 
-      case CycleInfo(cycle, root) =>
-        assert(root == null, s"unresolved root: $root")
-        _errors ::= CycleInInheritanceChain(cycle, fromAnalyzer)
+    workTracker.track {
+      classLoader.lookupClass(className).map {
+        case info: ClassInfo =>
+          info.link()
+          onSuccess(info)
+
+        case CycleInfo(cycle, root) =>
+          assert(root == null, s"unresolved root: $root")
+          _errors ::= CycleInInheritanceChain(cycle, fromAnalyzer)
+      }
     }
   }
 
@@ -885,11 +889,16 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
           onSuccess(proxy)
 
         case _ =>
-          val targetFuture = computeMostSpecificProxyMatch(candidates)
-          workTracker.track(targetFuture) { reflectiveTarget =>
+          implicit val ec = workTracker.ec
+
+          val future = for {
+            reflectiveTarget <- computeMostSpecificProxyMatch(candidates)
+          } yield {
             val proxy = createReflProxy(proxyName, reflectiveTarget.methodName)
             onSuccess(proxy)
           }
+
+          workTracker.track(future)
       }
     }
 
@@ -1586,11 +1595,11 @@ object Analyzer {
     private val pending = new AtomicInteger(0)
     private val promise = Promise[Unit]()
 
-    def track[T](fut: Future[T])(onSuccess: T => Unit): Unit = {
+    def track(fut: Future[Unit]): Unit = {
       val got = pending.incrementAndGet()
       assert(got > 0)
 
-      fut.map(onSuccess).onComplete {
+      fut.onComplete {
         case Success(_) => taskDone()
         case Failure(t) => promise.tryFailure(t)
       }
