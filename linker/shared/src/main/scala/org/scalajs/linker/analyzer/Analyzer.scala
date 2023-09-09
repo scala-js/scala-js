@@ -92,7 +92,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     loadObjectClass(() => loadEverything(moduleInitializers, symbolRequirements))
 
     workTracker
-      .future
+      .allowComplete()
       .map(_ => postLoad(moduleInitializers, logger))
       .andThen { case _ => infoLoader.cleanAfterRun() }
   }
@@ -1590,40 +1590,39 @@ object Analyzer {
 
   private class WorkTracker(implicit val ec: ExecutionContext) {
     private val pending = new AtomicInteger(0)
+    @volatile private var _allowComplete = false
     private val promise = Promise[Unit]()
 
     def track(fut: Future[Unit]): Unit = {
-      val got = pending.incrementAndGet()
-      assert(got > 0)
+      pending.incrementAndGet()
 
       fut.onComplete {
-        case Success(_) => taskDone()
-        case Failure(t) => promise.tryFailure(t)
+        case Success(_) =>
+          if (pending.decrementAndGet() == 0)
+            tryComplete()
+
+        case Failure(t) =>
+          promise.tryFailure(t)
       }
     }
 
-    private def taskDone(): Unit = {
-      if (pending.decrementAndGet() == 0) {
-        /* TODO: The completion condition in the WorkTracker is not what we want:
-         *
-         * What we have is: The number of pending tasks drops to 0.
-         *
-         * What we want is: The number of pending tasks drops to 0 after a
-         * certain point in the main execution flow has been reached.
-         *
-         * This is currently not a problem, because `loadObjectClass` submits the
-         * initial task and then everything else is done inside a task
-         * (until `postLoad`).
-         *
-         * However, this is not strictly necessary, we could, for example, start
-         * loading infos for other entrypoints in parallel. So we should fix this.
-         */
-        pending.set(-1)
+    private def tryComplete(): Unit = {
+      /* Note that after _allowComplete is true and pending == 0, we are sure
+       * that no new task will be submitted concurrently:
+       * - _allowComplete guarantees us that no external task will be added anymore
+       * - pending == 0 guarantees us that no internal task (which might create
+       *   more tasks) are running anymore.
+       */
+      if (_allowComplete && pending.get() == 0) {
         promise.trySuccess(())
       }
     }
 
-    def future: Future[Unit] = promise.future
+    def allowComplete(): Future[Unit] = {
+      _allowComplete = true
+      tryComplete()
+      promise.future
+    }
   }
 
   private final class GrowingList[A] {
