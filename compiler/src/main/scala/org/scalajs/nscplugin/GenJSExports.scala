@@ -871,6 +871,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
       }
     }
 
+    // Note: GenJSCode creates an anonymous subclass of Exported for JS class constructors.
     abstract class Exported(val sym: Symbol,
       // Parameters participating in overload resolution.
       val params: immutable.IndexedSeq[JSParamInfo]) {
