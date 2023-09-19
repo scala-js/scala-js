@@ -113,7 +113,8 @@ object | { // scalastyle:ignore
    * compatibility. It is not really harmful, and has some perks in certain
    * interoperability scenarios.
    */
-  implicit def undefOr2jsAny[A](value: js.UndefOr[A])(
+  @deprecated("Relocated to js.Any.undefOr2jsAny", "1.14.0")
+  def undefOr2jsAny[A](value: js.UndefOr[A])(
       implicit ev: A => js.Any): js.Any = {
     value.map(ev).asInstanceOf[js.Any]
   }
