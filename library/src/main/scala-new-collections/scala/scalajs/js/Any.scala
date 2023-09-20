@@ -79,6 +79,16 @@ object Any extends LowPrioAnyImplicits {
   @inline implicit def fromString(s: String): js.Any =
     s.asInstanceOf[js.Any]
 
+  /* This one is not very "in the spirit" of the union type, but it used to be
+   * available for `js.UndefOr[A]`, so we keep it for backward source
+   * compatibility. It is not really harmful, and has some perks in certain
+   * interoperability scenarios.
+   */
+  implicit def undefOr2jsAny[A](value: js.UndefOr[A])(
+      implicit ev: A => js.Any): js.Any = {
+    value.map(ev).asInstanceOf[js.Any]
+  }
+
   /* The following overload makes sure that the developer does not
    * inadvertently convert a Long to a Double to fit it in a js.Any.
    */

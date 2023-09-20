@@ -22,5 +22,8 @@ object Main {
 
     // Testing the library resolved with %%% + withDottyCompat
     assert(Types.IntType.show() == "int")
+
+    // Testing the undefOr2jsAny implicit conversion
+    val x: js.Any = js.defined("")
   }
 }
