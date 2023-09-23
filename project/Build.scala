@@ -888,6 +888,7 @@ object Build {
         "2.13.9",
         "2.13.10",
         "2.13.11",
+        "2.13.12",
       ),
 
       default212ScalaVersion := cross212ScalaVersions.value.last,
