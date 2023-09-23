@@ -152,7 +152,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
           case Constructor | Method =>
             val methodDef = withNewLocalNameScope {
-              genExportMethod(tups.map(_._2), JSName.Literal(info.jsName), static = true)
+              genExportMethod(tups.map(_._2), JSName.Literal(info.jsName), static = true,
+                  allowCallsiteInlineSingle = false)
             }
 
             js.TopLevelMethodExportDef(info.moduleID, methodDef)
@@ -191,11 +192,13 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         kind match {
           case Method =>
             methodProps += genMemberExportOrDispatcher(
-                JSName.Literal(info.jsName), isProp = false, alts, static = true)
+                JSName.Literal(info.jsName), isProp = false, alts, static = true,
+                allowCallsiteInlineSingle = false)
 
           case Property =>
             methodProps += genMemberExportOrDispatcher(
-                JSName.Literal(info.jsName), isProp = true, alts, static = true)
+                JSName.Literal(info.jsName), isProp = true, alts, static = true,
+                allowCallsiteInlineSingle = false)
 
           case Field =>
             val sym = checkSingleField(tups)
@@ -244,7 +247,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
             s"Exported $kind $jsName conflicts with ${alts.head.fullName}")
       }
 
-      genMemberExportOrDispatcher(JSName.Literal(jsName), isProp, alts, static = false)
+      genMemberExportOrDispatcher(JSName.Literal(jsName), isProp, alts,
+          static = false, allowCallsiteInlineSingle = false)
     }
 
     private def genJSClassDispatcher(classSym: Symbol, name: JSName): js.JSMethodPropDef = {
@@ -272,22 +276,24 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         implicit val pos = alts.head.pos
         js.JSPropertyDef(js.MemberFlags.empty, genExpr(name), None, None)(Unversioned)
       } else {
-        genMemberExportOrDispatcher(name, isProp, alts, static = false)
+        genMemberExportOrDispatcher(name, isProp, alts, static = false,
+            allowCallsiteInlineSingle = true)
       }
     }
 
     def genMemberExportOrDispatcher(jsName: JSName, isProp: Boolean,
-        alts: List[Symbol], static: Boolean): js.JSMethodPropDef = {
+        alts: List[Symbol], static: Boolean,
+        allowCallsiteInlineSingle: Boolean): js.JSMethodPropDef = {
       withNewLocalNameScope {
         if (isProp)
-          genExportProperty(alts, jsName, static)
+          genExportProperty(alts, jsName, static, allowCallsiteInlineSingle)
         else
-          genExportMethod(alts, jsName, static)
+          genExportMethod(alts, jsName, static, allowCallsiteInlineSingle)
       }
     }
 
     private def genExportProperty(alts: List[Symbol], jsName: JSName,
-        static: Boolean): js.JSPropertyDef = {
+        static: Boolean, allowCallsiteInlineSingle: Boolean): js.JSPropertyDef = {
       assert(!alts.isEmpty,
           s"genExportProperty with empty alternatives for $jsName")
 
@@ -307,7 +313,8 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         reportCannotDisambiguateError(jsName, alts)
 
       val getterBody = getter.headOption.map { getterSym =>
-        genApplyForSym(new FormalArgsRegistry(0, false), getterSym, static)
+        genApplyForSym(new FormalArgsRegistry(0, false), getterSym, static,
+            inline = allowCallsiteInlineSingle)
       }
 
       val setterArgAndBody = {
@@ -316,9 +323,18 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
         } else {
           val formalArgsRegistry = new FormalArgsRegistry(1, false)
           val (List(arg), None) = formalArgsRegistry.genFormalArgs()
-          val body = genOverloadDispatchSameArgc(jsName, formalArgsRegistry,
-              alts = setters.map(new ExportedSymbol(_, static)), jstpe.AnyType,
-              paramIndex = 0)
+
+          val body = {
+            if (setters.size == 1) {
+              genApplyForSym(formalArgsRegistry, setters.head, static,
+                  inline = allowCallsiteInlineSingle)
+            } else {
+              genOverloadDispatchSameArgc(jsName, formalArgsRegistry,
+                  alts = setters.map(new ExportedSymbol(_, static)), jstpe.AnyType,
+                  paramIndex = 0)
+            }
+          }
+
           Some((arg, body))
         }
       }
@@ -329,7 +345,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
     /** generates the exporter function (i.e. exporter for non-properties) for
      *  a given name */
     private def genExportMethod(alts0: List[Symbol], jsName: JSName,
-        static: Boolean): js.JSMethodDef = {
+        static: Boolean, allowCallsiteInlineSingle: Boolean): js.JSMethodDef = {
       assert(alts0.nonEmpty,
           "need at least one alternative to generate exporter method")
 
@@ -354,8 +370,20 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
       val overloads = alts.map(new ExportedSymbol(_, static))
 
-      val (formalArgs, restParam, body) =
-        genOverloadDispatch(jsName, overloads, jstpe.AnyType)
+      val (formalArgs, restParam, body) = {
+        if (overloads.size == 1) {
+          val trg = overloads.head
+          val minArgc = trg.params.lastIndexWhere(p => !p.hasDefault && !p.repeated) + 1
+          val formalArgsRegistry = new FormalArgsRegistry(minArgc,
+              needsRestParam = trg.params.size > minArgc)
+          val body = genApplyForSym(formalArgsRegistry, trg.sym, static,
+              inline = allowCallsiteInlineSingle)
+          val (formalArgs, restParam) = formalArgsRegistry.genFormalArgs()
+          (formalArgs, restParam, body)
+        } else {
+          genOverloadDispatch(jsName, overloads, jstpe.AnyType)
+        }
+      }
 
       js.JSMethodDef(flags, genExpr(jsName), formalArgs, restParam, body)(
           OptimizerHints.empty, Unversioned)
@@ -633,13 +661,13 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
      * required.
      */
     private def genApplyForSym(formalArgsRegistry: FormalArgsRegistry,
-        sym: Symbol, static: Boolean): js.Tree = {
+        sym: Symbol, static: Boolean, inline: Boolean): js.Tree = {
       if (isNonNativeJSClass(currentClassSym) &&
           sym.owner != currentClassSym.get) {
         assert(!static, s"nonsensical JS super call in static export of $sym")
         genApplyForSymJSSuperCall(formalArgsRegistry, sym)
       } else {
-        genApplyForSymNonJSSuperCall(formalArgsRegistry, sym, static)
+        genApplyForSymNonJSSuperCall(formalArgsRegistry, sym, static, inline)
       }
     }
 
@@ -681,7 +709,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
     private def genApplyForSymNonJSSuperCall(
         formalArgsRegistry: FormalArgsRegistry, sym: Symbol,
-        static: Boolean): js.Tree = {
+        static: Boolean, inline: Boolean): js.Tree = {
       implicit val pos = sym.pos
 
       val varDefs = new mutable.ListBuffer[js.VarDef]
@@ -696,7 +724,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
       val builtVarDefs = varDefs.result()
 
-      val jsResult = genResult(sym, builtVarDefs.map(_.ref), static)
+      val jsResult = genResult(sym, builtVarDefs.map(_.ref), static, inline)
 
       js.Block(builtVarDefs :+ jsResult)
     }
@@ -850,7 +878,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
     /** Generate the final forwarding call to the exported method. */
     private def genResult(sym: Symbol, args: List[js.Tree],
-        static: Boolean)(implicit pos: Position): js.Tree = {
+        static: Boolean, inline: Boolean)(implicit pos: Position): js.Tree = {
       def receiver = {
         if (static)
           genLoadModule(sym.owner)
@@ -860,14 +888,14 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
 
       if (isNonNativeJSClass(currentClassSym)) {
         assert(sym.owner == currentClassSym.get, sym.fullName)
-        ensureResultBoxed(genApplyJSClassMethod(receiver, sym, args), sym)
+        ensureResultBoxed(genApplyJSClassMethod(receiver, sym, args, inline = inline), sym)
       } else {
         if (sym.isClassConstructor)
           genNew(currentClassSym, sym, args)
         else if (sym.isPrivate)
-          ensureResultBoxed(genApplyMethodStatically(receiver, sym, args), sym)
+          ensureResultBoxed(genApplyMethodStatically(receiver, sym, args, inline = inline), sym)
         else
-          ensureResultBoxed(genApplyMethod(receiver, sym, args), sym)
+          ensureResultBoxed(genApplyMethod(receiver, sym, args, inline = inline), sym)
       }
     }
 
@@ -896,7 +924,7 @@ trait GenJSExports[G <: Global with Singleton] extends SubComponent {
     private class ExportedSymbol(sym: Symbol, static: Boolean)
         extends Exported(sym, jsParamInfos(sym).toIndexedSeq) {
       def genBody(formalArgsRegistry: FormalArgsRegistry): js.Tree =
-        genApplyForSym(formalArgsRegistry, sym, static)
+        genApplyForSym(formalArgsRegistry, sym, static, inline = false)
     }
   }
 

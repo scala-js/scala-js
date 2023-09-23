@@ -3337,8 +3337,9 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
     }
 
     def genApplyJSClassMethod(receiver: js.Tree, method: Symbol,
-        arguments: List[js.Tree])(implicit pos: Position): js.Tree = {
-      genApplyStatic(method, receiver :: arguments)
+        arguments: List[js.Tree], inline: Boolean = false)(
+        implicit pos: Position): js.Tree = {
+      genApplyStatic(method, receiver :: arguments, inline = inline)
     }
 
     def genApplyStatic(method: Symbol, arguments: List[js.Tree],

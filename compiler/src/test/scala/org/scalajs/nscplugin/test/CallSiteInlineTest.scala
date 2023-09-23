@@ -22,10 +22,6 @@ import org.scalajs.ir.Names
 import org.scalajs.ir.Names._
 
 class CallSiteInlineTest extends JSASTTest {
-  object SMN {
-    def unapply(ident: js.MethodIdent): Some[String] =
-      Some(ident.name.simpleName.nameString)
-  }
 
   @Test
   def testInline: Unit = {
