@@ -45,11 +45,6 @@ import Infos.{NamespacedMethodName, ReachabilityInfo, ReachabilityInfoInClass}
 final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     checkIR: Boolean, failOnError: Boolean, irLoader: IRLoader) {
 
-  import Analyzer._
-
-  private val allowAddingSyntheticMethods = initial
-  private val checkAbstractReachability = initial
-
   private val infoLoader: InfoLoader = {
     new InfoLoader(irLoader,
         if (!checkIR) InfoLoader.NoIRCheck
@@ -58,51 +53,87 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     )
   }
 
+  def computeReachability(moduleInitializers: Seq[ModuleInitializer],
+      symbolRequirements: SymbolRequirement, logger: Logger)(implicit ec: ExecutionContext): Future[Analysis] = {
+
+    infoLoader.update(logger)
+
+    val run = new AnalyzerRun(config, initial, infoLoader)(
+        adjustExecutionContextForParallelism(ec, config.parallel))
+
+    run
+      .computeReachability(moduleInitializers, symbolRequirements)
+      .map { _ =>
+        if (failOnError && run.errors.nonEmpty)
+          reportErrors(run.errors, logger)
+
+        run
+      }
+      .andThen { case _ => infoLoader.cleanAfterRun() }
+  }
+
+  private def reportErrors(errors: List[Error], logger: Logger): Unit = {
+    require(errors.nonEmpty)
+
+    val maxDisplayErrors = {
+      val propName = "org.scalajs.linker.maxlinkingerrors"
+      Try(System.getProperty(propName, "20").toInt).getOrElse(20).max(1)
+    }
+
+    errors
+      .take(maxDisplayErrors)
+      .foreach(logError(_, logger, Level.Error))
+
+    val skipped = errors.size - maxDisplayErrors
+    if (skipped > 0)
+      logger.log(Level.Error, s"Not showing $skipped more linking errors")
+
+    if (initial) {
+      throw new LinkingException("There were linking errors")
+    } else {
+      throw new AssertionError(
+          "There were linking errors after the optimizer has run. " +
+          "This is a bug, please report it. " +
+          "You can work around the bug by disabling the optimizer. " +
+          "In the sbt plugin, this can be done with " +
+          "`scalaJSLinkerConfig ~= { _.withOptimizer(false) }`.")
+    }
+  }
+}
+
+private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
+    infoLoader: InfoLoader)(implicit ec: ExecutionContext) extends Analysis {
+  import AnalyzerRun._
+
+  private val allowAddingSyntheticMethods = initial
+  private val checkAbstractReachability = initial
+
   private val isNoModule = config.coreSpec.moduleKind == ModuleKind.NoModule
 
+  private val workTracker: WorkTracker = new WorkTracker
+  private[this] val classLoader: ClassLoader = new ClassLoader
+
   private var objectClassInfo: ClassInfo = _
-  private[this] var classLoader: ClassLoader = _
+  private var _classInfos: scala.collection.Map[ClassName, ClassInfo] = _
+
+  def classInfos: scala.collection.Map[ClassName, Analysis.ClassInfo] = _classInfos
 
   private[this] val _errors = new GrowingList[Error]
 
-  private var workTracker: WorkTracker = _
+  override def errors: List[Error] = _errors.get()
 
   private val fromAnalyzer = FromCore("analyzer")
 
   private[this] val _topLevelExportInfos: mutable.Map[(ModuleID, String), TopLevelExportInfo] = emptyThreadSafeMap
+  def topLevelExportInfos: scala.collection.Map[(ModuleID, String), Analysis.TopLevelExportInfo] = _topLevelExportInfos
 
   def computeReachability(moduleInitializers: Seq[ModuleInitializer],
-      symbolRequirements: SymbolRequirement, logger: Logger)(implicit ec: ExecutionContext): Future[Analysis] = {
-
-    computeInternal(moduleInitializers, symbolRequirements, logger)(
-        adjustExecutionContextForParallelism(ec, config.parallel))
-  }
-
-  /** Internal helper to isolate the execution context. */
-  private def computeInternal(moduleInitializers: Seq[ModuleInitializer],
-      symbolRequirements: SymbolRequirement, logger: Logger)(implicit ec: ExecutionContext): Future[Analysis] = {
-
-    resetState()
-
-    infoLoader.update(logger)
-
-    workTracker = new WorkTracker
-    classLoader = new ClassLoader
-
+      symbolRequirements: SymbolRequirement): Future[Unit] = {
     loadObjectClass(() => loadEverything(moduleInitializers, symbolRequirements))
 
     workTracker
-      .future
-      .map(_ => postLoad(moduleInitializers, logger))
-      .andThen { case _ => infoLoader.cleanAfterRun() }
-  }
-
-  private def resetState(): Unit = {
-    objectClassInfo = null
-    workTracker = null
-    _errors.clear()
-    classLoader = null
-    _topLevelExportInfos.clear()
+      .allowComplete()
+      .map(_ => postLoad(moduleInitializers))
   }
 
   private def loadObjectClass(onSuccess: () => Unit): Unit = {
@@ -154,8 +185,9 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     reachInitializers(moduleInitializers)
   }
 
-  private def postLoad(moduleInitializers: Seq[ModuleInitializer],
-      logger: Logger): Analysis = {
+  private def postLoad(moduleInitializers: Seq[ModuleInitializer]): Unit = {
+    _classInfos = classLoader.loadedInfos()
+
     if (isNoModule) {
       // Check there is only a single module.
       val publicModuleIDs = (
@@ -167,51 +199,8 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
         _errors ::= MultiplePublicModulesWithoutModuleSupport(publicModuleIDs)
     }
 
-    val infos = classLoader.loadedInfos()
-
     // Reach additional data, based on reflection methods used
-    reachDataThroughReflection(infos)
-
-    val errs = _errors.get()
-
-    if (failOnError && errs.nonEmpty)
-      reportErrors(logger)
-
-    new Analysis {
-      val classInfos = infos
-      val topLevelExportInfos = _topLevelExportInfos
-      val errors = errs
-    }
-  }
-
-  private def reportErrors(logger: Logger): Unit = {
-    val errors = _errors.get()
-
-    require(errors.nonEmpty)
-
-    val maxDisplayErrors = {
-      val propName = "org.scalajs.linker.maxlinkingerrors"
-      Try(System.getProperty(propName, "20").toInt).getOrElse(20).max(1)
-    }
-
-    errors
-      .take(maxDisplayErrors)
-      .foreach(logError(_, logger, Level.Error))
-
-    val skipped = errors.size - maxDisplayErrors
-    if (skipped > 0)
-      logger.log(Level.Error, s"Not showing $skipped more linking errors")
-
-    if (initial) {
-      throw new LinkingException("There were linking errors")
-    } else {
-      throw new AssertionError(
-          "There were linking errors after the optimizer has run. " +
-          "This is a bug, please report it. " +
-          "You can work around the bug by disabling the optimizer. " +
-          "In the sbt plugin, this can be done with " +
-          "`scalaJSLinkerConfig ~= { _.withOptimizer(false) }`.")
-    }
+    reachDataThroughReflection()
   }
 
   private def reachSymbolRequirement(requirement: SymbolRequirement): Unit = {
@@ -304,10 +293,9 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
   }
 
   /** Reach additional class data based on reflection methods being used. */
-  private def reachDataThroughReflection(
-      classInfos: scala.collection.Map[ClassName, ClassInfo]): Unit = {
+  private def reachDataThroughReflection(): Unit = {
 
-    val classClassInfo = classInfos.get(ClassClass)
+    val classClassInfo = _classInfos.get(ClassClass)
 
     /* If Class.getSuperclass() is reachable, we can reach the data of all
      * superclasses of classes whose data we can already reach.
@@ -320,7 +308,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       // calledFrom should always be nonEmpty if isReachable, but let's be robust
       implicit val from =
         getSuperclassMethodInfo.calledFrom.headOption.getOrElse(fromAnalyzer)
-      for (classInfo <- classInfos.values.filter(_.isDataAccessed).toList) {
+      for (classInfo <- _classInfos.values.filter(_.isDataAccessed).toList) {
         @tailrec
         def loop(classInfo: ClassInfo): Unit = {
           classInfo.accessData()
@@ -339,14 +327,16 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
   private def lookupClass(className: ClassName)(
       onSuccess: ClassInfo => Unit)(implicit from: From): Unit = {
-    workTracker.track(classLoader.lookupClass(className)) {
-      case info: ClassInfo =>
-        info.link()
-        onSuccess(info)
+    workTracker.track {
+      classLoader.lookupClass(className).map {
+        case info: ClassInfo =>
+          info.link()
+          onSuccess(info)
 
-      case CycleInfo(cycle, root) =>
-        assert(root == null, s"unresolved root: $root")
-        _errors ::= CycleInInheritanceChain(cycle, fromAnalyzer)
+        case CycleInfo(cycle, root) =>
+          assert(root == null, s"unresolved root: $root")
+          _errors ::= CycleInInheritanceChain(cycle, fromAnalyzer)
+      }
     }
   }
 
@@ -831,19 +821,18 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       })
     }
 
-    def tryLookupReflProxyMethod(proxyName: MethodName)(
-        onSuccess: MethodInfo => Unit)(implicit from: From): Unit = {
+    private def maybeReachReflProxyMethod(proxyName: MethodName)(implicit from: From): Unit = {
       if (!allowAddingSyntheticMethods) {
-        tryLookupMethod(proxyName).foreach(onSuccess)
+        tryLookupMethod(proxyName).foreach(_.reach(this))
       } else {
-        publicMethodInfos.get(proxyName).fold {
-          findReflectiveTarget(proxyName)(onSuccess)
-        } (onSuccess)
+        publicMethodInfos
+          .get(proxyName)
+          .fold(findAndReachReflectiveTarget(proxyName))(_.reach(this))
       }
     }
 
-    private def findReflectiveTarget(proxyName: MethodName)(
-        onSuccess: MethodInfo => Unit)(implicit from: From): Unit = {
+    private def findAndReachReflectiveTarget(
+        proxyName: MethodName)(implicit from: From): Unit = {
       /* The lookup for a target method in this code implements the
        * algorithm defining `java.lang.Class.getMethod`. This mimics how
        * reflective calls are implemented on the JVM, at link time.
@@ -881,15 +870,16 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
         case onlyCandidate :: Nil =>
           // Fast path that does not require workTracker.track
-          val proxy = createReflProxy(proxyName, onlyCandidate.methodName)
-          onSuccess(proxy)
+          createReflProxy(proxyName, onlyCandidate.methodName).reach(this)
 
         case _ =>
-          val targetFuture = computeMostSpecificProxyMatch(candidates)
-          workTracker.track(targetFuture) { reflectiveTarget =>
-            val proxy = createReflProxy(proxyName, reflectiveTarget.methodName)
-            onSuccess(proxy)
+          val future = for {
+            reflectiveTarget <- computeMostSpecificProxyMatch(candidates)
+          } yield {
+            createReflProxy(proxyName, reflectiveTarget.methodName).reach(this)
           }
+
+          workTracker.track(future)
       }
     }
 
@@ -932,8 +922,6 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
     private def computeMostSpecificProxyMatch(candidates: List[MethodInfo])(
         implicit from: From): Future[MethodInfo] = {
-
-      implicit val ec = workTracker.ec
 
       /* From the JavaDoc of java.lang.Class.getMethod:
        *
@@ -1215,7 +1203,7 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     private def callMethodResolved(methodName: MethodName)(
         implicit from: From): Unit = {
       if (methodName.isReflectiveProxy) {
-        tryLookupReflProxyMethod(methodName)(_.reach(this))
+        maybeReachReflProxyMethod(methodName)
       } else {
         lookupMethod(methodName).reach(this)
       }
@@ -1578,46 +1566,45 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
 }
 
-object Analyzer {
+private object AnalyzerRun {
   private val getSuperclassMethodName =
     MethodName("getSuperclass", Nil, ClassRef(ClassClass))
 
-  private class WorkTracker(implicit val ec: ExecutionContext) {
+  private class WorkTracker(implicit ec: ExecutionContext) {
     private val pending = new AtomicInteger(0)
+    @volatile private var _allowComplete = false
     private val promise = Promise[Unit]()
 
-    def track[T](fut: Future[T])(onSuccess: T => Unit): Unit = {
-      val got = pending.incrementAndGet()
-      assert(got > 0)
+    def track(fut: Future[Unit]): Unit = {
+      pending.incrementAndGet()
 
-      fut.map(onSuccess).onComplete {
-        case Success(_) => taskDone()
-        case Failure(t) => promise.tryFailure(t)
+      fut.onComplete {
+        case Success(_) =>
+          if (pending.decrementAndGet() == 0)
+            tryComplete()
+
+        case Failure(t) =>
+          promise.tryFailure(t)
       }
     }
 
-    private def taskDone(): Unit = {
-      if (pending.decrementAndGet() == 0) {
-        /* TODO: The completion condition in the WorkTracker is not what we want:
-         *
-         * What we have is: The number of pending tasks drops to 0.
-         *
-         * What we want is: The number of pending tasks drops to 0 after a
-         * certain point in the main execution flow has been reached.
-         *
-         * This is currently not a problem, because `loadObjectClass` submits the
-         * initial task and then everything else is done inside a task
-         * (until `postLoad`).
-         *
-         * However, this is not strictly necessary, we could, for example, start
-         * loading infos for other entrypoints in parallel. So we should fix this.
-         */
-        pending.set(-1)
+    private def tryComplete(): Unit = {
+      /* Note that after _allowComplete is true and pending == 0, we are sure
+       * that no new task will be submitted concurrently:
+       * - _allowComplete guarantees us that no external task will be added anymore
+       * - pending == 0 guarantees us that no internal task (which might create
+       *   more tasks) are running anymore.
+       */
+      if (_allowComplete && pending.get() == 0) {
         promise.trySuccess(())
       }
     }
 
-    def future: Future[Unit] = promise.future
+    def allowComplete(): Future[Unit] = {
+      _allowComplete = true
+      tryComplete()
+      promise.future
+    }
   }
 
   private final class GrowingList[A] {
