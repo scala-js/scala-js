@@ -28,6 +28,11 @@ import ir.{Trees => js}
 
 abstract class JSASTTest extends DirectTest {
 
+  object SMN {
+    def unapply(ident: js.MethodIdent): Some[String] =
+      Some(ident.name.simpleName.nameString)
+  }
+
   class JSAST(val clDefs: List[js.ClassDef]) {
     type Pat = PartialFunction[js.IRNode, Unit]
 

@@ -15,6 +15,7 @@ package org.scalajs.nscplugin.test
 import util._
 
 import org.junit.Test
+import org.junit.Assert._
 
 import org.scalajs.ir.{Trees => js, Types => jstpe}
 import org.scalajs.ir.Names._
@@ -537,6 +538,27 @@ class OptimizationTest extends JSASTTest {
     """.hasExactly(1, "WrapAsThrowable") {
       case js.WrapAsThrowable(_) =>
     }
+  }
+
+  @Test
+  def callSiteInlineSingleDispatchJSMethods: Unit = {
+    val fooName = SimpleMethodName("foo")
+    val aName = ClassName("A")
+
+    val flags = {
+      """
+      import scala.scalajs.js
+
+      class A extends js.Object {
+        def foo(x: Int, y: Int = 2): Int = x + y
+      }
+      """.extractOne("foo dispatch call") {
+        case js.ApplyStatic(flags, `aName`, SMN("foo"), _) =>
+          flags
+      }
+    }
+
+    assertTrue(flags.inline)
   }
 }
 
