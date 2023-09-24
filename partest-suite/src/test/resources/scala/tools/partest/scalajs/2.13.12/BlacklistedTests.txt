@@ -27,6 +27,7 @@ neg/universal-lint.scala
 # Uses .java files
 run/t9200
 run/noInlineUnknownIndy
+run/t12799
 
 #
 # RUN
@@ -136,6 +137,7 @@ run/t10244.scala
 run/t10522.scala
 run/t11255
 run/transient-object.scala
+run/t12774.scala
 
 # Using System.getProperties
 
@@ -634,11 +636,13 @@ run/t12002.scala
 run/module-static.scala
 run/module-serialization-proxy-class-unload.scala
 run/t9644.scala
+run/t9644b
 
 run/dotty-i11332.scala
 run/dotty-i11332b.scala
 run/dotty-t12348.scala
 run/t12348.scala
+run/t8465.scala
 
 # Uses reflection indirectly through
 # scala.runtime.ScalaRunTime.replStringOf
@@ -827,6 +831,7 @@ run/t12705.scala
 run/t12390.scala
 run/repl-release.scala
 run/eta-dependent.scala
+run/t10655.scala
 
 # Using Scala Script (partest.ScriptTest)
 
@@ -957,6 +962,9 @@ run/t1406b.scala
 run/argfile.scala
 run/badout.scala
 run/debug-type-error.scala
+run/t12757.scala
+run/t12757b.scala
+run/t12757c.scala
 
 # Using partest.StoreReporterDirectTest
 run/package-object-stale-decl.scala
