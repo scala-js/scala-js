@@ -338,7 +338,7 @@ object Build {
   val previousVersions = List("1.0.0", "1.0.1", "1.1.0", "1.1.1", "1.2.0",
       "1.3.0", "1.3.1", "1.4.0", "1.5.0", "1.5.1", "1.6.0", "1.7.0", "1.7.1",
       "1.8.0", "1.9.0", "1.10.0", "1.10.1", "1.11.0", "1.12.0", "1.13.0",
-      "1.13.1", "1.13.2")
+      "1.13.1", "1.13.2", "1.14.0")
   val previousVersion = previousVersions.last
 
   val previousBinaryCrossVersion = CrossVersion.binaryWith("sjs1_", "")
