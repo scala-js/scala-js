@@ -51,9 +51,11 @@ private[analyzer] final class InfoLoader(irLoader: IRLoader, irCheckMode: InfoLo
     }
   }
 
-  def cleanAfterRun(): Unit = {
+  def cleanAfterRun(retain: scala.collection.Set[ClassName]): Unit = {
     logger = null
-    cache.filterInPlace((_, infoCache) => infoCache.cleanAfterRun())
+
+    cache.filterInPlace((className, _) => retain.contains(className))
+    cache.values.foreach(_.cleanAfterRun())
   }
 }
 
@@ -152,16 +154,11 @@ private[analyzer] object InfoLoader {
     }
 
     /** Returns true if the cache has been used and should be kept. */
-    def cleanAfterRun(): Boolean = synchronized {
-      val result = cacheUsed
+    def cleanAfterRun(): Unit = synchronized {
       cacheUsed = false
-      if (result) {
-        // No point in cleaning the inner caches if the whole class disappears
-        methodsInfoCaches.cleanAfterRun()
-        jsConstructorInfoCache.cleanAfterRun()
-        exportedMembersInfoCaches.cleanAfterRun()
-      }
-      result
+      methodsInfoCaches.cleanAfterRun()
+      jsConstructorInfoCache.cleanAfterRun()
+      exportedMembersInfoCaches.cleanAfterRun()
     }
   }
 

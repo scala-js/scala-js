@@ -53,26 +53,99 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
     )
   }
 
+  private var previousRunState: Analyzer.PreviousRunState = _
+
   def computeReachability(moduleInitializers: Seq[ModuleInitializer],
       symbolRequirements: SymbolRequirement, logger: Logger)(implicit ec: ExecutionContext): Future[Analysis] = {
 
     infoLoader.update(logger)
 
-    val run = new AnalyzerRun(config, initial, infoLoader)(
-        adjustExecutionContextForParallelism(ec, config.parallel))
+    val adjustedEc = adjustExecutionContextForParallelism(ec, config.parallel)
+
+    val analysisFuture = {
+      if (previousRunState != null) {
+        unchangedAnalysis(moduleInitializers, symbolRequirements).flatMap {
+          case Some(a) =>
+            logger.debug("Analyzer: Re-using previous analysis")
+            Future.successful(a)
+          case None    =>
+            doFullAnalysis(moduleInitializers, symbolRequirements)
+        }
+      } else {
+        doFullAnalysis(moduleInitializers, symbolRequirements)
+      }
+    }
+
+    analysisFuture
+      .andThen {
+        case Success(analysis) => infoLoader.cleanAfterRun(analysis.classInfos.keySet)
+        case Failure(_)        => infoLoader.cleanAfterRun(Set.empty)
+      }
+      .andThen {
+        case Success(analysis) if analysis.errors.isEmpty =>
+          previousRunState = new Analyzer.PreviousRunState(analysis, moduleInitializers, symbolRequirements)
+
+        case _ =>
+          previousRunState = null
+      }
+      .map { analysis =>
+        if (failOnError && analysis.errors.nonEmpty)
+          reportErrors(analysis.errors, logger)
+
+        analysis
+      }
+  }
+
+  private def unchangedAnalysis(moduleInitializers: Seq[ModuleInitializer],
+      symbolRequirements: SymbolRequirement)(implicit ec: ExecutionContext): Future[Option[Analysis]] = {
+
+    val changedFuture = {
+      if (symbolRequirements != previousRunState.symbolRequirements ||
+          moduleInitializers != previousRunState.moduleInitializers ||
+          /* Check that all classes with entry points are known.
+           * Otherwise there is a new entry point and the dependency graph changed.
+           */
+          infoLoader.classesWithEntryPoints().exists(clazz => !previousRunState.analysis.classInfos.contains(clazz))
+      ) {
+        Future.successful(true)
+      } else {
+        val changedFutures = for {
+          (className, prevInfo) <- previousRunState.analysis.classInfos
+        } yield Future.unit.flatMap { _ =>
+          infoLoader.loadInfo(className) match {
+            case None      => Future.successful(false)
+            case Some(fut) => fut.map(_ != prevInfo.data)
+          }
+        }
+
+        Future.foldLeft(changedFutures.toList)(false)(_ || _)
+      }
+    }
+
+    for {
+      changed <- changedFuture
+    } yield {
+      // Internal hook for benchmarking.
+      val simulateChanged = {
+        val propName = "org.scalajs.linker.analyzer.internal.simulateChangedInfo"
+        Try(System.getProperty(propName, "false").toBoolean).getOrElse(false)
+      }
+
+      if (changed || simulateChanged) None
+      else Some(previousRunState.analysis)
+    }
+  }
+
+  private def doFullAnalysis(moduleInitializers: Seq[ModuleInitializer],
+      symbolRequirements: SymbolRequirement)(implicit ec: ExecutionContext): Future[Analysis] = {
+    val run = new AnalyzerRun(config, initial, infoLoader)
 
     run
       .computeReachability(moduleInitializers, symbolRequirements)
-      .map { _ =>
-        if (failOnError && run.errors.nonEmpty)
-          reportErrors(run.errors, logger)
-
-        run
-      }
-      .andThen { case _ => infoLoader.cleanAfterRun() }
+      .map { _ => run }
   }
 
-  private def reportErrors(errors: List[Error], logger: Logger): Unit = {
+  private def reportErrors(errors: Seq[Error], logger: Logger): Unit = {
     require(errors.nonEmpty)
 
     val maxDisplayErrors = {
@@ -99,6 +172,14 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
           "`scalaJSLinkerConfig ~= { _.withOptimizer(false) }`.")
     }
   }
+}
+
+private object Analyzer {
+  private class PreviousRunState(
+    val analysis: Analysis,
+    val moduleInitializers: Seq[ModuleInitializer],
+    val symbolRequirements: SymbolRequirement,
+  )
 }
 
 private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,

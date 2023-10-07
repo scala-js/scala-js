@@ -88,6 +88,12 @@ object ExposedValues extends AutoPlugin {
      *
      *  ggplot(d, aes(x = op, color = variant, y = t_ns)) + geom_boxplot()
      *  ggsave("plot.png", width = 9, height = 5)
+     *
+     *  # Medians per variant and op
+     *
+     *  d %>%
+     *    group_by(variant, op) %>%
+     *    summarise(t_ns = median(t_ns))
      *  }}}
      */
     val loggerTimingVariant = settingKey[String]("Variant identifier for logger timings.")

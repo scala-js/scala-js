@@ -49,6 +49,8 @@ object Analysis {
    *  versions, possibly causing `LinkageError`s if you extend it.
    */
   trait ClassInfo {
+    private[analyzer] val data: Infos.ClassInfo
+
     def className: ClassName
     def kind: ClassKind
     def superClass: Option[ClassInfo]
