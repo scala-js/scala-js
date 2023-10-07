@@ -98,10 +98,20 @@ private[emitter] object WithGlobals {
      * efficient.
      */
     val values = xs.map(_.value)
-    val globalVarNames = xs.foldLeft(Set.empty[String]) { (prev, x) =>
+    val globalVarNames = collectNames(xs)
+    WithGlobals(values, globalVarNames)
+  }
+
+  def flatten[A](xs: List[WithGlobals[List[A]]]): WithGlobals[List[A]] = {
+    val values = xs.flatMap(_.value)
+    val globalVarNames = collectNames(xs)
+    WithGlobals(values, globalVarNames)
+  }
+
+  private def collectNames(xs: List[WithGlobals[_]]): Set[String] = {
+    xs.foldLeft(Set.empty[String]) { (prev, x) =>
       unionPreserveEmpty(prev, x.globalVarNames)
     }
-    WithGlobals(values, globalVarNames)
   }
 
   def option[A](xs: Option[WithGlobals[A]]): WithGlobals[Option[A]] =

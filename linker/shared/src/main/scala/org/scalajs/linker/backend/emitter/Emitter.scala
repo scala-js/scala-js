@@ -241,11 +241,11 @@ final class Emitter(config: Emitter.Config) {
          * requires consistency between the Analyzer and the Emitter. As such,
          * it is crucial that we verify it.
          */
-        val defTreesIterator: Iterator[js.Tree] = (
+        val defTrees: List[js.Tree] = (
             /* The definitions of the CoreJSLib that come before the definition
              * of `j.l.Object`. They depend on nothing else.
              */
-            coreJSLib.map(_.preObjectDefinitions).iterator ++
+            coreJSLib.iterator.flatMap(_.preObjectDefinitions) ++
 
             /* The definition of `j.l.Object` class. Unlike other classes, this
              * does not include its instance tests nor metadata.
@@ -257,7 +257,7 @@ final class Emitter(config: Emitter.Config) {
              * definitions of the array classes, as well as type data for
              * primitive types and for `j.l.Object`.
              */
-            coreJSLib.map(_.postObjectDefinitions).iterator ++
+            coreJSLib.iterator.flatMap(_.postObjectDefinitions) ++
 
             /* All class definitions, except `j.l.Object`, which depend on
              * nothing but their superclasses.
@@ -267,7 +267,7 @@ final class Emitter(config: Emitter.Config) {
             /* The initialization of the CoreJSLib, which depends on the
              * definition of classes (n.b. the RuntimeLong class).
              */
-            coreJSLib.map(_.initialization).iterator ++
+            coreJSLib.iterator.flatMap(_.initialization) ++
 
             /* All static field definitions, which depend on nothing, except
              * those of type Long which need $L0.
@@ -288,17 +288,7 @@ final class Emitter(config: Emitter.Config) {
 
             /* Module initializers, which by spec run at the end. */
             moduleInitializers.iterator
-        )
-
-        /* Flatten all the top-level js.Block's, because we temporarily use
-         * them to gather several top-level trees under a single `js.Tree`.
-         * TODO We should improve this in the future.
-         */
-        val defTrees: List[js.Tree] = defTreesIterator.flatMap {
-          case js.Block(stats) => stats
-          case js.Skip()       => Nil
-          case stat            => stat :: Nil
-        }.toList
+        ).toList
 
         // Make sure that there is at least one non-import definition.
         assert(!defTrees.isEmpty, {
@@ -391,9 +381,6 @@ final class Emitter(config: Emitter.Config) {
 
     val main = List.newBuilder[js.Tree]
 
-    def addToMain(treeWithGlobals: WithGlobals[js.Tree]): Unit =
-      main += extractWithGlobals(treeWithGlobals)
-
     val (linkedInlineableInit, linkedMethods) =
       classEmitter.extractInlineableInit(linkedClass)(classCache)
 
@@ -420,7 +407,7 @@ final class Emitter(config: Emitter.Config) {
         val methodCache =
           classCache.getStaticLikeMethodCache(namespace, methodDef.methodName)
 
-        addToMain(methodCache.getOrElseUpdate(methodDef.version,
+        main ++= extractWithGlobals(methodCache.getOrElseUpdate(methodDef.version,
             classEmitter.genStaticLikeMethod(className, methodDef)(moduleContext, methodCache)))
       }
     }
@@ -582,7 +569,7 @@ final class Emitter(config: Emitter.Config) {
               useESClass, // invalidated by class version (depends on kind, config and ancestry only)
               ctor, // invalidated directly
               memberMethods, // invalidated directly
-              exportedMembers // invalidated directly
+              exportedMembers.flatten // invalidated directly
             )(moduleContext, fullClassCache, linkedClass.pos) // pos invalidated by class version
           } yield {
             clazz
@@ -590,7 +577,7 @@ final class Emitter(config: Emitter.Config) {
         })
       }
 
-      addToMain(fullClass)
+      main ++= extractWithGlobals(fullClass)
     }
 
     if (className != ObjectClass) {
@@ -608,12 +595,12 @@ final class Emitter(config: Emitter.Config) {
        */
 
       if (classEmitter.needInstanceTests(linkedClass)(classCache)) {
-        addToMain(classTreeCache.instanceTests.getOrElseUpdate(
+        main += extractWithGlobals(classTreeCache.instanceTests.getOrElseUpdate(
             classEmitter.genInstanceTests(className, kind)(moduleContext, classCache, linkedClass.pos)))
       }
 
       if (linkedClass.hasRuntimeTypeInfo) {
-        addToMain(classTreeCache.typeData.getOrElseUpdate(
+        main ++= extractWithGlobals(classTreeCache.typeData.getOrElseUpdate(
             classEmitter.genTypeData(
               className, // invalidated by overall class cache (part of ancestors)
               kind, // invalidated by class version
@@ -630,7 +617,7 @@ final class Emitter(config: Emitter.Config) {
     }
 
     if (linkedClass.kind.hasModuleAccessor && linkedClass.hasInstances) {
-      addToMain(classTreeCache.moduleAccessor.getOrElseUpdate(
+      main ++= extractWithGlobals(classTreeCache.moduleAccessor.getOrElseUpdate(
           classEmitter.genModuleAccessor(className, kind)(moduleContext, classCache, linkedClass.pos)))
     }
 
@@ -772,15 +759,15 @@ final class Emitter(config: Emitter.Config) {
     private[this] var _cacheUsed = false
 
     private[this] val _methodCaches =
-      Array.fill(MemberNamespace.Count)(mutable.Map.empty[MethodName, MethodCache[js.Tree]])
+      Array.fill(MemberNamespace.Count)(mutable.Map.empty[MethodName, MethodCache[List[js.Tree]]])
 
     private[this] val _memberMethodCache =
       mutable.Map.empty[MethodName, MethodCache[js.MethodDef]]
 
-    private[this] var _constructorCache: Option[MethodCache[js.Tree]] = None
+    private[this] var _constructorCache: Option[MethodCache[List[js.Tree]]] = None
 
     private[this] val _exportedMembersCache =
-      mutable.Map.empty[Int, MethodCache[js.Tree]]
+      mutable.Map.empty[Int, MethodCache[List[js.Tree]]]
 
     private[this] var _fullClassCache: Option[FullClassCache] = None
 
@@ -820,20 +807,20 @@ final class Emitter(config: Emitter.Config) {
     }
 
     def getStaticLikeMethodCache(namespace: MemberNamespace,
-        methodName: MethodName): MethodCache[js.Tree] = {
+        methodName: MethodName): MethodCache[List[js.Tree]] = {
       _methodCaches(namespace.ordinal)
         .getOrElseUpdate(methodName, new MethodCache)
     }
 
-    def getConstructorCache(): MethodCache[js.Tree] = {
+    def getConstructorCache(): MethodCache[List[js.Tree]] = {
       _constructorCache.getOrElse {
-        val cache = new MethodCache[js.Tree]
+        val cache = new MethodCache[List[js.Tree]]
         _constructorCache = Some(cache)
         cache
       }
     }
 
-    def getExportedMemberCache(idx: Int): MethodCache[js.Tree] =
+    def getExportedMemberCache(idx: Int): MethodCache[List[js.Tree]] =
       _exportedMembersCache.getOrElseUpdate(idx, new MethodCache)
 
     def getFullClassCache(): FullClassCache = {
@@ -863,7 +850,7 @@ final class Emitter(config: Emitter.Config) {
     }
   }
 
-  private final class MethodCache[T <: js.Tree] extends knowledgeGuardian.KnowledgeAccessor {
+  private final class MethodCache[T] extends knowledgeGuardian.KnowledgeAccessor {
     private[this] var _tree: WithGlobals[T] = null
     private[this] var _lastVersion: Version = Version.Unversioned
     private[this] var _cacheUsed = false
@@ -899,11 +886,11 @@ final class Emitter(config: Emitter.Config) {
   }
 
   private class FullClassCache extends knowledgeGuardian.KnowledgeAccessor {
-    private[this] var _tree: WithGlobals[js.Tree] = null
+    private[this] var _tree: WithGlobals[List[js.Tree]] = null
     private[this] var _lastVersion: Version = Version.Unversioned
-    private[this] var _lastCtor: WithGlobals[js.Tree] = null
+    private[this] var _lastCtor: WithGlobals[List[js.Tree]] = null
     private[this] var _lastMemberMethods: List[WithGlobals[js.MethodDef]] = null
-    private[this] var _lastExportedMembers: List[WithGlobals[js.Tree]] = null
+    private[this] var _lastExportedMembers: List[WithGlobals[List[js.Tree]]] = null
     private[this] var _cacheUsed = false
 
     override def invalidate(): Unit = {
@@ -917,9 +904,9 @@ final class Emitter(config: Emitter.Config) {
 
     def startRun(): Unit = _cacheUsed = false
 
-    def getOrElseUpdate(version: Version, ctor: WithGlobals[js.Tree],
-        memberMethods: List[WithGlobals[js.MethodDef]], exportedMembers: List[WithGlobals[js.Tree]],
-        compute: => WithGlobals[js.Tree]): WithGlobals[js.Tree] = {
+    def getOrElseUpdate(version: Version, ctor: WithGlobals[List[js.Tree]],
+        memberMethods: List[WithGlobals[js.MethodDef]], exportedMembers: List[WithGlobals[List[js.Tree]]],
+        compute: => WithGlobals[List[js.Tree]]): WithGlobals[List[js.Tree]] = {
 
       @tailrec
       def allSame[A <: AnyRef](xs: List[A], ys: List[A]): Boolean = {
@@ -1049,9 +1036,9 @@ object Emitter {
   private final class DesugaredClassCache {
     val privateJSFields = new OneTimeCache[WithGlobals[List[js.Tree]]]
     val instanceTests = new OneTimeCache[WithGlobals[js.Tree]]
-    val typeData = new OneTimeCache[WithGlobals[js.Tree]]
+    val typeData = new OneTimeCache[WithGlobals[List[js.Tree]]]
     val setTypeData = new OneTimeCache[js.Tree]
-    val moduleAccessor = new OneTimeCache[WithGlobals[js.Tree]]
+    val moduleAccessor = new OneTimeCache[WithGlobals[List[js.Tree]]]
     val staticInitialization = new OneTimeCache[List[js.Tree]]
     val staticFields = new OneTimeCache[WithGlobals[List[js.Tree]]]
   }
