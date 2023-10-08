@@ -15,7 +15,7 @@ package org.scalajs.linker.backend.emitter
 import org.scalajs.linker.interface.ESVersion
 
 private[emitter] sealed abstract class PolyfillableBuiltin(
-    val builtinName: String, val availableInESVersion: ESVersion)
+    val polyfillField: VarField, val availableInESVersion: ESVersion)
 
 private[emitter] object PolyfillableBuiltin {
   lazy val All: List[PolyfillableBuiltin] = List(
@@ -27,18 +27,18 @@ private[emitter] object PolyfillableBuiltin {
   )
 
   sealed abstract class GlobalVarBuiltin(val globalVar: String,
-      builtinName: String, availableInESVersion: ESVersion)
-      extends PolyfillableBuiltin(builtinName, availableInESVersion)
+      polyfillField: VarField, availableInESVersion: ESVersion)
+      extends PolyfillableBuiltin(polyfillField, availableInESVersion)
 
   sealed abstract class NamespacedBuiltin(val namespaceGlobalVar: String,
-      builtinName: String, availableInESVersion: ESVersion)
-      extends PolyfillableBuiltin(builtinName, availableInESVersion)
+      val builtinName: String, polyfillField: VarField, availableInESVersion: ESVersion)
+      extends PolyfillableBuiltin(polyfillField, availableInESVersion)
 
-  case object ObjectIsBuiltin extends NamespacedBuiltin("Object", "is", ESVersion.ES2015)
-  case object ImulBuiltin extends NamespacedBuiltin("Math", "imul", ESVersion.ES2015)
-  case object FroundBuiltin extends NamespacedBuiltin("Math", "fround", ESVersion.ES2015)
+  case object ObjectIsBuiltin extends NamespacedBuiltin("Object", "is", VarField.is, ESVersion.ES2015)
+  case object ImulBuiltin extends NamespacedBuiltin("Math", "imul", VarField.imul, ESVersion.ES2015)
+  case object FroundBuiltin extends NamespacedBuiltin("Math", "fround", VarField.fround, ESVersion.ES2015)
   case object PrivateSymbolBuiltin
-      extends GlobalVarBuiltin("Symbol", "privateJSFieldSymbol", ESVersion.ES2015)
-  case object GetOwnPropertyDescriptorsBuiltin
-      extends NamespacedBuiltin("Object", "getOwnPropertyDescriptors", ESVersion.ES2017)
+      extends GlobalVarBuiltin("Symbol", VarField.privateJSFieldSymbol, ESVersion.ES2015)
+  case object GetOwnPropertyDescriptorsBuiltin extends NamespacedBuiltin("Object",
+      "getOwnPropertyDescriptors", VarField.getOwnPropertyDescriptors, ESVersion.ES2017)
 }

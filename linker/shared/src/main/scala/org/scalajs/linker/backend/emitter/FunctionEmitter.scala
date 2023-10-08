@@ -400,7 +400,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     private def newSyntheticVar()(implicit pos: Position): js.Ident = {
       syntheticVarCounter += 1
-      fileLevelVarIdent("$x" + syntheticVarCounter)
+      fileLevelVarIdent(VarField.x, syntheticVarCounter.toString())
     }
 
     @inline
@@ -482,7 +482,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         implicit pos: Position): WithGlobals[js.Function] = {
 
       performOptimisticThenPessimisticRuns {
-        val thisIdent = fileLevelVarIdent("thiz", thisOriginalName)
+        val thisIdent = fileLevelVarIdent(VarField.thiz, thisOriginalName)
         val env = env0.withExplicitThis()
         val js.Function(jsArrow, jsParams, restParam, jsBody) =
           desugarToFunctionInternal(arrow = false, params, None, body, isStat, env)
@@ -667,7 +667,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               unnest(superClass, qualifier, item, rhs) {
                 (newSuperClass, newQualifier, newItem, newRhs, env0) =>
                   implicit val env = env0
-                  genCallHelper("superSet", transformExprNoChar(newSuperClass),
+                  genCallHelper(VarField.superSet, transformExprNoChar(newSuperClass),
                       transformExprNoChar(newQualifier), transformExprNoChar(item),
                       transformExprNoChar(rhs))
               }
@@ -678,7 +678,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               if (needToUseGloballyMutableVarSetter(scope)) {
                 unnest(rhs) { (rhs, env0) =>
                   implicit val env = env0
-                  js.Apply(globalVar("u", scope), transformExpr(rhs, lhs.tpe) :: Nil)
+                  js.Apply(globalVar(VarField.u, scope), transformExpr(rhs, lhs.tpe) :: Nil)
                 }
               } else {
                 // Assign normally.
@@ -692,7 +692,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case StoreModule(className, value) =>
           unnest(value) { (newValue, env0) =>
             implicit val env = env0
-            js.Assign(globalVar("n", className), transformExprNoChar(newValue))
+            js.Assign(globalVar(VarField.n, className), transformExprNoChar(newValue))
           }
 
         case While(cond, body) =>
@@ -773,7 +773,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             } else {
               val superCtor = {
                 if (globalKnowledge.hasStoredSuperClass(enclosingClassName)) {
-                  fileLevelVar("superClass")
+                  fileLevelVar(VarField.superClass)
                 } else {
                   val superClass =
                     globalKnowledge.getSuperClassOfJSClass(enclosingClassName)
@@ -879,9 +879,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 case (PrimArray(srcPrimRef), PrimArray(destPrimRef)) if srcPrimRef == destPrimRef =>
                   genUncheckedArraycopy(jsArgs)
                 case (RefArray(), RefArray()) =>
-                  genCallHelper("systemArraycopyRefs", jsArgs: _*)
+                  genCallHelper(VarField.systemArraycopyRefs, jsArgs: _*)
                 case _ =>
-                  genCallHelper("systemArraycopyFull", jsArgs: _*)
+                  genCallHelper(VarField.systemArraycopyFull, jsArgs: _*)
               }
             }
           }
@@ -2209,7 +2209,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           genSelect(transformExprNoChar(checkNotNull(qualifier)), className, field)
 
         case SelectStatic(className, item) =>
-          globalVar("t", (className, item.name))
+          globalVar(VarField.t, (className, item.name))
 
         case SelectJSNativeMember(className, member) =>
           val jsNativeLoadSpec =
@@ -2247,10 +2247,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             js.Apply(newReceiver(false) DOT transformMethodIdent(method), newArgs)
 
           def genDispatchApply(): js.Tree =
-            js.Apply(globalVar("dp", methodName), newReceiver(false) :: newArgs)
+            js.Apply(globalVar(VarField.dp, methodName), newReceiver(false) :: newArgs)
 
           def genHijackedMethodApply(className: ClassName): js.Tree =
-            genApplyStaticLike("f", className, method, newReceiver(className == BoxedCharacterClass) :: newArgs)
+            genApplyStaticLike(VarField.f, className, method, newReceiver(className == BoxedCharacterClass) :: newArgs)
 
           if (isMaybeHijackedClass(receiver.tpe) &&
               !methodName.isReflectiveProxy) {
@@ -2300,20 +2300,20 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           val transformedArgs = newReceiver :: newArgs
 
           if (flags.isConstructor) {
-            genApplyStaticLike("ct", className, method, transformedArgs)
+            genApplyStaticLike(VarField.ct, className, method, transformedArgs)
           } else if (flags.isPrivate) {
-            genApplyStaticLike("p", className, method, transformedArgs)
+            genApplyStaticLike(VarField.p, className, method, transformedArgs)
           } else if (globalKnowledge.isInterface(className)) {
-            genApplyStaticLike("f", className, method, transformedArgs)
+            genApplyStaticLike(VarField.f, className, method, transformedArgs)
           } else {
             val fun =
-              globalVar("c", className).prototype DOT transformMethodIdent(method)
+              globalVar(VarField.c, className).prototype DOT transformMethodIdent(method)
             js.Apply(fun DOT "call", transformedArgs)
           }
 
         case ApplyStatic(flags, className, method, args) =>
           genApplyStaticLike(
-              if (flags.isPrivate) "ps" else "s",
+              if (flags.isPrivate) VarField.ps else VarField.s,
               className,
               method,
               transformTypedArgs(method.name, args))
@@ -2354,7 +2354,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               else
                 genLongMethodApply(newLhs, LongImpl.toInt)
             case DoubleToInt =>
-              genCallHelper("doubleToInt", newLhs)
+              genCallHelper(VarField.doubleToInt, newLhs)
             case DoubleToFloat =>
               genFround(newLhs)
 
@@ -2366,14 +2366,14 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 genLongMethodApply(newLhs, LongImpl.toDouble)
             case DoubleToLong =>
               if (useBigIntForLongs)
-                genCallHelper("doubleToLong", newLhs)
+                genCallHelper(VarField.doubleToLong, newLhs)
               else
                 genLongModuleApply(LongImpl.fromDouble, newLhs)
 
             // Long -> Float (neither widening nor narrowing)
             case LongToFloat =>
               if (useBigIntForLongs)
-                genCallHelper("longToFloat", newLhs)
+                genCallHelper(VarField.longToFloat, newLhs)
               else
                 genLongMethodApply(newLhs, LongImpl.toFloat)
 
@@ -2458,14 +2458,14 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 case IntLiteral(r) if r != 0 =>
                   or0(js.BinaryOp(JSBinaryOp./, newLhs, newRhs))
                 case _ =>
-                  genCallHelper("intDiv", newLhs, newRhs)
+                  genCallHelper(VarField.intDiv, newLhs, newRhs)
               }
             case Int_% =>
               rhs match {
                 case IntLiteral(r) if r != 0 =>
                   or0(js.BinaryOp(JSBinaryOp.%, newLhs, newRhs))
                 case _ =>
-                  genCallHelper("intMod", newLhs, newRhs)
+                  genCallHelper(VarField.intMod, newLhs, newRhs)
               }
 
             case Int_|   => js.BinaryOp(JSBinaryOp.|, newLhs, newRhs)
@@ -2513,7 +2513,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   case LongLiteral(r) if r != 0L =>
                     wrapBigInt64(js.BinaryOp(JSBinaryOp./, newLhs, newRhs))
                   case _ =>
-                    genCallHelper("longDiv", newLhs, newRhs)
+                    genCallHelper(VarField.longDiv, newLhs, newRhs)
                 }
               } else {
                 genLongMethodApply(newLhs, LongImpl./, newRhs)
@@ -2524,7 +2524,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   case LongLiteral(r) if r != 0L =>
                     wrapBigInt64(js.BinaryOp(JSBinaryOp.%, newLhs, newRhs))
                   case _ =>
-                    genCallHelper("longMod", newLhs, newRhs)
+                    genCallHelper(VarField.longMod, newLhs, newRhs)
                 }
               } else {
                 genLongMethodApply(newLhs, LongImpl.%, newRhs)
@@ -2631,7 +2631,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             case String_charAt =>
               semantics.stringIndexOutOfBounds match {
                 case CheckedBehavior.Compliant | CheckedBehavior.Fatal =>
-                  genCallHelper("charAt", newLhs, newRhs)
+                  genCallHelper(VarField.charAt, newLhs, newRhs)
                 case CheckedBehavior.Unchecked =>
                   js.Apply(genIdentBracketSelect(newLhs, "charCodeAt"), List(newRhs))
               }
@@ -2672,7 +2672,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           extractWithGlobals(genAsInstanceOf(transformExprNoChar(expr), tpe))
 
         case GetClass(expr) =>
-          genCallHelper("objectGetClass", transformExprNoChar(expr))
+          genCallHelper(VarField.objectGetClass, transformExprNoChar(expr))
 
         case Clone(expr) =>
           val newExpr = transformExprNoChar(checkNotNull(expr))
@@ -2700,15 +2700,15 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
              */
             case ClassType(CloneableClass) | ClassType(SerializableClass) |
                 ClassType(ObjectClass) | AnyType =>
-              genCallHelper("objectOrArrayClone", newExpr)
+              genCallHelper(VarField.objectOrArrayClone, newExpr)
 
             // Otherwise, it is known not to be an array.
             case _ =>
-              genCallHelper("objectClone", newExpr)
+              genCallHelper(VarField.objectClone, newExpr)
           }
 
         case IdentityHashCode(expr) =>
-          genCallHelper("systemIdentityHashCode", transformExprNoChar(expr))
+          genCallHelper(VarField.systemIdentityHashCode, transformExprNoChar(expr))
 
         case WrapAsThrowable(expr) =>
           val newExpr = transformExprNoChar(expr).asInstanceOf[js.VarRef]
@@ -2727,7 +2727,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         // Transients
 
         case Transient(CheckNotNull(obj)) =>
-          genCallHelper("n", transformExpr(obj, preserveChar = true))
+          genCallHelper(VarField.n, transformExpr(obj, preserveChar = true))
         case Transient(AssumeNotNull(obj)) =>
           transformExpr(obj, preserveChar = true)
 
@@ -2753,7 +2753,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           }
 
         case Transient(ObjectClassName(obj)) =>
-          genCallHelper("objectClassName", transformExprNoChar(obj))
+          genCallHelper(VarField.objectClassName, transformExprNoChar(obj))
 
         case Transient(ArrayToTypedArray(expr, primRef)) =>
           val value = transformExprNoChar(checkNotNull(expr))
@@ -2800,7 +2800,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case Transient(JSNewVararg(constr, argsArray)) =>
           assert(!es2015, s"generated a JSNewVargs with ES 2015+ at ${tree.pos}")
-          genCallHelper("newJSObjectWithVarargs",
+          genCallHelper(VarField.newJSObjectWithVarargs,
               transformExprNoChar(constr), transformExprNoChar(argsArray))
 
         case JSPrivateSelect(qualifier, className, field) =>
@@ -2840,7 +2840,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               transformExprNoChar(method)), args.map(transformJSArg))
 
         case JSSuperSelect(superClass, qualifier, item) =>
-          genCallHelper("superGet", transformExprNoChar(superClass),
+          genCallHelper(VarField.superGet, transformExprNoChar(superClass),
               transformExprNoChar(qualifier), transformExprNoChar(item))
 
         case JSImportCall(arg) =>
@@ -2902,7 +2902,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           js.UnaryOp(JSUnaryOp.typeof, transformExprNoChar(globalRef))
 
         case JSLinkingInfo() =>
-          globalVar("linkingInfo", CoreVar)
+          globalVar(VarField.linkingInfo, CoreVar)
 
         // Literals
 
@@ -2943,10 +2943,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               js.This()
 
             case VarKind.ExplicitThisAlias =>
-              fileLevelVar("thiz")
+              fileLevelVar(VarField.thiz)
 
             case VarKind.ClassCapture =>
-              fileLevelVar("cc", genName(name.name))
+              fileLevelVar(VarField.cc, genName(name.name))
           }
 
         case Transient(JSVarRef(name, _)) =>
@@ -2954,7 +2954,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case This() =>
           if (env.hasExplicitThis)
-            fileLevelVar("thiz")
+            fileLevelVar(VarField.thiz)
           else
             js.This()
 
@@ -2971,7 +2971,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             for ((value, expectedType) <- captureValues.zip(expectedTypes))
               yield transformExpr(value, expectedType)
           }
-          js.Apply(globalVar("a", className), transformedArgs)
+          js.Apply(globalVar(VarField.a, className), transformedArgs)
 
         // Invalid trees
 
@@ -2984,7 +2984,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       if (preserveChar || tree.tpe != CharType)
         baseResult
       else
-        genCallHelper("bC", baseResult)
+        genCallHelper(VarField.bC, baseResult)
     }
 
     private def transformApplyDynamicImport(tree: ApplyDynamicImport)(
@@ -3012,7 +3012,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       }
 
       val innerCall = extractWithGlobals {
-        withDynamicGlobalVar("s", (className, method.name)) { v =>
+        withDynamicGlobalVar(VarField.s, (className, method.name)) { v =>
           js.Apply(v, newArgs)
         }
       }
@@ -3232,7 +3232,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           keepOnlyDangerousVarNames = false)
     }
 
-    private def genApplyStaticLike(field: String, className: ClassName,
+    private def genApplyStaticLike(field: VarField, className: ClassName,
         method: MethodIdent, args: List[js.Tree])(
         implicit pos: Position): js.Tree = {
       js.Apply(globalVar(field, (className, method.name)), args)

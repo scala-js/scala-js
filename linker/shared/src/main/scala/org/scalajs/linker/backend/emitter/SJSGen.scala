@@ -87,7 +87,7 @@ private[emitter] final class SJSGen(
     if (useBigIntForLongs)
       BigIntLiteral(0L)
     else
-      globalVar("L0", CoreVar)
+      globalVar(VarField.L0, CoreVar)
   }
 
   def genBoxedZeroOf(tpe: Type)(
@@ -100,7 +100,7 @@ private[emitter] final class SJSGen(
   def genBoxedCharZero()(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
-    globalVar("bC0", CoreVar)
+    globalVar(VarField.bC0, CoreVar)
   }
 
   def genLongModuleApply(methodName: MethodName, args: Tree*)(
@@ -153,7 +153,7 @@ private[emitter] final class SJSGen(
     if (esFeatures.esVersion >= ESVersion.ES2015 && semantics.nullPointers == CheckedBehavior.Unchecked)
       Apply(args.head DOT "copyTo", args.tail)
     else
-      genCallHelper("systemArraycopy", args: _*)
+      genCallHelper(VarField.systemArraycopy, args: _*)
   }
 
   def genSelect(receiver: Tree, className: ClassName, field: irt.FieldIdent)(
@@ -178,7 +178,7 @@ private[emitter] final class SJSGen(
       pos: Position): Tree = {
     val fieldName = {
       implicit val pos = field.pos
-      globalVar("r", (className, field.name))
+      globalVar(VarField.r, (className, field.name))
     }
 
     BracketSelect(receiver, fieldName)
@@ -199,7 +199,7 @@ private[emitter] final class SJSGen(
             !globalKnowledge.isInterface(className)) {
           genIsInstanceOfClass(expr, className)
         } else {
-          Apply(globalVar("is", className), List(expr))
+          Apply(globalVar(VarField.is, className), List(expr))
         }
 
       case ArrayType(arrayTypeRef) =>
@@ -207,15 +207,15 @@ private[emitter] final class SJSGen(
           case ArrayTypeRef(_:PrimRef | ClassRef(ObjectClass), 1) =>
             expr instanceof genArrayConstrOf(arrayTypeRef)
           case ArrayTypeRef(base, depth) =>
-            Apply(typeRefVar("isArrayOf", base), List(expr, IntLiteral(depth)))
+            Apply(typeRefVar(VarField.isArrayOf, base), List(expr, IntLiteral(depth)))
         }
 
       case UndefType   => expr === Undefined()
       case BooleanType => typeof(expr) === "boolean"
-      case CharType    => expr instanceof globalVar("Char", CoreVar)
-      case ByteType    => genCallHelper("isByte", expr)
-      case ShortType   => genCallHelper("isShort", expr)
-      case IntType     => genCallHelper("isInt", expr)
+      case CharType    => expr instanceof globalVar(VarField.Char, CoreVar)
+      case ByteType    => genCallHelper(VarField.isByte, expr)
+      case ShortType   => genCallHelper(VarField.isShort, expr)
+      case IntType     => genCallHelper(VarField.isInt, expr)
       case LongType    => genIsLong(expr)
       case FloatType   => genIsFloat(expr)
       case DoubleType  => typeof(expr) === "number"
@@ -239,7 +239,7 @@ private[emitter] final class SJSGen(
        */
       BooleanLiteral(false)
     } else {
-      expr instanceof globalVar("c", className)
+      expr instanceof globalVar(VarField.c, className)
     }
   }
 
@@ -251,10 +251,10 @@ private[emitter] final class SJSGen(
     className match {
       case BoxedUnitClass      => expr === Undefined()
       case BoxedBooleanClass   => typeof(expr) === "boolean"
-      case BoxedCharacterClass => expr instanceof globalVar("Char", CoreVar)
-      case BoxedByteClass      => genCallHelper("isByte", expr)
-      case BoxedShortClass     => genCallHelper("isShort", expr)
-      case BoxedIntegerClass   => genCallHelper("isInt", expr)
+      case BoxedCharacterClass => expr instanceof globalVar(VarField.Char, CoreVar)
+      case BoxedByteClass      => genCallHelper(VarField.isByte, expr)
+      case BoxedShortClass     => genCallHelper(VarField.isShort, expr)
+      case BoxedIntegerClass   => genCallHelper(VarField.isInt, expr)
       case BoxedLongClass      => genIsLong(expr)
       case BoxedFloatClass     => genIsFloat(expr)
       case BoxedDoubleClass    => typeof(expr) === "number"
@@ -267,8 +267,8 @@ private[emitter] final class SJSGen(
       pos: Position): Tree = {
     import TreeDSL._
 
-    if (useBigIntForLongs) genCallHelper("isLong", expr)
-    else expr instanceof globalVar("c", LongImpl.RuntimeLongClass)
+    if (useBigIntForLongs) genCallHelper(VarField.isLong, expr)
+    else expr instanceof globalVar(VarField.c, LongImpl.RuntimeLongClass)
   }
 
   private def genIsFloat(expr: Tree)(
@@ -276,7 +276,7 @@ private[emitter] final class SJSGen(
       pos: Position): Tree = {
     import TreeDSL._
 
-    if (semantics.strictFloats) genCallHelper("isFloat", expr)
+    if (semantics.strictFloats) genCallHelper(VarField.isFloat, expr)
     else typeof(expr) === "number"
   }
 
@@ -295,9 +295,9 @@ private[emitter] final class SJSGen(
 
         case UndefType                     => wg(Block(expr, Undefined()))
         case BooleanType                   => wg(!(!expr))
-        case CharType                      => wg(genCallHelper("uC", expr))
+        case CharType                      => wg(genCallHelper(VarField.uC, expr))
         case ByteType | ShortType| IntType => wg(expr | 0)
-        case LongType                      => wg(genCallHelper("uJ", expr))
+        case LongType                      => wg(genCallHelper(VarField.uJ, expr))
         case DoubleType                    => wg(UnaryOp(irt.JSUnaryOp.+, expr))
         case StringType                    => wg(expr || StringLiteral(""))
 
@@ -313,21 +313,21 @@ private[emitter] final class SJSGen(
         case ClassType(ObjectClass) =>
           expr
         case ClassType(className) =>
-          Apply(globalVar("as", className), List(expr))
+          Apply(globalVar(VarField.as, className), List(expr))
 
         case ArrayType(ArrayTypeRef(base, depth)) =>
-          Apply(typeRefVar("asArrayOf", base), List(expr, IntLiteral(depth)))
+          Apply(typeRefVar(VarField.asArrayOf, base), List(expr, IntLiteral(depth)))
 
-        case UndefType   => genCallHelper("uV", expr)
-        case BooleanType => genCallHelper("uZ", expr)
-        case CharType    => genCallHelper("uC", expr)
-        case ByteType    => genCallHelper("uB", expr)
-        case ShortType   => genCallHelper("uS", expr)
-        case IntType     => genCallHelper("uI", expr)
-        case LongType    => genCallHelper("uJ", expr)
-        case FloatType   => genCallHelper("uF", expr)
-        case DoubleType  => genCallHelper("uD", expr)
-        case StringType  => genCallHelper("uT", expr)
+        case UndefType   => genCallHelper(VarField.uV, expr)
+        case BooleanType => genCallHelper(VarField.uZ, expr)
+        case CharType    => genCallHelper(VarField.uC, expr)
+        case ByteType    => genCallHelper(VarField.uB, expr)
+        case ShortType   => genCallHelper(VarField.uS, expr)
+        case IntType     => genCallHelper(VarField.uI, expr)
+        case LongType    => genCallHelper(VarField.uJ, expr)
+        case FloatType   => genCallHelper(VarField.uF, expr)
+        case DoubleType  => genCallHelper(VarField.uD, expr)
+        case StringType  => genCallHelper(VarField.uT, expr)
         case AnyType     => expr
 
         case NoType | NullType | NothingType | _:RecordType =>
@@ -386,7 +386,7 @@ private[emitter] final class SJSGen(
     BoxedFloatClass
   ) ::: nonSmallNumberHijackedClassesOrderedForTypeTests
 
-  def genCallHelper(helperName: String, args: Tree*)(
+  def genCallHelper(helperName: VarField, args: Tree*)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
     Apply(globalVar(helperName, CoreVar), args.toList)
@@ -405,7 +405,7 @@ private[emitter] final class SJSGen(
             Apply(genIdentBracketSelect(namespace, builtin.builtinName), args.toList)
       }
     } else {
-      WithGlobals(genCallHelper(builtin.builtinName, args: _*))
+      WithGlobals(genCallHelper(builtin.polyfillField, args: _*))
     }
   }
 
@@ -413,18 +413,18 @@ private[emitter] final class SJSGen(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
     import TreeDSL._
-    Apply(globalVar("m", moduleClass), Nil)
+    Apply(globalVar(VarField.m, moduleClass), Nil)
   }
 
   def genScalaClassNew(className: ClassName, ctor: MethodName, args: Tree*)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
-    val encodedClassVar = globalVar("c", className)
+    val encodedClassVar = globalVar(VarField.c, className)
     val argsList = args.toList
     if (globalKnowledge.hasInlineableInit(className)) {
       New(encodedClassVar, argsList)
     } else {
-      Apply(globalVar("ct", (className, ctor)), New(encodedClassVar, Nil) :: argsList)
+      Apply(globalVar(VarField.ct, (className, ctor)), New(encodedClassVar, Nil) :: argsList)
     }
   }
 
@@ -456,7 +456,7 @@ private[emitter] final class SJSGen(
   def genNonNativeJSClassConstructor(className: ClassName)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
-    Apply(globalVar("a", className), Nil)
+    Apply(globalVar(VarField.a, className), Nil)
   }
 
   def genLoadJSFromSpec(spec: irt.JSNativeLoadSpec,
@@ -487,7 +487,7 @@ private[emitter] final class SJSGen(
         val moduleValue = VarRef(externalModuleFieldIdent(module))
         path match {
           case "default" :: rest if moduleKind == ModuleKind.CommonJSModule =>
-            val defaultField = genCallHelper("moduleDefault", moduleValue)
+            val defaultField = genCallHelper(VarField.moduleDefault, moduleValue)
             WithGlobals(pathSelection(defaultField, rest))
           case _ =>
             WithGlobals(pathSelection(moduleValue, path))
@@ -513,7 +513,7 @@ private[emitter] final class SJSGen(
       case length :: Nil =>
         New(genArrayConstrOf(arrayTypeRef), length :: Nil)
       case _ =>
-        genCallHelper("newArrayObject", genClassDataOf(arrayTypeRef),
+        genCallHelper(VarField.newArrayObject, genClassDataOf(arrayTypeRef),
             ArrayConstr(lengths))
     }
   }
@@ -551,9 +551,9 @@ private[emitter] final class SJSGen(
 
     arrayTypeRef match {
       case ArrayTypeRef(primRef: PrimRef, 1) =>
-        globalVar("ac", primRef)
+        globalVar(VarField.ac, primRef)
       case ArrayTypeRef(ClassRef(ObjectClass), 1) =>
-        globalVar("ac", ObjectClass)
+        globalVar(VarField.ac, ObjectClass)
       case _ =>
         genClassDataOf(arrayTypeRef) DOT "constr"
     }
@@ -576,7 +576,7 @@ private[emitter] final class SJSGen(
       pos: Position): Tree = {
     typeRef match {
       case typeRef: NonArrayTypeRef =>
-        typeRefVar("d", typeRef)
+        typeRefVar(VarField.d, typeRef)
 
       case ArrayTypeRef(base, dims) =>
         val baseData = genClassDataOf(base)
@@ -598,6 +598,6 @@ private[emitter] final class SJSGen(
     if (semantics.nullPointers == CheckedBehavior.Unchecked)
       obj
     else
-      genCallHelper("n", obj)
+      genCallHelper(VarField.n, obj)
   }
 }
