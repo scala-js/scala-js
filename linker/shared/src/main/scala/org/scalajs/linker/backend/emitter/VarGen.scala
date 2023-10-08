@@ -262,7 +262,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
       origName: OriginalName = NoOriginalName)(
       implicit pos: Position): Ident = {
     val name =
-      if (subField == "") "$" + field
+      if (subField == "") ("$" + field).intern()
       else "$" + field + "_" + subField
 
     Ident(avoidClashWithGlobalRef(name), origName)
