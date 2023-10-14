@@ -358,6 +358,11 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
       def reprClass(x: (ClassName, MethodName)): ClassName = x._1
     }
 
+    implicit object DispatcherScope extends Scope[MethodName] {
+      def subField(x: MethodName): String = genName(x)
+      def reprClass(x: MethodName): ClassName = ObjectClass
+    }
+
     implicit object CoreJSLibScope extends Scope[CoreVar.type] {
       def subField(x: CoreVar.type): String = ""
       def reprClass(x: CoreVar.type): ClassName = ObjectClass

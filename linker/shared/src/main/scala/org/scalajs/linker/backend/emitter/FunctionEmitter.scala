@@ -2247,7 +2247,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             js.Apply(newReceiver(false) DOT transformMethodIdent(method), newArgs)
 
           def genDispatchApply(): js.Tree =
-            genCallHelper("dp_" + genName(methodName), newReceiver(false) :: newArgs: _*)
+            js.Apply(globalVar("dp", methodName), newReceiver(false) :: newArgs)
 
           def genHijackedMethodApply(className: ClassName): js.Tree =
             genApplyStaticLike("f", className, method, newReceiver(className == BoxedCharacterClass) :: newArgs)

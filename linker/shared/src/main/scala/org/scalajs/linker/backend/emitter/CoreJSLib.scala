@@ -823,8 +823,8 @@ private[emitter] object CoreJSLib {
 
       def defineDispatcher(methodName: MethodName, args: List[VarRef],
           body: Tree): List[Tree] = {
-        defineFunction("dp_" + genName(methodName),
-            paramList((instance :: args): _*), body)
+        val params = paramList((instance :: args): _*)
+        extractWithGlobals(globalFunctionDef("dp", methodName, params, None, body))
       }
 
       /* A standard dispatcher performs a type test on the instance and then
