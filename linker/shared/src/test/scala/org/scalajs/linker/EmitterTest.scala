@@ -20,6 +20,7 @@ import org.junit.Test
 import org.junit.Assert._
 
 import org.scalajs.ir.Trees._
+import org.scalajs.ir.Version
 
 import org.scalajs.junit.async._
 
@@ -126,6 +127,99 @@ class EmitterTest {
           MainTestModuleInitializers, MemOutputDirectory(), logger)
     } yield {
       logger.allLogLines.assertContains(EmitterSetOfDangerousGlobalRefsChangedMessage)
+    }
+  }
+
+  private val EmitterClassTreeCacheStatsMessage =
+    raw"""Emitter: Class tree cache stats: reused: (\d+) -- invalidated: (\d+)""".r
+
+  private val EmitterMethodTreeCacheStatsMessage =
+    raw"""Emitter: Method tree cache stats: reused: (\d+) -- invalidated: (\d+)""".r
+
+  private val EmitterPostTransformStatsMessage =
+    raw"""Emitter: Post transforms: total: (\d+) -- nested: (\d+) -- nested avoided: (\d+)""".r
+
+  /** Makes sure that linking a "substantial" program (using `println`) twice
+   *  does not invalidate any cache or top-level tree in the second run.
+   */
+  @Test
+  def noInvalidatedCacheOrTopLevelTreeInSecondRun(): AsyncResult = await {
+    val classDefs = List(
+      mainTestClassDef(systemOutPrintln(str("Hello world!")))
+    )
+
+    val logger1 = new CapturingLogger
+    val logger2 = new CapturingLogger
+
+    val config = StandardConfig()
+      .withCheckIR(true)
+      .withModuleKind(ModuleKind.ESModule)
+
+    val linker = StandardImpl.linker(config)
+    val classDefsFiles = classDefs.map(MemClassDefIRFile(_, Version.fromInt(0)))
+
+    val initializers = MainTestModuleInitializers
+    val outputDir = MemOutputDirectory()
+
+    for {
+      javalib <- TestIRRepo.javalib
+      allIRFiles = javalib ++ classDefsFiles
+      _ <- linker.link(allIRFiles, initializers, outputDir, logger1)
+      _ <- linker.link(allIRFiles, initializers, outputDir, logger2)
+    } yield {
+      val lines1 = logger1.allLogLines
+      val lines2 = logger2.allLogLines
+
+      // Class tree caches
+
+      val Seq(classCacheReused1, classCacheInvalidated1) =
+        lines1.assertContainsMatch(EmitterClassTreeCacheStatsMessage).map(_.toInt)
+
+      val Seq(classCacheReused2, classCacheInvalidated2) =
+        lines2.assertContainsMatch(EmitterClassTreeCacheStatsMessage).map(_.toInt)
+
+      // At the time of writing this test, classCacheInvalidated1 reports 47
+      assertTrue(
+          s"Not enough invalidated class caches (got $classCacheInvalidated1); extraction must have gone wrong",
+          classCacheInvalidated1 > 40)
+
+      assertEquals("First run must not reuse any class cache", 0, classCacheReused1)
+
+      assertEquals("Second run must reuse all class caches", classCacheReused2, classCacheInvalidated1)
+      assertEquals("Second run must not invalidate any class cache", 0, classCacheInvalidated2)
+
+      // Method tree caches
+
+      val Seq(methodCacheReused1, methodCacheInvalidated1) =
+        lines1.assertContainsMatch(EmitterMethodTreeCacheStatsMessage).map(_.toInt)
+
+      val Seq(methodCacheReused2, methodCacheInvalidated2) =
+        lines2.assertContainsMatch(EmitterMethodTreeCacheStatsMessage).map(_.toInt)
+
+      // At the time of writing this test, methodCacheInvalidated1 reports 107
+      assertTrue(
+          s"Not enough invalidated method caches (got $methodCacheInvalidated1); extraction must have gone wrong",
+          methodCacheInvalidated1 > 100)
+
+      assertEquals("First run must not reuse any method cache", 0, methodCacheReused1)
+
+      assertEquals("Second run must reuse all method caches", methodCacheReused2, methodCacheInvalidated1)
+      assertEquals("Second run must not invalidate any method cache", 0, methodCacheInvalidated2)
+
+      // Post transforms
+
+      val Seq(postTransforms1, _, _) =
+        lines1.assertContainsMatch(EmitterPostTransformStatsMessage).map(_.toInt)
+
+      val Seq(postTransforms2, _, _) =
+        lines2.assertContainsMatch(EmitterPostTransformStatsMessage).map(_.toInt)
+
+      // At the time of writing this test, postTransformsTotal1 reports 216
+      assertTrue(
+          s"Not enough post transforms (got $postTransforms1); extraction must have gone wrong",
+          postTransforms1 > 200)
+
+      assertEquals("Second run must not have any post transforms", 0, postTransforms2)
     }
   }
 }

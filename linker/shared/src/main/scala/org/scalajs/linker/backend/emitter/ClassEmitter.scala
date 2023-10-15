@@ -45,7 +45,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   def buildClass(className: ClassName, isJSClass: Boolean, jsClassCaptures: Option[List[ParamDef]],
       hasClassInitializer: Boolean,
-      superClass: Option[ClassIdent], storeJSSuperClass: Option[js.Tree], useESClass: Boolean,
+      superClass: Option[ClassIdent], storeJSSuperClass: List[js.Tree], useESClass: Boolean,
       members: List[js.Tree])(
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge, pos: Position): WithGlobals[List[js.Tree]] = {
@@ -75,7 +75,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       val createClassValueVar = genEmptyMutableLet(classValueIdent)
 
       val entireClassDefWithGlobals = if (useESClass) {
-        genJSSuperCtor(superClass, storeJSSuperClass.isDefined).map { jsSuperClass =>
+        genJSSuperCtor(superClass, storeJSSuperClass.nonEmpty).map { jsSuperClass =>
           List(classValueVar := js.ClassDef(Some(classValueIdent), Some(jsSuperClass), members))
         }
       } else {
@@ -86,7 +86,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         entireClassDef <- entireClassDefWithGlobals
         createStaticFields <- genCreateStaticFieldsOfJSClass(className)
       } yield {
-        storeJSSuperClass.toList ::: entireClassDef ::: createStaticFields
+        storeJSSuperClass ::: entireClassDef ::: createStaticFields
       }
 
       jsClassCaptures.fold {
