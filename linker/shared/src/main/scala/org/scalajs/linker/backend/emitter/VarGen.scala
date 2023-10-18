@@ -39,7 +39,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
   import jsGen._
   import nameGen._
 
-  def globalVar[T: Scope](field: String, scope: T,
+  def globalVar[T: Scope](field: VarField, scope: T,
       origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
@@ -51,7 +51,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     }
   }
 
-  def globalClassDef[T: Scope](field: String, scope: T,
+  def globalClassDef[T: Scope](field: VarField, scope: T,
       parentClass: Option[Tree], members: List[Tree],
       origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext, pos: Position): WithGlobals[List[Tree]] = {
@@ -59,7 +59,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     maybeExport(ident, ClassDef(Some(ident), parentClass, members), mutable = false)
   }
 
-  def globalFunctionDef[T: Scope](field: String, scope: T,
+  def globalFunctionDef[T: Scope](field: VarField, scope: T,
       args: List[ParamDef], restParam: Option[ParamDef], body: Tree,
       origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext, pos: Position): WithGlobals[List[Tree]] = {
@@ -67,7 +67,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     maybeExport(ident, FunctionDef(ident, args, restParam, body), mutable = false)
   }
 
-  def globalVarDef[T: Scope](field: String, scope: T, value: Tree,
+  def globalVarDef[T: Scope](field: VarField, scope: T, value: Tree,
       origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext, pos: Position): WithGlobals[List[Tree]] = {
     val ident = globalVarIdent(field, scope, origName)
@@ -75,7 +75,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
   }
 
   /** Attention: A globalVarDecl may only be modified from the module it was declared in. */
-  def globalVarDecl[T: Scope](field: String, scope: T,
+  def globalVarDecl[T: Scope](field: VarField, scope: T,
       origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext, pos: Position): WithGlobals[List[Tree]] = {
     val ident = globalVarIdent(field, scope, origName)
@@ -86,7 +86,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
    *  module. As such, an additional field needs to be provided for an
    *  additional setter. This is used when generating ES modules.
    */
-  def globallyMutableVarDef[T: Scope](field: String, setterField: String,
+  def globallyMutableVarDef[T: Scope](field: VarField, setterField: VarField,
       scope: T, value: Tree, origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext, pos: Position): WithGlobals[List[Tree]] = {
     val ident = globalVarIdent(field, scope, origName)
@@ -116,7 +116,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     globalKnowledge.getModule(scopeType.reprClass(scope)) != moduleContext.moduleID
   }
 
-  def globalVarExport[T: Scope](field: String, scope: T, exportName: ExportName,
+  def globalVarExport[T: Scope](field: VarField, scope: T, exportName: ExportName,
       origName: OriginalName = NoOriginalName)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
@@ -133,12 +133,12 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
   }
 
   /** Apply the provided body to a dynamically loaded global var */
-  def withDynamicGlobalVar[T: Scope](field: String, scope: T)(body: Tree => Tree)(
+  def withDynamicGlobalVar[T: Scope](field: VarField, scope: T)(body: Tree => Tree)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[Tree] = {
     val ident = globalVarIdent(field, scope)
 
-    val module = fileLevelVarIdent("$module")
+    val module = fileLevelVarIdent(VarField.module)
 
     def unitPromise = {
       globalRef("Promise").map { promise =>
@@ -186,7 +186,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     }
   }
 
-  private def globalVarIdent[T](field: String, scope: T,
+  private def globalVarIdent[T](field: VarField, scope: T,
       origName: OriginalName = NoOriginalName)(
       implicit pos: Position, scopeType: Scope[T]): Ident = {
     genericIdent(field, scopeType.subField(scope), origName)
@@ -205,7 +205,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
    *
    *  Returns the relevant coreJSLibVar for primitive types, globalVar otherwise.
    */
-  def typeRefVar(field: String, typeRef: NonArrayTypeRef)(
+  def typeRefVar(field: VarField, typeRef: NonArrayTypeRef)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
     /* Explicitly bringing `PrimRefScope` and `ClassScope` as local implicit
@@ -229,41 +229,41 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
     }
   }
 
-  def fileLevelVar(field: String, subField: String,
+  def fileLevelVar(field: VarField, subField: String,
       origName: OriginalName = NoOriginalName)(
       implicit pos: Position): VarRef = {
     VarRef(fileLevelVarIdent(field, subField, origName))
   }
 
-  def fileLevelVar(field: String)(implicit pos: Position): VarRef =
+  def fileLevelVar(field: VarField)(implicit pos: Position): VarRef =
     VarRef(fileLevelVarIdent(field))
 
-  def fileLevelVarIdent(field: String, subField: String,
+  def fileLevelVarIdent(field: VarField, subField: String,
       origName: OriginalName = NoOriginalName)(
       implicit pos: Position): Ident = {
     genericIdent(field, subField, origName)
   }
 
-  def fileLevelVarIdent(field: String)(implicit pos: Position): Ident =
+  def fileLevelVarIdent(field: VarField)(implicit pos: Position): Ident =
     fileLevelVarIdent(field, NoOriginalName)
 
-  def fileLevelVarIdent(field: String, origName: OriginalName)(
+  def fileLevelVarIdent(field: VarField, origName: OriginalName)(
       implicit pos: Position): Ident = {
     genericIdent(field, "", origName)
   }
 
   def externalModuleFieldIdent(moduleName: String)(implicit pos: Position): Ident =
-    fileLevelVarIdent("i", genModuleName(moduleName), OriginalName(moduleName))
+    fileLevelVarIdent(VarField.i, genModuleName(moduleName), OriginalName(moduleName))
 
   def internalModuleFieldIdent(module: ModuleID)(implicit pos: Position): Ident =
-    fileLevelVarIdent("j", genModuleName(module.id), OriginalName(module.id))
+    fileLevelVarIdent(VarField.j, genModuleName(module.id), OriginalName(module.id))
 
-  private def genericIdent(field: String, subField: String,
+  private def genericIdent(field: VarField, subField: String,
       origName: OriginalName = NoOriginalName)(
       implicit pos: Position): Ident = {
     val name =
-      if (subField == "") "$" + field
-      else "$" + field + "_" + subField
+      if (subField == "") field.str
+      else field.str + "_" + subField
 
     Ident(avoidClashWithGlobalRef(name), origName)
   }
@@ -356,6 +356,11 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
         genName(x._1) + "__" + genName(x._2)
 
       def reprClass(x: (ClassName, MethodName)): ClassName = x._1
+    }
+
+    implicit object DispatcherScope extends Scope[MethodName] {
+      def subField(x: MethodName): String = genName(x)
+      def reprClass(x: MethodName): ClassName = ObjectClass
     }
 
     implicit object CoreJSLibScope extends Scope[CoreVar.type] {
