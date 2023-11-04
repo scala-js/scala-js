@@ -43,7 +43,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   import nameGen._
   import varGen._
 
-  def buildClass(className: ClassName, kind: ClassKind, jsClassCaptures: Option[List[ParamDef]],
+  def buildClass(className: ClassName, isJSClass: Boolean, jsClassCaptures: Option[List[ParamDef]],
       hasClassInitializer: Boolean,
       superClass: Option[ClassIdent], jsSuperClass: Option[Tree], useESClass: Boolean, ctorDefs: List[js.Tree],
       memberDefs: List[js.MethodDef], exportedDefs: List[js.Tree])(
@@ -55,7 +55,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     def allES5Defs(classVar: js.Tree) =
       WithGlobals(ctorDefs ::: assignES5ClassMembers(classVar, memberDefs) ::: exportedDefs)
 
-    if (!kind.isJSClass) {
+    if (!isJSClass) {
       assert(jsSuperClass.isEmpty, className)
 
       if (useESClass) {
@@ -534,7 +534,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   }
 
   /** Generates a JS method. */
-  private def genJSMethod(className: ClassName, kind: ClassKind, useESClass: Boolean,
+  private def genJSMethod(className: ClassName, isJSClass: Boolean, useESClass: Boolean,
       method: JSMethodDef)(
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
@@ -550,29 +550,29 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       if (useESClass) {
         js.MethodDef(static = namespace.isStatic, propName, methodFun.args, methodFun.restParam, methodFun.body)
       } else {
-        val targetObject = exportTargetES5(className, kind, namespace)
+        val targetObject = exportTargetES5(className, isJSClass, namespace)
         js.Assign(genPropSelect(targetObject, propName), methodFun)
       }
     }
   }
 
   /** Generates a property. */
-  private def genJSProperty(className: ClassName, kind: ClassKind, useESClass: Boolean,
+  private def genJSProperty(className: ClassName, isJSClass: Boolean, useESClass: Boolean,
       property: JSPropertyDef)(
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
     if (useESClass)
       genJSPropertyES6(className, property)
     else
-      genJSPropertyES5(className, kind, property).map(_ :: Nil)
+      genJSPropertyES5(className, isJSClass, property).map(_ :: Nil)
   }
 
-  private def genJSPropertyES5(className: ClassName, kind: ClassKind, property: JSPropertyDef)(
+  private def genJSPropertyES5(className: ClassName, isJSClass: Boolean, property: JSPropertyDef)(
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     implicit val pos = property.pos
 
-    val targetObject = exportTargetES5(className, kind, property.flags.namespace)
+    val targetObject = exportTargetES5(className, isJSClass, property.flags.namespace)
 
     // optional getter definition
     val optGetterWithGlobals = property.getterBody map { body =>
@@ -627,13 +627,13 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     }
   }
 
-  private def exportTargetES5(className: ClassName, kind: ClassKind, namespace: MemberNamespace)(
+  private def exportTargetES5(className: ClassName, isJSClass: Boolean, namespace: MemberNamespace)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): js.Tree = {
     import TreeDSL._
 
     val classVarRef =
-      if (kind.isJSClass) fileLevelVar(VarField.b, genName(className))
+      if (isJSClass) fileLevelVar(VarField.b, genName(className))
       else globalVar(VarField.c, className)
 
     if (namespace.isStatic) classVarRef
@@ -943,15 +943,12 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     globalVar(VarField.c, className).prototype DOT "$classData" := globalVar(VarField.d, className)
   }
 
-  def genModuleAccessor(className: ClassName, kind: ClassKind)(
+  def genModuleAccessor(className: ClassName, isJSClass: Boolean)(
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge, pos: Position): WithGlobals[List[js.Tree]] = {
     import TreeDSL._
 
     val tpe = ClassType(className)
-
-    require(kind.hasModuleAccessor,
-        s"genModuleAccessor called with non-module class: $className")
 
     val moduleInstance = fileLevelVarIdent(VarField.n, genName(className))
 
@@ -962,7 +959,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
       val assignModule = {
         moduleInstanceVar := {
-          if (kind == ClassKind.JSModuleClass) {
+          if (isJSClass) {
             js.New(
                 genNonNativeJSClassConstructor(className),
                 Nil)
@@ -1002,12 +999,12 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     createAccessor.map(createModuleInstanceField :: _)
   }
 
-  def genExportedMember(className: ClassName, kind: ClassKind, useESClass: Boolean, member: JSMethodPropDef)(
+  def genExportedMember(className: ClassName, isJSClass: Boolean, useESClass: Boolean, member: JSMethodPropDef)(
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
     member match {
-      case m: JSMethodDef   => genJSMethod(className, kind, useESClass, m).map(_ :: Nil)
-      case p: JSPropertyDef => genJSProperty(className, kind, useESClass, p)
+      case m: JSMethodDef   => genJSMethod(className, isJSClass, useESClass, m).map(_ :: Nil)
+      case p: JSPropertyDef => genJSProperty(className, isJSClass, useESClass, p)
     }
   }
 
