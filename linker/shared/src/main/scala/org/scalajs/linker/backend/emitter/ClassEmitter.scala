@@ -45,15 +45,10 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   def buildClass(className: ClassName, isJSClass: Boolean, jsClassCaptures: Option[List[ParamDef]],
       hasClassInitializer: Boolean,
-      superClass: Option[ClassIdent], jsSuperClass: Option[Tree], useESClass: Boolean, ctorDefs: List[js.Tree],
-      memberDefs: List[js.MethodDef], exportedDefs: List[js.Tree])(
+      superClass: Option[ClassIdent], jsSuperClass: Option[Tree], useESClass: Boolean,
+      members: List[js.Tree])(
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge, pos: Position): WithGlobals[List[js.Tree]] = {
-
-    def allES6Defs = ctorDefs ::: memberDefs ::: exportedDefs
-
-    def allES5Defs(classVar: js.Tree) =
-      WithGlobals(ctorDefs ::: assignES5ClassMembers(classVar, memberDefs) ::: exportedDefs)
 
     if (!isJSClass) {
       assert(jsSuperClass.isEmpty, className)
@@ -66,10 +61,10 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         }
 
         WithGlobals.option(parentVarWithGlobals).flatMap { parentVar =>
-          globalClassDef(VarField.c, className, parentVar, allES6Defs)
+          globalClassDef(VarField.c, className, parentVar, members)
         }
       } else {
-        allES5Defs(globalVar(VarField.c, className))
+        WithGlobals(members)
       }
     } else {
       // Wrap the entire class def in an accessor function
@@ -87,10 +82,10 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
       val entireClassDefWithGlobals = if (useESClass) {
         genJSSuperCtor(superClass, jsSuperClass).map { jsSuperClass =>
-          List(classValueVar := js.ClassDef(Some(classValueIdent), Some(jsSuperClass), allES6Defs))
+          List(classValueVar := js.ClassDef(Some(classValueIdent), Some(jsSuperClass), members))
         }
       } else {
-        allES5Defs(classValueVar)
+        WithGlobals(members)
       }
 
       val classDefStatsWithGlobals = for {
@@ -470,9 +465,9 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     }
   }
 
-  def genMemberMethod(className: ClassName, method: MethodDef)(
+  def genMemberMethod(className: ClassName, isJSClass: Boolean, useESClass: Boolean, method: MethodDef)(
       implicit moduleContext: ModuleContext,
-      globalKnowledge: GlobalKnowledge): WithGlobals[js.MethodDef] = {
+      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
     assert(method.flags.namespace == MemberNamespace.Public)
 
     implicit val pos = method.pos
@@ -481,7 +476,13 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       methodFun <- desugarToFunction(className, method.args, method.body.get, method.resultType)
     } yield {
       val jsMethodName = genMemberMethodIdent(method.name, method.originalName)
-      js.MethodDef(static = false, jsMethodName, methodFun.args, methodFun.restParam, methodFun.body)
+
+      if (useESClass) {
+        js.MethodDef(static = false, jsMethodName, methodFun.args, methodFun.restParam, methodFun.body)
+      } else {
+        val targetObject = exportTargetES5(className, isJSClass, MemberNamespace.Public)
+        js.Assign(genPropSelect(targetObject, jsMethodName), methodFun)
+      }
     }
   }
 

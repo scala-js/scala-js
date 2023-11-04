@@ -532,8 +532,14 @@ final class Emitter(config: Emitter.Config) {
         val methodCache =
           classCache.getMemberMethodCache(method.methodName)
 
-        methodCache.getOrElseUpdate(method.version,
-            classEmitter.genMemberMethod(className, method)(moduleContext, methodCache))
+        val version = Version.combine(isJSClassVersion, method.version)
+        methodCache.getOrElseUpdate(version,
+            classEmitter.genMemberMethod(
+                className, // invalidated by overall class cache
+                isJSClass, // invalidated by isJSClassVersion
+                useESClass, // invalidated by isJSClassVersion
+                method // invalidated by method.version
+            )(moduleContext, methodCache))
       }
 
       // Exported Members
@@ -575,9 +581,7 @@ final class Emitter(config: Emitter.Config) {
               linkedClass.superClass, // invalidated by class version
               linkedClass.jsSuperClass, // invalidated by class version
               useESClass, // invalidated by class version (depends on kind, config and ancestry only)
-              ctor, // invalidated directly
-              memberMethods, // invalidated directly
-              exportedMembers.flatten // invalidated directly
+              ctor ::: memberMethods ::: exportedMembers.flatten // all 3 invalidated directly
             )(moduleContext, fullClassCache, linkedClass.pos) // pos invalidated by class version
           } yield {
             clazz
@@ -770,7 +774,7 @@ final class Emitter(config: Emitter.Config) {
       Array.fill(MemberNamespace.Count)(mutable.Map.empty[MethodName, MethodCache[List[js.Tree]]])
 
     private[this] val _memberMethodCache =
-      mutable.Map.empty[MethodName, MethodCache[js.MethodDef]]
+      mutable.Map.empty[MethodName, MethodCache[js.Tree]]
 
     private[this] var _constructorCache: Option[MethodCache[List[js.Tree]]] = None
 
@@ -810,7 +814,7 @@ final class Emitter(config: Emitter.Config) {
     }
 
     def getMemberMethodCache(
-        methodName: MethodName): MethodCache[js.MethodDef] = {
+        methodName: MethodName): MethodCache[js.Tree] = {
       _memberMethodCache.getOrElseUpdate(methodName, new MethodCache)
     }
 
@@ -897,7 +901,7 @@ final class Emitter(config: Emitter.Config) {
     private[this] var _tree: WithGlobals[List[js.Tree]] = null
     private[this] var _lastVersion: Version = Version.Unversioned
     private[this] var _lastCtor: WithGlobals[List[js.Tree]] = null
-    private[this] var _lastMemberMethods: List[WithGlobals[js.MethodDef]] = null
+    private[this] var _lastMemberMethods: List[WithGlobals[js.Tree]] = null
     private[this] var _lastExportedMembers: List[WithGlobals[List[js.Tree]]] = null
     private[this] var _cacheUsed = false
 
@@ -913,7 +917,7 @@ final class Emitter(config: Emitter.Config) {
     def startRun(): Unit = _cacheUsed = false
 
     def getOrElseUpdate(version: Version, ctor: WithGlobals[List[js.Tree]],
-        memberMethods: List[WithGlobals[js.MethodDef]], exportedMembers: List[WithGlobals[List[js.Tree]]],
+        memberMethods: List[WithGlobals[js.Tree]], exportedMembers: List[WithGlobals[List[js.Tree]]],
         compute: => WithGlobals[List[js.Tree]]): WithGlobals[List[js.Tree]] = {
 
       @tailrec
