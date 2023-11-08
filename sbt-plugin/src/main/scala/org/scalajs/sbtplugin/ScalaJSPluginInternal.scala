@@ -795,6 +795,8 @@ private[sbtplugin] object ScalaJSPluginInternal {
               scalaOrg %% "scala3-library_sjs1" % scalaV,
               /* scala3-library_sjs1 depends on some version of scalajs-library_2.13,
                * but we bump it to be at least scalaJSVersion.
+               * (It will also depend on some version of scalajs-scalalib_2.13,
+               * but we do not have to worry about that here.)
                */
               "org.scala-js" % "scalajs-library_2.13" % scalaJSVersion,
               "org.scala-js" % "scalajs-test-bridge_2.13" % scalaJSVersion % "test"
@@ -803,6 +805,12 @@ private[sbtplugin] object ScalaJSPluginInternal {
           prev ++ Seq(
               compilerPlugin("org.scala-js" % "scalajs-compiler" % scalaJSVersion cross CrossVersion.full),
               "org.scala-js" %% "scalajs-library" % scalaJSVersion,
+              /* scalajs-library depends on some version of scalajs-scalalib,
+               * but we want to make sure to bump it to be at least the one
+               * of our own `scalaVersion` (which would have back-published in
+               * the meantime).
+               */
+              "org.scala-js" %% "scalajs-scalalib" % s"$scalaV+$scalaJSVersion",
               "org.scala-js" %% "scalajs-test-bridge" % scalaJSVersion % "test"
           )
         }

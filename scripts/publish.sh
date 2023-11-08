@@ -10,7 +10,7 @@ fi
 SUFFIXES="2_12 2_13"
 
 JAVA_LIBS="javalibintf javalib"
-COMPILER="compiler jUnitPlugin"
+FULL_SCALA_LIBS="compiler jUnitPlugin scalalib"
 JS_LIBS="library irJS linkerInterfaceJS linkerJS testInterface testBridge jUnitRuntime"
 JVM_LIBS="ir linkerInterface linker testAdapter"
 SCALA_LIBS="$JS_LIBS $JVM_LIBS"
@@ -22,10 +22,10 @@ for p in $JAVA_LIBS; do
 done
 $CMD $ARGS
 
-# Publish compiler
+# Publish artifacts built with the full Scala version
 for s in $SUFFIXES; do
     ARGS=""
-    for p in $COMPILER; do
+    for p in $FULL_SCALA_LIBS; do
         ARGS="$ARGS +$p$s/publishSigned"
     done
     $CMD $ARGS

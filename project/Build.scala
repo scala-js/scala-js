@@ -197,7 +197,7 @@ object MyScalaJSPlugin extends AutoPlugin {
        */
       libraryDependencies ~= { libDeps =>
         val blacklist =
-          Set("scalajs-compiler", "scalajs-library", "scalajs-test-bridge")
+          Set("scalajs-compiler", "scalajs-library", "scalajs-scalalib", "scalajs-test-bridge")
         libDeps.filterNot(dep => blacklist.contains(dep.name))
       },
 
@@ -638,7 +638,7 @@ object Build {
    *  - `"semver-spec"` for artifacts whose public API can only break in major releases (e.g., `library`)
    *
    *  At the moment, we only set the version scheme for artifacts in the
-   *  "library ecosystem", i.e., scalajs-javalib scalajs-library,
+   *  "library ecosystem", i.e., scalajs-javalib, scalajs-scalalib, scalajs-library,
    *  scalajs-test-interface, scalajs-junit-runtime and scalajs-test-bridge.
    *  Artifacts of the "tools ecosystem" do not have a version scheme set, as
    *  the jury is still out on what is the best way to specify them.
@@ -749,7 +749,7 @@ object Build {
       }
     }
 
-    /** Depends on library and, by artificial transitivity, on the javalib. */
+    /** Depends on library and, by artificial transitivity, on the javalib and scalalib. */
     def dependsOnLibrary2_12: Project = {
       val library = LocalProject("library2_12")
 
@@ -757,9 +757,9 @@ object Build {
       val project1 = project
         .dependsOn(library)
 
-      /* Because the javalib's exportsJar is false, but its actual products are
-       * only in its jar, we must manually add the jar on the internal
-       * classpath.
+      /* Because the javalib's and scalalib's exportsJar is false, but their
+       * actual products are  only in their jar, we must manually add the jars
+       * on the internal classpath.
        * Once published, only jars are ever used, so this is fine.
        */
       if (isGeneratingForIDE) {
@@ -771,6 +771,12 @@ object Build {
               (javalib / Compile / packageBin).value,
             Test / internalDependencyClasspath +=
               (javalib / Compile / packageBin).value,
+          )
+          .settings(
+            Compile / internalDependencyClasspath +=
+              (scalalib.v2_12 / Compile / packageBin).value,
+            Test / internalDependencyClasspath +=
+              (scalalib.v2_12 / Compile / packageBin).value,
           )
       }
     }
@@ -818,21 +824,21 @@ object Build {
       }
     }
 
-    /** Depends on library and, by transitivity, on the javalib. */
+    /** Depends on library and, by artificial transitivity, on the javalib and scalalib. */
     def dependsOnLibrary: MultiScalaProject = {
       // Add a real dependency on the library
       val project1 = project
         .dependsOn(library)
 
-      /* Because the javalib's exportsJar is false, but its actual products are
-       * only in its jar, we must manually add the jar on the internal
-       * classpath.
+      /* Because the javalib's and scalalib's exportsJar is false, but their
+       * actual products are  only in their jar, we must manually add the jars
+       * on the internal classpath.
        * Once published, only jars are ever used, so this is fine.
        */
       if (isGeneratingForIDE) {
         project1
       } else {
-        // Actually add classpath dependencies on the javalib jar
+        // Actually add classpath dependencies on the javalib and scalalib jars
         project1
           .settings(
             Compile / internalDependencyClasspath +=
@@ -840,6 +846,14 @@ object Build {
             Test / internalDependencyClasspath +=
               (javalib / Compile / packageBin).value,
           )
+          .zippedSettings(scalalib) { scalalib =>
+            Def.settings(
+              Compile / internalDependencyClasspath +=
+                (scalalib / Compile / packageBin).value,
+              Test / internalDependencyClasspath +=
+                (scalalib / Compile / packageBin).value,
+            )
+          }
       }
     }
 
@@ -919,7 +933,7 @@ object Build {
             linkerInterface, linkerInterfaceJS, linker, linkerJS,
             testAdapter,
             javalibintf,
-            javalibInternal, javalib, scalalib, libraryAux, library,
+            javalibInternal, javalib, scalalibInternal, libraryAux, scalalib, library,
             testInterface, jUnitRuntime, testBridge, jUnitPlugin, jUnitAsyncJS,
             jUnitAsyncJVM, jUnitTestOutputsJS, jUnitTestOutputsJVM,
             helloworld, reversi, testingExample, testSuite, testSuiteJVM,
@@ -1358,12 +1372,14 @@ object Build {
             // JS libs
             publishLocal in javalib,
 
+            publishLocal in scalalib.v2_12,
             publishLocal in library.v2_12,
             publishLocal in testInterface.v2_12,
             publishLocal in testBridge.v2_12,
             publishLocal in jUnitRuntime.v2_12,
             publishLocal in irProjectJS.v2_12,
 
+            publishLocal in scalalib.v2_13,
             publishLocal in library.v2_13,
             publishLocal in testInterface.v2_13,
             publishLocal in testBridge.v2_13,
@@ -1478,7 +1494,7 @@ object Build {
    *  copied from `javalibInternal`.
    *
    *  This the "public" version of the javalib, as depended on by the `library`
-   *  and published on Maven.
+   *  and `scalalib`, and published on Maven.
    */
   lazy val javalib: Project = Project(
       id = "javalib", base = file("javalib-public")
@@ -1506,8 +1522,13 @@ object Build {
       },
   )
 
-  lazy val scalalib: MultiScalaProject = MultiScalaProject(
-      id = "scalalib", base = file("scalalib")
+  /** The project that actually compiles the `scalalib`, but which is not
+   *  exposed.
+   *
+   *  Instead, its products are copied in `scalalib`.
+   */
+  lazy val scalalibInternal: MultiScalaProject = MultiScalaProject(
+      id = "scalalibInternal", base = file("scalalib")
   ).enablePlugins(
       MyScalaJSPlugin
   ).settings(
@@ -1523,7 +1544,7 @@ object Build {
             s"https://raw.githubusercontent.com/scala/scala/v${scalaVersion.value}/src/library/")
         option ++ prev
       },
-      name := "Scala library for Scala.js",
+      name := "scalajs-scalalib-internal",
       publishArtifact in Compile := false,
       NoIDEExport.noIDEExportSettings,
       delambdafySetting,
@@ -1669,12 +1690,54 @@ object Build {
       recompileAllOrNothingSettings,
   ).withScalaJSCompiler.dependsOnLibraryNoJar
 
+  /** An empty project, without source nor dependencies (other than the javalib),
+   *  whose products are copied from `scalalibInternal` and `libraryAux`.
+   *
+   *  This the "public" version of the scalalib, as depended on by the `library`
+   *  and published on Maven.
+   */
+  lazy val scalalib: MultiScalaProject = MultiScalaProject(
+      id = "scalalib", base = file("scalalib-public")
+  ).dependsOn(
+    javalib,
+  ).settings(
+      commonSettings,
+      name := "scalajs-scalalib",
+      publishSettings(Some(VersionScheme.BreakOnMajor)),
+
+      /* The scalalib has a special version number that encodes both the Scala
+       * version and the Scala.js version. This allows us to back-publish for
+       * newer versions of Scala and older versions of Scala.js. The Scala
+       * version comes first so that Ivy resolution will choose 2.13.20+1.15.0
+       * over 2.13.18+1.16.0. The former might not be as optimized as the
+       * latter, but at least it will contain all the binary API that might be
+       * required.
+       */
+      version := scalaVersion.value + "+" + scalaJSVersion,
+
+      exportJars := false, // very important, otherwise there's a cycle with the `library`
+  ).zippedSettings(Seq("scalalibInternal", "libraryAux"))(localProjects =>
+      inConfig(Compile)(Seq(
+        // Use the .sjsir files from scalalibInternal and libraryAux (but not the .class files)
+        Compile / packageBin / mappings := {
+          val scalalibInternalMappings = (localProjects(0) / packageBin / mappings).value
+          val libraryAuxMappings = (localProjects(1) / packageBin / mappings).value
+          val allMappings = scalalibInternalMappings ++ libraryAuxMappings
+          allMappings.filter(_._2.endsWith(".sjsir"))
+        },
+    ))
+  )
+
   lazy val library: MultiScalaProject = MultiScalaProject(
       id = "library", base = file("library")
   ).enablePlugins(
       MyScalaJSPlugin
   ).dependsOn(
+      // Project dependencies
       javalibintf % Provided, javalib,
+  ).dependsOn(
+      // MultiScalaProject dependencies
+      scalalib,
   ).settings(
       commonSettings,
       publishSettings(Some(VersionScheme.BreakOnMajor)),
@@ -1726,25 +1789,6 @@ object Build {
            * still compile even with only part of the files being present.
            */
           dependencyClasspath in doc ++= exportedProducts.value,
-      ))
-  ).zippedSettings(Seq("scalalib", "libraryAux"))(localProjects =>
-        inConfig(Compile)(Seq(
-          /* Add the .sjsir files from other lib projects
-           * (but not .class files)
-           */
-          mappings in packageBin := {
-            val libraryMappings = (mappings in packageBin).value
-
-            val filter = ("*.sjsir": NameFilter)
-
-            val otherProducts = (
-                (products in localProjects(0)).value ++
-                (products in localProjects(1)).value)
-            val otherMappings =
-              otherProducts.flatMap(base => Path.selectSubpaths(base, filter))
-
-            libraryMappings ++ otherMappings
-          },
       ))
   ).withScalaJSCompiler
 
