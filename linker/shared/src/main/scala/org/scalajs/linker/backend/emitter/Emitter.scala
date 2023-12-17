@@ -447,6 +447,13 @@ final class Emitter(config: Emitter.Config) {
         (isJSClass || linkedClass.ancestors.contains(ThrowableClass))
       }
 
+      val hasJSSuperClass = linkedClass.jsSuperClass.isDefined
+
+      val storeJSSuperClass = linkedClass.jsSuperClass.map { jsSuperClass =>
+        extractWithGlobals(classTreeCache.storeJSSuperClass.getOrElseUpdate(
+            classEmitter.genStoreJSSuperClass(jsSuperClass)(moduleContext, classCache, linkedClass.pos)))
+      }
+
       // JS constructor
       val ctorWithGlobals = {
         /* The constructor depends both on the class version, and the version
@@ -468,7 +475,7 @@ final class Emitter(config: Emitter.Config) {
               classEmitter.genJSConstructor(
                 className, // invalidated by overall class cache (part of ancestors)
                 linkedClass.superClass, // invalidated by class version
-                linkedClass.jsSuperClass, // invalidated by class version
+                hasJSSuperClass, // invalidated by class version
                 useESClass, // invalidated by class version
                 jsConstructorDef // part of ctor version
               )(moduleContext, ctorCache, linkedClass.pos))
@@ -579,7 +586,7 @@ final class Emitter(config: Emitter.Config) {
               linkedClass.jsClassCaptures, // invalidated by class version
               hasClassInitializer, // invalidated by class version (optimizer cannot remove it)
               linkedClass.superClass, // invalidated by class version
-              linkedClass.jsSuperClass, // invalidated by class version
+              storeJSSuperClass, // invalidated by class version
               useESClass, // invalidated by class version (depends on kind, config and ancestry only)
               ctor ::: memberMethods ::: exportedMembers.flatten // all 3 invalidated directly
             )(moduleContext, fullClassCache, linkedClass.pos) // pos invalidated by class version
@@ -1047,6 +1054,7 @@ object Emitter {
 
   private final class DesugaredClassCache {
     val privateJSFields = new OneTimeCache[WithGlobals[List[js.Tree]]]
+    val storeJSSuperClass = new OneTimeCache[WithGlobals[js.Tree]]
     val instanceTests = new OneTimeCache[WithGlobals[List[js.Tree]]]
     val typeData = new OneTimeCache[WithGlobals[List[js.Tree]]]
     val setTypeData = new OneTimeCache[js.Tree]

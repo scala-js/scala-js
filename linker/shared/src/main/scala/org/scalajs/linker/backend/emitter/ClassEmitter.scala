@@ -45,13 +45,13 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   def buildClass(className: ClassName, isJSClass: Boolean, jsClassCaptures: Option[List[ParamDef]],
       hasClassInitializer: Boolean,
-      superClass: Option[ClassIdent], jsSuperClass: Option[Tree], useESClass: Boolean,
+      superClass: Option[ClassIdent], storeJSSuperClass: Option[js.Tree], useESClass: Boolean,
       members: List[js.Tree])(
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge, pos: Position): WithGlobals[List[js.Tree]] = {
 
     if (!isJSClass) {
-      assert(jsSuperClass.isEmpty, className)
+      assert(storeJSSuperClass.isEmpty, className)
 
       if (useESClass) {
         val parentVarWithGlobals = for (parentIdent <- superClass) yield {
@@ -70,18 +70,12 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       // Wrap the entire class def in an accessor function
       import TreeDSL._
 
-      val genStoreJSSuperClass = jsSuperClass.map { jsSuperClass =>
-        for (rhs <- desugarExpr(jsSuperClass, resultType = AnyType)) yield {
-          js.VarDef(fileLevelVar(VarField.superClass).ident, Some(rhs))
-        }
-      }
-
       val classValueIdent = fileLevelVarIdent(VarField.b, genName(className))
       val classValueVar = js.VarRef(classValueIdent)
       val createClassValueVar = genEmptyMutableLet(classValueIdent)
 
       val entireClassDefWithGlobals = if (useESClass) {
-        genJSSuperCtor(superClass, jsSuperClass).map { jsSuperClass =>
+        genJSSuperCtor(superClass, storeJSSuperClass.isDefined).map { jsSuperClass =>
           List(classValueVar := js.ClassDef(Some(classValueIdent), Some(jsSuperClass), members))
         }
       } else {
@@ -89,11 +83,10 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       }
 
       val classDefStatsWithGlobals = for {
-        optStoreJSSuperClass <- WithGlobals.option(genStoreJSSuperClass)
         entireClassDef <- entireClassDefWithGlobals
         createStaticFields <- genCreateStaticFieldsOfJSClass(className)
       } yield {
-        optStoreJSSuperClass.toList ::: entireClassDef ::: createStaticFields
+        storeJSSuperClass.toList ::: entireClassDef ::: createStaticFields
       }
 
       jsClassCaptures.fold {
@@ -225,7 +218,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   /** Generates the JS constructor for a JS class. */
   def genJSConstructor(className: ClassName, superClass: Option[ClassIdent],
-      jsSuperClass: Option[Tree], useESClass: Boolean, jsConstructorDef: JSConstructorDef)(
+      hasJSSuperClass: Boolean, useESClass: Boolean, jsConstructorDef: JSConstructorDef)(
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge, pos: Position): WithGlobals[List[js.Tree]] = {
 
@@ -240,7 +233,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     } else {
       for {
         ctorFun <- ctorFunWithGlobals
-        superCtor <- genJSSuperCtor(superClass, jsSuperClass)
+        superCtor <- genJSSuperCtor(superClass, hasJSSuperClass)
       } yield {
         import TreeDSL._
 
@@ -254,13 +247,21 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     }
   }
 
-  private def genJSSuperCtor(superClass: Option[ClassIdent], jsSuperClass: Option[Tree])(
+  private def genJSSuperCtor(superClass: Option[ClassIdent], hasJSSuperClass: Boolean)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): WithGlobals[js.Tree] = {
-    if (jsSuperClass.isDefined) {
+    if (hasJSSuperClass) {
       WithGlobals(fileLevelVar(VarField.superClass))
     } else {
       genJSClassConstructor(superClass.get.name, keepOnlyDangerousVarNames = true)
+    }
+  }
+
+  def genStoreJSSuperClass(jsSuperClass: Tree)(
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      pos: Position): WithGlobals[js.Tree] = {
+    for (rhs <- desugarExpr(jsSuperClass, resultType = AnyType)) yield {
+      js.VarDef(fileLevelVar(VarField.superClass).ident, Some(rhs))
     }
   }
 
