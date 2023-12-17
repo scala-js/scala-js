@@ -112,7 +112,7 @@ final class Emitter[E >: Null <: js.Tree](
   }
 
   private def emitInternal(moduleSet: ModuleSet,
-      logger: Logger): WithGlobals[Map[ModuleID, List[E]]] = {
+      logger: Logger): WithGlobals[Map[ModuleID, (List[E], Boolean)]] = {
     // Reset caching stats.
     statsClassesReused = 0
     statsClassesInvalidated = 0
@@ -169,7 +169,7 @@ final class Emitter[E >: Null <: js.Tree](
    */
   @tailrec
   private def emitAvoidGlobalClash(moduleSet: ModuleSet,
-      logger: Logger, secondAttempt: Boolean): WithGlobals[Map[ModuleID, List[E]]] = {
+      logger: Logger, secondAttempt: Boolean): WithGlobals[Map[ModuleID, (List[E], Boolean)]] = {
     val result = emitOnce(moduleSet, logger)
 
     val mentionedDangerousGlobalRefs =
@@ -194,7 +194,7 @@ final class Emitter[E >: Null <: js.Tree](
   }
 
   private def emitOnce(moduleSet: ModuleSet,
-      logger: Logger): WithGlobals[Map[ModuleID, List[E]]] = {
+      logger: Logger): WithGlobals[Map[ModuleID, (List[E], Boolean)]] = {
     // Genreate classes first so we can measure time separately.
     val generatedClasses = logger.time("Emitter: Generate Classes") {
       moduleSet.modules.map { module =>
@@ -212,18 +212,26 @@ final class Emitter[E >: Null <: js.Tree](
 
     val moduleTrees = logger.time("Emitter: Write trees") {
       moduleSet.modules.map { module =>
+        var changed = false
+        def extractChangedAndWithGlobals[T](x: (WithGlobals[T], Boolean)): T = {
+          changed ||= x._2
+          extractWithGlobals(x._1)
+        }
+
         val moduleContext = ModuleContext.fromModule(module)
         val moduleCache = state.moduleCaches.getOrElseUpdate(module.id, new ModuleCache)
 
         val moduleClasses = generatedClasses(module.id)
 
-        val moduleImports = extractWithGlobals {
+        changed ||= moduleClasses.exists(_.changed)
+
+        val moduleImports = extractChangedAndWithGlobals {
           moduleCache.getOrComputeImports(module.externalDependencies, module.internalDependencies) {
             genModuleImports(module).map(postTransform(_, 0))
           }
         }
 
-        val topLevelExports = extractWithGlobals {
+        val topLevelExports = extractChangedAndWithGlobals {
           /* We cache top level exports all together, rather than individually,
            * since typically there are few.
            */
@@ -233,7 +241,7 @@ final class Emitter[E >: Null <: js.Tree](
           }
         }
 
-        val moduleInitializers = extractWithGlobals {
+        val moduleInitializers = extractChangedAndWithGlobals {
           val initializers = module.initializers.toList
           moduleCache.getOrComputeInitializers(initializers) {
             WithGlobals.list(initializers.map { initializer =>
@@ -324,7 +332,7 @@ final class Emitter[E >: Null <: js.Tree](
           trackedGlobalRefs = unionPreserveEmpty(trackedGlobalRefs, genClass.trackedGlobalRefs)
         }
 
-        module.id -> allTrees
+        module.id -> (allTrees, changed)
       }
     }
 
@@ -382,8 +390,14 @@ final class Emitter[E >: Null <: js.Tree](
     val classCache = classCaches.getOrElseUpdate(
         new ClassID(linkedClass.ancestors, moduleContext), new ClassCache)
 
+    var changed = false
+    def extractChanged[T](x: (T, Boolean)): T = {
+      changed ||= x._2
+      x._1
+    }
+
     val classTreeCache =
-      classCache.getCache(linkedClass.version)
+      extractChanged(classCache.getCache(linkedClass.version))
 
     val kind = linkedClass.kind
 
@@ -395,6 +409,9 @@ final class Emitter[E >: Null <: js.Tree](
       trackedGlobalRefs = unionPreserveEmpty(trackedGlobalRefs, withGlobals.globalVarNames)
       withGlobals.value
     }
+
+    def extractWithGlobalsAndChanged[T](x: (WithGlobals[T], Boolean)): T =
+      extractWithGlobals(extractChanged(x))
 
     // Main part
 
@@ -426,7 +443,7 @@ final class Emitter[E >: Null <: js.Tree](
         val methodCache =
           classCache.getStaticLikeMethodCache(namespace, methodDef.methodName)
 
-        main ++= extractWithGlobals(methodCache.getOrElseUpdate(methodDef.version, {
+        main ++= extractWithGlobalsAndChanged(methodCache.getOrElseUpdate(methodDef.version, {
           classEmitter.genStaticLikeMethod(className, methodDef)(moduleContext, methodCache)
             .map(postTransform(_, 0))
         }))
@@ -486,7 +503,7 @@ final class Emitter[E >: Null <: js.Tree](
       }
 
       // JS constructor
-      val ctorWithGlobals = {
+      val ctorWithGlobals = extractChanged {
         /* The constructor depends both on the class version, and the version
          * of the inlineable init, if there is one.
          *
@@ -571,13 +588,13 @@ final class Emitter[E >: Null <: js.Tree](
           classCache.getMemberMethodCache(method.methodName)
 
         val version = Version.combine(isJSClassVersion, method.version)
-        methodCache.getOrElseUpdate(version,
+        extractChanged(methodCache.getOrElseUpdate(version,
             classEmitter.genMemberMethod(
                 className, // invalidated by overall class cache
                 isJSClass, // invalidated by isJSClassVersion
                 useESClass, // invalidated by isJSClassVersion
                 method // invalidated by method.version
-            )(moduleContext, methodCache).map(postTransform(_, memberIndent)))
+            )(moduleContext, methodCache).map(postTransform(_, memberIndent))))
       }
 
       // Exported Members
@@ -586,13 +603,13 @@ final class Emitter[E >: Null <: js.Tree](
       } yield {
         val memberCache = classCache.getExportedMemberCache(idx)
         val version = Version.combine(isJSClassVersion, member.version)
-        memberCache.getOrElseUpdate(version,
+        extractChanged(memberCache.getOrElseUpdate(version,
             classEmitter.genExportedMember(
                 className, // invalidated by overall class cache
                 isJSClass, // invalidated by isJSClassVersion
                 useESClass, // invalidated by isJSClassVersion
                 member // invalidated by version
-            )(moduleContext, memberCache).map(postTransform(_, memberIndent)))
+            )(moduleContext, memberCache).map(postTransform(_, memberIndent))))
       }
 
       val hasClassInitializer: Boolean = {
@@ -602,7 +619,7 @@ final class Emitter[E >: Null <: js.Tree](
         }
       }
 
-      val fullClass = {
+      val fullClass = extractChanged {
         val fullClassCache = classCache.getFullClassCache()
 
         fullClassCache.getOrElseUpdate(linkedClass.version, ctorWithGlobals,
@@ -714,7 +731,8 @@ final class Emitter[E >: Null <: js.Tree](
         main.result(),
         staticFields,
         staticInitialization,
-        trackedGlobalRefs
+        trackedGlobalRefs,
+        changed
     )
   }
 
@@ -751,7 +769,7 @@ final class Emitter[E >: Null <: js.Tree](
     }
 
     def getOrComputeImports(externalDependencies: Set[String], internalDependencies: Set[ModuleID])(
-        compute: => WithGlobals[List[E]]): WithGlobals[List[E]] = {
+        compute: => WithGlobals[List[E]]): (WithGlobals[List[E]], Boolean) = {
 
       _cacheUsed = true
 
@@ -759,20 +777,25 @@ final class Emitter[E >: Null <: js.Tree](
         _importsCache = compute
         _lastExternalDependencies = externalDependencies
         _lastInternalDependencies = internalDependencies
+        (_importsCache, true)
+      } else {
+        (_importsCache, false)
       }
-      _importsCache
+
     }
 
     def getOrComputeTopLevelExports(topLevelExports: List[LinkedTopLevelExport])(
-        compute: => WithGlobals[List[E]]): WithGlobals[List[E]] = {
+        compute: => WithGlobals[List[E]]): (WithGlobals[List[E]], Boolean) = {
 
       _cacheUsed = true
 
       if (!sameTopLevelExports(topLevelExports, _lastTopLevelExports)) {
         _topLevelExportsCache = compute
         _lastTopLevelExports = topLevelExports
+        (_topLevelExportsCache, true)
+      } else {
+        (_topLevelExportsCache, false)
       }
-      _topLevelExportsCache
     }
 
     private def sameTopLevelExports(tles1: List[LinkedTopLevelExport], tles2: List[LinkedTopLevelExport]): Boolean = {
@@ -803,15 +826,17 @@ final class Emitter[E >: Null <: js.Tree](
     }
 
     def getOrComputeInitializers(initializers: List[ModuleInitializer.Initializer])(
-        compute: => WithGlobals[List[E]]): WithGlobals[List[E]] = {
+        compute: => WithGlobals[List[E]]): (WithGlobals[List[E]], Boolean) = {
 
       _cacheUsed = true
 
       if (initializers != _lastInitializers) {
         _initializersCache = compute
         _lastInitializers = initializers
+        (_initializersCache, true)
+      } else {
+        (_initializersCache, false)
       }
-      _initializersCache
     }
 
     def cleanAfterRun(): Boolean = {
@@ -856,17 +881,18 @@ final class Emitter[E >: Null <: js.Tree](
       _fullClassCache.foreach(_.startRun())
     }
 
-    def getCache(version: Version): DesugaredClassCache[List[E]] = {
+    def getCache(version: Version): (DesugaredClassCache[List[E]], Boolean) = {
+      _cacheUsed = true
       if (_cache == null || !_lastVersion.sameVersion(version)) {
         invalidate()
         statsClassesInvalidated += 1
         _lastVersion = version
         _cache = new DesugaredClassCache[List[E]]
+        (_cache, true)
       } else {
         statsClassesReused += 1
+        (_cache, false)
       }
-      _cacheUsed = true
-      _cache
     }
 
     def getMemberMethodCache(
@@ -932,17 +958,18 @@ final class Emitter[E >: Null <: js.Tree](
     def startRun(): Unit = _cacheUsed = false
 
     def getOrElseUpdate(version: Version,
-        v: => WithGlobals[T]): WithGlobals[T] = {
+        v: => WithGlobals[T]): (WithGlobals[T], Boolean) = {
+      _cacheUsed = true
       if (_tree == null || !_lastVersion.sameVersion(version)) {
         invalidate()
         statsMethodsInvalidated += 1
         _tree = v
         _lastVersion = version
+        (_tree, true)
       } else {
         statsMethodsReused += 1
+        (_tree, false)
       }
-      _cacheUsed = true
-      _tree
     }
 
     def cleanAfterRun(): Boolean = {
@@ -974,7 +1001,7 @@ final class Emitter[E >: Null <: js.Tree](
 
     def getOrElseUpdate(version: Version, ctor: WithGlobals[List[E]],
         memberMethods: List[WithGlobals[List[E]]], exportedMembers: List[WithGlobals[List[E]]],
-        compute: => WithGlobals[List[E]]): WithGlobals[List[E]] = {
+        compute: => WithGlobals[List[E]]): (WithGlobals[List[E]], Boolean) = {
 
       @tailrec
       def allSame[A <: AnyRef](xs: List[A], ys: List[A]): Boolean = {
@@ -983,6 +1010,8 @@ final class Emitter[E >: Null <: js.Tree](
           ((xs.head eq ys.head) && allSame(xs.tail, ys.tail))
         }
       }
+
+      _cacheUsed = true
 
       if (_tree == null || !version.sameVersion(_lastVersion) || (_lastCtor ne ctor) ||
           !allSame(_lastMemberMethods, memberMethods) ||
@@ -993,10 +1022,10 @@ final class Emitter[E >: Null <: js.Tree](
         _lastCtor = ctor
         _lastMemberMethods = memberMethods
         _lastExportedMembers = exportedMembers
+        (_tree, true)
+      } else {
+        (_tree, false)
       }
-
-      _cacheUsed = true
-      _tree
     }
 
     def cleanAfterRun(): Boolean = {
@@ -1030,7 +1059,7 @@ object Emitter {
   /** Result of an emitter run. */
   final class Result[E] private[Emitter](
       val header: String,
-      val body: Map[ModuleID, List[E]],
+      val body: Map[ModuleID, (List[E], Boolean)],
       val footer: String,
       val topLevelVarDecls: List[String],
       val globalRefs: Set[String]
@@ -1121,7 +1150,8 @@ object Emitter {
       val main: List[E],
       val staticFields: List[E],
       val staticInitialization: List[E],
-      val trackedGlobalRefs: Set[String]
+      val trackedGlobalRefs: Set[String],
+      val changed: Boolean
   )
 
   private final class OneTimeCache[A >: Null] {

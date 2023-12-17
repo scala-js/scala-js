@@ -88,9 +88,7 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
     val writer = new OutputWriter(output, config, skipContentCheck) {
       protected def writeModuleWithoutSourceMap(moduleID: ModuleID, force: Boolean): Option[ByteBuffer] = {
         val cache = printedModuleSetCache.getModuleCache(moduleID)
-        val printedTrees = emitterResult.body(moduleID)
-
-        val changed = cache.update(printedTrees)
+        val (printedTrees, changed) = emitterResult.body(moduleID)
 
         if (force || changed || allChanged) {
           rewrittenModules.incrementAndGet()
@@ -114,9 +112,7 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
 
       protected def writeModuleWithSourceMap(moduleID: ModuleID, force: Boolean): Option[(ByteBuffer, ByteBuffer)] = {
         val cache = printedModuleSetCache.getModuleCache(moduleID)
-        val printedTrees = emitterResult.body(moduleID)
-
-        val changed = cache.update(printedTrees)
+        val (printedTrees, changed) = emitterResult.body(moduleID)
 
         if (force || changed || allChanged) {
           rewrittenModules.incrementAndGet()
@@ -220,8 +216,6 @@ private object BasicLinkerBackend {
 
   private sealed class PrintedModuleCache {
     private var cacheUsed = false
-    private var changed = false
-    private var lastPrintedTrees: List[js.PrintedTree] = Nil
 
     private var previousFinalJSFileSize: Int = 0
     private var previousFinalSourceMapSize: Int = 0
@@ -237,15 +231,6 @@ private object BasicLinkerBackend {
     def recordFinalSizes(finalJSFileSize: Int, finalSourceMapSize: Int): Unit = {
       previousFinalJSFileSize = finalJSFileSize
       previousFinalSourceMapSize = finalSourceMapSize
-    }
-
-    def update(newPrintedTrees: List[js.PrintedTree]): Boolean = {
-      val changed = !newPrintedTrees.corresponds(lastPrintedTrees)(_ eq _)
-      this.changed = changed
-      if (changed) {
-        lastPrintedTrees = newPrintedTrees
-      }
-      changed
     }
 
     def cleanAfterRun(): Boolean = {

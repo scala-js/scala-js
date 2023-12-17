@@ -106,7 +106,8 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
       sjsModule <- moduleSet.modules.headOption
     } yield {
       val closureChunk = logger.time("Closure: Create trees)") {
-        buildChunk(emitterResult.body(sjsModule.id))
+        val (trees, _) = emitterResult.body(sjsModule.id)
+        buildChunk(trees)
       }
 
       logger.time("Closure: Compiler pass") {
