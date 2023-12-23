@@ -619,37 +619,41 @@ final class Emitter[E >: Null <: js.Tree](
         }
       }
 
-      val fullClass = extractChanged {
-        val fullClassCache = classCache.getFullClassCache()
+      val fullClass = {
+        val fullClassChangeTracker = classCache.getFullClassChangeTracker()
 
-        fullClassCache.getOrElseUpdate(linkedClass.version, ctorWithGlobals,
-            memberMethodsWithGlobals, exportedMembersWithGlobals, {
-          for {
-            ctor <- ctorWithGlobals
-            memberMethods <- WithGlobals.flatten(memberMethodsWithGlobals)
-            exportedMembers <- WithGlobals.flatten(exportedMembersWithGlobals)
-            allMembers = ctor ::: memberMethods ::: exportedMembers
-            clazz <- classEmitter.buildClass(
-              className, // invalidated by overall class cache (part of ancestors)
-              isJSClass, // invalidated by class version
-              linkedClass.jsClassCaptures, // invalidated by class version
-              hasClassInitializer, // invalidated by class version (optimizer cannot remove it)
-              linkedClass.superClass, // invalidated by class version
-              storeJSSuperClass, // invalidated by class version
-              useESClass, // invalidated by class version (depends on kind, config and ancestry only)
-              allMembers // invalidated directly
-            )(moduleContext, fullClassCache, linkedClass.pos) // pos invalidated by class version
-          } yield {
-            // Avoid a nested post transform if we just got the original members back.
-            if (clazz eq allMembers) {
-              statsNestedPostTransformsAvoided += 1
-              allMembers
-            } else {
-              statsNestedPostTransforms += 1
-              postTransform(clazz, 0)
-            }
+        // Put changed state into a val to avoid short circuiting behavior of ||.
+        val classChanged = fullClassChangeTracker.trackChanged(
+            linkedClass.version, ctorWithGlobals,
+            memberMethodsWithGlobals, exportedMembersWithGlobals)
+
+        changed ||= classChanged
+
+        for {
+          ctor <- ctorWithGlobals
+          memberMethods <- WithGlobals.flatten(memberMethodsWithGlobals)
+          exportedMembers <- WithGlobals.flatten(exportedMembersWithGlobals)
+          allMembers = ctor ::: memberMethods ::: exportedMembers
+          clazz <- classEmitter.buildClass(
+            className, // invalidated by overall class cache (part of ancestors)
+            isJSClass, // invalidated by class version
+            linkedClass.jsClassCaptures, // invalidated by class version
+            hasClassInitializer, // invalidated by class version (optimizer cannot remove it)
+            linkedClass.superClass, // invalidated by class version
+            storeJSSuperClass, // invalidated by class version
+            useESClass, // invalidated by class version (depends on kind, config and ancestry only)
+            allMembers // invalidated directly
+          )(moduleContext, fullClassChangeTracker, linkedClass.pos) // pos invalidated by class version
+        } yield {
+          // Avoid a nested post transform if we just got the original members back.
+          if (clazz eq allMembers) {
+            statsNestedPostTransformsAvoided += 1
+            allMembers
+          } else {
+            statsNestedPostTransforms += 1
+            postTransform(clazz, 0)
           }
-        })
+        }
       }
 
       main ++= extractWithGlobals(fullClass)
@@ -862,7 +866,7 @@ final class Emitter[E >: Null <: js.Tree](
     private[this] val _exportedMembersCache =
       mutable.Map.empty[Int, MethodCache[List[E]]]
 
-    private[this] var _fullClassCache: Option[FullClassCache] = None
+    private[this] var _fullClassChangeTracker: Option[FullClassChangeTracker] = None
 
     override def invalidate(): Unit = {
       /* Do not invalidate contained methods, as they have their own
@@ -878,7 +882,7 @@ final class Emitter[E >: Null <: js.Tree](
       _methodCaches.foreach(_.valuesIterator.foreach(_.startRun()))
       _memberMethodCache.valuesIterator.foreach(_.startRun())
       _constructorCache.foreach(_.startRun())
-      _fullClassCache.foreach(_.startRun())
+      _fullClassChangeTracker.foreach(_.startRun())
     }
 
     def getCache(version: Version): (DesugaredClassCache[List[E]], Boolean) = {
@@ -917,10 +921,10 @@ final class Emitter[E >: Null <: js.Tree](
     def getExportedMemberCache(idx: Int): MethodCache[List[E]] =
       _exportedMembersCache.getOrElseUpdate(idx, new MethodCache)
 
-    def getFullClassCache(): FullClassCache = {
-      _fullClassCache.getOrElse {
-        val cache = new FullClassCache
-        _fullClassCache = Some(cache)
+    def getFullClassChangeTracker(): FullClassChangeTracker = {
+      _fullClassChangeTracker.getOrElse {
+        val cache = new FullClassChangeTracker
+        _fullClassChangeTracker = Some(cache)
         cache
       }
     }
@@ -934,8 +938,8 @@ final class Emitter[E >: Null <: js.Tree](
 
       _exportedMembersCache.filterInPlace((_, c) => c.cleanAfterRun())
 
-      if (_fullClassCache.exists(!_.cleanAfterRun()))
-        _fullClassCache = None
+      if (_fullClassChangeTracker.exists(!_.cleanAfterRun()))
+        _fullClassChangeTracker = None
 
       if (!_cacheUsed)
         invalidate()
@@ -980,28 +984,26 @@ final class Emitter[E >: Null <: js.Tree](
     }
   }
 
-  private class FullClassCache extends knowledgeGuardian.KnowledgeAccessor {
-    private[this] var _tree: WithGlobals[List[E]] = null
+  private class FullClassChangeTracker extends knowledgeGuardian.KnowledgeAccessor {
     private[this] var _lastVersion: Version = Version.Unversioned
     private[this] var _lastCtor: WithGlobals[List[E]] = null
     private[this] var _lastMemberMethods: List[WithGlobals[List[E]]] = null
     private[this] var _lastExportedMembers: List[WithGlobals[List[E]]] = null
-    private[this] var _cacheUsed = false
+    private[this] var _trackerUsed = false
 
     override def invalidate(): Unit = {
       super.invalidate()
-      _tree = null
       _lastVersion = Version.Unversioned
       _lastCtor = null
       _lastMemberMethods = null
       _lastExportedMembers = null
     }
 
-    def startRun(): Unit = _cacheUsed = false
+    def startRun(): Unit = _trackerUsed = false
 
-    def getOrElseUpdate(version: Version, ctor: WithGlobals[List[E]],
-        memberMethods: List[WithGlobals[List[E]]], exportedMembers: List[WithGlobals[List[E]]],
-        compute: => WithGlobals[List[E]]): (WithGlobals[List[E]], Boolean) = {
+    def trackChanged(version: Version, ctor: WithGlobals[List[E]],
+        memberMethods: List[WithGlobals[List[E]]],
+        exportedMembers: List[WithGlobals[List[E]]]): Boolean = {
 
       @tailrec
       def allSame[A <: AnyRef](xs: List[A], ys: List[A]): Boolean = {
@@ -1011,28 +1013,33 @@ final class Emitter[E >: Null <: js.Tree](
         }
       }
 
-      _cacheUsed = true
+      _trackerUsed = true
 
-      if (_tree == null || !version.sameVersion(_lastVersion) || (_lastCtor ne ctor) ||
-          !allSame(_lastMemberMethods, memberMethods) ||
-          !allSame(_lastExportedMembers, exportedMembers)) {
+      val changed = {
+        !version.sameVersion(_lastVersion) ||
+        (_lastCtor ne ctor) ||
+        !allSame(_lastMemberMethods, memberMethods) ||
+        !allSame(_lastExportedMembers, exportedMembers)
+      }
+
+      if (changed) {
+        // Input has changed or we were invalidated.
+        // Clean knowledge tracking and re-track dependencies.
         invalidate()
-        _tree = compute
         _lastVersion = version
         _lastCtor = ctor
         _lastMemberMethods = memberMethods
         _lastExportedMembers = exportedMembers
-        (_tree, true)
-      } else {
-        (_tree, false)
       }
+
+      changed
     }
 
     def cleanAfterRun(): Boolean = {
-      if (!_cacheUsed)
+      if (!_trackerUsed)
         invalidate()
 
-      _cacheUsed
+      _trackerUsed
     }
   }
 
