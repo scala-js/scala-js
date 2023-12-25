@@ -48,7 +48,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
     script
   }
 
-  def transformStat(tree: Tree)(implicit parentPos: Position): Node =
+  private def transformStat(tree: Tree)(implicit parentPos: Position): Node =
     innerTransformStat(tree, tree.pos orElse parentPos)
 
   private def innerTransformStat(tree: Tree, pos_in: Position): Node = {
@@ -276,7 +276,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
         membersBlock)
   }
 
-  def transformExpr(tree: Tree)(implicit parentPos: Position): Node =
+  private def transformExpr(tree: Tree)(implicit parentPos: Position): Node =
     innerTransformExpr(tree, tree.pos orElse parentPos)
 
   private def innerTransformExpr(tree: Tree, pos_in: Position): Node = {
@@ -397,15 +397,15 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
     new Node(Token.FUNCTION, nameNode, paramList, transformBlock(body))
   }
 
-  def transformName(ident: Ident)(implicit parentPos: Position): Node =
+  private def transformName(ident: Ident)(implicit parentPos: Position): Node =
     setNodePosition(Node.newString(Token.NAME, ident.name),
         ident.pos orElse parentPos)
 
-  def transformLabel(ident: Ident)(implicit parentPos: Position): Node =
+  private def transformLabel(ident: Ident)(implicit parentPos: Position): Node =
     setNodePosition(Node.newString(Token.LABEL_NAME, ident.name),
         ident.pos orElse parentPos)
 
-  def transformObjectLitField(name: PropertyName, value: Tree)(
+  private def transformObjectLitField(name: PropertyName, value: Tree)(
       implicit parentPos: Position): Node = {
 
     val transformedValue = transformExpr(value)
@@ -427,7 +427,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
     setNodePosition(node, name.pos.orElse(parentPos))
   }
 
-  def transformBlock(tree: Tree)(implicit parentPos: Position): Node = {
+  private def transformBlock(tree: Tree)(implicit parentPos: Position): Node = {
     val pos = if (tree.pos.isDefined) tree.pos else parentPos
     wrapTransform(tree) {
       case Block(stats) =>
@@ -437,14 +437,14 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
     } (pos)
   }
 
-  def transformBlock(stats: List[Tree], blockPos: Position): Node = {
+  private def transformBlock(stats: List[Tree], blockPos: Position): Node = {
     val block = new Node(Token.BLOCK)
     for (node <- transformBlockStats(stats)(blockPos))
       block.addChildToBack(node)
     block
   }
 
-  def transformBlockStats(stats: List[Tree])(
+  private def transformBlockStats(stats: List[Tree])(
       implicit parentPos: Position): List[Node] = {
 
     @inline def ctorDoc(): JSDocInfo = {
