@@ -73,15 +73,8 @@ object Printers {
           }
         case _ =>
           printStat(tree)
-          if (shouldPrintSepAfterTree(tree))
-            print(';')
           println()
       }
-    }
-
-    protected def shouldPrintSepAfterTree(tree: Tree): Boolean = tree match {
-      case _:DocComment | _:FunctionDef | _:ClassDef => false
-      case _                                         => true
     }
 
     protected def printRow(ts: List[Tree], start: Char, end: Char): Unit = {
@@ -105,11 +98,8 @@ object Printers {
             val x = rest.head
             rest = rest.tail
             printStat(x)
-            if (rest.nonEmpty) {
-              if (shouldPrintSepAfterTree(x))
-                print(';')
+            if (rest.nonEmpty)
               println()
-            }
           }
 
         case _ =>
@@ -146,6 +136,11 @@ object Printers {
       printTree(tree, isStat = false)
 
     def printTree(tree: Tree, isStat: Boolean): Unit = {
+      def printSeparatorIfStat() = {
+        if (isStat)
+          print(';')
+      }
+
       tree match {
         // Comments
 
@@ -178,6 +173,8 @@ object Printers {
             print(" = ")
             print(rhs)
           }
+          // VarDef is an "expr" in a "For" / "ForIn" tree
+          printSeparatorIfStat()
 
         case Let(ident, mutable, optRhs) =>
           print(if (mutable) "let " else "const ")
@@ -186,6 +183,8 @@ object Printers {
             print(" = ")
             print(rhs)
           }
+          // Let is an "expr" in a "For" / "ForIn" tree
+          printSeparatorIfStat()
 
         case ParamDef(ident) =>
           print(ident)
@@ -210,10 +209,12 @@ object Printers {
           print(lhs)
           print(" = ")
           print(rhs)
+          printSeparatorIfStat()
 
         case Return(expr) =>
           print("return ")
           print(expr)
+          print(';')
 
         case If(cond, thenp, elsep) =>
           if (isStat) {
@@ -306,19 +307,22 @@ object Printers {
         case Throw(expr) =>
           print("throw ")
           print(expr)
+          print(';')
 
         case Break(label) =>
-          if (label.isEmpty) print("break")
+          if (label.isEmpty) print("break;")
           else {
             print("break ")
             print(label.get)
+            print(';')
           }
 
         case Continue(label) =>
-          if (label.isEmpty) print("continue")
+          if (label.isEmpty) print("continue;")
           else {
             print("continue ")
             print(label.get)
+            print(';')
           }
 
         case Switch(selector, cases, default) =>
@@ -354,7 +358,7 @@ object Printers {
           print('}')
 
         case Debugger() =>
-          print("debugger")
+          print("debugger;")
 
         // Expressions
 
@@ -375,6 +379,7 @@ object Printers {
             print(')')
           }
           printArgs(args)
+          printSeparatorIfStat()
 
         case DotSelect(qualifier, item) =>
           qualifier match {
@@ -387,27 +392,33 @@ object Printers {
           }
           print(".")
           print(item)
+          printSeparatorIfStat()
 
         case BracketSelect(qualifier, item) =>
           print(qualifier)
           print('[')
           print(item)
           print(']')
+          printSeparatorIfStat()
 
         case Apply(fun, args) =>
           print(fun)
           printArgs(args)
+          printSeparatorIfStat()
 
         case ImportCall(arg) =>
           print("import(")
           print(arg)
           print(')')
+          printSeparatorIfStat()
 
         case NewTarget() =>
           print("new.target")
+          printSeparatorIfStat()
 
         case ImportMeta()  =>
           print("import.meta")
+          printSeparatorIfStat()
 
         case Spread(items) =>
           print("...")
@@ -416,6 +427,7 @@ object Printers {
         case Delete(prop) =>
           print("delete ")
           print(prop)
+          printSeparatorIfStat()
 
         case UnaryOp(op, lhs) =>
           import ir.Trees.JSUnaryOp._
@@ -433,6 +445,7 @@ object Printers {
           }
           print(lhs)
           print(')')
+          printSeparatorIfStat()
 
         case IncDec(prefix, inc, arg) =>
           val op = if (inc) "++" else "--"
@@ -443,6 +456,7 @@ object Printers {
           if (!prefix)
             print(op)
           print(')')
+          printSeparatorIfStat()
 
         case BinaryOp(op, lhs, rhs) =>
           import ir.Trees.JSBinaryOp._
@@ -482,13 +496,15 @@ object Printers {
           print(' ')
           print(rhs)
           print(')')
+          printSeparatorIfStat()
 
         case ArrayConstr(items) =>
           printRow(items, '[', ']')
+          printSeparatorIfStat()
 
         case ObjectConstr(Nil) =>
           if (isStat)
-            print("({})") // force expression position for the object literal
+            print("({});") // force expression position for the object literal
           else
             print("{}")
 
@@ -514,18 +530,21 @@ object Printers {
           println()
           print('}')
           if (isStat)
-            print(')')
+            print(");")
 
         // Literals
 
         case Undefined() =>
           print("(void 0)")
+          printSeparatorIfStat()
 
         case Null() =>
           print("null")
+          printSeparatorIfStat()
 
         case BooleanLiteral(value) =>
           print(if (value) "true" else "false")
+          printSeparatorIfStat()
 
         case IntLiteral(value) =>
           if (value >= 0) {
@@ -535,6 +554,7 @@ object Printers {
             print(value.toString)
             print(')')
           }
+          printSeparatorIfStat()
 
         case DoubleLiteral(value) =>
           if (value == 0 && 1 / value < 0) {
@@ -546,11 +566,13 @@ object Printers {
             print(value.toString)
             print(')')
           }
+          printSeparatorIfStat()
 
         case StringLiteral(value) =>
           print('\"')
           printEscapeJS(value)
           print('\"')
+          printSeparatorIfStat()
 
         case BigIntLiteral(value) =>
           if (value >= 0) {
@@ -561,14 +583,17 @@ object Printers {
             print(value.toString)
             print("n)")
           }
+          printSeparatorIfStat()
 
         // Atomic expressions
 
         case VarRef(ident) =>
           print(ident)
+          printSeparatorIfStat()
 
         case This() =>
           print("this")
+          printSeparatorIfStat()
 
         case Function(arrow, args, restParam, body) =>
           if (arrow) {
@@ -595,6 +620,7 @@ object Printers {
             printBlock(body)
             print(')')
           }
+          printSeparatorIfStat()
 
         // Named function definition
 
@@ -624,8 +650,7 @@ object Printers {
           var rest = members
           while (rest.nonEmpty) {
             println()
-            print(rest.head)
-            print(';')
+            printStat(rest.head)
             rest = rest.tail
           }
           undent(); println(); print('}')
@@ -677,12 +702,14 @@ object Printers {
           }
           print(" } from ")
           print(from: Tree)
+          print(';')
 
         case ImportNamespace(binding, from) =>
           print("import * as ")
           print(binding)
           print(" from ")
           print(from: Tree)
+          print(';')
 
         case Export(bindings) =>
           print("export { ")
@@ -699,7 +726,7 @@ object Printers {
             print(binding._2)
             rest = rest.tail
           }
-          print(" }")
+          print(" };")
 
         case ExportImport(bindings, from) =>
           print("export { ")
@@ -718,6 +745,7 @@ object Printers {
           }
           print(" } from ")
           print(from: Tree)
+          print(';')
 
         case _ =>
           throw new IllegalArgumentException(

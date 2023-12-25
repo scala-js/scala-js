@@ -43,7 +43,7 @@ class PrintersTest {
         """
           |function test() {
           |  const x = 2;
-          |  return x
+          |  return x;
           |}
         """,
         FunctionDef("test", Nil, None, Block(
@@ -75,13 +75,13 @@ class PrintersTest {
           |class MyClass {
           |  foo() {
           |    /*<skip>*/
-          |  };
+          |  }
           |  get a() {
-          |    return 1
-          |  };
+          |    return 1;
+          |  }
           |  set a(x) {
           |    /*<skip>*/
-          |  };
+          |  }
           |}
         """,
         ClassDef(Some("MyClass"), None, List(
@@ -106,7 +106,7 @@ class PrintersTest {
       """
         |for (let x = 1; (x < 15); x = (x + 1)) {
         |  /*<skip>*/
-        |};
+        |}
       """,
       For(Let("x", true, Some(IntLiteral(1))),
           BinaryOp(ir.Trees.JSBinaryOp.<, VarRef("x"), IntLiteral(15)),
@@ -120,7 +120,7 @@ class PrintersTest {
       """
         |for (var x in foo) {
         |  /*<skip>*/
-        |};
+        |}
       """,
       ForIn(VarDef("x", None), VarRef("foo"), Skip())
     )
@@ -130,8 +130,8 @@ class PrintersTest {
     assertPrintEquals(
         """
           |if (false) {
-          |  1
-          |};
+          |  1;
+          |}
         """,
         If(BooleanLiteral(false), IntLiteral(1), Skip())
     )
@@ -139,10 +139,10 @@ class PrintersTest {
     assertPrintEquals(
         """
           |if (false) {
-          |  1
+          |  1;
           |} else {
-          |  2
-          |};
+          |  2;
+          |}
         """,
         If(BooleanLiteral(false), IntLiteral(1), IntLiteral(2))
     )
@@ -150,12 +150,12 @@ class PrintersTest {
     assertPrintEquals(
         """
           |if (false) {
-          |  1
+          |  1;
           |} else if (true) {
-          |  2
+          |  2;
           |} else {
-          |  3
-          |};
+          |  3;
+          |}
         """,
         If(BooleanLiteral(false), IntLiteral(1),
             If(BooleanLiteral(true), IntLiteral(2), IntLiteral(3)))
