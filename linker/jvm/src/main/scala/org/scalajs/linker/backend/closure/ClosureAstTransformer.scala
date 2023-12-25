@@ -54,6 +54,27 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
   private def innerTransformStat(tree: Tree, pos_in: Position): Node = {
     implicit val pos = pos_in
 
+    def newFixedPropNode(token: Token, static: Boolean, name: Ident,
+        function: Node): Node = {
+      val node = Node.newString(token, name.name)
+      node.addChildToBack(function)
+      node.setStaticMember(static)
+      node
+    }
+
+    /* This method should take a `prop: Node.Prop` parameter to factor out
+     * the `node.putBooleanProp()` that we find the three cases below. However,
+     * that is not possible because `Node.Prop` is private in `Node`. Go figure
+     * why Java allows to export as `public` the aliases
+     * `Node.COMPUTED_PROP_METHOD` et al. with a type that is not public ...
+     */
+    def newComputedPropNode(static: Boolean, nameExpr: Tree,
+        function: Node): Node = {
+      val node = new Node(Token.COMPUTED_PROP, transformExpr(nameExpr), function)
+      node.setStaticMember(static)
+      node
+    }
+
     wrapTransform(tree) {
       case VarDef(ident, optRhs) =>
         val node = transformName(ident)
@@ -172,51 +193,6 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
       case classDef: ClassDef =>
         transformClassDef(classDef)
 
-      case _ =>
-        // We just assume it is an expression
-        new Node(Token.EXPR_RESULT, transformExpr(tree))
-    }
-  }
-
-  private def transformClassDef(classDef: ClassDef)(
-      implicit pos: Position): Node = {
-    val ClassDef(className, parentClass, members) = classDef
-
-    val membersBlock = new Node(Token.CLASS_MEMBERS)
-    for (member <- members)
-      membersBlock.addChildToBack(transformClassMember(member))
-    new Node(
-        Token.CLASS,
-        className.fold(new Node(Token.EMPTY))(transformName(_)),
-        parentClass.fold(new Node(Token.EMPTY))(transformExpr(_)),
-        membersBlock)
-  }
-
-  private def transformClassMember(member: Tree): Node = {
-    implicit val pos = member.pos
-
-    def newFixedPropNode(token: Token, static: Boolean, name: Ident,
-        function: Node): Node = {
-      val node = Node.newString(token, name.name)
-      node.addChildToBack(function)
-      node.setStaticMember(static)
-      node
-    }
-
-    /* This method should take a `prop: Node.Prop` parameter to factor out
-     * the `node.putBooleanProp()` that we find the three cases below. However,
-     * that is not possible because `Node.Prop` is private in `Node`. Go figure
-     * why Java allows to export as `public` the aliases
-     * `Node.COMPUTED_PROP_METHOD` et al. with a type that is not public ...
-     */
-    def newComputedPropNode(static: Boolean, nameExpr: Tree,
-        function: Node): Node = {
-      val node = new Node(Token.COMPUTED_PROP, transformExpr(nameExpr), function)
-      node.setStaticMember(static)
-      node
-    }
-
-    wrapTransform(member) {
       case MethodDef(static, name, args, restParam, body) =>
         val function = genFunction("", args, restParam, body)
         name match {
@@ -280,9 +256,24 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
         }
 
       case _ =>
-        throw new AssertionError(
-            s"Unexpected class member tree of class ${member.getClass.getName}")
+        // We just assume it is an expression
+        new Node(Token.EXPR_RESULT, transformExpr(tree))
     }
+  }
+
+  private def transformClassDef(classDef: ClassDef)(
+      implicit pos: Position): Node = {
+    val ClassDef(className, parentClass, members) = classDef
+
+    val membersBlock = new Node(Token.CLASS_MEMBERS)
+    for (node <- transformBlockStats(members))
+      membersBlock.addChildToBack(node)
+
+    new Node(
+        Token.CLASS,
+        className.fold(new Node(Token.EMPTY))(transformName(_)),
+        parentClass.fold(new Node(Token.EMPTY))(transformExpr(_)),
+        membersBlock)
   }
 
   def transformExpr(tree: Tree)(implicit parentPos: Position): Node =
