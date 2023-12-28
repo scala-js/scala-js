@@ -54,7 +54,6 @@ class PrintersTest {
     assertPrintEquals(
         """
           |function test() {
-          |  /*<skip>*/
           |}
         """,
         FunctionDef("test", Nil, None, Skip())
@@ -74,13 +73,11 @@ class PrintersTest {
         """
           |class MyClass {
           |  foo() {
-          |    /*<skip>*/
           |  }
           |  get a() {
           |    return 1;
           |  }
           |  set a(x) {
-          |    /*<skip>*/
           |  }
           |}
         """,
@@ -105,7 +102,6 @@ class PrintersTest {
     assertPrintEquals(
       """
         |for (let x = 1; (x < 15); x = (x + 1)) {
-        |  /*<skip>*/
         |}
       """,
       For(Let("x", true, Some(IntLiteral(1))),
@@ -119,7 +115,6 @@ class PrintersTest {
     assertPrintEquals(
       """
         |for (var x in foo) {
-        |  /*<skip>*/
         |}
       """,
       ForIn(VarDef("x", None), VarRef("foo"), Skip())

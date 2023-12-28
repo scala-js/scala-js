@@ -90,19 +90,21 @@ object Printers {
     }
 
     protected def printBlock(tree: Tree): Unit = {
-      print('{'); indent(); println()
+      print('{'); indent();
       tree match {
+        case Skip() =>
+          // do not print anything
+
         case tree: Block =>
           var rest = tree.stats
           while (rest.nonEmpty) {
-            val x = rest.head
+            println()
+            printStat(rest.head)
             rest = rest.tail
-            printStat(x)
-            if (rest.nonEmpty)
-              println()
           }
 
         case _ =>
+          println()
           printStat(tree)
       }
       undent(); println(); print('}')
