@@ -683,12 +683,12 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   def genInstanceTests(className: ClassName, kind: ClassKind)(
       implicit moduleContext: ModuleContext,
-      globalKnowledge: GlobalKnowledge, pos: Position): WithGlobals[js.Tree] = {
+      globalKnowledge: GlobalKnowledge, pos: Position): WithGlobals[List[js.Tree]] = {
     for {
       single <- genSingleInstanceTests(className, kind)
       array <- genArrayInstanceTests(className)
     } yield {
-      js.Block(single ::: array)
+      single ::: array
     }
   }
 
