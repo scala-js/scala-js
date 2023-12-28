@@ -62,19 +62,8 @@ object Printers {
     }
 
     def printTopLevelTree(tree: Tree): Unit = {
-      tree match {
-        case Skip() =>
-          // do not print anything
-        case tree: Block =>
-          var rest = tree.stats
-          while (rest.nonEmpty) {
-            printTopLevelTree(rest.head)
-            rest = rest.tail
-          }
-        case _ =>
-          printStat(tree)
-          println()
-      }
+      printStat(tree)
+      println()
     }
 
     protected def printRow(ts: List[Tree], start: Char, end: Char): Unit = {
