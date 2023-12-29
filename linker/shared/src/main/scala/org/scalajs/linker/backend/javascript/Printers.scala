@@ -64,10 +64,6 @@ object Printers {
       newIndentArray
     }
 
-    def printTopLevelTree(tree: Tree): Unit = {
-      printStat(tree)
-    }
-
     private def printRow(ts: List[Tree], start: Char, end: Char): Unit = {
       print(start)
       var rest = ts
@@ -121,7 +117,7 @@ object Printers {
       printRow(args, '(', ')')
 
     /** Prints a stat including leading indent and trailing newline. */
-    private def printStat(tree: Tree): Unit = {
+    final def printStat(tree: Tree): Unit = {
       printIndent()
       printTree(tree, isStat = true)
       println()

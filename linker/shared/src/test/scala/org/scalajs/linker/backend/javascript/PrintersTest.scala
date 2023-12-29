@@ -33,7 +33,7 @@ class PrintersTest {
   private def assertPrintEquals(expected: String, tree: Tree): Unit = {
     val out = new ByteArrayWriter
     val printer = new Printers.JSTreePrinter(out)
-    printer.printTopLevelTree(tree)
+    printer.printStat(tree)
     assertEquals(expected.stripMargin.trim + "\n",
         new String(out.toByteArray(), StandardCharsets.UTF_8))
   }

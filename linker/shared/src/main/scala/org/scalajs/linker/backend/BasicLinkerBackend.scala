@@ -283,7 +283,7 @@ private object BasicLinkerBackend {
       val jsCodeWriter = new ByteArrayWriter()
       val printer = new Printers.JSTreePrinter(jsCodeWriter)
 
-      printer.printTopLevelTree(tree)
+      printer.printStat(tree)
 
       new PrintedTree(jsCodeWriter.toByteArray(), SourceMapWriter.Fragment.Empty)
     }
@@ -321,7 +321,7 @@ private object BasicLinkerBackend {
       val smFragmentBuilder = new SourceMapWriter.FragmentBuilder()
       val printer = new Printers.JSTreePrinterWithSourceMap(jsCodeWriter, smFragmentBuilder)
 
-      printer.printTopLevelTree(tree)
+      printer.printStat(tree)
       smFragmentBuilder.complete()
 
       new PrintedTree(jsCodeWriter.toByteArray(), smFragmentBuilder.result())
