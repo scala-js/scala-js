@@ -26,6 +26,7 @@
 1. When merging the release announcement PR (after proper review):
     - Update the latest/ URLs (use `~/setlatestapi.sh <full sjs version>` on
       webserver)
+    - Create a release on the core scala-js repository.
     - Announce on Twitter using the @scala_js account
     - Announce on [Gitter](https://gitter.im/scala-js/scala-js)
     - Cross-post as an Announcement in Scala Users ([example][7])
