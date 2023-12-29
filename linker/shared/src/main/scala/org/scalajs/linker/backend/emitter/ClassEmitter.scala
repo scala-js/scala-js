@@ -1028,16 +1028,16 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         case e: TopLevelMethodExportDef =>
           genTopLevelMethodExportDef(e)
         case e: TopLevelFieldExportDef =>
-          genTopLevelFieldExportDef(topLevelExport.owningClass, e)
+          genTopLevelFieldExportDef(topLevelExport.owningClass, e).map(_ :: Nil)
       }
     }
 
-    WithGlobals.list(exportsWithGlobals)
+    WithGlobals.flatten(exportsWithGlobals)
   }
 
   private def genTopLevelMethodExportDef(tree: TopLevelMethodExportDef)(
       implicit moduleContext: ModuleContext,
-      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+      globalKnowledge: GlobalKnowledge): WithGlobals[List[js.Tree]] = {
     import TreeDSL._
 
     val JSMethodDef(flags, StringLiteral(exportName), args, restParam, body) =
@@ -1056,22 +1056,22 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   private def genConstValueExportDef(exportName: String,
       exportedValue: js.Tree)(
-      implicit pos: Position): WithGlobals[js.Tree] = {
+      implicit pos: Position): WithGlobals[List[js.Tree]] = {
     moduleKind match {
       case ModuleKind.NoModule =>
-        genAssignToNoModuleExportVar(exportName, exportedValue)
+        genAssignToNoModuleExportVar(exportName, exportedValue).map(_ :: Nil)
 
       case ModuleKind.ESModule =>
         val field = fileLevelVar(VarField.e, exportName)
         val let = js.Let(field.ident, mutable = true, Some(exportedValue))
         val exportStat = js.Export((field.ident -> js.ExportName(exportName)) :: Nil)
-        WithGlobals(js.Block(let, exportStat))
+        WithGlobals(List(let, exportStat))
 
       case ModuleKind.CommonJSModule =>
         globalRef("exports").map { exportsVarRef =>
           js.Assign(
               genBracketSelect(exportsVarRef, js.StringLiteral(exportName)),
-              exportedValue)
+              exportedValue) :: Nil
         }
     }
   }
