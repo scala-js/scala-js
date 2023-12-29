@@ -44,6 +44,9 @@ object Printers {
 
     protected def println(): Unit = {
       out.write('\n')
+    }
+
+    protected def printIndent(): Unit = {
       val indentArray = this.indentArray
       val indentMargin = this.indentMargin
       val bigEnoughIndentArray =
@@ -63,7 +66,6 @@ object Printers {
 
     def printTopLevelTree(tree: Tree): Unit = {
       printStat(tree)
-      println()
     }
 
     private def printRow(ts: List[Tree], start: Char, end: Char): Unit = {
@@ -79,7 +81,7 @@ object Printers {
     }
 
     private def printBlock(tree: Tree): Unit = {
-      print('{'); indent();
+      print('{'); indent(); println()
       tree match {
         case Skip() =>
           // do not print anything
@@ -87,16 +89,14 @@ object Printers {
         case tree: Block =>
           var rest = tree.stats
           while (rest.nonEmpty) {
-            println()
             printStat(rest.head)
             rest = rest.tail
           }
 
         case _ =>
-          println()
           printStat(tree)
       }
-      undent(); println(); print('}')
+      undent(); printIndent(); print('}')
     }
 
     private def printSig(args: List[ParamDef], restParam: Option[ParamDef]): Unit = {
@@ -120,12 +120,22 @@ object Printers {
     private def printArgs(args: List[Tree]): Unit =
       printRow(args, '(', ')')
 
-    private def printStat(tree: Tree): Unit =
+    /** Prints a stat including leading indent and trailing newline. */
+    private def printStat(tree: Tree): Unit = {
+      printIndent()
       printTree(tree, isStat = true)
+      println()
+    }
 
     private def print(tree: Tree): Unit =
       printTree(tree, isStat = false)
 
+    /** Print the "meat" of a tree.
+     *
+     *  Even if it is a stat:
+     *  - No leading indent.
+     *  - No trailing newline.
+     */
     def printTree(tree: Tree, isStat: Boolean): Unit = {
       def printSeparatorIfStat() = {
         if (isStat)
@@ -144,12 +154,12 @@ object Printers {
           } else {
             print("/** ")
             print(lines.head)
-            println()
+            println(); printIndent()
             var rest = lines.tail
             while (rest.nonEmpty) {
               print(" *  ")
               print(rest.head)
-              println()
+              println(); printIndent()
               rest = rest.tail
             }
             print(" */")
@@ -326,7 +336,7 @@ object Printers {
           while (rest.nonEmpty) {
             val next = rest.head
             rest = rest.tail
-            println()
+            println(); printIndent()
             print("case ")
             print(next._1)
             print(':')
@@ -339,13 +349,13 @@ object Printers {
           default match {
             case Skip() =>
             case _ =>
-              println()
+              println(); printIndent()
               print("default: ")
               printBlock(default)
           }
 
           undent()
-          println()
+          println(); printIndent()
           print('}')
 
         case Debugger() =>
@@ -509,16 +519,17 @@ object Printers {
           while (rest.nonEmpty) {
             val x = rest.head
             rest = rest.tail
+            printIndent()
             print(x._1)
             print(": ")
             print(x._2)
             if (rest.nonEmpty) {
               print(',')
-              println()
             }
+            println()
           }
           undent()
-          println()
+          printIndent()
           print('}')
           if (isStat)
             print(");")
@@ -637,14 +648,13 @@ object Printers {
             print(" extends ")
             print(optParentClass.get)
           }
-          print(" {"); indent()
+          print(" {"); indent(); println()
           var rest = members
           while (rest.nonEmpty) {
-            println()
             printStat(rest.head)
             rest = rest.tail
           }
-          undent(); println(); print('}')
+          undent(); printIndent(); print('}')
 
         case MethodDef(static, name, params, restParam, body) =>
           if (static)
@@ -801,6 +811,13 @@ object Printers {
     override protected def println(): Unit = {
       super.println()
       sourceMap.nextLine()
+      column = 0
+    }
+
+    override protected def printIndent(): Unit = {
+      assert(column == 0)
+
+      super.printIndent()
       column = this.getIndentMargin()
     }
 
