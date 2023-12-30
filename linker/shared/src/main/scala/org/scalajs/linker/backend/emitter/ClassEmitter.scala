@@ -214,14 +214,14 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       } yield {
         (
           // Real constructor
-          js.DocComment("@constructor") ::
-          realCtorDef :::
+          js.JSDocConstructor(realCtorDef.head) ::
+          realCtorDef.tail :::
           chainProto :::
           (genIdentBracketSelect(ctorVar.prototype, "constructor") := ctorVar) ::
 
           // Inheritable constructor
-          js.DocComment("@constructor") ::
-          inheritableCtorDef :::
+          js.JSDocConstructor(inheritableCtorDef.head) ::
+          inheritableCtorDef.tail :::
           (globalVar(VarField.h, className).prototype := ctorVar.prototype) :: Nil
         )
       }
@@ -251,8 +251,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
         val ctorVar = fileLevelVar(VarField.b, genName(className))
 
-        js.DocComment("@constructor") ::
-        (ctorVar := ctorFun) ::
+        js.JSDocConstructor(ctorVar := ctorFun) ::
         chainPrototypeWithLocalCtor(className, ctorVar, superCtor) :::
         (genIdentBracketSelect(ctorVar.prototype, "constructor") := ctorVar) :: Nil
       }
@@ -344,8 +343,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     val dummyCtor = fileLevelVar(VarField.hh, genName(className))
 
     List(
-        js.DocComment("@constructor"),
-        genConst(dummyCtor.ident, js.Function(false, Nil, None, js.Skip())),
+        js.JSDocConstructor(genConst(dummyCtor.ident, js.Function(false, Nil, None, js.Skip()))),
         dummyCtor.prototype := superCtor.prototype,
         ctorVar.prototype := js.New(dummyCtor, Nil)
     )

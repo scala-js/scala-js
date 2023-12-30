@@ -43,7 +43,8 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
 
   def transformScript(topLevelTrees: List[Tree]): Node = {
     val script = setNodePosition(new Node(Token.SCRIPT), NoPosition)
-    transformBlockStats(topLevelTrees)(NoPosition).foreach(script.addChildToBack(_))
+    for (stat <- topLevelTrees)
+      script.addChildToBack(transformStat(stat)(NoPosition))
     script.putProp(Node.FEATURE_SET, featureSet)
     script
   }
@@ -55,6 +56,20 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
     implicit val pos = pos_in
 
     wrapTransform(tree) {
+      case JSDocConstructor(tree) =>
+        val node = transformStat(tree)
+        // The @constructor must be propagated through an ExprResult node
+        val trg =
+          if (node.isExprResult()) node.getChildAtIndex(0)
+          else node
+        val ctorDoc = {
+          val b = JSDocInfo.builder()
+          b.recordConstructor()
+          b.build()
+        }
+        trg.setJSDocInfo(ctorDoc)
+        node
+
       case VarDef(ident, optRhs) =>
         val node = transformName(ident)
         optRhs.foreach(rhs => node.addChildToFront(transformExpr(rhs)))
@@ -448,43 +463,9 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
 
   def transformBlock(stats: List[Tree], blockPos: Position): Node = {
     val block = new Node(Token.BLOCK)
-    for (node <- transformBlockStats(stats)(blockPos))
-      block.addChildToBack(node)
+    for (stat <- stats)
+      block.addChildToBack(transformStat(stat)(blockPos))
     block
-  }
-
-  def transformBlockStats(stats: List[Tree])(
-      implicit parentPos: Position): List[Node] = {
-
-    @inline def ctorDoc(): JSDocInfo = {
-      val b = JSDocInfo.builder()
-      b.recordConstructor()
-      b.build()
-    }
-
-    // The Rhino IR attaches DocComments to the following nodes (rather than
-    // having individual nodes). We preprocess these here.
-    @tailrec
-    def loop(ts: List[Tree], nextIsCtor: Boolean, acc: List[Node]): List[Node] = ts match {
-      case DocComment(text) :: tss =>
-        loop(tss, nextIsCtor = text.startsWith("@constructor"), acc)
-
-      case t :: tss =>
-        val node = transformStat(t)
-        if (nextIsCtor) {
-          // The @constructor must be propagated through an ExprResult node
-          val trg =
-            if (node.isExprResult()) node.getChildAtIndex(0)
-            else node
-          trg.setJSDocInfo(ctorDoc())
-        }
-        loop(tss, nextIsCtor = false, node :: acc)
-
-      case Nil =>
-        acc.reverse
-    }
-
-    loop(stats, nextIsCtor = false, Nil)
   }
 
   @inline

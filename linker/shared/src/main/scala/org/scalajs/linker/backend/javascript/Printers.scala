@@ -139,27 +139,11 @@ object Printers {
       }
 
       tree match {
-        // Comments
-
-        case DocComment(text) =>
-          val lines = text.split("\n").toList
-          if (lines.tail.isEmpty) {
-            print("/** ")
-            print(lines.head)
-            print(" */")
-          } else {
-            print("/** ")
-            print(lines.head)
-            println(); printIndent()
-            var rest = lines.tail
-            while (rest.nonEmpty) {
-              print(" *  ")
-              print(rest.head)
-              println(); printIndent()
-              rest = rest.tail
-            }
-            print(" */")
-          }
+        case JSDocConstructor(tree) =>
+          print("/** @constructor */")
+          println(); printIndent()
+          // not printStat: we must not print the trailing newline.
+          printTree(tree, isStat = true)
 
         // Definitions
 
