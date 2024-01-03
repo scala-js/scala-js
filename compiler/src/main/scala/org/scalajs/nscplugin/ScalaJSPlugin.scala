@@ -55,6 +55,7 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
   object scalaJSOpts extends ScalaJSOptions {
     import ScalaJSOptions.URIMap
     var fixClassOf: Boolean = false
+    var avoidOptimizingScalaVarargsAsJSArray: Boolean = false
     var genStaticForwardersForNonTopLevelObjects: Boolean = false
     lazy val sourceURIMaps: List[URIMap] = {
       if (_sourceURIMaps.nonEmpty)
@@ -109,6 +110,8 @@ class ScalaJSPlugin(val global: Global) extends NscPlugin {
     for (option <- options) {
       if (option == "fixClassOf") {
         fixClassOf = true
+      } else if (option == "avoidOptimizingScalaVarargsAsJSArray") {
+        avoidOptimizingScalaVarargsAsJSArray = true
       } else if (option == "genStaticForwardersForNonTopLevelObjects") {
         genStaticForwardersForNonTopLevelObjects = true
       } else if (option == "nowarnGlobalExecutionContext") {

@@ -140,7 +140,7 @@ object ExecutionContext {
    * @return the global `ExecutionContext`
    */
   final lazy val global: ExecutionContextExecutor =
-    scala.scalajs.concurrent.JSExecutionContext.queue
+    JSGlobalExecutionContext()
 
   /**
    * WARNING: Only ever execute logic which will quickly return control to the caller.

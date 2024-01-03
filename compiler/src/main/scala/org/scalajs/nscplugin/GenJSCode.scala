@@ -5504,7 +5504,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
          * the extension to `false`.
          */
         for ((arg, wasRepeated) <- args.zipAll(wereRepeated, EmptyTree, false)) yield {
-          if (wasRepeated) {
+          if (wasRepeated && !scalaJSOpts.avoidOptimizingScalaVarargsAsJSArray) {
             tryGenRepeatedParamAsJSArray(arg, handleNil = false).fold {
               genExpr(arg)
             } { genArgs =>
