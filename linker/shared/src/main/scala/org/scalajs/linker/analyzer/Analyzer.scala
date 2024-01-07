@@ -62,17 +62,24 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
 
     val adjustedEc = adjustExecutionContextForParallelism(ec, config.parallel)
 
+    val fullRun = new AnalyzerRun(config, initial, infoLoader)
+
+    // Start a full run in any case for speed.
+    val fullRunResultFuture = fullRun.computeReachability(moduleInitializers, symbolRequirements)
+
     val analysisFuture = {
       if (previousRunState != null) {
-        unchangedAnalysis(moduleInitializers, symbolRequirements).flatMap {
-          case Some(a) =>
+        analysisChanged(moduleInitializers, symbolRequirements).flatMap { changed =>
+          if (changed) {
+            fullRunResultFuture
+          } else {
             logger.debug("Analyzer: Re-using previous analysis")
-            Future.successful(a)
-          case None    =>
-            doFullAnalysis(moduleInitializers, symbolRequirements)
+            //fullRun.abort()
+            Future.successful(previousRunState.analysis)
+          }
         }
       } else {
-        doFullAnalysis(moduleInitializers, symbolRequirements)
+        fullRunResultFuture
       }
     }
 
@@ -96,8 +103,8 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       }
   }
 
-  private def unchangedAnalysis(moduleInitializers: Seq[ModuleInitializer],
-      symbolRequirements: SymbolRequirement)(implicit ec: ExecutionContext): Future[Option[Analysis]] = {
+  private def analysisChanged(moduleInitializers: Seq[ModuleInitializer],
+      symbolRequirements: SymbolRequirement)(implicit ec: ExecutionContext): Future[Boolean] = {
 
     val changedFuture = {
       if (symbolRequirements != previousRunState.symbolRequirements ||
@@ -128,21 +135,11 @@ final class Analyzer(config: CommonPhaseConfig, initial: Boolean,
       // Internal hook for benchmarking.
       val simulateChanged = {
         val propName = "org.scalajs.linker.analyzer.internal.simulateChangedInfo"
-        Try(System.getProperty(propName, "false").toBoolean).getOrElse(false)
+        System.getProperty(propName, "false").toBoolean
       }
 
-      if (changed || simulateChanged) None
-      else Some(previousRunState.analysis)
+      changed || simulateChanged
     }
-  }
-
-  private def doFullAnalysis(moduleInitializers: Seq[ModuleInitializer],
-      symbolRequirements: SymbolRequirement)(implicit ec: ExecutionContext): Future[Analysis] = {
-    val run = new AnalyzerRun(config, initial, infoLoader)
-
-    run
-      .computeReachability(moduleInitializers, symbolRequirements)
-      .map { _ => run }
   }
 
   private def reportErrors(errors: Seq[Error], logger: Logger): Unit = {
@@ -209,7 +206,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
   def topLevelExportInfos: scala.collection.Map[(ModuleID, String), Analysis.TopLevelExportInfo] = _topLevelExportInfos
 
   def computeReachability(moduleInitializers: Seq[ModuleInitializer],
-      symbolRequirements: SymbolRequirement): Future[Unit] = {
+      symbolRequirements: SymbolRequirement): Future[Analysis] = {
     loadObjectClass(() => loadEverything(moduleInitializers, symbolRequirements))
 
     workTracker
@@ -266,7 +263,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     reachInitializers(moduleInitializers)
   }
 
-  private def postLoad(moduleInitializers: Seq[ModuleInitializer]): Unit = {
+  private def postLoad(moduleInitializers: Seq[ModuleInitializer]): Analysis = {
     _classInfos = classLoader.loadedInfos()
 
     if (isNoModule) {
@@ -282,6 +279,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
     // Reach additional data, based on reflection methods used
     reachDataThroughReflection()
+
+    this
   }
 
   private def reachSymbolRequirement(requirement: SymbolRequirement): Unit = {
