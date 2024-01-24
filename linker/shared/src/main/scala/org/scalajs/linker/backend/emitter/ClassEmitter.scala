@@ -670,7 +670,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   private def genMemberMethodIdent(ident: MethodIdent,
       originalName: OriginalName): js.Ident = {
-    val jsName = genName(ident.name)
+    val jsName = genMethodName(ident.name)
     js.Ident(jsName, genOriginalName(ident.name, originalName, jsName))(
         ident.pos)
   }

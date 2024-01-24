@@ -717,7 +717,7 @@ private[emitter] object CoreJSLib {
       defineFunction1(VarField.objectOrArrayClone) { instance =>
         // return instance.$classData.isArrayClass ? instance.clone__O() : $objectClone(instance);
         Return(If(genIdentBracketSelect(instance DOT classData, "isArrayClass"),
-            Apply(instance DOT genName(cloneMethodName), Nil),
+            genApply(instance, cloneMethodName, Nil),
             genCallHelper(VarField.objectClone, instance)))
       }
     )
@@ -767,7 +767,7 @@ private[emitter] object CoreJSLib {
           ), {
             If(instance === Null(), {
               if (nullPointers == CheckedBehavior.Unchecked)
-                Return(Apply(instance DOT genName(getClassMethodName), Nil))
+                Return(genApply(instance, getClassMethodName, Nil))
               else
                 genCallHelper(VarField.throwNullPointerException)
             }, {
@@ -813,7 +813,7 @@ private[emitter] object CoreJSLib {
           instance => genIdentBracketSelect(instance DOT classData, "name"),
           {
             if (nullPointers == CheckedBehavior.Unchecked)
-              Apply(Null() DOT genName(getNameMethodName), Nil)
+              genApply(Null(), getNameMethodName, Nil)
             else
               genCallHelper(VarField.throwNullPointerException)
           }
@@ -862,7 +862,7 @@ private[emitter] object CoreJSLib {
         }
 
         def genBodyNoSwitch(hijackedClasses: List[ClassName]): Tree = {
-          val normalCall = Return(Apply(instance DOT genName(methodName), args))
+          val normalCall = Return(genApply(instance, methodName, args))
 
           def hijackedDispatch(default: Tree) = {
             hijackedClasses.foldRight(default) { (className, next) =>
@@ -874,7 +874,7 @@ private[emitter] object CoreJSLib {
 
           if (implementedInObject) {
             val staticObjectCall: Tree = {
-              val fun = globalVar(VarField.c, ObjectClass).prototype DOT genName(methodName)
+              val fun = globalVar(VarField.c, ObjectClass).prototype DOT genMethodName(methodName)
               Return(Apply(fun DOT "call", instance :: args))
             }
 
@@ -1498,7 +1498,7 @@ private[emitter] object CoreJSLib {
           Nil
         }
 
-        val clone = MethodDef(static = false, Ident(genName(cloneMethodName)), Nil, None, {
+        val clone = MethodDef(static = false, Ident(genMethodName(cloneMethodName)), Nil, None, {
           Return(New(ArrayClass,
               Apply(genIdentBracketSelect(This().u, "slice"), Nil) :: Nil))
         })
@@ -1803,7 +1803,7 @@ private[emitter] object CoreJSLib {
               Nil
             }
 
-            val clone = MethodDef(static = false, Ident(genName(cloneMethodName)), Nil, None, {
+            val clone = MethodDef(static = false, Ident(genMethodName(cloneMethodName)), Nil, None, {
               Return(New(ArrayClass,
                   Apply(genIdentBracketSelect(This().u, "slice"), Nil) :: Nil))
             })

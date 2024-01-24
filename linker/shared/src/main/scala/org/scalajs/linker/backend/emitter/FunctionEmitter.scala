@@ -2352,7 +2352,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               if (useBigIntForLongs)
                 js.Apply(genGlobalVarRef("Number"), List(wrapBigInt32(newLhs)))
               else
-                genLongMethodApply(newLhs, LongImpl.toInt)
+                genApply(newLhs, LongImpl.toInt)
             case DoubleToInt =>
               genCallHelper(VarField.doubleToInt, newLhs)
             case DoubleToFloat =>
@@ -2363,7 +2363,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               if (useBigIntForLongs)
                 js.Apply(genGlobalVarRef("Number"), List(newLhs))
               else
-                genLongMethodApply(newLhs, LongImpl.toDouble)
+                genApply(newLhs, LongImpl.toDouble)
             case DoubleToLong =>
               if (useBigIntForLongs)
                 genCallHelper(VarField.doubleToLong, newLhs)
@@ -2375,7 +2375,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               if (useBigIntForLongs)
                 genCallHelper(VarField.longToFloat, newLhs)
               else
-                genLongMethodApply(newLhs, LongImpl.toFloat)
+                genApply(newLhs, LongImpl.toFloat)
 
             // String.length
             case String_length =>
@@ -2488,25 +2488,25 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.+, newLhs, newRhs))
               else
-                genLongMethodApply(newLhs, LongImpl.+, newRhs)
+                genApply(newLhs, LongImpl.+, newRhs)
             case Long_- =>
               lhs match {
                 case LongLiteral(0L) =>
                   if (useBigIntForLongs)
                     wrapBigInt64(js.UnaryOp(JSUnaryOp.-, newRhs))
                   else
-                    genLongMethodApply(newRhs, LongImpl.UNARY_-)
+                    genApply(newRhs, LongImpl.UNARY_-)
                 case _ =>
                   if (useBigIntForLongs)
                     wrapBigInt64(js.BinaryOp(JSBinaryOp.-, newLhs, newRhs))
                   else
-                    genLongMethodApply(newLhs, LongImpl.-, newRhs)
+                    genApply(newLhs, LongImpl.-, newRhs)
               }
             case Long_* =>
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.*, newLhs, newRhs))
               else
-                genLongMethodApply(newLhs, LongImpl.*, newRhs)
+                genApply(newLhs, LongImpl.*, newRhs)
             case Long_/ =>
               if (useBigIntForLongs) {
                 rhs match {
@@ -2516,7 +2516,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                     genCallHelper(VarField.longDiv, newLhs, newRhs)
                 }
               } else {
-                genLongMethodApply(newLhs, LongImpl./, newRhs)
+                genApply(newLhs, LongImpl./, newRhs)
               }
             case Long_% =>
               if (useBigIntForLongs) {
@@ -2527,78 +2527,78 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                     genCallHelper(VarField.longMod, newLhs, newRhs)
                 }
               } else {
-                genLongMethodApply(newLhs, LongImpl.%, newRhs)
+                genApply(newLhs, LongImpl.%, newRhs)
               }
 
             case Long_| =>
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.|, newLhs, newRhs))
               else
-                genLongMethodApply(newLhs, LongImpl.|, newRhs)
+                genApply(newLhs, LongImpl.|, newRhs)
             case Long_& =>
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.&, newLhs, newRhs))
               else
-                genLongMethodApply(newLhs, LongImpl.&, newRhs)
+                genApply(newLhs, LongImpl.&, newRhs)
             case Long_^ =>
               lhs match {
                 case LongLiteral(-1L) =>
                   if (useBigIntForLongs)
                     wrapBigInt64(js.UnaryOp(JSUnaryOp.~, newRhs))
                   else
-                    genLongMethodApply(newRhs, LongImpl.UNARY_~)
+                    genApply(newRhs, LongImpl.UNARY_~)
                 case _ =>
                   if (useBigIntForLongs)
                     wrapBigInt64(js.BinaryOp(JSBinaryOp.^, newLhs, newRhs))
                   else
-                    genLongMethodApply(newLhs, LongImpl.^, newRhs)
+                    genApply(newLhs, LongImpl.^, newRhs)
               }
             case Long_<< =>
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.<<, newLhs, bigIntShiftRhs(newRhs)))
               else
-                genLongMethodApply(newLhs, LongImpl.<<, newRhs)
+                genApply(newLhs, LongImpl.<<, newRhs)
             case Long_>>> =>
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.>>, wrapBigIntU64(newLhs), bigIntShiftRhs(newRhs)))
               else
-                genLongMethodApply(newLhs, LongImpl.>>>, newRhs)
+                genApply(newLhs, LongImpl.>>>, newRhs)
             case Long_>> =>
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.>>, newLhs, bigIntShiftRhs(newRhs)))
               else
-                genLongMethodApply(newLhs, LongImpl.>>, newRhs)
+                genApply(newLhs, LongImpl.>>, newRhs)
 
             case Long_== =>
               if (useBigIntForLongs)
                 js.BinaryOp(JSBinaryOp.===, newLhs, newRhs)
               else
-                genLongMethodApply(newLhs, LongImpl.===, newRhs)
+                genApply(newLhs, LongImpl.===, newRhs)
             case Long_!= =>
               if (useBigIntForLongs)
                 js.BinaryOp(JSBinaryOp.!==, newLhs, newRhs)
               else
-                genLongMethodApply(newLhs, LongImpl.!==, newRhs)
+                genApply(newLhs, LongImpl.!==, newRhs)
             case Long_< =>
               if (useBigIntForLongs)
                 js.BinaryOp(JSBinaryOp.<, newLhs, newRhs)
               else
-                genLongMethodApply(newLhs, LongImpl.<, newRhs)
+                genApply(newLhs, LongImpl.<, newRhs)
             case Long_<= =>
               if (useBigIntForLongs)
                 js.BinaryOp(JSBinaryOp.<=, newLhs, newRhs)
               else
-                genLongMethodApply(newLhs, LongImpl.<=, newRhs)
+                genApply(newLhs, LongImpl.<=, newRhs)
             case Long_> =>
               if (useBigIntForLongs)
                 js.BinaryOp(JSBinaryOp.>, newLhs, newRhs)
               else
-                genLongMethodApply(newLhs, LongImpl.>, newRhs)
+                genApply(newLhs, LongImpl.>, newRhs)
             case Long_>= =>
               if (useBigIntForLongs)
                 js.BinaryOp(JSBinaryOp.>=, newLhs, newRhs)
               else
-                genLongMethodApply(newLhs, LongImpl.>=, newRhs)
+                genApply(newLhs, LongImpl.>=, newRhs)
 
             case Float_+ => genFround(js.BinaryOp(JSBinaryOp.+, newLhs, newRhs))
             case Float_- => genFround(js.BinaryOp(JSBinaryOp.-, newLhs, newRhs))
@@ -2684,7 +2684,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
              * those cases, leaving a `Clone()` node an array.
              */
             case _: ArrayType =>
-              js.Apply(newExpr DOT genName(cloneMethodName), Nil)
+              genApply(newExpr, cloneMethodName, Nil)
 
             /* Otherwise, if it might be an array, use the full dispatcher.
              * In theory, only the `CloneableClass` case is required, since
@@ -3201,7 +3201,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       js.Ident(genName(ident.name))(ident.pos)
 
     private def transformMethodIdent(ident: MethodIdent): js.Ident =
-      js.Ident(genName(ident.name))(ident.pos)
+      js.Ident(genMethodName(ident.name))(ident.pos)
 
     private def transformLocalVarIdent(ident: LocalIdent): js.Ident =
       js.Ident(transformLocalName(ident.name))(ident.pos)
@@ -3267,12 +3267,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         implicit pos: Position): js.Tree = {
       js.Apply(genIdentBracketSelect(genGlobalVarRef("BigInt"), "asUintN"),
           List(js.IntLiteral(n), tree))
-    }
-
-    private def genLongMethodApply(receiver: js.Tree, methodName: MethodName,
-        args: js.Tree*)(implicit pos: Position): js.Tree = {
-      import TreeDSL._
-      js.Apply(receiver DOT genName(methodName), args.toList)
     }
   }
 }

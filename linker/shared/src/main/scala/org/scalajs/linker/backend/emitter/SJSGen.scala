@@ -107,8 +107,8 @@ private[emitter] final class SJSGen(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
     import TreeDSL._
-    Apply(
-        genLoadModule(LongImpl.RuntimeLongModuleClass) DOT genName(methodName),
+    genApply(
+        genLoadModule(LongImpl.RuntimeLongModuleClass), methodName,
         args.toList)
   }
 
@@ -171,6 +171,19 @@ private[emitter] final class SJSGen(
 
   private def genFieldJSName(className: ClassName, field: irt.FieldIdent): String =
     genName(className) + "__f_" + genName(field.name)
+
+  def genApply(receiver: Tree, methodName: MethodName, args: List[Tree])(
+      implicit pos: Position): Tree = {
+    Apply(DotSelect(receiver, Ident(genMethodName(methodName))), args)
+  }
+
+  def genApply(receiver: Tree, methodName: MethodName, args: Tree*)(
+      implicit pos: Position): Tree = {
+    genApply(receiver, methodName, args.toList)
+  }
+
+  def genMethodName(methodName: MethodName): String =
+    genName(methodName)
 
   def genJSPrivateSelect(receiver: Tree, className: ClassName,
       field: irt.FieldIdent)(
