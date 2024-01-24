@@ -54,6 +54,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
       s"Cannot use module kind $moduleKind with the Closure Compiler")
 
   private[this] val emitter = {
+    // Note that we do not transfer `minify` -- Closure will do its own thing anyway
     val emitterConfig = Emitter.Config(config.commonConfig.coreSpec)
       .withJSHeader(config.jsHeader)
       .withOptimizeBracketSelects(false)

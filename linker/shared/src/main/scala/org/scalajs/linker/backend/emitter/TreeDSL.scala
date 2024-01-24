@@ -112,7 +112,6 @@ private[emitter] object TreeDSL {
 
     def prototype(implicit pos: Position): Tree = self DOT "prototype"
     def length(implicit pos: Position): Tree = self DOT "length"
-    def u(implicit pos: Position): Tree = self DOT "u"
   }
 
   def typeof(expr: Tree)(implicit pos: Position): Tree =

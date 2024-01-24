@@ -32,7 +32,8 @@ import PolyfillableBuiltin._
 private[emitter] final class SJSGen(
     val jsGen: JSGen,
     val nameGen: NameGen,
-    val varGen: VarGen
+    val varGen: VarGen,
+    val nameCompressor: Option[NameCompressor]
 ) {
 
   import jsGen._
@@ -151,15 +152,22 @@ private[emitter] final class SJSGen(
 
   def genSelect(receiver: Tree, field: irt.FieldIdent)(
       implicit pos: Position): Tree = {
-    DotSelect(receiver, Ident(genName(field.name))(field.pos))
+    DotSelect(receiver, Ident(genFieldName(field.name))(field.pos))
   }
 
   def genSelect(receiver: Tree, field: irt.FieldIdent,
       originalName: OriginalName)(
       implicit pos: Position): Tree = {
-    val jsName = genName(field.name)
+    val jsName = genFieldName(field.name)
     val jsOrigName = genOriginalName(field.name, originalName, jsName)
     DotSelect(receiver, Ident(jsName, jsOrigName)(field.pos))
+  }
+
+  private def genFieldName(fieldName: FieldName): String = {
+    nameCompressor match {
+      case None             => genName(fieldName)
+      case Some(compressor) => compressor.allocatedFor(fieldName)
+    }
   }
 
   def genApply(receiver: Tree, methodName: MethodName, args: List[Tree])(
@@ -172,8 +180,34 @@ private[emitter] final class SJSGen(
     genApply(receiver, methodName, args.toList)
   }
 
-  def genMethodName(methodName: MethodName): String =
-    genName(methodName)
+  def genMethodName(methodName: MethodName): String = {
+    nameCompressor match {
+      case None             => genName(methodName)
+      case Some(compressor) => compressor.allocatedFor(methodName)
+    }
+  }
+
+  def genArrayClassPropApply(receiver: Tree, prop: ArrayClassProperty, args: Tree*)(
+      implicit pos: Position): Tree = {
+    genArrayClassPropApply(receiver, prop, args.toList)
+  }
+
+  def genArrayClassPropApply(receiver: Tree, prop: ArrayClassProperty, args: List[Tree])(
+      implicit pos: Position): Tree = {
+    Apply(genArrayClassPropSelect(receiver, prop), args)
+  }
+
+  def genArrayClassPropSelect(qualifier: Tree, prop: ArrayClassProperty)(
+      implicit pos: Position): Tree = {
+    DotSelect(qualifier, Ident(genArrayClassProperty(prop)))
+  }
+
+  def genArrayClassProperty(prop: ArrayClassProperty): String = {
+    nameCompressor match {
+      case None             => prop.nonMinifiedName
+      case Some(compressor) => compressor.allocatedFor(prop)
+    }
+  }
 
   def genJSPrivateSelect(receiver: Tree, field: irt.FieldIdent)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,

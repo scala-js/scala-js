@@ -301,7 +301,7 @@ private[emitter] final class NameGen {
   }
 }
 
-private object NameGen {
+private[emitter] object NameGen {
 
   private final val FullwidthSpacingUnderscore = '\uff3f'
   private final val GreekSmallLetterDelta = '\u03b4'
@@ -371,7 +371,7 @@ private object NameGen {
    *    not actually mean `void 0`, and who knows what JS engine performance
    *    cliffs we can trigger with that.
    */
-  private final val ReservedJSIdentifierNames: Set[String] = Set(
+  private[emitter] final val ReservedJSIdentifierNames: Set[String] = Set(
       "arguments", "await", "break", "case", "catch", "class", "const",
       "continue", "debugger", "default", "delete", "do", "else", "enum",
       "eval", "export", "extends", "false", "finally", "for", "function", "if",

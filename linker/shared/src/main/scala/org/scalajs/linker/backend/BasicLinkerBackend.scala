@@ -45,6 +45,7 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
     val emitterConfig = Emitter.Config(config.commonConfig.coreSpec)
       .withJSHeader(config.jsHeader)
       .withInternalModulePattern(m => OutputPatternsImpl.moduleName(config.outputPatterns, m.id))
+      .withMinify(config.minify)
 
     val postTransformer =
       if (config.sourceMap) PostTransformerWithSourceMap

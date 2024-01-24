@@ -40,7 +40,9 @@ object Platform {
     else Integer.parseInt(v.takeWhile(_.isDigit))
   }
 
-  def isInFullOpt: Boolean = false
+  def usesClosureCompiler: Boolean = false
+
+  def hasMinifiedNames: Boolean = false
 
   def hasCompliantAsInstanceOfs: Boolean = true
   def hasCompliantArrayIndexOutOfBounds: Boolean = true

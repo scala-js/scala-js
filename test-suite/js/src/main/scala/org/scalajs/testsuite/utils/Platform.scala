@@ -68,7 +68,10 @@ object Platform {
 
   def sourceMaps: Boolean = BuildInfo.hasSourceMaps && executingInNodeJS
 
-  def isInFullOpt: Boolean = BuildInfo.isFullOpt
+  def usesClosureCompiler: Boolean = BuildInfo.usesClosureCompiler
+
+  def hasMinifiedNames: Boolean = BuildInfo.hasMinifiedNames
+
   def isInProductionMode: Boolean = BuildInfo.productionMode
 
   def hasCompliantAsInstanceOfs: Boolean = BuildInfo.compliantAsInstanceOfs
