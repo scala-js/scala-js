@@ -2733,7 +2733,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case Transient(ZeroOf(runtimeClass)) =>
           js.DotSelect(
-              js.DotSelect(transformExprNoChar(checkNotNull(runtimeClass)), js.Ident("jl_Class__f_data")),
+              genSelect(transformExprNoChar(checkNotNull(runtimeClass)),
+                  ClassClass, FieldIdent(dataFieldName)),
               js.Ident("zero"))
 
         case Transient(NativeArrayWrapper(elemClass, nativeArray)) =>
@@ -2744,9 +2745,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               extractWithGlobals(
                   genNativeArrayWrapper(arrayTypeRef, newNativeArray))
             case _ =>
-              val elemClassData = js.DotSelect(
+              val elemClassData = genSelect(
                   transformExprNoChar(checkNotNull(elemClass)),
-                  js.Ident("jl_Class__f_data"))
+                  ClassClass, FieldIdent(dataFieldName))
               val arrayClassData = js.Apply(
                   js.DotSelect(elemClassData, js.Ident("getArrayOf")), Nil)
               js.Apply(arrayClassData DOT "wrapArray", newNativeArray :: Nil)
