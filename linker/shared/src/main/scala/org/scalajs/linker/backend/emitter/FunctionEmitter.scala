@@ -632,12 +632,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 }
 
                 if (checked) {
-                  js.Apply(js.DotSelect(genArray, js.Ident("set")),
-                      List(genIndex, genRhs))
+                  genArrayClassPropApply(genArray, ArrayClassProperty.set, genIndex, genRhs)
                 } else {
                   js.Assign(
                       js.BracketSelect(
-                          js.DotSelect(genArray, js.Ident("u"))(lhs.pos),
+                          genArrayClassPropSelect(genArray, ArrayClassProperty.u)(lhs.pos),
                           genIndex)(lhs.pos),
                       genRhs)
                 }
@@ -877,7 +876,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
             def genUnchecked(): js.Tree = {
               if (esFeatures.esVersion >= ESVersion.ES2015 && semantics.nullPointers == CheckedBehavior.Unchecked)
-                js.Apply(jsArgs.head DOT "copyTo", jsArgs.tail)
+                genArrayClassPropApply(jsArgs.head, ArrayClassProperty.copyTo, jsArgs.tail)
               else
                 genCallHelper(VarField.systemArraycopy, jsArgs: _*)
             }
@@ -2657,17 +2656,19 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               genArrayValue(typeRef, elems.map(transformExpr(_, preserveChar))))
 
         case ArrayLength(array) =>
-          genIdentBracketSelect(js.DotSelect(transformExprNoChar(checkNotNull(array)),
-              js.Ident("u")), "length")
+          val newArray = transformExprNoChar(checkNotNull(array))
+          genIdentBracketSelect(
+              genArrayClassPropSelect(newArray, ArrayClassProperty.u),
+              "length")
 
         case ArraySelect(array, index) =>
           val newArray = transformExprNoChar(checkNotNull(array))
           val newIndex = transformExprNoChar(index)
           semantics.arrayIndexOutOfBounds match {
             case CheckedBehavior.Compliant | CheckedBehavior.Fatal =>
-              js.Apply(js.DotSelect(newArray, js.Ident("get")), List(newIndex))
+              genArrayClassPropApply(newArray, ArrayClassProperty.get, newIndex)
             case CheckedBehavior.Unchecked =>
-              js.BracketSelect(js.DotSelect(newArray, js.Ident("u")), newIndex)
+              js.BracketSelect(genArrayClassPropSelect(newArray, ArrayClassProperty.u), newIndex)
           }
 
         case tree: RecordSelect =>
@@ -2766,12 +2767,13 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case Transient(ArrayToTypedArray(expr, primRef)) =>
           val value = transformExprNoChar(checkNotNull(expr))
+          val valueUnderlying = genArrayClassPropSelect(value, ArrayClassProperty.u)
 
           if (es2015) {
-            js.Apply(genIdentBracketSelect(value.u, "slice"), Nil)
+            js.Apply(genIdentBracketSelect(valueUnderlying, "slice"), Nil)
           } else {
             val typedArrayClass = extractWithGlobals(typedArrayRef(primRef).get)
-            js.New(typedArrayClass, value.u :: Nil)
+            js.New(typedArrayClass, valueUnderlying :: Nil)
           }
 
         case Transient(TypedArrayToArray(expr, primRef)) =>

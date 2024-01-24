@@ -53,6 +53,9 @@ object ExposedValues extends AutoPlugin {
     val default213ScalaVersion: SettingKey[String] =
       settingKey("the default Scala 2.13.x version for this build (derived from cross213ScalaVersions)")
 
+    val enableMinifyEverywhere: SettingKey[Boolean] =
+      settingKey("force usage of the `minify` option of the linker in all contexts (fast and full)")
+
     // set scalaJSLinkerConfig in someProject ~= makeCompliant
     val makeCompliant: StandardConfig => StandardConfig = {
       _.withSemantics { semantics =>
@@ -102,6 +105,8 @@ object ExposedValues extends AutoPlugin {
   }
 }
 
+import ExposedValues.autoImport.enableMinifyEverywhere
+
 final case class ExpectedSizes(fastLink: Range, fullLink: Range,
     fastLinkGz: Range, fullLinkGz: Range)
 
@@ -143,6 +148,15 @@ object MyScalaJSPlugin extends AutoPlugin {
   }
 
   override def globalSettings: Seq[Setting[_]] = Def.settings(
+      // can be overridden with a 'set' command
+      enableMinifyEverywhere := false,
+
+      scalaJSLinkerConfig := {
+        scalaJSLinkerConfig.value
+          .withCheckIR(true)
+          .withMinify(enableMinifyEverywhere.value)
+      },
+
       fullClasspath in scalaJSLinkerImpl := {
         (fullClasspath in (Build.linker.v2_12, Runtime)).value
       },
@@ -201,9 +215,23 @@ object MyScalaJSPlugin extends AutoPlugin {
         libDeps.filterNot(dep => blacklist.contains(dep.name))
       },
 
-      scalaJSLinkerConfig ~= (_.withCheckIR(true)),
-
       wantSourceMaps := true,
+
+      // If `enableMinifyEverywhere` is used, make sure to deactive GCC in fullLinkJS
+      Compile / fullLinkJS / scalaJSLinkerConfig := {
+        val prev = (Compile / fullLinkJS / scalaJSLinkerConfig).value
+        if (enableMinifyEverywhere.value)
+          prev.withClosureCompiler(false)
+        else
+          prev
+      },
+      Test / fullLinkJS / scalaJSLinkerConfig := {
+        val prev = (Test / fullLinkJS / scalaJSLinkerConfig).value
+        if (enableMinifyEverywhere.value)
+          prev.withClosureCompiler(false)
+        else
+          prev
+      },
 
       jsEnv := new NodeJSEnv(
           NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)),
@@ -231,6 +259,7 @@ object MyScalaJSPlugin extends AutoPlugin {
       checksizes := {
         val logger = streams.value.log
 
+        val useMinifySizes = enableMinifyEverywhere.value
         val maybeExpected = expectedSizes.value
 
         /* The deprecated tasks do exactly what we want in terms of module /
@@ -239,7 +268,7 @@ object MyScalaJSPlugin extends AutoPlugin {
         val fast = (fastOptJS in Compile).value.data
         val full = (fullOptJS in Compile).value.data
 
-        val desc = s"${thisProject.value.id} Scala ${scalaVersion.value}"
+        val desc = s"${thisProject.value.id} Scala ${scalaVersion.value}, useMinifySizes = $useMinifySizes"
 
         maybeExpected.fold {
           logger.info(s"Ignoring checksizes for " + desc)
@@ -1963,23 +1992,42 @@ object Build {
       MyScalaJSPlugin.expectedSizes := {
         val default212Version = default212ScalaVersion.value
         val default213Version = default213ScalaVersion.value
+        val useMinifySizes = enableMinifyEverywhere.value
 
         scalaVersion.value match {
           case `default212Version` =>
-            Some(ExpectedSizes(
-                fastLink = 640000 to 641000,
-                fullLink = 101000 to 102000,
-                fastLinkGz = 77000 to 78000,
-                fullLinkGz = 26000 to 27000,
-            ))
+            if (!useMinifySizes) {
+              Some(ExpectedSizes(
+                  fastLink = 640000 to 641000,
+                  fullLink = 101000 to 102000,
+                  fastLinkGz = 77000 to 78000,
+                  fullLinkGz = 26000 to 27000,
+              ))
+            } else {
+              Some(ExpectedSizes(
+                  fastLink = 538000 to 539000,
+                  fullLink = 371000 to 372000,
+                  fastLinkGz = 71000 to 72000,
+                  fullLinkGz = 51000 to 52000,
+              ))
+            }
 
           case `default213Version` =>
-            Some(ExpectedSizes(
-                fastLink = 462000 to 463000,
-                fullLink = 99000 to 100000,
-                fastLinkGz = 60000 to 61000,
-                fullLinkGz = 26000 to 27000,
-            ))
+            if (!useMinifySizes) {
+              Some(ExpectedSizes(
+                  fastLink = 462000 to 463000,
+                  fullLink = 99000 to 100000,
+                  fastLinkGz = 60000 to 61000,
+                  fullLinkGz = 26000 to 27000,
+              ))
+            } else {
+              Some(ExpectedSizes(
+                  fastLink = 373000 to 374000,
+                  fullLink = 332000 to 333000,
+                  fastLinkGz = 55000 to 56000,
+                  fullLinkGz = 50000 to 51000,
+              ))
+            }
 
           case _ =>
             None
@@ -2227,7 +2275,8 @@ object Build {
           "isNoModule" -> (moduleKind == ModuleKind.NoModule),
           "isESModule" -> (moduleKind == ModuleKind.ESModule),
           "isCommonJSModule" -> (moduleKind == ModuleKind.CommonJSModule),
-          "isFullOpt" -> (stage == Stage.FullOpt),
+          "usesClosureCompiler" -> linkerConfig.closureCompiler,
+          "hasMinifiedNames" -> (linkerConfig.closureCompiler || linkerConfig.minify),
           "compliantAsInstanceOfs" -> (sems.asInstanceOfs == CheckedBehavior.Compliant),
           "compliantArrayIndexOutOfBounds" -> (sems.arrayIndexOutOfBounds == CheckedBehavior.Compliant),
           "compliantArrayStores" -> (sems.arrayStores == CheckedBehavior.Compliant),

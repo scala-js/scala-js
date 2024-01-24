@@ -321,19 +321,22 @@ class OptimizerTest {
   }
 
   @Test def foldingDoubleWithDecimalAndString(): Unit = {
-    assumeFalse("Assumed not executing in FullOpt", isInFullOpt)
+    assumeFalse("GCC wrongly optimizes this code", usesClosureCompiler)
+
     assertEquals("1.2323919403474454e+21hello", 1.2323919403474454E21 + "hello")
     assertEquals("hello1.2323919403474454e+21", "hello" + 1.2323919403474454E21)
   }
 
   @Test def foldingDoubleThatJVMWouldPrintInScientificNotationAndString(): Unit = {
-    assumeFalse("Assumed not executing in FullOpt", isInFullOpt)
+    assumeFalse("GCC wrongly optimizes this code", usesClosureCompiler)
+
     assertEquals("123456789012345hello", 123456789012345d + "hello")
     assertEquals("hello123456789012345", "hello" + 123456789012345d)
   }
 
   @Test def foldingDoublesToString(): Unit = {
-    assumeFalse("Assumed not executing in FullOpt", isInFullOpt)
+    assumeFalse("GCC wrongly optimizes this code", usesClosureCompiler)
+
     @noinline def toStringNoInline(v: Double): String = v.toString
     @inline def test(v: Double): Unit =
       assertEquals(toStringNoInline(v), v.toString)

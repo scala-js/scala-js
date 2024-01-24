@@ -346,7 +346,7 @@ class ReflectiveCallTest {
 
     assumeFalse(
         "GCC is a bit too eager in its optimizations in this error case",
-        Platform.isInFullOpt)
+        Platform.usesClosureCompiler)
 
     type ObjWithAnyRefPrimitives = Any {
       def eq(that: AnyRef): Boolean

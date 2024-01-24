@@ -46,6 +46,19 @@ final class StandardConfig private (
     val relativizeSourceMapBase: Option[URI],
     /** Name patterns for output. */
     val outputPatterns: OutputPatterns,
+    /** Apply Scala.js-specific minification of the produced .js files.
+     *
+     *  When enabled, the linker more aggressively reduces the size of the
+     *  generated code, at the cost of readability and debuggability. It does
+     *  not perform size optimizations that would negatively impact run-time
+     *  performance.
+     *
+     *  The focus is on optimizations that general-purpose JavaScript minifiers
+     *  cannot do on their own. For the best results, we expect the Scala.js
+     *  minifier to be used in conjunction with a general-purpose JavaScript
+     *  minifier.
+     */
+    val minify: Boolean,
     /** Whether to use the Google Closure Compiler pass, if it is available.
      *  On the JavaScript platform, this does not have any effect.
      */
@@ -80,6 +93,7 @@ final class StandardConfig private (
         sourceMap = true,
         relativizeSourceMapBase = None,
         outputPatterns = OutputPatterns.Defaults,
+        minify = false,
         closureCompilerIfAvailable = false,
         prettyPrint = false,
         batchMode = false,
@@ -148,6 +162,9 @@ final class StandardConfig private (
   def withOutputPatterns(f: OutputPatterns => OutputPatterns): StandardConfig =
     copy(outputPatterns = f(outputPatterns))
 
+  def withMinify(minify: Boolean): StandardConfig =
+    copy(minify = minify)
+
   def withClosureCompilerIfAvailable(closureCompilerIfAvailable: Boolean): StandardConfig =
     copy(closureCompilerIfAvailable = closureCompilerIfAvailable)
 
@@ -173,6 +190,7 @@ final class StandardConfig private (
        |  sourceMap                  = $sourceMap,
        |  relativizeSourceMapBase    = $relativizeSourceMapBase,
        |  outputPatterns             = $outputPatterns,
+       |  minify                     = $minify,
        |  closureCompilerIfAvailable = $closureCompilerIfAvailable,
        |  prettyPrint                = $prettyPrint,
        |  batchMode                  = $batchMode,
@@ -192,6 +210,7 @@ final class StandardConfig private (
       sourceMap: Boolean = sourceMap,
       outputPatterns: OutputPatterns = outputPatterns,
       relativizeSourceMapBase: Option[URI] = relativizeSourceMapBase,
+      minify: Boolean = minify,
       closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
       prettyPrint: Boolean = prettyPrint,
       batchMode: Boolean = batchMode,
@@ -209,6 +228,7 @@ final class StandardConfig private (
         sourceMap,
         relativizeSourceMapBase,
         outputPatterns,
+        minify,
         closureCompilerIfAvailable,
         prettyPrint,
         batchMode,
@@ -237,6 +257,7 @@ object StandardConfig {
         .addField("relativizeSourceMapBase",
             config.relativizeSourceMapBase.map(_.toASCIIString()))
         .addField("outputPatterns", config.outputPatterns)
+        .addField("minify", config.minify)
         .addField("closureCompilerIfAvailable",
             config.closureCompilerIfAvailable)
         .addField("prettyPrint", config.prettyPrint)
@@ -264,6 +285,7 @@ object StandardConfig {
    *  - `sourceMap`: `true`
    *  - `relativizeSourceMapBase`: `None`
    *  - `outputPatterns`: [[OutputPatterns.Defaults]]
+   *  - `minify`: `false`
    *  - `closureCompilerIfAvailable`: `false`
    *  - `prettyPrint`: `false`
    *  - `batchMode`: `false`

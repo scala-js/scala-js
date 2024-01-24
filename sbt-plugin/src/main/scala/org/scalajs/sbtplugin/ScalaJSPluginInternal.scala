@@ -470,6 +470,7 @@ private[sbtplugin] object ScalaJSPluginInternal {
         prevConfig
           .withSemantics(_.optimized)
           .withClosureCompiler(useClosure)
+          .withMinify(true) // ignored if we actually use Closure
           .withCheckIR(true)  // for safety, fullOpt is slow anyways.
       },
 

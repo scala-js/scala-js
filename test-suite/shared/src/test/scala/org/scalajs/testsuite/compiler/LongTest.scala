@@ -620,7 +620,7 @@ class LongTest {
     test(-1, lg(-1))
 
     // Closure seems to incorrectly rewrite the constant on the right :-(
-    val epsilon = if (isInFullOpt) 1E4f else 0.0f
+    val epsilon = if (usesClosureCompiler) 1E4f else 0.0f
     test(9.223372E18f, MaxVal, epsilon)
     test(-9.223372E18f, MinVal, epsilon)
 
@@ -674,7 +674,7 @@ class LongTest {
     test(-1, lg(-1))
 
     // Closure seems to incorrectly rewrite the constant on the right :-(
-    val epsilon = if (isInFullOpt) 1E4 else 0.0
+    val epsilon = if (usesClosureCompiler) 1E4 else 0.0
     test(9.223372036854776E18, MaxVal, epsilon)
     test(-9.223372036854776E18, MinVal, epsilon)
 
@@ -722,7 +722,7 @@ class LongTest {
     test(lg(0), -Double.MinPositiveValue)
     test(MaxVal, twoPow63)
     test(MaxVal, twoPow63NextUp)
-    if (!isInFullOpt) {
+    if (!usesClosureCompiler) {
       // GCC incorrectly rewrites the Double constants on the rhs
       test(lg(-1024, 2147483647), twoPow63NextDown)
       test(MinVal, -twoPow63)

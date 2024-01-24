@@ -23,6 +23,7 @@ object StandardLinkerBackend {
       .withSourceMap(config.sourceMap)
       .withOutputPatterns(config.outputPatterns)
       .withRelativizeSourceMapBase(config.relativizeSourceMapBase)
+      .withMinify(config.minify)
       .withClosureCompilerIfAvailable(config.closureCompilerIfAvailable)
       .withPrettyPrint(config.prettyPrint)
       .withMaxConcurrentWrites(config.maxConcurrentWrites)
