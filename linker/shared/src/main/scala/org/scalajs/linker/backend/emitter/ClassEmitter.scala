@@ -43,6 +43,9 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   import nameGen._
   import varGen._
 
+  private implicit val globalRefTracking: GlobalRefTracking =
+    topLevelGlobalRefTracking
+
   def buildClass(className: ClassName, isJSClass: Boolean, jsClassCaptures: Option[List[ParamDef]],
       hasClassInitializer: Boolean,
       superClass: Option[ClassIdent], storeJSSuperClass: List[js.Tree], useESClass: Boolean,
@@ -56,7 +59,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       if (useESClass) {
         val parentVarWithGlobals = for (parentIdent <- superClass) yield {
           implicit val pos = parentIdent.pos
-          if (shouldExtendJSError(className, superClass)) untrackedGlobalRef("Error")
+          if (shouldExtendJSError(className, superClass)) globalRef("Error")
           else WithGlobals(globalVar(VarField.c, parentIdent.name))
         }
 
@@ -186,7 +189,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           WithGlobals.nil
 
         case Some(_) if shouldExtendJSError(className, superClass) =>
-          untrackedGlobalRef("Error").map(chainPrototypeWithLocalCtor(className, ctorVar, _))
+          globalRef("Error").map(chainPrototypeWithLocalCtor(className, ctorVar, _))
 
         case Some(parentIdent) =>
           WithGlobals(List(ctorVar.prototype := js.New(globalVar(VarField.h, parentIdent.name), Nil)))
@@ -252,7 +255,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     if (hasJSSuperClass) {
       WithGlobals(fileLevelVar(VarField.superClass))
     } else {
-      genJSClassConstructor(superClass.get.name, keepOnlyDangerousVarNames = true)
+      genJSClassConstructor(superClass.get.name)
     }
   }
 
@@ -899,8 +902,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           }))
         } else {
           for {
-            jsCtor <- genJSClassConstructor(className, jsNativeLoadSpec,
-                keepOnlyDangerousVarNames = true)
+            jsCtor <- genJSClassConstructor(className, jsNativeLoadSpec)
           } yield {
             genArrowFunction(List(js.ParamDef(js.Ident("x"))), None, js.Return {
               js.VarRef(js.Ident("x")) instanceof jsCtor
@@ -1075,12 +1077,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   private def genAssignToNoModuleExportVar(exportName: String, rhs: js.Tree)(
       implicit pos: Position): WithGlobals[js.Tree] = {
-    val dangerousGlobalRefs: Set[String] =
-      if (GlobalRefUtils.isDangerousGlobalRef(exportName)) Set(exportName)
-      else Set.empty
-    WithGlobals(
-        js.Assign(js.VarRef(js.Ident(exportName)), rhs),
-        dangerousGlobalRefs)
+    for (exportVar <- globalRef(exportName)) yield
+      js.Assign(exportVar, rhs)
   }
 
   private def genTopLevelFieldExportDef(className: ClassName,

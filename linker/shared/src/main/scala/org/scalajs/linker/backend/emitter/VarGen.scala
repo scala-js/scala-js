@@ -54,7 +54,8 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
   def globalClassDef[T: Scope](field: VarField, scope: T,
       parentClass: Option[Tree], members: List[Tree],
       origName: OriginalName = NoOriginalName)(
-      implicit moduleContext: ModuleContext, pos: Position): WithGlobals[List[Tree]] = {
+      implicit moduleContext: ModuleContext,
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[List[Tree]] = {
     val ident = globalVarIdent(field, scope, origName)
     maybeExport(ident, ClassDef(Some(ident), parentClass, members), mutable = false)
   }
@@ -62,14 +63,16 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
   def globalFunctionDef[T: Scope](field: VarField, scope: T,
       args: List[ParamDef], restParam: Option[ParamDef], body: Tree,
       origName: OriginalName = NoOriginalName)(
-      implicit moduleContext: ModuleContext, pos: Position): WithGlobals[List[Tree]] = {
+      implicit moduleContext: ModuleContext,
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[List[Tree]] = {
     val ident = globalVarIdent(field, scope, origName)
     maybeExport(ident, FunctionDef(ident, args, restParam, body), mutable = false)
   }
 
   def globalVarDef[T: Scope](field: VarField, scope: T, value: Tree,
       origName: OriginalName = NoOriginalName)(
-      implicit moduleContext: ModuleContext, pos: Position): WithGlobals[List[Tree]] = {
+      implicit moduleContext: ModuleContext,
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[List[Tree]] = {
     val ident = globalVarIdent(field, scope, origName)
     maybeExport(ident, genConst(ident, value), mutable = false)
   }
@@ -77,7 +80,8 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
   /** Attention: A globalVarDecl may only be modified from the module it was declared in. */
   def globalVarDecl[T: Scope](field: VarField, scope: T,
       origName: OriginalName = NoOriginalName)(
-      implicit moduleContext: ModuleContext, pos: Position): WithGlobals[List[Tree]] = {
+      implicit moduleContext: ModuleContext,
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[List[Tree]] = {
     val ident = globalVarIdent(field, scope, origName)
     maybeExport(ident, genEmptyMutableLet(ident), mutable = true)
   }
@@ -88,7 +92,8 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
    */
   def globallyMutableVarDef[T: Scope](field: VarField, setterField: VarField,
       scope: T, value: Tree, origName: OriginalName = NoOriginalName)(
-      implicit moduleContext: ModuleContext, pos: Position): WithGlobals[List[Tree]] = {
+      implicit moduleContext: ModuleContext,
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[List[Tree]] = {
     val ident = globalVarIdent(field, scope, origName)
     val varDef = genLet(ident, mutable = true, value)
 
@@ -135,7 +140,7 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
   /** Apply the provided body to a dynamically loaded global var */
   def withDynamicGlobalVar[T: Scope](field: VarField, scope: T)(body: Tree => Tree)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[Tree] = {
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[Tree] = {
     val ident = globalVarIdent(field, scope)
 
     val module = fileLevelVarIdent(VarField.module)
@@ -269,7 +274,8 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
   }
 
   private def maybeExport(ident: Ident, tree: Tree, mutable: Boolean)(
-      implicit moduleContext: ModuleContext, pos: Position): WithGlobals[List[Tree]] = {
+      implicit moduleContext: ModuleContext,
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[List[Tree]] = {
     if (moduleContext.public) {
       WithGlobals(tree :: Nil)
     } else {

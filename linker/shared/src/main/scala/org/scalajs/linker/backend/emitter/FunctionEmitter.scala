@@ -259,7 +259,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
   def desugarToFunction(enclosingClassName: ClassName, params: List[ParamDef],
       body: Tree, resultType: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[js.Function] = {
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[js.Function] = {
     desugarToFunction(enclosingClassName, params, restParam = None, body,
         resultType)
   }
@@ -269,10 +269,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
   def desugarToFunction(enclosingClassName: ClassName, params: List[ParamDef],
       restParam: Option[ParamDef], body: JSConstructorBody)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[js.Function] = {
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[js.Function] = {
     val bodyBlock = Block(body.allStats)(body.pos)
-    new JSDesugar().desugarToFunction(params, restParam, bodyBlock,
-        isStat = false,
+    new JSDesugar(globalRefTracking).desugarToFunction(
+        params, restParam, bodyBlock, isStat = false,
         Env.empty(AnyType).withEnclosingClassName(Some(enclosingClassName)))
   }
 
@@ -281,9 +281,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
   def desugarToFunction(enclosingClassName: ClassName, params: List[ParamDef],
       restParam: Option[ParamDef], body: Tree, resultType: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[js.Function] = {
-    new JSDesugar().desugarToFunction(params, restParam, body,
-        isStat = resultType == NoType,
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[js.Function] = {
+    new JSDesugar(globalRefTracking).desugarToFunction(
+        params, restParam, body, isStat = resultType == NoType,
         Env.empty(resultType).withEnclosingClassName(Some(enclosingClassName)))
   }
 
@@ -293,9 +293,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
   def desugarToFunctionWithExplicitThis(enclosingClassName: ClassName,
       params: List[ParamDef], body: Tree, resultType: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[js.Function] = {
-    new JSDesugar().desugarToFunctionWithExplicitThis(params, body,
-        isStat = resultType == NoType,
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[js.Function] = {
+    new JSDesugar(globalRefTracking).desugarToFunctionWithExplicitThis(
+        params, body, isStat = resultType == NoType,
         Env.empty(resultType).withEnclosingClassName(Some(enclosingClassName)))
   }
 
@@ -304,15 +304,16 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
   def desugarToFunction(params: List[ParamDef], restParam: Option[ParamDef],
       body: Tree, resultType: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[js.Function] = {
-    new JSDesugar().desugarToFunction(params, restParam, body,
-        isStat = resultType == NoType, Env.empty(resultType))
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[js.Function] = {
+    new JSDesugar(globalRefTracking).desugarToFunction(
+        params, restParam, body, isStat = resultType == NoType,
+        Env.empty(resultType))
   }
 
   /** Desugars a class-level expression. */
   def desugarExpr(expr: Tree, resultType: Type)(
-      implicit moduleContext: ModuleContext,
-      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      globalRefTracking: GlobalRefTracking): WithGlobals[js.Tree] = {
     implicit val pos = expr.pos
 
     for (fun <- desugarToFunction(Nil, None, expr, resultType)) yield {
@@ -326,8 +327,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     }
   }
 
-  private class JSDesugar()(
+  private class JSDesugar(outerGlobalRefTracking: GlobalRefTracking)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge) {
+
+    // Inside JSDesugar, we always track everything
+    private implicit val globalRefTracking: GlobalRefTracking =
+      GlobalRefTracking.All
 
     // For convenience
     private val es2015 = esFeatures.esVersion >= ESVersion.ES2015
@@ -410,7 +415,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       val result = body
       if (!isOptimisticNamingRun || !globalVarNames.exists(localVarNames)) {
         /* At this point, filter out the global refs that do not need to be
-         * tracked across functions and classes.
+         * tracked in the outer context.
          *
          * By default, only dangerous global refs need to be tracked outside of
          * functions, to power `mentionedDangerousGlobalRefs` In that case, the
@@ -422,11 +427,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
          * need to track all global variables across functions and classes. This is
          * slower, but running GCC will take most of the time anyway in that case.
          */
-        val globalRefs =
-          if (trackAllGlobalRefs) globalVarNames.toSet
-          else GlobalRefUtils.keepOnlyDangerousGlobalRefs(globalVarNames.toSet)
+        val outerGlobalRefs =
+          outerGlobalRefTracking.refineFrom(globalRefTracking, globalVarNames.toSet)
 
-        WithGlobals(result, globalRefs)
+        WithGlobals(result, outerGlobalRefs)
       } else {
         /* Clear the local var names, but *not* the global var names.
          * In the pessimistic run, we will use the knowledge gathered during
@@ -2214,8 +2218,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case SelectJSNativeMember(className, member) =>
           val jsNativeLoadSpec =
             globalKnowledge.getJSNativeLoadSpec(className, member.name)
-          extractWithGlobals(genLoadJSFromSpec(
-              jsNativeLoadSpec, keepOnlyDangerousVarNames = false))
+          extractWithGlobals(genLoadJSFromSpec(jsNativeLoadSpec))
 
         case Apply(_, receiver, method, args) =>
           val methodName = method.name
@@ -2863,8 +2866,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               genLoadModule(className)
 
             case Some(spec) =>
-              extractWithGlobals(
-                  genLoadJSFromSpec(spec, keepOnlyDangerousVarNames = false))
+              extractWithGlobals(genLoadJSFromSpec(spec))
           }
 
         case JSUnaryOp(op, lhs) =>
@@ -3229,8 +3231,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
      */
     private def genJSClassConstructor(className: ClassName)(
         implicit pos: Position): WithGlobals[js.Tree] = {
-      sjsGen.genJSClassConstructor(className,
-          keepOnlyDangerousVarNames = false)
+      sjsGen.genJSClassConstructor(className)
     }
 
     private def genApplyStaticLike(field: VarField, className: ClassName,

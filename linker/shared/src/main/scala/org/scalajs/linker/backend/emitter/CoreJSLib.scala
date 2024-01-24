@@ -71,6 +71,9 @@ private[emitter] object CoreJSLib {
 
     implicit private val noPosition: Position = Position.NoPosition
 
+    private implicit val globalRefTracking: GlobalRefTracking =
+      topLevelGlobalRefTracking
+
     private var trackedGlobalRefs = Set.empty[String]
 
     private def globalRef(name: String): VarRef = {
@@ -81,7 +84,7 @@ private[emitter] object CoreJSLib {
     private def trackGlobalRef(name: String): Unit = {
       // We never access dangerous global refs from the core JS lib
       assert(!GlobalRefUtils.isDangerousGlobalRef(name))
-      if (trackAllGlobalRefs)
+      if (globalRefTracking.shouldTrack(name))
         trackedGlobalRefs += name
     }
 

@@ -112,11 +112,18 @@ private[emitter] final class SJSGen(
         args.toList)
   }
 
-  def usesUnderlyingTypedArray(elemTypeRef: NonArrayTypeRef): Boolean =
-    getArrayUnderlyingTypedArrayClassRef(elemTypeRef)(Position.NoPosition).nonEmpty
+  def usesUnderlyingTypedArray(elemTypeRef: NonArrayTypeRef): Boolean = {
+    /* We are only interested in whether `getArrayUnderlyingTypedArrayClassRef`
+     * returns a `Some` or not. We do not keep the result, so the `Position`
+     * and the `GlobalRefTracking` are irrelevant.
+     */
+    implicit val dontCareGlobalRefTracking = GlobalRefTracking.Dangerous
+    implicit val dontCarePosition = Position.NoPosition
+    getArrayUnderlyingTypedArrayClassRef(elemTypeRef).nonEmpty
+  }
 
   def getArrayUnderlyingTypedArrayClassRef(elemTypeRef: NonArrayTypeRef)(
-      implicit pos: Position): Option[WithGlobals[VarRef]] = {
+      implicit tracking: GlobalRefTracking, pos: Position): Option[WithGlobals[VarRef]] = {
     elemTypeRef match {
       case _ if esFeatures.esVersion < ESVersion.ES2015 => None
       case primRef: PrimRef                             => typedArrayRef(primRef)
@@ -125,7 +132,7 @@ private[emitter] final class SJSGen(
   }
 
   def typedArrayRef(primRef: PrimRef)(
-      implicit pos: Position): Option[WithGlobals[VarRef]] = {
+      implicit tracking: GlobalRefTracking, pos: Position): Option[WithGlobals[VarRef]] = {
     def some(name: String) = Some(globalRef(name))
 
     primRef match {
@@ -295,7 +302,7 @@ private[emitter] final class SJSGen(
 
   def genAsInstanceOf(expr: Tree, tpe: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[Tree] = {
+      tracking: GlobalRefTracking, pos: Position): WithGlobals[Tree] = {
     import TreeDSL._
 
     // Local short-hand of WithGlobals(...)
@@ -407,7 +414,7 @@ private[emitter] final class SJSGen(
 
   def genCallPolyfillableBuiltin(builtin: PolyfillableBuiltin, args: Tree*)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[Tree] = {
+      tracking: GlobalRefTracking, pos: Position): WithGlobals[Tree] = {
     if (esFeatures.esVersion >= builtin.availableInESVersion) {
       builtin match {
         case builtin: GlobalVarBuiltin =>
@@ -441,28 +448,25 @@ private[emitter] final class SJSGen(
     }
   }
 
-  def genJSClassConstructor(className: ClassName,
-      keepOnlyDangerousVarNames: Boolean)(
+  def genJSClassConstructor(className: ClassName)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[Tree] = {
+      tracking: GlobalRefTracking, pos: Position): WithGlobals[Tree] = {
 
     genJSClassConstructor(className,
-        globalKnowledge.getJSNativeLoadSpec(className),
-        keepOnlyDangerousVarNames)
+        globalKnowledge.getJSNativeLoadSpec(className))
   }
 
   def genJSClassConstructor(className: ClassName,
-      spec: Option[irt.JSNativeLoadSpec],
-      keepOnlyDangerousVarNames: Boolean)(
+      spec: Option[irt.JSNativeLoadSpec])(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[Tree] = {
+      tracking: GlobalRefTracking, pos: Position): WithGlobals[Tree] = {
     spec match {
       case None =>
         // This is a non-native JS class
         WithGlobals(genNonNativeJSClassConstructor(className))
 
       case Some(spec) =>
-        genLoadJSFromSpec(spec, keepOnlyDangerousVarNames)
+        genLoadJSFromSpec(spec)
     }
   }
 
@@ -472,10 +476,9 @@ private[emitter] final class SJSGen(
     Apply(globalVar(VarField.a, className), Nil)
   }
 
-  def genLoadJSFromSpec(spec: irt.JSNativeLoadSpec,
-      keepOnlyDangerousVarNames: Boolean)(
+  def genLoadJSFromSpec(spec: irt.JSNativeLoadSpec)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[Tree] = {
+      tracking: GlobalRefTracking, pos: Position): WithGlobals[Tree] = {
 
     def pathSelection(from: Tree, path: List[String]): Tree = {
       path.foldLeft(from) {
@@ -484,17 +487,9 @@ private[emitter] final class SJSGen(
     }
 
     spec match {
-      case irt.JSNativeLoadSpec.Global(globalRef, path) =>
-        val globalVarRef = VarRef(Ident(globalRef))
-        val globalVarNames = {
-          if (keepOnlyDangerousVarNames && !trackAllGlobalRefs &&
-              !GlobalRefUtils.isDangerousGlobalRef(globalRef)) {
-            Set.empty[String]
-          } else {
-            Set(globalRef)
-          }
-        }
-        WithGlobals(pathSelection(globalVarRef, path), globalVarNames)
+      case irt.JSNativeLoadSpec.Global(globalRefName, path) =>
+        for (globalVarRef <- globalRef(globalRefName)) yield
+          pathSelection(globalVarRef, path)
 
       case irt.JSNativeLoadSpec.Import(module, path) =>
         val moduleValue = VarRef(externalModuleFieldIdent(module))
@@ -509,9 +504,9 @@ private[emitter] final class SJSGen(
       case irt.JSNativeLoadSpec.ImportWithGlobalFallback(importSpec, globalSpec) =>
         moduleKind match {
           case ModuleKind.NoModule =>
-            genLoadJSFromSpec(globalSpec, keepOnlyDangerousVarNames)
+            genLoadJSFromSpec(globalSpec)
           case ModuleKind.ESModule | ModuleKind.CommonJSModule =>
-            genLoadJSFromSpec(importSpec, keepOnlyDangerousVarNames)
+            genLoadJSFromSpec(importSpec)
         }
     }
   }
@@ -533,13 +528,13 @@ private[emitter] final class SJSGen(
 
   def genArrayValue(arrayTypeRef: ArrayTypeRef, elems: List[Tree])(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[Tree] = {
+      tracking: GlobalRefTracking, pos: Position): WithGlobals[Tree] = {
     genNativeArrayWrapper(arrayTypeRef, ArrayConstr(elems))
   }
 
   def genNativeArrayWrapper(arrayTypeRef: ArrayTypeRef, nativeArray: Tree)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[Tree] = {
+      tracking: GlobalRefTracking, pos: Position): WithGlobals[Tree] = {
     val argWithGlobals = arrayTypeRef match {
       case ArrayTypeRef(elemTypeRef, 1) =>
         getArrayUnderlyingTypedArrayClassRef(elemTypeRef) match {
