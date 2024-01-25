@@ -17,6 +17,7 @@ import scala.annotation.{switch, tailrec}
 import java.util.Comparator
 
 import scala.collection.mutable
+import scala.reflect.ClassTag
 
 import org.scalajs.ir._
 import org.scalajs.ir.Names._
@@ -40,7 +41,8 @@ import PolyfillableBuiltin._
 import Transients._
 
 private[emitter] final class NameCompressor private (
-  entries: NameCompressor.EntryMap
+  entries: NameCompressor.EntryMap,
+  ancestorEntries: NameCompressor.AncestorEntryMap
 ) {
   import NameCompressor._
 
@@ -52,9 +54,26 @@ private[emitter] final class NameCompressor private (
 
   def allocatedFor(prop: ArrayClassProperty): String =
     entries(prop).allocatedName
+
+  def allocatedForAncestor(ancestor: ClassName): String =
+    ancestorEntries(ancestor).allocatedName
 }
 
 private[emitter] object NameCompressor {
+  /** Base set of names that should be avoided when allocating property names
+   *  in any namespace.
+   *
+   *  This set contains:
+   *
+   *  - the reserved JS identifiers (not technically invalid by spec, but JS
+   *    minifiers tend to avoid them anyway: `foo.if` is playing with fire),
+   *  - the `"then"` name, because it is used to identify `Thenable`s by
+   *    spec and therefore lives in the same namespace as the properties of
+   *    *all* objects,
+   */
+  private val BasePropertyNamesToAvoid: Set[String] =
+    NameGen.ReservedJSIdentifierNames + "then"
+
   def compress(config: Emitter.Config, moduleSet: ModuleSet,
       logger: Logger): (NameCompressor, Set[String]) = {
     val traverser = new Traverser(config, moduleSet)
@@ -64,21 +83,27 @@ private[emitter] object NameCompressor {
     }
 
     val entries = traverser.entries
+    val ancestorEntries = traverser.ancestorEntries
     val dangerousGlobalRefs = traverser.dangerousGlobalRefs.toSet
 
     logger.time("Name compressor: Allocate property names") {
       allocatePropertyNames(entries, traverser.propertyNamesToAvoid)
     }
 
-    val compressor = new NameCompressor(entries)
+    logger.time("Name compressor: Allocate ancestor names") {
+      allocatePropertyNames(ancestorEntries, BasePropertyNamesToAvoid)
+    }
+
+    val compressor = new NameCompressor(entries, ancestorEntries)
     (compressor, dangerousGlobalRefs)
   }
 
-  private def allocatePropertyNames(entries: EntryMap,
-      namesToAvoid: collection.Set[String]): Unit = {
-    val comparator: Comparator[PropertyNameEntry] =
-      Comparator.comparingInt[PropertyNameEntry](_.occurrences).reversed() // by decreasing order of occurrences
-        .thenComparing(Comparator.naturalOrder[PropertyNameEntry]()) // tie-break
+  private def allocatePropertyNames[K <: AnyRef, E <: BaseEntry with Comparable[E]](
+      entries: mutable.AnyRefMap[K, E], namesToAvoid: collection.Set[String])(
+      implicit ct: ClassTag[E]): Unit = {
+    val comparator: Comparator[E] =
+      Comparator.comparingInt[E](_.occurrences).reversed() // by decreasing order of occurrences
+        .thenComparing(Comparator.naturalOrder[E]()) // tie-break
 
     val orderedEntries = entries.values.toArray
     java.util.Arrays.sort(orderedEntries, comparator)
@@ -92,12 +117,18 @@ private[emitter] object NameCompressor {
   /** Keys of this map are `FieldName | MethodName | ArrayClassProperty`. */
   private type EntryMap = mutable.AnyRefMap[AnyRef, PropertyNameEntry]
 
-  private sealed abstract class PropertyNameEntry extends Comparable[PropertyNameEntry] {
+  private type AncestorEntryMap = mutable.AnyRefMap[ClassName, AncestorNameEntry]
+
+  private sealed abstract class BaseEntry {
     var occurrences: Int = 0
     var allocatedName: String = null
 
     def incOccurrences(): Unit =
       occurrences += 1
+  }
+
+  private sealed abstract class PropertyNameEntry
+      extends BaseEntry with Comparable[PropertyNameEntry] {
 
     def compareTo(that: PropertyNameEntry): Int = (this, that) match {
       case (x: FieldNameEntry, y: FieldNameEntry) =>
@@ -134,6 +165,15 @@ private[emitter] object NameCompressor {
     override def toString(): String = s"ArrayClassPropEntry(${property.nonMinifiedName})"
   }
 
+  private final class AncestorNameEntry(val ancestor: ClassName)
+      extends BaseEntry with Comparable[AncestorNameEntry] {
+
+    def compareTo(that: AncestorNameEntry): Int =
+      this.ancestor.compareTo(that.ancestor)
+
+    override def toString(): String = s"AncestorNameEntry(${ancestor.nameString})"
+  }
+
   private final class Traverser(config: Emitter.Config, moduleSet: ModuleSet)
       extends org.scalajs.ir.Traversers.Traverser {
 
@@ -154,15 +194,13 @@ private[emitter] object NameCompressor {
 
     val dangerousGlobalRefs = mutable.Set.empty[String]
 
-    /** Names that should be avoided when allocating property names.
+    /** Names that should be avoided when allocating property names for
+     *  instance properties of Scala classes.
      *
      *  After traversing the module set, this set contains:
      *
-     *  - the reserved JS identifiers (not technically invalid by spec, but JS
-     *    minifiers tend to avoid them anyway: `foo.if` is playing with fire),
-     *  - the `"then"` name, because it is used to identify `Thenable`s by
-     *    spec and therefore lives in the same namespace as the properties of
-     *    *all* objects,
+     *  - the properties names that should be avoided in any namespace
+     *    (see `BasePropertyNamesToAvoid`),
      *  - the `"name"` and `"cause"` names, because they are specified instance
      *    properties of `Error` (which our `Throwable` extends) and are
      *    short enough that they could in theory collide with generated names,
@@ -171,10 +209,12 @@ private[emitter] object NameCompressor {
      *    rename, so we must avoid collisions with them.
      */
     val propertyNamesToAvoid: mutable.Set[String] =
-      mutable.Set.empty ++= NameGen.ReservedJSIdentifierNames ++= List("then", "name", "cause")
+      mutable.Set.empty ++= BasePropertyNamesToAvoid ++= List("name", "cause")
 
     /** Keys are `FieldName`s, `MethodName`s or `ArrayClassProperty`s. */
     val entries: EntryMap = mutable.AnyRefMap.empty
+
+    val ancestorEntries: AncestorEntryMap = mutable.AnyRefMap.empty
 
     private def countPropertyName(fieldName: FieldName): Unit =
       entries.getOrElseUpdate(fieldName, new FieldNameEntry(fieldName)).incOccurrences()
@@ -184,6 +224,11 @@ private[emitter] object NameCompressor {
 
     private def countPropertyName(prop: ArrayClassProperty): Unit =
       entries.getOrElseUpdate(prop, new ArrayClassPropEntry(prop)).incOccurrences()
+
+    private def countAncestorName(ancestor: ClassName): Unit = {
+      if (ancestor != ObjectClass)
+        ancestorEntries.getOrElseUpdate(ancestor, new AncestorNameEntry(ancestor)).incOccurrences()
+    }
 
     private def countGlobalRef(name: String): Unit = {
       if (GlobalRefUtils.isDangerousGlobalRef(name))
@@ -223,6 +268,14 @@ private[emitter] object NameCompressor {
 
       if (esVersion >= ESVersion.ES2015)
         countPropertyName(ArrayClassProperty.copyTo)
+
+      // Ancestor names
+
+      // One in `initArray`, and one in `initSpecializedArray`
+      countAncestorName(CloneableClass)
+      countAncestorName(CloneableClass)
+      countAncestorName(SerializableClass)
+      countAncestorName(SerializableClass)
     }
 
     def traverseLinkedClass(linkedClass: LinkedClass): Unit = {
@@ -252,6 +305,20 @@ private[emitter] object NameCompressor {
           traverseMethodDef(method)
         for (exportedMember <- linkedClass.exportedMembers)
           traverseJSMethodPropDef(exportedMember)
+      }
+
+      val className = linkedClass.className
+
+      if (linkedClass.hasInstanceTests) {
+        countAncestorName(className)
+        if (linkedClass.kind == ClassKind.Interface)
+          countAncestorName(className)
+      }
+
+      if (linkedClass.hasRuntimeTypeInfo) {
+        countAncestorName(className)
+        for (ancestor <- linkedClass.ancestors)
+          countAncestorName(ancestor)
       }
     }
 

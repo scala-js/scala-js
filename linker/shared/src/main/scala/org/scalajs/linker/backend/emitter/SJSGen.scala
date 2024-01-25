@@ -209,6 +209,13 @@ private[emitter] final class SJSGen(
     }
   }
 
+  def genAncestorName(ancestor: ClassName): String = {
+    nameCompressor match {
+      case None             => genName(ancestor)
+      case Some(compressor) => compressor.allocatedForAncestor(ancestor)
+    }
+  }
+
   def genJSPrivateSelect(receiver: Tree, field: irt.FieldIdent)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {

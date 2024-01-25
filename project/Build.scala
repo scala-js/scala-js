@@ -2013,24 +2013,24 @@ object Build {
             Some(ExpectedSizes(
                 fastLink = 640000 to 641000,
                 fullLink = 101000 to 102000,
-                fastLinkMinify = 538000 to 539000,
-                fullLinkMinify = 371000 to 372000,
+                fastLinkMinify = 499000 to 500000,
+                fullLinkMinify = 341000 to 342000,
                 fastLinkGz = 77000 to 78000,
                 fullLinkGz = 26000 to 27000,
-                fastLinkMinifyGz = 71000 to 72000,
-                fullLinkMinifyGz = 51000 to 52000,
+                fastLinkMinifyGz = 69000 to 70000,
+                fullLinkMinifyGz = 50000 to 51000,
             ))
 
           case `default213Version` =>
             Some(ExpectedSizes(
                 fastLink = 462000 to 463000,
                 fullLink = 99000 to 100000,
-                fastLinkMinify = 373000 to 374000,
-                fullLinkMinify = 332000 to 333000,
+                fastLinkMinify = 352000 to 353000,
+                fullLinkMinify = 312000 to 313000,
                 fastLinkGz = 60000 to 61000,
                 fullLinkGz = 26000 to 27000,
-                fastLinkMinifyGz = 55000 to 56000,
-                fullLinkMinifyGz = 50000 to 51000,
+                fastLinkMinifyGz = 54000 to 55000,
+                fullLinkMinifyGz = 49000 to 50000,
             ))
 
           case _ =>

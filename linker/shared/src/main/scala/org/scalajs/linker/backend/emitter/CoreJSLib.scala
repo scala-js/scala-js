@@ -1704,8 +1704,8 @@ private[emitter] object CoreJSLib {
             else
               Skip(),
             privateFieldSet("ancestors", ObjectConstr(List(
-                Ident(genName(CloneableClass)) -> 1,
-                Ident(genName(SerializableClass)) -> 1
+                Ident(genAncestorName(CloneableClass)) -> 1,
+                Ident(genAncestorName(SerializableClass)) -> 1
             ))),
             privateFieldSet("componentData", componentData),
             privateFieldSet("arrayBase", arrayBase),
