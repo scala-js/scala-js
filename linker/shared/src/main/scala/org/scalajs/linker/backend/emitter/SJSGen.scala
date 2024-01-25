@@ -43,6 +43,108 @@ private[emitter] final class SJSGen(
 
   val useBigIntForLongs = esFeatures.allowBigIntsForLongs
 
+  /** Core Property Names. */
+  object cpn {
+    // --- Scala.js objects ---
+
+    /** The class-wide classData field of Scala.js objects, which references their TypeData. */
+    val classData = "$classData" // always in full; it is used as identification of Scala.js objects
+
+    // --- Class ---
+
+    /** `Char.c`: the int value of the character. */
+    val c = "c"
+
+    // --- TypeData private fields ---
+
+    /** `TypeData.constr`: the run-time constructor of the class. */
+    val constr = if (minify) "C" else "constr"
+
+    /** `TypeData.parentData`: the super class data. */
+    val parentData = if (minify) "P" else "parentData"
+
+    /** `TypeData.ancestors`: dictionary where keys are the ancestor names of all ancestors. */
+    val ancestors = if (minify) "n" else "ancestors"
+
+    /** `TypeData.componentData`: the `TypeData` of the component type of an array type. */
+    val componentData = if (minify) "O" else "componentData"
+
+    /** `TypeData.arrayBase`: the `TypeData` of the base type of an array type. */
+    val arrayBase = if (minify) "B" else "arrayBase"
+
+    /** `TypeData.arrayDepth`: the depth of an array type. */
+    val arrayDepth = if (minify) "D" else "arrayDepth"
+
+    /** `TypeData.zero`: the zero value of the type. */
+    val zero = if (minify) "z" else "zero"
+
+    /** `TypeData.arrayEncodedName`: the name of the type as it appears in its array type's name. */
+    val arrayEncodedName = if (minify) "E" else "arrayEncodedName"
+
+    /** `TypeData._classOf`: the field storing the `jl.Class` instance for that type. */
+    val _classOf = if (minify) "L" else "_classOf"
+
+    /** `TypeData._arrayOf`: the field storing the `TypeData` for that type's array type. */
+    val _arrayOf = if (minify) "A" else "_arrayOf"
+
+    /** `TypeData.isAssignableFromFun`: the implementation of `jl.Class.isAssignableFrom` without fast path. */
+    val isAssignableFromFun = if (minify) "F" else "isAssignableFromFun"
+
+    /** `TypeData.wrapArray`: the function to create an ArrayClass instance from a JS array of its elements. */
+    val wrapArray = if (minify) "w" else "wrapArray"
+
+    /** `TypeData.isJSType`: whether it is a JS type. */
+    val isJSType = if (minify) "J" else "isJSType"
+
+    // --- TypeData constructors ---
+
+    val initPrim = if (minify) "p" else "initPrim"
+
+    val initClass = if (minify) "i" else "initClass"
+
+    val initSpecializedArray = if (minify) "y" else "initSpecializedArray"
+
+    val initArray = if (minify) "a" else "initArray"
+
+    // --- TypeData private methods ---
+
+    /** `TypeData.getArrayOf()`: the `Type` instance for that type's array type. */
+    val getArrayOf = if (minify) "r" else "getArrayOf"
+
+    /** `TypeData.getClassOf()`: the `jl.Class` instance for that type. */
+    val getClassOf = if (minify) "l" else "getClassOf"
+
+    // --- TypeData public fields --- never minified
+
+    /** `TypeData.name`: public, the user name of the class (the result of `jl.Class.getName()`). */
+    val name = "name"
+
+    /** `TypeData.isPrimitive`: public, whether it is a primitive type. */
+    val isPrimitive = "isPrimitive"
+
+    /** `TypeData.isInterface`: public, whether it is an interface type. */
+    val isInterface = "isInterface"
+
+    /** `TypeData.isArrayClass`: public, whether it is an array type. */
+    val isArrayClass = "isArrayClass"
+
+    /** `TypeData.isInstance()`: public, implementation of `jl.Class.isInstance`. */
+    val isInstance = "isInstance"
+
+    /** `TypeData.isAssignableFrom()`: public, implementation of `jl.Class.isAssignableFrom`. */
+    val isAssignableFrom = "isAssignableFrom"
+
+    // --- TypeData public methods --- never minified
+
+    val checkCast = "checkCast"
+
+    val getSuperclass = "getSuperclass"
+
+    val getComponentType = "getComponentType"
+
+    val newArrayOfThisClass = "newArrayOfThisClass"
+  }
+
   def genZeroOf(tpe: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
@@ -586,14 +688,14 @@ private[emitter] final class SJSGen(
       case ArrayTypeRef(ClassRef(ObjectClass), 1) =>
         globalVar(VarField.ac, ObjectClass)
       case _ =>
-        genClassDataOf(arrayTypeRef) DOT "constr"
+        genClassDataOf(arrayTypeRef) DOT cpn.constr
     }
   }
 
   def genClassOf(typeRef: TypeRef)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
-    Apply(DotSelect(genClassDataOf(typeRef), Ident("getClassOf")), Nil)
+    Apply(DotSelect(genClassDataOf(typeRef), Ident(cpn.getClassOf)), Nil)
   }
 
   def genClassOf(className: ClassName)(
@@ -612,7 +714,7 @@ private[emitter] final class SJSGen(
       case ArrayTypeRef(base, dims) =>
         val baseData = genClassDataOf(base)
         (1 to dims).foldLeft[Tree](baseData) { (prev, _) =>
-          Apply(DotSelect(prev, Ident("getArrayOf")), Nil)
+          Apply(DotSelect(prev, Ident(cpn.getArrayOf)), Nil)
         }
     }
   }

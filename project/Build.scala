@@ -2013,8 +2013,8 @@ object Build {
             Some(ExpectedSizes(
                 fastLink = 640000 to 641000,
                 fullLink = 101000 to 102000,
-                fastLinkMinify = 499000 to 500000,
-                fullLinkMinify = 341000 to 342000,
+                fastLinkMinify = 494000 to 495000,
+                fullLinkMinify = 337000 to 338000,
                 fastLinkGz = 77000 to 78000,
                 fullLinkGz = 26000 to 27000,
                 fastLinkMinifyGz = 69000 to 70000,
@@ -2025,8 +2025,8 @@ object Build {
             Some(ExpectedSizes(
                 fastLink = 462000 to 463000,
                 fullLink = 99000 to 100000,
-                fastLinkMinify = 352000 to 353000,
-                fullLinkMinify = 312000 to 313000,
+                fastLinkMinify = 347000 to 348000,
+                fullLinkMinify = 307000 to 308000,
                 fastLinkGz = 60000 to 61000,
                 fullLinkGz = 26000 to 27000,
                 fastLinkMinifyGz = 54000 to 55000,
