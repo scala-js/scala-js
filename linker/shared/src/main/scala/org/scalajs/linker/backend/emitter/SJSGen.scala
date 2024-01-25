@@ -250,6 +250,13 @@ private[emitter] final class SJSGen(
     }
   }
 
+  def genAncestorIdent(ancestor: ClassName)(implicit pos: Position): MaybeDelayedIdent = {
+    nameCompressor match {
+      case None             => Ident(genName(ancestor))
+      case Some(compressor) => DelayedIdent(compressor.genResolverForAncestor(ancestor))
+    }
+  }
+
   def genJSPrivateSelect(receiver: Tree, field: irt.FieldIdent)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {

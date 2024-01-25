@@ -821,7 +821,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       ancestors: js.Tree)(
       implicit pos: Position): js.Tree = {
     import TreeDSL._
-    ancestors DOT genName(className)
+    ancestors DOT genAncestorIdent(className)
   }
 
   def genTypeData(className: ClassName, kind: ClassKind,
@@ -852,7 +852,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     }
 
     val ancestorsRecord = js.ObjectConstr(
-        ancestors.withFilter(_ != ObjectClass).map(ancestor => (js.Ident(genName(ancestor)), js.IntLiteral(1))))
+        ancestors.withFilter(_ != ObjectClass).map(ancestor => (genAncestorIdent(ancestor), js.IntLiteral(1)))
+    )
 
     val isInstanceFunWithGlobals: WithGlobals[js.Tree] = {
       if (globalKnowledge.isAncestorOfHijackedClass(className)) {
@@ -901,7 +902,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     isInstanceFunWithGlobals.flatMap { isInstanceFun =>
       val allParams = List(
-          js.ObjectConstr(List(js.Ident(genName(className)) -> js.IntLiteral(0))),
+          js.ObjectConstr(List(genAncestorIdent(className) -> js.IntLiteral(0))),
           js.BooleanLiteral(kind == ClassKind.Interface),
           js.StringLiteral(RuntimeClassNameMapperImpl.map(
               semantics.runtimeClassNameMapper, className.nameString)),
