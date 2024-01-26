@@ -64,6 +64,11 @@ final class Emitter[E >: Null <: js.Tree](
 
     val classEmitter: ClassEmitter = new ClassEmitter(sjsGen)
 
+    val everyFileStart: List[E] = {
+      // This postTransform does not count in the statistics
+      postTransformer.transformStats(sjsGen.declarePrototypeVar, 0)
+    }
+
     val coreJSLibCache: CoreJSLibCache = new CoreJSLibCache
 
     val moduleCaches: mutable.Map[ModuleID, ModuleCache] = mutable.Map.empty
@@ -293,6 +298,11 @@ final class Emitter[E >: Null <: js.Tree](
          * it is crucial that we verify it.
          */
         val defTrees: List[E] = (
+            /* The declaration of the `$p` variable that temporarily holds
+             * prototypes.
+             */
+            state.everyFileStart.iterator ++
+
             /* The definitions of the CoreJSLib that come before the definition
              * of `j.l.Object`. They depend on nothing else.
              */

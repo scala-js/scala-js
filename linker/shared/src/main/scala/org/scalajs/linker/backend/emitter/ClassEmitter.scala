@@ -186,13 +186,13 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
       val chainProtoWithGlobals = superClass match {
         case None =>
-          WithGlobals.nil
+          WithGlobals(setPrototypeVar(ctorVar))
 
         case Some(_) if shouldExtendJSError(className, superClass) =>
-          globalRef("Error").map(chainPrototypeWithLocalCtor(className, ctorVar, _))
+          globalRef("Error").map(chainPrototypeWithLocalCtor(className, ctorVar, _, localDeclPrototypeVar = false))
 
         case Some(parentIdent) =>
-          WithGlobals(List(ctorVar.prototype := js.New(globalVar(VarField.h, parentIdent.name), Nil)))
+          WithGlobals(List(genAssignPrototype(ctorVar, js.New(globalVar(VarField.h, parentIdent.name), Nil))))
       }
 
       for {
@@ -208,12 +208,12 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           js.JSDocConstructor(realCtorDef.head) ::
           realCtorDef.tail :::
           chainProto :::
-          (genIdentBracketSelect(ctorVar.prototype, "constructor") := ctorVar) ::
+          (genIdentBracketSelect(prototypeFor(ctorVar), "constructor") := ctorVar) ::
 
           // Inheritable constructor
           js.JSDocConstructor(inheritableCtorDef.head) ::
           inheritableCtorDef.tail :::
-          (globalVar(VarField.h, className).prototype := ctorVar.prototype) :: Nil
+          (globalVar(VarField.h, className).prototype := prototypeFor(ctorVar)) :: Nil
         )
       }
     }
@@ -243,8 +243,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         val ctorVar = fileLevelVar(VarField.b, genName(className))
 
         js.JSDocConstructor(ctorVar := ctorFun) ::
-        chainPrototypeWithLocalCtor(className, ctorVar, superCtor) :::
-        (genIdentBracketSelect(ctorVar.prototype, "constructor") := ctorVar) :: Nil
+        chainPrototypeWithLocalCtor(className, ctorVar, superCtor, localDeclPrototypeVar = true) :::
+        (genIdentBracketSelect(prototypeFor(ctorVar), "constructor") := ctorVar) :: Nil
       }
     }
   }
@@ -333,7 +333,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   }
 
   private def chainPrototypeWithLocalCtor(className: ClassName, ctorVar: js.Tree,
-      superCtor: js.Tree)(implicit pos: Position): List[js.Tree] = {
+      superCtor: js.Tree, localDeclPrototypeVar: Boolean)(implicit pos: Position): List[js.Tree] = {
     import TreeDSL._
 
     val dummyCtor = fileLevelVar(VarField.hh, genName(className))
@@ -341,7 +341,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     List(
         js.JSDocConstructor(genConst(dummyCtor.ident, js.Function(false, Nil, None, js.Skip()))),
         dummyCtor.prototype := superCtor.prototype,
-        ctorVar.prototype := js.New(dummyCtor, Nil)
+        genAssignPrototype(ctorVar, js.New(dummyCtor, Nil), localDeclPrototypeVar)
     )
   }
 
@@ -638,7 +638,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       else globalVar(VarField.c, className)
 
     if (namespace.isStatic) classVarRef
-    else classVarRef.prototype
+    else prototypeFor(classVarRef)
   }
 
   def genMemberNameTree(name: Tree)(
