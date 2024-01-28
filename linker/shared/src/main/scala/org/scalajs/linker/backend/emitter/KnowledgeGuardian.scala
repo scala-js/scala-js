@@ -374,7 +374,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
      */
     private def computeFieldDefsVersion(linkedClass: LinkedClass): Version = {
       val hasAnyJSField = linkedClass.fields.exists(_.isInstanceOf[JSFieldDef])
-      val hasAnyJSFieldVersion = Version.fromInt(if (hasAnyJSField) 1 else 0)
+      val hasAnyJSFieldVersion = Version.fromByte(if (hasAnyJSField) 1 else 0)
       val scalaFieldNamesVersion = linkedClass.fields.collect {
         case FieldDef(_, FieldIdent(name), _, _) => Version.fromUTF8String(name.encoded)
       }

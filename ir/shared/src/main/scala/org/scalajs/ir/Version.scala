@@ -80,6 +80,16 @@ object Version {
   def fromBytes(bytes: Array[Byte]): Version =
     make(Type.Ephemeral, bytes)
 
+  /** Create a non-hash version from a Byte.
+   *
+   *  Strictly equivalent to (but potentially more efficient):
+   *  {{{
+   *  fromBytes(Array[Byte](i))
+   *  }}}
+   */
+  def fromByte(i: Byte): Version =
+    new Version(Array(Type.Ephemeral, i))
+
   /** Create a non-hash version from an Int.
    *
    *  Strictly equivalent to (but potentially more efficient):

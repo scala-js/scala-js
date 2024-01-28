@@ -2132,6 +2132,15 @@ private[emitter] object CoreJSLib {
       obj ::: prims
     }
 
+    private def assignES5ClassMembers(classRef: Tree, members: List[MethodDef]): List[Tree] = {
+      for {
+        MethodDef(static, name, args, restParam, body) <- members
+      } yield {
+        val target = if (static) classRef else classRef.prototype
+        genPropSelect(target, name) := Function(arrow = false, args, restParam, body)
+      }
+    }
+
     private def defineFunction(name: VarField, args: List[ParamDef], body: Tree): List[Tree] =
       extractWithGlobals(globalFunctionDef(name, CoreVar, args, None, body))
 

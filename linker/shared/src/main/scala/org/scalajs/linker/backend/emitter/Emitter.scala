@@ -412,8 +412,12 @@ final class Emitter(config: Emitter.Config) {
       }
     }
 
+    val isJSClass = kind.isJSClass
+
     // Class definition
     if (linkedClass.hasInstances && kind.isAnyNonNativeClass) {
+      val isJSClassVersion = Version.fromByte(if (isJSClass) 1 else 0)
+
       /* Is this class compiled as an ECMAScript `class`?
        *
        * See JSGen.useClassesForRegularClasses for the rationale here.
@@ -430,13 +434,24 @@ final class Emitter(config: Emitter.Config) {
        * observable change; whereas rewiring Throwable to extend `Error` when
        * it does not actually directly extend `Object` would break everything,
        * so we need to be more careful there.
+       *
+       * For caching, isJSClassVersion can be used to guard use of `useESClass`:
+       * it is the only "dynamic" value it depends on. The rest is configuration
+       * or part of the cache key (ancestors).
        */
       val useESClass = if (jsGen.useClassesForRegularClasses) {
         assert(jsGen.useClassesForJSClassesAndThrowables)
         true
       } else {
         jsGen.useClassesForJSClassesAndThrowables &&
-        (kind.isJSClass || linkedClass.ancestors.contains(ThrowableClass))
+        (isJSClass || linkedClass.ancestors.contains(ThrowableClass))
+      }
+
+      val hasJSSuperClass = linkedClass.jsSuperClass.isDefined
+
+      val storeJSSuperClass = linkedClass.jsSuperClass.map { jsSuperClass =>
+        extractWithGlobals(classTreeCache.storeJSSuperClass.getOrElseUpdate(
+            classEmitter.genStoreJSSuperClass(jsSuperClass)(moduleContext, classCache, linkedClass.pos)))
       }
 
       // JS constructor
@@ -448,7 +463,7 @@ final class Emitter(config: Emitter.Config) {
          */
         val ctorCache = classCache.getConstructorCache()
 
-        if (linkedClass.kind.isJSClass) {
+        if (isJSClass) {
           assert(linkedInlineableInit.isEmpty)
 
           val jsConstructorDef = linkedClass.jsConstructorDef.getOrElse {
@@ -460,7 +475,7 @@ final class Emitter(config: Emitter.Config) {
               classEmitter.genJSConstructor(
                 className, // invalidated by overall class cache (part of ancestors)
                 linkedClass.superClass, // invalidated by class version
-                linkedClass.jsSuperClass, // invalidated by class version
+                hasJSSuperClass, // invalidated by class version
                 useESClass, // invalidated by class version
                 jsConstructorDef // part of ctor version
               )(moduleContext, ctorCache, linkedClass.pos))
@@ -524,8 +539,14 @@ final class Emitter(config: Emitter.Config) {
         val methodCache =
           classCache.getMemberMethodCache(method.methodName)
 
-        methodCache.getOrElseUpdate(method.version,
-            classEmitter.genMemberMethod(className, method)(moduleContext, methodCache))
+        val version = Version.combine(isJSClassVersion, method.version)
+        methodCache.getOrElseUpdate(version,
+            classEmitter.genMemberMethod(
+                className, // invalidated by overall class cache
+                isJSClass, // invalidated by isJSClassVersion
+                useESClass, // invalidated by isJSClassVersion
+                method // invalidated by method.version
+            )(moduleContext, methodCache))
       }
 
       // Exported Members
@@ -533,13 +554,13 @@ final class Emitter(config: Emitter.Config) {
         (member, idx) <- linkedClass.exportedMembers.zipWithIndex
       } yield {
         val memberCache = classCache.getExportedMemberCache(idx)
-        val version = Version.combine(linkedClass.version, member.version)
+        val version = Version.combine(isJSClassVersion, member.version)
         memberCache.getOrElseUpdate(version,
             classEmitter.genExportedMember(
                 className, // invalidated by overall class cache
-                kind, // invalidated by class verison
-                useESClass, // invalidated by class version (combined)
-                member // invalidated by version (combined)
+                isJSClass, // invalidated by isJSClassVersion
+                useESClass, // invalidated by isJSClassVersion
+                member // invalidated by version
             )(moduleContext, memberCache))
       }
 
@@ -561,15 +582,13 @@ final class Emitter(config: Emitter.Config) {
             exportedMembers <- WithGlobals.list(exportedMembersWithGlobals)
             clazz <- classEmitter.buildClass(
               className, // invalidated by overall class cache (part of ancestors)
-              linkedClass.kind, // invalidated by class version
+              isJSClass, // invalidated by class version
               linkedClass.jsClassCaptures, // invalidated by class version
               hasClassInitializer, // invalidated by class version (optimizer cannot remove it)
               linkedClass.superClass, // invalidated by class version
-              linkedClass.jsSuperClass, // invalidated by class version
+              storeJSSuperClass, // invalidated by class version
               useESClass, // invalidated by class version (depends on kind, config and ancestry only)
-              ctor, // invalidated directly
-              memberMethods, // invalidated directly
-              exportedMembers.flatten // invalidated directly
+              ctor ::: memberMethods ::: exportedMembers.flatten // all 3 invalidated directly
             )(moduleContext, fullClassCache, linkedClass.pos) // pos invalidated by class version
           } yield {
             clazz
@@ -618,7 +637,7 @@ final class Emitter(config: Emitter.Config) {
 
     if (linkedClass.kind.hasModuleAccessor && linkedClass.hasInstances) {
       main ++= extractWithGlobals(classTreeCache.moduleAccessor.getOrElseUpdate(
-          classEmitter.genModuleAccessor(className, kind)(moduleContext, classCache, linkedClass.pos)))
+          classEmitter.genModuleAccessor(className, isJSClass)(moduleContext, classCache, linkedClass.pos)))
     }
 
     // Static fields
@@ -762,7 +781,7 @@ final class Emitter(config: Emitter.Config) {
       Array.fill(MemberNamespace.Count)(mutable.Map.empty[MethodName, MethodCache[List[js.Tree]]])
 
     private[this] val _memberMethodCache =
-      mutable.Map.empty[MethodName, MethodCache[js.MethodDef]]
+      mutable.Map.empty[MethodName, MethodCache[js.Tree]]
 
     private[this] var _constructorCache: Option[MethodCache[List[js.Tree]]] = None
 
@@ -802,7 +821,7 @@ final class Emitter(config: Emitter.Config) {
     }
 
     def getMemberMethodCache(
-        methodName: MethodName): MethodCache[js.MethodDef] = {
+        methodName: MethodName): MethodCache[js.Tree] = {
       _memberMethodCache.getOrElseUpdate(methodName, new MethodCache)
     }
 
@@ -889,7 +908,7 @@ final class Emitter(config: Emitter.Config) {
     private[this] var _tree: WithGlobals[List[js.Tree]] = null
     private[this] var _lastVersion: Version = Version.Unversioned
     private[this] var _lastCtor: WithGlobals[List[js.Tree]] = null
-    private[this] var _lastMemberMethods: List[WithGlobals[js.MethodDef]] = null
+    private[this] var _lastMemberMethods: List[WithGlobals[js.Tree]] = null
     private[this] var _lastExportedMembers: List[WithGlobals[List[js.Tree]]] = null
     private[this] var _cacheUsed = false
 
@@ -905,7 +924,7 @@ final class Emitter(config: Emitter.Config) {
     def startRun(): Unit = _cacheUsed = false
 
     def getOrElseUpdate(version: Version, ctor: WithGlobals[List[js.Tree]],
-        memberMethods: List[WithGlobals[js.MethodDef]], exportedMembers: List[WithGlobals[List[js.Tree]]],
+        memberMethods: List[WithGlobals[js.Tree]], exportedMembers: List[WithGlobals[List[js.Tree]]],
         compute: => WithGlobals[List[js.Tree]]): WithGlobals[List[js.Tree]] = {
 
       @tailrec
@@ -1035,6 +1054,7 @@ object Emitter {
 
   private final class DesugaredClassCache {
     val privateJSFields = new OneTimeCache[WithGlobals[List[js.Tree]]]
+    val storeJSSuperClass = new OneTimeCache[WithGlobals[js.Tree]]
     val instanceTests = new OneTimeCache[WithGlobals[List[js.Tree]]]
     val typeData = new OneTimeCache[WithGlobals[List[js.Tree]]]
     val setTypeData = new OneTimeCache[js.Tree]
