@@ -595,7 +595,7 @@ final class Emitter(config: Emitter.Config) {
        */
 
       if (classEmitter.needInstanceTests(linkedClass)(classCache)) {
-        main += extractWithGlobals(classTreeCache.instanceTests.getOrElseUpdate(
+        main ++= extractWithGlobals(classTreeCache.instanceTests.getOrElseUpdate(
             classEmitter.genInstanceTests(className, kind)(moduleContext, classCache, linkedClass.pos)))
       }
 
@@ -1035,7 +1035,7 @@ object Emitter {
 
   private final class DesugaredClassCache {
     val privateJSFields = new OneTimeCache[WithGlobals[List[js.Tree]]]
-    val instanceTests = new OneTimeCache[WithGlobals[js.Tree]]
+    val instanceTests = new OneTimeCache[WithGlobals[List[js.Tree]]]
     val typeData = new OneTimeCache[WithGlobals[List[js.Tree]]]
     val setTypeData = new OneTimeCache[js.Tree]
     val moduleAccessor = new OneTimeCache[WithGlobals[List[js.Tree]]]
