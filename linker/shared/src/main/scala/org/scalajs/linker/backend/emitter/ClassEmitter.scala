@@ -867,7 +867,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     }
 
     val ancestorsRecord = js.ObjectConstr(
-        ancestors.map(ancestor => (js.Ident(genName(ancestor)), js.IntLiteral(1))))
+        ancestors.withFilter(_ != ObjectClass).map(ancestor => (js.Ident(genName(ancestor)), js.IntLiteral(1))))
 
     val isInstanceFunWithGlobals: WithGlobals[js.Tree] = {
       if (globalKnowledge.isAncestorOfHijackedClass(className)) {

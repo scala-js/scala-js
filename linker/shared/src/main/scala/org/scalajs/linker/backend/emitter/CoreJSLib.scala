@@ -1687,7 +1687,6 @@ private[emitter] object CoreJSLib {
             else
               Skip(),
             privateFieldSet("ancestors", ObjectConstr(List(
-                Ident(genName(ObjectClass)) -> 1,
                 Ident(genName(CloneableClass)) -> 1,
                 Ident(genName(SerializableClass)) -> 1
             ))),
@@ -2066,7 +2065,7 @@ private[emitter] object CoreJSLib {
         extractWithGlobals(
             globalVarDef(VarField.d, ObjectClass, New(globalVar(VarField.TypeData, CoreVar), Nil))) :::
         List(
-          privateFieldSet("ancestors", ObjectConstr(List((Ident(genName(ObjectClass)) -> 1)))),
+          privateFieldSet("ancestors", ObjectConstr(Nil)),
           privateFieldSet("arrayEncodedName", str("L" + fullName + ";")),
           privateFieldSet("isAssignableFromFun", {
             genArrowFunction(paramList(that), {
