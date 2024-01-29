@@ -47,16 +47,26 @@ private[emitter] final class NameCompressor private (
   import NameCompressor._
 
   def allocatedFor(fieldName: FieldName): String =
-    entries(fieldName).allocatedName
+    entries(fieldName).useAllocatedName()
 
   def allocatedFor(methodName: MethodName): String =
-    entries(methodName).allocatedName
+    entries(methodName).useAllocatedName()
 
   def allocatedFor(prop: ArrayClassProperty): String =
-    entries(prop).allocatedName
+    entries(prop).useAllocatedName()
 
   def allocatedForAncestor(ancestor: ClassName): String =
-    ancestorEntries(ancestor).allocatedName
+    ancestorEntries(ancestor).useAllocatedName()
+
+  def endRun(logger: Logger): Unit = {
+    var atLeastOneNotUsed = false
+    for (entry <- entries.valuesIterator ++ ancestorEntries.valuesIterator) {
+      if (!entry.checkWasActuallyUsed(logger))
+        atLeastOneNotUsed = true
+    }
+    if (atLeastOneNotUsed)
+      throw new AssertionError("There was at least one unused name allocated by the name compressor")
+  }
 }
 
 private[emitter] object NameCompressor {
@@ -111,7 +121,7 @@ private[emitter] object NameCompressor {
     val generator = new NameGenerator(namesToAvoid)
 
     for (entry <- orderedEntries)
-      entry.allocatedName = generator.nextString()
+      entry.setAllocatedName(generator.nextString())
   }
 
   /** Keys of this map are `FieldName | MethodName | ArrayClassProperty`. */
@@ -120,11 +130,31 @@ private[emitter] object NameCompressor {
   private type AncestorEntryMap = mutable.AnyRefMap[ClassName, AncestorNameEntry]
 
   private sealed abstract class BaseEntry {
-    var occurrences: Int = 0
-    var allocatedName: String = null
+    private var _occurrences: Int = 0
+    private var allocatedName: String = null
+    private var actuallyUsed: Boolean = false
 
     def incOccurrences(): Unit =
-      occurrences += 1
+      _occurrences += 1
+
+    def occurrences: Int = _occurrences
+
+    def setAllocatedName(name: String): Unit =
+      allocatedName = name
+
+    def useAllocatedName(): String = {
+      actuallyUsed = true
+      allocatedName
+    }
+
+    def checkWasActuallyUsed(logger: Logger): Boolean = {
+      if (!actuallyUsed) {
+        logger.error(
+            s"The name compressor allocated the name $allocatedName for $this " +
+            s"based on a count of $occurrences occurrences but it was never used")
+      }
+      actuallyUsed
+    }
   }
 
   private sealed abstract class PropertyNameEntry
