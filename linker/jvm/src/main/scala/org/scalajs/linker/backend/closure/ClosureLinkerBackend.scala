@@ -60,7 +60,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
       .withTrackAllGlobalRefs(true)
       .withInternalModulePattern(m => OutputPatternsImpl.moduleName(config.outputPatterns, m.id))
 
-    new Emitter(emitterConfig)
+    new Emitter(emitterConfig, ClosureLinkerBackend.PostTransformer)
   }
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
@@ -106,7 +106,8 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
       sjsModule <- moduleSet.modules.headOption
     } yield {
       val closureChunk = logger.time("Closure: Create trees)") {
-        buildChunk(emitterResult.body(sjsModule.id))
+        val (trees, _) = emitterResult.body(sjsModule.id)
+        buildChunk(trees)
       }
 
       logger.time("Closure: Compiler pass") {
@@ -295,4 +296,11 @@ private object ClosureLinkerBackend {
     Function.prototype.apply;
     var NaN = 0.0/0.0, Infinity = 1.0/0.0, undefined = void 0;
     """
+
+  private object PostTransformer extends Emitter.PostTransformer[js.Tree] {
+    // Do not apply ClosureAstTransformer eagerly:
+    // The ASTs used by closure are highly mutable, so re-using them is non-trivial.
+    // Since closure is slow anyways, we haven't built the optimization.
+    def transformStats(trees: List[js.Tree], indent: Int): List[js.Tree] = trees
+  }
 }

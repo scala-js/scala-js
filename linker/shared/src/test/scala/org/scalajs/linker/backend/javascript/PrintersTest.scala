@@ -14,7 +14,7 @@ package org.scalajs.linker.backend.javascript
 
 import scala.language.implicitConversions
 
-import java.nio.charset.StandardCharsets
+import java.nio.charset.StandardCharsets.UTF_8
 
 import org.junit.Test
 import org.junit.Assert._
@@ -35,7 +35,7 @@ class PrintersTest {
     val printer = new Printers.JSTreePrinter(out)
     printer.printStat(tree)
     assertEquals(expected.stripMargin.trim + "\n",
-        new String(out.toByteArray(), StandardCharsets.UTF_8))
+        new String(out.toByteArray(), UTF_8))
   }
 
   @Test def printFunctionDef(): Unit = {
@@ -156,6 +156,26 @@ class PrintersTest {
         """,
         If(BooleanLiteral(false), IntLiteral(1),
             If(BooleanLiteral(true), IntLiteral(2), IntLiteral(3)))
+    )
+  }
+
+  @Test def showPrintedTree(): Unit = {
+    val tree = PrintedTree("test".getBytes(UTF_8), SourceMapWriter.Fragment.Empty)
+
+    assertEquals("test", tree.show)
+  }
+
+  @Test def showNestedPrintedTree(): Unit = {
+    val tree = PrintedTree("  test\n".getBytes(UTF_8), SourceMapWriter.Fragment.Empty)
+
+    val str = While(BooleanLiteral(false), tree).show
+    assertEquals(
+      """
+        |while (false) {
+        |  test
+        |}
+      """.stripMargin.trim,
+      str
     )
   }
 }

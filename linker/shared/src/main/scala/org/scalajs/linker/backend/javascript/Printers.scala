@@ -12,6 +12,8 @@
 
 package org.scalajs.linker.backend.javascript
 
+import java.nio.charset.StandardCharsets
+
 import scala.annotation.switch
 
 // Unimport default print and println to avoid invoking them by mistake
@@ -31,10 +33,10 @@ import Trees._
 object Printers {
   private val ReusableIndentArray = Array.fill(128)(' '.toByte)
 
-  class JSTreePrinter(protected val out: ByteArrayWriter) {
+  class JSTreePrinter(protected val out: ByteArrayWriter, initIndent: Int = 0) {
     private final val IndentStep = 2
 
-    private var indentMargin = 0
+    private var indentMargin = initIndent * IndentStep
     private var indentArray = ReusableIndentArray
 
     private def indent(): Unit = indentMargin += IndentStep
@@ -117,10 +119,15 @@ object Printers {
       printRow(args, '(', ')')
 
     /** Prints a stat including leading indent and trailing newline. */
-    final def printStat(tree: Tree): Unit = {
-      printIndent()
-      printTree(tree, isStat = true)
-      println()
+    final def printStat(tree: Tree): Unit = tree match {
+      case tree: PrintedTree =>
+        // PrintedTree already contains indent and trailing newline.
+        print(tree)
+
+      case _ =>
+        printIndent()
+        printTree(tree, isStat = true)
+        println()
     }
 
     private def print(tree: Tree): Unit =
@@ -750,6 +757,9 @@ object Printers {
         print("]")
     }
 
+    protected def print(printedTree: PrintedTree): Unit =
+      out.write(printedTree.jsCode)
+
     private def print(exportName: ExportName): Unit =
       printEscapeJS(exportName.name)
 
@@ -762,7 +772,8 @@ object Printers {
   }
 
   class JSTreePrinterWithSourceMap(_out: ByteArrayWriter,
-      sourceMap: SourceMapWriter.Builder) extends JSTreePrinter(_out) {
+      sourceMap: SourceMapWriter.Builder, initIndent: Int)
+      extends JSTreePrinter(_out, initIndent) {
 
     private var column = 0
 
@@ -786,6 +797,11 @@ object Printers {
       super.print(ident)
       if (ident.pos.isDefined)
         sourceMap.endNode(column)
+    }
+
+    override protected def print(printedTree: PrintedTree): Unit = {
+      super.print(printedTree)
+      sourceMap.insertFragment(printedTree.sourceMapFragment)
     }
 
     override protected def println(): Unit = {

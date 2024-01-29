@@ -32,9 +32,9 @@ import PolyfillableBuiltin._
 
 private[emitter] object CoreJSLib {
 
-  def build(sjsGen: SJSGen, moduleContext: ModuleContext,
-      globalKnowledge: GlobalKnowledge): WithGlobals[Lib] = {
-    new CoreJSLibBuilder(sjsGen)(moduleContext, globalKnowledge).build()
+  def build[E](sjsGen: SJSGen, postTransform: List[Tree] => E, moduleContext: ModuleContext,
+      globalKnowledge: GlobalKnowledge): WithGlobals[Lib[E]] = {
+    new CoreJSLibBuilder(sjsGen)(moduleContext, globalKnowledge).build(postTransform)
   }
 
   /** A fully built CoreJSLib
@@ -52,10 +52,10 @@ private[emitter] object CoreJSLib {
    *  @param initialization Things that depend on Scala.js generated classes.
    *      These must have class definitions (but not static fields) available.
    */
-  final class Lib private[CoreJSLib] (
-      val preObjectDefinitions: List[Tree],
-      val postObjectDefinitions: List[Tree],
-      val initialization: List[Tree])
+  final class Lib[E] private[CoreJSLib] (
+      val preObjectDefinitions: E,
+      val postObjectDefinitions: E,
+      val initialization: E)
 
   private class CoreJSLibBuilder(sjsGen: SJSGen)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge) {
@@ -115,9 +115,11 @@ private[emitter] object CoreJSLib {
     private val specializedArrayTypeRefs: List[NonArrayTypeRef] =
       ClassRef(ObjectClass) :: orderedPrimRefsWithoutVoid
 
-    def build(): WithGlobals[Lib] = {
-      val lib = new Lib(buildPreObjectDefinitions(),
-          buildPostObjectDefinitions(), buildInitializations())
+    def build[E](postTransform: List[Tree] => E): WithGlobals[Lib[E]] = {
+      val lib = new Lib(
+        postTransform(buildPreObjectDefinitions()),
+        postTransform(buildPostObjectDefinitions()),
+        postTransform(buildInitializations()))
       WithGlobals(lib, trackedGlobalRefs)
     }
 

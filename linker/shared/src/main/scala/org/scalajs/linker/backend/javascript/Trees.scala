@@ -499,4 +499,22 @@ object Trees {
       from: StringLiteral)(
       implicit val pos: Position)
       extends Tree
+
+  /** An already printed tree.
+   *
+   *  This is a special purpose node to store partially transformed trees.
+   *
+   *  A cleaner abstraction would be to have something like ir.Tree.Transient
+   *  (for different output formats), but for now, we do not need this.
+   */
+  sealed case class PrintedTree(jsCode: Array[Byte],
+      sourceMapFragment: SourceMapWriter.Fragment) extends Tree {
+    val pos: Position = Position.NoPosition
+
+    override def show: String = new String(jsCode, StandardCharsets.UTF_8)
+  }
+
+  object PrintedTree {
+    def empty: PrintedTree = PrintedTree(Array(), SourceMapWriter.Fragment.Empty)
+  }
 }
