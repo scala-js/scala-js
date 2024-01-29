@@ -89,12 +89,14 @@ class PrintersTest {
     )
   }
 
-  @Test def printDocComment(): Unit = {
+  @Test def printJSDocConstructor(): Unit = {
     assertPrintEquals(
       """
-        | /** test */
+        |/** @constructor */
+        |ctor = (function() {
+        |});
       """,
-      DocComment("test")
+      JSDocConstructor(Assign(VarRef("ctor"), Function(false, Nil, None, Skip())))
     )
   }
 

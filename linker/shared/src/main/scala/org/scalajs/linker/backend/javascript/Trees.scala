@@ -39,9 +39,9 @@ object Trees {
     }
   }
 
-  // Comments
+  // Constructor comment / annotation.
 
-  sealed case class DocComment(text: String)(implicit val pos: Position)
+  sealed case class JSDocConstructor(tree: Tree)(implicit val pos: Position)
       extends Tree
 
   // Identifiers and properties
