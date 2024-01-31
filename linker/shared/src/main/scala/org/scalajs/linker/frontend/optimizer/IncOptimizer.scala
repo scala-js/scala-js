@@ -380,8 +380,9 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     var subclasses: collOps.ParIterable[Class] = collOps.emptyParIterable
     var isInstantiated: Boolean = linkedClass.hasInstances
 
-    private var hasElidableModuleAccessor: Boolean = computeHasElidableModuleAccessor(linkedClass)
-    private val hasElidableModuleAccessorAskers = collOps.emptyMap[Processable, Unit]
+    /** True if *all* constructors of this class are recursively elidable. */
+    private var hasElidableConstructors: Boolean = computeHasElidableConstructors(linkedClass)
+    private val hasElidableConstructorsAskers = collOps.emptyMap[Processable, Unit]
 
     var fields: List[AnyFieldDef] = linkedClass.fields
     var fieldsRead: Set[FieldName] = linkedClass.fieldsRead
@@ -507,12 +508,12 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       for (methodName <- methodAttributeChanges)
         myInterface.tagStaticCallersOf(namespace, methodName)
 
-      // Module class specifics
-      val newHasElidableModuleAccessor = computeHasElidableModuleAccessor(linkedClass)
-      if (hasElidableModuleAccessor != newHasElidableModuleAccessor) {
-        hasElidableModuleAccessor = newHasElidableModuleAccessor
-        hasElidableModuleAccessorAskers.keysIterator.foreach(_.tag())
-        hasElidableModuleAccessorAskers.clear()
+      // Elidable constructors
+      val newHasElidableConstructors = computeHasElidableConstructors(linkedClass)
+      if (hasElidableConstructors != newHasElidableConstructors) {
+        hasElidableConstructors = newHasElidableConstructors
+        hasElidableConstructorsAskers.keysIterator.foreach(_.tag())
+        hasElidableConstructorsAskers.clear()
       }
 
       // Inlineable class
@@ -543,25 +544,21 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       subclasses = collOps.finishAdd(subclassAcc)
     }
 
-    def askHasElidableModuleAccessor(asker: Processable): Boolean = {
-      hasElidableModuleAccessorAskers.put(asker, ())
+    def askHasElidableConstructors(asker: Processable): Boolean = {
+      hasElidableConstructorsAskers.put(asker, ())
       asker.registerTo(this)
-      hasElidableModuleAccessor
+      hasElidableConstructors
     }
 
     /** UPDATE PASS ONLY. */
-    private def computeHasElidableModuleAccessor(linkedClass: LinkedClass): Boolean = {
-      def lookupModuleConstructor: Option[MethodImpl] = {
-        myInterface
-          .staticLike(MemberNamespace.Constructor)
-          .methods
-          .get(NoArgConstructorName)
+    private def computeHasElidableConstructors(linkedClass: LinkedClass): Boolean = {
+      if (isAdHocElidableConstructors(className)) {
+        true
+      } else {
+        superClass.forall(_.hasElidableConstructors) && // this was always updated before myself
+        myInterface.staticLike(MemberNamespace.Constructor)
+          .methods.valuesIterator.forall(computeIsElidableConstructor)
       }
-
-      val isModuleClass = linkedClass.kind == ClassKind.ModuleClass
-
-      isAdHocElidableModuleAccessor(className) ||
-      (isModuleClass && lookupModuleConstructor.exists(isElidableModuleConstructor))
     }
 
     /** UPDATE PASS ONLY. */
@@ -624,16 +621,17 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     }
 
     /** UPDATE PASS ONLY. */
-    private def isElidableModuleConstructor(impl: MethodImpl): Boolean = {
+    private def computeIsElidableConstructor(impl: MethodImpl): Boolean = {
       def isTriviallySideEffectFree(tree: Tree): Boolean = tree match {
         case _:VarRef | _:Literal | _:This | _:Skip => true
         case _                                      => false
       }
+
       def isElidableStat(tree: Tree): Boolean = tree match {
         case Block(stats)                      => stats.forall(isElidableStat)
         case Assign(Select(This(), _, _), rhs) => isTriviallySideEffectFree(rhs)
 
-        // Mixin constructor
+        // Mixin constructor -- test whether its body is entirely empty
         case ApplyStatically(flags, This(), className, methodName, Nil)
             if !flags.isPrivate && !classes.contains(className) =>
           // Since className is not in classes, it must be a default method call.
@@ -646,22 +644,27 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
             }
           }
 
-        // Delegation to another constructor (super or in the same class)
-        case ApplyStatically(flags, This(), className, methodName, args)
-            if flags.isConstructor =>
-          args.forall(isTriviallySideEffectFree) && {
-            getInterface(className)
-              .staticLike(MemberNamespace.Constructor)
-              .methods
-              .get(methodName.name)
-              .exists(isElidableModuleConstructor)
-          }
+        /* Delegation to another constructor (super or in the same class)
+         *
+         * - for super constructor calls, we have already checked before getting
+         *   here that the super class has elidable constructors, so by
+         *   construction they are elidable and we do not need to test them
+         * - for other constructors in the same class, we will collectively
+         *   treat them as all-elidable or non-elidable; therefore, we do not
+         *   need to check them either at this point.
+         *
+         * We only need to check the arguments to the constructor, not their
+         * bodies.
+         */
+        case ApplyStatically(flags, This(), _, _, args) if flags.isConstructor =>
+          args.forall(isTriviallySideEffectFree)
 
         case StoreModule(_, _) => true
         case _                 => isTriviallySideEffectFree(tree)
       }
+
       impl.originalDef.body.fold {
-        throw new AssertionError("Module constructor cannot be abstract")
+        throw new AssertionError("Constructor cannot be abstract")
       } { body =>
         isElidableStat(body)
       }
@@ -692,7 +695,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     }
 
     def unregisterDependee(dependee: Processable): Unit = {
-      hasElidableModuleAccessorAskers.remove(dependee)
+      hasElidableConstructorsAskers.remove(dependee)
     }
   }
 
@@ -1349,8 +1352,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     protected def getAncestorsOf(intfName: ClassName): List[ClassName] =
       getInterface(intfName).askAncestors(asker)
 
-    protected def hasElidableModuleAccessor(moduleClassName: ClassName): Boolean =
-      classes(moduleClassName).askHasElidableModuleAccessor(asker)
+    protected def hasElidableConstructors(className: ClassName): Boolean =
+      classes(className).askHasElidableConstructors(asker)
 
     protected def tryNewInlineableClass(
         className: ClassName): Option[OptimizerCore.InlineableClassStructure] = {
@@ -1380,6 +1383,6 @@ object IncOptimizer {
   def apply(config: CommonPhaseConfig): IncOptimizer =
     new IncOptimizer(config, SeqCollOps)
 
-  private val isAdHocElidableModuleAccessor: Set[ClassName] =
+  private val isAdHocElidableConstructors: Set[ClassName] =
     Set(ClassName("scala.Predef$"))
 }

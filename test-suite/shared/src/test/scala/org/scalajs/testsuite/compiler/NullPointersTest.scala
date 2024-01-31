@@ -23,7 +23,8 @@ class NullPointersTest {
   import NullPointersTest._
 
   // Instantiate Tester somewhere, otherwise plenty of tests are moot
-  new Tester(0)
+  @noinline def keep(x: Any): Unit = ()
+  keep(new Tester(0))
 
   @noinline
   private def nullOf[T >: Null]: T = null
