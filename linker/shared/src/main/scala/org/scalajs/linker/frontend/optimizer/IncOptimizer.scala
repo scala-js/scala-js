@@ -83,6 +83,11 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       updateAndTagEverything(unit)
     }
 
+    logger.time("Optimizer: Elidable constructors") {
+      /** ELIDABLE CTORS PASS */
+      updateElidableConstructors()
+    }
+
     logger.time("Optimizer: Optimizer part") {
       /* PROCESS PASS */
       processAllTaggedMethods(logger)
@@ -259,6 +264,47 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
   }
 
+  /** Elidable constructors: compute the fix point of hasElidableConstructors.
+   *
+   *  ELIDABLE CTORS PASS ONLY. (This IS the elidable ctors pass).
+   */
+  private def updateElidableConstructors(): Unit = {
+    import ElidableConstructorsInfo._
+
+    /* Invariant: when something is in the stack, its
+     * elidableConstructorsInfo was set to NotElidable.
+     */
+    val toProcessStack = mutable.ArrayBuffer.empty[Class]
+
+    // Build the graph and initial stack from the infos
+    for (cls <- classes.valuesIterator) {
+      cls.elidableConstructorsInfo match {
+        case NotElidable =>
+          toProcessStack += cls
+        case DependentOn(dependencies) =>
+          for (dependency <- dependencies)
+            classes(dependency).elidableConstructorsDependents += cls
+      }
+    }
+
+    // Propagate
+    while (toProcessStack.nonEmpty) {
+      val cls = toProcessStack.remove(toProcessStack.size - 1)
+
+      for (dependent <- cls.elidableConstructorsDependents) {
+        if (dependent.elidableConstructorsInfo != NotElidable) {
+          dependent.elidableConstructorsInfo = NotElidable
+          toProcessStack += dependent
+        }
+      }
+    }
+
+    // Set the final value of hasElidableConstructors
+    for (cls <- classes.valuesIterator) {
+      cls.setHasElidableConstructors(cls.elidableConstructorsInfo != NotElidable)
+    }
+  }
+
   /** Optimizer part: process all methods that need reoptimizing.
    *  PROCESS PASS ONLY. (This IS the process pass).
    */
@@ -380,8 +426,14 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     var subclasses: collOps.ParIterable[Class] = collOps.emptyParIterable
     var isInstantiated: Boolean = linkedClass.hasInstances
 
+    // Temporary information used to eventually derive `hasElidableConstructors`
+    var elidableConstructorsInfo: ElidableConstructorsInfo =
+      computeElidableConstructorsInfo(linkedClass)
+    val elidableConstructorsDependents: mutable.ArrayBuffer[Class] = mutable.ArrayBuffer.empty
+
     /** True if *all* constructors of this class are recursively elidable. */
-    private var hasElidableConstructors: Boolean = computeHasElidableConstructors(linkedClass)
+    private var hasElidableConstructors: Boolean =
+      elidableConstructorsInfo != ElidableConstructorsInfo.NotElidable // initial educated guess
     private val hasElidableConstructorsAskers = collOps.emptyMap[Processable, Unit]
 
     var fields: List[AnyFieldDef] = linkedClass.fields
@@ -509,12 +561,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         myInterface.tagStaticCallersOf(namespace, methodName)
 
       // Elidable constructors
-      val newHasElidableConstructors = computeHasElidableConstructors(linkedClass)
-      if (hasElidableConstructors != newHasElidableConstructors) {
-        hasElidableConstructors = newHasElidableConstructors
-        hasElidableConstructorsAskers.keysIterator.foreach(_.tag())
-        hasElidableConstructorsAskers.clear()
-      }
+      elidableConstructorsInfo = computeElidableConstructorsInfo(linkedClass)
+      elidableConstructorsDependents.clear()
 
       // Inlineable class
       if (updateTryNewInlineable(linkedClass)) {
@@ -525,6 +573,15 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       // Recurse in subclasses
       collOps.foreach(subclasses) { cls =>
         cls.walkForChanges(getLinkedClass, methodAttributeChanges)
+      }
+    }
+
+    /** ELIDABLE CTORS PASS ONLY. */
+    def setHasElidableConstructors(newHasElidableConstructors: Boolean): Unit = {
+      if (hasElidableConstructors != newHasElidableConstructors) {
+        hasElidableConstructors = newHasElidableConstructors
+        hasElidableConstructorsAskers.keysIterator.foreach(_.tag())
+        hasElidableConstructorsAskers.clear()
       }
     }
 
@@ -551,13 +608,25 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     }
 
     /** UPDATE PASS ONLY. */
-    private def computeHasElidableConstructors(linkedClass: LinkedClass): Boolean = {
+    private def computeElidableConstructorsInfo(linkedClass: LinkedClass): ElidableConstructorsInfo = {
+      import ElidableConstructorsInfo._
+
       if (isAdHocElidableConstructors(className)) {
-        true
+        AlwaysElidable
       } else {
-        superClass.forall(_.hasElidableConstructors) && // this was always updated before myself
-        myInterface.staticLike(MemberNamespace.Constructor)
-          .methods.valuesIterator.forall(computeIsElidableConstructor)
+        // It's OK to look at the superClass like this because it will always be updated before myself
+        var result = superClass.fold(ElidableConstructorsInfo.AlwaysElidable)(_.elidableConstructorsInfo)
+
+        if (result == NotElidable) {
+          // fast path
+          result
+        } else {
+          val ctorIterator = myInterface.staticLike(MemberNamespace.Constructor).methods.valuesIterator
+          while (result != NotElidable && ctorIterator.hasNext) {
+            result = result.mergeWith(computeCtorElidableInfo(ctorIterator.next()))
+          }
+          result
+        }
       }
     }
 
@@ -621,7 +690,9 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     }
 
     /** UPDATE PASS ONLY. */
-    private def computeIsElidableConstructor(impl: MethodImpl): Boolean = {
+    private def computeCtorElidableInfo(impl: MethodImpl): ElidableConstructorsInfo = {
+      val dependenciesBuilder = Set.newBuilder[ClassName]
+
       def isTriviallySideEffectFree(tree: Tree): Boolean = tree match {
         case _:VarRef | _:Literal | _:This | _:Skip =>
           true
@@ -632,6 +703,14 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         case GetClass(expr) =>
           config.coreSpec.semantics.nullPointers == CheckedBehavior.Unchecked &&
           isTriviallySideEffectFree(expr)
+
+        case New(className, _, args) =>
+          dependenciesBuilder += className
+          args.forall(isTriviallySideEffectFree(_))
+
+        case LoadModule(className) =>
+          dependenciesBuilder += className
+          true
 
         case _ =>
           false
@@ -676,7 +755,10 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       impl.originalDef.body.fold {
         throw new AssertionError("Constructor cannot be abstract")
       } { body =>
-        isElidableStat(body)
+        if (isElidableStat(body))
+          ElidableConstructorsInfo.DependentOn(dependenciesBuilder.result())
+        else
+          ElidableConstructorsInfo.NotElidable
       }
     }
 
@@ -1395,4 +1477,23 @@ object IncOptimizer {
 
   private val isAdHocElidableConstructors: Set[ClassName] =
     Set(ClassName("scala.Predef$"))
+
+  sealed abstract class ElidableConstructorsInfo {
+    import ElidableConstructorsInfo._
+
+    final def mergeWith(that: ElidableConstructorsInfo): ElidableConstructorsInfo = (this, that) match {
+      case (DependentOn(deps1), DependentOn(deps2)) =>
+        DependentOn(deps1 ++ deps2)
+      case _ =>
+        NotElidable
+    }
+  }
+
+  object ElidableConstructorsInfo {
+    case object NotElidable extends ElidableConstructorsInfo
+
+    final case class DependentOn(dependencies: Set[ClassName]) extends ElidableConstructorsInfo
+
+    val AlwaysElidable: ElidableConstructorsInfo = DependentOn(Set.empty)
+  }
 }

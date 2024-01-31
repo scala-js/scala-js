@@ -1967,18 +1967,18 @@ object Build {
         scalaVersion.value match {
           case `default212Version` =>
             Some(ExpectedSizes(
-                fastLink = 681000 to 682000,
-                fullLink = 111000 to 112000,
+                fastLink = 676000 to 677000,
+                fullLink = 103000 to 104000,
                 fastLinkGz = 82000 to 83000,
-                fullLinkGz = 28000 to 29000,
+                fullLinkGz = 26000 to 27000,
             ))
 
           case `default213Version` =>
             Some(ExpectedSizes(
-                fastLink = 475000 to 476000,
-                fullLink = 101000 to 102000,
-                fastLinkGz = 61000 to 62000,
-                fullLinkGz = 27000 to 28000,
+                fastLink = 468000 to 469000,
+                fullLink = 100000 to 101000,
+                fastLinkGz = 60000 to 61000,
+                fullLinkGz = 26000 to 27000,
             ))
 
           case _ =>
