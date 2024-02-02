@@ -626,6 +626,9 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         case _:VarRef | _:Literal | _:This | _:Skip =>
           true
 
+        case Closure(_, _, _, _, _, captureValues) =>
+          captureValues.forall(isTriviallySideEffectFree(_))
+
         case GetClass(expr) =>
           config.coreSpec.semantics.nullPointers == CheckedBehavior.Unchecked &&
           isTriviallySideEffectFree(expr)
