@@ -1476,7 +1476,7 @@ object IncOptimizer {
     new IncOptimizer(config, SeqCollOps)
 
   private val isAdHocElidableConstructors: Set[ClassName] =
-    Set(ClassName("scala.Predef$"))
+    Set(ClassName("scala.Predef$"), ClassName("scala.package$"))
 
   sealed abstract class ElidableConstructorsInfo {
     import ElidableConstructorsInfo._
