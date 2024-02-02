@@ -29,7 +29,7 @@ import org.scalajs.logging._
 import org.scalajs.linker._
 import org.scalajs.linker.backend.emitter.LongImpl
 import org.scalajs.linker.frontend.LinkingUnit
-import org.scalajs.linker.interface.ModuleKind
+import org.scalajs.linker.interface.{CheckedBehavior, ModuleKind}
 import org.scalajs.linker.standard._
 import org.scalajs.linker.CollectionsCompat._
 
@@ -623,8 +623,15 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     /** UPDATE PASS ONLY. */
     private def computeIsElidableConstructor(impl: MethodImpl): Boolean = {
       def isTriviallySideEffectFree(tree: Tree): Boolean = tree match {
-        case _:VarRef | _:Literal | _:This | _:Skip => true
-        case _                                      => false
+        case _:VarRef | _:Literal | _:This | _:Skip =>
+          true
+
+        case GetClass(expr) =>
+          config.coreSpec.semantics.nullPointers == CheckedBehavior.Unchecked &&
+          isTriviallySideEffectFree(expr)
+
+        case _ =>
+          false
       }
 
       def isElidableStat(tree: Tree): Boolean = tree match {
