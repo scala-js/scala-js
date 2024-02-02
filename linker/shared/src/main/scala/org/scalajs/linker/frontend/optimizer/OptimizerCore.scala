@@ -2791,7 +2791,9 @@ private[optimizer] abstract class OptimizerCore(
        *   if (cond) throw e
        *   else value
        *
-       * Typical shape of initialization of outer pointer of inner classes.
+       * Typical shape of initialization of outer pointer of inner classes
+       * coming from Scala.js < 1.15.1 (since 1.15.1, we intercept that shape
+       * already in the compiler back-end).
        */
       case If(cond, th: Throw, Assign(Select(This(), _, _), value)) :: rest =>
         // work around a bug of the compiler (these should be @-bindings)

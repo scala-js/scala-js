@@ -2270,13 +2270,50 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
                   toIRType(sym.tpe), sym.isMutable, rhsTree)
           }
 
-        case If(cond, thenp, elsep) =>
-          val tpe =
-            if (isStat) jstpe.NoType
-            else toIRType(tree.tpe)
+        case tree @ If(cond, thenp, elsep) =>
+          def default: js.Tree = {
+            val tpe =
+              if (isStat) jstpe.NoType
+              else toIRType(tree.tpe)
 
-          js.If(genExpr(cond), genStatOrExpr(thenp, isStat),
-              genStatOrExpr(elsep, isStat))(tpe)
+            js.If(genExpr(cond), genStatOrExpr(thenp, isStat),
+                genStatOrExpr(elsep, isStat))(tpe)
+          }
+
+          if (isStat && currentMethodSym.isClassConstructor) {
+            /* Nested classes that need an outer pointer have a weird shape for
+             * assigning it, with an explicit null check. It looks like this:
+             *
+             *   if ($outer.eq(null))
+             *     throw null
+             *   else
+             *     this.$outer = $outer
+             *
+             * This is a bad shape for our optimizations, notably because the
+             * explicit null check cannot be considered UB at the IR level if
+             * we compile it as is, although in the original *language*, that
+             * would clearly fall into UB.
+             *
+             * Therefore, we intercept that shape and rewrite it as follows
+             * instead:
+             *
+             *   <getClass>($outer)   // null check subject to UB
+             *   this.$outer = $outer // the `else` branch in general
+             */
+            tree match {
+              case If(Apply(fun @ Select(outer: Ident, nme.eq), Literal(Constant(null)) :: Nil),
+                  Throw(Literal(Constant(null))), elsep)
+                  if outer.symbol.isOuterParam && fun.symbol == definitions.Object_eq =>
+                js.Block(
+                  js.GetClass(genExpr(outer)), // null check
+                  genStat(elsep)
+                )
+              case _ =>
+                default
+            }
+          } else {
+            default
+          }
 
         case Return(expr) =>
           js.Return(toIRType(expr.tpe) match {
