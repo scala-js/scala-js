@@ -1572,20 +1572,28 @@ private object AnalyzerRun {
 
   private class WorkTracker(implicit ec: ExecutionContext) {
     private val pending = new AtomicInteger(0)
+    private val failures = new AtomicReference[List[Throwable]](Nil)
     @volatile private var _allowComplete = false
     private val promise = Promise[Unit]()
 
     def track(fut: Future[Unit]): Unit = {
       pending.incrementAndGet()
 
-      fut.onComplete {
-        case Success(_) =>
-          if (pending.decrementAndGet() == 0)
-            tryComplete()
-
-        case Failure(t) =>
-          promise.tryFailure(t)
+      fut.onComplete { result =>
+        result match {
+          case Success(_) => ()
+          case Failure(t) => addFailure(t)
+        }
+        if (pending.decrementAndGet() == 0)
+          tryComplete()
       }
+    }
+
+    @tailrec
+    private def addFailure(t: Throwable): Unit = {
+      val prev = failures.get()
+      if (!failures.compareAndSet(prev, t :: prev))
+        addFailure(t)
     }
 
     private def tryComplete(): Unit = {
@@ -1596,7 +1604,14 @@ private object AnalyzerRun {
        *   more tasks) are running anymore.
        */
       if (_allowComplete && pending.get() == 0) {
-        promise.trySuccess(())
+        failures.get() match {
+          case Nil =>
+            promise.success(())
+          case firstFailure :: moreFailures =>
+            for (t <- moreFailures)
+              firstFailure.addSuppressed(t)
+            promise.failure(firstFailure)
+        }
       }
     }
 
