@@ -66,11 +66,11 @@ private[optimizer] abstract class OptimizerCore(
   /** Returns the list of ancestors of a class or interface. */
   protected def getAncestorsOf(className: ClassName): List[ClassName]
 
-  /** Tests whether the given module class has an elidable accessor.
-   *  In other words, whether it is safe to discard a LoadModule of that
-   *  module class which is not used.
+  /** Tests whether *all* the constructors of the given class are elidable.
+   *  In other words, whether it is safe to discard a New or LoadModule of that
+   *  class which is not used.
    */
-  protected def hasElidableModuleAccessor(moduleClassName: ClassName): Boolean
+  protected def hasElidableConstructors(className: ClassName): Boolean
 
   /** Tests whether the given class is inlineable.
    *
@@ -1578,8 +1578,11 @@ private[optimizer] abstract class OptimizerCore(
         case Skip()      => keepOnlySideEffects(Block(init)(stat.pos))
         case lastEffects => Block(init, lastEffects)(stat.pos)
       }
+    case New(className, _, args) =>
+      if (hasElidableConstructors(className)) Block(args.map(keepOnlySideEffects(_)))(stat.pos)
+      else stat
     case LoadModule(moduleClassName) =>
-      if (hasElidableModuleAccessor(moduleClassName)) Skip()(stat.pos)
+      if (hasElidableConstructors(moduleClassName)) Skip()(stat.pos)
       else stat
     case NewArray(_, lengths) if lengths.forall(isNonNegativeIntLiteral(_)) =>
       Skip()(stat.pos)
