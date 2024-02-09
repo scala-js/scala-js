@@ -93,7 +93,7 @@ object ManifestFactory {
     override def newArrayBuilder(): ArrayBuilder[Byte] = new ArrayBuilder.ofByte()
     private def readResolve(): Any = Manifest.Byte
   }
-  def Byte: AnyValManifest[Byte] = ByteManifest
+  val Byte: AnyValManifest[Byte] = ByteManifest
 
   private object ShortManifest extends AnyValManifest[scala.Short]("Short") {
     def runtimeClass = java.lang.Short.TYPE
@@ -102,7 +102,7 @@ object ManifestFactory {
     override def newArrayBuilder(): ArrayBuilder[Short] = new ArrayBuilder.ofShort()
     private def readResolve(): Any = Manifest.Short
   }
-  def Short: AnyValManifest[Short] = ShortManifest
+  val Short: AnyValManifest[Short] = ShortManifest
 
   private object CharManifest extends AnyValManifest[scala.Char]("Char") {
     def runtimeClass = java.lang.Character.TYPE
@@ -111,7 +111,7 @@ object ManifestFactory {
     override def newArrayBuilder(): ArrayBuilder[Char] = new ArrayBuilder.ofChar()
     private def readResolve(): Any = Manifest.Char
   }
-  def Char: AnyValManifest[Char] = CharManifest
+  val Char: AnyValManifest[Char] = CharManifest
 
   private object IntManifest extends AnyValManifest[scala.Int]("Int") {
     def runtimeClass = java.lang.Integer.TYPE
@@ -120,7 +120,7 @@ object ManifestFactory {
     override def newArrayBuilder(): ArrayBuilder[Int] = new ArrayBuilder.ofInt()
     private def readResolve(): Any = Manifest.Int
   }
-  def Int: AnyValManifest[Int] = IntManifest
+  val Int: AnyValManifest[Int] = IntManifest
 
   private object LongManifest extends AnyValManifest[scala.Long]("Long") {
     def runtimeClass = java.lang.Long.TYPE
@@ -129,7 +129,7 @@ object ManifestFactory {
     override def newArrayBuilder(): ArrayBuilder[Long] = new ArrayBuilder.ofLong()
     private def readResolve(): Any = Manifest.Long
   }
-  def Long: AnyValManifest[Long] = LongManifest
+  val Long: AnyValManifest[Long] = LongManifest
 
   private object FloatManifest extends AnyValManifest[scala.Float]("Float") {
     def runtimeClass = java.lang.Float.TYPE
@@ -138,7 +138,7 @@ object ManifestFactory {
     override def newArrayBuilder(): ArrayBuilder[Float] = new ArrayBuilder.ofFloat()
     private def readResolve(): Any = Manifest.Float
   }
-  def Float: AnyValManifest[Float] = FloatManifest
+  val Float: AnyValManifest[Float] = FloatManifest
 
   private object DoubleManifest extends AnyValManifest[scala.Double]("Double") {
     def runtimeClass = java.lang.Double.TYPE
@@ -147,7 +147,7 @@ object ManifestFactory {
     override def newArrayBuilder(): ArrayBuilder[Double] = new ArrayBuilder.ofDouble()
     private def readResolve(): Any = Manifest.Double
   }
-  def Double: AnyValManifest[Double] = DoubleManifest
+  val Double: AnyValManifest[Double] = DoubleManifest
 
   private object BooleanManifest extends AnyValManifest[scala.Boolean]("Boolean") {
     def runtimeClass = java.lang.Boolean.TYPE
@@ -156,7 +156,7 @@ object ManifestFactory {
     override def newArrayBuilder(): ArrayBuilder[Boolean] = new ArrayBuilder.ofBoolean()
     private def readResolve(): Any = Manifest.Boolean
   }
-  def Boolean: AnyValManifest[Boolean] = BooleanManifest
+  val Boolean: AnyValManifest[Boolean] = BooleanManifest
 
   private object UnitManifest extends AnyValManifest[scala.Unit]("Unit") {
     def runtimeClass = java.lang.Void.TYPE
@@ -168,7 +168,7 @@ object ManifestFactory {
       else super.arrayClass(tp)
     private def readResolve(): Any = Manifest.Unit
   }
-  def Unit: AnyValManifest[Unit] = UnitManifest
+  val Unit: AnyValManifest[Unit] = UnitManifest
 
   private object AnyManifest extends PhantomManifest[scala.Any](classOf[java.lang.Object], "Any") {
     override def runtimeClass = classOf[java.lang.Object]
@@ -176,7 +176,7 @@ object ManifestFactory {
     override def <:<(that: ClassManifest[_]): Boolean = (that eq this)
     private def readResolve(): Any = Manifest.Any
   }
-  def Any: Manifest[scala.Any] = AnyManifest
+  val Any: Manifest[scala.Any] = AnyManifest
 
   private object ObjectManifest extends PhantomManifest[java.lang.Object](classOf[java.lang.Object], "Object") {
     override def runtimeClass = classOf[java.lang.Object]
@@ -184,9 +184,9 @@ object ManifestFactory {
     override def <:<(that: ClassManifest[_]): Boolean = (that eq this) || (that eq Any)
     private def readResolve(): Any = Manifest.Object
   }
-  def Object: Manifest[java.lang.Object] = ObjectManifest
+  val Object: Manifest[java.lang.Object] = ObjectManifest
 
-  def AnyRef: Manifest[scala.AnyRef] = Object.asInstanceOf[Manifest[scala.AnyRef]]
+  val AnyRef: Manifest[scala.AnyRef] = Object
 
   private object AnyValManifest extends PhantomManifest[scala.AnyVal](classOf[java.lang.Object], "AnyVal") {
     override def runtimeClass = classOf[java.lang.Object]
@@ -194,7 +194,7 @@ object ManifestFactory {
     override def <:<(that: ClassManifest[_]): Boolean = (that eq this) || (that eq Any)
     private def readResolve(): Any = Manifest.AnyVal
   }
-  def AnyVal: Manifest[scala.AnyVal] = AnyValManifest
+  val AnyVal: Manifest[scala.AnyVal] = AnyValManifest
 
   private object NullManifest extends PhantomManifest[scala.Null](classOf[scala.runtime.Null$], "Null") {
     override def runtimeClass = classOf[scala.runtime.Null$]
@@ -203,7 +203,7 @@ object ManifestFactory {
       (that ne null) && (that ne Nothing) && !(that <:< AnyVal)
     private def readResolve(): Any = Manifest.Null
   }
-  def Null: Manifest[scala.Null] = NullManifest
+  val Null: Manifest[scala.Null] = NullManifest
 
   private object NothingManifest extends PhantomManifest[scala.Nothing](classOf[scala.runtime.Nothing$], "Nothing") {
     override def runtimeClass = classOf[scala.runtime.Nothing$]
@@ -211,7 +211,7 @@ object ManifestFactory {
     override def <:<(that: ClassManifest[_]): Boolean = (that ne null)
     private def readResolve(): Any = Manifest.Nothing
   }
-  def Nothing: Manifest[scala.Nothing] = NothingManifest
+  val Nothing: Manifest[scala.Nothing] = NothingManifest
 
   private class SingletonTypeManifest[T <: AnyRef](value: AnyRef) extends Manifest[T] {
     lazy val runtimeClass = value.getClass
