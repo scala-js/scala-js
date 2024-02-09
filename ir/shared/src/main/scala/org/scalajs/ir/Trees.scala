@@ -904,7 +904,11 @@ object Trees {
 
   // Literals
 
-  /** Marker for literals. Literals are always pure. */
+  /** Marker for literals. Literals are always pure.
+   *
+   *  All `Literal`s can be compared for equality. The equality does not take
+   *  the `pos` into account.
+   */
   sealed trait Literal extends Tree
 
   /** Marker for literals that can be used in a [[Match]] case.
@@ -960,11 +964,25 @@ object Trees {
   sealed case class FloatLiteral(value: Float)(
       implicit val pos: Position) extends Literal {
     val tpe = FloatType
+
+    override def equals(that: Any): Boolean = that match {
+      case that: FloatLiteral => java.lang.Float.compare(this.value, that.value) == 0
+      case _                  => false
+    }
+
+    override def hashCode(): Int = java.lang.Float.hashCode(value)
   }
 
   sealed case class DoubleLiteral(value: Double)(
       implicit val pos: Position) extends Literal {
     val tpe = DoubleType
+
+    override def equals(that: Any): Boolean = that match {
+      case that: DoubleLiteral => java.lang.Double.compare(this.value, that.value) == 0
+      case _                   => false
+    }
+
+    override def hashCode(): Int = java.lang.Double.hashCode(value)
   }
 
   sealed case class StringLiteral(value: String)(

@@ -46,6 +46,8 @@ private[optimizer] abstract class OptimizerCore(
 
   type MethodID <: AbstractMethodID
 
+  protected val myself: Option[MethodID]
+
   private def semantics: Semantics = config.coreSpec.semantics
 
   // Uncomment and adapt to print debug messages only during one method
@@ -71,6 +73,13 @@ private[optimizer] abstract class OptimizerCore(
    *  class which is not used.
    */
   protected def hasElidableConstructors(className: ClassName): Boolean
+
+  /** Returns the inlineable field bodies of this module class.
+   *
+   *  If the class is not a module class, or if it does not have inlineable
+   *  accessors, the resulting `InlineableFieldBodies` is always empty.
+   */
+  protected def inlineableFieldBodies(className: ClassName): InlineableFieldBodies
 
   /** Tests whether the given class is inlineable.
    *
@@ -141,7 +150,7 @@ private[optimizer] abstract class OptimizerCore(
   private val intrinsics =
     Intrinsics.buildIntrinsics(config.coreSpec.esFeatures)
 
-  def optimize(myself: Option[MethodID], thisType: Type, params: List[ParamDef],
+  def optimize(thisType: Type, params: List[ParamDef],
       jsClassCaptures: List[ParamDef], resultType: Type, body: Tree,
       isNoArgCtor: Boolean): (List[ParamDef], Tree) = {
     try {
@@ -1220,28 +1229,72 @@ private[optimizer] abstract class OptimizerCore(
         cont(PreTransLit(IntLiteral(resultValue)))
 
       case _ =>
-        resolveLocalDef(preTransQual) match {
-          case PreTransRecordTree(newQual, origType, cancelFun) =>
-            val recordType = newQual.tpe.asInstanceOf[RecordType]
-            /* FIXME How come this lookup requires only the `simpleName`?
-             * The `recordType` is created at `InlineableClassStructure.recordType`,
-             * where it uses an allocator. Something fishy is going on here.
-             * (And no, this is not dead code.)
-             */
-            val recordField = recordType.findField(field.name.simpleName)
-            val sel = RecordSelect(newQual, SimpleFieldIdent(recordField.name))(recordField.tpe)
-            sel.tpe match {
-              case _: RecordType =>
-                cont(PreTransRecordTree(sel, RefinedType(expectedType), cancelFun))
-              case _ =>
-                cont(PreTransTree(sel, RefinedType(sel.tpe)))
-            }
+        def default: TailRec[Tree] = {
+          resolveLocalDef(preTransQual) match {
+            case PreTransRecordTree(newQual, origType, cancelFun) =>
+              val recordType = newQual.tpe.asInstanceOf[RecordType]
+              /* FIXME How come this lookup requires only the `simpleName`?
+               * The `recordType` is created at `InlineableClassStructure.recordType`,
+               * where it uses an allocator. Something fishy is going on here.
+               * (And no, this is not dead code.)
+               */
+              val recordField = recordType.findField(field.name.simpleName)
+              val sel = RecordSelect(newQual, SimpleFieldIdent(recordField.name))(recordField.tpe)
+              sel.tpe match {
+                case _: RecordType =>
+                  cont(PreTransRecordTree(sel, RefinedType(expectedType), cancelFun))
+                case _ =>
+                  cont(PreTransTree(sel, RefinedType(sel.tpe)))
+              }
 
-          case PreTransTree(newQual, newQualType) =>
-            val newQual1 = maybeAssumeNotNull(newQual, newQualType)
-            cont(PreTransTree(Select(newQual1, field)(expectedType),
-                RefinedType(expectedType)))
+            case PreTransTree(newQual, newQualType) =>
+              val newQual1 = maybeAssumeNotNull(newQual, newQualType)
+              cont(PreTransTree(Select(newQual1, field)(expectedType),
+                  RefinedType(expectedType)))
+          }
         }
+
+        preTransQual.tpe match {
+          // Try to inline an inlineable field body
+          case RefinedType(ClassType(qualClassName), _, _) if !isLhsOfAssign =>
+            if (myself.exists(m => m.enclosingClassName == qualClassName && m.methodName.isConstructor)) {
+              /* Within the constructor of a class, we cannot trust the
+               * inlineable field bodies of that class, since they only reflect
+               * the values of fields when the instance is fully initialized.
+               */
+              default
+            } else {
+              inlineableFieldBodies(qualClassName).fieldBodies.get(field.name) match {
+                case None =>
+                  default
+                case Some(fieldBody) =>
+                  val qualSideEffects = checkNotNullStatement(preTransQual)
+                  val fieldBodyTree = fieldBodyToTree(fieldBody)
+                  pretransformExpr(fieldBodyTree) { preTransFieldBody =>
+                    cont(PreTransBlock(qualSideEffects, preTransFieldBody))
+                  }
+              }
+            }
+          case _ =>
+            default
+        }
+    }
+  }
+
+  private def fieldBodyToTree(fieldBody: InlineableFieldBodies.FieldBody): Tree = {
+    import InlineableFieldBodies.FieldBody
+
+    implicit val pos = fieldBody.pos
+
+    fieldBody match {
+      case FieldBody.Literal(literal, _) =>
+        literal
+      case FieldBody.LoadModule(moduleClassName, _) =>
+        LoadModule(moduleClassName)
+      case FieldBody.ModuleSelect(qualifier, fieldName, tpe, _) =>
+        Select(fieldBodyToTree(qualifier), FieldIdent(fieldName))(tpe)
+      case FieldBody.ModuleGetter(qualifier, methodName, tpe, _) =>
+        Apply(ApplyFlags.empty, fieldBodyToTree(qualifier), MethodIdent(methodName), Nil)(tpe)
     }
   }
 
@@ -5136,6 +5189,66 @@ private[optimizer] object OptimizerCore {
         .map(f => s"${f.name.name.nameString}: ${f.ftpe}")
         .mkString("InlineableClassStructure(", ", ", ")")
     }
+  }
+
+  final class InlineableFieldBodies(
+    val fieldBodies: Map[FieldName, InlineableFieldBodies.FieldBody]
+  ) {
+    def isEmpty: Boolean = fieldBodies.isEmpty
+
+    override def equals(that: Any): Boolean = that match {
+      case that: InlineableFieldBodies =>
+        this.fieldBodies == that.fieldBodies
+      case _ =>
+        false
+    }
+
+    override def hashCode(): Int = fieldBodies.##
+
+    override def toString(): String = {
+      fieldBodies
+        .map(f => s"${f._1.nameString}: ${f._2}")
+        .mkString("InlineableFieldBodies(", ", ", ")")
+    }
+  }
+
+  object InlineableFieldBodies {
+    /** The body of field that we can inline.
+     *
+     *  This hierarchy mirrors the small subset of `Tree`s that we need to
+     *  represent field bodies that we can inline.
+     *
+     *  Unlike `Tree`, `FieldBody` guarantees a comprehensive equality test
+     *  representing its full structure. It is generally not safe to compare
+     *  `Tree`s for equality, but for `FieldBody` it is safe. We use equality
+     *  in `IncOptimizer` to detect changes.
+     *
+     *  This is also why the members of the hierarchy contain an explicit
+     *  `Position` in their primary parameter list.
+     */
+    sealed abstract class FieldBody {
+      val pos: Position
+    }
+
+    object FieldBody {
+      final case class Literal(literal: Trees.Literal, pos: Position) extends FieldBody {
+        require(pos == literal.pos, s"TreeBody.Literal.pos must be the same as its Literal")
+      }
+
+      object Literal {
+        def apply(literal: Trees.Literal): Literal =
+          Literal(literal, literal.pos)
+      }
+
+      final case class LoadModule(moduleClassName: ClassName, pos: Position)
+          extends FieldBody
+      final case class ModuleSelect(qualifier: LoadModule,
+          fieldName: FieldName, tpe: Type, pos: Position) extends FieldBody
+      final case class ModuleGetter(qualifier: LoadModule,
+          methodName: MethodName, tpe: Type, pos: Position) extends FieldBody
+    }
+
+    val Empty: InlineableFieldBodies = new InlineableFieldBodies(Map.empty)
   }
 
   private final val MaxRollbacksPerMethod = 256
