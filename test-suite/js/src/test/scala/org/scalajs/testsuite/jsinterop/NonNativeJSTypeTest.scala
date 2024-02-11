@@ -12,6 +12,8 @@
 
 package org.scalajs.testsuite.jsinterop
 
+import scala.collection.mutable
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
@@ -1306,6 +1308,25 @@ class NonNativeJSTypeTest {
     assertEquals(js.undefined, foo4.description)
   }
 
+  @Test def callSuperConstructorWithDefaultParams_Issue4929(): Unit = {
+    import ConstructorSuperCallWithDefaultParams._
+
+    sideEffects.clear()
+
+    val child = new Child(4, "hello", 23)
+    assertEquals(4, child.foo)
+    assertEquals(23, child.bar)
+
+    assertEquals(
+      List(
+        "4",
+        "Parent constructor; param1, 27, param1-27",
+        "Child constructor; 4, hello, 23"
+      ),
+      sideEffects.toList
+    )
+  }
+
   @Test def callSuperConstructorWithColonAsterisk(): Unit = {
     class CallSuperCtorWithSpread(x: Int, y: Int, z: Int)
         extends NativeParentClassWithVarargs(x, Seq(y, z): _*)
@@ -2038,6 +2059,21 @@ object NonNativeJSTypeTest {
     def this(c: Char) = this(c.toInt)("char", "a char")
 
     def this(x: Int, y: Int) = this(x)(y.toString, js.undefined)
+  }
+
+  object ConstructorSuperCallWithDefaultParams {
+    val sideEffects = mutable.ListBuffer.empty[String]
+
+    class Parent(parentParam1: Any = "param1", parentParam2: Any = "param2")(
+        dependentParam: String = s"$parentParam1-$parentParam2")
+        extends js.Object {
+      sideEffects += s"Parent constructor; $parentParam1, $parentParam2, $dependentParam"
+    }
+
+    class Child(val foo: Int, parentParam2: Any, val bar: Int)
+        extends Parent(parentParam2 = { sideEffects += foo.toString(); foo + bar })() {
+      sideEffects += s"Child constructor; $foo, $parentParam2, $bar"
+    }
   }
 
   class OverloadedConstructorParamNumber(val foo: Int) extends js.Object {

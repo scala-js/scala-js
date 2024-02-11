@@ -1472,18 +1472,78 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val sym = dd.symbol
       assert(sym.isPrimaryConstructor, s"called with non-primary ctor: $sym")
 
+      var preSuperStats = List.newBuilder[js.Tree]
       var jsSuperCall: Option[js.JSSuperConstructorCall] = None
-      val jsStats = List.newBuilder[js.Tree]
+      val postSuperStats = List.newBuilder[js.Tree]
 
-      /* Move all statements after the super constructor call since JS
-       * cannot access `this` before the super constructor call.
+      /* Move param accessor initializers and early initializers after the
+       * super constructor call since JS cannot access `this` before the super
+       * constructor call.
        *
        * scalac inserts statements before the super constructor call for early
        * initializers and param accessor initializers (including val's and var's
-       * declared in the params). We move those after the super constructor
-       * call, and are therefore executed later than for a Scala class.
+       * declared in the params). Those statements include temporary local `val`
+       * definitions (for true early initializers only) and the assignments,
+       * whose rhs'es are always simple Idents (either constructor params or the
+       * temporary local `val`s).
+       *
+       * There can also be local `val`s before the super constructor call for
+       * default arguments to the super constructor. These must remain before.
+       *
+       * Our strategy is therefore to move only the field assignments after the
+       * super constructor call. They are therefore executed later than for a
+       * Scala class (as specified for non-native JS classes semantics).
+       * However, side effects and evaluation order of all the other
+       * computations remains unchanged.
+       *
+       * For a somewhat extreme example of the shapes we can get here, consider
+       * the source code:
+       *
+       *   class Parent(output: Any = "output", callbackObject: Any = "callbackObject") extends js.Object {
+       *     println(s"Parent constructor; $output; $callbackObject")
+       *   }
+       *
+       *   class Child(val foo: Int, callbackObject: Any, val bar: Int) extends {
+       *     val xyz = foo + bar
+       *     val yz = { println(xyz); xyz + 2 }
+       *   } with Parent(callbackObject = { println(foo); xyz + bar }) {
+       *     println("Child constructor")
+       *     println(xyz)
+       *   }
+       *
+       * At this phase, for the constructor of `Child`, we receive the following
+       * scalac Tree:
+       *
+       *   def <init>(foo: Int, callbackObject: Object, bar: Int): helloworld.Child = {
+       *     Child.this.foo = foo; // param accessor assignment, moved
+       *     Child.this.bar = bar; // param accessor assignment, moved
+       *     val xyz: Int = foo.+(bar); // note that these still use the ctor params, not the fields
+       *     Child.this.xyz = xyz; // early initializer, moved
+       *     val yz: Int = {
+       *       scala.Predef.println(scala.Int.box(xyz)); // note that this uses the local val, not the field
+       *       xyz.+(2)
+       *     };
+       *     Child.this.yz = yz; // early initializer, moved
+       *     {
+       *       <artifact> val x$1: Int = {
+       *         scala.Predef.println(scala.Int.box(foo));
+       *         xyz.+(bar) // here as well, we use the local vals, not the fields
+       *       };
+       *       <artifact> val x$2: Object = helloworld.this.Parent.<init>$default$1();
+       *       Child.super.<init>(x$2, scala.Int.box(x$1))
+       *     };
+       *     scala.Predef.println("Child constructor");
+       *     scala.Predef.println(scala.Int.box(Child.this.xyz()));
+       *     ()
+       *   }
+       *
        */
       withPerMethodBodyState(sym) {
+        def isThisFieldAssignment(tree: Tree): Boolean = tree match {
+          case Assign(Select(ths: This, _), Ident(_)) => ths.symbol == currentClassSym.get
+          case _                                      => false
+        }
+
         flatStats(stats).foreach {
           case tree @ Apply(fun @ Select(Super(This(_), _), _), args)
                 if fun.symbol.isClassConstructor =>
@@ -1491,14 +1551,27 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             implicit val pos = tree.pos
             jsSuperCall = Some(js.JSSuperConstructorCall(genPrimitiveJSArgs(fun.symbol, args)))
 
+          case tree if jsSuperCall.isDefined =>
+            // Once we're past the super constructor call, everything goes after.
+            postSuperStats += genStat(tree)
+
+          case tree if isThisFieldAssignment(tree) =>
+            /* If that shape appears before the jsSuperCall, it is an early
+             * initializer or param accessor initializer. We move it.
+             */
+            postSuperStats += genStat(tree)
+
+          case tree @ OuterPointerNullCheck(outer, assign) if isThisFieldAssignment(assign) =>
+            /* Variant of the above with an outer pointer null check. The actual
+             * null check remains before the super call, while the associated
+             * assignment is moved after.
+             */
+            preSuperStats += js.GetClass(genExpr(outer))(tree.pos)
+            postSuperStats += genStat(assign)
+
           case stat =>
-            val jsStat = genStat(stat)
-
-            assert(jsSuperCall.isDefined || !jsStat.isInstanceOf[js.VarDef],
-                "Trying to move a local VarDef after the super constructor call " +
-                s"of a non-native JS class at ${dd.pos}")
-
-            jsStats += jsStat
+            // Other statements are left before.
+            preSuperStats += genStat(stat)
         }
       }
 
@@ -1506,7 +1579,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           s"construtor at ${dd.pos}")
 
       new PrimaryJSCtor(sym, genParamsAndInfo(sym, vparamss),
-          js.JSConstructorBody(Nil, jsSuperCall.get, jsStats.result())(dd.pos))
+          js.JSConstructorBody(preSuperStats.result(), jsSuperCall.get, postSuperStats.result())(dd.pos))
     }
 
     private def genSecondaryJSClassCtor(dd: DefDef): SplitSecondaryJSCtor = {
@@ -2301,9 +2374,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
              *   this.$outer = $outer // the `else` branch in general
              */
             tree match {
-              case If(Apply(fun @ Select(outer: Ident, nme.eq), Literal(Constant(null)) :: Nil),
-                  Throw(Literal(Constant(null))), elsep)
-                  if outer.symbol.isOuterParam && fun.symbol == definitions.Object_eq =>
+              case OuterPointerNullCheck(outer, elsep) =>
                 js.Block(
                   js.GetClass(genExpr(outer)), // null check
                   genStat(elsep)
@@ -2565,6 +2636,25 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               tree + "/" + tree.getClass + " at: " + tree.pos)
       }
     } // end of GenJSCode.genExpr()
+
+    /** Extractor for the shape of outer pointer null check.
+     *
+     *  See the comment in `case If(...) =>` of `genExpr`.
+     *
+     *  When successful, returns the pair `(outer, elsep)` where `outer` is the
+     *  `Ident` of the outer constructor parameter, and `elsep` is the else
+     *  branch of the condition.
+     */
+    private object OuterPointerNullCheck {
+      def unapply(tree: If): Option[(Ident, Tree)] = tree match {
+        case If(Apply(fun @ Select(outer: Ident, nme.eq), Literal(Constant(null)) :: Nil),
+            Throw(Literal(Constant(null))), elsep)
+            if outer.symbol.isOuterParam && fun.symbol == definitions.Object_eq =>
+          Some((outer, elsep))
+        case _ =>
+          None
+      }
+    }
 
     /** Gen JS this of the current class.
      *  Normally encoded straightforwardly as a JS this.

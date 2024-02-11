@@ -12,6 +12,8 @@
 
 package org.scalajs.testsuite.jsinterop
 
+import scala.collection.mutable
+
 import scala.scalajs.js
 import scala.scalajs.js.annotation._
 
@@ -36,6 +38,29 @@ class NonNativeJSTypeTestScala2 {
     assertNull(obj.asInstanceOf[js.Dynamic].valueClass)
   }
 
+  @Test def callSuperConstructorWithDefaultParamsAndEarlyInitializers_Issue4929(): Unit = {
+    import ConstructorSuperCallWithDefaultParamsAndEarlyInitializers._
+
+    sideEffects.clear()
+
+    val child = new Child(4, "hello", 23)
+    assertEquals(4, child.foo)
+    assertEquals(23, child.bar)
+    assertEquals(27, child.xyz)
+    assertEquals(29, child.yz)
+
+    assertEquals(
+      List(
+        "27",
+        "4",
+        "Parent constructor; param1, 27, param1-27",
+        "Child constructor; 4, hello, 23",
+        "27, 29"
+      ),
+      sideEffects.toList
+    )
+  }
+
 }
 
 object NonNativeJSTypeTestScala2 {
@@ -45,5 +70,23 @@ object NonNativeJSTypeTestScala2 {
   }
 
   class SomeValueClass(val i: Int) extends AnyVal
+
+  object ConstructorSuperCallWithDefaultParamsAndEarlyInitializers {
+    val sideEffects = mutable.ListBuffer.empty[String]
+
+    class Parent(parentParam1: Any = "param1", parentParam2: Any = "param2")(
+        dependentParam: String = s"$parentParam1-$parentParam2")
+        extends js.Object {
+      sideEffects += s"Parent constructor; $parentParam1, $parentParam2, $dependentParam"
+    }
+
+    class Child(val foo: Int, parentParam2: Any, val bar: Int) extends {
+      val xyz = foo + bar
+      val yz = { sideEffects += xyz.toString(); xyz + 2 }
+    } with Parent(parentParam2 = { sideEffects += foo.toString(); foo + bar })() {
+      sideEffects += s"Child constructor; $foo, $parentParam2, $bar"
+      sideEffects += s"$xyz, $yz"
+    }
+  }
 
 }
