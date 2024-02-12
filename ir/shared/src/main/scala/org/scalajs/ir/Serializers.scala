@@ -318,9 +318,8 @@ object Serializers {
           writeTagAndPos(TagLoadModule)
           writeName(className)
 
-        case StoreModule(className, value) =>
+        case StoreModule() =>
           writeTagAndPos(TagStoreModule)
-          writeName(className); writeTree(value)
 
         case Select(qualifier, className, field) =>
           writeTagAndPos(TagSelect)
@@ -1012,6 +1011,7 @@ object Serializers {
 
     private[this] var lastPosition: Position = Position.NoPosition
 
+    private[this] var enclosingClassName: ClassName = _
     private[this] var thisTypeForHack8: Type = NoType
 
     def deserializeEntryPointsInfo(): EntryPointsInfo = {
@@ -1156,7 +1156,18 @@ object Serializers {
 
         case TagNew          => New(readClassName(), readMethodIdent(), readTrees())
         case TagLoadModule   => LoadModule(readClassName())
-        case TagStoreModule  => StoreModule(readClassName(), readTree())
+
+        case TagStoreModule =>
+          if (hacks.use13) {
+            val cls = readClassName()
+            val rhs = readTree()
+            if (cls != enclosingClassName || !rhs.isInstanceOf[This]) {
+              throw new IOException(
+                  s"Illegal legacy StoreModule(${cls.nameString}, $rhs) " +
+                  s"found in class ${enclosingClassName.nameString}")
+            }
+          }
+          StoreModule()
 
         case TagSelect =>
           val qualifier = readTree()
@@ -1359,8 +1370,11 @@ object Serializers {
 
     def readClassDef(): ClassDef = {
       implicit val pos = readPosition()
+
       val name = readClassIdent()
       val cls = name.name
+      enclosingClassName = cls
+
       val originalName = readOriginalName()
       val kind = ClassKind.fromByte(readByte())
 
@@ -2073,6 +2087,8 @@ object Serializers {
     private val use11: Boolean = use8 || sourceVersion == "1.11"
 
     val use12: Boolean = use11 || sourceVersion == "1.12"
+
+    val use13: Boolean = use12 || sourceVersion == "1.13"
   }
 
   /** Names needed for hacks. */

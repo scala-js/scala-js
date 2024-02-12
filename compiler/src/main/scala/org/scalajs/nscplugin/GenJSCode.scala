@@ -3191,10 +3191,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         if (isStaticModule(currentClassSym) && !isModuleInitialized.value &&
             currentMethodSym.isClassConstructor) {
           isModuleInitialized.value = true
-          val className = encodeClassName(currentClassSym)
-          val initModule =
-            js.StoreModule(className, js.This()(jstpe.ClassType(className)))
-          js.Block(superCall, initModule)
+          js.Block(superCall, js.StoreModule())
         } else {
           superCall
         }

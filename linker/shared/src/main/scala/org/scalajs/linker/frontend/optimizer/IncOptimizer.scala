@@ -748,8 +748,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         case ApplyStatically(flags, This(), _, _, args) if flags.isConstructor =>
           args.forall(isTriviallySideEffectFree)
 
-        case StoreModule(_, _) => true
-        case _                 => isTriviallySideEffectFree(tree)
+        case StoreModule() => true
+        case _             => isTriviallySideEffectFree(tree)
       }
 
       impl.originalDef.body.fold {

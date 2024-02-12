@@ -171,7 +171,7 @@ private[optimizer] abstract class OptimizerCore(
   private def tryElimStoreModule(body: Tree): Tree = {
     implicit val pos = body.pos
     body match {
-      case StoreModule(_, _) =>
+      case StoreModule() =>
         Skip()
       case Block(stats) =>
         val (before, from) = stats.span(!_.isInstanceOf[StoreModule])
@@ -458,9 +458,6 @@ private[optimizer] abstract class OptimizerCore(
       case New(className, ctor, args) =>
         New(className, ctor, args map transformExpr)
 
-      case StoreModule(className, value) =>
-        StoreModule(className, transformExpr(value))
-
       case tree: Select =>
         trampoline {
           pretransformSelectCommon(tree, isLhsOfAssign = false)(
@@ -656,8 +653,8 @@ private[optimizer] abstract class OptimizerCore(
 
       // Trees that need not be transformed
 
-      case _:Skip | _:Debugger | _:LoadModule | _:SelectStatic |
-          _:JSNewTarget | _:JSImportMeta | _:JSLinkingInfo |
+      case _:Skip | _:Debugger | _:LoadModule | _:StoreModule |
+          _:SelectStatic | _:JSNewTarget | _:JSImportMeta | _:JSLinkingInfo |
           _:JSGlobalRef | _:JSTypeOfGlobalRef | _:Literal =>
         tree
 

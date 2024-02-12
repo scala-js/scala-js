@@ -77,9 +77,6 @@ object Traversers {
       case New(_, _, args) =>
         args foreach traverse
 
-      case StoreModule(_, value) =>
-        traverse(value)
-
       case Select(qualifier, _, _) =>
         traverse(qualifier)
 
@@ -222,9 +219,10 @@ object Traversers {
 
       // Trees that need not be traversed
 
-      case _:Skip | _:Debugger | _:LoadModule | _:SelectStatic | _:SelectJSNativeMember |
-          _:LoadJSConstructor | _:LoadJSModule | _:JSNewTarget | _:JSImportMeta |
-          _:JSLinkingInfo | _:Literal | _:VarRef | _:This | _:JSGlobalRef =>
+      case _:Skip | _:Debugger | _:LoadModule | _:StoreModule |
+          _:SelectStatic | _:SelectJSNativeMember | _:LoadJSConstructor |
+          _:LoadJSModule | _:JSNewTarget | _:JSImportMeta | _:JSLinkingInfo |
+          _:Literal | _:VarRef | _:This | _:JSGlobalRef =>
     }
 
     def traverseClassDef(tree: ClassDef): Unit = {

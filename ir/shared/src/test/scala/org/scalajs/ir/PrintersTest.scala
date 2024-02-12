@@ -302,8 +302,7 @@ class PrintersTest {
   }
 
   @Test def printStoreModule(): Unit = {
-    assertPrintEquals("mod:scala.Predef$<-this",
-        StoreModule("scala.Predef$", This()("scala.Predef$")))
+    assertPrintEquals("<storeModule>", StoreModule())
   }
 
   @Test def printSelect(): Unit = {

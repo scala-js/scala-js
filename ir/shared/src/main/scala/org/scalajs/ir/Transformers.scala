@@ -91,9 +91,6 @@ object Transformers {
         case New(className, ctor, args) =>
           New(className, ctor, args map transformExpr)
 
-        case StoreModule(className, value) =>
-          StoreModule(className, transformExpr(value))
-
         case Select(qualifier, className, field) =>
           Select(transformExpr(qualifier), className, field)(tree.tpe)
 
@@ -223,9 +220,10 @@ object Transformers {
 
         // Trees that need not be transformed
 
-        case _:Skip | _:Debugger | _:LoadModule | _:SelectStatic | _:SelectJSNativeMember |
-            _:LoadJSConstructor | _:LoadJSModule | _:JSNewTarget | _:JSImportMeta |
-            _:JSLinkingInfo | _:Literal | _:VarRef | _:This | _:JSGlobalRef  =>
+        case _:Skip | _:Debugger | _:LoadModule | _:StoreModule |
+            _:SelectStatic | _:SelectJSNativeMember | _:LoadJSConstructor |
+            _:LoadJSModule | _:JSNewTarget | _:JSImportMeta | _:JSLinkingInfo |
+            _:Literal | _:VarRef | _:This | _:JSGlobalRef  =>
           tree
       }
     }

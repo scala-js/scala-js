@@ -305,6 +305,62 @@ class ClassDefCheckerTest {
         Closure(arrow = false, Nil, Nil, None, This()(ClassType("Foo")), Nil),
         "`this` of type any typed as Foo")
   }
+
+  @Test
+  def storeModule(): Unit = {
+    val ctorFlags = EMF.withNamespace(MemberNamespace.Constructor)
+
+    val superCtorCall = ApplyStatically(EAF.withConstructor(true), This()(ClassType("Foo")),
+        ObjectClass, NoArgConstructorName, Nil)(NoType)
+
+    assertError(
+      classDef(
+        "Foo",
+        kind = ClassKind.Class,
+        superClass = Some(ObjectClass),
+        methods = List(
+          MethodDef(ctorFlags, NoArgConstructorName, NON, Nil, NoType, Some {
+            Block(
+              superCtorCall,
+              StoreModule()
+            )
+          })(EOH, UNV)
+        )
+      ),
+      "Illegal StoreModule inside class of kind Class"
+    )
+
+    assertError(
+      classDef(
+        "Foo",
+        kind = ClassKind.ModuleClass,
+        superClass = Some(ObjectClass),
+        methods = List(
+          trivialCtor("Foo"),
+          MethodDef(EMF, MethodName("foo", Nil, VoidRef), NON, Nil, NoType, Some {
+            Block(
+              StoreModule()
+            )
+          })(EOH, UNV)
+        )
+      ),
+      "Illegal StoreModule outside of constructor"
+    )
+
+    assertError(
+      classDef(
+        "Foo",
+        kind = ClassKind.JSModuleClass,
+        superClass = Some("scala.scalajs.js.Object"),
+        jsConstructor = Some(
+          JSConstructorDef(JSCtorFlags, Nil, None,
+              JSConstructorBody(StoreModule() :: Nil, JSSuperConstructorCall(Nil), Undefined() :: Nil))(
+              EOH, UNV)
+        )
+      ),
+      "Cannot find `this` in scope for StoreModule()"
+    )
+  }
 }
 
 private object ClassDefCheckerTest {
