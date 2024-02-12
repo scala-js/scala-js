@@ -1975,8 +1975,8 @@ object Build {
 
           case `default213Version` =>
             Some(ExpectedSizes(
-                fastLink = 468000 to 469000,
-                fullLink = 100000 to 101000,
+                fastLink = 463000 to 464000,
+                fullLink = 99000 to 100000,
                 fastLinkGz = 60000 to 61000,
                 fullLinkGz = 26000 to 27000,
             ))

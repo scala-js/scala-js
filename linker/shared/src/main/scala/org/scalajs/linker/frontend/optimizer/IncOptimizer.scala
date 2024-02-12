@@ -271,37 +271,93 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
   private def updateElidableConstructors(): Unit = {
     import ElidableConstructorsInfo._
 
-    /* Invariant: when something is in the stack, its
-     * elidableConstructorsInfo was set to NotElidable.
-     */
     val toProcessStack = mutable.ArrayBuffer.empty[Class]
 
-    // Build the graph and initial stack from the infos
-    for (cls <- classes.valuesIterator) {
-      cls.elidableConstructorsInfo match {
-        case NotElidable =>
-          toProcessStack += cls
-        case DependentOn(dependencies) =>
-          for (dependency <- dependencies)
-            classes(dependency).elidableConstructorsDependents += cls
+    /* Invariants for this algo:
+     * - when a class is in the stack, its elidableConstructorsInfo was set
+     *   to AcyclicElidable,
+     * - when a class has `DependentOn` as its info, its
+     *   `elidableConstructorsRemainingDependenciesCount` is the number of
+     *   classes in its `dependencies` that have not yet been *processed* as
+     *   AcyclicElidable.
+     *
+     * During this algorithm, the info can transition from DependentOn to
+     *
+     * - NotElidable, if its getter dependencies were not satisfied.
+     * - AcyclicElidable.
+     *
+     * Other transitions are not possible.
+     */
+
+    def isGetter(classAndMethodName: (ClassName, MethodName)): Boolean = {
+      val (className, methodName) = classAndMethodName
+      classes(className).lookupMethod(methodName).exists { m =>
+        m.originalDef.body match {
+          case Some(Select(This(), _)) => true
+          case _                          => false
+        }
       }
     }
 
-    // Propagate
+    /* Initialization:
+     * - Prune classes with unsatisfied getter dependencies
+     * - Build reverse dependencies
+     * - Initialize `elidableConstructorsRemainingDependenciesCount` for `DependentOn` classes
+     * - Initialize the stack with dependency-free classes
+     */
+    for (cls <- classes.valuesIterator) {
+      cls.elidableConstructorsInfo match {
+        case DependentOn(deps, getterDeps) =>
+          if (!getterDeps.forall(isGetter(_))) {
+            cls.elidableConstructorsInfo = NotElidable
+          } else {
+            if (deps.isEmpty) {
+              cls.elidableConstructorsInfo = AcyclicElidable
+              toProcessStack += cls
+            } else {
+              cls.elidableConstructorsRemainingDependenciesCount = deps.size
+              deps.foreach(dep => classes(dep).elidableConstructorsDependents += cls)
+            }
+          }
+        case AcyclicElidable =>
+          toProcessStack += cls
+        case NotElidable =>
+          ()
+      }
+    }
+
+    /* Propagate AcyclicElidable
+     * When a class `cls` is on the stack, it is known to be AcyclicElidable.
+     * Go to all its dependents and decrement their count of remaining
+     * dependencies. If the count reaches 0, then all the dependencies of the
+     * class are known to be AcyclicElidable, and so the new class is known to
+     * be AcyclicElidable.
+     */
     while (toProcessStack.nonEmpty) {
       val cls = toProcessStack.remove(toProcessStack.size - 1)
 
       for (dependent <- cls.elidableConstructorsDependents) {
-        if (dependent.elidableConstructorsInfo != NotElidable) {
-          dependent.elidableConstructorsInfo = NotElidable
-          toProcessStack += dependent
+        dependent.elidableConstructorsInfo match {
+          case DependentOn(_, _) =>
+            dependent.elidableConstructorsRemainingDependenciesCount -= 1
+            if (dependent.elidableConstructorsRemainingDependenciesCount == 0) {
+              dependent.elidableConstructorsInfo = AcyclicElidable
+              toProcessStack += dependent
+            }
+          case NotElidable =>
+            ()
+          case AcyclicElidable =>
+            throw new AssertionError(
+              s"Unexpected dependent link from class ${cls.className.nameString} " +
+              s"to ${dependent.className.nameString} which is AcyclicElidable"
+            )
         }
       }
     }
 
     // Set the final value of hasElidableConstructors
     for (cls <- classes.valuesIterator) {
-      cls.setHasElidableConstructors(cls.elidableConstructorsInfo != NotElidable)
+      cls.setHasElidableConstructors()
     }
   }
 
@@ -430,6 +486,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     var elidableConstructorsInfo: ElidableConstructorsInfo =
       computeElidableConstructorsInfo(linkedClass)
     val elidableConstructorsDependents: mutable.ArrayBuffer[Class] = mutable.ArrayBuffer.empty
+    var elidableConstructorsRemainingDependenciesCount: Int = 0
 
     /** True if *all* constructors of this class are recursively elidable. */
     private var hasElidableConstructors: Boolean =
@@ -562,7 +619,6 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
       // Elidable constructors
       elidableConstructorsInfo = computeElidableConstructorsInfo(linkedClass)
-      elidableConstructorsDependents.clear()
 
       // Inlineable class
       if (updateTryNewInlineable(linkedClass)) {
@@ -577,12 +633,21 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     }
 
     /** ELIDABLE CTORS PASS ONLY. */
-    def setHasElidableConstructors(newHasElidableConstructors: Boolean): Unit = {
+    def setHasElidableConstructors(): Unit = {
+      import ElidableConstructorsInfo._
+
+      val newHasElidableConstructors = elidableConstructorsInfo == AcyclicElidable
+
       if (hasElidableConstructors != newHasElidableConstructors) {
         hasElidableConstructors = newHasElidableConstructors
         hasElidableConstructorsAskers.keysIterator.foreach(_.tag())
         hasElidableConstructorsAskers.clear()
       }
+
+      // Release memory that we won't use anymore
+      if (!newHasElidableConstructors)
+        elidableConstructorsInfo = NotElidable // get rid of DependentOn
+      elidableConstructorsDependents.clear() // also resets state for next run
     }
 
     /** UPDATE PASS ONLY. */
@@ -612,10 +677,10 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       import ElidableConstructorsInfo._
 
       if (isAdHocElidableConstructors(className)) {
-        AlwaysElidable
+        AcyclicElidable
       } else {
         // It's OK to look at the superClass like this because it will always be updated before myself
-        var result = superClass.fold(ElidableConstructorsInfo.AlwaysElidable)(_.elidableConstructorsInfo)
+        var result = superClass.fold[ElidableConstructorsInfo](AcyclicElidable)(_.elidableConstructorsInfo)
 
         if (result == NotElidable) {
           // fast path
@@ -691,7 +756,16 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     /** UPDATE PASS ONLY. */
     private def computeCtorElidableInfo(impl: MethodImpl): ElidableConstructorsInfo = {
+      /* Dependencies on other classes to have acyclic elidable constructors
+       * It is possible for the enclosing class name to be added to this set,
+       * if the constructor depends on its own class. In that case, the
+       * analysis will naturally treat it as a cycle and will conclude that the
+       * class does not have elidable constructors.
+       */
       val dependenciesBuilder = Set.newBuilder[ClassName]
+
+      // Dependencies on certain methods to be getters
+      val getterDependenciesBuilder = Set.newBuilder[(ClassName, MethodName)]
 
       def isTriviallySideEffectFree(tree: Tree): Boolean = tree match {
         case _:VarRef | _:Literal | _:This | _:Skip =>
@@ -710,6 +784,28 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
         case LoadModule(className) =>
           dependenciesBuilder += className
+          true
+
+        case Select(LoadModule(className), _) =>
+          /* If the given module can be loaded without cycles, it is guaranteed
+           * to be non-null, and therefore the Select is side-effect-free.
+           */
+          dependenciesBuilder += className
+          true
+
+        case Select(This(), _) =>
+          true
+
+        case Apply(_, LoadModule(className), MethodIdent(methodName), Nil)
+            if !methodName.isReflectiveProxy =>
+          // For a getter-like call, we need the method to actually be a getter.
+          dependenciesBuilder += className
+          getterDependenciesBuilder += ((className, methodName))
+          true
+
+        case Apply(_, This(), MethodIdent(methodName), Nil)
+            if !methodName.isReflectiveProxy =>
+          getterDependenciesBuilder += ((className, methodName))
           true
 
         case _ =>
@@ -755,10 +851,16 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       impl.originalDef.body.fold {
         throw new AssertionError("Constructor cannot be abstract")
       } { body =>
-        if (isElidableStat(body))
-          ElidableConstructorsInfo.DependentOn(dependenciesBuilder.result())
-        else
+        if (isElidableStat(body)) {
+          val dependencies = dependenciesBuilder.result()
+          val getterDependencies = getterDependenciesBuilder.result()
+          if (dependencies.isEmpty && getterDependencies.isEmpty)
+            ElidableConstructorsInfo.AcyclicElidable
+          else
+            ElidableConstructorsInfo.DependentOn(dependencies, getterDependencies)
+        } else {
           ElidableConstructorsInfo.NotElidable
+        }
       }
     }
 
@@ -1482,8 +1584,12 @@ object IncOptimizer {
     import ElidableConstructorsInfo._
 
     final def mergeWith(that: ElidableConstructorsInfo): ElidableConstructorsInfo = (this, that) match {
-      case (DependentOn(deps1), DependentOn(deps2)) =>
-        DependentOn(deps1 ++ deps2)
+      case (DependentOn(deps1, getterDeps1), DependentOn(deps2, getterDeps2)) =>
+        DependentOn(deps1 ++ deps2, getterDeps1 ++ getterDeps2)
+      case (AcyclicElidable, _) =>
+        that
+      case (_, AcyclicElidable) =>
+        this
       case _ =>
         NotElidable
     }
@@ -1492,8 +1598,11 @@ object IncOptimizer {
   object ElidableConstructorsInfo {
     case object NotElidable extends ElidableConstructorsInfo
 
-    final case class DependentOn(dependencies: Set[ClassName]) extends ElidableConstructorsInfo
+    case object AcyclicElidable extends ElidableConstructorsInfo
 
-    val AlwaysElidable: ElidableConstructorsInfo = DependentOn(Set.empty)
+    final case class DependentOn(
+      dependencies: Set[ClassName],
+      getterDependencies: Set[(ClassName, MethodName)]
+    ) extends ElidableConstructorsInfo
   }
 }
