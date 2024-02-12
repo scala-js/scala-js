@@ -6613,11 +6613,25 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         if (sym.hasAnnotation(JSGlobalScopeAnnotation)) {
           MaybeGlobalScope.GlobalScope(pos)
         } else {
-          val className = encodeClassName(sym)
-          val tree =
-            if (isJSType(sym)) js.LoadJSModule(className)
-            else js.LoadModule(className)
-          MaybeGlobalScope.NotGlobalScope(tree)
+          if (sym == currentClassSym.get && isModuleInitialized.get != null && isModuleInitialized.value) {
+            /* This is a LoadModule(myClass) after the StoreModule(). It is
+             * guaranteed to always return the `this` value. We eagerly replace
+             * it by a `This()` node to help the elidable constructors analysis
+             * of the linker. If we don't do this, then the analysis must
+             * tolerate `LoadModule(myClass)` after `StoreModule()` to be
+             * side-effect-free, but that would weaken the guarantees resulting
+             * from the analysis. In particular, it cannot guarantee that the
+             * result of a `LoadModule()` of a module with elidable constructors
+             * is always fully initialized.
+             */
+            MaybeGlobalScope.NotGlobalScope(genThis())
+          } else {
+            val className = encodeClassName(sym)
+            val tree =
+              if (isJSType(sym)) js.LoadJSModule(className)
+              else js.LoadModule(className)
+            MaybeGlobalScope.NotGlobalScope(tree)
+          }
         }
       }
     }

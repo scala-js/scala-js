@@ -560,6 +560,28 @@ class OptimizationTest extends JSASTTest {
 
     assertTrue(flags.inline)
   }
+
+  @Test
+  def loadModuleAfterStoreModuleIsThis: Unit = {
+    val testName = ClassName("Test$")
+
+    """
+    object Test {
+      private val selfPair = (Test, Test)
+    }
+    """.hasNot("LoadModule") {
+      case js.LoadModule(_) =>
+    }
+
+    // Confidence check
+    """
+    object Test {
+      private def selfPair = (Test, Test)
+    }
+    """.hasExactly(2, "LoadModule") {
+      case js.LoadModule(`testName`) =>
+    }
+  }
 }
 
 object OptimizationTest {
