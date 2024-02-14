@@ -267,7 +267,7 @@ object Transformers {
         case JSPropertyDef(flags, name, getterBody, setterArgAndBody) =>
           JSPropertyDef(
               flags,
-              name,
+              transformExpr(name),
               getterBody.map(transformStat),
               setterArgAndBody map { case (arg, body) =>
                 (arg, transformStat(body))
@@ -277,7 +277,7 @@ object Transformers {
 
     def transformJSMethodDef(jsMethodDef: JSMethodDef): JSMethodDef = {
       val JSMethodDef(flags, name, args, restParam, body) = jsMethodDef
-      JSMethodDef(flags, name, args, restParam, transformExpr(body))(
+      JSMethodDef(flags, transformExpr(name), args, restParam, transformExpr(body))(
           jsMethodDef.optimizerHints, Unversioned)(jsMethodDef.pos)
     }
 

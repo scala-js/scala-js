@@ -259,7 +259,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
   def desugarToFunction(enclosingClassName: ClassName, params: List[ParamDef],
       body: Tree, resultType: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[js.Function] = {
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[js.Function] = {
     desugarToFunction(enclosingClassName, params, restParam = None, body,
         resultType)
   }
@@ -269,10 +269,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
   def desugarToFunction(enclosingClassName: ClassName, params: List[ParamDef],
       restParam: Option[ParamDef], body: JSConstructorBody)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[js.Function] = {
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[js.Function] = {
     val bodyBlock = Block(body.allStats)(body.pos)
-    new JSDesugar().desugarToFunction(params, restParam, bodyBlock,
-        isStat = false,
+    new JSDesugar(globalRefTracking).desugarToFunction(
+        params, restParam, bodyBlock, isStat = false,
         Env.empty(AnyType).withEnclosingClassName(Some(enclosingClassName)))
   }
 
@@ -281,9 +281,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
   def desugarToFunction(enclosingClassName: ClassName, params: List[ParamDef],
       restParam: Option[ParamDef], body: Tree, resultType: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[js.Function] = {
-    new JSDesugar().desugarToFunction(params, restParam, body,
-        isStat = resultType == NoType,
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[js.Function] = {
+    new JSDesugar(globalRefTracking).desugarToFunction(
+        params, restParam, body, isStat = resultType == NoType,
         Env.empty(resultType).withEnclosingClassName(Some(enclosingClassName)))
   }
 
@@ -293,9 +293,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
   def desugarToFunctionWithExplicitThis(enclosingClassName: ClassName,
       params: List[ParamDef], body: Tree, resultType: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[js.Function] = {
-    new JSDesugar().desugarToFunctionWithExplicitThis(params, body,
-        isStat = resultType == NoType,
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[js.Function] = {
+    new JSDesugar(globalRefTracking).desugarToFunctionWithExplicitThis(
+        params, body, isStat = resultType == NoType,
         Env.empty(resultType).withEnclosingClassName(Some(enclosingClassName)))
   }
 
@@ -304,15 +304,16 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
   def desugarToFunction(params: List[ParamDef], restParam: Option[ParamDef],
       body: Tree, resultType: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): WithGlobals[js.Function] = {
-    new JSDesugar().desugarToFunction(params, restParam, body,
-        isStat = resultType == NoType, Env.empty(resultType))
+      globalRefTracking: GlobalRefTracking, pos: Position): WithGlobals[js.Function] = {
+    new JSDesugar(globalRefTracking).desugarToFunction(
+        params, restParam, body, isStat = resultType == NoType,
+        Env.empty(resultType))
   }
 
   /** Desugars a class-level expression. */
   def desugarExpr(expr: Tree, resultType: Type)(
-      implicit moduleContext: ModuleContext,
-      globalKnowledge: GlobalKnowledge): WithGlobals[js.Tree] = {
+      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
+      globalRefTracking: GlobalRefTracking): WithGlobals[js.Tree] = {
     implicit val pos = expr.pos
 
     for (fun <- desugarToFunction(Nil, None, expr, resultType)) yield {
@@ -326,8 +327,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     }
   }
 
-  private class JSDesugar()(
+  private class JSDesugar(outerGlobalRefTracking: GlobalRefTracking)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge) {
+
+    // Inside JSDesugar, we always track everything
+    private implicit val globalRefTracking: GlobalRefTracking =
+      GlobalRefTracking.All
 
     // For convenience
     private val es2015 = esFeatures.esVersion >= ESVersion.ES2015
@@ -410,7 +415,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       val result = body
       if (!isOptimisticNamingRun || !globalVarNames.exists(localVarNames)) {
         /* At this point, filter out the global refs that do not need to be
-         * tracked across functions and classes.
+         * tracked in the outer context.
          *
          * By default, only dangerous global refs need to be tracked outside of
          * functions, to power `mentionedDangerousGlobalRefs` In that case, the
@@ -422,11 +427,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
          * need to track all global variables across functions and classes. This is
          * slower, but running GCC will take most of the time anyway in that case.
          */
-        val globalRefs =
-          if (trackAllGlobalRefs) globalVarNames.toSet
-          else GlobalRefUtils.keepOnlyDangerousGlobalRefs(globalVarNames.toSet)
+        val outerGlobalRefs =
+          outerGlobalRefTracking.refineFrom(globalRefTracking, globalVarNames.toSet)
 
-        WithGlobals(result, globalRefs)
+        WithGlobals(result, outerGlobalRefs)
       } else {
         /* Clear the local var names, but *not* the global var names.
          * In the pessimistic run, we will use the knowledge gathered during
@@ -2214,8 +2218,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case SelectJSNativeMember(className, member) =>
           val jsNativeLoadSpec =
             globalKnowledge.getJSNativeLoadSpec(className, member.name)
-          extractWithGlobals(genLoadJSFromSpec(
-              jsNativeLoadSpec, keepOnlyDangerousVarNames = false))
+          extractWithGlobals(genLoadJSFromSpec(jsNativeLoadSpec))
 
         case Apply(_, receiver, method, args) =>
           val methodName = method.name
@@ -2352,7 +2355,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               if (useBigIntForLongs)
                 js.Apply(genGlobalVarRef("Number"), List(wrapBigInt32(newLhs)))
               else
-                genLongMethodApply(newLhs, LongImpl.toInt)
+                genApply(newLhs, LongImpl.toInt)
             case DoubleToInt =>
               genCallHelper(VarField.doubleToInt, newLhs)
             case DoubleToFloat =>
@@ -2363,7 +2366,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               if (useBigIntForLongs)
                 js.Apply(genGlobalVarRef("Number"), List(newLhs))
               else
-                genLongMethodApply(newLhs, LongImpl.toDouble)
+                genApply(newLhs, LongImpl.toDouble)
             case DoubleToLong =>
               if (useBigIntForLongs)
                 genCallHelper(VarField.doubleToLong, newLhs)
@@ -2375,7 +2378,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               if (useBigIntForLongs)
                 genCallHelper(VarField.longToFloat, newLhs)
               else
-                genLongMethodApply(newLhs, LongImpl.toFloat)
+                genApply(newLhs, LongImpl.toFloat)
 
             // String.length
             case String_length =>
@@ -2488,25 +2491,25 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.+, newLhs, newRhs))
               else
-                genLongMethodApply(newLhs, LongImpl.+, newRhs)
+                genApply(newLhs, LongImpl.+, newRhs)
             case Long_- =>
               lhs match {
                 case LongLiteral(0L) =>
                   if (useBigIntForLongs)
                     wrapBigInt64(js.UnaryOp(JSUnaryOp.-, newRhs))
                   else
-                    genLongMethodApply(newRhs, LongImpl.UNARY_-)
+                    genApply(newRhs, LongImpl.UNARY_-)
                 case _ =>
                   if (useBigIntForLongs)
                     wrapBigInt64(js.BinaryOp(JSBinaryOp.-, newLhs, newRhs))
                   else
-                    genLongMethodApply(newLhs, LongImpl.-, newRhs)
+                    genApply(newLhs, LongImpl.-, newRhs)
               }
             case Long_* =>
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.*, newLhs, newRhs))
               else
-                genLongMethodApply(newLhs, LongImpl.*, newRhs)
+                genApply(newLhs, LongImpl.*, newRhs)
             case Long_/ =>
               if (useBigIntForLongs) {
                 rhs match {
@@ -2516,7 +2519,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                     genCallHelper(VarField.longDiv, newLhs, newRhs)
                 }
               } else {
-                genLongMethodApply(newLhs, LongImpl./, newRhs)
+                genApply(newLhs, LongImpl./, newRhs)
               }
             case Long_% =>
               if (useBigIntForLongs) {
@@ -2527,78 +2530,78 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                     genCallHelper(VarField.longMod, newLhs, newRhs)
                 }
               } else {
-                genLongMethodApply(newLhs, LongImpl.%, newRhs)
+                genApply(newLhs, LongImpl.%, newRhs)
               }
 
             case Long_| =>
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.|, newLhs, newRhs))
               else
-                genLongMethodApply(newLhs, LongImpl.|, newRhs)
+                genApply(newLhs, LongImpl.|, newRhs)
             case Long_& =>
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.&, newLhs, newRhs))
               else
-                genLongMethodApply(newLhs, LongImpl.&, newRhs)
+                genApply(newLhs, LongImpl.&, newRhs)
             case Long_^ =>
               lhs match {
                 case LongLiteral(-1L) =>
                   if (useBigIntForLongs)
                     wrapBigInt64(js.UnaryOp(JSUnaryOp.~, newRhs))
                   else
-                    genLongMethodApply(newRhs, LongImpl.UNARY_~)
+                    genApply(newRhs, LongImpl.UNARY_~)
                 case _ =>
                   if (useBigIntForLongs)
                     wrapBigInt64(js.BinaryOp(JSBinaryOp.^, newLhs, newRhs))
                   else
-                    genLongMethodApply(newLhs, LongImpl.^, newRhs)
+                    genApply(newLhs, LongImpl.^, newRhs)
               }
             case Long_<< =>
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.<<, newLhs, bigIntShiftRhs(newRhs)))
               else
-                genLongMethodApply(newLhs, LongImpl.<<, newRhs)
+                genApply(newLhs, LongImpl.<<, newRhs)
             case Long_>>> =>
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.>>, wrapBigIntU64(newLhs), bigIntShiftRhs(newRhs)))
               else
-                genLongMethodApply(newLhs, LongImpl.>>>, newRhs)
+                genApply(newLhs, LongImpl.>>>, newRhs)
             case Long_>> =>
               if (useBigIntForLongs)
                 wrapBigInt64(js.BinaryOp(JSBinaryOp.>>, newLhs, bigIntShiftRhs(newRhs)))
               else
-                genLongMethodApply(newLhs, LongImpl.>>, newRhs)
+                genApply(newLhs, LongImpl.>>, newRhs)
 
             case Long_== =>
               if (useBigIntForLongs)
                 js.BinaryOp(JSBinaryOp.===, newLhs, newRhs)
               else
-                genLongMethodApply(newLhs, LongImpl.===, newRhs)
+                genApply(newLhs, LongImpl.===, newRhs)
             case Long_!= =>
               if (useBigIntForLongs)
                 js.BinaryOp(JSBinaryOp.!==, newLhs, newRhs)
               else
-                genLongMethodApply(newLhs, LongImpl.!==, newRhs)
+                genApply(newLhs, LongImpl.!==, newRhs)
             case Long_< =>
               if (useBigIntForLongs)
                 js.BinaryOp(JSBinaryOp.<, newLhs, newRhs)
               else
-                genLongMethodApply(newLhs, LongImpl.<, newRhs)
+                genApply(newLhs, LongImpl.<, newRhs)
             case Long_<= =>
               if (useBigIntForLongs)
                 js.BinaryOp(JSBinaryOp.<=, newLhs, newRhs)
               else
-                genLongMethodApply(newLhs, LongImpl.<=, newRhs)
+                genApply(newLhs, LongImpl.<=, newRhs)
             case Long_> =>
               if (useBigIntForLongs)
                 js.BinaryOp(JSBinaryOp.>, newLhs, newRhs)
               else
-                genLongMethodApply(newLhs, LongImpl.>, newRhs)
+                genApply(newLhs, LongImpl.>, newRhs)
             case Long_>= =>
               if (useBigIntForLongs)
                 js.BinaryOp(JSBinaryOp.>=, newLhs, newRhs)
               else
-                genLongMethodApply(newLhs, LongImpl.>=, newRhs)
+                genApply(newLhs, LongImpl.>=, newRhs)
 
             case Float_+ => genFround(js.BinaryOp(JSBinaryOp.+, newLhs, newRhs))
             case Float_- => genFround(js.BinaryOp(JSBinaryOp.-, newLhs, newRhs))
@@ -2684,7 +2687,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
              * those cases, leaving a `Clone()` node an array.
              */
             case _: ArrayType =>
-              js.Apply(newExpr DOT genName(cloneMethodName), Nil)
+              genApply(newExpr, cloneMethodName, Nil)
 
             /* Otherwise, if it might be an array, use the full dispatcher.
              * In theory, only the `CloneableClass` case is required, since
@@ -2733,7 +2736,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case Transient(ZeroOf(runtimeClass)) =>
           js.DotSelect(
-              js.DotSelect(transformExprNoChar(checkNotNull(runtimeClass)), js.Ident("jl_Class__f_data")),
+              genSelect(transformExprNoChar(checkNotNull(runtimeClass)),
+                  ClassClass, FieldIdent(dataFieldName)),
               js.Ident("zero"))
 
         case Transient(NativeArrayWrapper(elemClass, nativeArray)) =>
@@ -2744,9 +2748,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               extractWithGlobals(
                   genNativeArrayWrapper(arrayTypeRef, newNativeArray))
             case _ =>
-              val elemClassData = js.DotSelect(
+              val elemClassData = genSelect(
                   transformExprNoChar(checkNotNull(elemClass)),
-                  js.Ident("jl_Class__f_data"))
+                  ClassClass, FieldIdent(dataFieldName))
               val arrayClassData = js.Apply(
                   js.DotSelect(elemClassData, js.Ident("getArrayOf")), Nil)
               js.Apply(arrayClassData DOT "wrapArray", newNativeArray :: Nil)
@@ -2862,8 +2866,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               genLoadModule(className)
 
             case Some(spec) =>
-              extractWithGlobals(
-                  genLoadJSFromSpec(spec, keepOnlyDangerousVarNames = false))
+              extractWithGlobals(genLoadJSFromSpec(spec))
           }
 
         case JSUnaryOp(op, lhs) =>
@@ -3200,7 +3203,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
       js.Ident(genName(ident.name))(ident.pos)
 
     private def transformMethodIdent(ident: MethodIdent): js.Ident =
-      js.Ident(genName(ident.name))(ident.pos)
+      js.Ident(genMethodName(ident.name))(ident.pos)
 
     private def transformLocalVarIdent(ident: LocalIdent): js.Ident =
       js.Ident(transformLocalName(ident.name))(ident.pos)
@@ -3228,8 +3231,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
      */
     private def genJSClassConstructor(className: ClassName)(
         implicit pos: Position): WithGlobals[js.Tree] = {
-      sjsGen.genJSClassConstructor(className,
-          keepOnlyDangerousVarNames = false)
+      sjsGen.genJSClassConstructor(className)
     }
 
     private def genApplyStaticLike(field: VarField, className: ClassName,
@@ -3266,12 +3268,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         implicit pos: Position): js.Tree = {
       js.Apply(genIdentBracketSelect(genGlobalVarRef("BigInt"), "asUintN"),
           List(js.IntLiteral(n), tree))
-    }
-
-    private def genLongMethodApply(receiver: js.Tree, methodName: MethodName,
-        args: js.Tree*)(implicit pos: Position): js.Tree = {
-      import TreeDSL._
-      js.Apply(receiver DOT genName(methodName), args.toList)
     }
   }
 }

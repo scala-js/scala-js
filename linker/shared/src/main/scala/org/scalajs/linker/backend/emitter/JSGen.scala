@@ -127,7 +127,7 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
   }
 
   def genDefineProperty(obj: Tree, prop: Tree, descriptor: List[(String, Tree)])(
-      implicit pos: Position): WithGlobals[Tree] = {
+      implicit tracking: GlobalRefTracking, pos: Position): WithGlobals[Tree] = {
     val descriptorTree =
         ObjectConstr(descriptor.map(x => StringLiteral(x._1) -> x._2))
 
@@ -137,14 +137,12 @@ private[emitter] final class JSGen(val config: Emitter.Config) {
     }
   }
 
-  def globalRef(name: String)(implicit pos: Position): WithGlobals[VarRef] =
-    WithGlobals(VarRef(Ident(name)), Set(name))
-
-  def untrackedGlobalRef(name: String)(implicit pos: Position): WithGlobals[VarRef] = {
-    assert(!GlobalRefUtils.isDangerousGlobalRef(name))
-
-    if (trackAllGlobalRefs) globalRef(name)
-    else WithGlobals(VarRef(Ident(name)))
+  def globalRef(name: String)(
+      implicit tracking: GlobalRefTracking, pos: Position): WithGlobals[VarRef] = {
+    val trackedSet: Set[String] =
+      if (tracking.shouldTrack(name)) Set(name)
+      else Set.empty
+    WithGlobals(VarRef(Ident(name)), trackedSet)
   }
 
   def genPropSelect(qual: Tree, item: PropertyName)(

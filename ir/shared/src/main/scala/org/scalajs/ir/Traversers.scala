@@ -246,10 +246,12 @@ object Traversers {
 
     def traverseJSMethodPropDef(jsMethodPropDef: JSMethodPropDef): Unit = {
       jsMethodPropDef match {
-        case JSMethodDef(_, _, _, _, body) =>
+        case JSMethodDef(_, name, _, _, body) =>
+          traverse(name)
           traverse(body)
 
-        case JSPropertyDef(_, _, getterBody, setterArgAndBody) =>
+        case JSPropertyDef(_, name, getterBody, setterArgAndBody) =>
+          traverse(name)
           getterBody.foreach(traverse)
           setterArgAndBody.foreach(argAndBody => traverse(argAndBody._2))
       }

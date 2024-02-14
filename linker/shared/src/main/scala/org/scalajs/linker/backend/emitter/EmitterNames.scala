@@ -26,6 +26,7 @@ private[emitter] object EmitterNames {
 
   // Field names
 
+  val dataFieldName = FieldName("data")
   val exceptionFieldName = FieldName("exception")
 
   // Method names

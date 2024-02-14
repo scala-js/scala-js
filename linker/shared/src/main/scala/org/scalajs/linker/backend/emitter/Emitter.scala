@@ -39,6 +39,9 @@ final class Emitter[E >: Null <: js.Tree](
   import Emitter._
   import config._
 
+  private implicit val globalRefTracking: GlobalRefTracking =
+    config.topLevelGlobalRefTracking
+
   private val knowledgeGuardian = new KnowledgeGuardian(config)
 
   private val uncachedKnowledge = new knowledgeGuardian.KnowledgeAccessor {}
@@ -173,15 +176,16 @@ final class Emitter[E >: Null <: js.Tree](
     val result = emitOnce(moduleSet, logger)
 
     val mentionedDangerousGlobalRefs =
-      if (!trackAllGlobalRefs) result.globalVarNames
-      else GlobalRefUtils.keepOnlyDangerousGlobalRefs(result.globalVarNames)
+      GlobalRefTracking.Dangerous.refineFrom(topLevelGlobalRefTracking, result.globalVarNames)
 
     if (mentionedDangerousGlobalRefs == state.lastMentionedDangerousGlobalRefs) {
       result
     } else {
       assert(!secondAttempt,
           "Uh oh! The second attempt gave a different set of dangerous " +
-          "global refs than the first one.")
+          "global refs than the first one.\n" +
+          "Before:" + state.lastMentionedDangerousGlobalRefs.toList.sorted.mkString("\n  ", "\n  ", "\n") +
+          "After:" + mentionedDangerousGlobalRefs.toList.sorted.mkString("\n  ", "\n  ", ""))
 
       // !!! This log message is tested in EmitterTest
       logger.debug(
@@ -1095,6 +1099,10 @@ object Emitter {
           optimizeBracketSelects = true,
           trackAllGlobalRefs = false)
     }
+
+    private[emitter] val topLevelGlobalRefTracking: GlobalRefTracking =
+      if (trackAllGlobalRefs) GlobalRefTracking.All
+      else GlobalRefTracking.Dangerous
 
     def withSemantics(f: Semantics => Semantics): Config =
       copy(semantics = f(semantics))
