@@ -1171,7 +1171,10 @@ private[emitter] object CoreJSLib {
               // Both values have the same "data" (could also be falsy values)
               If(srcData && genIdentBracketSelect(srcData, "isArrayClass"), {
                 // Fast path: the values are array of the same type
-                genUncheckedArraycopy(List(src, srcPos, dest, destPos, length))
+                if (esVersion >= ESVersion.ES2015 && nullPointers == CheckedBehavior.Unchecked)
+                  Apply(src DOT "copyTo", List(srcPos, dest, destPos, length))
+                else
+                  genCallHelper(VarField.systemArraycopy, src, srcPos, dest, destPos, length)
               }, {
                 genCallHelper(VarField.throwArrayStoreException, Null())
               })

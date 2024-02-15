@@ -875,12 +875,19 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             implicit val env = env0
             val jsArgs = newArgs.map(transformExprNoChar(_))
 
+            def genUnchecked(): js.Tree = {
+              if (esFeatures.esVersion >= ESVersion.ES2015 && semantics.nullPointers == CheckedBehavior.Unchecked)
+                js.Apply(jsArgs.head DOT "copyTo", jsArgs.tail)
+              else
+                genCallHelper(VarField.systemArraycopy, jsArgs: _*)
+            }
+
             if (semantics.arrayStores == Unchecked) {
-              genUncheckedArraycopy(jsArgs)
+              genUnchecked()
             } else {
               (src.tpe, dest.tpe) match {
                 case (PrimArray(srcPrimRef), PrimArray(destPrimRef)) if srcPrimRef == destPrimRef =>
-                  genUncheckedArraycopy(jsArgs)
+                  genUnchecked()
                 case (RefArray(), RefArray()) =>
                   genCallHelper(VarField.systemArraycopyRefs, jsArgs: _*)
                 case _ =>
