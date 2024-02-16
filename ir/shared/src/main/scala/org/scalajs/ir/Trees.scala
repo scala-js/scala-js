@@ -237,8 +237,7 @@ object Trees {
     val tpe = ClassType(className)
   }
 
-  sealed case class StoreModule(className: ClassName, value: Tree)(
-      implicit val pos: Position) extends Tree {
+  sealed case class StoreModule()(implicit val pos: Position) extends Tree {
     val tpe = NoType // cannot be in expression position
   }
 

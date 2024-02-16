@@ -319,14 +319,9 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         if (clazz.kind != ClassKind.ModuleClass)
           reportError("LoadModule of non-module class $className")
 
-      case StoreModule(className, value) =>
-        val clazz = lookupClass(className)
-        if (!clazz.kind.hasModuleAccessor)
-          reportError("StoreModule of non-module class $className")
-        val expectedType =
-          if (clazz.kind == ClassKind.JSModuleClass) AnyType
-          else ClassType(className)
-        typecheckExpect(value, env, expectedType)
+      case StoreModule() =>
+        // Nothing to check; everything is checked in ClassDefChecker
+        ()
 
       case Select(qualifier, className, FieldIdent(item)) =>
         val c = lookupClass(className)

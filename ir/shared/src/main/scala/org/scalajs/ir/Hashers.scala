@@ -259,10 +259,8 @@ object Hashers {
           mixTag(TagLoadModule)
           mixName(className)
 
-        case StoreModule(className, value) =>
+        case StoreModule() =>
           mixTag(TagStoreModule)
-          mixName(className)
-          mixTree(value)
 
         case Select(qualifier, className, field) =>
           mixTag(TagSelect)

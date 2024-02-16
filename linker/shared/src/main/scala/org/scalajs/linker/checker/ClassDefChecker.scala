@@ -292,7 +292,10 @@ private final class ClassDefChecker(classDef: ClassDef,
 
     // Body
     val thisType = if (static) NoType else instanceThisType
-    body.foreach(checkTree(_, Env.fromParams(params).withThisType(thisType)))
+    val bodyEnv = Env.fromParams(params)
+      .withThisType(thisType)
+      .withInConstructor(isConstructor)
+    body.foreach(checkTree(_, bodyEnv))
   }
 
   private def checkJSConstructorDef(ctorDef: JSConstructorDef): Unit = withPerMethodState {
@@ -311,6 +314,7 @@ private final class ClassDefChecker(classDef: ClassDef,
 
     val startEnv = Env.fromParams(classDef.jsClassCaptures.getOrElse(Nil) ++ params ++ restParam)
       .withHasNewTarget(true)
+      .withInConstructor(true)
 
     val envJustBeforeSuper = body.beforeSuper.foldLeft(startEnv) { (prevEnv, stat) =>
       checkTree(stat, prevEnv)
@@ -608,8 +612,13 @@ private final class ClassDefChecker(classDef: ClassDef,
 
       case _: LoadModule =>
 
-      case StoreModule(_, value) =>
-        checkTree(value, env)
+      case StoreModule() =>
+        if (!classDef.kind.hasModuleAccessor)
+          reportError(i"Illegal StoreModule inside class of kind ${classDef.kind}")
+        if (!env.inConstructor)
+          reportError(i"Illegal StoreModule outside of constructor")
+        if (env.thisType == NoType) // can happen before JSSuperConstructorCall in JSModuleClass
+          reportError(i"Cannot find `this` in scope for StoreModule()")
 
       case Select(qualifier, _, _) =>
         checkTree(qualifier, env)
@@ -922,7 +931,9 @@ object ClassDefChecker {
       /** Local variables in scope (including through closures). */
       val locals: Map[LocalName, LocalDef],
       /** Return types by label. */
-      val returnLabels: Set[LabelName]
+      val returnLabels: Set[LabelName],
+      /** Whether we are in a constructor of the class. */
+      val inConstructor: Boolean
   ) {
     import Env._
 
@@ -938,25 +949,36 @@ object ClassDefChecker {
     def withLabel(label: LabelName): Env =
       copy(returnLabels = returnLabels + label)
 
+    def withInConstructor(inConstructor: Boolean): Env =
+      copy(inConstructor = inConstructor)
+
     private def copy(
       hasNewTarget: Boolean = hasNewTarget,
       thisType: Type = thisType,
       locals: Map[LocalName, LocalDef] = locals,
-      returnLabels: Set[LabelName] = returnLabels
+      returnLabels: Set[LabelName] = returnLabels,
+      inConstructor: Boolean = inConstructor
     ): Env = {
-      new Env(hasNewTarget, thisType, locals, returnLabels)
+      new Env(hasNewTarget, thisType, locals, returnLabels, inConstructor)
     }
   }
 
   private object Env {
     val empty: Env =
-      new Env(hasNewTarget = false, thisType = NoType, Map.empty, Set.empty)
+      new Env(hasNewTarget = false, thisType = NoType, Map.empty, Set.empty, inConstructor = false)
 
     def fromParams(params: List[ParamDef]): Env = {
       val paramLocalDefs =
         for (p @ ParamDef(ident, _, tpe, mutable) <- params)
           yield ident.name -> LocalDef(ident.name, tpe, mutable)
-      new Env(hasNewTarget = false, thisType = NoType, paramLocalDefs.toMap, Set.empty)
+
+      new Env(
+        hasNewTarget = false,
+        thisType = NoType,
+        paramLocalDefs.toMap,
+        Set.empty,
+        inConstructor = false
+      )
     }
   }
 

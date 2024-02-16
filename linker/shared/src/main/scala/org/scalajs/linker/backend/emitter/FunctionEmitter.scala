@@ -693,11 +693,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               pushLhsInto(Lhs.Assign(lhs), rhs, tailPosLabels)
           }
 
-        case StoreModule(className, value) =>
-          unnest(value) { (newValue, env0) =>
-            implicit val env = env0
-            js.Assign(globalVar(VarField.n, className), transformExprNoChar(newValue))
+        case StoreModule() =>
+          val enclosingClassName = env.enclosingClassName.getOrElse {
+            throw new AssertionError(
+                "Need enclosing class for StoreModule().")
           }
+          js.Assign(globalVar(VarField.n, enclosingClassName), js.This())
 
         case While(cond, body) =>
           val loopEnv = env.withInLoopForVarCapture(true)

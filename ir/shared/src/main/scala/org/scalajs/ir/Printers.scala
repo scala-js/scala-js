@@ -296,11 +296,8 @@ object Printers {
           print("mod:")
           print(className)
 
-        case StoreModule(className, value) =>
-          print("mod:")
-          print(className)
-          print("<-")
-          print(value)
+        case StoreModule() =>
+          print("<storeModule>")
 
         case Select(qualifier, className, field) =>
           print(qualifier)
