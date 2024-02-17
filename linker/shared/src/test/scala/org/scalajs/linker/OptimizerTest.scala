@@ -203,14 +203,14 @@ class OptimizerTest {
             fields = List(
               // static var foo: java.lang.String
               FieldDef(EMF.withNamespace(PublicStatic).withMutable(true),
-                  "foo", NON, StringType)
+                  FieldName(MainTestClassName, "foo"), NON, StringType)
             ),
             methods = List(
                 trivialCtor(MainTestClassName),
                 // static def foo(): java.lang.String = Test::foo
                 MethodDef(EMF.withNamespace(MemberNamespace.PublicStatic),
                     fooGetter, NON, Nil, StringType, Some({
-                      SelectStatic(MainTestClassName, "foo")(StringType)
+                      SelectStatic(FieldName(MainTestClassName, "foo"))(StringType)
                     }))(EOH, UNV),
                 // static def main(args: String[]) { println(Test::foo()) }
                 mainMethodDef({
@@ -223,7 +223,7 @@ class OptimizerTest {
     for (moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers)) yield {
       val mainClassDef = findClass(moduleSet, MainTestClassName).get
       assertTrue(mainClassDef.fields.exists {
-        case FieldDef(_, FieldIdent(name), _, _) => name == FieldName("foo")
+        case FieldDef(_, FieldIdent(name), _, _) => name == FieldName(MainTestClassName, "foo")
         case _                                   => false
       })
     }
@@ -491,10 +491,10 @@ class OptimizerTest {
       classDef("Foo", kind = ClassKind.Class, superClass = Some(ObjectClass),
           fields = List(
             // x: Witness
-            FieldDef(EMF.withMutable(witnessMutable), "x", NON, witnessType),
+            FieldDef(EMF.withMutable(witnessMutable), FieldName("Foo", "x"), NON, witnessType),
 
             // y: Int
-            FieldDef(EMF, "y", NON, IntType)
+            FieldDef(EMF, FieldName("Foo", "y"), NON, IntType)
           ),
           methods = List(
             // def this() = {
@@ -502,13 +502,13 @@ class OptimizerTest {
             //   this.y = 5
             // }
             MethodDef(EMF.withNamespace(Constructor), NoArgConstructorName, NON, Nil, NoType, Some(Block(
-              Assign(Select(This()(ClassType("Foo")), "Foo", "x")(witnessType), Null()),
-              Assign(Select(This()(ClassType("Foo")), "Foo", "y")(IntType), int(5))
+              Assign(Select(This()(ClassType("Foo")), FieldName("Foo", "x"))(witnessType), Null()),
+              Assign(Select(This()(ClassType("Foo")), FieldName("Foo", "y"))(IntType), int(5))
             )))(EOH, UNV),
 
             // def method(): Int = this.y
             MethodDef(EMF, methodName, NON, Nil, IntType, Some {
-              Select(This()(ClassType("Foo")), "Foo", "y")(IntType)
+              Select(This()(ClassType("Foo")), FieldName("Foo", "y"))(IntType)
             })(EOH, UNV)
           ),
           optimizerHints = EOH.withInline(classInline)
@@ -527,7 +527,7 @@ class OptimizerTest {
       moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers)
     } yield {
       findClass(moduleSet, "Foo").get.fields match {
-        case List(FieldDef(_, FieldIdent(name), _, _)) if name == FieldName("y") =>
+        case List(FieldDef(_, FieldIdent(name), _, _)) if name == FieldName("Foo", "y") =>
           // ok
 
         case fields =>

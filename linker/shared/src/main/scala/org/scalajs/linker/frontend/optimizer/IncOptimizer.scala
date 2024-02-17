@@ -645,7 +645,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
           field = anyField.asInstanceOf[FieldDef]
           if parent.fieldsRead.contains(field.name.name)
         } yield {
-          parent.className -> field
+          field
         }
 
         Some(new OptimizerCore.InlineableClassStructure(allFields))
@@ -717,8 +717,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       }
 
       def isElidableStat(tree: Tree): Boolean = tree match {
-        case Block(stats)                      => stats.forall(isElidableStat)
-        case Assign(Select(This(), _, _), rhs) => isTriviallySideEffectFree(rhs)
+        case Block(stats)                   => stats.forall(isElidableStat)
+        case Assign(Select(This(), _), rhs) => isTriviallySideEffectFree(rhs)
 
         // Mixin constructor -- test whether its body is entirely empty
         case ApplyStatically(flags, This(), className, methodName, Nil)
@@ -1462,11 +1462,11 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       }
     }
 
-    protected def isFieldRead(className: ClassName, fieldName: FieldName): Boolean =
-      getInterface(className).askFieldRead(fieldName, asker)
+    protected def isFieldRead(fieldName: FieldName): Boolean =
+      getInterface(fieldName.className).askFieldRead(fieldName, asker)
 
-    protected def isStaticFieldRead(className: ClassName, fieldName: FieldName): Boolean =
-      getInterface(className).askStaticFieldRead(fieldName, asker)
+    protected def isStaticFieldRead(fieldName: FieldName): Boolean =
+      getInterface(fieldName.className).askStaticFieldRead(fieldName, asker)
   }
 
 }

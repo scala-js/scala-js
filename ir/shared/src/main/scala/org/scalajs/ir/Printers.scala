@@ -123,6 +123,7 @@ object Printers {
       node match {
         case node: LocalIdent        => print(node)
         case node: LabelIdent        => print(node)
+        case node: SimpleFieldIdent  => print(node)
         case node: FieldIdent        => print(node)
         case node: MethodIdent       => print(node)
         case node: ClassIdent        => print(node)
@@ -299,16 +300,12 @@ object Printers {
         case StoreModule() =>
           print("<storeModule>")
 
-        case Select(qualifier, className, field) =>
+        case Select(qualifier, field) =>
           print(qualifier)
           print('.')
-          print(className)
-          print("::")
           print(field)
 
-        case SelectStatic(className, field) =>
-          print(className)
-          print("::")
+        case SelectStatic(field) =>
           print(field)
 
         case SelectJSNativeMember(className, member) =>
@@ -572,11 +569,11 @@ object Printers {
 
         case JSNew(ctor, args) =>
           def containsOnlySelectsFromAtom(tree: Tree): Boolean = tree match {
-            case JSPrivateSelect(qual, _, _) => containsOnlySelectsFromAtom(qual)
-            case JSSelect(qual, _)           => containsOnlySelectsFromAtom(qual)
-            case VarRef(_)                   => true
-            case This()                      => true
-            case _                           => false // in particular, Apply
+            case JSPrivateSelect(qual, _) => containsOnlySelectsFromAtom(qual)
+            case JSSelect(qual, _)        => containsOnlySelectsFromAtom(qual)
+            case VarRef(_)                => true
+            case This()                   => true
+            case _                        => false // in particular, Apply
           }
           if (containsOnlySelectsFromAtom(ctor)) {
             print("new ")
@@ -588,11 +585,9 @@ object Printers {
           }
           printArgs(args)
 
-        case JSPrivateSelect(qualifier, className, field) =>
+        case JSPrivateSelect(qualifier, field) =>
           print(qualifier)
           print('.')
-          print(className)
-          print("::")
           print(field)
 
         case JSSelect(qualifier, item) =>
@@ -1113,6 +1108,9 @@ object Printers {
     def print(ident: LabelIdent): Unit =
       print(ident.name)
 
+    def print(ident: SimpleFieldIdent): Unit =
+      print(ident.name)
+
     def print(ident: FieldIdent): Unit =
       print(ident.name)
 
@@ -1123,6 +1121,9 @@ object Printers {
       print(ident.name)
 
     def print(name: Name): Unit =
+      printEscapeJS(name.nameString, out)
+
+    def print(name: FieldName): Unit =
       printEscapeJS(name.nameString, out)
 
     def print(name: MethodName): Unit =

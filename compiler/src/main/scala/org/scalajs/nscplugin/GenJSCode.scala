@@ -27,7 +27,7 @@ import scala.reflect.internal.Flags
 
 import org.scalajs.ir
 import org.scalajs.ir.{Trees => js, Types => jstpe, ClassKind, Hashers, OriginalName}
-import org.scalajs.ir.Names.{LocalName, FieldName, SimpleMethodName, MethodName, ClassName}
+import org.scalajs.ir.Names.{LocalName, SimpleFieldName, FieldName, SimpleMethodName, MethodName, ClassName}
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Trees.OptimizerHints
 import org.scalajs.ir.Version.Unversioned
@@ -6337,7 +6337,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
       val classType = jstpe.ClassType(className)
 
       // val f: Any
-      val fFieldIdent = js.FieldIdent(FieldName("f"))
+      val fFieldIdent = js.FieldIdent(FieldName(className, SimpleFieldName("f")))
       val fFieldDef = js.FieldDef(js.MemberFlags.empty, fFieldIdent,
           NoOriginalName, jstpe.AnyType)
 
@@ -6353,8 +6353,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
             jstpe.NoType,
             Some(js.Block(List(
                 js.Assign(
-                    js.Select(js.This()(classType), className, fFieldIdent)(
-                        jstpe.AnyType),
+                    js.Select(js.This()(classType), fFieldIdent)(jstpe.AnyType),
                     fParamDef.ref),
                 js.ApplyStatically(js.ApplyFlags.empty.withConstructor(true),
                     js.This()(classType),
@@ -6405,7 +6404,7 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
         }.map((ensureBoxed _).tupled)
 
         val call = js.JSFunctionApply(
-            js.Select(js.This()(classType), className, fFieldIdent)(jstpe.AnyType),
+            js.Select(js.This()(classType), fFieldIdent)(jstpe.AnyType),
             actualParams)
 
         val body = fromAny(call, enteringPhase(currentRun.posterasurePhase) {
@@ -6746,14 +6745,12 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
               js.JSSelect(qual, genPrivateFieldsSymbol()),
               encodeFieldSymAsStringLiteral(sym))
         } else {
-          js.JSPrivateSelect(qual, encodeClassName(sym.owner),
-              encodeFieldSym(sym))
+          js.JSPrivateSelect(qual, encodeFieldSym(sym))
         }
 
         (f, true)
       } else if (jsInterop.topLevelExportsOf(sym).nonEmpty) {
-        val f = js.SelectStatic(encodeClassName(sym.owner),
-            encodeFieldSym(sym))(jstpe.AnyType)
+        val f = js.SelectStatic(encodeFieldSym(sym))(jstpe.AnyType)
         (f, true)
       } else if (jsInterop.staticExportsOf(sym).nonEmpty) {
         val exportInfo = jsInterop.staticExportsOf(sym).head
@@ -6764,7 +6761,6 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
 
         (f, true)
       } else {
-        val className = encodeClassName(sym.owner)
         val fieldIdent = encodeFieldSym(sym)
 
         /* #4370 Fields cannot have type NothingType, so we box them as
@@ -6774,11 +6770,11 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
          */
         toIRType(sym.tpe) match {
           case jstpe.NothingType =>
-            val f = js.Select(qual, className, fieldIdent)(
+            val f = js.Select(qual, fieldIdent)(
                 encodeClassType(RuntimeNothingClass))
             (f, true)
           case ftpe =>
-            val f = js.Select(qual, className, fieldIdent)(ftpe)
+            val f = js.Select(qual, fieldIdent)(ftpe)
             (f, false)
         }
       }

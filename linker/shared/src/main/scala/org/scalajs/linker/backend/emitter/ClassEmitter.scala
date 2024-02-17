@@ -298,18 +298,15 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge, pos: Position): WithGlobals[js.Function] = {
     val superCtorCallAndFieldDefs = if (forESClass) {
-      val fieldDefs = genFieldDefsOfScalaClass(className,
+      val fieldDefs = genFieldDefsOfScalaClass(
           globalKnowledge.getFieldDefs(className))
       if (superClass.isEmpty)
         fieldDefs
       else
         js.Apply(js.Super(), Nil) :: fieldDefs
     } else {
-      val allFields =
-        globalKnowledge.getAllScalaClassFieldDefs(className)
-      allFields.flatMap { classAndFields =>
-        genFieldDefsOfScalaClass(classAndFields._1, classAndFields._2)
-      }
+      val allFields = globalKnowledge.getAllScalaClassFieldDefs(className)
+      genFieldDefsOfScalaClass(allFields)
     }
 
     initToInline.fold {
@@ -349,8 +346,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   }
 
   /** Generates the creation of fields for a Scala class. */
-  private def genFieldDefsOfScalaClass(className: ClassName,
-      fields: List[AnyFieldDef])(
+  private def genFieldDefsOfScalaClass(fields: List[AnyFieldDef])(
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge): List[js.Tree] = {
     for {
@@ -359,7 +355,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     } yield {
       val field = anyField.asInstanceOf[FieldDef]
       implicit val pos = field.pos
-      js.Assign(genSelect(js.This(), className, field.name, field.originalName),
+      js.Assign(genSelect(js.This(), field.name, field.originalName),
           genZeroOf(field.ftpe))
     }
   }
@@ -374,13 +370,12 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     } yield {
       implicit val pos = field.pos
 
-      val varScope = (className, name)
       val value = genZeroOf(ftpe)
 
       if (flags.isMutable)
-        globallyMutableVarDef(VarField.t, VarField.u, varScope, value, origName.orElse(name))
+        globallyMutableVarDef(VarField.t, VarField.u, name, value, origName.orElse(name))
       else
-        globalVarDef(VarField.t, varScope, value, origName.orElse(name))
+        globalVarDef(VarField.t, name, value, origName.orElse(name))
     }
 
     WithGlobals.flatten(defs)
@@ -407,7 +402,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       }
 
       symbolValueWithGlobals.flatMap { symbolValue =>
-        globalVarDef(VarField.r, (className, name), symbolValue, origName.orElse(name))
+        globalVarDef(VarField.r, name, symbolValue, origName.orElse(name))
       }
     }
 
@@ -1091,17 +1086,15 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     implicit val pos = tree.pos
 
-    val varScope = (className, field.name)
-
     moduleKind match {
       case ModuleKind.NoModule =>
         /* Initial value of the export. Updates are taken care of explicitly
          * when we assign to the static field.
          */
-        genAssignToNoModuleExportVar(exportName, globalVar(VarField.t, varScope))
+        genAssignToNoModuleExportVar(exportName, globalVar(VarField.t, field.name))
 
       case ModuleKind.ESModule =>
-        WithGlobals(globalVarExport(VarField.t, varScope, js.ExportName(exportName)))
+        WithGlobals(globalVarExport(VarField.t, field.name, js.ExportName(exportName)))
 
       case ModuleKind.CommonJSModule =>
         globalRef("exports").flatMap { exportsVarRef =>
@@ -1110,7 +1103,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
               js.StringLiteral(exportName),
               List(
                   "get" -> js.Function(arrow = false, Nil, None, {
-                    js.Return(globalVar(VarField.t, varScope))
+                    js.Return(globalVar(VarField.t, field.name))
                   }),
                   "configurable" -> js.BooleanLiteral(true)
               )

@@ -155,8 +155,8 @@ object TestIRBuilder {
     LocalName(name)
   implicit def string2LabelName(name: String): LabelName =
     LabelName(name)
-  implicit def string2FieldName(name: String): FieldName =
-    FieldName(name)
+  implicit def string2SimpleFieldName(name: String): SimpleFieldName =
+    SimpleFieldName(name)
   implicit def string2ClassName(name: String): ClassName =
     ClassName(name)
 
@@ -164,13 +164,13 @@ object TestIRBuilder {
     LocalIdent(LocalName(name))
   implicit def string2LabelIdent(name: String): LabelIdent =
     LabelIdent(LabelName(name))
-  implicit def string2FieldIdent(name: String): FieldIdent =
-    FieldIdent(FieldName(name))
   implicit def string2ClassIdent(name: String): ClassIdent =
     ClassIdent(ClassName(name))
 
   implicit def localName2LocalIdent(name: LocalName): LocalIdent =
     LocalIdent(name)
+  implicit def fieldName2FieldIdent(name: FieldName): FieldIdent =
+    FieldIdent(name)
   implicit def methodName2MethodIdent(name: MethodName): MethodIdent =
     MethodIdent(name)
 

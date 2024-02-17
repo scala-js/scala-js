@@ -214,6 +214,8 @@ private final class ClassDefChecker(classDef: ClassDef,
       case FieldDef(_, FieldIdent(name), _, ftpe) =>
         if (!classDef.kind.isAnyNonNativeClass)
           reportError("illegal FieldDef (only non native classes may contain fields)")
+        if (name.className != classDef.className)
+          reportError(i"illegal FieldDef with name $name in class ${classDef.className}")
         if (fields(namespace.ordinal).put(name, ftpe).isDefined)
           reportError(i"duplicate ${namespace.prefixString}field '$name'")
 
@@ -620,7 +622,7 @@ private final class ClassDefChecker(classDef: ClassDef,
         if (env.thisType == NoType) // can happen before JSSuperConstructorCall in JSModuleClass
           reportError(i"Cannot find `this` in scope for StoreModule()")
 
-      case Select(qualifier, _, _) =>
+      case Select(qualifier, _) =>
         checkTree(qualifier, env)
 
       case _: SelectStatic =>
@@ -714,7 +716,7 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(ctor, env)
         checkTreeOrSpreads(args, env)
 
-      case JSPrivateSelect(qualifier, className, field) =>
+      case JSPrivateSelect(qualifier, _) =>
         checkTree(qualifier, env)
 
       case JSSelect(qualifier, item) =>

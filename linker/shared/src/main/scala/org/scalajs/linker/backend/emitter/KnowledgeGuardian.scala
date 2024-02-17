@@ -178,7 +178,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     def isInterface(className: ClassName): Boolean =
       classes(className).askIsInterface(this)
 
-    def getAllScalaClassFieldDefs(className: ClassName): List[(ClassName, List[AnyFieldDef])] =
+    def getAllScalaClassFieldDefs(className: ClassName): List[AnyFieldDef] =
       classes(className).askAllScalaClassFieldDefs(this)
 
     def hasInlineableInit(className: ClassName): Boolean =
@@ -205,8 +205,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
     def getFieldDefs(className: ClassName): List[AnyFieldDef] =
       classes(className).askFieldDefs(this)
 
-    def getStaticFieldMirrors(className: ClassName, field: FieldName): List[String] =
-      classes(className).askStaticFieldMirrors(this, field)
+    def getStaticFieldMirrors(field: FieldName): List[String] =
+      classes(field.className).askStaticFieldMirrors(this, field)
 
     def getModule(className: ClassName): ModuleID =
       classes(className).askModule(this)
@@ -366,8 +366,8 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
      *    which will change every time the reachability analysis of the
      *    `JSFieldDef`s changes (because we either keep all or none of
      *    them), and
-     *  - the list of names of the `FieldDef`s, which will change every time
-     *    the reachability analysis of the `FieldDef`s changes.
+     *  - the list of simple names of the `FieldDef`s, which will change every
+     *    time the reachability analysis of the `FieldDef`s changes.
      *
      *  We do not try to use the names of `JSFieldDef`s because they are
      *  `Tree`s, which are not efficiently comparable nor versionable here.
@@ -376,7 +376,7 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       val hasAnyJSField = linkedClass.fields.exists(_.isInstanceOf[JSFieldDef])
       val hasAnyJSFieldVersion = Version.fromByte(if (hasAnyJSField) 1 else 0)
       val scalaFieldNamesVersion = linkedClass.fields.collect {
-        case FieldDef(_, FieldIdent(name), _, _) => Version.fromUTF8String(name.encoded)
+        case FieldDef(_, FieldIdent(name), _, _) => Version.fromUTF8String(name.simpleName.encoded)
       }
       Version.combine((linkedClass.version :: hasAnyJSFieldVersion :: scalaFieldNamesVersion): _*)
     }
@@ -396,15 +396,14 @@ private[emitter] final class KnowledgeGuardian(config: Emitter.Config) {
       isInterface
     }
 
-    def askAllScalaClassFieldDefs(
-        invalidatable: Invalidatable): List[(ClassName, List[AnyFieldDef])] = {
+    def askAllScalaClassFieldDefs(invalidatable: Invalidatable): List[AnyFieldDef] = {
       invalidatable.registeredTo(this)
       superClassAskers += invalidatable
       fieldDefsAskers += invalidatable
       val inheritedFieldDefs =
         if (superClass == null) Nil
         else classes(superClass).askAllScalaClassFieldDefs(invalidatable)
-      inheritedFieldDefs :+ (className -> fieldDefs)
+      inheritedFieldDefs ::: fieldDefs
     }
 
     def askHasInlineableInit(invalidatable: Invalidatable): Boolean = {

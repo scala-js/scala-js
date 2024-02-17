@@ -194,23 +194,23 @@ object Infos {
     private def forClass(cls: ClassName): ReachabilityInfoInClassBuilder =
       byClass.getOrElseUpdate(cls, new ReachabilityInfoInClassBuilder(cls))
 
-    def addFieldRead(cls: ClassName, field: FieldName): this.type = {
-      forClass(cls).addFieldRead(field)
+    def addFieldRead(field: FieldName): this.type = {
+      forClass(field.className).addFieldRead(field)
       this
     }
 
-    def addFieldWritten(cls: ClassName, field: FieldName): this.type = {
-      forClass(cls).addFieldWritten(field)
+    def addFieldWritten(field: FieldName): this.type = {
+      forClass(field.className).addFieldWritten(field)
       this
     }
 
-    def addStaticFieldRead(cls: ClassName, field: FieldName): this.type = {
-      forClass(cls).addStaticFieldRead(field)
+    def addStaticFieldRead(field: FieldName): this.type = {
+      forClass(field.className).addStaticFieldRead(field)
       this
     }
 
-    def addStaticFieldWritten(cls: ClassName, field: FieldName): this.type = {
-      forClass(cls).addStaticFieldWritten(field)
+    def addStaticFieldWritten(field: FieldName): this.type = {
+      forClass(field.className).addStaticFieldWritten(field)
       this
     }
 
@@ -560,8 +560,8 @@ object Infos {
 
         case topLevelFieldExport: TopLevelFieldExportDef =>
           val field = topLevelFieldExport.field.name
-          builder.addStaticFieldRead(enclosingClass, field)
-          builder.addStaticFieldWritten(enclosingClass, field)
+          builder.addStaticFieldRead(field)
+          builder.addStaticFieldWritten(field)
       }
 
       builder.result()
@@ -576,14 +576,14 @@ object Infos {
          */
         case Assign(lhs, rhs) =>
           lhs match {
-            case Select(qualifier, className, field) =>
-              builder.addFieldWritten(className, field.name)
+            case Select(qualifier, field) =>
+              builder.addFieldWritten(field.name)
               traverse(qualifier)
-            case SelectStatic(className, field) =>
-              builder.addStaticFieldWritten(className, field.name)
-            case JSPrivateSelect(qualifier, className, field) =>
-              builder.addStaticallyReferencedClass(className) // for the private name of the field
-              builder.addFieldWritten(className, field.name)
+            case SelectStatic(field) =>
+              builder.addStaticFieldWritten(field.name)
+            case JSPrivateSelect(qualifier, field) =>
+              builder.addStaticallyReferencedClass(field.name.className) // for the private name of the field
+              builder.addFieldWritten(field.name)
               traverse(qualifier)
             case _ =>
               traverse(lhs)
@@ -596,10 +596,10 @@ object Infos {
             case New(className, ctor, _) =>
               builder.addInstantiatedClass(className, ctor.name)
 
-            case Select(_, className, field) =>
-              builder.addFieldRead(className, field.name)
-            case SelectStatic(className, field) =>
-              builder.addStaticFieldRead(className, field.name)
+            case Select(_, field) =>
+              builder.addFieldRead(field.name)
+            case SelectStatic(field) =>
+              builder.addStaticFieldRead(field.name)
             case SelectJSNativeMember(className, member) =>
               builder.addJSNativeMemberUsed(className, member.name)
 
@@ -687,9 +687,9 @@ object Infos {
             case UnwrapFromThrowable(_) =>
               builder.addUsedInstanceTest(JavaScriptExceptionClass)
 
-            case JSPrivateSelect(_, className, field) =>
-              builder.addStaticallyReferencedClass(className) // for the private name of the field
-              builder.addFieldRead(className, field.name)
+            case JSPrivateSelect(_, field) =>
+              builder.addStaticallyReferencedClass(field.name.className) // for the private name of the field
+              builder.addFieldRead(field.name)
 
             case JSNewTarget() =>
               builder.addAccessNewTarget()

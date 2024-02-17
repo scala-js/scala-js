@@ -18,7 +18,7 @@ import scala.tools.nsc._
 
 import org.scalajs.ir
 import org.scalajs.ir.{Trees => js, Types => jstpe}
-import org.scalajs.ir.Names.{LocalName, LabelName, FieldName, SimpleMethodName, MethodName, ClassName}
+import org.scalajs.ir.Names.{LocalName, LabelName, SimpleFieldName, FieldName, SimpleMethodName, MethodName, ClassName}
 import org.scalajs.ir.OriginalName
 import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.UTF8String
@@ -178,8 +178,9 @@ trait JSEncoding[G <: Global with Singleton] extends SubComponent {
 
   def encodeFieldSym(sym: Symbol)(implicit pos: Position): js.FieldIdent = {
     requireSymIsField(sym)
-    val name = sym.name.dropLocal
-    js.FieldIdent(FieldName(name.toString()))
+    val className = encodeClassName(sym.owner)
+    val simpleName = SimpleFieldName(sym.name.dropLocal.toString())
+    js.FieldIdent(FieldName(className, simpleName))
   }
 
   def encodeFieldSymAsStringLiteral(sym: Symbol)(

@@ -225,23 +225,23 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         typecheckExpect(body, env.withLabeledReturnType(label.name, tpe), tpe)
 
       case Assign(lhs, rhs) =>
-        def checkNonStaticField(receiver: Tree, className: ClassName, name: FieldName): Unit = {
+        def checkNonStaticField(receiver: Tree, name: FieldName): Unit = {
           receiver match {
-            case This() if env.inConstructorOf == Some(className) =>
+            case This() if env.inConstructorOf == Some(name.className) =>
               // ok
             case _ =>
-              if (lookupClass(className).lookupField(name).exists(!_.flags.isMutable))
+              if (lookupClass(name.className).lookupField(name).exists(!_.flags.isMutable))
                 reportError(i"Assignment to immutable field $name.")
           }
         }
 
         lhs match {
-          case Select(receiver, className, FieldIdent(name)) =>
-            checkNonStaticField(receiver, className, name)
-          case JSPrivateSelect(receiver, className, FieldIdent(name)) =>
-            checkNonStaticField(receiver, className, name)
-          case SelectStatic(className, FieldIdent(name)) =>
-            val c = lookupClass(className)
+          case Select(receiver, FieldIdent(name)) =>
+            checkNonStaticField(receiver, name)
+          case JSPrivateSelect(receiver, FieldIdent(name)) =>
+            checkNonStaticField(receiver, name)
+          case SelectStatic(FieldIdent(name)) =>
+            val c = lookupClass(name.className)
             for {
               f <- c.lookupStaticField(name)
               if !f.flags.isMutable
@@ -323,7 +323,8 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         // Nothing to check; everything is checked in ClassDefChecker
         ()
 
-      case Select(qualifier, className, FieldIdent(item)) =>
+      case Select(qualifier, FieldIdent(item)) =>
+        val className = item.className
         val c = lookupClass(className)
         val kind = c.kind
         if (!kind.isClass) {
@@ -354,7 +355,8 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
           }
         }
 
-      case SelectStatic(className, FieldIdent(item)) =>
+      case SelectStatic(FieldIdent(item)) =>
+        val className = item.className
         val checkedClass = lookupClass(className)
         if (checkedClass.kind.isJSType) {
           reportError(i"Cannot select static $item of JS type $className")
@@ -530,8 +532,9 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         for (arg <- args)
           typecheckExprOrSpread(arg, env)
 
-      case JSPrivateSelect(qualifier, className, field) =>
+      case JSPrivateSelect(qualifier, field) =>
         typecheckExpr(qualifier, env)
+        val className = field.name.className
         val checkedClass = lookupClass(className)
         if (!checkedClass.kind.isJSClass && checkedClass.kind != ClassKind.AbstractJSType) {
           reportError(i"Cannot select JS private field $field of non-JS class $className")

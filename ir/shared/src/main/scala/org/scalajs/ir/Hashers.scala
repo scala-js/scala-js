@@ -262,16 +262,14 @@ object Hashers {
         case StoreModule() =>
           mixTag(TagStoreModule)
 
-        case Select(qualifier, className, field) =>
+        case Select(qualifier, field) =>
           mixTag(TagSelect)
           mixTree(qualifier)
-          mixName(className)
           mixFieldIdent(field)
           mixType(tree.tpe)
 
-        case SelectStatic(className, field) =>
+        case SelectStatic(field) =>
           mixTag(TagSelectStatic)
-          mixName(className)
           mixFieldIdent(field)
           mixType(tree.tpe)
 
@@ -351,7 +349,7 @@ object Hashers {
         case RecordSelect(record, field) =>
           mixTag(TagRecordSelect)
           mixTree(record)
-          mixFieldIdent(field)
+          mixSimpleFieldIdent(field)
           mixType(tree.tpe)
 
         case IsInstanceOf(expr, testType) =>
@@ -389,10 +387,9 @@ object Hashers {
           mixTree(ctor)
           mixTreeOrJSSpreads(args)
 
-        case JSPrivateSelect(qualifier, className, field) =>
+        case JSPrivateSelect(qualifier, field) =>
           mixTag(TagJSPrivateSelect)
           mixTree(qualifier)
-          mixName(className)
           mixFieldIdent(field)
 
         case JSSelect(qualifier, item) =>
@@ -651,9 +648,16 @@ object Hashers {
       mixName(ident.name)
     }
 
-    def mixFieldIdent(ident: FieldIdent): Unit = {
+    def mixSimpleFieldIdent(ident: SimpleFieldIdent): Unit = {
       mixPos(ident.pos)
       mixName(ident.name)
+    }
+
+    def mixFieldIdent(ident: FieldIdent): Unit = {
+      // For historical reasons, the className comes *before* the position
+      mixName(ident.name.className)
+      mixPos(ident.pos)
+      mixName(ident.name.simpleName)
     }
 
     def mixMethodIdent(ident: MethodIdent): Unit = {

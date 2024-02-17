@@ -59,6 +59,9 @@ object Trees {
   sealed case class LabelIdent(name: LabelName)(implicit val pos: Position)
       extends IRNode
 
+  sealed case class SimpleFieldIdent(name: SimpleFieldName)(implicit val pos: Position)
+      extends IRNode
+
   sealed case class FieldIdent(name: FieldName)(implicit val pos: Position)
       extends IRNode
 
@@ -241,13 +244,10 @@ object Trees {
     val tpe = NoType // cannot be in expression position
   }
 
-  sealed case class Select(qualifier: Tree, className: ClassName,
-      field: FieldIdent)(
-      val tpe: Type)(
+  sealed case class Select(qualifier: Tree, field: FieldIdent)(val tpe: Type)(
       implicit val pos: Position) extends AssignLhs
 
-  sealed case class SelectStatic(className: ClassName, field: FieldIdent)(
-      val tpe: Type)(
+  sealed case class SelectStatic(field: FieldIdent)(val tpe: Type)(
       implicit val pos: Position) extends AssignLhs
 
   sealed case class SelectJSNativeMember(className: ClassName, member: MethodIdent)(
@@ -465,7 +465,7 @@ object Trees {
   sealed case class RecordValue(tpe: RecordType, elems: List[Tree])(
       implicit val pos: Position) extends Tree
 
-  sealed case class RecordSelect(record: Tree, field: FieldIdent)(
+  sealed case class RecordSelect(record: Tree, field: SimpleFieldIdent)(
       val tpe: Type)(
       implicit val pos: Position)
       extends AssignLhs
@@ -512,8 +512,7 @@ object Trees {
     val tpe = AnyType
   }
 
-  sealed case class JSPrivateSelect(qualifier: Tree, className: ClassName,
-      field: FieldIdent)(
+  sealed case class JSPrivateSelect(qualifier: Tree, field: FieldIdent)(
       implicit val pos: Position) extends AssignLhs {
     val tpe = AnyType
   }
