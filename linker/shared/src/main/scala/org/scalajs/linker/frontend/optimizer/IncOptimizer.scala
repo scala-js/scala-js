@@ -33,6 +33,8 @@ import org.scalajs.linker.interface.{CheckedBehavior, ModuleKind}
 import org.scalajs.linker.standard._
 import org.scalajs.linker.CollectionsCompat._
 
+import OptimizerCore.InlineableFieldBodies.FieldBody
+
 /** Incremental optimizer.
  *
  *  An incremental optimizer optimizes a [[LinkingUnit]]
@@ -271,37 +273,93 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
   private def updateElidableConstructors(): Unit = {
     import ElidableConstructorsInfo._
 
-    /* Invariant: when something is in the stack, its
-     * elidableConstructorsInfo was set to NotElidable.
-     */
     val toProcessStack = mutable.ArrayBuffer.empty[Class]
 
-    // Build the graph and initial stack from the infos
-    for (cls <- classes.valuesIterator) {
-      cls.elidableConstructorsInfo match {
-        case NotElidable =>
-          toProcessStack += cls
-        case DependentOn(dependencies) =>
-          for (dependency <- dependencies)
-            classes(dependency).elidableConstructorsDependents += cls
+    /* Invariants for this algo:
+     * - when a class is in the stack, its elidableConstructorsInfo was set
+     *   to AcyclicElidable,
+     * - when a class has `DependentOn` as its info, its
+     *   `elidableConstructorsRemainingDependenciesCount` is the number of
+     *   classes in its `dependencies` that have not yet been *processed* as
+     *   AcyclicElidable.
+     *
+     * During this algorithm, the info can transition from DependentOn to
+     *
+     * - NotElidable, if its getter dependencies were not satisfied.
+     * - AcyclicElidable.
+     *
+     * Other transitions are not possible.
+     */
+
+    def isGetter(classAndMethodName: (ClassName, MethodName)): Boolean = {
+      val (className, methodName) = classAndMethodName
+      classes(className).lookupMethod(methodName).exists { m =>
+        m.originalDef.body match {
+          case Some(Select(This(), _)) => true
+          case _                          => false
+        }
       }
     }
 
-    // Propagate
+    /* Initialization:
+     * - Prune classes with unsatisfied getter dependencies
+     * - Build reverse dependencies
+     * - Initialize `elidableConstructorsRemainingDependenciesCount` for `DependentOn` classes
+     * - Initialize the stack with dependency-free classes
+     */
+    for (cls <- classes.valuesIterator) {
+      cls.elidableConstructorsInfo match {
+        case DependentOn(deps, getterDeps) =>
+          if (!getterDeps.forall(isGetter(_))) {
+            cls.elidableConstructorsInfo = NotElidable
+          } else {
+            if (deps.isEmpty) {
+              cls.elidableConstructorsInfo = AcyclicElidable
+              toProcessStack += cls
+            } else {
+              cls.elidableConstructorsRemainingDependenciesCount = deps.size
+              deps.foreach(dep => classes(dep).elidableConstructorsDependents += cls)
+            }
+          }
+        case AcyclicElidable =>
+          toProcessStack += cls
+        case NotElidable =>
+          ()
+      }
+    }
+
+    /* Propagate AcyclicElidable
+     * When a class `cls` is on the stack, it is known to be AcyclicElidable.
+     * Go to all its dependents and decrement their count of remaining
+     * dependencies. If the count reaches 0, then all the dependencies of the
+     * class are known to be AcyclicElidable, and so the new class is known to
+     * be AcyclicElidable.
+     */
     while (toProcessStack.nonEmpty) {
       val cls = toProcessStack.remove(toProcessStack.size - 1)
 
       for (dependent <- cls.elidableConstructorsDependents) {
-        if (dependent.elidableConstructorsInfo != NotElidable) {
-          dependent.elidableConstructorsInfo = NotElidable
-          toProcessStack += dependent
+        dependent.elidableConstructorsInfo match {
+          case DependentOn(_, _) =>
+            dependent.elidableConstructorsRemainingDependenciesCount -= 1
+            if (dependent.elidableConstructorsRemainingDependenciesCount == 0) {
+              dependent.elidableConstructorsInfo = AcyclicElidable
+              toProcessStack += dependent
+            }
+          case NotElidable =>
+            ()
+          case AcyclicElidable =>
+            throw new AssertionError(
+              s"Unexpected dependent link from class ${cls.className.nameString} " +
+              s"to ${dependent.className.nameString} which is AcyclicElidable"
+            )
         }
       }
     }
 
     // Set the final value of hasElidableConstructors
     for (cls <- classes.valuesIterator) {
-      cls.setHasElidableConstructors(cls.elidableConstructorsInfo != NotElidable)
+      cls.setHasElidableConstructors()
     }
   }
 
@@ -430,6 +488,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     var elidableConstructorsInfo: ElidableConstructorsInfo =
       computeElidableConstructorsInfo(linkedClass)
     val elidableConstructorsDependents: mutable.ArrayBuffer[Class] = mutable.ArrayBuffer.empty
+    var elidableConstructorsRemainingDependenciesCount: Int = 0
 
     /** True if *all* constructors of this class are recursively elidable. */
     private var hasElidableConstructors: Boolean =
@@ -439,6 +498,13 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     var fields: List[AnyFieldDef] = linkedClass.fields
     var fieldsRead: Set[FieldName] = linkedClass.fieldsRead
     var tryNewInlineable: Option[OptimizerCore.InlineableClassStructure] = None
+
+    /** The "bodies" of fields that can "inlined", *provided that* the enclosing
+     *  module class has elidable constructors.
+     */
+    private var inlineableFieldBodies: OptimizerCore.InlineableFieldBodies =
+      computeInlineableFieldBodies(linkedClass)
+    private val inlineableFieldBodiesAskers = collOps.emptyMap[Processable, Unit]
 
     setupAfterCreation(linkedClass)
 
@@ -562,7 +628,14 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
       // Elidable constructors
       elidableConstructorsInfo = computeElidableConstructorsInfo(linkedClass)
-      elidableConstructorsDependents.clear()
+
+      // Inlineable field bodies
+      val newInlineableFieldBodies = computeInlineableFieldBodies(linkedClass)
+      if (inlineableFieldBodies != newInlineableFieldBodies) {
+        inlineableFieldBodies = newInlineableFieldBodies
+        inlineableFieldBodiesAskers.keysIterator.foreach(_.tag())
+        inlineableFieldBodiesAskers.clear()
+      }
 
       // Inlineable class
       if (updateTryNewInlineable(linkedClass)) {
@@ -577,12 +650,21 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     }
 
     /** ELIDABLE CTORS PASS ONLY. */
-    def setHasElidableConstructors(newHasElidableConstructors: Boolean): Unit = {
+    def setHasElidableConstructors(): Unit = {
+      import ElidableConstructorsInfo._
+
+      val newHasElidableConstructors = elidableConstructorsInfo == AcyclicElidable
+
       if (hasElidableConstructors != newHasElidableConstructors) {
         hasElidableConstructors = newHasElidableConstructors
         hasElidableConstructorsAskers.keysIterator.foreach(_.tag())
         hasElidableConstructorsAskers.clear()
       }
+
+      // Release memory that we won't use anymore
+      if (!newHasElidableConstructors)
+        elidableConstructorsInfo = NotElidable // get rid of DependentOn
+      elidableConstructorsDependents.clear() // also resets state for next run
     }
 
     /** UPDATE PASS ONLY. */
@@ -607,15 +689,31 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       hasElidableConstructors
     }
 
+    def askInlineableFieldBodies(asker: Processable): OptimizerCore.InlineableFieldBodies = {
+      inlineableFieldBodiesAskers.put(asker, ())
+
+      if (inlineableFieldBodies.isEmpty) {
+        // Avoid asking for `hasInlineableConstructors`; we always get here for non-ModuleClass'es
+        asker.registerTo(this)
+        inlineableFieldBodies
+      } else {
+        // No need for asker.registerTo(this) in this branch; it is done anyway in askHasElidableConstructors
+        if (askHasElidableConstructors(asker))
+          inlineableFieldBodies
+        else
+          OptimizerCore.InlineableFieldBodies.Empty
+      }
+    }
+
     /** UPDATE PASS ONLY. */
     private def computeElidableConstructorsInfo(linkedClass: LinkedClass): ElidableConstructorsInfo = {
       import ElidableConstructorsInfo._
 
       if (isAdHocElidableConstructors(className)) {
-        AlwaysElidable
+        AcyclicElidable
       } else {
         // It's OK to look at the superClass like this because it will always be updated before myself
-        var result = superClass.fold(ElidableConstructorsInfo.AlwaysElidable)(_.elidableConstructorsInfo)
+        var result = superClass.fold[ElidableConstructorsInfo](AcyclicElidable)(_.elidableConstructorsInfo)
 
         if (result == NotElidable) {
           // fast path
@@ -631,27 +729,64 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     }
 
     /** UPDATE PASS ONLY. */
+    private def computeInlineableFieldBodies(
+        linkedClass: LinkedClass): OptimizerCore.InlineableFieldBodies = {
+      import OptimizerCore.InlineableFieldBodies
+
+      if (linkedClass.kind != ClassKind.ModuleClass) {
+        InlineableFieldBodies.Empty
+      } else {
+        myInterface.staticLike(MemberNamespace.Constructor).methods.get(NoArgConstructorName) match {
+          case None =>
+            InlineableFieldBodies.Empty
+
+          case Some(ctor) =>
+            val initFieldBodies = for {
+              fieldDef <- computeAllInstanceFieldDefs()
+              if !fieldDef.flags.isMutable
+            } yield {
+              // the zero value is always a Literal because the ftpe is not a RecordType
+              val zeroValue = zeroOf(fieldDef.ftpe)(NoPosition).asInstanceOf[Literal]
+              fieldDef.name.name -> FieldBody.Literal(zeroValue)
+            }
+
+            if (initFieldBodies.isEmpty) {
+              // fast path
+              InlineableFieldBodies.Empty
+            } else {
+              val finalFieldBodies = interpretConstructor(ctor, initFieldBodies.toMap, Nil)
+              new InlineableFieldBodies(finalFieldBodies)
+            }
+        }
+      }
+    }
+
+    /** UPDATE PASS ONLY. */
     def updateTryNewInlineable(linkedClass: LinkedClass): Boolean = {
       val oldTryNewInlineable = tryNewInlineable
 
       tryNewInlineable = if (!linkedClass.optimizerHints.inline) {
         None
       } else {
-        val allFields = for {
-          parent <- reverseParentChain
-          anyField <- parent.fields
-          if !anyField.flags.namespace.isStatic
-          // non-JS class may only contain FieldDefs (no JSFieldDef)
-          field = anyField.asInstanceOf[FieldDef]
-          if parent.fieldsRead.contains(field.name.name)
-        } yield {
-          field
-        }
-
+        val allFields = computeAllInstanceFieldDefs()
         Some(new OptimizerCore.InlineableClassStructure(allFields))
       }
 
       tryNewInlineable != oldTryNewInlineable
+    }
+
+    /** UPDATE PASS ONLY, used by `computeInlineableFieldBodies` and `updateTryNewInlineable`. */
+    private def computeAllInstanceFieldDefs(): List[FieldDef] = {
+      for {
+        parent <- reverseParentChain
+        anyField <- parent.fields
+        if !anyField.flags.namespace.isStatic
+        // non-JS class may only contain FieldDefs (no JSFieldDef)
+        field = anyField.asInstanceOf[FieldDef]
+        if parent.fieldsRead.contains(field.name.name)
+      } yield {
+        field
+      }
     }
 
     /** UPDATE PASS ONLY. */
@@ -691,7 +826,16 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     /** UPDATE PASS ONLY. */
     private def computeCtorElidableInfo(impl: MethodImpl): ElidableConstructorsInfo = {
+      /* Dependencies on other classes to have acyclic elidable constructors
+       * It is possible for the enclosing class name to be added to this set,
+       * if the constructor depends on its own class. In that case, the
+       * analysis will naturally treat it as a cycle and will conclude that the
+       * class does not have elidable constructors.
+       */
       val dependenciesBuilder = Set.newBuilder[ClassName]
+
+      // Dependencies on certain methods to be getters
+      val getterDependenciesBuilder = Set.newBuilder[(ClassName, MethodName)]
 
       def isTriviallySideEffectFree(tree: Tree): Boolean = tree match {
         case _:VarRef | _:Literal | _:This | _:Skip =>
@@ -710,6 +854,28 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
         case LoadModule(className) =>
           dependenciesBuilder += className
+          true
+
+        case Select(LoadModule(className), _) =>
+          /* If the given module can be loaded without cycles, it is guaranteed
+           * to be non-null, and therefore the Select is side-effect-free.
+           */
+          dependenciesBuilder += className
+          true
+
+        case Select(This(), _) =>
+          true
+
+        case Apply(_, LoadModule(className), MethodIdent(methodName), Nil)
+            if !methodName.isReflectiveProxy =>
+          // For a getter-like call, we need the method to actually be a getter.
+          dependenciesBuilder += className
+          getterDependenciesBuilder += ((className, methodName))
+          true
+
+        case Apply(_, This(), MethodIdent(methodName), Nil)
+            if !methodName.isReflectiveProxy =>
+          getterDependenciesBuilder += ((className, methodName))
           true
 
         case _ =>
@@ -755,10 +921,138 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       impl.originalDef.body.fold {
         throw new AssertionError("Constructor cannot be abstract")
       } { body =>
-        if (isElidableStat(body))
-          ElidableConstructorsInfo.DependentOn(dependenciesBuilder.result())
-        else
+        if (isElidableStat(body)) {
+          val dependencies = dependenciesBuilder.result()
+          val getterDependencies = getterDependenciesBuilder.result()
+          if (dependencies.isEmpty && getterDependencies.isEmpty)
+            ElidableConstructorsInfo.AcyclicElidable
+          else
+            ElidableConstructorsInfo.DependentOn(dependencies, getterDependencies)
+        } else {
           ElidableConstructorsInfo.NotElidable
+        }
+      }
+    }
+
+    /** UPDATE PASS ONLY. */
+    private def interpretConstructor(impl: MethodImpl,
+        fieldBodies: Map[FieldName, FieldBody],
+        paramBodies: List[Option[FieldBody]]): Map[FieldName, FieldBody] = {
+
+      /* This method performs a kind of abstract intepretation of the given
+       * given constructor `impl`. It *assumes* that the enclosing class ends
+       * up having elidable constructors. If that is not the case, the
+       * computation must not crash but its result can be arbitrary.
+       */
+
+      type FieldBodyMap = Map[FieldName, FieldBody]
+      type ParamBodyMap = Map[LocalName, FieldBody]
+
+      def interpretSelfGetter(methodName: MethodName,
+          fieldBodies: FieldBodyMap): Option[FieldBody] = {
+        methods.get(methodName).flatMap { impl =>
+          impl.originalDef.body match {
+            case Some(Select(This(), FieldIdent(fieldName))) =>
+              fieldBodies.get(fieldName)
+
+            case _ =>
+              /* If we get here, it means the class won't have elidable
+               * constructors, and therefore we can return arbitrary values
+               * from the whole method, so we don't care.
+               */
+              None
+          }
+        }
+      }
+
+      def interpretExpr(tree: Tree, fieldBodies: FieldBodyMap,
+          paramBodies: ParamBodyMap): Option[FieldBody] = {
+        tree match {
+          case lit: Literal =>
+            Some(FieldBody.Literal(lit))
+
+          case VarRef(LocalIdent(valName)) =>
+            paramBodies.get(valName)
+
+          case LoadModule(moduleClassName) =>
+            Some(FieldBody.LoadModule(moduleClassName, tree.pos))
+
+          case Select(qual @ LoadModule(moduleClassName), FieldIdent(fieldName)) =>
+            val moduleBody = FieldBody.LoadModule(moduleClassName, qual.pos)
+            Some(FieldBody.ModuleSelect(moduleBody, fieldName, tree.tpe, tree.pos))
+
+          case Select(This(), FieldIdent(fieldName)) =>
+            fieldBodies.get(fieldName)
+
+          case Apply(_, receiver @ LoadModule(moduleClassName), MethodIdent(methodName), Nil)
+              if !methodName.isReflectiveProxy =>
+            val moduleBody = FieldBody.LoadModule(moduleClassName, receiver.pos)
+            Some(FieldBody.ModuleGetter(moduleBody, methodName, tree.tpe, tree.pos))
+
+          case Apply(_, This(), MethodIdent(methodName), Nil)
+              if !methodName.isReflectiveProxy =>
+            interpretSelfGetter(methodName, fieldBodies)
+
+          case _ =>
+            None
+        }
+      }
+
+      def interpretBody(body: Tree, fieldBodies: FieldBodyMap,
+          paramBodies: ParamBodyMap): FieldBodyMap = {
+        body match {
+          case Block(stats) =>
+            stats.foldLeft(fieldBodies) { (prev, stat) =>
+              interpretBody(stat, prev, paramBodies)
+            }
+
+          case Skip() =>
+            fieldBodies
+
+          case Assign(Select(This(), FieldIdent(fieldName)), rhs) =>
+            if (!fieldBodies.contains(fieldName)) {
+              // It is a mutable field or it is dce'ed as never read, don't track it
+              fieldBodies
+            } else {
+              interpretExpr(rhs, fieldBodies, paramBodies) match {
+                case Some(newFieldBody) =>
+                  fieldBodies.updated(fieldName, newFieldBody)
+                case None =>
+                  // Unknown value; don't track it anymore
+                  fieldBodies - fieldName
+              }
+            }
+
+          // Mixin constructor -- assume it is empty
+          case ApplyStatically(flags, This(), className, methodName, Nil)
+              if !flags.isPrivate && !classes.contains(className) =>
+            fieldBodies
+
+          // Delegation to another constructor
+          case ApplyStatically(flags, This(), className, MethodIdent(methodName), args) if flags.isConstructor =>
+            val argBodies = args.map(interpretExpr(_, fieldBodies, paramBodies))
+            val ctorImpl = getInterface(className)
+              .staticLike(MemberNamespace.Constructor)
+              .methods(methodName)
+            interpretConstructor(ctorImpl, fieldBodies, argBodies)
+
+          case _ =>
+            /* Other statements cannot affect the eventual fieldBodies
+             * (assuming the class ends up having elidable constructors, as always).
+             */
+            fieldBodies
+        }
+      }
+
+      impl.originalDef.body.fold {
+        throw new AssertionError(s"Constructor $impl cannot be abstract")
+      } { body =>
+        val paramBodiesMap: ParamBodyMap =
+          impl.originalDef.args.zip(paramBodies).collect {
+            case (paramDef, Some(paramBody)) => paramDef.name.name -> paramBody
+          }.toMap
+
+        interpretBody(body, fieldBodies, paramBodiesMap)
       }
     }
 
@@ -788,6 +1082,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     def unregisterDependee(dependee: Processable): Unit = {
       hasElidableConstructorsAskers.remove(dependee)
+      inlineableFieldBodiesAskers.remove(dependee)
     }
   }
 
@@ -1319,8 +1614,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         throw new AssertionError("Methods to optimize must be concrete")
       }
 
-      val (newParams, newBody) = new Optimizer(this, this.toString()).optimize(
-          Some(this), owner.untrackedThisType, params, jsClassCaptures = Nil,
+      val (newParams, newBody) = new Optimizer(this, Some(this), this.toString()).optimize(
+          owner.untrackedThisType, params, jsClassCaptures = Nil,
           resultType, body, isNoArgCtor = name.name == NoArgConstructorName)
 
       MethodDef(static, name, originalName,
@@ -1344,8 +1639,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         case originalDef @ JSMethodDef(flags, name, params, restParam, body) =>
           val thisType = owner.untrackedThisType(flags.namespace)
 
-          val (newParamsAndRest, newBody) = new Optimizer(this, this.toString()).optimize(
-            None, thisType, params ++ restParam.toList, owner.untrackedJSClassCaptures,
+          val (newParamsAndRest, newBody) = new Optimizer(this, None, this.toString()).optimize(
+            thisType, params ++ restParam.toList, owner.untrackedJSClassCaptures,
             AnyType, body, isNoArgCtor = false)
 
           val (newParams, newRestParam) =
@@ -1360,14 +1655,14 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
           val jsClassCaptures = owner.untrackedJSClassCaptures
 
           val newGetterBody = getterBody.map { body =>
-            val (_, newBody) = new Optimizer(this, "get " + this.toString()).optimize(
-                None, thisType, Nil, jsClassCaptures, AnyType, body, isNoArgCtor = false)
+            val (_, newBody) = new Optimizer(this, None, "get " + this.toString()).optimize(
+                thisType, Nil, jsClassCaptures, AnyType, body, isNoArgCtor = false)
             newBody
           }
 
           val newSetterArgAndBody = setterArgAndBody.map { case (param, body) =>
-            val (List(newParam), newBody) = new Optimizer(this, "set " + this.toString()).optimize(
-                None, thisType, List(param), jsClassCaptures, AnyType, body,
+            val (List(newParam), newBody) = new Optimizer(this, None, "set " + this.toString()).optimize(
+                thisType, List(param), jsClassCaptures, AnyType, body,
                 isNoArgCtor = false)
             (newParam, newBody)
           }
@@ -1392,8 +1687,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
       val thisType = owner.untrackedThisType(flags.namespace)
 
-      val (newParamsAndRest, newRawBody) = new Optimizer(this, this.toString()).optimize(
-          None, thisType, params ++ restParam.toList, owner.untrackedJSClassCaptures, AnyType,
+      val (newParamsAndRest, newRawBody) = new Optimizer(this, None, this.toString()).optimize(
+          thisType, params ++ restParam.toList, owner.untrackedJSClassCaptures, AnyType,
           Block(body.allStats)(body.pos), isNoArgCtor = false)
 
       val (newParams, newRestParam) =
@@ -1420,7 +1715,8 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
    *
    *  All methods are PROCESS PASS ONLY
    */
-  private final class Optimizer(asker: Processable, debugID: String)
+  private final class Optimizer(
+      asker: Processable, protected val myself: Option[MethodImpl], debugID: String)
       extends OptimizerCore(config, debugID) {
     import OptimizerCore.ImportTarget
 
@@ -1446,6 +1742,9 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     protected def hasElidableConstructors(className: ClassName): Boolean =
       classes(className).askHasElidableConstructors(asker)
+
+    protected def inlineableFieldBodies(className: ClassName): OptimizerCore.InlineableFieldBodies =
+      classes.get(className).fold(OptimizerCore.InlineableFieldBodies.Empty)(_.askInlineableFieldBodies(asker))
 
     protected def tryNewInlineableClass(
         className: ClassName): Option[OptimizerCore.InlineableClassStructure] = {
@@ -1482,8 +1781,12 @@ object IncOptimizer {
     import ElidableConstructorsInfo._
 
     final def mergeWith(that: ElidableConstructorsInfo): ElidableConstructorsInfo = (this, that) match {
-      case (DependentOn(deps1), DependentOn(deps2)) =>
-        DependentOn(deps1 ++ deps2)
+      case (DependentOn(deps1, getterDeps1), DependentOn(deps2, getterDeps2)) =>
+        DependentOn(deps1 ++ deps2, getterDeps1 ++ getterDeps2)
+      case (AcyclicElidable, _) =>
+        that
+      case (_, AcyclicElidable) =>
+        this
       case _ =>
         NotElidable
     }
@@ -1492,8 +1795,11 @@ object IncOptimizer {
   object ElidableConstructorsInfo {
     case object NotElidable extends ElidableConstructorsInfo
 
-    final case class DependentOn(dependencies: Set[ClassName]) extends ElidableConstructorsInfo
+    case object AcyclicElidable extends ElidableConstructorsInfo
 
-    val AlwaysElidable: ElidableConstructorsInfo = DependentOn(Set.empty)
+    final case class DependentOn(
+      dependencies: Set[ClassName],
+      getterDependencies: Set[(ClassName, MethodName)]
+    ) extends ElidableConstructorsInfo
   }
 }

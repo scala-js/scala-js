@@ -96,21 +96,21 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
 object ClassTag {
   import ManifestFactory._
 
-  @uncheckedStable def Byte    : ByteManifest               = ManifestFactory.Byte
-  @uncheckedStable def Short   : ShortManifest              = ManifestFactory.Short
-  @uncheckedStable def Char    : CharManifest               = ManifestFactory.Char
-  @uncheckedStable def Int     : IntManifest                = ManifestFactory.Int
-  @uncheckedStable def Long    : LongManifest               = ManifestFactory.Long
-  @uncheckedStable def Float   : FloatManifest              = ManifestFactory.Float
-  @uncheckedStable def Double  : DoubleManifest             = ManifestFactory.Double
-  @uncheckedStable def Boolean : BooleanManifest            = ManifestFactory.Boolean
-  @uncheckedStable def Unit    : UnitManifest               = ManifestFactory.Unit
-  @uncheckedStable def Any     : ClassTag[scala.Any]        = ManifestFactory.Any
-  @uncheckedStable def Object  : ClassTag[java.lang.Object] = ManifestFactory.Object
-  @uncheckedStable def AnyVal  : ClassTag[scala.AnyVal]     = ManifestFactory.AnyVal
-  @uncheckedStable def AnyRef  : ClassTag[scala.AnyRef]     = ManifestFactory.AnyRef
-  @uncheckedStable def Nothing : ClassTag[scala.Nothing]    = ManifestFactory.Nothing
-  @uncheckedStable def Null    : ClassTag[scala.Null]       = ManifestFactory.Null
+  val Byte    : ByteManifest               = ManifestFactory.Byte
+  val Short   : ShortManifest              = ManifestFactory.Short
+  val Char    : CharManifest               = ManifestFactory.Char
+  val Int     : IntManifest                = ManifestFactory.Int
+  val Long    : LongManifest               = ManifestFactory.Long
+  val Float   : FloatManifest              = ManifestFactory.Float
+  val Double  : DoubleManifest             = ManifestFactory.Double
+  val Boolean : BooleanManifest            = ManifestFactory.Boolean
+  val Unit    : UnitManifest               = ManifestFactory.Unit
+  val Any     : ClassTag[scala.Any]        = ManifestFactory.Any
+  val Object  : ClassTag[java.lang.Object] = ManifestFactory.Object
+  val AnyVal  : ClassTag[scala.AnyVal]     = ManifestFactory.AnyVal
+  val AnyRef  : ClassTag[scala.AnyRef]     = ManifestFactory.AnyRef
+  val Nothing : ClassTag[scala.Nothing]    = ManifestFactory.Nothing
+  val Null    : ClassTag[scala.Null]       = ManifestFactory.Null
 
   @inline
   @SerialVersionUID(1L)

@@ -133,21 +133,21 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
  * Class tags corresponding to primitive types and constructor/extractor for ClassTags.
  */
 object ClassTag {
-  def Byte    : ClassTag[scala.Byte]       = ManifestFactory.Byte
-  def Short   : ClassTag[scala.Short]      = ManifestFactory.Short
-  def Char    : ClassTag[scala.Char]       = ManifestFactory.Char
-  def Int     : ClassTag[scala.Int]        = ManifestFactory.Int
-  def Long    : ClassTag[scala.Long]       = ManifestFactory.Long
-  def Float   : ClassTag[scala.Float]      = ManifestFactory.Float
-  def Double  : ClassTag[scala.Double]     = ManifestFactory.Double
-  def Boolean : ClassTag[scala.Boolean]    = ManifestFactory.Boolean
-  def Unit    : ClassTag[scala.Unit]       = ManifestFactory.Unit
-  def Any     : ClassTag[scala.Any]        = ManifestFactory.Any
-  def Object  : ClassTag[java.lang.Object] = ManifestFactory.Object
-  def AnyVal  : ClassTag[scala.AnyVal]     = ManifestFactory.AnyVal
-  def AnyRef  : ClassTag[scala.AnyRef]     = ManifestFactory.AnyRef
-  def Nothing : ClassTag[scala.Nothing]    = ManifestFactory.Nothing
-  def Null    : ClassTag[scala.Null]       = ManifestFactory.Null
+  val Byte    : ClassTag[scala.Byte]       = ManifestFactory.Byte
+  val Short   : ClassTag[scala.Short]      = ManifestFactory.Short
+  val Char    : ClassTag[scala.Char]       = ManifestFactory.Char
+  val Int     : ClassTag[scala.Int]        = ManifestFactory.Int
+  val Long    : ClassTag[scala.Long]       = ManifestFactory.Long
+  val Float   : ClassTag[scala.Float]      = ManifestFactory.Float
+  val Double  : ClassTag[scala.Double]     = ManifestFactory.Double
+  val Boolean : ClassTag[scala.Boolean]    = ManifestFactory.Boolean
+  val Unit    : ClassTag[scala.Unit]       = ManifestFactory.Unit
+  val Any     : ClassTag[scala.Any]        = ManifestFactory.Any
+  val Object  : ClassTag[java.lang.Object] = ManifestFactory.Object
+  val AnyVal  : ClassTag[scala.AnyVal]     = ManifestFactory.AnyVal
+  val AnyRef  : ClassTag[scala.AnyRef]     = ManifestFactory.AnyRef
+  val Nothing : ClassTag[scala.Nothing]    = ManifestFactory.Nothing
+  val Null    : ClassTag[scala.Null]       = ManifestFactory.Null
 
   @inline
   private class GenericClassTag[T](val runtimeClass: jClass[_]) extends ClassTag[T]
