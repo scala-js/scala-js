@@ -163,21 +163,18 @@ private[emitter] final class SJSGen(
       genCallHelper(VarField.systemArraycopy, args: _*)
   }
 
-  def genSelect(receiver: Tree, className: ClassName, field: irt.FieldIdent)(
+  def genSelect(receiver: Tree, field: irt.FieldIdent)(
       implicit pos: Position): Tree = {
-    DotSelect(receiver, Ident(genFieldJSName(className, field))(field.pos))
+    DotSelect(receiver, Ident(genName(field.name))(field.pos))
   }
 
-  def genSelect(receiver: Tree, className: ClassName, field: irt.FieldIdent,
+  def genSelect(receiver: Tree, field: irt.FieldIdent,
       originalName: OriginalName)(
       implicit pos: Position): Tree = {
-    val jsName = genFieldJSName(className, field)
+    val jsName = genName(field.name)
     val jsOrigName = genOriginalName(field.name, originalName, jsName)
     DotSelect(receiver, Ident(jsName, jsOrigName)(field.pos))
   }
-
-  private def genFieldJSName(className: ClassName, field: irt.FieldIdent): String =
-    genName(className) + "__f_" + genName(field.name)
 
   def genApply(receiver: Tree, methodName: MethodName, args: List[Tree])(
       implicit pos: Position): Tree = {
@@ -192,13 +189,12 @@ private[emitter] final class SJSGen(
   def genMethodName(methodName: MethodName): String =
     genName(methodName)
 
-  def genJSPrivateSelect(receiver: Tree, className: ClassName,
-      field: irt.FieldIdent)(
+  def genJSPrivateSelect(receiver: Tree, field: irt.FieldIdent)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
     val fieldName = {
       implicit val pos = field.pos
-      globalVar(VarField.r, (className, field.name))
+      globalVar(VarField.r, field.name)
     }
 
     BracketSelect(receiver, fieldName)

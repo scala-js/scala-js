@@ -53,6 +53,10 @@ final class OriginalName private (private val bytes: Array[Byte])
     if (isDefined) this
     else OriginalName(name)
 
+  // new in 1.16.0; added as last overload to preserve binary compatibility
+  def orElse(name: FieldName): OriginalName =
+    orElse(name.simpleName)
+
   def getOrElse(name: Name): UTF8String =
     getOrElse(name.encoded)
 
@@ -70,6 +74,10 @@ final class OriginalName private (private val bytes: Array[Byte])
     if (isDefined) unsafeGet
     else UTF8String(name)
   }
+
+  // new in 1.16.0; added as last overload to preserve binary compatibility
+  def getOrElse(name: FieldName): UTF8String =
+    getOrElse(name.simpleName)
 
   override def toString(): String =
     if (isDefined) s"OriginalName($unsafeGet)"

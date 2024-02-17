@@ -99,7 +99,7 @@ object Names {
     def apply(name: String): LocalName =
       LocalName(UTF8String(name))
 
-    private[Names] def fromFieldName(name: FieldName): LocalName =
+    private[Names] def fromSimpleFieldName(name: SimpleFieldName): LocalName =
       new LocalName(name.encoded)
   }
 
@@ -137,38 +137,90 @@ object Names {
       LabelName(UTF8String(name))
   }
 
-  /** The name of a field.
+  /** The simple name of a field (excluding its enclosing class).
    *
    *  Field names must be non-empty, and can contain any Unicode code point
    *  except `/ . ; [`.
    */
-  final class FieldName private (encoded: UTF8String)
-      extends Name(encoded) with Comparable[FieldName] {
+  final class SimpleFieldName private (encoded: UTF8String)
+      extends Name(encoded) with Comparable[SimpleFieldName] {
 
-    type ThisName = FieldName
+    type ThisName = SimpleFieldName
 
     override def equals(that: Any): Boolean = {
       (this eq that.asInstanceOf[AnyRef]) || (that match {
-        case that: FieldName => equalsName(that)
-        case _               => false
+        case that: SimpleFieldName => equalsName(that)
+        case _                     => false
       })
+    }
+
+    protected def stringPrefix: String = "SimpleFieldName"
+
+    final def withSuffix(suffix: String): SimpleFieldName =
+      SimpleFieldName(this.encoded ++ UTF8String(suffix))
+
+    final def toLocalName: LocalName =
+      LocalName.fromSimpleFieldName(this)
+  }
+
+  object SimpleFieldName {
+    def apply(name: UTF8String): SimpleFieldName =
+      new SimpleFieldName(validateSimpleEncodedName(name))
+
+    def apply(name: String): SimpleFieldName =
+      SimpleFieldName(UTF8String(name))
+  }
+
+  /** The full name of a field, including its simple name and its enclosing
+   *  class name.
+   */
+  final class FieldName private (
+      val className: ClassName, val simpleName: SimpleFieldName)
+      extends Comparable[FieldName] {
+
+    import FieldName._
+
+    private val _hashCode: Int = {
+      import scala.util.hashing.MurmurHash3._
+      var acc = -1025990011 // "FieldName".hashCode()
+      acc = mix(acc, className.##)
+      acc = mix(acc, simpleName.##)
+      finalizeHash(acc, 2)
+    }
+
+    override def equals(that: Any): Boolean = {
+      (this eq that.asInstanceOf[AnyRef]) || (that match {
+        case that: FieldName =>
+          this._hashCode == that._hashCode && // fail fast on different hash codes
+          this.className == that.className &&
+          this.simpleName == that.simpleName
+        case _ =>
+          false
+      })
+    }
+
+    override def hashCode(): Int = _hashCode
+
+    def compareTo(that: FieldName): Int = {
+      val classNameCmp = this.className.compareTo(that.className)
+      if (classNameCmp != 0)
+        classNameCmp
+      else
+        this.simpleName.compareTo(that.simpleName)
     }
 
     protected def stringPrefix: String = "FieldName"
 
-    final def withSuffix(suffix: String): FieldName =
-      FieldName(this.encoded ++ UTF8String(suffix))
+    def nameString: String =
+      className.nameString + "::" + simpleName.nameString
 
-    final def toLocalName: LocalName =
-      LocalName.fromFieldName(this)
+    override def toString(): String =
+      "FieldName<" + nameString + ">"
   }
 
   object FieldName {
-    def apply(name: UTF8String): FieldName =
-      new FieldName(validateSimpleEncodedName(name))
-
-    def apply(name: String): FieldName =
-      FieldName(UTF8String(name))
+    def apply(className: ClassName, simpleName: SimpleFieldName): FieldName =
+      new FieldName(className, simpleName)
   }
 
   /** The simple name of a method (excluding its signature).

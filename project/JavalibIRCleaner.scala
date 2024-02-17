@@ -439,8 +439,9 @@ final class JavalibIRCleaner(baseDirectoryURI: URI) {
 
         case New(className, ctor, args) =>
           New(transformNonJSClassName(className), transformMethodIdent(ctor), args)
-        case Select(qualifier, className, field) =>
-          Select(qualifier, transformNonJSClassName(className), field)(transformType(tree.tpe))
+        case Select(qualifier, field @ FieldIdent(fieldName)) =>
+          val newFieldName = FieldName(transformNonJSClassName(fieldName.className), fieldName.simpleName)
+          Select(qualifier, FieldIdent(newFieldName)(field.pos))(transformType(tree.tpe))
 
         case t: Apply =>
           Apply(t.flags, t.receiver, transformMethodIdent(t.method), t.args)(

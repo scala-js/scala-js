@@ -37,8 +37,8 @@ object TestIRBuilder {
   val NoOptHints = OptimizerHints.empty
 
   // String -> Name conversions
-  implicit def string2fieldName(name: String): FieldName =
-    FieldName(name)
+  implicit def string2simpleFieldName(name: String): SimpleFieldName =
+    SimpleFieldName(name)
   implicit def string2className(name: String): ClassName =
     ClassName(name)
 
@@ -47,8 +47,8 @@ object TestIRBuilder {
     LocalIdent(LocalName(name))
   implicit def string2labelIdent(name: String): LabelIdent =
     LabelIdent(LabelName(name))
-  implicit def string2fieldIdent(name: String): FieldIdent =
-    FieldIdent(FieldName(name))
+  implicit def string2simpleFieldIdent(name: String): SimpleFieldIdent =
+    SimpleFieldIdent(SimpleFieldName(name))
   implicit def string2classIdent(name: String): ClassIdent =
     ClassIdent(ClassName(name))
 
@@ -59,6 +59,8 @@ object TestIRBuilder {
     ClassRef(ClassName(className))
 
   // Name -> Ident conversions
+  implicit def fieldName2fieldIdent(name: FieldName): FieldIdent =
+    FieldIdent(name)
   implicit def methodName2methodIdent(name: MethodName): MethodIdent =
     MethodIdent(name)
   implicit def className2classRef(className: ClassName): ClassRef =

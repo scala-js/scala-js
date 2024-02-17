@@ -36,6 +36,7 @@ private[checker] object ErrorReporter {
     private def format(arg: Any): String = {
       arg match {
         case arg: Name       => arg.nameString
+        case arg: FieldName  => arg.nameString
         case arg: MethodName => arg.displayName
         case arg: IRNode     => arg.show
         case arg: TypeRef    => arg.displayName

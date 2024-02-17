@@ -91,8 +91,8 @@ object Transformers {
         case New(className, ctor, args) =>
           New(className, ctor, args map transformExpr)
 
-        case Select(qualifier, className, field) =>
-          Select(transformExpr(qualifier), className, field)(tree.tpe)
+        case Select(qualifier, field) =>
+          Select(transformExpr(qualifier), field)(tree.tpe)
 
         case Apply(flags, receiver, method, args) =>
           Apply(flags, transformExpr(receiver), method,
@@ -158,8 +158,8 @@ object Transformers {
         case JSNew(ctor, args) =>
           JSNew(transformExpr(ctor), args.map(transformExprOrJSSpread))
 
-        case JSPrivateSelect(qualifier, className, field) =>
-          JSPrivateSelect(transformExpr(qualifier), className, field)
+        case JSPrivateSelect(qualifier, field) =>
+          JSPrivateSelect(transformExpr(qualifier), field)
 
         case JSSelect(qualifier, item) =>
           JSSelect(transformExpr(qualifier), transformExpr(item))

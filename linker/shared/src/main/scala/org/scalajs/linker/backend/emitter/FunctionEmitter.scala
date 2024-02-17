@@ -459,11 +459,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
     }
 
     def makeRecordFieldIdent(recIdent: js.Ident,
-        fieldName: FieldName, fieldOrigName: OriginalName)(
+        fieldName: SimpleFieldName, fieldOrigName: OriginalName)(
         implicit pos: Position): js.Ident = {
 
       /* "__" is a safe separator for generated names because JSGen avoids it
-       * when generating `LocalName`s and `FieldName`s.
+       * when generating `LocalName`s and `SimpleFieldName`s.
        */
       val name = recIdent.name + "__" + genName(fieldName)
       val originalName = OriginalName(
@@ -607,11 +607,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case Assign(lhs, rhs) =>
           lhs match {
-            case Select(qualifier, className, field) =>
+            case Select(qualifier, field) =>
               unnest(checkNotNull(qualifier), rhs) { (newQualifier, newRhs, env0) =>
                 implicit val env = env0
                 js.Assign(
-                    genSelect(transformExprNoChar(newQualifier), className, field)(lhs.pos),
+                    genSelect(transformExprNoChar(newQualifier), field)(lhs.pos),
                     transformExpr(newRhs, lhs.tpe))
               }
 
@@ -648,12 +648,12 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   mutable = true)(lhs.tpe))
               pushLhsInto(Lhs.Assign(newLhs), rhs, tailPosLabels)
 
-            case JSPrivateSelect(qualifier, className, field) =>
+            case JSPrivateSelect(qualifier, field) =>
               unnest(qualifier, rhs) { (newQualifier, newRhs, env0) =>
                 implicit val env = env0
                 js.Assign(
-                    genJSPrivateSelect(transformExprNoChar(newQualifier),
-                        className, field)(moduleContext, globalKnowledge, lhs.pos),
+                    genJSPrivateSelect(transformExprNoChar(newQualifier), field)(
+                        moduleContext, globalKnowledge, lhs.pos),
                     transformExprNoChar(newRhs))
               }
 
@@ -676,13 +676,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                       transformExprNoChar(rhs))
               }
 
-            case SelectStatic(className, item) =>
-              val scope = (className, item.name)
-
-              if (needToUseGloballyMutableVarSetter(scope)) {
+            case SelectStatic(item) =>
+              if (needToUseGloballyMutableVarSetter(item.name)) {
                 unnest(rhs) { (rhs, env0) =>
                   implicit val env = env0
-                  js.Apply(globalVar(VarField.u, scope), transformExpr(rhs, lhs.tpe) :: Nil)
+                  js.Apply(globalVar(VarField.u, item.name), transformExpr(rhs, lhs.tpe) :: Nil)
                 }
               } else {
                 // Assign normally.
@@ -837,7 +835,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               field match {
                 case FieldDef(_, name, _, _) =>
                   js.Assign(
-                      genJSPrivateSelect(js.This(), enclosingClassName, name),
+                      genJSPrivateSelect(js.This(), name),
                       zero)
 
                 case JSFieldDef(_, name, _) =>
@@ -1066,8 +1064,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
               case New(className, constr, args) if noExtractYet =>
                 New(className, constr, recs(args))
-              case Select(qualifier, className, item) if noExtractYet =>
-                Select(rec(qualifier), className, item)(arg.tpe)
+              case Select(qualifier, item) if noExtractYet =>
+                Select(rec(qualifier), item)(arg.tpe)
               case Apply(flags, receiver, method, args) if noExtractYet =>
                 val newArgs = recs(args)
                 Apply(flags, rec(receiver), method, newArgs)(arg.tpe)
@@ -1292,9 +1290,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           testNPE(obj)
 
         // Expressions preserving side-effect freedom (modulo NPE)
-        case Select(qualifier, _, _) =>
+        case Select(qualifier, _) =>
           allowUnpure && testNPE(qualifier)
-        case SelectStatic(_, _) =>
+        case SelectStatic(_) =>
           allowUnpure
         case ArrayValue(tpe, elems) =>
           allowUnpure && (elems forall test)
@@ -1354,7 +1352,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           allowSideEffects && test(fun) && (args.forall(testJSArg))
         case Transient(JSNewVararg(ctor, argArray)) =>
           allowSideEffects && test(ctor) && test(argArray)
-        case JSPrivateSelect(qualifier, _, _) =>
+        case JSPrivateSelect(qualifier, _) =>
           allowSideEffects && test(qualifier)
         case JSSelect(qualifier, item) =>
           allowSideEffects && test(qualifier) && test(item)
@@ -1467,10 +1465,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           val base = js.Assign(transformExpr(lhs, preserveChar = true),
               transformExpr(rhs, lhs.tpe))
           lhs match {
-            case SelectStatic(className, FieldIdent(field))
+            case SelectStatic(FieldIdent(field))
                 if moduleKind == ModuleKind.NoModule =>
-              val mirrors =
-                globalKnowledge.getStaticFieldMirrors(className, field)
+              val mirrors = globalKnowledge.getStaticFieldMirrors(field)
               mirrors.foldLeft(base) { (prev, mirror) =>
                 js.Assign(genGlobalVarRef(mirror), prev)
               }
@@ -1716,9 +1713,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             redo(New(className, ctor, newArgs))(env)
           }
 
-        case Select(qualifier, className, item) =>
+        case Select(qualifier, item) =>
           unnest(qualifier) { (newQualifier, env) =>
-            redo(Select(newQualifier, className, item)(rhs.tpe))(env)
+            redo(Select(newQualifier, item)(rhs.tpe))(env)
           }
 
         case Apply(flags, receiver, method, args) =>
@@ -1924,9 +1921,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             redo(JSImportCall(newArg))(env)
           }
 
-        case JSPrivateSelect(qualifier, className, field) =>
+        case JSPrivateSelect(qualifier, field) =>
           unnest(qualifier) { (newQualifier, env) =>
-            redo(JSPrivateSelect(newQualifier, className, field))(env)
+            redo(JSPrivateSelect(newQualifier, field))(env)
           }
 
         case JSSelect(qualifier, item) =>
@@ -2210,11 +2207,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case LoadModule(className) =>
           genLoadModule(className)
 
-        case Select(qualifier, className, field) =>
-          genSelect(transformExprNoChar(checkNotNull(qualifier)), className, field)
+        case Select(qualifier, field) =>
+          genSelect(transformExprNoChar(checkNotNull(qualifier)), field)
 
-        case SelectStatic(className, item) =>
-          globalVar(VarField.t, (className, item.name))
+        case SelectStatic(item) =>
+          globalVar(VarField.t, item.name)
 
         case SelectJSNativeMember(className, member) =>
           val jsNativeLoadSpec =
@@ -2725,7 +2722,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           val newExpr = transformExprNoChar(expr).asInstanceOf[js.VarRef]
           js.If(
               genIsInstanceOfClass(newExpr, JavaScriptExceptionClass),
-              genSelect(newExpr, JavaScriptExceptionClass, FieldIdent(exceptionFieldName)),
+              genSelect(newExpr, FieldIdent(exceptionFieldName)),
               genCheckNotNull(newExpr))
 
         // Transients
@@ -2738,7 +2735,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case Transient(ZeroOf(runtimeClass)) =>
           js.DotSelect(
               genSelect(transformExprNoChar(checkNotNull(runtimeClass)),
-                  ClassClass, FieldIdent(dataFieldName)),
+                  FieldIdent(dataFieldName)),
               js.Ident("zero"))
 
         case Transient(NativeArrayWrapper(elemClass, nativeArray)) =>
@@ -2751,7 +2748,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             case _ =>
               val elemClassData = genSelect(
                   transformExprNoChar(checkNotNull(elemClass)),
-                  ClassClass, FieldIdent(dataFieldName))
+                  FieldIdent(dataFieldName))
               val arrayClassData = js.Apply(
                   js.DotSelect(elemClassData, js.Ident("getArrayOf")), Nil)
               js.Apply(arrayClassData DOT "wrapArray", newNativeArray :: Nil)
@@ -2808,8 +2805,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           genCallHelper(VarField.newJSObjectWithVarargs,
               transformExprNoChar(constr), transformExprNoChar(argsArray))
 
-        case JSPrivateSelect(qualifier, className, field) =>
-          genJSPrivateSelect(transformExprNoChar(qualifier), className, field)
+        case JSPrivateSelect(qualifier, field) =>
+          genJSPrivateSelect(transformExprNoChar(qualifier), field)
 
         case JSSelect(qualifier, item) =>
           genBracketSelect(transformExprNoChar(qualifier),

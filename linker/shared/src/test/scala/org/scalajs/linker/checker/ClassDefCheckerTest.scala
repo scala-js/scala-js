@@ -123,14 +123,46 @@ class ClassDefCheckerTest {
   }
 
   @Test
+  def fieldDefClassName(): Unit = {
+    assertError(
+      classDef(
+        "A",
+        superClass = Some(ObjectClass),
+        fields = List(
+          FieldDef(EMF, FieldName("B", "foo"), NON, IntType)
+        ),
+        methods = List(trivialCtor("A"))
+      ),
+      "illegal FieldDef with name B::foo in class A"
+    )
+
+    // evidence that we do not need an explicit check for top-level field exports
+    assertError(
+      classDef(
+        "A",
+        kind = ClassKind.ModuleClass,
+        superClass = Some(ObjectClass),
+        fields = List(
+          FieldDef(EMF.withNamespace(MemberNamespace.PublicStatic), FieldName("A", "foo"), NON, IntType)
+        ),
+        methods = List(trivialCtor("A")),
+        topLevelExportDefs = List(
+          TopLevelFieldExportDef("main", "foo", FieldName("B", "foo"))
+        )
+      ),
+      "Cannot export non-existent static field 'B::foo'"
+    )
+  }
+
+  @Test
   def noDuplicateFields(): Unit = {
     assertError(
         classDef("A", superClass = Some(ObjectClass),
             fields = List(
-              FieldDef(EMF, "foobar", NON, IntType),
-              FieldDef(EMF, "foobar", NON, BooleanType)
+              FieldDef(EMF, FieldName("A", "foobar"), NON, IntType),
+              FieldDef(EMF, FieldName("A", "foobar"), NON, BooleanType)
             )),
-        "duplicate field 'foobar'")
+        "duplicate field 'A::foobar'")
   }
 
   @Test

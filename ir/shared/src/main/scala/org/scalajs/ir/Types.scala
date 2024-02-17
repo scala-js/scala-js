@@ -143,12 +143,12 @@ object Types {
    *  The compiler itself never generates record types.
    */
   final case class RecordType(fields: List[RecordType.Field]) extends Type {
-    def findField(name: FieldName): RecordType.Field =
+    def findField(name: SimpleFieldName): RecordType.Field =
       fields.find(_.name == name).get
   }
 
   object RecordType {
-    final case class Field(name: FieldName, originalName: OriginalName,
+    final case class Field(name: SimpleFieldName, originalName: OriginalName,
         tpe: Type, mutable: Boolean)
   }
 

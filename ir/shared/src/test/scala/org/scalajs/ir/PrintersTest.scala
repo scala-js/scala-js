@@ -307,12 +307,12 @@ class PrintersTest {
 
   @Test def printSelect(): Unit = {
     assertPrintEquals("x.test.Test::f",
-        Select(ref("x", "test.Test"), "test.Test", "f")(IntType))
+        Select(ref("x", "test.Test"), FieldName("test.Test", "f"))(IntType))
   }
 
   @Test def printSelectStatic(): Unit = {
     assertPrintEquals("test.Test::f",
-        SelectStatic("test.Test", "f")(IntType))
+        SelectStatic(FieldName("test.Test", "f"))(IntType))
   }
 
   @Test def printApply(): Unit = {
@@ -606,21 +606,21 @@ class PrintersTest {
     assertPrintEquals("new C()", JSNew(ref("C", AnyType), Nil))
     assertPrintEquals("new C(4, 5)", JSNew(ref("C", AnyType), List(i(4), i(5))))
     assertPrintEquals("new x.test.Test::C(4, 5)",
-        JSNew(JSPrivateSelect(ref("x", AnyType), "test.Test", "C"), List(i(4), i(5))))
+        JSNew(JSPrivateSelect(ref("x", AnyType), FieldName("test.Test", "C")), List(i(4), i(5))))
     assertPrintEquals("""new x["C"]()""",
         JSNew(JSSelect(ref("x", AnyType), StringLiteral("C")), Nil))
 
     val fApplied = JSFunctionApply(ref("f", AnyType), Nil)
     assertPrintEquals("new (f())()", JSNew(fApplied, Nil))
     assertPrintEquals("new (f().test.Test::C)(4, 5)",
-        JSNew(JSPrivateSelect(fApplied, "test.Test", "C"), List(i(4), i(5))))
+        JSNew(JSPrivateSelect(fApplied, FieldName("test.Test", "C")), List(i(4), i(5))))
     assertPrintEquals("""new (f()["C"])()""",
         JSNew(JSSelect(fApplied, StringLiteral("C")), Nil))
   }
 
   @Test def printJSPrivateSelect(): Unit = {
     assertPrintEquals("x.test.Test::f",
-        JSPrivateSelect(ref("x", AnyType), "test.Test", "f"))
+        JSPrivateSelect(ref("x", AnyType), FieldName("test.Test", "f")))
   }
 
   @Test def printJSSelect(): Unit = {
@@ -634,12 +634,12 @@ class PrintersTest {
         JSFunctionApply(ref("f", AnyType), List(i(3), i(4))))
 
     assertPrintEquals("(0, x.test.Test::f)()",
-        JSFunctionApply(JSPrivateSelect(ref("x", AnyType), "test.Test", "f"), Nil))
+        JSFunctionApply(JSPrivateSelect(ref("x", AnyType), FieldName("test.Test", "f")), Nil))
     assertPrintEquals("""(0, x["f"])()""",
         JSFunctionApply(JSSelect(ref("x", AnyType), StringLiteral("f")),
             Nil))
     assertPrintEquals("(0, x.test.Test::f)()",
-        JSFunctionApply(Select(ref("x", "test.Test"), "test.Test", "f")(AnyType),
+        JSFunctionApply(Select(ref("x", "test.Test"), FieldName("test.Test", "f"))(AnyType),
             Nil))
   }
 
@@ -1137,7 +1137,7 @@ class PrintersTest {
     assertPrintEquals(
         """
           |module class Test extends java.lang.Object {
-          |  val x: int
+          |  val Test::x: int
           |  def m;I(): int = <abstract>
           |  constructor def constructor(): any = {
           |    super()
@@ -1151,7 +1151,7 @@ class PrintersTest {
         """,
         ClassDef("Test", NON, ClassKind.ModuleClass, None, Some(ObjectClass),
             Nil, None, None,
-            List(FieldDef(MemberFlags.empty, "x", NON, IntType)),
+            List(FieldDef(MemberFlags.empty, FieldName("Test", "x"), NON, IntType)),
             List(MethodDef(MemberFlags.empty, MethodName("m", Nil, I), NON, Nil, IntType, None)(NoOptHints, UNV)),
             Some(JSConstructorDef(MemberFlags.empty.withNamespace(Constructor), Nil, None,
                 JSConstructorBody(Nil, JSSuperConstructorCall(Nil), Nil))(NoOptHints, UNV)),
@@ -1163,12 +1163,12 @@ class PrintersTest {
   }
 
   @Test def printFieldDef(): Unit = {
-    assertPrintEquals("val x: int",
-        FieldDef(MemberFlags.empty, "x", NON, IntType))
-    assertPrintEquals("var y: any",
-        FieldDef(MemberFlags.empty.withMutable(true), "y", NON, AnyType))
-    assertPrintEquals("val x{orig name}: int",
-        FieldDef(MemberFlags.empty, "x", TestON, IntType))
+    assertPrintEquals("val Test::x: int",
+        FieldDef(MemberFlags.empty, FieldName("Test", "x"), NON, IntType))
+    assertPrintEquals("var Test::y: any",
+        FieldDef(MemberFlags.empty.withMutable(true), FieldName("Test", "y"), NON, AnyType))
+    assertPrintEquals("val Test::x{orig name}: int",
+        FieldDef(MemberFlags.empty, FieldName("Test", "x"), TestON, IntType))
   }
 
   @Test def printJSFieldDef(): Unit = {
@@ -1428,8 +1428,8 @@ class PrintersTest {
   @Test def printTopLevelFieldExportDef(): Unit = {
     assertPrintEquals(
         """
-          |export top[moduleID="main"] static field x$1 as "x"
+          |export top[moduleID="main"] static field Test::x$1 as "x"
         """,
-        TopLevelFieldExportDef("main", "x", "x$1"))
+        TopLevelFieldExportDef("main", "x", FieldName("Test", "x$1")))
   }
 }

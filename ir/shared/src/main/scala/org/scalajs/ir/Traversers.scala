@@ -77,7 +77,7 @@ object Traversers {
       case New(_, _, args) =>
         args foreach traverse
 
-      case Select(qualifier, _, _) =>
+      case Select(qualifier, _) =>
         traverse(qualifier)
 
       case Apply(_, receiver, _, args) =>
@@ -147,7 +147,7 @@ object Traversers {
         traverse(ctor)
         args.foreach(traverseTreeOrJSSpread)
 
-      case JSPrivateSelect(qualifier, _, _) =>
+      case JSPrivateSelect(qualifier, _) =>
         traverse(qualifier)
 
       case JSSelect(qualifier, item) =>

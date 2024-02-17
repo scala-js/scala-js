@@ -33,8 +33,7 @@ private[emitter] trait GlobalKnowledge {
    *  It is invalid to call this method with anything but a `Class` or
    *  `ModuleClass`.
    */
-  def getAllScalaClassFieldDefs(
-      className: ClassName): List[(ClassName, List[AnyFieldDef])]
+  def getAllScalaClassFieldDefs(className: ClassName): List[AnyFieldDef]
 
   /** Tests whether the specified class uses an inlineable init.
    *
@@ -82,7 +81,7 @@ private[emitter] trait GlobalKnowledge {
   def getFieldDefs(className: ClassName): List[AnyFieldDef]
 
   /** The global variables that mirror a given static field. */
-  def getStaticFieldMirrors(className: ClassName, field: FieldName): List[String]
+  def getStaticFieldMirrors(field: FieldName): List[String]
 
   /** The module containing this class definition.
    *

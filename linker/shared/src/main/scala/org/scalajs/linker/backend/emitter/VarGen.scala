@@ -350,11 +350,11 @@ private[emitter] final class VarGen(jsGen: JSGen, nameGen: NameGen,
       def reprClass(x: ClassName): ClassName = x
     }
 
-    implicit object FieldScope extends Scope[(ClassName, FieldName)] {
-      def subField(x: (ClassName, FieldName)): String =
-        genName(x._1) + "__" + genName(x._2)
+    implicit object FieldScope extends Scope[FieldName] {
+      def subField(x: FieldName): String =
+        genName(x.className) + "__" + genName(x.simpleName)
 
-      def reprClass(x: (ClassName, FieldName)): ClassName = x._1
+      def reprClass(x: FieldName): ClassName = x.className
     }
 
     implicit object MethodScope extends Scope[(ClassName, MethodName)] {

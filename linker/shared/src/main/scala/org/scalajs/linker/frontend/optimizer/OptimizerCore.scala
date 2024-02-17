@@ -88,10 +88,10 @@ private[optimizer] abstract class OptimizerCore(
       target: ImportTarget): Option[JSNativeLoadSpec.Import]
 
   /** Returns true if the given (non-static) field is ever read. */
-  protected def isFieldRead(className: ClassName, fieldName: FieldName): Boolean
+  protected def isFieldRead(fieldName: FieldName): Boolean
 
   /** Returns true if the given static field is ever read. */
-  protected def isStaticFieldRead(className: ClassName, fieldName: FieldName): Boolean
+  protected def isStaticFieldRead(fieldName: FieldName): Boolean
 
   private val localNameAllocator = new FreshNameAllocator.Local
 
@@ -180,9 +180,9 @@ private[optimizer] abstract class OptimizerCore(
         } else {
           val after = from.tail
           val afterIsTrivial = after.forall {
-            case Assign(Select(This(), _, _), _:Literal | _:VarRef) =>
+            case Assign(Select(This(), _), _:Literal | _:VarRef) =>
               true
-            case Assign(SelectStatic(_, _), _:Literal | _:VarRef) =>
+            case Assign(SelectStatic(_), _:Literal | _:VarRef) =>
               true
             case _ =>
               false
@@ -334,15 +334,15 @@ private[optimizer] abstract class OptimizerCore(
         }
 
         lhs match {
-          case Select(qualifier, className, FieldIdent(name)) if !isFieldRead(className, name) =>
+          case Select(qualifier, FieldIdent(name)) if !isFieldRead(name) =>
             // Field is never read. Drop assign, keep side effects only.
             Block(transformStat(qualifier), transformStat(rhs))
 
-          case SelectStatic(className, FieldIdent(name)) if !isStaticFieldRead(className, name) =>
+          case SelectStatic(FieldIdent(name)) if !isStaticFieldRead(name) =>
             // Field is never read. Drop assign, keep side effects only.
             transformStat(rhs)
 
-          case JSPrivateSelect(qualifier, className, FieldIdent(name)) if !isFieldRead(className, name) =>
+          case JSPrivateSelect(qualifier, FieldIdent(name)) if !isFieldRead(name) =>
             // Field is never read. Drop assign, keep side effects only.
             Block(transformStat(qualifier), transformStat(rhs))
 
@@ -574,8 +574,8 @@ private[optimizer] abstract class OptimizerCore(
       case JSNew(ctor, args) =>
         JSNew(transformExpr(ctor), transformExprsOrSpreads(args))
 
-      case JSPrivateSelect(qualifier, className, field) =>
-        JSPrivateSelect(transformExpr(qualifier), className, field)
+      case JSPrivateSelect(qualifier, field) =>
+        JSPrivateSelect(transformExpr(qualifier), field)
 
       case tree: JSSelect =>
         trampoline {
@@ -967,7 +967,7 @@ private[optimizer] abstract class OptimizerCore(
           } else if (baseTpe == NullType) {
             cont(checkNotNull(texpr))
           } else if (isSubtype(baseTpe, JavaScriptExceptionClassType)) {
-            pretransformSelectCommon(AnyType, texpr, JavaScriptExceptionClass,
+            pretransformSelectCommon(AnyType, texpr,
                 FieldIdent(exceptionFieldName), isLhsOfAssign = false)(cont)
           } else {
             if (texpr.tpe.isExact || !isSubtype(JavaScriptExceptionClassType, baseTpe))
@@ -1171,16 +1171,15 @@ private[optimizer] abstract class OptimizerCore(
   private def pretransformSelectCommon(tree: Select, isLhsOfAssign: Boolean)(
       cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = {
-    val Select(qualifier, className, field) = tree
+    val Select(qualifier, field) = tree
     pretransformExpr(qualifier) { preTransQual =>
-      pretransformSelectCommon(tree.tpe, preTransQual, className, field,
-          isLhsOfAssign)(cont)(scope, tree.pos)
+      pretransformSelectCommon(tree.tpe, preTransQual, field, isLhsOfAssign)(
+          cont)(scope, tree.pos)
     }
   }
 
   private def pretransformSelectCommon(expectedType: Type,
-      preTransQual: PreTransform, className: ClassName, field: FieldIdent,
-      isLhsOfAssign: Boolean)(
+      preTransQual: PreTransform, field: FieldIdent, isLhsOfAssign: Boolean)(
       cont: PreTransCont)(
       implicit scope: Scope, pos: Position): TailRec[Tree] = {
     /* Note: Callers are expected to have already removed writes to fields that
@@ -1190,7 +1189,7 @@ private[optimizer] abstract class OptimizerCore(
     preTransQual match {
       case PreTransLocalDef(LocalDef(_, _,
           InlineClassBeingConstructedReplacement(_, fieldLocalDefs, cancelFun))) =>
-        val fieldLocalDef = fieldLocalDefs(FieldID(className, field))
+        val fieldLocalDef = fieldLocalDefs(field.name)
         if (!isLhsOfAssign || fieldLocalDef.mutable) {
           cont(fieldLocalDef.toPreTransform)
         } else {
@@ -1205,18 +1204,18 @@ private[optimizer] abstract class OptimizerCore(
 
       case PreTransLocalDef(LocalDef(_, _,
           InlineClassInstanceReplacement(_, fieldLocalDefs, cancelFun))) =>
-        val fieldLocalDef = fieldLocalDefs(FieldID(className, field))
+        val fieldLocalDef = fieldLocalDefs(field.name)
         assert(!isLhsOfAssign || fieldLocalDef.mutable, s"assign to immutable field at $pos")
         cont(fieldLocalDef.toPreTransform)
 
       // Select the lo or hi "field" of a Long literal
       case PreTransLit(LongLiteral(value)) if useRuntimeLong =>
         val itemName = field.name
-        assert(itemName == inlinedRTLongLoField ||
-            itemName == inlinedRTLongHiField)
+        assert(itemName.simpleName == inlinedRTLongLoField ||
+            itemName.simpleName == inlinedRTLongHiField)
         assert(expectedType == IntType)
         val resultValue =
-          if (itemName == inlinedRTLongLoField) value.toInt
+          if (itemName.simpleName == inlinedRTLongLoField) value.toInt
           else (value >>> 32).toInt
         cont(PreTransLit(IntLiteral(resultValue)))
 
@@ -1224,8 +1223,13 @@ private[optimizer] abstract class OptimizerCore(
         resolveLocalDef(preTransQual) match {
           case PreTransRecordTree(newQual, origType, cancelFun) =>
             val recordType = newQual.tpe.asInstanceOf[RecordType]
-            val recordField = recordType.findField(field.name)
-            val sel = RecordSelect(newQual, field)(recordField.tpe)
+            /* FIXME How come this lookup requires only the `simpleName`?
+             * The `recordType` is created at `InlineableClassStructure.recordType`,
+             * where it uses an allocator. Something fishy is going on here.
+             * (And no, this is not dead code.)
+             */
+            val recordField = recordType.findField(field.name.simpleName)
+            val sel = RecordSelect(newQual, SimpleFieldIdent(recordField.name))(recordField.tpe)
             sel.tpe match {
               case _: RecordType =>
                 cont(PreTransRecordTree(sel, RefinedType(expectedType), cancelFun))
@@ -1235,7 +1239,7 @@ private[optimizer] abstract class OptimizerCore(
 
           case PreTransTree(newQual, newQualType) =>
             val newQual1 = maybeAssumeNotNull(newQual, newQualType)
-            cont(PreTransTree(Select(newQual1, className, field)(expectedType),
+            cont(PreTransTree(Select(newQual1, field)(expectedType),
                 RefinedType(expectedType)))
         }
     }
@@ -1332,7 +1336,7 @@ private[optimizer] abstract class OptimizerCore(
             if (!isImmutableType(recordType))
               cancelFun()
             PreTransRecordTree(
-                RecordValue(recordType, structure.fieldIDs.map(
+                RecordValue(recordType, structure.fieldNames.map(
                     id => fieldLocalDefs(id).newReplacement)),
                 tpe, cancelFun)
 
@@ -1591,7 +1595,7 @@ private[optimizer] abstract class OptimizerCore(
       checkNotNullStatement(array)(stat.pos)
     case ArraySelect(array, index) if semantics.arrayIndexOutOfBounds == CheckedBehavior.Unchecked =>
       Block(checkNotNullStatement(array)(stat.pos), keepOnlySideEffects(index))(stat.pos)
-    case Select(qualifier, _, _) =>
+    case Select(qualifier, _) =>
       checkNotNullStatement(qualifier)(stat.pos)
     case Closure(_, _, _, _, _, captureValues) =>
       Block(captureValues.map(keepOnlySideEffects))(stat.pos)
@@ -2221,13 +2225,13 @@ private[optimizer] abstract class OptimizerCore(
             "There was a This(), there should be a receiver")
         cont(checkNotNull(optReceiver.get._2))
 
-      case Select(This(), className, field) if formals.isEmpty =>
+      case Select(This(), field) if formals.isEmpty =>
         assert(optReceiver.isDefined,
             "There was a This(), there should be a receiver")
-        pretransformSelectCommon(body.tpe, optReceiver.get._2, className, field,
+        pretransformSelectCommon(body.tpe, optReceiver.get._2, field,
             isLhsOfAssign = false)(cont)
 
-      case Assign(lhs @ Select(This(), className, field), VarRef(LocalIdent(rhsName)))
+      case Assign(lhs @ Select(This(), field), VarRef(LocalIdent(rhsName)))
           if formals.size == 1 && formals.head.name.name == rhsName =>
         assert(isStat, "Found Assign in expression position")
         assert(optReceiver.isDefined,
@@ -2236,11 +2240,11 @@ private[optimizer] abstract class OptimizerCore(
         val treceiver = optReceiver.get._2
         val trhs = args.head
 
-        if (!isFieldRead(className, field.name)) {
+        if (!isFieldRead(field.name)) {
           // Field is never read, discard assign, keep side effects only.
           cont(PreTransTree(finishTransformArgsAsStat(), RefinedType.NoRefinedType))
         } else {
-          pretransformSelectCommon(lhs.tpe, treceiver, className, field,
+          pretransformSelectCommon(lhs.tpe, treceiver, field,
               isLhsOfAssign = true) { tlhs =>
             pretransformAssign(tlhs, args.head)(cont)
           }
@@ -2582,7 +2586,7 @@ private[optimizer] abstract class OptimizerCore(
                   elemLocalDef match {
                     case LocalDef(RefinedType(ClassType(Tuple2Class), _, _), false,
                         InlineClassInstanceReplacement(structure, tupleFields, _)) =>
-                      val List(key, value) = structure.fieldIDs.map(tupleFields)
+                      val List(key, value) = structure.fieldNames.map(tupleFields)
                       (key.newReplacement, value.newReplacement)
 
                     case _ =>
@@ -2658,7 +2662,7 @@ private[optimizer] abstract class OptimizerCore(
 
     withNewLocalDefs(initialFieldBindings) { (initialFieldLocalDefList, cont1) =>
       val initialFieldLocalDefs =
-        structure.fieldIDs.zip(initialFieldLocalDefList).toMap
+        structure.fieldNames.zip(initialFieldLocalDefList).toMap
 
       inlineClassConstructorBody(allocationSite, structure, initialFieldLocalDefs,
           className, className, ctor, args, cancelFun) { (finalFieldLocalDefs, cont2) =>
@@ -2674,10 +2678,10 @@ private[optimizer] abstract class OptimizerCore(
 
   private def inlineClassConstructorBody(
       allocationSite: AllocationSite, structure: InlineableClassStructure,
-      inputFieldsLocalDefs: Map[FieldID, LocalDef], className: ClassName,
+      inputFieldsLocalDefs: Map[FieldName, LocalDef], className: ClassName,
       ctorClass: ClassName, ctor: MethodIdent, args: List[PreTransform],
       cancelFun: CancelFun)(
-      buildInner: (Map[FieldID, LocalDef], PreTransCont) => TailRec[Tree])(
+      buildInner: (Map[FieldName, LocalDef], PreTransCont) => TailRec[Tree])(
       cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = tailcall {
 
@@ -2714,9 +2718,9 @@ private[optimizer] abstract class OptimizerCore(
 
   private def inlineClassConstructorBodyList(
       allocationSite: AllocationSite, structure: InlineableClassStructure,
-      thisLocalDef: LocalDef, inputFieldsLocalDefs: Map[FieldID, LocalDef],
+      thisLocalDef: LocalDef, inputFieldsLocalDefs: Map[FieldName, LocalDef],
       className: ClassName, stats: List[Tree], cancelFun: CancelFun)(
-      buildInner: (Map[FieldID, LocalDef], PreTransCont) => TailRec[Tree])(
+      buildInner: (Map[FieldName, LocalDef], PreTransCont) => TailRec[Tree])(
       cont: PreTransCont)(
       implicit scope: Scope): TailRec[Tree] = {
 
@@ -2745,18 +2749,17 @@ private[optimizer] abstract class OptimizerCore(
         inlineClassConstructorBodyList(allocationSite, structure, thisLocalDef,
             inputFieldsLocalDefs, className, rest, cancelFun)(buildInner)(cont)
 
-      case Assign(s @ Select(ths: This, className, field), value) :: rest
-          if !inputFieldsLocalDefs.contains(FieldID(className, field)) =>
+      case Assign(s @ Select(ths: This, field), value) :: rest
+          if !inputFieldsLocalDefs.contains(field.name) =>
         // Field is being optimized away. Only keep side effects of the write.
         withStat(value, rest)
 
-      case Assign(s @ Select(ths: This, className, field), value) :: rest
-          if !inputFieldsLocalDefs(FieldID(className, field)).mutable =>
+      case Assign(s @ Select(ths: This, field), value) :: rest
+          if !inputFieldsLocalDefs(field.name).mutable =>
         pretransformExpr(value) { tvalue =>
-          val fieldID = FieldID(className, field)
-          val originalName = structure.fieldOriginalName(fieldID)
+          val originalName = structure.fieldOriginalName(field.name)
           val binding = Binding(
-              Binding.Local(field.name.toLocalName, originalName),
+              Binding.Local(field.name.simpleName.toLocalName, originalName),
               s.tpe, false, tvalue)
           withNewLocalDef(binding) { (localDef, cont1) =>
             if (localDef.contains(thisLocalDef)) {
@@ -2766,7 +2769,7 @@ private[optimizer] abstract class OptimizerCore(
               cancelFun()
             }
             val newFieldsLocalDefs =
-              inputFieldsLocalDefs.updated(fieldID, localDef)
+              inputFieldsLocalDefs.updated(field.name, localDef)
             val newThisLocalDef = LocalDef(thisLocalDef.tpe, false,
                 InlineClassBeingConstructedReplacement(structure, newFieldsLocalDefs, cancelFun))
             val restScope =
@@ -2792,7 +2795,7 @@ private[optimizer] abstract class OptimizerCore(
        * coming from Scala.js < 1.15.1 (since 1.15.1, we intercept that shape
        * already in the compiler back-end).
        */
-      case If(cond, th: Throw, Assign(Select(This(), _, _), value)) :: rest =>
+      case If(cond, th: Throw, Assign(Select(This(), _), value)) :: rest =>
         // work around a bug of the compiler (these should be @-bindings)
         val stat = stats.head.asInstanceOf[If]
         val ass = stat.elsep.asInstanceOf[Assign]
@@ -5083,7 +5086,8 @@ private[optimizer] object OptimizerCore {
   private val JavaScriptExceptionClassType = ClassType(JavaScriptExceptionClass)
   private val ThrowableClassType = ClassType(ThrowableClass)
 
-  private val exceptionFieldName = FieldName("exception")
+  private val exceptionFieldName =
+    FieldName(JavaScriptExceptionClass, SimpleFieldName("exception"))
 
   private val AnyArgConstructorName = MethodName.constructor(List(ClassRef(ObjectClass)))
 
@@ -5092,34 +5096,31 @@ private[optimizer] object OptimizerCore {
   private val ClassTagApplyMethodName =
     MethodName("apply", List(ClassRef(ClassClass)), ClassRef(ClassName("scala.reflect.ClassTag")))
 
-  final class InlineableClassStructure(
-      /** `List[ownerClassName -> fieldDef]`. */
-      private val allFields: List[(ClassName, FieldDef)]) {
-
-    private[OptimizerCore] val fieldIDs: List[FieldID] =
-      allFields.map(field => FieldID(field._1, field._2))
+  final class InlineableClassStructure(private val allFields: List[FieldDef]) {
+    private[OptimizerCore] val fieldNames: List[FieldName] =
+      allFields.map(_.name.name)
 
     private[OptimizerCore] val recordType: RecordType = {
       val allocator = new FreshNameAllocator.Field
       val recordFields = for {
-        (className, f @ FieldDef(flags, FieldIdent(name), originalName, ftpe)) <- allFields
+        f @ FieldDef(flags, FieldIdent(name), originalName, ftpe) <- allFields
       } yield {
         assert(!flags.namespace.isStatic,
             s"unexpected static field in InlineableClassStructure at ${f.pos}")
-        RecordType.Field(allocator.freshName(name), originalName, ftpe,
+        RecordType.Field(allocator.freshName(name.simpleName), originalName, ftpe,
             flags.isMutable)
       }
       RecordType(recordFields)
     }
 
-    private val recordFieldNames: Map[FieldID, RecordType.Field] = {
-      val elems = for (((className, fieldDef), recordField) <- allFields.zip(recordType.fields))
-        yield FieldID(className, fieldDef) -> recordField
+    private val recordFieldNames: Map[FieldName, RecordType.Field] = {
+      val elems = for ((fieldDef, recordField) <- allFields.zip(recordType.fields))
+        yield fieldDef.name.name -> recordField
       elems.toMap
     }
 
-    private[OptimizerCore] def fieldOriginalName(fieldID: FieldID): OriginalName =
-      recordFieldNames(fieldID).originalName
+    private[OptimizerCore] def fieldOriginalName(fieldName: FieldName): OriginalName =
+      recordFieldNames(fieldName).originalName
 
     override def equals(that: Any): Boolean = that match {
       case that: InlineableClassStructure =>
@@ -5132,7 +5133,7 @@ private[optimizer] object OptimizerCore {
 
     override def toString(): String = {
       allFields
-        .map(f => s"${f._1.nameString}::${f._2.name.name.nameString}: ${f._2.ftpe}")
+        .map(f => s"${f.name.name.nameString}: ${f.ftpe}")
         .mkString("InlineableClassStructure(", ", ", ")")
     }
   }
@@ -5276,7 +5277,7 @@ private[optimizer] object OptimizerCore {
        */
       case InlineClassInstanceReplacement(structure, fieldLocalDefs, _)
           if tpe.base == ClassType(LongImpl.RuntimeLongClass) =>
-        val List(loField, hiField) = structure.fieldIDs
+        val List(loField, hiField) = structure.fieldNames
         val lo = fieldLocalDefs(loField).newReplacement
         val hi = fieldLocalDefs(hiField).newReplacement
         createNewLong(lo, hi)
@@ -5341,12 +5342,12 @@ private[optimizer] object OptimizerCore {
 
   private final case class InlineClassBeingConstructedReplacement(
       structure: InlineableClassStructure,
-      fieldLocalDefs: Map[FieldID, LocalDef],
+      fieldLocalDefs: Map[FieldName, LocalDef],
       cancelFun: CancelFun) extends LocalDefReplacement
 
   private final case class InlineClassInstanceReplacement(
       structure: InlineableClassStructure,
-      fieldLocalDefs: Map[FieldID, LocalDef],
+      fieldLocalDefs: Map[FieldName, LocalDef],
       cancelFun: CancelFun) extends LocalDefReplacement
 
   private final case class InlineJSArrayReplacement(
@@ -5798,8 +5799,8 @@ private[optimizer] object OptimizerCore {
 
     val RecordType(List(loField, hiField)) = recordVarRef.tpe
     createNewLong(
-        RecordSelect(recordVarRef, FieldIdent(loField.name))(IntType),
-        RecordSelect(recordVarRef, FieldIdent(hiField.name))(IntType))
+        RecordSelect(recordVarRef, SimpleFieldIdent(loField.name))(IntType),
+        RecordSelect(recordVarRef, SimpleFieldIdent(hiField.name))(IntType))
   }
 
   /** Creates a new instance of `RuntimeLong` from its `lo` and `hi` parts. */
@@ -6056,9 +6057,9 @@ private[optimizer] object OptimizerCore {
               true
 
             // Shape of accessors
-            case Select(This(), _, _) if params.isEmpty =>
+            case Select(This(), _) if params.isEmpty =>
               true
-            case Assign(Select(This(), _, _), VarRef(_)) if params.size == 1 =>
+            case Assign(Select(This(), _), VarRef(_)) if params.size == 1 =>
               true
 
             // Shape of trivial call-super constructors
@@ -6150,7 +6151,7 @@ private[optimizer] object OptimizerCore {
    */
   private def isSmallTree(tree: TreeOrJSSpread): Boolean = tree match {
     case _:VarRef | _:Literal    => true
-    case Select(This(), _, _)    => true
+    case Select(This(), _)       => true
     case UnaryOp(_, lhs)         => isSmallTree(lhs)
     case BinaryOp(_, lhs, rhs)   => isSmallTree(lhs) && isSmallTree(rhs)
     case JSUnaryOp(_, lhs)       => isSmallTree(lhs)
@@ -6165,7 +6166,7 @@ private[optimizer] object OptimizerCore {
       case Apply(_, receiver, _, args)              => areSimpleArgs(receiver :: args)
       case ApplyStatically(_, receiver, _, _, args) => areSimpleArgs(receiver :: args)
       case ApplyStatic(_, _, _, args)               => areSimpleArgs(args)
-      case Select(qual, _, _)                       => isSimpleArg(qual)
+      case Select(qual, _)                          => isSimpleArg(qual)
       case IsInstanceOf(inner, _)                   => isSimpleArg(inner)
 
       case Block(List(inner, Undefined())) =>
@@ -6319,11 +6320,11 @@ private[optimizer] object OptimizerCore {
         name.withSuffix(suffix)
     }
 
-    private val InitialFieldMap: Map[FieldName, Int] =
+    private val InitialFieldMap: Map[SimpleFieldName, Int] =
       Map.empty
 
-    final class Field extends FreshNameAllocator[FieldName](InitialFieldMap) {
-      protected def nameWithSuffix(name: FieldName, suffix: String): FieldName =
+    final class Field extends FreshNameAllocator[SimpleFieldName](InitialFieldMap) {
+      protected def nameWithSuffix(name: SimpleFieldName, suffix: String): SimpleFieldName =
         name.withSuffix(suffix)
     }
 
@@ -6335,30 +6336,6 @@ private[optimizer] object OptimizerCore {
       freshName: Name): OriginalName = {
     if (originalName.isDefined || (freshName eq base)) originalName
     else OriginalName(base)
-  }
-
-  final class FieldID private (val ownerClassName: ClassName, val name: FieldName) {
-    override def equals(that: Any): Boolean = that match {
-      case that: FieldID =>
-        this.ownerClassName == that.ownerClassName &&
-        this.name == that.name
-      case _ =>
-        false
-    }
-
-    override def hashCode(): Int =
-      ownerClassName.## ^ name.##
-
-    override def toString(): String =
-      s"FieldID($ownerClassName, $name)"
-  }
-
-  object FieldID {
-    def apply(ownerClassName: ClassName, field: FieldIdent): FieldID =
-      new FieldID(ownerClassName, field.name)
-
-    def apply(ownerClassName: ClassName, fieldDef: FieldDef): FieldID =
-      new FieldID(ownerClassName, fieldDef.name.name)
   }
 
   private sealed abstract class IsUsed {

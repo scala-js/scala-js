@@ -47,8 +47,8 @@ private[emitter] final class NameGen {
     cache
   }
 
-  private val genFieldNameCache =
-    mutable.Map.empty[FieldName, String]
+  private val genSimpleFieldNameCache =
+    mutable.Map.empty[SimpleFieldName, String]
 
   private val genMethodNameCache =
     mutable.Map.empty[MethodName, String]
@@ -107,7 +107,10 @@ private[emitter] final class NameGen {
   }
 
   def genName(name: LabelName): String = genNameGeneric(name, genLabelNameCache)
-  def genName(name: FieldName): String = genNameGeneric(name, genFieldNameCache)
+  def genName(name: SimpleFieldName): String = genNameGeneric(name, genSimpleFieldNameCache)
+
+  def genName(name: FieldName): String =
+    genName(name.className) + "__f_" + genName(name.simpleName)
 
   def genName(name: MethodName): String = {
     genMethodNameCache.getOrElseUpdate(name, {
@@ -208,6 +211,11 @@ private[emitter] final class NameGen {
   def genOriginalName(name: Name, originalName: OriginalName,
       jsName: String): OriginalName = {
     genOriginalName(name.encoded, originalName, jsName)
+  }
+
+  def genOriginalName(name: FieldName, originalName: OriginalName,
+      jsName: String): OriginalName = {
+    genOriginalName(name.simpleName, originalName, jsName)
   }
 
   def genOriginalName(name: MethodName, originalName: OriginalName,

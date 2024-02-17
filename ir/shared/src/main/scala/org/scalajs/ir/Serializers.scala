@@ -321,14 +321,14 @@ object Serializers {
         case StoreModule() =>
           writeTagAndPos(TagStoreModule)
 
-        case Select(qualifier, className, field) =>
+        case Select(qualifier, field) =>
           writeTagAndPos(TagSelect)
-          writeTree(qualifier); writeName(className); writeFieldIdent(field)
+          writeTree(qualifier); writeFieldIdent(field)
           writeType(tree.tpe)
 
-        case SelectStatic(className, field) =>
+        case SelectStatic(field) =>
           writeTagAndPos(TagSelectStatic)
-          writeName(className); writeFieldIdent(field)
+          writeFieldIdent(field)
           writeType(tree.tpe)
 
         case SelectJSNativeMember(className, member) =>
@@ -385,7 +385,7 @@ object Serializers {
 
         case RecordSelect(record, field) =>
           writeTagAndPos(TagRecordSelect)
-          writeTree(record); writeFieldIdent(field)
+          writeTree(record); writeSimpleFieldIdent(field)
           writeType(tree.tpe)
 
         case IsInstanceOf(expr, testType) =>
@@ -420,9 +420,9 @@ object Serializers {
           writeTagAndPos(TagJSNew)
           writeTree(ctor); writeTreeOrJSSpreads(args)
 
-        case JSPrivateSelect(qualifier, className, field) =>
+        case JSPrivateSelect(qualifier, field) =>
           writeTagAndPos(TagJSPrivateSelect)
-          writeTree(qualifier); writeName(className); writeFieldIdent(field)
+          writeTree(qualifier); writeFieldIdent(field)
 
         case JSSelect(qualifier, item) =>
           writeTagAndPos(TagJSSelect)
@@ -632,7 +632,7 @@ object Serializers {
         case FieldDef(flags, name, originalName, ftpe) =>
           writeByte(TagFieldDef)
           writeInt(MemberFlags.toBits(flags))
-          writeFieldIdent(name)
+          writeFieldIdentForEnclosingClass(name)
           writeOriginalName(originalName)
           writeType(ftpe)
 
@@ -762,7 +762,7 @@ object Serializers {
 
         case TopLevelFieldExportDef(moduleID, exportName, field) =>
           writeByte(TagTopLevelFieldExportDef)
-          writeString(moduleID); writeString(exportName); writeFieldIdent(field)
+          writeString(moduleID); writeString(exportName); writeFieldIdentForEnclosingClass(field)
       }
     }
 
@@ -782,9 +782,21 @@ object Serializers {
       writeName(ident.name)
     }
 
-    def writeFieldIdent(ident: FieldIdent): Unit = {
+    def writeSimpleFieldIdent(ident: SimpleFieldIdent): Unit = {
       writePosition(ident.pos)
       writeName(ident.name)
+    }
+
+    def writeFieldIdent(ident: FieldIdent): Unit = {
+      // For historical reasons, the className comes *before* the position
+      writeName(ident.name.className)
+      writePosition(ident.pos)
+      writeName(ident.name.simpleName)
+    }
+
+    def writeFieldIdentForEnclosingClass(ident: FieldIdent): Unit = {
+      writePosition(ident.pos)
+      writeName(ident.name.simpleName)
     }
 
     def writeMethodIdent(ident: MethodIdent): Unit = {
@@ -1003,11 +1015,22 @@ object Serializers {
     private[this] var encodedNames: Array[UTF8String] = _
     private[this] var localNames: Array[LocalName] = _
     private[this] var labelNames: Array[LabelName] = _
-    private[this] var fieldNames: Array[FieldName] = _
+    private[this] var simpleFieldNames: Array[SimpleFieldName] = _
     private[this] var simpleMethodNames: Array[SimpleMethodName] = _
     private[this] var classNames: Array[ClassName] = _
     private[this] var methodNames: Array[MethodName] = _
     private[this] var strings: Array[String] = _
+
+    /** Uniqueness cache for FieldName's.
+     *
+     *  For historical reasons, the `ClassName` and `SimpleFieldName`
+     *  components of `FieldName`s are store separately in the `.sjsir` format.
+     *  Since most if not all occurrences of any particular `FieldName`
+     *  typically come from a single `.sjsir` file, we use a uniqueness cache
+     *  to make them all `eq`, consuming less memory and speeding up equality
+     *  tests.
+     */
+    private[this] val uniqueFieldNames = mutable.AnyRefMap.empty[FieldName, FieldName]
 
     private[this] var lastPosition: Position = Position.NoPosition
 
@@ -1031,7 +1054,7 @@ object Serializers {
       }
       localNames = new Array(encodedNames.length)
       labelNames = new Array(encodedNames.length)
-      fieldNames = new Array(encodedNames.length)
+      simpleFieldNames = new Array(encodedNames.length)
       simpleMethodNames = new Array(encodedNames.length)
       classNames = new Array(encodedNames.length)
       methodNames = Array.fill(readInt()) {
@@ -1171,7 +1194,6 @@ object Serializers {
 
         case TagSelect =>
           val qualifier = readTree()
-          val className = readClassName()
           val field = readFieldIdent()
           val tpe = readType()
 
@@ -1179,12 +1201,12 @@ object Serializers {
             /* Note [Nothing FieldDef rewrite]
              * qual.field[nothing]  -->  throw qual.field[null]
              */
-            Throw(Select(qualifier, className, field)(NullType))
+            Throw(Select(qualifier, field)(NullType))
           } else {
-            Select(qualifier, className, field)(tpe)
+            Select(qualifier, field)(tpe)
           }
 
-        case TagSelectStatic => SelectStatic(readClassName(), readFieldIdent())(readType())
+        case TagSelectStatic => SelectStatic(readFieldIdent())(readType())
         case TagSelectJSNativeMember => SelectJSNativeMember(readClassName(), readMethodIdent())
 
         case TagApply =>
@@ -1219,7 +1241,7 @@ object Serializers {
           UnwrapFromThrowable(readTree())
 
         case TagJSNew                => JSNew(readTree(), readTreeOrJSSpreads())
-        case TagJSPrivateSelect      => JSPrivateSelect(readTree(), readClassName(), readFieldIdent())
+        case TagJSPrivateSelect      => JSPrivateSelect(readTree(), readFieldIdent())
         case TagJSSelect             => JSSelect(readTree(), readTree())
         case TagJSFunctionApply      => JSFunctionApply(readTree(), readTreeOrJSSpreads())
         case TagJSMethodApply        => JSMethodApply(readTree(), readTree(), readTreeOrJSSpreads())
@@ -1495,7 +1517,7 @@ object Serializers {
 
     private def readFieldDef()(implicit pos: Position): FieldDef = {
       val flags = MemberFlags.fromBits(readInt())
-      val name = readFieldIdent()
+      val name = readFieldIdentForEnclosingClass()
       val originalName = readOriginalName()
 
       val ftpe0 = readType()
@@ -1721,7 +1743,9 @@ object Serializers {
         case TagTopLevelJSClassExportDef => TopLevelJSClassExportDef(readModuleID(), readString())
         case TagTopLevelModuleExportDef  => TopLevelModuleExportDef(readModuleID(), readString())
         case TagTopLevelMethodExportDef  => TopLevelMethodExportDef(readModuleID(), readJSMethodDef())
-        case TagTopLevelFieldExportDef   => TopLevelFieldExportDef(readModuleID(), readString(), readFieldIdent())
+
+        case TagTopLevelFieldExportDef =>
+          TopLevelFieldExportDef(readModuleID(), readString(), readFieldIdentForEnclosingClass())
       }
     }
 
@@ -1739,8 +1763,22 @@ object Serializers {
     }
 
     def readFieldIdent(): FieldIdent = {
+      // For historical reasons, the className comes *before* the position
+      val className = readClassName()
       implicit val pos = readPosition()
-      FieldIdent(readFieldName())
+      val simpleName = readSimpleFieldName()
+      FieldIdent(makeFieldName(className, simpleName))
+    }
+
+    def readFieldIdentForEnclosingClass(): FieldIdent = {
+      implicit val pos = readPosition()
+      val simpleName = readSimpleFieldName()
+      FieldIdent(makeFieldName(enclosingClassName, simpleName))
+    }
+
+    private def makeFieldName(className: ClassName, simpleName: SimpleFieldName): FieldName = {
+      val newFieldName = FieldName(className, simpleName)
+      uniqueFieldNames.getOrElseUpdate(newFieldName, newFieldName)
     }
 
     def readMethodIdent(): MethodIdent = {
@@ -1826,7 +1864,7 @@ object Serializers {
 
         case TagRecordType =>
           RecordType(List.fill(readInt()) {
-            val name = readFieldName()
+            val name = readSimpleFieldName()
             val originalName = readString()
             val tpe = readType()
             val mutable = readBoolean()
@@ -1959,14 +1997,14 @@ object Serializers {
       }
     }
 
-    private def readFieldName(): FieldName = {
+    private def readSimpleFieldName(): SimpleFieldName = {
       val i = readInt()
-      val existing = fieldNames(i)
+      val existing = simpleFieldNames(i)
       if (existing ne null) {
         existing
       } else {
-        val result = FieldName(encodedNames(i))
-        fieldNames(i) = result
+        val result = SimpleFieldName(encodedNames(i))
+        simpleFieldNames(i) = result
         result
       }
     }
