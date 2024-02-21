@@ -130,7 +130,6 @@ private[emitter] object CoreJSLib {
       defineLinkingInfo() :::
       defineJSBuiltinsSnapshotsAndPolyfills() :::
       declareCachedL0() :::
-      definePropertyName() :::
       defineCharClass() :::
       defineRuntimeFunctions() :::
       defineObjectGetClassFunctions() :::
@@ -524,23 +523,6 @@ private[emitter] object CoreJSLib {
             LongImpl.RuntimeLongClass, LongImpl.initFromParts, 0, 0),
         genClassDataOf(LongRef) DOT cpn.zero := globalVar(VarField.L0, CoreVar)
       ))
-    }
-
-    private def definePropertyName(): List[Tree] = {
-      /* Encodes a property name for runtime manipulation.
-       *
-       * Usage:
-       *   env.propertyName({someProp:0})
-       * Returns:
-       *   "someProp"
-       * Useful when the property is renamed by a global optimizer (like
-       * Closure) but we must still get hold of a string of that name for
-       * runtime reflection.
-       */
-      defineFunction1(VarField.propertyName) { obj =>
-        val prop = varRef("prop")
-        ForIn(genEmptyImmutableLet(prop.ident), obj, Return(prop))
-      }
     }
 
     private def defineCharClass(): List[Tree] = {
@@ -1652,23 +1634,31 @@ private[emitter] object CoreJSLib {
       }
 
       val initClass = {
-        val internalNameObj = varRef("internalNameObj")
-        val isInterface = varRef("isInterface")
+        // This is an int, where 1 means isInterface; 2 means isJSType; 0 otherwise
+        val kind = varRef("kind")
+
+        val hasParentData = globalKnowledge.isParentDataAccessed
+
         val fullName = varRef("fullName")
         val ancestors = varRef("ancestors")
-        val isJSType = varRef("isJSType")
         val parentData = varRef("parentData")
         val isInstance = varRef("isInstance")
         val internalName = varRef("internalName")
         val that = varRef("that")
         val depth = varRef("depth")
         val obj = varRef("obj")
-        MethodDef(static = false, Ident(cpn.initClass),
-            paramList(internalNameObj, isInterface, fullName, ancestors,
-                isJSType, parentData, isInstance), None, {
+        val params =
+          if (hasParentData) paramList(kind, fullName, ancestors, parentData, isInstance)
+          else paramList(kind, fullName, ancestors, isInstance)
+        MethodDef(static = false, Ident(cpn.initClass), params, None, {
           Block(
-              const(internalName, genCallHelper(VarField.propertyName, internalNameObj)),
-              if (globalKnowledge.isParentDataAccessed)
+              /* Extract the internalName, which is the first property of ancestors.
+               * We use `getOwnPropertyNames()`, which since ES 2015 guarantees
+               * to return non-integer string keys in creation order.
+               */
+              const(internalName,
+                  BracketSelect(Apply(genIdentBracketSelect(ObjectRef, "getOwnPropertyNames"), List(ancestors)), 0)),
+              if (hasParentData)
                 privateFieldSet(cpn.parentData, parentData)
               else
                 Skip(),
@@ -1679,9 +1669,9 @@ private[emitter] object CoreJSLib {
                   Return(!(!(BracketSelect(that DOT cpn.ancestors, internalName))))
                 })
               }),
-              privateFieldSet(cpn.isJSType, !(!isJSType)),
+              privateFieldSet(cpn.isJSType, kind === 2),
               publicFieldSet(cpn.name, fullName),
-              publicFieldSet(cpn.isInterface, isInterface),
+              publicFieldSet(cpn.isInterface, kind === 1),
               publicFieldSet(cpn.isInstance, isInstance || {
                 genArrowFunction(paramList(obj), {
                   Return(!(!(obj && (obj DOT classData) &&

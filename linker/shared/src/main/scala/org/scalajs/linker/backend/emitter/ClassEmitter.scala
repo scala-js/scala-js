@@ -836,21 +836,26 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     val isJSType =
       kind.isJSType
 
-    val isJSTypeParam =
-      if (isJSType) js.BooleanLiteral(true)
-      else js.Undefined()
+    val kindParam = {
+      if (isJSType) js.IntLiteral(2)
+      else if (kind == ClassKind.Interface) js.IntLiteral(1)
+      else js.IntLiteral(0)
+    }
 
-    val parentData = if (globalKnowledge.isParentDataAccessed) {
-      superClass.fold[js.Tree] {
+    val parentDataOpt = if (globalKnowledge.isParentDataAccessed) {
+      val parentData = superClass.fold[js.Tree] {
         if (isObjectClass) js.Null()
         else js.Undefined()
       } { parent =>
         globalVar(VarField.d, parent.name)
       }
+      parentData :: Nil
     } else {
-      js.Undefined()
+      Nil
     }
 
+    assert(ancestors.headOption.contains(className),
+        s"The ancestors of ${className.nameString} do not start with itself: $ancestors")
     val ancestorsRecord = js.ObjectConstr(
         ancestors.withFilter(_ != ObjectClass).map(ancestor => (genAncestorIdent(ancestor), js.IntLiteral(1)))
     )
@@ -902,15 +907,11 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     isInstanceFunWithGlobals.flatMap { isInstanceFun =>
       val allParams = List(
-          js.ObjectConstr(List(genAncestorIdent(className) -> js.IntLiteral(0))),
-          js.BooleanLiteral(kind == ClassKind.Interface),
+          kindParam,
           js.StringLiteral(RuntimeClassNameMapperImpl.map(
               semantics.runtimeClassNameMapper, className.nameString)),
-          ancestorsRecord,
-          isJSTypeParam,
-          parentData,
-          isInstanceFun
-      )
+          ancestorsRecord
+      ) ::: parentDataOpt ::: isInstanceFun :: Nil
 
       val prunedParams =
         allParams.reverse.dropWhile(_.isInstanceOf[js.Undefined]).reverse

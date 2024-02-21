@@ -175,8 +175,6 @@ private[emitter] object VarField {
 
   final val valueDescription = mk("$valueDescription")
 
-  final val propertyName = mk("$propertyName")
-
   // ID hash subsystem
 
   final val systemIdentityHashCode = mk("$systemIdentityHashCode")

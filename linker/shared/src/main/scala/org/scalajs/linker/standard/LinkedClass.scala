@@ -29,6 +29,11 @@ import org.scalajs.ir.Names.{ClassName, FieldName}
  *  P+1. The converse is not true. This guarantees that versions can be used
  *  reliably to determine at phase P+1 whether a linked class coming from phase
  *  P must be reprocessed.
+ *
+ *  @param ancestors
+ *    List of all the ancestor classes and interfaces of this class. It always
+ *    contains this class name and `java.lang.Object`. This class name is
+ *    always the first element of the list.
  */
 final class LinkedClass(
     // Stuff from Tree
@@ -60,6 +65,9 @@ final class LinkedClass(
     val dynamicDependencies: Set[ClassName],
 
     val version: Version) {
+
+  require(ancestors.headOption.contains(name.name),
+      s"ancestors for ${name.name.nameString} must start with itself: $ancestors")
 
   def className: ClassName = name.name
 
