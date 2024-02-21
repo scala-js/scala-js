@@ -826,7 +826,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   def genTypeData(className: ClassName, kind: ClassKind,
       superClass: Option[ClassIdent], ancestors: List[ClassName],
-      jsNativeLoadSpec: Option[JSNativeLoadSpec])(
+      jsNativeLoadSpec: Option[JSNativeLoadSpec], hasInstances: Boolean)(
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge, pos: Position): WithGlobals[List[js.Tree]] = {
     import TreeDSL._
@@ -836,9 +836,18 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     val isJSType =
       kind.isJSType
 
-    val kindParam = {
+    /* The `kindOrCtor` param is either:
+     * - an int: 1 means isInterface; 2 means isJSType; 0 otherwise
+     * - a Scala class constructor: means 0 + assign `kindOrCtor.prototype.$classData = <this TypeData>;`
+     *
+     * We must only assign the `$classData` if the class is a regular
+     * (non-hijacked) Scala class, and if it has instances. Otherwise there is
+     * no Scala class constructor for the class at all.
+     */
+    val kindOrCtorParam = {
       if (isJSType) js.IntLiteral(2)
       else if (kind == ClassKind.Interface) js.IntLiteral(1)
+      else if (kind.isClass && hasInstances) globalVar(VarField.c, className)
       else js.IntLiteral(0)
     }
 
@@ -907,7 +916,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     isInstanceFunWithGlobals.flatMap { isInstanceFun =>
       val allParams = List(
-          kindParam,
+          kindOrCtorParam,
           js.StringLiteral(RuntimeClassNameMapperImpl.map(
               semantics.runtimeClassNameMapper, className.nameString)),
           ancestorsRecord
@@ -921,14 +930,6 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
       globalVarDef(VarField.d, className, typeData)
     }
-  }
-
-  def genSetTypeData(className: ClassName)(
-      implicit moduleContext: ModuleContext,
-      globalKnowledge: GlobalKnowledge, pos: Position): js.Tree = {
-    import TreeDSL._
-
-    globalVar(VarField.c, className).prototype DOT cpn.classData := globalVar(VarField.d, className)
   }
 
   def genModuleAccessor(className: ClassName, isJSClass: Boolean)(

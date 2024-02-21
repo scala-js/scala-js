@@ -1634,8 +1634,11 @@ private[emitter] object CoreJSLib {
       }
 
       val initClass = {
-        // This is an int, where 1 means isInterface; 2 means isJSType; 0 otherwise
-        val kind = varRef("kind")
+        /* This is either:
+         * - an int: 1 means isInterface; 2 means isJSType; 0 otherwise
+         * - a Scala class constructor: means 0 + assign `kindOrCtor.prototype.$classData = this;`
+         */
+        val kindOrCtor = varRef("kindOrCtor")
 
         val hasParentData = globalKnowledge.isParentDataAccessed
 
@@ -1648,8 +1651,8 @@ private[emitter] object CoreJSLib {
         val depth = varRef("depth")
         val obj = varRef("obj")
         val params =
-          if (hasParentData) paramList(kind, fullName, ancestors, parentData, isInstance)
-          else paramList(kind, fullName, ancestors, isInstance)
+          if (hasParentData) paramList(kindOrCtor, fullName, ancestors, parentData, isInstance)
+          else paramList(kindOrCtor, fullName, ancestors, isInstance)
         MethodDef(static = false, Ident(cpn.initClass), params, None, {
           Block(
               /* Extract the internalName, which is the first property of ancestors.
@@ -1669,14 +1672,17 @@ private[emitter] object CoreJSLib {
                   Return(!(!(BracketSelect(that DOT cpn.ancestors, internalName))))
                 })
               }),
-              privateFieldSet(cpn.isJSType, kind === 2),
+              privateFieldSet(cpn.isJSType, kindOrCtor === 2),
               publicFieldSet(cpn.name, fullName),
-              publicFieldSet(cpn.isInterface, kind === 1),
+              publicFieldSet(cpn.isInterface, kindOrCtor === 1),
               publicFieldSet(cpn.isInstance, isInstance || {
                 genArrowFunction(paramList(obj), {
                   Return(!(!(obj && (obj DOT classData) &&
                       BracketSelect(obj DOT classData DOT cpn.ancestors, internalName))))
                 })
+              }),
+              If(typeof(kindOrCtor) !== str("number"), {
+                kindOrCtor.prototype DOT cpn.classData := This()
               }),
               Return(This())
           )

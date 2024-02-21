@@ -716,20 +716,15 @@ final class Emitter[E >: Null <: js.Tree](
 
       if (linkedClass.hasRuntimeTypeInfo) {
         main ++= extractWithGlobals(classTreeCache.typeData.getOrElseUpdate(
+            linkedClass.hasInstances,
             classEmitter.genTypeData(
               className, // invalidated by overall class cache (part of ancestors)
               kind, // invalidated by class version
               linkedClass.superClass, // invalidated by class version
               linkedClass.ancestors, // invalidated by overall class cache (identity)
-              linkedClass.jsNativeLoadSpec // invalidated by class version
+              linkedClass.jsNativeLoadSpec, // invalidated by class version
+              linkedClass.hasInstances // invalidated directly (it is the input to `getOrElseUpdate`)
             )(moduleContext, classCache, linkedClass.pos).map(postTransform(_, 0))))
-      }
-
-      if (linkedClass.hasInstances && kind.isClass && linkedClass.hasRuntimeTypeInfo) {
-        main ++= classTreeCache.setTypeData.getOrElseUpdate({
-          val tree = classEmitter.genSetTypeData(className)(moduleContext, classCache, linkedClass.pos)
-          postTransform(tree, 0)
-        })
       }
     }
 
@@ -1198,7 +1193,7 @@ object Emitter {
     val privateJSFields = new OneTimeCache[WithGlobals[E]]
     val storeJSSuperClass = new OneTimeCache[WithGlobals[E]]
     val instanceTests = new OneTimeCache[WithGlobals[E]]
-    val typeData = new OneTimeCache[WithGlobals[E]]
+    val typeData = new InputEqualityCache[Boolean, WithGlobals[E]]
     val setTypeData = new OneTimeCache[E]
     val moduleAccessor = new OneTimeCache[WithGlobals[E]]
     val staticInitialization = new OneTimeCache[E]
@@ -1219,6 +1214,24 @@ object Emitter {
     def getOrElseUpdate(v: => A): A = {
       if (value == null)
         value = v
+      value
+    }
+  }
+
+  /** A cache that depends on an `input: I`, testing with `==`.
+   *
+   *  @tparam I
+   *    the type of input, for which `==` must meaningful
+   */
+  private final class InputEqualityCache[I, A >: Null] {
+    private[this] var lastInput: Option[I] = None
+    private[this] var value: A = null
+
+    def getOrElseUpdate(input: I, v: => A): A = {
+      if (!lastInput.contains(input)) {
+        value = v
+        lastInput = Some(input)
+      }
       value
     }
   }
