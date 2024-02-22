@@ -34,7 +34,7 @@ object Trees {
     def show: String = {
       val writer = new ByteArrayWriter()
       val printer = new Printers.JSTreePrinter(writer)
-      printer.printTree(this, isStat = true)
+      printer.printTree(this, isStat = true, isAtStartOfStat = true)
       new String(writer.toByteArray(), StandardCharsets.US_ASCII)
     }
   }

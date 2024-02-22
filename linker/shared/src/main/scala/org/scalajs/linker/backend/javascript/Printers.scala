@@ -126,12 +126,12 @@ object Printers {
 
       case _ =>
         printIndent()
-        printTree(tree, isStat = true)
+        printTree(tree, isStat = true, isAtStartOfStat = true)
         println()
     }
 
     private def print(tree: Tree): Unit =
-      printTree(tree, isStat = false)
+      printTree(tree, isStat = false, isAtStartOfStat = false)
 
     /** Print the "meat" of a tree.
      *
@@ -139,18 +139,21 @@ object Printers {
      *  - No leading indent.
      *  - No trailing newline.
      */
-    def printTree(tree: Tree, isStat: Boolean): Unit = {
+    def printTree(tree: Tree, isStat: Boolean, isAtStartOfStat: Boolean): Unit = {
       def printSeparatorIfStat() = {
         if (isStat)
           print(';')
       }
+
+      def printKeepAtStart(tree: Tree): Unit =
+        printTree(tree, isStat = false, isAtStartOfStat)
 
       tree match {
         case JSDocConstructor(tree) =>
           print("/** @constructor */")
           println(); printIndent()
           // not printStat: we must not print the trailing newline.
-          printTree(tree, isStat = true)
+          printTree(tree, isStat = true, isAtStartOfStat = true)
 
         // Definitions
 
@@ -194,7 +197,7 @@ object Printers {
           printBlock(body)
 
         case Assign(lhs, rhs) =>
-          print(lhs)
+          printKeepAtStart(lhs)
           print(" = ")
           print(rhs)
           printSeparatorIfStat()
@@ -214,7 +217,7 @@ object Printers {
               case Skip() => ()
               case _: If =>
                 print(" else ")
-                printTree(elsep, isStat)
+                printTree(elsep, isStat, isAtStartOfStat = true)
               case _ =>
                 print(" else ")
                 printBlock(elsep)
@@ -376,21 +379,21 @@ object Printers {
               print(qualifier)
               print(")")
             case _ =>
-              print(qualifier)
+              printKeepAtStart(qualifier)
           }
           print(".")
           print(item)
           printSeparatorIfStat()
 
         case BracketSelect(qualifier, item) =>
-          print(qualifier)
+          printKeepAtStart(qualifier)
           print('[')
           print(item)
           print(']')
           printSeparatorIfStat()
 
         case Apply(fun, args) =>
-          print(fun)
+          printKeepAtStart(fun)
           printArgs(args)
           printSeparatorIfStat()
 
@@ -491,15 +494,17 @@ object Printers {
           printSeparatorIfStat()
 
         case ObjectConstr(Nil) =>
-          if (isStat)
-            print("({});") // force expression position for the object literal
+          if (isAtStartOfStat)
+            print("({})")
           else
             print("{}")
+          printSeparatorIfStat()
 
         case ObjectConstr(fields) =>
-          if (isStat)
-            print('(') // force expression position for the object literal
-          print('{')
+          if (isAtStartOfStat)
+            print("({")
+          else
+            print('{')
           indent()
           println()
           var rest = fields
@@ -517,9 +522,11 @@ object Printers {
           }
           undent()
           printIndent()
-          print('}')
-          if (isStat)
-            print(");")
+          if (isAtStartOfStat)
+            print("})")
+          else
+            print('}')
+          printSeparatorIfStat()
 
         // Literals
 
@@ -777,12 +784,12 @@ object Printers {
 
     private var column = 0
 
-    override def printTree(tree: Tree, isStat: Boolean): Unit = {
+    override def printTree(tree: Tree, isStat: Boolean, isAtStartOfStat: Boolean): Unit = {
       val pos = tree.pos
       if (pos.isDefined)
         sourceMap.startNode(column, pos)
 
-      super.printTree(tree, isStat)
+      super.printTree(tree, isStat, isAtStartOfStat)
 
       if (pos.isDefined)
         sourceMap.endNode(column)
