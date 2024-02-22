@@ -14,7 +14,7 @@ package org.scalajs.linker.backend.javascript
 
 import java.nio.charset.StandardCharsets
 
-import scala.annotation.switch
+import scala.annotation.{switch, tailrec}
 
 // Unimport default print and println to avoid invoking them by mistake
 import scala.Predef.{print => _, println => _, _}
@@ -126,8 +126,46 @@ object Printers {
 
       case _ =>
         printIndent()
-        printTree(tree, isStat = true)
+        if (isExpressionStatementWithForbiddenLookahead(tree)) {
+          print('(')
+          printTree(tree, isStat = false)
+          print(");")
+        } else {
+          printTree(tree, isStat = true)
+        }
         println()
+    }
+
+    /** Tests whether the statement `tree` is a JS `ExpressionStatement` whose
+     *  printed form starts with a forbidden lookahead.
+     *
+     *  If it does, it must be surrounded in parens to force it into an
+     *  expression position.
+     *
+     *  @see [[https://262.ecma-international.org/#sec-expression-statement]]
+     */
+    private def isExpressionStatementWithForbiddenLookahead(tree: Tree): Boolean = {
+      /* We always surround the following nodes with `()` for precedence reasons,
+       * so we do not have cover them here:
+       *
+       * - binary operators nor postfix unary operators, even though their first
+       *   operand starts their printed form, nor
+       * - function expressions, even though they start with `function`, which
+       *   is a forbidden lookahead.
+       */
+
+      @tailrec
+      def isExpressionStartingWithForbiddenLookahead(tree: Tree): Boolean = tree match {
+        // ordered by decreasing likelihood of appearance as statement (guesstimate)
+        case Apply(fun, _)          => isExpressionStartingWithForbiddenLookahead(fun)
+        case Assign(lhs, _)         => isExpressionStartingWithForbiddenLookahead(lhs)
+        case DotSelect(qual, _)     => isExpressionStartingWithForbiddenLookahead(qual)
+        case BracketSelect(qual, _) => isExpressionStartingWithForbiddenLookahead(qual)
+        case ObjectConstr(_)        => true
+        case _                      => false
+      }
+
+      isExpressionStartingWithForbiddenLookahead(tree)
     }
 
     private def print(tree: Tree): Unit =
@@ -491,14 +529,11 @@ object Printers {
           printSeparatorIfStat()
 
         case ObjectConstr(Nil) =>
-          if (isStat)
-            print("({});") // force expression position for the object literal
-          else
-            print("{}")
+          assert(!isStat, s"ObjectConstr at ${tree.pos} should not be printed in statement position")
+          print("{}")
 
         case ObjectConstr(fields) =>
-          if (isStat)
-            print('(') // force expression position for the object literal
+          assert(!isStat, s"ObjectConstr at ${tree.pos} should not be printed in statement position")
           print('{')
           indent()
           println()
@@ -518,8 +553,6 @@ object Printers {
           undent()
           printIndent()
           print('}')
-          if (isStat)
-            print(");")
 
         // Literals
 

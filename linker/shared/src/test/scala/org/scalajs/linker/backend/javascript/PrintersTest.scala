@@ -159,6 +159,33 @@ class PrintersTest {
     )
   }
 
+  @Test def objectLitAtStartOfStatement_Issue4949(): Unit = {
+    val fooStringLit = StringLiteral("foo")
+
+    val emptyObjLit = ObjectConstr(Nil)
+    val emptyObjLitStr = "{}"
+
+    val foo1ObjLit = ObjectConstr(List(fooStringLit -> IntLiteral(1)))
+    val foo1ObjLitStr =
+      """{
+        |  "foo": 1
+        |}"""
+
+    for ((objLit, objLitStr) <- List(emptyObjLit -> emptyObjLitStr, foo1ObjLit -> foo1ObjLitStr)) {
+      // baseline: no wrapping ()
+      assertPrintEquals(s"""var x = $objLitStr;""", VarDef("x", Some(objLit)))
+
+      assertPrintEquals(s"""($objLitStr);""", objLit)
+      assertPrintEquals(s"""($objLitStr.foo);""", DotSelect(objLit, "foo"))
+      assertPrintEquals(s"""($objLitStr.foo = 2);""", Assign(DotSelect(objLit, "foo"), IntLiteral(2)))
+      assertPrintEquals(s"""($objLitStr.foo());""", Apply(DotSelect(objLit, "foo"), Nil))
+      assertPrintEquals(s"""($objLitStr["foo"]);""", BracketSelect(objLit, fooStringLit))
+      assertPrintEquals(s"""($objLitStr["foo"] = 2);""", Assign(BracketSelect(objLit, fooStringLit), IntLiteral(2)))
+      assertPrintEquals(s"""($objLitStr["foo"]());""", Apply(BracketSelect(objLit, fooStringLit), Nil))
+      assertPrintEquals(s"""($objLitStr + $objLitStr);""", BinaryOp(ir.Trees.JSBinaryOp.+, objLit, objLit))
+    }
+  }
+
   @Test def showPrintedTree(): Unit = {
     val tree = PrintedTree("test".getBytes(UTF_8), SourceMapWriter.Fragment.Empty)
 
