@@ -747,9 +747,13 @@ object Printers {
     protected def print(ident: Ident): Unit =
       printEscapeJS(ident.name)
 
+    protected def print(ident: DelayedIdent): Unit =
+      printEscapeJS(ident.resolveName())
+
     private final def print(propName: PropertyName): Unit = propName match {
-      case lit: StringLiteral => print(lit: Tree)
-      case ident: Ident       => print(ident)
+      case lit: StringLiteral  => print(lit: Tree)
+      case ident: Ident        => print(ident)
+      case ident: DelayedIdent => print(ident)
 
       case ComputedName(tree) =>
         print("[")
@@ -799,6 +803,14 @@ object Printers {
         sourceMap.endNode(column)
     }
 
+    override protected def print(ident: DelayedIdent): Unit = {
+      if (ident.pos.isDefined)
+        sourceMap.startIdentNode(column, ident.pos, ident.originalName)
+      printEscapeJS(ident.resolveName())
+      if (ident.pos.isDefined)
+        sourceMap.endNode(column)
+    }
+
     override protected def print(printedTree: PrintedTree): Unit = {
       super.print(printedTree)
       sourceMap.insertFragment(printedTree.sourceMapFragment)
@@ -830,4 +842,21 @@ object Printers {
     }
   }
 
+  /** Shows a `Tree` for debugging purposes, not for pretty-printing. */
+  private[javascript] def showTree(tree: Tree): String = {
+    val writer = new ByteArrayWriter()
+    val printer = new Printers.JSTreeShowPrinter(writer)
+    printer.printTree(tree, isStat = true)
+    new String(writer.toByteArray(), StandardCharsets.US_ASCII)
+  }
+
+  /** A printer that shows `Tree`s for debugging, not for pretty-printing. */
+  private class JSTreeShowPrinter(_out: ByteArrayWriter, initIndent: Int = 0)
+      extends JSTreePrinter(_out, initIndent) {
+    override protected def print(ident: DelayedIdent): Unit = {
+      print("<delayed:")
+      print(ident.resolver.debugString)
+      print(">")
+    }
+  }
 }

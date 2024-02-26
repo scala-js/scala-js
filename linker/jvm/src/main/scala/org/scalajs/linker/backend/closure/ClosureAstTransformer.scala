@@ -210,9 +210,9 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
   private def transformClassMember(member: Tree): Node = {
     implicit val pos = member.pos
 
-    def newFixedPropNode(token: Token, static: Boolean, name: Ident,
+    def newFixedPropNode(token: Token, static: Boolean, name: MaybeDelayedIdent,
         function: Node): Node = {
-      val node = Node.newString(token, name.name)
+      val node = Node.newString(token, name.resolveName())
       node.addChildToBack(function)
       node.setStaticMember(static)
       node
@@ -258,7 +258,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
             val node = newComputedPropNode(static, nameExpr, function)
             node.putBooleanProp(Node.COMPUTED_PROP_METHOD, true)
             node
-          case name: Ident =>
+          case name: MaybeDelayedIdent =>
             newFixedPropNode(Token.MEMBER_FUNCTION_DEF, static, name, function)
         }
 
@@ -274,7 +274,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
             val node = newComputedPropNode(static, nameExpr, function)
             node.putBooleanProp(Node.COMPUTED_PROP_GETTER, true)
             node
-          case name: Ident =>
+          case name: MaybeDelayedIdent =>
             newFixedPropNode(Token.GETTER_DEF, static, name, function)
         }
 
@@ -290,7 +290,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
             val node = newComputedPropNode(static, nameExpr, function)
             node.putBooleanProp(Node.COMPUTED_PROP_SETTER, true)
             node
-          case name: Ident =>
+          case name: MaybeDelayedIdent =>
             newFixedPropNode(Token.SETTER_DEF, static, name, function)
         }
 
@@ -321,7 +321,7 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
         args.foreach(arg => node.addChildToBack(transformExpr(arg)))
         node
       case DotSelect(qualifier, item) =>
-        val node = Node.newString(Token.GETPROP, item.name)
+        val node = Node.newString(Token.GETPROP, item.resolveName())
         node.addChildToBack(transformExpr(qualifier))
         setNodePosition(node, item.pos.orElse(pos))
       case BracketSelect(qualifier, item) =>
@@ -435,8 +435,8 @@ private class ClosureAstTransformer(featureSet: FeatureSet,
     val transformedValue = transformExpr(value)
 
     val node = name match {
-      case Ident(name, _) =>
-        Node.newString(Token.STRING_KEY, name)
+      case name: MaybeDelayedIdent =>
+        Node.newString(Token.STRING_KEY, name.resolveName())
 
       case StringLiteral(name) =>
         val node = Node.newString(Token.STRING_KEY, name)
