@@ -154,7 +154,7 @@ private[emitter] final class SJSGen(
     DotSelect(receiver, Ident(genName(field.name))(field.pos))
   }
 
-  def genSelect(receiver: Tree, field: irt.FieldIdent,
+  def genSelectForDef(receiver: Tree, field: irt.FieldIdent,
       originalName: OriginalName)(
       implicit pos: Position): Tree = {
     val jsName = genName(field.name)
@@ -164,7 +164,7 @@ private[emitter] final class SJSGen(
 
   def genApply(receiver: Tree, methodName: MethodName, args: List[Tree])(
       implicit pos: Position): Tree = {
-    Apply(DotSelect(receiver, Ident(genMethodName(methodName))), args)
+    Apply(DotSelect(receiver, genMethodIdent(methodName)), args)
   }
 
   def genApply(receiver: Tree, methodName: MethodName, args: Tree*)(
@@ -172,8 +172,23 @@ private[emitter] final class SJSGen(
     genApply(receiver, methodName, args.toList)
   }
 
-  def genMethodName(methodName: MethodName): String =
-    genName(methodName)
+  def genMethodIdent(methodIdent: irt.MethodIdent): Ident =
+    genMethodIdent(methodIdent.name)(methodIdent.pos)
+
+  def genMethodIdentForDef(methodIdent: irt.MethodIdent,
+      originalName: OriginalName): Ident = {
+    genMethodIdentForDef(methodIdent.name, originalName)(methodIdent.pos)
+  }
+
+  def genMethodIdent(methodName: MethodName)(implicit pos: Position): Ident =
+    Ident(genName(methodName))
+
+  def genMethodIdentForDef(methodName: MethodName, originalName: OriginalName)(
+      implicit pos: Position): Ident = {
+    val jsName = genName(methodName)
+    val jsOrigName = genOriginalName(methodName, originalName, jsName)
+    Ident(jsName, jsOrigName)
+  }
 
   def genJSPrivateSelect(receiver: Tree, field: irt.FieldIdent)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,

@@ -877,7 +877,7 @@ private[emitter] object CoreJSLib {
 
           if (implementedInObject) {
             val staticObjectCall: Tree = {
-              val fun = globalVar(VarField.c, ObjectClass).prototype DOT genMethodName(methodName)
+              val fun = globalVar(VarField.c, ObjectClass).prototype DOT genMethodIdent(methodName)
               Return(Apply(fun DOT "call", instance :: args))
             }
 
@@ -1504,7 +1504,8 @@ private[emitter] object CoreJSLib {
           Nil
         }
 
-        val clone = MethodDef(static = false, Ident(genMethodName(cloneMethodName)), Nil, None, {
+        val cloneMethodIdent = genMethodIdentForDef(cloneMethodName, NoOriginalName)
+        val clone = MethodDef(static = false, cloneMethodIdent, Nil, None, {
           Return(New(ArrayClass,
               Apply(genIdentBracketSelect(This().u, "slice"), Nil) :: Nil))
         })
@@ -1809,7 +1810,8 @@ private[emitter] object CoreJSLib {
               Nil
             }
 
-            val clone = MethodDef(static = false, Ident(genMethodName(cloneMethodName)), Nil, None, {
+            val cloneMethodIdent = genMethodIdentForDef(cloneMethodName, NoOriginalName)
+            val clone = MethodDef(static = false, cloneMethodIdent, Nil, None, {
               Return(New(ArrayClass,
                   Apply(genIdentBracketSelect(This().u, "slice"), Nil) :: Nil))
             })

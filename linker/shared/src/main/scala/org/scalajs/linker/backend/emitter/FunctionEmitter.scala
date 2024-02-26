@@ -2252,7 +2252,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           val newArgs = transformTypedArgs(method.name, args)
 
           def genNormalApply(): js.Tree =
-            js.Apply(newReceiver(false) DOT transformMethodIdent(method), newArgs)
+            js.Apply(newReceiver(false) DOT genMethodIdent(method), newArgs)
 
           def genDispatchApply(): js.Tree =
             js.Apply(globalVar(VarField.dp, methodName), newReceiver(false) :: newArgs)
@@ -2315,7 +2315,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             genApplyStaticLike(VarField.f, className, method, transformedArgs)
           } else {
             val fun =
-              globalVar(VarField.c, className).prototype DOT transformMethodIdent(method)
+              globalVar(VarField.c, className).prototype DOT genMethodIdent(method)
             js.Apply(fun DOT "call", transformedArgs)
           }
 
@@ -3206,9 +3206,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     private def transformLabelIdent(ident: LabelIdent): js.Ident =
       js.Ident(genName(ident.name))(ident.pos)
-
-    private def transformMethodIdent(ident: MethodIdent): js.Ident =
-      js.Ident(genMethodName(ident.name))(ident.pos)
 
     private def transformLocalVarIdent(ident: LocalIdent): js.Ident =
       js.Ident(transformLocalName(ident.name))(ident.pos)
