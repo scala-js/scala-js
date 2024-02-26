@@ -1571,9 +1571,11 @@ private object AnalyzerRun {
     MethodName("getSuperclass", Nil, ClassRef(ClassClass))
 
   private class WorkTracker(implicit ec: ExecutionContext) {
-    private val pending = new AtomicInteger(0)
+    /** The number of tasks that have started but not completed, `+ 1` until
+     *  `allowComplete()` gets called.
+     */
+    private val pending = new AtomicInteger(1)
     private val failures = new AtomicReference[List[Throwable]](Nil)
-    @volatile private var _allowComplete = false
     private val promise = Promise[Unit]()
 
     def track(fut: Future[Unit]): Unit = {
@@ -1584,8 +1586,7 @@ private object AnalyzerRun {
           case Success(_) => ()
           case Failure(t) => addFailure(t)
         }
-        if (pending.decrementAndGet() == 0)
-          tryComplete()
+        decrementPending()
       }
     }
 
@@ -1596,28 +1597,33 @@ private object AnalyzerRun {
         addFailure(t)
     }
 
-    private def tryComplete(): Unit = {
-      /* Note that after _allowComplete is true and pending == 0, we are sure
-       * that no new task will be submitted concurrently:
-       * - _allowComplete guarantees us that no external task will be added anymore
-       * - pending == 0 guarantees us that no internal task (which might create
-       *   more tasks) are running anymore.
+    private def decrementPending(): Unit = {
+      /* When `pending` reaches 0, we are sure that all started tasks have
+       * completed, and that `allowComplete()` was called. Therefore, no
+       * further task can be concurrently added, and we are done.
        */
-      if (_allowComplete && pending.get() == 0) {
-        failures.get() match {
-          case Nil =>
-            promise.success(())
-          case firstFailure :: moreFailures =>
-            for (t <- moreFailures)
-              firstFailure.addSuppressed(t)
-            promise.failure(firstFailure)
-        }
+      if (pending.decrementAndGet() == 0)
+        complete()
+    }
+
+    private def complete(): Unit = {
+      failures.get() match {
+        case Nil =>
+          promise.success(())
+        case firstFailure :: moreFailures =>
+          for (t <- moreFailures)
+            firstFailure.addSuppressed(t)
+          promise.failure(firstFailure)
       }
     }
 
+    /** Signals that no new top-level tasks will be started, and that it is
+     *  therefore OK to complete the tracker once all ongoing tasks have finished.
+     *
+     *  `allowComplete()` must not be called more than once.
+     */
     def allowComplete(): Future[Unit] = {
-      _allowComplete = true
-      tryComplete()
+      decrementPending()
       promise.future
     }
   }
