@@ -139,7 +139,7 @@ object Printers {
      *  - No leading indent.
      *  - No trailing newline.
      */
-    def printTree(tree: Tree, isStat: Boolean): Unit = {
+    protected def printTree(tree: Tree, isStat: Boolean): Unit = {
       def printSeparatorIfStat() = {
         if (isStat)
           print(';')
@@ -781,7 +781,7 @@ object Printers {
 
     private var column = 0
 
-    override def printTree(tree: Tree, isStat: Boolean): Unit = {
+    override protected def printTree(tree: Tree, isStat: Boolean): Unit = {
       val pos = tree.pos
       if (pos.isDefined)
         sourceMap.startNode(column, pos)
@@ -846,13 +846,16 @@ object Printers {
   private[javascript] def showTree(tree: Tree): String = {
     val writer = new ByteArrayWriter()
     val printer = new Printers.JSTreeShowPrinter(writer)
-    printer.printTree(tree, isStat = true)
+    printer.printTreeForShow(tree)
     new String(writer.toByteArray(), StandardCharsets.US_ASCII)
   }
 
   /** A printer that shows `Tree`s for debugging, not for pretty-printing. */
   private class JSTreeShowPrinter(_out: ByteArrayWriter, initIndent: Int = 0)
       extends JSTreePrinter(_out, initIndent) {
+    def printTreeForShow(tree: Tree): Unit =
+      printTree(tree, isStat = true)
+
     override protected def print(ident: DelayedIdent): Unit = {
       print("<delayed:")
       print(ident.resolver.debugString)
