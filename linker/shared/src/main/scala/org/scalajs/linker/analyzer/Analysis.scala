@@ -242,7 +242,7 @@ object Analysis {
         "is not a valid JavaScript identifier " +
         "(did you want to emit a module instead?)"
       case ConflictingTopLevelExport(moduleID, exportName, infos) =>
-        s"Conflicting top level exports for module $moduleID, name $exportName "
+        s"Conflicting top level exports for module $moduleID, name $exportName " +
         "involving " + infos.map(_.owningClass.nameString).mkString(", ")
       case ImportWithoutModuleSupport(module, info, None, _) =>
         s"${info.displayName} needs to be imported from module " +
