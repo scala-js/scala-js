@@ -93,7 +93,7 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
       protected def moduleChanged(moduleID: ModuleID): Boolean =
         allChanged || emitterResult.body(moduleID)._2
 
-      protected def writeModuleWithoutSourceMap(moduleID: ModuleID): ByteBuffer = {
+      protected def writeModuleWithoutSourceMap(moduleID: ModuleID, prevFile: Option[ByteBuffer]): ByteBuffer = {
         val cache = printedModuleSetCache.getModuleCache(moduleID)
         val (trees, _) = emitterResult.body(moduleID)
 
@@ -104,7 +104,7 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
         jsFileWriter.write(printedModuleSetCache.headerBytes)
         jsFileWriter.writeASCIIString("'use strict';\n")
 
-        val printer = new Printers.JSTreePrinter(jsFileWriter)
+        val printer = new Printers.JSTreePrinter(prevFile, jsFileWriter)
         for (tree <- trees)
           printer.printStat(tree)
 
@@ -114,7 +114,7 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
         jsFileWriter.toByteBuffer()
       }
 
-      protected def writeModuleWithSourceMap(moduleID: ModuleID): (ByteBuffer, ByteBuffer) = {
+      protected def writeModuleWithSourceMap(moduleID: ModuleID, prevFile: Option[ByteBuffer]): (ByteBuffer, ByteBuffer) = {
         val cache = printedModuleSetCache.getModuleCache(moduleID)
         val (trees, _) = emitterResult.body(moduleID)
 
@@ -136,7 +136,7 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
         jsFileWriter.writeASCIIString("'use strict';\n")
         smWriter.nextLine()
 
-        val printer = new Printers.JSTreePrinterWithSourceMap(jsFileWriter, smWriter, initIndent = 0)
+        val printer = new Printers.JSTreePrinterWithSourceMap(prevFile, jsFileWriter, smWriter, initIndent = 0)
         for (tree <- trees)
           printer.printStat(tree)
 
@@ -245,7 +245,7 @@ private object BasicLinkerBackend {
         Nil // Fast path
       } else {
         val jsCodeWriter = new ByteArrayWriter()
-        val printer = new Printers.JSTreePrinter(jsCodeWriter, indent)
+        val printer = new Printers.JSTreePrinter(None, jsCodeWriter, indent)
 
         trees.foreach(printer.printStat(_))
 
@@ -261,7 +261,7 @@ private object BasicLinkerBackend {
       } else {
         val jsCodeWriter = new ByteArrayWriter()
         val smFragmentBuilder = new SourceMapWriter.FragmentBuilder()
-        val printer = new Printers.JSTreePrinterWithSourceMap(jsCodeWriter, smFragmentBuilder, indent)
+        val printer = new Printers.JSTreePrinterWithSourceMap(None, jsCodeWriter, smFragmentBuilder, indent)
 
         trees.foreach(printer.printStat(_))
         smFragmentBuilder.complete()

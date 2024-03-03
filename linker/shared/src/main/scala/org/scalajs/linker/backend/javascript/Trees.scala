@@ -13,8 +13,10 @@
 package org.scalajs.linker.backend.javascript
 
 import scala.annotation.switch
+import scala.concurrent.Future
 
 import java.nio.charset.StandardCharsets
+import java.nio.ByteBuffer
 
 import org.scalajs.ir
 import org.scalajs.ir.{OriginalName, Position}
@@ -548,14 +550,42 @@ object Trees {
    *  A cleaner abstraction would be to have something like ir.Tree.Transient
    *  (for different output formats), but for now, we do not need this.
    */
-  sealed case class PrintedTree(jsCode: Array[Byte],
-      sourceMapFragment: SourceMapWriter.Fragment) extends Tree {
+  sealed class PrintedTree private (
+    private[this] var state: PrintedTree.State,
+    val sourceMapFragment: SourceMapWriter.Fragment
+  ) extends Tree {
     val pos: Position = Position.NoPosition
 
-    override def show: String = new String(jsCode, StandardCharsets.UTF_8)
+    override def show: String = state match {
+      case PrintedTree.InMemory(jsCode) =>
+        new String(jsCode, StandardCharsets.UTF_8)
+
+      case PrintedTree.OnDisk(startPos, endPos) =>
+        f"<printed (on disk @ $startPos-$endPos)>"
+    }
+
+    def jsCode(prevFile: Option[ByteBuffer]): ByteBuffer = state match {
+      case PrintedTree.InMemory(jsCode) =>
+        ByteBuffer.wrap(jsCode).asReadOnlyBuffer()
+
+      case PrintedTree.OnDisk(startPos, endPos) =>
+        prevFile.get.slice().position(startPos).limit(endPos)
+    }
+
+    def written(startPos: Int, endPos: Int): Unit =
+      this.state = PrintedTree.OnDisk(startPos, endPos)
   }
 
   object PrintedTree {
     def empty: PrintedTree = PrintedTree(Array(), SourceMapWriter.Fragment.Empty)
+
+    def apply(jsCode: Array[Byte],
+        sourceMapFragment: SourceMapWriter.Fragment): PrintedTree = {
+      new PrintedTree(InMemory(jsCode), sourceMapFragment)
+    }
+
+    sealed trait State
+    final case class InMemory(jsCode: Array[Byte]) extends State
+    final case class OnDisk(startPos: Int, endPos: Int) extends State
   }
 }

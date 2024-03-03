@@ -12,6 +12,7 @@
 
 package org.scalajs.linker.backend.javascript
 
+import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 
 import scala.annotation.switch
@@ -33,7 +34,7 @@ import Trees._
 object Printers {
   private val ReusableIndentArray = Array.fill(128)(' '.toByte)
 
-  class JSTreePrinter(protected val out: ByteArrayWriter, initIndent: Int = 0) {
+  class JSTreePrinter(prevFile: Option[ByteBuffer], protected val out: ByteArrayWriter, initIndent: Int = 0) {
     private final val IndentStep = 2
 
     private var indentMargin = initIndent * IndentStep
@@ -762,8 +763,12 @@ object Printers {
         print("]")
     }
 
-    protected def print(printedTree: PrintedTree): Unit =
-      out.write(printedTree.jsCode)
+    protected def print(printedTree: PrintedTree): Unit = {
+      val startPos = out.currentSize
+      out.write(printedTree.jsCode(prevFile))
+      val endPos = out.currentSize
+      printedTree.written(startPos, endPos)
+    }
 
     private def print(exportName: ExportName): Unit =
       printEscapeJS(exportName.name)
@@ -776,9 +781,9 @@ object Printers {
       out.write(c)
   }
 
-  class JSTreePrinterWithSourceMap(_out: ByteArrayWriter,
+  class JSTreePrinterWithSourceMap(prevFile: Option[ByteBuffer], _out: ByteArrayWriter,
       sourceMap: SourceMapWriter.Builder, initIndent: Int)
-      extends JSTreePrinter(_out, initIndent) {
+      extends JSTreePrinter(prevFile, _out, initIndent) {
 
     private var column = 0
 
@@ -853,7 +858,7 @@ object Printers {
 
   /** A printer that shows `Tree`s for debugging, not for pretty-printing. */
   private class JSTreeShowPrinter(_out: ByteArrayWriter, initIndent: Int = 0)
-      extends JSTreePrinter(_out, initIndent) {
+      extends JSTreePrinter(None, _out, initIndent) {
     def printTreeForShow(tree: Tree): Unit =
       printTree(tree, isStat = true)
 
@@ -861,6 +866,10 @@ object Printers {
       print("<delayed:")
       print(ident.resolver.debugString)
       print(">")
+    }
+
+    override protected def print(printedTree: PrintedTree): Unit = {
+      print(printedTree.show)
     }
   }
 }

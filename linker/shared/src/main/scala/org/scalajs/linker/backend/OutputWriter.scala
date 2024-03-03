@@ -32,9 +32,9 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
 
   protected def moduleChanged(moduleID: ModuleID): Boolean
 
-  protected def writeModuleWithoutSourceMap(moduleID: ModuleID): ByteBuffer
+  protected def writeModuleWithoutSourceMap(moduleID: ModuleID, prevFile: Option[ByteBuffer]): ByteBuffer
 
-  protected def writeModuleWithSourceMap(moduleID: ModuleID): (ByteBuffer, ByteBuffer)
+  protected def writeModuleWithSourceMap(moduleID: ModuleID, prevFile: Option[ByteBuffer]): (ByteBuffer, ByteBuffer)
 
   def write(moduleSet: ModuleSet)(implicit ec: ExecutionContext): Future[Report] = {
     val ioThrottler = new IOThrottler(config.maxConcurrentWrites)
@@ -67,13 +67,20 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
       implicit ec: ExecutionContext): Future[Report.Module] = {
     val jsFileName = OutputPatternsImpl.jsFile(config.outputPatterns, moduleID.id)
 
+    val prevFileFuture =
+      if (existingFiles.contains(jsFileName)) outputImpl.readFull(jsFileName).map(Some(_))
+      else Future.successful(None)
+
     if (config.sourceMap) {
       val sourceMapFileName = OutputPatternsImpl.sourceMapFile(config.outputPatterns, moduleID.id)
       val report = new ReportImpl.ModuleImpl(moduleID.id, jsFileName, Some(sourceMapFileName), moduleKind)
 
       if (moduleChanged(moduleID)) {
-        val (code, sourceMap) = writeModuleWithSourceMap(moduleID)
         for {
+          prevFile <- prevFileFuture
+          (code, sourceMap) = writeModuleWithSourceMap(moduleID, prevFile)
+
+          // TODO: We should not read the file again, but use the existing buffer to compare if a write is required.
           _ <- outputImpl.writeFull(jsFileName, code, skipContentCheck)
           _ <- outputImpl.writeFull(sourceMapFileName, sourceMap, skipContentCheck)
         } yield {
@@ -86,8 +93,9 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
       val report = new ReportImpl.ModuleImpl(moduleID.id, jsFileName, None, moduleKind)
 
       if (moduleChanged(moduleID)) {
-        val code = writeModuleWithoutSourceMap(moduleID)
         for {
+          prevFile <- prevFileFuture
+          code = writeModuleWithoutSourceMap(moduleID, prevFile)
           _ <- outputImpl.writeFull(jsFileName, code, skipContentCheck)
         } yield {
           report

@@ -32,7 +32,7 @@ class PrintersTest {
 
   private def printTree(tree: Tree): String = {
     val out = new ByteArrayWriter
-    val printer = new Printers.JSTreePrinter(out)
+    val printer = new Printers.JSTreePrinter(None, out)
     printer.printStat(tree)
     new String(out.toByteArray(), UTF_8)
   }
@@ -222,6 +222,13 @@ class PrintersTest {
     val tree = PrintedTree("test".getBytes(UTF_8), SourceMapWriter.Fragment.Empty)
 
     assertEquals("test", tree.show)
+  }
+
+  @Test def showWrittenPrintedTree(): Unit = {
+    val tree = PrintedTree("test".getBytes(UTF_8), SourceMapWriter.Fragment.Empty)
+    tree.written(100, 2000)
+
+    assertEquals("<printed (on disk @ 100-2000)>", tree.show)
   }
 
   @Test def showNestedPrintedTree(): Unit = {
