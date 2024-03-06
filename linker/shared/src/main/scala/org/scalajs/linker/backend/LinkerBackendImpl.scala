@@ -53,6 +53,8 @@ object LinkerBackendImpl {
       val outputPatterns: OutputPatterns,
       /** Base path to relativize paths in the source map. */
       val relativizeSourceMapBase: Option[URI],
+      /** Whether to use Scala.js' minifier for property names. */
+      val minify: Boolean,
       /** Whether to use the Google Closure Compiler pass, if it is available.
        *  On the JavaScript platform, this does not have any effect.
        */
@@ -69,6 +71,7 @@ object LinkerBackendImpl {
           sourceMap = true,
           outputPatterns = OutputPatterns.Defaults,
           relativizeSourceMapBase = None,
+          minify = false,
           closureCompilerIfAvailable = false,
           prettyPrint = false,
           maxConcurrentWrites = 50)
@@ -91,6 +94,9 @@ object LinkerBackendImpl {
     def withRelativizeSourceMapBase(relativizeSourceMapBase: Option[URI]): Config =
       copy(relativizeSourceMapBase = relativizeSourceMapBase)
 
+    def withMinify(minify: Boolean): Config =
+      copy(minify = minify)
+
     def withClosureCompilerIfAvailable(closureCompilerIfAvailable: Boolean): Config =
       copy(closureCompilerIfAvailable = closureCompilerIfAvailable)
 
@@ -106,12 +112,21 @@ object LinkerBackendImpl {
         sourceMap: Boolean = sourceMap,
         outputPatterns: OutputPatterns = outputPatterns,
         relativizeSourceMapBase: Option[URI] = relativizeSourceMapBase,
+        minify: Boolean = minify,
         closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
         prettyPrint: Boolean = prettyPrint,
         maxConcurrentWrites: Int = maxConcurrentWrites): Config = {
-      new Config(commonConfig, jsHeader, sourceMap, outputPatterns,
-          relativizeSourceMapBase, closureCompilerIfAvailable, prettyPrint,
-          maxConcurrentWrites)
+      new Config(
+        commonConfig,
+        jsHeader,
+        sourceMap,
+        outputPatterns,
+        relativizeSourceMapBase,
+        minify,
+        closureCompilerIfAvailable,
+        prettyPrint,
+        maxConcurrentWrites
+      )
     }
   }
 

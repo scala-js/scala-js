@@ -31,12 +31,7 @@ object Trees {
   abstract sealed class Tree {
     val pos: Position
 
-    def show: String = {
-      val writer = new ByteArrayWriter()
-      val printer = new Printers.JSTreePrinter(writer)
-      printer.printTree(this, isStat = true)
-      new String(writer.toByteArray(), StandardCharsets.US_ASCII)
-    }
+    def show: String = Printers.showTree(this)
   }
 
   // Constructor comment / annotation.
@@ -50,15 +45,25 @@ object Trees {
     def pos: Position
   }
 
+  sealed trait MaybeDelayedIdent extends PropertyName {
+    def resolveName(): String
+  }
+
   sealed case class Ident(name: String, originalName: OriginalName)(
-      implicit val pos: Position) extends PropertyName {
-    require(Ident.isValidJSIdentifierName(name),
-        s"'$name' is not a valid JS identifier name")
+      implicit val pos: Position) extends MaybeDelayedIdent {
+    Ident.requireValidJSIdentifierName(name)
+
+    def resolveName(): String = name
   }
 
   object Ident {
     def apply(name: String)(implicit pos: Position): Ident =
       new Ident(name, NoOriginalName)
+
+    def requireValidJSIdentifierName(name: String): Unit = {
+      require(isValidJSIdentifierName(name),
+          s"'$name' is not a valid JS identifier name")
+    }
 
     /** Tests whether the given string is a valid `IdentifierName` for the
      *  ECMAScript language specification.
@@ -84,6 +89,42 @@ object Trees {
       }
       true
       // scalastyle:on return
+    }
+  }
+
+  /** An ident whose real name will be resolved later. */
+  sealed case class DelayedIdent(resolver: DelayedIdent.Resolver, originalName: OriginalName)(
+      implicit val pos: Position)
+      extends MaybeDelayedIdent {
+
+    def resolveName(): String = {
+      val name = resolver.resolve()
+      Ident.requireValidJSIdentifierName(name)
+      name
+    }
+  }
+
+  object DelayedIdent {
+    def apply(resolver: DelayedIdent.Resolver)(implicit pos: Position): DelayedIdent =
+      new DelayedIdent(resolver, NoOriginalName)
+
+    /** Resolver for the eventual name of a `DelayedIdent`. */
+    trait Resolver {
+      /** Resolves the eventual name of the delayed ident.
+       *
+       *  @throws java.lang.IllegalStateException
+       *    if this resolver is not yet ready to resolve a name
+       */
+      def resolve(): String
+
+      /** A string representing this resolver for debugging purposes.
+       *
+       *  The result of this method is used when calling `show` on the
+       *  associated `DelayedIdent`. Once the resolver is ready, this method is
+       *  encouraged to return the same string as `resolve()`, but it is not
+       *  mandatory to do so.
+       */
+      def debugString: String
     }
   }
 
@@ -231,7 +272,7 @@ object Trees {
       implicit val pos: Position)
       extends Tree
 
-  sealed case class DotSelect(qualifier: Tree, item: Ident)(
+  sealed case class DotSelect(qualifier: Tree, item: MaybeDelayedIdent)(
       implicit val pos: Position)
       extends Tree
 

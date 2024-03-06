@@ -63,7 +63,7 @@ class EmitterTest {
           config = config)
       fullContent <- linkToContent(classDefs,
           moduleInitializers = MainTestModuleInitializers,
-          config = config.withClosureCompilerIfAvailable(true))
+          config = config.withClosureCompilerIfAvailable(true).withMinify(true))
     } yield {
       def testContent(content: String): Unit = {
         if (!content.startsWith(header)) {

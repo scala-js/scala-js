@@ -355,7 +355,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     } yield {
       val field = anyField.asInstanceOf[FieldDef]
       implicit val pos = field.pos
-      js.Assign(genSelect(js.This(), field.name, field.originalName),
+      js.Assign(genSelectForDef(js.This(), field.name, field.originalName),
           genZeroOf(field.ftpe))
     }
   }
@@ -422,8 +422,11 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       val zero = genBoxedZeroOf(field.ftpe)
       field match {
         case FieldDef(_, name, originalName, _) =>
+          /* TODO This seems to be dead code, which is somehow reassuring
+           * because I don't know what it is supposed to achieve.
+           */
           WithGlobals(
-              js.Assign(js.DotSelect(classVarRef, genMemberFieldIdent(name, originalName)), zero))
+              js.Assign(genSelectForDef(classVarRef, name, originalName), zero))
         case JSFieldDef(_, name, _) =>
           for (propName <- genMemberNameTree(name))
             yield js.Assign(genPropSelect(classVarRef, propName), zero)
@@ -472,7 +475,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     for {
       methodFun <- desugarToFunction(className, method.args, method.body.get, method.resultType)
     } yield {
-      val jsMethodName = genMemberMethodIdent(method.name, method.originalName)
+      val jsMethodName = genMethodIdentForDef(method.name, method.originalName)
 
       if (useESClass) {
         js.MethodDef(static = false, jsMethodName, methodFun.args, methodFun.restParam, methodFun.body)
@@ -659,20 +662,6 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     }
   }
 
-  private def genMemberFieldIdent(ident: FieldIdent,
-      originalName: OriginalName): js.Ident = {
-    val jsName = genName(ident.name)
-    js.Ident(jsName, genOriginalName(ident.name, originalName, jsName))(
-        ident.pos)
-  }
-
-  private def genMemberMethodIdent(ident: MethodIdent,
-      originalName: OriginalName): js.Ident = {
-    val jsName = genMethodName(ident.name)
-    js.Ident(jsName, genOriginalName(ident.name, originalName, jsName))(
-        ident.pos)
-  }
-
   def needInstanceTests(tree: LinkedClass)(
       implicit globalKnowledge: GlobalKnowledge): Boolean = {
     tree.hasInstanceTests || (tree.hasRuntimeTypeInfo &&
@@ -716,7 +705,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           !(!(
               genIsScalaJSObject(obj) &&
               genIsClassNameInAncestors(className,
-                  obj DOT "$classData" DOT "ancestors")
+                  obj DOT cpn.classData DOT cpn.ancestors)
           ))
         }
 
@@ -792,9 +781,9 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       globalFunctionDef(VarField.isArrayOf, className, List(objParam, depthParam), None, {
         js.Return(!(!({
           genIsScalaJSObject(obj) &&
-          ((obj DOT "$classData" DOT "arrayDepth") === depth) &&
+          ((obj DOT cpn.classData DOT cpn.arrayDepth) === depth) &&
           genIsClassNameInAncestors(className,
-              obj DOT "$classData" DOT "arrayBase" DOT "ancestors")
+              obj DOT cpn.classData DOT cpn.arrayBase DOT cpn.ancestors)
         })))
       })
     }
@@ -825,14 +814,14 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   private def genIsScalaJSObject(obj: js.Tree)(implicit pos: Position): js.Tree = {
     import TreeDSL._
-    obj && (obj DOT "$classData")
+    obj && (obj DOT cpn.classData)
   }
 
   private def genIsClassNameInAncestors(className: ClassName,
       ancestors: js.Tree)(
       implicit pos: Position): js.Tree = {
     import TreeDSL._
-    ancestors DOT genName(className)
+    ancestors DOT genAncestorIdent(className)
   }
 
   def genTypeData(className: ClassName, kind: ClassKind,
@@ -863,7 +852,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     }
 
     val ancestorsRecord = js.ObjectConstr(
-        ancestors.withFilter(_ != ObjectClass).map(ancestor => (js.Ident(genName(ancestor)), js.IntLiteral(1))))
+        ancestors.withFilter(_ != ObjectClass).map(ancestor => (genAncestorIdent(ancestor), js.IntLiteral(1)))
+    )
 
     val isInstanceFunWithGlobals: WithGlobals[js.Tree] = {
       if (globalKnowledge.isAncestorOfHijackedClass(className)) {
@@ -912,7 +902,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     isInstanceFunWithGlobals.flatMap { isInstanceFun =>
       val allParams = List(
-          js.ObjectConstr(List(js.Ident(genName(className)) -> js.IntLiteral(0))),
+          js.ObjectConstr(List(genAncestorIdent(className) -> js.IntLiteral(0))),
           js.BooleanLiteral(kind == ClassKind.Interface),
           js.StringLiteral(RuntimeClassNameMapperImpl.map(
               semantics.runtimeClassNameMapper, className.nameString)),
@@ -925,7 +915,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       val prunedParams =
         allParams.reverse.dropWhile(_.isInstanceOf[js.Undefined]).reverse
 
-      val typeData = js.Apply(js.New(globalVar(VarField.TypeData, CoreVar), Nil) DOT "initClass",
+      val typeData = js.Apply(js.New(globalVar(VarField.TypeData, CoreVar), Nil) DOT cpn.initClass,
           prunedParams)
 
       globalVarDef(VarField.d, className, typeData)
@@ -937,7 +927,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       globalKnowledge: GlobalKnowledge, pos: Position): js.Tree = {
     import TreeDSL._
 
-    globalVar(VarField.c, className).prototype DOT "$classData" := globalVar(VarField.d, className)
+    globalVar(VarField.c, className).prototype DOT cpn.classData := globalVar(VarField.d, className)
   }
 
   def genModuleAccessor(className: ClassName, isJSClass: Boolean)(

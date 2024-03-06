@@ -42,7 +42,7 @@ class MiscInteropTest {
     assumeFalse(
         "GCC wrongly optimizes this code, " +
         "see https://github.com/google/closure-compiler/issues/3498",
-        isInFullOpt)
+        usesClosureCompiler)
 
     @noinline def nonExistentGlobalVarNoInline(): Any =
       js.Dynamic.global.thisGlobalVarDoesNotExist
@@ -197,7 +197,7 @@ class MiscInteropTest {
   // Emitted classes
 
   @Test def meaningfulNameProperty(): Unit = {
-    assumeFalse("Assumed not executing in FullOpt", isInFullOpt)
+    assumeFalse("Need non-minified names", hasMinifiedNames)
 
     def nameOf(obj: Any): js.Any =
       obj.asInstanceOf[js.Dynamic].constructor.name

@@ -71,7 +71,7 @@ class LibrarySizeTest {
 
     testLinkedSizes(
       expectedFastLinkSize = 150063,
-      expectedFullLinkSizeWithoutClosure = 130664,
+      expectedFullLinkSizeWithoutClosure = 92648,
       expectedFullLinkSizeWithClosure = 21325,
       classDefs,
       moduleInitializers = MainTestModuleInitializers
@@ -98,6 +98,7 @@ object LibrarySizeTest {
     val fullLinkConfig = config
       .withSemantics(_.optimized)
       .withClosureCompilerIfAvailable(true)
+      .withMinify(true)
 
     val fastLinker = StandardImpl.linker(config)
     val fullLinker = StandardImpl.linker(fullLinkConfig)

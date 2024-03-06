@@ -54,13 +54,19 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
       s"Cannot use module kind $moduleKind with the Closure Compiler")
 
   private[this] val emitter = {
+    // Note that we do not transfer `minify` -- Closure will do its own thing anyway
     val emitterConfig = Emitter.Config(config.commonConfig.coreSpec)
       .withJSHeader(config.jsHeader)
       .withOptimizeBracketSelects(false)
       .withTrackAllGlobalRefs(true)
       .withInternalModulePattern(m => OutputPatternsImpl.moduleName(config.outputPatterns, m.id))
 
-    new Emitter(emitterConfig, ClosureLinkerBackend.PostTransformer)
+    // Do not apply ClosureAstTransformer eagerly:
+    // The ASTs used by closure are highly mutable, so re-using them is non-trivial.
+    // Since closure is slow anyways, we haven't built the optimization.
+    val postTransformer = Emitter.PostTransformer.Identity
+
+    new Emitter(emitterConfig, postTransformer)
   }
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
@@ -296,11 +302,4 @@ private object ClosureLinkerBackend {
     Function.prototype.apply;
     var NaN = 0.0/0.0, Infinity = 1.0/0.0, undefined = void 0;
     """
-
-  private object PostTransformer extends Emitter.PostTransformer[js.Tree] {
-    // Do not apply ClosureAstTransformer eagerly:
-    // The ASTs used by closure are highly mutable, so re-using them is non-trivial.
-    // Since closure is slow anyways, we haven't built the optimization.
-    def transformStats(trees: List[js.Tree], indent: Int): List[js.Tree] = trees
-  }
 }

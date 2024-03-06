@@ -185,6 +185,9 @@ def Tasks = [
         reversi$v/fastLinkJS \
         reversi$v/fullLinkJS \
         reversi$v/checksizes &&
+    sbtretry ++$scala \
+        'set Global/enableMinifyEverywhere := true' \
+        reversi$v/checksizes &&
     sbtretry ++$scala javalibintf/compile:doc compiler$v/compile:doc library$v/compile:doc \
         testInterface$v/compile:doc testBridge$v/compile:doc &&
     sbtretry ++$scala headerCheck &&
@@ -199,68 +202,84 @@ def Tasks = [
   "test-suite-default-esversion": '''
     setJavaVersion $java
     npm install &&
-    sbtretry ++$scala jUnitTestOutputsJVM$v/test jUnitTestOutputsJS$v/test testBridge$v/test \
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
+        jUnitTestOutputsJVM$v/test jUnitTestOutputsJS$v/test testBridge$v/test \
         'set scalaJSStage in Global := FullOptStage' jUnitTestOutputsJS$v/test testBridge$v/test &&
-    sbtretry ++$scala $testSuite$v/test $testSuite$v/testHtmlJSDom &&
-    sbtretry 'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test \
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
+        $testSuite$v/test $testSuite$v/testHtmlJSDom &&
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
+        'set scalaJSStage in Global := FullOptStage' \
+        $testSuite$v/test \
         $testSuite$v/testHtmlJSDom &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite$v/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
-        'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
-        ++$scala $testSuite$v/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
-        'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite$v/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
-        ++$scala $testSuite$v/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
-        'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
-        ++$scala $testSuite$v/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withAllowBigIntsForLongs(true)))' \
-        ++$scala $testSuite$v/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withAllowBigIntsForLongs(true)).withOptimizer(false))' \
-        ++$scala $testSuite$v/test &&
-    sbtretry \
+        'set scalaJSStage in Global := FullOptStage' \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
+        'set scalaJSStage in Global := FullOptStage' \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= makeCompliant' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
+        'set scalaJSStage in Global := FullOptStage' \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= { _.withSemantics(_.withStrictFloats(false)) }' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withAllowBigIntsForLongs(true)))' \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withAllowBigIntsForLongs(true)).withOptimizer(false))' \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withAvoidLetsAndConsts(false).withAvoidClasses(false)))' \
-        ++$scala $testSuite$v/test &&
-    sbtretry \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withESFeatures(_.withAvoidLetsAndConsts(false).withAvoidClasses(false)))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
-        ++$scala $testSuite$v/test &&
-    sbtretry \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
-        ++$scala $testSuite$v/test &&
-    sbtretry 'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.CommonJSModule))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test &&
-    sbtretry \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
-        ++$scala $testSuite$v/test &&
-    sbtretry \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallestModules))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
-        ++$scala $testSuite$v/test &&
-    sbtretry \
+        $testSuite$v/test &&
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleSplitStyle(ModuleSplitStyle.SmallModulesFor(List("org.scalajs.testsuite"))))' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
-        ++$scala $testSuite$v/test &&
-    sbtretry \
+        $testSuite$v/test &&
+    # The following tests the same thing whether testMinify is true or false; we also set it for regularity.
+    sbtretry ++$scala 'set Global/enableMinifyEverywhere := $testMinify' \
         'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withModuleKind(ModuleKind.ESModule))' \
         'set scalaJSStage in Global := FullOptStage' \
-        ++$scala $testSuite$v/test
+        $testSuite$v/test
   ''',
 
   "test-suite-custom-esversion-force-polyfills": '''
@@ -504,9 +523,10 @@ mainScalaVersions.each { scalaVersion ->
     quickMatrix.add([task: "main", scala: scalaVersion, java: javaVersion])
     quickMatrix.add([task: "tools", scala: scalaVersion, java: javaVersion])
   }
-  quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: mainJavaVersion, testSuite: "testSuite"])
+  quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: mainJavaVersion, testMinify: "false", testSuite: "testSuite"])
+  quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: mainJavaVersion, testMinify: "true", testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-custom-esversion", scala: scalaVersion, java: mainJavaVersion, esVersion: "ES5_1", testSuite: "testSuite"])
-  quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: mainJavaVersion, testSuite: "scalaTestSuite"])
+  quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: mainJavaVersion, testMinify: "false", testSuite: "scalaTestSuite"])
   quickMatrix.add([task: "test-suite-custom-esversion", scala: scalaVersion, java: mainJavaVersion, esVersion: "ES5_1", testSuite: "scalaTestSuite"])
   quickMatrix.add([task: "bootstrap", scala: scalaVersion, java: mainJavaVersion])
   quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion])
@@ -527,7 +547,7 @@ otherScalaVersions.each { scalaVersion ->
 }
 mainScalaVersions.each { scalaVersion ->
   otherJavaVersions.each { javaVersion ->
-    quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: javaVersion, testSuite: "testSuite"])
+    quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: javaVersion, testMinify: "false", testSuite: "testSuite"])
   }
   fullMatrix.add([task: "partest-noopt", scala: scalaVersion, java: mainJavaVersion])
   fullMatrix.add([task: "partest-fullopt", scala: scalaVersion, java: mainJavaVersion])

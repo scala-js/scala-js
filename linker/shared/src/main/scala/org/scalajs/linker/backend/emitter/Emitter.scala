@@ -39,6 +39,9 @@ final class Emitter[E >: Null <: js.Tree](
   import Emitter._
   import config._
 
+  require(!config.minify || postTransformer == PostTransformer.Identity,
+      "When using the 'minify' option, the postTransformer must be Identity.")
+
   private implicit val globalRefTracking: GlobalRefTracking =
     config.topLevelGlobalRefTracking
 
@@ -49,10 +52,14 @@ final class Emitter[E >: Null <: js.Tree](
   private val nameGen: NameGen = new NameGen
 
   private class State(val lastMentionedDangerousGlobalRefs: Set[String]) {
+    val nameCompressor =
+      if (minify) Some(new NameCompressor(config))
+      else None
+
     val sjsGen: SJSGen = {
       val jsGen = new JSGen(config)
       val varGen = new VarGen(jsGen, nameGen, lastMentionedDangerousGlobalRefs)
-      new SJSGen(jsGen, nameGen, varGen)
+      new SJSGen(jsGen, nameGen, varGen, nameCompressor)
     }
 
     val classEmitter: ClassEmitter = new ClassEmitter(sjsGen)
@@ -87,7 +94,7 @@ final class Emitter[E >: Null <: js.Tree](
   def emit(moduleSet: ModuleSet, logger: Logger): Result[E] = {
     val WithGlobals(body, globalRefs) = emitInternal(moduleSet, logger)
 
-    moduleKind match {
+    val result = moduleKind match {
       case ModuleKind.NoModule =>
         assert(moduleSet.modules.size <= 1)
         val topLevelVars = moduleSet.modules
@@ -112,6 +119,19 @@ final class Emitter[E >: Null <: js.Tree](
       case ModuleKind.ESModule | ModuleKind.CommonJSModule =>
         new Result(config.jsHeader, body, "", Nil, globalRefs)
     }
+
+    for (compressor <- state.nameCompressor) {
+      compressor.allocateNames(moduleSet, logger)
+
+      /* Throw away the whole state, but keep the mentioned dangerous global refs.
+       * Note that instances of the name compressor's entries are still alive
+       * at this point, since they are referenced from `DelayedIdent` nodes in
+       * the result trees.
+       */
+      state = new State(state.lastMentionedDangerousGlobalRefs)
+    }
+
+    result
   }
 
   private def emitInternal(moduleSet: ModuleSet,
@@ -1084,7 +1104,8 @@ object Emitter {
       val jsHeader: String,
       val internalModulePattern: ModuleID => String,
       val optimizeBracketSelects: Boolean,
-      val trackAllGlobalRefs: Boolean
+      val trackAllGlobalRefs: Boolean,
+      val minify: Boolean
   ) {
     private def this(
         semantics: Semantics,
@@ -1097,7 +1118,9 @@ object Emitter {
           jsHeader = "",
           internalModulePattern = "./" + _.id,
           optimizeBracketSelects = true,
-          trackAllGlobalRefs = false)
+          trackAllGlobalRefs = false,
+          minify = false
+      )
     }
 
     private[emitter] val topLevelGlobalRefTracking: GlobalRefTracking =
@@ -1127,6 +1150,9 @@ object Emitter {
     def withTrackAllGlobalRefs(trackAllGlobalRefs: Boolean): Config =
       copy(trackAllGlobalRefs = trackAllGlobalRefs)
 
+    def withMinify(minify: Boolean): Config =
+      copy(minify = minify)
+
     private def copy(
         semantics: Semantics = semantics,
         moduleKind: ModuleKind = moduleKind,
@@ -1134,9 +1160,12 @@ object Emitter {
         jsHeader: String = jsHeader,
         internalModulePattern: ModuleID => String = internalModulePattern,
         optimizeBracketSelects: Boolean = optimizeBracketSelects,
-        trackAllGlobalRefs: Boolean = trackAllGlobalRefs): Config = {
+        trackAllGlobalRefs: Boolean = trackAllGlobalRefs,
+        minify: Boolean = minify
+    ): Config = {
       new Config(semantics, moduleKind, esFeatures, jsHeader,
-          internalModulePattern, optimizeBracketSelects, trackAllGlobalRefs)
+          internalModulePattern, optimizeBracketSelects, trackAllGlobalRefs,
+          minify)
     }
   }
 
@@ -1147,6 +1176,12 @@ object Emitter {
 
   trait PostTransformer[E] {
     def transformStats(trees: List[js.Tree], indent: Int): List[E]
+  }
+
+  object PostTransformer {
+    object Identity extends PostTransformer[js.Tree] {
+      def transformStats(trees: List[js.Tree], indent: Int): List[js.Tree] = trees
+    }
   }
 
   private final class DesugaredClassCache[E >: Null] {

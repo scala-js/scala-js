@@ -30,12 +30,16 @@ class PrintersTest {
   private implicit def str2ident(name: String): Ident =
     Ident(name, ir.OriginalName.NoOriginalName)
 
-  private def assertPrintEquals(expected: String, tree: Tree): Unit = {
+  private def printTree(tree: Tree): String = {
     val out = new ByteArrayWriter
     val printer = new Printers.JSTreePrinter(out)
     printer.printStat(tree)
-    assertEquals(expected.stripMargin.trim + "\n",
-        new String(out.toByteArray(), UTF_8))
+    new String(out.toByteArray(), UTF_8)
+  }
+
+  private def assertPrintEquals(expected: String, tree: Tree): Unit = {
+    val printResult = printTree(tree)
+    assertEquals(expected.stripMargin.trim + "\n", printResult)
   }
 
   @Test def printFunctionDef(): Unit = {
@@ -157,6 +161,33 @@ class PrintersTest {
         If(BooleanLiteral(false), IntLiteral(1),
             If(BooleanLiteral(true), IntLiteral(2), IntLiteral(3)))
     )
+  }
+
+  @Test def delayedIdentPrintVersusShow(): Unit = {
+    locally {
+      object resolver extends DelayedIdent.Resolver {
+        def resolve(): String = "foo"
+        def debugString: String = "bar"
+      }
+
+      val tree = DotSelect(VarRef("x"), DelayedIdent(resolver))
+
+      assertPrintEquals("x.foo;", tree)
+      assertEquals("x.<delayed:bar>;", tree.show)
+    }
+
+    // Even when `resolve()` throws, `show` still succeeds based on `debugString`.
+    locally {
+      object resolver extends DelayedIdent.Resolver {
+        def resolve(): String = throw new IllegalStateException("not ready")
+        def debugString: String = "bar"
+      }
+
+      val tree = DotSelect(VarRef("x"), DelayedIdent(resolver))
+
+      assertThrows(classOf[IllegalStateException], () => printTree(tree))
+      assertEquals("x.<delayed:bar>;", tree.show)
+    }
   }
 
   @Test def showPrintedTree(): Unit = {

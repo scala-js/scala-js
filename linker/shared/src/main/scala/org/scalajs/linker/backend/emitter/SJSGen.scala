@@ -32,7 +32,8 @@ import PolyfillableBuiltin._
 private[emitter] final class SJSGen(
     val jsGen: JSGen,
     val nameGen: NameGen,
-    val varGen: VarGen
+    val varGen: VarGen,
+    val nameCompressor: Option[NameCompressor]
 ) {
 
   import jsGen._
@@ -41,6 +42,108 @@ private[emitter] final class SJSGen(
   import varGen._
 
   val useBigIntForLongs = esFeatures.allowBigIntsForLongs
+
+  /** Core Property Names. */
+  object cpn {
+    // --- Scala.js objects ---
+
+    /** The class-wide classData field of Scala.js objects, which references their TypeData. */
+    val classData = "$classData" // always in full; it is used as identification of Scala.js objects
+
+    // --- Class ---
+
+    /** `Char.c`: the int value of the character. */
+    val c = "c"
+
+    // --- TypeData private fields ---
+
+    /** `TypeData.constr`: the run-time constructor of the class. */
+    val constr = if (minify) "C" else "constr"
+
+    /** `TypeData.parentData`: the super class data. */
+    val parentData = if (minify) "P" else "parentData"
+
+    /** `TypeData.ancestors`: dictionary where keys are the ancestor names of all ancestors. */
+    val ancestors = if (minify) "n" else "ancestors"
+
+    /** `TypeData.componentData`: the `TypeData` of the component type of an array type. */
+    val componentData = if (minify) "O" else "componentData"
+
+    /** `TypeData.arrayBase`: the `TypeData` of the base type of an array type. */
+    val arrayBase = if (minify) "B" else "arrayBase"
+
+    /** `TypeData.arrayDepth`: the depth of an array type. */
+    val arrayDepth = if (minify) "D" else "arrayDepth"
+
+    /** `TypeData.zero`: the zero value of the type. */
+    val zero = if (minify) "z" else "zero"
+
+    /** `TypeData.arrayEncodedName`: the name of the type as it appears in its array type's name. */
+    val arrayEncodedName = if (minify) "E" else "arrayEncodedName"
+
+    /** `TypeData._classOf`: the field storing the `jl.Class` instance for that type. */
+    val _classOf = if (minify) "L" else "_classOf"
+
+    /** `TypeData._arrayOf`: the field storing the `TypeData` for that type's array type. */
+    val _arrayOf = if (minify) "A" else "_arrayOf"
+
+    /** `TypeData.isAssignableFromFun`: the implementation of `jl.Class.isAssignableFrom` without fast path. */
+    val isAssignableFromFun = if (minify) "F" else "isAssignableFromFun"
+
+    /** `TypeData.wrapArray`: the function to create an ArrayClass instance from a JS array of its elements. */
+    val wrapArray = if (minify) "w" else "wrapArray"
+
+    /** `TypeData.isJSType`: whether it is a JS type. */
+    val isJSType = if (minify) "J" else "isJSType"
+
+    // --- TypeData constructors ---
+
+    val initPrim = if (minify) "p" else "initPrim"
+
+    val initClass = if (minify) "i" else "initClass"
+
+    val initSpecializedArray = if (minify) "y" else "initSpecializedArray"
+
+    val initArray = if (minify) "a" else "initArray"
+
+    // --- TypeData private methods ---
+
+    /** `TypeData.getArrayOf()`: the `Type` instance for that type's array type. */
+    val getArrayOf = if (minify) "r" else "getArrayOf"
+
+    /** `TypeData.getClassOf()`: the `jl.Class` instance for that type. */
+    val getClassOf = if (minify) "l" else "getClassOf"
+
+    // --- TypeData public fields --- never minified
+
+    /** `TypeData.name`: public, the user name of the class (the result of `jl.Class.getName()`). */
+    val name = "name"
+
+    /** `TypeData.isPrimitive`: public, whether it is a primitive type. */
+    val isPrimitive = "isPrimitive"
+
+    /** `TypeData.isInterface`: public, whether it is an interface type. */
+    val isInterface = "isInterface"
+
+    /** `TypeData.isArrayClass`: public, whether it is an array type. */
+    val isArrayClass = "isArrayClass"
+
+    /** `TypeData.isInstance()`: public, implementation of `jl.Class.isInstance`. */
+    val isInstance = "isInstance"
+
+    /** `TypeData.isAssignableFrom()`: public, implementation of `jl.Class.isAssignableFrom`. */
+    val isAssignableFrom = "isAssignableFrom"
+
+    // --- TypeData public methods --- never minified
+
+    val checkCast = "checkCast"
+
+    val getSuperclass = "getSuperclass"
+
+    val getComponentType = "getComponentType"
+
+    val newArrayOfThisClass = "newArrayOfThisClass"
+  }
 
   def genZeroOf(tpe: Type)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
@@ -149,36 +252,43 @@ private[emitter] final class SJSGen(
     }
   }
 
-  def genUncheckedArraycopy(args: List[Tree])(
-      implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
-      pos: Position): Tree = {
-    import TreeDSL._
-
-    assert(args.lengthCompare(5) == 0,
-        s"wrong number of args for genUncheckedArrayCopy: $args")
-
-    if (esFeatures.esVersion >= ESVersion.ES2015 && semantics.nullPointers == CheckedBehavior.Unchecked)
-      Apply(args.head DOT "copyTo", args.tail)
-    else
-      genCallHelper(VarField.systemArraycopy, args: _*)
-  }
-
   def genSelect(receiver: Tree, field: irt.FieldIdent)(
       implicit pos: Position): Tree = {
-    DotSelect(receiver, Ident(genName(field.name))(field.pos))
+    DotSelect(receiver, genFieldIdent(field.name)(field.pos))
   }
 
-  def genSelect(receiver: Tree, field: irt.FieldIdent,
+  def genSelectForDef(receiver: Tree, field: irt.FieldIdent,
       originalName: OriginalName)(
       implicit pos: Position): Tree = {
-    val jsName = genName(field.name)
-    val jsOrigName = genOriginalName(field.name, originalName, jsName)
-    DotSelect(receiver, Ident(jsName, jsOrigName)(field.pos))
+    DotSelect(receiver, genFieldIdentForDef(field.name, originalName)(field.pos))
+  }
+
+  private def genFieldIdent(fieldName: FieldName)(
+      implicit pos: Position): MaybeDelayedIdent = {
+    nameCompressor match {
+      case None =>
+        Ident(genName(fieldName))
+      case Some(compressor) =>
+        DelayedIdent(compressor.genResolverFor(fieldName))
+    }
+  }
+
+  private def genFieldIdentForDef(fieldName: FieldName,
+      originalName: OriginalName)(
+      implicit pos: Position): MaybeDelayedIdent = {
+    nameCompressor match {
+      case None =>
+        val jsName = genName(fieldName)
+        val jsOrigName = genOriginalName(fieldName, originalName, jsName)
+        Ident(jsName, jsOrigName)
+      case Some(compressor) =>
+        DelayedIdent(compressor.genResolverFor(fieldName), originalName.orElse(fieldName))
+    }
   }
 
   def genApply(receiver: Tree, methodName: MethodName, args: List[Tree])(
       implicit pos: Position): Tree = {
-    Apply(DotSelect(receiver, Ident(genMethodName(methodName))), args)
+    Apply(DotSelect(receiver, genMethodIdent(methodName)), args)
   }
 
   def genApply(receiver: Tree, methodName: MethodName, args: Tree*)(
@@ -186,8 +296,68 @@ private[emitter] final class SJSGen(
     genApply(receiver, methodName, args.toList)
   }
 
-  def genMethodName(methodName: MethodName): String =
-    genName(methodName)
+  def genMethodIdent(methodIdent: irt.MethodIdent): MaybeDelayedIdent =
+    genMethodIdent(methodIdent.name)(methodIdent.pos)
+
+  def genMethodIdentForDef(methodIdent: irt.MethodIdent,
+      originalName: OriginalName): MaybeDelayedIdent = {
+    genMethodIdentForDef(methodIdent.name, originalName)(methodIdent.pos)
+  }
+
+  def genMethodIdent(methodName: MethodName)(implicit pos: Position): MaybeDelayedIdent = {
+    nameCompressor match {
+      case None             => Ident(genName(methodName))
+      case Some(compressor) => DelayedIdent(compressor.genResolverFor(methodName))
+    }
+  }
+
+  def genMethodIdentForDef(methodName: MethodName, originalName: OriginalName)(
+      implicit pos: Position): MaybeDelayedIdent = {
+    nameCompressor match {
+      case None =>
+        val jsName = genName(methodName)
+        val jsOrigName = genOriginalName(methodName, originalName, jsName)
+        Ident(jsName, jsOrigName)
+      case Some(compressor) =>
+        DelayedIdent(compressor.genResolverFor(methodName), originalName.orElse(methodName))
+    }
+  }
+
+  def genArrayClassPropApply(receiver: Tree, prop: ArrayClassProperty, args: Tree*)(
+      implicit pos: Position): Tree = {
+    genArrayClassPropApply(receiver, prop, args.toList)
+  }
+
+  def genArrayClassPropApply(receiver: Tree, prop: ArrayClassProperty, args: List[Tree])(
+      implicit pos: Position): Tree = {
+    Apply(genArrayClassPropSelect(receiver, prop), args)
+  }
+
+  def genArrayClassPropSelect(qualifier: Tree, prop: ArrayClassProperty)(
+      implicit pos: Position): Tree = {
+    DotSelect(qualifier, genArrayClassProperty(prop))
+  }
+
+  def genArrayClassProperty(prop: ArrayClassProperty)(implicit pos: Position): MaybeDelayedIdent = {
+    nameCompressor match {
+      case None             => Ident(prop.nonMinifiedName)
+      case Some(compressor) => DelayedIdent(compressor.genResolverFor(prop))
+    }
+  }
+
+  def genArrayClassPropertyForDef(prop: ArrayClassProperty)(implicit pos: Position): MaybeDelayedIdent = {
+    nameCompressor match {
+      case None             => Ident(prop.nonMinifiedName)
+      case Some(compressor) => DelayedIdent(compressor.genResolverFor(prop), prop.originalName)
+    }
+  }
+
+  def genAncestorIdent(ancestor: ClassName)(implicit pos: Position): MaybeDelayedIdent = {
+    nameCompressor match {
+      case None             => Ident(genName(ancestor))
+      case Some(compressor) => DelayedIdent(compressor.genResolverForAncestor(ancestor))
+    }
+  }
 
   def genJSPrivateSelect(receiver: Tree, field: irt.FieldIdent)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
@@ -559,14 +729,14 @@ private[emitter] final class SJSGen(
       case ArrayTypeRef(ClassRef(ObjectClass), 1) =>
         globalVar(VarField.ac, ObjectClass)
       case _ =>
-        genClassDataOf(arrayTypeRef) DOT "constr"
+        genClassDataOf(arrayTypeRef) DOT cpn.constr
     }
   }
 
   def genClassOf(typeRef: TypeRef)(
       implicit moduleContext: ModuleContext, globalKnowledge: GlobalKnowledge,
       pos: Position): Tree = {
-    Apply(DotSelect(genClassDataOf(typeRef), Ident("getClassOf")), Nil)
+    Apply(DotSelect(genClassDataOf(typeRef), Ident(cpn.getClassOf)), Nil)
   }
 
   def genClassOf(className: ClassName)(
@@ -585,7 +755,7 @@ private[emitter] final class SJSGen(
       case ArrayTypeRef(base, dims) =>
         val baseData = genClassDataOf(base)
         (1 to dims).foldLeft[Tree](baseData) { (prev, _) =>
-          Apply(DotSelect(prev, Ident("getArrayOf")), Nil)
+          Apply(DotSelect(prev, Ident(cpn.getArrayOf)), Nil)
         }
     }
   }

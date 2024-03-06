@@ -632,12 +632,11 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 }
 
                 if (checked) {
-                  js.Apply(js.DotSelect(genArray, js.Ident("set")),
-                      List(genIndex, genRhs))
+                  genArrayClassPropApply(genArray, ArrayClassProperty.set, genIndex, genRhs)
                 } else {
                   js.Assign(
                       js.BracketSelect(
-                          js.DotSelect(genArray, js.Ident("u"))(lhs.pos),
+                          genArrayClassPropSelect(genArray, ArrayClassProperty.u)(lhs.pos),
                           genIndex)(lhs.pos),
                       genRhs)
                 }
@@ -875,12 +874,19 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             implicit val env = env0
             val jsArgs = newArgs.map(transformExprNoChar(_))
 
+            def genUnchecked(): js.Tree = {
+              if (esFeatures.esVersion >= ESVersion.ES2015 && semantics.nullPointers == CheckedBehavior.Unchecked)
+                genArrayClassPropApply(jsArgs.head, ArrayClassProperty.copyTo, jsArgs.tail)
+              else
+                genCallHelper(VarField.systemArraycopy, jsArgs: _*)
+            }
+
             if (semantics.arrayStores == Unchecked) {
-              genUncheckedArraycopy(jsArgs)
+              genUnchecked()
             } else {
               (src.tpe, dest.tpe) match {
                 case (PrimArray(srcPrimRef), PrimArray(destPrimRef)) if srcPrimRef == destPrimRef =>
-                  genUncheckedArraycopy(jsArgs)
+                  genUnchecked()
                 case (RefArray(), RefArray()) =>
                   genCallHelper(VarField.systemArraycopyRefs, jsArgs: _*)
                 case _ =>
@@ -2245,7 +2251,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           val newArgs = transformTypedArgs(method.name, args)
 
           def genNormalApply(): js.Tree =
-            js.Apply(newReceiver(false) DOT transformMethodIdent(method), newArgs)
+            js.Apply(newReceiver(false) DOT genMethodIdent(method), newArgs)
 
           def genDispatchApply(): js.Tree =
             js.Apply(globalVar(VarField.dp, methodName), newReceiver(false) :: newArgs)
@@ -2308,7 +2314,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             genApplyStaticLike(VarField.f, className, method, transformedArgs)
           } else {
             val fun =
-              globalVar(VarField.c, className).prototype DOT transformMethodIdent(method)
+              globalVar(VarField.c, className).prototype DOT genMethodIdent(method)
             js.Apply(fun DOT "call", transformedArgs)
           }
 
@@ -2650,17 +2656,19 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               genArrayValue(typeRef, elems.map(transformExpr(_, preserveChar))))
 
         case ArrayLength(array) =>
-          genIdentBracketSelect(js.DotSelect(transformExprNoChar(checkNotNull(array)),
-              js.Ident("u")), "length")
+          val newArray = transformExprNoChar(checkNotNull(array))
+          genIdentBracketSelect(
+              genArrayClassPropSelect(newArray, ArrayClassProperty.u),
+              "length")
 
         case ArraySelect(array, index) =>
           val newArray = transformExprNoChar(checkNotNull(array))
           val newIndex = transformExprNoChar(index)
           semantics.arrayIndexOutOfBounds match {
             case CheckedBehavior.Compliant | CheckedBehavior.Fatal =>
-              js.Apply(js.DotSelect(newArray, js.Ident("get")), List(newIndex))
+              genArrayClassPropApply(newArray, ArrayClassProperty.get, newIndex)
             case CheckedBehavior.Unchecked =>
-              js.BracketSelect(js.DotSelect(newArray, js.Ident("u")), newIndex)
+              js.BracketSelect(genArrayClassPropSelect(newArray, ArrayClassProperty.u), newIndex)
           }
 
         case tree: RecordSelect =>
@@ -2736,7 +2744,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           js.DotSelect(
               genSelect(transformExprNoChar(checkNotNull(runtimeClass)),
                   FieldIdent(dataFieldName)),
-              js.Ident("zero"))
+              js.Ident(cpn.zero))
 
         case Transient(NativeArrayWrapper(elemClass, nativeArray)) =>
           val newNativeArray = transformExprNoChar(nativeArray)
@@ -2750,8 +2758,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   transformExprNoChar(checkNotNull(elemClass)),
                   FieldIdent(dataFieldName))
               val arrayClassData = js.Apply(
-                  js.DotSelect(elemClassData, js.Ident("getArrayOf")), Nil)
-              js.Apply(arrayClassData DOT "wrapArray", newNativeArray :: Nil)
+                  js.DotSelect(elemClassData, js.Ident(cpn.getArrayOf)), Nil)
+              js.Apply(arrayClassData DOT cpn.wrapArray, newNativeArray :: Nil)
           }
 
         case Transient(ObjectClassName(obj)) =>
@@ -2759,12 +2767,13 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case Transient(ArrayToTypedArray(expr, primRef)) =>
           val value = transformExprNoChar(checkNotNull(expr))
+          val valueUnderlying = genArrayClassPropSelect(value, ArrayClassProperty.u)
 
           if (es2015) {
-            js.Apply(genIdentBracketSelect(value.u, "slice"), Nil)
+            js.Apply(genIdentBracketSelect(valueUnderlying, "slice"), Nil)
           } else {
             val typedArrayClass = extractWithGlobals(typedArrayRef(primRef).get)
-            js.New(typedArrayClass, value.u :: Nil)
+            js.New(typedArrayClass, valueUnderlying :: Nil)
           }
 
         case Transient(TypedArrayToArray(expr, primRef)) =>
@@ -3199,9 +3208,6 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
     private def transformLabelIdent(ident: LabelIdent): js.Ident =
       js.Ident(genName(ident.name))(ident.pos)
-
-    private def transformMethodIdent(ident: MethodIdent): js.Ident =
-      js.Ident(genMethodName(ident.name))(ident.pos)
 
     private def transformLocalVarIdent(ident: LocalIdent): js.Ident =
       js.Ident(transformLocalName(ident.name))(ident.pos)

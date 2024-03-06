@@ -139,7 +139,7 @@ object Printers {
      *  - No leading indent.
      *  - No trailing newline.
      */
-    def printTree(tree: Tree, isStat: Boolean): Unit = {
+    protected def printTree(tree: Tree, isStat: Boolean): Unit = {
       def printSeparatorIfStat() = {
         if (isStat)
           print(';')
@@ -747,9 +747,13 @@ object Printers {
     protected def print(ident: Ident): Unit =
       printEscapeJS(ident.name)
 
+    protected def print(ident: DelayedIdent): Unit =
+      printEscapeJS(ident.resolveName())
+
     private final def print(propName: PropertyName): Unit = propName match {
-      case lit: StringLiteral => print(lit: Tree)
-      case ident: Ident       => print(ident)
+      case lit: StringLiteral  => print(lit: Tree)
+      case ident: Ident        => print(ident)
+      case ident: DelayedIdent => print(ident)
 
       case ComputedName(tree) =>
         print("[")
@@ -777,7 +781,7 @@ object Printers {
 
     private var column = 0
 
-    override def printTree(tree: Tree, isStat: Boolean): Unit = {
+    override protected def printTree(tree: Tree, isStat: Boolean): Unit = {
       val pos = tree.pos
       if (pos.isDefined)
         sourceMap.startNode(column, pos)
@@ -795,6 +799,14 @@ object Printers {
       if (ident.pos.isDefined)
         sourceMap.startIdentNode(column, ident.pos, ident.originalName)
       super.print(ident)
+      if (ident.pos.isDefined)
+        sourceMap.endNode(column)
+    }
+
+    override protected def print(ident: DelayedIdent): Unit = {
+      if (ident.pos.isDefined)
+        sourceMap.startIdentNode(column, ident.pos, ident.originalName)
+      printEscapeJS(ident.resolveName())
       if (ident.pos.isDefined)
         sourceMap.endNode(column)
     }
@@ -830,4 +842,24 @@ object Printers {
     }
   }
 
+  /** Shows a `Tree` for debugging purposes, not for pretty-printing. */
+  private[javascript] def showTree(tree: Tree): String = {
+    val writer = new ByteArrayWriter()
+    val printer = new Printers.JSTreeShowPrinter(writer)
+    printer.printTreeForShow(tree)
+    new String(writer.toByteArray(), StandardCharsets.US_ASCII)
+  }
+
+  /** A printer that shows `Tree`s for debugging, not for pretty-printing. */
+  private class JSTreeShowPrinter(_out: ByteArrayWriter, initIndent: Int = 0)
+      extends JSTreePrinter(_out, initIndent) {
+    def printTreeForShow(tree: Tree): Unit =
+      printTree(tree, isStat = true)
+
+    override protected def print(ident: DelayedIdent): Unit = {
+      print("<delayed:")
+      print(ident.resolver.debugString)
+      print(">")
+    }
+  }
 }
