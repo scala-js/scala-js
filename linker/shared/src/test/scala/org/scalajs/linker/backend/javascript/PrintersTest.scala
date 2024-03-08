@@ -163,6 +163,34 @@ class PrintersTest {
     )
   }
 
+  @Test def printObjectLiteral(): Unit = {
+    assertPrintEquals("({});", ObjectConstr(Nil))
+
+    assertPrintEquals(
+      """
+        |({
+        |  "foo": 1
+        |});
+      """,
+      ObjectConstr(List(StringLiteral("foo") -> IntLiteral(1)))
+    )
+
+    assertPrintEquals(
+      """
+        |({
+        |  "foo": 1,
+        |  ["bar"]: 2,
+        |  baz: 3
+        |});
+      """,
+      ObjectConstr(List(
+        StringLiteral("foo") -> IntLiteral(1),
+        ComputedName(StringLiteral("bar")) -> IntLiteral(2),
+        Ident("baz") -> IntLiteral(3)
+      ))
+    )
+  }
+
   @Test def delayedIdentPrintVersusShow(): Unit = {
     locally {
       object resolver extends DelayedIdent.Resolver {

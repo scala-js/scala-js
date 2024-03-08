@@ -491,15 +491,17 @@ object Printers {
           printSeparatorIfStat()
 
         case ObjectConstr(Nil) =>
-          if (isStat)
-            print("({});") // force expression position for the object literal
-          else
-            print("{}")
+          /* #4949 Always wrap object literals with () in case they end up at
+           * the start of an `ExpressionStatement`.
+           */
+          print("({})")
+          printSeparatorIfStat()
 
         case ObjectConstr(fields) =>
-          if (isStat)
-            print('(') // force expression position for the object literal
-          print('{')
+          /* #4949 Always wrap object literals with () in case they end up at
+           * the start of an `ExpressionStatement`.
+           */
+          print("({")
           indent()
           println()
           var rest = fields
@@ -517,9 +519,8 @@ object Printers {
           }
           undent()
           printIndent()
-          print('}')
-          if (isStat)
-            print(");")
+          print("})")
+          printSeparatorIfStat()
 
         // Literals
 

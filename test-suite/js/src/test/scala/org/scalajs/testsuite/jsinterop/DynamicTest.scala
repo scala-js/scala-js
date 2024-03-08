@@ -109,11 +109,19 @@ class DynamicTest {
     assertJSUndefined(obj_anything)
   }
 
-  @Test def objectLiteralInStatementPosition_Issue1627(): Unit = {
-    // Just make sure it does not cause a SyntaxError
+  @Test def objectLiteralInStatementPosition_Issue1627_Issue4949(): Unit = {
+    @noinline def dynProp(): String = "foo"
+
+    // Just make sure those statements do not cause a SyntaxError
     js.Dynamic.literal(foo = "bar")
-    // and also test the case without param (different code path in Printers)
     js.Dynamic.literal()
+    js.Dynamic.literal(foo = "bar").foo
+    js.Dynamic.literal(foo = () => "bar").foo()
+    js.Dynamic.literal(foo = "bar").foo = "babar"
+    js.Dynamic.literal(foo = "foo").selectDynamic(dynProp())
+    js.Dynamic.literal(foo = "foo").updateDynamic(dynProp())("babar")
+    js.Dynamic.literal(foo = () => "bar").applyDynamic(dynProp())()
+    js.Dynamic.literal(foo = "bar") + js.Dynamic.literal(foobar = "babar")
   }
 
   @Test def objectLiteralConstructionWithDynamicNaming(): Unit = {
