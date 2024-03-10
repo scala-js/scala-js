@@ -216,7 +216,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
         writer.write(footer)
       }
 
-      protected def writeModuleWithoutSourceMap(moduleID: ModuleID, force: Boolean): Option[ByteBuffer] = {
+      protected def writeModuleWithoutSourceMap(moduleID: ModuleID): Option[ByteBuffer] = {
         val jsFileWriter = new ByteArrayOutputStream()
         val jsFileStrWriter = new java.io.OutputStreamWriter(jsFileWriter, StandardCharsets.UTF_8)
         writeCode(jsFileStrWriter)
@@ -224,7 +224,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
         Some(ByteBuffer.wrap(jsFileWriter.toByteArray()))
       }
 
-      protected def writeModuleWithSourceMap(moduleID: ModuleID, force: Boolean): Option[(ByteBuffer, ByteBuffer)] = {
+      protected def writeModuleWithSourceMap(moduleID: ModuleID): Option[(ByteBuffer, ByteBuffer)] = {
         val jsFileURI = OutputPatternsImpl.jsFileURI(config.outputPatterns, moduleID.id)
         val sourceMapURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)
 

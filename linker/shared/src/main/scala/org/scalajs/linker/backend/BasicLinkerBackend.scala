@@ -90,11 +90,11 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
     val allChanged = allChanged0 || config.minify
 
     val writer = new OutputWriter(output, config, skipContentCheck) {
-      protected def writeModuleWithoutSourceMap(moduleID: ModuleID, force: Boolean): Option[ByteBuffer] = {
+      protected def writeModuleWithoutSourceMap(moduleID: ModuleID): Option[ByteBuffer] = {
         val cache = printedModuleSetCache.getModuleCache(moduleID)
         val (trees, changed) = emitterResult.body(moduleID)
 
-        if (force || changed || allChanged) {
+        if (changed || allChanged) {
           rewrittenModules.incrementAndGet()
 
           val jsFileWriter = new ByteArrayWriter(sizeHintFor(cache.getPreviousFinalJSFileSize()))
@@ -113,11 +113,11 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
         }
       }
 
-      protected def writeModuleWithSourceMap(moduleID: ModuleID, force: Boolean): Option[(ByteBuffer, ByteBuffer)] = {
+      protected def writeModuleWithSourceMap(moduleID: ModuleID): Option[(ByteBuffer, ByteBuffer)] = {
         val cache = printedModuleSetCache.getModuleCache(moduleID)
         val (trees, changed) = emitterResult.body(moduleID)
 
-        if (force || changed || allChanged) {
+        if (changed || allChanged) {
           rewrittenModules.incrementAndGet()
 
           val jsFileWriter = new ByteArrayWriter(sizeHintFor(cache.getPreviousFinalJSFileSize()))

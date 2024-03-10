@@ -30,9 +30,9 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
   private val outputImpl = OutputDirectoryImpl.fromOutputDirectory(output)
   private val moduleKind = config.commonConfig.coreSpec.moduleKind
 
-  protected def writeModuleWithoutSourceMap(moduleID: ModuleID, force: Boolean): Option[ByteBuffer]
+  protected def writeModuleWithoutSourceMap(moduleID: ModuleID): Option[ByteBuffer]
 
-  protected def writeModuleWithSourceMap(moduleID: ModuleID, force: Boolean): Option[(ByteBuffer, ByteBuffer)]
+  protected def writeModuleWithSourceMap(moduleID: ModuleID): Option[(ByteBuffer, ByteBuffer)]
 
   def write(moduleSet: ModuleSet)(implicit ec: ExecutionContext): Future[Report] = {
     val ioThrottler = new IOThrottler(config.maxConcurrentWrites)
@@ -68,9 +68,8 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
     if (config.sourceMap) {
       val sourceMapFileName = OutputPatternsImpl.sourceMapFile(config.outputPatterns, moduleID.id)
       val report = new ReportImpl.ModuleImpl(moduleID.id, jsFileName, Some(sourceMapFileName), moduleKind)
-      val force = !existingFiles.contains(jsFileName) || !existingFiles.contains(sourceMapFileName)
 
-      writeModuleWithSourceMap(moduleID, force) match {
+      writeModuleWithSourceMap(moduleID) match {
         case Some((code, sourceMap)) =>
           for {
             _ <- outputImpl.writeFull(jsFileName, code, skipContentCheck)
@@ -83,9 +82,8 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
       }
     } else {
       val report = new ReportImpl.ModuleImpl(moduleID.id, jsFileName, None, moduleKind)
-      val force = !existingFiles.contains(jsFileName)
 
-      writeModuleWithoutSourceMap(moduleID, force) match {
+      writeModuleWithoutSourceMap(moduleID) match {
         case Some(code) =>
           for {
             _ <- outputImpl.writeFull(jsFileName, code, skipContentCheck)
