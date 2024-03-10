@@ -137,7 +137,7 @@ class EmitterTest {
     raw"""Emitter: Method tree cache stats: reused: (\d+) -- invalidated: (\d+)""".r
 
   private val EmitterPostTransformStatsMessage =
-    raw"""Emitter: Post transforms: total: (\d+) -- nested: (\d+) -- nested avoided: (\d+)""".r
+    raw"""Emitter: Post transforms: (\d+)""".r
 
   /** Makes sure that linking a "substantial" program (using `println`) twice
    *  does not invalidate any cache or top-level tree in the second run.
@@ -208,21 +208,18 @@ class EmitterTest {
 
       // Post transforms
 
-      val Seq(postTransforms1, nestedPostTransforms1, _) =
+      val Seq(postTransforms1) =
         lines1.assertContainsMatch(EmitterPostTransformStatsMessage).map(_.toInt)
 
-      val Seq(postTransforms2, nestedPostTransforms2, _) =
+      val Seq(postTransforms2) =
         lines2.assertContainsMatch(EmitterPostTransformStatsMessage).map(_.toInt)
 
-      // At the time of writing this test, postTransforms1 reports 216
+      // At the time of writing this test, postTransforms1 reports 188
       assertTrue(
           s"Not enough post transforms (got $postTransforms1); extraction must have gone wrong",
-          postTransforms1 > 200)
+          postTransforms1 > 180)
 
-      assertEquals("Second run must only have nested post transforms",
-          nestedPostTransforms2, postTransforms2)
-      assertEquals("Both runs must have the same number of nested post transforms",
-          nestedPostTransforms1, nestedPostTransforms2)
+      assertEquals("Second run may not have post transforms", 0, postTransforms2)
     }
   }
 }
