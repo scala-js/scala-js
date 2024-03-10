@@ -216,15 +216,17 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
         writer.write(footer)
       }
 
-      protected def writeModuleWithoutSourceMap(moduleID: ModuleID): Option[ByteBuffer] = {
+      protected def moduleChanged(moduleID: ModuleID): Boolean = true // no incremental support
+
+      protected def writeModuleWithoutSourceMap(moduleID: ModuleID): ByteBuffer = {
         val jsFileWriter = new ByteArrayOutputStream()
         val jsFileStrWriter = new java.io.OutputStreamWriter(jsFileWriter, StandardCharsets.UTF_8)
         writeCode(jsFileStrWriter)
         jsFileStrWriter.flush()
-        Some(ByteBuffer.wrap(jsFileWriter.toByteArray()))
+        ByteBuffer.wrap(jsFileWriter.toByteArray())
       }
 
-      protected def writeModuleWithSourceMap(moduleID: ModuleID): Option[(ByteBuffer, ByteBuffer)] = {
+      protected def writeModuleWithSourceMap(moduleID: ModuleID): (ByteBuffer, ByteBuffer) = {
         val jsFileURI = OutputPatternsImpl.jsFileURI(config.outputPatterns, moduleID.id)
         val sourceMapURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)
 
@@ -241,7 +243,7 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
         sourceMap.appendTo(sourceMapStrWriter, jsFileURI)
         sourceMapStrWriter.flush()
 
-        Some((ByteBuffer.wrap(jsFileWriter.toByteArray()), ByteBuffer.wrap(sourceMapWriter.toByteArray())))
+        (ByteBuffer.wrap(jsFileWriter.toByteArray()), ByteBuffer.wrap(sourceMapWriter.toByteArray()))
       }
     }
 

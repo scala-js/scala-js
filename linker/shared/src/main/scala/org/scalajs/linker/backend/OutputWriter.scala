@@ -30,9 +30,11 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
   private val outputImpl = OutputDirectoryImpl.fromOutputDirectory(output)
   private val moduleKind = config.commonConfig.coreSpec.moduleKind
 
-  protected def writeModuleWithoutSourceMap(moduleID: ModuleID): Option[ByteBuffer]
+  protected def moduleChanged(moduleID: ModuleID): Boolean
 
-  protected def writeModuleWithSourceMap(moduleID: ModuleID): Option[(ByteBuffer, ByteBuffer)]
+  protected def writeModuleWithoutSourceMap(moduleID: ModuleID): ByteBuffer
+
+  protected def writeModuleWithSourceMap(moduleID: ModuleID): (ByteBuffer, ByteBuffer)
 
   def write(moduleSet: ModuleSet)(implicit ec: ExecutionContext): Future[Report] = {
     val ioThrottler = new IOThrottler(config.maxConcurrentWrites)
@@ -69,29 +71,29 @@ private[backend] abstract class OutputWriter(output: OutputDirectory,
       val sourceMapFileName = OutputPatternsImpl.sourceMapFile(config.outputPatterns, moduleID.id)
       val report = new ReportImpl.ModuleImpl(moduleID.id, jsFileName, Some(sourceMapFileName), moduleKind)
 
-      writeModuleWithSourceMap(moduleID) match {
-        case Some((code, sourceMap)) =>
-          for {
-            _ <- outputImpl.writeFull(jsFileName, code, skipContentCheck)
-            _ <- outputImpl.writeFull(sourceMapFileName, sourceMap, skipContentCheck)
-          } yield {
-            report
-          }
-        case None =>
-          Future.successful(report)
+      if (moduleChanged(moduleID)) {
+        val (code, sourceMap) = writeModuleWithSourceMap(moduleID)
+        for {
+          _ <- outputImpl.writeFull(jsFileName, code, skipContentCheck)
+          _ <- outputImpl.writeFull(sourceMapFileName, sourceMap, skipContentCheck)
+        } yield {
+          report
+        }
+      } else {
+        Future.successful(report)
       }
     } else {
       val report = new ReportImpl.ModuleImpl(moduleID.id, jsFileName, None, moduleKind)
 
-      writeModuleWithoutSourceMap(moduleID) match {
-        case Some(code) =>
-          for {
-            _ <- outputImpl.writeFull(jsFileName, code, skipContentCheck)
-          } yield {
-            report
-          }
-        case None =>
-          Future.successful(report)
+      if (moduleChanged(moduleID)) {
+        val code = writeModuleWithoutSourceMap(moduleID)
+        for {
+          _ <- outputImpl.writeFull(jsFileName, code, skipContentCheck)
+        } yield {
+          report
+        }
+      } else {
+        Future.successful(report)
       }
     }
   }

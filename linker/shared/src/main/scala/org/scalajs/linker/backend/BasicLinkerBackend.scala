@@ -90,64 +90,59 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
     val allChanged = allChanged0 || config.minify
 
     val writer = new OutputWriter(output, config, skipContentCheck) {
-      protected def writeModuleWithoutSourceMap(moduleID: ModuleID): Option[ByteBuffer] = {
+      protected def moduleChanged(moduleID: ModuleID): Boolean =
+        allChanged || emitterResult.body(moduleID)._2
+
+      protected def writeModuleWithoutSourceMap(moduleID: ModuleID): ByteBuffer = {
         val cache = printedModuleSetCache.getModuleCache(moduleID)
-        val (trees, changed) = emitterResult.body(moduleID)
+        val (trees, _) = emitterResult.body(moduleID)
 
-        if (changed || allChanged) {
-          rewrittenModules.incrementAndGet()
+        rewrittenModules.incrementAndGet()
 
-          val jsFileWriter = new ByteArrayWriter(sizeHintFor(cache.getPreviousFinalJSFileSize()))
+        val jsFileWriter = new ByteArrayWriter(sizeHintFor(cache.getPreviousFinalJSFileSize()))
 
-          jsFileWriter.write(printedModuleSetCache.headerBytes)
-          jsFileWriter.writeASCIIString("'use strict';\n")
+        jsFileWriter.write(printedModuleSetCache.headerBytes)
+        jsFileWriter.writeASCIIString("'use strict';\n")
 
-          bodyPrinter.printWithoutSourceMap(trees, jsFileWriter)
+        bodyPrinter.printWithoutSourceMap(trees, jsFileWriter)
 
-          jsFileWriter.write(printedModuleSetCache.footerBytes)
+        jsFileWriter.write(printedModuleSetCache.footerBytes)
 
-          cache.recordFinalSizes(jsFileWriter.currentSize, 0)
-          Some(jsFileWriter.toByteBuffer())
-        } else {
-          None
-        }
+        cache.recordFinalSizes(jsFileWriter.currentSize, 0)
+        jsFileWriter.toByteBuffer()
       }
 
-      protected def writeModuleWithSourceMap(moduleID: ModuleID): Option[(ByteBuffer, ByteBuffer)] = {
+      protected def writeModuleWithSourceMap(moduleID: ModuleID): (ByteBuffer, ByteBuffer) = {
         val cache = printedModuleSetCache.getModuleCache(moduleID)
-        val (trees, changed) = emitterResult.body(moduleID)
+        val (trees, _) = emitterResult.body(moduleID)
 
-        if (changed || allChanged) {
-          rewrittenModules.incrementAndGet()
+        rewrittenModules.incrementAndGet()
 
-          val jsFileWriter = new ByteArrayWriter(sizeHintFor(cache.getPreviousFinalJSFileSize()))
-          val sourceMapWriter = new ByteArrayWriter(sizeHintFor(cache.getPreviousFinalSourceMapSize()))
+        val jsFileWriter = new ByteArrayWriter(sizeHintFor(cache.getPreviousFinalJSFileSize()))
+        val sourceMapWriter = new ByteArrayWriter(sizeHintFor(cache.getPreviousFinalSourceMapSize()))
 
-          val jsFileURI = OutputPatternsImpl.jsFileURI(config.outputPatterns, moduleID.id)
-          val sourceMapURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)
+        val jsFileURI = OutputPatternsImpl.jsFileURI(config.outputPatterns, moduleID.id)
+        val sourceMapURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)
 
-          val smWriter = new SourceMapWriter(sourceMapWriter, jsFileURI,
-              config.relativizeSourceMapBase)
+        val smWriter = new SourceMapWriter(sourceMapWriter, jsFileURI,
+            config.relativizeSourceMapBase)
 
-          jsFileWriter.write(printedModuleSetCache.headerBytes)
-          for (_ <- 0 until printedModuleSetCache.headerNewLineCount)
-            smWriter.nextLine()
-
-          jsFileWriter.writeASCIIString("'use strict';\n")
+        jsFileWriter.write(printedModuleSetCache.headerBytes)
+        for (_ <- 0 until printedModuleSetCache.headerNewLineCount)
           smWriter.nextLine()
 
-          bodyPrinter.printWithSourceMap(trees, jsFileWriter, smWriter)
+        jsFileWriter.writeASCIIString("'use strict';\n")
+        smWriter.nextLine()
 
-          jsFileWriter.write(printedModuleSetCache.footerBytes)
-          jsFileWriter.write(("//# sourceMappingURL=" + sourceMapURI + "\n").getBytes(StandardCharsets.UTF_8))
+        bodyPrinter.printWithSourceMap(trees, jsFileWriter, smWriter)
 
-          smWriter.complete()
+        jsFileWriter.write(printedModuleSetCache.footerBytes)
+        jsFileWriter.write(("//# sourceMappingURL=" + sourceMapURI + "\n").getBytes(StandardCharsets.UTF_8))
 
-          cache.recordFinalSizes(jsFileWriter.currentSize, sourceMapWriter.currentSize)
-          Some((jsFileWriter.toByteBuffer(), sourceMapWriter.toByteBuffer()))
-        } else {
-          None
-        }
+        smWriter.complete()
+
+        cache.recordFinalSizes(jsFileWriter.currentSize, sourceMapWriter.currentSize)
+        (jsFileWriter.toByteBuffer(), sourceMapWriter.toByteBuffer())
       }
 
       private def sizeHintFor(previousSize: Int): Int =
