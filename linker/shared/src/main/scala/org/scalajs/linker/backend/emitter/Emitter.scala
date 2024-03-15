@@ -716,14 +716,14 @@ final class Emitter[E >: Null <: js.Tree](
 
       if (linkedClass.hasRuntimeTypeInfo) {
         main ++= extractWithGlobals(classTreeCache.typeData.getOrElseUpdate(
-            linkedClass.hasInstances,
+            linkedClass.hasDirectInstances,
             classEmitter.genTypeData(
               className, // invalidated by overall class cache (part of ancestors)
               kind, // invalidated by class version
               linkedClass.superClass, // invalidated by class version
               linkedClass.ancestors, // invalidated by overall class cache (identity)
               linkedClass.jsNativeLoadSpec, // invalidated by class version
-              linkedClass.hasInstances // invalidated directly (it is the input to `getOrElseUpdate`)
+              linkedClass.hasDirectInstances // invalidated directly (it is the input to `getOrElseUpdate`)
             )(moduleContext, classCache, linkedClass.pos).map(postTransform(_, 0))))
       }
     }
