@@ -826,7 +826,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   def genTypeData(className: ClassName, kind: ClassKind,
       superClass: Option[ClassIdent], ancestors: List[ClassName],
-      jsNativeLoadSpec: Option[JSNativeLoadSpec], hasInstances: Boolean)(
+      jsNativeLoadSpec: Option[JSNativeLoadSpec], hasDirectInstances: Boolean)(
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge, pos: Position): WithGlobals[List[js.Tree]] = {
     import TreeDSL._
@@ -847,7 +847,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     val kindOrCtorParam = {
       if (isJSType) js.IntLiteral(2)
       else if (kind == ClassKind.Interface) js.IntLiteral(1)
-      else if (kind.isClass && hasInstances) globalVar(VarField.c, className)
+      else if (kind.isClass && hasDirectInstances) globalVar(VarField.c, className)
       else js.IntLiteral(0)
     }
 

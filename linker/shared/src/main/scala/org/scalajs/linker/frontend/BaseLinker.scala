@@ -166,6 +166,7 @@ private[frontend] object BaseLinker {
         classDef.pos,
         ancestors.toList,
         hasInstances = classInfo.isAnySubclassInstantiated,
+        hasDirectInstances = classInfo.isInstantiated,
         hasInstanceTests = classInfo.areInstanceTestsUsed,
         hasRuntimeTypeInfo = classInfo.isDataAccessed,
         fieldsRead = classInfo.fieldsRead.toSet,

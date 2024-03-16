@@ -24,6 +24,9 @@ object BinaryIncompatibilities {
   )
 
   val Linker = Seq(
+    // !!! Breaking, OK in minor release
+    ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.linker.standard.LinkedClass.this"),
+
     // private, not an issue
     ProblemFilters.exclude[DirectMissingMethodProblem]("org.scalajs.linker.standard.CommonPhaseConfig.this"),
   )

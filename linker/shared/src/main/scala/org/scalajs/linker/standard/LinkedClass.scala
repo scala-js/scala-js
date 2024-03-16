@@ -55,6 +55,7 @@ final class LinkedClass(
     // Actual Linking info
     val ancestors: List[ClassName],
     val hasInstances: Boolean,
+    val hasDirectInstances: Boolean,
     val hasInstanceTests: Boolean,
     val hasRuntimeTypeInfo: Boolean,
     val fieldsRead: Set[FieldName],
