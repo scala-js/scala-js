@@ -80,18 +80,17 @@ class BackwardsCompatTest {
     val classDefFiles = classDefs.map(MemClassDefIRFile(_))
     val logger = new ScalaConsoleLogger(Level.Error)
 
-    Future.traverse(TestIRRepo.previousLibs.toSeq) { case (version, libFuture) =>
-      libFuture.flatMap { lib =>
-        val config = StandardConfig().withCheckIR(true)
-        val linker = StandardImpl.linker(config)
-        val out = MemOutputDirectory()
+    TestIRRepo.sequentiallyForEachPreviousLib { (version, lib) =>
+      val config = StandardConfig().withCheckIR(true)
+      val linker = StandardImpl.linker(config)
+      val out = MemOutputDirectory()
 
-        linker.link(lib ++ classDefFiles, moduleInitializers, out, logger)
-      }.recover {
-        case e: Throwable =>
-          throw new AssertionError(
-              s"linking stdlib $version failed: ${e.getMessage()}", e)
-      }
+      linker.link(lib ++ classDefFiles, moduleInitializers, out, logger)
+        .recover {
+          case e: Throwable =>
+            throw new AssertionError(
+                s"linking stdlib $version failed: ${e.getMessage()}", e)
+        }
     }
   }
 }
