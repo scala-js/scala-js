@@ -930,6 +930,9 @@ private[emitter] object CoreJSLib {
       defineFunction1(VarField.doubleToInt) { x =>
         Return(If(x > 2147483647, 2147483647, If(x < -2147483648, -2147483648, x | 0)))
       } :::
+      defineFunction1(VarField.charToString) { x =>
+        Return(Apply(genIdentBracketSelect(StringRef, "fromCharCode"), x :: Nil))
+      } :::
       condDefs(semantics.stringIndexOutOfBounds != CheckedBehavior.Unchecked)(
         defineFunction2(VarField.charAt) { (s, i) =>
           val r = varRef("r")

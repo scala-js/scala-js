@@ -118,7 +118,7 @@ object Character {
   @inline def hashCode(value: Char): Int = value.toInt
 
   @inline def toString(c: Char): String =
-    js.Dynamic.global.String.fromCharCode(c.toInt).asInstanceOf[String]
+    "" + c
 
   def toString(codePoint: Int): String = {
     if (isBmpCodePoint(codePoint)) {

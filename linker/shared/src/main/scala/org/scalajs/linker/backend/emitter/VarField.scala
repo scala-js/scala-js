@@ -157,6 +157,8 @@ private[emitter] object VarField {
   /** Box char. */
   final val bC = mk("$bC")
 
+  final val charToString = mk("$cToS")
+
   final val charAt = mk("$charAt")
 
   // Object helpers

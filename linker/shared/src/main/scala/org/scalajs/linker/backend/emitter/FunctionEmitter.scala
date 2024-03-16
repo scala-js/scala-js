@@ -2391,8 +2391,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case BinaryOp(op, lhs, rhs) =>
           import BinaryOp._
-          val newLhs = transformExprNoChar(lhs)
-          val newRhs = transformExprNoChar(rhs)
+          val newLhs = transformExpr(lhs, preserveChar = (op == String_+))
+          val newRhs = transformExpr(rhs, preserveChar = (op == String_+))
 
           (op: @switch) match {
             case === | !== =>
@@ -2445,11 +2445,16 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               js.BinaryOp(JSBinaryOp.!==, newLhs, newRhs)
 
             case String_+ =>
-              if (lhs.tpe == StringType || rhs.tpe == StringType) {
-                js.BinaryOp(JSBinaryOp.+, newLhs, newRhs)
-              } else {
-                js.BinaryOp(JSBinaryOp.+, js.BinaryOp(JSBinaryOp.+,
-                    js.StringLiteral(""), newLhs), newRhs)
+              def charToString(t: js.Tree): js.Tree =
+                genCallHelper(VarField.charToString, t)
+
+              (lhs.tpe, rhs.tpe) match {
+                case (CharType, CharType) => charToString(newLhs) + charToString(newRhs)
+                case (CharType, _)        => charToString(newLhs) + newRhs
+                case (_, CharType)        => newLhs + charToString(newRhs)
+                case (StringType, _)      => newLhs + newRhs
+                case (_, StringType)      => newLhs + newRhs
+                case _                    => (js.StringLiteral("") + newLhs) + newRhs
               }
 
             case Int_+ => or0(js.BinaryOp(JSBinaryOp.+, newLhs, newRhs))
