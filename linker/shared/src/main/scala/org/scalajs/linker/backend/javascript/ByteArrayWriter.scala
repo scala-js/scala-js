@@ -44,6 +44,14 @@ private[backend] final class ByteArrayWriter(originalCapacity: Int) extends Outp
     size += 1
   }
 
+  def write(bs: ByteBuffer): Unit = {
+    val len = bs.remaining()
+    val newSize = size + len
+    ensureCapacity(newSize)
+    bs.get(buffer, size, len)
+    size = newSize
+  }
+
   override def write(bs: Array[Byte]): Unit =
     write(bs, 0, bs.length)
 
