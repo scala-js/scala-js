@@ -186,13 +186,13 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
       val chainProtoWithGlobals = superClass match {
         case None =>
-          WithGlobals.nil
+          WithGlobals(setPrototypeVar(ctorVar))
 
         case Some(_) if shouldExtendJSError(className, superClass) =>
-          globalRef("Error").map(chainPrototypeWithLocalCtor(className, ctorVar, _))
+          globalRef("Error").map(chainPrototypeWithLocalCtor(className, ctorVar, _, localDeclPrototypeVar = false))
 
         case Some(parentIdent) =>
-          WithGlobals(List(ctorVar.prototype := js.New(globalVar(VarField.h, parentIdent.name), Nil)))
+          WithGlobals(List(genAssignPrototype(ctorVar, js.New(globalVar(VarField.h, parentIdent.name), Nil))))
       }
 
       for {
@@ -208,12 +208,12 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
           js.JSDocConstructor(realCtorDef.head) ::
           realCtorDef.tail :::
           chainProto :::
-          (genIdentBracketSelect(ctorVar.prototype, "constructor") := ctorVar) ::
+          (genIdentBracketSelect(prototypeFor(ctorVar), "constructor") := ctorVar) ::
 
           // Inheritable constructor
           js.JSDocConstructor(inheritableCtorDef.head) ::
           inheritableCtorDef.tail :::
-          (globalVar(VarField.h, className).prototype := ctorVar.prototype) :: Nil
+          (globalVar(VarField.h, className).prototype := prototypeFor(ctorVar)) :: Nil
         )
       }
     }
@@ -243,8 +243,8 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
         val ctorVar = fileLevelVar(VarField.b, genName(className))
 
         js.JSDocConstructor(ctorVar := ctorFun) ::
-        chainPrototypeWithLocalCtor(className, ctorVar, superCtor) :::
-        (genIdentBracketSelect(ctorVar.prototype, "constructor") := ctorVar) :: Nil
+        chainPrototypeWithLocalCtor(className, ctorVar, superCtor, localDeclPrototypeVar = true) :::
+        (genIdentBracketSelect(prototypeFor(ctorVar), "constructor") := ctorVar) :: Nil
       }
     }
   }
@@ -333,7 +333,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
   }
 
   private def chainPrototypeWithLocalCtor(className: ClassName, ctorVar: js.Tree,
-      superCtor: js.Tree)(implicit pos: Position): List[js.Tree] = {
+      superCtor: js.Tree, localDeclPrototypeVar: Boolean)(implicit pos: Position): List[js.Tree] = {
     import TreeDSL._
 
     val dummyCtor = fileLevelVar(VarField.hh, genName(className))
@@ -341,7 +341,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     List(
         js.JSDocConstructor(genConst(dummyCtor.ident, js.Function(false, Nil, None, js.Skip()))),
         dummyCtor.prototype := superCtor.prototype,
-        ctorVar.prototype := js.New(dummyCtor, Nil)
+        genAssignPrototype(ctorVar, js.New(dummyCtor, Nil), localDeclPrototypeVar)
     )
   }
 
@@ -638,7 +638,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
       else globalVar(VarField.c, className)
 
     if (namespace.isStatic) classVarRef
-    else classVarRef.prototype
+    else prototypeFor(classVarRef)
   }
 
   def genMemberNameTree(name: Tree)(
@@ -826,7 +826,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
   def genTypeData(className: ClassName, kind: ClassKind,
       superClass: Option[ClassIdent], ancestors: List[ClassName],
-      jsNativeLoadSpec: Option[JSNativeLoadSpec])(
+      jsNativeLoadSpec: Option[JSNativeLoadSpec], hasInstances: Boolean)(
       implicit moduleContext: ModuleContext,
       globalKnowledge: GlobalKnowledge, pos: Position): WithGlobals[List[js.Tree]] = {
     import TreeDSL._
@@ -836,21 +836,35 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     val isJSType =
       kind.isJSType
 
-    val isJSTypeParam =
-      if (isJSType) js.BooleanLiteral(true)
-      else js.Undefined()
+    /* The `kindOrCtor` param is either:
+     * - an int: 1 means isInterface; 2 means isJSType; 0 otherwise
+     * - a Scala class constructor: means 0 + assign `kindOrCtor.prototype.$classData = <this TypeData>;`
+     *
+     * We must only assign the `$classData` if the class is a regular
+     * (non-hijacked) Scala class, and if it has instances. Otherwise there is
+     * no Scala class constructor for the class at all.
+     */
+    val kindOrCtorParam = {
+      if (isJSType) js.IntLiteral(2)
+      else if (kind == ClassKind.Interface) js.IntLiteral(1)
+      else if (kind.isClass && hasInstances) globalVar(VarField.c, className)
+      else js.IntLiteral(0)
+    }
 
-    val parentData = if (globalKnowledge.isParentDataAccessed) {
-      superClass.fold[js.Tree] {
+    val parentDataOpt = if (globalKnowledge.isParentDataAccessed) {
+      val parentData = superClass.fold[js.Tree] {
         if (isObjectClass) js.Null()
         else js.Undefined()
       } { parent =>
         globalVar(VarField.d, parent.name)
       }
+      parentData :: Nil
     } else {
-      js.Undefined()
+      Nil
     }
 
+    assert(ancestors.headOption.contains(className),
+        s"The ancestors of ${className.nameString} do not start with itself: $ancestors")
     val ancestorsRecord = js.ObjectConstr(
         ancestors.withFilter(_ != ObjectClass).map(ancestor => (genAncestorIdent(ancestor), js.IntLiteral(1)))
     )
@@ -902,15 +916,11 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
     isInstanceFunWithGlobals.flatMap { isInstanceFun =>
       val allParams = List(
-          js.ObjectConstr(List(genAncestorIdent(className) -> js.IntLiteral(0))),
-          js.BooleanLiteral(kind == ClassKind.Interface),
+          kindOrCtorParam,
           js.StringLiteral(RuntimeClassNameMapperImpl.map(
               semantics.runtimeClassNameMapper, className.nameString)),
-          ancestorsRecord,
-          isJSTypeParam,
-          parentData,
-          isInstanceFun
-      )
+          ancestorsRecord
+      ) ::: parentDataOpt ::: isInstanceFun :: Nil
 
       val prunedParams =
         allParams.reverse.dropWhile(_.isInstanceOf[js.Undefined]).reverse
@@ -920,14 +930,6 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
       globalVarDef(VarField.d, className, typeData)
     }
-  }
-
-  def genSetTypeData(className: ClassName)(
-      implicit moduleContext: ModuleContext,
-      globalKnowledge: GlobalKnowledge, pos: Position): js.Tree = {
-    import TreeDSL._
-
-    globalVar(VarField.c, className).prototype DOT cpn.classData := globalVar(VarField.d, className)
   }
 
   def genModuleAccessor(className: ClassName, isJSClass: Boolean)(

@@ -417,7 +417,7 @@ private[optimizer] abstract class OptimizerCore(
         val (newName, newOriginalName) =
           freshLocalName(name, originalName, mutable = false)
         val localDef = LocalDef(RefinedType(AnyType), mutable = false,
-            ReplaceWithVarRef(newName, newSimpleState(Used), None))
+            ReplaceWithVarRef(newName, newSimpleState(UsedAtLeastOnce), None))
         val newBody = {
           val bodyScope = scope.withEnv(scope.env.withLocalDef(name, localDef))
           transformStat(body)(bodyScope)
@@ -430,7 +430,7 @@ private[optimizer] abstract class OptimizerCore(
         val (newName, newOriginalName) =
           freshLocalName(name, originalName, mutable = false)
         val localDef = LocalDef(RefinedType(AnyType), true,
-            ReplaceWithVarRef(newName, newSimpleState(Used), None))
+            ReplaceWithVarRef(newName, newSimpleState(UsedAtLeastOnce), None))
         val newHandler = {
           val handlerScope = scope.withEnv(scope.env.withLocalDef(name, localDef))
           transform(handler, isStat)(handlerScope)
@@ -1380,7 +1380,7 @@ private[optimizer] abstract class OptimizerCore(
       case PreTransLocalDef(localDef @ LocalDef(tpe, _, replacement)) =>
         replacement match {
           case ReplaceWithRecordVarRef(name, recordType, used, cancelFun) =>
-            used.value = Used
+            used.value = used.value.inc
             PreTransRecordTree(
                 VarRef(LocalIdent(name))(recordType), tpe, cancelFun)
 
@@ -1599,18 +1599,21 @@ private[optimizer] abstract class OptimizerCore(
 
         if (used.value.isUsed) {
           val ident = LocalIdent(name)
-          val varDef = resolveLocalDef(value) match {
+          resolveLocalDef(value) match {
             case PreTransRecordTree(valueTree, valueTpe, cancelFun) =>
               val recordType = valueTree.tpe.asInstanceOf[RecordType]
               if (!isImmutableType(recordType))
                 cancelFun()
-              VarDef(ident, originalName, recordType, mutable, valueTree)
+              Block(VarDef(ident, originalName, recordType, mutable, valueTree), innerBody)
 
             case PreTransTree(valueTree, valueTpe) =>
-              VarDef(ident, originalName, tpe.base, mutable, valueTree)
+              val optimized =
+                if (used.value.count == 1 && config.minify) tryInsertAtFirstEvalContext(name, valueTree, innerBody)
+                else None
+              optimized.getOrElse {
+                Block(VarDef(ident, originalName, tpe.base, mutable, valueTree), innerBody)
+              }
           }
-
-          Block(varDef, innerBody)
         } else {
           val valueSideEffects = finishTransformStat(value)
           Block(valueSideEffects, innerBody)
@@ -1711,6 +1714,282 @@ private[optimizer] abstract class OptimizerCore(
   private def isNonNegativeIntLiteral(tree: Tree): Boolean = tree match {
     case IntLiteral(value) => value >= 0
     case _                 => false
+  }
+
+  /** Tries to insert `valTree` in place of the (unique) occurrence of `valName` in `body`.
+   *
+   *  This function assumes that `valName` is used only once, and only inside
+   *  `body`. It does not assume that `valTree` or `body` are side-effect-free.
+   *
+   *  The replacement is done only if we can show that it will not affect
+   *  evaluation order. In practice, this means that we only replace if we find
+   *  the occurrence of `valName` in the first evaluation context of `body`.
+   *  In other words, we verify that all the expressions that will evaluate
+   *  before `valName` in `body` are pure.
+   *
+   *  We consider a `VarRef(y)` pure if `valTree` does not contain any
+   *  assignment to `y`.
+   *
+   *  For example, we can replace `x` in the following bodies:
+   *
+   *  {{{
+   *  x
+   *  x + e
+   *  x.foo(...)
+   *  x.f
+   *  e + x                 // if `e` is pure
+   *  e0.foo(...e1, x, ...) // if `e0` is pure and non-null, and the `...e1`s are pure
+   *  if (x) { ... } else { ... }
+   *  }}}
+   *
+   *  Why is this interesting? Mostly because of inlining.
+   *
+   *  Inlining tends to create many bindings for the receivers and arguments of
+   *  methods. We must do that to preserve evaluation order, and not to evaluate
+   *  them multiple times. However, very often, the receiver and arguments are
+   *  used exactly once in the inlined body, and in-order. Using this strategy,
+   *  we can take the right-hand-sides of the synthetic bindings and inline them
+   *  directly inside the body.
+   *
+   *  This in turn allows more trees to remain JS-level expressions, which means
+   *  that `FunctionEmitter` has to `unnest` less often, further reducing the
+   *  amount of temporary variables.
+   *
+   *  ---
+   *
+   *  Note that we can never cross any potential undefined behavior, even when
+   *  the corresponding semantics are `Unchecked`. That is because the
+   *  `valTree` could throw itself, preventing the normal behavior of the code
+   *  to reach the undefined behavior in the first place. Consider for example:
+   *
+   *  {{{
+   *  val x: Foo = ... // maybe null
+   *  val y: Int = if (x == null) throw new Exception() else 1
+   *  x.foo(y)
+   *  }}}
+   *
+   *  We cannot inline `y` in this example, because that would change
+   *  observable behavior if `x` is `null`.
+   *
+   *  It is OK to cross the potential UB if we can prove that it will not
+   *  actually trigger, for example if we know that `x` is not null.
+   *
+   *  ---
+   *
+   *  We only call this function when the `minify` option is on. This is for two
+   *  reasons:
+   *
+   *  - it can be detrimental to debuggability, as even user-written `val`s can
+   *    disappear, and their right-hand-side be evaluated out-of-order compared
+   *    to the source code;
+   *  - it is non-linear, as we can perform several traversals of the same body,
+   *    if it follows a sequence of `VarDef`s that can each be successfully
+   *    inserted.
+   */
+  private def tryInsertAtFirstEvalContext(valName: LocalName, valTree: Tree, body: Tree): Option[Tree] = {
+    import EvalContextInsertion._
+
+    object valTreeInfo extends Traversers.Traverser {
+      val mutatedLocalVars = mutable.Set.empty[LocalName]
+
+      traverse(valTree)
+
+      override def traverse(tree: Tree): Unit = {
+        super.traverse(tree)
+        tree match {
+          case Assign(VarRef(ident), _) => mutatedLocalVars += ident.name
+          case _                        => ()
+        }
+      }
+    }
+
+    def recs(bodies: List[Tree]): EvalContextInsertion[List[Tree]] = bodies match {
+      case Nil =>
+        NotFoundPureSoFar
+      case firstBody :: restBodies =>
+        rec(firstBody) match {
+          case Success(newFirstBody) => Success(newFirstBody :: restBodies)
+          case NotFoundPureSoFar     => recs(restBodies).mapOrKeepGoing(firstBody :: _)
+          case Failed                => Failed
+        }
+    }
+
+    def rec(body: Tree): EvalContextInsertion[Tree] = {
+      implicit val pos = body.pos
+
+      body match {
+        case VarRef(ident) =>
+          if (ident.name == valName)
+            Success(valTree)
+          else if (valTreeInfo.mutatedLocalVars.contains(ident.name))
+            Failed
+          else
+            NotFoundPureSoFar
+
+        case Skip() =>
+          NotFoundPureSoFar
+
+        case Block(stats) =>
+          recs(stats).mapOrKeepGoing(Block(_))
+
+        case Labeled(label, tpe, innerBody) =>
+          rec(innerBody).mapOrKeepGoing(Labeled(label, tpe, _))
+
+        case Return(expr, label) =>
+          rec(expr).mapOrFailed(Return(_, label))
+
+        case If(cond, thenp, elsep) =>
+          rec(cond).mapOrFailed(If(_, thenp, elsep)(body.tpe))
+
+        case Throw(expr) =>
+          rec(expr).mapOrFailed(Throw(_))
+
+        case Match(selector, cases, default) =>
+          rec(selector).mapOrFailed(Match(_, cases, default)(body.tpe))
+
+        case New(className, ctor, args) =>
+          recs(args).mapOrKeepGoingIf(New(className, ctor, _))(
+              keepGoingIf = hasElidableConstructors(className))
+
+        case LoadModule(className) =>
+          if (hasElidableConstructors(className)) NotFoundPureSoFar
+          else Failed
+
+        case Select(qual, field) =>
+          rec(qual).mapOrFailed(Select(_, field)(body.tpe))
+
+        case Apply(flags, receiver, method, args) =>
+          rec(receiver) match {
+            case Success(newReceiver) =>
+              Success(Apply(flags, newReceiver, method, args)(body.tpe))
+            case NotFoundPureSoFar if isNotNull(receiver) =>
+              recs(args).mapOrFailed(Apply(flags, receiver, method, _)(body.tpe))
+            case _ =>
+              Failed
+          }
+
+        case ApplyStatically(flags, receiver, className, method, args) =>
+          rec(receiver) match {
+            case Success(newReceiver) =>
+              Success(ApplyStatically(flags, newReceiver, className, method, args)(body.tpe))
+            case NotFoundPureSoFar if isNotNull(receiver) =>
+              recs(args).mapOrFailed(ApplyStatically(flags, receiver, className, method, _)(body.tpe))
+            case _ =>
+              Failed
+          }
+
+        case ApplyStatic(flags, className, method, args) =>
+          recs(args).mapOrFailed(ApplyStatic(flags, className, method, _)(body.tpe))
+
+        case UnaryOp(op, arg) =>
+          rec(arg).mapOrKeepGoing(UnaryOp(op, _))
+
+        case BinaryOp(op, lhs, rhs) =>
+          import BinaryOp._
+
+          rec(lhs) match {
+            case Success(newLhs) => Success(BinaryOp(op, newLhs, rhs))
+            case Failed          => Failed
+
+            case NotFoundPureSoFar =>
+              rec(rhs).mapOrKeepGoingIf(BinaryOp(op, lhs, _)) {
+                (op: @switch) match {
+                  case Int_/ | Int_% | Long_/ | Long_% | String_+ | String_charAt =>
+                    false
+                  case _ =>
+                    true
+                }
+              }
+          }
+
+        case NewArray(typeRef, lengths) =>
+          recs(lengths).mapOrKeepGoing(NewArray(typeRef, _))
+
+        case ArrayValue(typeRef, elems) =>
+          recs(elems).mapOrKeepGoing(ArrayValue(typeRef, _))
+
+        case ArrayLength(array) =>
+          rec(array).mapOrKeepGoingIf(ArrayLength(_))(keepGoingIf = isNotNull(array))
+
+        case ArraySelect(array, index) =>
+          rec(array) match {
+            case Success(newArray) =>
+              Success(ArraySelect(newArray, index)(body.tpe))
+            case NotFoundPureSoFar if isNotNull(array) =>
+              rec(index).mapOrFailed(ArraySelect(array, _)(body.tpe))
+            case _ =>
+              Failed
+          }
+
+        case RecordValue(tpe, elems) =>
+          recs(elems).mapOrKeepGoing(RecordValue(tpe, _))
+
+        case RecordSelect(record, field) =>
+          rec(record).mapOrKeepGoingIf(RecordSelect(_, field)(body.tpe)) {
+            // We can keep going if the selected field is immutable
+            val RecordType(fields) = record.tpe: @unchecked
+            !fields.find(_.name == field.name).get.mutable
+          }
+
+        case IsInstanceOf(expr, testType) =>
+          rec(expr).mapOrKeepGoing(IsInstanceOf(_, testType))
+
+        case AsInstanceOf(expr, tpe) =>
+          rec(expr).mapOrFailed(AsInstanceOf(_, tpe))
+
+        case GetClass(expr) =>
+          rec(expr).mapOrKeepGoingIf(GetClass(_))(keepGoingIf = isNotNull(expr))
+
+        case Clone(expr) =>
+          rec(expr).mapOrFailed(Clone(_))
+
+        case JSUnaryOp(op, arg) =>
+          rec(arg).mapOrFailed(JSUnaryOp(op, _))
+
+        case JSBinaryOp(op, lhs, rhs) =>
+          rec(lhs) match {
+            case Success(newLhs) =>
+              Success(JSBinaryOp(op, newLhs, rhs))
+            case NotFoundPureSoFar =>
+              rec(rhs).mapOrKeepGoingIf(JSBinaryOp(op, lhs, _))(
+                  keepGoingIf = op == JSBinaryOp.=== || op == JSBinaryOp.!==)
+            case Failed =>
+              Failed
+          }
+
+        case JSArrayConstr(items) =>
+          if (items.exists(_.isInstanceOf[JSSpread]))
+            Failed // in theory we could do something better here, but the complexity is not worth it
+          else
+            recs(items.asInstanceOf[List[Tree]]).mapOrKeepGoing(JSArrayConstr(_))
+
+        case _: Literal =>
+          NotFoundPureSoFar
+
+        case This() =>
+          NotFoundPureSoFar
+
+        case Closure(arrow, captureParams, params, restParam, body, captureValues) =>
+          recs(captureValues).mapOrKeepGoing(Closure(arrow, captureParams, params, restParam, body, _))
+
+        case _ =>
+          Failed
+      }
+    }
+
+    rec(body) match {
+      case Success(result) => Some(result)
+      case Failed          => None
+
+      case NotFoundPureSoFar =>
+        /* The val was never actually used. This can happen even when the
+         * variable was `used` exactly once, because `used` tracks the number
+         * of times we have generated a `VarRef` for it. In some cases, the
+         * generated `VarRef` is later discarded through `keepOnlySideEffects`
+         * somewhere else.
+         */
+        Some(Block(keepOnlySideEffects(valTree), body)(body.pos))
+    }
   }
 
   private def pretransformApply(tree: Apply, isStat: Boolean,
@@ -2066,7 +2345,7 @@ private[optimizer] abstract class OptimizerCore(
         if (target != expectedTarget)
           cancelFun()
 
-        used.value = Used
+        used.value = used.value.inc
         val module = VarRef(LocalIdent(moduleVarName))(AnyType)
         path.foldLeft[Tree](module) { (inner, pathElem) =>
           JSSelect(inner, StringLiteral(pathElem))
@@ -2097,7 +2376,7 @@ private[optimizer] abstract class OptimizerCore(
                   captureParams, params, body, captureLocalDefs,
                   alreadyUsed, cancelFun)))
               if !alreadyUsed.value.isUsed && argsNoSpread.size <= params.size =>
-            alreadyUsed.value = Used
+            alreadyUsed.value = alreadyUsed.value.inc
             val missingArgCount = params.size - argsNoSpread.size
             val expandedArgs =
               if (missingArgCount == 0) argsNoSpread
@@ -4991,7 +5270,7 @@ private[optimizer] abstract class OptimizerCore(
         case PreTransTree(VarRef(LocalIdent(refName)), _)
             if !localIsMutable(refName) =>
           buildInner(LocalDef(computeRefinedType(), false,
-              ReplaceWithVarRef(refName, newSimpleState(Used), None)), cont)
+              ReplaceWithVarRef(refName, newSimpleState(UsedAtLeastOnce), None)), cont)
 
         case _ =>
           withDedicatedVar(computeRefinedType())
@@ -5343,7 +5622,7 @@ private[optimizer] object OptimizerCore {
 
     def newReplacement(implicit pos: Position): Tree = this.replacement match {
       case ReplaceWithVarRef(name, used, _) =>
-        used.value = Used
+        used.value = used.value.inc
         VarRef(LocalIdent(name))(tpe.base)
 
       /* Allocate an instance of RuntimeLong on the fly.
@@ -5352,7 +5631,7 @@ private[optimizer] object OptimizerCore {
        */
       case ReplaceWithRecordVarRef(name, recordType, used, _)
           if tpe.base == ClassType(LongImpl.RuntimeLongClass) =>
-        used.value = Used
+        used.value = used.value.inc
         createNewLong(VarRef(LocalIdent(name))(recordType))
 
       case ReplaceWithRecordVarRef(_, _, _, cancelFun) =>
@@ -6451,14 +6730,40 @@ private[optimizer] object OptimizerCore {
     else OriginalName(base)
   }
 
-  private sealed abstract class IsUsed {
-    def isUsed: Boolean
+  private final case class IsUsed(count: Int) {
+    def isUsed: Boolean = count > 0
+
+    lazy val inc: IsUsed = IsUsed(count + 1)
   }
-  private case object Used extends IsUsed {
-    override def isUsed: Boolean = true
+
+  private val Unused: IsUsed = IsUsed(count = 0)
+  private val UsedAtLeastOnce: IsUsed = Unused.inc
+
+  private sealed abstract class EvalContextInsertion[+A] {
+    import EvalContextInsertion._
+
+    def mapOrKeepGoing[B](f: A => B): EvalContextInsertion[B] = this match {
+      case Success(a)        => Success(f(a))
+      case NotFoundPureSoFar => NotFoundPureSoFar
+      case Failed            => Failed
+    }
+
+    def mapOrKeepGoingIf[B](f: A => B)(keepGoingIf: => Boolean): EvalContextInsertion[B] = this match {
+      case Success(a)        => Success(f(a))
+      case NotFoundPureSoFar => if (keepGoingIf) NotFoundPureSoFar else Failed
+      case Failed            => Failed
+    }
+
+    def mapOrFailed[B](f: A => B): EvalContextInsertion[B] = this match {
+      case Success(a) => Success(f(a))
+      case _          => Failed
+    }
   }
-  private case object Unused extends IsUsed {
-    override def isUsed: Boolean = false
+
+  private object EvalContextInsertion {
+    final case class Success[+A](result: A) extends EvalContextInsertion[A]
+    case object Failed extends EvalContextInsertion[Nothing]
+    case object NotFoundPureSoFar extends EvalContextInsertion[Nothing]
   }
 
 }

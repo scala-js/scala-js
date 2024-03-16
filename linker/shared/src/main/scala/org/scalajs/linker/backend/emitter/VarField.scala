@@ -40,7 +40,10 @@ private[emitter] object VarField {
   /** Scala class initializers (<clinit>). */
   final val sct = mk("$sct")
 
-  /** Private (instance) methods. */
+  /** Private (instance) methods.
+   *
+   *  Also used for the `prototype` of the current class when minifying.
+   */
   final val p = mk("$p")
 
   /** Public static methods. */
@@ -171,8 +174,6 @@ private[emitter] object VarField {
   final val throwModuleInitError = mk("$throwModuleInitError")
 
   final val valueDescription = mk("$valueDescription")
-
-  final val propertyName = mk("$propertyName")
 
   // ID hash subsystem
 
