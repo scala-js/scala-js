@@ -402,10 +402,18 @@ def Tasks = [
     npm install &&
     sbtnoretry ++$scala linker$v/test &&
     sbtnoretry linkerPrivateLibrary/test &&
-    sbtnoretry ++$scala irJS$v/test linkerJS$v/test linkerInterfaceJS$v/test &&
+    sbtnoretry ++$scala irJS$v/test &&
+    sbtnoretry ++$scala linkerInterfaceJS$v/test &&
+    sbtnoretry ++$scala linkerJS$v/test &&
     sbtnoretry 'set scalaJSStage in Global := FullOptStage' \
         'set scalaJSStage in testSuite.v$v := FastOptStage' \
-        ++$scala irJS$v/test linkerJS$v/test linkerInterfaceJS$v/test &&
+        ++$scala irJS$v/test &&
+    sbtnoretry 'set scalaJSStage in Global := FullOptStage' \
+        'set scalaJSStage in testSuite.v$v := FastOptStage' \
+        ++$scala linkerInterfaceJS$v/test &&
+    sbtnoretry 'set scalaJSStage in Global := FullOptStage' \
+        'set scalaJSStage in testSuite.v$v := FastOptStage' \
+        ++$scala linkerJS$v/test &&
     sbtnoretry ++$scala testSuite$v/bootstrap:test &&
     sbtnoretry 'set scalaJSStage in Global := FullOptStage' \
         'set scalaJSStage in testSuite.v$v := FastOptStage' \
