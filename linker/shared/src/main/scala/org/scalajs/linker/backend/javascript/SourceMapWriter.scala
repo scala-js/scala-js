@@ -22,6 +22,7 @@ import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 import org.scalajs.ir
 import org.scalajs.ir.OriginalName
+import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Position
 import org.scalajs.ir.Position._
 
@@ -39,7 +40,7 @@ object SourceMapWriter {
   private final class NodePosStack {
     private var topIndex: Int = -1
     private var posStack: Array[Position] = new Array(128)
-    private var nameStack: Array[String] = new Array(128)
+    private var nameStack: Array[OriginalName] = new Array(128)
 
     def pop(): Unit =
       topIndex -= 1
@@ -47,10 +48,10 @@ object SourceMapWriter {
     def topPos: Position =
       posStack(topIndex)
 
-    def topName: String =
+    def topName: OriginalName =
       nameStack(topIndex)
 
-    def push(pos: Position, originalName: String): Unit = {
+    def push(pos: Position, originalName: OriginalName): Unit = {
       val newTopIdx = topIndex + 1
       topIndex = newTopIdx
       if (newTopIdx >= posStack.length)
@@ -60,9 +61,14 @@ object SourceMapWriter {
     }
 
     private def growStack(): Unit = {
-      val newSize = 2 * posStack.length
+      val oldSize = posStack.length
+      val newSize = 2 * oldSize
       posStack = ju.Arrays.copyOf(posStack, newSize)
-      nameStack = ju.Arrays.copyOf(nameStack, newSize)
+
+      // Work around broken typechecking of copyOf[OriginalName].
+      val oldNameStack = nameStack
+      nameStack = new Array(newSize)
+      System.arraycopy(oldNameStack, 0, nameStack, 0, oldSize)
     }
   }
 
@@ -86,13 +92,12 @@ object SourceMapWriter {
   sealed abstract class Builder {
     // Strings are nullable in this stack
     private val nodePosStack = new SourceMapWriter.NodePosStack
-    nodePosStack.push(NoPosition, null)
+    nodePosStack.push(NoPosition, NoOriginalName)
 
     private var pendingColumnInGenerated: Int = -1
     private var pendingPos: Position = NoPosition
     private var pendingIsIdent: Boolean = false
-    // pendingName string is nullable
-    private var pendingName: String = null
+    private var pendingName: OriginalName = NoOriginalName
 
     final def nextLine(): Unit = {
       writePendingSegment()
@@ -103,16 +108,12 @@ object SourceMapWriter {
     }
 
     final def startNode(column: Int, originalPos: Position): Unit = {
-      nodePosStack.push(originalPos, null)
-      startSegment(column, originalPos, isIdent = false, null)
+      nodePosStack.push(originalPos, NoOriginalName)
+      startSegment(column, originalPos, isIdent = false, NoOriginalName)
     }
 
     final def startIdentNode(column: Int, originalPos: Position,
-        optOriginalName: OriginalName): Unit = {
-      // TODO The then branch allocates a String; we should avoid that at some point
-      val originalName =
-        if (optOriginalName.isDefined) optOriginalName.get.toString()
-        else null
+        originalName: OriginalName): Unit = {
       nodePosStack.push(originalPos, originalName)
       startSegment(column, originalPos, isIdent = true, originalName)
     }
@@ -146,12 +147,12 @@ object SourceMapWriter {
     }
 
     private def startSegment(startColumn: Int, originalPos: Position,
-        isIdent: Boolean, originalName: String): Unit = {
+        isIdent: Boolean, originalName: OriginalName): Unit = {
       // scalastyle:off return
 
       // There is no point in outputting a segment with the same information
       if ((originalPos == pendingPos) && (isIdent == pendingIsIdent) &&
-          (originalName == pendingName)) {
+          OriginalName.equals(originalName, pendingName)) {
         return
       }
 
@@ -169,8 +170,14 @@ object SourceMapWriter {
     }
 
     private def writePendingSegment(): Unit = {
-      if (pendingColumnInGenerated >= 0)
-        doWriteSegment(pendingColumnInGenerated, pendingPos, pendingName)
+      if (pendingColumnInGenerated >= 0) {
+        // Allocate a name string *before* we write a fragment so we can cache it.
+        val originalName =
+          if (pendingName.isDefined) pendingName.get.toString()
+          else null
+
+        doWriteSegment(pendingColumnInGenerated, pendingPos, originalName)
+      }
     }
 
     protected def doWriteNewLine(): Unit
