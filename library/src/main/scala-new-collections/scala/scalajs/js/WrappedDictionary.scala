@@ -99,6 +99,10 @@ final class WrappedDictionary[A](private val dict: js.Dictionary[A])
   def iterator: scala.collection.Iterator[(String, A)] =
     new DictionaryIterator(dict)
 
+  /* Warning silenced in build for 2.13.13+:
+   * overriding method keys in trait MapOps is deprecated (since 2.13.13):
+   * This method should be an alias for keySet
+   */
   @inline
   override def keys: scala.collection.Iterable[String] =
     js.Object.keys(dict.asInstanceOf[js.Object])
