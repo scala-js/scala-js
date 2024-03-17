@@ -1,7 +1,7 @@
 val checkNoClosure = taskKey[Unit]("Check that fullOptJS wasn't run with closure")
 
 version := scalaJSVersion
-scalaVersion := "2.12.18"
+scalaVersion := "2.12.19"
 
 enablePlugins(ScalaJSPlugin)
 

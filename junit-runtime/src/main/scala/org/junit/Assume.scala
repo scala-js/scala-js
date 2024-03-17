@@ -33,13 +33,13 @@ object Assume {
   @noinline
   def assumeThat[T](actual: T, matcher: Matcher[T]): Unit = {
     if (!matcher.matches(actual.asInstanceOf[AnyRef]))
-      throw new AssumptionViolatedException(actual, matcher)
+      throw new AssumptionViolatedException(null, matcher, actual)
   }
 
   @noinline
   def assumeThat[T](message: String, actual: T, matcher: Matcher[T]): Unit = {
     if (!matcher.matches(actual.asInstanceOf[AnyRef]))
-      throw new AssumptionViolatedException(message, actual, matcher)
+      throw new AssumptionViolatedException(message, matcher, actual)
   }
 
   @noinline

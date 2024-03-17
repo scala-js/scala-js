@@ -832,6 +832,7 @@ run/t12390.scala
 run/repl-release.scala
 run/eta-dependent.scala
 run/t10655.scala
+run/repl-suspended-warnings.scala
 
 # Using Scala Script (partest.ScriptTest)
 
@@ -950,7 +951,6 @@ run/t10641.scala
 run/t10751.scala
 run/t10819.scala
 run/t11385.scala
-run/t11731.scala
 run/t11746.scala
 run/t11815.scala
 run/splain.scala
@@ -972,6 +972,7 @@ run/package-object-toolbox.scala
 run/package-object-with-inner-class-in-ancestor.scala
 run/package-object-with-inner-class-in-ancestor-simpler.scala
 run/package-object-with-inner-class-in-ancestor-simpler-still.scala
+run/t7324.scala
 run/t10171
 
 # partest.StubErrorMessageTest
@@ -994,6 +995,7 @@ run/t12597.scala
 
 # partest.ASMConverters
 run/t9403
+run/nonfatal.scala
 
 # partest.BytecodeTest
 run/t7106
@@ -1119,6 +1121,7 @@ run/t12195
 run/t12380
 run/t12523
 run/t12290
+run/t9714
 
 # Using scala-script
 run/t7791-script-linenums.scala

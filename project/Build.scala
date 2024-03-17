@@ -917,6 +917,7 @@ object Build {
         "2.12.16",
         "2.12.17",
         "2.12.18",
+        "2.12.19",
       ),
       cross213ScalaVersions := Seq(
         "2.13.0",
@@ -932,6 +933,7 @@ object Build {
         "2.13.10",
         "2.13.11",
         "2.13.12",
+        "2.13.13",
       ),
 
       default212ScalaVersion := cross212ScalaVersions.value.last,
@@ -1778,6 +1780,21 @@ object Build {
       previousArtifactSetting,
       mimaBinaryIssueFilters ++= BinaryIncompatibilities.Library,
 
+      /* Silence a Scala 2.13.13+ warning that we cannot address without breaking our API.
+       * See `js.WrappedDictionary.keys` and `js.WrappedMap.keys`.
+       */
+      scalacOptions ++= {
+        /* We only need the option in 2.13.13+, but listing all previous 2.13.x
+         * versions is cumberson. We only exclude 2.13.0 and 2.13.1 because
+         * they did not support -Wconf at all.
+         */
+        val v = scalaVersion.value
+        if (v.startsWith("2.13.") && v != "2.13.0" && v != "2.13.1")
+          List("-Wconf:msg=overriding method keys in trait MapOps is deprecated:s")
+        else
+          Nil
+      },
+
       test in Test := {
         streams.value.log.warn("Skipping library/test. Run testSuite/test to test library.")
       },
@@ -2015,14 +2032,14 @@ object Build {
           case `default213Version` =>
             if (!useMinifySizes) {
               Some(ExpectedSizes(
-                  fastLink = 452000 to 453000,
+                  fastLink = 451000 to 452000,
                   fullLink = 94000 to 95000,
                   fastLinkGz = 58000 to 59000,
                   fullLinkGz = 25000 to 26000,
               ))
             } else {
               Some(ExpectedSizes(
-                  fastLink = 309000 to 310000,
+                  fastLink = 308000 to 309000,
                   fullLink = 265000 to 266000,
                   fastLinkGz = 49000 to 50000,
                   fullLinkGz = 43000 to 44000,

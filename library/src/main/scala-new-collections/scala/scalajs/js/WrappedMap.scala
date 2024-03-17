@@ -95,6 +95,10 @@ final class WrappedMap[K, V](private val underlying: js.Map[K, V])
   def iterator: scala.collection.Iterator[(K, V)] =
     underlying.jsIterator().toIterator.map(kv => (kv._1, kv._2))
 
+  /* Warning silenced in build for 2.13.13+:
+   * overriding method keys in trait MapOps is deprecated (since 2.13.13):
+   * This method should be an alias for keySet
+   */
   @inline
   override def keys: scala.collection.Iterable[K] =
     underlying.asInstanceOf[js.Map.Raw[K, V]].keys().toIterator.to(Iterable)

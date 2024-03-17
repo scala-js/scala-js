@@ -11,7 +11,7 @@ lazy val concurrentUseOfLinkerTest = taskKey[Any]("")
 name := "Scala.js sbt test"
 
 version := scalaJSVersion
-scalaVersion := "2.12.18"
+scalaVersion := "2.12.19"
 
 enablePlugins(ScalaJSPlugin)
 
