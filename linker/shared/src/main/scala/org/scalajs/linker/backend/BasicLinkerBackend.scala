@@ -41,9 +41,11 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
   private[this] var totalModules = 0
   private[this] val rewrittenModules = new AtomicInteger(0)
 
+  private[this] val fragmentIndex = new SourceMapWriter.Index
+
   private[this] val bodyPrinter: BodyPrinter = {
     if (config.minify) IdentityPostTransformerBasedBodyPrinter
-    else if (config.sourceMap) PrintedTreeWithSourceMapBodyPrinter
+    else if (config.sourceMap) new PrintedTreeWithSourceMapBodyPrinter(fragmentIndex)
     else PrintedTreeWithoutSourceMapBodyPrinter
   }
 
@@ -127,7 +129,7 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
           val sourceMapURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)
 
           val smWriter = new SourceMapWriter(sourceMapWriter, jsFileURI,
-              config.relativizeSourceMapBase)
+              config.relativizeSourceMapBase, fragmentIndex)
 
           jsFileWriter.write(printedModuleSetCache.headerBytes)
           for (_ <- 0 until printedModuleSetCache.headerNewLineCount)
@@ -288,8 +290,8 @@ private object BasicLinkerBackend {
   private object PrintedTreeWithoutSourceMapBodyPrinter
       extends PrintedTreeBasedBodyPrinter(PostTransformerWithoutSourceMap)
 
-  private object PrintedTreeWithSourceMapBodyPrinter
-      extends PrintedTreeBasedBodyPrinter(PostTransformerWithSourceMap)
+  private class PrintedTreeWithSourceMapBodyPrinter(fragmentIndex: SourceMapWriter.Index)
+      extends PrintedTreeBasedBodyPrinter(new PostTransformerWithSourceMap(fragmentIndex))
 
   private object PostTransformerWithoutSourceMap extends Emitter.PostTransformer[js.PrintedTree] {
     def transformStats(trees: List[js.Tree], indent: Int): List[js.PrintedTree] = {
@@ -306,13 +308,14 @@ private object BasicLinkerBackend {
     }
   }
 
-  private object PostTransformerWithSourceMap extends Emitter.PostTransformer[js.PrintedTree] {
+  private class PostTransformerWithSourceMap(fragmentIndex: SourceMapWriter.Index)
+      extends Emitter.PostTransformer[js.PrintedTree] {
     def transformStats(trees: List[js.Tree], indent: Int): List[js.PrintedTree] = {
       if (trees.isEmpty) {
         Nil // Fast path
       } else {
         val jsCodeWriter = new ByteArrayWriter()
-        val smFragmentBuilder = new SourceMapWriter.FragmentBuilder()
+        val smFragmentBuilder = new SourceMapWriter.FragmentBuilder(fragmentIndex)
         val printer = new Printers.JSTreePrinterWithSourceMap(jsCodeWriter, smFragmentBuilder, indent)
 
         trees.foreach(printer.printStat(_))
