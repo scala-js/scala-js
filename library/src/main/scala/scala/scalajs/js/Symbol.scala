@@ -67,6 +67,12 @@ object Symbol extends js.Object {
    */
   def keyFor(sym: js.Symbol): js.UndefOr[String] = js.native
 
+  /** The well-known symbol `@@asyncIterator`.
+   *
+   *  @group wellknownsyms
+   */
+  val asyncIterator: js.Symbol = js.native
+
   /** The well-known symbol `@@hasInstance`.
    *
    *  @group wellknownsyms
