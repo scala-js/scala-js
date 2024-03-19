@@ -43,7 +43,7 @@ object Infos {
   final case class NamespacedMethodName(
       namespace: MemberNamespace, methodName: MethodName)
 
-  final class ClassInfo private[Infos] (
+  final case class ClassInfo private[Infos] (
       val className: ClassName,
       val kind: ClassKind,
       val superClass: Option[ClassName], // always None for interfaces
@@ -67,7 +67,7 @@ object Infos {
     override def toString(): String = className.nameString
   }
 
-  final class MethodInfo private (
+  final case class MethodInfo private (
       val methodName: MethodName,
       val namespace: MemberNamespace,
       val isAbstract: Boolean,
@@ -86,13 +86,13 @@ object Infos {
     }
   }
 
-  final class TopLevelExportInfo private[Infos] (
+  final case class TopLevelExportInfo private[Infos] (
       val reachability: ReachabilityInfo,
       val moduleID: ModuleID,
       val exportName: String
   )
 
-  final class ReachabilityInfo private[Infos] (
+  final case class ReachabilityInfo private[Infos] (
       val byClass: List[ReachabilityInfoInClass],
       val globalFlags: ReachabilityInfo.Flags
   )
@@ -107,7 +107,7 @@ object Infos {
   }
 
   /** Things from a given class that are reached by one method. */
-  final class ReachabilityInfoInClass private[Infos] (
+  final case class ReachabilityInfoInClass private[Infos] (
       val className: ClassName,
       val fieldsRead: List[FieldName],
       val fieldsWritten: List[FieldName],

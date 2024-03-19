@@ -43,6 +43,13 @@ final class ModuleInitializer private (
 
   def withModuleID(moduleID: String): ModuleInitializer =
     new ModuleInitializer(initializer, moduleID)
+
+  override def equals(that: Any): Boolean = that match {
+    case that: ModuleInitializer =>
+      this.initializer == that.initializer && this.moduleID == that.moduleID
+
+    case _ => false
+  }
 }
 
 /** Factory for [[ModuleInitializer]]s. */
