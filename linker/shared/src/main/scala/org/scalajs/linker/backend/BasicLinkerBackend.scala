@@ -44,10 +44,10 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
   private[this] val fragmentIndex = new SourceMapWriter.Index
 
   private[this] val emitter: Emitter = {
-    val postTransformer = {
-      if (config.minify) Emitter.PostTransformer.Identity
-      else if (config.sourceMap) new PostTransformerWithSourceMap(fragmentIndex)
-      else PostTransformerWithoutSourceMap
+    val prePrinter = {
+      if (config.minify) Emitter.PrePrinter.Off
+      else if (config.sourceMap) new Emitter.PrePrinter.WithSourceMap(fragmentIndex)
+      else Emitter.PrePrinter.WithoutSourceMap
     }
 
     val emitterConfig = Emitter.Config(config.commonConfig.coreSpec)
@@ -55,7 +55,7 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
       .withInternalModulePattern(m => OutputPatternsImpl.moduleName(config.outputPatterns, m.id))
       .withMinify(config.minify)
 
-    new Emitter(emitterConfig, postTransformer)
+    new Emitter(emitterConfig, prePrinter)
   }
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
@@ -243,39 +243,6 @@ private object BasicLinkerBackend {
       val wasUsed = cacheUsed
       cacheUsed = false
       wasUsed
-    }
-  }
-
-  private object PostTransformerWithoutSourceMap extends Emitter.PostTransformer {
-    def transformStats(trees: List[js.Tree], indent: Int): List[js.PrintedTree] = {
-      if (trees.isEmpty) {
-        Nil // Fast path
-      } else {
-        val jsCodeWriter = new ByteArrayWriter()
-        val printer = new Printers.JSTreePrinter(jsCodeWriter, indent)
-
-        trees.foreach(printer.printStat(_))
-
-        js.PrintedTree(jsCodeWriter.toByteArray(), SourceMapWriter.Fragment.Empty) :: Nil
-      }
-    }
-  }
-
-  private class PostTransformerWithSourceMap(fragmentIndex: SourceMapWriter.Index)
-      extends Emitter.PostTransformer {
-    def transformStats(trees: List[js.Tree], indent: Int): List[js.PrintedTree] = {
-      if (trees.isEmpty) {
-        Nil // Fast path
-      } else {
-        val jsCodeWriter = new ByteArrayWriter()
-        val smFragmentBuilder = new SourceMapWriter.FragmentBuilder(fragmentIndex)
-        val printer = new Printers.JSTreePrinterWithSourceMap(jsCodeWriter, smFragmentBuilder, indent)
-
-        trees.foreach(printer.printStat(_))
-        smFragmentBuilder.complete()
-
-        js.PrintedTree(jsCodeWriter.toByteArray(), smFragmentBuilder.result()) :: Nil
-      }
     }
   }
 }
