@@ -87,6 +87,9 @@ final class OriginalName private (private val bytes: Array[Byte])
 object OriginalName {
   val NoOriginalName: OriginalName = new OriginalName(null)
 
+  def equals(x: OriginalName, y: OriginalName): Boolean =
+    java.util.Arrays.equals(x.bytes, y.bytes) // handles nulls
+
   def apply(name: UTF8String): OriginalName =
     new OriginalName(name.bytes)
 

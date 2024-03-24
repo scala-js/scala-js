@@ -22,6 +22,7 @@ import scala.collection.mutable.{ArrayBuffer, ListBuffer}
 
 import org.scalajs.ir
 import org.scalajs.ir.OriginalName
+import org.scalajs.ir.OriginalName.NoOriginalName
 import org.scalajs.ir.Position
 import org.scalajs.ir.Position._
 
@@ -36,10 +37,16 @@ object SourceMapWriter {
   private final val VLQBaseMask = VLQBase - 1
   private final val VLQContinuationBit = VLQBase
 
+  // Constants for fragments
+  private final val FragNewLine = 0
+  private final val FragColOnly = 1
+  private final val FragColAndPos = 2
+  private final val FragColPosName = 3
+
   private final class NodePosStack {
     private var topIndex: Int = -1
     private var posStack: Array[Position] = new Array(128)
-    private var nameStack: Array[String] = new Array(128)
+    private var nameStack: Array[OriginalName] = new Array(128)
 
     def pop(): Unit =
       topIndex -= 1
@@ -47,10 +54,10 @@ object SourceMapWriter {
     def topPos: Position =
       posStack(topIndex)
 
-    def topName: String =
+    def topName: OriginalName =
       nameStack(topIndex)
 
-    def push(pos: Position, originalName: String): Unit = {
+    def push(pos: Position, originalName: OriginalName): Unit = {
       val newTopIdx = topIndex + 1
       topIndex = newTopIdx
       if (newTopIdx >= posStack.length)
@@ -60,39 +67,33 @@ object SourceMapWriter {
     }
 
     private def growStack(): Unit = {
-      val newSize = 2 * posStack.length
+      val oldSize = posStack.length
+      val newSize = 2 * oldSize
       posStack = ju.Arrays.copyOf(posStack, newSize)
-      nameStack = ju.Arrays.copyOf(nameStack, newSize)
+
+      // Work around broken typechecking of copyOf[OriginalName].
+      val oldNameStack = nameStack
+      nameStack = new Array(newSize)
+      System.arraycopy(oldNameStack, 0, nameStack, 0, oldSize)
     }
   }
 
-  private sealed abstract class FragmentElement
-
-  private object FragmentElement {
-    case object NewLine extends FragmentElement
-
-    // name is nullable
-    final case class Segment(columnInGenerated: Int, pos: Position, name: String)
-        extends FragmentElement
-  }
-
   final class Fragment private[SourceMapWriter] (
-      private[SourceMapWriter] val elements: Array[FragmentElement])
+      private[SourceMapWriter] val data: Array[Byte]) extends AnyVal
 
   object Fragment {
     val Empty: Fragment = new Fragment(new Array(0))
   }
 
-  sealed abstract class Builder {
+  sealed abstract class Builder(fragmentIndex: Index) {
     // Strings are nullable in this stack
     private val nodePosStack = new SourceMapWriter.NodePosStack
-    nodePosStack.push(NoPosition, null)
+    nodePosStack.push(NoPosition, NoOriginalName)
 
     private var pendingColumnInGenerated: Int = -1
     private var pendingPos: Position = NoPosition
     private var pendingIsIdent: Boolean = false
-    // pendingName string is nullable
-    private var pendingName: String = null
+    private var pendingName: OriginalName = NoOriginalName
 
     final def nextLine(): Unit = {
       writePendingSegment()
@@ -103,16 +104,12 @@ object SourceMapWriter {
     }
 
     final def startNode(column: Int, originalPos: Position): Unit = {
-      nodePosStack.push(originalPos, null)
-      startSegment(column, originalPos, isIdent = false, null)
+      nodePosStack.push(originalPos, NoOriginalName)
+      startSegment(column, originalPos, isIdent = false, NoOriginalName)
     }
 
     final def startIdentNode(column: Int, originalPos: Position,
-        optOriginalName: OriginalName): Unit = {
-      // TODO The then branch allocates a String; we should avoid that at some point
-      val originalName =
-        if (optOriginalName.isDefined) optOriginalName.get.toString()
-        else null
+        originalName: OriginalName): Unit = {
       nodePosStack.push(originalPos, originalName)
       startSegment(column, originalPos, isIdent = true, originalName)
     }
@@ -126,17 +123,43 @@ object SourceMapWriter {
     final def insertFragment(fragment: Fragment): Unit = {
       require(pendingColumnInGenerated < 0, s"Cannot add fragment when in the middle of a line")
 
-      val elements = fragment.elements
-      val len = elements.length
-      var i = 0
-      while (i != len) {
-        elements(i) match {
-          case FragmentElement.Segment(columnInGenerated, pos, name) =>
-            doWriteSegment(columnInGenerated, pos, name)
-          case FragmentElement.NewLine =>
+      val buf = ByteBuffer.wrap(fragment.data)
+
+      var columnInGenerated = 0
+      var sourceIndex = 0
+      var line: Int = 0
+      var column: Int = 0
+      var nameIndex: Int = 0
+
+      while (buf.hasRemaining()) {
+        (buf.get(): @unchecked) match {
+          case FragNewLine =>
             doWriteNewLine()
+
+          case FragColOnly =>
+            columnInGenerated += readRawVLQ(buf)
+            doWriteSegment(columnInGenerated, null, 0, 0, null)
+
+          case FragColAndPos =>
+            columnInGenerated += readRawVLQ(buf)
+            sourceIndex += readRawVLQ(buf)
+            line += readRawVLQ(buf)
+            column += readRawVLQ(buf)
+
+            val source = fragmentIndex.sources(sourceIndex)
+            doWriteSegment(columnInGenerated, source, line, column, null)
+
+          case FragColPosName =>
+            columnInGenerated += readRawVLQ(buf)
+            sourceIndex += readRawVLQ(buf)
+            line += readRawVLQ(buf)
+            column += readRawVLQ(buf)
+            nameIndex += readRawVLQ(buf)
+
+            val source = fragmentIndex.sources(sourceIndex)
+            val name = fragmentIndex.names(nameIndex)
+            doWriteSegment(columnInGenerated, source, line, column, name)
         }
-        i += 1
       }
     }
 
@@ -146,12 +169,12 @@ object SourceMapWriter {
     }
 
     private def startSegment(startColumn: Int, originalPos: Position,
-        isIdent: Boolean, originalName: String): Unit = {
+        isIdent: Boolean, originalName: OriginalName): Unit = {
       // scalastyle:off return
 
       // There is no point in outputting a segment with the same information
       if ((originalPos == pendingPos) && (isIdent == pendingIsIdent) &&
-          (originalName == pendingName)) {
+          OriginalName.equals(originalName, pendingName)) {
         return
       }
 
@@ -169,47 +192,175 @@ object SourceMapWriter {
     }
 
     private def writePendingSegment(): Unit = {
-      if (pendingColumnInGenerated >= 0)
-        doWriteSegment(pendingColumnInGenerated, pendingPos, pendingName)
+      if (pendingColumnInGenerated >= 0) {
+        if (pendingPos.isEmpty) {
+          doWriteSegment(pendingColumnInGenerated, null, 0, 0, null)
+        } else {
+          // Allocate a name string *before* we write a fragment so we can cache it.
+          val originalName =
+            if (pendingName.isDefined) pendingName.get.toString()
+            else null
+
+          doWriteSegment(pendingColumnInGenerated,
+              pendingPos.source, pendingPos.line, pendingPos.column, originalName)
+        }
+      }
+    }
+
+    private def readRawVLQ(buf: ByteBuffer): Int = {
+      var shift = 0
+      var value = 0
+
+      while ({
+        val i = buf.get()
+        value |= (i & 127) << shift
+        (i & 128) != 0
+      }) {
+        shift += 7
+      }
+
+      val neg = (value & 1) != 0
+      value >>>= 1
+
+      if (!neg) value
+      else if (value == 0) Int.MinValue
+      else -value
     }
 
     protected def doWriteNewLine(): Unit
 
-    protected def doWriteSegment(columnInGenerated: Int, pos: Position, name: String): Unit
+    protected def doWriteSegment(columnInGenerated: Int, source: SourceFile, line: Int, column: Int, name: String): Unit
 
     protected def doComplete(): Unit
   }
 
-  final class FragmentBuilder extends Builder {
-    private val elements = new ArrayBuffer[FragmentElement]
+  final class FragmentBuilder(index: Index) extends Builder(index) {
+    private val data = new ByteArrayWriter()
+
+    private var lastColumnInGenerated = 0
+    private var lastSource: SourceFile = null
+    private var lastSourceIndex = 0
+    private var lastLine: Int = 0
+    private var lastColumn: Int = 0
+    private var lastNameIndex: Int = 0
 
     protected def doWriteNewLine(): Unit =
-      elements += FragmentElement.NewLine
+      data.write(FragNewLine)
 
-    protected def doWriteSegment(columnInGenerated: Int, pos: Position, name: String): Unit =
-      elements += FragmentElement.Segment(columnInGenerated, pos, name)
+    protected def doWriteSegment(columnInGenerated: Int, source: SourceFile,
+        line: Int, column: Int, name: String): Unit = {
+      val MaxSegmentLength = 1 + 5 * 5 // segment type + max 5 rawVLQ of max 5 bytes each
+      val buffer = data.unsafeStartDirectWrite(maxBytes = MaxSegmentLength)
+      var offset = data.currentSize
 
-    protected def doComplete(): Unit = {
-      if (elements.nonEmpty && elements.last != FragmentElement.NewLine)
-        throw new IllegalStateException("Trying to complete a fragment in the middle of a line")
+      // Write segment type
+      buffer(offset) = {
+        if (source == null) FragColOnly
+        else if (name == null) FragColAndPos
+        else FragColPosName
+      }
+      offset += 1
+
+      offset = writeRawVLQ(buffer, offset, columnInGenerated-lastColumnInGenerated)
+      lastColumnInGenerated = columnInGenerated
+
+      if (source != null) {
+        if (source eq lastSource) { // highly likely
+          buffer(offset) = 0
+          offset += 1
+        } else {
+          val sourceIndex = index.sourceToIndex(source)
+          offset = writeRawVLQ(buffer, offset, sourceIndex-lastSourceIndex)
+          lastSource = source
+          lastSourceIndex = sourceIndex
+        }
+
+        // Line field
+        offset = writeRawVLQ(buffer, offset, line - lastLine)
+        lastLine = line
+
+        // Column field
+        offset = writeRawVLQ(buffer, offset, column - lastColumn)
+        lastColumn = column
+
+        // Name field
+        if (name != null) {
+          val nameIndex = index.nameToIndex(name)
+          offset = writeRawVLQ(buffer, offset, nameIndex-lastNameIndex)
+          lastNameIndex = nameIndex
+        }
+      }
+      data.unsafeEndDirectWrite(offset)
+    }
+
+    protected def doComplete(): Unit = ()
+
+    private def writeRawVLQ(buffer: Array[Byte], offset0: Int, value0: Int): Int = {
+      // See comment in writeBase64VLQ
+      val signExtended = value0 >> 31
+      var value = (((value0 ^ signExtended) - signExtended) << 1) | (signExtended & 1)
+
+      var offset = offset0
+
+      while ({
+        if ((value & ~127) != 0)
+          buffer(offset) = ((value & 127) | 128).toByte
+        else
+          buffer(offset) = (value & 127).toByte
+
+        offset += 1
+        value >>>= 7
+
+        value != 0
+      }) ()
+
+      offset
     }
 
     def result(): Fragment =
-      new Fragment(elements.toArray)
+      new Fragment(data.toByteArray())
+  }
+
+  final class Index {
+    private[SourceMapWriter] val sources = new ArrayBuffer[SourceFile]
+    private val _srcToIndex = new ju.HashMap[SourceFile, Integer]
+
+    private[SourceMapWriter] val names = new ArrayBuffer[String]
+    private val _nameToIndex = new ju.HashMap[String, Integer]
+
+    private[SourceMapWriter] def sourceToIndex(source: SourceFile): Int = {
+      val existing = _srcToIndex.get(source)
+      if (existing != null) {
+        existing.intValue()
+      } else {
+        val index = sources.size
+        _srcToIndex.put(source, index)
+        sources += source
+        index
+      }
+    }
+
+    private[SourceMapWriter] def nameToIndex(name: String): Int = {
+      val existing = _nameToIndex.get(name)
+      if (existing != null) {
+        existing.intValue()
+      } else {
+        val index = names.size
+        _nameToIndex.put(name, index)
+        names += name
+        index
+      }
+    }
   }
 }
 
 final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
-    relativizeBaseURI: Option[URI])
-    extends SourceMapWriter.Builder {
+    relativizeBaseURI: Option[URI], fragmentIndex: SourceMapWriter.Index)
+    extends SourceMapWriter.Builder(fragmentIndex) {
 
   import SourceMapWriter._
 
-  private val sources = new ListBuffer[SourceFile]
-  private val _srcToIndex = new ju.HashMap[SourceFile, Integer]
-
-  private val names = new ListBuffer[String]
-  private val _nameToIndex = new ju.HashMap[String, Integer]
+  private val outIndex = new Index
 
   private var lineCountInGenerated = 0
   private var lastColumnInGenerated = 0
@@ -221,30 +372,6 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
   private var lastNameIndex: Int = 0
 
   writeHeader()
-
-  private def sourceToIndex(source: SourceFile): Int = {
-    val existing = _srcToIndex.get(source)
-    if (existing != null) {
-      existing.intValue()
-    } else {
-      val index = sources.size
-      _srcToIndex.put(source, index)
-      sources += source
-      index
-    }
-  }
-
-  private def nameToIndex(name: String): Int = {
-    val existing = _nameToIndex.get(name)
-    if (existing != null) {
-      existing.intValue()
-    } else {
-      val index = names.size
-      _nameToIndex.put(name, index)
-      names += name
-      index
-    }
-  }
 
   private def writeJSONString(s: String): Unit = {
     out.write('\"')
@@ -266,7 +393,8 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
     firstSegmentOfLine = true
   }
 
-  protected def doWriteSegment(columnInGenerated: Int, pos: Position, name: String): Unit = {
+  protected def doWriteSegment(columnInGenerated: Int, source: SourceFile,
+      line: Int, column: Int, name: String): Unit = {
     // scalastyle:off return
 
     /* This method is incredibly performance-sensitive, so we resort to
@@ -288,23 +416,18 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
     offset = writeBase64VLQ(buffer, offset, columnInGenerated-lastColumnInGenerated)
     lastColumnInGenerated = columnInGenerated
 
-    // If the position is NoPosition, stop here
-    if (pos.isEmpty) {
+    if (source == null) {
+      // The position was NoPosition, stop here
       out.unsafeEndDirectWrite(offset)
       return
     }
-
-    // Extract relevant properties of pendingPos
-    val source = pos.source
-    val line = pos.line
-    val column = pos.column
 
     // Source index field
     if (source eq lastSource) { // highly likely
       buffer(offset) = 'A' // 0 in Base64VLQ
       offset += 1
     } else {
-      val sourceIndex = sourceToIndex(source)
+      val sourceIndex = outIndex.sourceToIndex(source)
       offset = writeBase64VLQ(buffer, offset, sourceIndex-lastSourceIndex)
       lastSource = source
       lastSourceIndex = sourceIndex
@@ -320,7 +443,7 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
 
     // Name field
     if (name != null) {
-      val nameIndex = nameToIndex(name)
+      val nameIndex = outIndex.nameToIndex(name)
       offset = writeBase64VLQ(buffer, offset, nameIndex-lastNameIndex)
       lastNameIndex = nameIndex
     }
@@ -332,21 +455,29 @@ final class SourceMapWriter(out: ByteArrayWriter, jsFileName: String,
 
   protected def doComplete(): Unit = {
     val relativizeBaseURI = this.relativizeBaseURI // local copy
-    var restSources = sources.result()
+    val sources = outIndex.sources // local copy
+    val sourcesLen = sources.length
+
     out.writeASCIIString("\",\n\"sources\": [")
-    while (restSources.nonEmpty) {
-      writeJSONString(SourceFileUtil.webURI(relativizeBaseURI, restSources.head))
-      restSources = restSources.tail
-      if (restSources.nonEmpty)
+
+    var i = 0
+    while (i < sourcesLen) {
+      writeJSONString(SourceFileUtil.webURI(relativizeBaseURI, sources(i)))
+      i += 1
+      if (i < sourcesLen)
         out.writeASCIIString(", ")
     }
 
-    var restNames = names.result()
+    val names = outIndex.names // local copy
+    val namesLen = names.length
+
     out.writeASCIIString("],\n\"names\": [")
-    while (restNames.nonEmpty) {
-      writeJSONString(restNames.head)
-      restNames = restNames.tail
-      if (restNames.nonEmpty)
+
+    i = 0
+    while (i < namesLen) {
+      writeJSONString(names(i))
+      i += 1
+      if (i < namesLen)
         out.writeASCIIString(", ")
     }
     out.writeASCIIString("],\n\"lineCount\": ")

@@ -41,19 +41,21 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
   private[this] var totalModules = 0
   private[this] val rewrittenModules = new AtomicInteger(0)
 
-  private[this] val bodyPrinter: BodyPrinter = {
-    if (config.minify) IdentityPostTransformerBasedBodyPrinter
-    else if (config.sourceMap) PrintedTreeWithSourceMapBodyPrinter
-    else PrintedTreeWithoutSourceMapBodyPrinter
-  }
+  private[this] val fragmentIndex = new SourceMapWriter.Index
 
-  private[this] val emitter: Emitter[bodyPrinter.TreeType] = {
+  private[this] val emitter: Emitter = {
+    val prePrinter = {
+      if (config.minify) Emitter.PrePrinter.Off
+      else if (config.sourceMap) new Emitter.PrePrinter.WithSourceMap(fragmentIndex)
+      else Emitter.PrePrinter.WithoutSourceMap
+    }
+
     val emitterConfig = Emitter.Config(config.commonConfig.coreSpec)
       .withJSHeader(config.jsHeader)
       .withInternalModulePattern(m => OutputPatternsImpl.moduleName(config.outputPatterns, m.id))
       .withMinify(config.minify)
 
-    new Emitter(emitterConfig, bodyPrinter.postTransformer)
+    new Emitter(emitterConfig, prePrinter)
   }
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
@@ -102,7 +104,9 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
           jsFileWriter.write(printedModuleSetCache.headerBytes)
           jsFileWriter.writeASCIIString("'use strict';\n")
 
-          bodyPrinter.printWithoutSourceMap(trees, jsFileWriter)
+          val printer = new Printers.JSTreePrinter(jsFileWriter)
+          for (tree <- trees)
+            printer.printStat(tree)
 
           jsFileWriter.write(printedModuleSetCache.footerBytes)
 
@@ -127,7 +131,7 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
           val sourceMapURI = OutputPatternsImpl.sourceMapURI(config.outputPatterns, moduleID.id)
 
           val smWriter = new SourceMapWriter(sourceMapWriter, jsFileURI,
-              config.relativizeSourceMapBase)
+              config.relativizeSourceMapBase, fragmentIndex)
 
           jsFileWriter.write(printedModuleSetCache.headerBytes)
           for (_ <- 0 until printedModuleSetCache.headerNewLineCount)
@@ -136,7 +140,9 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
           jsFileWriter.writeASCIIString("'use strict';\n")
           smWriter.nextLine()
 
-          bodyPrinter.printWithSourceMap(trees, jsFileWriter, smWriter)
+          val printer = new Printers.JSTreePrinterWithSourceMap(jsFileWriter, smWriter, initIndent = 0)
+          for (tree <- trees)
+            printer.printStat(tree)
 
           jsFileWriter.write(printedModuleSetCache.footerBytes)
           jsFileWriter.write(("//# sourceMappingURL=" + sourceMapURI + "\n").getBytes(StandardCharsets.UTF_8))
@@ -237,89 +243,6 @@ private object BasicLinkerBackend {
       val wasUsed = cacheUsed
       cacheUsed = false
       wasUsed
-    }
-  }
-
-  private abstract class BodyPrinter {
-    type TreeType >: Null <: js.Tree
-
-    val postTransformer: Emitter.PostTransformer[TreeType]
-
-    def printWithoutSourceMap(trees: List[TreeType], jsFileWriter: ByteArrayWriter): Unit
-    def printWithSourceMap(trees: List[TreeType], jsFileWriter: ByteArrayWriter, smWriter: SourceMapWriter): Unit
-  }
-
-  private object IdentityPostTransformerBasedBodyPrinter extends BodyPrinter {
-    type TreeType = js.Tree
-
-    val postTransformer: Emitter.PostTransformer[TreeType] = Emitter.PostTransformer.Identity
-
-    def printWithoutSourceMap(trees: List[TreeType], jsFileWriter: ByteArrayWriter): Unit = {
-      val printer = new Printers.JSTreePrinter(jsFileWriter)
-      for (tree <- trees)
-        printer.printStat(tree)
-    }
-
-    def printWithSourceMap(trees: List[TreeType], jsFileWriter: ByteArrayWriter, smWriter: SourceMapWriter): Unit = {
-      val printer = new Printers.JSTreePrinterWithSourceMap(jsFileWriter, smWriter, initIndent = 0)
-      for (tree <- trees)
-        printer.printStat(tree)
-    }
-  }
-
-  private abstract class PrintedTreeBasedBodyPrinter(
-    val postTransformer: Emitter.PostTransformer[js.PrintedTree]
-  ) extends BodyPrinter {
-    type TreeType = js.PrintedTree
-
-    def printWithoutSourceMap(trees: List[TreeType], jsFileWriter: ByteArrayWriter): Unit = {
-      for (tree <- trees)
-        jsFileWriter.write(tree.jsCode)
-    }
-
-    def printWithSourceMap(trees: List[TreeType], jsFileWriter: ByteArrayWriter, smWriter: SourceMapWriter): Unit = {
-      for (tree <- trees) {
-        jsFileWriter.write(tree.jsCode)
-        smWriter.insertFragment(tree.sourceMapFragment)
-      }
-    }
-  }
-
-  private object PrintedTreeWithoutSourceMapBodyPrinter
-      extends PrintedTreeBasedBodyPrinter(PostTransformerWithoutSourceMap)
-
-  private object PrintedTreeWithSourceMapBodyPrinter
-      extends PrintedTreeBasedBodyPrinter(PostTransformerWithSourceMap)
-
-  private object PostTransformerWithoutSourceMap extends Emitter.PostTransformer[js.PrintedTree] {
-    def transformStats(trees: List[js.Tree], indent: Int): List[js.PrintedTree] = {
-      if (trees.isEmpty) {
-        Nil // Fast path
-      } else {
-        val jsCodeWriter = new ByteArrayWriter()
-        val printer = new Printers.JSTreePrinter(jsCodeWriter, indent)
-
-        trees.foreach(printer.printStat(_))
-
-        js.PrintedTree(jsCodeWriter.toByteArray(), SourceMapWriter.Fragment.Empty) :: Nil
-      }
-    }
-  }
-
-  private object PostTransformerWithSourceMap extends Emitter.PostTransformer[js.PrintedTree] {
-    def transformStats(trees: List[js.Tree], indent: Int): List[js.PrintedTree] = {
-      if (trees.isEmpty) {
-        Nil // Fast path
-      } else {
-        val jsCodeWriter = new ByteArrayWriter()
-        val smFragmentBuilder = new SourceMapWriter.FragmentBuilder()
-        val printer = new Printers.JSTreePrinterWithSourceMap(jsCodeWriter, smFragmentBuilder, indent)
-
-        trees.foreach(printer.printStat(_))
-        smFragmentBuilder.complete()
-
-        js.PrintedTree(jsCodeWriter.toByteArray(), smFragmentBuilder.result()) :: Nil
-      }
     }
   }
 }
