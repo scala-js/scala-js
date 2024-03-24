@@ -33,13 +33,13 @@ import EmitterNames._
 import GlobalRefUtils._
 
 /** Emits a desugared JS tree to a builder */
-final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransformer) {
+final class Emitter(config: Emitter.Config, prePrinter: Emitter.PrePrinter) {
 
   import Emitter._
   import config._
 
-  require(!config.minify || postTransformer == PostTransformer.Identity,
-      "When using the 'minify' option, the postTransformer must be Identity.")
+  require(!config.minify || prePrinter == PrePrinter.Off,
+      "When using the 'minify' option, the prePrinter must be Off.")
 
   private implicit val globalRefTracking: GlobalRefTracking =
     config.topLevelGlobalRefTracking
@@ -64,8 +64,8 @@ final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransfo
     val classEmitter: ClassEmitter = new ClassEmitter(sjsGen)
 
     val everyFileStart: List[js.Tree] = {
-      // This postTransform does not count in the statistics
-      postTransformer.transformStats(sjsGen.declarePrototypeVar, 0)
+      // This prePrint does not count in the statistics
+      prePrinter.prePrint(sjsGen.declarePrototypeVar, 0)
     }
 
     val coreJSLibCache: CoreJSLibCache = new CoreJSLibCache
@@ -86,7 +86,7 @@ final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransfo
   private[this] var statsClassesInvalidated: Int = 0
   private[this] var statsMethodsReused: Int = 0
   private[this] var statsMethodsInvalidated: Int = 0
-  private[this] var statsPostTransforms: Int = 0
+  private[this] var statsPrePrints: Int = 0
 
   val symbolRequirements: SymbolRequirement =
     Emitter.symbolRequirements(config)
@@ -143,7 +143,7 @@ final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransfo
     statsClassesInvalidated = 0
     statsMethodsReused = 0
     statsMethodsInvalidated = 0
-    statsPostTransforms = 0
+    statsPrePrints = 0
 
     // Update GlobalKnowledge.
     val invalidateAll = knowledgeGuardian.update(moduleSet)
@@ -165,7 +165,7 @@ final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransfo
       logger.debug(
           s"Emitter: Method tree cache stats: reused: $statsMethodsReused -- "+
           s"invalidated: $statsMethodsInvalidated")
-      logger.debug(s"Emitter: Post transforms: $statsPostTransforms")
+      logger.debug(s"Emitter: Pre prints: $statsPrePrints")
 
       // Inform caches about run completion.
       state.moduleCaches.filterInPlace((_, c) => c.cleanAfterRun())
@@ -173,13 +173,13 @@ final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransfo
     }
   }
 
-  private def postTransform(trees: List[js.Tree], indent: Int): List[js.Tree] = {
-    statsPostTransforms += 1
-    postTransformer.transformStats(trees, indent)
+  private def prePrint(trees: List[js.Tree], indent: Int): List[js.Tree] = {
+    statsPrePrints += 1
+    prePrinter.prePrint(trees, indent)
   }
 
-  private def postTransform(tree: js.Tree, indent: Int): List[js.Tree] =
-    postTransform(tree :: Nil, indent)
+  private def prePrint(tree: js.Tree, indent: Int): List[js.Tree] =
+    prePrint(tree :: Nil, indent)
 
   /** Emits all JavaScript code avoiding clashes with global refs.
    *
@@ -248,7 +248,7 @@ final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransfo
 
         val moduleImports = extractChangedAndWithGlobals {
           moduleCache.getOrComputeImports(module.externalDependencies, module.internalDependencies) {
-            genModuleImports(module).map(postTransform(_, 0))
+            genModuleImports(module).map(prePrint(_, 0))
           }
         }
 
@@ -258,7 +258,7 @@ final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransfo
            */
           moduleCache.getOrComputeTopLevelExports(module.topLevelExports) {
             classEmitter.genTopLevelExports(module.topLevelExports)(
-                moduleContext, moduleCache).map(postTransform(_, 0))
+                moduleContext, moduleCache).map(prePrint(_, 0))
           }
         }
 
@@ -268,7 +268,7 @@ final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransfo
             WithGlobals.list(initializers.map { initializer =>
               classEmitter.genModuleInitializer(initializer)(
                   moduleContext, moduleCache)
-            }).map(postTransform(_, 0))
+            }).map(prePrint(_, 0))
           }
         }
 
@@ -450,7 +450,7 @@ final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransfo
     if (kind.isJSClass) {
       val fieldDefs = classTreeCache.privateJSFields.getOrElseUpdate {
         classEmitter.genCreatePrivateJSFieldDefsOfJSClass(className)(
-            moduleContext, classCache).map(postTransform(_, 0))
+            moduleContext, classCache).map(prePrint(_, 0))
       }
       main ++= extractWithGlobals(fieldDefs)
     }
@@ -471,7 +471,7 @@ final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransfo
 
         main ++= extractWithGlobalsAndChanged(methodCache.getOrElseUpdate(methodDef.version, {
           classEmitter.genStaticLikeMethod(className, methodDef)(moduleContext, methodCache)
-            .map(postTransform(_, 0))
+            .map(prePrint(_, 0))
         }))
       }
     }
@@ -522,7 +522,7 @@ final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransfo
         extractWithGlobals(classTreeCache.storeJSSuperClass.getOrElseUpdate({
           val jsSuperClass = linkedClass.jsSuperClass.get
           classEmitter.genStoreJSSuperClass(jsSuperClass)(moduleContext, classCache, linkedClass.pos)
-            .map(postTransform(_, 1))
+            .map(prePrint(_, 1))
         }))
       } else {
         Nil
@@ -552,7 +552,7 @@ final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransfo
                 hasJSSuperClass, // invalidated by class version
                 useESClass, // invalidated by class version
                 jsConstructorDef // part of ctor version
-              )(moduleContext, ctorCache, linkedClass.pos).map(postTransform(_, memberIndent)))
+              )(moduleContext, ctorCache, linkedClass.pos).map(prePrint(_, memberIndent)))
         } else {
           val ctorVersion = linkedInlineableInit.fold {
             Version.combine(linkedClass.version)
@@ -566,7 +566,7 @@ final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransfo
                 linkedClass.superClass, // invalidated by class version
                 useESClass, // invalidated by class version,
                 linkedInlineableInit // part of ctor version
-              )(moduleContext, ctorCache, linkedClass.pos).map(postTransform(_, memberIndent)))
+              )(moduleContext, ctorCache, linkedClass.pos).map(prePrint(_, memberIndent)))
         }
       }
 
@@ -620,7 +620,7 @@ final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransfo
                 isJSClass, // invalidated by isJSClassVersion
                 useESClass, // invalidated by isJSClassVersion
                 method // invalidated by method.version
-            )(moduleContext, methodCache).map(postTransform(_, memberIndent))))
+            )(moduleContext, methodCache).map(prePrint(_, memberIndent))))
       }
 
       // Exported Members
@@ -635,7 +635,7 @@ final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransfo
                 isJSClass, // invalidated by isJSClassVersion
                 useESClass, // invalidated by isJSClassVersion
                 member // invalidated by version
-            )(moduleContext, memberCache).map(postTransform(_, memberIndent))))
+            )(moduleContext, memberCache).map(prePrint(_, memberIndent))))
       }
 
       val hasClassInitializer: Boolean = {
@@ -695,7 +695,7 @@ final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransfo
       if (classEmitter.needInstanceTests(linkedClass)(classCache)) {
         main ++= extractWithGlobals(classTreeCache.instanceTests.getOrElseUpdate({
           classEmitter.genInstanceTests(className, kind)(moduleContext, classCache, linkedClass.pos)
-            .map(postTransform(_, 0))
+            .map(prePrint(_, 0))
         }))
       }
 
@@ -709,14 +709,14 @@ final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransfo
               linkedClass.ancestors, // invalidated by overall class cache (identity)
               linkedClass.jsNativeLoadSpec, // invalidated by class version
               linkedClass.hasDirectInstances // invalidated directly (it is the input to `getOrElseUpdate`)
-            )(moduleContext, classCache, linkedClass.pos).map(postTransform(_, 0))))
+            )(moduleContext, classCache, linkedClass.pos).map(prePrint(_, 0))))
       }
     }
 
     if (linkedClass.kind.hasModuleAccessor && linkedClass.hasInstances) {
       main ++= extractWithGlobals(classTreeCache.moduleAccessor.getOrElseUpdate({
         classEmitter.genModuleAccessor(className, isJSClass)(moduleContext, classCache, linkedClass.pos)
-          .map(postTransform(_, 0))
+          .map(prePrint(_, 0))
       }))
     }
 
@@ -727,7 +727,7 @@ final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransfo
     } else {
       extractWithGlobals(classTreeCache.staticFields.getOrElseUpdate({
         classEmitter.genCreateStaticFieldsOfScalaClass(className)(moduleContext, classCache)
-          .map(postTransform(_, 0))
+          .map(prePrint(_, 0))
       }))
     }
 
@@ -736,7 +736,7 @@ final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransfo
     val staticInitialization = if (classEmitter.needStaticInitialization(linkedClass)) {
       classTreeCache.staticInitialization.getOrElseUpdate({
         val tree = classEmitter.genStaticInitialization(className)(moduleContext, classCache, linkedClass.pos)
-        postTransform(tree, 0)
+        prePrint(tree, 0)
       })
     } else {
       Nil
@@ -1063,7 +1063,7 @@ final class Emitter(config: Emitter.Config, postTransformer: Emitter.PostTransfo
 
     def build(moduleContext: ModuleContext): WithGlobals[CoreJSLib.Lib[List[js.Tree]]] = {
       if (_lib == null || _lastModuleContext != moduleContext) {
-        _lib = CoreJSLib.build(sjsGen, postTransform(_, 0), moduleContext, this)
+        _lib = CoreJSLib.build(sjsGen, prePrint(_, 0), moduleContext, this)
         _lastModuleContext = moduleContext
       }
       _lib
@@ -1164,13 +1164,45 @@ object Emitter {
       new Config(coreSpec.semantics, coreSpec.moduleKind, coreSpec.esFeatures)
   }
 
-  trait PostTransformer {
-    def transformStats(trees: List[js.Tree], indent: Int): List[js.Tree]
+  sealed trait PrePrinter {
+    private[Emitter] def prePrint(trees: List[js.Tree], indent: Int): List[js.Tree]
   }
 
-  object PostTransformer {
-    object Identity extends PostTransformer {
-      def transformStats(trees: List[js.Tree], indent: Int): List[js.Tree] = trees
+  object PrePrinter {
+    object Off extends PrePrinter {
+      private[Emitter] def prePrint(trees: List[js.Tree], indent: Int): List[js.Tree] = trees
+    }
+
+    object WithoutSourceMap extends PrePrinter {
+      private[Emitter] def prePrint(trees: List[js.Tree], indent: Int): List[js.PrintedTree] = {
+        if (trees.isEmpty) {
+          Nil // Fast path
+        } else {
+          val jsCodeWriter = new ByteArrayWriter()
+          val printer = new Printers.JSTreePrinter(jsCodeWriter, indent)
+
+          trees.foreach(printer.printStat(_))
+
+          js.PrintedTree(jsCodeWriter.toByteArray(), SourceMapWriter.Fragment.Empty) :: Nil
+        }
+      }
+    }
+
+    final class WithSourceMap(fragmentIndex: SourceMapWriter.Index) extends PrePrinter {
+      private[Emitter] def prePrint(trees: List[js.Tree], indent: Int): List[js.PrintedTree] = {
+        if (trees.isEmpty) {
+          Nil // Fast path
+        } else {
+          val jsCodeWriter = new ByteArrayWriter()
+          val smFragmentBuilder = new SourceMapWriter.FragmentBuilder(fragmentIndex)
+          val printer = new Printers.JSTreePrinterWithSourceMap(jsCodeWriter, smFragmentBuilder, indent)
+
+          trees.foreach(printer.printStat(_))
+          smFragmentBuilder.complete()
+
+          js.PrintedTree(jsCodeWriter.toByteArray(), smFragmentBuilder.result()) :: Nil
+        }
+      }
     }
   }
 

@@ -61,12 +61,10 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
       .withTrackAllGlobalRefs(true)
       .withInternalModulePattern(m => OutputPatternsImpl.moduleName(config.outputPatterns, m.id))
 
-    // Do not apply ClosureAstTransformer eagerly:
-    // The ASTs used by closure are highly mutable, so re-using them is non-trivial.
-    // Since closure is slow anyways, we haven't built the optimization.
-    val postTransformer = Emitter.PostTransformer.Identity
+    // Do not pre-print trees: We do not want the printed form.
+    val prePrinter = Emitter.PrePrinter.Off
 
-    new Emitter(emitterConfig, postTransformer)
+    new Emitter(emitterConfig, prePrinter)
   }
 
   val symbolRequirements: SymbolRequirement = emitter.symbolRequirements
