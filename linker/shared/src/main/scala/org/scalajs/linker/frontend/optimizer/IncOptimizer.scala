@@ -16,6 +16,7 @@ import scala.annotation.{switch, tailrec}
 
 import scala.collection.mutable
 
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
 import org.scalajs.ir._
@@ -44,6 +45,16 @@ import OptimizerCore.InlineableFieldBodies.FieldBody
  *  run, based on detecting what parts of the program must be re-optimized,
  *  and keeping optimized results from previous runs for the rest.
  *
+ *  A general note about use of ConcurrentHashMap[T, Unit] as concurrent sets:
+ *  It would seem better to use ConcurrentHashMap.newKeySet() which is
+ *  specifically designed for this purpose. However, the views alone use up 4 MB
+ *  of shallow size on the test suite at the time of writing. Therefore, we give
+ *  up on the convenience API and use the underlying ConcurrentHashMap directly.
+ *
+ *  A similar argument applies to usages of keySet(): It appears that the
+ *  implementation holds on to the key set once it is created, resulting in
+ *  unnecessary memory usage.
+ *
  *  @param semantics Required Scala.js Semantics
  *  @param esLevel ECMAScript level
  */
@@ -65,15 +76,22 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
   private var batchMode: Boolean = false
 
   private var objectClass: Class = _
-  private val classes = collOps.emptyMap[ClassName, Class]
-  private val interfaces = collOps.emptyParMap[ClassName, InterfaceType]
+  private val classes = new ConcurrentHashMap[ClassName, Class]
+  private val interfaces = new ConcurrentHashMap[ClassName, InterfaceType]
   private val topLevelExports = new JSTopLevelMethodContainer
 
   private var methodsToProcess = collOps.emptyAddable[Processable]
 
   @inline
   private def getInterface(className: ClassName): InterfaceType =
-    collOps.forceGet(interfaces, className)
+    interfaces.get(className)
+
+  @inline
+  private def classOrElse[T >: Class](className: ClassName, default: => T): T = {
+    val clazz = classes.get(className)
+    if (clazz != null) clazz
+    else default
+  }
 
   /** Update the incremental analyzer with a new run. */
   def update(unit: LinkingUnit, logger: Logger): List[(ClassDef, Version)] = {
@@ -110,7 +128,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     val className = linkedClass.className
     val interface = getInterface(className)
 
-    val publicContainer = classes.get(className).getOrElse {
+    val publicContainer = classOrElse(className, {
       /* For interfaces, we need to look at default methods.
        * For other kinds of classes, the public namespace is necessarily
        * empty.
@@ -120,7 +138,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
           linkedClass.kind == ClassKind.Interface || container.methods.isEmpty,
           linkedClass.className -> linkedClass.kind)
       container
-    }
+    })
 
     val newMethods = for (m <- linkedClass.methods) yield {
       val namespace = m.flags.namespace
@@ -169,14 +187,14 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
   }
 
   private def updateAndTagClasses(linkedClasses: List[LinkedClass]): Unit = {
-    val neededInterfaces = collOps.emptyParMap[ClassName, LinkedClass]
-    val neededClasses = collOps.emptyParMap[ClassName, LinkedClass]
+    val neededInterfaces = new ConcurrentHashMap[ClassName, LinkedClass]
+    val neededClasses = new ConcurrentHashMap[ClassName, LinkedClass]
     for (linkedClass <- linkedClasses) {
-      collOps.put(neededInterfaces, linkedClass.className, linkedClass)
+      neededInterfaces.put(linkedClass.className, linkedClass)
 
       if (linkedClass.hasInstances &&
           (linkedClass.kind.isClass || linkedClass.kind == ClassKind.HijackedClass)) {
-        collOps.put(neededClasses, linkedClass.className, linkedClass)
+        neededClasses.put(linkedClass.className, linkedClass)
       }
     }
 
@@ -187,26 +205,26 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
      *
      * Non-batch mode only.
      */
-    assert(!batchMode || collOps.isEmpty(interfaces))
+    assert(!batchMode || interfaces.isEmpty())
     if (!batchMode) {
-      collOps.retain(interfaces) { (className, interface) =>
-        collOps.remove(neededInterfaces, className).fold {
+      interfaces.forEach(collOps.parThreshold, { (className, interface) =>
+        val linkedClass = neededInterfaces.remove(className)
+        if (linkedClass == null) {
           interface.delete()
-          false
-        } { linkedClass =>
+          interfaces.remove(className)
+        } else {
           interface.updateWith(linkedClass)
-          true
         }
-      }
+      })
     }
 
     /* Add new interfaces.
      * Easy, we don't have to notify anyone.
      */
-    collOps.valuesForeach(neededInterfaces) { linkedClass =>
+    neededInterfaces.forEachValue(collOps.parThreshold, { linkedClass =>
       val interface = new InterfaceType(linkedClass)
-      collOps.put(interfaces, interface.className, interface)
-    }
+      interfaces.put(interface.className, interface)
+    })
 
     if (!batchMode) {
       /* Class removals:
@@ -218,7 +236,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
        * Non-batch mode only.
        */
       val objectClassStillExists =
-        objectClass.walkClassesForDeletions(collOps.get(neededClasses, _))
+        objectClass.walkClassesForDeletions(className => Option(neededClasses.get(className)))
       assert(objectClassStillExists, "Uh oh, java.lang.Object was deleted!")
 
       /* Class changes:
@@ -228,8 +246,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
        *
        * Non-batch mode only.
        */
-      objectClass.walkForChanges(
-          collOps.remove(neededClasses, _).get, Set.empty)
+      objectClass.walkForChanges(neededClasses.remove(_), Set.empty)
     }
 
     /* Class additions:
@@ -238,30 +255,36 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
      */
 
     // Group children by (immediate) parent
-    val newChildrenByParent = collOps.emptyAccMap[ClassName, LinkedClass]
+    val newChildrenByParent = new ConcurrentHashMap[ClassName, collOps.Addable[LinkedClass]]
 
-    collOps.valuesForeach(neededClasses) { linkedClass =>
+    neededClasses.forEachValue(collOps.parThreshold, { linkedClass =>
       linkedClass.superClass.fold[Unit] {
         assert(batchMode, "Trying to add java.lang.Object in incremental mode")
         objectClass = new Class(None, linkedClass)
-        classes += linkedClass.className -> objectClass
+        classes.put(linkedClass.className, objectClass)
       } { superClassName =>
-        collOps.acc(newChildrenByParent, superClassName.name, linkedClass)
-      }
-    }
+        val addable = newChildrenByParent
+          .computeIfAbsent(superClassName.name, _ => collOps.emptyAddable)
 
-    val getNewChildren =
-      (name: ClassName) => collOps.getAcc(newChildrenByParent, name)
+        collOps.add(addable, linkedClass)
+      }
+    })
+
+    val getNewChildren = { (name: ClassName) =>
+      val acc = newChildrenByParent.get(name)
+      if (acc == null) collOps.emptyParIterable[LinkedClass]
+      else collOps.finishAdd(acc)
+    }
 
     // Walk the tree to add children
     if (batchMode) {
       objectClass.walkForAdditions(getNewChildren)
     } else {
-      val existingParents =
-        collOps.parFlatMapKeys(newChildrenByParent)(classes.get)
-      collOps.foreach(existingParents) { parent =>
-        parent.walkForAdditions(getNewChildren)
-      }
+      newChildrenByParent.forEachKey(1, { parentName =>
+        val parent = classes.get(parentName)
+        if (parent != null)
+          parent.walkForAdditions(getNewChildren)
+      })
     }
 
   }
@@ -293,7 +316,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     def isGetter(classAndMethodName: (ClassName, MethodName)): Boolean = {
       val (className, methodName) = classAndMethodName
-      classes(className).lookupMethod(methodName).exists { m =>
+      classes.get(className).lookupMethod(methodName).exists { m =>
         m.originalDef.body match {
           case Some(Select(This(), _)) => true
           case _                          => false
@@ -307,7 +330,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
      * - Initialize `elidableConstructorsRemainingDependenciesCount` for `DependentOn` classes
      * - Initialize the stack with dependency-free classes
      */
-    for (cls <- classes.valuesIterator) {
+    classes.forEachValue(Long.MaxValue, { cls =>
       cls.elidableConstructorsInfo match {
         case DependentOn(deps, getterDeps) =>
           if (!getterDeps.forall(isGetter(_))) {
@@ -318,7 +341,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
               toProcessStack += cls
             } else {
               cls.elidableConstructorsRemainingDependenciesCount = deps.size
-              deps.foreach(dep => classes(dep).elidableConstructorsDependents += cls)
+              deps.foreach(dep => classes.get(dep).elidableConstructorsDependents += cls)
             }
           }
         case AcyclicElidable =>
@@ -326,7 +349,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         case NotElidable =>
           ()
       }
-    }
+    })
 
     /* Propagate AcyclicElidable
      * When a class `cls` is on the stack, it is known to be AcyclicElidable.
@@ -358,9 +381,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     }
 
     // Set the final value of hasElidableConstructors
-    for (cls <- classes.valuesIterator) {
-      cls.setHasElidableConstructors()
-    }
+    classes.forEachValue(Long.MaxValue, _.setHasElidableConstructors())
   }
 
   /** Optimizer part: process all methods that need reoptimizing.
@@ -493,7 +514,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     /** True if *all* constructors of this class are recursively elidable. */
     private var hasElidableConstructors: Boolean =
       elidableConstructorsInfo != ElidableConstructorsInfo.NotElidable // initial educated guess
-    private val hasElidableConstructorsAskers = collOps.emptyMap[Processable, Unit]
+    private val hasElidableConstructorsAskers = new ConcurrentHashMap[Processable, Unit]
 
     var fields: List[AnyFieldDef] = linkedClass.fields
     var fieldsRead: Set[FieldName] = linkedClass.fieldsRead
@@ -504,7 +525,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
      */
     private var inlineableFieldBodies: OptimizerCore.InlineableFieldBodies =
       computeInlineableFieldBodies(linkedClass)
-    private val inlineableFieldBodiesAskers = collOps.emptyMap[Processable, Unit]
+    private val inlineableFieldBodiesAskers = new ConcurrentHashMap[Processable, Unit]
 
     setupAfterCreation(linkedClass)
 
@@ -548,7 +569,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
         notInstantiatedAnymore()
       for (method <- methods.values)
         method.delete()
-      classes -= className
+      classes.remove(className)
       /* Note: no need to tag methods that call *statically* one of the methods
        * of the deleted classes, since they've got to be invalidated by
        * themselves.
@@ -633,7 +654,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       val newInlineableFieldBodies = computeInlineableFieldBodies(linkedClass)
       if (inlineableFieldBodies != newInlineableFieldBodies) {
         inlineableFieldBodies = newInlineableFieldBodies
-        inlineableFieldBodiesAskers.keysIterator.foreach(_.tag())
+        inlineableFieldBodiesAskers.forEachKey(Long.MaxValue, _.tag())
         inlineableFieldBodiesAskers.clear()
       }
 
@@ -657,7 +678,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
       if (hasElidableConstructors != newHasElidableConstructors) {
         hasElidableConstructors = newHasElidableConstructors
-        hasElidableConstructorsAskers.keysIterator.foreach(_.tag())
+        hasElidableConstructorsAskers.forEachKey(Long.MaxValue, _.tag())
         hasElidableConstructorsAskers.clear()
       }
 
@@ -676,7 +697,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       collOps.foreach(getNewChildren(className)) { linkedClass =>
         val cls = new Class(Some(this), linkedClass)
         collOps.add(subclassAcc, cls)
-        classes += linkedClass.className -> cls
+        classes.put(linkedClass.className, cls)
         cls.walkForAdditions(getNewChildren)
       }
 
@@ -888,7 +909,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
         // Mixin constructor -- test whether its body is entirely empty
         case ApplyStatically(flags, This(), className, methodName, Nil)
-            if !flags.isPrivate && !classes.contains(className) =>
+            if !flags.isPrivate && !classes.containsKey(className) =>
           // Since className is not in classes, it must be a default method call.
           val container =
             getInterface(className).staticLike(MemberNamespace.Public)
@@ -1025,7 +1046,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
           // Mixin constructor -- assume it is empty
           case ApplyStatically(flags, This(), className, methodName, Nil)
-              if !flags.isPrivate && !classes.contains(className) =>
+              if !flags.isPrivate && !classes.containsKey(className) =>
             fieldBodies
 
           // Delegation to another constructor
@@ -1221,21 +1242,22 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     val className: ClassName = linkedClass.className
 
-    private type MethodCallers = collOps.Map[MethodName, collOps.Map[Processable, Unit]]
+    private type MethodCallers =
+      ConcurrentHashMap[MethodName, ConcurrentHashMap[Processable, Unit]]
 
-    private val ancestorsAskers = collOps.emptyMap[Processable, Unit]
-    private val dynamicCallers: MethodCallers = collOps.emptyMap
+    private val ancestorsAskers = new ConcurrentHashMap[Processable, Unit]
+    private val dynamicCallers: MethodCallers = new ConcurrentHashMap
 
     // ArrayBuffer to avoid need for ClassTag[collOps.Map[_, _]]
     private val staticCallers =
-      mutable.ArrayBuffer.fill[MethodCallers](MemberNamespace.Count)(collOps.emptyMap)
+      mutable.ArrayBuffer.fill[MethodCallers](MemberNamespace.Count)(new ConcurrentHashMap)
 
-    private val jsNativeImportsAskers = collOps.emptyMap[Processable, Unit]
-    private val fieldsReadAskers = collOps.emptyMap[Processable, Unit]
+    private val jsNativeImportsAskers = new ConcurrentHashMap[Processable, Unit]
+    private val fieldsReadAskers = new ConcurrentHashMap[Processable, Unit]
 
     private var _ancestors: List[ClassName] = linkedClass.ancestors
 
-    private val _instantiatedSubclasses = collOps.emptyMap[Class, Unit]
+    private val _instantiatedSubclasses = new ConcurrentHashMap[Class, Unit]
 
     private val staticLikes: Array[StaticLikeNamespace] = {
       Array.tabulate(MemberNamespace.Count) { ord =>
@@ -1285,17 +1307,20 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     def askDynamicCallTargets(methodName: MethodName,
         asker: Processable): List[MethodImpl] = {
       dynamicCallers
-        .getOrElseUpdate(methodName, collOps.emptyMap)
+        .computeIfAbsent(methodName, _ => new ConcurrentHashMap())
         .put(asker, ())
       asker.registerTo(this)
-      _instantiatedSubclasses.keys.flatMap(_.lookupMethod(methodName)).toList
+
+      val res = mutable.Set.empty[MethodImpl]
+      _instantiatedSubclasses.forEachKey(Long.MaxValue, _.lookupMethod(methodName).foreach(res += _))
+      res.toList
     }
 
     /** PROCESS PASS ONLY. */
     def askStaticCallTarget(namespace: MemberNamespace, methodName: MethodName,
         asker: Processable): MethodImpl = {
       staticCallers(namespace.ordinal)
-        .getOrElseUpdate(methodName, collOps.emptyMap)
+        .computeIfAbsent(methodName, _ => new ConcurrentHashMap())
         .put(asker, ())
       asker.registerTo(this)
 
@@ -1303,7 +1328,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
       val container =
         if (namespace != MemberNamespace.Public) inStaticsLike
-        else classes.getOrElse(className, inStaticsLike)
+        else classOrElse(className, inStaticsLike)
 
       // Method must exist, otherwise it's a bug / invalid IR.
       container.lookupMethod(methodName).getOrElse {
@@ -1317,7 +1342,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     /** UPDATE PASS ONLY. */
     def removeInstantiatedSubclass(x: Class): Unit =
-      _instantiatedSubclasses -= x
+      _instantiatedSubclasses.remove(x)
 
     /** PROCESS PASS ONLY. */
     def askAncestors(asker: Processable): List[ClassName] = {
@@ -1368,7 +1393,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       // Update ancestors
       if (linkedClass.ancestors != _ancestors) {
         _ancestors = linkedClass.ancestors
-        ancestorsAskers.keysIterator.foreach(_.tag())
+        ancestorsAskers.forEachKey(Long.MaxValue, _.tag())
         ancestorsAskers.clear()
       }
 
@@ -1376,7 +1401,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       val newJSNativeImports = computeJSNativeImports(linkedClass)
       if (jsNativeImports != newJSNativeImports) {
         jsNativeImports = newJSNativeImports
-        jsNativeImportsAskers.keysIterator.foreach(_.tag())
+        jsNativeImportsAskers.forEachKey(Long.MaxValue, _.tag())
         jsNativeImportsAskers.clear()
       }
 
@@ -1385,7 +1410,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
           staticFieldsRead != linkedClass.staticFieldsRead) {
         fieldsRead = linkedClass.fieldsRead
         staticFieldsRead = linkedClass.staticFieldsRead
-        fieldsReadAskers.keysIterator.foreach(_.tag())
+        fieldsReadAskers.forEachKey(Long.MaxValue, _.tag())
         fieldsReadAskers.clear()
       }
 
@@ -1412,8 +1437,9 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
      *  UPDATE PASS ONLY.
      */
     def tagDynamicCallersOf(methodName: MethodName): Unit = {
-      dynamicCallers.remove(methodName)
-        .foreach(_.keysIterator.foreach(_.tag()))
+      val callers = dynamicCallers.remove(methodName)
+      if (callers != null)
+        callers.forEachKey(Long.MaxValue, _.tag())
     }
 
     /** Tag the static-callers of an instance method.
@@ -1421,15 +1447,16 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
      */
     def tagStaticCallersOf(namespace: MemberNamespace,
         methodName: MethodName): Unit = {
-      staticCallers(namespace.ordinal).remove(methodName)
-        .foreach(_.keysIterator.foreach(_.tag()))
+      val callers = staticCallers(namespace.ordinal).remove(methodName)
+      if (callers != null)
+        callers.forEachKey(Long.MaxValue, _.tag())
     }
 
     /** UPDATE PASS ONLY. */
     def unregisterDependee(dependee: Processable): Unit = {
       ancestorsAskers.remove(dependee)
-      dynamicCallers.valuesIterator.foreach(_.remove(dependee))
-      staticCallers.foreach(_.valuesIterator.foreach(_.remove(dependee)))
+      dynamicCallers.forEachValue(Long.MaxValue, _.remove(dependee))
+      staticCallers.foreach(_.forEachValue(Long.MaxValue, _.remove(dependee)))
       jsNativeImportsAskers.remove(dependee)
     }
 
@@ -1468,7 +1495,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
   private abstract class Processable {
     type Def >: scala.Null <: VersionedMemberDef
 
-    private[this] val registeredTo = collOps.emptyMap[Unregisterable, Unit]
+    private[this] val registeredTo = new ConcurrentHashMap[Unregisterable, Unit]
     private[this] val tagged = new AtomicBoolean(false)
     private[this] var _deleted: Boolean = false
 
@@ -1510,7 +1537,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
     }
 
     private def unregisterFromEverywhere(): Unit = {
-      registeredTo.keysIterator.foreach(_.unregisterDependee(this))
+      registeredTo.forEachKey(Long.MaxValue, _.unregisterDependee(this))
       registeredTo.clear()
     }
 
@@ -1560,7 +1587,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     type Def = MethodDef
 
-    private val bodyAskers = collOps.emptyMap[Processable, Unit]
+    private val bodyAskers = new ConcurrentHashMap[Processable, Unit]
 
     var attributes: OptimizerCore.MethodAttributes = _
 
@@ -1578,7 +1605,7 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
 
     /** UPDATE PASS ONLY. */
     def tagBodyAskers(): Unit = {
-      bodyAskers.keysIterator.foreach(_.tag())
+      bodyAskers.forEachKey(Long.MaxValue, _.tag())
       bodyAskers.clear()
     }
 
@@ -1741,14 +1768,17 @@ final class IncOptimizer private[optimizer] (config: CommonPhaseConfig, collOps:
       getInterface(intfName).askAncestors(asker)
 
     protected def hasElidableConstructors(className: ClassName): Boolean =
-      classes(className).askHasElidableConstructors(asker)
+      classes.get(className).askHasElidableConstructors(asker)
 
-    protected def inlineableFieldBodies(className: ClassName): OptimizerCore.InlineableFieldBodies =
-      classes.get(className).fold(OptimizerCore.InlineableFieldBodies.Empty)(_.askInlineableFieldBodies(asker))
+    protected def inlineableFieldBodies(className: ClassName): OptimizerCore.InlineableFieldBodies = {
+      val clazz = classes.get(className)
+      if (clazz == null) OptimizerCore.InlineableFieldBodies.Empty
+      else clazz.askInlineableFieldBodies(asker)
+    }
 
     protected def tryNewInlineableClass(
         className: ClassName): Option[OptimizerCore.InlineableClassStructure] = {
-      classes(className).tryNewInlineable
+      classes.get(className).tryNewInlineable
     }
 
     protected def getJSNativeImportOf(
