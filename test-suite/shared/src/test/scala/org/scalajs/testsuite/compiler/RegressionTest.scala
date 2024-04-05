@@ -18,7 +18,7 @@ import org.junit.Test
 import org.junit.Assert._
 import org.junit.Assume._
 
-import org.scalajs.testsuite.utils.AssertThrows.assertThrows
+import org.scalajs.testsuite.utils.AssertThrows.{assertThrows, _}
 
 import org.scalajs.testsuite.utils.Platform
 import org.scalajs.testsuite.utils.Platform._
@@ -268,8 +268,6 @@ class RegressionTest {
   }
 
   @Test def irCheckerDoesNotCheckMethodSignaturesOnClassesWithNoInstance(): Unit = {
-    assumeTrue("linking only", false)
-
     class Foo // this class will be dropped by base linking
 
     class Bar {
@@ -281,10 +279,32 @@ class RegressionTest {
 
     @noinline def nullBar(): Bar = null
 
+    @noinline def nothingBar(): Bar = throw new IllegalStateException()
+
     // the IR checker must not try to infer the signature of these calls
-    nullBar().meth(null)
-    (null: Bar).meth(null)
-    (??? : Bar).meth(null) // scalastyle:ignore
+    assertThrowsNPEIfCompliant(nullBar().meth(null))
+    assertThrowsNPEIfCompliant((null: Bar).meth(null))
+    assertThrows(classOf[IllegalStateException], (nothingBar(): Bar).meth(null))
+  }
+
+  @Test def irCheckerDoesNotCheckMethodSignaturesOnInterfacesWithNoInstance(): Unit = {
+    class Foo // this class will be dropped by base linking
+
+    trait Bar {
+      /* This method is called, but unreachable because there are no instances
+       * of `Bar`. It will therefore not make `Foo` reachable.
+       */
+      def meth(foo: Foo): String = foo.toString()
+    }
+
+    @noinline def nullBar(): Bar = null
+
+    @noinline def nothingBar(): Bar = throw new IllegalStateException()
+
+    // the IR checker must not try to infer the signature of these calls
+    assertThrowsNPEIfCompliant(nullBar().meth(null))
+    assertThrowsNPEIfCompliant((null: Bar).meth(null))
+    assertThrows(classOf[IllegalStateException], (nothingBar(): Bar).meth(null))
   }
 
   @Test def orderCtorStatementsWhenInlining_Issue1369(): Unit = {
