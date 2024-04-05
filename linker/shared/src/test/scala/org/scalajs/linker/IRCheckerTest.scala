@@ -91,6 +91,78 @@ class IRCheckerTest {
   }
 
   @Test
+  def argumentTypeMismatch(): AsyncResult = await {
+    val A = ClassName("A")
+    val B = ClassName("B")
+    val C = ClassName("C")
+    val D = ClassName("D")
+
+    val fooMethodName = m("foo", List(ClassRef(B)), V)
+
+    val results = for (receiverClassName <- List(A, B, C, D)) yield {
+      val receiverClassRef = ClassRef(receiverClassName)
+      val receiverType = ClassType(receiverClassName)
+
+      val testMethodName = m("test", List(receiverClassRef, ClassRef(C), ClassRef(D)), V)
+
+      val newD = New(D, NoArgConstructorName, Nil)
+
+      val classDefs = Seq(
+        classDef(
+          "A",
+          kind = ClassKind.Interface,
+          interfaces = Nil,
+          methods = List(
+            MethodDef(EMF, fooMethodName, NON,
+                List(paramDef("x", ClassType(B))), NoType, Some(Skip()))(EOH, UNV)
+          )
+        ),
+        classDef("B", kind = ClassKind.Interface, interfaces = List("A")),
+        classDef(
+          "C",
+          kind = ClassKind.Class,
+          superClass = Some(ObjectClass),
+          interfaces = List("A"),
+          methods = List(trivialCtor("C"))
+        ),
+
+        classDef(
+          "D",
+          kind = ClassKind.Class,
+          superClass = Some("C"),
+          interfaces = List("B"),
+          methods = List(
+            trivialCtor("D"),
+            MethodDef(
+              EMF.withNamespace(MemberNamespace.PublicStatic),
+              testMethodName,
+              NON,
+              List(paramDef("x", receiverType), paramDef("c", ClassType(C)), paramDef("d", ClassType(D))),
+              NoType,
+              Some(Block(
+                Apply(EAF, VarRef("x")(receiverType), fooMethodName, List(VarRef("c")(ClassType(C))))(NoType),
+                Apply(EAF, VarRef("x")(receiverType), fooMethodName, List(VarRef("d")(ClassType(D))))(NoType)
+              ))
+            )(EOH, UNV)
+          )
+        ),
+
+        mainTestClassDef(
+          ApplyStatic(EAF, D, testMethodName, List(newD, newD, newD))(NoType)
+        )
+      )
+
+      for (log <- testLinkIRErrors(classDefs, MainTestModuleInitializers)) yield {
+        log.assertContainsError(
+            "B expected but C found for tree of type org.scalajs.ir.Trees$VarRef")
+        log.assertNotContains("B expected but D found")
+      }
+    }
+
+    Future.sequence(results)
+  }
+
+  @Test
   def missingJSNativeLoadSpec(): AsyncResult = await {
     val classDefs = Seq(
       classDef("A", kind = ClassKind.NativeJSClass, superClass = Some(ObjectClass)),

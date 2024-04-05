@@ -1133,23 +1133,22 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     private def subclassInstantiated()(implicit from: From): Unit = {
       _instantiatedFrom ::= from
 
-      if (!(isScalaClass || isJSType)) {
-        // Ignore
-      } else if (!_isAnySubclassInstantiated.getAndSet(true)) {
-
-        if (!isNativeJSClass) {
-          for (clazz <- superClass) {
-            if (clazz.isNativeJSClass)
-              clazz.jsNativeLoadSpec.foreach(addLoadSpec(this, _))
-            else
-              addStaticDependency(clazz.className)
+      if (!_isAnySubclassInstantiated.getAndSet(true)) {
+        if (!isInterface) {
+          if (!isNativeJSClass) {
+            for (clazz <- superClass) {
+              if (clazz.isNativeJSClass)
+                clazz.jsNativeLoadSpec.foreach(addLoadSpec(this, _))
+              else
+                addStaticDependency(clazz.className)
+            }
           }
-        }
 
-        // Reach exported members
-        if (!isJSClass) {
-          for (reachabilityInfo <- data.jsMethodProps)
-            followReachabilityInfo(reachabilityInfo, this)(FromExports)
+          // Reach exported members
+          if (!isJSClass) {
+            for (reachabilityInfo <- data.jsMethodProps)
+              followReachabilityInfo(reachabilityInfo, this)(FromExports)
+          }
         }
       }
     }
