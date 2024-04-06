@@ -12,6 +12,8 @@
 
 package java.util.concurrent
 
+import java.util.function.{BiConsumer, Consumer}
+
 import java.io.Serializable
 import java.util._
 
@@ -71,6 +73,22 @@ class ConcurrentHashMap[K, V] private (initialCapacity: Int, loadFactor: Float)
       throw new NullPointerException()
     new ConcurrentHashMap.KeySetView[K, V](this.inner, mappedValue)
   }
+
+  def forEach(parallelismThreshold: Long, action: BiConsumer[_ >: K, _ >: V]): Unit = {
+    // Note: It is tempting to simply call inner.forEach here:
+    // However, this will not have the correct snapshotting behavior.
+    val i = inner.nodeIterator()
+    while (i.hasNext()) {
+      val n = i.next()
+      action.accept(n.key, n.value)
+    }
+  }
+
+  def forEachKey(parallelismThreshold: Long, action: Consumer[_ >: K]): Unit =
+    inner.keyIterator().forEachRemaining(action)
+
+  def forEachValue(parallelismThreshold: Long, action: Consumer[_ >: V]): Unit =
+    inner.valueIterator().forEachRemaining(action)
 
   override def values(): Collection[V] =
     inner.values()

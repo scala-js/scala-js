@@ -227,6 +227,69 @@ class ConcurrentHashMapTest extends MapTest {
     val str = keySet.toString
     assertTrue(s"toString should print keys, but actual: $str", str == "[a, b]" || str == "[b, a]")
   }
+
+  @Test def forEachPar(): Unit = {
+    val pairs = List("ONE" -> 1, "TWO" -> 2, "THREE" -> 3)
+    val map = factory.empty[String, Int]
+    pairs.foreach(x => map.put(x._1, x._2))
+
+    val seen = mutable.Set.empty[(String, Int)]
+
+    map.forEach(1L, { (k, v) =>
+      if (k == "TWO")
+        map.remove("TWO") // check snapshotting behavior.
+
+      seen.synchronized {
+        seen += k -> v
+      }
+    })
+
+    assertEquals(2, map.size())
+    assertFalse(map.containsKey("TWO"))
+    assertEquals(pairs.toSet, seen)
+  }
+
+  @Test def forEachKeyPar(): Unit = {
+    val pairs = List("ONE" -> 1, "TWO" -> 2, "THREE" -> 3)
+    val map = factory.empty[String, Int]
+    pairs.foreach(x => map.put(x._1, x._2))
+
+    val seen = mutable.Set.empty[String]
+
+    map.forEachKey(1L, { k =>
+      if (k == "TWO")
+        map.remove("TWO") // check snapshotting behavior.
+
+      seen.synchronized {
+        seen += k
+      }
+    })
+
+    assertEquals(2, map.size())
+    assertFalse(map.containsKey("TWO"))
+    assertEquals(Set("ONE", "TWO", "THREE"), seen)
+  }
+
+  @Test def forEachValuePar(): Unit = {
+    val pairs = List("ONE" -> 1, "TWO" -> 2, "THREE" -> 3)
+    val map = factory.empty[String, Int]
+    pairs.foreach(x => map.put(x._1, x._2))
+
+    val seen = mutable.Set.empty[Int]
+
+    map.forEachValue(1L, { v =>
+      if (v == 2)
+        map.remove("TWO") // check snapshotting behavior.
+
+      seen.synchronized {
+        seen += v
+      }
+    })
+
+    assertEquals(2, map.size())
+    assertFalse(map.containsKey("TWO"))
+    assertEquals(seen, Set(1, 2, 3))
+  }
 }
 
 class ConcurrentHashMapFactory extends ConcurrentMapFactory {
