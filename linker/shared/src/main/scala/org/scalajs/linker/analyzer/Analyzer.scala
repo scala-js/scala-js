@@ -1432,6 +1432,13 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
           if ((flags & ReachabilityInfoInClass.FlagStaticallyReferenced) != 0) {
             moduleUnit.addStaticDependency(className)
           }
+
+          if ((flags & ReachabilityInfoInClass.FlagDynamicallyReferenced) != 0) {
+            if (isNoModule)
+              _errors ::= DynamicImportWithoutModuleSupport(from)
+            else
+              moduleUnit.addDynamicDependency(className)
+          }
         }
 
         /* Since many of the lists below are likely to be empty, we always
@@ -1465,17 +1472,6 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         if (!dataInClass.methodsCalledStatically.isEmpty) {
           for (methodName <- dataInClass.methodsCalledStatically)
             clazz.callMethodStatically(methodName)
-        }
-
-        if (!dataInClass.methodsCalledDynamicImport.isEmpty) {
-          if (isNoModule) {
-            _errors ::= DynamicImportWithoutModuleSupport(from)
-          } else {
-            moduleUnit.addDynamicDependency(className)
-            // In terms of reachability, a dynamic import call is just a static call.
-            for (methodName <- dataInClass.methodsCalledDynamicImport)
-              clazz.callMethodStatically(methodName)
-          }
         }
 
         if (!dataInClass.jsNativeMembersUsed.isEmpty) {

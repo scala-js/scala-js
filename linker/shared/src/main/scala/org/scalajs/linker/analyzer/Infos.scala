@@ -115,7 +115,6 @@ object Infos {
       val staticFieldsWritten: List[FieldName],
       val methodsCalled: List[MethodName],
       val methodsCalledStatically: List[NamespacedMethodName],
-      val methodsCalledDynamicImport: List[NamespacedMethodName],
       val jsNativeMembersUsed: List[MethodName],
       val flags: ReachabilityInfoInClass.Flags
   )
@@ -132,6 +131,7 @@ object Infos {
     final val FlagInstanceTestsUsed = 1 << 2
     final val FlagClassDataAccessed = 1 << 3
     final val FlagStaticallyReferenced = 1 << 4
+    final val FlagDynamicallyReferenced = 1 << 5
   }
 
   final class ClassInfoBuilder(
@@ -384,7 +384,6 @@ object Infos {
     private val staticFieldsWritten = mutable.Set.empty[FieldName]
     private val methodsCalled = mutable.Set.empty[MethodName]
     private val methodsCalledStatically = mutable.Set.empty[NamespacedMethodName]
-    private val methodsCalledDynamicImport = mutable.Set.empty[NamespacedMethodName]
     private val jsNativeMembersUsed = mutable.Set.empty[MethodName]
     private var flags: ReachabilityInfoInClass.Flags = 0
 
@@ -423,7 +422,9 @@ object Infos {
     }
 
     def addMethodCalledDynamicImport(method: NamespacedMethodName): this.type = {
-      methodsCalledDynamicImport += method
+      // In terms of reachability, a dynamic import call is just a static call.
+      methodsCalledStatically += method
+      setFlag(ReachabilityInfoInClass.FlagDynamicallyReferenced)
       this
     }
 
@@ -461,7 +462,6 @@ object Infos {
           staticFieldsWritten = toLikelyEmptyList(staticFieldsWritten),
           methodsCalled = toLikelyEmptyList(methodsCalled),
           methodsCalledStatically = toLikelyEmptyList(methodsCalledStatically),
-          methodsCalledDynamicImport = toLikelyEmptyList(methodsCalledDynamicImport),
           jsNativeMembersUsed = toLikelyEmptyList(jsNativeMembersUsed),
           flags = flags
       )
