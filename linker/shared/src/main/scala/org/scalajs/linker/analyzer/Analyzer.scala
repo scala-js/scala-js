@@ -1448,25 +1448,21 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         }
 
         if (!dataInClass.staticFieldsRead.isEmpty) {
-          moduleUnit.addStaticDependency(className)
           dataInClass.staticFieldsRead.foreach(
               clazz._staticFieldsRead.update(_, ()))
         }
 
         if (!dataInClass.staticFieldsWritten.isEmpty) {
-          moduleUnit.addStaticDependency(className)
           dataInClass.staticFieldsWritten.foreach(
               clazz._staticFieldsWritten.update(_, ()))
         }
 
         if (!dataInClass.methodsCalled.isEmpty) {
-          // Do not add to staticDependencies: We call these on the object.
           for (methodName <- dataInClass.methodsCalled)
             clazz.callMethod(methodName)
         }
 
         if (!dataInClass.methodsCalledStatically.isEmpty) {
-          moduleUnit.addStaticDependency(className)
           for (methodName <- dataInClass.methodsCalledStatically)
             clazz.callMethodStatically(methodName)
         }

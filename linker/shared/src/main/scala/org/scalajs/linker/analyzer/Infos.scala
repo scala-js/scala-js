@@ -400,21 +400,25 @@ object Infos {
 
     def addStaticFieldRead(field: FieldName): this.type = {
       staticFieldsRead += field
+      setStaticallyReferenced()
       this
     }
 
     def addStaticFieldWritten(field: FieldName): this.type = {
       staticFieldsWritten += field
+      setStaticallyReferenced()
       this
     }
 
     def addMethodCalled(method: MethodName): this.type = {
       methodsCalled += method
+      // Do not call setStaticallyReferenced: We call these methods on the object.
       this
     }
 
     def addMethodCalledStatically(method: NamespacedMethodName): this.type = {
       methodsCalledStatically += method
+      setStaticallyReferenced()
       this
     }
 
