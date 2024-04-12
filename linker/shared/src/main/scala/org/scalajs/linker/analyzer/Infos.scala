@@ -93,7 +93,7 @@ object Infos {
   )
 
   final class ReachabilityInfo private[Infos] (
-      val byClass: List[ReachabilityInfoInClass],
+      val byClass: Array[ReachabilityInfoInClass],
       val globalFlags: ReachabilityInfo.Flags
   )
 
@@ -374,7 +374,7 @@ object Infos {
       setFlag(ReachabilityInfo.FlagUsedExponentOperator)
 
     def result(): ReachabilityInfo =
-      new ReachabilityInfo(byClass.valuesIterator.map(_.result()).toList, flags)
+      new ReachabilityInfo(byClass.valuesIterator.map(_.result()).toArray, flags)
   }
 
   final class ReachabilityInfoInClassBuilder(val className: ClassName) {
