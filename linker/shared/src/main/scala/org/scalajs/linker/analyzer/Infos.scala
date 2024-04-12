@@ -109,13 +109,12 @@ object Infos {
   /** Things from a given class that are reached by one method. */
   final class ReachabilityInfoInClass private[Infos] (
       val className: ClassName,
-      val fieldsRead: List[FieldName],
-      val fieldsWritten: List[FieldName],
-      val staticFieldsRead: List[FieldName],
-      val staticFieldsWritten: List[FieldName],
-      val methodsCalled: List[MethodName],
-      val methodsCalledStatically: List[NamespacedMethodName],
-      val jsNativeMembersUsed: List[MethodName],
+      /* We use a single field for all members to reduce memory consumption:
+       * Typically, there are very few members reached in a single
+       * ReachabilityInfoInClass, so the overhead of having a field per type
+       * becomes significant in terms of memory usage.
+       */
+      val memberInfos: Array[MemberReachabilityInfo], // nullable!
       val flags: ReachabilityInfoInClass.Flags
   )
 
@@ -133,6 +132,38 @@ object Infos {
     final val FlagStaticallyReferenced = 1 << 4
     final val FlagDynamicallyReferenced = 1 << 5
   }
+
+  sealed trait MemberReachabilityInfo
+
+  final case class FieldReachable private[Infos] (
+    val fieldName: FieldName,
+    val read: Boolean = false,
+    val written: Boolean = false
+  ) extends MemberReachabilityInfo
+
+  final case class StaticFieldReachable private[Infos] (
+    val fieldName: FieldName,
+    val read: Boolean = false,
+    val written: Boolean = false
+  ) extends MemberReachabilityInfo
+
+  final case class MethodReachable private[Infos] (
+    val methodName: MethodName
+  ) extends MemberReachabilityInfo
+
+  final case class MethodStaticallyReachable private[Infos] (
+    val namespace: MemberNamespace,
+    val methodName: MethodName
+  ) extends MemberReachabilityInfo
+
+  object MethodStaticallyReachable {
+    private[Infos] def apply(m: NamespacedMethodName): MethodStaticallyReachable =
+      MethodStaticallyReachable(m.namespace, m.methodName)
+  }
+
+  final case class JSNativeMemberReachable private[Infos] (
+    val methodName: MethodName
+  ) extends MemberReachabilityInfo
 
   final class ClassInfoBuilder(
       private val className: ClassName,
@@ -378,33 +409,39 @@ object Infos {
   }
 
   final class ReachabilityInfoInClassBuilder(val className: ClassName) {
-    private val fieldsRead = mutable.Set.empty[FieldName]
-    private val fieldsWritten = mutable.Set.empty[FieldName]
-    private val staticFieldsRead = mutable.Set.empty[FieldName]
-    private val staticFieldsWritten = mutable.Set.empty[FieldName]
+    private val fieldsUsed = mutable.Map.empty[FieldName, FieldReachable]
+    private val staticFieldsUsed = mutable.Map.empty[FieldName, StaticFieldReachable]
     private val methodsCalled = mutable.Set.empty[MethodName]
     private val methodsCalledStatically = mutable.Set.empty[NamespacedMethodName]
     private val jsNativeMembersUsed = mutable.Set.empty[MethodName]
     private var flags: ReachabilityInfoInClass.Flags = 0
 
     def addFieldRead(field: FieldName): this.type = {
-      fieldsRead += field
+      fieldsUsed(field) = fieldsUsed
+        .getOrElse(field, FieldReachable(field))
+        .copy(read = true)
       this
     }
 
     def addFieldWritten(field: FieldName): this.type = {
-      fieldsWritten += field
+      fieldsUsed(field) = fieldsUsed
+        .getOrElse(field, FieldReachable(field))
+        .copy(written = true)
       this
     }
 
     def addStaticFieldRead(field: FieldName): this.type = {
-      staticFieldsRead += field
+      staticFieldsUsed(field) = staticFieldsUsed
+        .getOrElse(field, StaticFieldReachable(field))
+        .copy(read = true)
       setStaticallyReferenced()
       this
     }
 
     def addStaticFieldWritten(field: FieldName): this.type = {
-      staticFieldsWritten += field
+      staticFieldsUsed(field) = staticFieldsUsed
+        .getOrElse(field, StaticFieldReachable(field))
+        .copy(written = true)
       setStaticallyReferenced()
       this
     }
@@ -454,22 +491,20 @@ object Infos {
       setFlag(ReachabilityInfoInClass.FlagStaticallyReferenced)
 
     def result(): ReachabilityInfoInClass = {
-      new ReachabilityInfoInClass(
-          className,
-          fieldsRead = toLikelyEmptyList(fieldsRead),
-          fieldsWritten = toLikelyEmptyList(fieldsWritten),
-          staticFieldsRead = toLikelyEmptyList(staticFieldsRead),
-          staticFieldsWritten = toLikelyEmptyList(staticFieldsWritten),
-          methodsCalled = toLikelyEmptyList(methodsCalled),
-          methodsCalledStatically = toLikelyEmptyList(methodsCalledStatically),
-          jsNativeMembersUsed = toLikelyEmptyList(jsNativeMembersUsed),
-          flags = flags
-      )
-    }
+      val memberInfos: Array[MemberReachabilityInfo] = (
+          fieldsUsed.valuesIterator ++
+          staticFieldsUsed.valuesIterator ++
+          methodsCalled.iterator.map(MethodReachable(_)) ++
+          methodsCalledStatically.iterator.map(MethodStaticallyReachable(_)) ++
+          jsNativeMembersUsed.iterator.map(JSNativeMemberReachable(_))
+      ).toArray
 
-    private def toLikelyEmptyList[A](set: mutable.Set[A]): List[A] =
-      if (set.isEmpty) Nil
-      else set.toList
+      val memberInfosOrNull =
+        if (memberInfos.isEmpty) null
+        else memberInfos
+
+      new ReachabilityInfoInClass(className, memberInfosOrNull, flags)
+    }
   }
 
   /** Generates the [[MethodInfo]] of a

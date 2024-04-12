@@ -1079,7 +1079,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       } else if (!_isInstantiated.getAndSet(true)) {
 
         // TODO: Why is this not in subclassInstantiated()?
-        referenceFieldClasses(fieldsRead ++ fieldsWritten)
+        fieldsRead.foreach(referenceFieldClasses(_))
+        fieldsWritten.foreach(referenceFieldClasses(_))
 
         if (isScalaClass) {
           accessData()
@@ -1208,12 +1209,6 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       }
     }
 
-    def callMethodStatically(namespacedMethodName: NamespacedMethodName)(
-        implicit from: From): Unit = {
-      callMethodStatically(namespacedMethodName.namespace,
-          namespacedMethodName.methodName)
-    }
-
     def callMethodStatically(namespace: MemberNamespace,
         methodName: MethodName)(
         implicit from: From): Unit = {
@@ -1225,16 +1220,14 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         lookupMethod(methodName).reachStatic()
     }
 
-    def readFields(names: List[FieldName])(implicit from: From): Unit = {
-      names.foreach(_fieldsRead.update(_, ()))
+    def reachField(info: Infos.FieldReachable)(implicit from: From): Unit = {
+      val fieldName = info.fieldName
+      if (info.read)
+        _fieldsRead.update(fieldName, ())
+      if (info.written)
+        _fieldsWritten.update(fieldName, ())
       if (isInstantiated)
-        referenceFieldClasses(names)
-    }
-
-    def writeFields(names: List[FieldName])(implicit from: From): Unit = {
-      names.foreach(_fieldsWritten.update(_, ()))
-      if (isInstantiated)
-        referenceFieldClasses(names)
+        referenceFieldClasses(fieldName)
     }
 
     def useJSNativeMember(name: MethodName)(
@@ -1251,8 +1244,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       maybeJSNativeLoadSpec
     }
 
-    private def referenceFieldClasses(fieldNames: Iterable[FieldName])(
-        implicit from: From): Unit = {
+    private def referenceFieldClasses(fieldName: FieldName)(implicit from: From): Unit = {
       assert(isInstantiated)
 
       /* Reach referenced classes of non-static fields
@@ -1261,7 +1253,6 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
        * site will not reference the classes in the final JS code.
        */
       for {
-        fieldName <- fieldNames
         className <- data.referencedFieldClasses.get(fieldName)
       } {
         lookupClass(className)(_ => ())
@@ -1441,43 +1432,26 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
           }
         }
 
-        /* Since many of the lists below are likely to be empty, we always
-         * test `!list.isEmpty` before calling `foreach` or any other
-         * processing, avoiding closure allocations.
-         */
+        if (dataInClass.memberInfos != null) {
+          dataInClass.memberInfos.foreach {
+            case field: Infos.FieldReachable =>
+              clazz.reachField(field)
 
-        if (!dataInClass.fieldsRead.isEmpty) {
-          clazz.readFields(dataInClass.fieldsRead)
-        }
+            case Infos.StaticFieldReachable(fieldName, read, written) =>
+              if (read)
+                clazz._staticFieldsRead.update(fieldName, ())
+              if (written)
+                clazz._staticFieldsWritten.update(fieldName, ())
 
-        if (!dataInClass.fieldsWritten.isEmpty) {
-          clazz.writeFields(dataInClass.fieldsWritten)
-        }
+            case Infos.MethodReachable(methodName) =>
+              clazz.callMethod(methodName)
 
-        if (!dataInClass.staticFieldsRead.isEmpty) {
-          dataInClass.staticFieldsRead.foreach(
-              clazz._staticFieldsRead.update(_, ()))
-        }
+            case Infos.MethodStaticallyReachable(namespace, methodName) =>
+              clazz.callMethodStatically(namespace, methodName)
 
-        if (!dataInClass.staticFieldsWritten.isEmpty) {
-          dataInClass.staticFieldsWritten.foreach(
-              clazz._staticFieldsWritten.update(_, ()))
-        }
-
-        if (!dataInClass.methodsCalled.isEmpty) {
-          for (methodName <- dataInClass.methodsCalled)
-            clazz.callMethod(methodName)
-        }
-
-        if (!dataInClass.methodsCalledStatically.isEmpty) {
-          for (methodName <- dataInClass.methodsCalledStatically)
-            clazz.callMethodStatically(methodName)
-        }
-
-        if (!dataInClass.jsNativeMembersUsed.isEmpty) {
-          for (member <- dataInClass.jsNativeMembersUsed)
-            clazz.useJSNativeMember(member)
-              .foreach(addLoadSpec(moduleUnit, _))
+            case Infos.JSNativeMemberReachable(methodName) =>
+              clazz.useJSNativeMember(methodName).foreach(addLoadSpec(moduleUnit, _))
+          }
         }
       }
     }
