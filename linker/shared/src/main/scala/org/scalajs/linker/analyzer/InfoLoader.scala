@@ -64,14 +64,16 @@ private[analyzer] object InfoLoader {
   case object InitialIRCheck extends IRCheckMode
   case object InternalIRCheck extends IRCheckMode
 
+  private type MethodInfos = Array[Map[MethodName, Infos.MethodInfo]]
+
   private class ClassInfoCache(className: ClassName, irLoader: IRLoader, irCheckMode: InfoLoader.IRCheckMode) {
     private var cacheUsed: Boolean = false
     private var version: Version = Version.Unversioned
     private var info: Future[Infos.ClassInfo] = _
 
-    private val methodsInfoCaches = MethodDefsInfosCache()
-    private val jsConstructorInfoCache = new JSConstructorDefInfoCache()
-    private val exportedMembersInfoCaches = JSMethodPropDefsInfosCache()
+    private var prevMethodInfos: MethodInfos = Array.fill(MemberNamespace.Count)(Map.empty)
+    private var prevJSCtorInfo: Option[Infos.ReachabilityInfo] = None
+    private var prevJSMethodPropDefInfos: List[Infos.ReachabilityInfo] = Nil
 
     def loadInfo(logger: Logger)(implicit ec: ExecutionContext): Future[Infos.ClassInfo] = synchronized {
       /* If the cache was already used in this run, the classDef and info are
@@ -116,12 +118,13 @@ private[analyzer] object InfoLoader {
 
     private def generateInfos(classDef: ClassDef): Infos.ClassInfo =  {
       val referencedFieldClasses = Infos.genReferencedFieldClasses(classDef.fields)
-      val methods = classDef.methods.map(methodsInfoCaches.getInfo(_))
 
-      val jsMethodProps = {
-        classDef.jsConstructor.map(jsConstructorInfoCache.getInfo(_)).toList :::
-        exportedMembersInfoCaches.getInfos(classDef.jsMethodProps)
-      }
+      prevMethodInfos = genMethodInfos(classDef.methods, prevMethodInfos)
+      prevJSCtorInfo = genJSCtorInfo(classDef.jsConstructor, prevJSCtorInfo)
+      prevJSMethodPropDefInfos =
+        genJSMethodPropDefInfos(classDef.jsMethodProps, prevJSMethodPropDefInfos)
+
+      val exportedMembers = prevJSCtorInfo.toList ::: prevJSMethodPropDefInfos
 
       /* We do not cache top-level exports, because they're quite rare,
        * and usually quite small when they exist.
@@ -134,139 +137,66 @@ private[analyzer] object InfoLoader {
 
       new Infos.ClassInfo(classDef.className, classDef.kind,
           classDef.superClass.map(_.name), classDef.interfaces.map(_.name),
-          classDef.jsNativeLoadSpec, referencedFieldClasses, methods, jsNativeMembers,
-          jsMethodProps, topLevelExports)
+          classDef.jsNativeLoadSpec, referencedFieldClasses, prevMethodInfos,
+          jsNativeMembers, exportedMembers, topLevelExports)
     }
 
     /** Returns true if the cache has been used and should be kept. */
     def cleanAfterRun(): Boolean = synchronized {
       val result = cacheUsed
       cacheUsed = false
-      if (result) {
-        // No point in cleaning the inner caches if the whole class disappears
-        methodsInfoCaches.cleanAfterRun()
-        jsConstructorInfoCache.cleanAfterRun()
-        exportedMembersInfoCaches.cleanAfterRun()
-      }
       result
     }
   }
 
-  private final class MethodDefsInfosCache private (
-      val caches: Array[mutable.Map[MethodName, MethodDefInfoCache]])
-      extends AnyVal {
+  private def genMethodInfos(methods: List[MethodDef],
+      prevMethodInfos: MethodInfos): MethodInfos = {
 
-    def getInfo(methodDef: MethodDef): Infos.MethodInfo = {
-      val cache = caches(methodDef.flags.namespace.ordinal)
-        .getOrElseUpdate(methodDef.methodName, new MethodDefInfoCache)
-      cache.getInfo(methodDef)
+    val builders = Array.fill(MemberNamespace.Count)(Map.newBuilder[MethodName, Infos.MethodInfo])
+
+    methods.foreach { method =>
+      val info = prevMethodInfos(method.flags.namespace.ordinal)
+        .get(method.methodName)
+        .filter(_.version.sameVersion(method.version))
+        .getOrElse(Infos.generateMethodInfo(method))
+
+      builders(method.flags.namespace.ordinal) += method.methodName -> info
     }
 
-    def cleanAfterRun(): Unit = {
-      caches.foreach(_.filterInPlace((_, cache) => cache.cleanAfterRun()))
+    builders.map(_.result())
+  }
+
+  private def genJSCtorInfo(jsCtor: Option[JSConstructorDef],
+      prevJSCtorInfo: Option[Infos.ReachabilityInfo]): Option[Infos.ReachabilityInfo] = {
+    jsCtor.map { ctor =>
+      prevJSCtorInfo
+        .filter(_.version.sameVersion(ctor.version))
+        .getOrElse(Infos.generateJSConstructorInfo(ctor))
     }
   }
 
-  private object MethodDefsInfosCache {
-    def apply(): MethodDefsInfosCache = {
-      new MethodDefsInfosCache(
-          Array.fill(MemberNamespace.Count)(mutable.Map.empty))
-    }
-  }
+  private def genJSMethodPropDefInfos(jsMethodProps: List[JSMethodPropDef],
+      prevJSMethodPropDefInfos: List[Infos.ReachabilityInfo]): List[Infos.ReachabilityInfo] = {
+    /* For JS method and property definitions, we use their index in the list of
+     * `linkedClass.exportedMembers` as their identity. We cannot use their name
+     * because the name itself is a `Tree`.
+     *
+     * If there is a different number of exported members than in a previous run,
+     * we always recompute everything. This is fine because, for any given class,
+     * either all JS methods and properties are reachable, or none are. So we're
+     * only missing opportunities for incrementality in the case where JS members
+     * are added or removed in the original .sjsir, which is not a big deal.
+     */
 
-  /* For JS method and property definitions, we use their index in the list of
-   * `linkedClass.exportedMembers` as their identity. We cannot use their name
-   * because the name itself is a `Tree`.
-   *
-   * If there is a different number of exported members than in a previous run,
-   * we always recompute everything. This is fine because, for any given class,
-   * either all JS methods and properties are reachable, or none are. So we're
-   * only missing opportunities for incrementality in the case where JS members
-   * are added or removed in the original .sjsir, which is not a big deal.
-   */
-  private final class JSMethodPropDefsInfosCache private (
-      private var caches: Array[JSMethodPropDefInfoCache]) {
-
-    def getInfos(members: List[JSMethodPropDef]): List[Infos.ReachabilityInfo] = {
-      if (members.isEmpty) {
-        caches = null
-        Nil
-      } else {
-        val membersSize = members.size
-        if (caches == null || membersSize != caches.size)
-          caches = Array.fill(membersSize)(new JSMethodPropDefInfoCache)
-
-        for ((member, i) <- members.zipWithIndex) yield {
-          caches(i).getInfo(member)
-        }
-      }
-    }
-
-    def cleanAfterRun(): Unit = {
-      if (caches != null)
-        caches.foreach(_.cleanAfterRun())
-    }
-  }
-
-  private object JSMethodPropDefsInfosCache {
-    def apply(): JSMethodPropDefsInfosCache =
-      new JSMethodPropDefsInfosCache(null)
-  }
-
-  private abstract class AbstractMemberInfoCache[Def <: VersionedMemberDef, Info] {
-    private var cacheUsed: Boolean = false
-    private var lastVersion: Version = Version.Unversioned
-    private var info: Info = _
-
-    final def getInfo(member: Def): Info = {
-      update(member)
-      info
-    }
-
-    private final def update(member: Def): Unit = {
-      if (!cacheUsed) {
-        cacheUsed = true
-        val newVersion = member.version
-        if (!lastVersion.sameVersion(newVersion)) {
-          info = computeInfo(member)
-          lastVersion = newVersion
-        }
-      }
-    }
-
-    protected def computeInfo(member: Def): Info
-
-    /** Returns true if the cache has been used and should be kept. */
-    final def cleanAfterRun(): Boolean = {
-      val result = cacheUsed
-      cacheUsed = false
-      result
-    }
-  }
-
-  private final class MethodDefInfoCache
-      extends AbstractMemberInfoCache[MethodDef, Infos.MethodInfo] {
-
-    protected def computeInfo(member: MethodDef): Infos.MethodInfo =
-      Infos.generateMethodInfo(member)
-  }
-
-  private final class JSConstructorDefInfoCache
-      extends AbstractMemberInfoCache[JSConstructorDef, Infos.ReachabilityInfo] {
-
-    protected def computeInfo(member: JSConstructorDef): Infos.ReachabilityInfo =
-      Infos.generateJSConstructorInfo(member)
-  }
-
-  private final class JSMethodPropDefInfoCache
-      extends AbstractMemberInfoCache[JSMethodPropDef, Infos.ReachabilityInfo] {
-
-    protected def computeInfo(member: JSMethodPropDef): Infos.ReachabilityInfo = {
-      member match {
-        case methodDef: JSMethodDef =>
-          Infos.generateJSMethodInfo(methodDef)
-        case propertyDef: JSPropertyDef =>
-          Infos.generateJSPropertyInfo(propertyDef)
+    if (prevJSMethodPropDefInfos.size != jsMethodProps.size) {
+      // Regenerate everything.
+      jsMethodProps.map(Infos.generateJSMethodPropDefInfo(_))
+    } else {
+      for {
+        (prevInfo, member) <- prevJSMethodPropDefInfos.zip(jsMethodProps)
+      } yield {
+        if (prevInfo.version.sameVersion(member.version)) prevInfo
+        else Infos.generateJSMethodPropDefInfo(member)
       }
     }
   }

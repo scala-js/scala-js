@@ -19,6 +19,7 @@ import org.scalajs.ir.Names._
 import org.scalajs.ir.Traversers._
 import org.scalajs.ir.Trees._
 import org.scalajs.ir.Types._
+import org.scalajs.ir.Version
 
 import org.scalajs.linker.backend.emitter.Transients._
 import org.scalajs.linker.standard.LinkedTopLevelExport
@@ -59,7 +60,7 @@ object Infos {
        * This happens when they have non-class type (e.g. Int)
        */
       val referencedFieldClasses: Map[FieldName, ClassName],
-      val methods: List[MethodInfo],
+      val methods: Array[Map[MethodName, MethodInfo]],
       val jsNativeMembers: Map[MethodName, JSNativeLoadSpec],
       val jsMethodProps: List[ReachabilityInfo],
       val topLevelExports: List[TopLevelExportInfo]
@@ -67,22 +68,23 @@ object Infos {
     override def toString(): String = className.nameString
   }
 
+  /* MethodInfo should contain, not be a ReachbilityInfo
+   *
+   * However, since this class is retained over multiple linker runs in the
+   * cache, the shallow size of the object shows up in memory performance
+   * profiles. Therefore, we (ab)use inheritance to lower the memory overhead.
+   */
   final class MethodInfo private (
-      val methodName: MethodName,
-      val namespace: MemberNamespace,
-      val isAbstract: Boolean,
-      val reachabilityInfo: ReachabilityInfo
-  ) {
-    override def toString(): String = methodName.nameString
-  }
+    val isAbstract: Boolean,
+    version: Version,
+    byClass: Array[ReachabilityInfoInClass],
+    globalFlags: ReachabilityInfo.Flags
+  ) extends ReachabilityInfo(version, byClass, globalFlags)
 
   object MethodInfo {
-    def apply(
-        methodName: MethodName,
-        namespace: MemberNamespace,
-        isAbstract: Boolean,
-        reachabilityInfo: ReachabilityInfo): MethodInfo = {
-      new MethodInfo(methodName, namespace, isAbstract, reachabilityInfo)
+    def apply(isAbstract: Boolean, reachabilityInfo: ReachabilityInfo): MethodInfo = {
+      import reachabilityInfo._
+      new MethodInfo(isAbstract, version, byClass, globalFlags)
     }
   }
 
@@ -92,9 +94,15 @@ object Infos {
       val exportName: String
   )
 
-  final class ReachabilityInfo private[Infos] (
-      val byClass: Array[ReachabilityInfoInClass],
-      val globalFlags: ReachabilityInfo.Flags
+  sealed class ReachabilityInfo private[Infos] (
+    /* The version field does not belong here conceptually.
+     * However, it helps the InfoLoader re-use previous infos without
+     * additional data held in memory.
+     * This reduces the memory we need to cache infos between incremental runs.
+     */
+    val version: Version,
+    val byClass: Array[ReachabilityInfoInClass],
+    val globalFlags: ReachabilityInfo.Flags
   )
 
   object ReachabilityInfo {
@@ -186,7 +194,7 @@ object Infos {
     builder.result()
   }
 
-  final class ReachabilityInfoBuilder {
+  final class ReachabilityInfoBuilder(version: Version) {
     private val byClass = mutable.Map.empty[ClassName, ReachabilityInfoInClassBuilder]
     private var flags: ReachabilityInfo.Flags = 0
 
@@ -373,7 +381,7 @@ object Infos {
       setFlag(ReachabilityInfo.FlagUsedExponentOperator)
 
     def result(): ReachabilityInfo =
-      new ReachabilityInfo(byClass.valuesIterator.map(_.result()).toArray, flags)
+      new ReachabilityInfo(version, byClass.valuesIterator.map(_.result()).toArray, flags)
   }
 
   final class ReachabilityInfoInClassBuilder(val className: ClassName) {
@@ -479,38 +487,43 @@ object Infos {
    *  [[org.scalajs.ir.Trees.MethodDef Trees.MethodDef]].
    */
   def generateMethodInfo(methodDef: MethodDef): MethodInfo =
-    new GenInfoTraverser().generateMethodInfo(methodDef)
+    new GenInfoTraverser(methodDef.version).generateMethodInfo(methodDef)
 
   /** Generates the [[ReachabilityInfo]] of a
    *  [[org.scalajs.ir.Trees.JSConstructorDef Trees.JSConstructorDef]].
    */
   def generateJSConstructorInfo(ctorDef: JSConstructorDef): ReachabilityInfo =
-    new GenInfoTraverser().generateJSConstructorInfo(ctorDef)
+    new GenInfoTraverser(ctorDef.version).generateJSConstructorInfo(ctorDef)
 
   /** Generates the [[ReachabilityInfo]] of a
    *  [[org.scalajs.ir.Trees.JSMethodDef Trees.JSMethodDef]].
    */
   def generateJSMethodInfo(methodDef: JSMethodDef): ReachabilityInfo =
-    new GenInfoTraverser().generateJSMethodInfo(methodDef)
+    new GenInfoTraverser(methodDef.version).generateJSMethodInfo(methodDef)
 
   /** Generates the [[ReachabilityInfo]] of a
    *  [[org.scalajs.ir.Trees.JSPropertyDef Trees.JSPropertyDef]].
    */
   def generateJSPropertyInfo(propertyDef: JSPropertyDef): ReachabilityInfo =
-    new GenInfoTraverser().generateJSPropertyInfo(propertyDef)
+    new GenInfoTraverser(propertyDef.version).generateJSPropertyInfo(propertyDef)
+
+  def generateJSMethodPropDefInfo(member: JSMethodPropDef): ReachabilityInfo = member match {
+    case methodDef: JSMethodDef     => generateJSMethodInfo(methodDef)
+    case propertyDef: JSPropertyDef => generateJSPropertyInfo(propertyDef)
+  }
 
   /** Generates the [[MethodInfo]] for the top-level exports. */
   def generateTopLevelExportInfo(enclosingClass: ClassName,
       topLevelExportDef: TopLevelExportDef): TopLevelExportInfo = {
-    val info = new GenInfoTraverser().generateTopLevelExportInfo(enclosingClass,
-        topLevelExportDef)
+    val info = new GenInfoTraverser(Version.Unversioned)
+        .generateTopLevelExportInfo(enclosingClass, topLevelExportDef)
     new TopLevelExportInfo(info,
         ModuleID(topLevelExportDef.moduleID),
         topLevelExportDef.topLevelExportName)
   }
 
-  private final class GenInfoTraverser extends Traverser {
-    private val builder = new ReachabilityInfoBuilder
+  private final class GenInfoTraverser(version: Version) extends Traverser {
+    private val builder = new ReachabilityInfoBuilder(version)
 
     def generateMethodInfo(methodDef: MethodDef): MethodInfo = {
       val methodName = methodDef.methodName
@@ -521,12 +534,7 @@ object Infos {
 
       val reachabilityInfo = builder.result()
 
-      MethodInfo(
-          methodName,
-          methodDef.flags.namespace,
-          methodDef.body.isEmpty,
-          reachabilityInfo
-      )
+      MethodInfo(methodDef.body.isEmpty, reachabilityInfo)
     }
 
     def generateJSConstructorInfo(ctorDef: JSConstructorDef): ReachabilityInfo = {

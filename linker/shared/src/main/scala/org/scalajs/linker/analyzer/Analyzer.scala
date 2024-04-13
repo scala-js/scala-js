@@ -677,16 +677,15 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
      */
     private val _instantiatedSubclasses = new GrowingList[ClassInfo]
 
-    private val nsMethodInfos = {
-      val nsMethodInfos = Array.fill(MemberNamespace.Count) {
-        emptyThreadSafeMap[MethodName, MethodInfo]
-      }
-      for (methodData <- data.methods) {
-        // TODO It would be good to report duplicates as errors at this point
-        val relevantMap = nsMethodInfos(methodData.namespace.ordinal)
-        relevantMap(methodData.methodName) = new MethodInfo(this, methodData)
-      }
-      nsMethodInfos
+    private val nsMethodInfos = Array.tabulate(MemberNamespace.Count) { nsOrdinal =>
+      val namespace = MemberNamespace.fromOrdinal(nsOrdinal)
+
+      val m = emptyThreadSafeMap[MethodName, MethodInfo]
+
+      for ((name, data) <- data.methods(nsOrdinal))
+        m.put(name, new MethodInfo(this, namespace, name, data))
+
+      m
     }
 
     def methodInfos(
@@ -724,8 +723,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
        * method exists.
        */
       publicMethodInfos.getOrElseUpdate(methodName, {
-        val syntheticData = makeSyntheticMethodInfo(methodName, MemberNamespace.Public)
-        new MethodInfo(this, syntheticData, nonExistent = true)
+        val syntheticData = makeSyntheticMethodInfo()
+        new MethodInfo(this, MemberNamespace.Public, methodName, syntheticData, nonExistent = true)
       })
     }
 
@@ -812,11 +811,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         val targetOwner = target.owner
 
         val syntheticInfo = makeSyntheticMethodInfo(
-            methodName = methodName,
-            namespace = MemberNamespace.Public,
             methodsCalledStatically = List(
                 targetOwner.className -> NamespacedMethodName(MemberNamespace.Public, methodName)))
-        new MethodInfo(this, syntheticInfo,
+        new MethodInfo(this, MemberNamespace.Public, methodName, syntheticInfo,
             syntheticKind = MethodSyntheticKind.DefaultBridge(targetOwner.className))
       })
     }
@@ -1011,10 +1008,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
       publicMethodInfos.getOrElseUpdate(proxyName, {
         val syntheticInfo = makeSyntheticMethodInfo(
-            methodName = proxyName,
-            namespace = MemberNamespace.Public,
             methodsCalled = List(this.className -> targetName))
-        new MethodInfo(this, syntheticInfo,
+        new MethodInfo(this, MemberNamespace.Public, proxyName, syntheticInfo,
             syntheticKind = MethodSyntheticKind.ReflectiveProxy(targetName))
       })
     }
@@ -1024,8 +1019,8 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       assert(namespace != MemberNamespace.Public)
 
       methodInfos(namespace).getOrElseUpdate(methodName, {
-        val syntheticData = makeSyntheticMethodInfo(methodName, namespace)
-        new MethodInfo(this, syntheticData, nonExistent = true)
+        val syntheticData = makeSyntheticMethodInfo()
+        new MethodInfo(this, namespace, methodName, syntheticData, nonExistent = true)
       })
     }
 
@@ -1273,13 +1268,13 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
   private class MethodInfo(
     val owner: ClassInfo,
+    val namespace: MemberNamespace,
+    val methodName: MethodName,
     data: Infos.MethodInfo,
     val nonExistent: Boolean = false,
     val syntheticKind: MethodSyntheticKind = MethodSyntheticKind.None
   ) extends Analysis.MethodInfo {
 
-    val methodName = data.methodName
-    val namespace = data.namespace
     val isAbstract = data.isAbstract
 
     private[this] val _isAbstractReachable = new AtomicBoolean(false)
@@ -1357,7 +1352,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
     }
 
     private[this] def doReach(): Unit =
-      followReachabilityInfo(data.reachabilityInfo, owner)(FromMethod(this))
+      followReachabilityInfo(data, owner)(FromMethod(this))
   }
 
   private class TopLevelExportInfo(val owningClass: ClassName, data: Infos.TopLevelExportInfo)
@@ -1507,8 +1502,12 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       if (className == ObjectClass) None
       else Some(ObjectClass)
 
-    val methods =
-      List(makeSyntheticMethodInfo(NoArgConstructorName, MemberNamespace.Constructor))
+    val methods = Array.tabulate[Map[MethodName, Infos.MethodInfo]](MemberNamespace.Count) { nsOrdinal =>
+      if (nsOrdinal == MemberNamespace.Constructor.ordinal)
+        Map(NoArgConstructorName -> makeSyntheticMethodInfo())
+      else
+        Map.empty
+    }
 
     new Infos.ClassInfo(className, ClassKind.Class,
         superClass = superClass, interfaces = Nil, jsNativeLoadSpec = None,
@@ -1517,18 +1516,16 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
   }
 
   private def makeSyntheticMethodInfo(
-      methodName: MethodName,
-      namespace: MemberNamespace,
       methodsCalled: List[(ClassName, MethodName)] = Nil,
       methodsCalledStatically: List[(ClassName, NamespacedMethodName)] = Nil
   ): Infos.MethodInfo = {
-    val reachabilityInfoBuilder = new Infos.ReachabilityInfoBuilder()
+    val reachabilityInfoBuilder = new Infos.ReachabilityInfoBuilder(ir.Version.Unversioned)
+
     for ((className, methodName) <- methodsCalled)
       reachabilityInfoBuilder.addMethodCalled(className, methodName)
     for ((className, methodName) <- methodsCalledStatically)
       reachabilityInfoBuilder.addMethodCalledStatically(className, methodName)
-    Infos.MethodInfo(methodName, namespace, isAbstract = false,
-        reachabilityInfoBuilder.result())
+    Infos.MethodInfo(isAbstract = false, reachabilityInfoBuilder.result())
   }
 
 }
