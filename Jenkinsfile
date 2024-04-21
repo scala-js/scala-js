@@ -1,4 +1,5 @@
 // If not a PR, this is a long-lived branch, which should have a nightly build
+
 def triggers = []
 if (!env.CHANGE_ID) {
   // This is the 1.x series: run nightly from Sunday to Friday
