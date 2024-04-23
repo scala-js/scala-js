@@ -1681,6 +1681,12 @@ object Build {
 
         val s = streams.value
 
+        /* Exclude files coming from Scala's `library-aux` directory, as they are not
+         * meant to be compiled. They are part of the source jar since Scala 2.13.14.
+         */
+        val excludeFiles =
+          Set("Any.scala", "AnyRef.scala", "Nothing.scala", "Null.scala", "Singleton.scala")
+
         for {
           srcDir <- sourceDirectories
           normSrcDir = normPath(srcDir)
@@ -1688,10 +1694,10 @@ object Build {
         } {
           val normSrc = normPath(src)
           val path = normSrc.substring(normSrcDir.length)
-          val useless =
+          val exclude =
             path.contains("/scala/collection/parallel/") ||
-            path.contains("/scala/util/parsing/")
-          if (!useless) {
+            (src.getParentFile().getName() == "scala" && excludeFiles.contains(src.getName()))
+          if (!exclude) {
             if (paths.add(path))
               sources += src
             else
