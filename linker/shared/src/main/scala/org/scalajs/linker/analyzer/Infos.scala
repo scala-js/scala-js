@@ -43,7 +43,7 @@ object Infos {
   final case class NamespacedMethodName(
       namespace: MemberNamespace, methodName: MethodName)
 
-  final class ClassInfo private[Infos] (
+  final class ClassInfo(
       val className: ClassName,
       val kind: ClassKind,
       val superClass: Option[ClassName], // always None for interfaces
@@ -165,57 +165,25 @@ object Infos {
     val methodName: MethodName
   ) extends MemberReachabilityInfo
 
-  final class ClassInfoBuilder(
-      private val className: ClassName,
-      private val kind: ClassKind,
-      private val superClass: Option[ClassName],
-      private val interfaces: List[ClassName],
-      private val jsNativeLoadSpec: Option[JSNativeLoadSpec]
-  ) {
-    private val referencedFieldClasses = mutable.Map.empty[FieldName, ClassName]
-    private val methods = mutable.ListBuffer.empty[MethodInfo]
-    private val jsNativeMembers = mutable.Map.empty[MethodName, JSNativeLoadSpec]
-    private val jsMethodProps = mutable.ListBuffer.empty[ReachabilityInfo]
-    private val topLevelExports = mutable.ListBuffer.empty[TopLevelExportInfo]
+  def genReferencedFieldClasses(fields: List[AnyFieldDef]): Map[FieldName, ClassName] = {
+    val builder = Map.newBuilder[FieldName, ClassName]
 
-    def maybeAddReferencedFieldClass(name: FieldName, tpe: Type): this.type = {
-      tpe match {
-        case ClassType(cls) =>
-          referencedFieldClasses.put(name, cls)
-        case ArrayType(ArrayTypeRef(ClassRef(cls), _)) =>
-          referencedFieldClasses.put(name, cls)
-        case _ =>
-      }
-
-      this
+    fields.foreach {
+      case FieldDef(flags, FieldIdent(name), _, ftpe) =>
+        if (!flags.namespace.isStatic) {
+          ftpe match {
+            case ClassType(cls) =>
+              builder += name -> cls
+            case ArrayType(ArrayTypeRef(ClassRef(cls), _)) =>
+              builder += name -> cls
+            case _ =>
+          }
+        }
+      case _: JSFieldDef =>
+        // Nothing to do.
     }
 
-    def addMethod(methodInfo: MethodInfo): this.type = {
-      methods += methodInfo
-      this
-    }
-
-    def addJSNativeMember(member: JSNativeMemberDef): this.type = {
-      jsNativeMembers.put(member.name.name, member.jsNativeLoadSpec)
-      this
-    }
-
-    def addExportedMember(reachabilityInfo: ReachabilityInfo): this.type = {
-      jsMethodProps += reachabilityInfo
-      this
-    }
-
-    def addTopLevelExport(topLevelExportInfo: TopLevelExportInfo): this.type = {
-      topLevelExports += topLevelExportInfo
-      this
-    }
-
-    def result(): ClassInfo = {
-      new ClassInfo(className, kind, superClass,
-          interfaces, jsNativeLoadSpec, referencedFieldClasses.toMap,
-          methods.toList, jsNativeMembers.toMap, jsMethodProps.toList,
-          topLevelExports.toList)
-    }
+    builder.result()
   }
 
   final class ReachabilityInfoBuilder {

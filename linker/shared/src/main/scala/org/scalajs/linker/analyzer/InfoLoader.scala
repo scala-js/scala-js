@@ -115,40 +115,27 @@ private[analyzer] object InfoLoader {
     }
 
     private def generateInfos(classDef: ClassDef): Infos.ClassInfo =  {
-      val builder = new Infos.ClassInfoBuilder(classDef.className,
-          classDef.kind, classDef.superClass.map(_.name),
-          classDef.interfaces.map(_.name), classDef.jsNativeLoadSpec)
+      val referencedFieldClasses = Infos.genReferencedFieldClasses(classDef.fields)
+      val methods = classDef.methods.map(methodsInfoCaches.getInfo(_))
 
-      classDef.fields.foreach {
-        case FieldDef(flags, FieldIdent(name), _, ftpe) =>
-          if (!flags.namespace.isStatic)
-            builder.maybeAddReferencedFieldClass(name, ftpe)
-
-        case _: JSFieldDef =>
-          // Nothing to do.
+      val jsMethodProps = {
+        classDef.jsConstructor.map(jsConstructorInfoCache.getInfo(_)).toList :::
+        exportedMembersInfoCaches.getInfos(classDef.jsMethodProps)
       }
-
-      classDef.methods.foreach { method =>
-        builder.addMethod(methodsInfoCaches.getInfo(method))
-      }
-
-      classDef.jsConstructor.foreach { jsConstructor =>
-        builder.addExportedMember(jsConstructorInfoCache.getInfo(jsConstructor))
-      }
-
-      for (info <- exportedMembersInfoCaches.getInfos(classDef.jsMethodProps))
-        builder.addExportedMember(info)
 
       /* We do not cache top-level exports, because they're quite rare,
        * and usually quite small when they exist.
        */
-      classDef.topLevelExportDefs.foreach { topLevelExportDef =>
-        builder.addTopLevelExport(Infos.generateTopLevelExportInfo(classDef.name.name, topLevelExportDef))
-      }
+      val topLevelExports = classDef.topLevelExportDefs
+        .map(Infos.generateTopLevelExportInfo(classDef.name.name, _))
 
-      classDef.jsNativeMembers.foreach(builder.addJSNativeMember(_))
+      val jsNativeMembers = classDef.jsNativeMembers
+        .map(m => m.name.name -> m.jsNativeLoadSpec).toMap
 
-      builder.result()
+      new Infos.ClassInfo(classDef.className, classDef.kind,
+          classDef.superClass.map(_.name), classDef.interfaces.map(_.name),
+          classDef.jsNativeLoadSpec, referencedFieldClasses, methods, jsNativeMembers,
+          jsMethodProps, topLevelExports)
     }
 
     /** Returns true if the cache has been used and should be kept. */

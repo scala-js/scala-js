@@ -1507,10 +1507,13 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       if (className == ObjectClass) None
       else Some(ObjectClass)
 
-    new Infos.ClassInfoBuilder(className, ClassKind.Class,
-        superClass = superClass, interfaces = Nil, jsNativeLoadSpec = None)
-      .addMethod(makeSyntheticMethodInfo(NoArgConstructorName, MemberNamespace.Constructor))
-      .result()
+    val methods =
+      List(makeSyntheticMethodInfo(NoArgConstructorName, MemberNamespace.Constructor))
+
+    new Infos.ClassInfo(className, ClassKind.Class,
+        superClass = superClass, interfaces = Nil, jsNativeLoadSpec = None,
+        referencedFieldClasses = Map.empty, methods = methods,
+        jsNativeMembers = Map.empty, jsMethodProps = Nil, topLevelExports = Nil)
   }
 
   private def makeSyntheticMethodInfo(
