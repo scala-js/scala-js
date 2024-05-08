@@ -1520,8 +1520,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       methodName: MethodName,
       namespace: MemberNamespace,
       methodsCalled: List[(ClassName, MethodName)] = Nil,
-      methodsCalledStatically: List[(ClassName, NamespacedMethodName)] = Nil,
-      instantiatedClasses: List[ClassName] = Nil
+      methodsCalledStatically: List[(ClassName, NamespacedMethodName)] = Nil
   ): Infos.MethodInfo = {
     val reachabilityInfoBuilder = new Infos.ReachabilityInfoBuilder()
     for ((className, methodName) <- methodsCalled)
