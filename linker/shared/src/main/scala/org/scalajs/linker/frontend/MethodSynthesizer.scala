@@ -66,9 +66,10 @@ private[frontend] final class MethodSynthesizer(
       val targetIdent = targetMDef.name.copy() // for the new pos
       val proxyIdent = MethodIdent(methodName)
       val params = targetMDef.args.map(_.copy()) // for the new pos
-      val currentClassType = ClassType(classInfo.className)
+      val instanceThisType =
+        BoxedClassToPrimType.getOrElse(classInfo.className, ClassType(classInfo.className))
 
-      val call = Apply(ApplyFlags.empty, This()(currentClassType),
+      val call = Apply(ApplyFlags.empty, This()(instanceThisType),
           targetIdent, params.map(_.ref))(targetMDef.resultType)
 
       val body = if (targetName.resultTypeRef == VoidRef) {
@@ -100,10 +101,11 @@ private[frontend] final class MethodSynthesizer(
       val targetIdent = targetMDef.name.copy() // for the new pos
       val bridgeIdent = targetIdent
       val params = targetMDef.args.map(_.copy()) // for the new pos
-      val currentClassType = ClassType(classInfo.className)
+      val instanceThisType =
+        BoxedClassToPrimType.getOrElse(classInfo.className, ClassType(classInfo.className))
 
       val body = ApplyStatically(
-          ApplyFlags.empty, This()(currentClassType), targetInterface,
+          ApplyFlags.empty, This()(instanceThisType), targetInterface,
           targetIdent, params.map(_.ref))(targetMDef.resultType)
 
       MethodDef(MemberFlags.empty, bridgeIdent, targetMDef.originalName,
