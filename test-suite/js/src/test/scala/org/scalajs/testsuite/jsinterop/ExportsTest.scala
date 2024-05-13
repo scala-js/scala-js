@@ -728,6 +728,20 @@ class ExportsTest {
     assertEquals(18, bar.method(5, 6, 7))
   }
 
+  @Test def exportsInsideValueClass(): Unit = {
+    val obj = new ValueClassWithExports(5).asInstanceOf[js.Dynamic]
+
+    // Explicit export
+    assertEquals(12, obj.add(7))
+
+    // Export for toString() inherited from jl.Object
+    assertEquals("ValueClassWithExports(value = 5)", obj.toString())
+
+    // Export for toString() visible from JavaScript
+    val f = new js.Function("obj", "return '' + obj;").asInstanceOf[js.Function1[Any, String]]
+    assertEquals("ValueClassWithExports(value = 5)", f(obj))
+  }
+
   @Test def overloadingWithInheritedExports(): Unit = {
     class A {
       @JSExport
@@ -1985,6 +1999,13 @@ class ExportedDefaultArgClass(x: Int, y: Int, z: Int) {
 }
 
 class SomeValueClass(val i: Int) extends AnyVal
+
+class ValueClassWithExports(val value: Int) extends AnyVal {
+  @JSExport("add")
+  def addToValue(x: Int): Int = value + x
+
+  override def toString(): String = s"ValueClassWithExports(value = $value)"
+}
 
 object ExportHolder {
   @JSExportTopLevel("NestedExportedClass")

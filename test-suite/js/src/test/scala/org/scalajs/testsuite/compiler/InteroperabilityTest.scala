@@ -630,13 +630,15 @@ class InteroperabilityTest {
   @Test def boxValueClassesGivenToJSInteropMethod(): Unit = {
     val obj = js.eval("""
       var obj = {
-        stringOf: function(vc) { return vc.toString(); }
+        test: function(vc) { return vc; }
       };
       obj;
     """).asInstanceOf[InteroperabilityTestValueClassParam]
 
     val vc = new SomeValueClass(7)
-    assertEquals("SomeValueClass(7)", obj.stringOf(vc))
+    val r = obj.test(vc)
+    assertTrue(r.isInstanceOf[SomeValueClass])
+    assertEquals(7, r.asInstanceOf[SomeValueClass].i)
   }
 
   @Test def doNotUnboxValuesReceivedFromJSMethodInStatementPosition(): Unit = {
@@ -818,7 +820,7 @@ object InteroperabilityTest {
 
   @js.native
   trait InteroperabilityTestValueClassParam extends js.Object {
-    def stringOf(vc: SomeValueClass): String = js.native
+    def test(vc: SomeValueClass): Any = js.native
   }
 
   @js.native
