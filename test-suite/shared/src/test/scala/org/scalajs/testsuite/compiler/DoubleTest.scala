@@ -204,6 +204,108 @@ class DoubleTest {
   }
 
   @Test
+  def testRemainder(): Unit = {
+    /* Double `%` is atypical. It does not correspond to the IEEE-754 notion
+     * of remainder/modulo. Instead, it correspond to the common math function
+     * `fmod`. Therefore, we have dedicated tests for it, to make sure that
+     * our platforms agree on the semantics. They are not much, but they are
+     * enough to rule out the naive formula that can sometimes be found on the
+     * Web, namely `x - trunc(x / y) * y`.
+     */
+
+    def test(expected: Double, n: Double, d: Double): Unit =
+      assertExactEquals(expected, n % d)
+
+    // If n is NaN, return NaN
+    test(Double.NaN, Double.NaN, Double.NaN)
+    test(Double.NaN, Double.NaN, Double.PositiveInfinity)
+    test(Double.NaN, Double.NaN, Double.NegativeInfinity)
+    test(Double.NaN, Double.NaN, +0.0)
+    test(Double.NaN, Double.NaN, -0.0)
+    test(Double.NaN, Double.NaN, 2.1)
+    test(Double.NaN, Double.NaN, 5.5)
+    test(Double.NaN, Double.NaN, -151.189)
+
+    // If d is NaN, return NaN
+    test(Double.NaN, Double.NaN, Double.NaN)
+    test(Double.NaN, Double.PositiveInfinity, Double.NaN)
+    test(Double.NaN, Double.NegativeInfinity, Double.NaN)
+    test(Double.NaN, +0.0, Double.NaN)
+    test(Double.NaN, -0.0, Double.NaN)
+    test(Double.NaN, 2.1, Double.NaN)
+    test(Double.NaN, 5.5, Double.NaN)
+    test(Double.NaN, -151.189, Double.NaN)
+
+    // If n is PositiveInfinity, return NaN
+    test(Double.NaN, Double.PositiveInfinity, Double.PositiveInfinity)
+    test(Double.NaN, Double.PositiveInfinity, Double.NegativeInfinity)
+    test(Double.NaN, Double.PositiveInfinity, +0.0)
+    test(Double.NaN, Double.PositiveInfinity, -0.0)
+    test(Double.NaN, Double.PositiveInfinity, 2.1)
+    test(Double.NaN, Double.PositiveInfinity, 5.5)
+    test(Double.NaN, Double.PositiveInfinity, -151.189)
+
+    // If n is NegativeInfinity, return NaN
+    test(Double.NaN, Double.NegativeInfinity, Double.PositiveInfinity)
+    test(Double.NaN, Double.NegativeInfinity, Double.NegativeInfinity)
+    test(Double.NaN, Double.NegativeInfinity, +0.0)
+    test(Double.NaN, Double.NegativeInfinity, -0.0)
+    test(Double.NaN, Double.NegativeInfinity, 2.1)
+    test(Double.NaN, Double.NegativeInfinity, 5.5)
+    test(Double.NaN, Double.NegativeInfinity, -151.189)
+
+    // If d is PositiveInfinity, return n
+    test(+0.0, +0.0, Double.PositiveInfinity)
+    test(-0.0, -0.0, Double.PositiveInfinity)
+    test(2.1, 2.1, Double.PositiveInfinity)
+    test(5.5, 5.5, Double.PositiveInfinity)
+    test(-151.189, -151.189, Double.PositiveInfinity)
+
+    // If d is NegativeInfinity, return n
+    test(+0.0, +0.0, Double.NegativeInfinity)
+    test(-0.0, -0.0, Double.NegativeInfinity)
+    test(2.1, 2.1, Double.NegativeInfinity)
+    test(5.5, 5.5, Double.NegativeInfinity)
+    test(-151.189, -151.189, Double.NegativeInfinity)
+
+    // If d is +0.0, return NaN
+    test(Double.NaN, +0.0, +0.0)
+    test(Double.NaN, -0.0, +0.0)
+    test(Double.NaN, 2.1, +0.0)
+    test(Double.NaN, 5.5, +0.0)
+    test(Double.NaN, -151.189, +0.0)
+
+    // If d is -0.0, return NaN
+    test(Double.NaN, +0.0, -0.0)
+    test(Double.NaN, -0.0, -0.0)
+    test(Double.NaN, 2.1, -0.0)
+    test(Double.NaN, 5.5, -0.0)
+    test(Double.NaN, -151.189, -0.0)
+
+    // If n is +0.0, return n
+    test(+0.0, +0.0, 2.1)
+    test(+0.0, +0.0, 5.5)
+    test(+0.0, +0.0, -151.189)
+
+    // If n is -0.0, return n
+    test(-0.0, -0.0, 2.1)
+    test(-0.0, -0.0, 5.5)
+    test(-0.0, -0.0, -151.189)
+
+    // Non-special values
+    // { val l = List(2.1, 5.5, -151.189); for (n <- l; d <- l) println(s"    test(${n % d}, $n, $d)") }
+    test(0.0, 2.1, 2.1)
+    test(2.1, 2.1, 5.5)
+    test(2.1, 2.1, -151.189)
+    test(1.2999999999999998, 5.5, 2.1)
+    test(0.0, 5.5, 5.5)
+    test(5.5, 5.5, -151.189)
+    test(-2.0889999999999866, -151.189, 2.1)
+    test(-2.688999999999993, -151.189, 5.5)
+    test(-0.0, -151.189, -151.189)
+  }
+
+  @Test
   def noReverseComparisons_Issue3575(): Unit = {
     import Double.NaN
 
