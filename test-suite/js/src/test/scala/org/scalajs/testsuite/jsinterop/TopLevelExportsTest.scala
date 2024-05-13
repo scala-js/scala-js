@@ -38,6 +38,11 @@ class TopLevelExportsTest {
   private lazy val exportsNamespace: Future[js.Dynamic] =
     ExportLoopback.exportsNamespace
 
+  def witnessOf(obj: Any): Any = {
+    assertTrue("" + obj.getClass(), obj.isInstanceOf[WitnessInterface])
+    obj.asInstanceOf[WitnessInterface].witness
+  }
+
   // @JSExportTopLevel classes and objects
 
   @Test def toplevelExportsForObjects(): AsyncResult = await {
@@ -47,7 +52,7 @@ class TopLevelExportsTest {
     for (obj <- objFuture) yield {
       assertJSNotUndefined(obj)
       assertEquals("object", js.typeOf(obj))
-      assertEquals("witness", obj.witness)
+      assertEquals("witness", witnessOf(obj))
     }
   }
 
@@ -82,7 +87,7 @@ class TopLevelExportsTest {
     for (obj <- objFuture) yield {
       assertJSNotUndefined(obj)
       assertEquals("object", js.typeOf(obj))
-      assertEquals("witness", obj.witness)
+      assertEquals("witness", witnessOf(obj))
     }
   }
 
@@ -93,7 +98,7 @@ class TopLevelExportsTest {
     for (obj <- objFuture) yield {
       assertJSNotUndefined(obj)
       assertEquals("object", js.typeOf(obj))
-      assertEquals("witness", obj.witness)
+      assertEquals("witness", witnessOf(obj))
     }
   }
 
@@ -105,7 +110,7 @@ class TopLevelExportsTest {
       assertJSNotUndefined(constr)
       assertEquals("function", js.typeOf(constr))
       val obj = js.Dynamic.newInstance(constr)(5)
-      assertEquals(5, obj.x)
+      assertEquals(5, witnessOf(obj))
     }
   }
 
@@ -203,7 +208,7 @@ class TopLevelExportsTest {
       assertJSNotUndefined(constr)
       assertEquals("function", js.typeOf(constr))
       val obj = js.Dynamic.newInstance(constr)(5)
-      assertEquals(5, obj.x)
+      assertEquals(5, witnessOf(obj))
     }
   }
 
@@ -215,7 +220,7 @@ class TopLevelExportsTest {
       assertJSNotUndefined(constr)
       assertEquals("function", js.typeOf(constr))
       val obj = js.Dynamic.newInstance(constr)(5)
-      assertEquals(5, obj.x)
+      assertEquals(5, witnessOf(obj))
     }
   }
 
@@ -224,11 +229,11 @@ class TopLevelExportsTest {
       if (isNoModule) Future.successful(global.ExportedVarArgClass)
       else exportsNamespace.map(_.ExportedVarArgClass)
     for (constr <- constrFuture) yield {
-      assertEquals("", js.Dynamic.newInstance(constr)().result)
-      assertEquals("a", js.Dynamic.newInstance(constr)("a").result)
-      assertEquals("a|b", js.Dynamic.newInstance(constr)("a", "b").result)
-      assertEquals("a|b|c", js.Dynamic.newInstance(constr)("a", "b", "c").result)
-      assertEquals("Number: <5>|a", js.Dynamic.newInstance(constr)(5, "a").result)
+      assertEquals("", witnessOf(js.Dynamic.newInstance(constr)()))
+      assertEquals("a", witnessOf(js.Dynamic.newInstance(constr)("a")))
+      assertEquals("a|b", witnessOf(js.Dynamic.newInstance(constr)("a", "b")))
+      assertEquals("a|b|c", witnessOf(js.Dynamic.newInstance(constr)("a", "b", "c")))
+      assertEquals("Number: <5>|a", witnessOf(js.Dynamic.newInstance(constr)(5, "a")))
     }
   }
 
@@ -237,9 +242,9 @@ class TopLevelExportsTest {
       if (isNoModule) Future.successful(global.ExportedDefaultArgClass)
       else exportsNamespace.map(_.ExportedDefaultArgClass)
     for (constr <- constrFuture) yield {
-      assertEquals(6, js.Dynamic.newInstance(constr)(1,2,3).result)
-      assertEquals(106, js.Dynamic.newInstance(constr)(1).result)
-      assertEquals(103, js.Dynamic.newInstance(constr)(1,2).result)
+      assertEquals(6, witnessOf(js.Dynamic.newInstance(constr)(1, 2, 3)))
+      assertEquals(106, witnessOf(js.Dynamic.newInstance(constr)(1)))
+      assertEquals(103, witnessOf(js.Dynamic.newInstance(constr)(1, 2)))
     }
   }
 
@@ -506,10 +511,14 @@ object TopLevelExportNameHolder {
   final val objectName = "ConstantFoldedObjectExport"
 }
 
+/** Access to a `witness` property in instances of exported Scala classes. */
+trait WitnessInterface {
+  def witness: Any
+}
+
 @JSExportTopLevel("TopLevelExportedObject")
 @JSExportTopLevel(TopLevelExportNameHolder.objectName)
-object TopLevelExportedObject {
-  @JSExport
+object TopLevelExportedObject extends WitnessInterface {
   val witness: String = "witness"
 }
 
@@ -519,16 +528,14 @@ object SJSDefinedExportedObject extends js.Object {
 }
 
 @JSExportTopLevel("ProtectedExportedObject")
-protected object ProtectedExportedObject {
-  @JSExport
+protected object ProtectedExportedObject extends WitnessInterface {
   def witness: String = "witness"
 }
 
 @JSExportTopLevel("TopLevelExportedClass")
 @JSExportTopLevel(TopLevelExportNameHolder.className)
-class TopLevelExportedClass(_x: Int) {
-  @JSExport
-  val x = _x
+class TopLevelExportedClass(_x: Int) extends WitnessInterface {
+  val witness = _x
 }
 
 @JSExportTopLevel("SJSDefinedTopLevelExportedClass")
@@ -542,29 +549,26 @@ abstract class TopLevelExportedAbstractJSClass(val x: Int) extends js.Object {
 }
 
 @JSExportTopLevel("ProtectedExportedClass")
-protected class ProtectedExportedClass(_x: Int) {
-  @JSExport
-  val x = _x
+protected class ProtectedExportedClass(_x: Int) extends WitnessInterface {
+  val witness = _x
 }
 
 @JSExportTopLevel("ExportedVarArgClass")
-class ExportedVarArgClass(x: String*) {
+class ExportedVarArgClass(x: String*) extends WitnessInterface {
 
   @JSExportTopLevel("ExportedVarArgClass")
   def this(x: Int, y: String) = this(s"Number: <$x>", y)
 
-  @JSExport
-  def result: String = x.mkString("|")
+  def witness: String = x.mkString("|")
 }
 
 @JSExportTopLevel("ExportedDefaultArgClass")
-class ExportedDefaultArgClass(x: Int, y: Int, z: Int) {
+class ExportedDefaultArgClass(x: Int, y: Int, z: Int) extends WitnessInterface {
 
   @JSExportTopLevel("ExportedDefaultArgClass")
   def this(x: Int, y: Int = 5) = this(x, y, 100)
 
-  @JSExport
-  def result: Int = x + y + z
+  def witness: Int = x + y + z
 }
 
 object ExportHolder {
