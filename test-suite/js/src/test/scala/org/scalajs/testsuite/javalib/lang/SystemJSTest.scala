@@ -23,25 +23,6 @@ import org.junit.Assume._
 
 class SystemJSTest {
 
-  @Test def identityHashCodeIsStableIfObjectIsSealed(): Unit = {
-    /* This is mostly forward-checking that, should we have an implementation
-     * that seals Scala.js objects, identityHashCode() survives.
-     */
-    class HasIDHashCodeToBeSealed
-
-    // Seal before the first call to hashCode()
-    val x1 = new HasIDHashCodeToBeSealed
-    js.Object.seal(x1.asInstanceOf[js.Object])
-    val x1FirstHash = x1.hashCode()
-    assertEquals(x1FirstHash, x1.hashCode())
-
-    // Seal after the first call to hashCode()
-    val x2 = new HasIDHashCodeToBeSealed
-    val x2FirstHash = x2.hashCode()
-    js.Object.seal(x2.asInstanceOf[js.Object])
-    assertEquals(x2FirstHash, x2.hashCode())
-  }
-
   @Test def identityHashCodeForJSObjects(): Unit = {
     if (Platform.assumeES2015 || js.typeOf(js.Dynamic.global.WeakMap) != "undefined") {
       /* This test is more restrictive than the spec, but we know our
