@@ -22,6 +22,9 @@ import org.scalajs.ir.Types._
 
 import org.scalajs.junit.async._
 
+import org.scalajs.logging._
+
+import org.scalajs.linker.checker.ClassDefChecker
 import org.scalajs.linker.interface.StandardConfig
 import org.scalajs.linker.standard._
 
@@ -64,6 +67,28 @@ class BaseLinkerTest {
     for (moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers, config = config)) yield {
       val clazz = findClass(moduleSet, "Sub").get
       assertFalse(clazz.methods.exists(_.name.name == fooName))
+    }
+  }
+
+  @Test
+  def correctThisTypeInHijackedClassReflectiveProxies_Issue4982(): AsyncResult = await {
+    val compareTo = m("compareTo", List(ClassRef(BoxedIntegerClass)), IntRef)
+    val compareToReflProxy =
+      MethodName.reflectiveProxy("compareTo", List(ClassRef(BoxedIntegerClass)))
+
+    val classDefs = Seq(
+      mainTestClassDef(
+        consoleLog(Apply(EAF, IntLiteral(5), compareToReflProxy, List(IntLiteral(6)))(AnyType))
+      )
+    )
+
+    val config = StandardConfig().withOptimizer(false)
+
+    for (moduleSet <- linkToModuleSet(classDefs, MainTestModuleInitializers, config = config)) yield {
+      val clazz = findClass(moduleSet, BoxedIntegerClass).get
+      val errorCount = ClassDefChecker.check(clazz, postOptimizer = false,
+          new ScalaConsoleLogger(Level.Error))
+      assertEquals(0, errorCount)
     }
   }
 

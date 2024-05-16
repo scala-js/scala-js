@@ -24,6 +24,7 @@ import org.scalajs.ir.Types._
 import org.scalajs.logging._
 
 import org.scalajs.linker.checker.ErrorReporter._
+import org.scalajs.linker.standard.LinkedClass
 
 /** Checker for the validity of the IR. */
 private final class ClassDefChecker(classDef: ClassDef,
@@ -923,6 +924,30 @@ object ClassDefChecker {
     val reporter = new LoggerErrorReporter(logger)
     new ClassDefChecker(classDef, postBaseLinker, postOptimizer, reporter).checkClassDef()
     reporter.errorCount
+  }
+
+  def check(linkedClass: LinkedClass, postOptimizer: Boolean, logger: Logger): Int = {
+    // Rebuild a ClassDef out of the LinkedClass
+    import linkedClass._
+    implicit val pos = linkedClass.pos
+    val classDef = ClassDef(
+      name,
+      OriginalName.NoOriginalName,
+      kind,
+      jsClassCaptures,
+      superClass,
+      interfaces,
+      jsSuperClass,
+      jsNativeLoadSpec,
+      fields,
+      methods,
+      jsConstructorDef,
+      exportedMembers,
+      jsNativeMembers,
+      topLevelExportDefs = Nil
+    )(optimizerHints)
+
+    check(classDef, postBaseLinker = true, postOptimizer, logger)
   }
 
   private class Env(
