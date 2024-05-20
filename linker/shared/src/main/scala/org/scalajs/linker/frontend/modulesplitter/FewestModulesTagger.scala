@@ -173,17 +173,26 @@ private class FewestModulesTagger(infos: ModuleAnalyzer.DependencyInfo) {
   private def tag(classNames: Set[ClassName], pathRoot: ModuleID, pathSteps: List[ClassName],
                   dynamics: Set[ClassName]): Set[ClassName] = {
     classNames.headOption match {
-      case Some(className) =>
-        val updated = allPaths
-          .getOrElseUpdate(className, new Paths)
-          .put(pathRoot, pathSteps)
-        if (updated) {
+      case Some(className) => allPaths.get(className) match {
+        case Some(paths) if !paths.hasDynamic && pathSteps.nonEmpty =>
+          // Special case that visits static dependencies again when the first dynamic dependency is found so as to
+          // ensure that they are not thought to only be used by a single public module.
+          paths.put(pathRoot, pathSteps)
+          val classInfo = infos.classDependencies(className)
+          tag(classNames.tail ++ classInfo.staticDependencies, pathRoot, pathSteps, dynamics)
+        case None =>
+          val paths = new Paths
+          paths.put(pathRoot, pathSteps)
+          allPaths.put(className, paths)
+          // Consider dependencies the first time we encounter them as this is the shortest path there will be.
           val classInfo = infos.classDependencies(className)
           tag(classNames.tail ++ classInfo.staticDependencies, pathRoot, pathSteps,
             dynamics ++ classInfo.dynamicDependencies)
-        } else {
+        case Some(paths) =>
+          paths.put(pathRoot, pathSteps)
+          // Otherwise do not consider dependencies again as there is no more information to find.
           tag(classNames.tail, pathRoot, pathSteps, dynamics)
-        }
+      }
       case None => dynamics
     }
   }
@@ -225,6 +234,8 @@ private object FewestModulesTagger {
   private final class Paths {
     private val direct = mutable.Set.empty[ModuleID]
     private val dynamic = mutable.Map.empty[ModuleID, DynamicPaths]
+
+    def hasDynamic: Boolean = dynamic.nonEmpty
 
     def put(pathRoot: ModuleID, pathSteps: List[ClassName]): Boolean = {
       if (pathSteps.isEmpty) {
