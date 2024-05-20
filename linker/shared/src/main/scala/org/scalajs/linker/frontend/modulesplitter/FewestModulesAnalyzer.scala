@@ -33,7 +33,7 @@ private[modulesplitter] final class FewestModulesAnalyzer extends ModuleAnalyzer
       new SingleModuleAnalysis(info.publicModuleDependencies.head._1)
     } else {
       val modulesToAvoid = info.publicModuleDependencies.keys
-      val moduleMap = new Tagger(info).tagAll(modulesToAvoid)
+      val moduleMap = new FewestModulesTagger(info).tagAll(modulesToAvoid)
 
       new FullAnalysis(moduleMap)
     }
