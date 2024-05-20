@@ -169,37 +169,47 @@ private class FewestModulesTagger(infos: ModuleAnalyzer.DependencyInfo) {
     }
   }
 
-  private def tag(className: ClassName, pathRoot: ModuleID, pathSteps: List[ClassName]): Unit = {
-    val updated = allPaths
-      .getOrElseUpdate(className, new Paths)
-      .put(pathRoot, pathSteps)
-
-    if (updated) {
-      val classInfo = infos.classDependencies(className)
-      classInfo
-        .staticDependencies
-        .foreach(staticEdge(_, pathRoot, pathSteps))
-
-      classInfo
-        .dynamicDependencies
-        .foreach(dynamicEdge(_, pathRoot, pathSteps))
+  @tailrec
+  private def tag(classNames: Set[ClassName], pathRoot: ModuleID, pathSteps: List[ClassName],
+                  dynamics: Set[ClassName]): Set[ClassName] = {
+    classNames.headOption match {
+      case Some(className) =>
+        val updated = allPaths
+          .getOrElseUpdate(className, new Paths)
+          .put(pathRoot, pathSteps)
+        if (updated) {
+          val classInfo = infos.classDependencies(className)
+          tag(classNames.tail ++ classInfo.staticDependencies, pathRoot, pathSteps,
+            dynamics ++ classInfo.dynamicDependencies)
+        } else {
+          tag(classNames.tail, pathRoot, pathSteps, dynamics)
+        }
+      case None => dynamics
     }
   }
 
-  private def staticEdge(className: ClassName, pathRoot: ModuleID, pathSteps: List[ClassName]): Unit = {
-    tag(className, pathRoot, pathSteps)
-  }
-
-  private def dynamicEdge(className: ClassName, pathRoot: ModuleID, pathSteps: List[ClassName]): Unit = {
-    tag(className, pathRoot, pathSteps :+ className)
+  @tailrec
+  private def tagDynamics(classNames: Set[ClassName], pathRoot: ModuleID, pathSteps: List[ClassName],
+                          dynamics: List[(List[ClassName], Set[ClassName])]): Unit = {
+    classNames.headOption match {
+      case Some(className) =>
+        val nextPathSteps = pathSteps :+ className
+        val relativeDynamics = tag(Set(className), pathRoot, nextPathSteps, Set.empty)
+        val nextDynamics = nextPathSteps -> relativeDynamics :: dynamics
+        tagDynamics(classNames.tail, pathRoot, pathSteps, nextDynamics)
+      case None => dynamics match {
+        case (pathSteps, classNames) :: remainingDynamics =>
+          tagDynamics(classNames, pathRoot, pathSteps, remainingDynamics)
+        case Nil => ()
+      }
+    }
   }
 
   private def tagEntryPoints(): Unit = {
-    for {
-      (moduleID, deps) <- infos.publicModuleDependencies
-      className <- deps
-    } {
-      staticEdge(className, pathRoot = moduleID, pathSteps = Nil)
+    infos.publicModuleDependencies.foreach {
+      case (moduleID, deps) =>
+        val dynamics = tag(classNames = deps, pathRoot = moduleID, pathSteps = Nil, dynamics = Set.empty)
+        tagDynamics(classNames = dynamics, pathRoot = moduleID, pathSteps = Nil, dynamics = Nil)
     }
   }
 }
@@ -208,7 +218,7 @@ private object FewestModulesTagger {
 
   /** "Interesting" paths that can lead to a given class.
    *
-   *  "Interesting" in this context means:
+   * "Interesting" in this context means:
    *  - All direct paths from a public dependency.
    *  - All non-empty, mutually prefix-free paths of dynamic import hops.
    */
