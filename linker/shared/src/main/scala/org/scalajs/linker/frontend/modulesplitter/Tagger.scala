@@ -66,7 +66,7 @@ import scala.collection.{immutable, mutable}
  *  The (transitive) dependencies of the class are nevertheless taken into
  *  account and tagged as appropriate.
  *  In particular, to avoid cycles and excessive splitting alike (see #4835),
- *  we need to introduce an additonal tagging mechanism.
+ *  we need to introduce an additional tagging mechanism.
  *
  *  To illustrate the problem, take the following dependency graph as an example
  *
@@ -170,9 +170,23 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
     }
   }
 
+  /**
+   * Tags all of the given classes with the given path iff it is shorter than the existing path.
+   *
+   * This will recursively tag all static dependencies (which by definition do not contribute to the path).
+   *
+   * A class that only has a direct path may be re-tagged with a dynamic path. In this case, all its dependencies are
+   * also re-tagged where appropriate.
+   *
+   * @param classNames the starting set of classes to tag
+   * @param pathRoot the root of the path
+   * @param pathSteps the steps that make up path
+   * @param nextSteps the accumulated result
+   * @return the next steps to traverse
+   */
   @tailrec
   private def tag(classNames: Set[ClassName], pathRoot: ModuleID, pathSteps: List[ClassName],
-                  dynamics: Set[ClassName]): Set[ClassName] = {
+                  nextSteps: Set[ClassName]): Set[ClassName] = {
     classNames.headOption match {
       case Some(className) => allPaths.get(className) match {
         case Some(paths) if !paths.hasDynamic && pathSteps.nonEmpty =>
@@ -180,7 +194,7 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
           // ensure that they are not thought to only be used by a single public module.
           paths.put(pathRoot, pathSteps)
           val classInfo = infos.classDependencies(className)
-          tag(classNames.tail ++ classInfo.staticDependencies, pathRoot, pathSteps, dynamics)
+          tag(classNames.tail ++ classInfo.staticDependencies, pathRoot, pathSteps, nextSteps)
         case None =>
           val paths = new Paths
           paths.put(pathRoot, pathSteps)
@@ -188,33 +202,53 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
           // Consider dependencies the first time we encounter them as this is the shortest path there will be.
           val classInfo = infos.classDependencies(className)
           tag(classNames.tail ++ classInfo.staticDependencies, pathRoot, pathSteps,
-            dynamics ++ classInfo.dynamicDependencies)
+            nextSteps ++ classInfo.dynamicDependencies)
         case Some(paths) =>
           paths.put(pathRoot, pathSteps)
           // Otherwise do not consider dependencies again as there is no more information to find.
-          tag(classNames.tail, pathRoot, pathSteps, dynamics)
+          tag(classNames.tail, pathRoot, pathSteps, nextSteps)
       }
-      case None => dynamics
+      case None => nextSteps
     }
   }
 
+  /**
+   * Tags each step relative to the current path and tags them.
+   *
+   * Once all of the given steps (and their static dependencies) have been tagged it repeats on the next steps until all
+   * dependencies have been tagged.
+   *
+   * @param classNames the steps to tag and traverse
+   * @param pathRoot the root of the path
+   * @param pathSteps the steps that make up path
+   * @param acc the accumulator
+   */
   @tailrec
-  private def tagDynamics(classNames: Set[ClassName], pathRoot: ModuleID, pathSteps: List[ClassName],
-                          dynamics: List[(List[ClassName], Set[ClassName])]): Unit = {
+  private def tagNextSteps(classNames: Set[ClassName], pathRoot: ModuleID, pathSteps: List[ClassName],
+                           acc: List[(List[ClassName], Set[ClassName])]): Unit = {
     classNames.headOption match {
       case Some(className) =>
         val nextPathSteps = pathSteps :+ className
-        val relativeDynamics = tag(Set(className), pathRoot, nextPathSteps, Set.empty)
-        val nextDynamics = nextPathSteps -> relativeDynamics :: dynamics
-        tagDynamics(classNames.tail, pathRoot, pathSteps, nextDynamics)
-      case None => dynamics match {
-        case (pathSteps, classNames) :: remainingDynamics =>
-          tagDynamics(classNames, pathRoot, pathSteps, remainingDynamics)
+        val nextSteps = tag(Set(className), pathRoot, nextPathSteps, Set.empty)
+        val nextAcc = nextPathSteps -> nextSteps :: acc
+        tagNextSteps(classNames.tail, pathRoot, pathSteps, nextAcc)
+      case None => acc match {
+        case (pathSteps, classNames) :: nextAcc =>
+          tagNextSteps(classNames, pathRoot, pathSteps, nextAcc)
         case Nil => ()
       }
     }
   }
 
+  /**
+   * Performs a full traversal of the dependencies to re-tag the paths with the maximum excluded hop count.
+   *
+   * This will traverse dependencies repeatedly if a prefix is found with a larger excluded hop count.
+   *
+   * @param className the starting class to tag
+   * @param excludedHopCount the excluded hop count so far
+   * @param fromExcluded whether the previous step was excluded
+   */
   private def updateExcludedHopCounts(className: ClassName, excludedHopCount: Int, fromExcluded: Boolean): Unit = {
     val isExcluded = excludedClasses.contains(className)
 
@@ -241,8 +275,8 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
         // We need to be careful with memory usage here. There is a contention between finding the shortest path and
         // finding the maximum excluded hop count. For the former it is best to do a breadth first traversal but for the
         // later we do a depth first traversal.
-        val dynamics = tag(classNames = deps, pathRoot = moduleID, pathSteps = Nil, dynamics = Set.empty)
-        tagDynamics(classNames = dynamics, pathRoot = moduleID, pathSteps = Nil, dynamics = Nil)
+        val nextSteps = tag(classNames = deps, pathRoot = moduleID, pathSteps = Nil, nextSteps = Set.empty)
+        tagNextSteps(classNames = nextSteps, pathRoot = moduleID, pathSteps = Nil, acc = Nil)
         deps.foreach(updateExcludedHopCounts(_, excludedHopCount = 0, fromExcluded = false))
     }
   }
@@ -257,6 +291,7 @@ private object Tagger {
    *  - All non-empty, mutually prefix-free paths of dynamic import hops.
    */
   private final class Paths {
+    // Start at -1 so that when we re-tag we consider the first time it is set to 0 as an update.
     private var maxExcludedHopCount = -1
     private val direct = mutable.Set.empty[ModuleID]
     private val dynamic = mutable.Map.empty[ModuleID, DynamicPaths]
