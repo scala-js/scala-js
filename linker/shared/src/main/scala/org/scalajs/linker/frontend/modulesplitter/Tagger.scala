@@ -199,11 +199,13 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
           tag(classNames.tail ++ classInfo.staticDependencies, pathRoot, pathSteps,
             nextSteps ++ classInfo.dynamicDependencies)
         case Some(paths) =>
-          val reprocessStatics = paths.put(pathRoot, pathSteps)
+          val moduleIDChanged = paths.put(pathRoot, pathSteps)
           val nextClassNames =
-            if (reprocessStatics) {
-              // Revisit static dependencies again when we first detect that this is no longer used by a single public
-              // module.
+            if (moduleIDChanged) {
+              // TODO: What about dynamic dependencies? I think we need to revisit them too
+              // Revisit static dependencies again when the module id changes.
+              // We do not need to revisit dynamic dependencies because by definition they are not used by public
+              // modules, the first time we tag them is the shortest path so that path end never changes
               classNames.tail ++ infos.classDependencies(className).staticDependencies
             } else {
               // Otherwise do not consider dependencies again as there is no more information to find.
@@ -302,14 +304,10 @@ private object Tagger {
     private val direct = mutable.Set.empty[ModuleID]
     private val dynamic = mutable.Map.empty[ModuleID, DynamicPaths]
 
-    private def usedBySinglePublicModule: Boolean =
-      direct.size == 1 && dynamic.isEmpty && maxExcludedHopCount <= 0
-
     /**
-     * @return `true` iff this was previously only used by a single public dependency but now it is not
+     * @return `true` if the moduleID for this class changed
      */
     def put(pathRoot: ModuleID, pathSteps: List[ClassName]): Boolean = {
-      val wasUsedBySinglePublicModule = usedBySinglePublicModule
       if (pathSteps.isEmpty) {
         direct.add(pathRoot)
       } else {
@@ -317,7 +315,6 @@ private object Tagger {
           .getOrElseUpdate(pathRoot, new DynamicPaths)
           .put(pathSteps)
       }
-      wasUsedBySinglePublicModule && !usedBySinglePublicModule
     }
 
     def updateExcludedHopCount(excludedHopCount: Int): Boolean = {
@@ -329,7 +326,7 @@ private object Tagger {
 
     def moduleID(internalModIDGenerator: ForDigests): ModuleID = {
       assert(maxExcludedHopCount >= 0, "Maximum excluded hop count has not been calculated")
-      if (usedBySinglePublicModule) {
+      if (direct.size == 1 && dynamic.isEmpty && maxExcludedHopCount <= 0) {
         /* Class is only used by a single public module. Put it there.
          *
          * Note that we must not do this if there are any dynamic or excluded
@@ -387,6 +384,9 @@ private object Tagger {
   private final class DynamicPaths {
     private val content = mutable.Map.empty[ClassName, DynamicPaths]
 
+    /**
+     * @return `true` iff the end of the path changed.
+     */
     @tailrec
     def put(path: List[ClassName]): Boolean = {
       val h :: t = path
