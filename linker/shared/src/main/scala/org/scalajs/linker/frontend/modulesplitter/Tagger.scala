@@ -196,7 +196,7 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
           val classInfo = infos.classDependencies(className)
           tag(classNames.tail ++ classInfo.staticDependencies, pathRoot, pathSteps, nextSteps)
         case None =>
-          val paths = new Paths
+          val paths = new Paths(trackExcludedHopCounts = excludedClasses.nonEmpty)
           paths.put(pathRoot, pathSteps)
           allPaths.put(className, paths)
           // Consider dependencies the first time we encounter them as this is the shortest path there will be.
@@ -277,7 +277,10 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
         // later we do a depth first traversal.
         val nextSteps = tag(classNames = deps, pathRoot = moduleID, pathSteps = Nil, nextSteps = Set.empty)
         tagNextSteps(classNames = nextSteps, pathRoot = moduleID, pathSteps = Nil, acc = Nil)
-        deps.foreach(updateExcludedHopCounts(_, excludedHopCount = 0, fromExcluded = false))
+        // Only needed when there are excluded classes.
+        if (excludedClasses.nonEmpty) {
+          deps.foreach(updateExcludedHopCounts(_, excludedHopCount = 0, fromExcluded = false))
+        }
     }
   }
 }
@@ -290,9 +293,9 @@ private object Tagger {
    *  - All direct paths from a public dependency.
    *  - All non-empty, mutually prefix-free paths of dynamic import hops.
    */
-  private final class Paths {
+  private final class Paths(trackExcludedHopCounts: Boolean) {
     // Start at -1 so that when we re-tag we consider the first time it is set to 0 as an update.
-    private var maxExcludedHopCount = -1
+    private var maxExcludedHopCount = if (trackExcludedHopCounts) -1 else 0
     private val direct = mutable.Set.empty[ModuleID]
     private val dynamic = mutable.Map.empty[ModuleID, DynamicPaths]
 
