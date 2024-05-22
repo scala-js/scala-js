@@ -165,6 +165,7 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
     tagEntryPoints()
     for {
       (className, paths) <- allPaths
+      if !excludedClasses.contains(className)
     } yield {
       className -> paths.moduleID(internalModIDGenerator)
     }
