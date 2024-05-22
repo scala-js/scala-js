@@ -190,24 +190,26 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
                   nextSteps: Set[ClassName]): Set[ClassName] = {
     classNames.headOption match {
       case Some(className) => allPaths.get(className) match {
-        case Some(paths) if !paths.hasDynamic && pathSteps.nonEmpty =>
-          // Special case that visits static dependencies again when the first dynamic dependency is found so as to
-          // ensure that they are not thought to only be used by a single public module.
-          paths.put(pathRoot, pathSteps)
-          val classInfo = infos.classDependencies(className)
-          tag(classNames.tail ++ classInfo.staticDependencies, pathRoot, pathSteps, nextSteps)
         case None =>
           val paths = new Paths(trackExcludedHopCounts = excludedClasses.nonEmpty)
           paths.put(pathRoot, pathSteps)
-          allPaths.put(className, paths)
+          allPaths.update(className, paths)
           // Consider dependencies the first time we encounter them as this is the shortest path there will be.
           val classInfo = infos.classDependencies(className)
           tag(classNames.tail ++ classInfo.staticDependencies, pathRoot, pathSteps,
             nextSteps ++ classInfo.dynamicDependencies)
         case Some(paths) =>
-          paths.put(pathRoot, pathSteps)
-          // Otherwise do not consider dependencies again as there is no more information to find.
-          tag(classNames.tail, pathRoot, pathSteps, nextSteps)
+          val reprocessStatics = paths.put(pathRoot, pathSteps)
+          val nextClassNames =
+            if (reprocessStatics) {
+              // Revisit static dependencies again when we first detect that this is no longer used by a single public
+              // module.
+              classNames.tail ++ infos.classDependencies(className).staticDependencies
+            } else {
+              // Otherwise do not consider dependencies again as there is no more information to find.
+              classNames.tail
+            }
+          tag(nextClassNames, pathRoot, pathSteps, nextSteps)
       }
       case None => nextSteps
     }
@@ -257,7 +259,7 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
       if (fromExcluded && !isExcluded) excludedHopCount + 1 // hop from fine to coarse
       else excludedHopCount
 
-    val updated = allPaths(className).updateExcludedHopCount(excludedHopCount)
+    val updated = allPaths(className).updateExcludedHopCount(newExcludedHopCount)
 
     if (updated) {
       val classInfo = infos.classDependencies(className)
@@ -300,9 +302,14 @@ private object Tagger {
     private val direct = mutable.Set.empty[ModuleID]
     private val dynamic = mutable.Map.empty[ModuleID, DynamicPaths]
 
-    def hasDynamic: Boolean = dynamic.nonEmpty
+    private def usedBySinglePublicModule: Boolean =
+      direct.size == 1 && dynamic.isEmpty && maxExcludedHopCount <= 0
 
-    def put(pathRoot: ModuleID, pathSteps: List[ClassName]): Unit = {
+    /**
+     * @return `true` iff this was previously only used by a single public dependency but now it is not
+     */
+    def put(pathRoot: ModuleID, pathSteps: List[ClassName]): Boolean = {
+      val wasUsedBySinglePublicModule = usedBySinglePublicModule
       if (pathSteps.isEmpty) {
         direct.add(pathRoot)
       } else {
@@ -310,6 +317,7 @@ private object Tagger {
           .getOrElseUpdate(pathRoot, new DynamicPaths)
           .put(pathSteps)
       }
+      wasUsedBySinglePublicModule && !usedBySinglePublicModule
     }
 
     def updateExcludedHopCount(excludedHopCount: Int): Boolean = {
@@ -321,7 +329,7 @@ private object Tagger {
 
     def moduleID(internalModIDGenerator: ForDigests): ModuleID = {
       assert(maxExcludedHopCount >= 0, "Maximum excluded hop count has not been calculated")
-      if (direct.size == 1 && dynamic.isEmpty && maxExcludedHopCount <= 0) {
+      if (usedBySinglePublicModule) {
         /* Class is only used by a single public module. Put it there.
          *
          * Note that we must not do this if there are any dynamic or excluded
