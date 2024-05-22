@@ -353,11 +353,10 @@ object JSSymbolTest {
 
   def singletonIteratorLogic(singleton: Any): () => js.Dynamic = {
     var first = true
-    () => {
+    { () =>
       if (first) {
         first = false
-        js.Dynamic.literal(value = singleton.asInstanceOf[js.Any],
-          done = false)
+        js.Dynamic.literal(value = singleton.asInstanceOf[js.Any], done = false)
       } else {
         js.Dynamic.literal(value = (), done = true)
       }
