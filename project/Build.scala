@@ -55,6 +55,8 @@ object ExposedValues extends AutoPlugin {
 
     val enableMinifyEverywhere: SettingKey[Boolean] =
       settingKey("force usage of the `minify` option of the linker in all contexts (fast and full)")
+    val enableWasmEverywhere: SettingKey[Boolean] =
+      settingKey("enable the WebAssembly backend everywhere, including additional required linker config")
 
     // set scalaJSLinkerConfig in someProject ~= makeCompliant
     val makeCompliant: StandardConfig => StandardConfig = {
@@ -105,7 +107,7 @@ object ExposedValues extends AutoPlugin {
   }
 }
 
-import ExposedValues.autoImport.enableMinifyEverywhere
+import ExposedValues.autoImport.{enableMinifyEverywhere, enableWasmEverywhere}
 
 final case class ExpectedSizes(fastLink: Range, fullLink: Range,
     fastLinkGz: Range, fullLinkGz: Range)
@@ -150,11 +152,32 @@ object MyScalaJSPlugin extends AutoPlugin {
   override def globalSettings: Seq[Setting[_]] = Def.settings(
       // can be overridden with a 'set' command
       enableMinifyEverywhere := false,
+      enableWasmEverywhere := false,
 
       scalaJSLinkerConfig := {
-        scalaJSLinkerConfig.value
+        val baseConfig = scalaJSLinkerConfig.value
           .withCheckIR(true)
           .withMinify(enableMinifyEverywhere.value)
+
+        if (enableWasmEverywhere.value) {
+          import CheckedBehavior.Unchecked
+          baseConfig
+            .withExperimentalUseWebAssembly(true)
+            .withOptimizer(false)
+            .withModuleKind(ModuleKind.ESModule)
+            .withSemantics { sems =>
+              sems
+                .withAsInstanceOfs(Unchecked)
+                .withArrayIndexOutOfBounds(Unchecked)
+                .withArrayStores(Unchecked)
+                .withNegativeArraySizes(Unchecked)
+                .withNullPointers(Unchecked)
+                .withStringIndexOutOfBounds(Unchecked)
+                .withModuleInit(Unchecked)
+            }
+        } else {
+          baseConfig
+        }
       },
 
       fullClasspath in scalaJSLinkerImpl := {
@@ -233,8 +256,13 @@ object MyScalaJSPlugin extends AutoPlugin {
           prev
       },
 
-      jsEnv := new NodeJSEnv(
-          NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)),
+      jsEnv := {
+        val baseConfig = NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)
+        val config =
+          if (enableWasmEverywhere.value) baseConfig.withArgs(List("--experimental-wasm-exnref"))
+          else baseConfig
+        new NodeJSEnv(config)
+      },
 
       jsEnvInput in Compile :=
         (jsEnvInput in Compile).dependsOn(writePackageJSON).value,
@@ -2233,6 +2261,7 @@ object Build {
         val esVersion = linkerConfig.esFeatures.esVersion
         val moduleKind = linkerConfig.moduleKind
         val hasModules = moduleKind != ModuleKind.NoModule
+        val isWebAssembly = linkerConfig.experimentalUseWebAssembly
 
         collectionsEraDependentDirectory(scalaV, testDir) ::
         includeIf(testDir / "require-new-target",
@@ -2244,9 +2273,9 @@ object Build {
         includeIf(testDir / "require-no-modules",
             !hasModules) :::
         includeIf(testDir / "require-multi-modules",
-            hasModules && !linkerConfig.closureCompiler) :::
+            hasModules && !linkerConfig.closureCompiler && !isWebAssembly) :::
         includeIf(testDir / "require-dynamic-import",
-            moduleKind == ModuleKind.ESModule) ::: // this is an approximation that works for now
+            moduleKind == ModuleKind.ESModule && !isWebAssembly) ::: // this is an approximation that works for now
         includeIf(testDir / "require-esmodule",
             moduleKind == ModuleKind.ESModule) :::
         includeIf(testDir / "require-commonjs",
@@ -2313,6 +2342,7 @@ object Build {
           "productionMode" -> sems.productionMode,
           "esVersion" -> linkerConfig.esFeatures.esVersion.edition,
           "useECMAScript2015Semantics" -> linkerConfig.esFeatures.useECMAScript2015Semantics,
+          "isWebAssembly" -> linkerConfig.experimentalUseWebAssembly,
         )
       },
 
@@ -2715,6 +2745,17 @@ object Build {
       NoIDEExport.noIDEExportSettings,
 
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
+
+      /* scala.util.RandomTest.testShuffle() on WebAssembly manages to crash V8
+       * with a SIGSEGV, which probably indicates a bug in V8 and not in our own
+       * backend.
+       */
+      testOptions ++= {
+        if (enableWasmEverywhere.value)
+          Seq(Tests.Filter(_ != "scala.util.RandomTest"))
+        else
+          Nil
+      },
   ).zippedSettings(partest)(partest =>
       unmanagedSources in Compile ++= {
         val scalaV = scalaVersion.value

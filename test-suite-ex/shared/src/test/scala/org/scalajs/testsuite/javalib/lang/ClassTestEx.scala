@@ -14,6 +14,9 @@ package org.scalajs.testsuite.javalib.lang
 
 import org.junit.Test
 import org.junit.Assert._
+import org.junit.Assume._
+
+import org.scalajs.testsuite.utils.Platform._
 
 class ClassTestEx {
   import ClassTestEx._
@@ -26,6 +29,8 @@ class ClassTestEx {
    *  pollute the whole test suite with those.
    */
   @Test def getSuperclass(): Unit = {
+    assumeFalse("Not supported on WebAssembly", executingInWebAssembly)
+
     def test(parent: Class[_], child: Class[_]): Unit =
       assertSame(parent, child.getSuperclass())
 
@@ -47,6 +52,8 @@ class ClassTestEx {
   }
 
   @Test def getSuperclassWhenParentClassDataIsNotDirectlyAccessed_Issue1489(): Unit = {
+    assumeFalse("Not supported on WebAssembly", executingInWebAssembly)
+
     assertEquals("org.scalajs.testsuite.javalib.lang.ClassTestEx$ParentClassWhoseDataIsNotAccessedDirectly",
         classOf[ChildClassWhoseDataIsAccessedDirectly].getSuperclass.getName)
   }

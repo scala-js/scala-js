@@ -393,6 +393,22 @@ def Tasks = [
         ++$scala $testSuite$v/test
   ''',
 
+  "test-suite-webassembly": '''
+    setJavaVersion $java
+    npm install &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        jUnitTestOutputsJVM$v/test jUnitTestOutputsJS$v/test testBridge$v/test \
+        'set scalaJSStage in Global := FullOptStage' jUnitTestOutputsJS$v/test testBridge$v/test &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        $testSuite$v/test &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        'set scalaJSStage in Global := FullOptStage' \
+        $testSuite$v/test
+  ''',
+
   /* For the bootstrap tests to be able to call
    * `testSuite/test:fastOptJS`, `scalaJSStage in testSuite` must be
    * `FastOptStage`, even when `scalaJSStage in Global` is `FullOptStage`.
@@ -536,8 +552,11 @@ mainScalaVersions.each { scalaVersion ->
   quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: mainJavaVersion, testMinify: "false", testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: mainJavaVersion, testMinify: "true", testSuite: "testSuite"])
   quickMatrix.add([task: "test-suite-custom-esversion", scala: scalaVersion, java: mainJavaVersion, esVersion: "ES5_1", testSuite: "testSuite"])
+  quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, testMinify: "false", testSuite: "testSuite"])
+  quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, testMinify: "false", testSuite: "testSuiteEx"])
   quickMatrix.add([task: "test-suite-default-esversion", scala: scalaVersion, java: mainJavaVersion, testMinify: "false", testSuite: "scalaTestSuite"])
   quickMatrix.add([task: "test-suite-custom-esversion", scala: scalaVersion, java: mainJavaVersion, esVersion: "ES5_1", testSuite: "scalaTestSuite"])
+  quickMatrix.add([task: "test-suite-webassembly", scala: scalaVersion, java: mainJavaVersion, testMinify: "false", testSuite: "scalaTestSuite"])
   quickMatrix.add([task: "bootstrap", scala: scalaVersion, java: mainJavaVersion])
   quickMatrix.add([task: "partest-fastopt", scala: scalaVersion, java: mainJavaVersion])
 }

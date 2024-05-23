@@ -63,7 +63,13 @@ final class StandardConfig private (
      *  On the JavaScript platform, this does not have any effect.
      */
     val closureCompilerIfAvailable: Boolean,
-    /** Pretty-print the output. */
+    /** Pretty-print the output, for debugging purposes.
+     *
+     *  For the WebAssembly backend, this results in an additional `.wat` file
+     *  next to each produced `.wasm` file with the WebAssembly text format
+     *  representation of the latter. This file is never subsequently used,
+     *  but may be inspected for debugging pruposes.
+     */
     val prettyPrint: Boolean,
     /** Whether the linker should run in batch mode.
      *
@@ -78,7 +84,9 @@ final class StandardConfig private (
      */
     val batchMode: Boolean,
     /** The maximum number of (file) writes executed concurrently. */
-    val maxConcurrentWrites: Int
+    val maxConcurrentWrites: Int,
+    /** If true, use the experimental WebAssembly backend. */
+    val experimentalUseWebAssembly: Boolean
 ) {
   private def this() = {
     this(
@@ -97,7 +105,8 @@ final class StandardConfig private (
         closureCompilerIfAvailable = false,
         prettyPrint = false,
         batchMode = false,
-        maxConcurrentWrites = 50
+        maxConcurrentWrites = 50,
+        experimentalUseWebAssembly = false
     )
   }
 
@@ -177,6 +186,38 @@ final class StandardConfig private (
   def withMaxConcurrentWrites(maxConcurrentWrites: Int): StandardConfig =
     copy(maxConcurrentWrites = maxConcurrentWrites)
 
+  /** Specifies whether to use the experimental WebAssembly backend.
+   *
+   *  When using this setting, the following settings must also be set:
+   *
+   *  - `withSemantics(sems)` such that the behaviors of `sems` are all set to
+   *    `CheckedBehavior.Unchecked`
+   *  - `withModuleKind(ModuleKind.ESModule)`
+   *  - `withOptimizer(false)`
+   *  - `withStrictFloats(true)` (this is the default)
+   *
+   *  These restrictions will be lifted in the future, except for the
+   *  `ModuleKind`.
+   *
+   *  If any of these restrictions are not met, linking will eventually throw
+   *  an `IllegalArgumentException`.
+   *
+   *  @note
+   *    The WebAssembly backend silently ignores `@JSExport` and `@JSExportAll`
+   *    annotations. All other language features are supported.
+   *
+   *  @note
+   *    This setting is experimental. It may be removed in an upcoming *minor*
+   *    version of Scala.js. Future minor versions may also produce code that
+   *    requires more recent versions of JS engines supporting newer WebAssembly
+   *    standards.
+   *
+   *  @throws java.lang.UnsupportedOperationException
+   *    In the future, if the feature gets removed.
+   */
+  def withExperimentalUseWebAssembly(experimentalUseWebAssembly: Boolean): StandardConfig =
+    copy(experimentalUseWebAssembly = experimentalUseWebAssembly)
+
   override def toString(): String = {
     s"""StandardConfig(
        |  semantics                  = $semantics,
@@ -195,6 +236,7 @@ final class StandardConfig private (
        |  prettyPrint                = $prettyPrint,
        |  batchMode                  = $batchMode,
        |  maxConcurrentWrites        = $maxConcurrentWrites,
+       |  experimentalUseWebAssembly = $experimentalUseWebAssembly,
        |)""".stripMargin
   }
 
@@ -214,7 +256,8 @@ final class StandardConfig private (
       closureCompilerIfAvailable: Boolean = closureCompilerIfAvailable,
       prettyPrint: Boolean = prettyPrint,
       batchMode: Boolean = batchMode,
-      maxConcurrentWrites: Int = maxConcurrentWrites
+      maxConcurrentWrites: Int = maxConcurrentWrites,
+      experimentalUseWebAssembly: Boolean = experimentalUseWebAssembly
   ): StandardConfig = {
     new StandardConfig(
         semantics,
@@ -232,7 +275,8 @@ final class StandardConfig private (
         closureCompilerIfAvailable,
         prettyPrint,
         batchMode,
-        maxConcurrentWrites
+        maxConcurrentWrites,
+        experimentalUseWebAssembly
     )
   }
 }
@@ -263,6 +307,7 @@ object StandardConfig {
         .addField("prettyPrint", config.prettyPrint)
         .addField("batchMode", config.batchMode)
         .addField("maxConcurrentWrites", config.maxConcurrentWrites)
+        .addField("experimentalUseWebAssembly", config.experimentalUseWebAssembly)
         .build()
     }
   }
@@ -290,6 +335,7 @@ object StandardConfig {
    *  - `prettyPrint`: `false`
    *  - `batchMode`: `false`
    *  - `maxConcurrentWrites`: `50`
+   *  - `experimentalUseWebAssembly`: `false`
    */
   def apply(): StandardConfig = new StandardConfig()
 

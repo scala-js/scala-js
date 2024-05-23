@@ -15,6 +15,6 @@ package org.scalajs.linker.backend
 private[backend] object LinkerBackendImplPlatform {
   import LinkerBackendImpl.Config
 
-  def createLinkerBackend(config: Config): LinkerBackendImpl =
+  def createJSLinkerBackend(config: Config): LinkerBackendImpl =
     new BasicLinkerBackend(config)
 }

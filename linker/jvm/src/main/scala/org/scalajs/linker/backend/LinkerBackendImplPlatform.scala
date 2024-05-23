@@ -17,7 +17,7 @@ import org.scalajs.linker.backend.closure.ClosureLinkerBackend
 private[backend] object LinkerBackendImplPlatform {
   import LinkerBackendImpl.Config
 
-  def createLinkerBackend(config: Config): LinkerBackendImpl = {
+  def createJSLinkerBackend(config: Config): LinkerBackendImpl = {
     if (config.closureCompiler)
       new ClosureLinkerBackend(config)
     else
