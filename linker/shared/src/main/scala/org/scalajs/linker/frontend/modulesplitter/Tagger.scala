@@ -204,9 +204,8 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
           val nextClassNames =
             if (moduleIDChanged) {
               // Revisit static dependencies again when the module id changes.
-              // We do not need to revisit dynamic dependencies because by definition they are not used by public
-              // modules, the first time we tag them is the shortest path so that path end never changes and only the
-              // ends are used for the module ids.
+              // We do not need to revisit dynamic dependencies because their module id only changes when there is a
+              // new usage which is the case above and there we already revisit them.
               classNames.tail ++ infos.classDependencies(className).staticDependencies
             } else {
               // Otherwise do not consider dependencies again as there is no more information to find.
