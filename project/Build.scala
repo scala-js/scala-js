@@ -2248,7 +2248,9 @@ object Build {
         includeIf(testDir / "require-dynamic-import",
             moduleKind == ModuleKind.ESModule) ::: // this is an approximation that works for now
         includeIf(testDir / "require-esmodule",
-            moduleKind == ModuleKind.ESModule)
+            moduleKind == ModuleKind.ESModule) :::
+        includeIf(testDir / "require-commonjs",
+            moduleKind == ModuleKind.CommonJSModule)
       },
 
       unmanagedResourceDirectories in Test ++= {

@@ -13,15 +13,13 @@
 package org.scalajs.testsuite.jsinterop
 
 import scala.scalajs.js
-import scala.scalajs.js.annotation._
 
 import scala.concurrent.Future
 
 object ExportLoopback {
-  val exportsNamespace: Future[js.Dynamic] =
-    js.dynamicImport(mainModule).toFuture
-
-  @js.native
-  @JSImport("./main.js", JSImport.Namespace)
-  private val mainModule: js.Dynamic = js.native
+  val exportsNamespace: Future[js.Dynamic] = {
+    js.Promise.resolve[Unit](())
+      .`then`[js.Dynamic](_ => js.Dynamic.global.require("./main.js"))
+      .toFuture
+  }
 }
