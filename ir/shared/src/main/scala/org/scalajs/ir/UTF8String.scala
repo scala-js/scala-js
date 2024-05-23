@@ -12,7 +12,7 @@
 
 package org.scalajs.ir
 
-import java.nio.CharBuffer
+import java.nio.{ByteBuffer, CharBuffer}
 import java.nio.charset.CharacterCodingException
 import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets.UTF_8
@@ -48,6 +48,9 @@ final class UTF8String private (private[ir] val bytes: Array[Byte])
     System.arraycopy(that.bytes, 0, result, thisLen, thatLen)
     new UTF8String(result)
   }
+
+  def writeTo(buffer: ByteBuffer): Unit =
+    buffer.put(bytes)
 }
 
 object UTF8String {

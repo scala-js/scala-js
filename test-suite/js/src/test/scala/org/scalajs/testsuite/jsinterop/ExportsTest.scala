@@ -23,7 +23,7 @@ import org.scalajs.testsuite.utils.Platform._
 
 import org.junit.Assert._
 import org.junit.Assume._
-import org.junit.Test
+import org.junit.{BeforeClass, Test}
 
 class ExportsTest {
 
@@ -1453,6 +1453,14 @@ class ExportsTest {
     testExposure(getJSObj2())
     testExposure(getJSObj3())
     testExposure(getJSObj4())
+  }
+}
+
+object ExportsTest {
+  @BeforeClass
+  def beforeClass(): Unit = {
+    assumeFalse("@JSExport and @JSExportAll are not supported on WebAssembly",
+        executingInWebAssembly)
   }
 }
 

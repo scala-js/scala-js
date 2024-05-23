@@ -25,6 +25,25 @@ $ python3 -m http.server
 // Open http://localhost:8000/test-suite/js/.2.12/target/scala-2.12/scalajs-test-suite-fastopt-test-html/index.html
 ```
 
+## HTML-Test Runner with WebAssembly
+
+WebAssembly requires modules, so this is manual as well.
+
+This test currently requires Chrome (or another V8-based browser) with `--wasm-experimental-exnref` enabled.
+That option can be configured as "Experimental WebAssembly" at [chrome://flags/#enable-experimental-webassembly-features](chrome://flags/#enable-experimental-webassembly-features).
+
+```
+$ sbt
+> set Global/enableWasmEverywhere := true
+> testingExample2_12/testHtml
+> testSuite2_12/testHtml
+> exit
+$ python3 -m http.server
+
+// Open http://localhost:8000/examples/testing/.2.12/target/scala-2.12/testing-fastopt-test-html/index.html
+// Open http://localhost:8000/test-suite/js/.2.12/target/scala-2.12/scalajs-test-suite-fastopt-test-html/index.html
+```
+
 ## Sourcemaps
 
 To test source maps, do the following on:
