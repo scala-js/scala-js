@@ -203,8 +203,10 @@ final class StandardConfig private (
    *  an `IllegalArgumentException`.
    *
    *  @note
-   *    The WebAssembly backend silently ignores `@JSExport` and `@JSExportAll`
-   *    annotations. All other language features are supported.
+   *    Currently, the WebAssembly backend silently ignores `@JSExport` and
+   *    `@JSExportAll` annotations. This behavior may change in the future,
+   *    either by making them warnings or errors, or by adding support for them.
+   *    All other language features are supported.
    *
    *  @note
    *    This setting is experimental. It may be removed in an upcoming *minor*
