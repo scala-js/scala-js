@@ -892,7 +892,6 @@ private class FunctionEmitter private (
       val receiverClassName = receiverClassInfo.name
 
       fb += wa.LocalGet(receiverLocalForDispatch)
-      fb += wa.RefCast(watpe.RefType(genTypeID.forClass(receiverClassName)))
       fb += wa.StructGet(
         genTypeID.forClass(receiverClassName),
         genFieldID.objStruct.vtable
