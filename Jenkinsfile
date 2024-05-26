@@ -398,6 +398,18 @@ def Tasks = [
     npm install &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
+        helloworld$v/run &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        'set scalaJSStage in Global := FullOptStage' \
+        'set scalaJSLinkerConfig in helloworld.v$v ~= (_.withPrettyPrint(true))' \
+        helloworld$v/run &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        reversi$v/fastLinkJS \
+        reversi$v/fullLinkJS &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
         jUnitTestOutputsJVM$v/test jUnitTestOutputsJS$v/test testBridge$v/test \
         'set scalaJSStage in Global := FullOptStage' jUnitTestOutputsJS$v/test testBridge$v/test &&
     sbtretry ++$scala \
@@ -406,7 +418,14 @@ def Tasks = [
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
         'set scalaJSStage in Global := FullOptStage' \
-        $testSuite$v/test
+        $testSuite$v/test &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        testingExample$v/testHtml &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        'set scalaJSStage in Global := FullOptStage' \
+        testingExample$v/testHtml
   ''',
 
   /* For the bootstrap tests to be able to call
