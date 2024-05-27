@@ -166,7 +166,14 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
 
   final def tagAll(modulesToAvoid: Iterable[ModuleID]): scala.collection.Map[ClassName, ModuleID] = {
     val internalModIDGenerator = new InternalModuleIDGenerator.ForDigests(modulesToAvoid)
-    tagEntryPoints()
+
+    val edgesToProcess = mutable.Queue.empty[Edge]
+    edgesToProcess ++= entryPointEdges()
+
+    while (edgesToProcess.nonEmpty) {
+      edgesToProcess ++= processEdge(edgesToProcess.dequeue())
+    }
+
     for {
       (className, paths) <- allPaths
       if !excludedClasses.contains(className)
@@ -175,8 +182,9 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
     }
   }
 
-  private def tag(className: ClassName, pathRoot: ModuleID, pathSteps: List[ClassName],
-      excludedHopCount: Int, fromExcluded: Boolean): Unit = {
+  private def processEdge(edge: Edge): Iterable[Edge] = {
+    import edge._
+
     val isExcluded = excludedClasses.contains(className)
 
     val newExcludedHopCount =
@@ -189,31 +197,35 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
 
     if (updated) {
       val classInfo = infos.classDependencies(className)
-      classInfo
+      val staticEdges = classInfo
         .staticDependencies
-        .foreach(staticEdge(_, pathRoot, pathSteps, newExcludedHopCount, fromExcluded = isExcluded))
+        .map(staticEdge(_, pathRoot, pathSteps, newExcludedHopCount, fromExcluded = isExcluded))
 
-      classInfo
+      val dynamicEdges = classInfo
         .dynamicDependencies
-        .foreach(dynamicEdge(_, pathRoot, pathSteps, newExcludedHopCount, fromExcluded = isExcluded))
+        .map(dynamicEdge(_, pathRoot, pathSteps, newExcludedHopCount, fromExcluded = isExcluded))
+
+      staticEdges ++ dynamicEdges
+    } else {
+      Iterable.empty
     }
   }
 
   private def staticEdge(className: ClassName, pathRoot: ModuleID, pathSteps: List[ClassName],
-      excludedHopCount: Int, fromExcluded: Boolean): Unit = {
-    tag(className, pathRoot, pathSteps, excludedHopCount, fromExcluded)
+      excludedHopCount: Int, fromExcluded: Boolean): Edge = {
+    new Edge(className, pathRoot, pathSteps, excludedHopCount, fromExcluded)
   }
 
   private def dynamicEdge(className: ClassName, pathRoot: ModuleID, pathSteps: List[ClassName],
-      excludedHopCount: Int, fromExcluded: Boolean): Unit = {
-    tag(className, pathRoot, pathSteps :+ className, excludedHopCount, fromExcluded)
+      excludedHopCount: Int, fromExcluded: Boolean): Edge = {
+    new Edge(className, pathRoot, pathSteps :+ className, excludedHopCount, fromExcluded)
   }
 
-  private def tagEntryPoints(): Unit = {
+  private def entryPointEdges(): Iterable[Edge] = {
     for {
       (moduleID, deps) <- infos.publicModuleDependencies
       className <- deps
-    } {
+    } yield {
       staticEdge(className, pathRoot = moduleID, pathSteps = Nil,
           excludedHopCount = 0, fromExcluded = false)
     }
@@ -221,6 +233,14 @@ private class Tagger(infos: ModuleAnalyzer.DependencyInfo,
 }
 
 private object Tagger {
+
+  private final class Edge(
+    val className: ClassName,
+    val pathRoot: ModuleID,
+    val pathSteps: List[ClassName],
+    val excludedHopCount: Int,
+    val fromExcluded: Boolean
+  )
 
   /** "Interesting" paths that can lead to a given class.
    *
