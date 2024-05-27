@@ -55,8 +55,18 @@ protected[bridge] object HTMLRunner {
     }
   }
 
-  def start(tests: IsolatedTestSet): Unit =
-    dom.window.addEventListener("DOMContentLoaded", () => onLoad(tests))
+  def start(tests: IsolatedTestSet): Unit = {
+    // See https://developer.mozilla.org/en-US/docs/Web/API/Document/DOMContentLoaded_event
+    if (dom.document.readyState == "loading") {
+      // Loading has not finished yet; register a DOMContentLoaded event
+      dom.window.addEventListener("DOMContentLoaded", () => onLoad(tests))
+    } else {
+      // `DOMContentLoaded` has already fired; schedule `onLoad` on the next tick
+      Future {
+        onLoad(tests)
+      }
+    }
+  }
 
   private def onLoad(tests: IsolatedTestSet): Unit = {
     /* Note: Test filtering is currently done based on the fully qualified name
@@ -457,6 +467,7 @@ protected[bridge] object HTMLRunner {
     @JSGlobal
     @js.native
     object document extends js.Object {
+      def readyState: String = js.native
       def body: Element = js.native
       def createElement(tag: String): Element = js.native
       def createTextNode(tag: String): Node = js.native
