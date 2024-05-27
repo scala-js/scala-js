@@ -102,13 +102,13 @@ const scalaJSHelpers = {
   bF: (x) => x,
   bD: (x) => x,
 
-  // Unboxes (downcast, null is converted to the zero of the type)
-  uZ: (x) => x | 0,
-  uB: (x) => (x << 24) >> 24,
-  uS: (x) => (x << 16) >> 16,
-  uI: (x) => x | 0,
-  uF: (x) => Math.fround(x),
-  uD: (x) => +x,
+  // Unboxes (downcast, null is converted to the zero of the type as part of ToWebAssemblyValue)
+  uZ: (x) => x, // ToInt32 turns false into 0 and true into 1, so this is also an identity
+  uB: (x) => x,
+  uS: (x) => x,
+  uI: (x) => x,
+  uF: (x) => x,
+  uD: (x) => x,
 
   // Type tests
   tZ: (x) => typeof x === 'boolean',
