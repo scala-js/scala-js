@@ -353,6 +353,7 @@ object JSSymbolTest {
 
   def singletonIteratorLogic(singleton: Any): () => js.Dynamic = {
     var first = true
+
     { () =>
       if (first) {
         first = false
