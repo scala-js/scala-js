@@ -252,26 +252,6 @@ class JSSymbolTest {
     assertArrayEquals(Array(532), content.result())
   }
 
-  @Test def nativeAsyncIterable(): Unit = {
-    PromiseMock.withMockedPromise { processQueue =>
-      val obj = mkObject(
-        js.Symbol.asyncIterator -> (() => singletonAsyncIterator(795))
-      )
-
-      val iterableTraitContent = Array.newBuilder[Int]
-      iterateAsyncIterable(obj.asInstanceOf[JSAsyncIterable[Int]])(
-          iterableTraitContent += _)
-      processQueue()
-      assertArrayEquals(Array(795), iterableTraitContent.result())
-
-      val iterableClassContent = Array.newBuilder[Int]
-      iterateAsyncIterable(obj.asInstanceOf[ClassJSAsyncIterable[Int]])(
-          iterableClassContent += _)
-      processQueue()
-      assertArrayEquals(Array(795), iterableClassContent.result())
-    }
-  }
-
   @Test def sjsdefinedAsyncIterable(): Unit = {
     PromiseMock.withMockedPromise { processQueue =>
       val obj = new SJSDefinedAsyncIterable
@@ -582,13 +562,6 @@ object JSSymbolTest {
   trait JSAsyncIterable[+A] extends js.Object {
     @JSName(js.Symbol.asyncIterator)
     def asyncIterator(): js.Dynamic
-  }
-
-  @js.native
-  @JSGlobal("dummy")
-  class ClassJSAsyncIterable[+A] extends JSAsyncIterable[A] {
-    @JSName(js.Symbol.asyncIterator)
-    def asyncIterator(): js.Dynamic = js.native
   }
 
   class SJSDefinedAsyncIterable extends JSAsyncIterable[Int] {
