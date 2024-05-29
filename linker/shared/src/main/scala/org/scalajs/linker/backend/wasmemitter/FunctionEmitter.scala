@@ -2657,32 +2657,44 @@ private class FunctionEmitter private (
   private def genClone(tree: Clone): Type = {
     val Clone(expr) = tree
 
-    val exprLocal = addSyntheticLocal(watpe.RefType(genTypeID.ObjectStruct))
+    expr.tpe match {
+      case NothingType =>
+        genTree(expr, NothingType)
+        NothingType
 
-    genTree(expr, ClassType(CloneableClass))
+      case NullType =>
+        genTree(expr, NullType)
+        fb += wa.Unreachable // trap for NPE
+        NothingType
 
-    markPosition(tree)
+      case exprType =>
+        val exprLocal = addSyntheticLocal(watpe.RefType(genTypeID.ObjectStruct))
 
-    fb += wa.RefCast(watpe.RefType(genTypeID.ObjectStruct))
-    fb += wa.LocalTee(exprLocal)
+        genTree(expr, ClassType(CloneableClass))
 
-    fb += wa.LocalGet(exprLocal)
-    fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
-    fb += wa.StructGet(genTypeID.typeData, genFieldID.typeData.cloneFunction)
-    // cloneFunction: (ref j.l.Object) -> ref j.l.Object
-    fb += wa.CallRef(genTypeID.cloneFunctionType)
+        markPosition(tree)
 
-    tree.tpe match {
-      case ClassType(className) =>
-        val info = ctx.getClassInfo(className)
-        if (!info.isInterface) // if it's interface, no need to cast from j.l.Object
-          fb += wa.RefCast(watpe.RefType(genTypeID.forClass(className)))
-      case _ =>
-        throw new IllegalArgumentException(
-            s"Clone result type must be a class type, but is ${tree.tpe}")
+        fb += wa.RefAsNonNull
+        fb += wa.LocalTee(exprLocal)
+
+        fb += wa.LocalGet(exprLocal)
+        fb += wa.StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
+        fb += wa.StructGet(genTypeID.typeData, genFieldID.typeData.cloneFunction)
+        // cloneFunction: (ref j.l.Object) -> ref j.l.Object
+        fb += wa.CallRef(genTypeID.cloneFunctionType)
+
+        // cast the (ref jl.Object) back down to the result type
+        transformType(exprType) match {
+          case watpe.RefType(_, watpe.HeapType.Type(genTypeID.ObjectStruct)) =>
+            // no need to cast to (ref null jl.Object)
+          case wasmType: watpe.RefType =>
+            fb += wa.RefCast(wasmType.toNonNullable)
+          case wasmType =>
+            throw new AssertionError(s"Unexpected type for Clone: $exprType (Wasm: $wasmType)")
+        }
+
+        exprType
     }
-
-    tree.tpe
   }
 
   private def genMatch(tree: Match, expectedType: Type): Type = {
