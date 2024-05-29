@@ -57,7 +57,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         genGlobalID.forStaticField(name.name),
         origName,
         isMutable = true,
-        transformType(ftpe),
+        transformFieldType(ftpe),
         wa.Expr(List(genZeroOf(ftpe)))
       )
       ctx.addGlobal(global)
@@ -350,7 +350,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       watpe.StructField(
         genFieldID.forClassInstanceField(field.name.name),
         makeDebugName(ns.InstanceField, field.name.name),
-        transformType(field.ftpe),
+        transformFieldType(field.ftpe),
         isMutable = true // initialized by the constructors, so always mutable at the Wasm level
       )
     }
@@ -769,7 +769,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
         clazz.pos
       )
       val classCaptureParams = jsClassCaptures.map { cc =>
-        fb.addParam("cc." + cc.name.name.nameString, transformLocalType(cc.ptpe))
+        fb.addParam("cc." + cc.name.name.nameString, transformParamType(cc.ptpe))
       }
       fb.setResultType(watpe.RefType.any)
 
@@ -1147,7 +1147,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       if (namespace.isStatic)
         None
       else if (isHijackedClass)
-        Some(transformType(BoxedClassToPrimType(className)))
+        Some(transformPrimType(BoxedClassToPrimType(className)))
       else
         Some(transformClassType(className).toNonNullable)
 
@@ -1183,7 +1183,7 @@ class ClassEmitter(coreSpec: CoreSpec) {
       val receiverParam = fb.addParam(thisOriginalName, watpe.RefType.any)
       val argParams = method.args.map { arg =>
         val origName = arg.originalName.orElse(arg.name.name)
-        fb.addParam(origName, TypeTransformer.transformLocalType(arg.ptpe))
+        fb.addParam(origName, TypeTransformer.transformParamType(arg.ptpe))
       }
       fb.setResultTypes(TypeTransformer.transformResultType(method.resultType))
       fb.setFunctionType(ctx.tableFunctionType(methodName))
