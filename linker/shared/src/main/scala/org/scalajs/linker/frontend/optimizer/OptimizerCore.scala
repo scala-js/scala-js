@@ -421,10 +421,22 @@ private[optimizer] abstract class OptimizerCore(
           freshLocalName(name, originalName, mutable = false)
         val localDef = LocalDef(RefinedType(AnyType), mutable = false,
             ReplaceWithVarRef(newName, newSimpleState(UsedAtLeastOnce), None))
-        val newBody = {
-          val bodyScope = scope.withEnv(scope.env.withLocalDef(name, localDef))
+        val bodyScope = scope.withEnv(scope.env.withLocalDef(name, localDef))
+
+        val newBody = if (isWasm) {
+          // Avoid destroying the only shape of ForIn that the Wasm backend can handle
+          body match {
+            case JSFunctionApply(f: VarRef, List(arg: VarRef)) =>
+              JSFunctionApply(transformExpr(f)(bodyScope),
+                  List(transformExpr(arg)(bodyScope)))(body.pos)
+            case _ =>
+              // Wasm will not be able to deal with anything else, but we cannot do anything about it
+              transformStat(body)(bodyScope)
+          }
+        } else {
           transformStat(body)(bodyScope)
         }
+
         ForIn(newObj, LocalIdent(newName)(keyVar.pos), newOriginalName, newBody)
 
       case TryCatch(block, errVar @ LocalIdent(name), originalName, handler) =>
