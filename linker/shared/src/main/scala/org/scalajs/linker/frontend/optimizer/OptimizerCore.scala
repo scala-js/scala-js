@@ -135,7 +135,8 @@ private[optimizer] abstract class OptimizerCore(
 
   private var curTrampolineId = 0
 
-  private val useRuntimeLong = !config.coreSpec.esFeatures.allowBigIntsForLongs
+  private val useRuntimeLong =
+    !config.coreSpec.esFeatures.allowBigIntsForLongs && !isWasm
 
   /** The record type for inlined `RuntimeLong`. */
   private lazy val inlinedRTLongStructure =
@@ -3732,7 +3733,7 @@ private[optimizer] abstract class OptimizerCore(
       case (StringLiteral(l), StringLiteral(r))   => l == r
       case (ClassOf(l), ClassOf(r))               => l == r
       case (AnyNumLiteral(l), AnyNumLiteral(r))   => l.equals(r)
-      case (LongLiteral(l), LongLiteral(r))       => l == r && !useRuntimeLong
+      case (LongLiteral(l), LongLiteral(r))       => l == r && !useRuntimeLong && !isWasm
       case (Undefined(), Undefined())             => true
       case (Null(), Null())                       => true
       case _                                      => false
