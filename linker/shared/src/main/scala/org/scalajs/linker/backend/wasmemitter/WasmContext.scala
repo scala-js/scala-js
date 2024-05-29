@@ -116,7 +116,7 @@ final class WasmContext(
       normalizedName, {
         val typeID = genTypeID.forTableFunctionType(normalizedName)
         val regularParamTyps = normalizedName.paramTypeRefs.map { typeRef =>
-          TypeTransformer.transformLocalType(inferTypeFromTypeRef(typeRef))(this)
+          TypeTransformer.transformParamType(inferTypeFromTypeRef(typeRef))(this)
         }
         val resultType = TypeTransformer.transformResultType(
             inferTypeFromTypeRef(normalizedName.resultTypeRef))(this)
@@ -169,7 +169,7 @@ final class WasmContext(
             watpe.StructField(
               genFieldID.captureParam(i),
               NoOriginalName,
-              TypeTransformer.transformLocalType(tpe)(this),
+              TypeTransformer.transformParamType(tpe)(this),
               isMutable = false
             )
           }
