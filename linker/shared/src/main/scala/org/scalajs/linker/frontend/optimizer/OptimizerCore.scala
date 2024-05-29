@@ -151,7 +151,7 @@ private[optimizer] abstract class OptimizerCore(
     inlinedRTLongStructure.recordType.fields(1).name
 
   private val intrinsics =
-    Intrinsics.buildIntrinsics(config.coreSpec.esFeatures)
+    Intrinsics.buildIntrinsics(config.coreSpec.esFeatures, isWasm)
 
   def optimize(thisType: Type, params: List[ParamDef],
       jsClassCaptures: List[ParamDef], resultType: Type, body: Tree,
@@ -6367,9 +6367,10 @@ private[optimizer] object OptimizerCore {
     )
     // scalastyle:on line.size.limit
 
-    def buildIntrinsics(esFeatures: ESFeatures): Intrinsics = {
+    def buildIntrinsics(esFeatures: ESFeatures, isWasm: Boolean): Intrinsics = {
       val allIntrinsics =
-        if (esFeatures.allowBigIntsForLongs) baseIntrinsics
+        if (isWasm) Nil // TODO there are some intrinsics that actually matter on Wasm
+        else if (esFeatures.allowBigIntsForLongs) baseIntrinsics
         else baseIntrinsics ++ runtimeLongIntrinsics
 
       val intrinsicsMap = (for {
