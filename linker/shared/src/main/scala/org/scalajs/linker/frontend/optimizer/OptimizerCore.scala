@@ -2093,15 +2093,6 @@ private[optimizer] abstract class OptimizerCore(
     // TODO? Inline multiple non-forwarders with the exact same body?
     impls.forall(impl => impl.attributes.isForwarder && impl.attributes.inlineable) &&
     (getMethodBody(impls.head).body.get match {
-      // Trait impl forwarder
-      case ApplyStatic(flags, staticCls, MethodIdent(methodName), _) =>
-        impls.tail.forall(getMethodBody(_).body.get match {
-          case ApplyStatic(`flags`, `staticCls`, MethodIdent(`methodName`), _) =>
-            true
-          case _ =>
-            false
-        })
-
       // Shape of forwards to default methods
       case ApplyStatically(flags, This(), className, MethodIdent(methodName), args) =>
         impls.tail.forall(getMethodBody(_).body.get match {
@@ -6408,16 +6399,6 @@ private[optimizer] object OptimizerCore {
       val optimizerHints = methodDef.optimizerHints
 
       val isForwarder = body match {
-        // Shape of forwarders to trait impls
-        case ApplyStatic(_, impl, method, args) =>
-          ((args.size == params.size + 1) &&
-              (args.head.isInstanceOf[This]) &&
-              (args.tail.zip(params).forall {
-                case (VarRef(LocalIdent(aname)),
-                    ParamDef(LocalIdent(pname), _, _, _)) => aname == pname
-                case _ => false
-              }))
-
         // Shape of forwards to default methods
         case ApplyStatically(_, This(), className, method, args) =>
           args.size == params.size &&
