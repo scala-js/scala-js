@@ -258,9 +258,18 @@ object MyScalaJSPlugin extends AutoPlugin {
 
       jsEnv := {
         val baseConfig = NodeJSEnv.Config().withSourceMap(wantSourceMaps.value)
-        val config =
-          if (enableWasmEverywhere.value) baseConfig.withArgs(List("--experimental-wasm-exnref"))
-          else baseConfig
+        val config = if (enableWasmEverywhere.value) {
+          baseConfig.withArgs(List(
+            "--experimental-wasm-exnref",
+            /* Force using the Turboshaft infrastructure for the optimizing compiler.
+             * It appears to be more stable for the Wasm that we throw at it.
+             * If you remove it, try running `scalaTestSuite2_13/test` with Wasm.
+             */
+            "--turboshaft-wasm",
+          ))
+        } else {
+          baseConfig
+        }
         new NodeJSEnv(config)
       },
 
@@ -2745,17 +2754,6 @@ object Build {
       NoIDEExport.noIDEExportSettings,
 
       testOptions += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
-
-      /* scala.util.RandomTest.testShuffle() on WebAssembly manages to crash V8
-       * with a SIGSEGV, which probably indicates a bug in V8 and not in our own
-       * backend.
-       */
-      testOptions ++= {
-        if (enableWasmEverywhere.value)
-          Seq(Tests.Filter(_ != "scala.util.RandomTest"))
-        else
-          Nil
-      },
   ).zippedSettings(partest)(partest =>
       unmanagedSources in Compile ++= {
         val scalaV = scalaVersion.value
