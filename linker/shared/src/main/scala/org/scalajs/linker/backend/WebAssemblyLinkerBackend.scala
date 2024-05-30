@@ -52,6 +52,9 @@ final class WebAssemblyLinkerBackend(config: LinkerBackendImpl.Config)
     "The WebAssembly backend only supports strict float semantics."
   )
 
+  require(coreSpec.targetIsWebAssembly,
+      s"A WebAssembly backend cannot be used with CoreSpec targeting JavaScript")
+
   val loaderJSFileName = OutputPatternsImpl.jsFile(config.outputPatterns, "__loader")
 
   private val fragmentIndex = new SourceMapWriter.Index

@@ -49,7 +49,11 @@ private[linker] object CommonPhaseConfig {
   private[linker] def apply(): CommonPhaseConfig = new CommonPhaseConfig()
 
   private[linker] def fromStandardConfig(config: StandardConfig): CommonPhaseConfig = {
-    val coreSpec = CoreSpec(config.semantics, config.moduleKind, config.esFeatures)
-    new CommonPhaseConfig(coreSpec, config.minify, config.parallel, config.batchMode)
+    new CommonPhaseConfig(
+      CoreSpec.fromStandardConfig(config),
+      config.minify,
+      config.parallel,
+      config.batchMode
+    )
   }
 }

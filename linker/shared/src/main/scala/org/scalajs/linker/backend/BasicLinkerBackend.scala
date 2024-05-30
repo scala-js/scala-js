@@ -38,6 +38,9 @@ final class BasicLinkerBackend(config: LinkerBackendImpl.Config)
 
   import BasicLinkerBackend._
 
+  require(!coreSpec.targetIsWebAssembly,
+      s"A JavaScript backend cannot be used with CoreSpec targeting WebAssembly")
+
   private[this] var totalModules = 0
   private[this] val rewrittenModules = new AtomicInteger(0)
 

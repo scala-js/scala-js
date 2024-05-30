@@ -53,6 +53,9 @@ final class ClosureLinkerBackend(config: LinkerBackendImpl.Config)
   require(moduleKind != ModuleKind.ESModule,
       s"Cannot use module kind $moduleKind with the Closure Compiler")
 
+  require(!targetIsWebAssembly,
+      s"A JavaScript backend cannot be used with CoreSpec targeting WebAssembly")
+
   private[this] val emitter = {
     // Note that we do not transfer `minify` -- Closure will do its own thing anyway
     val emitterConfig = Emitter.Config(config.commonConfig.coreSpec)
