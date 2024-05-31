@@ -83,6 +83,7 @@ function installJSField(instance, name, value) {
 const linkingInfo = Object.freeze({
   "esVersion": 6,
   "assumingES6": true,
+  "isWebAssembly": true,
   "productionMode": false,
   "linkerVersion": "${ScalaJSVersions.current}",
   "fileLevelThis": this
