@@ -50,6 +50,8 @@ private[optimizer] abstract class OptimizerCore(
 
   private def semantics: Semantics = config.coreSpec.semantics
 
+  private val isWasm: Boolean = config.targetIsWebAssembly
+
   // Uncomment and adapt to print debug messages only during one method
   //lazy val debugThisMethod: Boolean =
   //  debugID == "java.lang.FloatingPointBits$.numberHashCode;D;I"
@@ -4911,6 +4913,9 @@ private[optimizer] abstract class OptimizerCore(
 
       case (JSLinkingInfo(), StringLiteral("assumingES6")) =>
         BooleanLiteral(esFeatures.useECMAScript2015Semantics)
+
+      case (JSLinkingInfo(), StringLiteral("isWebAssembly")) =>
+        BooleanLiteral(isWasm)
 
       case (JSLinkingInfo(), StringLiteral("version")) =>
         StringLiteral(ScalaJSVersions.current)

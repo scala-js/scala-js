@@ -22,6 +22,8 @@ object BinaryIncompatibilities {
   )
 
   val Library = Seq(
+    // New abstract member in JS trait, not an issue
+    ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.scalajs.runtime.LinkingInfo.isWebAssembly"),
   )
 
   val TestInterface = Seq(
