@@ -421,6 +421,15 @@ def Tasks = [
         $testSuite$v/test &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
+        $testSuite$v/test &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
+        'set scalaJSLinkerConfig in $testSuite.v$v ~= (_.withOptimizer(false))' \
+        'set scalaJSStage in Global := FullOptStage' \
+        $testSuite$v/test &&
+    sbtretry ++$scala \
+        'set Global/enableWasmEverywhere := true' \
         testingExample$v/testHtml &&
     sbtretry ++$scala \
         'set Global/enableWasmEverywhere := true' \

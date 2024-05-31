@@ -163,7 +163,6 @@ object MyScalaJSPlugin extends AutoPlugin {
           import CheckedBehavior.Unchecked
           baseConfig
             .withExperimentalUseWebAssembly(true)
-            .withOptimizer(false)
             .withModuleKind(ModuleKind.ESModule)
             .withSemantics { sems =>
               sems
