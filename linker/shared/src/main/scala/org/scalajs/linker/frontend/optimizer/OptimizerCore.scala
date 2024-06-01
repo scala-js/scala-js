@@ -6314,7 +6314,7 @@ private[optimizer] object OptimizerCore {
       ClassRef(ClassName(s"scala.scalajs.js.typedarray.${baseName}Array"))
 
     // scalastyle:off line.size.limit
-    private val baseIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
+    private val commonIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
         ClassName("java.lang.System$") -> List(
             m("arraycopy", List(O, I, O, I, I), V) -> ArrayCopy
         ),
@@ -6326,10 +6326,6 @@ private[optimizer] object OptimizerCore {
         ClassName("java.lang.Integer$") -> List(
             m("numberOfLeadingZeros", List(I), I) -> IntegerNLZ
         ),
-        ClassName("scala.collection.mutable.ArrayBuilder$") -> List(
-            m("scala$collection$mutable$ArrayBuilder$$zeroOf", List(ClassClassRef), O) -> ArrayBuilderZeroOf,
-            m("scala$collection$mutable$ArrayBuilder$$genericArrayBuilderResult", List(ClassClassRef, JSArrayClassRef), O) -> GenericArrayBuilderResult
-        ),
         ClassName("java.lang.Class") -> List(
             m("getComponentType", Nil, ClassClassRef) -> ClassGetComponentType,
             m("getName", Nil, StringClassRef) -> ClassGetName
@@ -6339,6 +6335,13 @@ private[optimizer] object OptimizerCore {
         ),
         ClassName("scala.scalajs.js.special.package$") -> List(
             m("objectLiteral", List(SeqClassRef), JSObjectClassRef) -> ObjectLiteral
+        )
+    )
+
+    private val baseJSIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
+        ClassName("scala.collection.mutable.ArrayBuilder$") -> List(
+            m("scala$collection$mutable$ArrayBuilder$$zeroOf", List(ClassClassRef), O) -> ArrayBuilderZeroOf,
+            m("scala$collection$mutable$ArrayBuilder$$genericArrayBuilderResult", List(ClassClassRef, JSArrayClassRef), O) -> GenericArrayBuilderResult
         ),
         ClassName("scala.scalajs.js.typedarray.package$") -> List(
             m("byteArray2Int8Array", List(a(ByteRef)), typedarrayClassRef("Int8")) -> ByteArrayToInt8Array,
@@ -6368,10 +6371,13 @@ private[optimizer] object OptimizerCore {
     // scalastyle:on line.size.limit
 
     def buildIntrinsics(esFeatures: ESFeatures, isWasm: Boolean): Intrinsics = {
-      val allIntrinsics =
-        if (isWasm) Nil // TODO there are some intrinsics that actually matter on Wasm
-        else if (esFeatures.allowBigIntsForLongs) baseIntrinsics
+      val allIntrinsics = if (isWasm) {
+        commonIntrinsics
+      } else {
+        val baseIntrinsics = commonIntrinsics ::: baseJSIntrinsics
+        if (esFeatures.allowBigIntsForLongs) baseIntrinsics
         else baseIntrinsics ++ runtimeLongIntrinsics
+      }
 
       val intrinsicsMap = (for {
         (className, methodsAndCodes) <- allIntrinsics

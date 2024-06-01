@@ -227,9 +227,23 @@ object VarGen {
     case object getComponentType extends FunctionID
     case object newArrayOfThisClass extends FunctionID
     case object anyGetClass extends FunctionID
+    case object anyGetClassName extends FunctionID
+    case object anyGetTypeData extends FunctionID
     case object newArrayObject extends FunctionID
     case object identityHashCode extends FunctionID
     case object searchReflectiveProxy extends FunctionID
+
+    private final case class SpecializedArrayCopyID(arrayBaseRef: NonArrayTypeRef) extends FunctionID
+
+    def specializedArrayCopy(arrayTypeRef: ArrayTypeRef): FunctionID = {
+      val baseRef = arrayTypeRef match {
+        case ArrayTypeRef(baseRef: PrimRef, 1) => baseRef
+        case _                                 => ClassRef(ObjectClass)
+      }
+      SpecializedArrayCopyID(baseRef)
+    }
+
+    case object genericArrayCopy extends FunctionID
   }
 
   object genFieldID {

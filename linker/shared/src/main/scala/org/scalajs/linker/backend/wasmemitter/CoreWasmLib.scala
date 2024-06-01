@@ -32,6 +32,23 @@ object CoreWasmLib {
 
   private implicit val noPos: Position = Position.NoPosition
 
+  private val arrayBaseRefs: List[NonArrayTypeRef] = List(
+    BooleanRef,
+    CharRef,
+    ByteRef,
+    ShortRef,
+    IntRef,
+    LongRef,
+    FloatRef,
+    DoubleRef,
+    ClassRef(ObjectClass)
+  )
+
+  private def charCodeForOriginalName(baseRef: NonArrayTypeRef): Char = baseRef match {
+    case baseRef: PrimRef => baseRef.charCode
+    case _: ClassRef      => 'O'
+  }
+
   /** Fields of the `typeData` struct definition.
    *
    *  They are accessible as a public list because they must be repeated in every vtable type
@@ -580,10 +597,13 @@ object CoreWasmLib {
     genGetComponentType()
     genNewArrayOfThisClass()
     genAnyGetClass()
+    genAnyGetClassName()
+    genAnyGetTypeData()
     genNewArrayObject()
     genIdentityHashCode()
     genSearchReflectiveProxy()
     genArrayCloneFunctions()
+    genArrayCopyFunctions()
   }
 
   private def newFunctionBuilder(functionID: FunctionID, originalName: OriginalName)(
@@ -1567,13 +1587,50 @@ object CoreWasmLib {
    *  [[https://www.scala-js.org/doc/semantics.html#getclass]].
    */
   private def genAnyGetClass()(implicit ctx: WasmContext): Unit = {
-    val typeDataType = RefType(genTypeID.typeData)
-
     val fb = newFunctionBuilder(genFunctionID.anyGetClass)
     val valueParam = fb.addParam("value", RefType.any)
     fb.setResultType(RefType.nullable(genTypeID.ClassStruct))
 
-    val typeDataLocal = fb.addLocal("typeData", typeDataType)
+    fb.block() { typeDataIsNullLabel =>
+      fb += LocalGet(valueParam)
+      fb += Call(genFunctionID.anyGetTypeData)
+      fb += BrOnNull(typeDataIsNullLabel)
+      fb += ReturnCall(genFunctionID.getClassOf)
+    }
+    fb += RefNull(HeapType.None)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `anyGetClassName: (ref any) -> (ref any)` (a string).
+   *
+   *  This is the implementation of `value.getClass().getName()`, which comes
+   *  to the backend as the `ObjectClassName` intrinsic.
+   */
+  private def genAnyGetClassName()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.anyGetClassName)
+    val valueParam = fb.addParam("value", RefType.any)
+    fb.setResultType(RefType.any)
+
+    fb += LocalGet(valueParam)
+    fb += Call(genFunctionID.anyGetTypeData)
+    fb += RefAsNonNull // NPE for null.getName()
+    fb += ReturnCall(genFunctionID.typeDataName)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** `anyGetTypeData: (ref any) -> (ref null typeData)`.
+   *
+   *  Common code between `anyGetClass` and `anyGetClassName`.
+   */
+  private def genAnyGetTypeData()(implicit ctx: WasmContext): Unit = {
+    val typeDataType = RefType(genTypeID.typeData)
+
+    val fb = newFunctionBuilder(genFunctionID.anyGetTypeData)
+    val valueParam = fb.addParam("value", RefType.any)
+    fb.setResultType(RefType.nullable(genTypeID.typeData))
+
     val doubleValueLocal = fb.addLocal("doubleValue", Float64)
     val intValueLocal = fb.addLocal("intValue", Int32)
     val ourObjectLocal = fb.addLocal("ourObject", RefType(genTypeID.ObjectStruct))
@@ -1581,139 +1638,137 @@ object CoreWasmLib {
     def getHijackedClassTypeDataInstr(className: ClassName): Instr =
       GlobalGet(genGlobalID.forVTable(className))
 
-    fb.block(RefType.nullable(genTypeID.ClassStruct)) { nonNullClassOfLabel =>
-      fb.block(typeDataType) { gotTypeDataLabel =>
-        fb.block(RefType(genTypeID.ObjectStruct)) { ourObjectLabel =>
-          // if value is our object, jump to $ourObject
+    fb.block(RefType(genTypeID.ObjectStruct)) { ourObjectLabel =>
+      // if value is our object, jump to $ourObject
+      fb += LocalGet(valueParam)
+      fb += BrOnCast(
+        ourObjectLabel,
+        RefType.any,
+        RefType(genTypeID.ObjectStruct)
+      )
+
+      // switch(jsValueType(value)) { ... }
+      fb.switch() { () =>
+        // scrutinee
+        fb += LocalGet(valueParam)
+        fb += Call(genFunctionID.jsValueType)
+      }(
+        // case JSValueTypeFalse, JSValueTypeTrue => typeDataOf[jl.Boolean]
+        List(JSValueTypeFalse, JSValueTypeTrue) -> { () =>
+          fb += getHijackedClassTypeDataInstr(BoxedBooleanClass)
+          fb += Return
+        },
+        // case JSValueTypeString => typeDataOf[jl.String]
+        List(JSValueTypeString) -> { () =>
+          fb += getHijackedClassTypeDataInstr(BoxedStringClass)
+          fb += Return
+        },
+        // case JSValueTypeNumber => ...
+        List(JSValueTypeNumber) -> { () =>
+          /* For `number`s, the result is based on the actual value, as specified by
+           * [[https://www.scala-js.org/doc/semantics.html#getclass]].
+           */
+
+          // doubleValue := unboxDouble(value)
           fb += LocalGet(valueParam)
-          fb += BrOnCast(
-            ourObjectLabel,
-            RefType.any,
-            RefType(genTypeID.ObjectStruct)
-          )
+          fb += Call(genFunctionID.unbox(DoubleRef))
+          fb += LocalTee(doubleValueLocal)
 
-          // switch(jsValueType(value)) { ... }
-          fb.switch(typeDataType) { () =>
-            // scrutinee
-            fb += LocalGet(valueParam)
-            fb += Call(genFunctionID.jsValueType)
-          }(
-            // case JSValueTypeFalse, JSValueTypeTrue => typeDataOf[jl.Boolean]
-            List(JSValueTypeFalse, JSValueTypeTrue) -> { () =>
-              fb += getHijackedClassTypeDataInstr(BoxedBooleanClass)
-            },
-            // case JSValueTypeString => typeDataOf[jl.String]
-            List(JSValueTypeString) -> { () =>
-              fb += getHijackedClassTypeDataInstr(BoxedStringClass)
-            },
-            // case JSValueTypeNumber => ...
-            List(JSValueTypeNumber) -> { () =>
-              /* For `number`s, the result is based on the actual value, as specified by
-               * [[https://www.scala-js.org/doc/semantics.html#getclass]].
-               */
+          // intValue := doubleValue.toInt
+          fb += I32TruncSatF64S
+          fb += LocalTee(intValueLocal)
 
-              // doubleValue := unboxDouble(value)
-              fb += LocalGet(valueParam)
-              fb += Call(genFunctionID.unbox(DoubleRef))
-              fb += LocalTee(doubleValueLocal)
-
-              // intValue := doubleValue.toInt
-              fb += I32TruncSatF64S
-              fb += LocalTee(intValueLocal)
-
-              // if same(intValue.toDouble, doubleValue) -- same bit pattern to avoid +0.0 == -0.0
-              fb += F64ConvertI32S
-              fb += I64ReinterpretF64
-              fb += LocalGet(doubleValueLocal)
-              fb += I64ReinterpretF64
-              fb += I64Eq
-              fb.ifThenElse(typeDataType) {
-                // then it is a Byte, a Short, or an Integer
-
-                // if intValue.toByte.toInt == intValue
-                fb += LocalGet(intValueLocal)
-                fb += I32Extend8S
-                fb += LocalGet(intValueLocal)
-                fb += I32Eq
-                fb.ifThenElse(typeDataType) {
-                  // then it is a Byte
-                  fb += getHijackedClassTypeDataInstr(BoxedByteClass)
-                } {
-                  // else, if intValue.toShort.toInt == intValue
-                  fb += LocalGet(intValueLocal)
-                  fb += I32Extend16S
-                  fb += LocalGet(intValueLocal)
-                  fb += I32Eq
-                  fb.ifThenElse(typeDataType) {
-                    // then it is a Short
-                    fb += getHijackedClassTypeDataInstr(BoxedShortClass)
-                  } {
-                    // else, it is an Integer
-                    fb += getHijackedClassTypeDataInstr(BoxedIntegerClass)
-                  }
-                }
-              } {
-                // else, it is a Float or a Double
-
-                // if doubleValue.toFloat.toDouble == doubleValue
-                fb += LocalGet(doubleValueLocal)
-                fb += F32DemoteF64
-                fb += F64PromoteF32
-                fb += LocalGet(doubleValueLocal)
-                fb += F64Eq
-                fb.ifThenElse(typeDataType) {
-                  // then it is a Float
-                  fb += getHijackedClassTypeDataInstr(BoxedFloatClass)
-                } {
-                  // else, if it is NaN
-                  fb += LocalGet(doubleValueLocal)
-                  fb += LocalGet(doubleValueLocal)
-                  fb += F64Ne
-                  fb.ifThenElse(typeDataType) {
-                    // then it is a Float
-                    fb += getHijackedClassTypeDataInstr(BoxedFloatClass)
-                  } {
-                    // else, it is a Double
-                    fb += getHijackedClassTypeDataInstr(BoxedDoubleClass)
-                  }
-                }
-              }
-            },
-            // case JSValueTypeUndefined => typeDataOf[jl.Void]
-            List(JSValueTypeUndefined) -> { () =>
-              fb += getHijackedClassTypeDataInstr(BoxedUnitClass)
-            }
-          ) { () =>
-            // case _ (JSValueTypeOther) => return null
-            fb += RefNull(HeapType(genTypeID.ClassStruct))
-            fb += Return
-          }
-
-          fb += Br(gotTypeDataLabel)
-        }
-
-        /* Now we have one of our objects. Normally we only have to get the
-         * vtable, but there are two exceptions. If the value is an instance of
-         * `jl.CharacterBox` or `jl.LongBox`, we must use the typeData of
-         * `jl.Character` or `jl.Long`, respectively.
-         */
-        fb += LocalTee(ourObjectLocal)
-        fb += RefTest(RefType(genTypeID.forClass(SpecialNames.CharBoxClass)))
-        fb.ifThenElse(typeDataType) {
-          fb += getHijackedClassTypeDataInstr(BoxedCharacterClass)
-        } {
-          fb += LocalGet(ourObjectLocal)
-          fb += RefTest(RefType(genTypeID.forClass(SpecialNames.LongBoxClass)))
+          // if same(intValue.toDouble, doubleValue) -- same bit pattern to avoid +0.0 == -0.0
+          fb += F64ConvertI32S
+          fb += I64ReinterpretF64
+          fb += LocalGet(doubleValueLocal)
+          fb += I64ReinterpretF64
+          fb += I64Eq
           fb.ifThenElse(typeDataType) {
-            fb += getHijackedClassTypeDataInstr(BoxedLongClass)
+            // then it is a Byte, a Short, or an Integer
+
+            // if intValue.toByte.toInt == intValue
+            fb += LocalGet(intValueLocal)
+            fb += I32Extend8S
+            fb += LocalGet(intValueLocal)
+            fb += I32Eq
+            fb.ifThenElse(typeDataType) {
+              // then it is a Byte
+              fb += getHijackedClassTypeDataInstr(BoxedByteClass)
+            } {
+              // else, if intValue.toShort.toInt == intValue
+              fb += LocalGet(intValueLocal)
+              fb += I32Extend16S
+              fb += LocalGet(intValueLocal)
+              fb += I32Eq
+              fb.ifThenElse(typeDataType) {
+                // then it is a Short
+                fb += getHijackedClassTypeDataInstr(BoxedShortClass)
+              } {
+                // else, it is an Integer
+                fb += getHijackedClassTypeDataInstr(BoxedIntegerClass)
+              }
+            }
           } {
-            fb += LocalGet(ourObjectLocal)
-            fb += StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
+            // else, it is a Float or a Double
+
+            // if doubleValue.toFloat.toDouble == doubleValue
+            fb += LocalGet(doubleValueLocal)
+            fb += F32DemoteF64
+            fb += F64PromoteF32
+            fb += LocalGet(doubleValueLocal)
+            fb += F64Eq
+            fb.ifThenElse(typeDataType) {
+              // then it is a Float
+              fb += getHijackedClassTypeDataInstr(BoxedFloatClass)
+            } {
+              // else, if it is NaN
+              fb += LocalGet(doubleValueLocal)
+              fb += LocalGet(doubleValueLocal)
+              fb += F64Ne
+              fb.ifThenElse(typeDataType) {
+                // then it is a Float
+                fb += getHijackedClassTypeDataInstr(BoxedFloatClass)
+              } {
+                // else, it is a Double
+                fb += getHijackedClassTypeDataInstr(BoxedDoubleClass)
+              }
+            }
           }
+          fb += Return
+        },
+        // case JSValueTypeUndefined => typeDataOf[jl.Void]
+        List(JSValueTypeUndefined) -> { () =>
+          fb += getHijackedClassTypeDataInstr(BoxedUnitClass)
+          fb += Return
         }
+      ) { () =>
+        // case _ (JSValueTypeOther) => return null
+        fb += RefNull(HeapType.None)
+        fb += Return
       }
 
-      fb += Call(genFunctionID.getClassOf)
+      fb += Unreachable
+    }
+
+    /* Now we have one of our objects. Normally we only have to get the
+     * vtable, but there are two exceptions. If the value is an instance of
+     * `jl.CharacterBox` or `jl.LongBox`, we must use the typeData of
+     * `jl.Character` or `jl.Long`, respectively.
+     */
+    fb += LocalTee(ourObjectLocal)
+    fb += RefTest(RefType(genTypeID.forClass(SpecialNames.CharBoxClass)))
+    fb.ifThenElse(typeDataType) {
+      fb += getHijackedClassTypeDataInstr(BoxedCharacterClass)
+    } {
+      fb += LocalGet(ourObjectLocal)
+      fb += RefTest(RefType(genTypeID.forClass(SpecialNames.LongBoxClass)))
+      fb.ifThenElse(typeDataType) {
+        fb += getHijackedClassTypeDataInstr(BoxedLongClass)
+      } {
+        fb += LocalGet(ourObjectLocal)
+        fb += StructGet(genTypeID.ObjectStruct, genFieldID.objStruct.vtable)
+      }
     }
 
     fb.buildAndAddToModule()
@@ -2139,29 +2194,13 @@ object CoreWasmLib {
   }
 
   private def genArrayCloneFunctions()(implicit ctx: WasmContext): Unit = {
-    val baseRefs = List(
-      BooleanRef,
-      CharRef,
-      ByteRef,
-      ShortRef,
-      IntRef,
-      LongRef,
-      FloatRef,
-      DoubleRef,
-      ClassRef(ObjectClass)
-    )
-
-    for (baseRef <- baseRefs)
+    for (baseRef <- arrayBaseRefs)
       genArrayCloneFunction(baseRef)
   }
 
   /** Generates the clone function for the array class with the given base. */
   private def genArrayCloneFunction(baseRef: NonArrayTypeRef)(implicit ctx: WasmContext): Unit = {
-    val charCodeForOriginalName = baseRef match {
-      case baseRef: PrimRef => baseRef.charCode
-      case _: ClassRef      => 'O'
-    }
-    val originalName = OriginalName("cloneArray." + charCodeForOriginalName)
+    val originalName = OriginalName("cloneArray." + charCodeForOriginalName(baseRef))
 
     val fb = newFunctionBuilder(genFunctionID.cloneArray(baseRef), originalName)
     val fromParam = fb.addParam("from", RefType(genTypeID.ObjectStruct))
@@ -2207,6 +2246,80 @@ object CoreWasmLib {
     fb += GlobalGet(genGlobalID.arrayClassITable) // itable
     fb += LocalGet(resultUnderlyingLocal)
     fb += StructNew(arrayStructTypeID)
+
+    fb.buildAndAddToModule()
+  }
+
+  private def genArrayCopyFunctions()(implicit ctx: WasmContext): Unit = {
+    for (baseRef <- arrayBaseRefs)
+      genSpecializedArrayCopy(baseRef)
+
+    genGenericArrayCopy()
+  }
+
+  /** Generates a specialized arrayCopy for the array class with the given base. */
+  private def genSpecializedArrayCopy(baseRef: NonArrayTypeRef)(implicit ctx: WasmContext): Unit = {
+    val originalName = OriginalName("arrayCopy." + charCodeForOriginalName(baseRef))
+
+    val arrayTypeRef = ArrayTypeRef(baseRef, 1)
+    val arrayStructTypeID = genTypeID.forArrayClass(arrayTypeRef)
+    val arrayClassType = RefType.nullable(arrayStructTypeID)
+    val underlyingArrayTypeID = genTypeID.underlyingOf(arrayTypeRef)
+
+    val fb = newFunctionBuilder(genFunctionID.specializedArrayCopy(arrayTypeRef), originalName)
+    val srcParam = fb.addParam("src", arrayClassType)
+    val srcPosParam = fb.addParam("srcPos", Int32)
+    val destParam = fb.addParam("dest", arrayClassType)
+    val destPosParam = fb.addParam("destPos", Int32)
+    val lengthParam = fb.addParam("length", Int32)
+
+    fb += LocalGet(destParam)
+    fb += StructGet(arrayStructTypeID, genFieldID.objStruct.arrayUnderlying)
+    fb += LocalGet(destPosParam)
+    fb += LocalGet(srcParam)
+    fb += StructGet(arrayStructTypeID, genFieldID.objStruct.arrayUnderlying)
+    fb += LocalGet(srcPosParam)
+    fb += LocalGet(lengthParam)
+    fb += ArrayCopy(underlyingArrayTypeID, underlyingArrayTypeID)
+
+    fb.buildAndAddToModule()
+  }
+
+  /** Generates the generic arrayCopy for an unknown array class. */
+  private def genGenericArrayCopy()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.genericArrayCopy)
+    val srcParam = fb.addParam("src", RefType.anyref)
+    val srcPosParam = fb.addParam("srcPos", Int32)
+    val destParam = fb.addParam("dest", RefType.anyref)
+    val destPosParam = fb.addParam("destPos", Int32)
+    val lengthParam = fb.addParam("length", Int32)
+
+    val anyrefToAnyrefBlockType =
+      fb.sigToBlockType(FunctionType(List(RefType.anyref), List(RefType.anyref)))
+
+    // Dispatch done based on the type of src
+    fb += LocalGet(srcParam)
+
+    for (baseRef <- arrayBaseRefs) {
+      val arrayTypeRef = ArrayTypeRef(baseRef, 1)
+      val arrayStructTypeID = genTypeID.forArrayClass(arrayTypeRef)
+      val nonNullArrayClassType = RefType(arrayStructTypeID)
+
+      fb.block(anyrefToAnyrefBlockType) { notThisArrayTypeLabel =>
+        fb += BrOnCastFail(notThisArrayTypeLabel, RefType.anyref, nonNullArrayClassType)
+
+        fb += LocalGet(srcPosParam)
+        fb += LocalGet(destParam)
+        fb += RefCast(nonNullArrayClassType)
+        fb += LocalGet(destPosParam)
+        fb += LocalGet(lengthParam)
+
+        fb += ReturnCall(genFunctionID.specializedArrayCopy(arrayTypeRef))
+      }
+    }
+
+    // Trap if `src` was not an instance of any of the array class types
+    fb += Unreachable
 
     fb.buildAndAddToModule()
   }
