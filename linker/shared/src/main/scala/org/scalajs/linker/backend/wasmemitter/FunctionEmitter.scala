@@ -2944,9 +2944,43 @@ private class FunctionEmitter private (
       case Transients.Cast(expr, tpe) =>
         genCast(expr, tpe, tree.pos)
 
+      case value: Transients.SystemArrayCopy =>
+        genSystemArrayCopy(tree, value)
+
+      case Transients.ObjectClassName(obj) =>
+        genTree(obj, AnyType)
+        markPosition(tree)
+        fb += wa.RefAsNonNull // trap on NPE
+        fb += wa.Call(genFunctionID.anyGetClassName)
+        StringType
+
       case other =>
         throw new AssertionError(s"Unknown transient: $other")
     }
+  }
+
+  private def genSystemArrayCopy(tree: Transient,
+      transientValue: Transients.SystemArrayCopy): Type = {
+    val Transients.SystemArrayCopy(src, srcPos, dest, destPos, length) = transientValue
+
+    genTreeAuto(src)
+    genTree(srcPos, IntType)
+    genTreeAuto(dest)
+    genTree(destPos, IntType)
+    genTree(length, IntType)
+
+    (src.tpe, dest.tpe) match {
+      case (ArrayType(srcArrayTypeRef), ArrayType(destArrayTypeRef))
+          if genTypeID.forArrayClass(srcArrayTypeRef) == genTypeID.forArrayClass(destArrayTypeRef) =>
+        // Generate a specialized arrayCopyT call
+        fb += wa.Call(genFunctionID.specializedArrayCopy(srcArrayTypeRef))
+
+      case _ =>
+        // Generate a generic arrayCopy call
+        fb += wa.Call(genFunctionID.genericArrayCopy)
+    }
+
+    NoType
   }
 
   /*--------------------------------------------------------------------*
