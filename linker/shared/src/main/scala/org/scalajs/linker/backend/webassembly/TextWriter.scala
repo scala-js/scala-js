@@ -321,12 +321,12 @@ class TextWriter(module: Module) {
     "export", {
       b.appendElement("\"" + e.name + "\"")
       e.desc match {
-        case ExportDesc.Func(id, _) =>
+        case ExportDesc.Func(id) =>
           b.sameLineList(
             "func",
             { appendName(id) }
           )
-        case ExportDesc.Global(id, _) =>
+        case ExportDesc.Global(id) =>
           b.sameLineList(
             "global",
             { appendName(id) }

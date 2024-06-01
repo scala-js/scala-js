@@ -219,10 +219,10 @@ class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
     buf.vec(module.exports) { exp =>
       buf.name(exp.name)
       exp.desc match {
-        case ExportDesc.Func(id, _) =>
+        case ExportDesc.Func(id) =>
           buf.byte(0x00)
           writeFuncIdx(buf, id)
-        case ExportDesc.Global(id, _) =>
+        case ExportDesc.Global(id) =>
           buf.byte(0x03)
           writeGlobalIdx(buf, id)
       }

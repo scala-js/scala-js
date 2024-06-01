@@ -36,6 +36,4 @@ object Identitities {
   trait TagID
 
   trait DataID
-
-  trait ExportID
 }

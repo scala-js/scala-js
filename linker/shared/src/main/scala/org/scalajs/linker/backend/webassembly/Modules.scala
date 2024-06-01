@@ -32,8 +32,8 @@ object Modules {
   sealed abstract class ExportDesc
 
   object ExportDesc {
-    final case class Func(id: FunctionID, originalName: OriginalName) extends ExportDesc
-    final case class Global(id: GlobalID, originalName: OriginalName) extends ExportDesc
+    final case class Func(id: FunctionID) extends ExportDesc
+    final case class Global(id: GlobalID) extends ExportDesc
   }
 
   /** A WebAssembly `import`. */
