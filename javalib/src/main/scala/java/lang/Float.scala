@@ -378,9 +378,11 @@ object Float {
   @inline def hashCode(value: scala.Float): Int =
     FloatingPointBits.numberHashCode(value)
 
+  // Wasm intrinsic
   @inline def intBitsToFloat(bits: scala.Int): scala.Float =
     FloatingPointBits.intBitsToFloat(bits)
 
+  // Wasm intrinsic
   @inline def floatToIntBits(value: scala.Float): scala.Int =
     FloatingPointBits.floatToIntBits(value)
 

@@ -28,22 +28,30 @@ object Math {
 
   @inline def abs(a: scala.Int): scala.Int = if (a < 0) -a else a
   @inline def abs(a: scala.Long): scala.Long = if (a < 0) -a else a
+
+  // Wasm intrinsics
   @inline def abs(a: scala.Float): scala.Float = js.Math.abs(a).toFloat
   @inline def abs(a: scala.Double): scala.Double = js.Math.abs(a)
 
   @inline def max(a: scala.Int, b: scala.Int): scala.Int = if (a > b) a else b
   @inline def max(a: scala.Long, b: scala.Long): scala.Long = if (a > b) a else b
+
+  // Wasm intrinsics
   @inline def max(a: scala.Float, b: scala.Float): scala.Float = js.Math.max(a, b).toFloat
   @inline def max(a: scala.Double, b: scala.Double): scala.Double = js.Math.max(a, b)
 
   @inline def min(a: scala.Int, b: scala.Int): scala.Int = if (a < b) a else b
   @inline def min(a: scala.Long, b: scala.Long): scala.Long = if (a < b) a else b
+
+  // Wasm intrinsics
   @inline def min(a: scala.Float, b: scala.Float): scala.Float = js.Math.min(a, b).toFloat
   @inline def min(a: scala.Double, b: scala.Double): scala.Double = js.Math.min(a, b)
 
+  // Wasm intrinsics
   @inline def ceil(a: scala.Double): scala.Double = js.Math.ceil(a)
   @inline def floor(a: scala.Double): scala.Double = js.Math.floor(a)
 
+  // Wasm intrinsic
   def rint(a: scala.Double): scala.Double = {
     val rounded = js.Math.round(a)
     val mod = a % 1.0
@@ -60,7 +68,9 @@ object Math {
   @inline def round(a: scala.Float): scala.Int = js.Math.round(a).toInt
   @inline def round(a: scala.Double): scala.Long = js.Math.round(a).toLong
 
+  // Wasm intrinsic
   @inline def sqrt(a: scala.Double): scala.Double = js.Math.sqrt(a)
+
   @inline def pow(a: scala.Double, b: scala.Double): scala.Double = js.Math.pow(a, b)
 
   @inline def exp(a: scala.Double): scala.Double = js.Math.exp(a)
