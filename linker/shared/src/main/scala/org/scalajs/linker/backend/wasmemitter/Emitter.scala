@@ -389,10 +389,10 @@ object Emitter {
     val factory = SymbolRequirement.factory("wasm")
 
     factory.multiple(
-      factory.instantiateClass(ClassClass, ClassCtor),
+      factory.instantiateClass(ClassClass, AnyArgConstructorName),
 
       // TODO Ideally we should not require this, but rather adapt to its absence
-      factory.instantiateClass(JSExceptionClass, JSExceptionCtor),
+      factory.instantiateClass(JSExceptionClass, AnyArgConstructorName),
 
       // See genIdentityHashCode in HelperFunctions
       factory.callMethodStatically(BoxedDoubleClass, hashCodeMethodName),

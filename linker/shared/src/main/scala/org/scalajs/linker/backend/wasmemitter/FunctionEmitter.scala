@@ -610,7 +610,7 @@ private class FunctionEmitter private (
       fb.block(watpe.RefType.any) { labelNotOurObject =>
         // arguments
         genTree(t.receiver, AnyType)
-        fb += wa.RefAsNotNull
+        fb += wa.RefAsNonNull
         fb += wa.LocalTee(receiverLocalForDispatch)
         genArgs(t.args, t.method.name)
 
@@ -674,7 +674,7 @@ private class FunctionEmitter private (
      */
     def genReceiverNotNull(): Unit = {
       genTreeAuto(t.receiver)
-      fb += wa.RefAsNotNull
+      fb += wa.RefAsNonNull
     }
 
     /* Generates a resolved call to a method of a hijacked class.
@@ -934,14 +934,14 @@ private class FunctionEmitter private (
         BoxedClassToPrimType.get(targetClassName) match {
           case None =>
             genTree(t.receiver, ClassType(targetClassName))
-            fb += wa.RefAsNotNull
+            fb += wa.RefAsNonNull
 
           case Some(primReceiverType) =>
             if (t.receiver.tpe == primReceiverType) {
               genTreeAuto(t.receiver)
             } else {
               genTree(t.receiver, AnyType)
-              fb += wa.RefAsNotNull
+              fb += wa.RefAsNonNull
               genUnbox(primReceiverType)(t.pos)
             }
         }
@@ -1757,7 +1757,7 @@ private class FunctionEmitter private (
         fb += wa.GlobalGet(genGlobalID.undef)
 
       case StringType =>
-        fb += wa.RefAsNotNull
+        fb += wa.RefAsNonNull
 
       case targetTpe: PrimTypeWithRef =>
         targetTpe match {
@@ -1821,7 +1821,7 @@ private class FunctionEmitter private (
     } else {
       genTree(tree.expr, AnyType)
       markPosition(tree)
-      fb += wa.RefAsNotNull
+      fb += wa.RefAsNonNull
       fb += wa.Call(genFunctionID.anyGetClass)
     }
 
@@ -2115,7 +2115,7 @@ private class FunctionEmitter private (
         genFunctionID.forMethod(
           MemberNamespace.Constructor,
           SpecialNames.JSExceptionClass,
-          SpecialNames.JSExceptionCtor
+          SpecialNames.AnyArgConstructorName
         )
       )
       fb += wa.LocalGet(instanceLocal)
@@ -2130,7 +2130,7 @@ private class FunctionEmitter private (
 
       markPosition(tree)
 
-      fb += wa.RefAsNotNull
+      fb += wa.RefAsNonNull
 
       // if !expr.isInstanceOf[js.JavaScriptException], then br $done
       fb += wa.BrOnCastFail(
@@ -2142,7 +2142,7 @@ private class FunctionEmitter private (
       // otherwise, unwrap the JavaScriptException by reading its field
       fb += wa.StructGet(
         genTypeID.forClass(SpecialNames.JSExceptionClass),
-        genFieldID.forClassInstanceField(SpecialNames.JSExceptionField)
+        genFieldID.forClassInstanceField(SpecialNames.exceptionFieldName)
       )
     }
 
@@ -2557,7 +2557,7 @@ private class FunctionEmitter private (
 
     fb += wa.RefCast(watpe.RefType(genTypeID.ObjectStruct))
     fb += wa.LocalTee(expr)
-    fb += wa.RefAsNotNull // cloneFunction argument is not nullable
+    fb += wa.RefAsNonNull // cloneFunction argument is not nullable
 
     fb += wa.LocalGet(expr)
     fb += wa.StructGet(genTypeID.forClass(ObjectClass), genFieldID.objStruct.vtable)

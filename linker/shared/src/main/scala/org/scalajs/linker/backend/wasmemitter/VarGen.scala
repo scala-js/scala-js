@@ -406,7 +406,7 @@ object VarGen {
 
       /** The function to clone the object of this type, a nullable function reference.
        *
-       *  This field is instantiated only with the classes that implement java.lang.Cloneable.
+       *  This field is initialized only with the classes that implement java.lang.Cloneable.
        */
       case object cloneFunction extends FieldID
 

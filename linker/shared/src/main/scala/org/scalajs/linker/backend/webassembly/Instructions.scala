@@ -120,7 +120,11 @@ object Instructions {
 
   case object Else extends SimpleInstr("else", 0x05)
 
-  /** `try` in the legacy exception system. */
+  /** `try` in the legacy exception system.
+   *
+   *  @see
+   *    [[https://webassembly.github.io/exception-handling/legacy/exceptions/core/syntax.html]]
+   */
   final case class Try(i: BlockType, label: Option[LabelID] = None)
       extends BlockTypeLabeledInstr("try", 0x06, i)
 
@@ -269,6 +273,7 @@ object Instructions {
   case object F64Div extends SimpleInstr("f64.div", 0xA3)
   case object F64Min extends SimpleInstr("f64.min", 0xA4)
   case object F64Max extends SimpleInstr("f64.max", 0xA5)
+  case object F64Copysign extends SimpleInstr("f64.copysign", 0xA6)
   case object I32WrapI64 extends SimpleInstr("i32.wrap_i64", 0xA7)
   case object I32TruncF32S extends SimpleInstr("i32.trunc_f32_s", 0xA8)
   case object I32TruncF32U extends SimpleInstr("i32.trunc_f32_u", 0xA9)
@@ -306,7 +311,7 @@ object Instructions {
   case object RefIsNull extends SimpleInstr("ref.is_null", 0xD1)
   final case class RefFunc(i: FunctionID) extends FuncInstr("ref.func", 0xD2, i)
   case object RefEq extends SimpleInstr("ref.eq", 0xD3)
-  case object RefAsNotNull extends SimpleInstr("ref.as_non_null", 0xD4)
+  case object RefAsNonNull extends SimpleInstr("ref.as_non_null", 0xD4)
   final case class BrOnNull(i: LabelID) extends LabelInstr("br_on_null", 0xD5, i)
   final case class BrOnNonNull(i: LabelID) extends LabelInstr("br_on_non_null", 0xD6, i)
 

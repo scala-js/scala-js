@@ -733,7 +733,7 @@ object CoreWasmLib {
           genTypeID.typeData,
           genFieldID.typeData.componentType
         )
-        fb += RefAsNotNull
+        fb += RefAsNonNull
         fb += LocalSet(componentTypeDataLocal)
 
         // switch (componentTypeData.kind)
@@ -915,7 +915,7 @@ object CoreWasmLib {
       genFunctionID.forMethod(
         MemberNamespace.Constructor,
         ClassClass,
-        SpecialNames.ClassCtor
+        SpecialNames.AnyArgConstructorName
       )
     )
 
@@ -1367,7 +1367,7 @@ object CoreWasmLib {
             // typeData := ref.as_non_null typeData.componentType (OK because KindArray)
             fb += LocalGet(typeDataParam)
             fb += StructGet(genTypeID.typeData, componentType)
-            fb += RefAsNotNull
+            fb += RefAsNonNull
             fb += LocalSet(typeDataParam)
 
             // loop back ("tail call")

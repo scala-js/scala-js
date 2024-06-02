@@ -57,11 +57,9 @@ final class ModuleBuilder(functionSignatureProvider: ModuleBuilder.FunctionTypeP
   def addData(data: Data): Unit = datas += data
 
   def build(): Module = {
-    val builtTypes: List[RecType] = types.toList.map { tpe =>
-      tpe match {
-        case tpe: RecType            => tpe
-        case builder: RecTypeBuilder => builder.build()
-      }
+    val builtTypes: List[RecType] = types.toList.map {
+      case tpe: RecType            => tpe
+      case builder: RecTypeBuilder => builder.build()
     }
 
     new Module(

@@ -230,63 +230,65 @@ final class FunctionBuilder(
       scrutinee: () => Unit)(
       clauses: (List[Int], () => Unit)*)(
       default: () => Unit): Unit = {
-    val clauseLabels = clauses.map(_ => genLabel())
 
-    // Build the dispatch vector, i.e., the array of caseValue -> target clauseLabel
-    val numCases = clauses.map(_._1.max).max + 1
-    if (numCases >= 128)
-      throw new IllegalArgumentException(s"Too many cases for switch: $numCases")
-    val dispatchVector = new Array[LabelID](numCases)
-    for {
-      (clause, clauseLabel) <- clauses.zip(clauseLabels)
-      caseValue <- clause._1
-    } {
-      if (dispatchVector(caseValue) != null)
-        throw new IllegalArgumentException(s"Duplicate case value for switch: $caseValue")
-      dispatchVector(caseValue) = clauseLabel
-    }
+    // Check prerequisites
 
-    // Compute the BlockType's we will need
     require(clauseSig.params.size >= scrutineeSig.results.size,
         "The clauses of a switch must consume all the results of the scrutinee " +
         s"(scrutinee results: ${scrutineeSig.results}; clause params: ${clauseSig.params})")
-    val (doneBlockType, clauseBlockType) = {
-      val clauseParamsComingFromAbove = clauseSig.params.drop(scrutineeSig.results.size)
-      val doneBlockSig = FunctionType(
-        clauseParamsComingFromAbove ::: scrutineeSig.params,
-        clauseSig.results
-      )
-      val clauseBlockSig = FunctionType(
-        clauseParamsComingFromAbove ::: scrutineeSig.params,
-        clauseSig.params
-      )
-      (sigToBlockType(doneBlockSig), sigToBlockType(clauseBlockSig))
-    }
 
-    block(doneBlockType) { doneLabel =>
-      block(clauseBlockType) { defaultLabel =>
-        // Fill up empty entries of the dispatch vector with the default label
-        for (i <- 0 until numCases if dispatchVector(i) == null)
-          dispatchVector(i) = defaultLabel
+    val numCases = clauses.map(_._1.max).max + 1
+    require(numCases <= 128, s"Too many cases for switch: $numCases")
 
-        // Enter all the case labels
-        for (clauseLabel <- clauseLabels.reverse)
-          instrs += Block(clauseBlockType, Some(clauseLabel))
+    // Allocate all the labels we will use
+    val doneLabel = genLabel()
+    val defaultLabel = genLabel()
+    val clauseLabels = clauses.map(_ => genLabel())
 
-        // Load the scrutinee and dispatch
-        scrutinee()
-        instrs += BrTable(dispatchVector.toList, defaultLabel)
-
-        // Close all the case labels and emit their respective bodies
-        for (clause <- clauses) {
-          instrs += End // close the block whose label is the corresponding label for this clause
-          clause._2() // emit the body of that clause
-          instrs += Br(doneLabel) // jump to done
-        }
+    // Build the dispatch vector, i.e., the array of caseValue -> target clauseLabel
+    val dispatchVector = {
+      val dv = Array.fill(numCases)(defaultLabel)
+      for {
+        ((caseValues, _), clauseLabel) <- clauses.zip(clauseLabels)
+        caseValue <- caseValues
+      } {
+        require(dv(caseValue) == defaultLabel, s"Duplicate case value for switch: $caseValue")
+        dv(caseValue) = clauseLabel
       }
-
-      default()
+      dv.toList
     }
+
+    // Input parameter to the overall switch "instruction"
+    val switchInputParams =
+      clauseSig.params.drop(scrutineeSig.results.size) ::: scrutineeSig.params
+
+    // Compute the BlockType's we will need
+    val doneBlockType = sigToBlockType(FunctionType(switchInputParams, clauseSig.results))
+    val clauseBlockType = sigToBlockType(FunctionType(switchInputParams, clauseSig.params))
+
+    // Open done block
+    instrs += Block(doneBlockType, Some(doneLabel))
+    // Open case and default blocks (in reverse order: default block is outermost!)
+    for (label <- (defaultLabel +: clauseLabels.reverse)) {
+      instrs += Block(clauseBlockType, Some(label))
+    }
+
+    // Load the scrutinee and dispatch
+    scrutinee()
+    instrs += BrTable(dispatchVector, defaultLabel)
+
+    // Close all the case blocks and emit their respective bodies
+    for ((_, caseBody) <- clauses) {
+      instrs += End // close the block whose label is the corresponding label for this clause
+      caseBody() // emit the body of that clause
+      instrs += Br(doneLabel) // jump to done
+    }
+
+    // Close the default block and emit its body (no jump to done necessary)
+    instrs += End
+    default()
+
+    instrs += End // close the done block
   }
 
   def switch(clauseSig: FunctionType)(scrutinee: () => Unit)(

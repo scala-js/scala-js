@@ -16,9 +16,11 @@ import org.scalajs.ir.Names._
 import org.scalajs.ir.Types._
 
 object SpecialNames {
+  // Class names
+
   /* Our back-end-specific box classes for the generic representation of
    * `char` and `long`. These classes are not part of the classpath. They are
-   * generated automatically by `LibraryPatches`.
+   * generated automatically by `DerivedClasses`.
    */
   val CharBoxClass = BoxedCharacterClass.withSuffix("Box")
   val LongBoxClass = BoxedLongClass.withSuffix("Box")
@@ -26,15 +28,18 @@ object SpecialNames {
   val CharBoxCtor = MethodName.constructor(List(CharRef))
   val LongBoxCtor = MethodName.constructor(List(LongRef))
 
-  val valueFieldSimpleName = SimpleFieldName("value")
-
-  // The constructor of java.lang.Class
-  val ClassCtor = MethodName.constructor(List(ClassRef(ObjectClass)))
-
   // js.JavaScriptException, for WrapAsThrowable and UnwrapFromThrowable
   val JSExceptionClass = ClassName("scala.scalajs.js.JavaScriptException")
-  val JSExceptionCtor = MethodName.constructor(List(ClassRef(ObjectClass)))
-  val JSExceptionField = FieldName(JSExceptionClass, SimpleFieldName("exception"))
+
+  // Field names
+
+  val valueFieldSimpleName = SimpleFieldName("value")
+
+  val exceptionFieldName = FieldName(JSExceptionClass, SimpleFieldName("exception"))
+
+  // Method names
+
+  val AnyArgConstructorName = MethodName.constructor(List(ClassRef(ObjectClass)))
 
   val hashCodeMethodName = MethodName("hashCode", Nil, IntRef)
 

@@ -41,7 +41,7 @@ object TypeTransformer {
 
   /** Transforms an IR type to the Wasm result types of a function or block.
    *
-   *  `void` translates to an empty resul type list, as expected.
+   *  `void` translates to an empty result type list, as expected.
    *
    *  `nothing` translates to an empty result type list as well, because Wasm does
    *  not have a bottom type (at least not one that can expressed at the user level).
