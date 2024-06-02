@@ -15,6 +15,7 @@ package java.lang
 import java.lang.constant.{Constable, ConstantDesc}
 
 import scala.scalajs.js
+import scala.scalajs.runtime.linkingInfo
 
 import Utils._
 
@@ -363,8 +364,23 @@ object Double {
   @inline def isFinite(d: scala.Double): scala.Boolean =
     !isNaN(d) && !isInfinite(d)
 
-  @inline def hashCode(value: scala.Double): Int =
-    FloatingPointBits.numberHashCode(value)
+  @inline def hashCode(value: scala.Double): Int = {
+    if (linkingInfo.isWebAssembly)
+      hashCodeForWasm(value)
+    else
+      FloatingPointBits.numberHashCode(value)
+  }
+
+  // See FloatingPointBits for the spec of this computation
+  @inline
+  private def hashCodeForWasm(value: scala.Double): Int = {
+    val bits = doubleToLongBits(value)
+    val valueInt = value.toInt
+    if (doubleToLongBits(valueInt.toDouble) == bits)
+      valueInt
+    else
+      Long.hashCode(bits)
+  }
 
   // Wasm intrinsic
   @inline def longBitsToDouble(bits: scala.Long): scala.Double =
