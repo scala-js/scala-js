@@ -2089,7 +2089,17 @@ private[optimizer] abstract class OptimizerCore(
             else dynamicCall(className, methodName)
           if (impls.size == 1) {
             pretransformSingleDispatch(flags, impls.head, Some(treceiver), targs, isStat, usePreTransform)(cont) {
-              treeNotInlined
+              if (isWasm) {
+                // Replace by an ApplyStatically to guarantee static dispatch
+                val targetClassName = impls.head.enclosingClassName
+                val castTReceiver = foldCast(treceiver, ClassType(targetClassName))
+                cont(PreTransTree(ApplyStatically(flags,
+                    finishTransformExprMaybeAssumeNotNull(castTReceiver),
+                    targetClassName, methodIdent,
+                    targs.map(finishTransformExpr))(resultType), RefinedType(resultType)))
+              } else {
+                treeNotInlined
+              }
             }
           } else {
             val allocationSites =
