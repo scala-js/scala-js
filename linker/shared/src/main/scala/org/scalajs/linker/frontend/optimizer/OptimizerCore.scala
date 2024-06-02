@@ -2082,7 +2082,22 @@ private[optimizer] abstract class OptimizerCore(
             else dynamicCall(className, methodName)
           if (impls.size == 1) {
             pretransformSingleDispatch(flags, impls.head, Some(treceiver), targs, isStat, usePreTransform)(cont) {
-              treeNotInlined
+              if (isWasm) {
+                // Replace by an ApplyStatically to guarantee static dispatch
+                val targetClassName = impls.head.enclosingClassName
+                val castTReceiver = foldCast(treceiver, ClassType(targetClassName))
+                cont(PreTransTree(ApplyStatically(flags,
+                    finishTransformExprMaybeAssumeNotNull(castTReceiver),
+                    targetClassName, methodIdent,
+                    targs.map(finishTransformExpr))(resultType), RefinedType(resultType)))
+              } else {
+                /* In case you get tempted to perform the same optimization on
+                 * JS, we tried it before (in a much more involved way) and we
+                 * found that it was not better or even worse:
+                 * https://github.com/scala-js/scala-js/pull/4337
+                 */
+                treeNotInlined
+              }
             }
           } else {
             val allocationSites =
