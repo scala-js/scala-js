@@ -221,7 +221,7 @@ class TextWriter(module: Module) {
                 writeTypeUse(typeID)
               }
             )
-          case ImportDesc.Global(id, _, tpe, isMutable) =>
+          case ImportDesc.Global(id, _, isMutable, tpe) =>
             b.sameLineList(
               "global", {
                 appendName(id)
@@ -347,7 +347,6 @@ class TextWriter(module: Module) {
     b.newLineList(
       "elem", {
         element.mode match {
-          case Element.Mode.Passive     => ()
           case Element.Mode.Declarative => b.appendElement("declare")
         }
         writeType(element.tpe)
@@ -432,8 +431,8 @@ class TextWriter(module: Module) {
 
       case _ =>
         instr match {
-          case End | Else | _: Catch | CatchAll => b.deindent()
-          case _                                => ()
+          case End | Else | _: Catch => b.deindent()
+          case _                     => ()
         }
         b.newLine()
         b.appendElement(instr.mnemonic)
@@ -450,8 +449,8 @@ class TextWriter(module: Module) {
         writeInstrImmediates(instr)
 
         instr match {
-          case _: StructuredLabeledInstr | Else | _: Catch | CatchAll => b.indent()
-          case _                                                      => ()
+          case _: StructuredLabeledInstr | Else | _: Catch => b.indent()
+          case _                                           => ()
         }
     }
   }

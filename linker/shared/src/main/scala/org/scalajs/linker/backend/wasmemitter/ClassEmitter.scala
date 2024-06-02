@@ -56,9 +56,9 @@ class ClassEmitter(coreSpec: CoreSpec) {
       val global = wamod.Global(
         genGlobalID.forStaticField(name.name),
         origName,
+        isMutable = true,
         transformType(ftpe),
-        wa.Expr(List(genZeroOf(ftpe))),
-        isMutable = true
+        wa.Expr(List(genZeroOf(ftpe)))
       )
       ctx.addGlobal(global)
     }
@@ -271,9 +271,9 @@ class ClassEmitter(coreSpec: CoreSpec) {
       wamod.Global(
         genGlobalID.forVTable(className),
         makeOriginalName(ns.TypeData, className),
+        isMutable = false,
         watpe.RefType(typeDataTypeID),
-        wa.Expr(instrs),
-        isMutable = false
+        wa.Expr(instrs)
       )
     )
   }
@@ -352,9 +352,9 @@ class ClassEmitter(coreSpec: CoreSpec) {
       val global = wamod.Global(
         genGlobalID.forModuleInstance(className),
         makeOriginalName(ns.ModuleInstance, className),
+        isMutable = true,
         watpe.RefType.nullable(heapType),
-        wa.Expr(List(wa.RefNull(heapType))),
-        isMutable = true
+        wa.Expr(List(wa.RefNull(heapType)))
       )
       ctx.addGlobal(global)
 
@@ -618,9 +618,9 @@ class ClassEmitter(coreSpec: CoreSpec) {
       val global = wamod.Global(
         globalID,
         makeOriginalName(ns.ITable, className),
+        isMutable = false,
         watpe.RefType(genTypeID.itables),
-        wa.Expr(itablesInit),
-        isMutable = false
+        wa.Expr(itablesInit)
       )
       ctx.addGlobal(global)
     }
@@ -663,9 +663,9 @@ class ClassEmitter(coreSpec: CoreSpec) {
             wamod.Global(
               genGlobalID.forJSPrivateField(name.name),
               makeOriginalName(ns.PrivateJSField, name.name),
+              isMutable = true,
               watpe.RefType.anyref,
-              wa.Expr(List(wa.RefNull(watpe.HeapType.Any))),
-              isMutable = true
+              wa.Expr(List(wa.RefNull(watpe.HeapType.Any)))
             )
           )
         case _ =>
@@ -972,9 +972,9 @@ class ClassEmitter(coreSpec: CoreSpec) {
     val cachedJSClassGlobal = wamod.Global(
       genGlobalID.forJSClassValue(className),
       makeOriginalName(ns.JSClassValueCache, className),
+      isMutable = true,
       watpe.RefType.anyref,
-      wa.Expr(List(wa.RefNull(watpe.HeapType.Any))),
-      isMutable = true
+      wa.Expr(List(wa.RefNull(watpe.HeapType.Any)))
     )
     ctx.addGlobal(cachedJSClassGlobal)
 
@@ -1005,9 +1005,9 @@ class ClassEmitter(coreSpec: CoreSpec) {
       wamod.Global(
         cacheGlobalID,
         makeOriginalName(ns.ModuleInstance, className),
+        isMutable = true,
         watpe.RefType.anyref,
-        wa.Expr(List(wa.RefNull(watpe.HeapType.Any))),
-        isMutable = true
+        wa.Expr(List(wa.RefNull(watpe.HeapType.Any)))
       )
     )
 

@@ -182,7 +182,7 @@ class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
         case ImportDesc.Func(_, _, typeID) =>
           buf.byte(0x00) // func
           writeTypeIdx(buf, typeID)
-        case ImportDesc.Global(_, _, tpe, isMutable) =>
+        case ImportDesc.Global(_, _, isMutable, tpe) =>
           buf.byte(0x03) // global
           writeType(buf, tpe)
           buf.boolean(isMutable)
@@ -236,7 +236,6 @@ class BinaryWriter(module: Module, emitDebugInfo: Boolean) {
   private def writeElementSection(buf: Buffer): Unit = {
     buf.vec(module.elems) { element =>
       element.mode match {
-        case Element.Mode.Passive     => buf.byte(5)
         case Element.Mode.Declarative => buf.byte(7)
       }
       writeType(buf, element.tpe)

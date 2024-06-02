@@ -22,19 +22,12 @@ import Types._
  *
  *  @see
  *    [[https://webassembly.github.io/gc/core/syntax/modules.html]]
+ *
+ *  @see
+ *    For tags:
+ *    [[https://webassembly.github.io/exception-handling/core/syntax/modules.html]]
  */
 object Modules {
-
-  /** A WebAssembly `export`. */
-  final case class Export(name: String, desc: ExportDesc)
-
-  /** A WebAssembly `exportdesc`. */
-  sealed abstract class ExportDesc
-
-  object ExportDesc {
-    final case class Func(id: FunctionID) extends ExportDesc
-    final case class Global(id: GlobalID) extends ExportDesc
-  }
 
   /** A WebAssembly `import`. */
   final case class Import(module: String, name: String, desc: ImportDesc)
@@ -46,13 +39,19 @@ object Modules {
     final case class Func(id: FunctionID, originalName: OriginalName, typeID: TypeID)
         extends ImportDesc
 
-    final case class Global(id: GlobalID, originalName: OriginalName, tpe: Type, isMutable: Boolean)
+    final case class Global(id: GlobalID, originalName: OriginalName, isMutable: Boolean, tpe: Type)
         extends ImportDesc
 
     final case class Tag(id: TagID, originalName: OriginalName, typeID: TypeID) extends ImportDesc
   }
 
-  /** A WebAssembly `func`, including names for parameters and locals. */
+  /** A WebAssembly `func`, including names/types for parameters, locals and results.
+   *
+   *  @note
+   *    The `params`' types and the `results` are not strictly necessary, as
+   *    they can be derived from the `typeID` by resolving it to a function
+   *    type. The binary writer ignores them. They are used by the text writer.
+   */
   final case class Function(
       id: FunctionID,
       originalName: OriginalName,
@@ -70,26 +69,32 @@ object Modules {
   /** A WebAssembly `tag` definition. */
   final case class Tag(id: TagID, originalName: OriginalName, typeID: TypeID)
 
-  /** A WebAssembly `data` definition. */
-  final case class Data(id: DataID, originalName: OriginalName, bytes: Array[Byte], mode: Data.Mode)
-
-  object Data {
-    sealed abstract class Mode
-
-    object Mode {
-      case object Passive extends Mode
-      // final case class Active(...)
-    }
-  }
-
   /** A WebAssembly `global` definition. */
   final case class Global(
       id: GlobalID,
       originalName: OriginalName,
+      isMutable: Boolean,
       tpe: Type,
-      init: Expr,
-      isMutable: Boolean
+      init: Expr
   )
+
+  /** A WebAssembly `export`.
+   *
+   *  @note
+   *    We do not use any `export` in our current compilation scheme.
+   *    However, we used them in the past and we will likely reuse them in the
+   *    future (notably for module splitting). Therefore, we keep them in the
+   *    codebase not to lose the work done in implementing them.
+   */
+  final case class Export(name: String, desc: ExportDesc)
+
+  /** A WebAssembly `exportdesc`. */
+  sealed abstract class ExportDesc
+
+  object ExportDesc {
+    final case class Func(id: FunctionID) extends ExportDesc
+    final case class Global(id: GlobalID) extends ExportDesc
+  }
 
   /** A WebAssembly `elem` definition. */
   final case class Element(tpe: Type, init: List[Expr], mode: Element.Mode)
@@ -98,13 +103,26 @@ object Modules {
     sealed abstract class Mode
 
     object Mode {
-      case object Passive extends Mode
-      // final case class Active(table: Immediate.TableIdx, offset: Expr) extends Mode
       case object Declarative extends Mode
     }
   }
 
-  /** A WebAssembly `module`. */
+  /** A WebAssembly `data` segment definition. */
+  final case class Data(id: DataID, originalName: OriginalName, bytes: Array[Byte], mode: Data.Mode)
+
+  object Data {
+    sealed abstract class Mode
+
+    object Mode {
+      case object Passive extends Mode
+    }
+  }
+
+  /** A WebAssembly `module`.
+   *
+   *  Fields are declared in the order of the binary format:
+   *  [[https://webassembly.github.io/gc/core/binary/modules.html#sections]]
+   */
   final class Module(
       val types: List[RecType],
       val imports: List[Import],

@@ -246,23 +246,23 @@ object CoreWasmLib {
   private def genGlobalImports()(implicit ctx: WasmContext): Unit = {
     def addGlobalHelperImport(
         id: genGlobalID.JSHelperGlobalID,
-        tpe: Type,
-        isMutable: Boolean
+        isMutable: Boolean,
+        tpe: Type
     ): Unit = {
       ctx.moduleBuilder.addImport(
         Import(
           "__scalaJSHelpers",
           id.toString(), // import name, guaranteed by JSHelperGlobalID
-          ImportDesc.Global(id, OriginalName(id.toString()), tpe, isMutable)
+          ImportDesc.Global(id, OriginalName(id.toString()), isMutable, tpe)
         )
       )
     }
 
-    addGlobalHelperImport(genGlobalID.undef, RefType.any, isMutable = false)
-    addGlobalHelperImport(genGlobalID.bFalse, RefType.any, isMutable = false)
-    addGlobalHelperImport(genGlobalID.bZero, RefType.any, isMutable = false)
-    addGlobalHelperImport(genGlobalID.emptyString, RefType.any, isMutable = false)
-    addGlobalHelperImport(genGlobalID.idHashCodeMap, RefType.extern, isMutable = false)
+    addGlobalHelperImport(genGlobalID.undef, isMutable = false, RefType.any)
+    addGlobalHelperImport(genGlobalID.bFalse, isMutable = false, RefType.any)
+    addGlobalHelperImport(genGlobalID.bZero, isMutable = false, RefType.any)
+    addGlobalHelperImport(genGlobalID.emptyString, isMutable = false, RefType.any)
+    addGlobalHelperImport(genGlobalID.idHashCodeMap, isMutable = false, RefType.extern)
   }
 
   private def genPrimitiveTypeDataGlobals()(implicit ctx: WasmContext): Unit = {
@@ -317,9 +317,9 @@ object CoreWasmLib {
         Global(
           genGlobalID.forVTable(primRef),
           OriginalName("d." + primRef.charCode),
+          isMutable = false,
           RefType(genTypeID.typeData),
-          Expr(instrs),
-          isMutable = false
+          Expr(instrs)
         )
       )
     }
@@ -344,9 +344,9 @@ object CoreWasmLib {
         Global(
           globalID,
           OriginalName(globalID.toString()),
+          isMutable = false,
           RefType(boxStruct),
-          Expr(instrs),
-          isMutable = false
+          Expr(instrs)
         )
       )
     }
@@ -362,9 +362,9 @@ object CoreWasmLib {
       Global(
         genGlobalID.arrayClassITable,
         OriginalName(genGlobalID.arrayClassITable.toString()),
+        isMutable = false,
         RefType(genTypeID.itables),
-        init = Expr(itablesInit),
-        isMutable = false
+        init = Expr(itablesInit)
       )
     )
   }
@@ -1907,9 +1907,9 @@ object CoreWasmLib {
       Global(
         genGlobalID.lastIDHashCode,
         OriginalName(genGlobalID.lastIDHashCode.toString()),
+        isMutable = true,
         Int32,
-        Expr(List(I32Const(0))),
-        isMutable = true
+        Expr(List(I32Const(0)))
       )
     )
 

@@ -74,7 +74,7 @@ final class Emitter(config: Emitter.Config) {
         wamod.Import(
           "__scalaJSImports",
           moduleName,
-          wamod.ImportDesc.Global(id, origName, watpe.RefType.anyref, isMutable = false)
+          wamod.ImportDesc.Global(id, origName, isMutable = false, watpe.RefType.anyref)
         )
       )
     }
@@ -139,14 +139,14 @@ final class Emitter(config: Emitter.Config) {
       wamod.Global(
         genGlobalID.stringLiteralCache,
         OriginalName("stringLiteralCache"),
+        isMutable = false,
         watpe.RefType(genTypeID.anyArray),
         wa.Expr(
           List(
             wa.I32Const(stringPoolCount),
             wa.ArrayNewDefault(genTypeID.anyArray)
           )
-        ),
-        isMutable = false
+        )
       )
     )
   }

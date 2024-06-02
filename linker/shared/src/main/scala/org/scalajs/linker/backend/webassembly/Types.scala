@@ -26,7 +26,13 @@ object Types {
   /** A WebAssembly `storagetype`. */
   sealed trait StorageType
 
-  /** A WebAssembly `valtype`. */
+  /** A WebAssembly `valtype`.
+   *
+   *  We call it `Type` because it matches the concept of `Type` in the
+   *  Scala.js IR. It is the type of a term, from an "execution semantic
+   *  typing" point of view. It is also the kind of type we manipulate the most
+   *  across the backend, so it also makes sense for it to be the "default".
+   */
   sealed abstract class Type extends StorageType
 
   /** Convenience superclass for `Type`s that are encoded with a simple opcode. */
@@ -101,17 +107,19 @@ object Types {
         val nullableRefTextName: String, val binaryCode: Byte)
         extends HeapType
 
+    // Ordered by decreasing value of opcodes -- matches the order in the binary format
+
+    case object NoExn extends AbsHeapType("noexn", "nullexnref", 0x74)
+    case object NoFunc extends AbsHeapType("nofunc", "nullfuncref", 0x73)
+    case object NoExtern extends AbsHeapType("noextern", "nullexternref", 0x72)
+    case object None extends AbsHeapType("none", "nullref", 0x71)
     case object Func extends AbsHeapType("func", "funcref", 0x70)
     case object Extern extends AbsHeapType("extern", "externref", 0x6F)
     case object Any extends AbsHeapType("any", "anyref", 0x6E)
     case object Eq extends AbsHeapType("eq", "eqref", 0x6D)
+    case object Struct extends AbsHeapType("struct", "structref", 0x6B)
     case object Array extends AbsHeapType("array", "arrayref", 0x6A)
     case object Exn extends AbsHeapType("exn", "exnref", 0x69)
-    case object Struct extends AbsHeapType("struct", "structref", 0x6B)
-    case object None extends AbsHeapType("none", "nullref", 0x71)
-    case object NoExtern extends AbsHeapType("noextern", "nullexternref", 0x72)
-    case object NoFunc extends AbsHeapType("nofunc", "nullfuncref", 0x73)
-    case object NoExn extends AbsHeapType("noexn", "nullexnref", 0x74)
 
     def apply(typeID: TypeID): HeapType.Type =
       HeapType.Type(typeID)
@@ -127,7 +135,12 @@ object Types {
       RecType(singleSubType :: Nil)
   }
 
-  /** A WebAssembly `subtype` with an associated name. */
+  /** A WebAssembly `subtype` with an associated name.
+   *
+   *  It has the form `sub isFinal? superType* compositeType` in the spec.
+   *  There is an additional constraint that `superType` can contain at most
+   *  one element, which we why we store it as an `Option`.
+   */
   final case class SubType(
       id: TypeID,
       originalName: OriginalName,
