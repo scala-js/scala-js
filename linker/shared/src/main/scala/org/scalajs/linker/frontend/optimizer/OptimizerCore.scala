@@ -33,6 +33,7 @@ import org.scalajs.linker.interface.unstable.RuntimeClassNameMapperImpl
 import org.scalajs.linker.standard._
 import org.scalajs.linker.backend.emitter.LongImpl
 import org.scalajs.linker.backend.emitter.Transients._
+import org.scalajs.linker.backend.wasmemitter.WasmTransients._
 
 /** Optimizer core.
  *  Designed to be "mixed in" [[IncOptimizer#MethodImpl#Optimizer]].
@@ -2786,6 +2787,35 @@ private[optimizer] abstract class OptimizerCore(
       })
     }
 
+    def longToInt(longExpr: Tree): Tree =
+      UnaryOp(UnaryOp.LongToInt, longExpr)
+    def wasmUnaryOp(op: WasmUnaryOp.Code, lhs: PreTransform): Tree =
+      Transient(WasmUnaryOp(op, finishTransformExpr(lhs)))
+    def wasmBinaryOp(op: WasmBinaryOp.Code, lhs: PreTransform, rhs: PreTransform): Tree =
+      Transient(WasmBinaryOp(op, finishTransformExpr(lhs), finishTransformExpr(rhs)))
+
+    def genericWasmDivModUnsigned(wasmOp: WasmBinaryOp.Code, signedOp: BinaryOp.Code,
+        equalsOp: BinaryOp.Code, zeroLiteral: Literal): TailRec[Tree] = {
+      targs(1) match {
+        case PreTransLit(IntLiteral(r)) if r != 0 =>
+          contTree(wasmBinaryOp(wasmOp, targs(0), targs(1)))
+        case PreTransLit(LongLiteral(r)) if r != 0L =>
+          contTree(wasmBinaryOp(wasmOp, targs(0), targs(1)))
+        case _ =>
+          withNewTempLocalDefs(targs) { (localDefs, cont1) =>
+            val List(lhsLocalDef, rhsLocalDef) = localDefs
+            cont1 {
+              If(BinaryOp(equalsOp, rhsLocalDef.newReplacement, zeroLiteral), {
+                // trigger the appropriate ArithmeticException
+                BinaryOp(signedOp, zeroLiteral, zeroLiteral)
+              }, {
+                wasmBinaryOp(wasmOp, lhsLocalDef.toPreTransform, rhsLocalDef.toPreTransform)
+              })(zeroLiteral.tpe).toPreTransform
+            }
+          } (cont)
+      }
+    }
+
     (intrinsicCode: @switch) match {
       // Not an intrisic
 
@@ -2889,10 +2919,73 @@ private[optimizer] abstract class OptimizerCore(
           case PreTransLit(IntLiteral(value)) =>
             contTree(IntLiteral(Integer.numberOfLeadingZeros(value)))
           case _ =>
-            default
+            if (isWasm)
+              contTree(wasmUnaryOp(WasmUnaryOp.I32Clz, tvalue))
+            else
+              default
+        }
+      case IntegerNTZ =>
+        val tvalue = targs.head
+        tvalue match {
+          case PreTransLit(IntLiteral(value)) =>
+            contTree(IntLiteral(Integer.numberOfTrailingZeros(value)))
+          case _ =>
+            contTree(wasmUnaryOp(WasmUnaryOp.I32Ctz, tvalue))
+        }
+      case IntegerBitCount =>
+        val tvalue = targs.head
+        tvalue match {
+          case PreTransLit(IntLiteral(value)) =>
+            contTree(IntLiteral(Integer.bitCount(value)))
+          case _ =>
+            contTree(wasmUnaryOp(WasmUnaryOp.I32Popcnt, tvalue))
         }
 
+      case IntegerRotateLeft =>
+        contTree(wasmBinaryOp(WasmBinaryOp.I32Rotl, targs.head, targs.tail.head))
+      case IntegerRotateRight =>
+        contTree(wasmBinaryOp(WasmBinaryOp.I32Rotr, targs.head, targs.tail.head))
+
+      case IntegerDivideUnsigned =>
+        genericWasmDivModUnsigned(WasmBinaryOp.I32DivU, BinaryOp.Int_/,
+            BinaryOp.Int_==, IntLiteral(0))
+      case IntegerRemainderUnsigned =>
+        genericWasmDivModUnsigned(WasmBinaryOp.I32RemU, BinaryOp.Int_/,
+            BinaryOp.Int_==, IntLiteral(0))
+
       // java.lang.Long
+
+      case LongNLZ =>
+        val tvalue = targs.head
+        tvalue match {
+          case PreTransLit(LongLiteral(value)) =>
+            contTree(IntLiteral(java.lang.Long.numberOfLeadingZeros(value)))
+          case _ =>
+            contTree(longToInt(wasmUnaryOp(WasmUnaryOp.I64Clz, tvalue)))
+        }
+      case LongNTZ =>
+        val tvalue = targs.head
+        tvalue match {
+          case PreTransLit(LongLiteral(value)) =>
+            contTree(IntLiteral(java.lang.Long.numberOfTrailingZeros(value)))
+          case _ =>
+            contTree(longToInt(wasmUnaryOp(WasmUnaryOp.I64Ctz, tvalue)))
+        }
+      case LongBitCount =>
+        val tvalue = targs.head
+        tvalue match {
+          case PreTransLit(LongLiteral(value)) =>
+            contTree(IntLiteral(java.lang.Long.bitCount(value)))
+          case _ =>
+            contTree(longToInt(wasmUnaryOp(WasmUnaryOp.I64Popcnt, tvalue)))
+        }
+
+      case LongRotateLeft =>
+        contTree(wasmBinaryOp(WasmBinaryOp.I64Rotl, targs.head,
+            PreTransUnaryOp(UnaryOp.IntToLong, targs.tail.head)))
+      case LongRotateRight =>
+        contTree(wasmBinaryOp(WasmBinaryOp.I64Rotr, targs.head,
+            PreTransUnaryOp(UnaryOp.IntToLong, targs.tail.head)))
 
       case LongToString =>
         pretransformApply(ApplyFlags.empty, targs.head,
@@ -2904,16 +2997,86 @@ private[optimizer] abstract class OptimizerCore(
             MethodIdent(LongImpl.compareToRTLong), targs.tail, IntType,
             isStat, usePreTransform)(
             cont)
+
       case LongDivideUnsigned =>
-        pretransformApply(ApplyFlags.empty, targs.head,
-            MethodIdent(LongImpl.divideUnsigned), targs.tail,
-            ClassType(LongImpl.RuntimeLongClass), isStat, usePreTransform)(
-            cont)
+        if (isWasm) {
+          genericWasmDivModUnsigned(WasmBinaryOp.I64DivU, BinaryOp.Long_/,
+              BinaryOp.Long_==, LongLiteral(0L))
+        } else {
+          pretransformApply(ApplyFlags.empty, targs.head,
+              MethodIdent(LongImpl.divideUnsigned), targs.tail,
+              ClassType(LongImpl.RuntimeLongClass), isStat, usePreTransform)(
+              cont)
+        }
       case LongRemainderUnsigned =>
-        pretransformApply(ApplyFlags.empty, targs.head,
-            MethodIdent(LongImpl.remainderUnsigned), targs.tail,
-            ClassType(LongImpl.RuntimeLongClass), isStat, usePreTransform)(
-            cont)
+        if (isWasm) {
+          genericWasmDivModUnsigned(WasmBinaryOp.I64RemU, BinaryOp.Long_%,
+              BinaryOp.Long_==, LongLiteral(0L))
+        } else {
+          pretransformApply(ApplyFlags.empty, targs.head,
+              MethodIdent(LongImpl.remainderUnsigned), targs.tail,
+              ClassType(LongImpl.RuntimeLongClass), isStat, usePreTransform)(
+              cont)
+        }
+
+      // java.lang.Float
+
+      case FloatToIntBits =>
+        // The Wasm I32ReinterpretF32 is the *raw* version; we need to normalize NaNs
+        withNewTempLocalDefs(targs) { (localDefs, cont1) =>
+          val argLocalDef = localDefs.head
+          def argToDouble = UnaryOp(UnaryOp.FloatToDouble, argLocalDef.newReplacement)
+          cont1 {
+            If(BinaryOp(BinaryOp.Double_!=, argToDouble, argToDouble),
+                IntLiteral(java.lang.Float.floatToIntBits(Float.NaN)),
+                wasmUnaryOp(WasmUnaryOp.I32ReinterpretF32, argLocalDef.toPreTransform))(
+                IntType).toPreTransform
+          }
+        } (cont)
+
+      case IntBitsToFloat =>
+        contTree(wasmUnaryOp(WasmUnaryOp.F32ReinterpretI32, targs.head))
+
+      // java.lang.Double
+
+      case DoubleToLongBits =>
+        // The Wasm I64ReinterpretF64 is the *raw* version; we need to normalize NaNs
+        withNewTempLocalDefs(targs) { (localDefs, cont1) =>
+          val argLocalDef = localDefs.head
+          cont1 {
+            If(BinaryOp(BinaryOp.Double_!=, argLocalDef.newReplacement, argLocalDef.newReplacement),
+                LongLiteral(java.lang.Double.doubleToLongBits(Double.NaN)),
+                wasmUnaryOp(WasmUnaryOp.I64ReinterpretF64, argLocalDef.toPreTransform))(
+                LongType).toPreTransform
+          }
+        } (cont)
+
+      case LongBitsToDouble =>
+        contTree(wasmUnaryOp(WasmUnaryOp.F64ReinterpretI64, targs.head))
+
+      // java.lang.Math
+
+      case MathAbsFloat =>
+        contTree(wasmUnaryOp(WasmUnaryOp.F32Abs, targs.head))
+      case MathAbsDouble =>
+        contTree(wasmUnaryOp(WasmUnaryOp.F64Abs, targs.head))
+      case MathCeil =>
+        contTree(wasmUnaryOp(WasmUnaryOp.F64Ceil, targs.head))
+      case MathFloor =>
+        contTree(wasmUnaryOp(WasmUnaryOp.F64Floor, targs.head))
+      case MathRint =>
+        contTree(wasmUnaryOp(WasmUnaryOp.F64Nearest, targs.head))
+      case MathSqrt =>
+        contTree(wasmUnaryOp(WasmUnaryOp.F64Sqrt, targs.head))
+
+      case MathMinFloat =>
+        contTree(wasmBinaryOp(WasmBinaryOp.F32Min, targs.head, targs.tail.head))
+      case MathMinDouble =>
+        contTree(wasmBinaryOp(WasmBinaryOp.F64Min, targs.head, targs.tail.head))
+      case MathMaxFloat =>
+        contTree(wasmBinaryOp(WasmBinaryOp.F32Max, targs.head, targs.tail.head))
+      case MathMaxDouble =>
+        contTree(wasmBinaryOp(WasmBinaryOp.F64Max, targs.head, targs.tail.head))
 
       // scala.collection.mutable.ArrayBuilder
 
@@ -6369,13 +6532,41 @@ private[optimizer] object OptimizerCore {
     final val ArrayLength = ArrayUpdate      + 1
 
     final val IntegerNLZ = ArrayLength + 1
+    final val IntegerNTZ = IntegerNLZ + 1
+    final val IntegerBitCount = IntegerNTZ + 1
+    final val IntegerRotateLeft = IntegerBitCount + 1
+    final val IntegerRotateRight = IntegerRotateLeft + 1
+    final val IntegerDivideUnsigned = IntegerRotateRight + 1
+    final val IntegerRemainderUnsigned = IntegerDivideUnsigned + 1
 
-    final val LongToString = IntegerNLZ + 1
+    final val LongNLZ = IntegerRemainderUnsigned + 1
+    final val LongNTZ = LongNLZ + 1
+    final val LongBitCount = LongNTZ + 1
+    final val LongRotateLeft = LongBitCount + 1
+    final val LongRotateRight = LongRotateLeft + 1
+    final val LongToString = LongRotateRight + 1
     final val LongCompare = LongToString + 1
     final val LongDivideUnsigned = LongCompare + 1
     final val LongRemainderUnsigned = LongDivideUnsigned + 1
 
-    final val ArrayBuilderZeroOf = LongRemainderUnsigned + 1
+    final val FloatToIntBits = LongRemainderUnsigned + 1
+    final val IntBitsToFloat = FloatToIntBits + 1
+
+    final val DoubleToLongBits = IntBitsToFloat + 1
+    final val LongBitsToDouble = DoubleToLongBits + 1
+
+    final val MathAbsFloat = LongBitsToDouble + 1
+    final val MathAbsDouble = MathAbsFloat + 1
+    final val MathCeil = MathAbsDouble + 1
+    final val MathFloor = MathCeil + 1
+    final val MathRint = MathFloor + 1
+    final val MathSqrt = MathRint + 1
+    final val MathMinFloat = MathSqrt + 1
+    final val MathMinDouble = MathMinFloat + 1
+    final val MathMaxFloat = MathMinDouble + 1
+    final val MathMaxDouble = MathMaxFloat + 1
+
+    final val ArrayBuilderZeroOf = MathMaxDouble + 1
     final val GenericArrayBuilderResult = ArrayBuilderZeroOf + 1
 
     final val ClassGetComponentType = GenericArrayBuilderResult + 1
@@ -6407,6 +6598,8 @@ private[optimizer] object OptimizerCore {
     private val V = VoidRef
     private val I = IntRef
     private val J = LongRef
+    private val F = FloatRef
+    private val D = DoubleRef
     private val O = ClassRef(ObjectClass)
     private val ClassClassRef = ClassRef(ClassClass)
     private val StringClassRef = ClassRef(BoxedStringClass)
@@ -6474,11 +6667,52 @@ private[optimizer] object OptimizerCore {
             m("remainderUnsigned", List(J, J), J) -> LongRemainderUnsigned
         )
     )
+
+    private val wasmIntrinsics: List[(ClassName, List[(MethodName, Int)])] = List(
+        ClassName("java.lang.Integer$") -> List(
+            // note: numberOfLeadingZeros in already in the commonIntrinsics
+            m("numberOfTrailingZeros", List(I), I) -> IntegerNTZ,
+            m("bitCount", List(I), I) -> IntegerBitCount,
+            m("rotateLeft", List(I, I), I) -> IntegerRotateLeft,
+            m("rotateRight", List(I, I), I) -> IntegerRotateRight,
+            m("divideUnsigned", List(I, I), I) -> IntegerDivideUnsigned,
+            m("remainderUnsigned", List(I, I), I) -> IntegerRemainderUnsigned
+        ),
+        ClassName("java.lang.Long$") -> List(
+            m("numberOfLeadingZeros", List(J), I) -> LongNLZ,
+            m("numberOfTrailingZeros", List(J), I) -> LongNTZ,
+            m("bitCount", List(J), I) -> LongBitCount,
+            m("rotateLeft", List(J, I), J) -> LongRotateLeft,
+            m("rotateRight", List(J, I), J) -> LongRotateRight,
+            m("divideUnsigned", List(J, J), J) -> LongDivideUnsigned,
+            m("remainderUnsigned", List(J, J), J) -> LongRemainderUnsigned
+        ),
+        ClassName("java.lang.Float$") -> List(
+            m("floatToIntBits", List(F), I) -> FloatToIntBits,
+            m("intBitsToFloat", List(I), F) -> IntBitsToFloat
+        ),
+        ClassName("java.lang.Double$") -> List(
+            m("doubleToLongBits", List(D), J) -> DoubleToLongBits,
+            m("longBitsToDouble", List(J), D) -> LongBitsToDouble
+        ),
+        ClassName("java.lang.Math$") -> List(
+            m("abs", List(F), F) -> MathAbsFloat,
+            m("abs", List(D), D) -> MathAbsDouble,
+            m("ceil", List(D), D) -> MathCeil,
+            m("floor", List(D), D) -> MathFloor,
+            m("rint", List(D), D) -> MathRint,
+            m("sqrt", List(D), D) -> MathSqrt,
+            m("min", List(F, F), F) -> MathMinFloat,
+            m("min", List(D, D), D) -> MathMinDouble,
+            m("max", List(F, F), F) -> MathMaxFloat,
+            m("max", List(D, D), D) -> MathMaxDouble
+        )
+    )
     // scalastyle:on line.size.limit
 
     def buildIntrinsics(esFeatures: ESFeatures, isWasm: Boolean): Intrinsics = {
       val allIntrinsics = if (isWasm) {
-        commonIntrinsics
+        commonIntrinsics ::: wasmIntrinsics
       } else {
         val baseIntrinsics = commonIntrinsics ::: baseJSIntrinsics
         if (esFeatures.allowBigIntsForLongs) baseIntrinsics

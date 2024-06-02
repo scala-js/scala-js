@@ -366,9 +366,11 @@ object Double {
   @inline def hashCode(value: scala.Double): Int =
     FloatingPointBits.numberHashCode(value)
 
+  // Wasm intrinsic
   @inline def longBitsToDouble(bits: scala.Long): scala.Double =
     FloatingPointBits.longBitsToDouble(bits)
 
+  // Wasm intrinsic
   @inline def doubleToLongBits(value: scala.Double): scala.Long =
     FloatingPointBits.doubleToLongBits(value)
 

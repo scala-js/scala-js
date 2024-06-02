@@ -2954,6 +2954,19 @@ private class FunctionEmitter private (
         fb += wa.Call(genFunctionID.anyGetClassName)
         StringType
 
+      case value @ WasmTransients.WasmUnaryOp(_, lhs) =>
+        genTreeAuto(lhs)
+        markPosition(tree)
+        fb += value.wasmInstr
+        value.tpe
+
+      case value @ WasmTransients.WasmBinaryOp(_, lhs, rhs) =>
+        genTreeAuto(lhs)
+        genTreeAuto(rhs)
+        markPosition(tree)
+        fb += value.wasmInstr
+        value.tpe
+
       case other =>
         throw new AssertionError(s"Unknown transient: $other")
     }
