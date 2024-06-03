@@ -116,7 +116,8 @@ object DerivedClasses {
         method.originalName,
         method.args,
         method.resultType,
-        Some(Apply(EAF, selectField, method.name, method.args.map(_.ref))(method.resultType))
+        Some(ApplyStatically(EAF, selectField, className, method.name,
+            method.args.map(_.ref))(method.resultType))
       )(method.optimizerHints, method.version)
     }
 
