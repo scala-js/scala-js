@@ -646,26 +646,20 @@ private class FunctionEmitter private (
         }
         val receiverClassInfo = ctx.getClassInfo(receiverClassName)
 
-        /* If possible, "optimize" this Apply node as an ApplyStatically call.
-         * We can do this if the receiver's class is a hijacked class or an
-         * array type (because they are known to be final) or if the target
-         * method is effectively final.
+        /* Hijacked classes do not receive tables at all, and `Apply`s on array
+         * types are considered to be statically resolved by the `Analyzer`.
+         * Therefore, if the receiver's static type is a prim type, hijacked
+         * class or array type, we must use static dispatch instead.
          *
-         * The latter condition is nothing but an optimization, and should be
-         * done by the optimizer instead. We will remove it once we can run the
-         * optimizer with Wasm.
-         *
-         * The former condition (being a hijacked class or an array type) will
-         * also never happen after we have the optimizer. But if we do not have
-         * the optimizer, we must still do it now because the preconditions of
-         * `genApplyWithDispatch` would not be met.
+         * This never happens when we use the optimizer, since it already turns
+         * any such `Apply` into an `ApplyStatically` (when it does not inline
+         * it altogether).
          */
-        val canUseStaticallyResolved = {
+        val useStaticDispatch = {
           receiverClassInfo.kind == ClassKind.HijackedClass ||
-          receiver.tpe.isInstanceOf[ArrayType] ||
-          receiverClassInfo.resolvedMethodInfos.get(method.name).exists(_.isEffectivelyFinal)
+          receiver.tpe.isInstanceOf[ArrayType]
         }
-        if (canUseStaticallyResolved) {
+        if (useStaticDispatch) {
           genApplyStatically(ApplyStatically(
               flags, receiver, receiverClassName, method, args)(tree.tpe)(tree.pos))
         } else {
