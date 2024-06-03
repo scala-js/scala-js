@@ -1347,19 +1347,53 @@ private class FunctionEmitter private (
     val BinaryOp(op, lhs, rhs) = tree
     assert(op == === || op == !==)
 
-    // TODO Optimize this when the operands have a better type than `any`
+    def maybeGenInvert(): Unit = {
+      if (op == BinaryOp.!==)
+        genBooleanNot(fb)
+    }
 
-    genTree(lhs, AnyType)
-    genTree(rhs, AnyType)
+    val lhsType = lhs.tpe
+    val rhsType = rhs.tpe
 
-    markPosition(tree)
+    if (lhsType == NothingType) {
+      genTree(lhs, NothingType)
+      NothingType
+    } else if (rhsType == NothingType) {
+      genTree(lhs, NoType)
+      genTree(rhs, NothingType)
+      NothingType
+    } else if (rhsType == NullType) {
+      /* Note that the optimizer normalizes Literals on the right of `===`,
+       * so testing for the `lhsType == NullType` is not as useful.
+       */
+      genTree(lhs, AnyType)
+      genTree(rhs, NoType) // no-op if it is actually a Null() literal
+      markPosition(tree)
+      fb += wa.RefIsNull
+      maybeGenInvert()
+      BooleanType
+    } else {
+      val lhsWasmType = transformSingleType(lhsType)
+      val rhsWasmType = transformSingleType(rhsType)
 
-    fb += wa.Call(genFunctionID.is)
+      (lhsWasmType, rhsWasmType) match {
+        case (watpe.RefType(_, lhsHeapType), watpe.RefType(_, rhsHeapType))
+            if lhsHeapType != watpe.HeapType.Any && rhsHeapType != watpe.HeapType.Any =>
+          genTree(lhs, lhsType)
+          genTree(rhs, rhsType)
+          markPosition(tree)
+          fb += wa.RefEq
 
-    if (op == !==)
-      genBooleanNot(fb)
+        case _ =>
+          genTree(lhs, AnyType)
+          genTree(rhs, AnyType)
+          markPosition(tree)
+          fb += wa.Call(genFunctionID.is)
+      }
 
-    BooleanType
+      maybeGenInvert()
+      BooleanType
+    }
   }
 
   private def getElementaryBinaryOpInstr(op: BinaryOp.Code): wa.Instr = {

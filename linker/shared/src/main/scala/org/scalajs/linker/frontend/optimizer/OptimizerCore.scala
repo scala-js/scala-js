@@ -542,10 +542,14 @@ private[optimizer] abstract class OptimizerCore(
           pretransformExpr(expr) { texpr =>
             val result = {
               if (isSubtype(texpr.tpe.base, testType)) {
-                if (texpr.tpe.isNullable)
-                  JSBinaryOp(JSBinaryOp.!==, finishTransformExpr(texpr), Null())
-                else
+                if (texpr.tpe.isNullable) {
+                  if (isWasm)
+                    BinaryOp(BinaryOp.!==, finishTransformExpr(texpr), Null())
+                  else
+                    JSBinaryOp(JSBinaryOp.!==, finishTransformExpr(texpr), Null())
+                } else {
                   Block(finishTransformStat(texpr), BooleanLiteral(true))
+                }
               } else {
                 if (texpr.tpe.isExact)
                   Block(finishTransformStat(texpr), BooleanLiteral(false))
@@ -3491,6 +3495,13 @@ private[optimizer] abstract class OptimizerCore(
                 if lhsIdent2 == lhsIdent && rhsIdent2 == rhsIdent =>
               elsep
 
+            // Same, but on Wasm, which does not turn BinaryOp.=== into JSBinaryOp.===
+            case (BinaryOp(BinaryOp.===, VarRef(lhsIdent), Null()),
+                BinaryOp(BinaryOp.===, VarRef(rhsIdent), Null()),
+                BinaryOp(BinaryOp.===, VarRef(lhsIdent2), VarRef(rhsIdent2)))
+                if lhsIdent2 == lhsIdent && rhsIdent2 == rhsIdent =>
+              elsep
+
             // Example: (x > y) || (x == y)  ->  (x >= y)
             case (BinaryOp(op1 @ (Int_== | Int_!= | Int_< | Int_<= | Int_> | Int_>=), l1, r1),
                   BooleanLiteral(true),
@@ -4077,7 +4088,9 @@ private[optimizer] abstract class OptimizerCore(
           case (PreTransLit(l), PreTransLit(r)) =>
             val isSame = literal_===(l, r, isJSStrictEq = false)
             PreTransLit(BooleanLiteral(if (op == ===) isSame else !isSame))
-          case _ if canOptimizeAsJSStrictEq(lhs.tpe, rhs.tpe) =>
+          case (PreTransLit(_), _) =>
+            foldBinaryOp(op, rhs, lhs)
+          case _ if !isWasm && canOptimizeAsJSStrictEq(lhs.tpe, rhs.tpe) =>
             foldJSBinaryOp(
                 if (op == ===) JSBinaryOp.=== else JSBinaryOp.!==,
                 lhs, rhs)
@@ -5027,7 +5040,7 @@ private[optimizer] abstract class OptimizerCore(
                 finishTransformStat(lhs),
                 BooleanLiteral(!positive)).toPreTransform
 
-          case (PreTransLit(_), _) => foldBinaryOp(op, rhs, lhs)
+          case (PreTransLit(_), _) => foldJSBinaryOp(op, rhs, lhs)
           case _                   => default
         }
 
