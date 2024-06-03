@@ -260,14 +260,11 @@ object WasmContext {
           val superTableEntries = superClass.fold[List[MethodName]](Nil)(_.tableEntries)
           val superTableEntrySet = superTableEntries.toSet
 
-          /* When computing the table entries to add for this class, exclude:
-           * - methods that are already in the super class' table entries, and
-           * - methods that are effectively final, since they will always be
-           *   statically resolved instead of using the table dispatch.
+          /* When computing the table entries to add for this class, exclude
+           * methods that are already in the super class' table entries.
            */
           val newTableEntries = methodsCalledDynamically
             .filter(!superTableEntrySet.contains(_))
-            .filterNot(m => resolvedMethodInfos.get(m).exists(_.isEffectivelyFinal))
             .sorted // for stability
 
           _tableEntries = superTableEntries ::: newTableEntries
@@ -289,13 +286,5 @@ object WasmContext {
 
   final class ConcreteMethodInfo(val ownerClass: ClassName, val methodName: MethodName) {
     val tableEntryID = genFunctionID.forTableEntry(ownerClass, methodName)
-
-    private var effectivelyFinal: Boolean = true
-
-    /** For use by `Preprocessor`. */
-    private[wasmemitter] def markOverridden(): Unit =
-      effectivelyFinal = false
-
-    def isEffectivelyFinal: Boolean = effectivelyFinal
   }
 }

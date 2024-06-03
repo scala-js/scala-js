@@ -175,9 +175,6 @@ object Preprocessor {
           m.methodName
         }
 
-        for (methodName <- concretePublicMethodNames)
-          inherited.get(methodName).foreach(_.markOverridden())
-
         concretePublicMethodNames.foldLeft(inherited) { (prev, methodName) =>
           prev.updated(methodName, new ConcreteMethodInfo(className, methodName))
         }
