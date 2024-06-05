@@ -49,7 +49,7 @@ class TaggerTest {
 
     val finalModuleMap = locally {
       val publicModuleDependencies = ListMap(
-        moduleAID -> ListSet(publicAClassName, publicBClassName),
+        moduleAID -> ListSet(publicAClassName, publicBClassName)
       )
       val info = new DependencyInfo(classDependencies, publicModuleDependencies)
       val tagger = new Tagger(info, Set.empty)
@@ -235,7 +235,7 @@ class TaggerTest {
 
     val midModuleMap = locally {
       val publicModuleDependencies = ListMap(
-        moduleAID -> ListSet(publicAClassName, publicBClassName),
+        moduleAID -> ListSet(publicAClassName, publicBClassName)
       )
       val info = new DependencyInfo(classDependencies, publicModuleDependencies)
       val tagger = new Tagger(info, Set.empty)
@@ -244,7 +244,7 @@ class TaggerTest {
 
     val finalModuleMap = locally {
       val publicModuleDependencies = ListMap(
-        moduleAID -> ListSet(publicAClassName, publicBClassName, publicCClassName),
+        moduleAID -> ListSet(publicAClassName, publicBClassName, publicCClassName)
       )
       val info = new DependencyInfo(classDependencies, publicModuleDependencies)
       val tagger = new Tagger(info, Set.empty)
