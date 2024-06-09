@@ -15,11 +15,19 @@ package java.util
 import scala.annotation.tailrec
 
 import scala.scalajs.js
+import scala.scalajs.runtime.linkingInfo
 
 class Random(seed_in: Long) extends AnyRef with java.io.Serializable {
+  /* This class has two different implementations of seeding and computing
+   * bits, depending on whether we are on Wasm or JS. On Wasm, we use the
+   * implementation specified in the JavaDoc verbatim. On JS, however, that is
+   * too slow, due to the use of `Long`s. Therefore, we decompose the
+   * computations using 2x24 bits. See `nextJS()` for details.
+   */
 
-  private var seedHi: Int = _ // 24 msb of the seed
-  private var seedLo: Int = _ // 24 lsb of the seed
+  private var seed: Long = _ // the full seed on Wasm (dce'ed on JS)
+  private var seedHi: Int = _ // 24 msb of the seed in JS (dce'ed on Wasm)
+  private var seedLo: Int = _ // 24 lsb of the seed in JS (dce'ed on Wasm)
 
   // see nextGaussian()
   private var nextNextGaussian: Double = _
@@ -31,12 +39,30 @@ class Random(seed_in: Long) extends AnyRef with java.io.Serializable {
 
   def setSeed(seed_in: Long): Unit = {
     val seed = ((seed_in ^ 0x5DEECE66DL) & ((1L << 48) - 1)) // as documented
-    seedHi = (seed >>> 24).toInt
-    seedLo = seed.toInt & ((1 << 24) - 1)
+    if (linkingInfo.isWebAssembly) {
+      this.seed = seed
+    } else {
+      seedHi = (seed >>> 24).toInt
+      seedLo = seed.toInt & ((1 << 24) - 1)
+    }
     haveNextNextGaussian = false
   }
 
-  protected def next(bits: Int): Int = {
+  @noinline
+  protected def next(bits: Int): Int =
+    if (linkingInfo.isWebAssembly) nextWasm(bits)
+    else nextJS(bits)
+
+  @inline
+  private def nextWasm(bits: Int): Int = {
+    // as documented
+    val newSeed = (seed * 0x5DEECE66DL + 0xBL) & ((1L << 48) - 1)
+    seed = newSeed
+    (newSeed >>> (48 - bits)).toInt
+  }
+
+  @inline
+  private def nextJS(bits: Int): Int = {
     /* This method is originally supposed to work with a Long seed from which
      * 48 bits are used.
      * Since Longs are too slow, we manually decompose the 48-bit seed in two
