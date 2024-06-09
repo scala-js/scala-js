@@ -634,6 +634,8 @@ private class FunctionEmitter private (
         primType match {
           case NullType =>
             ()
+          case ByteType | ShortType =>
+            fb += wa.RefI31
           case CharType =>
             /* `char` and `long` are opaque to JS in the Scala.js semantics.
              * We implement them with real Wasm classes following the correct

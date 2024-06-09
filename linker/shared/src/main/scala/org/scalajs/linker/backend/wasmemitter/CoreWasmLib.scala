@@ -310,12 +310,9 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
 
     addHelperImport(genFunctionID.isUndef, List(anyref), List(Int32))
 
-    for (primRef <- List(BooleanRef, ByteRef, ShortRef, FloatRef, DoubleRef)) {
-      val wasmType = primRef match {
-        case FloatRef  => Float32
-        case DoubleRef => Float64
-        case _         => Int32
-      }
+    for (primType <- List(BooleanType, FloatType, DoubleType)) {
+      val primRef = primType.primRef
+      val wasmType = transformPrimType(primType)
       addHelperImport(genFunctionID.box(primRef), List(wasmType), List(RefType.any))
       addHelperImport(genFunctionID.unbox(primRef), List(anyref), List(wasmType))
       addHelperImport(genFunctionID.typeTest(primRef), List(anyref), List(Int32))
@@ -596,6 +593,10 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
   private def genHelperDefinitions()(implicit ctx: WasmContext): Unit = {
     genBoxInt()
     genUnboxInt()
+    genUnboxByteOrShort(ByteRef)
+    genUnboxByteOrShort(ShortRef)
+    genTestByteOrShort(ByteRef, I32Extend8S)
+    genTestByteOrShort(ShortRef, I32Extend16S)
     genStringLiteral()
     genCreateStringFromData()
     genTypeDataName()
@@ -715,6 +716,61 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
 
     // Otherwise, use the fallback helper
     fb += Call(genFunctionID.uIFallback)
+
+    fb.buildAndAddToModule()
+  }
+
+  private def genUnboxByteOrShort(typeRef: PrimRef)(implicit ctx: WasmContext): Unit = {
+    /* The unboxing functions for Byte and Short actually do exactly the same thing.
+     * We keep them separate so that the rest of the codebase is clearer.
+     * Note that *checked* unboxing goes through `genFunctionID.asInstance` instead.
+     */
+
+    val fb = newFunctionBuilder(genFunctionID.unbox(typeRef))
+    val xParam = fb.addParam("x", RefType.anyref)
+    fb.setResultType(Int32)
+
+    // If x is a (ref i31), extract it
+    fb.block(RefType.anyref) { xIsNotI31Label =>
+      fb += LocalGet(xParam)
+      fb += BrOnCastFail(xIsNotI31Label, RefType.anyref, RefType.i31)
+      fb += I31GetS
+      fb += Return
+    }
+
+    // Otherwise, it must be null, so return 0
+    // Note that all JS `number`s in the correct range are guaranteed to be i31ref's
+    fb += Drop
+    fb += I32Const(0)
+
+    fb.buildAndAddToModule()
+  }
+
+  private def genTestByteOrShort(typeRef: PrimRef, signExtend: SimpleInstr)(
+        implicit ctx: WasmContext): Unit = {
+
+    val fb = newFunctionBuilder(genFunctionID.typeTest(typeRef))
+    val xParam = fb.addParam("x", RefType.anyref)
+    fb.setResultType(Int32)
+
+    val intValueLocal = fb.addLocal("intValue", Int32)
+
+    // If x is a (ref i31), extract it and test whether it sign-extends to itself
+    fb.block(RefType.anyref) { xIsNotI31Label =>
+      fb += LocalGet(xParam)
+      fb += BrOnCastFail(xIsNotI31Label, RefType.anyref, RefType.i31)
+      fb += I31GetS
+      fb += LocalTee(intValueLocal)
+      fb += LocalGet(intValueLocal)
+      fb += signExtend
+      fb += I32Eq
+      fb += Return
+    }
+
+    // Otherwise, return false
+    // Note that all JS `number`s in the correct range are guaranteed to be i31ref's
+    fb += Drop
+    fb += I32Const(0)
 
     fb.buildAndAddToModule()
   }
@@ -1202,6 +1258,40 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
 
     fb.block() { objIsNullLabel =>
       primType match {
+        // For byte and short, use br_on_cast_fail with i31 then check the value
+        case ByteType | ShortType =>
+          val intValueLocal = fb.addLocal("intValue", Int32)
+
+          fb.block(RefType.anyref) { castFailLabel =>
+            fb += LocalGet(objParam)
+            fb += BrOnNull(objIsNullLabel)
+            fb += BrOnCastFail(castFailLabel, RefType.any, RefType.i31)
+
+            // Extract the i31 value
+            fb += I31GetS
+            fb += LocalTee(intValueLocal)
+
+            // if it sign-extends to itself
+            fb += LocalGet(intValueLocal)
+            if (primType == ByteType)
+              fb += I32Extend8S
+            else
+              fb += I32Extend16S
+            fb += I32Eq
+            fb.ifThen() {
+              // then success
+              if (isUnbox)
+                fb += LocalGet(intValueLocal)
+              else
+                fb += LocalGet(objParam)
+              fb += Return
+            }
+
+            // Fall through for CCE
+            // Note that all JS `number`s in the correct range are guaranteed to be i31ref's
+            fb += LocalGet(objParam)
+          }
+
         // For char and long, use br_on_cast_fail to test+cast to the box class
         case CharType | LongType =>
           val boxClass =
