@@ -83,6 +83,9 @@ object Types {
     /** `(ref null func)`, i.e., `funcref`. */
     val funcref: RefType = nullable(HeapType.Func)
 
+    /** `(ref i31)`. */
+    val i31: RefType = apply(HeapType.I31)
+
     /** `(ref extern)`. */
     val extern: RefType = apply(HeapType.Extern)
 
@@ -119,6 +122,7 @@ object Types {
     case object Extern extends AbsHeapType("extern", "externref", 0x6F)
     case object Any extends AbsHeapType("any", "anyref", 0x6E)
     case object Eq extends AbsHeapType("eq", "eqref", 0x6D)
+    case object I31 extends AbsHeapType("i31", "i31ref", 0x6C)
     case object Struct extends AbsHeapType("struct", "structref", 0x6B)
     case object Array extends AbsHeapType("array", "arrayref", 0x6A)
     case object Exn extends AbsHeapType("exn", "exnref", 0x69)

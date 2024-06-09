@@ -310,7 +310,7 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
 
     addHelperImport(genFunctionID.isUndef, List(anyref), List(Int32))
 
-    for (primRef <- List(BooleanRef, ByteRef, ShortRef, IntRef, FloatRef, DoubleRef)) {
+    for (primRef <- List(BooleanRef, ByteRef, ShortRef, FloatRef, DoubleRef)) {
       val wasmType = primRef match {
         case FloatRef  => Float32
         case DoubleRef => Float64
@@ -320,6 +320,10 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
       addHelperImport(genFunctionID.unbox(primRef), List(anyref), List(wasmType))
       addHelperImport(genFunctionID.typeTest(primRef), List(anyref), List(Int32))
     }
+
+    addHelperImport(genFunctionID.bIFallback, List(Int32), List(RefType.any))
+    addHelperImport(genFunctionID.uIFallback, List(anyref), List(Int32))
+    addHelperImport(genFunctionID.typeTest(IntRef), List(anyref), List(Int32))
 
     addHelperImport(genFunctionID.fmod, List(Float64, Float64), List(Float64))
 
@@ -590,6 +594,8 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
 
   /** Generates all the helper function definitions of the core Wasm lib. */
   private def genHelperDefinitions()(implicit ctx: WasmContext): Unit = {
+    genBoxInt()
+    genUnboxInt()
     genStringLiteral()
     genCreateStringFromData()
     genTypeDataName()
@@ -660,6 +666,57 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
   private def newFunctionBuilder(functionID: FunctionID)(
       implicit ctx: WasmContext): FunctionBuilder = {
     newFunctionBuilder(functionID, OriginalName(functionID.toString()))
+  }
+
+  private def genBoxInt()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.box(IntRef))
+    val xParam = fb.addParam("x", Int32)
+    fb.setResultType(RefType.any)
+
+    /* Test if the two most significant bits are different: (x ^ (x << 1)) & 0x80000000
+     * If they are, we cannot box as i31 since sign extension on unbox will
+     * duplicate the second most significant bit (and JS would see the wrong
+     * number value as well).
+     */
+    fb += LocalGet(xParam)
+    fb += LocalGet(xParam)
+    fb += I32Const(1)
+    fb += I32Shl
+    fb += I32Xor
+    fb += I32Const(0x80000000)
+    fb += I32And
+
+    // If non-zero,
+    fb.ifThenElse(RefType.any) {
+      // then call the fallback JS helper
+      fb += LocalGet(xParam)
+      fb += Call(genFunctionID.bIFallback)
+    } {
+      // else use ref.i31
+      fb += LocalGet(xParam)
+      fb += RefI31
+    }
+
+    fb.buildAndAddToModule()
+  }
+
+  private def genUnboxInt()(implicit ctx: WasmContext): Unit = {
+    val fb = newFunctionBuilder(genFunctionID.unbox(IntRef))
+    val xParam = fb.addParam("x", RefType.anyref)
+    fb.setResultType(Int32)
+
+    // If x is a (ref i31), extract it
+    fb.block(RefType.anyref) { xIsNotI31Label =>
+      fb += LocalGet(xParam)
+      fb += BrOnCastFail(xIsNotI31Label, RefType.anyref, RefType.i31)
+      fb += I31GetS
+      fb += Return
+    }
+
+    // Otherwise, use the fallback helper
+    fb += Call(genFunctionID.uIFallback)
+
+    fb.buildAndAddToModule()
   }
 
   private def genStringLiteral()(implicit ctx: WasmContext): Unit = {
@@ -1168,8 +1225,20 @@ final class CoreWasmLib(coreSpec: CoreSpec) {
 
         // For all other types, use type test, and separately unbox if required
         case _ =>
-          fb += LocalGet(objParam)
-          fb += BrOnNull(objIsNullLabel)
+          // For Int, include a fast path for values that fit in i31
+          if (primType == IntType) {
+            fb.block(RefType.any) { notI31Label =>
+              fb += LocalGet(objParam)
+              fb += BrOnNull(objIsNullLabel)
+              fb += BrOnCastFail(notI31Label, RefType.any, RefType.i31)
+              if (isUnbox)
+                fb += I31GetS
+              fb += Return
+            }
+          } else {
+            fb += LocalGet(objParam)
+            fb += BrOnNull(objIsNullLabel)
+          }
 
           // if obj.isInstanceOf[primType]
           primType match {

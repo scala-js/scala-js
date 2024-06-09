@@ -96,7 +96,7 @@ const scalaJSHelpers = {
   bZ: (x) => x !== 0,
   bB: (x) => x,
   bS: (x) => x,
-  bI: (x) => x,
+  bIFallback: (x) => x,
   bF: (x) => x,
   bD: (x) => x,
 
@@ -104,7 +104,7 @@ const scalaJSHelpers = {
   uZ: (x) => x, // ToInt32 turns false into 0 and true into 1, so this is also an identity
   uB: (x) => x,
   uS: (x) => x,
-  uI: (x) => x,
+  uIFallback: (x) => x,
   uF: (x) => x,
   uD: (x) => x,
 
