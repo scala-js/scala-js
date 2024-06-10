@@ -186,41 +186,7 @@ In the absence of the optimizer, however, this one optimization was important to
 ### typeData
 
 Metadata about IR classes are reified at run-time as values of the struct type `(ref typeData)`.
-`typeData` is defined as follows.
 Documentation for the meaning of each field can be found in `VarGen.genFieldID.typeData`.
-
-```wat
-(type $typeData (sub (struct
-  (field $nameOffset i32)
-  (field $nameSize i32)
-  (field $nameStringIndex i32)
-  (field $kind i32)
-  (field $specialInstanceTypes i32)
-  (field $strictAncestors (ref null $typeDataArray))
-  (field $componentType (ref null $typeData))
-  (field $name (mut anyref))
-  (field $classOfValue (mut (ref null $c.java.lang.Class)))
-  (field $arrayOf (mut (ref null $v.java.lang.Object)))
-  (field $cloneFunction (ref null $cloneFunctionType))
-  (field $isJSClassInstance (ref null $isJSClassInstanceFuncType))
-  (field $reflectiveProxies (ref $reflectiveProxies)))
-))
-```
-
-The above definition references the following helper types:
-
-```wat
-(type $typeDataArray
-  (array (ref $typeData)))
-(type $cloneFunctionType
-  (func (param (ref $c.java.lang.Object)) (result (ref $c.java.lang.Object))))
-(type $isJSClassInstanceFuncType
-  (func (param anyref) (result i32)))
-(type $reflectiveProxies
-  (array (ref $reflectiveProxy)))
-(type $reflectiveProxy
-  (struct (field $func_name i32) (field $func_ref (ref func))))
-```
 
 ### vtable and virtual method calls
 
@@ -230,8 +196,14 @@ The vtable of our object model follows a standard layout:
 * Function pointers for the virtual methods, from `jl.Object` down to the current class.
 
 vtable structs form a subtyping hierarchy that mirrors the class hierarchy, so that `$v.B` is a subtype of `$v.A`.
-The vtable of `jl.Object` is a subtype of `typeData`.
 This is required for `$c.B` to be a valid subtype of `$c.A`, since their first field is of the corresponding vtable types.
+
+The vtable of `jl.Object` is a subtype of `typeData`, which allows to generically manipulate `typeData`s even when they are not full vtables.
+For example, the `typeData` of JS types and Scala interfaces do not have a corresponding vtable.
+
+An alternative would have been to make the vtables *contain* the `(ref typeData)` as a first field.
+That would however require an additional pointer indirection on every access to the `typeData`, for no benefit in memory usage or code size.
+WebAssembly does not have a notion of "flattened" inner structs: a struct cannot contain another struct; it can only contain a *reference* to another struct.
 
 Given
 
@@ -241,7 +213,10 @@ class A extends Object {
 }
 
 class B extends A {
+  val field: int
+
   def bar(x: double): double = x
+  override def foo(x: int): int = x + this.field
 }
 ```
 
@@ -251,14 +226,14 @@ we get
 (type $v.A (sub $v.java.lang.Object (struct
   ;; ... class metadata
   ;; ... methods of jl.Object
-  (field $m.B.foo_I_I (ref $4))
+  (field $m.foo_I_I (ref $4))
 )))
 
 (type $v.helloworld.B (sub $v.A (struct
   ;; ... class metadata
   ;; ... methods of jl.Object
-  (field $m.B.foo_I_I (ref $4))
-  (field $m.B.bar_D_D (ref $6))
+  (field $m.foo_I_I (ref $4))
+  (field $m.bar_D_D (ref $6))
 )))
 
 (type $4 (func (param (ref any)) (param i32) (result i32)))
@@ -266,8 +241,14 @@ we get
 ```
 
 Note that the declared type of `this` in the function types is always `(ref any)`.
-Since function types are contravariant in their parameters, we cannot use the precise type of the objects.
-This means that cannot directly put a reference to the implementing function the the vtables: their receiver has a precise type.
+If we used the enclosing class type, the type of `$m.foo_I_I` would have incompatible types in the two vtables:
+
+* In `$v.A`, it would have type `(func (param (ref $c.A)) ...)`
+* In `$v.B`, it would have type `(func (param (ref $c.B)) ...)`
+
+Since the latter is not a subtype of the former, `$v.B` cannot be a subtype of `$v.A` (recall from earlier that we need that subtyping relationship to hold).
+
+Because we use `(ref any)`, we cannot directly put a reference to the implementing functions (e.g., `$f.A.foo_I_I`) in the vtables: their receiver has a precise type.
 Instead, we generate bridge forwarders (the `forTableEntry` methods) which:
 
 1. take a receiver of type `(ref any)`,
@@ -289,32 +270,7 @@ The table entry forwarder for `A.foo` looks as follows:
 )
 ```
 
-A virtual call to `a.foo(1)` is compiled as follows:
-
-1. Load the receiver, cast away `null`, and store a copy in a temporary variable
-2. Load the other arguments
-3. Reload the copy of the receiver from the temporary variable
-4. Follow the `vtable` pointer, then get the function reference at the slot for `foo_I_I`
-5. Use `call_ref` to perform the indirect call
-
-```wat
-(param $this (ref $c.Test$)) (param $a (ref null $c.A)) (result i32)
-(local $1 (ref $c.A)) ;; declare the temporary
-;; load the receiver, cast away `null`
-local.get $a
-ref.as_non_null
-;; store a copy into the temp local, keep one on the stack to be
-;; the first argument to the function call a the end
-local.tee $1
-;; load the other arguments
-i32.const 1
-;; load the copy of the receiver and follow pointers to the function reference
-local.get $1
-struct.get $c.A $vtable
-struct.get $v.A $m.A.foo_I_I
-;; call the function reference
-call_ref $4 ;; $4 is still the same function type reference we saw earlier
-```
+A virtual call to `a.foo(1)` is compiled as you would expect: lookup the function reference in the vtable and call it.
 
 ### itables and interface method calls
 
@@ -360,42 +316,10 @@ In practice, allocating one slot for every interface in the program is wasteful.
 We can use the same slot for a set of interfaces that have no concrete class in common.
 This slot allocation is implemented in `Preprocessor.assignBuckets`.
 
-Since Wasm structs only support single inheritance in their subtyping relationships, we have to transform every interface type as `(ref null jl.Object)`.
-This does not turn to be a problem for interface method calls, since they pass through the `itables` array anyway, and use the table entry bridges which take `(ref any)` as argument.
-Moreover, since IR interfaces can only be subtypes of other interfaces and of `jl.Object`, this preserves subtyping relationships into Wasm, so no additional casts are necessary to compensate.
+Since Wasm structs only support single inheritance in their subtyping relationships, we have to transform every interface type as `(ref null jl.Object)` (the common supertype of all interfaces).
+This does not turn out to be a problem for interface method calls, since they pass through the `itables` array anyway, and use the table entry bridges which take `(ref any)` as argument.
 
-An interface method call to `intf.foo(1)` is compiled as follows:
-
-1. Load the receiver, cast away `null`, and store a copy in a temporary variable
-2. Load the other arguments
-3. Reload the copy of the receiver from the temporary variable
-4. Follow the `itables` pointer, then the slot assigned to the `Intf`, then get the function reference at the slot for `foo_I_I`
-5. Use `call_ref` to perform the indirect call
-
-```wat
-(param $this (ref $c.HelloWorld$)) (param $intf (ref null $c.java.lang.Object)) (result i32)
-(local $1 (ref $c.java.lang.Object)) ;; declare the temporary
-;; load the receiver, cast away `null`
-local.get $intf
-ref.as_non_null
-;; store a copy into the temp local, keep one on the stack to be
-;; the first argument to the function call a the end
-local.tee $1
-;; load the other arguments
-i32.const 1
-;; load the copy of the receiver and follow pointers to the Intf slot
-local.get $1
-struct.get $c.java.lang.Object $itables
-i32.const 0 ;; Intf was assigned slot 0 in this example
-array.get $itables
-;; since multiple interfaces can be assigned to the same slot,
-;; cast down to the type of itable for Intf
-ref.cast (ref $it.Intf)
-;; get the function reference at the slot for foo_I_I
-struct.get $it.Intf $m.Intf.foo_I_I
-;; call the function reference
-call_ref $4 ;; $4 is still the same function type reference we saw earlier
-```
+Given the above structure, an interface method call to `intf.foo(1)` is compiled as expected: lookup the function reference in the appropriate slot of the `itables` array, then call it.
 
 ### Reflective calls
 
@@ -403,26 +327,25 @@ Calls to reflective proxies use yet another strategy.
 Instead of building arrays or structs where each reflective proxy appears at a compile-time-constant slot, we use a search-based strategy.
 
 Each reflective proxy name found in the program is allocated a unique integer ID.
-The reflective proxy table of a class is an array of pairs `(id, funcRef)`.
+The reflective proxy table of a class is an array of pairs `(id, funcRef)`, stored in the class' `typeData`.
 In order to call a reflective proxy, we perform the following steps:
 
-1. Load the receiver, cast away `null`, and store a copy in a temporary variable
-2. Load the other arguments
-3. Reload the copy of the receiver from the temporary variable
-4. Follow the `vtable` pointer to get the class metadata
-5. Load the constant ID allocated to the given reflective proxy
-6. Call a helper function `searchReflectiveProxy`: it searches the given ID in the reflective proxy table of the class, and returns the corresponding `funcRef`
-7. Use `call_ref` to perform the indirect call
+
+1. Load the `typeData` of the receiver.
+2. Search the reflective proxy ID in `$reflectiveProxies` (using the `searchReflectiveProxy` helper).
+3. Call it (using `call_ref`).
 
 This strategy trades off efficiency for space.
 It is slow, but that corresponds to the fact that reflective calls are slow on the JVM as well.
-In order to have fixed slots for reflective proxy methods, we would need a `O(m*n)` matrix where `m` is the number of concrete classes and `n` the number of distinct reflective proxy names in the entire program.
+In order to have fixed slots for reflective proxy methods, we would need an `m*n` matrix where `m` is the number of concrete classes and `n` the number of distinct reflective proxy names in the entire program.
+With the compilation scheme we use, we only need an array containing the actually implemented reflective proxies per class, but we pay an `O(n)` run-time cost for lookup (instead of `O(1)`).
+TODO: We should make it `O(log n)`.
 
 ## Hijacked classes
 
 Due to our strong interoperability guarantees with JavaScript, the universal (boxed) representation of hijacked classes must be the appropriate JavaScript values.
 For example, a boxed `int` must be a JavaScript `number`.
-The only Wasm type that can both store references to GC structs and arbitrary JavaScript `number`s is `anyref` (an alias of `(ref null any)`).
+The only Wasm type that can store references to both GC structs and arbitrary JavaScript `number`s is `anyref` (an alias of `(ref null any)`).
 That is why we transform the types of ancestors of hijacked classes to the Wasm type `anyref`.
 
 ### Boxing
@@ -489,7 +412,7 @@ __scalaJSHelpers: {
 }
 ```
 
-However, we swap the Wasm types of argument result:
+However, we swap the Wasm types of parameter and result:
 
 ```wat
 (import "__scalaJSHelpers" "uI" (func $uI (param anyref) (result i32)))
@@ -527,80 +450,6 @@ The conversions involving `i32` are not free, but they are as efficient as it ge
 
 When the receiver of a method call is a primitive or a hijacked class, the call can always be statically resolved by construction, hence no dispatch is necessary.
 For strict ancestors of hijacked classes, we must use a type-test-based dispatch similar to what we do in `$dp_` dispatchers in the JavaScript backend.
-
-For example, the dispatch code for `(x: jl.Comparable).compareTo(y)` looks as follows:
-
-```wat
-(func $f.Test$.dispatch_Ljava.lang.Comparable_Ljava.lang.Integer_I (type $149)
-  (param $this (ref $c.Test$)) (param $x anyref) (param $y anyref) (result i32)
-  (local $1 (ref $c.java.lang.Object)) (local $2 (ref any)) (local $3 anyref) (local $4 (ref any)) (local $5 i32)
-
-  block $dispatchDone (result i32) ;; i32 here is the result of compareTo
-
-    ;; handle instances of actual, non-hijacked classes
-    block $receiverIsNotOurObject (result (ref any)) ;; (ref any) is left on the stack by br_on_cast_fail
-      ;; load receiver, cast away null, store in a local
-      local.get $x
-      ref.as_non_null
-      local.set $2
-      ;; load arguments and store them in locals
-      local.get $y
-      local.set $3
-
-      ;; test whether the receiver is a real instance of jl.Object
-      ;; if not, break out of $receiverIsNotOurObject
-      local.get $2
-      br_on_cast_fail $receiverIsNotOurObject (ref any) (ref $c.java.lang.Object)
-      ;; on the stack, we have now a (ref $c.jl.Object), use standard interface dispatch
-      local.tee $1
-      local.get $3
-      local.get $1
-      struct.get $c.java.lang.Object $itables
-      i32.const 40
-      array.get $itables
-      ref.cast (ref $it.java.lang.Comparable)
-      struct.get $it.java.lang.Comparable $m.java.lang.Comparable.compareTo_Ljava.lang.Object_I
-      call_ref $5
-      ;; we are done
-      br $dispatchDone
-    end
-
-    ;; handle hijacked class instances
-    ;; use the jsValueType helper to get an i32 value indicating its type
-    local.tee $4
-    call $jsValueType
-    local.tee $5
-    ;; switch on the result of jsValueType
-    block $switchDone (type $147)
-      block $default (type $148)
-        block $caseString (type $148)
-          block $caseBoolean (type $148)
-            br_table $caseBoolean $caseBoolean $caseString $default
-          end
-
-          ;; case boolean:
-          local.get $5
-          local.get $3
-          call $f.java.lang.Boolean.compareTo_Ljava.lang.Object_I
-          br $switchDone
-        end
-
-        ;; case string:
-        local.get $4
-        local.get $3
-        call $f.java.lang.String.compareTo_Ljava.lang.Object_I
-        br $switchDone
-      end
-
-      ;; default: (only number is left here)
-      local.get $4
-      call $uD
-      local.get $3
-      call $f.java.lang.Double.compareTo_Ljava.lang.Object_I
-    end
-  end
-)
-```
 
 ## Arrays
 
@@ -689,30 +538,10 @@ It would be nice to do the following instead:
 This would have a constant code size cost, irrespective of the amount of fields in `C`.
 Unfortunately, we cannot do this because the `$vtable` field is immutable.
 
-We cannot make it mutable either.
-vtable types extend their super class' vtable types; they are not exactly the same.
-If the `$vtable` field were mutable, a subclass' `struct` type could not be a subtype of its superclass' `struct` type.
-That would have much worse consequences.
-It is only because the `$vtable` field is immutable that covariance applies, and that the parallel subtyping relationship holds.
+We cannot make it mutable since we rely on covariance (which only applies for immutable fields) for class subtyping.
+Abandoning this would have much worse consequences.
 
 Wasm may evolve to have [a more flexible `struct.new_default`](https://github.com/WebAssembly/gc/blob/main/proposals/gc/Post-MVP.md#handle-nondefaultable-fields-in-structnew_default), which would solve this trade-off.
-
-### Type tests (`IsInstanceOf` IR trees)
-
-`IsInstanceOf(x, T)` is compiled as follows:
-
-* When `T` is a class `C`, directly use a Wasm-level `ref.test $c.C` (note that Wasm `struct` subtyping is nominal, so this encodes the right semantics)
-* When `T` is an interface, call a helper `$is.T` which performs the following steps:
-  1. Get the `$itables` array of `x`
-  2. Read the slot value at the index allocated to the interface `T`
-  3. Perform a `ref.test $it.T` of that value (this is not just a `null` test, because several unrelated interfaces can be allocated to the same slot)
-* When `T` is a primitive type, use a `$tT` helper function written in JS (for example, `$tD` tests whether `typeof x === 'number'` in JS)
-* When `T` is an ancestor of a hijacked class, combine the above strategies to cover all possible cases (this is similar to what we do in the JS backend)
-  * For ancestors of hijacked classes that have more than one primitive type implementing them (such as `jl.Comparable`), we use a single call to `jsValueType` followed by a bit-set-contains lookup (search for `specialInstanceTypes` in the codebase for details)
-* When `T` is a primitive array type or exactly `jl.Object[]`, perform a single `ref.test $XArray`
-* When `T` is any other reference array type:
-  1. First try to cast down to `$ObjectArray`
-  2. If successful, call a helper function `isAssignableFrom` to follow all the array covariance logic.
 
 ### Clone
 
@@ -724,29 +553,8 @@ To solve this issue, we add a "magic" `$clone` function pointer in every vtable.
 It is only populated for classes that actually extend `jl.Cloneable`.
 We then compile a `Clone` node similarly to any virtual method call.
 
-Each concrete implementation `$clone.C` looks as follows:
-
-```wat
-(func $clone.C (type $cloneFunctionType)
-  (param $from (ref $c.java.lang.Object)) (result (ref $c.java.lang.Object))
-  (local $fromTyped (ref $c.C))
-
-  ;; cast down the receiver (like we do in table entry bridges)
-  local.get $from
-  ref.cast (ref $c.C)
-  local.set $fromTyped
-  ;; load vtable and itables (with known values)
-  global.get $d.C
-  global.get $it.C
-  ;; load all the user-land fields of the receiver
-  local.get $fromTyped
-  struct.get $c.C $f.A.x
-  local.get $fromTyped
-  struct.get $c.C $f.C.y
-  ;; allocate a new $c.C with all of the above
-  struct.new $c.C
-)
-```
+Each concrete implementation `$clone.C` statically knows its corresponding `$c.C` struct type.
+It can therefore allocate a new instance and copy all the fields.
 
 ### Identity hash code
 
@@ -792,7 +600,9 @@ Other than that, we have:
 * closures, and
 * non-native JS classes.
 
-For the former, we use a series of helper JS functions that directly embed the operation semantics.
+### JS operation IR nodes
+
+We use a series of helper JS functions that directly embed the operation semantics.
 For example, `JSMethodApply` is implemented as a call to the following helper:
 
 ```js
