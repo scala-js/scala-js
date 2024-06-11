@@ -2030,52 +2030,100 @@ object CoreWasmLib {
 
     val fb = newFunctionBuilder(genFunctionID.searchReflectiveProxy)
     val typeDataParam = fb.addParam("typeData", typeDataType)
-    val methodIdParam = fb.addParam("methodId", Int32)
+    val methodIDParam = fb.addParam("methodID", Int32)
     fb.setResultType(RefType(HeapType.Func))
 
     val reflectiveProxies =
       fb.addLocal("reflectiveProxies", Types.RefType(genTypeID.reflectiveProxies))
-    val size = fb.addLocal("size", Types.Int32)
-    val i = fb.addLocal("i", Types.Int32)
+    val startLocal = fb.addLocal("start", Types.Int32)
+    val endLocal = fb.addLocal("end", Types.Int32)
+    val midLocal = fb.addLocal("mid", Types.Int32)
+    val entryLocal = fb.addLocal("entry", Types.RefType(genTypeID.reflectiveProxy))
+
+    /* This function implements a binary search. Unlike the typical binary search,
+     * it does not stop early if it happens to exactly hit the target ID.
+     * Instead, it systematically reduces the search range until it contains at
+     * most one element. At that point, it checks whether it is the ID we are
+     * looking for.
+     *
+     * We do this in the name of predictability, in order to avoid performance
+     * cliffs. It avoids the scenario where a codebase happens to be fast
+     * because a particular reflective call resolves in Θ(1), but where adding
+     * or removing something completely unrelated somewhere else in the
+     * codebase pushes it to a different slot where it resolves in Θ(log n).
+     *
+     * This function is therefore intentionally Θ(log n), not merely O(log n).
+     */
 
     fb += LocalGet(typeDataParam)
     fb += StructGet(genTypeID.typeData, genFieldID.typeData.reflectiveProxies)
     fb += LocalTee(reflectiveProxies)
+
+    // end := reflectiveProxies.length
     fb += ArrayLen
-    fb += LocalSet(size)
+    fb += LocalSet(endLocal)
 
+    // start := 0
     fb += I32Const(0)
-    fb += LocalSet(i)
+    fb += LocalSet(startLocal)
 
+    // while (start + 1 < end)
     fb.whileLoop() {
-      fb += LocalGet(i)
-      fb += LocalGet(size)
-      fb += I32Ne
+      fb += LocalGet(startLocal)
+      fb += I32Const(1)
+      fb += I32Add
+      fb += LocalGet(endLocal)
+      fb += I32LtU
     } {
+      // mid := (start + end) >>> 1
+      fb += LocalGet(startLocal)
+      fb += LocalGet(endLocal)
+      fb += I32Add
+      fb += I32Const(1)
+      fb += I32ShrU
+      fb += LocalSet(midLocal)
+
+      // if (methodID < reflectiveProxies[mid].func_name)
+      fb += LocalGet(methodIDParam)
       fb += LocalGet(reflectiveProxies)
-      fb += LocalGet(i)
+      fb += LocalGet(midLocal)
       fb += ArrayGet(genTypeID.reflectiveProxies)
-
       fb += StructGet(genTypeID.reflectiveProxy, genFieldID.reflectiveProxy.func_name)
-      fb += LocalGet(methodIdParam)
+      fb += I32LtU
+      fb.ifThenElse() {
+        // then end := mid
+        fb += LocalGet(midLocal)
+        fb += LocalSet(endLocal)
+      } {
+        // else start := mid
+        fb += LocalGet(midLocal)
+        fb += LocalSet(startLocal)
+      }
+    }
+
+    // if (start < end)
+    fb += LocalGet(startLocal)
+    fb += LocalGet(endLocal)
+    fb += I32LtU
+    fb.ifThen() {
+      // entry := reflectiveProxies[start]
+      fb += LocalGet(reflectiveProxies)
+      fb += LocalGet(startLocal)
+      fb += ArrayGet(genTypeID.reflectiveProxies)
+      fb += LocalTee(entryLocal)
+
+      // if (entry.func_name == methodID)
+      fb += StructGet(genTypeID.reflectiveProxy, genFieldID.reflectiveProxy.func_name)
+      fb += LocalGet(methodIDParam)
       fb += I32Eq
-
       fb.ifThen() {
-        fb += LocalGet(reflectiveProxies)
-        fb += LocalGet(i)
-        fb += ArrayGet(genTypeID.reflectiveProxies)
-
-        // get function reference
+        // return entry.func_ref
+        fb += LocalGet(entryLocal)
         fb += StructGet(genTypeID.reflectiveProxy, genFieldID.reflectiveProxy.func_ref)
         fb += Return
       }
-
-      // i += 1
-      fb += LocalGet(i)
-      fb += I32Const(1)
-      fb += I32Add
-      fb += LocalSet(i)
     }
+
     // throw new TypeError("...")
     fb ++= ctx.getConstantStringInstr("TypeError")
     fb += Call(genFunctionID.jsGlobalRefGet)

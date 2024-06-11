@@ -222,14 +222,17 @@ class ClassEmitter(coreSpec: CoreSpec) {
     }
 
     val reflectiveProxiesInstrs: List[wa.Instr] = {
-      reflectiveProxies.flatMap { proxyInfo =>
-        val proxyId = ctx.getReflectiveProxyId(proxyInfo.methodName)
-        List(
-          wa.I32Const(proxyId),
-          wa.RefFunc(proxyInfo.tableEntryID),
-          wa.StructNew(genTypeID.reflectiveProxy)
-        )
-      } :+ wa.ArrayNewFixed(genTypeID.reflectiveProxies, reflectiveProxies.size)
+      val elemsInstrs: List[wa.Instr] = reflectiveProxies
+        .map(proxyInfo => ctx.getReflectiveProxyId(proxyInfo.methodName) -> proxyInfo.tableEntryID)
+        .sortBy(_._1) // we will perform a binary search on the ID at run-time
+        .flatMap { case (proxyID, tableEntryID) =>
+          List(
+            wa.I32Const(proxyID),
+            wa.RefFunc(tableEntryID),
+            wa.StructNew(genTypeID.reflectiveProxy)
+          )
+        }
+      elemsInstrs :+ wa.ArrayNewFixed(genTypeID.reflectiveProxies, reflectiveProxies.size)
     }
 
     nameDataValue :::

@@ -338,8 +338,7 @@ In order to call a reflective proxy, we perform the following steps:
 This strategy trades off efficiency for space.
 It is slow, but that corresponds to the fact that reflective calls are slow on the JVM as well.
 In order to have fixed slots for reflective proxy methods, we would need an `m*n` matrix where `m` is the number of concrete classes and `n` the number of distinct reflective proxy names in the entire program.
-With the compilation scheme we use, we only need an array containing the actually implemented reflective proxies per class, but we pay an `O(n)` run-time cost for lookup (instead of `O(1)`).
-TODO: We should make it `O(log n)`.
+With the compilation scheme we use, we only need an array containing the actually implemented reflective proxies per class, but we pay an `O(log n)` run-time cost for lookup (instead of `O(1)`).
 
 ## Hijacked classes
 
