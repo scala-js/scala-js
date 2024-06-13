@@ -1272,6 +1272,14 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case BinaryOp(BinaryOp.String_charAt, lhs, rhs) =>
           allowBehavior(semantics.stringIndexOutOfBounds) && test(lhs) && test(rhs)
 
+        // Binary Class_x operations that can have side effects
+        case BinaryOp(BinaryOp.Class_isAssignableFrom, lhs, rhs) =>
+          test(lhs) && testNPE(rhs)
+        case BinaryOp(BinaryOp.Class_cast, lhs, rhs) =>
+          allowBehavior(semantics.asInstanceOfs) && test(lhs) && test(rhs)
+        case BinaryOp(BinaryOp.Class_newArray, lhs, rhs) =>
+          allowBehavior(semantics.negativeArraySizes) && allowUnpure && test(lhs) && testNPE(rhs)
+
         // Expressions preserving pureness (modulo NPE)
         case Block(trees)            => trees forall test
         case If(cond, thenp, elsep)  => test(cond) && test(thenp) && test(elsep)
@@ -2387,6 +2395,20 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             // String.length
             case String_length =>
               genIdentBracketSelect(newLhs, "length")
+
+            // Class operations
+            case Class_name =>
+              genGetDataOf(newLhs) DOT cpn.name
+            case Class_isPrimitive =>
+              genGetDataOf(newLhs) DOT cpn.isPrimitive
+            case Class_isInterface =>
+              genGetDataOf(newLhs) DOT cpn.isInterface
+            case Class_isArray =>
+              genGetDataOf(newLhs) DOT cpn.isArrayClass
+            case Class_componentType =>
+              js.Apply(genGetDataOf(newLhs) DOT cpn.getComponentType, Nil)
+            case Class_superClass =>
+              js.Apply(genGetDataOf(newLhs) DOT cpn.getSuperclass, Nil)
           }
 
         case BinaryOp(op, lhs, rhs) =>
@@ -2666,6 +2688,20 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 case CheckedBehavior.Unchecked =>
                   js.Apply(genIdentBracketSelect(newLhs, "charCodeAt"), List(newRhs))
               }
+
+            case Class_isInstance =>
+              js.Apply(genGetDataOf(newLhs) DOT cpn.isInstance, newRhs :: Nil)
+            case Class_isAssignableFrom =>
+              js.Apply(genGetDataOf(newLhs) DOT cpn.isAssignableFrom,
+                  genCheckNotNull(newRhs) :: Nil)
+            case Class_cast =>
+              if (semantics.asInstanceOfs == CheckedBehavior.Unchecked)
+                js.Block(newLhs, newRhs)
+              else
+                js.Apply(genGetDataOf(newLhs) DOT cpn.cast, newRhs :: Nil)
+            case Class_newArray =>
+              js.Apply(genGetDataOf(newLhs) DOT cpn.newArray,
+                  genCheckNotNull(newRhs) :: Nil)
           }
 
         case NewArray(typeRef, lengths) =>
@@ -2774,8 +2810,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case Transient(ZeroOf(runtimeClass)) =>
           js.DotSelect(
-              genSelect(transformExprNoChar(checkNotNull(runtimeClass)),
-                  FieldIdent(dataFieldName)),
+              genGetDataOf(transformExprNoChar(checkNotNull(runtimeClass))),
               js.Ident(cpn.zero))
 
         case Transient(NativeArrayWrapper(elemClass, nativeArray)) =>
@@ -2786,9 +2821,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               extractWithGlobals(
                   genNativeArrayWrapper(arrayTypeRef, newNativeArray))
             case _ =>
-              val elemClassData = genSelect(
-                  transformExprNoChar(checkNotNull(elemClass)),
-                  FieldIdent(dataFieldName))
+              val elemClassData =
+                genGetDataOf(transformExprNoChar(checkNotNull(elemClass)))
               val arrayClassData = js.Apply(
                   js.DotSelect(elemClassData, js.Ident(cpn.getArrayOf)), Nil)
               js.Apply(arrayClassData DOT cpn.wrapArray, newNativeArray :: Nil)
@@ -3251,6 +3285,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         implicit pos: Position): js.Tree = {
       js.Apply(globalVar(field, (className, method.name)), args)
     }
+
+    private def genGetDataOf(jlClassValue: js.Tree)(implicit pos: Position): js.Tree =
+      genSyntheticPropSelect(jlClassValue, SyntheticProperty.data)
 
     private def genCallPolyfillableBuiltin(
         builtin: PolyfillableBuiltin, args: js.Tree*)(

@@ -156,10 +156,7 @@ object VarGen {
     case object idHashCodeGet extends JSHelperFunctionID
     case object idHashCodeSet extends JSHelperFunctionID
 
-    case object genJSTypeMetaData extends JSHelperFunctionID
     case object makeTypeError extends JSHelperFunctionID
-    case object jsArrayLength extends JSHelperFunctionID
-    case object jsArrayGetInt extends JSHelperFunctionID
 
     case object jsGlobalRefGet extends JSHelperFunctionID
     case object jsGlobalRefSet extends JSHelperFunctionID
@@ -254,9 +251,9 @@ object VarGen {
     case object throwModuleInitError extends FunctionID
     case object isInstance extends FunctionID
     case object isAssignableFrom extends FunctionID
-    case object checkCast extends FunctionID
+    case object cast extends FunctionID
     case object getComponentType extends FunctionID
-    case object newArrayOfThisClass extends FunctionID
+    case object newArray extends FunctionID
     case object anyGetClass extends FunctionID
     case object anyGetClassName extends FunctionID
     case object anyGetTypeData extends FunctionID
@@ -398,6 +395,9 @@ object VarGen {
        */
       case object reflectiveProxies extends FieldID
     }
+
+    /** The magic `data` field of type `(ref typeData)`, injected into `jl.Class`. */
+    case object classData extends FieldID
   }
 
   object genTypeID {

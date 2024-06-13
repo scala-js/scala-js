@@ -283,7 +283,13 @@ object Trees {
     val tpe = AnyType
   }
 
-  /** Unary operation (always preserves pureness). */
+  /** Unary operation.
+   *
+   *  The `Class_x` operations take a `jl.Class!` argument, i.e., a
+   *  non-nullable `jl.Class`.
+   *
+   *  All existing unary operations preserve pureness.
+   */
   sealed case class UnaryOp(op: UnaryOp.Code, lhs: Tree)(
       implicit val pos: Position) extends Tree {
 
@@ -322,8 +328,19 @@ object Trees {
     // String.length, introduced in 1.11
     final val String_length = 17
 
+    // Class operations, introduced in 1.17
+    final val Class_name = 18
+    final val Class_isPrimitive = 19
+    final val Class_isInterface = 20
+    final val Class_isArray = 21
+    final val Class_componentType = 22
+    final val Class_superClass = 23
+
+    def isClassOp(op: Code): Boolean =
+      op >= Class_name && op <= Class_superClass
+
     def resultTypeOf(op: Code): Type = (op: @switch) match {
-      case Boolean_! =>
+      case Boolean_! | Class_isPrimitive | Class_isInterface | Class_isArray =>
         BooleanType
       case IntToChar =>
         CharType
@@ -339,10 +356,43 @@ object Trees {
         FloatType
       case IntToDouble | LongToDouble | FloatToDouble =>
         DoubleType
+      case Class_name =>
+        StringType
+      case Class_componentType | Class_superClass =>
+        ClassType(ClassClass, nullable = true)
     }
   }
 
-  /** Binary operation (always preserves pureness). */
+  /** Binary operation.
+   *
+   *  All binary operations follow common evaluation steps:
+   *
+   *  1. Let `lhsValue` be the result of evaluating `lhs`.
+   *  2. Let `rhsValue` be the result of evaluating `rhs`.
+   *  3. Perform an operation that depends on `op`, `lhsValue` and `rhsValue`.
+   *
+   *  Unless `lhsValue` throws, `rhsValue` will therefore always be evaluated,
+   *  even if the operation `op` would throw based only on `lhsValue`.
+   *
+   *  The integer dividing operators (`Int_/`, `Int_%`, `Long_/` and `Long_%`)
+   *  throw an `ArithmeticException` when their right-hand-side is 0. That
+   *  exception is not subject to undefined behavior.
+   *
+   *  `String_charAt` throws string index out bounds.
+   *
+   *  The `Class_x` operations take a `jl.Class!` as lhs, i.e., a
+   *  non-nullable `jl.Class`.
+   *
+   *  - `Class_isInstance` is pure.
+   *  - `Class_isAssignableFrom` NPEs when its second argument is `null`.
+   *  - `Class_cast` throws a CCE if its second argument is non-null and
+   *    not an instance of the class represented by its first argument.
+   *  - `Class_newArray` NPEs when its second argument is `null`, and throw a
+   *    `NegativeArraySizeException` if any of the elements of its second
+   *    argument is negative.
+   *
+   *  Otherwise, binary operations preserve pureness.
+   */
   sealed case class BinaryOp(op: BinaryOp.Code, lhs: Tree, rhs: Tree)(
       implicit val pos: Position) extends Tree {
 
@@ -425,12 +475,22 @@ object Trees {
     // New in 1.11
     final val String_charAt = 58
 
+    // New in 1.17
+    final val Class_isInstance = 59
+    final val Class_isAssignableFrom = 60
+    final val Class_cast = 61
+    final val Class_newArray = 62
+
+    def isClassOp(op: Code): Boolean =
+      op >= Class_isInstance && op <= Class_newArray
+
     def resultTypeOf(op: Code): Type = (op: @switch) match {
       case === | !== |
           Boolean_== | Boolean_!= | Boolean_| | Boolean_& |
           Int_== | Int_!= | Int_< | Int_<= | Int_> | Int_>= |
           Long_== | Long_!= | Long_< | Long_<= | Long_> | Long_>= |
-          Double_== | Double_!= | Double_< | Double_<= | Double_> | Double_>= =>
+          Double_== | Double_!= | Double_< | Double_<= | Double_> | Double_>= |
+          Class_isInstance | Class_isAssignableFrom =>
         BooleanType
       case String_+ =>
         StringType
@@ -446,6 +506,10 @@ object Trees {
         DoubleType
       case String_charAt =>
         CharType
+      case Class_cast =>
+        AnyType
+      case Class_newArray =>
+        AnyNotNullType
     }
   }
 

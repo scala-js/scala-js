@@ -1406,6 +1406,32 @@ private class FunctionEmitter private (
       // String.length
       case String_length =>
         fb += wa.Call(genFunctionID.stringLength)
+
+      // Class operations, introduced in 1.17
+      case Class_name =>
+        fb += wa.StructGet(genTypeID.ClassStruct, genFieldID.classData)
+        fb += wa.Call(genFunctionID.typeDataName)
+      case Class_isPrimitive =>
+        fb += wa.StructGet(genTypeID.ClassStruct, genFieldID.classData)
+        fb += wa.StructGet(genTypeID.typeData, genFieldID.typeData.kind)
+        fb += wa.I32Const(KindLastPrimitive)
+        fb += wa.I32LeU
+      case Class_isInterface =>
+        fb += wa.StructGet(genTypeID.ClassStruct, genFieldID.classData)
+        fb += wa.StructGet(genTypeID.typeData, genFieldID.typeData.kind)
+        fb += wa.I32Const(KindInterface)
+        fb += wa.I32Eq
+      case Class_isArray =>
+        fb += wa.StructGet(genTypeID.ClassStruct, genFieldID.classData)
+        fb += wa.StructGet(genTypeID.typeData, genFieldID.typeData.kind)
+        fb += wa.I32Const(KindArray)
+        fb += wa.I32Eq
+      case Class_componentType =>
+        fb += wa.Call(genFunctionID.getComponentType)
+      case Class_superClass =>
+        // FIXME Implement this
+        fb += wa.Drop
+        fb += wa.RefNull(watpe.HeapType.None)
     }
 
     tree.tpe
@@ -1502,6 +1528,43 @@ private class FunctionEmitter private (
         else
           fb += wa.Call(genFunctionID.checkedStringCharAt)
         CharType
+
+      // Class operations for which genTreeAuto would not do the right thing
+      case Class_isInstance =>
+        genTreeAuto(lhs)
+        fb += wa.StructGet(genTypeID.ClassStruct, genFieldID.classData) // lhs is non-null, so this is pure
+        genTree(rhs, AnyType)
+        markPosition(tree)
+        fb += wa.Call(genFunctionID.isInstance)
+        BooleanType
+      case Class_isAssignableFrom =>
+        genTreeAuto(lhs)
+        fb += wa.StructGet(genTypeID.ClassStruct, genFieldID.classData) // lhs is non-null, so this is pure
+        genTreeAuto(rhs)
+        genCheckNonNullFor(rhs)
+        fb += wa.StructGet(genTypeID.ClassStruct, genFieldID.classData)
+        markPosition(tree)
+        fb += wa.Call(genFunctionID.isAssignableFrom)
+        BooleanType
+      case Class_cast =>
+        if (semantics.asInstanceOfs != CheckedBehavior.Unchecked) {
+          genTreeAuto(lhs)
+          genTree(rhs, AnyType)
+          markPosition(tree)
+          fb += wa.Call(genFunctionID.cast)
+          AnyType
+        } else {
+          genTree(lhs, NoType)
+          genTreeAuto(rhs)
+          rhs.tpe
+        }
+      case Class_newArray =>
+        genTreeAuto(lhs)
+        genTreeAuto(rhs)
+        markPosition(tree)
+        genAsNonNullOrNPEFor(rhs)
+        fb += wa.Call(genFunctionID.newArray)
+        AnyNotNullType
 
       case _ =>
         genTreeAuto(lhs)

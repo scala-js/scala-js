@@ -178,22 +178,7 @@ const scalaJSHelpers = {
   idHashCodeSet: (map, obj, value) => map.set(obj, value),
 
   // Some support functions for CoreWasmLib
-  genJSTypeMetaData: (typeData, name, isPrimitive, isArrayClass, isInterface, isInstanceFun,
-      isAssignableFromFun, checkCastFun, getComponentTypeFun, newArrayOfThisClassFun) => ({
-    __typeData: typeData, // (TODO hide this better? although nobody will notice anyway)
-    "name": name,
-    "isPrimitive": isPrimitive !== 0,
-    "isArrayClass": isArrayClass !== 0,
-    "isInterface": isInterface !== 0,
-    "isInstance": (value) => isInstanceFun(typeData, value) !== 0,
-    "isAssignableFrom": (that) => isAssignableFromFun(typeData, that.__typeData) !== 0,
-    "checkCast": (value) => checkCastFun(typeData, value),
-    "getComponentType": () => getComponentTypeFun(typeData),
-    "newArrayOfThisClass": (lengths) => newArrayOfThisClassFun(typeData, lengths),
-  }),
   makeTypeError: (msg) => new TypeError(msg),
-  jsArrayLength: (array) => array.length,
-  jsArrayGetInt: (array, index) => array[index],
 
   // JS interop
   jsGlobalRefGet: (globalRefName) => (new Function("return " + globalRefName))(),

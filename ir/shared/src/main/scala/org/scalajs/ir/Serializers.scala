@@ -22,6 +22,7 @@ import scala.collection.mutable
 import scala.concurrent._
 
 import Names._
+import OriginalName.NoOriginalName
 import Position._
 import Trees._
 import Types._
@@ -38,6 +39,9 @@ object Serializers {
    *
    */
   final val IRMagicNumber = 0xCAFE4A53
+
+  // See deserialization hack for jl.Class and jl.reflect.Array from 1.16-.
+  private final val ReflectArrayModClass = ClassName("java.lang.reflect.Array$")
 
   def serialize(stream: OutputStream, classDef: ClassDef): Unit = {
     new Serializer().serialize(stream, classDef)
@@ -1471,6 +1475,10 @@ object Serializers {
         if (hacks.use4 && kind.isJSClass) {
           // #4409: Filter out abstract methods in non-native JS classes for version < 1.5
           methods0.filter(_.body.isDefined)
+        } else if (true /*hacks.use16*/ && cls == ClassClass) { // scalastyle:ignore
+          jlClassMethodsHack16(methods0)
+        } else if (true /*hacks.use16*/ && cls == ReflectArrayModClass) { // scalastyle:ignore
+          jlReflectArrayMethodsHack16(methods0)
         } else {
           methods0
         }
@@ -1491,6 +1499,111 @@ object Serializers {
           jsSuperClass, jsNativeLoadSpec, fields, methods, jsConstructor,
           jsMethodProps, jsNativeMembers, topLevelExportDefs)(
           optimizerHints)
+    }
+
+    private def jlClassMethodsHack16(methods: List[MethodDef]): List[MethodDef] = {
+      for (method <- methods) yield {
+        implicit val pos = method.pos
+
+        val methodName = method.methodName
+        val methodSimpleNameString = methodName.simpleName.nameString
+
+        val thisJLClass = This()(ClassType(ClassClass, nullable = false))
+
+        if (methodName.isConstructor) {
+          val newName = MethodIdent(NoArgConstructorName)(method.name.pos)
+          val newBody = ApplyStatically(ApplyFlags.empty.withConstructor(true),
+              thisJLClass, ObjectClass, newName, Nil)(NoType)
+          MethodDef(method.flags, newName, method.originalName,
+              Nil, NoType, Some(newBody))(
+              method.optimizerHints, method.version)
+        } else if (methodSimpleNameString == "newArrayOfThisClass") {
+          val intArrayTypeRef = ArrayTypeRef(IntRef, 1)
+          val intArrayType = ArrayType(intArrayTypeRef, nullable = true)
+          val newName = MethodIdent(MethodName(methodName.simpleName,
+              List(intArrayTypeRef), ClassRef(ObjectClass)))(method.name.pos)
+          val lengthsParam = ParamDef(LocalIdent(LocalName("lengths")),
+              NoOriginalName, intArrayType, mutable = false)
+          val newBody = BinaryOp(BinaryOp.Class_newArray, thisJLClass, lengthsParam.ref)
+          MethodDef(method.flags, newName, method.originalName,
+              List(lengthsParam), AnyType, Some(newBody))(
+              method.optimizerHints.withInline(true), method.version)
+        } else {
+          def argRef = method.args.head.ref
+
+          val newBody: Tree = methodSimpleNameString match {
+            case "getName"          => UnaryOp(UnaryOp.Class_name, thisJLClass)
+            case "isPrimitive"      => UnaryOp(UnaryOp.Class_isPrimitive, thisJLClass)
+            case "isInterface"      => UnaryOp(UnaryOp.Class_isInterface, thisJLClass)
+            case "isArray"          => UnaryOp(UnaryOp.Class_isArray, thisJLClass)
+            case "getComponentType" => UnaryOp(UnaryOp.Class_componentType, thisJLClass)
+            case "getSuperclass"    => UnaryOp(UnaryOp.Class_superClass, thisJLClass)
+
+            case "isInstance"       => BinaryOp(BinaryOp.Class_isInstance, thisJLClass, argRef)
+            case "isAssignableFrom" => BinaryOp(BinaryOp.Class_isAssignableFrom, thisJLClass, argRef)
+            case "cast"             => BinaryOp(BinaryOp.Class_cast, thisJLClass, argRef)
+
+            case _ =>
+              /* Unfortunately, some of the other methods directly referred to
+               * `this.data["name"]`, instead of building on `this.getName()`.
+               * We must replace those occurrences with a `Class_name` as well.
+               */
+              val transformer = new Transformers.Transformer {
+                override def transform(tree: Tree, isStat: Boolean): Tree = tree match {
+                  case JSSelect(_, StringLiteral("name")) =>
+                    implicit val pos = tree.pos
+                    UnaryOp(UnaryOp.Class_name, thisJLClass)
+                  case _ =>
+                    super.transform(tree, isStat)
+                }
+              }
+              transformer.transform(method.body.get, isStat = method.resultType == NoType)
+          }
+
+          MethodDef(method.flags, method.name, method.originalName,
+              method.args, method.resultType, Some(newBody))(
+              method.optimizerHints.withInline(true), method.version)
+        }
+      }
+    }
+
+    private def jlReflectArrayMethodsHack16(methods: List[MethodDef]): List[MethodDef] = {
+      /* Basically this method hard-codes new implementations for the two
+       * overloads of newInstance.
+       */
+
+      val intArrayTypeRef = ArrayTypeRef(IntRef, 1)
+      val objectRef = ClassRef(ObjectClass)
+
+      val EAF = ApplyFlags.empty
+
+      for (method <- methods) yield {
+        if (method.methodName.simpleName.nameString != "newInstance") {
+          method
+        } else {
+          implicit val pos = method.pos
+
+          val List(jlClassParam, secondParam) = method.args
+
+          val newBody = {
+            val secondParamAsArray = if (secondParam.ptpe == IntType) {
+              ArrayValue(intArrayTypeRef, List(secondParam.ref))
+            } else {
+              secondParam.ref
+            }
+
+            // newInstance(jl.Class, _)  -->  jlClass.newArrayOfThisClass(secondParamAsArray)
+            Apply(EAF, jlClassParam.ref,
+                MethodIdent(MethodName("newArrayOfThisClass", List(intArrayTypeRef), objectRef)),
+                List(secondParamAsArray))(
+                AnyType)
+          }
+
+          MethodDef(method.flags, method.name, method.originalName,
+              method.args, method.resultType, Some(newBody))(
+              method.optimizerHints, method.version)
+        }
+      }
     }
 
     private def jsConstructorHack(

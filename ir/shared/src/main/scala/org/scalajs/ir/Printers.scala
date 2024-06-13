@@ -343,33 +343,43 @@ object Printers {
           print(method)
           printArgs(args)
 
-        case UnaryOp(UnaryOp.String_length, lhs) =>
-          print(lhs)
-          print(".length")
-
         case UnaryOp(op, lhs) =>
           import UnaryOp._
-          print('(')
-          print((op: @switch) match {
-            case Boolean_! =>
-              "!"
-            case IntToChar =>
-              "(char)"
-            case IntToByte =>
-              "(byte)"
-            case IntToShort =>
-              "(short)"
-            case CharToInt | ByteToInt | ShortToInt | LongToInt | DoubleToInt =>
-              "(int)"
-            case IntToLong | DoubleToLong =>
-              "(long)"
-            case DoubleToFloat | LongToFloat =>
-              "(float)"
-            case IntToDouble | LongToDouble | FloatToDouble =>
-              "(double)"
-          })
-          print(lhs)
-          print(')')
+
+          if (op < String_length) {
+            print('(')
+            print((op: @switch) match {
+              case Boolean_! =>
+                "!"
+              case IntToChar =>
+                "(char)"
+              case IntToByte =>
+                "(byte)"
+              case IntToShort =>
+                "(short)"
+              case CharToInt | ByteToInt | ShortToInt | LongToInt | DoubleToInt =>
+                "(int)"
+              case IntToLong | DoubleToLong =>
+                "(long)"
+              case DoubleToFloat | LongToFloat =>
+                "(float)"
+              case IntToDouble | LongToDouble | FloatToDouble =>
+                "(double)"
+            })
+            print(lhs)
+            print(')')
+          } else {
+            print(lhs)
+            print((op: @switch) match {
+              case String_length       => ".length"
+              case Class_name          => ".name"
+              case Class_isPrimitive   => ".isPrimitive"
+              case Class_isInterface   => ".isInterface"
+              case Class_isArray       => ".isArray"
+              case Class_componentType => ".componentType"
+              case Class_superClass    => ".superClass"
+            })
+          }
 
         case BinaryOp(BinaryOp.Int_-, IntLiteral(0), rhs) =>
           print("(-")
@@ -407,6 +417,19 @@ object Printers {
           print('[')
           print(rhs)
           print(']')
+
+        case BinaryOp(op, lhs, rhs) if BinaryOp.isClassOp(op) =>
+          import BinaryOp._
+          print((op: @switch) match {
+            case Class_isInstance       => "isInstance("
+            case Class_isAssignableFrom => "isAssignableFrom("
+            case Class_cast             => "cast("
+            case Class_newArray         => "newArray("
+          })
+          print(lhs)
+          print(", ")
+          print(rhs)
+          print(')')
 
         case BinaryOp(op, lhs, rhs) =>
           import BinaryOp._

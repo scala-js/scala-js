@@ -55,7 +55,7 @@ private[emitter] final class SJSGen(
     /** `Char.c`: the int value of the character. */
     val c = "c"
 
-    // --- TypeData private fields ---
+    // --- TypeData fields ---
 
     /** `TypeData.constr`: the run-time constructor of the class. */
     val constr = if (minify) "C" else "constr"
@@ -96,6 +96,18 @@ private[emitter] final class SJSGen(
     /** `TypeData.isJSType`: whether it is a JS type. */
     val isJSType = if (minify) "J" else "isJSType"
 
+    /** `TypeData.name`: the user name of the class (the result of `jl.Class.getName()`). */
+    val name = if (minify) "N" else "name"
+
+    /** `TypeData.isPrimitive`: whether it is a primitive type. */
+    val isPrimitive = if (minify) "X" else "isPrimitive"
+
+    /** `TypeData.isInterface`: whether it is an interface type. */
+    val isInterface = if (minify) "Y" else "isInterface"
+
+    /** `TypeData.isArrayClass`: whether it is an array type. */
+    val isArrayClass = if (minify) "Z" else "isArrayClass"
+
     // --- TypeData constructors ---
 
     val initPrim = if (minify) "p" else "initPrim"
@@ -106,7 +118,7 @@ private[emitter] final class SJSGen(
 
     val initArray = if (minify) "a" else "initArray"
 
-    // --- TypeData private methods ---
+    // --- TypeData methods ---
 
     /** `TypeData.getArrayOf()`: the `Type` instance for that type's array type. */
     val getArrayOf = if (minify) "r" else "getArrayOf"
@@ -114,35 +126,23 @@ private[emitter] final class SJSGen(
     /** `TypeData.getClassOf()`: the `jl.Class` instance for that type. */
     val getClassOf = if (minify) "l" else "getClassOf"
 
-    // --- TypeData public fields --- never minified
+    /** `TypeData.getSuperclass()`: implementation of `Class_superClass`. */
+    val getSuperclass = if (minify) "S" else "getSuperclass"
 
-    /** `TypeData.name`: public, the user name of the class (the result of `jl.Class.getName()`). */
-    val name = "name"
+    /** `TypeData.getComponentType()`: implementation of `Class_componentType`. */
+    val getComponentType = if (minify) "Q" else "getComponentType"
 
-    /** `TypeData.isPrimitive`: public, whether it is a primitive type. */
-    val isPrimitive = "isPrimitive"
+    /** `TypeData.isInstance()`: implementation of `Class_isInstance`. */
+    val isInstance = if (minify) "I" else "isInstance"
 
-    /** `TypeData.isInterface`: public, whether it is an interface type. */
-    val isInterface = "isInterface"
+    /** `TypeData.isAssignableFrom()`: implementation of `Class_isAssignableFrom`. */
+    val isAssignableFrom = if (minify) "R" else "isAssignableFrom"
 
-    /** `TypeData.isArrayClass`: public, whether it is an array type. */
-    val isArrayClass = "isArrayClass"
+    /** `TypeData.cast()`: implementation of `Class_cast`. */
+    val cast = if (minify) "T" else "cast"
 
-    /** `TypeData.isInstance()`: public, implementation of `jl.Class.isInstance`. */
-    val isInstance = "isInstance"
-
-    /** `TypeData.isAssignableFrom()`: public, implementation of `jl.Class.isAssignableFrom`. */
-    val isAssignableFrom = "isAssignableFrom"
-
-    // --- TypeData public methods --- never minified
-
-    val checkCast = "checkCast"
-
-    val getSuperclass = "getSuperclass"
-
-    val getComponentType = "getComponentType"
-
-    val newArrayOfThisClass = "newArrayOfThisClass"
+    /** `TypeData.newArray()`: implementation of `Class_newArray`. */
+    val newArray = if (minify) "U" else "newArray"
   }
 
   /* This is a `val` because it is used at the top of every file, outside of

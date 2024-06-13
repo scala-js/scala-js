@@ -356,9 +356,20 @@ class ClassEmitter(coreSpec: CoreSpec) {
         isMutable = true // initialized by the constructors, so always mutable at the Wasm level
       )
     }
+    val jlClassDataField = if (className == ClassClass) {
+      // Inject the magic `data` field
+      watpe.StructField(
+        genFieldID.classData,
+        OriginalName("data"),
+        watpe.RefType(genTypeID.typeData),
+        isMutable = false
+      ) :: Nil
+    } else {
+      Nil
+    }
     val structTypeID = genTypeID.forClass(className)
     val superType = clazz.superClass.map(s => genTypeID.forClass(s.name))
-    val structType = watpe.StructType(vtableField :: itablesField :: fields)
+    val structType = watpe.StructType(vtableField :: itablesField :: fields ::: jlClassDataField)
     val subType = watpe.SubType(
       structTypeID,
       makeDebugName(ns.ClassInstance, className),
@@ -597,6 +608,9 @@ class ClassEmitter(coreSpec: CoreSpec) {
       makeDebugName(ns.NewDefault, className),
       clazz.pos
     )
+    val dataParamOpt =
+      if (className == ClassClass) Some(fb.addParam("data", watpe.RefType(genTypeID.typeData)))
+      else None
     fb.setResultType(watpe.RefType(structTypeID))
 
     fb += wa.GlobalGet(genGlobalID.forVTable(className))
@@ -609,6 +623,8 @@ class ClassEmitter(coreSpec: CoreSpec) {
     classInfo.allFieldDefs.foreach { f =>
       fb += genZeroOf(f.ftpe)
     }
+    for (dataParam <- dataParamOpt)
+      fb += wa.LocalGet(dataParam)
     fb += wa.StructNew(structTypeID)
 
     fb.buildAndAddToModule()

@@ -49,4 +49,7 @@ object SyntheticProperty {
 
   /** `ArrayClass.copyTo()`: copies from that array to another array. */
   val copyTo: SyntheticProperty = new SyntheticProperty("copyTo")
+
+  /** `jl.Class.data`: the underlying `TypeData` of the class. */
+  val data: SyntheticProperty = new SyntheticProperty("data")
 }
