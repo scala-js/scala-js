@@ -20,7 +20,8 @@ import org.scalajs.ir.OriginalName
  *  but is added by the Emitter on some classes that belong to the Scala class
  *  hierarchy.
  *
- *  Currently, these only include properties of the `ArrayClass`es.
+ *  Currently, these only include properties of the `ArrayClass`es, as well as
+ *  the magic `jl.Class.data` property.
  *
  *  These properties live in the same namespace as Scala field and method
  *  names, because the `ArrayClass`es extend `j.l.Object`. Therefore, they
@@ -49,4 +50,7 @@ object SyntheticProperty {
 
   /** `ArrayClass.copyTo()`: copies from that array to another array. */
   val copyTo: SyntheticProperty = new SyntheticProperty("copyTo")
+
+  /** `jl.Class.data`: the underlying `TypeData` of the class. */
+  val data: SyntheticProperty = new SyntheticProperty("data")
 }

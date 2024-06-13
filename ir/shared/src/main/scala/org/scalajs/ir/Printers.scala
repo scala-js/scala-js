@@ -371,8 +371,14 @@ object Printers {
           } else {
             print(lhs)
             print((op: @switch) match {
-              case String_length => ".length"
-              case CheckNotNull  => ".notNull"
+              case String_length       => ".length"
+              case CheckNotNull        => ".notNull"
+              case Class_name          => ".name"
+              case Class_isPrimitive   => ".isPrimitive"
+              case Class_isInterface   => ".isInterface"
+              case Class_isArray       => ".isArray"
+              case Class_componentType => ".componentType"
+              case Class_superClass    => ".superClass"
             })
           }
 
@@ -412,6 +418,19 @@ object Printers {
           print('[')
           print(rhs)
           print(']')
+
+        case BinaryOp(op, lhs, rhs) if BinaryOp.isClassOp(op) =>
+          import BinaryOp._
+          print((op: @switch) match {
+            case Class_isInstance       => "isInstance("
+            case Class_isAssignableFrom => "isAssignableFrom("
+            case Class_cast             => "cast("
+            case Class_newArray         => "newArray("
+          })
+          print(lhs)
+          print(", ")
+          print(rhs)
+          print(')')
 
         case BinaryOp(op, lhs, rhs) =>
           import BinaryOp._

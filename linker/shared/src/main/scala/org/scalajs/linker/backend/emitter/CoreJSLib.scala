@@ -578,7 +578,7 @@ private[emitter] object CoreJSLib {
                   str("char")
                 }, {
                   If(genIsScalaJSObject(value), {
-                    genIdentBracketSelect(value DOT classData, cpn.name)
+                    value DOT classData DOT cpn.name
                   }, {
                     typeof(value)
                   })
@@ -665,33 +665,6 @@ private[emitter] object CoreJSLib {
             str("Cannot call isInstance() on a Class representing a JS trait/object") :: Nil))
       } :::
 
-      defineFunction2(VarField.newArrayObject) { (arrayClassData, lengths) =>
-        Return(genCallHelper(VarField.newArrayObjectInternal, arrayClassData, lengths, int(0)))
-      } :::
-
-      defineFunction3(VarField.newArrayObjectInternal) { (arrayClassData, lengths, lengthIndex) =>
-        val result = varRef("result")
-        val subArrayClassData = varRef("subArrayClassData")
-        val subLengthIndex = varRef("subLengthIndex")
-        val underlying = varRef("underlying")
-        val i = varRef("i")
-
-        Block(
-          const(result, New(arrayClassData DOT cpn.constr,
-              BracketSelect(lengths, lengthIndex) :: Nil)),
-          If(lengthIndex < (lengths.length - 1), Block(
-            const(subArrayClassData, arrayClassData DOT cpn.componentData),
-            const(subLengthIndex, lengthIndex + 1),
-            const(underlying, result.u),
-            For(let(i, 0), i < underlying.length, i.++, {
-              BracketSelect(underlying, i) :=
-                genCallHelper(VarField.newArrayObjectInternal, subArrayClassData, lengths, subLengthIndex)
-            })
-          )),
-          Return(result)
-        )
-      } :::
-
       defineFunction1(VarField.objectClone) { instance =>
         // return Object.create(Object.getPrototypeOf(instance), $getOwnPropertyDescriptors(instance));
         val callGetOwnPropertyDescriptors = genCallPolyfillableBuiltin(
@@ -703,7 +676,7 @@ private[emitter] object CoreJSLib {
 
       defineFunction1(VarField.objectOrArrayClone) { instance =>
         // return instance.$classData.isArrayClass ? instance.clone__O() : $objectClone(instance);
-        Return(If(genIdentBracketSelect(instance DOT classData, cpn.isArrayClass),
+        Return(If(instance DOT classData DOT cpn.isArrayClass,
             genApply(instance, cloneMethodName, Nil),
             genCallHelper(VarField.objectClone, instance)))
       }
@@ -797,7 +770,7 @@ private[emitter] object CoreJSLib {
             StringLiteral(RuntimeClassNameMapperImpl.map(
                 semantics.runtimeClassNameMapper, className.nameString))
           },
-          instance => genIdentBracketSelect(instance DOT classData, cpn.name),
+          instance => instance DOT classData DOT cpn.name,
           {
             if (nullPointers == CheckedBehavior.Unchecked)
               genApply(Null(), getNameMethodName, Nil)
@@ -1132,7 +1105,7 @@ private[emitter] object CoreJSLib {
 
       condDefs(arrayStores != CheckedBehavior.Unchecked)(
         defineFunction5(VarField.systemArraycopyRefs) { (src, srcPos, dest, destPos, length) =>
-          If(Apply(genIdentBracketSelect(dest DOT classData, cpn.isAssignableFrom), List(src DOT classData)), {
+          If(Apply(dest DOT classData DOT cpn.isAssignableFrom, List(src DOT classData)), {
             /* Fast-path, no need for array store checks. This always applies
              * for arrays of the same type, and a fortiori, when `src eq dest`.
              */
@@ -1165,7 +1138,7 @@ private[emitter] object CoreJSLib {
             const(srcData, src && (src DOT classData)),
             If(srcData === (dest && (dest DOT classData)), {
               // Both values have the same "data" (could also be falsy values)
-              If(srcData && genIdentBracketSelect(srcData, cpn.isArrayClass), {
+              If(srcData && (srcData DOT cpn.isArrayClass), {
                 // Fast path: the values are array of the same type
                 if (esVersion >= ESVersion.ES2015 && nullPointers == CheckedBehavior.Unchecked)
                   genSyntheticPropApply(src, SyntheticProperty.copyTo, srcPos, dest, destPos, length)
@@ -1574,9 +1547,6 @@ private[emitter] object CoreJSLib {
       def privateFieldSet(fieldName: String, value: Tree): Tree =
         This() DOT fieldName := value
 
-      def publicFieldSet(fieldName: String, value: Tree): Tree =
-        genIdentBracketSelect(This(), fieldName) := value
-
       val ctor = {
         MethodDef(static = false, Ident("constructor"), Nil, None, {
           Block(
@@ -1603,11 +1573,11 @@ private[emitter] object CoreJSLib {
               privateFieldSet(cpn.wrapArray, Undefined()),
               privateFieldSet(cpn.isJSType, bool(false)),
 
-              publicFieldSet(cpn.name, str("")),
-              publicFieldSet(cpn.isPrimitive, bool(false)),
-              publicFieldSet(cpn.isInterface, bool(false)),
-              publicFieldSet(cpn.isArrayClass, bool(false)),
-              publicFieldSet(cpn.isInstance, Undefined())
+              privateFieldSet(cpn.name, str("")),
+              privateFieldSet(cpn.isPrimitive, bool(false)),
+              privateFieldSet(cpn.isInterface, bool(false)),
+              privateFieldSet(cpn.isArrayClass, bool(false)),
+              privateFieldSet(cpn.isInstance, Undefined())
           )
         })
       }
@@ -1631,9 +1601,9 @@ private[emitter] object CoreJSLib {
               const(self, This()), // capture `this` for use in arrow fun
               privateFieldSet(cpn.isAssignableFromFun,
                   genArrowFunction(paramList(that), Return(that === self))),
-              publicFieldSet(cpn.name, displayName),
-              publicFieldSet(cpn.isPrimitive, bool(true)),
-              publicFieldSet(cpn.isInstance,
+              privateFieldSet(cpn.name, displayName),
+              privateFieldSet(cpn.isPrimitive, bool(true)),
+              privateFieldSet(cpn.isInstance,
                   genArrowFunction(paramList(obj), Return(bool(false)))),
               If(arrayClass !== Undefined(), { // it is undefined for void
                 privateFieldSet(cpn._arrayOf,
@@ -1685,9 +1655,9 @@ private[emitter] object CoreJSLib {
                 })
               }),
               privateFieldSet(cpn.isJSType, kindOrCtor === 2),
-              publicFieldSet(cpn.name, fullName),
-              publicFieldSet(cpn.isInterface, kindOrCtor === 1),
-              publicFieldSet(cpn.isInstance, isInstance || {
+              privateFieldSet(cpn.name, fullName),
+              privateFieldSet(cpn.isInterface, kindOrCtor === 1),
+              privateFieldSet(cpn.isInstance, isInstance || {
                 genArrowFunction(paramList(obj), {
                   Return(!(!(obj && (obj DOT classData) &&
                       BracketSelect(obj DOT classData DOT cpn.ancestors, internalName))))
@@ -1720,8 +1690,8 @@ private[emitter] object CoreJSLib {
             privateFieldSet(cpn.arrayBase, arrayBase),
             privateFieldSet(cpn.arrayDepth, arrayDepth),
             privateFieldSet(cpn.arrayEncodedName, name),
-            publicFieldSet(cpn.name, name),
-            publicFieldSet(cpn.isArrayClass, bool(true))
+            privateFieldSet(cpn.name, name),
+            privateFieldSet(cpn.isArrayClass, bool(true))
         )
       }
 
@@ -1754,7 +1724,7 @@ private[emitter] object CoreJSLib {
                   })
                 })
               }),
-              publicFieldSet(cpn.isInstance,
+              privateFieldSet(cpn.isInstance,
                   genArrowFunction(paramList(obj), Return(obj instanceof arrayClass))),
               Return(This())
           )
@@ -1798,7 +1768,7 @@ private[emitter] object CoreJSLib {
 
               val storeCheck = {
                 If((v !== Null()) && !(componentData DOT cpn.isJSType) &&
-                    !Apply(genIdentBracketSelect(componentData, cpn.isInstance), v :: Nil),
+                    !Apply(componentData DOT cpn.isInstance, v :: Nil),
                     genCallHelper(VarField.throwArrayStoreException, v))
               }
 
@@ -1882,7 +1852,7 @@ private[emitter] object CoreJSLib {
                 Return(New(ArrayClass, array :: Nil))
               })),
               const(self, This()), // don't rely on the lambda being called with `this` as receiver
-              publicFieldSet(cpn.isInstance, genArrowFunction(paramList(obj), {
+              privateFieldSet(cpn.isInstance, genArrowFunction(paramList(obj), {
                 val data = varRef("data")
                 Block(
                     const(data, obj && (obj DOT classData)),
@@ -1911,9 +1881,13 @@ private[emitter] object CoreJSLib {
 
       def getClassOf = {
         MethodDef(static = false, Ident(cpn.getClassOf), Nil, None, {
+          /* We call the NoArgConstructorName with an argument, because it is
+           * added at the emitter level for java.lang.Class, without being in
+           * the IR.
+           */
           Block(
               If(!(This() DOT cpn._classOf),
-                  This() DOT cpn._classOf := genScalaClassNew(ClassClass, ObjectArgConstructorName, This()),
+                  This() DOT cpn._classOf := genScalaClassNew(ClassClass, NoArgConstructorName, This()),
                   Skip()),
               Return(This() DOT cpn._classOf)
           )
@@ -1921,7 +1895,7 @@ private[emitter] object CoreJSLib {
       }
 
       def isAssignableFrom = {
-        /* This is the public method called by j.l.Class.isAssignableFrom. It
+        /* This is the method called by `Class_isAssignableFrom`. It
          * first performs a fast-path with `this === that`, and otherwise calls
          * the internal `isAssignableFromFun` function.
          * The reason for this decomposition (as opposed to performing the
@@ -1931,7 +1905,7 @@ private[emitter] object CoreJSLib {
          * We only need a polymorphic dispatch in the slow path.
          */
         val that = varRef("that")
-        MethodDef(static = false, StringLiteral(cpn.isAssignableFrom),
+        MethodDef(static = false, Ident(cpn.isAssignableFrom),
             paramList(that), None, {
           Return(
               (This() === that) || // fast path
@@ -1939,22 +1913,22 @@ private[emitter] object CoreJSLib {
         })
       }
 
-      def checkCast = {
+      def cast = {
+        assert(asInstanceOfs != CheckedBehavior.Unchecked)
         val obj = varRef("obj")
-        MethodDef(static = false, StringLiteral(cpn.checkCast), paramList(obj), None,
-          if (asInstanceOfs != CheckedBehavior.Unchecked) {
+        MethodDef(static = false, Ident(cpn.cast), paramList(obj), None, {
+          Block(
             If((obj !== Null()) && !(This() DOT cpn.isJSType) &&
-                !Apply(genIdentBracketSelect(This(), cpn.isInstance), obj :: Nil),
-              genCallHelper(VarField.throwClassCastException, obj, genIdentBracketSelect(This(), cpn.name)),
-              Skip())
-          } else {
-            Skip()
-          }
-        )
+                !Apply(This() DOT cpn.isInstance, obj :: Nil),
+              genCallHelper(VarField.throwClassCastException, obj, This() DOT cpn.name),
+              Skip()),
+            Return(obj)
+          )
+        })
       }
 
       def getSuperclass = {
-        MethodDef(static = false, StringLiteral(cpn.getSuperclass), Nil, None, {
+        MethodDef(static = false, Ident(cpn.getSuperclass), Nil, None, {
           Return(If(This() DOT cpn.parentData,
               Apply(This() DOT cpn.parentData DOT cpn.getClassOf, Nil),
               Null()))
@@ -1962,26 +1936,18 @@ private[emitter] object CoreJSLib {
       }
 
       def getComponentType = {
-        MethodDef(static = false, StringLiteral(cpn.getComponentType), Nil, None, {
+        MethodDef(static = false, Ident(cpn.getComponentType), Nil, None, {
           Return(If(This() DOT cpn.componentData,
               Apply(This() DOT cpn.componentData DOT cpn.getClassOf, Nil),
               Null()))
         })
       }
 
-      def newArrayOfThisClass = {
-        val lengths = varRef("lengths")
-        val arrayClassData = varRef("arrayClassData")
-        val i = varRef("i")
-        MethodDef(static = false, StringLiteral(cpn.newArrayOfThisClass),
-            paramList(lengths), None, {
-          Block(
-              let(arrayClassData, This()),
-              For(let(i, 0), i < lengths.length, i.++, {
-                arrayClassData := Apply(arrayClassData DOT cpn.getArrayOf, Nil)
-              }),
-              Return(genCallHelper(VarField.newArrayObject, arrayClassData, lengths))
-          )
+      def newArray = {
+        val length = varRef("length")
+        MethodDef(static = false, Ident(cpn.newArray),
+            paramList(length), None, {
+          Return(New(Apply(This() DOT cpn.getArrayOf, Nil) DOT cpn.constr, length :: Nil))
         })
       }
 
@@ -1995,11 +1961,16 @@ private[emitter] object CoreJSLib {
           if (globalKnowledge.isClassClassInstantiated) {
             List(
                 getClassOf,
-                isAssignableFrom,
-                checkCast,
+                isAssignableFrom
+            ) ::: (
+              if (asInstanceOfs != CheckedBehavior.Unchecked)
+                List(cast)
+              else
+                Nil
+            ) ::: List(
                 getSuperclass,
                 getComponentType,
-                newArrayOfThisClass
+                newArray
             )
           } else if (arrayStores != CheckedBehavior.Unchecked) {
             List(
@@ -2035,7 +2006,7 @@ private[emitter] object CoreJSLib {
               Block(
                   const(arrayDepth, data DOT cpn.arrayDepth),
                   Return(If(arrayDepth === depth, {
-                    !genIdentBracketSelect(data DOT cpn.arrayBase, cpn.isPrimitive)
+                    !(data DOT cpn.arrayBase DOT cpn.isPrimitive)
                   }, {
                     arrayDepth > depth
                   }))
@@ -2098,9 +2069,6 @@ private[emitter] object CoreJSLib {
         def privateFieldSet(fieldName: String, value: Tree): Tree =
           typeDataVar DOT fieldName := value
 
-        def publicFieldSet(fieldName: String, value: Tree): Tree =
-          genIdentBracketSelect(typeDataVar, fieldName) := value
-
         extractWithGlobals(
             globalVarDef(VarField.d, ObjectClass, New(globalVar(VarField.TypeData, CoreVar), Nil))) :::
         List(
@@ -2108,11 +2076,11 @@ private[emitter] object CoreJSLib {
           privateFieldSet(cpn.arrayEncodedName, str("L" + fullName + ";")),
           privateFieldSet(cpn.isAssignableFromFun, {
             genArrowFunction(paramList(that), {
-              Return(!genIdentBracketSelect(that, cpn.isPrimitive))
+              Return(!(that DOT cpn.isPrimitive))
             })
           }),
-          publicFieldSet(cpn.name, str(fullName)),
-          publicFieldSet(cpn.isInstance,
+          privateFieldSet(cpn.name, str(fullName)),
+          privateFieldSet(cpn.isInstance,
               genArrowFunction(paramList(obj), Return(obj !== Null()))),
           privateFieldSet(cpn._arrayOf, {
             Apply(New(globalVar(VarField.TypeData, CoreVar), Nil) DOT cpn.initSpecializedArray, List(
@@ -2124,7 +2092,7 @@ private[emitter] object CoreJSLib {
                 Block(
                     const(thatDepth, that DOT cpn.arrayDepth),
                     Return(If(thatDepth === 1, {
-                      !genIdentBracketSelect(that DOT cpn.arrayBase, cpn.isPrimitive)
+                      !(that DOT cpn.arrayBase DOT cpn.isPrimitive)
                     }, {
                       (thatDepth > 1)
                     }))
