@@ -37,6 +37,8 @@ trait Analysis {
   def classInfos: scala.collection.Map[ClassName, ClassInfo]
   def topLevelExportInfos: scala.collection.Map[(ModuleID, String), TopLevelExportInfo]
 
+  def isClassSuperClassUsed: Boolean
+
   def errors: scala.collection.Seq[Error]
 }
 

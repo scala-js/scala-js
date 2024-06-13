@@ -118,6 +118,9 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
   def classInfos: scala.collection.Map[ClassName, Analysis.ClassInfo] = _classInfos
 
+  private val _classSuperClassUsed = new AtomicBoolean(false)
+  def isClassSuperClassUsed: Boolean = _classSuperClassUsed.get()
+
   private[this] val _errors = new GrowingList[Error]
 
   override def errors: List[Error] = _errors.get()
@@ -294,20 +297,11 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
 
   /** Reach additional class data based on reflection methods being used. */
   private def reachDataThroughReflection(): Unit = {
-
-    val classClassInfo = _classInfos.get(ClassClass)
-
-    /* If Class.getSuperclass() is reachable, we can reach the data of all
+    /* If Class_superClass is used, we can reach the data of all
      * superclasses of classes whose data we can already reach.
      */
-    for {
-      getSuperclassMethodInfo <-
-        classClassInfo.flatMap(_.publicMethodInfos.get(getSuperclassMethodName))
-      if getSuperclassMethodInfo.isReachable
-    } {
-      // calledFrom should always be nonEmpty if isReachable, but let's be robust
-      implicit val from =
-        getSuperclassMethodInfo.calledFrom.headOption.getOrElse(fromAnalyzer)
+    if (isClassSuperClassUsed) {
+      implicit val from = fromAnalyzer
       for (classInfo <- _classInfos.values.filter(_.isDataAccessed).toList) {
         @tailrec
         def loop(classInfo: ClassInfo): Unit = {
@@ -1461,7 +1455,7 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
         objectClassInfo.addStaticDependency(ClassClass)
         lookupClass(ClassClass) { clazz =>
           clazz.instantiated()
-          clazz.callMethodStatically(MemberNamespace.Constructor, ObjectArgConstructorName)
+          clazz.callMethodStatically(MemberNamespace.Constructor, NoArgConstructorName)
         }
       }
 
@@ -1478,6 +1472,10 @@ private class AnalyzerRun(config: CommonPhaseConfig, initial: Boolean,
       if ((globalFlags & ReachabilityInfo.FlagUsedExponentOperator) != 0 &&
           config.coreSpec.esFeatures.esVersion < ESVersion.ES2016) {
         _errors ::= ExponentOperatorWithoutES2016Support(from)
+      }
+
+      if ((globalFlags & ReachabilityInfo.FlagUsedClassSuperClass) != 0) {
+        _classSuperClassUsed.set(true)
       }
     }
   }
