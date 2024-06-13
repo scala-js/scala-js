@@ -310,6 +310,7 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
     }
 
     initToInline.fold {
+      assert(className != ClassClass, s"java.lang.Class did not have an inlineable init")
       WithGlobals(
           js.Function(arrow = false, Nil, None, js.Block(superCtorCallAndFieldDefs)))
     } { initMethodDef =>
@@ -326,8 +327,20 @@ private[emitter] final class ClassEmitter(sjsGen: SJSGen) {
 
       for (generatedInitMethodFun <- generatedInitMethodFunWithGlobals) yield {
         val js.Function(arrow, args, restParam, initMethodFunBody) = generatedInitMethodFun
-        js.Function(arrow, args, restParam,
-            js.Block(superCtorCallAndFieldDefs ::: initMethodFunBody :: Nil))
+
+        if (className != ClassClass) {
+          js.Function(arrow, args, restParam,
+              js.Block(superCtorCallAndFieldDefs ::: initMethodFunBody :: Nil))
+        } else {
+          // Inject the magical `data` argument and field
+          assert(args.isEmpty, s"Unexpected constructor arguments $args for java.lang.Class")
+          val dataParam = js.ParamDef(fileLevelVarIdent(VarField.data))
+          val createDataField = js.Assign(
+              js.DotSelect(js.This(), genArrayClassPropertyForDef(ArrayClassProperty.data)),
+              dataParam.ref)
+          js.Function(arrow, dataParam :: Nil, restParam,
+              js.Block(superCtorCallAndFieldDefs ::: createDataField :: initMethodFunBody :: Nil))
+        }
       }
     }
   }

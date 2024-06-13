@@ -91,9 +91,14 @@ final class BaseLinker(config: CommonPhaseConfig, checkIR: Boolean) {
     } yield {
       val (linkedClassDefs, linkedTopLevelExports) = assembled.unzip
 
+      val globalInfo = new LinkedGlobalInfo(
+        analysis.isClassSuperClassUsed
+      )
+
       new LinkingUnit(config.coreSpec, linkedClassDefs.toList,
           linkedTopLevelExports.flatten.toList,
-          moduleInitializers.toList)
+          moduleInitializers.toList,
+          globalInfo)
     }
   }
 }

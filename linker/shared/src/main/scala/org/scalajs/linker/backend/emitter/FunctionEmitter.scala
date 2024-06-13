@@ -1274,11 +1274,15 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         case BinaryOp(BinaryOp.String_charAt, lhs, rhs) =>
           allowBehavior(semantics.stringIndexOutOfBounds) && test(lhs) && test(rhs)
 
+        // Binary Class_x operations are complicated; pretend they can all have side effects
+        case BinaryOp(op, lhs, rhs) if BinaryOp.isClassOp(op) =>
+          allowSideEffects && test(lhs) && test(rhs)
+
         // Expressions preserving pureness (modulo NPE)
         case Block(trees)            => trees forall test
         case If(cond, thenp, elsep)  => test(cond) && test(thenp) && test(elsep)
         case BinaryOp(_, lhs, rhs)   => test(lhs) && test(rhs)
-        case UnaryOp(_, lhs)         => test(lhs)
+        case UnaryOp(op, lhs)        => if (UnaryOp.isClassOp(op)) testNPE(lhs) else test(lhs)
         case ArrayLength(array)      => testNPE(array)
         case RecordSelect(record, _) => test(record)
         case IsInstanceOf(expr, _)   => test(expr)
@@ -2339,7 +2343,10 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case UnaryOp(op, lhs) =>
           import UnaryOp._
-          val newLhs = transformExpr(lhs, preserveChar = op == CharToInt)
+
+          def newLhs = transformExpr(lhs, preserveChar = op == CharToInt)
+          def getClassDataOfLhs = genGetDataOf(transformExprNoChar(checkNotNull(lhs)))
+
           (op: @switch) match {
             case Boolean_! => js.UnaryOp(JSUnaryOp.!, newLhs)
 
@@ -2396,12 +2403,33 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             // String.length
             case String_length =>
               genIdentBracketSelect(newLhs, "length")
+
+            // Class operations
+            case Class_name =>
+              getClassDataOfLhs DOT cpn.name
+            case Class_isPrimitive =>
+              getClassDataOfLhs DOT cpn.isPrimitive
+            case Class_isInterface =>
+              getClassDataOfLhs DOT cpn.isInterface
+            case Class_isArray =>
+              getClassDataOfLhs DOT cpn.isArrayClass
+            case Class_componentType =>
+              js.Apply(getClassDataOfLhs DOT cpn.getComponentType, Nil)
+            case Class_superClass =>
+              js.Apply(getClassDataOfLhs DOT cpn.getSuperclass, Nil)
           }
 
         case BinaryOp(op, lhs, rhs) =>
           import BinaryOp._
           val newLhs = transformExpr(lhs, preserveChar = (op == String_+))
           val newRhs = transformExpr(rhs, preserveChar = (op == String_+))
+
+          def genClassOpCommon(directMethod: String, helper: VarField): js.Tree = {
+            if (isNotNull(lhs) || semantics.nullPointers == CheckedBehavior.Unchecked)
+              js.Apply(genGetDataOf(newLhs) DOT directMethod, newRhs :: Nil)
+            else
+              genCallHelper(helper, newLhs, newRhs)
+          }
 
           (op: @switch) match {
             case === | !== =>
@@ -2675,6 +2703,15 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                 case CheckedBehavior.Unchecked =>
                   js.Apply(genIdentBracketSelect(newLhs, "charCodeAt"), List(newRhs))
               }
+
+            case Class_isInstance =>
+              genClassOpCommon(cpn.isInstance, VarField.classIsInstance)
+            case Class_isAssignableFrom =>
+              genClassOpCommon(cpn.isAssignableFrom, VarField.classIsAssignableFrom)
+            case Class_cast =>
+              genClassOpCommon(cpn.cast, VarField.classCast)
+            case Class_newArray =>
+              genClassOpCommon(cpn.newArray, VarField.classNewArray)
           }
 
         case NewArray(typeRef, lengths) =>
@@ -2782,8 +2819,7 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
 
         case Transient(ZeroOf(runtimeClass)) =>
           js.DotSelect(
-              genSelect(transformExprNoChar(checkNotNull(runtimeClass)),
-                  FieldIdent(dataFieldName)),
+              genGetDataOf(transformExprNoChar(checkNotNull(runtimeClass))),
               js.Ident(cpn.zero))
 
         case Transient(NativeArrayWrapper(elemClass, nativeArray)) =>
@@ -2794,9 +2830,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               extractWithGlobals(
                   genNativeArrayWrapper(arrayTypeRef, newNativeArray))
             case _ =>
-              val elemClassData = genSelect(
-                  transformExprNoChar(checkNotNull(elemClass)),
-                  FieldIdent(dataFieldName))
+              val elemClassData =
+                genGetDataOf(transformExprNoChar(checkNotNull(elemClass)))
               val arrayClassData = js.Apply(
                   js.DotSelect(elemClassData, js.Ident(cpn.getArrayOf)), Nil)
               js.Apply(arrayClassData DOT cpn.wrapArray, newNativeArray :: Nil)
@@ -3285,6 +3320,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
         implicit pos: Position): js.Tree = {
       js.Apply(globalVar(field, (className, method.name)), args)
     }
+
+    private def genGetDataOf(jlClassValue: js.Tree)(implicit pos: Position): js.Tree =
+      genArrayClassPropSelect(jlClassValue, ArrayClassProperty.data)
 
     private def genCallPolyfillableBuiltin(
         builtin: PolyfillableBuiltin, args: js.Tree*)(

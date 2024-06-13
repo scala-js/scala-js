@@ -1483,9 +1483,15 @@ private[optimizer] abstract class OptimizerCore(
       case PreTransBlock(bindingsAndStats, result) =>
         finishTransformBindings(bindingsAndStats, finishTransformExpr(result))
       case PreTransUnaryOp(op, lhs) =>
-        UnaryOp(op, finishTransformExpr(lhs))
+        val lhsTree =
+          if (UnaryOp.isClassOp(op)) finishTransformExprMaybeAssumeNotNull(lhs)
+          else finishTransformExpr(lhs)
+        UnaryOp(op, lhsTree)
       case PreTransBinaryOp(op, lhs, rhs) =>
-        BinaryOp(op, finishTransformExpr(lhs), finishTransformExpr(rhs))
+        val lhsTree =
+          if (BinaryOp.isClassOp(op)) finishTransformExprMaybeAssumeNotNull(lhs)
+          else finishTransformExpr(lhs)
+        BinaryOp(op, lhsTree, finishTransformExpr(rhs))
       case PreTransLocalDef(localDef) =>
         localDef.newReplacement
 
@@ -1531,17 +1537,43 @@ private[optimizer] abstract class OptimizerCore(
   private def finishTransformStat(stat: PreTransform): Tree = stat match {
     case PreTransBlock(bindingsAndStats, result) =>
       finishTransformBindings(bindingsAndStats, finishTransformStat(result))
-    case PreTransUnaryOp(_, lhs) =>
-      finishTransformStat(lhs)
+
+    case PreTransUnaryOp(op, lhs) =>
+      if (UnaryOp.isClassOp(op))
+        checkNotNullStatement(lhs)(stat.pos)
+      else
+        finishTransformStat(lhs)
 
     case PreTransBinaryOp(op, lhs, rhs) =>
-      // Here we need to preserve the side-effects of integer division/modulo and String_charAt
       import BinaryOp._
+
+      implicit val pos = stat.pos
 
       def newLhs = finishTransformStat(lhs)
 
       def finishNoSideEffects: Tree =
-        Block(newLhs, finishTransformStat(rhs))(stat.pos)
+        Block(newLhs, finishTransformStat(rhs))
+
+      def finishWithSideEffects: Tree = {
+        val lhsTree =
+          if (BinaryOp.isClassOp(op)) finishTransformExprMaybeAssumeNotNull(lhs)
+          else finishTransformExpr(lhs)
+        BinaryOp(op, lhsTree, finishTransformExpr(rhs))
+      }
+
+      def finishClassOpMaybeLhsNPE: Tree = {
+        /* By spec, the NPE must come *after* evaluating the rhs. Therefore,
+         * we cannot straightforwardly `checkNotNull(lhs)` then eval the rhs.
+         * In general we keep the side effects, but if NPEs are unchecked or if
+         * the lhs is not null, we can eliminate the operation. In practice,
+         * the lhs is always known to be not-null, since it originates from the
+         * `this` value inside a method of `jl.Class`.
+         */
+        if (!lhs.tpe.isNullable || semantics.nullPointers == CheckedBehavior.Unchecked)
+          Block(finishTransformStat(lhs), finishTransformStat(rhs))
+        else
+          finishWithSideEffects
+      }
 
       (op: @switch) match {
         case Int_/ | Int_% =>
@@ -1549,19 +1581,34 @@ private[optimizer] abstract class OptimizerCore(
             case PreTransLit(IntLiteral(r)) if r != 0 =>
               finishNoSideEffects
             case _ =>
-              Block(newLhs, BinaryOp(op, IntLiteral(0)(stat.pos),
-                  finishTransformExpr(rhs))(stat.pos))(stat.pos)
+              Block(newLhs, BinaryOp(op, IntLiteral(0), finishTransformExpr(rhs)))
           }
         case Long_/ | Long_% =>
           rhs match {
             case PreTransLit(LongLiteral(r)) if r != 0L =>
               finishNoSideEffects
             case _ =>
-              Block(newLhs, BinaryOp(op, LongLiteral(0L)(stat.pos),
-                  finishTransformExpr(rhs))(stat.pos))(stat.pos)
+              Block(newLhs, BinaryOp(op, LongLiteral(0L), finishTransformExpr(rhs)))
           }
         case String_charAt if semantics.stringIndexOutOfBounds != CheckedBehavior.Unchecked =>
-          finishTransformExpr(stat)
+          finishWithSideEffects
+        case Class_isInstance =>
+          finishClassOpMaybeLhsNPE
+        case Class_isAssignableFrom =>
+          if (!lhs.tpe.isNullable || semantics.nullPointers == CheckedBehavior.Unchecked)
+            Block(finishTransformStat(lhs), checkNotNullStatement(rhs))
+          else
+            finishWithSideEffects
+        case Class_cast =>
+          if (semantics.asInstanceOfs != CheckedBehavior.Unchecked)
+            finishWithSideEffects
+          else
+            finishClassOpMaybeLhsNPE
+        case Class_newArray =>
+          if (semantics.negativeArraySizes != CheckedBehavior.Unchecked)
+            finishWithSideEffects
+          else
+            finishClassOpMaybeLhsNPE
         case _ =>
           finishNoSideEffects
       }
@@ -1655,45 +1702,24 @@ private[optimizer] abstract class OptimizerCore(
       checkNotNullStatement(qualifier)(stat.pos)
     case Closure(_, _, _, _, _, captureValues) =>
       Block(captureValues.map(keepOnlySideEffects))(stat.pos)
-    case UnaryOp(_, arg) =>
-      keepOnlySideEffects(arg)
     case If(cond, thenp, elsep) =>
       (keepOnlySideEffects(thenp), keepOnlySideEffects(elsep)) match {
         case (Skip(), Skip())     => keepOnlySideEffects(cond)
         case (newThenp, newElsep) => If(cond, newThenp, newElsep)(NoType)(stat.pos)
       }
 
+    case UnaryOp(op, lhs) =>
+      if (UnaryOp.isClassOp(op))
+        checkNotNullStatement(lhs)(stat.pos)
+      else
+        keepOnlySideEffects(lhs)
+
     case BinaryOp(op, lhs, rhs) =>
-      // Here we need to preserve the side-effects of integer division/modulo and String_charAt
-      import BinaryOp._
-
-      implicit val pos = stat.pos
-
-      def newLhs = keepOnlySideEffects(lhs)
-
-      def finishNoSideEffects: Tree =
-        Block(newLhs, keepOnlySideEffects(rhs))
-
-      op match {
-        case Int_/ | Int_% =>
-          rhs match {
-            case IntLiteral(r) if r != 0 =>
-              finishNoSideEffects
-            case _ =>
-              Block(newLhs, BinaryOp(op, IntLiteral(0), rhs))
-          }
-        case Long_/ | Long_% =>
-          rhs match {
-            case LongLiteral(r) if r != 0L =>
-              finishNoSideEffects
-            case _ =>
-              Block(newLhs, BinaryOp(op, LongLiteral(0L), rhs))
-          }
-        case String_charAt if semantics.stringIndexOutOfBounds != CheckedBehavior.Unchecked =>
-          stat
-        case _ =>
-          finishNoSideEffects
-      }
+      /* The logic here exceeds the complexity threshold for keeping a copy
+       * compared to `finishTransformStat` at the Tree level. Instead, we
+       * convert to a PreTransBinaryOp and delegate to the other function.
+       */
+      finishTransformStat(PreTransBinaryOp(op, lhs.toPreTransform, rhs.toPreTransform)(stat.pos))
 
     case RecordValue(_, elems) =>
       Block(elems.map(keepOnlySideEffects))(stat.pos)
@@ -1887,7 +1913,9 @@ private[optimizer] abstract class OptimizerCore(
           recs(args).mapOrFailed(ApplyStatic(flags, className, method, _)(body.tpe))
 
         case UnaryOp(op, arg) =>
-          rec(arg).mapOrKeepGoing(UnaryOp(op, _))
+          rec(arg).mapOrKeepGoingIf(UnaryOp(op, _)) {
+            !UnaryOp.isClassOp(op) || isNotNull(arg)
+          }
 
         case BinaryOp(op, lhs, rhs) =>
           import BinaryOp._
@@ -1902,7 +1930,7 @@ private[optimizer] abstract class OptimizerCore(
                   case Int_/ | Int_% | Long_/ | Long_% | String_+ | String_charAt =>
                     false
                   case _ =>
-                    true
+                    !BinaryOp.isClassOp(op)
                 }
               }
           }
@@ -2930,57 +2958,12 @@ private[optimizer] abstract class OptimizerCore(
 
       // java.lang.Class
 
-      case ClassGetComponentType =>
-        optTReceiver.get match {
-          case PreTransLit(ClassOf(ArrayTypeRef(base, depth))) =>
-            contTree(ClassOf(
-                if (depth == 1) base
-                else ArrayTypeRef(base, depth - 1)))
-          case PreTransLit(ClassOf(ClassRef(_))) =>
-            contTree(Null())
-          case receiver =>
-            default
-        }
-
       case ClassGetName =>
         optTReceiver.get match {
-          case PreTransMaybeBlock(bindingsAndStats, PreTransLit(ClassOf(typeRef))) =>
-            def mappedClassName(className: ClassName): String = {
-              RuntimeClassNameMapperImpl.map(
-                  config.coreSpec.semantics.runtimeClassNameMapper,
-                  className.nameString)
-            }
-
-            val nameString = typeRef match {
-              case primRef: PrimRef =>
-                primRef.displayName
-              case ClassRef(className) =>
-                mappedClassName(className)
-              case ArrayTypeRef(primRef: PrimRef, dimensions) =>
-                "[" * dimensions + primRef.charCode
-              case ArrayTypeRef(ClassRef(className), dimensions) =>
-                "[" * dimensions + "L" + mappedClassName(className) + ";"
-            }
-
-            contTree(finishTransformBindings(
-                bindingsAndStats, StringLiteral(nameString)))
-
           case PreTransMaybeBlock(bindingsAndStats, PreTransTree(GetClass(expr), _)) =>
             contTree(finishTransformBindings(
                 bindingsAndStats, Transient(ObjectClassName(expr))))
 
-          case _ =>
-            default
-        }
-
-      // java.lang.reflect.Array
-
-      case ArrayNewInstance =>
-        val List(tcomponentType, tlength) = targs
-        tcomponentType match {
-          case PreTransTree(ClassOf(elementTypeRef), _) =>
-            val arrayTypeRef = ArrayTypeRef.of(elementTypeRef)
-            contTree(NewArray(arrayTypeRef, List(finishTransformExpr(tlength))))
           case _ =>
             default
         }
@@ -3696,8 +3679,64 @@ private[optimizer] abstract class OptimizerCore(
             default
         }
 
+      // Class operations
+
+      case Class_name =>
+        arg match {
+          case PreTransLit(ClassOf(typeRef)) =>
+            PreTransLit(StringLiteral(constantClassNameOf(typeRef)))
+          case _ =>
+            default
+        }
+
+      case Class_isPrimitive =>
+        arg match {
+          case PreTransLit(ClassOf(typeRef)) =>
+            PreTransLit(BooleanLiteral(typeRef.isInstanceOf[PrimRef]))
+          case _ =>
+            default
+        }
+      case Class_isArray =>
+        arg match {
+          case PreTransLit(ClassOf(typeRef)) =>
+            PreTransLit(BooleanLiteral(typeRef.isInstanceOf[ArrayTypeRef]))
+          case _ =>
+            default
+        }
+
+      case Class_componentType =>
+        arg match {
+          case PreTransLit(ClassOf(ArrayTypeRef(base, depth))) =>
+            PreTransLit(ClassOf(
+                if (depth == 1) base
+                else ArrayTypeRef(base, depth - 1)))
+          case PreTransLit(ClassOf(_)) =>
+            PreTransLit(Null())
+          case _ =>
+            default
+        }
+
       case _ =>
         default
+    }
+  }
+
+  private def constantClassNameOf(typeRef: TypeRef): String = {
+    def mappedClassName(className: ClassName): String = {
+      RuntimeClassNameMapperImpl.map(
+          config.coreSpec.semantics.runtimeClassNameMapper,
+          className.nameString)
+    }
+
+    typeRef match {
+      case primRef: PrimRef =>
+        primRef.displayName
+      case ClassRef(className) =>
+        mappedClassName(className)
+      case ArrayTypeRef(primRef: PrimRef, dimensions) =>
+        "[" * dimensions + primRef.charCode
+      case ArrayTypeRef(ClassRef(className), dimensions) =>
+        "[" * dimensions + "L" + mappedClassName(className) + ";"
     }
   }
 
@@ -4716,6 +4755,31 @@ private[optimizer] abstract class OptimizerCore(
               charLit(l.charAt(r))
 
           case _ => default
+        }
+
+      case Class_isInstance | Class_isAssignableFrom =>
+        /* We could do something clever here if we added a knowledge query to
+         * turn a TypeRef into a Type. Barring that, we cannot tell whether a
+         * ClassRef must become an `AnyType` or a `ClassType`.
+         */
+        default
+
+      case Class_cast =>
+        if (semantics.asInstanceOfs == CheckedBehavior.Unchecked
+            && (!lhs.tpe.isNullable || semantics.nullPointers == CheckedBehavior.Unchecked)) {
+          PreTransBlock(finishTransformStat(lhs), rhs)
+        } else {
+          // Same comment as in isInstance and isAssignableFrom
+          default
+        }
+
+      case Class_newArray =>
+        lhs match {
+          case PreTransLit(ClassOf(elementTypeRef)) =>
+            val arrayTypeRef = ArrayTypeRef.of(elementTypeRef)
+            NewArray(arrayTypeRef, List(finishTransformExpr(rhs))).toPreTransform
+          case _ =>
+            default
         }
     }
   }
@@ -6254,12 +6318,9 @@ private[optimizer] object OptimizerCore {
     final val ArrayBuilderZeroOf = LongRemainderUnsigned + 1
     final val GenericArrayBuilderResult = ArrayBuilderZeroOf + 1
 
-    final val ClassGetComponentType = GenericArrayBuilderResult + 1
-    final val ClassGetName = ClassGetComponentType + 1
+    final val ClassGetName = GenericArrayBuilderResult + 1
 
-    final val ArrayNewInstance = ClassGetName + 1
-
-    final val ObjectLiteral = ArrayNewInstance + 1
+    final val ObjectLiteral = ClassGetName + 1
 
     final val ByteArrayToInt8Array      = ObjectLiteral            + 1
     final val ShortArrayToInt16Array    = ByteArrayToInt8Array     + 1
@@ -6313,11 +6374,7 @@ private[optimizer] object OptimizerCore {
             m("scala$collection$mutable$ArrayBuilder$$genericArrayBuilderResult", List(ClassClassRef, JSArrayClassRef), O) -> GenericArrayBuilderResult
         ),
         ClassName("java.lang.Class") -> List(
-            m("getComponentType", Nil, ClassClassRef) -> ClassGetComponentType,
             m("getName", Nil, StringClassRef) -> ClassGetName
-        ),
-        ClassName("java.lang.reflect.Array$") -> List(
-            m("newInstance", List(ClassClassRef, I), O) -> ArrayNewInstance
         ),
         ClassName("scala.scalajs.js.special.package$") -> List(
             m("objectLiteral", List(SeqClassRef), JSObjectClassRef) -> ObjectLiteral
