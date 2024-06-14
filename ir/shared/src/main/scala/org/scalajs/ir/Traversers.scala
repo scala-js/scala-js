@@ -101,8 +101,8 @@ object Traversers {
         traverse(lhs)
         traverse(rhs)
 
-      case NewArray(tpe, lengths) =>
-        lengths foreach traverse
+      case NewArray(tpe, length) =>
+        traverse(length)
 
       case ArrayValue(tpe, elems) =>
         elems foreach traverse

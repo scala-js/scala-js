@@ -519,7 +519,7 @@ object Trees {
     }
   }
 
-  sealed case class NewArray(typeRef: ArrayTypeRef, lengths: List[Tree])(
+  sealed case class NewArray(typeRef: ArrayTypeRef, length: Tree)(
       implicit val pos: Position) extends Tree {
     val tpe = ArrayType(typeRef, nullable = false)
   }

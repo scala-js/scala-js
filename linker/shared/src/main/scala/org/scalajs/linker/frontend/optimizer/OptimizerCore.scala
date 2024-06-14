@@ -530,8 +530,8 @@ private[optimizer] abstract class OptimizerCore(
           pretransformBinaryOp(tree)(finishTransform(isStat))
         }
 
-      case NewArray(tpe, lengths) =>
-        NewArray(tpe, lengths map transformExpr)
+      case NewArray(tpe, length) =>
+        NewArray(tpe, transformExpr(length))
 
       case ArrayValue(tpe, elems) =>
         ArrayValue(tpe, elems map transformExpr)
@@ -1665,10 +1665,10 @@ private[optimizer] abstract class OptimizerCore(
     case LoadModule(moduleClassName) =>
       if (hasElidableConstructors(moduleClassName)) Skip()(stat.pos)
       else stat
-    case NewArray(_, lengths) if lengths.forall(isNonNegativeIntLiteral(_)) =>
+    case NewArray(_, length) if isNonNegativeIntLiteral(length) =>
       Skip()(stat.pos)
-    case NewArray(_, lengths) if semantics.negativeArraySizes == CheckedBehavior.Unchecked =>
-      Block(lengths.map(keepOnlySideEffects))(stat.pos)
+    case NewArray(_, length) if semantics.negativeArraySizes == CheckedBehavior.Unchecked =>
+      keepOnlySideEffects(length)
     case ArrayValue(_, elems) =>
       Block(elems.map(keepOnlySideEffects(_)))(stat.pos)
     case ArrayLength(array) =>
@@ -1917,8 +1917,8 @@ private[optimizer] abstract class OptimizerCore(
               }
           }
 
-        case NewArray(typeRef, lengths) =>
-          recs(lengths).mapOrKeepGoing(NewArray(typeRef, _))
+        case NewArray(typeRef, length) =>
+          rec(length).mapOrKeepGoing(NewArray(typeRef, _))
 
         case ArrayValue(typeRef, elems) =>
           recs(elems).mapOrKeepGoing(ArrayValue(typeRef, _))
@@ -4999,7 +4999,7 @@ private[optimizer] abstract class OptimizerCore(
         lhs match {
           case PreTransLit(ClassOf(elementTypeRef)) if elementTypeRef != VoidRef =>
             val arrayTypeRef = ArrayTypeRef.of(elementTypeRef)
-            NewArray(arrayTypeRef, List(finishTransformExpr(rhs))).toPreTransform
+            NewArray(arrayTypeRef, finishTransformExpr(rhs)).toPreTransform
           case _ =>
             default
         }

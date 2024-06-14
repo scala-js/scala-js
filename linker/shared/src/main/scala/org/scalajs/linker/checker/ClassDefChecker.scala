@@ -663,14 +663,9 @@ private final class ClassDefChecker(classDef: ClassDef,
         checkTree(lhs, env)
         checkTree(rhs, env)
 
-      case NewArray(typeRef, lengths) =>
-        if (lengths.isEmpty)
-          reportError("NewArray must have non-0 dimensions")
-        if (lengths.size > 1)
-          reportError(i"Illegal legacy NewArray with ${lengths.size} dimensions")
-
+      case NewArray(typeRef, length) =>
         checkArrayTypeRef(typeRef)
-        checkTrees(lengths, env)
+        checkTree(length, env)
 
       case ArrayValue(typeRef, elems) =>
         checkArrayTypeRef(typeRef)

@@ -321,10 +321,10 @@ object Hashers {
           mixTree(lhs)
           mixTree(rhs)
 
-        case NewArray(typeRef, lengths) =>
+        case NewArray(typeRef, length) =>
           mixTag(TagNewArray)
           mixArrayTypeRef(typeRef)
-          mixTrees(lengths)
+          mixTrees(length :: Nil) // mixed as a list for historical reasons
 
         case ArrayValue(typeRef, elems) =>
           mixTag(TagArrayValue)

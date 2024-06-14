@@ -489,9 +489,8 @@ private final class IRChecker(unit: LinkingUnit, reporter: ErrorReporter) {
         typecheckExpect(lhs, env, expectedLhsType)
         typecheckExpect(rhs, env, expectedRhsType)
 
-      case NewArray(typeRef, lengths) =>
-        for (length <- lengths)
-          typecheckExpect(length, env, IntType)
+      case NewArray(typeRef, length) =>
+        typecheckExpect(length, env, IntType)
 
       case ArrayValue(typeRef, elems) =>
         val elemType = arrayElemType(typeRef)

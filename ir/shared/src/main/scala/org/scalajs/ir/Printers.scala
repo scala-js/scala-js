@@ -511,15 +511,13 @@ object Printers {
           print(rhs)
           print(')')
 
-        case NewArray(typeRef, lengths) =>
+        case NewArray(typeRef, length) =>
           print("new ")
           print(typeRef.base)
-          for (length <- lengths) {
-            print('[')
-            print(length)
-            print(']')
-          }
-          for (dim <- lengths.size until typeRef.dimensions)
+          print('[')
+          print(length)
+          print(']')
+          for (dim <- 1 until typeRef.dimensions)
             print("[]")
 
         case ArrayValue(typeRef, elems) =>

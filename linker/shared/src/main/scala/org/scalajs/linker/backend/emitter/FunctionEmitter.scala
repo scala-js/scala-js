@@ -1047,8 +1047,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
                   if noExtractYet || semantics.asInstanceOfs == Unchecked =>
                 AsInstanceOf(rec(expr), tpe)
 
-              case NewArray(tpe, lengths) =>
-                NewArray(tpe, recs(lengths))
+              case NewArray(tpe, length) =>
+                NewArray(tpe, rec(length))
               case ArrayValue(tpe, elems) =>
                 ArrayValue(tpe, recs(elems))
               case JSArrayConstr(items) if !needsToTranslateAnySpread(items) =>
@@ -1344,8 +1344,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
           allowSideEffects && test(expr) // may TypeError
 
         // Array operations with conditional exceptions
-        case NewArray(tpe, lengths) =>
-          allowBehavior(semantics.negativeArraySizes) && allowUnpure && lengths.forall(test)
+        case NewArray(tpe, length) =>
+          allowBehavior(semantics.negativeArraySizes) && allowUnpure && test(length)
         case ArraySelect(array, index) =>
           allowBehavior(semantics.arrayIndexOutOfBounds) && allowUnpure && testNPE(array) && test(index)
 
@@ -1757,9 +1757,9 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
             redo(BinaryOp(op, newLhs, newRhs))(env)
           }
 
-        case NewArray(tpe, lengths) =>
-          unnest(lengths) { (newLengths, env) =>
-            redo(NewArray(tpe, newLengths))(env)
+        case NewArray(tpe, length) =>
+          unnest(length) { (newLength, env) =>
+            redo(NewArray(tpe, newLength))(env)
           }
 
         case ArrayValue(tpe, elems) =>
@@ -2704,14 +2704,8 @@ private[emitter] class FunctionEmitter(sjsGen: SJSGen) {
               js.Apply(extractClassData(lhs, newLhs) DOT cpn.newArray, newRhs :: Nil)
           }
 
-        case NewArray(typeRef, lengths) =>
-          lengths match {
-            case length :: Nil =>
-              js.New(genArrayConstrOf(typeRef), transformExprNoChar(length) :: Nil)
-            case _ =>
-              throw new AssertionError(
-                  s"Illegal legacy NewArray with lengths $lengths at $pos")
-          }
+        case NewArray(typeRef, length) =>
+          js.New(genArrayConstrOf(typeRef), transformExprNoChar(length) :: Nil)
 
         case ArrayValue(typeRef, elems) =>
           val preserveChar = typeRef match {

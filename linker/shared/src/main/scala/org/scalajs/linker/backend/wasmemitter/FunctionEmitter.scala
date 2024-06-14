@@ -2941,7 +2941,7 @@ private class FunctionEmitter private (
   }
 
   private def genNewArray(tree: NewArray): Type = {
-    val NewArray(arrayTypeRef, length :: Nil) = tree: @unchecked
+    val NewArray(arrayTypeRef, length) = tree
 
     markPosition(tree)
 

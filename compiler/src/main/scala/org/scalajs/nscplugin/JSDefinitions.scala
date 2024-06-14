@@ -37,6 +37,8 @@ trait JSDefinitions {
 
     lazy val JavaLangVoidClass = getRequiredClass("java.lang.Void")
 
+    lazy val JavaLangReflectArrayModClass = getModuleIfDefined("java.lang.reflect.Array").moduleClass
+
     lazy val BoxedUnitModClass = BoxedUnitModule.moduleClass
 
     lazy val ScalaJSJSPackageModule = getPackageObject("scala.scalajs.js")

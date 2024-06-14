@@ -557,10 +557,10 @@ class PrintersTest {
   }
 
   @Test def printNewArray(): Unit = {
-    assertPrintEquals("new int[3]", NewArray(ArrayTypeRef(IntRef, 1), List(i(3))))
-    assertPrintEquals("new int[3][]", NewArray(ArrayTypeRef(IntRef, 2), List(i(3))))
-    assertPrintEquals("new java.lang.Object[3][4][][]",
-        NewArray(ArrayTypeRef(ObjectClass, 4), List(i(3), i(4))))
+    assertPrintEquals("new int[3]", NewArray(ArrayTypeRef(IntRef, 1), i(3)))
+    assertPrintEquals("new int[3][]", NewArray(ArrayTypeRef(IntRef, 2), i(3)))
+    assertPrintEquals("new java.lang.Object[3][][][]",
+        NewArray(ArrayTypeRef(ObjectClass, 4), i(3)))
   }
 
   @Test def printArrayValue(): Unit = {
