@@ -17,19 +17,12 @@ import scala.scalajs.js
 import java.lang.Class
 
 object Array {
+  @inline
   def newInstance(componentType: Class[_], length: Int): AnyRef =
-    componentType.newArrayOfThisClass(js.Array(length))
+    componentType.newArrayOfThisClass(scala.Array(length))
 
-  def newInstance(componentType: Class[_], dimensions: scala.Array[Int]): AnyRef = {
-    val jsDims = js.Array[Int]()
-    val len = dimensions.length
-    var i = 0
-    while (i != len) {
-      jsDims.push(dimensions(i))
-      i += 1
-    }
-    componentType.newArrayOfThisClass(jsDims)
-  }
+  def newInstance(componentType: Class[_], dimensions: scala.Array[Int]): AnyRef =
+    componentType.newArrayOfThisClass(dimensions)
 
   def getLength(array: AnyRef): Int = array match {
     // yes, this is kind of stupid, but that's how it is

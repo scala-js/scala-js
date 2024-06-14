@@ -1475,9 +1475,9 @@ object Serializers {
         if (hacks.use4 && kind.isJSClass) {
           // #4409: Filter out abstract methods in non-native JS classes for version < 1.5
           methods0.filter(_.body.isDefined)
-        } else if (true /*hacks.use16*/ && cls == ClassClass) { // scalastyle:ignore
+        } else if (hacks.use16 && cls == ClassClass) {
           jlClassMethodsHack16(methods0)
-        } else if (true /*hacks.use16*/ && cls == ReflectArrayModClass) { // scalastyle:ignore
+        } else if (hacks.use16 && cls == ReflectArrayModClass) {
           jlReflectArrayMethodsHack16(methods0)
         } else {
           methods0
