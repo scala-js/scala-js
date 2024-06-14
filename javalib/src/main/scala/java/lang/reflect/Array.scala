@@ -17,18 +17,34 @@ import scala.scalajs.js
 import java.lang.Class
 
 object Array {
+  @inline
   def newInstance(componentType: Class[_], length: Int): AnyRef =
-    componentType.newArrayOfThisClass(js.Array(length))
+    componentType.newArrayOfThisClass(length)
 
   def newInstance(componentType: Class[_], dimensions: scala.Array[Int]): AnyRef = {
-    val jsDims = js.Array[Int]()
-    val len = dimensions.length
-    var i = 0
-    while (i != len) {
-      jsDims.push(dimensions(i))
+    def rec(componentType: Class[_], offset: Int): AnyRef = {
+      val length = dimensions(offset)
+      val result = newInstance(componentType, length)
+      val innerOffset = offset + 1
+      if (innerOffset < dimensions.length) {
+        val result2 = result.asInstanceOf[Array[AnyRef]]
+        val innerComponentType = componentType.getComponentType()
+        var i = 0
+        while (i != length) {
+          result2(i) = rec(innerComponentType, innerOffset)
+          i += 1
+        }
+      }
+      result
+    }
+
+    var componentType2 = componentType
+    var i = 1
+    while (i != dimensions.length) {
+      componentType2 = newInstance(componentType2, 0).getClass()
       i += 1
     }
-    componentType.newArrayOfThisClass(jsDims)
+    rec(componentType2, 0)
   }
 
   def getLength(array: AnyRef): Int = array match {
