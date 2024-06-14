@@ -2176,17 +2176,36 @@ abstract class GenJSCode[G <: Global with Singleton](val global: G)
           isJSFunctionDef(currentClassSym)) {
         val flags = js.MemberFlags.empty.withNamespace(namespace)
         val body = {
+          def genAsUnaryOp(op: js.UnaryOp.Code): js.Tree =
+            js.UnaryOp(op, genThis())
+          def genAsBinaryOp(op: js.BinaryOp.Code): js.Tree =
+            js.BinaryOp(op, genThis(), jsParams.head.ref)
+
           if (currentClassSym.get == HackedStringClass) {
             /* Hijack the bodies of String.length and String.charAt and replace
              * them with String_length and String_charAt operations, respectively.
              */
             methodName.name match {
-              case `lengthMethodName` =>
-                js.UnaryOp(js.UnaryOp.String_length, genThis())
-              case `charAtMethodName` =>
-                js.BinaryOp(js.BinaryOp.String_charAt, genThis(), jsParams.head.ref)
-              case _ =>
-                genBody()
+              case `lengthMethodName` => genAsUnaryOp(js.UnaryOp.String_length)
+              case `charAtMethodName` => genAsBinaryOp(js.BinaryOp.String_charAt)
+              case _                  => genBody()
+            }
+          } else if (currentClassSym.get == ClassClass) {
+            // Similar, for the Class_x operations
+            methodName.name match {
+              case `getNameMethodName`          => genAsUnaryOp(js.UnaryOp.Class_name)
+              case `isPrimitiveMethodName`      => genAsUnaryOp(js.UnaryOp.Class_isPrimitive)
+              case `isInterfaceMethodName`      => genAsUnaryOp(js.UnaryOp.Class_isInterface)
+              case `isArrayMethodName`          => genAsUnaryOp(js.UnaryOp.Class_isArray)
+              case `getComponentTypeMethodName` => genAsUnaryOp(js.UnaryOp.Class_componentType)
+              case `getSuperclassMethodName`    => genAsUnaryOp(js.UnaryOp.Class_superClass)
+
+              case `isInstanceMethodName`          => genAsBinaryOp(js.BinaryOp.Class_isInstance)
+              case `isAssignableFromMethodName`    => genAsBinaryOp(js.BinaryOp.Class_isAssignableFrom)
+              case `castMethodName`                => genAsBinaryOp(js.BinaryOp.Class_cast)
+              case `newArrayOfThisClassMethodName` => genAsBinaryOp(js.BinaryOp.Class_newArray)
+
+              case _ => genBody()
             }
           } else {
             genBody()
@@ -7071,6 +7090,28 @@ private object GenJSCode {
     MethodName("length", Nil, jstpe.IntRef)
   private val charAtMethodName =
     MethodName("charAt", List(jstpe.IntRef), jstpe.CharRef)
+
+  private val getNameMethodName =
+    MethodName("getName", Nil, jstpe.ClassRef(ir.Names.BoxedStringClass))
+  private val isPrimitiveMethodName =
+    MethodName("isPrimitive", Nil, jstpe.BooleanRef)
+  private val isInterfaceMethodName =
+    MethodName("isInterface", Nil, jstpe.BooleanRef)
+  private val isArrayMethodName =
+    MethodName("isArray", Nil, jstpe.BooleanRef)
+  private val getComponentTypeMethodName =
+    MethodName("getComponentType", Nil, jstpe.ClassRef(ir.Names.ClassClass))
+  private val getSuperclassMethodName =
+    MethodName("getSuperclass", Nil, jstpe.ClassRef(ir.Names.ClassClass))
+
+  private val isInstanceMethodName =
+    MethodName("isInstance", List(jstpe.ClassRef(ir.Names.ObjectClass)), jstpe.BooleanRef)
+  private val isAssignableFromMethodName =
+    MethodName("isAssignableFrom", List(jstpe.ClassRef(ir.Names.ClassClass)), jstpe.BooleanRef)
+  private val castMethodName =
+    MethodName("cast", List(jstpe.ClassRef(ir.Names.ObjectClass)), jstpe.ClassRef(ir.Names.ObjectClass))
+  private val newArrayOfThisClassMethodName =
+    MethodName("newArrayOfThisClass", List(jstpe.IntRef), jstpe.ClassRef(ir.Names.ObjectClass))
 
   private val thisOriginalName = OriginalName("this")
 
